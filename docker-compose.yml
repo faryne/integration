@@ -1,0 +1,7 @@
+version: "3.6"
+
+services:
+  mysql:
+    image: arm64v8/mysql
+  redis:
+    image: redis:latest
