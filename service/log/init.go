@@ -1,7 +1,9 @@
 package log
 
 import (
+	"fmt"
 	"go.uber.org/zap"
+	"strings"
 	"sync"
 )
 
@@ -19,4 +21,10 @@ func init() {
 
 func Logger() *zap.Logger {
 	return l
+}
+
+type DBLogger struct{}
+
+func (o *DBLogger) Printf(pattern string, msg ...interface{}) {
+	fmt.Printf(strings.Replace(pattern, "\n", "\t", -1)+"\n", msg...)
 }

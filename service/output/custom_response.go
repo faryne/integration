@@ -1,0 +1,22 @@
+package output
+
+import (
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/utils/v2"
+)
+
+func Success(out any, message ...string) error {
+	msg := utils.StatusMessage(fiber.StatusOK)
+	if len(message) > 0 {
+		msg = message[0]
+	}
+	return New(fiber.StatusOK, CustomCodeSuccess, out, msg)
+}
+
+func DBError(err error) error {
+	return New(fiber.StatusInternalServerError, CustomCodeDBError, nil, err.Error())
+}
+
+func BadRequest(err error) error {
+	return New(fiber.StatusBadRequest, CustomCodeBadRequest, nil, err.Error())
+}

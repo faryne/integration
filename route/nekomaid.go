@@ -6,7 +6,9 @@ import (
 )
 
 func Nekomaid(app *fiber.App) {
-	g := app.Group("/nekomaid")
+	g1 := app.Group("/yandere")
+	g1.Get("/tags", nekomaid.YandereTags)
 
+	g := app.Group("/nekomaid")
 	g.Post("/retrieve.json", nekomaid.Retrieve)
 }

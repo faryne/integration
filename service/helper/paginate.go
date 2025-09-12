@@ -12,9 +12,9 @@ type PaginateCallbackResponse[T any] struct {
 	Data  T
 	Total int64
 }
-type PaginateCallback[T []any] func(page int64, perPage int64, params url.Values) (PaginateCallbackResponse[T], error)
+type PaginateCallback[T any] func(page int64, perPage int64, params url.Values) (PaginateCallbackResponse[T], error)
 
-func Paginate[T []any](ctx fiber.Ctx, cb PaginateCallback[T]) (*entity.CommonOutput[T], error) {
+func Paginate[T any](ctx fiber.Ctx, cb PaginateCallback[T]) (*entity.CommonPaginationOutput[T], error) {
 	currentPage, _ := strconv.ParseInt(ctx.Query("page", "1"), 10, 64)
 	perPage, _ := strconv.ParseInt(ctx.Query("per_page", "30"), 10, 64)
 	fullPath := ctx.Scheme() + "://" + ctx.Hostname() + ctx.Path()
@@ -31,7 +31,7 @@ func Paginate[T []any](ctx fiber.Ctx, cb PaginateCallback[T]) (*entity.CommonOut
 
 	lastPage := int64(math.Ceil(float64(resp.Total) / float64(perPage)))
 
-	return &entity.CommonOutput[T]{
+	return &entity.CommonPaginationOutput[T]{
 		Data:        resp.Data,
 		CurrentPage: currentPage,
 
