@@ -17,7 +17,14 @@ func FetchAllUnits() ([]ntpcfd.NTPCFDUnit, error) {
 func FetchEvents(req ntpcfd.NTPCFDEventRequest, page, perPage int64) ([]ntpcfd.NTPCFDEvent, int64, error) {
 	orm := client.GetDB(enum.DBWalolita)
 	var out = make([]ntpcfd.NTPCFDEvent, 0)
-	query := orm.Table("ntpcfd")
+	query := orm.Table("ntpcfd").Select(`
+			id AS uid,
+            IF(
+                LENGTH(service_sub_type) = 0, 
+                service_type, 
+                CONCAT_WS("-", service_type, service_sub_type)
+            ) AS service_type,
+            service_unit, service_addr, service_time, lat, lng`)
 	if req.ServiceType != "" {
 		query.Where("service_type = ?", req.ServiceType)
 	}

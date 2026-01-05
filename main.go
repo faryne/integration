@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"faryne.dev/config"
+	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
 	"faryne.dev/route"
 	"faryne.dev/service/client"
@@ -12,16 +13,19 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/swagger/v2"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"os"
 	"reflect"
 	"time"
+
+	_ "faryne.dev/docs"
 )
 
 var errChan = make(chan error)
 var reloadChan = make(chan bool)
-var envFile = ".env"
+var envFile = "./.env"
 var inputEnvFile = ""
 var reload bool
 
@@ -111,6 +115,12 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	//	return
 	//}
 
+	esConnError := client.InitElasticSearch(enum.ESDefault, []string{config.EnvConfig().ESDSN})
+	if esConnError != nil {
+		errChan <- esConnError
+		return
+	}
+
 	// 記錄開始時間
 	app.Use(func(c fiber.Ctx) error {
 		c.Locals("start_time", time.Now().UnixMilli())
@@ -121,6 +131,8 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)
+	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
+	app.Get("/*", swagger.HandlerDefault)
 	// </editor-fold>
 
 	go func() {

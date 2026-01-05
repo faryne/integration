@@ -6,6 +6,7 @@ type envConfig struct {
 	AppPort     string `env:"APP_PORT,default=8080"`
 	WalolitaDSN string `env:"WALOLITA_DSN"`
 	RedisDSN    string `env:"REDIS_DSN"`
+	ESDSN       string `env:"ES_DSN"`
 }
 
 var loadEnvConfig envConfig
