@@ -1,7 +1,14 @@
 version: "3.6"
 
 services:
-  mysql:
-    image: arm64v8/mysql
-  redis:
-    image: redis:latest
+#  mysql:
+#    image: arm64v8/mysql
+#  redis:
+#    image: redis:latest
+  manticore:
+    image: manticoresearch/manticore
+    container_name: search
+    ports:
+      - "9306:9306"
+      - "9308:9308"
+      - "9312:9312"
