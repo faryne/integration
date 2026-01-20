@@ -21,6 +21,10 @@ func ESError(err error) error {
 	return New(fiber.StatusInternalServerError, CustomCodeESError, nil, err.Error())
 }
 
+func ExternalServiceError(err error) error {
+	return New(fiber.StatusServiceUnavailable, CustomCodeExternalServiceError, nil, err.Error())
+}
+
 func BadRequest(err error) error {
 	return New(fiber.StatusBadRequest, CustomCodeBadRequest, nil, err.Error())
 }

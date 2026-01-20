@@ -7,9 +7,9 @@ import (
 )
 
 func Search(ctx fiber.Ctx) error {
-	rows, err := nekomaidService.Search(ctx)
+	raw, _, err := nekomaidService.Search(ctx)
 	if err != nil {
 		return output.ESError(err)
 	}
-	return output.Success(rows)
+	return output.Success(raw.Aggregations)
 }

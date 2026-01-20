@@ -1,4 +1,4 @@
-package search
+package entity
 
 type ElasticSearchResponse[T any] struct {
 	Took     int64    `json:"took"`
@@ -17,4 +17,14 @@ type ElasticSearchResponse[T any] struct {
 			Source T       `json:"_source"`
 		} `json:"hits"`
 	} `json:"hits"`
+	Aggregations map[string]struct {
+		DocCount int `json:"doc_count"`
+		BgCount  int `json:"bg_count"`
+		Buckets  []struct {
+			Key      string  `json:"key"`
+			DocCount int     `json:"doc_count"`
+			Score    float64 `json:"score"`
+			BgCount  int     `json:"bg_count"`
+		} `json:"buckets"`
+	} `json:"aggregations,omitempty"`
 }

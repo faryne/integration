@@ -1,6 +1,7 @@
 package nekomaid
 
 import (
+	"faryne.dev/model/entity"
 	"faryne.dev/model/entity/nekomaid"
 	"faryne.dev/service/search"
 	"fmt"
@@ -39,39 +40,7 @@ var f = func(input nekomaid.ArtworkSearchResult) nekomaid.ArtworkSearchClearRow 
 	return o
 }
 
-func _setQuery(q map[string]any, mustOrShould bool, conditions map[string]any) {
-	// 確保 conditions["query"] 被初始化為 map[string]any
-	if _, ok := conditions["query"]; !ok {
-		conditions["query"] = map[string]any{}
-	}
-
-	// 確保 conditions["query"]["bool"] 被初始化為 map[string]any
-	queryMap := conditions["query"].(map[string]any)
-	if _, ok := queryMap["bool"]; !ok {
-		queryMap["bool"] = map[string]any{}
-	}
-
-	boolMap := queryMap["bool"].(map[string]any)
-	if mustOrShould {
-		if _, ok := boolMap["must"]; !ok {
-			boolMap["must"] = make([]map[string]any, 0)
-		}
-
-		// 將新的條件添加到 must 陣列中
-		mustSlice := boolMap["must"].([]map[string]any)
-		boolMap["must"] = append(mustSlice, q)
-	} else {
-		if _, ok := boolMap["should"]; !ok {
-			boolMap["should"] = make([]map[string]any, 0)
-		}
-
-		// 將新的條件添加到 must 陣列中
-		shouldSlice := boolMap["should"].([]map[string]any)
-		boolMap["should"] = append(shouldSlice, q)
-	}
-}
-
-func Search(ctx fiber.Ctx) ([]nekomaid.ArtworkSearchClearRow, error) {
+func Search(ctx fiber.Ctx) (*entity.ElasticSearchResponse[nekomaid.ArtworkSearchResult], []nekomaid.ArtworkSearchClearRow, error) {
 	site := ctx.Params("site", "")
 	page, pageError := strconv.Atoi(ctx.Query("page", "1"))
 	if pageError != nil {
@@ -89,24 +58,24 @@ func Search(ctx fiber.Ctx) ([]nekomaid.ArtworkSearchClearRow, error) {
 		"sort": map[string]any{"published_dt": map[string]any{"order": "desc"}},
 	}
 	if site != "" {
-		_setQuery(map[string]any{"match": map[string]any{"from": site}}, true, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"from": site}}, true, q)
 	}
 	if authorId != "" {
-		_setQuery(map[string]any{"match": map[string]any{"author_id": authorId}}, true, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"author_id": authorId}}, true, q)
 	}
 	if artworkId != "" {
-		_setQuery(map[string]any{"match": map[string]any{"artwork_id": artworkId}}, true, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"artwork_id": artworkId}}, true, q)
 	}
 	if tag != "" {
-		_setQuery(map[string]any{"match": map[string]any{"tags.keyword": tag}}, true, q)
-		_setQuery(map[string]any{"match": map[string]any{"title.keyword": tag}}, false, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"tags.keyword": tag}}, true, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"title.keyword": tag}}, false, q)
 	}
 	if rating != "" {
 		switch rating {
 		case "2": // 全年齡向
-			_setQuery(map[string]any{"match": map[string]any{"r18": false}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"r18": false}}, true, q)
 		case "3": // r18
-			_setQuery(map[string]any{"match": map[string]any{"r18": true}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"r18": true}}, true, q)
 		default: // 不分級
 
 		}
@@ -114,16 +83,26 @@ func Search(ctx fiber.Ctx) ([]nekomaid.ArtworkSearchClearRow, error) {
 	if t != "" {
 		switch t {
 		case "illust":
-			_setQuery(map[string]any{"match": map[string]any{"photos_cnt": 1}}, true, q)
-			_setQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"photos_cnt": 1}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
 		case "manga":
-			_setQuery(map[string]any{"match": map[string]any{"range": map[string]any{"photos_cnt": map[string]any{"gte": 2}}}}, true, q)
-			_setQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"range": map[string]any{"photos_cnt": map[string]any{"gte": 2}}}}, true, q)
+			search.SetQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
 		}
 	}
-	_, cleaned, err := search.Search[nekomaid.ArtworkSearchResult, nekomaid.ArtworkSearchClearRow]("nekomaid", q, f)
-	if err != nil {
-		return nil, err
+	if _, ok := q["aggregations"]; !ok {
+		q["aggregations"] = map[string]any{
+			"tags": map[string]any{
+				"significant_terms": map[string]any{
+					"field": "tags.keyword",
+					"size":  20,
+				},
+			},
+		}
 	}
-	return cleaned, nil
+	rawResponse, cleaned, err := search.Search[nekomaid.ArtworkSearchResult, nekomaid.ArtworkSearchClearRow]("nekomaid", q, f)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rawResponse, cleaned, nil
 }

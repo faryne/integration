@@ -29,7 +29,7 @@ func Banks(_ fiber.Ctx) error {
 	})
 }
 
-func Currencies(ctx fiber.Ctx) error {
+func Currencies(_ fiber.Ctx) error {
 	return output.Success(map[string]string{
 		"AUD": "澳元",
 		"CAD": "加元",
@@ -51,5 +51,6 @@ func Currencies(ctx fiber.Ctx) error {
 		"THB": "泰銖",
 		"USD": "美元",
 		"VND": "越南盾",
-		"ZAR": "南非幣"})
+		"ZAR": "南非幣",
+	})
 }

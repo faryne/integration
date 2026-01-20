@@ -3,11 +3,27 @@ package opendata
 import (
 	"faryne.dev/model/entity/opendata/ntpcfd"
 	ntpcfdRepo "faryne.dev/repository/ntpcfd"
+	fdService "faryne.dev/service/fire_department"
 	"faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	"github.com/gofiber/fiber/v3"
 	"net/url"
 )
+
+func FDRealtime(ctx fiber.Ctx) error {
+	eventsNewTaipei, err := fdService.NewTaipei()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	eventsTaipei, err := fdService.Taipei()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	return output.Success(map[string][]fdService.Event{
+		"taipei":     eventsTaipei,
+		"new_taipei": eventsNewTaipei,
+	})
+}
 
 func FetchNtpcFDEvents(ctx fiber.Ctx) error {
 	var req ntpcfd.NTPCFDEventRequest
