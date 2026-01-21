@@ -1,6 +1,21 @@
 package av
 
-import "time"
+import (
+	"faryne.dev/model/entity"
+	"time"
+)
+
+type VideoQueryRequest struct {
+	Year      int                    `query:"year"`
+	Month     int                    `query:"month"`
+	Day       int                    `query:"day"`
+	StartDate *entity.OnlyDateFormat `query:"start_date"`
+	EndDate   *entity.OnlyDateFormat `query:"end_date"`
+	Keyword   string                 `query:"keyword"`
+	Tag       string                 `query:"tag"`
+	Actress   string                 `query:"actress"`
+	Page      int                    `query:"page"`
+}
 
 type RawVideo struct {
 	Version string `json:"@version"`

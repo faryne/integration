@@ -21,4 +21,8 @@ func OpenData(app *fiber.App) {
 	g3 := g.Group("/xcity")
 	g3.Get("/actress", opendata.XCityActressList)
 	g3.Get("/actress/detail/:id", opendata.XCityActressDetail)
+
+	g4 := g.Group("/av")
+	g4.Get("/search/video", opendata.AvVideoSearch)
+	g4.Get("/search/actress", opendata.AvActressSearch)
 }

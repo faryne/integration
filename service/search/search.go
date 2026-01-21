@@ -71,7 +71,6 @@ func Search[T any, R any](index string, query map[string]any, cleanFunc ...func(
 	defer s.Body.Close()
 
 	d, _ := io.ReadAll(s.Body)
-	fmt.Printf("content: %s\n", string(d))
 
 	if err := json.Unmarshal(d, &r); err != nil {
 		return nil, o, err

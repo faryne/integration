@@ -19,12 +19,20 @@ type ActressQueryRequest struct {
 	Page       int    `query:"page"`
 }
 
-type VideoQueryRequest struct {
-	Year    int    `query:"year"`
-	Month   int    `query:"month"`
-	Day     int    `query:"day"`
-	Keyword string `query:"keyword"`
-	Tag     string `query:"tag"`
-	Actress string `query:"actress"`
-	Page    int    `query:"page"`
+type Actress struct {
+	Blood      string        `json:"blood"`
+	Height     int           `json:"height"`
+	Kana       string        `json:"kana"`
+	Bust       int           `json:"bust"`
+	Cup        string        `json:"cup"`
+	BirthMonth int           `json:"birth_month"`
+	Horoscope  string        `json:"horoscope"`
+	Name       string        `json:"name"`
+	Photo      string        `json:"photo"`
+	Waist      int           `json:"waist"`
+	BornCity   string        `json:"born_city"`
+	BirthYear  int           `json:"birth_year"`
+	BirthDay   int           `json:"birth_day"`
+	Hips       int           `json:"hips"`
+	Interests  []interface{} `json:"interests"`
 }
