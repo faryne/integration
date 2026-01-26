@@ -2,11 +2,11 @@ import {AppBar, Toolbar, Typography} from "@mui/material"
 export function Header() {
     return (
         <>
-            <AppBar position={"fixed"} sx={{
+            <AppBar position={"relative"} sx={{
                 maxWidth: 'lg',
-                width: '100%',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                // width: '100%',
+                // left: '50%',
+                // transform: 'translateX(-50%)',
                 mx: 'auto'
             }}>
                 <Toolbar>

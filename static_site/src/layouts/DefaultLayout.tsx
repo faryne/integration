@@ -3,11 +3,7 @@ import {Footer} from "@/components/common/Footer.tsx"
 import { Outlet } from "react-router-dom"
 import type {FC, ReactNode} from "react"
 import "@/styles/common.css"
-import {Container, Stack} from "@mui/material";
-
-export interface DefaultLayoutProps {
-    children?: React.ReactNode
-}
+import {Container, Stack} from "@mui/material"
 
 export const DefaultLayout: FC<{ children?: ReactNode }> = () => {
     return (

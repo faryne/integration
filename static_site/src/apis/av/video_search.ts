@@ -1,0 +1,33 @@
+import type {CommonResponse,ListByPaginationRequest} from "@/apis/interfaces"
+import type {Video} from "@/types/av"
+import {useQuery} from "@tanstack/react-query"
+import axios from 'axios'
+
+export interface VideoSearchRequest {
+    page: number
+    year?: number
+    month?: number
+    start_date?: string
+    end_date?: string
+    keyword?: string
+    actress?: string
+    no?: string
+    maker_no?: string
+}
+export type VideoSearchResponse = CommonResponse<Video[]>
+
+export function useAVVideoSearch(params: ListByPaginationRequest<VideoSearchRequest>) {
+    return useQuery({
+        queryKey: [params.random, "av/video"],
+        queryFn: async() => {
+            const response = await axios.get<VideoSearchResponse>(
+                `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
+                {
+                    params,
+                    timeout: 10000,
+                }
+            )
+            return response.data
+        }
+    })
+}

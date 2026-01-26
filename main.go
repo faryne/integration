@@ -11,6 +11,7 @@ import (
 	"faryne.dev/service/output"
 	"flag"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/swagger/v2"
@@ -128,6 +129,7 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	})
 	app.Use(recover2.New())
 	app.Use(logger.New())
+	app.Use(cors.New())
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)

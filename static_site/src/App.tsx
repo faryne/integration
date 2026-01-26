@@ -1,15 +1,20 @@
 import './components/common/Header.tsx';
 import { BrowserRouter, Routes, Route } from "react-router-dom"
-import {DefaultLayout} from "./layouts/DefaultLayout.tsx";
+import {DefaultLayout} from "./layouts/DefaultLayout.tsx"
+import {AVVideo} from "@/pages/av/video.tsx"
+import {AVActress} from "@/pages/av/actress.tsx";
 
 function App() {
-  // const [count, setCount] = useState(0)
 
   return (
     <BrowserRouter>
       <Routes>
           <Route path={""} element={<DefaultLayout />}>
-              <Route path="/a" element={<><h1>Hello</h1></>} />
+              <Route>
+                  <Route path={"/av/video"} element={<AVVideo />} />
+                  <Route path={"/av/actress"} element={<AVActress />} />
+              </Route>
+              <Route path="/a" element={<h1>Hello</h1>} />
           </Route>
       </Routes>
     </BrowserRouter>
