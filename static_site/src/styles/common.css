@@ -1,6 +1,6 @@
-#root{
-    max-width: 1280px;
-    margin: 0 auto;
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
 }
 
 /*#header > h3:first-child {*/
@@ -9,13 +9,13 @@
 /*}*/
 
 footer {
-    /*padding: 10px 0;*/
-    border-top: 1px solid #000;
-    margin-top: 20px;
-    font-size: 12px;
-    color: #888;
+  /*padding: 10px 0;*/
+  border-top: 1px solid #000;
+  margin-top: 20px;
+  font-size: 12px;
+  color: #888;
 }
 
 footer a:hover {
-    color: #646cff;
+  color: #646cff;
 }
