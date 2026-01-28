@@ -84,7 +84,7 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(map[string]any{"match": map[string]any{"tags": input.Tag}}, true, q)
 	}
 	if input.Actress != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"actress": input.Actress}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"actress.keyword": input.Actress}}, true, q)
 	}
 
 	c, _ := json.Marshal(q)
@@ -110,6 +110,9 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 			"birth_month": map[string]any{"order": "desc"},
 			"birth_day":   map[string]any{"order": "desc"},
 		},
+	}
+	if input.Name != "" {
+		search.SetQuery(map[string]any{"term": map[string]any{"name.keyword": input.Name}}, true, q)
 	}
 	if input.BirthYear > 0 && input.BirthMonth > 0 && input.BirthDay > 0 {
 		search.SetQuery(map[string]any{"match": map[string]any{"birth_year": input.BirthYear, "birth_month": input.BirthMonth, "birth_day": input.BirthDay}}, true, q)

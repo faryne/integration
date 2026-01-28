@@ -1,4 +1,4 @@
-import type { CommonResponse } from "@/apis/interfaces.ts";
+import type {CommonResponse, ListByPaginationRequest, Pagination} from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -8,15 +8,21 @@ export interface ActressSearchRequest {
   b?: number[];
   w?: number[];
   h?: number[];
+  cup?: string;
   height?: number[];
   random?: number;
+  birth_year?: number;
+  name?: string;
 }
 
-export type ActressSearchResponse = CommonResponse<Actress[]>;
+export type ActressSearchResponse = CommonResponse<Pagination<Actress[]>>;
 
-export function useAVActressSearch(params: ActressSearchRequest) {
+export function useAVActressSearch(
+    params: ListByPaginationRequest<ActressSearchRequest>,
+    enabled: boolean = true,
+    ) {
   return useQuery({
-    queryKey: [params.random, "av/actress"],
+    queryKey: [params, "av/actress"],
     queryFn: async () => {
       const response = await axios.get<ActressSearchResponse>(
         `${import.meta.env.VITE_API_BASE}/opendata/av/search/actress`,
@@ -27,5 +33,6 @@ export function useAVActressSearch(params: ActressSearchRequest) {
       );
       return response.data;
     },
+    enabled: enabled,
   });
 }

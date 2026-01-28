@@ -7,7 +7,10 @@ export interface IActressSummary {
 
 export function ActressSummary(props: IActressSummary) {
   return (
-    <a href={"#"} onClick={() => props.onClick?.(props.actress)}>
+    <a href={"#"} onClick={(e) => {
+        e.preventDefault();
+        props.onClick?.(props.actress)
+    }}>
       <img
         src={props.actress.photo}
         alt={props.actress.name}

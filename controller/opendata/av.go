@@ -4,6 +4,7 @@ import (
 	avEntity "faryne.dev/model/entity/opendata/av"
 	"faryne.dev/service/av"
 	"faryne.dev/service/dmm"
+	"faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	"faryne.dev/service/xcity"
 	"github.com/go-playground/validator/v10"
@@ -18,11 +19,11 @@ func AvVideoSearch(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Query(&req); err != nil {
 		return output.BadRequest(err)
 	}
-	_, rows, err := av.VideoSearch(req)
+	r, rows, err := av.VideoSearch(req)
 	if err != nil {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
-	return output.Success(rows)
+	return output.Success(helper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
 }
 
 func AvActressSearch(ctx fiber.Ctx) error {
@@ -30,11 +31,11 @@ func AvActressSearch(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Query(&req); err != nil {
 		return output.BadRequest(err)
 	}
-	_, rows, err := av.ActressSearch(req)
+	r, rows, err := av.ActressSearch(req)
 	if err != nil {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
-	return output.Success(rows)
+	return output.Success(helper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
 }
 
 func DMMDailyVideo(ctx fiber.Ctx) error {

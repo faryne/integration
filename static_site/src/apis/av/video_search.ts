@@ -1,6 +1,6 @@
 import type {
   CommonResponse,
-  ListByPaginationRequest,
+  ListByPaginationRequest, Pagination,
 } from "@/apis/interfaces";
 import type { Video } from "@/types/av";
 import { useQuery } from "@tanstack/react-query";
@@ -17,13 +17,14 @@ export interface VideoSearchRequest {
   no?: string;
   maker_no?: string;
 }
-export type VideoSearchResponse = CommonResponse<Video[]>;
+export type VideoSearchResponse = CommonResponse<Pagination<Video[]>>;
 
 export function useAVVideoSearch(
   params: ListByPaginationRequest<VideoSearchRequest>,
+  enabled: boolean = true,
 ) {
   return useQuery({
-    queryKey: [params.random, "av/video"],
+    queryKey: [params, "av/video"],
     queryFn: async () => {
       const response = await axios.get<VideoSearchResponse>(
         `${import.meta.env.VITE_API_BASE}/opendata/av/search/video`,
@@ -34,5 +35,6 @@ export function useAVVideoSearch(
       );
       return response.data;
     },
+    enabled: enabled,
   });
 }
