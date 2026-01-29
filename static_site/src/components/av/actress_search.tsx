@@ -24,7 +24,7 @@ export function ActressSearch(props: IActressSearch) {
               <TextField
                   label={"關鍵字"}
                   variant={"outlined"}
-                  value={req.keyword}
+                  value={req.name}
                   onChange={(e) => {
                       setReq((o) => {
                           return {...o, ...{keyword: e.target.value}};

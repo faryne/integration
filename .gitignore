@@ -4,3 +4,7 @@
 php7-version
 
 docs
+
+.firebaserc
+static_site/.firebase
+static_site/public

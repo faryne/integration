@@ -6,6 +6,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import {useTitle} from "@/helpers/title.tsx";
 
 export interface IVideoDetail {
   video?: Video;
@@ -18,6 +19,8 @@ export function VideoDetail(props: IVideoDetail) {
   const makers = video ? video?.makers.filter((m) => m !== "") : [];
   const series = video ? video.series.filter((s) => s !== "") : [];
   const directors = video ? video?.directors.filter((d) => d !== "") : [];
+
+  useTitle(video?.title ?? "")
   return (
     <>
       <Stack direction={"column"} spacing={2}>
@@ -34,23 +37,23 @@ export function VideoDetail(props: IVideoDetail) {
           出演：{actresses.length > 0 ? actresses.join(" / ") : "-"} / 監督：
           {directors.length > 0 ? directors.join(" / ") : "-"}
         </Typography>
-        {props.video && <ImageList cols={4} rowHeight={120}>
+        <Typography variant={"body2"}>
+          {props.video?.maker_no && (
+              <Chip
+                  label={"View on missav"}
+                  onClick={() =>
+                      window.open(`https://missav.ws/${props.video?.maker_no}`)
+                  }
+              ></Chip>
+          )}
+        </Typography>
+        {props.video && <ImageList cols={4} variant={"masonry"}>
           {props.video?.images.map((i) => (
-            <ImageListItem key={i.thumb}>
+            <ImageListItem key={i.thumb} >
               <img src={i.thumb} alt={props.video?.title} title={i.thumb} />
             </ImageListItem>
           ))}
         </ImageList>}
-        <Typography variant={"body2"}>
-          {props.video?.maker_no && (
-            <Chip
-              label={"View on missav"}
-              onClick={() =>
-                window.open(`https://missav.ws/${props.video?.maker_no}`)
-              }
-            ></Chip>
-          )}
-        </Typography>
       </Stack>
     </>
   );

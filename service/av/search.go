@@ -86,6 +86,10 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 	if input.Actress != "" {
 		search.SetQuery(map[string]any{"term": map[string]any{"actress.keyword": input.Actress}}, true, q)
 	}
+	if input.No != "" {
+		search.SetQuery(map[string]any{"term": map[string]any{"no.keyword": input.No}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"maker_no.keyword": input.No}}, false, q)
+	}
 
 	c, _ := json.Marshal(q)
 	fmt.Println(string(c))

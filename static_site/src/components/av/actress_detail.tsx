@@ -1,5 +1,5 @@
 import type {Actress} from "@/types/av.ts";
-import {Card, CardContent, CardHeader, Grid, ImageListItemBar, Stack, Typography} from "@mui/material";
+import {Card, CardContent, CardHeader, Grid, Stack, Typography} from "@mui/material";
 import type {UseQueryResult} from "@tanstack/react-query";
 import type {VideoSearchResponse} from "@/apis/av/video_search.ts";
 import {VideoSummary} from "@/components/av/video_summary.tsx";
@@ -46,11 +46,6 @@ export function ActressDetail(props: IActressDetail) {
                                             navigate(`/av/video/${vid.maker_no ?? vid.no}`)
                                         }
                                     />
-                                    <ImageListItemBar
-                                        title={v.title}
-                                        subtitle={v.actresses.filter((a) => a !== "").join(" / ")}
-                                        onClick={() => navigate(`/av/video/${v.maker_no ?? v.no}`)}
-                                    ></ImageListItemBar>
                                 </>
                             )}
                             onPaginationChange={(p) => console.log(p)}

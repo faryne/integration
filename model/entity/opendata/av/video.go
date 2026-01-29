@@ -14,6 +14,7 @@ type VideoQueryRequest struct {
 	Keyword   string                 `query:"keyword"`
 	Tag       string                 `query:"tag"`
 	Actress   string                 `query:"actress"`
+	No        string                 `query:"no"`
 	Page      int                    `query:"page"`
 }
 
