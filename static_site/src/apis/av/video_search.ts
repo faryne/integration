@@ -1,6 +1,7 @@
 import type {
   CommonResponse,
-  ListByPaginationRequest, Pagination,
+  ListByPaginationRequest,
+  Pagination,
 } from "@/apis/interfaces";
 import type { Video } from "@/types/av";
 import { useQuery } from "@tanstack/react-query";

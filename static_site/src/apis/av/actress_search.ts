@@ -1,4 +1,8 @@
-import type {CommonResponse, ListByPaginationRequest, Pagination} from "@/apis/interfaces.ts";
+import type {
+  CommonResponse,
+  ListByPaginationRequest,
+  Pagination,
+} from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -18,9 +22,9 @@ export interface ActressSearchRequest {
 export type ActressSearchResponse = CommonResponse<Pagination<Actress[]>>;
 
 export function useAVActressSearch(
-    params: ListByPaginationRequest<ActressSearchRequest>,
-    enabled: boolean = true,
-    ) {
+  params: ListByPaginationRequest<ActressSearchRequest>,
+  enabled: boolean = true,
+) {
   return useQuery({
     queryKey: [params, "av/actress"],
     queryFn: async () => {

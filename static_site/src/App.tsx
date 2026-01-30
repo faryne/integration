@@ -3,8 +3,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { AVVideo } from "@/pages/av/video.tsx";
 import { AVActress } from "@/pages/av/actress.tsx";
-import {AVActressDetail} from "@/pages/av/actress_detail.tsx";
-import {AVVideoDetail} from "@/pages/av/video_detail.tsx";
+import { AVActressDetail } from "@/pages/av/actress_detail.tsx";
+import { AVVideoDetail } from "@/pages/av/video_detail.tsx";
 
 function App() {
   return (

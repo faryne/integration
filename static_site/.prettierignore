@@ -1,0 +1,9 @@
+.prettierrc
+firebase.json
+pnpm-lock.yaml
+tsconfig.*
+vite.config.js
+README.md
+public/*
+dist/*
+eslint.config.js
