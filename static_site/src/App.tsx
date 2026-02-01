@@ -5,18 +5,22 @@ import { AVVideo } from "@/pages/av/video.tsx";
 import { AVActress } from "@/pages/av/actress.tsx";
 import { AVActressDetail } from "@/pages/av/actress_detail.tsx";
 import { AVVideoDetail } from "@/pages/av/video_detail.tsx";
+import { TwStatsIndex } from "@/pages/opendata/twstats_index.tsx";
+import { TwStatsByName } from "@/pages/opendata/twstats_byname.tsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path={""} element={<DefaultLayout />}>
-          <Route>
-            <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
-            <Route path={"/av/video"} element={<AVVideo />} />
-            <Route path={"/av/actress/:name"} element={<AVActressDetail />} />
-            <Route path={"/av/actress"} element={<AVActress />} />
-          </Route>
+          <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
+          <Route path={"/av/video"} element={<AVVideo />} />
+          <Route path={"/av/actress/:name"} element={<AVActressDetail />} />
+          <Route path={"/av/actress"} element={<AVActress />} />
+
+          <Route path={"/data/tw-stats/:name"} element={<TwStatsByName />} />
+          <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
+
           <Route path="/a" element={<h1>Hello</h1>} />
         </Route>
       </Routes>
