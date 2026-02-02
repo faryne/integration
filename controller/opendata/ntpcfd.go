@@ -19,9 +19,10 @@ func FDRealtime(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.ExternalServiceError(err)
 	}
+	// Key 與前端的 TWArea 一致
 	return output.Success(map[string][]fdService.Event{
-		"taipei":     eventsTaipei,
-		"new_taipei": eventsNewTaipei,
+		"Taipei":    eventsTaipei,
+		"NewTaipei": eventsNewTaipei,
 	})
 }
 

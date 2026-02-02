@@ -7,6 +7,7 @@ import { AVActressDetail } from "@/pages/av/actress_detail.tsx";
 import { AVVideoDetail } from "@/pages/av/video_detail.tsx";
 import { TwStatsIndex } from "@/pages/opendata/twstats_index.tsx";
 import { TwStatsByName } from "@/pages/opendata/twstats_byname.tsx";
+import {FireDepartmentRealtime} from "@/pages/opendata/firedepartment_realtime.tsx";
 
 function App() {
   return (
@@ -20,6 +21,8 @@ function App() {
 
           <Route path={"/data/tw-stats/:name"} element={<TwStatsByName />} />
           <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
+
+          <Route path={"/data/fire/realtime"} element={<FireDepartmentRealtime />} />
 
           <Route path="/a" element={<h1>Hello</h1>} />
         </Route>

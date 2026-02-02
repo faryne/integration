@@ -13,15 +13,17 @@ type TaipeiResponse struct {
 }
 
 type TaipeiResponseRow struct {
-	InTime       string  `json:"inTime"`
-	DpKdid       string  `json:"dpKdid"`
-	CsKindName   string  `json:"csKindName"`
-	CsCodeName   string  `json:"csCodeName"`
-	CaseStatus   string  `json:"caseStatus"`
-	CsPlaceFuzzy string  `json:"csPlaceFuzzy"`
-	FuzzyAble    string  `json:"fuzzyAble"`
-	FuzzyX       float64 `json:"fuzzyX"`
-	FuzzyY       float64 `json:"fuzzyY"`
+	InTime       string   `json:"inTime"`
+	DpKdid       string   `json:"dpKdid"`
+	CsKindName   string   `json:"csKindName"`
+	CsCodeName   string   `json:"csCodeName"`
+	CaseStatus   string   `json:"caseStatus"`
+	CsPlaceFuzzy string   `json:"csPlaceFuzzy"`
+	FuzzyAble    string   `json:"fuzzyAble"`
+	FuzzyX       float64  `json:"fuzzyX"`
+	FuzzyY       float64  `json:"fuzzyY"`
+	CsX          *float64 `json:"csX,omitempty"`
+	CsY          *float64 `json:"csY,omitempty"`
 }
 
 func Twd97ToWGS84(x, y float64) (float64, float64) {
@@ -36,6 +38,7 @@ func Taipei() ([]Event, error) {
 		return nil, err
 	}
 	// TWD97 -> WGS84：https://wiki.openstreetmap.org/wiki/Zh-hant:key_formulas_and_constants?#TWD97_.E8.BD.89_WGS84
+	loc, _ := time.LoadLocation("Asia/Taipei")
 	return Fetch(req, func(input []byte) ([]Event, error) {
 		var respContent TaipeiResponse
 		if err := json.Unmarshal(input, &respContent); err != nil {
@@ -43,20 +46,23 @@ func Taipei() ([]Event, error) {
 		}
 		var out = make([]Event, respContent.Total)
 		for k, row := range respContent.Rows {
-			t, err := time.Parse("2006/01/02 15:04:05", row.InTime)
+			t, err := time.ParseInLocation("2006/01/02 15:04:05", row.InTime, loc)
 			if err != nil {
 				return nil, err
 			}
-			tx, ty := Twd97ToWGS84(row.FuzzyX, row.FuzzyY)
+			tx, ty := float64(0), float64(0)
+			if row.CsX != nil && row.CsY != nil {
+				tx, ty = Twd97ToWGS84(*row.CsX, *row.CsY)
+			}
 			out[k] = Event{
-				Lng:          ty,
-				Lat:          tx,
+				Lng:          tx,
+				Lat:          ty,
 				Type:         row.CsKindName,
 				SubType:      row.CsCodeName,
 				Title:        row.DpKdid,
 				EndpointInfo: row.CsPlaceFuzzy,
 				Cars:         make([]string, 0),
-				Timestamp:    t.Unix(),
+				Timestamp:    t.In(loc).Unix(),
 			}
 		}
 		return out, nil
