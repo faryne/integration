@@ -46,7 +46,7 @@ export const TWAreaMappings: { [key in TWArea]: string } = {
   HsinchuCity: "新竹市",
   ChiaYiCity: "嘉義市",
   Kinmen: "金門縣",
-  Matsu: "馬祖",
+  Matsu: "連江縣",
 };
 
 export type TwStatRawData = {

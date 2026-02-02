@@ -34,7 +34,7 @@ export function Header() {
             variant={"outlined"}
             onClick={(e) => setAnchor1(e.currentTarget)}
           >
-            二次元
+            大人的喜好
           </Button>
           <Menu
             key={"A1"}
@@ -55,6 +55,20 @@ export function Header() {
               href={"/yandere/tags"}
             >
               二次元常用英文 tag
+            </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor1(null)}
+              href={"/av/video"}
+            >
+              AV 影片搜尋
+            </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor1(null)}
+              href={"/av/actress"}
+            >
+              AV 女優搜尋
             </MenuItem>
           </Menu>
           <Button
@@ -77,6 +91,13 @@ export function Header() {
               href={"/data/rates"}
             >
               匯率
+            </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor2(null)}
+              href={"/data/fire/realtime"}
+            >
+              即時消防出勤記錄
             </MenuItem>
             <MenuItem
               component={"a"}

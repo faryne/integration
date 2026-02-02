@@ -8,6 +8,7 @@ import {
   TableCell,
   Chip,
   Divider,
+  TableBody,
 } from "@mui/material";
 import { useParams } from "react-router-dom";
 import { useGetTwStatsByName } from "@/apis/opendata/twstats.ts";
@@ -72,7 +73,7 @@ export function TwStatsByName() {
                               tmp.splice(o.indexOf(v), 1);
                               return [...tmp];
                             }
-                            return [...tmp, ...v];
+                            return [...tmp, ...[v]];
                           });
                         }}
                       />
@@ -107,7 +108,7 @@ export function TwStatsByName() {
                               tmp.splice(o.indexOf(v), 1);
                               return [...tmp];
                             }
-                            return [...tmp, ...v] as TWArea[];
+                            return [...tmp, ...[v]] as TWArea[];
                           });
                         }}
                       />
@@ -134,22 +135,26 @@ export function TwStatsByName() {
                       </TableCell>
                     ))}
                   </TableRow>
+                </TableHead>
+                <TableBody>
                   {s.data &&
                     Object.entries(s.data)
                       .filter((tv) => chooseYears.indexOf(tv[0]) >= 0)
                       .map((v) => (
-                        <TableRow>
+                        <TableRow key={v[0] ?? ""}>
                           <TableCell key={v[0]}>{v[0] ?? ""}</TableCell>
                           {chooseAreas.map((v1) => (
-                            <TableCell key={v1}>{v[1][v1] ?? ""}</TableCell>
+                            <TableCell key={(v[0] ?? "") + v1}>
+                              {v[1][v1] ?? ""}
+                            </TableCell>
                           ))}
                         </TableRow>
                       ))}
-                </TableHead>
+                </TableBody>
               </Table>
             </Stack>
           </Grid>
-          <Grid size={4}>AA</Grid>
+          <Grid size={4}></Grid>
         </Grid>
       </Stack>
     </>
