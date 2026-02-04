@@ -180,7 +180,7 @@ export function TwStatsByName() {
                   key="ProvincialCity"
                   variant={"outlined"}
                   onClick={() =>
-                    setChooseAreas(["Keelung", "HsinchuCounty", "ChiaYiCity"])
+                    setChooseAreas(["Keelung", "HsinchuCity", "ChiaYiCity"])
                   }
                 >
                   原省轄市
