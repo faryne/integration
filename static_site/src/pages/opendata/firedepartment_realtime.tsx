@@ -8,13 +8,17 @@ import {
   TableRow,
   TableCell,
   Stack,
+  Backdrop,
 } from "@mui/material";
 import { TWAreaMappings } from "@/types/twstats.ts";
 import dayjs from "dayjs";
+import { useTitle } from "@/helpers/title.tsx";
 
 export function FireDepartmentRealtime() {
   const [q, setQ] = useState<string>(new Date().toString());
   const s = useFireDepartmentRealtimeEvents(q);
+
+  useTitle("即時消防出勤記錄");
 
   useEffect(() => {
     const timer = setInterval(() => setQ(new Date().toString()), 300000);
@@ -24,6 +28,7 @@ export function FireDepartmentRealtime() {
 
   return (
     <>
+      <Backdrop open={s.isLoading}>Loading</Backdrop>
       <Stack direction={"column"} spacing={2}>
         {s.data &&
           Object.entries(s?.data.data ?? {}).map(([k, v]) => (

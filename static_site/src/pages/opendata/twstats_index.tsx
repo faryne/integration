@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import { useGetTwStatsIndex } from "@/apis/opendata/twstats.ts";
 import { useState } from "react";
+import { useTitle } from "@/helpers/title.tsx";
 
 export function TwStatsIndex() {
   const s = useGetTwStatsIndex();
@@ -16,6 +17,9 @@ export function TwStatsIndex() {
 
   const filterFunc = (key: string, v: string) =>
     key === "" || v.includes(keyword);
+
+  useTitle("台灣指標");
+
   return (
     <>
       <Backdrop open={s.isLoading && s.isSuccess}>Loading</Backdrop>

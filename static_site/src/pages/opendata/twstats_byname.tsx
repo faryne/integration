@@ -154,9 +154,15 @@ export function TwStatsByName() {
             <Grid size={11}>
               <Stack direction={"row"} spacing={1}>
                 <Button
-                    key="Taiwan"
-                    variant={"outlined"}
-                    onClick={() => setChooseAreas((Object.keys(TWAreaMappings) as TWArea[]).filter(v => v !== "Taiwan" ))}
+                  key="Taiwan"
+                  variant={"outlined"}
+                  onClick={() =>
+                    setChooseAreas(
+                      (Object.keys(TWAreaMappings) as TWArea[]).filter(
+                        (v) => v !== "Taiwan",
+                      ),
+                    )
+                  }
                 >
                   除台灣之外所有縣市
                 </Button>
@@ -198,7 +204,12 @@ export function TwStatsByName() {
                   onClick={() =>
                     setChooseAreas(
                       Object.entries(TWAreaMappings)
-                        .filter((v) => v[1].indexOf("縣") >= 0 && v[0] !== "Kinmen" && v[0] !== "Matsu")
+                        .filter(
+                          (v) =>
+                            v[1].indexOf("縣") >= 0 &&
+                            v[0] !== "Kinmen" &&
+                            v[0] !== "Matsu",
+                        )
                         .map((v) => v[0]) as TWArea[],
                     )
                   }
@@ -206,24 +217,22 @@ export function TwStatsByName() {
                   台灣省下轄縣
                 </Button>
                 <Button
-                    key="County"
-                    variant={"outlined"}
-                    onClick={() =>
-                        setChooseAreas(
-                            Object.entries(TWAreaMappings)
-                                .filter((v) => v[0] === "Kinmen" || v[0] === "Matsu")
-                                .map((v) => v[0]) as TWArea[],
-                        )
-                    }
+                  key="County"
+                  variant={"outlined"}
+                  onClick={() =>
+                    setChooseAreas(
+                      Object.entries(TWAreaMappings)
+                        .filter((v) => v[0] === "Kinmen" || v[0] === "Matsu")
+                        .map((v) => v[0]) as TWArea[],
+                    )
+                  }
                 >
                   福建省下轄縣
                 </Button>
                 <Button
-                    key="County"
-                    variant={"outlined"}
-                    onClick={() =>
-                        setChooseAreas(["Penghu", "Kinmen", "Matsu"])
-                    }
+                  key="County"
+                  variant={"outlined"}
+                  onClick={() => setChooseAreas(["Penghu", "Kinmen", "Matsu"])}
                 >
                   離島縣
                 </Button>
@@ -279,11 +288,9 @@ export function TwStatsByName() {
                 <TableHead>
                   <TableRow>
                     <TableCell>年份</TableCell>
-                    {chooseAreas.map(v => (
-                        <TableCell key={v}>
-                          {TWAreaMappings[v] ?? ""}
-                        </TableCell>
-                    )) }
+                    {chooseAreas.map((v) => (
+                      <TableCell key={v}>{TWAreaMappings[v] ?? ""}</TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
