@@ -1,10 +1,20 @@
 import { BankMappings, type Rate } from "@/types/rates.ts";
-import {Stack, Box, TextField, Radio, List, ListItem, Typography, RadioGroup, FormControlLabel} from "@mui/material";
+import {
+  Stack,
+  Box,
+  TextField,
+  Radio,
+  List,
+  ListItem,
+  Typography,
+  RadioGroup,
+  FormControlLabel,
+} from "@mui/material";
 import { useState } from "react";
 
 export interface IRateCalculator {
   rates: Rate[];
-  currencies: { [p in string]: string }
+  currencies: { [p in string]: string };
 }
 
 export function RateCalculator(props: IRateCalculator) {
@@ -22,21 +32,34 @@ export function RateCalculator(props: IRateCalculator) {
             label={"請輸入新台幣金額"}
           />
         </Box>
-          <Box sx={{textAlign: "center"}}>
-              <RadioGroup row sx={{textAlign: "justify"}}>
-                  <FormControlLabel control={<Radio />} label={"銀行買入"} value={0} onChange={() => setDirection(0)}/>
-                  <FormControlLabel control={<Radio />} label={"銀行賣出"} value={1} onChange={() => setDirection(1)} />
-              </RadioGroup>
-          </Box>
+        <Box sx={{ textAlign: "center" }}>
+          <RadioGroup row sx={{ textAlign: "justify" }}>
+            <FormControlLabel
+              control={<Radio />}
+              label={"銀行買入"}
+              value={0}
+              onChange={() => setDirection(0)}
+            />
+            <FormControlLabel
+              control={<Radio />}
+              label={"銀行賣出"}
+              value={1}
+              onChange={() => setDirection(1)}
+            />
+          </RadioGroup>
+        </Box>
       </Stack>
       <List>
-        {(direction !== null && input > 0 )&&
+        {direction !== null &&
+          input > 0 &&
           props.rates.map((v) => (
-              <ListItem>
-                  <Typography variant={"body1"}>
-                      {BankMappings[v.service_name] ?? ""}
-                      {direction === 0 ? "買入" : "賣出"}{props.currencies[v.base] ?? ""}- {input*(direction === 0 ? v.buy_rate : v.sell_rate)}
-                  </Typography>
+            <ListItem>
+              <Typography variant={"body1"}>
+                {BankMappings[v.service_name] ?? ""}
+                {direction === 0 ? "買入" : "賣出"}
+                {props.currencies[v.base] ?? ""}-{" "}
+                {input * (direction === 0 ? v.buy_rate : v.sell_rate)}
+              </Typography>
             </ListItem>
           ))}
       </List>

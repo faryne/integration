@@ -14,7 +14,8 @@ import {
   Backdrop,
   Tabs,
   Tab,
-  TextField, Typography,
+  TextField,
+  Typography,
 } from "@mui/material";
 import {
   type GetCurrencyRatesRequest,
@@ -26,8 +27,8 @@ import dayjs from "dayjs";
 import { BankMappings } from "@/types/rates.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { RateCalculator } from "@/components/rates/rate_calculator.tsx";
-import {CustomModal} from "@/components/common/CustomModal.tsx";
-import {type Rate} from "@/types/rates.ts"
+import { CustomModal } from "@/components/common/CustomModal.tsx";
+import { type Rate } from "@/types/rates.ts";
 
 export function RatesIndex() {
   const currencies = useGetCurrencies();
@@ -35,8 +36,8 @@ export function RatesIndex() {
     begin_date: dayjs().format("YYYY-MM-DD"),
     currencies: ["USD"],
   });
-  const [calculatorOpen, setCalculatorOpen] = useState(false)
-  const [rates, setRates] = useState<Rate[]>([])
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [rates, setRates] = useState<Rate[]>([]);
   const [chooseCurrency, setChooseCurrency] = useState("USD");
   const ratesQuery = useGetCurrencyRates(rateRequest);
 
@@ -162,10 +163,22 @@ export function RatesIndex() {
                             ].length ===
                             0 && (
                             <TableCell rowSpan={3}>
-                              <Typography component={"button"} onClick={() => {
-                                setRates(ratesQuery.data?.data.filter((v) => v.base === currency && v.record_date === v2.record_date))
-                                setCalculatorOpen(true)
-                              }} variant={"body1"}>{v2.record_date}</Typography>
+                              <Typography
+                                component={"button"}
+                                onClick={() => {
+                                  setRates(
+                                    ratesQuery.data?.data.filter(
+                                      (v) =>
+                                        v.base === currency &&
+                                        v.record_date === v2.record_date,
+                                    ),
+                                  );
+                                  setCalculatorOpen(true);
+                                }}
+                                variant={"body1"}
+                              >
+                                {v2.record_date}
+                              </Typography>
                             </TableCell>
                           )}
                           <TableCell>
@@ -182,8 +195,14 @@ export function RatesIndex() {
           ))}
         </Grid>
       </Grid>
-      <CustomModal open={calculatorOpen} onClose={() => setCalculatorOpen(false)}>
-        <RateCalculator rates={rates ?? []} currencies={currencies.data?.data ?? {}} />
+      <CustomModal
+        open={calculatorOpen}
+        onClose={() => setCalculatorOpen(false)}
+      >
+        <RateCalculator
+          rates={rates ?? []}
+          currencies={currencies.data?.data ?? {}}
+        />
       </CustomModal>
     </>
   );
