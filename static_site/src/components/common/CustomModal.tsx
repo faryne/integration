@@ -5,11 +5,12 @@ export interface ICustomModal {
   open: boolean;
   sx?: SxProps;
   children: ReactElement | ReactNode;
+  onClose: () => void;
 }
 
 export function CustomModal(props: ICustomModal) {
   return (
-    <Modal open={props.open}>
+    <Modal open={props.open} onClose={() => props.onClose()}>
       <Box
         sx={{
           position: "absolute" as const,

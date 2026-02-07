@@ -4,6 +4,7 @@ import { useState } from "react";
 
 export interface IRateCalculator {
   rates: Rate[];
+  currencies: { [p in string]: string }
 }
 
 export function RateCalculator(props: IRateCalculator) {
@@ -11,7 +12,7 @@ export function RateCalculator(props: IRateCalculator) {
   const [input, setInput] = useState<number>(0);
   return (
     <>
-      <Stack direction={"column"} textAlign={"center"}>
+      <Stack direction={"row"} textAlign={"center"} spacing={2}>
         <Box>
           <TextField
             type={"number"}
@@ -21,10 +22,12 @@ export function RateCalculator(props: IRateCalculator) {
             label={"請輸入新台幣金額"}
           />
         </Box>
-          <RadioGroup>
-              <FormControlLabel control={<Radio />} label={"銀行買入"} value={0} onChange={() => setDirection(0)}/>
-              <FormControlLabel control={<Radio />} label={"銀行賣出"} value={1} onChange={() => setDirection(1)} />
-          </RadioGroup>
+          <Box sx={{textAlign: "center"}}>
+              <RadioGroup row sx={{textAlign: "justify"}}>
+                  <FormControlLabel control={<Radio />} label={"銀行買入"} value={0} onChange={() => setDirection(0)}/>
+                  <FormControlLabel control={<Radio />} label={"銀行賣出"} value={1} onChange={() => setDirection(1)} />
+              </RadioGroup>
+          </Box>
       </Stack>
       <List>
         {(direction !== null && input > 0 )&&
@@ -32,7 +35,7 @@ export function RateCalculator(props: IRateCalculator) {
               <ListItem>
                   <Typography variant={"body1"}>
                       {BankMappings[v.service_name] ?? ""}
-                      {direction === 0 ? "買入" : "賣出"} - {input*(direction === 0 ? v.buy_rate : v.sell_rate)}
+                      {direction === 0 ? "買入" : "賣出"}{props.currencies[v.base] ?? ""}- {input*(direction === 0 ? v.buy_rate : v.sell_rate)}
                   </Typography>
             </ListItem>
           ))}

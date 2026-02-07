@@ -14,7 +14,7 @@ import {
   Backdrop,
   Tabs,
   Tab,
-  TextField,
+  TextField, Typography,
 } from "@mui/material";
 import {
   type GetCurrencyRatesRequest,
@@ -27,6 +27,7 @@ import { BankMappings } from "@/types/rates.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { RateCalculator } from "@/components/rates/rate_calculator.tsx";
 import {CustomModal} from "@/components/common/CustomModal.tsx";
+import {type Rate} from "@/types/rates.ts"
 
 export function RatesIndex() {
   const currencies = useGetCurrencies();
@@ -34,18 +35,20 @@ export function RatesIndex() {
     begin_date: dayjs().format("YYYY-MM-DD"),
     currencies: ["USD"],
   });
+  const [calculatorOpen, setCalculatorOpen] = useState(false)
+  const [rates, setRates] = useState<Rate[]>([])
   const [chooseCurrency, setChooseCurrency] = useState("USD");
-  const rates = useGetCurrencyRates(rateRequest);
+  const ratesQuery = useGetCurrencyRates(rateRequest);
 
   useEffect(() => {
-    rates.refetch();
+    ratesQuery.refetch();
   }, [rateRequest]);
 
   useTitle("匯率");
 
   return (
     <>
-      <Backdrop open={rates.isLoading}>Loading</Backdrop>
+      <Backdrop open={ratesQuery.isLoading}>Loading</Backdrop>
       <Grid container>
         <Grid size={3}>
           <List>
@@ -145,20 +148,25 @@ export function RatesIndex() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rates.data?.data
+                    {ratesQuery.data?.data
                       ?.filter((v) => v.base === currency)
                       .map((v2, k2) => (
                         <TableRow key={JSON.stringify(v2)}>
                           {k2 %
                             [
                               ...new Set(
-                                rates.data?.data
+                                ratesQuery.data?.data
                                   ?.filter((v) => v.base === currency)
                                   .map((v2) => v2.service_name),
                               ),
                             ].length ===
                             0 && (
-                            <TableCell rowSpan={3}>{v2.record_date}</TableCell>
+                            <TableCell rowSpan={3}>
+                              <Typography component={"button"} onClick={() => {
+                                setRates(ratesQuery.data?.data.filter((v) => v.base === currency && v.record_date === v2.record_date))
+                                setCalculatorOpen(true)
+                              }} variant={"body1"}>{v2.record_date}</Typography>
+                            </TableCell>
                           )}
                           <TableCell>
                             {BankMappings[v2.service_name] ?? ""}
@@ -174,8 +182,8 @@ export function RatesIndex() {
           ))}
         </Grid>
       </Grid>
-      <CustomModal open={true}>
-        <RateCalculator rates={rates?.data?.data ?? []} />
+      <CustomModal open={calculatorOpen} onClose={() => setCalculatorOpen(false)}>
+        <RateCalculator rates={rates ?? []} currencies={currencies.data?.data ?? {}} />
       </CustomModal>
     </>
   );
