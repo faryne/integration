@@ -13,6 +13,10 @@ func Success(out any, message ...string) error {
 	return New(fiber.StatusOK, CustomCodeSuccess, out, msg)
 }
 
+func InternalServiceError(err error) error {
+	return New(fiber.StatusInternalServerError, CustomCodeInternalServiceError, nil, err.Error())
+}
+
 func DBError(err error) error {
 	return New(fiber.StatusInternalServerError, CustomCodeDBError, nil, err.Error())
 }

@@ -9,11 +9,27 @@ import { TwStatsIndex } from "@/pages/opendata/twstats_index.tsx";
 import { TwStatsByName } from "@/pages/opendata/twstats_byname.tsx";
 import { FireDepartmentRealtime } from "@/pages/opendata/firedepartment_realtime.tsx";
 import { RatesIndex } from "@/pages/opendata/rates_index.tsx";
+import {Editor} from "@/pages/storyteller/editor.tsx";
+import {CrawlerIndex} from "@/pages/crawler";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path={"storyteller"} element={<DefaultLayout fullWidth={true} />}>
+          <Route path={""} element={<Editor />} />
+
+          <Route path={"project"}>
+            <Route path={":id"} element={<Editor />} />
+            <Route path={"resources"} element={<Editor />} />
+            <Route path={"resource/:id"} element={<Editor />} />
+            <Route path={"articles"} element={<Editor />} />
+            <Route path={"article/:id"} element={<Editor />} />
+
+          </Route>
+          <Route path={"editor"} element={<Editor />}/>
+        </Route>
+
         <Route path={""} element={<DefaultLayout />}>
           <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
           <Route path={"/av/video"} element={<AVVideo />} />
@@ -30,8 +46,17 @@ function App() {
             element={<FireDepartmentRealtime />}
           />
 
+          <Route
+            path={"/tools/crawler"}
+            element={<CrawlerIndex />}
+          />
+
+
+
           <Route path="/a" element={<h1>Hello</h1>} />
         </Route>
+
+        <Route path="*" element={<h1>404</h1>} />
       </Routes>
     </BrowserRouter>
   );

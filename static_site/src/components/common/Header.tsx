@@ -18,7 +18,7 @@ export function Header() {
       <AppBar
         position={"relative"}
         sx={{
-          maxWidth: "lg",
+          // maxWidth: "lg",
           // top: 0,
           // width: '100%',
           // left: '50%',
