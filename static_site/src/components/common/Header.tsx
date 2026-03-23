@@ -106,6 +106,13 @@ export function Header() {
             >
               台灣指標
             </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor2(null)}
+              href={"/tools/crawler"}
+            >
+              爬蟲工具
+            </MenuItem>
           </Menu>
           <Button
             sx={defaultButtonCss}

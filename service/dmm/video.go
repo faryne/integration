@@ -127,61 +127,10 @@ fragment ProductData on PPVProduct {
     downloadMaxQualityGroup
     __typename
   }
-  priceInclusiveTax @skip(if: $isPhase4_2Released)
-  sale @skip(if: $isPhase4_2Released) {
-    priceInclusiveTax
-    __typename
-  }
-  pricing @include(if: $isPhase4_2Released) {
-    regularPriceInclusiveTax
-    effectivePriceInclusiveTax
-    __typename
-  }
   expireDays
   utilizationStatus @include(if: $isLoggedIn)
   licenseType
   shopName
-  availableCoupon @skip(if: $isPhase4_2Released) {
-    name
-    expirationPolicy {
-      ... on ProductCouponExpirationAt {
-        expirationAt
-        __typename
-      }
-      ... on ProductCouponExpirationDay {
-        expirationDays
-        __typename
-      }
-      __typename
-    }
-    expirationAt
-    discountedPrice
-    minPayment
-    destinationUrl
-    __typename
-  }
-  couponDiscount @include(if: $isPhase4_2Released) {
-    coupon {
-      name
-      expirationPolicy {
-        ... on CouponExpirationAt {
-          expirationAt
-          __typename
-        }
-        ... on CouponExpirationDay {
-          expirationDays
-          __typename
-        }
-        __typename
-      }
-      expirationAt
-      minPayment
-      destinationUrl
-      __typename
-    }
-    discountedPriceInclusiveTax
-    __typename
-  }
   __typename
 }
 fragment AmateurAdditionalContentData on PPVContent {
