@@ -10,4 +10,7 @@ func Tools(app *fiber.App) {
 
 	g1 := g.Group("/crawler")
 	g1.Post("/exec", tools.CrawlerExec)
+
+	g2 := g.Group("/threads")
+	g2.Post("/oembed_capture", tools.ThreadCapture)
 }

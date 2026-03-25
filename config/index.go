@@ -7,6 +7,7 @@ type envConfig struct {
 	WalolitaDSN string `env:"WALOLITA_DSN"`
 	RedisDSN    string `env:"REDIS_DSN"`
 	ESDSN       string `env:"ES_DSN"`
+	ChromePath  string `env:"CHROME_PATH"`
 }
 
 var loadEnvConfig envConfig
