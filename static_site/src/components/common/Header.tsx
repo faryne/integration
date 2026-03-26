@@ -113,6 +113,13 @@ export function Header() {
             >
               爬蟲工具
             </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor2(null)}
+              href={"/tools/thread/capture"}
+              >
+              Threads 截圖工具
+            </MenuItem>
           </Menu>
           <Button
             sx={defaultButtonCss}

@@ -1,11 +1,14 @@
 import {Button, Card, TextField, Stack, CardContent, CardActions} from "@mui/material";
 import {useEffect, useState} from "react";
 import {useCaptureThread} from "@/apis/tools/capture_thread.ts";
+import {useTitle} from "@/helpers/title.tsx";
 
 export function CaptureThread() {
     const [uri, setUri] = useState<string>("")
     const captureThread = useCaptureThread()
     const [submitButtonDisabled, setSubmitButtonDisabled] = useState(false)
+
+    useTitle("Threads 截圖工具")
 
     useEffect(() => {
         if (captureThread.isSuccess) {

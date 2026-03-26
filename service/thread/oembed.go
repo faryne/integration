@@ -176,8 +176,8 @@ func OEmbedCapture(uri string) (string, error) {
 			Width  float64 `json:"width"`
 			Height float64 `json:"height"`
 		}{x, y, width, height}),
-		chromedp.FullScreenshot(&buf, 100),
-		//chromedp.Screenshot(`#capture-result`, &buf, chromedp.ByID),
+		//chromedp.FullScreenshot(&buf, 100),
+		chromedp.Screenshot(`#capture-result`, &buf, chromedp.ByID),
 	)
 	if chromeDpError != nil {
 		return "", chromeDpError
