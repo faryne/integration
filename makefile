@@ -1,5 +1,5 @@
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o apidev main.go
+	GOOS=linux GOARCH=amd64 go build -o apidev main.go && rsync -av apidev ubuntu@nekomimi.maid.tw:~/server-apidev
 
 build-frontend:
 	cd static_site; \

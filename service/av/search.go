@@ -85,7 +85,12 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, false, q)
 	}
 	if input.Keyword != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"title": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"title.keyword": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"makers.keyword": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"actresses.keyword": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"series.keyword": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"directors.keyword": input.Keyword}}, false, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"label.keyword": input.Keyword}}, false, q)
 	}
 	if input.Tag != "" {
 		search.SetQuery(map[string]any{"match": map[string]any{"tags": input.Tag}}, true, q)
