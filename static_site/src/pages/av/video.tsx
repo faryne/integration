@@ -5,9 +5,9 @@ import {
 import { Grid, ImageListItemBar, Box } from "@mui/material";
 import { VideoSummary } from "@/components/av/video_summary";
 import { useTitle } from "@/helpers/title";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { VideoSearch } from "@/components/av/video_search";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { ListByPaginationRequest } from "@/apis/interfaces";
 import { CustomImageList } from "@/components/common/CustomImageList";
 import type { Video } from "@/types/av.ts";
@@ -23,12 +23,19 @@ export function AVVideo() {
   useTitle("影片搜尋");
 
   const navigate = useNavigate();
+  const [query, _] = useSearchParams();
+  useEffect(() => {
+    setSearch((o) => ({ ...o, ...{ keyword: query.get("keyword") ?? "" } }));
+  }, [query]);
 
   return (
     <>
       <Grid container spacing={4}>
         <Grid size={4}>
-          <VideoSearch onClick={(r) => setSearch((o) => ({ ...o, ...r }))} />
+          <VideoSearch
+            onClick={(r) => setSearch((o) => ({ ...o, ...r }))}
+            conditions={search}
+          />
         </Grid>
         <Grid size={8}>
           {(s.isLoading || s.isPending) && <CustomLoading />}

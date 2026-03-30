@@ -5,6 +5,7 @@ import {
   Stack,
   CardContent,
   CardActions,
+  Alert,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useCaptureThread } from "@/apis/tools/capture_thread.ts";
@@ -29,6 +30,11 @@ export function CaptureThread() {
   return (
     <>
       <Stack direction={"column"} spacing={2}>
+        {captureThread.isSuccess &&
+          captureThread.data?.message !== "" &&
+          captureThread.data?.message !== "OK" && (
+            <Alert severity="error">{captureThread.data?.message}</Alert>
+          )}
         <TextField
           label={"請輸入要抓取的網址"}
           size={"medium"}
@@ -47,19 +53,19 @@ export function CaptureThread() {
         >
           送出
         </Button>
-        {captureThread.data?.img && (
+        {captureThread.data?.data?.img && (
           <>
             <Card variant={"outlined"}>
               <CardContent>
                 <img
-                  src={`data:image/png;base64, ${captureThread?.data?.img ?? ""}`}
+                  src={`data:image/png;base64, ${captureThread?.data?.data?.img ?? ""}`}
                 />
               </CardContent>
               <CardActions>
                 <Button
                   onClick={() => {
                     const link = document.createElement("a");
-                    link.href = `data:image/png;base64, ${captureThread?.data?.img ?? ""}`;
+                    link.href = `data:image/png;base64, ${captureThread?.data?.data?.img ?? ""}`;
                     link.download =
                       btoa(uri)
                         .replace(/\+/g, "-") // 將 + 換成 -

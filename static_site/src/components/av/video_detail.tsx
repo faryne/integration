@@ -8,12 +8,14 @@ import {
   Box,
 } from "@mui/material";
 import { useTitle } from "@/helpers/title.tsx";
+import { useNavigate } from "react-router-dom";
 
 export interface IVideoDetail {
   video?: Video;
 }
 
 export function VideoDetail(props: IVideoDetail) {
+  const navigate = useNavigate();
   const video = props.video || null;
   const labels = video ? video.labels.filter((l) => l !== "") : [];
   const actresses = video ? video.actresses.filter((a) => a !== "") : [];
@@ -22,6 +24,10 @@ export function VideoDetail(props: IVideoDetail) {
   const directors = video ? video?.directors.filter((d) => d !== "") : [];
 
   useTitle(video?.title ?? "");
+
+  const ChipClick = (s: string) => {
+    navigate("/av/video?keyword=" + encodeURIComponent(s));
+  };
   return (
     <>
       <Stack direction={"column"} spacing={2}>
@@ -29,15 +35,70 @@ export function VideoDetail(props: IVideoDetail) {
         <Typography variant={"body2"}>
           {props.video?.maker_no ?? "-"} / 發售日：{props.video?.vod_date ?? ""}
         </Typography>
-        <Typography variant={"body2"}>
-          發售商：{makers.length > 0 ? makers.join("") : "-"} / 品牌：
-          {labels.length > 0 ? labels.join(" ") : "-"} / 系列：
-          {series.length > 0 ? series.join(" / ") : "-"}
-        </Typography>
-        <Typography variant={"body2"}>
-          出演：{actresses.length > 0 ? actresses.join(" / ") : "-"} / 監督：
-          {directors.length > 0 ? directors.join(" / ") : "-"}
-        </Typography>
+        <Box>
+          發售商：
+          {makers.length > 0
+            ? makers.map((o) => (
+                <Chip
+                  component={"a"}
+                  key={`maker-${o}`}
+                  label={o}
+                  clickable
+                  onClick={() => ChipClick(o)}
+                />
+              ))
+            : "-"}{" "}
+          / 品牌：
+          {labels.length > 0
+            ? labels.map((o) => (
+                <Chip
+                  component={"a"}
+                  key={`label-${o}`}
+                  label={o}
+                  clickable
+                  onClick={() => ChipClick(o)}
+                />
+              ))
+            : "-"}{" "}
+          / 系列：
+          {series.length > 0
+            ? series.map((o) => (
+                <Chip
+                  component={"a"}
+                  key={`series-${o}`}
+                  label={o}
+                  clickable
+                  onClick={() => ChipClick(o)}
+                />
+              ))
+            : "-"}
+        </Box>
+        <Box>
+          出演：
+          {actresses.length > 0
+            ? actresses.map((o) => (
+                <Chip
+                  component={"a"}
+                  key={`actress-${o}`}
+                  label={o}
+                  clickable
+                  onClick={() => ChipClick(o)}
+                />
+              ))
+            : "-"}{" "}
+          / 監督：
+          {directors.length > 0
+            ? directors.map((o) => (
+                <Chip
+                  component={"a"}
+                  key={`director-${o}`}
+                  label={o}
+                  clickable
+                  onClick={() => ChipClick(o)}
+                />
+              ))
+            : "-"}
+        </Box>
         <Box>
           {props.video?.maker_no && (
             <Chip
@@ -45,6 +106,7 @@ export function VideoDetail(props: IVideoDetail) {
               onClick={() =>
                 window.open(`https://missav.ws/${props.video?.maker_no}`)
               }
+              clickable
             ></Chip>
           )}
         </Box>

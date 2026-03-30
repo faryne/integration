@@ -3,7 +3,7 @@ import { Button, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 
 export interface IVideoSearch {
@@ -14,9 +14,11 @@ export function VideoSearch(props: IVideoSearch) {
   const [req, setReq] = useState<VideoSearchRequest>({
     page: 1,
   });
-  if (props.conditions) {
-    setReq((o) => ({ ...o, ...props.conditions }));
-  }
+  useEffect(() => {
+    if (props.conditions) {
+      setReq((o) => ({ ...o, ...props.conditions }));
+    }
+  }, [props.conditions]);
 
   return (
     <>
@@ -27,6 +29,7 @@ export function VideoSearch(props: IVideoSearch) {
           onChange={(e) => {
             setReq((o) => ({ ...o, ...{ keyword: e.target.value } }));
           }}
+          value={req.keyword}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
