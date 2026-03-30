@@ -1,5 +1,5 @@
-import { ImageList, ImageListItem, Pagination } from "@mui/material";
-import type { ReactElement } from "react";
+import { ImageList, ImageListItem, Pagination, Box } from "@mui/material";
+import type { ReactElement, ReactNode } from "react";
 
 export interface ICustomImageList<T> {
   rows: T[];
@@ -7,7 +7,7 @@ export interface ICustomImageList<T> {
   per_page: number;
   current_page: number | undefined;
   keyItemFunc: (input: T) => string;
-  renderItemFunc: (input: T) => ReactElement;
+  renderItemFunc: (input: T) => ReactElement | ReactNode;
   onPaginationChange: (input: number) => void;
 }
 
@@ -17,7 +17,7 @@ export function CustomImageList<T>(props: ICustomImageList<T>) {
       {props.rows.length == 0 ? (
         <h1>沒有資料</h1>
       ) : (
-        <>
+        <Box>
           <ImageList cols={4}>
             {props.rows?.map((a) => (
               <ImageListItem
@@ -34,7 +34,7 @@ export function CustomImageList<T>(props: ICustomImageList<T>) {
             page={props.current_page ?? 1}
             onChange={(_, v) => props.onPaginationChange(v)}
           />
-        </>
+        </Box>
       )}
     </>
   );

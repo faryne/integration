@@ -6,12 +6,16 @@ import "@/styles/common.css";
 import { Container, Stack } from "@mui/material";
 
 export interface IDefaultLayout {
-    fullWidth?: boolean
+  fullWidth?: boolean;
 }
 
-export const DefaultLayout: FC<{ children?: ReactNode } & IDefaultLayout> = (props: IDefaultLayout) => {
+export const DefaultLayout: FC<{ children?: ReactNode } & IDefaultLayout> = (
+  props: IDefaultLayout,
+) => {
   return (
-    <Container sx={{minWidth: props.fullWidth ? "100% !important" : "1280px"}}>
+    <Container
+      sx={{ minWidth: props.fullWidth ? "100% !important" : "1280px" }}
+    >
       <Stack direction={"column"}>
         <Header />
         <main>
