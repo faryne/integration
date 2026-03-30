@@ -5,6 +5,7 @@ import {
   ImageListItem,
   Stack,
   Typography,
+  Box,
 } from "@mui/material";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -37,7 +38,7 @@ export function VideoDetail(props: IVideoDetail) {
           出演：{actresses.length > 0 ? actresses.join(" / ") : "-"} / 監督：
           {directors.length > 0 ? directors.join(" / ") : "-"}
         </Typography>
-        <Typography variant={"body2"}>
+        <Box>
           {props.video?.maker_no && (
             <Chip
               label={"View on missav"}
@@ -46,7 +47,8 @@ export function VideoDetail(props: IVideoDetail) {
               }
             ></Chip>
           )}
-        </Typography>
+        </Box>
+
         {props.video && (
           <ImageList cols={4} variant={"masonry"}>
             {props.video?.images.map((i) => (

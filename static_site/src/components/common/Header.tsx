@@ -117,7 +117,7 @@ export function Header() {
               component={"a"}
               onClick={() => setAnchor2(null)}
               href={"/tools/thread/capture"}
-              >
+            >
               Threads 截圖工具
             </MenuItem>
           </Menu>

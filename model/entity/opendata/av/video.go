@@ -40,6 +40,7 @@ type RawVideo struct {
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
 	Timestamp   time.Time     `json:"@timestamp"`
+	MakerNo     string        `json:"maker_no"`
 }
 
 type CleanVideo struct {
@@ -60,4 +61,5 @@ type CleanVideo struct {
 	Directors   []interface{} `json:"directors"`
 	Series      []interface{} `json:"series"`
 	Actresses   []string      `json:"actresses"`
+	MakerNo     string        `json:"maker_no"`
 }

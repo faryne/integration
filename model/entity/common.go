@@ -54,6 +54,9 @@ func (t DateTimeFormat) MarshalJSON() ([]byte, error) {
 }
 
 var timeConverter = func(value string) reflect.Value {
+	if value == "" {
+		return reflect.ValueOf(nil)
+	}
 	if v, err := time.Parse(time.DateOnly, value); err == nil {
 		return reflect.ValueOf(OnlyDateFormat(v))
 	}

@@ -20,38 +20,54 @@ export function VideoSearch(props: IVideoSearch) {
 
   return (
     <>
-      {JSON.stringify(req)}
       <Stack direction={"column"} spacing={2} sx={{ marginTop: "10px" }}>
         <TextField
           label={"關鍵字"}
           variant={"outlined"}
           onChange={(e) => {
-            setReq((o) => {
-              o.keyword = e.target.value;
-              return o;
-            });
+            setReq((o) => ({ ...o, ...{ keyword: e.target.value } }));
           }}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
             label="開始日期"
             value={req.start_date ? dayjs(req.start_date) : null}
-            onChange={(newValue) =>
-              setReq((prev) => ({
-                ...prev,
-                start_date: newValue?.format("YYYY-MM-DD") || "",
-              }))
-            }
+            onChange={(newValue) => {
+              if (newValue?.isValid()) {
+                setReq((prev) => ({
+                  ...prev,
+                  start_date: newValue?.format("YYYY-MM-DD") || "",
+                }));
+              } else {
+                setReq((o) => {
+                  const tmp = o;
+                  if (tmp.start_date) {
+                    delete tmp.start_date;
+                  }
+                  return { ...tmp };
+                });
+              }
+            }}
           />
           <DatePicker
             label="結束日期"
             value={req.end_date ? dayjs(req.end_date) : null}
-            onChange={(newValue) =>
-              setReq((prev) => ({
-                ...prev,
-                end_date: newValue?.format("YYYY-MM-DD") || "",
-              }))
-            }
+            onChange={(newValue) => {
+              if (newValue?.isValid()) {
+                setReq((prev) => ({
+                  ...prev,
+                  end_date: newValue?.format("YYYY-MM-DD") || "",
+                }));
+              } else {
+                setReq((o) => {
+                  const tmp = o;
+                  if (tmp.end_date) {
+                    delete tmp.end_date;
+                  }
+                  return { ...tmp };
+                });
+              }
+            }}
           />
         </LocalizationProvider>
 

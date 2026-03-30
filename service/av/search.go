@@ -21,6 +21,7 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 		Makers:   i.Makers,
 		Tags:     i.Tags,
 		Duration: i.Duration,
+		MakerNo:  i.MakerNo,
 	}
 	if i.PublishDate != nil {
 		if publishDate, ok := i.PublishDate.(string); ok {
@@ -47,38 +48,44 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 	var q = map[string]any{
 		"size": 30,
 		"from": (page - 1) * 30,
-		"sort": map[string]any{"publish_date": map[string]any{"order": "desc"}, "vod_date": map[string]any{"order": "desc"}},
+		"sort": map[string]any{"pulish_date": map[string]any{"order": "desc"}, "vod_date": map[string]any{"order": "desc"}},
 	}
 	if input.Year > 0 && input.Month > 0 && input.Day > 0 {
 		d := time.Date(input.Year, time.Month(input.Month), input.Day, 0, 0, 0, 0, time.Local)
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d.Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d.Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d.Format("2006/01/02")}}}, false, q)
 	} else if input.Year > 0 && input.Month > 0 {
 		d1 := time.Date(input.Year, time.Month(input.Month), 1, 0, 0, 0, 0, time.Local)
 		d2 := time.Date(input.Year, time.Month(input.Month+1), 1, 0, 0, 0, 0, time.Local)
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d1.Format("2006/01/02")}}}, false, q)
 	} else if input.Year > 0 {
 		d1 := time.Date(input.Year, 1, 1, 0, 0, 0, 0, time.Local)
 		d2 := time.Date(input.Year, 12, 31, 0, 0, 0, 0, time.Local)
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d1.Format("2006/01/02"), "lt": d2.Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d1.Format("2006/01/02")}}}, false, q)
 	} else if input.StartDate != nil && input.EndDate != nil {
 		d1 := *input.StartDate
 		d2 := *input.EndDate
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d1.Time().Format("2006/01/02"), "lt": d2.Time().Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d1.Time().Format("2006/01/02"), "lt": d2.Time().Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_dates": map[string]any{"gte": d1.Time().Format("2006/01/02")}}}, false, q)
 	} else if input.StartDate != nil {
 		d1 := *input.StartDate
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"gte": d1.Time().Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"gte": d1.Time().Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"gte": d1.Time().Format("2006/01/02")}}}, false, q)
 	} else if input.EndDate != nil {
 		d1 := *input.EndDate
 		search.SetQuery(map[string]any{"range": map[string]any{"vod_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, true, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, false, q)
+		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, false, q)
 	}
 	if input.Keyword != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"title": input.Keyword}}, true, q)
+		search.SetQuery(map[string]any{"match": map[string]any{"title": input.Keyword}}, false, q)
 	}
 	if input.Tag != "" {
 		search.SetQuery(map[string]any{"match": map[string]any{"tags": input.Tag}}, true, q)
@@ -87,7 +94,7 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(map[string]any{"term": map[string]any{"actress.keyword": input.Actress}}, true, q)
 	}
 	if input.No != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"no.keyword": input.No}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"no.keyword": input.No}}, false, q)
 		search.SetQuery(map[string]any{"term": map[string]any{"maker_no.keyword": input.No}}, false, q)
 	}
 
