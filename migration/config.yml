@@ -1,0 +1,15 @@
+localhost:
+  dialect: mysql
+  datasource: root@tcp(127.0.0.1:3307)/lab?parseTime=true
+  dir: migration
+  table: migrations
+development:
+  dialect: mysql
+  datasource: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(127.0.0.1:3307)/${MYSQL_NAME}?parseTime=true
+  dir: migration
+  table: migrations
+master:
+  dialect: mysql
+  datasource: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(${MYSQL_HOST}:3306)/${MYSQL_NAME}?parseTime=true
+  dir: migration
+  table: migrations
