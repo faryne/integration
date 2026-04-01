@@ -29,7 +29,7 @@ export function RateCalculator(props: IRateCalculator) {
             value={input}
             onChange={(e) => setInput(parseInt(e.target.value, 10))}
             placeholder={"輸入數字"}
-            label={"請輸入新台幣金額"}
+            label={`請輸入${props.currencies[props.rates[0].base]}金額`}
           />
         </Box>
         <Box sx={{ textAlign: "center" }}>

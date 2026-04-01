@@ -81,7 +81,7 @@ export function TwStatsByName() {
         label: TWAreaMappings[area],
         data: Object.entries(s.data ?? {})
           .filter((tv) => chooseYears.indexOf(tv[0]) >= 0)
-          .map((v) => parseFloat(v[1][area])),
+          .map((v) => (v[1][area] === "-" ? 0 : parseFloat(v[1][area]))),
       })),
     );
   }, [chooseAreas, chooseYears]);
@@ -277,7 +277,7 @@ export function TwStatsByName() {
             xAxis={[
               {
                 scaleType: "band",
-                data: chooseYears.map((v) => parseInt(v, 10)),
+                data: chooseYears.map((v) => v +"年"),
               },
             ]}
           />
