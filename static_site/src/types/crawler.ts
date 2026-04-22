@@ -4,5 +4,5 @@ export interface CrawlerRule {
   multiple: boolean;
   trim?: boolean;
   attrs?: string[];
-  children?: CrawlerRule[];
+  child?: CrawlerRule[];
 }

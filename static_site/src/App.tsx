@@ -12,6 +12,7 @@ import { RatesIndex } from "@/pages/opendata/rates_index.tsx";
 import { Editor } from "@/pages/storyteller/editor.tsx";
 import { CrawlerIndex } from "@/pages/crawler";
 import { CaptureThread } from "@/pages/threads/capture.tsx";
+import { YieldMaxEtfs } from "@/pages/etfs/yieldmax.tsx";
 
 function App() {
   return (
@@ -52,6 +53,8 @@ function App() {
           <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
 
           <Route path={"/tools/thread/capture"} element={<CaptureThread />} />
+
+          <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
 
           <Route path="/a" element={<h1>Hello</h1>} />
         </Route>

@@ -277,7 +277,7 @@ export function TwStatsByName() {
             xAxis={[
               {
                 scaleType: "band",
-                data: chooseYears.map((v) => v +"年"),
+                data: chooseYears.map((v) => v + "年"),
               },
             ]}
           />

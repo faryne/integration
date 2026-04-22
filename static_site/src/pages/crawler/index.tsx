@@ -42,10 +42,10 @@ export function CrawlerIndex() {
   const crawlerExec = useCrawlerExec();
   const [resp, setResp] = useState<ReactElement | null>(null);
   useEffect(() => {
-    if (crawlerExec.data?.data) {
+    if (crawlerExec.isSuccess) {
       setResp(<JsonEditor mode={"view"} value={crawlerExec.data.data} />);
     }
-  }, [crawlerExec.data]);
+  }, [crawlerExec.isSuccess]);
 
   const ajvMod = new Ajv({ allErrors: true, verbose: true });
   const schema = {

@@ -95,6 +95,13 @@ export function Header() {
             <MenuItem
               component={"a"}
               onClick={() => setAnchor2(null)}
+              href={"/data/etf/yieldmax"}
+            >
+              YieldMax ETF 配息統計
+            </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor2(null)}
               href={"/data/fire/realtime"}
             >
               即時消防出勤記錄
