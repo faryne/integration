@@ -2,7 +2,7 @@ export interface EtfInfo {
   code: string;
   description: string;
   distributions: EtfDistribution[];
-  divided_info?: EtfDivideInfo
+  divided_info?: EtfDivideInfo[];
 }
 
 export interface EtfDivideInfo {

@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { Tabs, Tab, Box, Container, Typography, Skeleton } from "@mui/material";
-import { type EtfInfo } from "@/types/etf.ts";
+import type { EtfDivideInfo, EtfInfo } from "@/types/etf.ts";
 import { ETFInfo } from "@/components/etf/etf_info.tsx";
 import { useCrawlerExec } from "@/apis/tools/crawler_exec.ts";
 import dayjs from "dayjs";
 import { useTitle } from "@/helpers/title.tsx";
 
-const etfs: Record<string, { uri: string; description: string }> = {
+const etfs: Record<
+  string,
+  { uri: string; description: string; divided_info?: EtfDivideInfo[] }
+> = {
   CONY: {
     uri: "https://yieldmaxetfs.com/our-etfs/cony/",
     description: "YieldMax COIN Option Income Strategy ETF",
+    divided_info: [{ date: "2025-12-10", ratio: 0.1 }],
   },
   AIYY: {
     uri: "https://yieldmaxetfs.com/our-etfs/aiyy/",
     description: "YieldMax® AI Option Income Strategy ETF",
+    divided_info: [{ date: "2025-12-10", ratio: 0.1 }],
   },
   NVDY: {
     uri: "https://yieldmaxetfs.com/our-etfs/nvdy/",
@@ -86,6 +91,7 @@ export function YieldMaxEtfs() {
       setRawData({
         code: activeTab,
         description: etfs[activeTab].description,
+        divided_info: etfs[activeTab].divided_info ?? undefined,
         distributions: queryCrawler.data.data.distributions.map((d: any) => {
           return {
             per_share: parseFloat(d.children.share.text.replace("$", "")),
