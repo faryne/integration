@@ -322,25 +322,28 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
     let totalRefund = 0;
 
     data.distributions
-        .filter(d => !simpleStartDate || d.ex_date >= simpleStartDate)
-        .forEach(d => {
-          // 考慮分割回推 (假設使用者輸入的是現在股數)
-          const divToNowFactor = getCumulativeFactor(d.ex_date, data.divided_info ?? []);
-          const historicalShares = simpleShares / divToNowFactor;
-          const currentAmount = d.per_share * historicalShares;
+      .filter((d) => !simpleStartDate || d.ex_date >= simpleStartDate)
+      .forEach((d) => {
+        // 考慮分割回推 (假設使用者輸入的是現在股數)
+        const divToNowFactor = getCumulativeFactor(
+          d.ex_date,
+          data.divided_info ?? [],
+        );
+        const historicalShares = simpleShares / divToNowFactor;
+        const currentAmount = d.per_share * historicalShares;
 
-          totalDiv += currentAmount * 0.7;
-          if (d.roc > 0) {
-            totalRefund += (currentAmount * 0.3 * (d.roc / 100));
-          }
-        });
+        totalDiv += currentAmount * 0.7;
+        if (d.roc > 0) {
+          totalRefund += currentAmount * 0.3 * (d.roc / 100);
+        }
+      });
 
     return {
       priceGain,
       totalDiv,
       totalRefund,
       total: priceGain + totalDiv,
-      totalWithRefund: priceGain + totalDiv + totalRefund
+      totalWithRefund: priceGain + totalDiv + totalRefund,
     };
   }, [currentPrice, simpleShares, simpleAvgCost, simpleStartDate, data]);
 
@@ -350,7 +353,7 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
     let totalPriceGain = 0;
     let totalRefund = 0; // 新增退稅累計
 
-    records.forEach(rec => {
+    records.forEach((rec) => {
       if (!rec.buyDate || !rec.buyShares) return;
 
       const factor = getCumulativeFactor(rec.buyDate, data.divided_info ?? []); //
@@ -358,31 +361,45 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
       const sellShares = rec.isSold ? Number(rec.sellShares) : 0;
 
       // 計算配息與退稅的 Helper
-      const processDistributions = (shares: number, fromDate: string, toDate: string | null) => {
+      const processDistributions = (
+        shares: number,
+        fromDate: string,
+        toDate: string | null,
+      ) => {
         data.distributions
-            .filter(d => d.ex_date >= fromDate && (toDate ? d.ex_date < toDate : true))
-            .forEach(d => {
-              const currentAmount = d.per_share * shares * factor;
-              totalDiv += currentAmount * 0.7; // 稅後實領
+          .filter(
+            (d) =>
+              d.ex_date >= fromDate && (toDate ? d.ex_date < toDate : true),
+          )
+          .forEach((d) => {
+            const currentAmount = d.per_share * shares * factor;
+            totalDiv += currentAmount * 0.7; // 稅後實領
 
-              // 計算退稅：必須有 ROC 資料且大於 0
-              if (d.roc > 0) {
-                totalRefund += (currentAmount * 0.3 * (d.roc / 100));
-              }
-            });
+            // 計算退稅：必須有 ROC 資料且大於 0
+            if (d.roc > 0) {
+              totalRefund += currentAmount * 0.3 * (d.roc / 100);
+            }
+          });
       };
 
       // 1. 已賣出部分的配息與退稅
-      processDistributions(sellShares, rec.buyDate, rec.isSold ? rec.sellDate : null);
+      processDistributions(
+        sellShares,
+        rec.buyDate,
+        rec.isSold ? rec.sellDate : null,
+      );
 
       // 2. 剩餘持股的配息與退稅
       processDistributions(buyShares - sellShares, rec.buyDate, null);
 
       // 3. 價差損益計算 (維持先前修正後的邏輯)
       const adjCost = rec.buyPrice / factor;
-      const realizedGain = rec.isSold ? (rec.sellPrice - adjCost) * (sellShares * factor) : 0;
-      const unrealizedGain = (currentPrice - adjCost) * ((buyShares - sellShares) * factor);
-      totalPriceGain += (realizedGain + unrealizedGain);
+      const realizedGain = rec.isSold
+        ? (rec.sellPrice - adjCost) * (sellShares * factor)
+        : 0;
+      const unrealizedGain =
+        (currentPrice - adjCost) * ((buyShares - sellShares) * factor);
+      totalPriceGain += realizedGain + unrealizedGain;
     });
 
     return {
@@ -390,7 +407,7 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
       totalPriceGain,
       totalRefund,
       total: totalDiv + totalPriceGain,
-      totalWithRefund: totalDiv + totalPriceGain + totalRefund // 含退稅總額
+      totalWithRefund: totalDiv + totalPriceGain + totalRefund, // 含退稅總額
     };
   }, [records, data, currentPrice]);
 
@@ -643,63 +660,125 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
             {/* 第一列：核心損益 */}
             <Grid container spacing={2} textAlign="center" sx={{ mb: 2 }}>
               <Grid size={4}>
-                <Typography variant="caption" color="text.secondary">股價價差</Typography>
-                <Typography variant="h6" sx={{ color: getTrendColor(
+                <Typography variant="caption" color="text.secondary">
+                  股價價差
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: getTrendColor(
                       tab === 0
-                          ? simpleResult.priceGain
-                          : tieredResult.totalPriceGain,
-                  ) }}>
-                  ${(tab === 0
+                        ? simpleResult.priceGain
+                        : tieredResult.totalPriceGain,
+                    ),
+                  }}
+                >
+                  $
+                  {(tab === 0
                     ? simpleResult.priceGain
-                    : tieredResult.totalPriceGain).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    : tieredResult.totalPriceGain
+                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </Typography>
               </Grid>
               <Grid size={4}>
-                <Typography variant="caption" color="text.secondary">累計領息 (稅後)</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  累計領息 (稅後)
+                </Typography>
                 <Typography variant="h6" color="primary.main">
-                  ${(tab === 0
+                  $
+                  {(tab === 0
                     ? simpleResult.totalDiv
-                    : tieredResult.totalDiv).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    : tieredResult.totalDiv
+                  ).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </Typography>
               </Grid>
               <Grid size={4}>
-                <Typography variant="caption" color="text.secondary" fontWeight="bold">含息總損益</Typography>
-                <Typography variant="h6" fontWeight="bold" sx={{ color: getTrendColor((tab === 0
-                      ? simpleResult
-                      : tieredResult).total) }}>
-                  ${(tab === 0
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight="bold"
+                >
+                  含息總損益
+                </Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight="bold"
+                  sx={{
+                    color: getTrendColor(
+                      (tab === 0 ? simpleResult : tieredResult).total,
+                    ),
+                  }}
+                >
+                  $
+                  {(tab === 0
                     ? simpleResult
-                    : tieredResult).total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    : tieredResult
+                  ).total.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
                 </Typography>
               </Grid>
             </Grid>
 
-            <Divider sx={{ my: 1, borderStyle: 'dashed' }} />
+            <Divider sx={{ my: 1, borderStyle: "dashed" }} />
 
             {/* 第二列：退稅試算 (亮點功能) */}
             <Grid container spacing={2} textAlign="center">
               <Grid size={6}>
                 <Typography variant="caption" color="text.secondary">
                   <Tooltip title="基於歷史 ROC 比例試算之次年退稅總額">
-                    <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'help' }}>
-                      預計退稅 <InfoOutlinedIcon sx={{ fontSize: 12, ml: 0.5 }} />
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        cursor: "help",
+                      }}
+                    >
+                      預計退稅{" "}
+                      <InfoOutlinedIcon sx={{ fontSize: 12, ml: 0.5 }} />
                     </Box>
                   </Tooltip>
                 </Typography>
-                <Typography variant="subtitle1" color="success.main" fontWeight="bold">
-                  +${(tab === 0
+                <Typography
+                  variant="subtitle1"
+                  color="success.main"
+                  fontWeight="bold"
+                >
+                  +$
+                  {(tab === 0
                     ? simpleResult
-                    : tieredResult).totalRefund.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    : tieredResult
+                  ).totalRefund.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
                 </Typography>
               </Grid>
               <Grid size={6}>
-                <Typography variant="caption" color="text.secondary" fontWeight="bold">含退稅總額 (最終盈虧)</Typography>
-                <Typography variant="h5" fontWeight="bold" sx={{ color: getTrendColor((tab === 0
-                      ? simpleResult
-                      : tieredResult).totalWithRefund) }}>
-                  ${(tab === 0
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight="bold"
+                >
+                  含退稅總額 (最終盈虧)
+                </Typography>
+                <Typography
+                  variant="h5"
+                  fontWeight="bold"
+                  sx={{
+                    color: getTrendColor(
+                      (tab === 0 ? simpleResult : tieredResult).totalWithRefund,
+                    ),
+                  }}
+                >
+                  $
+                  {(tab === 0
                     ? simpleResult
-                    : tieredResult).totalWithRefund.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    : tieredResult
+                  ).totalWithRefund.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                  })}
                 </Typography>
               </Grid>
             </Grid>
@@ -707,8 +786,15 @@ const ProfitCalculator = ({ data }: EtfTableProps) => {
           <Divider sx={{ my: 2 }} />
 
           <Box sx={{ px: 1, opacity: 0.7 }}>
-            <Typography variant="caption" color="text.secondary" component="p" align="center" sx={{ lineHeight: 1.5 }}>
-              ⚠️ 免責聲明：本工具提供之試算結果（含配息、價差及權值調整）僅供參考，不保證數據之即時性與準確性。
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              component="p"
+              align="center"
+              sx={{ lineHeight: 1.5 }}
+            >
+              ⚠️
+              免責聲明：本工具提供之試算結果（含配息、價差及權值調整）僅供參考，不保證數據之即時性與準確性。
               實際損益請以券商帳單為準。投資標的過去績效不代表未來表現，使用者應獨立評估風險並自負投資損益。
             </Typography>
           </Box>

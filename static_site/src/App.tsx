@@ -1,5 +1,6 @@
 import "./components/common/Header.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { default as Home } from "@/pages/Home.tsx";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { AVVideo } from "@/pages/av/video.tsx";
 import { AVActress } from "@/pages/av/actress.tsx";
@@ -57,6 +58,8 @@ function App() {
           <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
 
           <Route path="/a" element={<h1>Hello</h1>} />
+
+          <Route path={"/"} element={<Home />} />
         </Route>
 
         <Route path="*" element={<h1>404</h1>} />
