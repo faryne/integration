@@ -9,6 +9,8 @@ type envConfig struct {
 	ESDSN        string `env:"ES_DSN"`
 	ChromePath   string `env:"CHROME_PATH"`
 	FrontendPath string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
+
+	GoogleCalendarCred string `env:"GOOGLE_CALENDAR_CRED"`
 }
 
 var loadEnvConfig envConfig

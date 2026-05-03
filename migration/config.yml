@@ -1,6 +1,6 @@
 localhost:
   dialect: mysql
-  datasource: root@tcp(127.0.0.1:3307)/lab?parseTime=true
+  datasource: root:123456@tcp(127.0.0.1:3307)/lab?parseTime=true
   dir: migration
   table: migrations
 development:

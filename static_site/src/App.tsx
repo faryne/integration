@@ -14,6 +14,7 @@ import { Editor } from "@/pages/storyteller/editor.tsx";
 import { CrawlerIndex } from "@/pages/crawler";
 import { CaptureThread } from "@/pages/threads/capture.tsx";
 import { YieldMaxEtfs } from "@/pages/etfs/yieldmax.tsx";
+import { default as TwseEtf } from "@/pages/etfs/twse.tsx";
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
           <Route path={"/tools/thread/capture"} element={<CaptureThread />} />
 
           <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
+          <Route path={"/data/etf/twse"} element={<TwseEtf />} />
 
           <Route path="/a" element={<h1>Hello</h1>} />
 

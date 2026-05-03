@@ -17,3 +17,11 @@ export interface EtfDistribution {
   payable_date: string;
   roc: number;
 }
+
+export interface TwseEtfInfo {
+  date: string;
+  code: string;
+  name: string;
+  company: string;
+  target: string;
+}
