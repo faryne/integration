@@ -19,9 +19,17 @@ export interface EtfDistribution {
 }
 
 export interface TwseEtfInfo {
-  date: string;
+  date?: string;
   code: string;
   name: string;
-  company: string;
-  target: string;
+  company?: string;
+  target?: string;
 }
+
+export interface TwseEtfShare {
+  ex_date: string;
+  payable_date: string;
+  distribution: number;
+}
+
+export interface TwseEtfUpcomingShare extends TwseEtfInfo, TwseEtfShare {}

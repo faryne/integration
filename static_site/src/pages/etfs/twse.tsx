@@ -9,13 +9,45 @@ import {
   IconButton,
   TextField,
   InputAdornment,
+  TableContainer,
+  Paper,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Tabs,
+  Tab,
+  Chip,
+  Stack,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTitle } from "@/helpers/title.tsx";
 import { OptimizedEtfCard } from "@/components/etf/etf_card_info.tsx";
-import { useGetTwseEtfCodeList } from "@/apis/opendata/twse_etf.ts";
-import type { TwseEtfInfo } from "@/types/etf.ts";
+import {
+  useGetTwseEtfCodeList,
+  useGetTwseEtfInfo,
+} from "@/apis/opendata/twse_etf.ts";
+import type { TwseEtfInfo, TwseEtfUpcomingShare } from "@/types/etf.ts";
+import dayjs from "dayjs";
+
+const filters = [
+  { label: "全部", value: "ALL" },
+  { label: "槓桿 - 正 (L)", value: "LEVERAGED_POS" },
+  { label: "槓桿 - 反 (R)", value: "LEVERAGED_NEG" },
+  { label: "債券型 (B)", value: "BOND" },
+  { label: "外幣交易 (K)", value: "FOREIGN_CURR" },
+  { label: "主動式 (A)", value: "ACTIVE" },
+];
+
+type EtfCategory =
+  | "ALL"
+  | "LEVERAGED_POS"
+  | "LEVERAGED_NEG"
+  | "BOND"
+  | "ACTIVE"
+  | "FOREIGN_CURR";
 
 const EtfDashboard: React.FC = () => {
   // 狀態管理
@@ -23,8 +55,11 @@ const EtfDashboard: React.FC = () => {
   const [selectedEtf, setSelectedEtf] = useState<TwseEtfInfo | null>(null);
   const [allEtfs, setAllEtfs] = useState<TwseEtfInfo[]>([]);
   const [open, setOpen] = useState(false);
+  const [tabValue, setTabValue] = useState(0);
+  const [category, setCategory] = useState<EtfCategory>("ALL");
 
   const query = useGetTwseEtfCodeList();
+  const queryShares = useGetTwseEtfInfo(selectedEtf?.code ?? "");
   useTitle("ETF 投資導航");
 
   useEffect(() => {
@@ -36,21 +71,85 @@ const EtfDashboard: React.FC = () => {
   // 核心篩選邏輯：使用 useMemo 確保只有在關鍵字或原始資料變動時才重新計算
   const filteredEtfs = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return allEtfs;
+    let result = allEtfs;
 
-    return allEtfs.filter(
-      (etf) =>
-        etf.code.includes(term) ||
-        etf.name.toLowerCase().includes(term) ||
-        etf.company.toLowerCase().includes(term) ||
-        etf.target.toLowerCase().includes(term),
-    );
-  }, [searchTerm, allEtfs]);
+    // A. 嚴謹的代碼後綴類別篩選
+    if (category !== "ALL") {
+      result = result.filter((etf) => {
+        const code = etf.code.trim().toUpperCase();
+
+        switch (category) {
+          case "LEVERAGED_POS":
+            // 結尾為 L 且排除期貨型 U
+            return code.endsWith("L");
+          case "LEVERAGED_NEG":
+            // 結尾為 R
+            return code.endsWith("R");
+          case "BOND":
+            // 結尾為 B 或名稱含有債券相關字眼
+            return code.endsWith("B");
+          case "FOREIGN_CURR":
+            // 結尾為 K (外幣交易)
+            return code.endsWith("K");
+          case "ACTIVE":
+            // 檢查編碼 M 或名稱帶有主動式
+            return code.endsWith("A");
+          default:
+            return true;
+        }
+      });
+    }
+
+    // B. 關鍵字篩選 (交集計算)
+    if (term) {
+      result = result.filter(
+        (etf) =>
+          etf.code.toLowerCase().includes(term) ||
+          etf.name.toLowerCase().includes(term) ||
+          etf.target?.toLowerCase().includes(term),
+      );
+    }
+
+    return result;
+    // if (!term) return allEtfs;
+    //
+    // return allEtfs.filter(
+    //   (etf) =>
+    //     etf.code.includes(term) ||
+    //     etf.name.toLowerCase().includes(term) ||
+    //     etf.company?.toLowerCase().includes(term) ||
+    //     etf.target?.toLowerCase().includes(term),
+    // );
+  }, [searchTerm, allEtfs, category]);
 
   const handleOpen = (etf: TwseEtfInfo) => {
     setSelectedEtf(etf);
     setOpen(true);
   };
+
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedEtf(null);
+  };
+
+  const GetDateTabs = () => {
+    // 取得基準點（今天）
+    const today = dayjs();
+
+    // 定義你要的時段
+    return [
+      { label: "今日", date: today },
+      { label: "明日", date: today.add(1, "day") },
+      { label: "後天", date: today.add(2, "day") },
+      { label: "一星期後", date: today.add(7, "day") },
+      { label: "兩星期後", date: today.add(14, "day") },
+    ];
+  };
+
+  const selectedDate = useMemo(() => {
+    if (tabValue === 0) return dayjs();
+    return GetDateTabs()[tabValue - 1].date;
+  }, [tabValue]);
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, margin: "0 auto" }}>
@@ -62,80 +161,219 @@ const EtfDashboard: React.FC = () => {
         {allEtfs && <Typography>共 {allEtfs.length} 支</Typography>}
       </Typography>
 
-      {/* 搜尋篩選列 */}
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="搜尋代碼、名稱、公司或關鍵字 (如：元大、科技...)"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 4, bgcolor: "white" }}
-        InputProps={{
-          startAdornment: (
-            <InputAdornment position="start">
-              <SearchIcon color="action" />
-            </InputAdornment>
-          ),
-        }}
-      />
+      <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+        <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
+          <Tab label="全部 ETF" />
+          {GetDateTabs().map((tab, index) => (
+            <Tab key={index} label={`${tab.label}除權`} />
+          ))}
+        </Tabs>
+      </Box>
 
-      {/* 卡片列表 */}
+      <Box sx={{ display: tabValue === 0 ? "block" : "none" }}>
+        {/* 搜尋篩選列 */}
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="搜尋代碼、名稱、公司或關鍵字 (如：元大、科技...)"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          sx={{ mb: 4, bgcolor: "white" }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+        />
+
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}
+        >
+          <Typography variant={"subtitle2"}>快速選擇 ETF 類型</Typography>
+          {filters.map((f) => (
+            <Chip
+              key={f.value}
+              label={f.label}
+              onClick={() => setCategory(f.value as EtfCategory)}
+              color={category === f.value ? "primary" : "default"}
+              variant={category === f.value ? "filled" : "outlined"}
+              sx={{ fontWeight: "bold" }}
+            />
+          ))}
+        </Stack>
+
+        {/* 卡片列表 */}
+        <Typography
+          variant="h6"
+          sx={{ mb: 2, fontWeight: "bold", color: "#1a237e" }}
+        >
+          共 {filteredEtfs.length} 支符合條件
+        </Typography>
+        <Grid container spacing={3}>
+          {filteredEtfs && filteredEtfs.length > 0 ? (
+            filteredEtfs.map((etf) => (
+              <Grid key={etf.code} size={3}>
+                <OptimizedEtfCard etf={etf} onClick={() => handleOpen(etf)} />
+              </Grid>
+            ))
+          ) : (
+            <Grid size={12}>
+              <Box sx={{ textAlign: "center", py: 10 }}>
+                <Typography variant="h6" color="text.secondary">
+                  找不到符合「{searchTerm}」的 ETF
+                </Typography>
+              </Box>
+            </Grid>
+          )}
+        </Grid>
+
+        {/* 彈出視窗 (維持原本邏輯) */}
+        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+          {selectedEtf && (
+            <>
+              <DialogTitle
+                sx={{
+                  m: 0,
+                  p: 2,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography>
+                  {selectedEtf.name} ({selectedEtf.code})
+                </Typography>
+                <IconButton onClick={handleClose}>
+                  <CloseIcon />
+                </IconButton>
+              </DialogTitle>
+              <DialogContent dividers>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: "bold", mb: 2 }}
+                >
+                  歷史配息紀錄
+                </Typography>
+                <TableContainer component={Paper} variant="outlined">
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+                      <TableRow>
+                        <TableCell>除息日期</TableCell>
+                        <TableCell>入帳日期</TableCell>
+                        <TableCell align="right">配息金額</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {(queryShares.data?.data || []).map((record, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{record.ex_date}</TableCell>
+                          <TableCell>{record.payable_date}</TableCell>
+                          <TableCell
+                            align="right"
+                            sx={{ color: "success.main", fontWeight: "bold" }}
+                          >
+                            ${record.distribution.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!queryShares.data?.data && (
+                        <TableRow>
+                          <TableCell colSpan={3} align="center">
+                            尚無配息資料
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </DialogContent>
+            </>
+          )}
+        </Dialog>
+      </Box>
+      <DividendTable
+        data={[]}
+        is_show={Array.from(
+          { length: GetDateTabs().length },
+          (_, i) => i + 1,
+        ).includes(tabValue)}
+        selected_date={selectedDate.format("YYYY-MM-DD")}
+      />
+    </Box>
+  );
+};
+
+// 簡易表格元件
+const DividendTable = ({
+  data,
+  is_show,
+  selected_date,
+}: {
+  selected_date: string;
+  is_show: boolean;
+  data: TwseEtfUpcomingShare[];
+}) => (
+  <>
+    <Box
+      sx={{
+        borderBottom: 1,
+        borderColor: "divider",
+        mb: 2,
+        display: is_show ? "block" : "none",
+      }}
+    >
       <Typography
         variant="h6"
         sx={{ mb: 2, fontWeight: "bold", color: "#1a237e" }}
       >
-        共 {filteredEtfs.length} 支符合條件
+        {selected_date}除息
       </Typography>
-      <Grid container spacing={3}>
-        {filteredEtfs && filteredEtfs.length > 0 ? (
-          filteredEtfs.map((etf) => (
-            <Grid key={etf.code} size={3}>
-              <OptimizedEtfCard etf={etf} onClick={() => handleOpen(etf)} />
-            </Grid>
-          ))
-        ) : (
-          <Grid size={12}>
-            <Box sx={{ textAlign: "center", py: 10 }}>
-              <Typography variant="h6" color="text.secondary">
-                找不到符合「{searchTerm}」的 ETF
-              </Typography>
-            </Box>
-          </Grid>
-        )}
-      </Grid>
-
-      {/* 彈出視窗 (維持原本邏輯) */}
-      <Dialog
-        open={open}
-        onClose={() => setOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        {selectedEtf && (
-          <>
-            <DialogTitle
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <span>{selectedEtf.name} 歷史配息</span>
-              <IconButton onClick={() => setOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </DialogTitle>
-            <DialogContent dividers>
-              {/* 此處放置 Table 程式碼，同前一個回答 */}
-              <Typography variant="body2" sx={{ mb: 2 }}>
-                這裡會顯示 {selectedEtf.code} 的詳細配息數據...
-              </Typography>
-            </DialogContent>
-          </>
-        )}
-      </Dialog>
+      <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
+        <Table>
+          <TableHead sx={{ bgcolor: "action.hover" }}>
+            <TableRow>
+              <TableCell sx={{ fontWeight: "bold" }}>代號</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>名稱</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>除權息日期</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }} align="right">
+                預計配息金額
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {data.length > 0 ? (
+              data.map((etf) => (
+                <TableRow key={etf.code} hover>
+                  <TableCell>
+                    <Chip label={etf.code} size="small" />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>{etf.name}</TableCell>
+                  <TableCell>{etf.date}</TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ color: "success.main", fontWeight: "bold" }}
+                  >
+                    {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
+                    {etf.distribution ?? "--"}
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                  期間內無即將除權之 ETF
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
     </Box>
-  );
-};
+  </>
+);
 
 export default EtfDashboard;

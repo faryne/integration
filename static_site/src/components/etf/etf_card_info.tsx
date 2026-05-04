@@ -54,7 +54,7 @@ export const OptimizedEtfCard: React.FC<{
                 fontWeight: "bold",
               }}
             >
-              {etf.company.substring(0, 1)}
+              {etf.company?.substring(0, 1)}
             </Avatar>
             <Box sx={{ flexGrow: 1 }}>
               <Box
