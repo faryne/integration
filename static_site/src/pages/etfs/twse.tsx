@@ -64,7 +64,7 @@ const EtfDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!query.isLoading && query.isSuccess && !query.isError) {
-      setAllEtfs(query.data.data);
+      setAllEtfs(query.data);
     }
   }, [query.isLoading, query.isSuccess, query.isError]);
 

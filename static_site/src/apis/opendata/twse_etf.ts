@@ -7,8 +7,8 @@ export function useGetTwseEtfCodeList() {
   return useQuery({
     queryKey: ["opendata/twse/etf_code_list"],
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<TwseEtfInfo[]>>(
-        `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/code_list`,
+      const response = await axios.get<TwseEtfInfo[]>(
+        `${import.meta.env.VITE_CDN_BASE}/opendata/twse/etf/code_list.json`,
       );
       return response.data;
     },
