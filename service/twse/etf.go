@@ -1,8 +1,16 @@
 package twse
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	configInst "faryne.dev/config"
 	"faryne.dev/service/helper"
+	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/shopspring/decimal"
 	"io"
 	"net/http"
@@ -10,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -20,11 +29,11 @@ type ResponseData struct {
 }
 
 type ETF struct {
-	Date    string `json:"date"` // 發行日，抓回來時要把「.」轉換為「-」
+	Date    string `json:"date,omitempty"` // 發行日，抓回來時要把「.」轉換為「-」
 	Code    string `json:"code"`
 	Name    string `json:"name"`
-	Company string `json:"company"`
-	Target  string `json:"target"`
+	Company string `json:"company,omitempty"`
+	Target  string `json:"target,omitempty"`
 }
 
 type ETFDistribution struct {
@@ -33,9 +42,15 @@ type ETFDistribution struct {
 	Distribution float64 `json:"distribution"`
 }
 
+type ETFDistributionWithCode struct {
+	ETFDistribution
+	ETF
+}
+
 const (
 	ETFCodeListUrl = "https://www.twse.com.tw/rwd/zh/ETF/list"   // 取得 ETF 名稱列表
 	ETFShareUrl    = "https://www.twse.com.tw/rwd/zh/ETF/etfDiv" // 取得從 2005 年開始的配息
+	S3PrefixKey    = "opendata/twse/etf"
 )
 
 func GetCodeList() ([]ETF, error) {
@@ -92,13 +107,21 @@ func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
 	params.Add("stkNo", code)
 	params.Add("startDate", "20050101")
 	params.Add("endData", time.Now().Format("20060102"))
-	r, err := sendRequest(http.MethodGet, ETFShareUrl, &params, nil)
+	r, err := sendRequest(http.MethodGet, ETFShareUrl, params, nil)
 	if err != nil {
 		return out, err
 	}
 	for _, v := range r.Data {
-		exDate, _ := helper.ROCFullDateToAD(v[2].(string), time.DateOnly)
-		payableDate, _ := helper.ROCFullDateToAD(v[4].(string), time.DateOnly)
+		exDate, exDateError := helper.ROCFullDateToAD(v[2].(string), time.DateOnly)
+		if exDateError != nil {
+			fmt.Printf("invalid exDate: %s, %s\n", v[2].(string), exDateError.Error())
+			continue
+		}
+		payableDate, payableDateError := helper.ROCFullDateToAD(v[4].(string), time.DateOnly)
+		if payableDateError != nil {
+			fmt.Printf("invalid payableDate: %s, %s\n", v[4].(string), payableDateError.Error())
+			continue
+		}
 		distribution := float64(0)
 		if v[5] != nil {
 			d, _ := decimal.NewFromString(v[5].(string))
@@ -113,7 +136,100 @@ func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
 	return out, nil
 }
 
-func sendRequest(method, uri string, params, inputBody *url.Values) (*ResponseData, error) {
+func CronEtfCodeList() {
+	codeList, codeListError := GetCodeList()
+	if codeListError != nil {
+		fmt.Println("codeListError: ", codeListError.Error())
+		return
+	}
+	if err := writeFile(fmt.Sprintf(S3PrefixKey+"/code_list.json"), codeList); err != nil {
+		fmt.Println("writeFile error: ", err.Error())
+		return
+	}
+
+}
+
+func CronETFData() {
+	var codeList []ETF
+	resp, err := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/code_list.json")
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+	defer resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&codeList); err != nil {
+		fmt.Println("err: ", err)
+	}
+
+	for _, v := range codeList {
+		distributions, err := GetHistoryDivByCode(v.Code)
+		if err != nil {
+			fmt.Println("distribution error: ", err, " v: ", v, " distributions: ", distributions, "")
+			continue
+		}
+		go writeFile(fmt.Sprintf(S3PrefixKey+"/by_stock/%s.json", v.Code), distributions)
+
+		time.Sleep(time.Second * 2) // 休息 2 秒避免被 ban
+	}
+}
+
+func CronETFUpcomingShareDaily() {
+	var codeList []ETF
+	resp, err := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/code_list.json")
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+	defer resp.Body.Close()
+	if err := json.NewDecoder(resp.Body).Decode(&codeList); err != nil {
+		fmt.Println("err: ", err)
+	}
+
+	// 以除權日為基礎
+	distributionByDaily := make(map[string][]ETFDistributionWithCode)
+	var mu sync.Mutex
+
+	for _, v := range codeList {
+		var distributions []ETFDistribution
+		distResp, distRespError := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/by_stock/" + v.Code + ".json")
+		if distRespError != nil {
+			continue
+		}
+		distContent, _ := io.ReadAll(distResp.Body)
+		if jsonError := json.Unmarshal(distContent, &distributions); jsonError != nil {
+			fmt.Println("err: ", jsonError)
+			continue
+		}
+		distResp.Body.Close()
+
+		// 先把取到的部分存進 by 個股的檔案中
+		mu.Lock()
+		for _, d := range distributions {
+			if _, timeError := time.Parse("2006-01-02", d.ExDate); timeError != nil {
+				fmt.Printf("invalid date: %s, %s, d: %v, v: %v\n", d.ExDate, timeError.Error(), d, v)
+				continue
+			}
+			if _, ok := distributionByDaily[d.ExDate]; !ok {
+				distributionByDaily[d.ExDate] = make([]ETFDistributionWithCode, 0)
+			}
+			distributionByDaily[d.ExDate] = append(distributionByDaily[d.ExDate], ETFDistributionWithCode{
+				ETFDistribution: d,
+				ETF:             v,
+			})
+		}
+		mu.Unlock()
+	}
+	// 根據日期開始寫檔
+	for k, v := range distributionByDaily {
+		splitDate := strings.Split(k, "-")
+		go writeFile(fmt.Sprintf(S3PrefixKey+"/by_daily/%s/%s/%s.json", splitDate[0], splitDate[1], k), v)
+	}
+	c, _ := json.MarshalIndent(distributionByDaily, "", "  ")
+
+	fmt.Println(string(c))
+}
+
+func sendRequest(method, uri string, params, inputBody url.Values) (*ResponseData, error) {
 	// 處理 postBody
 	var body io.Reader
 	if method == http.MethodPost && inputBody != nil {
@@ -152,4 +268,34 @@ func sendRequest(method, uri string, params, inputBody *url.Values) (*ResponseDa
 		return nil, jsonError
 	}
 	return &r, nil
+}
+
+func writeFile(fileName string, data any) error {
+	c, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	ctx := context.TODO()
+
+	// 使用靜態金鑰建立 Provider
+	staticProvider := credentials.NewStaticCredentialsProvider(configInst.EnvConfig().S3AccessKey, configInst.EnvConfig().S3SecretKey, "")
+
+	// 載入設定時強制指定 CredentialsProvider 和 Region
+	cfg, err := config.LoadDefaultConfig(ctx,
+		config.WithRegion(configInst.EnvConfig().S3Region),
+		config.WithCredentialsProvider(staticProvider),
+	)
+	if err != nil {
+		return fmt.Errorf("無法載入 AWS 設定: %v", err)
+	}
+	client := s3.NewFromConfig(cfg)
+
+	_, err = client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(configInst.EnvConfig().S3Bucket),
+		Key:         aws.String(fileName),
+		Body:        bytes.NewReader(c),
+		ContentType: aws.String("application/json"),
+	})
+
+	return err
 }

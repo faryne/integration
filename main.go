@@ -9,6 +9,7 @@ import (
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
+	"faryne.dev/service/twse"
 	"flag"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -16,6 +17,7 @@ import (
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/swagger/v2"
 	"github.com/joho/godotenv"
+	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 	"os"
 	"reflect"
@@ -136,6 +138,20 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	route.Tools(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	app.Get("/*", swagger.HandlerDefault)
+	// </editor-fold>
+
+	// <editor-fold desc="cronjob">
+	go func() {
+		c := cron.New(cron.WithParser(cron.NewParser(
+			cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+		)))
+
+		c.AddFunc("@everyday", twse.CronEtfCodeList)
+		c.AddFunc("@everyday", twse.CronETFData)
+		c.AddFunc("@everyday", twse.CronETFUpcomingShareDaily)
+
+		c.Start()
+	}()
 	// </editor-fold>
 
 	go func() {

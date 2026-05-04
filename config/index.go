@@ -11,6 +11,12 @@ type envConfig struct {
 	FrontendPath string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
 
 	GoogleCalendarCred string `env:"GOOGLE_CALENDAR_CRED"`
+
+	S3AccessKey string `env:"S3_ACCESS_KEY"`
+	S3SecretKey string `env:"S3_SECRET_KEY"`
+	S3Region    string `env:"S3_REGION"`
+	S3Bucket    string `env:"S3_BUCKET"`
+	CDNUrl      string `env:"CDN_URL"`
 }
 
 var loadEnvConfig envConfig

@@ -2,6 +2,8 @@ package twse
 
 import (
 	"encoding/json"
+	"faryne.dev/config"
+	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -22,4 +24,10 @@ func Test_GetHistoryDivByCode(t *testing.T) {
 	require.NotEmpty(t, shares)
 	require.GreaterOrEqual(t, len(shares), 10)
 	t.Logf("%+v\n", shares)
+}
+
+func Test_CronETFData(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	CronETFData()
 }
