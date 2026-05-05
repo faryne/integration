@@ -19,14 +19,14 @@ import {
   Tabs,
   Tab,
   Chip,
-  Stack,
+  Stack, Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTitle } from "@/helpers/title.tsx";
 import { OptimizedEtfCard } from "@/components/etf/etf_card_info.tsx";
 import {
-  useGetTwseEtfCodeList,
+  useGetTwseEtfCodeList, useGetTwseEtfExInfo,
   useGetTwseEtfInfo,
 } from "@/apis/opendata/twse_etf.ts";
 import type { TwseEtfInfo, TwseEtfUpcomingShare } from "@/types/etf.ts";
@@ -39,6 +39,13 @@ const filters = [
   { label: "債券型 (B)", value: "BOND" },
   { label: "外幣交易 (K)", value: "FOREIGN_CURR" },
   { label: "主動式 (A)", value: "ACTIVE" },
+  { label: "主動式債券 (D)", value: "ACTIVE_BOND"},
+  { label: "外幣計價債券 (C)", value: "FOREIGN_CURR_BOND"},
+  { label: "外幣槓桿 ETF (M)", value: "FOREIGN_CURR_LEVERAGED_POS" },
+  { label: "外幣反向 (S)", value: "FOREIGN_CURR_LEVERAGED_NEG"},
+  { label: "期貨型 (U)", value: "FUTURE" },
+  { label: "外幣期貨 (V)", value: "FOREIGN_CURR_FUTURE" },
+  { label: "多資產/平衡 (T)", value: "MULTI_ASSET" }
 ];
 
 type EtfCategory =
@@ -47,7 +54,14 @@ type EtfCategory =
   | "LEVERAGED_NEG"
   | "BOND"
   | "ACTIVE"
-  | "FOREIGN_CURR";
+  | "FOREIGN_CURR"
+  | "ACTIVE_BOND"
+  | "FOREIGN_CURR_BOND"
+  | "FOREIGN_CURR_LEVERAGED_POS"
+  | "FOREIGN_CURR_LEVERAGED_NEG"
+  | "FUTURE"
+  | "FOREIGN_CURR_FUTURE"
+  | "MULTI_ASSET";
 
 const EtfDashboard: React.FC = () => {
   // 狀態管理
@@ -94,6 +108,20 @@ const EtfDashboard: React.FC = () => {
           case "ACTIVE":
             // 檢查編碼 M 或名稱帶有主動式
             return code.endsWith("A");
+          case  "ACTIVE_BOND":
+              return code.endsWith("D");
+          case "FOREIGN_CURR_BOND":
+            return code.endsWith("C");
+          case "FOREIGN_CURR_LEVERAGED_POS":
+            return code.endsWith("M");
+          case "FOREIGN_CURR_LEVERAGED_NEG":
+            return code.endsWith("S");
+          case "FUTURE":
+            return code.endsWith("U");
+            case "FOREIGN_CURR_FUTURE":
+              return code.endsWith("V");
+              case "MULTI_ASSET":
+                return code.endsWith("T");
           default:
             return true;
         }
@@ -111,15 +139,6 @@ const EtfDashboard: React.FC = () => {
     }
 
     return result;
-    // if (!term) return allEtfs;
-    //
-    // return allEtfs.filter(
-    //   (etf) =>
-    //     etf.code.includes(term) ||
-    //     etf.name.toLowerCase().includes(term) ||
-    //     etf.company?.toLowerCase().includes(term) ||
-    //     etf.target?.toLowerCase().includes(term),
-    // );
   }, [searchTerm, allEtfs, category]);
 
   const handleOpen = (etf: TwseEtfInfo) => {
@@ -150,6 +169,7 @@ const EtfDashboard: React.FC = () => {
     if (tabValue === 0) return dayjs();
     return GetDateTabs()[tabValue - 1].date;
   }, [tabValue]);
+  const queryExShare = useGetTwseEtfExInfo(selectedDate.format("YYYY-MM-DD"));
 
   return (
     <Box sx={{ p: 3, maxWidth: 1200, margin: "0 auto" }}>
@@ -165,7 +185,7 @@ const EtfDashboard: React.FC = () => {
         <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
           <Tab label="全部 ETF" />
           {GetDateTabs().map((tab, index) => (
-            <Tab key={index} label={`${tab.label}除權`} />
+            <Tab key={index} label={`${tab.label}除權 (${tab.date.format("YYYY-MM-DD")})`} />
           ))}
         </Tabs>
       </Box>
@@ -224,7 +244,7 @@ const EtfDashboard: React.FC = () => {
             <Grid size={12}>
               <Box sx={{ textAlign: "center", py: 10 }}>
                 <Typography variant="h6" color="text.secondary">
-                  找不到符合「{searchTerm}」的 ETF
+                  找不到符合{searchTerm && `「{searchTerm}」`}的 ETF
                 </Typography>
               </Box>
             </Grid>
@@ -268,7 +288,7 @@ const EtfDashboard: React.FC = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {(queryShares.data?.data || []).map((record, index) => (
+                      {(queryShares.data || []).map((record, index) => (
                         <TableRow key={index}>
                           <TableCell>{record.ex_date}</TableCell>
                           <TableCell>{record.payable_date}</TableCell>
@@ -280,7 +300,7 @@ const EtfDashboard: React.FC = () => {
                           </TableCell>
                         </TableRow>
                       ))}
-                      {!queryShares.data?.data && (
+                      {!queryShares.data && (
                         <TableRow>
                           <TableCell colSpan={3} align="center">
                             尚無配息資料
@@ -296,12 +316,17 @@ const EtfDashboard: React.FC = () => {
         </Dialog>
       </Box>
       <DividendTable
-        data={[]}
+        data={queryExShare?.data ?? []}
         is_show={Array.from(
           { length: GetDateTabs().length },
           (_, i) => i + 1,
         ).includes(tabValue)}
         selected_date={selectedDate.format("YYYY-MM-DD")}
+        onClick={(etfCode: string) => {
+          allEtfs.filter((etf) => etf.code === etfCode).forEach((etf) => {
+            handleOpen(etf);
+          });
+        }}
       />
     </Box>
   );
@@ -312,10 +337,12 @@ const DividendTable = ({
   data,
   is_show,
   selected_date,
+  onClick,
 }: {
   selected_date: string;
   is_show: boolean;
   data: TwseEtfUpcomingShare[];
+  onClick?: (etfCode: string) => void;
 }) => (
   <>
     <Box
@@ -349,9 +376,14 @@ const DividendTable = ({
               data.map((etf) => (
                 <TableRow key={etf.code} hover>
                   <TableCell>
-                    <Chip label={etf.code} size="small" />
+                    <Chip label={etf.code} size="small" onClick={() => {
+                      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                      onClick && onClick(etf.code);
+                    }}/>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>{etf.name}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>
+                    {onClick ? <Button onClick={() => onClick(etf.code)} variant={"text"}>{etf.name}</Button> : etf.name}
+                  </TableCell>
                   <TableCell>{etf.date}</TableCell>
                   <TableCell
                     align="right"

@@ -29,5 +29,5 @@ func Test_GetHistoryDivByCode(t *testing.T) {
 func Test_CronETFData(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
-	CronETFData()
+	CronETFUpcomingShareDaily()
 }

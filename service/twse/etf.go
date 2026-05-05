@@ -219,11 +219,18 @@ func CronETFUpcomingShareDaily() {
 		}
 		mu.Unlock()
 	}
-	// 根據日期開始寫檔
+	// 根據日期開始寫檔，啟用 waitGroup 等待
+	wg := sync.WaitGroup{}
+	wg.Add(len(distributionByDaily))
 	for k, v := range distributionByDaily {
 		splitDate := strings.Split(k, "-")
-		go writeFile(fmt.Sprintf(S3PrefixKey+"/by_daily/%s/%s/%s.json", splitDate[0], splitDate[1], k), v)
+		go func() {
+			_ = writeFile(fmt.Sprintf(S3PrefixKey+"/by_daily/%s/%s/%s.json", splitDate[0], splitDate[1], k), v)
+			wg.Done()
+		}()
 	}
+	wg.Wait()
+
 	c, _ := json.MarshalIndent(distributionByDaily, "", "  ")
 
 	fmt.Println(string(c))
