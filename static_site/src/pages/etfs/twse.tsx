@@ -384,7 +384,7 @@ const DividendTable = ({
                   <TableCell sx={{ fontWeight: 500 }}>
                     {onClick ? <Button onClick={() => onClick(etf.code)} variant={"text"}>{etf.name}</Button> : etf.name}
                   </TableCell>
-                  <TableCell>{etf.date}</TableCell>
+                  <TableCell>{etf.ex_date}</TableCell>
                   <TableCell
                     align="right"
                     sx={{ color: "success.main", fontWeight: "bold" }}
