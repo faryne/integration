@@ -244,7 +244,7 @@ const EtfDashboard: React.FC = () => {
             <Grid size={12}>
               <Box sx={{ textAlign: "center", py: 10 }}>
                 <Typography variant="h6" color="text.secondary">
-                  找不到符合{searchTerm && `「{searchTerm}」`}的 ETF
+                  找不到符合{searchTerm && `「${searchTerm}」`}的 ETF
                 </Typography>
               </Box>
             </Grid>
@@ -296,7 +296,7 @@ const EtfDashboard: React.FC = () => {
                             align="right"
                             sx={{ color: "success.main", fontWeight: "bold" }}
                           >
-                            ${record.distribution.toFixed(2)}
+                            {record.distribution > 0 ? record.distribution.toFixed(4) : "--"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -390,7 +390,7 @@ const DividendTable = ({
                     sx={{ color: "success.main", fontWeight: "bold" }}
                   >
                     {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
-                    {etf.distribution ?? "--"}
+                    {etf.distribution > 0 ? `$${etf.distribution.toFixed(4)}` : "--"}
                   </TableCell>
                 </TableRow>
               ))
