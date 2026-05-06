@@ -22,6 +22,26 @@ import (
 	"time"
 )
 
+type OTCEtfResponse struct {
+	MsgArray []struct {
+		Ex  string `json:"ex"`
+		Ch  string `json:"ch"`
+		Nf  string `json:"nf"`
+		Key string `json:"key"`
+		N   string `json:"n"`
+		Bp  string `json:"bp"`
+	} `json:"msgArray"`
+	Size      int    `json:"size"`
+	Rtcode    string `json:"rtcode"`
+	QueryTime struct {
+		StockDetail    int `json:"stockDetail"`
+		TotalMicroTime int `json:"totalMicroTime"`
+	} `json:"queryTime"`
+	Rtmessage   string `json:"rtmessage"`
+	ExKey       string `json:"exKey"`
+	CachedAlive int    `json:"cachedAlive"`
+}
+
 type ResponseData struct {
 	Stat   string   `json:"stat"`   // should be "OK"
 	Fields []string `json:"fields"` // fileName
@@ -34,6 +54,7 @@ type ETF struct {
 	Name    string `json:"name"`
 	Company string `json:"company,omitempty"`
 	Target  string `json:"target,omitempty"`
+	Market  string `json:"market,omitempty"` // twse / otc
 }
 
 type ETFDistribution struct {
@@ -47,20 +68,63 @@ type ETFDistributionWithCode struct {
 	ETF
 }
 
+type OTCETFDistribution struct {
+	Amount      string `json:"amount"`
+	StockName   string `json:"stockName"`
+	DivDate     string `json:"divDate"`
+	Year        string `json:"year"`
+	InDate      string `json:"inDate"`
+	Description string `json:"description"`
+	InBaseDate  string `json:"inBaseDate"`
+	StockNo     string `json:"stockNo"`
+}
+
 const (
-	ETFCodeListUrl = "https://www.twse.com.tw/rwd/zh/ETF/list"   // 取得 ETF 名稱列表
-	ETFShareUrl    = "https://www.twse.com.tw/rwd/zh/ETF/etfDiv" // 取得從 2005 年開始的配息
-	S3PrefixKey    = "opendata/twse/etf"
+	ETFCodeListUrl    = "https://www.twse.com.tw/rwd/zh/ETF/list"           // 取得 ETF 名稱列表
+	ETFShareUrl       = "https://www.twse.com.tw/rwd/zh/ETF/etfDiv"         // 取得從 2005 年開始的配息（證交所）
+	ETFOtcShareUrl    = "https://info.tpex.org.tw/api/etfExDiv"             // 取得從 2005 年開始的配息（櫃買中心）
+	OTCETFCodeListUrl = "https://mis.twse.com.tw/stock/api/getCategory.jsp" // 登記在櫃買中心的 ETF
+	S3PrefixKey       = "opendata/twse/etf"
+
+	// "https://info.tpex.org.tw/api/etfExDiv"
+	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=00400A&start_date=2026-05-01" // 股價資料
+	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=0050&start_date=2001-01-01" // 股利政策
 )
 
 func GetCodeList() ([]ETF, error) {
 	var out = make([]ETF, 0)
-	r, err := sendRequest(http.MethodGet, ETFCodeListUrl, nil, nil)
+	r, err := sendRequest[ResponseData](http.MethodGet, ETFCodeListUrl, nil, nil)
 	if err != nil {
 		return out, err
 	}
 	for _, v := range r.Data {
 		out = append(out, splitETFCodeData(v)...)
+	}
+	otcCodeList, err := GetOTCCodeList()
+	if err != nil {
+		return out, err
+	}
+	out = append(out, otcCodeList...)
+	return out, nil
+}
+
+func GetOTCCodeList() ([]ETF, error) {
+	var out = make([]ETF, 0)
+	u := url.Values{}
+	u.Add("ex", "otc")
+	u.Add("i", "B0")
+	u.Add("lang", "zh_tw")
+	r, err := sendRequest[OTCEtfResponse](http.MethodGet, OTCETFCodeListUrl, u, nil)
+	if err != nil {
+		return out, err
+	}
+	for _, v := range r.MsgArray {
+		out = append(out, ETF{
+			Code:    strings.Replace(v.Ch, ".tw", "", -1),
+			Name:    v.N,
+			Company: "",
+			Market:  "otc",
+		})
 	}
 	return out, nil
 }
@@ -79,6 +143,7 @@ func splitETFCodeData(v []any) []ETF {
 				Name:    v[2].(string),
 				Company: v[3].(string),
 				Target:  target,
+				Market:  "twse",
 			},
 		}
 	}
@@ -96,6 +161,7 @@ func splitETFCodeData(v []any) []ETF {
 			Name:    n[k],
 			Company: v[3].(string),
 			Target:  target,
+			Market:  "twse",
 		}
 	}
 	return out
@@ -107,7 +173,7 @@ func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
 	params.Add("stkNo", code)
 	params.Add("startDate", "20050101")
 	params.Add("endData", time.Now().Format("20060102"))
-	r, err := sendRequest(http.MethodGet, ETFShareUrl, params, nil)
+	r, err := sendRequest[ResponseData](http.MethodGet, ETFShareUrl, params, nil)
 	if err != nil {
 		return out, err
 	}
@@ -131,6 +197,34 @@ func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
 			ExDate:       exDate,
 			PayableDate:  payableDate,
 			Distribution: distribution,
+		})
+	}
+	return out, nil
+}
+
+func GetOTCHistoryDivByCode(code string) ([]ETFDistribution, error) {
+	var out = make([]ETFDistribution, 0)
+	params := url.Values{}
+	params.Add("stkNo", code)
+	r, err := sendRequest[[]OTCETFDistribution](http.MethodPost, ETFOtcShareUrl, nil, params)
+	if err != nil {
+		return out, err
+	}
+	for _, v := range *r {
+		amount := decimal.Zero
+		if v.Amount != "" {
+			var amountError error
+			amount, amountError = decimal.NewFromString(v.Amount)
+			if amountError != nil {
+				amount = decimal.Zero
+			}
+		}
+		d1, _ := helper.ROCFullDateToAD(v.DivDate, time.DateOnly)
+		d2, _ := helper.ROCFullDateToAD(v.InDate, time.DateOnly)
+		out = append(out, ETFDistribution{
+			ExDate:       d1,
+			PayableDate:  d2,
+			Distribution: amount.InexactFloat64(),
 		})
 	}
 	return out, nil
@@ -162,8 +256,14 @@ func CronETFData() {
 	}
 
 	for _, v := range codeList {
-		distributions, err := GetHistoryDivByCode(v.Code)
-		if err != nil {
+		var distributions []ETFDistribution
+		var distributionsError error
+		if v.Market == "twse" {
+			distributions, distributionsError = GetHistoryDivByCode(v.Code)
+		} else {
+			distributions, distributionsError = GetOTCHistoryDivByCode(v.Code)
+		}
+		if distributionsError != nil {
 			fmt.Println("distribution error: ", err, " v: ", v, " distributions: ", distributions, "")
 			continue
 		}
@@ -236,7 +336,7 @@ func CronETFUpcomingShareDaily() {
 	fmt.Println(string(c))
 }
 
-func sendRequest(method, uri string, params, inputBody url.Values) (*ResponseData, error) {
+func sendRequest[T any](method, uri string, params, inputBody url.Values) (*T, error) {
 	// 處理 postBody
 	var body io.Reader
 	if method == http.MethodPost && inputBody != nil {
@@ -259,6 +359,9 @@ func sendRequest(method, uri string, params, inputBody url.Values) (*ResponseDat
 	if err != nil {
 		return nil, err
 	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
 	// 發送
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -270,7 +373,7 @@ func sendRequest(method, uri string, params, inputBody url.Values) (*ResponseDat
 	if err != nil {
 		return nil, err
 	}
-	var r ResponseData
+	var r T
 	if jsonError := json.Unmarshal(c, &r); jsonError != nil {
 		return nil, jsonError
 	}

@@ -70,19 +70,33 @@ export const OptimizedEtfCard: React.FC<{
                   color="primary"
                   sx={{ fontWeight: "bold", borderRadius: "6px" }}
                 />
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <EventNoteIcon
-                    sx={{ fontSize: 14, color: "text.secondary" }}
-                  />
-                  <Typography variant="caption" color="text.secondary">
-                    {etf.date}
-                  </Typography>
-                </Stack>
+                {etf.date && (
+                  <Stack direction="row" alignItems="center" spacing={0.5}>
+                    <EventNoteIcon
+                      sx={{ fontSize: 14, color: "text.secondary" }}
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      {etf.date}
+                    </Typography>
+                  </Stack>
+                )}
               </Box>
               <Typography
                 variant="h6"
                 sx={{ fontWeight: 800, mt: 0.5, color: "#2c3e50" }}
               >
+                <Chip
+                  label={
+                    etf.market
+                      ? etf.market === "twse"
+                        ? "證交所"
+                        : "櫃買中心"
+                      : ""
+                  }
+                  size="small"
+                  color="primary"
+                  sx={{ fontWeight: "bold", borderRadius: "6px" }}
+                />
                 {etf.name}
               </Typography>
             </Box>
@@ -92,52 +106,56 @@ export const OptimizedEtfCard: React.FC<{
 
           {/* 下半部：詳細資訊 */}
           <Stack spacing={1.5}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <BusinessIcon
-                sx={{ fontSize: 18, mr: 1, color: "action.active" }}
-              />
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontWeight: 500 }}
-              >
-                {etf.company}
-              </Typography>
-            </Box>
-
-            <Box
-              sx={{
-                bgcolor: "action.hover",
-                p: 1.5,
-                borderRadius: 2,
-                border: "1px solid",
-                borderColor: "divider",
-              }}
-            >
-              <Stack direction="row" spacing={1} alignItems="flex-start">
-                <TrendingUpIcon
-                  sx={{ fontSize: 18, mt: 0.3, color: "primary.main" }}
+            {etf.company && (
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <BusinessIcon
+                  sx={{ fontSize: 18, mr: 1, color: "action.active" }}
                 />
-                <Box>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: "bold",
-                      color: "text.secondary",
-                      display: "block",
-                    }}
-                  >
-                    追蹤目標指數
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{ lineHeight: 1.4, color: "text.primary" }}
-                  >
-                    {etf.target}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontWeight: 500 }}
+                >
+                  {etf.company}
+                </Typography>
+              </Box>
+            )}
+
+            {etf.target && (
+              <Box
+                sx={{
+                  bgcolor: "action.hover",
+                  p: 1.5,
+                  borderRadius: 2,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                  <TrendingUpIcon
+                    sx={{ fontSize: 18, mt: 0.3, color: "primary.main" }}
+                  />
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: "bold",
+                        color: "text.secondary",
+                        display: "block",
+                      }}
+                    >
+                      追蹤目標指數
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ lineHeight: 1.4, color: "text.primary" }}
+                    >
+                      {etf.target}
+                    </Typography>
+                  </Box>
+                </Stack>
+              </Box>
+            )}
           </Stack>
         </CardContent>
       </CardActionArea>

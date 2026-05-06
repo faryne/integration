@@ -1,6 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
-import type {TwseEtfInfo, TwseEtfShare, TwseEtfUpcomingShare} from "@/types/etf.ts";
+import type {
+  TwseEtfInfo,
+  TwseEtfShare,
+  TwseEtfUpcomingShare,
+} from "@/types/etf.ts";
 
 export function useGetTwseEtfCodeList() {
   return useQuery({
@@ -32,7 +36,7 @@ export function useGetTwseEtfExInfo(date: string) {
     queryFn: async () => {
       const d = date.split("-");
       const response = await axios.get<TwseEtfUpcomingShare[]>(
-          `${import.meta.env.VITE_CDN_BASE}/opendata/twse/etf/by_daily/${d[0]}/${d[1]}/${date}.json`,
+        `${import.meta.env.VITE_CDN_BASE}/opendata/twse/etf/by_daily/${d[0]}/${d[1]}/${date}.json`,
       );
       return response.data;
     },

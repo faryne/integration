@@ -19,14 +19,16 @@ import {
   Tabs,
   Tab,
   Chip,
-  Stack, Button,
+  Stack,
+  Button,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import { useTitle } from "@/helpers/title.tsx";
 import { OptimizedEtfCard } from "@/components/etf/etf_card_info.tsx";
 import {
-  useGetTwseEtfCodeList, useGetTwseEtfExInfo,
+  useGetTwseEtfCodeList,
+  useGetTwseEtfExInfo,
   useGetTwseEtfInfo,
 } from "@/apis/opendata/twse_etf.ts";
 import type { TwseEtfInfo, TwseEtfUpcomingShare } from "@/types/etf.ts";
@@ -39,13 +41,13 @@ const filters = [
   { label: "債券型 (B)", value: "BOND" },
   { label: "外幣交易 (K)", value: "FOREIGN_CURR" },
   { label: "主動式 (A)", value: "ACTIVE" },
-  { label: "主動式債券 (D)", value: "ACTIVE_BOND"},
-  { label: "外幣計價債券 (C)", value: "FOREIGN_CURR_BOND"},
+  { label: "主動式債券 (D)", value: "ACTIVE_BOND" },
+  { label: "外幣計價債券 (C)", value: "FOREIGN_CURR_BOND" },
   { label: "外幣槓桿 ETF (M)", value: "FOREIGN_CURR_LEVERAGED_POS" },
-  { label: "外幣反向 (S)", value: "FOREIGN_CURR_LEVERAGED_NEG"},
+  { label: "外幣反向 (S)", value: "FOREIGN_CURR_LEVERAGED_NEG" },
   { label: "期貨型 (U)", value: "FUTURE" },
   { label: "外幣期貨 (V)", value: "FOREIGN_CURR_FUTURE" },
-  { label: "多資產/平衡 (T)", value: "MULTI_ASSET" }
+  { label: "多資產/平衡 (T)", value: "MULTI_ASSET" },
 ];
 
 type EtfCategory =
@@ -108,8 +110,8 @@ const EtfDashboard: React.FC = () => {
           case "ACTIVE":
             // 檢查編碼 M 或名稱帶有主動式
             return code.endsWith("A");
-          case  "ACTIVE_BOND":
-              return code.endsWith("D");
+          case "ACTIVE_BOND":
+            return code.endsWith("D");
           case "FOREIGN_CURR_BOND":
             return code.endsWith("C");
           case "FOREIGN_CURR_LEVERAGED_POS":
@@ -118,10 +120,10 @@ const EtfDashboard: React.FC = () => {
             return code.endsWith("S");
           case "FUTURE":
             return code.endsWith("U");
-            case "FOREIGN_CURR_FUTURE":
-              return code.endsWith("V");
-              case "MULTI_ASSET":
-                return code.endsWith("T");
+          case "FOREIGN_CURR_FUTURE":
+            return code.endsWith("V");
+          case "MULTI_ASSET":
+            return code.endsWith("T");
           default:
             return true;
         }
@@ -185,7 +187,10 @@ const EtfDashboard: React.FC = () => {
         <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)}>
           <Tab label="全部 ETF" />
           {GetDateTabs().map((tab, index) => (
-            <Tab key={index} label={`${tab.label}除權 (${tab.date.format("YYYY-MM-DD")})`} />
+            <Tab
+              key={index}
+              label={`${tab.label}除權 (${tab.date.format("YYYY-MM-DD")})`}
+            />
           ))}
         </Tabs>
       </Box>
@@ -296,7 +301,9 @@ const EtfDashboard: React.FC = () => {
                             align="right"
                             sx={{ color: "success.main", fontWeight: "bold" }}
                           >
-                            {record.distribution > 0 ? record.distribution.toFixed(4) : "--"}
+                            {record.distribution > 0
+                              ? record.distribution.toFixed(4)
+                              : "--"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -323,9 +330,11 @@ const EtfDashboard: React.FC = () => {
         ).includes(tabValue)}
         selected_date={selectedDate.format("YYYY-MM-DD")}
         onClick={(etfCode: string) => {
-          allEtfs.filter((etf) => etf.code === etfCode).forEach((etf) => {
-            handleOpen(etf);
-          });
+          allEtfs
+            .filter((etf) => etf.code === etfCode)
+            .forEach((etf) => {
+              handleOpen(etf);
+            });
         }}
       />
     </Box>
@@ -376,13 +385,26 @@ const DividendTable = ({
               data.map((etf) => (
                 <TableRow key={etf.code} hover>
                   <TableCell>
-                    <Chip label={etf.code} size="small" onClick={() => {
-                      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                      onClick && onClick(etf.code);
-                    }}/>
+                    <Chip
+                      label={etf.code}
+                      size="small"
+                      onClick={() => {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                        onClick && onClick(etf.code);
+                      }}
+                    />
                   </TableCell>
                   <TableCell sx={{ fontWeight: 500 }}>
-                    {onClick ? <Button onClick={() => onClick(etf.code)} variant={"text"}>{etf.name}</Button> : etf.name}
+                    {onClick ? (
+                      <Button
+                        onClick={() => onClick(etf.code)}
+                        variant={"text"}
+                      >
+                        {etf.name}
+                      </Button>
+                    ) : (
+                      etf.name
+                    )}
                   </TableCell>
                   <TableCell>{etf.ex_date}</TableCell>
                   <TableCell
@@ -390,7 +412,9 @@ const DividendTable = ({
                     sx={{ color: "success.main", fontWeight: "bold" }}
                   >
                     {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
-                    {etf.distribution > 0 ? `$${etf.distribution.toFixed(4)}` : "--"}
+                    {etf.distribution > 0
+                      ? `$${etf.distribution.toFixed(4)}`
+                      : "--"}
                   </TableCell>
                 </TableRow>
               ))

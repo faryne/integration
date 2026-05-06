@@ -24,6 +24,7 @@ export interface TwseEtfInfo {
   name: string;
   company?: string;
   target?: string;
+  market?: string;
 }
 
 export interface TwseEtfShare {
