@@ -12,6 +12,10 @@ func NewRepository[T any](orm *gorm.DB) *Repository[T] {
 	}
 }
 
+func (r *Repository[T]) GetDB() *gorm.DB {
+	return r.db
+}
+
 func (r *Repository[T]) Create(input *T) error {
 	return r.db.Create(&input).Error
 }

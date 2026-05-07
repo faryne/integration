@@ -17,6 +17,8 @@ type envConfig struct {
 	S3Region    string `env:"S3_REGION"`
 	S3Bucket    string `env:"S3_BUCKET"`
 	CDNUrl      string `env:"CDN_URL"`
+
+	FinMindToken string `env:"FINMIND_TOKEN"`
 }
 
 var loadEnvConfig envConfig

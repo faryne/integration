@@ -3,13 +3,18 @@ package twse
 import (
 	"encoding/json"
 	"faryne.dev/config"
+	"faryne.dev/model/enum"
+	"faryne.dev/service/client"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func Test_GetETFCodeList(t *testing.T) {
-	etfs, err := GetCodeList()
+func Test_UpdateETFCodeList(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	etfs, err := UpdateETFCodeList()
 	require.NoError(t, err)
 	require.NotEmpty(t, etfs)
 	require.GreaterOrEqual(t, len(etfs), 10)
@@ -18,18 +23,17 @@ func Test_GetETFCodeList(t *testing.T) {
 	t.Logf("%+v\n", etfs)
 }
 
-func Test_GetHistoryDivByCode(t *testing.T) {
-	shares, err := GetHistoryDivByCode("00878")
-	require.NoError(t, err)
-	require.NotEmpty(t, shares)
-	require.GreaterOrEqual(t, len(shares), 10)
-	t.Logf("%+v\n", shares)
-}
-
-func Test_CronETFData(t *testing.T) {
+func Test_GetETFTicker(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
-	//CronEtfCodeList()
-	//CronETFData()
-	CronETFUpcomingShareDaily()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	//UpdateETFTicker("twse", "2005-01-01")
+	UpdateETFTicker("otc", "2005-01-01")
+}
+
+func Test_GetETFShare(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	UpdateETFShare()
 }

@@ -143,12 +143,18 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	// <editor-fold desc="cronjob">
 	go func() {
 		c := cron.New(cron.WithParser(cron.NewParser(
-			cron.SecondOptional | cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+			cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
 		)))
 
-		c.AddFunc("@everyday", twse.CronEtfCodeList)
-		c.AddFunc("@everyday", twse.CronETFData)
-		c.AddFunc("@everyday", twse.CronETFUpcomingShareDaily)
+		c.AddFunc("0 0 * * 1", func() {
+			_, _ = twse.UpdateETFCodeList()
+			twse.UpdateETFShare()
+		})
+		c.AddFunc("0 15 * * *", func() {
+			d := time.Now().Format(time.DateOnly)
+			twse.UpdateETFTicker("twse", d)
+			twse.UpdateETFTicker("otc", d)
+		})
 
 		c.Start()
 	}()

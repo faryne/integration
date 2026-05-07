@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	configInst "faryne.dev/config"
+	"faryne.dev/model/entity/opendata/etf"
+	etfRepo "faryne.dev/repository/etf"
 	"faryne.dev/service/helper"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -18,7 +20,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -48,26 +49,6 @@ type ResponseData struct {
 	Data   [][]any  `json:"data"`   // 依據類型不同會輸出不同欄位，需要在各自方法中處理
 }
 
-type ETF struct {
-	Date    string `json:"date,omitempty"` // 發行日，抓回來時要把「.」轉換為「-」
-	Code    string `json:"code"`
-	Name    string `json:"name"`
-	Company string `json:"company,omitempty"`
-	Target  string `json:"target,omitempty"`
-	Market  string `json:"market,omitempty"` // twse / otc
-}
-
-type ETFDistribution struct {
-	ExDate       string  `json:"ex_date"`
-	PayableDate  string  `json:"payable_date"`
-	Distribution float64 `json:"distribution"`
-}
-
-type ETFDistributionWithCode struct {
-	ETFDistribution
-	ETF
-}
-
 type OTCETFDistribution struct {
 	Amount      string `json:"amount"`
 	StockName   string `json:"stockName"`
@@ -79,20 +60,37 @@ type OTCETFDistribution struct {
 	StockNo     string `json:"stockNo"`
 }
 
+type FinMindHistoryTicker struct {
+	Msg    string `json:"msg"`
+	Status int    `json:"status"`
+	Data   []struct {
+		Date            string  `json:"date"`
+		StockId         string  `json:"stock_id"`
+		TradingVolume   int     `json:"Trading_Volume"`
+		TradingMoney    int64   `json:"Trading_money"`
+		Open            float64 `json:"open"`
+		Max             float64 `json:"max"`
+		Min             float64 `json:"min"`
+		Close           float64 `json:"close"`
+		Spread          float64 `json:"spread"`
+		TradingTurnover int     `json:"Trading_turnover"`
+	} `json:"data"`
+}
+
 const (
 	ETFCodeListUrl    = "https://www.twse.com.tw/rwd/zh/ETF/list"           // 取得 ETF 名稱列表
 	ETFShareUrl       = "https://www.twse.com.tw/rwd/zh/ETF/etfDiv"         // 取得從 2005 年開始的配息（證交所）
 	ETFOtcShareUrl    = "https://info.tpex.org.tw/api/etfExDiv"             // 取得從 2005 年開始的配息（櫃買中心）
 	OTCETFCodeListUrl = "https://mis.twse.com.tw/stock/api/getCategory.jsp" // 登記在櫃買中心的 ETF
+	FinMindApiBase    = "https://api.finmindtrade.com/api/v4/data"          // FinMind API Base Path
 	S3PrefixKey       = "opendata/twse/etf"
 
-	// "https://info.tpex.org.tw/api/etfExDiv"
 	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=00400A&start_date=2026-05-01" // 股價資料
 	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=0050&start_date=2001-01-01" // 股利政策
 )
 
-func GetCodeList() ([]ETF, error) {
-	var out = make([]ETF, 0)
+func getTWSEETFCodeList() ([]etf.ETF, error) {
+	var out = make([]etf.ETF, 0)
 	r, err := sendRequest[ResponseData](http.MethodGet, ETFCodeListUrl, nil, nil)
 	if err != nil {
 		return out, err
@@ -100,16 +98,11 @@ func GetCodeList() ([]ETF, error) {
 	for _, v := range r.Data {
 		out = append(out, splitETFCodeData(v)...)
 	}
-	otcCodeList, err := GetOTCCodeList()
-	if err != nil {
-		return out, err
-	}
-	out = append(out, otcCodeList...)
 	return out, nil
 }
 
-func GetOTCCodeList() ([]ETF, error) {
-	var out = make([]ETF, 0)
+func getOTCCodeList() ([]etf.ETF, error) {
+	var out = make([]etf.ETF, 0)
 	u := url.Values{}
 	u.Add("ex", "otc")
 	u.Add("i", "B0")
@@ -119,7 +112,7 @@ func GetOTCCodeList() ([]ETF, error) {
 		return out, err
 	}
 	for _, v := range r.MsgArray {
-		out = append(out, ETF{
+		out = append(out, etf.ETF{
 			Code:    strings.Replace(v.Ch, ".tw", "", -1),
 			Name:    v.N,
 			Company: "",
@@ -129,14 +122,40 @@ func GetOTCCodeList() ([]ETF, error) {
 	return out, nil
 }
 
-func splitETFCodeData(v []any) []ETF {
+func UpdateETFCodeList() ([]etf.ETF, error) {
+	var out = make([]etf.ETF, 0)
+	// 處理證交所的
+	r, err := getTWSEETFCodeList()
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, r...)
+	// 處理櫃買中心的
+	otcCodeList, err := getOTCCodeList()
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, otcCodeList...)
+
+	if writeFileError := writeFile(fmt.Sprintf(S3PrefixKey+"/code_list.json"), out); writeFileError != nil {
+		return nil, writeFileError
+	}
+	repo := etfRepo.NewETFCode()
+	if dbError := repo.UpdateETFCodeBatch(out); dbError != nil {
+		return nil, dbError
+	}
+
+	return out, nil
+}
+
+func splitETFCodeData(v []any) []etf.ETF {
 	target := ""
 	if v[4] != nil {
 		target = v[4].(string)
 	}
 	if !strings.Contains(v[0].(string), "<br>") {
 		d := strings.ReplaceAll(v[0].(string), ".", "-")
-		return []ETF{
+		return []etf.ETF{
 			{
 				Date:    d,
 				Code:    v[1].(string),
@@ -151,11 +170,11 @@ func splitETFCodeData(v []any) []ETF {
 	c := strings.Split(v[1].(string), "<br>")
 	n := strings.Split(v[2].(string), "<br>")
 	pattern := regexp.MustCompile(`([^0-9a-zA-Z.]+)`)
-	out := make([]ETF, len(c))
+	out := make([]etf.ETF, len(c))
 	for k, _ := range c {
 		dateData := strings.ReplaceAll(pattern.ReplaceAllString(d[k], ""), ".", "-")
 		codeData := pattern.ReplaceAllString(c[k], "")
-		out[k] = ETF{
+		out[k] = etf.ETF{
 			Date:    dateData,
 			Code:    codeData,
 			Name:    n[k],
@@ -167,8 +186,68 @@ func splitETFCodeData(v []any) []ETF {
 	return out
 }
 
-func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
-	var out = make([]ETFDistribution, 0)
+func getETFTicker(code string, date ...string) ([]etf.Ticker, error) {
+	var out = make([]etf.Ticker, 0)
+	d := time.Now().Format(time.DateOnly)
+	if len(date) > 0 {
+		inputDate, err := time.Parse("2006-01-02", date[0])
+		if err != nil {
+			return out, err
+		}
+		d = inputDate.Format(time.DateOnly)
+	}
+	params := url.Values{}
+	params.Add("dataset", "TaiwanStockPrice")
+	params.Add("data_id", code)
+	params.Add("start_date", d)
+	r, err := sendRequest[FinMindHistoryTicker](http.MethodGet, FinMindApiBase, params, nil)
+	if err != nil {
+		return out, err
+	}
+	for _, v := range r.Data {
+		out = append(out, etf.Ticker{
+			Date:  v.Date,
+			Code:  v.StockId,
+			Open:  v.Open,
+			Max:   v.Max,
+			Min:   v.Min,
+			Close: v.Close,
+		})
+	}
+	return out, nil
+}
+
+func UpdateETFTicker(marketType string, date ...string) {
+	repoCode := etfRepo.NewETFCode()
+	repoTicker := etfRepo.NewETFTicker()
+	codeLists, err := repoCode.GetAll()
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+	d := time.Now().Format(time.DateOnly)
+	if len(date) > 0 {
+		d = date[0]
+	}
+	for _, v := range codeLists {
+		if v.Market != marketType { // marketType should be twse / otc
+			continue
+		}
+		tickers, err := getETFTicker(v.Code, d)
+		if err != nil {
+			fmt.Println("err: ", err)
+			continue
+		}
+		if dbError := repoTicker.UpdateETFTickerBatch(tickers); dbError != nil {
+			fmt.Println("dbError: ", dbError.Error())
+			continue
+		}
+		time.Sleep(time.Second * 1)
+	}
+}
+
+func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
+	var out = make([]etf.Share, 0)
 	params := url.Values{}
 	params.Add("stkNo", code)
 	params.Add("startDate", "20050101")
@@ -193,17 +272,18 @@ func GetHistoryDivByCode(code string) ([]ETFDistribution, error) {
 			d, _ := decimal.NewFromString(v[5].(string))
 			distribution = d.InexactFloat64()
 		}
-		out = append(out, ETFDistribution{
-			ExDate:       exDate,
-			PayableDate:  payableDate,
-			Distribution: distribution,
+		out = append(out, etf.Share{
+			ExDate:      exDate,
+			PayableDate: payableDate,
+			Share:       distribution,
+			Code:        code,
 		})
 	}
 	return out, nil
 }
 
-func GetOTCHistoryDivByCode(code string) ([]ETFDistribution, error) {
-	var out = make([]ETFDistribution, 0)
+func getOTCHistoryDivByCode(code string) ([]etf.Share, error) {
+	var out = make([]etf.Share, 0)
 	params := url.Values{}
 	params.Add("stkNo", code)
 	r, err := sendRequest[[]OTCETFDistribution](http.MethodPost, ETFOtcShareUrl, nil, params)
@@ -221,122 +301,56 @@ func GetOTCHistoryDivByCode(code string) ([]ETFDistribution, error) {
 		}
 		d1, _ := helper.ROCFullDateToAD(v.DivDate, time.DateOnly)
 		d2, _ := helper.ROCFullDateToAD(v.InDate, time.DateOnly)
-		out = append(out, ETFDistribution{
-			ExDate:       d1,
-			PayableDate:  d2,
-			Distribution: amount.InexactFloat64(),
+		out = append(out, etf.Share{
+			ExDate:      d1,
+			PayableDate: d2,
+			Share:       amount.InexactFloat64(),
+			Code:        code,
 		})
 	}
 	return out, nil
 }
 
-func CronEtfCodeList() {
-	codeList, codeListError := GetCodeList()
-	if codeListError != nil {
-		fmt.Println("codeListError: ", codeListError.Error())
-		return
-	}
-	if err := writeFile(fmt.Sprintf(S3PrefixKey+"/code_list.json"), codeList); err != nil {
-		fmt.Println("writeFile error: ", err.Error())
-		return
-	}
-
-}
-
-func CronETFData() {
-	var codeList []ETF
-	resp, err := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/code_list.json")
+func UpdateETFShare() {
+	codeLists, err := etfRepo.NewETFCode().GetAll()
 	if err != nil {
 		fmt.Println("err: ", err)
 		return
 	}
-	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&codeList); err != nil {
-		fmt.Println("err: ", err)
-	}
+	repoShare := etfRepo.NewETFShare()
 
-	for _, v := range codeList {
-		var distributions []ETFDistribution
+	for _, v := range codeLists {
+		var distributions []etf.Share
 		var distributionsError error
 		if v.Market == "twse" {
-			distributions, distributionsError = GetHistoryDivByCode(v.Code)
+			distributions, distributionsError = getTWSEHistoryDivByCode(v.Code)
 		} else {
-			distributions, distributionsError = GetOTCHistoryDivByCode(v.Code)
+			distributions, distributionsError = getOTCHistoryDivByCode(v.Code)
 		}
 		if distributionsError != nil {
 			fmt.Println("distribution error: ", err, " v: ", v, " distributions: ", distributions, "")
 			continue
 		}
-		go writeFile(fmt.Sprintf(S3PrefixKey+"/by_stock/%s.json", v.Code), distributions)
+		if len(distributions) > 0 {
+			dbError := repoShare.UpdateETFTShareBatch(distributions)
+			if dbError != nil {
+				fmt.Println("dbError: ", dbError.Error())
+			}
+		}
 
 		time.Sleep(time.Second * 2) // 休息 2 秒避免被 ban
 	}
 }
 
-func CronETFUpcomingShareDaily() {
-	var codeList []ETF
-	resp, err := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/code_list.json")
-	if err != nil {
-		fmt.Println("err: ", err)
-		return
-	}
-	defer resp.Body.Close()
-	if err := json.NewDecoder(resp.Body).Decode(&codeList); err != nil {
-		fmt.Println("err: ", err)
-	}
-
-	// 以除權日為基礎
-	distributionByDaily := make(map[string][]ETFDistributionWithCode)
-	var mu sync.Mutex
-
-	for _, v := range codeList {
-		var distributions []ETFDistribution
-		distResp, distRespError := http.DefaultClient.Get(configInst.EnvConfig().CDNUrl + "/" + S3PrefixKey + "/by_stock/" + v.Code + ".json")
-		if distRespError != nil {
-			continue
-		}
-		distContent, _ := io.ReadAll(distResp.Body)
-		if jsonError := json.Unmarshal(distContent, &distributions); jsonError != nil {
-			fmt.Println("err: ", jsonError)
-			continue
-		}
-		distResp.Body.Close()
-
-		// 先把取到的部分存進 by 個股的檔案中
-		mu.Lock()
-		for _, d := range distributions {
-			if _, timeError := time.Parse("2006-01-02", d.ExDate); timeError != nil {
-				fmt.Printf("invalid date: %s, %s, d: %v, v: %v\n", d.ExDate, timeError.Error(), d, v)
-				continue
-			}
-			if _, ok := distributionByDaily[d.ExDate]; !ok {
-				distributionByDaily[d.ExDate] = make([]ETFDistributionWithCode, 0)
-			}
-			distributionByDaily[d.ExDate] = append(distributionByDaily[d.ExDate], ETFDistributionWithCode{
-				ETFDistribution: d,
-				ETF:             v,
-			})
-		}
-		mu.Unlock()
-	}
-	// 根據日期開始寫檔，啟用 waitGroup 等待
-	wg := sync.WaitGroup{}
-	wg.Add(len(distributionByDaily))
-	for k, v := range distributionByDaily {
-		splitDate := strings.Split(k, "-")
-		go func() {
-			_ = writeFile(fmt.Sprintf(S3PrefixKey+"/by_daily/%s/%s/%s.json", splitDate[0], splitDate[1], k), v)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
-	c, _ := json.MarshalIndent(distributionByDaily, "", "  ")
-
-	fmt.Println(string(c))
+func GetCodeList() ([]etf.ETF, error) {
+	return etfRepo.NewETFCode().GetAll()
 }
 
-func sendRequest[T any](method, uri string, params, inputBody url.Values) (*T, error) {
+func GetHistoryDivByCode(code string) ([]etf.Share, error) {
+	return etfRepo.NewETFShare().GetETFShareByCode(code)
+}
+
+func sendRequest[T any](method, uri string, params, inputBody url.Values, useFinMind ...bool) (*T, error) {
 	// 處理 postBody
 	var body io.Reader
 	if method == http.MethodPost && inputBody != nil {
@@ -362,6 +376,9 @@ func sendRequest[T any](method, uri string, params, inputBody url.Values) (*T, e
 	if body != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
+	if useFinMind != nil && useFinMind[0] {
+		req.Header.Set("", configInst.EnvConfig().FinMindToken)
+	}
 	// 發送
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -380,13 +397,7 @@ func sendRequest[T any](method, uri string, params, inputBody url.Values) (*T, e
 	return &r, nil
 }
 
-func writeFile(fileName string, data any) error {
-	c, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-	ctx := context.TODO()
-
+func initS3Client(ctx context.Context) (*s3.Client, error) {
 	// 使用靜態金鑰建立 Provider
 	staticProvider := credentials.NewStaticCredentialsProvider(configInst.EnvConfig().S3AccessKey, configInst.EnvConfig().S3SecretKey, "")
 
@@ -396,9 +407,22 @@ func writeFile(fileName string, data any) error {
 		config.WithCredentialsProvider(staticProvider),
 	)
 	if err != nil {
-		return fmt.Errorf("無法載入 AWS 設定: %v", err)
+		return nil, fmt.Errorf("無法載入 AWS 設定: %v", err)
 	}
 	client := s3.NewFromConfig(cfg)
+	return client, nil
+}
+
+func writeFile(fileName string, data any) error {
+	c, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	ctx := context.TODO()
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return err
+	}
 
 	_, err = client.PutObject(ctx, &s3.PutObjectInput{
 		Bucket:      aws.String(configInst.EnvConfig().S3Bucket),
