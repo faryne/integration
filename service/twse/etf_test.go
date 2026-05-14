@@ -37,3 +37,10 @@ func Test_GetETFShare(t *testing.T) {
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
 	UpdateETFShare()
 }
+
+func Test_CreateCodeListFile(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	CreateCodeListFile()
+}

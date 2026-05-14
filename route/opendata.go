@@ -29,5 +29,8 @@ func OpenData(app *fiber.App) {
 	g5 := g.Group("/financial")
 	g51 := g5.Group("/twse")
 	g51.Get("/code_list", opendata.TwseEtfCodeList)
-	g51.Get("/share_info/:code", opendata.TwseEtfShareInfo)
+	g51.Get("/upcoming/by_date", opendata.TwseUpcomingExETFByDate)
+	g51a := g51.Group("/:code")
+	g51a.Get("/share_info", opendata.TwseEtfShareInfo)
+	g51a.Get("/ticker", opendata.TwseEtfTicker)
 }

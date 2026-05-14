@@ -4,16 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	configInst "faryne.dev/config"
-	"faryne.dev/model/entity/opendata/etf"
-	etfRepo "faryne.dev/repository/etf"
-	"faryne.dev/service/helper"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/shopspring/decimal"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,6 +12,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	configInst "faryne.dev/config"
+	"faryne.dev/model/entity/opendata/etf"
+	etfRepo "faryne.dev/repository/etf"
+	"faryne.dev/service/helper"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/shopspring/decimal"
 )
 
 type OTCEtfResponse struct {
@@ -140,9 +141,11 @@ func UpdateETFCodeList() ([]etf.ETF, error) {
 	if writeFileError := writeFile(fmt.Sprintf(S3PrefixKey+"/code_list.json"), out); writeFileError != nil {
 		return nil, writeFileError
 	}
-	repo := etfRepo.NewETFCode()
-	if dbError := repo.UpdateETFCodeBatch(out); dbError != nil {
-		return nil, dbError
+
+	repoWinRate := etfRepo.NewETFWinRateStats()
+	winRateRowsError := repoWinRate.UpdateETFWinRate()
+	if winRateRowsError != nil {
+		return nil, winRateRowsError
 	}
 
 	return out, nil
@@ -342,12 +345,45 @@ func UpdateETFShare() {
 	}
 }
 
-func GetCodeList() ([]etf.ETF, error) {
-	return etfRepo.NewETFCode().GetAll()
+func GetCodeList() ([]etf.WithRecentShareETF, error) {
+	return etfRepo.NewETFCode().GetCodesWithRecentShare()
 }
 
-func GetHistoryDivByCode(code string) ([]etf.Share, error) {
-	return etfRepo.NewETFShare().GetETFShareByCode(code)
+func CreateCodeListFile() {
+	rows, err := etfRepo.NewETFCode().GetCodesWithRecentShare()
+	if err != nil {
+		fmt.Println("err: ", err)
+	}
+	_ = writeFile(fmt.Sprintf(S3PrefixKey+"/code_list_with_share.json"), rows)
+}
+
+func GetHistoryDivByCode(code string) (etf.ShareWithWinRate, error) {
+	var out etf.ShareWithWinRate
+	//return etfRepo.NewETFShare().GetETFShareByCode(code)
+	resp1, err1 := etfRepo.NewETFWinRateStats().GetETFWinRate(code)
+	if err1 != nil {
+		return out, err1
+	}
+	out.WinRate = resp1
+	resp2, err2 := etfRepo.NewETFWinRateStats().GetETFWinRateStats(code)
+	if err2 != nil {
+		return out, err2
+	}
+	out.Stats = resp2
+	return out, nil
+}
+
+func GetUpcomingETFEx(startDate string, endDate ...string) ([]etf.WithRecentShareETF, error) {
+	inst1 := etfRepo.NewETFShare()
+
+	if len(endDate) > 0 {
+		return inst1.GetUpcomingExETFByDateRange(startDate, endDate[0])
+	}
+	return inst1.GetUpcomingExETFByDate(startDate)
+}
+
+func GetETFTicker(code string, startDate string, endDate string) ([]etf.Ticker, error) {
+	return etfRepo.NewETFTicker().GetETFTickerByCodeAndDate(code, startDate, endDate)
 }
 
 func sendRequest[T any](method, uri string, params, inputBody url.Values, useFinMind ...bool) (*T, error) {

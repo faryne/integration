@@ -25,12 +25,45 @@ export interface TwseEtfInfo {
   company?: string;
   target?: string;
   market?: string;
+  ex_date?: string;
+  share?: number;
+  total_ex_count: number;
+  success_fill_count: number;
+  win_rate: number;
+  avg_fill_days: number;
 }
 
-export interface TwseEtfShare {
+export interface TwseEtfUpcomingShare {
+  // 用於即將除息
+  code: string;
   ex_date: string;
+  name: string;
+  dividend_amount: number;
+  pre_ex_close_price: number;
+  yield_rate: number;
+  filled_date: string;
+  filled_close_price: number;
+  filled_days: number;
+  filled_trade_days: number;
   payable_date: string;
   distribution: number;
 }
 
-export interface TwseEtfUpcomingShare extends TwseEtfInfo, TwseEtfShare {}
+export interface TwseEtfShare {
+  // 用於主列表
+  stats: TwseEtfUpcomingShare[];
+  win_rate: {
+    total_ex_count: number;
+    success_fill_count: number;
+    win_rate: number;
+    avg_fill_days: number;
+  };
+}
+
+export interface TwseETFTicker {
+  date: string;
+  open: number;
+  max: number;
+  min: number;
+  close: number;
+}

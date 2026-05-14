@@ -21,17 +21,18 @@ import {
   Chip,
   Stack,
   Button,
+  useTheme, Divider,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
+import ReactApexChart from 'react-apexcharts';
 import { useTitle } from "@/helpers/title.tsx";
-import { OptimizedEtfCard } from "@/components/etf/etf_card_info.tsx";
 import {
   useGetTwseEtfCodeList,
   useGetTwseEtfExInfo,
-  useGetTwseEtfInfo,
+  useGetTwseEtfInfo, useGetTwseEtfTicker,
 } from "@/apis/opendata/twse_etf.ts";
-import type { TwseEtfInfo, TwseEtfUpcomingShare } from "@/types/etf.ts";
+import type {TwseEtfInfo, TwseEtfUpcomingShare} from "@/types/etf.ts";
 import dayjs from "dayjs";
 
 const filters = [
@@ -72,6 +73,7 @@ const EtfDashboard: React.FC = () => {
   const [allEtfs, setAllEtfs] = useState<TwseEtfInfo[]>([]);
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [dialogTabValue, setDialogTabValue] =  useState(0)
   const [category, setCategory] = useState<EtfCategory>("ALL");
 
   const query = useGetTwseEtfCodeList();
@@ -80,7 +82,7 @@ const EtfDashboard: React.FC = () => {
 
   useEffect(() => {
     if (!query.isLoading && query.isSuccess && !query.isError) {
-      setAllEtfs(query.data);
+      setAllEtfs(query.data?.data);
     }
   }, [query.isLoading, query.isSuccess, query.isError]);
 
@@ -240,11 +242,68 @@ const EtfDashboard: React.FC = () => {
         </Typography>
         <Grid container spacing={3}>
           {filteredEtfs && filteredEtfs.length > 0 ? (
-            filteredEtfs.map((etf) => (
-              <Grid key={etf.code} size={3}>
-                <OptimizedEtfCard etf={etf} onClick={() => handleOpen(etf)} />
-              </Grid>
-            ))
+            <TableContainer
+              component={Paper}
+              sx={{ borderRadius: 3, boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}
+            >
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: "bold" }}>代號</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>名稱</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>發行公司</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>上市日期</TableCell>
+                    {/* 預留欄位 */}
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      除權息次數
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      成功填息次數
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>勝率</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>
+                      平均填息日
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredEtfs.map((etf) => (
+                    <TableRow
+                      key={etf.code}
+                      hover
+                      onClick={() => handleOpen(etf)}
+                      sx={{ cursor: "pointer" }}
+                    >
+                      <TableCell>
+                        <Chip
+                          label={etf.code}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold" }}>
+                        {etf.name}
+                      </TableCell>
+                      <TableCell color="text.secondary">
+                        {etf.company}
+                      </TableCell>
+                      <TableCell>{dayjs(etf.date).format("YYYY-MM-DD")}</TableCell>
+                      <TableCell>{etf.total_ex_count}</TableCell>
+                      <TableCell>{etf.success_fill_count}</TableCell>
+                      <TableCell>
+                        {etf.win_rate > 0 ? etf.win_rate + "%" : "--"}
+                      </TableCell>
+                      <TableCell>
+                        {etf.avg_fill_days > 0
+                          ? etf.avg_fill_days + "天"
+                          : "--"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           ) : (
             <Grid size={12}>
               <Box sx={{ textAlign: "center", py: 10 }}>
@@ -276,54 +335,25 @@ const EtfDashboard: React.FC = () => {
                   <CloseIcon />
                 </IconButton>
               </DialogTitle>
-              <DialogContent dividers>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ fontWeight: "bold", mb: 2 }}
-                >
-                  歷史配息紀錄
-                </Typography>
-                <TableContainer component={Paper} variant="outlined">
-                  <Table size="small">
-                    <TableHead sx={{ bgcolor: "#f5f5f5" }}>
-                      <TableRow>
-                        <TableCell>除息日期</TableCell>
-                        <TableCell>入帳日期</TableCell>
-                        <TableCell align="right">配息金額</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {(queryShares.data || []).map((record, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{record.ex_date}</TableCell>
-                          <TableCell>{record.payable_date}</TableCell>
-                          <TableCell
-                            align="right"
-                            sx={{ color: "success.main", fontWeight: "bold" }}
-                          >
-                            {record.distribution > 0
-                              ? record.distribution.toFixed(4)
-                              : "--"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {!queryShares.data && (
-                        <TableRow>
-                          <TableCell colSpan={3} align="center">
-                            尚無配息資料
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+              <DialogContent dividers sx={{ overflowY: 'visible' }}>
+                <Tabs value={dialogTabValue} onChange={(_, newValue) => setDialogTabValue(newValue)}>
+                  <Tab label={"配息紀錄"} />
+                  <Tab label={"歷史股價"} />
+                </Tabs>
+                <Divider />
+                <Box sx={{ display: dialogTabValue === 0 ? "block" : "none" }}>
+                  <EtfHistoryShare data={(queryShares.data?.data?.stats) ?? []} />
+                </Box>
+                <Box sx={{ display: dialogTabValue === 1 ? "block" : "none" }}>
+                  <EtfCandleChart etfCode={selectedEtf.code} etfName={selectedEtf.name} />
+                </Box>
               </DialogContent>
             </>
           )}
         </Dialog>
       </Box>
       <DividendTable
-        data={queryExShare?.data ?? []}
+        data={queryExShare?.data?.data ?? []}
         is_show={Array.from(
           { length: GetDateTabs().length },
           (_, i) => i + 1,
@@ -378,6 +408,7 @@ const DividendTable = ({
               <TableCell sx={{ fontWeight: "bold" }} align="right">
                 預計配息金額
               </TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>勝率（填息次數/配息次數）</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -386,11 +417,14 @@ const DividendTable = ({
                 <TableRow key={etf.code} hover>
                   <TableCell>
                     <Chip
+                      color="primary"
+                      variant="outlined"
                       label={etf.code}
                       size="small"
                       onClick={() => {
-                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                        onClick && onClick(etf.code);
+                        if (onClick) {
+                          onClick(etf.code);
+                        }
                       }}
                     />
                   </TableCell>
@@ -406,16 +440,17 @@ const DividendTable = ({
                       etf.name
                     )}
                   </TableCell>
-                  <TableCell>{etf.ex_date}</TableCell>
+                  <TableCell>{dayjs(etf.ex_date).format("YYYY-MM-DD")}</TableCell>
                   <TableCell
                     align="right"
                     sx={{ color: "success.main", fontWeight: "bold" }}
                   >
                     {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
-                    {etf.distribution > 0
-                      ? `$${etf.distribution.toFixed(4)}`
+                    {etf.dividend_amount > 0
+                      ? `$${etf.dividend_amount.toFixed(4)}`
                       : "--"}
                   </TableCell>
+                  <TableCell>--</TableCell>
                 </TableRow>
               ))
             ) : (
@@ -431,5 +466,168 @@ const DividendTable = ({
     </Box>
   </>
 );
+
+const EtfHistoryShare = ({ data }: { data: TwseEtfUpcomingShare[] }) => (
+  <>
+    <Typography
+        variant="subtitle1"
+        sx={{ fontWeight: "bold", mb: 2 }}
+    >
+      歷史配息紀錄
+    </Typography>
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+          <TableRow>
+            <TableCell>除息日期</TableCell>
+            <TableCell>入帳日期</TableCell>
+            <TableCell align="right">配息金額</TableCell>
+            <TableCell>單次殖利率</TableCell>
+            <TableCell>填息日</TableCell>
+            <TableCell>填息所需日曆日</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {(data || []).map(
+              (record, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      {dayjs(record.ex_date).format("YYYY-MM-DD")}
+                    </TableCell>
+                    <TableCell>
+                      {dayjs(record.payable_date).format("YYYY-MM-DD")}
+                    </TableCell>
+                    <TableCell
+                        align="right"
+                        sx={{ color: "success.main", fontWeight: "bold" }}
+                    >
+                      {record.dividend_amount > 0
+                          ? record.dividend_amount.toFixed(4)
+                          : "--"}
+                    </TableCell>
+                    <TableCell>
+                      {record.yield_rate > 0
+                          ? record.yield_rate + "%"
+                          : "--"}
+                    </TableCell>
+                    <TableCell>{record.filled_date ? dayjs(record.filled_date).format("YYYY-MM-DD") : "--"}</TableCell>
+                    <TableCell>{record.filled_days > 0 ? record.filled_days : "--"}</TableCell>
+                  </TableRow>
+              ),
+          )}
+          {!data || data.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} align="center">
+                  尚無配息資料
+                </TableCell>
+              </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </>
+)
+
+const EtfCandleChart = ({ etfCode, etfName }: {etfCode: string, etfName: string}) => {
+  const theme = useTheme();
+  const [startDate] = useState(dayjs().subtract(1, "month").startOf("month").format("YYYY-MM-DD"));
+  const [endDate] = useState(dayjs().format("YYYY-MM-DD"));
+
+  const query = useGetTwseEtfTicker(etfCode, startDate, endDate)
+
+  // 將資料轉換為 ApexCharts 格式
+  const series = [{
+    data: (query?.data?.data ?? []).map(item => ({
+      x: dayjs(item.date).format("YYYY-MM-DD"),
+      y: [item.open, item.max, item.min, item.close]
+    }))
+  }];
+
+  const options: ApexCharts.ApexOptions = {
+    chart: {
+      type: 'candlestick',
+      height: 350,
+      toolbar: {
+        show: true,
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+          reset: true
+        }
+      },
+      animations: { enabled: true },
+      fontFamily: theme.typography.fontFamily,
+      background: 'transparent',
+    },
+    title: {
+      text: `${etfName} (${etfCode}) 股價走勢`,
+      align: 'left',
+      style: {
+        fontSize: '18px',
+        fontWeight: 600,
+        color: theme.palette.text.primary
+      }
+    },
+    xaxis: {
+      type: 'datetime',
+      labels: {
+        datetimeFormatter: {
+          year: 'yyyy',
+          month: 'MMM \'yy',
+          day: 'dd MMM',
+          hour: 'HH:mm'
+        },
+        style: { colors: theme.palette.text.secondary }
+      },
+      tooltip: { enabled: false }
+    },
+    yaxis: {
+      tooltip: { enabled: true },
+      labels: {
+        formatter: (val) => val.toFixed(2),
+        style: { colors: theme.palette.text.secondary }
+      },
+      forceNiceScale: true
+    },
+    tooltip: {
+      enabled: true,
+      theme: theme.palette.mode,
+      shared: true,
+      intersect: false,
+      x: {
+        format: 'yyyy-MM-dd'
+      },
+      fixed: {
+        enabled: false,
+        position: 'topRight',
+      }
+    },
+    plotOptions: {
+      candlestick: {
+        colors: {
+          upward: '#ef5350',   // 台灣習慣：漲紅
+          downward: '#26a69a'  // 台灣習慣：跌綠
+        },
+        wick: {
+          useFillColor: true
+        }
+      }
+    },
+    grid: {
+      borderColor: theme.palette.divider,
+      strokeDashArray: 4,
+    }
+  };
+
+  return (
+      <Box sx={{ width: '100%', mt: 2, bgcolor: 'background.paper', p: 2, borderRadius: 2 }}>
+        <ReactApexChart options={options} series={series} type="candlestick" height={350}/>
+      </Box>
+  );
+};
 
 export default EtfDashboard;

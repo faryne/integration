@@ -35,6 +35,9 @@ importers:
       ajv:
         specifier: ^8.18.0
         version: 8.18.0
+      apexcharts:
+        specifier: ^5.11.0
+        version: 5.11.0
       axios:
         specifier: ^1.13.6
         version: 1.13.6
@@ -50,6 +53,9 @@ importers:
       react:
         specifier: ^19.2.4
         version: 19.2.4
+      react-apexcharts:
+        specifier: ^2.1.0
+        version: 2.1.0(apexcharts@5.11.0)(react@19.2.4)
       react-chat-elements:
         specifier: ^12.0.18
         version: 12.0.18(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -979,6 +985,9 @@ packages:
     resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
     engines: {node: '>=8'}
 
+  apexcharts@5.11.0:
+    resolution: {integrity: sha512-iIXnZ1DhndVgY4G5fmAbyUtGBTR5j4LlMEb561eAd4+wkJB7wJXXKLMr9u+4V5aQEPXeVYWgkAbuw9Y1z6MIrg==}
+
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
@@ -1749,6 +1758,12 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  react-apexcharts@2.1.0:
+    resolution: {integrity: sha512-xrmeTKRKHh3cvvLc8SasqFjlOgIqGpyHc81qjnRtcjUM0Fu7qEjgVRWGPokGFjqhwRZVgEym8zmuEyYr5LMYIg==}
+    peerDependencies:
+      apexcharts: '>=5.10.1'
+      react: '>=16.8.0'
 
   react-chat-elements@12.0.18:
     resolution: {integrity: sha512-V1CV/pK6HwS9BvXYLA1SXnJpUvnUcBNwXMsRrAHZ9NvHLbEmBvRdt6fONY8/zEyDvkQBeDSOS2rc2hjNhXvyQA==}
@@ -2892,6 +2907,8 @@ snapshots:
     dependencies:
       color-convert: 2.0.1
 
+  apexcharts@5.11.0: {}
+
   argparse@2.0.1: {}
 
   asynckit@0.4.0: {}
@@ -3784,6 +3801,12 @@ snapshots:
   proxy-from-env@1.1.0: {}
 
   punycode@2.3.1: {}
+
+  react-apexcharts@2.1.0(apexcharts@5.11.0)(react@19.2.4):
+    dependencies:
+      apexcharts: 5.11.0
+      prop-types: 15.8.1
+      react: 19.2.4
 
   react-chat-elements@12.0.18(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
