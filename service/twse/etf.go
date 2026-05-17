@@ -15,6 +15,7 @@ import (
 
 	configInst "faryne.dev/config"
 	"faryne.dev/model/entity/opendata/etf"
+	"faryne.dev/model/enum"
 	etfRepo "faryne.dev/repository/etf"
 	"faryne.dev/service/helper"
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -90,6 +91,7 @@ const (
 	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=0050&start_date=2001-01-01" // 股利政策
 )
 
+// getTWSEETFCodeList 取得證券交易所上市 ETF 資料
 func getTWSEETFCodeList() ([]etf.ETF, error) {
 	var out = make([]etf.ETF, 0)
 	r, err := sendRequest[ResponseData](http.MethodGet, ETFCodeListUrl, nil, nil)
@@ -102,10 +104,11 @@ func getTWSEETFCodeList() ([]etf.ETF, error) {
 	return out, nil
 }
 
+// getOTCCodeList 取得櫃買中心上市 ETF 資料
 func getOTCCodeList() ([]etf.ETF, error) {
 	var out = make([]etf.ETF, 0)
 	u := url.Values{}
-	u.Add("ex", "otc")
+	u.Add("ex", "otc") // tse / otc ?
 	u.Add("i", "B0")
 	u.Add("lang", "zh_tw")
 	r, err := sendRequest[OTCEtfResponse](http.MethodGet, OTCETFCodeListUrl, u, nil)
@@ -117,12 +120,13 @@ func getOTCCodeList() ([]etf.ETF, error) {
 			Code:    strings.Replace(v.Ch, ".tw", "", -1),
 			Name:    v.N,
 			Company: "",
-			Market:  "otc",
+			Market:  enum.StockMarketOTC,
 		})
 	}
 	return out, nil
 }
 
+// UpdateETFCodeList 更新 ETF 資訊
 func UpdateETFCodeList() ([]etf.ETF, error) {
 	var out = make([]etf.ETF, 0)
 	// 處理證交所的
@@ -141,16 +145,13 @@ func UpdateETFCodeList() ([]etf.ETF, error) {
 	if writeFileError := writeFile(fmt.Sprintf(S3PrefixKey+"/code_list.json"), out); writeFileError != nil {
 		return nil, writeFileError
 	}
-
-	repoWinRate := etfRepo.NewETFWinRateStats()
-	winRateRowsError := repoWinRate.UpdateETFWinRate()
-	if winRateRowsError != nil {
-		return nil, winRateRowsError
+	if codeError := etfRepo.NewETFCode().UpdateETFCodeBatch(out); codeError != nil {
+		return nil, codeError
 	}
-
 	return out, nil
 }
 
+// splitETFCodeData 分析 ETF 資料
 func splitETFCodeData(v []any) []etf.ETF {
 	target := ""
 	if v[4] != nil {
@@ -165,7 +166,7 @@ func splitETFCodeData(v []any) []etf.ETF {
 				Name:    v[2].(string),
 				Company: v[3].(string),
 				Target:  target,
-				Market:  "twse",
+				Market:  enum.StockMarketTWSE,
 			},
 		}
 	}
@@ -183,12 +184,13 @@ func splitETFCodeData(v []any) []etf.ETF {
 			Name:    n[k],
 			Company: v[3].(string),
 			Target:  target,
-			Market:  "twse",
+			Market:  enum.StockMarketTWSE,
 		}
 	}
 	return out
 }
 
+// getETFTicker 取得 ETF 股價資料
 func getETFTicker(code string, date ...string) ([]etf.Ticker, error) {
 	var out = make([]etf.Ticker, 0)
 	d := time.Now().Format(time.DateOnly)
@@ -220,10 +222,11 @@ func getETFTicker(code string, date ...string) ([]etf.Ticker, error) {
 	return out, nil
 }
 
-func UpdateETFTicker(marketType string, date ...string) {
+// UpdateETFTicker 更新 ETF 股價資料
+func UpdateETFTicker(marketType enum.StockMarket, date ...string) {
 	repoCode := etfRepo.NewETFCode()
 	repoTicker := etfRepo.NewETFTicker()
-	codeLists, err := repoCode.GetAll()
+	codeLists, err := repoCode.GetByMarket(marketType)
 	if err != nil {
 		fmt.Println("err: ", err)
 		return
@@ -233,9 +236,6 @@ func UpdateETFTicker(marketType string, date ...string) {
 		d = date[0]
 	}
 	for _, v := range codeLists {
-		if v.Market != marketType { // marketType should be twse / otc
-			continue
-		}
 		tickers, err := getETFTicker(v.Code, d)
 		if err != nil {
 			fmt.Println("err: ", err)
@@ -249,6 +249,7 @@ func UpdateETFTicker(marketType string, date ...string) {
 	}
 }
 
+// getTWSEHistoryDivByCode 取得證交所 ETF 股利資料
 func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
 	var out = make([]etf.Share, 0)
 	params := url.Values{}
@@ -280,11 +281,13 @@ func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
 			PayableDate: payableDate,
 			Share:       distribution,
 			Code:        code,
+			FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
 		})
 	}
 	return out, nil
 }
 
+// getOTCHistoryDivByCode 取得櫃買中心 ETF 股利資料
 func getOTCHistoryDivByCode(code string) ([]etf.Share, error) {
 	var out = make([]etf.Share, 0)
 	params := url.Values{}
@@ -309,13 +312,15 @@ func getOTCHistoryDivByCode(code string) ([]etf.Share, error) {
 			PayableDate: d2,
 			Share:       amount.InexactFloat64(),
 			Code:        code,
+			FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
 		})
 	}
 	return out, nil
 }
 
-func UpdateETFShare() {
-	codeLists, err := etfRepo.NewETFCode().GetAll()
+// UpdateETFShare 更新 ETF 股利資料
+func UpdateETFShare(marketType enum.StockMarket) {
+	codeLists, err := etfRepo.NewETFCode().GetByMarket(marketType)
 	if err != nil {
 		fmt.Println("err: ", err)
 		return
@@ -325,7 +330,7 @@ func UpdateETFShare() {
 	for _, v := range codeLists {
 		var distributions []etf.Share
 		var distributionsError error
-		if v.Market == "twse" {
+		if v.Market == enum.StockMarketTWSE {
 			distributions, distributionsError = getTWSEHistoryDivByCode(v.Code)
 		} else {
 			distributions, distributionsError = getOTCHistoryDivByCode(v.Code)
@@ -345,27 +350,31 @@ func UpdateETFShare() {
 	}
 }
 
-func GetCodeList() ([]etf.WithRecentShareETF, error) {
-	return etfRepo.NewETFCode().GetCodesWithRecentShare()
+// GetCodeList 取得 ETF 列表
+func GetCodeList() ([]etf.ETF, error) {
+	return etfRepo.NewETFCode().GetAllETF()
 }
 
+// CreateCodeListFile 儲存 ETF 列表到 S3
 func CreateCodeListFile() {
-	rows, err := etfRepo.NewETFCode().GetCodesWithRecentShare()
+	rows, err := etfRepo.NewETFCode().GetAllETF()
 	if err != nil {
 		fmt.Println("err: ", err)
 	}
 	_ = writeFile(fmt.Sprintf(S3PrefixKey+"/code_list_with_share.json"), rows)
 }
 
-func GetHistoryDivByCode(code string) (etf.ShareWithWinRate, error) {
-	var out etf.ShareWithWinRate
+// GetHistoryDivByCode 取得 ETF 股利資料
+func GetHistoryDivByCode(code string) (etf.ShareWithETFAndStats, error) {
+	var out etf.ShareWithETFAndStats
 	//return etfRepo.NewETFShare().GetETFShareByCode(code)
-	resp1, err1 := etfRepo.NewETFWinRateStats().GetETFWinRate(code)
+	resp1, err1 := etfRepo.NewETFCode().GetETFByCode(code)
 	if err1 != nil {
 		return out, err1
 	}
-	out.WinRate = resp1
-	resp2, err2 := etfRepo.NewETFWinRateStats().GetETFWinRateStats(code)
+	out.ETF = *resp1
+	resp2, err2 := etfRepo.NewETFShare().GetETFShareByCode(code)
+
 	if err2 != nil {
 		return out, err2
 	}
@@ -373,8 +382,9 @@ func GetHistoryDivByCode(code string) (etf.ShareWithWinRate, error) {
 	return out, nil
 }
 
-func GetUpcomingETFEx(startDate string, endDate ...string) ([]etf.WithRecentShareETF, error) {
-	inst1 := etfRepo.NewETFShare()
+// GetUpcomingETFEx 取得即將除息 ETF
+func GetUpcomingETFEx(startDate string, endDate ...string) ([]etf.ETF, error) {
+	inst1 := etfRepo.NewETFCode()
 
 	if len(endDate) > 0 {
 		return inst1.GetUpcomingExETFByDateRange(startDate, endDate[0])
@@ -382,10 +392,12 @@ func GetUpcomingETFEx(startDate string, endDate ...string) ([]etf.WithRecentShar
 	return inst1.GetUpcomingExETFByDate(startDate)
 }
 
+// GetETFTicker 取得 ETF 股價資料
 func GetETFTicker(code string, startDate string, endDate string) ([]etf.Ticker, error) {
 	return etfRepo.NewETFTicker().GetETFTickerByCodeAndDate(code, startDate, endDate)
 }
 
+// sendRequest 發送 HTTP 請求
 func sendRequest[T any](method, uri string, params, inputBody url.Values, useFinMind ...bool) (*T, error) {
 	// 處理 postBody
 	var body io.Reader
@@ -433,6 +445,7 @@ func sendRequest[T any](method, uri string, params, inputBody url.Values, useFin
 	return &r, nil
 }
 
+// initS3Client 初始化 S3 Client
 func initS3Client(ctx context.Context) (*s3.Client, error) {
 	// 使用靜態金鑰建立 Provider
 	staticProvider := credentials.NewStaticCredentialsProvider(configInst.EnvConfig().S3AccessKey, configInst.EnvConfig().S3SecretKey, "")
@@ -449,6 +462,7 @@ func initS3Client(ctx context.Context) (*s3.Client, error) {
 	return client, nil
 }
 
+// writeFile 將資料寫入 S3
 func writeFile(fileName string, data any) error {
 	c, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -468,4 +482,44 @@ func writeFile(fileName string, data any) error {
 	})
 
 	return err
+}
+
+func UpdateExPriceAndYieldRate() {
+	inst := etfRepo.NewETFShare()
+	rows, err := inst.GetExPriceAndYieldRate()
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+
+	for _, v := range rows {
+		if updateError := inst.UpdateExPriceAndYieldRate(v); updateError != nil {
+			fmt.Println("err: ", err)
+		}
+	}
+}
+
+func UpdateFilledDays() {
+	inst := etfRepo.NewETFShare()
+	rows, err := inst.GetFilled()
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+
+	for _, v := range rows {
+		if v.FilledDate == time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly) {
+			continue
+		}
+		fmt.Println(
+			"v.Code: ", v.Code,
+			" v.FilledDate: ", v.FilledDate,
+			" v.ExDate: ", v.ExDate,
+			" v.PayableDate: ", v.PayableDate,
+			" v.Share: ", v.Share,
+		)
+		if updateError := inst.UpdateFilledDays(v); updateError != nil {
+			fmt.Println("err: ", err)
+		}
+	}
 }

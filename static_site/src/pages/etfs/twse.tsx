@@ -446,8 +446,8 @@ const DividendTable = ({
                     sx={{ color: "success.main", fontWeight: "bold" }}
                   >
                     {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
-                    {etf.dividend_amount > 0
-                      ? `$${etf.dividend_amount.toFixed(4)}`
+                    {etf.share > 0
+                      ? `$${etf.share.toFixed(4)}`
                       : "--"}
                   </TableCell>
                   <TableCell>--</TableCell>
@@ -501,8 +501,8 @@ const EtfHistoryShare = ({ data }: { data: TwseEtfUpcomingShare[] }) => (
                         align="right"
                         sx={{ color: "success.main", fontWeight: "bold" }}
                     >
-                      {record.dividend_amount > 0
-                          ? record.dividend_amount.toFixed(4)
+                      {record.share > 0
+                          ? record.share.toFixed(4)
                           : "--"}
                     </TableCell>
                     <TableCell>
@@ -510,7 +510,7 @@ const EtfHistoryShare = ({ data }: { data: TwseEtfUpcomingShare[] }) => (
                           ? record.yield_rate + "%"
                           : "--"}
                     </TableCell>
-                    <TableCell>{record.filled_date ? dayjs(record.filled_date).format("YYYY-MM-DD") : "--"}</TableCell>
+                    <TableCell>{record.filled_date ? (dayjs(record.filled_date).format("YYYY-MM-DD") !== "1900-01-01" ? dayjs(record.filled_date).format("YYYY-MM-DD") : "--") : "--"}</TableCell>
                     <TableCell>{record.filled_days > 0 ? record.filled_days : "--"}</TableCell>
                   </TableRow>
               ),

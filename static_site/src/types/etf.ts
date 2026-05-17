@@ -38,7 +38,7 @@ export interface TwseEtfUpcomingShare {
   code: string;
   ex_date: string;
   name: string;
-  dividend_amount: number;
+  share: number;
   pre_ex_close_price: number;
   yield_rate: number;
   filled_date: string;

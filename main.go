@@ -2,6 +2,11 @@ package main
 
 import (
 	"errors"
+	"flag"
+	"os"
+	"reflect"
+	"time"
+
 	"faryne.dev/config"
 	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
@@ -10,7 +15,6 @@ import (
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
 	"faryne.dev/service/twse"
-	"flag"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -19,9 +23,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
-	"os"
-	"reflect"
-	"time"
 
 	_ "faryne.dev/docs"
 )
@@ -148,12 +149,20 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 
 		c.AddFunc("0 0 * * 1", func() {
 			_, _ = twse.UpdateETFCodeList()
-			twse.UpdateETFShare()
+			twse.UpdateETFShare(enum.StockMarketTWSE)
+		})
+		c.AddFunc("0 0 * * 2", func() {
+			twse.UpdateETFShare(enum.StockMarketOTC)
 		})
 		c.AddFunc("0 15 * * *", func() {
 			d := time.Now().Format(time.DateOnly)
 			twse.UpdateETFTicker("twse", d)
 			twse.UpdateETFTicker("otc", d)
+		})
+		c.AddFunc("7 16 * * 1-5", func() {
+			// 更新填息資訊
+			twse.UpdateExPriceAndYieldRate()
+			twse.UpdateFilledDays()
 		})
 
 		c.Start()

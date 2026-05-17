@@ -2,12 +2,13 @@ package twse
 
 import (
 	"encoding/json"
+	"testing"
+
 	"faryne.dev/config"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_UpdateETFCodeList(t *testing.T) {
@@ -27,15 +28,16 @@ func Test_GetETFTicker(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
-	//UpdateETFTicker("twse", "2005-01-01")
-	UpdateETFTicker("otc", "2005-01-01")
+	UpdateETFTicker("twse", "2005-01-01")
+	//UpdateETFTicker("otc", "2005-01-01")
 }
 
 func Test_GetETFShare(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
-	UpdateETFShare()
+	//UpdateETFShare("twse")
+	UpdateETFShare("otc")
 }
 
 func Test_CreateCodeListFile(t *testing.T) {
@@ -43,4 +45,18 @@ func Test_CreateCodeListFile(t *testing.T) {
 	config.InitEnvConfig()
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
 	CreateCodeListFile()
+}
+
+func Test_UpdateExPriceAndYieldRate(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	UpdateExPriceAndYieldRate()
+}
+
+func Test_UpdateFilledDays(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	UpdateFilledDays()
 }
