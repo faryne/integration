@@ -39,9 +39,9 @@ func (inst *RepositoryETFShare) getFields() []string {
 		"s.ex_ticker_price", // 除權日前一天收盤價
 		"s.yield_rate",
 		"s.filled_date",
-		"(SELECT close FROM " + (&etf.Ticker{}).TableName() + " WHERE code = s.code AND ticker_date < s.filled_date) as filled_close_price",
+		"s.filled_ticker_price",
 		"s.filled_days",
-		"(SELECT count(1) FROM " + (&etf.Ticker{}).TableName() + " WHERE code = s.code AND ticker_date >= s.ex_date AND ticker_date <= s.filled_date) as filled_trade_days",
+		"s.filled_trade_days",
 	}
 }
 
