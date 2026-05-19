@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import type {
   TwseEtfInfo,
-  TwseEtfUpcomingShare,
-  TwseEtfShare, TwseETFTicker,
+  TwseEtfShare,
+  TwseEtfShareDetail,
+  TwseETFTicker,
 } from "@/types/etf.ts";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 
@@ -24,7 +25,7 @@ export function useGetTwseEtfInfo(code: string) {
   return useQuery({
     queryKey: ["opendata/twse/etf_info", code],
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<TwseEtfShare>>(
+      const response = await axios.get<CommonResponse<TwseEtfShareDetail>>(
         `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/${code}/share_info`,
       );
       return response.data;
@@ -36,7 +37,7 @@ export function useGetTwseEtfExInfo(date: string) {
   return useQuery({
     queryKey: ["opendata/twse/etf_info", date],
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<TwseEtfUpcomingShare[]>>(
+      const response = await axios.get<CommonResponse<TwseEtfShare[]>>(
         `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/upcoming/by_date`,
         {
           params: {
@@ -50,7 +51,11 @@ export function useGetTwseEtfExInfo(date: string) {
   });
 }
 
-export function useGetTwseEtfTicker(code: string, start_date: string, end_date: string) {
+export function useGetTwseEtfTicker(
+  code: string,
+  start_date: string,
+  end_date: string,
+) {
   return useQuery({
     queryKey: ["opendata/twse/etf_ticker", code, start_date, end_date],
     queryFn: async () => {
@@ -62,9 +67,9 @@ export function useGetTwseEtfTicker(code: string, start_date: string, end_date: 
             end_date,
           },
         },
-      )
+      );
       return response.data;
     },
     enabled: !!code && !!start_date && !!end_date,
-  })
+  });
 }

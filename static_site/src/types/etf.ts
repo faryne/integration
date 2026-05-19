@@ -33,7 +33,7 @@ export interface TwseEtfInfo {
   avg_fill_days: number;
 }
 
-export interface TwseEtfUpcomingShare {
+export interface TwseEtfShare extends TwseEtfInfo {
   // 用於即將除息
   code: string;
   ex_date: string;
@@ -49,9 +49,9 @@ export interface TwseEtfUpcomingShare {
   distribution: number;
 }
 
-export interface TwseEtfShare {
+export interface TwseEtfShareDetail {
   // 用於主列表
-  stats: TwseEtfUpcomingShare[];
+  stats: TwseEtfShare[];
   win_rate: {
     total_ex_count: number;
     success_fill_count: number;

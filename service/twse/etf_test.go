@@ -60,3 +60,10 @@ func Test_UpdateFilledDays(t *testing.T) {
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
 	UpdateFilledDays()
 }
+
+func Test_UpdateETFWinRate(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	UpdateETFWinRate()
+}
