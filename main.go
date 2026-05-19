@@ -161,8 +161,12 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 		})
 		c.AddFunc("7 16 * * 1-5", func() {
 			// 更新填息資訊
+			// -- 更新除權息價格及計算殖利率
 			twse.UpdateExPriceAndYieldRate()
+			// -- 更新填息日等資訊
 			twse.UpdateFilledDays()
+			// -- 更新勝率填息平均日等
+			twse.UpdateETFWinRate()
 		})
 
 		c.Start()

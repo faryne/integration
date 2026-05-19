@@ -95,3 +95,12 @@ func (inst *RepositoryETFCode) GetUpcomingExETFByDateRange(startDate, endDate st
 		Error
 	return out, err
 }
+
+func (inst *RepositoryETFCode) UpdateETFWinRate(input etf.ETF) error {
+	return inst.GetDB().Table((&etf.ETF{}).TableName()).Where("code = ?", input.Code).Updates(map[string]interface{}{
+		"success_fill_count": input.SuccessFillCount,
+		"total_ex_count":     input.TotalExCount,
+		"win_rate":           input.WinRate,
+		"avg_fill_days":      input.AvgFillDays,
+	}).Error
+}

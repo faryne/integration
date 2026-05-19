@@ -523,3 +523,20 @@ func UpdateFilledDays() {
 		}
 	}
 }
+
+func UpdateETFWinRate() {
+	inst1 := etfRepo.NewETFCode()
+	inst2 := etfRepo.NewETFShare()
+
+	rows, err := inst2.CountETFWinRate()
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+	for _, v := range rows {
+		if updateError := inst1.UpdateETFWinRate(v); updateError != nil {
+			fmt.Println("err: ", err)
+			continue
+		}
+	}
+}

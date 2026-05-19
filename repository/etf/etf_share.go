@@ -141,3 +141,27 @@ WHERE
 		t2.Format(time.DateOnly),
 	).Error
 }
+
+func (inst *RepositoryETFShare) CountETFWinRate() ([]etf.ETF, error) {
+	out := make([]etf.ETF, 0)
+	sql := `
+SELECT 
+	tmp.code, 
+	tmp.success_fill_count,
+	tmp.total_ex_count,
+	ROUND((tmp.success_fill_count/tmp.total_ex_count)*100, 2) as win_rate,
+	ROUND(tmp.filled_days/tmp.total_ex_count, 4) as avg_fill_days
+FROM (
+	SELECT 
+		o.code,
+		count(1) as success_fill_count,
+		(SELECT count(1) FROM etf_shares WHERE code = o.code) as total_ex_count,
+		  SUM(filled_days) as filled_days
+	FROM ` + (&etf.Share{}).TableName() + ` o
+	WHERE filled_days != -1
+	GROUP BY o.code
+) as tmp
+`
+	err := inst.GetDB().Raw(sql).Scan(&out).Error
+	return out, err
+}
