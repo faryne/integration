@@ -2,6 +2,7 @@ import "./components/common/Header.tsx";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { default as Home } from "@/pages/Home.tsx";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
+import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { AVVideo } from "@/pages/av/video.tsx";
 import { AVActress } from "@/pages/av/actress.tsx";
 import { AVActressDetail } from "@/pages/av/actress_detail.tsx";
@@ -62,6 +63,10 @@ function App() {
           <Route path="/a" element={<h1>Hello</h1>} />
 
           <Route path={"/"} element={<Home />} />
+        </Route>
+
+        <Route path={"/modern"} element={<ModernLayout />}>
+          <Route path={""} element={<div><h1>Modern Layout Demo</h1><p>這是使用新版 Header 與 Footer 的 ModernLayout。</p></div>} />
         </Route>
 
         <Route path="*" element={<h1>404</h1>} />
