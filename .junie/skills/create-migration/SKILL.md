@@ -42,6 +42,7 @@ go install github.com/rubenv/sql-migrate@latest
 我要變更 user 中 password 的欄位長度
 ```
 當收到使用者的需求時，你必須與使用者確認用途或是其他細節以整理出所需要執行的 up 與 down 操作。
+而且每個欄位都必須加上相對應的中文註解。
 
 整理出 up 時所需執行的 sql 後，你會根據以下 pattern 產生 migration 並執行 `sql-migrate new -env localhost -config ./migration/config.yml [migrationName]` 的操作：
 - 建立 Table： `create_[tableName]`
