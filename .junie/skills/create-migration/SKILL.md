@@ -74,7 +74,7 @@ sql-migrate down -env localhost -config ./migration/config.yml
 並回到 `收集使用者需求並產生檔案` 步驟，使用該步驟一開始產生的檔案重新整理出 up 與 down 的 sql 後重新執行本步驟。
 
 若是使用者對此操作不滿意想完全撤銷修改，則：
-- 執行 `sql-migrate down -env localhost -config ./migration/config.yaml`
+- 執行 `sql-migrate down -env localhost -config ./migration/config.yaml` （注意：只能撤銷最後一次的 migration） 
 - 刪除已經產生的 migration 檔案
 
 
