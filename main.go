@@ -168,6 +168,13 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 			// -- 更新勝率填息平均日等
 			twse.UpdateETFWinRate()
 		})
+		c.AddFunc("0 1 1 * *", func() {
+			// 每月 1 號 凌晨 1 點執行前一個月的月均價統計
+			now := time.Now()
+			lastMonth := now.AddDate(0, -1, 0)
+			s := twse.NewETFMonthlyPriceService()
+			_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
+		})
 
 		c.Start()
 	}()

@@ -29,6 +29,17 @@ func (inst *RepositoryETFTicker) UpdateETFTickerBatch(etfs []etf.Ticker) error {
 	return res.Error
 }
 
+// GetFirstTickerDate 獲取指定 code 的最早股價日期，如果 code 為空則獲取所有資料的最早日期
+func (inst *RepositoryETFTicker) GetFirstTickerDate(code string) (string, error) {
+	var date string
+	query := inst.GetDB().Table("etf_tickers").Select("MIN(ticker_date)")
+	if code != "" {
+		query = query.Where("code = ?", code)
+	}
+	err := query.Row().Scan(&date)
+	return date, err
+}
+
 // GetETFTickerByCodeAndDate retrieves ETF ticker data based on the given code and date range.
 // code specifies the ETF code to fetch data for.
 // startDate defines the starting date for the filter (inclusive).
@@ -41,6 +52,6 @@ func (inst *RepositoryETFTicker) GetETFTickerByCodeAndDate(code string, startDat
 	if endDate != nil && len(endDate) > 0 {
 		e = endDate[0]
 	}
-	err := inst.GetDB().Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).Find(&out).Error
+	err := inst.GetDB().Table("etf_tickers").Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).Find(&out).Error
 	return out, err
 }

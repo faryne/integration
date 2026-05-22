@@ -67,3 +67,17 @@ type ShareWithETFAndStats struct {
 func (s *Share) TableName() string {
 	return "etf_shares"
 }
+
+type MonthlyPrice struct {
+	Id        int64     `json:"id" gorm:"column:id;primaryKey;autoIncrement"`
+	Code      string    `json:"code" gorm:"column:code" validate:"required"`
+	Year      int       `json:"year" gorm:"column:year" validate:"required"`
+	Month     int       `json:"month" gorm:"column:month" validate:"required"`
+	AvgPrice  float64   `json:"avg_price" gorm:"column:avg_price" validate:"required"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
+}
+
+func (m *MonthlyPrice) TableName() string {
+	return "etf_monthly_prices"
+}
