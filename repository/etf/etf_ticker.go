@@ -52,6 +52,33 @@ func (inst *RepositoryETFTicker) GetETFTickerByCodeAndDate(code string, startDat
 	if endDate != nil && len(endDate) > 0 {
 		e = endDate[0]
 	}
-	err := inst.GetDB().Table("etf_tickers").Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).Find(&out).Error
+	err := inst.GetDB().Table((&etf.Ticker{}).TableName()).Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).Find(&out).Error
+	return out, err
+}
+
+// GetLatestTickerByCodeAndDate 抓出指定日期前一天的股價資訊
+func (inst *RepositoryETFTicker) GetLatestTickerByCodeAndDate(code string, startDate string) (*etf.Ticker, error) {
+	var out etf.Ticker
+	s := startDate
+
+	err := inst.GetDB().
+		Table((&etf.Ticker{}).TableName()).
+		Where("code = ? AND ticker_date < ?", code, s).
+		Order("ticker_date DESC").
+		First(&out).
+		Error
+	return &out, err
+}
+
+// GetMonthlyAverages 獲取指定 code 的所有月份平均股價
+func (inst *RepositoryETFTicker) GetMonthlyAverages(code string) ([]etf.MonthlyPrice, error) {
+	var out []etf.MonthlyPrice
+	// 使用 MySQL 的 YEAR() 和 MONTH() 函數進行分組
+	err := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Select("code, YEAR(ticker_date) as year, MONTH(ticker_date) as month, ROUND(AVG(close), 4) as avg_price").
+		Where("code = ?", code).
+		Group("code, year, month").
+		Order("year ASC, month ASC").
+		Scan(&out).Error
 	return out, err
 }

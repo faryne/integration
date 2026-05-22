@@ -175,6 +175,9 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 			s := twse.NewETFMonthlyPriceService()
 			_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
 		})
+		c.AddFunc("0 8 * * *", func() {
+			_ = twse.NotifyUpcomingETFEx()
+		})
 
 		c.Start()
 	}()

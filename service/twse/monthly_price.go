@@ -97,53 +97,45 @@ func (s *ETFMonthlyPriceService) UpdateMonthlyPriceByMonth(year int, month int, 
 	return s.repo.UpsertBatch(toUpsert)
 }
 
-// UpdateAllMonthlyPrices 從指定 ETF 或所有資料的最早日期開始更新到上個月
+// UpdateAllMonthlyPrices 使用 GROUP BY 效率化更新指定 ETF 的所有歷史月均價
 func (s *ETFMonthlyPriceService) UpdateAllMonthlyPrices(code ...string) error {
-	targetCode := ""
-	if len(code) > 0 {
-		targetCode = code[0]
+	if len(code) == 0 || code[0] == "" {
+		return fmt.Errorf("code is required for UpdateAllMonthlyPrices")
 	}
+	targetCode := code[0]
 
-	firstDate, err := s.tickerRepo.GetFirstTickerDate(targetCode)
-	if err != nil || firstDate == "" {
-		return fmt.Errorf("could not find first ticker date: %v", err)
-	}
-
-	startTime, err := time.Parse(time.RFC3339, firstDate)
+	// 直接從 tickerRepo 取得所有月份的平均價
+	averages, err := s.tickerRepo.GetMonthlyAverages(targetCode)
 	if err != nil {
-		startTime, err = time.Parse(time.DateOnly, firstDate)
-	}
-	if err != nil {
-		return fmt.Errorf("could not parse first ticker date %s: %v", firstDate, err)
+		return fmt.Errorf("failed to get monthly averages for %s: %v", targetCode, err)
 	}
 
-	startYear := startTime.Year()
-	startMonth := int(startTime.Month())
+	if len(averages) == 0 {
+		return nil
+	}
 
 	now := time.Now()
-	// 上個月
-	endYear, endMonth, _ := now.AddDate(0, -1, 0).Date()
+	// 上個月的年份和月份
+	lastMonth := now.AddDate(0, -1, 0)
+	endYear := lastMonth.Year()
+	endMonth := int(lastMonth.Month())
 
-	currentYear := startYear
-	currentMonth := startMonth
-
-	for {
-		if currentYear > int(endYear) || (currentYear == int(endYear) && currentMonth > int(endMonth)) {
-			break
+	var toUpsert []etf.MonthlyPrice
+	for _, avg := range averages {
+		// 只處理到上個月為止的數據
+		if avg.Year > endYear || (avg.Year == endYear && avg.Month > endMonth) {
+			continue
 		}
 
-		fmt.Printf("Updating monthly price for %s %04d-%02d...\n", targetCode, currentYear, currentMonth)
-		err := s.UpdateMonthlyPriceByMonth(currentYear, currentMonth, targetCode)
-		if err != nil {
-			fmt.Printf("Error updating %04d-%02d: %v\n", currentYear, currentMonth, err)
-		}
-
-		currentMonth++
-		if currentMonth > 12 {
-			currentMonth = 1
-			currentYear++
-		}
+		avg.CreatedAt = now
+		avg.UpdatedAt = now
+		toUpsert = append(toUpsert, avg)
 	}
 
-	return nil
+	if len(toUpsert) == 0 {
+		return nil
+	}
+
+	fmt.Printf("Batch updating %d monthly prices for %s...\n", len(toUpsert), targetCode)
+	return s.repo.UpsertBatch(toUpsert)
 }

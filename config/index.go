@@ -18,7 +18,8 @@ type envConfig struct {
 	S3Bucket    string `env:"S3_BUCKET"`
 	CDNUrl      string `env:"CDN_URL"`
 
-	FinMindToken string `env:"FINMIND_TOKEN"`
+	FinMindToken   string `env:"FINMIND_TOKEN"`
+	DiscordWebhook string `env:"DISCORD_WEBHOOK"`
 }
 
 var loadEnvConfig envConfig

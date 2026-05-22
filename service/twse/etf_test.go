@@ -67,3 +67,11 @@ func Test_UpdateETFWinRate(t *testing.T) {
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
 	UpdateETFWinRate()
 }
+
+func Test_NotifyUpcomingETFEx(t *testing.T) {
+	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
+	config.InitEnvConfig()
+	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
+	err := NotifyUpcomingETFEx("2026-05-19")
+	require.NoError(t, err)
+}

@@ -17,6 +17,7 @@ import (
 	"faryne.dev/model/entity/opendata/etf"
 	"faryne.dev/model/enum"
 	etfRepo "faryne.dev/repository/etf"
+	"faryne.dev/service/discord"
 	"faryne.dev/service/helper"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -539,4 +540,55 @@ func UpdateETFWinRate() {
 			continue
 		}
 	}
+}
+
+// NotifyUpcomingETFEx 每天早上發送除息通知到 Discord
+func NotifyUpcomingETFEx(date ...string) error {
+	today := time.Now().Format(time.DateOnly)
+	if len(date) > 0 {
+		today = date[0]
+	}
+	etfs, err := GetUpcomingETFEx(today)
+	if err != nil {
+		return fmt.Errorf("failed to get upcoming etf: %w", err)
+	}
+
+	if len(etfs) == 0 {
+		return nil
+	}
+
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("📅 **%s ETF 除息提醒**\n\n", today))
+
+	repoTicker := etfRepo.NewETFTicker()
+	for _, v := range etfs {
+		// 取得前一天的收盤價 (ex_ticker_price)
+		// GetUpcomingETFEx 抓回來的 etf.ETF 物件中，ExDate, Share 等資訊是從 etf_shares join 過來的
+		// 但目前的 etfRepo.GetUpcomingExETFByDate 只抓了基本欄位。
+		// 根據 model/entity/opendata/etf/etf.go，ETF 結構有 ExDate, Share 等欄位。
+
+		// 取得前一日收盤價
+		ticker, err := repoTicker.GetLatestTickerByCodeAndDate(v.Code, today)
+		if err != nil {
+			return fmt.Errorf("failed to get latest ticker by code and date: %w", err)
+		}
+		lastClose := ticker.Close
+
+		// 計算殖利率 (如果 v.Share 有值)
+		yieldRate := float64(0)
+		if lastClose > 0 {
+			yieldRate = (v.Share / lastClose) * 100
+		}
+
+		sb.WriteString(fmt.Sprintf("🔹 **%s %s**\n", v.Code, v.Name))
+		sb.WriteString(fmt.Sprintf("   • 配息金額: %.4f\n", v.Share))
+		sb.WriteString(fmt.Sprintf("   • 前日收盤: %.2f (估算殖利率: %.2f%%)\n", lastClose, yieldRate))
+		if v.PayableDate != "" {
+			sb.WriteString(fmt.Sprintf("   • 發放日: %s\n", v.PayableDate))
+		}
+		sb.WriteString("\n")
+	}
+
+	discordService := discord.NewServiceDiscord()
+	return discordService.SendMessage(context.Background(), sb.String())
 }
