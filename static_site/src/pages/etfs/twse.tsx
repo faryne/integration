@@ -24,7 +24,7 @@ import {
   useTheme,
   Divider,
   Container,
-  TableSortLabel
+  TableSortLabel,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -82,10 +82,9 @@ type StrategyType =
   | "eternal_wait"
   | "rookie_trap"; // 這是糞策略;
 
-
 // 允許排序的欄位型態
-type OrderableField = 'code' | 'share' | 'win_rate';
-type OrderableSort = 'asc' | 'desc';
+type OrderableField = "code" | "share" | "win_rate";
+type OrderableSort = "asc" | "desc";
 
 const FooterDisclaimer = () => {
   return (
@@ -204,7 +203,7 @@ const EtfDashboard: React.FC = () => {
       );
     };
 
-     return result.filter((etf) => {
+    return result.filter((etf) => {
       const code = etf.code.trim().toUpperCase();
 
       switch (category) {
@@ -589,10 +588,13 @@ const EtfTableList = ({
   onClick?: (etfCode: string) => void;
   noDataText?: string;
 }) => {
-  const [orderBy, setOrderBy] = useState<{ field: OrderableField, order: OrderableSort }>({ field: 'code', order: 'asc' });
+  const [orderBy, setOrderBy] = useState<{
+    field: OrderableField;
+    order: OrderableSort;
+  }>({ field: "code", order: "asc" });
   const handleRequestSort = (field: OrderableField) => {
-    const isAsc = orderBy.field === field && orderBy.order === 'asc';
-    setOrderBy(o => ({ ...o, field, order: isAsc ? 'desc' : 'asc' }));
+    const isAsc = orderBy.field === field && orderBy.order === "asc";
+    setOrderBy((o) => ({ ...o, field, order: isAsc ? "desc" : "asc" }));
   };
 
   const sortedResult = useMemo(() => {
@@ -600,126 +602,128 @@ const EtfTableList = ({
       let valueA = a[orderBy.field] as number;
       let valueB = b[orderBy.field] as number;
       // 數字型態轉型確保排序正確（避免字串比對錯誤）
-      if (orderBy.field === 'win_rate' || orderBy.field === 'share') {
+      if (orderBy.field === "win_rate" || orderBy.field === "share") {
         valueA = Number(valueA) || 0;
         valueB = Number(valueB) || 0;
       }
 
       // 執行正序或倒序比對
-      if (valueA < valueB) return orderBy.order === 'asc' ? -1 : 1;
-      if (valueA > valueB) return orderBy.order === 'asc' ? 1 : -1;
+      if (valueA < valueB) return orderBy.order === "asc" ? -1 : 1;
+      if (valueA > valueB) return orderBy.order === "asc" ? 1 : -1;
       return 0;
-    })
-  }, [orderBy, data])
+    });
+  }, [orderBy, data]);
   return (
-      <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
-        <Table>
-          <TableHead sx={{ bgcolor: "action.hover" }}>
-            <TableRow>
-              <TableCell sx={{ fontWeight: "bold" }}>
-                <TableSortLabel
-                    active={orderBy.field === 'code'}
-                    direction={orderBy.field === 'code' ? orderBy.order : 'asc'}
-                    onClick={() => handleRequestSort('code')}
-                >
-                  代號
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>名稱</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>除權息日期</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }} align="right" >
-                <TableSortLabel
-                    active={orderBy.field === 'share'}
-                    direction={orderBy.field === 'share' ? orderBy.order : 'asc'}
-                    onClick={() => handleRequestSort('share')}
-                >
-                  預計配息金額
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }} align="right">
-                除權息次數
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }} align="right">
-                成功填息次數
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }} align="right">
-                <TableSortLabel
-                    active={orderBy.field === 'win_rate'}
-                    direction={orderBy.field === 'win_rate' ? orderBy.order : 'asc'}
-                    onClick={() => handleRequestSort('win_rate')}
-                >
+    <TableContainer component={Paper} sx={{ borderRadius: 3, mt: 2 }}>
+      <Table>
+        <TableHead sx={{ bgcolor: "action.hover" }}>
+          <TableRow>
+            <TableCell sx={{ fontWeight: "bold" }}>
+              <TableSortLabel
+                active={orderBy.field === "code"}
+                direction={orderBy.field === "code" ? orderBy.order : "asc"}
+                onClick={() => handleRequestSort("code")}
+              >
+                代號
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>名稱</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }}>除權息日期</TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="right">
+              <TableSortLabel
+                active={orderBy.field === "share"}
+                direction={orderBy.field === "share" ? orderBy.order : "asc"}
+                onClick={() => handleRequestSort("share")}
+              >
+                預計配息金額
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="right">
+              除權息次數
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="right">
+              成功填息次數
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="right">
+              <TableSortLabel
+                active={orderBy.field === "win_rate"}
+                direction={orderBy.field === "win_rate" ? orderBy.order : "asc"}
+                onClick={() => handleRequestSort("win_rate")}
+              >
                 勝率
-                </TableSortLabel>
-              </TableCell>
-              <TableCell sx={{ fontWeight: "bold" }} align="right">
-                平均填息日
+              </TableSortLabel>
+            </TableCell>
+            <TableCell sx={{ fontWeight: "bold" }} align="right">
+              平均填息日
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {sortedResult.length > 0 ? (
+            sortedResult.map((etf) => (
+              <TableRow key={etf.code} hover>
+                <TableCell>
+                  <Chip
+                    color="primary"
+                    variant="outlined"
+                    label={etf.code}
+                    size="small"
+                    onClick={() => {
+                      if (onClick) {
+                        onClick(etf.code);
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell sx={{ fontWeight: 500 }}>
+                  {onClick ? (
+                    <Button onClick={() => onClick(etf.code)} variant={"text"}>
+                      {etf.name}
+                    </Button>
+                  ) : (
+                    etf.name
+                  )}
+                </TableCell>
+                <TableCell>
+                  {dayjs(etf.ex_date).format("YYYY-MM-DD") !== "0001-01-01"
+                    ? dayjs(etf.ex_date).format("YYYY-MM-DD")
+                    : "--"}
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ color: "success.main", fontWeight: "bold" }}
+                >
+                  {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
+                  {etf.share && etf.share > 0
+                    ? `$${etf.share.toFixed(4)}`
+                    : "--"}
+                </TableCell>
+                <TableCell align="right">
+                  {etf.total_ex_count > 0 ? etf.total_ex_count : "--"}
+                </TableCell>
+                <TableCell align="right">
+                  {etf.success_fill_count > 0 ? etf.success_fill_count : "--"}
+                </TableCell>
+                <TableCell align="right">
+                  {etf.win_rate > 0 ? `${etf.win_rate}%` : "--"}
+                </TableCell>
+                <TableCell align="right">
+                  {etf.avg_fill_days > 0 ? etf.avg_fill_days : "--"}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                {noDataText ?? "期間內無即將除權之 ETF"}
               </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedResult.length > 0 ? (
-                sortedResult.map((etf) => (
-                    <TableRow key={etf.code} hover>
-                      <TableCell>
-                        <Chip
-                            color="primary"
-                            variant="outlined"
-                            label={etf.code}
-                            size="small"
-                            onClick={() => {
-                              if (onClick) {
-                                onClick(etf.code);
-                              }
-                            }}
-                        />
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: 500 }}>
-                        {onClick ? (
-                            <Button onClick={() => onClick(etf.code)} variant={"text"}>
-                              {etf.name}
-                            </Button>
-                        ) : (
-                            etf.name
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {dayjs(etf.ex_date).format("YYYY-MM-DD") !== "0001-01-01"
-                            ? dayjs(etf.ex_date).format("YYYY-MM-DD")
-                            : "--"}
-                      </TableCell>
-                      <TableCell
-                          align="right"
-                          sx={{ color: "success.main", fontWeight: "bold" }}
-                      >
-                        {/* 假設 API 有提供這個欄位，若無則顯示預留字 */}
-                        {etf.share && etf.share > 0 ? `$${etf.share.toFixed(4)}` : "--"}
-                      </TableCell>
-                      <TableCell align="right">
-                        {etf.total_ex_count > 0 ? etf.total_ex_count : "--"}
-                      </TableCell>
-                      <TableCell align="right">
-                        {etf.success_fill_count > 0 ? etf.success_fill_count : "--"}
-                      </TableCell>
-                      <TableCell align="right">
-                        {etf.win_rate > 0 ? `${etf.win_rate}%` : "--"}
-                      </TableCell>
-                      <TableCell align="right">
-                        {etf.avg_fill_days > 0 ? etf.avg_fill_days : "--"}
-                      </TableCell>
-                    </TableRow>
-                ))
-            ) : (
-                <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                    {noDataText ?? "期間內無即將除權之 ETF"}
-                  </TableCell>
-                </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
-}
+};
 
 const EtfHistoryShare = ({ data }: { data: TwseEtfShare[] }) => (
   <>

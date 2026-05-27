@@ -15,9 +15,9 @@ export const ModernLayout: FC<{ children?: ReactNode } & IModernLayout> = (
   return (
     <Box
       sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
       }}
     >
       <ModernHeader />
@@ -29,9 +29,11 @@ export const ModernLayout: FC<{ children?: ReactNode } & IModernLayout> = (
         }}
       >
         <Container
-          sx={{ 
-            minWidth: props.fullWidth ? "100% !important" : { xs: '100%', md: '1200px' },
-            maxWidth: props.fullWidth ? "100% !important" : "lg"
+          sx={{
+            minWidth: props.fullWidth
+              ? "100% !important"
+              : { xs: "100%", md: "1200px" },
+            maxWidth: props.fullWidth ? "100% !important" : "lg",
           }}
         >
           <Outlet />

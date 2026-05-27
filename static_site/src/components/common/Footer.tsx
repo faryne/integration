@@ -10,7 +10,7 @@ export function Footer() {
           component={"a"}
           variant={"body2"}
           href={"https://faryne.dev/"}
-          sx={{ color: 'inherit', textDecoration: 'underline' }}
+          sx={{ color: "inherit", textDecoration: "underline" }}
         >
           faryne.dev
         </Typography>

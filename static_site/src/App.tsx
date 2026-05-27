@@ -16,6 +16,7 @@ import { CrawlerIndex } from "@/pages/crawler";
 import { CaptureThread } from "@/pages/threads/capture.tsx";
 import { YieldMaxEtfs } from "@/pages/etfs/yieldmax.tsx";
 import { default as TwseEtf } from "@/pages/etfs/twse.tsx";
+import { Userscripts } from "@/pages/tools/userscripts.tsx";
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
           <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
 
           <Route path={"/tools/thread/capture"} element={<CaptureThread />} />
+          <Route path={"/tools/userscripts"} element={<Userscripts />} />
 
           <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
           <Route path={"/data/etf/twse"} element={<TwseEtf />} />
@@ -66,7 +68,15 @@ function App() {
         </Route>
 
         <Route path={"/modern"} element={<ModernLayout />}>
-          <Route path={""} element={<div><h1>Modern Layout Demo</h1><p>這是使用新版 Header 與 Footer 的 ModernLayout。</p></div>} />
+          <Route
+            path={""}
+            element={
+              <div>
+                <h1>Modern Layout Demo</h1>
+                <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
+              </div>
+            }
+          />
         </Route>
 
         <Route path="*" element={<h1>404</h1>} />

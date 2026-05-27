@@ -134,6 +134,13 @@ export function Header() {
             >
               Threads 截圖工具
             </MenuItem>
+            <MenuItem
+              component={"a"}
+              onClick={() => setAnchor2(null)}
+              href={"/tools/userscripts"}
+            >
+              Userscripts
+            </MenuItem>
           </Menu>
           <Button
             sx={defaultButtonCss}

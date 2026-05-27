@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 export function ModernHeader() {
   const [adultAnchor, setAdultAnchor] = useState<null | HTMLElement>(null);
@@ -28,7 +28,11 @@ export function ModernHeader() {
   };
 
   const adultItems = [
-    { label: "難以名狀的抓圖器", path: "https://nekomaid.web.app", external: true },
+    {
+      label: "難以名狀的抓圖器",
+      path: "https://nekomaid.web.app",
+      external: true,
+    },
     { label: "二次元常用英文 tag", path: "/yandere/tags" },
     { label: "AV 影片搜尋", path: "/av/video" },
     { label: "AV 女優搜尋", path: "/av/actress" },
@@ -42,10 +46,16 @@ export function ModernHeader() {
     { label: "台灣指標", path: "/data/tw-stats" },
     { label: "爬蟲工具", path: "/tools/crawler" },
     { label: "Threads 截圖工具", path: "/tools/thread/capture" },
+    { label: "Userscripts", path: "/tools/userscripts" },
   ];
 
   return (
-    <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'background.paper' }}>
+    <AppBar
+      position="static"
+      color="default"
+      elevation={1}
+      sx={{ bgcolor: "background.paper" }}
+    >
       <Container maxWidth="lg">
         <Toolbar disableGutters>
           <Typography
@@ -55,28 +65,26 @@ export function ModernHeader() {
             to="/"
             sx={{
               mr: 4,
-              display: { xs: 'none', md: 'flex' },
+              display: { xs: "none", md: "flex" },
               fontWeight: 700,
-              color: 'primary.main',
-              textDecoration: 'none',
+              color: "primary.main",
+              textDecoration: "none",
             }}
           >
             Faryne.dev
           </Typography>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, gap: 1 }}>
-            <Button
-              component={Link}
-              to="/"
-              sx={{ color: 'text.primary' }}
-            >
+          <Box
+            sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, gap: 1 }}
+          >
+            <Button component={Link} to="/" sx={{ color: "text.primary" }}>
               首頁
             </Button>
 
             <Button
               onClick={handleAdultOpen}
               endIcon={<KeyboardArrowDownIcon />}
-              sx={{ color: 'text.primary' }}
+              sx={{ color: "text.primary" }}
             >
               大人的喜好
             </Button>
@@ -89,7 +97,13 @@ export function ModernHeader() {
                 <MenuItem
                   key={item.label}
                   component={item.external ? "a" : Link}
-                  {...(item.external ? { href: item.path, target: "_blank", rel: "noopener noreferrer" } : { to: item.path })}
+                  {...(item.external
+                    ? {
+                        href: item.path,
+                        target: "_blank",
+                        rel: "noopener noreferrer",
+                      }
+                    : { to: item.path })}
                   onClick={handleClose}
                 >
                   {item.label}
@@ -100,7 +114,7 @@ export function ModernHeader() {
             <Button
               onClick={handleToolsOpen}
               endIcon={<KeyboardArrowDownIcon />}
-              sx={{ color: 'text.primary' }}
+              sx={{ color: "text.primary" }}
             >
               方便工具
             </Button>
@@ -125,7 +139,7 @@ export function ModernHeader() {
               href="https://blog.faryne.dev"
               target="_blank"
               rel="noopener noreferrer"
-              sx={{ color: 'text.primary' }}
+              sx={{ color: "text.primary" }}
             >
               部落格
             </Button>

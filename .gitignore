@@ -11,4 +11,6 @@ static_site/public
 
 secret_keys/*
 
+rust
+
 .DS_Store

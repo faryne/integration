@@ -7,16 +7,16 @@ export function ModernFooter() {
       sx={{
         py: 3,
         px: 2,
-        mt: 'auto',
+        mt: "auto",
         backgroundColor: (theme) =>
-          theme.palette.mode === 'light'
+          theme.palette.mode === "light"
             ? theme.palette.grey[200]
             : theme.palette.grey[800],
       }}
     >
       <Container maxWidth="lg">
         <Stack
-          direction={{ xs: 'column', sm: 'row' }}
+          direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
           alignItems="center"
           spacing={2}
