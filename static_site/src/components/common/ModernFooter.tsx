@@ -1,4 +1,5 @@
 import { Box, Container, Typography, Link, Stack } from "@mui/material";
+import { FaryneLogo } from "./FaryneLogo";
 
 export function ModernFooter() {
   return (
@@ -10,8 +11,8 @@ export function ModernFooter() {
         mt: "auto",
         backgroundColor: (theme) =>
           theme.palette.mode === "light"
-            ? theme.palette.grey[200]
-            : theme.palette.grey[800],
+            ? "#F0E8F5"   // 與 Header 同色系，再淡一點的薰衣草紫
+            : "#252030",  // Dark mode 深紫灰
       }}
     >
       <Container maxWidth="lg">
@@ -21,12 +22,15 @@ export function ModernFooter() {
           alignItems="center"
           spacing={2}
         >
-          <Typography variant="body2" color="text.secondary">
-            Powered By Faryne |{" "}
-            <Link color="inherit" href="https://faryne.dev/">
-              faryne.dev
-            </Link>
-          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <FaryneLogo width={26} />
+            <Typography variant="body2" color="text.secondary">
+              Powered By Faryne |{" "}
+              <Link color="inherit" href="https://faryne.dev/">
+                faryne.dev
+              </Link>
+            </Typography>
+          </Stack>
         </Stack>
       </Container>
     </Box>

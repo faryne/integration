@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { FaryneLogo } from "./FaryneLogo";
 
 export function ModernHeader() {
   const [adultAnchor, setAdultAnchor] = useState<null | HTMLElement>(null);
@@ -54,25 +55,52 @@ export function ModernHeader() {
       position="static"
       color="default"
       elevation={1}
-      sx={{ bgcolor: "background.paper" }}
+      sx={{
+        bgcolor: (theme) =>
+          theme.palette.mode === "light"
+            ? "#F7F0FA"   // 極淡薰衣草紫，配合 logo 淡背景
+            : "#2C2538",  // Dark mode 帶紫的深色
+      }}
     >
       <Container maxWidth="lg">
         <Toolbar disableGutters>
-          <Typography
-            variant="h6"
-            noWrap
+          <Box
             component={Link}
             to="/"
             sx={{
-              mr: 4,
               display: { xs: "none", md: "flex" },
-              fontWeight: 700,
-              color: "primary.main",
+              alignItems: "center",
+              gap: 1.25,
+              mr: 4,
               textDecoration: "none",
             }}
           >
-            Faryne.dev
-          </Typography>
+            <FaryneLogo width={34} />
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{
+                fontWeight: 700,
+                color: "primary.main",
+              }}
+            >
+              Faryne.dev
+            </Typography>
+          </Box>
+
+          {/* Mobile logo */}
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: { xs: "flex", md: "none" },
+              alignItems: "center",
+              mr: 2,
+              textDecoration: "none",
+            }}
+          >
+            <FaryneLogo width={26} />
+          </Box>
 
           <Box
             sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, gap: 1 }}
