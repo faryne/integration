@@ -7,3 +7,9 @@ const (
 	NekomaidSiteNico   NekomaidSite = "nico"
 	NekomaidSiteTinami NekomaidSite = "tinami"
 )
+
+type NekomaidRedisKey string
+
+const (
+	NekomaidRedisKeyPixivToken NekomaidRedisKey = "nekomaid:pixiv:token"
+)

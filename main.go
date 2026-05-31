@@ -120,11 +120,13 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 		}
 	}
 
-	//redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
-	//if redisConnError != nil {
-	//	errChan <- redisConnError
-	//	return
-	//}
+	if config.EnvConfig().RedisDSN != "" {
+		redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
+		if redisConnError != nil {
+			errChan <- redisConnError
+			return
+		}
+	}
 
 	esConnError := client.InitElasticSearch(enum.ESDefault, []string{config.EnvConfig().ESDSN})
 	if esConnError != nil {

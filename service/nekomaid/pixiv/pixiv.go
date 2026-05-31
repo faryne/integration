@@ -17,6 +17,7 @@ import (
 	"faryne.dev/config"
 	"faryne.dev/model/entity/nekomaid"
 	"faryne.dev/model/enum"
+	"faryne.dev/service/client"
 	nm "faryne.dev/service/nekomaid"
 )
 
@@ -25,7 +26,6 @@ type instance struct {
 }
 
 const (
-	TokenName    = "pixiv_cookie"
 	LoginUrl     = "https://oauth.secure.pixiv.net/auth/token"
 	ApiUrl       = "https://app-api.pixiv.net/v1"
 	RefererUrl   = "https://www.pixiv.net/artworks/%s"
@@ -71,20 +71,21 @@ func New() nm.RetrieverInterface {
 }
 
 func (i *instance) Login() error {
-	// 暫時簡化，不使用 memcached，直接登入
+	if token, ok := getCachedToken(); ok {
+		i.Token = token
+		return nil
+	}
+
 	c := http.Client{}
 	var u = url.Values{}
 	u.Add("client_id", ClientId)
 	u.Add("client_secret", ClientSecret)
 	u.Add("get_secure_url", "1")
-	// 注意：這裡假設 config 有這些欄位，如果沒有則需要適配
 	u.Add("username", config.EnvConfig().PixivUsername)
 	u.Add("password", config.EnvConfig().PixivPassword)
 	u.Add("refresh_token", "OxA0xQjPUoLarW5IInGxqUNTEBwq9kptrIUoZfvqffA")
 	u.Add("grant_type", "refresh_token")
 
-	// 由於我們不知道 config 是否有 Pixiv 帳密，我們嘗試從環境變數讀取或留空
-	// 這裡先根據新版代碼邏輯實作
 	req, _ := http.NewRequest(http.MethodPost, LoginUrl, strings.NewReader(u.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("User-Agent", "PixivAndroidApp/5.0.64 (Android 6.0)")
@@ -107,7 +108,49 @@ func (i *instance) Login() error {
 		return err
 	}
 	i.Token = &token
+	cacheToken(&token)
 	return nil
+}
+
+func getCachedToken() (*OAuthAPIResponse, bool) {
+	r := client.GetRedis(enum.RedisDefault)
+	if r == nil {
+		return nil, false
+	}
+
+	raw, err := r.Get(string(enum.NekomaidRedisKeyPixivToken)).Result()
+	if err != nil {
+		return nil, false
+	}
+
+	var token OAuthAPIResponse
+	if err := json.Unmarshal([]byte(raw), &token); err != nil {
+		_ = r.Del(string(enum.NekomaidRedisKeyPixivToken)).Err()
+		return nil, false
+	}
+	if token.AccessToken == "" {
+		_ = r.Del(string(enum.NekomaidRedisKeyPixivToken)).Err()
+		return nil, false
+	}
+	return &token, true
+}
+
+func cacheToken(token *OAuthAPIResponse) {
+	r := client.GetRedis(enum.RedisDefault)
+	if r == nil || token == nil {
+		return
+	}
+
+	data, err := json.Marshal(token)
+	if err != nil {
+		return
+	}
+
+	expiration := time.Duration(token.ExpiresIn) * time.Second
+	if expiration > time.Minute {
+		expiration -= time.Minute
+	}
+	_ = r.Set(string(enum.NekomaidRedisKeyPixivToken), string(data), expiration).Err()
 }
 
 func (i *instance) Get(id string) (*nekomaid.ArtworkMain, error) {
