@@ -105,7 +105,7 @@ func (i *instance) parseGetArtwork(simpleResponse *SimpleResponse, detailRespons
 	}
 	defer resp.Body.Close()
 
-	img, thumb, err := nm.UploadImage(o.ArtworkId, resp, 0)
+	img, thumb, err := nm.UploadImage(enum.NekomaidSiteNico, o.AuthorId, o.ArtworkId, resp, 0)
 	if err != nil {
 		return nil, err
 	}

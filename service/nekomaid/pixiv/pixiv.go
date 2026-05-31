@@ -157,7 +157,7 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 
 	if result.Illust.PageCount > 1 {
 		for idx, page := range result.Illust.MetaPages {
-			p, t, err := i.getImageUpload(o.ArtworkId, page.ImageUrls.Original, idx)
+			p, t, err := i.getImageUpload(o.AuthorId, o.ArtworkId, page.ImageUrls.Original, idx)
 			if err != nil {
 				return nil, err
 			}
@@ -167,7 +167,7 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 			photos = append(photos, p)
 		}
 	} else {
-		p, t, err := i.getImageUpload(o.ArtworkId, result.Illust.MetaSinglePage.OriginalImageUrl, 0)
+		p, t, err := i.getImageUpload(o.AuthorId, o.ArtworkId, result.Illust.MetaSinglePage.OriginalImageUrl, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +191,7 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 	return o, nil
 }
 
-func (i *instance) getImageUpload(id string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
+func (i *instance) getImageUpload(authorId, artworkId string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
 	req, _ := http.NewRequest(http.MethodGet, u, nil)
 	req.Header.Add("Referer", "https://app-api.pixiv.net/")
 	req.Header.Add("User-Agent", "PixivAndroidApp/5.0.64 (Android 6.0)")
@@ -202,5 +202,5 @@ func (i *instance) getImageUpload(id string, u string, idx int) (nekomaid.Artwor
 	}
 	defer resp.Body.Close()
 
-	return nm.UploadImage(id, resp, idx)
+	return nm.UploadImage(enum.NekomaidSitePixiv, authorId, artworkId, resp, idx)
 }

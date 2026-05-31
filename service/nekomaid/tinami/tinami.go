@@ -84,7 +84,7 @@ func (i *instance) parseGetArtwork(id string, response *Response) (*nekomaid.Art
 	var thumb string
 
 	if response.Content.Type == "illust" {
-		p, t, err := i.getImageUpload(o.ArtworkId, response.Content.Image.Url, 0)
+		p, t, err := i.getImageUpload(o.AuthorId, o.ArtworkId, response.Content.Image.Url, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (i *instance) parseGetArtwork(id string, response *Response) (*nekomaid.Art
 		photos = append(photos, p)
 	} else {
 		for idx, img := range response.Content.Images.Items {
-			p, t, err := i.getImageUpload(o.ArtworkId, img.Url, idx)
+			p, t, err := i.getImageUpload(o.AuthorId, o.ArtworkId, img.Url, idx)
 			if err != nil {
 				return nil, err
 			}
@@ -120,12 +120,12 @@ func (i *instance) parseGetArtwork(id string, response *Response) (*nekomaid.Art
 	return o, nil
 }
 
-func (i *instance) getImageUpload(id string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
+func (i *instance) getImageUpload(authorId, artworkId string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
 	resp, err := http.Get(u)
 	if err != nil {
 		return nekomaid.ArtworkPhoto{}, "", err
 	}
 	defer resp.Body.Close()
 
-	return nm.UploadImage(id, resp, idx)
+	return nm.UploadImage(enum.NekomaidSiteTinami, authorId, artworkId, resp, idx)
 }

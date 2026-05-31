@@ -46,7 +46,7 @@ type RetrieverInterface interface {
 	Get(id string) (*nekomaid.ArtworkMain, error)
 }
 
-func UploadImage(artworkId string, reader *http.Response, idx int) (nekomaid.ArtworkPhoto, string, error) {
+func UploadImage(site enum.NekomaidSite, authorId, artworkId string, reader *http.Response, idx int) (nekomaid.ArtworkPhoto, string, error) {
 	var o = nekomaid.ArtworkPhoto{}
 	var thumb = "" // 縮圖網址
 
@@ -110,8 +110,9 @@ func UploadImage(artworkId string, reader *http.Response, idx int) (nekomaid.Art
 
 	// 處理縮圖
 	if idx == 0 {
-		thumbName := fmt.Sprintf("thumb/%s_%s_thumb.%s", artworkId, hashId, o.Ext)
-		thumb = getDomain() + "/" + thumbName // 設定縮圖完整網址
+		thumbFilename := fmt.Sprintf("%s_%s_thumb.%s", artworkId, hashId, o.Ext)
+		thumbKey := nekomaidThumbObjectKey(site, authorId, thumbFilename)
+		thumb = getDomain() + "/" + thumbKey // 設定縮圖完整網址
 		var width, height = 120, 0
 		if img.Bounds().Dx() < img.Bounds().Dy() {
 			width = 0
@@ -128,7 +129,7 @@ func UploadImage(artworkId string, reader *http.Response, idx int) (nekomaid.Art
 
 		_, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 			Bucket:      aws.String(cfg.NekomaidBucket),
-			Key:         aws.String(thumbName),
+			Key:         aws.String(thumbKey),
 			Body:        bytes.NewReader(thumbBytes.Bytes()),
 			ContentType: aws.String(http.DetectContentType(thumbBytes.Bytes())),
 			ACL:         types.ObjectCannedACLPublicRead,
@@ -144,12 +145,13 @@ func UploadImage(artworkId string, reader *http.Response, idx int) (nekomaid.Art
 	if idx > 0 {
 		filename = fmt.Sprintf(filenamePattern, artworkId, o.KeyId+"_p"+strconv.Itoa(idx), o.Ext)
 	}
-	o.Filename = filename
-	o.Url = getDomain() + "/" + filename
+	objectKey := nekomaidObjectKey(site, authorId, filename)
+	o.Filename = objectKey
+	o.Url = getDomain() + "/" + objectKey
 
 	_, err = s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(cfg.NekomaidBucket),
-		Key:         aws.String(filename),
+		Key:         aws.String(objectKey),
 		Body:        bytes.NewReader(b.Bytes()),
 		ContentType: aws.String(o.Mime),
 		ACL:         types.ObjectCannedACLPublicRead,
@@ -161,6 +163,40 @@ func UploadImage(artworkId string, reader *http.Response, idx int) (nekomaid.Art
 	}
 
 	return o, thumb, nil
+}
+
+func nekomaidObjectKey(site enum.NekomaidSite, authorId, filename string) string {
+	return strings.Join([]string{
+		cleanS3PathSegment(string(site)),
+		cleanS3PathSegment(authorId),
+		cleanS3PathSegment(filename),
+	}, "/")
+}
+
+func nekomaidThumbObjectKey(site enum.NekomaidSite, authorId, filename string) string {
+	return strings.Join([]string{
+		"thumb",
+		cleanS3PathSegment(string(site)),
+		cleanS3PathSegment(authorId),
+		cleanS3PathSegment(filename),
+	}, "/")
+}
+
+func cleanS3PathSegment(segment string) string {
+	segment = strings.TrimSpace(strings.Trim(segment, "/"))
+	segment = strings.ReplaceAll(segment, "/", "_")
+	if segment == "" {
+		return "_"
+	}
+	return segment
+}
+
+func s3KeyFromURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(u.EscapedPath(), "/")
 }
 
 func DeleteImages(ctx context.Context, photos []nekomaid.ArtworkPhoto, thumb string) {
@@ -184,17 +220,11 @@ func DeleteImages(ctx context.Context, photos []nekomaid.ArtworkPhoto, thumb str
 
 	// 刪除縮圖
 	if thumb != "" {
-		// 從網址解析出 key
-		// 假設 thumb 網址格式為 domain/thumb/filename
-		// 我們可以直接從 filename 推導，或者解析 URL
-		// 這裡為了保險，從 photos[0] 的 filename 或是直接用傳入的 thumb 處理
-		// 縮圖路徑邏輯：thumbName := fmt.Sprintf("thumb/%s_%s_thumb.%s", artworkId, hashId, o.Ext)
-		if len(photos) > 0 {
-			p := photos[0]
-			thumbName := fmt.Sprintf("thumb/%s_%s_thumb.%s", p.FileId, p.KeyId, p.Ext)
+		thumbKey := s3KeyFromURL(thumb)
+		if thumbKey != "" {
 			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 				Bucket: aws.String(cfg.NekomaidBucket),
-				Key:    aws.String(thumbName),
+				Key:    aws.String(thumbKey),
 			})
 		}
 	}
