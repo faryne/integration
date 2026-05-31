@@ -17,7 +17,7 @@ export const DefaultLayout: FC<{ children?: ReactNode } & IDefaultLayout> = (
       sx={{ minWidth: props.fullWidth ? "100% !important" : "1280px" }}
     >
       <Stack direction={"column"}>
-        <Header />
+        <Header fullWidth={props.fullWidth} />
         <main>
           <Outlet />
         </main>

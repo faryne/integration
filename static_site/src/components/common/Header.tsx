@@ -5,14 +5,18 @@ import {
   Typography,
   Menu,
   MenuItem,
-  Grid,
+  Box,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useState, type MouseEvent } from "react";
 import { headerNavigationItems, isLayoutDropMenu } from "@/data/navigation.ts";
 import { type LayoutDropMenu, type LayoutMenuItem } from "@/types/layout.ts";
 
-export function Header() {
+export interface HeaderProps {
+  fullWidth?: boolean;
+}
+
+export function Header({ fullWidth = false }: HeaderProps) {
   const [openedMenu, setOpenedMenu] = useState<LayoutDropMenu | null>(null);
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const defaultButtonCss = { color: "white" };
@@ -46,13 +50,13 @@ export function Header() {
   return (
     <>
       <AppBar
-        position={"relative"}
+        position={"fixed"}
         sx={{
-          // maxWidth: "lg",
-          // top: 0,
-          // width: '100%',
-          // left: '50%',
-          // transform: 'translateX(-50%)',
+          top: 0,
+          left: "50%",
+          right: "auto",
+          width: fullWidth ? "100%" : "1280px",
+          transform: "translateX(-50%)",
           mx: "auto",
         }}
       >
@@ -95,11 +99,8 @@ export function Header() {
           </Menu>
         </Toolbar>
       </AppBar>
-      <Grid container>
-        <Grid size={12} sx={{ lineHeight: "20px" }}>
-          &nbsp;
-        </Grid>
-      </Grid>
+      <Toolbar />
+      <Box sx={{ height: 20 }} />
     </>
   );
 }
