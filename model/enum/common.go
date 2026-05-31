@@ -4,6 +4,7 @@ type DBName string
 
 const (
 	DBWalolita DBName = "walolita"
+	DBNekomaid DBName = "nekomaid"
 )
 
 type RedisName string

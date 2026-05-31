@@ -108,11 +108,18 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	config.InitEnvConfig()
 
 	// 啟動 DB 連線
-	connError := client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
-	if connError != nil {
-		errChan <- connError
-		return
+	dbConnections := map[enum.DBName]string{
+		enum.DBWalolita: config.EnvConfig().WalolitaDSN,
+		enum.DBNekomaid: config.EnvConfig().NekomaidDSN,
 	}
+	for key, conn := range dbConnections {
+		connError := client.InitMySql(key, conn)
+		if connError != nil {
+			errChan <- connError
+			return
+		}
+	}
+
 	//redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
 	//if redisConnError != nil {
 	//	errChan <- redisConnError

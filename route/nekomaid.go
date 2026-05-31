@@ -12,4 +12,5 @@ func Nekomaid(app *fiber.App) {
 	g := app.Group("/nekomaid")
 	g.Get("/search/:site?/:authorId?/:artworkId?", nekomaid.Search)
 	g.Post("/retrieve.json", nekomaid.Retrieve)
+	g.Get("/retrieve.json", nekomaid.Retrieve)
 }

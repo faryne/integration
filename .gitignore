@@ -7,7 +7,6 @@ docs
 
 .firebaserc
 static_site/.firebase
-static_site/public
 
 secret_keys/*
 
