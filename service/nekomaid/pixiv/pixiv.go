@@ -157,7 +157,6 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 
 	if result.Illust.PageCount > 1 {
 		for idx, page := range result.Illust.MetaPages {
-			fmt.Println("image url: ", page.ImageUrls.Original, " idx: ", idx, "")
 			p, t, err := i.getImageUpload(o.ArtworkId, page.ImageUrls.Original, idx)
 			if err != nil {
 				return nil, err
@@ -168,7 +167,6 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 			photos = append(photos, p)
 		}
 	} else {
-		fmt.Println("image url: ", result.Illust.MetaSinglePage.OriginalImageUrl, " idx: ", 0, "")
 		p, t, err := i.getImageUpload(o.ArtworkId, result.Illust.MetaSinglePage.OriginalImageUrl, 0)
 		if err != nil {
 			return nil, err
@@ -194,7 +192,6 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 }
 
 func (i *instance) getImageUpload(id string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
-	fmt.Println(u)
 	req, _ := http.NewRequest(http.MethodGet, u, nil)
 	req.Header.Add("Referer", "https://app-api.pixiv.net/")
 	req.Header.Add("User-Agent", "PixivAndroidApp/5.0.64 (Android 6.0)")
