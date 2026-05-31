@@ -4,7 +4,10 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	"faryne.dev/model/enum"
 )
@@ -60,7 +63,11 @@ type ArtworkPhoto struct {
 }
 
 func (c ArtworkMainFullContent) Value() (driver.Value, error) {
-	return json.Marshal(c)
+	data, err := json.Marshal(c)
+	if err != nil {
+		return nil, err
+	}
+	return escapeNonASCIIJSON(data), nil
 }
 
 func (c *ArtworkMainFullContent) Scan(value any) error {
@@ -85,4 +92,28 @@ func (c *ArtworkMainFullContent) Scan(value any) error {
 	}
 
 	return json.Unmarshal(data, c)
+}
+
+func escapeNonASCIIJSON(data []byte) string {
+	if utf8.Valid(data) && len(data) == len([]rune(string(data))) {
+		return string(data)
+	}
+
+	var b strings.Builder
+	b.Grow(len(data))
+	for _, r := range string(data) {
+		if r < utf8.RuneSelf {
+			b.WriteRune(r)
+			continue
+		}
+		if r <= 0xffff {
+			fmt.Fprintf(&b, "\\u%04x", r)
+			continue
+		}
+		encoded := utf16.Encode([]rune{r})
+		for _, surrogate := range encoded {
+			fmt.Fprintf(&b, "\\u%04x", surrogate)
+		}
+	}
+	return b.String()
 }
