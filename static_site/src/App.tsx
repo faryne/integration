@@ -17,6 +17,7 @@ import { CaptureThread } from "@/pages/threads/capture.tsx";
 import { YieldMaxEtfs } from "@/pages/etfs/yieldmax.tsx";
 import { default as TwseEtf } from "@/pages/etfs/twse.tsx";
 import { Userscripts } from "@/pages/tools/userscripts.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
             <Route path={"article/:id"} element={<Editor />} />
           </Route>
           <Route path={"editor"} element={<Editor />} />
+          <Route path={"*"} element={<ErrorPage code={404} />} />
         </Route>
 
         <Route path={""} element={<DefaultLayout />}>
@@ -65,6 +67,7 @@ function App() {
           <Route path="/a" element={<h1>Hello</h1>} />
 
           <Route path={"/"} element={<Home />} />
+          <Route path={"*"} element={<ErrorPage code={404} />} />
         </Route>
 
         <Route path={"/modern"} element={<ModernLayout />}>
@@ -77,9 +80,8 @@ function App() {
               </div>
             }
           />
+          <Route path={"*"} element={<ErrorPage code={404} />} />
         </Route>
-
-        <Route path="*" element={<h1>404</h1>} />
       </Routes>
     </BrowserRouter>
   );
