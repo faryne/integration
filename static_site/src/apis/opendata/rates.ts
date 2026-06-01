@@ -24,16 +24,17 @@ export interface GetCurrencyRatesRequest {
 }
 export function useGetCurrencyRates(params: GetCurrencyRatesRequest) {
   return useQuery({
-    queryKey: ["rates"],
+    queryKey: ["rates", params],
+    enabled: Boolean(params.begin_date && params.currencies?.length),
     queryFn: async () => {
-      const reposne = await axios.get<CommonResponse<Rate[]>>(
+      const response = await axios.get<CommonResponse<Rate[]>>(
         `${import.meta.env.VITE_API_BASE}/opendata/rates`,
         {
           params,
           timeout: 10000,
         },
       );
-      return reposne.data;
+      return response.data;
     },
   });
 }

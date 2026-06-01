@@ -1,68 +1,146 @@
-import { BankMappings, type Rate } from "@/types/rates.ts";
+import { BankMappings } from "@/data/rates.ts";
+import type { Rate } from "@/types/rates.ts";
 import {
   Stack,
-  Box,
   TextField,
   Radio,
-  List,
-  ListItem,
   Typography,
   RadioGroup,
   FormControlLabel,
+  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface IRateCalculator {
   rates: Rate[];
   currencies: { [p in string]: string };
 }
 
+type ExchangeDirection = "bank_buy" | "bank_sell";
+
+const formatAmount = (value: number, maximumFractionDigits = 4) =>
+  value.toLocaleString("zh-TW", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+
 export function RateCalculator(props: IRateCalculator) {
-  const [direction, setDirection] = useState<number | null>(null);
-  const [input, setInput] = useState<number>(0);
+  const [direction, setDirection] = useState<ExchangeDirection>("bank_sell");
+  const [input, setInput] = useState("");
+  const baseCurrency = props.rates[0]?.base ?? "";
+  const baseCurrencyName = props.currencies[baseCurrency] ?? baseCurrency;
+  const recordDate = props.rates[0]?.record_date ?? "";
+  const inputAmount = Number(input);
+  const canCalculate = Number.isFinite(inputAmount) && inputAmount > 0;
+  const resultRows = useMemo(
+    () =>
+      props.rates.map((rate) => {
+        const exchangeRate =
+          direction === "bank_buy" ? rate.buy_rate : rate.sell_rate;
+
+        return {
+          ...rate,
+          exchangeRate,
+          amount: inputAmount * exchangeRate,
+        };
+      }),
+    [direction, inputAmount, props.rates],
+  );
+
+  if (props.rates.length === 0) {
+    return (
+      <Typography color={"text.secondary"}>目前沒有可試算的匯率資料</Typography>
+    );
+  }
+
   return (
-    <>
-      <Stack direction={"row"} textAlign={"center"} spacing={2}>
-        <Box>
-          <TextField
-            type={"number"}
-            value={input}
-            onChange={(e) => setInput(parseInt(e.target.value, 10))}
-            placeholder={"輸入數字"}
-            label={`請輸入${props.currencies[props.rates[0].base]}金額`}
-          />
-        </Box>
-        <Box sx={{ textAlign: "center" }}>
-          <RadioGroup row sx={{ textAlign: "justify" }}>
-            <FormControlLabel
-              control={<Radio />}
-              label={"銀行買入"}
-              value={0}
-              onChange={() => setDirection(0)}
-            />
-            <FormControlLabel
-              control={<Radio />}
-              label={"銀行賣出"}
-              value={1}
-              onChange={() => setDirection(1)}
-            />
-          </RadioGroup>
-        </Box>
+    <Stack spacing={2.5}>
+      <Stack spacing={0.5}>
+        <Typography variant={"h6"} fontWeight={700}>
+          {recordDate} 匯率試算
+        </Typography>
+        <Typography variant={"body2"} color={"text.secondary"}>
+          {baseCurrencyName}，共 {props.rates.length} 家銀行資料
+        </Typography>
       </Stack>
-      <List>
-        {direction !== null &&
-          input > 0 &&
-          props.rates.map((v) => (
-            <ListItem>
-              <Typography variant={"body1"}>
-                {BankMappings[v.service_name] ?? ""}
-                {direction === 0 ? "買入" : "賣出"}
-                {props.currencies[v.base] ?? ""}-{" "}
-                {input * (direction === 0 ? v.buy_rate : v.sell_rate)}
-              </Typography>
-            </ListItem>
-          ))}
-      </List>
-    </>
+
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+        <TextField
+          fullWidth
+          type={"number"}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={"輸入金額"}
+          label={`請輸入${baseCurrencyName}金額`}
+          inputProps={{ min: 0, step: "0.01" }}
+        />
+        <RadioGroup
+          row
+          value={direction}
+          onChange={(event) =>
+            setDirection(event.target.value as ExchangeDirection)
+          }
+          sx={{ minWidth: { sm: 240 } }}
+        >
+          <FormControlLabel
+            control={<Radio />}
+            label={"銀行買入"}
+            value={"bank_buy"}
+          />
+          <FormControlLabel
+            control={<Radio />}
+            label={"銀行賣出"}
+            value={"bank_sell"}
+          />
+        </RadioGroup>
+      </Stack>
+
+      <Alert severity={"info"} variant={"outlined"}>
+        {direction === "bank_buy"
+          ? `銀行買入：你把 ${baseCurrencyName} 賣給銀行，換成新台幣。`
+          : `銀行賣出：你向銀行買 ${baseCurrencyName}，需要支付新台幣。`}
+      </Alert>
+
+      <TableContainer component={Paper} variant={"outlined"}>
+        <Table size={"small"}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 700 }}>銀行</TableCell>
+              <TableCell align={"right"} sx={{ fontWeight: 700 }}>
+                匯率
+              </TableCell>
+              <TableCell align={"right"} sx={{ fontWeight: 700 }}>
+                換算金額
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {resultRows.map((rate) => (
+              <TableRow
+                hover
+                key={`${rate.base}-${rate.record_date}-${rate.service_name}`}
+              >
+                <TableCell>
+                  {BankMappings[rate.service_name] ?? rate.service_name}
+                </TableCell>
+                <TableCell align={"right"}>
+                  {formatAmount(rate.exchangeRate, 6)}
+                </TableCell>
+                <TableCell align={"right"}>
+                  {canCalculate ? `NT$ ${formatAmount(rate.amount, 2)}` : "--"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Stack>
   );
 }
