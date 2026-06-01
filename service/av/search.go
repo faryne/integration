@@ -2,11 +2,13 @@ package av
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
 	"faryne.dev/model/entity"
 	"faryne.dev/model/entity/opendata/av"
 	"faryne.dev/service/search"
-	"fmt"
-	"time"
 )
 
 var fVideo = func(i av.RawVideo) av.CleanVideo {
@@ -38,6 +40,38 @@ var fVideo = func(i av.RawVideo) av.CleanVideo {
 		o.Actresses = i.Actresses
 	}
 	return o
+}
+
+func videoKeywordQuery(keyword string) map[string]any {
+	return map[string]any{
+		"bool": map[string]any{
+			"should": []map[string]any{
+				{"match_phrase": map[string]any{"title": keyword}},
+				{"term": map[string]any{"title.keyword": keyword}},
+				{"match": map[string]any{"tags": keyword}},
+				{"term": map[string]any{"tags.keyword": keyword}},
+				{"match": map[string]any{"labels": keyword}},
+				{"term": map[string]any{"labels.keyword": keyword}},
+				{"term": map[string]any{"makers.keyword": keyword}},
+				{"term": map[string]any{"actresses.keyword": keyword}},
+				{"term": map[string]any{"series.keyword": keyword}},
+				{"term": map[string]any{"directors.keyword": keyword}},
+			},
+			"minimum_should_match": 1,
+		},
+	}
+}
+
+func videoNoQuery(no string) map[string]any {
+	return map[string]any{
+		"bool": map[string]any{
+			"should": []map[string]any{
+				{"term": map[string]any{"no.keyword": no}},
+				{"term": map[string]any{"maker_no.keyword": no}},
+			},
+			"minimum_should_match": 1,
+		},
+	}
 }
 
 func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.RawVideo], []av.CleanVideo, error) {
@@ -84,33 +118,37 @@ func VideoSearch(input av.VideoQueryRequest) (*entity.ElasticSearchResponse[av.R
 		search.SetQuery(map[string]any{"range": map[string]any{"publish_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, false, q)
 		search.SetQuery(map[string]any{"range": map[string]any{"pulish_date": map[string]any{"lt": d1.Time().Format("2006/01/02")}}}, false, q)
 	}
-	if input.Keyword != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"title.keyword": input.Keyword}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"makers.keyword": input.Keyword}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"actresses.keyword": input.Keyword}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"series.keyword": input.Keyword}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"directors.keyword": input.Keyword}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"label.keyword": input.Keyword}}, false, q)
+	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
+		search.SetQuery(videoKeywordQuery(keyword), true, q)
 	}
-	if input.Tag != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"tags": input.Tag}}, true, q)
+	if tag := strings.TrimSpace(input.Tag); tag != "" {
+		search.SetQuery(map[string]any{"match": map[string]any{"tags": tag}}, true, q)
 	}
-	if input.Actress != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"actress.keyword": input.Actress}}, true, q)
+	if actress := strings.TrimSpace(input.Actress); actress != "" {
+		search.SetQuery(map[string]any{"term": map[string]any{"actresses.keyword": actress}}, true, q)
 	}
-	if input.No != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"no.keyword": input.No}}, false, q)
-		search.SetQuery(map[string]any{"term": map[string]any{"maker_no.keyword": input.No}}, false, q)
+	if no := strings.TrimSpace(input.No); no != "" {
+		search.SetQuery(videoNoQuery(no), true, q)
 	}
-
-	c, _ := json.Marshal(q)
-	fmt.Println(string(c))
 
 	return search.Search[av.RawVideo, av.CleanVideo]("dmmvideos", q, fVideo)
 }
 
 var fActress = func(i av.Actress) av.Actress {
 	return i
+}
+
+func exactStringQuery(field string, value string) map[string]any {
+	return map[string]any{
+		"bool": map[string]any{
+			"should": []map[string]any{
+				{"term": map[string]any{field + ".keyword": value}},
+				{"term": map[string]any{field: value}},
+				{"term": map[string]any{field: strings.ToLower(value)}},
+			},
+			"minimum_should_match": 1,
+		},
+	}
 }
 
 func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[av.Actress], []av.Actress, error) {
@@ -127,27 +165,30 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 			"birth_day":   map[string]any{"order": "desc"},
 		},
 	}
-	if input.Name != "" {
-		search.SetQuery(map[string]any{"term": map[string]any{"name.keyword": input.Name}}, true, q)
+	if name := strings.TrimSpace(input.Name); name != "" {
+		search.SetQuery(map[string]any{"term": map[string]any{"name.keyword": name}}, true, q)
 	}
 	if input.BirthYear > 0 && input.BirthMonth > 0 && input.BirthDay > 0 {
-		search.SetQuery(map[string]any{"match": map[string]any{"birth_year": input.BirthYear, "birth_month": input.BirthMonth, "birth_day": input.BirthDay}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_month": input.BirthMonth}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_day": input.BirthDay}}, true, q)
 	} else if input.BirthYear > 0 && input.BirthMonth > 0 {
-		search.SetQuery(map[string]any{"match": map[string]any{"birth_year": input.BirthYear, "birth_month": input.BirthMonth}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_month": input.BirthMonth}}, true, q)
 	} else if input.BirthYear > 0 {
-		search.SetQuery(map[string]any{"match": map[string]any{"birth_year": input.BirthYear}}, true, q)
+		search.SetQuery(map[string]any{"term": map[string]any{"birth_year": input.BirthYear}}, true, q)
 	}
-	if len(input.Cup) > 0 {
-		search.SetQuery(map[string]any{"match": map[string]any{"cup": input.Cup}}, true, q)
-		q["sort"] = map[string]any{"cup": map[string]any{"order": "desc"}}
+	if cup := strings.ToUpper(strings.TrimSpace(input.Cup)); cup != "" {
+		search.SetQuery(exactStringQuery("cup", cup), true, q)
+		q["sort"] = map[string]any{"cup.keyword": map[string]any{"order": "desc", "unmapped_type": "keyword"}}
 	}
-	if input.BloodType != "" {
-		search.SetQuery(map[string]any{"match": map[string]any{"blood_type": input.BloodType}}, true, q)
+	if bloodType := strings.ToUpper(strings.TrimSpace(input.BloodType)); bloodType != "" {
+		search.SetQuery(exactStringQuery("blood", bloodType), true, q)
 	}
 	if bLength := len(input.B); bLength > 0 {
 		switch bLength {
 		case 1:
-			search.SetQuery(map[string]any{"match": map[string]any{"bust": input.B[0]}}, true, q)
+			search.SetQuery(map[string]any{"term": map[string]any{"bust": input.B[0]}}, true, q)
 		case 2:
 			search.SetQuery(map[string]any{"range": map[string]any{"bust": map[string]any{"gte": input.B[0], "lt": input.B[1]}}}, true, q)
 		}
@@ -156,7 +197,7 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 	if wLength := len(input.W); wLength > 0 {
 		switch wLength {
 		case 1:
-			search.SetQuery(map[string]any{"match": map[string]any{"waist": input.W[0]}}, true, q)
+			search.SetQuery(map[string]any{"term": map[string]any{"waist": input.W[0]}}, true, q)
 		case 2:
 			search.SetQuery(map[string]any{"range": map[string]any{"waist": map[string]any{"gte": input.W[0], "lt": input.W[1]}}}, true, q)
 		}
@@ -165,7 +206,7 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 	if hLength := len(input.H); hLength > 0 {
 		switch hLength {
 		case 1:
-			search.SetQuery(map[string]any{"match": map[string]any{"hips": input.H[0]}}, true, q)
+			search.SetQuery(map[string]any{"term": map[string]any{"hips": input.H[0]}}, true, q)
 		case 2:
 			search.SetQuery(map[string]any{"range": map[string]any{"hips": map[string]any{"gte": input.H[0], "lt": input.H[1]}}}, true, q)
 		}
@@ -174,7 +215,7 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 	if heightLength := len(input.Height); heightLength > 0 {
 		switch heightLength {
 		case 1:
-			search.SetQuery(map[string]any{"match": map[string]any{"height": input.Height[0]}}, true, q)
+			search.SetQuery(map[string]any{"term": map[string]any{"height": input.Height[0]}}, true, q)
 		case 2:
 			search.SetQuery(map[string]any{"range": map[string]any{"height": map[string]any{"gte": input.Height[0], "lt": input.Height[1]}}}, true, q)
 		}
