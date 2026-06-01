@@ -35,6 +35,7 @@ export function VideoDetail(props: IVideoDetail) {
   const series = video ? video.series.filter((s) => s !== "") : [];
   const directors = video ? video?.directors.filter((d) => d !== "") : [];
   const tags = video ? video.tags.filter((t) => t !== "") : [];
+  const displayMakerNo = video?.maker_no?.trim() ?? "";
 
   useTitle(video?.title ?? "");
 
@@ -159,15 +160,17 @@ export function VideoDetail(props: IVideoDetail) {
         >
           <Stack spacing={2}>
             <Stack direction="row" flexWrap="wrap" gap={1}>
-              <Chip
-                label={video.maker_no ?? video.no}
-                size="small"
-                sx={{
-                  borderRadius: 1,
-                  fontWeight: 700,
-                  letterSpacing: 0,
-                }}
-              />
+              {displayMakerNo && (
+                <Chip
+                  label={displayMakerNo}
+                  size="small"
+                  sx={{
+                    borderRadius: 1,
+                    fontWeight: 700,
+                    letterSpacing: 0,
+                  }}
+                />
+              )}
               {video.vod_date && (
                 <Chip
                   label={`發售日 ${video.vod_date}`}

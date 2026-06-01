@@ -21,6 +21,12 @@ import type { Video } from "@/types/av.ts";
 import MovieFilterIcon from "@mui/icons-material/MovieFilter";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 
+const videoDetailId = (video: Video) =>
+  video.maker_no?.trim() || video.no?.trim() || undefined;
+
+const videoDisplayMakerNo = (video: Video) =>
+  video.maker_no?.trim() || undefined;
+
 export function AVVideo() {
   const [search, setSearch] = useState<
     ListByPaginationRequest<VideoSearchRequest>
@@ -48,9 +54,12 @@ export function AVVideo() {
   );
 
   const toVideoDetail = (video: Video) => {
-    navigate(
-      `/av/video/${video.maker_no && video.maker_no !== "" ? video.maker_no : video.no}`,
-    );
+    const id = videoDetailId(video);
+    if (!id) {
+      return;
+    }
+
+    navigate(`/av/video/${id}`);
   };
 
   const handleSearch = (input: VideoSearchRequest) => {
@@ -230,38 +239,46 @@ export function AVVideo() {
                     },
                   }}
                 >
-                  {videos.map((video) => (
-                    <Box
-                      component="button"
-                      key={video.maker_no ?? video.no}
-                      onClick={() => toVideoDetail(video)}
-                      sx={{
-                        appearance: "none",
-                        bgcolor: "background.paper",
-                        border: "1px solid",
-                        borderColor: "divider",
-                        borderRadius: 2,
-                        cursor: "pointer",
-                        display: "flex",
-                        flexDirection: "column",
-                        overflow: "hidden",
-                        p: 0,
-                        textAlign: "left",
-                        transition:
-                          "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                        width: "100%",
-                        "&:focus-visible": {
-                          borderColor: "primary.main",
-                          boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
-                          outline: 0,
-                        },
-                        "&:hover": {
-                          borderColor: "rgba(25, 118, 210, 0.42)",
-                          boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
-                          transform: "translateY(-2px)",
-                        },
-                      }}
-                    >
+                  {videos.map((video) => {
+                    const detailId = videoDetailId(video);
+                    const displayMakerNo = videoDisplayMakerNo(video);
+
+                    return (
+                      <Box
+                        component="button"
+                        disabled={!detailId}
+                        key={detailId ?? video.url ?? video.title}
+                        onClick={() => toVideoDetail(video)}
+                        sx={{
+                          appearance: "none",
+                          bgcolor: "background.paper",
+                          border: "1px solid",
+                          borderColor: "divider",
+                          borderRadius: 2,
+                          cursor: detailId ? "pointer" : "default",
+                          display: "flex",
+                          flexDirection: "column",
+                          overflow: "hidden",
+                          p: 0,
+                          textAlign: "left",
+                          transition:
+                            "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+                          width: "100%",
+                          "&:focus-visible": {
+                            borderColor: "primary.main",
+                            boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
+                            outline: 0,
+                          },
+                          "&:hover": detailId
+                            ? {
+                                borderColor: "rgba(25, 118, 210, 0.42)",
+                                boxShadow:
+                                  "0 14px 34px rgba(15, 23, 42, 0.13)",
+                                transform: "translateY(-2px)",
+                              }
+                            : undefined,
+                        }}
+                      >
                       <Box
                         sx={{
                           aspectRatio: "16 / 10",
@@ -285,15 +302,17 @@ export function AVVideo() {
                       </Box>
                       <Stack spacing={1} sx={{ p: 1.5 }}>
                         <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                          <Chip
-                            label={video.maker_no ?? video.no}
-                            size="small"
-                            sx={{
-                              borderRadius: 1,
-                              fontSize: "0.72rem",
-                              fontWeight: 700,
-                            }}
-                          />
+                          {displayMakerNo && (
+                            <Chip
+                              label={displayMakerNo}
+                              size="small"
+                              sx={{
+                                borderRadius: 1,
+                                fontSize: "0.72rem",
+                                fontWeight: 700,
+                              }}
+                            />
+                          )}
                           {video.vod_date && (
                             <Chip
                               label={video.vod_date}
@@ -338,7 +357,8 @@ export function AVVideo() {
                         </Typography>
                       </Stack>
                     </Box>
-                  ))}
+                    );
+                  })}
                 </Box>
 
                 {pageCount > 1 && (

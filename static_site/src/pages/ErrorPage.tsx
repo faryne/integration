@@ -1,7 +1,9 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export interface ErrorPageProps {
+  backUrl?: string;
   code: number;
   message?: string;
   internalCode?: string;
@@ -45,8 +47,16 @@ const fallbackErrorContent = {
     "喵嗚，女僕這邊暫時處理不了主人想看的內容。請稍後再試一次，或先回首頁休息一下喵。",
 };
 
-export function ErrorPage({ code, message, internalCode }: ErrorPageProps) {
+export function ErrorPage({
+  backUrl,
+  code,
+  message,
+  internalCode,
+}: ErrorPageProps) {
   const errorContent = defaultErrorContent[code] ?? fallbackErrorContent;
+  const buttonHref = backUrl ?? "/";
+  const ButtonIcon = backUrl ? ArrowBackIcon : HomeIcon;
+  const buttonText = backUrl ? "回前頁" : "回首頁";
 
   return (
     <Container
@@ -116,12 +126,12 @@ export function ErrorPage({ code, message, internalCode }: ErrorPageProps) {
 
           <Button
             component="a"
-            href="/"
+            href={buttonHref}
             variant="contained"
-            startIcon={<HomeIcon />}
+            startIcon={<ButtonIcon />}
             sx={{ mt: 3 }}
           >
-            回首頁
+            {buttonText}
           </Button>
         </Box>
       </Stack>
