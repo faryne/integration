@@ -2,8 +2,107 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
+function getPackageName(id: string) {
+  const nodeModulesPath = id.split("node_modules/").pop();
+
+  if (!nodeModulesPath) {
+    return;
+  }
+
+  const parts = nodeModulesPath.split("/");
+
+  if (parts[0].startsWith("@")) {
+    return `${parts[0]}/${parts[1]}`;
+  }
+
+  return parts[0];
+}
+
+function chunkName(id: string) {
+  if (!id.includes("node_modules")) {
+    return;
+  }
+
+  const packageName = getPackageName(id);
+
+  if (!packageName) {
+    return;
+  }
+
+  if (["react", "react-dom", "scheduler"].includes(packageName)) {
+    return "vendor-react";
+  }
+
+  if (packageName === "@mui/icons-material") {
+    return "vendor-mui-icons";
+  }
+
+  if (packageName === "@mui/x-charts") {
+    return "vendor-mui-charts";
+  }
+
+  if (packageName === "@mui/x-date-pickers") {
+    return "vendor-mui-date-pickers";
+  }
+
+  if (
+    packageName.startsWith("@mui/") ||
+    packageName.startsWith("@emotion/") ||
+    packageName === "@popperjs/core"
+  ) {
+    return "vendor-mui";
+  }
+
+  if (packageName === "apexcharts" || packageName === "react-apexcharts") {
+    return "vendor-apexcharts";
+  }
+
+  if (packageName === "ace-builds") {
+    return "vendor-ace";
+  }
+
+  if (
+    packageName === "jsoneditor" ||
+    packageName === "jsoneditor-react" ||
+    packageName === "ajv" ||
+    packageName === "json-source-map"
+  ) {
+    return "vendor-jsoneditor";
+  }
+
+  if (
+    packageName === "react-markdown" ||
+    packageName.startsWith("remark-") ||
+    packageName.startsWith("rehype-") ||
+    packageName.startsWith("micromark") ||
+    packageName === "unified" ||
+    packageName.includes("mdast") ||
+    packageName.includes("hast") ||
+    packageName.includes("unist") ||
+    packageName.startsWith("vfile")
+  ) {
+    return "vendor-markdown";
+  }
+
+  if (
+    packageName.startsWith("@tanstack/") ||
+    packageName.startsWith("react-router") ||
+    packageName === "axios" ||
+    packageName === "dayjs"
+  ) {
+    return "vendor-app";
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: chunkName,
+      },
+    },
+  },
   plugins: [
     react({
       babel: {

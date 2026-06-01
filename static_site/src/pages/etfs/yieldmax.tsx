@@ -30,6 +30,20 @@ const etfs: Record<
   },
 };
 
+interface CrawlerTextField {
+  text: string;
+}
+
+interface YieldMaxDistributionCrawlerResult {
+  children: {
+    share: CrawlerTextField;
+    declared_date: CrawlerTextField;
+    ex_date: CrawlerTextField;
+    payable_date: CrawlerTextField;
+    roc: CrawlerTextField;
+  };
+}
+
 export function YieldMaxEtfs() {
   const [activeTab, setActiveTab] = useState(Object.keys(etfs)[0]);
 
@@ -92,22 +106,26 @@ export function YieldMaxEtfs() {
         code: activeTab,
         description: etfs[activeTab].description,
         divided_info: etfs[activeTab].divided_info ?? undefined,
-        distributions: queryCrawler.data.data.distributions.map((d: any) => {
-          return {
-            per_share: parseFloat(d.children.share.text.replace("$", "")),
-            declared_date: dayjs(d.children.declared_date.text).format(
+        distributions: queryCrawler.data.data.distributions.map(
+          (distribution: YieldMaxDistributionCrawlerResult) => ({
+            per_share: parseFloat(
+              distribution.children.share.text.replace("$", ""),
+            ),
+            declared_date: dayjs(
+              distribution.children.declared_date.text,
+            ).format("YYYY-MM-DD"),
+            ex_date: dayjs(distribution.children.ex_date.text).format(
               "YYYY-MM-DD",
             ),
-            ex_date: dayjs(d.children.ex_date.text).format("YYYY-MM-DD"),
-            payable_date: dayjs(d.children.payable_date.text).format(
-              "YYYY-MM-DD",
-            ),
+            payable_date: dayjs(
+              distribution.children.payable_date.text,
+            ).format("YYYY-MM-DD"),
             roc:
-              d.children.roc.text.indexOf("nan") >= 0
+              distribution.children.roc.text.indexOf("nan") >= 0
                 ? -1
-                : parseFloat(d.children.roc.text.replace("%", "")),
-          };
-        }),
+                : parseFloat(distribution.children.roc.text.replace("%", "")),
+          }),
+        ),
       });
     }
   }, [queryCrawler.isPending, queryCrawler.isSuccess, queryCrawler.isError]);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Grid,
   Typography,
@@ -30,7 +30,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import WorkspacePremiumIcon from "@mui/icons-material/WorkspacePremium";
-import ReactApexChart from "react-apexcharts";
+import ApexCharts from "apexcharts/candlestick";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   useGetTwseEtfCodeList,
@@ -795,6 +795,7 @@ const EtfCandleChart = ({
   etfName: string;
 }) => {
   const theme = useTheme();
+  const chartRef = useRef<HTMLDivElement>(null);
   const [startDate] = useState(
     dayjs().subtract(1, "month").startOf("month").format("YYYY-MM-DD"),
   );
@@ -803,94 +804,125 @@ const EtfCandleChart = ({
   const query = useGetTwseEtfTicker(etfCode, startDate, endDate);
 
   // 將資料轉換為 ApexCharts 格式
-  const series = [
-    {
-      data: (query?.data?.data ?? []).map((item) => ({
-        x: dayjs(item.date).format("YYYY-MM-DD"),
-        y: [item.open, item.max, item.min, item.close],
-      })),
-    },
-  ];
+  const series = useMemo(
+    () => [
+      {
+        data: (query?.data?.data ?? []).map((item) => ({
+          x: dayjs(item.date).format("YYYY-MM-DD"),
+          y: [item.open, item.max, item.min, item.close],
+        })),
+      },
+    ],
+    [query?.data?.data],
+  );
 
-  const options: ApexCharts.ApexOptions = {
-    chart: {
-      type: "candlestick",
-      height: 350,
-      toolbar: {
-        show: true,
-        tools: {
-          download: true,
-          selection: true,
-          zoom: true,
-          zoomin: true,
-          zoomout: true,
-          pan: true,
-          reset: true,
+  const options: ApexCharts.ApexOptions = useMemo(
+    () => ({
+      chart: {
+        type: "candlestick",
+        height: 350,
+        toolbar: {
+          show: true,
+          tools: {
+            download: true,
+            selection: true,
+            zoom: true,
+            zoomin: true,
+            zoomout: true,
+            pan: true,
+            reset: true,
+          },
+        },
+        animations: { enabled: true },
+        fontFamily: theme.typography.fontFamily,
+        background: "transparent",
+      },
+      title: {
+        text: `${etfName} (${etfCode}) 股價走勢`,
+        align: "left",
+        style: {
+          fontSize: "18px",
+          fontWeight: 600,
+          color: theme.palette.text.primary,
         },
       },
-      animations: { enabled: true },
-      fontFamily: theme.typography.fontFamily,
-      background: "transparent",
-    },
-    title: {
-      text: `${etfName} (${etfCode}) 股價走勢`,
-      align: "left",
-      style: {
-        fontSize: "18px",
-        fontWeight: 600,
-        color: theme.palette.text.primary,
-      },
-    },
-    xaxis: {
-      type: "datetime",
-      labels: {
-        datetimeFormatter: {
-          year: "yyyy",
-          month: "MMM 'yy",
-          day: "dd MMM",
-          hour: "HH:mm",
+      xaxis: {
+        type: "datetime",
+        labels: {
+          datetimeFormatter: {
+            year: "yyyy",
+            month: "MMM 'yy",
+            day: "dd MMM",
+            hour: "HH:mm",
+          },
+          style: { colors: theme.palette.text.secondary },
         },
-        style: { colors: theme.palette.text.secondary },
+        tooltip: { enabled: false },
       },
-      tooltip: { enabled: false },
-    },
-    yaxis: {
-      tooltip: { enabled: true },
-      labels: {
-        formatter: (val) => val.toFixed(2),
-        style: { colors: theme.palette.text.secondary },
-      },
-      forceNiceScale: true,
-    },
-    tooltip: {
-      enabled: true,
-      theme: theme.palette.mode,
-      shared: true,
-      intersect: false,
-      x: {
-        format: "yyyy-MM-dd",
-      },
-      fixed: {
-        enabled: false,
-        position: "topRight",
-      },
-    },
-    plotOptions: {
-      candlestick: {
-        colors: {
-          upward: "#ef5350", // 台灣習慣：漲紅
-          downward: "#26a69a", // 台灣習慣：跌綠
+      yaxis: {
+        tooltip: { enabled: true },
+        labels: {
+          formatter: (val) => val.toFixed(2),
+          style: { colors: theme.palette.text.secondary },
         },
-        wick: {
-          useFillColor: true,
+        forceNiceScale: true,
+      },
+      tooltip: {
+        enabled: true,
+        theme: theme.palette.mode,
+        shared: true,
+        intersect: false,
+        x: {
+          format: "yyyy-MM-dd",
+        },
+        fixed: {
+          enabled: false,
+          position: "topRight",
         },
       },
-    },
-    grid: {
-      borderColor: theme.palette.divider,
-      strokeDashArray: 4,
-    },
-  };
+      plotOptions: {
+        candlestick: {
+          colors: {
+            upward: "#ef5350", // 台灣習慣：漲紅
+            downward: "#26a69a", // 台灣習慣：跌綠
+          },
+          wick: {
+            useFillColor: true,
+          },
+        },
+      },
+      grid: {
+        borderColor: theme.palette.divider,
+        strokeDashArray: 4,
+      },
+    }),
+    [
+      etfCode,
+      etfName,
+      theme.palette.divider,
+      theme.palette.mode,
+      theme.palette.text.primary,
+      theme.palette.text.secondary,
+      theme.typography.fontFamily,
+    ],
+  );
+
+  useEffect(() => {
+    if (!chartRef.current) {
+      return;
+    }
+
+    const chart = new ApexCharts(chartRef.current, {
+      ...options,
+      series,
+    });
+
+    chart.render();
+
+    return () => {
+      chart.destroy();
+    };
+  }, [options, series]);
 
   return (
     <Box
@@ -902,12 +934,7 @@ const EtfCandleChart = ({
         borderRadius: 2,
       }}
     >
-      <ReactApexChart
-        options={options}
-        series={series}
-        type="candlestick"
-        height={350}
-      />
+      <Box ref={chartRef} sx={{ minHeight: 350 }} />
     </Box>
   );
 };
