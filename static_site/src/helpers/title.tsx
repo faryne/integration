@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 const siteName = "ha2.tw / faryne.dev";
-const canonicalOrigin = "https://faryne.dev";
+const canonicalOrigin = "https://beta.faryne.dev";
 const defaultDescription =
   "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";
 const defaultImage = "/faryne-icon-1024.jpg";
