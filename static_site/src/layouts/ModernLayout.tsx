@@ -18,13 +18,15 @@ export const ModernLayout: FC<{ children?: ReactNode } & IModernLayout> = (
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
+        width: "100%",
+        m: 0,
       }}
     >
       <ModernHeader />
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
+          flex: "1 0 auto",
           py: 3,
         }}
       >

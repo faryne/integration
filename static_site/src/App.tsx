@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -69,7 +70,62 @@ const TwseEtf = lazy(() => import("@/pages/etfs/twse.tsx"));
 const Userscripts = lazy(() => import("@/pages/tools/userscripts.tsx"));
 
 function LoadingFallback() {
-  return <div className="route-loading">載入中</div>;
+  return (
+    <Box
+      role="status"
+      aria-live="polite"
+      sx={{
+        minHeight: "100vh",
+        display: "grid",
+        placeItems: "center",
+        px: 3,
+        background:
+          "linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #f6f7fb 100%)",
+      }}
+    >
+      <Stack
+        spacing={2}
+        alignItems="center"
+        sx={{
+          width: "min(100%, 360px)",
+          textAlign: "center",
+        }}
+      >
+        <Box
+          component="img"
+          src="/faryne-icon-1024.jpg"
+          alt="Faryne mascot"
+          sx={{
+            width: 112,
+            height: 112,
+            borderRadius: 4,
+            objectFit: "cover",
+            boxShadow: "0 16px 40px rgba(25, 118, 210, 0.18)",
+          }}
+        />
+
+        <CircularProgress size={28} thickness={4} color="primary" />
+
+        <Box>
+          <Typography
+            component="p"
+            variant="h6"
+            sx={{ fontWeight: 800, color: "text.primary" }}
+          >
+            女僕正在整理頁面
+          </Typography>
+          <Typography
+            component="p"
+            variant="body2"
+            color="text.secondary"
+            sx={{ mt: 0.5 }}
+          >
+            請稍等一下，馬上替主人把資料端上來。
+          </Typography>
+        </Box>
+      </Stack>
+    </Box>
+  );
 }
 
 function App() {

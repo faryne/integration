@@ -87,94 +87,102 @@ export function ModernHeader() {
   };
 
   return (
-    <AppBar
-      position="static"
-      color="default"
-      elevation={1}
-      sx={{
-        bgcolor: (theme) =>
-          theme.palette.mode === "light"
-            ? "#F7F0FA" // 極淡薰衣草紫，配合 logo 淡背景
-            : "#2C2538", // Dark mode 帶紫的深色
-      }}
-    >
-      <Container maxWidth="lg">
-        <Toolbar disableGutters>
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: { xs: "none", md: "flex" },
-              alignItems: "center",
-              gap: 1.25,
-              mr: 4,
-              textDecoration: "none",
-            }}
-          >
-            <FaryneLogo width={34} />
-            <Typography
-              variant="h6"
-              noWrap
+    <>
+      <AppBar
+        position="fixed"
+        color="default"
+        elevation={1}
+        sx={{
+          top: 0,
+          left: 0,
+          right: 0,
+          flexShrink: 0,
+          width: "100%",
+          bgcolor: (theme) =>
+            theme.palette.mode === "light"
+              ? "#F7F0FA" // 極淡薰衣草紫，配合 logo 淡背景
+              : "#2C2538", // Dark mode 帶紫的深色
+        }}
+      >
+        <Container maxWidth="lg">
+          <Toolbar disableGutters>
+            <Box
+              component={Link}
+              to="/"
               sx={{
-                fontWeight: 700,
-                color: "primary.main",
+                display: { xs: "none", md: "flex" },
+                alignItems: "center",
+                gap: 1.25,
+                mr: 4,
+                textDecoration: "none",
               }}
             >
-              Faryne.dev
-            </Typography>
-          </Box>
+              <FaryneLogo width={34} />
+              <Typography
+                variant="h6"
+                noWrap
+                sx={{
+                  fontWeight: 700,
+                  color: "primary.main",
+                }}
+              >
+                Faryne.dev
+              </Typography>
+            </Box>
 
-          {/* Mobile logo */}
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: { xs: "flex", md: "none" },
-              alignItems: "center",
-              mr: 2,
-              textDecoration: "none",
-            }}
-          >
-            <FaryneLogo width={26} />
-          </Box>
-
-          <Box
-            sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, gap: 1 }}
-          >
-            {headerNavigationItems.map((item) =>
-              isLayoutDropMenu(item) ? (
-                <Button
-                  key={item.title}
-                  onClick={(event) => handleMenuOpen(item, event)}
-                  endIcon={<KeyboardArrowDownIcon />}
-                  variant="outlined"
-                  aria-haspopup="menu"
-                  aria-expanded={openedMenu?.title === item.title}
-                  sx={{
-                    color: "text.primary",
-                    borderColor: "divider",
-                    bgcolor: "background.paper",
-                    "&:hover": {
-                      borderColor: "primary.main",
-                    },
-                  }}
-                >
-                  {item.title}
-                </Button>
-              ) : (
-                renderButton(item)
-              ),
-            )}
-            <Menu
-              anchorEl={anchorEl}
-              open={Boolean(openedMenu)}
-              onClose={handleClose}
+            {/* Mobile logo */}
+            <Box
+              component={Link}
+              to="/"
+              sx={{
+                display: { xs: "flex", md: "none" },
+                alignItems: "center",
+                mr: 2,
+                textDecoration: "none",
+              }}
             >
-              {openedMenu?.items.map(renderMenuItem)}
-            </Menu>
-          </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+              <FaryneLogo width={26} />
+            </Box>
+
+            <Box
+              sx={{ flexGrow: 1, display: { xs: "none", md: "flex" }, gap: 1 }}
+            >
+              {headerNavigationItems.map((item) =>
+                isLayoutDropMenu(item) ? (
+                  <Button
+                    key={item.title}
+                    onClick={(event) => handleMenuOpen(item, event)}
+                    endIcon={<KeyboardArrowDownIcon />}
+                    variant="outlined"
+                    aria-haspopup="menu"
+                    aria-expanded={openedMenu?.title === item.title}
+                    sx={{
+                      color: "text.primary",
+                      borderColor: "divider",
+                      bgcolor: "background.paper",
+                      "&:hover": {
+                        borderColor: "primary.main",
+                      },
+                    }}
+                  >
+                    {item.title}
+                  </Button>
+                ) : (
+                  renderButton(item)
+                ),
+              )}
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(openedMenu)}
+                onClose={handleClose}
+              >
+                {openedMenu?.items.map(renderMenuItem)}
+              </Menu>
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+      <Toolbar />
+    </>
   );
 }

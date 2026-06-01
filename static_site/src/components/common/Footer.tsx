@@ -1,5 +1,6 @@
 import { Box, Divider, Stack, Typography } from "@mui/material";
 import { FooterNavigation } from "./FooterNavigation";
+import { SocialLinks } from "./SocialLinks";
 
 export function Footer() {
   return (
@@ -12,7 +13,7 @@ export function Footer() {
         spacing={2}
         sx={{ py: 1.5 }}
       >
-        <Box sx={{ flexShrink: 0 }}>
+        <Stack spacing={0.75} sx={{ flexShrink: 0 }}>
           <Typography variant={"body2"} color="text.secondary">
             Powered By Faryne |{" "}
             <Typography
@@ -24,7 +25,8 @@ export function Footer() {
               faryne.dev
             </Typography>
           </Typography>
-        </Box>
+          <SocialLinks />
+        </Stack>
         <Box sx={{ flexGrow: 1, maxWidth: { md: 720 } }}>
           <FooterNavigation />
         </Box>
