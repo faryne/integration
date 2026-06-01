@@ -16,9 +16,26 @@ export function VideoSearch(props: IVideoSearch) {
   });
   useEffect(() => {
     if (props.conditions) {
-      setReq((o) => ({ ...o, ...props.conditions }));
+      setReq({ ...props.conditions, page: props.conditions.page ?? 1 });
     }
   }, [props.conditions]);
+
+  const handleSubmit = () => {
+    const next = { ...req };
+    next.keyword = next.keyword?.trim();
+
+    if (!next.keyword) {
+      delete next.keyword;
+    }
+    if (!next.start_date) {
+      delete next.start_date;
+    }
+    if (!next.end_date) {
+      delete next.end_date;
+    }
+
+    props.onClick(next);
+  };
 
   return (
     <>
@@ -27,9 +44,9 @@ export function VideoSearch(props: IVideoSearch) {
           label={"關鍵字"}
           variant={"outlined"}
           onChange={(e) => {
-            setReq((o) => ({ ...o, ...{ keyword: e.target.value } }));
+            setReq((o) => ({ ...o, keyword: e.target.value }));
           }}
-          value={req.keyword}
+          value={req.keyword ?? ""}
         />
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DatePicker
@@ -43,11 +60,9 @@ export function VideoSearch(props: IVideoSearch) {
                 }));
               } else {
                 setReq((o) => {
-                  const tmp = o;
-                  if (tmp.start_date) {
-                    delete tmp.start_date;
-                  }
-                  return { ...tmp };
+                  const next = { ...o };
+                  delete next.start_date;
+                  return next;
                 });
               }
             }}
@@ -63,18 +78,16 @@ export function VideoSearch(props: IVideoSearch) {
                 }));
               } else {
                 setReq((o) => {
-                  const tmp = o;
-                  if (tmp.end_date) {
-                    delete tmp.end_date;
-                  }
-                  return { ...tmp };
+                  const next = { ...o };
+                  delete next.end_date;
+                  return next;
                 });
               }
             }}
           />
         </LocalizationProvider>
 
-        <Button onClick={() => props.onClick(req)} variant={"contained"}>
+        <Button onClick={handleSubmit} variant={"contained"}>
           搜尋
         </Button>
       </Stack>

@@ -85,7 +85,7 @@ export function AVActress() {
     value ? `${label} ${value.join("~")}` : "";
 
   const handleSearch = (input: ActressSearchRequest) => {
-    setSearch((current) => ({ ...current, ...input, page: 1 }));
+    setSearch({ ...input, page: 1 });
   };
 
   return (
@@ -284,7 +284,11 @@ export function AVActress() {
                       <Box
                         component="button"
                         key={actress.name}
-                        onClick={() => navigate(`/av/actress/${actress.name}`)}
+                        onClick={() =>
+                          navigate(
+                            `/av/actress/${encodeURIComponent(actress.name)}`,
+                          )
+                        }
                         sx={{
                           appearance: "none",
                           bgcolor: "background.paper",

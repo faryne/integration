@@ -33,7 +33,10 @@ export function AVVideo() {
   const navigate = useNavigate();
   const [query] = useSearchParams();
   useEffect(() => {
-    setSearch((o) => ({ ...o, keyword: query.get("keyword") ?? "" }));
+    const keyword = query.get("keyword")?.trim();
+    if (keyword) {
+      setSearch({ page: 1, keyword });
+    }
   }, [query]);
 
   const videos = s.data?.data?.data ?? [];
@@ -51,7 +54,7 @@ export function AVVideo() {
   };
 
   const handleSearch = (input: VideoSearchRequest) => {
-    setSearch((current) => ({ ...current, ...input, page: 1 }));
+    setSearch({ ...input, page: 1 });
   };
 
   return (

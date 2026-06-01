@@ -46,7 +46,7 @@ export function ActressSearch(props: IActressSearch) {
 
   useEffect(() => {
     if (props.conditions) {
-      setReq((o) => ({ ...o, ...props.conditions }));
+      setReq({ ...props.conditions, page: props.conditions.page ?? 1 });
     }
   }, [props.conditions]);
 
@@ -211,12 +211,21 @@ export function ActressSearch(props: IActressSearch) {
 
   const handleSubmit = () => {
     const next = { ...req };
+    next.name = next.name?.trim();
+    next.cup = next.cup?.trim().toUpperCase();
+
     if (!next.name) {
       delete next.name;
     }
     if (!next.cup) {
       delete next.cup;
     }
+    (["height", "b", "w", "h"] as RangeKey[]).forEach((key) => {
+      const range = next[key];
+      if (!range || range.every((value) => value <= 0)) {
+        delete next[key];
+      }
+    });
     props.onClick(next);
   };
 
