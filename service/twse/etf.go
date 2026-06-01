@@ -262,30 +262,68 @@ func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
 		return out, err
 	}
 	for _, v := range r.Data {
-		exDate, exDateError := helper.ROCFullDateToAD(v[2].(string), time.DateOnly)
-		if exDateError != nil {
-			fmt.Printf("invalid exDate: %s, %s\n", v[2].(string), exDateError.Error())
+		share, ok := parseTWSEHistoryDivRow(code, v)
+		if !ok {
 			continue
 		}
-		payableDate, payableDateError := helper.ROCFullDateToAD(v[4].(string), time.DateOnly)
-		if payableDateError != nil {
-			fmt.Printf("invalid payableDate: %s, %s\n", v[4].(string), payableDateError.Error())
-			continue
-		}
-		distribution := float64(0)
-		if v[5] != nil {
-			d, _ := decimal.NewFromString(v[5].(string))
-			distribution = d.InexactFloat64()
-		}
-		out = append(out, etf.Share{
-			ExDate:      exDate,
-			PayableDate: payableDate,
-			Share:       distribution,
-			Code:        code,
-			FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
-		})
+		out = append(out, share)
 	}
 	return out, nil
+}
+
+func parseTWSEHistoryDivRow(code string, row []any) (etf.Share, bool) {
+	var out etf.Share
+	if len(row) <= 5 {
+		fmt.Printf("invalid TWSE ETF share row: insufficient fields, code: %s, row: %+v\n", code, row)
+		return out, false
+	}
+
+	exDateText, ok := twseRowString(row, 2)
+	if !ok {
+		fmt.Printf("invalid exDate: missing string, code: %s, row: %+v\n", code, row)
+		return out, false
+	}
+	exDate, exDateError := helper.ROCFullDateToAD(exDateText, time.DateOnly)
+	if exDateError != nil {
+		fmt.Printf("invalid exDate: %s, %s\n", exDateText, exDateError.Error())
+		return out, false
+	}
+
+	payableDateText, ok := twseRowString(row, 4)
+	if !ok {
+		fmt.Printf("invalid payableDate: missing string, code: %s, row: %+v\n", code, row)
+		return out, false
+	}
+	payableDate, payableDateError := helper.ROCFullDateToAD(payableDateText, time.DateOnly)
+	if payableDateError != nil {
+		fmt.Printf("invalid payableDate: %s, %s\n", payableDateText, payableDateError.Error())
+		return out, false
+	}
+
+	distribution := float64(0)
+	if distributionText, ok := twseRowString(row, 5); ok {
+		d, _ := decimal.NewFromString(distributionText)
+		distribution = d.InexactFloat64()
+	}
+
+	return etf.Share{
+		ExDate:      exDate,
+		PayableDate: payableDate,
+		Share:       distribution,
+		Code:        code,
+		FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
+	}, true
+}
+
+func twseRowString(row []any, index int) (string, bool) {
+	if index >= len(row) || row[index] == nil {
+		return "", false
+	}
+	value, ok := row[index].(string)
+	if !ok || value == "" {
+		return "", false
+	}
+	return value, true
 }
 
 // getOTCHistoryDivByCode 取得櫃買中心 ETF 股利資料
