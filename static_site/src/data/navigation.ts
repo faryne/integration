@@ -59,6 +59,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/tools/thread/capture",
       },
       {
+        title: "網站截圖工具",
+        href: "/tools/webshot",
+      },
+      {
         title: "Userscripts",
         href: "/tools/userscripts",
       },

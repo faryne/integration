@@ -68,6 +68,7 @@ const YieldMaxEtfs = lazy(() =>
 );
 const TwseEtf = lazy(() => import("@/pages/etfs/twse.tsx"));
 const Userscripts = lazy(() => import("@/pages/tools/userscripts.tsx"));
+const Webshot = lazy(() => import("@/pages/tools/webshot.tsx"));
 
 function LoadingFallback() {
   return (
@@ -169,6 +170,8 @@ function App() {
             <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
 
             <Route path={"/tools/thread/capture"} element={<CaptureThread />} />
+            <Route path={"/tools/webshot"} element={<Webshot />} />
+            <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
             <Route path={"/tools/userscripts"} element={<Userscripts />} />
 
             <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />

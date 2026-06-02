@@ -15,6 +15,7 @@ import (
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
 	"faryne.dev/service/twse"
+	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -35,12 +36,13 @@ var reload bool
 
 func main() {
 	app := fiber.New(fiber.Config{
-		ServerHeader:  "faryne.dev",
-		AppName:       "faryne.dev",
-		StrictRouting: true,
-		CaseSensitive: true,
-		UnescapePath:  true,
-		BodyLimit:     1024 * 1024 * 1024,
+		ServerHeader:    "faryne.dev",
+		AppName:         "faryne.dev",
+		StrictRouting:   true,
+		CaseSensitive:   true,
+		UnescapePath:    true,
+		BodyLimit:       1024 * 1024 * 1024,
+		StructValidator: validation.NewStructValidator(),
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			if reflect.ValueOf(err).MethodByName("HttpCode").IsValid() {
 				var v output.CommonOutputInterface

@@ -13,4 +13,8 @@ func Tools(app *fiber.App) {
 
 	g2 := g.Group("/threads")
 	g2.Post("/oembed_capture", tools.ThreadCapture)
+
+	g3 := g.Group("/webshot")
+	g3.Post("", tools.WebshotCreate)
+	g3.Get("/:hash", tools.WebshotGet)
 }

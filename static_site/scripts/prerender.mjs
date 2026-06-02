@@ -55,6 +55,11 @@ const routes = [
     description: "將 Threads 貼文轉成適合保存與分享的截圖。",
   },
   {
+    path: "/tools/webshot",
+    title: `網站截圖工具 | ${siteName}`,
+    description: "產生網站完整頁面截圖、縮圖與歷史紀錄連結，方便保存網頁狀態。",
+  },
+  {
     path: "/tools/userscripts",
     title: `Userscripts 列表 | ${siteName}`,
     description: "整理 Faryne 維護或使用中的 userscripts 工具列表。",

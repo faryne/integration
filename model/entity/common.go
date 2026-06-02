@@ -21,6 +21,29 @@ type CommonPaginationOutput[T any] struct {
 	Total        int64  `json:"total"`
 }
 
+type CommonPaginationQueryRequest struct {
+	Page    int64 `query:"page" validate:"omitempty,gte=1"`
+	PerPage int64 `query:"per_page" validate:"omitempty,gte=1,lte=100"`
+}
+
+func (r CommonPaginationQueryRequest) PageValue() int64 {
+	if r.Page <= 0 {
+		return 1
+	}
+	return r.Page
+}
+
+func (r CommonPaginationQueryRequest) PerPageValue(defaultValue ...int64) int64 {
+	def := int64(30)
+	if len(defaultValue) > 0 && defaultValue[0] > 0 {
+		def = defaultValue[0]
+	}
+	if r.PerPage <= 0 {
+		return def
+	}
+	return r.PerPage
+}
+
 // OnlyDateFormat 將日期 Marshal / Unmarshal 成 YYYY-mm-dd
 type OnlyDateFormat time.Time
 

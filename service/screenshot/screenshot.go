@@ -4,20 +4,37 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"faryne.dev/config"
-	"faryne.dev/service/chrome_helper"
+	"errors"
 	"fmt"
-	"github.com/chromedp/chromedp"
-	"github.com/disintegration/imaging"
-	"github.com/minio/sha256-simd"
-	"github.com/skip2/go-qrcode"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
+	"html"
 	"image"
 	"image/png"
-	"os"
+	"math"
+	"strings"
+	"sync"
 	"time"
+
+	"faryne.dev/config"
+	modelTools "faryne.dev/model/entity/tools"
+	"faryne.dev/repository"
+	toolsRepo "faryne.dev/repository/tools"
+	"faryne.dev/service/chrome_helper"
+	"faryne.dev/service/helper"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/chromedp/chromedp"
+	"github.com/disintegration/imaging"
+	"github.com/skip2/go-qrcode"
 )
+
+var ErrWebshotNotFound = errors.New("webshot not found")
+
+func IsWebshotNotFound(err error) bool {
+	return errors.Is(err, ErrWebshotNotFound)
+}
 
 type QRCodePosition int
 
@@ -28,16 +45,40 @@ const (
 	BottomRight
 )
 
-func Screenshot(uri string) {
+type WebshotHistoryResponse struct {
+	Id             int64     `json:"id"`
+	MainId         int64     `json:"main_id"`
+	FullImagePath  string    `json:"full_image_path"`
+	ThumbImagePath string    `json:"thumb_image_path"`
+	FullImageUrl   string    `json:"full_image_url"`
+	ThumbImageUrl  string    `json:"thumb_image_url"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type WebshotResponse struct {
+	Id                 int64                    `json:"id"`
+	Url                string                   `json:"url"`
+	UrlHash            string                   `json:"url_hash"`
+	History            []WebshotHistoryResponse `json:"history"`
+	HistoryCurrentPage int64                    `json:"history_current_page"`
+	HistoryLastPage    int64                    `json:"history_last_page"`
+	HistoryPerPage     int64                    `json:"history_per_page"`
+	HistoryTotal       int64                    `json:"history_total"`
+	CreatedAt          time.Time                `json:"created_at"`
+	UpdatedAt          time.Time                `json:"updated_at"`
+}
+
+func Screenshot(uri string) (*WebshotResponse, error) {
 	captureTime := time.Now().UTC() // 擷取時間，使用 UTC
-	sha256Key := string(sha256.New().Sum([]byte(uri)))
+	sha256Key := helper.SHA256Hex(uri)
 	historyUrl := config.EnvConfig().FrontendPath + fmt.Sprintf("/tools/webshot/%s", sha256Key)
 
 	// 產生 QR Code
 	qrCode, qrCodeError := qrcode.Encode(historyUrl, qrcode.Medium, 100)
 	if qrCodeError != nil {
-		return
+		return nil, qrCodeError
 	}
+	displayUri := strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "\n", " ", "\r", " ").Replace(html.EscapeString(uri))
 	injectJS := fmt.Sprintf(`
 		(function() {
 			var f = document.createElement("div");
@@ -59,7 +100,7 @@ func Screenshot(uri string) {
 
 			document.body.appendChild(f);
 		})();
-	`, uri, captureTime.Format(time.RFC3339), base64.StdEncoding.EncodeToString(qrCode))
+	`, displayUri, captureTime.Format(time.RFC3339), base64.StdEncoding.EncodeToString(qrCode))
 
 	// 先截圖
 	inst := chrome_helper.NewDefaultInstance()
@@ -91,46 +132,193 @@ func Screenshot(uri string) {
 	}
 	err := chromedp.Run(inst.Ctx, actions)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return nil, err
 	}
 
 	// 將 QR Code 與網頁截圖合成在一起
 	fullImg, _, err := image.Decode(bytes.NewReader(fullPageBytes))
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	// 寫入 buffer 準備傳上 s3
-	f1, _ := os.Create("a.png")
-	//var buf1 bytes.Buffer
-	if err := png.Encode(f1, fullImg); err != nil {
-		return
+	var fullBuf bytes.Buffer
+	if err := png.Encode(&fullBuf, fullImg); err != nil {
+		return nil, err
 	}
 
 	// 處理縮圖
-	//var buf2 bytes.Buffer
-	f2, _ := os.Create("a_thumb.png")
+	var thumbBuf bytes.Buffer
 	thumbImg := imaging.Resize(fullImg, 300, 0, imaging.Lanczos)
-	if err := png.Encode(f2, thumbImg); err != nil {
-		return
+	if err := png.Encode(&thumbBuf, thumbImg); err != nil {
+		return nil, err
 	}
 
-	// 將原圖和縮圖都丟到 s3 @TODO
+	fullPath, thumbPath := imageObjectKeys(sha256Key, captureTime)
+	if err := putImages(context.TODO(), map[string][]byte{
+		fullPath:  fullBuf.Bytes(),
+		thumbPath: thumbBuf.Bytes(),
+	}); err != nil {
+		return nil, err
+	}
 
 	// 寫回到資料庫
-}
-
-// 文字繪製輔助函式
-func drawText(d *font.Drawer, x, y int, label, content string) {
-	d.Dot = fixed.P(x, y)
-	d.DrawString(label + " " + content)
-}
-
-// 網址截斷輔助函式
-func truncateUrl(u string, limit int) string {
-	if len(u) > limit {
-		return u[:limit-3] + "..."
+	mainRepo := toolsRepo.NewWebshotMain()
+	main, err := mainRepo.FindOrCreate(uri, sha256Key)
+	if err != nil {
+		return nil, err
 	}
-	return u
+
+	historyRepo := toolsRepo.NewWebshotHistory()
+	history := modelTools.WebshotHistory{
+		MainId:         main.Id,
+		FullImagePath:  fullPath,
+		ThumbImagePath: thumbPath,
+		CreatedAt:      captureTime,
+	}
+	if err := historyRepo.CreateHistory(&history); err != nil {
+		return nil, err
+	}
+
+	return responseFrom(main, []modelTools.WebshotHistory{history}, 1, 10, 1), nil
+}
+
+func GetHistory(urlHash string, page int64, perPage int64) (*WebshotResponse, error) {
+	mainRepo := toolsRepo.NewWebshotMain()
+	main, err := mainRepo.GetByHash(urlHash)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return nil, ErrWebshotNotFound
+		}
+		return nil, err
+	}
+
+	historyRepo := toolsRepo.NewWebshotHistory()
+	rows, total, err := historyRepo.ListByMainId(main.Id, page, perPage)
+	if err != nil {
+		return nil, err
+	}
+	return responseFrom(main, rows, page, perPage, total), nil
+}
+
+func ListRecent() ([]WebshotResponse, error) {
+	mainRepo := toolsRepo.NewWebshotMain()
+	rows, err := mainRepo.ListRecent(30)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]WebshotResponse, 0, len(rows))
+	for _, row := range rows {
+		main := row
+		out = append(out, *responseFrom(&main, nil, 1, 10, 0))
+	}
+	return out, nil
+}
+
+func imageObjectKeys(urlHash string, captureTime time.Time) (string, string) {
+	datePath := captureTime.Format("20060102")
+	hashInput := fmt.Sprintf("%s:%s", urlHash, captureTime.Format(time.RFC3339Nano))
+	shortKey := helper.ShortSHA256Hex(hashInput, 20)
+
+	return fmt.Sprintf("tools/webshot/%s/%s.png", datePath, shortKey),
+		fmt.Sprintf("tools/webshot/%s/%s_thumb.png", datePath, shortKey)
+}
+
+func putImage(ctx context.Context, key string, body []byte) error {
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return err
+	}
+	return putImageWithClient(ctx, client, key, body)
+}
+
+func putImageWithClient(ctx context.Context, client *s3.Client, key string, body []byte) error {
+	_, err := client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(config.EnvConfig().S3Bucket),
+		Key:         aws.String(key),
+		Body:        bytes.NewReader(body),
+		ContentType: aws.String("image/png"),
+	})
+	return err
+}
+
+func putImages(ctx context.Context, images map[string][]byte) error {
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(images))
+
+	for key, body := range images {
+		wg.Add(1)
+		go func(key string, body []byte) {
+			defer wg.Done()
+			if err := putImageWithClient(ctx, client, key, body); err != nil {
+				errCh <- err
+			}
+		}(key, body)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		return err
+	}
+	return nil
+}
+
+func initS3Client(ctx context.Context) (*s3.Client, error) {
+	staticProvider := credentials.NewStaticCredentialsProvider(config.EnvConfig().S3AccessKey, config.EnvConfig().S3SecretKey, "")
+	cfg, err := awsconfig.LoadDefaultConfig(ctx,
+		awsconfig.WithRegion(config.EnvConfig().S3Region),
+		awsconfig.WithCredentialsProvider(staticProvider),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("無法載入 AWS 設定: %v", err)
+	}
+	return s3.NewFromConfig(cfg), nil
+}
+
+func responseFrom(main *modelTools.WebshotMain, rows []modelTools.WebshotHistory, page int64, perPage int64, total int64) *WebshotResponse {
+	history := make([]WebshotHistoryResponse, 0, len(rows))
+	for _, row := range rows {
+		history = append(history, WebshotHistoryResponse{
+			Id:             row.Id,
+			MainId:         row.MainId,
+			FullImagePath:  row.FullImagePath,
+			ThumbImagePath: row.ThumbImagePath,
+			FullImageUrl:   publicAssetUrl(row.FullImagePath),
+			ThumbImageUrl:  publicAssetUrl(row.ThumbImagePath),
+			CreatedAt:      row.CreatedAt,
+		})
+	}
+	lastPage := int64(math.Ceil(float64(total) / float64(perPage)))
+	if lastPage <= 0 {
+		lastPage = 1
+	}
+
+	return &WebshotResponse{
+		Id:                 main.Id,
+		Url:                main.Url,
+		UrlHash:            main.UrlHash,
+		History:            history,
+		HistoryCurrentPage: page,
+		HistoryLastPage:    lastPage,
+		HistoryPerPage:     perPage,
+		HistoryTotal:       total,
+		CreatedAt:          main.CreatedAt,
+		UpdatedAt:          main.UpdatedAt,
+	}
+}
+
+func publicAssetUrl(key string) string {
+	cdnUrl := strings.TrimRight(config.EnvConfig().CDNUrl, "/")
+	if cdnUrl == "" {
+		return key
+	}
+	return cdnUrl + "/" + strings.TrimLeft(key, "/")
 }
