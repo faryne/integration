@@ -176,6 +176,7 @@ function App() {
 
             <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
             <Route path={"/data/etf/twse"} element={<TwseEtf />} />
+            <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
 
             <Route path="/a" element={<h1>Hello</h1>} />
 

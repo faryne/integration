@@ -33,9 +33,9 @@ export function useGetTwseEtfInfo(code: string) {
     enabled: !!code,
   });
 }
-export function useGetTwseEtfExInfo(date: string) {
+export function useGetTwseEtfExInfo(date: string, enabled = true) {
   return useQuery({
-    queryKey: ["opendata/twse/etf_info", date],
+    queryKey: ["opendata/twse/etf_ex_info", date],
     queryFn: async () => {
       const response = await axios.get<CommonResponse<TwseEtfShare[]>>(
         `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/upcoming/by_date`,
@@ -47,7 +47,7 @@ export function useGetTwseEtfExInfo(date: string) {
       );
       return response.data;
     },
-    enabled: !!date,
+    enabled: enabled && !!date,
   });
 }
 
@@ -55,6 +55,7 @@ export function useGetTwseEtfTicker(
   code: string,
   start_date: string,
   end_date: string,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["opendata/twse/etf_ticker", code, start_date, end_date],
@@ -70,6 +71,6 @@ export function useGetTwseEtfTicker(
       );
       return response.data;
     },
-    enabled: !!code && !!start_date && !!end_date,
+    enabled: enabled && !!code && !!start_date && !!end_date,
   });
 }
