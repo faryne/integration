@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"image"
+	"image/draw"
 	"image/png"
 	"math"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/disintegration/imaging"
 	"github.com/skip2/go-qrcode"
@@ -59,6 +61,13 @@ type WebshotResponse struct {
 	HistoryPerPage     int64                    `json:"history_per_page"`
 	HistoryTotal       int64                    `json:"history_total"`
 }
+
+const (
+	webshotViewportWidth     int64 = 1440
+	webshotViewportHeight    int64 = 900
+	webshotScrollStep        int64 = 800
+	webshotSingleCaptureMaxH int64 = 16000
+)
 
 func Screenshot(uri string) (*WebshotResponse, error) {
 	startTime := time.Now()
@@ -96,29 +105,23 @@ func Screenshot(uri string) (*WebshotResponse, error) {
 	`, displayUri, captureTime.Format(time.RFC3339), base64.StdEncoding.EncodeToString(qrCode))
 
 	// 先截圖
-	inst := chrome_helper.NewDefaultInstance()
+	inst := chrome_helper.NewDefaultInstanceWithTimeout(120 * time.Second)
 	var fullPageBytes []byte
 	actions := chromedp.Tasks{
-		chromedp.EmulateViewport(1440, 900),
+		chromedp.EmulateViewport(webshotViewportWidth, webshotViewportHeight),
 		chromedp.Navigate(uri),
 		chromedp.Poll(`document.readyState === "complete"`, nil),
-		chromedp.Sleep(3 * time.Second),
+		chromedp.Sleep(2 * time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			// 先捲動到最下面
-			err := chromedp.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`, nil).Do(ctx)
-			if err != nil {
+			if err := preloadPageForScreenshot(ctx); err != nil {
 				return err
 			}
-			// 等 1 秒讓圖片載入
-			time.Sleep(1 * time.Second)
-			err1 := chromedp.Evaluate(injectJS, nil).Do(ctx)
-			if err1 != nil {
-				return err1
+			if err := chromedp.Evaluate(injectJS, nil).Do(ctx); err != nil {
+				return err
 			}
-			// 捲動回最上面，準備截圖
-			return chromedp.Evaluate(`window.scrollTo(0, 0)`, nil).Do(ctx)
+			time.Sleep(500 * time.Millisecond)
+			return captureFullPage(ctx, &fullPageBytes)
 		}),
-		chromedp.FullScreenshot(&fullPageBytes, 100),
 	}
 	for _, c := range inst.Cancels {
 		defer c()
@@ -179,6 +182,125 @@ func Screenshot(uri string) (*WebshotResponse, error) {
 	}
 
 	return responseFrom(main, []modelTools.WebshotHistory{history}, 1, 10, 1), nil
+}
+
+type pageCaptureSize struct {
+	Width  int64 `json:"width"`
+	Height int64 `json:"height"`
+}
+
+func measurePageCaptureSize(ctx context.Context) (pageCaptureSize, error) {
+	var size pageCaptureSize
+	err := chromedp.Evaluate(fmt.Sprintf(`(() => {
+		const de = document.documentElement;
+		const body = document.body || de;
+		return {
+			width: Math.ceil(Math.max(%d, de.clientWidth, body.clientWidth || 0)),
+			height: Math.ceil(Math.max(%d, de.clientHeight, de.scrollHeight, body.clientHeight || 0, body.scrollHeight || 0, body.offsetHeight || 0))
+		};
+	})()`, webshotViewportWidth, webshotViewportHeight), &size).Do(ctx)
+	if err != nil {
+		return size, err
+	}
+	if size.Width <= 0 {
+		size.Width = webshotViewportWidth
+	}
+	if size.Height <= 0 {
+		size.Height = webshotViewportHeight
+	}
+	return size, nil
+}
+
+func preloadPageForScreenshot(ctx context.Context) error {
+	lastHeight := int64(0)
+	for pass := 0; pass < 3; pass++ {
+		size, err := measurePageCaptureSize(ctx)
+		if err != nil {
+			return err
+		}
+
+		for y := int64(0); y < size.Height; y += webshotScrollStep {
+			if err := scrollTo(ctx, y); err != nil {
+				return err
+			}
+			time.Sleep(80 * time.Millisecond)
+		}
+		if err := scrollTo(ctx, size.Height); err != nil {
+			return err
+		}
+		time.Sleep(300 * time.Millisecond)
+
+		if size.Height == lastHeight {
+			break
+		}
+		lastHeight = size.Height
+	}
+	return scrollTo(ctx, 0)
+}
+
+func scrollTo(ctx context.Context, y int64) error {
+	return chromedp.Evaluate(fmt.Sprintf(`window.scrollTo(0, %d)`, y), nil).Do(ctx)
+}
+
+func captureFullPage(ctx context.Context, out *[]byte) error {
+	size, err := measurePageCaptureSize(ctx)
+	if err != nil {
+		return err
+	}
+
+	if size.Height <= webshotSingleCaptureMaxH {
+		buf, err := capturePageClip(ctx, 0, float64(size.Width), float64(size.Height))
+		if err != nil {
+			return err
+		}
+		*out = buf
+		return nil
+	}
+
+	return captureFullPageByChunks(ctx, size, out)
+}
+
+func capturePageClip(ctx context.Context, y float64, width float64, height float64) ([]byte, error) {
+	return page.CaptureScreenshot().
+		WithFormat(page.CaptureScreenshotFormatPng).
+		WithCaptureBeyondViewport(true).
+		WithFromSurface(true).
+		WithClip(&page.Viewport{
+			X:      0,
+			Y:      y,
+			Width:  width,
+			Height: height,
+			Scale:  1,
+		}).
+		Do(ctx)
+}
+
+func captureFullPageByChunks(ctx context.Context, size pageCaptureSize, out *[]byte) error {
+	canvas := image.NewRGBA(image.Rect(0, 0, int(size.Width), int(size.Height)))
+
+	for y := int64(0); y < size.Height; y += webshotSingleCaptureMaxH {
+		chunkHeight := webshotSingleCaptureMaxH
+		if remain := size.Height - y; remain < chunkHeight {
+			chunkHeight = remain
+		}
+
+		buf, err := capturePageClip(ctx, float64(y), float64(size.Width), float64(chunkHeight))
+		if err != nil {
+			return err
+		}
+		chunkImg, _, err := image.Decode(bytes.NewReader(buf))
+		if err != nil {
+			return err
+		}
+		draw.Draw(canvas, image.Rect(0, int(y), int(y)+chunkImg.Bounds().Dx(), int(y)+chunkImg.Bounds().Dy()), chunkImg, chunkImg.Bounds().Min, draw.Src)
+	}
+
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, canvas); err != nil {
+		return err
+	}
+	*out = buf.Bytes()
+	return nil
 }
 
 func GetHistory(urlHash string, page int64, perPage int64) (*WebshotResponse, error) {

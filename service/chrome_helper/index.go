@@ -2,9 +2,11 @@ package chrome_helper
 
 import (
 	"context"
-	"faryne.dev/config"
-	"github.com/chromedp/chromedp"
 	"time"
+
+	"faryne.dev/config"
+
+	"github.com/chromedp/chromedp"
 )
 
 type ChromeHelperInstance struct {
@@ -13,6 +15,10 @@ type ChromeHelperInstance struct {
 }
 
 func New(opts ...chromedp.ExecAllocatorOption) *ChromeHelperInstance {
+	return NewWithTimeout(60*time.Second, opts...)
+}
+
+func NewWithTimeout(timeout time.Duration, opts ...chromedp.ExecAllocatorOption) *ChromeHelperInstance {
 	if len(opts) > 0 {
 		opts = append(chromedp.DefaultExecAllocatorOptions[:], opts...)
 	} else {
@@ -23,7 +29,7 @@ func New(opts ...chromedp.ExecAllocatorOption) *ChromeHelperInstance {
 
 	ctx, cancel2 := chromedp.NewContext(allocCtx)
 
-	ctx, cancel3 := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel3 := context.WithTimeout(ctx, timeout)
 
 	return &ChromeHelperInstance{
 		Ctx:     ctx,
@@ -32,7 +38,12 @@ func New(opts ...chromedp.ExecAllocatorOption) *ChromeHelperInstance {
 }
 
 func NewDefaultInstance() *ChromeHelperInstance {
-	return New(
+	return NewDefaultInstanceWithTimeout(60 * time.Second)
+}
+
+func NewDefaultInstanceWithTimeout(timeout time.Duration) *ChromeHelperInstance {
+	return NewWithTimeout(
+		timeout,
 		chromedp.NoSandbox,
 		chromedp.Headless,
 		chromedp.DisableGPU,
