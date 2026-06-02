@@ -48,6 +48,28 @@ function formatTime(input?: string) {
   }).format(new Date(input));
 }
 
+function formatDuration(ms?: number) {
+	if (!ms || ms <= 0) {
+		return "耗時：-";
+	}
+	return `耗時：${(ms / 1000).toFixed(2)} 秒`;
+}
+
+function formatDurationValue(ms?: number) {
+  if (!ms || ms <= 0) {
+    return "-";
+  }
+  return `${(ms / 1000).toFixed(2)} 秒`;
+}
+
+function totalDurationMs(item: { screenshot_duration_ms?: number; upload_duration_ms?: number }) {
+  return (item.screenshot_duration_ms ?? 0) + (item.upload_duration_ms ?? 0);
+}
+
+function durationBreakdownTitle(item: { screenshot_duration_ms?: number; upload_duration_ms?: number }) {
+  return `截圖：${formatDurationValue(item.screenshot_duration_ms)} / 上傳：${formatDurationValue(item.upload_duration_ms)}`;
+}
+
 function isNotFoundError(error: unknown) {
   return axios.isAxiosError(error) && error.response?.status === 404;
 }
@@ -111,6 +133,13 @@ function WebshotRows({
               <Stack spacing={1} sx={{ minWidth: 0, flex: 1 }}>
                 <Typography variant="subtitle2" color="text.secondary">
                   {formatTime(item.created_at)}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  title={durationBreakdownTitle(item)}
+                >
+                  {formatDuration(totalDurationMs(item))}
                 </Typography>
                 <Typography noWrap title={fullImageUrl}>
                   {fullImageUrl}

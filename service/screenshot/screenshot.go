@@ -46,29 +46,22 @@ const (
 )
 
 type WebshotHistoryResponse struct {
-	Id             int64     `json:"id"`
-	MainId         int64     `json:"main_id"`
-	FullImagePath  string    `json:"full_image_path"`
-	ThumbImagePath string    `json:"thumb_image_path"`
-	FullImageUrl   string    `json:"full_image_url"`
-	ThumbImageUrl  string    `json:"thumb_image_url"`
-	CreatedAt      time.Time `json:"created_at"`
+	modelTools.WebshotHistory
+	FullImageUrl  string `json:"full_image_url"`
+	ThumbImageUrl string `json:"thumb_image_url"`
 }
 
 type WebshotResponse struct {
-	Id                 int64                    `json:"id"`
-	Url                string                   `json:"url"`
-	UrlHash            string                   `json:"url_hash"`
+	modelTools.WebshotMain
 	History            []WebshotHistoryResponse `json:"history"`
 	HistoryCurrentPage int64                    `json:"history_current_page"`
 	HistoryLastPage    int64                    `json:"history_last_page"`
 	HistoryPerPage     int64                    `json:"history_per_page"`
 	HistoryTotal       int64                    `json:"history_total"`
-	CreatedAt          time.Time                `json:"created_at"`
-	UpdatedAt          time.Time                `json:"updated_at"`
 }
 
 func Screenshot(uri string) (*WebshotResponse, error) {
+	startTime := time.Now()
 	captureTime := time.Now().UTC() // 擷取時間，使用 UTC
 	sha256Key := helper.SHA256Hex(uri)
 	historyUrl := config.EnvConfig().FrontendPath + fmt.Sprintf("/tools/webshot/%s", sha256Key)
@@ -155,12 +148,15 @@ func Screenshot(uri string) (*WebshotResponse, error) {
 	}
 
 	fullPath, thumbPath := imageObjectKeys(sha256Key, captureTime)
+	screenshotDurationMs := time.Since(startTime).Milliseconds()
+	uploadStartTime := time.Now()
 	if err := putImages(context.TODO(), map[string][]byte{
 		fullPath:  fullBuf.Bytes(),
 		thumbPath: thumbBuf.Bytes(),
 	}); err != nil {
 		return nil, err
 	}
+	uploadDurationMs := time.Since(uploadStartTime).Milliseconds()
 
 	// 寫回到資料庫
 	mainRepo := toolsRepo.NewWebshotMain()
@@ -171,10 +167,12 @@ func Screenshot(uri string) (*WebshotResponse, error) {
 
 	historyRepo := toolsRepo.NewWebshotHistory()
 	history := modelTools.WebshotHistory{
-		MainId:         main.Id,
-		FullImagePath:  fullPath,
-		ThumbImagePath: thumbPath,
-		CreatedAt:      captureTime,
+		MainId:               main.Id,
+		FullImagePath:        fullPath,
+		ThumbImagePath:       thumbPath,
+		ScreenshotDurationMs: screenshotDurationMs,
+		UploadDurationMs:     uploadDurationMs,
+		CreatedAt:            captureTime,
 	}
 	if err := historyRepo.CreateHistory(&history); err != nil {
 		return nil, err
@@ -287,13 +285,9 @@ func responseFrom(main *modelTools.WebshotMain, rows []modelTools.WebshotHistory
 	history := make([]WebshotHistoryResponse, 0, len(rows))
 	for _, row := range rows {
 		history = append(history, WebshotHistoryResponse{
-			Id:             row.Id,
-			MainId:         row.MainId,
-			FullImagePath:  row.FullImagePath,
-			ThumbImagePath: row.ThumbImagePath,
+			WebshotHistory: row,
 			FullImageUrl:   publicAssetUrl(row.FullImagePath),
 			ThumbImageUrl:  publicAssetUrl(row.ThumbImagePath),
-			CreatedAt:      row.CreatedAt,
 		})
 	}
 	lastPage := int64(math.Ceil(float64(total) / float64(perPage)))
@@ -302,16 +296,12 @@ func responseFrom(main *modelTools.WebshotMain, rows []modelTools.WebshotHistory
 	}
 
 	return &WebshotResponse{
-		Id:                 main.Id,
-		Url:                main.Url,
-		UrlHash:            main.UrlHash,
+		WebshotMain:        *main,
 		History:            history,
 		HistoryCurrentPage: page,
 		HistoryLastPage:    lastPage,
 		HistoryPerPage:     perPage,
 		HistoryTotal:       total,
-		CreatedAt:          main.CreatedAt,
-		UpdatedAt:          main.UpdatedAt,
 	}
 }
 

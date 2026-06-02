@@ -3,6 +3,8 @@ export interface WebshotHistory {
   main_id: number;
   full_image_path: string;
   thumb_image_path: string;
+  screenshot_duration_ms: number;
+  upload_duration_ms: number;
   full_image_url: string;
   thumb_image_url: string;
   created_at: string;
