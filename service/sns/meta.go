@@ -25,6 +25,7 @@ type pathMeta struct {
 	Pattern     *regexp.Regexp
 	Title       string
 	Description string
+	Image       string
 	Prefix      bool
 	Apply       func(meta *modelSNS.Meta, matches []string)
 }
@@ -64,8 +65,9 @@ func RenderHTML(req modelSNS.RenderRequest) (string, error) {
 func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	frontendOrigin := frontendOrigin()
 	frontendPath := normalizeFrontendPath(req.Path)
-	canonical := withQuery(absoluteURL(frontendOrigin, frontendPath), req.Query)
-	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+frontendPath), req.Query)
+	cleanQuery := stripTrackingQuery(req.Query)
+	canonical := withQuery(absoluteURL(frontendOrigin, frontendPath), cleanQuery)
+	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+frontendPath), cleanQuery)
 
 	meta := modelSNS.Meta{
 		Title:        siteName,
@@ -81,6 +83,9 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	if matched, matches, ok := matchPathMeta(frontendPath); ok {
 		meta.Title = fullTitle(matched.Title)
 		meta.Description = matched.Description
+		if matched.Image != "" {
+			meta.Image = absoluteURL(frontendOrigin, matched.Image)
+		}
 		if matched.Apply != nil {
 			matched.Apply(&meta, matches)
 		}
@@ -168,6 +173,10 @@ func normalizeFrontendPath(value string) string {
 }
 
 func absoluteURL(origin string, targetPath string) string {
+	if parsed, err := url.Parse(targetPath); err == nil && parsed.IsAbs() {
+		return parsed.String()
+	}
+
 	base, err := url.Parse(origin)
 	if err != nil {
 		return defaultFrontendURL + targetPath
@@ -187,6 +196,79 @@ func withQuery(target string, query string) string {
 	}
 	parsed.RawQuery = query
 	return parsed.String()
+}
+
+func stripTrackingQuery(query string) string {
+	query = strings.TrimPrefix(strings.TrimSpace(query), "?")
+	if query == "" {
+		return ""
+	}
+
+	values, err := url.ParseQuery(query)
+	if err != nil {
+		return query
+	}
+
+	for key := range values {
+		normalizedKey := strings.ToLower(key)
+		if isTrackingQueryKey(normalizedKey) {
+			delete(values, key)
+		}
+	}
+
+	return values.Encode()
+}
+
+func isTrackingQueryKey(key string) bool {
+	if strings.HasPrefix(key, "utm_") {
+		return true
+	}
+
+	switch key {
+	case "fbclid",
+		"fbc_id",
+		"fb_action_ids",
+		"fb_action_types",
+		"fb_source",
+		"igshid",
+		"twclid",
+		"li_fat_id",
+		"trk",
+		"trkemail",
+		"lipi",
+		"ttclid",
+		"gclid",
+		"dclid",
+		"gbraid",
+		"wbraid",
+		"msclkid",
+		"yclid",
+		"mc_cid",
+		"mc_eid",
+		"vero_id",
+		"_hsenc",
+		"_hsmi",
+		"mkt_tok",
+		"scid",
+		"si",
+		"spm",
+		"ref_src",
+		"ref_url",
+		"share_id",
+		"sharecid",
+		"feature",
+		"app",
+		"entry_point",
+		"source",
+		"campaign_id",
+		"ad_id",
+		"adgroup_id",
+		"creative_id",
+		"gad_source":
+		return true
+	default:
+		return false
+	}
 }
 
 var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>

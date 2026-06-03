@@ -24,6 +24,58 @@ func TestBuildMetaStaticRoute(t *testing.T) {
 	}
 }
 
+func TestBuildMetaStripsTrackingQuery(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{
+		Path:  "data/etf/twse/0050",
+		Query: "category=BOND&strategy=high-win-rate&fbclid=abc&utm_source=facebook&fbc_id=def&twclid=x&li_fat_id=y&ttclid=z&msclkid=m",
+	})
+
+	expectedCanonical := "https://beta.faryne.dev/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
+	expectedOpenGraphURL := "https://beta.faryne.dev/sns/data/etf/twse/0050?category=BOND&strategy=high-win-rate"
+
+	if meta.Canonical != expectedCanonical {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != expectedOpenGraphURL {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+	if meta.RedirectURL != expectedCanonical {
+		t.Fatalf("unexpected redirect URL: %s", meta.RedirectURL)
+	}
+}
+
+func TestStripTrackingQueryKeepsUnknownBusinessParams(t *testing.T) {
+	cleanQuery := stripTrackingQuery("ref=business&source=facebook&share_id=abc&code=0050")
+
+	if cleanQuery != "code=0050&ref=business" {
+		t.Fatalf("unexpected clean query: %s", cleanQuery)
+	}
+}
+
+func TestBuildMetaRouteCanOverrideImage(t *testing.T) {
+	originalCollection := pathCollection
+	pathCollection = []pathMeta{
+		{Path: "/custom-image", Title: "Custom Image", Description: "Custom image route.", Image: "/custom-og.jpg"},
+	}
+	defer func() {
+		pathCollection = originalCollection
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "custom-image"})
+
+	if meta.Image != "https://beta.faryne.dev/custom-og.jpg" {
+		t.Fatalf("unexpected image: %s", meta.Image)
+	}
+}
+
+func TestAbsoluteURLKeepsAbsoluteImageURL(t *testing.T) {
+	got := absoluteURL("https://beta.faryne.dev", "https://cdn.example.com/og.jpg")
+
+	if got != "https://cdn.example.com/og.jpg" {
+		t.Fatalf("unexpected absolute URL: %s", got)
+	}
+}
+
 func TestBuildMetaRejectsAbsolutePath(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "https://evil.example/path"})
 
