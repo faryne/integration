@@ -87,6 +87,11 @@ const dateTabs = [
   { label: "兩星期後", offsetDays: 14 },
 ];
 
+function buildSnsShareUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${window.location.origin}/sns${normalizedPath}`;
+}
+
 type EtfCategory =
   | "ALL"
   | "LEVERAGED_POS"
@@ -656,8 +661,12 @@ const EtfDashboard: React.FC = () => {
     navigate(`/data/etf/twse${querySuffix}`);
   };
 
-  const handleShare = useCallback(async (url = window.location.href) => {
-    const result = await shareUrl({ url });
+  const handleShare = useCallback(async (
+    frontendPath = window.location.pathname + window.location.search,
+  ) => {
+    const result = await shareUrl({
+      url: buildSnsShareUrl(frontendPath),
+    });
 
     if (result === "copied") {
       setShareNotice("連結已複製");
@@ -1041,11 +1050,7 @@ const EtfDashboard: React.FC = () => {
             <Button
               size="small"
               startIcon={<ShareIcon />}
-              onClick={() =>
-                handleShare(
-                  `${window.location.origin}/data/etf/twse${querySuffix}`,
-                )
-              }
+              onClick={() => handleShare(`/data/etf/twse${querySuffix}`)}
               sx={{ fontWeight: 800 }}
             >
               分享
@@ -1111,9 +1116,7 @@ const EtfDashboard: React.FC = () => {
             title={selectedEtf.name}
             onClose={handleClose}
             onShare={() =>
-              handleShare(
-                `${window.location.origin}/data/etf/twse/${selectedEtf.code}${querySuffix}`,
-              )
+              handleShare(`/data/etf/twse/${selectedEtf.code}${querySuffix}`)
             }
             shareLabel="分享 ETF 連結"
           >

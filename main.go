@@ -148,6 +148,7 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)
 	route.Tools(app)
+	route.SNS(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	app.Get("/*", swagger.HandlerDefault)
 	// </editor-fold>

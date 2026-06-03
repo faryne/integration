@@ -1,0 +1,70 @@
+package sns
+
+import (
+	"strings"
+	"testing"
+
+	modelSNS "faryne.dev/model/entity/sns"
+)
+
+func TestBuildMetaStaticRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/rates", Query: "base=TWD"})
+
+	if !strings.Contains(meta.Title, "匯率") {
+		t.Fatalf("expected rates title, got %q", meta.Title)
+	}
+	if meta.Canonical != "https://beta.faryne.dev/data/rates?base=TWD" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/data/rates?base=TWD" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+	if meta.RedirectURL != meta.Canonical {
+		t.Fatalf("redirect URL should match canonical")
+	}
+}
+
+func TestBuildMetaRejectsAbsolutePath(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "https://evil.example/path"})
+
+	if meta.Canonical != "https://beta.faryne.dev/" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+}
+
+func TestBuildMetaDynamicETFRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/etf/twse/0050"})
+
+	if !strings.Contains(meta.Title, "0050") {
+		t.Fatalf("expected ETF code in title, got %q", meta.Title)
+	}
+	if !strings.Contains(meta.Description, "0050") {
+		t.Fatalf("expected ETF code in description, got %q", meta.Description)
+	}
+}
+
+func TestRenderHTMLEscapesContent(t *testing.T) {
+	html, err := RenderHTML(modelSNS.RenderRequest{Path: "data/tw-stats/<script>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(html, "<script>alert") {
+		t.Fatalf("html should escape path-derived content")
+	}
+	if !strings.Contains(html, "og:title") {
+		t.Fatalf("html should include social meta tags")
+	}
+}
+
+func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
+	html, err := RenderHTML(modelSNS.RenderRequest{Path: "data/etf/twse/00961"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `location.replace("https://beta.faryne.dev/data/etf/twse/00961")`) {
+		t.Fatalf("redirect script should use the canonical URL as a JS string, got: %s", html)
+	}
+	if strings.Contains(html, "%22https://") || strings.Contains(html, "&#34;https://") {
+		t.Fatalf("redirect script must not encode quotes into the URL")
+	}
+}

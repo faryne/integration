@@ -48,6 +48,13 @@
         ]
       }
     ],
+    "redirects": [
+      {
+        "source": "/sns/:path*",
+        "destination": "https://faryne.dev/api-integration/sns/:path",
+        "type": 302
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
