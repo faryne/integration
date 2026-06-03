@@ -56,7 +56,12 @@ func (inst *RepositoryETFCode) getCodeCommonSql() string {
 		"	c.total_ex_count, " +
 		" 	c.success_fill_count, " +
 		" 	c.win_rate, " +
-		" 	c.avg_fill_days " +
+		" 	c.avg_fill_days, " +
+		" 	c.range_position, " +
+		" 	c.latest_close, " +
+		" 	c.ma5, " +
+		" 	c.ma20, " +
+		" 	c.ma20_bias_rate " +
 		"FROM " + (&etf.ETF{}).TableName() + " as c " +
 		"LEFT JOIN (SELECT MAX(`ex_date`) as ex_date, `code`, MAX(`share`) as `share`, MAX(`payable_date`) as payable_date FROM " + (&etf.Share{}).TableName() + " WHERE `share` > 0 GROUP BY `code`) tmp ON tmp.code = c.code"
 }
@@ -102,5 +107,15 @@ func (inst *RepositoryETFCode) UpdateETFWinRate(input etf.ETF) error {
 		"total_ex_count":     input.TotalExCount,
 		"win_rate":           input.WinRate,
 		"avg_fill_days":      input.AvgFillDays,
+	}).Error
+}
+
+func (inst *RepositoryETFCode) UpdateETFTechnicalIndicators(input etf.ETF) error {
+	return inst.GetDB().Table((&etf.ETF{}).TableName()).Where("code = ?", input.Code).Updates(map[string]interface{}{
+		"range_position": input.RangePosition,
+		"latest_close":   input.LatestClose,
+		"ma5":            input.MA5,
+		"ma20":           input.MA20,
+		"ma20_bias_rate": input.MA20BiasRate,
 	}).Error
 }

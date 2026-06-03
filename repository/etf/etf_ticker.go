@@ -23,10 +23,26 @@ func NewETFTicker() *RepositoryETFTicker {
 
 func (inst *RepositoryETFTicker) UpdateETFTickerBatch(etfs []etf.Ticker) error {
 	res := inst.GetDB().Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "code"}, {Name: "ticker_date"}},
-		DoUpdates: clause.AssignmentColumns([]string{"open", "close", "min", "max", "updated_at"}),
+		Columns: []clause.Column{{Name: "code"}, {Name: "ticker_date"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"open", "close", "min", "max", "volume", "trading_money", "trading_turnover", "updated_at",
+		}),
 	}).Table("etf_tickers").CreateInBatches(etfs, 100)
 	return res.Error
+}
+
+func (inst *RepositoryETFTicker) UpdateTickerTechnicalIndicators(input etf.Ticker) error {
+	return inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ? AND ticker_date = ?", input.Code, input.Date).
+		Updates(map[string]interface{}{
+			"range_position_20":  input.RangePosition20,
+			"range_position_60":  input.RangePosition60,
+			"range_position_120": input.RangePosition120,
+			"ma5":                input.MA5,
+			"ma20":               input.MA20,
+			"ma60":               input.MA60,
+			"ma120":              input.MA120,
+		}).Error
 }
 
 // GetFirstTickerDate 獲取指定 code 的最早股價日期，如果 code 為空則獲取所有資料的最早日期
@@ -52,7 +68,51 @@ func (inst *RepositoryETFTicker) GetETFTickerByCodeAndDate(code string, startDat
 	if endDate != nil && len(endDate) > 0 {
 		e = endDate[0]
 	}
-	err := inst.GetDB().Table((&etf.Ticker{}).TableName()).Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).Find(&out).Error
+	err := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ? AND ticker_date >= ? AND ticker_date <= ?", code, s, e).
+		Order("ticker_date ASC").
+		Find(&out).Error
+	return out, err
+}
+
+func (inst *RepositoryETFTicker) GetAllTickerByCode(code string) ([]etf.Ticker, error) {
+	var out = make([]etf.Ticker, 0)
+	err := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ?", code).
+		Order("ticker_date ASC").
+		Find(&out).Error
+	return out, err
+}
+
+func (inst *RepositoryETFTicker) GetLatestTickersByCode(code string, limit int) ([]etf.Ticker, error) {
+	var out = make([]etf.Ticker, 0)
+	if limit <= 0 {
+		return out, nil
+	}
+
+	subQuery := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ?", code).
+		Order("ticker_date DESC").
+		Limit(limit)
+	err := inst.GetDB().Table("(?) AS latest_tickers", subQuery).
+		Order("ticker_date ASC").
+		Find(&out).Error
+	return out, err
+}
+
+func (inst *RepositoryETFTicker) GetLatestTickersByCodeBeforeOrEqualDate(code string, endDate string, limit int) ([]etf.Ticker, error) {
+	var out = make([]etf.Ticker, 0)
+	if limit <= 0 {
+		return out, nil
+	}
+
+	subQuery := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ? AND ticker_date <= ?", code, endDate).
+		Order("ticker_date DESC").
+		Limit(limit)
+	err := inst.GetDB().Table("(?) AS latest_tickers", subQuery).
+		Order("ticker_date ASC").
+		Find(&out).Error
 	return out, err
 }
 

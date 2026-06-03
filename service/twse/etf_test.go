@@ -91,12 +91,12 @@ func Test_UpdateETFCodeList(t *testing.T) {
 	t.Logf("%+v\n", etfs)
 }
 
-func Test_GetETFTicker(t *testing.T) {
+func Test_UpdateETFTechnicalIndicators(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
-	UpdateETFTicker("twse", "2005-01-01")
-	//UpdateETFTicker("otc", "2005-01-01")
+	UpdateETFTechnicalIndicators("twse", "2026-06-02")
+	UpdateETFTechnicalIndicators("otc", "2026-06-02")
 }
 
 func Test_GetETFShare(t *testing.T) {

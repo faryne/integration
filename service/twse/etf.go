@@ -80,6 +80,11 @@ type FinMindHistoryTicker struct {
 	} `json:"data"`
 }
 
+type ETFTechnicalIndicatorResult struct {
+	Code    etf.ETF
+	Tickers []etf.Ticker
+}
+
 const (
 	ETFCodeListUrl    = "https://www.twse.com.tw/rwd/zh/ETF/list"           // 取得 ETF 名稱列表
 	ETFShareUrl       = "https://www.twse.com.tw/rwd/zh/ETF/etfDiv"         // 取得從 2005 年開始的配息（證交所）
@@ -87,6 +92,7 @@ const (
 	OTCETFCodeListUrl = "https://mis.twse.com.tw/stock/api/getCategory.jsp" // 登記在櫃買中心的 ETF
 	FinMindApiBase    = "https://api.finmindtrade.com/api/v4/data"          // FinMind API Base Path
 	S3PrefixKey       = "opendata/twse/etf"
+	ETFIndicatorLimit = 120
 
 	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=00400A&start_date=2026-05-01" // 股價資料
 	// "https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockDividend&data_id=0050&start_date=2001-01-01" // 股利政策
@@ -212,18 +218,21 @@ func getETFTicker(code string, date ...string) ([]etf.Ticker, error) {
 	}
 	for _, v := range r.Data {
 		out = append(out, etf.Ticker{
-			Date:  v.Date,
-			Code:  v.StockId,
-			Open:  v.Open,
-			Max:   v.Max,
-			Min:   v.Min,
-			Close: v.Close,
+			Date:            v.Date,
+			Code:            v.StockId,
+			Open:            v.Open,
+			Max:             v.Max,
+			Min:             v.Min,
+			Close:           v.Close,
+			Volume:          int64(v.TradingVolume),
+			TradingMoney:    v.TradingMoney,
+			TradingTurnover: int64(v.TradingTurnover),
 		})
 	}
 	return out, nil
 }
 
-// UpdateETFTicker 更新 ETF 股價資料
+// UpdateETFTicker 從 FinMind 更新 ETF 股價資料，並補算本批更新日期的技術指標。
 func UpdateETFTicker(marketType enum.StockMarket, date ...string) {
 	repoCode := etfRepo.NewETFCode()
 	repoTicker := etfRepo.NewETFTicker()
@@ -246,8 +255,209 @@ func UpdateETFTicker(marketType enum.StockMarket, date ...string) {
 			fmt.Println("dbError: ", dbError.Error())
 			continue
 		}
+		indicatorResult, indicatorError := calculateETFTechnicalIndicators(v.Code, tickers)
+		if indicatorError != nil {
+			fmt.Println("indicatorError: ", indicatorError.Error())
+			continue
+		}
+		if dbError := persistETFTechnicalIndicators(indicatorResult); dbError != nil {
+			fmt.Println("dbError: ", dbError.Error())
+			continue
+		}
 		time.Sleep(time.Second * 1)
 	}
+}
+
+// UpdateETFTechnicalIndicators 使用 etf_tickers 既有股價補算技術指標，不會呼叫 FinMind。
+func UpdateETFTechnicalIndicators(marketType enum.StockMarket, date ...string) {
+	repoCode := etfRepo.NewETFCode()
+	repoTicker := etfRepo.NewETFTicker()
+	codeLists, err := repoCode.GetByMarket(marketType)
+	if err != nil {
+		fmt.Println("err: ", err)
+		return
+	}
+
+	for _, v := range codeLists {
+		targetDate := ""
+		if len(date) > 0 {
+			targetDate = date[0]
+		} else {
+			tickers, tickerError := repoTicker.GetLatestTickersByCode(v.Code, 1)
+			if tickerError != nil {
+				fmt.Println("tickerError: ", tickerError.Error())
+				continue
+			}
+			if len(tickers) == 0 {
+				continue
+			}
+			targetDate = tickers[len(tickers)-1].Date
+		}
+
+		indicatorResult, indicatorError := calculateETFTechnicalIndicators(v.Code, []etf.Ticker{
+			{
+				Code: v.Code,
+				Date: targetDate,
+			},
+		})
+		if indicatorError != nil {
+			fmt.Println("indicatorError: ", indicatorError.Error())
+			continue
+		}
+		if dbError := persistETFTechnicalIndicators(indicatorResult); dbError != nil {
+			fmt.Println("dbError: ", dbError.Error())
+			continue
+		}
+	}
+}
+
+func calculateETFTechnicalIndicators(code string, updatedTickers []etf.Ticker) (ETFTechnicalIndicatorResult, error) {
+	var result ETFTechnicalIndicatorResult
+	if len(updatedTickers) == 0 {
+		return result, nil
+	}
+
+	repoTicker := etfRepo.NewETFTicker()
+	targetDates := make(map[string]struct{}, len(updatedTickers))
+	maxDate := ""
+	for _, updatedTicker := range updatedTickers {
+		d := normalizeTickerDate(updatedTicker.Date)
+		targetDates[d] = struct{}{}
+		if d > maxDate {
+			maxDate = d
+		}
+	}
+	if maxDate == "" {
+		return result, nil
+	}
+
+	rows, err := repoTicker.GetLatestTickersByCodeBeforeOrEqualDate(code, maxDate, ETFIndicatorLimit+len(targetDates))
+	if err != nil {
+		return result, err
+	}
+	if len(rows) == 0 {
+		return result, nil
+	}
+
+	var latest etf.Ticker
+	hasLatest := false
+	for index := range rows {
+		currentDate := normalizeTickerDate(rows[index].Date)
+		if _, ok := targetDates[currentDate]; !ok {
+			continue
+		}
+		rows[index] = calculateTickerTechnicalIndicators(rows, index)
+
+		if !hasLatest || currentDate > normalizeTickerDate(latest.Date) {
+			latest = rows[index]
+		}
+		hasLatest = true
+		result.Tickers = append(result.Tickers, rows[index])
+	}
+	if !hasLatest {
+		return result, nil
+	}
+
+	ma20BiasRate := float64(0)
+	if latest.MA20 > 0 {
+		ma20BiasRate = roundTo4(((latest.Close - latest.MA20) / latest.MA20) * 100)
+	}
+
+	result.Code = etf.ETF{
+		Code:          code,
+		RangePosition: latest.RangePosition20,
+		LatestClose:   latest.Close,
+		MA5:           latest.MA5,
+		MA20:          latest.MA20,
+		MA20BiasRate:  ma20BiasRate,
+	}
+	return result, nil
+}
+
+func normalizeTickerDate(date string) string {
+	if t, err := time.Parse(time.DateOnly, date); err == nil {
+		return t.Format(time.DateOnly)
+	}
+	if t, err := time.Parse(time.RFC3339, date); err == nil {
+		return t.Format(time.DateOnly)
+	}
+	if len(date) >= len(time.DateOnly) {
+		return date[:len(time.DateOnly)]
+	}
+	return date
+}
+
+func calculateTickerTechnicalIndicators(rows []etf.Ticker, index int) etf.Ticker {
+	rows[index].MA5 = movingAverage(rows, index, 5)
+	rows[index].MA20 = movingAverage(rows, index, 20)
+	rows[index].MA60 = movingAverage(rows, index, 60)
+	rows[index].MA120 = movingAverage(rows, index, 120)
+	rows[index].RangePosition20 = closeRangePosition(rows, index, 20)
+	rows[index].RangePosition60 = closeRangePosition(rows, index, 60)
+	rows[index].RangePosition120 = closeRangePosition(rows, index, 120)
+	return rows[index]
+}
+
+func persistETFTechnicalIndicators(result ETFTechnicalIndicatorResult) error {
+	repoTicker := etfRepo.NewETFTicker()
+	for _, ticker := range result.Tickers {
+		if updateError := repoTicker.UpdateTickerTechnicalIndicators(ticker); updateError != nil {
+			return updateError
+		}
+	}
+
+	if result.Code.Code == "" {
+		return nil
+	}
+	return etfRepo.NewETFCode().UpdateETFTechnicalIndicators(result.Code)
+}
+
+func movingAverage(rows []etf.Ticker, index int, days int) float64 {
+	if len(rows) == 0 || index < 0 {
+		return 0
+	}
+
+	start := index - days + 1
+	if start < 0 {
+		start = 0
+	}
+
+	total := float64(0)
+	for _, row := range rows[start : index+1] {
+		total += row.Close
+	}
+	return roundTo4(total / float64(index-start+1))
+}
+
+func closeRangePosition(rows []etf.Ticker, index int, days int) float64 {
+	if len(rows) == 0 || index < 0 {
+		return 0
+	}
+
+	start := index - days + 1
+	if start < 0 {
+		start = 0
+	}
+
+	low := rows[start].Close
+	high := rows[start].Close
+	for _, row := range rows[start : index+1] {
+		if row.Close < low {
+			low = row.Close
+		}
+		if row.Close > high {
+			high = row.Close
+		}
+	}
+
+	if high == low {
+		return 0
+	}
+	return roundTo4(((rows[index].Close - low) / (high - low)) * 100)
+}
+
+func roundTo4(value float64) float64 {
+	return decimal.NewFromFloat(value).Round(4).InexactFloat64()
 }
 
 // getTWSEHistoryDivByCode 取得證交所 ETF 股利資料

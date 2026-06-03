@@ -110,7 +110,11 @@ type StrategyType =
   | "veteran" // 好策略
   | "loser_leak"
   | "eternal_wait"
-  | "rookie_trap"; // 這是糞策略;
+  | "rookie_trap" // 這是糞策略
+  | "low_rebound"
+  | "trend_strength"
+  | "overheat_warning"
+  | "ma_balance";
 
 // 允許排序的欄位型態
 type OrderableField =
@@ -120,7 +124,12 @@ type OrderableField =
   | "total_ex_count"
   | "success_fill_count"
   | "win_rate"
-  | "avg_fill_days";
+  | "avg_fill_days"
+  | "latest_close"
+  | "ma5"
+  | "ma20"
+  | "range_position"
+  | "ma20_bias_rate";
 type OrderableSort = "asc" | "desc";
 type TableDensity = "compact" | "full";
 type TickerViewMode = "chart" | "table";
@@ -174,6 +183,30 @@ const strategyOptions: {
     label: "👶 菜雞韭菜卡 (配息 < 2次)",
     description: "有除息紀錄，但歷史除息次數小於等於 2 次，樣本數偏少。",
   },
+  {
+    value: "low_rebound",
+    label: "📉 低位反彈 (低檔且低於 MA20)",
+    description: "月區間位置小於等於 25%，且 MA20 乖離率小於等於 -3%。",
+    color: "success",
+  },
+  {
+    value: "trend_strength",
+    label: "📈 趨勢偏強 (MA5 > MA20 且位置偏高)",
+    description: "MA5 高於 MA20，且月區間位置大於等於 60%。",
+    color: "primary",
+  },
+  {
+    value: "overheat_warning",
+    label: "⚠️ 過熱警戒 (高檔且偏離 MA20)",
+    description: "月區間位置大於等於 85%，且 MA20 乖離率大於等於 5%。",
+    color: "warning",
+  },
+  {
+    value: "ma_balance",
+    label: "⚖️ 均線收斂 (接近 MA20)",
+    description: "MA20 乖離率介於 -1.5% 到 1.5%，價格接近中期均線。",
+    color: "secondary",
+  },
 ];
 
 const isEtfCategory = (value: string | null): value is EtfCategory =>
@@ -196,6 +229,14 @@ const matchesStrategy = (strategy: StrategyType, etf: TwseEtfInfo) => {
       return etf.avg_fill_days >= 90.0;
     case "rookie_trap":
       return etf.total_ex_count > 0 && etf.total_ex_count <= 2;
+    case "low_rebound":
+      return etf.range_position > 0 && etf.range_position <= 25 && etf.ma20_bias_rate <= -3;
+    case "trend_strength":
+      return etf.ma5 > 0 && etf.ma20 > 0 && etf.ma5 > etf.ma20 && etf.range_position >= 60;
+    case "overheat_warning":
+      return etf.range_position >= 85 && etf.ma20_bias_rate >= 5;
+    case "ma_balance":
+      return etf.ma20 > 0 && Math.abs(etf.ma20_bias_rate) <= 1.5;
     default:
       return true;
   }
@@ -278,6 +319,9 @@ const getRecordStatus = (count: number) => {
   return null;
 };
 
+const hasMA20BiasRisk = (biasRate: number) =>
+  biasRate !== 0 && Math.abs(biasRate) >= 5;
+
 const getSortValue = (etf: TwseEtfInfo, field: OrderableField) => {
   if (field === "code") {
     return etf.code;
@@ -300,9 +344,45 @@ const formatSignedPercent = (value?: number | null) => {
   return `${prefix}${value.toFixed(2)}%`;
 };
 
+const formatPercent = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "--";
+  }
+  return `${value.toFixed(2)}%`;
+};
+
+const formatDecimal = (value?: number | null, digits = 2) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "--";
+  }
+  return value.toFixed(digits);
+};
+
+const formatInteger = (value?: number | null) => {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "--";
+  }
+  return Math.round(value).toLocaleString("zh-TW");
+};
+
 const averageClose = <T extends { close: number }>(rows: T[]) => {
   if (rows.length === 0) return null;
   return rows.reduce((sum, row) => sum + row.close, 0) / rows.length;
+};
+
+const rangePositionByClose = <T extends { close: number }>(rows: T[]) => {
+  if (rows.length === 0) return null;
+
+  const latest = rows[rows.length - 1];
+  const closes = rows.map((row) => row.close);
+  const high = Math.max(...closes);
+  const low = Math.min(...closes);
+  const range = high - low;
+
+  if (range <= 0) {
+    return 0;
+  }
+  return ((latest.close - low) / range) * 100;
 };
 
 const StatPill = ({
@@ -1173,7 +1253,7 @@ const EtfTableList = ({
     });
   }, [orderBy, data]);
   const isCompact = density === "compact";
-  const columnCount = isCompact ? 5 : 8;
+  const columnCount = isCompact ? 5 : 13;
 
   return (
     <TableContainer
@@ -1186,7 +1266,7 @@ const EtfTableList = ({
         boxShadow: "0 14px 40px rgba(15, 23, 42, 0.06)",
       }}
     >
-      <Table stickyHeader size="small" sx={{ minWidth: isCompact ? 680 : 960 }}>
+      <Table stickyHeader size="small" sx={{ minWidth: isCompact ? 680 : 1420 }}>
         <TableHead>
           <TableRow>
             <TableCell
@@ -1259,6 +1339,24 @@ const EtfTableList = ({
                   align="right"
                 >
                   <TableSortLabel
+                    active={orderBy.field === "latest_close"}
+                    direction={
+                      orderBy.field === "latest_close" ? orderBy.order : "asc"
+                    }
+                    onClick={() => handleRequestSort("latest_close")}
+                  >
+                    最新收盤
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
+                    color: "text.secondary",
+                  }}
+                  align="right"
+                >
+                  <TableSortLabel
                     active={orderBy.field === "total_ex_count"}
                     direction={
                       orderBy.field === "total_ex_count" ? orderBy.order : "asc"
@@ -1286,6 +1384,78 @@ const EtfTableList = ({
                     onClick={() => handleRequestSort("success_fill_count")}
                   >
                     成功填息次數
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
+                    color: "text.secondary",
+                  }}
+                  align="right"
+                >
+                  <TableSortLabel
+                    active={orderBy.field === "ma5"}
+                    direction={orderBy.field === "ma5" ? orderBy.order : "asc"}
+                    onClick={() => handleRequestSort("ma5")}
+                  >
+                    MA5
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
+                    color: "text.secondary",
+                  }}
+                  align="right"
+                >
+                  <TableSortLabel
+                    active={orderBy.field === "ma20"}
+                    direction={orderBy.field === "ma20" ? orderBy.order : "asc"}
+                    onClick={() => handleRequestSort("ma20")}
+                  >
+                    MA20
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
+                    color: "text.secondary",
+                  }}
+                  align="right"
+                >
+                  <TableSortLabel
+                    active={orderBy.field === "range_position"}
+                    direction={
+                      orderBy.field === "range_position"
+                        ? orderBy.order
+                        : "asc"
+                    }
+                    onClick={() => handleRequestSort("range_position")}
+                  >
+                    月區間位置
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell
+                  sx={{
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
+                    color: "text.secondary",
+                  }}
+                  align="right"
+                >
+                  <TableSortLabel
+                    active={orderBy.field === "ma20_bias_rate"}
+                    direction={
+                      orderBy.field === "ma20_bias_rate"
+                        ? orderBy.order
+                        : "asc"
+                    }
+                    onClick={() => handleRequestSort("ma20_bias_rate")}
+                  >
+                    MA20 乖離
                   </TableSortLabel>
                 </TableCell>
               </>
@@ -1393,6 +1563,9 @@ const EtfTableList = ({
                 </TableCell>
                 {!isCompact && (
                   <>
+                    <TableCell align="right" sx={{ fontWeight: 900 }}>
+                      {formatDecimal(etf.latest_close)}
+                    </TableCell>
                     <TableCell align="right">
                       <Stack
                         direction="row"
@@ -1418,6 +1591,48 @@ const EtfTableList = ({
                       {etf.success_fill_count > 0
                         ? etf.success_fill_count
                         : "--"}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {formatDecimal(etf.ma5)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {formatDecimal(etf.ma20)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 800 }}>
+                      {formatPercent(etf.range_position)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color:
+                          etf.ma20_bias_rate > 0
+                            ? "error.main"
+                            : etf.ma20_bias_rate < 0
+                              ? "success.main"
+                              : "text.primary",
+                        fontWeight: 800,
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        justifyContent="flex-end"
+                        alignItems="center"
+                      >
+                        {hasMA20BiasRisk(etf.ma20_bias_rate) && (
+                          <Tooltip
+                            title={`MA20 乖離率 ${formatSignedPercent(
+                              etf.ma20_bias_rate,
+                            )}，偏離中期均線過大`}
+                          >
+                            <WarningAmberIcon
+                              fontSize="small"
+                              sx={{ color: "warning.main" }}
+                            />
+                          </Tooltip>
+                        )}
+                        <span>{formatSignedPercent(etf.ma20_bias_rate)}</span>
+                      </Stack>
                     </TableCell>
                   </>
                 )}
@@ -1620,17 +1835,62 @@ const EtfCandleChart = ({
       ),
     [query.data?.data],
   );
-  const tickerTableRows = useMemo(
+  const calculatedTickerRows = useMemo(
     () =>
-      [...tickerRows].sort(
-        (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf(),
-      ),
+      tickerRows.map((row, index) => {
+        const rowsToDate = tickerRows.slice(0, index + 1);
+        const rows5 = rowsToDate.slice(-5);
+        const rows20 = rowsToDate.slice(-20);
+        const rows60 = rowsToDate.slice(-60);
+        const rows120 = rowsToDate.slice(-120);
+        const ma5 = rowsToDate.length >= 5 ? averageClose(rows5) : null;
+        const ma20 = rowsToDate.length >= 20 ? averageClose(rows20) : null;
+
+        return {
+          ...row,
+          calculated_ma5: ma5,
+          calculated_ma20: ma20,
+          calculated_ma60:
+            rowsToDate.length >= 60 ? averageClose(rows60) : null,
+          calculated_ma120:
+            rowsToDate.length >= 120 ? averageClose(rows120) : null,
+          calculated_ma20_bias_rate:
+            ma20 !== null && ma20 > 0
+              ? ((row.close - ma20) / ma20) * 100
+              : null,
+          calculated_range_position_20:
+            rowsToDate.length >= 20 ? rangePositionByClose(rows20) : null,
+          calculated_range_position_60:
+            rowsToDate.length >= 60 ? rangePositionByClose(rows60) : null,
+          calculated_range_position_120:
+            rowsToDate.length >= 120 ? rangePositionByClose(rows120) : null,
+        };
+      }),
     [tickerRows],
   );
+  const indicatorVisibility = useMemo(
+    () => ({
+      ma5: calculatedTickerRows.length >= 5,
+      ma20: calculatedTickerRows.length >= 20,
+      ma60: calculatedTickerRows.length >= 60,
+      ma120: calculatedTickerRows.length >= 120,
+      range20: calculatedTickerRows.length >= 20,
+      range60: calculatedTickerRows.length >= 60,
+      range120: calculatedTickerRows.length >= 120,
+    }),
+    [calculatedTickerRows.length],
+  );
+  const tickerTableRows = useMemo(
+    () =>
+      [...calculatedTickerRows].sort(
+        (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf(),
+      ),
+    [calculatedTickerRows],
+  );
   const closeRange = useMemo(() => {
-    return tickerRows.reduce<{
-      high: (typeof tickerRows)[number] | null;
-      low: (typeof tickerRows)[number] | null;
+    return calculatedTickerRows.reduce<{
+      high: (typeof calculatedTickerRows)[number] | null;
+      low: (typeof calculatedTickerRows)[number] | null;
     }>(
       (result, row) => {
         if (!result.high || row.close > result.high.close) {
@@ -1645,10 +1905,10 @@ const EtfCandleChart = ({
       },
       { high: null, low: null },
     );
-  }, [tickerRows]);
+  }, [calculatedTickerRows]);
   const tickerStats = useMemo(() => {
-    const first = tickerRows[0] ?? null;
-    const latest = tickerRows[tickerRows.length - 1] ?? null;
+    const first = calculatedTickerRows[0] ?? null;
+    const latest = calculatedTickerRows[calculatedTickerRows.length - 1] ?? null;
     const high = closeRange.high;
     const low = closeRange.low;
     const range = high && low ? high.close - low.close : 0;
@@ -1662,20 +1922,26 @@ const EtfCandleChart = ({
         : null;
     const amplitude =
       high && low && low.close > 0 ? (range / low.close) * 100 : null;
-    const ma5 = averageClose(tickerRows.slice(-5));
-    const ma20 = averageClose(tickerRows.slice(-20));
 
     return {
       amplitude,
       high,
       latest,
       low,
-      ma5,
-      ma20,
       position,
       returnRate,
     };
-  }, [closeRange.high, closeRange.low, tickerRows]);
+  }, [calculatedTickerRows, closeRange.high, closeRange.low]);
+  const tickerTableColumnCount =
+    8 +
+    Number(indicatorVisibility.range20) +
+    Number(indicatorVisibility.range60) +
+    Number(indicatorVisibility.range120) +
+    Number(indicatorVisibility.ma5) +
+    Number(indicatorVisibility.ma20) +
+    Number(indicatorVisibility.ma60) +
+    Number(indicatorVisibility.ma120) +
+    Number(indicatorVisibility.ma20);
 
   // 將資料轉換為 ApexCharts 格式
   const series = useMemo(
@@ -2017,14 +2283,67 @@ const EtfCandleChart = ({
               : `${tickerStats.amplitude.toFixed(2)}%`
           }
         />
-        <DetailStat
-          label="MA5"
-          value={tickerStats.ma5 === null ? "--" : tickerStats.ma5.toFixed(2)}
-        />
-        <DetailStat
-          label="MA20"
-          value={tickerStats.ma20 === null ? "--" : tickerStats.ma20.toFixed(2)}
-        />
+        {indicatorVisibility.ma5 && (
+          <DetailStat
+            label="MA5"
+            value={formatDecimal(tickerStats.latest?.calculated_ma5)}
+          />
+        )}
+        {indicatorVisibility.ma20 && (
+          <DetailStat
+            label="MA20"
+            value={formatDecimal(tickerStats.latest?.calculated_ma20)}
+          />
+        )}
+        {indicatorVisibility.ma20 && (
+          <DetailStat
+            label="MA20 乖離"
+            value={formatSignedPercent(
+              tickerStats.latest?.calculated_ma20_bias_rate,
+            )}
+            tone={
+              (tickerStats.latest?.calculated_ma20_bias_rate ?? 0) >= 0
+                ? "error.main"
+                : "success.main"
+            }
+          />
+        )}
+        {indicatorVisibility.ma60 && (
+          <DetailStat
+            label="MA60"
+            value={formatDecimal(tickerStats.latest?.calculated_ma60)}
+          />
+        )}
+        {indicatorVisibility.ma120 && (
+          <DetailStat
+            label="MA120"
+            value={formatDecimal(tickerStats.latest?.calculated_ma120)}
+          />
+        )}
+        {indicatorVisibility.range20 && (
+          <DetailStat
+            label="月區間位置"
+            value={formatPercent(
+              tickerStats.latest?.calculated_range_position_20,
+            )}
+          />
+        )}
+        {indicatorVisibility.range60 && (
+          <DetailStat
+            label="季區間位置"
+            value={formatPercent(
+              tickerStats.latest?.calculated_range_position_60,
+            )}
+          />
+        )}
+        {indicatorVisibility.range120 && (
+          <DetailStat
+            label="半年區間位置"
+            value={formatPercent(
+              tickerStats.latest?.calculated_range_position_120,
+            )}
+          />
+        )}
       </Stack>
 
       {dateRangeError ? (
@@ -2048,10 +2367,27 @@ const EtfCandleChart = ({
           variant="outlined"
           sx={{ borderRadius: 2, overflowX: "auto" }}
         >
-          <Table size="small" sx={{ minWidth: 720 }}>
+          <Table size="small" sx={{ minWidth: tickerTableColumnCount * 96 }}>
             <TableHead>
               <TableRow>
-                {["日期", "開盤", "最高", "最低", "收盤"].map((label) => (
+                {[
+                  "日期",
+                  "開盤",
+                  "最高",
+                  "最低",
+                  "收盤",
+                  ...(indicatorVisibility.range20 ? ["月區間位置"] : []),
+                  ...(indicatorVisibility.range60 ? ["季區間位置"] : []),
+                  ...(indicatorVisibility.range120 ? ["半年區間位置"] : []),
+                  ...(indicatorVisibility.ma5 ? ["MA5"] : []),
+                  ...(indicatorVisibility.ma20 ? ["MA20"] : []),
+                  ...(indicatorVisibility.ma20 ? ["MA20 乖離"] : []),
+                  ...(indicatorVisibility.ma60 ? ["MA60"] : []),
+                  ...(indicatorVisibility.ma120 ? ["MA120"] : []),
+                  "成交量",
+                  "成交金額",
+                  "交易筆數",
+                ].map((label) => (
                   <TableCell
                     key={label}
                     align={label === "日期" ? "left" : "right"}
@@ -2059,6 +2395,7 @@ const EtfCandleChart = ({
                       bgcolor: "#f6f9fc",
                       color: "text.secondary",
                       fontWeight: 900,
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {label}
@@ -2122,12 +2459,63 @@ const EtfCandleChart = ({
                           )}
                         </Stack>
                       </TableCell>
+                      {indicatorVisibility.range20 && (
+                        <TableCell align="right">
+                          {formatPercent(row.calculated_range_position_20)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.range60 && (
+                        <TableCell align="right">
+                          {formatPercent(row.calculated_range_position_60)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.range120 && (
+                        <TableCell align="right">
+                          {formatPercent(row.calculated_range_position_120)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.ma5 && (
+                        <TableCell align="right">
+                          {formatDecimal(row.calculated_ma5)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.ma20 && (
+                        <TableCell align="right">
+                          {formatDecimal(row.calculated_ma20)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.ma20 && (
+                        <TableCell align="right">
+                          {formatSignedPercent(row.calculated_ma20_bias_rate)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.ma60 && (
+                        <TableCell align="right">
+                          {formatDecimal(row.calculated_ma60)}
+                        </TableCell>
+                      )}
+                      {indicatorVisibility.ma120 && (
+                        <TableCell align="right">
+                          {formatDecimal(row.calculated_ma120)}
+                        </TableCell>
+                      )}
+                      <TableCell align="right">{formatInteger(row.volume)}</TableCell>
+                      <TableCell align="right">
+                        {formatInteger(row.trading_money)}
+                      </TableCell>
+                      <TableCell align="right">
+                        {formatInteger(row.trading_turnover)}
+                      </TableCell>
                     </TableRow>
                   );
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                  <TableCell
+                    colSpan={tickerTableColumnCount}
+                    align="center"
+                    sx={{ py: 3 }}
+                  >
                     查無股價資料
                   </TableCell>
                 </TableRow>

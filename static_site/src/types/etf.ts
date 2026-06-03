@@ -31,6 +31,11 @@ export interface TwseEtfInfo {
   success_fill_count: number;
   win_rate: number;
   avg_fill_days: number;
+  range_position: number;
+  latest_close: number;
+  ma5: number;
+  ma20: number;
+  ma20_bias_rate: number;
 }
 
 export interface TwseEtfShare extends TwseEtfInfo {
@@ -66,4 +71,14 @@ export interface TwseETFTicker {
   max: number;
   min: number;
   close: number;
+  range_position_20: number;
+  range_position_60: number;
+  range_position_120: number;
+  ma5: number;
+  ma20: number;
+  ma60: number;
+  ma120: number;
+  volume: number;
+  trading_money: number;
+  trading_turnover: number;
 }
