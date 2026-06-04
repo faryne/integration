@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 const siteName = "ha2.tw / faryne.dev";
+const nekomaidSiteName = "難以名狀的抓圖器";
 const canonicalOrigin = "https://beta.faryne.dev";
 const defaultDescription =
   "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";
@@ -10,6 +11,7 @@ const pageDescriptions: Record<string, string> = {
   首頁: defaultDescription,
   "AV 影片搜尋": "以番號、標籤、演員與片名搜尋影片資料的整理工具。",
   "AV 女優搜尋": "搜尋演員資料與作品索引的整理工具。",
+  難以名狀的抓圖器: "搜尋與瀏覽 Nekomaid 收錄的插圖索引與作品圖片。",
   台灣指標: "查詢台灣公開統計指標，快速瀏覽資料趨勢與歷史紀錄。",
   匯率: "查詢主要貨幣匯率，並提供簡單的匯率換算工具。",
   即時消防出勤記錄: "整理即時消防出勤公開資料，方便快速瀏覽事件列表。",
@@ -29,8 +31,24 @@ export interface SeoOptions {
   type?: "website" | "article";
 }
 
-function getFullTitle(page: string) {
-  return page.trim() ? `${page} | ${siteName}` : siteName;
+function getRouteSiteName() {
+  if (
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/nekomaid")
+  ) {
+    return nekomaidSiteName;
+  }
+  return siteName;
+}
+
+function getFullTitleForSite(page: string, currentSiteName: string) {
+  if (!page.trim()) {
+    return currentSiteName;
+  }
+  if (page.trim() === currentSiteName) {
+    return currentSiteName;
+  }
+  return `${page} | ${currentSiteName}`;
 }
 
 function getDescription(page: string, description?: string) {
@@ -106,7 +124,8 @@ function setJsonLd(id: string, data: Record<string, unknown>) {
 
 export function useSeo(page: string, options: SeoOptions = {}) {
   useEffect(() => {
-    const title = getFullTitle(page);
+    const currentSiteName = getRouteSiteName();
+    const title = getFullTitleForSite(page, currentSiteName);
     const description = getDescription(page, options.description);
     const canonicalUrl = toAbsoluteUrl(
       options.path ?? `${window.location.pathname}${window.location.search}`,
@@ -126,18 +145,18 @@ export function useSeo(page: string, options: SeoOptions = {}) {
     setMetaByName("twitter:image", imageUrl);
 
     setMetaByProperty("og:type", type);
-    setMetaByProperty("og:site_name", siteName);
+    setMetaByProperty("og:site_name", currentSiteName);
     setMetaByProperty("og:locale", "zh_TW");
     setMetaByProperty("og:title", title);
     setMetaByProperty("og:description", description);
     setMetaByProperty("og:url", canonicalUrl);
     setMetaByProperty("og:image", imageUrl);
-    setMetaByProperty("og:image:alt", siteName);
+    setMetaByProperty("og:image:alt", currentSiteName);
 
     setJsonLd("site-json-ld", {
       "@context": "https://schema.org",
       "@type": "WebSite",
-      name: siteName,
+      name: currentSiteName,
       url: canonicalOrigin,
       description: defaultDescription,
       inLanguage: "zh-Hant-TW",

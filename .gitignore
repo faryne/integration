@@ -13,3 +13,5 @@ secret_keys/*
 rust
 
 .DS_Store
+
+vue-nekomaid

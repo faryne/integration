@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
+import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
@@ -69,6 +70,7 @@ const YieldMaxEtfs = lazy(() =>
 const TwseEtf = lazy(() => import("@/pages/etfs/twse.tsx"));
 const Userscripts = lazy(() => import("@/pages/tools/userscripts.tsx"));
 const Webshot = lazy(() => import("@/pages/tools/webshot.tsx"));
+const Nekomaid = lazy(() => import("@/pages/nekomaid"));
 
 function LoadingFallback() {
   return (
@@ -181,6 +183,14 @@ function App() {
             <Route path="/a" element={<h1>Hello</h1>} />
 
             <Route path={"/"} element={<Home />} />
+            <Route path={"*"} element={<ErrorPage code={404} />} />
+          </Route>
+
+          <Route path={"/nekomaid"} element={<NekomaidLayout />}>
+            <Route path={""} element={<Nekomaid />} />
+            <Route path={":site"} element={<Nekomaid />} />
+            <Route path={":site/:authorId"} element={<Nekomaid />} />
+            <Route path={":site/:authorId/:artworkId"} element={<Nekomaid />} />
             <Route path={"*"} element={<ErrorPage code={404} />} />
           </Route>
 
