@@ -95,6 +95,154 @@ func TestBuildMetaDynamicETFRoute(t *testing.T) {
 	}
 }
 
+func TestBuildMetaNekomaidRouteUsesProjectSiteName(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid"})
+
+	if meta.Title != "難以名狀的抓圖器" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.SiteName != "難以名狀的抓圖器" {
+		t.Fatalf("unexpected site name: %s", meta.SiteName)
+	}
+	if !strings.Contains(meta.Description, "Pixiv") {
+		t.Fatalf("expected nekomaid description, got %q", meta.Description)
+	}
+}
+
+func TestBuildMetaNekomaidPrefixRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid/pixiv/123/456"})
+
+	if meta.Title != "難以名狀的抓圖器" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv/123/456" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+}
+
+func TestBuildMetaLegacyNekomaidSiteRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv"})
+
+	if meta.Title != "難以名狀的抓圖器" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.RedirectURL != meta.Canonical {
+		t.Fatalf("unexpected redirect URL: %s", meta.RedirectURL)
+	}
+	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+}
+
+func TestBuildMetaLegacyNekomaidAuthorRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv/123"})
+
+	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+}
+
+func TestBuildMetaLegacyNekomaidArtworkRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv/123/456"})
+
+	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != "https://beta.faryne.dev/sns/nekomaid/pixiv/123/456" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+}
+
+func TestBuildMetaNekomaidArtworkRouteUsesFetchedContent(t *testing.T) {
+	originalFetch := fetchNekomaidArtworkMeta
+	fetchNekomaidArtworkMeta = func(site string, authorID string, artworkID string) (nekomaidArtworkMeta, string, bool) {
+		if site != "pixiv" || authorID != "123" || artworkID != "456" {
+			t.Fatalf("unexpected fetch args: %s %s %s", site, authorID, artworkID)
+		}
+		return nekomaidArtworkMeta{
+			Title: "測試作品",
+			Tags:  []string{"tag1", "tag2"},
+			Thumb: "https://cdn.example.com/thumb.jpg",
+			Photos: []struct {
+				URL string `json:"url"`
+			}{
+				{URL: "https://cdn.example.com/1.jpg"},
+				{URL: "https://cdn.example.com/2.jpg"},
+			},
+		}, "測試作者", true
+	}
+	defer func() {
+		fetchNekomaidArtworkMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid/pixiv/123/456"})
+
+	if meta.Title != "測試作品 | 難以名狀的抓圖器" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if !strings.Contains(meta.Description, "測試作者") || !strings.Contains(meta.Description, "共 2 張圖片") {
+		t.Fatalf("unexpected description: %s", meta.Description)
+	}
+	if meta.Image != "https://cdn.example.com/thumb.jpg" {
+		t.Fatalf("unexpected image: %s", meta.Image)
+	}
+}
+
+func TestBuildMetaLegacyNekomaidArtworkRouteUsesFetchedContent(t *testing.T) {
+	originalFetch := fetchNekomaidArtworkMeta
+	fetchNekomaidArtworkMeta = func(site string, authorID string, artworkID string) (nekomaidArtworkMeta, string, bool) {
+		return nekomaidArtworkMeta{Title: "Legacy Title"}, "", true
+	}
+	defer func() {
+		fetchNekomaidArtworkMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "pixiv/123/456"})
+
+	if meta.Title != "Legacy Title | 難以名狀的抓圖器" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Canonical != "https://beta.faryne.dev/nekomaid/pixiv/123/456" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+}
+
+func TestBuildMetaNekomaidR18ArtworkKeepsDefaultImage(t *testing.T) {
+	originalFetch := fetchNekomaidArtworkMeta
+	fetchNekomaidArtworkMeta = func(site string, authorID string, artworkID string) (nekomaidArtworkMeta, string, bool) {
+		return nekomaidArtworkMeta{
+			Title: "R18作品",
+			Thumb: "https://cdn.example.com/r18.jpg",
+			R18:   true,
+		}, "", true
+	}
+	defer func() {
+		fetchNekomaidArtworkMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid/pixiv/123/456"})
+
+	if meta.Image != "https://beta.faryne.dev/faryne-icon-1024.jpg" {
+		t.Fatalf("unexpected image for r18 artwork: %s", meta.Image)
+	}
+}
+
+func TestRenderHTMLNekomaidSiteName(t *testing.T) {
+	html, err := RenderHTML(modelSNS.RenderRequest{Path: "nekomaid"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, `og:site_name" content="難以名狀的抓圖器"`) {
+		t.Fatalf("html should include nekomaid site name: %s", html)
+	}
+}
+
 func TestRenderHTMLEscapesContent(t *testing.T) {
 	html, err := RenderHTML(modelSNS.RenderRequest{Path: "data/tw-stats/<script>"})
 	if err != nil {
