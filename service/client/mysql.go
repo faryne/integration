@@ -38,3 +38,21 @@ func GetDB(name enum.DBName) *gorm.DB {
 	}
 	return mysqlConnections[name]
 }
+
+func CloseMySqlConnections() error {
+	var closeErr error
+	for name, conn := range mysqlConnections {
+		db, err := conn.DB()
+		if err != nil {
+			if closeErr == nil {
+				closeErr = err
+			}
+			continue
+		}
+		if err = db.Close(); err != nil && closeErr == nil {
+			closeErr = err
+		}
+		delete(mysqlConnections, name)
+	}
+	return closeErr
+}

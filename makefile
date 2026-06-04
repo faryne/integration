@@ -1,5 +1,10 @@
+APP_BIN ?= ./apidev
+ENV_FILE ?= ./.env
+PID_FILE ?= ./apidev.pid
+LOG_FILE ?= ./apidev.log
+
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o apidev main.go && rsync -av apidev ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev
+	GOOS=linux GOARCH=amd64 go build -o apidev main.go && rsync -av apidev makefile ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev
 
 build-frontend:
 	cd static_site; \
@@ -12,3 +17,34 @@ mig-up:
 
 mig-down:
 	sql-migrate down -config ./migration/config.yml -env localhost
+
+start:
+	@if [ -f "$(PID_FILE)" ] && kill -0 "$$(cat "$(PID_FILE)")" 2>/dev/null; then \
+		echo "Already running: pid=$$(cat "$(PID_FILE)")"; \
+		exit 1; \
+	fi
+	@nohup "$(APP_BIN)" -env "$(ENV_FILE)" > "$(LOG_FILE)" 2>&1 & echo $$! > "$(PID_FILE)"
+	@echo "Started $(APP_BIN): pid=$$(cat "$(PID_FILE)"), log=$(LOG_FILE)"
+
+restart:
+	@if [ ! -f "$(PID_FILE)" ]; then \
+		echo "PID file not found: $(PID_FILE)"; \
+		exit 1; \
+	fi
+	@kill -HUP "$$(cat "$(PID_FILE)")"
+	@echo "Restart signal sent: pid=$$(cat "$(PID_FILE)")"
+
+shutdown:
+	@if [ ! -f "$(PID_FILE)" ]; then \
+		echo "PID file not found: $(PID_FILE)"; \
+		exit 1; \
+	fi
+	@kill -TERM "$$(cat "$(PID_FILE)")"
+	@echo "Shutdown signal sent: pid=$$(cat "$(PID_FILE)")"
+
+status:
+	@if [ -f "$(PID_FILE)" ] && kill -0 "$$(cat "$(PID_FILE)")" 2>/dev/null; then \
+		echo "Running: pid=$$(cat "$(PID_FILE)")"; \
+	else \
+		echo "Not running"; \
+	fi

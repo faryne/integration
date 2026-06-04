@@ -4,7 +4,9 @@ import (
 	"errors"
 	"flag"
 	"os"
+	"os/signal"
 	"reflect"
+	"syscall"
 	"time"
 
 	"faryne.dev/config"
@@ -23,18 +25,21 @@ import (
 	"github.com/gofiber/swagger/v2"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
-	"go.uber.org/zap"
 
 	_ "faryne.dev/docs"
 )
 
-var errChan = make(chan error)
-var reloadChan = make(chan bool)
 var envFile = "./.env"
 var inputEnvFile = ""
 var reload bool
 
-func main() {
+type appRuntime struct {
+	app       *fiber.App
+	cron      *cron.Cron
+	listenErr chan error
+}
+
+func newApp() *fiber.App {
 	app := fiber.New(fiber.Config{
 		ServerHeader:    "faryne.dev",
 		AppName:         "faryne.dev",
@@ -63,49 +68,101 @@ func main() {
 			return ctx.JSON(err.Error())
 		},
 	})
-	go func() {
-		for {
-			select {
-			case err := <-errChan:
-				log.Logger().Panic("Listen and serve error: "+err.Error(), zap.Error(err))
-			case <-reloadChan:
-				shutdownAllSettings(app, inputEnvFile)
-				loadAllSettings(app, inputEnvFile)
-			}
-		}
-	}()
+	return app
+}
 
+func main() {
 	// 處理 env
 	flag.StringVar(&inputEnvFile, "env", "", "path of env file")
 	flag.BoolVar(&reload, "reload", false, "reload app")
 	flag.Parse()
 
+	runtime, err := loadAllSettings(inputEnvFile)
+	if err != nil {
+		log.Logger().Panic("Start app failed: " + err.Error())
+	}
+
 	if reload {
-		reloadChan <- true
+		if err := gracefulRestart(runtime); err != nil {
+			log.Logger().Panic("Graceful restart failed: " + err.Error())
+		}
 		return
 	}
 
-	loadAllSettings(app, inputEnvFile)
-
-	select {}
+	waitForSignal(runtime)
 }
 
-func shutdownAllSettings(app *fiber.App, inputEnvFile string) {
-	_ = app.Shutdown()
+func waitForSignal(runtime *appRuntime) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(signalChan)
+
+	for {
+		select {
+		case err := <-runtime.listenErr:
+			if err != nil {
+				log.Logger().Panic("Listen and serve error: " + err.Error())
+			}
+			return
+		case sig := <-signalChan:
+			switch sig {
+			case syscall.SIGHUP:
+				if err := gracefulRestart(runtime); err != nil {
+					log.Logger().Panic("Graceful restart failed: " + err.Error())
+				}
+				return
+			default:
+				if err := shutdownAllSettings(runtime); err != nil {
+					log.Logger().Panic("Graceful shutdown failed: " + err.Error())
+				}
+				return
+			}
+		}
+	}
 }
 
-func loadAllSettings(app *fiber.App, inputEnvFile string) {
+func shutdownAllSettings(runtime *appRuntime) error {
+	if runtime == nil {
+		return nil
+	}
+	var shutdownErr error
+	if runtime.app != nil {
+		shutdownErr = errors.Join(shutdownErr, runtime.app.ShutdownWithTimeout(30*time.Second))
+	}
+	if runtime.cron != nil {
+		ctx := runtime.cron.Stop()
+		select {
+		case <-ctx.Done():
+		case <-time.After(30 * time.Second):
+			shutdownErr = errors.Join(shutdownErr, errors.New("cron shutdown timeout"))
+		}
+	}
+	shutdownErr = errors.Join(shutdownErr, client.CloseRedisConnections())
+	shutdownErr = errors.Join(shutdownErr, client.CloseMySqlConnections())
+	return shutdownErr
+}
+
+func gracefulRestart(runtime *appRuntime) error {
+	if err := shutdownAllSettings(runtime); err != nil {
+		return err
+	}
+	path, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	return syscall.Exec(path, os.Args, os.Environ())
+}
+
+func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	if inputEnvFile != "" {
 		envFile = inputEnvFile
 	}
 	if _, err := os.Stat(envFile); err == nil {
 		if envError := godotenv.Load(envFile); envError != nil {
-			errChan <- envError
-			return
+			return nil, envError
 		}
 	} else {
-		errChan <- err
-		return
+		return nil, err
 	}
 	config.InitEnvConfig()
 
@@ -117,24 +174,28 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	for key, conn := range dbConnections {
 		connError := client.InitMySql(key, conn)
 		if connError != nil {
-			errChan <- connError
-			return
+			_ = client.CloseMySqlConnections()
+			return nil, connError
 		}
 	}
 
 	if config.EnvConfig().RedisDSN != "" {
 		redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
 		if redisConnError != nil {
-			errChan <- redisConnError
-			return
+			_ = client.CloseRedisConnections()
+			_ = client.CloseMySqlConnections()
+			return nil, redisConnError
 		}
 	}
 
 	esConnError := client.InitElasticSearch(enum.ESDefault, []string{config.EnvConfig().ESDSN})
 	if esConnError != nil {
-		errChan <- esConnError
-		return
+		_ = client.CloseRedisConnections()
+		_ = client.CloseMySqlConnections()
+		return nil, esConnError
 	}
+
+	app := newApp()
 
 	// 記錄開始時間
 	app.Use(func(c fiber.Ctx) error {
@@ -154,48 +215,53 @@ func loadAllSettings(app *fiber.App, inputEnvFile string) {
 	// </editor-fold>
 
 	// <editor-fold desc="cronjob">
-	go func() {
-		c := cron.New(cron.WithParser(cron.NewParser(
-			cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
-		)))
+	c := cron.New(cron.WithParser(cron.NewParser(
+		cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
+	)))
 
-		c.AddFunc("0 0 * * 1", func() {
-			_, _ = twse.UpdateETFCodeList()
-			twse.UpdateETFShare(enum.StockMarketTWSE)
-		})
-		c.AddFunc("0 0 * * 2", func() {
-			twse.UpdateETFShare(enum.StockMarketOTC)
-		})
-		c.AddFunc("0 15 * * *", func() {
-			d := time.Now().Format(time.DateOnly)
-			twse.UpdateETFTicker("twse", d)
-			twse.UpdateETFTicker("otc", d)
-		})
-		c.AddFunc("7 16 * * 1-5", func() {
-			// 更新填息資訊
-			// -- 更新除權息價格及計算殖利率
-			twse.UpdateExPriceAndYieldRate()
-			// -- 更新填息日等資訊
-			twse.UpdateFilledDays()
-			// -- 更新勝率填息平均日等
-			twse.UpdateETFWinRate()
-		})
-		c.AddFunc("0 1 1 * *", func() {
-			// 每月 1 號 凌晨 1 點執行前一個月的月均價統計
-			now := time.Now()
-			lastMonth := now.AddDate(0, -1, 0)
-			s := twse.NewETFMonthlyPriceService()
-			_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
-		})
-		c.AddFunc("0 8 * * *", func() {
-			_ = twse.NotifyUpcomingETFEx()
-		})
+	c.AddFunc("0 0 * * 1", func() {
+		_, _ = twse.UpdateETFCodeList()
+		twse.UpdateETFShare(enum.StockMarketTWSE)
+	})
+	c.AddFunc("0 0 * * 2", func() {
+		twse.UpdateETFShare(enum.StockMarketOTC)
+	})
+	c.AddFunc("0 15 * * *", func() {
+		d := time.Now().Format(time.DateOnly)
+		twse.UpdateETFTicker("twse", d)
+		twse.UpdateETFTicker("otc", d)
+	})
+	c.AddFunc("7 16 * * 1-5", func() {
+		// 更新填息資訊
+		// -- 更新除權息價格及計算殖利率
+		twse.UpdateExPriceAndYieldRate()
+		// -- 更新填息日等資訊
+		twse.UpdateFilledDays()
+		// -- 更新勝率填息平均日等
+		twse.UpdateETFWinRate()
+	})
+	c.AddFunc("0 1 1 * *", func() {
+		// 每月 1 號 凌晨 1 點執行前一個月的月均價統計
+		now := time.Now()
+		lastMonth := now.AddDate(0, -1, 0)
+		s := twse.NewETFMonthlyPriceService()
+		_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
+	})
+	c.AddFunc("0 8 * * *", func() {
+		_ = twse.NotifyUpcomingETFEx()
+	})
 
-		c.Start()
-	}()
+	c.Start()
 	// </editor-fold>
 
+	listenErr := make(chan error, 1)
 	go func() {
-		errChan <- app.Listen(":" + config.EnvConfig().AppPort)
+		listenErr <- app.Listen(":" + config.EnvConfig().AppPort)
 	}()
+
+	return &appRuntime{
+		app:       app,
+		cron:      c,
+		listenErr: listenErr,
+	}, nil
 }

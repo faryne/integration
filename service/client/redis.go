@@ -27,3 +27,14 @@ func GetRedis(name enum.RedisName) *redis.Client {
 	}
 	return redisConnections[name]
 }
+
+func CloseRedisConnections() error {
+	var closeErr error
+	for name, conn := range redisConnections {
+		if err := conn.Close(); err != nil && closeErr == nil {
+			closeErr = err
+		}
+		delete(redisConnections, name)
+	}
+	return closeErr
+}
