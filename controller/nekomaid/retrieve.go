@@ -9,6 +9,19 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// Retrieve retrieves and stores an artwork.
+// @Summary Retrieve nekomaid artwork
+// @Tags Nekomaid
+// @Produce json
+// @Param site query string true "Site, for example pixiv, nico, tinami"
+// @Param artwork_id query string true "Artwork ID"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 409 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /nekomaid/retrieve.json [get]
+// @Router /nekomaid/retrieve.json [post]
 func Retrieve(ctx fiber.Ctx) error {
 	var siteStr, artworkId string
 	if ctx.Method() == fiber.MethodPost {

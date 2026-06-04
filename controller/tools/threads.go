@@ -7,6 +7,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// ThreadCapture captures a Threads oEmbed image.
+// @Summary Capture Threads oEmbed
+// @Tags Tools
+// @Accept json
+// @Produce json
+// @Param request body tools.ThreadsCaptureRequest true "Threads capture request"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /tools/threads/oembed_capture [post]
 func ThreadCapture(ctx fiber.Ctx) error {
 	var q tools.ThreadsCaptureRequest
 	if err := ctx.Bind().Body(&q); err != nil {

@@ -9,6 +9,15 @@ import (
 	"net/url"
 )
 
+// YandereTags lists yandere tags.
+// @Summary List yandere tags
+// @Tags Nekomaid
+// @Produce json
+// @Param page query int false "Page number"
+// @Param per_page query int false "Rows per page"
+// @Success 200 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /yandere/tags [get]
 func YandereTags(ctx fiber.Ctx) error {
 	tagsResponse, tagsResponseError := helper.Paginate(ctx, func(page int64, perPage int64, params url.Values) (helper.PaginateCallbackResponse[[]nekomaid.YandereTagOutput], error) {
 		rows, total, err := yandere_tags.FetchTags(page, perPage)

@@ -6,6 +6,14 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// Render renders SNS metadata HTML.
+// @Summary Render SNS metadata HTML
+// @Tags SNS
+// @Produce html
+// @Param path path string false "SNS path"
+// @Success 200 {string} string "HTML"
+// @Router /sns [get]
+// @Router /sns/{path} [get]
 func Render(ctx fiber.Ctx) error {
 	html, err := serviceSNS.RenderHTML(modelSNS.RenderRequest{
 		Path:  ctx.Params("*"),

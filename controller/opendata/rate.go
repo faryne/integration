@@ -7,6 +7,18 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// Rate searches exchange-rate records.
+// @Summary Search exchange rates
+// @Tags OpenData Rates
+// @Produce json
+// @Param service_name query string false "Bank service name, for example Mega"
+// @Param begin_date query string false "Begin date in YYYY-MM-DD"
+// @Param end_date query string false "End date in YYYY-MM-DD"
+// @Param currencies query []string false "Currency codes" collectionFormat(multi)
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /opendata/rates [get]
 func Rate(ctx fiber.Ctx) error {
 	var req ratesEntity.RateRequest
 	if err := ctx.Bind().Query(&req); err != nil {
@@ -19,6 +31,12 @@ func Rate(ctx fiber.Ctx) error {
 	return output.Success(rates)
 }
 
+// Banks lists supported exchange-rate bank services.
+// @Summary List supported banks
+// @Tags OpenData Rates
+// @Produce json
+// @Success 200 {object} output.CommonOutput
+// @Router /opendata/rates/banks [get]
 func Banks(_ fiber.Ctx) error {
 	return output.Success(map[string]string{
 		"Mega":   "兆豐銀行",
@@ -29,6 +47,12 @@ func Banks(_ fiber.Ctx) error {
 	})
 }
 
+// Currencies lists supported currency codes.
+// @Summary List supported currencies
+// @Tags OpenData Rates
+// @Produce json
+// @Success 200 {object} output.CommonOutput
+// @Router /opendata/rates/currencies [get]
 func Currencies(_ fiber.Ctx) error {
 	return output.Success(map[string]string{
 		"AUD": "澳元",

@@ -11,6 +11,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// WebshotCreate creates a screenshot for a URL.
+// @Summary Create webshot
+// @Tags Tools
+// @Accept json
+// @Produce json
+// @Param request body tools.WebshotRequest true "Webshot request"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /tools/webshot [post]
 func WebshotCreate(ctx fiber.Ctx) error {
 	var req modelTools.WebshotRequest
 	if err := ctx.Bind().Body(&req); err != nil {
@@ -25,6 +35,18 @@ func WebshotCreate(ctx fiber.Ctx) error {
 	return output.Success(resp)
 }
 
+// WebshotGet returns screenshot history for a URL hash.
+// @Summary Get webshot history
+// @Tags Tools
+// @Produce json
+// @Param hash path string true "URL hash"
+// @Param page query int false "Page number"
+// @Param per_page query int false "Rows per page"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 404 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /tools/webshot/{hash} [get]
 func WebshotGet(ctx fiber.Ctx) error {
 	var uriReq modelTools.WebshotGetURIRequest
 	if err := ctx.Bind().URI(&uriReq); err != nil {

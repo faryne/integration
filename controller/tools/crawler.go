@@ -7,6 +7,16 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// CrawlerExec crawls a URL with selector rules.
+// @Summary Execute crawler
+// @Tags Tools
+// @Accept json
+// @Produce json
+// @Param request body tools.CrawlRequest true "Crawler request"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /tools/crawler/exec [post]
 func CrawlerExec(ctx fiber.Ctx) error {
 	var req tools.CrawlRequest
 	if err := ctx.Bind().Body(&req); err != nil {
