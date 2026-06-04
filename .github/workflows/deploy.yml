@@ -1,0 +1,89 @@
+# 只處理編譯，不處理部署
+name: Deploy Project
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: static_site
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+          cache-dependency-path: static_site/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build frontend
+        run: pnpm build
+        env:
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+
+#      - name: Deploy to Firebase
+#        uses: FirebaseExtended/action-hosting-deploy@v0
+#        with:
+#          repoToken: ${{ secrets.GITHUB_TOKEN }}
+#          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+#          projectId: faryne-integration
+#          channelId: live
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: true
+
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
+      - name: Generate Swagger docs
+        run: $(go env GOPATH)/bin/swag init -g main.go -o docs
+
+      - name: Build backend
+        run: GOOS=linux GOARCH=amd64 go build -o apidev main.go
+
+#      - name: Deploy to Remote Server
+#        uses: appleboy/scp-action@v0.1.7
+#        with:
+#          host: ${{ secrets.REMOTE_HOST }}
+#          username: ${{ secrets.REMOTE_USER }}
+#          password: ${{ secrets.REMOTE_PASSWORD }}
+#          port: ${{ secrets.REMOTE_PORT || 22 }}
+#          source: "apidev"
+#          target: "~/server-apidev"
+#          strip_components: 0
+
+#      - name: Post-deployment (Optional)
+#        uses: appleboy/ssh-action@v1.2.0
+#        with:
+#          host: ${{ secrets.REMOTE_HOST }}
+#          username: ${{ secrets.REMOTE_USER }}
+#          password: ${{ secrets.REMOTE_PASSWORD }}
+#          port: ${{ secrets.REMOTE_PORT || 22 }}
+#          script: |
+#            # 這裡可以加入重啟服務的指令，例如：
+#            # sudo systemctl restart apidev
