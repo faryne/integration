@@ -32,6 +32,7 @@ import (
 var envFile = "./.env"
 var inputEnvFile = ""
 var reload bool
+var buildVersion = "development"
 
 type appRuntime struct {
 	app       *fiber.App
@@ -81,8 +82,10 @@ func main() {
 	if err != nil {
 		log.Logger().Panic("Start app failed: " + err.Error())
 	}
+	logBuildEvent("start")
 
 	if reload {
+		logBuildEvent("restart")
 		if err := gracefulRestart(runtime); err != nil {
 			log.Logger().Panic("Graceful restart failed: " + err.Error())
 		}
@@ -107,11 +110,13 @@ func waitForSignal(runtime *appRuntime) {
 		case sig := <-signalChan:
 			switch sig {
 			case syscall.SIGHUP:
+				logBuildEvent("restart")
 				if err := gracefulRestart(runtime); err != nil {
 					log.Logger().Panic("Graceful restart failed: " + err.Error())
 				}
 				return
 			default:
+				logBuildEvent("shutdown")
 				if err := shutdownAllSettings(runtime); err != nil {
 					log.Logger().Panic("Graceful shutdown failed: " + err.Error())
 				}
@@ -119,6 +124,10 @@ func waitForSignal(runtime *appRuntime) {
 			}
 		}
 	}
+}
+
+func logBuildEvent(event string) {
+	log.Logger().Info("App " + event + ": buildVersion=" + buildVersion)
 }
 
 func shutdownAllSettings(runtime *appRuntime) error {

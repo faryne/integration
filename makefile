@@ -2,9 +2,11 @@ APP_BIN ?= ./apidev
 ENV_FILE ?= ./.env
 PID_FILE ?= ./apidev.pid
 LOG_FILE ?= ./apidev.log
+BUILD_VERSION ?= $(shell date '+%Y-%m-%d.%H%M%S')
+GO_LDFLAGS := -X main.buildVersion=$(BUILD_VERSION)
 
 build-linux:
-	GOOS=linux GOARCH=amd64 go build -o apidev main.go && rsync -av apidev makefile ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(GO_LDFLAGS)" -o apidev main.go && rsync -av apidev makefile ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev
 
 build-frontend:
 	cd static_site; \
@@ -23,7 +25,7 @@ start:
 		echo "Already running: pid=$$(cat "$(PID_FILE)")"; \
 		exit 1; \
 	fi
-	@nohup "$(APP_BIN)" -env "$(ENV_FILE)" > "$(LOG_FILE)" 2>&1 & echo $$! > "$(PID_FILE)"
+	@nohup "$(APP_BIN)" -env "$(ENV_FILE)" >> "$(LOG_FILE)" 2>&1 & echo $$! > "$(PID_FILE)"
 	@echo "Started $(APP_BIN): pid=$$(cat "$(PID_FILE)"), log=$(LOG_FILE)"
 
 restart:
