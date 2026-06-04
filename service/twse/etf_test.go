@@ -95,8 +95,8 @@ func Test_UpdateETFTechnicalIndicators(t *testing.T) {
 	_ = godotenv.Load("/Users/faryne/projects/sideproject/faryne.dev/.env")
 	config.InitEnvConfig()
 	_ = client.InitMySql(enum.DBWalolita, config.EnvConfig().WalolitaDSN)
-	UpdateETFTechnicalIndicators("twse", "2026-06-02")
-	UpdateETFTechnicalIndicators("otc", "2026-06-02")
+	UpdateETFTechnicalIndicators("twse", "2026-06-03")
+	UpdateETFTechnicalIndicators("otc", "2026-06-03")
 }
 
 func Test_GetETFShare(t *testing.T) {

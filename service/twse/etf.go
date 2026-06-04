@@ -346,6 +346,7 @@ func calculateETFTechnicalIndicators(code string, updatedTickers []etf.Ticker) (
 		if _, ok := targetDates[currentDate]; !ok {
 			continue
 		}
+		rows[index].Date = currentDate
 		rows[index] = calculateTickerTechnicalIndicators(rows, index)
 
 		if !hasLatest || currentDate > normalizeTickerDate(latest.Date) {

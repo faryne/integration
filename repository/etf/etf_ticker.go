@@ -1,6 +1,7 @@
 package etf
 
 import (
+	"fmt"
 	"time"
 
 	"faryne.dev/model/entity/opendata/etf"
@@ -32,8 +33,9 @@ func (inst *RepositoryETFTicker) UpdateETFTickerBatch(etfs []etf.Ticker) error {
 }
 
 func (inst *RepositoryETFTicker) UpdateTickerTechnicalIndicators(input etf.Ticker) error {
-	return inst.GetDB().Table((&etf.Ticker{}).TableName()).
-		Where("code = ? AND ticker_date = ?", input.Code, input.Date).
+	tickerDate := normalizeTickerDate(input.Date)
+	result := inst.GetDB().Table((&etf.Ticker{}).TableName()).
+		Where("code = ? AND ticker_date = ?", input.Code, tickerDate).
 		Updates(map[string]interface{}{
 			"range_position_20":  input.RangePosition20,
 			"range_position_60":  input.RangePosition60,
@@ -42,7 +44,27 @@ func (inst *RepositoryETFTicker) UpdateTickerTechnicalIndicators(input etf.Ticke
 			"ma20":               input.MA20,
 			"ma60":               input.MA60,
 			"ma120":              input.MA120,
-		}).Error
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("update etf ticker technical indicators affected 0 rows, code: %s, date: %s", input.Code, tickerDate)
+	}
+	return nil
+}
+
+func normalizeTickerDate(date string) string {
+	if t, err := time.Parse(time.DateOnly, date); err == nil {
+		return t.Format(time.DateOnly)
+	}
+	if t, err := time.Parse(time.RFC3339, date); err == nil {
+		return t.Format(time.DateOnly)
+	}
+	if len(date) >= len(time.DateOnly) {
+		return date[:len(time.DateOnly)]
+	}
+	return date
 }
 
 // GetFirstTickerDate 獲取指定 code 的最早股價日期，如果 code 為空則獲取所有資料的最早日期
