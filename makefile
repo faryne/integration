@@ -8,6 +8,9 @@ GO_LDFLAGS := -X main.buildVersion=$(BUILD_VERSION)
 build-linux:
 	GOOS=linux GOARCH=amd64 go build -ldflags "$(GO_LDFLAGS)" -o apidev main.go && rsync -av apidev makefile ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev
 
+build-linux-arm:
+	GOOS=linux GOARCH=arm64 go build -ldflags "$(GO_LDFLAGS)" -o apidev-arm64 main.go && rsync -av apidev-arm64 makefile ubuntu@nekomimi.maid.tw:~/server-apidev && rm apidev-arm64
+
 build-frontend:
 	cd static_site; \
 	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \

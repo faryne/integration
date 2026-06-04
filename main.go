@@ -22,11 +22,8 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/gofiber/swagger/v2"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
-
-	_ "faryne.dev/docs"
 )
 
 var envFile = "./.env"
@@ -72,6 +69,10 @@ func newApp() *fiber.App {
 	return app
 }
 
+// @title faryne.dev API
+// @version 1.0
+// @description faryne.dev backend API documentation.
+// @BasePath /
 func main() {
 	// 處理 env
 	flag.StringVar(&inputEnvFile, "env", "", "path of env file")
@@ -220,7 +221,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.Tools(app)
 	route.SNS(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
-	app.Get("/*", swagger.HandlerDefault)
+	route.Swagger(app)
 	// </editor-fold>
 
 	// <editor-fold desc="cronjob">
