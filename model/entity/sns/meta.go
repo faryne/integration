@@ -7,6 +7,7 @@ type RenderRequest struct {
 
 type Meta struct {
 	Title        string
+	SiteName     string
 	Description  string
 	Canonical    string
 	OpenGraphURL string

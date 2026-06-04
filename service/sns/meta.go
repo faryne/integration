@@ -1,36 +1,84 @@
 package sns
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
+	"net/http"
 	"net/url"
 	"path"
 	"regexp"
 	"strings"
+	"time"
 
 	"faryne.dev/config"
 	modelSNS "faryne.dev/model/entity/sns"
+	"faryne.dev/model/enum"
+	"faryne.dev/service/client"
 	"faryne.dev/service/twse"
 )
 
 const (
-	siteName           = "ha2.tw / faryne.dev"
-	defaultFrontendURL = "https://beta.faryne.dev"
-	defaultDescription = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
-	defaultImagePath   = "/faryne-icon-1024.jpg"
+	siteName            = "ha2.tw / faryne.dev"
+	nekomaidSiteName    = "難以名狀的抓圖器"
+	defaultFrontendURL  = "https://beta.faryne.dev"
+	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
+	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
+	defaultImagePath    = "/faryne-icon-1024.jpg"
+	nekomaidAPIBase     = "https://faryne.dev/api/opendata/nekomaid"
 )
 
 type pathMeta struct {
 	Path        string
 	Pattern     *regexp.Regexp
 	Title       string
+	SiteName    string
 	Description string
 	Image       string
 	Prefix      bool
 	Apply       func(meta *modelSNS.Meta, matches []string)
 }
 
+type nekomaidArtworkAPIResponse struct {
+	Artwork nekomaidArtworkMeta `json:"artwork"`
+	Author  struct {
+		Nickname string `json:"nickname"`
+		Author   string `json:"author"`
+	} `json:"author"`
+}
+
+type nekomaidArtworkMeta struct {
+	Site      string   `json:"site"`
+	From      string   `json:"from"`
+	AuthorID  any      `json:"author_id"`
+	ArtworkID string   `json:"artwork_id"`
+	Title     string   `json:"title"`
+	Tags      []string `json:"tags"`
+	Thumb     string   `json:"thumb"`
+	IsR18     any      `json:"is_r18"`
+	R18       bool     `json:"r18"`
+	Photos    []struct {
+		URL string `json:"url"`
+	} `json:"photos"`
+}
+
+var fetchNekomaidArtworkMeta = fetchNekomaidArtworkMetaFromAPI
+
 var pathCollection = []pathMeta{
+	{
+		Pattern:     regexp.MustCompile(`^/(pixiv|nico|tinami)(?:/([^/]+))?(?:/([^/]+))?$`),
+		Title:       nekomaidSiteName,
+		SiteName:    nekomaidSiteName,
+		Description: nekomaidDescription,
+		Apply:       applyLegacyNekomaidMeta,
+	},
+	{
+		Pattern:     regexp.MustCompile(`^/nekomaid/(pixiv|nico|tinami)/([^/]+)/([^/]+)$`),
+		Title:       nekomaidSiteName,
+		SiteName:    nekomaidSiteName,
+		Description: nekomaidDescription,
+		Apply:       applyNekomaidArtworkMetaFromMatches,
+	},
 	{
 		Pattern:     regexp.MustCompile(`^/data/etf/twse/([0-9A-Za-z_-]+)$`),
 		Title:       "ETF 投資導航",
@@ -51,6 +99,7 @@ var pathCollection = []pathMeta{
 	{Path: "/tools/thread/capture", Title: "Threads 截圖工具", Description: "將 Threads 貼文轉成適合保存與分享的截圖。"},
 	{Path: "/tools/webshot", Title: "網站截圖工具", Description: "產生網站完整頁面截圖、縮圖與歷史紀錄連結，方便保存網頁狀態。", Prefix: true},
 	{Path: "/tools/userscripts", Title: "Userscripts 列表", Description: "整理 Faryne 維護或使用中的 userscripts 工具列表。"},
+	{Path: "/nekomaid", Title: nekomaidSiteName, SiteName: nekomaidSiteName, Description: nekomaidDescription, Prefix: true},
 }
 
 func RenderHTML(req modelSNS.RenderRequest) (string, error) {
@@ -71,6 +120,7 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 
 	meta := modelSNS.Meta{
 		Title:        siteName,
+		SiteName:     siteName,
 		Description:  defaultDescription,
 		Canonical:    canonical,
 		OpenGraphURL: openGraphURL,
@@ -81,7 +131,10 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	}
 
 	if matched, matches, ok := matchPathMeta(frontendPath); ok {
-		meta.Title = fullTitle(matched.Title)
+		if matched.SiteName != "" {
+			meta.SiteName = matched.SiteName
+		}
+		meta.Title = fullTitleForSite(matched.Title, meta.SiteName)
 		meta.Description = matched.Description
 		if matched.Image != "" {
 			meta.Image = absoluteURL(frontendOrigin, matched.Image)
@@ -92,6 +145,155 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	}
 
 	return meta
+}
+
+func applyLegacyNekomaidMeta(meta *modelSNS.Meta, matches []string) {
+	site := matches[1]
+	segments := []string{"", "nekomaid", site}
+	if len(matches) > 2 && matches[2] != "" {
+		segments = append(segments, matches[2])
+	}
+	if len(matches) > 3 && matches[3] != "" {
+		segments = append(segments, matches[3])
+	}
+
+	targetPath := strings.Join(segments, "/")
+	frontendOrigin := frontendOrigin()
+	meta.Canonical = absoluteURL(frontendOrigin, targetPath)
+	meta.OpenGraphURL = absoluteURL(frontendOrigin, "/sns"+targetPath)
+	meta.RedirectURL = meta.Canonical
+
+	if len(matches) > 3 && matches[2] != "" && matches[3] != "" {
+		applyNekomaidArtworkMeta(meta, site, matches[2], matches[3])
+	}
+}
+
+func applyNekomaidArtworkMetaFromMatches(meta *modelSNS.Meta, matches []string) {
+	applyNekomaidArtworkMeta(meta, matches[1], matches[2], matches[3])
+}
+
+func applyNekomaidArtworkMeta(meta *modelSNS.Meta, site string, authorID string, artworkID string) {
+	artwork, authorName, ok := fetchNekomaidArtworkMeta(site, authorID, artworkID)
+	if !ok {
+		return
+	}
+
+	title := strings.TrimSpace(artwork.Title)
+	if title == "" {
+		title = artworkID
+	}
+	meta.Title = fullTitleForSite(title, meta.SiteName)
+
+	parts := []string{fmt.Sprintf("「%s」", title)}
+	if authorName != "" {
+		parts = append(parts, "作者："+authorName)
+	}
+	if siteLabel := nekomaidSiteLabel(site); siteLabel != "" {
+		parts = append(parts, "來源："+siteLabel)
+	}
+	if len(artwork.Tags) > 0 {
+		parts = append(parts, "標籤："+strings.Join(limitStrings(artwork.Tags, 8), "、"))
+	}
+	if len(artwork.Photos) > 1 {
+		parts = append(parts, fmt.Sprintf("共 %d 張圖片", len(artwork.Photos)))
+	}
+	meta.Description = strings.Join(parts, "，") + "。"
+
+	if image := nekomaidArtworkImage(artwork); image != "" && !nekomaidArtworkIsR18(artwork) {
+		meta.Image = image
+	}
+}
+
+func fetchNekomaidArtworkMetaFromAPI(site string, authorID string, artworkID string) (nekomaidArtworkMeta, string, bool) {
+	cacheKey := fmt.Sprintf("sns:nekomaid:artwork:%s:%s:%s", site, authorID, artworkID)
+	if r := client.GetRedis(enum.RedisDefault); r != nil {
+		if raw, err := r.Get(cacheKey).Result(); err == nil && raw != "" {
+			var cached nekomaidArtworkAPIResponse
+			if err := json.Unmarshal([]byte(raw), &cached); err == nil {
+				return cached.Artwork, nekomaidAuthorName(cached), true
+			}
+		}
+	}
+
+	apiURL := fmt.Sprintf("%s/%s/%s/%s", nekomaidAPIBase, url.PathEscape(site), url.PathEscape(authorID), url.PathEscape(artworkID))
+	httpClient := http.Client{Timeout: 5 * time.Second}
+	resp, err := httpClient.Get(apiURL)
+	if err != nil {
+		return nekomaidArtworkMeta{}, "", false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nekomaidArtworkMeta{}, "", false
+	}
+
+	var data nekomaidArtworkAPIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return nekomaidArtworkMeta{}, "", false
+	}
+	if strings.TrimSpace(data.Artwork.Title) == "" && data.Artwork.ArtworkID == "" {
+		return nekomaidArtworkMeta{}, "", false
+	}
+
+	if r := client.GetRedis(enum.RedisDefault); r != nil {
+		if raw, err := json.Marshal(data); err == nil {
+			_ = r.Set(cacheKey, string(raw), 24*time.Hour).Err()
+		}
+	}
+
+	return data.Artwork, nekomaidAuthorName(data), true
+}
+
+func nekomaidAuthorName(data nekomaidArtworkAPIResponse) string {
+	if name := strings.TrimSpace(data.Author.Nickname); name != "" {
+		return name
+	}
+	return strings.TrimSpace(data.Author.Author)
+}
+
+func nekomaidArtworkImage(artwork nekomaidArtworkMeta) string {
+	if strings.TrimSpace(artwork.Thumb) != "" {
+		return artwork.Thumb
+	}
+	if len(artwork.Photos) > 0 {
+		return strings.TrimSpace(artwork.Photos[0].URL)
+	}
+	return ""
+}
+
+func nekomaidArtworkIsR18(artwork nekomaidArtworkMeta) bool {
+	if artwork.R18 {
+		return true
+	}
+	switch value := artwork.IsR18.(type) {
+	case bool:
+		return value
+	case float64:
+		return value > 0
+	case string:
+		return value == "1" || strings.EqualFold(value, "true")
+	default:
+		return false
+	}
+}
+
+func nekomaidSiteLabel(site string) string {
+	switch site {
+	case "pixiv":
+		return "Pixiv"
+	case "nico":
+		return "Niconico 靜畫"
+	case "tinami":
+		return "TINAMI"
+	default:
+		return site
+	}
+}
+
+func limitStrings(values []string, limit int) []string {
+	if len(values) <= limit {
+		return values
+	}
+	return values[:limit]
 }
 
 func applyTwseETFMeta(meta *modelSNS.Meta, code string) {
@@ -140,11 +342,18 @@ func matchPathMeta(frontendPath string) (pathMeta, []string, bool) {
 }
 
 func fullTitle(page string) string {
+	return fullTitleForSite(page, siteName)
+}
+
+func fullTitleForSite(page string, currentSiteName string) string {
 	page = strings.TrimSpace(page)
-	if page == "" || page == siteName {
-		return siteName
+	if currentSiteName == "" {
+		currentSiteName = siteName
 	}
-	return page + " | " + siteName
+	if page == "" || page == currentSiteName {
+		return currentSiteName
+	}
+	return page + " | " + currentSiteName
 }
 
 func frontendOrigin() string {
@@ -282,13 +491,13 @@ var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>
   <meta name="robots" content="{{ .Robots }}">
   <meta name="theme-color" content="#1976d2">
   <meta property="og:type" content="{{ .Type }}">
-  <meta property="og:site_name" content="` + siteName + `">
+  <meta property="og:site_name" content="{{ .SiteName }}">
   <meta property="og:locale" content="zh_TW">
   <meta property="og:title" content="{{ .Title }}">
   <meta property="og:description" content="{{ .Description }}">
   <meta property="og:url" content="{{ .OpenGraphURL }}">
   <meta property="og:image" content="{{ .Image }}">
-  <meta property="og:image:alt" content="` + siteName + `">
+  <meta property="og:image:alt" content="{{ .SiteName }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ .Title }}">
   <meta name="twitter:description" content="{{ .Description }}">
@@ -300,7 +509,7 @@ var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>
     "url":{{ .Canonical | printf "%q" }},
     "description":{{ .Description | printf "%q" }},
     "inLanguage":"zh-Hant-TW",
-    "isPartOf":{"@type":"WebSite","name":"` + siteName + `","url":"` + defaultFrontendURL + `"}
+    "isPartOf":{"@type":"WebSite","name":{{ .SiteName | printf "%q" }},"url":"` + defaultFrontendURL + `"}
   }</script>
 </head>
 <body>
