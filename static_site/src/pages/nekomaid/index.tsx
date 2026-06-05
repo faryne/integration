@@ -29,7 +29,7 @@ import {
   useNekomaidSearch,
 } from "@/apis/nekomaid/search.ts";
 import { ArtworkCard } from "@/components/nekomaid/ArtworkCard.tsx";
-import { ArtworkImageViewer } from "@/components/nekomaid/ArtworkImageViewer.tsx";
+import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
 import { NekomaidBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
@@ -235,7 +235,7 @@ function DetailContent({
           title={artwork.title}
           artworkId={artwork.artwork_id}
         />
-        <ArtworkImageViewer
+        <ImageViewer
           photos={artwork.photos ?? []}
           title={artwork.title || "未命名作品"}
         />
