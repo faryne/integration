@@ -16,10 +16,32 @@ import { useEffect, useRef, useState } from "react";
 
 export interface ImageViewerPhoto {
   description?: string;
+  ext?: string;
+  mime?: string;
   thumb?: string;
   thumbnail?: string;
   url: string;
 }
+
+const isVideoPhoto = (photo?: ImageViewerPhoto) => {
+  if (!photo) {
+    return false;
+  }
+  const mime = photo.mime?.toLowerCase() ?? "";
+  const ext = photo.ext?.toLowerCase() ?? "";
+  const urlPath = (() => {
+    try {
+      return new URL(photo.url).pathname.toLowerCase();
+    } catch {
+      return photo.url.toLowerCase().split("?")[0] ?? "";
+    }
+  })();
+  return (
+    mime.startsWith("video/") ||
+    ["webm", "mp4", "mov"].includes(ext) ||
+    /\.(webm|mp4|mov)$/.test(urlPath)
+  );
+};
 
 export function ImageViewer({
   children,
@@ -41,6 +63,7 @@ export function ImageViewer({
   const suppressClickRef = useRef(false);
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
+  const currentIsVideo = isVideoPhoto(currentPhoto);
   const currentDescription = currentPhoto?.description?.trim();
   const thumbnails = photos.map(
     (photo) => photo.thumbnail || photo.thumb || "",
@@ -59,7 +82,7 @@ export function ImageViewer({
     setExpanded(false);
   };
 
-  const handleTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     if (!isCarousel || !allImagesLoaded || expanded) {
       return;
     }
@@ -68,7 +91,7 @@ export function ImageViewer({
     suppressClickRef.current = false;
   };
 
-  const handleTouchEnd = (event: TouchEvent<HTMLButtonElement>) => {
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
     if (!start || !isCarousel || !allImagesLoaded || expanded) {
@@ -120,13 +143,27 @@ export function ImageViewer({
       };
     }
 
-    urls.forEach((url) => {
-      const image = new Image();
+    photos.forEach((photo) => {
+      const url = photo.url;
+      if (!url) {
+        return;
+      }
       const markLoaded = () => {
         if (!cancelled) {
           setLoadedCount((count) => count + 1);
         }
       };
+      if (isVideoPhoto(photo)) {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+        video.onloadedmetadata = markLoaded;
+        video.onerror = markLoaded;
+        video.src = url;
+        return;
+      }
+      const image = new Image();
       image.onload = markLoaded;
       image.onerror = markLoaded;
       image.src = url;
@@ -345,11 +382,18 @@ export function ImageViewer({
               }}
             >
               <Box
-                component="button"
-                type="button"
+                component="div"
+                role="button"
+                tabIndex={0}
                 onClick={handleImageClick}
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleImageClick();
+                  }
+                }}
                 sx={{
                   alignItems: expanded ? "flex-start" : "center",
                   appearance: "none",
@@ -366,23 +410,51 @@ export function ImageViewer({
                   width: "100%",
                 }}
               >
-                <Box
-                  component="img"
-                  src={currentPhoto.url}
-                  alt={`${title} ${currentIndex + 1}`}
-                  sx={{
-                    borderRadius: expanded ? 0 : 1,
-                    boxShadow: expanded
-                      ? "none"
-                      : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                    display: "block",
-                    height: expanded ? "auto" : "auto",
-                    maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                    maxWidth: expanded ? "none" : "100%",
-                    objectFit: "contain",
-                    width: expanded ? "auto" : "auto",
-                  }}
-                />
+                {currentIsVideo ? (
+                  <Box
+                    component="video"
+                    aria-label={`${title} ${currentIndex + 1}`}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    sx={{
+                      borderRadius: expanded ? 0 : 1,
+                      boxShadow: expanded
+                        ? "none"
+                        : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                      display: "block",
+                      height: expanded ? "auto" : "auto",
+                      maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                      maxWidth: expanded ? "none" : "100%",
+                      objectFit: "contain",
+                      width: expanded ? "auto" : "auto",
+                    }}
+                  >
+                    <source
+                      src={currentPhoto.url}
+                      type={currentPhoto.mime || "video/webm"}
+                    />
+                  </Box>
+                ) : (
+                  <Box
+                    component="img"
+                    src={currentPhoto.url}
+                    alt={`${title} ${currentIndex + 1}`}
+                    sx={{
+                      borderRadius: expanded ? 0 : 1,
+                      boxShadow: expanded
+                        ? "none"
+                        : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                      display: "block",
+                      height: expanded ? "auto" : "auto",
+                      maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                      maxWidth: expanded ? "none" : "100%",
+                      objectFit: "contain",
+                      width: expanded ? "auto" : "auto",
+                    }}
+                  />
+                )}
               </Box>
               {children && (
                 <>

@@ -34,7 +34,7 @@ var f = func(input nekomaid.ArtworkSearchResult) nekomaid.ArtworkSearchClearRow 
 		PhotosCnt:    len(input.Photos),
 		PublishedDt:  input.PublishedDt,
 		Tags:         input.Tags,
-		NekomaidLink: fmt.Sprintf("https://nekomaid.web.app/#/%s/%s/%s", input.From, authorId, input.ArtworkId),
+		NekomaidLink: fmt.Sprintf("%s/nekomaid/%s/%s/%s", Home, input.From, authorId, input.ArtworkId),
 	}
 
 	return o

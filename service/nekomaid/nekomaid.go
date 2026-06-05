@@ -29,8 +29,8 @@ import (
 	"github.com/disintegration/imaging"
 )
 
-const Home = "https://nekomaid.web.app"
-const PreviewUrlPattern = Home + "/#/%s/%s/%s"
+const Home = "https://beta.faryne.dev"
+const PreviewUrlPattern = Home + "/nekomaid/%s/%s/%s"
 
 var domains = []string{
 	"https://pcdn1.ha2.tw",
@@ -182,6 +182,15 @@ func nekomaidThumbObjectKey(site enum.NekomaidSite, authorId, filename string) s
 	}, "/")
 }
 
+func ugoiraObjectKey(site enum.NekomaidSite, artworkId, filename string) string {
+	return strings.Join([]string{
+		"ugoira",
+		cleanS3PathSegment(string(site)),
+		cleanS3PathSegment(artworkId),
+		cleanS3PathSegment(filename),
+	}, "/")
+}
+
 func cleanS3PathSegment(segment string) string {
 	segment = strings.TrimSpace(strings.Trim(segment, "/"))
 	segment = strings.ReplaceAll(segment, "/", "_")
@@ -199,6 +208,99 @@ func s3KeyFromURL(rawURL string) string {
 	return strings.TrimPrefix(u.EscapedPath(), "/")
 }
 
+func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []byte, preview image.Image, rawURL string) (nekomaid.ArtworkPhoto, string, error) {
+	var o = nekomaid.ArtworkPhoto{}
+	var thumb string
+	if len(webmData) == 0 {
+		return o, thumb, fmt.Errorf("ugoira webm data is empty")
+	}
+	if len(zipData) == 0 {
+		return o, thumb, fmt.Errorf("ugoira zip data is empty")
+	}
+	if preview == nil {
+		return o, thumb, fmt.Errorf("ugoira preview image is nil")
+	}
+
+	m := md5.New()
+	m.Write(webmData)
+	hashId := hex.EncodeToString(m.Sum(nil))[0:5]
+
+	cfg := config.EnvConfig()
+	s3creds := credentials.NewStaticCredentialsProvider(cfg.NekomaidS3Key, cfg.NekomaidS3Secret, "")
+	s3cfg, _ := s3config.LoadDefaultConfig(context.TODO(),
+		s3config.WithRegion(cfg.S3Region),
+		s3config.WithCredentialsProvider(s3creds),
+	)
+	s3Client := s3.NewFromConfig(s3cfg)
+
+	webmKey := ugoiraObjectKey(site, artworkId, fmt.Sprintf("%s_%s.webm", artworkId, hashId))
+	zipKey := ugoiraObjectKey(site, artworkId, fmt.Sprintf("%s_%s.zip", artworkId, hashId))
+	thumbKey := nekomaidThumbObjectKey(site, artworkId, fmt.Sprintf("%s_%s_thumb.png", artworkId, hashId))
+	domain := getDomain()
+
+	newImage := imaging.Resize(preview, 120, 0, imaging.Lanczos)
+	if preview.Bounds().Dx() < preview.Bounds().Dy() {
+		newImage = imaging.Resize(preview, 0, 120, imaging.Lanczos)
+	}
+	var thumbBytes bytes.Buffer
+	if err := png.Encode(&thumbBytes, newImage); err != nil {
+		return o, thumb, err
+	}
+
+	if _, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(cfg.NekomaidBucket),
+		Key:         aws.String(thumbKey),
+		Body:        bytes.NewReader(thumbBytes.Bytes()),
+		ContentType: aws.String("image/png"),
+		ACL:         types.ObjectCannedACLPublicRead,
+	}); err != nil {
+		return o, thumb, fmt.Errorf("failed to upload ugoira thumbnail to s3: %w", err)
+	}
+	thumb = domain + "/" + thumbKey
+
+	if _, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(cfg.NekomaidBucket),
+		Key:         aws.String(zipKey),
+		Body:        bytes.NewReader(zipData),
+		ContentType: aws.String("application/zip"),
+		ACL:         types.ObjectCannedACLPublicRead,
+	}); err != nil {
+		return o, thumb, fmt.Errorf("failed to upload ugoira zip to s3: %w", err)
+	}
+
+	if _, err := s3Client.PutObject(context.TODO(), &s3.PutObjectInput{
+		Bucket:      aws.String(cfg.NekomaidBucket),
+		Key:         aws.String(webmKey),
+		Body:        bytes.NewReader(webmData),
+		ContentType: aws.String("video/webm"),
+		ACL:         types.ObjectCannedACLPublicRead,
+	}); err != nil {
+		return o, thumb, fmt.Errorf("failed to upload ugoira webm to s3: %w", err)
+	}
+
+	raw, _ := url.Parse(rawURL)
+	if raw != nil {
+		values := raw.Query()
+		values.Del("api_key")
+		raw.RawQuery = values.Encode()
+		o.Raw = raw.String()
+	}
+
+	o.Ext = "webm"
+	o.FileId = artworkId
+	o.Filename = webmKey
+	o.Height = preview.Bounds().Dy()
+	o.Index = 0
+	o.KeyId = hashId
+	o.Mime = "video/webm"
+	o.Original = domain + "/" + zipKey
+	o.Size = len(webmData)
+	o.Url = domain + "/" + webmKey
+	o.Width = preview.Bounds().Dx()
+
+	return o, thumb, nil
+}
+
 func DeleteImages(ctx context.Context, photos []nekomaid.ArtworkPhoto, thumb string) {
 	cfg := config.EnvConfig()
 	s3creds := credentials.NewStaticCredentialsProvider(cfg.S3AccessKey, cfg.S3SecretKey, "")
@@ -214,6 +316,12 @@ func DeleteImages(ctx context.Context, photos []nekomaid.ArtworkPhoto, thumb str
 			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
 				Bucket: aws.String(cfg.NekomaidBucket),
 				Key:    aws.String(p.Filename),
+			})
+		}
+		if originalKey := s3KeyFromURL(p.Original); strings.HasPrefix(originalKey, "ugoira/") {
+			_, _ = s3Client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(cfg.NekomaidBucket),
+				Key:    aws.String(originalKey),
 			})
 		}
 	}
