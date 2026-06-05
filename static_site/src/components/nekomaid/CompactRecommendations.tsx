@@ -1,4 +1,6 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, IconButton, Stack, Typography } from "@mui/material";
+import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { useEffect, useState } from "react";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 import { itemSite } from "@/helpers/nekomaid.ts";
@@ -15,6 +17,8 @@ export function CompactRecommendations({
   const pageSize = 3;
   const pageCount = Math.ceil(items.length / pageSize);
   const visibleItems = items.slice(page * pageSize, page * pageSize + pageSize);
+  const canGoPrev = page > 0;
+  const canGoNext = page < pageCount - 1;
 
   useEffect(() => {
     setPage(0);
@@ -31,7 +35,34 @@ export function CompactRecommendations({
       </Typography>
       <Box
         sx={{
-          display: "grid",
+          display: { xs: "flex", sm: "none" },
+          gap: 1.5,
+          WebkitOverflowScrolling: "touch",
+          mx: -0.5,
+          overflowX: "auto",
+          pb: 1,
+          px: 0.5,
+          scrollPaddingInline: 8,
+          scrollSnapType: "x mandatory",
+        }}
+      >
+        {items.map((item) => (
+          <ArtworkCard
+            key={`${itemSite(item)}-${item.author_id}-${item.artwork_id}`}
+            item={item}
+            forceBlur={forceBlur}
+            sx={{
+              flex: "0 0 72%",
+              maxWidth: 260,
+              scrollSnapAlign: "start",
+            }}
+          />
+        ))}
+      </Box>
+
+      <Box
+        sx={{
+          display: { xs: "none", sm: "grid" },
           gap: 1.5,
           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
         }}
@@ -47,10 +78,25 @@ export function CompactRecommendations({
       {pageCount > 1 && (
         <Stack
           direction="row"
+          alignItems="center"
           justifyContent="center"
           spacing={1}
-          sx={{ mt: 1.5 }}
+          sx={{ display: { xs: "none", sm: "flex" }, mt: 1.5 }}
         >
+          <IconButton
+            aria-label="上一批相關作品"
+            disabled={!canGoPrev}
+            onClick={() => setPage((current) => Math.max(current - 1, 0))}
+            size="small"
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              height: 30,
+              width: 30,
+            }}
+          >
+            <ArrowBackIosNewIcon sx={{ fontSize: 15 }} />
+          </IconButton>
           {Array.from({ length: pageCount }).map((_, index) => (
             <Box
               component="button"
@@ -74,6 +120,22 @@ export function CompactRecommendations({
               }}
             />
           ))}
+          <IconButton
+            aria-label="下一批相關作品"
+            disabled={!canGoNext}
+            onClick={() =>
+              setPage((current) => Math.min(current + 1, pageCount - 1))
+            }
+            size="small"
+            sx={{
+              border: "1px solid",
+              borderColor: "divider",
+              height: 30,
+              width: 30,
+            }}
+          >
+            <ArrowForwardIosIcon sx={{ fontSize: 15 }} />
+          </IconButton>
         </Stack>
       )}
     </Box>

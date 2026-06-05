@@ -9,7 +9,9 @@ import {
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import type { TouchEvent } from "react";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import type { ReactNode, TouchEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 export interface ImageViewerPhoto {
@@ -20,15 +22,18 @@ export interface ImageViewerPhoto {
 }
 
 export function ImageViewer({
+  children,
   initialIndex = 0,
   photos,
   title,
 }: {
+  children?: ReactNode;
   initialIndex?: number;
   photos: ImageViewerPhoto[];
   title: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [childrenVisible, setChildrenVisible] = useState(true);
   const [expanded, setExpanded] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -331,45 +336,154 @@ export function ImageViewer({
               </Box>
             )}
             <Box
-              component="button"
-              type="button"
-              onClick={handleImageClick}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
               sx={{
-                alignItems: expanded ? "flex-start" : "center",
-                appearance: "none",
-                bgcolor: "#0f172a",
-                border: 0,
                 borderRadius: 1.5,
                 cursor: expanded ? "zoom-out" : "zoom-in",
-                display: "flex",
-                justifyContent: "center",
-                minHeight: expanded ? "auto" : "min(76vh, 860px)",
                 order: { xs: 1, md: 2 },
-                overflow: "auto",
-                p: expanded ? 0 : { xs: 1, md: 2 },
-                touchAction: expanded ? "auto" : "pan-y",
+                position: "relative",
                 width: "100%",
               }}
             >
               <Box
-                component="img"
-                src={currentPhoto.url}
-                alt={`${title} ${currentIndex + 1}`}
+                component="button"
+                type="button"
+                onClick={handleImageClick}
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
                 sx={{
-                  borderRadius: expanded ? 0 : 1,
-                  boxShadow: expanded
-                    ? "none"
-                    : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                  display: "block",
-                  height: expanded ? "auto" : "auto",
-                  maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                  maxWidth: expanded ? "none" : "100%",
-                  objectFit: "contain",
-                  width: expanded ? "auto" : "auto",
+                  alignItems: expanded ? "flex-start" : "center",
+                  appearance: "none",
+                  bgcolor: "#0f172a",
+                  border: 0,
+                  borderRadius: 1.5,
+                  cursor: expanded ? "zoom-out" : "zoom-in",
+                  display: "flex",
+                  justifyContent: "center",
+                  minHeight: expanded ? "auto" : "min(76vh, 860px)",
+                  overflow: "auto",
+                  p: expanded ? 0 : { xs: 1, md: 2 },
+                  touchAction: expanded ? "auto" : "pan-y",
+                  width: "100%",
                 }}
-              />
+              >
+                <Box
+                  component="img"
+                  src={currentPhoto.url}
+                  alt={`${title} ${currentIndex + 1}`}
+                  sx={{
+                    borderRadius: expanded ? 0 : 1,
+                    boxShadow: expanded
+                      ? "none"
+                      : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                    display: "block",
+                    height: expanded ? "auto" : "auto",
+                    maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                    maxWidth: expanded ? "none" : "100%",
+                    objectFit: "contain",
+                    width: expanded ? "auto" : "auto",
+                  }}
+                />
+              </Box>
+              {children && (
+                <>
+                  {!childrenVisible && (
+                    <Button
+                      color="inherit"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setChildrenVisible(true);
+                      }}
+                      onTouchStart={(event) => event.stopPropagation()}
+                      size="small"
+                      startIcon={<InfoOutlinedIcon fontSize="small" />}
+                      sx={{
+                        backdropFilter: "blur(12px)",
+                        bgcolor: "rgba(15, 23, 42, 0.72)",
+                        border: "1px solid rgba(255, 255, 255, 0.18)",
+                        borderRadius: 999,
+                        boxShadow:
+                          "0 12px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
+                        bottom: { xs: 10, md: 16 },
+                        color: "#f8fafc",
+                        fontWeight: 900,
+                        justifyContent: "center",
+                        letterSpacing: 0.2,
+                        left: { xs: 10, md: 16 },
+                        minWidth: { xs: 168, md: 210 },
+                        position: "absolute",
+                        px: 2,
+                        width: { xs: 210, sm: 240, md: 260 },
+                        zIndex: 3,
+                        "&:hover": {
+                          bgcolor: "rgba(15, 23, 42, 0.86)",
+                          boxShadow:
+                            "0 16px 40px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                          transform: "translateY(-1px)",
+                        },
+                      }}
+                      variant="contained"
+                    >
+                      顯示資訊
+                    </Button>
+                  )}
+                  <Box
+                    sx={{
+                      bottom: { xs: 10, md: 16 },
+                      left: { xs: 10, md: 16 },
+                      maxWidth: { xs: "calc(100% - 20px)", md: "65%" },
+                      opacity: childrenVisible ? 1 : 0,
+                      pointerEvents: childrenVisible ? "auto" : "none",
+                      position: "absolute",
+                      transform: childrenVisible
+                        ? "translateY(0)"
+                        : "translateY(8px)",
+                      transition:
+                        "opacity 180ms ease, transform 180ms ease, visibility 180ms ease",
+                      visibility: childrenVisible ? "visible" : "hidden",
+                      zIndex: 2,
+                    }}
+                  >
+                    <Button
+                      color="inherit"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setChildrenVisible(false);
+                      }}
+                      onTouchStart={(event) => event.stopPropagation()}
+                      size="small"
+                      startIcon={<VisibilityOffOutlinedIcon fontSize="small" />}
+                      sx={{
+                        backdropFilter: "blur(12px)",
+                        bgcolor: "rgba(15, 23, 42, 0.72)",
+                        border: "1px solid rgba(255, 255, 255, 0.18)",
+                        borderRadius: 999,
+                        boxShadow:
+                          "0 10px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
+                        color: "#f8fafc",
+                        fontWeight: 900,
+                        letterSpacing: 0.2,
+                        minWidth: 132,
+                        position: "absolute",
+                        px: 1.75,
+                        left: { xs: 14, md: 20 },
+                        top: 0,
+                        transform: "translateY(-50%)",
+                        zIndex: 1,
+                        "&:hover": {
+                          bgcolor: "rgba(15, 23, 42, 0.86)",
+                          boxShadow:
+                            "0 14px 32px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
+                          transform: "translateY(calc(-50% - 1px))",
+                        },
+                      }}
+                      variant="contained"
+                    >
+                      隱藏資訊
+                    </Button>
+                    {children}
+                  </Box>
+                </>
+              )}
             </Box>
           </Box>
         )}

@@ -1,4 +1,5 @@
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 import {
@@ -14,9 +15,11 @@ import {
 export function ArtworkCard({
   item,
   forceBlur = false,
+  sx,
 }: {
   item: NekomaidArtwork;
   forceBlur?: boolean;
+  sx?: SxProps<Theme>;
 }) {
   const thumb = item.thumb || item.photos?.[0]?.url;
   const site = itemSite(item);
@@ -42,6 +45,7 @@ export function ArtworkCard({
           boxShadow: "0 16px 38px rgba(15, 23, 42, 0.16)",
           transform: "translateY(-3px)",
         },
+        ...sx,
       }}
     >
       <Box

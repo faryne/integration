@@ -88,10 +88,13 @@ function ArtworkInfoPanel({
     <Paper
       variant="outlined"
       sx={{
+        backdropFilter: "blur(18px)",
+        bgcolor: "rgba(255, 255, 255, 0.92)",
         borderRadius: 2,
+        boxShadow: "0 18px 60px rgba(15, 23, 42, 0.24)",
+        maxHeight: { xs: "58vh", md: "min(68vh, 720px)" },
+        overflow: "auto",
         p: { xs: 2, md: 2.5 },
-        position: { xl: "sticky" },
-        top: { xl: 24 },
       }}
     >
       <Stack spacing={2}>
@@ -219,34 +222,28 @@ function DetailContent({
   forceRecommendationBlur: boolean;
 }) {
   return (
-    <Box
-      sx={{
-        alignItems: "start",
-        display: "grid",
-        gap: 3,
-        gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1fr) 380px" },
-      }}
-    >
-      <Stack spacing={1.5} sx={{ minWidth: 0 }}>
-        <NekomaidBreadcrumb
-          site={itemSite(artwork)}
-          authorId={artwork.author_id}
-          authorName={authorName}
-          title={artwork.title}
-          artworkId={artwork.artwork_id}
-        />
-        <ImageViewer
-          photos={artwork.photos ?? []}
-          title={artwork.title || "未命名作品"}
-        />
-      </Stack>
-      <ArtworkInfoPanel
-        artwork={artwork}
+    <Stack spacing={1.5} sx={{ minWidth: 0 }}>
+      <NekomaidBreadcrumb
+        site={itemSite(artwork)}
+        authorId={artwork.author_id}
         authorName={authorName}
-        recommendations={recommendations}
-        forceRecommendationBlur={forceRecommendationBlur}
+        title={artwork.title}
+        artworkId={artwork.artwork_id}
       />
-    </Box>
+      <ImageViewer
+        photos={artwork.photos ?? []}
+        title={artwork.title || "未命名作品"}
+      >
+        <Box sx={{ maxWidth: { xs: "100%", md: 520, xl: 620 } }}>
+          <ArtworkInfoPanel
+            artwork={artwork}
+            authorName={authorName}
+            recommendations={recommendations}
+            forceRecommendationBlur={forceRecommendationBlur}
+          />
+        </Box>
+      </ImageViewer>
+    </Stack>
   );
 }
 
