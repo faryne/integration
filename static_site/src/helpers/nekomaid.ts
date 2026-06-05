@@ -21,6 +21,14 @@ export function artworkPath(item: NekomaidArtwork) {
   return `/nekomaid/${itemSite(item)}/${item.author_id}/${item.artwork_id}`;
 }
 
+export function artworkShareUrl(item: NekomaidArtwork) {
+  const path = artworkPath(item);
+  if (typeof window === "undefined") {
+    return `/sns${path}`;
+  }
+  return `${window.location.origin}/sns${path}`;
+}
+
 function isTruthyFlag(value: boolean | number | undefined) {
   return value === true || value === 1;
 }

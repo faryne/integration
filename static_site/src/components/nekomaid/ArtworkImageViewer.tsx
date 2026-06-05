@@ -9,7 +9,8 @@ import {
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import { useEffect, useState } from "react";
+import type { TouchEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 
 export function ArtworkImageViewer({
@@ -22,6 +23,8 @@ export function ArtworkImageViewer({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const suppressClickRef = useRef(false);
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
   const canGoPrev = currentIndex > 0;
@@ -35,6 +38,49 @@ export function ArtworkImageViewer({
     }
     setCurrentIndex(normalized);
     setExpanded(false);
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLButtonElement>) => {
+    if (!isCarousel || !allImagesLoaded || expanded) {
+      return;
+    }
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    suppressClickRef.current = false;
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLButtonElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || !isCarousel || !allImagesLoaded || expanded) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    const isHorizontalSwipe =
+      Math.abs(deltaX) >= 48 && Math.abs(deltaX) > Math.abs(deltaY) * 1.35;
+
+    if (!isHorizontalSwipe) {
+      return;
+    }
+
+    suppressClickRef.current = true;
+    if (deltaX > 0 && canGoPrev) {
+      goTo(currentIndex - 1);
+    }
+    if (deltaX < 0 && canGoNext) {
+      goTo(currentIndex + 1);
+    }
+  };
+
+  const handleImageClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    setExpanded((prev) => !prev);
   };
 
   useEffect(() => {
@@ -168,7 +214,9 @@ export function ArtworkImageViewer({
           <Box
             component="button"
             type="button"
-            onClick={() => setExpanded((prev) => !prev)}
+            onClick={handleImageClick}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             sx={{
               alignItems: expanded ? "flex-start" : "center",
               appearance: "none",
@@ -181,6 +229,7 @@ export function ArtworkImageViewer({
               minHeight: expanded ? "auto" : "min(76vh, 860px)",
               overflow: "auto",
               p: expanded ? 0 : { xs: 1, md: 2 },
+              touchAction: expanded ? "auto" : "pan-y",
               width: "100%",
             }}
           >
@@ -207,7 +256,7 @@ export function ArtworkImageViewer({
         {allImagesLoaded && (
           <Typography color="text.secondary" textAlign="center" variant="body2">
             點擊圖片可{expanded ? "縮回視窗內" : "放大檢視"}。
-            {isCarousel && " 可使用鍵盤左右鍵切換圖片。"}
+            {isCarousel && " 可使用鍵盤左右鍵或左右滑動切換圖片。"}
           </Typography>
         )}
       </Stack>

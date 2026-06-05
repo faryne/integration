@@ -41,10 +41,13 @@ type pathMeta struct {
 
 type nekomaidArtworkAPIResponse struct {
 	Artwork nekomaidArtworkMeta `json:"artwork"`
+	Item    nekomaidArtworkMeta `json:"item"`
+	Illust  nekomaidArtworkMeta `json:"illust"`
 	Author  struct {
 		Nickname string `json:"nickname"`
 		Author   string `json:"author"`
 	} `json:"author"`
+	Recommendations []nekomaidArtworkMeta `json:"recommendations"`
 }
 
 type nekomaidArtworkMeta struct {
@@ -210,7 +213,10 @@ func fetchNekomaidArtworkMetaFromAPI(site string, authorID string, artworkID str
 		if raw, err := r.Get(cacheKey).Result(); err == nil && raw != "" {
 			var cached nekomaidArtworkAPIResponse
 			if err := json.Unmarshal([]byte(raw), &cached); err == nil {
-				return cached.Artwork, nekomaidAuthorName(cached), true
+				artwork, ok := nekomaidResponseArtwork(cached)
+				if ok {
+					return artwork, nekomaidAuthorName(cached), true
+				}
 			}
 		}
 	}
@@ -230,7 +236,8 @@ func fetchNekomaidArtworkMetaFromAPI(site string, authorID string, artworkID str
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nekomaidArtworkMeta{}, "", false
 	}
-	if strings.TrimSpace(data.Artwork.Title) == "" && data.Artwork.ArtworkID == "" {
+	artwork, ok := nekomaidResponseArtwork(data)
+	if !ok {
 		return nekomaidArtworkMeta{}, "", false
 	}
 
@@ -240,7 +247,21 @@ func fetchNekomaidArtworkMetaFromAPI(site string, authorID string, artworkID str
 		}
 	}
 
-	return data.Artwork, nekomaidAuthorName(data), true
+	return artwork, nekomaidAuthorName(data), true
+}
+
+func nekomaidResponseArtwork(data nekomaidArtworkAPIResponse) (nekomaidArtworkMeta, bool) {
+	candidates := []nekomaidArtworkMeta{data.Artwork, data.Item, data.Illust}
+	if len(data.Recommendations) > 0 {
+		candidates = append(candidates, data.Recommendations...)
+	}
+
+	for _, artwork := range candidates {
+		if strings.TrimSpace(artwork.Title) != "" || strings.TrimSpace(artwork.ArtworkID) != "" {
+			return artwork, true
+		}
+	}
+	return nekomaidArtworkMeta{}, false
 }
 
 func nekomaidAuthorName(data nekomaidArtworkAPIResponse) string {

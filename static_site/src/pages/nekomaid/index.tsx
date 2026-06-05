@@ -11,11 +11,13 @@ import {
   Link,
   Paper,
   Skeleton,
+  Snackbar,
   Stack,
   Typography,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { useMemo } from "react";
+import ShareIcon from "@mui/icons-material/Share";
+import { useMemo, useState } from "react";
 import {
   Link as RouterLink,
   useNavigate,
@@ -40,6 +42,7 @@ import {
   UserscriptPromotionCard,
 } from "@/components/nekomaid/SidebarCards.tsx";
 import {
+  artworkShareUrl,
   artworkPhotoCount,
   externalArtworkUrl,
   externalAuthorUrl,
@@ -50,6 +53,7 @@ import {
   setR18ConfirmedCookie,
   useR18Confirmed,
 } from "@/helpers/nekomaid.ts";
+import { shareUrl } from "@/helpers/share.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
@@ -66,6 +70,19 @@ function ArtworkInfoPanel({
   forceRecommendationBlur: boolean;
 }) {
   const title = artwork.title || "未命名作品";
+  const [shareNotice, setShareNotice] = useState("");
+
+  const handleShare = async () => {
+    const result = await shareUrl({
+      title: `${title} | 難以名狀的抓圖器`,
+      url: artworkShareUrl(artwork),
+    });
+    if (result === "copied") {
+      setShareNotice("分享連結已複製");
+    } else if (result === "failed") {
+      setShareNotice("無法分享連結");
+    }
+  };
 
   return (
     <Paper
@@ -153,6 +170,13 @@ function ArtworkInfoPanel({
           >
             同畫師作品
           </Button>
+          <Button
+            onClick={handleShare}
+            startIcon={<ShareIcon />}
+            variant="outlined"
+          >
+            分享
+          </Button>
         </Stack>
 
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -173,6 +197,12 @@ function ArtworkInfoPanel({
           forceBlur={forceRecommendationBlur}
         />
       </Stack>
+      <Snackbar
+        autoHideDuration={2400}
+        message={shareNotice}
+        onClose={() => setShareNotice("")}
+        open={Boolean(shareNotice)}
+      />
     </Paper>
   );
 }
@@ -238,13 +268,30 @@ function DetailPage({
   const canShowArtworkImages = !requiresAgeConfirmation || r18Confirmed;
   const authorLabel =
     author?.nickname || `作者 ${artwork?.author_id ?? authorId}`;
+  const detailDescription = artwork
+    ? [
+        `「${artwork.title || artwork.artwork_id}」`,
+        `作者：${authorLabel}`,
+        `來源：${siteLabels[itemSite(artwork)] ?? itemSite(artwork)}`,
+        artworkPhotoCount(artwork) > 1
+          ? `漫畫（共${artworkPhotoCount(artwork)}張）`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("，")
+    : undefined;
   const confirmR18 = () => {
     setR18ConfirmedCookie();
   };
 
   useTitle(artwork?.title ?? "難以名狀的抓圖器", {
+    description: detailDescription,
+    image:
+      artwork && !isR18Artwork(artwork)
+        ? artwork.thumb || artwork.photos?.[0]?.url
+        : undefined,
     path: `/nekomaid/${site}/${authorId}/${artworkId}`,
-    robots: "noindex, nofollow",
+    type: "article",
   });
 
   if (detail.isLoading) {
@@ -386,7 +433,7 @@ function ListPage({
         gridTemplateColumns: { xs: "1fr", lg: "320px minmax(0, 1fr)" },
       }}
     >
-      <Box>
+      <Box sx={{ order: { xs: 2, lg: 1 } }}>
         <Box sx={{ position: { md: "sticky" }, top: 24 }}>
           <Stack spacing={2}>
             <SearchPanel
@@ -403,7 +450,7 @@ function ListPage({
           </Stack>
         </Box>
       </Box>
-      <Box sx={{ minWidth: 0 }}>
+      <Box sx={{ minWidth: 0, order: { xs: 1, lg: 2 } }}>
         <Stack spacing={2.5}>
           {(routeSite || routeAuthorId || author?.nickname) && (
             <NekomaidBreadcrumb
