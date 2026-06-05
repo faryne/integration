@@ -1,13 +1,15 @@
 package client
 
 import (
+	"fmt"
+	"time"
+
 	"faryne.dev/model/enum"
 	"faryne.dev/service/log"
-	"fmt"
+	"go.uber.org/zap"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"time"
 )
 
 var mysqlConnections = make(map[enum.DBName]*gorm.DB)
@@ -28,6 +30,16 @@ func InitMySql(name enum.DBName, dsn string) error {
 	if err != nil {
 		return err
 	}
+
+	db, err := r.DB()
+	if err != nil {
+		return err
+	}
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxLifetime(30 * time.Minute)
+
 	mysqlConnections[name] = r
 	return nil
 }
@@ -40,19 +52,23 @@ func GetDB(name enum.DBName) *gorm.DB {
 }
 
 func CloseMySqlConnections() error {
-	var closeErr error
 	for name, conn := range mysqlConnections {
 		db, err := conn.DB()
 		if err != nil {
-			if closeErr == nil {
-				closeErr = err
-			}
+			log.Logger().Warn("Get MySQL connection pool failed during shutdown",
+				zap.String("name", string(name)),
+				zap.Error(err),
+			)
+			delete(mysqlConnections, name)
 			continue
 		}
-		if err = db.Close(); err != nil && closeErr == nil {
-			closeErr = err
+		if err = db.Close(); err != nil {
+			log.Logger().Warn("Close MySQL connection pool failed during shutdown",
+				zap.String("name", string(name)),
+				zap.Error(err),
+			)
 		}
 		delete(mysqlConnections, name)
 	}
-	return closeErr
+	return nil
 }
