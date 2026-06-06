@@ -398,6 +398,10 @@ func (r *Retriever) RetrieveAndSave(ctx context.Context, site enum.NekomaidSite,
 		cleanup()
 		return "", fmt.Errorf("failed to save artwork: %w", err)
 	}
+	if err := IndexArtwork(ctx, artwork); err != nil {
+		cleanup()
+		return "", fmt.Errorf("failed to index artwork: %w", err)
+	}
 
 	return artwork.FullContent.PreviewUrl, nil
 }

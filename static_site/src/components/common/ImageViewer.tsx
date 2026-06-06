@@ -37,7 +37,9 @@ export function ImageViewer({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [childrenVisible, setChildrenVisible] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [imageWidth, setImageWidth] = useState<number | null>(null);
   const [loadedCount, setLoadedCount] = useState(0);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -59,6 +61,7 @@ export function ImageViewer({
     }
     setCurrentIndex(normalized);
     setExpanded(false);
+    setImageWidth(null);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -114,6 +117,7 @@ export function ImageViewer({
         : 0,
     );
     setExpanded(false);
+    setImageWidth(null);
 
     const urls = photos.map((photo) => photo.url).filter(Boolean);
     if (urls.length === 0) {
@@ -142,6 +146,27 @@ export function ImageViewer({
       cancelled = true;
     };
   }, [initialIndex, photos]);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!image || !allImagesLoaded) {
+      return;
+    }
+
+    const updateWidth = () => {
+      const rect = image.getBoundingClientRect();
+      setImageWidth(rect.width > 0 ? rect.width : null);
+    };
+
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(image);
+    window.addEventListener("resize", updateWidth);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateWidth);
+    };
+  }, [allImagesLoaded, currentIndex, expanded]);
 
   useEffect(() => {
     if (!allImagesLoaded || !hasThumbnails) {
@@ -201,31 +226,6 @@ export function ImageViewer({
       }}
     >
       <Stack spacing={1.5}>
-        {isCarousel && allImagesLoaded && (
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Chip
-              label={`第 ${currentIndex + 1} / ${photos.length} 張`}
-              variant="outlined"
-            />
-            <Button
-              disabled={!canGoPrev}
-              onClick={() => goTo(currentIndex - 1)}
-              startIcon={<ArrowBackIosNewIcon fontSize="small" />}
-              variant="outlined"
-            >
-              上一張
-            </Button>
-            <Button
-              disabled={!canGoNext}
-              onClick={() => goTo(currentIndex + 1)}
-              endIcon={<ArrowForwardIosIcon fontSize="small" />}
-              variant="outlined"
-            >
-              下一張
-            </Button>
-          </Stack>
-        )}
-
         {!allImagesLoaded ? (
           <Box
             sx={{
@@ -371,6 +371,8 @@ export function ImageViewer({
                   borderRadius: 1.5,
                   cursor: expanded ? "zoom-out" : "zoom-in",
                   display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
                   justifyContent: "center",
                   minHeight: expanded ? "auto" : "min(76vh, 860px)",
                   overflow: "auto",
@@ -379,23 +381,96 @@ export function ImageViewer({
                   width: "100%",
                 }}
               >
-                <Box
-                  component="img"
-                  src={currentPhoto.url}
-                  alt={`${title} ${currentIndex + 1}`}
+                <Stack
+                  spacing={1}
                   sx={{
-                    borderRadius: expanded ? 0 : 1,
-                    boxShadow: expanded
-                      ? "none"
-                      : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                    display: "block",
-                    height: expanded ? "auto" : "auto",
-                    maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                    maxWidth: expanded ? "none" : "100%",
-                    objectFit: "contain",
-                    width: expanded ? "auto" : "auto",
+                    alignItems: "center",
+                    maxWidth: "100%",
+                    width: imageWidth ? `${imageWidth}px` : "fit-content",
                   }}
-                />
+                >
+                  <Box
+                    component="img"
+                    ref={imageRef}
+                    src={currentPhoto.url}
+                    alt={`${title} ${currentIndex + 1}`}
+                    sx={{
+                      borderRadius: expanded ? 0 : 1,
+                      boxShadow: expanded
+                        ? "none"
+                        : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                      display: "block",
+                      height: expanded ? "auto" : "auto",
+                      maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                      maxWidth: expanded ? "none" : "100%",
+                      objectFit: "contain",
+                      width: expanded ? "auto" : "auto",
+                    }}
+                  />
+                  {isCarousel && (
+                    <Stack
+                      alignItems={{ xs: "stretch", sm: "center" }}
+                      direction={{ xs: "column", sm: "row" }}
+                      justifyContent="space-between"
+                      spacing={1}
+                      sx={{
+                        bgcolor: "rgba(255, 255, 255, 0.06)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        borderRadius: 1,
+                        boxSizing: "border-box",
+                        color: "#e5e7eb",
+                        px: { xs: 1.25, md: 1.5 },
+                        py: 1,
+                        width: {
+                          xs: "min(100%, 360px)",
+                          sm: "min(100%, 460px)",
+                          md: "min(100%, 520px)",
+                        },
+                      }}
+                    >
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          disabled={!canGoPrev}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            goTo(currentIndex - 1);
+                          }}
+                          startIcon={<ArrowBackIosNewIcon fontSize="small" />}
+                          sx={{
+                            color: "#f8fafc",
+                            borderColor: "rgba(248,250,252,0.42)",
+                          }}
+                          variant="outlined"
+                        >
+                          上一張
+                        </Button>
+                        <Button
+                          disabled={!canGoNext}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            goTo(currentIndex + 1);
+                          }}
+                          endIcon={<ArrowForwardIosIcon fontSize="small" />}
+                          sx={{
+                            color: "#f8fafc",
+                            borderColor: "rgba(248,250,252,0.42)",
+                          }}
+                          variant="outlined"
+                        >
+                          下一張
+                        </Button>
+                      </Stack>
+                      <Chip
+                        label={`第 ${currentIndex + 1} / ${photos.length} 張`}
+                        sx={{
+                          bgcolor: "rgba(255,255,255,0.1)",
+                          color: "#f8fafc",
+                          fontWeight: 800,
+                        }}
+                      />
+                    </Stack>
+                  )}
+                </Stack>
               </Box>
               {children && (
                 <>
