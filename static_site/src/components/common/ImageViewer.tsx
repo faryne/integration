@@ -407,7 +407,7 @@ export function ImageViewer({
                       width: expanded ? "auto" : "auto",
                     }}
                   />
-                  {isCarousel && (
+                  {(isCarousel || children) && (
                     <Stack
                       alignItems={{ xs: "stretch", sm: "center" }}
                       direction={{ xs: "column", sm: "row" }}
@@ -428,149 +428,105 @@ export function ImageViewer({
                         },
                       }}
                     >
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          disabled={!canGoPrev}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            goTo(currentIndex - 1);
-                          }}
-                          startIcon={<ArrowBackIosNewIcon fontSize="small" />}
-                          sx={{
-                            color: "#f8fafc",
-                            borderColor: "rgba(248,250,252,0.42)",
-                          }}
-                          variant="outlined"
-                        >
-                          上一張
-                        </Button>
-                        <Button
-                          disabled={!canGoNext}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            goTo(currentIndex + 1);
-                          }}
-                          endIcon={<ArrowForwardIosIcon fontSize="small" />}
-                          sx={{
-                            color: "#f8fafc",
-                            borderColor: "rgba(248,250,252,0.42)",
-                          }}
-                          variant="outlined"
-                        >
-                          下一張
-                        </Button>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {isCarousel && (
+                          <>
+                            <Button
+                              disabled={!canGoPrev}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                goTo(currentIndex - 1);
+                              }}
+                              startIcon={
+                                <ArrowBackIosNewIcon fontSize="small" />
+                              }
+                              sx={{
+                                color: "#f8fafc",
+                                borderColor: "rgba(248,250,252,0.42)",
+                              }}
+                              variant="outlined"
+                            >
+                              上一張
+                            </Button>
+                            <Button
+                              disabled={!canGoNext}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                goTo(currentIndex + 1);
+                              }}
+                              endIcon={<ArrowForwardIosIcon fontSize="small" />}
+                              sx={{
+                                color: "#f8fafc",
+                                borderColor: "rgba(248,250,252,0.42)",
+                              }}
+                              variant="outlined"
+                            >
+                              下一張
+                            </Button>
+                          </>
+                        )}
+                        {children && (
+                          <Button
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setChildrenVisible((visible) => !visible);
+                            }}
+                            startIcon={
+                              childrenVisible ? (
+                                <VisibilityOffOutlinedIcon fontSize="small" />
+                              ) : (
+                                <InfoOutlinedIcon fontSize="small" />
+                              )
+                            }
+                            sx={{
+                              color: "#f8fafc",
+                              borderColor: "rgba(248,250,252,0.42)",
+                            }}
+                            variant="outlined"
+                          >
+                            {childrenVisible ? "隱藏資訊" : "顯示資訊"}
+                          </Button>
+                        )}
                       </Stack>
-                      <Chip
-                        label={`第 ${currentIndex + 1} / ${photos.length} 張`}
-                        sx={{
-                          bgcolor: "rgba(255,255,255,0.1)",
-                          color: "#f8fafc",
-                          fontWeight: 800,
-                        }}
-                      />
+                      {isCarousel && (
+                        <Chip
+                          label={`第 ${currentIndex + 1} / ${photos.length} 張`}
+                          sx={{
+                            bgcolor: "rgba(255,255,255,0.1)",
+                            color: "#f8fafc",
+                            fontWeight: 800,
+                          }}
+                        />
+                      )}
                     </Stack>
                   )}
                 </Stack>
               </Box>
               {children && (
-                <>
-                  {!childrenVisible && (
-                    <Button
-                      color="inherit"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setChildrenVisible(true);
-                      }}
-                      onTouchStart={(event) => event.stopPropagation()}
-                      size="small"
-                      startIcon={<InfoOutlinedIcon fontSize="small" />}
-                      sx={{
-                        backdropFilter: "blur(12px)",
-                        bgcolor: "rgba(15, 23, 42, 0.72)",
-                        border: "1px solid rgba(255, 255, 255, 0.18)",
-                        borderRadius: 999,
-                        boxShadow:
-                          "0 12px 30px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
-                        bottom: { xs: 10, md: 16 },
-                        color: "#f8fafc",
-                        fontWeight: 900,
-                        justifyContent: "center",
-                        letterSpacing: 0.2,
-                        left: { xs: 10, md: 16 },
-                        minWidth: { xs: 168, md: 210 },
-                        position: "absolute",
-                        px: 2,
-                        width: { xs: 210, sm: 240, md: 260 },
-                        zIndex: 3,
-                        "&:hover": {
-                          bgcolor: "rgba(15, 23, 42, 0.86)",
-                          boxShadow:
-                            "0 16px 40px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-                          transform: "translateY(-1px)",
-                        },
-                      }}
-                      variant="contained"
-                    >
-                      顯示資訊
-                    </Button>
-                  )}
-                  <Box
-                    sx={{
-                      bottom: { xs: 10, md: 16 },
-                      left: { xs: 10, md: 16 },
-                      maxWidth: { xs: "calc(100% - 20px)", md: "65%" },
-                      opacity: childrenVisible ? 1 : 0,
-                      pointerEvents: childrenVisible ? "auto" : "none",
-                      position: "absolute",
-                      transform: childrenVisible
-                        ? "translateY(0)"
-                        : "translateY(8px)",
-                      transition:
-                        "opacity 180ms ease, transform 180ms ease, visibility 180ms ease",
-                      visibility: childrenVisible ? "visible" : "hidden",
-                      zIndex: 2,
-                    }}
-                  >
-                    <Button
-                      color="inherit"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setChildrenVisible(false);
-                      }}
-                      onTouchStart={(event) => event.stopPropagation()}
-                      size="small"
-                      startIcon={<VisibilityOffOutlinedIcon fontSize="small" />}
-                      sx={{
-                        backdropFilter: "blur(12px)",
-                        bgcolor: "rgba(15, 23, 42, 0.72)",
-                        border: "1px solid rgba(255, 255, 255, 0.18)",
-                        borderRadius: 999,
-                        boxShadow:
-                          "0 10px 24px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.16)",
-                        color: "#f8fafc",
-                        fontWeight: 900,
-                        letterSpacing: 0.2,
-                        minWidth: 132,
-                        position: "absolute",
-                        px: 1.75,
-                        left: { xs: 14, md: 20 },
-                        top: 0,
-                        transform: "translateY(-50%)",
-                        zIndex: 1,
-                        "&:hover": {
-                          bgcolor: "rgba(15, 23, 42, 0.86)",
-                          boxShadow:
-                            "0 14px 32px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.2)",
-                          transform: "translateY(calc(-50% - 1px))",
-                        },
-                      }}
-                      variant="contained"
-                    >
-                      隱藏資訊
-                    </Button>
-                    {children}
-                  </Box>
-                </>
+                <Box
+                  sx={{
+                    bottom: { xs: 10, md: 16 },
+                    left: { xs: 10, md: 16 },
+                    maxWidth: { xs: "calc(100% - 20px)", md: "65%" },
+                    opacity: childrenVisible ? 1 : 0,
+                    pointerEvents: childrenVisible ? "auto" : "none",
+                    position: "absolute",
+                    transform: childrenVisible
+                      ? "translateY(0)"
+                      : "translateY(8px)",
+                    transition:
+                      "opacity 180ms ease, transform 180ms ease, visibility 180ms ease",
+                    visibility: childrenVisible ? "visible" : "hidden",
+                    zIndex: 2,
+                  }}
+                >
+                  {children}
+                </Box>
               )}
             </Box>
           </Box>
