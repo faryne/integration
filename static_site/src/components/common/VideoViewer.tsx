@@ -4,6 +4,7 @@ import {
   CircularProgress,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -176,7 +177,7 @@ export function VideoViewer({
   title: string;
   videos: VideoViewerSource[];
 }) {
-  const [childrenVisible, setChildrenVisible] = useState(true);
+  const [childrenVisible, setChildrenVisible] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -425,25 +426,46 @@ export function VideoViewer({
                       </>
                     )}
                     {children && (
-                      <Button
-                        onClick={() =>
-                          setChildrenVisible((visible) => !visible)
+                      <Tooltip
+                        title={
+                          childrenVisible
+                            ? "收合影片資訊"
+                            : "點擊展開影片資訊與相關內容"
                         }
-                        startIcon={
-                          childrenVisible ? (
-                            <VisibilityOffOutlinedIcon fontSize="small" />
-                          ) : (
-                            <InfoOutlinedIcon fontSize="small" />
-                          )
-                        }
-                        sx={{
-                          color: "#f8fafc",
-                          borderColor: "rgba(248,250,252,0.42)",
-                        }}
-                        variant="outlined"
                       >
-                        {childrenVisible ? "隱藏資訊" : "顯示資訊"}
-                      </Button>
+                        <Button
+                          onClick={() =>
+                            setChildrenVisible((visible) => !visible)
+                          }
+                          startIcon={
+                            childrenVisible ? (
+                              <VisibilityOffOutlinedIcon fontSize="small" />
+                            ) : (
+                              <InfoOutlinedIcon fontSize="small" />
+                            )
+                          }
+                          sx={
+                            childrenVisible
+                              ? {
+                                  color: "#f8fafc",
+                                  borderColor: "rgba(248,250,252,0.42)",
+                                }
+                              : {
+                                  bgcolor: "rgba(245, 158, 11, 0.16)",
+                                  borderColor: "#f59e0b",
+                                  color: "#fbbf24",
+                                  fontWeight: 900,
+                                  "&:hover": {
+                                    bgcolor: "rgba(245, 158, 11, 0.24)",
+                                    borderColor: "#fbbf24",
+                                  },
+                                }
+                          }
+                          variant="outlined"
+                        >
+                          {childrenVisible ? "隱藏資訊" : "顯示資訊"}
+                        </Button>
+                      </Tooltip>
                     )}
                   </Stack>
                   {!isEmbedded && (
@@ -464,12 +486,17 @@ export function VideoViewer({
           {children && (
             <Box
               sx={{
-                bottom: { xs: 10, md: 16 },
-                left: { xs: 10, md: 16 },
-                maxWidth: { xs: "calc(100% - 20px)", md: "65%" },
+                bottom: { lg: 16 },
+                display: {
+                  xs: childrenVisible ? "block" : "none",
+                  lg: "block",
+                },
+                left: { lg: 16 },
+                mt: { xs: 1, lg: 0 },
+                maxWidth: { xs: "100%", lg: "65%" },
                 opacity: childrenVisible ? 1 : 0,
                 pointerEvents: childrenVisible ? "auto" : "none",
-                position: "absolute",
+                position: { xs: "static", lg: "absolute" },
                 transform: childrenVisible
                   ? "translateY(0)"
                   : "translateY(8px)",

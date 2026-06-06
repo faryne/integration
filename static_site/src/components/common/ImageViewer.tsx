@@ -5,6 +5,7 @@ import {
   CircularProgress,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -12,7 +13,7 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import type { ReactNode, TouchEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export interface ImageViewerPhoto {
   description?: string;
@@ -35,11 +36,10 @@ export function ImageViewer({
   title: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [childrenVisible, setChildrenVisible] = useState(true);
+  const [childrenVisible, setChildrenVisible] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [imageWidth, setImageWidth] = useState<number | null>(null);
   const [loadedCount, setLoadedCount] = useState(0);
-  const imageRef = useRef<HTMLImageElement | null>(null);
+  const imageStageRef = useRef<HTMLDivElement | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
@@ -61,7 +61,6 @@ export function ImageViewer({
     }
     setCurrentIndex(normalized);
     setExpanded(false);
-    setImageWidth(null);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
@@ -117,7 +116,6 @@ export function ImageViewer({
         : 0,
     );
     setExpanded(false);
-    setImageWidth(null);
 
     const urls = photos.map((photo) => photo.url).filter(Boolean);
     if (urls.length === 0) {
@@ -146,27 +144,6 @@ export function ImageViewer({
       cancelled = true;
     };
   }, [initialIndex, photos]);
-
-  useEffect(() => {
-    const image = imageRef.current;
-    if (!image || !allImagesLoaded) {
-      return;
-    }
-
-    const updateWidth = () => {
-      const rect = image.getBoundingClientRect();
-      setImageWidth(rect.width > 0 ? rect.width : null);
-    };
-
-    updateWidth();
-    const observer = new ResizeObserver(updateWidth);
-    observer.observe(image);
-    window.addEventListener("resize", updateWidth);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", updateWidth);
-    };
-  }, [allImagesLoaded, currentIndex, expanded]);
 
   useEffect(() => {
     if (!allImagesLoaded || !hasThumbnails) {
@@ -210,6 +187,26 @@ export function ImageViewer({
     isCarousel,
     photos.length,
   ]);
+
+  useLayoutEffect(() => {
+    if (!expanded || !allImagesLoaded) {
+      return;
+    }
+
+    const stage = imageStageRef.current;
+    if (!stage) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      stage.scrollLeft = Math.max(
+        0,
+        (stage.scrollWidth - stage.clientWidth) / 2,
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [allImagesLoaded, currentIndex, expanded]);
 
   if (!currentPhoto) {
     return null;
@@ -363,8 +360,9 @@ export function ImageViewer({
                     handleImageClick();
                   }
                 }}
+                ref={imageStageRef}
                 sx={{
-                  alignItems: expanded ? "flex-start" : "center",
+                  alignItems: "center",
                   appearance: "none",
                   bgcolor: "#0f172a",
                   border: 0,
@@ -374,7 +372,7 @@ export function ImageViewer({
                   flexDirection: "column",
                   gap: 1,
                   justifyContent: "center",
-                  minHeight: expanded ? "auto" : "min(76vh, 860px)",
+                  minHeight: "min(76vh, 860px)",
                   overflow: "auto",
                   p: expanded ? 0 : { xs: 1, md: 2 },
                   touchAction: expanded ? "auto" : "pan-y",
@@ -385,13 +383,12 @@ export function ImageViewer({
                   spacing={1}
                   sx={{
                     alignItems: "center",
-                    maxWidth: "100%",
-                    width: imageWidth ? `${imageWidth}px` : "fit-content",
+                    maxWidth: expanded ? "none" : "100%",
+                    width: expanded ? "max-content" : "100%",
                   }}
                 >
                   <Box
                     component="img"
-                    ref={imageRef}
                     src={currentPhoto.url}
                     alt={`${title} ${currentIndex + 1}`}
                     sx={{
@@ -433,6 +430,7 @@ export function ImageViewer({
                         spacing={1}
                         flexWrap="wrap"
                         useFlexGap
+                        sx={{ minWidth: 0 }}
                       >
                         {isCarousel && (
                           <>
@@ -470,39 +468,67 @@ export function ImageViewer({
                             </Button>
                           </>
                         )}
+                      </Stack>
+                      <Stack
+                        alignItems={{ xs: "stretch", sm: "center" }}
+                        direction={{ xs: "column", sm: "row" }}
+                        flexShrink={0}
+                        spacing={1}
+                      >
                         {children && (
-                          <Button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setChildrenVisible((visible) => !visible);
-                            }}
-                            startIcon={
-                              childrenVisible ? (
-                                <VisibilityOffOutlinedIcon fontSize="small" />
-                              ) : (
-                                <InfoOutlinedIcon fontSize="small" />
-                              )
+                          <Tooltip
+                            title={
+                              childrenVisible
+                                ? "收合作品資訊"
+                                : "點擊展開作品資訊與相關內容"
                             }
-                            sx={{
-                              color: "#f8fafc",
-                              borderColor: "rgba(248,250,252,0.42)",
-                            }}
-                            variant="outlined"
                           >
-                            {childrenVisible ? "隱藏資訊" : "顯示資訊"}
-                          </Button>
+                            <Button
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setChildrenVisible((visible) => !visible);
+                              }}
+                              startIcon={
+                                childrenVisible ? (
+                                  <VisibilityOffOutlinedIcon fontSize="small" />
+                                ) : (
+                                  <InfoOutlinedIcon fontSize="small" />
+                                )
+                              }
+                              sx={
+                                childrenVisible
+                                  ? {
+                                      color: "#f8fafc",
+                                      borderColor: "rgba(248,250,252,0.42)",
+                                    }
+                                  : {
+                                      bgcolor: "rgba(245, 158, 11, 0.16)",
+                                      borderColor: "#f59e0b",
+                                      color: "#fbbf24",
+                                      fontWeight: 900,
+                                      "&:hover": {
+                                        bgcolor: "rgba(245, 158, 11, 0.24)",
+                                        borderColor: "#fbbf24",
+                                      },
+                                    }
+                              }
+                              variant="outlined"
+                            >
+                              {childrenVisible ? "隱藏資訊" : "顯示資訊"}
+                            </Button>
+                          </Tooltip>
+                        )}
+                        {isCarousel && (
+                          <Chip
+                            label={`第 ${currentIndex + 1} / ${photos.length} 張`}
+                            sx={{
+                              bgcolor: "rgba(255,255,255,0.1)",
+                              color: "#f8fafc",
+                              fontWeight: 800,
+                            }}
+                          />
                         )}
                       </Stack>
-                      {isCarousel && (
-                        <Chip
-                          label={`第 ${currentIndex + 1} / ${photos.length} 張`}
-                          sx={{
-                            bgcolor: "rgba(255,255,255,0.1)",
-                            color: "#f8fafc",
-                            fontWeight: 800,
-                          }}
-                        />
-                      )}
                     </Stack>
                   )}
                 </Stack>
@@ -510,12 +536,17 @@ export function ImageViewer({
               {children && (
                 <Box
                   sx={{
-                    bottom: { xs: 10, md: 16 },
-                    left: { xs: 10, md: 16 },
-                    maxWidth: { xs: "calc(100% - 20px)", md: "65%" },
+                    bottom: { lg: 16 },
+                    display: {
+                      xs: childrenVisible ? "block" : "none",
+                      lg: "block",
+                    },
+                    left: { lg: 16 },
+                    mt: { xs: 1, lg: 0 },
+                    maxWidth: { xs: "100%", lg: "65%" },
                     opacity: childrenVisible ? 1 : 0,
                     pointerEvents: childrenVisible ? "auto" : "none",
-                    position: "absolute",
+                    position: { xs: "static", lg: "absolute" },
                     transform: childrenVisible
                       ? "translateY(0)"
                       : "translateY(8px)",

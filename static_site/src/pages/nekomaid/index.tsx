@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ShareIcon from "@mui/icons-material/Share";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Link as RouterLink,
   useNavigate,
@@ -222,6 +222,7 @@ function DetailContent({
   recommendations: NekomaidArtwork[];
   forceRecommendationBlur: boolean;
 }) {
+  const viewerAnchorRef = useRef<HTMLDivElement | null>(null);
   const photos = artwork.photos ?? [];
   const hasVideo = photos.some(isVideoMedia);
   const viewerTitle = artwork.title || "未命名作品";
@@ -235,6 +236,18 @@ function DetailContent({
       />
     </Box>
   );
+  const viewerKey = `${itemSite(artwork)}-${artwork.author_id}-${artwork.artwork_id}`;
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      viewerAnchorRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [viewerKey]);
 
   return (
     <Stack spacing={1.5} sx={{ minWidth: 0 }}>
@@ -245,15 +258,21 @@ function DetailContent({
         title={artwork.title}
         artworkId={artwork.artwork_id}
       />
-      {hasVideo ? (
-        <VideoViewer videos={photos} title={viewerTitle}>
-          {infoPanel}
-        </VideoViewer>
-      ) : (
-        <ImageViewer photos={photos} title={viewerTitle}>
-          {infoPanel}
-        </ImageViewer>
-      )}
+      <Box
+        id="nekomaid-artwork-viewer"
+        ref={viewerAnchorRef}
+        sx={{ scrollMarginBlock: "24px" }}
+      >
+        {hasVideo ? (
+          <VideoViewer videos={photos} title={viewerTitle}>
+            {infoPanel}
+          </VideoViewer>
+        ) : (
+          <ImageViewer photos={photos} title={viewerTitle}>
+            {infoPanel}
+          </ImageViewer>
+        )}
+      </Box>
     </Stack>
   );
 }
