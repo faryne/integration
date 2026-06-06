@@ -40,6 +40,8 @@ const (
 	HashSecret   = "28c1fdd170a5204386cb1313c7077b34f83e4aaf4aa829ce78c231e05b0bae2c"
 )
 
+const asyncPageCountThreshold = 3
+
 type OAuthAPIResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -191,7 +193,8 @@ func (i *instance) GetPreview(id string) (string, bool, error) {
 	authorId := strconv.FormatInt(result.Illust.User.Id, 10)
 	artworkId := strconv.FormatInt(result.Illust.Id, 10)
 	previewURL := fmt.Sprintf(nm.PreviewUrlPattern, enum.NekomaidSitePixiv, authorId, artworkId)
-	return previewURL, strings.EqualFold(result.Illust.Type, "ugoira"), nil
+	shouldRunAsync := strings.EqualFold(result.Illust.Type, "ugoira") || result.Illust.PageCount > asyncPageCountThreshold
+	return previewURL, shouldRunAsync, nil
 }
 
 func (i *instance) getArtworkDetail(id string) (*Response, error) {
@@ -315,12 +318,12 @@ func (i *instance) getUgoiraUpload(artworkId string) (nekomaid.ArtworkPhoto, str
 		return nekomaid.ArtworkPhoto{}, "", err
 	}
 
-	webmData, preview, err := buildUgoiraWebM(zipData, metadata.UgoiraMetadata.Frames)
+	webmData, preview, duration, err := buildUgoiraWebM(zipData, metadata.UgoiraMetadata.Frames)
 	if err != nil {
 		return nekomaid.ArtworkPhoto{}, "", err
 	}
 
-	return nm.UploadUgoira(enum.NekomaidSitePixiv, artworkId, webmData, zipData, preview, metadata.UgoiraMetadata.ZipUrls.Medium)
+	return nm.UploadUgoira(enum.NekomaidSitePixiv, artworkId, webmData, zipData, preview, metadata.UgoiraMetadata.ZipUrls.Medium, duration)
 }
 
 func (i *instance) getUgoiraMetadata(artworkId string) (*UgoiraMetadataResponse, error) {
@@ -363,14 +366,14 @@ func (i *instance) downloadPixivAsset(u string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-func buildUgoiraWebM(zipData []byte, frames []ugoiraFrame) ([]byte, image.Image, error) {
+func buildUgoiraWebM(zipData []byte, frames []ugoiraFrame) ([]byte, image.Image, float64, error) {
 	if len(frames) == 0 {
-		return nil, nil, fmt.Errorf("pixiv ugoira has no frames")
+		return nil, nil, 0, fmt.Errorf("pixiv ugoira has no frames")
 	}
 
 	reader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	files := make(map[string]*zip.File, len(reader.File))
@@ -380,41 +383,42 @@ func buildUgoiraWebM(zipData []byte, frames []ugoiraFrame) ([]byte, image.Image,
 
 	workDir, err := os.MkdirTemp("", "nekomaid-ugoira-*")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	defer os.RemoveAll(workDir)
 
 	concatPath := filepath.Join(workDir, "frames.txt")
 	concatFile, err := os.Create(concatPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	var preview image.Image
+	var totalDuration float64
 	for idx, frame := range frames {
 		file := files[frame.File]
 		if file == nil {
 			_ = concatFile.Close()
-			return nil, nil, fmt.Errorf("pixiv ugoira frame not found in zip: %s", frame.File)
+			return nil, nil, 0, fmt.Errorf("pixiv ugoira frame not found in zip: %s", frame.File)
 		}
 
 		frameData, err := readZipFile(file)
 		if err != nil {
 			_ = concatFile.Close()
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 
 		framePath := filepath.Join(workDir, fmt.Sprintf("frame_%06d%s", idx, filepath.Ext(frame.File)))
 		if err := os.WriteFile(framePath, frameData, 0600); err != nil {
 			_ = concatFile.Close()
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 
 		if idx == 0 {
 			img, _, err := image.Decode(bytes.NewReader(frameData))
 			if err != nil {
 				_ = concatFile.Close()
-				return nil, nil, err
+				return nil, nil, 0, err
 			}
 			preview = img
 		}
@@ -423,19 +427,20 @@ func buildUgoiraWebM(zipData []byte, frames []ugoiraFrame) ([]byte, image.Image,
 		if duration <= 0 {
 			duration = 0.1
 		}
+		totalDuration += duration
 		if _, err := fmt.Fprintf(concatFile, "file '%s'\nduration %.3f\n", escapeFFmpegConcatPath(framePath), duration); err != nil {
 			_ = concatFile.Close()
-			return nil, nil, err
+			return nil, nil, 0, err
 		}
 	}
 
 	lastFramePath := filepath.Join(workDir, fmt.Sprintf("frame_%06d%s", len(frames)-1, filepath.Ext(frames[len(frames)-1].File)))
 	if _, err := fmt.Fprintf(concatFile, "file '%s'\n", escapeFFmpegConcatPath(lastFramePath)); err != nil {
 		_ = concatFile.Close()
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 	if err := concatFile.Close(); err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
 
 	outputPath := filepath.Join(workDir, "ugoira.webm")
@@ -456,14 +461,14 @@ func buildUgoiraWebM(zipData []byte, frames []ugoiraFrame) ([]byte, image.Image,
 		outputPath,
 	)
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return nil, nil, fmt.Errorf("failed to convert pixiv ugoira to webm: %w: %s", err, strings.TrimSpace(string(output)))
+		return nil, nil, 0, fmt.Errorf("failed to convert pixiv ugoira to webm: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 
 	webmData, err := os.ReadFile(outputPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, 0, err
 	}
-	return webmData, preview, nil
+	return webmData, preview, totalDuration, nil
 }
 
 func readZipFile(file *zip.File) ([]byte, error) {

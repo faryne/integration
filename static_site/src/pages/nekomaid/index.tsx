@@ -30,6 +30,7 @@ import {
 } from "@/apis/nekomaid/search.ts";
 import { ArtworkCard } from "@/components/nekomaid/ArtworkCard.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
+import { isVideoMedia, VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
 import { NekomaidBreadcrumb } from "@/components/nekomaid/NekomaidBreadcrumb.tsx";
@@ -221,6 +222,20 @@ function DetailContent({
   recommendations: NekomaidArtwork[];
   forceRecommendationBlur: boolean;
 }) {
+  const photos = artwork.photos ?? [];
+  const hasVideo = photos.some(isVideoMedia);
+  const viewerTitle = artwork.title || "未命名作品";
+  const infoPanel = (
+    <Box sx={{ maxWidth: { xs: "100%", md: 520, xl: 620 } }}>
+      <ArtworkInfoPanel
+        artwork={artwork}
+        authorName={authorName}
+        recommendations={recommendations}
+        forceRecommendationBlur={forceRecommendationBlur}
+      />
+    </Box>
+  );
+
   return (
     <Stack spacing={1.5} sx={{ minWidth: 0 }}>
       <NekomaidBreadcrumb
@@ -230,19 +245,15 @@ function DetailContent({
         title={artwork.title}
         artworkId={artwork.artwork_id}
       />
-      <ImageViewer
-        photos={artwork.photos ?? []}
-        title={artwork.title || "未命名作品"}
-      >
-        <Box sx={{ maxWidth: { xs: "100%", md: 520, xl: 620 } }}>
-          <ArtworkInfoPanel
-            artwork={artwork}
-            authorName={authorName}
-            recommendations={recommendations}
-            forceRecommendationBlur={forceRecommendationBlur}
-          />
-        </Box>
-      </ImageViewer>
+      {hasVideo ? (
+        <VideoViewer videos={photos} title={viewerTitle}>
+          {infoPanel}
+        </VideoViewer>
+      ) : (
+        <ImageViewer photos={photos} title={viewerTitle}>
+          {infoPanel}
+        </ImageViewer>
+      )}
     </Stack>
   );
 }

@@ -2,6 +2,7 @@ export type NekomaidSite = "pixiv" | "nico" | "tinami" | string;
 
 export interface NekomaidPhoto {
   description?: string;
+  duration?: number;
   ext?: string;
   height?: number;
   mime?: string;

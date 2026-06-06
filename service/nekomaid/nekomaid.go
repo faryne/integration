@@ -208,7 +208,7 @@ func s3KeyFromURL(rawURL string) string {
 	return strings.TrimPrefix(u.EscapedPath(), "/")
 }
 
-func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []byte, preview image.Image, rawURL string) (nekomaid.ArtworkPhoto, string, error) {
+func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []byte, preview image.Image, rawURL string, duration float64) (nekomaid.ArtworkPhoto, string, error) {
 	var o = nekomaid.ArtworkPhoto{}
 	var thumb string
 	if len(webmData) == 0 {
@@ -297,6 +297,7 @@ func UploadUgoira(site enum.NekomaidSite, artworkId string, webmData, zipData []
 	o.Size = len(webmData)
 	o.Url = domain + "/" + webmKey
 	o.Width = preview.Bounds().Dx()
+	o.Duration = duration
 
 	return o, thumb, nil
 }

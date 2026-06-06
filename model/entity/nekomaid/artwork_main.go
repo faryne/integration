@@ -48,18 +48,19 @@ type ArtworkMainFullContent struct {
 }
 
 type ArtworkPhoto struct {
-	Width    int    `json:"width"`
-	Height   int    `json:"height"`
-	Mime     string `json:"mime"`
-	Ext      string `json:"ext"`
-	Raw      string `json:"raw"`
-	Size     int    `json:"size"`
-	Filename string `json:"filename"`
-	Index    int    `json:"index"`
-	Url      string `json:"url"`
-	Original string `json:"original"`
-	FileId   string `json:"file_id"`
-	KeyId    string `json:"key_id"`
+	Width    int     `json:"width"`
+	Height   int     `json:"height"`
+	Mime     string  `json:"mime"`
+	Ext      string  `json:"ext"`
+	Raw      string  `json:"raw"`
+	Size     int     `json:"size"`
+	Filename string  `json:"filename"`
+	Index    int     `json:"index"`
+	Url      string  `json:"url"`
+	Original string  `json:"original"`
+	FileId   string  `json:"file_id"`
+	KeyId    string  `json:"key_id"`
+	Duration float64 `json:"duration,omitempty"`
 }
 
 func (c ArtworkMainFullContent) Value() (driver.Value, error) {

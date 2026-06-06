@@ -23,26 +23,6 @@ export interface ImageViewerPhoto {
   url: string;
 }
 
-const isVideoPhoto = (photo?: ImageViewerPhoto) => {
-  if (!photo) {
-    return false;
-  }
-  const mime = photo.mime?.toLowerCase() ?? "";
-  const ext = photo.ext?.toLowerCase() ?? "";
-  const urlPath = (() => {
-    try {
-      return new URL(photo.url).pathname.toLowerCase();
-    } catch {
-      return photo.url.toLowerCase().split("?")[0] ?? "";
-    }
-  })();
-  return (
-    mime.startsWith("video/") ||
-    ["webm", "mp4", "mov"].includes(ext) ||
-    /\.(webm|mp4|mov)$/.test(urlPath)
-  );
-};
-
 export function ImageViewer({
   children,
   initialIndex = 0,
@@ -63,7 +43,6 @@ export function ImageViewer({
   const suppressClickRef = useRef(false);
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
-  const currentIsVideo = isVideoPhoto(currentPhoto);
   const currentDescription = currentPhoto?.description?.trim();
   const thumbnails = photos.map(
     (photo) => photo.thumbnail || photo.thumb || "",
@@ -153,16 +132,6 @@ export function ImageViewer({
           setLoadedCount((count) => count + 1);
         }
       };
-      if (isVideoPhoto(photo)) {
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.muted = true;
-        video.playsInline = true;
-        video.onloadedmetadata = markLoaded;
-        video.onerror = markLoaded;
-        video.src = url;
-        return;
-      }
       const image = new Image();
       image.onload = markLoaded;
       image.onerror = markLoaded;
@@ -410,51 +379,23 @@ export function ImageViewer({
                   width: "100%",
                 }}
               >
-                {currentIsVideo ? (
-                  <Box
-                    component="video"
-                    aria-label={`${title} ${currentIndex + 1}`}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    sx={{
-                      borderRadius: expanded ? 0 : 1,
-                      boxShadow: expanded
-                        ? "none"
-                        : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                      display: "block",
-                      height: expanded ? "auto" : "auto",
-                      maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                      maxWidth: expanded ? "none" : "100%",
-                      objectFit: "contain",
-                      width: expanded ? "auto" : "auto",
-                    }}
-                  >
-                    <source
-                      src={currentPhoto.url}
-                      type={currentPhoto.mime || "video/webm"}
-                    />
-                  </Box>
-                ) : (
-                  <Box
-                    component="img"
-                    src={currentPhoto.url}
-                    alt={`${title} ${currentIndex + 1}`}
-                    sx={{
-                      borderRadius: expanded ? 0 : 1,
-                      boxShadow: expanded
-                        ? "none"
-                        : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                      display: "block",
-                      height: expanded ? "auto" : "auto",
-                      maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                      maxWidth: expanded ? "none" : "100%",
-                      objectFit: "contain",
-                      width: expanded ? "auto" : "auto",
-                    }}
-                  />
-                )}
+                <Box
+                  component="img"
+                  src={currentPhoto.url}
+                  alt={`${title} ${currentIndex + 1}`}
+                  sx={{
+                    borderRadius: expanded ? 0 : 1,
+                    boxShadow: expanded
+                      ? "none"
+                      : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                    display: "block",
+                    height: expanded ? "auto" : "auto",
+                    maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                    maxWidth: expanded ? "none" : "100%",
+                    objectFit: "contain",
+                    width: expanded ? "auto" : "auto",
+                  }}
+                />
               </Box>
               {children && (
                 <>
