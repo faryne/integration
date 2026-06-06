@@ -83,7 +83,7 @@ func Retrieve(ctx fiber.Ctx) error {
 		// 根據錯誤訊息判斷狀態碼 (這部分可以再細分自定義錯誤類型)
 		status := fiber.StatusInternalServerError
 		if err.Error() == "此作品已被抓取過" {
-			status = fiber.StatusConflict
+			status = fiber.StatusAlreadyReported
 		} else if err.Error() == "此畫師的作品不允許被抓取" {
 			status = fiber.StatusForbidden
 		}
