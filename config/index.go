@@ -25,6 +25,8 @@ type envConfig struct {
 	NekomaidS3Secret  string `env:"NEKOMAID_S3_SECRET"`
 	PixivUsername     string `env:"PIXIV_USERNAME"`
 	PixivPassword     string `env:"PIXIV_PASSWORD"`
+	NicoEmail         string `env:"NICO_EMAIL"`
+	NicoPassword      string `env:"NICO_PASSWORD"`
 
 	FinMindToken   string `env:"FINMIND_TOKEN"`
 	DiscordWebhook string `env:"DISCORD_WEBHOOK"`
