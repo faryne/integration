@@ -5,6 +5,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
     title: "首頁",
     href: "/",
   },
+  // {
+  //   title: "關於我",
+  //   href: "/about",
+  // },
   {
     title: "大人的喜好",
     items: [
