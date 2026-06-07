@@ -178,6 +178,10 @@ function App() {
             <Route path={"/tools/userscripts"} element={<Userscripts />} />
 
             <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
+            <Route
+              path={"/data/etf/yieldmax/:etfCode"}
+              element={<YieldMaxEtfs />}
+            />
             <Route path={"/data/etf/twse"} element={<TwseEtf />} />
             <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
 

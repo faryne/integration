@@ -29,7 +29,6 @@ import {
   Button,
   useTheme,
   Divider,
-  Container,
   TableSortLabel,
   CircularProgress,
   LinearProgress,
@@ -62,6 +61,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { shareUrl } from "@/helpers/share.ts";
 import { DetailDialog } from "@/components/common/DetailDialog.tsx";
+import { InvestmentRiskDisclaimer } from "@/components/common/InvestmentRiskDisclaimer.tsx";
 
 const filters = [
   { label: "全部", value: "ALL" },
@@ -235,9 +235,18 @@ const matchesStrategy = (strategy: StrategyType, etf: TwseEtfInfo) => {
     case "rookie_trap":
       return etf.total_ex_count > 0 && etf.total_ex_count <= 2;
     case "low_rebound":
-      return etf.range_position > 0 && etf.range_position <= 25 && etf.ma20_bias_rate <= -3;
+      return (
+        etf.range_position > 0 &&
+        etf.range_position <= 25 &&
+        etf.ma20_bias_rate <= -3
+      );
     case "trend_strength":
-      return etf.ma5 > 0 && etf.ma20 > 0 && etf.ma5 > etf.ma20 && etf.range_position >= 60;
+      return (
+        etf.ma5 > 0 &&
+        etf.ma20 > 0 &&
+        etf.ma5 > etf.ma20 &&
+        etf.range_position >= 60
+      );
     case "overheat_warning":
       return etf.range_position >= 85 && etf.ma20_bias_rate >= 5;
     case "ma_balance":
@@ -477,66 +486,6 @@ const EtfDetailSummary = ({ etf }: { etf: TwseEtfInfo }) => (
   </Stack>
 );
 
-const FooterDisclaimer = () => {
-  return (
-    <Box
-      component="footer"
-      sx={{ mt: 8, pb: 4, bgcolor: "background.default" }}
-    >
-      <Container maxWidth="lg">
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: 1,
-            color: "text.secondary",
-          }}
-        >
-          <WarningAmberIcon
-            fontSize="small"
-            sx={{ mt: 0.3, color: "warning.main" }}
-          />
-          <Box>
-            <Typography
-              variant="subtitle2"
-              sx={{ fontWeight: "bold", mb: 1, color: "text.primary" }}
-            >
-              警語與免責聲明 / Disclaimer
-            </Typography>
-
-            <Typography
-              variant="caption"
-              display="block"
-              sx={{ lineHeight: 1.6, mb: 1.5 }}
-            >
-              本站所有資料僅供參考，不構成任何投資建議、買賣邀約或要約之引緻。本站所載之填息天數、勝率等歷史統計數據，係基於歷史股價與配息紀錄計算之結果，
-              <strong>歷史績效不保證未來獲利</strong>
-              。投資人進行投資前，應自行評估風險、審慎考量並自負投資損益。本站盡力確保資料之正確性，惟對資料之即時性、完整性或錯誤不負任何法律責任。
-            </Typography>
-
-            <Typography
-              variant="caption"
-              display="block"
-              sx={{ lineHeight: 1.6, fontStyle: "italic" }}
-            >
-              All information provided on this website is for informational
-              purposes only and does not constitute investment advice, financial
-              planning, or a solicitation to buy or sell any securities.
-              Historical performance, including calculated win rates and fill
-              days, is based on past data and
-              <strong> is not indicative of future results</strong>. Investors
-              should conduct their own research, assess risks carefully, and
-              assume full responsibility for their investment decisions. While
-              we strive to ensure data accuracy, we accept no liability for any
-              errors, omissions, or delays in the data.
-            </Typography>
-          </Box>
-        </Box>
-      </Container>
-    </Box>
-  );
-};
-
 const EtfDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { code } = useParams<{ code?: string }>();
@@ -661,21 +610,24 @@ const EtfDashboard: React.FC = () => {
     navigate(`/data/etf/twse${querySuffix}`);
   };
 
-  const handleShare = useCallback(async (
-    frontendPath = window.location.pathname + window.location.search,
-  ) => {
-    const result = await shareUrl({
-      url: buildSnsShareUrl(frontendPath),
-    });
+  const handleShare = useCallback(
+    async (
+      frontendPath = window.location.pathname + window.location.search,
+    ) => {
+      const result = await shareUrl({
+        url: buildSnsShareUrl(frontendPath),
+      });
 
-    if (result === "copied") {
-      setShareNotice("連結已複製");
-    }
+      if (result === "copied") {
+        setShareNotice("連結已複製");
+      }
 
-    if (result === "failed") {
-      setShareNotice("無法分享連結");
-    }
-  }, []);
+      if (result === "failed") {
+        setShareNotice("無法分享連結");
+      }
+    },
+    [],
+  );
 
   const selectedDate = useMemo(() => {
     if (tabValue === 0) return dayjs();
@@ -1155,7 +1107,7 @@ const EtfDashboard: React.FC = () => {
         selected_date={selectedDate.format("YYYY-MM-DD")}
         onClick={handleOpenByCode}
       />
-      <FooterDisclaimer />
+      <InvestmentRiskDisclaimer />
       <Snackbar
         open={!!shareNotice}
         autoHideDuration={2200}
@@ -1269,7 +1221,11 @@ const EtfTableList = ({
         boxShadow: "0 14px 40px rgba(15, 23, 42, 0.06)",
       }}
     >
-      <Table stickyHeader size="small" sx={{ minWidth: isCompact ? 680 : 1420 }}>
+      <Table
+        stickyHeader
+        size="small"
+        sx={{ minWidth: isCompact ? 680 : 1420 }}
+      >
         <TableHead>
           <TableRow>
             <TableCell
@@ -1432,9 +1388,7 @@ const EtfTableList = ({
                   <TableSortLabel
                     active={orderBy.field === "range_position"}
                     direction={
-                      orderBy.field === "range_position"
-                        ? orderBy.order
-                        : "asc"
+                      orderBy.field === "range_position" ? orderBy.order : "asc"
                     }
                     onClick={() => handleRequestSort("range_position")}
                   >
@@ -1452,9 +1406,7 @@ const EtfTableList = ({
                   <TableSortLabel
                     active={orderBy.field === "ma20_bias_rate"}
                     direction={
-                      orderBy.field === "ma20_bias_rate"
-                        ? orderBy.order
-                        : "asc"
+                      orderBy.field === "ma20_bias_rate" ? orderBy.order : "asc"
                     }
                     onClick={() => handleRequestSort("ma20_bias_rate")}
                   >
@@ -1911,7 +1863,8 @@ const EtfCandleChart = ({
   }, [calculatedTickerRows]);
   const tickerStats = useMemo(() => {
     const first = calculatedTickerRows[0] ?? null;
-    const latest = calculatedTickerRows[calculatedTickerRows.length - 1] ?? null;
+    const latest =
+      calculatedTickerRows[calculatedTickerRows.length - 1] ?? null;
     const high = closeRange.high;
     const low = closeRange.low;
     const range = high && low ? high.close - low.close : 0;
@@ -2502,7 +2455,9 @@ const EtfCandleChart = ({
                           {formatDecimal(row.calculated_ma120)}
                         </TableCell>
                       )}
-                      <TableCell align="right">{formatInteger(row.volume)}</TableCell>
+                      <TableCell align="right">
+                        {formatInteger(row.volume)}
+                      </TableCell>
                       <TableCell align="right">
                         {formatInteger(row.trading_money)}
                       </TableCell>
