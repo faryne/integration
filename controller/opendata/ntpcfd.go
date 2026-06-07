@@ -26,10 +26,30 @@ func FDRealtime(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.ExternalServiceError(err)
 	}
+	eventsTaoyuan, err := fdService.Taoyuan()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	eventsTaichung, err := fdService.Taichung()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	eventsTainan, err := fdService.Tainan()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
+	eventsKaohsiung, err := fdService.Kaohsiung()
+	if err != nil {
+		return output.ExternalServiceError(err)
+	}
 	// Key 與前端的 TWArea 一致
 	return output.Success(map[string][]fdService.Event{
 		"Taipei":    eventsTaipei,
 		"NewTaipei": eventsNewTaipei,
+		"Taoyuan":   eventsTaoyuan,
+		"Taichung":  eventsTaichung,
+		"Tainan":    eventsTainan,
+		"Kaohsiung": eventsKaohsiung,
 	})
 }
 
