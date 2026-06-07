@@ -5,9 +5,11 @@ export interface NekomaidPhoto {
   duration?: number;
   ext?: string;
   height?: number;
+  metadataLines?: string[];
   mime?: string;
   width?: number;
   ratio?: number;
+  size?: number;
   thumb?: string;
   thumbnail?: string;
   url: string;

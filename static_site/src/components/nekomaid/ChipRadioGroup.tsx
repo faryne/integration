@@ -1,11 +1,13 @@
 import { Chip, Stack, Typography } from "@mui/material";
 
 export function ChipRadioGroup({
+  disabled = false,
   label,
   value,
   options,
   onChange,
 }: {
+  disabled?: boolean;
   label: string;
   value: string;
   options: Array<{ label: string; value: string }>;
@@ -23,10 +25,15 @@ export function ChipRadioGroup({
             <Chip
               key={`${label}-${option.value || "all"}`}
               label={option.label}
-              clickable
+              clickable={!disabled}
               color={selected ? "primary" : "default"}
+              disabled={disabled}
               variant={selected ? "filled" : "outlined"}
-              onClick={() => onChange(option.value)}
+              onClick={() => {
+                if (!disabled) {
+                  onChange(option.value);
+                }
+              }}
             />
           );
         })}

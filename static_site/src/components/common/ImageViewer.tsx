@@ -3,6 +3,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
   Tooltip,
@@ -18,6 +19,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 export interface ImageViewerPhoto {
   description?: string;
   ext?: string;
+  metadataLines?: string[];
   mime?: string;
   thumb?: string;
   thumbnail?: string;
@@ -46,6 +48,8 @@ export function ImageViewer({
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
   const currentDescription = currentPhoto?.description?.trim();
+  const currentMetadataLines =
+    currentPhoto?.metadataLines?.filter(Boolean) ?? [];
   const thumbnails = photos.map(
     (photo) => photo.thumbnail || photo.thumb || "",
   );
@@ -362,7 +366,7 @@ export function ImageViewer({
                 }}
                 ref={imageStageRef}
                 sx={{
-                  alignItems: "center",
+                  alignItems: expanded ? "stretch" : "center",
                   appearance: "none",
                   bgcolor: "#0f172a",
                   border: 0,
@@ -384,6 +388,7 @@ export function ImageViewer({
                   sx={{
                     alignItems: "center",
                     maxWidth: expanded ? "none" : "100%",
+                    minWidth: expanded ? "100%" : 0,
                     width: expanded ? "max-content" : "100%",
                   }}
                 >
@@ -434,38 +439,42 @@ export function ImageViewer({
                       >
                         {isCarousel && (
                           <>
-                            <Button
-                              disabled={!canGoPrev}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                goTo(currentIndex - 1);
-                              }}
-                              startIcon={
-                                <ArrowBackIosNewIcon fontSize="small" />
-                              }
-                              sx={{
-                                color: "#f8fafc",
-                                borderColor: "rgba(248,250,252,0.42)",
-                              }}
-                              variant="outlined"
-                            >
-                              上一張
-                            </Button>
-                            <Button
-                              disabled={!canGoNext}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                goTo(currentIndex + 1);
-                              }}
-                              endIcon={<ArrowForwardIosIcon fontSize="small" />}
-                              sx={{
-                                color: "#f8fafc",
-                                borderColor: "rgba(248,250,252,0.42)",
-                              }}
-                              variant="outlined"
-                            >
-                              下一張
-                            </Button>
+                            <Tooltip title="上一張">
+                              <span>
+                                <IconButton
+                                  aria-label="上一張"
+                                  disabled={!canGoPrev}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    goTo(currentIndex - 1);
+                                  }}
+                                  sx={{
+                                    border: "1px solid rgba(248,250,252,0.42)",
+                                    color: "#f8fafc",
+                                  }}
+                                >
+                                  <ArrowBackIosNewIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                            <Tooltip title="下一張">
+                              <span>
+                                <IconButton
+                                  aria-label="下一張"
+                                  disabled={!canGoNext}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    goTo(currentIndex + 1);
+                                  }}
+                                  sx={{
+                                    border: "1px solid rgba(248,250,252,0.42)",
+                                    color: "#f8fafc",
+                                  }}
+                                >
+                                  <ArrowForwardIosIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
                           </>
                         )}
                       </Stack>
@@ -475,6 +484,28 @@ export function ImageViewer({
                         flexShrink={0}
                         spacing={1}
                       >
+                        {currentMetadataLines.length > 0 && (
+                          <Stack
+                            spacing={0.25}
+                            sx={{
+                              color: "rgba(248,250,252,0.78)",
+                              minWidth: { sm: 128 },
+                              textAlign: { xs: "left", sm: "right" },
+                            }}
+                          >
+                            {currentMetadataLines.map((line) => (
+                              <Typography
+                                key={line}
+                                color="inherit"
+                                fontWeight={800}
+                                lineHeight={1.25}
+                                variant="caption"
+                              >
+                                {line}
+                              </Typography>
+                            ))}
+                          </Stack>
+                        )}
                         {children && (
                           <Tooltip
                             title={

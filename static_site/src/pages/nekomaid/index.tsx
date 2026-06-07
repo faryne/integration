@@ -58,6 +58,29 @@ import { shareUrl } from "@/helpers/share.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
+import type { NekomaidPhoto } from "@/types/nekomaid.ts";
+
+function formatFileSize(size?: number) {
+  if (!size || size <= 0) {
+    return "";
+  }
+  if (size >= 1024 * 1024) {
+    return `${(size / 1024 / 1024).toFixed(2)} MB`;
+  }
+  if (size >= 1024) {
+    return `${(size / 1024).toFixed(1)} KB`;
+  }
+  return `${size} B`;
+}
+
+function imageMetadataLines(photo: NekomaidPhoto) {
+  const dimensions =
+    photo.width && photo.height
+      ? `${Math.round(photo.width)} x ${Math.round(photo.height)} px`
+      : "";
+  const fileSize = formatFileSize(photo.size);
+  return [dimensions, fileSize].filter(Boolean);
+}
 
 function ArtworkInfoPanel({
   artwork,
@@ -225,6 +248,13 @@ function DetailContent({
   const viewerAnchorRef = useRef<HTMLDivElement | null>(null);
   const photos = artwork.photos ?? [];
   const hasVideo = photos.some(isVideoMedia);
+  const imagePhotos = hasVideo
+    ? photos
+    : photos.map((photo) => ({
+        ...photo,
+        description: photo.description,
+        metadataLines: imageMetadataLines(photo),
+      }));
   const viewerTitle = artwork.title || "未命名作品";
   const infoPanel = (
     <Box sx={{ maxWidth: { xs: "100%", md: 520, xl: 620 } }}>
@@ -268,7 +298,7 @@ function DetailContent({
             {infoPanel}
           </VideoViewer>
         ) : (
-          <ImageViewer photos={photos} title={viewerTitle}>
+          <ImageViewer photos={imagePhotos} title={viewerTitle}>
             {infoPanel}
           </ImageViewer>
         )}

@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
   Tooltip,
@@ -391,38 +392,52 @@ export function VideoViewer({
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {!isEmbedded && (
                       <>
-                        <Button
-                          disabled={isPlaying}
-                          onClick={play}
-                          startIcon={<PlayArrowIcon />}
-                          variant="contained"
-                        >
-                          播放
-                        </Button>
-                        <Button
-                          disabled={!isPlaying}
-                          onClick={pause}
-                          startIcon={<PauseIcon />}
-                          sx={{
-                            color: "#f8fafc",
-                            borderColor: "rgba(248,250,252,0.42)",
-                          }}
-                          variant="outlined"
-                        >
-                          暫停
-                        </Button>
-                        <Button
-                          disabled={!isPlaying && currentTime === 0}
-                          onClick={stop}
-                          startIcon={<StopIcon />}
-                          sx={{
-                            color: "#f8fafc",
-                            borderColor: "rgba(248,250,252,0.42)",
-                          }}
-                          variant="outlined"
-                        >
-                          停止
-                        </Button>
+                        <Tooltip title="播放">
+                          <span>
+                            <IconButton
+                              aria-label="播放"
+                              disabled={isPlaying}
+                              onClick={play}
+                              sx={{
+                                bgcolor: "primary.main",
+                                color: "primary.contrastText",
+                                "&:hover": { bgcolor: "primary.dark" },
+                              }}
+                            >
+                              <PlayArrowIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="暫停">
+                          <span>
+                            <IconButton
+                              aria-label="暫停"
+                              disabled={!isPlaying}
+                              onClick={pause}
+                              sx={{
+                                border: "1px solid rgba(248,250,252,0.42)",
+                                color: "#f8fafc",
+                              }}
+                            >
+                              <PauseIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="停止">
+                          <span>
+                            <IconButton
+                              aria-label="停止"
+                              disabled={!isPlaying && currentTime === 0}
+                              onClick={stop}
+                              sx={{
+                                border: "1px solid rgba(248,250,252,0.42)",
+                                color: "#f8fafc",
+                              }}
+                            >
+                              <StopIcon />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </>
                     )}
                     {children && (

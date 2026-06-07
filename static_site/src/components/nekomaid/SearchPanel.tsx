@@ -36,6 +36,8 @@ export function SearchPanel({
     setDraft({ site, tag, rating, type, wallpaper, minWidth });
   }, [minWidth, rating, site, tag, type, wallpaper]);
 
+  const isAnimatedSearch = draft.type === "ugoira";
+
   return (
     <Paper variant="outlined" sx={{ borderRadius: 2, p: 2.5 }}>
       <Stack spacing={2}>
@@ -79,11 +81,19 @@ export function SearchPanel({
             { label: "漫畫", value: "manga" },
             { label: "動圖", value: "ugoira" },
           ]}
-          onChange={(value) => setDraft((prev) => ({ ...prev, type: value }))}
+          onChange={(value) =>
+            setDraft((prev) => ({
+              ...prev,
+              minWidth: value === "ugoira" ? "" : prev.minWidth,
+              type: value,
+              wallpaper: value === "ugoira" ? "" : prev.wallpaper,
+            }))
+          }
         />
         <ChipRadioGroup
+          disabled={isAnimatedSearch}
           label="桌布比例"
-          value={draft.wallpaper}
+          value={isAnimatedSearch ? "" : draft.wallpaper}
           options={[
             { label: "全部", value: "" },
             { label: "16:10", value: "16:10" },
@@ -95,11 +105,16 @@ export function SearchPanel({
           }
         />
         <TextField
+          disabled={isAnimatedSearch}
           label="最小寬度"
           type="number"
-          value={draft.minWidth}
+          value={isAnimatedSearch ? "" : draft.minWidth}
           slotProps={{ htmlInput: { min: 0, step: 1 } }}
-          helperText="搭配桌布比例篩選，單位 px。"
+          helperText={
+            isAnimatedSearch
+              ? "動圖搜尋不支援桌布尺寸條件。"
+              : "搭配桌布比例篩選，單位 px。"
+          }
           onChange={(event) =>
             setDraft((prev) => ({
               ...prev,
@@ -110,7 +125,14 @@ export function SearchPanel({
         <Button
           startIcon={<SearchIcon />}
           variant="contained"
-          onClick={() => onSearch({ ...draft, tag: draft.tag.trim() })}
+          onClick={() =>
+            onSearch({
+              ...draft,
+              minWidth: isAnimatedSearch ? "" : draft.minWidth,
+              tag: draft.tag.trim(),
+              wallpaper: isAnimatedSearch ? "" : draft.wallpaper,
+            })
+          }
         >
           搜尋
         </Button>
