@@ -62,6 +62,23 @@ export function ETFInfo({ data }: EtfTableProps) {
   const [endDate, setEndDate] = useState<string>("");
   const [dateType, setDateType] = useState<"ex_date" | "payable_date" | "">("");
   const [calOpen, setCalOpen] = useState<boolean>(false);
+  const rocStats = useMemo(() => {
+    const total = data.distributions.length;
+    const profit = data.distributions.filter((row) => row.roc === 0).length;
+    const partial = data.distributions.filter(
+      (row) => row.roc > 0 && row.roc <= 80,
+    ).length;
+    const capital = data.distributions.filter((row) => row.roc > 80).length;
+    const formatRate = (count: number) =>
+      total > 0 ? `${((count / total) * 100).toFixed(1)}%` : "0.0%";
+
+    return {
+      total,
+      profit: { count: profit, rate: formatRate(profit) },
+      partial: { count: partial, rate: formatRate(partial) },
+      capital: { count: capital, rate: formatRate(capital) },
+    };
+  }, [data.distributions]);
 
   return (
     <Box sx={{ mt: 3 }}>
@@ -86,32 +103,39 @@ export function ETFInfo({ data }: EtfTableProps) {
         <ProfitCalculator data={data} />
       </Drawer>
       <Stack direction={"column"} spacing={3}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mb: 2 }}
+        >
           <Typography variant="body2" color="text.secondary">
             ROC 篩選：
           </Typography>
           <Chip
-            label="全部"
+            label={`全部 (${rocStats.total})`}
             onClick={() => setRocFilter("ALL")}
             variant={rocFilter === "ALL" ? "filled" : "outlined"}
             size="small"
           />
           <Chip
-            label="獲利為主 (0%)"
+            label={`獲利為主 (0%) ${rocStats.profit.count}/${rocStats.total} (${rocStats.profit.rate})`}
             color="success"
             onClick={() => setRocFilter("PROFIT")}
             variant={rocFilter === "PROFIT" ? "filled" : "outlined"}
             size="small"
           />
           <Chip
-            label="部分本金"
+            label={`部分本金 (0-80%) ${rocStats.partial.count}/${rocStats.total} (${rocStats.partial.rate})`}
             color="warning"
             onClick={() => setRocFilter("PARTIAL")}
             variant={rocFilter === "PARTIAL" ? "filled" : "outlined"}
             size="small"
           />
           <Chip
-            label="本金返還 (>80%)"
+            label={`本金返還 (>80%) ${rocStats.capital.count}/${rocStats.total} (${rocStats.capital.rate})`}
             color="error"
             onClick={() => setRocFilter("CAPITAL")}
             variant={rocFilter === "CAPITAL" ? "filled" : "outlined"}
