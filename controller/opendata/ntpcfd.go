@@ -1,13 +1,15 @@
 package opendata
 
 import (
+	"fmt"
+	"net/url"
+
 	"faryne.dev/model/entity/opendata/ntpcfd"
 	ntpcfdRepo "faryne.dev/repository/ntpcfd"
 	fdService "faryne.dev/service/fire_department"
 	"faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	"github.com/gofiber/fiber/v3"
-	"net/url"
 )
 
 // FDRealtime returns realtime fire-department events.
@@ -18,39 +20,35 @@ import (
 // @Failure 503 {object} output.CommonOutput
 // @Router /opendata/fd/realtime_events [get]
 func FDRealtime(ctx fiber.Ctx) error {
-	eventsNewTaipei, err := fdService.NewTaipei()
+	events, err := fdService.RealtimeEvents()
 	if err != nil {
 		return output.ExternalServiceError(err)
 	}
-	eventsTaipei, err := fdService.Taipei()
+
+	return output.Success(events)
+}
+
+// FDRealtimeByArea returns realtime fire-department events for one area.
+// @Summary Get realtime fire-department events by area
+// @Tags OpenData Fire Department
+// @Produce json
+// @Param area path string true "TWArea key"
+// @Success 200 {object} output.CommonOutput
+// @Failure 400 {object} output.CommonOutput
+// @Failure 503 {object} output.CommonOutput
+// @Router /opendata/fd/realtime_events/{area} [get]
+func FDRealtimeByArea(ctx fiber.Ctx) error {
+	area := ctx.Params("area")
+	if area == "" {
+		return output.BadRequest(fmt.Errorf("area is required"))
+	}
+
+	events, err := fdService.RealtimeEventsByArea(area)
 	if err != nil {
 		return output.ExternalServiceError(err)
 	}
-	eventsTaoyuan, err := fdService.Taoyuan()
-	if err != nil {
-		return output.ExternalServiceError(err)
-	}
-	eventsTaichung, err := fdService.Taichung()
-	if err != nil {
-		return output.ExternalServiceError(err)
-	}
-	eventsTainan, err := fdService.Tainan()
-	if err != nil {
-		return output.ExternalServiceError(err)
-	}
-	eventsKaohsiung, err := fdService.Kaohsiung()
-	if err != nil {
-		return output.ExternalServiceError(err)
-	}
-	// Key 與前端的 TWArea 一致
-	return output.Success(map[string][]fdService.Event{
-		"Taipei":    eventsTaipei,
-		"NewTaipei": eventsNewTaipei,
-		"Taoyuan":   eventsTaoyuan,
-		"Taichung":  eventsTaichung,
-		"Tainan":    eventsTainan,
-		"Kaohsiung": eventsKaohsiung,
-	})
+
+	return output.Success(events)
 }
 
 // FetchNtpcFDEvents searches New Taipei fire-department events.

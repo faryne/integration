@@ -11,7 +11,7 @@ import (
 const taichungCaseListURL = "https://www.fire.taichung.gov.tw/"
 
 func Taichung() ([]Event, error) {
-	resp, err := crawler.CrawlByUrl(taichungCaseListURL, []crawler.SelectorRequest{
+	resp, err := crawler.CrawlByUrlWithTimeout(taichungCaseListURL, []crawler.SelectorRequest{
 		{
 			Name:     "cases",
 			Pattern:  "ul li:not(.timely_head)",
@@ -40,7 +40,7 @@ func Taichung() ([]Event, error) {
 				},
 			},
 		},
-	})
+	}, crawlerRequestTimeout)
 	if err != nil {
 		return nil, err
 	}

@@ -11,7 +11,7 @@ import (
 const taoyuanCaseListURL = "https://www.tyfd.gov.tw/cht/index.php?act=caselist"
 
 func Taoyuan() ([]Event, error) {
-	resp, err := crawler.CrawlByUrl(taoyuanCaseListURL, []crawler.SelectorRequest{
+	resp, err := crawler.CrawlByUrlWithTimeout(taoyuanCaseListURL, []crawler.SelectorRequest{
 		{
 			Name:     "cases",
 			Pattern:  "div.tr",
@@ -50,7 +50,7 @@ func Taoyuan() ([]Event, error) {
 				},
 			},
 		},
-	})
+	}, crawlerRequestTimeout)
 	if err != nil {
 		return nil, err
 	}

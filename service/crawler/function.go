@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]any, error) {
@@ -23,6 +24,20 @@ func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]
 
 func CrawlByUrl(uri string, selectors []SelectorRequest) (map[string]any, error) {
 	c, err := http.Get(uri)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Body.Close()
+	b, err := io.ReadAll(c.Body)
+	if err != nil {
+		return nil, err
+	}
+	return crawl(b, selectors)
+}
+
+func CrawlByUrlWithTimeout(uri string, selectors []SelectorRequest, timeout time.Duration) (map[string]any, error) {
+	client := http.Client{Timeout: timeout}
+	c, err := client.Get(uri)
 	if err != nil {
 		return nil, err
 	}

@@ -29,6 +29,15 @@ import { useTitle } from "@/helpers/title.tsx";
 
 type RegionFilter = "all" | TWArea;
 
+const supportedFireDepartmentAreas: TWArea[] = [
+  "Taipei",
+  "NewTaipei",
+  "Taoyuan",
+  "Taichung",
+  "Tainan",
+  "Kaohsiung",
+];
+
 interface RegionGroup {
   key: TWArea;
   name: string;
@@ -59,7 +68,7 @@ export function FireDepartmentRealtime() {
   const [q, setQ] = useState<string>(new Date().toString());
   const [regionFilter, setRegionFilter] = useState<RegionFilter>("all");
   const [keyword, setKeyword] = useState("");
-  const realtimeEvents = useFireDepartmentRealtimeEvents(q);
+  const realtimeEvents = useFireDepartmentRealtimeEvents(q, regionFilter);
 
   useTitle("即時消防出勤記錄");
 
@@ -78,11 +87,18 @@ export function FireDepartmentRealtime() {
       .map(([key, events]) => ({
         key: key as TWArea,
         name: getRegionName(key as TWArea),
-        events: [...events].sort((a, b) => b.timestamp - a.timestamp),
+        events: [...(events ?? [])].sort((a, b) => b.timestamp - a.timestamp),
       }))
       .filter((region) => region.events.length > 0)
       .sort((a, b) => b.events.length - a.events.length);
   }, [realtimeEvents.data?.data]);
+  const eventCountByRegion = useMemo(
+    () =>
+      new Map<TWArea, number>(
+        regions.map((region) => [region.key, region.events.length]),
+      ),
+    [regions],
+  );
 
   const allEvents = useMemo<DisplayEvent[]>(
     () =>
@@ -102,8 +118,6 @@ export function FireDepartmentRealtime() {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
     return allEvents.filter((event) => {
-      const matchesRegion =
-        regionFilter === "all" || event.regionKey === regionFilter;
       const searchableText = [
         event.regionName,
         event.event_type,
@@ -115,9 +129,9 @@ export function FireDepartmentRealtime() {
         .join(" ")
         .toLowerCase();
 
-      return matchesRegion && searchableText.includes(normalizedKeyword);
+      return searchableText.includes(normalizedKeyword);
     });
-  }, [allEvents, keyword, regionFilter]);
+  }, [allEvents, keyword]);
 
   const latestUpdatedAt = allEvents[0]?.timestamp
     ? formatTimestamp(allEvents[0].timestamp)
@@ -214,7 +228,10 @@ export function FireDepartmentRealtime() {
                     {totalCars.toLocaleString("zh-TW")}
                   </Typography>
                 </Paper>
-                <Paper variant="outlined" sx={{ flex: 1.4, minWidth: 220, p: 2 }}>
+                <Paper
+                  variant="outlined"
+                  sx={{ flex: 1.4, minWidth: 220, p: 2 }}
+                >
                   <Typography variant="body2" color="text.secondary">
                     最新時間
                   </Typography>
@@ -276,15 +293,19 @@ export function FireDepartmentRealtime() {
                 variant={regionFilter === "all" ? "filled" : "outlined"}
                 onClick={() => setRegionFilter("all")}
               />
-              {regions.map((region) => (
-                <Chip
-                  key={region.key}
-                  label={`${region.name} ${region.events.length}`}
-                  color={regionFilter === region.key ? "error" : "default"}
-                  variant={regionFilter === region.key ? "filled" : "outlined"}
-                  onClick={() => setRegionFilter(region.key)}
-                />
-              ))}
+              {supportedFireDepartmentAreas.map((area) => {
+                const eventCount = eventCountByRegion.get(area);
+
+                return (
+                  <Chip
+                    key={area}
+                    label={`${getRegionName(area)}${eventCount === undefined ? "" : ` ${eventCount}`}`}
+                    color={regionFilter === area ? "error" : "default"}
+                    variant={regionFilter === area ? "filled" : "outlined"}
+                    onClick={() => setRegionFilter(area)}
+                  />
+                );
+              })}
             </Stack>
           </Stack>
         </Paper>
@@ -347,36 +368,37 @@ export function FireDepartmentRealtime() {
                           useFlexGap
                           alignItems="center"
                         >
-                            <Chip
-                              size="small"
-                              color="error"
-                              label={event.regionName}
-                            />
+                          <Chip
+                            size="small"
+                            color="error"
+                            label={event.regionName}
+                          />
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={event.event_type || "未分類"}
+                          />
+                          {event.sub_type && (
                             <Chip
                               size="small"
                               variant="outlined"
-                              label={event.event_type || "未分類"}
+                              label={event.sub_type}
                             />
-                            {event.sub_type && (
-                              <Chip
-                                size="small"
-                                variant="outlined"
-                                label={event.sub_type}
-                              />
-                            )}
-                          </Stack>
-
-                          <Typography variant="h6" fontWeight={900}>
-                            {event.title || `${event.event_type} ${event.sub_type}`}
-                          </Typography>
-
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <AccessTimeIcon color="action" fontSize="small" />
-                            <Typography variant="body2" color="text.secondary">
-                              {formatTimestamp(event.timestamp)}
-                            </Typography>
-                          </Stack>
+                          )}
                         </Stack>
+
+                        <Typography variant="h6" fontWeight={900}>
+                          {event.title ||
+                            `${event.event_type} ${event.sub_type}`}
+                        </Typography>
+
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <AccessTimeIcon color="action" fontSize="small" />
+                          <Typography variant="body2" color="text.secondary">
+                            {formatTimestamp(event.timestamp)}
+                          </Typography>
+                        </Stack>
+                      </Stack>
 
                       <Divider />
 

@@ -21,7 +21,7 @@ type dataTableCaseConfig struct {
 }
 
 func crawlDataTableCases(config dataTableCaseConfig) ([]Event, error) {
-	resp, err := crawler.CrawlByUrl(config.URL, []crawler.SelectorRequest{
+	resp, err := crawler.CrawlByUrlWithTimeout(config.URL, []crawler.SelectorRequest{
 		{
 			Name:     "cases",
 			Pattern:  "#dataTable tr",
@@ -29,7 +29,7 @@ func crawlDataTableCases(config dataTableCaseConfig) ([]Event, error) {
 			Trim:     true,
 			Children: dataTableSelectorChildren(config),
 		},
-	})
+	}, crawlerRequestTimeout)
 	if err != nil {
 		return nil, err
 	}

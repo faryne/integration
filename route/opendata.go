@@ -18,6 +18,7 @@ func OpenData(app *fiber.App) {
 	g2.Get("", opendata.FetchNtpcFDEvents)
 	g2.Get("/units", opendata.FetchNtpcFDUnits)
 	g2.Get("/realtime_events", opendata.FDRealtime)
+	g2.Get("/realtime_events/:area", opendata.FDRealtimeByArea)
 
 	g3 := g.Group("/xcity")
 	g3.Get("/actress", opendata.XCityActressList)

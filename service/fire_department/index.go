@@ -3,7 +3,10 @@ package fire_department
 import (
 	"io/ioutil"
 	"net/http"
+	"time"
 )
+
+const crawlerRequestTimeout = 5 * time.Second
 
 type Event struct {
 	Lng          float64  `json:"lng"`
