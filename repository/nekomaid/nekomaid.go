@@ -50,6 +50,15 @@ func (r *NekomaidRepository) UpdateAuthorNickname(site enum.NekomaidSite, author
 	}).Create(&author).Error
 }
 
+func (r *NekomaidRepository) GetAuthor(site enum.NekomaidSite, authorId string) (*nekomaid.ArtworkAuthor, error) {
+	var author nekomaid.ArtworkAuthor
+	err := r.GetDB().Where("site = ? AND author_id = ?", site, authorId).First(&author).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &author, err
+}
+
 func (r *NekomaidRepository) SaveArtwork(artwork *nekomaid.ArtworkMain) error {
 	return r.GetDB().Create(artwork).Error
 }

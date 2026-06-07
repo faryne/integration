@@ -6,10 +6,11 @@ import type {
   NekomaidSearchResponse,
 } from "@/types/nekomaid.ts";
 
-const nekomaidBaseUrl = "https://faryne.dev/api/opendata/nekomaid";
+const nekomaidListBaseUrl = `${import.meta.env.VITE_API_BASE}/opendata/nekomaid`;
+const nekomaidDetailBaseUrl = "https://faryne.dev/api/opendata/nekomaid";
 
 function listUrl(input: NekomaidSearchRequest) {
-  const segments = [nekomaidBaseUrl];
+  const segments = [nekomaidListBaseUrl];
   if (input.site) {
     segments.push(encodeURIComponent(input.site));
   }
@@ -21,7 +22,7 @@ function listUrl(input: NekomaidSearchRequest) {
 
 export function useNekomaidSearch(input: NekomaidSearchRequest) {
   return useInfiniteQuery({
-    queryKey: ["nekomaid", "legacy-search", input],
+    queryKey: ["nekomaid", "search", input],
     initialPageParam: "",
     queryFn: async ({ pageParam }) => {
       const response = await axios.get<NekomaidSearchResponse>(listUrl(input), {
@@ -51,7 +52,7 @@ export function useNekomaidArtworkDetail(
     enabled: Boolean(site && authorId && artworkId),
     queryFn: async () => {
       const response = await axios.get<NekomaidArtworkDetailResponse>(
-        `${nekomaidBaseUrl}/${encodeURIComponent(site!)}/${encodeURIComponent(authorId!)}/${encodeURIComponent(artworkId!)}`,
+        `${nekomaidDetailBaseUrl}/${encodeURIComponent(site!)}/${encodeURIComponent(authorId!)}/${encodeURIComponent(artworkId!)}`,
       );
       return response.data;
     },

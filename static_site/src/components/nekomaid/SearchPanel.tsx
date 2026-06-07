@@ -77,6 +77,7 @@ export function SearchPanel({
             { label: "全部", value: "" },
             { label: "插畫", value: "illust" },
             { label: "漫畫", value: "manga" },
+            { label: "動圖", value: "ugoira" },
           ]}
           onChange={(value) => setDraft((prev) => ({ ...prev, type: value }))}
         />

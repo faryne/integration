@@ -44,6 +44,15 @@ func SetQuery(q map[string]any, mustOrShould bool, conditions map[string]any) {
 	}
 }
 
+func SetSort(conditions map[string]any, field string, order string) {
+	sortMap, ok := conditions["sort"].(map[string]any)
+	if !ok {
+		sortMap = map[string]any{}
+		conditions["sort"] = sortMap
+	}
+	sortMap[field] = map[string]any{"order": order}
+}
+
 // Search performs a search query on an Elasticsearch index and returns the raw response, optional processed results, and an error.
 // The index parameter specifies the Elasticsearch index to query.
 // The query parameter is a map defining the search criteria.

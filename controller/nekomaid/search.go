@@ -17,9 +17,9 @@ import (
 // @Failure 500 {object} output.CommonOutput
 // @Router /nekomaid/search/{site}/{authorId}/{artworkId} [get]
 func Search(ctx fiber.Ctx) error {
-	raw, _, err := nekomaidService.Search(ctx)
+	response, err := nekomaidService.Search(ctx)
 	if err != nil {
 		return output.ESError(err)
 	}
-	return output.Success(raw.Aggregations)
+	return ctx.JSON(response)
 }
