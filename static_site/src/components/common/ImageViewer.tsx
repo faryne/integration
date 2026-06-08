@@ -13,10 +13,12 @@ import {
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CloseIcon from "@mui/icons-material/Close";
+import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import type { ReactNode, TouchEvent } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ImagePuzzleDialog } from "@/components/common/ImagePuzzleDialog.tsx";
 
 export interface ImageViewerPhoto {
   description?: string;
@@ -44,7 +46,10 @@ export function ImageViewer({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [naturalHeights, setNaturalHeights] = useState<number[]>([]);
   const [naturalWidths, setNaturalWidths] = useState<number[]>([]);
+  const [puzzleOpen, setPuzzleOpen] = useState(false);
+  const [viewportSize, setViewportSize] = useState({ height: 0, width: 0 });
   const imageStageRef = useRef<HTMLDivElement | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -55,6 +60,7 @@ export function ImageViewer({
   const currentMetadataLines =
     currentPhoto?.metadataLines?.filter(Boolean) ?? [];
   const currentNaturalWidth = naturalWidths[currentIndex] ?? 0;
+  const currentNaturalHeight = naturalHeights[currentIndex] ?? 0;
   const thumbnails = photos.map(
     (photo) => photo.thumbnail || photo.thumb || "",
   );
@@ -62,6 +68,14 @@ export function ImageViewer({
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < photos.length - 1;
   const allImagesLoaded = photos.length > 0 && loadedCount >= photos.length;
+  const canPlayPuzzle =
+    expanded &&
+    currentNaturalWidth > 0 &&
+    currentNaturalHeight > 0 &&
+    viewportSize.width > 0 &&
+    viewportSize.height > 0 &&
+    currentNaturalWidth <= viewportSize.width &&
+    currentNaturalHeight <= viewportSize.height;
 
   const goTo = (nextIndex: number) => {
     const normalized = Math.min(Math.max(nextIndex, 0), photos.length - 1);
@@ -135,7 +149,9 @@ export function ImageViewer({
     let cancelled = false;
     setLoadedCount(0);
     setDialogOpen(false);
+    setPuzzleOpen(false);
     thumbnailRefs.current = thumbnailRefs.current.slice(0, photos.length);
+    setNaturalHeights(Array.from({ length: photos.length }, () => 0));
     setNaturalWidths(Array.from({ length: photos.length }, () => 0));
     setCurrentIndex(
       photos.length > 0
@@ -163,6 +179,11 @@ export function ImageViewer({
             nextWidths[index] = image.naturalWidth;
             return nextWidths;
           });
+          setNaturalHeights((heights) => {
+            const nextHeights = [...heights];
+            nextHeights[index] = image.naturalHeight;
+            return nextHeights;
+          });
           setLoadedCount((count) => count + 1);
         }
       };
@@ -176,6 +197,23 @@ export function ImageViewer({
       cancelled = true;
     };
   }, [initialIndex, photos]);
+
+  useEffect(() => {
+    const updateViewportSize = () => {
+      setViewportSize({
+        height: window.innerHeight,
+        width: window.innerWidth,
+      });
+    };
+
+    updateViewportSize();
+    window.addEventListener("resize", updateViewportSize);
+    window.addEventListener("orientationchange", updateViewportSize);
+    return () => {
+      window.removeEventListener("resize", updateViewportSize);
+      window.removeEventListener("orientationchange", updateViewportSize);
+    };
+  }, []);
 
   useEffect(() => {
     if (!allImagesLoaded || !hasThumbnails) {
@@ -605,6 +643,37 @@ export function ImageViewer({
                     )}
                   </Box>
                 </Box>
+                {canPlayPuzzle && (
+                  <Tooltip title="用目前圖片玩拼圖">
+                    <Button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setPuzzleOpen(true);
+                      }}
+                      startIcon={<ExtensionOutlinedIcon fontSize="small" />}
+                      sx={{
+                        backdropFilter: "blur(10px)",
+                        bgcolor: "rgba(251, 191, 36, 0.18)",
+                        border: "1px solid rgba(251, 191, 36, 0.72)",
+                        borderRadius: 999,
+                        bottom: { xs: 12, md: 18 },
+                        boxShadow: "0 14px 36px rgba(0, 0, 0, 0.28)",
+                        color: "#fbbf24",
+                        fontWeight: 900,
+                        position: "absolute",
+                        right: { xs: 12, md: 18 },
+                        zIndex: 4,
+                        "&:hover": {
+                          bgcolor: "rgba(251, 191, 36, 0.28)",
+                          borderColor: "#fbbf24",
+                        },
+                      }}
+                      variant="outlined"
+                    >
+                      玩拼圖
+                    </Button>
+                  </Tooltip>
+                )}
                 {children && (
                   <Box
                     sx={{
@@ -762,6 +831,16 @@ export function ImageViewer({
           />
         </Box>
       </Dialog>
+      <ImagePuzzleDialog
+        imageUrl={currentPhoto.url}
+        onClose={() => setPuzzleOpen(false)}
+        open={puzzleOpen}
+        title={
+          isCarousel
+            ? `${title}（第 ${currentIndex + 1} / ${photos.length} 張）`
+            : title
+        }
+      />
     </>
   );
 }

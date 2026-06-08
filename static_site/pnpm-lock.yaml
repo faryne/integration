@@ -44,6 +44,9 @@ importers:
       dayjs:
         specifier: ^1.11.20
         version: 1.11.20
+      headbreaker:
+        specifier: ^3.0.0
+        version: 3.0.0
       jsoneditor:
         specifier: ^10.4.2
         version: 10.4.2
@@ -1399,6 +1402,9 @@ packages:
   hast-util-whitespace@3.0.0:
     resolution: {integrity: sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw==}
 
+  headbreaker@3.0.0:
+    resolution: {integrity: sha512-CTpmUsgGflDOurrbRvjpuhBd0Cz6pHx82z29X0j0+0EUL8ikqTZqRyP205Qt/DN6eFDhXvmrgXkrug9z733Vtw==}
+
   hermes-estree@0.25.1:
     resolution: {integrity: sha512-0wUoCcLp+5Ev5pDW2OriHC2MJCbwLwuRx+gAqMTOkGKJJiBCLjtrvy4PWUGn6MIVefecRpzoOZ/UV6iGdOr+Cw==}
 
@@ -1525,6 +1531,9 @@ packages:
 
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
+
+  konva@6.0.0:
+    resolution: {integrity: sha512-YTwmtz3KzbzdC0KDRHWLzuk0KXB4NUdaQqytrxacXE1C39V6wCk7Nnu0wgq+GdGbG6m8A1qiEU9TSJ19qdIzDw==}
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -3345,6 +3354,10 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
 
+  headbreaker@3.0.0:
+    optionalDependencies:
+      konva: 6.0.0
+
   hermes-estree@0.25.1: {}
 
   hermes-parser@0.25.1:
@@ -3447,6 +3460,9 @@ snapshots:
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
+
+  konva@6.0.0:
+    optional: true
 
   levn@0.4.1:
     dependencies:
