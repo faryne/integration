@@ -2,6 +2,19 @@ package xcity
 
 const baseUri = "https://xcity.jp/idol/"
 
+var syllabusKeys = []string{
+	"a", "i", "u", "e", "o",
+	"ka", "ki", "ku", "ke", "ko",
+	"sa", "shi", "su", "se", "so",
+	"ta", "chi", "tsu", "te", "to",
+	"na", "ni", "nu", "ne", "no",
+	"ha", "hi", "fu", "he", "ho",
+	"ma", "mi", "mu", "me", "mo",
+	"ya", "yu", "yo",
+	"ra", "ri", "ru", "re", "ro",
+	"wa",
+}
+
 var syllabus = map[string]string{
 	"a":   "あ",
 	"i":   "い",
@@ -47,4 +60,10 @@ var syllabus = map[string]string{
 	"re":  "れ",
 	"ro":  "ろ",
 	"wa":  "わ",
+}
+
+func SyllabusKeys() []string {
+	keys := make([]string, len(syllabusKeys))
+	copy(keys, syllabusKeys)
+	return keys
 }

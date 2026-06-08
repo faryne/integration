@@ -151,7 +151,7 @@ func exactStringQuery(field string, value string) map[string]any {
 	}
 }
 
-func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[av.Actress], []av.Actress, error) {
+func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[string]any {
 	page := input.Page
 	if page <= 0 {
 		page = 1
@@ -164,6 +164,9 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 			"birth_month": map[string]any{"order": "desc"},
 			"birth_day":   map[string]any{"order": "desc"},
 		},
+	}
+	if domain != "" {
+		search.SetQuery(exactStringQuery("domain", domain), true, q)
 	}
 	if name := strings.TrimSpace(input.Name); name != "" {
 		search.SetQuery(map[string]any{"term": map[string]any{"name.keyword": name}}, true, q)
@@ -221,7 +224,30 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 		}
 		q["sort"] = map[string]any{"height": map[string]any{"order": "desc"}}
 	}
+	return q
+}
 
+func xcityActressIndexReady() (bool, error) {
+	q := map[string]any{
+		"size": 0,
+	}
+	search.SetQuery(exactStringQuery("domain", actressDomainXCity), true, q)
+
+	r, _, err := search.Search[av.Actress, av.Actress]("dmmactresses", q, fActress)
+	if err != nil {
+		return false, err
+	}
+	return r.Hits.Total.Value >= 1000, nil
+}
+
+func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[av.Actress], []av.Actress, error) {
+	domain := actressDomainXCity
+	if ready, err := xcityActressIndexReady(); err != nil {
+		return nil, nil, err
+	} else if !ready {
+		domain = ""
+	}
+	q := buildActressSearchQuery(input, domain)
 	c, _ := json.Marshal(q)
 	fmt.Println(string(c))
 

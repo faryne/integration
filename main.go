@@ -13,6 +13,7 @@ import (
 	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
 	"faryne.dev/route"
+	avService "faryne.dev/service/av"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
@@ -259,6 +260,9 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	})
 	c.AddFunc("0 8 * * *", func() {
 		_ = twse.NotifyUpcomingETFEx()
+	})
+	c.AddFunc("37 1 * * 3", func() {
+		avService.SyncXCityActressesCron()
 	})
 
 	c.Start()

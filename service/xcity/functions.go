@@ -36,7 +36,7 @@ func ActressList(s string, page int) ([]Actress, error) {
 		if actressError != nil {
 			fmt.Println(actressError)
 		} else {
-			allActresses = append(allActresses, *actress)
+			actress.ID = _actress.Id
 			if actress.Name != "" {
 				allActresses = append(allActresses, *actress)
 			}
@@ -119,6 +119,7 @@ func getActressRequest(syllabus string, page int) ([]ActressSimple, error) {
 }
 
 type Actress struct {
+	ID         int      `json:"id"`
 	Image      string   `json:"image"`
 	Name       string   `json:"name"`
 	Kana       string   `json:"kana"`
@@ -153,6 +154,7 @@ func GetActressDetail(id string) (*Actress, error) {
 		}
 		actress, _ = matchActressDetail(s)
 	})
+	actress.ID, _ = strconv.Atoi(id)
 
 	return actress, nil
 }
@@ -203,6 +205,10 @@ func getName(s string, o *Actress) {
 	pattern := `^([^\(\)]+)\(([^\)]+)\)(\[([^\]]+)\])?$`
 	r := regexp.MustCompile(pattern)
 	matched := r.FindStringSubmatch(s)
+	if matched == nil {
+		o.Name = strings.TrimSpace(s)
+		return
+	}
 	o.Name = matched[1]
 	if len(matched) >= 3 {
 		o.Kana = matched[2]
@@ -276,7 +282,7 @@ func getBirthCity(s string, o *Actress) {
 func getInterests(s string, o *Actress) {
 	q, _ := goquery.NewDocumentFromReader(strings.NewReader(s))
 	cleanText := strings.TrimSpace(strings.Replace(q.Text(), "趣味", "", -1))
-	if cleanText == "" {
+	if cleanText != "" {
 		o.Interests = strings.Split(cleanText, ",")
 	}
 }
