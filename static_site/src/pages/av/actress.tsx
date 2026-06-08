@@ -1,5 +1,5 @@
 import { useTitle } from "@/helpers/title.tsx";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type ActressSearchRequest,
   useAVActressSearch,
@@ -14,23 +14,114 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ActressSearch } from "@/components/av/actress_search";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 
+type ActressRangeKey = "height" | "b" | "w" | "h";
+
+const actressRangeKeys: ActressRangeKey[] = ["height", "b", "w", "h"];
+
+const parsePositiveInt = (value: string | null) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed;
+};
+
+const parseRange = (value: string | null) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parts = value
+    .split(",")
+    .slice(0, 2)
+    .map((part) => parseInt(part, 10));
+
+  if (parts.length !== 2 || parts.some(Number.isNaN)) {
+    return undefined;
+  }
+
+  const range = [Math.max(parts[0], 0), Math.max(parts[1], 0)];
+  return range.every((part) => part <= 0) ? undefined : range;
+};
+
+const parseActressSearchParams = (
+  query: URLSearchParams,
+): ListByPaginationRequest<ActressSearchRequest> => {
+  const page = parsePositiveInt(query.get("page")) ?? 1;
+  const search: ListByPaginationRequest<ActressSearchRequest> = { page };
+  const name = query.get("name")?.trim();
+  const cup = query.get("cup")?.trim().toUpperCase();
+  const birthYear = parsePositiveInt(query.get("birth_year"));
+
+  if (name) {
+    search.name = name;
+  }
+  if (cup) {
+    search.cup = cup;
+  }
+  if (birthYear) {
+    search.birth_year = birthYear;
+  }
+
+  actressRangeKeys.forEach((key) => {
+    const range = parseRange(query.get(key));
+    if (range) {
+      search[key] = range;
+    }
+  });
+
+  return search;
+};
+
+const actressSearchToParams = (
+  search: ListByPaginationRequest<ActressSearchRequest>,
+) => {
+  const query = new URLSearchParams();
+  const page = search.page ?? 1;
+
+  if (page > 1) {
+    query.set("page", String(page));
+  }
+  if (search.name?.trim()) {
+    query.set("name", search.name.trim());
+  }
+  if (search.cup?.trim()) {
+    query.set("cup", search.cup.trim().toUpperCase());
+  }
+  if (search.birth_year && search.birth_year > 0) {
+    query.set("birth_year", String(search.birth_year));
+  }
+  actressRangeKeys.forEach((key) => {
+    const range = search[key];
+    if (range && range.some((value) => value > 0)) {
+      query.set(key, range.slice(0, 2).join(","));
+    }
+  });
+
+  return query;
+};
+
 export function AVActress() {
   const navigate = useNavigate();
+  const [query, setQuery] = useSearchParams();
 
   const [search, setSearch] = useState<
     ListByPaginationRequest<ActressSearchRequest>
-  >({
-    page: 1,
-  });
+  >(() => parseActressSearchParams(query));
   const s = useAVActressSearch(search);
   useTitle("AV 女優搜尋");
+
+  useEffect(() => {
+    setSearch(parseActressSearchParams(query));
+  }, [query]);
 
   const actresses = s.data?.data?.data ?? [];
   const total = s.data?.data?.total ?? 0;
@@ -85,7 +176,11 @@ export function AVActress() {
     value ? `${label} ${value.join("~")}` : "";
 
   const handleSearch = (input: ActressSearchRequest) => {
-    setSearch({ ...input, page: 1 });
+    setQuery(actressSearchToParams({ ...input, page: 1 }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setQuery(actressSearchToParams({ ...search, page }));
   };
 
   return (
@@ -399,9 +494,7 @@ export function AVActress() {
                   >
                     <Pagination
                       count={pageCount}
-                      onChange={(_, page) =>
-                        setSearch((current) => ({ ...current, page }))
-                      }
+                      onChange={(_, page) => handlePageChange(page)}
                       page={search.page ?? 1}
                       shape="rounded"
                       variant="outlined"

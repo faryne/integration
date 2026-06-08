@@ -27,22 +27,71 @@ const videoDetailId = (video: Video) =>
 const videoDisplayMakerNo = (video: Video) =>
   video.maker_no?.trim() || undefined;
 
+const parsePositiveInt = (value: string | null) => {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? undefined : parsed;
+};
+
+const parseVideoSearchParams = (
+  query: URLSearchParams,
+): ListByPaginationRequest<VideoSearchRequest> => {
+  const page = parsePositiveInt(query.get("page")) ?? 1;
+  const search: ListByPaginationRequest<VideoSearchRequest> = { page };
+  const keyword = query.get("keyword")?.trim();
+  const startDate = query.get("start_date")?.trim();
+  const endDate = query.get("end_date")?.trim();
+
+  if (keyword) {
+    search.keyword = keyword;
+  }
+  if (startDate) {
+    search.start_date = startDate;
+  }
+  if (endDate) {
+    search.end_date = endDate;
+  }
+
+  return search;
+};
+
+const videoSearchToParams = (
+  search: ListByPaginationRequest<VideoSearchRequest>,
+) => {
+  const query = new URLSearchParams();
+  const page = search.page ?? 1;
+
+  if (page > 1) {
+    query.set("page", String(page));
+  }
+  if (search.keyword?.trim()) {
+    query.set("keyword", search.keyword.trim());
+  }
+  if (search.start_date) {
+    query.set("start_date", search.start_date);
+  }
+  if (search.end_date) {
+    query.set("end_date", search.end_date);
+  }
+
+  return query;
+};
+
 export function AVVideo() {
+  const [query, setQuery] = useSearchParams();
   const [search, setSearch] = useState<
     ListByPaginationRequest<VideoSearchRequest>
-  >({
-    page: 1,
-  });
+  >(() => parseVideoSearchParams(query));
   const s = useAVVideoSearch(search);
   useTitle("AV 影片搜尋");
 
   const navigate = useNavigate();
-  const [query] = useSearchParams();
+
   useEffect(() => {
-    const keyword = query.get("keyword")?.trim();
-    if (keyword) {
-      setSearch({ page: 1, keyword });
-    }
+    setSearch(parseVideoSearchParams(query));
   }, [query]);
 
   const videos = s.data?.data?.data ?? [];
@@ -63,7 +112,11 @@ export function AVVideo() {
   };
 
   const handleSearch = (input: VideoSearchRequest) => {
-    setSearch({ ...input, page: 1 });
+    setQuery(videoSearchToParams({ ...input, page: 1 }));
+  };
+
+  const handlePageChange = (page: number) => {
+    setQuery(videoSearchToParams({ ...search, page }));
   };
 
   return (
@@ -367,9 +420,7 @@ export function AVVideo() {
                   >
                     <Pagination
                       count={pageCount}
-                      onChange={(_, page) =>
-                        setSearch((current) => ({ ...current, page }))
-                      }
+                      onChange={(_, page) => handlePageChange(page)}
                       page={search.page ?? 1}
                       shape="rounded"
                       variant="outlined"
