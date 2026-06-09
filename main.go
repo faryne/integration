@@ -31,6 +31,73 @@ var envFile = "./.env"
 var inputEnvFile = ""
 var reload bool
 var buildVersion = "development"
+var cmdName = ""
+
+type cronJobConfig struct {
+	Name     string
+	Schedule string
+	Handler  func()
+}
+
+var cronJobs = []cronJobConfig{
+	{
+		Name:     "etf-code-share-twse",
+		Schedule: "0 0 * * 1",
+		Handler: func() {
+			_, _ = twse.UpdateETFCodeList()
+			twse.UpdateETFShare(enum.StockMarketTWSE)
+		},
+	},
+	{
+		Name:     "etf-share-otc",
+		Schedule: "0 0 * * 2",
+		Handler: func() {
+			twse.UpdateETFShare(enum.StockMarketOTC)
+		},
+	},
+	{
+		Name:     "etf-ticker-daily",
+		Schedule: "0 15 * * *",
+		Handler: func() {
+			d := time.Now().Format(time.DateOnly)
+			twse.UpdateETFTicker("twse", d)
+			twse.UpdateETFTicker("otc", d)
+		},
+	},
+	{
+		Name:     "etf-ex-info",
+		Schedule: "7 16 * * 1-5",
+		Handler: func() {
+			twse.UpdateExPriceAndYieldRate()
+			twse.UpdateFilledDays()
+			twse.UpdateETFWinRate()
+		},
+	},
+	{
+		Name:     "etf-monthly-price",
+		Schedule: "0 1 1 * *",
+		Handler: func() {
+			now := time.Now()
+			lastMonth := now.AddDate(0, -1, 0)
+			s := twse.NewETFMonthlyPriceService()
+			_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
+		},
+	},
+	{
+		Name:     "etf-notify-ex",
+		Schedule: "0 8 * * *",
+		Handler: func() {
+			_ = twse.NotifyUpcomingETFEx()
+		},
+	},
+	{
+		Name:     "av-sync-xcity",
+		Schedule: "37 1 * * 3",
+		Handler: func() {
+			avService.SyncXCityActressesCron()
+		},
+	},
+}
 
 type appRuntime struct {
 	app       *fiber.App
@@ -78,12 +145,19 @@ func main() {
 	// 處理 env
 	flag.StringVar(&inputEnvFile, "env", "", "path of env file")
 	flag.BoolVar(&reload, "reload", false, "reload app")
+	flag.StringVar(&cmdName, "cmd", "", "run specific command")
 	flag.Parse()
 
 	runtime, err := loadAllSettings(inputEnvFile)
 	if err != nil {
 		log.Logger().Panic("Start app failed: " + err.Error())
 	}
+
+	if cmdName != "" {
+		executeCommand(cmdName)
+		return
+	}
+
 	logBuildEvent("start")
 
 	if reload {
@@ -230,40 +304,12 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
 	)))
 
-	c.AddFunc("0 0 * * 1", func() {
-		_, _ = twse.UpdateETFCodeList()
-		twse.UpdateETFShare(enum.StockMarketTWSE)
-	})
-	c.AddFunc("0 0 * * 2", func() {
-		twse.UpdateETFShare(enum.StockMarketOTC)
-	})
-	c.AddFunc("0 15 * * *", func() {
-		d := time.Now().Format(time.DateOnly)
-		twse.UpdateETFTicker("twse", d)
-		twse.UpdateETFTicker("otc", d)
-	})
-	c.AddFunc("7 16 * * 1-5", func() {
-		// 更新填息資訊
-		// -- 更新除權息價格及計算殖利率
-		twse.UpdateExPriceAndYieldRate()
-		// -- 更新填息日等資訊
-		twse.UpdateFilledDays()
-		// -- 更新勝率填息平均日等
-		twse.UpdateETFWinRate()
-	})
-	c.AddFunc("0 1 1 * *", func() {
-		// 每月 1 號 凌晨 1 點執行前一個月的月均價統計
-		now := time.Now()
-		lastMonth := now.AddDate(0, -1, 0)
-		s := twse.NewETFMonthlyPriceService()
-		_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
-	})
-	c.AddFunc("0 8 * * *", func() {
-		_ = twse.NotifyUpcomingETFEx()
-	})
-	c.AddFunc("37 1 * * 3", func() {
-		avService.SyncXCityActressesCron()
-	})
+	for _, job := range cronJobs {
+		jobName := job.Name
+		c.AddFunc(job.Schedule, func() {
+			runCronJob(jobName)
+		})
+	}
 
 	c.Start()
 	// </editor-fold>
@@ -278,4 +324,25 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		cron:      c,
 		listenErr: listenErr,
 	}, nil
+}
+
+func executeCommand(name string) {
+	log.Logger().Info("Executing command: " + name)
+	found := false
+	for _, job := range cronJobs {
+		if job.Name == name {
+			job.Handler()
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Logger().Error("Unknown command: " + name)
+	}
+	log.Logger().Info("Command execution finished")
+}
+
+func runCronJob(name string) {
+	log.Logger().Info("CronJob triggered: " + name)
+	executeCommand(name)
 }
