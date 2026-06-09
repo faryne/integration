@@ -2,16 +2,17 @@ package xcity
 
 const baseUri = "https://xcity.jp/idol/"
 
+// 跑資料只使用這幾組，不跑後面餘下的四個音（因為資料重複）
 var syllabusKeys = []string{
-	"a", "i", "u", "e", "o",
-	"ka", "ki", "ku", "ke", "ko",
-	"sa", "shi", "su", "se", "so",
-	"ta", "chi", "tsu", "te", "to",
-	"na", "ni", "nu", "ne", "no",
-	"ha", "hi", "fu", "he", "ho",
-	"ma", "mi", "mu", "me", "mo",
-	"ya", "yu", "yo",
-	"ra", "ri", "ru", "re", "ro",
+	"a",
+	"ka",
+	"sa",
+	"ta",
+	"na",
+	"ha",
+	"ma",
+	"ya",
+	"ra",
 	"wa",
 }
 

@@ -2,12 +2,13 @@ package xcity
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type ActressSimple struct {

@@ -24,7 +24,7 @@ const actressDomainXCity = "xcity"
 const actressPersistWorkers = 4
 const actressPersistQueueSize = 100
 const actressMaxPagesPerSyllabus = 100
-const actressSyncTimeout = 2 * time.Hour
+const actressSyncTimeout = 24 * time.Hour
 
 type actressIndexDocument struct {
 	Domain     string   `json:"domain"`
