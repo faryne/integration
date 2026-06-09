@@ -32,7 +32,11 @@ export function VideoDetail(props: IVideoDetail) {
 
   useTitle(video?.title ?? "");
 
-  const chipClick = (s: string) => {
+  const chipClick = (s: string, keyPrefix: string) => {
+    if (keyPrefix === "actress") {
+      navigate("/av/actress?name=" + encodeURIComponent(s));
+      return;
+    }
     navigate("/av/video?keyword=" + encodeURIComponent(s));
   };
 
@@ -52,7 +56,7 @@ export function VideoDetail(props: IVideoDetail) {
           key={`${keyPrefix}-${o}`}
           label={o}
           clickable
-          onClick={() => chipClick(o)}
+          onClick={() => chipClick(o, keyPrefix)}
           sx={{
             borderRadius: 1.5,
             bgcolor: "rgba(25, 118, 210, 0.08)",

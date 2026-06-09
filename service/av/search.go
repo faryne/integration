@@ -138,6 +138,24 @@ var fActress = func(i av.Actress) av.Actress {
 	return i
 }
 
+func actressBirthdaySort() []map[string]any {
+	return []map[string]any{
+		{
+			"_script": map[string]any{
+				"type":  "number",
+				"order": "asc",
+				"script": map[string]any{
+					"lang":   "painless",
+					"source": "doc['birth_year'].size() == 0 || doc['birth_year'].value <= 0 ? 1 : 0",
+				},
+			},
+		},
+		{"birth_year": map[string]any{"order": "desc"}},
+		{"birth_month": map[string]any{"order": "desc"}},
+		{"birth_day": map[string]any{"order": "desc"}},
+	}
+}
+
 func exactStringQuery(field string, value string) map[string]any {
 	return map[string]any{
 		"bool": map[string]any{
@@ -159,11 +177,7 @@ func buildActressSearchQuery(input av.ActressQueryRequest, domain string) map[st
 	var q = map[string]any{
 		"size": 30,
 		"from": (page - 1) * 30,
-		"sort": map[string]any{
-			"birth_year":  map[string]any{"order": "desc"},
-			"birth_month": map[string]any{"order": "desc"},
-			"birth_day":   map[string]any{"order": "desc"},
-		},
+		"sort": actressBirthdaySort(),
 	}
 	if domain != "" {
 		search.SetQuery(exactStringQuery("domain", domain), true, q)

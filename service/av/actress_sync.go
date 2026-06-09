@@ -23,6 +23,8 @@ const actressIndexName = "dmmactresses"
 const actressDomainXCity = "xcity"
 const actressPersistWorkers = 4
 const actressPersistQueueSize = 100
+const actressMaxPagesPerSyllabus = 100
+const actressSyncTimeout = 2 * time.Hour
 
 type actressIndexDocument struct {
 	Domain     string   `json:"domain"`
@@ -80,6 +82,7 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var firstErr error
+	seenIDs := make(map[int]struct{})
 
 	addResult := func(update func()) {
 		mu.Lock()
@@ -136,6 +139,14 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 	for _, syllabus := range xcity.SyllabusKeys() {
 		page := 1
 		for {
+			if page > actressMaxPagesPerSyllabus {
+				log.Logger().Warn(
+					"Stop XCity actress sync because page limit reached",
+					zap.String("syllabus", syllabus),
+					zap.Int("page_limit", actressMaxPagesPerSyllabus),
+				)
+				break
+			}
 			select {
 			case <-ctx.Done():
 				recordErr(ctx.Err())
@@ -155,6 +166,7 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 			addResult(func() {
 				result.Fetched += len(actresses)
 			})
+			newDocs := 0
 			for _, actress := range actresses {
 				doc, ok := buildActressIndexDocument(actress)
 				if !ok {
@@ -163,11 +175,24 @@ func SyncXCityActresses(ctx context.Context) (*ActressSyncResult, error) {
 					})
 					continue
 				}
+				if _, exists := seenIDs[doc.AID]; exists {
+					continue
+				}
+				seenIDs[doc.AID] = struct{}{}
+				newDocs++
 				select {
 				case jobs <- doc:
 				case <-ctx.Done():
 					return finish()
 				}
+			}
+			if newDocs == 0 {
+				log.Logger().Warn(
+					"Stop XCity actress sync because page returned no new IDs",
+					zap.String("syllabus", syllabus),
+					zap.Int("page", page),
+				)
+				break
 			}
 
 			page++
@@ -267,7 +292,7 @@ func indexActress(ctx context.Context, doc actressIndexDocument) error {
 }
 
 func SyncXCityActressesCron() {
-	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Hour)
+	ctx, cancel := context.WithTimeout(context.Background(), actressSyncTimeout)
 	defer cancel()
 
 	startedAt := time.Now()
