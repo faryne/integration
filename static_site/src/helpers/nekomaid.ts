@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
+import { userscripts } from "@/data/userscript.ts";
 
 export const siteLabels: Record<string, string> = {
   pixiv: "Pixiv",
@@ -7,8 +8,7 @@ export const siteLabels: Record<string, string> = {
   tinami: "TINAMI",
 };
 
-export const nekomaidUserscriptUrl =
-  "https://raw.githubusercontent.com/faryne/faryne.github.com/refs/heads/master/userscripts/126952-userscript.js";
+export const nekomaidUserscriptUrl = userscripts["nekomaid"].url;
 
 const r18CookieName = "nekomaid_r18_confirmed";
 const r18ConfirmedEventName = "nekomaid:r18-confirmed";

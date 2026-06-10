@@ -310,8 +310,8 @@ function RuleGuideDrawer({
         </Stack>
 
         <Alert severity="info" sx={{ mb: 2 }}>
-          第一層從整份 HTML 查找，child 規則只會在父層元素內查找。
-          沒指定 attrs 時會回傳元素文字。
+          第一層從整份 HTML 查找，child 規則只會在父層元素內查找。 沒指定 attrs
+          時會回傳元素文字。
         </Alert>
 
         <Stack spacing={2.5}>
@@ -335,7 +335,11 @@ function RuleGuideDrawer({
                 <Chip size="small" label={field.type} variant="outlined" />
               </Stack>
               <Typography sx={{ mb: 0.75 }}>{field.summary}</Typography>
-              <Typography color="text.secondary" lineHeight={1.7} sx={{ mb: 1 }}>
+              <Typography
+                color="text.secondary"
+                lineHeight={1.7}
+                sx={{ mb: 1 }}
+              >
                 {field.usage}
               </Typography>
               <Paper
@@ -473,9 +477,7 @@ export function CrawlerIndex() {
               placeholder={"要抓取的網址"}
               value={input.uri}
               type={"url"}
-              onChange={(e) =>
-                setInput((o) => ({ ...o, uri: e.target.value }))
-              }
+              onChange={(e) => setInput((o) => ({ ...o, uri: e.target.value }))}
             />
 
             <Box>
@@ -559,7 +561,11 @@ export function CrawlerIndex() {
             )}
           </Stack>
           {resp ?? (
-            <Typography color="text.secondary" textAlign="center" sx={{ mt: 6 }}>
+            <Typography
+              color="text.secondary"
+              textAlign="center"
+              sx={{ mt: 6 }}
+            >
               尚未執行
             </Typography>
           )}

@@ -325,91 +325,90 @@ export function AVVideo() {
                           "&:hover": detailId
                             ? {
                                 borderColor: "rgba(25, 118, 210, 0.42)",
-                                boxShadow:
-                                  "0 14px 34px rgba(15, 23, 42, 0.13)",
+                                boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
                                 transform: "translateY(-2px)",
                               }
                             : undefined,
                         }}
                       >
-                      <Box
-                        sx={{
-                          aspectRatio: "16 / 10",
-                          bgcolor: "grey.100",
-                          overflow: "hidden",
-                          width: "100%",
-                        }}
-                      >
                         <Box
-                          component="img"
-                          src={video.thumb}
-                          alt={video.title}
-                          loading="lazy"
                           sx={{
-                            display: "block",
-                            height: "100%",
-                            objectFit: "cover",
+                            aspectRatio: "16 / 10",
+                            bgcolor: "grey.100",
+                            overflow: "hidden",
                             width: "100%",
                           }}
-                        />
-                      </Box>
-                      <Stack spacing={1} sx={{ p: 1.5 }}>
-                        <Stack direction="row" flexWrap="wrap" gap={0.75}>
-                          {displayMakerNo && (
-                            <Chip
-                              label={displayMakerNo}
-                              size="small"
-                              sx={{
-                                borderRadius: 1,
-                                fontSize: "0.72rem",
-                                fontWeight: 700,
-                              }}
-                            />
-                          )}
-                          {video.vod_date && (
-                            <Chip
-                              label={video.vod_date}
-                              size="small"
-                              sx={{
-                                borderRadius: 1,
-                                fontSize: "0.72rem",
-                              }}
-                              variant="outlined"
-                            />
-                          )}
+                        >
+                          <Box
+                            component="img"
+                            src={video.thumb}
+                            alt={video.title}
+                            loading="lazy"
+                            sx={{
+                              display: "block",
+                              height: "100%",
+                              objectFit: "cover",
+                              width: "100%",
+                            }}
+                          />
+                        </Box>
+                        <Stack spacing={1} sx={{ p: 1.5 }}>
+                          <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                            {displayMakerNo && (
+                              <Chip
+                                label={displayMakerNo}
+                                size="small"
+                                sx={{
+                                  borderRadius: 1,
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                }}
+                              />
+                            )}
+                            {video.vod_date && (
+                              <Chip
+                                label={video.vod_date}
+                                size="small"
+                                sx={{
+                                  borderRadius: 1,
+                                  fontSize: "0.72rem",
+                                }}
+                                variant="outlined"
+                              />
+                            )}
+                          </Stack>
+                          <Typography
+                            sx={{
+                              color: "text.primary",
+                              display: "-webkit-box",
+                              fontWeight: 800,
+                              letterSpacing: 0,
+                              lineHeight: 1.35,
+                              minHeight: "2.7em",
+                              overflow: "hidden",
+                              WebkitBoxOrient: "vertical",
+                              WebkitLineClamp: 2,
+                            }}
+                            variant="body1"
+                          >
+                            {video.title}
+                          </Typography>
+                          <Typography
+                            color="text.secondary"
+                            sx={{
+                              minHeight: "1.43em",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                            variant="body2"
+                          >
+                            {video.actresses
+                              .filter((a) => a !== "")
+                              .join(" / ") || "未登錄出演資訊"}
+                          </Typography>
                         </Stack>
-                        <Typography
-                          sx={{
-                            color: "text.primary",
-                            display: "-webkit-box",
-                            fontWeight: 800,
-                            letterSpacing: 0,
-                            lineHeight: 1.35,
-                            minHeight: "2.7em",
-                            overflow: "hidden",
-                            WebkitBoxOrient: "vertical",
-                            WebkitLineClamp: 2,
-                          }}
-                          variant="body1"
-                        >
-                          {video.title}
-                        </Typography>
-                        <Typography
-                          color="text.secondary"
-                          sx={{
-                            minHeight: "1.43em",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                          variant="body2"
-                        >
-                          {video.actresses
-                            .filter((a) => a !== "")
-                            .join(" / ") || "未登錄出演資訊"}
-                        </Typography>
-                      </Stack>
-                    </Box>
+                      </Box>
                     );
                   })}
                 </Box>

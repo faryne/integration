@@ -1,6 +1,9 @@
 import type { FC, ImgHTMLAttributes } from "react";
 
-interface FaryneLogoProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, "src" | "width" | "height"> {
+interface FaryneLogoProps extends Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  "src" | "width" | "height"
+> {
   /** Desired rendered width in pixels */
   width?: number;
   /** Alt text for accessibility */

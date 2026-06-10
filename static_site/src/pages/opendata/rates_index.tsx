@@ -98,9 +98,7 @@ const renderBankLabel = (bank: Rate["service_name"]) => {
       >
         {visual?.mark ?? bank.slice(0, 1)}
       </Avatar>
-      <Typography component={"span"}>
-        {BankMappings[bank] ?? bank}
-      </Typography>
+      <Typography component={"span"}>{BankMappings[bank] ?? bank}</Typography>
     </Stack>
   );
 };

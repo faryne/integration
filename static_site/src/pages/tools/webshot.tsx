@@ -29,7 +29,10 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import type { Webshot } from "@/types/webshot.ts";
 
 function cdnAssetUrl(path: string, fallback?: string) {
-  const cdnBase = String(import.meta.env.VITE_CDN_BASE ?? "").replace(/\/+$/, "");
+  const cdnBase = String(import.meta.env.VITE_CDN_BASE ?? "").replace(
+    /\/+$/,
+    "",
+  );
   const cleanPath = path.replace(/^\/+/, "");
 
   if (cdnBase && cleanPath) {
@@ -49,10 +52,10 @@ function formatTime(input?: string) {
 }
 
 function formatDuration(ms?: number) {
-	if (!ms || ms <= 0) {
-		return "耗時：-";
-	}
-	return `耗時：${(ms / 1000).toFixed(2)} 秒`;
+  if (!ms || ms <= 0) {
+    return "耗時：-";
+  }
+  return `耗時：${(ms / 1000).toFixed(2)} 秒`;
 }
 
 function formatDurationValue(ms?: number) {
@@ -62,11 +65,17 @@ function formatDurationValue(ms?: number) {
   return `${(ms / 1000).toFixed(2)} 秒`;
 }
 
-function totalDurationMs(item: { screenshot_duration_ms?: number; upload_duration_ms?: number }) {
+function totalDurationMs(item: {
+  screenshot_duration_ms?: number;
+  upload_duration_ms?: number;
+}) {
   return (item.screenshot_duration_ms ?? 0) + (item.upload_duration_ms ?? 0);
 }
 
-function durationBreakdownTitle(item: { screenshot_duration_ms?: number; upload_duration_ms?: number }) {
+function durationBreakdownTitle(item: {
+  screenshot_duration_ms?: number;
+  upload_duration_ms?: number;
+}) {
   return `截圖：${formatDurationValue(item.screenshot_duration_ms)} / 上傳：${formatDurationValue(item.upload_duration_ms)}`;
 }
 
@@ -92,11 +101,21 @@ function WebshotRows({
   return (
     <Stack spacing={2}>
       {data.history.map((item) => {
-        const fullImageUrl = cdnAssetUrl(item.full_image_path, item.full_image_url);
-        const thumbImageUrl = cdnAssetUrl(item.thumb_image_path, item.thumb_image_url);
+        const fullImageUrl = cdnAssetUrl(
+          item.full_image_path,
+          item.full_image_url,
+        );
+        const thumbImageUrl = cdnAssetUrl(
+          item.thumb_image_path,
+          item.thumb_image_url,
+        );
 
         return (
-          <Paper key={item.id} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+          <Paper
+            key={item.id}
+            variant="outlined"
+            sx={{ p: 2, borderRadius: 1 }}
+          >
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={2}
@@ -160,7 +179,9 @@ function WebshotRows({
                     <IconButton
                       aria-label="複製圖片網址"
                       size="small"
-                      onClick={() => navigator.clipboard.writeText(fullImageUrl)}
+                      onClick={() =>
+                        navigator.clipboard.writeText(fullImageUrl)
+                      }
                     >
                       <ContentCopyIcon fontSize="small" />
                     </IconButton>
@@ -218,8 +239,9 @@ export default function WebshotPage() {
     );
   };
 
-  const inputUrl = hash ? current?.url ?? "" : url;
-  const canSubmit = Boolean(inputUrl) && !create.isPending && (!hash || Boolean(current?.url));
+  const inputUrl = hash ? (current?.url ?? "") : url;
+  const canSubmit =
+    Boolean(inputUrl) && !create.isPending && (!hash || Boolean(current?.url));
   const pageLink =
     hash && current
       ? `${typeof window === "undefined" ? "" : window.location.origin}/tools/webshot/${current.url_hash}`
@@ -236,7 +258,14 @@ export default function WebshotPage() {
   }
 
   return (
-    <Box sx={{ width: "min(100%, 1100px)", mx: "auto", py: 4, px: { xs: 2, md: 0 } }}>
+    <Box
+      sx={{
+        width: "min(100%, 1100px)",
+        mx: "auto",
+        py: 4,
+        px: { xs: 2, md: 0 },
+      }}
+    >
       <Stack spacing={3}>
         <Stack spacing={1}>
           <Typography component="h1" variant="h4" sx={{ fontWeight: 900 }}>
@@ -294,7 +323,10 @@ export default function WebshotPage() {
         )}
 
         {current && (
-          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+          <Paper
+            variant="outlined"
+            sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
+          >
             <Stack spacing={2}>
               <Stack spacing={1}>
                 <Typography variant="h6" sx={{ fontWeight: 800 }}>

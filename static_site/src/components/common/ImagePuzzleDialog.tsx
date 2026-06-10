@@ -180,9 +180,7 @@ export function ImagePuzzleDialog({
         setIsReady(true);
       } catch (caught) {
         if (!cancelled) {
-          setError(
-            caught instanceof Error ? caught.message : "拼圖初始化失敗",
-          );
+          setError(caught instanceof Error ? caught.message : "拼圖初始化失敗");
         }
       }
     };

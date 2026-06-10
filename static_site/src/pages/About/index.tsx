@@ -446,7 +446,11 @@ const About: React.FC = () => {
                 <Star sx={{ mr: 1, color: "primary.main" }} />
                 {lang === "zh" ? "個人簡介" : "Summary"}
               </Typography>
-              <Typography variant="body1" color="text.secondary" lineHeight={1.8}>
+              <Typography
+                variant="body1"
+                color="text.secondary"
+                lineHeight={1.8}
+              >
                 {data.intro}
               </Typography>
             </Box>
@@ -533,7 +537,12 @@ const About: React.FC = () => {
                 <Star sx={{ mr: 1, color: "primary.main" }} />
                 {lang === "zh" ? "專業證照" : "Certifications"}
               </Typography>
-              <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
+              <Stack
+                direction="row"
+                spacing={1}
+                justifyContent="center"
+                flexWrap="wrap"
+              >
                 <div
                   data-iframe-width="150"
                   data-iframe-height="270"
@@ -590,7 +599,11 @@ const About: React.FC = () => {
                       },
                     }}
                   >
-                    <Typography variant="h6" fontWeight={700} color="text.primary">
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color="text.primary"
+                    >
                       {exp.role}
                     </Typography>
                     <Stack

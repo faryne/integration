@@ -43,11 +43,7 @@ function isValidThreadsUrl(input: string): boolean {
 function createDownloadFilename(input: string): string {
   try {
     const url = new URL(input.trim());
-    const parts = url.pathname
-      .split("/")
-      .filter(Boolean)
-      .slice(-3)
-      .join("-");
+    const parts = url.pathname.split("/").filter(Boolean).slice(-3).join("-");
     const suffix = parts || url.hostname;
 
     return `threads-${suffix.replace(/[^a-zA-Z0-9._-]/g, "-")}.png`;
