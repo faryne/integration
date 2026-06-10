@@ -54,7 +54,7 @@ type Response struct {
 		Title    string `json:"title"`
 		Type     string `json:"type"`
 		Caption  string `json:"caption"`
-		Restrict int64  `json:"restrict"`
+		Restrict int64  `json:"restrict"` // 似乎廢棄不再使用，無論 R-18 與否該欄位都為 0，因此改判斷 tags 中是否有 R-18 字眼
 		User     struct {
 			Id   int64  `json:"id"`
 			Name string `json:"name"`
@@ -228,12 +228,25 @@ func (i *instance) getArtworkDetail(id string) (*Response, error) {
 }
 
 func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, error) {
+	isR18 := false
+	/**
+	參考 response
+	{"illust":{"id":145839550,"title":"関根しおり✕入江みゆき528","type":"illust","caption":"修正済み","restrict":0,"user":{"id":14879896,"name":"siorin_ヤケクン"},"tags":[{"name":"R-18"},{"name":"関根しおり"},{"name":"入江みゆき"},{"name":"AngelBeats!"},{"name":"ビキニ"},{"name":"水着"},{"name":"メイド服"}],"meta_single_page":{"original_image_url":"https://i.pximg.net/img-original/img/2026/06/10/21/51/04/145839550_p0.png"},"meta_pages":[],"page_count":1}}
+	*/
+	if result.Illust.Tags != nil {
+		for _, t := range result.Illust.Tags {
+			if strings.EqualFold(t.Name, "R-18") {
+				isR18 = true
+				break
+			}
+		}
+	}
 	var o = &nekomaid.ArtworkMain{
 		Site:       "pixiv",
 		AuthorId:   strconv.FormatInt(result.Illust.User.Id, 10),
 		ArtworkId:  strconv.FormatInt(result.Illust.Id, 10),
 		Title:      result.Illust.Title,
-		IsR18:      result.Illust.Restrict > 0,
+		IsR18:      isR18,
 		IsAnimated: strings.EqualFold(result.Illust.Type, "ugoira"),
 		CreatedOn:  time.Now(),
 	}
