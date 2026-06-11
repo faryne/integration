@@ -27,8 +27,11 @@ import {
   useDestroyAuthSession,
   type AuthSession,
 } from "@/apis/auth/session.ts";
-
-const authSessionStorageKey = "faryne.auth.session";
+import {
+  getStoredAuthSession,
+  removeStoredAuthSession,
+  setStoredAuthSession,
+} from "@/apis/auth/storage.ts";
 
 function authErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -46,23 +49,9 @@ export default function Login() {
   const [authLoading, setAuthLoading] = useState(firebaseConfigReady);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(() => {
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const raw = localStorage.getItem(authSessionStorageKey);
-    if (!raw) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(raw) as AuthSession;
-    } catch {
-      localStorage.removeItem(authSessionStorageKey);
-      return null;
-    }
-  });
+  const [session, setSession] = useState<AuthSession | null>(() =>
+    getStoredAuthSession(),
+  );
   const createAuthSession = useCreateAuthSession();
   const destroyAuthSession = useDestroyAuthSession();
 
@@ -94,12 +83,7 @@ export default function Login() {
       const idToken = await credential.user.getIdToken();
       const authSessionResponse = await createAuthSession.mutateAsync(idToken);
       setSession(authSessionResponse.data);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          authSessionStorageKey,
-          JSON.stringify(authSessionResponse.data),
-        );
-      }
+      setStoredAuthSession(authSessionResponse.data);
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {
@@ -121,9 +105,7 @@ export default function Login() {
       }
       await signOut(firebaseAuth.auth);
       setSession(null);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(authSessionStorageKey);
-      }
+      removeStoredAuthSession();
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {
