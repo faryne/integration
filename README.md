@@ -42,9 +42,9 @@ curl -X POST http://localhost:8080/mcp \
 目前內建工具：
 
 - `ping`：回傳 `pong`，用於確認 MCP server 存活。
-- `server_info`：回傳 server 名稱、版本與 Go runtime 資訊。
 - `av_video_search`：串接 `service/av.VideoSearch`。
 - `av_actress_search`：串接 `service/av.ActressSearch`。
+- `nekomaid_search`：串接 `service/nekomaid.SearchByRequest`。
 
 ## 基礎設施
 

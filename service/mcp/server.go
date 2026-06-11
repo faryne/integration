@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
 	"sort"
 	"strings"
 )
@@ -69,6 +68,7 @@ func NewServer(name, version string) *Server {
 	}
 	s.registerBuiltInTools()
 	s.registerAVTools()
+	s.registerNekomaidTools()
 	return s
 }
 
@@ -162,24 +162,6 @@ func (s *Server) registerBuiltInTools() {
 		InputSchema: objectSchema(nil, nil),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			return textResult("pong"), nil
-		},
-	})
-	_ = s.RegisterTool(Tool{
-		Name:        "server_info",
-		Description: "Return runtime information for this MCP server.",
-		InputSchema: objectSchema(nil, nil),
-		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
-			body, err := json.MarshalIndent(map[string]string{
-				"name":       s.name,
-				"version":    s.version,
-				"go_version": runtime.Version(),
-				"os":         runtime.GOOS,
-				"arch":       runtime.GOARCH,
-			}, "", "  ")
-			if err != nil {
-				return nil, err
-			}
-			return textResult(string(body)), nil
 		},
 	})
 }

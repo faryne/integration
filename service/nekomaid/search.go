@@ -53,17 +53,55 @@ var f = func(input nekomaid.ArtworkSearchResult) nekomaid.ArtworkSearchClearRow 
 
 const searchPageSize = 30
 
+type SearchRequest struct {
+	Site      string
+	Sites     string
+	Page      int
+	AuthorId  string
+	ArtworkId string
+	Tag       string
+	Rating    string
+	Type      string
+	Wallpaper string
+	MinWidth  string
+}
+
 func Search(ctx fiber.Ctx) (*nekomaid.ArtworkSearchResponse, error) {
-	site := strings.TrimSpace(ctx.Params("site", ""))
-	sites := strings.TrimSpace(ctx.Query("sites", ""))
-	page := searchPage(ctx)
-	authorId := ctx.Params("authorId", "")
-	artworkId := ctx.Params("artworkId", "")
-	tag := ctx.Query("tag", "")
-	rating := ctx.Query("rating", "")
-	t := ctx.Query("type", "")
-	wallpaper := ctx.Query("wallpaper", "")
-	minWidth := ctx.Query("min_width", "")
+	req := SearchRequest{
+		Site:      ctx.Params("site", ""),
+		Sites:     ctx.Query("sites", ""),
+		Page:      searchPage(ctx),
+		AuthorId:  ctx.Params("authorId", ""),
+		ArtworkId: ctx.Params("artworkId", ""),
+		Tag:       ctx.Query("tag", ""),
+		Rating:    ctx.Query("rating", ""),
+		Type:      ctx.Query("type", ""),
+		Wallpaper: ctx.Query("wallpaper", ""),
+		MinWidth:  ctx.Query("min_width", ""),
+	}
+	return searchByRequest(req, func(page int) string {
+		return paginationLink(ctx, page)
+	})
+}
+
+func SearchByRequest(req SearchRequest) (*nekomaid.ArtworkSearchResponse, error) {
+	return searchByRequest(req, nil)
+}
+
+func searchByRequest(req SearchRequest, pagination func(page int) string) (*nekomaid.ArtworkSearchResponse, error) {
+	site := strings.TrimSpace(req.Site)
+	sites := strings.TrimSpace(req.Sites)
+	page := req.Page
+	if page <= 0 {
+		page = 1
+	}
+	authorId := strings.TrimSpace(req.AuthorId)
+	artworkId := strings.TrimSpace(req.ArtworkId)
+	tag := strings.TrimSpace(req.Tag)
+	rating := strings.TrimSpace(req.Rating)
+	t := strings.TrimSpace(req.Type)
+	wallpaper := strings.TrimSpace(req.Wallpaper)
+	minWidth := strings.TrimSpace(req.MinWidth)
 
 	q := map[string]any{
 		"size": searchPageSize,
@@ -150,7 +188,7 @@ func Search(ctx fiber.Ctx) (*nekomaid.ArtworkSearchResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	return searchResponse(ctx, rawResponse, cleaned, page, site, authorId), nil
+	return searchResponse(rawResponse, cleaned, page, site, authorId, pagination), nil
 }
 
 func searchPage(ctx fiber.Ctx) int {
@@ -174,12 +212,12 @@ func splitCSV(value string) []string {
 }
 
 func searchResponse(
-	ctx fiber.Ctx,
 	raw *entity.ElasticSearchResponse[nekomaid.ArtworkSearchResult],
 	rows []nekomaid.ArtworkSearchClearRow,
 	page int,
 	site string,
 	authorId string,
+	pagination func(page int) string,
 ) *nekomaid.ArtworkSearchResponse {
 	total := raw.Hits.Total.Value
 	tags := aggregationTags(raw)
@@ -192,11 +230,15 @@ func searchResponse(
 		Aggregations: map[string][]string{"tags": tags},
 	}
 	if page > 1 {
-		response.PrevLink = paginationLink(ctx, page-1)
+		if pagination != nil {
+			response.PrevLink = pagination(page - 1)
+		}
 	}
 	if int64(page*searchPageSize) < total {
 		response.NextToken = strconv.Itoa(page + 1)
-		response.NextLink = paginationLink(ctx, page+1)
+		if pagination != nil {
+			response.NextLink = pagination(page + 1)
+		}
 	}
 	if site != "" && authorId != "" {
 		author, _ := nekomaidRepo.NewNekomaidRepository().GetAuthor(enum.NekomaidSite(site), authorId)
