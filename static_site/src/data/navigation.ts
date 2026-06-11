@@ -76,6 +76,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
     href: "https://blog.faryne.dev",
     external: true,
   },
+  // {
+  //   title: "登入",
+  //   href: "/login",
+  // },
 ];
 
 export function isLayoutDropMenu(

@@ -8,6 +8,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
+const Login = lazy(() => import("@/pages/auth/Login.tsx"));
 const AVVideo = lazy(() =>
   import("@/pages/av/video.tsx").then((module) => ({
     default: module.AVVideo,
@@ -188,6 +189,7 @@ function App() {
             <Route path="/a" element={<h1>Hello</h1>} />
 
             <Route path={"/about"} element={<About />} />
+            <Route path={"/login"} element={<Login />} />
             <Route path={"/"} element={<Home />} />
             <Route path={"*"} element={<ErrorPage code={404} />} />
           </Route>
