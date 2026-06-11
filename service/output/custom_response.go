@@ -33,6 +33,10 @@ func BadRequest(err error) error {
 	return New(fiber.StatusBadRequest, CustomCodeBadRequest, nil, err.Error())
 }
 
+func Unauthorized(err error) error {
+	return New(fiber.StatusUnauthorized, CustomCodeUnauthorized, nil, err.Error())
+}
+
 func NotFound(err error) error {
 	return New(fiber.StatusNotFound, CustomCodeNotFound, nil, err.Error())
 }

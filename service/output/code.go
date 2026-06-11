@@ -4,6 +4,7 @@ type CustomCode string
 
 const (
 	CustomCodeSuccess              CustomCode = "000000"
+	CustomCodeUnauthorized                    = "401001"
 	CustomCodeBadRequest                      = "400001"
 	CustomCodeNotFound                        = "404001"
 	CustomCodeInternalServiceError            = "500000"
