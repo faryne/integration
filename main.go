@@ -153,12 +153,12 @@ func main() {
 		log.Logger().Panic("Start app failed: " + err.Error())
 	}
 
+	logBuildEvent("start")
+
 	if cmdName != "" {
 		executeCommand(cmdName)
 		return
 	}
-
-	logBuildEvent("start")
 
 	if reload {
 		logBuildEvent("restart")
@@ -239,17 +239,9 @@ func gracefulRestart(runtime *appRuntime) error {
 }
 
 func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
-	if inputEnvFile != "" {
-		envFile = inputEnvFile
-	}
-	if _, err := os.Stat(envFile); err == nil {
-		if envError := godotenv.Load(envFile); envError != nil {
-			return nil, envError
-		}
-	} else {
+	if err := loadEnvSettings(inputEnvFile); err != nil {
 		return nil, err
 	}
-	config.InitEnvConfig()
 
 	// 啟動 DB 連線
 	dbConnections := map[enum.DBName]string{
@@ -296,6 +288,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.Tools(app)
 	route.Auth(app)
 	route.SNS(app)
+	route.MCP(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	route.Swagger(app)
 	// </editor-fold>
@@ -325,6 +318,20 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		cron:      c,
 		listenErr: listenErr,
 	}, nil
+}
+
+func loadEnvSettings(inputEnvFile string) error {
+	if inputEnvFile != "" {
+		envFile = inputEnvFile
+	}
+	if _, err := os.Stat(envFile); err != nil {
+		return err
+	}
+	if envError := godotenv.Load(envFile); envError != nil {
+		return envError
+	}
+	config.InitEnvConfig()
+	return nil
 }
 
 func executeCommand(name string) {

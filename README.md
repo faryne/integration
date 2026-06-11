@@ -29,6 +29,23 @@
 - `make build-linux`：編譯 Linux 版本並同步至遠端伺服器。
 - `make build-frontend`：建置前端網站並部署至 Firebase。
 
+## MCP Server
+
+專案提供基本 MCP server 架構，HTTP 服務啟動後可透過 `POST /mcp` 與支援 MCP 的 client 溝通：
+
+```bash
+curl -X POST http://localhost:8080/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+目前內建工具：
+
+- `ping`：回傳 `pong`，用於確認 MCP server 存活。
+- `server_info`：回傳 server 名稱、版本與 Go runtime 資訊。
+- `av_video_search`：串接 `service/av.VideoSearch`。
+- `av_actress_search`：串接 `service/av.ActressSearch`。
+
 ## 基礎設施
 
 使用 Docker Compose 提供開發所需的基礎服務：

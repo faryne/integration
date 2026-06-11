@@ -1,8 +1,6 @@
 package av
 
 import (
-	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -262,8 +260,6 @@ func ActressSearch(input av.ActressQueryRequest) (*entity.ElasticSearchResponse[
 		domain = ""
 	}
 	q := buildActressSearchQuery(input, domain)
-	c, _ := json.Marshal(q)
-	fmt.Println(string(c))
 
 	return search.Search[av.Actress, av.Actress]("dmmactresses", q, fActress)
 }
