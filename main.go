@@ -294,6 +294,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)
 	route.Tools(app)
+	route.Auth(app)
 	route.SNS(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	route.Swagger(app)

@@ -22,6 +22,13 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { getFirebaseAuth, firebaseConfigReady } from "@/lib/firebase.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import {
+  useCreateAuthSession,
+  useDestroyAuthSession,
+  type AuthSession,
+} from "@/apis/auth/session.ts";
+
+const authSessionStorageKey = "faryne.auth.session";
 
 function authErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -39,6 +46,25 @@ export default function Login() {
   const [authLoading, setAuthLoading] = useState(firebaseConfigReady);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+
+    const raw = localStorage.getItem(authSessionStorageKey);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw) as AuthSession;
+    } catch {
+      localStorage.removeItem(authSessionStorageKey);
+      return null;
+    }
+  });
+  const createAuthSession = useCreateAuthSession();
+  const destroyAuthSession = useDestroyAuthSession();
 
   useEffect(() => {
     if (!firebaseAuth) {
@@ -61,7 +87,19 @@ export default function Login() {
     setErrorMessage(null);
 
     try {
-      await signInWithPopup(firebaseAuth.auth, firebaseAuth.googleProvider);
+      const credential = await signInWithPopup(
+        firebaseAuth.auth,
+        firebaseAuth.googleProvider,
+      );
+      const idToken = await credential.user.getIdToken();
+      const authSessionResponse = await createAuthSession.mutateAsync(idToken);
+      setSession(authSessionResponse.data);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(
+          authSessionStorageKey,
+          JSON.stringify(authSessionResponse.data),
+        );
+      }
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {
@@ -78,7 +116,14 @@ export default function Login() {
     setErrorMessage(null);
 
     try {
+      if (session?.encrypt_key) {
+        await destroyAuthSession.mutateAsync(session.encrypt_key);
+      }
       await signOut(firebaseAuth.auth);
+      setSession(null);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(authSessionStorageKey);
+      }
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
     } finally {
@@ -167,6 +212,13 @@ export default function Login() {
                     </Typography>
                   </Box>
                 </Stack>
+
+                {session && (
+                  <Alert severity="success">
+                    後端 session 已建立，encrypt_key 有效期限：
+                    {new Date(session.expires_at).toLocaleString()}
+                  </Alert>
+                )}
 
                 <Button
                   size="large"

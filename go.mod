@@ -17,6 +17,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/go-redis/redis/v7 v7.4.1
 	github.com/goccy/go-json v0.10.6
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/gofiber/swagger/v2 v2.0.0-20260208141700-e4cb1aaf502c
 	github.com/gofiber/utils/v2 v2.0.2
