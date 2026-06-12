@@ -1,10 +1,16 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { trackPageView } from "@/lib/analytics.ts";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
@@ -134,9 +140,22 @@ function LoadingFallback() {
   );
 }
 
+function AnalyticsTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageView(
+      `${location.pathname}${location.search}${location.hash}`,
+    );
+  }, [location]);
+
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
+      <AnalyticsTracker />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
           <Route
