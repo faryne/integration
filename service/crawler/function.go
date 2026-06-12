@@ -2,11 +2,15 @@ package crawler
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
+
+	"faryne.dev/config"
 )
 
 func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]any, error) {
@@ -47,6 +51,55 @@ func CrawlByUrlWithTimeout(uri string, selectors []SelectorRequest, timeout time
 		return nil, err
 	}
 	return crawl(b, selectors)
+}
+
+func CrawlByURLInTaiwan(uri string, selectors []SelectorRequest) (map[string]any, error) {
+	return CrawlByURLInTaiwanWithTimeout(uri, selectors, 30*time.Second)
+}
+
+func CrawlByURLInTaiwanWithTimeout(
+	uri string,
+	selectors []SelectorRequest,
+	timeout time.Duration,
+) (map[string]any, error) {
+	proxyURL := strings.TrimSpace(config.EnvConfig().CFWorkerProxyURL)
+	secret := strings.TrimSpace(config.EnvConfig().CFWorkerProxySecret)
+	if proxyURL == "" {
+		return nil, fmt.Errorf("CF_WORKER_PROXY_URL is required")
+	}
+	if secret == "" {
+		return nil, fmt.Errorf("CF_WORKER_PROXY_SECRET is required")
+	}
+
+	target, err := url.Parse(proxyURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse CF_WORKER_PROXY_URL: %w", err)
+	}
+	query := target.Query()
+	query.Set("url", uri)
+	target.RawQuery = query.Encode()
+
+	req, err := http.NewRequest(http.MethodGet, target.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+secret)
+
+	client := http.Client{Timeout: timeout}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("Taiwan proxy returned %s", resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return crawl(body, selectors)
 }
 
 func crawl(html []byte, selectors []SelectorRequest) (map[string]any, error) {

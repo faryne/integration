@@ -70,7 +70,7 @@ func (s *NeighborService) CrawlMonth(rocYear int, month int) (int, error) {
 		"key2":  {""},
 	}
 	uri := "https://service.taipower.com.tw/info/tc/inner.aspx?" + params.Encode()
-	resp, err := crawler.CrawlByUrlWithTimeout(uri, neighborSelectors(), neighborRequestTimeout)
+	resp, err := crawler.CrawlByURLInTaiwanWithTimeout(uri, neighborSelectors(), neighborRequestTimeout)
 	if err != nil {
 		return 0, err
 	}

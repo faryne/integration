@@ -17,6 +17,18 @@ build-frontend:
 	firebase deploy --project faryne-integration && \
 	cd ..
 
+worker-install:
+	cd workers && npm install
+
+worker-dev:
+	cd workers && npm run dev
+
+worker-secret:
+	cd workers && npx wrangler secret put PROXY_TOKEN
+
+worker-deploy:
+	cd workers && npm run deploy
+
 mig-up:
 	sql-migrate up -config ./migration/config.yml -env localhost
 

@@ -1,5 +1,7 @@
 package fire_department
 
+import "faryne.dev/service/crawler"
+
 const kaohsiungCaseListURL = "https://119dts.fdkc.gov.tw/DTS/caselist/html"
 
 func Kaohsiung() ([]Event, error) {
@@ -12,5 +14,6 @@ func Kaohsiung() ([]Event, error) {
 		AddressColumn: 5,
 		CarsColumn:    6,
 		StatusColumn:  7,
+		Crawl:         crawler.CrawlByURLInTaiwanWithTimeout,
 	})
 }

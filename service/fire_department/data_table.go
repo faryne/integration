@@ -18,10 +18,16 @@ type dataTableCaseConfig struct {
 	AddressColumn int
 	CarsColumn    int
 	StatusColumn  int
+	Crawl         func(string, []crawler.SelectorRequest, time.Duration) (map[string]any, error)
 }
 
 func crawlDataTableCases(config dataTableCaseConfig) ([]Event, error) {
-	resp, err := crawler.CrawlByUrlWithTimeout(config.URL, []crawler.SelectorRequest{
+	crawlFunc := config.Crawl
+	if crawlFunc == nil {
+		crawlFunc = crawler.CrawlByUrlWithTimeout
+	}
+
+	resp, err := crawlFunc(config.URL, []crawler.SelectorRequest{
 		{
 			Name:     "cases",
 			Pattern:  "#dataTable tr",

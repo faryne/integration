@@ -11,6 +11,9 @@ type envConfig struct {
 	ChromePath   string `env:"CHROME_PATH"`
 	FrontendPath string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
 
+	CFWorkerProxyURL    string `env:"CF_WORKER_PROXY_URL"`
+	CFWorkerProxySecret string `env:"CF_WORKER_PROXY_SECRET"`
+
 	GoogleCalendarCred string `env:"GOOGLE_CALENDAR_CRED"`
 	FirebaseProjectID  string `env:"FIREBASE_PROJECT_ID"`
 

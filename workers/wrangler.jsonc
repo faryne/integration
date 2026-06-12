@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "faryne-fetch-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-12",
+  "workers_dev": true,
+  "vars": {
+    "ALLOWED_HOSTS": ""
+  }
+}

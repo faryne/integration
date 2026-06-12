@@ -17,7 +17,6 @@ import (
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
-	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
@@ -98,33 +97,33 @@ var cronJobs = []cronJobConfig{
 			avService.SyncXCityActressesCron()
 		},
 	},
-	{
-		Name:     "taipower-neighbor-backfill",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.NewNeighborService().Backfill(); err != nil {
-				log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-monthly",
-		Schedule: "0 2 1 * *",
-		Handler: func() {
-			if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
-				log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-sync-es",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
-				log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
-			}
-		},
-	},
+	//{
+	//	Name:     "taipower-neighbor-backfill",
+	//	Schedule: "",
+	//	Handler: func() {
+	//		if err := taipower.NewNeighborService().Backfill(); err != nil {
+	//			log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
+	//		}
+	//	},
+	//},
+	//{
+	//	Name:     "taipower-neighbor-monthly",
+	//	Schedule: "0 2 1 * *",
+	//	Handler: func() {
+	//		if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
+	//			log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
+	//		}
+	//	},
+	//},
+	//{
+	//	Name:     "taipower-neighbor-sync-es",
+	//	Schedule: "",
+	//	Handler: func() {
+	//		if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
+	//			log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
+	//		}
+	//	},
+	//},
 }
 
 type appRuntime struct {

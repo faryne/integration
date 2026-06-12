@@ -1,5 +1,7 @@
 package fire_department
 
+import "faryne.dev/service/crawler"
+
 const tainanCaseListURL = "https://119dts.tncfd.gov.tw/DTS/caselist/html"
 
 func Tainan() ([]Event, error) {
@@ -12,5 +14,6 @@ func Tainan() ([]Event, error) {
 		AddressColumn: 5,
 		CarsColumn:    6,
 		StatusColumn:  7,
+		Crawl:         crawler.CrawlByURLInTaiwanWithTimeout,
 	})
 }
