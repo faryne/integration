@@ -3,10 +3,6 @@ import {
   Box,
   Button,
   Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Grid,
   Link,
   Paper,
@@ -29,6 +25,10 @@ import {
   useNekomaidSearch,
 } from "@/apis/nekomaid/search.ts";
 import { ArtworkCard } from "@/components/nekomaid/ArtworkCard.tsx";
+import {
+  AgeConfirmationDialog,
+  AgeConfirmationPanel,
+} from "@/components/common/AgeConfirmation.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
 import { isVideoMedia, VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
@@ -375,55 +375,19 @@ function DetailPage({
           forceRecommendationBlur={requiresAgeConfirmation && !r18Confirmed}
         />
       ) : (
-        <Paper
-          variant="outlined"
-          sx={{
-            alignItems: "center",
-            borderRadius: 2,
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 260,
-            p: 4,
-            textAlign: "center",
-          }}
-        >
-          <Typography fontWeight={950} variant="h5">
-            這個作品包含成人內容
-          </Typography>
-          <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 520 }}>
-            請先確認你已年滿 18 歲，確認後才會顯示完整圖片。
-          </Typography>
-          <Button
-            color="error"
-            onClick={confirmR18}
-            sx={{ mt: 2 }}
-            variant="contained"
-          >
-            我已滿 18 歲，顯示內容
-          </Button>
-        </Paper>
+        <AgeConfirmationPanel
+          description="請先確認你已年滿 18 歲，確認後才會顯示完整圖片。"
+          onConfirm={confirmR18}
+          title="這個作品包含成人內容"
+        />
       )}
 
-      <Dialog
+      <AgeConfirmationDialog
+        description="這個作品標示為 R18。請確認你已年滿 18 歲，並同意繼續瀏覽成人內容。"
+        leaveTo="/nekomaid"
+        onConfirm={confirmR18}
         open={requiresAgeConfirmation && !r18Confirmed}
-        onClose={() => undefined}
-        aria-labelledby="nekomaid-r18-dialog-title"
-      >
-        <DialogTitle id="nekomaid-r18-dialog-title">年齡確認</DialogTitle>
-        <DialogContent>
-          <Typography>
-            這個作品標示為 R18。請確認你已年滿 18 歲，並同意繼續瀏覽成人內容。
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button component={RouterLink} to="/nekomaid">
-            離開
-          </Button>
-          <Button color="error" onClick={confirmR18} variant="contained">
-            我已滿 18 歲
-          </Button>
-        </DialogActions>
-      </Dialog>
+      />
     </Stack>
   );
 }

@@ -55,6 +55,7 @@ Follow the existing module boundaries.
 - `make mig-down`: roll back localhost migrations
 - `make build-linux`: build and sync the Linux backend artifact
 - `make build-frontend`: build and deploy the frontend
+- `which go`: check the Go version and path
 
 ## Restricted Areas
 

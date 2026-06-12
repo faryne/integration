@@ -1,6 +1,9 @@
-import { useSyncExternalStore } from "react";
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 import { userscripts } from "@/data/userscript.ts";
+import {
+  setAgeConfirmed,
+  useAgeConfirmed,
+} from "@/helpers/ageConfirmation.ts";
 
 export const siteLabels: Record<string, string> = {
   pixiv: "Pixiv",
@@ -9,9 +12,6 @@ export const siteLabels: Record<string, string> = {
 };
 
 export const nekomaidUserscriptUrl = userscripts["nekomaid"].url;
-
-const r18CookieName = "nekomaid_r18_confirmed";
-const r18ConfirmedEventName = "nekomaid:r18-confirmed";
 
 export function itemSite(item: NekomaidArtwork) {
   return String(item.site ?? item.from ?? "");
@@ -45,35 +45,12 @@ export function artworkPhotoCount(item: NekomaidArtwork) {
   return Number(item.photos_cnt ?? item.photos?.length ?? 0);
 }
 
-function hasR18ConfirmedCookie() {
-  if (typeof document === "undefined") {
-    return false;
-  }
-  return document.cookie
-    .split(";")
-    .some((cookie) => cookie.trim() === `${r18CookieName}=1`);
-}
-
 export function setR18ConfirmedCookie() {
-  if (typeof document === "undefined") {
-    return;
-  }
-  const maxAge = 60 * 60 * 24 * 180;
-  document.cookie = `${r18CookieName}=1; max-age=${maxAge}; path=/; SameSite=Lax`;
-  window.dispatchEvent(new Event(r18ConfirmedEventName));
-}
-
-function subscribeR18Confirmation(callback: () => void) {
-  window.addEventListener(r18ConfirmedEventName, callback);
-  return () => window.removeEventListener(r18ConfirmedEventName, callback);
+  setAgeConfirmed();
 }
 
 export function useR18Confirmed() {
-  return useSyncExternalStore(
-    subscribeR18Confirmation,
-    hasR18ConfirmedCookie,
-    () => false,
-  );
+  return useAgeConfirmed();
 }
 
 export function externalArtworkUrl(item: NekomaidArtwork) {

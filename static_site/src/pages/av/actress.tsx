@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ActressSearch } from "@/components/av/actress_search";
+import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import type { ListByPaginationRequest } from "@/apis/interfaces.ts";
 import type { Actress } from "@/types/av.ts";
 import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
@@ -184,182 +185,133 @@ export function AVActress() {
   };
 
   return (
-    <Stack spacing={3}>
-      <Box
-        sx={{
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          pb: 2.5,
-          textAlign: "left",
-        }}
-      >
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-          <FaceRetouchingNaturalIcon color="primary" fontSize="large" />
-          <Box>
-            <Typography
-              component="h1"
-              sx={{
-                fontSize: { xs: "1.75rem", md: "2.25rem" },
-                fontWeight: 800,
-                letterSpacing: 0,
-                lineHeight: 1.2,
-              }}
-              variant="h3"
-            >
-              AV 女優搜尋
-            </Typography>
-            <Typography color="text.secondary" variant="body2">
-              依姓名、罩杯、出生年份與身形條件篩選女優資料。
-            </Typography>
-          </Box>
-        </Stack>
-      </Box>
+    <AgeConfirmationGate
+      description="AV 女優搜尋頁包含成人內容與成人作品索引。請確認你已年滿 18 歲後再繼續瀏覽。"
+      leaveTo="/"
+      panelTitle="AV 女優搜尋需要年齡確認"
+    >
+      <Stack spacing={3}>
+        <Box
+          sx={{
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            pb: 2.5,
+            textAlign: "left",
+          }}
+        >
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+            <FaceRetouchingNaturalIcon color="primary" fontSize="large" />
+            <Box>
+              <Typography
+                component="h1"
+                sx={{
+                  fontSize: { xs: "1.75rem", md: "2.25rem" },
+                  fontWeight: 800,
+                  letterSpacing: 0,
+                  lineHeight: 1.2,
+                }}
+                variant="h3"
+              >
+                AV 女優搜尋
+              </Typography>
+              <Typography color="text.secondary" variant="body2">
+                依姓名、罩杯、出生年份與身形條件篩選女優資料。
+              </Typography>
+            </Box>
+          </Stack>
+        </Box>
 
-      <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <Box
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 2,
-              p: 2.5,
-              position: { md: "sticky" },
-              textAlign: "left",
-              top: { md: 24 },
-            }}
-          >
-            <Typography fontWeight={800} sx={{ mb: 2 }} variant="h6">
-              搜尋條件
-            </Typography>
-            <ActressSearch onClick={handleSearch} conditions={search} />
-          </Box>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Stack spacing={2.5}>
+        <Grid container spacing={3}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <Box
               sx={{
-                alignItems: { xs: "flex-start", sm: "center" },
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                gap: 1.5,
-                justifyContent: "space-between",
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 2,
+                p: 2.5,
+                position: { md: "sticky" },
                 textAlign: "left",
+                top: { md: 24 },
               }}
             >
-              <Box>
-                <Typography fontWeight={800} variant="h6">
-                  搜尋結果
-                </Typography>
-                <Typography color="text.secondary" variant="body2">
-                  {s.isSuccess
-                    ? `共 ${total.toLocaleString()} 筆資料`
-                    : "讀取中"}
-                </Typography>
-              </Box>
-              {hasActiveFilter && (
-                <Stack direction="row" flexWrap="wrap" gap={1}>
-                  {search.name && (
-                    <Chip
-                      label={`姓名：${search.name}`}
-                      size="small"
-                      sx={{ borderRadius: 1 }}
-                    />
-                  )}
-                  {search.cup && (
-                    <Chip
-                      label={`罩杯：${search.cup}`}
-                      size="small"
-                      sx={{ borderRadius: 1 }}
-                    />
-                  )}
-                  {search.birth_year && (
-                    <Chip
-                      label={`出生年份：${search.birth_year}`}
-                      size="small"
-                      sx={{ borderRadius: 1 }}
-                      variant="outlined"
-                    />
-                  )}
-                  {[
-                    rangeLabel("身高", search.height),
-                    rangeLabel("B", search.b),
-                    rangeLabel("W", search.w),
-                    rangeLabel("H", search.h),
-                  ]
-                    .filter(Boolean)
-                    .map((label) => (
+              <Typography fontWeight={800} sx={{ mb: 2 }} variant="h6">
+                搜尋條件
+              </Typography>
+              <ActressSearch onClick={handleSearch} conditions={search} />
+            </Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 8 }}>
+            <Stack spacing={2.5}>
+              <Box
+                sx={{
+                  alignItems: { xs: "flex-start", sm: "center" },
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 1.5,
+                  justifyContent: "space-between",
+                  textAlign: "left",
+                }}
+              >
+                <Box>
+                  <Typography fontWeight={800} variant="h6">
+                    搜尋結果
+                  </Typography>
+                  <Typography color="text.secondary" variant="body2">
+                    {s.isSuccess
+                      ? `共 ${total.toLocaleString()} 筆資料`
+                      : "讀取中"}
+                  </Typography>
+                </Box>
+                {hasActiveFilter && (
+                  <Stack direction="row" flexWrap="wrap" gap={1}>
+                    {search.name && (
                       <Chip
-                        key={label}
-                        label={label}
+                        label={`姓名：${search.name}`}
+                        size="small"
+                        sx={{ borderRadius: 1 }}
+                      />
+                    )}
+                    {search.cup && (
+                      <Chip
+                        label={`罩杯：${search.cup}`}
+                        size="small"
+                        sx={{ borderRadius: 1 }}
+                      />
+                    )}
+                    {search.birth_year && (
+                      <Chip
+                        label={`出生年份：${search.birth_year}`}
                         size="small"
                         sx={{ borderRadius: 1 }}
                         variant="outlined"
                       />
-                    ))}
-                </Stack>
-              )}
-            </Box>
-
-            {s.isError && (
-              <Alert severity="error">搜尋資料讀取失敗，請稍後再試。</Alert>
-            )}
-
-            {(s.isLoading || s.isPending) && (
-              <Box
-                sx={{
-                  display: "grid",
-                  gap: 2,
-                  gridTemplateColumns: {
-                    xs: "repeat(2, minmax(0, 1fr))",
-                    sm: "repeat(3, minmax(0, 1fr))",
-                    lg: "repeat(4, minmax(0, 1fr))",
-                  },
-                }}
-              >
-                {Array.from({ length: 8 }).map((_, index) => (
-                  <Stack key={index} spacing={1}>
-                    <Skeleton
-                      height={220}
-                      sx={{ borderRadius: 2 }}
-                      variant="rounded"
-                    />
-                    <Skeleton height={28} variant="rounded" />
-                    <Skeleton height={22} width="72%" variant="rounded" />
+                    )}
+                    {[
+                      rangeLabel("身高", search.height),
+                      rangeLabel("B", search.b),
+                      rangeLabel("W", search.w),
+                      rangeLabel("H", search.h),
+                    ]
+                      .filter(Boolean)
+                      .map((label) => (
+                        <Chip
+                          key={label}
+                          label={label}
+                          size="small"
+                          sx={{ borderRadius: 1 }}
+                          variant="outlined"
+                        />
+                      ))}
                   </Stack>
-                ))}
+                )}
               </Box>
-            )}
 
-            {!s.isLoading && s.isSuccess && actresses.length === 0 && (
-              <Box
-                sx={{
-                  alignItems: "center",
-                  border: "1px dashed",
-                  borderColor: "divider",
-                  borderRadius: 2,
-                  color: "text.secondary",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 1,
-                  justifyContent: "center",
-                  minHeight: 260,
-                  px: 3,
-                  textAlign: "center",
-                }}
-              >
-                <SearchOffIcon fontSize="large" />
-                <Typography fontWeight={800} variant="h6">
-                  沒有符合條件的女優
-                </Typography>
-                <Typography variant="body2">
-                  調整姓名、罩杯或身形範圍後再搜尋。
-                </Typography>
-              </Box>
-            )}
+              {s.isError && (
+                <Alert severity="error">搜尋資料讀取失敗，請稍後再試。</Alert>
+              )}
 
-            {!s.isLoading && s.isSuccess && actresses.length > 0 && (
-              <>
+              {(s.isLoading || s.isPending) && (
                 <Box
                   sx={{
                     display: "grid",
@@ -371,141 +323,196 @@ export function AVActress() {
                     },
                   }}
                 >
-                  {actresses.map((actress) => {
-                    const bodyInfo = renderBodyInfo(actress);
-                    const birth = renderBirth(actress);
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <Stack key={index} spacing={1}>
+                      <Skeleton
+                        height={220}
+                        sx={{ borderRadius: 2 }}
+                        variant="rounded"
+                      />
+                      <Skeleton height={28} variant="rounded" />
+                      <Skeleton height={22} width="72%" variant="rounded" />
+                    </Stack>
+                  ))}
+                </Box>
+              )}
 
-                    return (
-                      <Box
-                        component="button"
-                        key={actress.name}
-                        onClick={() =>
-                          navigate(
-                            `/av/actress/${encodeURIComponent(actress.name)}`,
-                          )
-                        }
-                        sx={{
-                          appearance: "none",
-                          bgcolor: "background.paper",
-                          border: "1px solid",
-                          borderColor: "divider",
-                          borderRadius: 2,
-                          cursor: "pointer",
-                          display: "flex",
-                          flexDirection: "column",
-                          overflow: "hidden",
-                          p: 0,
-                          textAlign: "left",
-                          transition:
-                            "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                          width: "100%",
-                          "&:focus-visible": {
-                            borderColor: "primary.main",
-                            boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
-                            outline: 0,
-                          },
-                          "&:hover": {
-                            borderColor: "rgba(25, 118, 210, 0.42)",
-                            boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
-                            transform: "translateY(-2px)",
-                          },
-                        }}
-                      >
+              {!s.isLoading && s.isSuccess && actresses.length === 0 && (
+                <Box
+                  sx={{
+                    alignItems: "center",
+                    border: "1px dashed",
+                    borderColor: "divider",
+                    borderRadius: 2,
+                    color: "text.secondary",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1,
+                    justifyContent: "center",
+                    minHeight: 260,
+                    px: 3,
+                    textAlign: "center",
+                  }}
+                >
+                  <SearchOffIcon fontSize="large" />
+                  <Typography fontWeight={800} variant="h6">
+                    沒有符合條件的女優
+                  </Typography>
+                  <Typography variant="body2">
+                    調整姓名、罩杯或身形範圍後再搜尋。
+                  </Typography>
+                </Box>
+              )}
+
+              {!s.isLoading && s.isSuccess && actresses.length > 0 && (
+                <>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gap: 2,
+                      gridTemplateColumns: {
+                        xs: "repeat(2, minmax(0, 1fr))",
+                        sm: "repeat(3, minmax(0, 1fr))",
+                        lg: "repeat(4, minmax(0, 1fr))",
+                      },
+                    }}
+                  >
+                    {actresses.map((actress) => {
+                      const bodyInfo = renderBodyInfo(actress);
+                      const birth = renderBirth(actress);
+
+                      return (
                         <Box
+                          component="button"
+                          key={actress.name}
+                          onClick={() =>
+                            navigate(
+                              `/av/actress/${encodeURIComponent(actress.name)}`,
+                            )
+                          }
                           sx={{
-                            aspectRatio: "3 / 4",
-                            bgcolor: "grey.100",
+                            appearance: "none",
+                            bgcolor: "background.paper",
+                            border: "1px solid",
+                            borderColor: "divider",
+                            borderRadius: 2,
+                            cursor: "pointer",
+                            display: "flex",
+                            flexDirection: "column",
                             overflow: "hidden",
+                            p: 0,
+                            textAlign: "left",
+                            transition:
+                              "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
                             width: "100%",
+                            "&:focus-visible": {
+                              borderColor: "primary.main",
+                              boxShadow: "0 0 0 3px rgba(25, 118, 210, 0.28)",
+                              outline: 0,
+                            },
+                            "&:hover": {
+                              borderColor: "rgba(25, 118, 210, 0.42)",
+                              boxShadow: "0 14px 34px rgba(15, 23, 42, 0.13)",
+                              transform: "translateY(-2px)",
+                            },
                           }}
                         >
                           <Box
-                            component="img"
-                            src={actress.photo}
-                            alt={actress.name}
-                            loading="lazy"
                             sx={{
-                              display: "block",
-                              height: "100%",
-                              objectFit: "cover",
+                              aspectRatio: "3 / 4",
+                              bgcolor: "grey.100",
+                              overflow: "hidden",
                               width: "100%",
                             }}
-                          />
-                        </Box>
-                        <Stack spacing={0.75} sx={{ p: 1.5 }}>
-                          <Typography
-                            sx={{
-                              color: "text.primary",
-                              fontWeight: 800,
-                              letterSpacing: 0,
-                              lineHeight: 1.3,
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                            variant="body1"
                           >
-                            {actress.name}
-                          </Typography>
-                          {actress.kana && (
-                            <Typography
-                              color="text.secondary"
+                            <Box
+                              component="img"
+                              src={actress.photo}
+                              alt={actress.name}
+                              loading="lazy"
                               sx={{
+                                display: "block",
+                                height: "100%",
+                                objectFit: "cover",
+                                width: "100%",
+                              }}
+                            />
+                          </Box>
+                          <Stack spacing={0.75} sx={{ p: 1.5 }}>
+                            <Typography
+                              sx={{
+                                color: "text.primary",
+                                fontWeight: 800,
+                                letterSpacing: 0,
+                                lineHeight: 1.3,
                                 overflow: "hidden",
                                 textOverflow: "ellipsis",
                                 whiteSpace: "nowrap",
                               }}
-                              variant="caption"
+                              variant="body1"
                             >
-                              {actress.kana}
+                              {actress.name}
                             </Typography>
-                          )}
-                          <Typography
-                            color="text.secondary"
-                            sx={{
-                              minHeight: "2.86em",
-                              overflow: "hidden",
-                            }}
-                            variant="body2"
-                          >
-                            {bodyInfo || "未登錄身形資訊"}
-                          </Typography>
-                          {birth && (
-                            <Chip
-                              label={`生日 ${birth}`}
-                              size="small"
+                            {actress.kana && (
+                              <Typography
+                                color="text.secondary"
+                                sx={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                                variant="caption"
+                              >
+                                {actress.kana}
+                              </Typography>
+                            )}
+                            <Typography
+                              color="text.secondary"
                               sx={{
-                                alignSelf: "flex-start",
-                                borderRadius: 1,
-                                fontSize: "0.72rem",
+                                minHeight: "2.86em",
+                                overflow: "hidden",
                               }}
-                              variant="outlined"
-                            />
-                          )}
-                        </Stack>
-                      </Box>
-                    );
-                  })}
-                </Box>
-
-                {pageCount > 1 && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "center", pt: 1 }}
-                  >
-                    <Pagination
-                      count={pageCount}
-                      onChange={(_, page) => handlePageChange(page)}
-                      page={search.page ?? 1}
-                      shape="rounded"
-                      variant="outlined"
-                    />
+                              variant="body2"
+                            >
+                              {bodyInfo || "未登錄身形資訊"}
+                            </Typography>
+                            {birth && (
+                              <Chip
+                                label={`生日 ${birth}`}
+                                size="small"
+                                sx={{
+                                  alignSelf: "flex-start",
+                                  borderRadius: 1,
+                                  fontSize: "0.72rem",
+                                }}
+                                variant="outlined"
+                              />
+                            )}
+                          </Stack>
+                        </Box>
+                      );
+                    })}
                   </Box>
-                )}
-              </>
-            )}
-          </Stack>
+
+                  {pageCount > 1 && (
+                    <Box
+                      sx={{ display: "flex", justifyContent: "center", pt: 1 }}
+                    >
+                      <Pagination
+                        count={pageCount}
+                        onChange={(_, page) => handlePageChange(page)}
+                        page={search.page ?? 1}
+                        shape="rounded"
+                        variant="outlined"
+                      />
+                    </Box>
+                  )}
+                </>
+              )}
+            </Stack>
+          </Grid>
         </Grid>
-      </Grid>
-    </Stack>
+      </Stack>
+    </AgeConfirmationGate>
   );
 }
