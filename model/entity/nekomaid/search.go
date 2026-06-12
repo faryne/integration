@@ -58,3 +58,9 @@ type ArtworkSearchResponse struct {
 	RelativeTags []string                `json:"relative_tags"`
 	Aggregations map[string][]string     `json:"aggregations,omitempty"`
 }
+
+type ArtworkDetailResponse struct {
+	Artwork         ArtworkSearchClearRow   `json:"artwork"`
+	Author          *ArtworkAuthor          `json:"author,omitempty"`
+	Recommendations []ArtworkSearchClearRow `json:"recommendations"`
+}

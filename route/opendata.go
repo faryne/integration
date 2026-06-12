@@ -32,6 +32,7 @@ func OpenData(app *fiber.App) {
 	gNekomaid.Get("", nekomaidController.Search)
 	gNekomaid.Get("/:site", nekomaidController.Search)
 	gNekomaid.Get("/:site/:authorId", nekomaidController.Search)
+	gNekomaid.Get("/:site/:authorId/:artworkId", nekomaidController.Artwork)
 
 	g5 := g.Group("/financial")
 	g51 := g5.Group("/twse")

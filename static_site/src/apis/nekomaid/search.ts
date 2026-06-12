@@ -5,9 +5,10 @@ import type {
   NekomaidSearchRequest,
   NekomaidSearchResponse,
 } from "@/types/nekomaid.ts";
+import type { CommonResponse } from "@/apis/interfaces.ts";
 
 const nekomaidListBaseUrl = `${import.meta.env.VITE_API_BASE}/opendata/nekomaid`;
-const nekomaidDetailBaseUrl = "https://faryne.dev/api/opendata/nekomaid";
+const nekomaidDetailBaseUrl = `${import.meta.env.VITE_API_BASE}/opendata/nekomaid`;
 
 function listUrl(input: NekomaidSearchRequest) {
   const segments = [nekomaidListBaseUrl];
@@ -25,18 +26,21 @@ export function useNekomaidSearch(input: NekomaidSearchRequest) {
     queryKey: ["nekomaid", "search", input],
     initialPageParam: "",
     queryFn: async ({ pageParam }) => {
-      const response = await axios.get<NekomaidSearchResponse>(listUrl(input), {
-        params: {
-          tag: input.tag || undefined,
-          sites: input.sites || undefined,
-          rating: input.rating || undefined,
-          type: input.type || undefined,
-          wallpaper: input.wallpaper || undefined,
-          min_width: input.min_width || undefined,
-          next_token: pageParam || undefined,
+      const response = await axios.get<CommonResponse<NekomaidSearchResponse>>(
+        listUrl(input),
+        {
+          params: {
+            tag: input.tag || undefined,
+            sites: input.sites || undefined,
+            rating: input.rating || undefined,
+            type: input.type || undefined,
+            wallpaper: input.wallpaper || undefined,
+            min_width: input.min_width || undefined,
+            next_token: pageParam || undefined,
+          },
         },
-      });
-      return response.data;
+      );
+      return response.data.data;
     },
     getNextPageParam: (lastPage) => lastPage.next_token || undefined,
   });
@@ -48,13 +52,15 @@ export function useNekomaidArtworkDetail(
   artworkId?: string,
 ) {
   return useQuery({
-    queryKey: ["nekomaid", "legacy-detail", site, authorId, artworkId],
+    queryKey: ["nekomaid", "detail", site, authorId, artworkId],
     enabled: Boolean(site && authorId && artworkId),
     queryFn: async () => {
-      const response = await axios.get<NekomaidArtworkDetailResponse>(
+      const response = await axios.get<
+        CommonResponse<NekomaidArtworkDetailResponse>
+      >(
         `${nekomaidDetailBaseUrl}/${encodeURIComponent(site!)}/${encodeURIComponent(authorId!)}/${encodeURIComponent(artworkId!)}`,
       );
-      return response.data;
+      return response.data.data;
     },
   });
 }
