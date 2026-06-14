@@ -16,6 +16,7 @@ import (
 	"faryne.dev/route"
 	avService "faryne.dev/service/av"
 	"faryne.dev/service/client"
+	erogeService "faryne.dev/service/eroge"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
 	"faryne.dev/service/taipower"
@@ -36,8 +37,10 @@ var buildVersion = "development"
 var cmdName = ""
 
 var commandParams = commandParameter.Registry{
-	"yearMonthFrom": commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
-	"yearMonthTo":   commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
+	"brandName":      commandParameter.New("eroge brand name", nil),
+	"youtubeChannel": commandParameter.New("YouTube @handle or UC... channel ID", nil),
+	"yearMonthFrom":  commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
+	"yearMonthTo":    commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
 }
 
 type cronJobConfig struct {
@@ -47,6 +50,26 @@ type cronJobConfig struct {
 }
 
 var cronJobs = []cronJobConfig{
+	{
+		Name:     "eroge-youtube-add-brand",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunAddBrand(
+				commandParams.Value("brandName"),
+				commandParams.Value("youtubeChannel"),
+			)
+		},
+	},
+	{
+		Name:     "eroge-youtube-brands",
+		Schedule: "15 2 * * 1",
+		Handler:  erogeService.RunBrandSync,
+	},
+	{
+		Name:     "eroge-youtube-videos",
+		Schedule: "45 2 * * *",
+		Handler:  erogeService.RunVideoSync,
+	},
 	{
 		Name:     "etf-code-share-twse",
 		Schedule: "0 0 * * 1",

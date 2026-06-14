@@ -16,6 +16,7 @@ type envConfig struct {
 
 	GoogleCalendarCred string `env:"GOOGLE_CALENDAR_CRED"`
 	FirebaseProjectID  string `env:"FIREBASE_PROJECT_ID"`
+	YouTubeAPIKey      string `env:"YOUTUBE_API_KEY"`
 
 	S3AccessKey string `env:"S3_ACCESS_KEY"`
 	S3SecretKey string `env:"S3_SECRET_KEY"`
