@@ -20,6 +20,25 @@ type NeighborSearchOutput struct {
 	TotalCash float64 `json:"total_cash"`
 }
 
+type NeighborStatisticYear struct {
+	Year      int     `json:"year"`
+	TotalCash float64 `json:"total_cash"`
+}
+
+type NeighborStatistic struct {
+	Rank      int                     `json:"rank"`
+	Name      string                  `json:"name"`
+	QueryName string                  `json:"query_name"`
+	TotalCash float64                 `json:"total_cash"`
+	Years     []NeighborStatisticYear `json:"years"`
+}
+
+type NeighborStatisticsOutput struct {
+	GroupBy     string              `json:"group_by"`
+	GeneratedAt time.Time           `json:"generated_at"`
+	Data        []NeighborStatistic `json:"data"`
+}
+
 type Neighbor struct {
 	ID            uint      `gorm:"column:id;primaryKey" json:"id"`
 	ObjMonthID    int       `gorm:"column:obj_month_id" json:"obj_month_id"`

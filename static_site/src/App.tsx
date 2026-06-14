@@ -52,6 +52,9 @@ const TaipowerNeighbor = lazy(
 const TaipowerNeighborMap = lazy(
   () => import("@/pages/opendata/taipower_neighbor_map.tsx"),
 );
+const TaipowerNeighborStatistics = lazy(
+  () => import("@/pages/opendata/taipower_neighbor_statistics.tsx"),
+);
 const RatesIndex = lazy(() =>
   import("@/pages/opendata/rates_index.tsx").then((module) => ({
     default: module.RatesIndex,
@@ -192,6 +195,14 @@ function App() {
             <Route
               path={"/data/taipower/neighbor"}
               element={<TaipowerNeighbor />}
+            />
+            <Route
+              path={"/data/taipower/neighbor/cityarea"}
+              element={<TaipowerNeighborStatistics />}
+            />
+            <Route
+              path={"/data/taipower/neighbor/unit"}
+              element={<TaipowerNeighborStatistics />}
             />
             <Route
               path={"/data/taipower/neighbor/cityarea/:cityarea"}

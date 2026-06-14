@@ -137,6 +137,23 @@ export default function TaipowerNeighborPage() {
               </Button>
             </Stack>
 
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+              <Button
+                component={RouterLink}
+                to={`${basePath}/cityarea`}
+                variant="outlined"
+              >
+                行政區年度統計
+              </Button>
+              <Button
+                component={RouterLink}
+                to={`${basePath}/unit`}
+                variant="outlined"
+              >
+                受捐助單位年度統計
+              </Button>
+            </Stack>
+
             {(cityarea || unit) && (
               <Button
                 component={RouterLink}

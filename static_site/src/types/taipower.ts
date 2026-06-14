@@ -25,3 +25,24 @@ export interface TaipowerNeighborSearch {
 export interface TaipowerNeighborPagination {
   total_cash: number;
 }
+
+export type TaipowerStatisticGroup = "unit" | "cityarea";
+
+export interface TaipowerNeighborStatisticYear {
+  year: number;
+  total_cash: number;
+}
+
+export interface TaipowerNeighborStatistic {
+  rank: number;
+  name: string;
+  query_name: string;
+  total_cash: number;
+  years: TaipowerNeighborStatisticYear[];
+}
+
+export interface TaipowerNeighborStatistics {
+  group_by: TaipowerStatisticGroup;
+  generated_at: string;
+  data: TaipowerNeighborStatistic[];
+}

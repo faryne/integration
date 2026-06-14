@@ -144,6 +144,15 @@ var cronJobs = []cronJobConfig{
 			}
 		},
 	},
+	{
+		Name:     "taipower-neighbor-generate-statistics",
+		Schedule: "",
+		Handler: func() {
+			if err := taipower.GenerateNeighborStatisticsFiles(); err != nil {
+				log.Logger().Error("Taipower neighbor statistics generation failed: " + err.Error())
+			}
+		},
+	},
 }
 
 type appRuntime struct {

@@ -32,10 +32,58 @@ func TestParseNeighbors(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	require.Equal(t, 1, items[0].ObjMonthID)
+	require.Equal(t, "高雄市路竹區", items[0].CityArea)
 	require.Equal(t, 1230.5, items[0].Cash)
 	require.Equal(t, 2026, items[0].ObjYear)
 	require.Equal(t, 5, items[0].ObjMonth)
 	require.Equal(t, now, items[0].CreatedOn)
+}
+
+func TestParseNeighborsNormalizesCityAreaBeforeHashing(t *testing.T) {
+	text := func(value string) crawler.SelectorResponse {
+		return crawler.SelectorResponse{Text: &value}
+	}
+	resp := map[string]any{
+		"neighbors": []any{
+			crawler.SelectorResponse{Children: map[string]any{
+				"obj_month_id": text("1"),
+				"cityarea":     text("鹿港鎮"),
+				"unit":         text("彰化縣鹿港鎮公所"),
+				"summary":      text("測試活動"),
+				"cash":         text("30"),
+				"apply_reason": text("測試"),
+			}},
+		},
+	}
+
+	items, err := parseNeighbors(resp, 2026, 5, time.Now())
+
+	require.NoError(t, err)
+	require.Equal(t, "彰化縣鹿港鎮", items[0].CityArea)
+	require.Equal(t, neighborDuplicateHash(items[0]), items[0].DuplicateHash)
+}
+
+func TestParseNeighborsSkipsInvalidCityArea(t *testing.T) {
+	text := func(value string) crawler.SelectorResponse {
+		return crawler.SelectorResponse{Text: &value}
+	}
+	resp := map[string]any{
+		"neighbors": []any{
+			crawler.SelectorResponse{Children: map[string]any{
+				"obj_month_id": text("1"),
+				"cityarea":     text("aa"),
+				"unit":         text("台北縣測試單位"),
+				"summary":      text("測試活動"),
+				"cash":         text("30"),
+				"apply_reason": text("測試"),
+			}},
+		},
+	}
+
+	items, err := parseNeighbors(resp, 2026, 5, time.Now())
+
+	require.NoError(t, err)
+	require.Empty(t, items)
 }
 
 func TestParseNeighborsSkipsEmptyPlaceholderRow(t *testing.T) {

@@ -229,6 +229,10 @@ func parseNeighbors(resp map[string]any, year int, month int, now time.Time) ([]
 		if cityArea == "" || unit == "" || summary == "" {
 			continue
 		}
+		cityArea = normalizeCityArea(cityArea, unit)
+		if !isValidCityArea(cityArea) {
+			continue
+		}
 		cash, err := strconv.ParseFloat(strings.ReplaceAll(neighborText(data, "cash"), ",", ""), 64)
 		if err != nil {
 			return nil, fmt.Errorf("parse cash for item %d: %w", id, err)

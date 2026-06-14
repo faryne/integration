@@ -6,6 +6,8 @@ import type {
   TaipowerNeighbor,
   TaipowerNeighborPagination,
   TaipowerNeighborSearch,
+  TaipowerNeighborStatistics,
+  TaipowerStatisticGroup,
 } from "@/types/taipower.ts";
 
 type NeighborScope =
@@ -31,6 +33,22 @@ export function useTaipowerNeighbors(
       >(`${import.meta.env.VITE_API_BASE}/taipower/neighbor${suffix}`, {
         params: search,
       });
+      return response.data;
+    },
+  });
+}
+
+export function useTaipowerNeighborStatistics(groupBy: TaipowerStatisticGroup) {
+  return useQuery({
+    queryKey: ["taipower-neighbor-statistics", groupBy],
+    queryFn: async () => {
+      const cdnBase = String(import.meta.env.VITE_CDN_BASE ?? "").replace(
+        /\/+$/,
+        "",
+      );
+      const response = await axios.get<TaipowerNeighborStatistics>(
+        `${cdnBase}/taipower/neighbor/${groupBy}.json`,
+      );
       return response.data;
     },
   });
