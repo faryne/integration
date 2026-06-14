@@ -17,6 +17,7 @@ import (
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
+	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
@@ -97,33 +98,34 @@ var cronJobs = []cronJobConfig{
 			avService.SyncXCityActressesCron()
 		},
 	},
-	//{
-	//	Name:     "taipower-neighbor-backfill",
-	//	Schedule: "",
-	//	Handler: func() {
-	//		if err := taipower.NewNeighborService().Backfill(); err != nil {
-	//			log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
-	//		}
-	//	},
-	//},
-	//{
-	//	Name:     "taipower-neighbor-monthly",
-	//	Schedule: "0 2 1 * *",
-	//	Handler: func() {
-	//		if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
-	//			log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
-	//		}
-	//	},
-	//},
-	//{
-	//	Name:     "taipower-neighbor-sync-es",
-	//	Schedule: "",
-	//	Handler: func() {
-	//		if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
-	//			log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
-	//		}
-	//	},
-	//},
+	// 台電相關 job 手動執行
+	{
+		Name:     "taipower-neighbor-backfill",
+		Schedule: "",
+		Handler: func() {
+			if err := taipower.NewNeighborService().Backfill(); err != nil {
+				log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
+			}
+		},
+	},
+	{
+		Name:     "taipower-neighbor-monthly",
+		Schedule: "",
+		Handler: func() {
+			if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
+				log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
+			}
+		},
+	},
+	{
+		Name:     "taipower-neighbor-sync-es",
+		Schedule: "",
+		Handler: func() {
+			if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
+				log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
+			}
+		},
+	},
 }
 
 type appRuntime struct {
@@ -175,17 +177,23 @@ func main() {
 	flag.StringVar(&cmdName, "cmd", "", "run specific command")
 	flag.Parse()
 
+	if cmdName != "" {
+		if err := loadCommandSettings(inputEnvFile); err != nil {
+			log.Logger().Panic("Initialize command failed: " + err.Error())
+		}
+		executeCommand(cmdName)
+		if err := shutdownClients(); err != nil {
+			log.Logger().Panic("Command shutdown failed: " + err.Error())
+		}
+		return
+	}
+
 	runtime, err := loadAllSettings(inputEnvFile)
 	if err != nil {
 		log.Logger().Panic("Start app failed: " + err.Error())
 	}
 
 	logBuildEvent("start")
-
-	if cmdName != "" {
-		executeCommand(cmdName)
-		return
-	}
 
 	if reload {
 		logBuildEvent("restart")
@@ -249,6 +257,12 @@ func shutdownAllSettings(runtime *appRuntime) error {
 			shutdownErr = errors.Join(shutdownErr, errors.New("cron shutdown timeout"))
 		}
 	}
+	shutdownErr = errors.Join(shutdownErr, shutdownClients())
+	return shutdownErr
+}
+
+func shutdownClients() error {
+	var shutdownErr error
 	shutdownErr = errors.Join(shutdownErr, client.CloseRedisConnections())
 	shutdownErr = errors.Join(shutdownErr, client.CloseMySqlConnections())
 	return shutdownErr
@@ -266,37 +280,8 @@ func gracefulRestart(runtime *appRuntime) error {
 }
 
 func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
-	if err := loadEnvSettings(inputEnvFile); err != nil {
+	if err := loadCommandSettings(inputEnvFile); err != nil {
 		return nil, err
-	}
-
-	// 啟動 DB 連線
-	dbConnections := map[enum.DBName]string{
-		enum.DBWalolita: config.EnvConfig().WalolitaDSN,
-		enum.DBNekomaid: config.EnvConfig().NekomaidDSN,
-	}
-	for key, conn := range dbConnections {
-		connError := client.InitMySql(key, conn)
-		if connError != nil {
-			_ = client.CloseMySqlConnections()
-			return nil, connError
-		}
-	}
-
-	if config.EnvConfig().RedisDSN != "" {
-		redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
-		if redisConnError != nil {
-			_ = client.CloseRedisConnections()
-			_ = client.CloseMySqlConnections()
-			return nil, redisConnError
-		}
-	}
-
-	esConnError := client.InitElasticSearch(enum.ESDefault, []string{config.EnvConfig().ESDSN})
-	if esConnError != nil {
-		_ = client.CloseRedisConnections()
-		_ = client.CloseMySqlConnections()
-		return nil, esConnError
 	}
 
 	app := newApp()
@@ -348,6 +333,43 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		cron:      c,
 		listenErr: listenErr,
 	}, nil
+}
+
+func loadCommandSettings(inputEnvFile string) error {
+	if err := loadEnvSettings(inputEnvFile); err != nil {
+		return err
+	}
+
+	// 啟動 DB 連線
+	dbConnections := map[enum.DBName]string{
+		enum.DBWalolita: config.EnvConfig().WalolitaDSN,
+		enum.DBNekomaid: config.EnvConfig().NekomaidDSN,
+	}
+	for key, conn := range dbConnections {
+		connError := client.InitMySql(key, conn)
+		if connError != nil {
+			_ = client.CloseMySqlConnections()
+			return connError
+		}
+	}
+
+	if config.EnvConfig().RedisDSN != "" {
+		redisConnError := client.InitRedis(enum.RedisDefault, config.EnvConfig().RedisDSN)
+		if redisConnError != nil {
+			_ = client.CloseRedisConnections()
+			_ = client.CloseMySqlConnections()
+			return redisConnError
+		}
+	}
+
+	esConnError := client.InitElasticSearch(enum.ESDefault, []string{config.EnvConfig().ESDSN})
+	if esConnError != nil {
+		_ = client.CloseRedisConnections()
+		_ = client.CloseMySqlConnections()
+		return esConnError
+	}
+
+	return nil
 }
 
 func loadEnvSettings(inputEnvFile string) error {
