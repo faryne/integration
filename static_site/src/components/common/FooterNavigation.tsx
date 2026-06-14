@@ -23,9 +23,10 @@ export function FooterNavigation() {
         gridTemplateColumns: {
           xs: "1fr",
           sm: "repeat(2, minmax(0, 1fr))",
-          md: "repeat(3, minmax(150px, 1fr))",
+          lg: "repeat(4, minmax(140px, 1fr))",
         },
-        gap: { xs: 1.5, md: 3 },
+        columnGap: { xs: 1.5, md: 2.5, lg: 4 },
+        rowGap: { xs: 1.5, md: 2 },
       }}
     >
       <NavigationList title="主要連結" items={directNavigationItems} />

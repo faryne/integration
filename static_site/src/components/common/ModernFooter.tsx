@@ -20,9 +20,9 @@ export function ModernFooter() {
     >
       <Container maxWidth="lg">
         <Stack
-          direction={{ xs: "column", md: "row" }}
+          direction={{ xs: "column", lg: "row" }}
           justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "flex-start" }}
+          alignItems={{ xs: "stretch", lg: "flex-start" }}
           spacing={3}
         >
           <Stack
@@ -41,7 +41,7 @@ export function ModernFooter() {
               <SocialLinks />
             </Stack>
           </Stack>
-          <Box sx={{ flexGrow: 1, maxWidth: { md: 720 } }}>
+          <Box sx={{ flexGrow: 1, width: "100%" }}>
             <FooterNavigation />
           </Box>
         </Stack>

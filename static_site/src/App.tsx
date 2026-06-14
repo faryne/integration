@@ -1,10 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
@@ -50,6 +45,12 @@ const FireDepartmentRealtime = lazy(() =>
   import("@/pages/opendata/firedepartment_realtime.tsx").then((module) => ({
     default: module.FireDepartmentRealtime,
   })),
+);
+const TaipowerNeighbor = lazy(
+  () => import("@/pages/opendata/taipower_neighbor.tsx"),
+);
+const TaipowerNeighborMap = lazy(
+  () => import("@/pages/opendata/taipower_neighbor_map.tsx"),
 );
 const RatesIndex = lazy(() =>
   import("@/pages/opendata/rates_index.tsx").then((module) => ({
@@ -144,9 +145,7 @@ function AnalyticsTracker() {
   const location = useLocation();
 
   useEffect(() => {
-    trackPageView(
-      `${location.pathname}${location.search}${location.hash}`,
-    );
+    trackPageView(`${location.pathname}${location.search}${location.hash}`);
   }, [location]);
 
   return null;
@@ -189,6 +188,22 @@ function App() {
             <Route
               path={"/data/fire/realtime"}
               element={<FireDepartmentRealtime />}
+            />
+            <Route
+              path={"/data/taipower/neighbor"}
+              element={<TaipowerNeighbor />}
+            />
+            <Route
+              path={"/data/taipower/neighbor/cityarea/:cityarea"}
+              element={<TaipowerNeighbor />}
+            />
+            <Route
+              path={"/data/taipower/neighbor/unit/:unit"}
+              element={<TaipowerNeighbor />}
+            />
+            <Route
+              path={"/data/taipower/neighbor/map"}
+              element={<TaipowerNeighborMap />}
             />
 
             <Route path={"/tools/crawler"} element={<CrawlerIndex />} />

@@ -7,13 +7,13 @@ export function Footer() {
     <footer>
       <Divider textAlign={"left"} />
       <Stack
-        direction={{ xs: "column", md: "row" }}
+        direction={{ xs: "column", lg: "row" }}
         justifyContent="space-between"
-        alignItems={{ xs: "stretch", md: "flex-start" }}
-        spacing={2}
-        sx={{ py: 1.5 }}
+        alignItems={{ xs: "stretch", lg: "flex-start" }}
+        spacing={3}
+        sx={{ py: 2 }}
       >
-        <Stack spacing={0.75} sx={{ flexShrink: 0 }}>
+        <Stack spacing={0.75} sx={{ flexShrink: 0, minWidth: 190 }}>
           <Typography variant={"body2"} color="text.secondary">
             Powered By Faryne |{" "}
             <Typography
@@ -27,7 +27,7 @@ export function Footer() {
           </Typography>
           <SocialLinks />
         </Stack>
-        <Box sx={{ flexGrow: 1, maxWidth: { md: 720 } }}>
+        <Box sx={{ flexGrow: 1, width: "100%" }}>
           <FooterNavigation />
         </Box>
       </Stack>

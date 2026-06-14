@@ -31,7 +31,7 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
     ],
   },
   {
-    title: "方便工具",
+    title: "資料",
     items: [
       {
         title: "匯率",
@@ -49,6 +49,15 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         title: "即時消防出勤記錄",
         href: "/data/fire/realtime",
       },
+      {
+        title: "台電敦親睦鄰捐助",
+        href: "/data/taipower/neighbor",
+      },
+    ],
+  },
+  {
+    title: "方便工具",
+    items: [
       {
         title: "台灣指標",
         href: "/data/tw-stats",
