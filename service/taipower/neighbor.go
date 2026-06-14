@@ -2,10 +2,13 @@ package taipower
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"faryne.dev/model/entity/opendata/taipower"
@@ -18,6 +21,7 @@ const (
 	neighborRequestTimeout = 30 * time.Second
 	backfillRequestDelay   = 2 * time.Second
 	fullSyncBatchSize      = 500
+	neighborSaveWorkers    = 4
 )
 
 type NeighborService struct {
@@ -75,19 +79,51 @@ func (s *NeighborService) CrawlMonth(rocYear int, month int) (int, error) {
 		return 0, err
 	}
 
-	items, err := parseNeighbors(resp, rocYear, month, s.now())
+	items, err := parseNeighbors(resp, rocYear+1911, month, s.now())
 	if err != nil {
 		return 0, err
 	}
-	for i := range items {
-		if err := s.repo.Upsert(&items[i]); err != nil {
-			return i, fmt.Errorf("save item %d: %w", items[i].ObjMonthID, err)
-		}
+	if err := s.saveNeighbors(items); err != nil {
+		return 0, err
 	}
 	if err := indexNeighbors(context.Background(), items); err != nil {
 		return len(items), fmt.Errorf("index ROC year %d month %d: %w", rocYear, month, err)
 	}
 	return len(items), nil
+}
+
+func (s *NeighborService) saveNeighbors(items []taipower.Neighbor) error {
+	type saveJob struct {
+		item *taipower.Neighbor
+	}
+
+	jobs := make(chan saveJob)
+	errs := make(chan error, len(items))
+	var workers sync.WaitGroup
+	workerCount := min(neighborSaveWorkers, len(items))
+	for range workerCount {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			for job := range jobs {
+				if err := s.repo.Upsert(job.item); err != nil {
+					errs <- fmt.Errorf("save item %d: %w", job.item.ObjMonthID, err)
+				}
+			}
+		}()
+	}
+
+	for i := range items {
+		jobs <- saveJob{item: &items[i]}
+	}
+	close(jobs)
+	workers.Wait()
+	close(errs)
+
+	for err := range errs {
+		return err
+	}
+	return nil
 }
 
 func (s *NeighborService) SyncAllToElasticsearch() error {
@@ -124,7 +160,7 @@ func neighborSelectors() []crawler.SelectorRequest {
 	}}
 }
 
-func parseNeighbors(resp map[string]any, rocYear int, month int, now time.Time) ([]taipower.Neighbor, error) {
+func parseNeighbors(resp map[string]any, year int, month int, now time.Time) ([]taipower.Neighbor, error) {
 	rows, ok := resp["neighbors"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("neighbors response has unexpected type %T", resp["neighbors"])
@@ -157,13 +193,27 @@ func parseNeighbors(resp map[string]any, rocYear int, month int, now time.Time) 
 			Summary:     summary,
 			ApplyReason: neighborText(data, "apply_reason"),
 			Cash:        cash,
-			ObjYear:     rocYear,
+			ObjYear:     year,
 			ObjMonth:    month,
 			CreatedOn:   now,
 		}
+		item.DuplicateHash = neighborDuplicateHash(item)
 		items = append(items, item)
 	}
 	return items, nil
+}
+
+func neighborDuplicateHash(item taipower.Neighbor) string {
+	value := strings.Join([]string{
+		strconv.Itoa(item.ObjYear),
+		strconv.Itoa(item.ObjMonth),
+		item.CityArea,
+		item.Unit,
+		item.Summary,
+		strconv.FormatFloat(item.Cash, 'f', 6, 64),
+	}, "\x1f")
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
 }
 
 func neighborText(row crawler.SelectorResponse, name string) string {

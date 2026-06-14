@@ -134,11 +134,7 @@ func parseYearMonth(value string) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("must use YYYY-MM format")
 	}
-	rocYear := parsed.Year() - 1911
-	if rocYear <= 0 {
-		return 0, fmt.Errorf("year must be later than 1911")
-	}
-	return rocYear*100 + int(parsed.Month()), nil
+	return parsed.Year()*100 + int(parsed.Month()), nil
 }
 
 func exactTextQuery(field string, value string) map[string]any {
@@ -184,7 +180,7 @@ func ParseNeighborPath(yearValue string, monthValue string) (NeighborSearchFilte
 	}
 	year, err := strconv.Atoi(yearValue)
 	if err != nil || year <= 0 {
-		return filter, fmt.Errorf("year must be a positive ROC year")
+		return filter, fmt.Errorf("year must be positive")
 	}
 	filter.Year = year
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	taipowerModel "faryne.dev/model/entity/opendata/taipower"
 	"faryne.dev/service/crawler"
 	"github.com/stretchr/testify/require"
 )
@@ -26,13 +27,13 @@ func TestParseNeighbors(t *testing.T) {
 	}
 	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.Local)
 
-	items, err := parseNeighbors(resp, 115, 5, now)
+	items, err := parseNeighbors(resp, 2026, 5, now)
 
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	require.Equal(t, 1, items[0].ObjMonthID)
 	require.Equal(t, 1230.5, items[0].Cash)
-	require.Equal(t, 115, items[0].ObjYear)
+	require.Equal(t, 2026, items[0].ObjYear)
 	require.Equal(t, 5, items[0].ObjMonth)
 	require.Equal(t, now, items[0].CreatedOn)
 }
@@ -54,8 +55,26 @@ func TestParseNeighborsSkipsEmptyPlaceholderRow(t *testing.T) {
 		},
 	}
 
-	items, err := parseNeighbors(resp, 110, 4, time.Now())
+	items, err := parseNeighbors(resp, 2021, 4, time.Now())
 
 	require.NoError(t, err)
 	require.Empty(t, items)
+}
+
+func TestNeighborDuplicateHashUsesIdentityFields(t *testing.T) {
+	item := taipowerModel.Neighbor{
+		ObjYear:  2026,
+		ObjMonth: 5,
+		CityArea: "高雄市路竹區",
+		Unit:     "測試單位",
+		Summary:  "測試摘要",
+		Cash:     30,
+	}
+
+	hash := neighborDuplicateHash(item)
+	require.Len(t, hash, 64)
+	require.Equal(t, hash, neighborDuplicateHash(item))
+
+	item.ObjMonth = 6
+	require.NotEqual(t, hash, neighborDuplicateHash(item))
 }

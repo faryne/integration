@@ -1,12 +1,11 @@
 package taipower
 
 import (
-	"errors"
-
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type NeighborRepository struct {
@@ -20,30 +19,13 @@ func NewNeighborRepository() *NeighborRepository {
 }
 
 func (r *NeighborRepository) Upsert(item *taipowerModel.Neighbor) error {
-	var existing taipowerModel.Neighbor
-	result := r.db.
-		Where(
-			"BINARY cityarea = BINARY ? AND BINARY unit = BINARY ? AND BINARY summary = BINARY ?",
-			item.CityArea,
-			item.Unit,
-			item.Summary,
-		).
-		First(&existing)
-	if result.Error == nil {
-		item.ID = existing.ID
-		item.CreatedOn = existing.CreatedOn
-		return r.db.Model(&existing).Updates(map[string]any{
+	return r.db.Clauses(clause.OnConflict{
+		DoUpdates: clause.Assignments(map[string]any{
+			"id":           gorm.Expr("LAST_INSERT_ID(id)"),
 			"obj_month_id": item.ObjMonthID,
 			"apply_reason": item.ApplyReason,
-			"cash":         item.Cash,
-			"obj_year":     item.ObjYear,
-			"obj_month":    item.ObjMonth,
-		}).Error
-	}
-	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return result.Error
-	}
-	return r.db.Create(item).Error
+		}),
+	}).Create(item).Error
 }
 
 func (r *NeighborRepository) GetBatch(afterID uint, limit int) ([]taipowerModel.Neighbor, error) {

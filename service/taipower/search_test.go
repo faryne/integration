@@ -27,24 +27,31 @@ func TestBuildNeighborSearchQueryPathOverridesYearMonthRange(t *testing.T) {
 	query, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{
 		YearMonthFrom: "invalid",
 		YearMonthTo:   "invalid",
-	}, NeighborSearchFilter{Year: 115, Month: 5})
+	}, NeighborSearchFilter{Year: 2026, Month: 5})
 
 	require.NoError(t, err)
 	require.NotNil(t, query["query"])
 }
 
 func TestParseNeighborPath(t *testing.T) {
-	filter, err := ParseNeighborPath("115", "5")
+	filter, err := ParseNeighborPath("2026", "5")
 	require.NoError(t, err)
-	require.Equal(t, NeighborSearchFilter{Year: 115, Month: 5}, filter)
+	require.Equal(t, NeighborSearchFilter{Year: 2026, Month: 5}, filter)
 
 	filter, err = ParseNeighborPath("1", "")
 	require.NoError(t, err)
 	require.Equal(t, 1, filter.Year)
 	_, err = ParseNeighborPath("0", "")
 	require.Error(t, err)
-	_, err = ParseNeighborPath("115", "13")
+	_, err = ParseNeighborPath("2026", "13")
 	require.Error(t, err)
+}
+
+func TestParseYearMonthUsesGregorianYear(t *testing.T) {
+	yearMonth, err := parseYearMonth("2026-05")
+
+	require.NoError(t, err)
+	require.Equal(t, 202605, yearMonth)
 }
 
 func TestBuildNeighborSearchQueryIncludesCityAreaAndUnit(t *testing.T) {

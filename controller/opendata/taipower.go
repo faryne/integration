@@ -12,7 +12,7 @@ import (
 // @Summary Search Taipower neighborhood assistance records
 // @Tags OpenData Taipower
 // @Produce json
-// @Param year path int false "ROC year"
+// @Param year path int false "Gregorian year"
 // @Param month path int false "Month"
 // @Param keyword query string false "Summary, approval reason, unit, or city keyword"
 // @Param yearMonthFrom query string false "Start month in YYYY-MM"
