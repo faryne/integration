@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	commandParameter "faryne.dev/cmd/parameter"
 	"faryne.dev/config"
 	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
@@ -33,6 +34,11 @@ var inputEnvFile = ""
 var reload bool
 var buildVersion = "development"
 var cmdName = ""
+
+var commandParams = commandParameter.Registry{
+	"yearMonthFrom": commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
+	"yearMonthTo":   commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
+}
 
 type cronJobConfig struct {
 	Name     string
@@ -118,6 +124,18 @@ var cronJobs = []cronJobConfig{
 		},
 	},
 	{
+		Name:     "taipower-neighbor-range",
+		Schedule: "",
+		Handler: func() {
+			if err := taipower.NewNeighborService().CrawlRange(
+				commandParams.Value("yearMonthFrom"),
+				commandParams.Value("yearMonthTo"),
+			); err != nil {
+				log.Logger().Error("Taipower neighbor range crawl failed: " + err.Error())
+			}
+		},
+	},
+	{
 		Name:     "taipower-neighbor-sync-es",
 		Schedule: "",
 		Handler: func() {
@@ -175,6 +193,7 @@ func main() {
 	flag.StringVar(&inputEnvFile, "env", "", "path of env file")
 	flag.BoolVar(&reload, "reload", false, "reload app")
 	flag.StringVar(&cmdName, "cmd", "", "run specific command")
+	commandParams.Register(flag.CommandLine)
 	flag.Parse()
 
 	if cmdName != "" {

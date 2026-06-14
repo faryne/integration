@@ -61,6 +61,38 @@ func (s *NeighborService) CrawlPreviousMonth() (int, error) {
 	return s.CrawlMonth(lastMonth.Year()-1911, int(lastMonth.Month()))
 }
 
+func (s *NeighborService) CrawlRange(fromValue string, toValue string) error {
+	from, err := parseCrawlMonth(fromValue)
+	if err != nil {
+		return fmt.Errorf("from: %w", err)
+	}
+
+	var to time.Time
+	if strings.TrimSpace(toValue) == "" {
+		lastMonth := s.now().AddDate(0, -1, 0)
+		to = time.Date(lastMonth.Year(), lastMonth.Month(), 1, 0, 0, 0, 0, time.Local)
+	} else {
+		to, err = parseCrawlMonth(toValue)
+		if err != nil {
+			return fmt.Errorf("to: %w", err)
+		}
+	}
+	if from.After(to) {
+		return fmt.Errorf("from must not be later than to")
+	}
+
+	for current := from; !current.After(to); current = current.AddDate(0, 1, 0) {
+		rocYear := current.Year() - 1911
+		if _, err := s.CrawlMonth(rocYear, int(current.Month())); err != nil {
+			return fmt.Errorf("crawl %s: %w", current.Format("2006-01"), err)
+		}
+		if current.Before(to) {
+			time.Sleep(backfillRequestDelay)
+		}
+	}
+	return nil
+}
+
 func (s *NeighborService) CrawlMonth(rocYear int, month int) (int, error) {
 	if rocYear < firstROCYear || month < 1 || month > 12 {
 		return 0, fmt.Errorf("invalid ROC year/month: %d/%d", rocYear, month)
@@ -90,6 +122,21 @@ func (s *NeighborService) CrawlMonth(rocYear int, month int) (int, error) {
 		return len(items), fmt.Errorf("index ROC year %d month %d: %w", rocYear, month, err)
 	}
 	return len(items), nil
+}
+
+func parseCrawlMonth(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, fmt.Errorf("is required")
+	}
+	month, err := time.ParseInLocation("2006-01", value, time.Local)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("must use YYYY-MM format")
+	}
+	if month.Year()-1911 < firstROCYear {
+		return time.Time{}, fmt.Errorf("must not be earlier than %d-01", firstROCYear+1911)
+	}
+	return month, nil
 }
 
 func (s *NeighborService) saveNeighbors(items []taipower.Neighbor) error {

@@ -78,3 +78,27 @@ func TestNeighborDuplicateHashUsesIdentityFields(t *testing.T) {
 	item.ObjMonth = 6
 	require.NotEqual(t, hash, neighborDuplicateHash(item))
 }
+
+func TestParseCrawlMonth(t *testing.T) {
+	month, err := parseCrawlMonth("2025-01")
+	require.NoError(t, err)
+	require.Equal(t, 2025, month.Year())
+	require.Equal(t, time.January, month.Month())
+
+	_, err = parseCrawlMonth("")
+	require.Error(t, err)
+	_, err = parseCrawlMonth("2025-1")
+	require.Error(t, err)
+	_, err = parseCrawlMonth("2015-12")
+	require.Error(t, err)
+}
+
+func TestCrawlRangeRejectsInvalidRange(t *testing.T) {
+	service := &NeighborService{
+		now: func() time.Time {
+			return time.Date(2026, time.June, 14, 0, 0, 0, 0, time.Local)
+		},
+	}
+
+	require.Error(t, service.CrawlRange("2026-02", "2026-01"))
+}
