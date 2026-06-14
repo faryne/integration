@@ -15,6 +15,7 @@ import {
   TableFooter,
   TableHead,
   TableRow,
+  TableSortLabel,
   TextField,
   Typography,
 } from "@mui/material";
@@ -56,6 +57,10 @@ function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
     yearMonthTo: params.get("yearMonthTo")?.trim() || undefined,
     costFrom: parseNumber(params.get("costFrom")),
     costTo: parseNumber(params.get("costTo")),
+    sort:
+      params.get("sort") === "cash_asc" || params.get("sort") === "cash_desc"
+        ? (params.get("sort") as "cash_asc" | "cash_desc")
+        : undefined,
     page: Math.max(1, Number(params.get("page")) || 1),
     per_page: 30,
   };
@@ -127,6 +132,11 @@ export default function TaipowerNeighborPage() {
       ...form,
       yearMonths: yearMonths.length ? yearMonths : undefined,
     });
+  };
+
+  const toggleCashSort = () => {
+    const sort = search.sort === "cash_desc" ? "cash_asc" : "cash_desc";
+    setParams(toSearchParams({ ...search, sort, page: 1 }));
   };
 
   const scopedTitle = cityarea
@@ -323,7 +333,27 @@ export default function TaipowerNeighborPage() {
                   <TableCell>申請單位</TableCell>
                   <TableCell>申請摘要</TableCell>
                   <TableCell>核准理由</TableCell>
-                  <TableCell align="right">金額（千元）</TableCell>
+                  <TableCell
+                    align="right"
+                    sortDirection={
+                      search.sort === "cash_asc"
+                        ? "asc"
+                        : search.sort === "cash_desc"
+                          ? "desc"
+                          : false
+                    }
+                  >
+                    <TableSortLabel
+                      active={
+                        search.sort === "cash_asc" ||
+                        search.sort === "cash_desc"
+                      }
+                      direction={search.sort === "cash_asc" ? "asc" : "desc"}
+                      onClick={toggleCashSort}
+                    >
+                      金額（千元）
+                    </TableSortLabel>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

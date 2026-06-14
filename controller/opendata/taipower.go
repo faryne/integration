@@ -20,6 +20,7 @@ import (
 // @Param yearMonthTo query string false "End month in YYYY-MM"
 // @Param costFrom query number false "Minimum cost"
 // @Param costTo query number false "Maximum cost"
+// @Param sort query string false "date_desc, cash_asc, or cash_desc"
 // @Param page query int false "Page number"
 // @Param per_page query int false "Items per page, maximum 100"
 // @Success 200 {object} output.CommonOutput

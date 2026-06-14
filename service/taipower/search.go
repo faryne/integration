@@ -52,6 +52,10 @@ func buildNeighborSearchQuery(
 
 	page := input.PageValue()
 	perPage := input.PerPageValue()
+	sortConditions, err := neighborSort(input.Sort)
+	if err != nil {
+		return nil, err
+	}
 	query := map[string]any{
 		"from": (page - 1) * perPage,
 		"size": perPage,
@@ -60,11 +64,7 @@ func buildNeighborSearchQuery(
 				"sum": map[string]any{"field": "cash"},
 			},
 		},
-		"sort": []map[string]any{
-			{"obj_year": map[string]any{"order": "desc"}},
-			{"obj_month": map[string]any{"order": "desc"}},
-			{"obj_month_id": map[string]any{"order": "desc"}},
-		},
+		"sort": sortConditions,
 	}
 
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
@@ -136,6 +136,30 @@ func buildNeighborSearchQuery(
 	}
 
 	return query, nil
+}
+
+func neighborSort(value string) ([]map[string]any, error) {
+	dateSort := []map[string]any{
+		{"obj_year": map[string]any{"order": "desc"}},
+		{"obj_month": map[string]any{"order": "desc"}},
+		{"obj_month_id": map[string]any{"order": "desc"}},
+	}
+	switch strings.TrimSpace(value) {
+	case "", "date_desc":
+		return dateSort, nil
+	case "cash_asc":
+		return append(
+			[]map[string]any{{"cash": map[string]any{"order": "asc"}}},
+			dateSort...,
+		), nil
+	case "cash_desc":
+		return append(
+			[]map[string]any{{"cash": map[string]any{"order": "desc"}}},
+			dateSort...,
+		), nil
+	default:
+		return nil, fmt.Errorf("sort must be date_desc, cash_asc, or cash_desc")
+	}
 }
 
 func parseYearMonths(value string) ([]int, error) {

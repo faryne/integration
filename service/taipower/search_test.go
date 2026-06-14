@@ -42,6 +42,23 @@ func TestBuildNeighborSearchQuerySupportsSelectedMonths(t *testing.T) {
 	require.NotNil(t, query["query"])
 }
 
+func TestBuildNeighborSearchQuerySupportsCashSort(t *testing.T) {
+	query, err := buildNeighborSearchQuery(
+		taipowerModel.NeighborSearchRequest{Sort: "cash_desc"},
+		NeighborSearchFilter{},
+	)
+
+	require.NoError(t, err)
+	sortConditions := query["sort"].([]map[string]any)
+	require.Equal(t, map[string]any{"cash": map[string]any{"order": "desc"}}, sortConditions[0])
+
+	_, err = buildNeighborSearchQuery(
+		taipowerModel.NeighborSearchRequest{Sort: "summary_desc"},
+		NeighborSearchFilter{},
+	)
+	require.Error(t, err)
+}
+
 func TestBuildNeighborSearchQueryPathOverridesYearMonthRange(t *testing.T) {
 	query, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{
 		YearMonthFrom: "invalid",

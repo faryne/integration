@@ -14,6 +14,7 @@ type NeighborSearchRequest struct {
 	YearMonthTo   string   `query:"yearMonthTo"`
 	CostFrom      *float64 `query:"costFrom"`
 	CostTo        *float64 `query:"costTo"`
+	Sort          string   `query:"sort"`
 }
 
 type NeighborSearchOutput struct {

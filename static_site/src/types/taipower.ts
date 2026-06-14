@@ -19,6 +19,7 @@ export interface TaipowerNeighborSearch {
   yearMonthTo?: string;
   costFrom?: number;
   costTo?: number;
+  sort?: "date_desc" | "cash_asc" | "cash_desc";
   page?: number;
   per_page?: number;
 }
