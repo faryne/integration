@@ -1,6 +1,19 @@
 package taipower
 
-import "time"
+import (
+	"time"
+
+	"faryne.dev/model/entity"
+)
+
+type NeighborSearchRequest struct {
+	entity.CommonPaginationQueryRequest
+	Keyword       string   `query:"keyword"`
+	YearMonthFrom string   `query:"yearMonthFrom"`
+	YearMonthTo   string   `query:"yearMonthTo"`
+	CostFrom      *float64 `query:"costFrom"`
+	CostTo        *float64 `query:"costTo"`
+}
 
 type Neighbor struct {
 	ID          uint      `gorm:"column:id;primaryKey" json:"id"`

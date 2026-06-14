@@ -7,6 +7,11 @@ import (
 )
 
 func OpenData(app *fiber.App) {
+	taipowerGroup := app.Group("/taipower/neighbor")
+	taipowerGroup.Get("/cityarea/:cityarea/:year?/:month?", opendata.TaipowerNeighborByCityArea)
+	taipowerGroup.Get("/unit/:unit/:year?/:month?", opendata.TaipowerNeighborByUnit)
+	taipowerGroup.Get("/:year?/:month?", opendata.TaipowerNeighbor)
+
 	g := app.Group("/opendata")
 
 	g1 := g.Group("/rates")
