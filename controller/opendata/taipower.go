@@ -56,5 +56,12 @@ func searchTaipowerNeighbor(ctx fiber.Ctx, cityArea string, unit string) error {
 		return output.ESError(err)
 	}
 
-	return output.Success(helper.ResultPaginate(ctx, rows, raw.Hits.Total.Value))
+	totalCash := float64(0)
+	if aggregation, ok := raw.Aggregations["total_cash"]; ok && aggregation.Value != nil {
+		totalCash = *aggregation.Value
+	}
+	return output.Success(taipowerModel.NeighborSearchOutput{
+		CommonPaginationOutput: helper.ResultPaginate(ctx, rows, raw.Hits.Total.Value),
+		TotalCash:              totalCash,
+	})
 }

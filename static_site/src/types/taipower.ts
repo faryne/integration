@@ -21,3 +21,7 @@ export interface TaipowerNeighborSearch {
   page?: number;
   per_page?: number;
 }
+
+export interface TaipowerNeighborPagination {
+  total_cash: number;
+}

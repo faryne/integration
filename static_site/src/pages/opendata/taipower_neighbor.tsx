@@ -12,6 +12,7 @@ import {
   TableBody,
   TableCell,
   TableContainer,
+  TableFooter,
   TableHead,
   TableRow,
   TextField,
@@ -27,6 +28,8 @@ import {
 } from "react-router-dom";
 
 import { useTaipowerNeighbors } from "@/apis/opendata/taipower.ts";
+import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { integerToChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { TaipowerNeighborSearch } from "@/types/taipower.ts";
 
@@ -76,6 +79,7 @@ export default function TaipowerNeighborPage() {
       : ({ type: "all" } as const);
   const query = useTaipowerNeighbors(search, scope);
   const pagination = query.data?.data;
+  const totalAmount = Math.round((pagination?.total_cash ?? 0) * 1000);
 
   useTitle(
     cityarea
@@ -265,6 +269,30 @@ export default function TaipowerNeighborPage() {
                   </TableRow>
                 )}
               </TableBody>
+              {!!pagination?.data.length && (
+                <TableFooter>
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      align="right"
+                      sx={{ fontWeight: 700 }}
+                    >
+                      符合條件共 {pagination.total.toLocaleString("zh-TW")}{" "}
+                      筆，總金額
+                    </TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      新台幣 {totalAmount.toLocaleString("zh-TW")} 元
+                      <Typography
+                        component="div"
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        （{integerToChinese(totalAmount)}元）
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableFooter>
+              )}
             </Table>
           </TableContainer>
         )}
@@ -281,6 +309,7 @@ export default function TaipowerNeighborPage() {
           />
         )}
       </Stack>
+      <TaipowerDataDisclaimer />
     </Box>
   );
 }

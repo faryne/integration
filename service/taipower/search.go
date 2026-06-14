@@ -55,6 +55,11 @@ func buildNeighborSearchQuery(
 	query := map[string]any{
 		"from": (page - 1) * perPage,
 		"size": perPage,
+		"aggs": map[string]any{
+			"total_cash": map[string]any{
+				"sum": map[string]any{"field": "cash"},
+			},
+		},
 		"sort": []map[string]any{
 			{"obj_year": map[string]any{"order": "desc"}},
 			{"obj_month": map[string]any{"order": "desc"}},

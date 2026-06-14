@@ -18,8 +18,9 @@ type ElasticSearchResponse[T any] struct {
 		} `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]struct {
-		DocCount int `json:"doc_count"`
-		BgCount  int `json:"bg_count"`
+		Value    *float64 `json:"value,omitempty"`
+		DocCount int      `json:"doc_count"`
+		BgCount  int      `json:"bg_count"`
 		Buckets  []struct {
 			Key      string  `json:"key"`
 			DocCount int     `json:"doc_count"`

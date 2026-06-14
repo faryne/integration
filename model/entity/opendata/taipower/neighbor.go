@@ -15,6 +15,11 @@ type NeighborSearchRequest struct {
 	CostTo        *float64 `query:"costTo"`
 }
 
+type NeighborSearchOutput struct {
+	*entity.CommonPaginationOutput[[]Neighbor]
+	TotalCash float64 `json:"total_cash"`
+}
+
 type Neighbor struct {
 	ID            uint      `gorm:"column:id;primaryKey" json:"id"`
 	ObjMonthID    int       `gorm:"column:obj_month_id" json:"obj_month_id"`
