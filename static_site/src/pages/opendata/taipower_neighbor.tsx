@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import MapIcon from "@mui/icons-material/Map";
 import SearchIcon from "@mui/icons-material/Search";
+import AddIcon from "@mui/icons-material/Add";
 import { useEffect, useMemo, useState } from "react";
 import {
   Link as RouterLink,
@@ -29,6 +30,7 @@ import {
 
 import { useTaipowerNeighbors } from "@/apis/opendata/taipower.ts";
 import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { TaipowerNeighborSearch } from "@/types/taipower.ts";
@@ -44,6 +46,12 @@ function parseNumber(value: string | null) {
 function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
   return {
     keyword: params.get("keyword")?.trim() || undefined,
+    yearMonths:
+      params
+        .get("yearMonths")
+        ?.split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) || undefined,
     yearMonthFrom: params.get("yearMonthFrom")?.trim() || undefined,
     yearMonthTo: params.get("yearMonthTo")?.trim() || undefined,
     costFrom: parseNumber(params.get("costFrom")),
@@ -56,12 +64,13 @@ function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
 function toSearchParams(search: TaipowerNeighborSearch) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(search)) {
+    const serializedValue = Array.isArray(value) ? value.join(",") : value;
     if (
-      value !== undefined &&
-      value !== "" &&
-      !(key === "page" && value === 1)
+      serializedValue !== undefined &&
+      serializedValue !== "" &&
+      !(key === "page" && serializedValue === 1)
     ) {
-      params.set(key, String(value));
+      params.set(key, String(serializedValue));
     }
   }
   return params;
@@ -72,6 +81,7 @@ export default function TaipowerNeighborPage() {
   const [params, setParams] = useSearchParams();
   const search = useMemo(() => searchFromParams(params), [params]);
   const [form, setForm] = useState(search);
+  const [selectedMonth, setSelectedMonth] = useState("");
   const scope = cityarea
     ? ({ type: "cityarea", value: cityarea } as const)
     : unit
@@ -95,15 +105,48 @@ export default function TaipowerNeighborPage() {
     setParams(toSearchParams({ ...form, page: 1 }));
   };
 
+  const addSelectedMonth = () => {
+    if (!selectedMonth) return;
+    const yearMonths = Array.from(
+      new Set([...(form.yearMonths ?? []), selectedMonth]),
+    ).sort();
+    setForm({
+      ...form,
+      yearMonths,
+      yearMonthFrom: undefined,
+      yearMonthTo: undefined,
+    });
+    setSelectedMonth("");
+  };
+
+  const removeSelectedMonth = (month: string) => {
+    const yearMonths = (form.yearMonths ?? []).filter(
+      (value) => value !== month,
+    );
+    setForm({
+      ...form,
+      yearMonths: yearMonths.length ? yearMonths : undefined,
+    });
+  };
+
   const scopedTitle = cityarea
     ? `地區：${cityarea}`
     : unit
       ? `申請單位：${unit}`
       : "全部捐助資料";
+  const breadcrumbParent = cityarea
+    ? { label: "行政區統計", path: `${basePath}/cityarea` }
+    : unit
+      ? { label: "受捐助單位統計", path: `${basePath}/unit` }
+      : undefined;
 
   return (
     <Box sx={{ py: 2 }}>
       <Stack spacing={3}>
+        <TaipowerNeighborBreadcrumb
+          current={cityarea ?? unit}
+          parent={breadcrumbParent}
+        />
         <Paper
           variant="outlined"
           sx={{
@@ -180,6 +223,7 @@ export default function TaipowerNeighborPage() {
               <TextField
                 label="起始年月"
                 type="month"
+                disabled={!!form.yearMonths?.length}
                 value={form.yearMonthFrom ?? ""}
                 onChange={(event) =>
                   setForm({ ...form, yearMonthFrom: event.target.value })
@@ -189,6 +233,7 @@ export default function TaipowerNeighborPage() {
               <TextField
                 label="結束年月"
                 type="month"
+                disabled={!!form.yearMonths?.length}
                 value={form.yearMonthTo ?? ""}
                 onChange={(event) =>
                   setForm({ ...form, yearMonthTo: event.target.value })
@@ -214,6 +259,40 @@ export default function TaipowerNeighborPage() {
                   setForm({ ...form, costTo: parseNumber(event.target.value) })
                 }
               />
+            </Stack>
+            <Stack spacing={1}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                <TextField
+                  label="指定月份"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(event) => setSelectedMonth(event.target.value)}
+                  slotProps={{ inputLabel: { shrink: true } }}
+                  sx={{ minWidth: 220 }}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addSelectedMonth}
+                  disabled={!selectedMonth}
+                >
+                  加入月份
+                </Button>
+              </Stack>
+              {!!form.yearMonths?.length && (
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {form.yearMonths.map((month) => (
+                    <Chip
+                      key={month}
+                      label={month}
+                      onDelete={() => removeSelectedMonth(month)}
+                    />
+                  ))}
+                </Stack>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                可加入多個連續或不連續月份；指定月份存在時，起訖年月區間不會套用。
+              </Typography>
             </Stack>
             <Button
               variant="contained"

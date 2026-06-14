@@ -17,6 +17,7 @@ import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTaipowerNeighborStatistics } from "@/apis/opendata/taipower.ts";
 import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToFinancialChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type { TaipowerStatisticGroup } from "@/types/taipower.ts";
@@ -45,6 +46,7 @@ export default function TaipowerNeighborStatisticsPage() {
   return (
     <Box sx={{ py: 2 }}>
       <Stack spacing={3}>
+        <TaipowerNeighborBreadcrumb current={`${label}統計`} />
         <Paper
           variant="outlined"
           sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 4 }}

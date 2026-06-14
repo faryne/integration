@@ -9,6 +9,7 @@ import (
 type NeighborSearchRequest struct {
 	entity.CommonPaginationQueryRequest
 	Keyword       string   `query:"keyword"`
+	YearMonths    string   `query:"yearMonths"`
 	YearMonthFrom string   `query:"yearMonthFrom"`
 	YearMonthTo   string   `query:"yearMonthTo"`
 	CostFrom      *float64 `query:"costFrom"`

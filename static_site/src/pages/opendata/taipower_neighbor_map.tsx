@@ -3,6 +3,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useNavigate } from "react-router-dom";
 
 import { TaiwanAdministrativeMap } from "@/components/common/TaiwanAdministrativeMap.tsx";
+import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 const basePath = "/data/taipower/neighbor";
@@ -14,6 +15,7 @@ export default function TaipowerNeighborMapPage() {
   return (
     <Box sx={{ py: 2 }}>
       <Stack spacing={3}>
+        <TaipowerNeighborBreadcrumb current="台灣行政區地圖" />
         <Paper
           variant="outlined"
           sx={{ p: { xs: 2.5, md: 4 }, borderRadius: 4 }}

@@ -90,26 +90,34 @@ func buildNeighborSearchQuery(
 			search.SetQuery(map[string]any{"term": map[string]any{"obj_month": filter.Month}}, true, query)
 		}
 	} else {
-		from, err := parseYearMonth(input.YearMonthFrom)
+		yearMonths, err := parseYearMonths(input.YearMonths)
 		if err != nil {
-			return nil, fmt.Errorf("yearMonthFrom: %w", err)
+			return nil, fmt.Errorf("yearMonths: %w", err)
 		}
-		to, err := parseYearMonth(input.YearMonthTo)
-		if err != nil {
-			return nil, fmt.Errorf("yearMonthTo: %w", err)
-		}
-		if from > 0 && to > 0 && from >= to {
-			return nil, fmt.Errorf("yearMonthFrom must be earlier than yearMonthTo")
-		}
-		if from > 0 || to > 0 {
-			rangeCondition := map[string]any{}
-			if from > 0 {
-				rangeCondition["gte"] = from
+		if len(yearMonths) > 0 {
+			search.SetQuery(selectedMonthsQuery(yearMonths), true, query)
+		} else {
+			from, err := parseYearMonth(input.YearMonthFrom)
+			if err != nil {
+				return nil, fmt.Errorf("yearMonthFrom: %w", err)
 			}
-			if to > 0 {
-				rangeCondition["lte"] = to
+			to, err := parseYearMonth(input.YearMonthTo)
+			if err != nil {
+				return nil, fmt.Errorf("yearMonthTo: %w", err)
 			}
-			search.SetQuery(monthRangeQuery(rangeCondition), true, query)
+			if from > 0 && to > 0 && from > to {
+				return nil, fmt.Errorf("yearMonthFrom must not be later than yearMonthTo")
+			}
+			if from > 0 || to > 0 {
+				rangeCondition := map[string]any{}
+				if from > 0 {
+					rangeCondition["gte"] = from
+				}
+				if to > 0 {
+					rangeCondition["lte"] = to
+				}
+				search.SetQuery(monthRangeQuery(rangeCondition), true, query)
+			}
 		}
 	}
 
@@ -128,6 +136,47 @@ func buildNeighborSearchQuery(
 	}
 
 	return query, nil
+}
+
+func parseYearMonths(value string) ([]int, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil, nil
+	}
+	seen := make(map[int]struct{})
+	months := make([]int, 0)
+	for _, part := range strings.Split(value, ",") {
+		month, err := parseYearMonth(part)
+		if err != nil || month == 0 {
+			return nil, fmt.Errorf("each value must use YYYY-MM format")
+		}
+		if _, ok := seen[month]; ok {
+			continue
+		}
+		seen[month] = struct{}{}
+		months = append(months, month)
+	}
+	return months, nil
+}
+
+func selectedMonthsQuery(yearMonths []int) map[string]any {
+	conditions := make([]map[string]any, 0, len(yearMonths))
+	for _, yearMonth := range yearMonths {
+		conditions = append(conditions, map[string]any{
+			"bool": map[string]any{
+				"must": []map[string]any{
+					{"term": map[string]any{"obj_year": yearMonth / 100}},
+					{"term": map[string]any{"obj_month": yearMonth % 100}},
+				},
+			},
+		})
+	}
+	return map[string]any{
+		"bool": map[string]any{
+			"should":               conditions,
+			"minimum_should_match": 1,
+		},
+	}
 }
 
 func parseYearMonth(value string) (int, error) {

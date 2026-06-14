@@ -15,6 +15,7 @@ import (
 // @Param year path int false "Gregorian year"
 // @Param month path int false "Month"
 // @Param keyword query string false "Summary, approval reason, unit, or city keyword"
+// @Param yearMonths query string false "Selected months separated by commas, each in YYYY-MM"
 // @Param yearMonthFrom query string false "Start month in YYYY-MM"
 // @Param yearMonthTo query string false "End month in YYYY-MM"
 // @Param costFrom query number false "Minimum cost"

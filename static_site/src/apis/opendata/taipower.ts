@@ -31,7 +31,10 @@ export function useTaipowerNeighbors(
           Pagination<TaipowerNeighbor[]> & TaipowerNeighborPagination
         >
       >(`${import.meta.env.VITE_API_BASE}/taipower/neighbor${suffix}`, {
-        params: search,
+        params: {
+          ...search,
+          yearMonths: search.yearMonths?.join(",") || undefined,
+        },
       });
       return response.data;
     },

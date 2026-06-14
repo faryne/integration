@@ -23,6 +23,25 @@ func TestBuildNeighborSearchQueryRejectsInvalidRanges(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildNeighborSearchQueryAllowsSameMonthRange(t *testing.T) {
+	_, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{
+		YearMonthFrom: "2026-04",
+		YearMonthTo:   "2026-04",
+	}, NeighborSearchFilter{})
+
+	require.NoError(t, err)
+}
+
+func TestBuildNeighborSearchQuerySupportsSelectedMonths(t *testing.T) {
+	query, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{
+		YearMonths:    "2020-01,2021-10",
+		YearMonthFrom: "invalid",
+	}, NeighborSearchFilter{})
+
+	require.NoError(t, err)
+	require.NotNil(t, query["query"])
+}
+
 func TestBuildNeighborSearchQueryPathOverridesYearMonthRange(t *testing.T) {
 	query, err := buildNeighborSearchQuery(taipowerModel.NeighborSearchRequest{
 		YearMonthFrom: "invalid",

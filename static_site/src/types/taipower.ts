@@ -14,6 +14,7 @@ export interface TaipowerNeighbor {
 
 export interface TaipowerNeighborSearch {
   keyword?: string;
+  yearMonths?: string[];
   yearMonthFrom?: string;
   yearMonthTo?: string;
   costFrom?: number;
