@@ -27,6 +27,30 @@ import type { Objects, Topology } from "topojson-specification";
 
 const mapWidth = 560;
 const mapHeight = 720;
+const countyGeographicOrder = [
+  "基隆市",
+  "臺北市",
+  "新北市",
+  "桃園市",
+  "新竹縣",
+  "新竹市",
+  "苗栗縣",
+  "臺中市",
+  "彰化縣",
+  "南投縣",
+  "雲林縣",
+  "嘉義縣",
+  "嘉義市",
+  "臺南市",
+  "高雄市",
+  "屏東縣",
+  "宜蘭縣",
+  "花蓮縣",
+  "臺東縣",
+  "澎湖縣",
+  "金門縣",
+  "連江縣",
+];
 
 interface CountyProperties extends Record<string, unknown> {
   COUNTYNAME: string;
@@ -126,6 +150,46 @@ export function TaiwanAdministrativeMap({
     () =>
       visibleFeatures ? mapPaths(visibleFeatures, mapWidth, mapHeight) : [],
     [visibleFeatures],
+  );
+
+  const countyNames = useMemo(
+    () =>
+      counties
+        ? counties.features
+            .map((county) => county.properties.COUNTYNAME)
+            .sort((a, b) => {
+              const aIndex = countyGeographicOrder.indexOf(a);
+              const bIndex = countyGeographicOrder.indexOf(b);
+              if (aIndex === -1 || bIndex === -1) {
+                return a.localeCompare(b, "zh-TW");
+              }
+              return aIndex - bIndex;
+            })
+        : [],
+    [counties],
+  );
+
+  const districtNames = useMemo(
+    () =>
+      selectedCounty && towns
+        ? towns.features
+            .filter((town) => town.properties.COUNTYNAME === selectedCounty)
+            .map((town) => town.properties.TOWNNAME)
+            .sort((a, b) => a.localeCompare(b, "zh-TW"))
+        : [],
+    [selectedCounty, towns],
+  );
+
+  const selectCounty = useCallback((countyName: string) => {
+    setSelectedCounty(countyName);
+    setHoveredArea("");
+  }, []);
+
+  const selectDistrict = useCallback(
+    (countyName: string, townName: string) => {
+      onDistrictSelect(normalizeAreaName(`${countyName}${townName}`));
+    },
+    [onDistrictSelect],
   );
 
   const resetZoom = useCallback(() => {
@@ -253,7 +317,7 @@ export function TaiwanAdministrativeMap({
                 const countyName = area.properties.COUNTYNAME;
                 const townName =
                   "TOWNNAME" in area.properties
-                    ? area.properties.TOWNNAME
+                    ? String(area.properties.TOWNNAME)
                     : undefined;
                 const label = townName
                   ? `${countyName}${townName}`
@@ -265,10 +329,9 @@ export function TaiwanAdministrativeMap({
                     fill={hoveredArea === label ? "#1976d2" : "#71b89b"}
                     onClick={() => {
                       if (townName) {
-                        onDistrictSelect(normalizeAreaName(label));
+                        selectDistrict(countyName, townName);
                       } else {
-                        setSelectedCounty(countyName);
-                        setHoveredArea("");
+                        selectCounty(countyName);
                       }
                     }}
                     onMouseEnter={() => setHoveredArea(label)}
@@ -306,9 +369,47 @@ export function TaiwanAdministrativeMap({
             </Typography>
             <Typography color="text.secondary">
               {selectedCounty
-                ? "點擊地圖中的行政區，查看該地區的台電敦親睦鄰捐助資料。"
-                : "點擊地圖中的縣市後，地圖會放大並顯示鄉鎮市區。"}
+                ? "點擊地圖或下方清單中的行政區，查看該地區的台電敦親睦鄰捐助資料。"
+                : "點擊地圖或下方清單中的縣市，顯示該縣市的鄉鎮市區。"}
             </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(3, minmax(0, 1fr))",
+                md: "repeat(2, minmax(0, 1fr))",
+              },
+              gap: 1,
+              maxHeight: 420,
+              overflowY: "auto",
+              pr: 0.5,
+            }}
+          >
+            {(selectedCounty ? districtNames : countyNames).map((name) => {
+              const label = selectedCounty ? `${selectedCounty}${name}` : name;
+              return (
+                <Button
+                  key={name}
+                  variant={hoveredArea === label ? "contained" : "outlined"}
+                  onClick={() =>
+                    selectedCounty
+                      ? selectDistrict(selectedCounty, name)
+                      : selectCounty(name)
+                  }
+                  onMouseEnter={() => setHoveredArea(label)}
+                  onMouseLeave={() => setHoveredArea("")}
+                  sx={{
+                    justifyContent: "flex-start",
+                    minWidth: 0,
+                    px: 1.25,
+                  }}
+                >
+                  {name}
+                </Button>
+              );
+            })}
           </Box>
           <Paper
             variant="outlined"
