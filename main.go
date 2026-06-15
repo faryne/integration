@@ -38,6 +38,7 @@ var cmdName = ""
 
 var commandParams = commandParameter.Registry{
 	"brandId":        commandParameter.New("eroge_brands numeric ID", nil),
+	"brandIds":       commandParameter.New("comma-separated eroge_brands numeric IDs", nil),
 	"brandName":      commandParameter.New("eroge brand name", nil),
 	"csvFile":        commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
 	"playlist":       commandParameter.New("public YouTube playlist URL or ID", nil),
@@ -93,6 +94,13 @@ var cronJobs = []cronJobConfig{
 		Schedule: "",
 		Handler: func() {
 			erogeService.RunImportPlaylistBrands(commandParams.Value("playlist"))
+		},
+	},
+	{
+		Name:     "eroge-youtube-resync-brand-videos",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunResyncBrandVideos(commandParams.Value("brandIds"))
 		},
 	},
 	{

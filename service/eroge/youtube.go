@@ -46,6 +46,7 @@ var videoTitleKeywords = []string{
 	"デモムービー",
 	"発売記念",
 	"エンディング",
+	"ＯＰムービー",
 }
 
 type SyncResult struct {
@@ -420,6 +421,49 @@ func (s *Service) SyncVideos(ctx context.Context) (*SyncResult, error) {
 		if err != nil {
 			result.Failed++
 			logBrandVideoSyncError(brand, err)
+			continue
+		}
+		if err := s.repo.MarkVideoSync(brand.ID, syncStartedAt); err != nil {
+			return result, err
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) ResyncBrandVideos(ctx context.Context, brandIDs []uint64) (*SyncResult, error) {
+	result := &SyncResult{Brands: len(brandIDs)}
+	for _, brandID := range brandIDs {
+		brand, err := s.repo.BrandByID(brandID)
+		if err != nil {
+			result.Failed++
+			log.Logger().Error("Load eroge brand for video resync failed", zap.Uint64("brand_id", brandID), zap.Error(err))
+			continue
+		}
+		if brand.UploadsPlaylistID == "" {
+			refreshed, refreshErr := s.refreshBrand(ctx, *brand)
+			if refreshErr != nil {
+				result.Failed++
+				logBrandVideoSyncError(*brand, refreshErr)
+				continue
+			}
+			brand = refreshed
+		}
+		syncStartedAt := time.Now()
+		brand.LastVideoSyncedAt = nil
+		err = s.syncBrandVideos(ctx, *brand, result)
+		if isPlaylistNotFound(err) {
+			refreshed, refreshErr := s.refreshBrand(ctx, *brand)
+			if refreshErr == nil {
+				brand = refreshed
+				brand.LastVideoSyncedAt = nil
+				err = s.syncBrandVideos(ctx, *brand, result)
+			} else {
+				err = fmt.Errorf("%w; refresh channel failed: %v", err, refreshErr)
+			}
+		}
+		if err != nil {
+			result.Failed++
+			logBrandVideoSyncError(*brand, err)
 			continue
 		}
 		if err := s.repo.MarkVideoSync(brand.ID, syncStartedAt); err != nil {
@@ -833,12 +877,55 @@ func RunImportPlaylistBrands(playlistValue string) {
 	log.Logger().Error("Import playlist brands failed", zap.Error(err))
 }
 
+func RunResyncBrandVideos(brandIDsValue string) {
+	brandIDs, err := parseBrandIDs(brandIDsValue)
+	if err != nil {
+		log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
+	defer cancel()
+	service, err := NewService(ctx)
+	if err == nil {
+		var result *SyncResult
+		result, err = service.ResyncBrandVideos(ctx, brandIDs)
+		if err == nil {
+			log.Logger().Info("Resync eroge brand videos finished", zap.Any("result", result))
+			return
+		}
+	}
+	log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
+}
+
 func parseBrandID(value string) (uint64, error) {
 	brandID, err := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
 	if err != nil || brandID == 0 {
 		return 0, fmt.Errorf("brandId must be a positive integer")
 	}
 	return brandID, nil
+}
+
+func parseBrandIDs(value string) ([]uint64, error) {
+	seen := make(map[uint64]struct{})
+	brandIDs := make([]uint64, 0)
+	for _, part := range strings.Split(value, ",") {
+		if strings.TrimSpace(part) == "" {
+			continue
+		}
+		brandID, err := parseBrandID(part)
+		if err != nil {
+			return nil, err
+		}
+		if _, exists := seen[brandID]; exists {
+			continue
+		}
+		seen[brandID] = struct{}{}
+		brandIDs = append(brandIDs, brandID)
+	}
+	if len(brandIDs) == 0 {
+		return nil, fmt.Errorf("brandIds must contain at least one brand ID")
+	}
+	return brandIDs, nil
 }
 
 func runSync(name string, syncFunc func(*Service, context.Context) (*SyncResult, error)) {
