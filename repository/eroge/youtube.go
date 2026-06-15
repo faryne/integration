@@ -90,7 +90,7 @@ func (r *YouTubeRepository) SearchVideos(
 		return nil, 0, err
 	}
 	videos := make([]erogeModel.VideoOutput, 0)
-	err := query.Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id").
+	err := query.Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 		Order("videos.published_at DESC, videos.id DESC").
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
@@ -101,7 +101,7 @@ func (r *YouTubeRepository) SearchVideos(
 func (r *YouTubeRepository) Video(brandPublicID string, videoID string) (*erogeModel.VideoOutput, error) {
 	var video erogeModel.VideoOutput
 	query := r.db.Table("eroge_videos AS videos").
-		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id").
+		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
 		Where("videos.youtube_video_id = ?", videoID)
 	if brandPublicID != "" {
@@ -111,6 +111,35 @@ func (r *YouTubeRepository) Video(brandPublicID string, videoID string) (*erogeM
 		return nil, err
 	}
 	return &video, nil
+}
+
+func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput) ([]erogeModel.VideoOutput, error) {
+	candidates := make([]erogeModel.VideoOutput, 0, 200)
+	base := func() *gorm.DB {
+		return r.db.Session(&gorm.Session{NewDB: true}).
+			Table("eroge_videos AS videos").
+			Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
+			Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+			Where("videos.youtube_video_id <> ?", video.YouTubeVideoID)
+	}
+
+	sameBrand := make([]erogeModel.VideoOutput, 0, 50)
+	if err := base().Where("videos.brand_id = ?", video.BrandID).
+		Order("videos.published_at DESC").
+		Limit(50).
+		Scan(&sameBrand).Error; err != nil {
+		return nil, err
+	}
+	candidates = append(candidates, sameBrand...)
+
+	otherBrands := make([]erogeModel.VideoOutput, 0, 150)
+	if err := base().Where("videos.brand_id <> ?", video.BrandID).
+		Order("videos.published_at DESC").
+		Limit(150).
+		Scan(&otherBrands).Error; err != nil {
+		return nil, err
+	}
+	return append(candidates, otherBrands...), nil
 }
 
 func (r *YouTubeRepository) UpsertBrand(brand *erogeModel.Brand) error {

@@ -56,3 +56,14 @@ func Video(ctx fiber.Ctx) error {
 	}
 	return output.Success(video)
 }
+
+func RelatedVideos(ctx fiber.Ctx) error {
+	videos, err := eroge.NewCatalogService().RelatedVideos(ctx.Params("brand"), ctx.Params("videoId"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame video not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(videos)
+}

@@ -11,5 +11,6 @@ func Galgame(app *fiber.App) {
 	group.Get("/brands/:brand", galgame.Brand)
 	group.Get("/video", galgame.Videos)
 	group.Get("/:brand/video", galgame.Videos)
+	group.Get("/:brand/video/:videoId/related", galgame.RelatedVideos)
 	group.Get("/:brand/video/:videoId", galgame.Video)
 }

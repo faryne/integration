@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -77,6 +78,88 @@ func (s *CatalogService) Video(brandValue, videoID string) (*erogeModel.VideoOut
 	return s.repo.Video(brandPublicID, strings.TrimSpace(videoID))
 }
 
+func (s *CatalogService) RelatedVideos(brandValue, videoID string) ([]erogeModel.VideoOutput, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	candidates, err := s.repo.RelatedVideoCandidates(*video)
+	if err != nil {
+		return nil, err
+	}
+	sourceTags := parseTags(video.Tags)
+	sourceTokens := titleTokens(video.Title)
+	scored := make([]erogeModel.RelatedVideoOutput, 0, len(candidates))
+	for _, candidate := range candidates {
+		score := relatedVideoScore(*video, candidate, sourceTags, sourceTokens)
+		scored = append(scored, erogeModel.RelatedVideoOutput{VideoOutput: candidate, Score: score})
+	}
+	sort.SliceStable(scored, func(i, j int) bool {
+		if scored[i].Score == scored[j].Score {
+			return scored[i].PublishedAt.After(scored[j].PublishedAt)
+		}
+		return scored[i].Score > scored[j].Score
+	})
+	limit := min(5, len(scored))
+	output := make([]erogeModel.VideoOutput, 0, limit)
+	for _, item := range scored[:limit] {
+		output = append(output, item.VideoOutput)
+	}
+	return output, nil
+}
+
+func relatedVideoScore(
+	source erogeModel.VideoOutput,
+	candidate erogeModel.VideoOutput,
+	sourceTags map[string]struct{},
+	sourceTokens map[string]struct{},
+) int {
+	score := 0
+	if source.BrandID == candidate.BrandID {
+		score += 100
+	}
+	for tag := range parseTags(candidate.Tags) {
+		if _, ok := sourceTags[tag]; ok {
+			score += 20
+		}
+	}
+	for token := range titleTokens(candidate.Title) {
+		if _, ok := sourceTokens[token]; ok {
+			score += 8
+		}
+	}
+	days := int(source.PublishedAt.Sub(candidate.PublishedAt).Abs().Hours() / 24)
+	if days < 30 {
+		score += 15 - days/2
+	}
+	return score
+}
+
+func parseTags(raw string) map[string]struct{} {
+	var tags []string
+	_ = json.Unmarshal([]byte(raw), &tags)
+	output := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		if normalized := strings.ToLower(strings.TrimSpace(tag)); normalized != "" {
+			output[normalized] = struct{}{}
+		}
+	}
+	return output
+}
+
+func titleTokens(title string) map[string]struct{} {
+	parts := strings.FieldsFunc(strings.ToLower(title), func(char rune) bool {
+		return !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') ||
+			(char >= '\u3040' && char <= '\u30ff') || (char >= '\u4e00' && char <= '\u9fff'))
+	})
+	tokens := make(map[string]struct{}, len(parts))
+	for _, token := range parts {
+		if len([]rune(token)) >= 2 {
+			tokens[token] = struct{}{}
+		}
+	}
+	return tokens
+}
 func parseBrandPublicID(value string) (string, error) {
 	if strings.TrimSpace(value) == "" {
 		return "", nil

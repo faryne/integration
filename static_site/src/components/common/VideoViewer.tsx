@@ -283,8 +283,8 @@ export function VideoViewer({
               flexDirection: "column",
               gap: 1,
               justifyContent: "center",
-              minHeight: "min(76vh, 860px)",
-              p: { xs: 1, md: 2 },
+              minHeight: isEmbedded ? 0 : "min(76vh, 860px)",
+              p: isEmbedded ? 0 : { xs: 1, md: 2 },
               position: "relative",
               width: "100%",
             }}

@@ -17,10 +17,6 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/galgame",
       },
       {
-        title: "Galgame 品牌",
-        href: "/galgame/brands",
-      },
-      {
         title: "難以名狀的抓圖器",
         href: "/nekomaid",
       },

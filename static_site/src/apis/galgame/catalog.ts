@@ -62,9 +62,11 @@ export function useGalgameBrand(brand?: string) {
 export function useGalgameVideos(
   brandId: string | undefined,
   search: GalgameVideoSearch,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["galgame-videos", brandId, search],
+    enabled,
     queryFn: async () => {
       const prefix = brandId ? `/galgame/${brandId}/video` : "/galgame/video";
       const response = await axios.get<
@@ -84,6 +86,19 @@ export function useGalgameVideo(brandId?: string, videoId?: string) {
         `${apiBase}/galgame/${brandId}/video/${videoId}`,
       );
       return response.data.data;
+    },
+  });
+}
+
+export function useRelatedGalgameVideos(brandId?: string, videoId?: string) {
+  return useQuery({
+    queryKey: ["galgame-related-videos", brandId, videoId],
+    enabled: Boolean(brandId && videoId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<GalgameVideo[]>>(
+        `${apiBase}/galgame/${brandId}/video/${videoId}/related`,
+      );
+      return response.data.data ?? [];
     },
   });
 }

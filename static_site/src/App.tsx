@@ -86,7 +86,6 @@ const Webshot = lazy(() => import("@/pages/tools/webshot.tsx"));
 const Nekomaid = lazy(() => import("@/pages/nekomaid"));
 const GalgameHome = lazy(() => import("@/pages/galgame"));
 const GalgameBrand = lazy(() => import("@/pages/galgame/brand.tsx"));
-const GalgameBrands = lazy(() => import("@/pages/galgame/brands.tsx"));
 const GalgameVideo = lazy(() => import("@/pages/galgame/video.tsx"));
 
 function LoadingFallback() {
@@ -183,7 +182,6 @@ function App() {
 
           <Route path={""} element={<DefaultLayout />}>
             <Route path={"/galgame"} element={<GalgameHome />} />
-            <Route path={"/galgame/brands"} element={<GalgameBrands />} />
             <Route path={"/galgame/:brandSlug"} element={<GalgameBrand />} />
             <Route path={"/galgame/:brandSlug/video/:videoId"} element={<GalgameVideo />} />
             <Route path={"/av/video/:no"} element={<AVVideoDetail />} />

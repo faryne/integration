@@ -39,7 +39,7 @@ export default function GalgameBrand() {
     axios.isAxiosError(brandQuery.error) &&
     brandQuery.error.response?.status === 404
   ) {
-    return <ErrorPage code={404} backUrl="/galgame/brands" />;
+    return <ErrorPage code={404} backUrl="/galgame?tab=brands" />;
   }
 
   return (

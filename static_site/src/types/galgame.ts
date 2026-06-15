@@ -17,6 +17,7 @@ export interface GalgameVideo {
   brand_id: number;
   brand_public_id: string;
   brand_name: string;
+  brand_avatar_url: string;
   youtube_video_id: string;
   title: string;
   thumbnail_url: string;
