@@ -144,3 +144,39 @@ func SetVideoFavorite(ctx fiber.Ctx) error {
 	}
 	return output.Success(status)
 }
+
+func FavoriteStatus(ctx fiber.Ctx) error {
+	var input erogeModel.FavoriteStatusRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	status, err := eroge.NewCatalogService().FavoriteStatus(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(status)
+}
+
+func FavoriteBrands(ctx fiber.Ctx) error {
+	var input erogeModel.BrandSearchRequest
+	if err := ctx.Bind().Query(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	rows, total, err := eroge.NewCatalogService().FavoriteBrands(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(helper.ResultPaginate(ctx, rows, total))
+}
+
+func FavoriteVideos(ctx fiber.Ctx) error {
+	var input erogeModel.VideoSearchRequest
+	if err := ctx.Bind().Query(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	rows, total, err := eroge.NewCatalogService().FavoriteVideos(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(helper.ResultPaginate(ctx, rows, total))
+}

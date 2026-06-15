@@ -37,6 +37,11 @@ export interface GalgameFavoriteStatus {
   favorite: boolean;
 }
 
+export interface GalgameFavoriteStatuses {
+  brand_ids: number[];
+  video_ids: number[];
+}
+
 export interface GalgameVideoNavigation {
   previous: GalgameVideo | null;
   next: GalgameVideo | null;

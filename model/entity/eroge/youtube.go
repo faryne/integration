@@ -85,6 +85,16 @@ type FavoriteStatus struct {
 	Favorite bool `json:"favorite"`
 }
 
+type FavoriteStatusRequest struct {
+	BrandIDs []uint64 `json:"brand_ids"`
+	VideoIDs []uint64 `json:"video_ids"`
+}
+
+type FavoriteStatusOutput struct {
+	BrandIDs []uint64 `json:"brand_ids"`
+	VideoIDs []uint64 `json:"video_ids"`
+}
+
 type VideoNavigationOutput struct {
 	Previous *VideoOutput `json:"previous"`
 	Next     *VideoOutput `json:"next"`

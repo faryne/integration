@@ -89,6 +89,7 @@ const Nekomaid = lazy(() => import("@/pages/nekomaid"));
 const GalgameHome = lazy(() => import("@/pages/galgame"));
 const GalgameBrand = lazy(() => import("@/pages/galgame/brand.tsx"));
 const GalgameVideo = lazy(() => import("@/pages/galgame/video.tsx"));
+const GalgameFavorites = lazy(() => import("@/pages/galgame/favorites.tsx"));
 
 function LoadingFallback() {
   return (
@@ -170,6 +171,7 @@ function App() {
           {standaloneGalgame && (
             <Route path={""} element={<GalgameLayout />}>
               <Route path={"/"} element={<GalgameHome />} />
+              <Route path={"/favorites"} element={<GalgameFavorites />} />
               <Route path={"/:brandSlug"} element={<GalgameBrand />} />
               <Route
                 path={"/:brandSlug/video/:videoId"}
@@ -200,6 +202,10 @@ function App() {
 
               <Route path={""} element={<GalgameLayout />}>
                 <Route path={"/galgame"} element={<GalgameHome />} />
+                <Route
+                  path={"/galgame/favorites"}
+                  element={<GalgameFavorites />}
+                />
                 <Route
                   path={"/galgame/:brandSlug"}
                   element={<GalgameBrand />}

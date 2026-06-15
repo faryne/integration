@@ -28,12 +28,7 @@ import {
 
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
-
-const navigation = [
-  { title: "全部影片", href: "/" },
-  { title: "最新影片", href: "/?tab=recent" },
-  { title: "品牌", href: "/?tab=brands" },
-];
+import { galgamePath } from "@/helpers/galgame.ts";
 
 export function GalgameLayout() {
   const navigate = useNavigate();
@@ -43,6 +38,12 @@ export function GalgameLayout() {
     params.get("tab") === "brands" ? "brands" : "videos",
   );
   const [keyword, setKeyword] = useState(params.get("keyword") ?? "");
+  const navigation = [
+    { title: "全部影片", href: galgamePath() },
+    { title: "最新影片", href: `${galgamePath()}?tab=recent` },
+    { title: "品牌", href: `${galgamePath()}?tab=brands` },
+    { title: "我的最愛", href: galgamePath("favorites") },
+  ];
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -53,7 +54,7 @@ export function GalgameLayout() {
     if (keyword.trim()) {
       next.set("keyword", keyword.trim());
     }
-    navigate(`/?${next.toString()}`);
+    navigate(`${galgamePath()}?${next.toString()}`);
   };
 
   return (
@@ -63,7 +64,7 @@ export function GalgameLayout() {
           <Toolbar disableGutters sx={{ gap: 1 }}>
             <Stack
               component={RouterLink}
-              to="/"
+              to={galgamePath()}
               direction="row"
               alignItems="center"
               spacing={1}

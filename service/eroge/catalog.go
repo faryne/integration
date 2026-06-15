@@ -160,6 +160,30 @@ func (s *CatalogService) SetVideoFavorite(userID uint64, brandValue, videoID str
 	return &erogeModel.FavoriteStatus{Favorite: favorite}, nil
 }
 
+func (s *CatalogService) FavoriteStatus(userID uint64, input erogeModel.FavoriteStatusRequest) (*erogeModel.FavoriteStatusOutput, error) {
+	brandIDs, videoIDs, err := s.repo.FavoriteStatus(userID, input.BrandIDs, input.VideoIDs)
+	if err != nil {
+		return nil, err
+	}
+	return &erogeModel.FavoriteStatusOutput{BrandIDs: brandIDs, VideoIDs: videoIDs}, nil
+}
+
+func (s *CatalogService) FavoriteBrands(userID uint64, input erogeModel.BrandSearchRequest) ([]erogeModel.BrandOutput, int64, error) {
+	brands, total, err := s.repo.FavoriteBrands(userID, input)
+	if err != nil {
+		return nil, 0, err
+	}
+	output := make([]erogeModel.BrandOutput, 0, len(brands))
+	for _, brand := range brands {
+		output = append(output, buildBrandOutput(brand))
+	}
+	return output, total, nil
+}
+
+func (s *CatalogService) FavoriteVideos(userID uint64, input erogeModel.VideoSearchRequest) ([]erogeModel.VideoOutput, int64, error) {
+	return s.repo.FavoriteVideos(userID, input)
+}
+
 func (s *CatalogService) brandEntity(brandValue string) (*erogeModel.Brand, error) {
 	publicID, err := parseBrandPublicID(brandValue)
 	if err != nil {

@@ -16,6 +16,7 @@ import axios from "axios";
 import {
   useGalgameBrand,
   useGalgameBrandFavorite,
+  useGalgameFavoriteStatus,
   useGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
@@ -35,6 +36,11 @@ export default function GalgameBrand() {
   const favorite = useGalgameBrandFavorite(brandSlug);
   const brand = brandQuery.data;
   const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
+  const videoFavoriteStatus = useGalgameFavoriteStatus(
+    [],
+    videos.data?.data.map((video) => video.id) ?? [],
+  );
+  const favoriteVideoIDs = new Set(videoFavoriteStatus.data?.video_ids ?? []);
   const pages = useMemo(
     () =>
       Math.max(
@@ -129,7 +135,10 @@ export default function GalgameBrand() {
                     key={video.youtube_video_id}
                     size={{ xs: 12, sm: 6, md: 4 }}
                   >
-                    <GalgameVideoCard video={video} />
+                    <GalgameVideoCard
+                      video={video}
+                      favorite={favoriteVideoIDs.has(video.id)}
+                    />
                   </Grid>
                 ))}
               </Grid>

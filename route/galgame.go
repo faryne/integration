@@ -17,6 +17,9 @@ func Galgame(app *fiber.App) {
 	group.Get("/:brand/video/:videoId", galgame.Video)
 
 	authenticated := group.Group("", authsession.New())
+	authenticated.Post("/favorites/status", galgame.FavoriteStatus)
+	authenticated.Get("/favorites/brands", galgame.FavoriteBrands)
+	authenticated.Get("/favorites/videos", galgame.FavoriteVideos)
 	authenticated.Get("/brands/:brand/favorite", galgame.BrandFavorite)
 	authenticated.Put("/brands/:brand/favorite", galgame.SetBrandFavorite)
 	authenticated.Get("/:brand/video/:videoId/favorite", galgame.VideoFavorite)

@@ -30,14 +30,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    return onAuthStateChanged(firebaseAuth.auth, (currentUser) => {
-      setUser(currentUser);
-      if (!currentUser) {
-        setSession(null);
-        removeStoredAuthSession();
-      }
-      setLoading(false);
-    });
+    let unsubscribe = () => {};
+    let active = true;
+    void firebaseAuth.persistenceReady
+      .then(() => {
+        if (!active) {
+          return;
+        }
+        unsubscribe = onAuthStateChanged(firebaseAuth.auth, (currentUser) => {
+          setUser(currentUser);
+          if (!currentUser) {
+            setSession(null);
+            removeStoredAuthSession();
+          }
+          setLoading(false);
+        });
+      })
+      .catch(() => setLoading(false));
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, [firebaseAuth]);
 
   const establishSession = async (currentUser: User) => {
@@ -78,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setSubmitting(true);
     try {
+      await firebaseAuth.persistenceReady;
       const currentUser =
         firebaseAuth.auth.currentUser ??
         (await signInWithPopup(firebaseAuth.auth, firebaseAuth.googleProvider))

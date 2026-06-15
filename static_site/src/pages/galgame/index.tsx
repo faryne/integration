@@ -11,10 +11,15 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
+import StarIcon from "@mui/icons-material/Star";
 import { useMemo, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
-import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
+import {
+  useGalgameBrands,
+  useGalgameFavoriteStatus,
+  useGalgameVideos,
+} from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
@@ -41,6 +46,12 @@ export default function GalgameHome() {
     tab !== "brands",
   );
   const brands = useGalgameBrands(keyword, page, 24);
+  const favoriteStatus = useGalgameFavoriteStatus(
+    brands.data?.data.map((brand) => brand.id) ?? [],
+    videos.data?.data.map((video) => video.id) ?? [],
+  );
+  const favoriteBrandIDs = new Set(favoriteStatus.data?.brand_ids ?? []);
+  const favoriteVideoIDs = new Set(favoriteStatus.data?.video_ids ?? []);
   useTitle("Galgame 影片");
 
   const pages = useMemo(() => {
@@ -121,9 +132,22 @@ export default function GalgameHome() {
                             alt={brand.name}
                             sx={{ width: 112, height: 112 }}
                           />
-                          <Typography variant="h6" textAlign="center">
-                            {brand.name}
-                          </Typography>
+                          <Stack
+                            direction="row"
+                            alignItems="center"
+                            spacing={0.5}
+                          >
+                            <Typography variant="h6" textAlign="center">
+                              {brand.name}
+                            </Typography>
+                            {favoriteBrandIDs.has(brand.id) && (
+                              <StarIcon
+                                color="warning"
+                                fontSize="small"
+                                aria-label="已收藏品牌"
+                              />
+                            )}
+                          </Stack>
                         </Stack>
                       </CardContent>
                     </CardActionArea>
@@ -150,7 +174,10 @@ export default function GalgameHome() {
                   key={video.youtube_video_id}
                   size={{ xs: 12, sm: 6, md: 4 }}
                 >
-                  <GalgameVideoCard video={video} />
+                  <GalgameVideoCard
+                    video={video}
+                    favorite={favoriteVideoIDs.has(video.id)}
+                  />
                 </Grid>
               ))}
             </Grid>

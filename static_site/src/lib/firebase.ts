@@ -1,5 +1,11 @@
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  getAuth,
+  GoogleAuthProvider,
+  setPersistence,
+  type Auth,
+} from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,14 +18,15 @@ const firebaseConfig = {
 
 export const firebaseConfigReady = Boolean(
   firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId,
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.appId,
 );
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
+let persistenceReady: Promise<void> | null = null;
 
 export function getFirebaseAuth() {
   if (!firebaseConfigReady) {
@@ -29,6 +36,7 @@ export function getFirebaseAuth() {
   if (!app) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    persistenceReady = setPersistence(auth, browserLocalPersistence);
     googleProvider = new GoogleAuthProvider();
     googleProvider.setCustomParameters({ prompt: "select_account" });
   }
@@ -36,5 +44,6 @@ export function getFirebaseAuth() {
   return {
     auth: auth!,
     googleProvider: googleProvider!,
+    persistenceReady: persistenceReady!,
   };
 }
