@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"go.uber.org/zap"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
@@ -45,7 +47,7 @@ var videoTitleKeywords = []string{
 }
 
 type SyncResult struct {
-	Brands, Fetched, Matched, Saved, Indexed int
+	Brands, Fetched, Matched, Saved, Indexed, Failed int
 }
 
 type BrandInput struct {
@@ -150,32 +152,15 @@ func (s *Service) SyncBrands(ctx context.Context) (*SyncResult, error) {
 	}
 	result := &SyncResult{Brands: len(brands)}
 	for _, brand := range brands {
-		resp, err := s.youtube.Channels.List([]string{"snippet", "contentDetails", "statistics"}).
-			Id(brand.YouTubeChannelID).Context(ctx).Do()
-		if err != nil {
-			return result, fmt.Errorf("fetch channel %s: %w", brand.YouTubeChannelID, err)
-		}
-		if len(resp.Items) != 1 {
-			return result, fmt.Errorf("youtube channel %s not found", brand.YouTubeChannelID)
-		}
-		channel := resp.Items[0]
-		if channel.Snippet == nil || channel.ContentDetails == nil || channel.ContentDetails.RelatedPlaylists == nil {
-			return result, fmt.Errorf("youtube channel %s returned incomplete metadata", brand.YouTubeChannelID)
-		}
-		raw, err := json.Marshal(channel)
-		if err != nil {
-			return result, err
-		}
-		avatar := thumbnailURL(channel.Snippet.Thumbnails)
-		uploads := channel.ContentDetails.RelatedPlaylists.Uploads
-		if err := s.repo.UpdateBrandChannel(brand.ID, avatar, uploads, string(raw), time.Now()); err != nil {
-			return result, err
-		}
-		brand.AvatarURL = avatar
-		brand.UploadsPlaylistID = uploads
-		brand.YouTubeInfo = string(raw)
-		if err := indexBrand(ctx, brand); err != nil {
-			return result, err
+		if _, err := s.refreshBrand(ctx, brand); err != nil {
+			result.Failed++
+			log.Logger().Error(
+				"Sync eroge brand failed",
+				zap.String("brand", brand.Name),
+				zap.String("youtube_channel_id", brand.YouTubeChannelID),
+				zap.Error(err),
+			)
+			continue
 		}
 		result.Indexed++
 	}
@@ -190,16 +175,96 @@ func (s *Service) SyncVideos(ctx context.Context) (*SyncResult, error) {
 	result := &SyncResult{Brands: len(brands)}
 	for _, brand := range brands {
 		if brand.UploadsPlaylistID == "" {
+			refreshed, refreshErr := s.refreshBrand(ctx, brand)
+			if refreshErr != nil {
+				result.Failed++
+				logBrandVideoSyncError(brand, refreshErr)
+				continue
+			}
+			brand = *refreshed
+		}
+		syncStartedAt := time.Now()
+		err := s.syncBrandVideos(ctx, brand, result)
+		if isPlaylistNotFound(err) {
+			refreshed, refreshErr := s.refreshBrand(ctx, brand)
+			if refreshErr == nil {
+				brand = *refreshed
+				err = s.syncBrandVideos(ctx, brand, result)
+			} else {
+				err = fmt.Errorf("%w; refresh channel failed: %v", err, refreshErr)
+			}
+		}
+		if err != nil {
+			result.Failed++
+			logBrandVideoSyncError(brand, err)
 			continue
 		}
-		if err := s.syncBrandVideos(ctx, brand, result); err != nil {
-			return result, fmt.Errorf("sync brand %s: %w", brand.Name, err)
-		}
-		if err := s.repo.MarkVideoSync(brand.ID, time.Now()); err != nil {
+		if err := s.repo.MarkVideoSync(brand.ID, syncStartedAt); err != nil {
 			return result, err
 		}
 	}
 	return result, nil
+}
+
+func (s *Service) refreshBrand(ctx context.Context, brand erogeModel.Brand) (*erogeModel.Brand, error) {
+	resp, err := s.youtube.Channels.List([]string{"snippet", "contentDetails", "statistics"}).
+		Id(brand.YouTubeChannelID).Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("fetch channel %s: %w", brand.YouTubeChannelID, err)
+	}
+	if len(resp.Items) != 1 {
+		return nil, fmt.Errorf("youtube channel %s not found", brand.YouTubeChannelID)
+	}
+	channel := resp.Items[0]
+	if channel.Snippet == nil || channel.ContentDetails == nil || channel.ContentDetails.RelatedPlaylists == nil {
+		return nil, fmt.Errorf("youtube channel %s returned incomplete metadata", brand.YouTubeChannelID)
+	}
+	raw, err := json.Marshal(channel)
+	if err != nil {
+		return nil, err
+	}
+	brand.AvatarURL = thumbnailURL(channel.Snippet.Thumbnails)
+	brand.UploadsPlaylistID = channel.ContentDetails.RelatedPlaylists.Uploads
+	brand.YouTubeInfo = string(raw)
+	if err := s.repo.UpdateBrandChannel(
+		brand.ID,
+		brand.AvatarURL,
+		brand.UploadsPlaylistID,
+		brand.YouTubeInfo,
+		time.Now(),
+	); err != nil {
+		return nil, err
+	}
+	if err := indexBrand(ctx, brand); err != nil {
+		return nil, err
+	}
+	return &brand, nil
+}
+
+func isPlaylistNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	var apiErr *googleapi.Error
+	if !errors.As(err, &apiErr) || apiErr.Code != http.StatusNotFound {
+		return false
+	}
+	for _, item := range apiErr.Errors {
+		if item.Reason == "playlistNotFound" {
+			return true
+		}
+	}
+	return false
+}
+
+func logBrandVideoSyncError(brand erogeModel.Brand, err error) {
+	log.Logger().Error(
+		"Sync eroge brand videos failed",
+		zap.String("brand", brand.Name),
+		zap.String("youtube_channel_id", brand.YouTubeChannelID),
+		zap.String("uploads_playlist_id", brand.UploadsPlaylistID),
+		zap.Error(err),
+	)
 }
 
 func (s *Service) syncBrandVideos(ctx context.Context, brand erogeModel.Brand, result *SyncResult) error {

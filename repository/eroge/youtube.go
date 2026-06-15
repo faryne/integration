@@ -18,7 +18,7 @@ func NewYouTubeRepository() *YouTubeRepository {
 }
 
 func (r *YouTubeRepository) Brands() ([]erogeModel.Brand, error) {
-	var brands []erogeModel.Brand
+	brands := make([]erogeModel.Brand, 0)
 	err := r.db.Order("id ASC").Find(&brands).Error
 	return brands, err
 }
@@ -32,7 +32,7 @@ func (r *YouTubeRepository) SearchBrands(input erogeModel.BrandSearchRequest) ([
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var brands []erogeModel.Brand
+	brands := make([]erogeModel.Brand, 0)
 	err := query.Order("name ASC").
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
@@ -81,7 +81,7 @@ func (r *YouTubeRepository) SearchVideos(
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var videos []erogeModel.VideoOutput
+	videos := make([]erogeModel.VideoOutput, 0)
 	err := query.Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id").
 		Order("videos.published_at DESC, videos.id DESC").
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).

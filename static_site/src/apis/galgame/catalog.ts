@@ -10,6 +10,13 @@ import type {
 
 const apiBase = import.meta.env.VITE_API_BASE;
 
+function normalizePagination<T>(pagination: Pagination<T[]>) {
+  return {
+    ...pagination,
+    data: pagination.data ?? [],
+  };
+}
+
 export function useGalgameBrands(keyword = "") {
   return useQuery({
     queryKey: ["galgame-brands", keyword],
@@ -19,7 +26,14 @@ export function useGalgameBrands(keyword = "") {
       >(`${apiBase}/galgame/brands`, {
         params: { keyword: keyword || undefined, per_page: 100 },
       });
-      return response.data.data;
+      const pagination = normalizePagination(response.data.data);
+      return {
+        ...pagination,
+        data: pagination.data.map((brand) => ({
+          ...brand,
+          links: brand.links ?? [],
+        })),
+      };
     },
   });
 }
@@ -35,7 +49,7 @@ export function useGalgameVideos(
       const response = await axios.get<
         CommonResponse<Pagination<GalgameVideo[]>>
       >(`${apiBase}${prefix}`, { params: search });
-      return response.data.data;
+      return normalizePagination(response.data.data);
     },
   });
 }
