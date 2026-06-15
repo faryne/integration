@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -143,6 +145,227 @@ func newBrandPublicID() (string, error) {
 		return "", fmt.Errorf("generate brand public ID: %w", err)
 	}
 	return fmt.Sprintf("%x", value), nil
+}
+
+func (s *Service) UpdateBrand(ctx context.Context, brandID uint64, youtubeURL string) (*erogeModel.Brand, error) {
+	_, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return nil, err
+	}
+	channelRef, err := youtubeChannelRefFromURL(youtubeURL)
+	if err != nil {
+		return nil, err
+	}
+	channel, err := s.resolveChannel(ctx, channelRef)
+	if err != nil {
+		return nil, err
+	}
+	videoIDs, err := s.repo.VideoIDsByBrand(brandID)
+	if err != nil {
+		return nil, err
+	}
+	if err := deleteIndexDocuments(ctx, videoIndexName, videoIDs); err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(channel)
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	if err := s.repo.ReplaceBrandChannel(
+		brandID,
+		channel.Snippet.Title,
+		channel.Id,
+		thumbnailURL(channel.Snippet.Thumbnails),
+		channel.ContentDetails.RelatedPlaylists.Uploads,
+		string(raw),
+		now,
+	); err != nil {
+		return nil, err
+	}
+	updated, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return nil, err
+	}
+	if err := indexBrand(ctx, *updated); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
+func (s *Service) DeleteBrand(ctx context.Context, brandID uint64) error {
+	brand, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return err
+	}
+	videoIDs, err := s.repo.VideoIDsByBrand(brandID)
+	if err != nil {
+		return err
+	}
+	if err := deleteIndexDocuments(ctx, videoIndexName, videoIDs); err != nil {
+		return err
+	}
+	if err := deleteIndexDocuments(ctx, brandIndexName, []string{brand.PublicID}); err != nil {
+		return err
+	}
+	return s.repo.HardDeleteBrand(brandID)
+}
+
+func (s *Service) ImportPlaylistBrands(ctx context.Context, playlistValue string) (*SyncResult, error) {
+	playlistID, err := youtubePlaylistID(playlistValue)
+	if err != nil {
+		return nil, err
+	}
+	channelIDs := make(map[string]struct{})
+	pageToken := ""
+	result := &SyncResult{}
+	for {
+		resp, err := s.youtube.PlaylistItems.List([]string{"snippet"}).
+			PlaylistId(playlistID).MaxResults(50).PageToken(pageToken).Context(ctx).Do()
+		if err != nil {
+			return result, fmt.Errorf("fetch playlist %s: %w", playlistID, err)
+		}
+		result.Fetched += len(resp.Items)
+		for _, item := range resp.Items {
+			if item.Snippet != nil && item.Snippet.VideoOwnerChannelId != "" {
+				channelIDs[item.Snippet.VideoOwnerChannelId] = struct{}{}
+			}
+		}
+		if resp.NextPageToken == "" {
+			break
+		}
+		pageToken = resp.NextPageToken
+	}
+
+	ids := make([]string, 0, len(channelIDs))
+	for id := range channelIDs {
+		ids = append(ids, id)
+	}
+	result.Brands = len(ids)
+	for start := 0; start < len(ids); start += 50 {
+		end := min(start+50, len(ids))
+		resp, err := s.youtube.Channels.List([]string{"snippet", "contentDetails", "statistics"}).
+			Id(ids[start:end]...).Context(ctx).Do()
+		if err != nil {
+			return result, err
+		}
+		for _, channel := range resp.Items {
+			if channel.Snippet == nil || channel.ContentDetails == nil || channel.ContentDetails.RelatedPlaylists == nil {
+				result.Failed++
+				continue
+			}
+			brand, err := s.upsertChannelBrand(ctx, channel)
+			if err != nil {
+				result.Failed++
+				log.Logger().Error(
+					"Import playlist brand failed",
+					zap.String("youtube_channel_id", channel.Id),
+					zap.Error(err),
+				)
+				continue
+			}
+			result.Saved++
+			result.Indexed++
+			log.Logger().Info(
+				"Imported playlist brand",
+				zap.String("name", brand.Name),
+				zap.String("youtube_channel_id", brand.YouTubeChannelID),
+			)
+		}
+	}
+	return result, nil
+}
+
+func (s *Service) upsertChannelBrand(ctx context.Context, channel *youtube.Channel) (*erogeModel.Brand, error) {
+	raw, err := json.Marshal(channel)
+	if err != nil {
+		return nil, err
+	}
+	publicID, err := newBrandPublicID()
+	if err != nil {
+		return nil, err
+	}
+	now := time.Now()
+	brand := &erogeModel.Brand{
+		PublicID: publicID, Name: channel.Snippet.Title, YouTubeChannelID: channel.Id,
+		AvatarURL: thumbnailURL(channel.Snippet.Thumbnails), YouTubeInfo: string(raw),
+		UploadsPlaylistID:   channel.ContentDetails.RelatedPlaylists.Uploads,
+		LastChannelSyncedAt: &now, UpdatedAt: now,
+	}
+	if err := s.repo.UpsertBrand(brand); err != nil {
+		return nil, err
+	}
+	savedBrand, err := s.repo.BrandByYouTubeChannelID(channel.Id)
+	if err != nil {
+		return nil, err
+	}
+	if err := indexBrand(ctx, *savedBrand); err != nil {
+		return nil, err
+	}
+	return savedBrand, nil
+}
+
+func (s *Service) resolveChannel(ctx context.Context, channelRef string) (*youtube.Channel, error) {
+	call := s.youtube.Channels.List([]string{"snippet", "contentDetails", "statistics"})
+	if strings.HasPrefix(channelRef, "@") {
+		call = call.ForHandle(strings.TrimPrefix(channelRef, "@"))
+	} else {
+		call = call.Id(channelRef)
+	}
+	resp, err := call.Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Items) != 1 {
+		return nil, fmt.Errorf("youtube channel %s not found", channelRef)
+	}
+	channel := resp.Items[0]
+	if channel.Snippet == nil || channel.ContentDetails == nil || channel.ContentDetails.RelatedPlaylists == nil {
+		return nil, fmt.Errorf("youtube channel %s returned incomplete metadata", channelRef)
+	}
+	return channel, nil
+}
+
+func youtubeChannelRefFromURL(rawURL string) (string, error) {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil || parsed.Hostname() == "" {
+		return "", fmt.Errorf("invalid YouTube URL")
+	}
+	host := strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
+	if host != "youtube.com" && host != "m.youtube.com" {
+		return "", fmt.Errorf("URL must use youtube.com")
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) == 1 && strings.HasPrefix(parts[0], "@") {
+		return parts[0], nil
+	}
+	if len(parts) == 2 && parts[0] == "channel" && strings.HasPrefix(parts[1], "UC") {
+		return parts[1], nil
+	}
+	return "", fmt.Errorf("YouTube URL must use /@handle or /channel/UC... format")
+}
+
+func youtubePlaylistID(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", fmt.Errorf("playlist is required")
+	}
+	if !strings.Contains(value, "://") {
+		return value, nil
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("invalid YouTube playlist URL")
+	}
+	host := strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
+	if host != "youtube.com" && host != "m.youtube.com" {
+		return "", fmt.Errorf("playlist URL must use youtube.com")
+	}
+	playlistID := strings.TrimSpace(parsed.Query().Get("list"))
+	if playlistID == "" {
+		return "", fmt.Errorf("playlist URL is missing list parameter")
+	}
+	return playlistID, nil
 }
 
 func (s *Service) SyncBrands(ctx context.Context) (*SyncResult, error) {
@@ -431,6 +654,35 @@ func indexDocument(ctx context.Context, indexName, documentID string, document a
 	)
 }
 
+func deleteIndexDocuments(ctx context.Context, indexName string, documentIDs []string) error {
+	es := client.GetElasticSearch(enum.ESDefault)
+	if es == nil {
+		return fmt.Errorf("elasticsearch client is not initialized")
+	}
+	for _, documentID := range documentIDs {
+		resp, err := es.Delete(indexName, documentID, es.Delete.WithContext(ctx), es.Delete.WithRefresh("true"))
+		if err != nil {
+			return err
+		}
+		responseBody, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			return readErr
+		}
+		if (resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices) &&
+			resp.StatusCode != http.StatusNotFound {
+			return fmt.Errorf(
+				"delete index document failed: index=%s id=%s status=%s body=%s",
+				indexName,
+				documentID,
+				resp.Status(),
+				responseBody,
+			)
+		}
+	}
+	return nil
+}
+
 func RunBrandSync() {
 	runSync("brand", func(s *Service, ctx context.Context) (*SyncResult, error) { return s.SyncBrands(ctx) })
 }
@@ -520,6 +772,73 @@ func RunImportBrands(path string) {
 		)
 	}
 	log.Logger().Info("Import eroge brands finished", zap.Int("imported", imported))
+}
+
+func RunUpdateBrand(brandIDValue, youtubeURL string) {
+	brandID, err := parseBrandID(brandIDValue)
+	if err != nil {
+		log.Logger().Error("Update eroge brand failed", zap.Error(err))
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	service, err := NewService(ctx)
+	if err == nil {
+		var brand *erogeModel.Brand
+		brand, err = service.UpdateBrand(ctx, brandID, youtubeURL)
+		if err == nil {
+			log.Logger().Info(
+				"Updated eroge brand",
+				zap.Uint64("brand_id", brand.ID),
+				zap.String("name", brand.Name),
+				zap.String("youtube_channel_id", brand.YouTubeChannelID),
+			)
+			return
+		}
+	}
+	log.Logger().Error("Update eroge brand failed", zap.Uint64("brand_id", brandID), zap.Error(err))
+}
+
+func RunDeleteBrand(brandIDValue string) {
+	brandID, err := parseBrandID(brandIDValue)
+	if err != nil {
+		log.Logger().Error("Delete eroge brand failed", zap.Error(err))
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+	service, err := NewService(ctx)
+	if err == nil {
+		err = service.DeleteBrand(ctx, brandID)
+		if err == nil {
+			log.Logger().Info("Deleted eroge brand", zap.Uint64("brand_id", brandID))
+			return
+		}
+	}
+	log.Logger().Error("Delete eroge brand failed", zap.Uint64("brand_id", brandID), zap.Error(err))
+}
+
+func RunImportPlaylistBrands(playlistValue string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
+	defer cancel()
+	service, err := NewService(ctx)
+	if err == nil {
+		var result *SyncResult
+		result, err = service.ImportPlaylistBrands(ctx, playlistValue)
+		if err == nil {
+			log.Logger().Info("Import playlist brands finished", zap.Any("result", result))
+			return
+		}
+	}
+	log.Logger().Error("Import playlist brands failed", zap.Error(err))
+}
+
+func parseBrandID(value string) (uint64, error) {
+	brandID, err := strconv.ParseUint(strings.TrimSpace(value), 10, 64)
+	if err != nil || brandID == 0 {
+		return 0, fmt.Errorf("brandId must be a positive integer")
+	}
+	return brandID, nil
 }
 
 func runSync(name string, syncFunc func(*Service, context.Context) (*SyncResult, error)) {

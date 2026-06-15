@@ -48,6 +48,14 @@ func (r *YouTubeRepository) Brand(publicID string) (*erogeModel.Brand, error) {
 	return &brand, nil
 }
 
+func (r *YouTubeRepository) BrandByID(id uint64) (*erogeModel.Brand, error) {
+	var brand erogeModel.Brand
+	if err := r.db.First(&brand, id).Error; err != nil {
+		return nil, err
+	}
+	return &brand, nil
+}
+
 func (r *YouTubeRepository) BrandByYouTubeChannelID(channelID string) (*erogeModel.Brand, error) {
 	var brand erogeModel.Brand
 	if err := r.db.Where("youtube_channel_id = ?", channelID).First(&brand).Error; err != nil {
@@ -133,4 +141,37 @@ func (r *YouTubeRepository) UpsertVideo(video *erogeModel.Video) error {
 func (r *YouTubeRepository) MarkVideoSync(brandID uint64, syncedAt time.Time) error {
 	return r.db.Model(&erogeModel.Brand{}).Where("id = ?", brandID).
 		Update("last_video_synced_at", syncedAt).Error
+}
+
+func (r *YouTubeRepository) VideoIDsByBrand(brandID uint64) ([]string, error) {
+	ids := make([]string, 0)
+	err := r.db.Model(&erogeModel.Video{}).
+		Where("brand_id = ?", brandID).
+		Pluck("youtube_video_id", &ids).Error
+	return ids, err
+}
+
+func (r *YouTubeRepository) ReplaceBrandChannel(
+	brandID uint64,
+	name string,
+	channelID string,
+	avatar string,
+	uploads string,
+	info string,
+	syncedAt time.Time,
+) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("brand_id = ?", brandID).Delete(&erogeModel.Video{}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&erogeModel.Brand{}).Where("id = ?", brandID).Updates(map[string]any{
+			"name": name, "youtube_channel_id": channelID, "avatar_url": avatar,
+			"uploads_playlist_id": uploads, "youtube_info": info,
+			"last_channel_synced_at": syncedAt, "last_video_synced_at": nil,
+		}).Error
+	})
+}
+
+func (r *YouTubeRepository) HardDeleteBrand(brandID uint64) error {
+	return r.db.Unscoped().Delete(&erogeModel.Brand{}, brandID).Error
 }

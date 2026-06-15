@@ -37,9 +37,12 @@ var buildVersion = "development"
 var cmdName = ""
 
 var commandParams = commandParameter.Registry{
+	"brandId":        commandParameter.New("eroge_brands numeric ID", nil),
 	"brandName":      commandParameter.New("eroge brand name", nil),
 	"csvFile":        commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
+	"playlist":       commandParameter.New("public YouTube playlist URL or ID", nil),
 	"youtubeChannel": commandParameter.New("YouTube @handle or UC... channel ID", nil),
+	"youtubeURL":     commandParameter.New("YouTube brand page URL", nil),
 	"yearMonthFrom":  commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
 	"yearMonthTo":    commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
 }
@@ -66,6 +69,30 @@ var cronJobs = []cronJobConfig{
 		Schedule: "",
 		Handler: func() {
 			erogeService.RunImportBrands(commandParams.Value("csvFile"))
+		},
+	},
+	{
+		Name:     "eroge-youtube-update-brand",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunUpdateBrand(
+				commandParams.Value("brandId"),
+				commandParams.Value("youtubeURL"),
+			)
+		},
+	},
+	{
+		Name:     "eroge-youtube-delete-brand",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunDeleteBrand(commandParams.Value("brandId"))
+		},
+	},
+	{
+		Name:     "eroge-youtube-import-playlist-brands",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunImportPlaylistBrands(commandParams.Value("playlist"))
 		},
 	},
 	{
