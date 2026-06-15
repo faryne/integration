@@ -42,6 +42,23 @@ export function useGalgameBrands(keyword = "", page = 1, perPage = 24) {
   });
 }
 
+export function useGalgameBrand(brand?: string) {
+  return useQuery({
+    queryKey: ["galgame-brand", brand],
+    enabled: Boolean(brand),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<GalgameBrand>>(
+        `${apiBase}/galgame/brands/${brand}`,
+      );
+      return {
+        ...response.data.data,
+        links: response.data.data.links ?? [],
+      };
+    },
+  });
+}
+
 export function useGalgameVideos(
   brandId: string | undefined,
   search: GalgameVideoSearch,

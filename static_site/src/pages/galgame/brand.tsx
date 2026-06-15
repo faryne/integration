@@ -11,21 +11,22 @@ import {
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import axios from "axios";
 
-import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
+import { useGalgameBrand, useGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { ExpandableText } from "@/components/common/ExpandableText.tsx";
 import { useTitle } from "@/helpers/title.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 export default function GalgameBrand() {
   const { brandSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const brands = useGalgameBrands("", 1, 100);
-  const publicId = brandSlug?.split("-", 1)[0];
-  const brand = brands.data?.data.find((item) => item.public_id === publicId);
+  const brandQuery = useGalgameBrand(brandSlug);
+  const brand = brandQuery.data;
   const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
   const pages = useMemo(
     () => Math.max(1, Math.ceil((videos.data?.total ?? 0) / (videos.data?.per_page || 24))),
@@ -33,17 +34,23 @@ export default function GalgameBrand() {
   );
   useTitle(brand ? `${brand.name} 影片` : "品牌影片");
 
+  if (
+    brandQuery.isError &&
+    axios.isAxiosError(brandQuery.error) &&
+    brandQuery.error.response?.status === 404
+  ) {
+    return <ErrorPage code={404} backUrl="/galgame/brands" />;
+  }
+
   return (
     <Box sx={{ pb: 6 }}>
       <GalgameBreadcrumb brand={brand} />
       <Stack spacing={3}>
-        {brands.isPending ? (
+        {brandQuery.isPending ? (
           <GalgameState loading message="正在載入品牌資料..." />
-        ) : brands.isError ? (
+        ) : brandQuery.isError ? (
           <GalgameState severity="error" message="品牌資料載入失敗，請稍後再試。" />
-        ) : !brand ? (
-          <GalgameState severity="error" message="找不到此品牌。" />
-        ) : (
+        ) : brand ? (
           <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
             <Stack
               direction={{ xs: "column", md: "row" }}
@@ -81,7 +88,7 @@ export default function GalgameBrand() {
               </Stack>
             </Stack>
           </Paper>
-        )}
+        ) : null}
         {brand && (
           videos.isPending ? (
             <GalgameState loading message="正在載入品牌影片..." />

@@ -34,6 +34,19 @@ func (s *CatalogService) SearchBrands(input erogeModel.BrandSearchRequest) ([]er
 	return output, total, nil
 }
 
+func (s *CatalogService) Brand(brandValue string) (*erogeModel.BrandOutput, error) {
+	publicID, err := parseBrandPublicID(brandValue)
+	if err != nil {
+		return nil, err
+	}
+	brand, err := s.repo.Brand(publicID)
+	if err != nil {
+		return nil, err
+	}
+	output := buildBrandOutput(*brand)
+	return &output, nil
+}
+
 func (s *CatalogService) SearchVideos(
 	brandValue string,
 	input erogeModel.VideoSearchRequest,

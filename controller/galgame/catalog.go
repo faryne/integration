@@ -23,6 +23,17 @@ func Brands(ctx fiber.Ctx) error {
 	return output.Success(helper.ResultPaginate(ctx, rows, total))
 }
 
+func Brand(ctx fiber.Ctx) error {
+	brand, err := eroge.NewCatalogService().Brand(ctx.Params("brand"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame brand not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(brand)
+}
+
 func Videos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
 	if err := ctx.Bind().Query(&input); err != nil {
