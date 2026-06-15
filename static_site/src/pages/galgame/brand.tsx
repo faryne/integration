@@ -1,5 +1,4 @@
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -17,6 +16,7 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
+import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameBrand() {
@@ -37,7 +37,13 @@ export default function GalgameBrand() {
     <Box sx={{ pb: 6 }}>
       <GalgameBreadcrumb brand={brand} />
       <Stack spacing={3}>
-        {brand ? (
+        {brands.isPending ? (
+          <GalgameState loading message="正在載入品牌資料..." />
+        ) : brands.isError ? (
+          <GalgameState severity="error" message="品牌資料載入失敗，請稍後再試。" />
+        ) : !brand ? (
+          <GalgameState severity="error" message="找不到此品牌。" />
+        ) : (
           <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
             <Stack
               direction={{ xs: "column", md: "row" }}
@@ -88,24 +94,32 @@ export default function GalgameBrand() {
               </Stack>
             </Stack>
           </Paper>
-        ) : (
-          <Typography variant="h3" component="h1">品牌影片</Typography>
         )}
-        {videos.isError && <Alert severity="error">影片載入失敗。</Alert>}
-        <Grid container spacing={3}>
-          {videos.data?.data.map((video) => (
-            <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <GalgameVideoCard video={video} />
-            </Grid>
-          ))}
-        </Grid>
-        {videos.data?.data.length === 0 && <Alert severity="info">此品牌目前沒有影片。</Alert>}
-        <Pagination
-          page={page}
-          count={pages}
-          onChange={(_, value) => setParams(value > 1 ? { page: String(value) } : {})}
-          sx={{ alignSelf: "center" }}
-        />
+        {brand && (
+          videos.isPending ? (
+            <GalgameState loading message="正在載入品牌影片..." />
+          ) : videos.isError ? (
+            <GalgameState severity="error" message="影片載入失敗，請稍後再試。" />
+          ) : videos.data.data.length === 0 ? (
+            <GalgameState message="此品牌目前尚無影片。" />
+          ) : (
+            <>
+              <Grid container spacing={3}>
+                {videos.data.data.map((video) => (
+                  <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                    <GalgameVideoCard video={video} />
+                  </Grid>
+                ))}
+              </Grid>
+              <Pagination
+                page={page}
+                count={pages}
+                onChange={(_, value) => setParams(value > 1 ? { page: String(value) } : {})}
+                sx={{ alignSelf: "center" }}
+              />
+            </>
+          )
+        )}
       </Stack>
     </Box>
   );

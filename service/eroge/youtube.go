@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -388,6 +390,71 @@ func RunAddBrand(name, channelRef string) {
 		}
 	}
 	log.Logger().Error("Add eroge brand failed", zap.Error(err))
+}
+
+func RunImportBrands(path string) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		log.Logger().Error("Import eroge brands failed", zap.Error(fmt.Errorf("csvFile is required")))
+		return
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		log.Logger().Error("Import eroge brands failed", zap.Error(err))
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = '|'
+	reader.TrimLeadingSpace = true
+	reader.FieldsPerRecord = 2
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+	service, err := NewService(ctx)
+	if err != nil {
+		log.Logger().Error("Import eroge brands failed", zap.Error(err))
+		return
+	}
+
+	imported := 0
+	for line := 1; ; line++ {
+		record, readErr := reader.Read()
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			log.Logger().Error(
+				"Import eroge brands failed",
+				zap.Int("line", line),
+				zap.Error(readErr),
+			)
+			return
+		}
+		brand, addErr := service.AddBrand(ctx, BrandInput{
+			Name:       record[0],
+			ChannelRef: record[1],
+		})
+		if addErr != nil {
+			log.Logger().Error(
+				"Import eroge brand failed",
+				zap.Int("line", line),
+				zap.String("name", record[0]),
+				zap.String("youtube_channel", record[1]),
+				zap.Error(addErr),
+			)
+			continue
+		}
+		imported++
+		log.Logger().Info(
+			"Imported eroge brand",
+			zap.Int("line", line),
+			zap.String("name", brand.Name),
+			zap.String("youtube_channel_id", brand.YouTubeChannelID),
+		)
+	}
+	log.Logger().Info("Import eroge brands finished", zap.Int("imported", imported))
 }
 
 func runSync(name string, syncFunc func(*Service, context.Context) (*SyncResult, error)) {

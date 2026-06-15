@@ -38,6 +38,7 @@ var cmdName = ""
 
 var commandParams = commandParameter.Registry{
 	"brandName":      commandParameter.New("eroge brand name", nil),
+	"csvFile":        commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
 	"youtubeChannel": commandParameter.New("YouTube @handle or UC... channel ID", nil),
 	"yearMonthFrom":  commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
 	"yearMonthTo":    commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
@@ -58,6 +59,13 @@ var cronJobs = []cronJobConfig{
 				commandParams.Value("brandName"),
 				commandParams.Value("youtubeChannel"),
 			)
+		},
+	},
+	{
+		Name:     "eroge-youtube-import-brands",
+		Schedule: "",
+		Handler: func() {
+			erogeService.RunImportBrands(commandParams.Value("csvFile"))
 		},
 	},
 	{

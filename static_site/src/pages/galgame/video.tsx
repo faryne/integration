@@ -1,10 +1,11 @@
-import { Alert, Box, Button, Link, Stack, Typography } from "@mui/material";
+import { Box, Button, Link, Stack, Typography } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import { useGalgameVideo } from "@/apis/galgame/catalog.ts";
 import { VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
+import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { galgameBrandSlug } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -14,17 +15,17 @@ export default function GalgameVideo() {
   const video = query.data;
   useTitle(video?.title ?? "Galgame 影片");
 
-  if (query.isError) {
-    return <Alert severity="error">影片不存在或載入失敗。</Alert>;
-  }
-
   return (
     <Box sx={{ pb: 6 }}>
       <GalgameBreadcrumb
         brand={video ? { public_id: video.brand_public_id, name: video.brand_name } : undefined}
         videoTitle={video?.title}
       />
-      {video && (
+      {query.isPending ? (
+        <GalgameState loading message="正在載入影片..." />
+      ) : query.isError || !video ? (
+        <GalgameState severity="error" message="影片不存在或載入失敗。" />
+      ) : (
         <Stack spacing={3}>
           <Stack
             direction={{ xs: "column", sm: "row" }}

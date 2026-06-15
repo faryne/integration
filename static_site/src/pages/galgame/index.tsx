@@ -1,5 +1,4 @@
 import {
-  Alert,
   Box,
   Button,
   Grid,
@@ -14,6 +13,7 @@ import { Link as RouterLink, useSearchParams } from "react-router-dom";
 import { useGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
+import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameHome() {
@@ -55,25 +55,33 @@ export default function GalgameHome() {
           <TextField fullWidth label="搜尋影片" value={draft} onChange={(e) => setDraft(e.target.value)} />
           <Button type="submit" variant="contained">搜尋</Button>
         </Stack>
-        {videos.isError && <Alert severity="error">影片載入失敗。</Alert>}
-        <Grid container spacing={3}>
-          {videos.data?.data.map((video) => (
-            <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <GalgameVideoCard video={video} />
+        {videos.isPending ? (
+          <GalgameState loading message="正在載入影片..." />
+        ) : videos.isError ? (
+          <GalgameState severity="error" message="影片載入失敗，請稍後再試。" />
+        ) : videos.data.data.length === 0 ? (
+          <GalgameState message={keyword ? "找不到符合搜尋條件的影片。" : "目前尚無影片資料。"} />
+        ) : (
+          <>
+            <Grid container spacing={3}>
+              {videos.data.data.map((video) => (
+                <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <GalgameVideoCard video={video} />
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-        {videos.data?.data.length === 0 && <Alert severity="info">找不到符合條件的影片。</Alert>}
-        <Pagination
-          page={page}
-          count={pages}
-          onChange={(_, value) => {
-            const next = new URLSearchParams(params);
-            value === 1 ? next.delete("page") : next.set("page", String(value));
-            setParams(next);
-          }}
-          sx={{ alignSelf: "center" }}
-        />
+            <Pagination
+              page={page}
+              count={pages}
+              onChange={(_, value) => {
+                const next = new URLSearchParams(params);
+                value === 1 ? next.delete("page") : next.set("page", String(value));
+                setParams(next);
+              }}
+              sx={{ alignSelf: "center" }}
+            />
+          </>
+        )}
       </Stack>
     </Box>
   );
