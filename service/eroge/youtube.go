@@ -3,6 +3,7 @@ package eroge
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,10 @@ import (
 	"google.golang.org/api/youtube/v3"
 )
 
-const videoIndexName = "galgame_videos"
+const (
+	brandIndexName = "galgame_brands"
+	videoIndexName = "galgame_videos"
+)
 
 var videoTitleKeywords = []string{
 	"PV",
@@ -106,8 +110,12 @@ func (s *Service) AddBrand(ctx context.Context, input BrandInput) (*erogeModel.B
 		return nil, err
 	}
 	now := time.Now()
+	publicID, err := newBrandPublicID()
+	if err != nil {
+		return nil, err
+	}
 	brand := &erogeModel.Brand{
-		Name: input.Name, YouTubeChannelID: channel.Id,
+		PublicID: publicID, Name: input.Name, YouTubeChannelID: channel.Id,
 		AvatarURL:   thumbnailURL(channel.Snippet.Thumbnails),
 		YouTubeInfo: string(raw), UploadsPlaylistID: channel.ContentDetails.RelatedPlaylists.Uploads,
 		LastChannelSyncedAt: &now, UpdatedAt: now,
@@ -115,7 +123,22 @@ func (s *Service) AddBrand(ctx context.Context, input BrandInput) (*erogeModel.B
 	if err := s.repo.UpsertBrand(brand); err != nil {
 		return nil, err
 	}
-	return brand, nil
+	savedBrand, err := s.repo.BrandByYouTubeChannelID(channel.Id)
+	if err != nil {
+		return nil, err
+	}
+	if err := indexBrand(ctx, *savedBrand); err != nil {
+		return nil, err
+	}
+	return savedBrand, nil
+}
+
+func newBrandPublicID() (string, error) {
+	value := make([]byte, 16)
+	if _, err := rand.Read(value); err != nil {
+		return "", fmt.Errorf("generate brand public ID: %w", err)
+	}
+	return fmt.Sprintf("%x", value), nil
 }
 
 func (s *Service) SyncBrands(ctx context.Context) (*SyncResult, error) {
@@ -146,6 +169,13 @@ func (s *Service) SyncBrands(ctx context.Context) (*SyncResult, error) {
 		if err := s.repo.UpdateBrandChannel(brand.ID, avatar, uploads, string(raw), time.Now()); err != nil {
 			return result, err
 		}
+		brand.AvatarURL = avatar
+		brand.UploadsPlaylistID = uploads
+		brand.YouTubeInfo = string(raw)
+		if err := indexBrand(ctx, brand); err != nil {
+			return result, err
+		}
+		result.Indexed++
 	}
 	return result, nil
 }
@@ -295,6 +325,43 @@ func indexVideo(ctx context.Context, brand erogeModel.Brand, video erogeModel.Vi
 	}
 	responseBody, _ := io.ReadAll(resp.Body)
 	return fmt.Errorf("index video failed: status=%s body=%s", resp.Status(), responseBody)
+}
+
+func indexBrand(ctx context.Context, brand erogeModel.Brand) error {
+	document := buildBrandOutput(brand)
+	return indexDocument(ctx, brandIndexName, brand.PublicID, document)
+}
+
+func indexDocument(ctx context.Context, indexName, documentID string, document any) error {
+	es := client.GetElasticSearch(enum.ESDefault)
+	if es == nil {
+		return fmt.Errorf("elasticsearch client is not initialized")
+	}
+	body, err := json.Marshal(document)
+	if err != nil {
+		return err
+	}
+	resp, err := es.Index(
+		indexName,
+		bytes.NewReader(body),
+		es.Index.WithContext(ctx),
+		es.Index.WithDocumentID(documentID),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices {
+		return nil
+	}
+	responseBody, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf(
+		"index document failed: index=%s id=%s status=%s body=%s",
+		indexName,
+		documentID,
+		resp.Status(),
+		responseBody,
+	)
 }
 
 func RunBrandSync() {

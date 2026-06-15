@@ -13,6 +13,14 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
     title: "大人的喜好",
     items: [
       {
+        title: "Galgame 影片",
+        href: "/galgame",
+      },
+      {
+        title: "Galgame 品牌",
+        href: "/galgame/brands",
+      },
+      {
         title: "難以名狀的抓圖器",
         href: "/nekomaid",
       },

@@ -352,6 +352,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.Auth(app)
 	route.SNS(app)
 	route.MCP(app)
+	route.Galgame(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	route.Swagger(app)
 	// </editor-fold>

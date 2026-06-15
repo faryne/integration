@@ -1,9 +1,14 @@
 package eroge
 
-import "time"
+import (
+	"time"
+
+	"faryne.dev/model/entity"
+)
 
 type Brand struct {
 	ID                  uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID            string     `gorm:"column:public_id" json:"public_id"`
 	Name                string     `gorm:"column:name" json:"name"`
 	YouTubeChannelID    string     `gorm:"column:youtube_channel_id" json:"youtube_channel_id"`
 	AvatarURL           string     `gorm:"column:avatar_url" json:"avatar_url"`
@@ -32,3 +37,40 @@ type Video struct {
 }
 
 func (Video) TableName() string { return "eroge_videos" }
+
+type BrandSearchRequest struct {
+	entity.CommonPaginationQueryRequest
+	Keyword string `query:"keyword"`
+}
+
+type BrandLink struct {
+	Label string `json:"label"`
+	URL   string `json:"url"`
+}
+
+type BrandOutput struct {
+	ID               uint64      `json:"id"`
+	PublicID         string      `json:"public_id"`
+	Name             string      `json:"name"`
+	YouTubeChannelID string      `json:"youtube_channel_id"`
+	AvatarURL        string      `json:"avatar_url"`
+	Description      string      `json:"description"`
+	CustomURL        string      `json:"custom_url"`
+	SubscriberCount  uint64      `json:"subscriber_count"`
+	VideoCount       uint64      `json:"video_count"`
+	ViewCount        uint64      `json:"view_count"`
+	Links            []BrandLink `json:"links"`
+}
+
+type VideoSearchRequest struct {
+	entity.CommonPaginationQueryRequest
+	Keyword         string `query:"keyword"`
+	PublishedAtFrom string `query:"published_at_from"`
+	PublishedAtTo   string `query:"published_at_to"`
+}
+
+type VideoOutput struct {
+	Video
+	BrandName     string `gorm:"column:brand_name" json:"brand_name"`
+	BrandPublicID string `gorm:"column:brand_public_id" json:"brand_public_id"`
+}
