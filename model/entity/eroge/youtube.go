@@ -80,3 +80,28 @@ type RelatedVideoOutput struct {
 	VideoOutput
 	Score int `json:"-"`
 }
+
+type FavoriteStatus struct {
+	Favorite bool `json:"favorite"`
+}
+
+type VideoNavigationOutput struct {
+	Previous *VideoOutput `json:"previous"`
+	Next     *VideoOutput `json:"next"`
+}
+
+type BrandFavorite struct {
+	UserID    uint64    `gorm:"column:user_id;primaryKey"`
+	BrandID   uint64    `gorm:"column:brand_id;primaryKey"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func (BrandFavorite) TableName() string { return "galgame_brand_favorites" }
+
+type VideoFavorite struct {
+	UserID    uint64    `gorm:"column:user_id;primaryKey"`
+	VideoID   uint64    `gorm:"column:video_id;primaryKey"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+}
+
+func (VideoFavorite) TableName() string { return "galgame_video_favorites" }

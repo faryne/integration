@@ -32,3 +32,12 @@ export interface GalgameVideoSearch {
   page?: number;
   per_page?: number;
 }
+
+export interface GalgameFavoriteStatus {
+  favorite: boolean;
+}
+
+export interface GalgameVideoNavigation {
+  previous: GalgameVideo | null;
+  next: GalgameVideo | null;
+}

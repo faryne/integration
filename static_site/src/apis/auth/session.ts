@@ -16,35 +16,43 @@ export interface AuthSession {
   expires_at: string;
 }
 
+export async function createAuthSession(idToken: string) {
+  const response = await axios.post<CommonResponse<AuthSession>>(
+    `${import.meta.env.VITE_API_BASE}/auth/session`,
+    null,
+    {
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    },
+  );
+  return response.data.data;
+}
+
+export async function destroyAuthSession(encryptKey: string) {
+  const response = await axios.delete<CommonResponse<{ destroyed: boolean }>>(
+    `${import.meta.env.VITE_API_BASE}/auth/session`,
+    {
+      headers: {
+        "X-Encrypt-Key": encryptKey,
+      },
+    },
+  );
+  return response.data.data;
+}
+
 export function useCreateAuthSession() {
   return useMutation({
-    mutationFn: async (idToken: string) => {
-      const response = await axios.post<CommonResponse<AuthSession>>(
-        `${import.meta.env.VITE_API_BASE}/auth/session`,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        },
-      );
-      return response.data;
-    },
+    mutationFn: async (idToken: string) => ({
+      data: await createAuthSession(idToken),
+    }),
   });
 }
 
 export function useDestroyAuthSession() {
   return useMutation({
-    mutationFn: async (encryptKey: string) => {
-      const response = await axios.delete<CommonResponse<{ destroyed: boolean }>>(
-        `${import.meta.env.VITE_API_BASE}/auth/session`,
-        {
-          headers: {
-            "X-Encrypt-Key": encryptKey,
-          },
-        },
-      );
-      return response.data;
-    },
+    mutationFn: async (encryptKey: string) => ({
+      data: await destroyAuthSession(encryptKey),
+    }),
   });
 }

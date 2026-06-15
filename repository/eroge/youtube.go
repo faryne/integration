@@ -142,6 +142,74 @@ func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput)
 	return append(candidates, otherBrands...), nil
 }
 
+func (r *YouTubeRepository) AdjacentVideos(video erogeModel.VideoOutput) (*erogeModel.VideoOutput, *erogeModel.VideoOutput, error) {
+	base := func() *gorm.DB {
+		return r.db.Table("eroge_videos AS videos").
+			Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
+			Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+			Where("videos.brand_id = ?", video.BrandID)
+	}
+
+	var previous erogeModel.VideoOutput
+	previousQuery := base().
+		Where("(videos.published_at < ? OR (videos.published_at = ? AND videos.id < ?))", video.PublishedAt, video.PublishedAt, video.ID).
+		Order("videos.published_at DESC, videos.id DESC").
+		Take(&previous)
+	if previousQuery.Error != nil && previousQuery.Error != gorm.ErrRecordNotFound {
+		return nil, nil, previousQuery.Error
+	}
+
+	var next erogeModel.VideoOutput
+	nextQuery := base().
+		Where("(videos.published_at > ? OR (videos.published_at = ? AND videos.id > ?))", video.PublishedAt, video.PublishedAt, video.ID).
+		Order("videos.published_at ASC, videos.id ASC").
+		Take(&next)
+	if nextQuery.Error != nil && nextQuery.Error != gorm.ErrRecordNotFound {
+		return nil, nil, nextQuery.Error
+	}
+
+	var previousOutput, nextOutput *erogeModel.VideoOutput
+	if previousQuery.Error == nil {
+		previousOutput = &previous
+	}
+	if nextQuery.Error == nil {
+		nextOutput = &next
+	}
+	return previousOutput, nextOutput, nil
+}
+
+func (r *YouTubeRepository) BrandFavorite(userID, brandID uint64) (bool, error) {
+	var count int64
+	err := r.db.Model(&erogeModel.BrandFavorite{}).
+		Where("user_id = ? AND brand_id = ?", userID, brandID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *YouTubeRepository) SetBrandFavorite(userID, brandID uint64, favorite bool) error {
+	value := erogeModel.BrandFavorite{UserID: userID, BrandID: brandID}
+	if favorite {
+		return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&value).Error
+	}
+	return r.db.Where("user_id = ? AND brand_id = ?", userID, brandID).Delete(&value).Error
+}
+
+func (r *YouTubeRepository) VideoFavorite(userID, videoID uint64) (bool, error) {
+	var count int64
+	err := r.db.Model(&erogeModel.VideoFavorite{}).
+		Where("user_id = ? AND video_id = ?", userID, videoID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *YouTubeRepository) SetVideoFavorite(userID, videoID uint64, favorite bool) error {
+	value := erogeModel.VideoFavorite{UserID: userID, VideoID: videoID}
+	if favorite {
+		return r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&value).Error
+	}
+	return r.db.Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&value).Error
+}
+
 func (r *YouTubeRepository) UpsertBrand(brand *erogeModel.Brand) error {
 	return r.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "youtube_channel_id"}},

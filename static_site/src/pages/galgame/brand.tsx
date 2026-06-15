@@ -13,8 +13,13 @@ import { useMemo } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 
-import { useGalgameBrand, useGalgameVideos } from "@/apis/galgame/catalog.ts";
+import {
+  useGalgameBrand,
+  useGalgameBrandFavorite,
+  useGalgameVideos,
+} from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
+import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { ExpandableText } from "@/components/common/ExpandableText.tsx";
@@ -27,6 +32,7 @@ export default function GalgameBrand() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
   const brandQuery = useGalgameBrand(brandSlug);
+  const favorite = useGalgameBrandFavorite(brandSlug);
   const brand = brandQuery.data;
   const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
   const pages = useMemo(
@@ -71,9 +77,17 @@ export default function GalgameBrand() {
                 sx={{ width: 144, height: 144, flexShrink: 0 }}
               />
               <Stack spacing={2} sx={{ minWidth: 0, flex: 1 }}>
-                <Typography variant="h3" component="h1">
-                  {brand.name}
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Typography variant="h3" component="h1">
+                    {brand.name}
+                  </Typography>
+                  <FavoriteButton
+                    label="品牌"
+                    favorite={favorite.favorite}
+                    loading={favorite.isFetching || favorite.mutation.isPending}
+                    onToggle={(value) => favorite.mutation.mutateAsync(value)}
+                  />
+                </Stack>
                 {brand.description && (
                   <ExpandableText text={brand.description} />
                 )}

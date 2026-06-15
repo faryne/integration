@@ -3,6 +3,7 @@ package galgame
 import (
 	"errors"
 
+	"faryne.dev/middleware/authsession"
 	erogeModel "faryne.dev/model/entity/eroge"
 	"faryne.dev/repository"
 	"faryne.dev/service/eroge"
@@ -10,6 +11,10 @@ import (
 	"faryne.dev/service/output"
 	"github.com/gofiber/fiber/v3"
 )
+
+type favoriteRequest struct {
+	Favorite bool `json:"favorite"`
+}
 
 func Brands(ctx fiber.Ctx) error {
 	var input erogeModel.BrandSearchRequest
@@ -66,4 +71,76 @@ func RelatedVideos(ctx fiber.Ctx) error {
 		return output.DBError(err)
 	}
 	return output.Success(videos)
+}
+
+func VideoNavigation(ctx fiber.Ctx) error {
+	navigation, err := eroge.NewCatalogService().VideoNavigation(ctx.Params("brand"), ctx.Params("videoId"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame video not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(navigation)
+}
+
+func BrandFavorite(ctx fiber.Ctx) error {
+	session := authsession.Session(ctx)
+	status, err := eroge.NewCatalogService().BrandFavorite(session.UserId, ctx.Params("brand"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame brand not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(status)
+}
+
+func SetBrandFavorite(ctx fiber.Ctx) error {
+	var input favoriteRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	session := authsession.Session(ctx)
+	status, err := eroge.NewCatalogService().SetBrandFavorite(session.UserId, ctx.Params("brand"), input.Favorite)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame brand not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(status)
+}
+
+func VideoFavorite(ctx fiber.Ctx) error {
+	session := authsession.Session(ctx)
+	status, err := eroge.NewCatalogService().VideoFavorite(session.UserId, ctx.Params("brand"), ctx.Params("videoId"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame video not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(status)
+}
+
+func SetVideoFavorite(ctx fiber.Ctx) error {
+	var input favoriteRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	session := authsession.Session(ctx)
+	status, err := eroge.NewCatalogService().SetVideoFavorite(
+		session.UserId,
+		ctx.Params("brand"),
+		ctx.Params("videoId"),
+		input.Favorite,
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("galgame video not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(status)
 }

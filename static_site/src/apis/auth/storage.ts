@@ -13,7 +13,12 @@ export function getStoredAuthSession() {
   }
 
   try {
-    return JSON.parse(raw) as AuthSession;
+    const session = JSON.parse(raw) as AuthSession;
+    if (new Date(session.expires_at).getTime() <= Date.now()) {
+      localStorage.removeItem(authSessionStorageKey);
+      return null;
+    }
+    return session;
   } catch {
     localStorage.removeItem(authSessionStorageKey);
     return null;

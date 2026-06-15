@@ -5,6 +5,9 @@ import {
   Avatar,
   Box,
   Button,
+  Card,
+  CardActionArea,
+  CardContent,
   Grid,
   Link,
   Stack,
@@ -12,10 +15,14 @@ import {
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
   useGalgameVideo,
+  useGalgameVideoFavorite,
+  useGalgameVideoNavigation,
   useRelatedGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
 import { VideoViewer } from "@/components/common/VideoViewer.tsx";
@@ -25,11 +32,14 @@ import { ExpandableText } from "@/components/common/ExpandableText.tsx";
 import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { RelatedVideoList } from "@/components/galgame/RelatedVideoList.tsx";
+import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
 
 export default function GalgameVideo() {
   const { brandSlug, videoId } = useParams();
   const query = useGalgameVideo(brandSlug, videoId);
   const related = useRelatedGalgameVideos(brandSlug, videoId);
+  const favorite = useGalgameVideoFavorite(brandSlug, videoId);
+  const navigation = useGalgameVideoNavigation(brandSlug, videoId);
   const video = query.data;
   useTitle(video?.title ?? "Galgame 影片");
 
@@ -54,9 +64,22 @@ export default function GalgameVideo() {
             spacing={1.5}
             alignItems={{ xs: "flex-start", sm: "center" }}
           >
-            <Typography variant="h4" component="h1" sx={{ flex: 1 }}>
-              {video.title}
-            </Typography>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={0.5}
+              sx={{ flex: 1 }}
+            >
+              <Typography variant="h4" component="h1">
+                {video.title}
+              </Typography>
+              <FavoriteButton
+                label="影片"
+                favorite={favorite.favorite}
+                loading={favorite.isFetching || favorite.mutation.isPending}
+                onToggle={(value) => favorite.mutation.mutateAsync(value)}
+              />
+            </Stack>
           </Stack>
           <Grid container spacing={3} alignItems="flex-start">
             <Grid size={{ xs: 12, md: 8 }}>
@@ -69,6 +92,111 @@ export default function GalgameVideo() {
                   },
                 ]}
               />
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={2}
+                sx={{ mt: 2 }}
+              >
+                <Card
+                  variant="outlined"
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    opacity: navigation.data?.previous ? 1 : 0.5,
+                  }}
+                >
+                  <CardActionArea
+                    component={
+                      navigation.data?.previous ? RouterLink : "button"
+                    }
+                    to={
+                      navigation.data?.previous
+                        ? galgamePath(
+                            `${galgameBrandSlug(navigation.data.previous.brand_public_id, navigation.data.previous.brand_name)}/video/${navigation.data.previous.youtube_video_id}`,
+                          )
+                        : undefined
+                    }
+                    disabled={!navigation.data?.previous}
+                    sx={{ height: "100%", textAlign: "left" }}
+                  >
+                    <CardContent>
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.5}
+                        color="text.secondary"
+                      >
+                        <NavigateBeforeIcon fontSize="small" />
+                        <Typography variant="caption" fontWeight={700}>
+                          上一則影片
+                        </Typography>
+                      </Stack>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={700}
+                        sx={{
+                          mt: 0.75,
+                          display: "-webkit-box",
+                          overflow: "hidden",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                        }}
+                      >
+                        {navigation.data?.previous?.title ?? "沒有上一則影片"}
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    opacity: navigation.data?.next ? 1 : 0.5,
+                  }}
+                >
+                  <CardActionArea
+                    component={navigation.data?.next ? RouterLink : "button"}
+                    to={
+                      navigation.data?.next
+                        ? galgamePath(
+                            `${galgameBrandSlug(navigation.data.next.brand_public_id, navigation.data.next.brand_name)}/video/${navigation.data.next.youtube_video_id}`,
+                          )
+                        : undefined
+                    }
+                    disabled={!navigation.data?.next}
+                    sx={{ height: "100%", textAlign: "right" }}
+                  >
+                    <CardContent>
+                      <Stack
+                        direction="row"
+                        justifyContent="flex-end"
+                        alignItems="center"
+                        spacing={0.5}
+                        color="text.secondary"
+                      >
+                        <Typography variant="caption" fontWeight={700}>
+                          下一則影片
+                        </Typography>
+                        <NavigateNextIcon fontSize="small" />
+                      </Stack>
+                      <Typography
+                        variant="subtitle1"
+                        fontWeight={700}
+                        sx={{
+                          mt: 0.75,
+                          display: "-webkit-box",
+                          overflow: "hidden",
+                          WebkitBoxOrient: "vertical",
+                          WebkitLineClamp: 2,
+                        }}
+                      >
+                        {navigation.data?.next?.title ?? "沒有下一則影片"}
+                      </Typography>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Stack>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <Stack spacing={1.5}>

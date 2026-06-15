@@ -108,6 +108,66 @@ func (s *CatalogService) RelatedVideos(brandValue, videoID string) ([]erogeModel
 	return output, nil
 }
 
+func (s *CatalogService) VideoNavigation(brandValue, videoID string) (*erogeModel.VideoNavigationOutput, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	previous, next, err := s.repo.AdjacentVideos(*video)
+	if err != nil {
+		return nil, err
+	}
+	return &erogeModel.VideoNavigationOutput{Previous: previous, Next: next}, nil
+}
+
+func (s *CatalogService) BrandFavorite(userID uint64, brandValue string) (*erogeModel.FavoriteStatus, error) {
+	brand, err := s.brandEntity(brandValue)
+	if err != nil {
+		return nil, err
+	}
+	favorite, err := s.repo.BrandFavorite(userID, brand.ID)
+	return &erogeModel.FavoriteStatus{Favorite: favorite}, err
+}
+
+func (s *CatalogService) SetBrandFavorite(userID uint64, brandValue string, favorite bool) (*erogeModel.FavoriteStatus, error) {
+	brand, err := s.brandEntity(brandValue)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetBrandFavorite(userID, brand.ID, favorite); err != nil {
+		return nil, err
+	}
+	return &erogeModel.FavoriteStatus{Favorite: favorite}, nil
+}
+
+func (s *CatalogService) VideoFavorite(userID uint64, brandValue, videoID string) (*erogeModel.FavoriteStatus, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	favorite, err := s.repo.VideoFavorite(userID, video.ID)
+	return &erogeModel.FavoriteStatus{Favorite: favorite}, err
+}
+
+func (s *CatalogService) SetVideoFavorite(userID uint64, brandValue, videoID string, favorite bool) (*erogeModel.FavoriteStatus, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetVideoFavorite(userID, video.ID, favorite); err != nil {
+		return nil, err
+	}
+	return &erogeModel.FavoriteStatus{Favorite: favorite}, nil
+}
+
+func (s *CatalogService) brandEntity(brandValue string) (*erogeModel.Brand, error) {
+	publicID, err := parseBrandPublicID(brandValue)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Brand(publicID)
+}
+
 func relatedVideoScore(
 	source erogeModel.VideoOutput,
 	candidate erogeModel.VideoOutput,

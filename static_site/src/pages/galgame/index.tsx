@@ -1,7 +1,6 @@
 import {
   Avatar,
   Box,
-  Button,
   Card,
   CardActionArea,
   CardContent,
@@ -10,10 +9,9 @@ import {
   Stack,
   Tab,
   Tabs,
-  TextField,
   Typography,
 } from "@mui/material";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
 import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
@@ -33,11 +31,10 @@ export default function GalgameHome() {
         ? "brands"
         : "all";
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const [draft, setDraft] = useState(keyword);
-  const publishedAtFrom =
-    tab === "recent"
-      ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      : undefined;
+  const [recentFrom] = useState(() =>
+    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  );
+  const publishedAtFrom = tab === "recent" ? recentFrom : undefined;
   const videos = useGalgameVideos(
     undefined,
     { keyword, page, per_page: 24, published_at_from: publishedAtFrom },
@@ -53,18 +50,6 @@ export default function GalgameHome() {
       Math.ceil((result?.total ?? 0) / (result?.per_page || 24)),
     );
   }, [brands.data, tab, videos.data]);
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const next = new URLSearchParams();
-    if (tab !== "all") {
-      next.set("tab", tab);
-    }
-    if (draft.trim()) {
-      next.set("keyword", draft.trim());
-    }
-    setParams(next);
-  };
-
   return (
     <Box sx={{ pb: 6 }}>
       <GalgameBreadcrumb />
@@ -84,25 +69,17 @@ export default function GalgameHome() {
             </Typography>
           </Box>
         </Stack>
-        <Stack component="form" direction="row" spacing={1} onSubmit={submit}>
-          <TextField
-            fullWidth
-            label={tab === "brands" ? "搜尋品牌" : "搜尋影片"}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          <Button type="submit" variant="contained">
-            搜尋
-          </Button>
-        </Stack>
         <Tabs
           value={tab}
           onChange={(_, value: "all" | "recent" | "brands") => {
             const next = new URLSearchParams(params);
-            value === "all" ? next.delete("tab") : next.set("tab", value);
+            if (value === "all") {
+              next.delete("tab");
+            } else {
+              next.set("tab", value);
+            }
             next.delete("page");
             next.delete("keyword");
-            setDraft("");
             setParams(next);
           }}
           aria-label="影片時間範圍"
@@ -186,9 +163,11 @@ export default function GalgameHome() {
             count={pages}
             onChange={(_, value) => {
               const next = new URLSearchParams(params);
-              value === 1
-                ? next.delete("page")
-                : next.set("page", String(value));
+              if (value === 1) {
+                next.delete("page");
+              } else {
+                next.set("page", String(value));
+              }
               setParams(next);
             }}
             sx={{ alignSelf: "center" }}

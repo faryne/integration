@@ -13,25 +13,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import type { User } from "firebase/auth";
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
-import { useEffect, useMemo, useState } from "react";
-import { getFirebaseAuth, firebaseConfigReady } from "@/lib/firebase.ts";
+import { useState } from "react";
+import { firebaseConfigReady } from "@/lib/firebase.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import {
-  useCreateAuthSession,
-  useDestroyAuthSession,
-  type AuthSession,
-} from "@/apis/auth/session.ts";
-import {
-  getStoredAuthSession,
-  removeStoredAuthSession,
-  setStoredAuthSession,
-} from "@/apis/auth/storage.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 
 function authErrorMessage(error: unknown) {
   if (error instanceof Error) {
@@ -44,72 +29,33 @@ function authErrorMessage(error: unknown) {
 export default function Login() {
   useTitle("Google 登入");
 
-  const firebaseAuth = useMemo(() => getFirebaseAuth(), []);
-  const [user, setUser] = useState<User | null>(null);
-  const [authLoading, setAuthLoading] = useState(firebaseConfigReady);
-  const [submitting, setSubmitting] = useState(false);
+  const {
+    user,
+    session,
+    loading: authLoading,
+    submitting,
+    login,
+    logout,
+  } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(() =>
-    getStoredAuthSession(),
-  );
-  const createAuthSession = useCreateAuthSession();
-  const destroyAuthSession = useDestroyAuthSession();
-
-  useEffect(() => {
-    if (!firebaseAuth) {
-      setAuthLoading(false);
-      return;
-    }
-
-    return onAuthStateChanged(firebaseAuth.auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthLoading(false);
-    });
-  }, [firebaseAuth]);
 
   const handleGoogleLogin = async () => {
-    if (!firebaseAuth) {
-      return;
-    }
-
-    setSubmitting(true);
     setErrorMessage(null);
 
     try {
-      const credential = await signInWithPopup(
-        firebaseAuth.auth,
-        firebaseAuth.googleProvider,
-      );
-      const idToken = await credential.user.getIdToken();
-      const authSessionResponse = await createAuthSession.mutateAsync(idToken);
-      setSession(authSessionResponse.data);
-      setStoredAuthSession(authSessionResponse.data);
+      await login();
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleLogout = async () => {
-    if (!firebaseAuth) {
-      return;
-    }
-
-    setSubmitting(true);
     setErrorMessage(null);
 
     try {
-      if (session?.encrypt_key) {
-        await destroyAuthSession.mutateAsync(session.encrypt_key);
-      }
-      await signOut(firebaseAuth.auth);
-      setSession(null);
-      removeStoredAuthSession();
+      await logout();
     } catch (error) {
       setErrorMessage(authErrorMessage(error));
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -189,7 +135,10 @@ export default function Login() {
                     <Typography variant="h6" sx={{ fontWeight: 800 }}>
                       {user.displayName ?? "已登入使用者"}
                     </Typography>
-                    <Typography color="text.secondary" sx={{ wordBreak: "break-all" }}>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ wordBreak: "break-all" }}
+                    >
                       {user.email}
                     </Typography>
                   </Box>
@@ -218,7 +167,7 @@ export default function Login() {
                 size="large"
                 variant="contained"
                 startIcon={<GoogleIcon />}
-                disabled={!firebaseAuth || submitting}
+                disabled={!firebaseConfigReady || submitting}
                 onClick={handleGoogleLogin}
                 sx={{
                   py: 1.4,
