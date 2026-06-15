@@ -200,7 +200,7 @@ function App() {
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
-              <Route path={""} element={<GalgameLayout />}>
+              <Route path={""} element={<DefaultLayout />}>
                 <Route path={"/galgame"} element={<GalgameHome />} />
                 <Route
                   path={"/galgame/favorites"}
