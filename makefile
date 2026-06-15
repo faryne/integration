@@ -14,7 +14,13 @@ build-linux-arm:
 build-frontend:
 	cd static_site; \
 	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
-	firebase deploy --project faryne-integration && \
+	pnpm deploy:main && \
+	cd ..
+
+build-frontend-galgame:
+	cd static_site; \
+	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	pnpm deploy:galgame && \
 	cd ..
 
 worker-install:

@@ -10,14 +10,16 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 
 import type { GalgameVideo } from "@/types/galgame.ts";
-import { galgameBrandSlug } from "@/helpers/galgame.ts";
+import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 
 export function GalgameVideoCard({ video }: { video: GalgameVideo }) {
   return (
     <Card sx={{ height: "100%" }}>
       <CardActionArea
         component={RouterLink}
-        to={`/galgame/${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`}
+        to={galgamePath(
+          `${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`,
+        )}
         sx={{ height: "100%", alignItems: "stretch" }}
       >
         <CardMedia

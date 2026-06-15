@@ -19,6 +19,7 @@ import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { ExpandableText } from "@/components/common/ExpandableText.tsx";
 import { useTitle } from "@/helpers/title.tsx";
+import { galgamePath } from "@/helpers/galgame.ts";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 
 export default function GalgameBrand() {
@@ -29,7 +30,11 @@ export default function GalgameBrand() {
   const brand = brandQuery.data;
   const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
   const pages = useMemo(
-    () => Math.max(1, Math.ceil((videos.data?.total ?? 0) / (videos.data?.per_page || 24))),
+    () =>
+      Math.max(
+        1,
+        Math.ceil((videos.data?.total ?? 0) / (videos.data?.per_page || 24)),
+      ),
     [videos.data],
   );
   useTitle(brand ? `${brand.name} 影片` : "品牌影片");
@@ -39,7 +44,7 @@ export default function GalgameBrand() {
     axios.isAxiosError(brandQuery.error) &&
     brandQuery.error.response?.status === 404
   ) {
-    return <ErrorPage code={404} backUrl="/galgame?tab=brands" />;
+    return <ErrorPage code={404} backUrl={`${galgamePath()}?tab=brands`} />;
   }
 
   return (
@@ -49,7 +54,10 @@ export default function GalgameBrand() {
         {brandQuery.isPending ? (
           <GalgameState loading message="正在載入品牌資料..." />
         ) : brandQuery.isError ? (
-          <GalgameState severity="error" message="品牌資料載入失敗，請稍後再試。" />
+          <GalgameState
+            severity="error"
+            message="品牌資料載入失敗，請稍後再試。"
+          />
         ) : brand ? (
           <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 } }}>
             <Stack
@@ -89,18 +97,24 @@ export default function GalgameBrand() {
             </Stack>
           </Paper>
         ) : null}
-        {brand && (
-          videos.isPending ? (
+        {brand &&
+          (videos.isPending ? (
             <GalgameState loading message="正在載入品牌影片..." />
           ) : videos.isError ? (
-            <GalgameState severity="error" message="影片載入失敗，請稍後再試。" />
+            <GalgameState
+              severity="error"
+              message="影片載入失敗，請稍後再試。"
+            />
           ) : videos.data.data.length === 0 ? (
             <GalgameState message="此品牌目前尚無影片。" />
           ) : (
             <>
               <Grid container spacing={3}>
                 {videos.data.data.map((video) => (
-                  <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Grid
+                    key={video.youtube_video_id}
+                    size={{ xs: 12, sm: 6, md: 4 }}
+                  >
                     <GalgameVideoCard video={video} />
                   </Grid>
                 ))}
@@ -108,12 +122,13 @@ export default function GalgameBrand() {
               <Pagination
                 page={page}
                 count={pages}
-                onChange={(_, value) => setParams(value > 1 ? { page: String(value) } : {})}
+                onChange={(_, value) =>
+                  setParams(value > 1 ? { page: String(value) } : {})
+                }
                 sx={{ alignSelf: "center" }}
               />
             </>
-          )
-        )}
+          ))}
       </Stack>
     </Box>
   );

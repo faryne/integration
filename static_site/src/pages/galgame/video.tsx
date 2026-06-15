@@ -22,7 +22,7 @@ import { VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { ExpandableText } from "@/components/common/ExpandableText.tsx";
-import { galgameBrandSlug } from "@/helpers/galgame.ts";
+import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { RelatedVideoList } from "@/components/galgame/RelatedVideoList.tsx";
 
@@ -36,7 +36,11 @@ export default function GalgameVideo() {
   return (
     <Box sx={{ pb: 6 }}>
       <GalgameBreadcrumb
-        brand={video ? { public_id: video.brand_public_id, name: video.brand_name } : undefined}
+        brand={
+          video
+            ? { public_id: video.brand_public_id, name: video.brand_name }
+            : undefined
+        }
         videoTitle={video?.title}
       />
       {query.isPending ? (
@@ -58,10 +62,12 @@ export default function GalgameVideo() {
             <Grid size={{ xs: 12, md: 8 }}>
               <VideoViewer
                 title={video.title}
-                videos={[{
-                  url: `https://www.youtube.com/watch?v=${video.youtube_video_id}`,
-                  thumb: video.thumbnail_url,
-                }]}
+                videos={[
+                  {
+                    url: `https://www.youtube.com/watch?v=${video.youtube_video_id}`,
+                    thumb: video.thumbnail_url,
+                  },
+                ]}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
@@ -85,7 +91,12 @@ export default function GalgameVideo() {
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Link
                       component={RouterLink}
-                      to={`/galgame/${galgameBrandSlug(video.brand_public_id, video.brand_name)}`}
+                      to={galgamePath(
+                        galgameBrandSlug(
+                          video.brand_public_id,
+                          video.brand_name,
+                        ),
+                      )}
                       variant="subtitle1"
                       fontWeight={700}
                       underline="hover"
@@ -117,9 +128,14 @@ export default function GalgameVideo() {
                   </AccordionSummary>
                   <AccordionDetails>
                     {video.description ? (
-                      <ExpandableText text={video.description} collapsedLines={8} />
+                      <ExpandableText
+                        text={video.description}
+                        collapsedLines={8}
+                      />
                     ) : (
-                      <Typography color="text.secondary">此影片沒有介紹。</Typography>
+                      <Typography color="text.secondary">
+                        此影片沒有介紹。
+                      </Typography>
                     )}
                   </AccordionDetails>
                 </Accordion>

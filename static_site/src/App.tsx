@@ -4,8 +4,10 @@ import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
+import { GalgameLayout } from "./layouts/GalgameLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
+import { isGalgameSite } from "@/helpers/galgame.ts";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
@@ -158,115 +160,154 @@ function AnalyticsTracker() {
 }
 
 function App() {
+  const standaloneGalgame = isGalgameSite();
+
   return (
     <BrowserRouter>
       <AnalyticsTracker />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
-          <Route
-            path={"storyteller"}
-            element={<DefaultLayout fullWidth={true} />}
-          >
-            <Route path={""} element={<Editor />} />
-
-            <Route path={"project"}>
-              <Route path={":id"} element={<Editor />} />
-              <Route path={"resources"} element={<Editor />} />
-              <Route path={"resource/:id"} element={<Editor />} />
-              <Route path={"articles"} element={<Editor />} />
-              <Route path={"article/:id"} element={<Editor />} />
+          {standaloneGalgame && (
+            <Route path={""} element={<GalgameLayout />}>
+              <Route path={"/"} element={<GalgameHome />} />
+              <Route path={"/:brandSlug"} element={<GalgameBrand />} />
+              <Route
+                path={"/:brandSlug/video/:videoId"}
+                element={<GalgameVideo />}
+              />
+              <Route path={"*"} element={<ErrorPage code={404} />} />
             </Route>
-            <Route path={"editor"} element={<Editor />} />
-            <Route path={"*"} element={<ErrorPage code={404} />} />
-          </Route>
+          )}
 
-          <Route path={""} element={<DefaultLayout />}>
-            <Route path={"/galgame"} element={<GalgameHome />} />
-            <Route path={"/galgame/:brandSlug"} element={<GalgameBrand />} />
-            <Route path={"/galgame/:brandSlug/video/:videoId"} element={<GalgameVideo />} />
-            <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
-            <Route path={"/av/video"} element={<AVVideo />} />
-            <Route path={"/av/actress/:name"} element={<AVActressDetail />} />
-            <Route path={"/av/actress"} element={<AVActress />} />
+          {!standaloneGalgame && (
+            <>
+              <Route
+                path={"storyteller"}
+                element={<DefaultLayout fullWidth={true} />}
+              >
+                <Route path={""} element={<Editor />} />
 
-            <Route path={"/data/tw-stats/:name"} element={<TwStatsByName />} />
-            <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
+                <Route path={"project"}>
+                  <Route path={":id"} element={<Editor />} />
+                  <Route path={"resources"} element={<Editor />} />
+                  <Route path={"resource/:id"} element={<Editor />} />
+                  <Route path={"articles"} element={<Editor />} />
+                  <Route path={"article/:id"} element={<Editor />} />
+                </Route>
+                <Route path={"editor"} element={<Editor />} />
+                <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
 
-            <Route path={"/data/rates"} element={<RatesIndex />} />
+              <Route path={""} element={<DefaultLayout />}>
+                <Route path={"/galgame"} element={<GalgameHome />} />
+                <Route
+                  path={"/galgame/:brandSlug"}
+                  element={<GalgameBrand />}
+                />
+                <Route
+                  path={"/galgame/:brandSlug/video/:videoId"}
+                  element={<GalgameVideo />}
+                />
+                <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
+                <Route path={"/av/video"} element={<AVVideo />} />
+                <Route
+                  path={"/av/actress/:name"}
+                  element={<AVActressDetail />}
+                />
+                <Route path={"/av/actress"} element={<AVActress />} />
 
-            <Route
-              path={"/data/fire/realtime"}
-              element={<FireDepartmentRealtime />}
-            />
-            <Route
-              path={"/data/taipower/neighbor"}
-              element={<TaipowerNeighbor />}
-            />
-            <Route
-              path={"/data/taipower/neighbor/cityarea"}
-              element={<TaipowerNeighborStatistics />}
-            />
-            <Route
-              path={"/data/taipower/neighbor/unit"}
-              element={<TaipowerNeighborStatistics />}
-            />
-            <Route
-              path={"/data/taipower/neighbor/cityarea/:cityarea"}
-              element={<TaipowerNeighbor />}
-            />
-            <Route
-              path={"/data/taipower/neighbor/unit/:unit"}
-              element={<TaipowerNeighbor />}
-            />
-            <Route
-              path={"/data/taipower/neighbor/map"}
-              element={<TaipowerNeighborMap />}
-            />
+                <Route
+                  path={"/data/tw-stats/:name"}
+                  element={<TwStatsByName />}
+                />
+                <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
 
-            <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
+                <Route path={"/data/rates"} element={<RatesIndex />} />
 
-            <Route path={"/tools/thread/capture"} element={<CaptureThread />} />
-            <Route path={"/tools/webshot"} element={<Webshot />} />
-            <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
-            <Route path={"/tools/userscripts"} element={<Userscripts />} />
+                <Route
+                  path={"/data/fire/realtime"}
+                  element={<FireDepartmentRealtime />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor"}
+                  element={<TaipowerNeighbor />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor/cityarea"}
+                  element={<TaipowerNeighborStatistics />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor/unit"}
+                  element={<TaipowerNeighborStatistics />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor/cityarea/:cityarea"}
+                  element={<TaipowerNeighbor />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor/unit/:unit"}
+                  element={<TaipowerNeighbor />}
+                />
+                <Route
+                  path={"/data/taipower/neighbor/map"}
+                  element={<TaipowerNeighborMap />}
+                />
 
-            <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
-            <Route
-              path={"/data/etf/yieldmax/:etfCode"}
-              element={<YieldMaxEtfs />}
-            />
-            <Route path={"/data/etf/twse"} element={<TwseEtf />} />
-            <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
+                <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
 
-            <Route path="/a" element={<h1>Hello</h1>} />
+                <Route
+                  path={"/tools/thread/capture"}
+                  element={<CaptureThread />}
+                />
+                <Route path={"/tools/webshot"} element={<Webshot />} />
+                <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
+                <Route path={"/tools/userscripts"} element={<Userscripts />} />
 
-            <Route path={"/about"} element={<About />} />
-            <Route path={"/login"} element={<Login />} />
-            <Route path={"/auth/encrypted-demo"} element={<EncryptedDemo />} />
-            <Route path={"/"} element={<Home />} />
-            <Route path={"*"} element={<ErrorPage code={404} />} />
-          </Route>
+                <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
+                <Route
+                  path={"/data/etf/yieldmax/:etfCode"}
+                  element={<YieldMaxEtfs />}
+                />
+                <Route path={"/data/etf/twse"} element={<TwseEtf />} />
+                <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
 
-          <Route path={"/nekomaid"} element={<NekomaidLayout />}>
-            <Route path={""} element={<Nekomaid />} />
-            <Route path={":site"} element={<Nekomaid />} />
-            <Route path={":site/:authorId"} element={<Nekomaid />} />
-            <Route path={":site/:authorId/:artworkId"} element={<Nekomaid />} />
-            <Route path={"*"} element={<ErrorPage code={404} />} />
-          </Route>
+                <Route path="/a" element={<h1>Hello</h1>} />
 
-          <Route path={"/modern"} element={<ModernLayout />}>
-            <Route
-              path={""}
-              element={
-                <div>
-                  <h1>Modern Layout Demo</h1>
-                  <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
-                </div>
-              }
-            />
-            <Route path={"*"} element={<ErrorPage code={404} />} />
-          </Route>
+                <Route path={"/about"} element={<About />} />
+                <Route path={"/login"} element={<Login />} />
+                <Route
+                  path={"/auth/encrypted-demo"}
+                  element={<EncryptedDemo />}
+                />
+                <Route path={"/"} element={<Home />} />
+                <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
+
+              <Route path={"/nekomaid"} element={<NekomaidLayout />}>
+                <Route path={""} element={<Nekomaid />} />
+                <Route path={":site"} element={<Nekomaid />} />
+                <Route path={":site/:authorId"} element={<Nekomaid />} />
+                <Route
+                  path={":site/:authorId/:artworkId"}
+                  element={<Nekomaid />}
+                />
+                <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
+
+              <Route path={"/modern"} element={<ModernLayout />}>
+                <Route
+                  path={""}
+                  element={
+                    <div>
+                      <h1>Modern Layout Demo</h1>
+                      <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
+                    </div>
+                  }
+                />
+                <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
+            </>
+          )}
         </Routes>
       </Suspense>
     </BrowserRouter>

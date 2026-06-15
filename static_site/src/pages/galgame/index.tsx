@@ -16,15 +16,12 @@ import {
 import { useMemo, useState, type FormEvent } from "react";
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
 
-import {
-  useGalgameBrands,
-  useGalgameVideos,
-} from "@/apis/galgame/catalog.ts";
+import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
-import { galgameBrandSlug } from "@/helpers/galgame.ts";
+import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 
 export default function GalgameHome() {
   const [params, setParams] = useSearchParams();
@@ -49,13 +46,13 @@ export default function GalgameHome() {
   const brands = useGalgameBrands(keyword, page, 24);
   useTitle("Galgame 影片");
 
-  const pages = useMemo(
-    () => {
-      const result = tab === "brands" ? brands.data : videos.data;
-      return Math.max(1, Math.ceil((result?.total ?? 0) / (result?.per_page || 24)));
-    },
-    [brands.data, tab, videos.data],
-  );
+  const pages = useMemo(() => {
+    const result = tab === "brands" ? brands.data : videos.data;
+    return Math.max(
+      1,
+      Math.ceil((result?.total ?? 0) / (result?.per_page || 24)),
+    );
+  }, [brands.data, tab, videos.data]);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const next = new URLSearchParams();
@@ -79,8 +76,12 @@ export default function GalgameHome() {
           alignItems={{ xs: "flex-start", sm: "center" }}
         >
           <Box>
-            <Typography variant="h3" component="h1">Galgame 最新影片</Typography>
-            <Typography color="text.secondary">各遊戲品牌官方頻道的最新 PV、OP 與相關影片。</Typography>
+            <Typography variant="h3" component="h1">
+              Galgame 最新影片
+            </Typography>
+            <Typography color="text.secondary">
+              各遊戲品牌官方頻道的最新 PV、OP 與相關影片。
+            </Typography>
           </Box>
         </Stack>
         <Stack component="form" direction="row" spacing={1} onSubmit={submit}>
@@ -90,7 +91,9 @@ export default function GalgameHome() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
-          <Button type="submit" variant="contained">搜尋</Button>
+          <Button type="submit" variant="contained">
+            搜尋
+          </Button>
         </Stack>
         <Tabs
           value={tab}
@@ -112,9 +115,16 @@ export default function GalgameHome() {
           brands.isPending ? (
             <GalgameState loading message="正在載入品牌..." />
           ) : brands.isError ? (
-            <GalgameState severity="error" message="品牌載入失敗，請稍後再試。" />
+            <GalgameState
+              severity="error"
+              message="品牌載入失敗，請稍後再試。"
+            />
           ) : brands.data.data.length === 0 ? (
-            <GalgameState message={keyword ? "找不到符合搜尋條件的品牌。" : "目前尚無品牌資料。"} />
+            <GalgameState
+              message={
+                keyword ? "找不到符合搜尋條件的品牌。" : "目前尚無品牌資料。"
+              }
+            />
           ) : (
             <Grid container spacing={3}>
               {brands.data.data.map((brand) => (
@@ -122,13 +132,21 @@ export default function GalgameHome() {
                   <Card sx={{ height: "100%" }}>
                     <CardActionArea
                       component={RouterLink}
-                      to={`/galgame/${galgameBrandSlug(brand.public_id, brand.name)}`}
+                      to={galgamePath(
+                        galgameBrandSlug(brand.public_id, brand.name),
+                      )}
                       sx={{ height: "100%" }}
                     >
                       <CardContent>
                         <Stack alignItems="center" spacing={2}>
-                          <Avatar src={brand.avatar_url} alt={brand.name} sx={{ width: 112, height: 112 }} />
-                          <Typography variant="h6" textAlign="center">{brand.name}</Typography>
+                          <Avatar
+                            src={brand.avatar_url}
+                            alt={brand.name}
+                            sx={{ width: 112, height: 112 }}
+                          />
+                          <Typography variant="h6" textAlign="center">
+                            {brand.name}
+                          </Typography>
                         </Stack>
                       </CardContent>
                     </CardActionArea>
@@ -142,12 +160,19 @@ export default function GalgameHome() {
         ) : videos.isError ? (
           <GalgameState severity="error" message="影片載入失敗，請稍後再試。" />
         ) : videos.data.data.length === 0 ? (
-          <GalgameState message={keyword ? "找不到符合搜尋條件的影片。" : "目前尚無影片資料。"} />
+          <GalgameState
+            message={
+              keyword ? "找不到符合搜尋條件的影片。" : "目前尚無影片資料。"
+            }
+          />
         ) : (
           <>
             <Grid container spacing={3}>
               {videos.data.data.map((video) => (
-                <Grid key={video.youtube_video_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <Grid
+                  key={video.youtube_video_id}
+                  size={{ xs: 12, sm: 6, md: 4 }}
+                >
                   <GalgameVideoCard video={video} />
                 </Grid>
               ))}
@@ -161,7 +186,9 @@ export default function GalgameHome() {
             count={pages}
             onChange={(_, value) => {
               const next = new URLSearchParams(params);
-              value === 1 ? next.delete("page") : next.set("page", String(value));
+              value === 1
+                ? next.delete("page")
+                : next.set("page", String(value));
               setParams(next);
             }}
             sx={{ alignSelf: "center" }}

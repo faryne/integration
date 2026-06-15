@@ -10,7 +10,7 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
-import { galgameBrandSlug } from "@/helpers/galgame.ts";
+import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 import type { GalgameVideo } from "@/types/galgame.ts";
 
 export function RelatedVideoList({
@@ -26,7 +26,11 @@ export function RelatedVideoList({
 }) {
   return (
     <Stack spacing={1.5}>
-      {showTitle && <Typography variant="h5" component="h2">相關影片</Typography>}
+      {showTitle && (
+        <Typography variant="h5" component="h2">
+          相關影片
+        </Typography>
+      )}
       {loading ? (
         <GalgameState loading message="正在載入相關影片..." />
       ) : error ? (
@@ -38,16 +42,25 @@ export function RelatedVideoList({
           <Card key={video.youtube_video_id} variant="outlined">
             <CardActionArea
               component={RouterLink}
-              to={`/galgame/${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`}
+              to={galgamePath(
+                `${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`,
+              )}
             >
               <Stack direction="row">
                 <CardMedia
                   component="img"
                   image={video.thumbnail_url}
                   alt={video.title}
-                  sx={{ width: 144, minHeight: 82, objectFit: "cover", flexShrink: 0 }}
+                  sx={{
+                    width: 144,
+                    minHeight: 82,
+                    objectFit: "cover",
+                    flexShrink: 0,
+                  }}
                 />
-                <CardContent sx={{ minWidth: 0, p: 1.25, "&:last-child": { pb: 1.25 } }}>
+                <CardContent
+                  sx={{ minWidth: 0, p: 1.25, "&:last-child": { pb: 1.25 } }}
+                >
                   <Typography
                     variant="subtitle2"
                     sx={{
@@ -60,7 +73,12 @@ export function RelatedVideoList({
                     {video.title}
                   </Typography>
                   <Box sx={{ mt: 0.75 }}>
-                    <Typography variant="caption" color="primary" display="block" noWrap>
+                    <Typography
+                      variant="caption"
+                      color="primary"
+                      display="block"
+                      noWrap
+                    >
                       {video.brand_name}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
