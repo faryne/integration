@@ -17,14 +17,18 @@ function normalizePagination<T>(pagination: Pagination<T[]>) {
   };
 }
 
-export function useGalgameBrands(keyword = "") {
+export function useGalgameBrands(keyword = "", page = 1, perPage = 24) {
   return useQuery({
-    queryKey: ["galgame-brands", keyword],
+    queryKey: ["galgame-brands", keyword, page, perPage],
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<Pagination<GalgameBrand[]>>
       >(`${apiBase}/galgame/brands`, {
-        params: { keyword: keyword || undefined, per_page: 100 },
+        params: {
+          keyword: keyword || undefined,
+          page,
+          per_page: perPage,
+        },
       });
       const pagination = normalizePagination(response.data.data);
       return {

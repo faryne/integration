@@ -2,7 +2,6 @@ import {
   Avatar,
   Box,
   Button,
-  Chip,
   Grid,
   Pagination,
   Paper,
@@ -17,13 +16,14 @@ import { useGalgameBrands, useGalgameVideos } from "@/apis/galgame/catalog.ts";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameVideoCard } from "@/components/galgame/GalgameVideoCard.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
+import { ExpandableText } from "@/components/common/ExpandableText.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameBrand() {
   const { brandSlug } = useParams();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get("page")) || 1);
-  const brands = useGalgameBrands();
+  const brands = useGalgameBrands("", 1, 100);
   const publicId = brandSlug?.split("-", 1)[0];
   const brand = brands.data?.data.find((item) => item.public_id === publicId);
   const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
@@ -59,21 +59,8 @@ export default function GalgameBrand() {
                 <Typography variant="h3" component="h1">
                   {brand.name}
                 </Typography>
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-                  {brand.subscriber_count > 0 && (
-                    <Chip label={`${brand.subscriber_count.toLocaleString()} 位訂閱者`} />
-                  )}
-                  {brand.video_count > 0 && (
-                    <Chip label={`${brand.video_count.toLocaleString()} 部 YouTube 影片`} />
-                  )}
-                  {brand.view_count > 0 && (
-                    <Chip label={`${brand.view_count.toLocaleString()} 次觀看`} />
-                  )}
-                </Stack>
                 {brand.description && (
-                  <Typography sx={{ whiteSpace: "pre-wrap" }}>
-                    {brand.description}
-                  </Typography>
+                  <ExpandableText text={brand.description} />
                 )}
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                   {brand.links.map((link) => (

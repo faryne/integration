@@ -84,9 +84,12 @@ func parseDate(value string, exclusiveEnd bool) (*time.Time, error) {
 	if strings.TrimSpace(value) == "" {
 		return nil, nil
 	}
+	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
+		return &parsed, nil
+	}
 	parsed, err := time.ParseInLocation(time.DateOnly, value, time.Local)
 	if err != nil {
-		return nil, fmt.Errorf("must use YYYY-MM-DD format")
+		return nil, fmt.Errorf("must use YYYY-MM-DD or RFC3339 format")
 	}
 	if exclusiveEnd {
 		parsed = parsed.AddDate(0, 0, 1)

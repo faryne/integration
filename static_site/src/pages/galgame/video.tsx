@@ -6,6 +6,7 @@ import { useGalgameVideo } from "@/apis/galgame/catalog.ts";
 import { VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { GalgameBreadcrumb } from "@/components/galgame/GalgameBreadcrumb.tsx";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
+import { ExpandableText } from "@/components/common/ExpandableText.tsx";
 import { galgameBrandSlug } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 
@@ -81,7 +82,7 @@ export default function GalgameVideo() {
               前往 YouTube
             </Link>
           </Stack>
-          <Typography sx={{ whiteSpace: "pre-wrap" }}>{video.description}</Typography>
+          {video.description && <ExpandableText text={video.description} />}
         </Stack>
       )}
     </Box>

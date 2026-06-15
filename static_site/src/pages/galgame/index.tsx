@@ -4,6 +4,8 @@ import {
   Grid,
   Pagination,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -19,9 +21,19 @@ import { useTitle } from "@/helpers/title.tsx";
 export default function GalgameHome() {
   const [params, setParams] = useSearchParams();
   const keyword = params.get("keyword") ?? "";
+  const tab = params.get("tab") === "recent" ? "recent" : "all";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const [draft, setDraft] = useState(keyword);
-  const videos = useGalgameVideos(undefined, { keyword, page, per_page: 24 });
+  const publishedAtFrom =
+    tab === "recent"
+      ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      : undefined;
+  const videos = useGalgameVideos(undefined, {
+    keyword,
+    page,
+    per_page: 24,
+    published_at_from: publishedAtFrom,
+  });
   useTitle("Galgame 影片");
 
   const pages = useMemo(
@@ -30,7 +42,14 @@ export default function GalgameHome() {
   );
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    setParams(draft.trim() ? { keyword: draft.trim() } : {});
+    const next = new URLSearchParams();
+    if (tab === "recent") {
+      next.set("tab", "recent");
+    }
+    if (draft.trim()) {
+      next.set("keyword", draft.trim());
+    }
+    setParams(next);
   };
 
   return (
@@ -55,6 +74,19 @@ export default function GalgameHome() {
           <TextField fullWidth label="搜尋影片" value={draft} onChange={(e) => setDraft(e.target.value)} />
           <Button type="submit" variant="contained">搜尋</Button>
         </Stack>
+        <Tabs
+          value={tab}
+          onChange={(_, value: "all" | "recent") => {
+            const next = new URLSearchParams(params);
+            value === "recent" ? next.set("tab", "recent") : next.delete("tab");
+            next.delete("page");
+            setParams(next);
+          }}
+          aria-label="影片時間範圍"
+        >
+          <Tab value="all" label="所有影片" />
+          <Tab value="recent" label="最近一天內上檔影片" />
+        </Tabs>
         {videos.isPending ? (
           <GalgameState loading message="正在載入影片..." />
         ) : videos.isError ? (
