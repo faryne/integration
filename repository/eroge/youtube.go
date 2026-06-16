@@ -19,12 +19,19 @@ func NewYouTubeRepository() *YouTubeRepository {
 
 func (r *YouTubeRepository) Brands() ([]erogeModel.Brand, error) {
 	brands := make([]erogeModel.Brand, 0)
-	err := r.db.Order("id ASC").Find(&brands).Error
+	err := r.db.Where("status = ?", "approved").Order("id ASC").Find(&brands).Error
 	return brands, err
 }
 
 func (r *YouTubeRepository) SearchBrands(input erogeModel.BrandSearchRequest) ([]erogeModel.Brand, int64, error) {
 	query := r.db.Model(&erogeModel.Brand{})
+	status := strings.TrimSpace(input.Status)
+	if status == "" {
+		status = "approved"
+	}
+	if status != "all" {
+		query = query.Where("status = ?", status)
+	}
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		query = query.Where("name LIKE ?", "%"+keyword+"%")
 	}
@@ -42,7 +49,7 @@ func (r *YouTubeRepository) SearchBrands(input erogeModel.BrandSearchRequest) ([
 
 func (r *YouTubeRepository) Brand(publicID string) (*erogeModel.Brand, error) {
 	var brand erogeModel.Brand
-	if err := r.db.Where("public_id = ?", publicID).First(&brand).Error; err != nil {
+	if err := r.db.Where("public_id = ? AND status = ?", publicID, "approved").First(&brand).Error; err != nil {
 		return nil, err
 	}
 	return &brand, nil
@@ -64,6 +71,21 @@ func (r *YouTubeRepository) BrandByYouTubeChannelID(channelID string) (*erogeMod
 	return &brand, nil
 }
 
+func (r *YouTubeRepository) CreatePendingBrand(brand *erogeModel.Brand) (bool, error) {
+	result := r.db.Clauses(clause.OnConflict{DoNothing: true}).Create(brand)
+	return result.RowsAffected > 0, result.Error
+}
+
+func (r *YouTubeRepository) UpdateBrandStatus(brandID, adminUserID uint64, status string) error {
+	updates := map[string]any{"status": status}
+	if status == "approved" {
+		now := time.Now()
+		updates["approved_by_user_id"] = adminUserID
+		updates["approved_at"] = now
+	}
+	return r.db.Model(&erogeModel.Brand{}).Where("id = ?", brandID).Updates(updates).Error
+}
+
 func (r *YouTubeRepository) SearchVideos(
 	brandPublicID string,
 	input erogeModel.VideoSearchRequest,
@@ -71,7 +93,8 @@ func (r *YouTubeRepository) SearchVideos(
 	to *time.Time,
 ) ([]erogeModel.VideoOutput, int64, error) {
 	query := r.db.Table("eroge_videos AS videos").
-		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id")
+		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+		Where("brands.status = ?", "approved")
 	if brandPublicID != "" {
 		query = query.Where("brands.public_id = ?", brandPublicID)
 	}
@@ -103,6 +126,7 @@ func (r *YouTubeRepository) Video(brandPublicID string, videoID string) (*erogeM
 	query := r.db.Table("eroge_videos AS videos").
 		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+		Where("brands.status = ?", "approved").
 		Where("videos.youtube_video_id = ?", videoID)
 	if brandPublicID != "" {
 		query = query.Where("brands.public_id = ?", brandPublicID)
@@ -113,6 +137,23 @@ func (r *YouTubeRepository) Video(brandPublicID string, videoID string) (*erogeM
 	return &video, nil
 }
 
+func (r *YouTubeRepository) VideosForDurationBackfill() ([]erogeModel.VideoOutput, error) {
+	videos := make([]erogeModel.VideoOutput, 0)
+	err := r.db.Table("eroge_videos AS videos").
+		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url, brands.youtube_channel_id AS youtube_channel_id").
+		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+		Where("videos.youtube_info IS NOT NULL AND videos.youtube_info <> ''").
+		Order("videos.id ASC").
+		Scan(&videos).Error
+	return videos, err
+}
+
+func (r *YouTubeRepository) UpdateVideoDuration(videoID uint64, durationSeconds uint64) error {
+	return r.db.Model(&erogeModel.Video{}).
+		Where("id = ?", videoID).
+		Update("duration_seconds", durationSeconds).Error
+}
+
 func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput) ([]erogeModel.VideoOutput, error) {
 	candidates := make([]erogeModel.VideoOutput, 0, 200)
 	base := func() *gorm.DB {
@@ -120,6 +161,7 @@ func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput)
 			Table("eroge_videos AS videos").
 			Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 			Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
+			Where("brands.status = ?", "approved").
 			Where("videos.youtube_video_id <> ?", video.YouTubeVideoID)
 	}
 
@@ -147,7 +189,7 @@ func (r *YouTubeRepository) AdjacentVideos(video erogeModel.VideoOutput) (*eroge
 		return r.db.Table("eroge_videos AS videos").
 			Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 			Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
-			Where("videos.brand_id = ?", video.BrandID)
+			Where("videos.brand_id = ? AND brands.status = ?", video.BrandID, "approved")
 	}
 
 	var previous erogeModel.VideoOutput
@@ -210,6 +252,52 @@ func (r *YouTubeRepository) SetVideoFavorite(userID, videoID uint64, favorite bo
 	return r.db.Where("user_id = ? AND video_id = ?", userID, videoID).Delete(&value).Error
 }
 
+func (r *YouTubeRepository) VideoReaction(userID, videoID uint64) (string, error) {
+	var event erogeModel.VideoReactionEvent
+	err := r.db.Where("user_id = ? AND video_id = ?", userID, videoID).
+		Order("created_at DESC, id DESC").
+		Take(&event).Error
+	if err == gorm.ErrRecordNotFound {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	switch event.Action {
+	case erogeModel.VideoReactionLike:
+		return "like", nil
+	case erogeModel.VideoReactionDislike:
+		return "dislike", nil
+	default:
+		return "", nil
+	}
+}
+
+func (r *YouTubeRepository) SetVideoReaction(userID uint64, video erogeModel.VideoOutput, action erogeModel.VideoReactionAction) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		event := erogeModel.VideoReactionEvent{UserID: userID, VideoID: video.ID, Action: action}
+		if err := tx.Create(&event).Error; err != nil {
+			return err
+		}
+		switch action {
+		case erogeModel.VideoReactionLike:
+			return tx.Model(&erogeModel.Video{}).Where("id = ?", video.ID).
+				UpdateColumn("likes", gorm.Expr("likes + 1")).Error
+		case erogeModel.VideoReactionDislike:
+			return tx.Model(&erogeModel.Video{}).Where("id = ?", video.ID).
+				UpdateColumn("dislikes", gorm.Expr("dislikes + 1")).Error
+		case erogeModel.VideoReactionCancelLike:
+			return tx.Model(&erogeModel.Video{}).Where("id = ?", video.ID).
+				UpdateColumn("likes", gorm.Expr("IF(likes > 0, likes - 1, 0)")).Error
+		case erogeModel.VideoReactionCancelDislike:
+			return tx.Model(&erogeModel.Video{}).Where("id = ?", video.ID).
+				UpdateColumn("dislikes", gorm.Expr("IF(dislikes > 0, dislikes - 1, 0)")).Error
+		default:
+			return nil
+		}
+	})
+}
+
 func (r *YouTubeRepository) FavoriteStatus(userID uint64, brandIDs, videoIDs []uint64) ([]uint64, []uint64, error) {
 	favoriteBrandIDs := make([]uint64, 0)
 	if len(brandIDs) > 0 {
@@ -232,8 +320,8 @@ func (r *YouTubeRepository) FavoriteStatus(userID uint64, brandIDs, videoIDs []u
 
 func (r *YouTubeRepository) FavoriteBrands(userID uint64, input erogeModel.BrandSearchRequest) ([]erogeModel.Brand, int64, error) {
 	query := r.db.Table("eroge_brands AS brands").
-		Joins("JOIN galgame_brand_favorites AS favorites ON favorites.brand_id = brands.id").
-		Where("favorites.user_id = ?", userID)
+		Joins("JOIN eroge_brand_favorites AS favorites ON favorites.brand_id = brands.id").
+		Where("favorites.user_id = ? AND brands.status = ?", userID, "approved")
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		query = query.Where("brands.name LIKE ?", "%"+keyword+"%")
 	}
@@ -242,7 +330,13 @@ func (r *YouTubeRepository) FavoriteBrands(userID uint64, input erogeModel.Brand
 		return nil, 0, err
 	}
 	brands := make([]erogeModel.Brand, 0)
-	err := query.Select("brands.*").
+	err := query.Select(`brands.*,
+		(
+			SELECT COUNT(*)
+			FROM eroge_videos AS latest_videos
+			WHERE latest_videos.brand_id = brands.id
+				AND latest_videos.published_at >= DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)
+		) AS latest_video_count`).
 		Order("favorites.created_at DESC").
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
@@ -254,8 +348,8 @@ func (r *YouTubeRepository) FavoriteVideos(userID uint64, input erogeModel.Video
 	query := r.db.Table("eroge_videos AS videos").
 		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url").
 		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
-		Joins("JOIN galgame_video_favorites AS favorites ON favorites.video_id = videos.id").
-		Where("favorites.user_id = ?", userID)
+		Joins("JOIN eroge_video_favorites AS favorites ON favorites.video_id = videos.id").
+		Where("favorites.user_id = ? AND brands.status = ?", userID, "approved")
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		like := "%" + keyword + "%"
 		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ?)", like, like)
@@ -292,7 +386,7 @@ func (r *YouTubeRepository) UpsertVideo(video *erogeModel.Video) error {
 	return r.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "youtube_video_id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"brand_id", "title", "tags", "thumbnail_url", "description", "published_at", "youtube_info", "updated_at",
+			"brand_id", "title", "tags", "thumbnail_url", "description", "published_at", "duration_seconds", "youtube_info", "updated_at",
 		}),
 	}).Create(video).Error
 }

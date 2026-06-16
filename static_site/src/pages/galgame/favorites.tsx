@@ -5,6 +5,7 @@ import {
   Card,
   CardActionArea,
   CardContent,
+  Chip,
   Grid,
   Pagination,
   Stack,
@@ -95,10 +96,15 @@ export default function GalgameFavorites() {
                 <Grid key={brand.id} size={{ xs: 12, sm: 6, md: 3 }}>
                   <Card sx={{ height: "100%" }}>
                     <CardActionArea
-                      component={RouterLink}
-                      to={galgamePath(
-                        galgameBrandSlug(brand.public_id, brand.name),
-                      )}
+                      component={
+                        brand.latest_video_count > 0 ? RouterLink : "button"
+                      }
+                      to={
+                        brand.latest_video_count > 0
+                          ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?tab=recent`
+                          : undefined
+                      }
+                      disabled={brand.latest_video_count <= 0}
                       sx={{ height: "100%" }}
                     >
                       <CardContent>
@@ -118,6 +124,15 @@ export default function GalgameFavorites() {
                             </Typography>
                             <StarIcon color="warning" fontSize="small" />
                           </Stack>
+                          <Chip
+                            label={`最新上檔 ${brand.latest_video_count ?? 0}`}
+                            color={
+                              brand.latest_video_count > 0
+                                ? "secondary"
+                                : "default"
+                            }
+                            size="small"
+                          />
                         </Stack>
                       </CardContent>
                     </CardActionArea>

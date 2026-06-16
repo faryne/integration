@@ -17,12 +17,15 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
+import ThumbDownIcon from "@mui/icons-material/ThumbDown";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
   useGalgameVideo,
   useGalgameVideoFavorite,
   useGalgameVideoNavigation,
+  useGalgameVideoReaction,
   useRelatedGalgameVideos,
 } from "@/apis/galgame/catalog.ts";
 import { VideoViewer } from "@/components/common/VideoViewer.tsx";
@@ -33,13 +36,16 @@ import { galgameBrandSlug, galgamePath } from "@/helpers/galgame.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { RelatedVideoList } from "@/components/galgame/RelatedVideoList.tsx";
 import { FavoriteButton } from "@/components/galgame/FavoriteButton.tsx";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 
 export default function GalgameVideo() {
   const { brandSlug, videoId } = useParams();
   const query = useGalgameVideo(brandSlug, videoId);
   const related = useRelatedGalgameVideos(brandSlug, videoId);
   const favorite = useGalgameVideoFavorite(brandSlug, videoId);
+  const reaction = useGalgameVideoReaction(brandSlug, videoId);
   const navigation = useGalgameVideoNavigation(brandSlug, videoId);
+  const { session, login, submitting } = useAuth();
   const video = query.data;
   useTitle(video?.title ?? "Galgame 影片");
 
@@ -59,28 +65,9 @@ export default function GalgameVideo() {
         <GalgameState severity="error" message="影片不存在或載入失敗。" />
       ) : (
         <Stack spacing={3}>
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1.5}
-            alignItems={{ xs: "flex-start", sm: "center" }}
-          >
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={0.5}
-              sx={{ flex: 1 }}
-            >
-              <Typography variant="h4" component="h1">
-                {video.title}
-              </Typography>
-              <FavoriteButton
-                label="影片"
-                favorite={favorite.favorite}
-                loading={favorite.isFetching || favorite.mutation.isPending}
-                onToggle={(value) => favorite.mutation.mutateAsync(value)}
-              />
-            </Stack>
-          </Stack>
+          <Typography variant="h4" component="h1">
+            {video.title}
+          </Typography>
           <Grid container spacing={3} alignItems="flex-start">
             <Grid size={{ xs: 12, md: 8 }}>
               <VideoViewer
@@ -92,6 +79,76 @@ export default function GalgameVideo() {
                   },
                 ]}
               />
+              <Stack
+                direction="row"
+                spacing={1}
+                useFlexGap
+                flexWrap="wrap"
+                sx={{
+                  mt: 2,
+                  border: 1,
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  p: 1,
+                  bgcolor: "background.paper",
+                }}
+              >
+                <FavoriteButton
+                  label="影片"
+                  variant="button"
+                  favorite={favorite.favorite}
+                  loading={favorite.isFetching || favorite.mutation.isPending}
+                  onToggle={(value) => favorite.mutation.mutateAsync(value)}
+                />
+                <Button
+                  variant={
+                    reaction.reaction === "like" ? "contained" : "outlined"
+                  }
+                  color="success"
+                  startIcon={<ThumbUpIcon />}
+                  disabled={
+                    submitting ||
+                    reaction.reaction === "dislike" ||
+                    reaction.mutation.isPending
+                  }
+                  onClick={() => {
+                    if (!session) {
+                      void login();
+                      return;
+                    }
+                    void reaction.mutation.mutateAsync(
+                      reaction.reaction === "like" ? "cancel_like" : "like",
+                    );
+                  }}
+                >
+                  喜歡 {reaction.likes ?? video.likes}
+                </Button>
+                <Button
+                  variant={
+                    reaction.reaction === "dislike" ? "contained" : "outlined"
+                  }
+                  color="error"
+                  startIcon={<ThumbDownIcon />}
+                  disabled={
+                    submitting ||
+                    reaction.reaction === "like" ||
+                    reaction.mutation.isPending
+                  }
+                  onClick={() => {
+                    if (!session) {
+                      void login();
+                      return;
+                    }
+                    void reaction.mutation.mutateAsync(
+                      reaction.reaction === "dislike"
+                        ? "cancel_dislike"
+                        : "dislike",
+                    );
+                  }}
+                >
+                  不喜歡 {reaction.dislikes ?? video.dislikes}
+                </Button>
+              </Stack>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={2}

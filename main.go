@@ -104,13 +104,18 @@ var cronJobs = []cronJobConfig{
 		},
 	},
 	{
+		Name:     "eroge-youtube-backfill-video-duration",
+		Schedule: "",
+		Handler:  erogeService.RunBackfillVideoDuration,
+	},
+	{
 		Name:     "eroge-youtube-brands",
 		Schedule: "15 2 * * 1",
 		Handler:  erogeService.RunBrandSync,
 	},
 	{
 		Name:     "eroge-youtube-videos",
-		Schedule: "45 2 * * *",
+		Schedule: "45 */8 * * *",
 		Handler:  erogeService.RunVideoSync,
 	},
 	{

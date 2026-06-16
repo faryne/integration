@@ -58,6 +58,7 @@ func CreateSession(idToken string) (*modelAuth.SessionResponse, error) {
 			Email:       user.Email,
 			DisplayName: user.DisplayName,
 			PhotoURL:    user.PhotoURL,
+			IsAdmin:     user.IsAdmin,
 		},
 		EncryptKey: encryptKey,
 		ExpiresAt:  expiresAt.Format(time.RFC3339),

@@ -9,6 +9,7 @@ type User struct {
 	DisplayName *string    `json:"display_name"`
 	PhotoURL    *string    `json:"photo_url" gorm:"column:photo_url"`
 	Disabled    bool       `json:"disabled"`
+	IsAdmin     bool       `json:"is_admin" gorm:"column:is_admin"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 	LastLoginAt *time.Time `json:"last_login_at"`

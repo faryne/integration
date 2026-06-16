@@ -9,6 +9,8 @@ import type {
   GalgameFavoriteStatuses,
   GalgameVideo,
   GalgameVideoNavigation,
+  GalgameVideoReactionAction,
+  GalgameVideoReactionStatus,
   GalgameVideoSearch,
 } from "@/types/galgame.ts";
 
@@ -42,6 +44,78 @@ export function useGalgameBrands(keyword = "", page = 1, perPage = 24) {
           links: brand.links ?? [],
         })),
       };
+    },
+  });
+}
+
+export interface GalgameBrandSubmissionResult {
+  input: string;
+  brand?: GalgameBrand;
+  created: boolean;
+  error?: string;
+}
+
+export function useSubmitGalgameBrands() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (channels: string[]) => {
+      const response = await axios.post<
+        CommonResponse<GalgameBrandSubmissionResult[]>
+      >(
+        `${apiBase}/galgame/brands/submissions`,
+        { channels },
+        session?.encrypt_key
+          ? { headers: sessionHeaders(session.encrypt_key) }
+          : undefined,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useAdminGalgameBrands(
+  status = "pending",
+  page = 1,
+  perPage = 24,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["galgame-admin-brands", session?.user.id, status, page, perPage],
+    enabled: Boolean(session?.encrypt_key && session.user.is_admin),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<Pagination<GalgameBrand[]>>
+      >(`${apiBase}/galgame/admin/brands`, {
+        params: { status, page, per_page: perPage },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return normalizePagination(response.data.data);
+    },
+  });
+}
+
+export function useSetGalgameBrandStatus() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      brandId,
+      status,
+    }: {
+      brandId: number;
+      status: "pending" | "approved" | "rejected";
+    }) => {
+      const response = await axios.put<CommonResponse<GalgameBrand>>(
+        `${apiBase}/galgame/admin/brands/${brandId}/status`,
+        { status },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-brands"] });
+      void queryClient.invalidateQueries({ queryKey: ["galgame-brands"] });
     },
   });
 }
@@ -190,6 +264,54 @@ export function useGalgameVideoFavorite(
     },
   });
   return { ...query, favorite: query.data?.favorite ?? false, mutation };
+}
+
+export function useGalgameVideoReaction(brandId?: string, videoId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  const queryKey = [
+    "galgame-video-reaction",
+    session?.user.id,
+    brandId,
+    videoId,
+  ];
+  const query = useQuery({
+    queryKey,
+    enabled: Boolean(session?.encrypt_key && brandId && videoId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<GalgameVideoReactionStatus>
+      >(`${apiBase}/galgame/${brandId}/video/${videoId}/reaction`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+  });
+  const mutation = useMutation({
+    mutationFn: async (action: GalgameVideoReactionAction) => {
+      const response = await axios.put<
+        CommonResponse<GalgameVideoReactionStatus>
+      >(
+        `${apiBase}/galgame/${brandId}/video/${videoId}/reaction`,
+        { action },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: (status) => {
+      queryClient.setQueryData(queryKey, status);
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-video", brandId, videoId],
+      });
+    },
+  });
+  return {
+    ...query,
+    reaction: query.data?.reaction ?? "",
+    likes: query.data?.likes,
+    dislikes: query.data?.dislikes,
+    mutation,
+  };
 }
 
 export function useGalgameVideoNavigation(brandId?: string, videoId?: string) {

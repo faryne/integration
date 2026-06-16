@@ -27,6 +27,7 @@ import {
 } from "react-router-dom";
 
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { BilingualDisclaimer } from "@/components/common/BilingualDisclaimer.tsx";
 import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
 import { galgamePath } from "@/helpers/galgame.ts";
 
@@ -43,6 +44,7 @@ export function GalgameLayout() {
     { title: "最新影片", href: `${galgamePath()}?tab=recent` },
     { title: "品牌", href: `${galgamePath()}?tab=brands` },
     { title: "我的最愛", href: galgamePath("favorites") },
+    { title: "追加頻道", href: galgamePath("submit") },
   ];
 
   const submitSearch = (event: FormEvent) => {
@@ -180,6 +182,11 @@ export function GalgameLayout() {
         <Outlet />
       </Container>
 
+      <BilingualDisclaimer
+        title="警語與版權宣告 / Disclaimer and Copyright Notice"
+        chinese="本網站整理公開可嵌入之官方 YouTube 影片資訊，影片與商標權利均屬原權利人所有。內容可能涉及成人向遊戲或不適合未成年人之題材，請依所在地法律與平台規範自行判斷是否瀏覽。"
+        english="This site indexes publicly embeddable official YouTube video metadata. Videos, trademarks, and related rights belong to their respective owners. Some content may involve adult-oriented games or themes unsuitable for minors; please follow local laws and platform rules."
+      />
       <Container component="footer" maxWidth="lg">
         <Divider />
         <Box sx={{ py: 2, textAlign: "center" }}>

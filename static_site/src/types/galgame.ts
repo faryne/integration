@@ -9,6 +9,8 @@ export interface GalgameBrand {
   subscriber_count: number;
   video_count: number;
   view_count: number;
+  latest_video_count: number;
+  status: "pending" | "approved" | "rejected";
   links: Array<{ label: string; url: string }>;
 }
 
@@ -23,6 +25,9 @@ export interface GalgameVideo {
   thumbnail_url: string;
   description: string;
   published_at: string;
+  duration_seconds: number;
+  likes: number;
+  dislikes: number;
 }
 
 export interface GalgameVideoSearch {
@@ -45,4 +50,16 @@ export interface GalgameFavoriteStatuses {
 export interface GalgameVideoNavigation {
   previous: GalgameVideo | null;
   next: GalgameVideo | null;
+}
+
+export type GalgameVideoReactionAction =
+  | "like"
+  | "dislike"
+  | "cancel_like"
+  | "cancel_dislike";
+
+export interface GalgameVideoReactionStatus {
+  reaction: "" | "like" | "dislike";
+  likes: number;
+  dislikes: number;
 }

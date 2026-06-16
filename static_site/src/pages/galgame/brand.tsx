@@ -6,6 +6,8 @@ import {
   Pagination,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -31,11 +33,20 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 export default function GalgameBrand() {
   const { brandSlug } = useParams();
   const [params, setParams] = useSearchParams();
+  const tab = params.get("tab") === "recent" ? "recent" : "all";
   const page = Math.max(1, Number(params.get("page")) || 1);
   const brandQuery = useGalgameBrand(brandSlug);
   const favorite = useGalgameBrandFavorite(brandSlug);
   const brand = brandQuery.data;
-  const videos = useGalgameVideos(brandSlug, { page, per_page: 24 });
+  const recentFrom = useMemo(
+    () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    [],
+  );
+  const videos = useGalgameVideos(brandSlug, {
+    page,
+    per_page: 24,
+    published_at_from: tab === "recent" ? recentFrom : undefined,
+  });
   const videoFavoriteStatus = useGalgameFavoriteStatus(
     [],
     videos.data?.data.map((video) => video.id) ?? [],
@@ -87,17 +98,18 @@ export default function GalgameBrand() {
                   <Typography variant="h3" component="h1">
                     {brand.name}
                   </Typography>
-                  <FavoriteButton
-                    label="品牌"
-                    favorite={favorite.favorite}
-                    loading={favorite.isFetching || favorite.mutation.isPending}
-                    onToggle={(value) => favorite.mutation.mutateAsync(value)}
-                  />
                 </Stack>
                 {brand.description && (
                   <ExpandableText text={brand.description} />
                 )}
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  <FavoriteButton
+                    label="品牌"
+                    variant="button"
+                    favorite={favorite.favorite}
+                    loading={favorite.isFetching || favorite.mutation.isPending}
+                    onToggle={(value) => favorite.mutation.mutateAsync(value)}
+                  />
                   {brand.links.map((link) => (
                     <Button
                       key={link.url}
@@ -117,6 +129,25 @@ export default function GalgameBrand() {
             </Stack>
           </Paper>
         ) : null}
+        {brand && (
+          <Tabs
+            value={tab}
+            onChange={(_, value: "all" | "recent") => {
+              const next = new URLSearchParams(params);
+              if (value === "recent") {
+                next.set("tab", "recent");
+              } else {
+                next.delete("tab");
+              }
+              next.delete("page");
+              setParams(next);
+            }}
+            aria-label="品牌影片分類"
+          >
+            <Tab value="all" label="所有影片" />
+            <Tab value="recent" label="最新上檔影片" />
+          </Tabs>
+        )}
         {brand &&
           (videos.isPending ? (
             <GalgameState loading message="正在載入品牌影片..." />
@@ -146,7 +177,15 @@ export default function GalgameBrand() {
                 page={page}
                 count={pages}
                 onChange={(_, value) =>
-                  setParams(value > 1 ? { page: String(value) } : {})
+                  setParams((current) => {
+                    const next = new URLSearchParams(current);
+                    if (value > 1) {
+                      next.set("page", String(value));
+                    } else {
+                      next.delete("page");
+                    }
+                    return next;
+                  })
                 }
                 sx={{ alignSelf: "center" }}
               />

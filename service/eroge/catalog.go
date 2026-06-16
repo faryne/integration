@@ -1,6 +1,7 @@
 package eroge
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -10,10 +11,15 @@ import (
 	"time"
 
 	erogeModel "faryne.dev/model/entity/eroge"
+	"faryne.dev/model/enum"
+	authRepo "faryne.dev/repository/auth"
 	erogeRepo "faryne.dev/repository/eroge"
+	"faryne.dev/service/client"
 )
 
 var brandURLPattern = regexp.MustCompile(`https?://[^\s<>"'）)]+`)
+
+const catalogCacheTTL = time.Hour
 
 type CatalogService struct {
 	repo *erogeRepo.YouTubeRepository
@@ -24,6 +30,13 @@ func NewCatalogService() *CatalogService {
 }
 
 func (s *CatalogService) SearchBrands(input erogeModel.BrandSearchRequest) ([]erogeModel.BrandOutput, int64, error) {
+	input.Status = "approved"
+	cacheKey := catalogCacheKey("brands", "", input)
+	var cachedRows []erogeModel.BrandOutput
+	if total, ok := getCatalogCache(cacheKey, &cachedRows); ok {
+		rows := cachedRows
+		return rows, total, nil
+	}
 	brands, total, err := s.repo.SearchBrands(input)
 	if err != nil {
 		return nil, 0, err
@@ -32,6 +45,7 @@ func (s *CatalogService) SearchBrands(input erogeModel.BrandSearchRequest) ([]er
 	for _, brand := range brands {
 		output = append(output, buildBrandOutput(brand))
 	}
+	setCatalogCache(cacheKey, output, total)
 	return output, total, nil
 }
 
@@ -66,6 +80,19 @@ func (s *CatalogService) SearchVideos(
 	}
 	if from != nil && to != nil && !from.Before(*to) {
 		return nil, 0, fmt.Errorf("published_at_from must not be later than published_at_to")
+	}
+	if from == nil && to == nil {
+		cacheKey := catalogCacheKey("videos", brandPublicID, input)
+		var cachedRows []erogeModel.VideoOutput
+		if total, ok := getCatalogCache(cacheKey, &cachedRows); ok {
+			rows := cachedRows
+			return rows, total, nil
+		}
+		rows, total, err := s.repo.SearchVideos(brandPublicID, input, from, to)
+		if err == nil {
+			setCatalogCache(cacheKey, rows, total)
+		}
+		return rows, total, err
 	}
 	return s.repo.SearchVideos(brandPublicID, input, from, to)
 }
@@ -160,6 +187,60 @@ func (s *CatalogService) SetVideoFavorite(userID uint64, brandValue, videoID str
 	return &erogeModel.FavoriteStatus{Favorite: favorite}, nil
 }
 
+func (s *CatalogService) VideoReaction(userID uint64, brandValue, videoID string) (*erogeModel.VideoReactionStatus, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	reaction, err := s.repo.VideoReaction(userID, video.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &erogeModel.VideoReactionStatus{Reaction: reaction, Likes: video.Likes, Dislikes: video.Dislikes}, nil
+}
+
+func (s *CatalogService) SetVideoReaction(
+	userID uint64,
+	brandValue string,
+	videoID string,
+	action erogeModel.VideoReactionAction,
+) (*erogeModel.VideoReactionStatus, error) {
+	video, err := s.Video(brandValue, videoID)
+	if err != nil {
+		return nil, err
+	}
+	current, err := s.repo.VideoReaction(userID, video.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateVideoReactionAction(current, action); err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetVideoReaction(userID, *video, action); err != nil {
+		return nil, err
+	}
+	next := current
+	switch action {
+	case erogeModel.VideoReactionLike:
+		video.Likes++
+		next = "like"
+	case erogeModel.VideoReactionDislike:
+		video.Dislikes++
+		next = "dislike"
+	case erogeModel.VideoReactionCancelLike:
+		if video.Likes > 0 {
+			video.Likes--
+		}
+		next = ""
+	case erogeModel.VideoReactionCancelDislike:
+		if video.Dislikes > 0 {
+			video.Dislikes--
+		}
+		next = ""
+	}
+	return &erogeModel.VideoReactionStatus{Reaction: next, Likes: video.Likes, Dislikes: video.Dislikes}, nil
+}
+
 func (s *CatalogService) FavoriteStatus(userID uint64, input erogeModel.FavoriteStatusRequest) (*erogeModel.FavoriteStatusOutput, error) {
 	brandIDs, videoIDs, err := s.repo.FavoriteStatus(userID, input.BrandIDs, input.VideoIDs)
 	if err != nil {
@@ -182,6 +263,88 @@ func (s *CatalogService) FavoriteBrands(userID uint64, input erogeModel.BrandSea
 
 func (s *CatalogService) FavoriteVideos(userID uint64, input erogeModel.VideoSearchRequest) ([]erogeModel.VideoOutput, int64, error) {
 	return s.repo.FavoriteVideos(userID, input)
+}
+
+func (s *CatalogService) AdminSearchBrands(userID uint64, input erogeModel.BrandSearchRequest) ([]erogeModel.BrandOutput, int64, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, 0, err
+	}
+	if strings.TrimSpace(input.Status) == "" {
+		input.Status = "pending"
+	}
+	brands, total, err := s.repo.SearchBrands(input)
+	if err != nil {
+		return nil, 0, err
+	}
+	output := make([]erogeModel.BrandOutput, 0, len(brands))
+	for _, brand := range brands {
+		output = append(output, buildBrandOutput(brand))
+	}
+	return output, total, nil
+}
+
+func (s *CatalogService) SetBrandStatus(ctx context.Context, userID uint64, brandID uint64, status string) (*erogeModel.BrandOutput, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, err
+	}
+	if status != "approved" && status != "rejected" && status != "pending" {
+		return nil, fmt.Errorf("invalid brand status")
+	}
+	if err := s.repo.UpdateBrandStatus(brandID, userID, status); err != nil {
+		return nil, err
+	}
+	brand, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return nil, err
+	}
+	output := buildBrandOutput(*brand)
+	if status == "approved" {
+		if err := indexBrand(ctx, *brand); err != nil {
+			return nil, err
+		}
+	}
+	return &output, nil
+}
+
+func requireGalgameAdmin(userID uint64) error {
+	user, err := authRepo.NewUserRepository().UserByID(userID)
+	if err != nil {
+		return err
+	}
+	if user.IsAdmin {
+		return nil
+	}
+	return fmt.Errorf("galgame admin permission is required")
+}
+
+func validateVideoReactionAction(current string, action erogeModel.VideoReactionAction) error {
+	switch action {
+	case erogeModel.VideoReactionLike:
+		if current == "dislike" {
+			return fmt.Errorf("cancel dislike before liking this video")
+		}
+		if current == "like" {
+			return fmt.Errorf("video is already liked")
+		}
+	case erogeModel.VideoReactionDislike:
+		if current == "like" {
+			return fmt.Errorf("cancel like before disliking this video")
+		}
+		if current == "dislike" {
+			return fmt.Errorf("video is already disliked")
+		}
+	case erogeModel.VideoReactionCancelLike:
+		if current != "like" {
+			return fmt.Errorf("video is not liked")
+		}
+	case erogeModel.VideoReactionCancelDislike:
+		if current != "dislike" {
+			return fmt.Errorf("video is not disliked")
+		}
+	default:
+		return fmt.Errorf("invalid reaction action")
+	}
+	return nil
 }
 
 func (s *CatalogService) brandEntity(brandValue string) (*erogeModel.Brand, error) {
@@ -281,6 +444,8 @@ func buildBrandOutput(brand erogeModel.Brand) erogeModel.BrandOutput {
 	output := erogeModel.BrandOutput{
 		ID: brand.ID, PublicID: brand.PublicID, Name: brand.Name,
 		YouTubeChannelID: brand.YouTubeChannelID, AvatarURL: brand.AvatarURL,
+		LatestVideoCount: brand.LatestVideoCount,
+		Status:           brandStatus(brand.Status),
 		Links: []erogeModel.BrandLink{{
 			Label: "YouTube",
 			URL:   "https://www.youtube.com/channel/" + brand.YouTubeChannelID,
@@ -307,6 +472,13 @@ func buildBrandOutput(brand erogeModel.Brand) erogeModel.BrandOutput {
 	output.ViewCount = channel.Statistics.ViewCount
 	output.Links = append(output.Links, descriptionLinks(output.Description)...)
 	return output
+}
+
+func brandStatus(status string) string {
+	if strings.TrimSpace(status) == "" {
+		return "approved"
+	}
+	return status
 }
 
 func descriptionLinks(description string) []erogeModel.BrandLink {
@@ -344,4 +516,51 @@ func linkLabel(host string) string {
 	default:
 		return host
 	}
+}
+
+type catalogCachePayload struct {
+	Rows  json.RawMessage `json:"rows"`
+	Total int64           `json:"total"`
+}
+
+func catalogCacheKey(kind, scope string, input any) string {
+	raw, _ := json.Marshal(input)
+	return fmt.Sprintf("galgame:catalog:%s:%s:%x", kind, scope, raw)
+}
+
+func getCatalogCache(key string, rows any) (int64, bool) {
+	redisClient := client.GetRedis(enum.RedisDefault)
+	if redisClient == nil {
+		return 0, false
+	}
+	raw, err := redisClient.Get(key).Result()
+	if err != nil {
+		return 0, false
+	}
+	var payload catalogCachePayload
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		_ = redisClient.Del(key).Err()
+		return 0, false
+	}
+	if err := json.Unmarshal(payload.Rows, rows); err != nil {
+		_ = redisClient.Del(key).Err()
+		return 0, false
+	}
+	return payload.Total, true
+}
+
+func setCatalogCache(key string, rows any, total int64) {
+	redisClient := client.GetRedis(enum.RedisDefault)
+	if redisClient == nil {
+		return
+	}
+	rowData, err := json.Marshal(rows)
+	if err != nil {
+		return
+	}
+	raw, err := json.Marshal(catalogCachePayload{Rows: rowData, Total: total})
+	if err != nil {
+		return
+	}
+	_ = redisClient.Set(key, string(raw), catalogCacheTTL).Err()
 }

@@ -12,6 +12,7 @@ type UserResponse struct {
 	Email       *string `json:"email"`
 	DisplayName *string `json:"display_name"`
 	PhotoURL    *string `json:"photo_url"`
+	IsAdmin     bool    `json:"is_admin"`
 }
 
 type RedisSession struct {

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -48,6 +49,8 @@ var videoTitleKeywords = []string{
 	"エンディング",
 	"ＯＰムービー",
 }
+
+var youtubeDurationPattern = regexp.MustCompile(`^P(?:\d+W)?(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$`)
 
 type SyncResult struct {
 	Brands, Fetched, Matched, Saved, Indexed, Failed int
@@ -125,6 +128,7 @@ func (s *Service) AddBrand(ctx context.Context, input BrandInput) (*erogeModel.B
 		PublicID: publicID, Name: input.Name, YouTubeChannelID: channel.Id,
 		AvatarURL:   thumbnailURL(channel.Snippet.Thumbnails),
 		YouTubeInfo: string(raw), UploadsPlaylistID: channel.ContentDetails.RelatedPlaylists.Uploads,
+		Status:              "approved",
 		LastChannelSyncedAt: &now, UpdatedAt: now,
 	}
 	if err := s.repo.UpsertBrand(brand); err != nil {
@@ -138,6 +142,40 @@ func (s *Service) AddBrand(ctx context.Context, input BrandInput) (*erogeModel.B
 		return nil, err
 	}
 	return savedBrand, nil
+}
+
+func (s *Service) SubmitBrands(ctx context.Context, userID uint64, channels []string) ([]erogeModel.BrandSubmissionResult, error) {
+	results := make([]erogeModel.BrandSubmissionResult, 0, len(channels))
+	for _, rawInput := range channels {
+		input := strings.TrimSpace(rawInput)
+		if input == "" {
+			continue
+		}
+		result := erogeModel.BrandSubmissionResult{Input: input}
+		channelRef, err := youtubeChannelRef(input)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		channel, err := s.resolveChannel(ctx, channelRef)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		brand, created, err := s.createPendingBrand(ctx, userID, channel)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		output := buildBrandOutput(*brand)
+		result.Brand = &output
+		result.Created = created
+		results = append(results, result)
+	}
+	return results, nil
 }
 
 func newBrandPublicID() (string, error) {
@@ -291,6 +329,7 @@ func (s *Service) upsertChannelBrand(ctx context.Context, channel *youtube.Chann
 		PublicID: publicID, Name: channel.Snippet.Title, YouTubeChannelID: channel.Id,
 		AvatarURL: thumbnailURL(channel.Snippet.Thumbnails), YouTubeInfo: string(raw),
 		UploadsPlaylistID:   channel.ContentDetails.RelatedPlaylists.Uploads,
+		Status:              "approved",
 		LastChannelSyncedAt: &now, UpdatedAt: now,
 	}
 	if err := s.repo.UpsertBrand(brand); err != nil {
@@ -304,6 +343,36 @@ func (s *Service) upsertChannelBrand(ctx context.Context, channel *youtube.Chann
 		return nil, err
 	}
 	return savedBrand, nil
+}
+
+func (s *Service) createPendingBrand(ctx context.Context, userID uint64, channel *youtube.Channel) (*erogeModel.Brand, bool, error) {
+	raw, err := json.Marshal(channel)
+	if err != nil {
+		return nil, false, err
+	}
+	publicID, err := newBrandPublicID()
+	if err != nil {
+		return nil, false, err
+	}
+	now := time.Now()
+	brand := &erogeModel.Brand{
+		PublicID: publicID, Name: channel.Snippet.Title, YouTubeChannelID: channel.Id,
+		AvatarURL: thumbnailURL(channel.Snippet.Thumbnails), YouTubeInfo: string(raw),
+		UploadsPlaylistID:   channel.ContentDetails.RelatedPlaylists.Uploads,
+		Status:              "pending",
+		SubmittedByUserID:   userID,
+		LastChannelSyncedAt: &now,
+		UpdatedAt:           now,
+	}
+	created, err := s.repo.CreatePendingBrand(brand)
+	if err != nil {
+		return nil, false, err
+	}
+	savedBrand, err := s.repo.BrandByYouTubeChannelID(channel.Id)
+	if err != nil {
+		return nil, false, err
+	}
+	return savedBrand, created, nil
 }
 
 func (s *Service) resolveChannel(ctx context.Context, channelRef string) (*youtube.Channel, error) {
@@ -344,6 +413,20 @@ func youtubeChannelRefFromURL(rawURL string) (string, error) {
 		return parts[1], nil
 	}
 	return "", fmt.Errorf("YouTube URL must use /@handle or /channel/UC... format")
+}
+
+func youtubeChannelRef(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", fmt.Errorf("youtube channel is required")
+	}
+	if strings.Contains(value, "://") {
+		return youtubeChannelRefFromURL(value)
+	}
+	if strings.HasPrefix(value, "@") || strings.HasPrefix(value, "UC") {
+		return value, nil
+	}
+	return "", fmt.Errorf("YouTube channel must be an @handle, UC... channel ID, or YouTube URL")
 }
 
 func youtubePlaylistID(value string) (string, error) {
@@ -473,6 +556,60 @@ func (s *Service) ResyncBrandVideos(ctx context.Context, brandIDs []uint64) (*Sy
 	return result, nil
 }
 
+func BackfillVideoDuration(ctx context.Context) (*SyncResult, error) {
+	repo := erogeRepo.NewYouTubeRepository()
+	videos, err := repo.VideosForDurationBackfill()
+	if err != nil {
+		return nil, err
+	}
+	result := &SyncResult{Fetched: len(videos)}
+	for _, video := range videos {
+		durationSeconds := youtubeInfoDurationSeconds(video.YouTubeInfo)
+		if durationSeconds == 0 {
+			result.Failed++
+			log.Logger().Warn(
+				"Backfill eroge video duration skipped",
+				zap.Uint64("video_id", video.ID),
+				zap.String("youtube_video_id", video.YouTubeVideoID),
+			)
+			continue
+		}
+		if video.DurationSeconds != durationSeconds {
+			if err := repo.UpdateVideoDuration(video.ID, durationSeconds); err != nil {
+				result.Failed++
+				log.Logger().Error(
+					"Backfill eroge video duration update failed",
+					zap.Uint64("video_id", video.ID),
+					zap.String("youtube_video_id", video.YouTubeVideoID),
+					zap.Error(err),
+				)
+				continue
+			}
+			video.DurationSeconds = durationSeconds
+			result.Saved++
+		}
+		brand := erogeModel.Brand{
+			ID:               video.BrandID,
+			Name:             video.BrandName,
+			PublicID:         video.BrandPublicID,
+			AvatarURL:        video.BrandAvatarURL,
+			YouTubeChannelID: video.YouTubeChannelID,
+		}
+		if err := indexVideo(ctx, brand, video.Video, videoTags(video.Tags)); err != nil {
+			result.Failed++
+			log.Logger().Error(
+				"Backfill eroge video duration index failed",
+				zap.Uint64("video_id", video.ID),
+				zap.String("youtube_video_id", video.YouTubeVideoID),
+				zap.Error(err),
+			)
+			continue
+		}
+		result.Indexed++
+	}
+	return result, nil
+}
+
 func (s *Service) refreshBrand(ctx context.Context, brand erogeModel.Brand) (*erogeModel.Brand, error) {
 	resp, err := s.youtube.Channels.List([]string{"snippet", "contentDetails", "statistics"}).
 		Id(brand.YouTubeChannelID).Context(ctx).Do()
@@ -598,7 +735,8 @@ func (s *Service) fetchAndSaveVideos(ctx context.Context, brand erogeModel.Brand
 			BrandID: brand.ID, YouTubeVideoID: item.Id, Title: item.Snippet.Title,
 			Tags: string(tags), ThumbnailURL: thumbnailURL(item.Snippet.Thumbnails),
 			Description: item.Snippet.Description, PublishedAt: publishedAt,
-			YouTubeInfo: string(raw), UpdatedAt: time.Now(),
+			DurationSeconds: youtubeDurationSeconds(item.ContentDetails),
+			YouTubeInfo:     string(raw), UpdatedAt: time.Now(),
 		}
 		if err := s.repo.UpsertVideo(&video); err != nil {
 			return err
@@ -610,6 +748,54 @@ func (s *Service) fetchAndSaveVideos(ctx context.Context, brand erogeModel.Brand
 		result.Indexed++
 	}
 	return nil
+}
+
+func youtubeDurationSeconds(details *youtube.VideoContentDetails) uint64 {
+	if details == nil || details.Duration == "" {
+		return 0
+	}
+	return parseYouTubeDurationSeconds(details.Duration)
+}
+
+func youtubeInfoDurationSeconds(raw string) uint64 {
+	var video struct {
+		ContentDetails struct {
+			Duration string `json:"duration"`
+		} `json:"contentDetails"`
+	}
+	if err := json.Unmarshal([]byte(raw), &video); err != nil {
+		return 0
+	}
+	return parseYouTubeDurationSeconds(video.ContentDetails.Duration)
+}
+
+func parseYouTubeDurationSeconds(duration string) uint64 {
+	if duration == "" {
+		return 0
+	}
+	matches := youtubeDurationPattern.FindStringSubmatch(duration)
+	if matches == nil {
+		return 0
+	}
+	var total uint64
+	multipliers := []uint64{3600, 60, 1}
+	for index, value := range matches[1:] {
+		if value == "" {
+			continue
+		}
+		parsed, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return 0
+		}
+		total += parsed * multipliers[index]
+	}
+	return total
+}
+
+func videoTags(raw string) []string {
+	var tags []string
+	_ = json.Unmarshal([]byte(raw), &tags)
+	return tags
 }
 
 func (s *Service) matches(title string) bool {
@@ -644,6 +830,7 @@ func indexVideo(ctx context.Context, brand erogeModel.Brand, video erogeModel.Vi
 		"youtube_channel_id": brand.YouTubeChannelID, "youtube_video_id": video.YouTubeVideoID,
 		"title": video.Title, "tags": tags, "thumbnail_url": video.ThumbnailURL,
 		"description": video.Description, "published_at": video.PublishedAt,
+		"duration_seconds": video.DurationSeconds,
 	})
 	if err != nil {
 		return err
@@ -895,6 +1082,17 @@ func RunResyncBrandVideos(brandIDsValue string) {
 		}
 	}
 	log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
+}
+
+func RunBackfillVideoDuration() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	defer cancel()
+	result, err := BackfillVideoDuration(ctx)
+	if err == nil {
+		log.Logger().Info("Backfill eroge video duration finished", zap.Any("result", result))
+		return
+	}
+	log.Logger().Error("Backfill eroge video duration failed", zap.Error(err))
 }
 
 func parseBrandID(value string) (uint64, error) {

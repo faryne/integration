@@ -42,3 +42,11 @@ func (r *UserRepository) UpsertFirebaseUser(input modelAuth.User) (*modelAuth.Us
 	}
 	return &user, nil
 }
+
+func (r *UserRepository) UserByID(userID uint64) (*modelAuth.User, error) {
+	var user modelAuth.User
+	if err := r.GetDB().First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
