@@ -143,6 +143,7 @@ func (r *YouTubeRepository) VideosForDurationBackfill() ([]erogeModel.VideoOutpu
 		Select("videos.*, brands.name AS brand_name, brands.public_id AS brand_public_id, brands.avatar_url AS brand_avatar_url, brands.youtube_channel_id AS youtube_channel_id").
 		Joins("JOIN eroge_brands AS brands ON brands.id = videos.brand_id").
 		Where("videos.youtube_info IS NOT NULL AND videos.youtube_info <> ''").
+		Where("videos.duration_seconds = 0").
 		Order("videos.id ASC").
 		Scan(&videos).Error
 	return videos, err
