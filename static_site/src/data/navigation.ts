@@ -14,7 +14,7 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
     items: [
       {
         title: "Galgame 影片",
-        href: "/galgame",
+        href: "https://galgame.tv/",
       },
       {
         title: "難以名狀的抓圖器",

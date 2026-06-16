@@ -5,11 +5,13 @@ import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { GalgameLayout } from "./layouts/GalgameLayout.tsx";
+import { LabLayout } from "./layouts/LabLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
+const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
 const Login = lazy(() => import("@/pages/auth/Login.tsx"));
 const EncryptedDemo = lazy(() => import("@/pages/auth/EncryptedDemo.tsx"));
@@ -310,6 +312,11 @@ function App() {
                     </div>
                   }
                 />
+                <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
+
+              <Route path={"/lab"} element={<LabLayout />}>
+                <Route path={""} element={<LabHome />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
             </>
