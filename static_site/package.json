@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/prerender.mjs",
+    "build": "pnpm encode-contacts && tsc -b && vite build && node scripts/prerender.mjs",
+    "encode-contacts": "node scripts/encode-contact-source.mjs",
     "deploy": "pnpm deploy:main && pnpm deploy:galgame",
     "deploy:main": "firebase deploy --project faryne-integration --only hosting:main",
     "deploy:galgame": "firebase deploy --project galgame-tv --only hosting:galgame",

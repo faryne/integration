@@ -1,5 +1,10 @@
 function keyBytes() {
-  const key = import.meta.env.VITE_SECRET_KEY || "faryne.dev";
+  const key = import.meta.env.VITE_SECRET_KEY;
+
+  if (!key) {
+    throw new Error("VITE_SECRET_KEY is required to decode encoded contact strings.");
+  }
+
   return new TextEncoder().encode(key);
 }
 
