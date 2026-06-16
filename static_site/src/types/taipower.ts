@@ -22,6 +22,7 @@ export interface TaipowerNeighborSearch {
   sort?: "date_desc" | "cash_asc" | "cash_desc";
   page?: number;
   per_page?: number;
+  cursor?: string;
 }
 
 export interface TaipowerNeighborPagination {

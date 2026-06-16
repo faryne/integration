@@ -62,8 +62,30 @@ func searchTaipowerNeighbor(ctx fiber.Ctx, cityArea string, unit string) error {
 	if aggregation, ok := raw.Aggregations["total_cash"]; ok && aggregation.Value != nil {
 		totalCash = *aggregation.Value
 	}
+	currentOffset := (req.PageValue() - 1) * req.PerPageValue()
+	if cursor, err := helper.DecodeESCursor(req.Cursor); err != nil {
+		return output.BadRequest(err)
+	} else if cursor != nil {
+		currentOffset = cursor.Offset
+	}
+	var nextSearchAfter []any
+	if len(raw.Hits.Hits) > 0 {
+		nextSearchAfter = raw.Hits.Hits[len(raw.Hits.Hits)-1].Sort
+	}
+	pagination, err := helper.PaginateByES(ctx, helper.ESPaginateInput[[]taipowerModel.Neighbor]{
+		Data:            rows,
+		Total:           raw.Hits.Total.Value,
+		PerPage:         req.PerPageValue(),
+		CurrentCursor:   req.Cursor,
+		CurrentOffset:   currentOffset,
+		NextSearchAfter: nextSearchAfter,
+		RowsCount:       int64(len(rows)),
+	})
+	if err != nil {
+		return output.ESError(err)
+	}
 	return output.Success(taipowerModel.NeighborSearchOutput{
-		CommonPaginationOutput: helper.ResultPaginate(ctx, rows, raw.Hits.Total.Value),
-		TotalCash:              totalCash,
+		CommonESPaginationOutput: pagination,
+		TotalCash:                totalCash,
 	})
 }

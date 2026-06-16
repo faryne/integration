@@ -15,10 +15,11 @@ type NeighborSearchRequest struct {
 	CostFrom      *float64 `query:"costFrom"`
 	CostTo        *float64 `query:"costTo"`
 	Sort          string   `query:"sort"`
+	Cursor        string   `query:"cursor"`
 }
 
 type NeighborSearchOutput struct {
-	*entity.CommonPaginationOutput[[]Neighbor]
+	*entity.CommonESPaginationOutput[[]Neighbor]
 	TotalCash float64 `json:"total_cash"`
 }
 

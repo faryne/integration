@@ -15,6 +15,7 @@ type ElasticSearchResponse[T any] struct {
 			Index  string  `json:"_index"`
 			Score  float64 `json:"_score"`
 			Source T       `json:"_source"`
+			Sort   []any   `json:"sort,omitempty"`
 		} `json:"hits"`
 	} `json:"hits"`
 	Aggregations map[string]struct {

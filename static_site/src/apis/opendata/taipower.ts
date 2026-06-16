@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 
-import type { CommonResponse, Pagination } from "@/apis/interfaces.ts";
+import type { CommonResponse, EsPagination } from "@/apis/interfaces.ts";
 import type {
   TaipowerNeighbor,
   TaipowerNeighborPagination,
@@ -28,7 +28,7 @@ export function useTaipowerNeighbors(
           : `/${scope.type}/${encodeURIComponent(scope.value)}`;
       const response = await axios.get<
         CommonResponse<
-          Pagination<TaipowerNeighbor[]> & TaipowerNeighborPagination
+          EsPagination<TaipowerNeighbor[]> & TaipowerNeighborPagination
         >
       >(`${import.meta.env.VITE_API_BASE}/taipower/neighbor${suffix}`, {
         params: {

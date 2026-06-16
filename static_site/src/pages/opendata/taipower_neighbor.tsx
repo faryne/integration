@@ -5,7 +5,6 @@ import {
   Chip,
   CircularProgress,
   Link,
-  Pagination,
   Paper,
   Stack,
   Table,
@@ -31,6 +30,7 @@ import {
 
 import { useTaipowerNeighbors } from "@/apis/opendata/taipower.ts";
 import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -61,8 +61,9 @@ function searchFromParams(params: URLSearchParams): TaipowerNeighborSearch {
       params.get("sort") === "cash_asc" || params.get("sort") === "cash_desc"
         ? (params.get("sort") as "cash_asc" | "cash_desc")
         : undefined,
-    page: Math.max(1, Number(params.get("page")) || 1),
+    page: 1,
     per_page: 30,
+    cursor: params.get("cursor")?.trim() || undefined,
   };
 }
 
@@ -87,6 +88,7 @@ export default function TaipowerNeighborPage() {
   const search = useMemo(() => searchFromParams(params), [params]);
   const [form, setForm] = useState(search);
   const [selectedMonth, setSelectedMonth] = useState("");
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const scope = cityarea
     ? ({ type: "cityarea", value: cityarea } as const)
     : unit
@@ -107,7 +109,8 @@ export default function TaipowerNeighborPage() {
   useEffect(() => setForm(search), [search]);
 
   const submit = () => {
-    setParams(toSearchParams({ ...form, page: 1 }));
+    setCursorHistory([]);
+    setParams(toSearchParams({ ...form, page: 1, cursor: undefined }));
   };
 
   const addSelectedMonth = () => {
@@ -136,7 +139,8 @@ export default function TaipowerNeighborPage() {
 
   const toggleCashSort = () => {
     const sort = search.sort === "cash_desc" ? "cash_asc" : "cash_desc";
-    setParams(toSearchParams({ ...search, sort, page: 1 }));
+    setCursorHistory([]);
+    setParams(toSearchParams({ ...search, sort, page: 1, cursor: undefined }));
   };
 
   const scopedTitle = cityarea
@@ -422,15 +426,37 @@ export default function TaipowerNeighborPage() {
             </Table>
           </TableContainer>
         )}
-
-        {(pagination?.last_page ?? 0) > 1 && (
-          <Pagination
-            count={pagination?.last_page ?? 1}
-            page={search.page ?? 1}
-            onChange={(_, page) =>
-              setParams(toSearchParams({ ...search, page }))
-            }
-            shape="rounded"
+        {!!pagination && pagination.total > 0 && (
+          <EsCursorPagination
+            perPage={pagination?.per_page}
+            from={pagination.from}
+            to={pagination.to}
+            total={pagination.total}
+            hasPrevious={cursorHistory.length > 0 || !!search.cursor}
+            hasNext={!!pagination.has_next}
+            onPrevious={() => {
+              const nextHistory = [...cursorHistory];
+              const previousCursor = nextHistory.pop();
+              setCursorHistory(nextHistory);
+              setParams(
+                toSearchParams({
+                  ...search,
+                  page: 1,
+                  cursor: previousCursor,
+                }),
+              );
+            }}
+            onNext={() => {
+              if (!pagination.next_cursor) return;
+              setCursorHistory([...cursorHistory, search.cursor ?? ""]);
+              setParams(
+                toSearchParams({
+                  ...search,
+                  page: 1,
+                  cursor: pagination.next_cursor,
+                }),
+              );
+            }}
             sx={{ alignSelf: "center" }}
           />
         )}

@@ -1,9 +1,10 @@
 package entity
 
 import (
-	"github.com/gofiber/fiber/v3/binder"
 	"reflect"
 	"time"
+
+	"github.com/gofiber/fiber/v3/binder"
 )
 
 type CommonPaginationOutput[T any] struct {
@@ -19,6 +20,18 @@ type CommonPaginationOutput[T any] struct {
 	PrevPageUrl  string `json:"prev_page_url"`
 	To           int64  `json:"to"`
 	Total        int64  `json:"total"`
+}
+
+type CommonESPaginationOutput[T any] struct {
+	Data          T      `json:"data"`
+	From          int64  `json:"from"`
+	To            int64  `json:"to"`
+	Total         int64  `json:"total"`
+	PerPage       int64  `json:"per_page"`
+	Path          string `json:"path"`
+	NextCursor    string `json:"next_cursor,omitempty"`
+	CurrentCursor string `json:"current_cursor,omitempty"`
+	HasNext       bool   `json:"has_next,omitempty"`
 }
 
 type CommonPaginationQueryRequest struct {

@@ -26,3 +26,15 @@ export interface Pagination<T> {
   to: number;
   total: number;
 }
+
+export interface EsPagination<T> {
+  data: T;
+  from: number;
+  to: number;
+  total: number;
+  per_page: number;
+  path: string;
+  next_cursor?: string;
+  current_cursor?: string;
+  has_next?: boolean;
+}

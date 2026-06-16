@@ -8,6 +8,7 @@ import (
 
 	"faryne.dev/model/entity"
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
+	"faryne.dev/service/helper"
 	"faryne.dev/service/search"
 )
 
@@ -52,12 +53,14 @@ func buildNeighborSearchQuery(
 
 	page := input.PageValue()
 	perPage := input.PerPageValue()
+	if strings.TrimSpace(input.Cursor) == "" && page*perPage > 10000 {
+		return nil, fmt.Errorf("page is too deep; use cursor pagination")
+	}
 	sortConditions, err := neighborSort(input.Sort)
 	if err != nil {
 		return nil, err
 	}
 	query := map[string]any{
-		"from": (page - 1) * perPage,
 		"size": perPage,
 		"aggs": map[string]any{
 			"total_cash": map[string]any{
@@ -65,6 +68,13 @@ func buildNeighborSearchQuery(
 			},
 		},
 		"sort": sortConditions,
+	}
+	if strings.TrimSpace(input.Cursor) == "" {
+		query["from"] = (page - 1) * perPage
+	} else if cursor, err := helper.DecodeESCursor(input.Cursor); err != nil {
+		return nil, fmt.Errorf("cursor is invalid")
+	} else if cursor != nil {
+		query["search_after"] = cursor.SearchAfter
 	}
 
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
@@ -143,6 +153,7 @@ func neighborSort(value string) ([]map[string]any, error) {
 		{"obj_year": map[string]any{"order": "desc"}},
 		{"obj_month": map[string]any{"order": "desc"}},
 		{"obj_month_id": map[string]any{"order": "desc"}},
+		{"id": map[string]any{"order": "desc"}},
 	}
 	switch strings.TrimSpace(value) {
 	case "", "date_desc":
