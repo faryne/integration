@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
@@ -94,25 +94,87 @@ function chunkName(id: string) {
   }
 }
 
+function toBase64Url(value: Uint8Array) {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function encryptContact(value: string, key: string) {
+  const input = new TextEncoder().encode(value);
+  const keyBytes = new TextEncoder().encode(key || "faryne.dev");
+  const encrypted = input.map((byte, index) => byte ^ keyBytes[index % keyBytes.length]);
+
+  return `v1.${toBase64Url(encrypted)}`;
+}
+
+function parseStringLiteral(value: string) {
+  return Function(`"use strict"; return (${value});`)() as string;
+}
+
+function contactEncoderPlugin(secretKey: string): Plugin {
+  const callPattern =
+    /\bce\(\s*(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)\s*\)/g;
+
+  return {
+    name: "contact-encoder",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.includes("/src/") || !/\.[cm]?[jt]sx?$/.test(id)) {
+        return null;
+      }
+
+      const transformed = code.replace(callPattern, (match) => {
+        const literal = match.slice(match.indexOf("(") + 1, -1).trim();
+        const value = parseStringLiteral(literal);
+
+        if (value.startsWith("v1.")) {
+          return match;
+        }
+
+        const encrypted = encryptContact(value, secretKey);
+
+        return `ce(${JSON.stringify(encrypted)})`;
+      });
+
+      if (transformed === code) {
+        return null;
+      }
+
+      return {
+        code: transformed,
+        map: null,
+      };
+    },
+  };
+}
+
 // https://vite.dev/config/
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: chunkName,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+
+  return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: chunkName,
+        },
       },
     },
-  },
-  plugins: [
-    react({
-      babel: {
-        plugins: [["babel-plugin-react-compiler"]],
+    plugins: [
+      contactEncoderPlugin(env.VITE_SECRET_KEY),
+      react({
+        babel: {
+          plugins: [["babel-plugin-react-compiler"]],
+        },
+      }),
+    ],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
       },
-    }),
-  ],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
     },
-  },
+  };
 });

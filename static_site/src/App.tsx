@@ -12,6 +12,7 @@ import { isGalgameSite } from "@/helpers/galgame.ts";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
+const Cv = lazy(() => import("@/pages/Cv.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
 const Login = lazy(() => import("@/pages/auth/Login.tsx"));
 const EncryptedDemo = lazy(() => import("@/pages/auth/EncryptedDemo.tsx"));
@@ -282,6 +283,7 @@ function App() {
                 <Route path="/a" element={<h1>Hello</h1>} />
 
                 <Route path={"/about"} element={<About />} />
+                <Route path={"/cv"} element={<Cv />} />
                 <Route path={"/login"} element={<Login />} />
                 <Route
                   path={"/auth/encrypted-demo"}
