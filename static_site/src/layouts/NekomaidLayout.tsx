@@ -3,8 +3,11 @@ import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 import HomeIcon from "@mui/icons-material/Home";
 import { Link as RouterLink, Outlet } from "react-router-dom";
 import "@/styles/common.css";
+import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
 
 export function NekomaidLayout() {
+  const standaloneNekomaid = isNekomaidSite();
+
   return (
     <Box
       sx={{
@@ -39,7 +42,7 @@ export function NekomaidLayout() {
         >
           <Stack
             component={RouterLink}
-            to="/nekomaid"
+            to={nekomaidPath()}
             direction="row"
             alignItems="center"
             spacing={1.5}
@@ -67,45 +70,35 @@ export function NekomaidLayout() {
             <Box sx={{ minWidth: 0 }}>
               <Typography
                 component="p"
-                sx={{
-                  color: "rgba(248,250,252,0.58)",
-                  fontSize: 11,
-                  fontWeight: 900,
-                  letterSpacing: 1.3,
-                  textTransform: "uppercase",
-                }}
-              >
-                Nekomaid Archive
-              </Typography>
-              <Typography
-                component="p"
                 sx={{ fontWeight: 950, lineHeight: 1.1 }}
               >
-                難以名狀的抓圖器
+                  難以名狀的抓圖器
               </Typography>
             </Box>
           </Stack>
 
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button
-              component={RouterLink}
-              to="/"
-              size="small"
-              startIcon={<HomeIcon fontSize="small" />}
-              sx={{
-                borderColor: "rgba(255,255,255,0.28)",
-                color: "#f8fafc",
-                ml: { sm: 1 },
-                "&:hover": {
-                  borderColor: "rgba(255,255,255,0.54)",
-                  bgcolor: "rgba(255,255,255,0.08)",
-                },
-              }}
-              variant="outlined"
-            >
-              回實驗室首頁
-            </Button>
-          </Stack>
+          {!standaloneNekomaid && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                component={RouterLink}
+                to="/"
+                size="small"
+                startIcon={<HomeIcon fontSize="small" />}
+                sx={{
+                  borderColor: "rgba(255,255,255,0.28)",
+                  color: "#f8fafc",
+                  ml: { sm: 1 },
+                  "&:hover": {
+                    borderColor: "rgba(255,255,255,0.54)",
+                    bgcolor: "rgba(255,255,255,0.08)",
+                  },
+                }}
+                variant="outlined"
+              >
+                回 faryne.dev
+              </Button>
+            </Stack>
+          )}
         </Stack>
       </Box>
 
@@ -131,7 +124,18 @@ export function NekomaidLayout() {
         }}
       >
         <Typography variant="body2">
-          難以名狀的抓圖器 / faryne.dev 實驗室項目
+          難以名狀的抓圖器 by{" "}
+          <Typography
+            component="a"
+            href="https://faryne.dev/"
+            variant="body2"
+            color="inherit"
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{ textDecoration: "underline" }}
+          >
+            faryne.dev
+          </Typography>
         </Typography>
       </Box>
     </Box>

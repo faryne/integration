@@ -23,6 +23,12 @@ build-frontend-galgame:
 	pnpm deploy:galgame && \
 	cd ..
 
+build-frontend-nekomaid:
+	cd static_site; \
+	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	pnpm deploy:nekomaid && \
+	cd ..
+
 worker-install:
 	cd workers && npm install
 

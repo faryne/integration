@@ -2,6 +2,7 @@ import { Box, Button, Chip, Paper, Stack, Typography } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { nekomaidPath } from "@/helpers/nekomaid.ts";
 
 export function CollapsibleRelatedTags({ tags }: { tags: string[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -60,7 +61,7 @@ export function CollapsibleRelatedTags({ tags }: { tags: string[] }) {
                 key={item}
                 label={item}
                 component={RouterLink}
-                to={`/nekomaid?tag=${encodeURIComponent(item)}`}
+                to={nekomaidPath(`?tag=${encodeURIComponent(item)}`)}
                 clickable
               />
             ))}

@@ -50,6 +50,7 @@ import {
   isAnimatedArtwork,
   isR18Artwork,
   itemSite,
+  nekomaidPath,
   siteLabels,
   setR18ConfirmedCookie,
   useR18Confirmed,
@@ -153,7 +154,7 @@ function ArtworkInfoPanel({
             by{" "}
             <Link
               component={RouterLink}
-              to={`/nekomaid/${itemSite(artwork)}/${artwork.author_id}`}
+              to={nekomaidPath(`${itemSite(artwork)}/${artwork.author_id}`)}
               underline="hover"
               sx={{ fontWeight: 800 }}
             >
@@ -192,7 +193,7 @@ function ArtworkInfoPanel({
           )}
           <Button
             component={RouterLink}
-            to={`/nekomaid/${itemSite(artwork)}/${artwork.author_id}`}
+            to={nekomaidPath(`${itemSite(artwork)}/${artwork.author_id}`)}
             variant="outlined"
           >
             同畫師作品
@@ -212,7 +213,7 @@ function ArtworkInfoPanel({
               key={tag}
               label={tag}
               component={RouterLink}
-              to={`/nekomaid?tag=${encodeURIComponent(tag)}`}
+              to={nekomaidPath(`?tag=${encodeURIComponent(tag)}`)}
               clickable
               size="small"
             />
@@ -347,7 +348,7 @@ function DetailPage({
       artwork && !isR18Artwork(artwork)
         ? artwork.thumb || artwork.photos?.[0]?.url
         : undefined,
-    path: `/nekomaid/${site}/${authorId}/${artworkId}`,
+    path: nekomaidPath(`${site}/${authorId}/${artworkId}`),
     type: "article",
   });
 
@@ -359,7 +360,7 @@ function DetailPage({
     return (
       <ErrorPage
         code={404}
-        backUrl="/nekomaid"
+        backUrl={nekomaidPath()}
         message="找不到這個作品。請確認連結是否正確，或回到難以名狀的抓圖器重新搜尋。"
       />
     );
@@ -384,7 +385,7 @@ function DetailPage({
 
       <AgeConfirmationDialog
         description="這個作品標示為 R18。請確認你已年滿 18 歲，並同意繼續瀏覽成人內容。"
-        leaveTo="/nekomaid"
+        leaveTo={nekomaidPath()}
         onConfirm={confirmR18}
         open={requiresAgeConfirmation && !r18Confirmed}
       />
@@ -433,7 +434,7 @@ function ListPage({
     [artworks, search.data?.pages],
   );
 
-  useTitle("難以名狀的抓圖器", { path: "/nekomaid" });
+  useTitle("難以名狀的抓圖器", { path: nekomaidPath() });
 
   const applySearch = (next: NekomaidSearchFormValue) => {
     const params = new URLSearchParams();
@@ -443,7 +444,7 @@ function ListPage({
     if (next.type) params.set("type", next.type);
     if (next.wallpaper) params.set("wallpaper", next.wallpaper);
     if (next.minWidth) params.set("min_width", next.minWidth);
-    navigate(`/nekomaid?${params.toString()}`);
+    navigate(nekomaidPath(`?${params.toString()}`));
   };
 
   return (
@@ -498,7 +499,11 @@ function ListPage({
                     : "讀取中"}
               </Typography>
             </Box>
-            <Button component={RouterLink} to="/nekomaid" variant="outlined">
+            <Button
+              component={RouterLink}
+              to={nekomaidPath()}
+              variant="outlined"
+            >
               清除條件
             </Button>
           </Stack>

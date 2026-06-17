@@ -9,6 +9,7 @@ import { LabLayout } from "./layouts/LabLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
+import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 
 const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
@@ -172,12 +173,26 @@ function AnalyticsTracker() {
 
 function App() {
   const standaloneGalgame = isGalgameSite();
+  const standaloneNekomaid = isNekomaidSite();
 
   return (
     <BrowserRouter>
       <AnalyticsTracker />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+          {standaloneNekomaid && (
+            <Route path={""} element={<NekomaidLayout />}>
+              <Route path={"/"} element={<Nekomaid />} />
+              <Route path={"/:site"} element={<Nekomaid />} />
+              <Route path={"/:site/:authorId"} element={<Nekomaid />} />
+              <Route
+                path={"/:site/:authorId/:artworkId"}
+                element={<Nekomaid />}
+              />
+              <Route path={"*"} element={<ErrorPage code={404} />} />
+            </Route>
+          )}
+
           {standaloneGalgame && (
             <Route path={""} element={<GalgameLayout />}>
               <Route path={"/"} element={<GalgameHome />} />
@@ -194,7 +209,7 @@ function App() {
             </Route>
           )}
 
-          {!standaloneGalgame && (
+          {!standaloneGalgame && !standaloneNekomaid && (
             <>
               <Route
                 path={"storyteller"}

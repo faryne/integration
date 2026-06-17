@@ -1,9 +1,6 @@
 import type { NekomaidArtwork } from "@/types/nekomaid.ts";
 import { userscripts } from "@/data/userscript.ts";
-import {
-  setAgeConfirmed,
-  useAgeConfirmed,
-} from "@/helpers/ageConfirmation.ts";
+import { setAgeConfirmed, useAgeConfirmed } from "@/helpers/ageConfirmation.ts";
 
 export const siteLabels: Record<string, string> = {
   pixiv: "Pixiv",
@@ -13,12 +10,27 @@ export const siteLabels: Record<string, string> = {
 
 export const nekomaidUserscriptUrl = userscripts["nekomaid"].url;
 
+export function isNekomaidSite() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return ["nekomaid.web.app", "nekomaid.firebaseapp.com"].includes(
+    window.location.hostname,
+  );
+}
+
+export function nekomaidPath(path = "") {
+  const normalizedPath = path ? `/${path.replace(/^\/+/, "")}` : "";
+  return `${isNekomaidSite() ? "" : "/nekomaid"}${normalizedPath}` || "/";
+}
+
 export function itemSite(item: NekomaidArtwork) {
   return String(item.site ?? item.from ?? "");
 }
 
 export function artworkPath(item: NekomaidArtwork) {
-  return `/nekomaid/${itemSite(item)}/${item.author_id}/${item.artwork_id}`;
+  return nekomaidPath(`${itemSite(item)}/${item.author_id}/${item.artwork_id}`);
 }
 
 export function artworkShareUrl(item: NekomaidArtwork) {

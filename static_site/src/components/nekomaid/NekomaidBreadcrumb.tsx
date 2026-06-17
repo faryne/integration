@@ -1,6 +1,6 @@
 import { Box, Breadcrumbs, Link, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { siteLabels } from "@/helpers/nekomaid.ts";
+import { nekomaidPath, siteLabels } from "@/helpers/nekomaid.ts";
 
 export function NekomaidBreadcrumb({
   site,
@@ -27,13 +27,13 @@ export function NekomaidBreadcrumb({
   return (
     <Box sx={{ color: "text.secondary", fontSize: 14, minWidth: 0 }}>
       <Breadcrumbs aria-label="nekomaid breadcrumb">
-        <Link component={RouterLink} to="/nekomaid" underline="hover">
+        <Link component={RouterLink} to={nekomaidPath()} underline="hover">
           難以名狀的抓圖器
         </Link>
         {cleanSite && (
           <Link
             component={RouterLink}
-            to={`/nekomaid/${encodeURIComponent(cleanSite)}`}
+            to={nekomaidPath(encodeURIComponent(cleanSite))}
             underline="hover"
           >
             {siteLabels[cleanSite] ?? cleanSite}
@@ -42,7 +42,9 @@ export function NekomaidBreadcrumb({
         {cleanSite && cleanAuthorId && (
           <Link
             component={RouterLink}
-            to={`/nekomaid/${encodeURIComponent(cleanSite)}/${encodeURIComponent(cleanAuthorId)}`}
+            to={nekomaidPath(
+              `${encodeURIComponent(cleanSite)}/${encodeURIComponent(cleanAuthorId)}`,
+            )}
             underline="hover"
           >
             {authorLabel}

@@ -10,6 +10,7 @@
     "deploy": "pnpm deploy:main && pnpm deploy:galgame",
     "deploy:main": "firebase deploy --project faryne-integration --only hosting:main",
     "deploy:galgame": "firebase deploy --project galgame-tv --only hosting:galgame",
+    "deploy:nekomaid": "firebase target:apply hosting nekomaid nekomaid --project faryne-firebase && firebase deploy --project faryne-firebase --only hosting:nekomaid",
     "prerender": "node scripts/prerender.mjs",
     "lint": "eslint -c eslint.config.js .",
     "preview": "vite preview",
