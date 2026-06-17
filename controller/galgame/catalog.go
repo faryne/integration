@@ -141,6 +141,17 @@ func ResumeBrandIndexing(ctx fiber.Ctx) error {
 	return output.Success(map[string]string{"status": "queued"})
 }
 
+func SyncBrandVideosNow(ctx fiber.Ctx) error {
+	brandID, err := strconv.ParseUint(ctx.Params("brandId"), 10, 64)
+	if err != nil || brandID == 0 {
+		return output.BadRequest(errors.New("invalid brand ID"))
+	}
+	if err := eroge.NewCatalogService().SyncBrandVideosNow(authsession.Session(ctx).UserId, brandID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
 func AdminVideos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
 	if err := ctx.Bind().Query(&input); err != nil {
@@ -231,6 +242,57 @@ func SetVideoSubmissionStatus(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]string{"status": input.Status})
+}
+
+func AdminVideoTitleKeywords(ctx fiber.Ctx) error {
+	var input erogeModel.VideoTitleKeywordSearchRequest
+	if err := ctx.Bind().Query(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	rows, total, err := eroge.NewCatalogService().AdminSearchVideoTitleKeywords(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.Unauthorized(err)
+	}
+	return output.Success(helper.ResultPaginate(ctx, rows, total))
+}
+
+func CreateVideoTitleKeyword(ctx fiber.Ctx) error {
+	var input erogeModel.VideoTitleKeywordRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := eroge.NewCatalogService().CreateVideoTitleKeyword(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func UpdateVideoTitleKeyword(ctx fiber.Ctx) error {
+	keywordID, err := strconv.ParseUint(ctx.Params("keywordId"), 10, 64)
+	if err != nil || keywordID == 0 {
+		return output.BadRequest(errors.New("invalid keyword ID"))
+	}
+	var input erogeModel.VideoTitleKeywordRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := eroge.NewCatalogService().UpdateVideoTitleKeyword(authsession.Session(ctx).UserId, keywordID, input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteVideoTitleKeyword(ctx fiber.Ctx) error {
+	keywordID, err := strconv.ParseUint(ctx.Params("keywordId"), 10, 64)
+	if err != nil || keywordID == 0 {
+		return output.BadRequest(errors.New("invalid keyword ID"))
+	}
+	if err := eroge.NewCatalogService().DeleteVideoTitleKeyword(authsession.Session(ctx).UserId, keywordID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "ok"})
 }
 
 func Videos(ctx fiber.Ctx) error {

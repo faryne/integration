@@ -405,6 +405,11 @@ func (r *YouTubeRepository) MarkVideoSync(brandID uint64, syncedAt time.Time) er
 		Update("last_video_synced_at", syncedAt).Error
 }
 
+func (r *YouTubeRepository) ClearVideoSyncCursor(brandID uint64) error {
+	return r.db.Model(&erogeModel.Brand{}).Where("id = ?", brandID).
+		Update("last_video_synced_at", nil).Error
+}
+
 func (r *YouTubeRepository) VideoIDsByBrand(brandID uint64) ([]string, error) {
 	ids := make([]string, 0)
 	err := r.db.Model(&erogeModel.Video{}).
@@ -560,4 +565,59 @@ func (r *YouTubeRepository) UpdateVideoSubmissionStatus(id, adminUserID uint64, 
 	return r.db.Model(&erogeModel.VideoSubmission{}).Where("id = ?", id).Updates(map[string]any{
 		"status": status, "reviewed_by_user_id": adminUserID, "reviewed_at": now, "error_message": errorMessage,
 	}).Error
+}
+
+func (r *YouTubeRepository) EnabledVideoTitleKeywords() ([]string, error) {
+	keywords := make([]string, 0)
+	err := r.db.Model(&erogeModel.VideoTitleKeyword{}).
+		Where("enabled = ?", true).
+		Order("id ASC").
+		Pluck("keyword", &keywords).Error
+	return keywords, err
+}
+
+func (r *YouTubeRepository) SearchVideoTitleKeywords(input erogeModel.VideoTitleKeywordSearchRequest) ([]erogeModel.VideoTitleKeyword, int64, error) {
+	query := r.db.Model(&erogeModel.VideoTitleKeyword{})
+	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
+		query = query.Where("keyword LIKE ?", "%"+keyword+"%")
+	}
+	switch strings.TrimSpace(input.Enabled) {
+	case "true", "1":
+		query = query.Where("enabled = ?", true)
+	case "false", "0":
+		query = query.Where("enabled = ?", false)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]erogeModel.VideoTitleKeyword, 0)
+	err := query.Order("keyword ASC").
+		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
+		Limit(int(input.PerPageValue())).
+		Find(&rows).Error
+	return rows, total, err
+}
+
+func (r *YouTubeRepository) CreateVideoTitleKeyword(keyword string, enabled bool) (*erogeModel.VideoTitleKeyword, error) {
+	row := &erogeModel.VideoTitleKeyword{Keyword: keyword, Enabled: enabled}
+	if err := r.db.Create(row).Error; err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+func (r *YouTubeRepository) UpdateVideoTitleKeyword(id uint64, updates map[string]any) (*erogeModel.VideoTitleKeyword, error) {
+	if err := r.db.Model(&erogeModel.VideoTitleKeyword{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return nil, err
+	}
+	var row erogeModel.VideoTitleKeyword
+	if err := r.db.First(&row, id).Error; err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+func (r *YouTubeRepository) DeleteVideoTitleKeyword(id uint64) error {
+	return r.db.Delete(&erogeModel.VideoTitleKeyword{}, id).Error
 }

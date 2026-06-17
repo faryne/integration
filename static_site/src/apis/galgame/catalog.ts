@@ -13,6 +13,7 @@ import type {
   GalgameVideoReactionStatus,
   GalgameVideoSearch,
   GalgameVideoSubmission,
+  GalgameVideoTitleKeyword,
 } from "@/types/galgame.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -163,13 +164,21 @@ export function useGalgameBrandAdminAction() {
       action,
     }: {
       brandId: number;
-      action: "delete" | "restore" | "pause" | "resume";
+      action: "delete" | "restore" | "pause" | "resume" | "sync";
     }) => {
       const headers = sessionHeaders(session!.encrypt_key);
       if (action === "delete") {
         await axios.delete(`${apiBase}/admin/galgame/brands/${brandId}`, {
           headers,
         });
+        return;
+      }
+      if (action === "sync") {
+        await axios.post(
+          `${apiBase}/admin/galgame/brands/${brandId}/sync-videos`,
+          {},
+          { headers },
+        );
         return;
       }
       const path =
@@ -305,6 +314,111 @@ export function useSetGalgameVideoSubmissionStatus() {
       });
       void queryClient.invalidateQueries({ queryKey: ["galgame-admin-videos"] });
       void queryClient.invalidateQueries({ queryKey: ["galgame-videos"] });
+    },
+  });
+}
+
+export function useAdminGalgameVideoTitleKeywords(
+  keyword = "",
+  enabled = "all",
+  page = 1,
+  perPage = 20,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "galgame-admin-video-title-keywords",
+      session?.user.id,
+      keyword,
+      enabled,
+      page,
+      perPage,
+    ],
+    enabled: Boolean(session?.encrypt_key && session.user.is_admin),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<Pagination<GalgameVideoTitleKeyword[]>>
+      >(`${apiBase}/admin/galgame/video-title-keywords`, {
+        params: {
+          keyword: keyword || undefined,
+          enabled: enabled === "all" ? undefined : enabled,
+          page,
+          per_page: perPage,
+        },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return normalizePagination(response.data.data);
+    },
+  });
+}
+
+export function useCreateGalgameVideoTitleKeyword() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (keyword: string) => {
+      const response = await axios.post<
+        CommonResponse<GalgameVideoTitleKeyword>
+      >(
+        `${apiBase}/admin/galgame/video-title-keywords`,
+        { keyword, enabled: true },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-video-title-keywords"],
+      });
+    },
+  });
+}
+
+export function useUpdateGalgameVideoTitleKeyword() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      keywordId,
+      keyword,
+      enabled,
+    }: {
+      keywordId: number;
+      keyword?: string;
+      enabled?: boolean;
+    }) => {
+      const response = await axios.put<
+        CommonResponse<GalgameVideoTitleKeyword>
+      >(
+        `${apiBase}/admin/galgame/video-title-keywords/${keywordId}`,
+        { keyword, enabled },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-video-title-keywords"],
+      });
+    },
+  });
+}
+
+export function useDeleteGalgameVideoTitleKeyword() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (keywordId: number) => {
+      await axios.delete(
+        `${apiBase}/admin/galgame/video-title-keywords/${keywordId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-video-title-keywords"],
+      });
     },
   });
 }

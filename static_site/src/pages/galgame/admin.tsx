@@ -19,23 +19,33 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import RestoreIcon from "@mui/icons-material/Restore";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useState } from "react";
 
 import {
   useAdminGalgameBrands,
   useAdminGalgameVideos,
   useAdminGalgameVideoSubmissions,
+  useAdminGalgameVideoTitleKeywords,
+  useCreateGalgameVideoTitleKeyword,
+  useDeleteGalgameVideoTitleKeyword,
   useGalgameBrandAdminAction,
   useGalgameVideoAdminAction,
   useSetGalgameBrandStatus,
   useSetGalgameVideoSubmissionStatus,
+  useUpdateGalgameVideoTitleKeyword,
 } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 type BrandTab = "all" | "deleted" | "paused";
-type AdminTab = "brands" | "videos" | "pending-brands" | "pending-videos";
+type AdminTab =
+  | "brands"
+  | "videos"
+  | "pending-brands"
+  | "pending-videos"
+  | "title-keywords";
 type VideoTab = "all" | "deleted";
 
 const adminPageSize = 20;
@@ -51,6 +61,10 @@ export default function GalgameAdmin() {
   const [videoPage, setVideoPage] = useState(1);
   const [pendingBrandPage, setPendingBrandPage] = useState(1);
   const [pendingVideoPage, setPendingVideoPage] = useState(1);
+  const [titleKeyword, setTitleKeyword] = useState("");
+  const [titleKeywordEnabled, setTitleKeywordEnabled] = useState("all");
+  const [titleKeywordPage, setTitleKeywordPage] = useState(1);
+  const [newTitleKeyword, setNewTitleKeyword] = useState("");
   const brandStatus = brandTab === "all" ? "approved" : brandTab;
   const brands = useAdminGalgameBrands(
     brandStatus,
@@ -74,14 +88,24 @@ export default function GalgameAdmin() {
     pendingVideoPage,
     adminPageSize,
   );
+  const titleKeywords = useAdminGalgameVideoTitleKeywords(
+    titleKeyword,
+    titleKeywordEnabled,
+    titleKeywordPage,
+    adminPageSize,
+  );
   const setBrandStatus = useSetGalgameBrandStatus();
   const brandAction = useGalgameBrandAdminAction();
   const videoAction = useGalgameVideoAdminAction();
   const setSubmissionStatus = useSetGalgameVideoSubmissionStatus();
+  const createTitleKeyword = useCreateGalgameVideoTitleKeyword();
+  const updateTitleKeyword = useUpdateGalgameVideoTitleKeyword();
+  const deleteTitleKeyword = useDeleteGalgameVideoTitleKeyword();
   const brandRows = brands.data?.data ?? [];
   const pendingBrandRows = pendingBrands.data?.data ?? [];
   const videoRows = videos.data?.data ?? [];
   const submissionRows = submissions.data?.data ?? [];
+  const titleKeywordRows = titleKeywords.data?.data ?? [];
   const brandPages = Math.max(
     1,
     Math.ceil((brands.data?.total ?? 0) / (brands.data?.per_page || adminPageSize)),
@@ -102,6 +126,13 @@ export default function GalgameAdmin() {
     Math.ceil(
       (submissions.data?.total ?? 0) /
         (submissions.data?.per_page || adminPageSize),
+    ),
+  );
+  const titleKeywordPages = Math.max(
+    1,
+    Math.ceil(
+      (titleKeywords.data?.total ?? 0) /
+        (titleKeywords.data?.per_page || adminPageSize),
     ),
   );
   useTitle("Galgame 管理後台");
@@ -133,6 +164,7 @@ export default function GalgameAdmin() {
           <Tab value="videos" label="影片管理" />
           <Tab value="pending-brands" label="待審頻道" />
           <Tab value="pending-videos" label="待審影片" />
+          <Tab value="title-keywords" label="影片關鍵字" />
         </Tabs>
 
         {adminTab === "brands" && (
@@ -270,6 +302,18 @@ export default function GalgameAdmin() {
                                 }
                               >
                                 暫停索引
+                              </Button>
+                              <Button
+                                startIcon={<SyncIcon />}
+                                disabled={brandAction.isPending}
+                                onClick={() =>
+                                  void brandAction.mutateAsync({
+                                    brandId: brand.id,
+                                    action: "sync",
+                                  })
+                                }
+                              >
+                                完全索引
                               </Button>
                             </>
                           )}
@@ -535,6 +579,115 @@ export default function GalgameAdmin() {
               page={pendingVideoPage}
               count={pendingVideoPages}
               onChange={(_, value) => setPendingVideoPage(value)}
+              sx={{ alignSelf: "center" }}
+            />
+          )}
+        </Stack>
+        )}
+
+        {adminTab === "title-keywords" && (
+        <Stack spacing={2}>
+          <Typography variant="h5" component="h2">
+            影片關鍵字
+          </Typography>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+            <TextField
+              label="新增關鍵字"
+              value={newTitleKeyword}
+              onChange={(event) => setNewTitleKeyword(event.target.value)}
+              sx={{ flex: 1 }}
+            />
+            <Button
+              variant="contained"
+              disabled={
+                newTitleKeyword.trim() === "" || createTitleKeyword.isPending
+              }
+              onClick={() =>
+                void createTitleKeyword
+                  .mutateAsync(newTitleKeyword.trim())
+                  .then(() => setNewTitleKeyword(""))
+              }
+            >
+              新增
+            </Button>
+          </Stack>
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+            <TextField
+              label="搜尋關鍵字"
+              value={titleKeyword}
+              onChange={(event) => {
+                setTitleKeyword(event.target.value);
+                setTitleKeywordPage(1);
+              }}
+              sx={{ flex: 1 }}
+            />
+            <Tabs
+              value={titleKeywordEnabled}
+              onChange={(_, value: string) => {
+                setTitleKeywordEnabled(value);
+                setTitleKeywordPage(1);
+              }}
+            >
+              <Tab value="all" label="全部" />
+              <Tab value="true" label="啟用" />
+              <Tab value="false" label="停用" />
+            </Tabs>
+          </Stack>
+          {titleKeywords.isPending ? (
+            <GalgameState loading message="正在載入關鍵字..." />
+          ) : titleKeywordRows.length === 0 ? (
+            <GalgameState message="沒有符合條件的關鍵字。" />
+          ) : (
+            <Grid container spacing={2}>
+              {titleKeywordRows.map((keyword) => (
+                <Grid key={keyword.id} size={{ xs: 12, md: 6 }}>
+                  <Card variant="outlined">
+                    <CardContent>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontWeight={700} noWrap>
+                            {keyword.keyword}
+                          </Typography>
+                          <Chip
+                            label={keyword.enabled ? "啟用" : "停用"}
+                            color={keyword.enabled ? "success" : "default"}
+                            size="small"
+                            sx={{ mt: 0.75 }}
+                          />
+                        </Box>
+                        <Button
+                          disabled={updateTitleKeyword.isPending}
+                          onClick={() =>
+                            void updateTitleKeyword.mutateAsync({
+                              keywordId: keyword.id,
+                              enabled: !keyword.enabled,
+                            })
+                          }
+                        >
+                          {keyword.enabled ? "停用" : "啟用"}
+                        </Button>
+                        <Button
+                          color="error"
+                          startIcon={<DeleteIcon />}
+                          disabled={deleteTitleKeyword.isPending}
+                          onClick={() =>
+                            void deleteTitleKeyword.mutateAsync(keyword.id)
+                          }
+                        >
+                          刪除
+                        </Button>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+          {(titleKeywords.data?.total ?? 0) > 0 && (
+            <Pagination
+              page={titleKeywordPage}
+              count={titleKeywordPages}
+              onChange={(_, value) => setTitleKeywordPage(value)}
               sx={{ alignSelf: "center" }}
             />
           )}

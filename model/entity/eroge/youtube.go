@@ -214,3 +214,24 @@ type VideoSubmissionResult struct {
 type VideoSubmissionStatusRequest struct {
 	Status string `json:"status"`
 }
+
+type VideoTitleKeyword struct {
+	ID        uint64    `gorm:"column:id;primaryKey" json:"id"`
+	Keyword   string    `gorm:"column:keyword" json:"keyword"`
+	Enabled   bool      `gorm:"column:enabled" json:"enabled"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (VideoTitleKeyword) TableName() string { return "eroge_video_title_keywords" }
+
+type VideoTitleKeywordSearchRequest struct {
+	entity.CommonPaginationQueryRequest
+	Keyword string `query:"keyword"`
+	Enabled string `query:"enabled"`
+}
+
+type VideoTitleKeywordRequest struct {
+	Keyword string `json:"keyword"`
+	Enabled *bool  `json:"enabled"`
+}

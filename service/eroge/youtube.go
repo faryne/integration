@@ -20,6 +20,7 @@ import (
 	"faryne.dev/config"
 	erogeModel "faryne.dev/model/entity/eroge"
 	"faryne.dev/model/enum"
+	"faryne.dev/repository"
 	erogeRepo "faryne.dev/repository/eroge"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
@@ -34,26 +35,10 @@ const (
 	videoIndexName = "galgame_videos"
 )
 
-var videoTitleKeywords = []string{
-	"PV",
-	"OP",
-	"OPムービー",
-	"オープニング",
-	"オープニングムービー",
-	"プロモーション",
-	"プロモーションムービー",
-	"ティザー",
-	"体験版",
-	"デモムービー",
-	"発売記念",
-	"エンディング",
-	"ＯＰムービー",
-}
-
 var youtubeDurationPattern = regexp.MustCompile(`^P(?:\d+W)?(?:\d+D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$`)
 
 type SyncResult struct {
-	Brands, Fetched, Matched, Saved, Indexed, Failed int
+	Brands, Fetched, Matched, Saved, NewVideos, Indexed, Failed int
 }
 
 type BrandInput struct {
@@ -76,13 +61,18 @@ func NewService(ctx context.Context) (*Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	keywords := make([]string, 0, len(videoTitleKeywords))
-	for _, keyword := range videoTitleKeywords {
+	repo := erogeRepo.NewYouTubeRepository()
+	dbKeywords, err := repo.EnabledVideoTitleKeywords()
+	if err != nil {
+		return nil, err
+	}
+	keywords := make([]string, 0, len(dbKeywords))
+	for _, keyword := range dbKeywords {
 		if keyword = strings.TrimSpace(keyword); keyword != "" {
 			keywords = append(keywords, strings.ToLower(keyword))
 		}
 	}
-	return &Service{repo: erogeRepo.NewYouTubeRepository(), youtube: api, keywords: keywords}, nil
+	return &Service{repo: repo, youtube: api, keywords: keywords}, nil
 }
 
 func (s *Service) AddBrand(ctx context.Context, input BrandInput) (*erogeModel.Brand, error) {
@@ -279,7 +269,7 @@ func (s *Service) SetVideoSubmissionStatus(ctx context.Context, userID, submissi
 			video, err := s.fetchYouTubeVideo(ctx, submission.YouTubeVideoID)
 			if err != nil {
 				errorMessage = err.Error()
-			} else if err := s.saveAndIndexVideo(ctx, *brand, video); err != nil {
+			} else if _, err := s.saveAndIndexVideo(ctx, *brand, video); err != nil {
 				errorMessage = err.Error()
 			}
 		}
@@ -637,6 +627,7 @@ func (s *Service) SyncVideos(ctx context.Context) (*SyncResult, error) {
 			brand = *refreshed
 		}
 		syncStartedAt := time.Now()
+		newVideosBeforeSync := result.NewVideos
 		err := s.syncBrandVideos(ctx, brand, result)
 		if isPlaylistNotFound(err) {
 			refreshed, refreshErr := s.refreshBrand(ctx, brand)
@@ -655,6 +646,7 @@ func (s *Service) SyncVideos(ctx context.Context) (*SyncResult, error) {
 		if err := s.repo.MarkVideoSync(brand.ID, syncStartedAt); err != nil {
 			return result, err
 		}
+		clearVideoCatalogCacheIfNewVideos(ctx, brand, result, newVideosBeforeSync)
 	}
 	return result, nil
 }
@@ -678,6 +670,10 @@ func (s *Service) ResyncBrandVideos(ctx context.Context, brandIDs []uint64) (*Sy
 			brand = refreshed
 		}
 		syncStartedAt := time.Now()
+		newVideosBeforeSync := result.NewVideos
+		if err := s.repo.ClearVideoSyncCursor(brand.ID); err != nil {
+			return result, err
+		}
 		brand.LastVideoSyncedAt = nil
 		err = s.syncBrandVideos(ctx, *brand, result)
 		if isPlaylistNotFound(err) {
@@ -698,6 +694,7 @@ func (s *Service) ResyncBrandVideos(ctx context.Context, brandIDs []uint64) (*Sy
 		if err := s.repo.MarkVideoSync(brand.ID, syncStartedAt); err != nil {
 			return result, err
 		}
+		clearVideoCatalogCacheIfNewVideos(ctx, *brand, result, newVideosBeforeSync)
 	}
 	return result, nil
 }
@@ -871,10 +868,14 @@ func (s *Service) fetchAndSaveVideos(ctx context.Context, brand erogeModel.Brand
 			continue
 		}
 		result.Matched++
-		if err := s.saveAndIndexVideo(ctx, brand, item); err != nil {
+		created, err := s.saveAndIndexVideo(ctx, brand, item)
+		if err != nil {
 			return err
 		}
 		result.Saved++
+		if created {
+			result.NewVideos++
+		}
 		result.Indexed++
 	}
 	return nil
@@ -892,15 +893,20 @@ func (s *Service) fetchYouTubeVideo(ctx context.Context, videoID string) (*youtu
 	return resp.Items[0], nil
 }
 
-func (s *Service) saveAndIndexVideo(ctx context.Context, brand erogeModel.Brand, item *youtube.Video) error {
+func (s *Service) saveAndIndexVideo(ctx context.Context, brand erogeModel.Brand, item *youtube.Video) (bool, error) {
 	publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 	if err != nil {
-		return err
+		return false, err
 	}
 	tags, _ := json.Marshal(item.Snippet.Tags)
 	raw, err := json.Marshal(item)
 	if err != nil {
-		return err
+		return false, err
+	}
+	_, findErr := s.repo.VideoByYouTubeVideoID(item.Id)
+	created := repository.IsRecordNotFound(findErr)
+	if findErr != nil && !created {
+		return false, findErr
 	}
 	video := erogeModel.Video{
 		BrandID: brand.ID, YouTubeVideoID: item.Id, Title: item.Snippet.Title,
@@ -910,12 +916,53 @@ func (s *Service) saveAndIndexVideo(ctx context.Context, brand erogeModel.Brand,
 		YouTubeInfo:     string(raw), UpdatedAt: time.Now(),
 	}
 	if err := s.repo.UpsertVideo(&video); err != nil {
-		return err
+		return false, err
 	}
 	if brand.IndexPausedAt != nil || brand.DeletedAt != nil {
+		return created, nil
+	}
+	return created, indexVideo(ctx, brand, video, item.Snippet.Tags)
+}
+
+func clearVideoCatalogCacheIfNewVideos(ctx context.Context, brand erogeModel.Brand, result *SyncResult, newVideosBeforeSync int) {
+	if result.NewVideos <= newVideosBeforeSync {
+		return
+	}
+	if err := clearVideoCatalogCache(ctx, brand.PublicID); err != nil {
+		log.Logger().Warn(
+			"Clear galgame video catalog cache failed",
+			zap.Uint64("brand_id", brand.ID),
+			zap.String("public_id", brand.PublicID),
+			zap.Error(err),
+		)
+	}
+}
+
+func clearVideoCatalogCache(ctx context.Context, publicID string) error {
+	redisClient := client.GetRedis(enum.RedisDefault)
+	if redisClient == nil || publicID == "" {
 		return nil
 	}
-	return indexVideo(ctx, brand, video, item.Snippet.Tags)
+	pattern := fmt.Sprintf("galgame:catalog:videos:%s:*", publicID)
+	var cursor uint64
+	for {
+		keys, nextCursor, err := redisClient.Scan(cursor, pattern, 100).Result()
+		if err != nil {
+			return err
+		}
+		if len(keys) > 0 {
+			if err := redisClient.Del(keys...).Err(); err != nil {
+				return err
+			}
+		}
+		if nextCursor == 0 {
+			return nil
+		}
+		cursor = nextCursor
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+	}
 }
 
 func valueOrZero(value *uint64) uint64 {

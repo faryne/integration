@@ -344,15 +344,7 @@ func (s *CatalogService) RestoreBrand(userID uint64, brandID uint64) error {
 	if err := s.repo.RestoreBrand(brandID); err != nil {
 		return err
 	}
-	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-		defer cancel()
-		service, err := NewService(ctx)
-		if err != nil {
-			return
-		}
-		_, _ = service.ResyncBrandVideos(ctx, []uint64{brandID})
-	}()
+	s.queueBrandVideoSync(brandID)
 	return nil
 }
 
@@ -370,6 +362,29 @@ func (s *CatalogService) ResumeBrandIndexing(userID uint64, brandID uint64) erro
 	if err := s.repo.ResumeBrandIndexing(brandID); err != nil {
 		return err
 	}
+	s.queueBrandVideoSync(brandID)
+	return nil
+}
+
+func (s *CatalogService) SyncBrandVideosNow(userID uint64, brandID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	brand, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return err
+	}
+	if brand.DeletedAt != nil {
+		return fmt.Errorf("deleted brand cannot be indexed")
+	}
+	if brand.IndexPausedAt != nil {
+		return fmt.Errorf("brand indexing is paused")
+	}
+	s.queueBrandVideoSync(brandID)
+	return nil
+}
+
+func (s *CatalogService) queueBrandVideoSync(brandID uint64) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
@@ -379,7 +394,6 @@ func (s *CatalogService) ResumeBrandIndexing(userID uint64, brandID uint64) erro
 		}
 		_, _ = service.ResyncBrandVideos(ctx, []uint64{brandID})
 	}()
-	return nil
 }
 
 func (s *CatalogService) DeleteVideo(userID uint64, videoID uint64) error {
@@ -433,6 +447,52 @@ func (s *CatalogService) AdminSearchVideoSubmissions(userID uint64, input erogeM
 		return nil, 0, err
 	}
 	return s.repo.SearchVideoSubmissions(input)
+}
+
+func (s *CatalogService) AdminSearchVideoTitleKeywords(userID uint64, input erogeModel.VideoTitleKeywordSearchRequest) ([]erogeModel.VideoTitleKeyword, int64, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.SearchVideoTitleKeywords(input)
+}
+
+func (s *CatalogService) CreateVideoTitleKeyword(userID uint64, input erogeModel.VideoTitleKeywordRequest) (*erogeModel.VideoTitleKeyword, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, err
+	}
+	keyword := strings.TrimSpace(input.Keyword)
+	if keyword == "" {
+		return nil, fmt.Errorf("keyword is required")
+	}
+	enabled := true
+	if input.Enabled != nil {
+		enabled = *input.Enabled
+	}
+	return s.repo.CreateVideoTitleKeyword(keyword, enabled)
+}
+
+func (s *CatalogService) UpdateVideoTitleKeyword(userID uint64, id uint64, input erogeModel.VideoTitleKeywordRequest) (*erogeModel.VideoTitleKeyword, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, err
+	}
+	updates := make(map[string]any)
+	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
+		updates["keyword"] = keyword
+	}
+	if input.Enabled != nil {
+		updates["enabled"] = *input.Enabled
+	}
+	if len(updates) == 0 {
+		return nil, fmt.Errorf("no updates")
+	}
+	return s.repo.UpdateVideoTitleKeyword(id, updates)
+}
+
+func (s *CatalogService) DeleteVideoTitleKeyword(userID uint64, id uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	return s.repo.DeleteVideoTitleKeyword(id)
 }
 
 func requireGalgameAdmin(userID uint64) error {

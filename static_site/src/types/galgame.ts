@@ -80,3 +80,11 @@ export interface GalgameVideoSubmission {
   error_message: string;
   created_at: string;
 }
+
+export interface GalgameVideoTitleKeyword {
+  id: number;
+  keyword: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
