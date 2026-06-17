@@ -8,6 +8,7 @@ import {
   Card,
   CardActionArea,
   CardContent,
+  Chip,
   Grid,
   Link,
   Stack,
@@ -19,9 +20,11 @@ import NavigateBeforeIcon from "@mui/icons-material/NavigateBefore";
 import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import ThumbDownIcon from "@mui/icons-material/ThumbDown";
 import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import { useMemo } from "react";
 import { Link as RouterLink, useParams } from "react-router-dom";
 
 import {
+  useGalgameBrandFavorite,
   useGalgameVideo,
   useGalgameVideoFavorite,
   useGalgameVideoNavigation,
@@ -43,10 +46,22 @@ export default function GalgameVideo() {
   const query = useGalgameVideo(brandSlug, videoId);
   const related = useRelatedGalgameVideos(brandSlug, videoId);
   const favorite = useGalgameVideoFavorite(brandSlug, videoId);
+  const video = query.data;
+  const brandFavorite = useGalgameBrandFavorite(
+    video
+      ? galgameBrandSlug(video.brand_public_id, video.brand_name)
+      : undefined,
+  );
   const reaction = useGalgameVideoReaction(brandSlug, videoId);
   const navigation = useGalgameVideoNavigation(brandSlug, videoId);
   const { session, login, submitting } = useAuth();
-  const video = query.data;
+  const displayTags = useMemo(
+    () =>
+      (video?.tags ?? [])
+        .map((tag) => tag.replace(/^#+/, "").trim())
+        .filter(Boolean),
+    [video?.tags],
+  );
   useTitle(video?.title ?? "Galgame 影片");
 
   return (
@@ -100,6 +115,16 @@ export default function GalgameVideo() {
                   loading={favorite.isFetching || favorite.mutation.isPending}
                   onToggle={(value) => favorite.mutation.mutateAsync(value)}
                 />
+                <Button
+                  component="a"
+                  href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="outlined"
+                  endIcon={<OpenInNewIcon />}
+                >
+                  YouTube
+                </Button>
                 <Button
                   variant={
                     reaction.reaction === "like" ? "contained" : "outlined"
@@ -292,16 +317,18 @@ export default function GalgameVideo() {
                       {new Date(video.published_at).toLocaleDateString("zh-TW")}
                     </Typography>
                   </Box>
-                  <Button
-                    component="a"
-                    href={`https://www.youtube.com/watch?v=${video.youtube_video_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    size="small"
-                    endIcon={<OpenInNewIcon />}
-                  >
-                    YouTube
-                  </Button>
+                  <FavoriteButton
+                    label="品牌"
+                    variant="button"
+                    favorite={brandFavorite.favorite}
+                    loading={
+                      brandFavorite.isFetching ||
+                      brandFavorite.mutation.isPending
+                    }
+                    onToggle={(value) =>
+                      brandFavorite.mutation.mutateAsync(value)
+                    }
+                  />
                 </Stack>
                 <Accordion disableGutters>
                   <AccordionSummary
@@ -312,11 +339,29 @@ export default function GalgameVideo() {
                     <Typography variant="h6">影片介紹</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {video.description ? (
-                      <ExpandableText
-                        text={video.description}
-                        collapsedLines={8}
-                      />
+                    {displayTags.length > 0 || video.description ? (
+                      <Stack spacing={1.5}>
+                        {displayTags.length > 0 && (
+                          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                            {displayTags.map((tag) => (
+                              <Chip
+                                key={tag}
+                                label={tag}
+                                size="small"
+                                component={RouterLink}
+                                clickable
+                                to={`${galgamePath()}?keyword=${encodeURIComponent(tag)}`}
+                              />
+                            ))}
+                          </Stack>
+                        )}
+                        {video.description && (
+                          <ExpandableText
+                            text={video.description}
+                            collapsedLines={8}
+                          />
+                        )}
+                      </Stack>
                     ) : (
                       <Typography color="text.secondary">
                         此影片沒有介紹。

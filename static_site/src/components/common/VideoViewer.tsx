@@ -542,12 +542,6 @@ export function VideoViewer({
             {currentDescription}
           </Typography>
         )}
-
-        <Typography color="text.secondary" textAlign="center" variant="body2">
-          {isEmbedded
-            ? "嵌入式影片使用來源平台播放器。"
-            : "影片會自動循環播放，也可以使用下方控制列操作。"}
-        </Typography>
       </Stack>
     </Paper>
   );

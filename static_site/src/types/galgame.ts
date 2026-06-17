@@ -31,6 +31,7 @@ export interface GalgameVideo {
   likes: number;
   dislikes: number;
   deleted_at?: string | null;
+  tags?: string[] | null;
 }
 
 export interface GalgameVideoSearch {

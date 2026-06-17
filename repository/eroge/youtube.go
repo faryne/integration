@@ -1,6 +1,7 @@
 package eroge
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -107,7 +108,7 @@ func (r *YouTubeRepository) SearchVideos(
 	}
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		like := "%" + keyword + "%"
-		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ?)", like, like)
+		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ? OR CAST(videos.tags AS CHAR) LIKE ?)", like, like, like)
 	}
 	if from != nil {
 		query = query.Where("videos.published_at >= ?", *from)
@@ -125,6 +126,7 @@ func (r *YouTubeRepository) SearchVideos(
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
 		Scan(&videos).Error
+	hydrateVideoOutputTags(videos)
 	return videos, total, err
 }
 
@@ -141,6 +143,7 @@ func (r *YouTubeRepository) Video(brandPublicID string, videoID string) (*erogeM
 	if err := query.Take(&video).Error; err != nil {
 		return nil, err
 	}
+	video.TagList = videoOutputTags(video.Tags)
 	return &video, nil
 }
 
@@ -153,6 +156,7 @@ func (r *YouTubeRepository) VideosForDurationBackfill() ([]erogeModel.VideoOutpu
 		Where("videos.duration_seconds = 0").
 		Order("videos.id ASC").
 		Scan(&videos).Error
+	hydrateVideoOutputTags(videos)
 	return videos, err
 }
 
@@ -180,6 +184,7 @@ func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput)
 		Scan(&sameBrand).Error; err != nil {
 		return nil, err
 	}
+	hydrateVideoOutputTags(sameBrand)
 	candidates = append(candidates, sameBrand...)
 
 	otherBrands := make([]erogeModel.VideoOutput, 0, 150)
@@ -189,6 +194,7 @@ func (r *YouTubeRepository) RelatedVideoCandidates(video erogeModel.VideoOutput)
 		Scan(&otherBrands).Error; err != nil {
 		return nil, err
 	}
+	hydrateVideoOutputTags(otherBrands)
 	return append(candidates, otherBrands...), nil
 }
 
@@ -220,9 +226,11 @@ func (r *YouTubeRepository) AdjacentVideos(video erogeModel.VideoOutput) (*eroge
 
 	var previousOutput, nextOutput *erogeModel.VideoOutput
 	if previousQuery.Error == nil {
+		previous.TagList = videoOutputTags(previous.Tags)
 		previousOutput = &previous
 	}
 	if nextQuery.Error == nil {
+		next.TagList = videoOutputTags(next.Tags)
 		nextOutput = &next
 	}
 	return previousOutput, nextOutput, nil
@@ -361,7 +369,7 @@ func (r *YouTubeRepository) FavoriteVideos(userID uint64, input erogeModel.Video
 		Where("favorites.user_id = ? AND brands.status = ?", userID, "approved")
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		like := "%" + keyword + "%"
-		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ?)", like, like)
+		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ? OR CAST(videos.tags AS CHAR) LIKE ?)", like, like, like)
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -372,6 +380,7 @@ func (r *YouTubeRepository) FavoriteVideos(userID uint64, input erogeModel.Video
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
 		Scan(&videos).Error
+	hydrateVideoOutputTags(videos)
 	return videos, total, err
 }
 
@@ -480,7 +489,7 @@ func (r *YouTubeRepository) SearchAdminVideos(input erogeModel.VideoSearchReques
 	}
 	if keyword := strings.TrimSpace(input.Keyword); keyword != "" {
 		like := "%" + keyword + "%"
-		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ? OR brands.name LIKE ?)", like, like, like)
+		query = query.Where("(videos.title LIKE ? OR videos.description LIKE ? OR CAST(videos.tags AS CHAR) LIKE ? OR brands.name LIKE ?)", like, like, like, like)
 	}
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -491,7 +500,25 @@ func (r *YouTubeRepository) SearchAdminVideos(input erogeModel.VideoSearchReques
 		Offset(int((input.PageValue() - 1) * input.PerPageValue())).
 		Limit(int(input.PerPageValue())).
 		Scan(&videos).Error
+	hydrateVideoOutputTags(videos)
 	return videos, total, err
+}
+
+func hydrateVideoOutputTags(videos []erogeModel.VideoOutput) {
+	for index := range videos {
+		videos[index].TagList = videoOutputTags(videos[index].Tags)
+	}
+}
+
+func videoOutputTags(raw string) []string {
+	if strings.TrimSpace(raw) == "" || strings.TrimSpace(raw) == "null" {
+		return nil
+	}
+	tags := make([]string, 0)
+	if err := json.Unmarshal([]byte(raw), &tags); err != nil {
+		return nil
+	}
+	return tags
 }
 
 func (r *YouTubeRepository) VideoByID(videoID uint64) (*erogeModel.Video, error) {

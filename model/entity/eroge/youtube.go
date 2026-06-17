@@ -106,10 +106,11 @@ type VideoSubmissionSearchRequest struct {
 
 type VideoOutput struct {
 	Video
-	BrandName        string `gorm:"column:brand_name" json:"brand_name"`
-	BrandPublicID    string `gorm:"column:brand_public_id" json:"brand_public_id"`
-	BrandAvatarURL   string `gorm:"column:brand_avatar_url" json:"brand_avatar_url"`
-	YouTubeChannelID string `gorm:"column:youtube_channel_id" json:"-"`
+	BrandName        string   `gorm:"column:brand_name" json:"brand_name"`
+	BrandPublicID    string   `gorm:"column:brand_public_id" json:"brand_public_id"`
+	BrandAvatarURL   string   `gorm:"column:brand_avatar_url" json:"brand_avatar_url"`
+	YouTubeChannelID string   `gorm:"column:youtube_channel_id" json:"-"`
+	TagList          []string `gorm:"-" json:"tags"`
 }
 
 type RelatedVideoOutput struct {
