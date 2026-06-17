@@ -228,103 +228,29 @@ function App() {
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
-              <Route path={""} element={<GalgameLayout />}>
-                <Route path={"/galgame"} element={<GalgameHome />} />
+              <Route path={"galgame"} element={<GalgameLayout />}>
+                <Route path={""} element={<GalgameHome />} />
                 <Route
-                  path={"/galgame/favorites"}
+                  path={"favorites"}
                   element={<GalgameFavorites />}
                 />
                 <Route
-                  path={"/galgame/submit"}
+                  path={"submit"}
                   element={<GalgameSubmitBrand />}
                 />
                 <Route
-                  path={"/galgame/submit-video"}
+                  path={"submit-video"}
                   element={<GalgameSubmitVideo />}
                 />
-                <Route path={"/galgame/admin"} element={<GalgameAdmin />} />
+                <Route path={"admin"} element={<GalgameAdmin />} />
                 <Route
-                  path={"/galgame/:brandSlug"}
+                  path={":brandSlug"}
                   element={<GalgameBrand />}
                 />
                 <Route
-                  path={"/galgame/:brandSlug/video/:videoId"}
+                  path={":brandSlug/video/:videoId"}
                   element={<GalgameVideo />}
                 />
-                <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
-                <Route path={"/av/video"} element={<AVVideo />} />
-                <Route
-                  path={"/av/actress/:name"}
-                  element={<AVActressDetail />}
-                />
-                <Route path={"/av/actress"} element={<AVActress />} />
-
-                <Route
-                  path={"/data/tw-stats/:name"}
-                  element={<TwStatsByName />}
-                />
-                <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
-
-                <Route path={"/data/rates"} element={<RatesIndex />} />
-
-                <Route
-                  path={"/data/fire/realtime"}
-                  element={<FireDepartmentRealtime />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/cityarea"}
-                  element={<TaipowerNeighborStatistics />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/unit"}
-                  element={<TaipowerNeighborStatistics />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/cityarea/:cityarea"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/unit/:unit"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/map"}
-                  element={<TaipowerNeighborMap />}
-                />
-
-                <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
-
-                <Route
-                  path={"/tools/thread/capture"}
-                  element={<CaptureThread />}
-                />
-                <Route path={"/tools/webshot"} element={<Webshot />} />
-                <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
-                <Route path={"/tools/userscripts"} element={<Userscripts />} />
-
-                <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
-                <Route
-                  path={"/data/etf/yieldmax/:etfCode"}
-                  element={<YieldMaxEtfs />}
-                />
-                <Route path={"/data/etf/twse"} element={<TwseEtf />} />
-                <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
-
-                <Route path="/a" element={<h1>Hello</h1>} />
-
-                <Route path={"/about"} element={<About />} />
-                <Route path={"/cv"} element={<Cv />} />
-                <Route path={"/login"} element={<Login />} />
-                <Route
-                  path={"/auth/encrypted-demo"}
-                  element={<EncryptedDemo />}
-                />
-                <Route path={"/"} element={<Home />} />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
               <Route path={"/nekomaid"} element={<NekomaidLayout />}>
@@ -336,6 +262,83 @@ function App() {
                   element={<Nekomaid />}
                 />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
+              </Route>
+
+              <Route path={""} element={<DefaultLayout />}>
+                  <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
+                  <Route path={"/av/video"} element={<AVVideo />} />
+                  <Route
+                      path={"/av/actress/:name"}
+                      element={<AVActressDetail />}
+                  />
+                  <Route path={"/av/actress"} element={<AVActress />} />
+
+                  <Route
+                      path={"/data/tw-stats/:name"}
+                      element={<TwStatsByName />}
+                  />
+                  <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
+
+                  <Route path={"/data/rates"} element={<RatesIndex />} />
+
+                  <Route
+                      path={"/data/fire/realtime"}
+                      element={<FireDepartmentRealtime />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor"}
+                      element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor/cityarea"}
+                      element={<TaipowerNeighborStatistics />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor/unit"}
+                      element={<TaipowerNeighborStatistics />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor/cityarea/:cityarea"}
+                      element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor/unit/:unit"}
+                      element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                      path={"/data/taipower/neighbor/map"}
+                      element={<TaipowerNeighborMap />}
+                  />
+
+                  <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
+
+                  <Route
+                      path={"/tools/thread/capture"}
+                      element={<CaptureThread />}
+                  />
+                  <Route path={"/tools/webshot"} element={<Webshot />} />
+                  <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
+                  <Route path={"/tools/userscripts"} element={<Userscripts />} />
+
+                  <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
+                  <Route
+                      path={"/data/etf/yieldmax/:etfCode"}
+                      element={<YieldMaxEtfs />}
+                  />
+                  <Route path={"/data/etf/twse"} element={<TwseEtf />} />
+                  <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
+
+                  <Route path="/a" element={<h1>Hello</h1>} />
+
+                  <Route path={"/about"} element={<About />} />
+                  <Route path={"/cv"} element={<Cv />} />
+                  <Route path={"/login"} element={<Login />} />
+                  <Route
+                      path={"/auth/encrypted-demo"}
+                      element={<EncryptedDemo />}
+                  />
+                  <Route path={"/"} element={<Home />} />
+                  <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
               <Route path={"/modern"} element={<ModernLayout />}>

@@ -18,7 +18,7 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
       },
       {
         title: "難以名狀的抓圖器",
-        href: "/nekomaid",
+        href: "https://nekomaid.web.app/",
       },
       {
         title: "二次元常用英文 tag",
