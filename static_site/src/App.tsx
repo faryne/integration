@@ -179,6 +179,8 @@ function App() {
               <Route path={"/"} element={<GalgameHome />} />
               <Route path={"/favorites"} element={<GalgameFavorites />} />
               <Route path={"/submit"} element={<GalgameSubmitBrand />} />
+              <Route path={"/submit-video"} element={<GalgameSubmitVideo />} />
+              <Route path={"/admin"} element={<GalgameAdmin />} />
               <Route path={"/:brandSlug"} element={<GalgameBrand />} />
               <Route
                 path={"/:brandSlug/video/:videoId"}
