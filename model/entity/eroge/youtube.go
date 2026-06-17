@@ -20,6 +20,8 @@ type Brand struct {
 	ApprovedAt          *time.Time `gorm:"column:approved_at" json:"approved_at"`
 	LastChannelSyncedAt *time.Time `gorm:"column:last_channel_synced_at" json:"last_channel_synced_at"`
 	LastVideoSyncedAt   *time.Time `gorm:"column:last_video_synced_at" json:"last_video_synced_at"`
+	IndexPausedAt       *time.Time `gorm:"column:index_paused_at" json:"index_paused_at"`
+	DeletedAt           *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	LatestVideoCount    uint64     `gorm:"->;column:latest_video_count" json:"-"`
 	CreatedAt           time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt           time.Time  `gorm:"column:updated_at" json:"updated_at"`
@@ -28,20 +30,21 @@ type Brand struct {
 func (Brand) TableName() string { return "eroge_brands" }
 
 type Video struct {
-	ID              uint64    `gorm:"column:id;primaryKey" json:"id"`
-	BrandID         uint64    `gorm:"column:brand_id" json:"brand_id"`
-	YouTubeVideoID  string    `gorm:"column:youtube_video_id" json:"youtube_video_id"`
-	Title           string    `gorm:"column:title" json:"title"`
-	Tags            string    `gorm:"column:tags" json:"-"`
-	ThumbnailURL    string    `gorm:"column:thumbnail_url" json:"thumbnail_url"`
-	Description     string    `gorm:"column:description" json:"description"`
-	PublishedAt     time.Time `gorm:"column:published_at" json:"published_at"`
-	DurationSeconds uint64    `gorm:"column:duration_seconds" json:"duration_seconds"`
-	Likes           uint64    `gorm:"column:likes" json:"likes"`
-	Dislikes        uint64    `gorm:"column:dislikes" json:"dislikes"`
-	YouTubeInfo     string    `gorm:"column:youtube_info" json:"-"`
-	CreatedAt       time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time `gorm:"column:updated_at" json:"updated_at"`
+	ID              uint64     `gorm:"column:id;primaryKey" json:"id"`
+	BrandID         uint64     `gorm:"column:brand_id" json:"brand_id"`
+	YouTubeVideoID  string     `gorm:"column:youtube_video_id" json:"youtube_video_id"`
+	Title           string     `gorm:"column:title" json:"title"`
+	Tags            string     `gorm:"column:tags" json:"-"`
+	ThumbnailURL    string     `gorm:"column:thumbnail_url" json:"thumbnail_url"`
+	Description     string     `gorm:"column:description" json:"description"`
+	PublishedAt     time.Time  `gorm:"column:published_at" json:"published_at"`
+	DurationSeconds uint64     `gorm:"column:duration_seconds" json:"duration_seconds"`
+	Likes           uint64     `gorm:"column:likes" json:"likes"`
+	Dislikes        uint64     `gorm:"column:dislikes" json:"dislikes"`
+	YouTubeInfo     string     `gorm:"column:youtube_info" json:"-"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Video) TableName() string { return "eroge_videos" }
@@ -91,8 +94,14 @@ type BrandStatusRequest struct {
 type VideoSearchRequest struct {
 	entity.CommonPaginationQueryRequest
 	Keyword         string `query:"keyword"`
+	Status          string `query:"status"`
 	PublishedAtFrom string `query:"published_at_from"`
 	PublishedAtTo   string `query:"published_at_to"`
+}
+
+type VideoSubmissionSearchRequest struct {
+	entity.CommonPaginationQueryRequest
+	Status string `query:"status"`
 }
 
 type VideoOutput struct {
@@ -171,3 +180,37 @@ type VideoReactionEvent struct {
 }
 
 func (VideoReactionEvent) TableName() string { return "eroge_video_reaction_events" }
+
+type VideoSubmission struct {
+	ID               uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64     `gorm:"column:user_id" json:"user_id"`
+	BrandID          *uint64    `gorm:"column:brand_id" json:"brand_id"`
+	YouTubeChannelID string     `gorm:"column:youtube_channel_id" json:"youtube_channel_id"`
+	YouTubeVideoID   string     `gorm:"column:youtube_video_id" json:"youtube_video_id"`
+	VideoURL         string     `gorm:"column:video_url" json:"video_url"`
+	Title            string     `gorm:"column:title" json:"title"`
+	ThumbnailURL     string     `gorm:"column:thumbnail_url" json:"thumbnail_url"`
+	Status           string     `gorm:"column:status" json:"status"`
+	ReviewedByUserID *uint64    `gorm:"column:reviewed_by_user_id" json:"reviewed_by_user_id"`
+	ReviewedAt       *time.Time `gorm:"column:reviewed_at" json:"reviewed_at"`
+	ErrorMessage     string     `gorm:"column:error_message" json:"error_message"`
+	CreatedAt        time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (VideoSubmission) TableName() string { return "eroge_video_submissions" }
+
+type VideoSubmissionRequest struct {
+	URLs []string `json:"urls"`
+}
+
+type VideoSubmissionResult struct {
+	Input      string           `json:"input"`
+	Submission *VideoSubmission `json:"submission,omitempty"`
+	Created    bool             `json:"created"`
+	Error      string           `json:"error,omitempty"`
+}
+
+type VideoSubmissionStatusRequest struct {
+	Status string `json:"status"`
+}

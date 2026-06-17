@@ -97,6 +97,142 @@ func SetBrandStatus(ctx fiber.Ctx) error {
 	return output.Success(brand)
 }
 
+func DeleteBrand(ctx fiber.Ctx) error {
+	brandID, err := strconv.ParseUint(ctx.Params("brandId"), 10, 64)
+	if err != nil || brandID == 0 {
+		return output.BadRequest(errors.New("invalid brand ID"))
+	}
+	if err := eroge.NewCatalogService().DeleteBrand(authsession.Session(ctx).UserId, brandID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
+func RestoreBrand(ctx fiber.Ctx) error {
+	brandID, err := strconv.ParseUint(ctx.Params("brandId"), 10, 64)
+	if err != nil || brandID == 0 {
+		return output.BadRequest(errors.New("invalid brand ID"))
+	}
+	if err := eroge.NewCatalogService().RestoreBrand(authsession.Session(ctx).UserId, brandID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
+func PauseBrandIndexing(ctx fiber.Ctx) error {
+	brandID, err := strconv.ParseUint(ctx.Params("brandId"), 10, 64)
+	if err != nil || brandID == 0 {
+		return output.BadRequest(errors.New("invalid brand ID"))
+	}
+	if err := eroge.NewCatalogService().PauseBrandIndexing(authsession.Session(ctx).UserId, brandID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "ok"})
+}
+
+func ResumeBrandIndexing(ctx fiber.Ctx) error {
+	brandID, err := strconv.ParseUint(ctx.Params("brandId"), 10, 64)
+	if err != nil || brandID == 0 {
+		return output.BadRequest(errors.New("invalid brand ID"))
+	}
+	if err := eroge.NewCatalogService().ResumeBrandIndexing(authsession.Session(ctx).UserId, brandID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
+func AdminVideos(ctx fiber.Ctx) error {
+	var input erogeModel.VideoSearchRequest
+	if err := ctx.Bind().Query(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	rows, total, err := eroge.NewCatalogService().AdminSearchVideos(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.Unauthorized(err)
+	}
+	return output.Success(helper.ResultPaginate(ctx, rows, total))
+}
+
+func DeleteVideo(ctx fiber.Ctx) error {
+	videoID, err := strconv.ParseUint(ctx.Params("videoId"), 10, 64)
+	if err != nil || videoID == 0 {
+		return output.BadRequest(errors.New("invalid video ID"))
+	}
+	if err := eroge.NewCatalogService().DeleteVideo(authsession.Session(ctx).UserId, videoID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
+func RestoreVideo(ctx fiber.Ctx) error {
+	videoID, err := strconv.ParseUint(ctx.Params("videoId"), 10, 64)
+	if err != nil || videoID == 0 {
+		return output.BadRequest(errors.New("invalid video ID"))
+	}
+	if err := eroge.NewCatalogService().RestoreVideo(authsession.Session(ctx).UserId, videoID); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": "queued"})
+}
+
+func SubmitVideos(ctx fiber.Ctx) error {
+	var input erogeModel.VideoSubmissionRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	if len(input.URLs) == 0 {
+		return output.BadRequest(errors.New("urls is required"))
+	}
+	requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	service, err := eroge.NewService(requestCtx)
+	if err != nil {
+		return output.DBError(err)
+	}
+	var userID uint64
+	if session := authsession.Session(ctx); session != nil {
+		userID = session.UserId
+	}
+	results, err := service.SubmitVideos(requestCtx, userID, input.URLs)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(results)
+}
+
+func AdminVideoSubmissions(ctx fiber.Ctx) error {
+	var input erogeModel.VideoSubmissionSearchRequest
+	if err := ctx.Bind().Query(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	rows, total, err := eroge.NewCatalogService().AdminSearchVideoSubmissions(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.Unauthorized(err)
+	}
+	return output.Success(helper.ResultPaginate(ctx, rows, total))
+}
+
+func SetVideoSubmissionStatus(ctx fiber.Ctx) error {
+	submissionID, err := strconv.ParseUint(ctx.Params("submissionId"), 10, 64)
+	if err != nil || submissionID == 0 {
+		return output.BadRequest(errors.New("invalid submission ID"))
+	}
+	var input erogeModel.VideoSubmissionStatusRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	service, err := eroge.NewService(requestCtx)
+	if err != nil {
+		return output.DBError(err)
+	}
+	if err := service.SetVideoSubmissionStatus(requestCtx, authsession.Session(ctx).UserId, submissionID, input.Status); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]string{"status": input.Status})
+}
+
 func Videos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
 	if err := ctx.Bind().Query(&input); err != nil {

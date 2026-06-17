@@ -283,6 +283,13 @@ func (s *CatalogService) AdminSearchBrands(userID uint64, input erogeModel.Brand
 	return output, total, nil
 }
 
+func (s *CatalogService) AdminSearchVideos(userID uint64, input erogeModel.VideoSearchRequest) ([]erogeModel.VideoOutput, int64, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.SearchAdminVideos(input)
+}
+
 func (s *CatalogService) SetBrandStatus(ctx context.Context, userID uint64, brandID uint64, status string) (*erogeModel.BrandOutput, error) {
 	if err := requireGalgameAdmin(userID); err != nil {
 		return nil, err
@@ -304,6 +311,128 @@ func (s *CatalogService) SetBrandStatus(ctx context.Context, userID uint64, bran
 		}
 	}
 	return &output, nil
+}
+
+func (s *CatalogService) DeleteBrand(userID uint64, brandID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	brand, err := s.repo.BrandByID(brandID)
+	if err != nil {
+		return err
+	}
+	videoIDs, err := s.repo.VideoIDsByBrand(brandID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.SoftDeleteBrand(brandID, time.Now()); err != nil {
+		return err
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		_ = deleteIndexDocuments(ctx, videoIndexName, videoIDs)
+		_ = deleteIndexDocuments(ctx, brandIndexName, []string{brand.PublicID})
+	}()
+	return nil
+}
+
+func (s *CatalogService) RestoreBrand(userID uint64, brandID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	if err := s.repo.RestoreBrand(brandID); err != nil {
+		return err
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+		service, err := NewService(ctx)
+		if err != nil {
+			return
+		}
+		_, _ = service.ResyncBrandVideos(ctx, []uint64{brandID})
+	}()
+	return nil
+}
+
+func (s *CatalogService) PauseBrandIndexing(userID uint64, brandID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	return s.repo.PauseBrandIndexing(brandID, time.Now())
+}
+
+func (s *CatalogService) ResumeBrandIndexing(userID uint64, brandID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	if err := s.repo.ResumeBrandIndexing(brandID); err != nil {
+		return err
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		defer cancel()
+		service, err := NewService(ctx)
+		if err != nil {
+			return
+		}
+		_, _ = service.ResyncBrandVideos(ctx, []uint64{brandID})
+	}()
+	return nil
+}
+
+func (s *CatalogService) DeleteVideo(userID uint64, videoID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	video, err := s.repo.VideoByID(videoID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.SoftDeleteVideo(videoID, time.Now()); err != nil {
+		return err
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		_ = deleteIndexDocuments(ctx, videoIndexName, []string{video.YouTubeVideoID})
+	}()
+	return nil
+}
+
+func (s *CatalogService) RestoreVideo(userID uint64, videoID uint64) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	video, err := s.repo.VideoByID(videoID)
+	if err != nil {
+		return err
+	}
+	brand, err := s.repo.BrandByID(video.BrandID)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.RestoreVideo(videoID); err != nil {
+		return err
+	}
+	if brand.DeletedAt != nil || brand.IndexPausedAt != nil {
+		return nil
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		video.DeletedAt = nil
+		_ = indexVideo(ctx, *brand, *video, videoTags(video.Tags))
+	}()
+	return nil
+}
+
+func (s *CatalogService) AdminSearchVideoSubmissions(userID uint64, input erogeModel.VideoSubmissionSearchRequest) ([]erogeModel.VideoSubmission, int64, error) {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return nil, 0, err
+	}
+	return s.repo.SearchVideoSubmissions(input)
 }
 
 func requireGalgameAdmin(userID uint64) error {

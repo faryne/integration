@@ -94,17 +94,24 @@ export default function GalgameFavorites() {
             <Grid container spacing={3}>
               {brands.data!.data.map((brand) => (
                 <Grid key={brand.id} size={{ xs: 12, sm: 6, md: 3 }}>
-                  <Card sx={{ height: "100%" }}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      opacity: brand.deleted_at ? 0.58 : 1,
+                    }}
+                  >
                     <CardActionArea
                       component={
-                        brand.latest_video_count > 0 ? RouterLink : "button"
+                        brand.latest_video_count > 0 && !brand.deleted_at
+                          ? RouterLink
+                          : "button"
                       }
                       to={
-                        brand.latest_video_count > 0
+                        brand.latest_video_count > 0 && !brand.deleted_at
                           ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?tab=recent`
                           : undefined
                       }
-                      disabled={brand.latest_video_count <= 0}
+                      disabled={brand.latest_video_count <= 0 || Boolean(brand.deleted_at)}
                       sx={{ height: "100%" }}
                     >
                       <CardContent>
@@ -125,9 +132,15 @@ export default function GalgameFavorites() {
                             <StarIcon color="warning" fontSize="small" />
                           </Stack>
                           <Chip
-                            label={`最新上檔 ${brand.latest_video_count ?? 0}`}
+                            label={
+                              brand.deleted_at
+                                ? "已刪除"
+                                : `最新上檔 ${brand.latest_video_count ?? 0}`
+                            }
                             color={
-                              brand.latest_video_count > 0
+                              brand.deleted_at
+                                ? "default"
+                                : brand.latest_video_count > 0
                                 ? "secondary"
                                 : "default"
                             }

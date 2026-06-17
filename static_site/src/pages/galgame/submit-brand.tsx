@@ -1,37 +1,26 @@
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Card,
   CardContent,
-  Chip,
-  Grid,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import CheckIcon from "@mui/icons-material/Check";
-import CloseIcon from "@mui/icons-material/Close";
 import SendIcon from "@mui/icons-material/Send";
 import axios from "axios";
 import { useMemo, useState } from "react";
 
-import {
-  useAdminGalgameBrands,
-  useSetGalgameBrandStatus,
-  useSubmitGalgameBrands,
-} from "@/apis/galgame/catalog.ts";
+import { useSubmitGalgameBrands } from "@/apis/galgame/catalog.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { GalgameState } from "@/components/galgame/GalgameState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 
 export default function GalgameSubmitBrand() {
-  const { session, loading } = useAuth();
+  const { loading } = useAuth();
   const [input, setInput] = useState("");
   const submit = useSubmitGalgameBrands();
-  const adminBrands = useAdminGalgameBrands("pending", 1, 48);
-  const setStatus = useSetGalgameBrandStatus();
   const channels = useMemo(
     () =>
       input
@@ -121,65 +110,6 @@ export default function GalgameSubmitBrand() {
                     }`}
               </Alert>
             ))}
-          </Stack>
-        )}
-
-        {session?.user.is_admin && !adminBrands.isError && (
-          <Stack spacing={2}>
-            <Typography variant="h5" component="h2">
-              待審頻道
-            </Typography>
-            {adminBrands.isPending ? (
-              <GalgameState loading message="正在載入待審頻道..." />
-            ) : adminBrands.data.data.length === 0 ? (
-              <GalgameState message="目前沒有待審頻道。" />
-            ) : (
-              <Grid container spacing={2}>
-                {adminBrands.data.data.map((brand) => (
-                  <Grid key={brand.id} size={{ xs: 12, md: 6 }}>
-                    <Card variant="outlined">
-                      <CardContent>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Avatar src={brand.avatar_url} alt={brand.name} />
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography fontWeight={700} noWrap>
-                              {brand.name}
-                            </Typography>
-                            <Chip label={brand.status} size="small" />
-                          </Box>
-                          <Button
-                            color="success"
-                            startIcon={<CheckIcon />}
-                            disabled={setStatus.isPending}
-                            onClick={() =>
-                              void setStatus.mutateAsync({
-                                brandId: brand.id,
-                                status: "approved",
-                              })
-                            }
-                          >
-                            核准
-                          </Button>
-                          <Button
-                            color="error"
-                            startIcon={<CloseIcon />}
-                            disabled={setStatus.isPending}
-                            onClick={() =>
-                              void setStatus.mutateAsync({
-                                brandId: brand.id,
-                                status: "rejected",
-                              })
-                            }
-                          >
-                            拒絕
-                          </Button>
-                        </Stack>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
           </Stack>
         )}
       </Stack>

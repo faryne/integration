@@ -50,6 +50,7 @@ export function GalgameVideoCard({
     await favoriteQuery.mutation.mutateAsync(!isFavorite);
   };
   const duration = formatGalgameDuration(video.duration_seconds);
+  const disabled = Boolean(video.deleted_at);
   const videoPath = galgamePath(
     `${galgameBrandSlug(video.brand_public_id, video.brand_name)}/video/${video.youtube_video_id}`,
   );
@@ -91,7 +92,7 @@ export function GalgameVideoCard({
   return (
     <Card
       variant={variant === "simple" ? "outlined" : undefined}
-      sx={{ height: "100%", position: "relative" }}
+      sx={{ height: "100%", position: "relative", opacity: disabled ? 0.58 : 1 }}
     >
       <Tooltip title={isFavorite ? "取消收藏影片" : "收藏影片"}>
         <Box
@@ -116,6 +117,7 @@ export function GalgameVideoCard({
             aria-label={isFavorite ? "取消收藏影片" : "收藏影片"}
             disabled={
               submitting ||
+              disabled ||
               favoriteQuery.isFetching ||
               favoriteQuery.mutation.isPending
             }
@@ -130,8 +132,9 @@ export function GalgameVideoCard({
         </Box>
       </Tooltip>
       <CardActionArea
-        component={RouterLink}
-        to={videoPath}
+        component={disabled ? "button" : RouterLink}
+        to={disabled ? undefined : videoPath}
+        disabled={disabled}
         sx={{
           height: "100%",
           alignItems: "stretch",
@@ -149,6 +152,7 @@ export function GalgameVideoCard({
         >
           <Stack direction="row" sx={{ mb: variant === "summary" ? 1 : 0.5 }}>
             <Chip label={video.brand_name} color="primary" size="small" />
+            {disabled && <Chip label="已刪除" size="small" sx={{ ml: 1 }} />}
           </Stack>
           <Typography
             variant={variant === "summary" ? "h6" : "subtitle2"}

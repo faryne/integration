@@ -12,6 +12,7 @@ import type {
   GalgameVideoReactionAction,
   GalgameVideoReactionStatus,
   GalgameVideoSearch,
+  GalgameVideoSubmission,
 } from "@/types/galgame.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -73,21 +74,54 @@ export function useSubmitGalgameBrands() {
   });
 }
 
+export interface GalgameVideoSubmissionResult {
+  input: string;
+  submission?: GalgameVideoSubmission;
+  created: boolean;
+  error?: string;
+}
+
+export function useSubmitGalgameVideos() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (urls: string[]) => {
+      const response = await axios.post<
+        CommonResponse<GalgameVideoSubmissionResult[]>
+      >(
+        `${apiBase}/galgame/videos/submissions`,
+        { urls },
+        session?.encrypt_key
+          ? { headers: sessionHeaders(session.encrypt_key) }
+          : undefined,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function useAdminGalgameBrands(
   status = "pending",
   page = 1,
   perPage = 24,
+  keyword = "",
 ) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ["galgame-admin-brands", session?.user.id, status, page, perPage],
+    queryKey: [
+      "galgame-admin-brands",
+      session?.user.id,
+      status,
+      keyword,
+      page,
+      perPage,
+    ],
     enabled: Boolean(session?.encrypt_key && session.user.is_admin),
     retry: false,
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<Pagination<GalgameBrand[]>>
-      >(`${apiBase}/galgame/admin/brands`, {
-        params: { status, page, per_page: perPage },
+      >(`${apiBase}/admin/galgame/brands`, {
+        params: { status, keyword: keyword || undefined, page, per_page: perPage },
         headers: sessionHeaders(session!.encrypt_key),
       });
       return normalizePagination(response.data.data);
@@ -107,7 +141,7 @@ export function useSetGalgameBrandStatus() {
       status: "pending" | "approved" | "rejected";
     }) => {
       const response = await axios.put<CommonResponse<GalgameBrand>>(
-        `${apiBase}/galgame/admin/brands/${brandId}/status`,
+        `${apiBase}/admin/galgame/brands/${brandId}/status`,
         { status },
         { headers: sessionHeaders(session!.encrypt_key) },
       );
@@ -116,6 +150,161 @@ export function useSetGalgameBrandStatus() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["galgame-admin-brands"] });
       void queryClient.invalidateQueries({ queryKey: ["galgame-brands"] });
+    },
+  });
+}
+
+export function useGalgameBrandAdminAction() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      brandId,
+      action,
+    }: {
+      brandId: number;
+      action: "delete" | "restore" | "pause" | "resume";
+    }) => {
+      const headers = sessionHeaders(session!.encrypt_key);
+      if (action === "delete") {
+        await axios.delete(`${apiBase}/admin/galgame/brands/${brandId}`, {
+          headers,
+        });
+        return;
+      }
+      const path =
+        action === "restore"
+          ? "restore"
+          : action === "pause"
+            ? "pause-indexing"
+            : "resume-indexing";
+      await axios.put(
+        `${apiBase}/admin/galgame/brands/${brandId}/${path}`,
+        {},
+        { headers },
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-brands"] });
+      void queryClient.invalidateQueries({ queryKey: ["galgame-brands"] });
+    },
+  });
+}
+
+export function useAdminGalgameVideos(
+  status = "all",
+  keyword = "",
+  page = 1,
+  perPage = 24,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "galgame-admin-videos",
+      session?.user.id,
+      status,
+      keyword,
+      page,
+      perPage,
+    ],
+    enabled: Boolean(session?.encrypt_key && session.user.is_admin),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<Pagination<GalgameVideo[]>>
+      >(`${apiBase}/admin/galgame/videos`, {
+        params: { status, keyword: keyword || undefined, page, per_page: perPage },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return normalizePagination(response.data.data);
+    },
+  });
+}
+
+export function useGalgameVideoAdminAction() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      videoId,
+      action,
+    }: {
+      videoId: number;
+      action: "delete" | "restore";
+    }) => {
+      const headers = sessionHeaders(session!.encrypt_key);
+      if (action === "delete") {
+        await axios.delete(`${apiBase}/admin/galgame/videos/${videoId}`, {
+          headers,
+        });
+        return;
+      }
+      await axios.put(
+        `${apiBase}/admin/galgame/videos/${videoId}/restore`,
+        {},
+        { headers },
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-videos"] });
+      void queryClient.invalidateQueries({ queryKey: ["galgame-videos"] });
+    },
+  });
+}
+
+export const useDeleteGalgameVideo = useGalgameVideoAdminAction;
+
+export function useAdminGalgameVideoSubmissions(
+  status = "pending",
+  page = 1,
+  perPage = 24,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "galgame-admin-video-submissions",
+      session?.user.id,
+      status,
+      page,
+      perPage,
+    ],
+    enabled: Boolean(session?.encrypt_key && session.user.is_admin),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<Pagination<GalgameVideoSubmission[]>>
+      >(`${apiBase}/admin/galgame/video-submissions`, {
+        params: { status, page, per_page: perPage },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return normalizePagination(response.data.data);
+    },
+  });
+}
+
+export function useSetGalgameVideoSubmissionStatus() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      submissionId,
+      status,
+    }: {
+      submissionId: number;
+      status: "pending" | "approved" | "rejected";
+    }) => {
+      await axios.put(
+        `${apiBase}/admin/galgame/video-submissions/${submissionId}/status`,
+        { status },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-video-submissions"],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-videos"] });
+      void queryClient.invalidateQueries({ queryKey: ["galgame-videos"] });
     },
   });
 }

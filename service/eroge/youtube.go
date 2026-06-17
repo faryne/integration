@@ -178,6 +178,118 @@ func (s *Service) SubmitBrands(ctx context.Context, userID uint64, channels []st
 	return results, nil
 }
 
+func (s *Service) SubmitVideos(ctx context.Context, userID uint64, urls []string) ([]erogeModel.VideoSubmissionResult, error) {
+	results := make([]erogeModel.VideoSubmissionResult, 0, len(urls))
+	for _, rawInput := range urls {
+		input := strings.TrimSpace(rawInput)
+		if input == "" {
+			continue
+		}
+		result := erogeModel.VideoSubmissionResult{Input: input}
+		videoID, err := youtubeVideoID(input)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		if _, err := s.repo.VideoByYouTubeVideoID(videoID); err == nil {
+			result.Error = "影片已存在"
+			results = append(results, result)
+			continue
+		}
+		if submission, err := s.repo.VideoSubmissionByYouTubeVideoID(videoID); err == nil {
+			result.Submission = submission
+			result.Error = "影片已被提出，正在等待審核"
+			results = append(results, result)
+			continue
+		}
+		video, err := s.fetchYouTubeVideo(ctx, videoID)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		channelID := ""
+		if video.Snippet != nil {
+			channelID = video.Snippet.ChannelId
+		}
+		var brandID *uint64
+		brand, err := s.repo.BrandByYouTubeChannelID(channelID)
+		if err != nil {
+			channel, channelErr := s.resolveChannel(ctx, channelID)
+			if channelErr != nil {
+				result.Error = channelErr.Error()
+				results = append(results, result)
+				continue
+			}
+			brand, _, err = s.createPendingBrand(ctx, userID, channel)
+			if err != nil {
+				result.Error = err.Error()
+				results = append(results, result)
+				continue
+			}
+		}
+		brandID = &brand.ID
+		submission := &erogeModel.VideoSubmission{
+			UserID: userID, BrandID: brandID, YouTubeChannelID: channelID, YouTubeVideoID: videoID,
+			VideoURL: input, Status: "pending", UpdatedAt: time.Now(),
+		}
+		if video.Snippet != nil {
+			submission.Title = video.Snippet.Title
+			submission.ThumbnailURL = thumbnailURL(video.Snippet.Thumbnails)
+		}
+		created, err := s.repo.CreateVideoSubmission(submission)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		saved, err := s.repo.VideoSubmissionByYouTubeVideoID(videoID)
+		if err != nil {
+			result.Error = err.Error()
+			results = append(results, result)
+			continue
+		}
+		result.Submission = saved
+		result.Created = created
+		results = append(results, result)
+	}
+	return results, nil
+}
+
+func (s *Service) SetVideoSubmissionStatus(ctx context.Context, userID, submissionID uint64, status string) error {
+	if err := requireGalgameAdmin(userID); err != nil {
+		return err
+	}
+	if status != "approved" && status != "rejected" && status != "pending" {
+		return fmt.Errorf("invalid video submission status")
+	}
+	submission, err := s.repo.VideoSubmissionByID(submissionID)
+	if err != nil {
+		return err
+	}
+	errorMessage := ""
+	if status == "approved" {
+		brand, err := s.repo.BrandByID(valueOrZero(submission.BrandID))
+		if err != nil {
+			errorMessage = err.Error()
+		} else if brand.Status != "approved" || brand.DeletedAt != nil {
+			errorMessage = "brand is not approved"
+		} else {
+			video, err := s.fetchYouTubeVideo(ctx, submission.YouTubeVideoID)
+			if err != nil {
+				errorMessage = err.Error()
+			} else if err := s.saveAndIndexVideo(ctx, *brand, video); err != nil {
+				errorMessage = err.Error()
+			}
+		}
+		if errorMessage != "" {
+			status = "failed"
+		}
+	}
+	return s.repo.UpdateVideoSubmissionStatus(submissionID, userID, status, errorMessage)
+}
+
 func newBrandPublicID() (string, error) {
 	value := make([]byte, 16)
 	if _, err := rand.Read(value); err != nil {
@@ -247,7 +359,7 @@ func (s *Service) DeleteBrand(ctx context.Context, brandID uint64) error {
 	if err := deleteIndexDocuments(ctx, brandIndexName, []string{brand.PublicID}); err != nil {
 		return err
 	}
-	return s.repo.HardDeleteBrand(brandID)
+	return s.repo.SoftDeleteBrand(brandID, time.Now())
 }
 
 func (s *Service) ImportPlaylistBrands(ctx context.Context, playlistValue string) (*SyncResult, error) {
@@ -427,6 +539,40 @@ func youtubeChannelRef(value string) (string, error) {
 		return value, nil
 	}
 	return "", fmt.Errorf("YouTube channel must be an @handle, UC... channel ID, or YouTube URL")
+}
+
+func youtubeVideoID(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", fmt.Errorf("youtube video URL is required")
+	}
+	if !strings.Contains(value, "://") {
+		if len(value) >= 6 {
+			return value, nil
+		}
+		return "", fmt.Errorf("invalid YouTube video ID")
+	}
+	parsed, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("invalid YouTube video URL")
+	}
+	host := strings.TrimPrefix(strings.ToLower(parsed.Hostname()), "www.")
+	if host == "youtu.be" {
+		id := strings.Trim(strings.TrimSpace(parsed.Path), "/")
+		if id != "" {
+			return id, nil
+		}
+	}
+	if host == "youtube.com" || host == "m.youtube.com" {
+		if id := strings.TrimSpace(parsed.Query().Get("v")); id != "" {
+			return id, nil
+		}
+		parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+		if len(parts) == 2 && (parts[0] == "shorts" || parts[0] == "embed") && parts[1] != "" {
+			return parts[1], nil
+		}
+	}
+	return "", fmt.Errorf("YouTube video URL must use youtu.be/... or youtube.com/watch?v=...")
 }
 
 func youtubePlaylistID(value string) (string, error) {
@@ -639,6 +785,9 @@ func (s *Service) refreshBrand(ctx context.Context, brand erogeModel.Brand) (*er
 	); err != nil {
 		return nil, err
 	}
+	if brand.IndexPausedAt != nil || brand.DeletedAt != nil {
+		return &brand, nil
+	}
 	if err := indexBrand(ctx, brand); err != nil {
 		return nil, err
 	}
@@ -722,32 +871,58 @@ func (s *Service) fetchAndSaveVideos(ctx context.Context, brand erogeModel.Brand
 			continue
 		}
 		result.Matched++
-		publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-		if err != nil {
-			return err
-		}
-		tags, _ := json.Marshal(item.Snippet.Tags)
-		raw, err := json.Marshal(item)
-		if err != nil {
-			return err
-		}
-		video := erogeModel.Video{
-			BrandID: brand.ID, YouTubeVideoID: item.Id, Title: item.Snippet.Title,
-			Tags: string(tags), ThumbnailURL: thumbnailURL(item.Snippet.Thumbnails),
-			Description: item.Snippet.Description, PublishedAt: publishedAt,
-			DurationSeconds: youtubeDurationSeconds(item.ContentDetails),
-			YouTubeInfo:     string(raw), UpdatedAt: time.Now(),
-		}
-		if err := s.repo.UpsertVideo(&video); err != nil {
+		if err := s.saveAndIndexVideo(ctx, brand, item); err != nil {
 			return err
 		}
 		result.Saved++
-		if err := indexVideo(ctx, brand, video, item.Snippet.Tags); err != nil {
-			return err
-		}
 		result.Indexed++
 	}
 	return nil
+}
+
+func (s *Service) fetchYouTubeVideo(ctx context.Context, videoID string) (*youtube.Video, error) {
+	resp, err := s.youtube.Videos.List([]string{"snippet", "contentDetails", "statistics", "status"}).
+		Id(videoID).Context(ctx).Do()
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Items) != 1 || resp.Items[0].Snippet == nil {
+		return nil, fmt.Errorf("youtube video %s not found", videoID)
+	}
+	return resp.Items[0], nil
+}
+
+func (s *Service) saveAndIndexVideo(ctx context.Context, brand erogeModel.Brand, item *youtube.Video) error {
+	publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
+	if err != nil {
+		return err
+	}
+	tags, _ := json.Marshal(item.Snippet.Tags)
+	raw, err := json.Marshal(item)
+	if err != nil {
+		return err
+	}
+	video := erogeModel.Video{
+		BrandID: brand.ID, YouTubeVideoID: item.Id, Title: item.Snippet.Title,
+		Tags: string(tags), ThumbnailURL: thumbnailURL(item.Snippet.Thumbnails),
+		Description: item.Snippet.Description, PublishedAt: publishedAt,
+		DurationSeconds: youtubeDurationSeconds(item.ContentDetails),
+		YouTubeInfo:     string(raw), UpdatedAt: time.Now(),
+	}
+	if err := s.repo.UpsertVideo(&video); err != nil {
+		return err
+	}
+	if brand.IndexPausedAt != nil || brand.DeletedAt != nil {
+		return nil
+	}
+	return indexVideo(ctx, brand, video, item.Snippet.Tags)
+}
+
+func valueOrZero(value *uint64) uint64 {
+	if value == nil {
+		return 0
+	}
+	return *value
 }
 
 func youtubeDurationSeconds(details *youtube.VideoContentDetails) uint64 {

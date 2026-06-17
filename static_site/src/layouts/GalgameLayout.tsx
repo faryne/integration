@@ -34,7 +34,7 @@ import { galgamePath } from "@/helpers/galgame.ts";
 export function GalgameLayout() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { user, loading, submitting, login, logout } = useAuth();
+  const { user, session, loading, submitting, login, logout } = useAuth();
   const [searchType, setSearchType] = useState<"videos" | "brands">(
     params.get("tab") === "brands" ? "brands" : "videos",
   );
@@ -45,7 +45,11 @@ export function GalgameLayout() {
     { title: "品牌", href: `${galgamePath()}?tab=brands` },
     { title: "我的最愛", href: galgamePath("favorites") },
     { title: "追加頻道", href: galgamePath("submit") },
+    { title: "追加影片", href: galgamePath("submit-video") },
   ];
+  if (session?.user.is_admin) {
+    navigation.push({ title: "管理", href: galgamePath("admin") });
+  }
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();

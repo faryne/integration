@@ -11,6 +11,8 @@ export interface GalgameBrand {
   view_count: number;
   latest_video_count: number;
   status: "pending" | "approved" | "rejected";
+  index_paused_at?: string | null;
+  deleted_at?: string | null;
   links: Array<{ label: string; url: string }>;
 }
 
@@ -28,6 +30,7 @@ export interface GalgameVideo {
   duration_seconds: number;
   likes: number;
   dislikes: number;
+  deleted_at?: string | null;
 }
 
 export interface GalgameVideoSearch {
@@ -62,4 +65,18 @@ export interface GalgameVideoReactionStatus {
   reaction: "" | "like" | "dislike";
   likes: number;
   dislikes: number;
+}
+
+export interface GalgameVideoSubmission {
+  id: number;
+  user_id: number;
+  brand_id: number | null;
+  youtube_channel_id: string;
+  youtube_video_id: string;
+  video_url: string;
+  title: string;
+  thumbnail_url: string;
+  status: "pending" | "approved" | "rejected" | "failed";
+  error_message: string;
+  created_at: string;
 }
