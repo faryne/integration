@@ -44,6 +44,10 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/data/rates",
       },
       {
+        title: "NCCC 信用卡消費資料",
+        href: "/data/nccc",
+      },
+      {
         title: "YieldMax ETF 配息統計",
         href: "/data/etf/yieldmax",
       },

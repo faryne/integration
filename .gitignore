@@ -16,5 +16,7 @@ rust
 
 .DS_Store
 
+.cache/
+
 vue-nekomaid
 logstash

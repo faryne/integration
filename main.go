@@ -18,6 +18,7 @@ import (
 	"faryne.dev/service/client"
 	erogeService "faryne.dev/service/eroge"
 	"faryne.dev/service/log"
+	"faryne.dev/service/nccc"
 	"faryne.dev/service/output"
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
@@ -174,6 +175,16 @@ var cronJobs = []cronJobConfig{
 		Handler: func() {
 			avService.SyncXCityActressesCron()
 		},
+	},
+	{
+		Name:     "nccc-download",
+		Schedule: "12 3 * * 0",
+		Handler:  nccc.RunDownload,
+	},
+	{
+		Name:     "nccc-clear-indexes",
+		Schedule: "",
+		Handler:  nccc.RunClearIndexes,
 	},
 	// 台電相關 job 手動執行
 	{

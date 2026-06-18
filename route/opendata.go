@@ -33,6 +33,10 @@ func OpenData(app *fiber.App) {
 	g4.Get("/search/video", opendata.AvVideoSearch)
 	g4.Get("/search/actress", opendata.AvActressSearch)
 
+	gNCCC := g.Group("/nccc")
+	gNCCC.Get("/indexes", opendata.NCCCIndexes)
+	gNCCC.Get("/indexes/:token/records", opendata.NCCCRecords)
+
 	gNekomaid := g.Group("/nekomaid")
 	gNekomaid.Get("", nekomaidController.Search)
 	gNekomaid.Get("/:site", nekomaidController.Search)
