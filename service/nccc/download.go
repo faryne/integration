@@ -52,11 +52,14 @@ type DownloadResult struct {
 	Indexed    int
 	Downloaded int64
 	Fields     map[string]string
+	Documents  []map[string]any
 }
 
 type IndexFileEntry struct {
-	Name   string            `json:"name"`
-	Fields map[string]string `json:"fields"`
+	Name    string              `json:"name"`
+	Text    string              `json:"text"`
+	Fields  map[string]string   `json:"fields"`
+	Filters map[string][]string `json:"filters,omitempty"`
 }
 
 type parseResult struct {
@@ -113,6 +116,7 @@ func (s *Service) Download(ctx context.Context, dataSetKey ...string) ([]Downloa
 
 	results := make([]DownloadResult, 0)
 	indexFields := make(map[string]map[string]string)
+	indexFilters := make(map[string]map[string]map[string]struct{})
 	var joinedErr error
 	currentFile := 0
 	for _, dataSetKey := range keys {
@@ -137,6 +141,7 @@ func (s *Service) Download(ctx context.Context, dataSetKey ...string) ([]Downloa
 				continue
 			}
 			mergeIndexFields(indexFields, dataSetKey, result.Fields)
+			mergeIndexFilters(indexFilters, dataSetKey, result.Documents)
 			results = append(results, result)
 			log.Logger().Info("NCCC file indexed",
 				zap.String("dataset", dataSetKey),
@@ -148,7 +153,7 @@ func (s *Service) Download(ctx context.Context, dataSetKey ...string) ([]Downloa
 			)
 		}
 	}
-	if err := uploadIndexFile(ctx, s3Client, indexFields); err != nil {
+	if err := uploadIndexFile(ctx, s3Client, indexFields, indexFilters); err != nil {
 		joinedErr = errors.Join(joinedErr, err)
 	}
 
@@ -227,6 +232,7 @@ func (s *Service) downloadOne(ctx context.Context, s3Client *s3.Client, dataSetK
 		Indexed:    len(documents),
 		Downloaded: int64(len(content)),
 		Fields:     inferDocumentFields(documents),
+		Documents:  documents,
 	}, nil
 }
 
@@ -584,6 +590,40 @@ func mergeIndexFields(indexFields map[string]map[string]string, dataSetKey strin
 	}
 }
 
+func mergeIndexFilters(indexFilters map[string]map[string]map[string]struct{}, dataSetKey string, documents []map[string]any) {
+	indexName := ncccIndexName(dataSetKey)
+	currentFilters, ok := indexFilters[indexName]
+	if !ok {
+		currentFilters = make(map[string]map[string]struct{})
+		indexFilters[indexName] = currentFilters
+	}
+	for _, document := range documents {
+		for field, value := range document {
+			if !indexFilterField(field) {
+				continue
+			}
+			text := strings.TrimSpace(fmt.Sprint(value))
+			if text == "" {
+				continue
+			}
+			values, ok := currentFilters[field]
+			if !ok {
+				values = make(map[string]struct{})
+				currentFilters[field] = values
+			}
+			values[text] = struct{}{}
+		}
+	}
+}
+
+func indexFilterField(field string) bool {
+	if field == "年月" || field == "年度" || field == "id_key" {
+		return false
+	}
+	_, ok := stringFieldNames[field]
+	return ok
+}
+
 func indexFieldType(value any) string {
 	switch value.(type) {
 	case int, int64, float32, float64:
@@ -595,7 +635,7 @@ func indexFieldType(value any) string {
 	}
 }
 
-func uploadIndexFile(ctx context.Context, s3Client *s3.Client, indexFields map[string]map[string]string) error {
+func uploadIndexFile(ctx context.Context, s3Client *s3.Client, indexFields map[string]map[string]string, indexFilters map[string]map[string]map[string]struct{}) error {
 	entries := make([]IndexFileEntry, 0, len(indexFields))
 	names := make([]string, 0, len(indexFields))
 	for name := range indexFields {
@@ -603,9 +643,12 @@ func uploadIndexFile(ctx context.Context, s3Client *s3.Client, indexFields map[s
 	}
 	sort.Strings(names)
 	for _, name := range names {
+		dataSetKey := strings.TrimPrefix(name, "nccc_")
 		entries = append(entries, IndexFileEntry{
-			Name:   name,
-			Fields: indexFields[name],
+			Name:    name,
+			Text:    dataSets[dataSetKey].Text,
+			Fields:  indexFields[name],
+			Filters: sortedIndexFilters(indexFilters[name]),
 		})
 	}
 	content, err := json.MarshalIndent(entries, "", "  ")
@@ -623,4 +666,47 @@ func uploadIndexFile(ctx context.Context, s3Client *s3.Client, indexFields map[s
 		return fmt.Errorf("upload nccc/index.json: %w", err)
 	}
 	return nil
+}
+
+func sortedIndexFilters(filters map[string]map[string]struct{}) map[string][]string {
+	if len(filters) == 0 {
+		return nil
+	}
+	out := make(map[string][]string, len(filters))
+	for field, values := range filters {
+		items := make([]string, 0, len(values))
+		for value := range values {
+			items = append(items, value)
+		}
+		sortFilterValues(field, items)
+		out[field] = items
+	}
+	return out
+}
+
+func sortFilterValues(field string, values []string) {
+	if field != "地區" {
+		sort.Slice(values, func(i, j int) bool {
+			return values[i] < values[j]
+		})
+		return
+	}
+	ranks := make(map[string]int, len(chineseCities))
+	for index, city := range chineseCities {
+		ranks[city] = index
+	}
+	sort.Slice(values, func(i, j int) bool {
+		rankI, okI := ranks[values[i]]
+		rankJ, okJ := ranks[values[j]]
+		if okI && okJ {
+			return rankI < rankJ
+		}
+		if okI {
+			return true
+		}
+		if okJ {
+			return false
+		}
+		return values[i] < values[j]
+	})
 }

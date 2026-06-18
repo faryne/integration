@@ -13,6 +13,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
+	"faryne.dev/config"
 	"faryne.dev/model/entity"
 	ncccModel "faryne.dev/model/entity/opendata/nccc"
 	"faryne.dev/model/enum"
@@ -36,6 +40,13 @@ func recordFacetFields() []string {
 }
 
 func ListIndexes() []ncccModel.IndexInfo {
+	if indexes, err := listIndexesFromIndexFile(context.Background()); err == nil && len(indexes) > 0 {
+		return indexes
+	}
+	return fallbackIndexInfos()
+}
+
+func fallbackIndexInfos() []ncccModel.IndexInfo {
 	keys := dataSetKeys()
 	indexes := make([]ncccModel.IndexInfo, 0, len(keys))
 	for _, key := range keys {
@@ -47,17 +58,82 @@ func ListIndexes() []ncccModel.IndexInfo {
 	return indexes
 }
 
+func listIndexesFromIndexFile(ctx context.Context) ([]ncccModel.IndexInfo, error) {
+	if strings.TrimSpace(config.EnvConfig().S3Bucket) == "" || strings.TrimSpace(config.EnvConfig().S3Region) == "" {
+		return nil, fmt.Errorf("s3 config is empty")
+	}
+	s3Client, err := newS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(config.EnvConfig().S3Bucket),
+		Key:    aws.String("nccc/index.json"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var entries []IndexFileEntry
+	if err := json.Unmarshal(content, &entries); err != nil {
+		return nil, err
+	}
+	indexes := make([]ncccModel.IndexInfo, 0, len(entries))
+	for _, entry := range entries {
+		key, ok := dataSetKeyFromIndexName(entry.Name)
+		if !ok {
+			continue
+		}
+		text := strings.TrimSpace(entry.Text)
+		if text == "" {
+			text = dataSets[key].Text
+		}
+		indexes = append(indexes, ncccModel.IndexInfo{
+			Token:   indexToken(key),
+			Text:    text,
+			Fields:  entry.Fields,
+			Filters: entry.Filters,
+		})
+	}
+	return indexes, nil
+}
+
+func dataSetKeyFromIndexName(indexName string) (string, bool) {
+	key := strings.TrimPrefix(indexName, "nccc_")
+	if key == indexName {
+		return "", false
+	}
+	if _, ok := dataSets[key]; !ok {
+		return "", false
+	}
+	return key, true
+}
+
 func ResolveIndexToken(token string) (string, ncccModel.IndexInfo, bool) {
 	token = strings.TrimSpace(token)
-	for key, dataSet := range dataSets {
-		if hmac.Equal([]byte(indexToken(key)), []byte(token)) {
-			return key, ncccModel.IndexInfo{
-				Token: token,
-				Text:  dataSet.Text,
-			}, true
+	for _, index := range ListIndexes() {
+		if hmac.Equal([]byte(index.Token), []byte(token)) {
+			key, ok := dataSetKeyByToken(index.Token)
+			if !ok {
+				return "", ncccModel.IndexInfo{}, false
+			}
+			return key, index, true
 		}
 	}
 	return "", ncccModel.IndexInfo{}, false
+}
+
+func dataSetKeyByToken(token string) (string, bool) {
+	for key := range dataSets {
+		if hmac.Equal([]byte(indexToken(key)), []byte(token)) {
+			return key, true
+		}
+	}
+	return "", false
 }
 
 func SearchRecords(input ncccModel.RecordSearchRequest, dataSetKey string) (*entity.ElasticSearchResponse[map[string]any], []map[string]any, error) {
@@ -78,18 +154,8 @@ func EffectiveRecordPerPage(input ncccModel.RecordSearchRequest) int64 {
 
 func buildRecordSearchQuery(input ncccModel.RecordSearchRequest) (map[string]any, error) {
 	perPage := EffectiveRecordPerPage(input)
-	aggs := make(map[string]any)
-	for index, field := range recordFacetFields() {
-		aggs[facetAggregationKey(index)] = map[string]any{
-			"terms": map[string]any{
-				"field": field + ".keyword",
-				"size":  100,
-			},
-		}
-	}
 	query := map[string]any{
 		"size": perPage,
-		"aggs": aggs,
 		"sort": []map[string]any{
 			{"_doc": map[string]any{"order": "asc"}},
 		},
@@ -117,7 +183,6 @@ func buildRecordSearchQuery(input ncccModel.RecordSearchRequest) (map[string]any
 
 func applyRecordFilters(query map[string]any, input ncccModel.RecordSearchRequest) error {
 	must := make([]map[string]any, 0)
-	postFilterMust := make([]map[string]any, 0)
 	filters, err := parseFieldFilters(input.Filters)
 	if err != nil {
 		return err
@@ -144,18 +209,13 @@ func applyRecordFilters(query map[string]any, input ncccModel.RecordSearchReques
 		if len(values) == 0 {
 			continue
 		}
-		postFilterMust = append(postFilterMust, map[string]any{
+		must = append(must, map[string]any{
 			"terms": map[string]any{field + ".keyword": values},
 		})
 	}
 	if len(must) > 0 {
 		query["query"] = map[string]any{
 			"bool": map[string]any{"must": must},
-		}
-	}
-	if len(postFilterMust) > 0 {
-		query["post_filter"] = map[string]any{
-			"bool": map[string]any{"must": postFilterMust},
 		}
 	}
 	return nil
@@ -237,60 +297,6 @@ func parseYearMonthFilters(value string) ([]string, error) {
 		out = append(out, item)
 	}
 	return out, nil
-}
-
-func RecordFacets(raw *entity.ElasticSearchResponse[map[string]any]) ncccModel.RecordFacets {
-	if raw == nil {
-		return ncccModel.RecordFacets{}
-	}
-	fields := recordFacetFields()
-	fieldFacets := make([]ncccModel.FieldFacet, 0, len(fields))
-	for index, field := range fields {
-		options := facetOptions(raw, facetAggregationKey(index))
-		if len(options) == 0 {
-			continue
-		}
-		fieldFacets = append(fieldFacets, ncccModel.FieldFacet{
-			Field:   field,
-			Options: options,
-		})
-	}
-	return ncccModel.RecordFacets{
-		Regions:    facetOptions(raw, facetAggregationKey(recordFacetFieldIndex("地區"))),
-		Categories: facetOptions(raw, facetAggregationKey(recordFacetFieldIndex("類別"))),
-		Fields:     fieldFacets,
-	}
-}
-
-func facetAggregationKey(index int) string {
-	return fmt.Sprintf("field_%d", index)
-}
-
-func recordFacetFieldIndex(field string) int {
-	for index, item := range recordFacetFields() {
-		if item == field {
-			return index
-		}
-	}
-	return -1
-}
-
-func facetOptions(raw *entity.ElasticSearchResponse[map[string]any], key string) []ncccModel.FacetOption {
-	aggregation, ok := raw.Aggregations[key]
-	if !ok {
-		return nil
-	}
-	options := make([]ncccModel.FacetOption, 0, len(aggregation.Buckets))
-	for _, bucket := range aggregation.Buckets {
-		if bucket.Key == "" {
-			continue
-		}
-		options = append(options, ncccModel.FacetOption{
-			Value: bucket.Key,
-			Count: bucket.DocCount,
-		})
-	}
-	return options
 }
 
 func searchRecords(indexName string, query map[string]any) (*entity.ElasticSearchResponse[map[string]any], []map[string]any, error) {

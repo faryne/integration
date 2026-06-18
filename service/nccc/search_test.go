@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"faryne.dev/model/entity"
 	ncccModel "faryne.dev/model/entity/opendata/nccc"
 	"faryne.dev/service/helper"
 	"github.com/stretchr/testify/require"
@@ -81,9 +80,9 @@ func TestBuildRecordSearchQueryAddsFilters(t *testing.T) {
 	query, err := buildRecordSearchQuery(req)
 
 	require.NoError(t, err)
-	require.Contains(t, query, "aggs")
 	require.Contains(t, query, "query")
-	require.Contains(t, query, "post_filter")
+	require.NotContains(t, query, "aggs")
+	require.NotContains(t, query, "post_filter")
 	body, err := jsonMarshal(query)
 	require.NoError(t, err)
 	require.Contains(t, body, `"年月.keyword":["113年01月","113年02月"]`)
@@ -91,15 +90,10 @@ func TestBuildRecordSearchQueryAddsFilters(t *testing.T) {
 	require.Contains(t, body, `"類別.keyword":["食"]`)
 	require.Contains(t, body, `"性別.keyword":["1","2"]`)
 	require.Contains(t, body, `"年齡層.keyword":["20(含)-25歲","25(含)-30歲"]`)
-	require.Contains(t, body, `"field_`)
 
 	queryBody, err := jsonMarshal(query["query"])
 	require.NoError(t, err)
-	require.NotContains(t, queryBody, "地區.keyword")
-
-	postFilterBody, err := jsonMarshal(query["post_filter"])
-	require.NoError(t, err)
-	require.Contains(t, postFilterBody, "地區.keyword")
+	require.Contains(t, queryBody, "地區.keyword")
 }
 
 func TestParseFieldFiltersAcceptsLegacySingleValue(t *testing.T) {
@@ -121,53 +115,6 @@ func TestBuildRecordSearchQueryRejectsUnsupportedFilter(t *testing.T) {
 	_, err := buildRecordSearchQuery(req)
 
 	require.Error(t, err)
-}
-
-func TestRecordFacets(t *testing.T) {
-	regionAggKey := facetAggregationKey(recordFacetFieldIndex("地區"))
-	genderAggKey := facetAggregationKey(recordFacetFieldIndex("性別"))
-	raw := &entity.ElasticSearchResponse[map[string]any]{
-		Aggregations: map[string]struct {
-			Value    *float64 `json:"value,omitempty"`
-			DocCount int      `json:"doc_count"`
-			BgCount  int      `json:"bg_count"`
-			Buckets  []struct {
-				Key      string  `json:"key"`
-				DocCount int     `json:"doc_count"`
-				Score    float64 `json:"score"`
-				BgCount  int     `json:"bg_count"`
-			} `json:"buckets"`
-		}{
-			regionAggKey: {
-				Buckets: []struct {
-					Key      string  `json:"key"`
-					DocCount int     `json:"doc_count"`
-					Score    float64 `json:"score"`
-					BgCount  int     `json:"bg_count"`
-				}{
-					{Key: "台北市", DocCount: 12},
-				},
-			},
-			genderAggKey: {
-				Buckets: []struct {
-					Key      string  `json:"key"`
-					DocCount int     `json:"doc_count"`
-					Score    float64 `json:"score"`
-					BgCount  int     `json:"bg_count"`
-				}{
-					{Key: "1", DocCount: 7},
-				},
-			},
-		},
-	}
-
-	facets := RecordFacets(raw)
-
-	require.Equal(t, []ncccModel.FacetOption{{Value: "台北市", Count: 12}}, facets.Regions)
-	require.Contains(t, facets.Fields, ncccModel.FieldFacet{
-		Field:   "性別",
-		Options: []ncccModel.FacetOption{{Value: "1", Count: 7}},
-	})
 }
 
 func jsonMarshal(input any) (string, error) {

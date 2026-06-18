@@ -32,7 +32,7 @@ import { useNCCCIndexes, useNCCCRecords } from "@/apis/opendata/nccc.ts";
 import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import type {
-  NCCCFacetOption,
+  NCCCFieldFacet,
   NCCCRecord,
   NCCCRecordSearch,
 } from "@/types/nccc.ts";
@@ -157,16 +157,51 @@ function collectColumns(rows: NCCCRecord[]) {
   ];
 }
 
-function sortFacetOptions(field: string, options: NCCCFacetOption[]) {
+function sortFacetOptions(field: string, options: string[]) {
   if (field !== "地區") return options;
   return [...options].sort((a, b) => {
-    const rankA = taiwanRegionRank.get(a.value);
-    const rankB = taiwanRegionRank.get(b.value);
+    const rankA = taiwanRegionRank.get(a);
+    const rankB = taiwanRegionRank.get(b);
     if (rankA !== undefined && rankB !== undefined) return rankA - rankB;
     if (rankA !== undefined) return -1;
     if (rankB !== undefined) return 1;
-    return a.value.localeCompare(b.value, "zh-Hant");
+    return a.localeCompare(b, "zh-Hant");
   });
+}
+
+function filterFacetsFromIndexFilters(
+  filters: Record<string, string[]> | undefined,
+) {
+  return Object.entries(filters ?? {})
+    .map(([field, options]) => ({
+      field,
+      options,
+    }))
+    .filter((facet) => facet.options.length);
+}
+
+function mergeSelectedFacetOptions(
+  facets: NCCCFieldFacet[],
+  filters: Record<string, string[]> | undefined,
+) {
+  const merged = new Map<string, NCCCFieldFacet>();
+  facets.forEach((facet) => {
+    merged.set(facet.field, {
+      ...facet,
+      options: [...facet.options],
+    });
+  });
+  Object.entries(filters ?? {}).forEach(([field, values]) => {
+    const facet = merged.get(field) ?? { field, options: [] };
+    const existing = new Set(facet.options);
+    values.forEach((value) => {
+      if (existing.has(value)) return;
+      facet.options.push(value);
+      existing.add(value);
+    });
+    merged.set(field, facet);
+  });
+  return Array.from(merged.values());
 }
 
 function gregorianMonthToNCCC(value: string) {
@@ -193,13 +228,22 @@ export default function NCCCPage() {
   const recordsQuery = useNCCCRecords(selectedToken, search);
   const pagination = recordsQuery.data?.data;
   const rows = pagination?.data ?? [];
+  const selectedIndex =
+    indexesQuery.data?.data.find((item) => item.token === selectedToken) ??
+    pagination?.index;
+  const filterFacets = useMemo(
+    () =>
+      mergeSelectedFacetOptions(
+        filterFacetsFromIndexFilters(selectedIndex?.filters),
+        search.filters,
+      ),
+    [selectedIndex?.filters, search.filters],
+  );
   const columns = useMemo(() => collectColumns(rows), [rows]);
   const visibleColumns = columns.filter(
     (column) => requiredColumn(column) || !hiddenColumns.includes(column),
   );
-  const selectedIndexText =
-    indexesQuery.data?.data.find((item) => item.token === selectedToken)
-      ?.text ?? "";
+  const selectedIndexText = selectedIndex?.text ?? "";
 
   useTitle("NCCC 信用卡消費資料");
 
@@ -351,7 +395,7 @@ export default function NCCCPage() {
                     加入
                   </Button>
                 </Stack>
-                {(pagination?.facets.fields ?? []).map((facet) => (
+                {filterFacets.map((facet) => (
                   <FormControl key={facet.field} sx={{ minWidth: 180 }}>
                     <InputLabel id={`nccc-${facet.field}-select-label`}>
                       {facet.field}
@@ -384,15 +428,14 @@ export default function NCCCPage() {
                       )}
                     >
                       {sortFacetOptions(facet.field, facet.options).map(
-                        (item) => (
-                          <MenuItem key={item.value} value={item.value}>
+                        (value) => (
+                          <MenuItem key={value} value={value}>
                             <Checkbox
                               checked={(
                                 search.filters?.[facet.field] ?? []
-                              ).includes(item.value)}
+                              ).includes(value)}
                             />
-                            {displayValue(facet.field, item.value)}（
-                            {item.count.toLocaleString("zh-TW")}）
+                            {displayValue(facet.field, value)}
                           </MenuItem>
                         ),
                       )}

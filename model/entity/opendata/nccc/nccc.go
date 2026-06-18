@@ -3,8 +3,10 @@ package nccc
 import "faryne.dev/model/entity"
 
 type IndexInfo struct {
-	Token string `json:"token"`
-	Text  string `json:"text"`
+	Token   string              `json:"token"`
+	Text    string              `json:"text"`
+	Fields  map[string]string   `json:"fields,omitempty"`
+	Filters map[string][]string `json:"filters,omitempty"`
 }
 
 type RecordSearchRequest struct {
@@ -16,24 +18,7 @@ type RecordSearchRequest struct {
 	Filters    string `query:"filters"`
 }
 
-type FacetOption struct {
-	Value string `json:"value"`
-	Count int    `json:"count"`
-}
-
-type RecordFacets struct {
-	Regions    []FacetOption `json:"regions"`
-	Categories []FacetOption `json:"categories"`
-	Fields     []FieldFacet  `json:"fields"`
-}
-
-type FieldFacet struct {
-	Field   string        `json:"field"`
-	Options []FacetOption `json:"options"`
-}
-
 type RecordSearchOutput struct {
 	*entity.CommonESPaginationOutput[[]map[string]any]
-	Index  IndexInfo    `json:"index"`
-	Facets RecordFacets `json:"facets"`
+	Index IndexInfo `json:"index"`
 }

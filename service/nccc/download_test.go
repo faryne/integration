@@ -158,6 +158,21 @@ func TestInferDocumentFields(t *testing.T) {
 	require.Equal(t, "number", fields["[筆數]"])
 }
 
+func TestMergeIndexFiltersCollectsStringFieldValues(t *testing.T) {
+	filters := make(map[string]map[string]map[string]struct{})
+
+	mergeIndexFilters(filters, "age", []map[string]any{
+		{"年月": "113年01月", "地區": "雲林縣", "年齡層": "20(含)-25歲", "信用卡交易筆數": float64(10), "id_key": "age"},
+		{"年月": "113年02月", "地區": "台北市", "年齡層": "20(含)-25歲", "信用卡交易筆數": float64(20), "id_key": "age"},
+	})
+
+	sorted := sortedIndexFilters(filters["nccc_age"])
+	require.Equal(t, []string{"台北市", "雲林縣"}, sorted["地區"])
+	require.Equal(t, []string{"20(含)-25歲"}, sorted["年齡層"])
+	require.NotContains(t, sorted, "年月")
+	require.NotContains(t, sorted, "信用卡交易筆數")
+}
+
 func TestDocumentIDIsStable(t *testing.T) {
 	doc := map[string]any{
 		"年度":     "113年01月",

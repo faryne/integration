@@ -60,6 +60,5 @@ func NCCCRecords(ctx fiber.Ctx) error {
 	return output.Success(ncccModel.RecordSearchOutput{
 		CommonESPaginationOutput: pagination,
 		Index:                    indexInfo,
-		Facets:                   nccc.RecordFacets(raw),
 	})
 }
