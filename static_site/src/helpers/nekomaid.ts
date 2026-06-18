@@ -15,7 +15,7 @@ export function isNekomaidSite() {
     return false;
   }
 
-  return ["nekomaid.web.app", "nekomaid.firebaseapp.com"].includes(
+  return ["nekomaid.web.app", "nekomaid.firebaseapp.com", "neko.maid.tw"].includes(
     window.location.hostname,
   );
 }
@@ -36,9 +36,9 @@ export function artworkPath(item: NekomaidArtwork) {
 export function artworkShareUrl(item: NekomaidArtwork) {
   const path = artworkPath(item);
   if (typeof window === "undefined") {
-    return `/sns${path}`;
+    return `${path}`;
   }
-  return `${window.location.origin}/sns${path}`;
+  return `${window.location.origin}${path}`;
 }
 
 function isTruthyFlag(value: boolean | number | undefined) {

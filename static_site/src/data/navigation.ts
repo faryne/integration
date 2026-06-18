@@ -15,10 +15,12 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
       {
         title: "Galgame 影片",
         href: "https://galgame.tv/",
+        external: true,
       },
       {
         title: "難以名狀的抓圖器",
-        href: "https://nekomaid.web.app/",
+        href: "https://neko.maid.tw/",
+        external: true,
       },
       {
         title: "二次元常用英文 tag",
