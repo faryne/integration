@@ -34,6 +34,9 @@ export function useNCCCRecords(
           params: {
             ...search,
             yearMonths: search.yearMonths?.join(",") || undefined,
+            filters: search.filters
+              ? JSON.stringify(search.filters)
+              : undefined,
           },
         },
       );

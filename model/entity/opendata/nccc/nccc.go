@@ -13,6 +13,7 @@ type RecordSearchRequest struct {
 	YearMonths string `query:"yearMonths"`
 	Region     string `query:"region"`
 	Category   string `query:"category"`
+	Filters    string `query:"filters"`
 }
 
 type FacetOption struct {
@@ -23,6 +24,12 @@ type FacetOption struct {
 type RecordFacets struct {
 	Regions    []FacetOption `json:"regions"`
 	Categories []FacetOption `json:"categories"`
+	Fields     []FieldFacet  `json:"fields"`
+}
+
+type FieldFacet struct {
+	Field   string        `json:"field"`
+	Options []FacetOption `json:"options"`
 }
 
 type RecordSearchOutput struct {

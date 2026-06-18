@@ -64,6 +64,7 @@ type parseResult struct {
 	Rows           int
 	Headers        []string
 	FirstColumn    []string
+	FirstRow       []string
 	SampleRows     []string
 	DecodedContent []byte
 }
@@ -75,8 +76,8 @@ func NewService() *Service {
 	}
 }
 
-func RunDownload() {
-	results, err := NewService().Download(context.Background())
+func RunDownload(dataSetKey ...string) {
+	results, err := NewService().Download(context.Background(), dataSetKey...)
 	if err != nil {
 		log.Logger().Error("NCCC download failed: " + err.Error())
 		return
@@ -91,13 +92,16 @@ func RunDownload() {
 	)
 }
 
-func (s *Service) Download(ctx context.Context) ([]DownloadResult, error) {
+func (s *Service) Download(ctx context.Context, dataSetKey ...string) ([]DownloadResult, error) {
 	s3Client, err := newS3Client(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	keys := dataSetKeys()
+	keys, err := selectDataSetKeys(dataSetKey...)
+	if err != nil {
+		return nil, err
+	}
 
 	totalFiles := 0
 	expandedURLs := make(map[string][]string, len(keys))
@@ -151,6 +155,17 @@ func (s *Service) Download(ctx context.Context) ([]DownloadResult, error) {
 	return results, joinedErr
 }
 
+func selectDataSetKeys(dataSetKey ...string) ([]string, error) {
+	if len(dataSetKey) == 0 || strings.TrimSpace(dataSetKey[0]) == "" {
+		return dataSetKeys(), nil
+	}
+	key := strings.TrimSpace(dataSetKey[0])
+	if _, ok := dataSets[key]; !ok {
+		return nil, fmt.Errorf("unknown NCCC data set key: %s", key)
+	}
+	return []string{key}, nil
+}
+
 func (s *Service) downloadOne(ctx context.Context, s3Client *s3.Client, dataSetKey string, rawPath string) (DownloadResult, error) {
 	fullURL := baseURL + "/" + strings.TrimPrefix(rawPath, "/")
 
@@ -188,13 +203,15 @@ func (s *Service) downloadOne(ctx context.Context, s3Client *s3.Client, dataSetK
 		zap.Int("documents", len(parsed.Documents)),
 		zap.Strings("headers", parsed.Headers),
 		zap.Strings("first_column", parsed.FirstColumn),
+		zap.Strings("first_row", parsed.FirstRow),
 	)
 	if len(parsed.Documents) == 0 {
 		return DownloadResult{}, fmt.Errorf(
-			"parsed zero documents: rows=%d headers=%v first_column=%v sample_rows=%v",
+			"parsed zero documents: rows=%d headers=%v first_column=%v first_row=%v sample_rows=%v",
 			parsed.Rows,
 			parsed.Headers,
 			parsed.FirstColumn,
+			parsed.FirstRow,
 			parsed.SampleRows,
 		)
 	}
@@ -280,6 +297,7 @@ func parseDocuments(dataSetKey string, content []byte) (parseResult, error) {
 	headers := normalizeHeaders(rows[0])
 	result.Headers = sampleStrings(headers, 20)
 	result.FirstColumn = sampleFirstColumn(rows, 20)
+	result.FirstRow = firstDataRow(headers, rows)
 	documents := make([]map[string]any, 0, len(rows)-1)
 	for _, row := range rows[1:] {
 		if len(row) == 0 || !isDataRow(row[0]) {
@@ -331,6 +349,24 @@ func parseDocuments(dataSetKey string, content []byte) (parseResult, error) {
 	}
 	result.Documents = documents
 	return result, nil
+}
+
+func firstDataRow(headers []string, rows [][]string) []string {
+	for _, row := range rows[1:] {
+		if len(row) == 0 || !isDataRow(row[0]) {
+			continue
+		}
+		out := make([]string, 0, len(headers))
+		for i, header := range headers {
+			value := ""
+			if i < len(row) {
+				value = strings.TrimSpace(row[i])
+			}
+			out = append(out, fmt.Sprintf("%s=%s", header, value))
+		}
+		return out
+	}
+	return nil
 }
 
 func sampleFirstColumn(rows [][]string, limit int) []string {
@@ -408,12 +444,30 @@ func normalizeCSVField(header string, value string) any {
 		if header == "年月" {
 			return normalizeYearMonth(value)
 		}
+		if header == "地區" {
+			return normalizeRegion(value)
+		}
 		return value
 	}
 	if header == "年月" {
 		return normalizeYearMonth(value)
 	}
 	return normalizeCSVValue(value)
+}
+
+func normalizeRegion(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	code, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return value
+	}
+	if city, ok := codeCities[code]; ok {
+		return city
+	}
+	return value
 }
 
 func normalizeYearMonth(value string) string {

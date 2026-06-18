@@ -27,6 +27,13 @@ func TestExpandDataSetURLsLeavesUnusedPlaceholdersAlone(t *testing.T) {
 	require.Contains(t, urls, "/EC/BANK_EC_FD.CSV")
 }
 
+func TestSelectDataSetKeysDefaultsToAllDataSets(t *testing.T) {
+	keys, err := selectDataSetKeys()
+
+	require.NoError(t, err)
+	require.Equal(t, dataSetKeys(), keys)
+}
+
 func TestParseDocuments(t *testing.T) {
 	content := []byte("\ufeff年度,筆數,金額\r\n113年01月,10,200\r\n合計,10,200\r\n,1,2\r\n")
 
@@ -50,13 +57,17 @@ func TestParseDocumentsAcceptsGregorianYearMonth(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, documents, 1)
 	require.Equal(t, "103年01月", documents[0]["年月"])
-	require.Equal(t, "10018000", documents[0]["地區"])
+	require.Equal(t, "新竹市", documents[0]["地區"])
 	require.Equal(t, "行", documents[0]["信用卡產業別"])
 	require.Equal(t, float64(68), documents[0]["信用卡交易筆數"])
+	require.Contains(t, parsed.FirstRow, "年月=201401")
+	require.Contains(t, parsed.FirstRow, "地區=10018000")
 }
 
 func TestNormalizeCSVFieldKeepsCategoryCodesAsStrings(t *testing.T) {
-	require.Equal(t, "10018000", normalizeCSVField("地區", "10018000"))
+	require.Equal(t, "新竹市", normalizeCSVField("地區", "10018000"))
+	require.Equal(t, "99999999", normalizeCSVField("地區", "99999999"))
+	require.Equal(t, "台北市", normalizeCSVField("地區", "台北市"))
 	require.Equal(t, "行", normalizeCSVField("信用卡產業別", "行"))
 	require.Equal(t, float64(68), normalizeCSVField("信用卡交易筆數", "68"))
 }

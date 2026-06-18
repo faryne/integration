@@ -14,6 +14,7 @@ export interface NCCCRecordSearch {
   yearMonths?: string[];
   region?: string;
   category?: string;
+  filters?: Record<string, string[]>;
 }
 
 export interface NCCCFacetOption {
@@ -24,6 +25,12 @@ export interface NCCCFacetOption {
 export interface NCCCRecordFacets {
   regions: NCCCFacetOption[];
   categories: NCCCFacetOption[];
+  fields: NCCCFieldFacet[];
+}
+
+export interface NCCCFieldFacet {
+  field: string;
+  options: NCCCFacetOption[];
 }
 
 export type NCCCRecordPagination = EsPagination<NCCCRecord[]> & {

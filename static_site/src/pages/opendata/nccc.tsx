@@ -31,7 +31,62 @@ import { useSearchParams } from "react-router-dom";
 import { useNCCCIndexes, useNCCCRecords } from "@/apis/opendata/nccc.ts";
 import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { useTitle } from "@/helpers/title.tsx";
-import type { NCCCRecord, NCCCRecordSearch } from "@/types/nccc.ts";
+import type {
+  NCCCFacetOption,
+  NCCCRecord,
+  NCCCRecordSearch,
+} from "@/types/nccc.ts";
+
+const taiwanRegionOrder = [
+  "台北市",
+  "新北市",
+  "桃園市",
+  "新竹市",
+  "新竹縣",
+  "苗栗縣",
+  "台中市",
+  "彰化縣",
+  "南投縣",
+  "雲林縣",
+  "嘉義縣",
+  "嘉義市",
+  "台南市",
+  "高雄市",
+  "屏東縣",
+  "基隆市",
+  "宜蘭縣",
+  "花蓮縣",
+  "台東縣",
+  "澎湖縣",
+  "金門縣",
+  "連江縣",
+];
+
+const taiwanRegionRank = new Map(
+  taiwanRegionOrder.map((region, index) => [region, index]),
+);
+
+function filtersFromParams(params: URLSearchParams) {
+  const raw = params.get("filters")?.trim();
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string | string[]>;
+    const filters: Record<string, string[]> = {};
+    Object.entries(parsed).forEach(([rawField, rawValue]) => {
+      const field = rawField.trim();
+      const values = Array.isArray(rawValue) ? rawValue : [rawValue];
+      const normalized = Array.from(
+        new Set(values.map((value) => String(value).trim()).filter(Boolean)),
+      );
+      if (field && normalized.length) {
+        filters[field] = normalized;
+      }
+    });
+    return Object.keys(filters).length ? filters : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function searchFromParams(params: URLSearchParams): NCCCRecordSearch {
   return {
@@ -46,6 +101,7 @@ function searchFromParams(params: URLSearchParams): NCCCRecordSearch {
         .filter(Boolean) || undefined,
     region: params.get("region")?.trim() || undefined,
     category: params.get("category")?.trim() || undefined,
+    filters: filtersFromParams(params),
   };
 }
 
@@ -58,10 +114,18 @@ function toSearchParams(token: string | undefined, search: NCCCRecordSearch) {
   }
   if (search.region) params.set("region", search.region);
   if (search.category) params.set("category", search.category);
+  if (search.filters && Object.keys(search.filters).length) {
+    params.set("filters", JSON.stringify(search.filters));
+  }
   return params;
 }
 
-function displayValue(value: NCCCRecord[string]) {
+function displayValue(column: string, value: NCCCRecord[string]) {
+  if (column === "性別") {
+    if (value === 1 || value === "1") return "男性";
+    if (value === 2 || value === "2") return "女性";
+  }
+
   if (typeof value === "number") {
     return value.toLocaleString("zh-TW", { maximumFractionDigits: 6 });
   }
@@ -91,6 +155,18 @@ function collectColumns(rows: NCCCRecord[]) {
     ...preferred.filter((key) => keys.delete(key)),
     ...Array.from(keys).sort((a, b) => a.localeCompare(b, "zh-Hant")),
   ];
+}
+
+function sortFacetOptions(field: string, options: NCCCFacetOption[]) {
+  if (field !== "地區") return options;
+  return [...options].sort((a, b) => {
+    const rankA = taiwanRegionRank.get(a.value);
+    const rankB = taiwanRegionRank.get(b.value);
+    if (rankA !== undefined && rankB !== undefined) return rankA - rankB;
+    if (rankA !== undefined) return -1;
+    if (rankB !== undefined) return 1;
+    return a.value.localeCompare(b.value, "zh-Hant");
+  });
 }
 
 function gregorianMonthToNCCC(value: string) {
@@ -167,6 +243,22 @@ export default function NCCCPage() {
         ? current.filter((item) => item !== column)
         : [...current, column],
     );
+  };
+
+  const updateFieldFilter = (field: string, values: string[]) => {
+    const filters = { ...(search.filters ?? {}) };
+    const nextValues = Array.from(
+      new Set(values.map((value) => value.trim()).filter(Boolean)),
+    );
+    if (nextValues.length) {
+      filters[field] = nextValues;
+    } else {
+      delete filters[field];
+    }
+    updateSearch({
+      ...search,
+      filters: Object.keys(filters).length ? filters : undefined,
+    });
   };
 
   return (
@@ -259,48 +351,54 @@ export default function NCCCPage() {
                     加入
                   </Button>
                 </Stack>
-                <FormControl sx={{ minWidth: 180 }}>
-                  <InputLabel id="nccc-region-select-label">地區</InputLabel>
-                  <Select
-                    labelId="nccc-region-select-label"
-                    label="地區"
-                    value={search.region ?? ""}
-                    onChange={(event) =>
-                      updateSearch({
-                        ...search,
-                        region: event.target.value || undefined,
-                      })
-                    }
-                  >
-                    <MenuItem value="">全部</MenuItem>
-                    {(pagination?.facets.regions ?? []).map((item) => (
-                      <MenuItem key={item.value} value={item.value}>
-                        {item.value}（{item.count.toLocaleString("zh-TW")}）
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl sx={{ minWidth: 180 }}>
-                  <InputLabel id="nccc-category-select-label">類別</InputLabel>
-                  <Select
-                    labelId="nccc-category-select-label"
-                    label="類別"
-                    value={search.category ?? ""}
-                    onChange={(event) =>
-                      updateSearch({
-                        ...search,
-                        category: event.target.value || undefined,
-                      })
-                    }
-                  >
-                    <MenuItem value="">全部</MenuItem>
-                    {(pagination?.facets.categories ?? []).map((item) => (
-                      <MenuItem key={item.value} value={item.value}>
-                        {item.value}（{item.count.toLocaleString("zh-TW")}）
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                {(pagination?.facets.fields ?? []).map((facet) => (
+                  <FormControl key={facet.field} sx={{ minWidth: 180 }}>
+                    <InputLabel id={`nccc-${facet.field}-select-label`}>
+                      {facet.field}
+                    </InputLabel>
+                    <Select
+                      labelId={`nccc-${facet.field}-select-label`}
+                      label={facet.field}
+                      multiple
+                      value={search.filters?.[facet.field] ?? []}
+                      onChange={(event) =>
+                        updateFieldFilter(
+                          facet.field,
+                          typeof event.target.value === "string"
+                            ? event.target.value.split(",")
+                            : event.target.value,
+                        )
+                      }
+                      renderValue={(selected) => (
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
+                          {selected.map((value) => (
+                            <Chip
+                              key={value}
+                              size="small"
+                              label={displayValue(facet.field, value)}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                    >
+                      {sortFacetOptions(facet.field, facet.options).map(
+                        (item) => (
+                          <MenuItem key={item.value} value={item.value}>
+                            <Checkbox
+                              checked={(
+                                search.filters?.[facet.field] ?? []
+                              ).includes(item.value)}
+                            />
+                            {displayValue(facet.field, item.value)}（
+                            {item.count.toLocaleString("zh-TW")}）
+                          </MenuItem>
+                        ),
+                      )}
+                    </Select>
+                  </FormControl>
+                ))}
               </Stack>
               {!!search.yearMonths?.length && (
                 <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
@@ -392,7 +490,7 @@ export default function NCCCPage() {
                             }
                             sx={{ whiteSpace: "nowrap" }}
                           >
-                            {displayValue(row[column])}
+                            {displayValue(column, row[column])}
                           </TableCell>
                         ))}
                       </TableRow>

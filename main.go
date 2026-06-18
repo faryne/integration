@@ -42,6 +42,7 @@ var commandParams = commandParameter.Registry{
 	"brandIds":       commandParameter.New("comma-separated eroge_brands numeric IDs", nil),
 	"brandName":      commandParameter.New("eroge brand name", nil),
 	"csvFile":        commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
+	"ncccKey":        commandParameter.New("single NCCC data set key, e.g. gender", nil),
 	"playlist":       commandParameter.New("public YouTube playlist URL or ID", nil),
 	"youtubeChannel": commandParameter.New("YouTube @handle or UC... channel ID", nil),
 	"youtubeURL":     commandParameter.New("YouTube brand page URL", nil),
@@ -178,8 +179,10 @@ var cronJobs = []cronJobConfig{
 	},
 	{
 		Name:     "nccc-download",
-		Schedule: "12 3 * * 0",
-		Handler:  nccc.RunDownload,
+		Schedule: "12 3 15 * *",
+		Handler: func() {
+			nccc.RunDownload(commandParams.Value("ncccKey"))
+		},
 	},
 	{
 		Name:     "nccc-clear-indexes",

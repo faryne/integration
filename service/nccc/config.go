@@ -22,6 +22,31 @@ var chineseCities = []string{
 	"台東縣", "澎湖縣", "金門縣", "連江縣",
 }
 
+var codeCities = map[float64]string{
+	63000000: "台北市",
+	65000000: "新北市",
+	68000000: "桃園市",
+	10018000: "新竹市",
+	10004000: "新竹縣",
+	10005000: "苗栗縣",
+	66000000: "台中市",
+	10007000: "彰化縣",
+	10008000: "南投縣",
+	10009000: "雲林縣",
+	10010000: "嘉義縣",
+	10020000: "嘉義市",
+	67000000: "台南市",
+	64000000: "高雄市",
+	10013000: "屏東縣",
+	10017000: "基隆市",
+	10002000: "宜蘭縣",
+	10015000: "花蓮縣",
+	10014000: "台東縣",
+	10016000: "澎湖縣",
+	9020000:  "金門縣",
+	9007000:  "連江縣",
+}
+
 var defaultPlaceholders = map[string][]string{
 	"AREA":   regions,
 	"TYPE":   consumeTypes,
@@ -41,6 +66,15 @@ var stringFieldNames = map[string]struct{}{
 	"年月":     {},
 	"年度":     {},
 	"id_key": {},
+}
+
+func stringFieldNamesList() []string {
+	fields := make([]string, 0, len(stringFieldNames))
+	for field := range stringFieldNames {
+		fields = append(fields, field)
+	}
+	sort.Strings(fields)
+	return fields
 }
 
 type dataSetConfig struct {

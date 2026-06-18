@@ -24,6 +24,17 @@ const maxRecordPerPage = 100
 
 var yearMonthFilterPattern = regexp.MustCompile(`^[0-9]{2,4}年[0-9]{1,2}月$`)
 
+func recordFacetFields() []string {
+	fields := make([]string, 0, len(stringFieldNames))
+	for _, field := range stringFieldNamesList() {
+		if field == "年月" || field == "年度" || field == "id_key" {
+			continue
+		}
+		fields = append(fields, field)
+	}
+	return fields
+}
+
 func ListIndexes() []ncccModel.IndexInfo {
 	keys := dataSetKeys()
 	indexes := make([]ncccModel.IndexInfo, 0, len(keys))
@@ -67,22 +78,18 @@ func EffectiveRecordPerPage(input ncccModel.RecordSearchRequest) int64 {
 
 func buildRecordSearchQuery(input ncccModel.RecordSearchRequest) (map[string]any, error) {
 	perPage := EffectiveRecordPerPage(input)
+	aggs := make(map[string]any)
+	for index, field := range recordFacetFields() {
+		aggs[facetAggregationKey(index)] = map[string]any{
+			"terms": map[string]any{
+				"field": field + ".keyword",
+				"size":  100,
+			},
+		}
+	}
 	query := map[string]any{
 		"size": perPage,
-		"aggs": map[string]any{
-			"regions": map[string]any{
-				"terms": map[string]any{
-					"field": "地區.keyword",
-					"size":  100,
-				},
-			},
-			"categories": map[string]any{
-				"terms": map[string]any{
-					"field": "類別.keyword",
-					"size":  100,
-				},
-			},
-		},
+		"aggs": aggs,
 		"sort": []map[string]any{
 			{"_doc": map[string]any{"order": "asc"}},
 		},
@@ -110,6 +117,11 @@ func buildRecordSearchQuery(input ncccModel.RecordSearchRequest) (map[string]any
 
 func applyRecordFilters(query map[string]any, input ncccModel.RecordSearchRequest) error {
 	must := make([]map[string]any, 0)
+	postFilterMust := make([]map[string]any, 0)
+	filters, err := parseFieldFilters(input.Filters)
+	if err != nil {
+		return err
+	}
 	yearMonths, err := parseYearMonthFilters(input.YearMonths)
 	if err != nil {
 		return err
@@ -120,13 +132,20 @@ func applyRecordFilters(query map[string]any, input ncccModel.RecordSearchReques
 		})
 	}
 	if region := strings.TrimSpace(input.Region); region != "" {
-		must = append(must, map[string]any{
-			"term": map[string]any{"地區.keyword": region},
-		})
+		filters["地區"] = []string{region}
 	}
 	if category := strings.TrimSpace(input.Category); category != "" {
-		must = append(must, map[string]any{
-			"term": map[string]any{"類別.keyword": category},
+		filters["類別"] = []string{category}
+	}
+	for field, values := range filters {
+		if _, ok := filterableRecordFields()[field]; !ok {
+			return fmt.Errorf("unsupported nccc filter field: %s", field)
+		}
+		if len(values) == 0 {
+			continue
+		}
+		postFilterMust = append(postFilterMust, map[string]any{
+			"terms": map[string]any{field + ".keyword": values},
 		})
 	}
 	if len(must) > 0 {
@@ -134,7 +153,66 @@ func applyRecordFilters(query map[string]any, input ncccModel.RecordSearchReques
 			"bool": map[string]any{"must": must},
 		}
 	}
+	if len(postFilterMust) > 0 {
+		query["post_filter"] = map[string]any{
+			"bool": map[string]any{"must": postFilterMust},
+		}
+	}
 	return nil
+}
+
+func parseFieldFilters(value string) (map[string][]string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return map[string][]string{}, nil
+	}
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(value), &raw); err != nil {
+		return nil, fmt.Errorf("filters must be valid JSON")
+	}
+	out := make(map[string][]string, len(raw))
+	for field, rawValue := range raw {
+		field = strings.TrimSpace(field)
+		values := normalizeFieldFilterValues(rawValue)
+		if field == "" || len(values) == 0 {
+			continue
+		}
+		out[field] = values
+	}
+	return out, nil
+}
+
+func normalizeFieldFilterValues(value any) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	appendValue := func(item any) {
+		text := strings.TrimSpace(fmt.Sprint(item))
+		if text == "" {
+			return
+		}
+		if _, ok := seen[text]; ok {
+			return
+		}
+		seen[text] = struct{}{}
+		out = append(out, text)
+	}
+	switch typed := value.(type) {
+	case []any:
+		for _, item := range typed {
+			appendValue(item)
+		}
+	default:
+		appendValue(typed)
+	}
+	return out
+}
+
+func filterableRecordFields() map[string]struct{} {
+	fields := make(map[string]struct{}, len(stringFieldNames))
+	for _, field := range recordFacetFields() {
+		fields[field] = struct{}{}
+	}
+	return fields
 }
 
 func parseYearMonthFilters(value string) ([]string, error) {
@@ -165,10 +243,36 @@ func RecordFacets(raw *entity.ElasticSearchResponse[map[string]any]) ncccModel.R
 	if raw == nil {
 		return ncccModel.RecordFacets{}
 	}
-	return ncccModel.RecordFacets{
-		Regions:    facetOptions(raw, "regions"),
-		Categories: facetOptions(raw, "categories"),
+	fields := recordFacetFields()
+	fieldFacets := make([]ncccModel.FieldFacet, 0, len(fields))
+	for index, field := range fields {
+		options := facetOptions(raw, facetAggregationKey(index))
+		if len(options) == 0 {
+			continue
+		}
+		fieldFacets = append(fieldFacets, ncccModel.FieldFacet{
+			Field:   field,
+			Options: options,
+		})
 	}
+	return ncccModel.RecordFacets{
+		Regions:    facetOptions(raw, facetAggregationKey(recordFacetFieldIndex("地區"))),
+		Categories: facetOptions(raw, facetAggregationKey(recordFacetFieldIndex("類別"))),
+		Fields:     fieldFacets,
+	}
+}
+
+func facetAggregationKey(index int) string {
+	return fmt.Sprintf("field_%d", index)
+}
+
+func recordFacetFieldIndex(field string) int {
+	for index, item := range recordFacetFields() {
+		if item == field {
+			return index
+		}
+	}
+	return -1
 }
 
 func facetOptions(raw *entity.ElasticSearchResponse[map[string]any], key string) []ncccModel.FacetOption {
