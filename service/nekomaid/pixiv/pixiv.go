@@ -34,6 +34,7 @@ type instance struct {
 const (
 	LoginUrl     = "https://oauth.secure.pixiv.net/auth/token"
 	ApiUrl       = "https://app-api.pixiv.net/v1"
+	WebAjaxUrl   = "https://www.pixiv.net/ajax"
 	RefererUrl   = "https://www.pixiv.net/artworks/%s"
 	ClientId     = "MOBrBDS8blbauoSck0ZfDbtuzpyT"
 	ClientSecret = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj"
@@ -72,6 +73,39 @@ type Response struct {
 		} `json:"meta_pages"`
 		PageCount int64 `json:"page_count"`
 	} `json:"illust"`
+}
+
+type WebArtworkResponse struct {
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+	Body    struct {
+		Id        string `json:"illustId"`
+		Title     string `json:"illustTitle"`
+		Type      string `json:"illustType"`
+		Caption   string `json:"description"`
+		XRestrict int64  `json:"xRestrict"`
+		UserId    string `json:"userId"`
+		UserName  string `json:"userName"`
+		PageCount int64  `json:"pageCount"`
+		Urls      struct {
+			Original string `json:"original"`
+		} `json:"urls"`
+		Tags struct {
+			Tags []struct {
+				Tag string `json:"tag"`
+			} `json:"tags"`
+		} `json:"tags"`
+	} `json:"body"`
+}
+
+type WebArtworkPagesResponse struct {
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+	Body    []struct {
+		Urls struct {
+			Original string `json:"original"`
+		} `json:"urls"`
+	} `json:"body"`
 }
 
 type UgoiraMetadataResponse struct {
@@ -126,8 +160,11 @@ func (i *instance) Login() error {
 	defer resp.Body.Close()
 
 	var token OAuthAPIResponse
-	if err := json.NewDecoder(resp.Body).Decode(&token); err != nil {
+	if err := decodePixivJSONResponse(resp, &token, "pixiv login"); err != nil {
 		return err
+	}
+	if token.AccessToken == "" {
+		return fmt.Errorf("pixiv login returned empty access token")
 	}
 	i.Token = &token
 	cacheToken(&token)
@@ -215,16 +252,122 @@ func (i *instance) getArtworkDetail(id string) (*Response, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("pixiv artwork detail failed: status=%d artwork_id=%s body=%s", resp.StatusCode, id, strings.TrimSpace(string(body)))
-	}
-
 	var result Response
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+	if err := decodePixivJSONResponse(resp, &result, fmt.Sprintf("pixiv artwork detail artwork_id=%s", id)); err != nil {
+		webResult, webErr := i.getWebArtworkDetail(id)
+		if webErr != nil {
+			return nil, fmt.Errorf("%w; pixiv web fallback failed: %v", err, webErr)
+		}
+		return webResult, nil
 	}
 	return &result, nil
+}
+
+func (i *instance) getWebArtworkDetail(id string) (*Response, error) {
+	var artwork WebArtworkResponse
+	if err := getPixivWebJSON(fmt.Sprintf("%s/illust/%s?lang=ja", WebAjaxUrl, url.PathEscape(id)), id, &artwork); err != nil {
+		return nil, err
+	}
+	if artwork.Error {
+		return nil, fmt.Errorf("pixiv web artwork failed: artwork_id=%s message=%s", id, artwork.Message)
+	}
+
+	result, err := webArtworkToResponse(artwork)
+	if err != nil {
+		return nil, err
+	}
+	if result.Illust.Type == "ugoira" {
+		return result, nil
+	}
+	if result.Illust.PageCount <= 1 && result.Illust.MetaSinglePage.OriginalImageUrl != "" {
+		return result, nil
+	}
+
+	pages, err := getPixivWebArtworkPages(id)
+	if err != nil {
+		return nil, err
+	}
+	result.Illust.PageCount = int64(len(pages))
+	if len(pages) == 1 {
+		result.Illust.MetaSinglePage.OriginalImageUrl = pages[0]
+		return result, nil
+	}
+	for _, page := range pages {
+		result.Illust.MetaPages = append(result.Illust.MetaPages, struct {
+			ImageUrls struct {
+				Original string `json:"original"`
+			} `json:"image_urls"`
+		}{
+			ImageUrls: struct {
+				Original string `json:"original"`
+			}{Original: page},
+		})
+	}
+	return result, nil
+}
+
+func getPixivWebArtworkPages(id string) ([]string, error) {
+	var pages WebArtworkPagesResponse
+	if err := getPixivWebJSON(fmt.Sprintf("%s/illust/%s/pages?lang=ja", WebAjaxUrl, url.PathEscape(id)), id, &pages); err != nil {
+		return nil, err
+	}
+	if pages.Error {
+		return nil, fmt.Errorf("pixiv web artwork pages failed: artwork_id=%s message=%s", id, pages.Message)
+	}
+
+	result := make([]string, 0, len(pages.Body))
+	for _, page := range pages.Body {
+		if page.Urls.Original != "" {
+			result = append(result, page.Urls.Original)
+		}
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("pixiv web artwork pages has no original image urls: artwork_id=%s", id)
+	}
+	return result, nil
+}
+
+func getPixivWebJSON(apiURL, artworkID string, out any) error {
+	req, _ := http.NewRequest(http.MethodGet, apiURL, nil)
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Referer", fmt.Sprintf(RefererUrl, artworkID))
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return decodePixivJSONResponse(resp, out, fmt.Sprintf("pixiv web ajax artwork_id=%s", artworkID))
+}
+
+func webArtworkToResponse(input WebArtworkResponse) (*Response, error) {
+	artworkId, err := strconv.ParseInt(input.Body.Id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse pixiv web artwork id: %w", err)
+	}
+	authorId, err := strconv.ParseInt(input.Body.UserId, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("parse pixiv web author id: %w", err)
+	}
+
+	result := &Response{}
+	result.Illust.Id = artworkId
+	result.Illust.Title = input.Body.Title
+	result.Illust.Type = input.Body.Type
+	result.Illust.Caption = input.Body.Caption
+	result.Illust.Restrict = input.Body.XRestrict
+	result.Illust.User.Id = authorId
+	result.Illust.User.Name = input.Body.UserName
+	result.Illust.PageCount = input.Body.PageCount
+	result.Illust.MetaSinglePage.OriginalImageUrl = input.Body.Urls.Original
+	for _, tag := range input.Body.Tags.Tags {
+		result.Illust.Tags = append(result.Illust.Tags, struct {
+			Name string `json:"name"`
+		}{Name: tag.Tag})
+	}
+	return result, nil
 }
 
 func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, error) {
@@ -305,7 +448,7 @@ func (i *instance) parseGetArtwork(result *Response) (*nekomaid.ArtworkMain, err
 
 func (i *instance) getImageUpload(authorId, artworkId string, u string, idx int) (nekomaid.ArtworkPhoto, string, error) {
 	req, _ := http.NewRequest(http.MethodGet, u, nil)
-	req.Header.Add("Referer", "https://app-api.pixiv.net/")
+	req.Header.Add("Referer", fmt.Sprintf(RefererUrl, artworkId))
 	req.Header.Add("User-Agent", "PixivAndroidApp/5.0.64 (Android 6.0)")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -351,16 +494,36 @@ func (i *instance) getUgoiraMetadata(artworkId string) (*UgoiraMetadataResponse,
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("pixiv ugoira metadata failed: status=%d artwork_id=%s body=%s", resp.StatusCode, artworkId, strings.TrimSpace(string(body)))
-	}
-
 	var result UgoiraMetadataResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := decodePixivJSONResponse(resp, &result, fmt.Sprintf("pixiv ugoira metadata artwork_id=%s", artworkId)); err != nil {
 		return nil, err
 	}
 	return &result, nil
+}
+
+func decodePixivJSONResponse(resp *http.Response, out any, context string) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("%s read response failed: %w", context, err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("%s failed: status=%d content_type=%s body=%s", context, resp.StatusCode, resp.Header.Get("Content-Type"), responseSnippet(body))
+	}
+
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("%s returned invalid json: status=%d content_type=%s body=%s: %w", context, resp.StatusCode, resp.Header.Get("Content-Type"), responseSnippet(body), err)
+	}
+	return nil
+}
+
+func responseSnippet(body []byte) string {
+	const maxLen = 500
+	s := strings.TrimSpace(string(body))
+	if len(s) > maxLen {
+		return s[:maxLen] + "..."
+	}
+	return s
 }
 
 func (i *instance) downloadPixivAsset(u string) ([]byte, error) {
