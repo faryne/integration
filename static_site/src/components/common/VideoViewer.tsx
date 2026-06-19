@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface VideoViewerSource {
+  autoPlay?: boolean;
   description?: string;
   duration?: number;
   ext?: string;
@@ -191,6 +192,18 @@ export function VideoViewer({
     () => (currentVideo ? getVideoEmbed(currentVideo.url) : null),
     [currentVideo],
   );
+  const embedUrl = useMemo(() => {
+    if (!embed) {
+      return "";
+    }
+    if (!currentVideo?.autoPlay || embed.provider !== "youtube") {
+      return embed.url;
+    }
+    const url = new URL(embed.url);
+    url.searchParams.set("autoplay", "1");
+    url.searchParams.set("rel", "0");
+    return url.toString();
+  }, [currentVideo?.autoPlay, embed]);
   const isEmbedded = Boolean(embed);
 
   useEffect(() => {
@@ -316,7 +329,7 @@ export function VideoViewer({
               {isEmbedded ? (
                 <Box
                   component="iframe"
-                  src={embed?.url ?? ""}
+                  src={embedUrl}
                   title={`${title} (${embed?.provider ?? "embed"})`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen

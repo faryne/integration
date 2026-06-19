@@ -16,7 +16,7 @@ import {
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { useTaipowerNeighborStatistics } from "@/apis/opendata/taipower.ts";
-import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { TaipowerDataDisclaimer } from "@/components/taipower/TaipowerDataDisclaimer.tsx";
 import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToFinancialChinese } from "@/helpers/chineseNumber.ts";
 import { useTitle } from "@/helpers/title.tsx";

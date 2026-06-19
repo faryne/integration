@@ -29,7 +29,7 @@ import {
 } from "react-router-dom";
 
 import { useTaipowerNeighbors } from "@/apis/opendata/taipower.ts";
-import { TaipowerDataDisclaimer } from "@/components/common/TaipowerDataDisclaimer.tsx";
+import { TaipowerDataDisclaimer } from "@/components/taipower/TaipowerDataDisclaimer.tsx";
 import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { TaipowerNeighborBreadcrumb } from "@/components/taipower/TaipowerNeighborBreadcrumb.tsx";
 import { integerToChinese } from "@/helpers/chineseNumber.ts";

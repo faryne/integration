@@ -61,7 +61,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { shareUrl } from "@/helpers/share.ts";
 import { DetailDialog } from "@/components/common/DetailDialog.tsx";
-import { InvestmentRiskDisclaimer } from "@/components/common/InvestmentRiskDisclaimer.tsx";
+import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
 
 const filters = [
   { label: "全部", value: "ALL" },

@@ -89,6 +89,7 @@ export default function GalgameVideo() {
                 title={video.title}
                 videos={[
                   {
+                    autoPlay: true,
                     url: `https://www.youtube.com/watch?v=${video.youtube_video_id}`,
                     thumb: video.thumbnail_url,
                   },

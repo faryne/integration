@@ -23,7 +23,7 @@ import dayjs from "dayjs";
 import { useTitle } from "@/helpers/title.tsx";
 import { yieldMaxEtfOptions, yieldMaxEtfs } from "@/data/yieldmax.ts";
 import { useNavigate, useParams } from "react-router-dom";
-import { InvestmentRiskDisclaimer } from "@/components/common/InvestmentRiskDisclaimer.tsx";
+import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
 
 interface CrawlerTextField {
   text: string;
