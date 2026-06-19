@@ -30,6 +30,7 @@ import {
   AgeConfirmationPanel,
 } from "@/components/common/AgeConfirmation.tsx";
 import { ImageViewer } from "@/components/common/ImageViewer.tsx";
+import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
 import { isVideoMedia, VideoViewer } from "@/components/common/VideoViewer.tsx";
 import { CollapsibleRelatedTags } from "@/components/nekomaid/CollapsibleRelatedTags.tsx";
 import { CompactRecommendations } from "@/components/nekomaid/CompactRecommendations.tsx";
@@ -408,6 +409,8 @@ function ListPage({
   const type = query.get("type") ?? "";
   const wallpaper = query.get("wallpaper") ?? "";
   const minWidth = query.get("min_width") ?? "";
+  const cursor = query.get("cursor") ?? "";
+  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
   const search = useNekomaidSearch({
     site: routeSite,
     authorId: routeAuthorId,
@@ -417,21 +420,21 @@ function ListPage({
     type,
     wallpaper,
     min_width: minWidth,
+    cursor,
   });
-  const artworks =
-    search.data?.pages.flatMap((page) => page.artworks ?? page.items ?? []) ??
-    [];
-  const total = search.data?.pages[0]?.total;
-  const author = search.data?.pages[0]?.author;
+  const payload = search.data?.data;
+  const artworks = payload?.artworks ?? payload?.items ?? [];
+  const total = search.data?.total;
+  const author = payload?.author;
   const tags = useMemo(
     () =>
       Array.from(
         new Set([
-          ...(search.data?.pages[0]?.relative_tags ?? []),
+          ...(payload?.relative_tags ?? []),
           ...artworks.flatMap((item) => item.tags ?? []),
         ]),
       ).slice(0, 40),
-    [artworks, search.data?.pages],
+    [artworks, payload?.relative_tags],
   );
 
   useTitle("難以名狀的抓圖器", { path: nekomaidPath() });
@@ -444,7 +447,29 @@ function ListPage({
     if (next.type) params.set("type", next.type);
     if (next.wallpaper) params.set("wallpaper", next.wallpaper);
     if (next.minWidth) params.set("min_width", next.minWidth);
-    navigate(nekomaidPath(`?${params.toString()}`));
+    setCursorHistory([]);
+    navigate(toListPath(params));
+  };
+
+  const toListPath = (params: URLSearchParams) => {
+    const base = [routeSite, routeAuthorId].filter(Boolean).join("/");
+    const queryString = params.toString();
+    if (base) {
+      return nekomaidPath(`${base}${queryString ? `?${queryString}` : ""}`);
+    }
+    return queryString ? `${nekomaidPath()}?${queryString}` : nekomaidPath();
+  };
+
+  const toSearchParams = (nextCursor?: string) => {
+    const params = new URLSearchParams();
+    if (tag) params.set("tag", tag);
+    if (!routeSite && site) params.set("site", site);
+    if (rating) params.set("rating", rating);
+    if (type) params.set("type", type);
+    if (wallpaper) params.set("wallpaper", wallpaper);
+    if (minWidth) params.set("min_width", minWidth);
+    if (nextCursor) params.set("cursor", nextCursor);
+    return params;
   };
 
   return (
@@ -544,15 +569,26 @@ function ListPage({
             ))}
           </Box>
 
-          {search.hasNextPage && (
-            <Button
-              disabled={search.isFetchingNextPage}
-              onClick={() => search.fetchNextPage()}
-              variant="contained"
-              sx={{ alignSelf: "center" }}
-            >
-              {search.isFetchingNextPage ? "讀取中" : "載入更多"}
-            </Button>
+          {!!search.data && total !== undefined && total > 0 && (
+            <EsCursorPagination
+              from={search.data.from ?? 0}
+              to={search.data.to ?? 0}
+              total={total}
+              perPage={search.data.per_page}
+              hasPrevious={cursorHistory.length > 0 || !!cursor}
+              hasNext={!!search.data.has_next}
+              onPrevious={() => {
+                const nextHistory = [...cursorHistory];
+                const previousCursor = nextHistory.pop() ?? "";
+                setCursorHistory(nextHistory);
+                navigate(toListPath(toSearchParams(previousCursor)));
+              }}
+              onNext={() => {
+                if (!search.data?.next_cursor) return;
+                setCursorHistory([...cursorHistory, cursor]);
+                navigate(toListPath(toSearchParams(search.data.next_cursor)));
+              }}
+            />
           )}
         </Stack>
       </Box>

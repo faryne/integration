@@ -1,3 +1,5 @@
+import type { EsPagination } from "@/apis/interfaces.ts";
+
 export type NekomaidSite = "pixiv" | "nico" | "tinami" | string;
 
 export interface NekomaidPhoto {
@@ -45,14 +47,14 @@ export interface NekomaidArtwork {
   nekomaid_link?: string;
 }
 
-export interface NekomaidSearchResponse {
+export interface NekomaidSearchPayload {
   artworks?: NekomaidArtwork[];
   items?: NekomaidArtwork[];
   author?: NekomaidAuthor;
-  next_token?: string;
-  total?: number;
   relative_tags?: string[];
 }
+
+export type NekomaidSearchResponse = EsPagination<NekomaidSearchPayload>;
 
 export interface NekomaidArtworkDetailResponse {
   artwork: NekomaidArtwork;
@@ -70,4 +72,5 @@ export interface NekomaidSearchRequest {
   wallpaper?: string;
   min_width?: string;
   nextToken?: string;
+  cursor?: string;
 }

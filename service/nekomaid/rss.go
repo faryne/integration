@@ -64,11 +64,11 @@ func BuildSearchRSS(ctx fiber.Ctx, response *nekomaid.ArtworkSearchResponse) (st
 			Title:       searchRSSTitle(response),
 			Link:        Home + ctx.Path(),
 			Description: "Nekomaid artwork search results",
-			Items:       make([]rssItem, 0, len(response.Items)),
+			Items:       make([]rssItem, 0, len(response.Data.Items)),
 		},
 	}
 
-	for _, artwork := range response.Items {
+	for _, artwork := range response.Data.Items {
 		item := rssItem{
 			Title:       artwork.Title,
 			Link:        artwork.NekomaidLink,
@@ -95,8 +95,8 @@ func BuildSearchRSS(ctx fiber.Ctx, response *nekomaid.ArtworkSearchResponse) (st
 }
 
 func searchRSSTitle(response *nekomaid.ArtworkSearchResponse) string {
-	if response != nil && response.Author != nil && strings.TrimSpace(response.Author.Nickname) != "" {
-		return fmt.Sprintf("Nekomaid: %s", response.Author.Nickname)
+	if response != nil && response.Data.Author != nil && strings.TrimSpace(response.Data.Author.Nickname) != "" {
+		return fmt.Sprintf("Nekomaid: %s", response.Data.Author.Nickname)
 	}
 	return "Nekomaid Search"
 }

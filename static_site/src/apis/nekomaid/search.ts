@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import type {
   NekomaidArtworkDetailResponse,
@@ -22,10 +22,9 @@ function listUrl(input: NekomaidSearchRequest) {
 }
 
 export function useNekomaidSearch(input: NekomaidSearchRequest) {
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: ["nekomaid", "search", input],
-    initialPageParam: "",
-    queryFn: async ({ pageParam }) => {
+    queryFn: async () => {
       const response = await axios.get<CommonResponse<NekomaidSearchResponse>>(
         listUrl(input),
         {
@@ -36,13 +35,12 @@ export function useNekomaidSearch(input: NekomaidSearchRequest) {
             type: input.type || undefined,
             wallpaper: input.wallpaper || undefined,
             min_width: input.min_width || undefined,
-            next_token: pageParam || undefined,
+            cursor: input.cursor || undefined,
           },
         },
       );
       return response.data.data;
     },
-    getNextPageParam: (lastPage) => lastPage.next_token || undefined,
   });
 }
 

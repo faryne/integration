@@ -2,7 +2,6 @@ package nekomaid
 
 import (
 	"fmt"
-	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"faryne.dev/model/entity/nekomaid"
 	"faryne.dev/model/enum"
 	nekomaidRepo "faryne.dev/repository/nekomaid"
+	"faryne.dev/service/helper"
 	"faryne.dev/service/search"
 	"github.com/gofiber/fiber/v3"
 )
@@ -64,6 +64,7 @@ type SearchRequest struct {
 	Type      string
 	Wallpaper string
 	MinWidth  string
+	Cursor    string
 }
 
 func Search(ctx fiber.Ctx) (*nekomaid.ArtworkSearchResponse, error) {
@@ -78,17 +79,16 @@ func Search(ctx fiber.Ctx) (*nekomaid.ArtworkSearchResponse, error) {
 		Type:      ctx.Query("type", ""),
 		Wallpaper: ctx.Query("wallpaper", ""),
 		MinWidth:  ctx.Query("min_width", ""),
+		Cursor:    ctx.Query("cursor", ""),
 	}
-	return searchByRequest(req, func(page int) string {
-		return paginationLink(ctx, page)
-	})
+	return searchByRequest(req, ctx.Scheme()+"://"+ctx.Hostname()+ctx.Path())
 }
 
 func SearchByRequest(req SearchRequest) (*nekomaid.ArtworkSearchResponse, error) {
-	return searchByRequest(req, nil)
+	return searchByRequest(req, "")
 }
 
-func searchByRequest(req SearchRequest, pagination func(page int) string) (*nekomaid.ArtworkSearchResponse, error) {
+func searchByRequest(req SearchRequest, path string) (*nekomaid.ArtworkSearchResponse, error) {
 	site := strings.TrimSpace(req.Site)
 	sites := strings.TrimSpace(req.Sites)
 	page := req.Page
@@ -102,11 +102,24 @@ func searchByRequest(req SearchRequest, pagination func(page int) string) (*neko
 	t := strings.TrimSpace(req.Type)
 	wallpaper := strings.TrimSpace(req.Wallpaper)
 	minWidth := strings.TrimSpace(req.MinWidth)
+	cursorValue := strings.TrimSpace(req.Cursor)
+	currentOffset := int64((page - 1) * searchPageSize)
 
 	q := map[string]any{
 		"size": searchPageSize,
-		"from": (page - 1) * searchPageSize,
-		"sort": map[string]any{"published_dt": map[string]any{"order": "desc"}},
+		"sort": nekomaidDefaultSort(),
+	}
+	if cursorValue == "" {
+		q["from"] = currentOffset
+	} else {
+		cursor, err := helper.DecodeESCursor(cursorValue)
+		if err != nil {
+			return nil, fmt.Errorf("cursor is invalid")
+		}
+		if cursor != nil {
+			q["search_after"] = cursor.SearchAfter
+			currentOffset = cursor.Offset
+		}
 	}
 	if site != "" {
 		search.SetQuery(map[string]any{"match": map[string]any{"from": site}}, true, q)
@@ -140,13 +153,13 @@ func searchByRequest(req SearchRequest, pagination func(page int) string) (*neko
 		switch wallpaper {
 		case "16:10":
 			search.SetQuery(map[string]any{"match": map[string]any{"photos.ratio": 1.6}}, true, q)
-			search.SetSort(q, "photos.width", "desc")
+			prependNekomaidSort(q, "photos.width", "desc")
 		case "16:9":
 			search.SetQuery(map[string]any{"range": map[string]any{"photos.ratio": map[string]any{"gte": 1.77, "lte": 1.78}}}, true, q)
-			search.SetSort(q, "photos.width", "desc")
+			prependNekomaidSort(q, "photos.width", "desc")
 		case "4:3":
 			search.SetQuery(map[string]any{"range": map[string]any{"photos.ratio": map[string]any{"gte": 1.33, "lte": 1.34}}}, true, q)
-			search.SetSort(q, "photos.width", "desc")
+			prependNekomaidSort(q, "photos.width", "desc")
 		}
 		if width, err := strconv.Atoi(minWidth); err == nil && width > 0 {
 			search.SetQuery(map[string]any{"range": map[string]any{"photos.width": map[string]any{"gte": width}}}, true, q)
@@ -188,7 +201,7 @@ func searchByRequest(req SearchRequest, pagination func(page int) string) (*neko
 	if err != nil {
 		return nil, err
 	}
-	return searchResponse(rawResponse, cleaned, page, site, authorId, pagination), nil
+	return searchResponse(rawResponse, cleaned, currentOffset, cursorValue, site, authorId, path), nil
 }
 
 func searchPage(ctx fiber.Ctx) int {
@@ -211,39 +224,74 @@ func splitCSV(value string) []string {
 	return out
 }
 
+func nekomaidDefaultSort() []map[string]any {
+	return []map[string]any{
+		{"published_dt": map[string]any{"order": "desc"}},
+		{"artwork_id.keyword": map[string]any{"order": "desc"}},
+	}
+}
+
+func prependNekomaidSort(query map[string]any, field string, order string) {
+	next := []map[string]any{{field: map[string]any{"order": order}}}
+	if existing, ok := query["sort"].([]map[string]any); ok {
+		next = append(next, existing...)
+	} else {
+		next = append(next, nekomaidDefaultSort()...)
+	}
+	query["sort"] = next
+}
+
 func searchResponse(
 	raw *entity.ElasticSearchResponse[nekomaid.ArtworkSearchResult],
 	rows []nekomaid.ArtworkSearchClearRow,
-	page int,
+	currentOffset int64,
+	currentCursor string,
 	site string,
 	authorId string,
-	pagination func(page int) string,
+	path string,
 ) *nekomaid.ArtworkSearchResponse {
 	total := raw.Hits.Total.Value
 	tags := aggregationTags(raw)
-	response := &nekomaid.ArtworkSearchResponse{
-		Total:        total,
-		PerPage:      searchPageSize,
+	payload := nekomaid.ArtworkSearchPayload{
 		Items:        rows,
 		Artworks:     rows,
 		RelativeTags: tags,
 		Aggregations: map[string][]string{"tags": tags},
 	}
-	if page > 1 {
-		if pagination != nil {
-			response.PrevLink = pagination(page - 1)
-		}
-	}
-	if int64(page*searchPageSize) < total {
-		response.NextToken = strconv.Itoa(page + 1)
-		if pagination != nil {
-			response.NextLink = pagination(page + 1)
-		}
-	}
 	if site != "" && authorId != "" {
 		author, _ := nekomaidRepo.NewNekomaidRepository().GetAuthor(enum.NekomaidSite(site), authorId)
-		response.Author = author
+		payload.Author = author
 	}
+
+	var nextSearchAfter []any
+	if len(raw.Hits.Hits) > 0 {
+		nextSearchAfter = raw.Hits.Hits[len(raw.Hits.Hits)-1].Sort
+	}
+
+	rowsCount := int64(len(rows))
+	response := &entity.CommonESPaginationOutput[nekomaid.ArtworkSearchPayload]{
+		Data:          payload,
+		From:          currentOffset + 1,
+		To:            currentOffset + rowsCount,
+		Total:         total,
+		PerPage:       searchPageSize,
+		Path:          path,
+		CurrentCursor: currentCursor,
+	}
+	if rowsCount == 0 {
+		response.From = 0
+		response.To = 0
+	}
+	if rowsCount > 0 && len(nextSearchAfter) > 0 && currentOffset+rowsCount < total {
+		if nextCursor, err := helper.EncodeESCursor(helper.ESCursor{
+			SearchAfter: nextSearchAfter,
+			Offset:      currentOffset + rowsCount,
+		}); err == nil {
+			response.NextCursor = nextCursor
+			response.HasNext = true
+		}
+	}
+
 	return response
 }
 
@@ -260,16 +308,4 @@ func aggregationTags(raw *entity.ElasticSearchResponse[nekomaid.ArtworkSearchRes
 		tags = append(tags, bucket.Key)
 	}
 	return tags
-}
-
-func paginationLink(ctx fiber.Ctx, page int) string {
-	values, _ := url.ParseQuery(string(ctx.Request().URI().QueryString()))
-	values.Del("next_token")
-	values.Del("page")
-	values.Set("p", strconv.Itoa(page))
-	path := ctx.Path()
-	if query := values.Encode(); query != "" {
-		return path + "?" + query
-	}
-	return path
 }

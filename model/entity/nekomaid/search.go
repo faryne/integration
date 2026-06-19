@@ -1,5 +1,7 @@
 package nekomaid
 
+import "faryne.dev/model/entity"
+
 type ArtworkSearchResult struct {
 	ArtworkId string `json:"artwork_id"`
 	AuthorId  any    `json:"author_id"`
@@ -46,18 +48,15 @@ type ArtworkSearchClearRow struct {
 	NekomaidLink string   `json:"nekomaid_link"`
 }
 
-type ArtworkSearchResponse struct {
-	PrevLink     string                  `json:"prev_link,omitempty"`
-	NextLink     string                  `json:"next_link,omitempty"`
-	NextToken    string                  `json:"next_token,omitempty"`
-	Total        int64                   `json:"total"`
-	PerPage      int                     `json:"per_page"`
+type ArtworkSearchPayload struct {
 	Author       *ArtworkAuthor          `json:"author,omitempty"`
 	Items        []ArtworkSearchClearRow `json:"items"`
 	Artworks     []ArtworkSearchClearRow `json:"artworks"`
 	RelativeTags []string                `json:"relative_tags"`
 	Aggregations map[string][]string     `json:"aggregations,omitempty"`
 }
+
+type ArtworkSearchResponse = entity.CommonESPaginationOutput[ArtworkSearchPayload]
 
 type ArtworkDetailResponse struct {
 	Artwork         ArtworkSearchClearRow   `json:"artwork"`
