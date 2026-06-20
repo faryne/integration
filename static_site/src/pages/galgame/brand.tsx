@@ -11,7 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import axios from "axios";
 
@@ -38,9 +38,8 @@ export default function GalgameBrand() {
   const brandQuery = useGalgameBrand(brandSlug);
   const favorite = useGalgameBrandFavorite(brandSlug);
   const brand = brandQuery.data;
-  const recentFrom = useMemo(
-    () => new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-    [],
+  const [recentFrom] = useState(() =>
+    new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
   );
   const videos = useGalgameVideos(brandSlug, {
     page,

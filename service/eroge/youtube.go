@@ -921,7 +921,11 @@ func (s *Service) saveAndIndexVideo(ctx context.Context, brand erogeModel.Brand,
 	if brand.IndexPausedAt != nil || brand.DeletedAt != nil {
 		return created, nil
 	}
-	return created, indexVideo(ctx, brand, video, item.Snippet.Tags)
+	savedVideo, err := s.repo.VideoByYouTubeVideoID(item.Id)
+	if err != nil {
+		return false, err
+	}
+	return created, indexVideo(ctx, brand, *savedVideo, item.Snippet.Tags)
 }
 
 func clearVideoCatalogCacheIfNewVideos(ctx context.Context, brand erogeModel.Brand, result *SyncResult, newVideosBeforeSync int) {
@@ -1048,11 +1052,12 @@ func indexVideo(ctx context.Context, brand erogeModel.Brand, video erogeModel.Vi
 		return fmt.Errorf("elasticsearch client is not initialized")
 	}
 	body, err := json.Marshal(map[string]any{
-		"brand_id": brand.ID, "brand_name": brand.Name,
+		"id": video.ID, "brand_id": brand.ID, "brand_name": brand.Name,
+		"brand_public_id": brand.PublicID, "brand_avatar_url": brand.AvatarURL,
 		"youtube_channel_id": brand.YouTubeChannelID, "youtube_video_id": video.YouTubeVideoID,
 		"title": video.Title, "tags": tags, "thumbnail_url": video.ThumbnailURL,
 		"description": video.Description, "published_at": video.PublishedAt,
-		"duration_seconds": video.DurationSeconds,
+		"duration_seconds": video.DurationSeconds, "likes": video.Likes, "dislikes": video.Dislikes,
 	})
 	if err != nil {
 		return err
@@ -1287,16 +1292,17 @@ func RunImportPlaylistBrands(playlistValue string) {
 }
 
 func RunResyncBrandVideos(brandIDsValue string) {
-	brandIDs, err := parseBrandIDs(brandIDsValue)
-	if err != nil {
-		log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
-		return
-	}
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Hour)
 	defer cancel()
 	service, err := NewService(ctx)
 	if err == nil {
 		var result *SyncResult
+		var brandIDs []uint64
+		brandIDs, err = service.resyncBrandIDs(brandIDsValue)
+		if err != nil {
+			log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
+			return
+		}
 		result, err = service.ResyncBrandVideos(ctx, brandIDs)
 		if err == nil {
 			log.Logger().Info("Resync eroge brand videos finished", zap.Any("result", result))
@@ -1304,6 +1310,25 @@ func RunResyncBrandVideos(brandIDsValue string) {
 		}
 	}
 	log.Logger().Error("Resync eroge brand videos failed", zap.Error(err))
+}
+
+func (s *Service) resyncBrandIDs(value string) ([]uint64, error) {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.EqualFold(value, "all") {
+		brands, err := s.repo.Brands()
+		if err != nil {
+			return nil, err
+		}
+		brandIDs := make([]uint64, 0, len(brands))
+		for _, brand := range brands {
+			brandIDs = append(brandIDs, brand.ID)
+		}
+		if len(brandIDs) == 0 {
+			return nil, fmt.Errorf("no approved brands available for resync")
+		}
+		return brandIDs, nil
+	}
+	return parseBrandIDs(value)
 }
 
 func RunBackfillVideoDuration() {
