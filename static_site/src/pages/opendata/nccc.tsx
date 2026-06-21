@@ -157,9 +157,7 @@ function toSearchParams(search: NCCCRecordSearch) {
 
 function toNCCCPath(token: string | undefined, search: NCCCRecordSearch) {
   const query = toSearchParams(search).toString();
-  const path = token
-    ? `/data/nccc/${encodeURIComponent(token)}`
-    : "/data/nccc";
+  const path = token ? `/data/nccc/${encodeURIComponent(token)}` : "/data/nccc";
   return query ? `${path}?${query}` : path;
 }
 

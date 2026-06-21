@@ -118,7 +118,9 @@ export default function GalgameSubmitVideo() {
                   {result.error
                     ? `${result.submission?.title ?? result.input}: ${result.error}`
                     : `${result.submission?.title ?? result.input}: ${
-                        result.created ? "已送出，等待管理者核准。" : `已存在（${result.submission?.status ?? "unknown"}）`
+                        result.created
+                          ? "已送出，等待管理者核准。"
+                          : `已存在（${result.submission?.status ?? "unknown"}）`
                       }`}
                 </Alert>
               );

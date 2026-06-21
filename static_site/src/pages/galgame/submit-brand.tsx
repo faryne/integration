@@ -101,12 +101,16 @@ export default function GalgameSubmitBrand() {
             {submit.data.map((result) => (
               <Alert
                 key={result.input}
-                severity={result.error ? "error" : result.created ? "success" : "info"}
+                severity={
+                  result.error ? "error" : result.created ? "success" : "info"
+                }
               >
                 {result.error
                   ? `${result.input}: ${result.error}`
                   : `${result.brand?.name ?? result.input}: ${
-                      result.created ? "已送出，等待管理者核准。" : `已存在（${result.brand?.status ?? "unknown"}）`
+                      result.created
+                        ? "已送出，等待管理者核准。"
+                        : `已存在（${result.brand?.status ?? "unknown"}）`
                     }`}
               </Alert>
             ))}

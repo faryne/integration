@@ -39,11 +39,12 @@ func Rate(ctx fiber.Ctx) error {
 // @Router /opendata/rates/banks [get]
 func Banks(_ fiber.Ctx) error {
 	return output.Success(map[string]string{
-		"Mega":   "兆豐銀行",
-		"BOT":    "台灣銀行",
-		"esun":   "玉山銀行",
-		"cathay": "國泰世華銀行",
-		"land":   "土地銀行",
+		"Mega":       "兆豐銀行",
+		"BOT":        "台灣銀行",
+		"esun":       "玉山銀行",
+		"cathay":     "國泰世華銀行",
+		"land":       "土地銀行",
+		"Chinatrust": "中國信託銀行",
 	})
 }
 

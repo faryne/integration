@@ -21,7 +21,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
-import { callEncryptedDemo, type DemoHttpMethod } from "@/apis/auth/encryptedDemo.ts";
+import {
+  callEncryptedDemo,
+  type DemoHttpMethod,
+} from "@/apis/auth/encryptedDemo.ts";
 import { decryptPayload, encryptPayload } from "@/apis/auth/encryptedCrypto.ts";
 import { getStoredAuthSession } from "@/apis/auth/storage.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -66,7 +69,9 @@ export default function EncryptedDemo() {
   useTitle("Encrypted API Demo");
 
   const [method, setMethod] = useState<DemoHttpMethod>("POST");
-  const [payloadType, setPayloadType] = useState<"json" | "querystring">("json");
+  const [payloadType, setPayloadType] = useState<"json" | "querystring">(
+    "json",
+  );
   const [fields, setFields] = useState<FieldRow[]>([
     { id: crypto.randomUUID(), key: "a", value: "1" },
     { id: crypto.randomUUID(), key: "b", value: "2" },
@@ -83,7 +88,9 @@ export default function EncryptedDemo() {
 
   const updateField = (id: string, patch: Partial<FieldRow>) => {
     setFields((current) =>
-      current.map((field) => (field.id === id ? { ...field, ...patch } : field)),
+      current.map((field) =>
+        field.id === id ? { ...field, ...patch } : field,
+      ),
     );
   };
 
@@ -109,7 +116,9 @@ export default function EncryptedDemo() {
 
     try {
       const requestPayload =
-        payloadType === "json" ? buildJsonString(fields) : buildQueryString(fields);
+        payloadType === "json"
+          ? buildJsonString(fields)
+          : buildQueryString(fields);
       const encryptedPayload = await encryptPayload(encryptKey, requestPayload);
       const demoResponse = await callEncryptedDemo({
         method,
@@ -144,7 +153,8 @@ export default function EncryptedDemo() {
             Encrypted API 串接測試
           </Typography>
           <Typography color="text.secondary" sx={{ mt: 1 }}>
-            此頁不放導覽連結，用來測試 /auth/encrypted/demo 的 request 加密與 response 解密。
+            此頁不放導覽連結，用來測試 /auth/encrypted/demo 的 request 加密與
+            response 解密。
           </Typography>
         </Box>
 
@@ -155,18 +165,25 @@ export default function EncryptedDemo() {
         )}
         {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
-        <Card elevation={0} sx={{ border: "1px solid #dce4ef", borderRadius: 4 }}>
+        <Card
+          elevation={0}
+          sx={{ border: "1px solid #dce4ef", borderRadius: 4 }}
+        >
           <CardContent>
             <Stack spacing={3}>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth>
-                    <InputLabel id="encrypted-method-label">HTTP Method</InputLabel>
+                    <InputLabel id="encrypted-method-label">
+                      HTTP Method
+                    </InputLabel>
                     <Select
                       labelId="encrypted-method-label"
                       label="HTTP Method"
                       value={method}
-                      onChange={(event) => setMethod(event.target.value as DemoHttpMethod)}
+                      onChange={(event) =>
+                        setMethod(event.target.value as DemoHttpMethod)
+                      }
                     >
                       {methodOptions.map((item) => (
                         <MenuItem key={item} value={item}>
@@ -178,17 +195,23 @@ export default function EncryptedDemo() {
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <FormControl fullWidth>
-                    <InputLabel id="encrypted-payload-type-label">Payload</InputLabel>
+                    <InputLabel id="encrypted-payload-type-label">
+                      Payload
+                    </InputLabel>
                     <Select
                       labelId="encrypted-payload-type-label"
                       label="Payload"
                       value={payloadType}
                       onChange={(event) =>
-                        setPayloadType(event.target.value as "json" | "querystring")
+                        setPayloadType(
+                          event.target.value as "json" | "querystring",
+                        )
                       }
                     >
                       <MenuItem value="json">JSON: {`{"a":"1"}`}</MenuItem>
-                      <MenuItem value="querystring">QueryString: a=1&amp;b=2</MenuItem>
+                      <MenuItem value="querystring">
+                        QueryString: a=1&amp;b=2
+                      </MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -197,7 +220,11 @@ export default function EncryptedDemo() {
               <Divider />
 
               <Stack spacing={2}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>
                     欄位
                   </Typography>
@@ -207,12 +234,19 @@ export default function EncryptedDemo() {
                 </Stack>
 
                 {fields.map((field) => (
-                  <Grid container spacing={1.5} key={field.id} alignItems="center">
+                  <Grid
+                    container
+                    spacing={1.5}
+                    key={field.id}
+                    alignItems="center"
+                  >
                     <Grid size={{ xs: 12, md: 5 }}>
                       <TextField
                         label="欄位名稱"
                         value={field.key}
-                        onChange={(event) => updateField(field.id, { key: event.target.value })}
+                        onChange={(event) =>
+                          updateField(field.id, { key: event.target.value })
+                        }
                         fullWidth
                       />
                     </Grid>

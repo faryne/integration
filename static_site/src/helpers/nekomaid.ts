@@ -15,9 +15,11 @@ export function isNekomaidSite() {
     return false;
   }
 
-  return ["nekomaid.web.app", "nekomaid.firebaseapp.com", "neko.maid.tw"].includes(
-    window.location.hostname,
-  );
+  return [
+    "nekomaid.web.app",
+    "nekomaid.firebaseapp.com",
+    "neko.maid.tw",
+  ].includes(window.location.hostname);
 }
 
 export function nekomaidPath(path = "") {

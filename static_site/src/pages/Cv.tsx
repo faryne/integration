@@ -60,11 +60,27 @@ type ContactMethod =
 const skills = [
   {
     title: "Backend / Languages",
-    items: ["Golang", "PHP", "Python", "Shell Script", "JavaScript", "HTML", "CSS"],
+    items: [
+      "Golang",
+      "PHP",
+      "Python",
+      "Shell Script",
+      "JavaScript",
+      "HTML",
+      "CSS",
+    ],
   },
   {
     title: "Frameworks / Frontend",
-    items: ["Gin", "Fiber", "Laravel", "CodeIgniter", "Vue.js", "React", "jQuery"],
+    items: [
+      "Gin",
+      "Fiber",
+      "Laravel",
+      "CodeIgniter",
+      "Vue.js",
+      "React",
+      "jQuery",
+    ],
   },
   {
     title: "Data / Search",
@@ -72,7 +88,16 @@ const skills = [
   },
   {
     title: "Cloud / DevOps / SRE",
-    items: ["AWS", "GCP", "Docker", "K8S", "CloudWatch", "Grafana", "GitHub Actions", "TravisCI"],
+    items: [
+      "AWS",
+      "GCP",
+      "Docker",
+      "K8S",
+      "CloudWatch",
+      "Grafana",
+      "GitHub Actions",
+      "TravisCI",
+    ],
   },
 ];
 
@@ -226,7 +251,9 @@ const projects: Project[] = [
     name: "api.faryne.dev",
     type: "Personal API",
     link: "https://github.com/faryne/api.faryne.dev",
-    highlights: ["以 Golang、Fiber 與 Google App Engine 為基礎的個人 API 專案。"],
+    highlights: [
+      "以 Golang、Fiber 與 Google App Engine 為基礎的個人 API 專案。",
+    ],
   },
   {
     name: "ha2.tw",
@@ -278,14 +305,14 @@ const contacts: ContactMethod[] = [
     label: "X / Twitter",
     icon: <XIcon />,
     action: "open",
-    href: "https://x.com/faryne"
+    href: "https://x.com/faryne",
   },
   {
     label: "Facebook",
     icon: <FacebookIcon />,
     action: "open",
-    href: "https://facebook.com/faryne"
-  }
+    href: "https://facebook.com/faryne",
+  },
 ];
 
 const tabs = [
@@ -296,9 +323,21 @@ const tabs = [
     icon: <WorkOutlineIcon fontSize="small" />,
   },
   { value: "education", label: "學歷", icon: <SchoolIcon fontSize="small" /> },
-  { value: "certifications", label: "證照", icon: <VerifiedIcon fontSize="small" /> },
-  { value: "projects", label: "個人作品 / 專案", icon: <CodeIcon fontSize="small" /> },
-  { value: "contact", label: "聯絡方式", icon: <ContactMailIcon fontSize="small" /> },
+  {
+    value: "certifications",
+    label: "證照",
+    icon: <VerifiedIcon fontSize="small" />,
+  },
+  {
+    value: "projects",
+    label: "個人作品 / 專案",
+    icon: <CodeIcon fontSize="small" />,
+  },
+  {
+    value: "contact",
+    label: "聯絡方式",
+    icon: <ContactMailIcon fontSize="small" />,
+  },
 ];
 
 type CvTab = (typeof tabs)[number]["value"];
@@ -306,7 +345,9 @@ type CvTab = (typeof tabs)[number]["value"];
 function PanelTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2.5 }}>
-      <Box sx={{ color: "primary.main", display: "grid", placeItems: "center" }}>
+      <Box
+        sx={{ color: "primary.main", display: "grid", placeItems: "center" }}
+      >
         {icon}
       </Box>
       <Typography component="h2" variant="h4" sx={{ fontWeight: 800 }}>
@@ -327,7 +368,12 @@ function SmartLink({
 
   if (isInternal) {
     return (
-      <Button component={Link} to={href} size="small" endIcon={<OpenInNewIcon />}>
+      <Button
+        component={Link}
+        to={href}
+        size="small"
+        endIcon={<OpenInNewIcon />}
+      >
         {children}
       </Button>
     );
@@ -362,7 +408,9 @@ export default function Cv() {
     if (!certifications.some((cert) => cert.badgeId)) return;
 
     document
-      .querySelectorAll('script[src="https://cdn.credly.com/assets/utilities/embed.js"]')
+      .querySelectorAll(
+        'script[src="https://cdn.credly.com/assets/utilities/embed.js"]',
+      )
       .forEach((script) => script.remove());
     const script = document.createElement("script");
     script.type = "text/javascript";
@@ -403,8 +451,9 @@ export default function Cv() {
             </Box>
             <Typography sx={{ maxWidth: 820, fontSize: 18, lineHeight: 1.9 }}>
               主要專長為網站開發與系統管理，具備前後端開發經驗，職涯重心以後端服務、
-              雲端架構、CI/CD、監控告警與 SRE / DevOps 實務為主。熟悉 PHP / MySQL
-              技術棧，近年以 Golang、AWS / GCP 與雲端服務維運為主要工作領域。
+              雲端架構、CI/CD、監控告警與 SRE / DevOps 實務為主。熟悉 PHP /
+              MySQL 技術棧，近年以 Golang、AWS / GCP
+              與雲端服務維運為主要工作領域。
             </Typography>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
               <Button
@@ -424,7 +473,10 @@ export default function Cv() {
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="outlined"
-                sx={{ color: "common.white", borderColor: "rgba(255,255,255,0.56)" }}
+                sx={{
+                  color: "common.white",
+                  borderColor: "rgba(255,255,255,0.56)",
+                }}
               >
                 Blog
               </Button>
@@ -470,7 +522,10 @@ export default function Cv() {
                       <Grid size={{ xs: 12, md: 6 }} key={group.title}>
                         <Card variant="outlined" sx={{ height: "100%" }}>
                           <CardContent>
-                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 1.5 }}>
+                            <Typography
+                              variant="h6"
+                              sx={{ fontWeight: 800, mb: 1.5 }}
+                            >
                               {group.title}
                             </Typography>
                             <Stack
@@ -510,13 +565,23 @@ export default function Cv() {
                               <Typography variant="h5" sx={{ fontWeight: 850 }}>
                                 {experience.role}
                               </Typography>
-                              <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                              <Typography
+                                color="text.secondary"
+                                sx={{ mt: 0.5 }}
+                              >
                                 {experience.company}
                               </Typography>
                             </Box>
-                            <Chip label={experience.period} variant="outlined" />
+                            <Chip
+                              label={experience.period}
+                              variant="outlined"
+                            />
                           </Stack>
-                          <Stack component="ul" spacing={1} sx={{ pl: 2.5, mt: 2 }}>
+                          <Stack
+                            component="ul"
+                            spacing={1}
+                            sx={{ pl: 2.5, mt: 2 }}
+                          >
                             {experience.highlights.map((item) => (
                               <Typography
                                 component="li"
@@ -529,7 +594,9 @@ export default function Cv() {
                           </Stack>
                           {experience.link && (
                             <Box sx={{ mt: 1.5 }}>
-                              <SmartLink href={experience.link}>公司網站</SmartLink>
+                              <SmartLink href={experience.link}>
+                                公司網站
+                              </SmartLink>
                             </Box>
                           )}
                         </CardContent>
@@ -627,14 +694,22 @@ export default function Cv() {
                               spacing={2}
                             >
                               <Box>
-                                <Typography variant="h6" sx={{ fontWeight: 850 }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{ fontWeight: 850 }}
+                                >
                                   {project.name}
                                 </Typography>
-                                <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                                <Typography
+                                  color="text.secondary"
+                                  sx={{ mt: 0.5 }}
+                                >
                                   {project.type}
                                 </Typography>
                               </Box>
-                              {project.link && <SmartLink href={project.link}>查看</SmartLink>}
+                              {project.link && (
+                                <SmartLink href={project.link}>查看</SmartLink>
+                              )}
                             </Stack>
                             <Divider sx={{ my: 2 }} />
                             <Stack component="ul" spacing={1} sx={{ pl: 2.5 }}>
@@ -664,7 +739,11 @@ export default function Cv() {
                       <Grid size={{ xs: 12, md: 4 }} key={contact.label}>
                         <Card variant="outlined" sx={{ height: "100%" }}>
                           <CardContent>
-                            <Stack spacing={2} alignItems="center" sx={{ py: 1 }}>
+                            <Stack
+                              spacing={2}
+                              alignItems="center"
+                              sx={{ py: 1 }}
+                            >
                               <Box
                                 sx={{
                                   width: 56,
@@ -686,11 +765,15 @@ export default function Cv() {
                                   variant="outlined"
                                   startIcon={<ContentCopyIcon />}
                                   onClick={() => {
-                                    void navigator.clipboard?.writeText(contact.value);
+                                    void navigator.clipboard?.writeText(
+                                      contact.value,
+                                    );
                                     setCopiedContact(contact.label);
                                   }}
                                 >
-                                  {copiedContact === contact.label ? "已複製" : "複製"}
+                                  {copiedContact === contact.label
+                                    ? "已複製"
+                                    : "複製"}
                                 </Button>
                               ) : (
                                 <Button

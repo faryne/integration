@@ -40,13 +40,15 @@ export interface SeoOptions {
 function getRouteSiteName() {
   if (
     typeof window !== "undefined" &&
-    (window.location.pathname.startsWith("/nekomaid") || window.location.hostname.indexOf("neko.maid.tw") >= 0)
+    (window.location.pathname.startsWith("/nekomaid") ||
+      window.location.hostname.indexOf("neko.maid.tw") >= 0)
   ) {
     return nekomaidSiteName;
   }
   if (
-      typeof window !== "undefined" &&
-      (window.location.pathname.startsWith("/galgame") || window.location.hostname.indexOf("galgame.tv") >= 0)
+    typeof window !== "undefined" &&
+    (window.location.pathname.startsWith("/galgame") ||
+      window.location.hostname.indexOf("galgame.tv") >= 0)
   ) {
     return galgameSiteName;
   }

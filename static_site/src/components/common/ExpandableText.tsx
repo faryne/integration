@@ -46,7 +46,10 @@ export function ExpandableText({
             : undefined
         }
       >
-        <Typography component="div" sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+        <Typography
+          component="div"
+          sx={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+        >
           {content}
         </Typography>
       </Box>

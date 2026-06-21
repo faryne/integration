@@ -1,4 +1,10 @@
-import { Alert, CircularProgress, Paper, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  CircularProgress,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 
 interface Props {
   message: string;

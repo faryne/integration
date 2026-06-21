@@ -111,7 +111,10 @@ export default function GalgameFavorites() {
                           ? `${galgamePath(galgameBrandSlug(brand.public_id, brand.name))}?tab=recent`
                           : undefined
                       }
-                      disabled={brand.latest_video_count <= 0 || Boolean(brand.deleted_at)}
+                      disabled={
+                        brand.latest_video_count <= 0 ||
+                        Boolean(brand.deleted_at)
+                      }
                       sx={{ height: "100%" }}
                     >
                       <CardContent>
@@ -141,8 +144,8 @@ export default function GalgameFavorites() {
                               brand.deleted_at
                                 ? "default"
                                 : brand.latest_video_count > 0
-                                ? "secondary"
-                                : "default"
+                                  ? "secondary"
+                                  : "default"
                             }
                             size="small"
                           />

@@ -14,7 +14,9 @@ export interface DemoResponse {
   body: string;
 }
 
-export async function callEncryptedDemo(input: DemoRequestInput): Promise<DemoResponse> {
+export async function callEncryptedDemo(
+  input: DemoRequestInput,
+): Promise<DemoResponse> {
   const url = `${import.meta.env.VITE_API_BASE}/auth/encrypted/demo`;
   const headers = {
     "X-Encrypt-Key": input.encryptKey,
@@ -33,7 +35,10 @@ export async function callEncryptedDemo(input: DemoRequestInput): Promise<DemoRe
     return {
       ok: response.status >= 200 && response.status < 300,
       status: response.status,
-      body: typeof response.data === "string" ? response.data : JSON.stringify(response.data),
+      body:
+        typeof response.data === "string"
+          ? response.data
+          : JSON.stringify(response.data),
     };
   }
 
@@ -48,6 +53,9 @@ export async function callEncryptedDemo(input: DemoRequestInput): Promise<DemoRe
   return {
     ok: response.status >= 200 && response.status < 300,
     status: response.status,
-    body: typeof response.data === "string" ? response.data : JSON.stringify(response.data),
+    body:
+      typeof response.data === "string"
+        ? response.data
+        : JSON.stringify(response.data),
   };
 }

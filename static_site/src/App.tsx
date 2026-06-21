@@ -11,7 +11,7 @@ import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 
-const Home = lazy(() => import("@/pages/Home.tsx"));
+// const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
 const Cv = lazy(() => import("@/pages/Cv.tsx"));
 const About = lazy(() => import("@/pages/About/index.tsx"));
@@ -254,6 +254,9 @@ function App() {
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
+              <Route path={"/"} element={<LabLayout />}>
+                <Route path={""} element={<LabHome />} />
+              </Route>
               <Route path={""} element={<DefaultLayout />}>
                 <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
                 <Route path={"/av/video"} element={<AVVideo />} />
@@ -330,7 +333,6 @@ function App() {
                   path={"/auth/encrypted-demo"}
                   element={<EncryptedDemo />}
                 />
-                <Route path={"/"} element={<Home />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
@@ -344,11 +346,6 @@ function App() {
                     </div>
                   }
                 />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
-              </Route>
-
-              <Route path={"/lab"} element={<LabLayout />}>
-                <Route path={""} element={<LabHome />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
             </>

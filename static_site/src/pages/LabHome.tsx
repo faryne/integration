@@ -179,7 +179,11 @@ export default function LabHome() {
             >
               項目
             </Typography>
-            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ flexWrap: "wrap", gap: 1 }}
+            >
               {projectGroups.map((group) => (
                 <Chip
                   key={group}
@@ -253,7 +257,11 @@ export default function LabHome() {
                   },
                 }}
               >
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                >
                   <Chip
                     icon={groupIcon(project.group)}
                     label={project.group}
@@ -296,7 +304,6 @@ export default function LabHome() {
           </Box>
         </Box>
       </Container>
-
     </Box>
   );
 }

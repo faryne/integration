@@ -92,7 +92,11 @@ export function GalgameVideoCard({
   return (
     <Card
       variant={variant === "simple" ? "outlined" : undefined}
-      sx={{ height: "100%", position: "relative", opacity: disabled ? 0.58 : 1 }}
+      sx={{
+        height: "100%",
+        position: "relative",
+        opacity: disabled ? 0.58 : 1,
+      }}
     >
       <Tooltip title={isFavorite ? "取消收藏影片" : "收藏影片"}>
         <Box

@@ -39,7 +39,10 @@ function schemaType(schema?: McpSchema) {
 function formatConstraints(schema: McpSchema) {
   const constraints: string[] = [];
 
-  if (typeof schema.minItems === "number" || typeof schema.maxItems === "number") {
+  if (
+    typeof schema.minItems === "number" ||
+    typeof schema.maxItems === "number"
+  ) {
     constraints.push(
       `長度 ${schema.minItems ?? 0} - ${schema.maxItems ?? "不限"}`,
     );
@@ -90,7 +93,9 @@ function parseFormValue(schema: McpSchema, value: string) {
 function buildArguments(tool: McpTool, values: FormValues) {
   const args: Record<string, unknown> = {};
 
-  for (const [name, schema] of Object.entries(tool.inputSchema?.properties ?? {})) {
+  for (const [name, schema] of Object.entries(
+    tool.inputSchema?.properties ?? {},
+  )) {
     const parsed = parseFormValue(schema, values[name] ?? "");
     if (parsed !== undefined) {
       args[name] = parsed;
@@ -174,7 +179,8 @@ function ServerSetup() {
           <code>{pretty(config)}</code>
         </Box>
         <Alert severity="info" variant="outlined">
-          左側方法清單會從 tools/list 讀取並在瀏覽器端快取 1 小時；切換方法或重新進入頁面時不會每次重新請求。
+          左側方法清單會從 tools/list 讀取並在瀏覽器端快取 1
+          小時；切換方法或重新進入頁面時不會每次重新請求。
         </Alert>
       </Stack>
     </Paper>
@@ -184,7 +190,9 @@ function ServerSetup() {
 function ToolDetail({ tool }: { tool: McpTool }) {
   const properties = Object.entries(tool.inputSchema?.properties ?? {});
   const required = new Set(tool.inputSchema?.required ?? []);
-  const [values, setValues] = useState<FormValues>(() => initialFormValues(tool));
+  const [values, setValues] = useState<FormValues>(() =>
+    initialFormValues(tool),
+  );
   const callTool = useCallMcpTool();
   const payload = useMemo(() => callPayload(tool, values), [tool, values]);
 
@@ -240,14 +248,19 @@ function ToolDetail({ tool }: { tool: McpTool }) {
                   key={name}
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: { xs: "1fr", md: "220px minmax(0, 1fr)" },
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "220px minmax(0, 1fr)",
+                    },
                     gap: { xs: 1, md: 2 },
                     alignItems: "start",
                   }}
                 >
                   <Stack spacing={0.75}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Typography sx={{ fontFamily: "monospace", fontWeight: 800 }}>
+                      <Typography
+                        sx={{ fontFamily: "monospace", fontWeight: 800 }}
+                      >
                         {name}
                       </Typography>
                       {required.has(name) && (
@@ -267,7 +280,9 @@ function ToolDetail({ tool }: { tool: McpTool }) {
                     label={name}
                     value={values[name] ?? ""}
                     helperText={helperText}
-                    multiline={schema.type === "object" || schema.type === "array"}
+                    multiline={
+                      schema.type === "object" || schema.type === "array"
+                    }
                     minRows={schema.type === "object" ? 4 : 1}
                     placeholder={
                       schema.type === "array"
@@ -401,7 +416,12 @@ export default function McpToolsPage() {
           <Divider />
 
           {tools.isLoading && (
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: 2 }}>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              sx={{ p: 2 }}
+            >
               <CircularProgress size={20} />
               <Typography color="text.secondary">讀取中...</Typography>
             </Stack>
@@ -421,7 +441,9 @@ export default function McpToolsPage() {
 
           <List disablePadding>
             {tools.data?.map((tool) => {
-              const properties = Object.keys(tool.inputSchema?.properties ?? {});
+              const properties = Object.keys(
+                tool.inputSchema?.properties ?? {},
+              );
 
               return (
                 <ListItemButton
@@ -432,7 +454,9 @@ export default function McpToolsPage() {
                 >
                   <ListItemText
                     primary={
-                      <Typography sx={{ fontFamily: "monospace", fontWeight: 800 }}>
+                      <Typography
+                        sx={{ fontFamily: "monospace", fontWeight: 800 }}
+                      >
                         {tool.name}
                       </Typography>
                     }

@@ -122,7 +122,12 @@ export function useAdminGalgameBrands(
       const response = await axios.get<
         CommonResponse<Pagination<GalgameBrand[]>>
       >(`${apiBase}/admin/galgame/brands`, {
-        params: { status, keyword: keyword || undefined, page, per_page: perPage },
+        params: {
+          status,
+          keyword: keyword || undefined,
+          page,
+          per_page: perPage,
+        },
         headers: sessionHeaders(session!.encrypt_key),
       });
       return normalizePagination(response.data.data);
@@ -149,7 +154,9 @@ export function useSetGalgameBrandStatus() {
       return response.data.data;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-brands"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-brands"],
+      });
       void queryClient.invalidateQueries({ queryKey: ["galgame-brands"] });
     },
   });
@@ -194,7 +201,9 @@ export function useGalgameBrandAdminAction() {
       );
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-brands"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-brands"],
+      });
       void queryClient.invalidateQueries({ queryKey: ["galgame-brands"] });
     },
   });
@@ -222,7 +231,12 @@ export function useAdminGalgameVideos(
       const response = await axios.get<
         CommonResponse<Pagination<GalgameVideo[]>>
       >(`${apiBase}/admin/galgame/videos`, {
-        params: { status, keyword: keyword || undefined, page, per_page: perPage },
+        params: {
+          status,
+          keyword: keyword || undefined,
+          page,
+          per_page: perPage,
+        },
         headers: sessionHeaders(session!.encrypt_key),
       });
       return normalizePagination(response.data.data);
@@ -255,7 +269,9 @@ export function useGalgameVideoAdminAction() {
       );
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-videos"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-videos"],
+      });
       void queryClient.invalidateQueries({ queryKey: ["galgame-videos"] });
     },
   });
@@ -312,7 +328,9 @@ export function useSetGalgameVideoSubmissionStatus() {
       void queryClient.invalidateQueries({
         queryKey: ["galgame-admin-video-submissions"],
       });
-      void queryClient.invalidateQueries({ queryKey: ["galgame-admin-videos"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["galgame-admin-videos"],
+      });
       void queryClient.invalidateQueries({ queryKey: ["galgame-videos"] });
     },
   });

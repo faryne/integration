@@ -343,7 +343,12 @@ export default function GalgameVideo() {
                     {displayTags.length > 0 || video.description ? (
                       <Stack spacing={1.5}>
                         {displayTags.length > 0 && (
-                          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            useFlexGap
+                            flexWrap="wrap"
+                          >
                             {displayTags.map((tag) => (
                               <Chip
                                 key={tag}

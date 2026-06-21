@@ -36,8 +36,8 @@ export function EsCursorPagination({
         上一頁
       </Button>
       <Typography variant="body2" color="text.secondary">
-        目前讀取第 {from.toLocaleString("zh-TW")} /
-        &nbsp;{to.toLocaleString("zh-TW")} 筆資料
+        目前讀取第 {from.toLocaleString("zh-TW")} / &nbsp;
+        {to.toLocaleString("zh-TW")} 筆資料
       </Typography>
       <Button variant="outlined" disabled={!hasNext} onClick={onNext}>
         下一頁

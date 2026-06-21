@@ -72,7 +72,7 @@ export function NekomaidLayout() {
                 component="p"
                 sx={{ fontWeight: 950, lineHeight: 1.1 }}
               >
-                  難以名狀的抓圖器
+                難以名狀的抓圖器
               </Typography>
             </Box>
           </Stack>

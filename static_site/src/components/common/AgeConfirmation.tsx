@@ -10,10 +10,7 @@ import {
 } from "@mui/material";
 import { useId, type ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import {
-  setAgeConfirmed,
-  useAgeConfirmed,
-} from "@/helpers/ageConfirmation.ts";
+import { setAgeConfirmed, useAgeConfirmed } from "@/helpers/ageConfirmation.ts";
 
 export function AgeConfirmationPanel({
   description = "請先確認你已年滿 18 歲，確認後才會顯示完整內容。",

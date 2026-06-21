@@ -29,8 +29,8 @@ import (
 	"github.com/disintegration/imaging"
 )
 
-const Home = "https://beta.faryne.dev"
-const PreviewUrlPattern = Home + "/nekomaid/%s/%s/%s"
+const Home = "https://neko.maid.tw"
+const PreviewUrlPattern = Home + "/%s/%s/%s"
 
 var domains = []string{
 	"https://pcdn1.ha2.tw",
