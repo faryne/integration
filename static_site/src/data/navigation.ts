@@ -103,6 +103,11 @@ export const headerNavigationItems: LayoutNavigationItem[] = [
         href: "/tools/userscripts",
         description: "收集我做的 userscripts "
       },
+      {
+        title: "MCP 方法列表",
+        href: "/tools/mcp",
+        description: "讀取 /mcp tools/list 並列出可呼叫方法與參數說明"
+      },
     ],
   },
   {
