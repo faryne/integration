@@ -5,6 +5,11 @@ export interface ShareUrlOptions {
   url?: string;
 }
 
+export function buildSnsShareUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${window.location.origin}${normalizedPath}`;
+}
+
 export async function shareUrl({
   title = document.title,
   url = window.location.href,

@@ -4,6 +4,7 @@ export interface LayoutMenuItem {
   title: string;
   href: string;
   external?: boolean;
+  description?: string;
 }
 
 export interface LayoutDropMenu {

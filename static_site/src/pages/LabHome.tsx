@@ -49,14 +49,6 @@ const groupIcon = (group: string) => {
   return <PublicIcon fontSize="small" />;
 };
 
-const projectDescription = (project: LabProject) => {
-  if (project.external) return "外部觀測站，收錄長篇筆記與研究紀錄。";
-  if (project.group.includes("資料")) return "將公開資料清洗、比對並轉換成可查詢的操作面板。";
-  if (project.group.includes("工具")) return "替日常流程封裝的實用工具，偏向自動化與快速驗證。";
-  if (project.group.includes("喜好")) return "影像、標籤與收藏資料的探索型實驗項目。";
-  return "主要入口與個人站台資訊。";
-};
-
 const projectGroups = [
   "全部",
   ...Array.from(new Set(labProjects.map((project) => project.group))),
@@ -64,7 +56,7 @@ const projectGroups = [
 
 export default function LabHome() {
   const [selectedGroup, setSelectedGroup] = useState("全部");
-  useTitle("暗黑實驗室首頁預覽");
+  useTitle("Faryne 的實驗室");
 
   const filteredProjects =
     selectedGroup === "全部"
@@ -120,7 +112,7 @@ export default function LabHome() {
                 lineHeight: 1.8,
               }}
             >
-              將站內作品、資料面板與工具集中成一個可掃描的實驗索引。每個項目像一個正在運作的模組，保留技術感，也讓入口更容易被理解。
+              收集我目前的作品 / Side Project 資訊，或許有個東西你有機會用到？
             </Typography>
             <Stack
               direction="row"
@@ -290,7 +282,7 @@ export default function LabHome() {
                     {project.title}
                   </Typography>
                   <Typography sx={{ color: "#9fb7bc", lineHeight: 1.7 }}>
-                    {projectDescription(project)}
+                    {project.description || ""}
                   </Typography>
                 </Box>
                 <Stack direction="row" alignItems="center" spacing={0.75}>

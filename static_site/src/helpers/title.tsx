@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 
-const siteName = "ha2.tw / faryne.dev";
+const siteName = "Faryne 的實驗室 by faryne.dev";
 const nekomaidSiteName = "難以名狀的抓圖器";
+const galgameSiteName = "galgame.tv";
 const canonicalOrigin = "https://beta.faryne.dev";
 const defaultDescription =
   "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";
@@ -14,6 +15,8 @@ const pageDescriptions: Record<string, string> = {
   難以名狀的抓圖器: "搜尋與瀏覽 Nekomaid 收錄的插圖索引與作品圖片。",
   台灣指標: "查詢台灣公開統計指標，快速瀏覽資料趨勢與歷史紀錄。",
   匯率: "查詢主要貨幣匯率，並提供簡單的匯率換算工具。",
+  "NCCC 信用卡消費資料":
+    "查詢 NCCC 信用卡公開資料，依資料集、年月、地區與欄位條件篩選消費統計。",
   即時消防出勤記錄: "整理即時消防出勤公開資料，方便快速瀏覽事件列表。",
   台電敦親睦鄰捐助:
     "查詢台電敦親睦鄰捐助紀錄、受補助地區、申請單位與核准金額。",
@@ -37,9 +40,15 @@ export interface SeoOptions {
 function getRouteSiteName() {
   if (
     typeof window !== "undefined" &&
-    window.location.pathname.startsWith("/nekomaid")
+    (window.location.pathname.startsWith("/nekomaid") || window.location.hostname.indexOf("neko.maid.tw") >= 0)
   ) {
     return nekomaidSiteName;
+  }
+  if (
+      typeof window !== "undefined" &&
+      (window.location.pathname.startsWith("/galgame") || window.location.hostname.indexOf("galgame.tv") >= 0)
+  ) {
+    return galgameSiteName;
   }
   return siteName;
 }

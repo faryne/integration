@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	modelSNS "faryne.dev/model/entity/sns"
+	"faryne.dev/service/nccc"
 )
 
 func TestBuildMetaStaticRoute(t *testing.T) {
@@ -92,6 +93,49 @@ func TestBuildMetaDynamicETFRoute(t *testing.T) {
 	}
 	if !strings.Contains(meta.Description, "0050") {
 		t.Fatalf("expected ETF code in description, got %q", meta.Description)
+	}
+}
+
+func TestBuildMetaNCCCRoute(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "data/nccc"})
+	origin := frontendOrigin()
+
+	if !strings.Contains(meta.Title, "NCCC 信用卡消費資料") {
+		t.Fatalf("expected NCCC title, got %q", meta.Title)
+	}
+	if meta.Canonical != origin+"/data/nccc" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != origin+"/sns/data/nccc" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+}
+
+func TestBuildMetaDynamicNCCCRoute(t *testing.T) {
+	indexes := nccc.ListIndexes()
+	if len(indexes) == 0 {
+		t.Fatal("expected fallback NCCC indexes")
+	}
+
+	meta := BuildMeta(modelSNS.RenderRequest{
+		Path:  "data/nccc/" + indexes[0].Token,
+		Query: "yearMonths=113%E5%B9%B401%E6%9C%88&f=abc&fbclid=tracking",
+	})
+
+	if !strings.Contains(meta.Title, indexes[0].Text) {
+		t.Fatalf("expected NCCC index text in title, got %q", meta.Title)
+	}
+	if !strings.Contains(meta.Description, indexes[0].Text) {
+		t.Fatalf("expected NCCC index text in description, got %q", meta.Description)
+	}
+	origin := frontendOrigin()
+	expectedCanonical := origin + "/data/nccc/" + indexes[0].Token + "?f=abc&yearMonths=113%E5%B9%B401%E6%9C%88"
+	expectedOpenGraphURL := origin + "/sns/data/nccc/" + indexes[0].Token + "?f=abc&yearMonths=113%E5%B9%B401%E6%9C%88"
+	if meta.Canonical != expectedCanonical {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != expectedOpenGraphURL {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 }
 

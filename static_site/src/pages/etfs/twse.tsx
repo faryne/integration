@@ -59,7 +59,7 @@ import type { TwseEtfInfo, TwseEtfShare } from "@/types/etf.ts";
 import dayjs from "dayjs";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { shareUrl } from "@/helpers/share.ts";
+import { buildSnsShareUrl, shareUrl } from "@/helpers/share.ts";
 import { DetailDialog } from "@/components/common/DetailDialog.tsx";
 import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
 
@@ -86,11 +86,6 @@ const dateTabs = [
   { label: "一星期後", offsetDays: 7 },
   { label: "兩星期後", offsetDays: 14 },
 ];
-
-function buildSnsShareUrl(path: string) {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${window.location.origin}/sns${normalizedPath}`;
-}
 
 type EtfCategory =
   | "ALL"

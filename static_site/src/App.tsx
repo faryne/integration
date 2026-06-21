@@ -270,6 +270,7 @@ function App() {
 
                 <Route path={"/data/rates"} element={<RatesIndex />} />
                 <Route path={"/data/nccc"} element={<NCCC />} />
+                <Route path={"/data/nccc/:token"} element={<NCCC />} />
 
                 <Route
                   path={"/data/fire/realtime"}

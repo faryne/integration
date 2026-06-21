@@ -15,13 +15,14 @@ import (
 	modelSNS "faryne.dev/model/entity/sns"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
+	"faryne.dev/service/nccc"
 	"faryne.dev/service/twse"
 )
 
 const (
 	siteName            = "ha2.tw / faryne.dev"
 	nekomaidSiteName    = "難以名狀的抓圖器"
-	defaultFrontendURL  = "https://beta.faryne.dev"
+	defaultFrontendURL  = "https://faryne.dev"
 	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
 	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
 	defaultImagePath    = "/faryne-icon-1024.jpg"
@@ -89,6 +90,12 @@ var pathCollection = []pathMeta{
 		Apply: func(meta *modelSNS.Meta, matches []string) {
 			applyTwseETFMeta(meta, strings.ToUpper(matches[1]))
 		},
+	},
+	{
+		Pattern:     regexp.MustCompile(`^/data/nccc(?:/([^/]+))?$`),
+		Title:       "NCCC 信用卡消費資料",
+		Description: "查詢 NCCC 信用卡公開資料，依資料集、年月、地區與欄位條件篩選消費統計。",
+		Apply:       applyNCCCMeta,
 	},
 	{Path: "/", Title: siteName, Description: defaultDescription},
 	{Path: "/av/video", Title: "AV 影片搜尋", Description: "以番號、標籤、演員與片名搜尋影片資料的整理工具。", Prefix: true},
@@ -343,6 +350,21 @@ func applyTwseETFMeta(meta *modelSNS.Meta, code string) {
 		parts = append(parts, fmt.Sprintf("最新收盤價 %.2f 元", row.ETF.LatestClose))
 	}
 	meta.Description = strings.Join(parts, "，") + "。"
+}
+
+func applyNCCCMeta(meta *modelSNS.Meta, matches []string) {
+	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
+		return
+	}
+
+	_, indexInfo, ok := nccc.ResolveIndexToken(matches[1])
+	if !ok || strings.TrimSpace(indexInfo.Text) == "" {
+		return
+	}
+
+	text := strings.TrimSpace(indexInfo.Text)
+	meta.Title = fullTitle("NCCC 信用卡消費資料 - " + text)
+	meta.Description = fmt.Sprintf("查詢 NCCC「%s」信用卡公開資料，依年月、地區與欄位條件篩選消費統計。", text)
 }
 
 func matchPathMeta(frontendPath string) (pathMeta, []string, bool) {

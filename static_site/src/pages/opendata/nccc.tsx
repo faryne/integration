@@ -12,6 +12,7 @@ import {
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -24,12 +25,14 @@ import {
 } from "@mui/material";
 import DatasetIcon from "@mui/icons-material/Dataset";
 import AddIcon from "@mui/icons-material/Add";
+import ShareIcon from "@mui/icons-material/Share";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { useNCCCIndexes, useNCCCRecords } from "@/apis/opendata/nccc.ts";
 import { EsCursorPagination } from "@/components/common/EsCursorPagination.tsx";
+import { buildSnsShareUrl, shareUrl } from "@/helpers/share.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import type {
   NCCCFieldFacet,
@@ -66,8 +69,28 @@ const taiwanRegionRank = new Map(
   taiwanRegionOrder.map((region, index) => [region, index]),
 );
 
-function filtersFromParams(params: URLSearchParams) {
-  const raw = params.get("filters")?.trim();
+function encodeUrlPayload(value: unknown) {
+  const json = JSON.stringify(value);
+  const bytes = new TextEncoder().encode(json);
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+}
+
+function decodeUrlPayload(value: string) {
+  const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function normalizeFilters(raw: string | undefined) {
   if (!raw) return undefined;
   try {
     const parsed = JSON.parse(raw) as Record<string, string | string[]>;
@@ -88,6 +111,19 @@ function filtersFromParams(params: URLSearchParams) {
   }
 }
 
+function filtersFromParams(params: URLSearchParams) {
+  const encoded = params.get("f")?.trim();
+  if (encoded) {
+    try {
+      const filters = normalizeFilters(decodeUrlPayload(encoded));
+      if (filters) return filters;
+    } catch {
+      return undefined;
+    }
+  }
+  return normalizeFilters(params.get("filters")?.trim());
+}
+
 function searchFromParams(params: URLSearchParams): NCCCRecordSearch {
   return {
     page: 1,
@@ -105,9 +141,8 @@ function searchFromParams(params: URLSearchParams): NCCCRecordSearch {
   };
 }
 
-function toSearchParams(token: string | undefined, search: NCCCRecordSearch) {
+function toSearchParams(search: NCCCRecordSearch) {
   const params = new URLSearchParams();
-  if (token) params.set("index", token);
   if (search.cursor) params.set("cursor", search.cursor);
   if (search.yearMonths?.length) {
     params.set("yearMonths", search.yearMonths.join(","));
@@ -115,9 +150,17 @@ function toSearchParams(token: string | undefined, search: NCCCRecordSearch) {
   if (search.region) params.set("region", search.region);
   if (search.category) params.set("category", search.category);
   if (search.filters && Object.keys(search.filters).length) {
-    params.set("filters", JSON.stringify(search.filters));
+    params.set("f", encodeUrlPayload(search.filters));
   }
   return params;
+}
+
+function toNCCCPath(token: string | undefined, search: NCCCRecordSearch) {
+  const query = toSearchParams(search).toString();
+  const path = token
+    ? `/data/nccc/${encodeURIComponent(token)}`
+    : "/data/nccc";
+  return query ? `${path}?${query}` : path;
 }
 
 function displayValue(column: string, value: NCCCRecord[string]) {
@@ -218,10 +261,14 @@ function requiredColumn(column: string) {
 }
 
 export default function NCCCPage() {
-  const [params, setParams] = useSearchParams();
-  const selectedToken = params.get("index")?.trim() || undefined;
+  const navigate = useNavigate();
+  const routeParams = useParams();
+  const [params] = useSearchParams();
+  const selectedToken =
+    routeParams.token?.trim() || params.get("index")?.trim() || undefined;
   const search = useMemo(() => searchFromParams(params), [params]);
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [shareNotice, setShareNotice] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("");
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
   const indexesQuery = useNCCCIndexes();
@@ -244,20 +291,32 @@ export default function NCCCPage() {
     (column) => requiredColumn(column) || !hiddenColumns.includes(column),
   );
   const selectedIndexText = selectedIndex?.text ?? "";
+  const seoTitle = selectedIndexText
+    ? `NCCC 信用卡消費資料 - ${selectedIndexText}`
+    : "NCCC 信用卡消費資料";
+  const seoDescription = selectedIndexText
+    ? `查詢 NCCC「${selectedIndexText}」信用卡公開資料，依年月、地區與欄位條件篩選消費統計。`
+    : "查詢 NCCC 信用卡公開資料，依資料集、年月、地區與欄位條件篩選消費統計。";
+  const shareLink =
+    typeof window === "undefined"
+      ? ""
+      : buildSnsShareUrl(toNCCCPath(selectedToken, search));
 
-  useTitle("NCCC 信用卡消費資料");
+  useTitle(seoTitle, {
+    description: seoDescription,
+    path: toNCCCPath(selectedToken, search),
+    robots: search.cursor ? "noindex, follow" : "index, follow",
+  });
 
   const selectIndex = (token: string) => {
     setCursorHistory([]);
     setHiddenColumns([]);
-    setParams(toSearchParams(token, { page: 1 }));
+    navigate(toNCCCPath(token, { page: 1 }));
   };
 
   const updateSearch = (nextSearch: NCCCRecordSearch) => {
     setCursorHistory([]);
-    setParams(
-      toSearchParams(selectedToken, { ...nextSearch, cursor: undefined }),
-    );
+    navigate(toNCCCPath(selectedToken, { ...nextSearch, cursor: undefined }));
   };
 
   const addSelectedMonth = () => {
@@ -303,6 +362,15 @@ export default function NCCCPage() {
       ...search,
       filters: Object.keys(filters).length ? filters : undefined,
     });
+  };
+
+  const handleShare = async () => {
+    const result = await shareUrl({
+      title: seoTitle,
+      url: shareLink,
+    });
+    if (result === "copied") setShareNotice("分享連結已複製");
+    if (result === "failed") setShareNotice("無法分享連結");
   };
 
   return (
@@ -477,6 +545,7 @@ export default function NCCCPage() {
               <Stack
                 direction={{ xs: "column", md: "row" }}
                 justifyContent="space-between"
+                alignItems={{ xs: "stretch", md: "flex-start" }}
                 spacing={1}
               >
                 <Box>
@@ -487,6 +556,13 @@ export default function NCCCPage() {
                     共 {pagination.total.toLocaleString("zh-TW")} 筆資料
                   </Typography>
                 </Box>
+                <Button
+                  variant="outlined"
+                  startIcon={<ShareIcon />}
+                  onClick={handleShare}
+                >
+                  分享
+                </Button>
               </Stack>
 
               {!!columns.length && (
@@ -563,9 +639,9 @@ export default function NCCCPage() {
                   const nextHistory = [...cursorHistory];
                   const previousCursor = nextHistory.pop();
                   setCursorHistory(nextHistory);
-                  setParams(
-                    toSearchParams(selectedToken, {
-                      page: 1,
+                  navigate(
+                    toNCCCPath(selectedToken, {
+                      ...search,
                       cursor: previousCursor,
                     }),
                   );
@@ -573,9 +649,9 @@ export default function NCCCPage() {
                 onNext={() => {
                   if (!pagination.next_cursor) return;
                   setCursorHistory([...cursorHistory, search.cursor ?? ""]);
-                  setParams(
-                    toSearchParams(selectedToken, {
-                      page: 1,
+                  navigate(
+                    toNCCCPath(selectedToken, {
+                      ...search,
                       cursor: pagination.next_cursor,
                     }),
                   );
@@ -585,6 +661,12 @@ export default function NCCCPage() {
           )
         )}
       </Stack>
+      <Snackbar
+        open={Boolean(shareNotice)}
+        autoHideDuration={2500}
+        onClose={() => setShareNotice("")}
+        message={shareNotice}
+      />
     </Box>
   );
 }

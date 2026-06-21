@@ -25,6 +25,12 @@ const routes = [
     description: "查詢主要貨幣匯率，並提供簡單的匯率換算工具。",
   },
   {
+    path: "/data/nccc",
+    title: `NCCC 信用卡消費資料 | ${siteName}`,
+    description:
+      "查詢 NCCC 信用卡公開資料，依資料集、年月、地區與欄位條件篩選消費統計。",
+  },
+  {
     path: "/data/etf/yieldmax",
     title: `YieldMax ETF 配息統計 | ${siteName}`,
     description: "整理 YieldMax ETF 配息資料、歷史紀錄與分割資訊。",
