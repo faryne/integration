@@ -72,6 +72,28 @@ const Editor = lazy(() =>
     default: module.Editor,
   })),
 );
+const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
+const StorytellerProjects = lazy(
+  () => import("@/pages/storyteller/Projects.tsx"),
+);
+const StorytellerProjectDetail = lazy(
+  () => import("@/pages/storyteller/ProjectDetail.tsx"),
+);
+const StorytellerNewProject = lazy(
+  () => import("@/pages/storyteller/NewProject.tsx"),
+);
+const StorytellerAgents = lazy(
+  () => import("@/pages/storyteller/Agents.tsx"),
+);
+const StorytellerNewAgent = lazy(
+  () => import("@/pages/storyteller/NewAgent.tsx"),
+);
+const StorytellerStoryEditor = lazy(
+  () => import("@/pages/storyteller/StoryEditor.tsx"),
+);
+const StorytellerStoryDiffCompare = lazy(
+  () => import("@/pages/storyteller/StoryDiffCompare.tsx"),
+);
 const CrawlerIndex = lazy(() =>
   import("@/pages/crawler").then((module) => ({
     default: module.CrawlerIndex,
@@ -217,14 +239,36 @@ function App() {
                 path={"storyteller"}
                 element={<DefaultLayout fullWidth={true} />}
               >
-                <Route path={""} element={<Editor />} />
+                <Route path={""} element={<StorytellerHome />} />
 
                 <Route path={"project"}>
-                  <Route path={":id"} element={<Editor />} />
+                  <Route path={""} element={<StorytellerProjects />} />
+                  <Route path={"new"} element={<StorytellerNewProject />} />
+                  <Route
+                    path={":id/story/new"}
+                    element={<StorytellerStoryEditor />}
+                  />
+                  <Route
+                    path={":id/story/:storyId/diff/:diffId1/:diffId2"}
+                    element={<StorytellerStoryDiffCompare />}
+                  />
+                  <Route
+                    path={":id/story/:storyId/diff"}
+                    element={<StorytellerStoryEditor />}
+                  />
+                  <Route
+                    path={":id/story/:storyId"}
+                    element={<StorytellerStoryEditor />}
+                  />
+                  <Route path={":id"} element={<StorytellerProjectDetail />} />
                   <Route path={"resources"} element={<Editor />} />
                   <Route path={"resource/:id"} element={<Editor />} />
                   <Route path={"articles"} element={<Editor />} />
                   <Route path={"article/:id"} element={<Editor />} />
+                </Route>
+                <Route path={"agent"}>
+                  <Route path={""} element={<StorytellerAgents />} />
+                  <Route path={"new"} element={<StorytellerNewAgent />} />
                 </Route>
                 <Route path={"editor"} element={<Editor />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />

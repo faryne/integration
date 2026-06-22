@@ -1,0 +1,243 @@
+export interface StorytellerProject {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  storiesCount: number;
+  updatedAt: string;
+  status: "drafting" | "planning" | "paused";
+}
+
+export interface StorytellerAgent {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  purpose: string;
+  projectCount: number;
+  updatedAt: string;
+  enabled: boolean;
+}
+
+export interface StorytellerStory {
+  id: string;
+  projectId: string;
+  title: string;
+  summary: string;
+  words: number;
+  updatedAt: string;
+  content: string;
+}
+
+export interface StorytellerStoryDiff {
+  id: string;
+  storyId: string;
+  title: string;
+  content: string;
+  source: string;
+  createdAt: string;
+  words: number;
+}
+
+export const storytellerProjects: StorytellerProject[] = [
+  {
+    id: "pj-river-lantern",
+    name: "河燈之城",
+    slug: "river-lantern",
+    description:
+      "架空港都奇幻長篇。主線聚焦在失蹤的記憶、河神信仰，以及城市改建後浮出的舊契約。",
+    storiesCount: 8,
+    updatedAt: "2026-06-20T18:30:00+08:00",
+    status: "drafting",
+  },
+  {
+    id: "pj-copper-sky",
+    name: "銅色天空檔案",
+    slug: "copper-sky",
+    description:
+      "近未來懸疑短篇集。每篇以同一座軌道城市中的匿名委託為開場。",
+    storiesCount: 4,
+    updatedAt: "2026-06-18T09:10:00+08:00",
+    status: "planning",
+  },
+  {
+    id: "pj-quiet-market",
+    name: "夜市熄燈以後",
+    slug: "quiet-market",
+    description: "都市怪談企劃，整理角色、場景與章節草稿用。",
+    storiesCount: 2,
+    updatedAt: "2026-06-12T22:45:00+08:00",
+    status: "paused",
+  },
+];
+
+export const storytellerAgents: StorytellerAgent[] = [
+  {
+    id: "ag-plot-doctor",
+    name: "Plot Doctor",
+    provider: "Grok",
+    model: "grok-4",
+    purpose: "檢查章節節奏、伏筆回收與角色動機一致性。",
+    projectCount: 2,
+    updatedAt: "2026-06-21T13:20:00+08:00",
+    enabled: true,
+  },
+  {
+    id: "ag-scene-continuator",
+    name: "Scene Continuator",
+    provider: "Grok",
+    model: "grok-4-fast",
+    purpose: "依選取段落延伸下一段，保持既有敘事口吻。",
+    projectCount: 3,
+    updatedAt: "2026-06-19T16:05:00+08:00",
+    enabled: true,
+  },
+  {
+    id: "ag-lore-keeper",
+    name: "Lore Keeper",
+    provider: "OpenAI compatible",
+    model: "未設定",
+    purpose: "整理設定集、名詞表與跨章節時間線。",
+    projectCount: 1,
+    updatedAt: "2026-06-10T11:00:00+08:00",
+    enabled: false,
+  },
+];
+
+export const storytellerStories: StorytellerStory[] = [
+  {
+    id: "story-01",
+    projectId: "pj-river-lantern",
+    title: "第一章：潮線以下",
+    summary: "主角回到港都，發現河岸改建工地挖出舊神龕。",
+    words: 4200,
+    updatedAt: "2026-06-20T18:30:00+08:00",
+    content: `# 第一章：潮線以下
+
+雨從傍晚開始落下，沿著港邊的霓虹招牌往下爬，把整座城市洗成一片濕亮的藍。
+
+林岫提著行李箱站在河堤上，看見工地圍籬後方露出半截石龕。那不是她記憶中的東西。至少在她離開這座城市以前，河岸邊只有賣烤魷魚的小攤、三間永遠不會準時開門的雜貨店，以及每年中元節都會漂滿河面的紙燈。
+
+她把手機拿起來，對準石龕拍照。快門聲落下的瞬間，河面上有什麼東西亮了一下。
+
+像一盞燈，也像一隻眼睛。`,
+  },
+  {
+    id: "story-02",
+    projectId: "pj-river-lantern",
+    title: "第二章：無名契約",
+    summary: "工地主任交出一份沒有署名的土地契約。",
+    words: 3800,
+    updatedAt: "2026-06-18T21:00:00+08:00",
+    content: `# 第二章：無名契約
+
+契約紙很薄，邊緣泛黃，卻沒有任何潮氣侵蝕的痕跡。
+
+林岫用指腹碰了一下紙面，墨跡像是剛乾，黑得近乎刺眼。`,
+  },
+  {
+    id: "story-03",
+    projectId: "pj-river-lantern",
+    title: "角色設定與年表",
+    summary: "主要人物、城市背景與時間線整理。",
+    words: 1900,
+    updatedAt: "2026-06-15T14:20:00+08:00",
+    content: `# 角色設定與年表
+
+## 林岫
+
+- 年齡：29
+- 職業：都市更新顧問
+- 核心矛盾：不相信故鄉傳說，卻比任何人都清楚祭典細節。`,
+  },
+];
+
+export const storytellerStoryDiffs: StorytellerStoryDiff[] = [
+  {
+    id: "diff-20260620-1830",
+    storyId: "story-01",
+    title: "第一章：潮線以下",
+    content: `# 第一章：潮線以下
+
+雨從傍晚開始落下，沿著港邊的霓虹招牌往下爬，把整座城市洗成一片濕亮的藍。
+
+林岫提著行李箱站在河堤上，看見工地圍籬後方露出半截石龕。那不是她記憶中的東西。至少在她離開這座城市以前，河岸邊只有賣烤魷魚的小攤、三間永遠不會準時開門的雜貨店，以及每年中元節都會漂滿河面的紙燈。
+
+她把手機拿起來，對準石龕拍照。快門聲落下的瞬間，河面上有什麼東西亮了一下。
+
+像一盞燈，也像一隻眼睛。`,
+    source: "手動編輯",
+    createdAt: "2026-06-20T18:30:00+08:00",
+    words: 4200,
+  },
+  {
+    id: "diff-20260620-1805",
+    storyId: "story-01",
+    title: "第一章：潮線之下",
+    content: `# 第一章：潮線之下
+
+雨從傍晚開始落下，沿著港邊的霓虹招牌往下爬，把整座城市洗成一片濕亮的藍。
+
+林岫提著行李箱站在河堤上，看見工地圍籬後方露出半截石龕。那不是她記憶中的東西。至少在她離開這座城市以前，河岸邊只有賣烤魷魚的小攤、兩間永遠不會準時開門的雜貨店，以及每年中元節都會漂滿河面的紙燈。
+
+她把手機拿起來，對準石龕拍照。快門聲落下的瞬間，河面像被誰從底下點亮。
+
+那光不像燈，比較像一隻在水底睜開的眼睛。`,
+    source: "Plot Doctor",
+    createdAt: "2026-06-20T18:05:00+08:00",
+    words: 4120,
+  },
+  {
+    id: "diff-20260619-2212",
+    storyId: "story-01",
+    title: "第一章：潮線以下",
+    content: `# 第一章：潮線以下
+
+雨從傍晚開始落下，把整座城市洗成一片濕亮的藍。
+
+林岫提著行李箱站在河堤上，看見工地圍籬後方露出半截石龕。那不是她記憶中的東西。
+
+她把手機拿起來，對準石龕拍照。快門聲落下的瞬間，河面上有什麼東西亮了一下。`,
+    source: "手動編輯",
+    createdAt: "2026-06-19T22:12:00+08:00",
+    words: 3600,
+  },
+  {
+    id: "diff-20260618-2100",
+    storyId: "story-02",
+    title: "第二章：無名契約",
+    content: `# 第二章：無名契約
+
+契約紙很薄，邊緣泛黃，卻沒有任何潮氣侵蝕的痕跡。
+
+林岫用指腹碰了一下紙面，墨跡像是剛乾，黑得近乎刺眼。`,
+    source: "手動編輯",
+    createdAt: "2026-06-18T21:00:00+08:00",
+    words: 3800,
+  },
+];
+
+export function getProjectStories(projectId: string) {
+  return storytellerStories.filter((story) => story.projectId === projectId);
+}
+
+export function getStoryDiffs(storyId: string) {
+  return storytellerStoryDiffs.filter((diff) => diff.storyId === storyId);
+}
+
+export function formatStorytellerDate(input: string) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(input));
+}
+
+export function projectStatusLabel(status: StorytellerProject["status"]) {
+  if (status === "drafting") {
+    return "撰寫中";
+  }
+  if (status === "planning") {
+    return "規劃中";
+  }
+  return "暫停";
+}
