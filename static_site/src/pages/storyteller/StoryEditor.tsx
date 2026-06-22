@@ -6,8 +6,10 @@ import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import HistoryIcon from "@mui/icons-material/History";
+import AddCommentIcon from "@mui/icons-material/AddComment";
 import PreviewIcon from "@mui/icons-material/Preview";
 import SaveIcon from "@mui/icons-material/Save";
+import SendIcon from "@mui/icons-material/Send";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import {
@@ -67,6 +69,9 @@ export default function StorytellerStoryEditor() {
   const [content, setContent] = useState(story?.content ?? "");
   const [selectedText, setSelectedText] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [selectedAgentId, setSelectedAgentId] = useState(
+    storytellerAgents[0].id,
+  );
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
@@ -89,6 +94,9 @@ export default function StorytellerStoryEditor() {
       ? `/storyteller/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`
       : "";
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
+  const selectedAgent =
+    storytellerAgents.find((agent) => agent.id === selectedAgentId) ??
+    storytellerAgents[0];
 
   useEffect(() => {
     if (isHistoryRoute) {
@@ -553,51 +561,176 @@ export default function StorytellerStoryEditor() {
         </Grid>
 
         <Grid size={{ xs: 12, lg: 4 }}>
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <SmartToyIcon color="primary" />
-                <Typography variant="h6" fontWeight={800}>
-                  AI Agent
+          <Paper
+            variant="outlined"
+            sx={{
+              borderRadius: 1,
+              overflow: "hidden",
+              position: { lg: "sticky" },
+              top: { lg: 16 },
+            }}
+          >
+            <Stack sx={{ minHeight: { lg: 720 } }}>
+              <Stack
+                spacing={1.5}
+                sx={{ p: 2, bgcolor: "background.default" }}
+              >
+                <Stack
+                  direction={{ xs: "column", sm: "row", lg: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ minWidth: 120 }}
+                  >
+                    <SmartToyIcon color="primary" />
+                    <Typography variant="h6" fontWeight={800}>
+                      AI Agent
+                    </Typography>
+                  </Stack>
+                  <TextField
+                    select
+                    size="small"
+                    label="選擇 Agent"
+                    value={selectedAgentId}
+                    onChange={(event) => setSelectedAgentId(event.target.value)}
+                    sx={{ flex: 1, minWidth: 180 }}
+                  >
+                    {storytellerAgents.map((agent) => (
+                      <MenuItem key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Stack>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Chip
+                    size="small"
+                    label={selectedAgent.enabled ? "可用" : "停用"}
+                    color={selectedAgent.enabled ? "success" : "default"}
+                  />
+                  <Chip size="small" label={selectedAgent.provider} />
+                  <Chip size="small" label={selectedAgent.model} />
+                </Stack>
+                <Typography variant="body2" color="text.secondary">
+                  {selectedAgent.purpose}
                 </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddCommentIcon />}
+                  >
+                    new chat
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<HistoryIcon />}
+                  >
+                    history
+                  </Button>
+                </Stack>
               </Stack>
-              <TextField select label="使用 Agent" defaultValue={storytellerAgents[0].id}>
-                {storytellerAgents.map((agent) => (
-                  <MenuItem key={agent.id} value={agent.id}>
-                    {agent.name} / {agent.provider}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                multiline
-                minRows={8}
-                label="提問或指令"
-                value={aiPrompt}
-                onChange={(event) => setAiPrompt(event.target.value)}
-                placeholder="例如：讀取目前全文，指出節奏太快的段落。"
-              />
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Button
-                  variant="outlined"
-                  onClick={() => setAiPrompt("請讀取目前完整內容，整理角色動機與潛在矛盾。")}
-                >
-                  分析全文
-                </Button>
-                <Button
-                  variant="outlined"
-                  disabled={!selectedText}
-                  onClick={() => setAiPrompt(`請延續這段文字繼續寫下去：\n\n${selectedText}`)}
-                >
-                  延續選取段落
-                </Button>
-              </Stack>
+
               <Divider />
-              <Alert severity="info" variant="outlined">
-                AI 對話區目前是前端畫面，等待後端 API 與 Agent 設定串接。
-              </Alert>
-              <Button variant="contained" startIcon={<SmartToyIcon />}>
-                送出給 AI Agent
-              </Button>
+
+              <Stack
+                spacing={1.5}
+                sx={{
+                  p: 2,
+                  flex: 1,
+                  overflowY: "auto",
+                  bgcolor: "grey.50",
+                }}
+              >
+                <Box
+                  sx={{
+                    alignSelf: "flex-start",
+                    maxWidth: "92%",
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: "background.paper",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    {selectedAgent.name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    我會依照目前選擇的 Agent 用途協助處理故事內容。你可以直接輸入需求，也可以貼上 Markdown。
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    alignSelf: "flex-end",
+                    maxWidth: "92%",
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                  }}
+                >
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    使用者
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    **先幫我看第一章開場是否需要增加懸疑感。**
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    alignSelf: "flex-start",
+                    maxWidth: "92%",
+                    p: 1.5,
+                    borderRadius: 1,
+                    bgcolor: "background.paper",
+                    border: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography variant="caption" color="text.secondary">
+                    {selectedAgent.name}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    <Markdown>
+                      {
+                        "目前開場的城市氣氛足夠明確，可以把 **石龕** 與 **河面發光** 之間的因果再拉遠一點，讓讀者先感到不對勁。"
+                      }
+                    </Markdown>
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Divider />
+
+              <Stack spacing={1.5} sx={{ p: 2 }}>
+                <TextField
+                  multiline
+                  minRows={4}
+                  label="輸入需求"
+                  value={aiPrompt}
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                  placeholder="可輸入 Markdown，例如：請用 **條列式** 指出目前章節需要補強的地方。"
+                />
+                {aiPrompt.trim() && (
+                  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Markdown 預覽
+                    </Typography>
+                    <Box sx={{ typography: "body2", mt: 0.5 }}>
+                      <Markdown>{aiPrompt}</Markdown>
+                    </Box>
+                  </Paper>
+                )}
+                <Button variant="contained" startIcon={<SendIcon />}>
+                  送出需求
+                </Button>
+              </Stack>
             </Stack>
           </Paper>
         </Grid>

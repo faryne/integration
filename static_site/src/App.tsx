@@ -245,10 +245,6 @@ function App() {
                   <Route path={""} element={<StorytellerProjects />} />
                   <Route path={"new"} element={<StorytellerNewProject />} />
                   <Route
-                    path={":id/story/new"}
-                    element={<StorytellerStoryEditor />}
-                  />
-                  <Route
                     path={":id/story/:storyId/diff/:diffId1/:diffId2"}
                     element={<StorytellerStoryDiffCompare />}
                   />
