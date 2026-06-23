@@ -2,6 +2,8 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
@@ -18,7 +20,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
@@ -43,6 +45,7 @@ interface ReaderStory {
   title: string;
   summary: string;
   content: string;
+  sort: number;
   updatedAt: string;
 }
 
@@ -90,17 +93,106 @@ function StoryIndex({
   );
 }
 
+function ChapterNavCard({
+  label,
+  title,
+  to,
+  disabled = false,
+  align = "left",
+}: {
+  label: string;
+  title: string;
+  to?: string;
+  disabled?: boolean;
+  align?: "left" | "center" | "right";
+}) {
+  const LabelIcon =
+    align === "left" ? ArrowBackIcon : align === "right" ? ArrowForwardIcon : undefined;
+
+  return (
+    <Paper
+      component={to ? RouterLink : "div"}
+      to={to}
+      variant="outlined"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        gap: 0.5,
+        px: 1.75,
+        py: 1.5,
+        minHeight: 40,
+        borderRadius: 1,
+        textDecoration: "none",
+        color: "inherit",
+        opacity: disabled ? 0.55 : 1,
+        overflow: "hidden",
+        textAlign: align,
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={0.5}
+        alignItems="center"
+        justifyContent={
+          align === "center"
+            ? "center"
+            : align === "right"
+              ? "flex-end"
+              : "flex-start"
+        }
+        sx={{ color: "text.secondary" }}
+      >
+        {align === "left" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
+        <Typography variant="caption" color="inherit">
+          {label}
+        </Typography>
+        {align === "right" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
+      </Stack>
+      <Typography
+        fontWeight={800}
+        sx={{
+          lineHeight: 1.35,
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2,
+          overflow: "hidden",
+        }}
+      >
+        {title}
+      </Typography>
+    </Paper>
+  );
+}
+
 export default function StorytellerReader() {
-  const { projectPath, shareToken, storyId } = useParams();
+  const params = useParams();
+  const { shareToken } = params;
+  const routeStoryPath = params["*"];
+  const routeStoryParts = routeStoryPath?.split("/").filter(Boolean) ?? [];
+  const routeStoryId =
+    params.storyId ??
+    (routeStoryParts.length > 1
+      ? routeStoryParts[routeStoryParts.length - 1]
+      : undefined);
+  const routeProjectPath = routeStoryPath
+    ? routeStoryParts
+        .slice(0, routeStoryId ? -1 : undefined)
+        .join("/")
+    : params.projectPath;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [indexOpen, setIndexOpen] = useState(true);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [rating, setRating] = useState<number | null>(4);
-  const publicProjectQuery = usePublicStorytellerProject(projectPath);
+  const storyStartRef = useRef<HTMLHeadingElement | null>(null);
+  const previousStoryIdRef = useRef<string | undefined>(undefined);
+  const publicProjectQuery = usePublicStorytellerProject(routeProjectPath);
   const sharedProjectQuery = useSharedStorytellerProject(shareToken);
-  const apiProject = projectPath
+  const apiProject = routeProjectPath
     ? publicProjectQuery.data
     : shareToken
       ? sharedProjectQuery.data
@@ -110,8 +202,8 @@ export default function StorytellerReader() {
   const isFavorited = apiProject
     ? (favoriteQuery.data?.favorited ?? false)
     : favorite;
-  const mockProject = projectPath
-    ? findProjectByPublicPath(projectPath)
+  const mockProject = routeProjectPath
+    ? findProjectByPublicPath(routeProjectPath)
     : shareToken
       ? findProjectByShareToken(shareToken)
       : undefined;
@@ -126,6 +218,7 @@ export default function StorytellerReader() {
           title: story.title,
           summary: story.summary,
           content: story.latest_content,
+          sort: story.sort,
           updatedAt: story.updated_at,
         })),
       }
@@ -135,19 +228,21 @@ export default function StorytellerReader() {
           name: mockProject.name,
           description: mockProject.description,
           path: publicProjectPath(mockProject),
-          stories: getProjectStories(mockProject.id).map((story) => ({
+          stories: getProjectStories(mockProject.id).map((story, index) => ({
             id: story.id,
             title: story.title,
             summary: story.summary,
             content: story.content,
+            sort: index,
             updatedAt: story.updatedAt,
           })),
         }
       : undefined;
   const stories = project?.stories ?? [];
-  const currentStory = storyId
-    ? stories.find((story) => story.id === storyId)
-    : undefined;
+  const currentStoryId = routeStoryId;
+  const currentStory = currentStoryId
+    ? stories.find((story) => story.id === currentStoryId)
+    : (stories.find((story) => story.sort === 0) ?? stories[0]);
   const currentStoryIndex = currentStory
     ? stories.findIndex((story) => story.id === currentStory.id)
     : -1;
@@ -160,13 +255,32 @@ export default function StorytellerReader() {
   const isShareRoute = Boolean(shareToken);
 
   useTitle(project ? `${project.name} - Storyteller` : "Storyteller", {
-    path: projectPath
-      ? `/storyteller/story/${projectPath}${storyId ? `/${storyId}` : ""}`
+    path: routeProjectPath
+      ? `/storyteller/story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`
       : shareToken
-        ? `/storyteller/story/share/${shareToken}${storyId ? `/${storyId}` : ""}`
+        ? `/storyteller/story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`
         : "",
     robots: isShareRoute ? "noindex, nofollow" : "index, follow",
   });
+
+  useEffect(() => {
+    if (!currentStory?.id) {
+      return;
+    }
+    if (!previousStoryIdRef.current) {
+      previousStoryIdRef.current = currentStory.id;
+      return;
+    }
+    if (previousStoryIdRef.current === currentStory.id) {
+      return;
+    }
+
+    previousStoryIdRef.current = currentStory.id;
+    storyStartRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [currentStory?.id]);
 
   if (!project) {
     return <ErrorPage code={404} />;
@@ -285,7 +399,13 @@ export default function StorytellerReader() {
             {currentStory ? (
               <Stack spacing={2}>
                 <Box>
-                  <Typography component="h1" variant="h4" fontWeight={800}>
+                  <Typography
+                    ref={storyStartRef}
+                    component="h1"
+                    variant="h4"
+                    fontWeight={800}
+                    sx={{ scrollMarginTop: 24 }}
+                  >
                     {currentStory.title}
                   </Typography>
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
@@ -308,67 +428,44 @@ export default function StorytellerReader() {
                   <Markdown>{currentStory.content}</Markdown>
                 </Box>
                 <Divider />
-                <Grid container spacing={1.5}>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Paper
-                      component={previousStory ? RouterLink : "div"}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "minmax(0, 1fr)",
+                      md: "repeat(3, minmax(0, 1fr))",
+                    },
+                    gap: 1.5,
+                    minWidth: 0,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <ChapterNavCard
+                      label="上一章"
+                      title={previousStory?.title ?? "沒有上一章"}
                       to={previousStory ? `${basePath}/${previousStory.id}` : undefined}
-                      variant="outlined"
-                      sx={{
-                        display: "block",
-                        p: 2,
-                        height: 1,
-                        borderRadius: 1,
-                        textDecoration: "none",
-                        color: "inherit",
-                        opacity: previousStory ? 1 : 0.55,
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        上一章
-                      </Typography>
-                      <Typography fontWeight={800} sx={{ mt: 0.5 }}>
-                        {previousStory?.title ?? "沒有上一章"}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Paper
-                      variant="outlined"
-                      sx={{ p: 2, height: 1, borderRadius: 1 }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        本章
-                      </Typography>
-                      <Typography fontWeight={800} sx={{ mt: 0.5 }}>
-                        {currentStory.title}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Paper
-                      component={nextStory ? RouterLink : "div"}
+                      disabled={!previousStory}
+                      align="left"
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <ChapterNavCard
+                      label="本章"
+                      title={currentStory.title}
+                      align="center"
+                      disabled
+                    />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <ChapterNavCard
+                      label="下一章"
+                      title={nextStory?.title ?? "沒有下一章"}
                       to={nextStory ? `${basePath}/${nextStory.id}` : undefined}
-                      variant="outlined"
-                      sx={{
-                        display: "block",
-                        p: 2,
-                        height: 1,
-                        borderRadius: 1,
-                        textDecoration: "none",
-                        color: "inherit",
-                        opacity: nextStory ? 1 : 0.55,
-                      }}
-                    >
-                      <Typography variant="caption" color="text.secondary">
-                        下一章
-                      </Typography>
-                      <Typography fontWeight={800} sx={{ mt: 0.5 }}>
-                        {nextStory?.title ?? "沒有下一章"}
-                      </Typography>
-                    </Paper>
-                  </Grid>
-                </Grid>
+                      disabled={!nextStory}
+                      align="right"
+                    />
+                  </Box>
+                </Box>
               </Stack>
             ) : (
               <Stack spacing={2}>

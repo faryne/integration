@@ -13,6 +13,8 @@ import (
 )
 
 var whitespaceRegexp = regexp.MustCompile(`\s+`)
+var unsafeSlugRegexp = regexp.MustCompile(`[^\p{L}\p{N}._~-]+`)
+var slugUnderscoreRegexp = regexp.MustCompile(`_+`)
 
 type Service struct {
 	repo *storytellerRepo.Repository
@@ -68,15 +70,11 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 	if err := validateProject(input); err != nil {
 		return nil, err
 	}
-	slug := strings.TrimSpace(input.Slug)
-	if slug == "" {
-		slug = randomID()
-	}
 	project := &storytellerModel.Project{
 		PublicID:    randomID(),
 		UserID:      userID,
 		Name:        strings.TrimSpace(input.Name),
-		Slug:        slug,
+		Slug:        safeProjectSlug(input.Name),
 		Description: strings.TrimSpace(input.Description),
 		Visibility:  input.Visibility,
 	}
@@ -98,12 +96,7 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	if err != nil {
 		return nil, err
 	}
-	slug := strings.TrimSpace(input.Slug)
-	if slug == "" {
-		slug = randomID()
-	}
 	project.Name = strings.TrimSpace(input.Name)
-	project.Slug = slug
 	project.Description = strings.TrimSpace(input.Description)
 	project.Visibility = input.Visibility
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted && project.ShareToken == "" {
@@ -382,6 +375,16 @@ func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVers
 func wordCount(content string) uint {
 	normalized := whitespaceRegexp.ReplaceAllString(content, "")
 	return uint(len([]rune(normalized)))
+}
+
+func safeProjectSlug(name string) string {
+	slug := unsafeSlugRegexp.ReplaceAllString(strings.TrimSpace(name), "_")
+	slug = slugUnderscoreRegexp.ReplaceAllString(slug, "_")
+	slug = strings.Trim(slug, "_")
+	if slug == "" {
+		return randomID()
+	}
+	return slug
 }
 
 func normalizeProjectRequest(input storytellerModel.ProjectRequest) storytellerModel.ProjectRequest {

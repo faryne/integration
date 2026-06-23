@@ -36,7 +36,7 @@ export function usePublicStorytellerProject(projectPath?: string) {
     enabled: Boolean(projectPath),
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerProject>>(
-        `${apiBase}/storyteller/story/${projectPath}`,
+        `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}`,
       );
       return response.data.data;
     },

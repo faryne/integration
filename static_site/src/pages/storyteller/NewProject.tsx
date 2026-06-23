@@ -20,6 +20,14 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
 
+function projectNameToSlug(name: string) {
+  return name
+    .trim()
+    .replace(/[^\p{L}\p{N}._~-]+/gu, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 export default function StorytellerNewProject() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -90,8 +98,12 @@ export default function StorytellerNewProject() {
         sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
         onSubmit={(event) => {
           event.preventDefault();
+          const payload = {
+            ...input,
+            slug: editingProject?.slug ?? projectNameToSlug(input.name),
+          };
           saveProject.mutate(
-            { publicId: editingProject?.public_id, input },
+            { publicId: editingProject?.public_id, input: payload },
             {
               onSuccess: (project) => {
                 if (project?.public_id) {
@@ -125,13 +137,10 @@ export default function StorytellerNewProject() {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="專案特殊網址"
-                placeholder="例如：river-lantern"
-                helperText="可留空由系統產生；限中英數，不得使用符號。"
-                value={input.slug}
-                onChange={(event) =>
-                  setInput((value) => ({ ...value, slug: event.target.value }))
-                }
+                disabled
+                label="專案網址"
+                helperText="專案網址建立時會使用專案名稱，建立後暫不開放修改。"
+                value={editingProject?.slug ?? projectNameToSlug(input.name)}
               />
             </Grid>
             <Grid size={12}>

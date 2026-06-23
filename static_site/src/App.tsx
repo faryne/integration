@@ -252,11 +252,6 @@ function App() {
                 <Route path={""} element={<StorytellerPublicHome />} />
                 <Route path={"mine"} element={<StorytellerHome />} />
                 <Route path={"favorites"} element={<StorytellerFavorites />} />
-                <Route path={"story/:projectPath"} element={<StorytellerReader />} />
-                <Route
-                  path={"story/:projectPath/:storyId"}
-                  element={<StorytellerReader />}
-                />
                 <Route
                   path={"story/share/:shareToken"}
                   element={<StorytellerReader />}
@@ -265,6 +260,7 @@ function App() {
                   path={"story/share/:shareToken/:storyId"}
                   element={<StorytellerReader />}
                 />
+                <Route path={"story/*"} element={<StorytellerReader />} />
 
                 <Route path={"project"}>
                   <Route path={""} element={<StorytellerProjects />} />
