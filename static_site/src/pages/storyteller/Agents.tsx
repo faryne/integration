@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { useStorytellerAgents } from "@/apis/storyteller.ts";
 import {
   formatStorytellerDate,
   storytellerAgents,
@@ -22,6 +23,21 @@ import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerAgents() {
+  const { data: apiAgents = [] } = useStorytellerAgents();
+  const agents =
+    apiAgents.length > 0
+      ? apiAgents.map((agent) => ({
+          id: agent.id,
+          name: agent.name,
+          purpose: agent.default_prompt,
+          provider: agent.provider,
+          model: agent.model_name,
+          projectCount: 0,
+          enabled: !agent.is_deleted,
+          updatedAt: agent.updated_at,
+        }))
+      : storytellerAgents;
+
   useTitle("Storyteller AI Agent 列表", {
     path: "/storyteller/agent",
     robots: "noindex, nofollow",
@@ -30,7 +46,7 @@ export default function StorytellerAgents() {
   return (
     <StorytellerShell
       title="AI Agent 列表"
-      description="管理可供故事專案使用的 AI Agent。此頁先保留多供應商與不同模型的畫面結構。"
+      description="管理可供故事專案使用的 AI Agent。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "AI Agent 列表" },
@@ -59,7 +75,7 @@ export default function StorytellerAgents() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {storytellerAgents.map((agent) => (
+            {agents.map((agent) => (
               <TableRow key={agent.id} hover>
                 <TableCell>
                   <Stack direction="row" spacing={1.5} alignItems="center">

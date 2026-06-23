@@ -6,6 +6,7 @@ import { ModernLayout } from "./layouts/ModernLayout.tsx";
 import { NekomaidLayout } from "./layouts/NekomaidLayout.tsx";
 import { GalgameLayout } from "./layouts/GalgameLayout.tsx";
 import { LabLayout } from "./layouts/LabLayout.tsx";
+import { StorytellerLayout } from "./layouts/StorytellerLayout.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
@@ -72,7 +73,13 @@ const Editor = lazy(() =>
     default: module.Editor,
   })),
 );
+const StorytellerPublicHome = lazy(
+  () => import("@/pages/storyteller/PublicHome.tsx"),
+);
 const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
+const StorytellerFavorites = lazy(
+  () => import("@/pages/storyteller/Favorites.tsx"),
+);
 const StorytellerProjects = lazy(
   () => import("@/pages/storyteller/Projects.tsx"),
 );
@@ -93,6 +100,9 @@ const StorytellerStoryEditor = lazy(
 );
 const StorytellerStoryDiffCompare = lazy(
   () => import("@/pages/storyteller/StoryDiffCompare.tsx"),
+);
+const StorytellerReader = lazy(
+  () => import("@/pages/storyteller/Reader.tsx"),
 );
 const CrawlerIndex = lazy(() =>
   import("@/pages/crawler").then((module) => ({
@@ -237,13 +247,29 @@ function App() {
             <>
               <Route
                 path={"storyteller"}
-                element={<DefaultLayout fullWidth={true} />}
+                element={<StorytellerLayout />}
               >
-                <Route path={""} element={<StorytellerHome />} />
+                <Route path={""} element={<StorytellerPublicHome />} />
+                <Route path={"mine"} element={<StorytellerHome />} />
+                <Route path={"favorites"} element={<StorytellerFavorites />} />
+                <Route path={"story/:projectPath"} element={<StorytellerReader />} />
+                <Route
+                  path={"story/:projectPath/:storyId"}
+                  element={<StorytellerReader />}
+                />
+                <Route
+                  path={"story/share/:shareToken"}
+                  element={<StorytellerReader />}
+                />
+                <Route
+                  path={"story/share/:shareToken/:storyId"}
+                  element={<StorytellerReader />}
+                />
 
                 <Route path={"project"}>
                   <Route path={""} element={<StorytellerProjects />} />
                   <Route path={"new"} element={<StorytellerNewProject />} />
+                  <Route path={":id/edit"} element={<StorytellerNewProject />} />
                   <Route
                     path={":id/story/:storyId/diff/:diffId1/:diffId2"}
                     element={<StorytellerStoryDiffCompare />}

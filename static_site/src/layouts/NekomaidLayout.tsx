@@ -1,9 +1,10 @@
-import { Box, Button, Stack, Typography } from "@mui/material";
+import { Box, Button, Divider, Stack, Typography } from "@mui/material";
 import AutoAwesomeMosaicIcon from "@mui/icons-material/AutoAwesomeMosaic";
 import HomeIcon from "@mui/icons-material/Home";
 import { Link as RouterLink, Outlet } from "react-router-dom";
 import "@/styles/common.css";
 import { isNekomaidSite, nekomaidPath } from "@/helpers/nekomaid.ts";
+import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 
 export function NekomaidLayout() {
   const standaloneNekomaid = isNekomaidSite();
@@ -114,29 +115,9 @@ export function NekomaidLayout() {
         <Outlet />
       </Box>
 
-      <Box
-        component="footer"
-        sx={{
-          color: "#64748b",
-          px: { xs: 2, md: 4 },
-          py: 3,
-          textAlign: "center",
-        }}
-      >
-        <Typography variant="body2">
-          難以名狀的抓圖器 by{" "}
-          <Typography
-            component="a"
-            href="https://faryne.dev/"
-            variant="body2"
-            color="inherit"
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{ textDecoration: "underline" }}
-          >
-            faryne.dev
-          </Typography>
-        </Typography>
+      <Box component="footer" sx={{ px: { xs: 2, md: 4 } }}>
+        <Divider sx={{ opacity: 0.1 }} />
+        <IndependentFooter service_name="難以名狀的抓圖器" />
       </Box>
     </Box>
   );

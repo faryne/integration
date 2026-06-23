@@ -1,11 +1,14 @@
 export interface StorytellerProject {
   id: string;
+  publicId: string;
   name: string;
   slug: string;
   description: string;
   storiesCount: number;
   updatedAt: string;
   status: "drafting" | "planning" | "paused";
+  visibility: "public" | "unlisted" | "private";
+  shareToken?: string;
 }
 
 export interface StorytellerAgent {
@@ -42,6 +45,7 @@ export interface StorytellerStoryDiff {
 export const storytellerProjects: StorytellerProject[] = [
   {
     id: "pj-river-lantern",
+    publicId: "river8x4",
     name: "河燈之城",
     slug: "river-lantern",
     description:
@@ -49,9 +53,12 @@ export const storytellerProjects: StorytellerProject[] = [
     storiesCount: 8,
     updatedAt: "2026-06-20T18:30:00+08:00",
     status: "drafting",
+    visibility: "public",
+    shareToken: "river-lantern-friends",
   },
   {
     id: "pj-copper-sky",
+    publicId: "sky9k2",
     name: "銅色天空檔案",
     slug: "copper-sky",
     description:
@@ -59,15 +66,19 @@ export const storytellerProjects: StorytellerProject[] = [
     storiesCount: 4,
     updatedAt: "2026-06-18T09:10:00+08:00",
     status: "planning",
+    visibility: "public",
   },
   {
     id: "pj-quiet-market",
+    publicId: "night7m1",
     name: "夜市熄燈以後",
     slug: "quiet-market",
     description: "都市怪談企劃，整理角色、場景與章節草稿用。",
     storiesCount: 2,
     updatedAt: "2026-06-12T22:45:00+08:00",
     status: "paused",
+    visibility: "private",
+    shareToken: "quiet-market-private",
   },
 ];
 
@@ -219,6 +230,24 @@ export const storytellerStoryDiffs: StorytellerStoryDiff[] = [
 
 export function getProjectStories(projectId: string) {
   return storytellerStories.filter((story) => story.projectId === projectId);
+}
+
+export function publicProjectPath(project: StorytellerProject) {
+  return `/storyteller/story/${project.publicId}-${project.slug}`;
+}
+
+export function getPublicProjects() {
+  return storytellerProjects.filter((project) => project.visibility === "public");
+}
+
+export function findProjectByPublicPath(projectPath: string) {
+  return storytellerProjects.find(
+    (project) => `${project.publicId}-${project.slug}` === projectPath,
+  );
+}
+
+export function findProjectByShareToken(shareToken: string) {
+  return storytellerProjects.find((project) => project.shareToken === shareToken);
 }
 
 export function getStoryDiffs(storyId: string) {

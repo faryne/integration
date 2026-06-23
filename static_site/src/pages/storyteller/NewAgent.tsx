@@ -3,20 +3,29 @@ import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
   Button,
-  FormControlLabel,
   Grid,
   MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
 } from "@mui/material";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSaveStorytellerAgent } from "@/apis/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import type { StorytellerAgentRequest } from "@/types/storyteller.ts";
 
 export default function StorytellerNewAgent() {
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
+  const saveAgent = useSaveStorytellerAgent();
+  const [input, setInput] = useState<StorytellerAgentRequest>({
+    name: "",
+    provider: "grok",
+    model_name: "",
+    api_key: "",
+    default_prompt: "",
+  });
   useTitle("建立 Storyteller AI Agent", {
     path: "/storyteller/agent/new",
     robots: "noindex, nofollow",
@@ -25,7 +34,7 @@ export default function StorytellerNewAgent() {
   return (
     <StorytellerShell
       title="建立 AI Agent"
-      description="設定 Agent 名稱、供應商、模型與 API Key。此階段先完成表單畫面。"
+      description="設定 Agent 名稱、供應商、模型與 API Key。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "AI Agent 列表", to: "/storyteller/agent" },
@@ -38,13 +47,20 @@ export default function StorytellerNewAgent() {
         sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
         onSubmit={(event) => {
           event.preventDefault();
-          setSubmitted(true);
+          saveAgent.mutate(
+            { input },
+            {
+              onSuccess: () => {
+                navigate("/storyteller/agent");
+              },
+            },
+          );
         }}
       >
         <Stack spacing={3}>
-          {submitted && (
-            <Alert severity="info" variant="outlined">
-              目前僅完成畫面，尚未串接建立 AI Agent API。
+          {saveAgent.isError && (
+            <Alert severity="error" variant="outlined">
+              建立 AI Agent 失敗，請確認登入狀態與欄位內容。
             </Alert>
           )}
           <Grid container spacing={2}>
@@ -54,13 +70,27 @@ export default function StorytellerNewAgent() {
                 fullWidth
                 label="Agent 名稱"
                 placeholder="例如：Plot Doctor"
+                value={input.name}
+                onChange={(event) =>
+                  setInput((value) => ({ ...value, name: event.target.value }))
+                }
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField required fullWidth select label="AI 供應商" defaultValue="grok">
+              <TextField
+                required
+                fullWidth
+                select
+                label="AI 供應商"
+                value={input.provider}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    provider: event.target.value,
+                  }))
+                }
+              >
                 <MenuItem value="grok">Grok</MenuItem>
-                <MenuItem value="openai-compatible">OpenAI compatible</MenuItem>
-                <MenuItem value="custom">其他</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -69,6 +99,13 @@ export default function StorytellerNewAgent() {
                 fullWidth
                 label="模型名稱"
                 placeholder="例如：grok-4"
+                value={input.model_name}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    model_name: event.target.value,
+                  }))
+                }
               />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
@@ -77,6 +114,13 @@ export default function StorytellerNewAgent() {
                 type="password"
                 label="API Key"
                 placeholder="填入後端加密保存前的輸入欄位"
+                value={input.api_key}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    api_key: event.target.value,
+                  }))
+                }
                 slotProps={{
                   input: {
                     startAdornment: <KeyIcon color="disabled" sx={{ mr: 1 }} />,
@@ -89,14 +133,15 @@ export default function StorytellerNewAgent() {
                 fullWidth
                 multiline
                 minRows={5}
-                label="Agent 用途"
+                label="Agent 預設 prompt"
                 placeholder="描述此 Agent 適合做什麼，例如續寫、改寫、世界觀校對或章節節奏分析。"
-              />
-            </Grid>
-            <Grid size={12}>
-              <FormControlLabel
-                control={<Switch defaultChecked />}
-                label="建立後立即啟用"
+                value={input.default_prompt}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    default_prompt: event.target.value,
+                  }))
+                }
               />
             </Grid>
           </Grid>
@@ -104,8 +149,13 @@ export default function StorytellerNewAgent() {
             <Button href="/storyteller/agent" variant="text">
               返回列表
             </Button>
-            <Button type="submit" variant="contained" startIcon={<SaveIcon />}>
-              建立 AI Agent
+            <Button
+              type="submit"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={saveAgent.isPending}
+            >
+              {saveAgent.isPending ? "建立中" : "建立 AI Agent"}
             </Button>
           </Stack>
         </Stack>

@@ -1,7 +1,6 @@
 import {
   AppBar,
   Avatar,
-  Box,
   Button,
   Container,
   Divider,
@@ -29,6 +28,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { BilingualDisclaimer } from "@/components/common/BilingualDisclaimer.tsx";
 import { FaryneLogo } from "@/components/common/FaryneLogo.tsx";
+import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 import { galgamePath } from "@/helpers/galgame.ts";
 
 export function GalgameLayout() {
@@ -193,22 +193,7 @@ export function GalgameLayout() {
       />
       <Container component="footer" maxWidth="lg">
         <Divider />
-        <Box sx={{ py: 2, textAlign: "center" }}>
-          <Typography variant="body2" color="text.secondary">
-            Galgame TV by{" "}
-            <Typography
-              component="a"
-              href="https://faryne.dev/"
-              variant="body2"
-              color="inherit"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ textDecoration: "underline" }}
-            >
-              faryne.dev
-            </Typography>
-          </Typography>
-        </Box>
+        <IndependentFooter service_name="Galgame TV" />
       </Container>
     </Stack>
   );

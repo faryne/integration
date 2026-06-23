@@ -17,6 +17,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   Grid,
   IconButton,
@@ -41,6 +42,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  useSaveStorytellerStory,
+  useStorytellerAgents,
+  useStorytellerProjects,
+  useStorytellerStories,
+} from "@/apis/storyteller.ts";
+import {
   formatStorytellerDate,
   getStoryDiffs,
   storytellerAgents,
@@ -53,16 +60,98 @@ import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 
 const historyPerPage = 5;
 
+interface EditorProject {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface EditorStory {
+  id: string;
+  title: string;
+  summary: string;
+  content: string;
+  updatedAt: string;
+  sort: number;
+}
+
+interface EditorAgent {
+  id: string;
+  name: string;
+  provider: string;
+  model: string;
+  purpose: string;
+  enabled: boolean;
+}
+
 export default function StorytellerStoryEditor() {
   const { id, storyId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const isNewStory = storyId === "new";
   const isHistoryRoute = location.pathname.endsWith("/diff");
-  const project = storytellerProjects.find((item) => item.id === id);
-  const story = storytellerStories.find(
+  const { data: apiProjects = [], isPending: apiProjectsPending } =
+    useStorytellerProjects();
+  const apiProject = apiProjects.find((item) => item.public_id === id);
+  const mockProject = storytellerProjects.find((item) => item.id === id);
+  const project: EditorProject | undefined = apiProject
+    ? {
+        id: apiProject.public_id,
+        name: apiProject.name,
+        description: apiProject.description,
+      }
+    : mockProject
+      ? {
+          id: mockProject.id,
+          name: mockProject.name,
+          description: mockProject.description,
+        }
+      : undefined;
+  const { data: apiStories = [], isPending: apiStoriesPending } =
+    useStorytellerStories(apiProject?.public_id);
+  const apiStory = apiStories.find((item) => item.public_id === storyId);
+  const mockStory = storytellerStories.find(
     (item) => item.projectId === id && item.id === storyId,
   );
+  const story: EditorStory | undefined = apiStory
+    ? {
+        id: apiStory.public_id,
+        title: apiStory.title,
+        summary: apiStory.summary,
+        content: apiStory.latest_content,
+        updatedAt: apiStory.updated_at,
+        sort: apiStory.sort,
+      }
+    : mockStory
+      ? {
+          id: mockStory.id,
+          title: mockStory.title,
+          summary: mockStory.summary,
+          content: mockStory.content,
+          updatedAt: mockStory.updatedAt,
+          sort: 0,
+        }
+      : undefined;
+  const { data: apiAgents = [] } = useStorytellerAgents();
+  const agentRows: EditorAgent[] =
+    apiAgents.length > 0
+      ? apiAgents.map((agent) => ({
+          id: String(agent.id),
+          name: agent.name,
+          provider: agent.provider,
+          model: agent.model_name,
+          purpose: agent.default_prompt,
+          enabled: !agent.is_deleted,
+        }))
+      : storytellerAgents.map((agent) => ({
+          id: agent.id,
+          name: agent.name,
+          provider: agent.provider,
+          model: agent.model,
+          purpose: agent.purpose,
+          enabled: agent.enabled,
+        }));
+  const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const [storyTitle, setStoryTitle] = useState(story?.title ?? "");
   const [storySummary, setStorySummary] = useState(story?.summary ?? "");
   const [tab, setTab] = useState(isHistoryRoute ? "history" : "editor");
@@ -70,7 +159,7 @@ export default function StorytellerStoryEditor() {
   const [selectedText, setSelectedText] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState(
-    storytellerAgents[0].id,
+    agentRows[0]?.id ?? "",
   );
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [leftDiffId, setLeftDiffId] = useState("");
@@ -95,14 +184,25 @@ export default function StorytellerStoryEditor() {
       : "";
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
   const selectedAgent =
-    storytellerAgents.find((agent) => agent.id === selectedAgentId) ??
-    storytellerAgents[0];
+    agentRows.find((agent) => agent.id === selectedAgentId) ?? agentRows[0];
 
   useEffect(() => {
     if (isHistoryRoute) {
       setTab("history");
     }
   }, [isHistoryRoute]);
+
+  useEffect(() => {
+    setStoryTitle(story?.title ?? "");
+    setStorySummary(story?.summary ?? "");
+    setContent(story?.content ?? "");
+  }, [story?.content, story?.summary, story?.title]);
+
+  useEffect(() => {
+    if (!agentRows.some((agent) => agent.id === selectedAgentId)) {
+      setSelectedAgentId(agentRows[0]?.id ?? "");
+    }
+  }, [agentRows, selectedAgentId]);
 
   useTitle(`${pageTitle} - Storyteller`, {
     path:
@@ -116,6 +216,14 @@ export default function StorytellerStoryEditor() {
     const normalized = content.replace(/\s+/g, "");
     return normalized.length;
   }, [content]);
+
+  if ((!project && apiProjectsPending) || (apiProject && !isNewStory && !story && apiStoriesPending)) {
+    return (
+      <Stack alignItems="center" sx={{ py: 8 }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
 
   if (!project || (!isNewStory && !story)) {
     return <ErrorPage code={404} />;
@@ -202,6 +310,33 @@ export default function StorytellerStoryEditor() {
     }
   }
 
+  function handleSaveStory() {
+    if (!apiProject?.public_id) {
+      setSaveMessageVisible(true);
+      return;
+    }
+
+    saveStory.mutate(
+      {
+        storyPublicId: isNewStory ? undefined : story?.id,
+        input: {
+          title: storyTitle,
+          summary: storySummary,
+          sort: story?.sort ?? 0,
+          content,
+        },
+      },
+      {
+        onSuccess: (savedStory) => {
+          setSaveMessageVisible(true);
+          if (isNewStory && savedStory?.public_id) {
+            navigate(`/storyteller/project/${id}/story/${savedStory.public_id}`);
+          }
+        },
+      },
+    );
+  }
+
   return (
     <StorytellerShell
       title={pageTitle}
@@ -230,8 +365,18 @@ export default function StorytellerStoryEditor() {
       headerContent={
         <Stack spacing={2}>
           {saveMessageVisible && (
-            <Alert severity="info" variant="outlined">
-              目前僅完成前端畫面；存檔將包含故事標題、故事摘要與故事本文。
+            <Alert
+              severity={apiProject ? "success" : "info"}
+              variant="outlined"
+            >
+              {apiProject
+                ? "故事已存檔。"
+                : "目前使用前端假資料，未送出到後端 API。"}
+            </Alert>
+          )}
+          {saveStory.isError && (
+            <Alert severity="error" variant="outlined">
+              存檔失敗，請確認登入狀態與欄位內容。
             </Alert>
           )}
           <Grid container spacing={2} alignItems="flex-start">
@@ -263,9 +408,10 @@ export default function StorytellerStoryEditor() {
                 variant="contained"
                 startIcon={<SaveIcon />}
                 sx={{ py: 1.7 }}
-                onClick={() => setSaveMessageVisible(true)}
+                disabled={saveStory.isPending}
+                onClick={handleSaveStory}
               >
-                存檔
+                {saveStory.isPending ? "存檔中" : "存檔"}
               </Button>
             </Grid>
           </Grid>
@@ -599,7 +745,7 @@ export default function StorytellerStoryEditor() {
                     onChange={(event) => setSelectedAgentId(event.target.value)}
                     sx={{ flex: 1, minWidth: 180 }}
                   >
-                    {storytellerAgents.map((agent) => (
+                    {agentRows.map((agent) => (
                       <MenuItem key={agent.id} value={agent.id}>
                         {agent.name}
                       </MenuItem>
