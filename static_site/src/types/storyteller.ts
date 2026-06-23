@@ -8,7 +8,6 @@ export interface StorytellerProject {
   visibility: "public" | "unlisted" | "private";
   share_token: string;
   rating_count: number;
-  rating_total: number;
   average_rating: number;
   created_at: string;
   updated_at: string;
@@ -35,6 +34,18 @@ export interface StorytellerStory {
   summary: string;
   sort: number;
   latest_content: string;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerStoryVersion {
+  id: number;
+  story_id: number;
+  title: string;
+  summary: string;
+  content: string;
+  word_count: number;
   created_at: string;
   updated_at: string;
 }

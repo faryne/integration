@@ -60,6 +60,9 @@
 - [x] 在故事頁中的故事內容尾端加上 `上一章 [章節名稱]` `本章 [章節名稱]` `下一章 [章節名稱]` 的 card
 - [x] 故事頁需要加入收藏 button 以及評分 button （使用五星制，以半顆星為基本單位）
 - [x] 故事頁索引可像抽屜一般收起/展開。另外故事頁索引需考慮到行動裝置調整位置
+- [x] review project
+- [x] review story
+- [x] 確認變更的 migration 並產生新檔案
 
 ### Review 與補強
 - [x] review `細部規格` > `關於 storyteller layout`
@@ -98,6 +101,10 @@
 - 需要實作 `project` 的編輯畫面，編輯 button 放在 `/mine` 下顯示 `project`時。
 - 刪除 `project` 的 button 也放在 `/mine` 下顯示 `project`時。按下後會出現一個確認 dialog ，使用者必須輸入該 `project` 名稱，刪除 button 才會亮起來。此 dialog 可作為共用元件
 - 顯示總評分人數以及平均分在 project card 內
+- project card 內一定要有的元素： `公開屬性` `故事章數` `總評分數` `平均分數` `故事總字數` `標題` `摘要`
+
+### 關於 story 
+- story 內容在存檔時，要存一份進 story version
 
 
 ### migration 與資料表
@@ -129,12 +136,14 @@
 - sort：用以表示該故事的順序，故事列表應該使用這個欄位排序
 - 故事最新內容
 - project_id
+- 字數統計
 
 
 ### 故事版本（story version）
 記錄版本與故事的連結，用以產生每個版本的差距，至少要有：
 - story_id
 - 該版本原始內容
+- 該版本內文字數統計
 
 ### 聊天（story chat)
 與故事綁定，記錄每個聊天室的 metadata 等資訊
@@ -143,4 +152,16 @@
 記錄聊天室
 
 ### 收藏（project favorite）
-記錄 user_id 與 project_id 等欄位
+`刪除此表` 記錄 user_id 與 project_id 等欄位
+
+### 專案評分（project favorite ranking）
+記錄每個使用給作品的評分。原則上使用者可以隨時變更評分。因此 project 的評分相關欄位拔除。改使用這個資料表即時計算。
+也透過這張表得知使用者是不是有給指定作品評分過。
+
+另外考慮與收藏功能部分重複，因此將收藏也整併到本表
+
+基本記錄以下欄位
+- user_id
+- project_id
+- ranking
+- is_favorite

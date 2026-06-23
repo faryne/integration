@@ -5,11 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	storytellerRepo "faryne.dev/repository/storyteller"
 )
+
+var whitespaceRegexp = regexp.MustCompile(`\s+`)
 
 type Service struct {
 	repo *storytellerRepo.Repository
@@ -65,11 +68,15 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 	if err := validateProject(input); err != nil {
 		return nil, err
 	}
+	slug := strings.TrimSpace(input.Slug)
+	if slug == "" {
+		slug = randomID()
+	}
 	project := &storytellerModel.Project{
 		PublicID:    randomID(),
 		UserID:      userID,
 		Name:        strings.TrimSpace(input.Name),
-		Slug:        strings.TrimSpace(input.Slug),
+		Slug:        slug,
 		Description: strings.TrimSpace(input.Description),
 		Visibility:  input.Visibility,
 	}
@@ -91,8 +98,12 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	if err != nil {
 		return nil, err
 	}
+	slug := strings.TrimSpace(input.Slug)
+	if slug == "" {
+		slug = randomID()
+	}
 	project.Name = strings.TrimSpace(input.Name)
-	project.Slug = strings.TrimSpace(input.Slug)
+	project.Slug = slug
 	project.Description = strings.TrimSpace(input.Description)
 	project.Visibility = input.Visibility
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted && project.ShareToken == "" {
@@ -200,6 +211,7 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		Summary:       strings.TrimSpace(input.Summary),
 		Sort:          input.Sort,
 		LatestContent: input.Content,
+		WordCount:     wordCount(input.Content),
 	}
 	version := buildStoryVersion(*story)
 	if err := s.repo.CreateStoryWithVersion(story, version); err != nil {
@@ -224,6 +236,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.Summary = strings.TrimSpace(input.Summary)
 	story.Sort = input.Sort
 	story.LatestContent = input.Content
+	story.WordCount = wordCount(input.Content)
 	version := buildStoryVersion(*story)
 	if err := s.repo.UpdateStoryWithVersion(story, version); err != nil {
 		return nil, err
@@ -243,6 +256,22 @@ func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID stri
 	return s.repo.DeleteStory(story)
 }
 
+func (s *Service) StoryVersions(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryVersion, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryVersions(story.ID)
+}
+
+func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID string, versionID uint64) (*storytellerModel.StoryVersion, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryVersion(story.ID, versionID)
+}
+
 func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
 	projects, err := s.repo.FavoriteProjects(userID)
 	if err != nil {
@@ -256,11 +285,11 @@ func (s *Service) FavoriteStatus(userID uint64, projectPublicID string) (map[str
 	if err != nil {
 		return nil, err
 	}
-	favorite, err := s.repo.Favorite(userID, project.ID)
+	ranking, err := s.repo.Ranking(userID, project.ID)
 	if err != nil {
 		return map[string]bool{"favorited": false}, nil
 	}
-	return map[string]bool{"favorited": favorite.DeletedAt == nil}, nil
+	return map[string]bool{"favorited": ranking.DeletedAt == nil && ranking.IsFavorite}, nil
 }
 
 func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storytellerModel.ProjectOutput, error) {
@@ -268,18 +297,19 @@ func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storyt
 	if err != nil {
 		return nil, err
 	}
-	favorite, err := s.repo.Favorite(userID, project.ID)
+	ranking, err := s.repo.Ranking(userID, project.ID)
 	if err == nil {
-		if favorite.DeletedAt != nil {
-			if err := s.repo.RestoreFavorite(favorite); err != nil {
-				return nil, err
-			}
+		ranking.DeletedAt = nil
+		ranking.IsFavorite = true
+		if err := s.repo.SaveRanking(ranking); err != nil {
+			return nil, err
 		}
 		return s.projectOutput(project)
 	}
-	if err := s.repo.CreateFavorite(&storytellerModel.ProjectFavorite{
-		UserID:    userID,
-		ProjectID: project.ID,
+	if err := s.repo.CreateRanking(&storytellerModel.ProjectRanking{
+		UserID:     userID,
+		ProjectID:  project.ID,
+		IsFavorite: true,
 	}); err != nil {
 		return nil, err
 	}
@@ -291,24 +321,36 @@ func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
 	if err != nil {
 		return err
 	}
-	favorite, err := s.repo.Favorite(userID, project.ID)
+	ranking, err := s.repo.Ranking(userID, project.ID)
 	if err != nil {
 		return nil
 	}
-	if favorite.DeletedAt != nil {
-		return nil
-	}
-	return s.repo.DeleteFavorite(favorite)
+	ranking.IsFavorite = false
+	return s.repo.SaveRanking(ranking)
 }
 
 func (s *Service) projectOutput(project *storytellerModel.Project) (*storytellerModel.ProjectOutput, error) {
 	output := outputProject(*project)
+	ratingCount, averageRating, err := s.repo.RankingSummary(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output.RatingCount = ratingCount
+	output.AverageRating = averageRating
 	stories, err := s.repo.Stories(project.ID)
 	if err != nil {
 		return nil, err
 	}
 	output.Stories = stories
 	return output, nil
+}
+
+func (s *Service) storyForUserProject(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Story(project.ID, storyPublicID)
 }
 
 func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storytellerModel.ProjectOutput, error) {
@@ -324,20 +366,22 @@ func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storyte
 }
 
 func outputProject(project storytellerModel.Project) *storytellerModel.ProjectOutput {
-	out := storytellerModel.ProjectOutput{Project: project}
-	if project.RatingCount > 0 {
-		out.AverageRating = project.RatingTotal / float64(project.RatingCount)
-	}
-	return &out
+	return &storytellerModel.ProjectOutput{Project: project}
 }
 
 func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVersion {
 	return &storytellerModel.StoryVersion{
-		StoryID: story.ID,
-		Title:   story.Title,
-		Summary: story.Summary,
-		Content: story.LatestContent,
+		StoryID:   story.ID,
+		Title:     story.Title,
+		Summary:   story.Summary,
+		Content:   story.LatestContent,
+		WordCount: story.WordCount,
 	}
+}
+
+func wordCount(content string) uint {
+	normalized := whitespaceRegexp.ReplaceAllString(content, "")
+	return uint(len([]rune(normalized)))
 }
 
 func normalizeProjectRequest(input storytellerModel.ProjectRequest) storytellerModel.ProjectRequest {

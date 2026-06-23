@@ -25,6 +25,7 @@ import {
   Pagination,
   Paper,
   Radio,
+  Snackbar,
   Stack,
   Tab,
   Table,
@@ -45,6 +46,7 @@ import {
   useSaveStorytellerStory,
   useStorytellerAgents,
   useStorytellerProjects,
+  useStorytellerStoryVersions,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
 import {
@@ -59,6 +61,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 
 const historyPerPage = 5;
+const autoSaveIntervalMinutes = 2;
 
 interface EditorProject {
   id: string;
@@ -82,6 +85,29 @@ interface EditorAgent {
   model: string;
   purpose: string;
   enabled: boolean;
+}
+
+interface EditorStoryVersion {
+  id: string;
+  title: string;
+  source: string;
+  createdAt: string;
+  words: number;
+}
+
+interface StoryDraft {
+  title: string;
+  summary: string;
+  content: string;
+  sort: number;
+}
+
+function serializeStoryDraft(title: string, summary: string, content: string) {
+  return JSON.stringify({
+    title,
+    summary,
+    content,
+  });
 }
 
 export default function StorytellerStoryEditor() {
@@ -152,6 +178,8 @@ export default function StorytellerStoryEditor() {
           enabled: agent.enabled,
         }));
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
+  const { data: apiStoryVersions = [], isLoading: apiStoryVersionsLoading } =
+    useStorytellerStoryVersions(apiProject?.public_id, apiStory?.public_id);
   const [storyTitle, setStoryTitle] = useState(story?.title ?? "");
   const [storySummary, setStorySummary] = useState(story?.summary ?? "");
   const [tab, setTab] = useState(isHistoryRoute ? "history" : "editor");
@@ -162,14 +190,36 @@ export default function StorytellerStoryEditor() {
     agentRows[0]?.id ?? "",
   );
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const currentDraftRef = useRef(serializeStoryDraft("", "", ""));
+  const lastSavedDraftRef = useRef(serializeStoryDraft("", "", ""));
+  const latestDraftRef = useRef<StoryDraft>({
+    title: "",
+    summary: "",
+    content: "",
+    sort: 0,
+  });
+  const saveStoryRef = useRef(saveStory);
+  const autoSaveRunningRef = useRef(false);
   const pageTitle = isNewStory
     ? "建立故事"
     : storyTitle.trim() || story?.title || "未命名故事";
-  const storyDiffs = story ? getStoryDiffs(story.id) : [];
+  const storyDiffs: EditorStoryVersion[] =
+    apiStory
+      ? apiStoryVersions.map((version) => ({
+          id: String(version.id),
+          title: version.title,
+          source: "手動編輯",
+          createdAt: version.created_at,
+          words: version.word_count,
+        }))
+      : story
+        ? getStoryDiffs(story.id)
+        : [];
   const totalHistoryPages = Math.max(
     1,
     Math.ceil(storyDiffs.length / historyPerPage),
@@ -196,7 +246,32 @@ export default function StorytellerStoryEditor() {
     setStoryTitle(story?.title ?? "");
     setStorySummary(story?.summary ?? "");
     setContent(story?.content ?? "");
+    const savedDraft = serializeStoryDraft(
+      story?.title ?? "",
+      story?.summary ?? "",
+      story?.content ?? "",
+    );
+    currentDraftRef.current = savedDraft;
+    lastSavedDraftRef.current = savedDraft;
   }, [story?.content, story?.summary, story?.title]);
+
+  useEffect(() => {
+    currentDraftRef.current = serializeStoryDraft(
+      storyTitle,
+      storySummary,
+      content,
+    );
+    latestDraftRef.current = {
+      title: storyTitle,
+      summary: storySummary,
+      content,
+      sort: story?.sort ?? 0,
+    };
+  }, [content, story?.sort, storySummary, storyTitle]);
+
+  useEffect(() => {
+    saveStoryRef.current = saveStory;
+  }, [saveStory]);
 
   useEffect(() => {
     if (!agentRows.some((agent) => agent.id === selectedAgentId)) {
@@ -216,6 +291,49 @@ export default function StorytellerStoryEditor() {
     const normalized = content.replace(/\s+/g, "");
     return normalized.length;
   }, [content]);
+
+  useEffect(() => {
+    if (!apiProject?.public_id || isNewStory || !story?.id) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      const currentDraft = currentDraftRef.current;
+      const latestDraft = latestDraftRef.current;
+      if (
+        autoSaveRunningRef.current ||
+        currentDraft === lastSavedDraftRef.current ||
+        latestDraft.title.trim() === ""
+      ) {
+        return;
+      }
+
+      autoSaveRunningRef.current = true;
+      saveStoryRef.current.mutate(
+        {
+          storyPublicId: story.id,
+          input: {
+            title: latestDraft.title,
+            summary: latestDraft.summary,
+            sort: latestDraft.sort,
+            content: latestDraft.content,
+          },
+        },
+        {
+          onSuccess: () => {
+            lastSavedDraftRef.current = currentDraft;
+            setSaveMessage("已自動存檔。");
+            setSaveMessageVisible(true);
+          },
+          onSettled: () => {
+            autoSaveRunningRef.current = false;
+          },
+        },
+      );
+    }, autoSaveIntervalMinutes * 60 * 1000);
+
+    return () => window.clearInterval(timer);
+  }, [apiProject?.public_id, isNewStory, story?.id]);
 
   if ((!project && apiProjectsPending) || (apiProject && !isNewStory && !story && apiStoriesPending)) {
     return (
@@ -245,7 +363,7 @@ export default function StorytellerStoryEditor() {
       return true;
     }
 
-    return new Date(diff.createdAt) > new Date(leftDiff.createdAt);
+    return new Date(diff.createdAt) <= new Date(leftDiff.createdAt);
   }
 
   function handleLeftDiffChange(diffId: string) {
@@ -257,7 +375,7 @@ export default function StorytellerStoryEditor() {
       !selectedLeftDiff ||
       !selectedRightDiff ||
       selectedRightDiff.id === selectedLeftDiff.id ||
-      new Date(selectedRightDiff.createdAt) > new Date(selectedLeftDiff.createdAt)
+      new Date(selectedRightDiff.createdAt) <= new Date(selectedLeftDiff.createdAt)
     ) {
       setRightDiffId("");
     }
@@ -312,6 +430,8 @@ export default function StorytellerStoryEditor() {
 
   function handleSaveStory() {
     if (!apiProject?.public_id) {
+      lastSavedDraftRef.current = currentDraftRef.current;
+      setSaveMessage("目前使用前端假資料，未送出到後端 API。");
       setSaveMessageVisible(true);
       return;
     }
@@ -328,6 +448,8 @@ export default function StorytellerStoryEditor() {
       },
       {
         onSuccess: (savedStory) => {
+          lastSavedDraftRef.current = currentDraftRef.current;
+          setSaveMessage("故事已存檔。");
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
             navigate(`/storyteller/project/${id}/story/${savedStory.public_id}`);
@@ -355,7 +477,16 @@ export default function StorytellerStoryEditor() {
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${wordCount.toLocaleString()} 字`} />
           {story ? (
-            <Chip label={`更新於 ${formatStorytellerDate(story.updatedAt)}`} />
+            <>
+              <Chip label={`更新於 ${formatStorytellerDate(story.updatedAt)}`} />
+              {apiProject && (
+                <Chip
+                  color="success"
+                  variant="outlined"
+                  label={`每 ${autoSaveIntervalMinutes} 分鐘自動存檔`}
+                />
+              )}
+            </>
           ) : (
             <Chip label="尚未存檔" color="warning" />
           )}
@@ -364,16 +495,6 @@ export default function StorytellerStoryEditor() {
       hideHeading
       headerContent={
         <Stack spacing={2}>
-          {saveMessageVisible && (
-            <Alert
-              severity={apiProject ? "success" : "info"}
-              variant="outlined"
-            >
-              {apiProject
-                ? "故事已存檔。"
-                : "目前使用前端假資料，未送出到後端 API。"}
-            </Alert>
-          )}
           {saveStory.isError && (
             <Alert severity="error" variant="outlined">
               存檔失敗，請確認登入狀態與欄位內容。
@@ -418,6 +539,22 @@ export default function StorytellerStoryEditor() {
         </Stack>
       }
     >
+      <Snackbar
+        open={saveMessageVisible}
+        autoHideDuration={2000}
+        onClose={() => setSaveMessageVisible(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          severity={apiProject ? "success" : "info"}
+          variant="filled"
+          onClose={() => setSaveMessageVisible(false)}
+          sx={{ width: "100%" }}
+        >
+          {saveMessage}
+        </Alert>
+      </Snackbar>
+
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 8 }}>
           <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
@@ -565,6 +702,12 @@ export default function StorytellerStoryEditor() {
                       fontFamily:
                         '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
                       lineHeight: 1.8,
+                      height: { xs: 420, md: 560 },
+                      overflow: "auto",
+                      "& textarea": {
+                        height: "100% !important",
+                        overflow: "auto !important",
+                      },
                     },
                   },
                 }}
@@ -592,6 +735,11 @@ export default function StorytellerStoryEditor() {
                 </Alert>
               ) : (
                 <Stack spacing={2}>
+                  {apiStoryVersionsLoading && (
+                    <Stack alignItems="center" sx={{ py: 2 }}>
+                      <CircularProgress size={24} />
+                    </Stack>
+                  )}
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
                     spacing={1}
@@ -613,7 +761,7 @@ export default function StorytellerStoryEditor() {
 
                   {(!leftDiffId || !rightDiffId) && (
                     <Alert severity="info" variant="outlined">
-                      請先選擇 diff1，再從 diff1 同時間或更早的版本中選擇 diff2。
+                      請先選擇較舊的 diff1，再從 diff1 更新的版本中選擇 diff2。
                     </Alert>
                   )}
 
@@ -625,8 +773,8 @@ export default function StorytellerStoryEditor() {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell padding="checkbox">diff1</TableCell>
-                          <TableCell padding="checkbox">diff2</TableCell>
+                          <TableCell padding="checkbox">diff1<br />舊</TableCell>
+                          <TableCell padding="checkbox">diff2<br />新</TableCell>
                           <TableCell>版本</TableCell>
                           <TableCell>來源</TableCell>
                           <TableCell>字數</TableCell>

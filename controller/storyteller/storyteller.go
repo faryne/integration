@@ -204,6 +204,29 @@ func DeleteStory(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"deleted": true})
 }
 
+func StoryVersions(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().StoryVersions(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func StoryVersion(ctx fiber.Ctx) error {
+	versionID, err := parseUint(ctx.Params("version"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().StoryVersion(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), versionID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story version not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
 func FavoriteProjects(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().FavoriteProjects(authsession.Session(ctx).UserId)
 	if err != nil {

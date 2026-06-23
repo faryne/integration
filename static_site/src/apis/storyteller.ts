@@ -9,6 +9,7 @@ import type {
   StorytellerProjectRequest,
   StorytellerStory,
   StorytellerStoryRequest,
+  StorytellerStoryVersion,
 } from "@/types/storyteller.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -255,6 +256,60 @@ export function useSaveStorytellerStory(projectPublicId?: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerStoryVersions(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "story-versions",
+      projectPublicId,
+      storyPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryVersion[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/versions`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerStoryVersion(
+  projectPublicId?: string,
+  storyPublicId?: string,
+  versionId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "story-version",
+      projectPublicId,
+      storyPublicId,
+      versionId,
+      session?.user.id,
+    ],
+    enabled: Boolean(
+      session?.encrypt_key && projectPublicId && storyPublicId && versionId,
+    ),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerStoryVersion>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/versions/${versionId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }

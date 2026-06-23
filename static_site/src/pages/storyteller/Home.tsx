@@ -61,6 +61,11 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                 : "完全不公開",
           statusColor: project.visibility === "private" ? "default" : "primary",
           storiesCount: project.stories?.length ?? 0,
+          wordCount:
+            project.stories?.reduce(
+              (total, story) => total + story.word_count,
+              0,
+            ) ?? 0,
           ratingCount: project.rating_count,
           averageRating: project.average_rating,
           updatedAt: project.updated_at,
@@ -73,6 +78,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           statusLabel: projectStatusLabel(project.status),
           statusColor: project.status === "drafting" ? "primary" : "default",
           storiesCount: project.storiesCount,
+          wordCount: 0,
           ratingCount: 0,
           averageRating: 0,
           updatedAt: project.updatedAt,
@@ -101,6 +107,10 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     color={project.statusColor as "primary" | "default"}
                   />
                   <Chip size="small" label={`${project.storiesCount} 篇故事`} />
+                  <Chip
+                    size="small"
+                    label={`${project.wordCount.toLocaleString()} 字`}
+                  />
                   <Chip
                     size="small"
                     label={`${project.ratingCount} 人評分`}

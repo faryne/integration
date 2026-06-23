@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Grid,
   Paper,
   Stack,
@@ -11,17 +12,30 @@ import {
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
+  useStorytellerProjects,
+  useStorytellerStoryVersion,
+  useStorytellerStories,
+} from "@/apis/storyteller.ts";
+import {
   formatStorytellerDate,
   storytellerProjects,
   storytellerStories,
   storytellerStoryDiffs,
-  type StorytellerStoryDiff,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 
 type DiffState = "same" | "changed" | "added" | "removed";
+
+interface CompareDiff {
+  id: string;
+  title: string;
+  content: string;
+  source: string;
+  createdAt: string;
+  words: number;
+}
 
 interface DiffLine {
   index: number;
@@ -81,7 +95,7 @@ function DiffPane({
   side,
   lines,
 }: {
-  diff: StorytellerStoryDiff;
+  diff: CompareDiff;
   side: "left" | "right";
   lines: DiffLine[];
 }) {
@@ -135,16 +149,74 @@ function DiffPane({
 
 export default function StorytellerStoryDiffCompare() {
   const { id, storyId, diffId1, diffId2 } = useParams();
-  const project = storytellerProjects.find((item) => item.id === id);
-  const story = storytellerStories.find(
+  const { data: apiProjects = [], isPending: apiProjectsPending } =
+    useStorytellerProjects();
+  const apiProject = apiProjects.find((item) => item.public_id === id);
+  const mockProject = storytellerProjects.find((item) => item.id === id);
+  const project = apiProject
+    ? {
+        id: apiProject.public_id,
+        name: apiProject.name,
+      }
+    : mockProject
+      ? {
+          id: mockProject.id,
+          name: mockProject.name,
+        }
+      : undefined;
+  const { data: apiStories = [], isPending: apiStoriesPending } =
+    useStorytellerStories(apiProject?.public_id);
+  const apiStory = apiStories.find((item) => item.public_id === storyId);
+  const mockStory = storytellerStories.find(
     (item) => item.projectId === id && item.id === storyId,
   );
-  const leftDiff = storytellerStoryDiffs.find(
+  const story = apiStory
+    ? {
+        id: apiStory.public_id,
+        title: apiStory.title,
+      }
+    : mockStory
+      ? {
+          id: mockStory.id,
+          title: mockStory.title,
+        }
+      : undefined;
+  const leftVersion = useStorytellerStoryVersion(
+    apiProject?.public_id,
+    apiStory?.public_id,
+    diffId1,
+  );
+  const rightVersion = useStorytellerStoryVersion(
+    apiProject?.public_id,
+    apiStory?.public_id,
+    diffId2,
+  );
+  const leftMockDiff = storytellerStoryDiffs.find(
     (item) => item.storyId === storyId && item.id === diffId1,
   );
-  const rightDiff = storytellerStoryDiffs.find(
+  const rightMockDiff = storytellerStoryDiffs.find(
     (item) => item.storyId === storyId && item.id === diffId2,
   );
+  const leftDiff: CompareDiff | undefined = leftVersion.data
+    ? {
+        id: String(leftVersion.data.id),
+        title: leftVersion.data.title,
+        content: leftVersion.data.content,
+        source: "手動編輯",
+        createdAt: leftVersion.data.created_at,
+        words: leftVersion.data.word_count,
+      }
+    : leftMockDiff;
+  const rightDiff: CompareDiff | undefined = rightVersion.data
+    ? {
+        id: String(rightVersion.data.id),
+        title: rightVersion.data.title,
+        content: rightVersion.data.content,
+        source: "手動編輯",
+        createdAt: rightVersion.data.created_at,
+        words: rightVersion.data.word_count,
+      }
+    : rightMockDiff;
   const lines = useMemo(
     () =>
       leftDiff && rightDiff
@@ -165,7 +237,26 @@ export default function StorytellerStoryDiffCompare() {
     robots: "noindex, nofollow",
   });
 
-  if (!project || !story || !leftDiff || !rightDiff) {
+  if (
+    (!project && apiProjectsPending) ||
+    (apiProject && !story && apiStoriesPending) ||
+    leftVersion.isLoading ||
+    rightVersion.isLoading
+  ) {
+    return (
+      <Stack alignItems="center" sx={{ py: 8 }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
+  if (
+    !project ||
+    !story ||
+    !leftDiff ||
+    !rightDiff ||
+    new Date(leftDiff.createdAt) >= new Date(rightDiff.createdAt)
+  ) {
     return <ErrorPage code={404} />;
   }
 

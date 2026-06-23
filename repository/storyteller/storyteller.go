@@ -121,6 +121,21 @@ func (r *Repository) Story(projectID uint64, publicID string) (*storytellerModel
 	return &row, err
 }
 
+func (r *Repository) StoryVersions(storyID uint64) ([]storytellerModel.StoryVersion, error) {
+	rows := make([]storytellerModel.StoryVersion, 0)
+	err := r.db.Where("story_id = ? AND deleted_at IS NULL", storyID).
+		Order("created_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) StoryVersion(storyID, versionID uint64) (*storytellerModel.StoryVersion, error) {
+	var row storytellerModel.StoryVersion
+	err := r.db.Where("story_id = ? AND id = ? AND deleted_at IS NULL", storyID, versionID).
+		First(&row).Error
+	return &row, err
+}
+
 func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(story).Error; err != nil {
@@ -151,31 +166,41 @@ func (r *Repository) FavoriteProjects(userID uint64) ([]storytellerModel.Project
 	err := r.db.
 		Table("storyteller_projects").
 		Select("storyteller_projects.*").
-		Joins("INNER JOIN storyteller_project_favorites ON storyteller_project_favorites.project_id = storyteller_projects.id").
-		Where("storyteller_project_favorites.user_id = ? AND storyteller_project_favorites.deleted_at IS NULL", userID).
+		Joins("INNER JOIN storyteller_project_rankings ON storyteller_project_rankings.project_id = storyteller_projects.id").
+		Where("storyteller_project_rankings.user_id = ? AND storyteller_project_rankings.deleted_at IS NULL", userID).
+		Where("storyteller_project_rankings.is_favorite = 1").
 		Where("storyteller_projects.deleted_at IS NULL").
-		Order("storyteller_project_favorites.updated_at DESC, storyteller_project_favorites.id DESC").
+		Order("storyteller_project_rankings.updated_at DESC, storyteller_project_rankings.id DESC").
 		Find(&rows).Error
 	return rows, err
 }
 
-func (r *Repository) Favorite(userID, projectID uint64) (*storytellerModel.ProjectFavorite, error) {
-	var row storytellerModel.ProjectFavorite
+func (r *Repository) Ranking(userID, projectID uint64) (*storytellerModel.ProjectRanking, error) {
+	var row storytellerModel.ProjectRanking
 	err := r.db.Unscoped().
 		Where("user_id = ? AND project_id = ?", userID, projectID).
 		First(&row).Error
 	return &row, err
 }
 
-func (r *Repository) CreateFavorite(row *storytellerModel.ProjectFavorite) error {
+func (r *Repository) CreateRanking(row *storytellerModel.ProjectRanking) error {
 	return r.db.Create(row).Error
 }
 
-func (r *Repository) RestoreFavorite(row *storytellerModel.ProjectFavorite) error {
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": nil}).Error
+func (r *Repository) SaveRanking(row *storytellerModel.ProjectRanking) error {
+	return r.db.Save(row).Error
 }
 
-func (r *Repository) DeleteFavorite(row *storytellerModel.ProjectFavorite) error {
-	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+func (r *Repository) RankingSummary(projectID uint64) (uint64, float64, error) {
+	type result struct {
+		Count   uint64
+		Average float64
+	}
+	var row result
+	err := r.db.
+		Table("storyteller_project_rankings").
+		Select("COUNT(*) AS count, COALESCE(AVG(ranking), 0) AS average").
+		Where("project_id = ? AND ranking IS NOT NULL AND deleted_at IS NULL", projectID).
+		Scan(&row).Error
+	return row.Count, row.Average, err
 }

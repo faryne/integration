@@ -39,6 +39,8 @@ export default function StorytellerProjectDetail() {
         name: apiProject.name,
         slug: apiProject.slug,
         description: apiProject.description,
+        visibility: apiProject.visibility,
+        shareToken: apiProject.share_token,
         statusLabel:
           apiProject.visibility === "public"
             ? "已公開"
@@ -54,6 +56,8 @@ export default function StorytellerProjectDetail() {
           name: mockProject.name,
           slug: mockProject.slug,
           description: mockProject.description,
+          visibility: mockProject.visibility,
+          shareToken: mockProject.shareToken,
           statusLabel: projectStatusLabel(mockProject.status),
           storiesCount: mockProject.storiesCount,
           updatedAt: mockProject.updatedAt,
@@ -62,12 +66,12 @@ export default function StorytellerProjectDetail() {
   const { data: apiStories = [] } = useStorytellerStories(apiProject?.public_id);
   const stories =
     apiStories.length > 0
-      ? apiStories.map((story) => ({
-          id: story.public_id,
-          title: story.title,
-          words: story.latest_content.length,
-          updatedAt: story.updated_at,
-        }))
+        ? apiStories.map((story) => ({
+            id: story.public_id,
+            title: story.title,
+            words: story.word_count,
+            updatedAt: story.updated_at,
+          }))
       : mockProject
         ? getProjectStories(mockProject.id).map((story) => ({
             id: story.id,
@@ -107,6 +111,19 @@ export default function StorytellerProjectDetail() {
     return <ErrorPage code={404} />;
   }
 
+  const readerUrl =
+    project.visibility === "public"
+      ? `/storyteller/story/${project.id}-${project.slug}`
+      : project.visibility === "unlisted" && project.shareToken
+        ? `/storyteller/story/share/${project.shareToken}`
+        : "";
+  const readerUrlLabel =
+    project.visibility === "public"
+      ? "公開網址"
+      : project.visibility === "unlisted"
+        ? "不公開網址"
+        : "";
+
   return (
     <StorytellerShell
       title={project.name}
@@ -128,7 +145,14 @@ export default function StorytellerProjectDetail() {
       <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Chip label={`特殊網址：${project.slug}`} />
+            {readerUrl && (
+              <Chip
+                component="a"
+                clickable
+                href={readerUrl}
+                label={`${readerUrlLabel}：${readerUrl}`}
+              />
+            )}
             <Chip label={project.statusLabel} color="primary" />
             <Chip label={`${stories.length || project.storiesCount} 篇故事`} />
             <Chip label={`更新於 ${formatStorytellerDate(project.updatedAt)}`} />

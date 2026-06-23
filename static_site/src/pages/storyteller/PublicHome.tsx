@@ -23,6 +23,11 @@ export default function StorytellerPublicHome() {
           name: project.name,
           description: project.description,
           storiesCount: project.stories?.length ?? 0,
+          wordCount:
+            project.stories?.reduce(
+              (total, story) => total + story.word_count,
+              0,
+            ) ?? 0,
           updatedAt: project.updated_at,
           path: `/storyteller/story/${project.public_id}-${project.slug}`,
         }))
@@ -31,6 +36,7 @@ export default function StorytellerPublicHome() {
           name: project.name,
           description: project.description,
           storiesCount: project.storiesCount,
+          wordCount: 0,
           updatedAt: project.updatedAt,
           path: publicProjectPath(project),
         }));
@@ -62,6 +68,10 @@ export default function StorytellerPublicHome() {
                 <>
                   <Chip size="small" icon={<LockOpenIcon />} label="公開閱讀" />
                   <Chip size="small" label={`${project.storiesCount} 篇故事`} />
+                  <Chip
+                    size="small"
+                    label={`${project.wordCount.toLocaleString()} 字`}
+                  />
                 </>
               }
               actions={

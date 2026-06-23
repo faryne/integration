@@ -33,8 +33,6 @@ type Project struct {
 	Description string            `gorm:"column:description" json:"description"`
 	Visibility  ProjectVisibility `gorm:"column:visibility" json:"visibility"`
 	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
-	RatingCount uint64            `gorm:"column:rating_count" json:"rating_count"`
-	RatingTotal float64           `gorm:"column:rating_total" json:"rating_total"`
 	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt   time.Time         `gorm:"column:updated_at" json:"updated_at"`
@@ -66,6 +64,7 @@ type Story struct {
 	Summary       string     `gorm:"column:summary" json:"summary"`
 	Sort          int        `gorm:"column:sort" json:"sort"`
 	LatestContent string     `gorm:"column:latest_content" json:"latest_content"`
+	WordCount     uint       `gorm:"column:word_count" json:"word_count"`
 	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
@@ -79,6 +78,7 @@ type StoryVersion struct {
 	Title     string     `gorm:"column:title" json:"title"`
 	Summary   string     `gorm:"column:summary" json:"summary"`
 	Content   string     `gorm:"column:content" json:"content"`
+	WordCount uint       `gorm:"column:word_count" json:"word_count"`
 	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
@@ -115,18 +115,20 @@ func (StoryChatMessage) TableName() string {
 	return "storyteller_story_chat_messages"
 }
 
-type ProjectFavorite struct {
-	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID    uint64     `gorm:"column:user_id" json:"user_id"`
-	ProjectID uint64     `gorm:"column:project_id" json:"project_id"`
-	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
-	Project   Project    `gorm:"foreignKey:ProjectID" json:"project"`
+type ProjectRanking struct {
+	ID         uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID     uint64     `gorm:"column:user_id" json:"user_id"`
+	ProjectID  uint64     `gorm:"column:project_id" json:"project_id"`
+	Ranking    *float64   `gorm:"column:ranking" json:"ranking"`
+	IsFavorite bool       `gorm:"column:is_favorite" json:"is_favorite"`
+	DeletedAt  *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt  time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt  time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	Project    Project    `gorm:"foreignKey:ProjectID" json:"project"`
 }
 
-func (ProjectFavorite) TableName() string {
-	return "storyteller_project_favorites"
+func (ProjectRanking) TableName() string {
+	return "storyteller_project_rankings"
 }
 
 type ProjectRequest struct {
@@ -153,6 +155,8 @@ type StoryRequest struct {
 
 type ProjectOutput struct {
 	Project
-	AverageRating float64 `json:"average_rating"`
+	AverageRating float64 `gorm:"-" json:"average_rating"`
+	RatingCount   uint64  `gorm:"-" json:"rating_count"`
+	IsFavorite    bool    `gorm:"-" json:"is_favorite"`
 	Stories       []Story `gorm:"-" json:"stories,omitempty"`
 }
