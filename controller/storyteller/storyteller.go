@@ -264,6 +264,66 @@ func DeleteFavorite(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"deleted": true})
 }
 
+func RankingStatus(ctx fiber.Ctx) error {
+	row, err := storyteller.NewService().RankingStatus(authsession.Session(ctx).UserId, ctx.Params("project"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func SaveRanking(ctx fiber.Ctx) error {
+	var input storytellerModel.ProjectRankingRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().SaveRanking(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteRanking(ctx fiber.Ctx) error {
+	if err := storyteller.NewService().DeleteRanking(authsession.Session(ctx).UserId, ctx.Params("project")); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
+func UserProfile(ctx fiber.Ctx) error {
+	row, err := storyteller.NewService().UserProfile(authsession.Session(ctx).UserId)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func SaveUserProfile(ctx fiber.Ctx) error {
+	var input storytellerModel.UserProfileRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().SaveUserProfile(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteUserProfile(ctx fiber.Ctx) error {
+	if err := storyteller.NewService().DeleteUserProfile(authsession.Session(ctx).UserId); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
 func parseUint(value string) (uint64, error) {
 	id, err := strconv.ParseUint(value, 10, 64)
 	if err != nil || id == 0 {

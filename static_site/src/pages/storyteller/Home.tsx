@@ -1,4 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
@@ -22,12 +21,11 @@ import {
   useStorytellerAgents,
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
-  projectStatusLabel,
   storytellerAgents,
-  storytellerProjects,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
@@ -40,6 +38,33 @@ import type {
   StorytellerProject,
 } from "@/types/storyteller.ts";
 
+function LoginRequiredPanel({
+  message,
+  login,
+  submitting,
+}: {
+  message: string;
+  login: () => Promise<void>;
+  submitting: boolean;
+}) {
+  return (
+    <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+      <Stack spacing={2} alignItems="flex-start">
+        <Alert severity="info" variant="outlined">
+          {message}
+        </Alert>
+        <Button
+          variant="contained"
+          onClick={() => void login()}
+          disabled={submitting}
+        >
+          {submitting ? "登入中..." : "使用 Google 登入"}
+        </Button>
+      </Stack>
+    </Paper>
+  );
+}
+
 function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const deleteProject = useDeleteStorytellerProject();
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -47,43 +72,28 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     name: string;
     apiBacked: boolean;
   } | null>(null);
-  const rows =
-    projects.length > 0
-      ? projects.map((project) => ({
-          id: project.public_id,
-          name: project.name,
-          description: project.description,
-          statusLabel:
-            project.visibility === "public"
-              ? "已公開"
-              : project.visibility === "unlisted"
-                ? "與親友分享"
-                : "完全不公開",
-          statusColor: project.visibility === "private" ? "default" : "primary",
-          storiesCount: project.stories?.length ?? 0,
-          wordCount:
-            project.stories?.reduce(
-              (total, story) => total + story.word_count,
-              0,
-            ) ?? 0,
-          ratingCount: project.rating_count,
-          averageRating: project.average_rating,
-          updatedAt: project.updated_at,
-          apiBacked: true,
-        }))
-      : storytellerProjects.map((project) => ({
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          statusLabel: projectStatusLabel(project.status),
-          statusColor: project.status === "drafting" ? "primary" : "default",
-          storiesCount: project.storiesCount,
-          wordCount: 0,
-          ratingCount: 0,
-          averageRating: 0,
-          updatedAt: project.updatedAt,
-          apiBacked: false,
-        }));
+  const rows = projects.map((project) => ({
+    id: project.public_id,
+    name: project.name,
+    description: project.description,
+    statusLabel:
+      project.visibility === "public"
+        ? "已公開"
+        : project.visibility === "unlisted"
+          ? "與親友分享"
+          : "完全不公開",
+    statusColor: project.visibility === "private" ? "default" : "primary",
+    storiesCount: project.stories?.length ?? 0,
+    wordCount:
+      project.stories?.reduce(
+        (total, story) => total + story.word_count,
+        0,
+      ) ?? 0,
+    ratingCount: project.rating_count,
+    averageRating: project.average_rating,
+    updatedAt: project.updated_at,
+    apiBacked: true,
+  }));
 
   return (
     <>
@@ -268,6 +278,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
 
 export default function StorytellerHome() {
   const [tab, setTab] = useState("projects");
+  const { session, loading, login, submitting } = useAuth();
   const { data: projects = [] } = useStorytellerProjects();
   const { data: agents = [] } = useStorytellerAgents();
   useTitle("Storyteller 我的工作台", {
@@ -285,6 +296,17 @@ export default function StorytellerHome() {
       ]}
       action={<StorytellerPrimaryActions />}
     >
+      {loading ? (
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      ) : !session ? (
+        <LoginRequiredPanel
+          message="登入後即可查看我的工作台。"
+          login={login}
+          submitting={submitting}
+        />
+      ) : (
       <Paper variant="outlined" sx={{ borderRadius: 1 }}>
         <Tabs value={tab} onChange={(_, value) => setTab(value)}>
           <Tab value="projects" label="故事專案" />
@@ -293,28 +315,9 @@ export default function StorytellerHome() {
         <Divider />
         <Box sx={{ p: { xs: 2, md: 3 } }}>
           <Stack spacing={2}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              alignItems={{ xs: "stretch", sm: "center" }}
-              justifyContent="space-between"
-              spacing={1}
-            >
-              <Typography variant="h6" fontWeight={800}>
-                {tab === "projects" ? "最近的故事專案" : "可用的 AI Agent"}
-              </Typography>
-              <Button
-                component={RouterLink}
-                to={
-                  tab === "projects"
-                    ? "/storyteller/project/new"
-                    : "/storyteller/agent/new"
-                }
-                startIcon={<AddIcon />}
-                variant="contained"
-              >
-                {tab === "projects" ? "新增專案" : "新增 Agent"}
-              </Button>
-            </Stack>
+            <Typography variant="h6" fontWeight={800}>
+              {tab === "projects" ? "最近的故事專案" : "可用的 AI Agent"}
+            </Typography>
             {tab === "projects" ? (
               <ProjectCards projects={projects} />
             ) : (
@@ -323,6 +326,7 @@ export default function StorytellerHome() {
           </Stack>
         </Box>
       </Paper>
+      )}
     </StorytellerShell>
   );
 }

@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Divider,
   Drawer,
   Grid,
@@ -25,16 +26,14 @@ import Markdown from "react-markdown";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProjectFavorite,
+  useSaveStorytellerProjectRanking,
   usePublicStorytellerProject,
   useSharedStorytellerProject,
   useStorytellerProjectFavorite,
+  useStorytellerProjectRanking,
 } from "@/apis/storyteller.ts";
 import {
-  findProjectByPublicPath,
-  findProjectByShareToken,
   formatStorytellerDate,
-  getProjectStories,
-  publicProjectPath,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -54,6 +53,7 @@ interface ReaderProject {
   name: string;
   description: string;
   path: string;
+  authorPenName?: string;
   stories: ReaderStory[];
 }
 
@@ -187,7 +187,6 @@ export default function StorytellerReader() {
   const [indexOpen, setIndexOpen] = useState(true);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
-  const [rating, setRating] = useState<number | null>(4);
   const storyStartRef = useRef<HTMLHeadingElement | null>(null);
   const previousStoryIdRef = useRef<string | undefined>(undefined);
   const publicProjectQuery = usePublicStorytellerProject(routeProjectPath);
@@ -199,20 +198,19 @@ export default function StorytellerReader() {
       : undefined;
   const favoriteQuery = useStorytellerProjectFavorite(apiProject?.public_id);
   const saveFavorite = useSaveStorytellerProjectFavorite(apiProject?.public_id);
+  const rankingQuery = useStorytellerProjectRanking(apiProject?.public_id);
+  const saveRanking = useSaveStorytellerProjectRanking(apiProject?.public_id);
   const isFavorited = apiProject
     ? (favoriteQuery.data?.favorited ?? false)
     : favorite;
-  const mockProject = routeProjectPath
-    ? findProjectByPublicPath(routeProjectPath)
-    : shareToken
-      ? findProjectByShareToken(shareToken)
-      : undefined;
+  const rating = rankingQuery.data?.ranking ?? null;
   const project: ReaderProject | undefined = apiProject
     ? {
         id: apiProject.public_id,
         name: apiProject.name,
         description: apiProject.description,
         path: `/storyteller/story/${apiProject.public_id}-${apiProject.slug}`,
+        authorPenName: apiProject.author?.pen_name,
         stories: (apiProject.stories ?? []).map((story) => ({
           id: story.public_id,
           title: story.title,
@@ -222,21 +220,6 @@ export default function StorytellerReader() {
           updatedAt: story.updated_at,
         })),
       }
-    : mockProject
-      ? {
-          id: mockProject.id,
-          name: mockProject.name,
-          description: mockProject.description,
-          path: publicProjectPath(mockProject),
-          stories: getProjectStories(mockProject.id).map((story, index) => ({
-            id: story.id,
-            title: story.title,
-            summary: story.summary,
-            content: story.content,
-            sort: index,
-            updatedAt: story.updatedAt,
-          })),
-        }
       : undefined;
   const stories = project?.stories ?? [];
   const currentStoryId = routeStoryId;
@@ -282,6 +265,14 @@ export default function StorytellerReader() {
     });
   }, [currentStory?.id]);
 
+  if (!project && (publicProjectQuery.isLoading || sharedProjectQuery.isLoading)) {
+    return (
+      <Stack alignItems="center" sx={{ py: 8 }}>
+        <CircularProgress />
+      </Stack>
+    );
+  }
+
   if (!project) {
     return <ErrorPage code={404} />;
   }
@@ -305,6 +296,9 @@ export default function StorytellerReader() {
             label={isShareRoute ? "專用連結" : "公開閱讀"}
             color={isShareRoute ? "warning" : "success"}
           />
+          {project.authorPenName && (
+            <Chip label={`作者 ${project.authorPenName}`} variant="outlined" />
+          )}
           <Chip label={`${stories.length} 篇故事`} />
         </Stack>
       }
@@ -373,7 +367,8 @@ export default function StorytellerReader() {
                 <Rating
                   value={rating}
                   precision={0.5}
-                  onChange={(_, value) => setRating(value)}
+                  disabled={!apiProject?.public_id || saveRanking.isPending}
+                  onChange={(_, value) => saveRanking.mutate(value)}
                 />
               </Stack>
             </Paper>
@@ -411,9 +406,22 @@ export default function StorytellerReader() {
                   <Typography color="text.secondary" sx={{ mt: 1 }}>
                     {currentStory.summary}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    更新於 {formatStorytellerDate(currentStory.updatedAt)}
-                  </Typography>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ mt: 1 }}
+                  >
+                    {project.authorPenName && (
+                      <Typography variant="caption" color="text.secondary">
+                        作者 {project.authorPenName}
+                      </Typography>
+                    )}
+                    <Typography variant="caption" color="text.secondary">
+                      更新於 {formatStorytellerDate(currentStory.updatedAt)}
+                    </Typography>
+                  </Stack>
                 </Box>
                 <Divider />
                 <Box

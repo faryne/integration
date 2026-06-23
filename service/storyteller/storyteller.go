@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/repository"
+	authRepo "faryne.dev/repository/auth"
 	storytellerRepo "faryne.dev/repository/storyteller"
 )
 
@@ -322,6 +324,111 @@ func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
 	return s.repo.SaveRanking(ranking)
 }
 
+func (s *Service) RankingStatus(userID uint64, projectPublicID string) (*storytellerModel.ProjectRankingOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	ranking, err := s.repo.Ranking(userID, project.ID)
+	if err != nil || ranking.DeletedAt != nil {
+		return &storytellerModel.ProjectRankingOutput{}, nil
+	}
+	return &storytellerModel.ProjectRankingOutput{Ranking: ranking.Ranking}, nil
+}
+
+func (s *Service) SaveRanking(userID uint64, projectPublicID string, input storytellerModel.ProjectRankingRequest) (*storytellerModel.ProjectRankingOutput, error) {
+	if input.Ranking < 0.5 || input.Ranking > 5 || input.Ranking*2 != float64(int(input.Ranking*2)) {
+		return nil, errors.New("ranking must be between 0.5 and 5 by 0.5 step")
+	}
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	value := input.Ranking
+	ranking, err := s.repo.Ranking(userID, project.ID)
+	if err == nil {
+		ranking.DeletedAt = nil
+		ranking.Ranking = &value
+		if err := s.repo.SaveRanking(ranking); err != nil {
+			return nil, err
+		}
+		return &storytellerModel.ProjectRankingOutput{Ranking: &value}, nil
+	}
+	if err := s.repo.CreateRanking(&storytellerModel.ProjectRanking{
+		UserID:    userID,
+		ProjectID: project.ID,
+		Ranking:   &value,
+	}); err != nil {
+		return nil, err
+	}
+	return &storytellerModel.ProjectRankingOutput{Ranking: &value}, nil
+}
+
+func (s *Service) DeleteRanking(userID uint64, projectPublicID string) error {
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return err
+	}
+	ranking, err := s.repo.Ranking(userID, project.ID)
+	if err != nil {
+		return nil
+	}
+	ranking.Ranking = nil
+	return s.repo.SaveRanking(ranking)
+}
+
+func (s *Service) UserProfile(userID uint64) (*storytellerModel.UserProfileOutput, error) {
+	profile, err := s.repo.UserProfile(userID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return defaultUserProfileOutput(userID), nil
+		}
+		return nil, err
+	}
+	return userProfileOutput(profile), nil
+}
+
+func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProfileRequest) (*storytellerModel.UserProfileOutput, error) {
+	input = normalizeUserProfileRequest(input)
+	profile, err := s.repo.UserProfileWithDeleted(userID)
+	if err == nil {
+		profile.PenName = input.PenName
+		profile.Bio = input.Bio
+		profile.UseDefaultAvatar = input.UseDefaultAvatar
+		profile.AvatarURL = input.AvatarURL
+		profile.DeletedAt = nil
+		if err := s.repo.SaveUserProfile(profile); err != nil {
+			return nil, err
+		}
+		return userProfileOutput(profile), nil
+	}
+	if !repository.IsRecordNotFound(err) {
+		return nil, err
+	}
+	profile = &storytellerModel.UserProfile{
+		UserID:           userID,
+		PenName:          input.PenName,
+		Bio:              input.Bio,
+		UseDefaultAvatar: input.UseDefaultAvatar,
+		AvatarURL:        input.AvatarURL,
+	}
+	if err := s.repo.CreateUserProfile(profile); err != nil {
+		return nil, err
+	}
+	return userProfileOutput(profile), nil
+}
+
+func (s *Service) DeleteUserProfile(userID uint64) error {
+	profile, err := s.repo.UserProfile(userID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return s.repo.DeleteUserProfile(profile)
+}
+
 func (s *Service) projectOutput(project *storytellerModel.Project) (*storytellerModel.ProjectOutput, error) {
 	output := outputProject(*project)
 	ratingCount, averageRating, err := s.repo.RankingSummary(project.ID)
@@ -335,7 +442,32 @@ func (s *Service) projectOutput(project *storytellerModel.Project) (*storyteller
 		return nil, err
 	}
 	output.Stories = stories
+	author, err := s.authorOutput(project.UserID)
+	if err != nil {
+		return nil, err
+	}
+	output.Author = author
 	return output, nil
+}
+
+func (s *Service) authorOutput(userID uint64) (*storytellerModel.UserProfileOutput, error) {
+	profile, err := s.repo.UserProfile(userID)
+	if err != nil && !repository.IsRecordNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		output := userProfileOutput(profile)
+		if output.PenName != "" {
+			return output, nil
+		}
+		output.PenName = fallbackAuthorName(userID)
+		return output, nil
+	}
+	return &storytellerModel.UserProfileOutput{
+		UserID:           userID,
+		PenName:          fallbackAuthorName(userID),
+		UseDefaultAvatar: true,
+	}, nil
 }
 
 func (s *Service) storyForUserProject(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
@@ -360,6 +492,37 @@ func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storyte
 
 func outputProject(project storytellerModel.Project) *storytellerModel.ProjectOutput {
 	return &storytellerModel.ProjectOutput{Project: project}
+}
+
+func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput {
+	return &storytellerModel.UserProfileOutput{
+		UserID:           userID,
+		UseDefaultAvatar: true,
+	}
+}
+
+func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.UserProfileOutput {
+	return &storytellerModel.UserProfileOutput{
+		UserID:           profile.UserID,
+		PenName:          profile.PenName,
+		Bio:              profile.Bio,
+		UseDefaultAvatar: profile.UseDefaultAvatar,
+		AvatarURL:        profile.AvatarURL,
+	}
+}
+
+func fallbackAuthorName(userID uint64) string {
+	user, err := authRepo.NewUserRepository().UserByID(userID)
+	if err != nil {
+		return ""
+	}
+	if user.DisplayName != nil && strings.TrimSpace(*user.DisplayName) != "" {
+		return strings.TrimSpace(*user.DisplayName)
+	}
+	if user.Email != nil && strings.TrimSpace(*user.Email) != "" {
+		return strings.TrimSpace(*user.Email)
+	}
+	return ""
 }
 
 func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVersion {
@@ -409,6 +572,16 @@ func validateProject(input storytellerModel.ProjectRequest) error {
 func normalizeAgentRequest(input storytellerModel.AgentRequest) storytellerModel.AgentRequest {
 	if input.Provider == "" {
 		input.Provider = storytellerModel.AgentProviderGrok
+	}
+	return input
+}
+
+func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) storytellerModel.UserProfileRequest {
+	input.PenName = strings.TrimSpace(input.PenName)
+	input.Bio = strings.TrimSpace(input.Bio)
+	input.AvatarURL = strings.TrimSpace(input.AvatarURL)
+	if input.UseDefaultAvatar {
+		input.AvatarURL = ""
 	}
 	return input
 }

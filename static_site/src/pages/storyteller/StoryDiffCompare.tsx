@@ -16,12 +16,7 @@ import {
   useStorytellerStoryVersion,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
-import {
-  formatStorytellerDate,
-  storytellerProjects,
-  storytellerStories,
-  storytellerStoryDiffs,
-} from "@/data/storyteller.ts";
+import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -152,34 +147,20 @@ export default function StorytellerStoryDiffCompare() {
   const { data: apiProjects = [], isPending: apiProjectsPending } =
     useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
-  const mockProject = storytellerProjects.find((item) => item.id === id);
   const project = apiProject
     ? {
         id: apiProject.public_id,
         name: apiProject.name,
       }
-    : mockProject
-      ? {
-          id: mockProject.id,
-          name: mockProject.name,
-        }
       : undefined;
   const { data: apiStories = [], isPending: apiStoriesPending } =
     useStorytellerStories(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
-  const mockStory = storytellerStories.find(
-    (item) => item.projectId === id && item.id === storyId,
-  );
   const story = apiStory
     ? {
         id: apiStory.public_id,
         title: apiStory.title,
       }
-    : mockStory
-      ? {
-          id: mockStory.id,
-          title: mockStory.title,
-        }
       : undefined;
   const leftVersion = useStorytellerStoryVersion(
     apiProject?.public_id,
@@ -191,12 +172,6 @@ export default function StorytellerStoryDiffCompare() {
     apiStory?.public_id,
     diffId2,
   );
-  const leftMockDiff = storytellerStoryDiffs.find(
-    (item) => item.storyId === storyId && item.id === diffId1,
-  );
-  const rightMockDiff = storytellerStoryDiffs.find(
-    (item) => item.storyId === storyId && item.id === diffId2,
-  );
   const leftDiff: CompareDiff | undefined = leftVersion.data
     ? {
         id: String(leftVersion.data.id),
@@ -206,7 +181,7 @@ export default function StorytellerStoryDiffCompare() {
         createdAt: leftVersion.data.created_at,
         words: leftVersion.data.word_count,
       }
-    : leftMockDiff;
+    : undefined;
   const rightDiff: CompareDiff | undefined = rightVersion.data
     ? {
         id: String(rightVersion.data.id),
@@ -216,7 +191,7 @@ export default function StorytellerStoryDiffCompare() {
         createdAt: rightVersion.data.created_at,
         words: rightVersion.data.word_count,
       }
-    : rightMockDiff;
+    : undefined;
   const lines = useMemo(
     () =>
       leftDiff && rightDiff

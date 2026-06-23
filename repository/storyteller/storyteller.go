@@ -204,3 +204,28 @@ func (r *Repository) RankingSummary(projectID uint64) (uint64, float64, error) {
 		Scan(&row).Error
 	return row.Count, row.Average, err
 }
+
+func (r *Repository) UserProfile(userID uint64) (*storytellerModel.UserProfile, error) {
+	var row storytellerModel.UserProfile
+	err := r.db.Where("user_id = ? AND deleted_at IS NULL", userID).First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) UserProfileWithDeleted(userID uint64) (*storytellerModel.UserProfile, error) {
+	var row storytellerModel.UserProfile
+	err := r.db.Unscoped().Where("user_id = ?", userID).First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateUserProfile(row *storytellerModel.UserProfile) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) SaveUserProfile(row *storytellerModel.UserProfile) error {
+	return r.db.Save(row).Error
+}
+
+func (r *Repository) DeleteUserProfile(row *storytellerModel.UserProfile) error {
+	now := time.Now()
+	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+}

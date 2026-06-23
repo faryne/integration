@@ -11,11 +11,13 @@ import {
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useFavoriteStorytellerProjects } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerFavorites() {
+  const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading, isError } =
     useFavoriteStorytellerProjects();
 
@@ -33,7 +35,26 @@ export default function StorytellerFavorites() {
         { label: "我的收藏" },
       ]}
     >
-      {isLoading ? (
+      {loading ? (
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      ) : !session ? (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+          <Stack spacing={2} alignItems="flex-start">
+            <Alert severity="info" variant="outlined">
+              登入後即可查看我的收藏。
+            </Alert>
+            <Button
+              variant="contained"
+              onClick={() => void login()}
+              disabled={submitting}
+            >
+              {submitting ? "登入中..." : "使用 Google 登入"}
+            </Button>
+          </Stack>
+        </Paper>
+      ) : isLoading ? (
         <Stack alignItems="center" sx={{ py: 8 }}>
           <CircularProgress />
         </Stack>

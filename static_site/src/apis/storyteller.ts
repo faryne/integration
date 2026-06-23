@@ -6,10 +6,13 @@ import type {
   StorytellerAgent,
   StorytellerAgentRequest,
   StorytellerProject,
+  StorytellerProjectRanking,
   StorytellerProjectRequest,
   StorytellerStory,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
+  StorytellerUserProfile,
+  StorytellerUserProfileRequest,
 } from "@/types/storyteller.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -173,6 +176,100 @@ export function useSaveStorytellerProjectFavorite(projectPublicId?: string) {
   });
 }
 
+export function useStorytellerProjectRanking(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "ranking",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerProjectRanking>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/ranking`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? { ranking: null };
+    },
+  });
+}
+
+export function useSaveStorytellerProjectRanking(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ranking: number | null) => {
+      const url = `${apiBase}/storyteller/projects/${projectPublicId}/ranking`;
+      const response =
+        ranking === null
+          ? await axios.delete<CommonResponse<{ deleted: boolean }>>(url, {
+              headers: sessionHeaders(session!.encrypt_key),
+            })
+          : await axios.put<CommonResponse<StorytellerProjectRanking>>(
+              url,
+              { ranking },
+              { headers: sessionHeaders(session!.encrypt_key) },
+            );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerUserProfile() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "user", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerUserProfile>>(
+        `${apiBase}/storyteller/user`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+  });
+}
+
+export function useSaveStorytellerUserProfile() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StorytellerUserProfileRequest) => {
+      const response = await axios.put<CommonResponse<StorytellerUserProfile>>(
+        `${apiBase}/storyteller/user`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useDeleteStorytellerUserProfile() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/user`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
 export function useStorytellerAgents() {
   const { session } = useAuth();
   return useQuery({
@@ -252,6 +349,23 @@ export function useSaveStorytellerStory(projectPublicId?: string) {
         : await axios.post<CommonResponse<StorytellerStory>>(url, input, {
             headers: sessionHeaders(session!.encrypt_key),
           });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useDeleteStorytellerStory(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (storyPublicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
       return response.data.data;
     },
     onSuccess: () => {

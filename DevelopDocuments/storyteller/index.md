@@ -39,18 +39,22 @@
 - [x] 新增 `storyteller` 專用 layout 並套用
 - [x] 新的 `storyteller` layout 必須整合專案已有的 login 功能。
 - [x] 實作收藏功能
+- [x] 前端增加 user 的維護功能、故事頁加入作者筆名顯示
 
 ### 後端資料表
 - [x] 按照 `migration 與資料表` 中的內容，產生 `專案` `故事` `故事版本` `代理` 的 migration 以及 model entity
 - [x] 處理 `migration 與資料表` 中的內容，處理 `聊天` 相關的資料表
 - [x] `project` 資料表增加 `評分人數` 與 `評分總分` ，平均分數由前端計算
 - [x] `migration 與資料表` 中的內容，產生 `收藏` 的 migration 以及 model entity
+- [x] `migration 與資料表` 中的內容，產生 `使用者` 的 migration 以及 model entity
 
 ### 後端 api 
 - [x] 新增 `project` 的 CRUD api 
 - [x] 新增 `agent` 的 CRUD api
 - [x] 新增 `story` 的 CRUD api
 - [x] 新增 `favorite` 的 CRUD api
+- [x] 新增 `ranking` 操作 api 以及前端的串接
+- [x] 新增 `user` 的 CRUD api
 
 ### 追加調整
 - [x] diff 列表前的 radio 分成左右兩個，左邊的是 diff1 ，右邊是 diff2。同時右邊的 diff2 不能選 diff1 之後更新的。
@@ -165,3 +169,11 @@
 - project_id
 - ranking
 - is_favorite
+
+### 使用者資訊（user）
+存放使用者在 `storyteller` 專案中的專用資料
+- user_id
+- pen name：筆名
+- 自我介紹
+- use_default_avatar：0 / 1，1 的話直接使用 `user` 的 avatar
+- avatar_url：use_default_avatar=0 時才能讓使用者上傳自己的 avatar 到本專案 s3，path 為 `storyteller/avatar/[userId]-[hashId].png`

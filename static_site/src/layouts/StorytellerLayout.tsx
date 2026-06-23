@@ -4,6 +4,7 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PersonIcon from "@mui/icons-material/Person";
 import {
   AppBar,
   Avatar,
@@ -57,6 +58,14 @@ export function StorytellerLayout() {
               startIcon={<FavoriteIcon />}
             >
               我的收藏
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/storyteller/profile"
+              size="small"
+              startIcon={<PersonIcon />}
+            >
+              作者設定
             </Button>
           </Stack>
           {session ? (

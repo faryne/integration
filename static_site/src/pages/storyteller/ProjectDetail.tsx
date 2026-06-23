@@ -1,7 +1,7 @@
 import ArticleIcon from "@mui/icons-material/Article";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
+import DeleteIcon from "@mui/icons-material/Delete";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import {
-  Alert,
   Button,
   Chip,
   CircularProgress,
@@ -10,29 +10,29 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  useStorytellerAgents,
+  useDeleteStorytellerStory,
   useStorytellerProjects,
+  useSaveStorytellerStory,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
-import {
-  formatStorytellerDate,
-  getProjectStories,
-  projectStatusLabel,
-  storytellerAgents,
-  storytellerProjects,
-} from "@/data/storyteller.ts";
+import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import type { StorytellerStory } from "@/types/storyteller.ts";
 
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
+  const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
+  const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(null);
   const { data: apiProjects = [], isPending: apiProjectsPending } =
     useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
-  const mockProject = storytellerProjects.find((item) => item.id === id);
   const project = apiProject
     ? {
         id: apiProject.public_id,
@@ -50,49 +50,14 @@ export default function StorytellerProjectDetail() {
         storiesCount: apiProject.stories?.length ?? 0,
         updatedAt: apiProject.updated_at,
       }
-    : mockProject
-      ? {
-          id: mockProject.id,
-          name: mockProject.name,
-          slug: mockProject.slug,
-          description: mockProject.description,
-          visibility: mockProject.visibility,
-          shareToken: mockProject.shareToken,
-          statusLabel: projectStatusLabel(mockProject.status),
-          storiesCount: mockProject.storiesCount,
-          updatedAt: mockProject.updatedAt,
-        }
-      : undefined;
+    : undefined;
   const { data: apiStories = [] } = useStorytellerStories(apiProject?.public_id);
-  const stories =
-    apiStories.length > 0
-        ? apiStories.map((story) => ({
-            id: story.public_id,
-            title: story.title,
-            words: story.word_count,
-            updatedAt: story.updated_at,
-          }))
-      : mockProject
-        ? getProjectStories(mockProject.id).map((story) => ({
-            id: story.id,
-            title: story.title,
-            words: story.words,
-            updatedAt: story.updatedAt,
-          }))
-        : [];
-  const { data: apiAgents = [] } = useStorytellerAgents();
-  const agents =
-    apiAgents.length > 0
-      ? apiAgents.slice(0, 2).map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-          purpose: agent.default_prompt,
-        }))
-      : storytellerAgents.slice(0, 2).map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-          purpose: agent.purpose,
-        }));
+  const saveStory = useSaveStorytellerStory(apiProject?.public_id);
+  const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
+
+  useEffect(() => {
+    setOrderedStories([...apiStories].sort((left, right) => left.sort - right.sort));
+  }, [apiStories]);
 
   useTitle(project ? `${project.name} - Storyteller` : "Storyteller 專案", {
     path: id ? `/storyteller/project/${id}` : "/storyteller/project",
@@ -116,7 +81,7 @@ export default function StorytellerProjectDetail() {
       ? `/storyteller/story/${project.id}-${project.slug}`
       : project.visibility === "unlisted" && project.shareToken
         ? `/storyteller/story/share/${project.shareToken}`
-        : "";
+      : "";
   const readerUrlLabel =
     project.visibility === "public"
       ? "公開網址"
@@ -154,34 +119,95 @@ export default function StorytellerProjectDetail() {
               />
             )}
             <Chip label={project.statusLabel} color="primary" />
-            <Chip label={`${stories.length || project.storiesCount} 篇故事`} />
+            <Chip label={`${orderedStories.length || project.storiesCount} 篇故事`} />
             <Chip label={`更新於 ${formatStorytellerDate(project.updatedAt)}`} />
           </Stack>
         </Paper>
 
+        {deleteStory.isError && (
+          <Typography color="error">
+            刪除故事失敗，請確認登入狀態後再試一次。
+          </Typography>
+        )}
+
         <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 7 }}>
+          <Grid size={12}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Stack spacing={2}>
                 <Typography variant="h6" fontWeight={800}>
                   故事列表
                 </Typography>
-                {stories.map((story) => (
-                  <Paper key={story.id} variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                {orderedStories.map((story) => (
+                  <Paper
+                    key={story.public_id}
+                    draggable
+                    variant="outlined"
+                    onDragStart={() => setDraggingStoryId(story.public_id)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => {
+                      if (!draggingStoryId || draggingStoryId === story.public_id) {
+                        return;
+                      }
+                      const draggingIndex = orderedStories.findIndex(
+                        (item) => item.public_id === draggingStoryId,
+                      );
+                      const dropIndex = orderedStories.findIndex(
+                        (item) => item.public_id === story.public_id,
+                      );
+                      if (draggingIndex < 0 || dropIndex < 0) {
+                        return;
+                      }
+                      const nextStories = [...orderedStories];
+                      const [draggingStory] = nextStories.splice(draggingIndex, 1);
+                      nextStories.splice(dropIndex, 0, draggingStory);
+                      setOrderedStories(nextStories);
+                      setDraggingStoryId(null);
+                      nextStories.forEach((item, index) => {
+                        if (item.sort === index) {
+                          return;
+                        }
+                        saveStory.mutate({
+                          storyPublicId: item.public_id,
+                          input: {
+                            title: item.title,
+                            summary: item.summary,
+                            sort: index,
+                            content: item.latest_content,
+                          },
+                        });
+                      });
+                    }}
+                    sx={{
+                      p: 2,
+                      borderRadius: 1,
+                      cursor: "grab",
+                      opacity: draggingStoryId === story.public_id ? 0.55 : 1,
+                    }}
+                  >
                     <Stack direction="row" spacing={1.5} alignItems="center">
+                      <DragIndicatorIcon color="disabled" />
                       <ArticleIcon color="primary" />
-                      <Stack sx={{ flex: 1 }}>
+                      <Stack sx={{ flex: 1, minWidth: 0 }}>
                         <Typography fontWeight={800}>{story.title}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          {story.words.toLocaleString()} 字 · {formatStorytellerDate(story.updatedAt)}
+                          {story.word_count.toLocaleString()} 字 · {formatStorytellerDate(story.updated_at)}
                         </Typography>
                       </Stack>
                       <Button
-                        href={`/storyteller/project/${project.id}/story/${story.id}`}
+                        href={`/storyteller/project/${project.id}/story/${story.public_id}`}
                         variant="outlined"
                         size="small"
                       >
                         編輯
+                      </Button>
+                      <Button
+                        color="error"
+                        variant="outlined"
+                        size="small"
+                        startIcon={<DeleteIcon />}
+                        onClick={() => setDeleteTarget(story)}
+                      >
+                        刪除
                       </Button>
                     </Stack>
                   </Paper>
@@ -189,31 +215,24 @@ export default function StorytellerProjectDetail() {
               </Stack>
             </Paper>
           </Grid>
-          <Grid size={{ xs: 12, md: 5 }}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <Stack spacing={2}>
-                <Typography variant="h6" fontWeight={800}>
-                  專案 AI Agent
-                </Typography>
-                {agents.map((agent) => (
-                  <Stack key={agent.id} direction="row" spacing={1.5} alignItems="flex-start">
-                    <SmartToyIcon color="primary" />
-                    <Stack>
-                      <Typography fontWeight={800}>{agent.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {agent.purpose}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                ))}
-                <Alert severity="info" variant="outlined">
-                  關聯 Agent 功能尚未實作，此處先顯示目前可用 Agent。
-                </Alert>
-              </Stack>
-            </Paper>
-          </Grid>
         </Grid>
       </Stack>
+      {deleteTarget && (
+        <ConfirmNameDialog
+          open
+          title="刪除故事"
+          description="刪除後會移除這篇故事與其版本資料。請輸入故事名稱確認。"
+          confirmName={deleteTarget.title}
+          confirmLabel="刪除故事"
+          loading={deleteStory.isPending}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() =>
+            deleteStory.mutate(deleteTarget.public_id, {
+              onSuccess: () => setDeleteTarget(null),
+            })
+          }
+        />
+      )}
     </StorytellerShell>
   );
 }

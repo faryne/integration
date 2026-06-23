@@ -131,6 +131,22 @@ func (ProjectRanking) TableName() string {
 	return "storyteller_project_rankings"
 }
 
+type UserProfile struct {
+	ID               uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64     `gorm:"column:user_id" json:"user_id"`
+	PenName          string     `gorm:"column:pen_name" json:"pen_name"`
+	Bio              string     `gorm:"column:bio" json:"bio"`
+	UseDefaultAvatar bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
+	AvatarURL        string     `gorm:"column:avatar_url" json:"avatar_url"`
+	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt        time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (UserProfile) TableName() string {
+	return "storyteller_users"
+}
+
 type ProjectRequest struct {
 	Name        string            `json:"name"`
 	Slug        string            `json:"slug"`
@@ -153,10 +169,34 @@ type StoryRequest struct {
 	Content string `json:"content"`
 }
 
+type ProjectRankingRequest struct {
+	Ranking float64 `json:"ranking"`
+}
+
+type UserProfileRequest struct {
+	PenName          string `json:"pen_name"`
+	Bio              string `json:"bio"`
+	UseDefaultAvatar bool   `json:"use_default_avatar"`
+	AvatarURL        string `json:"avatar_url"`
+}
+
+type ProjectRankingOutput struct {
+	Ranking *float64 `json:"ranking"`
+}
+
+type UserProfileOutput struct {
+	UserID           uint64 `json:"user_id"`
+	PenName          string `json:"pen_name"`
+	Bio              string `json:"bio,omitempty"`
+	UseDefaultAvatar bool   `json:"use_default_avatar"`
+	AvatarURL        string `json:"avatar_url,omitempty"`
+}
+
 type ProjectOutput struct {
 	Project
-	AverageRating float64 `gorm:"-" json:"average_rating"`
-	RatingCount   uint64  `gorm:"-" json:"rating_count"`
-	IsFavorite    bool    `gorm:"-" json:"is_favorite"`
-	Stories       []Story `gorm:"-" json:"stories,omitempty"`
+	AverageRating float64            `gorm:"-" json:"average_rating"`
+	RatingCount   uint64             `gorm:"-" json:"rating_count"`
+	IsFavorite    bool               `gorm:"-" json:"is_favorite"`
+	Stories       []Story            `gorm:"-" json:"stories,omitempty"`
+	Author        *UserProfileOutput `gorm:"-" json:"author,omitempty"`
 }

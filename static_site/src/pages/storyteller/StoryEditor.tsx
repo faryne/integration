@@ -51,10 +51,7 @@ import {
 } from "@/apis/storyteller.ts";
 import {
   formatStorytellerDate,
-  getStoryDiffs,
   storytellerAgents,
-  storytellerProjects,
-  storytellerStories,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -119,26 +116,16 @@ export default function StorytellerStoryEditor() {
   const { data: apiProjects = [], isPending: apiProjectsPending } =
     useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
-  const mockProject = storytellerProjects.find((item) => item.id === id);
   const project: EditorProject | undefined = apiProject
     ? {
         id: apiProject.public_id,
         name: apiProject.name,
         description: apiProject.description,
       }
-    : mockProject
-      ? {
-          id: mockProject.id,
-          name: mockProject.name,
-          description: mockProject.description,
-        }
       : undefined;
   const { data: apiStories = [], isPending: apiStoriesPending } =
     useStorytellerStories(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
-  const mockStory = storytellerStories.find(
-    (item) => item.projectId === id && item.id === storyId,
-  );
   const story: EditorStory | undefined = apiStory
     ? {
         id: apiStory.public_id,
@@ -148,15 +135,6 @@ export default function StorytellerStoryEditor() {
         updatedAt: apiStory.updated_at,
         sort: apiStory.sort,
       }
-    : mockStory
-      ? {
-          id: mockStory.id,
-          title: mockStory.title,
-          summary: mockStory.summary,
-          content: mockStory.content,
-          updatedAt: mockStory.updatedAt,
-          sort: 0,
-        }
       : undefined;
   const { data: apiAgents = [] } = useStorytellerAgents();
   const agentRows: EditorAgent[] =
@@ -217,9 +195,7 @@ export default function StorytellerStoryEditor() {
           createdAt: version.created_at,
           words: version.word_count,
         }))
-      : story
-        ? getStoryDiffs(story.id)
-        : [];
+      : [];
   const totalHistoryPages = Math.max(
     1,
     Math.ceil(storyDiffs.length / historyPerPage),

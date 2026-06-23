@@ -80,6 +80,9 @@ const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
 const StorytellerFavorites = lazy(
   () => import("@/pages/storyteller/Favorites.tsx"),
 );
+const StorytellerProfile = lazy(
+  () => import("@/pages/storyteller/Profile.tsx"),
+);
 const StorytellerProjects = lazy(
   () => import("@/pages/storyteller/Projects.tsx"),
 );
@@ -252,6 +255,7 @@ function App() {
                 <Route path={""} element={<StorytellerPublicHome />} />
                 <Route path={"mine"} element={<StorytellerHome />} />
                 <Route path={"favorites"} element={<StorytellerFavorites />} />
+                <Route path={"profile"} element={<StorytellerProfile />} />
                 <Route
                   path={"story/share/:shareToken"}
                   element={<StorytellerReader />}

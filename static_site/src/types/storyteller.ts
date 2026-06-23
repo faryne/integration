@@ -12,6 +12,7 @@ export interface StorytellerProject {
   created_at: string;
   updated_at: string;
   stories?: StorytellerStory[];
+  author?: StorytellerUserProfile;
 }
 
 export interface StorytellerAgent {
@@ -50,6 +51,18 @@ export interface StorytellerStoryVersion {
   updated_at: string;
 }
 
+export interface StorytellerProjectRanking {
+  ranking?: number | null;
+}
+
+export interface StorytellerUserProfile {
+  user_id: number;
+  pen_name: string;
+  bio?: string;
+  use_default_avatar: boolean;
+  avatar_url?: string;
+}
+
 export interface StorytellerProjectRequest {
   name: string;
   slug: string;
@@ -70,4 +83,11 @@ export interface StorytellerStoryRequest {
   summary: string;
   sort: number;
   content: string;
+}
+
+export interface StorytellerUserProfileRequest {
+  pen_name: string;
+  bio: string;
+  use_default_avatar: boolean;
+  avatar_url: string;
 }
