@@ -14,8 +14,8 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
   useStorytellerAgents,
@@ -131,7 +131,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                 <>
                   <Button
                     component={RouterLink}
-                    to={`/storyteller/project/${project.id}`}
+                    to={`/storyteller/my/project/${project.id}`}
                     size="small"
                     variant="outlined"
                   >
@@ -139,7 +139,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                   </Button>
                   <Button
                     component={RouterLink}
-                    to={`/storyteller/project/${project.id}/edit`}
+                    to={`/storyteller/my/project/${project.id}/edit`}
                     size="small"
                     variant="outlined"
                     startIcon={<EditIcon />}
@@ -278,16 +278,28 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
 }
 
 export default function StorytellerHome() {
-  const [tab, setTab] = useState("projects");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab = location.pathname.endsWith("/agent") ? "agent" : "project";
+  const [tab, setTab] = useState(activeTab);
   const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } =
     useStorytellerProjects();
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
   useTitle("Storyteller 我的工作台", {
-    path: "/storyteller/mine",
+    path: `/storyteller/my/${activeTab}`,
     robots: "noindex, nofollow",
   });
+
+  useEffect(() => {
+    setTab(activeTab);
+  }, [activeTab]);
+
+  function handleTabChange(value: "project" | "agent") {
+    setTab(value);
+    navigate(`/storyteller/my/${value}`);
+  }
 
   return (
     <StorytellerShell
@@ -311,19 +323,19 @@ export default function StorytellerHome() {
         />
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1 }}>
-          <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-            <Tab value="projects" label="故事專案" />
-            <Tab value="agents" label="AI Agent" />
+          <Tabs value={tab} onChange={(_, value) => handleTabChange(value)}>
+            <Tab value="project" label="故事專案" />
+            <Tab value="agent" label="AI Agent" />
           </Tabs>
           <Divider />
           <Box sx={{ p: { xs: 2, md: 3 } }}>
             <Stack spacing={2}>
               <Typography variant="h6" fontWeight={800}>
-                {tab === "projects" ? "最近的故事專案" : "可用的 AI Agent"}
+                {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
               </Typography>
-              {tab === "projects" && projectsLoading ? (
+              {tab === "project" && projectsLoading ? (
                 <StorytellerLoading label="正在載入故事專案..." />
-              ) : tab === "projects" ? (
+              ) : tab === "project" ? (
                 <ProjectCards projects={projects} />
               ) : agentsLoading ? (
                 <StorytellerLoading label="正在載入 AI Agent..." />

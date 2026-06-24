@@ -83,17 +83,11 @@ const StorytellerFavorites = lazy(
 const StorytellerProfile = lazy(
   () => import("@/pages/storyteller/Profile.tsx"),
 );
-const StorytellerProjects = lazy(
-  () => import("@/pages/storyteller/Projects.tsx"),
-);
 const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
 const StorytellerNewProject = lazy(
   () => import("@/pages/storyteller/NewProject.tsx"),
-);
-const StorytellerAgents = lazy(
-  () => import("@/pages/storyteller/Agents.tsx"),
 );
 const StorytellerNewAgent = lazy(
   () => import("@/pages/storyteller/NewAgent.tsx"),
@@ -104,9 +98,7 @@ const StorytellerStoryEditor = lazy(
 const StorytellerStoryDiffCompare = lazy(
   () => import("@/pages/storyteller/StoryDiffCompare.tsx"),
 );
-const StorytellerReader = lazy(
-  () => import("@/pages/storyteller/Reader.tsx"),
-);
+const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
 const StorytellerUserProjects = lazy(
   () => import("@/pages/storyteller/UserProjects.tsx"),
 );
@@ -251,13 +243,46 @@ function App() {
 
           {!standaloneGalgame && !standaloneNekomaid && (
             <>
-              <Route
-                path={"storyteller"}
-                element={<StorytellerLayout />}
-              >
+              <Route path={"storyteller"} element={<StorytellerLayout />}>
                 <Route path={""} element={<StorytellerPublicHome />} />
-                <Route path={"mine"} element={<StorytellerHome />} />
-                <Route path={"user/:username"} element={<StorytellerUserProjects />} />
+                <Route path={"my"}>
+                  <Route path={""} element={<StorytellerHome />} />
+                  <Route path={"project"} element={<StorytellerHome />} />
+                  <Route path={"agent"} element={<StorytellerHome />} />
+                  <Route
+                    path={"project/new"}
+                    element={<StorytellerNewProject />}
+                  />
+                  <Route
+                    path={"project/:id/edit"}
+                    element={<StorytellerNewProject />}
+                  />
+                  <Route
+                    path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
+                    element={<StorytellerStoryDiffCompare />}
+                  />
+                  <Route
+                    path={"project/:id/story/:storyId/diff"}
+                    element={<StorytellerStoryEditor />}
+                  />
+                  <Route
+                    path={"project/:id/story/:storyId"}
+                    element={<StorytellerStoryEditor />}
+                  />
+                  <Route
+                    path={"project/:id"}
+                    element={<StorytellerProjectDetail />}
+                  />
+                  <Route path={"project/resources"} element={<Editor />} />
+                  <Route path={"project/resource/:id"} element={<Editor />} />
+                  <Route path={"project/articles"} element={<Editor />} />
+                  <Route path={"project/article/:id"} element={<Editor />} />
+                  <Route path={"agent/new"} element={<StorytellerNewAgent />} />
+                </Route>
+                <Route
+                  path={"user/:username"}
+                  element={<StorytellerUserProjects />}
+                />
                 <Route path={"favorites"} element={<StorytellerFavorites />} />
                 <Route path={"profile"} element={<StorytellerProfile />} />
                 <Route
@@ -269,33 +294,6 @@ function App() {
                   element={<StorytellerReader />}
                 />
                 <Route path={"story/*"} element={<StorytellerReader />} />
-
-                <Route path={"project"}>
-                  <Route path={""} element={<StorytellerProjects />} />
-                  <Route path={"new"} element={<StorytellerNewProject />} />
-                  <Route path={":id/edit"} element={<StorytellerNewProject />} />
-                  <Route
-                    path={":id/story/:storyId/diff/:diffId1/:diffId2"}
-                    element={<StorytellerStoryDiffCompare />}
-                  />
-                  <Route
-                    path={":id/story/:storyId/diff"}
-                    element={<StorytellerStoryEditor />}
-                  />
-                  <Route
-                    path={":id/story/:storyId"}
-                    element={<StorytellerStoryEditor />}
-                  />
-                  <Route path={":id"} element={<StorytellerProjectDetail />} />
-                  <Route path={"resources"} element={<Editor />} />
-                  <Route path={"resource/:id"} element={<Editor />} />
-                  <Route path={"articles"} element={<Editor />} />
-                  <Route path={"article/:id"} element={<Editor />} />
-                </Route>
-                <Route path={"agent"}>
-                  <Route path={""} element={<StorytellerAgents />} />
-                  <Route path={"new"} element={<StorytellerNewAgent />} />
-                </Route>
                 <Route path={"editor"} element={<Editor />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>

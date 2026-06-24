@@ -215,7 +215,7 @@ export default function StorytellerStoryDiffCompare() {
   useTitle(story ? `${story.title} 版本比對 - Storyteller` : "版本比對", {
     path:
       id && storyId && diffId1 && diffId2
-        ? `/storyteller/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`
+        ? `/storyteller/my/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`
         : "",
     robots: "noindex, nofollow",
   });
@@ -245,11 +245,11 @@ export default function StorytellerStoryDiffCompare() {
       description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "專案列表", to: "/storyteller/project" },
-        { label: project.name, to: `/storyteller/project/${project.id}` },
+        { label: "故事專案", to: "/storyteller/my/project" },
+        { label: project.name, to: `/storyteller/my/project/${project.id}` },
         {
           label: story.title,
-          to: `/storyteller/project/${project.id}/story/${story.id}`,
+          to: `/storyteller/my/project/${project.id}/story/${story.id}`,
         },
         { label: "版本比對" },
       ]}
@@ -257,7 +257,7 @@ export default function StorytellerStoryDiffCompare() {
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${changedCount} 行差異`} color="warning" />
           <Button
-            href={`/storyteller/project/${project.id}/story/${story.id}`}
+            href={`/storyteller/my/project/${project.id}/story/${story.id}`}
             variant="outlined"
             startIcon={<ArrowBackIcon />}
           >

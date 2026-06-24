@@ -35,11 +35,7 @@ export default function StorytellerPublicHome() {
       description="公開故事專案與章節索引。"
       breadcrumbs={[{ label: "Storyteller" }]}
       action={
-        <Button
-          component={RouterLink}
-          to="/storyteller/mine"
-          variant="outlined"
-        >
+        <Button component={RouterLink} to="/storyteller/my" variant="outlined">
           我的工作台
         </Button>
       }

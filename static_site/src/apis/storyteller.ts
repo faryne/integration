@@ -61,6 +61,7 @@ export function usePublicStorytellerProject(projectPath?: string) {
   return useQuery({
     queryKey: ["storyteller", "public-project", projectPath],
     enabled: Boolean(projectPath),
+    retry: false,
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerProject>>(
         `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}`,
@@ -74,6 +75,7 @@ export function useSharedStorytellerProject(shareToken?: string) {
   return useQuery({
     queryKey: ["storyteller", "shared-project", shareToken],
     enabled: Boolean(shareToken),
+    retry: false,
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerProject>>(
         `${apiBase}/storyteller/story/share/${shareToken}`,
@@ -94,6 +96,21 @@ export function useStorytellerProjects() {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerProject(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "project", projectPublicId, session?.user.id],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerProject>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }
@@ -162,12 +179,7 @@ export function useFavoriteStorytellerProjects() {
 export function useStorytellerProjectFavorite(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: [
-      "storyteller",
-      "favorite",
-      projectPublicId,
-      session?.user.id,
-    ],
+    queryKey: ["storyteller", "favorite", projectPublicId, session?.user.id],
     enabled: Boolean(session?.encrypt_key && projectPublicId),
     queryFn: async () => {
       const response = await axios.get<CommonResponse<{ favorited: boolean }>>(
@@ -203,18 +215,14 @@ export function useSaveStorytellerProjectFavorite(projectPublicId?: string) {
 export function useStorytellerProjectRanking(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: [
-      "storyteller",
-      "ranking",
-      projectPublicId,
-      session?.user.id,
-    ],
+    queryKey: ["storyteller", "ranking", projectPublicId, session?.user.id],
     enabled: Boolean(session?.encrypt_key && projectPublicId),
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<StorytellerProjectRanking>>(
-        `${apiBase}/storyteller/projects/${projectPublicId}/ranking`,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
+      const response = await axios.get<
+        CommonResponse<StorytellerProjectRanking>
+      >(`${apiBase}/storyteller/projects/${projectPublicId}/ranking`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data ?? { ranking: null };
     },
   });

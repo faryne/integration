@@ -26,6 +26,7 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import {
+  useStorytellerProject,
   useSaveStorytellerProjectFavorite,
   useSaveStorytellerProjectRanking,
   usePublicStorytellerProject,
@@ -175,7 +176,7 @@ function ChapterNavCard({
 }
 
 export default function StorytellerReader() {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const params = useParams();
   const { shareToken } = params;
   const routeStoryPath = params["*"];
@@ -196,17 +197,43 @@ export default function StorytellerReader() {
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const storyStartRef = useRef<HTMLHeadingElement | null>(null);
   const previousStoryIdRef = useRef<string | undefined>(undefined);
+  const routeProjectPublicId = routeProjectPath?.split("-", 1)[0];
   const publicProjectQuery = usePublicStorytellerProject(routeProjectPath);
   const sharedProjectQuery = useSharedStorytellerProject(shareToken);
+  const shouldLoadOwnerProject = Boolean(
+    routeProjectPublicId &&
+    !shareToken &&
+    session?.encrypt_key &&
+    !publicProjectQuery.isLoading &&
+    !publicProjectQuery.data,
+  );
+  const ownerProjectQuery = useStorytellerProject(
+    shouldLoadOwnerProject ? routeProjectPublicId : undefined,
+  );
+  const ownerPrivateProject =
+    ownerProjectQuery.data?.visibility === "private"
+      ? ownerProjectQuery.data
+      : undefined;
   const apiProject = routeProjectPath
-    ? publicProjectQuery.data
+    ? (publicProjectQuery.data ?? ownerPrivateProject)
     : shareToken
       ? sharedProjectQuery.data
       : undefined;
-  const favoriteQuery = useStorytellerProjectFavorite(apiProject?.public_id);
-  const saveFavorite = useSaveStorytellerProjectFavorite(apiProject?.public_id);
-  const rankingQuery = useStorytellerProjectRanking(apiProject?.public_id);
-  const saveRanking = useSaveStorytellerProjectRanking(apiProject?.public_id);
+  const isOwner = Boolean(
+    apiProject && session?.user.id && apiProject.user_id === session.user.id,
+  );
+  const favoriteQuery = useStorytellerProjectFavorite(
+    isOwner ? undefined : apiProject?.public_id,
+  );
+  const saveFavorite = useSaveStorytellerProjectFavorite(
+    isOwner ? undefined : apiProject?.public_id,
+  );
+  const rankingQuery = useStorytellerProjectRanking(
+    isOwner ? undefined : apiProject?.public_id,
+  );
+  const saveRanking = useSaveStorytellerProjectRanking(
+    isOwner ? undefined : apiProject?.public_id,
+  );
   const isFavorited = apiProject
     ? (favoriteQuery.data?.favorited ?? false)
     : favorite;
@@ -247,6 +274,8 @@ export default function StorytellerReader() {
       ? stories[currentStoryIndex + 1]
       : undefined;
   const isShareRoute = Boolean(shareToken);
+  const isPrivateOwnerRoute =
+    isOwner && apiProject?.visibility === "private" && !isShareRoute;
 
   useTitle(project ? `${project.name} - Storyteller` : "Storyteller", {
     path: routeProjectPath
@@ -254,7 +283,10 @@ export default function StorytellerReader() {
       : shareToken
         ? `/storyteller/story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`
         : "",
-    robots: isShareRoute ? "noindex, nofollow" : "index, follow",
+    robots:
+      isShareRoute || isPrivateOwnerRoute
+        ? "noindex, nofollow"
+        : "index, follow",
   });
 
   useEffect(() => {
@@ -278,7 +310,10 @@ export default function StorytellerReader() {
 
   if (
     !project &&
-    (publicProjectQuery.isLoading || sharedProjectQuery.isLoading)
+    (authLoading ||
+      publicProjectQuery.isLoading ||
+      sharedProjectQuery.isLoading ||
+      ownerProjectQuery.isLoading)
   ) {
     return <StorytellerLoading label="正在載入故事..." />;
   }
@@ -303,8 +338,20 @@ export default function StorytellerReader() {
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip
-            label={isShareRoute ? "專用連結" : "公開閱讀"}
-            color={isShareRoute ? "warning" : "success"}
+            label={
+              isPrivateOwnerRoute
+                ? "私人預覽"
+                : isShareRoute
+                  ? "專用連結"
+                  : "公開閱讀"
+            }
+            color={
+              isPrivateOwnerRoute
+                ? "default"
+                : isShareRoute
+                  ? "warning"
+                  : "success"
+            }
           />
           {project.authorPenName && (
             <Chip
@@ -364,7 +411,7 @@ export default function StorytellerReader() {
               ? "收起故事索引"
               : "展開故事索引"}
         </Button>
-        {currentStory && (
+        {currentStory && !isOwner && (
           <Stack
             direction="row"
             spacing={1}

@@ -100,7 +100,7 @@ export function StorytellerPrimaryActions() {
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
       <Button
         component={RouterLink}
-        to="/storyteller/project/new"
+        to="/storyteller/my/project/new"
         variant="contained"
         startIcon={<AutoStoriesIcon />}
       >
@@ -108,7 +108,7 @@ export function StorytellerPrimaryActions() {
       </Button>
       <Button
         component={RouterLink}
-        to="/storyteller/agent/new"
+        to="/storyteller/my/agent/new"
         variant="outlined"
         startIcon={<SmartToyIcon />}
       >

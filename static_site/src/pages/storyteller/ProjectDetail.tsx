@@ -1,7 +1,18 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import { Button, Chip, Grid, Paper, Stack, Typography } from "@mui/material";
+import LinkIcon from "@mui/icons-material/Link";
+import {
+  Button,
+  Chip,
+  Grid,
+  Menu,
+  MenuItem,
+  Paper,
+  Snackbar,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -27,6 +38,10 @@ export default function StorytellerProjectDetail() {
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
     null,
   );
+  const [linkMenuAnchor, setLinkMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [copyMessageOpen, setCopyMessageOpen] = useState(false);
   const { data: apiProjects = [], isPending: apiProjectsPending } =
     useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
@@ -60,7 +75,7 @@ export default function StorytellerProjectDetail() {
   }, [apiStories]);
 
   useTitle(project ? `${project.name} - Storyteller` : "Storyteller 專案", {
-    path: id ? `/storyteller/project/${id}` : "/storyteller/project",
+    path: id ? `/storyteller/my/project/${id}` : "/storyteller/my/project",
     robots: "noindex, nofollow",
   });
 
@@ -73,17 +88,24 @@ export default function StorytellerProjectDetail() {
   }
 
   const readerUrl =
-    project.visibility === "public"
-      ? `/storyteller/story/${project.id}-${project.slug}`
-      : project.visibility === "unlisted" && project.shareToken
-        ? `/storyteller/story/share/${project.shareToken}`
-        : "";
+    project.visibility === "unlisted" && project.shareToken
+      ? `/storyteller/story/share/${project.shareToken}`
+      : `/storyteller/story/${project.id}-${project.slug}`;
   const readerUrlLabel =
-    project.visibility === "public"
-      ? "公開網址"
-      : project.visibility === "unlisted"
-        ? "不公開網址"
-        : "";
+    project.visibility === "unlisted" ? "親友分享連結" : "故事頁連結";
+  const absoluteReaderUrl =
+    typeof window === "undefined"
+      ? readerUrl
+      : new URL(readerUrl, window.location.origin).toString();
+
+  async function copyReaderUrl() {
+    try {
+      await navigator.clipboard.writeText(absoluteReaderUrl);
+      setCopyMessageOpen(true);
+    } finally {
+      setLinkMenuAnchor(null);
+    }
+  }
 
   return (
     <StorytellerShell
@@ -91,12 +113,12 @@ export default function StorytellerProjectDetail() {
       description={project.description}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "專案列表", to: "/storyteller/project" },
+        { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name },
       ]}
       action={
         <Button
-          href={`/storyteller/project/${project.id}/story/new`}
+          href={`/storyteller/my/project/${project.id}/story/new`}
           variant="contained"
         >
           建立故事
@@ -106,14 +128,30 @@ export default function StorytellerProjectDetail() {
       <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {readerUrl && (
-              <Chip
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<LinkIcon />}
+              onClick={(event) => setLinkMenuAnchor(event.currentTarget)}
+            >
+              {readerUrlLabel}
+            </Button>
+            <Menu
+              anchorEl={linkMenuAnchor}
+              open={Boolean(linkMenuAnchor)}
+              onClose={() => setLinkMenuAnchor(null)}
+            >
+              <MenuItem onClick={() => void copyReaderUrl()}>
+                複製到剪貼簿
+              </MenuItem>
+              <MenuItem
                 component="a"
-                clickable
                 href={readerUrl}
-                label={`${readerUrlLabel}：${readerUrl}`}
-              />
-            )}
+                onClick={() => setLinkMenuAnchor(null)}
+              >
+                前往
+              </MenuItem>
+            </Menu>
             <Chip label={project.statusLabel} color="primary" />
             <Chip
               label={`${orderedStories.length || project.storiesCount} 篇故事`}
@@ -123,6 +161,12 @@ export default function StorytellerProjectDetail() {
             />
           </Stack>
         </Paper>
+        <Snackbar
+          open={copyMessageOpen}
+          autoHideDuration={2000}
+          message="已複製故事頁連結"
+          onClose={() => setCopyMessageOpen(false)}
+        />
 
         {deleteStory.isError && (
           <Typography color="error">
@@ -206,7 +250,7 @@ export default function StorytellerProjectDetail() {
                           </Typography>
                         </Stack>
                         <Button
-                          href={`/storyteller/project/${project.id}/story/${story.public_id}`}
+                          href={`/storyteller/my/project/${project.id}/story/${story.public_id}`}
                           variant="outlined"
                           size="small"
                         >

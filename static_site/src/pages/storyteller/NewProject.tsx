@@ -60,8 +60,8 @@ export default function StorytellerNewProject() {
   useTitle(isEditing ? "編輯 Storyteller 專案" : "建立 Storyteller 專案", {
     path:
       isEditing && id
-        ? `/storyteller/project/${id}/edit`
-        : "/storyteller/project/new",
+        ? `/storyteller/my/project/${id}/edit`
+        : "/storyteller/my/project/new",
     robots: "noindex, nofollow",
   });
 
@@ -83,12 +83,12 @@ export default function StorytellerNewProject() {
       }
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "專案列表", to: "/storyteller/project" },
+        { label: "故事專案", to: "/storyteller/my/project" },
         ...(editingProject
           ? [
               {
                 label: editingProject.name,
-                to: `/storyteller/project/${editingProject.public_id}`,
+                to: `/storyteller/my/project/${editingProject.public_id}`,
               },
             ]
           : []),
@@ -110,7 +110,7 @@ export default function StorytellerNewProject() {
             {
               onSuccess: (project) => {
                 if (project?.public_id) {
-                  navigate(`/storyteller/project/${project.public_id}`);
+                  navigate(`/storyteller/my/project/${project.public_id}`);
                 }
               },
             },
@@ -184,7 +184,7 @@ export default function StorytellerNewProject() {
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button href="/storyteller/project" variant="text">
+            <Button href="/storyteller/my/project" variant="text">
               返回列表
             </Button>
             <Button

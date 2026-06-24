@@ -208,7 +208,7 @@ export default function StorytellerStoryEditor() {
   );
   const comparePath =
     id && storyId && leftDiffId && rightDiffId
-      ? `/storyteller/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`
+      ? `/storyteller/my/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`
       : "";
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
   const selectedAgent =
@@ -260,7 +260,7 @@ export default function StorytellerStoryEditor() {
   useTitle(`${pageTitle} - Storyteller`, {
     path:
       id && storyId
-        ? `/storyteller/project/${id}/story/${storyId}${isHistoryRoute ? "/diff" : ""}`
+        ? `/storyteller/my/project/${id}/story/${storyId}${isHistoryRoute ? "/diff" : ""}`
         : "",
     robots: "noindex, nofollow",
   });
@@ -404,7 +404,7 @@ export default function StorytellerStoryEditor() {
       return;
     }
 
-    const editorPath = `/storyteller/project/${id}/story/${storyId}`;
+    const editorPath = `/storyteller/my/project/${id}/story/${storyId}`;
     const historyPath = `${editorPath}/diff`;
 
     if (value === "history" && location.pathname !== historyPath) {
@@ -439,7 +439,7 @@ export default function StorytellerStoryEditor() {
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
             navigate(
-              `/storyteller/project/${id}/story/${savedStory.public_id}`,
+              `/storyteller/my/project/${id}/story/${savedStory.public_id}`,
             );
           }
         },
@@ -457,8 +457,8 @@ export default function StorytellerStoryEditor() {
       }
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "專案列表", to: "/storyteller/project" },
-        { label: project.name, to: `/storyteller/project/${project.id}` },
+        { label: "故事專案", to: "/storyteller/my/project" },
+        { label: project.name, to: `/storyteller/my/project/${project.id}` },
         { label: pageTitle },
       ]}
       action={

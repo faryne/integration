@@ -44,7 +44,7 @@ export function StorytellerLayout() {
 
   const menuItems = [
     { label: "公開故事", to: "/storyteller", icon: <AutoStoriesIcon /> },
-    { label: "我的工作台", to: "/storyteller/mine", icon: <AutoStoriesIcon /> },
+    { label: "我的工作台", to: "/storyteller/my", icon: <AutoStoriesIcon /> },
     { label: "我的收藏", to: "/storyteller/favorites", icon: <FavoriteIcon /> },
     { label: "作者設定", to: "/storyteller/profile", icon: <PersonIcon /> },
   ];

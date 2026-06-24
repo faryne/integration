@@ -27,7 +27,7 @@ export default function StorytellerNewAgent() {
     default_prompt: "",
   });
   useTitle("建立 Storyteller AI Agent", {
-    path: "/storyteller/agent/new",
+    path: "/storyteller/my/agent/new",
     robots: "noindex, nofollow",
   });
 
@@ -37,7 +37,7 @@ export default function StorytellerNewAgent() {
       description="設定 Agent 名稱、供應商、模型與 API Key。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "AI Agent 列表", to: "/storyteller/agent" },
+        { label: "AI Agent", to: "/storyteller/my/agent" },
         { label: "建立 AI Agent" },
       ]}
     >
@@ -51,7 +51,7 @@ export default function StorytellerNewAgent() {
             { input },
             {
               onSuccess: () => {
-                navigate("/storyteller/agent");
+                navigate("/storyteller/my/agent");
               },
             },
           );
@@ -146,7 +146,7 @@ export default function StorytellerNewAgent() {
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button href="/storyteller/agent" variant="text">
+            <Button href="/storyteller/my/agent" variant="text">
               返回列表
             </Button>
             <Button
