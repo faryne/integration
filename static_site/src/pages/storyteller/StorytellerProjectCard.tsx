@@ -9,6 +9,7 @@ export interface StorytellerProjectCardProps {
   updatedAt: string;
   chips: ReactNode;
   actions: ReactNode;
+  authorName?: string;
 }
 
 export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
@@ -54,6 +55,7 @@ export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
           {props.chips}
         </Stack>
         <Typography variant="caption" color="text.secondary">
+          {props.authorName && `作者 ${props.authorName} · `}
           更新於 {formatStorytellerDate(props.updatedAt)}
         </Typography>
         <Stack

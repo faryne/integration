@@ -107,6 +107,9 @@ const StorytellerStoryDiffCompare = lazy(
 const StorytellerReader = lazy(
   () => import("@/pages/storyteller/Reader.tsx"),
 );
+const StorytellerUserProjects = lazy(
+  () => import("@/pages/storyteller/UserProjects.tsx"),
+);
 const CrawlerIndex = lazy(() =>
   import("@/pages/crawler").then((module) => ({
     default: module.CrawlerIndex,
@@ -254,6 +257,7 @@ function App() {
               >
                 <Route path={""} element={<StorytellerPublicHome />} />
                 <Route path={"mine"} element={<StorytellerHome />} />
+                <Route path={"user/:username"} element={<StorytellerUserProjects />} />
                 <Route path={"favorites"} element={<StorytellerFavorites />} />
                 <Route path={"profile"} element={<StorytellerProfile />} />
                 <Route

@@ -17,6 +17,7 @@ export default function StorytellerPublicHome() {
     name: project.name,
     description: project.description,
     storiesCount: project.stories?.length ?? 0,
+    authorName: project.author?.pen_name,
     wordCount:
       project.stories?.reduce(
         (total, story) => total + story.word_count,
@@ -49,6 +50,7 @@ export default function StorytellerPublicHome() {
               name={project.name}
               description={project.description}
               updatedAt={project.updatedAt}
+              authorName={project.authorName}
               chips={
                 <>
                   <Chip size="small" icon={<LockOpenIcon />} label="公開閱讀" />

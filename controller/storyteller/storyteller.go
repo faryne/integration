@@ -20,6 +20,22 @@ func PublicProjects(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+func PublicUserProjects(ctx fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.Query("pageSize", "20"))
+	rows, total, err := storyteller.NewService().PublicUserProjects(ctx.Params("username"), page, pageSize)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("user not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(map[string]any{
+		"items": rows,
+		"total": total,
+	})
+}
+
 func PublicProject(ctx fiber.Ctx) error {
 	row, err := storyteller.NewService().PublicProject(ctx.Params("project"))
 	if err != nil {

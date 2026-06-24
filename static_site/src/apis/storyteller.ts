@@ -33,6 +33,30 @@ export function usePublicStorytellerProjects() {
   });
 }
 
+export function usePublicUserStorytellerProjects(
+  username?: string,
+  page = 1,
+  pageSize = 20,
+) {
+  return useQuery({
+    queryKey: ["storyteller", "public-user-projects", username, page, pageSize],
+    enabled: Boolean(username),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<{ items: StorytellerProject[]; total: number }>
+      >(`${apiBase}/storyteller/user/${encodeURIComponent(username!)}`, {
+        params: { page, pageSize },
+      });
+      return (
+        response.data.data ?? {
+          items: [],
+          total: 0,
+        }
+      );
+    },
+  });
+}
+
 export function usePublicStorytellerProject(projectPath?: string) {
   return useQuery({
     queryKey: ["storyteller", "public-project", projectPath],

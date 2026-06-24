@@ -205,6 +205,19 @@ func (r *Repository) RankingSummary(projectID uint64) (uint64, float64, error) {
 	return row.Count, row.Average, err
 }
 
+func (r *Repository) PublicProjectsByUserID(userID uint64, offset, limit int) ([]storytellerModel.Project, int64, error) {
+	rows := make([]storytellerModel.Project, 0)
+	var total int64
+	query := r.db.Model(&storytellerModel.Project{}).Where("user_id = ? AND visibility = ? AND deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.Order("updated_at DESC, id DESC").
+		Offset(offset).Limit(limit).
+		Find(&rows).Error
+	return rows, total, err
+}
+
 func (r *Repository) UserProfile(userID uint64) (*storytellerModel.UserProfile, error) {
 	var row storytellerModel.UserProfile
 	err := r.db.Where("user_id = ? AND deleted_at IS NULL", userID).First(&row).Error
@@ -214,6 +227,12 @@ func (r *Repository) UserProfile(userID uint64) (*storytellerModel.UserProfile, 
 func (r *Repository) UserProfileWithDeleted(userID uint64) (*storytellerModel.UserProfile, error) {
 	var row storytellerModel.UserProfile
 	err := r.db.Unscoped().Where("user_id = ?", userID).First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) UserProfileByPenName(penName string) (*storytellerModel.UserProfile, error) {
+	var row storytellerModel.UserProfile
+	err := r.db.Where("pen_name = ? AND deleted_at IS NULL", penName).First(&row).Error
 	return &row, err
 }
 

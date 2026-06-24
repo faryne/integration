@@ -267,6 +267,25 @@ func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID str
 	return s.repo.StoryVersion(story.ID, versionID)
 }
 
+func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	profile, err := s.repo.UserProfileByPenName(penName)
+	if err != nil {
+		return nil, 0, err
+	}
+	projects, total, err := s.repo.PublicProjectsByUserID(profile.UserID, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	outputs, err := s.projectOutputs(projects)
+	return outputs, total, err
+}
+
 func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
 	projects, err := s.repo.FavoriteProjects(userID)
 	if err != nil {
