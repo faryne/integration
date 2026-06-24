@@ -24,6 +24,8 @@ import {
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { Link as RouterLink, useParams } from "react-router-dom";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import {
   useSaveStorytellerProjectFavorite,
   useSaveStorytellerProjectRanking,
@@ -54,6 +56,7 @@ interface ReaderProject {
   description: string;
   path: string;
   authorPenName?: string;
+  wordCount: number;
   stories: ReaderStory[];
 }
 
@@ -168,6 +171,7 @@ function ChapterNavCard({
 }
 
 export default function StorytellerReader() {
+  const { session } = useAuth();
   const params = useParams();
   const { shareToken } = params;
   const routeStoryPath = params["*"];
@@ -187,6 +191,7 @@ export default function StorytellerReader() {
   const [indexOpen, setIndexOpen] = useState(true);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const storyStartRef = useRef<HTMLHeadingElement | null>(null);
   const previousStoryIdRef = useRef<string | undefined>(undefined);
   const publicProjectQuery = usePublicStorytellerProject(routeProjectPath);
@@ -211,6 +216,10 @@ export default function StorytellerReader() {
         description: apiProject.description,
         path: `/storyteller/story/${apiProject.public_id}-${apiProject.slug}`,
         authorPenName: apiProject.author?.pen_name,
+        wordCount: (apiProject.stories ?? []).reduce(
+          (total, story) => total + story.word_count,
+          0,
+        ),
         stories: (apiProject.stories ?? []).map((story) => ({
           id: story.public_id,
           title: story.title,
@@ -297,9 +306,16 @@ export default function StorytellerReader() {
             color={isShareRoute ? "warning" : "success"}
           />
           {project.authorPenName && (
-            <Chip label={`作者 ${project.authorPenName}`} variant="outlined" />
+            <Chip
+              label={`作者 ${project.authorPenName}`}
+              variant="outlined"
+              component={RouterLink}
+              to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
+              clickable
+            />
           )}
           <Chip label={`${stories.length} 篇故事`} />
+          <Chip label={`${project.wordCount.toLocaleString()} 字`} />
         </Stack>
       }
     >
@@ -350,6 +366,10 @@ export default function StorytellerReader() {
               startIcon={isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
               disabled={saveFavorite.isPending}
               onClick={() => {
+                if (!session) {
+                  setLoginPromptOpen(true);
+                  return;
+                }
                 if (apiProject?.public_id) {
                   saveFavorite.mutate(!isFavorited);
                   return;
@@ -367,14 +387,28 @@ export default function StorytellerReader() {
                 <Rating
                   value={rating}
                   precision={0.5}
-                  disabled={!apiProject?.public_id || saveRanking.isPending}
-                  onChange={(_, value) => saveRanking.mutate(value)}
+                  disabled={saveRanking.isPending}
+                  onChange={(_, value) => {
+                    if (!session) {
+                      setLoginPromptOpen(true);
+                      return;
+                    }
+                    if (apiProject?.public_id && value !== null) {
+                      saveRanking.mutate(value);
+                    }
+                  }}
                 />
               </Stack>
             </Paper>
           </Stack>
         )}
       </Stack>
+
+      <LoginPromptDialog
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        description="收藏或評分故事需要登入。是否要現在登入？"
+      />
 
       <Grid container spacing={2}>
         {showInlineIndex && (
@@ -414,7 +448,13 @@ export default function StorytellerReader() {
                     sx={{ mt: 1 }}
                   >
                     {project.authorPenName && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        color="primary"
+                        component={RouterLink}
+                        to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
+                        sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+                      >
                         作者 {project.authorPenName}
                       </Typography>
                     )}
