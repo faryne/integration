@@ -16,6 +16,7 @@ import (
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"faryne.dev/service/nccc"
+	"faryne.dev/service/storyteller"
 	"faryne.dev/service/twse"
 )
 
@@ -67,8 +68,22 @@ type nekomaidArtworkMeta struct {
 }
 
 var fetchNekomaidArtworkMeta = fetchNekomaidArtworkMetaFromAPI
+var fetchStorytellerPublicProjectMeta = fetchStorytellerPublicProjectMetaFromService
+var fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromService
 
 var pathCollection = []pathMeta{
+	{
+		Pattern:     regexp.MustCompile(`^/storyteller/story/share/([^/]+)(?:/[^/]+)?$`),
+		Title:       "Storyteller",
+		Description: defaultDescription,
+		Apply:       applyStorytellerSharedProjectMeta,
+	},
+	{
+		Pattern:     regexp.MustCompile(`^/storyteller/story/([^/]+)(?:/[^/]+)?$`),
+		Title:       "Storyteller",
+		Description: defaultDescription,
+		Apply:       applyStorytellerPublicProjectMeta,
+	},
 	{
 		Pattern:     regexp.MustCompile(`^/(pixiv|nico|tinami)(?:/([^/]+))?(?:/([^/]+))?$`),
 		Title:       nekomaidSiteName,
@@ -155,6 +170,62 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	}
 
 	return meta
+}
+
+func applyStorytellerPublicProjectMeta(meta *modelSNS.Meta, matches []string) {
+	project, ok := fetchStorytellerPublicProjectMeta(matches[1])
+	if !ok {
+		return
+	}
+	applyStorytellerProjectMeta(meta, project)
+}
+
+func applyStorytellerSharedProjectMeta(meta *modelSNS.Meta, matches []string) {
+	project, ok := fetchStorytellerSharedProjectMeta(matches[1])
+	if !ok {
+		return
+	}
+	applyStorytellerProjectMeta(meta, project)
+	meta.Robots = "noindex, nofollow"
+}
+
+func applyStorytellerProjectMeta(meta *modelSNS.Meta, project storytellerProjectMeta) {
+	title := strings.TrimSpace(project.Title)
+	if title == "" {
+		return
+	}
+	meta.Title = fullTitleForSite(title, meta.SiteName)
+	if description := strings.TrimSpace(project.Description); description != "" {
+		meta.Description = description
+	}
+	meta.Type = "article"
+}
+
+type storytellerProjectMeta struct {
+	Title       string
+	Description string
+}
+
+func fetchStorytellerPublicProjectMetaFromService(projectPath string) (storytellerProjectMeta, bool) {
+	project, err := storyteller.NewService().PublicProject(projectPath)
+	if err != nil || project == nil {
+		return storytellerProjectMeta{}, false
+	}
+	return storytellerProjectMeta{
+		Title:       project.Name,
+		Description: project.Description,
+	}, true
+}
+
+func fetchStorytellerSharedProjectMetaFromService(shareToken string) (storytellerProjectMeta, bool) {
+	project, err := storyteller.NewService().SharedProject(shareToken)
+	if err != nil || project == nil {
+		return storytellerProjectMeta{}, false
+	}
+	return storytellerProjectMeta{
+		Title:       project.Name,
+		Description: project.Description,
+	}, true
 }
 
 func applyLegacyNekomaidMeta(meta *modelSNS.Meta, matches []string) {

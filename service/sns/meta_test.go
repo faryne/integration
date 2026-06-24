@@ -139,6 +139,68 @@ func TestBuildMetaDynamicNCCCRoute(t *testing.T) {
 	}
 }
 
+func TestBuildMetaStorytellerPublicProjectRoute(t *testing.T) {
+	originalFetch := fetchStorytellerPublicProjectMeta
+	fetchStorytellerPublicProjectMeta = func(projectPath string) (storytellerProjectMeta, bool) {
+		if projectPath != "abc123-my-story" {
+			t.Fatalf("unexpected project path: %s", projectPath)
+		}
+		return storytellerProjectMeta{
+			Title:       "河燈之城",
+			Description: "一段關於河港、燈影與記憶的故事。",
+		}, true
+	}
+	defer func() {
+		fetchStorytellerPublicProjectMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/story/abc123-my-story/chapter-1"})
+
+	if meta.Title != "河燈之城 | ha2.tw / faryne.dev" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Description != "一段關於河港、燈影與記憶的故事。" {
+		t.Fatalf("unexpected description: %s", meta.Description)
+	}
+	if meta.Type != "article" {
+		t.Fatalf("unexpected type: %s", meta.Type)
+	}
+	if meta.Robots != "index, follow" {
+		t.Fatalf("unexpected robots: %s", meta.Robots)
+	}
+}
+
+func TestBuildMetaStorytellerSharedProjectRoute(t *testing.T) {
+	originalFetch := fetchStorytellerSharedProjectMeta
+	fetchStorytellerSharedProjectMeta = func(shareToken string) (storytellerProjectMeta, bool) {
+		if shareToken != "share-token" {
+			t.Fatalf("unexpected share token: %s", shareToken)
+		}
+		return storytellerProjectMeta{
+			Title:       "親友限定故事",
+			Description: "只分享給親友看的故事摘要。",
+		}, true
+	}
+	defer func() {
+		fetchStorytellerSharedProjectMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/story/share/share-token/chapter-1"})
+
+	if meta.Title != "親友限定故事 | ha2.tw / faryne.dev" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Description != "只分享給親友看的故事摘要。" {
+		t.Fatalf("unexpected description: %s", meta.Description)
+	}
+	if meta.Type != "article" {
+		t.Fatalf("unexpected type: %s", meta.Type)
+	}
+	if meta.Robots != "noindex, nofollow" {
+		t.Fatalf("unexpected robots: %s", meta.Robots)
+	}
+}
+
 func TestBuildMetaNekomaidRouteUsesProjectSiteName(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid"})
 

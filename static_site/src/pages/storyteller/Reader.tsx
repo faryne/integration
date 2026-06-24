@@ -276,8 +276,10 @@ export default function StorytellerReader() {
   const isShareRoute = Boolean(shareToken);
   const isPrivateOwnerRoute =
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
+  const shouldUseStorySeo = Boolean(project && !isPrivateOwnerRoute);
 
   useTitle(project ? `${project.name} - Storyteller` : "Storyteller", {
+    description: shouldUseStorySeo ? project?.description : undefined,
     path: routeProjectPath
       ? `/storyteller/story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`
       : shareToken
@@ -287,6 +289,7 @@ export default function StorytellerReader() {
       isShareRoute || isPrivateOwnerRoute
         ? "noindex, nofollow"
         : "index, follow",
+    type: shouldUseStorySeo ? "article" : "website",
   });
 
   useEffect(() => {
