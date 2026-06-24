@@ -17,10 +17,13 @@ import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerProjects } from "@/apis/storyteller.ts";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerProjects() {
-  const { data: apiProjects = [] } = useStorytellerProjects();
+  const { data: apiProjects = [], isLoading } = useStorytellerProjects();
   const projects = apiProjects.map((project) => ({
     id: project.public_id,
     name: project.name,
@@ -61,57 +64,67 @@ export default function StorytellerProjects() {
         </Button>
       }
     >
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>專案</TableCell>
-              <TableCell>特殊網址</TableCell>
-              <TableCell>故事數</TableCell>
-              <TableCell>狀態</TableCell>
-              <TableCell>更新時間</TableCell>
-              <TableCell align="right">操作</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {projects.map((project) => (
-              <TableRow key={project.id} hover>
-                <TableCell>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <FolderOpenIcon color="primary" />
-                    <Stack spacing={0.5}>
-                      <Typography fontWeight={800}>{project.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {project.description}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </TableCell>
-                <TableCell>{project.slug}</TableCell>
-                <TableCell>{project.storiesCount}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={project.statusLabel}
-                    color={project.statusColor as "primary" | "default"}
-                  />
-                </TableCell>
-                <TableCell>{formatStorytellerDate(project.updatedAt)}</TableCell>
-                <TableCell align="right">
-                  <Button
-                    component={RouterLink}
-                    to={`/storyteller/project/${project.id}`}
-                    size="small"
-                    variant="outlined"
-                  >
-                    開啟
-                  </Button>
-                </TableCell>
+      {isLoading ? (
+        <StorytellerLoading label="正在載入專案列表..." />
+      ) : (
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ borderRadius: 1 }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>專案</TableCell>
+                <TableCell>特殊網址</TableCell>
+                <TableCell>故事數</TableCell>
+                <TableCell>狀態</TableCell>
+                <TableCell>更新時間</TableCell>
+                <TableCell align="right">操作</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {projects.map((project) => (
+                <TableRow key={project.id} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <FolderOpenIcon color="primary" />
+                      <Stack spacing={0.5}>
+                        <Typography fontWeight={800}>{project.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {project.description}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>{project.slug}</TableCell>
+                  <TableCell>{project.storiesCount}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={project.statusLabel}
+                      color={project.statusColor as "primary" | "default"}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {formatStorytellerDate(project.updatedAt)}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Button
+                      component={RouterLink}
+                      to={`/storyteller/project/${project.id}`}
+                      size="small"
+                      variant="outlined"
+                    >
+                      開啟
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </StorytellerShell>
   );
 }

@@ -4,6 +4,7 @@ import {
   Box,
   Breadcrumbs,
   Button,
+  CircularProgress,
   Link,
   Paper,
   Stack,
@@ -114,5 +115,20 @@ export function StorytellerPrimaryActions() {
         建立 AI Agent
       </Button>
     </Stack>
+  );
+}
+
+export function StorytellerLoading({
+  label = "載入中...",
+}: {
+  label?: string;
+}) {
+  return (
+    <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+      <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
+        <CircularProgress />
+        <Typography color="text.secondary">{label}</Typography>
+      </Stack>
+    </Paper>
   );
 }

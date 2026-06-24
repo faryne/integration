@@ -20,10 +20,13 @@ import {
   storytellerAgents,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerAgents() {
-  const { data: apiAgents = [] } = useStorytellerAgents();
+  const { data: apiAgents = [], isLoading } = useStorytellerAgents();
   const agents =
     apiAgents.length > 0
       ? apiAgents.map((agent) => ({
@@ -62,48 +65,60 @@ export default function StorytellerAgents() {
         </Button>
       }
     >
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Agent</TableCell>
-              <TableCell>供應商</TableCell>
-              <TableCell>模型</TableCell>
-              <TableCell>連結專案</TableCell>
-              <TableCell>狀態</TableCell>
-              <TableCell>更新時間</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {agents.map((agent) => (
-              <TableRow key={agent.id} hover>
-                <TableCell>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <SmartToyIcon color={agent.enabled ? "primary" : "disabled"} />
-                    <Stack spacing={0.5}>
-                      <Typography fontWeight={800}>{agent.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {agent.purpose}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </TableCell>
-                <TableCell>{agent.provider}</TableCell>
-                <TableCell>{agent.model}</TableCell>
-                <TableCell>{agent.projectCount}</TableCell>
-                <TableCell>
-                  <Chip
-                    size="small"
-                    label={agent.enabled ? "啟用" : "停用"}
-                    color={agent.enabled ? "success" : "default"}
-                  />
-                </TableCell>
-                <TableCell>{formatStorytellerDate(agent.updatedAt)}</TableCell>
+      {isLoading ? (
+        <StorytellerLoading label="正在載入 AI Agent..." />
+      ) : (
+        <TableContainer
+          component={Paper}
+          variant="outlined"
+          sx={{ borderRadius: 1 }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Agent</TableCell>
+                <TableCell>供應商</TableCell>
+                <TableCell>模型</TableCell>
+                <TableCell>連結專案</TableCell>
+                <TableCell>狀態</TableCell>
+                <TableCell>更新時間</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {agents.map((agent) => (
+                <TableRow key={agent.id} hover>
+                  <TableCell>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <SmartToyIcon
+                        color={agent.enabled ? "primary" : "disabled"}
+                      />
+                      <Stack spacing={0.5}>
+                        <Typography fontWeight={800}>{agent.name}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {agent.purpose}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>{agent.provider}</TableCell>
+                  <TableCell>{agent.model}</TableCell>
+                  <TableCell>{agent.projectCount}</TableCell>
+                  <TableCell>
+                    <Chip
+                      size="small"
+                      label={agent.enabled ? "啟用" : "停用"}
+                      color={agent.enabled ? "success" : "default"}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {formatStorytellerDate(agent.updatedAt)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </StorytellerShell>
   );
 }

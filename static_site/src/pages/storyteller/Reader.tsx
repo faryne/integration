@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Divider,
   Drawer,
   Grid,
@@ -34,12 +33,13 @@ import {
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
 } from "@/apis/storyteller.ts";
-import {
-  formatStorytellerDate,
-} from "@/data/storyteller.ts";
+import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 interface ReaderStory {
   id: string;
@@ -110,7 +110,11 @@ function ChapterNavCard({
   align?: "left" | "center" | "right";
 }) {
   const LabelIcon =
-    align === "left" ? ArrowBackIcon : align === "right" ? ArrowForwardIcon : undefined;
+    align === "left"
+      ? ArrowBackIcon
+      : align === "right"
+        ? ArrowForwardIcon
+        : undefined;
 
   return (
     <Paper
@@ -182,9 +186,7 @@ export default function StorytellerReader() {
       ? routeStoryParts[routeStoryParts.length - 1]
       : undefined);
   const routeProjectPath = routeStoryPath
-    ? routeStoryParts
-        .slice(0, routeStoryId ? -1 : undefined)
-        .join("/")
+    ? routeStoryParts.slice(0, routeStoryId ? -1 : undefined).join("/")
     : params.projectPath;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -229,7 +231,7 @@ export default function StorytellerReader() {
           updatedAt: story.updated_at,
         })),
       }
-      : undefined;
+    : undefined;
   const stories = project?.stories ?? [];
   const currentStoryId = routeStoryId;
   const currentStory = currentStoryId
@@ -274,12 +276,11 @@ export default function StorytellerReader() {
     });
   }, [currentStory?.id]);
 
-  if (!project && (publicProjectQuery.isLoading || sharedProjectQuery.isLoading)) {
-    return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress />
-      </Stack>
-    );
+  if (
+    !project &&
+    (publicProjectQuery.isLoading || sharedProjectQuery.isLoading)
+  ) {
+    return <StorytellerLoading label="正在載入故事..." />;
   }
 
   if (!project) {
@@ -357,13 +358,25 @@ export default function StorytellerReader() {
             isMobile ? setMobileIndexOpen(true) : setIndexOpen((open) => !open)
           }
         >
-          {isMobile ? "開啟故事索引" : indexOpen ? "收起故事索引" : "展開故事索引"}
+          {isMobile
+            ? "開啟故事索引"
+            : indexOpen
+              ? "收起故事索引"
+              : "展開故事索引"}
         </Button>
         {currentStory && (
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
             <Button
               variant={isFavorited ? "contained" : "outlined"}
-              startIcon={isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+              startIcon={
+                isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
+              }
               disabled={saveFavorite.isPending}
               onClick={() => {
                 if (!session) {
@@ -379,7 +392,10 @@ export default function StorytellerReader() {
             >
               {isFavorited ? "已收藏" : "收藏"}
             </Button>
-            <Paper variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}>
+            <Paper
+              variant="outlined"
+              sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}
+            >
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography variant="body2" color="text.secondary">
                   評分
@@ -424,7 +440,10 @@ export default function StorytellerReader() {
         )}
 
         <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
-          <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+          <Paper
+            variant="outlined"
+            sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
+          >
             {currentStory ? (
               <Stack spacing={2}>
                 <Box>
@@ -453,7 +472,10 @@ export default function StorytellerReader() {
                         color="primary"
                         component={RouterLink}
                         to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
-                        sx={{ textDecoration: "none", "&:hover": { textDecoration: "underline" } }}
+                        sx={{
+                          textDecoration: "none",
+                          "&:hover": { textDecoration: "underline" },
+                        }}
                       >
                         作者 {project.authorPenName}
                       </Typography>
@@ -491,7 +513,11 @@ export default function StorytellerReader() {
                     <ChapterNavCard
                       label="上一章"
                       title={previousStory?.title ?? "沒有上一章"}
-                      to={previousStory ? `${basePath}/${previousStory.id}` : undefined}
+                      to={
+                        previousStory
+                          ? `${basePath}/${previousStory.id}`
+                          : undefined
+                      }
                       disabled={!previousStory}
                       align="left"
                     />
@@ -520,11 +546,11 @@ export default function StorytellerReader() {
                 <Typography component="h1" variant="h4" fontWeight={800}>
                   {project.name}
                 </Typography>
-                <Typography color="text.secondary">{project.description}</Typography>
-                <Divider />
-                <Typography>
-                  請從左側索引選擇故事章節開始閱讀。
+                <Typography color="text.secondary">
+                  {project.description}
                 </Typography>
+                <Divider />
+                <Typography>請從左側索引選擇故事章節開始閱讀。</Typography>
               </Stack>
             )}
           </Paper>

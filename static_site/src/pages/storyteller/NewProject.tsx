@@ -2,7 +2,6 @@ import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
   Button,
-  CircularProgress,
   Grid,
   MenuItem,
   Paper,
@@ -17,7 +16,10 @@ import {
 } from "@/apis/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
 
 function projectNameToSlug(name: string) {
@@ -56,16 +58,15 @@ export default function StorytellerNewProject() {
   }, [editingProject]);
 
   useTitle(isEditing ? "編輯 Storyteller 專案" : "建立 Storyteller 專案", {
-    path: isEditing && id ? `/storyteller/project/${id}/edit` : "/storyteller/project/new",
+    path:
+      isEditing && id
+        ? `/storyteller/project/${id}/edit`
+        : "/storyteller/project/new",
     robots: "noindex, nofollow",
   });
 
   if (isEditing && isLoading) {
-    return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress />
-      </Stack>
-    );
+    return <StorytellerLoading label="正在載入專案資料..." />;
   }
 
   if (isEditing && !editingProject) {
@@ -76,7 +77,9 @@ export default function StorytellerNewProject() {
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
       description={
-        isEditing ? "調整故事企劃的基本資訊與閱讀狀態。" : "填寫故事企劃的基本資訊。"
+        isEditing
+          ? "調整故事企劃的基本資訊與閱讀狀態。"
+          : "填寫故事企劃的基本資訊。"
       }
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
@@ -117,7 +120,8 @@ export default function StorytellerNewProject() {
         <Stack spacing={3}>
           {saveProject.isError && (
             <Alert severity="error" variant="outlined">
-              {isEditing ? "更新專案失敗" : "建立專案失敗"}，請確認登入狀態與欄位內容。
+              {isEditing ? "更新專案失敗" : "建立專案失敗"}
+              ，請確認登入狀態與欄位內容。
             </Alert>
           )}
           <Grid container spacing={2}>

@@ -3,17 +3,23 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Grid,
   Pagination,
   Stack,
   Typography,
 } from "@mui/material";
-import { Link as RouterLink, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { usePublicUserStorytellerProjects } from "@/apis/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerUserProjects() {
   const { username } = useParams();
@@ -42,9 +48,7 @@ export default function StorytellerUserProjects() {
           { label: username || "作者" },
         ]}
       >
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <CircularProgress />
-        </Stack>
+        <StorytellerLoading label="正在載入作者作品..." />
       </StorytellerShell>
     );
   }
@@ -55,10 +59,8 @@ export default function StorytellerUserProjects() {
     description: project.description,
     storiesCount: project.stories?.length ?? 0,
     wordCount:
-      project.stories?.reduce(
-        (total, story) => total + story.word_count,
-        0,
-      ) ?? 0,
+      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
+      0,
     updatedAt: project.updated_at,
     path: `/storyteller/story/${project.public_id}-${project.slug}`,
   }));
@@ -90,8 +92,15 @@ export default function StorytellerUserProjects() {
                   updatedAt={project.updatedAt}
                   chips={
                     <>
-                      <Chip size="small" icon={<LockOpenIcon />} label="公開閱讀" />
-                      <Chip size="small" label={`${project.storiesCount} 篇故事`} />
+                      <Chip
+                        size="small"
+                        icon={<LockOpenIcon />}
+                        label="公開閱讀"
+                      />
+                      <Chip
+                        size="small"
+                        label={`${project.storiesCount} 篇故事`}
+                      />
                       <Chip
                         size="small"
                         label={`${project.wordCount.toLocaleString()} 字`}

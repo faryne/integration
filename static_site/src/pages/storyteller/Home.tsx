@@ -30,6 +30,7 @@ import {
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
+  StorytellerLoading,
   StorytellerPrimaryActions,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -85,10 +86,8 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     statusColor: project.visibility === "private" ? "default" : "primary",
     storiesCount: project.stories?.length ?? 0,
     wordCount:
-      project.stories?.reduce(
-        (total, story) => total + story.word_count,
-        0,
-      ) ?? 0,
+      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
+      0,
     ratingCount: project.rating_count,
     averageRating: project.average_rating,
     updatedAt: project.updated_at,
@@ -121,10 +120,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     size="small"
                     label={`${project.wordCount.toLocaleString()} 字`}
                   />
-                  <Chip
-                    size="small"
-                    label={`${project.ratingCount} 人評分`}
-                  />
+                  <Chip size="small" label={`${project.ratingCount} 人評分`} />
                   <Chip
                     size="small"
                     label={`平均 ${project.averageRating.toFixed(1)}`}
@@ -234,7 +230,12 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
             }}
           >
             <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ minWidth: 0 }}
+              >
                 <SmartToyIcon color={agent.enabled ? "primary" : "disabled"} />
                 <Typography
                   variant="h6"
@@ -279,8 +280,10 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
 export default function StorytellerHome() {
   const [tab, setTab] = useState("projects");
   const { session, loading, login, submitting } = useAuth();
-  const { data: projects = [] } = useStorytellerProjects();
-  const { data: agents = [] } = useStorytellerAgents();
+  const { data: projects = [], isLoading: projectsLoading } =
+    useStorytellerProjects();
+  const { data: agents = [], isLoading: agentsLoading } =
+    useStorytellerAgents();
   useTitle("Storyteller 我的工作台", {
     path: "/storyteller/mine",
     robots: "noindex, nofollow",
@@ -307,25 +310,29 @@ export default function StorytellerHome() {
           submitting={submitting}
         />
       ) : (
-      <Paper variant="outlined" sx={{ borderRadius: 1 }}>
-        <Tabs value={tab} onChange={(_, value) => setTab(value)}>
-          <Tab value="projects" label="故事專案" />
-          <Tab value="agents" label="AI Agent" />
-        </Tabs>
-        <Divider />
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
-          <Stack spacing={2}>
-            <Typography variant="h6" fontWeight={800}>
-              {tab === "projects" ? "最近的故事專案" : "可用的 AI Agent"}
-            </Typography>
-            {tab === "projects" ? (
-              <ProjectCards projects={projects} />
-            ) : (
-              <AgentCards agents={agents} />
-            )}
-          </Stack>
-        </Box>
-      </Paper>
+        <Paper variant="outlined" sx={{ borderRadius: 1 }}>
+          <Tabs value={tab} onChange={(_, value) => setTab(value)}>
+            <Tab value="projects" label="故事專案" />
+            <Tab value="agents" label="AI Agent" />
+          </Tabs>
+          <Divider />
+          <Box sx={{ p: { xs: 2, md: 3 } }}>
+            <Stack spacing={2}>
+              <Typography variant="h6" fontWeight={800}>
+                {tab === "projects" ? "最近的故事專案" : "可用的 AI Agent"}
+              </Typography>
+              {tab === "projects" && projectsLoading ? (
+                <StorytellerLoading label="正在載入故事專案..." />
+              ) : tab === "projects" ? (
+                <ProjectCards projects={projects} />
+              ) : agentsLoading ? (
+                <StorytellerLoading label="正在載入 AI Agent..." />
+              ) : (
+                <AgentCards agents={agents} />
+              )}
+            </Stack>
+          </Box>
+        </Paper>
       )}
     </StorytellerShell>
   );

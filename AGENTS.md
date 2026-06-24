@@ -29,7 +29,8 @@ Follow the existing module boundaries.
 
 ## Working Rules
 
-- Keep business logic in `service/`.
+- Keep business logic in `service/` and always create `*_test.go` for testing
+- migrations should be in `migration/`, and you should create migration in `mysql 5.7.x` compatiable format.
 - Keep database access in `repository/`.
 - Controllers should stay thin and delegate to services.
 - When adding an API, prefer this flow:
@@ -37,7 +38,8 @@ Follow the existing module boundaries.
   2. implement persistence in `repository/`
   3. add business logic in `service/`
   4. add handlers in `controller/`
-  5. register routes in `route/`
+  5. always use `faryne.dev/service/output` as standard api response if no anotation is provided.
+  6. register routes in `route/`
 - Add cron logic in the `cronjob` section of `main.go`, and keep substantial logic in `service/`.
 
 ## Technology Notes
@@ -63,6 +65,8 @@ Do not modify or rely on these directories unless the user explicitly asks for i
 
 - `php7-version/`: legacy PHP code kept only for manual reference during migration work
 - `secret_keys/`: sensitive material that must not be exposed or reused in code changes
+- `rust`: experimental Rust code
+- `logstash`：old logstash config files, you cannot read this directory passively.
 
 ## Frontend Note
 

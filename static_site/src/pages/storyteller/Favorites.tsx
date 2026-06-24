@@ -1,25 +1,23 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import {
-  Alert,
-  Button,
-  CircularProgress,
-  Grid,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Alert, Button, Grid, Paper, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useFavoriteStorytellerProjects } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerFavorites() {
   const { session, loading, login, submitting } = useAuth();
-  const { data: projects = [], isLoading, isError } =
-    useFavoriteStorytellerProjects();
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+  } = useFavoriteStorytellerProjects();
 
   useTitle("Storyteller 我的收藏", {
     path: "/storyteller/favorites",
@@ -36,9 +34,7 @@ export default function StorytellerFavorites() {
       ]}
     >
       {loading ? (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
-        </Stack>
+        <StorytellerLoading label="正在確認登入狀態..." />
       ) : !session ? (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
           <Stack spacing={2} alignItems="flex-start">
@@ -55,9 +51,7 @@ export default function StorytellerFavorites() {
           </Stack>
         </Paper>
       ) : isLoading ? (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <CircularProgress />
-        </Stack>
+        <StorytellerLoading label="正在載入收藏故事..." />
       ) : isError ? (
         <Alert severity="error" variant="outlined">
           讀取收藏失敗，請確認登入狀態後再試一次。

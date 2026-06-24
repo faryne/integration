@@ -55,7 +55,10 @@ import {
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 const historyPerPage = 5;
 const autoSaveIntervalMinutes = 2;
@@ -122,7 +125,7 @@ export default function StorytellerStoryEditor() {
         name: apiProject.name,
         description: apiProject.description,
       }
-      : undefined;
+    : undefined;
   const { data: apiStories = [], isPending: apiStoriesPending } =
     useStorytellerStories(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
@@ -135,7 +138,7 @@ export default function StorytellerStoryEditor() {
         updatedAt: apiStory.updated_at,
         sort: apiStory.sort,
       }
-      : undefined;
+    : undefined;
   const { data: apiAgents = [] } = useStorytellerAgents();
   const agentRows: EditorAgent[] =
     apiAgents.length > 0
@@ -186,16 +189,15 @@ export default function StorytellerStoryEditor() {
   const pageTitle = isNewStory
     ? "建立故事"
     : storyTitle.trim() || story?.title || "未命名故事";
-  const storyDiffs: EditorStoryVersion[] =
-    apiStory
-      ? apiStoryVersions.map((version) => ({
-          id: String(version.id),
-          title: version.title,
-          source: "手動編輯",
-          createdAt: version.created_at,
-          words: version.word_count,
-        }))
-      : [];
+  const storyDiffs: EditorStoryVersion[] = apiStory
+    ? apiStoryVersions.map((version) => ({
+        id: String(version.id),
+        title: version.title,
+        source: "手動編輯",
+        createdAt: version.created_at,
+        words: version.word_count,
+      }))
+    : [];
   const totalHistoryPages = Math.max(
     1,
     Math.ceil(storyDiffs.length / historyPerPage),
@@ -273,50 +275,52 @@ export default function StorytellerStoryEditor() {
       return;
     }
 
-    const timer = window.setInterval(() => {
-      const currentDraft = currentDraftRef.current;
-      const latestDraft = latestDraftRef.current;
-      if (
-        autoSaveRunningRef.current ||
-        currentDraft === lastSavedDraftRef.current ||
-        latestDraft.title.trim() === ""
-      ) {
-        return;
-      }
+    const timer = window.setInterval(
+      () => {
+        const currentDraft = currentDraftRef.current;
+        const latestDraft = latestDraftRef.current;
+        if (
+          autoSaveRunningRef.current ||
+          currentDraft === lastSavedDraftRef.current ||
+          latestDraft.title.trim() === ""
+        ) {
+          return;
+        }
 
-      autoSaveRunningRef.current = true;
-      saveStoryRef.current.mutate(
-        {
-          storyPublicId: story.id,
-          input: {
-            title: latestDraft.title,
-            summary: latestDraft.summary,
-            sort: latestDraft.sort,
-            content: latestDraft.content,
+        autoSaveRunningRef.current = true;
+        saveStoryRef.current.mutate(
+          {
+            storyPublicId: story.id,
+            input: {
+              title: latestDraft.title,
+              summary: latestDraft.summary,
+              sort: latestDraft.sort,
+              content: latestDraft.content,
+            },
           },
-        },
-        {
-          onSuccess: () => {
-            lastSavedDraftRef.current = currentDraft;
-            setSaveMessage("已自動存檔。");
-            setSaveMessageVisible(true);
+          {
+            onSuccess: () => {
+              lastSavedDraftRef.current = currentDraft;
+              setSaveMessage("已自動存檔。");
+              setSaveMessageVisible(true);
+            },
+            onSettled: () => {
+              autoSaveRunningRef.current = false;
+            },
           },
-          onSettled: () => {
-            autoSaveRunningRef.current = false;
-          },
-        },
-      );
-    }, autoSaveIntervalMinutes * 60 * 1000);
+        );
+      },
+      autoSaveIntervalMinutes * 60 * 1000,
+    );
 
     return () => window.clearInterval(timer);
   }, [apiProject?.public_id, isNewStory, story?.id]);
 
-  if ((!project && apiProjectsPending) || (apiProject && !isNewStory && !story && apiStoriesPending)) {
-    return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress />
-      </Stack>
-    );
+  if (
+    (!project && apiProjectsPending) ||
+    (apiProject && !isNewStory && !story && apiStoriesPending)
+  ) {
+    return <StorytellerLoading label="正在載入故事編輯資料..." />;
   }
 
   if (!project || (!isNewStory && !story)) {
@@ -329,7 +333,10 @@ export default function StorytellerStoryEditor() {
       return;
     }
 
-    const value = target.value.slice(target.selectionStart, target.selectionEnd);
+    const value = target.value.slice(
+      target.selectionStart,
+      target.selectionEnd,
+    );
     setSelectedText(value.trim());
   }
 
@@ -345,13 +352,16 @@ export default function StorytellerStoryEditor() {
   function handleLeftDiffChange(diffId: string) {
     setLeftDiffId(diffId);
     const selectedLeftDiff = storyDiffs.find((diff) => diff.id === diffId);
-    const selectedRightDiff = storyDiffs.find((diff) => diff.id === rightDiffId);
+    const selectedRightDiff = storyDiffs.find(
+      (diff) => diff.id === rightDiffId,
+    );
 
     if (
       !selectedLeftDiff ||
       !selectedRightDiff ||
       selectedRightDiff.id === selectedLeftDiff.id ||
-      new Date(selectedRightDiff.createdAt) <= new Date(selectedLeftDiff.createdAt)
+      new Date(selectedRightDiff.createdAt) <=
+        new Date(selectedLeftDiff.createdAt)
     ) {
       setRightDiffId("");
     }
@@ -428,7 +438,9 @@ export default function StorytellerStoryEditor() {
           setSaveMessage("故事已存檔。");
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
-            navigate(`/storyteller/project/${id}/story/${savedStory.public_id}`);
+            navigate(
+              `/storyteller/project/${id}/story/${savedStory.public_id}`,
+            );
           }
         },
       },
@@ -454,7 +466,9 @@ export default function StorytellerStoryEditor() {
           <Chip label={`${wordCount.toLocaleString()} 字`} />
           {story ? (
             <>
-              <Chip label={`更新於 ${formatStorytellerDate(story.updatedAt)}`} />
+              <Chip
+                label={`更新於 ${formatStorytellerDate(story.updatedAt)}`}
+              />
               {apiProject && (
                 <Chip
                   color="success"
@@ -533,7 +547,10 @@ export default function StorytellerStoryEditor() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 8 }}>
-          <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
+          <Paper
+            variant="outlined"
+            sx={{ borderRadius: 1, overflow: "hidden" }}
+          >
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={1}
@@ -559,7 +576,9 @@ export default function StorytellerStoryEditor() {
                   <Button
                     size="small"
                     onClick={() =>
-                      setAiPrompt(`請針對這段文字提供三種改寫版本：\n\n${selectedText}`)
+                      setAiPrompt(
+                        `請針對這段文字提供三種改寫版本：\n\n${selectedText}`,
+                      )
                     }
                   >
                     改寫
@@ -573,7 +592,12 @@ export default function StorytellerStoryEditor() {
             <Box sx={{ display: tab === "editor" ? "block" : "none", p: 2 }}>
               <Paper
                 variant="outlined"
-                sx={{ p: 1, mb: 2, borderRadius: 1, bgcolor: "background.default" }}
+                sx={{
+                  p: 1,
+                  mb: 2,
+                  borderRadius: 1,
+                  bgcolor: "background.default",
+                }}
               >
                 <Stack
                   direction="row"
@@ -749,8 +773,14 @@ export default function StorytellerStoryEditor() {
                     <Table>
                       <TableHead>
                         <TableRow>
-                          <TableCell padding="checkbox">diff1<br />舊</TableCell>
-                          <TableCell padding="checkbox">diff2<br />新</TableCell>
+                          <TableCell padding="checkbox">
+                            diff1
+                            <br />舊
+                          </TableCell>
+                          <TableCell padding="checkbox">
+                            diff2
+                            <br />新
+                          </TableCell>
                           <TableCell>版本</TableCell>
                           <TableCell>來源</TableCell>
                           <TableCell>字數</TableCell>
@@ -770,7 +800,9 @@ export default function StorytellerStoryEditor() {
                               <Radio
                                 checked={leftDiffId === diff.id}
                                 onChange={() => handleLeftDiffChange(diff.id)}
-                                inputProps={{ "aria-label": `選擇 ${diff.id} 作為 diff1` }}
+                                inputProps={{
+                                  "aria-label": `選擇 ${diff.id} 作為 diff1`,
+                                }}
                               />
                             </TableCell>
                             <TableCell padding="checkbox">
@@ -778,7 +810,9 @@ export default function StorytellerStoryEditor() {
                                 checked={rightDiffId === diff.id}
                                 disabled={isRightDiffDisabled(diff.id)}
                                 onChange={() => setRightDiffId(diff.id)}
-                                inputProps={{ "aria-label": `選擇 ${diff.id} 作為 diff2` }}
+                                inputProps={{
+                                  "aria-label": `選擇 ${diff.id} 作為 diff2`,
+                                }}
                               />
                             </TableCell>
                             <TableCell>
@@ -841,10 +875,7 @@ export default function StorytellerStoryEditor() {
             }}
           >
             <Stack sx={{ minHeight: { lg: 720 } }}>
-              <Stack
-                spacing={1.5}
-                sx={{ p: 2, bgcolor: "background.default" }}
-              >
+              <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
                 <Stack
                   direction={{ xs: "column", sm: "row", lg: "row" }}
                   spacing={1}
@@ -932,7 +963,9 @@ export default function StorytellerStoryEditor() {
                     {selectedAgent.name}
                   </Typography>
                   <Typography variant="body2" sx={{ mt: 0.5 }}>
-                    我會依照目前選擇的 Agent 用途協助處理故事內容。你可以直接輸入需求，也可以貼上 Markdown。
+                    我會依照目前選擇的 Agent
+                    用途協助處理故事內容。你可以直接輸入需求，也可以貼上
+                    Markdown。
                   </Typography>
                 </Box>
                 <Box

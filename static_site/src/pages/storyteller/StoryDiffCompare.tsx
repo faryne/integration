@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Grid,
   Paper,
   Stack,
@@ -19,7 +18,10 @@ import {
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 
 type DiffState = "same" | "changed" | "added" | "removed";
 
@@ -112,7 +114,8 @@ function DiffPane({
           m: 0,
           p: 0,
           overflowX: "auto",
-          fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+          fontFamily:
+            '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
           fontSize: 13,
           lineHeight: 1.7,
           whiteSpace: "pre-wrap",
@@ -131,10 +134,15 @@ function DiffPane({
               ...lineSx(line.state, side),
             }}
           >
-            <Box component="span" sx={{ color: "text.secondary", userSelect: "none" }}>
+            <Box
+              component="span"
+              sx={{ color: "text.secondary", userSelect: "none" }}
+            >
               {line.index}
             </Box>
-            <Box component="span">{side === "left" ? line.left : line.right || " "}</Box>
+            <Box component="span">
+              {side === "left" ? line.left : line.right || " "}
+            </Box>
           </Box>
         ))}
       </Box>
@@ -152,7 +160,7 @@ export default function StorytellerStoryDiffCompare() {
         id: apiProject.public_id,
         name: apiProject.name,
       }
-      : undefined;
+    : undefined;
   const { data: apiStories = [], isPending: apiStoriesPending } =
     useStorytellerStories(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
@@ -161,7 +169,7 @@ export default function StorytellerStoryDiffCompare() {
         id: apiStory.public_id,
         title: apiStory.title,
       }
-      : undefined;
+    : undefined;
   const leftVersion = useStorytellerStoryVersion(
     apiProject?.public_id,
     apiStory?.public_id,
@@ -218,11 +226,7 @@ export default function StorytellerStoryDiffCompare() {
     leftVersion.isLoading ||
     rightVersion.isLoading
   ) {
-    return (
-      <Stack alignItems="center" sx={{ py: 8 }}>
-        <CircularProgress />
-      </Stack>
-    );
+    return <StorytellerLoading label="正在載入版本比對資料..." />;
   }
 
   if (

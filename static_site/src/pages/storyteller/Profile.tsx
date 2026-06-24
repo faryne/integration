@@ -6,7 +6,6 @@ import {
   Avatar,
   Box,
   Button,
-  CircularProgress,
   Divider,
   FormControlLabel,
   Paper,
@@ -24,7 +23,10 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { useTitle } from "@/helpers/title.tsx";
-import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
 
 const emptyForm: StorytellerUserProfileRequest = {
@@ -42,8 +44,11 @@ export default function StorytellerProfile() {
   const [form, setForm] = useState<StorytellerUserProfileRequest>(emptyForm);
   const [message, setMessage] = useState("");
   const defaultAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
-  const previewAvatar = form.use_default_avatar ? defaultAvatar : form.avatar_url;
-  const displayName = form.pen_name || session?.user.display_name || "Storyteller";
+  const previewAvatar = form.use_default_avatar
+    ? defaultAvatar
+    : form.avatar_url;
+  const displayName =
+    form.pen_name || session?.user.display_name || "Storyteller";
 
   useTitle("Storyteller 作者設定", {
     path: "/storyteller/profile",
@@ -92,9 +97,7 @@ export default function StorytellerProfile() {
       ]}
     >
       {loading ? (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <CircularProgress />
-        </Stack>
+        <StorytellerLoading label="正在確認登入狀態..." />
       ) : !session ? (
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
           <Stack spacing={2} alignItems="flex-start">
@@ -110,6 +113,8 @@ export default function StorytellerProfile() {
             </Button>
           </Stack>
         </Paper>
+      ) : profileQuery.isLoading ? (
+        <StorytellerLoading label="正在載入作者設定..." />
       ) : (
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
           <Stack spacing={3}>
@@ -118,7 +123,11 @@ export default function StorytellerProfile() {
               spacing={2}
               alignItems={{ xs: "flex-start", sm: "center" }}
             >
-              <Avatar src={previewAvatar} alt={displayName} sx={{ width: 64, height: 64 }}>
+              <Avatar
+                src={previewAvatar}
+                alt={displayName}
+                sx={{ width: 64, height: 64 }}
+              >
                 <PersonIcon />
               </Avatar>
               <Box sx={{ minWidth: 0 }}>
@@ -168,7 +177,10 @@ export default function StorytellerProfile() {
               label="Storyteller avatar URL"
               value={form.avatar_url}
               onChange={(event) =>
-                setForm((value) => ({ ...value, avatar_url: event.target.value }))
+                setForm((value) => ({
+                  ...value,
+                  avatar_url: event.target.value,
+                }))
               }
               disabled={form.use_default_avatar}
               fullWidth
