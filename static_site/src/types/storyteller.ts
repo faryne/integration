@@ -78,6 +78,58 @@ export interface StorytellerAgentRequest {
   default_prompt: string;
 }
 
+export type StorytellerAgentRunMode =
+  | "rewrite_selection"
+  | "expand_selection"
+  | "translate_selection"
+  | "continue_chapter"
+  | "custom_selection"
+  | "custom_chapter";
+
+export interface StorytellerAgentRunRequest {
+  mode: StorytellerAgentRunMode;
+  instruction: string;
+  full_content: string;
+  selected_content: string;
+  selection_start?: number;
+  selection_end?: number;
+}
+
+export interface StorytellerAgentRunUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+}
+
+export interface StorytellerAgentRunResponse {
+  agent_id: number;
+  provider: string;
+  model_name: string;
+  mode: StorytellerAgentRunMode;
+  result: string;
+  usage?: StorytellerAgentRunUsage;
+  finish_reason?: string;
+}
+
+export interface StorytellerStoryChatMessage {
+  id: number;
+  chat_id: number;
+  role: "system" | "user" | "assistant";
+  content: string;
+  metadata?: string;
+  agent_id: number;
+  agent_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerStoryChatMessagePage {
+  items: StorytellerStoryChatMessage[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 export interface StorytellerStoryRequest {
   title: string;
   summary: string;

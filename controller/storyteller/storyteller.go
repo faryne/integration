@@ -170,6 +170,39 @@ func DeleteAgent(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"deleted": true})
 }
 
+func RunAgent(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgentRunRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().RunAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), agentID, input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or story not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func isAgentProviderError(err error) bool {
+	return errors.Is(err, storyteller.ErrAIProviderInvalidAPIKey) ||
+		errors.Is(err, storyteller.ErrAIProviderRateLimited) ||
+		errors.Is(err, storyteller.ErrAIProviderTimeout) ||
+		errors.Is(err, storyteller.ErrAIProviderUnavailable) ||
+		errors.Is(err, storyteller.ErrAIProviderInvalidModel) ||
+		errors.Is(err, storyteller.ErrAIProviderEmptyResult) ||
+		errors.Is(err, storyteller.ErrAIProviderUnknown) ||
+		errors.Is(err, storyteller.ErrAIProviderUnsupported)
+}
+
 func Stories(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Stories(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
@@ -241,6 +274,24 @@ func StoryVersion(ctx fiber.Ctx) error {
 		return output.DBError(err)
 	}
 	return output.Success(row)
+}
+
+func StoryChatMessages(ctx fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
+	rows, total, err := storyteller.NewService().StoryChatMessages(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), page, pageSize)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(map[string]any{
+		"items":    rows,
+		"total":    total,
+		"page":     page,
+		"per_page": pageSize,
+	})
 }
 
 func FavoriteProjects(ctx fiber.Ctx) error {

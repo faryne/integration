@@ -16,6 +16,17 @@ const (
 	AgentProviderGrok AgentProvider = "grok"
 )
 
+type AgentRunMode string
+
+const (
+	AgentRunModeRewriteSelection   AgentRunMode = "rewrite_selection"
+	AgentRunModeExpandSelection    AgentRunMode = "expand_selection"
+	AgentRunModeTranslateSelection AgentRunMode = "translate_selection"
+	AgentRunModeContinueChapter    AgentRunMode = "continue_chapter"
+	AgentRunModeCustomSelection    AgentRunMode = "custom_selection"
+	AgentRunModeCustomChapter      AgentRunMode = "custom_chapter"
+)
+
 type ChatMessageRole string
 
 const (
@@ -162,6 +173,15 @@ type AgentRequest struct {
 	DefaultPrompt string        `json:"default_prompt"`
 }
 
+type AgentRunRequest struct {
+	Mode            AgentRunMode `json:"mode"`
+	Instruction     string       `json:"instruction"`
+	FullContent     string       `json:"full_content"`
+	SelectedContent string       `json:"selected_content"`
+	SelectionStart  *int         `json:"selection_start"`
+	SelectionEnd    *int         `json:"selection_end"`
+}
+
 type StoryRequest struct {
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
@@ -182,6 +202,34 @@ type UserProfileRequest struct {
 
 type ProjectRankingOutput struct {
 	Ranking *float64 `json:"ranking"`
+}
+
+type AgentRunUsage struct {
+	InputTokens  int `json:"input_tokens,omitempty"`
+	OutputTokens int `json:"output_tokens,omitempty"`
+	TotalTokens  int `json:"total_tokens,omitempty"`
+}
+
+type AgentRunResponse struct {
+	AgentID      uint64         `json:"agent_id"`
+	Provider     AgentProvider  `json:"provider"`
+	ModelName    string         `json:"model_name"`
+	Mode         AgentRunMode   `json:"mode"`
+	Result       string         `json:"result"`
+	Usage        *AgentRunUsage `json:"usage,omitempty"`
+	FinishReason string         `json:"finish_reason,omitempty"`
+}
+
+type StoryChatMessageOutput struct {
+	ID        uint64          `json:"id"`
+	ChatID    uint64          `json:"chat_id"`
+	Role      ChatMessageRole `json:"role"`
+	Content   string          `json:"content"`
+	Metadata  string          `json:"metadata,omitempty"`
+	AgentID   uint64          `json:"agent_id"`
+	AgentName string          `json:"agent_name"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 type UserProfileOutput struct {

@@ -42,6 +42,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story", storyteller.Story)
 	authenticated.Put("/projects/:project/stories/:story", storyteller.UpdateStory)
 	authenticated.Delete("/projects/:project/stories/:story", storyteller.DeleteStory)
+	authenticated.Post("/projects/:project/stories/:story/agents/:agent/run", storyteller.RunAgent)
+	authenticated.Get("/projects/:project/stories/:story/chat-messages", storyteller.StoryChatMessages)
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
 }

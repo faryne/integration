@@ -136,6 +136,49 @@ func (r *Repository) StoryVersion(storyID, versionID uint64) (*storytellerModel.
 	return &row, err
 }
 
+func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(chat).Error; err != nil {
+			return err
+		}
+		for i := range messages {
+			messages[i].ChatID = chat.ID
+		}
+		return tx.Create(&messages).Error
+	})
+}
+
+func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
+	rows := make([]storytellerModel.StoryChatMessageOutput, 0)
+	query := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Joins("INNER JOIN storyteller_agents AS agents ON agents.id = chats.agent_id").
+		Where("chats.story_id = ? AND chats.deleted_at IS NULL AND messages.deleted_at IS NULL", storyID)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.
+		Select(`messages.id,
+			messages.chat_id,
+			messages.role,
+			messages.content,
+			messages.metadata,
+			messages.created_at,
+			messages.updated_at,
+			chats.agent_id,
+			agents.name AS agent_name`).
+		Order("messages.created_at DESC, messages.id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&rows).Error
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	return rows, total, err
+}
+
 func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(story).Error; err != nil {

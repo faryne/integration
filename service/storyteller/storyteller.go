@@ -1,6 +1,7 @@
 package storyteller
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -21,6 +22,15 @@ var slugUnderscoreRegexp = regexp.MustCompile(`_+`)
 type Service struct {
 	repo *storytellerRepo.Repository
 }
+
+type agentRunRepository interface {
+	ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error)
+	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
+	Agent(userID, id uint64) (*storytellerModel.Agent, error)
+	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error
+}
+
+type aiProviderFactory func(provider storytellerModel.AgentProvider) (AIProvider, error)
 
 func NewService() *Service {
 	return &Service{repo: storytellerRepo.NewRepository()}
@@ -175,6 +185,62 @@ func (s *Service) DeleteAgent(userID, id uint64) error {
 	return s.repo.DeleteAgent(agent)
 }
 
+func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	return runAgent(ctx, s.repo, NewAIProvider, userID, projectPublicID, storyPublicID, agentID, input)
+}
+
+func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	if err := validateAgentRunRequest(input); err != nil {
+		return nil, err
+	}
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	story, err := repo.Story(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	agent, err := repo.Agent(userID, agentID)
+	if err != nil {
+		return nil, err
+	}
+	provider, err := providerFactory(agent.Provider)
+	if err != nil {
+		return nil, err
+	}
+	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
+	response, err := provider.Generate(ctx, AIProviderRequest{
+		APIKey:       agent.APIKey,
+		ModelName:    agent.ModelName,
+		SystemPrompt: systemPrompt,
+		UserPrompt:   userPrompt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	output := &storytellerModel.AgentRunResponse{
+		AgentID:      agent.ID,
+		Provider:     agent.Provider,
+		ModelName:    agent.ModelName,
+		Mode:         input.Mode,
+		Result:       response.Result,
+		FinishReason: response.FinishReason,
+	}
+	if response.Usage != nil {
+		output.Usage = &storytellerModel.AgentRunUsage{
+			InputTokens:  response.Usage.InputTokens,
+			OutputTokens: response.Usage.OutputTokens,
+			TotalTokens:  response.Usage.TotalTokens,
+		}
+	}
+	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output)
+	if err := repo.CreateStoryChatWithMessages(chat, messages); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerModel.Story, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
@@ -265,6 +331,23 @@ func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID str
 		return nil, err
 	}
 	return s.repo.StoryVersion(story.ID, versionID)
+}
+
+func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicID string, page, pageSize int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 50 {
+		pageSize = 50
+	}
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.repo.StoryChatMessages(story.ID, (page-1)*pageSize, pageSize)
 }
 
 func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, error) {
@@ -617,6 +700,178 @@ func validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) erro
 	}
 	if requireAPIKey && strings.TrimSpace(input.APIKey) == "" {
 		return errors.New("api_key is required")
+	}
+	return nil
+}
+
+func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
+	if strings.TrimSpace(input.Instruction) == "" {
+		return errors.New("instruction is required")
+	}
+	switch input.Mode {
+	case storytellerModel.AgentRunModeRewriteSelection,
+		storytellerModel.AgentRunModeExpandSelection,
+		storytellerModel.AgentRunModeTranslateSelection,
+		storytellerModel.AgentRunModeCustomSelection:
+		return validateSelectionAgentRunRequest(input)
+	case storytellerModel.AgentRunModeContinueChapter, storytellerModel.AgentRunModeCustomChapter:
+		return nil
+	default:
+		return errors.New("invalid mode")
+	}
+}
+
+func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (string, string) {
+	systemPrompt := strings.TrimSpace(`You are Storyteller's writing assistant. Help the user process story text.
+
+Rules:
+- Follow the purpose, tone, and constraints configured for this Agent.
+- Unless the user asks for analysis, output content that can be placed directly back into the story.
+- Do not include unrelated prefaces, conclusions, or explanations.
+- Do not store, disclose, or request sensitive information.
+
+Agent default configuration:
+` + strings.TrimSpace(agent.DefaultPrompt))
+
+	sections := []string{
+		"Task mode:\n" + string(input.Mode),
+		"User instruction:\n" + strings.TrimSpace(input.Instruction),
+	}
+	if !agentRunModeRequiresSelection(input.Mode) {
+		sections = append(sections, "Current chapter full content:\n<<<STORY_FULL_CONTENT\n"+input.FullContent+"\nSTORY_FULL_CONTENT")
+	}
+	if agentRunModeRequiresSelection(input.Mode) {
+		sections = append(sections, "Current selected text:\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
+	}
+	sections = append(sections, "Output requirements:\n"+agentRunOutputInstruction(input.Mode))
+	return systemPrompt, strings.Join(sections, "\n\n")
+}
+
+func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+	title := strings.TrimSpace(input.Instruction)
+	if title == "" {
+		title = string(input.Mode)
+	}
+	if len([]rune(title)) > 80 {
+		title = string([]rune(title)[:80])
+	}
+	chat := &storytellerModel.StoryChat{
+		StoryID:  storyID,
+		AgentID:  agent.ID,
+		UserID:   userID,
+		Title:    title,
+		Metadata: agentRunMetadata(input.Mode, output),
+	}
+	messages := []storytellerModel.StoryChatMessage{
+		{
+			Role:     storytellerModel.ChatMessageRoleUser,
+			Content:  agentRunUserMessageContent(input),
+			Metadata: agentRunInputMetadata(input),
+		},
+		{
+			Role:     storytellerModel.ChatMessageRoleAssistant,
+			Content:  output.Result,
+			Metadata: agentRunOutputMetadata(output),
+		},
+	}
+	return chat, messages
+}
+
+func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
+	instruction := strings.TrimSpace(input.Instruction)
+	selected := strings.TrimSpace(input.SelectedContent)
+	if selected == "" {
+		return instruction
+	}
+	quoted := strings.ReplaceAll(selected, "\n", "\n> ")
+	if instruction == "" {
+		return "> " + quoted
+	}
+	return "> " + quoted + "\n\n" + instruction
+}
+
+func agentRunMetadata(mode storytellerModel.AgentRunMode, output *storytellerModel.AgentRunResponse) string {
+	value := fmt.Sprintf(`{"mode":%q`, mode)
+	if output != nil && output.FinishReason != "" {
+		value += fmt.Sprintf(`,"finish_reason":%q`, output.FinishReason)
+	}
+	return value + "}"
+}
+
+func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {
+	value := fmt.Sprintf(`{"mode":%q`, input.Mode)
+	if input.SelectionStart != nil && input.SelectionEnd != nil {
+		value += fmt.Sprintf(`,"selection_start":%d,"selection_end":%d`, *input.SelectionStart, *input.SelectionEnd)
+	}
+	if input.SelectedContent != "" {
+		value += fmt.Sprintf(`,"selected_content_length":%d`, len([]rune(input.SelectedContent)))
+	}
+	value += fmt.Sprintf(`,"full_content_length":%d`, len([]rune(input.FullContent)))
+	return value + "}"
+}
+
+func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
+	if output == nil || output.Usage == nil {
+		if output != nil && output.FinishReason != "" {
+			return fmt.Sprintf(`{"finish_reason":%q}`, output.FinishReason)
+		}
+		return "{}"
+	}
+	return fmt.Sprintf(
+		`{"finish_reason":%q,"usage":{"input_tokens":%d,"output_tokens":%d,"total_tokens":%d}}`,
+		output.FinishReason,
+		output.Usage.InputTokens,
+		output.Usage.OutputTokens,
+		output.Usage.TotalTokens,
+	)
+}
+
+func agentRunModeRequiresSelection(mode storytellerModel.AgentRunMode) bool {
+	switch mode {
+	case storytellerModel.AgentRunModeRewriteSelection,
+		storytellerModel.AgentRunModeExpandSelection,
+		storytellerModel.AgentRunModeTranslateSelection,
+		storytellerModel.AgentRunModeCustomSelection:
+		return true
+	default:
+		return false
+	}
+}
+
+func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
+	switch mode {
+	case storytellerModel.AgentRunModeRewriteSelection:
+		return "Only output the rewritten text. Do not list versions or explain changes. Preserve the original tone and Markdown structure."
+	case storytellerModel.AgentRunModeExpandSelection:
+		return "Only output the expanded text. Do not explain changes. Continue the original tone and point of view."
+	case storytellerModel.AgentRunModeTranslateSelection:
+		return "Only output the translated text without notes. Infer the target language from the user instruction; if unspecified, translate to Traditional Chinese."
+	case storytellerModel.AgentRunModeContinueChapter:
+		return "Only output new content that can continue after the current chapter ending. Do not repeat the full chapter."
+	case storytellerModel.AgentRunModeCustomSelection:
+		return "Follow the user instruction. If analysis is not requested, output text that can be directly applied to the story."
+	case storytellerModel.AgentRunModeCustomChapter:
+		return "Follow the user instruction. If rewriting or continuing, do not repeat the entire chapter."
+	default:
+		return "Follow the user instruction."
+	}
+}
+
+func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) error {
+	if strings.TrimSpace(input.SelectedContent) == "" {
+		return errors.New("selected_content is required")
+	}
+	if input.SelectionStart == nil {
+		return errors.New("selection_start is required")
+	}
+	if input.SelectionEnd == nil {
+		return errors.New("selection_end is required")
+	}
+	if *input.SelectionStart < 0 {
+		return errors.New("selection_start must be greater than or equal to 0")
+	}
+	if *input.SelectionEnd <= *input.SelectionStart {
+		return errors.New("selection_end must be greater than selection_start")
 	}
 	return nil
 }

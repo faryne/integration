@@ -4,11 +4,14 @@ import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
+  StorytellerAgentRunRequest,
+  StorytellerAgentRunResponse,
   StorytellerAgentRequest,
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
   StorytellerStory,
+  StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
   StorytellerUserProfile,
@@ -346,6 +349,54 @@ export function useSaveStorytellerAgent() {
   });
 }
 
+export function useDeleteStorytellerAgent() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/agents/${id}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useRunStorytellerAgent(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      input,
+    }: {
+      agentId: number;
+      input: StorytellerAgentRunRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgentRunResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/run`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "story-chat-messages"],
+      });
+    },
+  });
+}
+
 export function useStorytellerStories(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
@@ -428,6 +479,46 @@ export function useStorytellerStoryVersions(
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerStoryChatMessages(
+  projectPublicId?: string,
+  storyPublicId?: string,
+  page = 1,
+  perPage = 10,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "story-chat-messages",
+      projectPublicId,
+      storyPublicId,
+      page,
+      perPage,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryChatMessagePage>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/chat-messages`,
+        {
+          params: { page, per_page: perPage },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return (
+        response.data.data ?? {
+          items: [],
+          total: 0,
+          page,
+          per_page: perPage,
+        }
+      );
     },
   });
 }

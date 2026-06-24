@@ -278,6 +278,10 @@ function App() {
                   <Route path={"project/articles"} element={<Editor />} />
                   <Route path={"project/article/:id"} element={<Editor />} />
                   <Route path={"agent/new"} element={<StorytellerNewAgent />} />
+                  <Route
+                    path={"agent/:agentId/edit"}
+                    element={<StorytellerNewAgent />}
+                  />
                 </Route>
                 <Route
                   path={"user/:username"}

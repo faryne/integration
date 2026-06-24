@@ -17,6 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
+  useDeleteStorytellerAgent,
   useDeleteStorytellerProject,
   useStorytellerAgents,
   useStorytellerProjects,
@@ -194,6 +195,12 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 }
 
 function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
+  const deleteAgent = useDeleteStorytellerAgent();
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+    apiBacked: boolean;
+  } | null>(null);
   const rows =
     agents.length > 0
       ? agents.map((agent) => ({
@@ -204,6 +211,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
           model: agent.model_name,
           enabled: !agent.is_deleted,
           updatedAt: agent.updated_at,
+          apiBacked: true,
         }))
       : storytellerAgents.map((agent) => ({
           id: agent.id,
@@ -213,67 +221,118 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
           model: agent.model,
           enabled: agent.enabled,
           updatedAt: agent.updatedAt,
+          apiBacked: false,
         }));
 
   return (
-    <Grid container spacing={2}>
-      {rows.map((agent) => (
-        <Grid key={agent.id} size={{ xs: 12, md: 4 }}>
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 2,
-              borderRadius: 1,
-              height: 1,
-              boxSizing: "border-box",
-              overflow: "hidden",
-            }}
-          >
-            <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                sx={{ minWidth: 0 }}
-              >
-                <SmartToyIcon color={agent.enabled ? "primary" : "disabled"} />
-                <Typography
-                  variant="h6"
-                  fontWeight={800}
-                  sx={{ minWidth: 0, overflowWrap: "anywhere" }}
+    <>
+      <Grid container spacing={2}>
+        {rows.map((agent) => (
+          <Grid key={agent.id} size={{ xs: 12, md: 4 }}>
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                borderRadius: 1,
+                height: 1,
+                boxSizing: "border-box",
+                overflow: "hidden",
+              }}
+            >
+              <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{ minWidth: 0 }}
                 >
-                  {agent.name}
+                  <SmartToyIcon color={agent.enabled ? "primary" : "disabled"} />
+                  <Typography
+                    variant="h6"
+                    fontWeight={800}
+                    sx={{ minWidth: 0, overflowWrap: "anywhere" }}
+                  >
+                    {agent.name}
+                  </Typography>
+                </Stack>
+                <Typography
+                  color="text.secondary"
+                  sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
+                >
+                  {agent.purpose}
                 </Typography>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  flexWrap="wrap"
+                  useFlexGap
+                  sx={{ minWidth: 0 }}
+                >
+                  <Chip size="small" label={agent.provider} />
+                  <Chip size="small" label={agent.model} />
+                  <Chip
+                    size="small"
+                    label={agent.enabled ? "啟用" : "停用"}
+                    color={agent.enabled ? "success" : "default"}
+                  />
+                </Stack>
+                <Typography variant="caption" color="text.secondary">
+                  更新於 {formatStorytellerDate(agent.updatedAt)}
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  <Button
+                    component={RouterLink}
+                    to={`/storyteller/my/agent/${agent.id}/edit`}
+                    size="small"
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    disabled={!agent.apiBacked}
+                  >
+                    編輯
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    variant="outlined"
+                    startIcon={<DeleteIcon />}
+                    disabled={!agent.apiBacked}
+                    onClick={() =>
+                      setDeleteTarget({
+                        id: Number(agent.id),
+                        name: agent.name,
+                        apiBacked: agent.apiBacked,
+                      })
+                    }
+                  >
+                    刪除
+                  </Button>
+                </Stack>
               </Stack>
-              <Typography
-                color="text.secondary"
-                sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
-              >
-                {agent.purpose}
-              </Typography>
-              <Stack
-                direction="row"
-                spacing={1}
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ minWidth: 0 }}
-              >
-                <Chip size="small" label={agent.provider} />
-                <Chip size="small" label={agent.model} />
-                <Chip
-                  size="small"
-                  label={agent.enabled ? "啟用" : "停用"}
-                  color={agent.enabled ? "success" : "default"}
-                />
-              </Stack>
-              <Typography variant="caption" color="text.secondary">
-                更新於 {formatStorytellerDate(agent.updatedAt)}
-              </Typography>
-            </Stack>
-          </Paper>
-        </Grid>
-      ))}
-    </Grid>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+      {deleteTarget && (
+        <ConfirmNameDialog
+          open
+          title="刪除 AI Agent"
+          description="刪除後此 Agent 將無法在故事編輯器中使用。請輸入 Agent 名稱確認。"
+          confirmName={deleteTarget.name}
+          confirmLabel="刪除 Agent"
+          loading={deleteAgent.isPending}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => {
+            if (!deleteTarget.apiBacked) {
+              setDeleteTarget(null);
+              return;
+            }
+            deleteAgent.mutate(deleteTarget.id, {
+              onSuccess: () => setDeleteTarget(null),
+            });
+          }}
+        />
+      )}
+    </>
   );
 }
 
