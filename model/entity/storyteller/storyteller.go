@@ -114,6 +114,7 @@ func (StoryChat) TableName() string { return "storyteller_story_chats" }
 type StoryChatMessage struct {
 	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
 	ChatID    uint64          `gorm:"column:chat_id" json:"chat_id"`
+	AgentID   *uint64         `gorm:"column:agent_id" json:"agent_id"`
 	Role      ChatMessageRole `gorm:"column:role" json:"role"`
 	Content   string          `gorm:"column:content" json:"content"`
 	Metadata  string          `gorm:"column:metadata" json:"metadata"`
@@ -226,7 +227,7 @@ type StoryChatMessageOutput struct {
 	Role      ChatMessageRole `json:"role"`
 	Content   string          `json:"content"`
 	Metadata  string          `json:"metadata,omitempty"`
-	AgentID   uint64          `json:"agent_id"`
+	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
 	AgentName string          `json:"agent_name"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`

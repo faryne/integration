@@ -37,6 +37,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { ChatMessageList } from "@mui/x-chat";
+import { ChatProvider, createEchoAdapter } from "@mui/x-chat/headless";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -69,6 +71,7 @@ import type {
 const historyPerPage = 5;
 const autoSaveIntervalMinutes = 2;
 const aiMessagesPerPage = 10;
+const storytellerChatAdapter = createEchoAdapter();
 
 interface EditorProject {
   id: string;
@@ -121,6 +124,17 @@ interface OptimisticChatMessage {
   content: string;
   agent_id: number;
   agent_name: string;
+  mode?: StorytellerAgentRunMode;
+  usage?: StorytellerAgentRunResponse["usage"];
+  resultSelection?: TextSelectionState | null;
+  isLoading?: boolean;
+  isCurrentResult?: boolean;
+}
+
+interface AgentPromptReference {
+  token: string;
+  title: string;
+  content: string;
 }
 
 function serializeStoryDraft(title: string, summary: string, content: string) {
@@ -221,7 +235,6 @@ export default function StorytellerStoryEditor() {
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
-  const lastPromptQuoteRef = useRef("");
   const currentDraftRef = useRef(serializeStoryDraft("", "", ""));
   const lastSavedDraftRef = useRef(serializeStoryDraft("", "", ""));
   const latestDraftRef = useRef<StoryDraft>({
@@ -271,9 +284,49 @@ export default function StorytellerStoryEditor() {
           ),
       )
     : aiMessages;
-  const chatMessages = optimisticMessage
-    ? [...visibleAiMessages, optimisticMessage]
-    : visibleAiMessages;
+  const transientMessages: OptimisticChatMessage[] = [];
+  if (optimisticMessage) {
+    transientMessages.push(optimisticMessage);
+  }
+  if (runAgent.isPending) {
+    transientMessages.push({
+      id: "agent-loading",
+      role: "assistant",
+      content: "",
+      agent_id: selectedAgentNumericId,
+      agent_name: selectedAgent?.name ?? "AI Agent",
+      isLoading: true,
+    });
+  }
+  if (aiResult) {
+    transientMessages.push({
+      id: `agent-result-${aiResult.agent_id}-${aiResult.result.length}`,
+      role: "assistant",
+      content: aiResult.result,
+      agent_id: aiResult.agent_id,
+      agent_name: selectedAgent?.name ?? "AI Agent",
+      mode: aiResult.mode,
+      usage: aiResult.usage,
+      resultSelection: aiResultSelection,
+      isCurrentResult: true,
+    });
+  }
+  const chatMessages = [...visibleAiMessages, ...transientMessages];
+  const chatMessageIds = chatMessages.map((message) => String(message.id));
+  const chatMessageById = new Map(
+    chatMessages.map((message) => [String(message.id), message]),
+  );
+  const agentPromptReferences = buildAgentPromptReferences(aiPrompt);
+  const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
+  const storyMentionOptions =
+    storyMentionQuery === null
+      ? []
+      : apiStories
+          .filter((item) => item.public_id !== apiStory?.public_id)
+          .filter((item) =>
+            item.title.toLowerCase().includes(storyMentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
   const aiMessageTotalPages = Math.max(
     1,
     Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
@@ -411,41 +464,6 @@ export default function StorytellerStoryEditor() {
     const end = target.selectionEnd;
     const value = target.value.slice(start, end);
     setSelectionState({ start, end, text: value });
-    if (value.trim()) {
-      prependSelectionQuoteToPrompt(value);
-    }
-  }
-
-  function selectionQuote(value: string) {
-    return value
-      .trim()
-      .split("\n")
-      .map((line) => `> ${line}`)
-      .join("\n");
-  }
-
-  function prependSelectionQuoteToPrompt(value: string) {
-    const quote = selectionQuote(value);
-    if (!quote || lastPromptQuoteRef.current === quote) {
-      return;
-    }
-    setAiPrompt((current) => {
-      let body = current.trimStart();
-      if (lastPromptQuoteRef.current && body.startsWith(lastPromptQuoteRef.current)) {
-        body = body.slice(lastPromptQuoteRef.current.length).trimStart();
-      }
-      lastPromptQuoteRef.current = quote;
-      return body ? `${quote}\n\n${body}` : quote;
-    });
-  }
-
-  function userMessageContent(instruction: string, selected: string) {
-    const quote = selected.trim() ? selectionQuote(selected) : "";
-    const body = instruction.trim();
-    if (quote && body) {
-      return `${quote}\n\n${body}`;
-    }
-    return quote || body;
   }
 
   function isRightDiffDisabled(diffId: string) {
@@ -563,20 +581,23 @@ export default function StorytellerStoryEditor() {
     const instruction = instructionOverride
       ? instructionOverride
       : normalizeInstructionForRun(rawInstruction);
-    if (!canRunAgent || instruction.trim() === "") {
+    if (!canRunAgent) {
       return;
     }
-    const hasSelection = selectionState.start < selectionState.end;
-    const nextMode =
-      mode ?? (hasSelection ? "custom_selection" : "custom_chapter");
-    const selectionStart = hasSelection ? selectionState.start : undefined;
-    const selectionEnd = hasSelection ? selectionState.end : undefined;
+    const referenceContent = buildAgentReferenceContent(agentPromptReferences);
+    const resultSelection =
+      selectionState.start < selectionState.end
+        ? {
+            start: selectionState.start,
+            end: selectionState.end,
+            text: selectionState.text,
+          }
+        : null;
+    const nextMode = mode ?? "custom_chapter";
     setOptimisticMessage({
       id: `pending-${Date.now()}`,
       role: "user",
-      content: instructionOverride
-        ? userMessageContent(rawInstruction, hasSelection ? selectionState.text : "")
-        : rawInstruction,
+      content: rawInstruction.trim() || "（未輸入需求）",
       agent_id: selectedAgentNumericId,
       agent_name: selectedAgent?.name ?? "AI Agent",
     });
@@ -587,24 +608,14 @@ export default function StorytellerStoryEditor() {
         input: {
           mode: nextMode,
           instruction,
-          full_content: content,
-          selected_content: hasSelection ? selectionState.text : "",
-          selection_start: selectionStart,
-          selection_end: selectionEnd,
+          full_content: referenceContent,
+          selected_content: "",
         },
       },
       {
         onSuccess: (result) => {
           setAiResult(result ?? null);
-          setAiResultSelection(
-            hasSelection
-              ? {
-                  start: selectionState.start,
-                  end: selectionState.end,
-                  text: selectionState.text,
-                }
-              : null,
-          );
+          setAiResultSelection(resultSelection);
         },
         onSettled: () => {
           setOptimisticMessage(null);
@@ -614,18 +625,7 @@ export default function StorytellerStoryEditor() {
   }
 
   function normalizeInstructionForRun(value: string) {
-    let body = value.trimStart();
-    if (lastPromptQuoteRef.current && body.startsWith(lastPromptQuoteRef.current)) {
-      body = body.slice(lastPromptQuoteRef.current.length).trimStart();
-    }
-    return body;
-  }
-
-  function applyAiResult(action: "replace" | "insert" | "append" | "copy") {
-    if (!aiResult?.result) {
-      return;
-    }
-    applyAgentText(aiResult.result, action, aiResultSelection);
+    return value.trim();
   }
 
   function applyAgentText(
@@ -709,6 +709,235 @@ export default function StorytellerStoryEditor() {
       return userProfile?.pen_name || "使用者";
     }
     return "System";
+  }
+
+  function buildAgentPromptReferences(value: string): AgentPromptReference[] {
+    const references = new Map<string, AgentPromptReference>();
+    if (value.includes("@thisStory")) {
+      references.set("@thisStory", {
+        token: "@thisStory",
+        title: storyTitle.trim() || story?.title || "目前故事",
+        content,
+      });
+    }
+
+    for (const referencedStory of apiStories) {
+      if (referencedStory.public_id === apiStory?.public_id) {
+        continue;
+      }
+      const token = `@story:${referencedStory.title}`;
+      const bracketToken = `@story:[${referencedStory.title}]`;
+      if (!value.includes(token) && !value.includes(bracketToken)) {
+        continue;
+      }
+      references.set(token, {
+        token,
+        title: referencedStory.title,
+        content: referencedStory.latest_content,
+      });
+    }
+
+    return Array.from(references.values());
+  }
+
+  function buildAgentReferenceContent(references: AgentPromptReference[]) {
+    if (references.length === 0) {
+      return "";
+    }
+    return references
+      .map(
+        (reference) =>
+          `Reference story: ${reference.title}\nToken: ${reference.token}\n<<<STORY_REFERENCE_CONTENT\n${reference.content}\nSTORY_REFERENCE_CONTENT`,
+      )
+      .join("\n\n");
+  }
+
+  function currentStoryMentionQuery(value: string) {
+    const match = value.match(/@story:([^\s\]]*)$/);
+    return match ? match[1] : null;
+  }
+
+  function insertStoryMention(title: string) {
+    setAiPrompt((current) => {
+      const token = `@story:${title}`;
+      if (/@story:([^\s\]]*)$/.test(current)) {
+        return current.replace(/@story:([^\s\]]*)$/, token);
+      }
+      return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
+    });
+  }
+
+  function renderChatMessage(messageId: string) {
+    const message = chatMessageById.get(messageId);
+    if (!message) {
+      return null;
+    }
+    const isUser = message.role === "user";
+    const isOptimistic = "isLoading" in message || "isCurrentResult" in message;
+    return (
+      <Box
+        key={message.id}
+        sx={{
+          display: "flex",
+          justifyContent: isUser ? "flex-end" : "flex-start",
+          px: 2,
+          py: 0.625,
+        }}
+      >
+        <Box
+          sx={{
+            maxWidth: "92%",
+            p: 1.5,
+            borderRadius: 1,
+            bgcolor: isUser ? "primary.main" : "background.paper",
+            color: isUser ? "primary.contrastText" : "text.primary",
+            border: isUser ? 0 : "1px solid",
+            borderColor: "divider",
+            "& blockquote": {
+              m: 0,
+              mt: 0.75,
+              mb: 1,
+              px: 1.25,
+              py: 0.75,
+              borderLeft: "3px solid",
+              borderColor: isUser ? "primary.contrastText" : "primary.main",
+              bgcolor: isUser ? "rgba(255,255,255,0.14)" : "action.hover",
+              borderRadius: 0.5,
+            },
+            "& blockquote p": {
+              m: 0,
+            },
+          }}
+        >
+          <Typography
+            variant="caption"
+            color={isUser ? "inherit" : "text.secondary"}
+            sx={{ opacity: isUser ? 0.82 : 1 }}
+          >
+            {messageSpeaker(message)}
+          </Typography>
+          {isOptimistic && message.isLoading ? (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mt: 1 }}
+            >
+              <CircularProgress size={18} />
+              <Typography variant="body2" color="text.secondary">
+                處理中...
+              </Typography>
+            </Stack>
+          ) : (
+            <Box sx={{ typography: "body2", mt: 0.5 }}>
+              <Markdown>{message.content}</Markdown>
+            </Box>
+          )}
+          {!isUser && isOptimistic && message.isCurrentResult && (
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mt: 1 }}
+            >
+              <Chip size="small" label={message.mode} />
+              {message.usage?.total_tokens ? (
+                <Chip
+                  size="small"
+                  label={`${message.usage.total_tokens} tokens`}
+                />
+              ) : null}
+            </Stack>
+          )}
+          {!isUser && message.content.trim() && !isOptimistic && (
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mt: 1 }}
+            >
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => applyAgentText(message.content, "insert", null)}
+              >
+                插入游標
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => applyAgentText(message.content, "append", null)}
+              >
+                附加末尾
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() => applyAgentText(message.content, "copy", null)}
+              >
+                複製
+              </Button>
+            </Stack>
+          )}
+          {!isUser &&
+            isOptimistic &&
+            message.isCurrentResult &&
+            message.content.trim() && (
+              <Stack
+                direction="row"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ mt: 1 }}
+              >
+                <Button
+                  size="small"
+                  variant="outlined"
+                  disabled={!message.resultSelection}
+                  onClick={() =>
+                    applyAgentText(
+                      message.content,
+                      "replace",
+                      message.resultSelection ?? null,
+                    )
+                  }
+                >
+                  取代選取
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() =>
+                    applyAgentText(message.content, "insert", null)
+                  }
+                >
+                  插入游標
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() =>
+                    applyAgentText(message.content, "append", null)
+                  }
+                >
+                  附加末尾
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<ContentCopyIcon />}
+                  onClick={() => applyAgentText(message.content, "copy", null)}
+                >
+                  複製
+                </Button>
+              </Stack>
+            )}
+        </Box>
+      </Box>
+    );
   }
 
   return (
@@ -1141,16 +1370,19 @@ export default function StorytellerStoryEditor() {
               <Stack
                 spacing={1.5}
                 sx={{
-                  p: 2,
                   flex: 1,
                   minHeight: { xs: 360, lg: 0 },
                   maxHeight: { xs: 520, lg: 480 },
-                  overflowY: "auto",
+                  overflow: "hidden",
                   bgcolor: "grey.50",
                 }}
               >
                 {!apiStory?.public_id && (
-                  <Alert severity="info" variant="outlined">
+                  <Alert
+                    severity="info"
+                    variant="outlined"
+                    sx={{ m: 2, mb: 0 }}
+                  >
                     新故事第一次存檔後才能呼叫 AI Agent。
                   </Alert>
                 )}
@@ -1159,96 +1391,20 @@ export default function StorytellerStoryEditor() {
                     <CircularProgress size={24} />
                   </Stack>
                 ) : chatMessages.length > 0 ? (
-                  <Stack spacing={1.25}>
-                    {chatMessages.map((message) => {
-                      const isUser = message.role === "user";
-                      return (
-                        <Box
-                          key={message.id}
-                          sx={{
-                            alignSelf: isUser ? "flex-end" : "flex-start",
-                            maxWidth: "92%",
-                            p: 1.5,
-                            borderRadius: 1,
-                            bgcolor: isUser
-                              ? "primary.main"
-                              : "background.paper",
-                            color: isUser
-                              ? "primary.contrastText"
-                              : "text.primary",
-                            border: isUser ? 0 : "1px solid",
-                            borderColor: "divider",
-                            "& blockquote": {
-                              m: 0,
-                              mt: 0.75,
-                              mb: 1,
-                              px: 1.25,
-                              py: 0.75,
-                              borderLeft: "3px solid",
-                              borderColor: isUser
-                                ? "primary.contrastText"
-                                : "primary.main",
-                              bgcolor: isUser
-                                ? "rgba(255,255,255,0.14)"
-                                : "action.hover",
-                              borderRadius: 0.5,
-                            },
-                            "& blockquote p": {
-                              m: 0,
-                            },
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            color={isUser ? "inherit" : "text.secondary"}
-                            sx={{ opacity: isUser ? 0.82 : 1 }}
-                          >
-                            {messageSpeaker(message)}
-                          </Typography>
-                          <Box sx={{ typography: "body2", mt: 0.5 }}>
-                            <Markdown>{message.content}</Markdown>
-                          </Box>
-                          {!isUser && message.content.trim() && (
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              flexWrap="wrap"
-                              useFlexGap
-                              sx={{ mt: 1 }}
-                            >
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() =>
-                                  applyAgentText(message.content, "insert", null)
-                                }
-                              >
-                                插入游標
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() =>
-                                  applyAgentText(message.content, "append", null)
-                                }
-                              >
-                                附加末尾
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<ContentCopyIcon />}
-                                onClick={() =>
-                                  applyAgentText(message.content, "copy", null)
-                                }
-                              >
-                                複製
-                              </Button>
-                            </Stack>
-                          )}
-                        </Box>
-                      );
-                    })}
+                  <Stack spacing={1.25} sx={{ flex: 1, minHeight: 0 }}>
+                    <ChatProvider adapter={storytellerChatAdapter}>
+                      <ChatMessageList
+                        items={chatMessageIds}
+                        renderItem={({ id }) => renderChatMessage(id)}
+                        enableRovingFocus={false}
+                        sx={{ flex: 1, minHeight: 0 }}
+                        slotProps={{
+                          messageListContent: {
+                            style: { paddingBlock: 11 },
+                          },
+                        }}
+                      />
+                    </ChatProvider>
                     {aiMessageTotalPages > 1 && (
                       <Stack direction="row" justifyContent="center">
                         <Pagination
@@ -1265,100 +1421,15 @@ export default function StorytellerStoryEditor() {
                   <Typography
                     variant="body2"
                     color="text.secondary"
-                    sx={{ textAlign: "center", py: 2 }}
+                    sx={{ textAlign: "center", py: 2, px: 2 }}
                   >
                     這個故事還沒有 AI Agent 對話紀錄。
                   </Typography>
                 )}
-                {runAgent.isPending && (
-                  <Stack alignItems="center" sx={{ py: 2 }}>
-                    <CircularProgress size={24} />
-                  </Stack>
-                )}
                 {runAgent.isError && (
-                  <Alert severity="error" variant="outlined">
+                  <Alert severity="error" variant="outlined" sx={{ mx: 2 }}>
                     {aiErrorMessage(runAgent.error)}
                   </Alert>
-                )}
-                {aiResult && (
-                  <Box
-                    sx={{
-                      alignSelf: "flex-start",
-                      maxWidth: "100%",
-                      p: 1.5,
-                      borderRadius: 1,
-                      bgcolor: "background.paper",
-                      border: "1px solid",
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Stack spacing={1}>
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        flexWrap="wrap"
-                        useFlexGap
-                      >
-                        <Typography variant="caption" color="text.secondary">
-                          {selectedAgent.name}
-                        </Typography>
-                        <Chip size="small" label={aiResult.mode} />
-                        {aiResult.usage?.total_tokens ? (
-                          <Chip
-                            size="small"
-                            label={`${aiResult.usage.total_tokens} tokens`}
-                          />
-                        ) : null}
-                      </Stack>
-                      {aiResult.result.trim() ? (
-                        <Box sx={{ typography: "body2" }}>
-                          <Markdown>{aiResult.result}</Markdown>
-                        </Box>
-                      ) : (
-                        <Alert severity="warning" variant="outlined">
-                          AI 沒有回傳內容。
-                        </Alert>
-                      )}
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        flexWrap="wrap"
-                        useFlexGap
-                      >
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          disabled={!aiResultSelection}
-                          onClick={() => applyAiResult("replace")}
-                        >
-                          取代選取
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => applyAiResult("insert")}
-                        >
-                          插入游標
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => applyAiResult("append")}
-                        >
-                          附加末尾
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<ContentCopyIcon />}
-                          onClick={() => applyAiResult("copy")}
-                        >
-                          複製
-                        </Button>
-                      </Stack>
-                    </Stack>
-                  </Box>
                 )}
               </Stack>
 
@@ -1371,12 +1442,42 @@ export default function StorytellerStoryEditor() {
                   label="輸入需求"
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
-                  placeholder="可輸入 Markdown，例如：請用 **條列式** 指出目前章節需要補強的地方。"
+                  placeholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story: 引用同專案其他故事。"
                 />
+                {agentPromptReferences.length > 0 && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {agentPromptReferences.map((reference) => (
+                      <Chip
+                        key={reference.token}
+                        size="small"
+                        color={
+                          reference.token === "@thisStory"
+                            ? "primary"
+                            : "default"
+                        }
+                        label={reference.title}
+                      />
+                    ))}
+                  </Stack>
+                )}
+                {storyMentionOptions.length > 0 && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {storyMentionOptions.map((item) => (
+                      <Button
+                        key={item.public_id}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => insertStoryMention(item.title)}
+                      >
+                        {item.title}
+                      </Button>
+                    ))}
+                  </Stack>
+                )}
                 <Button
                   variant="contained"
                   startIcon={<SendIcon />}
-                  disabled={!canRunAgent || aiPrompt.trim() === ""}
+                  disabled={!canRunAgent}
                   onClick={() => runSelectedAgent()}
                 >
                   {runAgent.isPending ? "處理中" : "送出需求"}

@@ -38,14 +38,20 @@ func TestValidateAgentRunRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "missing instruction",
+			name: "selection mode without instruction",
 			input: storytellerModel.AgentRunRequest{
 				Mode:            storytellerModel.AgentRunModeRewriteSelection,
 				SelectedContent: "old",
 				SelectionStart:  &start,
 				SelectionEnd:    &end,
 			},
-			wantErr: "instruction is required",
+		},
+		{
+			name: "chapter mode without instruction",
+			input: storytellerModel.AgentRunRequest{
+				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				FullContent: "chapter",
+			},
 		},
 		{
 			name: "invalid mode",

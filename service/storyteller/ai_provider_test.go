@@ -160,6 +160,26 @@ func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {
 	require.NotContains(t, userPrompt, "Current selected text:")
 }
 
+func TestBuildAgentRunPromptsAllowsEmptyInstruction(t *testing.T) {
+	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
+		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		FullContent: "Full chapter.",
+	})
+
+	require.Contains(t, userPrompt, "User instruction:\n(No additional instruction was provided.)")
+	require.Contains(t, userPrompt, "Current chapter full content:")
+}
+
+func TestBuildAgentRunPromptsOmitsEmptyFullContent(t *testing.T) {
+	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
+		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Instruction: "Only use this request.",
+	})
+
+	require.Contains(t, userPrompt, "User instruction:\nOnly use this request.")
+	require.NotContains(t, userPrompt, "Current chapter full content:")
+}
+
 func TestGrokStatusErrorWrapsExpectedSentinel(t *testing.T) {
 	err := grokStatusError(http.StatusUnauthorized, strings.NewReader(`{"error":"bad key"}`))
 	require.ErrorIs(t, err, ErrAIProviderInvalidAPIKey)

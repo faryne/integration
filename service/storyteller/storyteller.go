@@ -705,9 +705,6 @@ func validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) erro
 }
 
 func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
-	if strings.TrimSpace(input.Instruction) == "" {
-		return errors.New("instruction is required")
-	}
 	switch input.Mode {
 	case storytellerModel.AgentRunModeRewriteSelection,
 		storytellerModel.AgentRunModeExpandSelection,
@@ -735,9 +732,9 @@ Agent default configuration:
 
 	sections := []string{
 		"Task mode:\n" + string(input.Mode),
-		"User instruction:\n" + strings.TrimSpace(input.Instruction),
+		"User instruction:\n" + agentRunPromptInstruction(input.Instruction),
 	}
-	if !agentRunModeRequiresSelection(input.Mode) {
+	if !agentRunModeRequiresSelection(input.Mode) && strings.TrimSpace(input.FullContent) != "" {
 		sections = append(sections, "Current chapter full content:\n<<<STORY_FULL_CONTENT\n"+input.FullContent+"\nSTORY_FULL_CONTENT")
 	}
 	if agentRunModeRequiresSelection(input.Mode) {
@@ -745,6 +742,14 @@ Agent default configuration:
 	}
 	sections = append(sections, "Output requirements:\n"+agentRunOutputInstruction(input.Mode))
 	return systemPrompt, strings.Join(sections, "\n\n")
+}
+
+func agentRunPromptInstruction(instruction string) string {
+	value := strings.TrimSpace(instruction)
+	if value == "" {
+		return "(No additional instruction was provided.)"
+	}
+	return value
 }
 
 func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
@@ -762,13 +767,16 @@ func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, inp
 		Title:    title,
 		Metadata: agentRunMetadata(input.Mode, output),
 	}
+	agentID := agent.ID
 	messages := []storytellerModel.StoryChatMessage{
 		{
+			AgentID:  &agentID,
 			Role:     storytellerModel.ChatMessageRoleUser,
 			Content:  agentRunUserMessageContent(input),
 			Metadata: agentRunInputMetadata(input),
 		},
 		{
+			AgentID:  &agentID,
 			Role:     storytellerModel.ChatMessageRoleAssistant,
 			Content:  output.Result,
 			Metadata: agentRunOutputMetadata(output),
