@@ -71,6 +71,9 @@ import type {
 const historyPerPage = 5;
 const autoSaveIntervalMinutes = 2;
 const aiMessagesPerPage = 10;
+const aiInstructionMaxCharacters = 4000;
+const aiFullContentMaxCharacters = 60000;
+const aiTotalPayloadMaxCharacters = 80000;
 const storytellerChatAdapter = createEchoAdapter();
 
 interface EditorProject {
@@ -311,12 +314,26 @@ export default function StorytellerStoryEditor() {
       isCurrentResult: true,
     });
   }
+  const agentPromptReferences = buildAgentPromptReferences(aiPrompt);
+  const agentReferenceContent = buildAgentReferenceContent(
+    agentPromptReferences,
+  );
+  const aiPromptLength = Array.from(aiPrompt).length;
+  const aiReferenceContentLength = Array.from(agentReferenceContent).length;
+  const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
+  const aiPayloadError =
+    aiPromptLength > aiInstructionMaxCharacters
+      ? `輸入需求最多 ${aiInstructionMaxCharacters.toLocaleString()} 字。`
+      : aiReferenceContentLength > aiFullContentMaxCharacters
+        ? `引用內容最多 ${aiFullContentMaxCharacters.toLocaleString()} 字。`
+        : aiPayloadLength > aiTotalPayloadMaxCharacters
+          ? `單次 Agent payload 最多 ${aiTotalPayloadMaxCharacters.toLocaleString()} 字。`
+          : "";
   const chatMessages = [...visibleAiMessages, ...transientMessages];
   const chatMessageIds = chatMessages.map((message) => String(message.id));
   const chatMessageById = new Map(
     chatMessages.map((message) => [String(message.id), message]),
   );
-  const agentPromptReferences = buildAgentPromptReferences(aiPrompt);
   const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
   const storyMentionOptions =
     storyMentionQuery === null
@@ -335,6 +352,7 @@ export default function StorytellerStoryEditor() {
     Boolean(apiProject?.public_id && apiStory?.public_id) &&
     Number.isFinite(selectedAgentNumericId) &&
     Boolean(selectedAgent?.enabled) &&
+    aiPayloadError === "" &&
     !runAgent.isPending;
 
   useEffect(() => {
@@ -584,7 +602,6 @@ export default function StorytellerStoryEditor() {
     if (!canRunAgent) {
       return;
     }
-    const referenceContent = buildAgentReferenceContent(agentPromptReferences);
     const resultSelection =
       selectionState.start < selectionState.end
         ? {
@@ -601,6 +618,7 @@ export default function StorytellerStoryEditor() {
       agent_id: selectedAgentNumericId,
       agent_name: selectedAgent?.name ?? "AI Agent",
     });
+    setAiPrompt("");
 
     runAgent.mutate(
       {
@@ -608,7 +626,7 @@ export default function StorytellerStoryEditor() {
         input: {
           mode: nextMode,
           instruction,
-          full_content: referenceContent,
+          full_content: agentReferenceContent,
           selected_content: "",
         },
       },
@@ -1443,7 +1461,14 @@ export default function StorytellerStoryEditor() {
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
                   placeholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story: 引用同專案其他故事。"
+                  error={Boolean(aiPayloadError)}
+                  helperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
                 />
+                {aiPayloadError && (
+                  <Alert severity="warning" variant="outlined">
+                    {aiPayloadError}
+                  </Alert>
+                )}
                 {agentPromptReferences.length > 0 && (
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {agentPromptReferences.map((reference) => (

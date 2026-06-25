@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -60,6 +61,34 @@ func TestValidateAgentRunRequest(t *testing.T) {
 				Instruction: "test",
 			},
 			wantErr: "invalid mode",
+		},
+		{
+			name: "instruction too large",
+			input: storytellerModel.AgentRunRequest{
+				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				Instruction: strings.Repeat("a", agentRunInstructionMaxRunes+1),
+			},
+			wantErr: "instruction must be 4000 characters or less",
+		},
+		{
+			name: "full content too large",
+			input: storytellerModel.AgentRunRequest{
+				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				Instruction: "process",
+				FullContent: strings.Repeat("a", agentRunFullContentMaxRunes+1),
+			},
+			wantErr: "full_content must be 60000 characters or less",
+		},
+		{
+			name: "selected content too large",
+			input: storytellerModel.AgentRunRequest{
+				Mode:            storytellerModel.AgentRunModeCustomSelection,
+				Instruction:     "process",
+				SelectedContent: strings.Repeat("a", agentRunSelectedContentMaxRunes+1),
+				SelectionStart:  &start,
+				SelectionEnd:    &end,
+			},
+			wantErr: "selected_content must be 20000 characters or less",
 		},
 		{
 			name: "selection missing content",

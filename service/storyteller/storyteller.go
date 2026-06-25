@@ -705,6 +705,9 @@ func validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) erro
 }
 
 func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
+	if err := validateAgentRunPayloadSize(input); err != nil {
+		return err
+	}
 	switch input.Mode {
 	case storytellerModel.AgentRunModeRewriteSelection,
 		storytellerModel.AgentRunModeExpandSelection,
@@ -716,6 +719,32 @@ func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
 	default:
 		return errors.New("invalid mode")
 	}
+}
+
+const (
+	agentRunInstructionMaxRunes     = 4000
+	agentRunFullContentMaxRunes     = 60000
+	agentRunSelectedContentMaxRunes = 20000
+	agentRunTotalPayloadMaxRunes    = 80000
+)
+
+func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
+	instructionLength := len([]rune(input.Instruction))
+	fullContentLength := len([]rune(input.FullContent))
+	selectedContentLength := len([]rune(input.SelectedContent))
+	if instructionLength > agentRunInstructionMaxRunes {
+		return fmt.Errorf("instruction must be %d characters or less", agentRunInstructionMaxRunes)
+	}
+	if fullContentLength > agentRunFullContentMaxRunes {
+		return fmt.Errorf("full_content must be %d characters or less", agentRunFullContentMaxRunes)
+	}
+	if selectedContentLength > agentRunSelectedContentMaxRunes {
+		return fmt.Errorf("selected_content must be %d characters or less", agentRunSelectedContentMaxRunes)
+	}
+	if instructionLength+fullContentLength+selectedContentLength > agentRunTotalPayloadMaxRunes {
+		return fmt.Errorf("agent run payload must be %d characters or less", agentRunTotalPayloadMaxRunes)
+	}
+	return nil
 }
 
 func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (string, string) {
