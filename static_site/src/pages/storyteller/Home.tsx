@@ -24,15 +24,11 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
-import {
-  formatStorytellerDate,
-  storytellerAgents,
-} from "@/data/storyteller.ts";
+import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
-  StorytellerPrimaryActions,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import type {
@@ -102,74 +98,93 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           刪除專案失敗，請確認登入狀態後再試一次。
         </Alert>
       )}
-      <Grid container spacing={2}>
-        {rows.map((project) => (
-          <Grid key={project.id} size={{ xs: 12, md: 4 }}>
-            <StorytellerProjectCard
-              name={project.name}
-              description={project.description}
-              updatedAt={project.updatedAt}
-              chips={
-                <>
-                  <Chip
-                    size="small"
-                    label={project.statusLabel}
-                    color={project.statusColor as "primary" | "default"}
-                  />
-                  <Chip size="small" label={`${project.storiesCount} 篇故事`} />
-                  <Chip
-                    size="small"
-                    label={`${project.wordCount.toLocaleString()} 字`}
-                  />
-                  <Chip size="small" label={`${project.ratingCount} 人評分`} />
-                  <Chip
-                    size="small"
-                    label={`平均 ${project.averageRating.toFixed(1)}`}
-                  />
-                </>
-              }
-              actions={
-                <>
-                  <Button
-                    component={RouterLink}
-                    to={`/storyteller/my/project/${project.id}`}
-                    size="small"
-                    variant="outlined"
-                  >
-                    開啟專案
-                  </Button>
-                  <Button
-                    component={RouterLink}
-                    to={`/storyteller/my/project/${project.id}/edit`}
-                    size="small"
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    disabled={!project.apiBacked}
-                  >
-                    編輯
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                    startIcon={<DeleteIcon />}
-                    disabled={!project.apiBacked}
-                    onClick={() =>
-                      setDeleteTarget({
-                        id: project.id,
-                        name: project.name,
-                        apiBacked: project.apiBacked,
-                      })
-                    }
-                  >
-                    刪除
-                  </Button>
-                </>
-              }
-            />
-          </Grid>
-        ))}
-      </Grid>
+      {rows.length === 0 ? (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+          <Stack spacing={2} alignItems="flex-start">
+            <Alert severity="info" variant="outlined">
+              目前還沒有故事專案。
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              可以使用上方的「建立專案」開始建立第一個故事專案。
+            </Typography>
+          </Stack>
+        </Paper>
+      ) : (
+        <Grid container spacing={2}>
+          {rows.map((project) => (
+            <Grid key={project.id} size={{ xs: 12, md: 4 }}>
+              <StorytellerProjectCard
+                name={project.name}
+                description={project.description}
+                updatedAt={project.updatedAt}
+                chips={
+                  <>
+                    <Chip
+                      size="small"
+                      label={project.statusLabel}
+                      color={project.statusColor as "primary" | "default"}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${project.storiesCount} 篇故事`}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${project.wordCount.toLocaleString()} 字`}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${project.ratingCount} 人評分`}
+                    />
+                    <Chip
+                      size="small"
+                      label={`平均 ${project.averageRating.toFixed(1)}`}
+                    />
+                  </>
+                }
+                actions={
+                  <>
+                    <Button
+                      component={RouterLink}
+                      to={`/storyteller/my/project/${project.id}`}
+                      size="small"
+                      variant="outlined"
+                    >
+                      開啟專案
+                    </Button>
+                    <Button
+                      component={RouterLink}
+                      to={`/storyteller/my/project/${project.id}/edit`}
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      disabled={!project.apiBacked}
+                    >
+                      編輯
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<DeleteIcon />}
+                      disabled={!project.apiBacked}
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: project.id,
+                          name: project.name,
+                          apiBacked: project.apiBacked,
+                        })
+                      }
+                    >
+                      刪除
+                    </Button>
+                  </>
+                }
+              />
+            </Grid>
+          ))}
+        </Grid>
+      )}
       {deleteTarget && (
         <ConfirmNameDialog
           open
@@ -201,117 +216,115 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
     name: string;
     apiBacked: boolean;
   } | null>(null);
-  const rows =
-    agents.length > 0
-      ? agents.map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-          purpose: agent.default_prompt,
-          provider: agent.provider,
-          model: agent.model_name,
-          enabled: !agent.is_deleted,
-          updatedAt: agent.updated_at,
-          apiBacked: true,
-        }))
-      : storytellerAgents.map((agent) => ({
-          id: agent.id,
-          name: agent.name,
-          purpose: agent.purpose,
-          provider: agent.provider,
-          model: agent.model,
-          enabled: agent.enabled,
-          updatedAt: agent.updatedAt,
-          apiBacked: false,
-        }));
+  const rows = agents.map((agent) => ({
+    id: agent.id,
+    name: agent.name,
+    purpose: agent.default_prompt,
+    provider: agent.provider,
+    model: agent.model_name,
+    enabled: !agent.is_deleted,
+    updatedAt: agent.updated_at,
+    apiBacked: true,
+  }));
 
   return (
     <>
-      <Grid container spacing={2}>
-        {rows.map((agent) => (
-          <Grid key={agent.id} size={{ xs: 12, md: 4 }}>
-            <Paper
-              variant="outlined"
-              sx={{
-                p: 2,
-                borderRadius: 1,
-                height: 1,
-                boxSizing: "border-box",
-                overflow: "hidden",
-              }}
-            >
-              <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  sx={{ minWidth: 0 }}
-                >
-                  <SmartToyIcon color={agent.enabled ? "primary" : "disabled"} />
+      {rows.length === 0 ? (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
+          <Stack spacing={2} alignItems="flex-start">
+            <Alert severity="info" variant="outlined">
+              目前還沒有 AI Agent。
+            </Alert>
+            <Typography variant="body2" color="text.secondary">
+              可以使用上方的「建立 AI Agent」新增可在故事編輯器中使用的 Agent。
+            </Typography>
+          </Stack>
+        </Paper>
+      ) : (
+        <Grid container spacing={2}>
+          {rows.map((agent) => (
+            <Grid key={agent.id} size={{ xs: 12, md: 4 }}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  height: 1,
+                  boxSizing: "border-box",
+                  overflow: "hidden",
+                }}
+              >
+                <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ minWidth: 0 }}
+                  >
+                    <SmartToyIcon
+                      color={agent.enabled ? "primary" : "disabled"}
+                    />
+                    <Typography
+                      variant="h6"
+                      fontWeight={800}
+                      sx={{ minWidth: 0, overflowWrap: "anywhere" }}
+                    >
+                      {agent.name}
+                    </Typography>
+                  </Stack>
                   <Typography
-                    variant="h6"
-                    fontWeight={800}
-                    sx={{ minWidth: 0, overflowWrap: "anywhere" }}
+                    color="text.secondary"
+                    sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
                   >
-                    {agent.name}
+                    {agent.purpose}
                   </Typography>
-                </Stack>
-                <Typography
-                  color="text.secondary"
-                  sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
-                >
-                  {agent.purpose}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  flexWrap="wrap"
-                  useFlexGap
-                  sx={{ minWidth: 0 }}
-                >
-                  <Chip size="small" label={agent.provider} />
-                  <Chip size="small" label={agent.model} />
-                  <Chip
-                    size="small"
-                    label={agent.enabled ? "啟用" : "停用"}
-                    color={agent.enabled ? "success" : "default"}
-                  />
-                </Stack>
-                <Typography variant="caption" color="text.secondary">
-                  更新於 {formatStorytellerDate(agent.updatedAt)}
-                </Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Button
-                    component={RouterLink}
-                    to={`/storyteller/my/agent/${agent.id}/edit`}
-                    size="small"
-                    variant="outlined"
-                    startIcon={<EditIcon />}
-                    disabled={!agent.apiBacked}
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ minWidth: 0 }}
                   >
-                    編輯
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    variant="outlined"
-                    startIcon={<DeleteIcon />}
-                    disabled={!agent.apiBacked}
-                    onClick={() =>
-                      setDeleteTarget({
-                        id: Number(agent.id),
-                        name: agent.name,
-                        apiBacked: agent.apiBacked,
-                      })
-                    }
-                  >
-                    刪除
-                  </Button>
+                    <Chip size="small" label={agent.provider} />
+                    <Chip size="small" label={agent.model} />
+                  </Stack>
+                  <Typography variant="caption" color="text.secondary">
+                    更新於 {formatStorytellerDate(agent.updatedAt)}
+                  </Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Button
+                      component={RouterLink}
+                      to={`/storyteller/my/agent/${agent.id}/edit`}
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EditIcon />}
+                      disabled={!agent.apiBacked}
+                    >
+                      編輯
+                    </Button>
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<DeleteIcon />}
+                      disabled={!agent.apiBacked}
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: Number(agent.id),
+                          name: agent.name,
+                          apiBacked: agent.apiBacked,
+                        })
+                      }
+                    >
+                      刪除
+                    </Button>
+                  </Stack>
                 </Stack>
-              </Stack>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      )}
       {deleteTarget && (
         <ConfirmNameDialog
           open
@@ -368,7 +381,6 @@ export default function StorytellerHome() {
         { label: "Storyteller", to: "/storyteller" },
         { label: "我的工作台" },
       ]}
-      action={<StorytellerPrimaryActions />}
     >
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}>
@@ -389,9 +401,33 @@ export default function StorytellerHome() {
           <Divider />
           <Box sx={{ p: { xs: 2, md: 3 } }}>
             <Stack spacing={2}>
-              <Typography variant="h6" fontWeight={800}>
-                {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
-              </Typography>
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1.5}
+                justifyContent="space-between"
+                alignItems={{ xs: "stretch", sm: "center" }}
+              >
+                <Typography variant="h6" fontWeight={800}>
+                  {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
+                </Typography>
+                {tab === "project" ? (
+                  <Button
+                    component={RouterLink}
+                    to="/storyteller/my/project/new"
+                    variant="contained"
+                  >
+                    建立專案
+                  </Button>
+                ) : (
+                  <Button
+                    component={RouterLink}
+                    to="/storyteller/my/agent/new"
+                    variant="contained"
+                  >
+                    建立 AI Agent
+                  </Button>
+                )}
+              </Stack>
               {tab === "project" && projectsLoading ? (
                 <StorytellerLoading label="正在載入故事專案..." />
               ) : tab === "project" ? (

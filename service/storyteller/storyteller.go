@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
@@ -350,7 +351,7 @@ func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicI
 	return s.repo.StoryChatMessages(story.ID, (page-1)*pageSize, pageSize)
 }
 
-func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, error) {
+func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.UserProfileOutput, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -359,14 +360,17 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	}
 	profile, err := s.repo.UserProfileByPenName(penName)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	projects, total, err := s.repo.PublicProjectsByUserID(profile.UserID, (page-1)*pageSize, pageSize)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, nil, err
 	}
 	outputs, err := s.projectOutputs(projects)
-	return outputs, total, err
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	return outputs, total, userProfileOutput(profile), nil
 }
 
 func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
@@ -375,6 +379,22 @@ func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOut
 		return nil, err
 	}
 	return s.projectOutputs(projects)
+}
+
+func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
+	favorites, err := s.repo.FavoriteAuthors(userID)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
+	for _, favorite := range favorites {
+		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID)
+		if err != nil {
+			return nil, err
+		}
+		outputs = append(outputs, *output)
+	}
+	return outputs, nil
 }
 
 func (s *Service) FavoriteStatus(userID uint64, projectPublicID string) (map[string]bool, error) {
@@ -424,6 +444,45 @@ func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
 	}
 	ranking.IsFavorite = false
 	return s.repo.SaveRanking(ranking)
+}
+
+func (s *Service) AuthorFavoriteStatus(userID, authorUserID uint64) (map[string]bool, error) {
+	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+	if err != nil {
+		return map[string]bool{"favorited": false}, nil
+	}
+	return map[string]bool{"favorited": favorite.DeletedAt == nil}, nil
+}
+
+func (s *Service) CreateAuthorFavorite(userID, authorUserID uint64) (*storytellerModel.FavoriteAuthorOutput, error) {
+	if userID == authorUserID {
+		return nil, errors.New("cannot favorite yourself")
+	}
+	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+	if err == nil {
+		favorite.DeletedAt = nil
+		if err := s.repo.SaveAuthorFavorite(favorite); err != nil {
+			return nil, err
+		}
+		return s.favoriteAuthorOutput(authorUserID)
+	}
+	if err := s.repo.CreateAuthorFavorite(&storytellerModel.AuthorFavorite{
+		UserID:       userID,
+		AuthorUserID: authorUserID,
+	}); err != nil {
+		return nil, err
+	}
+	return s.favoriteAuthorOutput(authorUserID)
+}
+
+func (s *Service) DeleteAuthorFavorite(userID, authorUserID uint64) error {
+	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+	if err != nil {
+		return nil
+	}
+	now := time.Now()
+	favorite.DeletedAt = &now
+	return s.repo.SaveAuthorFavorite(favorite)
 }
 
 func (s *Service) RankingStatus(userID uint64, projectPublicID string) (*storytellerModel.ProjectRankingOutput, error) {
@@ -569,6 +628,25 @@ func (s *Service) authorOutput(userID uint64) (*storytellerModel.UserProfileOutp
 		UserID:           userID,
 		PenName:          fallbackAuthorName(userID),
 		UseDefaultAvatar: true,
+	}, nil
+}
+
+func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.FavoriteAuthorOutput, error) {
+	author, err := s.authorOutput(userID)
+	if err != nil {
+		return nil, err
+	}
+	projectCount, storyCount, wordCount, ratingCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.FavoriteAuthorOutput{
+		UserProfileOutput: *author,
+		ProjectCount:      projectCount,
+		StoryCount:        storyCount,
+		WordCount:         wordCount,
+		RatingCount:       ratingCount,
+		AverageRating:     averageRating,
 	}, nil
 }
 

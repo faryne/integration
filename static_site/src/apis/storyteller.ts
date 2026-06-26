@@ -7,6 +7,7 @@ import type {
   StorytellerAgentRunRequest,
   StorytellerAgentRunResponse,
   StorytellerAgentRequest,
+  StorytellerFavoriteAuthor,
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
@@ -46,7 +47,11 @@ export function usePublicUserStorytellerProjects(
     enabled: Boolean(username),
     queryFn: async () => {
       const response = await axios.get<
-        CommonResponse<{ items: StorytellerProject[]; total: number }>
+        CommonResponse<{
+          items: StorytellerProject[];
+          total: number;
+          author?: StorytellerUserProfile;
+        }>
       >(`${apiBase}/storyteller/user/${encodeURIComponent(username!)}`, {
         params: { page, pageSize },
       });
@@ -179,6 +184,22 @@ export function useFavoriteStorytellerProjects() {
   });
 }
 
+export function useFavoriteStorytellerAuthors() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "favorite-authors", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerFavoriteAuthor[]>
+      >(`${apiBase}/storyteller/favorites/authors`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function useStorytellerProjectFavorite(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
@@ -190,6 +211,49 @@ export function useStorytellerProjectFavorite(projectPublicId?: string) {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? { favorited: false };
+    },
+  });
+}
+
+export function useStorytellerAuthorFavorite(authorUserId?: number) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "author-favorite",
+      authorUserId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && authorUserId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<{ favorited: boolean }>>(
+        `${apiBase}/storyteller/authors/${authorUserId}/favorite`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? { favorited: false };
+    },
+  });
+}
+
+export function useSaveStorytellerAuthorFavorite(authorUserId?: number) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (favorited: boolean) => {
+      const url = `${apiBase}/storyteller/authors/${authorUserId}/favorite`;
+      const response = favorited
+        ? await axios.post<CommonResponse<StorytellerFavoriteAuthor>>(
+            url,
+            null,
+            { headers: sessionHeaders(session!.encrypt_key) },
+          )
+        : await axios.delete<CommonResponse<{ deleted: boolean }>>(url, {
+            headers: sessionHeaders(session!.encrypt_key),
+          });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }

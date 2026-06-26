@@ -23,7 +23,7 @@ func PublicProjects(ctx fiber.Ctx) error {
 func PublicUserProjects(ctx fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("pageSize", "20"))
-	rows, total, err := storyteller.NewService().PublicUserProjects(ctx.Params("username"), page, pageSize)
+	rows, total, author, err := storyteller.NewService().PublicUserProjects(ctx.Params("username"), page, pageSize)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("user not found"))
@@ -31,8 +31,9 @@ func PublicUserProjects(ctx fiber.Ctx) error {
 		return output.DBError(err)
 	}
 	return output.Success(map[string]any{
-		"items": rows,
-		"total": total,
+		"items":  rows,
+		"total":  total,
+		"author": author,
 	})
 }
 
@@ -302,6 +303,14 @@ func FavoriteProjects(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+func FavoriteAuthors(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().FavoriteAuthors(authsession.Session(ctx).UserId)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
 func FavoriteStatus(ctx fiber.Ctx) error {
 	row, err := storyteller.NewService().FavoriteStatus(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {
@@ -326,6 +335,41 @@ func CreateFavorite(ctx fiber.Ctx) error {
 
 func DeleteFavorite(ctx fiber.Ctx) error {
 	if err := storyteller.NewService().DeleteFavorite(authsession.Session(ctx).UserId, ctx.Params("project")); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
+func AuthorFavoriteStatus(ctx fiber.Ctx) error {
+	authorUserID, err := parseUint(ctx.Params("author"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().AuthorFavoriteStatus(authsession.Session(ctx).UserId, authorUserID)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func CreateAuthorFavorite(ctx fiber.Ctx) error {
+	authorUserID, err := parseUint(ctx.Params("author"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateAuthorFavorite(authsession.Session(ctx).UserId, authorUserID)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteAuthorFavorite(ctx fiber.Ctx) error {
+	authorUserID, err := parseUint(ctx.Params("author"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().DeleteAuthorFavorite(authsession.Session(ctx).UserId, authorUserID); err != nil {
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]bool{"deleted": true})

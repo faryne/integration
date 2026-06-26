@@ -218,6 +218,68 @@ func (r *Repository) FavoriteProjects(userID uint64) ([]storytellerModel.Project
 	return rows, err
 }
 
+func (r *Repository) FavoriteAuthors(userID uint64) ([]storytellerModel.AuthorFavorite, error) {
+	rows := make([]storytellerModel.AuthorFavorite, 0)
+	err := r.db.
+		Where("user_id = ? AND deleted_at IS NULL", userID).
+		Order("updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) AuthorFavorite(userID, authorUserID uint64) (*storytellerModel.AuthorFavorite, error) {
+	var row storytellerModel.AuthorFavorite
+	err := r.db.Unscoped().
+		Where("user_id = ? AND author_user_id = ?", userID, authorUserID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateAuthorFavorite(row *storytellerModel.AuthorFavorite) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) SaveAuthorFavorite(row *storytellerModel.AuthorFavorite) error {
+	return r.db.Save(row).Error
+}
+
+func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64, uint64, float64, error) {
+	var projectCount int64
+	if err := r.db.
+		Table("storyteller_projects").
+		Where("user_id = ? AND visibility = ? AND deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
+		Count(&projectCount).Error; err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+	type storyResult struct {
+		StoryCount uint64
+		WordCount  uint64
+	}
+	var stories storyResult
+	if err := r.db.
+		Table("storyteller_projects AS projects").
+		Select("COUNT(stories.id) AS story_count, COALESCE(SUM(stories.word_count), 0) AS word_count").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.deleted_at IS NULL").
+		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
+		Scan(&stories).Error; err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+	type rankingResult struct {
+		RatingCount   uint64
+		AverageRating float64
+	}
+	var rankings rankingResult
+	if err := r.db.
+		Table("storyteller_projects AS projects").
+		Select("COUNT(rankings.ranking) AS rating_count, COALESCE(AVG(rankings.ranking), 0) AS average_rating").
+		Joins("INNER JOIN storyteller_project_rankings AS rankings ON rankings.project_id = projects.id AND rankings.ranking IS NOT NULL AND rankings.deleted_at IS NULL").
+		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
+		Scan(&rankings).Error; err != nil {
+		return 0, 0, 0, 0, 0, err
+	}
+	return uint64(projectCount), stories.StoryCount, stories.WordCount, rankings.RatingCount, rankings.AverageRating, nil
+}
+
 func (r *Repository) Ranking(userID, projectID uint64) (*storytellerModel.ProjectRanking, error) {
 	var row storytellerModel.ProjectRanking
 	err := r.db.Unscoped().

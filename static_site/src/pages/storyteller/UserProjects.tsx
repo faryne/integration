@@ -1,3 +1,5 @@
+import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
+import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import {
   Box,
@@ -8,12 +10,19 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
 import {
   Link as RouterLink,
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import { usePublicUserStorytellerProjects } from "@/apis/storyteller.ts";
+import {
+  usePublicUserStorytellerProjects,
+  useSaveStorytellerAuthorFavorite,
+  useStorytellerAuthorFavorite,
+} from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -22,8 +31,10 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 
 export default function StorytellerUserProjects() {
+  const { session } = useAuth();
   const { username } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 12;
 
@@ -32,6 +43,15 @@ export default function StorytellerUserProjects() {
     page,
     pageSize,
   );
+  const authorUserId = data?.author?.user_id;
+  const isOwner = Boolean(authorUserId && session?.user.id === authorUserId);
+  const authorFavoriteQuery = useStorytellerAuthorFavorite(
+    isOwner ? undefined : authorUserId,
+  );
+  const saveAuthorFavorite = useSaveStorytellerAuthorFavorite(
+    isOwner ? undefined : authorUserId,
+  );
+  const isAuthorFavorited = authorFavoriteQuery.data?.favorited ?? false;
 
   useTitle(`${username} 的作品 - Storyteller`, {
     path: `/storyteller/user/${username}`,
@@ -76,11 +96,36 @@ export default function StorytellerUserProjects() {
         { label: username || "作者" },
       ]}
       action={
-        <Button component={RouterLink} to="/storyteller" variant="outlined">
-          回首頁
-        </Button>
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          {authorUserId && !isOwner && (
+            <Button
+              variant={isAuthorFavorited ? "contained" : "outlined"}
+              startIcon={
+                isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
+              }
+              disabled={saveAuthorFavorite.isPending}
+              onClick={() => {
+                if (!session) {
+                  setLoginPromptOpen(true);
+                  return;
+                }
+                saveAuthorFavorite.mutate(!isAuthorFavorited);
+              }}
+            >
+              {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
+            </Button>
+          )}
+          <Button component={RouterLink} to="/storyteller" variant="outlined">
+            回首頁
+          </Button>
+        </Stack>
       }
     >
+      <LoginPromptDialog
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        description="收藏作者需要登入。是否要現在登入？"
+      />
       {items.length > 0 ? (
         <Stack spacing={3}>
           <Grid container spacing={2}>

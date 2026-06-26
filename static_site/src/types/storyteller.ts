@@ -63,6 +63,14 @@ export interface StorytellerUserProfile {
   avatar_url?: string;
 }
 
+export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
+  project_count: number;
+  story_count: number;
+  word_count: number;
+  rating_count: number;
+  average_rating: number;
+}
+
 export interface StorytellerProjectRequest {
   name: string;
   slug: string;

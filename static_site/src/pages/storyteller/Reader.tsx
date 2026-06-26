@@ -27,10 +27,12 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import {
   useStorytellerProject,
+  useSaveStorytellerAuthorFavorite,
   useSaveStorytellerProjectFavorite,
   useSaveStorytellerProjectRanking,
   usePublicStorytellerProject,
   useSharedStorytellerProject,
+  useStorytellerAuthorFavorite,
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
 } from "@/apis/storyteller.ts";
@@ -56,6 +58,7 @@ interface ReaderProject {
   name: string;
   description: string;
   path: string;
+  authorUserId?: number;
   authorPenName?: string;
   wordCount: number;
   stories: ReaderStory[];
@@ -228,6 +231,12 @@ export default function StorytellerReader() {
   const saveFavorite = useSaveStorytellerProjectFavorite(
     isOwner ? undefined : apiProject?.public_id,
   );
+  const authorFavoriteQuery = useStorytellerAuthorFavorite(
+    isOwner ? undefined : apiProject?.user_id,
+  );
+  const saveAuthorFavorite = useSaveStorytellerAuthorFavorite(
+    isOwner ? undefined : apiProject?.user_id,
+  );
   const rankingQuery = useStorytellerProjectRanking(
     isOwner ? undefined : apiProject?.public_id,
   );
@@ -237,6 +246,7 @@ export default function StorytellerReader() {
   const isFavorited = apiProject
     ? (favoriteQuery.data?.favorited ?? false)
     : favorite;
+  const isAuthorFavorited = authorFavoriteQuery.data?.favorited ?? false;
   const rating = rankingQuery.data?.ranking ?? null;
   const project: ReaderProject | undefined = apiProject
     ? {
@@ -244,6 +254,7 @@ export default function StorytellerReader() {
         name: apiProject.name,
         description: apiProject.description,
         path: `/storyteller/story/${apiProject.public_id}-${apiProject.slug}`,
+        authorUserId: apiProject.user_id,
         authorPenName: apiProject.author?.pen_name,
         wordCount: (apiProject.stories ?? []).reduce(
           (total, story) => total + story.word_count,
@@ -442,6 +453,28 @@ export default function StorytellerReader() {
             >
               {isFavorited ? "已收藏" : "收藏"}
             </Button>
+            {project.authorUserId && (
+              <Button
+                variant={isAuthorFavorited ? "contained" : "outlined"}
+                startIcon={
+                  isAuthorFavorited ? (
+                    <BookmarkAddedIcon />
+                  ) : (
+                    <BookmarkAddIcon />
+                  )
+                }
+                disabled={saveAuthorFavorite.isPending}
+                onClick={() => {
+                  if (!session) {
+                    setLoginPromptOpen(true);
+                    return;
+                  }
+                  saveAuthorFavorite.mutate(!isAuthorFavorited);
+                }}
+              >
+                {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
+              </Button>
+            )}
             <Paper
               variant="outlined"
               sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}
@@ -473,7 +506,7 @@ export default function StorytellerReader() {
       <LoginPromptDialog
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
-        description="收藏或評分故事需要登入。是否要現在登入？"
+        description="收藏故事、收藏作者或評分故事需要登入。是否要現在登入？"
       />
 
       <Grid container spacing={2}>

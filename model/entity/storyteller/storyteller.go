@@ -143,6 +143,19 @@ func (ProjectRanking) TableName() string {
 	return "storyteller_project_rankings"
 }
 
+type AuthorFavorite struct {
+	ID           uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID       uint64     `gorm:"column:user_id" json:"user_id"`
+	AuthorUserID uint64     `gorm:"column:author_user_id" json:"author_user_id"`
+	DeletedAt    *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt    time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AuthorFavorite) TableName() string {
+	return "storyteller_author_favorites"
+}
+
 type UserProfile struct {
 	ID               uint64     `gorm:"column:id;primaryKey" json:"id"`
 	UserID           uint64     `gorm:"column:user_id" json:"user_id"`
@@ -239,6 +252,15 @@ type UserProfileOutput struct {
 	Bio              string `json:"bio,omitempty"`
 	UseDefaultAvatar bool   `json:"use_default_avatar"`
 	AvatarURL        string `json:"avatar_url,omitempty"`
+}
+
+type FavoriteAuthorOutput struct {
+	UserProfileOutput
+	ProjectCount  uint64  `json:"project_count"`
+	StoryCount    uint64  `json:"story_count"`
+	WordCount     uint64  `json:"word_count"`
+	RatingCount   uint64  `json:"rating_count"`
+	AverageRating float64 `json:"average_rating"`
 }
 
 type ProjectOutput struct {

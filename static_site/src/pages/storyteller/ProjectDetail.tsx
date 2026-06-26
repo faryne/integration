@@ -11,11 +11,13 @@ import {
   Paper,
   Snackbar,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
+  useDeleteStorytellerProject,
   useDeleteStorytellerStory,
   useStorytellerProjects,
   useSaveStorytellerStory,
@@ -33,11 +35,13 @@ import type { StorytellerStory } from "@/types/storyteller.ts";
 
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
     null,
   );
+  const [projectDeleteOpen, setProjectDeleteOpen] = useState(false);
   const [linkMenuAnchor, setLinkMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -67,6 +71,7 @@ export default function StorytellerProjectDetail() {
     useStorytellerStories(apiProject?.public_id);
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
+  const deleteProject = useDeleteStorytellerProject();
 
   useEffect(() => {
     setOrderedStories(
@@ -127,38 +132,69 @@ export default function StorytellerProjectDetail() {
     >
       <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<LinkIcon />}
-              onClick={(event) => setLinkMenuAnchor(event.currentTarget)}
-            >
-              {readerUrlLabel}
-            </Button>
-            <Menu
-              anchorEl={linkMenuAnchor}
-              open={Boolean(linkMenuAnchor)}
-              onClose={() => setLinkMenuAnchor(null)}
-            >
-              <MenuItem onClick={() => void copyReaderUrl()}>
-                複製到剪貼簿
-              </MenuItem>
-              <MenuItem
-                component="a"
-                href={readerUrl}
-                onClick={() => setLinkMenuAnchor(null)}
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1.5}
+            justifyContent="space-between"
+            alignItems={{ xs: "stretch", md: "center" }}
+          >
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<LinkIcon />}
+                onClick={(event) => setLinkMenuAnchor(event.currentTarget)}
               >
-                前往
-              </MenuItem>
-            </Menu>
-            <Chip label={project.statusLabel} color="primary" />
-            <Chip
-              label={`${orderedStories.length || project.storiesCount} 篇故事`}
-            />
-            <Chip
-              label={`更新於 ${formatStorytellerDate(project.updatedAt)}`}
-            />
+                {readerUrlLabel}
+              </Button>
+              <Menu
+                anchorEl={linkMenuAnchor}
+                open={Boolean(linkMenuAnchor)}
+                onClose={() => setLinkMenuAnchor(null)}
+              >
+                <MenuItem onClick={() => void copyReaderUrl()}>
+                  複製到剪貼簿
+                </MenuItem>
+                <MenuItem
+                  component="a"
+                  href={readerUrl}
+                  onClick={() => setLinkMenuAnchor(null)}
+                >
+                  前往
+                </MenuItem>
+              </Menu>
+              <Chip label={project.statusLabel} color="primary" />
+              <Chip
+                label={`${orderedStories.length || project.storiesCount} 篇故事`}
+              />
+              <Chip
+                label={`更新於 ${formatStorytellerDate(project.updatedAt)}`}
+              />
+            </Stack>
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              justifyContent={{ xs: "flex-start", md: "flex-end" }}
+            >
+              <Button
+                href={`/storyteller/my/project/${project.id}/edit`}
+                variant="outlined"
+                size="small"
+              >
+                編輯專案
+              </Button>
+              <Button
+                color="error"
+                variant="outlined"
+                size="small"
+                startIcon={<DeleteIcon />}
+                onClick={() => setProjectDeleteOpen(true)}
+              >
+                刪除專案
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
         <Snackbar
@@ -238,12 +274,23 @@ export default function StorytellerProjectDetail() {
                       }}
                     >
                       <Stack direction="row" spacing={1.5} alignItems="center">
-                        <DragIndicatorIcon color="disabled" />
+                        <Tooltip title="拖放調整故事順序">
+                          <DragIndicatorIcon color="disabled" />
+                        </Tooltip>
                         <ArticleIcon color="primary" />
                         <Stack sx={{ flex: 1, minWidth: 0 }}>
                           <Typography fontWeight={800}>
                             {story.title}
                           </Typography>
+                          {story.summary.trim() && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ overflowWrap: "anywhere" }}
+                            >
+                              {story.summary}
+                            </Typography>
+                          )}
                           <Typography variant="body2" color="text.secondary">
                             {story.word_count.toLocaleString()} 字 ·{" "}
                             {formatStorytellerDate(story.updated_at)}
@@ -286,6 +333,22 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
+            })
+          }
+        />
+      )}
+      {projectDeleteOpen && (
+        <ConfirmNameDialog
+          open
+          title="刪除專案"
+          description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
+          confirmName={project.name}
+          confirmLabel="刪除專案"
+          loading={deleteProject.isPending}
+          onClose={() => setProjectDeleteOpen(false)}
+          onConfirm={() =>
+            deleteProject.mutate(project.id, {
+              onSuccess: () => navigate("/storyteller/my/project"),
             })
           }
         />
