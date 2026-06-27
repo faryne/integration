@@ -1378,9 +1378,36 @@ export default function StorytellerStoryEditor() {
                   <Chip size="small" label={selectedAgent.provider} />
                   <Chip size="small" label={selectedAgent.model} />
                 </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  {selectedAgent.purpose}
-                </Typography>
+                <Tooltip
+                  title={
+                    <Box
+                      sx={{
+                        maxWidth: 520,
+                        maxHeight: 320,
+                        overflow: "auto",
+                        whiteSpace: "pre-wrap",
+                      }}
+                    >
+                      {selectedAgent.purpose}
+                    </Box>
+                  }
+                  placement="bottom-start"
+                  enterDelay={400}
+                >
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      display: "-webkit-box",
+                      overflow: "hidden",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: 2,
+                      cursor: "help",
+                    }}
+                  >
+                    {selectedAgent.purpose}
+                  </Typography>
+                </Tooltip>
               </Stack>
 
               <Divider />
@@ -1457,6 +1484,7 @@ export default function StorytellerStoryEditor() {
                 <TextField
                   multiline
                   minRows={4}
+                  maxRows={8}
                   label="輸入需求"
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
