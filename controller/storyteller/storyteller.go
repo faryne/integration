@@ -193,6 +193,28 @@ func RunAgent(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func RunLoreAgent(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgentRunRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().RunLoreAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), agentID, input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or lore not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func isAgentProviderError(err error) bool {
 	return errors.Is(err, storyteller.ErrAIProviderInvalidAPIKey) ||
 		errors.Is(err, storyteller.ErrAIProviderRateLimited) ||
@@ -277,6 +299,79 @@ func StoryVersion(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func Lores(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().Lores(authsession.Session(ctx).UserId, ctx.Params("project"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func Lore(ctx fiber.Ctx) error {
+	row, err := storyteller.NewService().Lore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func CreateLore(ctx fiber.Ctx) error {
+	var input storytellerModel.LoreRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateLore(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func UpdateLore(ctx fiber.Ctx) error {
+	var input storytellerModel.LoreRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().UpdateLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteLore(ctx fiber.Ctx) error {
+	if err := storyteller.NewService().DeleteLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore")); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
+func LoreVersions(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().LoreVersions(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func LoreVersion(ctx fiber.Ctx) error {
+	versionID, err := parseUint(ctx.Params("version"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().LoreVersion(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), versionID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore version not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
 func StoryChatMessages(ctx fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
@@ -284,6 +379,24 @@ func StoryChatMessages(ctx fiber.Ctx) error {
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(map[string]any{
+		"items":    rows,
+		"total":    total,
+		"page":     page,
+		"per_page": pageSize,
+	})
+}
+
+func LoreChatMessages(ctx fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
+	rows, total, err := storyteller.NewService().LoreChatMessages(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), page, pageSize)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore not found"))
 		}
 		return output.DBError(err)
 	}

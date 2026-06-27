@@ -190,6 +190,58 @@ func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, 
 	return runAgent(ctx, s.repo, NewAIProvider, userID, projectPublicID, storyPublicID, agentID, input)
 }
 
+func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	if err := validateAgentRunRequest(input); err != nil {
+		return nil, err
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore, err := s.repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	agent, err := s.repo.Agent(userID, agentID)
+	if err != nil {
+		return nil, err
+	}
+	provider, err := NewAIProvider(agent.Provider)
+	if err != nil {
+		return nil, err
+	}
+	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
+	response, err := provider.Generate(ctx, AIProviderRequest{
+		APIKey:       agent.APIKey,
+		ModelName:    agent.ModelName,
+		SystemPrompt: systemPrompt,
+		UserPrompt:   userPrompt,
+	})
+	if err != nil {
+		return nil, err
+	}
+	output := &storytellerModel.AgentRunResponse{
+		AgentID:      agent.ID,
+		Provider:     agent.Provider,
+		ModelName:    agent.ModelName,
+		Mode:         input.Mode,
+		Result:       response.Result,
+		FinishReason: response.FinishReason,
+	}
+	if response.Usage != nil {
+		output.Usage = &storytellerModel.AgentRunUsage{
+			InputTokens:  response.Usage.InputTokens,
+			OutputTokens: response.Usage.OutputTokens,
+			TotalTokens:  response.Usage.TotalTokens,
+		}
+	}
+	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output)
+	if err := s.repo.CreateStoryChatWithMessages(chat, messages); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
 	if err := validateAgentRunRequest(input); err != nil {
 		return nil, err
@@ -334,6 +386,94 @@ func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID str
 	return s.repo.StoryVersion(story.ID, versionID)
 }
 
+func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerModel.Lore, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Lores(project.ID)
+}
+
+func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*storytellerModel.Lore, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Lore(project.ID, lorePublicID)
+}
+
+func (s *Service) CreateLore(userID uint64, projectPublicID string, input storytellerModel.LoreRequest) (*storytellerModel.Lore, error) {
+	if err := validateLore(input); err != nil {
+		return nil, err
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore := &storytellerModel.Lore{
+		PublicID:      randomID(),
+		ProjectID:     project.ID,
+		Title:         strings.TrimSpace(input.Title),
+		LatestContent: input.Content,
+		WordCount:     wordCount(input.Content),
+	}
+	version := buildLoreVersion(*lore)
+	if err := s.repo.CreateLoreWithVersion(lore, version); err != nil {
+		return nil, err
+	}
+	return lore, nil
+}
+
+func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreRequest) (*storytellerModel.Lore, error) {
+	if err := validateLore(input); err != nil {
+		return nil, err
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore, err := s.repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore.Title = strings.TrimSpace(input.Title)
+	lore.LatestContent = input.Content
+	lore.WordCount = wordCount(input.Content)
+	version := buildLoreVersion(*lore)
+	if err := s.repo.UpdateLoreWithVersion(lore, version); err != nil {
+		return nil, err
+	}
+	return lore, nil
+}
+
+func (s *Service) DeleteLore(userID uint64, projectPublicID, lorePublicID string) error {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return err
+	}
+	lore, err := s.repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteLore(lore)
+}
+
+func (s *Service) LoreVersions(userID uint64, projectPublicID, lorePublicID string) ([]storytellerModel.LoreVersion, error) {
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.LoreVersions(lore.ID)
+}
+
+func (s *Service) LoreVersion(userID uint64, projectPublicID, lorePublicID string, versionID uint64) (*storytellerModel.LoreVersion, error) {
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.LoreVersion(lore.ID, versionID)
+}
+
 func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicID string, page, pageSize int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
 	if page < 1 {
 		page = 1
@@ -349,6 +489,23 @@ func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicI
 		return nil, 0, err
 	}
 	return s.repo.StoryChatMessages(story.ID, (page-1)*pageSize, pageSize)
+}
+
+func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID string, page, pageSize int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 50 {
+		pageSize = 50
+	}
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.repo.LoreChatMessages(lore.ID, (page-1)*pageSize, pageSize)
 }
 
 func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.UserProfileOutput, error) {
@@ -658,6 +815,14 @@ func (s *Service) storyForUserProject(userID uint64, projectPublicID, storyPubli
 	return s.repo.Story(project.ID, storyPublicID)
 }
 
+func (s *Service) loreForUserProject(userID uint64, projectPublicID, lorePublicID string) (*storytellerModel.Lore, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Lore(project.ID, lorePublicID)
+}
+
 func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storytellerModel.ProjectOutput, error) {
 	output := make([]storytellerModel.ProjectOutput, 0, len(projects))
 	for _, project := range projects {
@@ -712,6 +877,15 @@ func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVers
 		Summary:   story.Summary,
 		Content:   story.LatestContent,
 		WordCount: story.WordCount,
+	}
+}
+
+func buildLoreVersion(lore storytellerModel.Lore) *storytellerModel.LoreVersion {
+	return &storytellerModel.LoreVersion{
+		LoreID:    lore.ID,
+		Title:     lore.Title,
+		Content:   lore.LatestContent,
+		WordCount: lore.WordCount,
 	}
 }
 
@@ -860,6 +1034,30 @@ func agentRunPromptInstruction(instruction string) string {
 }
 
 func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+	title := agentRunChatTitle(input)
+	chat := &storytellerModel.StoryChat{
+		StoryID:  &storyID,
+		AgentID:  agent.ID,
+		UserID:   userID,
+		Title:    title,
+		Metadata: agentRunMetadata(input.Mode, output),
+	}
+	return chat, buildAgentRunMessages(agent, input, output)
+}
+
+func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+	title := agentRunChatTitle(input)
+	chat := &storytellerModel.StoryChat{
+		LoreID:   &loreID,
+		AgentID:  agent.ID,
+		UserID:   userID,
+		Title:    title,
+		Metadata: agentRunMetadata(input.Mode, output),
+	}
+	return chat, buildAgentRunMessages(agent, input, output)
+}
+
+func agentRunChatTitle(input storytellerModel.AgentRunRequest) string {
 	title := strings.TrimSpace(input.Instruction)
 	if title == "" {
 		title = string(input.Mode)
@@ -867,15 +1065,12 @@ func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, inp
 	if len([]rune(title)) > 80 {
 		title = string([]rune(title)[:80])
 	}
-	chat := &storytellerModel.StoryChat{
-		StoryID:  storyID,
-		AgentID:  agent.ID,
-		UserID:   userID,
-		Title:    title,
-		Metadata: agentRunMetadata(input.Mode, output),
-	}
+	return title
+}
+
+func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) []storytellerModel.StoryChatMessage {
 	agentID := agent.ID
-	messages := []storytellerModel.StoryChatMessage{
+	return []storytellerModel.StoryChatMessage{
 		{
 			AgentID:  &agentID,
 			Role:     storytellerModel.ChatMessageRoleUser,
@@ -889,7 +1084,6 @@ func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, inp
 			Metadata: agentRunOutputMetadata(output),
 		},
 	}
-	return chat, messages
 }
 
 func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
@@ -992,6 +1186,13 @@ func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) er
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {
+	if strings.TrimSpace(input.Title) == "" {
+		return errors.New("title is required")
+	}
+	return nil
+}
+
+func validateLore(input storytellerModel.LoreRequest) error {
 	if strings.TrimSpace(input.Title) == "" {
 		return errors.New("title is required")
 	}

@@ -8,6 +8,9 @@ import type {
   StorytellerAgentRunResponse,
   StorytellerAgentRequest,
   StorytellerFavoriteAuthor,
+  StorytellerLore,
+  StorytellerLoreRequest,
+  StorytellerLoreVersion,
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
@@ -461,6 +464,37 @@ export function useRunStorytellerAgent(
   });
 }
 
+export function useRunStorytellerLoreAgent(
+  projectPublicId?: string,
+  lorePublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      input,
+    }: {
+      agentId: number;
+      input: StorytellerAgentRunRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgentRunResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/run`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "lore-chat-messages"],
+      });
+    },
+  });
+}
+
 export function useStorytellerStories(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
@@ -587,6 +621,46 @@ export function useStorytellerStoryChatMessages(
   });
 }
 
+export function useStorytellerLoreChatMessages(
+  projectPublicId?: string,
+  lorePublicId?: string,
+  page = 1,
+  perPage = 10,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "lore-chat-messages",
+      projectPublicId,
+      lorePublicId,
+      page,
+      perPage,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && lorePublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryChatMessagePage>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/chat-messages`,
+        {
+          params: { page, per_page: perPage },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return (
+        response.data.data ?? {
+          items: [],
+          total: 0,
+          page,
+          per_page: perPage,
+        }
+      );
+    },
+  });
+}
+
 export function useStorytellerStoryVersion(
   projectPublicId?: string,
   storyPublicId?: string,
@@ -608,6 +682,120 @@ export function useStorytellerStoryVersion(
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerStoryVersion>>(
         `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/versions/${versionId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+  });
+}
+
+export function useStorytellerLores(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "lores", projectPublicId, session?.user.id],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerLore[]>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSaveStorytellerLore(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      lorePublicId,
+      input,
+    }: {
+      lorePublicId?: string;
+      input: StorytellerLoreRequest;
+    }) => {
+      const base = `${apiBase}/storyteller/projects/${projectPublicId}/lores`;
+      const url = lorePublicId ? `${base}/${lorePublicId}` : base;
+      const response = lorePublicId
+        ? await axios.put<CommonResponse<StorytellerLore>>(url, input, {
+            headers: sessionHeaders(session!.encrypt_key),
+          })
+        : await axios.post<CommonResponse<StorytellerLore>>(url, input, {
+            headers: sessionHeaders(session!.encrypt_key),
+          });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useDeleteStorytellerLore(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (lorePublicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerLoreVersions(
+  projectPublicId?: string,
+  lorePublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "lore-versions",
+      projectPublicId,
+      lorePublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && lorePublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerLoreVersion[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/versions`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerLoreVersion(
+  projectPublicId?: string,
+  lorePublicId?: string,
+  versionId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "lore-version",
+      projectPublicId,
+      lorePublicId,
+      versionId,
+      session?.user.id,
+    ],
+    enabled: Boolean(
+      session?.encrypt_key && projectPublicId && lorePublicId && versionId,
+    ),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerLoreVersion>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/versions/${versionId}`,
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;

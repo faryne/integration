@@ -95,8 +95,14 @@ const StorytellerNewAgent = lazy(
 const StorytellerStoryEditor = lazy(
   () => import("@/pages/storyteller/StoryEditor.tsx"),
 );
+const StorytellerLoreEditor = lazy(
+  () => import("@/pages/storyteller/LoreEditor.tsx"),
+);
 const StorytellerStoryDiffCompare = lazy(
   () => import("@/pages/storyteller/StoryDiffCompare.tsx"),
+);
+const StorytellerLoreDiffCompare = lazy(
+  () => import("@/pages/storyteller/LoreDiffCompare.tsx"),
 );
 const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
 const StorytellerUserProjects = lazy(
@@ -262,12 +268,20 @@ function App() {
                     element={<StorytellerStoryDiffCompare />}
                   />
                   <Route
+                    path={"project/:id/lore/:loreId/diff/:diffId1/:diffId2"}
+                    element={<StorytellerLoreDiffCompare />}
+                  />
+                  <Route
                     path={"project/:id/story/:storyId/diff"}
                     element={<StorytellerStoryEditor />}
                   />
                   <Route
                     path={"project/:id/story/:storyId"}
                     element={<StorytellerStoryEditor />}
+                  />
+                  <Route
+                    path={"project/:id/lore/:loreId"}
+                    element={<StorytellerLoreEditor />}
                   />
                   <Route
                     path={"project/:id"}

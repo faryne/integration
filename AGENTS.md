@@ -46,7 +46,7 @@ Follow the existing module boundaries.
 
 - Use modern Go style compatible with Go 1.26+.
 - The backend uses Fiber v3.
-- The project uses MySQL, Redis, and Manticore Search.
+- The project uses MySQL, Redis, and Elasticsearch (current) / Manticore (Future) Search.
 - Database migrations use `sql-migrate` with environments such as `localhost`, `development`, and `master`.
 
 ## Common Commands
@@ -71,3 +71,12 @@ Do not modify or rely on these directories unless the user explicitly asks for i
 ## Frontend Note
 
 `static_site/README.md` is currently the default Vite template README. Treat the actual source tree in `static_site/` as authoritative over that README when making frontend changes.
+
+## Important Notices
+- `AVOID` put all functions / constants / variables or other things in JUST ONE FILE. Separate them into multiple files.
+- Every Creating frontend page SHOULD contain proper `breadcrumb` in Chinese.
+- When encountering an error during calling api, frontend page should make a `SNACK` component appeared to notify user what happened.
+- ALWAYS Consider Function / Const / Frontend Component or others' usage in common.
+- Soft deleted data SHOULD be marked with `is_deleted` & `deleted_at` field. And user clicks `delete`, ALWAYS show a `confirm` dialog to avoid mis-delelted data.
+- ALWAYS REMOVE UNUSED CODE.
+- ALWAYS APPEND PROPER COMMENTS IN CHINESE, tell the maintainer what's the purpose of the code.

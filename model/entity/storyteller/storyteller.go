@@ -76,6 +76,7 @@ type Story struct {
 	Sort          int        `gorm:"column:sort" json:"sort"`
 	LatestContent string     `gorm:"column:latest_content" json:"latest_content"`
 	WordCount     uint       `gorm:"column:word_count" json:"word_count"`
+	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
 	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
@@ -97,9 +98,38 @@ type StoryVersion struct {
 
 func (StoryVersion) TableName() string { return "storyteller_story_versions" }
 
+type Lore struct {
+	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID      string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID     uint64     `gorm:"column:project_id" json:"project_id"`
+	Title         string     `gorm:"column:title" json:"title"`
+	LatestContent string     `gorm:"column:latest_content" json:"latest_content"`
+	WordCount     uint       `gorm:"column:word_count" json:"word_count"`
+	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (Lore) TableName() string { return "storyteller_lores" }
+
+type LoreVersion struct {
+	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
+	LoreID    uint64     `gorm:"column:lore_id" json:"lore_id"`
+	Title     string     `gorm:"column:title" json:"title"`
+	Content   string     `gorm:"column:content" json:"content"`
+	WordCount uint       `gorm:"column:word_count" json:"word_count"`
+	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
+
 type StoryChat struct {
 	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	StoryID   uint64     `gorm:"column:story_id" json:"story_id"`
+	StoryID   *uint64    `gorm:"column:story_id" json:"story_id"`
+	LoreID    *uint64    `gorm:"column:lore_id" json:"lore_id"`
 	AgentID   uint64     `gorm:"column:agent_id" json:"agent_id"`
 	UserID    uint64     `gorm:"column:user_id" json:"user_id"`
 	Title     string     `gorm:"column:title" json:"title"`
@@ -200,6 +230,11 @@ type StoryRequest struct {
 	Title   string `json:"title"`
 	Summary string `json:"summary"`
 	Sort    int    `json:"sort"`
+	Content string `json:"content"`
+}
+
+type LoreRequest struct {
+	Title   string `json:"title"`
 	Content string `json:"content"`
 }
 

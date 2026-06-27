@@ -9,7 +9,6 @@ import {
   Divider,
   FormControlLabel,
   Paper,
-  Snackbar,
   Stack,
   Switch,
   TextField,
@@ -27,6 +26,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
 
 const emptyForm: StorytellerUserProfileRequest = {
@@ -207,16 +207,11 @@ export default function StorytellerProfile() {
           </Stack>
         </Paper>
       )}
-      <Snackbar
+      <CustomSnackbar
         open={Boolean(message)}
-        autoHideDuration={2000}
+        message={message}
         onClose={() => setMessage("")}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert severity="success" variant="filled">
-          {message}
-        </Alert>
-      </Snackbar>
+      />
     </StorytellerShell>
   );
 }

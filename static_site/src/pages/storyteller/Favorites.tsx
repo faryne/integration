@@ -18,6 +18,7 @@ import {
   useFavoriteStorytellerProjects,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -97,17 +98,11 @@ export default function StorytellerFavorites() {
             </Alert>
           ) : tab === "stories" ? (
             projects.length === 0 ? (
-              <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-                <Stack spacing={2} alignItems="flex-start">
-                  <FavoriteIcon color="primary" />
-                  <Typography variant="h6" fontWeight={800}>
-                    尚未收藏故事
-                  </Typography>
-                  <Alert severity="info" variant="outlined">
-                    在故事閱讀頁按下收藏後，會在此列出故事專案。
-                  </Alert>
-                </Stack>
-              </Paper>
+              <CustomEmptyState
+                icon={<FavoriteIcon fontSize="large" />}
+                title="尚未收藏故事"
+                description="在故事閱讀頁按下收藏後，會在此列出故事專案。"
+              />
             ) : (
               <Grid container spacing={2}>
                 {projects.map((project) => {
@@ -160,17 +155,11 @@ export default function StorytellerFavorites() {
               </Grid>
             )
           ) : authors.length === 0 ? (
-            <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-              <Stack spacing={2} alignItems="flex-start">
-                <PersonIcon color="primary" />
-                <Typography variant="h6" fontWeight={800}>
-                  尚未收藏作者
-                </Typography>
-                <Alert severity="info" variant="outlined">
-                  在故事閱讀頁按下收藏作者後，會在此列出作者。
-                </Alert>
-              </Stack>
-            </Paper>
+            <CustomEmptyState
+              icon={<PersonIcon fontSize="large" />}
+              title="尚未收藏作者"
+              description="在故事閱讀頁按下收藏作者後，會在此列出作者。"
+            />
           ) : (
             <Grid container spacing={2}>
               {authors.map((author) => (

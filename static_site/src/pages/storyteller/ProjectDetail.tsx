@@ -2,6 +2,7 @@ import ArticleIcon from "@mui/icons-material/Article";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import LinkIcon from "@mui/icons-material/Link";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Button,
   Chip,
@@ -9,8 +10,9 @@ import {
   Menu,
   MenuItem,
   Paper,
-  Snackbar,
   Stack,
+  Tab,
+  Tabs,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -18,11 +20,15 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
+  useDeleteStorytellerLore,
   useDeleteStorytellerStory,
+  useStorytellerLores,
   useStorytellerProjects,
   useSaveStorytellerStory,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { useTitle } from "@/helpers/title.tsx";
@@ -31,7 +37,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import type { StorytellerStory } from "@/types/storyteller.ts";
+import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
@@ -41,6 +47,9 @@ export default function StorytellerProjectDetail() {
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
     null,
   );
+  const [deleteLoreTarget, setDeleteLoreTarget] =
+    useState<StorytellerLore | null>(null);
+  const [activeTab, setActiveTab] = useState<"stories" | "lores">("stories");
   const [projectDeleteOpen, setProjectDeleteOpen] = useState(false);
   const [linkMenuAnchor, setLinkMenuAnchor] = useState<HTMLElement | null>(
     null,
@@ -69,8 +78,11 @@ export default function StorytellerProjectDetail() {
     : undefined;
   const { data: apiStories = [], isLoading: apiStoriesLoading } =
     useStorytellerStories(apiProject?.public_id);
+  const { data: apiLores = [], isLoading: apiLoresLoading } =
+    useStorytellerLores(apiProject?.public_id);
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
+  const deleteLore = useDeleteStorytellerLore(apiProject?.public_id);
   const deleteProject = useDeleteStorytellerProject();
 
   useEffect(() => {
@@ -121,14 +133,6 @@ export default function StorytellerProjectDetail() {
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name },
       ]}
-      action={
-        <Button
-          href={`/storyteller/my/project/${project.id}/story/new`}
-          variant="contained"
-        >
-          建立故事
-        </Button>
-      }
     >
       <Stack spacing={3}>
         <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -197,9 +201,8 @@ export default function StorytellerProjectDetail() {
             </Stack>
           </Stack>
         </Paper>
-        <Snackbar
+        <CustomSnackbar
           open={copyMessageOpen}
-          autoHideDuration={2000}
           message="已複製故事頁連結"
           onClose={() => setCopyMessageOpen(false)}
         />
@@ -209,17 +212,72 @@ export default function StorytellerProjectDetail() {
             刪除故事失敗，請確認登入狀態後再試一次。
           </Typography>
         )}
+        {deleteLore.isError && (
+          <Typography color="error">
+            刪除設定集失敗，請確認登入狀態後再試一次。
+          </Typography>
+        )}
 
         <Grid container spacing={2}>
           <Grid size={12}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
               <Stack spacing={2}>
-                <Typography variant="h6" fontWeight={800}>
-                  故事列表
-                </Typography>
-                {apiStoriesLoading ? (
+                <Tabs
+                  value={activeTab}
+                  onChange={(_, value: "stories" | "lores") =>
+                    setActiveTab(value)
+                  }
+                >
+                  <Tab value="stories" label="故事" />
+                  <Tab value="lores" label="設定集" />
+                </Tabs>
+                {activeTab === "stories" && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Typography variant="h6" fontWeight={800}>
+                      故事列表
+                    </Typography>
+                    <Button
+                      href={`/storyteller/my/project/${project.id}/story/new`}
+                      variant="contained"
+                      sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                    >
+                      建立故事
+                    </Button>
+                  </Stack>
+                )}
+                {activeTab === "lores" && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Typography variant="h6" fontWeight={800}>
+                      設定集列表
+                    </Typography>
+                    <Button
+                      href={`/storyteller/my/project/${project.id}/lore/new`}
+                      variant="contained"
+                      sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                    >
+                      建立設定集
+                    </Button>
+                  </Stack>
+                )}
+                {activeTab === "stories" && apiStoriesLoading ? (
                   <StorytellerLoading label="正在載入故事列表..." />
-                ) : (
+                ) : activeTab === "stories" && orderedStories.length === 0 ? (
+                  <CustomEmptyState
+                    icon={<ArticleIcon fontSize="large" />}
+                    title="尚未建立故事"
+                    description="使用上方的「建立故事」開始撰寫第一篇故事。"
+                  />
+                ) : activeTab === "stories" ? (
                   orderedStories.map((story) => (
                     <Paper
                       key={story.public_id}
@@ -315,6 +373,49 @@ export default function StorytellerProjectDetail() {
                       </Stack>
                     </Paper>
                   ))
+                ) : apiLoresLoading ? (
+                  <StorytellerLoading label="正在載入設定集..." />
+                ) : apiLores.length === 0 ? (
+                  <CustomEmptyState
+                    icon={<MenuBookIcon fontSize="large" />}
+                    title="尚未建立設定集"
+                    description="使用上方的「建立設定集」記錄世界觀、角色規則與劇本設定。"
+                  />
+                ) : (
+                  apiLores.map((lore) => (
+                    <Paper
+                      key={lore.public_id}
+                      variant="outlined"
+                      sx={{ p: 2, borderRadius: 1 }}
+                    >
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <MenuBookIcon color="primary" />
+                        <Stack sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography fontWeight={800}>{lore.title}</Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {lore.word_count.toLocaleString()} 字 ·{" "}
+                            {formatStorytellerDate(lore.updated_at)}
+                          </Typography>
+                        </Stack>
+                        <Button
+                          href={`/storyteller/my/project/${project.id}/lore/${lore.public_id}`}
+                          variant="outlined"
+                          size="small"
+                        >
+                          編輯
+                        </Button>
+                        <Button
+                          color="error"
+                          variant="outlined"
+                          size="small"
+                          startIcon={<DeleteIcon />}
+                          onClick={() => setDeleteLoreTarget(lore)}
+                        >
+                          刪除
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  ))
                 )}
               </Stack>
             </Paper>
@@ -333,6 +434,22 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
+            })
+          }
+        />
+      )}
+      {deleteLoreTarget && (
+        <ConfirmNameDialog
+          open
+          title="刪除設定集"
+          description="刪除後會移除這份設定集與其版本資料。請輸入設定集名稱確認。"
+          confirmName={deleteLoreTarget.title}
+          confirmLabel="刪除設定集"
+          loading={deleteLore.isPending}
+          onClose={() => setDeleteLoreTarget(null)}
+          onConfirm={() =>
+            deleteLore.mutate(deleteLoreTarget.public_id, {
+              onSuccess: () => setDeleteLoreTarget(null),
             })
           }
         />

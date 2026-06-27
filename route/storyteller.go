@@ -50,4 +50,14 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story/chat-messages", storyteller.StoryChatMessages)
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
+
+	authenticated.Get("/projects/:project/lores", storyteller.Lores)
+	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
+	authenticated.Get("/projects/:project/lores/:lore", storyteller.Lore)
+	authenticated.Put("/projects/:project/lores/:lore", storyteller.UpdateLore)
+	authenticated.Delete("/projects/:project/lores/:lore", storyteller.DeleteLore)
+	authenticated.Post("/projects/:project/lores/:lore/agents/:agent/run", storyteller.RunLoreAgent)
+	authenticated.Get("/projects/:project/lores/:lore/chat-messages", storyteller.LoreChatMessages)
+	authenticated.Get("/projects/:project/lores/:lore/versions", storyteller.LoreVersions)
+	authenticated.Get("/projects/:project/lores/:lore/versions/:version", storyteller.LoreVersion)
 }

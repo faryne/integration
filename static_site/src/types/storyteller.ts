@@ -51,6 +51,27 @@ export interface StorytellerStoryVersion {
   updated_at: string;
 }
 
+export interface StorytellerLore {
+  id: number;
+  public_id: string;
+  project_id: number;
+  title: string;
+  latest_content: string;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerLoreVersion {
+  id: number;
+  lore_id: number;
+  title: string;
+  content: string;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface StorytellerProjectRanking {
   ranking?: number | null;
 }
@@ -142,6 +163,11 @@ export interface StorytellerStoryRequest {
   title: string;
   summary: string;
   sort: number;
+  content: string;
+}
+
+export interface StorytellerLoreRequest {
+  title: string;
   content: string;
 }
 

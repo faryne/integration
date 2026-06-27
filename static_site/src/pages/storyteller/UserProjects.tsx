@@ -1,15 +1,7 @@
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import {
-  Box,
-  Button,
-  Chip,
-  Grid,
-  Pagination,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Chip, Grid, Pagination, Stack } from "@mui/material";
 import { useState } from "react";
 import {
   Link as RouterLink,
@@ -23,6 +15,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -179,9 +172,11 @@ export default function StorytellerUserProjects() {
           )}
         </Stack>
       ) : (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">目前沒有公開的作品。</Typography>
-        </Stack>
+        <CustomEmptyState
+          icon={<LockOpenIcon fontSize="large" />}
+          title="目前沒有公開的作品"
+          description="這位作者公開的 Storyteller 專案會顯示在這裡。"
+        />
       )}
     </StorytellerShell>
   );

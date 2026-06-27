@@ -1,6 +1,7 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import {
   Box,
   Alert,
@@ -23,6 +24,7 @@ import {
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -99,16 +101,11 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         </Alert>
       )}
       {rows.length === 0 ? (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-          <Stack spacing={2} alignItems="flex-start">
-            <Alert severity="info" variant="outlined">
-              目前還沒有故事專案。
-            </Alert>
-            <Typography variant="body2" color="text.secondary">
-              可以使用上方的「建立專案」開始建立第一個故事專案。
-            </Typography>
-          </Stack>
-        </Paper>
+        <CustomEmptyState
+          icon={<AutoStoriesIcon fontSize="large" />}
+          title="目前還沒有故事專案"
+          description="可以使用上方的「建立專案」開始建立第一個故事專案。"
+        />
       ) : (
         <Grid container spacing={2}>
           {rows.map((project) => (
@@ -230,16 +227,11 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   return (
     <>
       {rows.length === 0 ? (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-          <Stack spacing={2} alignItems="flex-start">
-            <Alert severity="info" variant="outlined">
-              目前還沒有 AI Agent。
-            </Alert>
-            <Typography variant="body2" color="text.secondary">
-              可以使用上方的「建立 AI Agent」新增可在故事編輯器中使用的 Agent。
-            </Typography>
-          </Stack>
-        </Paper>
+        <CustomEmptyState
+          icon={<SmartToyIcon fontSize="large" />}
+          title="目前還沒有 AI Agent"
+          description="可以使用上方的「建立 AI Agent」新增可在故事編輯器中使用的 Agent。"
+        />
       ) : (
         <Grid container spacing={2}>
           {rows.map((agent) => (

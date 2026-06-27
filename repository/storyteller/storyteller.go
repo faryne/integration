@@ -108,7 +108,7 @@ func (r *Repository) DeleteAgent(row *storytellerModel.Agent) error {
 
 func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND deleted_at IS NULL", projectID).
+	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
@@ -116,7 +116,7 @@ func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error)
 
 func (r *Repository) Story(projectID uint64, publicID string) (*storytellerModel.Story, error) {
 	var row storytellerModel.Story
-	err := r.db.Where("project_id = ? AND public_id = ? AND deleted_at IS NULL", projectID, publicID).
+	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
 		First(&row).Error
 	return &row, err
 }
@@ -132,6 +132,36 @@ func (r *Repository) StoryVersions(storyID uint64) ([]storytellerModel.StoryVers
 func (r *Repository) StoryVersion(storyID, versionID uint64) (*storytellerModel.StoryVersion, error) {
 	var row storytellerModel.StoryVersion
 	err := r.db.Where("story_id = ? AND id = ? AND deleted_at IS NULL", storyID, versionID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {
+	rows := make([]storytellerModel.Lore, 0)
+	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Order("updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error) {
+	var row storytellerModel.Lore
+	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) LoreVersions(loreID uint64) ([]storytellerModel.LoreVersion, error) {
+	rows := make([]storytellerModel.LoreVersion, 0)
+	err := r.db.Where("lore_id = ? AND deleted_at IS NULL", loreID).
+		Order("created_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) LoreVersion(loreID, versionID uint64) (*storytellerModel.LoreVersion, error) {
+	var row storytellerModel.LoreVersion
+	err := r.db.Where("lore_id = ? AND id = ? AND deleted_at IS NULL", loreID, versionID).
 		First(&row).Error
 	return &row, err
 }
@@ -179,6 +209,37 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	return rows, total, err
 }
 
+func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
+	rows := make([]storytellerModel.StoryChatMessageOutput, 0)
+	query := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Joins("INNER JOIN storyteller_agents AS agents ON agents.id = COALESCE(messages.agent_id, chats.agent_id)").
+		Where("chats.lore_id = ? AND chats.deleted_at IS NULL AND messages.deleted_at IS NULL", loreID)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.
+		Select(`messages.id,
+			messages.chat_id,
+			messages.role,
+			messages.content,
+			messages.metadata,
+			messages.created_at,
+			messages.updated_at,
+			COALESCE(messages.agent_id, chats.agent_id) AS agent_id,
+			agents.name AS agent_name`).
+		Order("messages.created_at DESC, messages.id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&rows).Error
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	return rows, total, err
+}
+
 func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(story).Error; err != nil {
@@ -201,7 +262,32 @@ func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, versi
 
 func (r *Repository) DeleteStory(row *storytellerModel.Story) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
+}
+
+func (r *Repository) CreateLoreWithVersion(lore *storytellerModel.Lore, version *storytellerModel.LoreVersion) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(lore).Error; err != nil {
+			return err
+		}
+		version.LoreID = lore.ID
+		return tx.Create(version).Error
+	})
+}
+
+func (r *Repository) UpdateLoreWithVersion(lore *storytellerModel.Lore, version *storytellerModel.LoreVersion) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(lore).Error; err != nil {
+			return err
+		}
+		version.LoreID = lore.ID
+		return tx.Create(version).Error
+	})
+}
+
+func (r *Repository) DeleteLore(row *storytellerModel.Lore) error {
+	now := time.Now()
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
 
 func (r *Repository) FavoriteProjects(userID uint64) ([]storytellerModel.Project, error) {
@@ -259,7 +345,7 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 	if err := r.db.
 		Table("storyteller_projects AS projects").
 		Select("COUNT(stories.id) AS story_count, COALESCE(SUM(stories.word_count), 0) AS word_count").
-		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.deleted_at IS NULL").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.is_deleted = 0 AND stories.deleted_at IS NULL").
 		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Scan(&stories).Error; err != nil {
 		return 0, 0, 0, 0, 0, err

@@ -1,7 +1,8 @@
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import { Alert, Button, Chip, Grid } from "@mui/material";
+import { Button, Chip, Grid } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { usePublicStorytellerProjects } from "@/apis/storyteller.ts";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -43,9 +44,11 @@ export default function StorytellerPublicHome() {
       {isLoading ? (
         <StorytellerLoading label="正在載入公開故事..." />
       ) : publicProjects.length === 0 ? (
-        <Alert severity="info" variant="outlined">
-          目前還沒有公開故事專案。
-        </Alert>
+        <CustomEmptyState
+          icon={<LockOpenIcon fontSize="large" />}
+          title="目前還沒有公開故事專案"
+          description="公開的 Storyteller 專案會顯示在這裡。"
+        />
       ) : (
         <Grid container spacing={2}>
           {publicProjects.map((project) => (

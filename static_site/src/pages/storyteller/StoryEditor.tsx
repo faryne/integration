@@ -1,10 +1,8 @@
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import HistoryIcon from "@mui/icons-material/History";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import SaveIcon from "@mui/icons-material/Save";
 import SendIcon from "@mui/icons-material/Send";
@@ -22,16 +20,8 @@ import {
   MenuItem,
   Pagination,
   Paper,
-  Radio,
-  Snackbar,
   Stack,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Tooltip,
@@ -46,12 +36,15 @@ import {
   useRunStorytellerAgent,
   useSaveStorytellerStory,
   useStorytellerAgents,
+  useStorytellerLores,
   useStorytellerProjects,
   useStorytellerStoryChatMessages,
   useStorytellerStoryVersions,
   useStorytellerStories,
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
+import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
   storytellerAgents,
@@ -62,6 +55,10 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import {
+  StoryEditHistory,
+  type StoryEditHistoryItem,
+} from "@/pages/storyteller/StoryEditHistory.tsx";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -98,14 +95,6 @@ interface EditorAgent {
   model: string;
   purpose: string;
   enabled: boolean;
-}
-
-interface EditorStoryVersion {
-  id: string;
-  title: string;
-  source: string;
-  createdAt: string;
-  words: number;
 }
 
 interface StoryDraft {
@@ -166,6 +155,7 @@ export default function StorytellerStoryEditor() {
     : undefined;
   const { data: apiStories = [], isPending: apiStoriesPending } =
     useStorytellerStories(apiProject?.public_id);
+  const { data: apiLores = [] } = useStorytellerLores(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
   const story: EditorStory | undefined = apiStory
     ? {
@@ -251,7 +241,7 @@ export default function StorytellerStoryEditor() {
   const pageTitle = isNewStory
     ? "建立故事"
     : storyTitle.trim() || story?.title || "未命名故事";
-  const storyDiffs: EditorStoryVersion[] = apiStory
+  const storyDiffs: StoryEditHistoryItem[] = apiStory
     ? apiStoryVersions.map((version) => ({
         id: String(version.id),
         title: version.title,
@@ -335,6 +325,7 @@ export default function StorytellerStoryEditor() {
     chatMessages.map((message) => [String(message.id), message]),
   );
   const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
+  const loreMentionQuery = currentLoreMentionQuery(aiPrompt);
   const storyMentionOptions =
     storyMentionQuery === null
       ? []
@@ -342,6 +333,14 @@ export default function StorytellerStoryEditor() {
           .filter((item) => item.public_id !== apiStory?.public_id)
           .filter((item) =>
             item.title.toLowerCase().includes(storyMentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
+  const loreMentionOptions =
+    loreMentionQuery === null
+      ? []
+      : apiLores
+          .filter((item) =>
+            item.title.toLowerCase().includes(loreMentionQuery.toLowerCase()),
           )
           .slice(0, 6);
   const aiMessageTotalPages = Math.max(
@@ -755,6 +754,19 @@ export default function StorytellerStoryEditor() {
       });
     }
 
+    for (const referencedLore of apiLores) {
+      const token = `@lore:${referencedLore.title}`;
+      const bracketToken = `@lore:[${referencedLore.title}]`;
+      if (!value.includes(token) && !value.includes(bracketToken)) {
+        continue;
+      }
+      references.set(token, {
+        token,
+        title: referencedLore.title,
+        content: referencedLore.latest_content,
+      });
+    }
+
     return Array.from(references.values());
   }
 
@@ -775,11 +787,26 @@ export default function StorytellerStoryEditor() {
     return match ? match[1] : null;
   }
 
+  function currentLoreMentionQuery(value: string) {
+    const match = value.match(/@lore:([^\s\]]*)$/);
+    return match ? match[1] : null;
+  }
+
   function insertStoryMention(title: string) {
     setAiPrompt((current) => {
       const token = `@story:${title}`;
       if (/@story:([^\s\]]*)$/.test(current)) {
         return current.replace(/@story:([^\s\]]*)$/, token);
+      }
+      return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
+    });
+  }
+
+  function insertLoreMention(title: string) {
+    setAiPrompt((current) => {
+      const token = `@lore:${title}`;
+      if (/@lore:([^\s\]]*)$/.test(current)) {
+        return current.replace(/@lore:([^\s\]]*)$/, token);
       }
       return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
     });
@@ -1002,7 +1029,7 @@ export default function StorytellerStoryEditor() {
             </Alert>
           )}
           <Grid container spacing={2} alignItems="flex-start">
-            <Grid size={12}>
+            <Grid size={{ xs: 12, md: 10 }}>
               <TextField
                 required
                 fullWidth
@@ -1011,17 +1038,6 @@ export default function StorytellerStoryEditor() {
                 onChange={(event) => setStoryTitle(event.target.value)}
                 placeholder="請輸入故事標題"
                 helperText="列表與編輯頁標題以此欄位為主。"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 10 }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label="故事摘要"
-                value={storySummary}
-                onChange={(event) => setStorySummary(event.target.value)}
-                placeholder="簡短描述這篇故事的重點、章節目的或目前狀態。"
               />
             </Grid>
             <Grid size={{ xs: 12, md: 2 }}>
@@ -1036,25 +1052,27 @@ export default function StorytellerStoryEditor() {
                 {saveStory.isPending ? "存檔中" : "存檔"}
               </Button>
             </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                multiline
+                minRows={2}
+                label="故事摘要"
+                value={storySummary}
+                onChange={(event) => setStorySummary(event.target.value)}
+                placeholder="簡短描述這篇故事的重點、章節目的或目前狀態。"
+              />
+            </Grid>
           </Grid>
         </Stack>
       }
     >
-      <Snackbar
+      <CustomSnackbar
         open={saveMessageVisible}
-        autoHideDuration={2000}
+        message={saveMessage}
+        severity={apiProject ? "success" : "info"}
         onClose={() => setSaveMessageVisible(false)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          severity={apiProject ? "success" : "info"}
-          variant="filled"
-          onClose={() => setSaveMessageVisible(false)}
-          sx={{ width: "100%" }}
-        >
-          {saveMessage}
-        </Alert>
-      </Snackbar>
+      />
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 8 }}>
@@ -1191,137 +1209,21 @@ export default function StorytellerStoryEditor() {
             </Box>
 
             <Box sx={{ display: tab === "history" ? "block" : "none", p: 2 }}>
-              {isNewStory ? (
-                <Alert severity="info" variant="outlined">
-                  新故事第一次存檔後才會產生編輯歷史。
-                </Alert>
-              ) : (
-                <Stack spacing={2}>
-                  {apiStoryVersionsLoading && (
-                    <Stack alignItems="center" sx={{ py: 2 }}>
-                      <CircularProgress size={24} />
-                    </Stack>
-                  )}
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    alignItems={{ xs: "stretch", sm: "center" }}
-                    justifyContent="space-between"
-                  >
-                    <Typography color="text.secondary">
-                      選擇兩個版本後可以比對標題與 Markdown 內容差異。
-                    </Typography>
-                    <Button
-                      href={comparePath || undefined}
-                      disabled={!comparePath}
-                      variant="contained"
-                      startIcon={<CompareArrowsIcon />}
-                    >
-                      比對選取版本
-                    </Button>
-                  </Stack>
-
-                  {(!leftDiffId || !rightDiffId) && (
-                    <Alert severity="info" variant="outlined">
-                      請先選擇較舊的 diff1，再從 diff1 更新的版本中選擇 diff2。
-                    </Alert>
-                  )}
-
-                  <TableContainer
-                    component={Paper}
-                    variant="outlined"
-                    sx={{ borderRadius: 1 }}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell padding="checkbox">
-                            diff1
-                            <br />舊
-                          </TableCell>
-                          <TableCell padding="checkbox">
-                            diff2
-                            <br />新
-                          </TableCell>
-                          <TableCell>版本</TableCell>
-                          <TableCell>來源</TableCell>
-                          <TableCell>字數</TableCell>
-                          <TableCell>建立時間</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {visibleStoryDiffs.map((diff) => (
-                          <TableRow
-                            key={diff.id}
-                            hover
-                            selected={
-                              leftDiffId === diff.id || rightDiffId === diff.id
-                            }
-                          >
-                            <TableCell padding="checkbox">
-                              <Radio
-                                checked={leftDiffId === diff.id}
-                                onChange={() => handleLeftDiffChange(diff.id)}
-                                inputProps={{
-                                  "aria-label": `選擇 ${diff.id} 作為 diff1`,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell padding="checkbox">
-                              <Radio
-                                checked={rightDiffId === diff.id}
-                                disabled={isRightDiffDisabled(diff.id)}
-                                onChange={() => setRightDiffId(diff.id)}
-                                inputProps={{
-                                  "aria-label": `選擇 ${diff.id} 作為 diff2`,
-                                }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Stack
-                                direction="row"
-                                spacing={1.5}
-                                alignItems="center"
-                              >
-                                <HistoryIcon color="primary" />
-                                <Stack spacing={0.5}>
-                                  <Typography fontWeight={800}>
-                                    {diff.title}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                  >
-                                    {diff.id}
-                                  </Typography>
-                                </Stack>
-                              </Stack>
-                            </TableCell>
-                            <TableCell>
-                              <Chip size="small" label={diff.source} />
-                            </TableCell>
-                            <TableCell>{diff.words.toLocaleString()}</TableCell>
-                            <TableCell>
-                              {formatStorytellerDate(diff.createdAt)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-
-                  <Stack direction="row" justifyContent="center">
-                    <Pagination
-                      count={totalHistoryPages}
-                      page={historyPage}
-                      onChange={(_, page) => setHistoryPage(page)}
-                      color="primary"
-                      showFirstButton
-                      showLastButton
-                    />
-                  </Stack>
-                </Stack>
-              )}
+              <StoryEditHistory
+                items={visibleStoryDiffs}
+                loading={apiStoryVersionsLoading}
+                leftVersionId={leftDiffId}
+                rightVersionId={rightDiffId}
+                comparePath={comparePath}
+                onLeftVersionChange={handleLeftDiffChange}
+                onRightVersionChange={setRightDiffId}
+                isRightVersionDisabled={isRightDiffDisabled}
+                isNewItem={isNewStory}
+                newItemMessage="新故事第一次存檔後才會產生編輯歷史。"
+                page={historyPage}
+                pageCount={totalHistoryPages}
+                onPageChange={setHistoryPage}
+              />
             </Box>
           </Paper>
         </Grid>
@@ -1463,13 +1365,13 @@ export default function StorytellerStoryEditor() {
                     )}
                   </Stack>
                 ) : (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ textAlign: "center", py: 2, px: 2 }}
-                  >
-                    這個故事還沒有 AI Agent 對話紀錄。
-                  </Typography>
+                  <Box sx={{ px: 2, py: 2 }}>
+                    <CustomEmptyState
+                      icon={<SmartToyIcon fontSize="large" />}
+                      title="還沒有 AI Agent 對話紀錄"
+                      description="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
+                    />
+                  </Box>
                 )}
                 {runAgent.isError && (
                   <Alert severity="error" variant="outlined" sx={{ mx: 2 }}>
@@ -1488,7 +1390,7 @@ export default function StorytellerStoryEditor() {
                   label="輸入需求"
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
-                  placeholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story: 引用同專案其他故事。"
+                  placeholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 引用同專案資料。"
                   error={Boolean(aiPayloadError)}
                   helperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
                 />
@@ -1523,6 +1425,20 @@ export default function StorytellerStoryEditor() {
                         onClick={() => insertStoryMention(item.title)}
                       >
                         {item.title}
+                      </Button>
+                    ))}
+                  </Stack>
+                )}
+                {loreMentionOptions.length > 0 && (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {loreMentionOptions.map((item) => (
+                      <Button
+                        key={item.public_id}
+                        size="small"
+                        variant="outlined"
+                        onClick={() => insertLoreMention(item.title)}
+                      >
+                        設定集：{item.title}
                       </Button>
                     ))}
                   </Stack>
