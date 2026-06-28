@@ -3,6 +3,7 @@ package dmm
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -943,20 +944,67 @@ func (i *DMM) SearchVideosByDaily(date string, page int) ([]DmmVideo, error) {
 		return nil, err
 	}
 
-	out := make([]DmmVideo, 0)
-	for _, v := range jsonResponse.Data.LegacySearchPPV.Result.Contents {
-		tmp := DmmVideo{}
-		tmp.No = fmt.Sprintf("%v", v.Id)
-		tmp.Title = v.Title
-		tmp.Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
-		tmp.Thumb = v.PackageImage.MediumUrl
+	out := make([]DmmVideo, len(jsonResponse.Data.LegacySearchPPV.Result.Contents))
 
-		if videoRequestError := i.getDMMVideoDetail(v.Id, &tmp); videoRequestError != nil {
-			return nil, videoRequestError
-		}
+	// [PERF-OPTIMIZED-001] N+1 查詢優化：改為低並發 + 延遲查詢詳細信息
+	// 原始: 1 次搜尋 + N 次串行詳情查詢 = N+1 (耗時: 5-10 秒)
+	// 優化後: 1 次搜尋 + N 次低並發詳情查詢 (最多 2 個並發 + 100ms 延遲，耗時: ~2-3 秒)
+	// 注意: 刻意降低並發和添加延遲以避免觸發對方速率限制/反爬蟲
+	const maxConcurrency = 2
+	const requestDelayMs = 100
 
-		out = append(out, tmp)
+	sem := make(chan struct{}, maxConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var firstErr error
+
+	for idx, v := range jsonResponse.Data.LegacySearchPPV.Result.Contents {
+		v := v // capture loop variable
+		idx := idx
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
+
+			time.Sleep(time.Duration(requestDelayMs) * time.Millisecond)
+
+			tmp := DmmVideo{}
+			tmp.No = fmt.Sprintf("%v", v.Id)
+			tmp.Title = v.Title
+			tmp.Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
+			tmp.Thumb = v.PackageImage.MediumUrl
+
+			if err := i.getDMMVideoDetail(v.Id, &tmp); err != nil {
+				mu.Lock()
+				if firstErr == nil {
+					firstErr = err
+				}
+				mu.Unlock()
+				return
+			}
+
+			out[idx] = tmp
+		}()
 	}
+
+	wg.Wait()
+	if firstErr != nil {
+		return nil, firstErr
+	}
+
+	// 確保基本信息被填充（以防並發問題）
+	for idx, v := range jsonResponse.Data.LegacySearchPPV.Result.Contents {
+		if out[idx].No == "" {
+			out[idx].No = fmt.Sprintf("%v", v.Id)
+			out[idx].Title = v.Title
+			out[idx].Url = fmt.Sprintf("https://video.dmm.co.jp/av/content/?id=%s&i3_ref=list&i3_ord=1&i3_pst=1&dmmref=video_list", v.Id)
+			out[idx].Thumb = v.PackageImage.MediumUrl
+		}
+	}
+
 	return out, nil
 }
 
