@@ -29,7 +29,11 @@ import {
 } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -65,6 +69,8 @@ export default function StorytellerProjectDetail() {
         slug: apiProject.slug,
         description: apiProject.description,
         visibility: apiProject.visibility,
+        rating: apiProject.rating,
+        tags: apiProject.tags ?? [],
         shareToken: apiProject.share_token,
         statusLabel:
           apiProject.visibility === "public"
@@ -171,6 +177,14 @@ export default function StorytellerProjectDetail() {
               <Chip
                 label={`${orderedStories.length || project.storiesCount} 篇故事`}
               />
+              <Chip
+                label={storytellerProjectRatingLabel(project.rating)}
+                color={storytellerProjectRatingColor(project.rating)}
+                variant="outlined"
+              />
+              {project.tags.map((tag) => (
+                <Chip key={tag} label={tag} variant="outlined" />
+              ))}
               <Chip
                 label={`更新於 ${formatStorytellerDate(project.updatedAt)}`}
               />
@@ -318,6 +332,7 @@ export default function StorytellerProjectDetail() {
                             input: {
                               title: item.title,
                               summary: item.summary,
+                              status: item.status,
                               sort: index,
                               content: item.latest_content,
                             },
@@ -354,6 +369,12 @@ export default function StorytellerProjectDetail() {
                             {formatStorytellerDate(story.updated_at)}
                           </Typography>
                         </Stack>
+                        <Chip
+                          size="small"
+                          label={story.status === "completed" ? "已完成" : "撰寫中"}
+                          color={story.status === "completed" ? "success" : "warning"}
+                          variant="outlined"
+                        />
                         <Button
                           href={`/storyteller/my/project/${project.id}/story/${story.public_id}`}
                           variant="outlined"

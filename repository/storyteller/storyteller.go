@@ -114,6 +114,14 @@ func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error)
 	return rows, err
 }
 
+func (r *Repository) PublishedStories(projectID uint64) ([]storytellerModel.Story, error) {
+	rows := make([]storytellerModel.Story, 0)
+	err := r.db.Where("project_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
+		Order("sort ASC, id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) Story(projectID uint64, publicID string) (*storytellerModel.Story, error) {
 	var row storytellerModel.Story
 	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
@@ -345,7 +353,7 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 	if err := r.db.
 		Table("storyteller_projects AS projects").
 		Select("COUNT(stories.id) AS story_count, COALESCE(SUM(stories.word_count), 0) AS word_count").
-		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.is_deleted = 0 AND stories.deleted_at IS NULL").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.status = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", storytellerModel.StoryStatusCompleted).
 		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Scan(&stories).Error; err != nil {
 		return 0, 0, 0, 0, 0, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -42,7 +43,7 @@ func (s *Service) PublicProjects() ([]storytellerModel.ProjectOutput, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputs(projects)
+	return s.projectOutputs(projects, false)
 }
 
 func (s *Service) PublicProject(projectValue string) (*storytellerModel.ProjectOutput, error) {
@@ -51,7 +52,7 @@ func (s *Service) PublicProject(projectValue string) (*storytellerModel.ProjectO
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project)
+	return s.projectOutput(project, false)
 }
 
 func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, error) {
@@ -59,7 +60,7 @@ func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, 
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project)
+	return s.projectOutput(project, false)
 }
 
 func (s *Service) Projects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
@@ -67,7 +68,7 @@ func (s *Service) Projects(userID uint64) ([]storytellerModel.ProjectOutput, err
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputs(projects)
+	return s.projectOutputs(projects, true)
 }
 
 func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.ProjectOutput, error) {
@@ -75,7 +76,7 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project)
+	return s.projectOutput(project, true)
 }
 
 func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectRequest) (*storytellerModel.ProjectOutput, error) {
@@ -90,6 +91,8 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 		Slug:        safeProjectSlug(input.Name),
 		Description: strings.TrimSpace(input.Description),
 		Visibility:  input.Visibility,
+		Rating:      input.Rating,
+		Tags:        encodeProjectTags(input.Tags),
 	}
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
 		project.ShareToken = randomID() + randomID()
@@ -112,13 +115,15 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	project.Name = strings.TrimSpace(input.Name)
 	project.Description = strings.TrimSpace(input.Description)
 	project.Visibility = input.Visibility
+	project.Rating = input.Rating
+	project.Tags = encodeProjectTags(input.Tags)
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted && project.ShareToken == "" {
 		project.ShareToken = randomID() + randomID()
 	}
 	if err := s.repo.UpdateProject(project); err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project)
+	return s.projectOutput(project, true)
 }
 
 func (s *Service) DeleteProject(userID uint64, publicID string) error {
@@ -311,6 +316,7 @@ func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*
 }
 
 func (s *Service) CreateStory(userID uint64, projectPublicID string, input storytellerModel.StoryRequest) (*storytellerModel.Story, error) {
+	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
 		return nil, err
 	}
@@ -323,6 +329,7 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		ProjectID:     project.ID,
 		Title:         strings.TrimSpace(input.Title),
 		Summary:       strings.TrimSpace(input.Summary),
+		Status:        input.Status,
 		Sort:          input.Sort,
 		LatestContent: input.Content,
 		WordCount:     wordCount(input.Content),
@@ -335,6 +342,7 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 }
 
 func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest) (*storytellerModel.Story, error) {
+	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
 		return nil, err
 	}
@@ -348,6 +356,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	}
 	story.Title = strings.TrimSpace(input.Title)
 	story.Summary = strings.TrimSpace(input.Summary)
+	story.Status = input.Status
 	story.Sort = input.Sort
 	story.LatestContent = input.Content
 	story.WordCount = wordCount(input.Content)
@@ -523,7 +532,7 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	outputs, err := s.projectOutputs(projects)
+	outputs, err := s.projectOutputs(projects, false)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -535,7 +544,7 @@ func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOut
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputs(projects)
+	return s.projectOutputs(projects, false)
 }
 
 func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
@@ -578,7 +587,7 @@ func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storyt
 		if err := s.repo.SaveRanking(ranking); err != nil {
 			return nil, err
 		}
-		return s.projectOutput(project)
+		return s.projectOutput(project, false)
 	}
 	if err := s.repo.CreateRanking(&storytellerModel.ProjectRanking{
 		UserID:     userID,
@@ -587,7 +596,7 @@ func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storyt
 	}); err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project)
+	return s.projectOutput(project, false)
 }
 
 func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
@@ -747,7 +756,7 @@ func (s *Service) DeleteUserProfile(userID uint64) error {
 	return s.repo.DeleteUserProfile(profile)
 }
 
-func (s *Service) projectOutput(project *storytellerModel.Project) (*storytellerModel.ProjectOutput, error) {
+func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftStories bool) (*storytellerModel.ProjectOutput, error) {
 	output := outputProject(*project)
 	ratingCount, averageRating, err := s.repo.RankingSummary(project.ID)
 	if err != nil {
@@ -755,7 +764,12 @@ func (s *Service) projectOutput(project *storytellerModel.Project) (*storyteller
 	}
 	output.RatingCount = ratingCount
 	output.AverageRating = averageRating
-	stories, err := s.repo.Stories(project.ID)
+	var stories []storytellerModel.Story
+	if includeDraftStories {
+		stories, err = s.repo.Stories(project.ID)
+	} else {
+		stories, err = s.repo.PublishedStories(project.ID)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -823,10 +837,10 @@ func (s *Service) loreForUserProject(userID uint64, projectPublicID, lorePublicI
 	return s.repo.Lore(project.ID, lorePublicID)
 }
 
-func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storytellerModel.ProjectOutput, error) {
+func (s *Service) projectOutputs(projects []storytellerModel.Project, includeDraftStories bool) ([]storytellerModel.ProjectOutput, error) {
 	output := make([]storytellerModel.ProjectOutput, 0, len(projects))
 	for _, project := range projects {
-		row, err := s.projectOutput(&project)
+		row, err := s.projectOutput(&project, includeDraftStories)
 		if err != nil {
 			return nil, err
 		}
@@ -836,7 +850,10 @@ func (s *Service) projectOutputs(projects []storytellerModel.Project) ([]storyte
 }
 
 func outputProject(project storytellerModel.Project) *storytellerModel.ProjectOutput {
-	return &storytellerModel.ProjectOutput{Project: project}
+	return &storytellerModel.ProjectOutput{
+		Project: project,
+		TagList: decodeProjectTags(project.Tags),
+	}
 }
 
 func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput {
@@ -908,6 +925,10 @@ func normalizeProjectRequest(input storytellerModel.ProjectRequest) storytellerM
 	if input.Visibility == "" {
 		input.Visibility = storytellerModel.ProjectVisibilityPrivate
 	}
+	if input.Rating == "" {
+		input.Rating = storytellerModel.ProjectRatingGeneral
+	}
+	input.Tags = normalizeProjectTags(input.Tags)
 	return input
 }
 
@@ -917,10 +938,69 @@ func validateProject(input storytellerModel.ProjectRequest) error {
 	}
 	switch input.Visibility {
 	case storytellerModel.ProjectVisibilityPublic, storytellerModel.ProjectVisibilityUnlisted, storytellerModel.ProjectVisibilityPrivate:
-		return nil
 	default:
 		return fmt.Errorf("invalid visibility")
 	}
+	switch input.Rating {
+	case storytellerModel.ProjectRatingGeneral, storytellerModel.ProjectRatingGuidance, storytellerModel.ProjectRatingRestricted:
+	default:
+		return fmt.Errorf("invalid rating")
+	}
+	if len(input.Tags) > 12 {
+		return fmt.Errorf("tags must contain 12 items or less")
+	}
+	for _, tag := range input.Tags {
+		if len([]rune(tag)) > 24 {
+			return fmt.Errorf("tag must be 24 characters or less")
+		}
+	}
+	return nil
+}
+
+func normalizeProjectTags(tags []string) []string {
+	seen := make(map[string]struct{}, len(tags))
+	output := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		value := strings.TrimSpace(tag)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		output = append(output, value)
+	}
+	return output
+}
+
+func encodeProjectTags(tags []string) string {
+	if len(tags) == 0 {
+		return "[]"
+	}
+	raw, err := json.Marshal(tags)
+	if err != nil {
+		return "[]"
+	}
+	return string(raw)
+}
+
+func decodeProjectTags(raw string) []string {
+	tags := make([]string, 0)
+	if strings.TrimSpace(raw) == "" {
+		return tags
+	}
+	if err := json.Unmarshal([]byte(raw), &tags); err != nil {
+		return make([]string, 0)
+	}
+	return normalizeProjectTags(tags)
+}
+
+func normalizeStoryRequest(input storytellerModel.StoryRequest) storytellerModel.StoryRequest {
+	if input.Status == "" {
+		input.Status = storytellerModel.StoryStatusCompleted
+	}
+	return input
 }
 
 func normalizeAgentRequest(input storytellerModel.AgentRequest) storytellerModel.AgentRequest {
@@ -1188,6 +1268,11 @@ func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) er
 func validateStory(input storytellerModel.StoryRequest) error {
 	if strings.TrimSpace(input.Title) == "" {
 		return errors.New("title is required")
+	}
+	switch input.Status {
+	case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
+	default:
+		return fmt.Errorf("invalid status")
 	}
 	return nil
 }

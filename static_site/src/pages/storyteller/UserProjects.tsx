@@ -16,6 +16,10 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import {
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -71,6 +75,8 @@ export default function StorytellerUserProjects() {
     name: project.name,
     description: project.description,
     storiesCount: project.stories?.length ?? 0,
+    rating: project.rating,
+    tags: project.tags ?? [],
     wordCount:
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
@@ -137,12 +143,20 @@ export default function StorytellerUserProjects() {
                       />
                       <Chip
                         size="small"
+                        color={storytellerProjectRatingColor(project.rating)}
+                        label={storytellerProjectRatingLabel(project.rating)}
+                      />
+                      <Chip
+                        size="small"
                         label={`${project.storiesCount} 篇故事`}
                       />
                       <Chip
                         size="small"
                         label={`${project.wordCount.toLocaleString()} 字`}
                       />
+                      {project.tags.map((tag) => (
+                        <Chip key={tag} size="small" label={tag} />
+                      ))}
                     </>
                   }
                   actions={

@@ -10,6 +10,21 @@ const (
 	ProjectVisibilityPrivate  ProjectVisibility = "private"
 )
 
+type ProjectRating string
+
+const (
+	ProjectRatingGeneral    ProjectRating = "general"
+	ProjectRatingGuidance   ProjectRating = "guidance"
+	ProjectRatingRestricted ProjectRating = "restricted"
+)
+
+type StoryStatus string
+
+const (
+	StoryStatusDraft     StoryStatus = "draft"
+	StoryStatusCompleted StoryStatus = "completed"
+)
+
 type AgentProvider string
 
 const (
@@ -43,6 +58,8 @@ type Project struct {
 	Slug        string            `gorm:"column:slug" json:"slug"`
 	Description string            `gorm:"column:description" json:"description"`
 	Visibility  ProjectVisibility `gorm:"column:visibility" json:"visibility"`
+	Rating      ProjectRating     `gorm:"column:rating" json:"rating"`
+	Tags        string            `gorm:"column:tags" json:"-"`
 	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
 	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
@@ -68,18 +85,19 @@ type Agent struct {
 func (Agent) TableName() string { return "storyteller_agents" }
 
 type Story struct {
-	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
-	PublicID      string     `gorm:"column:public_id" json:"public_id"`
-	ProjectID     uint64     `gorm:"column:project_id" json:"project_id"`
-	Title         string     `gorm:"column:title" json:"title"`
-	Summary       string     `gorm:"column:summary" json:"summary"`
-	Sort          int        `gorm:"column:sort" json:"sort"`
-	LatestContent string     `gorm:"column:latest_content" json:"latest_content"`
-	WordCount     uint       `gorm:"column:word_count" json:"word_count"`
-	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID            uint64      `gorm:"column:id;primaryKey" json:"id"`
+	PublicID      string      `gorm:"column:public_id" json:"public_id"`
+	ProjectID     uint64      `gorm:"column:project_id" json:"project_id"`
+	Title         string      `gorm:"column:title" json:"title"`
+	Summary       string      `gorm:"column:summary" json:"summary"`
+	Status        StoryStatus `gorm:"column:status" json:"status"`
+	Sort          int         `gorm:"column:sort" json:"sort"`
+	LatestContent string      `gorm:"column:latest_content" json:"latest_content"`
+	WordCount     uint        `gorm:"column:word_count" json:"word_count"`
+	IsDeleted     bool        `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt     *time.Time  `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time   `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time   `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Story) TableName() string { return "storyteller_stories" }
@@ -207,6 +225,8 @@ type ProjectRequest struct {
 	Slug        string            `json:"slug"`
 	Description string            `json:"description"`
 	Visibility  ProjectVisibility `json:"visibility"`
+	Rating      ProjectRating     `json:"rating"`
+	Tags        []string          `json:"tags"`
 }
 
 type AgentRequest struct {
@@ -227,10 +247,11 @@ type AgentRunRequest struct {
 }
 
 type StoryRequest struct {
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
-	Sort    int    `json:"sort"`
-	Content string `json:"content"`
+	Title   string      `json:"title"`
+	Summary string      `json:"summary"`
+	Status  StoryStatus `json:"status"`
+	Sort    int         `json:"sort"`
+	Content string      `json:"content"`
 }
 
 type LoreRequest struct {
@@ -303,6 +324,7 @@ type ProjectOutput struct {
 	AverageRating float64            `gorm:"-" json:"average_rating"`
 	RatingCount   uint64             `gorm:"-" json:"rating_count"`
 	IsFavorite    bool               `gorm:"-" json:"is_favorite"`
+	TagList       []string           `gorm:"-" json:"tags"`
 	Stories       []Story            `gorm:"-" json:"stories,omitempty"`
 	Author        *UserProfileOutput `gorm:"-" json:"author,omitempty"`
 }

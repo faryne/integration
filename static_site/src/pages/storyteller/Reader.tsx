@@ -25,6 +25,7 @@ import Markdown from "react-markdown";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
+import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import {
   useStorytellerProject,
   useSaveStorytellerAuthorFavorite,
@@ -36,7 +37,11 @@ import {
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
 } from "@/apis/storyteller.ts";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -60,6 +65,8 @@ interface ReaderProject {
   path: string;
   authorUserId?: number;
   authorPenName?: string;
+  rating: "general" | "guidance" | "restricted";
+  tags: string[];
   wordCount: number;
   stories: ReaderStory[];
 }
@@ -256,6 +263,8 @@ export default function StorytellerReader() {
         path: `/storyteller/story/${apiProject.public_id}-${apiProject.slug}`,
         authorUserId: apiProject.user_id,
         authorPenName: apiProject.author?.pen_name,
+        rating: apiProject.rating,
+        tags: apiProject.tags ?? [],
         wordCount: (apiProject.stories ?? []).reduce(
           (total, story) => total + story.word_count,
           0,
@@ -340,6 +349,116 @@ export default function StorytellerReader() {
     ? `/storyteller/story/share/${shareToken}`
     : project.path;
   const showInlineIndex = !isMobile && indexOpen;
+  const readerBody = (
+    <Paper
+      variant="outlined"
+      sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
+    >
+      {currentStory ? (
+        <Stack spacing={2}>
+          <Box>
+            <Typography
+              ref={storyStartRef}
+              component="h1"
+              variant="h4"
+              fontWeight={800}
+              sx={{ scrollMarginTop: 24 }}
+            >
+              {currentStory.title}
+            </Typography>
+            <Typography color="text.secondary" sx={{ mt: 1 }}>
+              {currentStory.summary}
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              sx={{ mt: 1 }}
+            >
+              {project.authorPenName && (
+                <Typography
+                  variant="caption"
+                  color="primary"
+                  component={RouterLink}
+                  to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
+                  sx={{
+                    textDecoration: "none",
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  作者 {project.authorPenName}
+                </Typography>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                更新於 {formatStorytellerDate(currentStory.updatedAt)}
+              </Typography>
+            </Stack>
+          </Box>
+          <Divider />
+          <Box
+            sx={{
+              typography: "body1",
+              lineHeight: 1.9,
+              "& h1": { typography: "h5", fontWeight: 800 },
+              "& h2": { typography: "h6", fontWeight: 800, mt: 3 },
+              "& p": { my: 1.5 },
+            }}
+          >
+            <Markdown>{currentStory.content}</Markdown>
+          </Box>
+          <Divider />
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "minmax(0, 1fr)",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: 1.5,
+              minWidth: 0,
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <ChapterNavCard
+                label="上一章"
+                title={previousStory?.title ?? "沒有上一章"}
+                to={previousStory ? `${basePath}/${previousStory.id}` : undefined}
+                disabled={!previousStory}
+                align="left"
+              />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <ChapterNavCard
+                label="本章"
+                title={currentStory.title}
+                align="center"
+                disabled
+              />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <ChapterNavCard
+                label="下一章"
+                title={nextStory?.title ?? "沒有下一章"}
+                to={nextStory ? `${basePath}/${nextStory.id}` : undefined}
+                disabled={!nextStory}
+                align="right"
+              />
+            </Box>
+          </Box>
+        </Stack>
+      ) : (
+        <Stack spacing={2}>
+          <Typography component="h1" variant="h4" fontWeight={800}>
+            {project.name}
+          </Typography>
+          <Typography color="text.secondary">{project.description}</Typography>
+          <Divider />
+          <Typography>請從左側索引選擇故事章節開始閱讀。</Typography>
+        </Stack>
+      )}
+    </Paper>
+  );
 
   return (
     <StorytellerShell
@@ -378,6 +497,14 @@ export default function StorytellerReader() {
           )}
           <Chip label={`${stories.length} 篇故事`} />
           <Chip label={`${project.wordCount.toLocaleString()} 字`} />
+          <Chip
+            label={storytellerProjectRatingLabel(project.rating)}
+            color={storytellerProjectRatingColor(project.rating)}
+            variant="outlined"
+          />
+          {project.tags.map((tag) => (
+            <Chip key={tag} label={tag} variant="outlined" />
+          ))}
         </Stack>
       }
     >
@@ -509,136 +636,49 @@ export default function StorytellerReader() {
         description="收藏故事、收藏作者或評分故事需要登入。是否要現在登入？"
       />
 
-      <Grid container spacing={2}>
-        {showInlineIndex && (
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-              <StoryIndex
-                stories={stories}
-                currentStoryId={currentStory?.id}
-                basePath={basePath}
-              />
-            </Paper>
-          </Grid>
-        )}
-
-        <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
-          <Paper
-            variant="outlined"
-            sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
-          >
-            {currentStory ? (
-              <Stack spacing={2}>
-                <Box>
-                  <Typography
-                    ref={storyStartRef}
-                    component="h1"
-                    variant="h4"
-                    fontWeight={800}
-                    sx={{ scrollMarginTop: 24 }}
-                  >
-                    {currentStory.title}
-                  </Typography>
-                  <Typography color="text.secondary" sx={{ mt: 1 }}>
-                    {currentStory.summary}
-                  </Typography>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    flexWrap="wrap"
-                    useFlexGap
-                    sx={{ mt: 1 }}
-                  >
-                    {project.authorPenName && (
-                      <Typography
-                        variant="caption"
-                        color="primary"
-                        component={RouterLink}
-                        to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
-                        sx={{
-                          textDecoration: "none",
-                          "&:hover": { textDecoration: "underline" },
-                        }}
-                      >
-                        作者 {project.authorPenName}
-                      </Typography>
-                    )}
-                    <Typography variant="caption" color="text.secondary">
-                      更新於 {formatStorytellerDate(currentStory.updatedAt)}
-                    </Typography>
-                  </Stack>
-                </Box>
-                <Divider />
-                <Box
-                  sx={{
-                    typography: "body1",
-                    lineHeight: 1.9,
-                    "& h1": { typography: "h5", fontWeight: 800 },
-                    "& h2": { typography: "h6", fontWeight: 800, mt: 3 },
-                    "& p": { my: 1.5 },
-                  }}
-                >
-                  <Markdown>{currentStory.content}</Markdown>
-                </Box>
-                <Divider />
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "minmax(0, 1fr)",
-                      md: "repeat(3, minmax(0, 1fr))",
-                    },
-                    gap: 1.5,
-                    minWidth: 0,
-                  }}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <ChapterNavCard
-                      label="上一章"
-                      title={previousStory?.title ?? "沒有上一章"}
-                      to={
-                        previousStory
-                          ? `${basePath}/${previousStory.id}`
-                          : undefined
-                      }
-                      disabled={!previousStory}
-                      align="left"
-                    />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <ChapterNavCard
-                      label="本章"
-                      title={currentStory.title}
-                      align="center"
-                      disabled
-                    />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <ChapterNavCard
-                      label="下一章"
-                      title={nextStory?.title ?? "沒有下一章"}
-                      to={nextStory ? `${basePath}/${nextStory.id}` : undefined}
-                      disabled={!nextStory}
-                      align="right"
-                    />
-                  </Box>
-                </Box>
-              </Stack>
-            ) : (
-              <Stack spacing={2}>
-                <Typography component="h1" variant="h4" fontWeight={800}>
-                  {project.name}
-                </Typography>
-                <Typography color="text.secondary">
-                  {project.description}
-                </Typography>
-                <Divider />
-                <Typography>請從左側索引選擇故事章節開始閱讀。</Typography>
-              </Stack>
+      {project.rating === "restricted" && !isOwner ? (
+        <AgeConfirmationGate
+          description="此故事專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
+          leaveTo="/storyteller"
+          panelTitle="限制級故事專案"
+        >
+          <Grid container spacing={2}>
+            {showInlineIndex && (
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                  <StoryIndex
+                    stories={stories}
+                    currentStoryId={currentStory?.id}
+                    basePath={basePath}
+                  />
+                </Paper>
+              </Grid>
             )}
-          </Paper>
+
+            <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
+              {readerBody}
+            </Grid>
+          </Grid>
+        </AgeConfirmationGate>
+      ) : (
+        <Grid container spacing={2}>
+          {showInlineIndex && (
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                <StoryIndex
+                  stories={stories}
+                  currentStoryId={currentStory?.id}
+                  basePath={basePath}
+                />
+              </Paper>
+            </Grid>
+          )}
+
+          <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
+            {readerBody}
+          </Grid>
         </Grid>
-      </Grid>
+      )}
     </StorytellerShell>
   );
 }

@@ -30,6 +30,17 @@ function projectNameToSlug(name: string) {
     .replace(/^_+|_+$/g, "");
 }
 
+function tagTextToList(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,，\n]/)
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
 export default function StorytellerNewProject() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -44,7 +55,10 @@ export default function StorytellerNewProject() {
     slug: "",
     description: "",
     visibility: "private",
+    rating: "general",
+    tags: [],
   });
+  const [tagText, setTagText] = useState("");
 
   useEffect(() => {
     if (editingProject) {
@@ -53,7 +67,10 @@ export default function StorytellerNewProject() {
         slug: editingProject.slug,
         description: editingProject.description,
         visibility: editingProject.visibility,
+        rating: editingProject.rating,
+        tags: editingProject.tags ?? [],
       });
+      setTagText((editingProject.tags ?? []).join(", "));
     }
   }, [editingProject]);
 
@@ -103,6 +120,7 @@ export default function StorytellerNewProject() {
           event.preventDefault();
           const payload = {
             ...input,
+            tags: tagTextToList(tagText),
             slug: editingProject?.slug ?? projectNameToSlug(input.name),
           };
           saveProject.mutate(
@@ -181,6 +199,36 @@ export default function StorytellerNewProject() {
                 <MenuItem value="unlisted">與親友分享</MenuItem>
                 <MenuItem value="public">已公開</MenuItem>
               </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="分級"
+                value={input.rating}
+                onChange={(event) =>
+                  setInput((value) => ({
+                    ...value,
+                    rating: event.target
+                      .value as StorytellerProjectRequest["rating"],
+                  }))
+                }
+                helperText="限制級公開頁會要求讀者進行年齡確認。"
+              >
+                <MenuItem value="general">普通級</MenuItem>
+                <MenuItem value="guidance">輔導級</MenuItem>
+                <MenuItem value="restricted">限制級</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="標籤"
+                value={tagText}
+                onChange={(event) => setTagText(event.target.value)}
+                helperText="使用逗號分隔，最多 12 個，每個最多 24 字。"
+                placeholder="奇幻, 長篇, 群像"
+              />
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">

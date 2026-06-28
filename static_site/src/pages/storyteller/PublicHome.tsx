@@ -4,6 +4,10 @@ import { Link as RouterLink } from "react-router-dom";
 import { usePublicStorytellerProjects } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
+import {
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
@@ -17,6 +21,8 @@ export default function StorytellerPublicHome() {
     name: project.name,
     description: project.description,
     storiesCount: project.stories?.length ?? 0,
+    rating: project.rating,
+    tags: project.tags ?? [],
     authorName: project.author?.pen_name,
     wordCount:
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
@@ -67,12 +73,20 @@ export default function StorytellerPublicHome() {
                     />
                     <Chip
                       size="small"
+                      color={storytellerProjectRatingColor(project.rating)}
+                      label={storytellerProjectRatingLabel(project.rating)}
+                    />
+                    <Chip
+                      size="small"
                       label={`${project.storiesCount} 篇故事`}
                     />
                     <Chip
                       size="small"
                       label={`${project.wordCount.toLocaleString()} 字`}
                     />
+                    {project.tags.map((tag) => (
+                      <Chip key={tag} size="small" label={tag} />
+                    ))}
                   </>
                 }
                 actions={

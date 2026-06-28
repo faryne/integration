@@ -2,7 +2,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -26,6 +25,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
 
@@ -99,20 +99,11 @@ export default function StorytellerProfile() {
       {loading ? (
         <StorytellerLoading label="正在確認登入狀態..." />
       ) : !session ? (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-          <Stack spacing={2} alignItems="flex-start">
-            <Alert severity="info" variant="outlined">
-              登入後即可維護 Storyteller 作者資訊。
-            </Alert>
-            <Button
-              variant="contained"
-              onClick={() => void login()}
-              disabled={submitting}
-            >
-              {submitting ? "登入中..." : "使用 Google 登入"}
-            </Button>
-          </Stack>
-        </Paper>
+        <CustomLoginRequiredState
+          description="登入後即可維護 Storyteller 作者資訊。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
       ) : profileQuery.isLoading ? (
         <StorytellerLoading label="正在載入作者設定..." />
       ) : (

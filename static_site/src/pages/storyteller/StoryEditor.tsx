@@ -83,6 +83,7 @@ interface EditorStory {
   id: string;
   title: string;
   summary: string;
+  status: "draft" | "completed";
   content: string;
   updatedAt: string;
   sort: number;
@@ -100,6 +101,7 @@ interface EditorAgent {
 interface StoryDraft {
   title: string;
   summary: string;
+  status: "draft" | "completed";
   content: string;
   sort: number;
 }
@@ -129,10 +131,16 @@ interface AgentPromptReference {
   content: string;
 }
 
-function serializeStoryDraft(title: string, summary: string, content: string) {
+function serializeStoryDraft(
+  title: string,
+  summary: string,
+  status: "draft" | "completed",
+  content: string,
+) {
   return JSON.stringify({
     title,
     summary,
+    status,
     content,
   });
 }
@@ -162,6 +170,7 @@ export default function StorytellerStoryEditor() {
         id: apiStory.public_id,
         title: apiStory.title,
         summary: apiStory.summary,
+        status: apiStory.status,
         content: apiStory.latest_content,
         updatedAt: apiStory.updated_at,
         sort: apiStory.sort,
@@ -204,6 +213,9 @@ export default function StorytellerStoryEditor() {
     );
   const [storyTitle, setStoryTitle] = useState(story?.title ?? "");
   const [storySummary, setStorySummary] = useState(story?.summary ?? "");
+  const [storyStatus, setStoryStatus] = useState<"draft" | "completed">(
+    story?.status ?? "completed",
+  );
   const [tab, setTab] = useState(isHistoryRoute ? "history" : "editor");
   const [content, setContent] = useState(story?.content ?? "");
   const [selectionState, setSelectionState] = useState<TextSelectionState>({
@@ -228,11 +240,12 @@ export default function StorytellerStoryEditor() {
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
-  const currentDraftRef = useRef(serializeStoryDraft("", "", ""));
-  const lastSavedDraftRef = useRef(serializeStoryDraft("", "", ""));
+  const currentDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
+  const lastSavedDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
   const latestDraftRef = useRef<StoryDraft>({
     title: "",
     summary: "",
+    status: "completed",
     content: "",
     sort: 0,
   });
@@ -363,29 +376,33 @@ export default function StorytellerStoryEditor() {
   useEffect(() => {
     setStoryTitle(story?.title ?? "");
     setStorySummary(story?.summary ?? "");
+    setStoryStatus(story?.status ?? "completed");
     setContent(story?.content ?? "");
     const savedDraft = serializeStoryDraft(
       story?.title ?? "",
       story?.summary ?? "",
+      story?.status ?? "completed",
       story?.content ?? "",
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
-  }, [story?.content, story?.summary, story?.title]);
+  }, [story?.content, story?.status, story?.summary, story?.title]);
 
   useEffect(() => {
     currentDraftRef.current = serializeStoryDraft(
       storyTitle,
       storySummary,
+      storyStatus,
       content,
     );
     latestDraftRef.current = {
       title: storyTitle,
       summary: storySummary,
+      status: storyStatus,
       content,
       sort: story?.sort ?? 0,
     };
-  }, [content, story?.sort, storySummary, storyTitle]);
+  }, [content, story?.sort, storyStatus, storySummary, storyTitle]);
 
   useEffect(() => {
     saveStoryRef.current = saveStory;
@@ -438,6 +455,7 @@ export default function StorytellerStoryEditor() {
             input: {
               title: latestDraft.title,
               summary: latestDraft.summary,
+              status: latestDraft.status,
               sort: latestDraft.sort,
               content: latestDraft.content,
             },
@@ -571,6 +589,7 @@ export default function StorytellerStoryEditor() {
         input: {
           title: storyTitle,
           summary: storySummary,
+          status: storyStatus,
           sort: story?.sort ?? 0,
           content,
         },
@@ -1002,6 +1021,11 @@ export default function StorytellerStoryEditor() {
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${wordCount.toLocaleString()} 字`} />
+          <Chip
+            label={storyStatus === "completed" ? "已完成" : "撰寫中"}
+            color={storyStatus === "completed" ? "success" : "warning"}
+            variant="outlined"
+          />
           {story ? (
             <>
               <Chip
@@ -1051,6 +1075,21 @@ export default function StorytellerStoryEditor() {
               >
                 {saveStory.isPending ? "存檔中" : "存檔"}
               </Button>
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                select
+                label="故事狀態"
+                value={storyStatus}
+                onChange={(event) =>
+                  setStoryStatus(event.target.value as "draft" | "completed")
+                }
+                helperText="撰寫中的故事不會出現在公開閱讀頁與故事索引。"
+              >
+                <MenuItem value="draft">撰寫中</MenuItem>
+                <MenuItem value="completed">已完成</MenuItem>
+              </TextField>
             </Grid>
             <Grid size={12}>
               <TextField

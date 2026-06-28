@@ -25,8 +25,13 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -37,33 +42,6 @@ import type {
   StorytellerAgent,
   StorytellerProject,
 } from "@/types/storyteller.ts";
-
-function LoginRequiredPanel({
-  message,
-  login,
-  submitting,
-}: {
-  message: string;
-  login: () => Promise<void>;
-  submitting: boolean;
-}) {
-  return (
-    <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-      <Stack spacing={2} alignItems="flex-start">
-        <Alert severity="info" variant="outlined">
-          {message}
-        </Alert>
-        <Button
-          variant="contained"
-          onClick={() => void login()}
-          disabled={submitting}
-        >
-          {submitting ? "登入中..." : "使用 Google 登入"}
-        </Button>
-      </Stack>
-    </Paper>
-  );
-}
 
 function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const deleteProject = useDeleteStorytellerProject();
@@ -84,6 +62,8 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           : "完全不公開",
     statusColor: project.visibility === "private" ? "default" : "primary",
     storiesCount: project.stories?.length ?? 0,
+    rating: project.rating,
+    tags: project.tags ?? [],
     wordCount:
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
@@ -123,6 +103,11 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     />
                     <Chip
                       size="small"
+                      color={storytellerProjectRatingColor(project.rating)}
+                      label={storytellerProjectRatingLabel(project.rating)}
+                    />
+                    <Chip
+                      size="small"
                       label={`${project.storiesCount} 篇故事`}
                     />
                     <Chip
@@ -137,6 +122,9 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                       size="small"
                       label={`平均 ${project.averageRating.toFixed(1)}`}
                     />
+                    {project.tags.map((tag) => (
+                      <Chip key={tag} size="small" label={tag} />
+                    ))}
                   </>
                 }
                 actions={
@@ -379,9 +367,9 @@ export default function StorytellerHome() {
           <Typography color="text.secondary">正在確認登入狀態...</Typography>
         </Stack>
       ) : !session ? (
-        <LoginRequiredPanel
-          message="登入後即可查看我的工作台。"
-          login={login}
+        <CustomLoginRequiredState
+          description="登入後即可查看我的工作台。"
+          onLogin={() => void login()}
           submitting={submitting}
         />
       ) : (

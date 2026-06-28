@@ -261,6 +261,30 @@ export function formatStorytellerDate(input: string) {
   }).format(new Date(input));
 }
 
+export function storytellerProjectRatingLabel(
+  rating: "general" | "guidance" | "restricted" | undefined,
+) {
+  if (rating === "restricted") {
+    return "限制級";
+  }
+  if (rating === "guidance") {
+    return "輔導級";
+  }
+  return "普通級";
+}
+
+export function storytellerProjectRatingColor(
+  rating: "general" | "guidance" | "restricted" | undefined,
+) {
+  if (rating === "restricted") {
+    return "error";
+  }
+  if (rating === "guidance") {
+    return "warning";
+  }
+  return "success";
+}
+
 export function projectStatusLabel(status: StorytellerProject["status"]) {
   if (status === "drafting") {
     return "撰寫中";

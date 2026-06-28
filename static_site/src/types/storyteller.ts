@@ -6,6 +6,8 @@ export interface StorytellerProject {
   slug: string;
   description: string;
   visibility: "public" | "unlisted" | "private";
+  rating: "general" | "guidance" | "restricted";
+  tags: string[];
   share_token: string;
   rating_count: number;
   average_rating: number;
@@ -33,6 +35,7 @@ export interface StorytellerStory {
   project_id: number;
   title: string;
   summary: string;
+  status: "draft" | "completed";
   sort: number;
   latest_content: string;
   word_count: number;
@@ -97,6 +100,8 @@ export interface StorytellerProjectRequest {
   slug: string;
   description: string;
   visibility: "public" | "unlisted" | "private";
+  rating: "general" | "guidance" | "restricted";
+  tags: string[];
 }
 
 export interface StorytellerAgentRequest {
@@ -162,6 +167,7 @@ export interface StorytellerStoryChatMessagePage {
 export interface StorytellerStoryRequest {
   title: string;
   summary: string;
+  status: "draft" | "completed";
   sort: number;
   content: string;
 }

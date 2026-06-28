@@ -19,6 +19,11 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import {
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -59,20 +64,11 @@ export default function StorytellerFavorites() {
       {loading ? (
         <StorytellerLoading label="正在確認登入狀態..." />
       ) : !session ? (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
-          <Stack spacing={2} alignItems="flex-start">
-            <Alert severity="info" variant="outlined">
-              登入後即可查看我的收藏。
-            </Alert>
-            <Button
-              variant="contained"
-              onClick={() => void login()}
-              disabled={submitting}
-            >
-              {submitting ? "登入中..." : "使用 Google 登入"}
-            </Button>
-          </Stack>
-        </Paper>
+        <CustomLoginRequiredState
+          description="登入後即可查看我的收藏。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
       ) : (
         <Stack spacing={2}>
           <Tabs
@@ -124,6 +120,15 @@ export default function StorytellerFavorites() {
                         authorName={project.author?.pen_name}
                         chips={
                           <>
+                            <Chip
+                              size="small"
+                              color={storytellerProjectRatingColor(
+                                project.rating,
+                              )}
+                              label={storytellerProjectRatingLabel(
+                                project.rating,
+                              )}
+                            />
                             <Chip size="small" label={`${storyCount} 篇故事`} />
                             <Chip
                               size="small"
@@ -137,6 +142,9 @@ export default function StorytellerFavorites() {
                               size="small"
                               label={`平均 ${project.average_rating.toFixed(1)}`}
                             />
+                            {(project.tags ?? []).map((tag) => (
+                              <Chip key={tag} size="small" label={tag} />
+                            ))}
                           </>
                         }
                         actions={
