@@ -80,3 +80,6 @@ Do not modify or rely on these directories unless the user explicitly asks for i
 - Soft deleted data SHOULD be marked with `is_deleted` & `deleted_at` field. And user clicks `delete`, ALWAYS show a `confirm` dialog to avoid mis-delelted data.
 - ALWAYS REMOVE UNUSED CODE.
 - ALWAYS APPEND PROPER COMMENTS IN CHINESE, tell the maintainer what's the purpose of the code.
+- ALWAYS DO `sort imports` when editing go files.
+- Writing comments in Traditional Chinese is highly encouraged to enhance code readability and maintainability.
+- Less code, greater readability, and greater efforts.

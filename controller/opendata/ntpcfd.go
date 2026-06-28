@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
 	"faryne.dev/model/entity/opendata/ntpcfd"
 	ntpcfdRepo "faryne.dev/repository/ntpcfd"
 	fdService "faryne.dev/service/fire_department"
-	"faryne.dev/service/helper"
+	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
-	"github.com/gofiber/fiber/v3"
 )
 
 // FDRealtime returns realtime fire-department events.
@@ -67,12 +69,12 @@ func FDRealtimeByArea(ctx fiber.Ctx) error {
 // @Router /opendata/fd [get]
 func FetchNtpcFDEvents(ctx fiber.Ctx) error {
 	var req ntpcfd.NTPCFDEventRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
-	resp, err := helper.Paginate(ctx, func(page int64, perPage int64, params url.Values) (helper.PaginateCallbackResponse[[]ntpcfd.NTPCFDEvent], error) {
+	resp, err := serviceHelper.Paginate(ctx, func(page int64, perPage int64, params url.Values) (serviceHelper.PaginateCallbackResponse[[]ntpcfd.NTPCFDEvent], error) {
 		rows, total, err := ntpcfdRepo.FetchEvents(req, page, perPage)
-		return helper.PaginateCallbackResponse[[]ntpcfd.NTPCFDEvent]{
+		return serviceHelper.PaginateCallbackResponse[[]ntpcfd.NTPCFDEvent]{
 			Data:  rows,
 			Total: total,
 		}, err

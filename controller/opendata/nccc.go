@@ -3,11 +3,13 @@ package opendata
 import (
 	"errors"
 
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
 	ncccModel "faryne.dev/model/entity/opendata/nccc"
-	"faryne.dev/service/helper"
+	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/nccc"
 	"faryne.dev/service/output"
-	"github.com/gofiber/fiber/v3"
 )
 
 func NCCCIndexes(ctx fiber.Ctx) error {
@@ -21,8 +23,8 @@ func NCCCRecords(ctx fiber.Ctx) error {
 	}
 
 	var req ncccModel.RecordSearchRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 
 	raw, rows, err := nccc.SearchRecords(req, dataSetKey)
@@ -35,7 +37,7 @@ func NCCCRecords(ctx fiber.Ctx) error {
 	if currentOffset < 0 {
 		currentOffset = 0
 	}
-	if cursor, err := helper.DecodeESCursor(req.Cursor); err != nil {
+	if cursor, err := serviceHelper.DecodeESCursor(req.Cursor); err != nil {
 		return output.BadRequest(err)
 	} else if cursor != nil {
 		currentOffset = cursor.Offset
@@ -44,7 +46,7 @@ func NCCCRecords(ctx fiber.Ctx) error {
 	if len(raw.Hits.Hits) > 0 {
 		nextSearchAfter = raw.Hits.Hits[len(raw.Hits.Hits)-1].Sort
 	}
-	pagination, err := helper.PaginateByES(ctx, helper.ESPaginateInput[[]map[string]any]{
+	pagination, err := serviceHelper.PaginateByES(ctx, serviceHelper.ESPaginateInput[[]map[string]any]{
 		Data:            rows,
 		Total:           raw.Hits.Total.Value,
 		PerPage:         perPage,

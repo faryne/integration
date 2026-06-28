@@ -6,13 +6,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
 	"faryne.dev/middleware/authsession"
 	erogeModel "faryne.dev/model/entity/eroge"
 	"faryne.dev/repository"
 	"faryne.dev/service/eroge"
-	"faryne.dev/service/helper"
+	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
-	"github.com/gofiber/fiber/v3"
 )
 
 type favoriteRequest struct {
@@ -21,14 +23,14 @@ type favoriteRequest struct {
 
 func Brands(ctx fiber.Ctx) error {
 	var input erogeModel.BrandSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().SearchBrands(input)
 	if err != nil {
 		return output.DBError(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func Brand(ctx fiber.Ctx) error {
@@ -44,8 +46,8 @@ func Brand(ctx fiber.Ctx) error {
 
 func SubmitBrands(ctx fiber.Ctx) error {
 	var input erogeModel.BrandSubmissionRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	if len(input.Channels) == 0 {
 		return output.BadRequest(errors.New("channels is required"))
@@ -69,14 +71,14 @@ func SubmitBrands(ctx fiber.Ctx) error {
 
 func AdminBrands(ctx fiber.Ctx) error {
 	var input erogeModel.BrandSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().AdminSearchBrands(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.Unauthorized(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func SetBrandStatus(ctx fiber.Ctx) error {
@@ -85,8 +87,8 @@ func SetBrandStatus(ctx fiber.Ctx) error {
 		return output.BadRequest(errors.New("invalid brand ID"))
 	}
 	var input erogeModel.BrandStatusRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -154,14 +156,14 @@ func SyncBrandVideosNow(ctx fiber.Ctx) error {
 
 func AdminVideos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().AdminSearchVideos(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.Unauthorized(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func DeleteVideo(ctx fiber.Ctx) error {
@@ -188,8 +190,8 @@ func RestoreVideo(ctx fiber.Ctx) error {
 
 func SubmitVideos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSubmissionRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	if len(input.URLs) == 0 {
 		return output.BadRequest(errors.New("urls is required"))
@@ -213,14 +215,14 @@ func SubmitVideos(ctx fiber.Ctx) error {
 
 func AdminVideoSubmissions(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSubmissionSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().AdminSearchVideoSubmissions(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.Unauthorized(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func SetVideoSubmissionStatus(ctx fiber.Ctx) error {
@@ -229,8 +231,8 @@ func SetVideoSubmissionStatus(ctx fiber.Ctx) error {
 		return output.BadRequest(errors.New("invalid submission ID"))
 	}
 	var input erogeModel.VideoSubmissionStatusRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -246,20 +248,20 @@ func SetVideoSubmissionStatus(ctx fiber.Ctx) error {
 
 func AdminVideoTitleKeywords(ctx fiber.Ctx) error {
 	var input erogeModel.VideoTitleKeywordSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().AdminSearchVideoTitleKeywords(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.Unauthorized(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func CreateVideoTitleKeyword(ctx fiber.Ctx) error {
 	var input erogeModel.VideoTitleKeywordRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	row, err := eroge.NewCatalogService().CreateVideoTitleKeyword(authsession.Session(ctx).UserId, input)
 	if err != nil {
@@ -274,8 +276,8 @@ func UpdateVideoTitleKeyword(ctx fiber.Ctx) error {
 		return output.BadRequest(errors.New("invalid keyword ID"))
 	}
 	var input erogeModel.VideoTitleKeywordRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	row, err := eroge.NewCatalogService().UpdateVideoTitleKeyword(authsession.Session(ctx).UserId, keywordID, input)
 	if err != nil {
@@ -297,14 +299,14 @@ func DeleteVideoTitleKeyword(ctx fiber.Ctx) error {
 
 func Videos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().SearchVideos(ctx.Params("brand"), input)
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func Video(ctx fiber.Ctx) error {
@@ -354,8 +356,8 @@ func BrandFavorite(ctx fiber.Ctx) error {
 
 func SetBrandFavorite(ctx fiber.Ctx) error {
 	var input favoriteRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	session := authsession.Session(ctx)
 	status, err := eroge.NewCatalogService().SetBrandFavorite(session.UserId, ctx.Params("brand"), input.Favorite)
@@ -382,8 +384,8 @@ func VideoFavorite(ctx fiber.Ctx) error {
 
 func SetVideoFavorite(ctx fiber.Ctx) error {
 	var input favoriteRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	session := authsession.Session(ctx)
 	status, err := eroge.NewCatalogService().SetVideoFavorite(
@@ -415,8 +417,8 @@ func VideoReaction(ctx fiber.Ctx) error {
 
 func SetVideoReaction(ctx fiber.Ctx) error {
 	var input erogeModel.VideoReactionRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	session := authsession.Session(ctx)
 	status, err := eroge.NewCatalogService().SetVideoReaction(
@@ -436,8 +438,8 @@ func SetVideoReaction(ctx fiber.Ctx) error {
 
 func FavoriteStatus(ctx fiber.Ctx) error {
 	var input erogeModel.FavoriteStatusRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindJSON(ctx, &input); err != nil {
+		return err
 	}
 	status, err := eroge.NewCatalogService().FavoriteStatus(authsession.Session(ctx).UserId, input)
 	if err != nil {
@@ -448,24 +450,24 @@ func FavoriteStatus(ctx fiber.Ctx) error {
 
 func FavoriteBrands(ctx fiber.Ctx) error {
 	var input erogeModel.BrandSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().FavoriteBrands(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.DBError(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }
 
 func FavoriteVideos(ctx fiber.Ctx) error {
 	var input erogeModel.VideoSearchRequest
-	if err := ctx.Bind().Query(&input); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &input); err != nil {
+		return err
 	}
 	rows, total, err := eroge.NewCatalogService().FavoriteVideos(authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return output.DBError(err)
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, total))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, total))
 }

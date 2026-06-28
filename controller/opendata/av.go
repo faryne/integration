@@ -1,17 +1,20 @@
 package opendata
 
 import (
-	avEntity "faryne.dev/model/entity/opendata/av"
-	"faryne.dev/service/av"
-	"faryne.dev/service/dmm"
-	"faryne.dev/service/helper"
-	"faryne.dev/service/output"
-	"faryne.dev/service/xcity"
-	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v3"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
+	avEntity "faryne.dev/model/entity/opendata/av"
+	"faryne.dev/service/av"
+	"faryne.dev/service/dmm"
+	serviceHelper "faryne.dev/service/helper"
+	"faryne.dev/service/output"
+	"faryne.dev/service/xcity"
 )
 
 // AvVideoSearch searches AV video records.
@@ -34,14 +37,14 @@ import (
 // @Router /opendata/av/search/video [get]
 func AvVideoSearch(ctx fiber.Ctx) error {
 	var req avEntity.VideoQueryRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 	r, rows, err := av.VideoSearch(req)
 	if err != nil {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
 }
 
 // AvActressSearch searches AV actress records.
@@ -65,14 +68,14 @@ func AvVideoSearch(ctx fiber.Ctx) error {
 // @Router /opendata/av/search/actress [get]
 func AvActressSearch(ctx fiber.Ctx) error {
 	var req avEntity.ActressQueryRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 	r, rows, err := av.ActressSearch(req)
 	if err != nil {
 		return output.New(http.StatusInternalServerError, "", nil, err.Error())
 	}
-	return output.Success(helper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
+	return output.Success(serviceHelper.ResultPaginate(ctx, rows, r.Hits.Total.Value))
 }
 
 // DMMDailyVideo lists DMM daily videos.
@@ -118,8 +121,8 @@ func DMMDailyVideo(ctx fiber.Ctx) error {
 // @Router /opendata/xcity/actress [get]
 func XCityActressList(ctx fiber.Ctx) error {
 	var req avEntity.ActressQuery
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 	if err := validator.New().Struct(&req); err != nil {
 		return output.BadRequest(err)

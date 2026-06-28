@@ -1,11 +1,13 @@
 package opendata
 
 import (
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
 	taipowerModel "faryne.dev/model/entity/opendata/taipower"
-	"faryne.dev/service/helper"
+	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	taipowerService "faryne.dev/service/taipower"
-	"github.com/gofiber/fiber/v3"
 )
 
 // TaipowerNeighbor searches Taipower neighborhood assistance records.
@@ -40,8 +42,8 @@ func TaipowerNeighborByUnit(ctx fiber.Ctx) error {
 
 func searchTaipowerNeighbor(ctx fiber.Ctx, cityArea string, unit string) error {
 	var req taipowerModel.NeighborSearchRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 
 	filter, err := taipowerService.ParseNeighborPath(ctx.Params("year"), ctx.Params("month"))
@@ -63,7 +65,7 @@ func searchTaipowerNeighbor(ctx fiber.Ctx, cityArea string, unit string) error {
 		totalCash = *aggregation.Value
 	}
 	currentOffset := (req.PageValue() - 1) * req.PerPageValue()
-	if cursor, err := helper.DecodeESCursor(req.Cursor); err != nil {
+	if cursor, err := serviceHelper.DecodeESCursor(req.Cursor); err != nil {
 		return output.BadRequest(err)
 	} else if cursor != nil {
 		currentOffset = cursor.Offset
@@ -72,7 +74,7 @@ func searchTaipowerNeighbor(ctx fiber.Ctx, cityArea string, unit string) error {
 	if len(raw.Hits.Hits) > 0 {
 		nextSearchAfter = raw.Hits.Hits[len(raw.Hits.Hits)-1].Sort
 	}
-	pagination, err := helper.PaginateByES(ctx, helper.ESPaginateInput[[]taipowerModel.Neighbor]{
+	pagination, err := serviceHelper.PaginateByES(ctx, serviceHelper.ESPaginateInput[[]taipowerModel.Neighbor]{
 		Data:            rows,
 		Total:           raw.Hits.Total.Value,
 		PerPage:         req.PerPageValue(),

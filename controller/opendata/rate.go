@@ -1,10 +1,12 @@
 package opendata
 
 import (
+	"github.com/gofiber/fiber/v3"
+
+	"faryne.dev/controller/helper"
 	ratesEntity "faryne.dev/model/entity/opendata/rates"
 	ratesRepository "faryne.dev/repository/rates"
 	"faryne.dev/service/output"
-	"github.com/gofiber/fiber/v3"
 )
 
 // Rate searches exchange-rate records.
@@ -21,8 +23,8 @@ import (
 // @Router /opendata/rates [get]
 func Rate(ctx fiber.Ctx) error {
 	var req ratesEntity.RateRequest
-	if err := ctx.Bind().Query(&req); err != nil {
-		return output.BadRequest(err)
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
 	}
 	rates, err := ratesRepository.FetchRates(req)
 	if err != nil {
