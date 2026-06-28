@@ -1027,13 +1027,14 @@ func (i *DMM) getDMMVideoDetail(no string, tmp *DmmVideo) error {
 		return requestError
 	}
 
-	//tz := time.FixedZone("Asia/Tokyo", 9*60*60)
+	tz := time.FixedZone("Asia/Tokyo", 9*60*60)
 
 	tmp.Thumb = finalResponse.Data.PpvContent.PackageImage.MediumUrl
 	tmp.MakerNo = finalResponse.Data.PpvContent.MakerContentId
 	tmp.Duration = int(math.Ceil(float64(finalResponse.Data.PpvContent.Duration / 60)))
-	tmp.VodDate = finalResponse.Data.PpvContent.DeliveryStartDate.Format("2006/01/02")
-	tmp.PublishDate = finalResponse.Data.PpvContent.MakerReleasedAt.Format("2006/01/02")
+
+	tmp.VodDate = finalResponse.Data.PpvContent.DeliveryStartDate.In(tz).Format("2006/01/02")
+	tmp.PublishDate = finalResponse.Data.PpvContent.MakerReleasedAt.In(tz).Format("2006/01/02")
 	tmp.Actresses = make([]string, 0)
 	for _, act := range finalResponse.Data.PpvContent.Actresses {
 		tmp.Actresses = append(tmp.Actresses, act.Name)
