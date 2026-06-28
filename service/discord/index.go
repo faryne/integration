@@ -5,11 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
 	"faryne.dev/config"
+	"faryne.dev/service/client"
 )
 
 type WebhookRequest struct {
@@ -81,20 +81,14 @@ func (s *ServiceDiscord) sendRawMessage(ctx context.Context, message string) err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	// 發送請求並取得原始響應及狀態碼
+	content, statusCode, err := client.DoRawWithStatus(req)
 	if err != nil {
 		return fmt.Errorf("failed to send discord request: %w", err)
 	}
-	defer resp.Body.Close()
 
-	content, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read discord response body: %w", err)
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("discord responded with status: %d with raw: %s", resp.StatusCode, string(content))
+	if statusCode < 200 || statusCode >= 300 {
+		return fmt.Errorf("discord responded with status: %d with raw: %s", statusCode, string(content))
 	}
 
 	return nil

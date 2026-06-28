@@ -2,24 +2,21 @@ package crawler
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
+
 	"faryne.dev/config"
+	"faryne.dev/service/client"
 )
 
 func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]any, error) {
-	c, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer c.Body.Close()
-	b, err := io.ReadAll(c.Body)
+	b, err := client.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -27,12 +24,11 @@ func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]
 }
 
 func CrawlByUrl(uri string, selectors []SelectorRequest) (map[string]any, error) {
-	c, err := http.Get(uri)
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer c.Body.Close()
-	b, err := io.ReadAll(c.Body)
+	b, err := client.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -40,13 +36,16 @@ func CrawlByUrl(uri string, selectors []SelectorRequest) (map[string]any, error)
 }
 
 func CrawlByUrlWithTimeout(uri string, selectors []SelectorRequest, timeout time.Duration) (map[string]any, error) {
-	client := http.Client{Timeout: timeout}
-	c, err := client.Get(uri)
+	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		return nil, err
 	}
-	defer c.Body.Close()
-	b, err := io.ReadAll(c.Body)
+	// 設定超時的上下文
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	b, err := client.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -79,26 +78,26 @@ func CrawlByURLInTaiwanWithTimeout(
 	query.Set("url", uri)
 	target.RawQuery = query.Encode()
 
+	// 設定超時的上下文
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	req, err := http.NewRequest(http.MethodGet, target.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 	req.Header.Set("Authorization", "Bearer "+secret)
 
-	client := http.Client{Timeout: timeout}
-	resp, err := client.Do(req)
+	body, statusCode, err := client.DoRawWithStatus(req)
 	if err != nil {
 		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("Taiwan proxy returned %s", resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+	if statusCode < http.StatusOK || statusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("Taiwan proxy returned status %d", statusCode)
 	}
+
 	return crawl(body, selectors)
 }
 

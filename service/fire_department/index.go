@@ -1,9 +1,10 @@
 package fire_department
 
 import (
-	"io/ioutil"
 	"net/http"
 	"time"
+
+	"faryne.dev/service/client"
 )
 
 const crawlerRequestTimeout = 5 * time.Second
@@ -21,14 +22,9 @@ type Event struct {
 
 type FetchCallback func([]byte) ([]Event, error)
 
+// Fetch 發送 HTTP 請求並使用回調函數處理響應
 func Fetch(req *http.Request, cb FetchCallback) ([]Event, error) {
-	c := http.Client{}
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	content, err := ioutil.ReadAll(resp.Body)
+	content, err := client.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}

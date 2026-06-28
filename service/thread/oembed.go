@@ -3,14 +3,16 @@ package thread
 import (
 	"encoding/base64"
 	"encoding/json"
-	"faryne.dev/service/chrome_helper"
 	"fmt"
-	"github.com/chromedp/chromedp"
-	"github.com/skip2/go-qrcode"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/chromedp/chromedp"
+	"github.com/skip2/go-qrcode"
+
+	"faryne.dev/service/chrome_helper"
+	"faryne.dev/service/client"
 )
 
 type OembedThread struct {
@@ -114,13 +116,13 @@ func OEmbedCapture(uri string) (string, error) {
 	if uri == "" || uri[0] != 'h' {
 		return "", fmt.Errorf("uri is not matched: %s", uri)
 	}
-	resp, err := http.DefaultClient.Get(newUri)
+
+	req, err := http.NewRequest(http.MethodGet, newUri, nil)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
 
-	content, err := io.ReadAll(resp.Body)
+	content, err := client.DoRaw(req)
 	if err != nil {
 		return "", err
 	}
