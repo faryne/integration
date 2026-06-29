@@ -63,17 +63,25 @@ func decryptAgentAPIKey(agent *storytellerModel.Agent) (string, error) {
 	}
 	key, err := agentAPIKeyMasterKeyByID(agent.APIKeyKeyID)
 	if err != nil {
-		return "", err
+		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("load master key %q failed: %w", agent.APIKeyKeyID, err))
 	}
 	dataKey, err := decryptBytes(key.key, agent.APIKeyDataKey)
 	if err != nil {
-		return "", err
+		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("decrypt data key with key %q failed: %w", agent.APIKeyKeyID, err))
 	}
 	plaintext, err := decryptBytes(dataKey, agent.APIKeyEncrypted)
 	if err != nil {
-		return "", err
+		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("decrypt api key ciphertext failed: %w", err))
 	}
 	return strings.TrimSpace(string(plaintext)), nil
+}
+
+func legacyAgentAPIKeyFallback(agent *storytellerModel.Agent, decryptErr error) (string, error) {
+	if strings.TrimSpace(agent.APIKey) != "" {
+		// 若資料列仍保留舊明文，優先維持功能可用；下一次輪換 job 會重新寫入正確密文。
+		return strings.TrimSpace(agent.APIKey), nil
+	}
+	return "", decryptErr
 }
 
 func applyEncryptedAgentAPIKey(agent *storytellerModel.Agent, plaintext string) error {
