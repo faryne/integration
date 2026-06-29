@@ -1,13 +1,5 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import {
-  Box,
-  Button,
-  Chip,
-  Grid,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Button, Chip, Grid, Stack, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -15,6 +7,10 @@ import {
   useStorytellerLores,
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
+import { CustomDiffPane } from "@/components/common/CustomDiffPane.tsx";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -23,107 +19,9 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 
-type DiffState = "same" | "changed" | "added" | "removed";
-
-function buildLineDiff(left: string, right: string) {
-  const leftLines = left.split("\n");
-  const rightLines = right.split("\n");
-  const max = Math.max(leftLines.length, rightLines.length);
-  return Array.from({ length: max }, (_, index) => {
-    const leftLine = leftLines[index] ?? "";
-    const rightLine = rightLines[index] ?? "";
-    const state: DiffState =
-      leftLine === rightLine
-        ? "same"
-        : !leftLine
-          ? "added"
-          : !rightLine
-            ? "removed"
-            : "changed";
-    return { index: index + 1, left: leftLine, right: rightLine, state };
-  });
-}
-
-function lineSx(state: DiffState, side: "left" | "right") {
-  if (state === "same") {
-    return { bgcolor: "transparent" };
-  }
-  if (state === "added") {
-    return side === "right"
-      ? { bgcolor: "success.light", color: "success.contrastText" }
-      : { bgcolor: "action.hover", color: "text.secondary" };
-  }
-  if (state === "removed") {
-    return side === "left"
-      ? { bgcolor: "error.light", color: "error.contrastText" }
-      : { bgcolor: "action.hover", color: "text.secondary" };
-  }
-  return { bgcolor: "warning.light" };
-}
-
-function DiffPane({
-  title,
-  createdAt,
-  side,
-  lines,
-}: {
-  title: string;
-  createdAt: string;
-  side: "left" | "right";
-  lines: ReturnType<typeof buildLineDiff>;
-}) {
-  return (
-    <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
-      <Stack spacing={1} sx={{ p: 2, bgcolor: "background.default" }}>
-        <Typography variant="h6" fontWeight={800}>
-          {title}
-        </Typography>
-        <Chip size="small" label={formatStorytellerDate(createdAt)} />
-      </Stack>
-      <Box
-        component="pre"
-        sx={{
-          m: 0,
-          p: 0,
-          overflowX: "auto",
-          fontFamily:
-            '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-          fontSize: 13,
-          lineHeight: 1.7,
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-word",
-        }}
-      >
-        {lines.map((line) => (
-          <Box
-            key={`${side}-${line.index}`}
-            component="span"
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "48px minmax(0, 1fr)",
-              px: 1.5,
-              py: 0.25,
-              ...lineSx(line.state, side),
-            }}
-          >
-            <Box
-              component="span"
-              sx={{ color: "text.secondary", userSelect: "none" }}
-            >
-              {line.index}
-            </Box>
-            <Box component="span">
-              {side === "left" ? line.left : line.right || " "}
-            </Box>
-          </Box>
-        ))}
-      </Box>
-    </Paper>
-  );
-}
-
 export default function StorytellerLoreDiffCompare() {
   const { id, loreId, diffId1, diffId2 } = useParams();
+  const { session, loading, login, submitting } = useAuth();
   const { data: apiProjects = [], isPending: projectsPending } =
     useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
@@ -144,7 +42,7 @@ export default function StorytellerLoreDiffCompare() {
   const lines = useMemo(
     () =>
       leftVersion.data && rightVersion.data
-        ? buildLineDiff(
+        ? buildCustomLineDiff(
             `${leftVersion.data.title}\n\n${leftVersion.data.content}`,
             `${rightVersion.data.title}\n\n${rightVersion.data.content}`,
           )
@@ -163,6 +61,44 @@ export default function StorytellerLoreDiffCompare() {
       robots: "noindex, nofollow",
     },
   );
+
+  if (loading) {
+    return (
+      <StorytellerShell
+        title="設定集版本差異比對"
+        description="左右對照設定集標題與 Markdown 內容。"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: "版本比對" },
+        ]}
+      >
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      </StorytellerShell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <StorytellerShell
+        title="設定集版本差異比對"
+        description="左右對照設定集標題與 Markdown 內容。"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: "版本比對" },
+        ]}
+      >
+        <CustomLoginRequiredState
+          description="登入後即可查看設定集編輯歷史比對。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
+      </StorytellerShell>
+    );
+  }
 
   if (
     (!apiProject && projectsPending) ||
@@ -209,17 +145,19 @@ export default function StorytellerLoreDiffCompare() {
     >
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
-          <DiffPane
+          <CustomDiffPane
             title={leftVersion.data.title}
-            createdAt={leftVersion.data.created_at}
+            metadataLabels={[formatStorytellerDate(leftVersion.data.created_at)]}
             side="left"
             lines={lines}
           />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
-          <DiffPane
+          <CustomDiffPane
             title={rightVersion.data.title}
-            createdAt={rightVersion.data.created_at}
+            metadataLabels={[
+              formatStorytellerDate(rightVersion.data.created_at),
+            ]}
             side="right"
             lines={lines}
           />
