@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ const (
 	defaultGrokChatCompletionsURL       = "https://api.x.ai/v1/chat/completions"
 	defaultOpenAIChatCompletionsURL     = "https://api.openai.com/v1/chat/completions"
 	defaultClaudeMessagesURL            = "https://api.anthropic.com/v1/messages"
+	defaultGeminiGenerateContentBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 	defaultOpenRouterChatCompletionsURL = "https://openrouter.ai/api/v1/chat/completions"
 )
 
@@ -65,6 +67,8 @@ func NewAIProvider(provider storytellerModel.AgentProvider) (AIProvider, error) 
 		return NewOpenAICompatibleProvider(defaultOpenRouterChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
 	case storytellerModel.AgentProviderClaude:
 		return NewClaudeProvider(defaultClaudeMessagesURL, &http.Client{Timeout: 60 * time.Second}), nil
+	case storytellerModel.AgentProviderGemini:
+		return NewGeminiProvider(defaultGeminiGenerateContentBaseURL, &http.Client{Timeout: 60 * time.Second}), nil
 	default:
 		return nil, ErrAIProviderUnsupported
 	}
@@ -332,4 +336,124 @@ func (r claudeMessageResponse) JoinedText() string {
 		}
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+type GeminiProvider struct {
+	baseURL    string
+	httpClient *http.Client
+}
+
+func NewGeminiProvider(baseURL string, httpClient *http.Client) *GeminiProvider {
+	if strings.TrimSpace(baseURL) == "" {
+		baseURL = defaultGeminiGenerateContentBaseURL
+	}
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 60 * time.Second}
+	}
+	return &GeminiProvider{baseURL: strings.TrimRight(baseURL, "/"), httpClient: httpClient}
+}
+
+func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+	if strings.TrimSpace(req.APIKey) == "" {
+		return nil, ErrAIProviderInvalidAPIKey
+	}
+	if strings.TrimSpace(req.ModelName) == "" {
+		return nil, ErrAIProviderInvalidModel
+	}
+	body, err := json.Marshal(geminiGenerateContentRequest{
+		SystemInstruction: geminiContent{
+			Parts: []geminiPart{{Text: req.SystemPrompt}},
+		},
+		Contents: []geminiContent{
+			{
+				Role:  "user",
+				Parts: []geminiPart{{Text: req.UserPrompt}},
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: encode request failed", ErrAIProviderUnknown)
+	}
+	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", p.baseURL, url.PathEscape(strings.TrimSpace(req.ModelName)), url.QueryEscape(strings.TrimSpace(req.APIKey)))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("%w: create request failed", ErrAIProviderUnknown)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, ErrAIProviderTimeout
+		}
+		return nil, fmt.Errorf("%w: request failed", ErrAIProviderUnavailable)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
+	}
+	var output geminiGenerateContentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
+	}
+	result := strings.TrimSpace(output.JoinedText())
+	if result == "" {
+		return nil, ErrAIProviderEmptyResult
+	}
+	return &AIProviderResponse{
+		Result: result,
+		Usage: &AIProviderUsage{
+			InputTokens:  output.UsageMetadata.PromptTokenCount,
+			OutputTokens: output.UsageMetadata.CandidatesTokenCount,
+			TotalTokens:  output.UsageMetadata.TotalTokenCount,
+		},
+		FinishReason: output.FinishReason(),
+	}, nil
+}
+
+type geminiGenerateContentRequest struct {
+	SystemInstruction geminiContent   `json:"system_instruction"`
+	Contents          []geminiContent `json:"contents"`
+}
+
+type geminiContent struct {
+	Role  string       `json:"role,omitempty"`
+	Parts []geminiPart `json:"parts"`
+}
+
+type geminiPart struct {
+	Text string `json:"text"`
+}
+
+type geminiGenerateContentResponse struct {
+	Candidates []struct {
+		Content      geminiContent `json:"content"`
+		FinishReason string        `json:"finishReason"`
+	} `json:"candidates"`
+	UsageMetadata struct {
+		PromptTokenCount     int `json:"promptTokenCount"`
+		CandidatesTokenCount int `json:"candidatesTokenCount"`
+		TotalTokenCount      int `json:"totalTokenCount"`
+	} `json:"usageMetadata"`
+}
+
+func (r geminiGenerateContentResponse) JoinedText() string {
+	parts := make([]string, 0)
+	for _, candidate := range r.Candidates {
+		for _, part := range candidate.Content.Parts {
+			if strings.TrimSpace(part.Text) != "" {
+				parts = append(parts, strings.TrimSpace(part.Text))
+			}
+		}
+	}
+	return strings.Join(parts, "\n\n")
+}
+
+func (r geminiGenerateContentResponse) FinishReason() string {
+	if len(r.Candidates) == 0 {
+		return ""
+	}
+	return r.Candidates[0].FinishReason
 }

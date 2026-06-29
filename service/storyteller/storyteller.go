@@ -15,6 +15,7 @@ import (
 	"faryne.dev/repository"
 	authRepo "faryne.dev/repository/auth"
 	storytellerRepo "faryne.dev/repository/storyteller"
+	"faryne.dev/service/log"
 )
 
 var whitespaceRegexp = regexp.MustCompile(`\s+`)
@@ -36,6 +37,35 @@ type aiProviderFactory func(provider storytellerModel.AgentProvider) (AIProvider
 
 func NewService() *Service {
 	return &Service{repo: storytellerRepo.NewRepository()}
+}
+
+func RunRotateStorytellerAgentAPIKeys() {
+	if err := NewService().RotateAgentAPIKeys(); err != nil {
+		log.Logger().Error("Storyteller agent api key rotation failed: " + err.Error())
+	}
+}
+
+func (s *Service) RotateAgentAPIKeys() error {
+	agents, err := s.repo.ActiveAgentsForAPIKeyRotation()
+	if err != nil {
+		return err
+	}
+	for index := range agents {
+		apiKey, err := decryptAgentAPIKey(&agents[index])
+		if err != nil {
+			return err
+		}
+		if strings.TrimSpace(apiKey) == "" {
+			continue
+		}
+		if err := applyEncryptedAgentAPIKey(&agents[index], apiKey); err != nil {
+			return err
+		}
+		if err := s.repo.UpdateAgentAPIKeyEncryption(&agents[index]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) PublicProjects() ([]storytellerModel.ProjectOutput, error) {
@@ -158,8 +188,10 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 		Provider:      input.Provider,
 		ModelName:     strings.TrimSpace(input.ModelName),
 		AgentModelID:  agentModelID(providerModel),
-		APIKey:        strings.TrimSpace(input.APIKey),
 		DefaultPrompt: strings.TrimSpace(input.DefaultPrompt),
+	}
+	if err := applyEncryptedAgentAPIKey(agent, input.APIKey); err != nil {
+		return nil, err
 	}
 	if err := s.repo.CreateAgent(agent); err != nil {
 		return nil, err
@@ -182,7 +214,9 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 	agent.ModelName = strings.TrimSpace(input.ModelName)
 	agent.AgentModelID = agentModelID(providerModel)
 	if strings.TrimSpace(input.APIKey) != "" {
-		agent.APIKey = strings.TrimSpace(input.APIKey)
+		if err := applyEncryptedAgentAPIKey(agent, input.APIKey); err != nil {
+			return nil, err
+		}
 	}
 	agent.DefaultPrompt = strings.TrimSpace(input.DefaultPrompt)
 	if err := s.repo.UpdateAgent(agent); err != nil {
@@ -237,9 +271,13 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err != nil {
 		return nil, err
 	}
+	apiKey, err := decryptAgentAPIKey(agent)
+	if err != nil {
+		return nil, err
+	}
 	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
 	response, err := provider.Generate(ctx, AIProviderRequest{
-		APIKey:       agent.APIKey,
+		APIKey:       apiKey,
 		ModelName:    agent.ModelName,
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
@@ -289,9 +327,13 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	if err != nil {
 		return nil, err
 	}
+	apiKey, err := decryptAgentAPIKey(agent)
+	if err != nil {
+		return nil, err
+	}
 	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
 	response, err := provider.Generate(ctx, AIProviderRequest{
-		APIKey:       agent.APIKey,
+		APIKey:       apiKey,
 		ModelName:    agent.ModelName,
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,

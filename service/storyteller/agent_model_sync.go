@@ -81,6 +81,7 @@ func groupOpenRouterModels(models []openRouterModel) map[storytellerModel.AgentP
 		storytellerModel.AgentProviderOpenRouter: {},
 		storytellerModel.AgentProviderOpenAI:     {},
 		storytellerModel.AgentProviderClaude:     {},
+		storytellerModel.AgentProviderGemini:     {},
 		storytellerModel.AgentProviderGrok:       {},
 	}
 	for _, model := range models {
@@ -102,6 +103,7 @@ func groupOpenRouterModels(models []openRouterModel) map[storytellerModel.AgentP
 		// 直連供應商不需要 OpenRouter prefix，避免使用者拿到無法直接呼叫的模型名稱。
 		addDirectProviderModel(grouped, storytellerModel.AgentProviderOpenAI, id, "openai/", label, model.Description, price)
 		addDirectProviderModel(grouped, storytellerModel.AgentProviderClaude, id, "anthropic/", label, model.Description, price)
+		addGeminiProviderModel(grouped, id, label, model.Description, price)
 		addDirectProviderModel(grouped, storytellerModel.AgentProviderGrok, id, "x-ai/", label, model.Description, price)
 	}
 
@@ -131,6 +133,22 @@ func addDirectProviderModel(grouped map[storytellerModel.AgentProvider]map[strin
 		return
 	}
 	grouped[provider][name] = storytellerModel.AgentModelSyncInput{
+		Name:        name,
+		Label:       label,
+		Description: strings.TrimSpace(description),
+		Price:       price,
+	}
+}
+
+func addGeminiProviderModel(grouped map[storytellerModel.AgentProvider]map[string]storytellerModel.AgentModelSyncInput, id string, label string, description string, price string) {
+	if !strings.HasPrefix(id, "google/gemini") {
+		return
+	}
+	name := strings.TrimPrefix(id, "google/")
+	if name == "" || strings.Contains(name, ":") {
+		return
+	}
+	grouped[storytellerModel.AgentProviderGemini][name] = storytellerModel.AgentModelSyncInput{
 		Name:        name,
 		Label:       label,
 		Description: strings.TrimSpace(description),

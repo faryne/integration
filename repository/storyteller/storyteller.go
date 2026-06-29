@@ -94,6 +94,23 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return &row, err
 }
 
+func (r *Repository) ActiveAgentsForAPIKeyRotation() ([]storytellerModel.Agent, error) {
+	rows := make([]storytellerModel.Agent, 0)
+	err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").
+		Order("id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) UpdateAgentAPIKeyEncryption(agent *storytellerModel.Agent) error {
+	return r.db.Model(agent).Updates(map[string]any{
+		"api_key":           agent.APIKey,
+		"api_key_encrypted": agent.APIKeyEncrypted,
+		"api_key_data_key":  agent.APIKeyDataKey,
+		"api_key_key_id":    agent.APIKeyKeyID,
+	}).Error
+}
+
 func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderModels, error) {
 	providers := make([]storytellerModel.AgentProviderSetting, 0)
 	if err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").

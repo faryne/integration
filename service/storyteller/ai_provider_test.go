@@ -18,13 +18,17 @@ func TestNewAIProvider(t *testing.T) {
 	require.NoError(t, err)
 	require.IsType(t, &GrokProvider{}, provider)
 
+	provider, err = NewAIProvider(storytellerModel.AgentProviderGemini)
+	require.NoError(t, err)
+	require.IsType(t, &GeminiProvider{}, provider)
+
 	provider, err = NewAIProvider(storytellerModel.AgentProvider("unknown"))
 	require.Nil(t, provider)
 	require.ErrorIs(t, err, ErrAIProviderUnsupported)
 }
 
 func TestGrokProviderGenerate(t *testing.T) {
-	var request grokChatCompletionRequest
+	var request openAIChatCompletionRequest
 	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
@@ -61,6 +65,49 @@ func TestGrokProviderGenerate(t *testing.T) {
 	require.Equal(t, "user prompt", request.Messages[1].Content)
 	require.Equal(t, "generated text", response.Result)
 	require.Equal(t, "stop", response.FinishReason)
+	require.Equal(t, 12, response.Usage.InputTokens)
+	require.Equal(t, 5, response.Usage.OutputTokens)
+	require.Equal(t, 17, response.Usage.TotalTokens)
+}
+
+func TestGeminiProviderGenerate(t *testing.T) {
+	var request geminiGenerateContentRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1beta/models/gemini-2.5-flash:generateContent", r.URL.Path)
+		require.Equal(t, "test-key", r.URL.Query().Get("key"))
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		return jsonResponse(http.StatusOK, `{
+			"candidates": [
+				{
+					"content": {"parts": [{"text": "generated text"}]},
+					"finishReason": "STOP"
+				}
+			],
+			"usageMetadata": {
+				"promptTokenCount": 12,
+				"candidatesTokenCount": 5,
+				"totalTokenCount": 17
+			}
+		}`), nil
+	})}
+
+	provider := NewGeminiProvider("https://example.test/v1beta/models", client)
+	response, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:       "test-key",
+		ModelName:    "gemini-2.5-flash",
+		SystemPrompt: "system prompt",
+		UserPrompt:   "user prompt",
+	})
+
+	require.NoError(t, err)
+	require.Len(t, request.SystemInstruction.Parts, 1)
+	require.Equal(t, "system prompt", request.SystemInstruction.Parts[0].Text)
+	require.Len(t, request.Contents, 1)
+	require.Equal(t, "user", request.Contents[0].Role)
+	require.Equal(t, "user prompt", request.Contents[0].Parts[0].Text)
+	require.Equal(t, "generated text", response.Result)
+	require.Equal(t, "STOP", response.FinishReason)
 	require.Equal(t, 12, response.Usage.InputTokens)
 	require.Equal(t, 5, response.Usage.OutputTokens)
 	require.Equal(t, 17, response.Usage.TotalTokens)
@@ -181,7 +228,7 @@ func TestBuildAgentRunPromptsOmitsEmptyFullContent(t *testing.T) {
 }
 
 func TestGrokStatusErrorWrapsExpectedSentinel(t *testing.T) {
-	err := grokStatusError(http.StatusUnauthorized, strings.NewReader(`{"error":"bad key"}`))
+	err := aiProviderStatusError(http.StatusUnauthorized, strings.NewReader(`{"error":"bad key"}`))
 	require.ErrorIs(t, err, ErrAIProviderInvalidAPIKey)
 }
 

@@ -37,6 +37,9 @@ type envConfig struct {
 
 	FinMindToken   string `env:"FINMIND_TOKEN"`
 	DiscordWebhook string `env:"DISCORD_WEBHOOK"`
+
+	StorytellerAgentAPIKeyActiveKeyID string `env:"STORYTELLER_AGENT_API_KEY_ACTIVE_KEY_ID"`
+	StorytellerAgentAPIKeyMasterKeys  string `env:"STORYTELLER_AGENT_API_KEY_MASTER_KEYS"`
 }
 
 var loadEnvConfig envConfig
