@@ -28,8 +28,34 @@ const (
 type AgentProvider string
 
 const (
-	AgentProviderGrok AgentProvider = "grok"
+	AgentProviderGrok       AgentProvider = "grok"
+	AgentProviderOpenAI     AgentProvider = "openai"
+	AgentProviderClaude     AgentProvider = "claude"
+	AgentProviderOpenRouter AgentProvider = "openrouter"
 )
+
+type AgentModelOption struct {
+	ID          uint64 `json:"id"`
+	Name        string `json:"name"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	Price       string `json:"price"`
+}
+
+type AgentModelSyncInput struct {
+	Name        string
+	Label       string
+	Description string
+	Price       string
+	Sort        int
+}
+
+type AgentProviderModels struct {
+	Provider         AgentProvider      `json:"provider"`
+	Label            string             `json:"label"`
+	Models           []AgentModelOption `json:"models"`
+	AllowCustomModel bool               `json:"allow_custom_model"`
+}
 
 type AgentRunMode string
 
@@ -74,6 +100,7 @@ type Agent struct {
 	Name          string        `gorm:"column:name" json:"name"`
 	Provider      AgentProvider `gorm:"column:provider" json:"provider"`
 	ModelName     string        `gorm:"column:model_name" json:"model_name"`
+	AgentModelID  *uint64       `gorm:"column:agent_model_id" json:"agent_model_id"`
 	APIKey        string        `gorm:"column:api_key" json:"-"`
 	DefaultPrompt string        `gorm:"column:default_prompt" json:"default_prompt"`
 	IsDeleted     bool          `gorm:"column:is_deleted" json:"is_deleted"`
@@ -83,6 +110,56 @@ type Agent struct {
 }
 
 func (Agent) TableName() string { return "storyteller_agents" }
+
+type AgentProviderSetting struct {
+	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
+	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
+	Label            string        `gorm:"column:label" json:"label"`
+	AllowCustomModel bool          `gorm:"column:allow_custom_model" json:"allow_custom_model"`
+	Sort             int           `gorm:"column:sort" json:"sort"`
+	IsDeleted        bool          `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt        *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time     `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AgentProviderSetting) TableName() string {
+	return "storyteller_agent_providers"
+}
+
+type AgentModel struct {
+	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	ProviderID  uint64     `gorm:"column:provider_id" json:"provider_id"`
+	Name        string     `gorm:"column:name" json:"name"`
+	Label       string     `gorm:"column:label" json:"label"`
+	Description string     `gorm:"column:description" json:"description"`
+	Price       string     `gorm:"column:price" json:"price"`
+	Sort        int        `gorm:"column:sort" json:"sort"`
+	IsDeleted   bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt   *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt   time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AgentModel) TableName() string {
+	return "storyteller_agent_models"
+}
+
+type AgentPromptVersion struct {
+	ID            uint64        `gorm:"column:id;primaryKey" json:"id"`
+	AgentID       uint64        `gorm:"column:agent_id" json:"agent_id"`
+	Name          string        `gorm:"column:name" json:"name"`
+	Provider      AgentProvider `gorm:"column:provider" json:"provider"`
+	ModelName     string        `gorm:"column:model_name" json:"model_name"`
+	DefaultPrompt string        `gorm:"column:default_prompt" json:"default_prompt"`
+	DeletedAt     *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time     `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time     `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AgentPromptVersion) TableName() string {
+	return "storyteller_agent_prompt_versions"
+}
 
 type Story struct {
 	ID            uint64      `gorm:"column:id;primaryKey" json:"id"`
@@ -145,16 +222,13 @@ type LoreVersion struct {
 func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
 
 type StoryChat struct {
-	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	StoryID   *uint64    `gorm:"column:story_id" json:"story_id"`
-	LoreID    *uint64    `gorm:"column:lore_id" json:"lore_id"`
-	AgentID   uint64     `gorm:"column:agent_id" json:"agent_id"`
-	UserID    uint64     `gorm:"column:user_id" json:"user_id"`
-	Title     string     `gorm:"column:title" json:"title"`
-	Metadata  string     `gorm:"column:metadata" json:"metadata"`
-	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID        uint64    `gorm:"column:id;primaryKey" json:"id"`
+	StoryID   *uint64   `gorm:"column:story_id" json:"story_id"`
+	LoreID    *uint64   `gorm:"column:lore_id" json:"lore_id"`
+	AgentID   uint64    `gorm:"column:agent_id" json:"agent_id"`
+	UserID    uint64    `gorm:"column:user_id" json:"user_id"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }

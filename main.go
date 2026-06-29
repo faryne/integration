@@ -20,6 +20,7 @@ import (
 	"faryne.dev/service/log"
 	"faryne.dev/service/nccc"
 	"faryne.dev/service/output"
+	storytellerService "faryne.dev/service/storyteller"
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
 	"faryne.dev/service/validation"
@@ -188,6 +189,11 @@ var cronJobs = []cronJobConfig{
 		Name:     "nccc-clear-indexes",
 		Schedule: "",
 		Handler:  nccc.RunClearIndexes,
+	},
+	{
+		Name:     "storyteller-sync-agent-models-weekly",
+		Schedule: "20 4 * * 1",
+		Handler:  storytellerService.RunSyncStorytellerAgentModels,
 	},
 	// 台電相關 job 手動執行
 	{

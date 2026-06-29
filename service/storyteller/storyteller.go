@@ -142,9 +142,14 @@ func (s *Service) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return s.repo.Agent(userID, id)
 }
 
+func (s *Service) AgentProviderModels() ([]storytellerModel.AgentProviderModels, error) {
+	return s.repo.AgentProviderModels()
+}
+
 func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
 	input = normalizeAgentRequest(input)
-	if err := validateAgent(input, true); err != nil {
+	providerModel, err := s.validateAgent(input, true)
+	if err != nil {
 		return nil, err
 	}
 	agent := &storytellerModel.Agent{
@@ -152,6 +157,7 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 		Name:          strings.TrimSpace(input.Name),
 		Provider:      input.Provider,
 		ModelName:     strings.TrimSpace(input.ModelName),
+		AgentModelID:  agentModelID(providerModel),
 		APIKey:        strings.TrimSpace(input.APIKey),
 		DefaultPrompt: strings.TrimSpace(input.DefaultPrompt),
 	}
@@ -163,7 +169,8 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 
 func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
 	input = normalizeAgentRequest(input)
-	if err := validateAgent(input, false); err != nil {
+	providerModel, err := s.validateAgent(input, false)
+	if err != nil {
 		return nil, err
 	}
 	agent, err := s.repo.Agent(userID, id)
@@ -173,6 +180,7 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 	agent.Name = strings.TrimSpace(input.Name)
 	agent.Provider = input.Provider
 	agent.ModelName = strings.TrimSpace(input.ModelName)
+	agent.AgentModelID = agentModelID(providerModel)
 	if strings.TrimSpace(input.APIKey) != "" {
 		agent.APIKey = strings.TrimSpace(input.APIKey)
 	}
@@ -189,6 +197,20 @@ func (s *Service) DeleteAgent(userID, id uint64) error {
 		return err
 	}
 	return s.repo.DeleteAgent(agent)
+}
+
+func (s *Service) AgentPromptVersions(userID, agentID uint64) ([]storytellerModel.AgentPromptVersion, error) {
+	if _, err := s.repo.Agent(userID, agentID); err != nil {
+		return nil, err
+	}
+	return s.repo.AgentPromptVersions(agentID)
+}
+
+func (s *Service) AgentPromptVersion(userID, agentID, versionID uint64) (*storytellerModel.AgentPromptVersion, error) {
+	if _, err := s.repo.Agent(userID, agentID); err != nil {
+		return nil, err
+	}
+	return s.repo.AgentPromptVersion(agentID, versionID)
 }
 
 func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
@@ -1020,20 +1042,32 @@ func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) stor
 	return input
 }
 
-func validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) error {
+func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) (*storytellerModel.AgentProviderModels, error) {
 	if strings.TrimSpace(input.Name) == "" {
-		return errors.New("name is required")
+		return nil, errors.New("name is required")
 	}
-	if input.Provider != storytellerModel.AgentProviderGrok {
-		return errors.New("invalid provider")
+	provider, err := s.repo.AgentProviderModel(input.Provider, strings.TrimSpace(input.ModelName))
+	if err != nil {
+		return nil, errors.New("invalid provider")
+	}
+	if !provider.AllowCustomModel && len(provider.Models) == 0 {
+		return nil, errors.New("invalid model_name")
 	}
 	if strings.TrimSpace(input.ModelName) == "" {
-		return errors.New("model_name is required")
+		return nil, errors.New("model_name is required")
 	}
 	if requireAPIKey && strings.TrimSpace(input.APIKey) == "" {
-		return errors.New("api_key is required")
+		return nil, errors.New("api_key is required")
 	}
-	return nil
+	return provider, nil
+}
+
+func agentModelID(providerModel *storytellerModel.AgentProviderModels) *uint64 {
+	if providerModel == nil || len(providerModel.Models) == 0 || providerModel.Models[0].ID == 0 {
+		return nil
+	}
+	id := providerModel.Models[0].ID
+	return &id
 }
 
 func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
@@ -1114,38 +1148,21 @@ func agentRunPromptInstruction(instruction string) string {
 }
 
 func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
-	title := agentRunChatTitle(input)
 	chat := &storytellerModel.StoryChat{
-		StoryID:  &storyID,
-		AgentID:  agent.ID,
-		UserID:   userID,
-		Title:    title,
-		Metadata: agentRunMetadata(input.Mode, output),
+		StoryID: &storyID,
+		AgentID: agent.ID,
+		UserID:  userID,
 	}
 	return chat, buildAgentRunMessages(agent, input, output)
 }
 
 func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
-	title := agentRunChatTitle(input)
 	chat := &storytellerModel.StoryChat{
-		LoreID:   &loreID,
-		AgentID:  agent.ID,
-		UserID:   userID,
-		Title:    title,
-		Metadata: agentRunMetadata(input.Mode, output),
+		LoreID:  &loreID,
+		AgentID: agent.ID,
+		UserID:  userID,
 	}
 	return chat, buildAgentRunMessages(agent, input, output)
-}
-
-func agentRunChatTitle(input storytellerModel.AgentRunRequest) string {
-	title := strings.TrimSpace(input.Instruction)
-	if title == "" {
-		title = string(input.Mode)
-	}
-	if len([]rune(title)) > 80 {
-		title = string([]rune(title)[:80])
-	}
-	return title
 }
 
 func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) []storytellerModel.StoryChatMessage {
@@ -1177,14 +1194,6 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 		return "> " + quoted
 	}
 	return "> " + quoted + "\n\n" + instruction
-}
-
-func agentRunMetadata(mode storytellerModel.AgentRunMode, output *storytellerModel.AgentRunResponse) string {
-	value := fmt.Sprintf(`{"mode":%q`, mode)
-	if output != nil && output.FinishReason != "" {
-		value += fmt.Sprintf(`,"finish_reason":%q`, output.FinishReason)
-	}
-	return value + "}"
 }
 
 func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {

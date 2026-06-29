@@ -14,7 +14,12 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
 
-const defaultGrokChatCompletionsURL = "https://api.x.ai/v1/chat/completions"
+const (
+	defaultGrokChatCompletionsURL       = "https://api.x.ai/v1/chat/completions"
+	defaultOpenAIChatCompletionsURL     = "https://api.openai.com/v1/chat/completions"
+	defaultClaudeMessagesURL            = "https://api.anthropic.com/v1/messages"
+	defaultOpenRouterChatCompletionsURL = "https://openrouter.ai/api/v1/chat/completions"
+)
 
 var (
 	ErrAIProviderInvalidAPIKey = errors.New("ai provider api key is invalid")
@@ -54,6 +59,12 @@ func NewAIProvider(provider storytellerModel.AgentProvider) (AIProvider, error) 
 	switch provider {
 	case storytellerModel.AgentProviderGrok:
 		return NewGrokProvider(defaultGrokChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+	case storytellerModel.AgentProviderOpenAI:
+		return NewOpenAICompatibleProvider(defaultOpenAIChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+	case storytellerModel.AgentProviderOpenRouter:
+		return NewOpenAICompatibleProvider(defaultOpenRouterChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+	case storytellerModel.AgentProviderClaude:
+		return NewClaudeProvider(defaultClaudeMessagesURL, &http.Client{Timeout: 60 * time.Second}), nil
 	default:
 		return nil, ErrAIProviderUnsupported
 	}
@@ -75,15 +86,35 @@ func NewGrokProvider(endpoint string, httpClient *http.Client) *GrokProvider {
 }
 
 func (p *GrokProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+	return generateOpenAICompatible(ctx, p.endpoint, p.httpClient, req)
+}
+
+type OpenAICompatibleProvider struct {
+	endpoint   string
+	httpClient *http.Client
+}
+
+func NewOpenAICompatibleProvider(endpoint string, httpClient *http.Client) *OpenAICompatibleProvider {
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 60 * time.Second}
+	}
+	return &OpenAICompatibleProvider{endpoint: endpoint, httpClient: httpClient}
+}
+
+func (p *OpenAICompatibleProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+	return generateOpenAICompatible(ctx, p.endpoint, p.httpClient, req)
+}
+
+func generateOpenAICompatible(ctx context.Context, endpoint string, httpClient *http.Client, req AIProviderRequest) (*AIProviderResponse, error) {
 	if strings.TrimSpace(req.APIKey) == "" {
 		return nil, ErrAIProviderInvalidAPIKey
 	}
 	if strings.TrimSpace(req.ModelName) == "" {
 		return nil, ErrAIProviderInvalidModel
 	}
-	body, err := json.Marshal(grokChatCompletionRequest{
+	body, err := json.Marshal(openAIChatCompletionRequest{
 		Model: req.ModelName,
-		Messages: []grokChatMessage{
+		Messages: []openAIChatMessage{
 			{Role: "system", Content: req.SystemPrompt},
 			{Role: "user", Content: req.UserPrompt},
 		},
@@ -91,7 +122,7 @@ func (p *GrokProvider) Generate(ctx context.Context, req AIProviderRequest) (*AI
 	if err != nil {
 		return nil, fmt.Errorf("%w: encode request failed", ErrAIProviderUnknown)
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.endpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("%w: create request failed", ErrAIProviderUnknown)
 	}
@@ -99,7 +130,7 @@ func (p *GrokProvider) Generate(ctx context.Context, req AIProviderRequest) (*AI
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "application/json")
 
-	resp, err := p.httpClient.Do(httpReq)
+	resp, err := httpClient.Do(httpReq)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return nil, ErrAIProviderTimeout
@@ -109,10 +140,10 @@ func (p *GrokProvider) Generate(ctx context.Context, req AIProviderRequest) (*AI
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return nil, grokStatusError(resp.StatusCode, resp.Body)
+		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
 	}
 
-	var output grokChatCompletionResponse
+	var output openAIChatCompletionResponse
 	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
 		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
 	}
@@ -130,7 +161,7 @@ func (p *GrokProvider) Generate(ctx context.Context, req AIProviderRequest) (*AI
 	}, nil
 }
 
-func grokStatusError(statusCode int, body io.Reader) error {
+func aiProviderStatusError(statusCode int, body io.Reader) error {
 	message := sanitizeProviderErrorMessage(body)
 	var base error
 	switch statusCode {
@@ -174,17 +205,17 @@ func sanitizeProviderErrorMessage(body io.Reader) string {
 	return strings.TrimSpace(string(data))
 }
 
-type grokChatCompletionRequest struct {
-	Model    string            `json:"model"`
-	Messages []grokChatMessage `json:"messages"`
+type openAIChatCompletionRequest struct {
+	Model    string              `json:"model"`
+	Messages []openAIChatMessage `json:"messages"`
 }
 
-type grokChatMessage struct {
+type openAIChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type grokChatCompletionResponse struct {
+type openAIChatCompletionResponse struct {
 	Choices []struct {
 		Message struct {
 			Content string `json:"content"`
@@ -196,4 +227,109 @@ type grokChatCompletionResponse struct {
 		CompletionTokens int `json:"completion_tokens"`
 		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
+}
+
+type ClaudeProvider struct {
+	endpoint   string
+	httpClient *http.Client
+}
+
+func NewClaudeProvider(endpoint string, httpClient *http.Client) *ClaudeProvider {
+	if strings.TrimSpace(endpoint) == "" {
+		endpoint = defaultClaudeMessagesURL
+	}
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 60 * time.Second}
+	}
+	return &ClaudeProvider{endpoint: endpoint, httpClient: httpClient}
+}
+
+func (p *ClaudeProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+	if strings.TrimSpace(req.APIKey) == "" {
+		return nil, ErrAIProviderInvalidAPIKey
+	}
+	if strings.TrimSpace(req.ModelName) == "" {
+		return nil, ErrAIProviderInvalidModel
+	}
+	body, err := json.Marshal(claudeMessageRequest{
+		Model:     req.ModelName,
+		MaxTokens: 4096,
+		System:    req.SystemPrompt,
+		Messages:  []claudeMessage{{Role: "user", Content: req.UserPrompt}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: encode request failed", ErrAIProviderUnknown)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("%w: create request failed", ErrAIProviderUnknown)
+	}
+	httpReq.Header.Set("x-api-key", strings.TrimSpace(req.APIKey))
+	httpReq.Header.Set("anthropic-version", "2023-06-01")
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	resp, err := p.httpClient.Do(httpReq)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, ErrAIProviderTimeout
+		}
+		return nil, fmt.Errorf("%w: request failed", ErrAIProviderUnavailable)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
+	}
+	var output claudeMessageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
+	}
+	result := strings.TrimSpace(output.JoinedText())
+	if result == "" {
+		return nil, ErrAIProviderEmptyResult
+	}
+	return &AIProviderResponse{
+		Result: result,
+		Usage: &AIProviderUsage{
+			InputTokens:  output.Usage.InputTokens,
+			OutputTokens: output.Usage.OutputTokens,
+			TotalTokens:  output.Usage.InputTokens + output.Usage.OutputTokens,
+		},
+		FinishReason: output.StopReason,
+	}, nil
+}
+
+type claudeMessageRequest struct {
+	Model     string          `json:"model"`
+	MaxTokens int             `json:"max_tokens"`
+	System    string          `json:"system"`
+	Messages  []claudeMessage `json:"messages"`
+}
+
+type claudeMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type claudeMessageResponse struct {
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+	StopReason string `json:"stop_reason"`
+	Usage      struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+	} `json:"usage"`
+}
+
+func (r claudeMessageResponse) JoinedText() string {
+	parts := make([]string, 0, len(r.Content))
+	for _, item := range r.Content {
+		if item.Type == "text" && strings.TrimSpace(item.Text) != "" {
+			parts = append(parts, strings.TrimSpace(item.Text))
+		}
+	}
+	return strings.Join(parts, "\n\n")
 }

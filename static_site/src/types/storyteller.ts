@@ -23,8 +23,35 @@ export interface StorytellerAgent {
   name: string;
   provider: string;
   model_name: string;
+  agent_model_id: number | null;
   default_prompt: string;
   is_deleted: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerAgentModelOption {
+  id: number;
+  name: string;
+  label: string;
+  description: string;
+  price: string;
+}
+
+export interface StorytellerAgentProviderModels {
+  provider: string;
+  label: string;
+  models: StorytellerAgentModelOption[];
+  allow_custom_model: boolean;
+}
+
+export interface StorytellerAgentPromptVersion {
+  id: number;
+  agent_id: number;
+  name: string;
+  provider: string;
+  model_name: string;
+  default_prompt: string;
   created_at: string;
   updated_at: string;
 }

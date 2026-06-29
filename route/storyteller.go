@@ -36,8 +36,11 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/projects/:project/ranking", storyteller.DeleteRanking)
 
 	authenticated.Get("/agents", storyteller.Agents)
+	authenticated.Get("/agents/provider-models", storyteller.AgentProviderModels)
 	authenticated.Post("/agents", storyteller.CreateAgent)
 	authenticated.Get("/agents/:agent", storyteller.Agent)
+	authenticated.Get("/agents/:agent/versions", storyteller.AgentPromptVersions)
+	authenticated.Get("/agents/:agent/versions/:version", storyteller.AgentPromptVersion)
 	authenticated.Put("/agents/:agent", storyteller.UpdateAgent)
 	authenticated.Delete("/agents/:agent", storyteller.DeleteAgent)
 

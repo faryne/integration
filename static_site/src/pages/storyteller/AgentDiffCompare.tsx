@@ -3,9 +3,8 @@ import { Button, Chip, Stack, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
-  useStorytellerLoreVersion,
-  useStorytellerLores,
-  useStorytellerProjects,
+  useStorytellerAgentPromptVersion,
+  useStorytellerAgents,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
@@ -19,48 +18,49 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import type { StorytellerAgentPromptVersion } from "@/types/storyteller.ts";
 
-export default function StorytellerLoreDiffCompare() {
-  const { id, loreId, diffId1, diffId2 } = useParams();
+function buildAgentDiffSections(
+  left: StorytellerAgentPromptVersion,
+  right: StorytellerAgentPromptVersion,
+) {
+  return [
+    {
+      key: "name",
+      title: "AI Agent 名稱",
+      lines: buildCustomLineDiff(left.name, right.name),
+    },
+    {
+      key: "provider",
+      title: "AI 供應商",
+      lines: buildCustomLineDiff(left.provider, right.provider),
+    },
+    {
+      key: "model",
+      title: "模型名稱",
+      lines: buildCustomLineDiff(left.model_name, right.model_name),
+    },
+    {
+      key: "prompt",
+      title: "提示詞內容",
+      lines: buildCustomLineDiff(left.default_prompt, right.default_prompt),
+    },
+  ];
+}
+
+export default function StorytellerAgentDiffCompare() {
+  const { agentId, diffId1, diffId2 } = useParams();
+  const editAgentId = agentId ? Number(agentId) : undefined;
   const { session, loading, login, submitting } = useAuth();
-  const { data: apiProjects = [], isPending: projectsPending } =
-    useStorytellerProjects();
-  const apiProject = apiProjects.find((item) => item.public_id === id);
-  const { data: apiLores = [], isPending: loresPending } = useStorytellerLores(
-    apiProject?.public_id,
-  );
-  const apiLore = apiLores.find((item) => item.public_id === loreId);
-  const leftVersion = useStorytellerLoreVersion(
-    apiProject?.public_id,
-    apiLore?.public_id,
-    diffId1,
-  );
-  const rightVersion = useStorytellerLoreVersion(
-    apiProject?.public_id,
-    apiLore?.public_id,
-    diffId2,
-  );
+  const { data: agents = [], isLoading: agentsLoading } =
+    useStorytellerAgents();
+  const agent = agents.find((item) => item.id === editAgentId);
+  const leftVersion = useStorytellerAgentPromptVersion(editAgentId, diffId1);
+  const rightVersion = useStorytellerAgentPromptVersion(editAgentId, diffId2);
   const diffSections = useMemo(
     () =>
       leftVersion.data && rightVersion.data
-        ? [
-            {
-              key: "title",
-              title: "標題",
-              lines: buildCustomLineDiff(
-                leftVersion.data.title,
-                rightVersion.data.title,
-              ),
-            },
-            {
-              key: "content",
-              title: "內容",
-              lines: buildCustomLineDiff(
-                leftVersion.data.content,
-                rightVersion.data.content,
-              ),
-            },
-          ]
+        ? buildAgentDiffSections(leftVersion.data, rightVersion.data)
         : [],
     [leftVersion.data, rightVersion.data],
   );
@@ -70,25 +70,22 @@ export default function StorytellerLoreDiffCompare() {
     0,
   );
 
-  useTitle(
-    apiLore ? `${apiLore.title} 版本比對 - Storyteller` : "設定集版本比對",
-    {
-      path:
-        id && loreId && diffId1 && diffId2
-          ? `/storyteller/my/project/${id}/lore/${loreId}/diff/${diffId1}/${diffId2}`
-          : "",
-      robots: "noindex, nofollow",
-    },
-  );
+  useTitle(agent ? `${agent.name} Prompt 版本比對 - Storyteller` : "Prompt 版本比對", {
+    path:
+      agentId && diffId1 && diffId2
+        ? `/storyteller/my/agent/${agentId}/diff/${diffId1}/${diffId2}`
+        : "",
+    robots: "noindex, nofollow",
+  });
 
   if (loading) {
     return (
       <StorytellerShell
-        title="設定集版本差異比對"
-        description="左右對照設定集標題與 Markdown 內容。"
+        title="Prompt 版本差異比對"
+        description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
         ]}
       >
@@ -102,16 +99,16 @@ export default function StorytellerLoreDiffCompare() {
   if (!session) {
     return (
       <StorytellerShell
-        title="設定集版本差異比對"
-        description="左右對照設定集標題與 Markdown 內容。"
+        title="Prompt 版本差異比對"
+        description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
         ]}
       >
         <CustomLoginRequiredState
-          description="登入後即可查看設定集編輯歷史比對。"
+          description="登入後即可查看 AI Agent Prompt 編輯歷史比對。"
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -120,44 +117,36 @@ export default function StorytellerLoreDiffCompare() {
   }
 
   if (
-    (!apiProject && projectsPending) ||
-    (apiProject && !apiLore && loresPending) ||
+    agentsLoading ||
     leftVersion.isLoading ||
     rightVersion.isLoading
   ) {
-    return <StorytellerLoading label="正在載入設定集版本比對資料..." />;
+    return <StorytellerLoading label="正在載入 Prompt 版本比對資料..." />;
   }
 
-  if (!apiProject || !apiLore || !leftVersion.data || !rightVersion.data) {
+  if (!agent || !leftVersion.data || !rightVersion.data) {
     return <ErrorPage code={404} />;
   }
 
   return (
     <StorytellerShell
-      title="設定集版本差異比對"
-      description="左右對照設定集標題與 Markdown 內容。"
+      title="Prompt 版本差異比對"
+      description="左右對照 AI Agent 設定與 Prompt 內容。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "故事專案", to: "/storyteller/my/project" },
-        {
-          label: apiProject.name,
-          to: `/storyteller/my/project/${apiProject.public_id}`,
-        },
-        {
-          label: apiLore.title,
-          to: `/storyteller/my/project/${apiProject.public_id}/lore/${apiLore.public_id}`,
-        },
+        { label: "AI Agent", to: "/storyteller/my/agent" },
+        { label: agent.name, to: `/storyteller/my/agent/${agent.id}/edit` },
         { label: "版本比對" },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${changedCount} 行差異`} color="warning" />
           <Button
-            href={`/storyteller/my/project/${apiProject.public_id}/lore/${apiLore.public_id}`}
+            href={`/storyteller/my/agent/${agent.id}/edit`}
             startIcon={<ArrowBackIcon />}
             variant="outlined"
           >
-            回設定集
+            回 AI Agent
           </Button>
         </Stack>
       }
@@ -169,8 +158,6 @@ export default function StorytellerLoreDiffCompare() {
             key={section.key}
             title={section.title}
             lines={section.lines}
-            leftTitle="舊版本"
-            rightTitle="新版本"
             leftMetadataLabels={[
               formatStorytellerDate(leftVersion.data.created_at),
             ]}

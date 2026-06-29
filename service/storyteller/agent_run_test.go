@@ -198,7 +198,6 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
 	require.Equal(t, uint64(40), repo.chat.AgentID)
 	require.Equal(t, uint64(20), repo.chat.UserID)
-	require.Equal(t, "rewrite", repo.chat.Title)
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)

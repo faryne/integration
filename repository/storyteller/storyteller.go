@@ -7,6 +7,7 @@ import (
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Repository struct{ db *gorm.DB }
@@ -93,17 +94,180 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return &row, err
 }
 
+func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderModels, error) {
+	providers := make([]storytellerModel.AgentProviderSetting, 0)
+	if err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").
+		Order("sort ASC, id ASC").
+		Find(&providers).Error; err != nil {
+		return nil, err
+	}
+	if len(providers) == 0 {
+		return []storytellerModel.AgentProviderModels{}, nil
+	}
+	providerIDs := make([]uint64, 0, len(providers))
+	for _, provider := range providers {
+		providerIDs = append(providerIDs, provider.ID)
+	}
+	models := make([]storytellerModel.AgentModel, 0)
+	if err := r.db.Where("provider_id IN ? AND is_deleted = 0 AND deleted_at IS NULL", providerIDs).
+		Order("provider_id ASC, sort ASC, id ASC").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+	modelsByProviderID := make(map[uint64][]storytellerModel.AgentModelOption)
+	for _, model := range models {
+		modelsByProviderID[model.ProviderID] = append(modelsByProviderID[model.ProviderID], storytellerModel.AgentModelOption{
+			ID:          model.ID,
+			Name:        model.Name,
+			Label:       model.Label,
+			Description: model.Description,
+			Price:       model.Price,
+		})
+	}
+	output := make([]storytellerModel.AgentProviderModels, 0, len(providers))
+	for _, provider := range providers {
+		providerModels := modelsByProviderID[provider.ID]
+		if providerModels == nil {
+			providerModels = []storytellerModel.AgentModelOption{}
+		}
+		output = append(output, storytellerModel.AgentProviderModels{
+			Provider:         provider.Provider,
+			Label:            provider.Label,
+			Models:           providerModels,
+			AllowCustomModel: provider.AllowCustomModel,
+		})
+	}
+	return output, nil
+}
+
+func (r *Repository) AgentProviderModel(provider storytellerModel.AgentProvider, modelName string) (*storytellerModel.AgentProviderModels, error) {
+	var providerRow storytellerModel.AgentProviderSetting
+	if err := r.db.Where("provider = ? AND is_deleted = 0 AND deleted_at IS NULL", provider).
+		First(&providerRow).Error; err != nil {
+		return nil, err
+	}
+	output := &storytellerModel.AgentProviderModels{
+		Provider:         providerRow.Provider,
+		Label:            providerRow.Label,
+		AllowCustomModel: providerRow.AllowCustomModel,
+	}
+	var model storytellerModel.AgentModel
+	if err := r.db.Where("provider_id = ? AND name = ? AND is_deleted = 0 AND deleted_at IS NULL", providerRow.ID, modelName).
+		First(&model).Error; err != nil {
+		if providerRow.AllowCustomModel {
+			return output, nil
+		}
+		return nil, err
+	}
+	output.Models = []storytellerModel.AgentModelOption{{
+		ID:          model.ID,
+		Name:        model.Name,
+		Label:       model.Label,
+		Description: model.Description,
+		Price:       model.Price,
+	}}
+	return output, nil
+}
+
+func (r *Repository) SyncAgentModels(provider storytellerModel.AgentProvider, models []storytellerModel.AgentModelSyncInput) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		var providerRow storytellerModel.AgentProviderSetting
+		if err := tx.Where("provider = ? AND is_deleted = 0 AND deleted_at IS NULL", provider).
+			First(&providerRow).Error; err != nil {
+			return err
+		}
+
+		modelNames := make([]string, 0, len(models))
+		for _, model := range models {
+			row := storytellerModel.AgentModel{
+				ProviderID:  providerRow.ID,
+				Name:        model.Name,
+				Label:       model.Label,
+				Description: model.Description,
+				Price:       model.Price,
+				Sort:        model.Sort,
+				IsDeleted:   false,
+				DeletedAt:   nil,
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns: []clause.Column{
+					{Name: "provider_id"},
+					{Name: "name"},
+				},
+				DoUpdates: clause.AssignmentColumns([]string{
+					"label",
+					"description",
+					"price",
+					"sort",
+					"is_deleted",
+					"deleted_at",
+					"updated_at",
+				}),
+			}).Create(&row).Error; err != nil {
+				return err
+			}
+			modelNames = append(modelNames, model.Name)
+		}
+
+		query := tx.Model(&storytellerModel.AgentModel{}).
+			Where("provider_id = ? AND is_deleted = 0", providerRow.ID)
+		if len(modelNames) > 0 {
+			query = query.Where("name NOT IN ?", modelNames)
+		}
+		now := time.Now()
+		return query.Updates(map[string]any{
+			"is_deleted": true,
+			"deleted_at": &now,
+		}).Error
+	})
+}
+
 func (r *Repository) CreateAgent(row *storytellerModel.Agent) error {
-	return r.db.Create(row).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(row).Error; err != nil {
+			return err
+		}
+		return tx.Create(agentPromptVersionFromAgent(row)).Error
+	})
 }
 
 func (r *Repository) UpdateAgent(row *storytellerModel.Agent) error {
-	return r.db.Save(row).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(row).Error; err != nil {
+			return err
+		}
+		return tx.Create(agentPromptVersionFromAgent(row)).Error
+	})
 }
 
 func (r *Repository) DeleteAgent(row *storytellerModel.Agent) error {
 	now := time.Now()
 	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
+}
+
+func (r *Repository) AgentPromptVersions(agentID uint64) ([]storytellerModel.AgentPromptVersion, error) {
+	rows := make([]storytellerModel.AgentPromptVersion, 0)
+	err := r.db.Where("agent_id = ? AND deleted_at IS NULL", agentID).
+		Order("created_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) AgentPromptVersion(agentID, versionID uint64) (*storytellerModel.AgentPromptVersion, error) {
+	var row storytellerModel.AgentPromptVersion
+	err := r.db.Where("agent_id = ? AND id = ? AND deleted_at IS NULL", agentID, versionID).
+		First(&row).Error
+	return &row, err
+}
+
+func agentPromptVersionFromAgent(agent *storytellerModel.Agent) *storytellerModel.AgentPromptVersion {
+	return &storytellerModel.AgentPromptVersion{
+		AgentID:       agent.ID,
+		Name:          agent.Name,
+		Provider:      agent.Provider,
+		ModelName:     agent.ModelName,
+		DefaultPrompt: agent.DefaultPrompt,
+	}
 }
 
 func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error) {
@@ -192,7 +356,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
 		Joins("INNER JOIN storyteller_agents AS agents ON agents.id = COALESCE(messages.agent_id, chats.agent_id)").
-		Where("chats.story_id = ? AND chats.deleted_at IS NULL AND messages.deleted_at IS NULL", storyID)
+		Where("chats.story_id = ? AND messages.deleted_at IS NULL", storyID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -223,7 +387,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
 		Joins("INNER JOIN storyteller_agents AS agents ON agents.id = COALESCE(messages.agent_id, chats.agent_id)").
-		Where("chats.lore_id = ? AND chats.deleted_at IS NULL AND messages.deleted_at IS NULL", loreID)
+		Where("chats.lore_id = ? AND messages.deleted_at IS NULL", loreID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err

@@ -1,5 +1,5 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Button, Chip, Grid, Stack, Typography } from "@mui/material";
+import { Button, Chip, Stack, Typography } from "@mui/material";
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import {
@@ -9,7 +9,8 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
-import { CustomDiffPane } from "@/components/common/CustomDiffPane.tsx";
+import { CustomDiffLegend } from "@/components/common/CustomDiffLegend.tsx";
+import { CustomDiffSection } from "@/components/common/CustomDiffSection.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -22,6 +23,7 @@ import {
 interface CompareDiff {
   id: string;
   title: string;
+  summary: string;
   content: string;
   source: string;
   createdAt: string;
@@ -63,6 +65,7 @@ export default function StorytellerStoryDiffCompare() {
     ? {
         id: String(leftVersion.data.id),
         title: leftVersion.data.title,
+        summary: leftVersion.data.summary,
         content: leftVersion.data.content,
         source: "手動編輯",
         createdAt: leftVersion.data.created_at,
@@ -73,23 +76,41 @@ export default function StorytellerStoryDiffCompare() {
     ? {
         id: String(rightVersion.data.id),
         title: rightVersion.data.title,
+        summary: rightVersion.data.summary,
         content: rightVersion.data.content,
         source: "手動編輯",
         createdAt: rightVersion.data.created_at,
         words: rightVersion.data.word_count,
       }
     : undefined;
-  const lines = useMemo(
+  const diffSections = useMemo(
     () =>
       leftDiff && rightDiff
-        ? buildCustomLineDiff(
-            `${leftDiff.title}\n\n${leftDiff.content}`,
-            `${rightDiff.title}\n\n${rightDiff.content}`,
-          )
+        ? [
+            {
+              key: "title",
+              title: "標題",
+              lines: buildCustomLineDiff(leftDiff.title, rightDiff.title),
+            },
+            {
+              key: "summary",
+              title: "摘要",
+              lines: buildCustomLineDiff(leftDiff.summary, rightDiff.summary),
+            },
+            {
+              key: "content",
+              title: "內容",
+              lines: buildCustomLineDiff(leftDiff.content, rightDiff.content),
+            },
+          ]
         : [],
     [leftDiff, rightDiff],
   );
-  const changedCount = lines.filter((line) => line.state !== "same").length;
+  const changedCount = diffSections.reduce(
+    (total, section) =>
+      total + section.lines.filter((line) => line.state !== "same").length,
+    0,
+  );
 
   useTitle(story ? `${story.title} 版本比對 - Storyteller` : "版本比對", {
     path:
@@ -183,30 +204,26 @@ export default function StorytellerStoryDiffCompare() {
         </Stack>
       }
     >
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <CustomDiffPane
-            title={leftDiff.title}
-            metadataLabels={[
+      <Stack spacing={3}>
+        <CustomDiffLegend />
+        {diffSections.map((section) => (
+          <CustomDiffSection
+            key={section.key}
+            title={section.title}
+            lines={section.lines}
+            leftTitle="舊版本"
+            rightTitle="新版本"
+            leftMetadataLabels={[
               leftDiff.source,
               formatStorytellerDate(leftDiff.createdAt),
             ]}
-            side="left"
-            lines={lines}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <CustomDiffPane
-            title={rightDiff.title}
-            metadataLabels={[
+            rightMetadataLabels={[
               rightDiff.source,
               formatStorytellerDate(rightDiff.createdAt),
             ]}
-            side="right"
-            lines={lines}
           />
-        </Grid>
-      </Grid>
+        ))}
+      </Stack>
     </StorytellerShell>
   );
 }

@@ -4,6 +4,8 @@ import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
+  StorytellerAgentPromptVersion,
+  StorytellerAgentProviderModels,
   StorytellerAgentRunRequest,
   StorytellerAgentRunResponse,
   StorytellerAgentRequest,
@@ -387,6 +389,22 @@ export function useStorytellerAgents() {
   });
 }
 
+export function useStorytellerAgentProviderModels() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "agent-provider-models", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAgentProviderModels[]>
+      >(`${apiBase}/storyteller/agents/provider-models`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function useSaveStorytellerAgent() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -412,6 +430,47 @@ export function useSaveStorytellerAgent() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerAgentPromptVersions(agentId?: number) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "agent-prompt-versions", agentId, session?.user.id],
+    enabled: Boolean(session?.encrypt_key && agentId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAgentPromptVersion[]>
+      >(`${apiBase}/storyteller/agents/${agentId}/versions`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerAgentPromptVersion(
+  agentId?: number,
+  versionId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "agent-prompt-version",
+      agentId,
+      versionId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && agentId && versionId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAgentPromptVersion>
+      >(`${apiBase}/storyteller/agents/${agentId}/versions/${versionId}`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
     },
   });
 }

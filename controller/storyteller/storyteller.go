@@ -117,6 +117,14 @@ func Agents(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+func AgentProviderModels(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().AgentProviderModels()
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
 func Agent(ctx fiber.Ctx) error {
 	id, err := parseUint(ctx.Params("agent"))
 	if err != nil {
@@ -126,6 +134,40 @@ func Agent(ctx fiber.Ctx) error {
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func AgentPromptVersions(ctx fiber.Ctx) error {
+	id, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	rows, err := storyteller.NewService().AgentPromptVersions(authsession.Session(ctx).UserId, id)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
+func AgentPromptVersion(ctx fiber.Ctx) error {
+	id, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	versionID, err := parseUint(ctx.Params("version"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().AgentPromptVersion(authsession.Session(ctx).UserId, id, versionID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent prompt version not found"))
 		}
 		return output.DBError(err)
 	}
