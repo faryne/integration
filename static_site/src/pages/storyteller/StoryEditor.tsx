@@ -30,7 +30,7 @@ import {
 import { ChatMessageList } from "@mui/x-chat";
 import { ChatProvider, createEchoAdapter } from "@mui/x-chat/headless";
 import { useEffect, useMemo, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useRunStorytellerAgent,
@@ -59,6 +59,10 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
+import {
+  StorytellerMarkdownSyntaxDrawer,
+  StorytellerMarkdownSyntaxLink,
+} from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -251,6 +255,7 @@ export default function StorytellerStoryEditor() {
   });
   const saveStoryRef = useRef(saveStory);
   const autoSaveRunningRef = useRef(false);
+  const pendingMessageIdRef = useRef(0);
   const pageTitle = isNewStory
     ? "建立故事"
     : storyTitle.trim() || story?.title || "未命名故事";
@@ -629,8 +634,9 @@ export default function StorytellerStoryEditor() {
           }
         : null;
     const nextMode = mode ?? "custom_chapter";
+    pendingMessageIdRef.current += 1;
     setOptimisticMessage({
-      id: `pending-${Date.now()}`,
+      id: `pending-${pendingMessageIdRef.current}`,
       role: "user",
       content: rawInstruction.trim() || "（未輸入需求）",
       agent_id: selectedAgentNumericId,
@@ -894,7 +900,7 @@ export default function StorytellerStoryEditor() {
             </Stack>
           ) : (
             <Box sx={{ typography: "body2", mt: 0.5 }}>
-              <Markdown>{message.content}</Markdown>
+              <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
             </Box>
           )}
           {!isUser && isOptimistic && message.isCurrentResult && (
@@ -1200,6 +1206,8 @@ export default function StorytellerStoryEditor() {
                       <FormatAlignRightIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+                  <StorytellerMarkdownSyntaxDrawer />
                 </Stack>
               </Paper>
               <TextField
@@ -1243,7 +1251,7 @@ export default function StorytellerStoryEditor() {
                   "& p": { my: 1.5 },
                 }}
               >
-                <Markdown>{content}</Markdown>
+                <StorytellerMarkdown>{content}</StorytellerMarkdown>
               </Box>
             </Box>
 
@@ -1433,6 +1441,9 @@ export default function StorytellerStoryEditor() {
                   error={Boolean(aiPayloadError)}
                   helperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
                 />
+                <Stack direction="row" justifyContent="flex-start">
+                  <StorytellerMarkdownSyntaxLink />
+                </Stack>
                 {aiPayloadError && (
                   <Alert severity="warning" variant="outlined">
                     {aiPayloadError}

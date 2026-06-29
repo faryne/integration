@@ -2,7 +2,7 @@ import MdEditor, {
   type FunctionPlugin,
   Plugins,
 } from "react-markdown-editor-lite";
-import Markdown from "react-markdown";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { Tabs, Tab, Box, Grid } from "@mui/material";
 import { useEffect, useState } from "react";
 import "react-markdown-editor-lite/lib/index.css";
@@ -70,7 +70,7 @@ export function Editor() {
             <MdEditor
               style={{ height: "500px" }}
               value={md}
-              renderHTML={(text) => <Markdown>{text}</Markdown>}
+              renderHTML={(text) => <StorytellerMarkdown>{text}</StorytellerMarkdown>}
               onChange={(e) => setMd(e.text)}
             />
           </Grid>

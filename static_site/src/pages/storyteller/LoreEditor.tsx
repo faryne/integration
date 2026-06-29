@@ -26,8 +26,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useRunStorytellerLoreAgent,
@@ -53,6 +53,10 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
+import {
+  StorytellerMarkdownSyntaxDrawer,
+  StorytellerMarkdownSyntaxLink,
+} from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 
 const aiMessagesPerPage = 10;
 const autoSaveIntervalMinutes = 2;
@@ -182,6 +186,13 @@ export default function StorytellerLoreEditor() {
     createdAt: version.created_at,
     words: version.word_count,
   }));
+  const showSnack = useCallback(
+    (message: string, severity: AlertColor = "success") => {
+      setSnack(message);
+      setSnackSeverity(severity);
+    },
+    [],
+  );
 
   useEffect(() => {
     setTitle(lore?.title ?? "");
@@ -246,7 +257,7 @@ export default function StorytellerLoreEditor() {
     );
 
     return () => window.clearInterval(timer);
-  }, [apiProject?.public_id, isNewLore, lore?.id]);
+  }, [apiProject?.public_id, isNewLore, lore?.id, showSnack]);
 
   useTitle(`${pageTitle} - Storyteller`, {
     path: id && loreId ? `/storyteller/my/project/${id}/lore/${loreId}` : "",
@@ -301,11 +312,6 @@ export default function StorytellerLoreEditor() {
       });
     }
     return references;
-  }
-
-  function showSnack(message: string, severity: AlertColor = "success") {
-    setSnack(message);
-    setSnackSeverity(severity);
   }
 
   function applyMarkdownFormat(
@@ -571,6 +577,8 @@ export default function StorytellerLoreEditor() {
                       <FormatAlignRightIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+                  <StorytellerMarkdownSyntaxDrawer />
                 </Stack>
               </Paper>
               <TextField
@@ -612,7 +620,7 @@ export default function StorytellerLoreEditor() {
                   "& img": { maxWidth: "100%" },
                 }}
               >
-                <Markdown>{content || " "}</Markdown>
+                <StorytellerMarkdown>{content || " "}</StorytellerMarkdown>
               </Box>
             </Box>
 
@@ -773,7 +781,7 @@ export default function StorytellerLoreEditor() {
                             : "使用者"}
                         </Typography>
                         <Box sx={{ typography: "body2", mt: 0.5 }}>
-                          <Markdown>{message.content}</Markdown>
+                          <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
                         </Box>
                       </Paper>
                     ))}
@@ -805,7 +813,7 @@ export default function StorytellerLoreEditor() {
                           </Button>
                         </Stack>
                         <Box sx={{ typography: "body2", mt: 1 }}>
-                          <Markdown>{visibleAiResult}</Markdown>
+                          <StorytellerMarkdown>{visibleAiResult}</StorytellerMarkdown>
                         </Box>
                       </Paper>
                     )}
@@ -841,8 +849,11 @@ export default function StorytellerLoreEditor() {
                   multiline
                   minRows={4}
                   maxRows={8}
-                  placeholder="可輸入 @thisLore、@lore:標題 或 @story:標題 引用內容。"
+                  placeholder="可輸入 Markdown。使用 @thisLore、@lore:標題 或 @story:標題 引用內容。"
                 />
+                <Stack direction="row" justifyContent="flex-start">
+                  <StorytellerMarkdownSyntaxLink />
+                </Stack>
                 <Button
                   startIcon={<SendIcon />}
                   variant="contained"

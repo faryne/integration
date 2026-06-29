@@ -43,6 +43,27 @@ import type {
   StorytellerProject,
 } from "@/types/storyteller.ts";
 
+const agentPromptSummaryLength = 120;
+
+function agentPromptPlainTextSummary(prompt: string) {
+  // AI Agent 卡片只顯示 Prompt 摘要，避免 Markdown 或 HTML-like 語法影響列表掃描。
+  const plainText = prompt
+    .replace(/<[^>]*>/g, " ")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
+    .replace(/[*_~>#|\-[\]]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plainText) {
+    return "未設定 Prompt 摘要。";
+  }
+  const characters = Array.from(plainText);
+  return characters.length > agentPromptSummaryLength
+    ? `${characters.slice(0, agentPromptSummaryLength).join("")}...`
+    : plainText;
+}
+
 function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const deleteProject = useDeleteStorytellerProject();
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -204,7 +225,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const rows = agents.map((agent) => ({
     id: agent.id,
     name: agent.name,
-    purpose: agent.default_prompt,
+    promptSummary: agentPromptPlainTextSummary(agent.default_prompt),
     provider: agent.provider,
     model: agent.model_name,
     enabled: !agent.is_deleted,
@@ -256,7 +277,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                     color="text.secondary"
                     sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
                   >
-                    {agent.purpose}
+                    {agent.promptSummary}
                   </Typography>
                   <Stack
                     direction="row"

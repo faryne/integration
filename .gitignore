@@ -9,6 +9,7 @@ docs
 
 .firebaserc
 static_site/.firebase
+.pnpm-store
 
 secret_keys/*
 

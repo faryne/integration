@@ -21,7 +21,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import Markdown from "react-markdown";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -405,7 +405,7 @@ export default function StorytellerReader() {
               "& p": { my: 1.5 },
             }}
           >
-            <Markdown>{currentStory.content}</Markdown>
+            <StorytellerMarkdown>{currentStory.content}</StorytellerMarkdown>
           </Box>
           <Divider />
           <Box
