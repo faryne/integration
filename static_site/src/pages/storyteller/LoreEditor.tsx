@@ -1,12 +1,9 @@
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import SaveIcon from "@mui/icons-material/Save";
-import SendIcon from "@mui/icons-material/Send";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import {
   Alert,
@@ -16,15 +13,12 @@ import {
   Divider,
   Grid,
   IconButton,
-  MenuItem,
   Paper,
-  Pagination,
   Stack,
   Tab,
   Tabs,
   TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -39,7 +33,6 @@ import {
   useStorytellerProjects,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
-import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
@@ -53,10 +46,16 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
+import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import {
-  StorytellerMarkdownSyntaxDrawer,
-  StorytellerMarkdownSyntaxLink,
-} from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
+  StorytellerAgentPanel,
+  type StorytellerAgentPanelAgent,
+  type StorytellerAgentPanelMessage,
+} from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import {
+  buildStorytellerAgentReferenceContent,
+  resolveStorytellerAgentReferences,
+} from "@/pages/storyteller/storytellerAgentReferences.ts";
 
 const aiMessagesPerPage = 10;
 const autoSaveIntervalMinutes = 2;
@@ -153,11 +152,43 @@ export default function StorytellerLoreEditor() {
   );
   const selectedAgent =
     agents.find((agent) => String(agent.id) === selectedAgentId) ?? agents[0];
+  const panelAgents: StorytellerAgentPanelAgent[] = agents.map((agent) => ({
+    id: String(agent.id),
+    name: agent.name,
+    provider: agent.provider,
+    model: agent.model_name,
+    prompt: agent.default_prompt,
+    enabled: !agent.is_deleted,
+  }));
   const canRunAgent =
     !isNewLore &&
     Boolean(apiProject?.public_id && apiLore?.public_id && selectedAgent) &&
     !runAgent.isPending;
-  const loreReferences = buildLoreReferences(aiPrompt);
+  const loreReferences = resolveStorytellerAgentReferences({
+    prompt: aiPrompt,
+    currentLore: apiLore
+      ? {
+          kind: "lore",
+          id: apiLore.public_id,
+          title: title.trim() || apiLore.title,
+          content,
+        }
+      : null,
+    stories: apiStories.map((story) => ({
+      kind: "story" as const,
+      id: story.public_id,
+      title: story.title,
+      content: story.latest_content,
+    })),
+    lores: apiLores
+      .filter((item) => item.public_id !== apiLore?.public_id)
+      .map((item) => ({
+        kind: "lore" as const,
+        id: item.public_id,
+        title: item.title,
+        content: item.latest_content,
+      })),
+  });
   const aiMessages = aiMessagesPage?.items ?? [];
   const visibleAiResult =
     aiResult &&
@@ -169,16 +200,33 @@ export default function StorytellerLoreEditor() {
     )
       ? aiResult
       : "";
+  const panelMessages: StorytellerAgentPanelMessage[] = [
+    ...aiMessages.map((message) => ({
+      id: String(message.id),
+      role: message.role,
+      content: message.content,
+      speaker:
+        message.role === "assistant"
+          ? message.agent_name || "AI Agent"
+          : "使用者",
+    })),
+    ...(visibleAiResult
+      ? [
+          {
+            id: `lore-agent-result-${visibleAiResult.length}`,
+            role: "assistant" as const,
+            content: visibleAiResult,
+            speaker: selectedAgent?.name || "AI Agent",
+            isCurrentResult: true,
+          },
+        ]
+      : []),
+  ];
   const aiMessageTotalPages = Math.max(
     1,
     Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
   );
-  const agentContext = loreReferences
-    .map(
-      (reference) =>
-        `Reference lore: ${reference.title}\nToken: ${reference.token}\n<<<LORE_REFERENCE_CONTENT\n${reference.content}\nLORE_REFERENCE_CONTENT`,
-    )
-    .join("\n\n");
+  const agentContext = buildStorytellerAgentReferenceContent(loreReferences);
   const loreHistoryItems: StoryEditHistoryItem[] = versions.map((version) => ({
     id: String(version.id),
     title: version.title,
@@ -275,45 +323,6 @@ export default function StorytellerLoreEditor() {
     return <ErrorPage code={404} />;
   }
 
-  function buildLoreReferences(value: string) {
-    const references = [];
-    if (value.includes("@thisLore")) {
-      references.push({
-        token: "@thisLore",
-        title: title.trim() || lore?.title || "目前設定集",
-        content,
-      });
-    }
-    for (const item of apiLores) {
-      const token = `@lore:${item.title}`;
-      const bracketToken = `@lore:[${item.title}]`;
-      if (
-        item.public_id === apiLore?.public_id ||
-        (!value.includes(token) && !value.includes(bracketToken))
-      ) {
-        continue;
-      }
-      references.push({
-        token,
-        title: item.title,
-        content: item.latest_content,
-      });
-    }
-    for (const story of apiStories) {
-      const token = `@story:${story.title}`;
-      const bracketToken = `@story:[${story.title}]`;
-      if (!value.includes(token) && !value.includes(bracketToken)) {
-        continue;
-      }
-      references.push({
-        token,
-        title: story.title,
-        content: story.latest_content,
-      });
-    }
-    return references;
-  }
-
   function applyMarkdownFormat(
     type: "bold" | "italic" | "subscript" | "left" | "center" | "right",
   ) {
@@ -389,6 +398,34 @@ export default function StorytellerLoreEditor() {
           showSnack(errorMessage(error, "AI Agent 呼叫失敗。"), "error"),
       },
     );
+  }
+
+  function applyAgentText(
+    result: string,
+    action: "insert" | "append" | "copy",
+  ) {
+    const text = result.trim();
+    if (!text) {
+      return;
+    }
+    const target = textAreaRef.current;
+    if (action === "copy") {
+      void navigator.clipboard.writeText(text);
+      showSnack("AI 回應已複製。");
+      return;
+    }
+    if (action === "append") {
+      setContent(
+        (value) => `${value}${value.endsWith("\n") ? "" : "\n\n"}${text}`,
+      );
+      return;
+    }
+    const cursor = target?.selectionStart ?? content.length;
+    setContent(`${content.slice(0, cursor)}${text}${content.slice(cursor)}`);
+    window.requestAnimationFrame(() => {
+      target?.focus();
+      target?.setSelectionRange(cursor, cursor + text.length);
+    });
   }
 
   function isRightVersionDisabled(versionId: string) {
@@ -642,229 +679,46 @@ export default function StorytellerLoreEditor() {
         </Grid>
 
         <Grid size={{ xs: 12, lg: 4 }}>
-          <Paper
-            variant="outlined"
-            sx={{
-              borderRadius: 1,
-              overflow: "hidden",
-              position: { lg: "sticky" },
-              top: { lg: 16 },
-            }}
-          >
-            <Stack sx={{ height: { lg: 720 }, maxHeight: { lg: 720 } }}>
-              <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
-                <Stack
-                  direction={{ xs: "column", sm: "row", lg: "row" }}
-                  spacing={1}
-                  alignItems={{ xs: "stretch", sm: "center" }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    sx={{ minWidth: 120 }}
-                  >
-                    <SmartToyIcon color="primary" />
-                    <Typography variant="h6" fontWeight={800}>
-                      AI Agent
-                    </Typography>
-                  </Stack>
-                  <TextField
-                    select
-                    size="small"
-                    label="選擇 Agent"
-                    value={String(selectedAgent?.id ?? "")}
-                    onChange={(event) => setSelectedAgentId(event.target.value)}
-                    sx={{ flex: 1, minWidth: 180 }}
-                  >
-                    {agents.map((agent) => (
-                      <MenuItem key={agent.id} value={String(agent.id)}>
-                        {agent.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-                {selectedAgent && (
-                  <>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      <Chip size="small" label="可用" color="success" />
-                      <Chip size="small" label={selectedAgent.provider} />
-                      <Chip size="small" label={selectedAgent.model_name} />
-                    </Stack>
-                    <Tooltip
-                      title={
-                        <Box
-                          sx={{
-                            maxWidth: 520,
-                            maxHeight: 320,
-                            overflow: "auto",
-                            whiteSpace: "pre-wrap",
-                          }}
-                        >
-                          {selectedAgent.default_prompt || "未設定 Prompt。"}
-                        </Box>
+          <StorytellerAgentPanel
+            agents={panelAgents}
+            selectedAgentId={String(selectedAgent?.id ?? "")}
+            onSelectedAgentChange={setSelectedAgentId}
+            messages={panelMessages}
+            messagesLoading={aiMessagesLoading}
+            pending={runAgent.isPending}
+            unavailableMessage={
+              isNewLore ? "設定集第一次存檔後才能呼叫 AI Agent。" : undefined
+            }
+            emptyTitle="還沒有 AI Agent 對話紀錄"
+            emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
+            page={aiMessagePage}
+            pageCount={aiMessageTotalPages}
+            onPageChange={setAiMessagePage}
+            prompt={aiPrompt}
+            onPromptChange={setAiPrompt}
+            promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
+            promptExtras={
+              loreReferences.length > 0 ? (
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {loreReferences.map((reference) => (
+                    <Chip
+                      key={reference.token}
+                      size="small"
+                      color={
+                        reference.token === "@thisLore" ? "primary" : "default"
                       }
-                      placement="bottom-start"
-                      enterDelay={400}
-                    >
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          display: "-webkit-box",
-                          overflow: "hidden",
-                          WebkitBoxOrient: "vertical",
-                          WebkitLineClamp: 2,
-                          cursor: "help",
-                        }}
-                      >
-                        {selectedAgent.default_prompt || "未設定 Prompt。"}
-                      </Typography>
-                    </Tooltip>
-                  </>
-                )}
-                {isNewLore && (
-                  <Alert severity="info" variant="outlined">
-                    設定集第一次存檔後才能呼叫 AI Agent。
-                  </Alert>
-                )}
-              </Stack>
-
-              <Divider />
-
-              <Stack
-                spacing={1.5}
-                sx={{
-                  flex: 1,
-                  minHeight: { xs: 360, lg: 0 },
-                  maxHeight: { xs: 520, lg: 480 },
-                  overflow: "auto",
-                  bgcolor: "grey.50",
-                  p: 2,
-                }}
-              >
-                {runAgent.isPending && (
-                  <StorytellerLoading label="AI Agent 處理中..." />
-                )}
-                {aiMessagesLoading ? (
-                  <StorytellerLoading label="正在載入 AI Agent 對話紀錄..." />
-                ) : aiMessages.length > 0 || visibleAiResult ? (
-                  <>
-                    {aiMessages.map((message) => (
-                      <Paper
-                        key={message.id}
-                        variant="outlined"
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 1,
-                          bgcolor:
-                            message.role === "user"
-                              ? "primary.main"
-                              : "background.paper",
-                          color:
-                            message.role === "user"
-                              ? "primary.contrastText"
-                              : "text.primary",
-                        }}
-                      >
-                        <Typography
-                          variant="caption"
-                          sx={{ opacity: message.role === "user" ? 0.82 : 1 }}
-                        >
-                          {message.role === "assistant"
-                            ? message.agent_name || "AI Agent"
-                            : "使用者"}
-                        </Typography>
-                        <Box sx={{ typography: "body2", mt: 0.5 }}>
-                          <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
-                        </Box>
-                      </Paper>
-                    ))}
-                    {visibleAiResult && (
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          justifyContent="space-between"
-                        >
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                          >
-                            <SmartToyIcon color="primary" />
-                            <Typography fontWeight={800}>AI 回應</Typography>
-                          </Stack>
-                          <Button
-                            startIcon={<ContentCopyIcon />}
-                            onClick={() =>
-                              void navigator.clipboard.writeText(
-                                visibleAiResult,
-                              )
-                            }
-                          >
-                            複製
-                          </Button>
-                        </Stack>
-                        <Box sx={{ typography: "body2", mt: 1 }}>
-                          <StorytellerMarkdown>{visibleAiResult}</StorytellerMarkdown>
-                        </Box>
-                      </Paper>
-                    )}
-                    {aiMessageTotalPages > 1 && (
-                      <Stack direction="row" justifyContent="center">
-                        <Pagination
-                          size="small"
-                          count={aiMessageTotalPages}
-                          page={aiMessagePage}
-                          onChange={(_, page) => setAiMessagePage(page)}
-                          color="primary"
-                        />
-                      </Stack>
-                    )}
-                  </>
-                ) : (
-                  <CustomEmptyState
-                    icon={<SmartToyIcon fontSize="large" />}
-                    title="還沒有 AI Agent 對話紀錄"
-                    description="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
-                  />
-                )}
-              </Stack>
-
-              <Divider />
-
-              <Stack spacing={1.5} sx={{ p: 2 }}>
-                <TextField
-                  label="輸入需求"
-                  value={aiPrompt}
-                  onChange={(event) => setAiPrompt(event.target.value)}
-                  fullWidth
-                  multiline
-                  minRows={4}
-                  maxRows={8}
-                  placeholder="可輸入 Markdown。使用 @thisLore、@lore:標題 或 @story:標題 引用內容。"
-                />
-                <Stack direction="row" justifyContent="flex-start">
-                  <StorytellerMarkdownSyntaxLink />
+                      label={reference.title}
+                    />
+                  ))}
                 </Stack>
-                <Button
-                  startIcon={<SendIcon />}
-                  variant="contained"
-                  onClick={runSelectedAgent}
-                  disabled={!canRunAgent}
-                >
-                  {runAgent.isPending ? "處理中" : "送出需求"}
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
+              ) : null
+            }
+            canRun={canRunAgent}
+            onRun={runSelectedAgent}
+            onApplyText={(text, action) =>
+              applyAgentText(text, action === "replace" ? "insert" : action)
+            }
+          />
         </Grid>
       </Grid>
       <CustomSnackbar

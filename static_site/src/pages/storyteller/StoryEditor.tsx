@@ -3,34 +3,25 @@ import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import SaveIcon from "@mui/icons-material/Save";
-import SendIcon from "@mui/icons-material/Send";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import {
   Alert,
   Box,
   Button,
   Chip,
-  CircularProgress,
   Divider,
   Grid,
   IconButton,
   MenuItem,
-  Pagination,
   Paper,
   Stack,
   Tab,
   Tabs,
   TextField,
   Tooltip,
-  Typography,
 } from "@mui/material";
-import { ChatMessageList } from "@mui/x-chat";
-import { ChatProvider, createEchoAdapter } from "@mui/x-chat/headless";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useRunStorytellerAgent,
@@ -43,7 +34,6 @@ import {
   useStorytellerStories,
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
-import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
@@ -59,10 +49,18 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
+import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import {
-  StorytellerMarkdownSyntaxDrawer,
-  StorytellerMarkdownSyntaxLink,
-} from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
+  StorytellerAgentPanel,
+  type StorytellerAgentPanelAgent,
+  type StorytellerAgentPanelMessage,
+} from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import {
+  buildStorytellerAgentReferenceContent,
+  formatStorytellerAgentReferenceToken,
+  resolveStorytellerAgentReferences,
+} from "@/pages/storyteller/storytellerAgentReferences.ts";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -75,7 +73,6 @@ const aiMessagesPerPage = 10;
 const aiInstructionMaxCharacters = 4000;
 const aiFullContentMaxCharacters = 60000;
 const aiTotalPayloadMaxCharacters = 80000;
-const storytellerChatAdapter = createEchoAdapter();
 
 interface EditorProject {
   id: string;
@@ -127,12 +124,6 @@ interface OptimisticChatMessage {
   resultSelection?: TextSelectionState | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
-}
-
-interface AgentPromptReference {
-  token: string;
-  title: string;
-  content: string;
 }
 
 function serializeStoryDraft(
@@ -245,7 +236,9 @@ export default function StorytellerStoryEditor() {
   const [historyPage, setHistoryPage] = useState(1);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
   const currentDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
-  const lastSavedDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
+  const lastSavedDraftRef = useRef(
+    serializeStoryDraft("", "", "completed", ""),
+  );
   const latestDraftRef = useRef<StoryDraft>({
     title: "",
     summary: "",
@@ -322,8 +315,32 @@ export default function StorytellerStoryEditor() {
       isCurrentResult: true,
     });
   }
-  const agentPromptReferences = buildAgentPromptReferences(aiPrompt);
-  const agentReferenceContent = buildAgentReferenceContent(
+  const agentPromptReferences = resolveStorytellerAgentReferences({
+    prompt: aiPrompt,
+    currentStory: apiStory
+      ? {
+          kind: "story",
+          id: apiStory.public_id,
+          title: storyTitle.trim() || apiStory.title,
+          content,
+        }
+      : null,
+    stories: apiStories
+      .filter((item) => item.public_id !== apiStory?.public_id)
+      .map((item) => ({
+        kind: "story" as const,
+        id: item.public_id,
+        title: item.title,
+        content: item.latest_content,
+      })),
+    lores: apiLores.map((item) => ({
+      kind: "lore" as const,
+      id: item.public_id,
+      title: item.title,
+      content: item.latest_content,
+    })),
+  });
+  const agentReferenceContent = buildStorytellerAgentReferenceContent(
     agentPromptReferences,
   );
   const aiPromptLength = Array.from(aiPrompt).length;
@@ -337,11 +354,33 @@ export default function StorytellerStoryEditor() {
         : aiPayloadLength > aiTotalPayloadMaxCharacters
           ? `單次 Agent payload 最多 ${aiTotalPayloadMaxCharacters.toLocaleString()} 字。`
           : "";
-  const chatMessages = [...visibleAiMessages, ...transientMessages];
-  const chatMessageIds = chatMessages.map((message) => String(message.id));
-  const chatMessageById = new Map(
-    chatMessages.map((message) => [String(message.id), message]),
-  );
+  const chatMessages: StorytellerAgentPanelMessage[] = [
+    ...visibleAiMessages.map((message) => ({
+      id: String(message.id),
+      role: message.role,
+      content: message.content,
+      speaker: messageSpeaker(message),
+    })),
+    ...transientMessages.map((message) => ({
+      id: String(message.id),
+      role: message.role,
+      content: message.content,
+      speaker: messageSpeaker(message),
+      mode: message.mode,
+      usage: message.usage,
+      resultSelection: message.resultSelection,
+      isLoading: message.isLoading,
+      isCurrentResult: message.isCurrentResult,
+    })),
+  ];
+  const panelAgents: StorytellerAgentPanelAgent[] = agentRows.map((agent) => ({
+    id: agent.id,
+    name: agent.name,
+    provider: agent.provider,
+    model: agent.model,
+    prompt: agent.purpose,
+    enabled: agent.enabled,
+  }));
   const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
   const loreMentionQuery = currentLoreMentionQuery(aiPrompt);
   const storyMentionOptions =
@@ -753,60 +792,6 @@ export default function StorytellerStoryEditor() {
     return "System";
   }
 
-  function buildAgentPromptReferences(value: string): AgentPromptReference[] {
-    const references = new Map<string, AgentPromptReference>();
-    if (value.includes("@thisStory")) {
-      references.set("@thisStory", {
-        token: "@thisStory",
-        title: storyTitle.trim() || story?.title || "目前故事",
-        content,
-      });
-    }
-
-    for (const referencedStory of apiStories) {
-      if (referencedStory.public_id === apiStory?.public_id) {
-        continue;
-      }
-      const token = `@story:${referencedStory.title}`;
-      const bracketToken = `@story:[${referencedStory.title}]`;
-      if (!value.includes(token) && !value.includes(bracketToken)) {
-        continue;
-      }
-      references.set(token, {
-        token,
-        title: referencedStory.title,
-        content: referencedStory.latest_content,
-      });
-    }
-
-    for (const referencedLore of apiLores) {
-      const token = `@lore:${referencedLore.title}`;
-      const bracketToken = `@lore:[${referencedLore.title}]`;
-      if (!value.includes(token) && !value.includes(bracketToken)) {
-        continue;
-      }
-      references.set(token, {
-        token,
-        title: referencedLore.title,
-        content: referencedLore.latest_content,
-      });
-    }
-
-    return Array.from(references.values());
-  }
-
-  function buildAgentReferenceContent(references: AgentPromptReference[]) {
-    if (references.length === 0) {
-      return "";
-    }
-    return references
-      .map(
-        (reference) =>
-          `Reference story: ${reference.title}\nToken: ${reference.token}\n<<<STORY_REFERENCE_CONTENT\n${reference.content}\nSTORY_REFERENCE_CONTENT`,
-      )
-      .join("\n\n");
-  }
-
   function currentStoryMentionQuery(value: string) {
     const match = value.match(/@story:([^\s\]]*)$/);
     return match ? match[1] : null;
@@ -819,7 +804,7 @@ export default function StorytellerStoryEditor() {
 
   function insertStoryMention(title: string) {
     setAiPrompt((current) => {
-      const token = `@story:${title}`;
+      const token = formatStorytellerAgentReferenceToken("story", title);
       if (/@story:([^\s\]]*)$/.test(current)) {
         return current.replace(/@story:([^\s\]]*)$/, token);
       }
@@ -829,185 +814,12 @@ export default function StorytellerStoryEditor() {
 
   function insertLoreMention(title: string) {
     setAiPrompt((current) => {
-      const token = `@lore:${title}`;
+      const token = formatStorytellerAgentReferenceToken("lore", title);
       if (/@lore:([^\s\]]*)$/.test(current)) {
         return current.replace(/@lore:([^\s\]]*)$/, token);
       }
       return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
     });
-  }
-
-  function renderChatMessage(messageId: string) {
-    const message = chatMessageById.get(messageId);
-    if (!message) {
-      return null;
-    }
-    const isUser = message.role === "user";
-    const isOptimistic = "isLoading" in message || "isCurrentResult" in message;
-    return (
-      <Box
-        key={message.id}
-        sx={{
-          display: "flex",
-          justifyContent: isUser ? "flex-end" : "flex-start",
-          px: 2,
-          py: 0.625,
-        }}
-      >
-        <Box
-          sx={{
-            maxWidth: "92%",
-            p: 1.5,
-            borderRadius: 1,
-            bgcolor: isUser ? "primary.main" : "background.paper",
-            color: isUser ? "primary.contrastText" : "text.primary",
-            border: isUser ? 0 : "1px solid",
-            borderColor: "divider",
-            "& blockquote": {
-              m: 0,
-              mt: 0.75,
-              mb: 1,
-              px: 1.25,
-              py: 0.75,
-              borderLeft: "3px solid",
-              borderColor: isUser ? "primary.contrastText" : "primary.main",
-              bgcolor: isUser ? "rgba(255,255,255,0.14)" : "action.hover",
-              borderRadius: 0.5,
-            },
-            "& blockquote p": {
-              m: 0,
-            },
-          }}
-        >
-          <Typography
-            variant="caption"
-            color={isUser ? "inherit" : "text.secondary"}
-            sx={{ opacity: isUser ? 0.82 : 1 }}
-          >
-            {messageSpeaker(message)}
-          </Typography>
-          {isOptimistic && message.isLoading ? (
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ mt: 1 }}
-            >
-              <CircularProgress size={18} />
-              <Typography variant="body2" color="text.secondary">
-                處理中...
-              </Typography>
-            </Stack>
-          ) : (
-            <Box sx={{ typography: "body2", mt: 0.5 }}>
-              <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
-            </Box>
-          )}
-          {!isUser && isOptimistic && message.isCurrentResult && (
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mt: 1 }}
-            >
-              <Chip size="small" label={message.mode} />
-              {message.usage?.total_tokens ? (
-                <Chip
-                  size="small"
-                  label={`${message.usage.total_tokens} tokens`}
-                />
-              ) : null}
-            </Stack>
-          )}
-          {!isUser && message.content.trim() && !isOptimistic && (
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ mt: 1 }}
-            >
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => applyAgentText(message.content, "insert", null)}
-              >
-                插入游標
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() => applyAgentText(message.content, "append", null)}
-              >
-                附加末尾
-              </Button>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ContentCopyIcon />}
-                onClick={() => applyAgentText(message.content, "copy", null)}
-              >
-                複製
-              </Button>
-            </Stack>
-          )}
-          {!isUser &&
-            isOptimistic &&
-            message.isCurrentResult &&
-            message.content.trim() && (
-              <Stack
-                direction="row"
-                spacing={1}
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ mt: 1 }}
-              >
-                <Button
-                  size="small"
-                  variant="outlined"
-                  disabled={!message.resultSelection}
-                  onClick={() =>
-                    applyAgentText(
-                      message.content,
-                      "replace",
-                      message.resultSelection ?? null,
-                    )
-                  }
-                >
-                  取代選取
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() =>
-                    applyAgentText(message.content, "insert", null)
-                  }
-                >
-                  插入游標
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() =>
-                    applyAgentText(message.content, "append", null)
-                  }
-                >
-                  附加末尾
-                </Button>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<ContentCopyIcon />}
-                  onClick={() => applyAgentText(message.content, "copy", null)}
-                >
-                  複製
-                </Button>
-              </Stack>
-            )}
-        </Box>
-      </Box>
-    );
   }
 
   return (
@@ -1276,179 +1088,34 @@ export default function StorytellerStoryEditor() {
         </Grid>
 
         <Grid size={{ xs: 12, lg: 4 }}>
-          <Paper
-            variant="outlined"
-            sx={{
-              borderRadius: 1,
-              overflow: "hidden",
-              position: { lg: "sticky" },
-              top: { lg: 16 },
-            }}
-          >
-            <Stack sx={{ height: { lg: 720 }, maxHeight: { lg: 720 } }}>
-              <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
-                <Stack
-                  direction={{ xs: "column", sm: "row", lg: "row" }}
-                  spacing={1}
-                  alignItems={{ xs: "stretch", sm: "center" }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    sx={{ minWidth: 120 }}
-                  >
-                    <SmartToyIcon color="primary" />
-                    <Typography variant="h6" fontWeight={800}>
-                      AI Agent
-                    </Typography>
-                  </Stack>
-                  <TextField
-                    select
-                    size="small"
-                    label="選擇 Agent"
-                    value={selectedAgentId}
-                    onChange={(event) => setSelectedAgentId(event.target.value)}
-                    sx={{ flex: 1, minWidth: 180 }}
-                  >
-                    {agentRows.map((agent) => (
-                      <MenuItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                </Stack>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip
-                    size="small"
-                    label={selectedAgent.enabled ? "可用" : "停用"}
-                    color={selectedAgent.enabled ? "success" : "default"}
-                  />
-                  <Chip size="small" label={selectedAgent.provider} />
-                  <Chip size="small" label={selectedAgent.model} />
-                </Stack>
-                <Tooltip
-                  title={
-                    <Box
-                      sx={{
-                        maxWidth: 520,
-                        maxHeight: 320,
-                        overflow: "auto",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {selectedAgent.purpose}
-                    </Box>
-                  }
-                  placement="bottom-start"
-                  enterDelay={400}
-                >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      display: "-webkit-box",
-                      overflow: "hidden",
-                      WebkitBoxOrient: "vertical",
-                      WebkitLineClamp: 2,
-                      cursor: "help",
-                    }}
-                  >
-                    {selectedAgent.purpose}
-                  </Typography>
-                </Tooltip>
-              </Stack>
-
-              <Divider />
-
-              <Stack
-                spacing={1.5}
-                sx={{
-                  flex: 1,
-                  minHeight: { xs: 360, lg: 0 },
-                  maxHeight: { xs: 520, lg: 480 },
-                  overflow: "hidden",
-                  bgcolor: "grey.50",
-                }}
-              >
-                {!apiStory?.public_id && (
-                  <Alert
-                    severity="info"
-                    variant="outlined"
-                    sx={{ m: 2, mb: 0 }}
-                  >
-                    新故事第一次存檔後才能呼叫 AI Agent。
-                  </Alert>
-                )}
-                {aiMessagesLoading ? (
-                  <Stack alignItems="center" sx={{ py: 2 }}>
-                    <CircularProgress size={24} />
-                  </Stack>
-                ) : chatMessages.length > 0 ? (
-                  <Stack spacing={1.25} sx={{ flex: 1, minHeight: 0 }}>
-                    <ChatProvider adapter={storytellerChatAdapter}>
-                      <ChatMessageList
-                        items={chatMessageIds}
-                        renderItem={({ id }) => renderChatMessage(id)}
-                        enableRovingFocus={false}
-                        sx={{ flex: 1, minHeight: 0 }}
-                        slotProps={{
-                          messageListContent: {
-                            style: { paddingBlock: 11 },
-                          },
-                        }}
-                      />
-                    </ChatProvider>
-                    {aiMessageTotalPages > 1 && (
-                      <Stack direction="row" justifyContent="center">
-                        <Pagination
-                          size="small"
-                          count={aiMessageTotalPages}
-                          page={aiMessagePage}
-                          onChange={(_, page) => setAiMessagePage(page)}
-                          color="primary"
-                        />
-                      </Stack>
-                    )}
-                  </Stack>
-                ) : (
-                  <Box sx={{ px: 2, py: 2 }}>
-                    <CustomEmptyState
-                      icon={<SmartToyIcon fontSize="large" />}
-                      title="還沒有 AI Agent 對話紀錄"
-                      description="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
-                    />
-                  </Box>
-                )}
-                {runAgent.isError && (
-                  <Alert severity="error" variant="outlined" sx={{ mx: 2 }}>
-                    {aiErrorMessage(runAgent.error)}
-                  </Alert>
-                )}
-              </Stack>
-
-              <Divider />
-
-              <Stack spacing={1.5} sx={{ p: 2 }}>
-                <TextField
-                  multiline
-                  minRows={4}
-                  maxRows={8}
-                  label="輸入需求"
-                  value={aiPrompt}
-                  onChange={(event) => setAiPrompt(event.target.value)}
-                  placeholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 引用同專案資料。"
-                  error={Boolean(aiPayloadError)}
-                  helperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
-                />
-                <Stack direction="row" justifyContent="flex-start">
-                  <StorytellerMarkdownSyntaxLink />
-                </Stack>
-                {aiPayloadError && (
-                  <Alert severity="warning" variant="outlined">
-                    {aiPayloadError}
-                  </Alert>
-                )}
+          <StorytellerAgentPanel
+            agents={panelAgents}
+            selectedAgentId={selectedAgentId}
+            onSelectedAgentChange={setSelectedAgentId}
+            messages={chatMessages}
+            messagesLoading={aiMessagesLoading}
+            pending={runAgent.isPending}
+            unavailableMessage={
+              !apiStory?.public_id
+                ? "新故事第一次存檔後才能呼叫 AI Agent。"
+                : undefined
+            }
+            emptyTitle="還沒有 AI Agent 對話紀錄"
+            emptyDescription="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
+            page={aiMessagePage}
+            pageCount={aiMessageTotalPages}
+            onPageChange={setAiMessagePage}
+            errorMessage={
+              runAgent.isError ? aiErrorMessage(runAgent.error) : ""
+            }
+            prompt={aiPrompt}
+            onPromptChange={setAiPrompt}
+            promptPlaceholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 從候選清單插入引用。"
+            promptError={Boolean(aiPayloadError)}
+            promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
+            promptWarning={aiPayloadError}
+            promptExtras={
+              <>
                 {agentPromptReferences.length > 0 && (
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {agentPromptReferences.map((reference) => (
@@ -1493,17 +1160,13 @@ export default function StorytellerStoryEditor() {
                     ))}
                   </Stack>
                 )}
-                <Button
-                  variant="contained"
-                  startIcon={<SendIcon />}
-                  disabled={!canRunAgent}
-                  onClick={() => runSelectedAgent()}
-                >
-                  {runAgent.isPending ? "處理中" : "送出需求"}
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
+              </>
+            }
+            canRun={canRunAgent}
+            onRun={() => runSelectedAgent()}
+            onApplyText={applyAgentText}
+            enableReplace
+          />
         </Grid>
       </Grid>
     </StorytellerShell>
