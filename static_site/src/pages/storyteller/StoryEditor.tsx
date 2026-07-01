@@ -1084,167 +1084,166 @@ export default function StorytellerStoryEditor() {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 1 }} sx={{ order: { xs: 2, lg: 3 } }}>
-          <StorytellerEditorSideTabs
-            value={sidePanel}
-            onChange={handleSidePanelChange}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 3, lg: 2 } }}>
-          {sidePanel === "preview" && (
-            <Paper
-              ref={previewScrollRef}
-              variant="outlined"
-              sx={{
-                borderRadius: 1,
-                p: 3,
-                height: { lg: 720 },
-                overflow: "auto",
-              }}
-            >
-              <Box
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <Stack spacing={2}>
+            <StorytellerEditorSideTabs
+              value={sidePanel}
+              onChange={handleSidePanelChange}
+            />
+            {sidePanel === "preview" && (
+              <Paper
+                ref={previewScrollRef}
+                variant="outlined"
                 sx={{
-                  typography: "body1",
-                  lineHeight: 1.9,
-                  "& h1": { typography: "h4", fontWeight: 800 },
-                  "& h2": { typography: "h5", fontWeight: 800, mt: 3 },
-                  "& p": { my: 1.5 },
+                  borderRadius: 1,
+                  p: 3,
+                  height: { lg: 720 },
+                  overflow: "auto",
                 }}
               >
-                {previewBlocks.map((block, index) => (
-                  <Box key={index} data-story-block-index={index}>
-                    <StorytellerMarkdown>{block.text}</StorytellerMarkdown>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          )}
+                <Box
+                  sx={{
+                    typography: "body1",
+                    lineHeight: 1.9,
+                    "& h1": { typography: "h4", fontWeight: 800 },
+                    "& h2": { typography: "h5", fontWeight: 800, mt: 3 },
+                    "& p": { my: 1.5 },
+                  }}
+                >
+                  {previewBlocks.map((block, index) => (
+                    <Box key={index} data-story-block-index={index}>
+                      <StorytellerMarkdown>{block.text}</StorytellerMarkdown>
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            )}
 
-          {sidePanel === "history" && (
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 1,
-                p: 2,
-                height: { lg: 720 },
-                overflow: "auto",
-              }}
-            >
-              <StoryEditHistory
-                items={visibleStoryDiffs}
-                loading={apiStoryVersionsLoading}
-                leftVersionId={leftDiffId}
-                rightVersionId={rightDiffId}
-                comparePath={comparePath}
-                onLeftVersionChange={handleLeftDiffChange}
-                onRightVersionChange={setRightDiffId}
-                isRightVersionDisabled={isRightDiffDisabled}
-                isNewItem={isNewStory}
-                newItemMessage="新故事第一次存檔後才會產生編輯歷史。"
-                page={historyPage}
-                pageCount={totalHistoryPages}
-                onPageChange={setHistoryPage}
+            {sidePanel === "history" && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  borderRadius: 1,
+                  p: 2,
+                  height: { lg: 720 },
+                  overflow: "auto",
+                }}
+              >
+                <StoryEditHistory
+                  items={visibleStoryDiffs}
+                  loading={apiStoryVersionsLoading}
+                  leftVersionId={leftDiffId}
+                  rightVersionId={rightDiffId}
+                  comparePath={comparePath}
+                  onLeftVersionChange={handleLeftDiffChange}
+                  onRightVersionChange={setRightDiffId}
+                  isRightVersionDisabled={isRightDiffDisabled}
+                  isNewItem={isNewStory}
+                  newItemMessage="新故事第一次存檔後才會產生編輯歷史。"
+                  page={historyPage}
+                  pageCount={totalHistoryPages}
+                  onPageChange={setHistoryPage}
+                />
+              </Paper>
+            )}
+
+            {sidePanel === "ai" && (
+              <StorytellerAgentPanel
+                agents={panelAgents}
+                selectedAgentId={selectedAgentId}
+                onSelectedAgentChange={setSelectedAgentId}
+                messages={chatMessages}
+                messagesLoading={aiMessagesLoading}
+                pending={runAgent.isPending}
+                unavailableMessage={
+                  !apiStory?.public_id
+                    ? "新故事第一次存檔後才能呼叫 AI Agent。"
+                    : undefined
+                }
+                emptyTitle="還沒有 AI Agent 對話紀錄"
+                emptyDescription="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
+                page={aiMessagePage}
+                pageCount={aiMessageTotalPages}
+                onPageChange={setAiMessagePage}
+                errorMessage={
+                  runAgent.isError ? aiErrorMessage(runAgent.error) : ""
+                }
+                prompt={aiPrompt}
+                onPromptChange={setAiPrompt}
+                promptPlaceholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 從候選清單插入引用。"
+                promptError={Boolean(aiPayloadError)}
+                promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
+                promptWarning={aiPayloadError}
+                promptExtras={
+                  <>
+                    {agentPromptReferences.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {agentPromptReferences.map((reference) => (
+                          <Chip
+                            key={reference.token}
+                            size="small"
+                            color={
+                              reference.token === "@thisStory"
+                                ? "primary"
+                                : "default"
+                            }
+                            label={reference.title}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                    {storyMentionOptions.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {storyMentionOptions.map((item) => (
+                          <Button
+                            key={item.public_id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertStoryMention(item.title)}
+                          >
+                            {item.title}
+                          </Button>
+                        ))}
+                      </Stack>
+                    )}
+                    {loreMentionOptions.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {loreMentionOptions.map((item) => (
+                          <Button
+                            key={item.public_id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() => insertLoreMention(item.title)}
+                          >
+                            設定集：{item.title}
+                          </Button>
+                        ))}
+                      </Stack>
+                    )}
+                  </>
+                }
+                canRun={canRunAgent}
+                onRun={() => runSelectedAgent()}
+                onApplyText={applyAgentText}
+                enableReplace
               />
-            </Paper>
-          )}
-
-          {sidePanel === "ai" && (
-            <StorytellerAgentPanel
-              agents={panelAgents}
-              selectedAgentId={selectedAgentId}
-              onSelectedAgentChange={setSelectedAgentId}
-              messages={chatMessages}
-              messagesLoading={aiMessagesLoading}
-              pending={runAgent.isPending}
-              unavailableMessage={
-                !apiStory?.public_id
-                  ? "新故事第一次存檔後才能呼叫 AI Agent。"
-                  : undefined
-              }
-              emptyTitle="還沒有 AI Agent 對話紀錄"
-              emptyDescription="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
-              page={aiMessagePage}
-              pageCount={aiMessageTotalPages}
-              onPageChange={setAiMessagePage}
-              errorMessage={
-                runAgent.isError ? aiErrorMessage(runAgent.error) : ""
-              }
-              prompt={aiPrompt}
-              onPromptChange={setAiPrompt}
-              promptPlaceholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 從候選清單插入引用。"
-              promptError={Boolean(aiPayloadError)}
-              promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
-              promptWarning={aiPayloadError}
-              promptExtras={
-                <>
-                  {agentPromptReferences.length > 0 && (
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {agentPromptReferences.map((reference) => (
-                        <Chip
-                          key={reference.token}
-                          size="small"
-                          color={
-                            reference.token === "@thisStory"
-                              ? "primary"
-                              : "default"
-                          }
-                          label={reference.title}
-                        />
-                      ))}
-                    </Stack>
-                  )}
-                  {storyMentionOptions.length > 0 && (
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {storyMentionOptions.map((item) => (
-                        <Button
-                          key={item.public_id}
-                          size="small"
-                          variant="outlined"
-                          onClick={() => insertStoryMention(item.title)}
-                        >
-                          {item.title}
-                        </Button>
-                      ))}
-                    </Stack>
-                  )}
-                  {loreMentionOptions.length > 0 && (
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {loreMentionOptions.map((item) => (
-                        <Button
-                          key={item.public_id}
-                          size="small"
-                          variant="outlined"
-                          onClick={() => insertLoreMention(item.title)}
-                        >
-                          設定集：{item.title}
-                        </Button>
-                      ))}
-                    </Stack>
-                  )}
-                </>
-              }
-              canRun={canRunAgent}
-              onRun={() => runSelectedAgent()}
-              onApplyText={applyAgentText}
-              enableReplace
-            />
-          )}
+            )}
+          </Stack>
         </Grid>
       </Grid>
     </StorytellerShell>

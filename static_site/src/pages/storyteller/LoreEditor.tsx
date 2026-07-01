@@ -679,116 +679,122 @@ export default function StorytellerLoreEditor() {
           </Paper>
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 1 }} sx={{ order: { xs: 2, lg: 3 } }}>
-          <StorytellerEditorSideTabs
-            value={sidePanel}
-            onChange={setSidePanel}
-            historyDisabled={isNewLore}
-          />
-        </Grid>
-
-        <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 3, lg: 2 } }}>
-          {sidePanel === "preview" && (
-            <Paper
-              ref={previewScrollRef}
-              variant="outlined"
-              sx={{
-                borderRadius: 1,
-                p: 3,
-                height: { lg: 720 },
-                overflow: "auto",
-              }}
-            >
-              <Box
+        <Grid size={{ xs: 12, lg: 5 }}>
+          <Stack spacing={2}>
+            <StorytellerEditorSideTabs
+              value={sidePanel}
+              onChange={setSidePanel}
+              historyDisabled={isNewLore}
+            />
+            {sidePanel === "preview" && (
+              <Paper
+                ref={previewScrollRef}
+                variant="outlined"
                 sx={{
-                  typography: "body1",
-                  lineHeight: 1.9,
-                  "& h1": { typography: "h4", fontWeight: 800 },
-                  "& h2": { typography: "h5", fontWeight: 800, mt: 3 },
-                  "& p": { my: 1.5 },
-                  "& img": { maxWidth: "100%" },
+                  borderRadius: 1,
+                  p: 3,
+                  height: { lg: 720 },
+                  overflow: "auto",
                 }}
               >
-                {previewBlocks.map((block, index) => (
-                  <Box key={index} data-story-block-index={index}>
-                    <StorytellerMarkdown>
-                      {block.text || " "}
-                    </StorytellerMarkdown>
-                  </Box>
-                ))}
-              </Box>
-            </Paper>
-          )}
+                <Box
+                  sx={{
+                    typography: "body1",
+                    lineHeight: 1.9,
+                    "& h1": { typography: "h4", fontWeight: 800 },
+                    "& h2": { typography: "h5", fontWeight: 800, mt: 3 },
+                    "& p": { my: 1.5 },
+                    "& img": { maxWidth: "100%" },
+                  }}
+                >
+                  {previewBlocks.map((block, index) => (
+                    <Box key={index} data-story-block-index={index}>
+                      <StorytellerMarkdown>
+                        {block.text || " "}
+                      </StorytellerMarkdown>
+                    </Box>
+                  ))}
+                </Box>
+              </Paper>
+            )}
 
-          {sidePanel === "history" && (
-            <Paper
-              variant="outlined"
-              sx={{
-                borderRadius: 1,
-                p: 2,
-                height: { lg: 720 },
-                overflow: "auto",
-              }}
-            >
-              <StoryEditHistory
-                items={loreHistoryItems}
-                loading={versionsLoading}
-                leftVersionId={leftVersionId}
-                rightVersionId={rightVersionId}
-                comparePath={comparePath}
-                onLeftVersionChange={handleLeftVersionChange}
-                onRightVersionChange={setRightVersionId}
-                isRightVersionDisabled={isRightVersionDisabled}
-                isNewItem={isNewLore}
-                newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+            {sidePanel === "history" && (
+              <Paper
+                variant="outlined"
+                sx={{
+                  borderRadius: 1,
+                  p: 2,
+                  height: { lg: 720 },
+                  overflow: "auto",
+                }}
+              >
+                <StoryEditHistory
+                  items={loreHistoryItems}
+                  loading={versionsLoading}
+                  leftVersionId={leftVersionId}
+                  rightVersionId={rightVersionId}
+                  comparePath={comparePath}
+                  onLeftVersionChange={handleLeftVersionChange}
+                  onRightVersionChange={setRightVersionId}
+                  isRightVersionDisabled={isRightVersionDisabled}
+                  isNewItem={isNewLore}
+                  newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+                />
+              </Paper>
+            )}
+
+            {sidePanel === "ai" && (
+              <StorytellerAgentPanel
+                agents={panelAgents}
+                selectedAgentId={String(selectedAgent?.id ?? "")}
+                onSelectedAgentChange={setSelectedAgentId}
+                messages={panelMessages}
+                messagesLoading={aiMessagesLoading}
+                pending={runAgent.isPending}
+                unavailableMessage={
+                  isNewLore
+                    ? "設定集第一次存檔後才能呼叫 AI Agent。"
+                    : undefined
+                }
+                emptyTitle="還沒有 AI Agent 對話紀錄"
+                emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
+                page={aiMessagePage}
+                pageCount={aiMessageTotalPages}
+                onPageChange={setAiMessagePage}
+                prompt={aiPrompt}
+                onPromptChange={setAiPrompt}
+                promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
+                promptExtras={
+                  loreReferences.length > 0 ? (
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
+                      {loreReferences.map((reference) => (
+                        <Chip
+                          key={reference.token}
+                          size="small"
+                          color={
+                            reference.token === "@thisLore"
+                              ? "primary"
+                              : "default"
+                          }
+                          label={reference.title}
+                        />
+                      ))}
+                    </Stack>
+                  ) : null
+                }
+                canRun={canRunAgent}
+                onRun={runSelectedAgent}
+                onApplyText={(text, action) =>
+                  applyAgentText(text, action === "replace" ? "insert" : action)
+                }
               />
-            </Paper>
-          )}
-
-          {sidePanel === "ai" && (
-            <StorytellerAgentPanel
-              agents={panelAgents}
-              selectedAgentId={String(selectedAgent?.id ?? "")}
-              onSelectedAgentChange={setSelectedAgentId}
-              messages={panelMessages}
-              messagesLoading={aiMessagesLoading}
-              pending={runAgent.isPending}
-              unavailableMessage={
-                isNewLore ? "設定集第一次存檔後才能呼叫 AI Agent。" : undefined
-              }
-              emptyTitle="還沒有 AI Agent 對話紀錄"
-              emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
-              page={aiMessagePage}
-              pageCount={aiMessageTotalPages}
-              onPageChange={setAiMessagePage}
-              prompt={aiPrompt}
-              onPromptChange={setAiPrompt}
-              promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
-              promptExtras={
-                loreReferences.length > 0 ? (
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {loreReferences.map((reference) => (
-                      <Chip
-                        key={reference.token}
-                        size="small"
-                        color={
-                          reference.token === "@thisLore"
-                            ? "primary"
-                            : "default"
-                        }
-                        label={reference.title}
-                      />
-                    ))}
-                  </Stack>
-                ) : null
-              }
-              canRun={canRunAgent}
-              onRun={runSelectedAgent}
-              onApplyText={(text, action) =>
-                applyAgentText(text, action === "replace" ? "insert" : action)
-              }
-            />
-          )}
+            )}
+          </Stack>
         </Grid>
       </Grid>
       <CustomSnackbar

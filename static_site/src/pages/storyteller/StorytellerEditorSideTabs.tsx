@@ -11,42 +11,37 @@ interface StorytellerEditorSideTabsProps {
   historyDisabled?: boolean;
 }
 
-// 右側垂直分頁：AI Agent／預覽／編輯歷史同一時間只展開一種側欄內容，
-// 避免和文字編輯區同時並排時版面過於擁擠。
+// 側欄頂端的水平分頁：AI Agent／預覽／編輯歷史同一時間只展開一種側欄內容，
+// 避免和文字編輯區同時並排時版面過於擁擠。改成水平置頂後，原本佔一整欄
+// 高度的直向分頁欄寬可以讓給側欄內容本身使用。
 export function StorytellerEditorSideTabs({
   value,
   onChange,
   historyDisabled,
 }: StorytellerEditorSideTabsProps) {
   return (
-    <Paper variant="outlined" sx={{ borderRadius: 1, height: "100%" }}>
+    <Paper variant="outlined" sx={{ borderRadius: 1 }}>
       <Tabs
-        orientation="vertical"
         value={value}
         onChange={(_, next: StorytellerEditorSidePanel) => onChange(next)}
-        sx={{
-          "& .MuiTab-root": {
-            minWidth: 0,
-            minHeight: 64,
-            fontSize: "0.7rem",
-            whiteSpace: "normal",
-            lineHeight: 1.3,
-          },
-        }}
+        variant="fullWidth"
       >
         <Tab
           value="ai"
           icon={<SmartToyIcon fontSize="small" />}
+          iconPosition="start"
           label="AI Agent"
         />
         <Tab
           value="preview"
           icon={<VisibilityIcon fontSize="small" />}
+          iconPosition="start"
           label="預覽"
         />
         <Tab
           value="history"
           icon={<HistoryIcon fontSize="small" />}
+          iconPosition="start"
           label="編輯歷史"
           disabled={historyDisabled}
         />
