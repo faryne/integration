@@ -30,6 +30,25 @@ export interface ImageViewerPhoto {
   url: string;
 }
 
+interface SlideTransition {
+  direction: 1 | -1;
+  index: number;
+  photo: ImageViewerPhoto;
+}
+
+const SLIDE_DURATION = 280;
+
+function slideTransform(
+  entered: boolean,
+  isOutgoing: boolean,
+  direction: 1 | -1,
+) {
+  if (isOutgoing) {
+    return entered ? `translateX(${direction * -100}%)` : "translateX(0)";
+  }
+  return entered ? "translateX(0)" : `translateX(${direction * 100}%)`;
+}
+
 export function ImageViewer({
   children,
   initialIndex = 0,
@@ -49,6 +68,10 @@ export function ImageViewer({
   const [naturalHeights, setNaturalHeights] = useState<number[]>([]);
   const [naturalWidths, setNaturalWidths] = useState<number[]>([]);
   const [puzzleOpen, setPuzzleOpen] = useState(false);
+  const [slideEntered, setSlideEntered] = useState(false);
+  const [slideTransition, setSlideTransition] = useState<SlideTransition | null>(
+    null,
+  );
   const [viewportSize, setViewportSize] = useState({ height: 0, width: 0 });
   const imageStageRef = useRef<HTMLDivElement | null>(null);
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -82,6 +105,8 @@ export function ImageViewer({
     if (normalized === currentIndex) {
       return;
     }
+    const direction: 1 | -1 = normalized > currentIndex ? 1 : -1;
+    setSlideTransition({ direction, index: currentIndex, photo: currentPhoto });
     setCurrentIndex(normalized);
     setExpanded(false);
   };
@@ -159,6 +184,8 @@ export function ImageViewer({
         : 0,
     );
     setExpanded(false);
+    setSlideTransition(null);
+    setSlideEntered(false);
 
     const urls = photos.map((photo) => photo.url).filter(Boolean);
     if (urls.length === 0) {
@@ -214,6 +241,23 @@ export function ImageViewer({
       window.removeEventListener("orientationchange", updateViewportSize);
     };
   }, []);
+
+  useEffect(() => {
+    if (!slideTransition) {
+      return;
+    }
+
+    const raf = requestAnimationFrame(() => setSlideEntered(true));
+    const timeout = window.setTimeout(() => {
+      setSlideTransition(null);
+      setSlideEntered(false);
+    }, SLIDE_DURATION);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [slideTransition]);
 
   useEffect(() => {
     if (!allImagesLoaded || !hasThumbnails) {
@@ -332,8 +376,8 @@ export function ImageViewer({
                 display: "grid",
                 gap: 1.5,
                 gridTemplateColumns: {
-                  xs: "1fr",
-                  md: hasThumbnails ? "92px minmax(0, 1fr)" : "1fr",
+                  xs: "minmax(0, 1fr)",
+                  md: hasThumbnails ? "92px minmax(0, 1fr)" : "minmax(0, 1fr)",
                 },
                 width: "100%",
               }}
@@ -465,22 +509,74 @@ export function ImageViewer({
                     }}
                   >
                     <Box
-                      component="img"
-                      src={currentPhoto.url}
-                      alt={`${title} ${currentIndex + 1}`}
                       sx={{
-                        borderRadius: expanded ? 0 : 1,
-                        boxShadow: expanded
-                          ? "none"
-                          : "0 18px 50px rgba(0, 0, 0, 0.28)",
-                        display: "block",
-                        height: expanded ? "auto" : "auto",
-                        maxHeight: expanded ? "none" : "min(72vh, 820px)",
-                        maxWidth: expanded ? "none" : "100%",
-                        objectFit: "contain",
-                        width: expanded ? "auto" : "auto",
+                        height: slideTransition ? "min(72vh, 820px)" : "auto",
+                        position: "relative",
+                        width: slideTransition ? "100%" : "auto",
                       }}
-                    />
+                    >
+                      {slideTransition && (
+                        <Box
+                          component="img"
+                          src={slideTransition.photo.url}
+                          alt={`${title} ${slideTransition.index + 1}`}
+                          sx={{
+                            borderRadius: 1,
+                            boxShadow: "0 18px 50px rgba(0, 0, 0, 0.28)",
+                            height: "100%",
+                            inset: 0,
+                            objectFit: "contain",
+                            pointerEvents: "none",
+                            position: "absolute",
+                            transform: slideTransform(
+                              slideEntered,
+                              true,
+                              slideTransition.direction,
+                            ),
+                            transition: `transform ${SLIDE_DURATION}ms ease`,
+                            width: "100%",
+                          }}
+                        />
+                      )}
+                      <Box
+                        key={currentPhoto.url}
+                        component="img"
+                        src={currentPhoto.url}
+                        alt={`${title} ${currentIndex + 1}`}
+                        sx={{
+                          borderRadius: expanded ? 0 : 1,
+                          boxShadow: expanded
+                            ? "none"
+                            : "0 18px 50px rgba(0, 0, 0, 0.28)",
+                          display: "block",
+                          height: expanded
+                            ? "auto"
+                            : slideTransition
+                              ? "100%"
+                              : "auto",
+                          inset: slideTransition ? 0 : undefined,
+                          maxHeight: expanded ? "none" : "min(72vh, 820px)",
+                          maxWidth: expanded ? "none" : "100%",
+                          objectFit: "contain",
+                          position: slideTransition ? "absolute" : "static",
+                          transform: slideTransition
+                            ? slideTransform(
+                                slideEntered,
+                                false,
+                                slideTransition.direction,
+                              )
+                            : "none",
+                          transition: slideTransition
+                            ? `transform ${SLIDE_DURATION}ms ease`
+                            : "none",
+                          width: expanded
+                            ? "auto"
+                            : slideTransition
+                              ? "100%"
+                              : "auto",
+                        }}
+                      />
+                    </Box>
 
                     {(isCarousel ||
                       children ||
