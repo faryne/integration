@@ -55,6 +55,12 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import {
+  findStorytellerBlockIndexByOffset,
+  scrollStorytellerPreviewBlockIntoView,
+  splitStorytellerContentBlocks,
+  syncStorytellerPreviewScrollRatio,
+} from "@/pages/storyteller/storytellerEditorSync.ts";
+import {
   buildStorytellerAgentReferenceContent,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
@@ -91,6 +97,7 @@ export default function StorytellerLoreEditor() {
   const navigate = useNavigate();
   const isNewLore = loreId === "new";
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDraftRef = useRef(serializeLoreDraft("", ""));
   const lastSavedDraftRef = useRef(serializeLoreDraft("", ""));
   const latestDraftRef = useRef<LoreDraft>({ title: "", content: "" });
@@ -150,6 +157,10 @@ export default function StorytellerLoreEditor() {
     : title.trim() || lore?.title || "設定集";
   const wordCount = useMemo(
     () => content.replace(/\s+/g, "").length,
+    [content],
+  );
+  const previewBlocks = useMemo(
+    () => splitStorytellerContentBlocks(content),
     [content],
   );
   const selectedAgent =
@@ -265,6 +276,26 @@ export default function StorytellerLoreEditor() {
   }, [saveLore]);
 
   useEffect(() => {
+    const target = textAreaRef.current;
+    if (!target) {
+      return;
+    }
+
+    function handleEditorScroll() {
+      if (sidePanel !== "preview") {
+        return;
+      }
+      syncStorytellerPreviewScrollRatio(
+        target as HTMLTextAreaElement,
+        previewScrollRef.current,
+      );
+    }
+
+    target.addEventListener("scroll", handleEditorScroll);
+    return () => target.removeEventListener("scroll", handleEditorScroll);
+  }, [sidePanel]);
+
+  useEffect(() => {
     if (!apiProject?.public_id || isNewLore || !lore?.id) {
       return;
     }
@@ -323,6 +354,18 @@ export default function StorytellerLoreEditor() {
 
   if (!project || (!isNewLore && !lore)) {
     return <ErrorPage code={404} />;
+  }
+
+  function syncPreviewOnCursor() {
+    const target = textAreaRef.current;
+    if (!target || sidePanel !== "preview") {
+      return;
+    }
+    const blockIndex = findStorytellerBlockIndexByOffset(
+      previewBlocks,
+      target.selectionStart,
+    );
+    scrollStorytellerPreviewBlockIntoView(previewScrollRef.current, blockIndex);
   }
 
   function applyMarkdownFormat(
@@ -609,6 +652,9 @@ export default function StorytellerLoreEditor() {
               label="Markdown 內容"
               value={content}
               onChange={(event) => setContent(event.target.value)}
+              onSelect={syncPreviewOnCursor}
+              onKeyUp={syncPreviewOnCursor}
+              onMouseUp={syncPreviewOnCursor}
               fullWidth
               multiline
               minRows={22}
@@ -644,6 +690,7 @@ export default function StorytellerLoreEditor() {
         <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 3, lg: 2 } }}>
           {sidePanel === "preview" && (
             <Paper
+              ref={previewScrollRef}
               variant="outlined"
               sx={{
                 borderRadius: 1,
@@ -662,7 +709,13 @@ export default function StorytellerLoreEditor() {
                   "& img": { maxWidth: "100%" },
                 }}
               >
-                <StorytellerMarkdown>{content || " "}</StorytellerMarkdown>
+                {previewBlocks.map((block, index) => (
+                  <Box key={index} data-story-block-index={index}>
+                    <StorytellerMarkdown>
+                      {block.text || " "}
+                    </StorytellerMarkdown>
+                  </Box>
+                ))}
               </Box>
             </Paper>
           )}

@@ -58,6 +58,12 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import {
+  findStorytellerBlockIndexByOffset,
+  scrollStorytellerPreviewBlockIntoView,
+  splitStorytellerContentBlocks,
+  syncStorytellerPreviewScrollRatio,
+} from "@/pages/storyteller/storytellerEditorSync.ts";
+import {
   buildStorytellerAgentReferenceContent,
   formatStorytellerAgentReferenceToken,
   resolveStorytellerAgentReferences,
@@ -239,6 +245,7 @@ export default function StorytellerStoryEditor() {
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
   const lastSavedDraftRef = useRef(
     serializeStoryDraft("", "", "completed", ""),
@@ -478,6 +485,30 @@ export default function StorytellerStoryEditor() {
     const normalized = content.replace(/\s+/g, "");
     return normalized.length;
   }, [content]);
+  const previewBlocks = useMemo(
+    () => splitStorytellerContentBlocks(content),
+    [content],
+  );
+
+  useEffect(() => {
+    const target = textAreaRef.current;
+    if (!target) {
+      return;
+    }
+
+    function handleEditorScroll() {
+      if (sidePanel !== "preview") {
+        return;
+      }
+      syncStorytellerPreviewScrollRatio(
+        target as HTMLTextAreaElement,
+        previewScrollRef.current,
+      );
+    }
+
+    target.addEventListener("scroll", handleEditorScroll);
+    return () => target.removeEventListener("scroll", handleEditorScroll);
+  }, [sidePanel]);
 
   useEffect(() => {
     if (!apiProject?.public_id || isNewStory || !story?.id) {
@@ -547,6 +578,17 @@ export default function StorytellerStoryEditor() {
     const end = target.selectionEnd;
     const value = target.value.slice(start, end);
     setSelectionState({ start, end, text: value });
+
+    if (sidePanel === "preview") {
+      const blockIndex = findStorytellerBlockIndexByOffset(
+        previewBlocks,
+        start,
+      );
+      scrollStorytellerPreviewBlockIntoView(
+        previewScrollRef.current,
+        blockIndex,
+      );
+    }
   }
 
   function isRightDiffDisabled(diffId: string) {
@@ -1052,6 +1094,7 @@ export default function StorytellerStoryEditor() {
         <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 3, lg: 2 } }}>
           {sidePanel === "preview" && (
             <Paper
+              ref={previewScrollRef}
               variant="outlined"
               sx={{
                 borderRadius: 1,
@@ -1069,7 +1112,11 @@ export default function StorytellerStoryEditor() {
                   "& p": { my: 1.5 },
                 }}
               >
-                <StorytellerMarkdown>{content}</StorytellerMarkdown>
+                {previewBlocks.map((block, index) => (
+                  <Box key={index} data-story-block-index={index}>
+                    <StorytellerMarkdown>{block.text}</StorytellerMarkdown>
+                  </Box>
+                ))}
               </Box>
             </Paper>
           )}
