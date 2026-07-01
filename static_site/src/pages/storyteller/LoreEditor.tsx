@@ -15,8 +15,6 @@ import {
   IconButton,
   Paper,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   Tooltip,
 } from "@mui/material";
@@ -52,6 +50,10 @@ import {
   type StorytellerAgentPanelAgent,
   type StorytellerAgentPanelMessage,
 } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import {
+  StorytellerEditorSideTabs,
+  type StorytellerEditorSidePanel,
+} from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import {
   buildStorytellerAgentReferenceContent,
   resolveStorytellerAgentReferences,
@@ -93,7 +95,7 @@ export default function StorytellerLoreEditor() {
   const lastSavedDraftRef = useRef(serializeLoreDraft("", ""));
   const latestDraftRef = useRef<LoreDraft>({ title: "", content: "" });
   const autoSaveRunningRef = useRef(false);
-  const [tab, setTab] = useState("editor");
+  const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel>("ai");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
@@ -528,125 +530,128 @@ export default function StorytellerLoreEditor() {
       }
     >
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: 8 }}>
+        <Grid size={{ xs: 12, lg: 7 }}>
           <Paper
             variant="outlined"
-            sx={{ borderRadius: 1, overflow: "hidden" }}
+            sx={{ borderRadius: 1, overflow: "hidden", p: 2 }}
           >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              alignItems={{ xs: "stretch", sm: "center" }}
-              justifyContent="space-between"
-              sx={{ px: 2, py: 1.5 }}
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 1,
+                mb: 2,
+                borderRadius: 1,
+                bgcolor: "background.default",
+              }}
             >
-              <Tabs value={tab} onChange={(_, value: string) => setTab(value)}>
-                <Tab value="editor" label="文字編輯" />
-                <Tab value="preview" label="預覽" />
-                <Tab value="history" label="編輯歷史" disabled={isNewLore} />
-              </Tabs>
-            </Stack>
-            <Divider />
-
-            <Box sx={{ display: tab === "editor" ? "block" : "none", p: 2 }}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 1,
-                  mb: 2,
-                  borderRadius: 1,
-                  bgcolor: "background.default",
-                }}
+              <Stack
+                direction="row"
+                spacing={0.5}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
               >
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  alignItems="center"
-                  flexWrap="wrap"
-                  useFlexGap
-                >
-                  <Tooltip title="粗體">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("bold")}
-                    >
-                      <FormatBoldIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="斜體">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("italic")}
-                    >
-                      <FormatItalicIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="底標">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("subscript")}
-                    >
-                      <SubscriptIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-                  <Tooltip title="靠左">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("left")}
-                    >
-                      <FormatAlignLeftIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="置中">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("center")}
-                    >
-                      <FormatAlignCenterIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="靠右">
-                    <IconButton
-                      size="small"
-                      onClick={() => applyMarkdownFormat("right")}
-                    >
-                      <FormatAlignRightIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-                  <StorytellerMarkdownSyntaxDrawer />
-                </Stack>
-              </Paper>
-              <TextField
-                inputRef={textAreaRef}
-                label="Markdown 內容"
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-                fullWidth
-                multiline
-                minRows={22}
-                placeholder="使用 Markdown 撰寫設定集內容"
-                slotProps={{
-                  input: {
-                    sx: {
-                      alignItems: "flex-start",
-                      fontFamily:
-                        '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-                      lineHeight: 1.8,
-                      height: { xs: 420, md: 560 },
-                      overflow: "auto",
-                      "& textarea": {
-                        height: "100% !important",
-                        overflow: "auto !important",
-                      },
+                <Tooltip title="粗體">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("bold")}
+                  >
+                    <FormatBoldIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="斜體">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("italic")}
+                  >
+                    <FormatItalicIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="底標">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("subscript")}
+                  >
+                    <SubscriptIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+                <Tooltip title="靠左">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("left")}
+                  >
+                    <FormatAlignLeftIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="置中">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("center")}
+                  >
+                    <FormatAlignCenterIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="靠右">
+                  <IconButton
+                    size="small"
+                    onClick={() => applyMarkdownFormat("right")}
+                  >
+                    <FormatAlignRightIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+                <StorytellerMarkdownSyntaxDrawer />
+              </Stack>
+            </Paper>
+            <TextField
+              inputRef={textAreaRef}
+              label="Markdown 內容"
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              fullWidth
+              multiline
+              minRows={22}
+              placeholder="使用 Markdown 撰寫設定集內容"
+              slotProps={{
+                input: {
+                  sx: {
+                    alignItems: "flex-start",
+                    fontFamily:
+                      '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+                    lineHeight: 1.8,
+                    height: { xs: 420, md: 560 },
+                    overflow: "auto",
+                    "& textarea": {
+                      height: "100% !important",
+                      overflow: "auto !important",
                     },
                   },
-                }}
-              />
-            </Box>
+                },
+              }}
+            />
+          </Paper>
+        </Grid>
 
-            <Box sx={{ display: tab === "preview" ? "block" : "none", p: 3 }}>
+        <Grid size={{ xs: 12, lg: 1 }} sx={{ order: { xs: 2, lg: 3 } }}>
+          <StorytellerEditorSideTabs
+            value={sidePanel}
+            onChange={setSidePanel}
+            historyDisabled={isNewLore}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 4 }} sx={{ order: { xs: 3, lg: 2 } }}>
+          {sidePanel === "preview" && (
+            <Paper
+              variant="outlined"
+              sx={{
+                borderRadius: 1,
+                p: 3,
+                height: { lg: 720 },
+                overflow: "auto",
+              }}
+            >
               <Box
                 sx={{
                   typography: "body1",
@@ -659,9 +664,19 @@ export default function StorytellerLoreEditor() {
               >
                 <StorytellerMarkdown>{content || " "}</StorytellerMarkdown>
               </Box>
-            </Box>
+            </Paper>
+          )}
 
-            <Box sx={{ display: tab === "history" ? "block" : "none", p: 2 }}>
+          {sidePanel === "history" && (
+            <Paper
+              variant="outlined"
+              sx={{
+                borderRadius: 1,
+                p: 2,
+                height: { lg: 720 },
+                overflow: "auto",
+              }}
+            >
               <StoryEditHistory
                 items={loreHistoryItems}
                 loading={versionsLoading}
@@ -674,51 +689,53 @@ export default function StorytellerLoreEditor() {
                 isNewItem={isNewLore}
                 newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
               />
-            </Box>
-          </Paper>
-        </Grid>
+            </Paper>
+          )}
 
-        <Grid size={{ xs: 12, lg: 4 }}>
-          <StorytellerAgentPanel
-            agents={panelAgents}
-            selectedAgentId={String(selectedAgent?.id ?? "")}
-            onSelectedAgentChange={setSelectedAgentId}
-            messages={panelMessages}
-            messagesLoading={aiMessagesLoading}
-            pending={runAgent.isPending}
-            unavailableMessage={
-              isNewLore ? "設定集第一次存檔後才能呼叫 AI Agent。" : undefined
-            }
-            emptyTitle="還沒有 AI Agent 對話紀錄"
-            emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
-            page={aiMessagePage}
-            pageCount={aiMessageTotalPages}
-            onPageChange={setAiMessagePage}
-            prompt={aiPrompt}
-            onPromptChange={setAiPrompt}
-            promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
-            promptExtras={
-              loreReferences.length > 0 ? (
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {loreReferences.map((reference) => (
-                    <Chip
-                      key={reference.token}
-                      size="small"
-                      color={
-                        reference.token === "@thisLore" ? "primary" : "default"
-                      }
-                      label={reference.title}
-                    />
-                  ))}
-                </Stack>
-              ) : null
-            }
-            canRun={canRunAgent}
-            onRun={runSelectedAgent}
-            onApplyText={(text, action) =>
-              applyAgentText(text, action === "replace" ? "insert" : action)
-            }
-          />
+          {sidePanel === "ai" && (
+            <StorytellerAgentPanel
+              agents={panelAgents}
+              selectedAgentId={String(selectedAgent?.id ?? "")}
+              onSelectedAgentChange={setSelectedAgentId}
+              messages={panelMessages}
+              messagesLoading={aiMessagesLoading}
+              pending={runAgent.isPending}
+              unavailableMessage={
+                isNewLore ? "設定集第一次存檔後才能呼叫 AI Agent。" : undefined
+              }
+              emptyTitle="還沒有 AI Agent 對話紀錄"
+              emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
+              page={aiMessagePage}
+              pageCount={aiMessageTotalPages}
+              onPageChange={setAiMessagePage}
+              prompt={aiPrompt}
+              onPromptChange={setAiPrompt}
+              promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
+              promptExtras={
+                loreReferences.length > 0 ? (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {loreReferences.map((reference) => (
+                      <Chip
+                        key={reference.token}
+                        size="small"
+                        color={
+                          reference.token === "@thisLore"
+                            ? "primary"
+                            : "default"
+                        }
+                        label={reference.title}
+                      />
+                    ))}
+                  </Stack>
+                ) : null
+              }
+              canRun={canRunAgent}
+              onRun={runSelectedAgent}
+              onApplyText={(text, action) =>
+                applyAgentText(text, action === "replace" ? "insert" : action)
+              }
+            />
+          )}
         </Grid>
       </Grid>
       <CustomSnackbar
