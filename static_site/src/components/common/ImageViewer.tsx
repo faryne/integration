@@ -19,6 +19,11 @@ import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined
 import type { ReactNode, TouchEvent } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ImagePuzzleDialog } from "@/components/common/ImagePuzzleDialog.tsx";
+import {
+  SLIDE_DURATION,
+  slideTransform,
+  type SlideTransition,
+} from "@/helpers/imageViewerSlide.ts";
 
 export interface ImageViewerPhoto {
   description?: string;
@@ -28,25 +33,6 @@ export interface ImageViewerPhoto {
   thumb?: string;
   thumbnail?: string;
   url: string;
-}
-
-interface SlideTransition {
-  direction: 1 | -1;
-  index: number;
-  photo: ImageViewerPhoto;
-}
-
-const SLIDE_DURATION = 280;
-
-function slideTransform(
-  entered: boolean,
-  isOutgoing: boolean,
-  direction: 1 | -1,
-) {
-  if (isOutgoing) {
-    return entered ? `translateX(${direction * -100}%)` : "translateX(0)";
-  }
-  return entered ? "translateX(0)" : `translateX(${direction * 100}%)`;
 }
 
 export function ImageViewer({
@@ -105,6 +91,8 @@ export function ImageViewer({
     if (normalized === currentIndex) {
       return;
     }
+    // 記錄「正要離開畫面」的那張圖片與換頁方向，讓下面的渲染同時疊出
+    // 退場／進場兩張圖片並播放滑動動畫；動畫結束後由下方的 effect 清除。
     const direction: 1 | -1 = normalized > currentIndex ? 1 : -1;
     setSlideTransition({ direction, index: currentIndex, photo: currentPhoto });
     setCurrentIndex(normalized);
@@ -242,6 +230,9 @@ export function ImageViewer({
     };
   }, []);
 
+  // 換頁滑動動畫的生命週期：先讓兩張圖片以「起始位置」掛載一次，
+  // 下一個影格再把 slideEntered 打開觸發 CSS transition 滑到定案位置，
+  // 動畫時間到了之後清除退場圖片、回到單張圖片的一般版面。
   useEffect(() => {
     if (!slideTransition) {
       return;
@@ -375,6 +366,10 @@ export function ImageViewer({
                 alignItems: "stretch",
                 display: "grid",
                 gap: 1.5,
+                // 欄寬務必用 minmax(0, 1fr) 而非裸的 1fr：
+                // 外部作品資訊面板裡的「其他相關作品」是不換行的橫向捲動列表，
+                // 若欄位沒有明確的最小寬度上限，會被撐開到內容的完整寬度，
+                // 導致整個 grid（連同圖片）被推出手機畫面外（看起來像圖片消失）。
                 gridTemplateColumns: {
                   xs: "minmax(0, 1fr)",
                   md: hasThumbnails ? "92px minmax(0, 1fr)" : "minmax(0, 1fr)",
