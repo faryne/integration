@@ -27,7 +27,7 @@ const (
 	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
 	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
 	defaultImagePath    = "/faryne-icon-1024.jpg"
-	nekomaidAPIBase     = "https://faryne.dev/api/opendata/nekomaid"
+	nekomaidAPIBase     = "https://faryne.dev/api/nekomaid"
 )
 
 type pathMeta struct {

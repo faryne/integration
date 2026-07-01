@@ -1,7 +1,6 @@
 package route
 
 import (
-	nekomaidController "faryne.dev/controller/nekomaid"
 	"faryne.dev/controller/opendata"
 	"github.com/gofiber/fiber/v3"
 )
@@ -36,12 +35,6 @@ func OpenData(app *fiber.App) {
 	gNCCC := g.Group("/nccc")
 	gNCCC.Get("/indexes", opendata.NCCCIndexes)
 	gNCCC.Get("/indexes/:token/records", opendata.NCCCRecords)
-
-	gNekomaid := g.Group("/nekomaid")
-	gNekomaid.Get("", nekomaidController.Search)
-	gNekomaid.Get("/:site", nekomaidController.Search)
-	gNekomaid.Get("/:site/:authorId", nekomaidController.Search)
-	gNekomaid.Get("/:site/:authorId/:artworkId", nekomaidController.Artwork)
 
 	g5 := g.Group("/financial")
 	g51 := g5.Group("/twse")

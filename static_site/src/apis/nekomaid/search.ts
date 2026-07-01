@@ -7,11 +7,10 @@ import type {
 } from "@/types/nekomaid.ts";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 
-const nekomaidListBaseUrl = `${import.meta.env.VITE_API_BASE}/opendata/nekomaid`;
-const nekomaidDetailBaseUrl = `${import.meta.env.VITE_API_BASE}/opendata/nekomaid`;
+const nekomaidBaseUrl = `${import.meta.env.VITE_API_BASE}/nekomaid`;
 
 function listUrl(input: NekomaidSearchRequest) {
-  const segments = [nekomaidListBaseUrl];
+  const segments = [nekomaidBaseUrl];
   if (input.site) {
     segments.push(encodeURIComponent(input.site));
   }
@@ -56,7 +55,7 @@ export function useNekomaidArtworkDetail(
       const response = await axios.get<
         CommonResponse<NekomaidArtworkDetailResponse>
       >(
-        `${nekomaidDetailBaseUrl}/${encodeURIComponent(site!)}/${encodeURIComponent(authorId!)}/${encodeURIComponent(artworkId!)}`,
+        `${nekomaidBaseUrl}/${encodeURIComponent(site!)}/${encodeURIComponent(authorId!)}/${encodeURIComponent(artworkId!)}`,
       );
       return response.data.data;
     },

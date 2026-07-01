@@ -18,7 +18,7 @@ import (
 // @Success 200 {object} output.CommonOutput
 // @Failure 404 {object} output.CommonOutput
 // @Failure 500 {object} output.CommonOutput
-// @Router /opendata/nekomaid/{site}/{authorId}/{artworkId} [get]
+// @Router /nekomaid/{site}/{authorId}/{artworkId} [get]
 func Artwork(ctx fiber.Ctx) error {
 	response, err := nekomaidService.GetArtworkDetail(
 		ctx.Params("site"),
@@ -43,7 +43,7 @@ func Artwork(ctx fiber.Ctx) error {
 // @Param artworkId path string false "Artwork ID"
 // @Success 200 {object} output.CommonOutput
 // @Failure 500 {object} output.CommonOutput
-// @Router /nekomaid/search/{site}/{authorId}/{artworkId} [get]
+// @Router /nekomaid/{site}/{authorId}/{artworkId} [get]
 func Search(ctx fiber.Ctx) error {
 	response, err := nekomaidService.Search(ctx)
 	if err != nil {
