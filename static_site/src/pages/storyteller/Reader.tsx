@@ -208,7 +208,7 @@ export default function StorytellerReader() {
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  // 頂端收藏／評分功能列是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
+  // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
   // 右下角快速按鈕展開的選單錨點
   const [quickActionsAnchor, setQuickActionsAnchor] =
@@ -617,6 +617,7 @@ export default function StorytellerReader() {
       )}
 
       <Stack
+        ref={actionBarRef}
         direction={{ xs: "column", md: "row" }}
         spacing={1}
         justifyContent="space-between"
@@ -637,7 +638,6 @@ export default function StorytellerReader() {
         </Button>
         {currentStory && !isOwner && (
           <Stack
-            ref={actionBarRef}
             direction="row"
             spacing={1}
             alignItems="center"
@@ -655,25 +655,45 @@ export default function StorytellerReader() {
         description="收藏故事、收藏作者或評分故事需要登入。是否要現在登入？"
       />
 
-      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕，點開可收藏與評分 */}
-      {currentStory && !isOwner && (
+      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引、非作者可收藏與評分 */}
+      {currentStory && (isMobile || !isOwner) && (
         <>
-          <Zoom in={!actionBarVisible}>
-            <Fab
-              color="primary"
-              size="medium"
-              aria-label="開啟收藏與評分選單"
-              onClick={(event) => setQuickActionsAnchor(event.currentTarget)}
-              sx={{
-                position: "fixed",
-                right: { xs: 16, md: 32 },
-                bottom: { xs: 16, md: 32 },
-                zIndex: theme.zIndex.speedDial,
-              }}
-            >
-              {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-            </Fab>
-          </Zoom>
+          <Stack
+            spacing={1}
+            alignItems="center"
+            sx={{
+              position: "fixed",
+              right: { xs: 16, md: 32 },
+              bottom: { xs: 16, md: 32 },
+              zIndex: theme.zIndex.speedDial,
+            }}
+          >
+            {isMobile && (
+              <Zoom in={!actionBarVisible}>
+                <Fab
+                  size="medium"
+                  aria-label="開啟故事索引"
+                  onClick={() => setMobileIndexOpen(true)}
+                >
+                  <MenuBookIcon />
+                </Fab>
+              </Zoom>
+            )}
+            {!isOwner && (
+              <Zoom in={!actionBarVisible}>
+                <Fab
+                  color="primary"
+                  size="medium"
+                  aria-label="開啟收藏與評分選單"
+                  onClick={(event) =>
+                    setQuickActionsAnchor(event.currentTarget)
+                  }
+                >
+                  {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+                </Fab>
+              </Zoom>
+            )}
+          </Stack>
           <Popover
             open={Boolean(quickActionsAnchor)}
             anchorEl={quickActionsAnchor}
@@ -697,7 +717,18 @@ export default function StorytellerReader() {
           <Grid container spacing={2}>
             {showInlineIndex && (
               <Grid size={{ xs: 12, md: 4 }}>
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+                {/* 索引跟著頁面捲動；章節過多時在欄內自行捲動 */}
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2,
+                    borderRadius: 1,
+                    position: "sticky",
+                    top: 16,
+                    maxHeight: "calc(100vh - 32px)",
+                    overflowY: "auto",
+                  }}
+                >
                   <StoryIndex
                     stories={stories}
                     currentStoryId={currentStory?.id}
@@ -716,7 +747,18 @@ export default function StorytellerReader() {
         <Grid container spacing={2}>
           {showInlineIndex && (
             <Grid size={{ xs: 12, md: 4 }}>
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+              {/* 索引跟著頁面捲動；章節過多時在欄內自行捲動 */}
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 1,
+                  position: "sticky",
+                  top: 16,
+                  maxHeight: "calc(100vh - 32px)",
+                  overflowY: "auto",
+                }}
+              >
                 <StoryIndex
                   stories={stories}
                   currentStoryId={currentStory?.id}
