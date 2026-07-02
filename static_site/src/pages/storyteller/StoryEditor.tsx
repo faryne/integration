@@ -303,16 +303,6 @@ export default function StorytellerStoryEditor() {
   if (optimisticMessage) {
     transientMessages.push(optimisticMessage);
   }
-  if (runAgent.isPending) {
-    transientMessages.push({
-      id: "agent-loading",
-      role: "assistant",
-      content: "",
-      agent_id: selectedAgentNumericId,
-      agent_name: selectedAgent?.name ?? "AI Agent",
-      isLoading: true,
-    });
-  }
   if (aiResult) {
     transientMessages.push({
       id: `agent-result-${aiResult.agent_id}-${aiResult.result.length}`,

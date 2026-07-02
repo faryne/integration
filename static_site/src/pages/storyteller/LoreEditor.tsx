@@ -106,6 +106,8 @@ export default function StorytellerLoreEditor() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  // 送出中的需求內容：立刻顯示在對話列表，等後端寫入正式紀錄後清除
+  const [pendingPrompt, setPendingPrompt] = useState("");
   const [aiResult, setAiResult] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
@@ -223,6 +225,16 @@ export default function StorytellerLoreEditor() {
           ? message.agent_name || "AI Agent"
           : "使用者",
     })),
+    ...(pendingPrompt
+      ? [
+          {
+            id: "pending-user",
+            role: "user" as const,
+            content: pendingPrompt,
+            speaker: "使用者",
+          },
+        ]
+      : []),
     ...(visibleAiResult
       ? [
           {
@@ -425,12 +437,16 @@ export default function StorytellerLoreEditor() {
     if (!canRunAgent || !selectedAgent) {
       return;
     }
+    const instruction = aiPrompt.trim();
+    // 立刻把需求顯示在對話列表（樂觀訊息），完成或失敗後再清除
+    setPendingPrompt(instruction || "（未輸入需求）");
+    setAiPrompt("");
     runAgent.mutate(
       {
         agentId: selectedAgent.id,
         input: {
           mode: "custom_chapter",
-          instruction: aiPrompt.trim(),
+          instruction,
           full_content:
             agentContext ||
             `Current lore:\n<<<LORE_CONTENT\n${content}\nLORE_CONTENT`,
@@ -441,6 +457,7 @@ export default function StorytellerLoreEditor() {
         onSuccess: (result) => setAiResult(result?.result ?? ""),
         onError: (error) =>
           showSnack(errorMessage(error, "AI Agent 呼叫失敗。"), "error"),
+        onSettled: () => setPendingPrompt(""),
       },
     );
   }

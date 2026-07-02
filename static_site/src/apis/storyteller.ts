@@ -515,8 +515,10 @@ export function useRunStorytellerAgent(
       );
       return response.data.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    // 等訊息列表重新抓取完成後 mutation 才算結束，
+    // 讓編輯器清除樂觀訊息時正式紀錄已經就位，避免訊息短暫消失
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: ["storyteller", "story-chat-messages"],
       });
     },
@@ -546,8 +548,10 @@ export function useRunStorytellerLoreAgent(
       );
       return response.data.data;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    // 等訊息列表重新抓取完成後 mutation 才算結束，
+    // 讓編輯器清除樂觀訊息時正式紀錄已經就位，避免訊息短暫消失
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
         queryKey: ["storyteller", "lore-chat-messages"],
       });
     },
