@@ -108,10 +108,6 @@ const StorytellerLoreDiffCompare = lazy(
   () => import("@/pages/storyteller/LoreDiffCompare.tsx"),
 );
 const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
-// dev 專用：AI Agent 對話面板沙盒，模擬對話流程重現 UX 問題，不呼叫 API
-const StorytellerAgentPanelSandbox = lazy(
-  () => import("@/pages/storyteller/AgentPanelSandbox.tsx"),
-);
 const StorytellerUserProjects = lazy(
   () => import("@/pages/storyteller/UserProjects.tsx"),
 );
@@ -258,12 +254,6 @@ function App() {
             <>
               <Route path={"storyteller"} element={<StorytellerLayout />}>
                 <Route path={""} element={<StorytellerPublicHome />} />
-                {import.meta.env.DEV && (
-                  <Route
-                    path={"dev/agent-sandbox"}
-                    element={<StorytellerAgentPanelSandbox />}
-                  />
-                )}
                 <Route path={"my"}>
                   <Route path={""} element={<StorytellerHome />} />
                   <Route path={"project"} element={<StorytellerHome />} />
