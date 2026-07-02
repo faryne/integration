@@ -18,7 +18,7 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -247,13 +247,10 @@ export default function StorytellerLoreEditor() {
     createdAt: version.created_at,
     words: version.word_count,
   }));
-  const showSnack = useCallback(
-    (message: string, severity: AlertColor = "success") => {
-      setSnack(message);
-      setSnackSeverity(severity);
-    },
-    [],
-  );
+  const showSnack = (message: string, severity: AlertColor = "success") => {
+    setSnack(message);
+    setSnackSeverity(severity);
+  };
 
   useEffect(() => {
     setTitle(lore?.title ?? "");
