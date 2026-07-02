@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -93,9 +93,21 @@ interface StorytellerAgentPanelProps {
 
 export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedAgent =
     props.agents.find((agent) => agent.id === props.selectedAgentId) ??
     props.agents[0];
+  const { messagesLoading, page } = props;
+  const messageCount = props.messages.length;
+
+  // 載入完成、訊息增減或處理狀態改變時，停留在最新頁就自動捲到列表底部
+  useEffect(() => {
+    const node = messagesContainerRef.current;
+    if (!node || messagesLoading || page !== 1) {
+      return;
+    }
+    node.scrollTop = node.scrollHeight;
+  }, [messageCount, props.pending, messagesLoading, page]);
 
   return (
     <Paper
@@ -197,6 +209,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
         <Divider />
 
         <Stack
+          ref={messagesContainerRef}
           spacing={1.5}
           sx={{
             flex: 1,
@@ -207,14 +220,6 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
             p: 2,
           }}
         >
-          {props.pending && (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <CircularProgress size={18} />
-              <Typography variant="body2" color="text.secondary">
-                AI Agent 處理中...
-              </Typography>
-            </Stack>
-          )}
           {props.messagesLoading ? (
             <Stack direction="row" spacing={1} alignItems="center">
               <CircularProgress size={18} />
@@ -222,15 +227,31 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
                 正在載入 AI Agent 對話紀錄...
               </Typography>
             </Stack>
-          ) : props.messages.length > 0 ? (
-            props.messages.map((message) => (
-              <StorytellerAgentMessage
-                key={message.id}
-                message={message}
-                enableReplace={Boolean(props.enableReplace)}
-                onApplyText={props.onApplyText}
-              />
-            ))
+          ) : props.messages.length > 0 || props.pending ? (
+            <>
+              {props.messages.map((message) => (
+                <StorytellerAgentMessage
+                  key={message.id}
+                  message={message}
+                  enableReplace={Boolean(props.enableReplace)}
+                  onApplyText={props.onApplyText}
+                />
+              ))}
+              {/* 處理中泡泡固定顯示在列表尾端，位置與稍後的回應一致 */}
+              {props.pending && (
+                <StorytellerAgentMessage
+                  message={{
+                    id: "agent-pending",
+                    role: "assistant",
+                    content: "",
+                    speaker: selectedAgent?.name ?? "AI Agent",
+                    isLoading: true,
+                  }}
+                  enableReplace={false}
+                  onApplyText={props.onApplyText}
+                />
+              )}
+            </>
           ) : (
             <CustomEmptyState
               icon={<SmartToyIcon fontSize="large" />}
