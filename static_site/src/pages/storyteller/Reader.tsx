@@ -11,12 +11,15 @@ import {
   Chip,
   Divider,
   Drawer,
+  Fab,
   Grid,
   IconButton,
   Paper,
+  Popover,
   Rating,
   Stack,
   Typography,
+  Zoom,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -205,6 +208,12 @@ export default function StorytellerReader() {
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  // 頂端收藏／評分功能列是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
+  const [actionBarVisible, setActionBarVisible] = useState(true);
+  // 右下角快速按鈕展開的選單錨點
+  const [quickActionsAnchor, setQuickActionsAnchor] =
+    useState<HTMLElement | null>(null);
+  const actionBarRef = useRef<HTMLDivElement | null>(null);
   const storyStartRef = useRef<HTMLHeadingElement | null>(null);
   const previousStoryIdRef = useRef<string | undefined>(undefined);
   const routeProjectPublicId = routeProjectPath?.split("-", 1)[0];
@@ -331,6 +340,19 @@ export default function StorytellerReader() {
     });
   }, [currentStory?.id]);
 
+  // 監看頂端功能列是否捲出畫面，用來切換右下角快速按鈕的顯示
+  useEffect(() => {
+    const node = actionBarRef.current;
+    if (!node) {
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      setActionBarVisible(entry.isIntersecting);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [currentStory?.id, isOwner]);
+
   if (
     !project &&
     (authLoading ||
@@ -349,11 +371,70 @@ export default function StorytellerReader() {
     ? `/storyteller/story/share/${shareToken}`
     : project.path;
   const showInlineIndex = !isMobile && indexOpen;
+  // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用
+  const readerActions = (
+    <>
+      <Button
+        variant={isFavorited ? "contained" : "outlined"}
+        startIcon={isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+        disabled={saveFavorite.isPending}
+        onClick={() => {
+          if (!session) {
+            setLoginPromptOpen(true);
+            return;
+          }
+          if (apiProject?.public_id) {
+            saveFavorite.mutate(!isFavorited);
+            return;
+          }
+          setFavorite((value) => !value);
+        }}
+      >
+        {isFavorited ? "已收藏" : "收藏"}
+      </Button>
+      {project.authorUserId && (
+        <Button
+          variant={isAuthorFavorited ? "contained" : "outlined"}
+          startIcon={
+            isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
+          }
+          disabled={saveAuthorFavorite.isPending}
+          onClick={() => {
+            if (!session) {
+              setLoginPromptOpen(true);
+              return;
+            }
+            saveAuthorFavorite.mutate(!isAuthorFavorited);
+          }}
+        >
+          {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
+        </Button>
+      )}
+      <Paper variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            評分
+          </Typography>
+          <Rating
+            value={rating}
+            precision={0.5}
+            disabled={saveRanking.isPending}
+            onChange={(_, value) => {
+              if (!session) {
+                setLoginPromptOpen(true);
+                return;
+              }
+              if (apiProject?.public_id && value !== null) {
+                saveRanking.mutate(value);
+              }
+            }}
+          />
+        </Stack>
+      </Paper>
+    </>
+  );
   const readerBody = (
-    <Paper
-      variant="outlined"
-      sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
-    >
+    <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
       {currentStory ? (
         <Stack spacing={2}>
           <Box>
@@ -423,7 +504,9 @@ export default function StorytellerReader() {
               <ChapterNavCard
                 label="上一章"
                 title={previousStory?.title ?? "沒有上一章"}
-                to={previousStory ? `${basePath}/${previousStory.id}` : undefined}
+                to={
+                  previousStory ? `${basePath}/${previousStory.id}` : undefined
+                }
                 disabled={!previousStory}
                 align="left"
               />
@@ -554,78 +637,14 @@ export default function StorytellerReader() {
         </Button>
         {currentStory && !isOwner && (
           <Stack
+            ref={actionBarRef}
             direction="row"
             spacing={1}
             alignItems="center"
             flexWrap="wrap"
             useFlexGap
           >
-            <Button
-              variant={isFavorited ? "contained" : "outlined"}
-              startIcon={
-                isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
-              }
-              disabled={saveFavorite.isPending}
-              onClick={() => {
-                if (!session) {
-                  setLoginPromptOpen(true);
-                  return;
-                }
-                if (apiProject?.public_id) {
-                  saveFavorite.mutate(!isFavorited);
-                  return;
-                }
-                setFavorite((value) => !value);
-              }}
-            >
-              {isFavorited ? "已收藏" : "收藏"}
-            </Button>
-            {project.authorUserId && (
-              <Button
-                variant={isAuthorFavorited ? "contained" : "outlined"}
-                startIcon={
-                  isAuthorFavorited ? (
-                    <BookmarkAddedIcon />
-                  ) : (
-                    <BookmarkAddIcon />
-                  )
-                }
-                disabled={saveAuthorFavorite.isPending}
-                onClick={() => {
-                  if (!session) {
-                    setLoginPromptOpen(true);
-                    return;
-                  }
-                  saveAuthorFavorite.mutate(!isAuthorFavorited);
-                }}
-              >
-                {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
-              </Button>
-            )}
-            <Paper
-              variant="outlined"
-              sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="body2" color="text.secondary">
-                  評分
-                </Typography>
-                <Rating
-                  value={rating}
-                  precision={0.5}
-                  disabled={saveRanking.isPending}
-                  onChange={(_, value) => {
-                    if (!session) {
-                      setLoginPromptOpen(true);
-                      return;
-                    }
-                    if (apiProject?.public_id && value !== null) {
-                      saveRanking.mutate(value);
-                    }
-                  }}
-                />
-              </Stack>
-            </Paper>
+            {readerActions}
           </Stack>
         )}
       </Stack>
@@ -635,6 +654,39 @@ export default function StorytellerReader() {
         onClose={() => setLoginPromptOpen(false)}
         description="收藏故事、收藏作者或評分故事需要登入。是否要現在登入？"
       />
+
+      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕，點開可收藏與評分 */}
+      {currentStory && !isOwner && (
+        <>
+          <Zoom in={!actionBarVisible}>
+            <Fab
+              color="primary"
+              size="medium"
+              aria-label="開啟收藏與評分選單"
+              onClick={(event) => setQuickActionsAnchor(event.currentTarget)}
+              sx={{
+                position: "fixed",
+                right: { xs: 16, md: 32 },
+                bottom: { xs: 16, md: 32 },
+                zIndex: theme.zIndex.speedDial,
+              }}
+            >
+              {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+            </Fab>
+          </Zoom>
+          <Popover
+            open={Boolean(quickActionsAnchor)}
+            anchorEl={quickActionsAnchor}
+            onClose={() => setQuickActionsAnchor(null)}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+          >
+            <Stack spacing={1} sx={{ p: 1.5 }}>
+              {readerActions}
+            </Stack>
+          </Popover>
+        </>
+      )}
 
       {project.rating === "restricted" && !isOwner ? (
         <AgeConfirmationGate
