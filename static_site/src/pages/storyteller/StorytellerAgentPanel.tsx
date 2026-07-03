@@ -1,4 +1,6 @@
+import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import ReplyIcon from "@mui/icons-material/Reply";
 import SendIcon from "@mui/icons-material/Send";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
@@ -8,6 +10,7 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  IconButton,
   MenuItem,
   Pagination,
   Paper,
@@ -89,6 +92,9 @@ interface StorytellerAgentPanelProps {
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
   enableReplace?: boolean;
+  replyTarget?: StorytellerAgentPanelMessage | null;
+  onReply?: (message: StorytellerAgentPanelMessage) => void;
+  onCancelReply?: () => void;
 }
 
 export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
@@ -108,6 +114,17 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
     }
     node.scrollTop = node.scrollHeight;
   }, [messageCount, props.pending, messagesLoading, page]);
+
+  function scrollToReplyTarget() {
+    const replyTarget = props.replyTarget;
+    if (!replyTarget) {
+      return;
+    }
+    const node = messagesContainerRef.current?.querySelector(
+      `[data-agent-message-id="${CSS.escape(replyTarget.id)}"]`,
+    );
+    node?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   return (
     <Paper
@@ -235,6 +252,8 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
                   message={message}
                   enableReplace={Boolean(props.enableReplace)}
                   onApplyText={props.onApplyText}
+                  onReply={props.onReply}
+                  isReplyTarget={props.replyTarget?.id === message.id}
                 />
               ))}
               {/* 處理中泡泡固定顯示在列表尾端，位置與稍後的回應一致 */}
@@ -280,6 +299,44 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
         <Divider />
 
         <Stack spacing={1.5} sx={{ p: 2 }}>
+          {props.replyTarget && (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                pl: 1.25,
+                pr: 0.5,
+                py: 0.5,
+                borderLeft: "3px solid",
+                borderColor: "primary.main",
+                bgcolor: "action.hover",
+                borderRadius: 0.5,
+              }}
+            >
+              <Box
+                onClick={scrollToReplyTarget}
+                sx={{ flex: 1, minWidth: 0, cursor: "pointer" }}
+              >
+                <Typography variant="caption" color="text.secondary">
+                  回覆 {props.replyTarget.speaker}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {props.replyTarget.content}
+                </Typography>
+              </Box>
+              <IconButton size="small" onClick={props.onCancelReply}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          )}
           <TextField
             multiline
             minRows={4}
@@ -333,6 +390,8 @@ interface StorytellerAgentMessageProps {
     action: StorytellerAgentApplyAction,
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
+  onReply?: (message: StorytellerAgentPanelMessage) => void;
+  isReplyTarget?: boolean;
 }
 
 function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
@@ -342,6 +401,7 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
 
   return (
     <Box
+      data-agent-message-id={message.id}
       sx={{
         display: "flex",
         justifyContent: isUser ? "flex-end" : "flex-start",
@@ -355,7 +415,9 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           bgcolor: isUser ? "primary.main" : "background.paper",
           color: isUser ? "primary.contrastText" : "text.primary",
           border: isUser ? 0 : "1px solid",
-          borderColor: "divider",
+          borderColor: props.isReplyTarget ? "primary.main" : "divider",
+          outline: props.isReplyTarget ? "2px solid" : "none",
+          outlineColor: "primary.main",
           "& blockquote": {
             m: 0,
             mt: 0.75,
@@ -452,6 +514,16 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
             >
               複製
             </Button>
+            {props.onReply && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ReplyIcon />}
+                onClick={() => props.onReply?.(message)}
+              >
+                回覆
+              </Button>
+            )}
           </Stack>
         )}
       </Box>

@@ -94,6 +94,21 @@ export function buildStorytellerAgentReferenceContent(
     .join("\n\n");
 }
 
+export interface StorytellerAgentReplyTarget {
+  id: string;
+  speaker: string;
+  content: string;
+}
+
+export function buildStorytellerAgentReplyReferenceContent(
+  reply: StorytellerAgentReplyTarget | null | undefined,
+) {
+  if (!reply || reply.content.trim() === "") {
+    return "";
+  }
+  return `Reference reply: ${reply.speaker}\n<<<REPLY_REFERENCE_CONTENT\n${reply.content}\nREPLY_REFERENCE_CONTENT`;
+}
+
 function escapeStorytellerAgentReferenceTitle(title: string) {
   return title.replace(/\\/g, "\\\\").replace(/\]/g, "\\]");
 }

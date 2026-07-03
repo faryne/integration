@@ -60,6 +60,7 @@ import {
 } from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
+  buildStorytellerAgentReplyReferenceContent,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
@@ -116,6 +117,8 @@ export default function StorytellerLoreEditor() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [replyTarget, setReplyTarget] =
+    useState<StorytellerAgentPanelMessage | null>(null);
   // 送出中的需求內容：立刻顯示在對話列表，等後端寫入正式紀錄後清除
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [aiResult, setAiResult] = useState("");
@@ -285,9 +288,26 @@ export default function StorytellerLoreEditor() {
     1,
     Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
   );
-  const agentContext = buildStorytellerAgentReferenceContent(loreReferences);
+  const loreReferenceContent = buildStorytellerAgentReferenceContent(
+    loreReferences,
+  );
+  const replyReferenceContent = buildStorytellerAgentReplyReferenceContent(
+    replyTarget
+      ? {
+          id: replyTarget.id,
+          speaker: replyTarget.speaker,
+          content: replyTarget.content,
+        }
+      : null,
+  );
+  const agentContext =
+    loreReferenceContent ||
+    `Current lore:\n<<<LORE_CONTENT\n${content}\nLORE_CONTENT`;
+  const fullAgentContent = [agentContext, replyReferenceContent]
+    .filter(Boolean)
+    .join("\n\n");
   const aiPromptLength = Array.from(aiPrompt).length;
-  const aiReferenceContentLength = Array.from(agentContext).length;
+  const aiReferenceContentLength = Array.from(fullAgentContent).length;
   const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
   const aiPayloadError =
     aiPromptLength > aiInstructionMaxCharacters
@@ -494,15 +514,14 @@ export default function StorytellerLoreEditor() {
     // 立刻把需求顯示在對話列表（樂觀訊息），完成或失敗後再清除
     setPendingPrompt(instruction || "（未輸入需求）");
     setAiPrompt("");
+    setReplyTarget(null);
     runAgent.mutate(
       {
         agentId: selectedAgent.id,
         input: {
           mode: "custom_chapter",
           instruction,
-          full_content:
-            agentContext ||
-            `Current lore:\n<<<LORE_CONTENT\n${content}\nLORE_CONTENT`,
+          full_content: fullAgentContent,
           selected_content: "",
         },
       },
@@ -912,6 +931,9 @@ export default function StorytellerLoreEditor() {
                 onRun={runSelectedAgent}
                 onApplyText={applyAgentText}
                 enableReplace
+                replyTarget={replyTarget}
+                onReply={setReplyTarget}
+                onCancelReply={() => setReplyTarget(null)}
               />
             )}
           </Stack>

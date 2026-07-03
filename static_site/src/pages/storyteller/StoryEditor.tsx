@@ -63,6 +63,7 @@ import {
 } from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
+  buildStorytellerAgentReplyReferenceContent,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
@@ -230,6 +231,8 @@ export default function StorytellerStoryEditor() {
       text: "",
     });
   const [aiPrompt, setAiPrompt] = useState("");
+  const [replyTarget, setReplyTarget] =
+    useState<StorytellerAgentPanelMessage | null>(null);
   const [aiResult, setAiResult] = useState<StorytellerAgentRunResponse | null>(
     null,
   );
@@ -342,9 +345,20 @@ export default function StorytellerStoryEditor() {
       content: item.latest_content,
     })),
   });
-  const agentReferenceContent = buildStorytellerAgentReferenceContent(
-    agentPromptReferences,
-  );
+  const agentReferenceContent = [
+    buildStorytellerAgentReferenceContent(agentPromptReferences),
+    buildStorytellerAgentReplyReferenceContent(
+      replyTarget
+        ? {
+            id: replyTarget.id,
+            speaker: replyTarget.speaker,
+            content: replyTarget.content,
+          }
+        : null,
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const aiPromptLength = Array.from(aiPrompt).length;
   const aiReferenceContentLength = Array.from(agentReferenceContent).length;
   const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
@@ -706,6 +720,7 @@ export default function StorytellerStoryEditor() {
       agent_name: selectedAgent?.name ?? "AI Agent",
     });
     setAiPrompt("");
+    setReplyTarget(null);
 
     runAgent.mutate(
       {
@@ -1167,6 +1182,9 @@ export default function StorytellerStoryEditor() {
                 onRun={() => runSelectedAgent()}
                 onApplyText={applyAgentText}
                 enableReplace
+                replyTarget={replyTarget}
+                onReply={setReplyTarget}
+                onCancelReply={() => setReplyTarget(null)}
               />
             )}
           </Stack>
