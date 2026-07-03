@@ -57,35 +57,22 @@ func encryptAgentAPIKey(plaintext string) (*encryptedAgentAPIKey, error) {
 }
 
 func decryptProviderAPIKey(key *storytellerModel.ProviderAPIKey) (string, error) {
-	return decryptAPIKeyFields(key.APIKeyEncrypted, key.APIKeyDataKey, key.APIKeyKeyID, key.APIKey)
-}
-
-func decryptAPIKeyFields(encrypted, dataKey, keyID, plainFallback string) (string, error) {
-	if strings.TrimSpace(encrypted) == "" {
-		// 舊資料在 migration 後仍可能只有明文 api_key，先保留讀取能力讓輪換 job 可逐步轉換。
-		return strings.TrimSpace(plainFallback), nil
+	if strings.TrimSpace(key.APIKeyEncrypted) == "" {
+		return "", errAgentAPIKeyCiphertextInvalid
 	}
-	masterKey, err := agentAPIKeyMasterKeyByID(keyID)
+	masterKey, err := agentAPIKeyMasterKeyByID(key.APIKeyKeyID)
 	if err != nil {
-		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("load master key %q failed: %w", keyID, err))
+		return "", fmt.Errorf("load master key %q failed: %w", key.APIKeyKeyID, err)
 	}
-	rawDataKey, err := decryptBytes(masterKey.key, dataKey)
+	rawDataKey, err := decryptBytes(masterKey.key, key.APIKeyDataKey)
 	if err != nil {
-		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("decrypt data key with key %q failed: %w", keyID, err))
+		return "", fmt.Errorf("decrypt data key with key %q failed: %w", key.APIKeyKeyID, err)
 	}
-	plaintext, err := decryptBytes(rawDataKey, encrypted)
+	plaintext, err := decryptBytes(rawDataKey, key.APIKeyEncrypted)
 	if err != nil {
-		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("decrypt api key ciphertext failed: %w", err))
+		return "", fmt.Errorf("decrypt api key ciphertext failed: %w", err)
 	}
 	return strings.TrimSpace(string(plaintext)), nil
-}
-
-func legacyAPIKeyFallback(plainFallback string, decryptErr error) (string, error) {
-	if strings.TrimSpace(plainFallback) != "" {
-		// 若資料列仍保留舊明文，優先維持功能可用；下一次輪換 job 會重新寫入正確密文。
-		return strings.TrimSpace(plainFallback), nil
-	}
-	return "", decryptErr
 }
 
 func applyEncryptedProviderAPIKey(key *storytellerModel.ProviderAPIKey, plaintext string) error {
@@ -93,7 +80,6 @@ func applyEncryptedProviderAPIKey(key *storytellerModel.ProviderAPIKey, plaintex
 	if err != nil {
 		return err
 	}
-	key.APIKey = ""
 	key.APIKeyEncrypted = encrypted.ciphertext
 	key.APIKeyDataKey = encrypted.dataKey
 	key.APIKeyKeyID = encrypted.keyID

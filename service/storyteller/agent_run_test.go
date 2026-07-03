@@ -2,14 +2,29 @@ package storyteller
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"strings"
 	"testing"
 
+	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
+
+func init() {
+	// 讓測試能實際跑加解密流程，而不是依賴已移除的明文 fallback。
+	config.EnvConfig().StorytellerAgentAPIKeyActiveKeyID = "test"
+	config.EnvConfig().StorytellerAgentAPIKeyMasterKeys = "test:" + base64.RawURLEncoding.EncodeToString(make([]byte, 32))
+}
+
+func encryptedTestProviderAPIKey(t *testing.T, id, userID uint64, provider storytellerModel.AgentProvider, plaintext string) *storytellerModel.ProviderAPIKey {
+	t.Helper()
+	key := &storytellerModel.ProviderAPIKey{ID: id, UserID: userID, Provider: provider}
+	require.NoError(t, applyEncryptedProviderAPIKey(key, plaintext))
+	return key
+}
 
 func TestValidateAgentRunRequest(t *testing.T) {
 	start := 2
@@ -160,12 +175,7 @@ func TestRunAgent(t *testing.T) {
 			ProviderAPIKeyID: &providerAPIKeyID,
 			DefaultPrompt:    "Use concise prose.",
 		},
-		providerAPIKey: &storytellerModel.ProviderAPIKey{
-			ID:       50,
-			UserID:   20,
-			Provider: storytellerModel.AgentProviderGrok,
-			APIKey:   "secret-key",
-		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
 	provider := &fakeAIProvider{
 		response: &AIProviderResponse{
@@ -258,12 +268,7 @@ func TestRunAgentProviderError(t *testing.T) {
 			ModelName:        "grok-test",
 			ProviderAPIKeyID: &providerAPIKeyID,
 		},
-		providerAPIKey: &storytellerModel.ProviderAPIKey{
-			ID:       50,
-			UserID:   20,
-			Provider: storytellerModel.AgentProviderGrok,
-			APIKey:   "secret-key",
-		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
 
 	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider) (AIProvider, error) {

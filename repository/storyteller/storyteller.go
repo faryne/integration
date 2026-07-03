@@ -135,7 +135,6 @@ func (r *Repository) ActiveProviderAPIKeysForRotation() ([]storytellerModel.Prov
 
 func (r *Repository) UpdateProviderAPIKeyEncryption(row *storytellerModel.ProviderAPIKey) error {
 	return r.db.Model(row).Updates(map[string]any{
-		"api_key":           row.APIKey,
 		"api_key_encrypted": row.APIKeyEncrypted,
 		"api_key_data_key":  row.APIKeyDataKey,
 		"api_key_key_id":    row.APIKeyKeyID,

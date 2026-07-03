@@ -117,7 +117,6 @@ type ProviderAPIKey struct {
 	UserID          uint64        `gorm:"column:user_id" json:"user_id"`
 	Provider        AgentProvider `gorm:"column:provider" json:"provider"`
 	Label           string        `gorm:"column:label" json:"label"`
-	APIKey          string        `gorm:"column:api_key" json:"-"`
 	APIKeyEncrypted string        `gorm:"column:api_key_encrypted" json:"-"`
 	APIKeyDataKey   string        `gorm:"column:api_key_data_key" json:"-"`
 	APIKeyKeyID     string        `gorm:"column:api_key_key_id" json:"-"`
