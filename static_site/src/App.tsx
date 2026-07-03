@@ -92,9 +92,6 @@ const StorytellerNewProject = lazy(
 const StorytellerNewAgent = lazy(
   () => import("@/pages/storyteller/NewAgent.tsx"),
 );
-const StorytellerApiKeyManagement = lazy(
-  () => import("@/pages/storyteller/ApiKeyManagement.tsx"),
-);
 const StorytellerAgentDiffCompare = lazy(
   () => import("@/pages/storyteller/AgentDiffCompare.tsx"),
 );
@@ -306,10 +303,7 @@ function App() {
                     path={"agent/:agentId/edit"}
                     element={<StorytellerNewAgent />}
                   />
-                  <Route
-                    path={"api-keys"}
-                    element={<StorytellerApiKeyManagement />}
-                  />
+                  <Route path={"api-keys"} element={<StorytellerHome />} />
                 </Route>
                 <Route
                   path={"user/:username"}

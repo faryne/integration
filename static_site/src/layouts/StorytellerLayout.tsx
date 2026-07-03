@@ -15,7 +15,6 @@ import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import MenuIcon from "@mui/icons-material/Menu";
 import PersonIcon from "@mui/icons-material/Person";
-import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import {
   AppBar,
   Avatar,
@@ -64,7 +63,6 @@ export function StorytellerLayout() {
     { label: "公開故事", to: "/storyteller", icon: <AutoStoriesIcon /> },
     { label: "我的工作台", to: "/storyteller/my", icon: <AutoStoriesIcon /> },
     { label: "我的收藏", to: "/storyteller/favorites", icon: <FavoriteIcon /> },
-    { label: "金鑰管理", to: "/storyteller/my/api-keys", icon: <VpnKeyIcon /> },
     { label: "作者設定", to: "/storyteller/profile", icon: <PersonIcon /> },
   ];
 
