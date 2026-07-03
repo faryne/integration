@@ -21,6 +21,8 @@ import type {
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
+  StorytellerProviderAPIKey,
+  StorytellerProviderAPIKeyRequest,
   StorytellerStory,
   StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
@@ -406,6 +408,74 @@ export function useStorytellerAgentProviderModels() {
         headers: sessionHeaders(session!.encrypt_key),
       });
       return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerProviderAPIKeys() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "provider-apikeys", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerProviderAPIKey[]>>(
+        `${apiBase}/storyteller/provider-apikeys`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useCreateStorytellerProviderAPIKey() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StorytellerProviderAPIKeyRequest) => {
+      const response = await axios.post<CommonResponse<StorytellerProviderAPIKey>>(
+        `${apiBase}/storyteller/provider-apikeys`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "provider-apikeys"],
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerProviderAPIKey() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/provider-apikeys/${id}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "provider-apikeys"],
+      });
+    },
+  });
+}
+
+export function useTestStorytellerProviderAPIKey() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await axios.post<CommonResponse<{ ok: boolean }>>(
+        `${apiBase}/storyteller/provider-apikeys/${id}/test-connection`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }

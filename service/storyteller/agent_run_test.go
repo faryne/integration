@@ -148,16 +148,23 @@ func TestValidateAgentRunRequest(t *testing.T) {
 func TestRunAgent(t *testing.T) {
 	start := 0
 	end := 5
+	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:            40,
-			UserID:        20,
-			Provider:      storytellerModel.AgentProviderGrok,
-			ModelName:     "grok-test",
-			APIKey:        "secret-key",
-			DefaultPrompt: "Use concise prose.",
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderGrok,
+			ModelName:        "grok-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+			DefaultPrompt:    "Use concise prose.",
+		},
+		providerAPIKey: &storytellerModel.ProviderAPIKey{
+			ID:       50,
+			UserID:   20,
+			Provider: storytellerModel.AgentProviderGrok,
+			APIKey:   "secret-key",
 		},
 	}
 	provider := &fakeAIProvider{
@@ -240,15 +247,22 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 
 func TestRunAgentProviderError(t *testing.T) {
 	providerErr := errors.New("provider failed")
+	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:        40,
-			UserID:    20,
-			Provider:  storytellerModel.AgentProviderGrok,
-			ModelName: "grok-test",
-			APIKey:    "secret-key",
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderGrok,
+			ModelName:        "grok-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey: &storytellerModel.ProviderAPIKey{
+			ID:       50,
+			UserID:   20,
+			Provider: storytellerModel.AgentProviderGrok,
+			APIKey:   "secret-key",
 		},
 	}
 
@@ -265,15 +279,17 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project    *storytellerModel.Project
-	projectErr error
-	story      *storytellerModel.Story
-	storyErr   error
-	agent      *storytellerModel.Agent
-	agentErr   error
-	chat       *storytellerModel.StoryChat
-	messages   []storytellerModel.StoryChatMessage
-	chatErr    error
+	project           *storytellerModel.Project
+	projectErr        error
+	story             *storytellerModel.Story
+	storyErr          error
+	agent             *storytellerModel.Agent
+	agentErr          error
+	providerAPIKey    *storytellerModel.ProviderAPIKey
+	providerAPIKeyErr error
+	chat              *storytellerModel.StoryChat
+	messages          []storytellerModel.StoryChatMessage
+	chatErr           error
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -286,6 +302,10 @@ func (r *fakeAgentRunRepository) Story(uint64, string) (*storytellerModel.Story,
 
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {
 	return r.agent, r.agentErr
+}
+
+func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerModel.ProviderAPIKey, error) {
+	return r.providerAPIKey, r.providerAPIKeyErr
 }
 
 func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error {

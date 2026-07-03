@@ -27,6 +27,7 @@ import {
   useStorytellerAgents,
   useStorytellerLores,
   useStorytellerProjects,
+  useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
   useStorytellerStoryVersions,
   useStorytellerStories,
@@ -248,6 +249,8 @@ export default function StorytellerStoryEditor() {
   const [selectedAgentId, setSelectedAgentId] = useState(
     agentRows[0]?.id ?? "",
   );
+  const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
+  const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [leftDiffId, setLeftDiffId] = useState("");
@@ -297,6 +300,9 @@ export default function StorytellerStoryEditor() {
   const selectedAgent =
     agentRows.find((agent) => agent.id === selectedAgentId) ?? agentRows[0];
   const selectedAgentNumericId = Number(selectedAgent?.id);
+  const overrideApiKeyOptions = providerApiKeys.filter(
+    (apiKey) => apiKey.provider === selectedAgent?.provider,
+  );
   // 第 1 頁是最新訊息，載入更早的訊息時往後翻頁；顯示時要反過來，最早的頁在最上面
   const aiMessages = (aiMessagesPages?.pages ?? [])
     .slice()
@@ -480,6 +486,12 @@ export default function StorytellerStoryEditor() {
       setSelectedAgentId(agentRows[0]?.id ?? "");
     }
   }, [agentRows, selectedAgentId]);
+
+  // 換 Agent 後，之前選的覆寫金鑰不一定屬於新 Agent 的供應商，重置回「使用預設」
+  useEffect(() => {
+    setOverrideApiKeyId("");
+  }, [selectedAgentId]);
+
 
   useTitle(`${pageTitle} - Storyteller`, {
     path:
@@ -737,6 +749,9 @@ export default function StorytellerStoryEditor() {
           instruction,
           full_content: agentReferenceContent,
           selected_content: "",
+          provider_apikey_id: overrideApiKeyId
+            ? Number(overrideApiKeyId)
+            : undefined,
         },
       },
       {
@@ -1116,6 +1131,25 @@ export default function StorytellerStoryEditor() {
                 promptWarning={aiPayloadError}
                 promptExtras={
                   <>
+                    {overrideApiKeyOptions.length > 1 && (
+                      <TextField
+                        select
+                        size="small"
+                        label="使用其他金鑰執行一次"
+                        value={overrideApiKeyId}
+                        onChange={(event) =>
+                          setOverrideApiKeyId(event.target.value)
+                        }
+                        sx={{ minWidth: 220 }}
+                      >
+                        <MenuItem value="">使用 Agent 預設金鑰</MenuItem>
+                        {overrideApiKeyOptions.map((apiKey) => (
+                          <MenuItem key={apiKey.id} value={String(apiKey.id)}>
+                            {apiKey.label || `金鑰 #${apiKey.id}`}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    )}
                     {agentPromptReferences.length > 0 && (
                       <Stack
                         direction="row"

@@ -125,6 +125,57 @@ func AgentProviderModels(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+func ProviderAPIKeys(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().ProviderAPIKeys(authsession.Session(ctx).UserId)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
+func CreateProviderAPIKey(ctx fiber.Ctx) error {
+	var input storytellerModel.ProviderAPIKeyRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateProviderAPIKey(authsession.Session(ctx).UserId, input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteProviderAPIKey(ctx fiber.Ctx) error {
+	id, err := parseUint(ctx.Params("apikey"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().DeleteProviderAPIKey(authsession.Session(ctx).UserId, id); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("provider api key not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
+func TestProviderAPIKey(ctx fiber.Ctx) error {
+	id, err := parseUint(ctx.Params("apikey"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().TestProviderAPIKey(ctx.Context(), authsession.Session(ctx).UserId, id); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("provider api key not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"ok": true})
+}
+
 func Agent(ctx fiber.Ctx) error {
 	id, err := parseUint(ctx.Params("agent"))
 	if err != nil {

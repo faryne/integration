@@ -30,6 +30,7 @@ type agentRunRepository interface {
 	ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error)
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
+	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error
 }
 
@@ -40,28 +41,28 @@ func NewService() *Service {
 }
 
 func RunRotateStorytellerAgentAPIKeys() {
-	if err := NewService().RotateAgentAPIKeys(); err != nil {
-		log.Logger().Error("Storyteller agent api key rotation failed: " + err.Error())
+	if err := NewService().RotateProviderAPIKeys(); err != nil {
+		log.Logger().Error("Storyteller provider api key rotation failed: " + err.Error())
 	}
 }
 
-func (s *Service) RotateAgentAPIKeys() error {
-	agents, err := s.repo.ActiveAgentsForAPIKeyRotation()
+func (s *Service) RotateProviderAPIKeys() error {
+	keys, err := s.repo.ActiveProviderAPIKeysForRotation()
 	if err != nil {
 		return err
 	}
-	for index := range agents {
-		apiKey, err := decryptAgentAPIKey(&agents[index])
+	for index := range keys {
+		apiKey, err := decryptProviderAPIKey(&keys[index])
 		if err != nil {
 			return err
 		}
 		if strings.TrimSpace(apiKey) == "" {
 			continue
 		}
-		if err := applyEncryptedAgentAPIKey(&agents[index], apiKey); err != nil {
+		if err := applyEncryptedProviderAPIKey(&keys[index], apiKey); err != nil {
 			return err
 		}
-		if err := s.repo.UpdateAgentAPIKeyEncryption(&agents[index]); err != nil {
+		if err := s.repo.UpdateProviderAPIKeyEncryption(&keys[index]); err != nil {
 			return err
 		}
 	}
@@ -182,16 +183,17 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 	if err != nil {
 		return nil, err
 	}
-	agent := &storytellerModel.Agent{
-		UserID:        userID,
-		Name:          strings.TrimSpace(input.Name),
-		Provider:      input.Provider,
-		ModelName:     strings.TrimSpace(input.ModelName),
-		AgentModelID:  agentModelID(providerModel),
-		DefaultPrompt: strings.TrimSpace(input.DefaultPrompt),
-	}
-	if err := applyEncryptedAgentAPIKey(agent, input.APIKey); err != nil {
+	if err := s.validateAgentProviderAPIKey(userID, input); err != nil {
 		return nil, err
+	}
+	agent := &storytellerModel.Agent{
+		UserID:           userID,
+		Name:             strings.TrimSpace(input.Name),
+		Provider:         input.Provider,
+		ModelName:        strings.TrimSpace(input.ModelName),
+		AgentModelID:     agentModelID(providerModel),
+		ProviderAPIKeyID: input.ProviderAPIKeyID,
+		DefaultPrompt:    strings.TrimSpace(input.DefaultPrompt),
 	}
 	if err := s.repo.CreateAgent(agent); err != nil {
 		return nil, err
@@ -205,6 +207,9 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 	if err != nil {
 		return nil, err
 	}
+	if err := s.validateAgentProviderAPIKey(userID, input); err != nil {
+		return nil, err
+	}
 	agent, err := s.repo.Agent(userID, id)
 	if err != nil {
 		return nil, err
@@ -213,16 +218,129 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 	agent.Provider = input.Provider
 	agent.ModelName = strings.TrimSpace(input.ModelName)
 	agent.AgentModelID = agentModelID(providerModel)
-	if strings.TrimSpace(input.APIKey) != "" {
-		if err := applyEncryptedAgentAPIKey(agent, input.APIKey); err != nil {
-			return nil, err
-		}
+	if input.ProviderAPIKeyID != nil {
+		agent.ProviderAPIKeyID = input.ProviderAPIKeyID
 	}
 	agent.DefaultPrompt = strings.TrimSpace(input.DefaultPrompt)
 	if err := s.repo.UpdateAgent(agent); err != nil {
 		return nil, err
 	}
 	return agent, nil
+}
+
+func (s *Service) validateAgentProviderAPIKey(userID uint64, input storytellerModel.AgentRequest) error {
+	if input.ProviderAPIKeyID == nil {
+		return nil
+	}
+	key, err := s.repo.ProviderAPIKey(userID, *input.ProviderAPIKeyID)
+	if err != nil {
+		return err
+	}
+	if key.Provider != input.Provider {
+		return errors.New("provider_apikey_id does not match provider")
+	}
+	return nil
+}
+
+func (s *Service) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKeyOutput, error) {
+	rows, err := s.repo.ProviderAPIKeys(userID)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.ProviderAPIKeyOutput, 0, len(rows))
+	for _, row := range rows {
+		outputs = append(outputs, providerAPIKeyOutput(row))
+	}
+	return outputs, nil
+}
+
+func (s *Service) CreateProviderAPIKey(userID uint64, input storytellerModel.ProviderAPIKeyRequest) (*storytellerModel.ProviderAPIKeyOutput, error) {
+	if err := s.validateProviderAPIKeyRequest(input); err != nil {
+		return nil, err
+	}
+	row := &storytellerModel.ProviderAPIKey{
+		UserID:   userID,
+		Provider: input.Provider,
+		Label:    strings.TrimSpace(input.Label),
+	}
+	if err := applyEncryptedProviderAPIKey(row, input.APIKey); err != nil {
+		return nil, err
+	}
+	if err := s.repo.CreateProviderAPIKey(row); err != nil {
+		return nil, err
+	}
+	output := providerAPIKeyOutput(*row)
+	return &output, nil
+}
+
+func (s *Service) DeleteProviderAPIKey(userID, id uint64) error {
+	row, err := s.repo.ProviderAPIKey(userID, id)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteProviderAPIKey(row)
+}
+
+func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64) error {
+	key, err := s.repo.ProviderAPIKey(userID, id)
+	if err != nil {
+		return err
+	}
+	providerModels, err := s.repo.AgentProviderModels()
+	if err != nil {
+		return err
+	}
+	modelName := ""
+	for _, providerModel := range providerModels {
+		if providerModel.Provider == key.Provider && len(providerModel.Models) > 0 {
+			modelName = providerModel.Models[0].Name
+			break
+		}
+	}
+	if modelName == "" {
+		return errors.New("no model configured for this provider yet")
+	}
+	provider, err := NewAIProvider(key.Provider)
+	if err != nil {
+		return err
+	}
+	apiKey, err := decryptProviderAPIKey(key)
+	if err != nil {
+		return err
+	}
+	_, err = provider.Generate(ctx, AIProviderRequest{
+		APIKey:       apiKey,
+		ModelName:    modelName,
+		SystemPrompt: "Reply with exactly one word: OK",
+		UserPrompt:   "OK",
+	})
+	return err
+}
+
+func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderAPIKeyRequest) error {
+	if strings.TrimSpace(input.APIKey) == "" {
+		return errors.New("api_key is required")
+	}
+	providerModels, err := s.repo.AgentProviderModels()
+	if err != nil {
+		return err
+	}
+	for _, providerModel := range providerModels {
+		if providerModel.Provider == input.Provider {
+			return nil
+		}
+	}
+	return errors.New("invalid provider")
+}
+
+func providerAPIKeyOutput(row storytellerModel.ProviderAPIKey) storytellerModel.ProviderAPIKeyOutput {
+	return storytellerModel.ProviderAPIKeyOutput{
+		ID:        row.ID,
+		Provider:  row.Provider,
+		Label:     row.Label,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
+	}
 }
 
 func (s *Service) DeleteAgent(userID, id uint64) error {
@@ -267,11 +385,15 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err != nil {
 		return nil, err
 	}
+	providerAPIKeyRow, err := resolveAgentProviderAPIKey(s.repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
 	provider, err := NewAIProvider(agent.Provider)
 	if err != nil {
 		return nil, err
 	}
-	apiKey, err := decryptAgentAPIKey(agent)
+	apiKey, err := decryptProviderAPIKey(providerAPIKeyRow)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +429,29 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	return output, nil
 }
 
+var (
+	errAgentProviderAPIKeyNotConfigured = errors.New("agent has no provider api key configured")
+	errAgentProviderAPIKeyMismatch      = errors.New("provider api key does not match agent provider")
+)
+
+func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerModel.ProviderAPIKey, error), userID uint64, agent *storytellerModel.Agent, overrideID *uint64) (*storytellerModel.ProviderAPIKey, error) {
+	keyID := agent.ProviderAPIKeyID
+	if overrideID != nil {
+		keyID = overrideID
+	}
+	if keyID == nil {
+		return nil, errAgentProviderAPIKeyNotConfigured
+	}
+	key, err := lookup(userID, *keyID)
+	if err != nil {
+		return nil, err
+	}
+	if key.Provider != agent.Provider {
+		return nil, errAgentProviderAPIKeyMismatch
+	}
+	return key, nil
+}
+
 func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
 	if err := validateAgentRunRequest(input); err != nil {
 		return nil, err
@@ -323,11 +468,15 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	if err != nil {
 		return nil, err
 	}
+	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
 	provider, err := providerFactory(agent.Provider)
 	if err != nil {
 		return nil, err
 	}
-	apiKey, err := decryptAgentAPIKey(agent)
+	apiKey, err := decryptProviderAPIKey(providerAPIKeyRow)
 	if err != nil {
 		return nil, err
 	}
@@ -1098,8 +1247,8 @@ func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIK
 	if strings.TrimSpace(input.ModelName) == "" {
 		return nil, errors.New("model_name is required")
 	}
-	if requireAPIKey && strings.TrimSpace(input.APIKey) == "" {
-		return nil, errors.New("api_key is required")
+	if requireAPIKey && input.ProviderAPIKeyID == nil {
+		return nil, errors.New("provider_apikey_id is required")
 	}
 	return provider, nil
 }

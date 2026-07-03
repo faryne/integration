@@ -13,6 +13,7 @@ import {
   Divider,
   Grid,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -29,6 +30,7 @@ import {
   useStorytellerLoreVersions,
   useStorytellerLores,
   useStorytellerProjects,
+  useStorytellerProviderAPIKeys,
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -133,6 +135,7 @@ export default function StorytellerLoreEditor() {
       text: "",
     });
   const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
   const [snack, setSnack] = useState("");
@@ -151,6 +154,7 @@ export default function StorytellerLoreEditor() {
   const { data: versions = [], isLoading: versionsLoading } =
     useStorytellerLoreVersions(apiProject?.public_id, apiLore?.public_id);
   const { data: agents = [] } = useStorytellerAgents();
+  const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);
   const runAgent = useRunStorytellerLoreAgent(
@@ -193,6 +197,9 @@ export default function StorytellerLoreEditor() {
   );
   const selectedAgent =
     agents.find((agent) => String(agent.id) === selectedAgentId) ?? agents[0];
+  const overrideApiKeyOptions = providerApiKeys.filter(
+    (apiKey) => apiKey.provider === selectedAgent?.provider,
+  );
   const panelAgents: StorytellerAgentPanelAgent[] = agents.map((agent) => ({
     id: String(agent.id),
     name: agent.name,
@@ -360,6 +367,11 @@ export default function StorytellerLoreEditor() {
   useEffect(() => {
     saveLoreRef.current = saveLore;
   }, [saveLore]);
+
+  // 換 Agent 後，之前選的覆寫金鑰不一定屬於新 Agent 的供應商，重置回「使用預設」
+  useEffect(() => {
+    setOverrideApiKeyId("");
+  }, [selectedAgentId]);
 
   useEffect(() => {
     const target = textAreaRef.current;
@@ -533,6 +545,9 @@ export default function StorytellerLoreEditor() {
           instruction,
           full_content: fullAgentContent,
           selected_content: "",
+          provider_apikey_id: overrideApiKeyId
+            ? Number(overrideApiKeyId)
+            : undefined,
         },
       },
       {
@@ -868,6 +883,25 @@ export default function StorytellerLoreEditor() {
                 promptWarning={aiPayloadError}
                 promptExtras={
                   <>
+                    {overrideApiKeyOptions.length > 1 && (
+                      <TextField
+                        select
+                        size="small"
+                        label="使用其他金鑰執行一次"
+                        value={overrideApiKeyId}
+                        onChange={(event) =>
+                          setOverrideApiKeyId(event.target.value)
+                        }
+                        sx={{ minWidth: 220 }}
+                      >
+                        <MenuItem value="">使用 Agent 預設金鑰</MenuItem>
+                        {overrideApiKeyOptions.map((apiKey) => (
+                          <MenuItem key={apiKey.id} value={String(apiKey.id)}>
+                            {apiKey.label || `金鑰 #${apiKey.id}`}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    )}
                     {loreReferences.length > 0 && (
                       <Stack
                         direction="row"

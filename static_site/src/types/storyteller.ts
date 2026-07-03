@@ -24,10 +24,25 @@ export interface StorytellerAgent {
   provider: string;
   model_name: string;
   agent_model_id: number | null;
+  provider_apikey_id: number | null;
   default_prompt: string;
   is_deleted: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface StorytellerProviderAPIKey {
+  id: number;
+  provider: string;
+  label: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerProviderAPIKeyRequest {
+  provider: string;
+  label: string;
+  api_key: string;
 }
 
 export interface StorytellerAgentModelOption {
@@ -135,7 +150,7 @@ export interface StorytellerAgentRequest {
   name: string;
   provider: string;
   model_name: string;
-  api_key?: string;
+  provider_apikey_id?: number | null;
   default_prompt: string;
 }
 
@@ -154,6 +169,7 @@ export interface StorytellerAgentRunRequest {
   selected_content: string;
   selection_start?: number;
   selection_end?: number;
+  provider_apikey_id?: number;
 }
 
 export interface StorytellerAgentRunUsage {
