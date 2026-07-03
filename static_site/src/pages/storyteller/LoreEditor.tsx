@@ -60,7 +60,9 @@ import {
 } from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
+  buildStorytellerAgentReplyQuote,
   buildStorytellerAgentReplyReferenceContent,
+  composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
@@ -288,17 +290,18 @@ export default function StorytellerLoreEditor() {
     1,
     Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
   );
+  const replyReferenceTarget = replyTarget
+    ? {
+        id: replyTarget.id,
+        speaker: replyTarget.speaker,
+        content: replyTarget.content,
+      }
+    : null;
   const loreReferenceContent = buildStorytellerAgentReferenceContent(
     loreReferences,
   );
   const replyReferenceContent = buildStorytellerAgentReplyReferenceContent(
-    replyTarget
-      ? {
-          id: replyTarget.id,
-          speaker: replyTarget.speaker,
-          content: replyTarget.content,
-        }
-      : null,
+    replyReferenceTarget,
   );
   const agentContext =
     loreReferenceContent ||
@@ -306,11 +309,15 @@ export default function StorytellerLoreEditor() {
   const fullAgentContent = [agentContext, replyReferenceContent]
     .filter(Boolean)
     .join("\n\n");
+  const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const aiPromptLength = Array.from(aiPrompt).length;
+  const aiInstructionPayloadLength =
+    aiPromptLength +
+    (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
   const aiReferenceContentLength = Array.from(fullAgentContent).length;
-  const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
+  const aiPayloadLength = aiInstructionPayloadLength + aiReferenceContentLength;
   const aiPayloadError =
-    aiPromptLength > aiInstructionMaxCharacters
+    aiInstructionPayloadLength > aiInstructionMaxCharacters
       ? `輸入需求最多 ${aiInstructionMaxCharacters.toLocaleString()} 字。`
       : aiReferenceContentLength > aiFullContentMaxCharacters
         ? `引用內容最多 ${aiFullContentMaxCharacters.toLocaleString()} 字。`
@@ -502,7 +509,10 @@ export default function StorytellerLoreEditor() {
     if (!canRunAgent || !selectedAgent) {
       return;
     }
-    const instruction = aiPrompt.trim();
+    const instruction = composeStorytellerAgentInstructionWithReply(
+      aiPrompt.trim(),
+      replyReferenceTarget,
+    );
     const resultSelection =
       selectionState.start < selectionState.end
         ? {

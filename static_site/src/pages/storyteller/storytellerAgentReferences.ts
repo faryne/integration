@@ -109,6 +109,44 @@ export function buildStorytellerAgentReplyReferenceContent(
   return `Reference reply: ${reply.speaker}\n<<<REPLY_REFERENCE_CONTENT\n${reply.content}\nREPLY_REFERENCE_CONTENT`;
 }
 
+const storytellerAgentReplyQuoteSummaryMaxCharacters = 60;
+
+// 把回覆目標摘要成一行 markdown blockquote，讓對話列表（不論是剛送出的樂觀訊息，
+// 或之後重新載入的歷史紀錄）都能看出這則訊息是在回覆誰，而不用改後端 schema——
+// 這段文字會直接併入 instruction 送出，後端會原封不動存成訊息內容。
+export function buildStorytellerAgentReplyQuote(
+  reply: StorytellerAgentReplyTarget | null | undefined,
+) {
+  if (!reply || reply.content.trim() === "") {
+    return "";
+  }
+  const summary = summarizeStorytellerAgentReplyContent(reply.content);
+  return `> 回覆 ${reply.speaker}：${summary}`;
+}
+
+export function composeStorytellerAgentInstructionWithReply(
+  instruction: string,
+  reply: StorytellerAgentReplyTarget | null | undefined,
+) {
+  const quote = buildStorytellerAgentReplyQuote(reply);
+  if (!quote) {
+    return instruction;
+  }
+  return instruction.trim() ? `${quote}\n\n${instruction}` : quote;
+}
+
+function summarizeStorytellerAgentReplyContent(
+  content: string,
+  maxLength = storytellerAgentReplyQuoteSummaryMaxCharacters,
+) {
+  const singleLine = content.replace(/\s+/g, " ").trim();
+  const characters = Array.from(singleLine);
+  if (characters.length <= maxLength) {
+    return singleLine;
+  }
+  return `${characters.slice(0, maxLength).join("")}…`;
+}
+
 function escapeStorytellerAgentReferenceTitle(title: string) {
   return title.replace(/\\/g, "\\\\").replace(/\]/g, "\\]");
 }

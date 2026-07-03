@@ -63,7 +63,9 @@ import {
 } from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
+  buildStorytellerAgentReplyQuote,
   buildStorytellerAgentReplyReferenceContent,
+  composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
@@ -345,25 +347,28 @@ export default function StorytellerStoryEditor() {
       content: item.latest_content,
     })),
   });
+  const replyReferenceTarget = replyTarget
+    ? {
+        id: replyTarget.id,
+        speaker: replyTarget.speaker,
+        content: replyTarget.content,
+      }
+    : null;
   const agentReferenceContent = [
     buildStorytellerAgentReferenceContent(agentPromptReferences),
-    buildStorytellerAgentReplyReferenceContent(
-      replyTarget
-        ? {
-            id: replyTarget.id,
-            speaker: replyTarget.speaker,
-            content: replyTarget.content,
-          }
-        : null,
-    ),
+    buildStorytellerAgentReplyReferenceContent(replyReferenceTarget),
   ]
     .filter(Boolean)
     .join("\n\n");
+  const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const aiPromptLength = Array.from(aiPrompt).length;
+  const aiInstructionPayloadLength =
+    aiPromptLength +
+    (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
   const aiReferenceContentLength = Array.from(agentReferenceContent).length;
-  const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
+  const aiPayloadLength = aiInstructionPayloadLength + aiReferenceContentLength;
   const aiPayloadError =
-    aiPromptLength > aiInstructionMaxCharacters
+    aiInstructionPayloadLength > aiInstructionMaxCharacters
       ? `輸入需求最多 ${aiInstructionMaxCharacters.toLocaleString()} 字。`
       : aiReferenceContentLength > aiFullContentMaxCharacters
         ? `引用內容最多 ${aiFullContentMaxCharacters.toLocaleString()} 字。`
@@ -696,9 +701,13 @@ export default function StorytellerStoryEditor() {
     instructionOverride?: string,
   ) {
     const rawInstruction = instructionOverride ?? aiPrompt;
-    const instruction = instructionOverride
+    const trimmedInstruction = instructionOverride
       ? instructionOverride
       : normalizeInstructionForRun(rawInstruction);
+    const instruction = composeStorytellerAgentInstructionWithReply(
+      trimmedInstruction,
+      replyReferenceTarget,
+    );
     if (!canRunAgent) {
       return;
     }
@@ -715,7 +724,7 @@ export default function StorytellerStoryEditor() {
     setOptimisticMessage({
       id: `pending-${pendingMessageIdRef.current}`,
       role: "user",
-      content: rawInstruction.trim() || "（未輸入需求）",
+      content: instruction.trim() || "（未輸入需求）",
       agent_id: selectedAgentNumericId,
       agent_name: selectedAgent?.name ?? "AI Agent",
     });
