@@ -94,20 +94,51 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return &row, err
 }
 
-func (r *Repository) ActiveAgentsForAPIKeyRotation() ([]storytellerModel.Agent, error) {
-	rows := make([]storytellerModel.Agent, 0)
+func (r *Repository) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKey, error) {
+	rows := make([]storytellerModel.ProviderAPIKey, 0)
+	err := r.db.Where("user_id = ? AND is_deleted = 0 AND deleted_at IS NULL", userID).
+		Order("provider ASC, updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error) {
+	var row storytellerModel.ProviderAPIKey
+	err := r.db.Where("user_id = ? AND id = ? AND is_deleted = 0 AND deleted_at IS NULL", userID, id).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateProviderAPIKey(row *storytellerModel.ProviderAPIKey) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) DeleteProviderAPIKey(row *storytellerModel.ProviderAPIKey) error {
+	now := time.Now()
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&storytellerModel.Agent{}).
+			Where("provider_apikey_id = ?", row.ID).
+			Update("provider_apikey_id", nil).Error
+	})
+}
+
+func (r *Repository) ActiveProviderAPIKeysForRotation() ([]storytellerModel.ProviderAPIKey, error) {
+	rows := make([]storytellerModel.ProviderAPIKey, 0)
 	err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").
 		Order("id ASC").
 		Find(&rows).Error
 	return rows, err
 }
 
-func (r *Repository) UpdateAgentAPIKeyEncryption(agent *storytellerModel.Agent) error {
-	return r.db.Model(agent).Updates(map[string]any{
-		"api_key":           agent.APIKey,
-		"api_key_encrypted": agent.APIKeyEncrypted,
-		"api_key_data_key":  agent.APIKeyDataKey,
-		"api_key_key_id":    agent.APIKeyKeyID,
+func (r *Repository) UpdateProviderAPIKeyEncryption(row *storytellerModel.ProviderAPIKey) error {
+	return r.db.Model(row).Updates(map[string]any{
+		"api_key":           row.APIKey,
+		"api_key_encrypted": row.APIKeyEncrypted,
+		"api_key_data_key":  row.APIKeyDataKey,
+		"api_key_key_id":    row.APIKeyKeyID,
 	}).Error
 }
 

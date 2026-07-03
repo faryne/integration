@@ -56,43 +56,47 @@ func encryptAgentAPIKey(plaintext string) (*encryptedAgentAPIKey, error) {
 	}, nil
 }
 
-func decryptAgentAPIKey(agent *storytellerModel.Agent) (string, error) {
-	if strings.TrimSpace(agent.APIKeyEncrypted) == "" {
+func decryptProviderAPIKey(key *storytellerModel.ProviderAPIKey) (string, error) {
+	return decryptAPIKeyFields(key.APIKeyEncrypted, key.APIKeyDataKey, key.APIKeyKeyID, key.APIKey)
+}
+
+func decryptAPIKeyFields(encrypted, dataKey, keyID, plainFallback string) (string, error) {
+	if strings.TrimSpace(encrypted) == "" {
 		// 舊資料在 migration 後仍可能只有明文 api_key，先保留讀取能力讓輪換 job 可逐步轉換。
-		return strings.TrimSpace(agent.APIKey), nil
+		return strings.TrimSpace(plainFallback), nil
 	}
-	key, err := agentAPIKeyMasterKeyByID(agent.APIKeyKeyID)
+	masterKey, err := agentAPIKeyMasterKeyByID(keyID)
 	if err != nil {
-		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("load master key %q failed: %w", agent.APIKeyKeyID, err))
+		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("load master key %q failed: %w", keyID, err))
 	}
-	dataKey, err := decryptBytes(key.key, agent.APIKeyDataKey)
+	rawDataKey, err := decryptBytes(masterKey.key, dataKey)
 	if err != nil {
-		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("decrypt data key with key %q failed: %w", agent.APIKeyKeyID, err))
+		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("decrypt data key with key %q failed: %w", keyID, err))
 	}
-	plaintext, err := decryptBytes(dataKey, agent.APIKeyEncrypted)
+	plaintext, err := decryptBytes(rawDataKey, encrypted)
 	if err != nil {
-		return legacyAgentAPIKeyFallback(agent, fmt.Errorf("decrypt api key ciphertext failed: %w", err))
+		return legacyAPIKeyFallback(plainFallback, fmt.Errorf("decrypt api key ciphertext failed: %w", err))
 	}
 	return strings.TrimSpace(string(plaintext)), nil
 }
 
-func legacyAgentAPIKeyFallback(agent *storytellerModel.Agent, decryptErr error) (string, error) {
-	if strings.TrimSpace(agent.APIKey) != "" {
+func legacyAPIKeyFallback(plainFallback string, decryptErr error) (string, error) {
+	if strings.TrimSpace(plainFallback) != "" {
 		// 若資料列仍保留舊明文，優先維持功能可用；下一次輪換 job 會重新寫入正確密文。
-		return strings.TrimSpace(agent.APIKey), nil
+		return strings.TrimSpace(plainFallback), nil
 	}
 	return "", decryptErr
 }
 
-func applyEncryptedAgentAPIKey(agent *storytellerModel.Agent, plaintext string) error {
+func applyEncryptedProviderAPIKey(key *storytellerModel.ProviderAPIKey, plaintext string) error {
 	encrypted, err := encryptAgentAPIKey(strings.TrimSpace(plaintext))
 	if err != nil {
 		return err
 	}
-	agent.APIKey = ""
-	agent.APIKeyEncrypted = encrypted.ciphertext
-	agent.APIKeyDataKey = encrypted.dataKey
-	agent.APIKeyKeyID = encrypted.keyID
+	key.APIKey = ""
+	key.APIKeyEncrypted = encrypted.ciphertext
+	key.APIKeyDataKey = encrypted.dataKey
+	key.APIKeyKeyID = encrypted.keyID
 	return nil
 }
 

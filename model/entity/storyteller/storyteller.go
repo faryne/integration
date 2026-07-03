@@ -96,24 +96,38 @@ type Project struct {
 func (Project) TableName() string { return "storyteller_projects" }
 
 type Agent struct {
+	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
+	Name             string        `gorm:"column:name" json:"name"`
+	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
+	ModelName        string        `gorm:"column:model_name" json:"model_name"`
+	AgentModelID     *uint64       `gorm:"column:agent_model_id" json:"agent_model_id"`
+	ProviderAPIKeyID *uint64       `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
+	DefaultPrompt    string        `gorm:"column:default_prompt" json:"default_prompt"`
+	IsDeleted        bool          `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt        *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time     `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (Agent) TableName() string { return "storyteller_agents" }
+
+type ProviderAPIKey struct {
 	ID              uint64        `gorm:"column:id;primaryKey" json:"id"`
 	UserID          uint64        `gorm:"column:user_id" json:"user_id"`
-	Name            string        `gorm:"column:name" json:"name"`
 	Provider        AgentProvider `gorm:"column:provider" json:"provider"`
-	ModelName       string        `gorm:"column:model_name" json:"model_name"`
-	AgentModelID    *uint64       `gorm:"column:agent_model_id" json:"agent_model_id"`
+	Label           string        `gorm:"column:label" json:"label"`
 	APIKey          string        `gorm:"column:api_key" json:"-"`
 	APIKeyEncrypted string        `gorm:"column:api_key_encrypted" json:"-"`
 	APIKeyDataKey   string        `gorm:"column:api_key_data_key" json:"-"`
 	APIKeyKeyID     string        `gorm:"column:api_key_key_id" json:"-"`
-	DefaultPrompt   string        `gorm:"column:default_prompt" json:"default_prompt"`
 	IsDeleted       bool          `gorm:"column:is_deleted" json:"is_deleted"`
 	DeletedAt       *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt       time.Time     `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt       time.Time     `gorm:"column:updated_at" json:"updated_at"`
 }
 
-func (Agent) TableName() string { return "storyteller_agents" }
+func (ProviderAPIKey) TableName() string { return "storyteller_provider_apikeys" }
 
 type AgentProviderSetting struct {
 	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
@@ -308,20 +322,35 @@ type ProjectRequest struct {
 }
 
 type AgentRequest struct {
-	Name          string        `json:"name"`
-	Provider      AgentProvider `json:"provider"`
-	ModelName     string        `json:"model_name"`
-	APIKey        string        `json:"api_key"`
-	DefaultPrompt string        `json:"default_prompt"`
+	Name             string        `json:"name"`
+	Provider         AgentProvider `json:"provider"`
+	ModelName        string        `json:"model_name"`
+	ProviderAPIKeyID *uint64       `json:"provider_apikey_id"`
+	DefaultPrompt    string        `json:"default_prompt"`
 }
 
 type AgentRunRequest struct {
-	Mode            AgentRunMode `json:"mode"`
-	Instruction     string       `json:"instruction"`
-	FullContent     string       `json:"full_content"`
-	SelectedContent string       `json:"selected_content"`
-	SelectionStart  *int         `json:"selection_start"`
-	SelectionEnd    *int         `json:"selection_end"`
+	Mode             AgentRunMode `json:"mode"`
+	Instruction      string       `json:"instruction"`
+	FullContent      string       `json:"full_content"`
+	SelectedContent  string       `json:"selected_content"`
+	SelectionStart   *int         `json:"selection_start"`
+	SelectionEnd     *int         `json:"selection_end"`
+	ProviderAPIKeyID *uint64      `json:"provider_apikey_id,omitempty"`
+}
+
+type ProviderAPIKeyRequest struct {
+	Provider AgentProvider `json:"provider"`
+	Label    string        `json:"label"`
+	APIKey   string        `json:"api_key"`
+}
+
+type ProviderAPIKeyOutput struct {
+	ID        uint64        `json:"id"`
+	Provider  AgentProvider `json:"provider"`
+	Label     string        `json:"label"`
+	CreatedAt time.Time     `json:"created_at"`
+	UpdatedAt time.Time     `json:"updated_at"`
 }
 
 type StoryRequest struct {

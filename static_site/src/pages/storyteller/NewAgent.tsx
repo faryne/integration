@@ -15,12 +15,17 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import {
   useStorytellerAgentPromptVersions,
   useStorytellerAgentProviderModels,
   useSaveStorytellerAgent,
   useStorytellerAgents,
+  useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import {
@@ -39,6 +44,7 @@ export default function StorytellerNewAgent() {
     useStorytellerAgents();
   const agent = agents.find((item) => item.id === editAgentId);
   const { data: providerModels = [] } = useStorytellerAgentProviderModels();
+  const { data: apiKeys = [] } = useStorytellerProviderAPIKeys();
   const { data: promptVersions = [], isLoading: promptVersionsLoading } =
     useStorytellerAgentPromptVersions(editAgentId);
   const saveAgent = useSaveStorytellerAgent();
@@ -49,7 +55,7 @@ export default function StorytellerNewAgent() {
     name: "",
     provider: "grok",
     model_name: "",
-    api_key: "",
+    provider_apikey_id: null,
     default_prompt: "",
   });
 
@@ -61,10 +67,25 @@ export default function StorytellerNewAgent() {
       name: agent.name,
       provider: agent.provider,
       model_name: agent.model_name,
-      api_key: "",
+      provider_apikey_id: agent.provider_apikey_id,
       default_prompt: agent.default_prompt,
     });
   }, [agent]);
+
+  const providerApiKeys = useMemo(
+    () => apiKeys.filter((apiKey) => apiKey.provider === input.provider),
+    [apiKeys, input.provider],
+  );
+
+  useEffect(() => {
+    if (input.provider_apikey_id || providerApiKeys.length === 0) {
+      return;
+    }
+    setInput((value) => ({
+      ...value,
+      provider_apikey_id: providerApiKeys[0].id,
+    }));
+  }, [input.provider_apikey_id, providerApiKeys]);
 
   useEffect(() => {
     const currentProvider = providerModels.find(
@@ -249,6 +270,7 @@ export default function StorytellerNewAgent() {
                       ...value,
                       provider: nextProvider,
                       model_name: nextOption?.models[0]?.name ?? "",
+                      provider_apikey_id: null,
                     }));
                   }}
                 >
@@ -358,30 +380,51 @@ export default function StorytellerNewAgent() {
                   </Grid>
                 )}
               <Grid size={12}>
-                <TextField
-                  fullWidth
-                  type="password"
-                  label="API Key"
-                  placeholder={
-                    isEdit
-                      ? "留空代表沿用既有 API Key"
-                      : "填入後端加密保存前的輸入欄位"
-                  }
-                  value={input.api_key}
-                  onChange={(event) =>
-                    setInput((value) => ({
-                      ...value,
-                      api_key: event.target.value,
-                    }))
-                  }
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <KeyIcon color="disabled" sx={{ mr: 1 }} />
-                      ),
-                    },
-                  }}
-                />
+                {providerApiKeys.length > 0 ? (
+                  <TextField
+                    required
+                    fullWidth
+                    select
+                    label="API Key"
+                    helperText="從金鑰管理建立的金鑰中選擇此 Agent 預設使用的金鑰。"
+                    value={input.provider_apikey_id ?? ""}
+                    onChange={(event) =>
+                      setInput((value) => ({
+                        ...value,
+                        provider_apikey_id: Number(event.target.value),
+                      }))
+                    }
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <KeyIcon color="disabled" sx={{ mr: 1 }} />
+                        ),
+                      },
+                    }}
+                  >
+                    {providerApiKeys.map((apiKey) => (
+                      <MenuItem key={apiKey.id} value={apiKey.id}>
+                        {apiKey.label || `金鑰 #${apiKey.id}`}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <Alert
+                    severity="warning"
+                    variant="outlined"
+                    action={
+                      <Button
+                        component={RouterLink}
+                        to="/storyteller/my/api-keys"
+                        size="small"
+                      >
+                        前往新增
+                      </Button>
+                    }
+                  >
+                    此供應商尚未建立任何 API Key，請先到金鑰管理新增一把。
+                  </Alert>
+                )}
               </Grid>
               <Grid size={12}>
                 <TextField
