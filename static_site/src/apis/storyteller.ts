@@ -1,5 +1,10 @@
 import axios from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
@@ -437,7 +442,12 @@ export function useSaveStorytellerAgent() {
 export function useStorytellerAgentPromptVersions(agentId?: number) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: ["storyteller", "agent-prompt-versions", agentId, session?.user.id],
+    queryKey: [
+      "storyteller",
+      "agent-prompt-versions",
+      agentId,
+      session?.user.id,
+    ],
     enabled: Boolean(session?.encrypt_key && agentId),
     queryFn: async () => {
       const response = await axios.get<
@@ -644,31 +654,31 @@ export function useStorytellerStoryVersions(
   });
 }
 
+// 依「頁碼」累加載入的對話紀錄：第 1 頁是最新訊息，往後翻頁載入更早的訊息，
+// 供 IM 常見的「載入更早的訊息」互動使用（而非數字換頁，換頁會整批替換畫面上的訊息）。
 export function useStorytellerStoryChatMessages(
   projectPublicId?: string,
   storyPublicId?: string,
-  page = 1,
   perPage = 10,
 ) {
   const { session } = useAuth();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: [
       "storyteller",
       "story-chat-messages",
       projectPublicId,
       storyPublicId,
-      page,
-      perPage,
       session?.user.id,
     ],
     enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       const response = await axios.get<
         CommonResponse<StorytellerStoryChatMessagePage>
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/chat-messages`,
         {
-          params: { page, per_page: perPage },
+          params: { page: pageParam, per_page: perPage },
           headers: sessionHeaders(session!.encrypt_key),
         },
       );
@@ -676,39 +686,41 @@ export function useStorytellerStoryChatMessages(
         response.data.data ?? {
           items: [],
           total: 0,
-          page,
+          page: pageParam,
           per_page: perPage,
         }
       );
     },
+    getNextPageParam: (lastPage) =>
+      lastPage.page * lastPage.per_page < lastPage.total
+        ? lastPage.page + 1
+        : undefined,
   });
 }
 
 export function useStorytellerLoreChatMessages(
   projectPublicId?: string,
   lorePublicId?: string,
-  page = 1,
   perPage = 10,
 ) {
   const { session } = useAuth();
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: [
       "storyteller",
       "lore-chat-messages",
       projectPublicId,
       lorePublicId,
-      page,
-      perPage,
       session?.user.id,
     ],
     enabled: Boolean(session?.encrypt_key && projectPublicId && lorePublicId),
-    queryFn: async () => {
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       const response = await axios.get<
         CommonResponse<StorytellerStoryChatMessagePage>
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/chat-messages`,
         {
-          params: { page, per_page: perPage },
+          params: { page: pageParam, per_page: perPage },
           headers: sessionHeaders(session!.encrypt_key),
         },
       );
@@ -716,11 +728,15 @@ export function useStorytellerLoreChatMessages(
         response.data.data ?? {
           items: [],
           total: 0,
-          page,
+          page: pageParam,
           per_page: perPage,
         }
       );
     },
+    getNextPageParam: (lastPage) =>
+      lastPage.page * lastPage.per_page < lastPage.total
+        ? lastPage.page + 1
+        : undefined,
   });
 }
 

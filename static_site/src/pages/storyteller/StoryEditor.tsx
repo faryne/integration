@@ -209,14 +209,17 @@ export default function StorytellerStoryEditor() {
   );
   const { data: apiStoryVersions = [], isLoading: apiStoryVersionsLoading } =
     useStorytellerStoryVersions(apiProject?.public_id, apiStory?.public_id);
-  const [aiMessagePage, setAiMessagePage] = useState(1);
-  const { data: aiMessagesPage, isLoading: aiMessagesLoading } =
-    useStorytellerStoryChatMessages(
-      apiProject?.public_id,
-      apiStory?.public_id,
-      aiMessagePage,
-      aiMessagesPerPage,
-    );
+  const {
+    data: aiMessagesPages,
+    isLoading: aiMessagesLoading,
+    hasNextPage: hasMoreAiMessages,
+    isFetchingNextPage: loadingMoreAiMessages,
+    fetchNextPage: fetchMoreAiMessages,
+  } = useStorytellerStoryChatMessages(
+    apiProject?.public_id,
+    apiStory?.public_id,
+    aiMessagesPerPage,
+  );
   const [storyTitle, setStoryTitle] = useState(story?.title ?? "");
   const [storySummary, setStorySummary] = useState(story?.summary ?? "");
   const [storyStatus, setStoryStatus] = useState<"draft" | "completed">(
@@ -294,7 +297,11 @@ export default function StorytellerStoryEditor() {
   const selectedAgent =
     agentRows.find((agent) => agent.id === selectedAgentId) ?? agentRows[0];
   const selectedAgentNumericId = Number(selectedAgent?.id);
-  const aiMessages = aiMessagesPage?.items ?? [];
+  // 第 1 頁是最新訊息，載入更早的訊息時往後翻頁；顯示時要反過來，最早的頁在最上面
+  const aiMessages = (aiMessagesPages?.pages ?? [])
+    .slice()
+    .reverse()
+    .flatMap((page) => page.items);
   const visibleAiMessages = aiResult
     ? aiMessages.filter(
         (message) =>
@@ -363,8 +370,7 @@ export default function StorytellerStoryEditor() {
   const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const aiPromptLength = Array.from(aiPrompt).length;
   const aiInstructionPayloadLength =
-    aiPromptLength +
-    (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
+    aiPromptLength + (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
   const aiReferenceContentLength = Array.from(agentReferenceContent).length;
   const aiPayloadLength = aiInstructionPayloadLength + aiReferenceContentLength;
   const aiPayloadError =
@@ -421,10 +427,6 @@ export default function StorytellerStoryEditor() {
             item.title.toLowerCase().includes(loreMentionQuery.toLowerCase()),
           )
           .slice(0, 6);
-  const aiMessageTotalPages = Math.max(
-    1,
-    Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
-  );
   const canRunAgent =
     Boolean(apiProject?.public_id && apiStory?.public_id) &&
     Number.isFinite(selectedAgentNumericId) &&
@@ -478,10 +480,6 @@ export default function StorytellerStoryEditor() {
       setSelectedAgentId(agentRows[0]?.id ?? "");
     }
   }, [agentRows, selectedAgentId]);
-
-  useEffect(() => {
-    setAiMessagePage(1);
-  }, [apiStory?.public_id]);
 
   useTitle(`${pageTitle} - Storyteller`, {
     path:
@@ -1104,9 +1102,9 @@ export default function StorytellerStoryEditor() {
                 }
                 emptyTitle="還沒有 AI Agent 對話紀錄"
                 emptyDescription="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
-                page={aiMessagePage}
-                pageCount={aiMessageTotalPages}
-                onPageChange={setAiMessagePage}
+                hasMoreHistory={Boolean(hasMoreAiMessages)}
+                loadingMoreHistory={loadingMoreAiMessages}
+                onLoadMoreHistory={() => void fetchMoreAiMessages()}
                 errorMessage={
                   runAgent.isError ? aiErrorMessage(runAgent.error) : ""
                 }
