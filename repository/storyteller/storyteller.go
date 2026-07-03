@@ -141,6 +141,24 @@ func (r *Repository) UpdateProviderAPIKeyEncryption(row *storytellerModel.Provid
 	}).Error
 }
 
+func (r *Repository) UpdateProviderAPIKeyTestResult(row *storytellerModel.ProviderAPIKey) error {
+	return r.db.Model(row).Updates(map[string]any{
+		"last_tested_at": row.LastTestedAt,
+		"last_test_ok":   row.LastTestOK,
+	}).Error
+}
+
+func (r *Repository) UpdateProviderAPIKey(row *storytellerModel.ProviderAPIKey) error {
+	return r.db.Model(row).Updates(map[string]any{
+		"label":             row.Label,
+		"api_key_encrypted": row.APIKeyEncrypted,
+		"api_key_data_key":  row.APIKeyDataKey,
+		"api_key_key_id":    row.APIKeyKeyID,
+		"last_tested_at":    row.LastTestedAt,
+		"last_test_ok":      row.LastTestOK,
+	}).Error
+}
+
 func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderModels, error) {
 	providers := make([]storytellerModel.AgentProviderSetting, 0)
 	if err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").

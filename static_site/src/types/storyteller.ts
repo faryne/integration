@@ -35,6 +35,8 @@ export interface StorytellerProviderAPIKey {
   id: number;
   provider: string;
   label: string;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +45,11 @@ export interface StorytellerProviderAPIKeyRequest {
   provider: string;
   label: string;
   api_key: string;
+}
+
+export interface StorytellerProviderAPIKeyUpdateRequest {
+  label: string;
+  api_key?: string;
 }
 
 export interface StorytellerAgentModelOption {

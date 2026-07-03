@@ -23,6 +23,7 @@ import type {
   StorytellerProjectRequest,
   StorytellerProviderAPIKey,
   StorytellerProviderAPIKeyRequest,
+  StorytellerProviderAPIKeyUpdateRequest,
   StorytellerStory,
   StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
@@ -418,10 +419,11 @@ export function useStorytellerProviderAPIKeys() {
     queryKey: ["storyteller", "provider-apikeys", session?.user.id],
     enabled: Boolean(session?.encrypt_key),
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<StorytellerProviderAPIKey[]>>(
-        `${apiBase}/storyteller/provider-apikeys`,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
+      const response = await axios.get<
+        CommonResponse<StorytellerProviderAPIKey[]>
+      >(`${apiBase}/storyteller/provider-apikeys`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data ?? [];
     },
   });
@@ -432,11 +434,11 @@ export function useCreateStorytellerProviderAPIKey() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: StorytellerProviderAPIKeyRequest) => {
-      const response = await axios.post<CommonResponse<StorytellerProviderAPIKey>>(
-        `${apiBase}/storyteller/provider-apikeys`,
-        input,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
+      const response = await axios.post<
+        CommonResponse<StorytellerProviderAPIKey>
+      >(`${apiBase}/storyteller/provider-apikeys`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data;
     },
     onSuccess: () => {
@@ -466,8 +468,35 @@ export function useDeleteStorytellerProviderAPIKey() {
   });
 }
 
+export function useUpdateStorytellerProviderAPIKey() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      input,
+    }: {
+      id: number;
+      input: StorytellerProviderAPIKeyUpdateRequest;
+    }) => {
+      const response = await axios.put<
+        CommonResponse<StorytellerProviderAPIKey>
+      >(`${apiBase}/storyteller/provider-apikeys/${id}`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "provider-apikeys"],
+      });
+    },
+  });
+}
+
 export function useTestStorytellerProviderAPIKey() {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
       const response = await axios.post<CommonResponse<{ ok: boolean }>>(
@@ -476,6 +505,12 @@ export function useTestStorytellerProviderAPIKey() {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;
+    },
+    // 不論成功或失敗，後端都會把測試結果寫回 DB，這裡重新整理清單讓畫面顯示最新的持久化狀態
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "provider-apikeys"],
+      });
     },
   });
 }

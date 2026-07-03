@@ -145,6 +145,25 @@ func CreateProviderAPIKey(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func UpdateProviderAPIKey(ctx fiber.Ctx) error {
+	id, err := parseUint(ctx.Params("apikey"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.ProviderAPIKeyUpdateRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().UpdateProviderAPIKey(authsession.Session(ctx).UserId, id, input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("provider api key not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func DeleteProviderAPIKey(ctx fiber.Ctx) error {
 	id, err := parseUint(ctx.Params("apikey"))
 	if err != nil {
