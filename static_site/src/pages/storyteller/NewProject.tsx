@@ -45,7 +45,11 @@ export default function StorytellerNewProject() {
   const { id } = useParams();
   const navigate = useNavigate();
   const saveProject = useSaveStorytellerProject();
-  const { data: projects = [], isLoading } = useStorytellerProjects();
+  const {
+    data: projects = [],
+    isLoading,
+    isFetching,
+  } = useStorytellerProjects();
   const editingProject = id
     ? projects.find((project) => project.public_id === id)
     : undefined;
@@ -82,7 +86,7 @@ export default function StorytellerNewProject() {
     robots: "noindex, nofollow",
   });
 
-  if (isEditing && isLoading) {
+  if (isEditing && !editingProject && (isLoading || isFetching)) {
     return <StorytellerLoading label="正在載入專案資料..." />;
   }
 

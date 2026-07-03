@@ -15,11 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Link as RouterLink,
-  useNavigate,
-  useParams,
-} from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   useStorytellerAgentPromptVersions,
   useStorytellerAgentProviderModels,
@@ -40,8 +36,11 @@ export default function StorytellerNewAgent() {
   const { agentId } = useParams();
   const editAgentId = agentId ? Number(agentId) : undefined;
   const isEdit = Number.isFinite(editAgentId);
-  const { data: agents = [], isLoading: agentsLoading } =
-    useStorytellerAgents();
+  const {
+    data: agents = [],
+    isLoading: agentsLoading,
+    isFetching: agentsFetching,
+  } = useStorytellerAgents();
   const agent = agents.find((item) => item.id === editAgentId);
   const { data: providerModels = [] } = useStorytellerAgentProviderModels();
   const { data: apiKeys = [] } = useStorytellerProviderAPIKeys();
@@ -140,7 +139,7 @@ export default function StorytellerNewAgent() {
     robots: "noindex, nofollow",
   });
 
-  if (isEdit && agentsLoading) {
+  if (isEdit && !agent && (agentsLoading || agentsFetching)) {
     return (
       <StorytellerShell
         title="編輯 AI Agent"
