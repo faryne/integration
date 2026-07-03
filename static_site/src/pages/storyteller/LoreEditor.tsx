@@ -135,7 +135,6 @@ export default function StorytellerLoreEditor() {
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
-  const [aiMessagePage, setAiMessagePage] = useState(1);
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
 
@@ -158,13 +157,17 @@ export default function StorytellerLoreEditor() {
     apiProject?.public_id,
     apiLore?.public_id,
   );
-  const { data: aiMessagesPage, isLoading: aiMessagesLoading } =
-    useStorytellerLoreChatMessages(
-      apiProject?.public_id,
-      apiLore?.public_id,
-      aiMessagePage,
-      aiMessagesPerPage,
-    );
+  const {
+    data: aiMessagesPages,
+    isLoading: aiMessagesLoading,
+    hasNextPage: hasMoreAiMessages,
+    isFetchingNextPage: loadingMoreAiMessages,
+    fetchNextPage: fetchMoreAiMessages,
+  } = useStorytellerLoreChatMessages(
+    apiProject?.public_id,
+    apiLore?.public_id,
+    aiMessagesPerPage,
+  );
 
   const project = apiProject
     ? { id: apiProject.public_id, name: apiProject.name }
@@ -242,7 +245,11 @@ export default function StorytellerLoreEditor() {
         content: item.latest_content,
       })),
   });
-  const aiMessages = aiMessagesPage?.items ?? [];
+  // 第 1 頁是最新訊息，載入更早的訊息時往後翻頁；顯示時要反過來，最早的頁在最上面
+  const aiMessages = (aiMessagesPages?.pages ?? [])
+    .slice()
+    .reverse()
+    .flatMap((page) => page.items);
   const visibleAiResult =
     aiResult &&
     !aiMessages.some(
@@ -286,10 +293,6 @@ export default function StorytellerLoreEditor() {
         ]
       : []),
   ];
-  const aiMessageTotalPages = Math.max(
-    1,
-    Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
-  );
   const replyReferenceTarget = replyTarget
     ? {
         id: replyTarget.id,
@@ -297,12 +300,10 @@ export default function StorytellerLoreEditor() {
         content: replyTarget.content,
       }
     : null;
-  const loreReferenceContent = buildStorytellerAgentReferenceContent(
-    loreReferences,
-  );
-  const replyReferenceContent = buildStorytellerAgentReplyReferenceContent(
-    replyReferenceTarget,
-  );
+  const loreReferenceContent =
+    buildStorytellerAgentReferenceContent(loreReferences);
+  const replyReferenceContent =
+    buildStorytellerAgentReplyReferenceContent(replyReferenceTarget);
   const agentContext =
     loreReferenceContent ||
     `Current lore:\n<<<LORE_CONTENT\n${content}\nLORE_CONTENT`;
@@ -312,8 +313,7 @@ export default function StorytellerLoreEditor() {
   const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const aiPromptLength = Array.from(aiPrompt).length;
   const aiInstructionPayloadLength =
-    aiPromptLength +
-    (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
+    aiPromptLength + (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
   const aiReferenceContentLength = Array.from(fullAgentContent).length;
   const aiPayloadLength = aiInstructionPayloadLength + aiReferenceContentLength;
   const aiPayloadError =
@@ -849,9 +849,9 @@ export default function StorytellerLoreEditor() {
                 }
                 emptyTitle="還沒有 AI Agent 對話紀錄"
                 emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
-                page={aiMessagePage}
-                pageCount={aiMessageTotalPages}
-                onPageChange={setAiMessagePage}
+                hasMoreHistory={Boolean(hasMoreAiMessages)}
+                loadingMoreHistory={loadingMoreAiMessages}
+                onLoadMoreHistory={() => void fetchMoreAiMessages()}
                 errorMessage={
                   runAgent.isError
                     ? errorMessage(

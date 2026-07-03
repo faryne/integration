@@ -12,7 +12,6 @@ import {
   Divider,
   IconButton,
   MenuItem,
-  Pagination,
   Paper,
   Stack,
   TextField,
@@ -20,7 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -73,9 +72,9 @@ interface StorytellerAgentPanelProps {
   unavailableMessage?: string;
   emptyTitle: string;
   emptyDescription: string;
-  page: number;
-  pageCount: number;
-  onPageChange: (page: number) => void;
+  hasMoreHistory: boolean;
+  loadingMoreHistory: boolean;
+  onLoadMoreHistory: () => void;
   errorMessage?: string;
   prompt: string;
   onPromptChange: (value: string) => void;
@@ -103,17 +102,35 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
   const selectedAgent =
     props.agents.find((agent) => agent.id === props.selectedAgentId) ??
     props.agents[0];
-  const { messagesLoading, page } = props;
+  const { messagesLoading } = props;
   const messageCount = props.messages.length;
+  // 記錄「載入更早的訊息」點擊當下的捲動高度；新訊息載入完成後用來校正捲動位置，
+  // 讓畫面停留在原本閱讀的地方，不會因為上方多了內容而往下跳
+  const loadingMoreAnchorRef = useRef<number | null>(null);
 
-  // 載入完成、訊息增減或處理狀態改變時，停留在最新頁就自動捲到列表底部
-  useEffect(() => {
+  // 載入完成、訊息增減或處理狀態改變時自動捲到列表底部；
+  // 若是使用者剛按過「載入更早的訊息」（新內容加在最上面），改成校正捲動位置而非捲到底部
+  useLayoutEffect(() => {
     const node = messagesContainerRef.current;
-    if (!node || messagesLoading || page !== 1) {
+    if (!node) {
+      return;
+    }
+    if (loadingMoreAnchorRef.current !== null) {
+      node.scrollTop += node.scrollHeight - loadingMoreAnchorRef.current;
+      loadingMoreAnchorRef.current = null;
+      return;
+    }
+    if (messagesLoading) {
       return;
     }
     node.scrollTop = node.scrollHeight;
-  }, [messageCount, props.pending, messagesLoading, page]);
+  }, [messageCount, props.pending, messagesLoading]);
+
+  function handleLoadMoreHistory() {
+    loadingMoreAnchorRef.current =
+      messagesContainerRef.current?.scrollHeight ?? null;
+    props.onLoadMoreHistory();
+  }
 
   function scrollToReplyTarget() {
     const replyTarget = props.replyTarget;
@@ -246,6 +263,23 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
             </Stack>
           ) : props.messages.length > 0 || props.pending ? (
             <>
+              {props.hasMoreHistory && (
+                <Stack direction="row" justifyContent="center">
+                  <Button
+                    size="small"
+                    variant="text"
+                    disabled={props.loadingMoreHistory}
+                    onClick={handleLoadMoreHistory}
+                    startIcon={
+                      props.loadingMoreHistory ? (
+                        <CircularProgress size={14} />
+                      ) : undefined
+                    }
+                  >
+                    {props.loadingMoreHistory ? "載入中..." : "載入更早的訊息"}
+                  </Button>
+                </Stack>
+              )}
               {props.messages.map((message) => (
                 <StorytellerAgentMessage
                   key={message.id}
@@ -277,17 +311,6 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
               title={props.emptyTitle}
               description={props.emptyDescription}
             />
-          )}
-          {props.pageCount > 1 && (
-            <Stack direction="row" justifyContent="center">
-              <Pagination
-                size="small"
-                count={props.pageCount}
-                page={props.page}
-                onChange={(_, page) => props.onPageChange(page)}
-                color="primary"
-              />
-            </Stack>
           )}
           {props.errorMessage && (
             <Alert severity="error" variant="outlined">
