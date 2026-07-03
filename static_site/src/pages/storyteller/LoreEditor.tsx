@@ -141,12 +141,17 @@ export default function StorytellerLoreEditor() {
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
 
-  const { data: apiProjects = [], isPending: projectsPending } =
-    useStorytellerProjects();
+  const {
+    data: apiProjects = [],
+    isPending: projectsPending,
+    isFetching: projectsFetching,
+  } = useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
-  const { data: apiLores = [], isPending: loresPending } = useStorytellerLores(
-    apiProject?.public_id,
-  );
+  const {
+    data: apiLores = [],
+    isPending: loresPending,
+    isFetching: loresFetching,
+  } = useStorytellerLores(apiProject?.public_id);
   const apiLore = apiLores.find((item) => item.public_id === loreId);
   const { data: apiStories = [] } = useStorytellerStories(
     apiProject?.public_id,
@@ -444,8 +449,8 @@ export default function StorytellerLoreEditor() {
   });
 
   if (
-    (!project && projectsPending) ||
-    (apiProject && !isNewLore && !lore && loresPending)
+    (!project && (projectsPending || projectsFetching)) ||
+    (apiProject && !isNewLore && !lore && (loresPending || loresFetching))
   ) {
     return <StorytellerLoading label="正在載入設定集..." />;
   }

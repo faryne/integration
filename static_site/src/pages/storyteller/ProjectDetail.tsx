@@ -43,6 +43,10 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 
+// 穩定的空陣列參考：查詢尚未回傳資料時（例如登入狀態剛載入、query 被停用）
+// 用同一個參考當預設值，避免每次 render 都產生新陣列，觸發下方 useEffect 無限重渲染
+const emptyStories: StorytellerStory[] = [];
+
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -59,8 +63,11 @@ export default function StorytellerProjectDetail() {
     null,
   );
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
-  const { data: apiProjects = [], isPending: apiProjectsPending } =
-    useStorytellerProjects();
+  const {
+    data: apiProjects = [],
+    isPending: apiProjectsPending,
+    isFetching: apiProjectsFetching,
+  } = useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
   const project = apiProject
     ? {
@@ -82,7 +89,7 @@ export default function StorytellerProjectDetail() {
         updatedAt: apiProject.updated_at,
       }
     : undefined;
-  const { data: apiStories = [], isLoading: apiStoriesLoading } =
+  const { data: apiStories = emptyStories, isLoading: apiStoriesLoading } =
     useStorytellerStories(apiProject?.public_id);
   const { data: apiLores = [], isLoading: apiLoresLoading } =
     useStorytellerLores(apiProject?.public_id);
@@ -102,7 +109,7 @@ export default function StorytellerProjectDetail() {
     robots: "noindex, nofollow",
   });
 
-  if (!project && apiProjectsPending) {
+  if (!project && (apiProjectsPending || apiProjectsFetching)) {
     return <StorytellerLoading label="正在載入專案..." />;
   }
 
@@ -371,8 +378,12 @@ export default function StorytellerProjectDetail() {
                         </Stack>
                         <Chip
                           size="small"
-                          label={story.status === "completed" ? "已完成" : "撰寫中"}
-                          color={story.status === "completed" ? "success" : "warning"}
+                          label={
+                            story.status === "completed" ? "已完成" : "撰寫中"
+                          }
+                          color={
+                            story.status === "completed" ? "success" : "warning"
+                          }
                           variant="outlined"
                         />
                         <Button

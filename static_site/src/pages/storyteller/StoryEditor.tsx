@@ -158,8 +158,11 @@ export default function StorytellerStoryEditor() {
   const navigate = useNavigate();
   const isNewStory = storyId === "new";
   const isHistoryRoute = location.pathname.endsWith("/diff");
-  const { data: apiProjects = [], isPending: apiProjectsPending } =
-    useStorytellerProjects();
+  const {
+    data: apiProjects = [],
+    isPending: apiProjectsPending,
+    isFetching: apiProjectsFetching,
+  } = useStorytellerProjects();
   const apiProject = apiProjects.find((item) => item.public_id === id);
   const project: EditorProject | undefined = apiProject
     ? {
@@ -168,8 +171,11 @@ export default function StorytellerStoryEditor() {
         description: apiProject.description,
       }
     : undefined;
-  const { data: apiStories = [], isPending: apiStoriesPending } =
-    useStorytellerStories(apiProject?.public_id);
+  const {
+    data: apiStories = [],
+    isPending: apiStoriesPending,
+    isFetching: apiStoriesFetching,
+  } = useStorytellerStories(apiProject?.public_id);
   const { data: apiLores = [] } = useStorytellerLores(apiProject?.public_id);
   const apiStory = apiStories.find((item) => item.public_id === storyId);
   const story: EditorStory | undefined = apiStory
@@ -492,7 +498,6 @@ export default function StorytellerStoryEditor() {
     setOverrideApiKeyId("");
   }, [selectedAgentId]);
 
-
   useTitle(`${pageTitle} - Storyteller`, {
     path:
       id && storyId
@@ -578,8 +583,11 @@ export default function StorytellerStoryEditor() {
   }, [apiProject?.public_id, isNewStory, story?.id]);
 
   if (
-    (!project && apiProjectsPending) ||
-    (apiProject && !isNewStory && !story && apiStoriesPending)
+    (!project && (apiProjectsPending || apiProjectsFetching)) ||
+    (apiProject &&
+      !isNewStory &&
+      !story &&
+      (apiStoriesPending || apiStoriesFetching))
   ) {
     return <StorytellerLoading label="正在載入故事編輯資料..." />;
   }
