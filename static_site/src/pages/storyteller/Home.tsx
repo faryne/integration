@@ -33,6 +33,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
@@ -350,10 +351,20 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   );
 }
 
+const tabPath: Record<"project" | "agent" | "apikey", string> = {
+  project: "project",
+  agent: "agent",
+  apikey: "api-keys",
+};
+
 export default function StorytellerHome() {
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTab = location.pathname.endsWith("/agent") ? "agent" : "project";
+  const activeTab = location.pathname.endsWith("/agent")
+    ? "agent"
+    : location.pathname.endsWith("/api-keys")
+      ? "apikey"
+      : "project";
   const [tab, setTab] = useState(activeTab);
   const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } =
@@ -361,7 +372,7 @@ export default function StorytellerHome() {
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
   useTitle("Storyteller 我的工作台", {
-    path: `/storyteller/my/${activeTab}`,
+    path: `/storyteller/my/${tabPath[activeTab]}`,
     robots: "noindex, nofollow",
   });
 
@@ -369,15 +380,15 @@ export default function StorytellerHome() {
     setTab(activeTab);
   }, [activeTab]);
 
-  function handleTabChange(value: "project" | "agent") {
+  function handleTabChange(value: "project" | "agent" | "apikey") {
     setTab(value);
-    navigate(`/storyteller/my/${value}`);
+    navigate(`/storyteller/my/${tabPath[value]}`);
   }
 
   return (
     <StorytellerShell
       title="Storyteller"
-      description="故事專案、章節草稿與 AI Agent 的工作台。此階段先提供前端畫面與操作動線。"
+      description="故事專案、AI Agent 與金鑰管理的工作台。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "我的工作台" },
@@ -398,45 +409,50 @@ export default function StorytellerHome() {
           <Tabs value={tab} onChange={(_, value) => handleTabChange(value)}>
             <Tab value="project" label="故事專案" />
             <Tab value="agent" label="AI Agent" />
+            <Tab value="apikey" label="金鑰管理" />
           </Tabs>
           <Divider />
           <Box sx={{ p: { xs: 2, md: 3 } }}>
             <Stack spacing={2}>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.5}
-                justifyContent="space-between"
-                alignItems={{ xs: "stretch", sm: "center" }}
-              >
-                <Typography variant="h6" fontWeight={800}>
-                  {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
-                </Typography>
-                {tab === "project" ? (
-                  <Button
-                    component={RouterLink}
-                    to="/storyteller/my/project/new"
-                    variant="contained"
-                  >
-                    建立專案
-                  </Button>
-                ) : (
-                  <Button
-                    component={RouterLink}
-                    to="/storyteller/my/agent/new"
-                    variant="contained"
-                  >
-                    建立 AI Agent
-                  </Button>
-                )}
-              </Stack>
+              {tab !== "apikey" && (
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1.5}
+                  justifyContent="space-between"
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                >
+                  <Typography variant="h6" fontWeight={800}>
+                    {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
+                  </Typography>
+                  {tab === "project" ? (
+                    <Button
+                      component={RouterLink}
+                      to="/storyteller/my/project/new"
+                      variant="contained"
+                    >
+                      建立專案
+                    </Button>
+                  ) : (
+                    <Button
+                      component={RouterLink}
+                      to="/storyteller/my/agent/new"
+                      variant="contained"
+                    >
+                      建立 AI Agent
+                    </Button>
+                  )}
+                </Stack>
+              )}
               {tab === "project" && projectsLoading ? (
                 <StorytellerLoading label="正在載入故事專案..." />
               ) : tab === "project" ? (
                 <ProjectCards projects={projects} />
-              ) : agentsLoading ? (
+              ) : tab === "agent" && agentsLoading ? (
                 <StorytellerLoading label="正在載入 AI Agent..." />
-              ) : (
+              ) : tab === "agent" ? (
                 <AgentCards agents={agents} />
+              ) : (
+                <StorytellerApiKeyPanel />
               )}
             </Stack>
           </Box>
