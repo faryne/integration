@@ -120,6 +120,8 @@ type ProviderAPIKey struct {
 	APIKeyEncrypted string        `gorm:"column:api_key_encrypted" json:"-"`
 	APIKeyDataKey   string        `gorm:"column:api_key_data_key" json:"-"`
 	APIKeyKeyID     string        `gorm:"column:api_key_key_id" json:"-"`
+	LastTestedAt    *time.Time    `gorm:"column:last_tested_at" json:"last_tested_at"`
+	LastTestOK      *bool         `gorm:"column:last_test_ok" json:"last_test_ok"`
 	IsDeleted       bool          `gorm:"column:is_deleted" json:"is_deleted"`
 	DeletedAt       *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt       time.Time     `gorm:"column:created_at" json:"created_at"`
@@ -344,12 +346,19 @@ type ProviderAPIKeyRequest struct {
 	APIKey   string        `json:"api_key"`
 }
 
+type ProviderAPIKeyUpdateRequest struct {
+	Label  string `json:"label"`
+	APIKey string `json:"api_key"`
+}
+
 type ProviderAPIKeyOutput struct {
-	ID        uint64        `json:"id"`
-	Provider  AgentProvider `json:"provider"`
-	Label     string        `json:"label"`
-	CreatedAt time.Time     `json:"created_at"`
-	UpdatedAt time.Time     `json:"updated_at"`
+	ID           uint64        `json:"id"`
+	Provider     AgentProvider `json:"provider"`
+	Label        string        `json:"label"`
+	LastTestedAt *time.Time    `json:"last_tested_at"`
+	LastTestOK   *bool         `json:"last_test_ok"`
+	CreatedAt    time.Time     `json:"created_at"`
+	UpdatedAt    time.Time     `json:"updated_at"`
 }
 
 type StoryRequest struct {

@@ -273,6 +273,27 @@ func (s *Service) CreateProviderAPIKey(userID uint64, input storytellerModel.Pro
 	return &output, nil
 }
 
+func (s *Service) UpdateProviderAPIKey(userID, id uint64, input storytellerModel.ProviderAPIKeyUpdateRequest) (*storytellerModel.ProviderAPIKeyOutput, error) {
+	row, err := s.repo.ProviderAPIKey(userID, id)
+	if err != nil {
+		return nil, err
+	}
+	row.Label = strings.TrimSpace(input.Label)
+	if strings.TrimSpace(input.APIKey) != "" {
+		if err := applyEncryptedProviderAPIKey(row, input.APIKey); err != nil {
+			return nil, err
+		}
+		// 金鑰內容換了，先前的測試結果就不再有意義，回到「未測試」狀態。
+		row.LastTestedAt = nil
+		row.LastTestOK = nil
+	}
+	if err := s.repo.UpdateProviderAPIKey(row); err != nil {
+		return nil, err
+	}
+	output := providerAPIKeyOutput(*row)
+	return &output, nil
+}
+
 func (s *Service) DeleteProviderAPIKey(userID, id uint64) error {
 	row, err := s.repo.ProviderAPIKey(userID, id)
 	if err != nil {
@@ -308,13 +329,21 @@ func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64) err
 	if err != nil {
 		return err
 	}
-	_, err = provider.Generate(ctx, AIProviderRequest{
+	_, testErr := provider.Generate(ctx, AIProviderRequest{
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: "Reply with exactly one word: OK",
 		UserPrompt:   "OK",
 	})
-	return err
+	// 不論成功或失敗都寫回資料庫，讓金鑰列表重新整理後仍看得到上一次測試的結果。
+	now := time.Now()
+	ok := testErr == nil
+	key.LastTestedAt = &now
+	key.LastTestOK = &ok
+	if err := s.repo.UpdateProviderAPIKeyTestResult(key); err != nil {
+		return err
+	}
+	return testErr
 }
 
 func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderAPIKeyRequest) error {
@@ -335,11 +364,13 @@ func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderA
 
 func providerAPIKeyOutput(row storytellerModel.ProviderAPIKey) storytellerModel.ProviderAPIKeyOutput {
 	return storytellerModel.ProviderAPIKeyOutput{
-		ID:        row.ID,
-		Provider:  row.Provider,
-		Label:     row.Label,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		ID:           row.ID,
+		Provider:     row.Provider,
+		Label:        row.Label,
+		LastTestedAt: row.LastTestedAt,
+		LastTestOK:   row.LastTestOK,
+		CreatedAt:    row.CreatedAt,
+		UpdatedAt:    row.UpdatedAt,
 	}
 }
 
