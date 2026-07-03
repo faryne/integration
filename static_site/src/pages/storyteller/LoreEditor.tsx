@@ -55,8 +55,6 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import {
-  findStorytellerBlockIndexByOffset,
-  scrollStorytellerPreviewBlockIntoView,
   splitStorytellerContentBlocks,
   syncStorytellerPreviewScrollRatio,
 } from "@/pages/storyteller/storytellerEditorSync.ts";
@@ -64,9 +62,21 @@ import {
   buildStorytellerAgentReferenceContent,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
+import {
+  applyStorytellerAgentText,
+  currentLoreMentionQuery,
+  currentStoryMentionQuery,
+  insertLoreMention,
+  insertStoryMention,
+  updateStorytellerSelection,
+  type StorytellerAgentTextSelection,
+} from "@/pages/storyteller/storytellerAgentEditing.ts";
 
 const aiMessagesPerPage = 10;
 const autoSaveIntervalMinutes = 2;
+const aiInstructionMaxCharacters = 4000;
+const aiFullContentMaxCharacters = 60000;
+const aiTotalPayloadMaxCharacters = 80000;
 
 interface LoreDraft {
   title: string;
@@ -109,6 +119,14 @@ export default function StorytellerLoreEditor() {
   // 送出中的需求內容：立刻顯示在對話列表，等後端寫入正式紀錄後清除
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [aiResult, setAiResult] = useState("");
+  const [aiResultSelection, setAiResultSelection] =
+    useState<StorytellerAgentTextSelection | null>(null);
+  const [selectionState, setSelectionState] =
+    useState<StorytellerAgentTextSelection>({
+      start: 0,
+      end: 0,
+      text: "",
+    });
   const [selectedAgentId, setSelectedAgentId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
@@ -175,10 +193,25 @@ export default function StorytellerLoreEditor() {
     prompt: agent.default_prompt,
     enabled: !agent.is_deleted,
   }));
-  const canRunAgent =
-    !isNewLore &&
-    Boolean(apiProject?.public_id && apiLore?.public_id && selectedAgent) &&
-    !runAgent.isPending;
+  const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
+  const loreMentionQuery = currentLoreMentionQuery(aiPrompt);
+  const storyMentionOptions =
+    storyMentionQuery === null
+      ? []
+      : apiStories
+          .filter((item) =>
+            item.title.toLowerCase().includes(storyMentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
+  const loreMentionOptions =
+    loreMentionQuery === null
+      ? []
+      : apiLores
+          .filter((item) => item.public_id !== apiLore?.public_id)
+          .filter((item) =>
+            item.title.toLowerCase().includes(loreMentionQuery.toLowerCase()),
+          )
+          .slice(0, 6);
   const loreReferences = resolveStorytellerAgentReferences({
     prompt: aiPrompt,
     currentLore: apiLore
@@ -242,6 +275,7 @@ export default function StorytellerLoreEditor() {
             role: "assistant" as const,
             content: visibleAiResult,
             speaker: selectedAgent?.name || "AI Agent",
+            resultSelection: aiResultSelection,
             isCurrentResult: true,
           },
         ]
@@ -252,6 +286,22 @@ export default function StorytellerLoreEditor() {
     Math.ceil((aiMessagesPage?.total ?? 0) / aiMessagesPerPage),
   );
   const agentContext = buildStorytellerAgentReferenceContent(loreReferences);
+  const aiPromptLength = Array.from(aiPrompt).length;
+  const aiReferenceContentLength = Array.from(agentContext).length;
+  const aiPayloadLength = aiPromptLength + aiReferenceContentLength;
+  const aiPayloadError =
+    aiPromptLength > aiInstructionMaxCharacters
+      ? `輸入需求最多 ${aiInstructionMaxCharacters.toLocaleString()} 字。`
+      : aiReferenceContentLength > aiFullContentMaxCharacters
+        ? `引用內容最多 ${aiFullContentMaxCharacters.toLocaleString()} 字。`
+        : aiPayloadLength > aiTotalPayloadMaxCharacters
+          ? `單次 Agent payload 最多 ${aiTotalPayloadMaxCharacters.toLocaleString()} 字。`
+          : "";
+  const canRunAgent =
+    !isNewLore &&
+    Boolean(apiProject?.public_id && apiLore?.public_id && selectedAgent) &&
+    aiPayloadError === "" &&
+    !runAgent.isPending;
   const loreHistoryItems: StoryEditHistoryItem[] = versions.map((version) => ({
     id: String(version.id),
     title: version.title,
@@ -365,16 +415,14 @@ export default function StorytellerLoreEditor() {
     return <ErrorPage code={404} />;
   }
 
-  function syncPreviewOnCursor() {
-    const target = textAreaRef.current;
-    if (!target || sidePanel !== "preview") {
-      return;
-    }
-    const blockIndex = findStorytellerBlockIndexByOffset(
+  function updateSelection() {
+    updateStorytellerSelection({
+      target: textAreaRef.current,
+      sidePanel,
       previewBlocks,
-      target.selectionStart,
-    );
-    scrollStorytellerPreviewBlockIntoView(previewScrollRef.current, blockIndex);
+      previewScrollContainer: previewScrollRef.current,
+      setSelectionState,
+    });
   }
 
   function applyMarkdownFormat(
@@ -435,6 +483,14 @@ export default function StorytellerLoreEditor() {
       return;
     }
     const instruction = aiPrompt.trim();
+    const resultSelection =
+      selectionState.start < selectionState.end
+        ? {
+            start: selectionState.start,
+            end: selectionState.end,
+            text: selectionState.text,
+          }
+        : null;
     // 立刻把需求顯示在對話列表（樂觀訊息），完成或失敗後再清除
     setPendingPrompt(instruction || "（未輸入需求）");
     setAiPrompt("");
@@ -451,9 +507,10 @@ export default function StorytellerLoreEditor() {
         },
       },
       {
-        onSuccess: (result) => setAiResult(result?.result ?? ""),
-        onError: (error) =>
-          showSnack(errorMessage(error, "AI Agent 呼叫失敗。"), "error"),
+        onSuccess: (result) => {
+          setAiResult(result?.result ?? "");
+          setAiResultSelection(resultSelection);
+        },
         onSettled: () => setPendingPrompt(""),
       },
     );
@@ -461,29 +518,20 @@ export default function StorytellerLoreEditor() {
 
   function applyAgentText(
     result: string,
-    action: "insert" | "append" | "copy",
+    action: "replace" | "insert" | "append" | "copy",
+    resultSelection: StorytellerAgentTextSelection | null,
   ) {
-    const text = result.trim();
-    if (!text) {
-      return;
-    }
-    const target = textAreaRef.current;
-    if (action === "copy") {
-      void navigator.clipboard.writeText(text);
-      showSnack("AI 回應已複製。");
-      return;
-    }
-    if (action === "append") {
-      setContent(
-        (value) => `${value}${value.endsWith("\n") ? "" : "\n\n"}${text}`,
-      );
-      return;
-    }
-    const cursor = target?.selectionStart ?? content.length;
-    setContent(`${content.slice(0, cursor)}${text}${content.slice(cursor)}`);
-    window.requestAnimationFrame(() => {
-      target?.focus();
-      target?.setSelectionRange(cursor, cursor + text.length);
+    applyStorytellerAgentText({
+      result,
+      action,
+      content,
+      resultSelection,
+      target: textAreaRef.current,
+      setContent,
+      onCopy: () => showSnack("AI 回應已複製。"),
+      onSelectionMismatch: () =>
+        showSnack("選取範圍已變更，請改用插入或複製。", "error"),
+      onAfterApply: updateSelection,
     });
   }
 
@@ -666,9 +714,9 @@ export default function StorytellerLoreEditor() {
               label="Markdown 內容"
               value={content}
               onChange={(event) => setContent(event.target.value)}
-              onSelect={syncPreviewOnCursor}
-              onKeyUp={syncPreviewOnCursor}
-              onMouseUp={syncPreviewOnCursor}
+              onSelect={updateSelection}
+              onKeyUp={updateSelection}
+              onMouseUp={updateSelection}
               fullWidth
               multiline
               minRows={22}
@@ -775,37 +823,95 @@ export default function StorytellerLoreEditor() {
                 page={aiMessagePage}
                 pageCount={aiMessageTotalPages}
                 onPageChange={setAiMessagePage}
+                errorMessage={
+                  runAgent.isError
+                    ? errorMessage(
+                        runAgent.error,
+                        "AI Agent 呼叫失敗，請確認 Agent 設定與後端狀態。",
+                      )
+                    : ""
+                }
                 prompt={aiPrompt}
                 onPromptChange={setAiPrompt}
-                promptPlaceholder="可輸入 Markdown。使用 @thisLore、@lore:[標題] 或 @story:[標題] 引用內容。"
+                promptPlaceholder="可輸入 Markdown。使用 @thisLore 引用本篇設定集，或輸入 @story:、@lore: 從候選清單插入引用。"
+                promptError={Boolean(aiPayloadError)}
+                promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
+                promptWarning={aiPayloadError}
                 promptExtras={
-                  loreReferences.length > 0 ? (
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {loreReferences.map((reference) => (
-                        <Chip
-                          key={reference.token}
-                          size="small"
-                          color={
-                            reference.token === "@thisLore"
-                              ? "primary"
-                              : "default"
-                          }
-                          label={reference.title}
-                        />
-                      ))}
-                    </Stack>
-                  ) : null
+                  <>
+                    {loreReferences.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {loreReferences.map((reference) => (
+                          <Chip
+                            key={reference.token}
+                            size="small"
+                            color={
+                              reference.token === "@thisLore"
+                                ? "primary"
+                                : "default"
+                            }
+                            label={reference.title}
+                          />
+                        ))}
+                      </Stack>
+                    )}
+                    {storyMentionOptions.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {storyMentionOptions.map((item) => (
+                          <Button
+                            key={item.public_id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              setAiPrompt((current) =>
+                                insertStoryMention(current, item.title),
+                              )
+                            }
+                          >
+                            {item.title}
+                          </Button>
+                        ))}
+                      </Stack>
+                    )}
+                    {loreMentionOptions.length > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        flexWrap="wrap"
+                        useFlexGap
+                      >
+                        {loreMentionOptions.map((item) => (
+                          <Button
+                            key={item.public_id}
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              setAiPrompt((current) =>
+                                insertLoreMention(current, item.title),
+                              )
+                            }
+                          >
+                            設定集：{item.title}
+                          </Button>
+                        ))}
+                      </Stack>
+                    )}
+                  </>
                 }
                 canRun={canRunAgent}
                 onRun={runSelectedAgent}
-                onApplyText={(text, action) =>
-                  applyAgentText(text, action === "replace" ? "insert" : action)
-                }
+                onApplyText={applyAgentText}
+                enableReplace
               />
             )}
           </Stack>

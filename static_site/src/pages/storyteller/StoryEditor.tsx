@@ -58,16 +58,22 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import {
-  findStorytellerBlockIndexByOffset,
-  scrollStorytellerPreviewBlockIntoView,
   splitStorytellerContentBlocks,
   syncStorytellerPreviewScrollRatio,
 } from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
-  formatStorytellerAgentReferenceToken,
   resolveStorytellerAgentReferences,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
+import {
+  applyStorytellerAgentText,
+  currentLoreMentionQuery,
+  currentStoryMentionQuery,
+  insertLoreMention,
+  insertStoryMention,
+  updateStorytellerSelection,
+  type StorytellerAgentTextSelection,
+} from "@/pages/storyteller/storytellerAgentEditing.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import type {
   StorytellerAgentRunMode,
@@ -115,12 +121,6 @@ interface StoryDraft {
   sort: number;
 }
 
-interface TextSelectionState {
-  start: number;
-  end: number;
-  text: string;
-}
-
 interface OptimisticChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -129,7 +129,7 @@ interface OptimisticChatMessage {
   agent_name: string;
   mode?: StorytellerAgentRunMode;
   usage?: StorytellerAgentRunResponse["usage"];
-  resultSelection?: TextSelectionState | null;
+  resultSelection?: StorytellerAgentTextSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
 }
@@ -223,17 +223,18 @@ export default function StorytellerStoryEditor() {
     isHistoryRoute ? "history" : "ai",
   );
   const [content, setContent] = useState(story?.content ?? "");
-  const [selectionState, setSelectionState] = useState<TextSelectionState>({
-    start: 0,
-    end: 0,
-    text: "",
-  });
+  const [selectionState, setSelectionState] =
+    useState<StorytellerAgentTextSelection>({
+      start: 0,
+      end: 0,
+      text: "",
+    });
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiResult, setAiResult] = useState<StorytellerAgentRunResponse | null>(
     null,
   );
   const [aiResultSelection, setAiResultSelection] =
-    useState<TextSelectionState | null>(null);
+    useState<StorytellerAgentTextSelection | null>(null);
   const [optimisticMessage, setOptimisticMessage] =
     useState<OptimisticChatMessage | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(
@@ -559,26 +560,13 @@ export default function StorytellerStoryEditor() {
   }
 
   function updateSelection() {
-    const target = textAreaRef.current;
-    if (!target) {
-      return;
-    }
-
-    const start = target.selectionStart;
-    const end = target.selectionEnd;
-    const value = target.value.slice(start, end);
-    setSelectionState({ start, end, text: value });
-
-    if (sidePanel === "preview") {
-      const blockIndex = findStorytellerBlockIndexByOffset(
-        previewBlocks,
-        start,
-      );
-      scrollStorytellerPreviewBlockIntoView(
-        previewScrollRef.current,
-        blockIndex,
-      );
-    }
+    updateStorytellerSelection({
+      target: textAreaRef.current,
+      sidePanel,
+      previewBlocks,
+      previewScrollContainer: previewScrollRef.current,
+      setSelectionState,
+    });
   }
 
   function isRightDiffDisabled(diffId: string) {
@@ -748,54 +736,24 @@ export default function StorytellerStoryEditor() {
   function applyAgentText(
     result: string,
     action: "replace" | "insert" | "append" | "copy",
-    resultSelection: TextSelectionState | null,
+    resultSelection: StorytellerAgentTextSelection | null,
   ) {
-    const target = textAreaRef.current;
-    if (action === "copy") {
-      void navigator.clipboard.writeText(result);
-      setSaveMessage("AI 回應已複製。");
-      setSaveMessageVisible(true);
-      return;
-    }
-    if (action === "append") {
-      setContent(
-        (value) => `${value}${value.endsWith("\n") ? "" : "\n\n"}${result}`,
-      );
-      return;
-    }
-    if (action === "insert") {
-      const cursor = target?.selectionStart ?? content.length;
-      setContent(
-        `${content.slice(0, cursor)}${result}${content.slice(cursor)}`,
-      );
-      window.requestAnimationFrame(() => {
-        target?.focus();
-        target?.setSelectionRange(cursor, cursor + result.length);
-        updateSelection();
-      });
-      return;
-    }
-    if (!resultSelection) {
-      return;
-    }
-    const currentSelectedText = content.slice(
-      resultSelection.start,
-      resultSelection.end,
-    );
-    if (currentSelectedText !== resultSelection.text) {
-      setSaveMessage("選取範圍已變更，請改用插入或複製。");
-      setSaveMessageVisible(true);
-      return;
-    }
-    const nextContent = `${content.slice(0, resultSelection.start)}${result}${content.slice(resultSelection.end)}`;
-    setContent(nextContent);
-    window.requestAnimationFrame(() => {
-      target?.focus();
-      target?.setSelectionRange(
-        resultSelection.start,
-        resultSelection.start + result.length,
-      );
-      updateSelection();
+    applyStorytellerAgentText({
+      result,
+      action,
+      content,
+      resultSelection,
+      target: textAreaRef.current,
+      setContent,
+      onCopy: () => {
+        setSaveMessage("AI 回應已複製。");
+        setSaveMessageVisible(true);
+      },
+      onSelectionMismatch: () => {
+        setSaveMessage("選取範圍已變更，請改用插入或複製。");
+        setSaveMessageVisible(true);
+      },
+      onAfterApply: updateSelection,
     });
   }
 
@@ -826,36 +784,6 @@ export default function StorytellerStoryEditor() {
       return userProfile?.pen_name || "使用者";
     }
     return "System";
-  }
-
-  function currentStoryMentionQuery(value: string) {
-    const match = value.match(/@story:([^\s\]]*)$/);
-    return match ? match[1] : null;
-  }
-
-  function currentLoreMentionQuery(value: string) {
-    const match = value.match(/@lore:([^\s\]]*)$/);
-    return match ? match[1] : null;
-  }
-
-  function insertStoryMention(title: string) {
-    setAiPrompt((current) => {
-      const token = formatStorytellerAgentReferenceToken("story", title);
-      if (/@story:([^\s\]]*)$/.test(current)) {
-        return current.replace(/@story:([^\s\]]*)$/, token);
-      }
-      return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
-    });
-  }
-
-  function insertLoreMention(title: string) {
-    setAiPrompt((current) => {
-      const token = formatStorytellerAgentReferenceToken("lore", title);
-      if (/@lore:([^\s\]]*)$/.test(current)) {
-        return current.replace(/@lore:([^\s\]]*)$/, token);
-      }
-      return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
-    });
   }
 
   return (
@@ -1199,7 +1127,11 @@ export default function StorytellerStoryEditor() {
                             key={item.public_id}
                             size="small"
                             variant="outlined"
-                            onClick={() => insertStoryMention(item.title)}
+                            onClick={() =>
+                              setAiPrompt((current) =>
+                                insertStoryMention(current, item.title),
+                              )
+                            }
                           >
                             {item.title}
                           </Button>
@@ -1218,7 +1150,11 @@ export default function StorytellerStoryEditor() {
                             key={item.public_id}
                             size="small"
                             variant="outlined"
-                            onClick={() => insertLoreMention(item.title)}
+                            onClick={() =>
+                              setAiPrompt((current) =>
+                                insertLoreMention(current, item.title),
+                              )
+                            }
                           >
                             設定集：{item.title}
                           </Button>

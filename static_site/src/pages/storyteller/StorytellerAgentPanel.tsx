@@ -216,7 +216,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
             minHeight: { xs: 360, lg: 0 },
             maxHeight: { xs: 520, lg: 480 },
             overflow: "auto",
-            bgcolor: "grey.50",
+            bgcolor: "background.default",
             p: 2,
           }}
         >
