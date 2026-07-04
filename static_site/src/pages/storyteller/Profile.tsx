@@ -81,6 +81,18 @@ function snsUrlError(type: string, url: string): string | undefined {
   return `網址需包含 ${domains.join(" 或 ")}`;
 }
 
+// eslint-disable-next-line no-control-regex -- intentionally blocking raw control characters
+const INVALID_PEN_NAME_CHARS = /[/\\?#%\x00-\x1F]/;
+
+function penNameError(penName: string): string | undefined {
+  const trimmed = penName.trim();
+  if (!trimmed) return "筆名不能是空白";
+  if (INVALID_PEN_NAME_CHARS.test(trimmed)) {
+    return "筆名不能包含 / \\ ? # % 或控制字元";
+  }
+  return undefined;
+}
+
 function errorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -186,6 +198,7 @@ export default function StorytellerProfile() {
   const hasSnsError = snsRows.some((row) =>
     Boolean(snsUrlError(row.type, row.url)),
   );
+  const hasPenNameError = Boolean(penNameError(form.pen_name));
 
   const save = () => {
     saveProfile.mutate(
@@ -262,6 +275,11 @@ export default function StorytellerProfile() {
               value={form.pen_name}
               onChange={(event) =>
                 setForm((value) => ({ ...value, pen_name: event.target.value }))
+              }
+              error={Boolean(penNameError(form.pen_name))}
+              helperText={
+                penNameError(form.pen_name) ??
+                "會顯示在公開作者頁網址上，不能包含 / \\ ? # % 等符號。"
               }
               fullWidth
             />
@@ -412,7 +430,7 @@ export default function StorytellerProfile() {
               <Button
                 variant="contained"
                 startIcon={<SaveIcon />}
-                disabled={saveProfile.isPending || hasSnsError}
+                disabled={saveProfile.isPending || hasSnsError || hasPenNameError}
                 onClick={save}
               >
                 儲存
