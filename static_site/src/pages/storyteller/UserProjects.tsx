@@ -252,12 +252,6 @@ export default function StorytellerUserProjects() {
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">故事</Typography>
-                  <Typography fontWeight={700}>
-                    {author?.story_count ?? 0}
-                  </Typography>
-                </Stack>
-                <Stack direction="row" justifyContent="space-between">
                   <Typography color="text.secondary">字數</Typography>
                   <Typography fontWeight={700}>
                     {(author?.word_count ?? 0).toLocaleString()}
@@ -540,7 +534,6 @@ function FavoriteAuthorCard({
         )}
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip size="small" label={`${author.project_count} 個專案`} />
-          <Chip size="small" label={`${author.story_count} 篇故事`} />
           <Chip
             size="small"
             label={`${author.word_count.toLocaleString()} 字`}

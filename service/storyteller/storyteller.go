@@ -1067,12 +1067,19 @@ func (s *Service) UserProfile(userID uint64) (*storytellerModel.UserProfileOutpu
 
 func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProfileRequest) (*storytellerModel.UserProfileOutput, error) {
 	input = normalizeUserProfileRequest(input)
+	if err := validateSNSLinks(input.SNSLinks); err != nil {
+		return nil, err
+	}
+	avatarURL := input.AvatarURL
+	if input.UseDefaultAvatar {
+		avatarURL = loginAvatarURL(userID)
+	}
 	profile, err := s.repo.UserProfileWithDeleted(userID)
 	if err == nil {
 		profile.PenName = input.PenName
 		profile.Bio = input.Bio
 		profile.UseDefaultAvatar = input.UseDefaultAvatar
-		profile.AvatarURL = input.AvatarURL
+		profile.AvatarURL = avatarURL
 		profile.SNSLinks = input.SNSLinks
 		profile.HideFavoriteProjects = input.HideFavoriteProjects
 		profile.HideFavoriteAuthors = input.HideFavoriteAuthors
@@ -1090,7 +1097,7 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		PenName:              input.PenName,
 		Bio:                  input.Bio,
 		UseDefaultAvatar:     input.UseDefaultAvatar,
-		AvatarURL:            input.AvatarURL,
+		AvatarURL:            avatarURL,
 		SNSLinks:             input.SNSLinks,
 		HideFavoriteProjects: input.HideFavoriteProjects,
 		HideFavoriteAuthors:  input.HideFavoriteAuthors,
@@ -1246,6 +1253,49 @@ func fallbackAuthorName(userID uint64) string {
 		return strings.TrimSpace(*user.Email)
 	}
 	return ""
+}
+
+func loginAvatarURL(userID uint64) string {
+	user, err := authRepo.NewUserRepository().UserByID(userID)
+	if err != nil || user.PhotoURL == nil {
+		return ""
+	}
+	return strings.TrimSpace(*user.PhotoURL)
+}
+
+var snsDomainAllowlist = map[storytellerModel.SNSType][]string{
+	storytellerModel.SNSTypeX:         {"x.com", "twitter.com"},
+	storytellerModel.SNSTypeFacebook:  {"facebook.com", "fb.com"},
+	storytellerModel.SNSTypeInstagram: {"instagram.com"},
+	storytellerModel.SNSTypeThreads:   {"threads.net", "threads.com"},
+	storytellerModel.SNSTypePlurk:     {"plurk.com"},
+	storytellerModel.SNSTypeBahamut:   {"gamer.com.tw"},
+	storytellerModel.SNSTypeDiscord:   {"discord.com", "discord.gg"},
+	storytellerModel.SNSTypeYouTube:   {"youtube.com", "youtu.be"},
+}
+
+// validateSNSLinks only checks the well-known SNSType keys against their
+// expected domains (e.g. catching an X handle pasted without x.com/twitter.com).
+// Unrecognized keys are user-defined custom labels and are left unrestricted.
+func validateSNSLinks(links storytellerModel.SNSLinks) error {
+	for key, url := range links {
+		domains, ok := snsDomainAllowlist[storytellerModel.SNSType(key)]
+		if !ok {
+			continue
+		}
+		lower := strings.ToLower(url)
+		matched := false
+		for _, domain := range domains {
+			if strings.Contains(lower, domain) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			return fmt.Errorf("%s 連結網址需包含 %s", key, strings.Join(domains, " 或 "))
+		}
+	}
+	return nil
 }
 
 func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVersion {
