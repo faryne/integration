@@ -154,7 +154,7 @@ export default function StorytellerUserProjects() {
   return (
     <StorytellerShell
       title={displayName}
-      description={`${displayName} 在 Storyteller 的公開作者頁。`}
+      description={author?.bio || ""}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: displayName },
@@ -217,14 +217,6 @@ export default function StorytellerUserProjects() {
                   )}
                 </Box>
               </Stack>
-              {author?.bio && (
-                <Typography
-                  color="text.secondary"
-                  sx={{ overflowWrap: "anywhere" }}
-                >
-                  {author.bio}
-                </Typography>
-              )}
               {snsEntries.length > 0 && (
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                   {snsEntries.map(([type, url]) => (
