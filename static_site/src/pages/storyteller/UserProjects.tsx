@@ -196,9 +196,7 @@ export default function StorytellerUserProjects() {
             <Stack spacing={2}>
               <Stack direction="row" spacing={2} alignItems="center">
                 <Avatar
-                  src={
-                    author?.use_default_avatar ? undefined : author?.avatar_url
-                  }
+                  src={author?.avatar_url}
                   alt={displayName}
                   sx={{ width: 56, height: 56 }}
                 >
