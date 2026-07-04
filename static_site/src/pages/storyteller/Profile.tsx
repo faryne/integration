@@ -61,6 +61,41 @@ const SNS_TYPE_OPTIONS: { value: string; label: string }[] = [
 const CUSTOM_SNS_TYPE = "__custom__";
 const KNOWN_SNS_TYPES = new Set(SNS_TYPE_OPTIONS.map((option) => option.value));
 
+const SNS_DOMAIN_HINTS: Record<string, string[]> = {
+  x: ["x.com", "twitter.com"],
+  facebook: ["facebook.com", "fb.com"],
+  instagram: ["instagram.com"],
+  threads: ["threads.net", "threads.com"],
+  plurk: ["plurk.com"],
+  bahamut: ["gamer.com.tw"],
+  discord: ["discord.com", "discord.gg"],
+  youtube: ["youtube.com", "youtu.be"],
+};
+
+function snsUrlError(type: string, url: string): string | undefined {
+  if (!url.trim()) return undefined;
+  const domains = SNS_DOMAIN_HINTS[type];
+  if (!domains) return undefined;
+  const lower = url.toLowerCase();
+  if (domains.some((domain) => lower.includes(domain))) return undefined;
+  return `網址需包含 ${domains.join(" 或 ")}`;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const data = error.response.data as { message?: string };
+    return data.message || fallback;
+  }
+  return fallback;
+}
+
 interface SNSLinkRow {
   id: string;
   type: string;
@@ -97,6 +132,7 @@ export default function StorytellerProfile() {
   const [form, setForm] = useState<StorytellerUserProfileRequest>(emptyForm);
   const [snsRows, setSnsRows] = useState<SNSLinkRow[]>([]);
   const [message, setMessage] = useState("");
+  const [severity, setSeverity] = useState<"success" | "error">("success");
   const defaultAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
   const previewAvatar = form.use_default_avatar
     ? defaultAvatar
@@ -147,10 +183,23 @@ export default function StorytellerProfile() {
     [form],
   );
 
+  const hasSnsError = snsRows.some((row) =>
+    Boolean(snsUrlError(row.type, row.url)),
+  );
+
   const save = () => {
     saveProfile.mutate(
       { ...form, sns_links: snsLinksFromRows(snsRows) },
-      { onSuccess: () => setMessage("作者設定已儲存") },
+      {
+        onSuccess: () => {
+          setSeverity("success");
+          setMessage("作者設定已儲存");
+        },
+        onError: (error) => {
+          setSeverity("error");
+          setMessage(errorMessage(error, "作者設定儲存失敗，請確認欄位內容。"));
+        },
+      },
     );
   };
 
@@ -301,6 +350,8 @@ export default function StorytellerProfile() {
                       onChange={(event) =>
                         updateSnsRow(row.id, { url: event.target.value })
                       }
+                      error={Boolean(snsUrlError(row.type, row.url))}
+                      helperText={snsUrlError(row.type, row.url)}
                       fullWidth
                     />
                     <IconButton
@@ -361,7 +412,7 @@ export default function StorytellerProfile() {
               <Button
                 variant="contained"
                 startIcon={<SaveIcon />}
-                disabled={saveProfile.isPending}
+                disabled={saveProfile.isPending || hasSnsError}
                 onClick={save}
               >
                 儲存
@@ -382,6 +433,7 @@ export default function StorytellerProfile() {
       <CustomSnackbar
         open={Boolean(message)}
         message={message}
+        severity={severity}
         onClose={() => setMessage("")}
       />
     </StorytellerShell>
