@@ -233,6 +233,37 @@ export interface StorytellerStoryChatMessagePage {
   per_page: number;
 }
 
+export interface StorytellerAgentUsageSummaryRow {
+  provider_apikey_id: number;
+  provider: string;
+  provider_apikey_label: string;
+  agent_id: number;
+  agent_name: string;
+  model_name: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  run_count: number;
+}
+
+export interface StorytellerAgentUsageLogRow {
+  id: number;
+  created_at: string;
+  model_name: string;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  story_title?: string;
+  lore_title?: string;
+}
+
+export interface StorytellerAgentUsageLogPage {
+  items: StorytellerAgentUsageLogRow[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 export interface StorytellerStoryRequest {
   title: string;
   summary: string;

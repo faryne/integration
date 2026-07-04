@@ -220,6 +220,13 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
+	require.NotNil(t, repo.usage)
+	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
+	require.Equal(t, uint64(40), repo.usage.AgentID)
+	require.Equal(t, uint64(20), repo.usage.UserID)
+	require.Equal(t, 11, repo.usage.InputTokens)
+	require.Equal(t, 7, repo.usage.OutputTokens)
+	require.Equal(t, 18, repo.usage.TotalTokens)
 }
 
 func TestRunAgentStoryNotFound(t *testing.T) {
@@ -294,6 +301,7 @@ type fakeAgentRunRepository struct {
 	providerAPIKeyErr error
 	chat              *storytellerModel.StoryChat
 	messages          []storytellerModel.StoryChatMessage
+	usage             *storytellerModel.AgentUsageLog
 	chatErr           error
 }
 
@@ -313,9 +321,10 @@ func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerMod
 	return r.providerAPIKey, r.providerAPIKeyErr
 }
 
-func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error {
+func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error {
 	r.chat = chat
 	r.messages = messages
+	r.usage = usage
 	return r.chatErr
 }
 

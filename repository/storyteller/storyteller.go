@@ -403,7 +403,7 @@ func (r *Repository) LoreVersion(loreID, versionID uint64) (*storytellerModel.Lo
 	return &row, err
 }
 
-func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error {
+func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(chat).Error; err != nil {
 			return err
@@ -411,8 +411,69 @@ func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryCha
 		for i := range messages {
 			messages[i].ChatID = chat.ID
 		}
-		return tx.Create(&messages).Error
+		if err := tx.Create(&messages).Error; err != nil {
+			return err
+		}
+		if usage == nil {
+			return nil
+		}
+		usage.ChatID = chat.ID
+		return tx.Create(usage).Error
 	})
+}
+
+func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]storytellerModel.AgentUsageSummaryRow, error) {
+	rows := make([]storytellerModel.AgentUsageSummaryRow, 0)
+	err := r.db.Table("storyteller_agent_usage_logs AS logs").
+		Select(`logs.provider_apikey_id,
+			logs.provider,
+			keys.label AS provider_apikey_label,
+			logs.agent_id,
+			agents.name AS agent_name,
+			logs.model_name,
+			SUM(logs.input_tokens) AS input_tokens,
+			SUM(logs.output_tokens) AS output_tokens,
+			SUM(logs.total_tokens) AS total_tokens,
+			COUNT(*) AS run_count`).
+		Joins("LEFT JOIN storyteller_provider_apikeys AS keys ON keys.id = logs.provider_apikey_id").
+		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = logs.agent_id").
+		Where("logs.user_id = ? AND logs.created_at >= ? AND logs.created_at < ?", userID, from, to).
+		Group("logs.provider_apikey_id, logs.provider, keys.label, logs.agent_id, agents.name, logs.model_name").
+		Order("logs.provider_apikey_id ASC, logs.agent_id ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, from, to time.Time, offset, limit int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
+	base := r.db.Table("storyteller_agent_usage_logs AS logs").
+		Joins("LEFT JOIN storyteller_story_chats AS chats ON chats.id = logs.chat_id").
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Where(
+			"logs.user_id = ? AND logs.provider_apikey_id = ? AND logs.agent_id = ? AND logs.created_at >= ? AND logs.created_at < ?",
+			userID, providerAPIKeyID, agentID, from, to,
+		)
+
+	var total int64
+	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	rows := make([]storytellerModel.AgentUsageLogRow, 0)
+	err := base.Session(&gorm.Session{}).
+		Select(`logs.id,
+			logs.created_at,
+			logs.model_name,
+			logs.input_tokens,
+			logs.output_tokens,
+			logs.total_tokens,
+			stories.title AS story_title,
+			lores.title AS lore_title`).
+		Order("logs.created_at DESC, logs.id DESC").
+		Offset(offset).
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, total, err
 }
 
 func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {

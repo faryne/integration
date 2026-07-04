@@ -14,6 +14,8 @@ import type {
   StorytellerAgentRunRequest,
   StorytellerAgentRunResponse,
   StorytellerAgentRequest,
+  StorytellerAgentUsageLogPage,
+  StorytellerAgentUsageSummaryRow,
   StorytellerFavoriteAuthor,
   StorytellerLore,
   StorytellerLoreRequest,
@@ -592,6 +594,63 @@ export function useTestStorytellerProviderAPIKey() {
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "provider-apikeys"],
       });
+    },
+  });
+}
+
+export function useStorytellerAgentUsageSummary(month: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "usage-summary", session?.user.id, month],
+    enabled: Boolean(session?.encrypt_key) && Boolean(month),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAgentUsageSummaryRow[]>
+      >(`${apiBase}/storyteller/usage/summary`, {
+        params: { month },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerAgentUsageLogs(
+  providerApiKeyId: number,
+  agentId: number,
+  month: string,
+  page: number,
+  perPage = 20,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "usage-logs",
+      session?.user.id,
+      providerApiKeyId,
+      agentId,
+      month,
+      page,
+      perPage,
+    ],
+    enabled: Boolean(session?.encrypt_key) && Boolean(month),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAgentUsageLogPage>
+      >(`${apiBase}/storyteller/usage/logs`, {
+        params: {
+          provider_apikey_id: providerApiKeyId,
+          agent_id: agentId,
+          month,
+          page,
+          per_page: perPage,
+        },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return (
+        response.data.data ?? { items: [], total: 0, page, per_page: perPage }
+      );
     },
   });
 }

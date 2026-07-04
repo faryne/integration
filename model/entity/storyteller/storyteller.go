@@ -184,6 +184,24 @@ type ProviderAPIKey struct {
 
 func (ProviderAPIKey) TableName() string { return "storyteller_provider_apikeys" }
 
+// AgentUsageLog 記錄每一次 Agent 執行實際使用的 API Key 與 token 用量，
+// provider/model_name 是執行當下的快照，不會隨著 Agent 或 Key 之後的設定變更而改變。
+type AgentUsageLog struct {
+	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
+	ProviderAPIKeyID uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
+	AgentID          uint64        `gorm:"column:agent_id" json:"agent_id"`
+	ChatID           uint64        `gorm:"column:chat_id" json:"chat_id"`
+	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
+	ModelName        string        `gorm:"column:model_name" json:"model_name"`
+	InputTokens      int           `gorm:"column:input_tokens" json:"input_tokens"`
+	OutputTokens     int           `gorm:"column:output_tokens" json:"output_tokens"`
+	TotalTokens      int           `gorm:"column:total_tokens" json:"total_tokens"`
+	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+}
+
+func (AgentUsageLog) TableName() string { return "storyteller_agent_usage_logs" }
+
 type AgentProviderSetting struct {
 	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
 	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
@@ -481,6 +499,33 @@ type StoryChatMessageOutput struct {
 	AgentName string          `json:"agent_name"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+// AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 Agent 的 token 用量加總，
+// 前端依 provider_apikey_id 再依 agent_id 分組即可組出「Key -> Agent」兩層報表。
+type AgentUsageSummaryRow struct {
+	ProviderAPIKeyID    uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
+	Provider            AgentProvider `gorm:"column:provider" json:"provider"`
+	ProviderAPIKeyLabel string        `gorm:"column:provider_apikey_label" json:"provider_apikey_label"`
+	AgentID             uint64        `gorm:"column:agent_id" json:"agent_id"`
+	AgentName           string        `gorm:"column:agent_name" json:"agent_name"`
+	ModelName           string        `gorm:"column:model_name" json:"model_name"`
+	InputTokens         int64         `gorm:"column:input_tokens" json:"input_tokens"`
+	OutputTokens        int64         `gorm:"column:output_tokens" json:"output_tokens"`
+	TotalTokens         int64         `gorm:"column:total_tokens" json:"total_tokens"`
+	RunCount            int64         `gorm:"column:run_count" json:"run_count"`
+}
+
+// AgentUsageLogRow 是單次執行的明細，StoryTitle/LoreTitle 兩者互斥，依該次執行是故事還是世界觀設定而定。
+type AgentUsageLogRow struct {
+	ID           uint64    `gorm:"column:id" json:"id"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	ModelName    string    `gorm:"column:model_name" json:"model_name"`
+	InputTokens  int       `gorm:"column:input_tokens" json:"input_tokens"`
+	OutputTokens int       `gorm:"column:output_tokens" json:"output_tokens"`
+	TotalTokens  int       `gorm:"column:total_tokens" json:"total_tokens"`
+	StoryTitle   *string   `gorm:"column:story_title" json:"story_title,omitempty"`
+	LoreTitle    *string   `gorm:"column:lore_title" json:"lore_title,omitempty"`
 }
 
 type UserProfileOutput struct {

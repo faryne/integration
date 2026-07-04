@@ -45,6 +45,9 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/provider-apikeys/:apikey", storyteller.DeleteProviderAPIKey)
 	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
 
+	authenticated.Get("/usage/summary", storyteller.AgentUsageSummary)
+	authenticated.Get("/usage/logs", storyteller.AgentUsageLogs)
+
 	authenticated.Get("/agents", storyteller.Agents)
 	authenticated.Get("/agents/provider-models", storyteller.AgentProviderModels)
 	authenticated.Post("/agents", storyteller.CreateAgent)

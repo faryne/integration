@@ -33,6 +33,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -351,10 +352,11 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   );
 }
 
-const tabPath: Record<"project" | "agent" | "apikey", string> = {
+const tabPath: Record<"project" | "agent" | "apikey" | "usage", string> = {
   project: "project",
   agent: "agent",
   apikey: "api-keys",
+  usage: "usage",
 };
 
 export default function StorytellerHome() {
@@ -364,7 +366,9 @@ export default function StorytellerHome() {
     ? "agent"
     : location.pathname.endsWith("/api-keys")
       ? "apikey"
-      : "project";
+      : location.pathname.endsWith("/usage")
+        ? "usage"
+        : "project";
   const [tab, setTab] = useState(activeTab);
   const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } =
@@ -380,7 +384,7 @@ export default function StorytellerHome() {
     setTab(activeTab);
   }, [activeTab]);
 
-  function handleTabChange(value: "project" | "agent" | "apikey") {
+  function handleTabChange(value: "project" | "agent" | "apikey" | "usage") {
     setTab(value);
     navigate(`/storyteller/my/${tabPath[value]}`);
   }
@@ -410,11 +414,12 @@ export default function StorytellerHome() {
             <Tab value="project" label="故事專案" />
             <Tab value="agent" label="AI Agent" />
             <Tab value="apikey" label="金鑰管理" />
+            <Tab value="usage" label="用量報表" />
           </Tabs>
           <Divider />
           <Box sx={{ p: { xs: 2, md: 3 } }}>
             <Stack spacing={2}>
-              {tab !== "apikey" && (
+              {tab !== "apikey" && tab !== "usage" && (
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1.5}
@@ -451,8 +456,10 @@ export default function StorytellerHome() {
                 <StorytellerLoading label="正在載入 AI Agent..." />
               ) : tab === "agent" ? (
                 <AgentCards agents={agents} />
-              ) : (
+              ) : tab === "apikey" ? (
                 <StorytellerApiKeyPanel />
+              ) : (
+                <StorytellerAgentUsagePanel />
               )}
             </Stack>
           </Box>

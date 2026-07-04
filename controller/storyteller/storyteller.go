@@ -235,6 +235,42 @@ func TestProviderAPIKey(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"ok": true})
 }
 
+func AgentUsageSummary(ctx fiber.Ctx) error {
+	month := ctx.Query("month")
+	rows, err := storyteller.NewService().AgentUsageSummary(authsession.Session(ctx).UserId, month)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func AgentUsageLogs(ctx fiber.Ctx) error {
+	providerAPIKeyID, err := parseUint(ctx.Query("provider_apikey_id"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	agentID, err := parseUint(ctx.Query("agent_id"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	month := ctx.Query("month")
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "20"))
+	rows, total, err := storyteller.NewService().AgentUsageLogs(authsession.Session(ctx).UserId, providerAPIKeyID, agentID, month, page, pageSize)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("provider api key or agent not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{
+		"items":    rows,
+		"total":    total,
+		"page":     page,
+		"per_page": pageSize,
+	})
+}
+
 func Agent(ctx fiber.Ctx) error {
 	id, err := parseUint(ctx.Params("agent"))
 	if err != nil {

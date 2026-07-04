@@ -32,7 +32,7 @@ type agentRunRepository interface {
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
-	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage) error
+	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider) (AIProvider, error)
@@ -347,6 +347,50 @@ func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64) err
 	return testErr
 }
 
+const usageLogPageSizeDefault = 20
+const usageLogPageSizeMax = 50
+
+// parseUsageMonth 把 "2026-07" 這種月份字串轉成 [from, to) 的時間區間，供用量查詢篩選 created_at。
+func parseUsageMonth(month string) (time.Time, time.Time, error) {
+	from, err := time.ParseInLocation("2006-01", month, time.Local)
+	if err != nil {
+		return time.Time{}, time.Time{}, errors.New("month must be in YYYY-MM format")
+	}
+	return from, from.AddDate(0, 1, 0), nil
+}
+
+func (s *Service) AgentUsageSummary(userID uint64, month string) ([]storytellerModel.AgentUsageSummaryRow, error) {
+	from, to, err := parseUsageMonth(month)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.AgentUsageSummary(userID, from, to)
+}
+
+func (s *Service) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, month string, page, pageSize int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
+	from, to, err := parseUsageMonth(month)
+	if err != nil {
+		return nil, 0, err
+	}
+	// 確認這把 Key 與這個 Agent 都屬於呼叫者本人，避免用別人的 id 猜出用量明細。
+	if _, err := s.repo.ProviderAPIKey(userID, providerAPIKeyID); err != nil {
+		return nil, 0, err
+	}
+	if _, err := s.repo.Agent(userID, agentID); err != nil {
+		return nil, 0, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = usageLogPageSizeDefault
+	}
+	if pageSize > usageLogPageSizeMax {
+		pageSize = usageLogPageSizeMax
+	}
+	return s.repo.AgentUsageLogs(userID, providerAPIKeyID, agentID, from, to, (page-1)*pageSize, pageSize)
+}
+
 func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderAPIKeyRequest) error {
 	if strings.TrimSpace(input.APIKey) == "" {
 		return errors.New("api_key is required")
@@ -455,7 +499,8 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 		}
 	}
 	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output)
-	if err := s.repo.CreateStoryChatWithMessages(chat, messages); err != nil {
+	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	if err := s.repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
 		return nil, err
 	}
 	return output, nil
@@ -538,10 +583,29 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 		}
 	}
 	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output)
-	if err := repo.CreateStoryChatWithMessages(chat, messages); err != nil {
+	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	if err := repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
 		return nil, err
 	}
 	return output, nil
+}
+
+// buildAgentUsageLog 記錄這次執行「實際解析後」使用的 apikey_id，
+// 不論它來自 request 的單次覆寫還是 Agent 的預設設定；沒有 usage 資訊時不寫入紀錄。
+func buildAgentUsageLog(userID, providerAPIKeyID uint64, agent storytellerModel.Agent, output *storytellerModel.AgentRunResponse) *storytellerModel.AgentUsageLog {
+	if output == nil || output.Usage == nil {
+		return nil
+	}
+	return &storytellerModel.AgentUsageLog{
+		UserID:           userID,
+		ProviderAPIKeyID: providerAPIKeyID,
+		AgentID:          agent.ID,
+		Provider:         agent.Provider,
+		ModelName:        agent.ModelName,
+		InputTokens:      output.Usage.InputTokens,
+		OutputTokens:     output.Usage.OutputTokens,
+		TotalTokens:      output.Usage.TotalTokens,
+	}
 }
 
 func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerModel.Story, error) {

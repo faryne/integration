@@ -7,6 +7,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import KeyIcon from "@mui/icons-material/Key";
 import NetworkCheckIcon from "@mui/icons-material/NetworkCheck";
+import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
@@ -28,6 +29,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   useCreateStorytellerProviderAPIKey,
   useDeleteStorytellerProviderAPIKey,
@@ -257,6 +259,17 @@ function ProviderApiKeyRow({
     <ListItem
       secondaryAction={
         <Stack direction="row" spacing={0.5}>
+          {!isEditingLabel && (
+            <Tooltip title="查看用量">
+              <IconButton
+                edge="end"
+                component={RouterLink}
+                to={`/storyteller/my/usage?apikey=${apiKey.id}`}
+              >
+                <QueryStatsIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
           {!isEditingLabel && (
             <Tooltip
               title={

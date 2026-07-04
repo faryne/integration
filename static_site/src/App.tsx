@@ -304,6 +304,7 @@ function App() {
                     element={<StorytellerNewAgent />}
                   />
                   <Route path={"api-keys"} element={<StorytellerHome />} />
+                  <Route path={"usage"} element={<StorytellerHome />} />
                 </Route>
                 <Route
                   path={"user/:username"}
