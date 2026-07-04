@@ -5,6 +5,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ErrorIcon from "@mui/icons-material/Error";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import NetworkCheckIcon from "@mui/icons-material/NetworkCheck";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
@@ -75,7 +76,39 @@ export function StorytellerApiKeyPanel() {
             });
           }}
         >
-          <Typography variant="h6">新增金鑰</Typography>
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            <Typography variant="h6">新增金鑰</Typography>
+            <Tooltip
+              title={
+                <Stack spacing={0.5} sx={{ py: 0.5 }}>
+                  <Typography variant="caption" fontWeight={500}>
+                    你的 API Key 會被這樣保護：
+                  </Typography>
+                  <Typography variant="caption">
+                    ・以加密方式儲存，資料庫內不會留下明文。
+                  </Typography>
+                  <Typography variant="caption">
+                    ・只有在你觸發 Agent
+                    執行、測試連線，或系統定期更新加密方式時，才會在伺服器端短暫解密使用。
+                  </Typography>
+                  <Typography variant="caption">
+                    ・僅用來呼叫你指定的 AI
+                    供應商完成當次請求，不會挪作他用，也不會分享給第三方。
+                  </Typography>
+                  <Typography variant="caption">
+                    ・畫面上不會再顯示明文，之後只能覆蓋或刪除，無法重新檢視完整金鑰。
+                  </Typography>
+                </Stack>
+              }
+              arrow
+              placement="right"
+            >
+              <InfoOutlinedIcon
+                fontSize="small"
+                sx={{ color: "text.secondary", cursor: "help" }}
+              />
+            </Tooltip>
+          </Stack>
           {createApiKey.isError && (
             <Alert severity="error" variant="outlined">
               新增金鑰失敗，請確認登入狀態與欄位內容。
