@@ -58,6 +58,7 @@ export function usePublicUserStorytellerProjects(
   return useQuery({
     queryKey: ["storyteller", "public-user-projects", username, page, pageSize],
     enabled: Boolean(username),
+    retry: false,
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<{
