@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -1233,12 +1234,35 @@ func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.
 		PenName:              profile.PenName,
 		Bio:                  profile.Bio,
 		UseDefaultAvatar:     profile.UseDefaultAvatar,
-		AvatarURL:            profile.AvatarURL,
+		AvatarURL:            resolvedAvatarURL(profile.UserID, profile.AvatarURL),
 		SNSLinks:             profile.SNSLinks,
 		HideFavoriteProjects: profile.HideFavoriteProjects,
 		HideFavoriteAuthors:  profile.HideFavoriteAuthors,
 		CreatedAt:            profile.CreatedAt,
 	}
+}
+
+// resolvedAvatarURL falls back to a Gravatar identicon when the profile has
+// no avatar set at all (no custom URL, and the login provider has no photo
+// either), so the public author page never has to show a bare placeholder icon.
+func resolvedAvatarURL(userID uint64, avatarURL string) string {
+	if avatarURL != "" {
+		return avatarURL
+	}
+	return gravatarURL(userID)
+}
+
+func gravatarURL(userID uint64) string {
+	user, err := authRepo.NewUserRepository().UserByID(userID)
+	if err != nil || user.Email == nil {
+		return ""
+	}
+	email := strings.ToLower(strings.TrimSpace(*user.Email))
+	if email == "" {
+		return ""
+	}
+	hash := md5.Sum([]byte(email))
+	return fmt.Sprintf("https://www.gravatar.com/avatar/%x?d=identicon", hash)
 }
 
 func fallbackAuthorName(userID uint64) string {
