@@ -75,7 +75,7 @@ export function StorytellerShell({
             {hideHeading ? (
               <Box sx={{ flex: 1 }} />
             ) : (
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography component="h1" variant="h4" fontWeight={800}>
                   {title}
                 </Typography>
@@ -88,7 +88,7 @@ export function StorytellerShell({
                 </Typography>
               </Box>
             )}
-            {action}
+            {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
           </Stack>
           {headerContent}
         </Stack>
