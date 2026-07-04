@@ -1068,7 +1068,13 @@ func (s *Service) UserProfile(userID uint64) (*storytellerModel.UserProfileOutpu
 
 func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProfileRequest) (*storytellerModel.UserProfileOutput, error) {
 	input = normalizeUserProfileRequest(input)
+	if err := validatePenName(input.PenName); err != nil {
+		return nil, err
+	}
 	if err := validateSNSLinks(input.SNSLinks); err != nil {
+		return nil, err
+	}
+	if err := s.ensurePenNameAvailable(userID, input.PenName); err != nil {
 		return nil, err
 	}
 	avatarURL := input.AvatarURL
@@ -1285,6 +1291,38 @@ func loginAvatarURL(userID uint64) string {
 		return ""
 	}
 	return strings.TrimSpace(*user.PhotoURL)
+}
+
+// invalidPenNameCharsRegexp rejects characters that are structurally
+// significant in a URL path segment (/storyteller/user/:username uses the
+// pen name verbatim), plus raw control characters.
+var invalidPenNameCharsRegexp = regexp.MustCompile(`[/\\?#%\x00-\x1F]`)
+
+func validatePenName(penName string) error {
+	if penName == "" {
+		return errors.New("筆名不能是空白")
+	}
+	if invalidPenNameCharsRegexp.MatchString(penName) {
+		return errors.New("筆名不能包含 / \\ ? # % 或控制字元")
+	}
+	return nil
+}
+
+// ensurePenNameAvailable rejects a pen name already claimed by a different
+// user, since it doubles as the public profile URL segment and two users
+// sharing one would silently shadow each other's page.
+func (s *Service) ensurePenNameAvailable(userID uint64, penName string) error {
+	existing, err := s.repo.UserProfileByPenName(penName)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	if existing.UserID != userID {
+		return errors.New("這個筆名已經有人使用了，請換一個")
+	}
+	return nil
 }
 
 var snsDomainAllowlist = map[storytellerModel.SNSType][]string{
