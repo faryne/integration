@@ -25,6 +25,9 @@ export function PenNameDialog({ open }: PenNameDialogProps) {
       bio: "",
       use_default_avatar: true,
       avatar_url: "",
+      sns_links: {},
+      hide_favorite_projects: false,
+      hide_favorite_authors: false,
     });
   };
 

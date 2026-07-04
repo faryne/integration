@@ -3,14 +3,32 @@ package storyteller
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"faryne.dev/middleware/authsession"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
+	authService "faryne.dev/service/auth"
 	"faryne.dev/service/output"
 	"faryne.dev/service/storyteller"
 	"github.com/gofiber/fiber/v3"
 )
+
+// optionalViewerID resolves the caller's user ID from the encrypt-key header
+// when present, without requiring authentication like authsession.New() does.
+// Used by public endpoints that show extra data (e.g. hidden favorites) to
+// the profile owner while keeping the route open to anonymous visitors.
+func optionalViewerID(ctx fiber.Ctx) uint64 {
+	encryptKey := strings.TrimSpace(ctx.Get(authsession.HeaderEncryptKey))
+	if encryptKey == "" {
+		return 0
+	}
+	session, err := authService.GetSessionByEncryptKey(encryptKey)
+	if err != nil {
+		return 0
+	}
+	return session.UserId
+}
 
 func PublicProjects(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().PublicProjects()
@@ -35,6 +53,28 @@ func PublicUserProjects(ctx fiber.Ctx) error {
 		"total":  total,
 		"author": author,
 	})
+}
+
+func PublicFavoriteProjects(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().PublicFavoriteProjects(ctx.Params("username"), optionalViewerID(ctx))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("user not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
+func PublicFavoriteAuthors(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().PublicFavoriteAuthors(ctx.Params("username"), optionalViewerID(ctx))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("user not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(rows)
 }
 
 func PublicProject(ctx fiber.Ctx) error {
@@ -598,6 +638,35 @@ func DeleteAuthorFavorite(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]bool{"deleted": true})
+}
+
+func SetFavoriteProjectVisibility(ctx fiber.Ctx) error {
+	var input storytellerModel.FavoriteVisibilityRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().SetFavoriteProjectVisibility(authsession.Session(ctx).UserId, ctx.Params("project"), input.Hidden); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"hidden": input.Hidden})
+}
+
+func SetFavoriteAuthorVisibility(ctx fiber.Ctx) error {
+	authorUserID, err := parseUint(ctx.Params("author"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.FavoriteVisibilityRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().SetFavoriteAuthorVisibility(authsession.Session(ctx).UserId, authorUserID, input.Hidden); err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"hidden": input.Hidden})
 }
 
 func RankingStatus(ctx fiber.Ctx) error {

@@ -566,13 +566,13 @@ func (r *Repository) SaveAuthorFavorite(row *storytellerModel.AuthorFavorite) er
 	return r.db.Save(row).Error
 }
 
-func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64, uint64, float64, error) {
+func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64, uint64, uint64, float64, error) {
 	var projectCount int64
 	if err := r.db.
 		Table("storyteller_projects").
 		Where("user_id = ? AND visibility = ? AND deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Count(&projectCount).Error; err != nil {
-		return 0, 0, 0, 0, 0, err
+		return 0, 0, 0, 0, 0, 0, err
 	}
 	type storyResult struct {
 		StoryCount uint64
@@ -585,7 +585,7 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.status = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", storytellerModel.StoryStatusCompleted).
 		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Scan(&stories).Error; err != nil {
-		return 0, 0, 0, 0, 0, err
+		return 0, 0, 0, 0, 0, 0, err
 	}
 	type rankingResult struct {
 		RatingCount   uint64
@@ -598,9 +598,105 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 		Joins("INNER JOIN storyteller_project_rankings AS rankings ON rankings.project_id = projects.id AND rankings.ranking IS NOT NULL AND rankings.deleted_at IS NULL").
 		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Scan(&rankings).Error; err != nil {
-		return 0, 0, 0, 0, 0, err
+		return 0, 0, 0, 0, 0, 0, err
 	}
-	return uint64(projectCount), stories.StoryCount, stories.WordCount, rankings.RatingCount, rankings.AverageRating, nil
+	var followerCount int64
+	if err := r.db.
+		Table("storyteller_author_favorites").
+		Where("author_user_id = ? AND deleted_at IS NULL", userID).
+		Count(&followerCount).Error; err != nil {
+		return 0, 0, 0, 0, 0, 0, err
+	}
+	return uint64(projectCount), stories.StoryCount, stories.WordCount, rankings.RatingCount, uint64(followerCount), rankings.AverageRating, nil
+}
+
+func (r *Repository) ProjectFavoriteCounts(projectIDs []uint64) (map[uint64]uint64, error) {
+	counts := make(map[uint64]uint64, len(projectIDs))
+	if len(projectIDs) == 0 {
+		return counts, nil
+	}
+	type result struct {
+		ProjectID uint64
+		Count     uint64
+	}
+	rows := make([]result, 0)
+	if err := r.db.
+		Table("storyteller_project_rankings").
+		Select("project_id, COUNT(*) AS count").
+		Where("project_id IN ? AND is_favorite = 1 AND deleted_at IS NULL", projectIDs).
+		Group("project_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.ProjectID] = row.Count
+	}
+	return counts, nil
+}
+
+func (r *Repository) PublicFavoriteProjects(authorUserID uint64, includeHidden bool) ([]storytellerModel.Project, error) {
+	rows := make([]storytellerModel.Project, 0)
+	query := r.db.
+		Table("storyteller_projects").
+		Select("storyteller_projects.*").
+		Joins("INNER JOIN storyteller_project_rankings ON storyteller_project_rankings.project_id = storyteller_projects.id").
+		Where("storyteller_project_rankings.user_id = ? AND storyteller_project_rankings.deleted_at IS NULL", authorUserID).
+		Where("storyteller_project_rankings.is_favorite = 1")
+	if !includeHidden {
+		query = query.Where("storyteller_project_rankings.favorite_hidden = 0")
+	}
+	err := query.
+		Where("storyteller_projects.visibility = ? AND storyteller_projects.deleted_at IS NULL", storytellerModel.ProjectVisibilityPublic).
+		Order("storyteller_project_rankings.updated_at DESC, storyteller_project_rankings.id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) FavoriteProjectHiddenFlags(userID uint64, projectIDs []uint64) (map[uint64]bool, error) {
+	flags := make(map[uint64]bool, len(projectIDs))
+	if len(projectIDs) == 0 {
+		return flags, nil
+	}
+	type result struct {
+		ProjectID      uint64
+		FavoriteHidden bool
+	}
+	rows := make([]result, 0)
+	if err := r.db.
+		Table("storyteller_project_rankings").
+		Select("project_id, favorite_hidden").
+		Where("user_id = ? AND project_id IN ? AND deleted_at IS NULL", userID, projectIDs).
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		flags[row.ProjectID] = row.FavoriteHidden
+	}
+	return flags, nil
+}
+
+func (r *Repository) PublicFavoriteAuthors(authorUserID uint64, includeHidden bool) ([]storytellerModel.AuthorFavorite, error) {
+	rows := make([]storytellerModel.AuthorFavorite, 0)
+	query := r.db.Where("user_id = ? AND deleted_at IS NULL", authorUserID)
+	if !includeHidden {
+		query = query.Where("hidden = 0")
+	}
+	err := query.Order("updated_at DESC, id DESC").Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) SetFavoriteProjectHidden(userID, projectID uint64, hidden bool) error {
+	return r.db.
+		Table("storyteller_project_rankings").
+		Where("user_id = ? AND project_id = ? AND deleted_at IS NULL", userID, projectID).
+		Update("favorite_hidden", hidden).Error
+}
+
+func (r *Repository) SetFavoriteAuthorHidden(userID, authorUserID uint64, hidden bool) error {
+	return r.db.
+		Table("storyteller_author_favorites").
+		Where("user_id = ? AND author_user_id = ? AND deleted_at IS NULL", userID, authorUserID).
+		Update("hidden", hidden).Error
 }
 
 func (r *Repository) Ranking(userID, projectID uint64) (*storytellerModel.ProjectRanking, error) {

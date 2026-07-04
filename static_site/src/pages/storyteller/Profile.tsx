@@ -1,3 +1,5 @@
+import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
@@ -6,8 +8,13 @@ import {
   Box,
   Button,
   Divider,
+  FormControl,
   FormControlLabel,
+  IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Switch,
   TextField,
@@ -34,7 +41,53 @@ const emptyForm: StorytellerUserProfileRequest = {
   bio: "",
   use_default_avatar: true,
   avatar_url: "",
+  sns_links: {},
+  hide_favorite_projects: false,
+  hide_favorite_authors: false,
 };
+
+const SNS_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "x", label: "X（Twitter）" },
+  { value: "facebook", label: "Facebook" },
+  { value: "instagram", label: "Instagram" },
+  { value: "threads", label: "Threads" },
+  { value: "website", label: "個人網站" },
+  { value: "plurk", label: "Plurk" },
+  { value: "bahamut", label: "巴哈姆特" },
+  { value: "discord", label: "Discord" },
+  { value: "youtube", label: "YouTube" },
+];
+
+const CUSTOM_SNS_TYPE = "__custom__";
+const KNOWN_SNS_TYPES = new Set(SNS_TYPE_OPTIONS.map((option) => option.value));
+
+interface SNSLinkRow {
+  id: string;
+  type: string;
+  customLabel: string;
+  url: string;
+}
+
+function rowsFromSNSLinks(links: Record<string, string> | undefined): SNSLinkRow[] {
+  return Object.entries(links ?? {}).map(([key, url], index) => ({
+    id: `${index}-${key}`,
+    type: KNOWN_SNS_TYPES.has(key) ? key : CUSTOM_SNS_TYPE,
+    customLabel: KNOWN_SNS_TYPES.has(key) ? "" : key,
+    url,
+  }));
+}
+
+function snsLinksFromRows(rows: SNSLinkRow[]): Record<string, string> {
+  const links: Record<string, string> = {};
+  for (const row of rows) {
+    const key =
+      row.type === CUSTOM_SNS_TYPE ? row.customLabel.trim() : row.type;
+    const url = row.url.trim();
+    if (!key || !url) continue;
+    links[key] = url;
+  }
+  return links;
+}
 
 export default function StorytellerProfile() {
   const { session, user, loading, login, submitting } = useAuth();
@@ -42,6 +95,7 @@ export default function StorytellerProfile() {
   const saveProfile = useSaveStorytellerUserProfile();
   const deleteProfile = useDeleteStorytellerUserProfile();
   const [form, setForm] = useState<StorytellerUserProfileRequest>(emptyForm);
+  const [snsRows, setSnsRows] = useState<SNSLinkRow[]>([]);
   const [message, setMessage] = useState("");
   const defaultAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
   const previewAvatar = form.use_default_avatar
@@ -64,8 +118,29 @@ export default function StorytellerProfile() {
       bio: profileQuery.data.bio ?? "",
       use_default_avatar: profileQuery.data.use_default_avatar,
       avatar_url: profileQuery.data.avatar_url ?? "",
+      sns_links: profileQuery.data.sns_links ?? {},
+      hide_favorite_projects: profileQuery.data.hide_favorite_projects,
+      hide_favorite_authors: profileQuery.data.hide_favorite_authors,
     });
+    setSnsRows(rowsFromSNSLinks(profileQuery.data.sns_links));
   }, [profileQuery.data]);
+
+  const addSnsRow = () => {
+    setSnsRows((rows) => [
+      ...rows,
+      { id: `new-${Date.now()}`, type: "x", customLabel: "", url: "" },
+    ]);
+  };
+
+  const updateSnsRow = (id: string, changes: Partial<SNSLinkRow>) => {
+    setSnsRows((rows) =>
+      rows.map((row) => (row.id === id ? { ...row, ...changes } : row)),
+    );
+  };
+
+  const removeSnsRow = (id: string) => {
+    setSnsRows((rows) => rows.filter((row) => row.id !== id));
+  };
 
   const hasProfileValue = useMemo(
     () => Boolean(form.pen_name || form.bio || form.avatar_url),
@@ -73,15 +148,17 @@ export default function StorytellerProfile() {
   );
 
   const save = () => {
-    saveProfile.mutate(form, {
-      onSuccess: () => setMessage("作者設定已儲存"),
-    });
+    saveProfile.mutate(
+      { ...form, sns_links: snsLinksFromRows(snsRows) },
+      { onSuccess: () => setMessage("作者設定已儲存") },
+    );
   };
 
   const reset = () => {
     deleteProfile.mutate(undefined, {
       onSuccess: () => {
         setForm(emptyForm);
+        setSnsRows([]);
         setMessage("作者設定已清除");
       },
     });
@@ -176,6 +253,110 @@ export default function StorytellerProfile() {
               disabled={form.use_default_avatar}
               fullWidth
             />
+            <Divider />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                SNS 連結
+              </Typography>
+              <Stack spacing={1.5}>
+                {snsRows.map((row) => (
+                  <Stack
+                    key={row.id}
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <FormControl sx={{ minWidth: { sm: 160 } }}>
+                      <InputLabel>類型</InputLabel>
+                      <Select
+                        label="類型"
+                        value={row.type}
+                        onChange={(event) =>
+                          updateSnsRow(row.id, { type: event.target.value })
+                        }
+                      >
+                        {SNS_TYPE_OPTIONS.map((option) => (
+                          <MenuItem key={option.value} value={option.value}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                        <MenuItem value={CUSTOM_SNS_TYPE}>自訂類型</MenuItem>
+                      </Select>
+                    </FormControl>
+                    {row.type === CUSTOM_SNS_TYPE && (
+                      <TextField
+                        label="自訂類型名稱"
+                        value={row.customLabel}
+                        onChange={(event) =>
+                          updateSnsRow(row.id, {
+                            customLabel: event.target.value,
+                          })
+                        }
+                        sx={{ minWidth: { sm: 160 } }}
+                      />
+                    )}
+                    <TextField
+                      label="網址"
+                      value={row.url}
+                      onChange={(event) =>
+                        updateSnsRow(row.id, { url: event.target.value })
+                      }
+                      fullWidth
+                    />
+                    <IconButton
+                      aria-label="刪除這個 SNS 連結"
+                      onClick={() => removeSnsRow(row.id)}
+                    >
+                      <CloseIcon />
+                    </IconButton>
+                  </Stack>
+                ))}
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={addSnsRow}
+                  sx={{ alignSelf: "flex-start" }}
+                >
+                  新增一列
+                </Button>
+              </Stack>
+            </Box>
+            <Divider />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                隱私設定
+              </Typography>
+              <Stack>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.hide_favorite_projects}
+                      onChange={(event) =>
+                        setForm((value) => ({
+                          ...value,
+                          hide_favorite_projects: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="隱藏我收藏的作品"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.hide_favorite_authors}
+                      onChange={(event) =>
+                        setForm((value) => ({
+                          ...value,
+                          hide_favorite_authors: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="隱藏我收藏的作家"
+                />
+              </Stack>
+            </Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button
                 variant="contained"

@@ -1,6 +1,11 @@
 package storyteller
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 type ProjectVisibility string
 
@@ -17,6 +22,55 @@ const (
 	ProjectRatingGuidance   ProjectRating = "guidance"
 	ProjectRatingRestricted ProjectRating = "restricted"
 )
+
+type SNSType string
+
+const (
+	SNSTypeX         SNSType = "x"
+	SNSTypeFacebook  SNSType = "facebook"
+	SNSTypeInstagram SNSType = "instagram"
+	SNSTypeThreads   SNSType = "threads"
+	SNSTypeWebsite   SNSType = "website"
+	SNSTypePlurk     SNSType = "plurk"
+	SNSTypeBahamut   SNSType = "bahamut"
+	SNSTypeDiscord   SNSType = "discord"
+	SNSTypeYouTube   SNSType = "youtube"
+)
+
+// SNSLinks maps an SNSType (or a user-supplied custom label) to its URI.
+type SNSLinks map[string]string
+
+func (l SNSLinks) Value() (driver.Value, error) {
+	if l == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(l)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (l *SNSLinks) Scan(value any) error {
+	if value == nil {
+		*l = nil
+		return nil
+	}
+	var data []byte
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into SNSLinks", value)
+	}
+	if len(data) == 0 {
+		*l = nil
+		return nil
+	}
+	return json.Unmarshal(data, l)
+}
 
 type StoryStatus string
 
@@ -269,15 +323,16 @@ func (StoryChatMessage) TableName() string {
 }
 
 type ProjectRanking struct {
-	ID         uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID     uint64     `gorm:"column:user_id" json:"user_id"`
-	ProjectID  uint64     `gorm:"column:project_id" json:"project_id"`
-	Ranking    *float64   `gorm:"column:ranking" json:"ranking"`
-	IsFavorite bool       `gorm:"column:is_favorite" json:"is_favorite"`
-	DeletedAt  *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt  time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt  time.Time  `gorm:"column:updated_at" json:"updated_at"`
-	Project    Project    `gorm:"foreignKey:ProjectID" json:"project"`
+	ID             uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID         uint64     `gorm:"column:user_id" json:"user_id"`
+	ProjectID      uint64     `gorm:"column:project_id" json:"project_id"`
+	Ranking        *float64   `gorm:"column:ranking" json:"ranking"`
+	IsFavorite     bool       `gorm:"column:is_favorite" json:"is_favorite"`
+	FavoriteHidden bool       `gorm:"column:favorite_hidden" json:"favorite_hidden"`
+	DeletedAt      *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt      time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	Project        Project    `gorm:"foreignKey:ProjectID" json:"project"`
 }
 
 func (ProjectRanking) TableName() string {
@@ -288,6 +343,7 @@ type AuthorFavorite struct {
 	ID           uint64     `gorm:"column:id;primaryKey" json:"id"`
 	UserID       uint64     `gorm:"column:user_id" json:"user_id"`
 	AuthorUserID uint64     `gorm:"column:author_user_id" json:"author_user_id"`
+	Hidden       bool       `gorm:"column:hidden" json:"hidden"`
 	DeletedAt    *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt    time.Time  `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt    time.Time  `gorm:"column:updated_at" json:"updated_at"`
@@ -298,15 +354,18 @@ func (AuthorFavorite) TableName() string {
 }
 
 type UserProfile struct {
-	ID               uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID           uint64     `gorm:"column:user_id" json:"user_id"`
-	PenName          string     `gorm:"column:pen_name" json:"pen_name"`
-	Bio              string     `gorm:"column:bio" json:"bio"`
-	UseDefaultAvatar bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
-	AvatarURL        string     `gorm:"column:avatar_url" json:"avatar_url"`
-	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt        time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID                   uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID               uint64     `gorm:"column:user_id" json:"user_id"`
+	PenName              string     `gorm:"column:pen_name" json:"pen_name"`
+	Bio                  string     `gorm:"column:bio" json:"bio"`
+	UseDefaultAvatar     bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
+	AvatarURL            string     `gorm:"column:avatar_url" json:"avatar_url"`
+	SNSLinks             SNSLinks   `gorm:"column:sns_links;type:json" json:"sns_links"`
+	HideFavoriteProjects bool       `gorm:"column:hide_favorite_projects" json:"hide_favorite_projects"`
+	HideFavoriteAuthors  bool       `gorm:"column:hide_favorite_authors" json:"hide_favorite_authors"`
+	DeletedAt            *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt            time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt            time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (UserProfile) TableName() string {
@@ -378,11 +437,18 @@ type ProjectRankingRequest struct {
 	Ranking float64 `json:"ranking"`
 }
 
+type FavoriteVisibilityRequest struct {
+	Hidden bool `json:"hidden"`
+}
+
 type UserProfileRequest struct {
-	PenName          string `json:"pen_name"`
-	Bio              string `json:"bio"`
-	UseDefaultAvatar bool   `json:"use_default_avatar"`
-	AvatarURL        string `json:"avatar_url"`
+	PenName              string   `json:"pen_name"`
+	Bio                  string   `json:"bio"`
+	UseDefaultAvatar     bool     `json:"use_default_avatar"`
+	AvatarURL            string   `json:"avatar_url"`
+	SNSLinks             SNSLinks `json:"sns_links"`
+	HideFavoriteProjects bool     `json:"hide_favorite_projects"`
+	HideFavoriteAuthors  bool     `json:"hide_favorite_authors"`
 }
 
 type ProjectRankingOutput struct {
@@ -418,11 +484,15 @@ type StoryChatMessageOutput struct {
 }
 
 type UserProfileOutput struct {
-	UserID           uint64 `json:"user_id"`
-	PenName          string `json:"pen_name"`
-	Bio              string `json:"bio,omitempty"`
-	UseDefaultAvatar bool   `json:"use_default_avatar"`
-	AvatarURL        string `json:"avatar_url,omitempty"`
+	UserID               uint64    `json:"user_id"`
+	PenName              string    `json:"pen_name"`
+	Bio                  string    `json:"bio,omitempty"`
+	UseDefaultAvatar     bool      `json:"use_default_avatar"`
+	AvatarURL            string    `json:"avatar_url,omitempty"`
+	SNSLinks             SNSLinks  `json:"sns_links,omitempty"`
+	HideFavoriteProjects bool      `json:"hide_favorite_projects"`
+	HideFavoriteAuthors  bool      `json:"hide_favorite_authors"`
+	CreatedAt            time.Time `json:"created_at"`
 }
 
 type FavoriteAuthorOutput struct {
@@ -432,14 +502,18 @@ type FavoriteAuthorOutput struct {
 	WordCount     uint64  `json:"word_count"`
 	RatingCount   uint64  `json:"rating_count"`
 	AverageRating float64 `json:"average_rating"`
+	FollowerCount uint64  `json:"follower_count"`
+	Hidden        bool    `json:"hidden,omitempty"`
 }
 
 type ProjectOutput struct {
 	Project
-	AverageRating float64            `gorm:"-" json:"average_rating"`
-	RatingCount   uint64             `gorm:"-" json:"rating_count"`
-	IsFavorite    bool               `gorm:"-" json:"is_favorite"`
-	TagList       []string           `gorm:"-" json:"tags"`
-	Stories       []Story            `gorm:"-" json:"stories,omitempty"`
-	Author        *UserProfileOutput `gorm:"-" json:"author,omitempty"`
+	AverageRating  float64            `gorm:"-" json:"average_rating"`
+	RatingCount    uint64             `gorm:"-" json:"rating_count"`
+	FavoriteCount  uint64             `gorm:"-" json:"favorite_count"`
+	FavoriteHidden bool               `gorm:"-" json:"favorite_hidden,omitempty"`
+	IsFavorite     bool               `gorm:"-" json:"is_favorite"`
+	TagList        []string           `gorm:"-" json:"tags"`
+	Stories        []Story            `gorm:"-" json:"stories,omitempty"`
+	Author         *UserProfileOutput `gorm:"-" json:"author,omitempty"`
 }

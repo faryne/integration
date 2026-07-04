@@ -10,6 +10,7 @@ export interface StorytellerProjectCardProps {
   chips: ReactNode;
   actions: ReactNode;
   authorName?: string;
+  headerAction?: ReactNode;
 }
 
 export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
@@ -25,15 +26,24 @@ export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
       }}
     >
       <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-          <AutoStoriesIcon color="primary" />
-          <Typography
-            variant="h6"
-            fontWeight={800}
-            sx={{ minWidth: 0, overflowWrap: "anywhere" }}
-          >
-            {props.name}
-          </Typography>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ minWidth: 0 }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+            <AutoStoriesIcon color="primary" />
+            <Typography
+              variant="h6"
+              fontWeight={800}
+              sx={{ minWidth: 0, overflowWrap: "anywhere" }}
+            >
+              {props.name}
+            </Typography>
+          </Stack>
+          {props.headerAction}
         </Stack>
         <Typography
           color="text.secondary"

@@ -761,7 +761,7 @@ func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID 
 	return s.repo.LoreChatMessages(lore.ID, (page-1)*pageSize, pageSize)
 }
 
-func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.UserProfileOutput, error) {
+func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.FavoriteAuthorOutput, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -780,7 +780,113 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	return outputs, total, userProfileOutput(profile), nil
+	outputs, err = s.fillFavoriteCounts(outputs)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	projectCount, storyCount, wordCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.UserID)
+	if err != nil {
+		return nil, 0, nil, err
+	}
+	author := &storytellerModel.FavoriteAuthorOutput{
+		UserProfileOutput: *userProfileOutput(profile),
+		ProjectCount:      projectCount,
+		StoryCount:        storyCount,
+		WordCount:         wordCount,
+		RatingCount:       ratingCount,
+		AverageRating:     averageRating,
+		FollowerCount:     followerCount,
+	}
+	return outputs, total, author, nil
+}
+
+func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]storytellerModel.ProjectOutput, error) {
+	profile, err := s.repo.UserProfileByPenName(penName)
+	if err != nil {
+		return nil, err
+	}
+	isOwner := viewerID != 0 && viewerID == profile.UserID
+	if profile.HideFavoriteProjects && !isOwner {
+		return []storytellerModel.ProjectOutput{}, nil
+	}
+	projects, err := s.repo.PublicFavoriteProjects(profile.UserID, isOwner)
+	if err != nil {
+		return nil, err
+	}
+	outputs, err := s.projectOutputs(projects, false)
+	if err != nil {
+		return nil, err
+	}
+	outputs, err = s.fillFavoriteCounts(outputs)
+	if err != nil {
+		return nil, err
+	}
+	if isOwner {
+		ids := make([]uint64, 0, len(outputs))
+		for _, output := range outputs {
+			ids = append(ids, output.ID)
+		}
+		hidden, err := s.repo.FavoriteProjectHiddenFlags(profile.UserID, ids)
+		if err != nil {
+			return nil, err
+		}
+		for i := range outputs {
+			outputs[i].FavoriteHidden = hidden[outputs[i].ID]
+		}
+	}
+	return outputs, nil
+}
+
+func (s *Service) PublicFavoriteAuthors(penName string, viewerID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
+	profile, err := s.repo.UserProfileByPenName(penName)
+	if err != nil {
+		return nil, err
+	}
+	isOwner := viewerID != 0 && viewerID == profile.UserID
+	if profile.HideFavoriteAuthors && !isOwner {
+		return []storytellerModel.FavoriteAuthorOutput{}, nil
+	}
+	favorites, err := s.repo.PublicFavoriteAuthors(profile.UserID, isOwner)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
+	for _, favorite := range favorites {
+		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID)
+		if err != nil {
+			return nil, err
+		}
+		output.Hidden = favorite.Hidden
+		outputs = append(outputs, *output)
+	}
+	return outputs, nil
+}
+
+func (s *Service) SetFavoriteProjectVisibility(userID uint64, projectPublicID string, hidden bool) error {
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return err
+	}
+	return s.repo.SetFavoriteProjectHidden(userID, project.ID, hidden)
+}
+
+func (s *Service) SetFavoriteAuthorVisibility(userID, authorUserID uint64, hidden bool) error {
+	return s.repo.SetFavoriteAuthorHidden(userID, authorUserID, hidden)
+}
+
+func (s *Service) fillFavoriteCounts(outputs []storytellerModel.ProjectOutput) ([]storytellerModel.ProjectOutput, error) {
+	ids := make([]uint64, 0, len(outputs))
+	for _, output := range outputs {
+		ids = append(ids, output.ID)
+	}
+	counts, err := s.repo.ProjectFavoriteCounts(ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range outputs {
+		outputs[i].FavoriteCount = counts[outputs[i].ID]
+	}
+	return outputs, nil
 }
 
 func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
@@ -967,6 +1073,9 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		profile.Bio = input.Bio
 		profile.UseDefaultAvatar = input.UseDefaultAvatar
 		profile.AvatarURL = input.AvatarURL
+		profile.SNSLinks = input.SNSLinks
+		profile.HideFavoriteProjects = input.HideFavoriteProjects
+		profile.HideFavoriteAuthors = input.HideFavoriteAuthors
 		profile.DeletedAt = nil
 		if err := s.repo.SaveUserProfile(profile); err != nil {
 			return nil, err
@@ -977,11 +1086,14 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		return nil, err
 	}
 	profile = &storytellerModel.UserProfile{
-		UserID:           userID,
-		PenName:          input.PenName,
-		Bio:              input.Bio,
-		UseDefaultAvatar: input.UseDefaultAvatar,
-		AvatarURL:        input.AvatarURL,
+		UserID:               userID,
+		PenName:              input.PenName,
+		Bio:                  input.Bio,
+		UseDefaultAvatar:     input.UseDefaultAvatar,
+		AvatarURL:            input.AvatarURL,
+		SNSLinks:             input.SNSLinks,
+		HideFavoriteProjects: input.HideFavoriteProjects,
+		HideFavoriteAuthors:  input.HideFavoriteAuthors,
 	}
 	if err := s.repo.CreateUserProfile(profile); err != nil {
 		return nil, err
@@ -1051,7 +1163,7 @@ func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.Favorit
 	if err != nil {
 		return nil, err
 	}
-	projectCount, storyCount, wordCount, ratingCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
+	projectCount, storyCount, wordCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -1062,6 +1174,7 @@ func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.Favorit
 		WordCount:         wordCount,
 		RatingCount:       ratingCount,
 		AverageRating:     averageRating,
+		FollowerCount:     followerCount,
 	}, nil
 }
 
@@ -1109,11 +1222,15 @@ func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput
 
 func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.UserProfileOutput {
 	return &storytellerModel.UserProfileOutput{
-		UserID:           profile.UserID,
-		PenName:          profile.PenName,
-		Bio:              profile.Bio,
-		UseDefaultAvatar: profile.UseDefaultAvatar,
-		AvatarURL:        profile.AvatarURL,
+		UserID:               profile.UserID,
+		PenName:              profile.PenName,
+		Bio:                  profile.Bio,
+		UseDefaultAvatar:     profile.UseDefaultAvatar,
+		AvatarURL:            profile.AvatarURL,
+		SNSLinks:             profile.SNSLinks,
+		HideFavoriteProjects: profile.HideFavoriteProjects,
+		HideFavoriteAuthors:  profile.HideFavoriteAuthors,
+		CreatedAt:            profile.CreatedAt,
 	}
 }
 
@@ -1260,6 +1377,18 @@ func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) stor
 	input.AvatarURL = strings.TrimSpace(input.AvatarURL)
 	if input.UseDefaultAvatar {
 		input.AvatarURL = ""
+	}
+	if input.SNSLinks != nil {
+		links := make(storytellerModel.SNSLinks, len(input.SNSLinks))
+		for key, value := range input.SNSLinks {
+			key = strings.TrimSpace(key)
+			value = strings.TrimSpace(value)
+			if key == "" || value == "" {
+				continue
+			}
+			links[key] = value
+		}
+		input.SNSLinks = links
 	}
 	return input
 }

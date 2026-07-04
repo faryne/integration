@@ -63,7 +63,7 @@ export function usePublicUserStorytellerProjects(
         CommonResponse<{
           items: StorytellerProject[];
           total: number;
-          author?: StorytellerUserProfile;
+          author?: StorytellerFavoriteAuthor;
         }>
       >(`${apiBase}/storyteller/user/${encodeURIComponent(username!)}`, {
         params: { page, pageSize },
@@ -74,6 +74,86 @@ export function usePublicUserStorytellerProjects(
           total: 0,
         }
       );
+    },
+  });
+}
+
+// 帶上登入者的 encrypt key（若有）讓後端可以辨識「正在看自己頁面的作者本人」，
+// 藉此在回應中夾帶隱藏中的收藏項目，讓作者能在自己的公開頁上管理它們。
+export function usePublicFavoriteStorytellerProjects(username?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-favorite-projects",
+      username,
+      session?.user.id,
+    ],
+    enabled: Boolean(username),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerProject[]>>(
+        `${apiBase}/storyteller/user/${encodeURIComponent(username!)}/favorites/projects`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function usePublicFavoriteStorytellerAuthors(username?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-favorite-authors",
+      username,
+      session?.user.id,
+    ],
+    enabled: Boolean(username),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerFavoriteAuthor[]>
+      >(
+        `${apiBase}/storyteller/user/${encodeURIComponent(username!)}/favorites/authors`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSaveFavoriteProjectVisibility(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hidden: boolean) => {
+      const response = await axios.patch<CommonResponse<{ hidden: boolean }>>(
+        `${apiBase}/storyteller/favorites/projects/${projectPublicId}/visibility`,
+        { hidden },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useSaveFavoriteAuthorVisibility(authorUserId?: number) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (hidden: boolean) => {
+      const response = await axios.patch<CommonResponse<{ hidden: boolean }>>(
+        `${apiBase}/storyteller/favorites/authors/${authorUserId}/visibility`,
+        { hidden },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }

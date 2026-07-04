@@ -10,6 +10,8 @@ func Storyteller(app *fiber.App) {
 	group := app.Group("/storyteller")
 	group.Get("/projects/public", storyteller.PublicProjects)
 	group.Get("/user/:username", storyteller.PublicUserProjects)
+	group.Get("/user/:username/favorites/projects", storyteller.PublicFavoriteProjects)
+	group.Get("/user/:username/favorites/authors", storyteller.PublicFavoriteAuthors)
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 
@@ -31,6 +33,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/favorite", storyteller.FavoriteStatus)
 	authenticated.Post("/projects/:project/favorite", storyteller.CreateFavorite)
 	authenticated.Delete("/projects/:project/favorite", storyteller.DeleteFavorite)
+	authenticated.Patch("/favorites/projects/:project/visibility", storyteller.SetFavoriteProjectVisibility)
+	authenticated.Patch("/favorites/authors/:author/visibility", storyteller.SetFavoriteAuthorVisibility)
 	authenticated.Get("/projects/:project/ranking", storyteller.RankingStatus)
 	authenticated.Put("/projects/:project/ranking", storyteller.SaveRanking)
 	authenticated.Delete("/projects/:project/ranking", storyteller.DeleteRanking)

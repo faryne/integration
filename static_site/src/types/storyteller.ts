@@ -11,6 +11,8 @@ export interface StorytellerProject {
   share_token: string;
   rating_count: number;
   average_rating: number;
+  favorite_count: number;
+  favorite_hidden?: boolean;
   created_at: string;
   updated_at: string;
   stories?: StorytellerStory[];
@@ -128,12 +130,27 @@ export interface StorytellerProjectRanking {
   ranking?: number | null;
 }
 
+export type StorytellerSNSType =
+  | "x"
+  | "facebook"
+  | "instagram"
+  | "threads"
+  | "website"
+  | "plurk"
+  | "bahamut"
+  | "discord"
+  | "youtube";
+
 export interface StorytellerUserProfile {
   user_id: number;
   pen_name: string;
   bio?: string;
   use_default_avatar: boolean;
   avatar_url?: string;
+  sns_links?: Record<string, string>;
+  hide_favorite_projects: boolean;
+  hide_favorite_authors: boolean;
+  created_at: string;
 }
 
 export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
@@ -142,6 +159,8 @@ export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
   word_count: number;
   rating_count: number;
   average_rating: number;
+  follower_count: number;
+  hidden?: boolean;
 }
 
 export interface StorytellerProjectRequest {
@@ -232,4 +251,7 @@ export interface StorytellerUserProfileRequest {
   bio: string;
   use_default_avatar: boolean;
   avatar_url: string;
+  sns_links: Record<string, string>;
+  hide_favorite_projects: boolean;
+  hide_favorite_authors: boolean;
 }
