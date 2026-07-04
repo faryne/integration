@@ -28,7 +28,7 @@ export function StorytellerShell({
   children,
 }: {
   title: string;
-  description: string;
+  description: ReactNode;
   breadcrumbs: StorytellerBreadcrumbItem[];
   action?: ReactNode;
   headerContent?: ReactNode;
@@ -79,7 +79,11 @@ export function StorytellerShell({
                 <Typography component="h1" variant="h4" fontWeight={800}>
                   {title}
                 </Typography>
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                <Typography
+                  component="div"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
                   {description}
                 </Typography>
               </Box>

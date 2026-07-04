@@ -11,6 +11,7 @@ import {
   Box,
   Button,
   Chip,
+  Collapse,
   Grid,
   IconButton,
   Pagination,
@@ -43,6 +44,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
@@ -154,7 +156,7 @@ export default function StorytellerUserProjects() {
   return (
     <StorytellerShell
       title={displayName}
-      description={author?.bio || ""}
+      description={author?.bio ? <AuthorBio bio={author.bio} /> : ""}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: displayName },
@@ -406,6 +408,32 @@ export default function StorytellerUserProjects() {
         </Grid>
       </Grid>
     </StorytellerShell>
+  );
+}
+
+const BIO_COLLAPSE_THRESHOLD = 160;
+
+function AuthorBio({ bio }: { bio: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = bio.length > BIO_COLLAPSE_THRESHOLD;
+
+  return (
+    <Box>
+      <Collapse in={expanded || !isLong} collapsedSize={64}>
+        <Box sx={{ "& p": { mt: 0, mb: 1 }, "& p:last-child": { mb: 0 } }}>
+          <StorytellerMarkdown>{bio}</StorytellerMarkdown>
+        </Box>
+      </Collapse>
+      {isLong && (
+        <Button
+          size="small"
+          onClick={() => setExpanded((value) => !value)}
+          sx={{ mt: 0.5, minWidth: 0, px: 0 }}
+        >
+          {expanded ? "收合簡介" : "顯示完整簡介"}
+        </Button>
+      )}
+    </Box>
   );
 }
 
