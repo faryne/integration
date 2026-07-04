@@ -44,6 +44,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -85,11 +86,11 @@ export default function StorytellerUserProjects() {
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 12;
 
-  const { data, isLoading } = usePublicUserStorytellerProjects(
-    username,
-    page,
-    pageSize,
-  );
+  const {
+    data,
+    isLoading,
+    isError,
+  } = usePublicUserStorytellerProjects(username, page, pageSize);
   const author = data?.author;
   const authorUserId = author?.user_id;
   const isOwner = Boolean(authorUserId && session?.user.id === authorUserId);
@@ -126,6 +127,10 @@ export default function StorytellerUserProjects() {
         <StorytellerLoading label="正在載入作者資訊..." />
       </StorytellerShell>
     );
+  }
+
+  if (isError || !data?.author) {
+    return <ErrorPage code={404} />;
   }
 
   const items = (data?.items || []).map((project) => ({
