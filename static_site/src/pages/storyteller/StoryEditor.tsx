@@ -849,7 +849,7 @@ export default function StorytellerStoryEditor() {
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${wordCount.toLocaleString()} 字`} />
           <Chip
-            label={storyStatus === "completed" ? "已完成" : "撰寫中"}
+            label={storyStatus === "completed" ? "公開中" : "撰寫中"}
             color={storyStatus === "completed" ? "success" : "warning"}
             variant="outlined"
           />
@@ -915,7 +915,7 @@ export default function StorytellerStoryEditor() {
                 helperText="撰寫中的故事不會出現在公開閱讀頁與故事索引。"
               >
                 <MenuItem value="draft">撰寫中</MenuItem>
-                <MenuItem value="completed">已完成</MenuItem>
+                <MenuItem value="completed">公開中</MenuItem>
               </TextField>
             </Grid>
             <Grid size={12}>

@@ -284,6 +284,18 @@ type StoryVersion struct {
 
 func (StoryVersion) TableName() string { return "storyteller_story_versions" }
 
+type StoryBookmark struct {
+	ID             uint64    `gorm:"column:id;primaryKey" json:"id"`
+	UserID         uint64    `gorm:"column:user_id" json:"user_id"`
+	StoryID        uint64    `gorm:"column:story_id" json:"story_id"`
+	StoryVersionID uint64    `gorm:"column:story_version_id" json:"story_version_id"`
+	LineIndex      int       `gorm:"column:line_index" json:"line_index"`
+	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt      time.Time `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (StoryBookmark) TableName() string { return "storyteller_story_bookmarks" }
+
 type Lore struct {
 	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
 	PublicID      string     `gorm:"column:public_id" json:"public_id"`

@@ -487,6 +487,62 @@ func StoryVersion(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func PublicStoryLatestVersion(ctx fiber.Ctx) error {
+	row, err := storyteller.NewService().PublicStoryLatestVersion(ctx.Params("project"), ctx.Params("story"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+type storyBookmarkRequest struct {
+	VersionID uint64 `json:"version_id"`
+	LineIndex int    `json:"line_index"`
+}
+
+func StoryBookmarks(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().StoryBookmarks(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
+func CreateStoryBookmark(ctx fiber.Ctx) error {
+	var input storyBookmarkRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.VersionID, input.LineIndex)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteStoryBookmark(ctx fiber.Ctx) error {
+	var input storyBookmarkRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	if err := storyteller.NewService().DeleteStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.VersionID, input.LineIndex); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
 func Lores(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Lores(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {

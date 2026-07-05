@@ -1,4 +1,6 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import CloseIcon from "@mui/icons-material/Close";
@@ -18,6 +20,7 @@ import {
   Popover,
   Rating,
   Stack,
+  Tooltip,
   Typography,
   Zoom,
   useMediaQuery,
@@ -29,8 +32,12 @@ import { Link as RouterLink, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   useStorytellerProject,
+  useCreateStorytellerStoryBookmark,
+  useDeleteStorytellerStoryBookmark,
+  usePublicStorytellerStoryLatestVersion,
   useSaveStorytellerAuthorFavorite,
   useSaveStorytellerProjectFavorite,
   useSaveStorytellerProjectRanking,
@@ -39,6 +46,7 @@ import {
   useStorytellerAuthorFavorite,
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
+  useStorytellerStoryBookmarks,
 } from "@/apis/storyteller.ts";
 import {
   formatStorytellerDate,
@@ -188,6 +196,76 @@ function ChapterNavCard({
   );
 }
 
+function StoryContentLines({
+  content,
+  bookmarkedLines,
+  pendingLines,
+  interactive,
+  onToggleBookmark,
+}: {
+  content: string;
+  bookmarkedLines: Set<number>;
+  pendingLines: Set<number>;
+  interactive: boolean;
+  onToggleBookmark: (lineIndex: number) => void;
+}) {
+  const lines = content.split("\n");
+  return (
+    <Stack spacing={0.25}>
+      {lines.map((line, index) => {
+        if (!line.trim()) {
+          return <Box key={index} sx={{ height: 12 }} />;
+        }
+        const isBookmarked = bookmarkedLines.has(index);
+        return (
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 0.5,
+              "&:hover .bookmark-ghost": { opacity: 1 },
+            }}
+          >
+            <Box sx={{ width: 30, flexShrink: 0, pt: 0.25 }}>
+              {interactive && (
+                <Tooltip
+                  title={isBookmarked ? "移除書籤" : "加入書籤"}
+                  enterTouchDelay={0}
+                >
+                  <span>
+                    <IconButton
+                      size="small"
+                      aria-label={isBookmarked ? "移除書籤" : "加入書籤"}
+                      disabled={pendingLines.has(index)}
+                      onClick={() => onToggleBookmark(index)}
+                      className={isBookmarked ? undefined : "bookmark-ghost"}
+                      sx={{
+                        opacity: isBookmarked ? 1 : 0,
+                        transition: "opacity .12s",
+                        color: isBookmarked ? "primary.main" : "text.secondary",
+                      }}
+                    >
+                      {isBookmarked ? (
+                        <BookmarkIcon fontSize="small" />
+                      ) : (
+                        <BookmarkBorderIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              )}
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <StorytellerMarkdown>{line}</StorytellerMarkdown>
+            </Box>
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
+
 export default function StorytellerReader() {
   const { session, loading: authLoading } = useAuth();
   const params = useParams();
@@ -208,6 +286,13 @@ export default function StorytellerReader() {
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [pendingBookmarkLines, setPendingBookmarkLines] = useState<
+    Set<number>
+  >(new Set());
+  const [bookmarkSnackbar, setBookmarkSnackbar] = useState<{
+    open: boolean;
+    message: string;
+  }>({ open: false, message: "" });
   // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
   // 右下角快速按鈕展開的選單錨點
@@ -302,6 +387,58 @@ export default function StorytellerReader() {
     currentStoryIndex >= 0 && currentStoryIndex < stories.length - 1
       ? stories[currentStoryIndex + 1]
       : undefined;
+  const latestVersionQuery = usePublicStorytellerStoryLatestVersion(
+    apiProject?.public_id,
+    currentStory?.id,
+  );
+  const bookmarksQuery = useStorytellerStoryBookmarks(
+    apiProject?.public_id,
+    currentStory?.id,
+  );
+  const createBookmark = useCreateStorytellerStoryBookmark(
+    apiProject?.public_id,
+    currentStory?.id,
+  );
+  const deleteBookmark = useDeleteStorytellerStoryBookmark(
+    apiProject?.public_id,
+    currentStory?.id,
+  );
+  const latestVersionId = latestVersionQuery.data?.id;
+  const bookmarkedLines = new Set(
+    (bookmarksQuery.data ?? [])
+      .filter((bookmark) => bookmark.story_version_id === latestVersionId)
+      .map((bookmark) => bookmark.line_index),
+  );
+  const handleToggleBookmark = (lineIndex: number) => {
+    if (!session) {
+      setLoginPromptOpen(true);
+      return;
+    }
+    if (!latestVersionId || pendingBookmarkLines.has(lineIndex)) {
+      return;
+    }
+    const isBookmarked = bookmarkedLines.has(lineIndex);
+    setPendingBookmarkLines((prev) => new Set(prev).add(lineIndex));
+    const mutation = isBookmarked ? deleteBookmark : createBookmark;
+    mutation.mutate(
+      { versionId: latestVersionId, lineIndex },
+      {
+        onSuccess: () => {
+          setBookmarkSnackbar({
+            open: true,
+            message: isBookmarked ? "書籤已刪除" : "書籤已加入",
+          });
+        },
+        onSettled: () => {
+          setPendingBookmarkLines((prev) => {
+            const next = new Set(prev);
+            next.delete(lineIndex);
+            return next;
+          });
+        },
+      },
+    );
+  };
   const isShareRoute = Boolean(shareToken);
   const isPrivateOwnerRoute =
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
@@ -483,10 +620,16 @@ export default function StorytellerReader() {
               lineHeight: 1.9,
               "& h1": { typography: "h5", fontWeight: 800 },
               "& h2": { typography: "h6", fontWeight: 800, mt: 3 },
-              "& p": { my: 1.5 },
+              "& p": { my: 0.5 },
             }}
           >
-            <StorytellerMarkdown>{currentStory.content}</StorytellerMarkdown>
+            <StoryContentLines
+              content={currentStory.content}
+              bookmarkedLines={bookmarkedLines}
+              pendingLines={pendingBookmarkLines}
+              interactive={!isOwner && Boolean(latestVersionId)}
+              onToggleBookmark={handleToggleBookmark}
+            />
           </Box>
           <Divider />
           <Box
@@ -652,7 +795,12 @@ export default function StorytellerReader() {
       <LoginPromptDialog
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
-        description="收藏故事、收藏作者或評分故事需要登入。是否要現在登入？"
+        description="收藏故事、收藏作者、評分故事或加入書籤需要登入。是否要現在登入？"
+      />
+      <CustomSnackbar
+        open={bookmarkSnackbar.open}
+        message={bookmarkSnackbar.message}
+        onClose={() => setBookmarkSnackbar((prev) => ({ ...prev, open: false }))}
       />
 
       {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引、非作者可收藏與評分 */}

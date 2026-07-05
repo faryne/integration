@@ -27,6 +27,7 @@ import type {
   StorytellerProviderAPIKeyRequest,
   StorytellerProviderAPIKeyUpdateRequest,
   StorytellerStory,
+  StorytellerStoryBookmark,
   StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
@@ -873,6 +874,29 @@ export function useDeleteStorytellerStory(projectPublicId?: string) {
   });
 }
 
+export function usePublicStorytellerStoryLatestVersion(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-story-latest-version",
+      projectPublicId,
+      storyPublicId,
+    ],
+    enabled: Boolean(projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryVersion>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/latest-version`,
+      );
+      return response.data.data;
+    },
+  });
+}
+
 export function useStorytellerStoryVersions(
   projectPublicId?: string,
   storyPublicId?: string,
@@ -895,6 +919,93 @@ export function useStorytellerStoryVersions(
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerStoryBookmarks(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "story-bookmarks",
+      projectPublicId,
+      storyPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryBookmark[]>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+interface StorytellerStoryBookmarkInput {
+  versionId: number;
+  lineIndex: number;
+}
+
+export function useCreateStorytellerStoryBookmark(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      versionId,
+      lineIndex,
+    }: StorytellerStoryBookmarkInput) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerStoryBookmark>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
+        { version_id: versionId, line_index: lineIndex },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "story-bookmarks"],
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerStoryBookmark(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      versionId,
+      lineIndex,
+    }: StorytellerStoryBookmarkInput) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
+        {
+          data: { version_id: versionId, line_index: lineIndex },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "story-bookmarks"],
+      });
     },
   });
 }

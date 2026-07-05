@@ -84,3 +84,4 @@ Do not modify or rely on these directories unless the user explicitly asks for i
 - Writing comments in Traditional Chinese is highly encouraged to enhance code readability and maintainability.
 - Less code, greater readability, and greater efforts.
 - ALWAYS CREATE NEW BRANCH FOR EVERY FEATURE. And DELETE THE BRANCH AFTER MERGING TO `MAIN`.
+- ALWAYS CREATE A FRONTEND MOCKUP FOR REVIEW AND IMPLEMENTED AFTER USER CONFIRMATION.

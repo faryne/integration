@@ -704,6 +704,66 @@ func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID str
 	return s.repo.StoryVersion(story.ID, versionID)
 }
 
+// publicPublishedStory 回傳讀者可讀取的故事（專案為公開或不公開連結、故事狀態為公開中），
+// 供書籤與版本查詢等「讀者視角」功能共用權限判斷，不要求使用者為專案擁有者。
+func (s *Service) publicPublishedStory(projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.PublishedStory(project.ID, storyPublicID)
+}
+
+func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string) (*storytellerModel.StoryVersion, error) {
+	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.LatestStoryVersion(story.ID)
+}
+
+func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {
+	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryBookmarks(userID, story.ID)
+}
+
+func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
+	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	latest, err := s.repo.LatestStoryVersion(story.ID)
+	if err != nil {
+		return nil, err
+	}
+	if latest.ID != versionID {
+		return nil, errors.New("只能對最新版本加入書籤")
+	}
+	if existing, err := s.repo.StoryBookmark(userID, versionID, lineIndex); err == nil {
+		return existing, nil
+	}
+	row := &storytellerModel.StoryBookmark{
+		UserID:         userID,
+		StoryID:        story.ID,
+		StoryVersionID: versionID,
+		LineIndex:      lineIndex,
+	}
+	if err := s.repo.CreateStoryBookmark(row); err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+func (s *Service) DeleteStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) error {
+	if _, err := s.publicPublishedStory(projectPublicID, storyPublicID); err != nil {
+		return err
+	}
+	return s.repo.DeleteStoryBookmark(userID, versionID, lineIndex)
+}
+
 func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerModel.Lore, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {

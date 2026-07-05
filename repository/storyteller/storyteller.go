@@ -373,6 +373,50 @@ func (r *Repository) StoryVersion(storyID, versionID uint64) (*storytellerModel.
 	return &row, err
 }
 
+func (r *Repository) LatestStoryVersion(storyID uint64) (*storytellerModel.StoryVersion, error) {
+	var row storytellerModel.StoryVersion
+	err := r.db.Where("story_id = ? AND deleted_at IS NULL", storyID).
+		Order("created_at DESC, id DESC").
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) PublishedStory(projectID uint64, publicID string) (*storytellerModel.Story, error) {
+	var row storytellerModel.Story
+	err := r.db.Where(
+		"project_id = ? AND public_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL",
+		projectID, publicID, storytellerModel.StoryStatusCompleted,
+	).First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) StoryBookmarks(userID, storyID uint64) ([]storytellerModel.StoryBookmark, error) {
+	rows := make([]storytellerModel.StoryBookmark, 0)
+	err := r.db.
+		Where("user_id = ? AND story_id = ?", userID, storyID).
+		Order("story_version_id DESC, line_index ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) StoryBookmark(userID, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
+	var row storytellerModel.StoryBookmark
+	err := r.db.
+		Where("user_id = ? AND story_version_id = ? AND line_index = ?", userID, versionID, lineIndex).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateStoryBookmark(row *storytellerModel.StoryBookmark) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) DeleteStoryBookmark(userID, versionID uint64, lineIndex int) error {
+	return r.db.
+		Where("user_id = ? AND story_version_id = ? AND line_index = ?", userID, versionID, lineIndex).
+		Delete(&storytellerModel.StoryBookmark{}).Error
+}
+
 func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {
 	rows := make([]storytellerModel.Lore, 0)
 	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).

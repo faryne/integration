@@ -105,6 +105,16 @@ export interface StorytellerStoryVersion {
   updated_at: string;
 }
 
+export interface StorytellerStoryBookmark {
+  id: number;
+  user_id: number;
+  story_id: number;
+  story_version_id: number;
+  line_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface StorytellerLore {
   id: number;
   public_id: string;

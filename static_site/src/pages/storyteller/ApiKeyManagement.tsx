@@ -96,7 +96,7 @@ export function StorytellerApiKeyPanel() {
                     供應商完成當次請求，不會挪作他用，也不會分享給第三方。
                   </Typography>
                   <Typography variant="caption">
-                    ・畫面上不會再顯示明文，之後只能覆蓋或刪除，無法重新檢視完整金鑰。
+                    ・畫面上不會再顯示明文，之後只能刪除，無法重新檢視完整金鑰。
                   </Typography>
                 </Stack>
               }
