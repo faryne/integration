@@ -498,6 +498,17 @@ func PublicStoryLatestVersion(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func PublicStoryVersions(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().PublicStoryVersions(ctx.Params("project"), ctx.Params("story"))
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
 func ProjectStoryBookmarks(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().ProjectStoryBookmarks(authsession.Session(ctx).UserId, ctx.Params("project"))
 	if err != nil {

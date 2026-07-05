@@ -898,6 +898,29 @@ export function usePublicStorytellerStoryLatestVersion(
   });
 }
 
+export function usePublicStorytellerStoryVersions(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-story-versions",
+      projectPublicId,
+      storyPublicId,
+    ],
+    enabled: Boolean(projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryVersion[]>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/versions`,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function useStorytellerStoryVersions(
   projectPublicId?: string,
   storyPublicId?: string,

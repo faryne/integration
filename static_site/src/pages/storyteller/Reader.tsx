@@ -6,6 +6,7 @@ import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import HistoryIcon from "@mui/icons-material/History";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
@@ -38,6 +39,7 @@ import {
   useCreateStorytellerStoryBookmark,
   useDeleteStorytellerStoryBookmark,
   usePublicStorytellerStoryLatestVersion,
+  usePublicStorytellerStoryVersions,
   useSaveStorytellerAuthorFavorite,
   useSaveStorytellerProjectFavorite,
   useSaveStorytellerProjectRanking,
@@ -404,6 +406,7 @@ export default function StorytellerReader() {
   const [highlightedLine, setHighlightedLine] = useState<number | undefined>(
     undefined,
   );
+  const [versionListOpen, setVersionListOpen] = useState(false);
   const navigate = useNavigate();
   // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
@@ -502,6 +505,10 @@ export default function StorytellerReader() {
   const latestVersionQuery = usePublicStorytellerStoryLatestVersion(
     apiProject?.public_id,
     currentStory?.id,
+  );
+  const versionsQuery = usePublicStorytellerStoryVersions(
+    apiProject?.public_id,
+    versionListOpen ? currentStory?.id : undefined,
   );
   const bookmarksQuery = useStorytellerStoryBookmarks(
     apiProject?.public_id,
@@ -713,18 +720,96 @@ export default function StorytellerReader() {
       {currentStory ? (
         <Stack spacing={2}>
           <Box>
-            <Typography
-              ref={storyStartRef}
-              component="h1"
-              variant="h4"
-              fontWeight={800}
-              sx={{ scrollMarginTop: 24 }}
+            <Stack
+              direction="row"
+              alignItems="flex-start"
+              justifyContent="space-between"
+              spacing={1}
             >
-              {currentStory.title}
-            </Typography>
+              <Typography
+                ref={storyStartRef}
+                component="h1"
+                variant="h4"
+                fontWeight={800}
+                sx={{ scrollMarginTop: 24 }}
+              >
+                {currentStory.title}
+              </Typography>
+              {!isOwner && (
+                <Tooltip title="版本歷史">
+                  <IconButton
+                    size="small"
+                    aria-label="版本歷史"
+                    onClick={() => setVersionListOpen((open) => !open)}
+                    sx={{
+                      flexShrink: 0,
+                      color: versionListOpen ? "primary.main" : "text.secondary",
+                    }}
+                  >
+                    <HistoryIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </Stack>
             <Typography color="text.secondary" sx={{ mt: 1 }}>
               {currentStory.summary}
             </Typography>
+            {versionListOpen && (
+              <Paper
+                variant="outlined"
+                sx={{ mt: 1, borderRadius: 1, overflow: "hidden" }}
+              >
+                {versionsQuery.isLoading ? (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ p: 1.5 }}
+                  >
+                    載入版本中...
+                  </Typography>
+                ) : (
+                  (versionsQuery.data ?? []).map((version, index, arr) => {
+                    const isLatest = index === 0;
+                    const label = isLatest
+                      ? `第 ${arr.length} 版（最新）`
+                      : `第 ${arr.length - index} 版`;
+                    return (
+                      <Box
+                        key={version.id}
+                        {...(isLatest
+                          ? {}
+                          : {
+                              component: RouterLink,
+                              to: `${basePath}/${currentStory.id}/versions/${version.id}`,
+                            })}
+                        onClick={() => setVersionListOpen(false)}
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          px: 1.5,
+                          py: 1,
+                          borderBottom:
+                            index < arr.length - 1 ? "1px solid" : "none",
+                          borderColor: "divider",
+                          textDecoration: "none",
+                          color: "inherit",
+                          cursor: isLatest ? "default" : "pointer",
+                          "&:hover": isLatest
+                            ? undefined
+                            : { bgcolor: "action.hover" },
+                        }}
+                      >
+                        <Typography variant="body2">{label}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatStorytellerDate(version.created_at)}
+                        </Typography>
+                      </Box>
+                    );
+                  })
+                )}
+              </Paper>
+            )}
             <Stack
               direction="row"
               spacing={1}

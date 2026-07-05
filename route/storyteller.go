@@ -15,6 +15,7 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
+	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
 
 	authenticated := group.Group("", authsession.New())
 	authenticated.Get("/user", storyteller.UserProfile)
