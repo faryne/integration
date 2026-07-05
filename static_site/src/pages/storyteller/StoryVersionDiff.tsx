@@ -127,9 +127,10 @@ export default function StorytellerStoryVersionDiff() {
                         py: 0.25,
                         textDecoration: "line-through",
                         mb: 0.25,
+                        "& *": { textDecoration: "line-through" },
                       }}
                     >
-                      {line.left}
+                      <StorytellerMarkdown>{line.left}</StorytellerMarkdown>
                     </Box>
                   )}
                   {line.state !== "removed" && line.right.trim() && (
@@ -142,7 +143,7 @@ export default function StorytellerStoryVersionDiff() {
                         py: 0.25,
                       }}
                     >
-                      {line.right}
+                      <StorytellerMarkdown>{line.right}</StorytellerMarkdown>
                     </Box>
                   )}
                 </Box>

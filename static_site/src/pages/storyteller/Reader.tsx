@@ -188,6 +188,8 @@ function StoryIndexPanel({
               const story = stories.find(
                 (item) => item.id === bookmark.story_public_id,
               );
+              const isStale =
+                bookmark.story_version_id !== bookmark.latest_story_version_id;
               return (
                 <Paper
                   key={bookmark.id}
@@ -198,13 +200,28 @@ function StoryIndexPanel({
                     onNavigate?.();
                   }}
                 >
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block" }}
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
                   >
-                    {story?.title ?? bookmark.story_title}
-                  </Typography>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block" }}
+                    >
+                      {story?.title ?? bookmark.story_title}
+                    </Typography>
+                    {isStale && (
+                      <Chip
+                        size="small"
+                        label="非最新版本"
+                        color="warning"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: 11 }}
+                      />
+                    )}
+                  </Stack>
                   <Typography variant="body2">
                     第 {bookmark.line_index + 1} 行
                   </Typography>
@@ -296,18 +313,20 @@ function ChapterNavCard({
   );
 }
 
+type BookmarkMode = "full" | "removeOnly" | "none";
+
 function StoryContentLines({
   content,
   bookmarkedLines,
   pendingLines,
-  interactive,
+  bookmarkMode,
   highlightedLine,
   onToggleBookmark,
 }: {
   content: string;
   bookmarkedLines: Set<number>;
   pendingLines: Set<number>;
-  interactive: boolean;
+  bookmarkMode: BookmarkMode;
   highlightedLine?: number;
   onToggleBookmark: (lineIndex: number) => void;
 }) {
@@ -319,6 +338,9 @@ function StoryContentLines({
           return <Box key={index} sx={{ height: 12 }} />;
         }
         const isBookmarked = bookmarkedLines.has(index);
+        const showIcon =
+          bookmarkMode === "full" ||
+          (bookmarkMode === "removeOnly" && isBookmarked);
         return (
           <Box
             key={index}
@@ -335,7 +357,7 @@ function StoryContentLines({
             }}
           >
             <Box sx={{ width: 30, flexShrink: 0, pt: 0.25 }}>
-              {interactive && (
+              {showIcon && (
                 <Tooltip
                   title={isBookmarked ? "移除書籤" : "加入書籤"}
                   enterTouchDelay={0}
@@ -407,6 +429,9 @@ export default function StorytellerReader() {
     undefined,
   );
   const [versionListOpen, setVersionListOpen] = useState(false);
+  const [historicalVersionId, setHistoricalVersionId] = useState<
+    number | undefined
+  >(undefined);
   const navigate = useNavigate();
   // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
@@ -508,7 +533,7 @@ export default function StorytellerReader() {
   );
   const versionsQuery = usePublicStorytellerStoryVersions(
     apiProject?.public_id,
-    versionListOpen ? currentStory?.id : undefined,
+    currentStory?.id,
   );
   const bookmarksQuery = useStorytellerStoryBookmarks(
     apiProject?.public_id,
@@ -523,24 +548,47 @@ export default function StorytellerReader() {
     currentStory?.id,
   );
   const latestVersionId = latestVersionQuery.data?.id;
+  const versions = versionsQuery.data ?? [];
+  const historicalVersionIndex = historicalVersionId
+    ? versions.findIndex((version) => version.id === historicalVersionId)
+    : -1;
+  const historicalVersion =
+    historicalVersionIndex >= 0 ? versions[historicalVersionIndex] : undefined;
+  const isHistoricalView = Boolean(historicalVersion);
+  const displayVersionId = historicalVersion
+    ? historicalVersion.id
+    : latestVersionId;
+  const displayContent = historicalVersion
+    ? historicalVersion.content
+    : currentStory?.content;
   const bookmarkedLines = new Set(
     (bookmarksQuery.data ?? [])
-      .filter((bookmark) => bookmark.story_version_id === latestVersionId)
+      .filter((bookmark) => bookmark.story_version_id === displayVersionId)
       .map((bookmark) => bookmark.line_index),
   );
+  const bookmarkMode: BookmarkMode = isOwner
+    ? "none"
+    : isHistoricalView
+      ? "removeOnly"
+      : displayVersionId
+        ? "full"
+        : "none";
   const handleToggleBookmark = (lineIndex: number) => {
     if (!session) {
       setLoginPromptOpen(true);
       return;
     }
-    if (!latestVersionId || pendingBookmarkLines.has(lineIndex)) {
+    if (!displayVersionId || pendingBookmarkLines.has(lineIndex)) {
       return;
     }
     const isBookmarked = bookmarkedLines.has(lineIndex);
+    if (isHistoricalView && !isBookmarked) {
+      return;
+    }
     setPendingBookmarkLines((prev) => new Set(prev).add(lineIndex));
     const mutation = isBookmarked ? deleteBookmark : createBookmark;
     mutation.mutate(
-      { versionId: latestVersionId, lineIndex },
+      { versionId: displayVersionId, lineIndex },
       {
         onSuccess: () => {
           setBookmarkSnackbar({
@@ -647,6 +695,9 @@ export default function StorytellerReader() {
   const handleJumpToBookmark = (
     bookmark: StorytellerStoryBookmarkWithStory,
   ) => {
+    const isStale =
+      bookmark.story_version_id !== bookmark.latest_story_version_id;
+    setHistoricalVersionId(isStale ? bookmark.story_version_id : undefined);
     setPendingScrollLineIndex(bookmark.line_index);
     if (bookmark.story_public_id !== currentStory?.id) {
       navigate(`${basePath}/${bookmark.story_public_id}`);
@@ -835,6 +886,36 @@ export default function StorytellerReader() {
                 更新於 {formatStorytellerDate(currentStory.updatedAt)}
               </Typography>
             </Stack>
+            {isHistoricalView && (
+              <Box
+                onClick={() => setHistoricalVersionId(undefined)}
+                sx={{
+                  mt: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 1,
+                  px: 1.5,
+                  py: 1,
+                  borderRadius: 1,
+                  bgcolor: "warning.light",
+                  color: "warning.contrastText",
+                  cursor: "pointer",
+                }}
+              >
+                <Typography variant="body2">
+                  此非最新版本（第{" "}
+                  {versions.length - historicalVersionIndex} 版），內容為當時儲存的版本，僅能移除既有書籤，無法新增
+                </Typography>
+                <Typography
+                  variant="body2"
+                  fontWeight={800}
+                  sx={{ flexShrink: 0 }}
+                >
+                  點擊查看最新版本 →
+                </Typography>
+              </Box>
+            )}
           </Box>
           <Divider />
           <Box
@@ -847,10 +928,10 @@ export default function StorytellerReader() {
             }}
           >
             <StoryContentLines
-              content={currentStory.content}
+              content={displayContent ?? currentStory.content}
               bookmarkedLines={bookmarkedLines}
               pendingLines={pendingBookmarkLines}
-              interactive={!isOwner && Boolean(latestVersionId)}
+              bookmarkMode={bookmarkMode}
               highlightedLine={highlightedLine}
               onToggleBookmark={handleToggleBookmark}
             />
@@ -1100,8 +1181,8 @@ export default function StorytellerReader() {
                     p: 2,
                     borderRadius: 1,
                     position: "sticky",
-                    top: 16,
-                    maxHeight: "calc(100vh - 32px)",
+                    top: 80,
+                    maxHeight: "calc(100vh - 96px)",
                     overflowY: "auto",
                   }}
                 >
@@ -1134,8 +1215,8 @@ export default function StorytellerReader() {
                   p: 2,
                   borderRadius: 1,
                   position: "sticky",
-                  top: 16,
-                  maxHeight: "calc(100vh - 32px)",
+                  top: 80,
+                  maxHeight: "calc(100vh - 96px)",
                   overflowY: "auto",
                 }}
               >

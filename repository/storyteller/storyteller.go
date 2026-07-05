@@ -411,7 +411,10 @@ func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytel
 			stories.title AS story_title,
 			bookmarks.story_version_id,
 			bookmarks.line_index,
-			bookmarks.created_at`).
+			bookmarks.created_at,
+			(SELECT versions.id FROM storyteller_story_versions AS versions
+				WHERE versions.story_id = bookmarks.story_id AND versions.deleted_at IS NULL
+				ORDER BY versions.created_at DESC, versions.id DESC LIMIT 1) AS latest_story_version_id`).
 		Order("bookmarks.created_at DESC, bookmarks.id DESC").
 		Find(&rows).Error
 	return rows, err

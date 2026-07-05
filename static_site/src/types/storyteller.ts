@@ -121,6 +121,7 @@ export interface StorytellerStoryBookmarkWithStory {
   story_public_id: string;
   story_title: string;
   story_version_id: number;
+  latest_story_version_id: number;
   line_index: number;
   created_at: string;
 }
