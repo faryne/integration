@@ -39,6 +39,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/ranking", storyteller.RankingStatus)
 	authenticated.Put("/projects/:project/ranking", storyteller.SaveRanking)
 	authenticated.Delete("/projects/:project/ranking", storyteller.DeleteRanking)
+	authenticated.Get("/story/:project/bookmarks", storyteller.ProjectStoryBookmarks)
 	authenticated.Get("/story/:project/stories/:story/bookmarks", storyteller.StoryBookmarks)
 	authenticated.Post("/story/:project/stories/:story/bookmarks", storyteller.CreateStoryBookmark)
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)

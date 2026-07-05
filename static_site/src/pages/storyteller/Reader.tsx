@@ -28,7 +28,7 @@ import {
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
@@ -46,6 +46,7 @@ import {
   useStorytellerAuthorFavorite,
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
+  useStorytellerProjectBookmarks,
   useStorytellerStoryBookmarks,
 } from "@/apis/storyteller.ts";
 import {
@@ -59,6 +60,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 
 interface ReaderStory {
   id: string;
@@ -114,6 +116,102 @@ function StoryIndex({
           {index + 1}. {story.title}
         </Button>
       ))}
+    </Stack>
+  );
+}
+
+function StoryIndexPanel({
+  stories,
+  currentStoryId,
+  basePath,
+  onNavigate,
+  bookmarks,
+  bookmarksEnabled,
+  bookmarksLoading,
+  onJumpToBookmark,
+}: {
+  stories: ReaderStory[];
+  currentStoryId?: string;
+  basePath: string;
+  onNavigate?: () => void;
+  bookmarks: StorytellerStoryBookmarkWithStory[];
+  bookmarksEnabled: boolean;
+  bookmarksLoading: boolean;
+  onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
+}) {
+  const [tab, setTab] = useState<"toc" | "bookmarks">("toc");
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" spacing={1}>
+        <Button
+          size="small"
+          variant={tab === "toc" ? "contained" : "outlined"}
+          onClick={() => setTab("toc")}
+          sx={{ flex: 1 }}
+        >
+          目錄
+        </Button>
+        <Button
+          size="small"
+          variant={tab === "bookmarks" ? "contained" : "outlined"}
+          onClick={() => setTab("bookmarks")}
+          sx={{ flex: 1 }}
+        >
+          書籤{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
+        </Button>
+      </Stack>
+      {tab === "toc" ? (
+        <StoryIndex
+          stories={stories}
+          currentStoryId={currentStoryId}
+          basePath={basePath}
+          onNavigate={onNavigate}
+        />
+      ) : (
+        <Stack spacing={1}>
+          {!bookmarksEnabled ? (
+            <Typography variant="body2" color="text.secondary">
+              登入後即可查看你的書籤。
+            </Typography>
+          ) : bookmarksLoading ? (
+            <Typography variant="body2" color="text.secondary">
+              載入書籤中...
+            </Typography>
+          ) : bookmarks.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              還沒有加入任何書籤，閱讀時點擊每行左側的書籤圖示即可加入。
+            </Typography>
+          ) : (
+            bookmarks.map((bookmark) => {
+              const story = stories.find(
+                (item) => item.id === bookmark.story_public_id,
+              );
+              return (
+                <Paper
+                  key={bookmark.id}
+                  variant="outlined"
+                  sx={{ p: 1, borderRadius: 1, cursor: "pointer" }}
+                  onClick={() => {
+                    onJumpToBookmark(bookmark);
+                    onNavigate?.();
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
+                  >
+                    {story?.title ?? bookmark.story_title}
+                  </Typography>
+                  <Typography variant="body2">
+                    第 {bookmark.line_index + 1} 行
+                  </Typography>
+                </Paper>
+              );
+            })
+          )}
+        </Stack>
+      )}
     </Stack>
   );
 }
@@ -201,12 +299,14 @@ function StoryContentLines({
   bookmarkedLines,
   pendingLines,
   interactive,
+  highlightedLine,
   onToggleBookmark,
 }: {
   content: string;
   bookmarkedLines: Set<number>;
   pendingLines: Set<number>;
   interactive: boolean;
+  highlightedLine?: number;
   onToggleBookmark: (lineIndex: number) => void;
 }) {
   const lines = content.split("\n");
@@ -220,10 +320,15 @@ function StoryContentLines({
         return (
           <Box
             key={index}
+            id={`bookmark-line-${index}`}
             sx={{
               display: "flex",
               alignItems: "flex-start",
               gap: 0.5,
+              borderRadius: 1,
+              transition: "background-color .6s",
+              bgcolor:
+                highlightedLine === index ? "action.selected" : undefined,
               "&:hover .bookmark-ghost": { opacity: 1 },
             }}
           >
@@ -293,6 +398,13 @@ export default function StorytellerReader() {
     open: boolean;
     message: string;
   }>({ open: false, message: "" });
+  const [pendingScrollLineIndex, setPendingScrollLineIndex] = useState<
+    number | undefined
+  >(undefined);
+  const [highlightedLine, setHighlightedLine] = useState<number | undefined>(
+    undefined,
+  );
+  const navigate = useNavigate();
   // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
   // 右下角快速按鈕展開的選單錨點
@@ -439,6 +551,24 @@ export default function StorytellerReader() {
       },
     );
   };
+  const projectBookmarksQuery = useStorytellerProjectBookmarks(
+    apiProject?.public_id,
+  );
+  const projectBookmarks = projectBookmarksQuery.data ?? [];
+  useEffect(() => {
+    if (pendingScrollLineIndex === undefined) {
+      return;
+    }
+    const targetIndex = pendingScrollLineIndex;
+    const frame = requestAnimationFrame(() => {
+      const el = document.getElementById(`bookmark-line-${targetIndex}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlightedLine(targetIndex);
+      setPendingScrollLineIndex(undefined);
+      setTimeout(() => setHighlightedLine(undefined), 1200);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [currentStory?.id, pendingScrollLineIndex]);
   const isShareRoute = Boolean(shareToken);
   const isPrivateOwnerRoute =
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
@@ -507,6 +637,14 @@ export default function StorytellerReader() {
   const basePath = isShareRoute
     ? `/storyteller/story/share/${shareToken}`
     : project.path;
+  const handleJumpToBookmark = (
+    bookmark: StorytellerStoryBookmarkWithStory,
+  ) => {
+    setPendingScrollLineIndex(bookmark.line_index);
+    if (bookmark.story_public_id !== currentStory?.id) {
+      navigate(`${basePath}/${bookmark.story_public_id}`);
+    }
+  };
   const showInlineIndex = !isMobile && indexOpen;
   // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用
   const readerActions = (
@@ -628,6 +766,7 @@ export default function StorytellerReader() {
               bookmarkedLines={bookmarkedLines}
               pendingLines={pendingBookmarkLines}
               interactive={!isOwner && Boolean(latestVersionId)}
+              highlightedLine={highlightedLine}
               onToggleBookmark={handleToggleBookmark}
             />
           </Box>
@@ -749,11 +888,15 @@ export default function StorytellerReader() {
                 <CloseIcon />
               </IconButton>
             </Stack>
-            <StoryIndex
+            <StoryIndexPanel
               stories={stories}
               currentStoryId={currentStory?.id}
               basePath={basePath}
               onNavigate={() => setMobileIndexOpen(false)}
+              bookmarks={projectBookmarks}
+              bookmarksEnabled={Boolean(session)}
+              bookmarksLoading={projectBookmarksQuery.isLoading}
+              onJumpToBookmark={handleJumpToBookmark}
             />
           </Box>
         </Drawer>
@@ -877,10 +1020,14 @@ export default function StorytellerReader() {
                     overflowY: "auto",
                   }}
                 >
-                  <StoryIndex
+                  <StoryIndexPanel
                     stories={stories}
                     currentStoryId={currentStory?.id}
                     basePath={basePath}
+                    bookmarks={projectBookmarks}
+                    bookmarksEnabled={Boolean(session)}
+                    bookmarksLoading={projectBookmarksQuery.isLoading}
+                    onJumpToBookmark={handleJumpToBookmark}
                   />
                 </Paper>
               </Grid>
@@ -907,10 +1054,14 @@ export default function StorytellerReader() {
                   overflowY: "auto",
                 }}
               >
-                <StoryIndex
+                <StoryIndexPanel
                   stories={stories}
                   currentStoryId={currentStory?.id}
                   basePath={basePath}
+                  bookmarks={projectBookmarks}
+                  bookmarksEnabled={Boolean(session)}
+                  bookmarksLoading={projectBookmarksQuery.isLoading}
+                  onJumpToBookmark={handleJumpToBookmark}
                 />
               </Paper>
             </Grid>

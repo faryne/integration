@@ -722,6 +722,14 @@ func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string
 	return s.repo.LatestStoryVersion(story.ID)
 }
 
+func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryBookmarkOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.ProjectStoryBookmarks(userID, project.ID)
+}
+
 func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {
 	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
 	if err != nil {

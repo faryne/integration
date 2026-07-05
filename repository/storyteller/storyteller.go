@@ -399,6 +399,24 @@ func (r *Repository) StoryBookmarks(userID, storyID uint64) ([]storytellerModel.
 	return rows, err
 }
 
+func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytellerModel.StoryBookmarkOutput, error) {
+	rows := make([]storytellerModel.StoryBookmarkOutput, 0)
+	err := r.db.
+		Table("storyteller_story_bookmarks AS bookmarks").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
+		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
+		Select(`bookmarks.id,
+			bookmarks.story_id,
+			stories.public_id AS story_public_id,
+			stories.title AS story_title,
+			bookmarks.story_version_id,
+			bookmarks.line_index,
+			bookmarks.created_at`).
+		Order("bookmarks.created_at DESC, bookmarks.id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) StoryBookmark(userID, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
 	var row storytellerModel.StoryBookmark
 	err := r.db.

@@ -296,6 +296,18 @@ type StoryBookmark struct {
 
 func (StoryBookmark) TableName() string { return "storyteller_story_bookmarks" }
 
+// StoryBookmarkOutput 附上所屬章節的 public_id／標題，供讀者頁側欄書籤列表
+// 跨章節顯示與產生跳轉連結使用。
+type StoryBookmarkOutput struct {
+	ID             uint64    `gorm:"column:id" json:"id"`
+	StoryID        uint64    `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID  string    `gorm:"column:story_public_id" json:"story_public_id"`
+	StoryTitle     string    `gorm:"column:story_title" json:"story_title"`
+	StoryVersionID uint64    `gorm:"column:story_version_id" json:"story_version_id"`
+	LineIndex      int       `gorm:"column:line_index" json:"line_index"`
+	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`
+}
+
 type Lore struct {
 	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
 	PublicID      string     `gorm:"column:public_id" json:"public_id"`

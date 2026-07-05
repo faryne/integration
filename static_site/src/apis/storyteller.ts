@@ -28,6 +28,7 @@ import type {
   StorytellerProviderAPIKeyUpdateRequest,
   StorytellerStory,
   StorytellerStoryBookmark,
+  StorytellerStoryBookmarkWithStory,
   StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
@@ -923,6 +924,27 @@ export function useStorytellerStoryVersions(
   });
 }
 
+export function useStorytellerProjectBookmarks(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "project-bookmarks",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryBookmarkWithStory[]>
+      >(`${apiBase}/storyteller/story/${projectPublicId}/bookmarks`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function useStorytellerStoryBookmarks(
   projectPublicId?: string,
   storyPublicId?: string,
@@ -978,6 +1000,9 @@ export function useCreateStorytellerStoryBookmark(
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "story-bookmarks"],
       });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "project-bookmarks"],
+      });
     },
   });
 }
@@ -1005,6 +1030,9 @@ export function useDeleteStorytellerStoryBookmark(
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "story-bookmarks"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "project-bookmarks"],
       });
     },
   });
