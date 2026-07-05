@@ -404,6 +404,7 @@ func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytel
 	err := r.db.
 		Table("storyteller_story_bookmarks AS bookmarks").
 		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
+		Joins("INNER JOIN storyteller_story_versions AS versions ON versions.id = bookmarks.story_version_id").
 		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
 		Select(`bookmarks.id,
 			bookmarks.story_id,
@@ -412,9 +413,10 @@ func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytel
 			bookmarks.story_version_id,
 			bookmarks.line_index,
 			bookmarks.created_at,
-			(SELECT versions.id FROM storyteller_story_versions AS versions
-				WHERE versions.story_id = bookmarks.story_id AND versions.deleted_at IS NULL
-				ORDER BY versions.created_at DESC, versions.id DESC LIMIT 1) AS latest_story_version_id`).
+			(SELECT v.id FROM storyteller_story_versions AS v
+				WHERE v.story_id = bookmarks.story_id AND v.deleted_at IS NULL
+				ORDER BY v.created_at DESC, v.id DESC LIMIT 1) AS latest_story_version_id,
+			TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(versions.content, '\n', bookmarks.line_index + 1), '\n', -1)) AS line_preview`).
 		Order("bookmarks.created_at DESC, bookmarks.id DESC").
 		Find(&rows).Error
 	return rows, err

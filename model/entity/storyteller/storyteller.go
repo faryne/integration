@@ -307,6 +307,7 @@ type StoryBookmarkOutput struct {
 	StoryVersionID       uint64    `gorm:"column:story_version_id" json:"story_version_id"`
 	LatestStoryVersionID uint64    `gorm:"column:latest_story_version_id" json:"latest_story_version_id"`
 	LineIndex            int       `gorm:"column:line_index" json:"line_index"`
+	LinePreview          string    `gorm:"column:line_preview" json:"line_preview"`
 	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at"`
 }
 

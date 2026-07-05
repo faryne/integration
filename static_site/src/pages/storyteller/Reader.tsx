@@ -190,8 +190,7 @@ function StoryIndexPanel({
               );
               const isStale =
                 bookmark.story_version_id !== bookmark.latest_story_version_id;
-              const lineText =
-                story?.content.split("\n")[bookmark.line_index]?.trim() ?? "";
+              const lineText = bookmark.line_preview.trim();
               const snippet =
                 lineText.length > 10
                   ? `${lineText.slice(0, 10)}…`
