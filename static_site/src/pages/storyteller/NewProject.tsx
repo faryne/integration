@@ -87,7 +87,17 @@ export default function StorytellerNewProject() {
   });
 
   if (isEditing && !editingProject && (isLoading || isFetching)) {
-    return <StorytellerLoading label="正在載入專案資料..." />;
+    return (
+      <StorytellerShell
+        title="編輯專案"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入專案資料..." />
+      </StorytellerShell>
+    );
   }
 
   if (isEditing && !editingProject) {
@@ -97,11 +107,6 @@ export default function StorytellerNewProject() {
   return (
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
-      description={
-        isEditing
-          ? "調整故事企劃的基本資訊與閱讀狀態。"
-          : "填寫故事企劃的基本資訊。"
-      }
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "故事專案", to: "/storyteller/my/project" },

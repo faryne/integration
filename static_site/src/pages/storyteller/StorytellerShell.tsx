@@ -22,14 +22,18 @@ export function StorytellerShell({
   title,
   description,
   breadcrumbs,
+  meta,
   action,
   headerContent,
   hideHeading = false,
   children,
 }: {
   title: string;
-  description: ReactNode;
+  // 只在真的有實質內容（例如作品簡介）時才傳入；單純換句話說重複標題的文字不要傳
+  description?: ReactNode;
   breadcrumbs: StorytellerBreadcrumbItem[];
+  // 狀態／統計 chip 列，固定顯示在標題正下方，跟右側的 action 按鈕區分開
+  meta?: ReactNode;
   action?: ReactNode;
   headerContent?: ReactNode;
   hideHeading?: boolean;
@@ -79,13 +83,22 @@ export function StorytellerShell({
                 <Typography component="h1" variant="h4" fontWeight={800}>
                   {title}
                 </Typography>
-                <Typography
-                  component="div"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
-                  {description}
-                </Typography>
+                {description && (
+                  <Typography
+                    component="div"
+                    color="text.secondary"
+                    sx={{ mt: 1 }}
+                  >
+                    {description}
+                  </Typography>
+                )}
+                {meta && (
+                  <Box sx={{ mt: 1 }}>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {meta}
+                    </Stack>
+                  </Box>
+                )}
               </Box>
             )}
             {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}

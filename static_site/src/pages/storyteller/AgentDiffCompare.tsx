@@ -121,7 +121,18 @@ export default function StorytellerAgentDiffCompare() {
     leftVersion.isLoading ||
     rightVersion.isLoading
   ) {
-    return <StorytellerLoading label="正在載入 Prompt 版本比對資料..." />;
+    return (
+      <StorytellerShell
+        title="Prompt 版本差異比對"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: "版本比對" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入 Prompt 版本比對資料..." />
+      </StorytellerShell>
+    );
   }
 
   if (!agent || !leftVersion.data || !rightVersion.data) {

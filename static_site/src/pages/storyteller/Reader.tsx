@@ -697,7 +697,14 @@ export default function StorytellerReader() {
       sharedProjectQuery.isLoading ||
       ownerProjectQuery.isLoading)
   ) {
-    return <StorytellerLoading label="正在載入故事..." />;
+    return (
+      <StorytellerShell
+        title="故事"
+        breadcrumbs={[{ label: "Storyteller", to: "/storyteller" }]}
+      >
+        <StorytellerLoading label="正在載入故事..." />
+      </StorytellerShell>
+    );
   }
 
   if (!project) {
@@ -1014,8 +1021,8 @@ export default function StorytellerReader() {
         { label: "Storyteller", to: "/storyteller" },
         { label: project.name },
       ]}
-      action={
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      meta={
+        <>
           <Chip
             label={
               isPrivateOwnerRoute
@@ -1051,7 +1058,7 @@ export default function StorytellerReader() {
           {project.tags.map((tag) => (
             <Chip key={tag} label={tag} variant="outlined" />
           ))}
-        </Stack>
+        </>
       }
     >
       {isMobile && (

@@ -452,7 +452,17 @@ export default function StorytellerLoreEditor() {
     (!project && (projectsPending || projectsFetching)) ||
     (apiProject && !isNewLore && !lore && (loresPending || loresFetching))
   ) {
-    return <StorytellerLoading label="正在載入設定集..." />;
+    return (
+      <StorytellerShell
+        title="設定集編輯器"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入設定集..." />
+      </StorytellerShell>
+    );
   }
 
   if (!project || (!isNewLore && !lore)) {
@@ -622,7 +632,6 @@ export default function StorytellerLoreEditor() {
   return (
     <StorytellerShell
       title={pageTitle}
-      description="撰寫故事世界觀、角色規則、背景資料與劇本設定。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "故事專案", to: "/storyteller/my/project" },

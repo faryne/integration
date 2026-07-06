@@ -40,7 +40,14 @@ export default function StorytellerStoryVersionDiff() {
   });
 
   if (projectQuery.isLoading || versionsQuery.isLoading) {
-    return <StorytellerLoading label="正在載入版本比較..." />;
+    return (
+      <StorytellerShell
+        title="版本比較"
+        breadcrumbs={[{ label: "Storyteller", to: "/storyteller" }]}
+      >
+        <StorytellerLoading label="正在載入版本比較..." />
+      </StorytellerShell>
+    );
   }
 
   if (!project || !story || !target) {

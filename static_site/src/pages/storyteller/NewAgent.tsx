@@ -143,15 +143,15 @@ export default function StorytellerNewAgent() {
     return (
       <StorytellerShell
         title="編輯 AI Agent"
-        description="正在載入 Agent 設定。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "編輯 AI Agent" },
         ]}
       >
-        <Stack alignItems="center" sx={{ py: 6 }}>
+        <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
           <CircularProgress size={28} />
+          <Typography color="text.secondary">正在載入 Agent 設定...</Typography>
         </Stack>
       </StorytellerShell>
     );
@@ -178,7 +178,6 @@ export default function StorytellerNewAgent() {
   return (
     <StorytellerShell
       title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
-      description="設定 Agent 名稱、供應商、模型與 API Key。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "AI Agent", to: "/storyteller/my/agent" },

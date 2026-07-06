@@ -391,8 +391,7 @@ export default function StorytellerHome() {
 
   return (
     <StorytellerShell
-      title="Storyteller"
-      description="故事專案、AI Agent 與金鑰管理的工作台。"
+      title="我的工作台"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "我的工作台" },
