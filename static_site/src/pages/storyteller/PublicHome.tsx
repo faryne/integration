@@ -38,9 +38,13 @@ export default function StorytellerPublicHome() {
 
   return (
     <StorytellerShell
-      title="Storyteller"
-      description="公開故事專案與章節索引。"
+      title="公開故事"
       breadcrumbs={[{ label: "Storyteller" }]}
+      meta={
+        !isLoading && (
+          <Chip size="small" label={`${publicProjects.length} 部作品`} />
+        )
+      }
       action={
         <Button component={RouterLink} to="/storyteller/my" variant="outlined">
           我的工作台

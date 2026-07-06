@@ -55,7 +55,6 @@ export default function StorytellerFavorites() {
   return (
     <StorytellerShell
       title="我的收藏"
-      description="整理已收藏的故事專案。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "我的收藏" },

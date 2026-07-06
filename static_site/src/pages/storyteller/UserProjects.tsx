@@ -118,7 +118,6 @@ export default function StorytellerUserProjects() {
     return (
       <StorytellerShell
         title={`${username} 的作品`}
-        description={""}
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
           { label: username || "作者" },
@@ -161,7 +160,7 @@ export default function StorytellerUserProjects() {
   return (
     <StorytellerShell
       title={displayName}
-      description={author?.bio ? <AuthorBio bio={author.bio} /> : ""}
+      description={author?.bio ? <AuthorBio bio={author.bio} /> : undefined}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: displayName },

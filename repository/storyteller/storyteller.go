@@ -494,7 +494,7 @@ func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]sto
 	err := r.db.Table("storyteller_agent_usage_logs AS logs").
 		Select(`logs.provider_apikey_id,
 			logs.provider,
-			keys.label AS provider_apikey_label,
+			apikeys.label AS provider_apikey_label,
 			logs.agent_id,
 			agents.name AS agent_name,
 			logs.model_name,
@@ -502,10 +502,11 @@ func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]sto
 			SUM(logs.output_tokens) AS output_tokens,
 			SUM(logs.total_tokens) AS total_tokens,
 			COUNT(*) AS run_count`).
-		Joins("LEFT JOIN storyteller_provider_apikeys AS keys ON keys.id = logs.provider_apikey_id").
+		// "keys" 是 MySQL 保留字，當別名會造成語法錯誤，改用 apikeys
+		Joins("LEFT JOIN storyteller_provider_apikeys AS apikeys ON apikeys.id = logs.provider_apikey_id").
 		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = logs.agent_id").
 		Where("logs.user_id = ? AND logs.created_at >= ? AND logs.created_at < ?", userID, from, to).
-		Group("logs.provider_apikey_id, logs.provider, keys.label, logs.agent_id, agents.name, logs.model_name").
+		Group("logs.provider_apikey_id, logs.provider, apikeys.label, logs.agent_id, agents.name, logs.model_name").
 		Order("logs.provider_apikey_id ASC, logs.agent_id ASC").
 		Scan(&rows).Error
 	return rows, err

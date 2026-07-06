@@ -125,7 +125,18 @@ export default function StorytellerLoreDiffCompare() {
     leftVersion.isLoading ||
     rightVersion.isLoading
   ) {
-    return <StorytellerLoading label="正在載入設定集版本比對資料..." />;
+    return (
+      <StorytellerShell
+        title="設定集版本差異比對"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: "版本比對" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入設定集版本比對資料..." />
+      </StorytellerShell>
+    );
   }
 
   if (!apiProject || !apiLore || !leftVersion.data || !rightVersion.data) {

@@ -589,7 +589,17 @@ export default function StorytellerStoryEditor() {
       !story &&
       (apiStoriesPending || apiStoriesFetching))
   ) {
-    return <StorytellerLoading label="正在載入故事編輯資料..." />;
+    return (
+      <StorytellerShell
+        title="故事編輯器"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入故事編輯資料..." />
+      </StorytellerShell>
+    );
   }
 
   if (!project || (!isNewStory && !story)) {
@@ -834,11 +844,6 @@ export default function StorytellerStoryEditor() {
   return (
     <StorytellerShell
       title={pageTitle}
-      description={
-        isNewStory
-          ? "建立新的故事草稿。第一次存檔後，後續會切換到正式故事編輯路由。"
-          : "編輯故事基本資訊、本文與版本歷史。"
-      }
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "故事專案", to: "/storyteller/my/project" },

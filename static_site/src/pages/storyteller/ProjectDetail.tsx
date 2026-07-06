@@ -110,7 +110,17 @@ export default function StorytellerProjectDetail() {
   });
 
   if (!project && (apiProjectsPending || apiProjectsFetching)) {
-    return <StorytellerLoading label="正在載入專案..." />;
+    return (
+      <StorytellerShell
+        title="故事專案"
+        breadcrumbs={[
+          { label: "Storyteller", to: "/storyteller" },
+          { label: "故事專案", to: "/storyteller/my/project" },
+        ]}
+      >
+        <StorytellerLoading label="正在載入專案..." />
+      </StorytellerShell>
+    );
   }
 
   if (!project) {
