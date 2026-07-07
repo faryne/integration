@@ -222,7 +222,7 @@ export default function StorytellerProjectDetail() {
               </Button>
               <Button
                 color="error"
-                variant="outlined"
+                variant="contained"
                 size="small"
                 startIcon={<DeleteIcon />}
                 onClick={() => setProjectDeleteOpen(true)}
@@ -412,7 +412,7 @@ export default function StorytellerProjectDetail() {
                         </Button>
                         <Button
                           color="error"
-                          variant="outlined"
+                          variant="contained"
                           size="small"
                           startIcon={<DeleteIcon />}
                           onClick={() => setDeleteTarget(story)}
@@ -455,7 +455,7 @@ export default function StorytellerProjectDetail() {
                         </Button>
                         <Button
                           color="error"
-                          variant="outlined"
+                          variant="contained"
                           size="small"
                           startIcon={<DeleteIcon />}
                           onClick={() => setDeleteLoreTarget(lore)}

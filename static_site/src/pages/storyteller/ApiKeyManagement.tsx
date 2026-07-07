@@ -357,6 +357,12 @@ function ProviderApiKeyRow({
               edge="end"
               disabled={deletePending}
               onClick={() => setConfirmingDelete(true)}
+              sx={{
+                bgcolor: "error.main",
+                color: "error.contrastText",
+                "&:hover": { bgcolor: "error.dark" },
+                "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
+              }}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>

@@ -1,7 +1,9 @@
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
+  Autocomplete,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -13,7 +15,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProject,
@@ -35,15 +37,33 @@ function projectNameToSlug(name: string) {
     .replace(/^_+|_+$/g, "");
 }
 
-function tagTextToList(value: string) {
+const maxTagCount = 12;
+const maxTagLength = 24;
+
+function normalizeTags(tags: string[]) {
   return Array.from(
     new Set(
-      value
-        .split(/[,，\n]/)
-        .map((tag) => tag.trim())
+      tags
+        .flatMap((tag) => tag.split(/[,，]/))
+        .map((tag) => tag.trim().slice(0, maxTagLength))
         .filter(Boolean),
     ),
-  );
+  ).slice(0, maxTagCount);
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const data = error.response.data as { message?: string };
+    return data.message || fallback;
+  }
+  return fallback;
 }
 
 export default function StorytellerNewProject() {
@@ -67,10 +87,11 @@ export default function StorytellerNewProject() {
     rating: "general",
     tags: [],
   });
-  const [tagText, setTagText] = useState("");
+  const [tagInputValue, setTagInputValue] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(
     null,
   );
+  const [slugWarningOpen, setSlugWarningOpen] = useState(false);
 
   useEffect(() => {
     if (editingProject) {
@@ -82,7 +103,6 @@ export default function StorytellerNewProject() {
         rating: editingProject.rating,
         tags: editingProject.tags ?? [],
       });
-      setTagText((editingProject.tags ?? []).join(", "));
     }
   }, [editingProject]);
 
@@ -126,6 +146,67 @@ export default function StorytellerNewProject() {
     setCreatedProjectId(null);
   }
 
+  function performSave() {
+    const pendingTag = tagInputValue.trim();
+    const payload = {
+      ...input,
+      tags: normalizeTags(
+        pendingTag ? [...input.tags, pendingTag] : input.tags,
+      ),
+      slug: isEditing ? input.slug : projectNameToSlug(input.name),
+    };
+    saveProject.mutate(
+      { publicId: editingProject?.public_id, input: payload },
+      {
+        onSuccess: (project) => {
+          if (!project?.public_id) {
+            return;
+          }
+          if (isEditing) {
+            navigate(`/storyteller/my/project/${project.public_id}`);
+            return;
+          }
+          setCreatedProjectId(project.public_id);
+        },
+      },
+    );
+  }
+
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const slugChanged =
+      isEditing &&
+      Boolean(editingProject) &&
+      input.slug.trim() !== editingProject?.slug;
+    const visibilityAffectsSlug =
+      input.visibility === "public" || input.visibility === "unlisted";
+    if (slugChanged && visibilityAffectsSlug) {
+      setSlugWarningOpen(true);
+      return;
+    }
+    performSave();
+  }
+
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : "";
+  let urlPreview: string | null = null;
+  if (isEditing && editingProject) {
+    if (input.visibility === "public") {
+      urlPreview = `${origin}/storyteller/story/${editingProject.public_id}-${input.slug.trim()}`;
+    } else if (input.visibility === "unlisted") {
+      urlPreview =
+        editingProject.visibility === "unlisted" && editingProject.share_token
+          ? `${origin}/storyteller/story/share/${editingProject.share_token}`
+          : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
+    }
+  } else if (!isEditing) {
+    if (input.visibility === "public") {
+      urlPreview = `建立後網址大致會是：${origin}/storyteller/story/（系統代碼）-${projectNameToSlug(input.name)}`;
+    } else if (input.visibility === "unlisted") {
+      urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
+    }
+  }
+
   return (
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
@@ -165,39 +246,44 @@ export default function StorytellerNewProject() {
           <Button onClick={handleGoToProjectHome}>回專案首頁</Button>
         </DialogActions>
       </Dialog>
+      <Dialog
+        open={slugWarningOpen}
+        onClose={() => setSlugWarningOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>變更專案網址</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            網址已變更，公開頁面顯示與分享的網址會立即更新為新網址（舊網址原則上仍可正常開啟，但可能不會馬上被外部平台或搜尋引擎更新）。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSlugWarningOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              setSlugWarningOpen(false);
+              performSave();
+            }}
+          >
+            確認變更
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Paper
         component="form"
         variant="outlined"
         sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const payload = {
-            ...input,
-            tags: tagTextToList(tagText),
-            slug: editingProject?.slug ?? projectNameToSlug(input.name),
-          };
-          saveProject.mutate(
-            { publicId: editingProject?.public_id, input: payload },
-            {
-              onSuccess: (project) => {
-                if (!project?.public_id) {
-                  return;
-                }
-                if (isEditing) {
-                  navigate(`/storyteller/my/project/${project.public_id}`);
-                  return;
-                }
-                setCreatedProjectId(project.public_id);
-              },
-            },
-          );
-        }}
+        onSubmit={handleSubmit}
       >
         <Stack spacing={3}>
           {saveProject.isError && (
             <Alert severity="error" variant="outlined">
-              {isEditing ? "更新專案失敗" : "建立專案失敗"}
-              ，請確認登入狀態與欄位內容。
+              {errorMessage(
+                saveProject.error,
+                `${isEditing ? "更新專案失敗" : "建立專案失敗"}，請確認登入狀態與欄位內容。`,
+              )}
             </Alert>
           )}
           <Grid container spacing={2}>
@@ -217,11 +303,36 @@ export default function StorytellerNewProject() {
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                disabled
+                disabled={!isEditing}
+                required={isEditing}
                 label="專案網址"
-                helperText="專案網址建立時會使用專案名稱，建立後暫不開放修改。"
-                value={editingProject?.slug ?? projectNameToSlug(input.name)}
+                helperText={
+                  isEditing
+                    ? "變更後，公開頁面顯示與分享用的網址會跟著改變。"
+                    : "預設使用專案名稱產生，建立後可以修改。"
+                }
+                value={
+                  isEditing ? input.slug : projectNameToSlug(input.name)
+                }
+                onChange={
+                  isEditing
+                    ? (event) =>
+                        setInput((value) => ({
+                          ...value,
+                          slug: event.target.value,
+                        }))
+                    : undefined
+                }
               />
+              {urlPreview && (
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mt: 0.5, overflowWrap: "anywhere" }}
+                >
+                  {urlPreview}
+                </Typography>
+              )}
             </Grid>
             <Grid size={12}>
               <TextField
@@ -280,13 +391,53 @@ export default function StorytellerNewProject() {
               </TextField>
             </Grid>
             <Grid size={12}>
-              <TextField
+              <Autocomplete
+                multiple
+                freeSolo
                 fullWidth
-                label="標籤"
-                value={tagText}
-                onChange={(event) => setTagText(event.target.value)}
-                helperText="使用逗號分隔，最多 12 個，每個最多 24 字。"
-                placeholder="奇幻, 長篇, 群像"
+                options={[]}
+                value={input.tags}
+                inputValue={tagInputValue}
+                onInputChange={(_, newInputValue, reason) => {
+                  if (reason === "input" && /[,，]/.test(newInputValue)) {
+                    const segments = newInputValue.split(/[,，]/);
+                    const remainder = segments.pop() ?? "";
+                    setInput((value) => ({
+                      ...value,
+                      tags: normalizeTags([...value.tags, ...segments]),
+                    }));
+                    setTagInputValue(remainder.trimStart());
+                    return;
+                  }
+                  setTagInputValue(newInputValue);
+                }}
+                onChange={(_, newValue) => {
+                  setInput((value) => ({
+                    ...value,
+                    tags: normalizeTags(newValue),
+                  }));
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip
+                      variant="outlined"
+                      size="small"
+                      label={option}
+                      {...getTagProps({ index })}
+                      key={option}
+                    />
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="標籤"
+                    helperText={`輸入後按 Enter，或用「,」「，」分隔新增多個，最多 ${maxTagCount} 個，每個最多 ${maxTagLength} 字。`}
+                    placeholder={
+                      input.tags.length === 0 ? "奇幻, 長篇, 群像" : ""
+                    }
+                  />
+                )}
               />
             </Grid>
           </Grid>

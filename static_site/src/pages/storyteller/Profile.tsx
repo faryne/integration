@@ -1,6 +1,5 @@
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
 import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
 import {
@@ -23,9 +22,8 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  useDeleteStorytellerUserProfile,
   useSaveStorytellerUserProfile,
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
@@ -157,7 +155,6 @@ export default function StorytellerProfile() {
   const { session, user, loading, login, submitting } = useAuth();
   const profileQuery = useStorytellerUserProfile();
   const saveProfile = useSaveStorytellerUserProfile();
-  const deleteProfile = useDeleteStorytellerUserProfile();
   const [form, setForm] = useState<StorytellerUserProfileRequest>(emptyForm);
   const [snsRows, setSnsRows] = useState<SNSLinkRow[]>([]);
   const [message, setMessage] = useState("");
@@ -236,11 +233,6 @@ export default function StorytellerProfile() {
     setSnsRows((rows) => rows.filter((row) => row.id !== id));
   };
 
-  const hasProfileValue = useMemo(
-    () => Boolean(form.pen_name || form.bio || form.avatar_url),
-    [form],
-  );
-
   const hasSnsError = snsRows.some((row) =>
     Boolean(snsUrlError(row.type, row.url)),
   );
@@ -260,16 +252,6 @@ export default function StorytellerProfile() {
         },
       },
     );
-  };
-
-  const reset = () => {
-    deleteProfile.mutate(undefined, {
-      onSuccess: () => {
-        setForm(emptyForm);
-        setSnsRows([]);
-        setMessage("作者設定已清除");
-      },
-    });
   };
 
   return (
@@ -505,15 +487,6 @@ export default function StorytellerProfile() {
                 onClick={save}
               >
                 儲存
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                disabled={deleteProfile.isPending || !hasProfileValue}
-                onClick={reset}
-              >
-                清除設定
               </Button>
             </Stack>
           </Stack>

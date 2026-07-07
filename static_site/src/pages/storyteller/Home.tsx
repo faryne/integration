@@ -174,7 +174,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     <Button
                       size="small"
                       color="error"
-                      variant="outlined"
+                      variant="contained"
                       startIcon={<DeleteIcon />}
                       disabled={!project.apiBacked}
                       onClick={() =>
@@ -322,7 +322,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                     <Button
                       size="small"
                       color="error"
-                      variant="outlined"
+                      variant="contained"
                       startIcon={<DeleteIcon />}
                       disabled={!agent.apiBacked}
                       onClick={() =>

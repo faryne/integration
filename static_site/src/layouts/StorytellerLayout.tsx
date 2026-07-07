@@ -7,13 +7,14 @@ import {
   getInitialStorytellerThemeMode,
   storytellerThemeModeStorageKey,
 } from "@/layouts/storytellerThemeMode.tsx";
+import AddIcon from "@mui/icons-material/Add";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
-import MenuIcon from "@mui/icons-material/Menu";
 import PersonIcon from "@mui/icons-material/Person";
 import {
   AppBar,
@@ -23,13 +24,11 @@ import {
   Container,
   createTheme,
   Divider,
-  Drawer,
   IconButton,
-  List,
-  ListItem,
-  ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   ThemeProvider,
   Toolbar,
@@ -41,7 +40,8 @@ import { Link as RouterLink, Outlet } from "react-router-dom";
 
 export function StorytellerLayout() {
   const { user, session, loading, submitting, login, logout } = useAuth();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuAnchor, setAccountMenuAnchor] =
+    useState<HTMLElement | null>(null);
   // 深色模式套用在整個 Storyteller 產品線（不影響其他子站），記在 localStorage 供下次造訪沿用
   const [mode, setMode] = useState(getInitialStorytellerThemeMode);
   const theme = useMemo(() => createTheme({ palette: { mode } }), [mode]);
@@ -59,11 +59,10 @@ export function StorytellerLayout() {
   const showPenNameDialog =
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
 
-  const menuItems = [
-    { label: "公開故事", to: "/storyteller", icon: <AutoStoriesIcon /> },
+  const accountMenuItems = [
     { label: "我的工作台", to: "/storyteller/my", icon: <AutoStoriesIcon /> },
     { label: "我的收藏", to: "/storyteller/favorites", icon: <FavoriteIcon /> },
-    { label: "作者設定", to: "/storyteller/profile", icon: <PersonIcon /> },
+    { label: "我的檔案", to: "/storyteller/profile", icon: <PersonIcon /> },
   ];
 
   return (
@@ -71,43 +70,8 @@ export function StorytellerLayout() {
       <StorytellerThemeModeContext.Provider value={{ mode, toggleMode }}>
         <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
           <PenNameDialog open={Boolean(showPenNameDialog)} />
-          <Drawer
-            anchor="left"
-            open={mobileMenuOpen}
-            onClose={() => setMobileMenuOpen(false)}
-          >
-            <Box sx={{ width: 250, p: 2 }}>
-              <Typography variant="h6" fontWeight={800} sx={{ mb: 2, px: 2 }}>
-                Storyteller
-              </Typography>
-              <Divider />
-              <List>
-                {menuItems.map((item) => (
-                  <ListItem key={item.to} disablePadding>
-                    <ListItemButton
-                      component={RouterLink}
-                      to={item.to}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <ListItemIcon>{item.icon}</ListItemIcon>
-                      <ListItemText primary={item.label} />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          </Drawer>
           <AppBar position="sticky" color="default" elevation={0}>
             <Toolbar>
-              <IconButton
-                edge="start"
-                color="inherit"
-                aria-label="menu"
-                sx={{ mr: 2, display: { md: "none" } }}
-                onClick={() => setMobileMenuOpen(true)}
-              >
-                <MenuIcon />
-              </IconButton>
               <Stack
                 direction="row"
                 spacing={1}
@@ -124,58 +88,100 @@ export function StorytellerLayout() {
                 >
                   Storyteller
                 </Typography>
-                <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1 }}>
-                  {menuItems.map((item) => (
-                    <Button
-                      key={item.to}
-                      component={RouterLink}
-                      to={item.to}
-                      size="small"
-                      startIcon={item.icon}
-                    >
-                      {item.label}
-                    </Button>
-                  ))}
-                </Box>
-              </Stack>
-              <Tooltip
-                title={mode === "dark" ? "切換為日間模式" : "切換為夜間模式"}
-              >
-                <IconButton
-                  aria-label={
-                    mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
-                  }
-                  color="inherit"
-                  onClick={toggleMode}
-                  sx={{ mr: 1 }}
+                <Tooltip
+                  title={mode === "dark" ? "切換為日間模式" : "切換為夜間模式"}
                 >
-                  {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-                </IconButton>
-              </Tooltip>
+                  <IconButton
+                    aria-label={
+                      mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
+                    }
+                    color="inherit"
+                    onClick={toggleMode}
+                    size="small"
+                  >
+                    {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Button
+                component={RouterLink}
+                to="/storyteller/my/project/new"
+                variant="contained"
+                color="primary"
+                startIcon={<AddIcon />}
+                sx={{
+                  mr: 1,
+                  whiteSpace: "nowrap",
+                  display: { xs: "none", sm: "inline-flex" },
+                }}
+              >
+                建立故事專案
+              </Button>
+              <IconButton
+                component={RouterLink}
+                to="/storyteller/my/project/new"
+                color="primary"
+                aria-label="建立故事專案"
+                sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
+              >
+                <AddIcon />
+              </IconButton>
               {session ? (
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography
-                    variant="body2"
-                    sx={{ display: { xs: "none", sm: "block" } }}
-                  >
-                    {displayName}
-                  </Typography>
-                  <Tooltip title={displayName}>
-                    <Avatar
-                      src={photoURL}
-                      alt={displayName}
-                      sx={{ width: 32, height: 32 }}
-                    />
-                  </Tooltip>
-                  <Tooltip title="登出">
+                  <Tooltip title="帳號選單">
                     <IconButton
-                      color="inherit"
-                      disabled={submitting}
-                      onClick={() => void logout()}
+                      onClick={(event) =>
+                        setAccountMenuAnchor(event.currentTarget)
+                      }
+                      aria-label="帳號選單"
+                      sx={{ borderRadius: 5, pr: 0.5 }}
                     >
-                      <LogoutIcon />
+                      <Avatar
+                        src={photoURL}
+                        alt={displayName}
+                        sx={{ width: 32, height: 32 }}
+                      />
+                      <ArrowDropDownIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  <Menu
+                    anchorEl={accountMenuAnchor}
+                    open={Boolean(accountMenuAnchor)}
+                    onClose={() => setAccountMenuAnchor(null)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    <Box sx={{ px: 2, py: 1 }}>
+                      <Typography variant="body2" fontWeight={700}>
+                        {profile?.pen_name || displayName}
+                      </Typography>
+                    </Box>
+                    <Divider />
+                    {accountMenuItems.map((item) => (
+                      <MenuItem
+                        key={item.to}
+                        component={RouterLink}
+                        to={item.to}
+                        onClick={() => setAccountMenuAnchor(null)}
+                      >
+                        <ListItemIcon>{item.icon}</ListItemIcon>
+                        <ListItemText primary={item.label} />
+                      </MenuItem>
+                    ))}
+                    <Divider />
+                    <MenuItem
+                      disabled={submitting}
+                      onClick={() => {
+                        setAccountMenuAnchor(null);
+                        void logout();
+                      }}
+                    >
+                      <ListItemIcon>
+                        <LogoutIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText primary="登出" />
+                    </MenuItem>
+                  </Menu>
                 </Stack>
               ) : (
                 <Button

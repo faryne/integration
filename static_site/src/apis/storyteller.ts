@@ -450,23 +450,6 @@ export function useSaveStorytellerUserProfile() {
   });
 }
 
-export function useDeleteStorytellerUserProfile() {
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
-        `${apiBase}/storyteller/user`,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
-      return response.data.data;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
-    },
-  });
-}
-
 export function useStorytellerAgents() {
   const { session } = useAuth();
   return useQuery({

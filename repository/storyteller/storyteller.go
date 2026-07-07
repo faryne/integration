@@ -70,6 +70,15 @@ func (r *Repository) CreateProject(row *storytellerModel.Project) error {
 	return r.db.Create(row).Error
 }
 
+func (r *Repository) ProjectSlugTaken(userID uint64, slug string, excludeProjectID uint64) (bool, error) {
+	var count int64
+	err := r.db.
+		Table("storyteller_projects").
+		Where("user_id = ? AND slug = ? AND id != ?", userID, slug, excludeProjectID).
+		Count(&count).Error
+	return count > 0, err
+}
+
 func (r *Repository) UpdateProject(row *storytellerModel.Project) error {
 	return r.db.Save(row).Error
 }

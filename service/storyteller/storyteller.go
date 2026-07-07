@@ -111,16 +111,41 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	return s.projectOutput(project, true)
 }
 
+func (s *Service) uniqueProjectSlug(userID uint64, slug string, excludeProjectID uint64) (string, error) {
+	taken, err := s.repo.ProjectSlugTaken(userID, slug, excludeProjectID)
+	if err != nil {
+		return "", err
+	}
+	if !taken {
+		return slug, nil
+	}
+	for i := 0; i < 5; i++ {
+		candidate := slug + "-" + randomID()[:6]
+		taken, err := s.repo.ProjectSlugTaken(userID, candidate, excludeProjectID)
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
+	}
+	return slug + "-" + randomID(), nil
+}
+
 func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectRequest) (*storytellerModel.ProjectOutput, error) {
 	input = normalizeProjectRequest(input)
 	if err := validateProject(input); err != nil {
+		return nil, err
+	}
+	slug, err := s.uniqueProjectSlug(userID, safeProjectSlug(input.Name), 0)
+	if err != nil {
 		return nil, err
 	}
 	project := &storytellerModel.Project{
 		PublicID:    randomID(),
 		UserID:      userID,
 		Name:        strings.TrimSpace(input.Name),
-		Slug:        safeProjectSlug(input.Name),
+		Slug:        slug,
 		Description: strings.TrimSpace(input.Description),
 		Visibility:  input.Visibility,
 		Rating:      input.Rating,
@@ -144,13 +169,29 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	if err != nil {
 		return nil, err
 	}
+	newSlug := safeProjectSlug(input.Slug)
+	if newSlug != project.Slug {
+		taken, err := s.repo.ProjectSlugTaken(userID, newSlug, project.ID)
+		if err != nil {
+			return nil, err
+		}
+		if taken {
+			return nil, errors.New("這個網址已經被你的其他專案使用，請換一個。")
+		}
+	}
+	previousVisibility := project.Visibility
 	project.Name = strings.TrimSpace(input.Name)
+	project.Slug = newSlug
 	project.Description = strings.TrimSpace(input.Description)
 	project.Visibility = input.Visibility
 	project.Rating = input.Rating
 	project.Tags = encodeProjectTags(input.Tags)
-	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted && project.ShareToken == "" {
-		project.ShareToken = randomID() + randomID()
+	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
+		if previousVisibility != storytellerModel.ProjectVisibilityUnlisted {
+			project.ShareToken = randomID() + randomID()
+		}
+	} else {
+		project.ShareToken = ""
 	}
 	if err := s.repo.UpdateProject(project); err != nil {
 		return nil, err
