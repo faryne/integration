@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://beta.faryne.dev/</loc>
+    <loc>https://faryne.dev/</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/rates</loc>
+    <loc>https://faryne.dev/data/rates</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/nccc</loc>
+    <loc>https://faryne.dev/data/nccc</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/etf/yieldmax</loc>
+    <loc>https://faryne.dev/data/etf/yieldmax</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/etf/twse</loc>
+    <loc>https://faryne.dev/data/etf/twse</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/fire/realtime</loc>
+    <loc>https://faryne.dev/data/fire/realtime</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/data/tw-stats</loc>
+    <loc>https://faryne.dev/data/tw-stats</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/tools/crawler</loc>
+    <loc>https://faryne.dev/tools/crawler</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/tools/thread/capture</loc>
+    <loc>https://faryne.dev/tools/thread/capture</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://beta.faryne.dev/tools/userscripts</loc>
+    <loc>https://faryne.dev/tools/userscripts</loc>
     <lastmod>2026-06-01</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

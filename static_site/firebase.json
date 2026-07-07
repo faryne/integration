@@ -55,6 +55,26 @@
           "source": "/sns/:path*",
           "destination": "https://faryne.dev/api-integration/sns/:path",
           "type": 302
+        },
+        {
+          "source": "/dmm/actress",
+          "destination": "/av/actress",
+          "type": 301
+        },
+        {
+          "source": "/dmm/actress/:path*",
+          "destination": "/av/actress/:path",
+          "type": 301
+        },
+        {
+          "source": "/dmm/video",
+          "destination": "/av/video",
+          "type": 301
+        },
+        {
+          "source": "/dmm/video/:path*",
+          "destination": "/av/video/:path",
+          "type": 301
         }
       ],
       "rewrites": [
