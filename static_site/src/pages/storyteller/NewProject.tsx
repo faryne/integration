@@ -2,11 +2,16 @@ import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Grid,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -63,6 +68,9 @@ export default function StorytellerNewProject() {
     tags: [],
   });
   const [tagText, setTagText] = useState("");
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (editingProject) {
@@ -104,6 +112,20 @@ export default function StorytellerNewProject() {
     return <ErrorPage code={404} />;
   }
 
+  function handleStartFirstStory() {
+    if (createdProjectId) {
+      navigate(`/storyteller/my/project/${createdProjectId}/story/new`);
+    }
+    setCreatedProjectId(null);
+  }
+
+  function handleGoToProjectHome() {
+    if (createdProjectId) {
+      navigate(`/storyteller/my/project/${createdProjectId}`);
+    }
+    setCreatedProjectId(null);
+  }
+
   return (
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
@@ -121,6 +143,28 @@ export default function StorytellerNewProject() {
         { label: isEditing ? "編輯專案" : "建立專案" },
       ]}
     >
+      <Dialog open={Boolean(createdProjectId)} maxWidth="xs" fullWidth>
+        <DialogTitle>專案建立成功</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            《{input.name}》已建立完成。要現在建立第一篇故事，還是先回專案首頁？
+          </Typography>
+        </DialogContent>
+        <DialogActions
+          sx={{
+            flexDirection: "column",
+            alignItems: "stretch",
+            gap: 1,
+            px: 3,
+            pb: 2,
+          }}
+        >
+          <Button variant="contained" onClick={handleStartFirstStory}>
+            建立第一篇故事
+          </Button>
+          <Button onClick={handleGoToProjectHome}>回專案首頁</Button>
+        </DialogActions>
+      </Dialog>
       <Paper
         component="form"
         variant="outlined"
@@ -136,9 +180,14 @@ export default function StorytellerNewProject() {
             { publicId: editingProject?.public_id, input: payload },
             {
               onSuccess: (project) => {
-                if (project?.public_id) {
-                  navigate(`/storyteller/my/project/${project.public_id}`);
+                if (!project?.public_id) {
+                  return;
                 }
+                if (isEditing) {
+                  navigate(`/storyteller/my/project/${project.public_id}`);
+                  return;
+                }
+                setCreatedProjectId(project.public_id);
               },
             },
           );
@@ -179,6 +228,7 @@ export default function StorytellerNewProject() {
                 fullWidth
                 multiline
                 minRows={5}
+                maxRows={12}
                 label="專案描述"
                 placeholder="記錄故事類型、核心題材、世界觀與目前預計的寫作方向。"
                 value={input.description}

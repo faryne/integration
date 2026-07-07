@@ -22,6 +22,7 @@ import {
   useDeleteStorytellerProject,
   useStorytellerAgents,
   useStorytellerProjects,
+  useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -219,6 +220,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 
 function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const deleteAgent = useDeleteStorytellerAgent();
+  const { data: apiKeys = [] } = useStorytellerProviderAPIKeys();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -231,6 +233,9 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
     provider: agent.provider,
     model: agent.model_name,
     enabled: !agent.is_deleted,
+    apiKeyLabel:
+      apiKeys.find((apiKey) => apiKey.id === agent.provider_apikey_id)
+        ?.label ?? null,
     updatedAt: agent.updated_at,
     apiBacked: true,
   }));
@@ -290,6 +295,15 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                   >
                     <Chip size="small" label={agent.provider} />
                     <Chip size="small" label={agent.model} />
+                    {agent.apiKeyLabel ? (
+                      <Chip size="small" label={`Key：${agent.apiKeyLabel}`} />
+                    ) : (
+                      <Chip
+                        size="small"
+                        color="warning"
+                        label="未綁定 API Key"
+                      />
+                    )}
                   </Stack>
                   <Typography variant="caption" color="text.secondary">
                     更新於 {formatStorytellerDate(agent.updatedAt)}

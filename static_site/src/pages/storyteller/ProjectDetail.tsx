@@ -376,7 +376,14 @@ export default function StorytellerProjectDetail() {
                             <Typography
                               variant="body2"
                               color="text.secondary"
-                              sx={{ overflowWrap: "anywhere" }}
+                              sx={{
+                                overflowWrap: "anywhere",
+                                wordBreak: "break-word",
+                                display: "-webkit-box",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                overflow: "hidden",
+                              }}
                             >
                               {story.summary}
                             </Typography>
@@ -389,7 +396,7 @@ export default function StorytellerProjectDetail() {
                         <Chip
                           size="small"
                           label={
-                            story.status === "completed" ? "已完成" : "撰寫中"
+                            story.status === "completed" ? "公開中" : "撰寫中"
                           }
                           color={
                             story.status === "completed" ? "success" : "warning"

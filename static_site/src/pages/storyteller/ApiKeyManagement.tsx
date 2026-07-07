@@ -15,6 +15,10 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -35,6 +39,7 @@ import {
   useCreateStorytellerProviderAPIKey,
   useDeleteStorytellerProviderAPIKey,
   useStorytellerAgentProviderModels,
+  useStorytellerAgents,
   useStorytellerProviderAPIKeys,
   useTestStorytellerProviderAPIKey,
   useUpdateStorytellerProviderAPIKey,
@@ -49,8 +54,14 @@ import type {
 export function StorytellerApiKeyPanel() {
   const { data: providerModels = [] } = useStorytellerAgentProviderModels();
   const { data: apiKeys = [], isLoading } = useStorytellerProviderAPIKeys();
+  const { data: agents = [] } = useStorytellerAgents();
   const createApiKey = useCreateStorytellerProviderAPIKey();
   const deleteApiKey = useDeleteStorytellerProviderAPIKey();
+
+  const boundAgentNames = (apiKeyId: number) =>
+    agents
+      .filter((agent) => agent.provider_apikey_id === apiKeyId)
+      .map((agent) => agent.name);
   const [input, setInput] = useState<StorytellerProviderAPIKeyRequest>({
     provider: "grok",
     label: "",
@@ -207,6 +218,7 @@ export function StorytellerApiKeyPanel() {
                   <ProviderApiKeyRow
                     apiKey={apiKey}
                     providerLabel={providerLabel(apiKey.provider)}
+                    boundAgentNames={boundAgentNames(apiKey.id)}
                     onDelete={() => deleteApiKey.mutate(apiKey.id)}
                     deletePending={deleteApiKey.isPending}
                   />
@@ -235,11 +247,13 @@ const testCooldownSeconds = 30;
 function ProviderApiKeyRow({
   apiKey,
   providerLabel,
+  boundAgentNames,
   onDelete,
   deletePending,
 }: {
   apiKey: StorytellerProviderAPIKey;
   providerLabel: string;
+  boundAgentNames: string[];
   onDelete: () => void;
   deletePending: boolean;
 }) {
@@ -249,6 +263,7 @@ function ProviderApiKeyRow({
   const [draftLabel, setDraftLabel] = useState(apiKey.label);
   const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const isTesting = testApiKey.isPending && testApiKey.variables === apiKey.id;
 
   // 避免使用者誤按或連按送出重複的測試連線請求，按下後鎖定一段時間再開放
@@ -338,7 +353,11 @@ function ProviderApiKeyRow({
             </Tooltip>
           )}
           <Tooltip title="刪除金鑰">
-            <IconButton edge="end" disabled={deletePending} onClick={onDelete}>
+            <IconButton
+              edge="end"
+              disabled={deletePending}
+              onClick={() => setConfirmingDelete(true)}
+            >
               <DeleteIcon fontSize="small" />
             </IconButton>
           </Tooltip>
@@ -391,11 +410,31 @@ function ProviderApiKeyRow({
       ) : (
         <ListItemText
           primary={
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
               <Chip size="small" label={providerLabel} />
               <Typography variant="body1">
                 {apiKey.label || "（未命名）"}
               </Typography>
+              {boundAgentNames.length > 0 ? (
+                <Tooltip title={boundAgentNames.join("、")} arrow>
+                  <Chip
+                    size="small"
+                    label={`使用中：${boundAgentNames.length} 個 Agent`}
+                  />
+                </Tooltip>
+              ) : (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label="未被任何 Agent 使用"
+                />
+              )}
             </Stack>
           }
           secondary={
@@ -417,6 +456,45 @@ function ProviderApiKeyRow({
           slotProps={{ secondary: { component: "div" } }}
         />
       )}
+      <Dialog
+        open={confirmingDelete}
+        onClose={() => setConfirmingDelete(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>刪除金鑰</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography color="text.secondary">
+              確定要刪除「{apiKey.label || "（未命名）"}」這把金鑰嗎？此操作無法復原。
+            </Typography>
+            {boundAgentNames.length > 0 ? (
+              <Alert severity="warning" variant="outlined">
+                目前有 {boundAgentNames.length} 個 AI Agent 使用這把金鑰：
+                {boundAgentNames.join("、")}。刪除後這些 Agent 會失去綁定的金鑰，需要重新指定才能繼續使用。
+              </Alert>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                目前沒有 AI Agent 使用這把金鑰。
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={deletePending}
+            onClick={() => {
+              onDelete();
+              setConfirmingDelete(false);
+            }}
+          >
+            刪除金鑰
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ListItem>
   );
 }

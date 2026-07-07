@@ -10,10 +10,13 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
+  FormLabel,
   IconButton,
   InputLabel,
   MenuItem,
   Paper,
+  Radio,
+  RadioGroup,
   Select,
   Stack,
   Switch,
@@ -93,6 +96,20 @@ function penNameError(penName: string): string | undefined {
   return undefined;
 }
 
+async function gravatarUrlFromEmail(email: string): Promise<string> {
+  const normalized = email.trim().toLowerCase();
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(normalized),
+  );
+  const hash = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return `https://www.gravatar.com/avatar/${hash}`;
+}
+
+type AvatarOption = "default" | "gravatar" | "custom";
+
 function errorMessage(error: unknown, fallback: string) {
   if (
     typeof error === "object" &&
@@ -145,10 +162,16 @@ export default function StorytellerProfile() {
   const [snsRows, setSnsRows] = useState<SNSLinkRow[]>([]);
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<"success" | "error">("success");
+  const [avatarOption, setAvatarOption] = useState<AvatarOption>("default");
+  const [gravatarUrl, setGravatarUrl] = useState("");
   const defaultAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
-  const previewAvatar = form.use_default_avatar
-    ? defaultAvatar
-    : form.avatar_url;
+  const email = session?.user.email ?? "";
+  const previewAvatar =
+    avatarOption === "default"
+      ? defaultAvatar
+      : avatarOption === "gravatar"
+        ? gravatarUrl
+        : form.avatar_url;
   const displayName =
     form.pen_name || session?.user.display_name || "Storyteller";
 
@@ -156,6 +179,22 @@ export default function StorytellerProfile() {
     path: "/storyteller/profile",
     robots: "noindex, nofollow",
   });
+
+  useEffect(() => {
+    if (!email) {
+      setGravatarUrl("");
+      return;
+    }
+    let cancelled = false;
+    gravatarUrlFromEmail(email).then((url) => {
+      if (!cancelled) {
+        setGravatarUrl(url);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [email]);
 
   useEffect(() => {
     if (!profileQuery.data) {
@@ -170,8 +209,15 @@ export default function StorytellerProfile() {
       hide_favorite_projects: profileQuery.data.hide_favorite_projects,
       hide_favorite_authors: profileQuery.data.hide_favorite_authors,
     });
+    if (profileQuery.data.use_default_avatar) {
+      setAvatarOption("default");
+    } else if (gravatarUrl && profileQuery.data.avatar_url === gravatarUrl) {
+      setAvatarOption("gravatar");
+    } else {
+      setAvatarOption("custom");
+    }
     setSnsRows(rowsFromSNSLinks(profileQuery.data.sns_links));
-  }, [profileQuery.data]);
+  }, [profileQuery.data, gravatarUrl]);
 
   const addSnsRow = () => {
     setSnsRows((rows) => [
@@ -229,7 +275,6 @@ export default function StorytellerProfile() {
   return (
     <StorytellerShell
       title="作者設定"
-      description="設定在 Storyteller 公開閱讀頁顯示的作者資訊。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
         { label: "作者設定" },
@@ -289,37 +334,63 @@ export default function StorytellerProfile() {
               onChange={(event) =>
                 setForm((value) => ({ ...value, bio: event.target.value }))
               }
+              helperText="支援 Markdown 語法，會顯示在公開作者頁。"
               fullWidth
               multiline
               minRows={4}
+              maxRows={12}
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.use_default_avatar}
+            <Box>
+              <FormControl>
+                <FormLabel id="storyteller-avatar-option-label">
+                  Avatar 來源
+                </FormLabel>
+                <RadioGroup
+                  aria-labelledby="storyteller-avatar-option-label"
+                  value={avatarOption}
+                  onChange={(event) => {
+                    const next = event.target.value as AvatarOption;
+                    setAvatarOption(next);
+                    setForm((value) => ({
+                      ...value,
+                      use_default_avatar: next === "default",
+                      avatar_url: next === "gravatar" ? gravatarUrl : "",
+                    }));
+                  }}
+                >
+                  <FormControlLabel
+                    value="gravatar"
+                    control={<Radio />}
+                    label="使用 Gravatar"
+                    disabled={!gravatarUrl}
+                  />
+                  <FormControlLabel
+                    value="default"
+                    control={<Radio />}
+                    label="使用登入帳號的 avatar"
+                  />
+                  <FormControlLabel
+                    value="custom"
+                    control={<Radio />}
+                    label="自己填入網址"
+                  />
+                </RadioGroup>
+              </FormControl>
+              {avatarOption === "custom" && (
+                <TextField
+                  label="Storyteller avatar URL"
+                  value={form.avatar_url}
                   onChange={(event) =>
                     setForm((value) => ({
                       ...value,
-                      use_default_avatar: event.target.checked,
-                      avatar_url: event.target.checked ? "" : value.avatar_url,
+                      avatar_url: event.target.value,
                     }))
                   }
+                  fullWidth
+                  sx={{ mt: 1 }}
                 />
-              }
-              label="使用登入帳號的 avatar"
-            />
-            <TextField
-              label="Storyteller avatar URL"
-              value={form.avatar_url}
-              onChange={(event) =>
-                setForm((value) => ({
-                  ...value,
-                  avatar_url: event.target.value,
-                }))
-              }
-              disabled={form.use_default_avatar}
-              fullWidth
-            />
+              )}
+            </Box>
             <Divider />
             <Box>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>

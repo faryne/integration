@@ -193,14 +193,16 @@ export default function StorytellerStoryEditor() {
   const { data: userProfile } = useStorytellerUserProfile();
   const agentRows: EditorAgent[] =
     apiAgents.length > 0
-      ? apiAgents.map((agent) => ({
-          id: String(agent.id),
-          name: agent.name,
-          provider: agent.provider,
-          model: agent.model_name,
-          purpose: agent.default_prompt,
-          enabled: !agent.is_deleted,
-        }))
+      ? apiAgents
+          .filter((agent) => agent.provider_apikey_id !== null)
+          .map((agent) => ({
+            id: String(agent.id),
+            name: agent.name,
+            provider: agent.provider,
+            model: agent.model_name,
+            purpose: agent.default_prompt,
+            enabled: !agent.is_deleted,
+          }))
       : storytellerAgents.map((agent) => ({
           id: agent.id,
           name: agent.name,
@@ -928,6 +930,7 @@ export default function StorytellerStoryEditor() {
                 fullWidth
                 multiline
                 minRows={2}
+                maxRows={12}
                 label="故事摘要"
                 value={storySummary}
                 onChange={(event) => setStorySummary(event.target.value)}

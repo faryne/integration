@@ -1035,7 +1035,22 @@ func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOut
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputs(projects, false)
+	outputs, err := s.projectOutputs(projects, false)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uint64, 0, len(outputs))
+	for _, output := range outputs {
+		ids = append(ids, output.ID)
+	}
+	hidden, err := s.repo.FavoriteProjectHiddenFlags(userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i := range outputs {
+		outputs[i].FavoriteHidden = hidden[outputs[i].ID]
+	}
+	return outputs, nil
 }
 
 func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
@@ -1049,6 +1064,7 @@ func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAut
 		if err != nil {
 			return nil, err
 		}
+		output.Hidden = favorite.Hidden
 		outputs = append(outputs, *output)
 	}
 	return outputs, nil

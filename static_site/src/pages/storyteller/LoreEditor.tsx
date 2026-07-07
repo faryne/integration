@@ -158,7 +158,8 @@ export default function StorytellerLoreEditor() {
   );
   const { data: versions = [], isLoading: versionsLoading } =
     useStorytellerLoreVersions(apiProject?.public_id, apiLore?.public_id);
-  const { data: agents = [] } = useStorytellerAgents();
+  const { data: allAgents = [] } = useStorytellerAgents();
+  const agents = allAgents.filter((agent) => agent.provider_apikey_id !== null);
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);

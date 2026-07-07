@@ -19,6 +19,7 @@ import {
   Stack,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useState } from "react";
@@ -417,7 +418,7 @@ export default function StorytellerUserProjects() {
 
 const BIO_COLLAPSE_THRESHOLD = 160;
 
-function AuthorBio({ bio }: { bio: string }) {
+export function AuthorBio({ bio }: { bio: string }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = bio.length > BIO_COLLAPSE_THRESHOLD;
 
@@ -463,14 +464,18 @@ function FavoriteProjectCard({
       authorName={project.author?.pen_name}
       headerAction={
         isOwner && (
-          <IconButton
-            size="small"
-            aria-label={hidden ? "設為公開" : "設為隱藏"}
-            disabled={saveVisibility.isPending}
-            onClick={() => saveVisibility.mutate(!hidden)}
-          >
-            {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
-          </IconButton>
+          <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
+            <span>
+              <IconButton
+                size="small"
+                aria-label={hidden ? "設為公開" : "設為隱藏"}
+                disabled={saveVisibility.isPending}
+                onClick={() => saveVisibility.mutate(!hidden)}
+              >
+                {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
+              </IconButton>
+            </span>
+          </Tooltip>
         )
       }
       chips={
@@ -526,7 +531,13 @@ function FavoriteAuthorCard({
           justifyContent="space-between"
         >
           <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
-            <PersonIcon color="primary" />
+            <Avatar
+              src={author.avatar_url}
+              alt={author.pen_name || "未命名作者"}
+              sx={{ width: 32, height: 32 }}
+            >
+              <PersonIcon fontSize="small" />
+            </Avatar>
             <Typography
               variant="h6"
               fontWeight={800}
@@ -536,24 +547,21 @@ function FavoriteAuthorCard({
             </Typography>
           </Stack>
           {isOwner && (
-            <IconButton
-              size="small"
-              aria-label={hidden ? "設為公開" : "設為隱藏"}
-              disabled={saveVisibility.isPending}
-              onClick={() => saveVisibility.mutate(!hidden)}
-            >
-              {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
-            </IconButton>
+            <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label={hidden ? "設為公開" : "設為隱藏"}
+                  disabled={saveVisibility.isPending}
+                  onClick={() => saveVisibility.mutate(!hidden)}
+                >
+                  {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
           )}
         </Stack>
-        {author.bio && (
-          <Typography
-            color="text.secondary"
-            sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
-          >
-            {author.bio}
-          </Typography>
-        )}
+        {author.bio && <AuthorBio bio={author.bio} />}
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip size="small" label={`${author.project_count} 個專案`} />
           <Chip

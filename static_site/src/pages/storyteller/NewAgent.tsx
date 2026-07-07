@@ -429,6 +429,7 @@ export default function StorytellerNewAgent() {
                   fullWidth
                   multiline
                   minRows={5}
+                  maxRows={12}
                   label="Agent 預設 prompt"
                   placeholder="描述此 Agent 適合做什麼，例如續寫、改寫、世界觀校對或章節節奏分析。"
                   value={input.default_prompt}
