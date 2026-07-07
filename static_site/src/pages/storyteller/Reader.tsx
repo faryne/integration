@@ -62,6 +62,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 
 interface ReaderStory {
@@ -1055,9 +1056,9 @@ export default function StorytellerReader() {
             color={storytellerProjectRatingColor(project.rating)}
             variant="outlined"
           />
-          {project.tags.map((tag) => (
-            <Chip key={tag} label={tag} variant="outlined" />
-          ))}
+          <Box sx={{ flexBasis: "100%" }}>
+            <StorytellerTagChips tags={project.tags} sx={{ mt: 1 }} />
+          </Box>
         </>
       }
     >

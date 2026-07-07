@@ -154,6 +154,7 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
       description={project.description}
       updatedAt={project.updated_at}
       authorName={project.author?.pen_name}
+      tags={project.tags}
       headerAction={
         <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
           <span>
@@ -182,9 +183,6 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
             size="small"
             label={`平均 ${project.average_rating.toFixed(1)}`}
           />
-          {(project.tags ?? []).map((tag) => (
-            <Chip key={tag} size="small" label={tag} />
-          ))}
           {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
         </>
       }

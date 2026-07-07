@@ -41,6 +41,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 
 // 穩定的空陣列參考：查詢尚未回傳資料時（例如登入狀態剛載入、query 被停用）
@@ -199,9 +200,6 @@ export default function StorytellerProjectDetail() {
                 color={storytellerProjectRatingColor(project.rating)}
                 variant="outlined"
               />
-              {project.tags.map((tag) => (
-                <Chip key={tag} label={tag} variant="outlined" />
-              ))}
               <Chip
                 label={`更新於 ${formatStorytellerDate(project.updatedAt)}`}
               />
@@ -231,6 +229,7 @@ export default function StorytellerProjectDetail() {
               </Button>
             </Stack>
           </Stack>
+          <StorytellerTagChips tags={project.tags} sx={{ mt: 1.5 }} />
         </Paper>
         <CustomSnackbar
           open={copyMessageOpen}

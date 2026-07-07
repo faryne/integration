@@ -295,6 +295,7 @@ export default function StorytellerUserProjects() {
                           name={project.name}
                           description={project.description}
                           updatedAt={project.updatedAt}
+                          tags={project.tags}
                           chips={
                             <>
                               <Chip
@@ -327,9 +328,6 @@ export default function StorytellerUserProjects() {
                                 size="small"
                                 label={`${project.favoriteCount} 人收藏`}
                               />
-                              {project.tags.map((tag) => (
-                                <Chip key={tag} size="small" label={tag} />
-                              ))}
                             </>
                           }
                           actions={
@@ -462,6 +460,7 @@ function FavoriteProjectCard({
       description={project.description}
       updatedAt={project.updated_at}
       authorName={project.author?.pen_name}
+      tags={project.tags}
       headerAction={
         isOwner && (
           <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>

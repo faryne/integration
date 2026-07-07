@@ -118,6 +118,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                 name={project.name}
                 description={project.description}
                 updatedAt={project.updatedAt}
+                tags={project.tags}
                 chips={
                   <>
                     <Chip
@@ -146,9 +147,6 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                       size="small"
                       label={`平均 ${project.averageRating.toFixed(1)}`}
                     />
-                    {project.tags.map((tag) => (
-                      <Chip key={tag} size="small" label={tag} />
-                    ))}
                   </>
                 }
                 actions={

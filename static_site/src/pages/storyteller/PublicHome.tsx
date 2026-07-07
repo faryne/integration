@@ -38,7 +38,7 @@ export default function StorytellerPublicHome() {
 
   return (
     <StorytellerShell
-      title="公開故事"
+      title="已發佈的故事"
       breadcrumbs={[{ label: "Storyteller" }]}
       meta={
         !isLoading && (
@@ -68,6 +68,7 @@ export default function StorytellerPublicHome() {
                 description={project.description}
                 updatedAt={project.updatedAt}
                 authorName={project.authorName}
+                tags={project.tags}
                 chips={
                   <>
                     <Chip
@@ -88,9 +89,6 @@ export default function StorytellerPublicHome() {
                       size="small"
                       label={`${project.wordCount.toLocaleString()} 字`}
                     />
-                    {project.tags.map((tag) => (
-                      <Chip key={tag} size="small" label={tag} />
-                    ))}
                   </>
                 }
                 actions={

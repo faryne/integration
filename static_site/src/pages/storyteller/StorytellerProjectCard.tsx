@@ -2,6 +2,7 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { Paper, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 
 export interface StorytellerProjectCardProps {
   name: string;
@@ -11,6 +12,7 @@ export interface StorytellerProjectCardProps {
   actions: ReactNode;
   authorName?: string;
   headerAction?: ReactNode;
+  tags?: string[];
 }
 
 export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
@@ -64,6 +66,7 @@ export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
         >
           {props.chips}
         </Stack>
+        <StorytellerTagChips tags={props.tags} />
         <Typography variant="caption" color="text.secondary">
           {props.authorName && `作者 ${props.authorName} · `}
           更新於 {formatStorytellerDate(props.updatedAt)}
