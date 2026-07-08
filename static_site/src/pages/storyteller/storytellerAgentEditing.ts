@@ -1,10 +1,4 @@
 import { formatStorytellerAgentReferenceToken } from "@/pages/storyteller/storytellerAgentReferences.ts";
-import type { StorytellerContentBlock } from "@/pages/storyteller/storytellerEditorSync.ts";
-import {
-  findStorytellerBlockIndexByOffset,
-  scrollStorytellerPreviewBlockIntoView,
-} from "@/pages/storyteller/storytellerEditorSync.ts";
-import type { StorytellerEditorSidePanel } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 
 // StoryEditor／LoreEditor 共用的 AI Agent 編輯行為：@story:／@lore: 引用解析與插入、
 // 內文選取範圍追蹤、AI 回應套用到內文。兩個編輯器各自擁有自己的 content／selection
@@ -40,34 +34,6 @@ export function insertLoreMention(current: string, title: string): string {
     return current.replace(/@lore:([^\s\]]*)$/, token);
   }
   return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
-}
-
-// 更新目前的內文選取範圍；預覽分頁開啟時同步捲動預覽到對應段落
-export function updateStorytellerSelection({
-  target,
-  sidePanel,
-  previewBlocks,
-  previewScrollContainer,
-  setSelectionState,
-}: {
-  target: HTMLTextAreaElement | null;
-  sidePanel: StorytellerEditorSidePanel;
-  previewBlocks: StorytellerContentBlock[];
-  previewScrollContainer: HTMLElement | null;
-  setSelectionState: (selection: StorytellerAgentTextSelection) => void;
-}) {
-  if (!target) {
-    return;
-  }
-  const start = target.selectionStart;
-  const end = target.selectionEnd;
-  const text = target.value.slice(start, end);
-  setSelectionState({ start, end, text });
-
-  if (sidePanel === "preview") {
-    const blockIndex = findStorytellerBlockIndexByOffset(previewBlocks, start);
-    scrollStorytellerPreviewBlockIntoView(previewScrollContainer, blockIndex);
-  }
 }
 
 // 將 AI 回應套用回內文：取代選取／插入游標／附加末尾／複製。
