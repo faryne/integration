@@ -19,6 +19,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 
 export default function StorytellerLoreDiffCompare() {
   const { id, loreId, diffId1, diffId2 } = useParams();
@@ -55,9 +56,12 @@ export default function StorytellerLoreDiffCompare() {
             {
               key: "content",
               title: "內容",
+              // 濾掉 marker/align/comment 屬性再比對，理由同 StoryDiffCompare.tsx：
+              // 這個頁面是純文字 diff，不濾掉的話使用者會直接看到 `⟦uuid⟧...⟦/uuid⟧`
+              // 這種內部語法，且無關的屬性異動會被誤判成內容變更。
               lines: buildCustomLineDiff(
-                leftVersion.data.content,
-                rightVersion.data.content,
+                stripMarkerForDiffContent(leftVersion.data.content),
+                stripMarkerForDiffContent(rightVersion.data.content),
               ),
             },
           ]

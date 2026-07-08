@@ -79,7 +79,7 @@ const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
   ...HEADING_LEVELS.map((level) => ({ value: level, label: `標題 ${level}` })),
 ];
 
-export interface StoryWysiwygEditorProps {
+export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
 }
@@ -93,10 +93,10 @@ export interface StoryWysiwygEditorProps {
  * 不能再讓下面的 effect 重新 setContent 一次，不然每打一個字游標就會被重置。
  * lastEmittedRef 就是用來分辨這兩種情況。
  */
-export function StoryWysiwygEditor({
+export function StorytellerWysiwygEditor({
   value,
   onChange,
-}: StoryWysiwygEditorProps) {
+}: StorytellerWysiwygEditorProps) {
   const lastEmittedRef = useRef(value);
 
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
@@ -407,7 +407,10 @@ export function StoryWysiwygEditor({
         </Stack>
       </Paper>
 
-      <Paper variant="outlined" sx={{ p: 2 }}>
+      <Paper
+        variant="outlined"
+        sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
+      >
         <Box
           sx={[HEADING_TYPOGRAPHY_SX, COMMENT_HIGHLIGHT_SX]}
           onMouseOver={handleEditorMouseOver}
