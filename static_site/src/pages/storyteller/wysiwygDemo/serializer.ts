@@ -1,10 +1,9 @@
 import type { JSONContent } from "@tiptap/core";
 
 import {
-  ALIGN_BLOCK_CLOSE,
-  ALIGN_BLOCK_OPEN,
   DEFAULT_ALIGNMENT,
   DEFAULT_HEADING_LEVEL,
+  MARKER_ALIGN_ATTR,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
@@ -74,6 +73,9 @@ function serializeParagraphInline(paragraph: JSONContent): string {
   return output;
 }
 
+// align／comment 都是 marker 開始標記上的屬性（不是行首前綴），固定順序 align 在前、
+// comment 在後，要跟 parser.ts 的 MARKER_PATTERN 對稱。標題仍然是行首前綴，因為那是
+// 沿用大家熟悉的 markdown 慣例，跟 align/comment 這種「無論如何都要自創語法」的情況不同。
 function serializeParagraph(paragraph: JSONContent): string {
   const markerId = (paragraph.attrs?.markerId as string | null) ?? "";
   const align =
@@ -84,22 +86,23 @@ function serializeParagraph(paragraph: JSONContent): string {
   const comment = (paragraph.attrs?.comment as string | null) ?? null;
   const headingPrefix =
     headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
+  const alignAttr =
+    align !== DEFAULT_ALIGNMENT ? ` ${MARKER_ALIGN_ATTR}="${align}"` : "";
   const commentAttr = comment
     ? ` ${MARKER_COMMENT_ATTR}="${escapeMarkerComment(comment)}"`
     : "";
   const inline = serializeParagraphInline(paragraph);
-  const wrapped = `${headingPrefix}${MARKER_OPEN}${markerId}${commentAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
-
-  if (align !== DEFAULT_ALIGNMENT) {
-    return `${ALIGN_BLOCK_OPEN} ${align}\n${wrapped}\n${ALIGN_BLOCK_CLOSE}`;
-  }
-  return wrapped;
+  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${commentAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 }
 
-/** 把 Tiptap 的 doc JSON 序列化成白名單規則下的自訂 markdown 字串。 */
+/**
+ * 把 Tiptap 的 doc JSON 序列化成白名單規則下的自訂 markdown 字串。
+ * 段落之間用單一 `\n` 接（不是空行），跟 parseMarkdownToParagraphs 的 split("\n") 對稱，
+ * 也是為了讓 content.split("\n") 的陣列位置跟書籤 line_index／版本 diff 保持一致。
+ */
 export function serializeDocToMarkdown(doc: JSONContent): string {
   return (doc.content ?? [])
     .filter((node) => node.type === "paragraph")
     .map(serializeParagraph)
-    .join("\n\n");
+    .join("\n");
 }

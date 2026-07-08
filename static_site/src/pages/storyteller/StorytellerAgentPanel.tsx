@@ -91,6 +91,8 @@ interface StorytellerAgentPanelProps {
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
   enableReplace?: boolean;
+  /** 「插入游標處」需要編輯器暴露文字游標位置，所見即所得編輯器目前還沒有這個對應機制，先隱藏。 */
+  enableInsert?: boolean;
   replyTarget?: StorytellerAgentPanelMessage | null;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   onCancelReply?: () => void;
@@ -285,6 +287,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
                   key={message.id}
                   message={message}
                   enableReplace={Boolean(props.enableReplace)}
+                  enableInsert={props.enableInsert ?? true}
                   onApplyText={props.onApplyText}
                   onReply={props.onReply}
                   isReplyTarget={props.replyTarget?.id === message.id}
@@ -301,6 +304,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
                     isLoading: true,
                   }}
                   enableReplace={false}
+                  enableInsert={false}
                   onApplyText={props.onApplyText}
                 />
               )}
@@ -408,6 +412,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
 interface StorytellerAgentMessageProps {
   message: StorytellerAgentPanelMessage;
   enableReplace: boolean;
+  enableInsert: boolean;
   onApplyText: (
     text: string,
     action: StorytellerAgentApplyAction,
@@ -515,13 +520,17 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
                 取代選取
               </Button>
             )}
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={() => props.onApplyText(message.content, "insert", null)}
-            >
-              插入游標
-            </Button>
+            {props.enableInsert && (
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() =>
+                  props.onApplyText(message.content, "insert", null)
+                }
+              >
+                插入游標
+              </Button>
+            )}
             <Button
               size="small"
               variant="outlined"

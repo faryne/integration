@@ -51,14 +51,24 @@ export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
 export type HeadingLevel = 0 | (typeof HEADING_LEVELS)[number];
 export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
 
-export const ALIGN_BLOCK_OPEN = ":::";
-export const ALIGN_BLOCK_CLOSE = ":::";
-
-/** 段落 marker 包住整個段落內容，系統保留、使用者不可鍵入、渲染時完全隱藏。刻意不用 HTML，避免和「不接受 HTML」規則衝突。 */
+/**
+ * 段落 marker 包住整個段落內容，系統保留、使用者不可鍵入、渲染時完全隱藏。刻意不用 HTML，避免和「不接受 HTML」規則衝突。
+ *
+ * 段落之間用單一 `\n` 分隔（不是空行）：故事閱讀頁的書籤功能（line_index）跟版本 diff
+ * （逐行比對）都是直接對 `content.split("\n")` 的陣列位置定位，「一行＝一個段落」
+ * 必須跟這個既有假設保持一致，否則舊資料 migrate 過來後書籤/diff 的索引全部對不上。
+ *
+ * 對齊（align）跟註解（comment）都是這個 marker 開始標記上的屬性，不是另外的行首前綴語法——
+ * 兩者本質上都是「掛在這個段落上的中繼資料」，讓 marker 當成統一的屬性容器比另外發明一套
+ * 前綴規則更一致，而且屬性天生就活在同一行裡，完全不會跟「一行＝一個段落」的限制衝突。
+ * 固定順序：`⟦markerId align="center" comment="..."⟧內容⟦/markerId⟧`（align 在前、comment 在後），
+ * 兩個屬性都可省略（省略時分別代表置左、沒有註解）。
+ */
 export const MARKER_OPEN = "⟦";
 export const MARKER_CLOSE = "⟧";
 export const MARKER_CLOSE_SLASH = "/";
 
+export const MARKER_ALIGN_ATTR = "align";
 /** 段落最多一則註解，內嵌成 marker 開始標記上的屬性：⟦markerId comment="..."⟧。 */
 export const MARKER_COMMENT_ATTR = "comment";
 

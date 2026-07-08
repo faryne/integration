@@ -2,10 +2,9 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   ALIGNMENT_VALUES,
-  ALIGN_BLOCK_CLOSE,
-  ALIGN_BLOCK_OPEN,
   DEFAULT_ALIGNMENT,
   DEFAULT_HEADING_LEVEL,
+  MARKER_ALIGN_ATTR,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
@@ -30,18 +29,19 @@ export interface ParsedParagraph {
   runs: ParsedRun[];
 }
 
-const ALIGN_BLOCK_PATTERN = new RegExp(
-  `^${ALIGN_BLOCK_OPEN} (${ALIGNMENT_VALUES.join("|")})\\n([\\s\\S]*)\\n${ALIGN_BLOCK_CLOSE}$`,
-);
-
 /** 比照 CommonMark ATX heading：行首 1~6 個 #，後面不能緊接第 7 個 #，再接一個空白。 */
 const HEADING_PATTERN = /^(#{1,6})(?!#) ([\s\S]*)$/;
 
-// group 1: markerId／group 2: comment（跳脫過，可能不存在）／group 3: 段落內容／group 4: 結尾的 markerId
+// group 1: markerId／group 2: align（可能不存在，省略代表置左）／group 3: comment（跳脫過，可能不存在）
+// group 4: 段落內容／group 5: 結尾的 markerId
+// 兩個屬性順序固定是 align 在前、comment 在後，序列化時也要照這個順序輸出。
 // comment 屬性值用「(?:[^"\\]|\\.)*」掃描：逐字比對「不是引號也不是反斜線的字元」或「反斜線+任一字元（跳脫序列）」，
 // 這樣才能正確找到「沒被跳脫的那個引號」當結尾，而不是天真地找下一個 " 就當結束。
 const MARKER_PATTERN = new RegExp(
-  `^${MARKER_OPEN}([^${MARKER_CLOSE}\\s]*)(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")?${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
+  `^${MARKER_OPEN}([^${MARKER_CLOSE}\\s]*)` +
+    `(?: ${MARKER_ALIGN_ATTR}="(${ALIGNMENT_VALUES.join("|")})")?` +
+    `(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")?` +
+    `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
 );
 
 /**
@@ -107,60 +107,68 @@ function normalizeRuns(runs: ParsedRun[]): ParsedRun[] {
   return merged;
 }
 
-function extractHeading(innerLine: string): {
+function extractHeading(line: string): {
   headingLevel: HeadingLevel;
   content: string;
 } {
-  const match = innerLine.match(HEADING_PATTERN);
+  const match = line.match(HEADING_PATTERN);
   if (match) {
     return { headingLevel: match[1].length as HeadingLevel, content: match[2] };
   }
-  return { headingLevel: DEFAULT_HEADING_LEVEL, content: innerLine };
+  return { headingLevel: DEFAULT_HEADING_LEVEL, content: line };
 }
 
-function extractMarker(innerLine: string): {
+function extractMarker(line: string): {
   markerId: string | null;
+  align: AlignmentValue;
   comment: string | null;
   content: string;
 } {
-  const match = innerLine.match(MARKER_PATTERN);
-  if (match && match[1] === match[4]) {
-    const comment = match[2] !== undefined ? unescapeMarkerComment(match[2]) : null;
-    return { markerId: match[1], comment, content: match[3] };
+  const match = line.match(MARKER_PATTERN);
+  if (match && match[1] === match[5]) {
+    const align = (match[2] as AlignmentValue | undefined) ?? DEFAULT_ALIGNMENT;
+    const comment = match[3] !== undefined ? unescapeMarkerComment(match[3]) : null;
+    return { markerId: match[1], align, comment, content: match[4] };
   }
-  // 舊資料尚未跑過 marker 遷移，或內容不是本編輯器產生的：整段當純文字，id 留空由呼叫端決定怎麼補。
-  return { markerId: null, comment: null, content: innerLine };
+  // 舊資料尚未跑過 marker 遷移，或內容不是本編輯器產生的：整行當純文字，id 留空由呼叫端決定怎麼補。
+  return { markerId: null, align: DEFAULT_ALIGNMENT, comment: null, content: line };
 }
 
-function parseBlock(block: string): ParsedParagraph {
-  const alignMatch = block.match(ALIGN_BLOCK_PATTERN);
-  const align: AlignmentValue = alignMatch
-    ? (alignMatch[1] as AlignmentValue)
-    : DEFAULT_ALIGNMENT;
-  const afterAlign = alignMatch ? alignMatch[2] : block;
-
-  const { headingLevel, content: afterHeading } = extractHeading(afterAlign);
-  const { markerId, comment, content } = extractMarker(afterHeading);
+/** 一行＝一個段落，見 whitelist.ts 的 MARKER_OPEN 說明：要跟書籤/diff 既有的逐行索引保持一致。 */
+function parseLine(line: string): ParsedParagraph {
+  const { headingLevel, content: afterHeading } = extractHeading(line);
+  const { markerId, align, comment, content } = extractMarker(afterHeading);
   const runs = normalizeRuns(parseInline(content));
 
   return { markerId, align, headingLevel, comment, runs };
 }
 
-/** 把白名單規則下的自訂 markdown 字串解析成段落陣列，供載入編輯器或預覽渲染共用。 */
-export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
-  const trimmed = markdown.trim();
-  if (trimmed === "")
-    return [
-      {
-        markerId: null,
-        align: DEFAULT_ALIGNMENT,
-        headingLevel: DEFAULT_HEADING_LEVEL,
-        comment: null,
-        runs: [],
-      },
-    ];
+/**
+ * 拿掉一行裡的 marker 開始/結束標記（含 align／comment 屬性），保留標題前綴跟行內樣式語法不變。
+ * 給「逐行文字 diff」這種不會透過我們的解析器渲染、只是把字串原樣顯示出來的地方用——
+ * 不濾掉的話，marker id 換了、或單純加/改/刪一則註解／調整對齊，都會被 diff 誤判成「內容變了」，
+ * 使用者也會在畫面上直接看到 `⟦uuid⟧...⟦/uuid⟧` 這種不該曝光的內部語法。
+ */
+export function stripMarkerForDiffLine(line: string): string {
+  const { headingLevel, content: afterHeading } = extractHeading(line);
+  const { content } = extractMarker(afterHeading);
 
-  return trimmed.split(/\n\s*\n/).map(parseBlock);
+  const headingPrefix = headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
+  return `${headingPrefix}${content}`;
+}
+
+/** stripMarkerForDiffLine 套用在整份內容上，逐行處理後用 \n 接回去，方便直接餵給 buildCustomLineDiff。 */
+export function stripMarkerForDiffContent(content: string): string {
+  return content.split("\n").map(stripMarkerForDiffLine).join("\n");
+}
+
+/**
+ * 把白名單規則下的自訂 markdown 字串解析成段落陣列，供載入編輯器或預覽渲染共用。
+ * 刻意用原始字串直接 split("\n")，不 trim、不特別處理空字串——要跟
+ * `content.split("\n")`（書籤 line_index、版本 diff 用的陣列）逐一對應。
+ */
+export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
+  return markdown.split("\n").map(parseLine);
 }
 
 /** 把段落陣列組成 Tiptap 可以直接 setContent 的 doc JSON。 */
