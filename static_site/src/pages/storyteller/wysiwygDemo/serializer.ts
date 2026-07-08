@@ -2,14 +2,17 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   DEFAULT_ALIGNMENT,
+  DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   MARKER_ALIGN_ATTR,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
+  MARKER_COMMENT_COLOR_ATTR,
   MARKER_OPEN,
   MARK_SYNTAX_WHITELIST,
   escapeMarkerComment,
+  type CommentColorValue,
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
@@ -28,7 +31,9 @@ const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
 ];
 
 function orderedMarksOf(node: JSONContent): MarkName[] {
-  const present = new Set((node.marks ?? []).map((mark) => mark.type as MarkName));
+  const present = new Set(
+    (node.marks ?? []).map((mark) => mark.type as MarkName),
+  );
   return MARK_NESTING_ORDER_OUTER_TO_INNER.filter((mark) => present.has(mark));
 }
 
@@ -38,7 +43,9 @@ function orderedMarksOf(node: JSONContent): MarkName[] {
  * 這裡用一個「目前展開中的樣式堆疊」跟下一個節點要的樣式做前綴比對，只關閉/開啟真正變動的部分。
  */
 function serializeParagraphInline(paragraph: JSONContent): string {
-  const textNodes = (paragraph.content ?? []).filter((node) => node.type === "text");
+  const textNodes = (paragraph.content ?? []).filter(
+    (node) => node.type === "text",
+  );
 
   let output = "";
   let openMarks: MarkName[] = [];
@@ -73,9 +80,9 @@ function serializeParagraphInline(paragraph: JSONContent): string {
   return output;
 }
 
-// align／comment 都是 marker 開始標記上的屬性（不是行首前綴），固定順序 align 在前、
-// comment 在後，要跟 parser.ts 的 MARKER_PATTERN 對稱。標題仍然是行首前綴，因為那是
-// 沿用大家熟悉的 markdown 慣例，跟 align/comment 這種「無論如何都要自創語法」的情況不同。
+// align／comment／commentColor 都是 marker 開始標記上的屬性（不是行首前綴），固定順序
+// align、comment、commentColor，要跟 parser.ts 的 MARKER_PATTERN 對稱。標題仍然是行首前綴，
+// 因為那是沿用大家熟悉的 markdown 慣例，跟 align/comment 這種「無論如何都要自創語法」的情況不同。
 function serializeParagraph(paragraph: JSONContent): string {
   const markerId = (paragraph.attrs?.markerId as string | null) ?? "";
   const align =
@@ -84,15 +91,21 @@ function serializeParagraph(paragraph: JSONContent): string {
     (paragraph.attrs?.headingLevel as HeadingLevel | undefined) ??
     DEFAULT_HEADING_LEVEL;
   const comment = (paragraph.attrs?.comment as string | null) ?? null;
-  const headingPrefix =
-    headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
+  const commentColor =
+    (paragraph.attrs?.commentColor as CommentColorValue | null) ?? null;
+  const headingPrefix = headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
   const alignAttr =
     align !== DEFAULT_ALIGNMENT ? ` ${MARKER_ALIGN_ATTR}="${align}"` : "";
   const commentAttr = comment
     ? ` ${MARKER_COMMENT_ATTR}="${escapeMarkerComment(comment)}"`
     : "";
+  // commentColor 沒有 comment 時不輸出；有 comment 但顏色是預設色時也不輸出（省略即代表預設色）。
+  const commentColorAttr =
+    comment && commentColor && commentColor !== DEFAULT_COMMENT_COLOR
+      ? ` ${MARKER_COMMENT_COLOR_ATTR}="${commentColor}"`
+      : "";
   const inline = serializeParagraphInline(paragraph);
-  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${commentAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
+  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${commentAttr}${commentColorAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 }
 
 /**

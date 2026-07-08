@@ -6,11 +6,7 @@
  */
 
 export type MarkName =
-  | "bold"
-  | "italic"
-  | "underline"
-  | "subscript"
-  | "superscript";
+  "bold" | "italic" | "underline" | "subscript" | "superscript";
 
 export interface MarkSyntaxRule {
   markName: MarkName;
@@ -61,8 +57,9 @@ export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
  * 對齊（align）跟註解（comment）都是這個 marker 開始標記上的屬性，不是另外的行首前綴語法——
  * 兩者本質上都是「掛在這個段落上的中繼資料」，讓 marker 當成統一的屬性容器比另外發明一套
  * 前綴規則更一致，而且屬性天生就活在同一行裡，完全不會跟「一行＝一個段落」的限制衝突。
- * 固定順序：`⟦markerId align="center" comment="..."⟧內容⟦/markerId⟧`（align 在前、comment 在後），
- * 兩個屬性都可省略（省略時分別代表置左、沒有註解）。
+ * 固定順序：`⟦markerId align="center" comment="..." commentColor="pink"⟧內容⟦/markerId⟧`
+ * （align 在前、comment 在後、commentColor 殿後），三個屬性都可省略（省略時分別代表置左、
+ * 沒有註解、預設色）。commentColor 只有在有 comment 時才有意義。
  */
 export const MARKER_OPEN = "⟦";
 export const MARKER_CLOSE = "⟧";
@@ -71,6 +68,20 @@ export const MARKER_CLOSE_SLASH = "/";
 export const MARKER_ALIGN_ATTR = "align";
 /** 段落最多一則註解，內嵌成 marker 開始標記上的屬性：⟦markerId comment="..."⟧。 */
 export const MARKER_COMMENT_ATTR = "comment";
+/**
+ * 註解底色，固定幾種偏亮色系可選，不開放自訂顏色值。省略時代表預設色（第一個值），
+ * 讓還沒有這個屬性的舊資料（本功能上線前建立的註解）維持原本看到的顏色。
+ */
+export const MARKER_COMMENT_COLOR_ATTR = "commentColor";
+export const COMMENT_COLOR_VALUES = [
+  "yellow",
+  "pink",
+  "blue",
+  "green",
+  "purple",
+] as const;
+export type CommentColorValue = (typeof COMMENT_COLOR_VALUES)[number];
+export const DEFAULT_COMMENT_COLOR: CommentColorValue = "yellow";
 
 export function generateMarkerId(): string {
   return crypto.randomUUID();

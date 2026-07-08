@@ -3,6 +3,8 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
+import { DEFAULT_COMMENT_COLOR, type CommentColorValue } from "./whitelist";
+
 /**
  * 段落的 comment 現在直接是 paragraph node 自己的 attribute（見 markerParagraph.ts），
  * 不再是外部 React state 同步進來的東西，所以這裡不需要自己的 plugin state／transaction
@@ -13,9 +15,12 @@ function buildDecorations(doc: ProseMirrorNode) {
   doc.descendants((node, pos) => {
     const comment = node.attrs.comment as string | null;
     if (node.type.name === "paragraph" && comment) {
+      const color =
+        (node.attrs.commentColor as CommentColorValue | null) ??
+        DEFAULT_COMMENT_COLOR;
       decorations.push(
         Decoration.node(pos, pos + node.nodeSize, {
-          class: "wysiwyg-has-comment",
+          class: `wysiwyg-has-comment wysiwyg-comment-color-${color}`,
           // 純編輯器執行期用的 DOM 屬性，給 hover tooltip 直接讀取內容用，
           // 跟序列化進 markdown 的 comment attribute 是分開的兩件事。
           "data-comment": comment,

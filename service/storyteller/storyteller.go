@@ -776,7 +776,47 @@ func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) (
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.ProjectStoryBookmarks(userID, project.ID)
+	rows, err := s.repo.ProjectStoryBookmarks(userID, project.ID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].LinePreview = stripBookmarkLineMarker(rows[i].LinePreview)
+	}
+	return rows, nil
+}
+
+// storyBookmarkMarkerPattern 比照前端 wysiwygDemo/parser.ts 的 MARKER_PATTERN：
+// 段落 marker 開頭是 markerId，接著可選的 align／comment 屬性，align/comment 的值
+// 這裡不需要解析出來，比對到就整段丟棄即可。
+var storyBookmarkMarkerPattern = regexp.MustCompile(
+	`^⟦([^⟧\s]*)(?: align="(?:left|center|right)")?(?: comment="(?:[^"\\]|\\.)*")?⟧([\s\S]*)⟦/([^⟧\s]*)⟧$`,
+)
+
+// stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment 屬性）跟標題前綴，
+// 只留下可讀文字。DB 裡的 content 存的是含 marker 語法的原始行（見 storyteller_story_versions
+// 遷移後的格式），SQL 只能整行原樣抓出來，所以在這裡（service 層）做語法層面的清理，
+// 邏輯跟前端 stripMarkerForDiffLine 一致，方便未來對照維護。
+func stripBookmarkLineMarker(line string) string {
+	headingLevel := 0
+	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
+		headingLevel++
+	}
+	content := line
+	if headingLevel > 0 && headingLevel < len(line) && line[headingLevel] == ' ' {
+		content = line[headingLevel+1:]
+	} else {
+		headingLevel = 0
+	}
+
+	if match := storyBookmarkMarkerPattern.FindStringSubmatch(content); match != nil && match[1] == match[3] {
+		content = match[2]
+	}
+
+	if headingLevel > 0 {
+		return strings.Repeat("#", headingLevel) + " " + content
+	}
+	return content
 }
 
 func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {

@@ -4,8 +4,10 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 
 import {
+  DEFAULT_COMMENT_COLOR,
   generateMarkerId,
   HEADING_LEVELS,
+  type CommentColorValue,
   type HeadingLevel,
 } from "./whitelist";
 
@@ -27,8 +29,14 @@ declare module "@tiptap/core" {
     markerParagraph: {
       /** 0 代表改回一般段落。 */
       setHeadingLevel: (level: HeadingLevel) => ReturnType;
-      /** null 代表移除這段的註解。 */
-      setComment: (comment: string | null) => ReturnType;
+      /**
+       * null 代表移除這段的註解（連同顏色一併清除）。color 省略時沿用預設色，
+       * 只有在 comment 非 null 時才有意義。
+       */
+      setComment: (
+        comment: string | null,
+        color?: CommentColorValue | null,
+      ) => ReturnType;
     };
   }
 }
@@ -73,6 +81,12 @@ export const MarkerParagraph = Paragraph.extend({
         default: null as string | null,
         rendered: false,
       },
+      // 註解底色，固定色盤（見 whitelist.ts）。跟 comment 一樣內嵌成段落屬性，
+      // 沒有 comment 時這個值沒有意義（由呼叫端保證同步清空，見 setComment／Enter 分割）。
+      commentColor: {
+        default: null as CommentColorValue | null,
+        rendered: false,
+      },
     };
   },
 
@@ -102,9 +116,12 @@ export const MarkerParagraph = Paragraph.extend({
         ({ commands }) =>
           commands.updateAttributes(this.name, { headingLevel: level }),
       setComment:
-        (comment: string | null) =>
+        (comment: string | null, color?: CommentColorValue | null) =>
         ({ commands }) =>
-          commands.updateAttributes(this.name, { comment }),
+          commands.updateAttributes(this.name, {
+            comment,
+            commentColor: comment ? (color ?? DEFAULT_COMMENT_COLOR) : null,
+          }),
     };
   },
 
@@ -171,6 +188,7 @@ export const MarkerParagraph = Paragraph.extend({
           tr.setNodeAttribute(paragraphStart, "markerId", generateMarkerId());
           tr.setNodeAttribute(paragraphStart, "headingLevel", 0);
           tr.setNodeAttribute(paragraphStart, "comment", null);
+          tr.setNodeAttribute(paragraphStart, "commentColor", null);
           return true;
         });
         return true;

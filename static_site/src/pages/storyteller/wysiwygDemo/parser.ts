@@ -2,16 +2,20 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   ALIGNMENT_VALUES,
+  COMMENT_COLOR_VALUES,
   DEFAULT_ALIGNMENT,
+  DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   MARKER_ALIGN_ATTR,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
+  MARKER_COMMENT_COLOR_ATTR,
   MARKER_OPEN,
   PARSE_DELIMITERS,
   unescapeMarkerComment,
   type AlignmentValue,
+  type CommentColorValue,
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
@@ -26,6 +30,7 @@ export interface ParsedParagraph {
   align: AlignmentValue;
   headingLevel: HeadingLevel;
   comment: string | null;
+  commentColor: CommentColorValue | null;
   runs: ParsedRun[];
 }
 
@@ -33,14 +38,15 @@ export interface ParsedParagraph {
 const HEADING_PATTERN = /^(#{1,6})(?!#) ([\s\S]*)$/;
 
 // group 1: markerId／group 2: align（可能不存在，省略代表置左）／group 3: comment（跳脫過，可能不存在）
-// group 4: 段落內容／group 5: 結尾的 markerId
-// 兩個屬性順序固定是 align 在前、comment 在後，序列化時也要照這個順序輸出。
+// group 4: commentColor（可能不存在，省略代表預設色）／group 5: 段落內容／group 6: 結尾的 markerId
+// 三個屬性順序固定是 align、comment、commentColor，序列化時也要照這個順序輸出。
 // comment 屬性值用「(?:[^"\\]|\\.)*」掃描：逐字比對「不是引號也不是反斜線的字元」或「反斜線+任一字元（跳脫序列）」，
 // 這樣才能正確找到「沒被跳脫的那個引號」當結尾，而不是天真地找下一個 " 就當結束。
 const MARKER_PATTERN = new RegExp(
   `^${MARKER_OPEN}([^${MARKER_CLOSE}\\s]*)` +
     `(?: ${MARKER_ALIGN_ATTR}="(${ALIGNMENT_VALUES.join("|")})")?` +
     `(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")?` +
+    `(?: ${MARKER_COMMENT_COLOR_ATTR}="(${COMMENT_COLOR_VALUES.join("|")})")?` +
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
 );
 
@@ -74,7 +80,10 @@ function parseInline(text: string): ParsedRun[] {
   if (closeIndex === -1) {
     // 找不到對應的結尾記號：把這個記號當成純文字，繼續往後掃描
     const literalPrefix = text.slice(0, searchFrom);
-    return [{ text: literalPrefix, marks: [] }, ...parseInline(text.slice(searchFrom))];
+    return [
+      { text: literalPrefix, marks: [] },
+      ...parseInline(text.slice(searchFrom)),
+    ];
   }
 
   const before = text.slice(0, openIndex);
@@ -122,25 +131,44 @@ function extractMarker(line: string): {
   markerId: string | null;
   align: AlignmentValue;
   comment: string | null;
+  commentColor: CommentColorValue | null;
   content: string;
 } {
   const match = line.match(MARKER_PATTERN);
-  if (match && match[1] === match[5]) {
+  if (match && match[1] === match[6]) {
     const align = (match[2] as AlignmentValue | undefined) ?? DEFAULT_ALIGNMENT;
-    const comment = match[3] !== undefined ? unescapeMarkerComment(match[3]) : null;
-    return { markerId: match[1], align, comment, content: match[4] };
+    const comment =
+      match[3] !== undefined ? unescapeMarkerComment(match[3]) : null;
+    // commentColor 只有在有 comment 時才有意義；省略時（含舊資料）沿用預設色。
+    const commentColor = comment
+      ? ((match[4] as CommentColorValue | undefined) ?? DEFAULT_COMMENT_COLOR)
+      : null;
+    return {
+      markerId: match[1],
+      align,
+      comment,
+      commentColor,
+      content: match[5],
+    };
   }
   // 舊資料尚未跑過 marker 遷移，或內容不是本編輯器產生的：整行當純文字，id 留空由呼叫端決定怎麼補。
-  return { markerId: null, align: DEFAULT_ALIGNMENT, comment: null, content: line };
+  return {
+    markerId: null,
+    align: DEFAULT_ALIGNMENT,
+    comment: null,
+    commentColor: null,
+    content: line,
+  };
 }
 
 /** 一行＝一個段落，見 whitelist.ts 的 MARKER_OPEN 說明：要跟書籤/diff 既有的逐行索引保持一致。 */
 function parseLine(line: string): ParsedParagraph {
   const { headingLevel, content: afterHeading } = extractHeading(line);
-  const { markerId, align, comment, content } = extractMarker(afterHeading);
+  const { markerId, align, comment, commentColor, content } =
+    extractMarker(afterHeading);
   const runs = normalizeRuns(parseInline(content));
 
-  return { markerId, align, headingLevel, comment, runs };
+  return { markerId, align, headingLevel, comment, commentColor, runs };
 }
 
 /**
@@ -182,6 +210,7 @@ export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
         textAlign: paragraph.align,
         headingLevel: paragraph.headingLevel,
         comment: paragraph.comment,
+        commentColor: paragraph.commentColor,
       },
       content: paragraph.runs
         .filter((run) => run.text !== "")
