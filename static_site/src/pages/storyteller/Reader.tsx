@@ -28,7 +28,8 @@ import {
   useTheme,
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
-import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
+import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -350,7 +351,14 @@ function StoryContentLines({
   return (
     <Stack spacing={0.25}>
       {lines.map((line, index) => {
-        if (!line.trim()) {
+        // 新版內容每行都會被 marker 包住（例如 `⟦id⟧⟦/id⟧`），就算段落本身是空的，
+        // 原始字串也不會是空字串——用解析結果的實際文字判斷是不是空行，而不是直接看
+        // 原始字串是否為空白，不然舊資料的空行間距（用來排版）在遷移後會失效。
+        const isBlankLine =
+          parseMarkdownToParagraphs(line)[0].runs.every(
+            (run) => run.text.trim() === "",
+          );
+        if (isBlankLine) {
           return <Box key={index} sx={{ height: 12 }} />;
         }
         const isBookmarked = bookmarkedLines.has(index);
@@ -402,7 +410,7 @@ function StoryContentLines({
               )}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <StorytellerMarkdown>{line}</StorytellerMarkdown>
+              <StorytellerWysiwygMarkdown>{line}</StorytellerWysiwygMarkdown>
             </Box>
           </Box>
         );

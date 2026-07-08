@@ -9,11 +9,12 @@ import {
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 
 export default function StorytellerStoryVersionDiff() {
   const { projectPath, storyId, versionId } = useParams();
@@ -54,7 +55,12 @@ export default function StorytellerStoryVersionDiff() {
     return <ErrorPage code={404} />;
   }
 
-  const diffLines = buildCustomLineDiff(previous?.content ?? "", target.content);
+  // 先把 marker/comment 屬性濾掉再比對——不然 marker id 沒變化但 comment 有異動的段落，
+  // 或單純因為遷移補了新 id，都會被誤判成「內容變了」，畫面上也不該讓使用者看到內部語法。
+  const diffLines = buildCustomLineDiff(
+    stripMarkerForDiffContent(previous?.content ?? ""),
+    stripMarkerForDiffContent(target.content),
+  );
   const changedCount = diffLines.filter((line) => line.state !== "same").length;
 
   return (
@@ -118,7 +124,7 @@ export default function StorytellerStoryVersionDiff() {
                     key={line.index}
                     sx={{ typography: "body1", lineHeight: 1.9 }}
                   >
-                    <StorytellerMarkdown>{line.right}</StorytellerMarkdown>
+                    <StorytellerWysiwygMarkdown>{line.right}</StorytellerWysiwygMarkdown>
                   </Box>
                 );
               }
@@ -137,7 +143,7 @@ export default function StorytellerStoryVersionDiff() {
                         "& *": { textDecoration: "line-through" },
                       }}
                     >
-                      <StorytellerMarkdown>{line.left}</StorytellerMarkdown>
+                      <StorytellerWysiwygMarkdown>{line.left}</StorytellerWysiwygMarkdown>
                     </Box>
                   )}
                   {line.state !== "removed" && line.right.trim() && (
@@ -150,7 +156,7 @@ export default function StorytellerStoryVersionDiff() {
                         py: 0.25,
                       }}
                     >
-                      <StorytellerMarkdown>{line.right}</StorytellerMarkdown>
+                      <StorytellerWysiwygMarkdown>{line.right}</StorytellerWysiwygMarkdown>
                     </Box>
                   )}
                 </Box>

@@ -1,23 +1,13 @@
-import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
-import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
-import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import SaveIcon from "@mui/icons-material/Save";
-import SubscriptIcon from "@mui/icons-material/Subscript";
 import {
   Alert,
-  Box,
   Button,
   Chip,
-  Divider,
   Grid,
-  IconButton,
   MenuItem,
   Paper,
   Stack,
   TextField,
-  Tooltip,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -48,7 +38,6 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
-import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import {
   StorytellerAgentPanel,
   type StorytellerAgentPanelAgent,
@@ -58,10 +47,6 @@ import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
-import {
-  splitStorytellerContentBlocks,
-  syncStorytellerPreviewScrollRatio,
-} from "@/pages/storyteller/storytellerEditorSync.ts";
 import {
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
@@ -75,10 +60,11 @@ import {
   currentStoryMentionQuery,
   insertLoreMention,
   insertStoryMention,
-  updateStorytellerSelection,
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
-import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
+import { StoryWysiwygEditor } from "@/pages/storyteller/StoryWysiwygEditor.tsx";
+import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -238,12 +224,6 @@ export default function StorytellerStoryEditor() {
     isHistoryRoute ? "history" : "ai",
   );
   const [content, setContent] = useState(story?.content ?? "");
-  const [selectionState, setSelectionState] =
-    useState<StorytellerAgentTextSelection>({
-      start: 0,
-      end: 0,
-      text: "",
-    });
   const [aiPrompt, setAiPrompt] = useState("");
   const [replyTarget, setReplyTarget] =
     useState<StorytellerAgentPanelMessage | null>(null);
@@ -264,8 +244,6 @@ export default function StorytellerStoryEditor() {
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
-  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
-  const previewScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
   const lastSavedDraftRef = useRef(
     serializeStoryDraft("", "", "completed", ""),
@@ -508,34 +486,15 @@ export default function StorytellerStoryEditor() {
     robots: "noindex, nofollow",
   });
 
+  // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號，
+  // 不然新編輯器產生的內容會讓字數被這些不算「故事內容」的字元灌水。
   const wordCount = useMemo(() => {
-    const normalized = content.replace(/\s+/g, "");
-    return normalized.length;
+    const cleanText = parseMarkdownToParagraphs(content)
+      .flatMap((paragraph) => paragraph.runs)
+      .map((run) => run.text)
+      .join("");
+    return cleanText.replace(/\s+/g, "").length;
   }, [content]);
-  const previewBlocks = useMemo(
-    () => splitStorytellerContentBlocks(content),
-    [content],
-  );
-
-  useEffect(() => {
-    const target = textAreaRef.current;
-    if (!target) {
-      return;
-    }
-
-    function handleEditorScroll() {
-      if (sidePanel !== "preview") {
-        return;
-      }
-      syncStorytellerPreviewScrollRatio(
-        target as HTMLTextAreaElement,
-        previewScrollRef.current,
-      );
-    }
-
-    target.addEventListener("scroll", handleEditorScroll);
-    return () => target.removeEventListener("scroll", handleEditorScroll);
-  }, [sidePanel]);
 
   useEffect(() => {
     if (!apiProject?.public_id || isNewStory || !story?.id) {
@@ -608,16 +567,6 @@ export default function StorytellerStoryEditor() {
     return <ErrorPage code={404} />;
   }
 
-  function updateSelection() {
-    updateStorytellerSelection({
-      target: textAreaRef.current,
-      sidePanel,
-      previewBlocks,
-      previewScrollContainer: previewScrollRef.current,
-      setSelectionState,
-    });
-  }
-
   function isRightDiffDisabled(diffId: string) {
     const diff = storyDiffs.find((item) => item.id === diffId);
     if (!leftDiff || !diff || diff.id === leftDiff.id) {
@@ -643,36 +592,6 @@ export default function StorytellerStoryEditor() {
     ) {
       setRightDiffId("");
     }
-  }
-
-  function applyMarkdownFormat(
-    type: "bold" | "italic" | "subscript" | "left" | "center" | "right",
-  ) {
-    const target = textAreaRef.current;
-    if (!target) {
-      return;
-    }
-
-    const start = target.selectionStart;
-    const end = target.selectionEnd;
-    const selected = content.slice(start, end);
-    const fallback = selected || "文字";
-    const replacements = {
-      bold: `**${fallback}**`,
-      italic: `*${fallback}*`,
-      subscript: `<sub>${fallback}</sub>`,
-      left: `<div align="left">\n${fallback}\n</div>`,
-      center: `<div align="center">\n${fallback}\n</div>`,
-      right: `<div align="right">\n${fallback}\n</div>`,
-    };
-    const nextContent = `${content.slice(0, start)}${replacements[type]}${content.slice(end)}`;
-
-    setContent(nextContent);
-    window.requestAnimationFrame(() => {
-      target.focus();
-      target.setSelectionRange(start, start + replacements[type].length);
-      updateSelection();
-    });
   }
 
   function handleSidePanelChange(value: StorytellerEditorSidePanel) {
@@ -741,14 +660,9 @@ export default function StorytellerStoryEditor() {
     if (!canRunAgent) {
       return;
     }
-    const resultSelection =
-      selectionState.start < selectionState.end
-        ? {
-            start: selectionState.start,
-            end: selectionState.end,
-            text: selectionState.text,
-          }
-        : null;
+    // 「取代選取範圍」這次先停用（見 StorytellerAgentPanel 的 enableReplace/enableInsert），
+    // 所以這裡不需要再追蹤 textarea 的選取範圍，固定傳 null。
+    const resultSelection = null;
     const nextMode = mode ?? "custom_chapter";
     pendingMessageIdRef.current += 1;
     setOptimisticMessage({
@@ -795,12 +709,15 @@ export default function StorytellerStoryEditor() {
     action: "replace" | "insert" | "append" | "copy",
     resultSelection: StorytellerAgentTextSelection | null,
   ) {
+    // target 固定傳 null：插入游標/取代選取這兩個需要 textarea 游標位置的動作
+    // 這次先停用（UI 上也隱藏了對應按鈕），實際只會走得到 append/copy 這兩條路徑，
+    // 兩者都是純字串操作，不需要 target。
     applyStorytellerAgentText({
       result,
       action,
       content,
       resultSelection,
-      target: textAreaRef.current,
+      target: null,
       setContent,
       onCopy: () => {
         setSaveMessage("AI 回應已複製。");
@@ -810,7 +727,7 @@ export default function StorytellerStoryEditor() {
         setSaveMessage("選取範圍已變更，請改用插入或複製。");
         setSaveMessageVisible(true);
       },
-      onAfterApply: updateSelection,
+      onAfterApply: () => {},
     });
   }
 
@@ -950,109 +867,7 @@ export default function StorytellerStoryEditor() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 7 }}>
-          <Paper
-            variant="outlined"
-            sx={{ borderRadius: 1, overflow: "hidden", p: 2 }}
-          >
-            <Paper
-              variant="outlined"
-              sx={{
-                p: 1,
-                mb: 2,
-                borderRadius: 1,
-                bgcolor: "background.default",
-              }}
-            >
-              <Stack
-                direction="row"
-                spacing={0.5}
-                alignItems="center"
-                flexWrap="wrap"
-                useFlexGap
-              >
-                <Tooltip title="粗體">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("bold")}
-                  >
-                    <FormatBoldIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="斜體">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("italic")}
-                  >
-                    <FormatItalicIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="底標">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("subscript")}
-                  >
-                    <SubscriptIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-                <Tooltip title="靠左">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("left")}
-                  >
-                    <FormatAlignLeftIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="置中">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("center")}
-                  >
-                    <FormatAlignCenterIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="靠右">
-                  <IconButton
-                    size="small"
-                    onClick={() => applyMarkdownFormat("right")}
-                  >
-                    <FormatAlignRightIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-                <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-                <StorytellerMarkdownSyntaxDrawer />
-              </Stack>
-            </Paper>
-            <TextField
-              fullWidth
-              multiline
-              label="故事內容"
-              minRows={22}
-              value={content}
-              inputRef={textAreaRef}
-              onChange={(event) => setContent(event.target.value)}
-              onSelect={updateSelection}
-              onKeyUp={updateSelection}
-              onMouseUp={updateSelection}
-              placeholder="使用 Markdown 撰寫故事內容"
-              slotProps={{
-                input: {
-                  sx: {
-                    alignItems: "flex-start",
-                    fontFamily:
-                      '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
-                    lineHeight: 1.8,
-                    height: { xs: 420, md: 560 },
-                    overflow: "auto",
-                    "& textarea": {
-                      height: "100% !important",
-                      overflow: "auto !important",
-                    },
-                  },
-                },
-              }}
-            />
-          </Paper>
+          <StoryWysiwygEditor value={content} onChange={setContent} />
         </Grid>
 
         <Grid size={{ xs: 12, lg: 5 }}>
@@ -1063,7 +878,6 @@ export default function StorytellerStoryEditor() {
             />
             {sidePanel === "preview" && (
               <Paper
-                ref={previewScrollRef}
                 variant="outlined"
                 sx={{
                   borderRadius: 1,
@@ -1072,21 +886,9 @@ export default function StorytellerStoryEditor() {
                   overflow: "auto",
                 }}
               >
-                <Box
-                  sx={{
-                    typography: "body1",
-                    lineHeight: 1.9,
-                    "& h1": { typography: "h4", fontWeight: 800 },
-                    "& h2": { typography: "h5", fontWeight: 800, mt: 3 },
-                    "& p": { my: 1.5 },
-                  }}
-                >
-                  {previewBlocks.map((block, index) => (
-                    <Box key={index} data-story-block-index={index}>
-                      <StorytellerMarkdown>{block.text}</StorytellerMarkdown>
-                    </Box>
-                  ))}
-                </Box>
+                <StorytellerWysiwygMarkdown>
+                  {content}
+                </StorytellerWysiwygMarkdown>
               </Paper>
             )}
 
@@ -1238,7 +1040,8 @@ export default function StorytellerStoryEditor() {
                 canRun={canRunAgent}
                 onRun={() => runSelectedAgent()}
                 onApplyText={applyAgentText}
-                enableReplace
+                enableReplace={false}
+                enableInsert={false}
                 replyTarget={replyTarget}
                 onReply={setReplyTarget}
                 onCancelReply={() => setReplyTarget(null)}
