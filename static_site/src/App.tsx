@@ -68,11 +68,6 @@ const RatesIndex = lazy(() =>
   })),
 );
 const NCCC = lazy(() => import("@/pages/opendata/nccc.tsx"));
-const Editor = lazy(() =>
-  import("@/pages/storyteller/editor.tsx").then((module) => ({
-    default: module.Editor,
-  })),
-);
 const StorytellerPublicHome = lazy(
   () => import("@/pages/storyteller/PublicHome.tsx"),
 );
@@ -297,10 +292,6 @@ function App() {
                     path={"project/:id"}
                     element={<StorytellerProjectDetail />}
                   />
-                  <Route path={"project/resources"} element={<Editor />} />
-                  <Route path={"project/resource/:id"} element={<Editor />} />
-                  <Route path={"project/articles"} element={<Editor />} />
-                  <Route path={"project/article/:id"} element={<Editor />} />
                   <Route path={"agent/new"} element={<StorytellerNewAgent />} />
                   <Route
                     path={"agent/:agentId/edit"}
@@ -328,7 +319,6 @@ function App() {
                   element={<StorytellerStoryVersionDiff />}
                 />
                 <Route path={"story/*"} element={<StorytellerReader />} />
-                <Route path={"editor"} element={<Editor />} />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
