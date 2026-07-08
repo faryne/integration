@@ -63,7 +63,7 @@ import {
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
 import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
-import { StoryWysiwygEditor } from "@/pages/storyteller/StoryWysiwygEditor.tsx";
+import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 import type {
   StorytellerAgentRunMode,
@@ -867,7 +867,7 @@ export default function StorytellerStoryEditor() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: 7 }}>
-          <StoryWysiwygEditor value={content} onChange={setContent} />
+          <StorytellerWysiwygEditor value={content} onChange={setContent} />
         </Grid>
 
         <Grid size={{ xs: 12, lg: 5 }}>

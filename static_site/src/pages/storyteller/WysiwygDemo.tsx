@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTitle } from "@/helpers/title.tsx";
 
 import { StorytellerWysiwygMarkdown } from "./StorytellerWysiwygMarkdown";
-import { StoryWysiwygEditor } from "./StoryWysiwygEditor";
+import { StorytellerWysiwygEditor } from "./StorytellerWysiwygEditor";
 
 // 刻意不帶 marker 記號，用來驗證載入舊資料（尚未跑過 marker 遷移）時會自動補上 id。
 // 一行 = 一個段落（要跟書籤 line_index／版本 diff 的逐行索引對齊），所以這裡用單一 \n 接。
@@ -20,8 +20,8 @@ const SAMPLE_MARKDOWN = [
 
 /**
  * 這個 demo 頁只負責展示編輯器+預覽並排的效果，實際的編輯器/工具列/註解機制
- * 都在 StoryWysiwygEditor.tsx（跟 StoryEditor.tsx 共用同一份元件，避免兩邊各自
- * 維護一份幾乎一樣的 Tiptap 設定/工具列程式碼）。
+ * 都在 StorytellerWysiwygEditor.tsx（跟 StoryEditor.tsx／LoreEditor.tsx 共用同一份元件，
+ * 避免每個地方各自維護一份幾乎一樣的 Tiptap 設定/工具列程式碼）。
  */
 export function WysiwygDemo() {
   useTitle("所見即所得編輯器 Demo - Storyteller", {
@@ -46,7 +46,7 @@ export function WysiwygDemo() {
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             編輯區（右鍵點段落可以加註解／編輯註解／移除註解）
           </Typography>
-          <StoryWysiwygEditor value={markdown} onChange={setMarkdown} />
+          <StorytellerWysiwygEditor value={markdown} onChange={setMarkdown} />
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
