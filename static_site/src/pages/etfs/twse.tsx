@@ -1971,7 +1971,12 @@ const EtfCandleChart = ({
           position: "topRight",
         },
         custom: ({ seriesIndex, dataPointIndex, w }) => {
-          const point = w.config.series?.[seriesIndex]?.data?.[dataPointIndex];
+          // apexcharts 的 series 型別是 candlestick 的物件陣列（含 data）跟
+          // pie/donut 用的純數字陣列（number[]）的聯集，但這張圖固定是 candlestick，
+          // 一定是前者，所以在這裡窄化型別，不影響其他圖表共用的型別定義。
+          const seriesEntry = w.config.series?.[seriesIndex] as
+            { data?: { x: string | number; y: number[] }[] } | undefined;
+          const point = seriesEntry?.data?.[dataPointIndex];
           const values = point?.y ?? [];
           const [open, high, low, close] = values;
           const date = point?.x ? dayjs(point.x).format("YYYY-MM-DD") : "--";
