@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
@@ -786,18 +787,19 @@ func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) (
 	return rows, nil
 }
 
-// storyBookmarkMarkerPattern 比照前端 wysiwygDemo/parser.ts 的 MARKER_PATTERN：
-// 段落 marker 開頭是 markerId，接著可選的 align／comment 屬性，align/comment 的值
-// 這裡不需要解析出來，比對到就整段丟棄即可。
-var storyBookmarkMarkerPattern = regexp.MustCompile(
-	`^⟦([^⟧\s]*)(?: align="(?:left|center|right)")?(?: comment="(?:[^"\\]|\\.)*")?⟧([\s\S]*)⟦/([^⟧\s]*)⟧$`,
+// storyMarkerPattern 比照前端 wysiwygDemo/parser.ts 的 MARKER_PATTERN：段落 marker 開頭是
+// markerId，接著可選的 align／comment／commentColor 屬性，這幾個屬性的值這裡不需要解析出來，
+// 比對到就整段丟棄即可（順序必須跟前端一致：align 在前、comment 居中、commentColor 殿後，
+// 三個都可省略）。
+var storyMarkerPattern = regexp.MustCompile(
+	`^⟦([^⟧\s]*)(?: align="(?:left|center|right)")?(?: comment="(?:[^"\\]|\\.)*")?(?: commentColor="(?:yellow|pink|blue|green|purple)")?⟧([\s\S]*)⟦/([^⟧\s]*)⟧$`,
 )
 
-// stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment 屬性）跟標題前綴，
-// 只留下可讀文字。DB 裡的 content 存的是含 marker 語法的原始行（見 storyteller_story_versions
-// 遷移後的格式），SQL 只能整行原樣抓出來，所以在這裡（service 層）做語法層面的清理，
-// 邏輯跟前端 stripMarkerForDiffLine 一致，方便未來對照維護。
-func stripBookmarkLineMarker(line string) string {
+// splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）跟段落 marker（含 align／
+// comment／commentColor 屬性），回傳段落真正的可讀內容。是 stripBookmarkLineMarker 跟
+// wordCount 共用的底層邏輯，DB 裡的 content 存的是含 marker 語法的原始行（見
+// storyteller_story_versions 遷移後的格式），這兩個地方都需要在 Go 這邊做語法層面的清理。
+func splitHeadingAndMarkerContent(line string) (int, string) {
 	headingLevel := 0
 	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
 		headingLevel++
@@ -809,14 +811,47 @@ func stripBookmarkLineMarker(line string) string {
 		headingLevel = 0
 	}
 
-	if match := storyBookmarkMarkerPattern.FindStringSubmatch(content); match != nil && match[1] == match[3] {
+	if match := storyMarkerPattern.FindStringSubmatch(content); match != nil && match[1] == match[3] {
 		content = match[2]
 	}
 
+	return headingLevel, content
+}
+
+// stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment/commentColor
+// 屬性），保留標題前綴，只留下可讀文字。邏輯跟前端 stripMarkerForDiffLine 一致，方便未來對照維護。
+func stripBookmarkLineMarker(line string) string {
+	headingLevel, content := splitHeadingAndMarkerContent(line)
 	if headingLevel > 0 {
 		return strings.Repeat("#", headingLevel) + " " + content
 	}
 	return content
+}
+
+// wordCountInlineDelimiters 比照前端 whitelist.ts 的 PARSE_DELIMITERS，長的寫法要排在前面
+// （例如 ** 要早於 *），避免誤判成短的那個。
+var wordCountInlineDelimiters = []string{"**", "__", "++", "*", "~", "^"}
+
+// stripInlineDelimiters 拿掉行內樣式 delimiter（粗體/底線/斜體/上下標的記號），只留下記號
+// 包住的文字本身，邏輯對應前端 parseInline 把 delimiter 轉成 marks、只留 run.text 的效果。
+func stripInlineDelimiters(text string) string {
+	var b strings.Builder
+	for i := 0; i < len(text); {
+		matched := false
+		for _, d := range wordCountInlineDelimiters {
+			if strings.HasPrefix(text[i:], d) {
+				i += len(d)
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			_, size := utf8.DecodeRuneInString(text[i:])
+			b.WriteString(text[i : i+size])
+			i += size
+		}
+	}
+	return b.String()
 }
 
 func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {
@@ -1616,8 +1651,17 @@ func buildLoreVersion(lore storytellerModel.Lore) *storytellerModel.LoreVersion 
 	}
 }
 
+// wordCount 只算段落實際會顯示給讀者看的文字：拿掉標題前綴、段落 marker（含 align/comment/
+// commentColor 屬性）、行內樣式 delimiter，不然這些系統語法（尤其是 marker 裡兩個 36 碼的
+// markerId UUID）會把字數嚴重灌水。邏輯對應前端 StoryEditor.tsx／LoreEditor.tsx 用
+// parseMarkdownToParagraphs 取 runs 文字的字數公式，確保編輯中即時字數跟存檔後版本字數一致。
 func wordCount(content string) uint {
-	normalized := whitespaceRegexp.ReplaceAllString(content, "")
+	var builder strings.Builder
+	for _, line := range strings.Split(content, "\n") {
+		_, clean := splitHeadingAndMarkerContent(line)
+		builder.WriteString(stripInlineDelimiters(clean))
+	}
+	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")
 	return uint(len([]rune(normalized)))
 }
 
