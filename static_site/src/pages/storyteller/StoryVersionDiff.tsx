@@ -1,5 +1,13 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { Box, Button, Chip, Divider, Paper, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
 import {
@@ -14,7 +22,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygDemo/parser.ts";
+import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 export default function StorytellerStoryVersionDiff() {
   const { projectPath, storyId, versionId } = useParams();
@@ -32,8 +40,7 @@ export default function StorytellerStoryVersionDiff() {
     (version) => String(version.id) === versionId,
   );
   const target = targetIndex >= 0 ? versions[targetIndex] : undefined;
-  const previous =
-    targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
+  const previous = targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
   const basePath = `/storyteller/story/${projectPath}`;
 
   useTitle(story ? `${story.title} 版本比較 - Storyteller` : "版本比較", {
@@ -124,7 +131,9 @@ export default function StorytellerStoryVersionDiff() {
                     key={line.index}
                     sx={{ typography: "body1", lineHeight: 1.9 }}
                   >
-                    <StorytellerWysiwygMarkdown>{line.right}</StorytellerWysiwygMarkdown>
+                    <StorytellerWysiwygMarkdown>
+                      {line.right}
+                    </StorytellerWysiwygMarkdown>
                   </Box>
                 );
               }
@@ -143,7 +152,9 @@ export default function StorytellerStoryVersionDiff() {
                         "& *": { textDecoration: "line-through" },
                       }}
                     >
-                      <StorytellerWysiwygMarkdown>{line.left}</StorytellerWysiwygMarkdown>
+                      <StorytellerWysiwygMarkdown>
+                        {line.left}
+                      </StorytellerWysiwygMarkdown>
                     </Box>
                   )}
                   {line.state !== "removed" && line.right.trim() && (
@@ -156,7 +167,9 @@ export default function StorytellerStoryVersionDiff() {
                         py: 0.25,
                       }}
                     >
-                      <StorytellerWysiwygMarkdown>{line.right}</StorytellerWysiwygMarkdown>
+                      <StorytellerWysiwygMarkdown>
+                        {line.right}
+                      </StorytellerWysiwygMarkdown>
                     </Box>
                   )}
                 </Box>

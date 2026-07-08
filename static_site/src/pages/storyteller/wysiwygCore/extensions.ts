@@ -19,7 +19,7 @@ import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
  * 使用者打 `#`、`- ` 這類語法時，schema 裡根本沒有對應節點可以被解析成，
  * 只會原地留在段落文字裡（滿足「非白名單語法略過解析、以純文字顯示」）。
  */
-export const wysiwygDemoExtensions = [
+export const wysiwygCoreExtensions = [
   Document,
   MarkerParagraph,
   Text,

@@ -19,7 +19,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygDemo/parser.ts";
+import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 interface CompareDiff {
   id: string;

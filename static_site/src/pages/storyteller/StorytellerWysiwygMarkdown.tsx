@@ -4,9 +4,9 @@ import { Box } from "@mui/material";
 import {
   parseMarkdownToParagraphs,
   type ParsedRun,
-} from "./wysiwygDemo/parser";
-import { HEADING_TYPOGRAPHY_SX } from "./wysiwygDemo/typographySx";
-import type { MarkName } from "./wysiwygDemo/whitelist";
+} from "./wysiwygCore/parser";
+import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
+import type { MarkName } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
@@ -33,7 +33,7 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
  * 所見即所得編輯器的白名單解析器版本 StorytellerMarkdown，介面刻意相容
  * （同樣吃 `children: string`），給故事內容的所有閱讀端（編輯頁預覽面板、公開
  * 閱讀頁、版本 diff）共用同一套解析結果——不是重新實作一套規則，是直接呼叫
- * wysiwygDemo/parser.ts 的 parseMarkdownToParagraphs，跟編輯器本身用同一份邏輯。
+ * wysiwygCore/parser.ts 的 parseMarkdownToParagraphs，跟編輯器本身用同一份邏輯。
  *
  * 只給「故事內容」（可能含新 marker 語法）這種來源用；LoreEditor／AI Agent
  * 面板／使用者簡介這些還沒換新編輯器產生內容的地方，繼續用原本的

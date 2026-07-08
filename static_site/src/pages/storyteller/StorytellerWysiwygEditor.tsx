@@ -39,10 +39,10 @@ import {
   useState,
 } from "react";
 
-import { CommentHighlight } from "./wysiwygDemo/commentHighlight";
-import { markdownToDoc } from "./wysiwygDemo/parser";
-import { serializeDocToMarkdown } from "./wysiwygDemo/serializer";
-import { HEADING_TYPOGRAPHY_SX } from "./wysiwygDemo/typographySx";
+import { CommentHighlight } from "./wysiwygCore/commentHighlight";
+import { markdownToDoc } from "./wysiwygCore/parser";
+import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
+import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
   ALIGNMENT_VALUES,
   COMMENT_COLOR_VALUES,
@@ -52,8 +52,8 @@ import {
   type AlignmentValue,
   type CommentColorValue,
   type HeadingLevel,
-} from "./wysiwygDemo/whitelist";
-import { wysiwygDemoExtensions } from "./wysiwygDemo/extensions";
+} from "./wysiwygCore/whitelist";
+import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
 
 interface HoveredComment {
   text: string;
@@ -153,7 +153,7 @@ export function StorytellerWysiwygEditor({
     useState<ContextMenuPosition | null>(null);
 
   const editor = useEditor({
-    extensions: [...wysiwygDemoExtensions, CommentHighlight],
+    extensions: [...wysiwygCoreExtensions, CommentHighlight],
     content: markdownToDoc(value),
     immediatelyRender: false,
     editorProps: {

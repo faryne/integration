@@ -29,7 +29,7 @@ import {
 } from "@mui/material";
 import { useEffect, useRef, useState } from "react";
 import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
-import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
+import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";

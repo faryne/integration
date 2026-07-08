@@ -63,7 +63,7 @@ import {
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
-import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
+import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
