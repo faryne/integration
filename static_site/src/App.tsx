@@ -114,11 +114,6 @@ const StorytellerStoryVersionDiff = lazy(
 const StorytellerUserProjects = lazy(
   () => import("@/pages/storyteller/UserProjects.tsx"),
 );
-const StorytellerWysiwygDemo = lazy(() =>
-  import("@/pages/storyteller/WysiwygDemo.tsx").then((module) => ({
-    default: module.WysiwygDemo,
-  })),
-);
 const CrawlerIndex = lazy(() =>
   import("@/pages/crawler").then((module) => ({
     default: module.CrawlerIndex,
@@ -334,10 +329,6 @@ function App() {
                 />
                 <Route path={"story/*"} element={<StorytellerReader />} />
                 <Route path={"editor"} element={<Editor />} />
-                <Route
-                  path={"wysiwyg-demo"}
-                  element={<StorytellerWysiwygDemo />}
-                />
                 <Route path={"*"} element={<ErrorPage code={404} />} />
               </Route>
 
