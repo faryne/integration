@@ -4,10 +4,14 @@ import {
   ALIGN_BLOCK_CLOSE,
   ALIGN_BLOCK_OPEN,
   DEFAULT_ALIGNMENT,
+  DEFAULT_HEADING_LEVEL,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
+  MARKER_COMMENT_ATTR,
   MARKER_OPEN,
   MARK_SYNTAX_WHITELIST,
+  escapeMarkerComment,
+  type HeadingLevel,
   type MarkName,
 } from "./whitelist";
 
@@ -74,8 +78,17 @@ function serializeParagraph(paragraph: JSONContent): string {
   const markerId = (paragraph.attrs?.markerId as string | null) ?? "";
   const align =
     (paragraph.attrs?.textAlign as string | undefined) ?? DEFAULT_ALIGNMENT;
+  const headingLevel =
+    (paragraph.attrs?.headingLevel as HeadingLevel | undefined) ??
+    DEFAULT_HEADING_LEVEL;
+  const comment = (paragraph.attrs?.comment as string | null) ?? null;
+  const headingPrefix =
+    headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
+  const commentAttr = comment
+    ? ` ${MARKER_COMMENT_ATTR}="${escapeMarkerComment(comment)}"`
+    : "";
   const inline = serializeParagraphInline(paragraph);
-  const wrapped = `${MARKER_OPEN}${markerId}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
+  const wrapped = `${headingPrefix}${MARKER_OPEN}${markerId}${commentAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 
   if (align !== DEFAULT_ALIGNMENT) {
     return `${ALIGN_BLOCK_OPEN} ${align}\n${wrapped}\n${ALIGN_BLOCK_CLOSE}`;

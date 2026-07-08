@@ -2,6 +2,7 @@ import { Box } from "@mui/material";
 import type { ReactNode } from "react";
 
 import { parseMarkdownToParagraphs, type ParsedRun } from "./parser";
+import { HEADING_TYPOGRAPHY_SX } from "./typographySx";
 import type { MarkName } from "./whitelist";
 
 const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
@@ -30,14 +31,23 @@ export function Preview({ markdown }: { markdown: string }) {
   const paragraphs = parseMarkdownToParagraphs(markdown);
 
   return (
-    <Box sx={{ "& p": { margin: 0, minHeight: "1.5em" } }}>
-      {paragraphs.map((paragraph, index) => (
-        <p key={paragraph.markerId ?? index} style={{ textAlign: paragraph.align }}>
-          {paragraph.runs.length === 0
-            ? " "
-            : paragraph.runs.map((run, runIndex) => renderRun(run, runIndex))}
-        </p>
-      ))}
+    <Box sx={HEADING_TYPOGRAPHY_SX}>
+      {paragraphs.map((paragraph, index) => {
+        const HeadingOrParagraphTag =
+          paragraph.headingLevel > 0
+            ? (`h${paragraph.headingLevel}` as keyof React.JSX.IntrinsicElements)
+            : "p";
+        return (
+          <HeadingOrParagraphTag
+            key={paragraph.markerId ?? index}
+            style={{ textAlign: paragraph.align }}
+          >
+            {paragraph.runs.length === 0
+              ? " "
+              : paragraph.runs.map((run, runIndex) => renderRun(run, runIndex))}
+          </HeadingOrParagraphTag>
+        );
+      })}
     </Box>
   );
 }

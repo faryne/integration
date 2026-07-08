@@ -46,6 +46,11 @@ export const ALIGNMENT_VALUES = ["left", "center", "right"] as const;
 export type AlignmentValue = (typeof ALIGNMENT_VALUES)[number];
 export const DEFAULT_ALIGNMENT: AlignmentValue = "left";
 
+/** 0 代表一般段落（非標題）。語法是行首的 `#` 到 `######`，比照 CommonMark ATX heading。 */
+export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const;
+export type HeadingLevel = 0 | (typeof HEADING_LEVELS)[number];
+export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
+
 export const ALIGN_BLOCK_OPEN = ":::";
 export const ALIGN_BLOCK_CLOSE = ":::";
 
@@ -54,6 +59,19 @@ export const MARKER_OPEN = "⟦";
 export const MARKER_CLOSE = "⟧";
 export const MARKER_CLOSE_SLASH = "/";
 
+/** 段落最多一則註解，內嵌成 marker 開始標記上的屬性：⟦markerId comment="..."⟧。 */
+export const MARKER_COMMENT_ATTR = "comment";
+
 export function generateMarkerId(): string {
   return crypto.randomUUID();
+}
+
+/** 把註解文字裡的反斜線／雙引號跳脫，才能安全塞進 `comment="..."` 屬性字串。順序：反斜線一定要先跳脫。 */
+export function escapeMarkerComment(text: string): string {
+  return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/** escapeMarkerComment 的反向操作：把 `\X` 還原成 `X`，不管 X 是什麼字元。 */
+export function unescapeMarkerComment(escaped: string): string {
+  return escaped.replace(/\\(.)/g, "$1");
 }
