@@ -62,7 +62,6 @@ import {
   insertStoryMention,
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
-import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygDemo/parser.ts";
 import type {
@@ -876,22 +875,6 @@ export default function StorytellerStoryEditor() {
               value={sidePanel}
               onChange={handleSidePanelChange}
             />
-            {sidePanel === "preview" && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  borderRadius: 1,
-                  p: 3,
-                  height: { lg: 720 },
-                  overflow: "auto",
-                }}
-              >
-                <StorytellerWysiwygMarkdown>
-                  {content}
-                </StorytellerWysiwygMarkdown>
-              </Paper>
-            )}
-
             {sidePanel === "history" && (
               <Paper
                 variant="outlined"
