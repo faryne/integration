@@ -1,6 +1,7 @@
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Grid,
@@ -100,7 +101,9 @@ export default function StorytellerLoreEditor() {
   const lastSavedDraftRef = useRef(serializeLoreDraft("", ""));
   const latestDraftRef = useRef<LoreDraft>({ title: "", content: "" });
   const autoSaveRunningRef = useRef(false);
-  const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel>("ai");
+  const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
+    null,
+  );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
@@ -613,177 +616,182 @@ export default function StorytellerLoreEditor() {
         </Stack>
       }
     >
+      <Box sx={{ mb: 1 }}>
+        <StorytellerEditorSideTabs
+          value={sidePanel}
+          onChange={setSidePanel}
+          historyDisabled={isNewLore}
+        />
+      </Box>
+
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: 7 }}>
+        <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
           <StorytellerWysiwygEditor value={content} onChange={setContent} />
         </Grid>
 
-        <Grid size={{ xs: 12, lg: 5 }}>
-          <Stack spacing={2}>
-            <StorytellerEditorSideTabs
-              value={sidePanel}
-              onChange={setSidePanel}
-              historyDisabled={isNewLore}
-            />
-            {sidePanel === "history" && (
-              <Paper
-                variant="outlined"
-                sx={{
-                  borderRadius: 1,
-                  p: 2,
-                  height: { lg: 720 },
-                  overflow: "auto",
-                }}
-              >
-                <StoryEditHistory
-                  items={loreHistoryItems}
-                  loading={versionsLoading}
-                  leftVersionId={leftVersionId}
-                  rightVersionId={rightVersionId}
-                  comparePath={comparePath}
-                  onLeftVersionChange={handleLeftVersionChange}
-                  onRightVersionChange={setRightVersionId}
-                  isRightVersionDisabled={isRightVersionDisabled}
-                  isNewItem={isNewLore}
-                  newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
-                />
-              </Paper>
-            )}
+        {sidePanel && (
+          <Grid size={{ xs: 12, lg: 5 }}>
+            <Stack spacing={2}>
+              {sidePanel === "history" && (
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 1,
+                    p: 2,
+                    height: { lg: 720 },
+                    overflow: "auto",
+                  }}
+                >
+                  <StoryEditHistory
+                    items={loreHistoryItems}
+                    loading={versionsLoading}
+                    leftVersionId={leftVersionId}
+                    rightVersionId={rightVersionId}
+                    comparePath={comparePath}
+                    onLeftVersionChange={handleLeftVersionChange}
+                    onRightVersionChange={setRightVersionId}
+                    isRightVersionDisabled={isRightVersionDisabled}
+                    isNewItem={isNewLore}
+                    newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+                  />
+                </Paper>
+              )}
 
-            {sidePanel === "ai" && (
-              <StorytellerAgentPanel
-                agents={panelAgents}
-                selectedAgentId={String(selectedAgent?.id ?? "")}
-                onSelectedAgentChange={setSelectedAgentId}
-                messages={panelMessages}
-                messagesLoading={aiMessagesLoading}
-                pending={runAgent.isPending}
-                unavailableMessage={
-                  isNewLore
-                    ? "設定集第一次存檔後才能呼叫 AI Agent。"
-                    : undefined
-                }
-                emptyTitle="還沒有 AI Agent 對話紀錄"
-                emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
-                hasMoreHistory={Boolean(hasMoreAiMessages)}
-                loadingMoreHistory={loadingMoreAiMessages}
-                onLoadMoreHistory={() => void fetchMoreAiMessages()}
-                errorMessage={
-                  runAgent.isError
-                    ? errorMessage(
-                        runAgent.error,
-                        "AI Agent 呼叫失敗，請確認 Agent 設定與後端狀態。",
-                      )
-                    : ""
-                }
-                prompt={aiPrompt}
-                onPromptChange={setAiPrompt}
-                promptPlaceholder="可輸入 Markdown。使用 @thisLore 引用本篇設定集，或輸入 @story:、@lore: 從候選清單插入引用。"
-                promptError={Boolean(aiPayloadError)}
-                promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
-                promptWarning={aiPayloadError}
-                promptExtras={
-                  <>
-                    {overrideApiKeyOptions.length > 1 && (
-                      <TextField
-                        select
-                        size="small"
-                        label="使用其他金鑰執行一次"
-                        value={overrideApiKeyId}
-                        onChange={(event) =>
-                          setOverrideApiKeyId(event.target.value)
-                        }
-                        sx={{ minWidth: 220 }}
-                      >
-                        <MenuItem value="">使用 Agent 預設金鑰</MenuItem>
-                        {overrideApiKeyOptions.map((apiKey) => (
-                          <MenuItem key={apiKey.id} value={String(apiKey.id)}>
-                            {apiKey.label || `金鑰 #${apiKey.id}`}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    )}
-                    {loreReferences.length > 0 && (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        flexWrap="wrap"
-                        useFlexGap
-                      >
-                        {loreReferences.map((reference) => (
-                          <Chip
-                            key={reference.token}
-                            size="small"
-                            color={
-                              reference.token === "@thisLore"
-                                ? "primary"
-                                : "default"
-                            }
-                            label={reference.title}
-                          />
-                        ))}
-                      </Stack>
-                    )}
-                    {storyMentionOptions.length > 0 && (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        flexWrap="wrap"
-                        useFlexGap
-                      >
-                        {storyMentionOptions.map((item) => (
-                          <Button
-                            key={item.public_id}
-                            size="small"
-                            variant="outlined"
-                            onClick={() =>
-                              setAiPrompt((current) =>
-                                insertStoryMention(current, item.title),
-                              )
-                            }
-                          >
-                            {item.title}
-                          </Button>
-                        ))}
-                      </Stack>
-                    )}
-                    {loreMentionOptions.length > 0 && (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        flexWrap="wrap"
-                        useFlexGap
-                      >
-                        {loreMentionOptions.map((item) => (
-                          <Button
-                            key={item.public_id}
-                            size="small"
-                            variant="outlined"
-                            onClick={() =>
-                              setAiPrompt((current) =>
-                                insertLoreMention(current, item.title),
-                              )
-                            }
-                          >
-                            設定集：{item.title}
-                          </Button>
-                        ))}
-                      </Stack>
-                    )}
-                  </>
-                }
-                canRun={canRunAgent}
-                onRun={runSelectedAgent}
-                onApplyText={applyAgentText}
-                enableReplace={false}
-                enableInsert={false}
-                replyTarget={replyTarget}
-                onReply={setReplyTarget}
-                onCancelReply={() => setReplyTarget(null)}
-              />
-            )}
-          </Stack>
-        </Grid>
+              {sidePanel === "ai" && (
+                <StorytellerAgentPanel
+                  agents={panelAgents}
+                  selectedAgentId={String(selectedAgent?.id ?? "")}
+                  onSelectedAgentChange={setSelectedAgentId}
+                  messages={panelMessages}
+                  messagesLoading={aiMessagesLoading}
+                  pending={runAgent.isPending}
+                  unavailableMessage={
+                    isNewLore
+                      ? "設定集第一次存檔後才能呼叫 AI Agent。"
+                      : undefined
+                  }
+                  emptyTitle="還沒有 AI Agent 對話紀錄"
+                  emptyDescription="送出需求後，這份設定集的 AI Agent 對話會顯示在這裡。"
+                  hasMoreHistory={Boolean(hasMoreAiMessages)}
+                  loadingMoreHistory={loadingMoreAiMessages}
+                  onLoadMoreHistory={() => void fetchMoreAiMessages()}
+                  errorMessage={
+                    runAgent.isError
+                      ? errorMessage(
+                          runAgent.error,
+                          "AI Agent 呼叫失敗，請確認 Agent 設定與後端狀態。",
+                        )
+                      : ""
+                  }
+                  prompt={aiPrompt}
+                  onPromptChange={setAiPrompt}
+                  promptPlaceholder="可輸入 Markdown。使用 @thisLore 引用本篇設定集，或輸入 @story:、@lore: 從候選清單插入引用。"
+                  promptError={Boolean(aiPayloadError)}
+                  promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
+                  promptWarning={aiPayloadError}
+                  promptExtras={
+                    <>
+                      {overrideApiKeyOptions.length > 1 && (
+                        <TextField
+                          select
+                          size="small"
+                          label="使用其他金鑰執行一次"
+                          value={overrideApiKeyId}
+                          onChange={(event) =>
+                            setOverrideApiKeyId(event.target.value)
+                          }
+                          sx={{ minWidth: 220 }}
+                        >
+                          <MenuItem value="">使用 Agent 預設金鑰</MenuItem>
+                          {overrideApiKeyOptions.map((apiKey) => (
+                            <MenuItem key={apiKey.id} value={String(apiKey.id)}>
+                              {apiKey.label || `金鑰 #${apiKey.id}`}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      )}
+                      {loreReferences.length > 0 && (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
+                          {loreReferences.map((reference) => (
+                            <Chip
+                              key={reference.token}
+                              size="small"
+                              color={
+                                reference.token === "@thisLore"
+                                  ? "primary"
+                                  : "default"
+                              }
+                              label={reference.title}
+                            />
+                          ))}
+                        </Stack>
+                      )}
+                      {storyMentionOptions.length > 0 && (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
+                          {storyMentionOptions.map((item) => (
+                            <Button
+                              key={item.public_id}
+                              size="small"
+                              variant="outlined"
+                              onClick={() =>
+                                setAiPrompt((current) =>
+                                  insertStoryMention(current, item.title),
+                                )
+                              }
+                            >
+                              {item.title}
+                            </Button>
+                          ))}
+                        </Stack>
+                      )}
+                      {loreMentionOptions.length > 0 && (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
+                          {loreMentionOptions.map((item) => (
+                            <Button
+                              key={item.public_id}
+                              size="small"
+                              variant="outlined"
+                              onClick={() =>
+                                setAiPrompt((current) =>
+                                  insertLoreMention(current, item.title),
+                                )
+                              }
+                            >
+                              設定集：{item.title}
+                            </Button>
+                          ))}
+                        </Stack>
+                      )}
+                    </>
+                  }
+                  canRun={canRunAgent}
+                  onRun={runSelectedAgent}
+                  onApplyText={applyAgentText}
+                  enableReplace={false}
+                  enableInsert={false}
+                  replyTarget={replyTarget}
+                  onReply={setReplyTarget}
+                  onCancelReply={() => setReplyTarget(null)}
+                />
+              )}
+            </Stack>
+          </Grid>
+        )}
       </Grid>
       <CustomSnackbar
         open={Boolean(snack)}
