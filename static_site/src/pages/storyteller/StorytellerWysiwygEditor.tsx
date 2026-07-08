@@ -45,9 +45,12 @@ import { serializeDocToMarkdown } from "./wysiwygDemo/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygDemo/typographySx";
 import {
   ALIGNMENT_VALUES,
+  COMMENT_COLOR_VALUES,
+  DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
   type AlignmentValue,
+  type CommentColorValue,
   type HeadingLevel,
 } from "./wysiwygDemo/whitelist";
 import { wysiwygDemoExtensions } from "./wysiwygDemo/extensions";
@@ -63,16 +66,43 @@ interface ContextMenuPosition {
   y: number;
 }
 
+/** 註解底色的實際色值跟顯示名稱，固定色盤（見 whitelist.ts 的 COMMENT_COLOR_VALUES）。 */
+const COMMENT_COLOR_STYLES: Record<
+  CommentColorValue,
+  { background: string; border: string }
+> = {
+  yellow: { background: "rgba(255, 214, 0, 0.16)", border: "#ffd600" },
+  pink: { background: "rgba(236, 64, 122, 0.14)", border: "#ec407a" },
+  blue: { background: "rgba(66, 165, 245, 0.16)", border: "#42a5f5" },
+  green: { background: "rgba(102, 187, 106, 0.16)", border: "#66bb6a" },
+  purple: { background: "rgba(171, 71, 188, 0.16)", border: "#ab47bc" },
+};
+
+const COMMENT_COLOR_LABELS: Record<CommentColorValue, string> = {
+  yellow: "黃",
+  pink: "粉紅",
+  blue: "藍",
+  green: "綠",
+  purple: "紫",
+};
+
 // 只在編輯區生效的高亮樣式，刻意不放進 typographySx.ts 共用——
 // 註解本來就不該出現在預覽區（故事閱讀頁），兩邊的樣式不應該混在一起。
+// 每種顏色各自一個 class（見 commentHighlight.ts 怎麼決定套用哪個 class），
+// 而不是用 inline style，這樣才能繼續透過 sx 主題化、深色模式等既有機制。
 const COMMENT_HIGHLIGHT_SX = {
-  "& .wysiwyg-has-comment": {
-    backgroundColor: "rgba(255, 214, 0, 0.16)",
-    borderLeft: "3px solid #ffd600",
-    paddingLeft: "8px",
-    marginLeft: "-8px",
-    borderRadius: "2px",
-  },
+  ...Object.fromEntries(
+    COMMENT_COLOR_VALUES.map((color) => [
+      `& .wysiwyg-comment-color-${color}`,
+      {
+        backgroundColor: COMMENT_COLOR_STYLES[color].background,
+        borderLeft: `3px solid ${COMMENT_COLOR_STYLES[color].border}`,
+        paddingLeft: "8px",
+        marginLeft: "-8px",
+        borderRadius: "2px",
+      },
+    ]),
+  ),
   // 用游標樣式提示「這裡可以右鍵開編輯工具」，不用另外疊一個 tooltip——
   // 有註解的段落 hover 時已經會跳出註解內容的 tooltip 了，再加一個提示視窗只會更亂。
   "& p, & h1, & h2, & h3, & h4, & h5, & h6": {
@@ -114,6 +144,8 @@ export function StorytellerWysiwygEditor({
   const [pendingSnippet, setPendingSnippet] = useState("");
   const [pendingHadExistingComment, setPendingHadExistingComment] =
     useState(false);
+  const [pendingCommentColor, setPendingCommentColor] =
+    useState<CommentColorValue>(DEFAULT_COMMENT_COLOR);
   const [hoveredComment, setHoveredComment] = useState<HoveredComment | null>(
     null,
   );
@@ -203,21 +235,27 @@ export function StorytellerWysiwygEditor({
     const markerId = parent.attrs.markerId as string | null;
     if (!markerId) return;
     const existingComment = parent.attrs.comment as string | null;
+    const existingColor = parent.attrs.commentColor as CommentColorValue | null;
     setPendingMarkerId(markerId);
     setPendingSnippet(parent.textContent.slice(0, 24) || "(空段落)");
     setPendingHadExistingComment(Boolean(existingComment));
     setCommentDraft(existingComment ?? "");
+    setPendingCommentColor(existingColor ?? DEFAULT_COMMENT_COLOR);
     setCommentDialogOpen(true);
   };
 
   const handleConfirmComment = () => {
     if (!pendingMarkerId || commentDraft.trim() === "") return;
-    editor.chain().focus().setComment(commentDraft.trim()).run();
+    editor
+      .chain()
+      .focus()
+      .setComment(commentDraft.trim(), pendingCommentColor)
+      .run();
     setCommentDialogOpen(false);
   };
 
-  // 找到目前文件裡持有這個 markerId 的段落，直接用位置操作清掉它的 comment attribute——
-  // 不透過 selection/focus，因為要刪除的段落不一定是目前游標所在的段落。
+  // 找到目前文件裡持有這個 markerId 的段落，直接用位置操作清掉它的 comment/commentColor
+  // attribute——不透過 selection/focus，因為要刪除的段落不一定是目前游標所在的段落。
   const handleRemoveComment = (markerId: string) => {
     let targetPos: number | null = null;
     editor.state.doc.descendants((node, pos) => {
@@ -231,6 +269,7 @@ export function StorytellerWysiwygEditor({
     const confirmedPos = targetPos;
     editor.commands.command(({ tr }) => {
       tr.setNodeAttribute(confirmedPos, "comment", null);
+      tr.setNodeAttribute(confirmedPos, "commentColor", null);
       return true;
     });
     setCommentDialogOpen(false);
@@ -489,6 +528,39 @@ export function StorytellerWysiwygEditor({
             value={commentDraft}
             onChange={(event) => setCommentDraft(event.target.value)}
           />
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 2, mb: 1 }}
+          >
+            底色
+          </Typography>
+          <Stack direction="row" spacing={1}>
+            {COMMENT_COLOR_VALUES.map((color) => (
+              <Tooltip key={color} title={COMMENT_COLOR_LABELS[color]}>
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label={COMMENT_COLOR_LABELS[color]}
+                  aria-pressed={pendingCommentColor === color}
+                  onClick={() => setPendingCommentColor(color)}
+                  sx={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "2px solid",
+                    borderColor:
+                      pendingCommentColor === color
+                        ? "text.primary"
+                        : "transparent",
+                    bgcolor: COMMENT_COLOR_STYLES[color].border,
+                    cursor: "pointer",
+                    p: 0,
+                  }}
+                />
+              </Tooltip>
+            ))}
+          </Stack>
         </DialogContent>
         <DialogActions>
           {pendingHadExistingComment && pendingMarkerId && (

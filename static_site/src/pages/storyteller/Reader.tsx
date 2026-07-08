@@ -194,9 +194,7 @@ function StoryIndexPanel({
                 bookmark.story_version_id !== bookmark.latest_story_version_id;
               const lineText = bookmark.line_preview.trim();
               const snippet =
-                lineText.length > 10
-                  ? `${lineText.slice(0, 10)}…`
-                  : lineText;
+                lineText.length > 10 ? `${lineText.slice(0, 10)}…` : lineText;
               return (
                 <Paper
                   key={bookmark.id}
@@ -229,18 +227,8 @@ function StoryIndexPanel({
                       />
                     )}
                   </Stack>
-                  <Typography variant="body2">
-                    第 {bookmark.line_index + 1} 行
-                    {snippet && (
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        color="text.secondary"
-                      >
-                        {" "}
-                        · {snippet}
-                      </Typography>
-                    )}
+                  <Typography variant="body2" color="text.secondary">
+                    {snippet || "（空白段落）"}
                   </Typography>
                 </Paper>
               );
@@ -354,10 +342,9 @@ function StoryContentLines({
         // 新版內容每行都會被 marker 包住（例如 `⟦id⟧⟦/id⟧`），就算段落本身是空的，
         // 原始字串也不會是空字串——用解析結果的實際文字判斷是不是空行，而不是直接看
         // 原始字串是否為空白，不然舊資料的空行間距（用來排版）在遷移後會失效。
-        const isBlankLine =
-          parseMarkdownToParagraphs(line)[0].runs.every(
-            (run) => run.text.trim() === "",
-          );
+        const isBlankLine = parseMarkdownToParagraphs(line)[0].runs.every(
+          (run) => run.text.trim() === "",
+        );
         if (isBlankLine) {
           return <Box key={index} sx={{ height: 12 }} />;
         }
@@ -439,9 +426,9 @@ export default function StorytellerReader() {
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [pendingBookmarkLines, setPendingBookmarkLines] = useState<
-    Set<number>
-  >(new Set());
+  const [pendingBookmarkLines, setPendingBookmarkLines] = useState<Set<number>>(
+    new Set(),
+  );
   const [bookmarkSnackbar, setBookmarkSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -825,7 +812,9 @@ export default function StorytellerReader() {
                     onClick={() => setVersionListOpen((open) => !open)}
                     sx={{
                       flexShrink: 0,
-                      color: versionListOpen ? "primary.main" : "text.secondary",
+                      color: versionListOpen
+                        ? "primary.main"
+                        : "text.secondary",
                     }}
                   >
                     <HistoryIcon fontSize="small" />
@@ -935,8 +924,8 @@ export default function StorytellerReader() {
                 }}
               >
                 <Typography variant="body2">
-                  此非最新版本（第{" "}
-                  {versions.length - historicalVersionIndex} 版），內容為當時儲存的版本，僅能移除既有書籤，無法新增
+                  此非最新版本（第 {versions.length - historicalVersionIndex}{" "}
+                  版），內容為當時儲存的版本，僅能移除既有書籤，無法新增
                 </Typography>
                 <Typography
                   variant="body2"
@@ -1140,7 +1129,9 @@ export default function StorytellerReader() {
       <CustomSnackbar
         open={bookmarkSnackbar.open}
         message={bookmarkSnackbar.message}
-        onClose={() => setBookmarkSnackbar((prev) => ({ ...prev, open: false }))}
+        onClose={() =>
+          setBookmarkSnackbar((prev) => ({ ...prev, open: false }))
+        }
       />
 
       {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引、非作者可收藏與評分 */}
