@@ -31,7 +31,13 @@ import {
   Typography,
 } from "@mui/material";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import { type MouseEvent, useEffect, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { CommentHighlight } from "./wysiwygDemo/commentHighlight";
 import { markdownToDoc } from "./wysiwygDemo/parser";
@@ -82,6 +88,8 @@ const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
+  /** 塞在工具列最右側的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
+  toolbarExtra?: ReactNode;
 }
 
 /**
@@ -96,6 +104,7 @@ export interface StorytellerWysiwygEditorProps {
 export function StorytellerWysiwygEditor({
   value,
   onChange,
+  toolbarExtra,
 }: StorytellerWysiwygEditorProps) {
   const lastEmittedRef = useRef(value);
 
@@ -270,8 +279,8 @@ export function StorytellerWysiwygEditor({
   };
 
   const handleContextMenuRemoveComment = () => {
-    const markerId = editor.state.selection.$from.parent.attrs
-      .markerId as string | null;
+    const markerId = editor.state.selection.$from.parent.attrs.markerId as
+      string | null;
     closeContextMenu();
     if (markerId) handleRemoveComment(markerId);
   };
@@ -314,7 +323,11 @@ export function StorytellerWysiwygEditor({
 
           <Divider orientation="vertical" flexItem />
 
-          <ToggleButtonGroup size="small" value={activeMarks} onChange={() => {}}>
+          <ToggleButtonGroup
+            size="small"
+            value={activeMarks}
+            onChange={() => {}}
+          >
             <Tooltip title="粗體">
               <ToggleButton
                 value="bold"
@@ -355,9 +368,7 @@ export function StorytellerWysiwygEditor({
               <ToggleButton
                 value="superscript"
                 selected={editorState.superscript}
-                onClick={() =>
-                  editor.chain().focus().toggleSuperscript().run()
-                }
+                onClick={() => editor.chain().focus().toggleSuperscript().run()}
               >
                 <SuperscriptIcon fontSize="small" />
               </ToggleButton>
@@ -404,6 +415,13 @@ export function StorytellerWysiwygEditor({
               </ToggleButton>
             </Tooltip>
           </ToggleButtonGroup>
+
+          {toolbarExtra && (
+            <>
+              <Divider orientation="vertical" flexItem />
+              <Box sx={{ ml: "auto" }}>{toolbarExtra}</Box>
+            </>
+          )}
         </Stack>
       </Paper>
 

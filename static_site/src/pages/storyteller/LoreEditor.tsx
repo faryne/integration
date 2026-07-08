@@ -1,7 +1,6 @@
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
-  Box,
   Button,
   Chip,
   Grid,
@@ -616,17 +615,19 @@ export default function StorytellerLoreEditor() {
         </Stack>
       }
     >
-      <Box sx={{ mb: 1 }}>
-        <StorytellerEditorSideTabs
-          value={sidePanel}
-          onChange={setSidePanel}
-          historyDisabled={isNewLore}
-        />
-      </Box>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
-          <StorytellerWysiwygEditor value={content} onChange={setContent} />
+          <StorytellerWysiwygEditor
+            value={content}
+            onChange={setContent}
+            toolbarExtra={
+              <StorytellerEditorSideTabs
+                value={sidePanel}
+                onChange={setSidePanel}
+                historyDisabled={isNewLore}
+              />
+            }
+          />
         </Grid>
 
         {sidePanel && (
