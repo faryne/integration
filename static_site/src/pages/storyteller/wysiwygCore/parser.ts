@@ -7,6 +7,7 @@ import {
   DEFAULT_ALIGNMENT,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
+  FOOTNOTE_PARSE_DELIMITERS,
   INLINE_MARKER_TYPES,
   isSafeHref,
   LINK_TARGET_VALUES,
@@ -17,6 +18,7 @@ import {
   MARKER_COMMENT_ATTR,
   MARKER_COMMENT_COLOR_ATTR,
   MARKER_HREF_ATTR,
+  MARKER_NOTE_ATTR,
   MARKER_OPEN,
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
@@ -43,6 +45,14 @@ export interface ParsedRun {
   href?: string;
   /** 連結開啟方式，目前只有 "_blank" 有意義，沒設定就是同分頁開啟。 */
   target?: LinkTargetValue;
+  /**
+   * 腳注的 marker id（含 `footnote-` 前綴），同一個腳注橫跨多個 run（例如錨定文字裡有
+   * 粗體）時，這些 run 的 footnoteId 會是同一個值——渲染端要靠這個判斷「連續幾個 run
+   * 其實是同一個腳注錨點」，只在整組結束後渲染一次上標編號，不是每個 run 各渲染一次。
+   */
+  footnoteId?: string;
+  /** 腳注內文（原始字串，可能還帶著粗體/斜體/底線的 delimiter，尚未解析），沒設定就是 undefined。 */
+  footnoteNote?: string;
 }
 
 export interface ParsedParagraph {
@@ -70,14 +80,16 @@ const MARKER_PATTERN = new RegExp(
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
 );
 
-// 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結）。同一個 marker 實例只會用到
-// 其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type 分流解析，因為屬性名稱
-// 本身就不會撞名，直接掃出所有認得的屬性即可，parseInline 不需要知道 marker 是哪個 type。
+// 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結、footnote 的內文）。同一個
+// marker 實例只會用到其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type
+// 分流解析，因為屬性名稱本身就不會撞名，直接掃出所有認得的屬性即可，parseInline
+// 不需要知道 marker 是哪個 type。
 interface InlineAttrs {
   textColor?: TextColorValue;
   bgColor?: BgColorValue;
   href?: string;
   target?: LinkTargetValue;
+  note?: string;
 }
 
 // 行內 marker 的開頭標記（sticky，用 lastIndex 從指定位置比對）：
@@ -118,19 +130,36 @@ function parseInlineAttrs(attrBlob: string): InlineAttrs {
       (LINK_TARGET_VALUES as readonly string[]).includes(value)
     ) {
       result.target = value as LinkTargetValue;
+    } else if (name === MARKER_NOTE_ATTR) {
+      // note 沒有固定色盤那種值限制（自由格式文字），跟 comment 屬性一樣直接接受，
+      // 只要跳脫格式正確就算合法。
+      result.note = value;
     }
   }
   return result;
 }
 
-/** 把行內 marker 的屬性套到 run 上：巢狀時內層優先（內層已經有值就不被外層覆蓋）。 */
-function applyInlineAttrs(run: ParsedRun, attrs: InlineAttrs): ParsedRun {
+/**
+ * 把行內 marker 的屬性套到 run 上：巢狀時內層優先（內層已經有值就不被外層覆蓋）。
+ * `markerId` 是這個行內 marker 的完整 id（含 type 前綴，例如 `footnote-a3f9`）——
+ * 只有 footnote 需要記住是「哪一個」腳注（用來判斷連續 run 是不是同一個腳注錨點、
+ * 渲染端也要靠這個 id 產生錨點/回連結的 DOM id），span/a 不需要，其他屬性
+ * （顏色/連結）只看值本身就夠了，不需要記 id。
+ */
+function applyInlineAttrs(
+  run: ParsedRun,
+  attrs: InlineAttrs,
+  markerId: string,
+): ParsedRun {
+  const isFootnote = markerId.startsWith("footnote-");
   return {
     ...run,
     textColor: run.textColor ?? attrs.textColor,
     bgColor: run.bgColor ?? attrs.bgColor,
     href: run.href ?? attrs.href,
     target: run.target ?? attrs.target,
+    footnoteId: run.footnoteId ?? (isFootnote ? markerId : undefined),
+    footnoteNote: run.footnoteNote ?? (isFootnote ? attrs.note : undefined),
   };
 }
 
@@ -222,12 +251,12 @@ function parseInline(text: string): ParsedRun[] {
   const innerRaw = text.slice(token.openEnd, closeIndex);
   const after = text.slice(closeIndex + closeTag.length);
   const innerRuns = parseInline(innerRaw).map((run) =>
-    applyInlineAttrs(run, token.attrs),
+    applyInlineAttrs(run, token.attrs, token.id),
   );
   return [...beforeRuns, ...innerRuns, ...parseInline(after)];
 }
 
-/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結），normalizeRuns 用來決定能不能合併。 */
+/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結＋腳注），normalizeRuns 用來決定能不能合併。 */
 function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
     a.marks.length === b.marks.length &&
@@ -235,7 +264,8 @@ function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
     a.textColor === b.textColor &&
     a.bgColor === b.bgColor &&
     a.href === b.href &&
-    a.target === b.target
+    a.target === b.target &&
+    a.footnoteId === b.footnoteId
   );
 }
 
@@ -250,6 +280,52 @@ function normalizeRuns(runs: ParsedRun[]): ParsedRun[] {
     }
   }
   return merged;
+}
+
+/**
+ * 腳注內文的簡化版行內解析：只認粗體/斜體/底線（`FOOTNOTE_PARSE_DELIMITERS`，見
+ * whitelist.ts 為什麼刻意不含上下標），不認行內 marker（腳注內文不能再巢狀另一個
+ * 顏色/連結/腳注——這是屬性值裡的一段純文字，不是段落 runs 的一部分）。
+ * 給渲染端（閱讀頁的腳注清單、編輯區的 hover tooltip）共用，兩邊都要看到一樣的格式。
+ */
+export function parseFootnoteNoteRuns(note: string): ParsedRun[] {
+  function parse(text: string): ParsedRun[] {
+    if (text === "") return [];
+
+    let openIndex = -1;
+    let openDelimiter: (typeof FOOTNOTE_PARSE_DELIMITERS)[number] | null = null;
+    outer: for (let i = 0; i < text.length; i++) {
+      for (const candidate of FOOTNOTE_PARSE_DELIMITERS) {
+        if (text.startsWith(candidate.delimiter, i)) {
+          openIndex = i;
+          openDelimiter = candidate;
+          break outer;
+        }
+      }
+    }
+    if (openIndex === -1 || !openDelimiter) return [{ text, marks: [] }];
+
+    const searchFrom = openIndex + openDelimiter.delimiter.length;
+    const closeIndex = text.indexOf(openDelimiter.delimiter, searchFrom);
+    if (closeIndex === -1) {
+      return [
+        { text: text.slice(0, searchFrom), marks: [] },
+        ...parse(text.slice(searchFrom)),
+      ];
+    }
+
+    const before = text.slice(0, openIndex);
+    const innerRaw = text.slice(searchFrom, closeIndex);
+    const after = text.slice(closeIndex + openDelimiter.delimiter.length);
+    const innerRuns = parse(innerRaw).map((run) => ({
+      ...run,
+      marks: [...run.marks, openDelimiter!.markName],
+    }));
+    const beforeRuns: ParsedRun[] = before ? [{ text: before, marks: [] }] : [];
+    return [...beforeRuns, ...innerRuns, ...parse(after)];
+  }
+
+  return normalizeRuns(parse(note));
 }
 
 function extractHeading(line: string): {
@@ -349,7 +425,36 @@ export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
   return markdown.split("\n").map(parseLine);
 }
 
-/** 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色／連結 marks。 */
+/**
+ * 依文件順序收集這份內容裡所有腳注的「乾淨內文」（粗體/斜體/底線的 delimiter 已經拿掉，
+ * 只留讀者看得到的文字），供版本 diff 頁單獨比對用——閱讀頁把腳注放在故事尾端渲染，
+ * diff 也比照辦理，把腳注跟本文分開兩個區塊比對，不是把腳注文字塞進本文那一行裡。
+ * 一個腳注可能橫跨多個 run（錨定文字裡有粗體），但只在第一次遇到某個 footnoteId 時
+ * 收集一次，避免同一則腳注被重複列出。
+ */
+export function extractFootnoteNotesForDiff(content: string): string[] {
+  const paragraphs = parseMarkdownToParagraphs(content);
+  const seenFootnoteIds = new Set<string>();
+  const notes: string[] = [];
+  for (const paragraph of paragraphs) {
+    for (const run of paragraph.runs) {
+      if (!run.footnoteId || seenFootnoteIds.has(run.footnoteId)) continue;
+      seenFootnoteIds.add(run.footnoteId);
+      notes.push(
+        parseFootnoteNoteRuns(run.footnoteNote ?? "")
+          .map((noteRun) => noteRun.text)
+          .join(""),
+      );
+    }
+  }
+  return notes;
+}
+
+/**
+ * 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色／連結／腳注 marks。
+ * 腳注 mark 故意不帶 id——id 只是序列化時產生的配對用途（見 whitelist.ts 的
+ * generateInlineMarkerId 說明），跟 span/a 一樣不需要存進 Tiptap 文件本身的狀態。
+ */
 function runToTiptapMarks(
   run: ParsedRun,
 ): { type: string; attrs?: Record<string, string> }[] {
@@ -366,6 +471,9 @@ function runToTiptapMarks(
       type: "link",
       attrs: { href: run.href, target: run.target ?? "" },
     });
+  }
+  if (run.footnoteId) {
+    marks.push({ type: "footnote", attrs: { note: run.footnoteNote ?? "" } });
   }
   return marks;
 }

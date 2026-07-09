@@ -114,8 +114,8 @@ export function unescapeMarkerComment(escaped: string): string {
  * （diff 端一律先 strip marker，id 變動不會造成假差異）。
  * ------------------------------------------------------------------ */
 
-/** 目前支援的行內 marker 種類。之後加腳注時往這裡加一個值即可。 */
-export const INLINE_MARKER_TYPES = ["span", "a"] as const;
+/** 目前支援的行內 marker 種類。 */
+export const INLINE_MARKER_TYPES = ["span", "a", "footnote"] as const;
 export type InlineMarkerType = (typeof INLINE_MARKER_TYPES)[number];
 
 /** 產生行內 marker 的 id：`<type>-<短亂數>`。只需在同一行內唯一即可。 */
@@ -191,3 +191,24 @@ export function isSafeHref(href: string): boolean {
     return false;
   }
 }
+
+/* --- footnote（腳注）行內 marker 的屬性 --- */
+
+/** 腳注沒有 id 屬性——跟 span/a 一樣，marker 本身的 id（`footnote-<nonce>`）只在序列化時
+ * 產生，不是段落 marker 那種需要跨編輯階段保持穩定的東西，見 generateInlineMarkerId 的說明。 */
+export const MARKER_NOTE_ATTR = "note";
+
+/**
+ * 腳注內文刻意限縮格式範圍：只接受粗體/斜體/底線，不像段落本文那樣還開放上下標
+ * （腳注通常是補充說明的短文字，允許的樣式範圍比照大部分排版慣例，故意比正文窄）。
+ * `parseFootnoteNoteRuns`（parser.ts）跟 Go 後端的字數計算都要用同一份限縮清單，
+ * 兩邊算出來的「乾淨字數」才會一致。
+ */
+export const FOOTNOTE_MARK_NAMES: MarkName[] = ["bold", "italic", "underline"];
+
+/** parseFootnoteNoteRuns 逐字掃描時要用的候選 delimiter 清單，跟 PARSE_DELIMITERS 同一個
+ * 排序規則（長的在前），只是先篩掉腳注不支援的上下標。 */
+export const FOOTNOTE_PARSE_DELIMITERS: FlatDelimiter[] =
+  PARSE_DELIMITERS.filter((delimiter) =>
+    FOOTNOTE_MARK_NAMES.includes(delimiter.markName),
+  );

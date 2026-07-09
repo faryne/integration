@@ -819,12 +819,46 @@ func splitHeadingAndMarkerContent(line string) (int, string) {
 }
 
 // storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色、
-// a 連結等）：`⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡不管配對、
-// 單純把記號本身抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字。
-// 之後加腳注時往 `(?:span|a)` 裡多加一個 type 即可。
+// a 連結、footnote 腳注等）：`⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡
+// 不管配對、單純把記號本身抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字——
+// 腳注的 note 屬性值（讀者看不到的內文）也會隨著整個開頭標記一起被丟掉，這是刻意的：
+// 字數另外由 extractFootnoteWordCount 獨立算好併入 wordCount，不能讓它在這裡被算進本文字數。
 var storyInlineMarkerPattern = regexp.MustCompile(
-	`⟦/?(?:span|a)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
+	`⟦/?(?:span|a|footnote)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
 )
+
+// markerAttrEscapeRegexp 是前端 escapeMarkerComment 的反向操作（unescapeMarkerComment）：
+// 把 `\X` 還原成 `X`，不管 X 是什麼字元。
+var markerAttrEscapeRegexp = regexp.MustCompile(`\\(.)`)
+
+func unescapeMarkerAttr(escaped string) string {
+	return markerAttrEscapeRegexp.ReplaceAllString(escaped, "$1")
+}
+
+// footnoteOpenPattern 只比對腳注行內 marker 的「開頭」標記（帶 note 屬性），跟一般的
+// storyInlineMarkerPattern 不同：這裡要把 note 的值抽出來算字數，不是丟掉。結尾標記
+// `⟦/footnote-id⟧` 沒有 note="..." 這段，天然不會被這個 pattern 誤配到。
+var footnoteOpenPattern = regexp.MustCompile(
+	`⟦footnote-([^⟧\s]+) note="((?:[^"\\]|\\.)*)"⟧`,
+)
+
+// extractFootnoteNotes 依文件出現順序收集每一則腳注的原始內文（尚未拿掉粗體等 delimiter），
+// 同一個 id 只收集一次——正常存檔的內容裡一個 id 本來就只會出現一次開頭標記，這裡加上
+// dedupe 只是防禦性處理，避免不正常/手動改過的資料被重複計算字數。
+func extractFootnoteNotes(content string) []string {
+	matches := footnoteOpenPattern.FindAllStringSubmatch(content, -1)
+	seen := make(map[string]bool, len(matches))
+	notes := make([]string, 0, len(matches))
+	for _, match := range matches {
+		id := match[1]
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		notes = append(notes, unescapeMarkerAttr(match[2]))
+	}
+	return notes
+}
 
 // stripStoryInlineMarkers 把一段內容裡的行內 marker 記號（span 顏色等）抽掉，只留下被包住的文字。
 func stripStoryInlineMarkers(content string) string {
@@ -847,13 +881,20 @@ func stripBookmarkLineMarker(line string) string {
 // （例如 ** 要早於 *），避免誤判成短的那個。
 var wordCountInlineDelimiters = []string{"**", "__", "++", "*", "~", "^"}
 
-// stripInlineDelimiters 拿掉行內樣式 delimiter（粗體/底線/斜體/上下標的記號），只留下記號
-// 包住的文字本身，邏輯對應前端 parseInline 把 delimiter 轉成 marks、只留 run.text 的效果。
-func stripInlineDelimiters(text string) string {
+// footnoteInlineDelimiters 比照前端 FOOTNOTE_PARSE_DELIMITERS：腳注內文只接受粗體/斜體/
+// 底線，故意不含 ~/^（上下標）——如果腳注內文剛好打了字面上的 ~ 或 ^，前端限縮版解析器
+// （parseFootnoteNoteRuns）會把它們當純文字保留，這裡字數計算也不能把它們當 delimiter 拿掉，
+// 不然字數會跟讀者實際看到的內容對不起來。
+var footnoteInlineDelimiters = []string{"**", "__", "++", "*"}
+
+// stripDelimitersFrom 拿掉指定的行內樣式 delimiter 清單，只留下記號包住的文字本身，邏輯
+// 對應前端 parseInline 把 delimiter 轉成 marks、只留 run.text 的效果。給 wordCount（六種
+// delimiter 都拿）跟 extractFootnoteWordCount（腳注內文限縮版，只有四種）共用同一套邏輯。
+func stripDelimitersFrom(text string, delimiters []string) string {
 	var b strings.Builder
 	for i := 0; i < len(text); {
 		matched := false
-		for _, d := range wordCountInlineDelimiters {
+		for _, d := range delimiters {
 			if strings.HasPrefix(text[i:], d) {
 				i += len(d)
 				matched = true
@@ -867,6 +908,17 @@ func stripInlineDelimiters(text string) string {
 		}
 	}
 	return b.String()
+}
+
+// extractFootnoteWordCount 加總所有腳注內文（拿掉限縮版 delimiter 之後）的字數，跟本文
+// 字數分開算，但併入同一個 wordCount 總數——使用者要求「腳註內容需要算進故事字數」。
+func extractFootnoteWordCount(content string) uint {
+	var builder strings.Builder
+	for _, note := range extractFootnoteNotes(content) {
+		builder.WriteString(stripDelimitersFrom(note, footnoteInlineDelimiters))
+	}
+	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")
+	return uint(len([]rune(normalized)))
 }
 
 func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {
@@ -1670,15 +1722,18 @@ func buildLoreVersion(lore storytellerModel.Lore) *storytellerModel.LoreVersion 
 // commentColor 屬性）、行內樣式 delimiter，不然這些系統語法（尤其是 marker 裡兩個 36 碼的
 // markerId UUID）會把字數嚴重灌水。邏輯對應前端 StoryEditor.tsx／LoreEditor.tsx 用
 // parseMarkdownToParagraphs 取 runs 文字的字數公式，確保編輯中即時字數跟存檔後版本字數一致。
+//
+// 腳注內文另外用 extractFootnoteWordCount 算好之後併入總數——腳注內文躺在行內 marker 的
+// note 屬性值裡，會被上面逐行的 stripStoryInlineMarkers 整段丟掉，不會重複計算。
 func wordCount(content string) uint {
 	var builder strings.Builder
 	for _, line := range strings.Split(content, "\n") {
 		_, clean := splitHeadingAndMarkerContent(line)
 		clean = stripStoryInlineMarkers(clean)
-		builder.WriteString(stripInlineDelimiters(clean))
+		builder.WriteString(stripDelimitersFrom(clean, wordCountInlineDelimiters))
 	}
 	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")
-	return uint(len([]rune(normalized)))
+	return uint(len([]rune(normalized))) + extractFootnoteWordCount(content)
 }
 
 func safeProjectSlug(name string) string {

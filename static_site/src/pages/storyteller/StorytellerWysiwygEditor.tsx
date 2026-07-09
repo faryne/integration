@@ -10,6 +10,7 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
+import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import {
@@ -52,6 +53,7 @@ import {
   TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
 import { CommentHighlight } from "./wysiwygCore/commentHighlight";
+import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
@@ -75,6 +77,12 @@ import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
 interface HoveredComment {
   text: string;
   /** hover 當下該段落的 bounding rect（viewport 座標），用來把 tooltip 定位在段落正下方。 */
+  rect: DOMRect;
+}
+
+interface HoveredFootnote {
+  /** 這裡放的是還沒解析的腳注原文（含 **粗體** 等限縮語法），渲染時交給 renderFootnoteNote。 */
+  text: string;
   rect: DOMRect;
 }
 
@@ -151,6 +159,17 @@ const INLINE_COLOR_SX = {
   },
 } as const;
 
+// 腳注是編輯區限定的提示樣式（跟註解一樣，閱讀頁才是真正的上標編號+尾端清單，
+// 見 footnoteRender.tsx／StorytellerWysiwygMarkdown.tsx），用點狀底線跟連結的
+// 實線底線區分開來，避免使用者誤以為腳注也是可以點擊跳轉的連結。
+const FOOTNOTE_HIGHLIGHT_SX = {
+  "& .wysiwyg-has-footnote": {
+    textDecorationLine: "underline",
+    textDecorationStyle: "dotted",
+    cursor: "help",
+  },
+} as const;
+
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
   { value: 0, label: "內文" },
   ...HEADING_LEVELS.map((level) => ({ value: level, label: `標題 ${level}` })),
@@ -200,6 +219,12 @@ export function StorytellerWysiwygEditor({
   const [hrefDraft, setHrefDraft] = useState("");
   const [openInNewTab, setOpenInNewTab] = useState(false);
   const [pendingHadExistingLink, setPendingHadExistingLink] = useState(false);
+  const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
+  const [footnoteDraft, setFootnoteDraft] = useState("");
+  const [pendingHadExistingFootnote, setPendingHadExistingFootnote] =
+    useState(false);
+  const [hoveredFootnote, setHoveredFootnote] =
+    useState<HoveredFootnote | null>(null);
 
   const editor = useEditor({
     extensions: [...wysiwygCoreExtensions, CommentHighlight],
@@ -254,6 +279,7 @@ export function StorytellerWysiwygEditor({
           textColor: null as TextColorValue | null,
           bgColor: null as BgColorValue | null,
           hasLink: false,
+          hasFootnote: false,
         };
       }
       const align =
@@ -285,6 +311,7 @@ export function StorytellerWysiwygEditor({
         textColor,
         bgColor,
         hasLink: ctx.editor.isActive("link"),
+        hasFootnote: ctx.editor.isActive("footnote"),
       };
     },
   });
@@ -342,20 +369,38 @@ export function StorytellerWysiwygEditor({
   // 不用替每個段落個別掛 listener）。註解文字直接讀 decoration 附加的 data-comment，
   // 定位資訊用 getBoundingClientRect()，所以 tooltip 用 position: fixed 直接對齊。
   const handleEditorMouseOver = (event: MouseEvent<HTMLDivElement>) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(
+    const eventTarget = event.target as HTMLElement;
+
+    const commentTarget = eventTarget.closest<HTMLElement>(
       ".wysiwyg-has-comment",
     );
-    const comment = target?.dataset.comment;
-    if (!target || !comment) return;
-    setHoveredComment({ text: comment, rect: target.getBoundingClientRect() });
+    const comment = commentTarget?.dataset.comment;
+    if (commentTarget && comment) {
+      setHoveredComment({
+        text: comment,
+        rect: commentTarget.getBoundingClientRect(),
+      });
+    }
+
+    const footnoteTarget = eventTarget.closest<HTMLElement>(
+      ".wysiwyg-has-footnote",
+    );
+    const note = footnoteTarget?.dataset.note;
+    if (footnoteTarget && note) {
+      setHoveredFootnote({
+        text: note,
+        rect: footnoteTarget.getBoundingClientRect(),
+      });
+    }
   };
 
   const handleEditorMouseOut = (event: MouseEvent<HTMLDivElement>) => {
-    const stillInsideSameParagraph = (
-      event.relatedTarget as HTMLElement | null
-    )?.closest(".wysiwyg-has-comment");
-    if (!stillInsideSameParagraph) {
+    const relatedTarget = event.relatedTarget as HTMLElement | null;
+    if (!relatedTarget?.closest(".wysiwyg-has-comment")) {
       setHoveredComment(null);
+    }
+    if (!relatedTarget?.closest(".wysiwyg-has-footnote")) {
+      setHoveredFootnote(null);
     }
   };
 
@@ -446,6 +491,35 @@ export function StorytellerWysiwygEditor({
   const handleRemoveLink = () => {
     editor.chain().focus().extendMarkRange("link").unsetLink().run();
     setLinkDialogOpen(false);
+  };
+
+  // 跟連結一樣：游標落在既有腳注中間時，getAttributes 就能讀到目前生效的 note，
+  // 帶出來預填，讓「編輯腳注」跟「加腳注」共用同一個 Dialog。
+  const handleOpenFootnoteDialog = () => {
+    const existingNote = editor.getAttributes("footnote").note as
+      string | undefined;
+    setPendingHadExistingFootnote(Boolean(existingNote));
+    setFootnoteDraft(existingNote ?? "");
+    setFootnoteDialogOpen(true);
+  };
+
+  // extendMarkRange 原因同連結：避免游標只是落在腳注中間（沒有主動選取整段文字）時，
+  // setFootnote 只套用到空選取範圍，等於沒改到既有腳注。
+  const handleConfirmFootnote = () => {
+    const note = footnoteDraft.trim();
+    if (note === "") return;
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("footnote")
+      .setFootnote({ note })
+      .run();
+    setFootnoteDialogOpen(false);
+  };
+
+  const handleRemoveFootnote = () => {
+    editor.chain().focus().extendMarkRange("footnote").unsetFootnote().run();
+    setFootnoteDialogOpen(false);
   };
 
   const activeMarks = [
@@ -619,6 +693,20 @@ export function StorytellerWysiwygEditor({
           <Divider orientation="vertical" flexItem />
 
           <ToggleButtonGroup size="small">
+            <Tooltip title={editorState.hasFootnote ? "編輯腳注" : "加腳注"}>
+              <ToggleButton
+                value="footnote"
+                selected={editorState.hasFootnote}
+                onClick={handleOpenFootnoteDialog}
+              >
+                <NoteAltIcon fontSize="small" />
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
+
+          <Divider orientation="vertical" flexItem />
+
+          <ToggleButtonGroup size="small">
             <Tooltip title={editorState.hasComment ? "編輯註解" : "加註解"}>
               <ToggleButton
                 value="add-comment"
@@ -644,7 +732,12 @@ export function StorytellerWysiwygEditor({
         sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
       >
         <Box
-          sx={[HEADING_TYPOGRAPHY_SX, COMMENT_HIGHLIGHT_SX, INLINE_COLOR_SX]}
+          sx={[
+            HEADING_TYPOGRAPHY_SX,
+            COMMENT_HIGHLIGHT_SX,
+            INLINE_COLOR_SX,
+            FOOTNOTE_HIGHLIGHT_SX,
+          ]}
           onMouseOver={handleEditorMouseOver}
           onMouseOut={handleEditorMouseOut}
           onContextMenu={handleEditorContextMenu}
@@ -837,6 +930,35 @@ export function StorytellerWysiwygEditor({
             {editorState.hasLink ? "編輯連結" : "加連結"}
           </ListItemText>
         </MenuItem>
+
+        <Divider />
+
+        <MenuItem
+          onClick={() => {
+            closeContextMenu();
+            handleOpenFootnoteDialog();
+          }}
+        >
+          <ListItemIcon>
+            <NoteAltIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {editorState.hasFootnote ? "編輯腳注" : "加腳注"}
+          </ListItemText>
+        </MenuItem>
+        {editorState.hasFootnote && (
+          <MenuItem
+            onClick={() => {
+              closeContextMenu();
+              handleRemoveFootnote();
+            }}
+          >
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>移除腳注</ListItemText>
+          </MenuItem>
+        )}
 
         <Divider />
 
@@ -1068,6 +1190,54 @@ export function StorytellerWysiwygEditor({
         </DialogActions>
       </Dialog>
 
+      <Dialog
+        open={footnoteDialogOpen}
+        onClose={() => setFootnoteDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {pendingHadExistingFootnote ? "編輯腳注" : "加腳注"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            label="腳注內容"
+            value={footnoteDraft}
+            onChange={(event) => setFootnoteDraft(event.target.value)}
+          />
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 1 }}
+          >
+            只支援 **粗體**、*斜體*、++底線++，其餘格式不會被套用
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          {pendingHadExistingFootnote && (
+            <Button
+              color="error"
+              onClick={handleRemoveFootnote}
+              sx={{ mr: "auto" }}
+            >
+              移除腳注
+            </Button>
+          )}
+          <Button onClick={() => setFootnoteDialogOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmFootnote}
+            disabled={footnoteDraft.trim() === ""}
+          >
+            {pendingHadExistingFootnote ? "更新腳注" : "新增腳注"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {hoveredComment && (
         <Box
           sx={{
@@ -1088,6 +1258,31 @@ export function StorytellerWysiwygEditor({
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
               右鍵可編輯或移除註解
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+
+      {hoveredFootnote && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: hoveredFootnote.rect.bottom + 6,
+            left: hoveredFootnote.rect.left,
+            zIndex: 9999,
+            maxWidth: 320,
+            pointerEvents: "none",
+          }}
+        >
+          <Paper elevation={8} sx={{ p: 1.5, bgcolor: "grey.900" }}>
+            <Typography variant="body2" sx={{ color: "common.white" }}>
+              {renderFootnoteNote(hoveredFootnote.text)}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "grey.400", display: "block", mt: 0.5 }}
+            >
+              右鍵可編輯或移除腳注
             </Typography>
           </Paper>
         </Box>

@@ -16,7 +16,20 @@
   - 加註解／編輯註解的 Dialog 裡加一排色塊選色，`setComment` command 同時帶入顏色；移除註解時 `commentColor` 一併清空；Enter 分割段落時新段落的 `commentColor` 也重置成 null（跟 comment 一樣）。
   - `commentHighlight.ts` 依 `commentColor` 決定套用哪個 CSS class（`wysiwyg-comment-color-{color}`），`StorytellerWysiwygEditor.tsx` 內建 5 色的底色／邊框樣式。只影響編輯區，不影響閱讀頁（註解本來就不會出現在預覽/閱讀端）。
 
-- [ ] **讀者可見的「腳注／註解」功能**（像論文腳注或維基百科的參考註解，讀者也會看到，不是編輯限定的「加註解」）——目前只做設計分析，還沒實作。
+- [x] **讀者可見的「腳注」功能**（像論文腳注或維基百科的參考註解，讀者也會看到，不是編輯限定的「加註解」）——已實作（2026-07-09）。
+  - **實作摘要**：沿用文字顏色/連結打好的通用「行內 marker」機制，新增 `type="footnote"`，語法 `⟦footnote-<id> note="跳脫過的腳注內文"⟧被選取的文字⟦/footnote-<id>⟧`。跟連結最大的不同：腳注內文本身還要支援有限的行內樣式（粗體/斜體/底線），且讀者端需要「編號＋上標連結＋尾端腳注清單＋回連結」這一整套額外渲染，不是單純套個 style/href 就結束。
+    - **範圍確認**（實作前用 `AskUserQuestion` 跟你確認過三點）：腳注內文只接受粗體/斜體/底線（不含上下標、不能再巢狀顏色/連結/另一個腳注）；編輯區走「簡化版」——跟加註解一樣是反白提示＋hover tooltip＋右鍵選單，不在編輯器內即時顯示編號或尾端預覽；版本 diff 把腳注獨立成一個「腳注」區塊比對（比照閱讀頁把腳注放在故事尾端渲染），不是讓腳注內文跟著本文那一行進入內容 diff。
+    - `whitelist.ts`：`INLINE_MARKER_TYPES` 加 `"footnote"`；新增 `MARKER_NOTE_ATTR`／`FOOTNOTE_MARK_NAMES`（`["bold","italic","underline"]`）／`FOOTNOTE_PARSE_DELIMITERS`（從 `PARSE_DELIMITERS` 篩出這三種，刻意不含上下標，避免腳注內文字面上打的 `~`／`^` 被誤判成樣式）。
+    - `parser.ts`：`ParsedRun` 加 `footnoteId`（含 `footnote-` 前綴，同一腳注橫跨多個 run 時共用同一個值，供渲染端判斷「連續幾個 run 其實是同一個錨點」）／`footnoteNote`（原始未解析內文）；新增自成一格的 `parseFootnoteNoteRuns()`——限縮版遞迴解析器，只認 `FOOTNOTE_PARSE_DELIMITERS`，不認任何行內 marker（腳注內文不能再巢狀另一個顏色/連結/腳注）；新增 `extractFootnoteNotesForDiff(content)`，依文件順序、依 id 去重，抽出每則腳注的乾淨文字（marks 已剝除），供 diff 頁單獨比對用。
+    - `serializer.ts`：`InlineWrapper` 加 `"footnote"` kind，序列化時放在最外層（span／a／delimiter 之前），`note` 屬性一樣走 `escapeMarkerComment` 跳脫。
+    - `inlineFootnoteMark.ts`（新）／`footnoteRender.tsx`（新）：`InlineFootnote` tiptap Mark（單一 `note` 屬性，故意不存 id——id 只是序列化時的配對用途）；`renderFootnoteNote()` 共用渲染函式（把限縮版 marks 轉成 `<strong>`/`<em>`/`<u>`），編輯區 hover tooltip 跟閱讀頁腳注清單都呼叫同一份，兩邊格式保證一致。
+    - `StorytellerWysiwygEditor.tsx`：比照加註解／連結的既有模式——工具列按鈕＋Dialog（多行 TextField，附一行「只支援 `**`/`*`/`++`」提示）、hover tooltip（新增 `.wysiwyg-has-footnote` 偵測，跟註解的 hover 邏輯並存不衝突）、右鍵選單加「加腳注／編輯腳注／移除腳注」，皆用 `extendMarkRange("footnote")` 讓編輯既有腳注時整個範圍一起被替換。編輯區高亮走點狀底線＋`cursor:help`，刻意跟連結的實線底線區分，避免使用者誤以為腳注也能點擊跳轉。
+    - `StorytellerWysiwygMarkdown.tsx`：改成兩輪處理——第一輪掃過全部段落，依文件出現順序給每個不重複的 `footnoteId` 編號（讀者看到 1、2、3...，不是內部亂數 id）；第二輪渲染時，`renderParagraphRuns()` 取代原本單純的逐 run 渲染，偵測「連續 run 共用同一個 footnoteId」的分組，只在整組最後一個 run 後面插入一次上標編號連結（不是每個 run 各插一次），所有段落渲染完後再多渲染一個「腳注」區塊，依編號列出 `renderFootnoteNote()` 渲染過的內文＋一個回內文的反向連結。錨點/回連結的 DOM id 用 `useId()` 前綴＋`footnoteId` 組成，避免同一頁同時渲染兩個實例（例如版本 diff 左右並排）時 id 相撞。
+    - 後端 `service/storyteller/storyteller.go`：`storyInlineMarkerPattern` 的 type 清單加 `footnote`；新增 `footnoteOpenPattern`／`extractFootnoteNotes()`（只比對腳注「開頭」標記，抽出 `note` 屬性值，依 id 去重）／`unescapeMarkerAttr()`（Go 這邊第一個屬性值反跳脫函式，之前的 comment／span／href 都只是整段丟棄、沒有真的解析出值）；`stripInlineDelimiters` 一般化成參數化的 `stripDelimitersFrom(text, delimiters)`，讓 `footnoteInlineDelimiters`（`**`／`__`／`++`／`*`，刻意跟前端 `FOOTNOTE_PARSE_DELIMITERS` 對齊、不含 `~`/`^`）可以共用同一套邏輯；新增 `extractFootnoteWordCount()`，加總進 `wordCount()` 總數——使用者要求「腳注內容需要算進故事字數」。
+    - 三個 diff 頁（`StoryVersionDiff.tsx`／`StoryDiffCompare.tsx`／`LoreDiffCompare.tsx`）都加一個獨立的「腳注」比對區塊，用 `extractFootnoteNotesForDiff()` 兩側結果各自 `join("\n")` 餵給既有的 `buildCustomLineDiff`；`StoryVersionDiff.tsx`（讀者可見的公開版本比較頁）兩側都沒有腳注時整段不顯示，`StoryDiffCompare.tsx`／`LoreDiffCompare.tsx`（作者用的純文字 diff 頁）沿用既有 `CustomDiffSection` 元件，沒有腳注時該區塊自動顯示「無變更」，不需要額外判斷是否要隱藏。
+  - **已驗證**：Node/Vite `ssrLoadModule` round-trip（腳注橫跨粗體/單一腳注/note 含跳脫引號等場景）全過；Go 測試涵蓋 `extractFootnoteNotes`（含跳脫引號還原、同 id 去重）、`extractFootnoteWordCount`、`stripStoryInlineMarkers` 三項全過；`tsc -b`／`eslint`／`prettier`／`go build`／`go vet` 皆乾淨；dev server 對所有異動模組的載入 smoke test（curl 200、無編譯錯誤）全過。同樣**未在瀏覽器實際點過工具列/Dialog/右鍵選單**（環境限制：`preview_start`/`claude-in-chrome` 在 worktree 下會誤連到主 repo，見既有已知限制），僅資料層／型別層／建置層驗證，**Dialog 輸入、hover tooltip 定位、右鍵選單項目、閱讀頁編號與跳轉等 UI 行為建議實際操作時再確認一次**。
+  - 以下為原始設計分析（保留供對照）：
+- [ ] （原腳注設計分析，功能已完成，保留供參考）
   - **跟現有「加註解」的本質差異**：
     1. 錨點範圍不同：「加註解」是掛在整個段落上（marker 的 `comment` 屬性），這個功能要錨在「選取的一段文字」上——是行內（inline）等級，不是段落等級，架構上比較接近粗體/斜體那種行內樣式，但多了「每個實例要帶一個獨立 id、還要帶一段文字內容」這件事，粗體/斜體目前都不需要 id。
     2. 可見性不同：「加註解」故意設計成只有作者在編輯區看得到（`commentHighlight.ts`／hover tooltip），讀者端（`StorytellerWysiwygMarkdown.tsx`／`Reader.tsx`）完全不會渲染。這個功能相反，讀者要看到：內文裡選取範圍旁邊要有個上標的編號（像 `¹`），點下去或往下捲可以跳到「這篇故事尾端」的註解清單，清單那邊照編號列出完整註解內容，通常還會有個「返回內文」的反向連結。
