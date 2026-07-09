@@ -96,3 +96,63 @@ export function escapeMarkerComment(text: string): string {
 export function unescapeMarkerComment(escaped: string): string {
   return escaped.replace(/\\(.)/g, "$1");
 }
+
+/* ------------------------------------------------------------------ *
+ * 行內 marker（inline marker）
+ *
+ * 跟上面的「段落 marker」用同一組括號（⟦⟧）跟跳脫規則，但兩者是分開的機制：
+ * - 段落 marker 包住「整行」（parser 用 `^...$` 比對），帶的是段落層級屬性
+ *   （align／comment／commentColor），id 是純 UUID。
+ * - 行內 marker 包住「段落內容裡的一段選取文字」（在 parseInline 階段處理），
+ *   帶的是行內元素屬性（文字顏色 textColor／bgColor，之後還有腳注、連結），
+ *   id 前面一定有 `<type>-` 前綴（例如 `span-`），parser 靠這個前綴判斷種類，
+ *   也讓行內 marker 跟段落 marker（純 UUID、無前綴）天生可區分。
+ *
+ * 語法：`⟦<type>-<id> attr="..."⟧被套用的文字⟦/<type>-<id>⟧`
+ * id 只需要在「同一行內」唯一（行內 marker 不跨行），open/close 靠完整的
+ * `<type>-<id>` 字串配對，所以巢狀／相鄰時也不會配錯。id 每次序列化重新產生
+ * （diff 端一律先 strip marker，id 變動不會造成假差異）。
+ * ------------------------------------------------------------------ */
+
+/** 目前支援的行內 marker 種類。之後加腳注／連結時往這裡加一個值即可。 */
+export const INLINE_MARKER_TYPES = ["span"] as const;
+export type InlineMarkerType = (typeof INLINE_MARKER_TYPES)[number];
+
+/** 產生行內 marker 的 id：`<type>-<短亂數>`。只需在同一行內唯一即可。 */
+export function generateInlineMarkerId(type: InlineMarkerType): string {
+  // 8 碼 36 進位亂數，同一行內夠唯一了，不用像段落 marker 那樣塞整個 UUID。
+  const nonce = Math.random().toString(36).slice(2, 10);
+  return `${type}-${nonce}`;
+}
+
+/* --- span（文字樣式）行內 marker 的屬性 --- */
+
+export const MARKER_TEXT_COLOR_ATTR = "textColor";
+export const MARKER_BG_COLOR_ATTR = "bgColor";
+
+/**
+ * 文字前景色色盤：飽和度較高、對比明顯的語意色，適合當文字顏色。
+ * 固定選項、不開放自填 CSS 值（值 → 實際色碼的對照表放在渲染端，見
+ * StorytellerWysiwygEditor.tsx／StorytellerWysiwygMarkdown.tsx）。
+ */
+export const TEXT_COLOR_VALUES = [
+  "red",
+  "orange",
+  "green",
+  "blue",
+  "purple",
+] as const;
+export type TextColorValue = (typeof TEXT_COLOR_VALUES)[number];
+
+/**
+ * 文字背景色色盤：偏淡的底色，文字疊上去還讀得到（比照 commentColor 的淡色路線）。
+ * 一樣固定選項、不開放自填。
+ */
+export const BG_COLOR_VALUES = [
+  "yellow",
+  "pink",
+  "blue",
+  "green",
+  "purple",
+] as const;
+export type BgColorValue = (typeof BG_COLOR_VALUES)[number];

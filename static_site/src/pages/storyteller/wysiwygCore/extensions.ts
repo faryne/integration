@@ -10,6 +10,7 @@ import Text from "@tiptap/extension-text";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 
+import { BgColor, TextColor } from "./inlineColorMarks";
 import { MarkerParagraph } from "./markerParagraph";
 import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
 
@@ -28,6 +29,8 @@ export const wysiwygCoreExtensions = [
   Underline,
   Subscript,
   Superscript,
+  TextColor,
+  BgColor,
   TextAlign.configure({
     types: ["paragraph"],
     alignments: [...ALIGNMENT_VALUES],
