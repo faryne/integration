@@ -168,11 +168,13 @@ export type LinkTargetValue = (typeof LINK_TARGET_VALUES)[number];
 
 /**
  * 網址不像顏色可以走固定色盤（本質上就是自由格式的值），這裡的資安防線是限制 scheme，
- * 不是限制值本身：只允許 http／https，或是沒有 scheme 的相對路徑（例如站內連結
- * `/storyteller/...`）。擋掉 `javascript:`／`data:`／`vbscript:` 這類會在點擊時執行內容
- * 的危險 scheme。用一個假的 base 餵給 URL 建構子——如果輸入本身帶了 scheme（例如
- * `javascript:...`），URL 建構子會用輸入自己的 scheme、忽略 base，所以這個檢查法
- * 對「輸入是絕對網址」跟「輸入是相對路徑」都適用。
+ * 不是限制值本身：只接受明確以 `http://` 或 `https://` 開頭的網址，擋掉 `javascript:`／
+ * `data:`／`vbscript:` 這類會在點擊時執行內容的危險 scheme。
+ *
+ * 刻意不接受「沒有 scheme 的相對路徑」（也就是站內連結，例如連到同專案裡的另一篇
+ * 故事／設定集）——不是技術上做不到，是產品面還沒決定：站內連結牽涉到「故事是否公開」
+ * 「設定集目前還沒有公開機制」這些還沒拍板的問題，先只支援明確的外部網址，等使用情境
+ * 明朗後再評估要不要開放（見 DevelopDocuments/storyteller/所見即所得編輯器_issue.md）。
  *
  * 這裡只擋 scheme，不驗證網址「看起來正不正確」；渲染成 `<a href>` 時 React 本來就會
  * 正確跳脫屬性值，所以 XSS 風險只在 scheme 這一關，不需要更嚴格的網址格式驗證。
@@ -180,9 +182,10 @@ export type LinkTargetValue = (typeof LINK_TARGET_VALUES)[number];
  * 任何一關漏了都不能假設別的地方已經擋過。
  */
 export function isSafeHref(href: string): boolean {
-  if (href.trim() === "") return false;
+  const trimmed = href.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
   try {
-    const url = new URL(href, "https://faryne.dev");
+    const url = new URL(trimmed);
     return url.protocol === "http:" || url.protocol === "https:";
   } catch {
     return false;
