@@ -4,10 +4,8 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 
 import {
-  DEFAULT_COMMENT_COLOR,
   generateMarkerId,
   HEADING_LEVELS,
-  type CommentColorValue,
   type HeadingLevel,
 } from "./whitelist";
 
@@ -29,14 +27,6 @@ declare module "@tiptap/core" {
     markerParagraph: {
       /** 0 代表改回一般段落。 */
       setHeadingLevel: (level: HeadingLevel) => ReturnType;
-      /**
-       * null 代表移除這段的註解（連同顏色一併清除）。color 省略時沿用預設色，
-       * 只有在 comment 非 null 時才有意義。
-       */
-      setComment: (
-        comment: string | null,
-        color?: CommentColorValue | null,
-      ) => ReturnType;
     };
   }
 }
@@ -46,19 +36,18 @@ function headingTag(level: HeadingLevel): string {
 }
 
 /**
- * 段落 marker 機制 + 標題（heading）樣式 + 段落註解，三者掛在同一個 node type 上：
- * - 每個段落節點都有一個穩定的 markerId，作為註解功能的錨點。
+ * 段落 marker 機制 + 標題（heading）樣式，兩者掛在同一個 node type 上：
+ * - 每個段落節點都有一個穩定的 markerId，作為書籤功能的錨點。
  * - headingLevel（0-6）決定要渲染成 <p> 還是 <h1>~<h6>；沒有另外開一個 heading node type，
  *   是因為 marker 的分割/合併/自動補 id 邏輯只寫在這一個地方，標題本質上仍是「一個段落」，
  *   拆成兩個 node type 只會讓 marker 邏輯要維護兩份。
- * - comment（每段最多一則）內嵌成段落元素的屬性，不是獨立資料表——段落被刪除/合併時
- *   comment 自然一起消失，不會有孤兒註解需要另外清理。
- * - Enter 分割段落時，游標前半段沿用原本的 markerId（連同它的註解），後半段拿新的
- *   markerId、標題與註解都重置成預設值（比照 Notion／大多數編輯器習慣：換行後不會
- *   整段繼續當標題，註解也不該憑空複製到新段落）。
+ * - Enter 分割段落時，游標前半段沿用原本的 markerId，後半段拿新的 markerId、標題重置成
+ *   預設值（比照 Notion／大多數編輯器習慣：換行後不會整段繼續當標題）。註解（comment mark）
+ *   2026-07-09 起改成行內 marker，不再是段落屬性，Enter 分割時不需要特別重置——
+ *   跟粗體/顏色/連結/腳注等其他行內 mark 一樣，ProseMirror 預設的分割行為就會正確地
+ *   讓 mark 留在它原本包住的文字範圍內。
  * - Backspace 合併段落時直接用 ProseMirror 預設的 joinBackward，
- *   保留在前段落的 node 本身連同它的 markerId／headingLevel／comment 不受影響，不需要額外處理；
- *   被併入段落原本的註解直接作廢（每段最多一則註解，不會合併成多則）。
+ *   保留在前段落的 node 本身連同它的 markerId／headingLevel 不受影響，不需要額外處理。
  * - appendTransaction 補一個保險：任何時候文件裡出現沒有 markerId 的段落
  *   （例如載入舊內容、貼上新段落），都會自動補上一個新 id。
  */
@@ -73,18 +62,6 @@ export const MarkerParagraph = Paragraph.extend({
       },
       headingLevel: {
         default: 0 as HeadingLevel,
-        rendered: false,
-      },
-      // 每段最多一則註解，直接內嵌成這個段落元素的屬性（見規格文件），
-      // 不是獨立的資料表——段落被刪除/合併時，comment 自然跟著消失，不會變成孤兒資料。
-      comment: {
-        default: null as string | null,
-        rendered: false,
-      },
-      // 註解底色，固定色盤（見 whitelist.ts）。跟 comment 一樣內嵌成段落屬性，
-      // 沒有 comment 時這個值沒有意義（由呼叫端保證同步清空，見 setComment／Enter 分割）。
-      commentColor: {
-        default: null as CommentColorValue | null,
         rendered: false,
       },
     };
@@ -115,13 +92,6 @@ export const MarkerParagraph = Paragraph.extend({
         (level: HeadingLevel) =>
         ({ commands }) =>
           commands.updateAttributes(this.name, { headingLevel: level }),
-      setComment:
-        (comment: string | null, color?: CommentColorValue | null) =>
-        ({ commands }) =>
-          commands.updateAttributes(this.name, {
-            comment,
-            commentColor: comment ? (color ?? DEFAULT_COMMENT_COLOR) : null,
-          }),
     };
   },
 
@@ -187,8 +157,6 @@ export const MarkerParagraph = Paragraph.extend({
         editor.commands.command(({ tr }) => {
           tr.setNodeAttribute(paragraphStart, "markerId", generateMarkerId());
           tr.setNodeAttribute(paragraphStart, "headingLevel", 0);
-          tr.setNodeAttribute(paragraphStart, "comment", null);
-          tr.setNodeAttribute(paragraphStart, "commentColor", null);
           return true;
         });
         return true;

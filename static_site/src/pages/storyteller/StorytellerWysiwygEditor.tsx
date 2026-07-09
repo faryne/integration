@@ -52,7 +52,6 @@ import {
   TEXT_COLOR_CSS,
   TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
-import { CommentHighlight } from "./wysiwygCore/commentHighlight";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
@@ -113,24 +112,24 @@ const COMMENT_COLOR_LABELS: Record<CommentColorValue, string> = {
 
 // 只在編輯區生效的高亮樣式，刻意不放進 typographySx.ts 共用——
 // 註解本來就不該出現在預覽區（故事閱讀頁），兩邊的樣式不應該混在一起。
-// 每種顏色各自一個 class（見 commentHighlight.ts 怎麼決定套用哪個 class），
-// 而不是用 inline style，這樣才能繼續透過 sx 主題化、深色模式等既有機制。
+// 2026-07-09 起註解改成行內 marker（掛在選取範圍的 <span> 上，不再是整個段落），
+// 高亮樣式也跟著從「段落左側色條」改成「這段文字本身的底色＋底線」，比照一般文書
+// 軟體的螢光筆註解視覺；每種顏色各自一個 class（見 inlineCommentMark.ts 的 renderHTML
+// 怎麼決定套用哪個 class），而不是用 inline style，這樣才能繼續透過 sx 主題化、深色模式
+// 等既有機制。
 const COMMENT_HIGHLIGHT_SX = {
   ...Object.fromEntries(
     COMMENT_COLOR_VALUES.map((color) => [
       `& .wysiwyg-comment-color-${color}`,
       {
         backgroundColor: COMMENT_COLOR_STYLES[color].background,
-        borderLeft: `3px solid ${COMMENT_COLOR_STYLES[color].border}`,
-        paddingLeft: "8px",
-        marginLeft: "-8px",
-        borderRadius: "2px",
+        borderBottom: `2px solid ${COMMENT_COLOR_STYLES[color].border}`,
       },
     ]),
   ),
   // 用游標樣式提示「這裡可以右鍵開編輯工具」，不用另外疊一個 tooltip——
-  // 有註解的段落 hover 時已經會跳出註解內容的 tooltip 了，再加一個提示視窗只會更亂。
-  "& p, & h1, & h2, & h3, & h4, & h5, & h6": {
+  // hover 時已經會跳出註解內容的 tooltip 了，再加一個提示視窗只會更亂。
+  "& .wysiwyg-has-comment": {
     cursor: "context-menu",
   },
 } as const;
@@ -200,7 +199,6 @@ export function StorytellerWysiwygEditor({
 
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
-  const [pendingMarkerId, setPendingMarkerId] = useState<string | null>(null);
   const [pendingSnippet, setPendingSnippet] = useState("");
   const [pendingHadExistingComment, setPendingHadExistingComment] =
     useState(false);
@@ -227,7 +225,7 @@ export function StorytellerWysiwygEditor({
     useState<HoveredFootnote | null>(null);
 
   const editor = useEditor({
-    extensions: [...wysiwygCoreExtensions, CommentHighlight],
+    extensions: wysiwygCoreExtensions,
     content: markdownToDoc(value),
     immediatelyRender: false,
     editorProps: {
@@ -276,6 +274,7 @@ export function StorytellerWysiwygEditor({
           align: "left" as AlignmentValue,
           headingLevel: DEFAULT_HEADING_LEVEL,
           hasComment: false,
+          hasSelection: false,
           textColor: null as TextColorValue | null,
           bgColor: null as BgColorValue | null,
           hasLink: false,
@@ -305,9 +304,8 @@ export function StorytellerWysiwygEditor({
         superscript: ctx.editor.isActive("superscript"),
         align,
         headingLevel,
-        hasComment: Boolean(
-          ctx.editor.state.selection.$from.parent.attrs.comment,
-        ),
+        hasComment: ctx.editor.isActive("comment"),
+        hasSelection: !ctx.editor.state.selection.empty,
         textColor,
         bgColor,
         hasLink: ctx.editor.isActive("link"),
@@ -320,54 +318,47 @@ export function StorytellerWysiwygEditor({
     return null;
   }
 
+  // 跟連結/腳注一樣：游標落在既有註解中間時，getAttributes 就能讀到目前生效的
+  // comment/commentColor，帶出來預填，讓「編輯註解」跟「加註解」共用同一個 Dialog。
+  // 註解改成行內 marker 之後，snippet 直接取「目前實際選取的文字」——比舊版「段落開頭
+  // 24 字」更準確，因為現在真的是針對這段選取範圍加註解，不是針對整個段落。
   const handleOpenCommentDialog = () => {
-    const parent = editor.state.selection.$from.parent;
-    const markerId = parent.attrs.markerId as string | null;
-    if (!markerId) return;
-    const existingComment = parent.attrs.comment as string | null;
-    const existingColor = parent.attrs.commentColor as CommentColorValue | null;
-    setPendingMarkerId(markerId);
-    setPendingSnippet(parent.textContent.slice(0, 24) || "(空段落)");
+    const attrs = editor.getAttributes("comment");
+    const existingComment = attrs.comment as string | undefined;
+    const existingColor = attrs.commentColor as CommentColorValue | undefined;
+    const { from, to } = editor.state.selection;
     setPendingHadExistingComment(Boolean(existingComment));
+    setPendingSnippet(editor.state.doc.textBetween(from, to, " ").slice(0, 24));
     setCommentDraft(existingComment ?? "");
     setPendingCommentColor(existingColor ?? DEFAULT_COMMENT_COLOR);
     setCommentDialogOpen(true);
   };
 
+  // extendMarkRange 原因同連結/腳注：避免游標只是落在註解中間（沒有主動選取整段文字）時，
+  // setComment 只套用到空選取範圍，等於沒改到既有註解。
   const handleConfirmComment = () => {
-    if (!pendingMarkerId || commentDraft.trim() === "") return;
+    if (commentDraft.trim() === "") return;
     editor
       .chain()
       .focus()
-      .setComment(commentDraft.trim(), pendingCommentColor)
+      .extendMarkRange("comment")
+      .setComment({
+        comment: commentDraft.trim(),
+        commentColor: pendingCommentColor,
+      })
       .run();
     setCommentDialogOpen(false);
   };
 
-  // 找到目前文件裡持有這個 markerId 的段落，直接用位置操作清掉它的 comment/commentColor
-  // attribute——不透過 selection/focus，因為要刪除的段落不一定是目前游標所在的段落。
-  const handleRemoveComment = (markerId: string) => {
-    let targetPos: number | null = null;
-    editor.state.doc.descendants((node, pos) => {
-      if (node.type.name === "paragraph" && node.attrs.markerId === markerId) {
-        targetPos = pos;
-        return false;
-      }
-      return true;
-    });
-    if (targetPos === null) return;
-    const confirmedPos = targetPos;
-    editor.commands.command(({ tr }) => {
-      tr.setNodeAttribute(confirmedPos, "comment", null);
-      tr.setNodeAttribute(confirmedPos, "commentColor", null);
-      return true;
-    });
+  const handleRemoveComment = () => {
+    editor.chain().focus().extendMarkRange("comment").unsetComment().run();
     setCommentDialogOpen(false);
   };
 
-  // hover 在編輯區內任何地方時，往上找最近的 .wysiwyg-has-comment 段落（事件代理，
-  // 不用替每個段落個別掛 listener）。註解文字直接讀 decoration 附加的 data-comment，
-  // 定位資訊用 getBoundingClientRect()，所以 tooltip 用 position: fixed 直接對齊。
+  // hover 在編輯區內任何地方時，往上找最近的 .wysiwyg-has-comment（事件代理，不用替
+  // 每個註解範圍個別掛 listener）。註解文字直接讀 InlineComment mark 的 renderHTML
+  // 附加的 data-comment，定位資訊用 getBoundingClientRect()，所以 tooltip 用
+  // position: fixed 直接對齊。
   const handleEditorMouseOver = (event: MouseEvent<HTMLDivElement>) => {
     const eventTarget = event.target as HTMLElement;
 
@@ -435,10 +426,8 @@ export function StorytellerWysiwygEditor({
   };
 
   const handleContextMenuRemoveComment = () => {
-    const markerId = editor.state.selection.$from.parent.attrs.markerId as
-      string | null;
     closeContextMenu();
-    if (markerId) handleRemoveComment(markerId);
+    handleRemoveComment();
   };
 
   // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
@@ -529,6 +518,12 @@ export function StorytellerWysiwygEditor({
     editorState.subscript && "subscript",
     editorState.superscript && "superscript",
   ].filter(Boolean) as string[];
+
+  // 註解是行內 marker，套用在「一段選取的文字」上，不像以前的段落屬性版本可以在空
+  // 選取（只有游標）時也套用到整個段落——所以「加註解」只有在真的選了文字，或游標
+  // 已經落在既有註解裡（此時是要編輯/移除，不是新增）時才能開。
+  const canOpenCommentDialog =
+    editorState.hasComment || editorState.hasSelection;
 
   return (
     <Box>
@@ -707,14 +702,25 @@ export function StorytellerWysiwygEditor({
           <Divider orientation="vertical" flexItem />
 
           <ToggleButtonGroup size="small">
-            <Tooltip title={editorState.hasComment ? "編輯註解" : "加註解"}>
-              <ToggleButton
-                value="add-comment"
-                selected={editorState.hasComment}
-                onClick={handleOpenCommentDialog}
-              >
-                <AddCommentIcon fontSize="small" />
-              </ToggleButton>
+            <Tooltip
+              title={
+                editorState.hasComment
+                  ? "編輯註解"
+                  : canOpenCommentDialog
+                    ? "加註解"
+                    : "請先選取要加註解的文字"
+              }
+            >
+              <span>
+                <ToggleButton
+                  value="add-comment"
+                  selected={editorState.hasComment}
+                  disabled={!canOpenCommentDialog}
+                  onClick={handleOpenCommentDialog}
+                >
+                  <AddCommentIcon fontSize="small" />
+                </ToggleButton>
+              </span>
             </Tooltip>
           </ToggleButtonGroup>
 
@@ -962,7 +968,10 @@ export function StorytellerWysiwygEditor({
 
         <Divider />
 
-        <MenuItem onClick={handleContextMenuAddOrEditComment}>
+        <MenuItem
+          onClick={handleContextMenuAddOrEditComment}
+          disabled={!canOpenCommentDialog}
+        >
           <ListItemIcon>
             <AddCommentIcon fontSize="small" />
           </ListItemIcon>
@@ -1066,9 +1075,11 @@ export function StorytellerWysiwygEditor({
           {pendingHadExistingComment ? "編輯註解" : "加註解"}
         </DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            這則註解會掛在這段文字上：「{pendingSnippet}」
-          </Typography>
+          {pendingSnippet && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              這則註解會掛在這段文字上：「{pendingSnippet}」
+            </Typography>
+          )}
           <TextField
             autoFocus
             fullWidth
@@ -1113,10 +1124,10 @@ export function StorytellerWysiwygEditor({
           </Stack>
         </DialogContent>
         <DialogActions>
-          {pendingHadExistingComment && pendingMarkerId && (
+          {pendingHadExistingComment && (
             <Button
               color="error"
-              onClick={() => handleRemoveComment(pendingMarkerId)}
+              onClick={handleRemoveComment}
               sx={{ mr: "auto" }}
             >
               移除註解

@@ -11,6 +11,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 
 import { BgColor, TextColor } from "./inlineColorMarks";
+import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
 import { InlineLink } from "./inlineLinkMark";
 import { MarkerParagraph } from "./markerParagraph";
@@ -35,6 +36,7 @@ export const wysiwygCoreExtensions = [
   BgColor,
   InlineLink,
   InlineFootnote,
+  InlineComment,
   TextAlign.configure({
     types: ["paragraph"],
     alignments: [...ALIGNMENT_VALUES],

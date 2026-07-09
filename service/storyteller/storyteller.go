@@ -787,18 +787,23 @@ func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) (
 	return rows, nil
 }
 
-// storyMarkerPattern 比照前端 wysiwygDemo/parser.ts 的 MARKER_PATTERN：段落 marker 開頭是
-// markerId，接著可選的 align／comment／commentColor 屬性，這幾個屬性的值這裡不需要解析出來，
-// 比對到就整段丟棄即可（順序必須跟前端一致：align 在前、comment 居中、commentColor 殿後，
-// 三個都可省略）。
+// storyMarkerPattern 比照前端 wysiwygCore/parser.ts 的 MARKER_PATTERN：段落 marker 開頭是
+// markerId，接著可選的 align 屬性，這個屬性的值這裡不需要解析出來，比對到就整段丟棄即可。
+//
+// 註解（comment）2026-07-09 起改成行內 marker（見 storyInlineMarkerPattern），新資料不會
+// 再把 comment／commentColor 寫在段落 marker 上——但這裡刻意繼續保留這兩個屬性的比對
+// （選配、不擷取值），純粹是為了相容 2026-07-09 之前存的舊資料：Go 這邊本來就只是把
+// comment 屬性整個丟棄（從來不會把註解內容算進字數或書籤預覽），不管新舊格式都一樣「丟掉
+// 就好」，所以不需要另外寫遷移邏輯，繼續比對舊屬性只是避免舊段落因為多了這兩個屬性、
+// 整個 marker 比對失敗，退化成把原始 `⟦...⟧` 語法當純文字外洩到字數/書籤預覽。
 var storyMarkerPattern = regexp.MustCompile(
 	`^⟦([^⟧\s]*)(?: align="(?:left|center|right)")?(?: comment="(?:[^"\\]|\\.)*")?(?: commentColor="(?:yellow|pink|blue|green|purple)")?⟧([\s\S]*)⟦/([^⟧\s]*)⟧$`,
 )
 
-// splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）跟段落 marker（含 align／
-// comment／commentColor 屬性），回傳段落真正的可讀內容。是 stripBookmarkLineMarker 跟
-// wordCount 共用的底層邏輯，DB 裡的 content 存的是含 marker 語法的原始行（見
-// storyteller_story_versions 遷移後的格式），這兩個地方都需要在 Go 這邊做語法層面的清理。
+// splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）跟段落 marker（含 align
+// 屬性），回傳段落真正的可讀內容。是 stripBookmarkLineMarker 跟 wordCount 共用的底層邏輯，
+// DB 裡的 content 存的是含 marker 語法的原始行（見 storyteller_story_versions 遷移後的
+// 格式），這兩個地方都需要在 Go 這邊做語法層面的清理。
 func splitHeadingAndMarkerContent(line string) (int, string) {
 	headingLevel := 0
 	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
@@ -819,12 +824,14 @@ func splitHeadingAndMarkerContent(line string) (int, string) {
 }
 
 // storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色、
-// a 連結、footnote 腳注等）：`⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡
-// 不管配對、單純把記號本身抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字——
-// 腳注的 note 屬性值（讀者看不到的內文）也會隨著整個開頭標記一起被丟掉，這是刻意的：
-// 字數另外由 extractFootnoteWordCount 獨立算好併入 wordCount，不能讓它在這裡被算進本文字數。
+// a 連結、footnote 腳注、comment 註解等）：`⟦<type>-<id> attr="..."⟧` 開頭跟
+// `⟦/<type>-<id>⟧` 結尾。這裡不管配對、單純把記號本身抽掉（保留被包住的文字），因為
+// 字數計算跟書籤預覽都只需要看得到的文字——腳注的 note 屬性值（讀者看不到的內文）也會
+// 隨著整個開頭標記一起被丟掉，這是刻意的：字數另外由 extractFootnoteWordCount 獨立算好
+// 併入 wordCount，不能讓它在這裡被算進本文字數。註解（comment）的內文本來就完全不該算進
+// 字數/書籤預覽，跟以前是段落屬性時的行為一致，這裡整段丟掉正是想要的效果，不需要額外抽取。
 var storyInlineMarkerPattern = regexp.MustCompile(
-	`⟦/?(?:span|a|footnote)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
+	`⟦/?(?:span|a|footnote|comment)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
 )
 
 // markerAttrEscapeRegexp 是前端 escapeMarkerComment 的反向操作（unescapeMarkerComment）：

@@ -54,19 +54,21 @@ export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
  * （逐行比對）都是直接對 `content.split("\n")` 的陣列位置定位，「一行＝一個段落」
  * 必須跟這個既有假設保持一致，否則舊資料 migrate 過來後書籤/diff 的索引全部對不上。
  *
- * 對齊（align）跟註解（comment）都是這個 marker 開始標記上的屬性，不是另外的行首前綴語法——
- * 兩者本質上都是「掛在這個段落上的中繼資料」，讓 marker 當成統一的屬性容器比另外發明一套
- * 前綴規則更一致，而且屬性天生就活在同一行裡，完全不會跟「一行＝一個段落」的限制衝突。
- * 固定順序：`⟦markerId align="center" comment="..." commentColor="pink"⟧內容⟦/markerId⟧`
- * （align 在前、comment 在後、commentColor 殿後），三個屬性都可省略（省略時分別代表置左、
- * 沒有註解、預設色）。commentColor 只有在有 comment 時才有意義。
+ * 對齊（align）是這個 marker 開始標記上的屬性，不是另外的行首前綴語法——這是「掛在整個
+ * 段落上的中繼資料」，讓 marker 當成統一的屬性容器比另外發明一套前綴規則更一致。
+ * 固定順序：`⟦markerId align="center"⟧內容⟦/markerId⟧`，可省略（省略代表置左）。
+ *
+ * 註解（comment）原本也內嵌在這個段落 marker 上，2026-07-09 改成跟文字顏色/連結/腳注一樣
+ * 走「行內 marker」機制（見下面），因為使用者可能只想針對段落裡的一小段文字加註解，不一定
+ * 是整個段落——`MARKER_COMMENT_ATTR`／`MARKER_COMMENT_COLOR_ATTR`／`COMMENT_COLOR_VALUES`
+ * 這些常數本身不變，只是現在被行內 marker 的 `comment-<id>` 消費，不再出現在段落 marker上。
  */
 export const MARKER_OPEN = "⟦";
 export const MARKER_CLOSE = "⟧";
 export const MARKER_CLOSE_SLASH = "/";
 
 export const MARKER_ALIGN_ATTR = "align";
-/** 段落最多一則註解，內嵌成 marker 開始標記上的屬性：⟦markerId comment="..."⟧。 */
+/** 註解文字，行內 marker（`type="comment"`）的屬性：⟦comment-<id> comment="..."⟧。 */
 export const MARKER_COMMENT_ATTR = "comment";
 /**
  * 註解底色，固定幾種偏亮色系可選，不開放自訂顏色值。省略時代表預設色（第一個值），
@@ -102,11 +104,12 @@ export function unescapeMarkerComment(escaped: string): string {
  *
  * 跟上面的「段落 marker」用同一組括號（⟦⟧）跟跳脫規則，但兩者是分開的機制：
  * - 段落 marker 包住「整行」（parser 用 `^...$` 比對），帶的是段落層級屬性
- *   （align／comment／commentColor），id 是純 UUID。
+ *   （目前只剩 align），id 是純 UUID。
  * - 行內 marker 包住「段落內容裡的一段選取文字」（在 parseInline 階段處理），
- *   帶的是行內元素屬性（文字顏色 textColor／bgColor，之後還有腳注、連結），
- *   id 前面一定有 `<type>-` 前綴（例如 `span-`），parser 靠這個前綴判斷種類，
- *   也讓行內 marker 跟段落 marker（純 UUID、無前綴）天生可區分。
+ *   帶的是行內元素屬性（文字顏色 textColor／bgColor、連結 href/target、腳注
+ *   note、註解 comment/commentColor），id 前面一定有 `<type>-` 前綴（例如
+ *   `span-`），parser 靠這個前綴判斷種類，也讓行內 marker 跟段落 marker
+ *   （純 UUID、無前綴）天生可區分。
  *
  * 語法：`⟦<type>-<id> attr="..."⟧被套用的文字⟦/<type>-<id>⟧`
  * id 只需要在「同一行內」唯一（行內 marker 不跨行），open/close 靠完整的
@@ -115,7 +118,12 @@ export function unescapeMarkerComment(escaped: string): string {
  * ------------------------------------------------------------------ */
 
 /** 目前支援的行內 marker 種類。 */
-export const INLINE_MARKER_TYPES = ["span", "a", "footnote"] as const;
+export const INLINE_MARKER_TYPES = [
+  "span",
+  "a",
+  "footnote",
+  "comment",
+] as const;
 export type InlineMarkerType = (typeof INLINE_MARKER_TYPES)[number];
 
 /** 產生行內 marker 的 id：`<type>-<短亂數>`。只需在同一行內唯一即可。 */

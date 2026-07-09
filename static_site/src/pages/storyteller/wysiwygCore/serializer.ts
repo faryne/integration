@@ -38,18 +38,22 @@ const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
 
 // 一個「行內包裝」：可能是純開關樣式的 delimiter（粗體等，開/關字串一樣），
 // 也可能是帶值的行內 marker——span（文字顏色，開 `⟦span-id ...⟧`、關 `⟦/span-id⟧`）、
-// a（連結，開 `⟦a-id href="..." target="..."⟧`、關 `⟦/a-id⟧`），或 footnote（腳注，
-// 開 `⟦footnote-id note="..."⟧`、關 `⟦/footnote-id⟧`，沒有 id 屬性，id 只在序列化時產生）。
+// a（連結，開 `⟦a-id href="..." target="..."⟧`、關 `⟦/a-id⟧`）、footnote（腳注，開
+// `⟦footnote-id note="..."⟧`、關 `⟦/footnote-id⟧`），或 comment（註解，開
+// `⟦comment-id comment="..." commentColor="..."⟧`、關 `⟦/comment-id⟧`）——皆沒有 id
+// 屬性，id 只在序列化時產生。
 type InlineWrapper =
   | { kind: "delimiter"; mark: MarkName }
   | { kind: "span"; textColor?: string; bgColor?: string }
   | { kind: "a"; href: string; target?: string }
-  | { kind: "footnote"; note: string };
+  | { kind: "footnote"; note: string }
+  | { kind: "comment"; comment: string; commentColor: CommentColorValue };
 
 /**
- * 讀出這個文字節點要套的所有包裝，由外而內排序：footnote（腳注）最外層，接著 span
- * （顏色），再來 a（連結），delimiter 樣式（粗體等）最內層。順序只是為了序列化輸出穩定
- * （同樣的格式每次存檔都長一樣），解析端不假設任何順序，任何巢狀順序都讀得出來。
+ * 讀出這個文字節點要套的所有包裝，由外而內排序：comment（註解）最外層，接著 footnote
+ * （腳注），再來 span（顏色），接著 a（連結），delimiter 樣式（粗體等）最內層。順序只是
+ * 為了序列化輸出穩定（同樣的格式每次存檔都長一樣），解析端不假設任何順序，任何巢狀順序
+ * 都讀得出來。
  */
 function wrappersOf(node: JSONContent): InlineWrapper[] {
   const marks = node.marks ?? [];
@@ -58,6 +62,8 @@ function wrappersOf(node: JSONContent): InlineWrapper[] {
   let href: string | undefined;
   let target: string | undefined;
   let footnoteNote: string | undefined;
+  let commentText: string | undefined;
+  let commentColor: CommentColorValue | undefined;
   for (const mark of marks) {
     if (mark.type === "textColor") {
       textColor = mark.attrs?.value as string | undefined;
@@ -68,10 +74,22 @@ function wrappersOf(node: JSONContent): InlineWrapper[] {
       target = (mark.attrs?.target as string | undefined) || undefined;
     } else if (mark.type === "footnote") {
       footnoteNote = (mark.attrs?.note as string | undefined) ?? "";
+    } else if (mark.type === "comment") {
+      commentText = (mark.attrs?.comment as string | undefined) ?? "";
+      commentColor =
+        (mark.attrs?.commentColor as CommentColorValue | undefined) ??
+        DEFAULT_COMMENT_COLOR;
     }
   }
 
   const wrappers: InlineWrapper[] = [];
+  if (commentText !== undefined) {
+    wrappers.push({
+      kind: "comment",
+      comment: commentText,
+      commentColor: commentColor ?? DEFAULT_COMMENT_COLOR,
+    });
+  }
   if (footnoteNote !== undefined) {
     wrappers.push({ kind: "footnote", note: footnoteNote });
   }
@@ -103,10 +121,13 @@ function wrappersEqual(a: InlineWrapper, b: InlineWrapper): boolean {
   if (a.kind === "footnote" && b.kind === "footnote") {
     return a.note === b.note;
   }
+  if (a.kind === "comment" && b.kind === "comment") {
+    return a.comment === b.comment && a.commentColor === b.commentColor;
+  }
   return false;
 }
 
-/** 展開一個包裝，回傳輸出字串跟（span／a／footnote 才有的）本次產生的 id，關閉時要用同一個 id。 */
+/** 展開一個包裝，回傳輸出字串跟（span／a／footnote／comment 才有的）本次產生的 id，關閉時要用同一個 id。 */
 function openWrapper(wrapper: InlineWrapper): {
   text: string;
   id: string | null;
@@ -139,10 +160,23 @@ function openWrapper(wrapper: InlineWrapper): {
       id,
     };
   }
-  const id = generateInlineMarkerId("footnote");
-  const noteAttr = ` ${MARKER_NOTE_ATTR}="${escapeMarkerComment(wrapper.note)}"`;
+  if (wrapper.kind === "footnote") {
+    const id = generateInlineMarkerId("footnote");
+    const noteAttr = ` ${MARKER_NOTE_ATTR}="${escapeMarkerComment(wrapper.note)}"`;
+    return {
+      text: `${MARKER_OPEN}${id}${noteAttr}${MARKER_CLOSE}`,
+      id,
+    };
+  }
+  const id = generateInlineMarkerId("comment");
+  const commentAttr = ` ${MARKER_COMMENT_ATTR}="${escapeMarkerComment(wrapper.comment)}"`;
+  // commentColor 是預設色時省略不輸出（省略即代表預設色），比照原本段落屬性時代的規則。
+  const commentColorAttr =
+    wrapper.commentColor !== DEFAULT_COMMENT_COLOR
+      ? ` ${MARKER_COMMENT_COLOR_ATTR}="${wrapper.commentColor}"`
+      : "";
   return {
-    text: `${MARKER_OPEN}${id}${noteAttr}${MARKER_CLOSE}`,
+    text: `${MARKER_OPEN}${id}${commentAttr}${commentColorAttr}${MARKER_CLOSE}`,
     id,
   };
 }
@@ -204,9 +238,10 @@ function serializeParagraphInline(paragraph: JSONContent): string {
   return output;
 }
 
-// align／comment／commentColor 都是 marker 開始標記上的屬性（不是行首前綴），固定順序
-// align、comment、commentColor，要跟 parser.ts 的 MARKER_PATTERN 對稱。標題仍然是行首前綴，
-// 因為那是沿用大家熟悉的 markdown 慣例，跟 align/comment 這種「無論如何都要自創語法」的情況不同。
+// align 是段落 marker 開始標記上的屬性（不是行首前綴），要跟 parser.ts 的 MARKER_PATTERN
+// 對稱。標題仍然是行首前綴，因為那是沿用大家熟悉的 markdown 慣例，跟 align 這種
+// 「無論如何都要自創語法」的情況不同。註解（comment）2026-07-09 起改成行內 marker
+// （見 wrappersOf 的 "comment" kind），不再是段落屬性。
 function serializeParagraph(paragraph: JSONContent): string {
   const markerId = (paragraph.attrs?.markerId as string | null) ?? "";
   const align =
@@ -214,22 +249,11 @@ function serializeParagraph(paragraph: JSONContent): string {
   const headingLevel =
     (paragraph.attrs?.headingLevel as HeadingLevel | undefined) ??
     DEFAULT_HEADING_LEVEL;
-  const comment = (paragraph.attrs?.comment as string | null) ?? null;
-  const commentColor =
-    (paragraph.attrs?.commentColor as CommentColorValue | null) ?? null;
   const headingPrefix = headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
   const alignAttr =
     align !== DEFAULT_ALIGNMENT ? ` ${MARKER_ALIGN_ATTR}="${align}"` : "";
-  const commentAttr = comment
-    ? ` ${MARKER_COMMENT_ATTR}="${escapeMarkerComment(comment)}"`
-    : "";
-  // commentColor 沒有 comment 時不輸出；有 comment 但顏色是預設色時也不輸出（省略即代表預設色）。
-  const commentColorAttr =
-    comment && commentColor && commentColor !== DEFAULT_COMMENT_COLOR
-      ? ` ${MARKER_COMMENT_COLOR_ATTR}="${commentColor}"`
-      : "";
   const inline = serializeParagraphInline(paragraph);
-  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${commentAttr}${commentColorAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
+  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 }
 
 /**

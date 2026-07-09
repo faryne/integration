@@ -16,6 +16,20 @@
   - 加註解／編輯註解的 Dialog 裡加一排色塊選色，`setComment` command 同時帶入顏色；移除註解時 `commentColor` 一併清空；Enter 分割段落時新段落的 `commentColor` 也重置成 null（跟 comment 一樣）。
   - `commentHighlight.ts` 依 `commentColor` 決定套用哪個 CSS class（`wysiwyg-comment-color-{color}`），`StorytellerWysiwygEditor.tsx` 內建 5 色的底色／邊框樣式。只影響編輯區，不影響閱讀頁（註解本來就不會出現在預覽/閱讀端）。
 
+- [x] **加註解改成行內（選取範圍）而不是整個段落**——已實作（2026-07-09，腳注做完後追加）。
+  - **緣起**：實作腳注時想到，加註解當初做成段落層級（跟 `align` 共用同一個段落 marker），單純是因為那是這個編輯器最早建的 marker，那時候還沒有行內 marker 機制——但使用者可能只想針對段落裡的一小段文字加註解，不一定是整段。既然腳注/連結/文字顏色都已經證明「行內 marker」機制好用，comment 也比照辦理走行內選字，不再限制只能整段。
+  - **實作摘要**：`type="comment"` 加進 `INLINE_MARKER_TYPES`，語法 `⟦comment-<id> comment="跳脫過的註解文字" commentColor="pink"⟧被選取的文字⟦/comment-<id>⟧`（`commentColor` 省略代表預設色 yellow，跟以前段落屬性時代的省略規則一致）。
+    - `whitelist.ts`：`MARKER_COMMENT_ATTR`／`MARKER_COMMENT_COLOR_ATTR`／`COMMENT_COLOR_VALUES`／`DEFAULT_COMMENT_COLOR` 這些常數本身不變，只是現在被行內 marker 的 `comment-<id>` 消費，不再出現在段落 marker 上；段落 marker 的固定順序也從「align → comment → commentColor」簡化成只剩 `align`。
+    - `parser.ts`：`ParsedParagraph` 移除 `comment`／`commentColor` 欄位；`ParsedRun` 新增 `commentId`／`comment`／`commentColor`（跟 `footnoteId` 同一套「同一則註解橫跨多個 run 時共用同一個 id」的設計）；`MARKER_PATTERN`（段落層級）簡化成只認 `align`；`InlineAttrs`／`parseInlineAttrs`／`applyInlineAttrs` 都加上 comment 相關欄位的解析。
+    - `serializer.ts`：`InlineWrapper` 加 `"comment"` kind（`comment`/`commentColor` 兩個屬性，跟 `span` 的 `textColor`/`bgColor` 同樣是「一個 kind 帶兩個屬性」的先例），序列化時放在跟 `footnote` 同一層（最外層，delimiter/span/a 之前）；`serializeParagraph` 移除 comment/commentColor 相關輸出。
+    - `inlineCommentMark.ts`（新）：`InlineComment` tiptap Mark，`comment` 屬性的 `renderHTML` 同時讀 `commentColor`（Tiptap 每個屬性的 `renderHTML` 收到的其實是整個 mark 的屬性物件，不是只有自己那一個值，這個技巧沿用來讓一個屬性的 renderHTML 就能算出完整的 class 名稱）。`commentHighlight.ts`（舊的 ProseMirror decoration plugin）直接刪除——高亮邏輯改成純粹由這個 mark 的 `renderHTML` 決定 class，不需要另外維護一個獨立的 decoration extension。
+    - `markerParagraph.ts`：移除 `comment`／`commentColor` 段落屬性、`setComment` command（改由 `InlineComment` mark 自己的 `setComment`/`unsetComment` 提供）；Enter 分割段落時原本會手動重置 `comment`/`commentColor` 的兩行也一併移除——行內 mark 不需要特別處理，ProseMirror 預設的分割行為就會正確地讓 mark 留在它原本包住的文字範圍內（跟粗體/顏色/連結/腳注等其他行內 mark 的行為一致）。
+    - `StorytellerWysiwygEditor.tsx`：`handleOpenCommentDialog`/`handleConfirmComment`/`handleRemoveComment` 全部改用 `extendMarkRange("comment")` 的 mark-based 流程（跟連結/腳注同一套模式），不再需要「找到持有某個 markerId 的段落」這種段落層級操作；`editorState.hasComment` 改用 `isActive("comment")`；新增 `hasSelection`／`canOpenCommentDialog`——**加註解現在需要真的選取一段文字才能新增**（編輯/移除既有註解則不受此限制，游標落在裡面就能開），沒有選取時工具列按鈕跟右鍵選單項目都會停用並顯示提示；`COMMENT_HIGHLIGHT_SX` 從「段落左側色條」改成「這段文字本身的底色＋底線」（比照螢光筆註解視覺，因為現在是選取範圍而不是整段）。
+    - **舊資料相容（重要）**：這是一個會改變序列化格式的異動，2026-07-09 之前存的故事/設定集內容，段落 marker 上還留著舊版的 `comment="..." commentColor="..."` 屬性。如果不處理，新的 `MARKER_PATTERN` 會直接比對失敗、整段退化成純文字，使用者會看到原始 `⟦...⟧` 語法外洩、既有註解也會憑空消失。解法：
+      - 前端新增 `LEGACY_PARAGRAPH_COMMENT_PATTERN`（`parser.ts`），偵測到舊格式時把整段內容包一層合成的行內 comment marker（沿用 `parseInline` 既有的行內 marker 解析路徑，不用另外寫一次性遷移腳本），視覺/資料上等同「原本整段都有註解」→「行內註解剛好包住整段文字」，語意無損；下次存檔會自然序列化成新格式，等於原地遷移。
+      - 後端 `storyMarkerPattern`（Go）刻意**保留**對舊版 `comment`／`commentColor` 屬性的比對（選配、不擷取值）——Go 這邊本來就只是把 comment 整個丟棄（從來不算進字數/書籤預覽），新舊格式「丟掉就好」的處理完全一樣，繼續比對舊屬性純粹是避免舊段落因為多了這兩個屬性讓整個 marker 比對失敗、退化成把原始語法外洩。
+  - **已驗證**：TS round-trip 22 項全過，涵蓋新格式（含跨粗體的註解、預設色省略/還原）跟舊格式相容（含跳脫引號、align 保留、diff-strip 乾淨無 `⟦⟧`外洩、遷移後重新存檔會變成新格式）；Go 測試涵蓋舊格式段落丟棄不算字數、新格式行內 marker 丟棄不算字數、純 `align` 段落正常解析三項全過；`tsc -b`／`eslint`／`prettier`／`go build`／`go vet` 皆乾淨；dev server 對所有異動模組的 HMR/smoke test 全過，無編譯錯誤。同樣**未在瀏覽器實際點過工具列/Dialog/右鍵選單/「沒選字時加註解按鈕會停用」的互動**（環境限制，見腳注那筆的說明），僅資料層／型別層／建置層驗證。
+
 - [x] **讀者可見的「腳注」功能**（像論文腳注或維基百科的參考註解，讀者也會看到，不是編輯限定的「加註解」）——已實作（2026-07-09）。
   - **實作摘要**：沿用文字顏色/連結打好的通用「行內 marker」機制，新增 `type="footnote"`，語法 `⟦footnote-<id> note="跳脫過的腳注內文"⟧被選取的文字⟦/footnote-<id>⟧`。跟連結最大的不同：腳注內文本身還要支援有限的行內樣式（粗體/斜體/底線），且讀者端需要「編號＋上標連結＋尾端腳注清單＋回連結」這一整套額外渲染，不是單純套個 style/href 就結束。
     - **範圍確認**（實作前用 `AskUserQuestion` 跟你確認過三點）：腳注內文只接受粗體/斜體/底線（不含上下標、不能再巢狀顏色/連結/另一個腳注）；編輯區走「簡化版」——跟加註解一樣是反白提示＋hover tooltip＋右鍵選單，不在編輯器內即時顯示編號或尾端預覽；版本 diff 把腳注獨立成一個「腳注」區塊比對（比照閱讀頁把腳注放在故事尾端渲染），不是讓腳注內文跟著本文那一行進入內容 diff。
