@@ -10,7 +10,9 @@ import {
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
   MARKER_COMMENT_COLOR_ATTR,
+  MARKER_HREF_ATTR,
   MARKER_OPEN,
+  MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
   MARK_SYNTAX_WHITELIST,
   escapeMarkerComment,
@@ -34,27 +36,41 @@ const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
 ];
 
 // 一個「行內包裝」：可能是純開關樣式的 delimiter（粗體等，開/關字串一樣），
-// 也可能是帶值的 span 行內 marker（文字顏色，開 `⟦span-id ...⟧`、關 `⟦/span-id⟧`）。
+// 也可能是帶值的行內 marker——span（文字顏色，開 `⟦span-id ...⟧`、關 `⟦/span-id⟧`）
+// 或 a（連結，開 `⟦a-id href="..." target="..."⟧`、關 `⟦/a-id⟧`）。
 type InlineWrapper =
   | { kind: "delimiter"; mark: MarkName }
-  | { kind: "span"; textColor?: string; bgColor?: string };
+  | { kind: "span"; textColor?: string; bgColor?: string }
+  | { kind: "a"; href: string; target?: string };
 
-/** 讀出這個文字節點要套的所有包裝，由外而內排序：span（顏色）在最外層、delimiter 樣式在內層。 */
+/**
+ * 讀出這個文字節點要套的所有包裝，由外而內排序：span（顏色）最外層，
+ * 接著 a（連結），delimiter 樣式（粗體等）最內層。順序只是為了序列化輸出穩定
+ * （同樣的格式每次存檔都長一樣），解析端不假設任何順序，任何巢狀順序都讀得出來。
+ */
 function wrappersOf(node: JSONContent): InlineWrapper[] {
   const marks = node.marks ?? [];
   let textColor: string | undefined;
   let bgColor: string | undefined;
+  let href: string | undefined;
+  let target: string | undefined;
   for (const mark of marks) {
     if (mark.type === "textColor") {
       textColor = mark.attrs?.value as string | undefined;
     } else if (mark.type === "bgColor") {
       bgColor = mark.attrs?.value as string | undefined;
+    } else if (mark.type === "link") {
+      href = mark.attrs?.href as string | undefined;
+      target = (mark.attrs?.target as string | undefined) || undefined;
     }
   }
 
   const wrappers: InlineWrapper[] = [];
   if (textColor || bgColor) {
     wrappers.push({ kind: "span", textColor, bgColor });
+  }
+  if (href) {
+    wrappers.push({ kind: "a", href, target });
   }
   const present = new Set(marks.map((mark) => mark.type as MarkName));
   for (const mark of MARK_NESTING_ORDER_OUTER_TO_INNER) {
@@ -72,10 +88,13 @@ function wrappersEqual(a: InlineWrapper, b: InlineWrapper): boolean {
   if (a.kind === "span" && b.kind === "span") {
     return a.textColor === b.textColor && a.bgColor === b.bgColor;
   }
+  if (a.kind === "a" && b.kind === "a") {
+    return a.href === b.href && a.target === b.target;
+  }
   return false;
 }
 
-/** 展開一個包裝，回傳輸出字串跟（span 才有的）本次產生的 id，關閉時要用同一個 id。 */
+/** 展開一個包裝，回傳輸出字串跟（span／a 才有的）本次產生的 id，關閉時要用同一個 id。 */
 function openWrapper(wrapper: InlineWrapper): {
   text: string;
   id: string | null;
@@ -83,15 +102,27 @@ function openWrapper(wrapper: InlineWrapper): {
   if (wrapper.kind === "delimiter") {
     return { text: CANONICAL_DELIMITER[wrapper.mark], id: null };
   }
-  const id = generateInlineMarkerId("span");
-  const textColorAttr = wrapper.textColor
-    ? ` ${MARKER_TEXT_COLOR_ATTR}="${wrapper.textColor}"`
-    : "";
-  const bgColorAttr = wrapper.bgColor
-    ? ` ${MARKER_BG_COLOR_ATTR}="${wrapper.bgColor}"`
+  if (wrapper.kind === "span") {
+    const id = generateInlineMarkerId("span");
+    const textColorAttr = wrapper.textColor
+      ? ` ${MARKER_TEXT_COLOR_ATTR}="${wrapper.textColor}"`
+      : "";
+    const bgColorAttr = wrapper.bgColor
+      ? ` ${MARKER_BG_COLOR_ATTR}="${wrapper.bgColor}"`
+      : "";
+    return {
+      text: `${MARKER_OPEN}${id}${textColorAttr}${bgColorAttr}${MARKER_CLOSE}`,
+      id,
+    };
+  }
+  const id = generateInlineMarkerId("a");
+  // href 是自由格式值，不像顏色是固定 enum，一定要跳脫才能安全塞進屬性字串。
+  const hrefAttr = ` ${MARKER_HREF_ATTR}="${escapeMarkerComment(wrapper.href)}"`;
+  const targetAttr = wrapper.target
+    ? ` ${MARKER_TARGET_ATTR}="${wrapper.target}"`
     : "";
   return {
-    text: `${MARKER_OPEN}${id}${textColorAttr}${bgColorAttr}${MARKER_CLOSE}`,
+    text: `${MARKER_OPEN}${id}${hrefAttr}${targetAttr}${MARKER_CLOSE}`,
     id,
   };
 }

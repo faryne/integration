@@ -8,16 +8,20 @@ import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
 import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import LinkIcon from "@mui/icons-material/Link";
+import LinkOffIcon from "@mui/icons-material/LinkOff";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
+  FormControlLabel,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -58,6 +62,7 @@ import {
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
+  isSafeHref,
   TEXT_COLOR_VALUES,
   type AlignmentValue,
   type BgColorValue,
@@ -138,6 +143,12 @@ const INLINE_COLOR_SX = {
       { backgroundColor: BG_COLOR_CSS[color] },
     ]),
   ),
+  // 連結：跟顏色一樣「編輯區＝閱讀頁」，不是像註解那種編輯限定的樣式。
+  "& .wysiwyg-link": {
+    color: "primary.main",
+    textDecoration: "underline",
+    cursor: "pointer",
+  },
 } as const;
 
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
@@ -185,6 +196,10 @@ export function StorytellerWysiwygEditor({
     null,
   );
   const [bgColorAnchor, setBgColorAnchor] = useState<HTMLElement | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [hrefDraft, setHrefDraft] = useState("");
+  const [openInNewTab, setOpenInNewTab] = useState(false);
+  const [pendingHadExistingLink, setPendingHadExistingLink] = useState(false);
 
   const editor = useEditor({
     extensions: [...wysiwygCoreExtensions, CommentHighlight],
@@ -238,6 +253,7 @@ export function StorytellerWysiwygEditor({
           hasComment: false,
           textColor: null as TextColorValue | null,
           bgColor: null as BgColorValue | null,
+          hasLink: false,
         };
       }
       const align =
@@ -268,6 +284,7 @@ export function StorytellerWysiwygEditor({
         ),
         textColor,
         bgColor,
+        hasLink: ctx.editor.isActive("link"),
       };
     },
   });
@@ -388,6 +405,38 @@ export function StorytellerWysiwygEditor({
     } else {
       editor.chain().focus().setBgColor(value).run();
     }
+  };
+
+  // 開連結 Dialog：如果游標目前就在一個既有連結裡，把 href/target 帶出來預填，
+  // 這樣「編輯連結」跟「新增連結」共用同一個 Dialog，使用者不用先移除再重加。
+  const handleOpenLinkDialog = () => {
+    const existingHref = editor.getAttributes("link").href as
+      string | undefined;
+    const existingTarget = editor.getAttributes("link").target as
+      string | undefined;
+    setPendingHadExistingLink(Boolean(existingHref));
+    setHrefDraft(existingHref ?? "");
+    setOpenInNewTab(existingTarget === "_blank");
+    setLinkDialogOpen(true);
+  };
+
+  // extendMarkRange 先把選取範圍延伸到涵蓋整個既有連結——不然編輯連結時，如果游標只是
+  // 落在連結中間（沒有主動選取整段文字），setLink 只會套用到目前的空選取範圍，等於沒改到。
+  const handleConfirmLink = () => {
+    const href = hrefDraft.trim();
+    if (!isSafeHref(href)) return;
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange("link")
+      .setLink({ href, target: openInNewTab ? "_blank" : undefined })
+      .run();
+    setLinkDialogOpen(false);
+  };
+
+  const handleRemoveLink = () => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    setLinkDialogOpen(false);
   };
 
   const activeMarks = [
@@ -540,6 +589,20 @@ export function StorytellerWysiwygEditor({
                       : undefined,
                   }}
                 />
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
+
+          <Divider orientation="vertical" flexItem />
+
+          <ToggleButtonGroup size="small">
+            <Tooltip title={editorState.hasLink ? "編輯連結" : "加連結"}>
+              <ToggleButton
+                value="link"
+                selected={editorState.hasLink}
+                onClick={handleOpenLinkDialog}
+              >
+                <LinkIcon fontSize="small" />
               </ToggleButton>
             </Tooltip>
           </ToggleButtonGroup>
@@ -758,6 +821,63 @@ export function StorytellerWysiwygEditor({
             disabled={commentDraft.trim() === ""}
           >
             {pendingHadExistingComment ? "更新註解" : "新增註解"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={linkDialogOpen}
+        onClose={() => setLinkDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {pendingHadExistingLink ? "編輯連結" : "加連結"}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            label="網址"
+            placeholder="https://..."
+            value={hrefDraft}
+            onChange={(event) => setHrefDraft(event.target.value)}
+            error={hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())}
+            helperText={
+              hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())
+                ? "只接受 http／https 網址或站內相對路徑"
+                : undefined
+            }
+          />
+          <FormControlLabel
+            sx={{ mt: 1 }}
+            control={
+              <Checkbox
+                checked={openInNewTab}
+                onChange={(event) => setOpenInNewTab(event.target.checked)}
+              />
+            }
+            label="在新分頁開啟"
+          />
+        </DialogContent>
+        <DialogActions>
+          {pendingHadExistingLink && (
+            <Button
+              color="error"
+              onClick={handleRemoveLink}
+              startIcon={<LinkOffIcon fontSize="small" />}
+              sx={{ mr: "auto" }}
+            >
+              移除連結
+            </Button>
+          )}
+          <Button onClick={() => setLinkDialogOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmLink}
+            disabled={!isSafeHref(hrefDraft.trim())}
+          >
+            {pendingHadExistingLink ? "更新連結" : "新增連結"}
           </Button>
         </DialogActions>
       </Dialog>

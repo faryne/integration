@@ -8,13 +8,17 @@ import {
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   INLINE_MARKER_TYPES,
+  isSafeHref,
+  LINK_TARGET_VALUES,
   MARKER_ALIGN_ATTR,
   MARKER_BG_COLOR_ATTR,
   MARKER_CLOSE,
   MARKER_CLOSE_SLASH,
   MARKER_COMMENT_ATTR,
   MARKER_COMMENT_COLOR_ATTR,
+  MARKER_HREF_ATTR,
   MARKER_OPEN,
+  MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
   PARSE_DELIMITERS,
   TEXT_COLOR_VALUES,
@@ -23,6 +27,7 @@ import {
   type BgColorValue,
   type CommentColorValue,
   type HeadingLevel,
+  type LinkTargetValue,
   type MarkName,
   type TextColorValue,
 } from "./whitelist";
@@ -34,6 +39,10 @@ export interface ParsedRun {
   textColor?: TextColorValue;
   /** 文字背景色（span 行內 marker），沒設定就是 undefined。 */
   bgColor?: BgColorValue;
+  /** 連結網址（a 行內 marker），已經過 scheme 安全檢查，沒設定就是 undefined。 */
+  href?: string;
+  /** 連結開啟方式，目前只有 "_blank" 有意義，沒設定就是同分頁開啟。 */
+  target?: LinkTargetValue;
 }
 
 export interface ParsedParagraph {
@@ -61,14 +70,20 @@ const MARKER_PATTERN = new RegExp(
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
 );
 
-interface SpanAttrs {
+// 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結）。同一個 marker 實例只會用到
+// 其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type 分流解析，因為屬性名稱
+// 本身就不會撞名，直接掃出所有認得的屬性即可，parseInline 不需要知道 marker 是哪個 type。
+interface InlineAttrs {
   textColor?: TextColorValue;
   bgColor?: BgColorValue;
+  href?: string;
+  target?: LinkTargetValue;
 }
 
-// span 行內 marker 的開頭標記（sticky，用 lastIndex 從指定位置比對）：
-// group 1 = 完整 id token（例如 span-a3f9）／group 2 = 屬性字串（可能為空，前面帶空白）。
-// 屬性值的掃描規則跟段落 marker 的 comment 一樣（跳脫感知），雖然目前顏色值是純 enum。
+// 行內 marker 的開頭標記（sticky，用 lastIndex 從指定位置比對）：
+// group 1 = 完整 id token（例如 span-a3f9／a-b7c1）／group 2 = 屬性字串（可能為空，前面帶空白）。
+// 屬性值的掃描規則跟段落 marker 的 comment 一樣（跳脫感知）——href 是自由格式值，
+// 必須用這套逐字跳脫規則，不能像顏色那樣假設值裡不會出現引號。
 const INLINE_MARKER_OPEN = new RegExp(
   `${MARKER_OPEN}((?:${INLINE_MARKER_TYPES.join("|")})-[^${MARKER_CLOSE}\\s]+)` +
     `((?: [A-Za-z]+="(?:[^"\\\\]|\\\\.)*")*)` +
@@ -76,9 +91,9 @@ const INLINE_MARKER_OPEN = new RegExp(
   "y",
 );
 
-/** 從屬性字串（例如 ` textColor="red" bgColor="yellow"`）抽出 span 支援、且值在白名單內的顏色屬性。 */
-function parseSpanAttrs(attrBlob: string): SpanAttrs {
-  const result: SpanAttrs = {};
+/** 從屬性字串（例如 ` textColor="red"` 或 ` href="https://..." target="_blank"`）抽出認得、且值合法的屬性。 */
+function parseInlineAttrs(attrBlob: string): InlineAttrs {
+  const result: InlineAttrs = {};
   const attrRe = /([A-Za-z]+)="((?:[^"\\]|\\.)*)"/g;
   let match: RegExpExecArray | null;
   while ((match = attrRe.exec(attrBlob)) !== null) {
@@ -94,17 +109,28 @@ function parseSpanAttrs(attrBlob: string): SpanAttrs {
       (BG_COLOR_VALUES as readonly string[]).includes(value)
     ) {
       result.bgColor = value as BgColorValue;
+    } else if (name === MARKER_HREF_ATTR && isSafeHref(value)) {
+      // 防禦性檢查：就算 DB 裡不知怎麼混進了危險 scheme（例如手動改資料、之後的匯入功能），
+      // 解析階段也不會把它當成有效連結，不能只靠編輯器輸入時的驗證。
+      result.href = value;
+    } else if (
+      name === MARKER_TARGET_ATTR &&
+      (LINK_TARGET_VALUES as readonly string[]).includes(value)
+    ) {
+      result.target = value as LinkTargetValue;
     }
   }
   return result;
 }
 
-/** 把 span 屬性套到 run 上：巢狀時內層優先（內層已經有顏色就不被外層覆蓋）。 */
-function applyInlineSpanAttrs(run: ParsedRun, attrs: SpanAttrs): ParsedRun {
+/** 把行內 marker 的屬性套到 run 上：巢狀時內層優先（內層已經有值就不被外層覆蓋）。 */
+function applyInlineAttrs(run: ParsedRun, attrs: InlineAttrs): ParsedRun {
   return {
     ...run,
     textColor: run.textColor ?? attrs.textColor,
     bgColor: run.bgColor ?? attrs.bgColor,
+    href: run.href ?? attrs.href,
+    target: run.target ?? attrs.target,
   };
 }
 
@@ -118,7 +144,7 @@ type NextToken =
       index: number;
       kind: "marker";
       id: string;
-      attrs: SpanAttrs;
+      attrs: InlineAttrs;
       openEnd: number;
     };
 
@@ -133,7 +159,7 @@ function findNextToken(text: string): NextToken | null {
           index: i,
           kind: "marker",
           id: match[1],
-          attrs: parseSpanAttrs(match[2]),
+          attrs: parseInlineAttrs(match[2]),
           openEnd: i + match[0].length,
         };
       }
@@ -196,18 +222,20 @@ function parseInline(text: string): ParsedRun[] {
   const innerRaw = text.slice(token.openEnd, closeIndex);
   const after = text.slice(closeIndex + closeTag.length);
   const innerRuns = parseInline(innerRaw).map((run) =>
-    applyInlineSpanAttrs(run, token.attrs),
+    applyInlineAttrs(run, token.attrs),
   );
   return [...beforeRuns, ...innerRuns, ...parseInline(after)];
 }
 
-/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色），normalizeRuns 用來決定能不能合併。 */
+/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結），normalizeRuns 用來決定能不能合併。 */
 function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
     a.marks.length === b.marks.length &&
     a.marks.every((mark, i) => mark === b.marks[i]) &&
     a.textColor === b.textColor &&
-    a.bgColor === b.bgColor
+    a.bgColor === b.bgColor &&
+    a.href === b.href &&
+    a.target === b.target
   );
 }
 
@@ -321,18 +349,23 @@ export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
   return markdown.split("\n").map(parseLine);
 }
 
-/** 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色 marks。 */
+/** 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色／連結 marks。 */
 function runToTiptapMarks(
   run: ParsedRun,
-): { type: string; attrs?: { value: string } }[] {
-  const marks: { type: string; attrs?: { value: string } }[] = run.marks.map(
-    (mark) => ({ type: mark }),
-  );
+): { type: string; attrs?: Record<string, string> }[] {
+  const marks: { type: string; attrs?: Record<string, string> }[] =
+    run.marks.map((mark) => ({ type: mark }));
   if (run.textColor) {
     marks.push({ type: "textColor", attrs: { value: run.textColor } });
   }
   if (run.bgColor) {
     marks.push({ type: "bgColor", attrs: { value: run.bgColor } });
+  }
+  if (run.href) {
+    marks.push({
+      type: "link",
+      attrs: { href: run.href, target: run.target ?? "" },
+    });
   }
   return marks;
 }

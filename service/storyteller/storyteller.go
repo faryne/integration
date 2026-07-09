@@ -818,12 +818,12 @@ func splitHeadingAndMarkerContent(line string) (int, string) {
 	return headingLevel, content
 }
 
-// storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色等）：
-// `⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡不管配對、單純把記號本身
-// 抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字。目前只有 span，
-// 之後加腳注／連結時往 `(?:span)` 裡多加一個 type 即可。
+// storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色、
+// a 連結等）：`⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡不管配對、
+// 單純把記號本身抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字。
+// 之後加腳注時往 `(?:span|a)` 裡多加一個 type 即可。
 var storyInlineMarkerPattern = regexp.MustCompile(
-	`⟦/?(?:span)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
+	`⟦/?(?:span|a)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
 )
 
 // stripStoryInlineMarkers 把一段內容裡的行內 marker 記號（span 顏色等）抽掉，只留下被包住的文字。
