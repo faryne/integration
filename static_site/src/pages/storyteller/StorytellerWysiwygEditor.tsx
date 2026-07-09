@@ -4,6 +4,8 @@ import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
+import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
+import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import SubscriptIcon from "@mui/icons-material/Subscript";
@@ -39,19 +41,29 @@ import {
   useState,
 } from "react";
 
+import {
+  BG_COLOR_CSS,
+  BG_COLOR_LABELS,
+  TEXT_COLOR_CSS,
+  TEXT_COLOR_LABELS,
+} from "./wysiwygCore/colorStyles";
 import { CommentHighlight } from "./wysiwygCore/commentHighlight";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
   ALIGNMENT_VALUES,
+  BG_COLOR_VALUES,
   COMMENT_COLOR_VALUES,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
+  TEXT_COLOR_VALUES,
   type AlignmentValue,
+  type BgColorValue,
   type CommentColorValue,
   type HeadingLevel,
+  type TextColorValue,
 } from "./wysiwygCore/whitelist";
 import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
 
@@ -110,6 +122,24 @@ const COMMENT_HIGHLIGHT_SX = {
   },
 } as const;
 
+// 文字前景色／背景色的 class → 樣式對照（editor 端）。跟閱讀頁共用同一份色碼對照表
+// （colorStyles.ts），只是編輯區走 class、閱讀頁走 inline style。這個跟註解高亮不同，
+// 顏色是讀者也看得到的內容樣式，所以編輯區跟閱讀頁應該長得一樣。
+const INLINE_COLOR_SX = {
+  ...Object.fromEntries(
+    TEXT_COLOR_VALUES.map((color) => [
+      `& .wysiwyg-textcolor-${color}`,
+      { color: TEXT_COLOR_CSS[color] },
+    ]),
+  ),
+  ...Object.fromEntries(
+    BG_COLOR_VALUES.map((color) => [
+      `& .wysiwyg-bgcolor-${color}`,
+      { backgroundColor: BG_COLOR_CSS[color] },
+    ]),
+  ),
+} as const;
+
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
   { value: 0, label: "內文" },
   ...HEADING_LEVELS.map((level) => ({ value: level, label: `標題 ${level}` })),
@@ -151,6 +181,10 @@ export function StorytellerWysiwygEditor({
   );
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
+  const [textColorAnchor, setTextColorAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [bgColorAnchor, setBgColorAnchor] = useState<HTMLElement | null>(null);
 
   const editor = useEditor({
     extensions: [...wysiwygCoreExtensions, CommentHighlight],
@@ -202,6 +236,8 @@ export function StorytellerWysiwygEditor({
           align: "left" as AlignmentValue,
           headingLevel: DEFAULT_HEADING_LEVEL,
           hasComment: false,
+          textColor: null as TextColorValue | null,
+          bgColor: null as BgColorValue | null,
         };
       }
       const align =
@@ -211,6 +247,14 @@ export function StorytellerWysiwygEditor({
         HEADING_LEVELS.find((level) =>
           ctx.editor!.isActive("paragraph", { headingLevel: level }),
         ) ?? DEFAULT_HEADING_LEVEL;
+      const textColor =
+        TEXT_COLOR_VALUES.find((value) =>
+          ctx.editor!.isActive("textColor", { value }),
+        ) ?? null;
+      const bgColor =
+        BG_COLOR_VALUES.find((value) =>
+          ctx.editor!.isActive("bgColor", { value }),
+        ) ?? null;
       return {
         bold: ctx.editor.isActive("bold"),
         italic: ctx.editor.isActive("italic"),
@@ -222,6 +266,8 @@ export function StorytellerWysiwygEditor({
         hasComment: Boolean(
           ctx.editor.state.selection.$from.parent.attrs.comment,
         ),
+        textColor,
+        bgColor,
       };
     },
   });
@@ -322,6 +368,26 @@ export function StorytellerWysiwygEditor({
       string | null;
     closeContextMenu();
     if (markerId) handleRemoveComment(markerId);
+  };
+
+  // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
+  // 之後鍵入的文字上，跟粗體等行為一致）。選 null 代表清除。
+  const applyTextColor = (value: TextColorValue | null) => {
+    setTextColorAnchor(null);
+    if (value === null) {
+      editor.chain().focus().unsetTextColor().run();
+    } else {
+      editor.chain().focus().setTextColor(value).run();
+    }
+  };
+
+  const applyBgColor = (value: BgColorValue | null) => {
+    setBgColorAnchor(null);
+    if (value === null) {
+      editor.chain().focus().unsetBgColor().run();
+    } else {
+      editor.chain().focus().setBgColor(value).run();
+    }
   };
 
   const activeMarks = [
@@ -444,6 +510,43 @@ export function StorytellerWysiwygEditor({
           <Divider orientation="vertical" flexItem />
 
           <ToggleButtonGroup size="small">
+            <Tooltip title="文字顏色">
+              <ToggleButton
+                value="text-color"
+                selected={editorState.textColor !== null}
+                onClick={(event) => setTextColorAnchor(event.currentTarget)}
+              >
+                <FormatColorTextIcon
+                  fontSize="small"
+                  sx={{
+                    color: editorState.textColor
+                      ? TEXT_COLOR_CSS[editorState.textColor]
+                      : undefined,
+                  }}
+                />
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="文字背景色">
+              <ToggleButton
+                value="bg-color"
+                selected={editorState.bgColor !== null}
+                onClick={(event) => setBgColorAnchor(event.currentTarget)}
+              >
+                <FormatColorFillIcon
+                  fontSize="small"
+                  sx={{
+                    color: editorState.bgColor
+                      ? BG_COLOR_CSS[editorState.bgColor]
+                      : undefined,
+                  }}
+                />
+              </ToggleButton>
+            </Tooltip>
+          </ToggleButtonGroup>
+
+          <Divider orientation="vertical" flexItem />
+
+          <ToggleButtonGroup size="small">
             <Tooltip title={editorState.hasComment ? "編輯註解" : "加註解"}>
               <ToggleButton
                 value="add-comment"
@@ -469,7 +572,7 @@ export function StorytellerWysiwygEditor({
         sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
       >
         <Box
-          sx={[HEADING_TYPOGRAPHY_SX, COMMENT_HIGHLIGHT_SX]}
+          sx={[HEADING_TYPOGRAPHY_SX, COMMENT_HIGHLIGHT_SX, INLINE_COLOR_SX]}
           onMouseOver={handleEditorMouseOver}
           onMouseOut={handleEditorMouseOut}
           onContextMenu={handleEditorContextMenu}
@@ -504,6 +607,82 @@ export function StorytellerWysiwygEditor({
             <ListItemText>移除註解</ListItemText>
           </MenuItem>
         )}
+      </Menu>
+
+      <Menu
+        open={textColorAnchor !== null}
+        anchorEl={textColorAnchor}
+        onClose={() => setTextColorAnchor(null)}
+      >
+        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
+          {TEXT_COLOR_VALUES.map((color) => (
+            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
+              <Box
+                component="button"
+                type="button"
+                aria-label={TEXT_COLOR_LABELS[color]}
+                aria-pressed={editorState.textColor === color}
+                onClick={() => applyTextColor(color)}
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  border: "2px solid",
+                  borderColor:
+                    editorState.textColor === color
+                      ? "text.primary"
+                      : "divider",
+                  bgcolor: TEXT_COLOR_CSS[color],
+                  cursor: "pointer",
+                  p: 0,
+                }}
+              />
+            </Tooltip>
+          ))}
+        </Stack>
+        <MenuItem onClick={() => applyTextColor(null)}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>清除文字顏色</ListItemText>
+        </MenuItem>
+      </Menu>
+
+      <Menu
+        open={bgColorAnchor !== null}
+        anchorEl={bgColorAnchor}
+        onClose={() => setBgColorAnchor(null)}
+      >
+        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
+          {BG_COLOR_VALUES.map((color) => (
+            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
+              <Box
+                component="button"
+                type="button"
+                aria-label={BG_COLOR_LABELS[color]}
+                aria-pressed={editorState.bgColor === color}
+                onClick={() => applyBgColor(color)}
+                sx={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  border: "2px solid",
+                  borderColor:
+                    editorState.bgColor === color ? "text.primary" : "divider",
+                  bgcolor: BG_COLOR_CSS[color],
+                  cursor: "pointer",
+                  p: 0,
+                }}
+              />
+            </Tooltip>
+          ))}
+        </Stack>
+        <MenuItem onClick={() => applyBgColor(null)}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>清除背景色</ListItemText>
+        </MenuItem>
       </Menu>
 
       <Dialog

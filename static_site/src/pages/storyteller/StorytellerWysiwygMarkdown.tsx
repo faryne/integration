@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Box } from "@mui/material";
 
+import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import {
   parseMarkdownToParagraphs,
   type ParsedRun,
@@ -25,6 +26,18 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
   for (const mark of run.marks) {
     const Tag = MARK_TAG[mark];
     node = <Tag key={`${key}-${mark}`}>{node}</Tag>;
+  }
+  // 文字顏色／背景色：值一律取自固定色盤的對照表（colorStyles.ts），不是把序列化字串
+  // 原樣塞進 style，符合「不接受使用者自填 CSS」的安全規則。
+  const style: CSSProperties = {};
+  if (run.textColor) style.color = TEXT_COLOR_CSS[run.textColor];
+  if (run.bgColor) style.backgroundColor = BG_COLOR_CSS[run.bgColor];
+  if (style.color || style.backgroundColor) {
+    return (
+      <span key={key} style={style}>
+        {node}
+      </span>
+    );
   }
   return <span key={key}>{node}</span>;
 }

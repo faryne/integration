@@ -818,10 +818,25 @@ func splitHeadingAndMarkerContent(line string) (int, string) {
 	return headingLevel, content
 }
 
+// storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色等）：
+// `⟦<type>-<id> attr="..."⟧` 開頭跟 `⟦/<type>-<id>⟧` 結尾。這裡不管配對、單純把記號本身
+// 抽掉（保留被包住的文字），因為字數計算跟書籤預覽都只需要看得到的文字。目前只有 span，
+// 之後加腳注／連結時往 `(?:span)` 裡多加一個 type 即可。
+var storyInlineMarkerPattern = regexp.MustCompile(
+	`⟦/?(?:span)-[^⟧\s]+(?: [A-Za-z]+="(?:[^"\\]|\\.)*")*⟧`,
+)
+
+// stripStoryInlineMarkers 把一段內容裡的行內 marker 記號（span 顏色等）抽掉，只留下被包住的文字。
+func stripStoryInlineMarkers(content string) string {
+	return storyInlineMarkerPattern.ReplaceAllString(content, "")
+}
+
 // stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment/commentColor
-// 屬性），保留標題前綴，只留下可讀文字。邏輯跟前端 stripMarkerForDiffLine 一致，方便未來對照維護。
+// 屬性）跟行內 marker（span 顏色等），保留標題前綴，只留下可讀文字。邏輯跟前端
+// stripMarkerForDiffLine 一致，方便未來對照維護。
 func stripBookmarkLineMarker(line string) string {
 	headingLevel, content := splitHeadingAndMarkerContent(line)
+	content = stripStoryInlineMarkers(content)
 	if headingLevel > 0 {
 		return strings.Repeat("#", headingLevel) + " " + content
 	}
@@ -1659,6 +1674,7 @@ func wordCount(content string) uint {
 	var builder strings.Builder
 	for _, line := range strings.Split(content, "\n") {
 		_, clean := splitHeadingAndMarkerContent(line)
+		clean = stripStoryInlineMarkers(clean)
 		builder.WriteString(stripInlineDelimiters(clean))
 	}
 	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")
