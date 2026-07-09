@@ -89,17 +89,21 @@
   - **安全性考量（比前面幾個功能都更需要注意）**：連結的 `href` 是要直接渲染成真的 `<a href="...">` 給讀者點的，這裡要小心 XSS——至少要限制 scheme 只能是 `http`／`https`（擋掉 `javascript:`、`data:` 等危險 scheme），渲染時 `<a>` 標籤建議加上 `rel="noopener noreferrer"`（外部連結常見的安全慣例，防止新分頁能透過 `window.opener` 操作原本頁面）。這件事不只是「設計選擇」而是「正確性/安全性要求」，正式動工時一定要做。
   - **編輯面**：選取文字 → 工具列或右鍵選單開 Dialog 輸入網址（比照腳注的 Dialog 模式，把「輸入註解文字」換成「輸入網址」，可以視需要加網址格式驗證）。
   - **待確認**：
-    1. 要不要支援「站內連結」（例如連到同專案裡的另一篇故事／設定集，類似 AI Agent 面板已經有的 `@story:`／`@lore:` 引用機制）？如果要，這會是另一種 `href` 之外的屬性（例如 `storyId`／`loreId`），還是統一都用一般網址（站內連結就是一般的網址字串）處理就好？
-    2. 連結文字要不要也支援跟粗體/斜體等既有行內樣式疊加？（跟腳注/文字顏色一樣的疊加問題，可以合併一起設計。）
+    1. ~~要不要支援「站內連結」~~——**已決定暫緩**（2026-07-09）：`isSafeHref()` 改成只接受明確以 `http://`／`https://` 開頭的網址，不再把「沒有 scheme 的相對路徑」當成安全值。原因：站內連結牽涉到「故事是否公開」「設定集目前還沒有公開機制」這些還沒拍板的問題，等使用情境明朗後再評估要不要開放（到時候可能是另一種 `storyId`／`loreId` 屬性，也可能還是一般網址字串，先不用現在決定）。
+    2. 連結文字要不要也支援跟粗體/斜體等既有行內樣式疊加？（跟腳注/文字顏色一樣的疊加問題，可以合併一起設計。）——**已驗證可行**：round-trip 測試裡「連結包粗體」「連結疊顏色」都過，機制上沒問題。
   - **對照「關於客製化元素」章節後的補充**：那邊把連結定位成 `type="a"`，屬性是 `href`／`target`，跟這裡提的「行內 marker」機制方向一致。另外補一個資安提醒：如果 `target="_blank"`（開新分頁）是選項之一，渲染成 `<a>` 時務必同時加上 `rel="noopener noreferrer"`——這是跟前面 XSS scheme 限制分開的另一個資安慣例（防止新分頁透過 `window.opener` 回頭操作原本頁面），兩個都要做，不是只做其中一個。
   - **實作摘要**：`type="a"` 加進 `INLINE_MARKER_TYPES`，語法沿用文字顏色打好的通用行內 marker 機制：`⟦a-<id> href="..." target="_blank"⟧文字⟦/a-<id>⟧`（`target` 可省略）。
-    - `whitelist.ts`：新增 `MARKER_HREF_ATTR`／`MARKER_TARGET_ATTR`、`LINK_TARGET_VALUES`（目前只有 `_blank`）、`isSafeHref()`——**資安防線是限制 scheme，不是限制值**（href 本質上是自由格式，跟顏色的固定 enum 不同）：只允許 `http:`／`https:`，或沒有 scheme 的相對路徑（用假 base 餵給 `URL` 建構子來判斷，站內連結例如 `/storyteller/xxx` 因此也視為安全）。
+    - `whitelist.ts`：新增 `MARKER_HREF_ATTR`／`MARKER_TARGET_ATTR`、`LINK_TARGET_VALUES`（目前只有 `_blank`）、`isSafeHref()`——**資安防線是限制 scheme，不是限制值**（href 本質上是自由格式，跟顏色的固定 enum 不同）：**只接受明確以 `http://`／`https://` 開頭的網址**（2026-07-09 收緊：原本用假 base 餵給 `URL` 建構子、連沒有 scheme 的相對路徑也當安全值放行，現在改成必須明確帶 scheme，暫不支援站內連結，見上面第 1 點待確認）。
     - `parser.ts`：把原本專屬顏色的 `SpanAttrs`/`parseSpanAttrs`/`applyInlineSpanAttrs` 一般化成 `InlineAttrs`/`parseInlineAttrs`/`applyInlineAttrs`，同時認得顏色跟 href/target 屬性（屬性名稱不會撞名，不需要照 marker type 分流解析）。**`parseInlineAttrs` 解析 href 時會呼叫 `isSafeHref` 防禦性檢查**——就算 DB 裡不知怎麼混進危險 scheme（手動改資料、以後的匯入功能等），解析階段也不會把它當有效連結，不能只靠編輯器輸入時的驗證這一關。
     - `serializer.ts`：`InlineWrapper` 加 `"a"` kind（href 用 `escapeMarkerComment` 跳脫，因為是自由格式值，不像顏色是 enum 不需要跳脫）。目前的巢狀順序：span（顏色）最外層 → a（連結）→ delimiter 樣式（粗體等）最內層——這只影響序列化輸出穩不穩定，解析端不假設任何順序。
     - `inlineLinkMark.ts`（新）：`InlineLink` tiptap Mark，`setLink` command 本身也重複呼叫 `isSafeHref`（第二層防禦，就算呼叫端忘記先驗證也不會套用危險網址）。
     - 編輯區：工具列加連結按鈕＋Dialog（網址輸入框即時顯示格式錯誤、「在新分頁開啟」checkbox、編輯既有連結時用 `extendMarkRange("link")` 讓整個連結範圍一起被替換而不是只有游標那一點）。閱讀端：`renderRun` 渲染 `<a>` 前**再檢查一次 `isSafeHref`**（第三層防禦，渲染永遠不假設前面的關卡一定擋過），`target="_blank"` 時加 `rel="noopener noreferrer"`。
     - 後端 `storyInlineMarkerPattern` 加 `a` 到 type 清單（原本只有 `span`），書籤預覽/字數統計才不會漏掉連結的行內 marker。
   - **已驗證**：TS round-trip 19 項全過（含連結包粗體/連結疊顏色/target=_blank/href 含跳脫字元），**專門驗證 `javascript:`／`data:` scheme 在解析階段就被擋掉、文字仍保留但不再是連結**；Go 書籤 strip／字數測試全過；`tsc -b`／`eslint`／`prettier`／`go build`／`go vet` 皆乾淨、dev server 模組載入無誤。同樣未在瀏覽器實際點過（環境限制），僅資料/型別層驗證，**Dialog 的即時錯誤提示、editor 內連結可點擊性等 UI 行為建議實際操作時再確認一次**。
+  - **後續追加（2026-07-09，同一天第二輪）**：
+    1. **收緊 `isSafeHref()`**（見上面第 1 點待確認）：不再接受相對路徑，Dialog 的「加入連結」按鈕原本就是靠 `disabled={!isSafeHref(...)}` 控制，收緊驗證函式後不用額外改按鈕邏輯，行為自動一起變嚴格。新增測試驗證：DB 裡如果混進舊的相對路徑連結，parser 解析時 `href` 會被濾掉（回退成純文字，不會壞掉，只是不再是連結）。
+    2. **把粗體/斜體/底線/上下標/文字色/背景色/連結都整合進右鍵選單**，跟工具列的動作一致，不用特別移到工具列才能套用格式。
+    3. **順便修掉一個右鍵選單的既有 bug**：`handleEditorContextMenu` 原本不管三七二十一，右鍵點哪就把選取範圍收合成那個單點——這在「只有加註解」的年代沒差（加註解本來就是套在整個段落上，跟游標實際位置無關），但這次要在右鍵選單裡加粗體/顏色/連結這些「套在選取範圍上」的動作後，這個行為會變成 bug：使用者選了一段文字、在選取範圍**裡面**按右鍵想套格式，選取範圍卻被收合掉，套用動作會失效。修法：只有在右鍵點的位置**落在目前選取範圍外面**時才收合成單點，點在範圍裡面就維持原本的選取範圍不動。
 
 - [ ] **加入清單 `ul` / `ol` > `li`**——目前只做設計分析，還沒實作，三個裡面架構最複雜的一個。
   - **架構定位**：跟引用一樣是段落層級屬性（例如 `listType: "none" | "bullet" | "number"`），一樣需要「連續段落分組成一個視覺容器」（沿用引用那邊提到的分組渲染邏輯，`ul`/`ol` 的分組規則更複雜一點：連續的 bullet 項目分成一組 `<ul>`；如果中間穿插一個 number 類型的段落，就要斷成兩組，各自包自己的 `<ul>`/`<ol>`，不能混在同一個清單容器裡）。

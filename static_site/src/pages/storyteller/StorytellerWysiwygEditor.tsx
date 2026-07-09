@@ -362,6 +362,11 @@ export function StorytellerWysiwygEditor({
   // 右鍵點哪裡，就把選取範圍移到那個位置（posAtCoords 換算螢幕座標成文件內位置），
   // 不管那段目前有沒有註解都適用——不像 hover 高亮，只有已經有註解的段落才有
   // .wysiwyg-has-comment 可以定位，右鍵選單要對「還沒加註解」的段落也能開。
+  //
+  // 但如果使用者已經選了一段文字、在選取範圍「裡面」按右鍵（想對這段文字套格式），
+  // 不能把選取範圍收合成右鍵點的那個單一位置——不然選取範圍就沒了，右鍵選單裡的
+  // 粗體/顏色/連結等動作會套用到「空選取」上，等於失效。只有右鍵點在選取範圍「外面」
+  // 時才收合成單點（沿用原本「右鍵任何地方都能開加註解選單」的行為）。
   const handleEditorContextMenu = (event: MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     const result = editor.view.posAtCoords({
@@ -369,7 +374,11 @@ export function StorytellerWysiwygEditor({
       top: event.clientY,
     });
     if (!result) return;
-    editor.commands.setTextSelection(result.pos);
+    const { from, to } = editor.state.selection;
+    const clickedInsideSelection = result.pos >= from && result.pos <= to;
+    if (!clickedInsideSelection) {
+      editor.commands.setTextSelection(result.pos);
+    }
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   };
 
@@ -654,6 +663,183 @@ export function StorytellerWysiwygEditor({
             : undefined
         }
       >
+        <MenuItem
+          selected={editorState.bold}
+          onClick={() => {
+            editor.chain().focus().toggleBold().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <FormatBoldIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>粗體</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={editorState.italic}
+          onClick={() => {
+            editor.chain().focus().toggleItalic().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <FormatItalicIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>斜體</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={editorState.underline}
+          onClick={() => {
+            editor.chain().focus().toggleUnderline().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <FormatUnderlinedIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>底線</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={editorState.subscript}
+          onClick={() => {
+            editor.chain().focus().toggleSubscript().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <SubscriptIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>下標</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={editorState.superscript}
+          onClick={() => {
+            editor.chain().focus().toggleSuperscript().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <SuperscriptIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>上標</ListItemText>
+        </MenuItem>
+
+        <Divider />
+
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", px: 2, pt: 1 }}
+        >
+          文字顏色
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
+          {TEXT_COLOR_VALUES.map((color) => (
+            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
+              <Box
+                component="button"
+                type="button"
+                aria-label={TEXT_COLOR_LABELS[color]}
+                aria-pressed={editorState.textColor === color}
+                onClick={() => {
+                  applyTextColor(color);
+                  closeContextMenu();
+                }}
+                sx={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "2px solid",
+                  borderColor:
+                    editorState.textColor === color
+                      ? "text.primary"
+                      : "divider",
+                  bgcolor: TEXT_COLOR_CSS[color],
+                  cursor: "pointer",
+                  p: 0,
+                }}
+              />
+            </Tooltip>
+          ))}
+        </Stack>
+        <MenuItem
+          onClick={() => {
+            applyTextColor(null);
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>清除文字顏色</ListItemText>
+        </MenuItem>
+
+        <Divider />
+
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", px: 2, pt: 1 }}
+        >
+          文字背景色
+        </Typography>
+        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
+          {BG_COLOR_VALUES.map((color) => (
+            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
+              <Box
+                component="button"
+                type="button"
+                aria-label={BG_COLOR_LABELS[color]}
+                aria-pressed={editorState.bgColor === color}
+                onClick={() => {
+                  applyBgColor(color);
+                  closeContextMenu();
+                }}
+                sx={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  border: "2px solid",
+                  borderColor:
+                    editorState.bgColor === color ? "text.primary" : "divider",
+                  bgcolor: BG_COLOR_CSS[color],
+                  cursor: "pointer",
+                  p: 0,
+                }}
+              />
+            </Tooltip>
+          ))}
+        </Stack>
+        <MenuItem
+          onClick={() => {
+            applyBgColor(null);
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>清除背景色</ListItemText>
+        </MenuItem>
+
+        <Divider />
+
+        <MenuItem
+          onClick={() => {
+            closeContextMenu();
+            handleOpenLinkDialog();
+          }}
+        >
+          <ListItemIcon>
+            <LinkIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>
+            {editorState.hasLink ? "編輯連結" : "加連結"}
+          </ListItemText>
+        </MenuItem>
+
+        <Divider />
+
         <MenuItem onClick={handleContextMenuAddOrEditComment}>
           <ListItemIcon>
             <AddCommentIcon fontSize="small" />
@@ -845,7 +1031,7 @@ export function StorytellerWysiwygEditor({
             error={hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())}
             helperText={
               hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())
-                ? "只接受 http／https 網址或站內相對路徑"
+                ? "只接受 http:// 或 https:// 開頭的網址（暫不支援站內連結）"
                 : undefined
             }
           />
