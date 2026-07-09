@@ -7,6 +7,7 @@ import {
   DEFAULT_ALIGNMENT,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
+  FOOTNOTE_PARSE_DELIMITERS,
   INLINE_MARKER_TYPES,
   isSafeHref,
   LINK_TARGET_VALUES,
@@ -17,6 +18,7 @@ import {
   MARKER_COMMENT_ATTR,
   MARKER_COMMENT_COLOR_ATTR,
   MARKER_HREF_ATTR,
+  MARKER_NOTE_ATTR,
   MARKER_OPEN,
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
@@ -43,41 +45,72 @@ export interface ParsedRun {
   href?: string;
   /** 連結開啟方式，目前只有 "_blank" 有意義，沒設定就是同分頁開啟。 */
   target?: LinkTargetValue;
+  /**
+   * 腳注的 marker id（含 `footnote-` 前綴），同一個腳注橫跨多個 run（例如錨定文字裡有
+   * 粗體）時，這些 run 的 footnoteId 會是同一個值——渲染端要靠這個判斷「連續幾個 run
+   * 其實是同一個腳注錨點」，只在整組結束後渲染一次上標編號，不是每個 run 各渲染一次。
+   */
+  footnoteId?: string;
+  /** 腳注內文（原始字串，可能還帶著粗體/斜體/底線的 delimiter，尚未解析），沒設定就是 undefined。 */
+  footnoteNote?: string;
+  /**
+   * 註解的 marker id（含 `comment-` 前綴）。2026-07-09 起註解改成行內 marker（原本是段落
+   * marker 的屬性），道理跟 footnoteId 一樣：同一則註解橫跨多個 run 時共用同一個值，
+   * 編輯區的 hover/右鍵編輯要靠這個判斷「這段範圍屬於同一則註解」。
+   */
+  commentId?: string;
+  /** 註解文字，沒設定就是 undefined。註解只在編輯區顯示，不會出現在讀者端渲染或字數統計。 */
+  comment?: string;
+  /** 註解底色，沒設定時渲染端要 fallback 成 DEFAULT_COMMENT_COLOR（比照原本段落屬性的規則）。 */
+  commentColor?: CommentColorValue;
 }
 
 export interface ParsedParagraph {
   markerId: string | null;
   align: AlignmentValue;
   headingLevel: HeadingLevel;
-  comment: string | null;
-  commentColor: CommentColorValue | null;
   runs: ParsedRun[];
 }
 
 /** 比照 CommonMark ATX heading：行首 1~6 個 #，後面不能緊接第 7 個 #，再接一個空白。 */
 const HEADING_PATTERN = /^(#{1,6})(?!#) ([\s\S]*)$/;
 
-// group 1: markerId／group 2: align（可能不存在，省略代表置左）／group 3: comment（跳脫過，可能不存在）
-// group 4: commentColor（可能不存在，省略代表預設色）／group 5: 段落內容／group 6: 結尾的 markerId
-// 三個屬性順序固定是 align、comment、commentColor，序列化時也要照這個順序輸出。
-// comment 屬性值用「(?:[^"\\]|\\.)*」掃描：逐字比對「不是引號也不是反斜線的字元」或「反斜線+任一字元（跳脫序列）」，
-// 這樣才能正確找到「沒被跳脫的那個引號」當結尾，而不是天真地找下一個 " 就當結束。
+// group 1: markerId／group 2: align（可能不存在，省略代表置左）／group 3: 段落內容／group 4: 結尾的 markerId
+// 註解已經改成行內 marker（見下面 InlineAttrs），不再是段落 marker 的屬性。
 const MARKER_PATTERN = new RegExp(
   `^${MARKER_OPEN}([^${MARKER_CLOSE}\\s]*)` +
     `(?: ${MARKER_ALIGN_ATTR}="(${ALIGNMENT_VALUES.join("|")})")?` +
-    `(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")?` +
+    `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
+);
+
+// 舊資料相容：2026-07-09 之前，註解是段落 marker 的屬性（align 之後、緊接著 commentColor）。
+// 上面的 MARKER_PATTERN 不會比對這兩個屬性了（新資料不會再寫入），舊格式的段落會直接整個
+// 比對失敗、退化成整行當純文字——這樣使用者既有的註解會憑空消失、還會在畫面上看到原始
+// `⟦...⟧` 語法。這裡另外用一個「一定要有 comment 屬性」的寬鬆版 pattern 偵測舊格式，
+// group 1=markerId／2=align／3=comment（必要，跳脫過）／4=commentColor／5=段落內容／
+// 6=結尾 markerId。偵測到就在 extractMarker 裡把整段內容包一層合成的行內 comment marker，
+// 沿用 parseInline 既有的行內 marker解析路徑——不用另外寫一次性遷移腳本，下次存檔
+// 就會自然序列化成新格式（原地遷移）。
+const LEGACY_PARAGRAPH_COMMENT_PATTERN = new RegExp(
+  `^${MARKER_OPEN}([^${MARKER_CLOSE}\\s]*)` +
+    `(?: ${MARKER_ALIGN_ATTR}="(${ALIGNMENT_VALUES.join("|")})")?` +
+    `(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")` +
     `(?: ${MARKER_COMMENT_COLOR_ATTR}="(${COMMENT_COLOR_VALUES.join("|")})")?` +
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
 );
 
-// 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結）。同一個 marker 實例只會用到
-// 其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type 分流解析，因為屬性名稱
-// 本身就不會撞名，直接掃出所有認得的屬性即可，parseInline 不需要知道 marker 是哪個 type。
+// 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結、footnote 的內文）。同一個
+// marker 實例只會用到其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type
+// 分流解析，因為屬性名稱本身就不會撞名，直接掃出所有認得的屬性即可，parseInline
+// 不需要知道 marker 是哪個 type。
 interface InlineAttrs {
   textColor?: TextColorValue;
   bgColor?: BgColorValue;
   href?: string;
   target?: LinkTargetValue;
+  note?: string;
+  comment?: string;
+  commentColor?: CommentColorValue;
 }
 
 // 行內 marker 的開頭標記（sticky，用 lastIndex 從指定位置比對）：
@@ -118,19 +151,50 @@ function parseInlineAttrs(attrBlob: string): InlineAttrs {
       (LINK_TARGET_VALUES as readonly string[]).includes(value)
     ) {
       result.target = value as LinkTargetValue;
+    } else if (name === MARKER_NOTE_ATTR) {
+      // note 沒有固定色盤那種值限制（自由格式文字），跟 comment 屬性一樣直接接受，
+      // 只要跳脫格式正確就算合法。
+      result.note = value;
+    } else if (name === MARKER_COMMENT_ATTR) {
+      // comment 一樣是自由格式文字，沒有固定值限制。
+      result.comment = value;
+    } else if (
+      name === MARKER_COMMENT_COLOR_ATTR &&
+      (COMMENT_COLOR_VALUES as readonly string[]).includes(value)
+    ) {
+      result.commentColor = value as CommentColorValue;
     }
   }
   return result;
 }
 
-/** 把行內 marker 的屬性套到 run 上：巢狀時內層優先（內層已經有值就不被外層覆蓋）。 */
-function applyInlineAttrs(run: ParsedRun, attrs: InlineAttrs): ParsedRun {
+/**
+ * 把行內 marker 的屬性套到 run 上：巢狀時內層優先（內層已經有值就不被外層覆蓋）。
+ * `markerId` 是這個行內 marker 的完整 id（含 type 前綴，例如 `footnote-a3f9`）——
+ * footnote／comment 需要記住是「哪一個」實例（用來判斷連續 run 是不是同一個錨點，
+ * comment 的編輯區 hover/右鍵編輯、footnote 渲染端的錨點/回連結都要靠這個 id），
+ * span/a 不需要，其他屬性（顏色/連結）只看值本身就夠了，不需要記 id。
+ */
+function applyInlineAttrs(
+  run: ParsedRun,
+  attrs: InlineAttrs,
+  markerId: string,
+): ParsedRun {
+  const isFootnote = markerId.startsWith("footnote-");
+  const isComment = markerId.startsWith("comment-");
   return {
     ...run,
     textColor: run.textColor ?? attrs.textColor,
     bgColor: run.bgColor ?? attrs.bgColor,
     href: run.href ?? attrs.href,
     target: run.target ?? attrs.target,
+    footnoteId: run.footnoteId ?? (isFootnote ? markerId : undefined),
+    footnoteNote: run.footnoteNote ?? (isFootnote ? attrs.note : undefined),
+    commentId: run.commentId ?? (isComment ? markerId : undefined),
+    comment: run.comment ?? (isComment ? attrs.comment : undefined),
+    commentColor:
+      run.commentColor ??
+      (isComment ? (attrs.commentColor ?? DEFAULT_COMMENT_COLOR) : undefined),
   };
 }
 
@@ -222,12 +286,12 @@ function parseInline(text: string): ParsedRun[] {
   const innerRaw = text.slice(token.openEnd, closeIndex);
   const after = text.slice(closeIndex + closeTag.length);
   const innerRuns = parseInline(innerRaw).map((run) =>
-    applyInlineAttrs(run, token.attrs),
+    applyInlineAttrs(run, token.attrs, token.id),
   );
   return [...beforeRuns, ...innerRuns, ...parseInline(after)];
 }
 
-/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結），normalizeRuns 用來決定能不能合併。 */
+/** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結＋腳注＋註解），normalizeRuns 用來決定能不能合併。 */
 function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
     a.marks.length === b.marks.length &&
@@ -235,7 +299,9 @@ function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
     a.textColor === b.textColor &&
     a.bgColor === b.bgColor &&
     a.href === b.href &&
-    a.target === b.target
+    a.target === b.target &&
+    a.footnoteId === b.footnoteId &&
+    a.commentId === b.commentId
   );
 }
 
@@ -252,6 +318,52 @@ function normalizeRuns(runs: ParsedRun[]): ParsedRun[] {
   return merged;
 }
 
+/**
+ * 腳注內文的簡化版行內解析：只認粗體/斜體/底線（`FOOTNOTE_PARSE_DELIMITERS`，見
+ * whitelist.ts 為什麼刻意不含上下標），不認行內 marker（腳注內文不能再巢狀另一個
+ * 顏色/連結/腳注——這是屬性值裡的一段純文字，不是段落 runs 的一部分）。
+ * 給渲染端（閱讀頁的腳注清單、編輯區的 hover tooltip）共用，兩邊都要看到一樣的格式。
+ */
+export function parseFootnoteNoteRuns(note: string): ParsedRun[] {
+  function parse(text: string): ParsedRun[] {
+    if (text === "") return [];
+
+    let openIndex = -1;
+    let openDelimiter: (typeof FOOTNOTE_PARSE_DELIMITERS)[number] | null = null;
+    outer: for (let i = 0; i < text.length; i++) {
+      for (const candidate of FOOTNOTE_PARSE_DELIMITERS) {
+        if (text.startsWith(candidate.delimiter, i)) {
+          openIndex = i;
+          openDelimiter = candidate;
+          break outer;
+        }
+      }
+    }
+    if (openIndex === -1 || !openDelimiter) return [{ text, marks: [] }];
+
+    const searchFrom = openIndex + openDelimiter.delimiter.length;
+    const closeIndex = text.indexOf(openDelimiter.delimiter, searchFrom);
+    if (closeIndex === -1) {
+      return [
+        { text: text.slice(0, searchFrom), marks: [] },
+        ...parse(text.slice(searchFrom)),
+      ];
+    }
+
+    const before = text.slice(0, openIndex);
+    const innerRaw = text.slice(searchFrom, closeIndex);
+    const after = text.slice(closeIndex + openDelimiter.delimiter.length);
+    const innerRuns = parse(innerRaw).map((run) => ({
+      ...run,
+      marks: [...run.marks, openDelimiter!.markName],
+    }));
+    const beforeRuns: ParsedRun[] = before ? [{ text: before, marks: [] }] : [];
+    return [...beforeRuns, ...innerRuns, ...parse(after)];
+  }
+
+  return normalizeRuns(parse(note));
+}
+
 function extractHeading(line: string): {
   headingLevel: HeadingLevel;
   content: string;
@@ -266,33 +378,46 @@ function extractHeading(line: string): {
 function extractMarker(line: string): {
   markerId: string | null;
   align: AlignmentValue;
-  comment: string | null;
-  commentColor: CommentColorValue | null;
   content: string;
 } {
   const match = line.match(MARKER_PATTERN);
-  if (match && match[1] === match[6]) {
+  if (match && match[1] === match[4]) {
     const align = (match[2] as AlignmentValue | undefined) ?? DEFAULT_ALIGNMENT;
-    const comment =
-      match[3] !== undefined ? unescapeMarkerComment(match[3]) : null;
-    // commentColor 只有在有 comment 時才有意義；省略時（含舊資料）沿用預設色。
-    const commentColor = comment
-      ? ((match[4] as CommentColorValue | undefined) ?? DEFAULT_COMMENT_COLOR)
-      : null;
     return {
       markerId: match[1],
       align,
-      comment,
-      commentColor,
-      content: match[5],
+      content: match[3],
     };
   }
+
+  // 舊格式相容（見 LEGACY_PARAGRAPH_COMMENT_PATTERN 說明）：段落 marker 上還留著舊版的
+  // comment/commentColor 屬性，原地遷移成包住整段內容的合成行內 comment marker。
+  const legacyMatch = line.match(LEGACY_PARAGRAPH_COMMENT_PATTERN);
+  if (legacyMatch && legacyMatch[1] === legacyMatch[6]) {
+    const align =
+      (legacyMatch[2] as AlignmentValue | undefined) ?? DEFAULT_ALIGNMENT;
+    // legacyMatch[3] 已經是跳脫過的字串（直接取自序列化格式），跟新的行內 comment marker
+    // 用的是同一套跳脫規則，原樣搬過去即可，不需要先還原再重新跳脫。
+    const legacyCommentAttr = legacyMatch[3];
+    const legacyColor = legacyMatch[4] as CommentColorValue | undefined;
+    const legacyColorAttr = legacyColor
+      ? ` ${MARKER_COMMENT_COLOR_ATTR}="${legacyColor}"`
+      : "";
+    const wrappedContent =
+      `${MARKER_OPEN}comment-legacy ${MARKER_COMMENT_ATTR}="${legacyCommentAttr}"${legacyColorAttr}${MARKER_CLOSE}` +
+      legacyMatch[5] +
+      `${MARKER_OPEN}${MARKER_CLOSE_SLASH}comment-legacy${MARKER_CLOSE}`;
+    return {
+      markerId: legacyMatch[1],
+      align,
+      content: wrappedContent,
+    };
+  }
+
   // 舊資料尚未跑過 marker 遷移，或內容不是本編輯器產生的：整行當純文字，id 留空由呼叫端決定怎麼補。
   return {
     markerId: null,
     align: DEFAULT_ALIGNMENT,
-    comment: null,
-    commentColor: null,
     content: line,
   };
 }
@@ -300,11 +425,10 @@ function extractMarker(line: string): {
 /** 一行＝一個段落，見 whitelist.ts 的 MARKER_OPEN 說明：要跟書籤/diff 既有的逐行索引保持一致。 */
 function parseLine(line: string): ParsedParagraph {
   const { headingLevel, content: afterHeading } = extractHeading(line);
-  const { markerId, align, comment, commentColor, content } =
-    extractMarker(afterHeading);
+  const { markerId, align, content } = extractMarker(afterHeading);
   const runs = normalizeRuns(parseInline(content));
 
-  return { markerId, align, headingLevel, comment, commentColor, runs };
+  return { markerId, align, headingLevel, runs };
 }
 
 // 行內 marker 的開頭／結束標記，供「diff 前清乾淨」用。這裡是不管配對、單純把記號本身
@@ -349,7 +473,37 @@ export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
   return markdown.split("\n").map(parseLine);
 }
 
-/** 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色／連結 marks。 */
+/**
+ * 依文件順序收集這份內容裡所有腳注的「乾淨內文」（粗體/斜體/底線的 delimiter 已經拿掉，
+ * 只留讀者看得到的文字），供版本 diff 頁單獨比對用——閱讀頁把腳注放在故事尾端渲染，
+ * diff 也比照辦理，把腳注跟本文分開兩個區塊比對，不是把腳注文字塞進本文那一行裡。
+ * 一個腳注可能橫跨多個 run（錨定文字裡有粗體），但只在第一次遇到某個 footnoteId 時
+ * 收集一次，避免同一則腳注被重複列出。
+ */
+export function extractFootnoteNotesForDiff(content: string): string[] {
+  const paragraphs = parseMarkdownToParagraphs(content);
+  const seenFootnoteIds = new Set<string>();
+  const notes: string[] = [];
+  for (const paragraph of paragraphs) {
+    for (const run of paragraph.runs) {
+      if (!run.footnoteId || seenFootnoteIds.has(run.footnoteId)) continue;
+      seenFootnoteIds.add(run.footnoteId);
+      notes.push(
+        parseFootnoteNoteRuns(run.footnoteNote ?? "")
+          .map((noteRun) => noteRun.text)
+          .join(""),
+      );
+    }
+  }
+  return notes;
+}
+
+/**
+ * 把一個 run 轉成 Tiptap 的 mark 陣列：純開關 marks（粗體等）＋帶值的顏色／連結／腳注／
+ * 註解 marks。腳注／註解 mark 故意不帶 id——id 只是序列化時產生的配對用途（見
+ * whitelist.ts 的 generateInlineMarkerId 說明），跟 span/a 一樣不需要存進 Tiptap
+ * 文件本身的狀態。
+ */
 function runToTiptapMarks(
   run: ParsedRun,
 ): { type: string; attrs?: Record<string, string> }[] {
@@ -367,6 +521,18 @@ function runToTiptapMarks(
       attrs: { href: run.href, target: run.target ?? "" },
     });
   }
+  if (run.footnoteId) {
+    marks.push({ type: "footnote", attrs: { note: run.footnoteNote ?? "" } });
+  }
+  if (run.commentId) {
+    marks.push({
+      type: "comment",
+      attrs: {
+        comment: run.comment ?? "",
+        commentColor: run.commentColor ?? DEFAULT_COMMENT_COLOR,
+      },
+    });
+  }
   return marks;
 }
 
@@ -380,8 +546,6 @@ export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
         markerId: paragraph.markerId,
         textAlign: paragraph.align,
         headingLevel: paragraph.headingLevel,
-        comment: paragraph.comment,
-        commentColor: paragraph.commentColor,
       },
       content: paragraph.runs
         .filter((run) => run.text !== "")

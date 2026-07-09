@@ -22,7 +22,11 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import { renderFootnoteNote } from "@/pages/storyteller/wysiwygCore/footnoteRender.tsx";
+import {
+  extractFootnoteNotesForDiff,
+  stripMarkerForDiffContent,
+} from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 export default function StorytellerStoryVersionDiff() {
   const { projectPath, storyId, versionId } = useParams();
@@ -69,6 +73,19 @@ export default function StorytellerStoryVersionDiff() {
     stripMarkerForDiffContent(target.content),
   );
   const changedCount = diffLines.filter((line) => line.state !== "same").length;
+
+  // 腳注拆成獨立區塊比對，不跟著本文那一行進入上面的 diffLines——閱讀頁把腳注放在故事
+  // 尾端渲染，diff 也比照辦理。兩邊都沒有腳注時就不顯示這個區塊。
+  const previousFootnotes = extractFootnoteNotesForDiff(
+    previous?.content ?? "",
+  );
+  const targetFootnotes = extractFootnoteNotesForDiff(target.content);
+  const footnoteDiffLines = buildCustomLineDiff(
+    previousFootnotes.join("\n"),
+    targetFootnotes.join("\n"),
+  );
+  const hasFootnotes =
+    previousFootnotes.length > 0 || targetFootnotes.length > 0;
 
   return (
     <StorytellerShell
@@ -176,6 +193,65 @@ export default function StorytellerStoryVersionDiff() {
               );
             })}
           </Stack>
+
+          {hasFootnotes && (
+            <>
+              <Divider />
+              <Typography variant="subtitle1" fontWeight={700}>
+                腳注
+              </Typography>
+              <Stack spacing={0.25}>
+                {footnoteDiffLines.map((line) => {
+                  if (line.state === "same") {
+                    if (!line.right.trim()) {
+                      return <Box key={line.index} sx={{ height: 12 }} />;
+                    }
+                    return (
+                      <Box
+                        key={line.index}
+                        sx={{ typography: "body2", lineHeight: 1.9 }}
+                      >
+                        {renderFootnoteNote(line.right)}
+                      </Box>
+                    );
+                  }
+                  return (
+                    <Box key={line.index} sx={{ py: 0.25 }}>
+                      {line.state !== "added" && line.left.trim() && (
+                        <Box
+                          sx={{
+                            bgcolor: "error.light",
+                            color: "error.contrastText",
+                            borderRadius: 1,
+                            px: 1,
+                            py: 0.25,
+                            textDecoration: "line-through",
+                            mb: 0.25,
+                            "& *": { textDecoration: "line-through" },
+                          }}
+                        >
+                          {renderFootnoteNote(line.left)}
+                        </Box>
+                      )}
+                      {line.state !== "removed" && line.right.trim() && (
+                        <Box
+                          sx={{
+                            bgcolor: "success.light",
+                            color: "success.contrastText",
+                            borderRadius: 1,
+                            px: 1,
+                            py: 0.25,
+                          }}
+                        >
+                          {renderFootnoteNote(line.right)}
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Stack>
+            </>
+          )}
         </Stack>
       </Paper>
     </StorytellerShell>

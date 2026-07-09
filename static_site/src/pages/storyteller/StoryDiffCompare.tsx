@@ -19,7 +19,10 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import {
+  extractFootnoteNotesForDiff,
+  stripMarkerForDiffContent,
+} from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 interface CompareDiff {
   id: string;
@@ -107,6 +110,17 @@ export default function StorytellerStoryDiffCompare() {
               lines: buildCustomLineDiff(
                 stripMarkerForDiffContent(leftDiff.content),
                 stripMarkerForDiffContent(rightDiff.content),
+              ),
+            },
+            {
+              key: "footnotes",
+              title: "腳注",
+              // 閱讀頁把腳注放在故事尾端渲染，這裡也把腳注拆成獨立區塊比對，不是讓腳注
+              // 內文跟著本文那一行進入上面的「內容」diff（腳注內文本來就活在行內 marker
+              // 的屬性值裡，不是段落可見文字的一部分）。
+              lines: buildCustomLineDiff(
+                extractFootnoteNotesForDiff(leftDiff.content).join("\n"),
+                extractFootnoteNotesForDiff(rightDiff.content).join("\n"),
               ),
             },
           ]

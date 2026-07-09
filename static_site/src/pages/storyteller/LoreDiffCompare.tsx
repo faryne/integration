@@ -19,7 +19,10 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { stripMarkerForDiffContent } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import {
+  extractFootnoteNotesForDiff,
+  stripMarkerForDiffContent,
+} from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 export default function StorytellerLoreDiffCompare() {
   const { id, loreId, diffId1, diffId2 } = useParams();
@@ -62,6 +65,20 @@ export default function StorytellerLoreDiffCompare() {
               lines: buildCustomLineDiff(
                 stripMarkerForDiffContent(leftVersion.data.content),
                 stripMarkerForDiffContent(rightVersion.data.content),
+              ),
+            },
+            {
+              key: "footnotes",
+              title: "腳注",
+              // 理由同 StoryDiffCompare.tsx：腳注拆成獨立區塊比對，不跟著本文那一行進入
+              // 上面的「內容」diff。
+              lines: buildCustomLineDiff(
+                extractFootnoteNotesForDiff(leftVersion.data.content).join(
+                  "\n",
+                ),
+                extractFootnoteNotesForDiff(rightVersion.data.content).join(
+                  "\n",
+                ),
               ),
             },
           ]
