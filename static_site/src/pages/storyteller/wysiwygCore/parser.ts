@@ -473,29 +473,54 @@ export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
   return markdown.split("\n").map(parseLine);
 }
 
+export interface FootnoteListEntry {
+  footnoteId: string;
+  /** 原始字串，可能還帶著粗體/斜體/底線的 delimiter，尚未解析。 */
+  note: string;
+}
+
+export interface FootnoteNumbering {
+  /** footnoteId → 讀者看到的編號（1, 2, 3...，依文件出現順序），不是 parser 內部配對
+   * 開關標記用的亂數 id（那個每次序列化都會換）。 */
+  numbers: Map<string, number>;
+  /** 跟 numbers 同一份順序，供尾端腳注清單直接照順序渲染，不用再掃一次文件。 */
+  list: FootnoteListEntry[];
+}
+
+/**
+ * 依文件出現順序給整份內容（可能是一整篇故事，橫跨多個段落/標題）裡每個不重複的
+ * footnoteId 編號，同時收集腳注內文。**必須用整篇故事的完整內容呼叫一次**，不能每個
+ * 段落各自呼叫——閱讀頁如果是逐段落渲染（例如 Reader.tsx 要在每行掛書籤功能，一行一個
+ * 渲染單位），編號跟尾端清單要靠呼叫端共用這裡算出來的同一份結果，不然每個段落會各自
+ * 從 1 開始編號、甚至各自渲染一次尾端清單（腳注應該只在整篇故事的最尾端出現一次，
+ * 跟內容裡有沒有標題、標題怎麼分段完全無關）。
+ */
+export function computeFootnoteNumbering(content: string): FootnoteNumbering {
+  const paragraphs = parseMarkdownToParagraphs(content);
+  const numbers = new Map<string, number>();
+  const list: FootnoteListEntry[] = [];
+  for (const paragraph of paragraphs) {
+    for (const run of paragraph.runs) {
+      if (run.footnoteId && !numbers.has(run.footnoteId)) {
+        numbers.set(run.footnoteId, list.length + 1);
+        list.push({ footnoteId: run.footnoteId, note: run.footnoteNote ?? "" });
+      }
+    }
+  }
+  return { numbers, list };
+}
+
 /**
  * 依文件順序收集這份內容裡所有腳注的「乾淨內文」（粗體/斜體/底線的 delimiter 已經拿掉，
  * 只留讀者看得到的文字），供版本 diff 頁單獨比對用——閱讀頁把腳注放在故事尾端渲染，
  * diff 也比照辦理，把腳注跟本文分開兩個區塊比對，不是把腳注文字塞進本文那一行裡。
- * 一個腳注可能橫跨多個 run（錨定文字裡有粗體），但只在第一次遇到某個 footnoteId 時
- * 收集一次，避免同一則腳注被重複列出。
  */
 export function extractFootnoteNotesForDiff(content: string): string[] {
-  const paragraphs = parseMarkdownToParagraphs(content);
-  const seenFootnoteIds = new Set<string>();
-  const notes: string[] = [];
-  for (const paragraph of paragraphs) {
-    for (const run of paragraph.runs) {
-      if (!run.footnoteId || seenFootnoteIds.has(run.footnoteId)) continue;
-      seenFootnoteIds.add(run.footnoteId);
-      notes.push(
-        parseFootnoteNoteRuns(run.footnoteNote ?? "")
-          .map((noteRun) => noteRun.text)
-          .join(""),
-      );
-    }
-  }
-  return notes;
+  return computeFootnoteNumbering(content).list.map(({ note }) =>
+    parseFootnoteNoteRuns(note)
+      .map((noteRun) => noteRun.text)
+      .join(""),
+  );
 }
 
 /**

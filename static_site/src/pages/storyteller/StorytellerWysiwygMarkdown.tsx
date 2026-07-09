@@ -4,7 +4,10 @@ import { Box, Typography } from "@mui/material";
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
+  computeFootnoteNumbering,
   parseMarkdownToParagraphs,
+  type FootnoteListEntry,
+  type FootnoteNumbering,
   type ParsedRun,
 } from "./wysiwygCore/parser";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
@@ -12,6 +15,26 @@ import { isSafeHref, type MarkName } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
+  /**
+   * 外部已經算好的腳注編號＋清單。故事內容如果是逐段落/逐行渲染（例如 Reader.tsx 要在
+   * 每行掛書籤功能，一行對應一個 StorytellerWysiwygMarkdown 實例），編號跟尾端清單
+   * 必須用「整篇故事」算出來的同一份結果，不能讓每個實例各自從 children（只有一行）
+   * 重新算一次——不然每行都會從編號 1 開始，且每行只要有腳注就會各自渲染一次尾端清單。
+   * 不提供時退回自己從 children 算一份，適合「一次拿到全部內容」的呼叫端。
+   */
+  footnoteNumbering?: FootnoteNumbering;
+  /**
+   * 錨點/回連結 DOM id 的前綴。同一篇故事的所有渲染單位（不管是一個實例涵蓋全部內容，
+   * 還是逐行多個實例）都要共用同一個值，上標編號連結才能跳轉到正確的（也是共用的）
+   * 腳注清單項目。不提供時退回 useId()（單一元件自己用，跟以前的行為一致）。
+   */
+  footnoteIdPrefix?: string;
+  /**
+   * 是否渲染腳注清單（尾端區塊）。逐行渲染時，呼叫端應該只在故事最後一行之後渲染一次
+   * （用 StorytellerFootnoteSection 自己渲染），其餘每一行都要傳 false，避免每行各自
+   * 重複渲染。預設 true（單一元件涵蓋全部內容時的行為，向後相容）。
+   */
+  showFootnoteSection?: boolean;
 }
 
 const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
@@ -58,21 +81,28 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
   return <span key={key}>{node}</span>;
 }
 
+/** 上標編號連結的錨點 id，跟尾端清單項目的 id 成對出現，見下面兩個函式共用同一個前綴規則。 */
+function footnoteAnchorId(idPrefix: string, footnoteId: string): string {
+  return `${idPrefix}fn-anchor-${footnoteId}`;
+}
+
+function footnoteNoteId(idPrefix: string, footnoteId: string): string {
+  return `${idPrefix}fn-note-${footnoteId}`;
+}
+
 /**
  * 一個段落的 runs 裡，連續幾個 run 只要 footnoteId 相同就代表同一個腳注錨點（例如錨定
  * 文字裡有一段粗體，會被拆成兩個 run，但都掛著同一個 footnoteId）——只在這組的最後一個
  * run 之後插入一次上標編號連結，不是每個 run 各插一次。
  *
- * anchorId／noteId 都是「instanceId + footnoteId」組出來的 DOM id：光用 footnoteId
- * 不夠，因為同一頁可能同時渲染這個元件兩次（例如版本 diff 頁面左右並排），兩份 id
- * 剛好相同的機率雖然極低，但也不該假設「同一頁只會有一個 StorytellerWysiwygMarkdown
- * 實例」；useId() 保證每個實例的前綴不同。
+ * idPrefix 是這個上標連結對應的 DOM id 前綴，必須跟渲染尾端清單那個
+ * StorytellerFootnoteSection 用同一個值，上標編號才能正確跳轉到清單裡對應的項目
+ * （見 StorytellerWysiwygMarkdownProps 的 footnoteIdPrefix 說明）。
  */
 function renderParagraphRuns(
   runs: ParsedRun[],
   footnoteNumbers: Map<string, number>,
-  anchorId: (footnoteId: string) => string,
-  noteId: (footnoteId: string) => string,
+  idPrefix: string,
 ): ReactNode[] {
   const nodes: ReactNode[] = [];
   runs.forEach((run, index) => {
@@ -83,7 +113,10 @@ function renderParagraphRuns(
       const number = footnoteNumbers.get(run.footnoteId);
       nodes.push(
         <sup key={`${index}-footnote-ref`}>
-          <a id={anchorId(run.footnoteId)} href={`#${noteId(run.footnoteId)}`}>
+          <a
+            id={footnoteAnchorId(idPrefix, run.footnoteId)}
+            href={`#${footnoteNoteId(idPrefix, run.footnoteId)}`}
+          >
             [{number}]
           </a>
         </sup>,
@@ -91,6 +124,52 @@ function renderParagraphRuns(
     }
   });
   return nodes;
+}
+
+/**
+ * 故事尾端的腳注清單，獨立匯出成自己的元件——故事內容如果是逐段落/逐行渲染（例如
+ * Reader.tsx 要在每行掛書籤功能），這個區塊只應該在整篇故事的最尾端渲染一次，
+ * 不能讓 StorytellerWysiwygMarkdown 每個逐行實例各自渲染一次（那樣腳注就會出現在
+ * 每一行甚至每個標題底下，而不是只在故事最尾端），所以拆出來讓呼叫端自己決定何時渲染。
+ * idPrefix 必須跟內文裡產生上標編號連結的那些 StorytellerWysiwygMarkdown 實例共用
+ * 同一個值。
+ */
+export function StorytellerFootnoteSection({
+  list,
+  idPrefix,
+}: {
+  list: FootnoteListEntry[];
+  idPrefix: string;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <Box
+      component="section"
+      sx={{
+        mt: 3,
+        pt: 1.5,
+        borderTop: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <Typography variant="subtitle2" component="h2" sx={{ mb: 1 }}>
+        腳注
+      </Typography>
+      <Box component="ol" sx={{ m: 0, pl: 3 }}>
+        {list.map(({ footnoteId, note }) => (
+          <Typography
+            key={footnoteId}
+            component="li"
+            variant="body2"
+            id={footnoteNoteId(idPrefix, footnoteId)}
+          >
+            <a href={`#${footnoteAnchorId(idPrefix, footnoteId)}`}>{"↩"}</a>{" "}
+            {renderFootnoteNote(note)}
+          </Typography>
+        ))}
+      </Box>
+    </Box>
+  );
 }
 
 /**
@@ -105,29 +184,17 @@ function renderParagraphRuns(
  */
 export function StorytellerWysiwygMarkdown({
   children,
+  footnoteNumbering: externalFootnoteNumbering,
+  footnoteIdPrefix: externalFootnoteIdPrefix,
+  showFootnoteSection = true,
 }: StorytellerWysiwygMarkdownProps) {
   const paragraphs = parseMarkdownToParagraphs(children);
-  const instanceId = useId();
-
-  // 第一輪：依文件出現順序給每個不重複的 footnoteId 編號——讀者看到的是 1, 2, 3...，
-  // 不是 parser 內部用來配對開關標記的亂數 id（那個每次序列化都會換）。同時把腳注內文
-  // 收集起來，尾端腳注清單直接複用這份順序，不用再掃一次文件。
-  const footnoteNumbers = new Map<string, number>();
-  const footnoteList: { footnoteId: string; note: string }[] = [];
-  for (const paragraph of paragraphs) {
-    for (const run of paragraph.runs) {
-      if (run.footnoteId && !footnoteNumbers.has(run.footnoteId)) {
-        footnoteNumbers.set(run.footnoteId, footnoteList.length + 1);
-        footnoteList.push({
-          footnoteId: run.footnoteId,
-          note: run.footnoteNote ?? "",
-        });
-      }
-    }
-  }
-  const anchorId = (footnoteId: string) =>
-    `${instanceId}fn-anchor-${footnoteId}`;
-  const noteId = (footnoteId: string) => `${instanceId}fn-note-${footnoteId}`;
+  // useId() 一定要無條件呼叫（Hook 規則），就算外部有提供 footnoteIdPrefix 也一樣呼叫，
+  // 只是呼叫出來的值不會被用到——這樣才不會因為 props 不同而改變 Hook 呼叫的數量/順序。
+  const generatedIdPrefix = useId();
+  const footnoteIdPrefix = externalFootnoteIdPrefix ?? generatedIdPrefix;
+  const footnoteNumbering =
+    externalFootnoteNumbering ?? computeFootnoteNumbering(children);
 
   return (
     <Box sx={HEADING_TYPOGRAPHY_SX}>
@@ -145,41 +212,18 @@ export function StorytellerWysiwygMarkdown({
               ? " "
               : renderParagraphRuns(
                   paragraph.runs,
-                  footnoteNumbers,
-                  anchorId,
-                  noteId,
+                  footnoteNumbering.numbers,
+                  footnoteIdPrefix,
                 )}
           </HeadingOrParagraphTag>
         );
       })}
 
-      {footnoteList.length > 0 && (
-        <Box
-          component="section"
-          sx={{
-            mt: 3,
-            pt: 1.5,
-            borderTop: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Typography variant="subtitle2" component="h2" sx={{ mb: 1 }}>
-            腳注
-          </Typography>
-          <Box component="ol" sx={{ m: 0, pl: 3 }}>
-            {footnoteList.map(({ footnoteId, note }) => (
-              <Typography
-                key={footnoteId}
-                component="li"
-                variant="body2"
-                id={noteId(footnoteId)}
-              >
-                <a href={`#${anchorId(footnoteId)}`}>{"↩"}</a>{" "}
-                {renderFootnoteNote(note)}
-              </Typography>
-            ))}
-          </Box>
-        </Box>
+      {showFootnoteSection && (
+        <StorytellerFootnoteSection
+          list={footnoteNumbering.list}
+          idPrefix={footnoteIdPrefix}
+        />
       )}
     </Box>
   );

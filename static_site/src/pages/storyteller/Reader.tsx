@@ -27,9 +27,16 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
-import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
-import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  StorytellerFootnoteSection,
+  StorytellerWysiwygMarkdown,
+} from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
+import {
+  computeFootnoteNumbering,
+  parseMarkdownToParagraphs,
+  type FootnoteNumbering,
+} from "@/pages/storyteller/wysiwygCore/parser.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -327,6 +334,8 @@ function StoryContentLines({
   bookmarkMode,
   highlightedLine,
   onToggleBookmark,
+  footnoteNumbering,
+  footnoteIdPrefix,
 }: {
   content: string;
   bookmarkedLines: Set<number>;
@@ -334,6 +343,11 @@ function StoryContentLines({
   bookmarkMode: BookmarkMode;
   highlightedLine?: number;
   onToggleBookmark: (lineIndex: number) => void;
+  // 整篇故事共用的腳注編號＋DOM id 前綴（見 StorytellerWysiwygMarkdown 的
+  // footnoteNumbering／footnoteIdPrefix 說明）——這裡逐行渲染，每一行都要用同一份，
+  // 不能讓每行各自算，不然編號會從 1 重來、腳注清單也會每行各渲染一次。
+  footnoteNumbering: FootnoteNumbering;
+  footnoteIdPrefix: string;
 }) {
   const lines = content.split("\n");
   return (
@@ -397,7 +411,13 @@ function StoryContentLines({
               )}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <StorytellerWysiwygMarkdown>{line}</StorytellerWysiwygMarkdown>
+              <StorytellerWysiwygMarkdown
+                footnoteNumbering={footnoteNumbering}
+                footnoteIdPrefix={footnoteIdPrefix}
+                showFootnoteSection={false}
+              >
+                {line}
+              </StorytellerWysiwygMarkdown>
             </Box>
           </Box>
         );
@@ -572,6 +592,14 @@ export default function StorytellerReader() {
   const displayContent = historicalVersion
     ? historicalVersion.content
     : currentStory?.content;
+  // 腳注編號／尾端清單一定要用「整篇故事的完整內容」算一次，不能讓下面逐行渲染的
+  // StoryContentLines 每行各自算——不然每行都會從編號 1 重來，且腳注只要出現在某行，
+  // 那行就會各自渲染一次尾端清單（腳注應該只在整篇故事最尾端出現一次，跟內容裡有沒有
+  // 標題、標題怎麼分段完全無關）。footnoteIdPrefix 也要在這裡算一次，跟逐行渲染的每個
+  // StorytellerWysiwygMarkdown 實例、跟故事最尾端的 StorytellerFootnoteSection 共用
+  // 同一個值，上標編號連結才能正確跳轉。
+  const footnoteIdPrefix = useId();
+  const footnoteNumbering = computeFootnoteNumbering(displayContent ?? "");
   const bookmarkedLines = new Set(
     (bookmarksQuery.data ?? [])
       .filter((bookmark) => bookmark.story_version_id === displayVersionId)
@@ -954,6 +982,14 @@ export default function StorytellerReader() {
               bookmarkMode={bookmarkMode}
               highlightedLine={highlightedLine}
               onToggleBookmark={handleToggleBookmark}
+              footnoteNumbering={footnoteNumbering}
+              footnoteIdPrefix={footnoteIdPrefix}
+            />
+            {/* 腳注固定放在整篇故事的最尾端，跟內容裡有沒有標題、標題怎麼分段無關——
+                所以是在這裡（逐行內容渲染完之後）渲染一次，不是讓上面每一行各自渲染。 */}
+            <StorytellerFootnoteSection
+              list={footnoteNumbering.list}
+              idPrefix={footnoteIdPrefix}
             />
           </Box>
           <Divider />
