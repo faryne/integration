@@ -7,7 +7,7 @@ import {
   type ParsedRun,
 } from "./wysiwygCore/parser";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
-import type { MarkName } from "./wysiwygCore/whitelist";
+import { isSafeHref, type MarkName } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
@@ -33,10 +33,25 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
   if (run.textColor) style.color = TEXT_COLOR_CSS[run.textColor];
   if (run.bgColor) style.backgroundColor = BG_COLOR_CSS[run.bgColor];
   if (style.color || style.backgroundColor) {
-    return (
-      <span key={key} style={style}>
+    node = (
+      <span key={`${key}-color`} style={style}>
         {node}
       </span>
+    );
+  }
+  // 連結：parser 已經檢查過 scheme，這裡渲染前再檢查一次（防禦性、不假設上一層
+  // 一定擋過）——每一層都要各自驗證，不能只靠其中一關。target=_blank 一定要配
+  // rel="noopener noreferrer"，防止新分頁透過 window.opener 回頭操作原本頁面。
+  if (run.href && isSafeHref(run.href)) {
+    return (
+      <a
+        key={key}
+        href={run.href}
+        target={run.target}
+        rel={run.target === "_blank" ? "noopener noreferrer" : undefined}
+      >
+        {node}
+      </a>
     );
   }
   return <span key={key}>{node}</span>;

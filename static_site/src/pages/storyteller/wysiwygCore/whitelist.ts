@@ -114,8 +114,8 @@ export function unescapeMarkerComment(escaped: string): string {
  * （diff 端一律先 strip marker，id 變動不會造成假差異）。
  * ------------------------------------------------------------------ */
 
-/** 目前支援的行內 marker 種類。之後加腳注／連結時往這裡加一個值即可。 */
-export const INLINE_MARKER_TYPES = ["span"] as const;
+/** 目前支援的行內 marker 種類。之後加腳注時往這裡加一個值即可。 */
+export const INLINE_MARKER_TYPES = ["span", "a"] as const;
 export type InlineMarkerType = (typeof INLINE_MARKER_TYPES)[number];
 
 /** 產生行內 marker 的 id：`<type>-<短亂數>`。只需在同一行內唯一即可。 */
@@ -156,3 +156,35 @@ export const BG_COLOR_VALUES = [
   "purple",
 ] as const;
 export type BgColorValue = (typeof BG_COLOR_VALUES)[number];
+
+/* --- a（連結）行內 marker 的屬性 --- */
+
+export const MARKER_HREF_ATTR = "href";
+export const MARKER_TARGET_ATTR = "target";
+
+/** 目前只支援「開新分頁」這個值；省略代表同分頁開啟（預設）。 */
+export const LINK_TARGET_VALUES = ["_blank"] as const;
+export type LinkTargetValue = (typeof LINK_TARGET_VALUES)[number];
+
+/**
+ * 網址不像顏色可以走固定色盤（本質上就是自由格式的值），這裡的資安防線是限制 scheme，
+ * 不是限制值本身：只允許 http／https，或是沒有 scheme 的相對路徑（例如站內連結
+ * `/storyteller/...`）。擋掉 `javascript:`／`data:`／`vbscript:` 這類會在點擊時執行內容
+ * 的危險 scheme。用一個假的 base 餵給 URL 建構子——如果輸入本身帶了 scheme（例如
+ * `javascript:...`），URL 建構子會用輸入自己的 scheme、忽略 base，所以這個檢查法
+ * 對「輸入是絕對網址」跟「輸入是相對路徑」都適用。
+ *
+ * 這裡只擋 scheme，不驗證網址「看起來正不正確」；渲染成 `<a href>` 時 React 本來就會
+ * 正確跳脫屬性值，所以 XSS 風險只在 scheme 這一關，不需要更嚴格的網址格式驗證。
+ * 呼叫端（編輯器輸入驗證、parser 解析既有資料、渲染端輸出前）都要各自呼叫這個檢查，
+ * 任何一關漏了都不能假設別的地方已經擋過。
+ */
+export function isSafeHref(href: string): boolean {
+  if (href.trim() === "") return false;
+  try {
+    const url = new URL(href, "https://faryne.dev");
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
