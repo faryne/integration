@@ -7,6 +7,9 @@ import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
 import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
+import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
+import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
+import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
@@ -59,7 +62,9 @@ import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
   ALIGNMENT_VALUES,
   BG_COLOR_VALUES,
+  BLOCK_KIND_VALUES,
   COMMENT_COLOR_VALUES,
+  DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
@@ -67,6 +72,7 @@ import {
   TEXT_COLOR_VALUES,
   type AlignmentValue,
   type BgColorValue,
+  type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
   type TextColorValue,
@@ -168,6 +174,56 @@ const FOOTNOTE_HIGHLIGHT_SX = {
     cursor: "help",
   },
 } as const;
+
+// 引用/清單（blockKind）2026-07-10 加入：編輯區的段落 schema 是扁平的（每個段落都是
+// 獨立的 <p> node，沒有真的 <blockquote>/<ul>/<ol> 巢狀，見 markerParagraph.ts 的說明），
+// 所以「連續同 blockKind 的段落看起來像一個整體」純粹是 CSS 錯覺：相鄰同 data-block-kind
+// 的段落靠一致的縮排/裝飾字元營造出視覺分組，不是真的 DOM 巢狀（閱讀頁 StorytellerWysiwygMarkdown.tsx
+// 才是真的巢狀渲染，見那邊的分組邏輯）。有序清單的編號用 CSS counter 自動算，不用 JS
+// 手動追蹤——每個 [data-block-kind="number"] 段落遞增 counter，只有在「前一個相鄰兄弟
+// 不是 number」（進入一組新的清單）或「本身是第一個子元素」時才重置成 0。
+const BLOCK_KIND_SX = {
+  "& [data-block-kind='quote']": {
+    borderLeft: "4px solid",
+    borderColor: "divider",
+    paddingLeft: "12px",
+    fontStyle: "italic",
+    color: "text.secondary",
+  },
+  "& [data-block-kind='bullet'], & [data-block-kind='number']": {
+    position: "relative",
+    paddingLeft: "24px",
+  },
+  "& [data-block-kind='bullet']::before": {
+    content: '"•"',
+    position: "absolute",
+    left: "8px",
+  },
+  "& [data-block-kind='number']": {
+    counterIncrement: "storyteller-ordered-list",
+  },
+  "& [data-block-kind='number']::before": {
+    content: 'counter(storyteller-ordered-list) ". "',
+    position: "absolute",
+    left: 0,
+  },
+  "& :not([data-block-kind='number']) + [data-block-kind='number']": {
+    counterReset: "storyteller-ordered-list",
+  },
+  "& [data-block-kind='number']:first-child": {
+    counterReset: "storyteller-ordered-list",
+  },
+} as const;
+
+const BLOCK_KIND_OPTIONS: {
+  value: Exclude<BlockKindValue, "none">;
+  label: string;
+  Icon: typeof FormatQuoteIcon;
+}[] = [
+  { value: "quote", label: "引用", Icon: FormatQuoteIcon },
+  { value: "bullet", label: "無序清單", Icon: FormatListBulletedIcon },
+  { value: "number", label: "有序清單", Icon: FormatListNumberedIcon },
+];
 
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
   { value: 0, label: "內文" },
@@ -273,6 +329,7 @@ export function StorytellerWysiwygEditor({
           superscript: false,
           align: "left" as AlignmentValue,
           headingLevel: DEFAULT_HEADING_LEVEL,
+          blockKind: DEFAULT_BLOCK_KIND,
           hasComment: false,
           hasSelection: false,
           textColor: null as TextColorValue | null,
@@ -288,6 +345,12 @@ export function StorytellerWysiwygEditor({
         HEADING_LEVELS.find((level) =>
           ctx.editor!.isActive("paragraph", { headingLevel: level }),
         ) ?? DEFAULT_HEADING_LEVEL;
+      const blockKind =
+        BLOCK_KIND_VALUES.find(
+          (kind) =>
+            kind !== DEFAULT_BLOCK_KIND &&
+            ctx.editor!.isActive("paragraph", { blockKind: kind }),
+        ) ?? DEFAULT_BLOCK_KIND;
       const textColor =
         TEXT_COLOR_VALUES.find((value) =>
           ctx.editor!.isActive("textColor", { value }),
@@ -304,6 +367,7 @@ export function StorytellerWysiwygEditor({
         superscript: ctx.editor.isActive("superscript"),
         align,
         headingLevel,
+        blockKind,
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
         textColor,
@@ -428,6 +492,13 @@ export function StorytellerWysiwygEditor({
   const handleContextMenuRemoveComment = () => {
     closeContextMenu();
     handleRemoveComment();
+  };
+
+  // 引用/清單是段落屬性，跟標題（Select）同一種切換邏輯，但這裡是按鈕形式：再按一次
+  // 目前已經生效的種類會切回一般段落（"none"），符合大多數清單/引用按鈕的直覺行為。
+  const toggleBlockKind = (kind: Exclude<BlockKindValue, "none">) => {
+    const next = editorState.blockKind === kind ? DEFAULT_BLOCK_KIND : kind;
+    editor.chain().focus().setBlockKind(next).run();
   };
 
   // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
@@ -637,6 +708,22 @@ export function StorytellerWysiwygEditor({
           <Divider orientation="vertical" flexItem />
 
           <ToggleButtonGroup size="small">
+            {BLOCK_KIND_OPTIONS.map(({ value, label, Icon }) => (
+              <Tooltip key={value} title={label}>
+                <ToggleButton
+                  value={value}
+                  selected={editorState.blockKind === value}
+                  onClick={() => toggleBlockKind(value)}
+                >
+                  <Icon fontSize="small" />
+                </ToggleButton>
+              </Tooltip>
+            ))}
+          </ToggleButtonGroup>
+
+          <Divider orientation="vertical" flexItem />
+
+          <ToggleButtonGroup size="small">
             <Tooltip title="文字顏色">
               <ToggleButton
                 value="text-color"
@@ -743,6 +830,7 @@ export function StorytellerWysiwygEditor({
             COMMENT_HIGHLIGHT_SX,
             INLINE_COLOR_SX,
             FOOTNOTE_HIGHLIGHT_SX,
+            BLOCK_KIND_SX,
           ]}
           onMouseOver={handleEditorMouseOver}
           onMouseOut={handleEditorMouseOut}

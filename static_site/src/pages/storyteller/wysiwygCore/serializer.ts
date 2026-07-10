@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   DEFAULT_ALIGNMENT,
+  DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   MARKER_ALIGN_ATTR,
@@ -16,8 +17,10 @@ import {
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
   MARK_SYNTAX_WHITELIST,
+  blockKindPrefix,
   escapeMarkerComment,
   generateInlineMarkerId,
+  type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
   type MarkName,
@@ -242,6 +245,11 @@ function serializeParagraphInline(paragraph: JSONContent): string {
 // 對稱。標題仍然是行首前綴，因為那是沿用大家熟悉的 markdown 慣例，跟 align 這種
 // 「無論如何都要自創語法」的情況不同。註解（comment）2026-07-09 起改成行內 marker
 // （見 wrappersOf 的 "comment" kind），不再是段落屬性。
+//
+// 引用/清單（blockKind）2026-07-10 起也走行首前綴，跟標題互斥——這裡只會輸出其中一種
+// 前綴（標題優先），就算編輯器不知怎麼讓兩個屬性同時非預設值，序列化這一關也不會把
+// 兩個前綴都寫出來，這是最後一道防線（真正的互斥保證在 markerParagraph.ts 的
+// setHeadingLevel／setBlockKind 命令，見那邊的說明）。
 function serializeParagraph(paragraph: JSONContent): string {
   const markerId = (paragraph.attrs?.markerId as string | null) ?? "";
   const align =
@@ -249,11 +257,17 @@ function serializeParagraph(paragraph: JSONContent): string {
   const headingLevel =
     (paragraph.attrs?.headingLevel as HeadingLevel | undefined) ??
     DEFAULT_HEADING_LEVEL;
-  const headingPrefix = headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
+  const blockKind =
+    (paragraph.attrs?.blockKind as BlockKindValue | undefined) ??
+    DEFAULT_BLOCK_KIND;
+  const prefix =
+    headingLevel > 0
+      ? `${"#".repeat(headingLevel)} `
+      : blockKindPrefix(blockKind);
   const alignAttr =
     align !== DEFAULT_ALIGNMENT ? ` ${MARKER_ALIGN_ATTR}="${align}"` : "";
   const inline = serializeParagraphInline(paragraph);
-  return `${headingPrefix}${MARKER_OPEN}${markerId}${alignAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
+  return `${prefix}${MARKER_OPEN}${markerId}${alignAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 }
 
 /**

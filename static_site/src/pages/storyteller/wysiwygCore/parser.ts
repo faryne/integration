@@ -3,8 +3,13 @@ import type { JSONContent } from "@tiptap/core";
 import {
   ALIGNMENT_VALUES,
   BG_COLOR_VALUES,
+  BLOCK_KIND_BULLET_PREFIX,
+  BLOCK_KIND_NUMBER_PARSE_PATTERN,
+  BLOCK_KIND_QUOTE_PREFIX,
+  blockKindPrefix,
   COMMENT_COLOR_VALUES,
   DEFAULT_ALIGNMENT,
+  DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
   FOOTNOTE_PARSE_DELIMITERS,
@@ -27,6 +32,7 @@ import {
   unescapeMarkerComment,
   type AlignmentValue,
   type BgColorValue,
+  type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
   type LinkTargetValue,
@@ -69,6 +75,8 @@ export interface ParsedParagraph {
   markerId: string | null;
   align: AlignmentValue;
   headingLevel: HeadingLevel;
+  /** 引用/清單種類，跟 headingLevel 互斥（一個段落只能是標題或引用/清單其中一種）。 */
+  blockKind: BlockKindValue;
   runs: ParsedRun[];
 }
 
@@ -375,6 +383,35 @@ function extractHeading(line: string): {
   return { headingLevel: DEFAULT_HEADING_LEVEL, content: line };
 }
 
+/**
+ * 跟 extractHeading 同一種「行首前綴決定段落種類」的邏輯，但引用/清單三選一，且
+ * 跟標題互斥——呼叫端（parseLine）只在 headingLevel 是 0 時才會呼叫這個函式，兩者
+ * 不會同時生效。有序清單的數字不驗證連續性，任何「數字 + `. `」都算數（見 whitelist.ts
+ * 的 BLOCK_KIND_NUMBER_PARSE_PATTERN 說明）。
+ */
+function extractBlockKind(line: string): {
+  blockKind: BlockKindValue;
+  content: string;
+} {
+  if (line.startsWith(BLOCK_KIND_QUOTE_PREFIX)) {
+    return {
+      blockKind: "quote",
+      content: line.slice(BLOCK_KIND_QUOTE_PREFIX.length),
+    };
+  }
+  const numberMatch = line.match(BLOCK_KIND_NUMBER_PARSE_PATTERN);
+  if (numberMatch) {
+    return { blockKind: "number", content: line.slice(numberMatch[0].length) };
+  }
+  if (line.startsWith(BLOCK_KIND_BULLET_PREFIX)) {
+    return {
+      blockKind: "bullet",
+      content: line.slice(BLOCK_KIND_BULLET_PREFIX.length),
+    };
+  }
+  return { blockKind: DEFAULT_BLOCK_KIND, content: line };
+}
+
 function extractMarker(line: string): {
   markerId: string | null;
   align: AlignmentValue;
@@ -422,13 +459,21 @@ function extractMarker(line: string): {
   };
 }
 
-/** 一行＝一個段落，見 whitelist.ts 的 MARKER_OPEN 說明：要跟書籤/diff 既有的逐行索引保持一致。 */
+/**
+ * 一行＝一個段落，見 whitelist.ts 的 MARKER_OPEN 說明：要跟書籤/diff 既有的逐行索引保持一致。
+ * 標題／引用／清單三者互斥：只有在沒有標題前綴時才會嘗試比對引用/清單前綴，兩者不會
+ * 同時生效（headingLevel > 0 時 blockKind 一律是 "none"）。
+ */
 function parseLine(line: string): ParsedParagraph {
   const { headingLevel, content: afterHeading } = extractHeading(line);
-  const { markerId, align, content } = extractMarker(afterHeading);
+  const { blockKind, content: afterBlockKind } =
+    headingLevel > 0
+      ? { blockKind: DEFAULT_BLOCK_KIND, content: afterHeading }
+      : extractBlockKind(afterHeading);
+  const { markerId, align, content } = extractMarker(afterBlockKind);
   const runs = normalizeRuns(parseInline(content));
 
-  return { markerId, align, headingLevel, runs };
+  return { markerId, align, headingLevel, blockKind, runs };
 }
 
 // 行內 marker 的開頭／結束標記，供「diff 前清乾淨」用。這裡是不管配對、單純把記號本身
@@ -445,18 +490,22 @@ export function stripInlineMarkers(content: string): string {
 }
 
 /**
- * 拿掉一行裡的段落 marker（含 align／comment 屬性）＋行內 marker（span 顏色等），保留標題前綴
- * 跟行內樣式 delimiter（`**` 等）不變。給「逐行文字 diff」這種不會透過我們的解析器渲染、
- * 只是把字串原樣顯示出來的地方用——不濾掉的話，marker id 換了、或單純加/改/刪一則註解／
- * 調整對齊／改個顏色，都會被 diff 誤判成「內容變了」，使用者也會在畫面上直接看到
+ * 拿掉一行裡的段落 marker（含 align／comment 屬性）＋行內 marker（span 顏色等），保留標題／
+ * 引用／清單前綴跟行內樣式 delimiter（`**` 等）不變。給「逐行文字 diff」這種不會透過我們的
+ * 解析器渲染、只是把字串原樣顯示出來的地方用——不濾掉的話，marker id 換了、或單純加/改/刪
+ * 一則註解／調整對齊／改個顏色，都會被 diff 誤判成「內容變了」，使用者也會在畫面上直接看到
  * `⟦uuid⟧...⟦/uuid⟧`、`⟦span-x⟧...⟦/span-x⟧` 這種不該曝光的內部語法。
  */
 export function stripMarkerForDiffLine(line: string): string {
   const { headingLevel, content: afterHeading } = extractHeading(line);
-  const { content } = extractMarker(afterHeading);
+  const { blockKind, content: afterBlockKind } =
+    headingLevel > 0
+      ? { blockKind: DEFAULT_BLOCK_KIND, content: afterHeading }
+      : extractBlockKind(afterHeading);
+  const { content } = extractMarker(afterBlockKind);
 
   const headingPrefix = headingLevel > 0 ? `${"#".repeat(headingLevel)} ` : "";
-  return `${headingPrefix}${stripInlineMarkers(content)}`;
+  return `${headingPrefix}${blockKindPrefix(blockKind)}${stripInlineMarkers(content)}`;
 }
 
 /** stripMarkerForDiffLine 套用在整份內容上，逐行處理後用 \n 接回去，方便直接餵給 buildCustomLineDiff。 */
@@ -571,6 +620,7 @@ export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
         markerId: paragraph.markerId,
         textAlign: paragraph.align,
         headingLevel: paragraph.headingLevel,
+        blockKind: paragraph.blockKind,
       },
       content: paragraph.runs
         .filter((run) => run.text !== "")

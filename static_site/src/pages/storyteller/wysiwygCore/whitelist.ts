@@ -48,6 +48,48 @@ export type HeadingLevel = 0 | (typeof HEADING_LEVELS)[number];
 export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
 
 /**
+ * 段落種類（引用/清單），跟標題一樣走行首前綴（2026-07-10 定案，見
+ * DevelopDocuments/storyteller/所見即所得編輯器_issue.md 的「實作方向」）：
+ * 引用 `> `、無序清單項目 `- `、有序清單項目「數字 + `. `」。這是一個**跟
+ * `headingLevel` 分開**的段落屬性，不是把 headingLevel 擴充成聯合型別——標題現有的
+ * input rule／鍵盤快速鍵／渲染邏輯已經上線在用，分開一個屬性比重構風險低。兩者互斥：
+ * 一個段落只能是「標題」或「引用/清單」其中一種，序列化時只會輸出其中一種前綴（見
+ * serializer.ts），切換時另一種要重置成預設值（見 markerParagraph.ts 的
+ * setBlockKind／setHeadingLevel 命令）。第一版不支援巢狀引用/清單。
+ */
+export const BLOCK_KIND_VALUES = ["none", "quote", "bullet", "number"] as const;
+export type BlockKindValue = (typeof BLOCK_KIND_VALUES)[number];
+export const DEFAULT_BLOCK_KIND: BlockKindValue = "none";
+
+export const BLOCK_KIND_QUOTE_PREFIX = "> ";
+export const BLOCK_KIND_BULLET_PREFIX = "- ";
+/**
+ * 有序清單一律自動編號：解析時接受任何「數字 + `. `」（不要求數字連續正確，使用者
+ * 打字、或編輯過程中插入/刪除項目時不需要手動調整後面項目的數字），但存進去的數字
+ * 本身沒有意義、序列化輸出一律用這個固定的 canonical 前綴——真正顯示的編號完全交給
+ * 渲染端的原生 `<ol>` 處理，不用自己算，也不會有「插入一項、後面全部要重新編號」的
+ * 維護負擔。
+ */
+export const BLOCK_KIND_NUMBER_CANONICAL_PREFIX = "1. ";
+/** 解析有序清單前綴用的寬鬆比對規則（任何數字＋`. `），跟上面固定輸出的 canonical 前綴分開。 */
+export const BLOCK_KIND_NUMBER_PARSE_PATTERN = /^\d+\. /;
+
+/** 依 blockKind 回傳序列化/diff 顯示要用的行首前綴，`"none"` 回傳空字串。parser.ts
+ * 的 stripMarkerForDiffLine 跟 serializer.ts 的 serializeParagraph 共用同一份規則。 */
+export function blockKindPrefix(blockKind: BlockKindValue): string {
+  switch (blockKind) {
+    case "quote":
+      return BLOCK_KIND_QUOTE_PREFIX;
+    case "bullet":
+      return BLOCK_KIND_BULLET_PREFIX;
+    case "number":
+      return BLOCK_KIND_NUMBER_CANONICAL_PREFIX;
+    default:
+      return "";
+  }
+}
+
+/**
  * 段落 marker 包住整個段落內容，系統保留、使用者不可鍵入、渲染時完全隱藏。刻意不用 HTML，避免和「不接受 HTML」規則衝突。
  *
  * 段落之間用單一 `\n` 分隔（不是空行）：故事閱讀頁的書籤功能（line_index）跟版本 diff

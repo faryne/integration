@@ -8,10 +8,15 @@ import {
   parseMarkdownToParagraphs,
   type FootnoteListEntry,
   type FootnoteNumbering,
+  type ParsedParagraph,
   type ParsedRun,
 } from "./wysiwygCore/parser";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
-import { isSafeHref, type MarkName } from "./wysiwygCore/whitelist";
+import {
+  isSafeHref,
+  type BlockKindValue,
+  type MarkName,
+} from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
@@ -36,6 +41,31 @@ interface StorytellerWysiwygMarkdownProps {
    */
   showFootnoteSection?: boolean;
 }
+
+// 引用/清單在閱讀頁走真正的巢狀 DOM（跟編輯區的 CSS 錯覺分組不同，見
+// StorytellerWysiwygEditor.tsx 的 BLOCK_KIND_SX 說明——這裡是純 React 渲染，
+// 沒有 ProseMirror schema 的限制，可以直接輸出真正的 <blockquote>/<ul>/<ol>）。
+// 有序清單用真正的 <ol>，編號交給瀏覽器原生處理，不用自己算。
+const BLOCK_GROUP_SX = {
+  "& blockquote": {
+    margin: "0 0 0.5em 0",
+    paddingLeft: "12px",
+    borderLeft: "4px solid",
+    borderColor: "divider",
+    fontStyle: "italic",
+    color: "text.secondary",
+  },
+  "& blockquote p": {
+    margin: 0,
+  },
+  "& ul, & ol": {
+    margin: "0 0 0.5em 0",
+    paddingLeft: "24px",
+  },
+  "& li": {
+    lineHeight: 1.5,
+  },
+} as const;
 
 const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
   bold: "strong",
@@ -126,6 +156,53 @@ function renderParagraphRuns(
   return nodes;
 }
 
+interface ParagraphGroup {
+  blockKind: BlockKindValue;
+  items: { paragraph: ParsedParagraph; index: number }[];
+}
+
+/**
+ * 把連續同 blockKind（引用/清單）的段落分成一組，"none"（一般段落/標題）的段落
+ * 永遠各自獨立成一組——只有引用/清單需要合併成一個 <blockquote>/<ul>/<ol> 容器，
+ * 一般段落跟標題本來就是各自獨立渲染，不需要合併。
+ */
+function groupParagraphsByBlockKind(
+  paragraphs: ParsedParagraph[],
+): ParagraphGroup[] {
+  const groups: ParagraphGroup[] = [];
+  paragraphs.forEach((paragraph, index) => {
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      last.blockKind === paragraph.blockKind &&
+      paragraph.blockKind !== "none"
+    ) {
+      last.items.push({ paragraph, index });
+    } else {
+      groups.push({
+        blockKind: paragraph.blockKind,
+        items: [{ paragraph, index }],
+      });
+    }
+  });
+  return groups;
+}
+
+/** 渲染一個段落的行內內容（runs），不含外層標籤——給一般段落/標題跟清單/引用項目共用。 */
+function renderParagraphContent(
+  paragraph: ParsedParagraph,
+  footnoteNumbering: FootnoteNumbering,
+  footnoteIdPrefix: string,
+): ReactNode {
+  return paragraph.runs.length === 0
+    ? " "
+    : renderParagraphRuns(
+        paragraph.runs,
+        footnoteNumbering.numbers,
+        footnoteIdPrefix,
+      );
+}
+
 /**
  * 故事尾端的腳注清單，獨立匯出成自己的元件——故事內容如果是逐段落/逐行渲染（例如
  * Reader.tsx 要在每行掛書籤功能），這個區塊只應該在整篇故事的最尾端渲染一次，
@@ -197,25 +274,51 @@ export function StorytellerWysiwygMarkdown({
     externalFootnoteNumbering ?? computeFootnoteNumbering(children);
 
   return (
-    <Box sx={HEADING_TYPOGRAPHY_SX}>
-      {paragraphs.map((paragraph, index) => {
-        const HeadingOrParagraphTag =
-          paragraph.headingLevel > 0
-            ? (`h${paragraph.headingLevel}` as keyof React.JSX.IntrinsicElements)
-            : "p";
+    <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX]}>
+      {groupParagraphsByBlockKind(paragraphs).map((group, groupIndex) => {
+        if (group.blockKind === "none") {
+          const { paragraph, index } = group.items[0];
+          const HeadingOrParagraphTag =
+            paragraph.headingLevel > 0
+              ? (`h${paragraph.headingLevel}` as keyof React.JSX.IntrinsicElements)
+              : "p";
+          return (
+            <HeadingOrParagraphTag
+              key={paragraph.markerId ?? index}
+              style={{ textAlign: paragraph.align }}
+            >
+              {renderParagraphContent(
+                paragraph,
+                footnoteNumbering,
+                footnoteIdPrefix,
+              )}
+            </HeadingOrParagraphTag>
+          );
+        }
+
+        const ItemTag = group.blockKind === "quote" ? "p" : "li";
+        const WrapperTag =
+          group.blockKind === "quote"
+            ? "blockquote"
+            : group.blockKind === "bullet"
+              ? "ul"
+              : "ol";
         return (
-          <HeadingOrParagraphTag
-            key={paragraph.markerId ?? index}
-            style={{ textAlign: paragraph.align }}
-          >
-            {paragraph.runs.length === 0
-              ? " "
-              : renderParagraphRuns(
-                  paragraph.runs,
-                  footnoteNumbering.numbers,
+          <Box component={WrapperTag} key={`block-group-${groupIndex}`}>
+            {group.items.map(({ paragraph, index }) => (
+              <Box
+                component={ItemTag}
+                key={paragraph.markerId ?? index}
+                style={{ textAlign: paragraph.align }}
+              >
+                {renderParagraphContent(
+                  paragraph,
+                  footnoteNumbering,
                   footnoteIdPrefix,
                 )}
-          </HeadingOrParagraphTag>
+              </Box>
+            ))}
+          </Box>
         );
       })}
 
