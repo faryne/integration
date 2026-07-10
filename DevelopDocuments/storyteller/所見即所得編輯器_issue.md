@@ -101,7 +101,23 @@
     - 但 `style` 屬性的值**不能是使用者自由輸入的 CSS 字串**——這不只是設計選擇，是安全性要求：如果真的把使用者可控的字串直接塞進渲染出來的 `style="..."`，等於開了一個 CSS injection 的口子（例如 `background-image: url(...)` 拿來做資料外洩）。`style` 的值必須是編輯器提供的固定選項（色盤）之一，渲染端用「認得的值 → 對應的樣式」這種對照表方式套用，不能把字串原樣塞進 HTML 屬性或 `dangerouslySetInnerHTML` 之類的地方。
     - `span` 底下的原則「markdown 沒有的語法規則才優先用客製元素」這點很好，粗體/斜體/底線/上下標繼續用現有的 delimiter 語法，`span` 只留給顏色這種真的沒有對應 delimiter 語法的樣式，避免兩套語法同時能表達同一件事。
 
-- [ ] **加入引用 `blockquote`**——目前只做設計分析，還沒實作。
+- [x] **加入引用 `blockquote`**——已實作（2026-07-10）。
+  - **實作方向（2026-07-10 定案，跟 `ul`/`ol` 一起決定）**：
+    - 走行首前綴（`> `），不走 `type="quote"` marker——採用下面「對照『關於客製化元素』章節後的分歧點」裡「我目前傾向」的那條路，跟 `headingLevel` 同一套模式，`quote`/`list` 都沿用段落自己的 marker（align 等屬性不變）。
+    - 新增一個**跟 `headingLevel` 分開**的段落屬性 `blockKind`（`"none" | "quote" | "bullet" | "number"`，`bullet`/`number` 是 `ul`/`ol` 用的，見下面清單那筆），不是把 `headingLevel` 擴充成聯合型別——`headingLevel` 現有的 input rule／鍵盤快速鍵／渲染邏輯都已經上線在用，直接沿用比重構風險低。序列化時**只會輸出一種前綴**：`headingLevel > 0` 就輸出標題前綴，否則才輸出 `blockKind` 對應的前綴，兩者互斥由序列化邏輯本身保證（不是只靠 UI 約束）。
+    - **跟標題互斥**：切換引用/清單時把 `headingLevel` 重置成 0；切換標題時把 `blockKind` 重置成 `"none"`（呼應下面「待確認」第 1 點的決定：不行同時存在）。
+    - **不支援巢狀**（呼應下面「待確認」第 2 點的決定：第一版不做）。
+    - **書籤/diff 不受影響**：跟原分析一致，分組純粹是渲染時的事。
+  - **實作摘要**：
+    - `whitelist.ts`：新增 `BLOCK_KIND_VALUES`（`"none"|"quote"|"bullet"|"number"`）／`BlockKindValue`／`DEFAULT_BLOCK_KIND`、前綴常數（`BLOCK_KIND_QUOTE_PREFIX="> "`／`BLOCK_KIND_BULLET_PREFIX="- "`／`BLOCK_KIND_NUMBER_CANONICAL_PREFIX="1. "`）、寬鬆解析用的 `BLOCK_KIND_NUMBER_PARSE_PATTERN`（任何數字＋`. `）、共用的 `blockKindPrefix()` 函式（parser.ts／serializer.ts 都靠它決定輸出哪個前綴）。
+    - `parser.ts`：`ParsedParagraph` 加 `blockKind`；新增 `extractBlockKind()`，`parseLine` 裡只有 `headingLevel === 0` 時才會呼叫它（互斥直接寫進解析順序，不是額外檢查）；`stripMarkerForDiffLine` 也比照標題前綴的邏輯，把 blockKind 前綴保留在 diff 文字裡。
+    - `serializer.ts`：`serializeParagraph` 改成算一個共用的 `prefix`（`headingLevel > 0` 就輸出標題前綴，否則 `blockKindPrefix(blockKind)`），保證序列化這一關不會同時寫出兩種前綴，就算編輯器不知怎麼讓兩個屬性同時非預設值也不會壞資料格式。
+    - `markerParagraph.ts`：`blockKind` 段落屬性（跟 `headingLevel` 同一個 node type，理由一致：都還是「一個段落」，不需要另開 Blockquote/List node type）；`setHeadingLevel`／`setBlockKind` 兩個 command 互相重置對方；三個新 input rule（`> `／`- `／`\d+\. `，共用跟標題同一套「手動合併 attrs 再 setBlockType」邏輯，避免 Tiptap 內建 `textblockTypeInputRule` 把 `markerId`/`align` 一起重置掉）；Enter 鍵行為：非空的清單/引用行按 Enter 會延續同一種 `blockKind`（`splitBlock` 預設就會複製 attrs，不用額外處理），但空白的清單/引用行按 Enter 會提早攔截、直接把該行的 `blockKind` 重置成 `"none"`（跳出清單/引用，不新增一行），比照大多數清單編輯器的習慣。
+    - `StorytellerWysiwygEditor.tsx`：工具列三顆切換按鈕（引用/無序清單/有序清單），再按已選取的同一個會切回一般段落。編輯區用 CSS 對相鄰同 `data-block-kind` 的 `<p>` 做視覺分組（左側色條、項目符號、CSS counter 自動編號），不是真的 DOM 巢狀——ProseMirror 的段落 schema 是扁平的，跟 `headingLevel` 當初不開額外 node type 是同一個理由。
+    - `StorytellerWysiwygMarkdown.tsx`（閱讀頁）：新增 `groupParagraphsByBlockKind()`，把連續同 `blockKind` 的段落分成一組（`"none"` 的段落永遠各自獨立），引用組渲染成 `<blockquote>` 包住多個 `<p>`，清單組渲染成 `<ul>`/`<ol>` 包住多個 `<li>`——這裡是純 React 渲染，沒有 ProseMirror schema 的限制，可以直接輸出真正巢狀的 DOM，有序清單直接用真正的 `<ol>`，編號交給瀏覽器原生處理。
+    - 後端 `service/storyteller/storyteller.go`：`splitHeadingAndMarkerContent` 回傳值多一個 `blockPrefix`（只有在沒有標題前綴時才會嘗試比對），`stripBookmarkLineMarker` 把它加回書籤預覽文字（跟標題前綴的處理方式一致），`wordCount` 則直接丟棄（前綴符號不算進字數，跟標題前綴的處理一致）。
+  - **已驗證**：TS round-trip 22 項全過（涵蓋標題/引用/清單三者互斥、有序清單任意數字都能解析但輸出永遠 canonicalize 成 `1. `、清單項目內還能正常疊加粗體/腳注/註解等既有行內功能、diff-strip 正確保留各種前綴、`content.split("\n")` 的行數不受影響）；Go 測試涵蓋書籤預覽前綴保留、字數計算前綴排除、多行加總正確三項全過；`tsc -b`／`eslint`／`prettier`／`go build`／`go vet` 皆乾淨、dev server 模組載入無誤。同樣**未在瀏覽器實際點過**（環境限制，見腳注那筆的說明），僅資料層／型別層／建置層驗證，**Enter/Backspace 在清單中的實際手感、CSS 分組視覺效果建議實際操作時再確認一次**。
+  - 以下為原始設計分析（保留供對照）：
   - **架構定位**：跟腳注/文字顏色（行內、掛在選取文字上）不一樣，引用是「整行/整段落」等級的樣式，這點比較接近現有的 `headingLevel`——都是「這個段落整體是什麼類型」，不是段落裡某一小段文字的樣式。建議做法：比照 `headingLevel`，新增一個段落層級屬性（例如 `isBlockquote: boolean`），序列化時用行首前綴（比照 markdown 慣例的 `> `），跟標題前綴屬於同一種設計語言（`whitelist.ts` 裡標題前綴的理由本來就是「沿用大家熟悉的 markdown 慣例」，引用的 `> ` 前綴也是同樣熟悉的慣例）。
   - **新的難題：連續段落要合併成一個視覺區塊**。這是前面幾個功能都沒遇過的情況——之前所有段落都是各自獨立渲染，沒有「好幾個段落合起來當一個整體」的需求。引用通常是連續好幾行都在引用範圍內，讀者端渲染時，連續好幾個「有 `isBlockquote` 標記」的段落，要合併包在同一個 `<blockquote>` 裡（而不是每行各自一個 `<blockquote>`，那樣視覺上會變成一行一個引用框，不是想要的效果）。`StorytellerWysiwygMarkdown.tsx` 目前是單純攤開渲染每個段落，需要改成「先把連續同類型的段落分組，再決定要不要包一層容器」——這個「分組」邏輯之後 `ul`/`ol` 也會用到（見下面）。
   - **對書籤/diff 索引沒有影響**：分組純粹是渲染時的事，底層還是每行一個段落、`content.split("\n")` 的陣列位置完全不變，書籤 `line_index`／版本 diff 都不受影響。
@@ -135,7 +151,21 @@
     2. **把粗體/斜體/底線/上下標/文字色/背景色/連結都整合進右鍵選單**，跟工具列的動作一致，不用特別移到工具列才能套用格式。
     3. **順便修掉一個右鍵選單的既有 bug**：`handleEditorContextMenu` 原本不管三七二十一，右鍵點哪就把選取範圍收合成那個單點——這在「只有加註解」的年代沒差（加註解本來就是套在整個段落上，跟游標實際位置無關），但這次要在右鍵選單裡加粗體/顏色/連結這些「套在選取範圍上」的動作後，這個行為會變成 bug：使用者選了一段文字、在選取範圍**裡面**按右鍵想套格式，選取範圍卻被收合掉，套用動作會失效。修法：只有在右鍵點的位置**落在目前選取範圍外面**時才收合成單點，點在範圍裡面就維持原本的選取範圍不動。
 
-- [ ] **加入清單 `ul` / `ol` > `li`**——目前只做設計分析，還沒實作，三個裡面架構最複雜的一個。
+- [x] **加入清單 `ul` / `ol` > `li`**——已實作（2026-07-10，跟引用一起做）。
+  - **實作方向（2026-07-10 定案，跟 `blockquote` 一起決定）**：
+    - 沿用引用那邊定案的 `blockKind` 屬性（`"bullet"` 對應 `- `、`"number"` 對應有序項目），跟標題/引用互斥，理由同上。
+    - **有序清單一律自動編號**：解析時接受任何「數字 + `. `」當作有序項目前綴（例如 `1. `／`2. `／`15. `，不要求數字連續正確，因為使用者打字時可能沒對齊，或是編輯過程中中間插入/刪除項目），但**存進去的數字本身不重要、渲染永遠不採用**；序列化輸出一律用固定的 `1. ` 當 canonical 前綴（跟 heading 前綴用實際字元數表達層級不同，這裡故意不編碼真正的序號，避免每次插入/刪除項目都要重新調整後面所有項目的數字）。閱讀頁渲染成真正的 `<ol>` 元素，編號交給瀏覽器原生處理，不用自己算。
+    - **不支援巢狀**（呼應下面「待確認」第 1 點的決定：第一版不做）。
+    - **跟標題/引用互斥**（呼應下面「待確認」第 2 點的決定：三者互斥）。
+    - **書籤/diff 不受影響**：跟原分析一致。
+  - **實作摘要**：跟引用共用同一套 `blockKind` 基礎設施（見上一筆 `blockquote` 的實作摘要，`whitelist.ts`／`parser.ts`／`serializer.ts`／`markerParagraph.ts`／後端 Go 的異動都是同一批）。清單特有的部分：
+    - 有序清單解析用 `BLOCK_KIND_NUMBER_PARSE_PATTERN`（`/^\d+\. /`）寬鬆比對任意數字，序列化一律輸出 `BLOCK_KIND_NUMBER_CANONICAL_PREFIX`（`"1. "`），已用 round-trip 測試驗證「輸入 `42. ` 解析出 `blockKind="number"`，重新序列化後前綴 canonicalize 回 `1. `」。
+    - `StorytellerWysiwygEditor.tsx` 的 CSS 分組：無序清單用 `::before` 加項目符號；有序清單用 CSS `counter-increment`/`counter-reset` 自動編號（`:not([data-block-kind='number']) + [data-block-kind='number']` 偵測「進入新的一組」才重置 counter），完全不用 JS 手動算號碼。
+    - `StorytellerWysiwygMarkdown.tsx` 用真正的 `<ol>` 元素，編號完全交給瀏覽器（不像編輯區要用 CSS counter 模擬，閱讀頁沒有 ProseMirror 的 schema 限制，可以直接用語意正確的原生元素）。
+    - Enter 鍵在清單項目中的「延續/跳出」邏輯（見上一筆說明）已經涵蓋兩種清單類型，不需要額外處理。
+    - 清單項目內部照樣能疊加既有的粗體/斜體/底線/上下標/文字顏色/連結/腳注/註解等行內功能，已用 round-trip 測試驗證（有序清單項目裡同時測了粗體、腳注、註解，皆正確解析/序列化）。
+  - **已驗證**：見上一筆 `blockquote` 的「已驗證」，兩個功能是同一批測試涵蓋的。
+  - 以下為原始設計分析（保留供對照）：
   - **架構定位**：跟引用一樣是段落層級屬性（例如 `listType: "none" | "bullet" | "number"`），一樣需要「連續段落分組成一個視覺容器」（沿用引用那邊提到的分組渲染邏輯，`ul`/`ol` 的分組規則更複雜一點：連續的 bullet 項目分成一組 `<ul>`；如果中間穿插一個 number 類型的段落，就要斷成兩組，各自包自己的 `<ul>`/`<ol>`，不能混在同一個清單容器裡）。
   - **比引用更複雜的地方**：
     1. **巢狀層級**：真正的清單通常需要支援子清單（縮排一層）。如果要支援，段落屬性還要再加一個 `listIndentLevel`（0 到 N），渲染時要把巢狀結構還原成真正的 `<ul><li><ul>...` 巢狀 DOM，比引用的巢狀（本來就建議先不支援）複雜得多。**建議第一版直接不支援巢狀**，只做單層清單，之後有需要再加。

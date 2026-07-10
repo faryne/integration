@@ -800,11 +800,19 @@ var storyMarkerPattern = regexp.MustCompile(
 	`^⟦([^⟧\s]*)(?: align="(?:left|center|right)")?(?: comment="(?:[^"\\]|\\.)*")?(?: commentColor="(?:yellow|pink|blue|green|purple)")?⟧([\s\S]*)⟦/([^⟧\s]*)⟧$`,
 )
 
-// splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）跟段落 marker（含 align
-// 屬性），回傳段落真正的可讀內容。是 stripBookmarkLineMarker 跟 wordCount 共用的底層邏輯，
+// blockKindPrefixPattern 比照前端 whitelist.ts 的 blockKindPrefix：引用 `> `、無序清單
+// `- `、有序清單「數字 + `. `」（數字不驗證連續性，任何數字都算數，見前端
+// BLOCK_KIND_NUMBER_PARSE_PATTERN 的說明——有序清單一律自動編號，存進去的數字本身
+// 沒有意義）。跟標題前綴互斥，splitHeadingAndMarkerContent 只有在沒有標題前綴時
+// 才會嘗試比對這個 pattern。
+var blockKindPrefixPattern = regexp.MustCompile(`^(?:> |- |\d+\. )`)
+
+// splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）、引用/清單前綴（回傳
+// blockPrefix，跟標題互斥，只有沒有標題時才會比對）跟段落 marker（含 align 屬性），
+// 回傳段落真正的可讀內容。是 stripBookmarkLineMarker 跟 wordCount 共用的底層邏輯，
 // DB 裡的 content 存的是含 marker 語法的原始行（見 storyteller_story_versions 遷移後的
 // 格式），這兩個地方都需要在 Go 這邊做語法層面的清理。
-func splitHeadingAndMarkerContent(line string) (int, string) {
+func splitHeadingAndMarkerContent(line string) (int, string, string) {
 	headingLevel := 0
 	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
 		headingLevel++
@@ -816,11 +824,19 @@ func splitHeadingAndMarkerContent(line string) (int, string) {
 		headingLevel = 0
 	}
 
+	blockPrefix := ""
+	if headingLevel == 0 {
+		if match := blockKindPrefixPattern.FindString(content); match != "" {
+			blockPrefix = match
+			content = content[len(match):]
+		}
+	}
+
 	if match := storyMarkerPattern.FindStringSubmatch(content); match != nil && match[1] == match[3] {
 		content = match[2]
 	}
 
-	return headingLevel, content
+	return headingLevel, blockPrefix, content
 }
 
 // storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色、
@@ -873,15 +889,15 @@ func stripStoryInlineMarkers(content string) string {
 }
 
 // stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment/commentColor
-// 屬性）跟行內 marker（span 顏色等），保留標題前綴，只留下可讀文字。邏輯跟前端
-// stripMarkerForDiffLine 一致，方便未來對照維護。
+// 屬性）跟行內 marker（span 顏色等），保留標題／引用／清單前綴，只留下可讀文字。邏輯跟
+// 前端 stripMarkerForDiffLine 一致，方便未來對照維護。
 func stripBookmarkLineMarker(line string) string {
-	headingLevel, content := splitHeadingAndMarkerContent(line)
+	headingLevel, blockPrefix, content := splitHeadingAndMarkerContent(line)
 	content = stripStoryInlineMarkers(content)
 	if headingLevel > 0 {
 		return strings.Repeat("#", headingLevel) + " " + content
 	}
-	return content
+	return blockPrefix + content
 }
 
 // wordCountInlineDelimiters 比照前端 whitelist.ts 的 PARSE_DELIMITERS，長的寫法要排在前面
@@ -1735,7 +1751,7 @@ func buildLoreVersion(lore storytellerModel.Lore) *storytellerModel.LoreVersion 
 func wordCount(content string) uint {
 	var builder strings.Builder
 	for _, line := range strings.Split(content, "\n") {
-		_, clean := splitHeadingAndMarkerContent(line)
+		_, _, clean := splitHeadingAndMarkerContent(line)
 		clean = stripStoryInlineMarkers(clean)
 		builder.WriteString(stripDelimitersFrom(clean, wordCountInlineDelimiters))
 	}
