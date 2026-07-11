@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import App from "@/App.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/components/auth/AuthProvider.tsx";
+import { installAuthInterceptors } from "@/apis/auth/httpInterceptors.ts";
+
+installAuthInterceptors();
 
 const queryClient = new QueryClient();
 

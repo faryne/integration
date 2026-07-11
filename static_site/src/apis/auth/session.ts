@@ -30,6 +30,16 @@ export async function createAuthSession(idToken: string) {
   return response.data.data;
 }
 
+// proactive renewal 用：不換 encrypt_key，只是打一次 API 讓後端 sliding TTL 續期，
+// 新的 expires_at 會從 response header 回來，由 axios interceptor 更新 sessionStore。
+export async function touchAuthSession(encryptKey: string) {
+  await axios.get(`${import.meta.env.VITE_API_BASE}/auth/session`, {
+    headers: {
+      "X-Encrypt-Key": encryptKey,
+    },
+  });
+}
+
 export async function destroyAuthSession(encryptKey: string) {
   const response = await axios.delete<CommonResponse<{ destroyed: boolean }>>(
     `${import.meta.env.VITE_API_BASE}/auth/session`,

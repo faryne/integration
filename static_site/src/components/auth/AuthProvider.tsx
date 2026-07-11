@@ -1,26 +1,36 @@
 import type { User } from "firebase/auth";
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
 import {
   createAuthSession,
   destroyAuthSession,
-  type AuthSession,
+  touchAuthSession,
 } from "@/apis/auth/session.ts";
 import {
-  getStoredAuthSession,
-  removeStoredAuthSession,
-  setStoredAuthSession,
-} from "@/apis/auth/storage.ts";
+  clearSession as clearStoredSession,
+  getSessionSnapshot,
+  setSession as setStoredSession,
+  subscribeSession,
+} from "@/apis/auth/sessionStore.ts";
 import { getFirebaseAuth } from "@/lib/firebase.ts";
 import { AuthContext } from "@/components/auth/AuthContext.ts";
+
+// session 快過期前的續期緩衝：提早這麼久主動 touch 一次，一般使用情境下根本不會撞到 401。
+const RENEW_BEFORE_EXPIRY_MS = 30 * 60 * 1000;
+const MIN_RENEW_DELAY_MS = 5 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const firebaseAuth = useMemo(() => getFirebaseAuth(), []);
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<AuthSession | null>(() =>
-    getStoredAuthSession(),
-  );
+  const session = useSyncExternalStore(subscribeSession, getSessionSnapshot);
   const [loading, setLoading] = useState(Boolean(firebaseAuth));
   const [submitting, setSubmitting] = useState(false);
   const sessionSyncAttempted = useRef<string | null>(null);
@@ -40,8 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         unsubscribe = onAuthStateChanged(firebaseAuth.auth, (currentUser) => {
           setUser(currentUser);
           if (!currentUser) {
-            setSession(null);
-            removeStoredAuthSession();
+            clearStoredSession();
           }
           setLoading(false);
         });
@@ -57,8 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const establishSession = async (currentUser: User) => {
     const idToken = await currentUser.getIdToken();
     const nextSession = await createAuthSession(idToken);
-    setSession(nextSession);
-    setStoredAuthSession(nextSession);
+    setStoredSession(nextSession);
   };
 
   useEffect(() => {
@@ -68,8 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (session && session.user.firebase_uid !== user.uid) {
-      setSession(null);
-      removeStoredAuthSession();
+      clearStoredSession();
       return;
     }
 
@@ -85,6 +92,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => setSubmitting(false));
   }, [session, user]);
+
+  // proactive renewal：expires_at 一有變動（含 sliding TTL 續期）就重新排程，
+  // 在真的過期前主動 touch 一次，讓開著分頁不動作的使用者也不會撞到 401。
+  useEffect(() => {
+    if (!session?.encrypt_key) {
+      return;
+    }
+
+    const delay = Math.max(
+      new Date(session.expires_at).getTime() -
+        Date.now() -
+        RENEW_BEFORE_EXPIRY_MS,
+      MIN_RENEW_DELAY_MS,
+    );
+    const timer = window.setTimeout(() => {
+      void touchAuthSession(session.encrypt_key).catch(() => {
+        // 續期失敗（session 已在別處失效）交給 axios interceptor 的 401 流程處理
+      });
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [session?.encrypt_key, session?.expires_at]);
 
   const login = async () => {
     if (!firebaseAuth) {
@@ -113,8 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await destroyAuthSession(session.encrypt_key);
       }
       await signOut(firebaseAuth.auth);
-      setSession(null);
-      removeStoredAuthSession();
+      clearStoredSession();
     } finally {
       setSubmitting(false);
     }

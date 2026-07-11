@@ -9,6 +9,13 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
+// GetSession 是給前端做 proactive renewal 用的輕量 touch 端點：
+// 只要通過 authsession middleware 就代表 sliding TTL 已經延長，
+// 過期時間透過 X-Session-Expires-At response header 回傳，不用整包重建 session。
+func GetSession(ctx fiber.Ctx) error {
+	return output.Success(map[string]bool{"active": true})
+}
+
 func CreateSession(ctx fiber.Ctx) error {
 	idToken, err := bearerToken(ctx.Get("Authorization"))
 	if err != nil {

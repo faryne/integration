@@ -417,7 +417,9 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	})
 	app.Use(recover2.New())
 	app.Use(logger.New())
-	app.Use(cors.New())
+	app.Use(cors.New(cors.Config{
+		ExposeHeaders: []string{"X-Session-Expires-At"},
+	}))
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)

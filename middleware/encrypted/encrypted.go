@@ -16,10 +16,11 @@ import (
 )
 
 const (
-	LocalDecryptedPayload = "encrypted.decrypted_payload"
-	LocalAuthSession      = "encrypted.auth_session"
-	HeaderEncryptKey      = "X-Encrypt-Key"
-	QueryPayload          = "payload"
+	LocalDecryptedPayload  = "encrypted.decrypted_payload"
+	LocalAuthSession       = "encrypted.auth_session"
+	HeaderEncryptKey       = "X-Encrypt-Key"
+	HeaderSessionExpiresAt = "X-Session-Expires-At"
+	QueryPayload           = "payload"
 )
 
 var queryDecoder = schema.NewDecoder()
@@ -48,6 +49,7 @@ func New() fiber.Handler {
 
 		ctx.Locals(LocalDecryptedPayload, decryptedPayload)
 		ctx.Locals(LocalAuthSession, session)
+		ctx.Set(HeaderSessionExpiresAt, session.ExpiresAt)
 
 		if err := ctx.Next(); err != nil {
 			if handled, handleErr := handleOutputError(ctx, err); handleErr != nil {

@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	LocalAuthSession = "auth_session"
-	HeaderEncryptKey = "X-Encrypt-Key"
+	LocalAuthSession       = "auth_session"
+	HeaderEncryptKey       = "X-Encrypt-Key"
+	HeaderSessionExpiresAt = "X-Session-Expires-At"
 )
 
 func New() fiber.Handler {
@@ -26,6 +27,7 @@ func New() fiber.Handler {
 			return output.Unauthorized(err)
 		}
 		ctx.Locals(LocalAuthSession, session)
+		ctx.Set(HeaderSessionExpiresAt, session.ExpiresAt)
 		return ctx.Next()
 	}
 }

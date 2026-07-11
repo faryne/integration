@@ -2,12 +2,14 @@ package route
 
 import (
 	"faryne.dev/controller/auth"
+	"faryne.dev/middleware/authsession"
 	"faryne.dev/middleware/encrypted"
 	"github.com/gofiber/fiber/v3"
 )
 
 func Auth(app *fiber.App) {
 	g := app.Group("/auth")
+	g.Get("/session", authsession.New(), auth.GetSession)
 	g.Post("/session", auth.CreateSession)
 	g.Delete("/session", auth.DestroySession)
 
