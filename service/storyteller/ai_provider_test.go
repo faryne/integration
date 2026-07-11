@@ -14,17 +14,25 @@ import (
 )
 
 func TestNewAIProvider(t *testing.T) {
-	provider, err := NewAIProvider(storytellerModel.AgentProviderGrok)
+	provider, err := NewAIProvider(storytellerModel.AgentProviderGrok, "")
 	require.NoError(t, err)
 	require.IsType(t, &GrokProvider{}, provider)
 
-	provider, err = NewAIProvider(storytellerModel.AgentProviderGemini)
+	provider, err = NewAIProvider(storytellerModel.AgentProviderGemini, "")
 	require.NoError(t, err)
 	require.IsType(t, &GeminiProvider{}, provider)
 
-	provider, err = NewAIProvider(storytellerModel.AgentProvider("unknown"))
+	provider, err = NewAIProvider(storytellerModel.AgentProvider("unknown"), "")
 	require.Nil(t, provider)
 	require.ErrorIs(t, err, ErrAIProviderUnsupported)
+
+	provider, err = NewAIProvider(storytellerModel.AgentProviderSelfHosted, "")
+	require.Nil(t, provider)
+	require.ErrorIs(t, err, ErrAIProviderMissingEndpoint)
+
+	provider, err = NewAIProvider(storytellerModel.AgentProviderSelfHosted, "https://my-vllm.internal/v1/chat/completions")
+	require.NoError(t, err)
+	require.IsType(t, &OpenAICompatibleProvider{}, provider)
 }
 
 func TestGrokProviderGenerate(t *testing.T) {

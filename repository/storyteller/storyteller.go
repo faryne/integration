@@ -160,6 +160,7 @@ func (r *Repository) UpdateProviderAPIKeyTestResult(row *storytellerModel.Provid
 func (r *Repository) UpdateProviderAPIKey(row *storytellerModel.ProviderAPIKey) error {
 	return r.db.Model(row).Updates(map[string]any{
 		"label":             row.Label,
+		"endpoint":          row.Endpoint,
 		"api_key_encrypted": row.APIKeyEncrypted,
 		"api_key_data_key":  row.APIKeyDataKey,
 		"api_key_key_id":    row.APIKeyKeyID,

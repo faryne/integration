@@ -36,7 +36,7 @@ type agentRunRepository interface {
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error
 }
 
-type aiProviderFactory func(provider storytellerModel.AgentProvider) (AIProvider, error)
+type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)
 
 func NewService() *Service {
 	return &Service{repo: storytellerRepo.NewRepository()}
@@ -305,6 +305,7 @@ func (s *Service) CreateProviderAPIKey(userID uint64, input storytellerModel.Pro
 		UserID:   userID,
 		Provider: input.Provider,
 		Label:    strings.TrimSpace(input.Label),
+		Endpoint: strings.TrimSpace(input.Endpoint),
 	}
 	if err := applyEncryptedProviderAPIKey(row, input.APIKey); err != nil {
 		return nil, err
@@ -322,6 +323,12 @@ func (s *Service) UpdateProviderAPIKey(userID, id uint64, input storytellerModel
 		return nil, err
 	}
 	row.Label = strings.TrimSpace(input.Label)
+	if row.Provider == storytellerModel.AgentProviderSelfHosted {
+		if strings.TrimSpace(input.Endpoint) == "" {
+			return nil, errors.New("endpoint is required for self-hosted provider")
+		}
+		row.Endpoint = strings.TrimSpace(input.Endpoint)
+	}
 	if strings.TrimSpace(input.APIKey) != "" {
 		if err := applyEncryptedProviderAPIKey(row, input.APIKey); err != nil {
 			return nil, err
@@ -345,7 +352,7 @@ func (s *Service) DeleteProviderAPIKey(userID, id uint64) error {
 	return s.repo.DeleteProviderAPIKey(row)
 }
 
-func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64) error {
+func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64, modelNameOverride string) error {
 	key, err := s.repo.ProviderAPIKey(userID, id)
 	if err != nil {
 		return err
@@ -354,17 +361,25 @@ func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64) err
 	if err != nil {
 		return err
 	}
-	modelName := ""
+	modelName := strings.TrimSpace(modelNameOverride)
+	allowCustomModel := false
 	for _, providerModel := range providerModels {
-		if providerModel.Provider == key.Provider && len(providerModel.Models) > 0 {
-			modelName = providerModel.Models[0].Name
-			break
+		if providerModel.Provider != key.Provider {
+			continue
 		}
+		allowCustomModel = providerModel.AllowCustomModel
+		if modelName == "" && len(providerModel.Models) > 0 {
+			modelName = providerModel.Models[0].Name
+		}
+		break
 	}
 	if modelName == "" {
+		if allowCustomModel {
+			return errors.New("model_name is required to test this provider")
+		}
 		return errors.New("no model configured for this provider yet")
 	}
-	provider, err := NewAIProvider(key.Provider)
+	provider, err := NewAIProvider(key.Provider, key.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -437,6 +452,9 @@ func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderA
 	if strings.TrimSpace(input.APIKey) == "" {
 		return errors.New("api_key is required")
 	}
+	if input.Provider == storytellerModel.AgentProviderSelfHosted && strings.TrimSpace(input.Endpoint) == "" {
+		return errors.New("endpoint is required for self-hosted provider")
+	}
 	providerModels, err := s.repo.AgentProviderModels()
 	if err != nil {
 		return err
@@ -454,6 +472,7 @@ func providerAPIKeyOutput(row storytellerModel.ProviderAPIKey) storytellerModel.
 		ID:           row.ID,
 		Provider:     row.Provider,
 		Label:        row.Label,
+		Endpoint:     row.Endpoint,
 		LastTestedAt: row.LastTestedAt,
 		LastTestOK:   row.LastTestOK,
 		CreatedAt:    row.CreatedAt,
@@ -507,7 +526,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err != nil {
 		return nil, err
 	}
-	provider, err := NewAIProvider(agent.Provider)
+	provider, err := NewAIProvider(agent.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +610,7 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	if err != nil {
 		return nil, err
 	}
-	provider, err := providerFactory(agent.Provider)
+	provider, err := providerFactory(agent.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}

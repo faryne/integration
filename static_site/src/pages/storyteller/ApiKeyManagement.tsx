@@ -45,6 +45,7 @@ import {
   useUpdateStorytellerProviderAPIKey,
 } from "@/apis/storyteller.ts";
 import type {
+  StorytellerAgentProviderModels,
   StorytellerProviderAPIKey,
   StorytellerProviderAPIKeyRequest,
 } from "@/types/storyteller.ts";
@@ -65,12 +66,13 @@ export function StorytellerApiKeyPanel() {
   const [input, setInput] = useState<StorytellerProviderAPIKeyRequest>({
     provider: "grok",
     label: "",
+    endpoint: "",
     api_key: "",
   });
 
-  const providerLabel = (provider: string) =>
-    providerModels.find((item) => item.provider === provider)?.label ??
-    provider;
+  const providerOption = (provider: string) =>
+    providerModels.find((item) => item.provider === provider);
+  const isSelfHosted = input.provider === "self_hosted";
 
   return (
     <Stack spacing={3}>
@@ -82,7 +84,12 @@ export function StorytellerApiKeyPanel() {
             event.preventDefault();
             createApiKey.mutate(input, {
               onSuccess: () => {
-                setInput((value) => ({ ...value, label: "", api_key: "" }));
+                setInput((value) => ({
+                  ...value,
+                  label: "",
+                  endpoint: "",
+                  api_key: "",
+                }));
               },
             });
           }}
@@ -133,12 +140,15 @@ export function StorytellerApiKeyPanel() {
                 select
                 label="AI 供應商"
                 value={input.provider}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const nextProvider = event.target.value;
                   setInput((value) => ({
                     ...value,
-                    provider: event.target.value,
-                  }))
-                }
+                    provider: nextProvider,
+                    endpoint:
+                      nextProvider === "self_hosted" ? value.endpoint : "",
+                  }));
+                }}
               >
                 {providerModels.map((provider) => (
                   <MenuItem key={provider.provider} value={provider.provider}>
@@ -195,6 +205,24 @@ export function StorytellerApiKeyPanel() {
                 {createApiKey.isPending ? "新增中" : "新增"}
               </Button>
             </Grid>
+            {isSelfHosted && (
+              <Grid size={12}>
+                <TextField
+                  required
+                  fullWidth
+                  label="Endpoint"
+                  placeholder="例如：https://my-vllm.internal/v1/chat/completions"
+                  helperText="自架服務的 OpenAI 相容 Chat Completions API 位址"
+                  value={input.endpoint}
+                  onChange={(event) =>
+                    setInput((value) => ({
+                      ...value,
+                      endpoint: event.target.value,
+                    }))
+                  }
+                />
+              </Grid>
+            )}
           </Grid>
         </Stack>
       </Paper>
@@ -217,7 +245,7 @@ export function StorytellerApiKeyPanel() {
                   {index > 0 && <Divider component="li" />}
                   <ProviderApiKeyRow
                     apiKey={apiKey}
-                    providerLabel={providerLabel(apiKey.provider)}
+                    providerOption={providerOption(apiKey.provider)}
                     boundAgentNames={boundAgentNames(apiKey.id)}
                     onDelete={() => deleteApiKey.mutate(apiKey.id)}
                     deletePending={deleteApiKey.isPending}
@@ -246,25 +274,34 @@ const testCooldownSeconds = 30;
 
 function ProviderApiKeyRow({
   apiKey,
-  providerLabel,
+  providerOption,
   boundAgentNames,
   onDelete,
   deletePending,
 }: {
   apiKey: StorytellerProviderAPIKey;
-  providerLabel: string;
+  providerOption: StorytellerAgentProviderModels | undefined;
   boundAgentNames: string[];
   onDelete: () => void;
   deletePending: boolean;
 }) {
+  const providerLabel = providerOption?.label ?? apiKey.provider;
+  const isSelfHosted = apiKey.provider === "self_hosted";
+  // self_hosted 沒有內建 model 目錄，測試連線時要讓使用者自己輸入一個 model name
+  const needsTestModelName =
+    (providerOption?.allow_custom_model ?? false) &&
+    (providerOption?.models.length ?? 0) === 0;
   const testApiKey = useTestStorytellerProviderAPIKey();
   const updateApiKey = useUpdateStorytellerProviderAPIKey();
   const [isEditingLabel, setIsEditingLabel] = useState(false);
   const [draftLabel, setDraftLabel] = useState(apiKey.label);
+  const [draftEndpoint, setDraftEndpoint] = useState(apiKey.endpoint);
+  const [testModelName, setTestModelName] = useState("");
   const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const isTesting = testApiKey.isPending && testApiKey.variables === apiKey.id;
+  const isTesting =
+    testApiKey.isPending && testApiKey.variables?.id === apiKey.id;
 
   // 避免使用者誤按或連按送出重複的測試連線請求，按下後鎖定一段時間再開放
   useEffect(() => {
@@ -288,19 +325,26 @@ function ProviderApiKeyRow({
 
   function startEditing() {
     setDraftLabel(apiKey.label);
+    setDraftEndpoint(apiKey.endpoint);
     setIsEditingLabel(true);
   }
 
   function saveLabel() {
     updateApiKey.mutate(
-      { id: apiKey.id, input: { label: draftLabel } },
+      {
+        id: apiKey.id,
+        input: {
+          label: draftLabel,
+          endpoint: isSelfHosted ? draftEndpoint : undefined,
+        },
+      },
       { onSuccess: () => setIsEditingLabel(false) },
     );
   }
 
   function runTest() {
     setCooldownEndsAt(Date.now() + testCooldownSeconds * 1000);
-    testApiKey.mutate(apiKey.id);
+    testApiKey.mutate({ id: apiKey.id, modelName: testModelName });
   }
 
   return (
@@ -323,13 +367,19 @@ function ProviderApiKeyRow({
               title={
                 isCoolingDown
                   ? `請稍候 ${cooldownRemainingSeconds} 秒後再試`
-                  : "測試連線"
+                  : needsTestModelName && !testModelName.trim()
+                    ? "請先在下方填入測試用的 Model Name"
+                    : "測試連線"
               }
             >
               <span>
                 <IconButton
                   edge="end"
-                  disabled={isTesting || isCoolingDown}
+                  disabled={
+                    isTesting ||
+                    isCoolingDown ||
+                    (needsTestModelName && !testModelName.trim())
+                  }
                   onClick={runTest}
                 >
                   {isTesting ? (
@@ -395,12 +445,30 @@ function ProviderApiKeyRow({
             }}
             sx={{ flex: 1 }}
           />
+          {isSelfHosted && (
+            <TextField
+              size="small"
+              placeholder="Endpoint"
+              value={draftEndpoint}
+              onChange={(event) => setDraftEndpoint(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  saveLabel();
+                }
+              }}
+              sx={{ flex: 2 }}
+            />
+          )}
           <Tooltip title="儲存">
             <span>
               <IconButton
                 size="small"
                 color="primary"
-                disabled={updateApiKey.isPending}
+                disabled={
+                  updateApiKey.isPending ||
+                  (isSelfHosted && !draftEndpoint.trim())
+                }
                 onClick={saveLabel}
               >
                 <SaveIcon fontSize="small" />
@@ -444,19 +512,36 @@ function ProviderApiKeyRow({
             </Stack>
           }
           secondary={
-            <Stack direction="row" spacing={0.75} alignItems="center">
-              {apiKey.last_tested_at === null ||
-              apiKey.last_test_ok === null ? (
-                <HelpOutlineIcon fontSize="inherit" color="disabled" />
-              ) : apiKey.last_test_ok ? (
-                <CheckCircleIcon fontSize="inherit" color="success" />
-              ) : (
-                <ErrorIcon fontSize="inherit" color="error" />
+            <Stack spacing={0.5} sx={{ mt: 0.25 }}>
+              <Stack direction="row" spacing={0.75} alignItems="center">
+                {apiKey.last_tested_at === null ||
+                apiKey.last_test_ok === null ? (
+                  <HelpOutlineIcon fontSize="inherit" color="disabled" />
+                ) : apiKey.last_test_ok ? (
+                  <CheckCircleIcon fontSize="inherit" color="success" />
+                ) : (
+                  <ErrorIcon fontSize="inherit" color="error" />
+                )}
+                <span>
+                  建立於 {new Date(apiKey.created_at).toLocaleString()}・
+                  {providerApiKeyTestStatusText(apiKey)}
+                </span>
+              </Stack>
+              {isSelfHosted && (
+                <Typography variant="caption" color="text.secondary">
+                  Endpoint：{apiKey.endpoint || "（尚未設定）"}
+                </Typography>
               )}
-              <span>
-                建立於 {new Date(apiKey.created_at).toLocaleString()}・
-                {providerApiKeyTestStatusText(apiKey)}
-              </span>
+              {needsTestModelName && (
+                <TextField
+                  size="small"
+                  label="測試連線用的 Model Name"
+                  placeholder="例如：llama-3.1-70b"
+                  value={testModelName}
+                  onChange={(event) => setTestModelName(event.target.value)}
+                  sx={{ maxWidth: 320 }}
+                />
+              )}
             </Stack>
           }
           slotProps={{ secondary: { component: "div" } }}
@@ -472,12 +557,14 @@ function ProviderApiKeyRow({
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Typography color="text.secondary">
-              確定要刪除「{apiKey.label || "（未命名）"}」這把金鑰嗎？此操作無法復原。
+              確定要刪除「{apiKey.label || "（未命名）"}
+              」這把金鑰嗎？此操作無法復原。
             </Typography>
             {boundAgentNames.length > 0 ? (
               <Alert severity="warning" variant="outlined">
                 目前有 {boundAgentNames.length} 個 AI Agent 使用這把金鑰：
-                {boundAgentNames.join("、")}。刪除後這些 Agent 會失去綁定的金鑰，需要重新指定才能繼續使用。
+                {boundAgentNames.join("、")}。刪除後這些 Agent
+                會失去綁定的金鑰，需要重新指定才能繼續使用。
               </Alert>
             ) : (
               <Typography variant="body2" color="text.secondary">

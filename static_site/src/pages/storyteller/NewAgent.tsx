@@ -305,7 +305,11 @@ export default function StorytellerNewAgent() {
                     required
                     fullWidth
                     label="模型名稱"
-                    placeholder="例如：openai/gpt-4.1"
+                    placeholder={
+                      input.provider === "self_hosted"
+                        ? "例如：llama-3.1-70b（依自架服務實際載入的模型名稱填寫）"
+                        : "例如：openai/gpt-4.1"
+                    }
                     value={input.model_name}
                     onChange={(event) =>
                       setInput((value) => ({

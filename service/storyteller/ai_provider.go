@@ -24,14 +24,15 @@ const (
 )
 
 var (
-	ErrAIProviderInvalidAPIKey = errors.New("ai provider api key is invalid")
-	ErrAIProviderRateLimited   = errors.New("ai provider rate limited")
-	ErrAIProviderTimeout       = errors.New("ai provider timeout")
-	ErrAIProviderUnavailable   = errors.New("ai provider unavailable")
-	ErrAIProviderInvalidModel  = errors.New("ai provider model is invalid")
-	ErrAIProviderEmptyResult   = errors.New("ai provider returned empty result")
-	ErrAIProviderUnknown       = errors.New("ai provider error")
-	ErrAIProviderUnsupported   = errors.New("ai provider is not supported")
+	ErrAIProviderInvalidAPIKey   = errors.New("ai provider api key is invalid")
+	ErrAIProviderRateLimited     = errors.New("ai provider rate limited")
+	ErrAIProviderTimeout         = errors.New("ai provider timeout")
+	ErrAIProviderUnavailable     = errors.New("ai provider unavailable")
+	ErrAIProviderInvalidModel    = errors.New("ai provider model is invalid")
+	ErrAIProviderEmptyResult     = errors.New("ai provider returned empty result")
+	ErrAIProviderUnknown         = errors.New("ai provider error")
+	ErrAIProviderUnsupported     = errors.New("ai provider is not supported")
+	ErrAIProviderMissingEndpoint = errors.New("ai provider endpoint is required")
 )
 
 type AIProvider interface {
@@ -57,7 +58,9 @@ type AIProviderUsage struct {
 	TotalTokens  int
 }
 
-func NewAIProvider(provider storytellerModel.AgentProvider) (AIProvider, error) {
+// endpoint 只有 self-hosted provider 會用到（自架的 OpenAI 相容 API 位址），
+// 其餘固定 provider 一律沿用各自的預設常數，忽略傳入值。
+func NewAIProvider(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 	switch provider {
 	case storytellerModel.AgentProviderGrok:
 		return NewGrokProvider(defaultGrokChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
@@ -69,6 +72,11 @@ func NewAIProvider(provider storytellerModel.AgentProvider) (AIProvider, error) 
 		return NewClaudeProvider(defaultClaudeMessagesURL, &http.Client{Timeout: 60 * time.Second}), nil
 	case storytellerModel.AgentProviderGemini:
 		return NewGeminiProvider(defaultGeminiGenerateContentBaseURL, &http.Client{Timeout: 60 * time.Second}), nil
+	case storytellerModel.AgentProviderSelfHosted:
+		if strings.TrimSpace(endpoint) == "" {
+			return nil, ErrAIProviderMissingEndpoint
+		}
+		return NewOpenAICompatibleProvider(strings.TrimSpace(endpoint), &http.Client{Timeout: 60 * time.Second}), nil
 	default:
 		return nil, ErrAIProviderUnsupported
 	}

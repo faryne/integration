@@ -566,10 +566,16 @@ export function useTestStorytellerProviderAPIKey() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      modelName,
+    }: {
+      id: number;
+      modelName?: string;
+    }) => {
       const response = await axios.post<CommonResponse<{ ok: boolean }>>(
         `${apiBase}/storyteller/provider-apikeys/${id}/test-connection`,
-        {},
+        { model_name: modelName ?? "" },
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;
@@ -871,9 +877,7 @@ export function usePublicStorytellerStoryLatestVersion(
     ],
     enabled: Boolean(projectPublicId && storyPublicId),
     queryFn: async () => {
-      const response = await axios.get<
-        CommonResponse<StorytellerStoryVersion>
-      >(
+      const response = await axios.get<CommonResponse<StorytellerStoryVersion>>(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/latest-version`,
       );
       return response.data.data;

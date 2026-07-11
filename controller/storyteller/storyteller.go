@@ -223,7 +223,9 @@ func TestProviderAPIKey(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	if err := storyteller.NewService().TestProviderAPIKey(ctx.Context(), authsession.Session(ctx).UserId, id); err != nil {
+	var input storytellerModel.ProviderAPIKeyTestRequest
+	_ = ctx.Bind().Body(&input) // 沒有 body 也視為合法請求，沿用 catalog 的第一個 model 測試
+	if err := storyteller.NewService().TestProviderAPIKey(ctx.Context(), authsession.Session(ctx).UserId, id, input.ModelName); err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("provider api key not found"))
 		}
