@@ -185,7 +185,7 @@ func TestRunAgent(t *testing.T) {
 		},
 	}
 
-	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider) (AIProvider, error) {
+	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		require.Equal(t, storytellerModel.AgentProviderGrok, agentProvider)
 		return provider, nil
 	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
@@ -278,7 +278,7 @@ func TestRunAgentProviderError(t *testing.T) {
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
 
-	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider) (AIProvider, error) {
+	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return &fakeAIProvider{err: providerErr}, nil
 	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomChapter,

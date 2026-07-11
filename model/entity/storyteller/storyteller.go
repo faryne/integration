@@ -87,6 +87,7 @@ const (
 	AgentProviderClaude     AgentProvider = "claude"
 	AgentProviderGemini     AgentProvider = "gemini"
 	AgentProviderOpenRouter AgentProvider = "openrouter"
+	AgentProviderSelfHosted AgentProvider = "self_hosted"
 )
 
 type AgentModelOption struct {
@@ -171,6 +172,7 @@ type ProviderAPIKey struct {
 	UserID          uint64        `gorm:"column:user_id" json:"user_id"`
 	Provider        AgentProvider `gorm:"column:provider" json:"provider"`
 	Label           string        `gorm:"column:label" json:"label"`
+	Endpoint        string        `gorm:"column:endpoint" json:"endpoint"`
 	APIKeyEncrypted string        `gorm:"column:api_key_encrypted" json:"-"`
 	APIKeyDataKey   string        `gorm:"column:api_key_data_key" json:"-"`
 	APIKeyKeyID     string        `gorm:"column:api_key_key_id" json:"-"`
@@ -447,22 +449,29 @@ type AgentRunRequest struct {
 type ProviderAPIKeyRequest struct {
 	Provider AgentProvider `json:"provider"`
 	Label    string        `json:"label"`
+	Endpoint string        `json:"endpoint"`
 	APIKey   string        `json:"api_key"`
 }
 
 type ProviderAPIKeyUpdateRequest struct {
-	Label  string `json:"label"`
-	APIKey string `json:"api_key"`
+	Label    string `json:"label"`
+	Endpoint string `json:"endpoint"`
+	APIKey   string `json:"api_key"`
 }
 
 type ProviderAPIKeyOutput struct {
 	ID           uint64        `json:"id"`
 	Provider     AgentProvider `json:"provider"`
 	Label        string        `json:"label"`
+	Endpoint     string        `json:"endpoint"`
 	LastTestedAt *time.Time    `json:"last_tested_at"`
 	LastTestOK   *bool         `json:"last_test_ok"`
 	CreatedAt    time.Time     `json:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at"`
+}
+
+type ProviderAPIKeyTestRequest struct {
+	ModelName string `json:"model_name"`
 }
 
 type StoryRequest struct {
