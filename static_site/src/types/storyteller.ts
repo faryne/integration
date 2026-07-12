@@ -175,6 +175,8 @@ export interface StorytellerUserProfile {
   sns_links?: Record<string, string>;
   hide_favorite_projects: boolean;
   hide_favorite_authors: boolean;
+  auto_save_enabled: boolean;
+  auto_save_interval_minutes: number;
   created_at: string;
 }
 
@@ -310,4 +312,6 @@ export interface StorytellerUserProfileRequest {
   sns_links: Record<string, string>;
   hide_favorite_projects: boolean;
   hide_favorite_authors: boolean;
+  auto_save_enabled: boolean;
+  auto_save_interval_minutes: number;
 }

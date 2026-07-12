@@ -71,11 +71,23 @@ import type {
 } from "@/types/storyteller.ts";
 
 const historyPerPage = 5;
-const autoSaveIntervalMinutes = 2;
+const autoSaveIntervalMinutesMin = 2;
+const autoSaveIntervalMinutesMax = 60;
+const autoSaveIntervalMinutesDefault = 5;
+const autoSavePresetMinutes = [2, 5, 10];
 const aiMessagesPerPage = 10;
 const aiInstructionMaxCharacters = 4000;
 const aiFullContentMaxCharacters = 60000;
 const aiTotalPayloadMaxCharacters = 80000;
+
+type AutoSaveSelectValue = "off" | "custom" | `${number}`;
+
+function clampAutoSaveIntervalMinutes(value: number) {
+  return Math.min(
+    autoSaveIntervalMinutesMax,
+    Math.max(autoSaveIntervalMinutesMin, Math.trunc(value)),
+  );
+}
 
 interface EditorProject {
   id: string;
@@ -238,6 +250,21 @@ export default function StorytellerStoryEditor() {
   );
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
+  // 只存在這次編輯 session，不落 DB：初始值取自 profile 的全域預設，使用者可以依當次需要另外調整
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [autoSaveIntervalMinutes, setAutoSaveIntervalMinutes] = useState(
+    autoSaveIntervalMinutesDefault,
+  );
+  const [autoSaveIntervalInput, setAutoSaveIntervalInput] = useState(
+    String(autoSaveIntervalMinutesDefault),
+  );
+  // 下拉選單顯示的模式獨立於 autoSaveIntervalMinutes 存在，
+  // 否則選「自訂」時若剛好跟現有頻率同值（例如都是 5），畫面會立刻被推導邏輯打回原本的預設選項。
+  const [autoSaveSelectValue, setAutoSaveSelectValue] =
+    useState<AutoSaveSelectValue>(
+      String(autoSaveIntervalMinutesDefault) as AutoSaveSelectValue,
+    );
+  const autoSaveDefaultsAppliedRef = useRef(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [leftDiffId, setLeftDiffId] = useState("");
@@ -495,8 +522,65 @@ export default function StorytellerStoryEditor() {
     return cleanText.replace(/\s+/g, "").length;
   }, [content]);
 
+  // 編輯頁開關預設值取自 profile 設定，只在第一次拿到資料時套用一次，
+  // 避免使用者在這次編輯 session 已經自己調整過，卻被之後的 profile 重新整理蓋掉。
   useEffect(() => {
-    if (!apiProject?.public_id || isNewStory || !story?.id) {
+    if (!userProfile || autoSaveDefaultsAppliedRef.current) {
+      return;
+    }
+    autoSaveDefaultsAppliedRef.current = true;
+    setAutoSaveEnabled(userProfile.auto_save_enabled);
+    const interval = clampAutoSaveIntervalMinutes(
+      userProfile.auto_save_interval_minutes || autoSaveIntervalMinutesDefault,
+    );
+    setAutoSaveIntervalMinutes(interval);
+    setAutoSaveIntervalInput(String(interval));
+    setAutoSaveSelectValue(
+      !userProfile.auto_save_enabled
+        ? "off"
+        : autoSavePresetMinutes.includes(interval)
+          ? (String(interval) as AutoSaveSelectValue)
+          : "custom",
+    );
+  }, [userProfile]);
+
+  function commitAutoSaveInterval() {
+    const parsed = Number(autoSaveIntervalInput);
+    const next =
+      autoSaveIntervalInput.trim() === "" || !Number.isFinite(parsed)
+        ? autoSaveIntervalMinutesDefault
+        : clampAutoSaveIntervalMinutes(parsed);
+    setAutoSaveIntervalMinutes(next);
+    setAutoSaveIntervalInput(String(next));
+  }
+
+  function handleAutoSaveSelectChange(next: AutoSaveSelectValue) {
+    setAutoSaveSelectValue(next);
+    if (next === "off") {
+      setAutoSaveEnabled(false);
+      setSaveMessage("已關閉自動存檔，記得手動存檔。");
+      setSaveMessageVisible(true);
+      return;
+    }
+    setAutoSaveEnabled(true);
+    if (next === "custom") {
+      setAutoSaveIntervalInput(String(autoSaveIntervalMinutes));
+      return;
+    }
+    const minutes = clampAutoSaveIntervalMinutes(Number(next));
+    setAutoSaveIntervalMinutes(minutes);
+    setAutoSaveIntervalInput(String(minutes));
+    setSaveMessage(`已設定每 ${minutes} 分鐘自動存檔。`);
+    setSaveMessageVisible(true);
+  }
+
+  useEffect(() => {
+    if (
+      !apiProject?.public_id ||
+      isNewStory ||
+      !story?.id ||
+      !autoSaveEnabled
+    ) {
       return;
     }
 
@@ -540,7 +624,7 @@ export default function StorytellerStoryEditor() {
     );
 
     return () => window.clearInterval(timer);
-  }, [apiProject?.public_id, isNewStory, story?.id]);
+  }, [apiProject?.public_id, isNewStory, story?.id, autoSaveEnabled]);
 
   if (
     (!project && (apiProjectsPending || apiProjectsFetching)) ||
@@ -783,9 +867,13 @@ export default function StorytellerStoryEditor() {
               />
               {apiProject && (
                 <Chip
-                  color="success"
+                  color={autoSaveEnabled ? "success" : "default"}
                   variant="outlined"
-                  label={`每 ${autoSaveIntervalMinutes} 分鐘自動存檔`}
+                  label={
+                    autoSaveEnabled
+                      ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
+                      : "自動存檔已關閉"
+                  }
                 />
               )}
             </>
@@ -803,7 +891,7 @@ export default function StorytellerStoryEditor() {
             </Alert>
           )}
           <Grid container spacing={2} alignItems="flex-start">
-            <Grid size={{ xs: 12, md: 10 }}>
+            <Grid size={{ xs: 12, md: 5 }}>
               <TextField
                 required
                 fullWidth
@@ -814,7 +902,52 @@ export default function StorytellerStoryEditor() {
                 helperText="列表與編輯頁標題以此欄位為主。"
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 2 }}>
+            {apiProject && (
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Stack spacing={1}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="自動存檔"
+                    value={autoSaveSelectValue}
+                    onChange={(event) =>
+                      handleAutoSaveSelectChange(
+                        event.target.value as AutoSaveSelectValue,
+                      )
+                    }
+                  >
+                    <MenuItem value="off">不自動存檔</MenuItem>
+                    {autoSavePresetMinutes.map((minutes) => (
+                      <MenuItem key={minutes} value={String(minutes)}>
+                        每 {minutes} 分鐘
+                      </MenuItem>
+                    ))}
+                    <MenuItem value="custom">自訂頻率…</MenuItem>
+                  </TextField>
+                  {autoSaveSelectValue === "custom" && (
+                    <TextField
+                      type="number"
+                      size="small"
+                      fullWidth
+                      label={`自訂頻率（${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘）`}
+                      value={autoSaveIntervalInput}
+                      slotProps={{
+                        htmlInput: {
+                          min: autoSaveIntervalMinutesMin,
+                          max: autoSaveIntervalMinutesMax,
+                          step: 1,
+                        },
+                      }}
+                      onChange={(event) =>
+                        setAutoSaveIntervalInput(event.target.value)
+                      }
+                      onBlur={commitAutoSaveInterval}
+                    />
+                  )}
+                </Stack>
+              </Grid>
+            )}
+            <Grid size={{ xs: 12, md: 3 }}>
               <Button
                 fullWidth
                 variant="contained"

@@ -37,6 +37,10 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
 
+const autoSaveIntervalMinutesMin = 2;
+const autoSaveIntervalMinutesMax = 60;
+const autoSaveIntervalMinutesDefault = 5;
+
 const emptyForm: StorytellerUserProfileRequest = {
   pen_name: "",
   bio: "",
@@ -45,6 +49,8 @@ const emptyForm: StorytellerUserProfileRequest = {
   sns_links: {},
   hide_favorite_projects: false,
   hide_favorite_authors: false,
+  auto_save_enabled: true,
+  auto_save_interval_minutes: autoSaveIntervalMinutesDefault,
 };
 
 const SNS_TYPE_OPTIONS: { value: string; label: string }[] = [
@@ -130,7 +136,9 @@ interface SNSLinkRow {
   url: string;
 }
 
-function rowsFromSNSLinks(links: Record<string, string> | undefined): SNSLinkRow[] {
+function rowsFromSNSLinks(
+  links: Record<string, string> | undefined,
+): SNSLinkRow[] {
   return Object.entries(links ?? {}).map(([key, url], index) => ({
     id: `${index}-${key}`,
     type: KNOWN_SNS_TYPES.has(key) ? key : CUSTOM_SNS_TYPE,
@@ -205,6 +213,8 @@ export default function StorytellerProfile() {
       sns_links: profileQuery.data.sns_links ?? {},
       hide_favorite_projects: profileQuery.data.hide_favorite_projects,
       hide_favorite_authors: profileQuery.data.hide_favorite_authors,
+      auto_save_enabled: profileQuery.data.auto_save_enabled,
+      auto_save_interval_minutes: profileQuery.data.auto_save_interval_minutes,
     });
     if (profileQuery.data.use_default_avatar) {
       setAvatarOption("default");
@@ -237,6 +247,10 @@ export default function StorytellerProfile() {
     Boolean(snsUrlError(row.type, row.url)),
   );
   const hasPenNameError = Boolean(penNameError(form.pen_name));
+  const hasAutoSaveIntervalError =
+    !Number.isInteger(form.auto_save_interval_minutes) ||
+    form.auto_save_interval_minutes < autoSaveIntervalMinutesMin ||
+    form.auto_save_interval_minutes > autoSaveIntervalMinutesMax;
 
   const save = () => {
     saveProfile.mutate(
@@ -479,11 +493,71 @@ export default function StorytellerProfile() {
                 />
               </Stack>
             </Box>
+            <Divider />
+            <Box>
+              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+                編輯器設定
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                這裡是故事與設定集編輯頁的預設值，開啟編輯頁時仍可依當次需要另外調整。
+              </Typography>
+              <Stack spacing={1.5}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={form.auto_save_enabled}
+                      onChange={(event) =>
+                        setForm((value) => ({
+                          ...value,
+                          auto_save_enabled: event.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="自動存檔"
+                />
+                <TextField
+                  type="number"
+                  label="自動存檔頻率（分鐘）"
+                  size="small"
+                  sx={{ width: 220 }}
+                  value={form.auto_save_interval_minutes}
+                  disabled={!form.auto_save_enabled}
+                  error={hasAutoSaveIntervalError}
+                  helperText={
+                    hasAutoSaveIntervalError
+                      ? `請輸入 ${autoSaveIntervalMinutesMin} 到 ${autoSaveIntervalMinutesMax} 之間的整數`
+                      : `未填寫預設為 ${autoSaveIntervalMinutesDefault} 分鐘`
+                  }
+                  slotProps={{
+                    htmlInput: {
+                      min: autoSaveIntervalMinutesMin,
+                      max: autoSaveIntervalMinutesMax,
+                      step: 1,
+                    },
+                  }}
+                  onChange={(event) =>
+                    setForm((value) => ({
+                      ...value,
+                      auto_save_interval_minutes:
+                        event.target.value === ""
+                          ? autoSaveIntervalMinutesDefault
+                          : Math.trunc(Number(event.target.value)),
+                    }))
+                  }
+                />
+              </Stack>
+            </Box>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Button
                 variant="contained"
                 startIcon={<SaveIcon />}
-                disabled={saveProfile.isPending || hasSnsError || hasPenNameError}
+                disabled={
+                  saveProfile.isPending ||
+                  hasSnsError ||
+                  hasPenNameError ||
+                  hasAutoSaveIntervalError
+                }
                 onClick={save}
               >
                 儲存

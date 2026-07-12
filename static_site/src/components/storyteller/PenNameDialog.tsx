@@ -28,6 +28,8 @@ export function PenNameDialog({ open }: PenNameDialogProps) {
       sns_links: {},
       hide_favorite_projects: false,
       hide_favorite_authors: false,
+      auto_save_enabled: true,
+      auto_save_interval_minutes: 5,
     });
   };
 

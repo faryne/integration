@@ -401,18 +401,20 @@ func (AuthorFavorite) TableName() string {
 }
 
 type UserProfile struct {
-	ID                   uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID               uint64     `gorm:"column:user_id" json:"user_id"`
-	PenName              string     `gorm:"column:pen_name" json:"pen_name"`
-	Bio                  string     `gorm:"column:bio" json:"bio"`
-	UseDefaultAvatar     bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
-	AvatarURL            string     `gorm:"column:avatar_url" json:"avatar_url"`
-	SNSLinks             SNSLinks   `gorm:"column:sns_links;type:json" json:"sns_links"`
-	HideFavoriteProjects bool       `gorm:"column:hide_favorite_projects" json:"hide_favorite_projects"`
-	HideFavoriteAuthors  bool       `gorm:"column:hide_favorite_authors" json:"hide_favorite_authors"`
-	DeletedAt            *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt            time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt            time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID                      uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID                  uint64     `gorm:"column:user_id" json:"user_id"`
+	PenName                 string     `gorm:"column:pen_name" json:"pen_name"`
+	Bio                     string     `gorm:"column:bio" json:"bio"`
+	UseDefaultAvatar        bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
+	AvatarURL               string     `gorm:"column:avatar_url" json:"avatar_url"`
+	SNSLinks                SNSLinks   `gorm:"column:sns_links;type:json" json:"sns_links"`
+	HideFavoriteProjects    bool       `gorm:"column:hide_favorite_projects" json:"hide_favorite_projects"`
+	HideFavoriteAuthors     bool       `gorm:"column:hide_favorite_authors" json:"hide_favorite_authors"`
+	AutoSaveEnabled         bool       `gorm:"column:auto_save_enabled" json:"auto_save_enabled"`
+	AutoSaveIntervalMinutes int        `gorm:"column:auto_save_interval_minutes" json:"auto_save_interval_minutes"`
+	DeletedAt               *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt               time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (UserProfile) TableName() string {
@@ -496,13 +498,15 @@ type FavoriteVisibilityRequest struct {
 }
 
 type UserProfileRequest struct {
-	PenName              string   `json:"pen_name"`
-	Bio                  string   `json:"bio"`
-	UseDefaultAvatar     bool     `json:"use_default_avatar"`
-	AvatarURL            string   `json:"avatar_url"`
-	SNSLinks             SNSLinks `json:"sns_links"`
-	HideFavoriteProjects bool     `json:"hide_favorite_projects"`
-	HideFavoriteAuthors  bool     `json:"hide_favorite_authors"`
+	PenName                 string   `json:"pen_name"`
+	Bio                     string   `json:"bio"`
+	UseDefaultAvatar        bool     `json:"use_default_avatar"`
+	AvatarURL               string   `json:"avatar_url"`
+	SNSLinks                SNSLinks `json:"sns_links"`
+	HideFavoriteProjects    bool     `json:"hide_favorite_projects"`
+	HideFavoriteAuthors     bool     `json:"hide_favorite_authors"`
+	AutoSaveEnabled         bool     `json:"auto_save_enabled"`
+	AutoSaveIntervalMinutes int      `json:"auto_save_interval_minutes"`
 }
 
 type ProjectRankingOutput struct {
@@ -565,15 +569,17 @@ type AgentUsageLogRow struct {
 }
 
 type UserProfileOutput struct {
-	UserID               uint64    `json:"user_id"`
-	PenName              string    `json:"pen_name"`
-	Bio                  string    `json:"bio,omitempty"`
-	UseDefaultAvatar     bool      `json:"use_default_avatar"`
-	AvatarURL            string    `json:"avatar_url,omitempty"`
-	SNSLinks             SNSLinks  `json:"sns_links,omitempty"`
-	HideFavoriteProjects bool      `json:"hide_favorite_projects"`
-	HideFavoriteAuthors  bool      `json:"hide_favorite_authors"`
-	CreatedAt            time.Time `json:"created_at"`
+	UserID                  uint64    `json:"user_id"`
+	PenName                 string    `json:"pen_name"`
+	Bio                     string    `json:"bio,omitempty"`
+	UseDefaultAvatar        bool      `json:"use_default_avatar"`
+	AvatarURL               string    `json:"avatar_url,omitempty"`
+	SNSLinks                SNSLinks  `json:"sns_links,omitempty"`
+	HideFavoriteProjects    bool      `json:"hide_favorite_projects"`
+	HideFavoriteAuthors     bool      `json:"hide_favorite_authors"`
+	AutoSaveEnabled         bool      `json:"auto_save_enabled"`
+	AutoSaveIntervalMinutes int       `json:"auto_save_interval_minutes"`
+	CreatedAt               time.Time `json:"created_at"`
 }
 
 type FavoriteAuthorOutput struct {

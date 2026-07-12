@@ -1455,6 +1455,9 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 	if err := validateSNSLinks(input.SNSLinks); err != nil {
 		return nil, err
 	}
+	if err := validateAutoSaveIntervalMinutes(input.AutoSaveIntervalMinutes); err != nil {
+		return nil, err
+	}
 	if err := s.ensurePenNameAvailable(userID, input.PenName); err != nil {
 		return nil, err
 	}
@@ -1471,6 +1474,8 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		profile.SNSLinks = input.SNSLinks
 		profile.HideFavoriteProjects = input.HideFavoriteProjects
 		profile.HideFavoriteAuthors = input.HideFavoriteAuthors
+		profile.AutoSaveEnabled = input.AutoSaveEnabled
+		profile.AutoSaveIntervalMinutes = input.AutoSaveIntervalMinutes
 		profile.DeletedAt = nil
 		if err := s.repo.SaveUserProfile(profile); err != nil {
 			return nil, err
@@ -1481,14 +1486,16 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		return nil, err
 	}
 	profile = &storytellerModel.UserProfile{
-		UserID:               userID,
-		PenName:              input.PenName,
-		Bio:                  input.Bio,
-		UseDefaultAvatar:     input.UseDefaultAvatar,
-		AvatarURL:            avatarURL,
-		SNSLinks:             input.SNSLinks,
-		HideFavoriteProjects: input.HideFavoriteProjects,
-		HideFavoriteAuthors:  input.HideFavoriteAuthors,
+		UserID:                  userID,
+		PenName:                 input.PenName,
+		Bio:                     input.Bio,
+		UseDefaultAvatar:        input.UseDefaultAvatar,
+		AvatarURL:               avatarURL,
+		SNSLinks:                input.SNSLinks,
+		HideFavoriteProjects:    input.HideFavoriteProjects,
+		HideFavoriteAuthors:     input.HideFavoriteAuthors,
+		AutoSaveEnabled:         input.AutoSaveEnabled,
+		AutoSaveIntervalMinutes: input.AutoSaveIntervalMinutes,
 	}
 	if err := s.repo.CreateUserProfile(profile); err != nil {
 		return nil, err
@@ -1610,22 +1617,26 @@ func outputProject(project storytellerModel.Project) *storytellerModel.ProjectOu
 
 func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput {
 	return &storytellerModel.UserProfileOutput{
-		UserID:           userID,
-		UseDefaultAvatar: true,
+		UserID:                  userID,
+		UseDefaultAvatar:        true,
+		AutoSaveEnabled:         true,
+		AutoSaveIntervalMinutes: autoSaveIntervalMinutesDefault,
 	}
 }
 
 func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.UserProfileOutput {
 	return &storytellerModel.UserProfileOutput{
-		UserID:               profile.UserID,
-		PenName:              profile.PenName,
-		Bio:                  profile.Bio,
-		UseDefaultAvatar:     profile.UseDefaultAvatar,
-		AvatarURL:            resolvedAvatarURL(profile.UserID, profile.AvatarURL),
-		SNSLinks:             profile.SNSLinks,
-		HideFavoriteProjects: profile.HideFavoriteProjects,
-		HideFavoriteAuthors:  profile.HideFavoriteAuthors,
-		CreatedAt:            profile.CreatedAt,
+		UserID:                  profile.UserID,
+		PenName:                 profile.PenName,
+		Bio:                     profile.Bio,
+		UseDefaultAvatar:        profile.UseDefaultAvatar,
+		AvatarURL:               resolvedAvatarURL(profile.UserID, profile.AvatarURL),
+		SNSLinks:                profile.SNSLinks,
+		HideFavoriteProjects:    profile.HideFavoriteProjects,
+		HideFavoriteAuthors:     profile.HideFavoriteAuthors,
+		AutoSaveEnabled:         profile.AutoSaveEnabled,
+		AutoSaveIntervalMinutes: profile.AutoSaveIntervalMinutes,
+		CreatedAt:               profile.CreatedAt,
 	}
 }
 
@@ -1685,6 +1696,13 @@ func validatePenName(penName string) error {
 	}
 	if invalidPenNameCharsRegexp.MatchString(penName) {
 		return errors.New("筆名不能包含 / \\ ? # % 或控制字元")
+	}
+	return nil
+}
+
+func validateAutoSaveIntervalMinutes(minutes int) error {
+	if minutes < autoSaveIntervalMinutesMin || minutes > autoSaveIntervalMinutesMax {
+		return fmt.Errorf("auto_save_interval_minutes 必須介於 %d 到 %d 分鐘之間", autoSaveIntervalMinutesMin, autoSaveIntervalMinutesMax)
 	}
 	return nil
 }
@@ -1877,12 +1895,21 @@ func normalizeAgentRequest(input storytellerModel.AgentRequest) storytellerModel
 	return input
 }
 
+const (
+	autoSaveIntervalMinutesDefault = 5
+	autoSaveIntervalMinutesMin     = 2
+	autoSaveIntervalMinutesMax     = 60
+)
+
 func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) storytellerModel.UserProfileRequest {
 	input.PenName = strings.TrimSpace(input.PenName)
 	input.Bio = strings.TrimSpace(input.Bio)
 	input.AvatarURL = strings.TrimSpace(input.AvatarURL)
 	if input.UseDefaultAvatar {
 		input.AvatarURL = ""
+	}
+	if input.AutoSaveIntervalMinutes == 0 {
+		input.AutoSaveIntervalMinutes = autoSaveIntervalMinutesDefault
 	}
 	if input.SNSLinks != nil {
 		links := make(storytellerModel.SNSLinks, len(input.SNSLinks))
