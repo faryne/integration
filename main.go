@@ -24,6 +24,7 @@ import (
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
 	"faryne.dev/service/validation"
+	vtuberService "faryne.dev/service/vtuber"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -170,6 +171,11 @@ var cronJobs = []cronJobConfig{
 		Handler: func() {
 			_ = twse.NotifyUpcomingETFEx()
 		},
+	},
+	{
+		Name:     "vtuber-hololive-talents",
+		Schedule: "30 2 * * 1",
+		Handler:  vtuberService.RunSyncTalentChannels,
 	},
 	{
 		Name:     "av-sync-xcity",
