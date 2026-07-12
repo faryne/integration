@@ -6,6 +6,7 @@ import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
   computeFootnoteNumbering,
   parseMarkdownToParagraphs,
+  storyHeadingAnchorId,
   type FootnoteListEntry,
   type FootnoteNumbering,
   type ParsedParagraph,
@@ -285,6 +286,11 @@ export function StorytellerWysiwygMarkdown({
           return (
             <HeadingOrParagraphTag
               key={paragraph.markerId ?? index}
+              id={
+                paragraph.headingLevel > 0 && paragraph.markerId
+                  ? storyHeadingAnchorId(paragraph.markerId)
+                  : undefined
+              }
               style={{ textAlign: paragraph.align }}
             >
               {renderParagraphContent(

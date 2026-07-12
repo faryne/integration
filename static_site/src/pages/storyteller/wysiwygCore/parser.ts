@@ -522,6 +522,16 @@ export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
   return markdown.split("\n").map(parseLine);
 }
 
+/**
+ * 標題的錨點 id，直接用段落自己的 markerId（同一個段落編輯前後 markerId 不變），不是
+ * 用行號——行號只是「目前這次渲染時，這個段落排第幾行」，內容前面增刪行數就會跟著變，
+ * markerId 才是真正跟著這個標題段落走、不會變動的識別碼。閱讀頁的 TOC 靠這個 id 直接
+ * 跳轉錨點，不用再跟捲動位置或行號互相對應。
+ */
+export function storyHeadingAnchorId(markerId: string): string {
+  return `story-heading-${markerId}`;
+}
+
 export interface FootnoteListEntry {
   footnoteId: string;
   /** 原始字串，可能還帶著粗體/斜體/底線的 delimiter，尚未解析。 */

@@ -35,8 +35,10 @@ import {
 import {
   computeFootnoteNumbering,
   parseMarkdownToParagraphs,
+  storyHeadingAnchorId,
   type FootnoteNumbering,
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -95,6 +97,34 @@ interface ReaderProject {
   stories: ReaderStory[];
 }
 
+interface StoryHeading {
+  // lineIndex 只用來當 React key／跟 activeHeadingLine 比對「目前是哪一個」，不是拿來
+  // 定位錨點——行號會因為前面內容增刪而改變，不是穩定的識別碼。
+  lineIndex: number;
+  level: HeadingLevel;
+  text: string;
+  // 實際跳轉／捲動高亮用的 DOM id：段落有 markerId（新版內容都會有）就用
+  // storyHeadingAnchorId 直接定位到標題本身；沒有的話（舊資料尚未遷移）退回沿用
+  // StoryContentLines 既有的 `bookmark-line-{lineIndex}` id。
+  anchorId: string;
+}
+
+/** 從故事全文抽出標題清單，供側欄「本篇大綱」使用；沒有標題就回傳空陣列（呼叫端應該直接不顯示這個分頁）。 */
+function extractStoryHeadings(content: string): StoryHeading[] {
+  return parseMarkdownToParagraphs(content)
+    .map((paragraph, lineIndex) => ({ paragraph, lineIndex }))
+    .filter(({ paragraph }) => paragraph.headingLevel > 0)
+    .map(({ paragraph, lineIndex }) => ({
+      lineIndex,
+      level: paragraph.headingLevel,
+      text: paragraph.runs.map((run) => run.text).join("").trim(),
+      anchorId: paragraph.markerId
+        ? storyHeadingAnchorId(paragraph.markerId)
+        : `bookmark-line-${lineIndex}`,
+    }))
+    .filter((heading) => heading.text.length > 0);
+}
+
 function StoryIndex({
   stories,
   currentStoryId,
@@ -131,6 +161,43 @@ function StoryIndex({
   );
 }
 
+function StoryOutline({
+  headings,
+  activeLineIndex,
+  onJumpToHeading,
+}: {
+  headings: StoryHeading[];
+  activeLineIndex?: number;
+  onJumpToHeading: (heading: StoryHeading) => void;
+}) {
+  return (
+    <Stack spacing={0.5}>
+      {headings.map((heading) => {
+        const isActive = activeLineIndex === heading.lineIndex;
+        return (
+          <Button
+            key={heading.lineIndex}
+            size="small"
+            variant="text"
+            onClick={() => onJumpToHeading(heading)}
+            sx={{
+              justifyContent: "flex-start",
+              textAlign: "left",
+              pl: 1.5 + (heading.level - 1) * 1.5,
+              color: isActive ? "primary.main" : "text.secondary",
+              fontWeight: isActive ? 700 : 400,
+              bgcolor: isActive ? "action.selected" : undefined,
+              fontSize: heading.level >= 3 ? 13 : 14,
+            }}
+          >
+            {heading.text}
+          </Button>
+        );
+      })}
+    </Stack>
+  );
+}
+
 function StoryIndexPanel({
   stories,
   currentStoryId,
@@ -140,6 +207,9 @@ function StoryIndexPanel({
   bookmarksEnabled,
   bookmarksLoading,
   onJumpToBookmark,
+  headings,
+  activeHeadingLine,
+  onJumpToHeading,
 }: {
   stories: ReaderStory[];
   currentStoryId?: string;
@@ -149,8 +219,19 @@ function StoryIndexPanel({
   bookmarksEnabled: boolean;
   bookmarksLoading: boolean;
   onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
+  headings: StoryHeading[];
+  activeHeadingLine?: number;
+  onJumpToHeading: (heading: StoryHeading) => void;
 }) {
-  const [tab, setTab] = useState<"toc" | "bookmarks">("toc");
+  const [tab, setTab] = useState<"toc" | "bookmarks" | "outline">("toc");
+  const hasOutline = headings.length > 0;
+  useEffect(() => {
+    // 切到沒有標題的故事時，「本篇大綱」分頁會消失，這時候如果還停在該分頁要退回目錄，
+    // 不然畫面會變成沒有任何分頁按鈕顯示為選取中。
+    if (tab === "outline" && !hasOutline) {
+      setTab("toc");
+    }
+  }, [tab, hasOutline]);
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={1}>
@@ -170,6 +251,16 @@ function StoryIndexPanel({
         >
           書籤{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
         </Button>
+        {hasOutline && (
+          <Button
+            size="small"
+            variant={tab === "outline" ? "contained" : "outlined"}
+            onClick={() => setTab("outline")}
+            sx={{ flex: 1 }}
+          >
+            本篇大綱
+          </Button>
+        )}
       </Stack>
       {tab === "toc" ? (
         <StoryIndex
@@ -177,6 +268,15 @@ function StoryIndexPanel({
           currentStoryId={currentStoryId}
           basePath={basePath}
           onNavigate={onNavigate}
+        />
+      ) : tab === "outline" && hasOutline ? (
+        <StoryOutline
+          headings={headings}
+          activeLineIndex={activeHeadingLine}
+          onJumpToHeading={(heading) => {
+            onJumpToHeading(heading);
+            onNavigate?.();
+          }}
         />
       ) : (
         <Stack spacing={1}>
@@ -453,12 +553,20 @@ export default function StorytellerReader() {
     open: boolean;
     message: string;
   }>({ open: false, message: "" });
-  const [pendingScrollLineIndex, setPendingScrollLineIndex] = useState<
-    number | undefined
+  // block 依呼叫端而不同：書籤沿用原本的 "center"（把整行捲到畫面中央方便看上下文）；
+  // 標題跳轉用 "start"，讓標題落在畫面頂端的「目前閱讀行」附近，跟下面 scroll-spy
+  // 判斷目前 highlight 哪個標題所用的基準線一致，不然點擊當下跟捲動結束後兩邊算出來的
+  // 「目前標題」對不上，畫面會在跳轉完成的瞬間又跳回上一個標題。
+  const [pendingScroll, setPendingScroll] = useState<
+    { lineIndex: number; block: ScrollLogicalPosition } | undefined
   >(undefined);
   const [highlightedLine, setHighlightedLine] = useState<number | undefined>(
     undefined,
   );
+  // 側欄「本篇大綱」目前 highlight 哪個標題，由下面的捲動監聽隨捲動更新。
+  const [activeHeadingLine, setActiveHeadingLine] = useState<
+    number | undefined
+  >(undefined);
   const [versionListOpen, setVersionListOpen] = useState(false);
   const [historicalVersionId, setHistoricalVersionId] = useState<
     number | undefined
@@ -600,6 +708,9 @@ export default function StorytellerReader() {
   // 同一個值，上標編號連結才能正確跳轉。
   const footnoteIdPrefix = useId();
   const footnoteNumbering = computeFootnoteNumbering(displayContent ?? "");
+  // React Compiler 會自動處理記憶化，這裡不用手動包 useMemo（見專案 vite.config.ts 的
+  // babel-plugin-react-compiler 設定）。
+  const storyHeadings = extractStoryHeadings(displayContent ?? "");
   const bookmarkedLines = new Set(
     (bookmarksQuery.data ?? [])
       .filter((bookmark) => bookmark.story_version_id === displayVersionId)
@@ -650,19 +761,81 @@ export default function StorytellerReader() {
   );
   const projectBookmarks = projectBookmarksQuery.data ?? [];
   useEffect(() => {
-    if (pendingScrollLineIndex === undefined) {
+    if (!pendingScroll) {
       return;
     }
-    const targetIndex = pendingScrollLineIndex;
+    const { lineIndex: targetIndex, block } = pendingScroll;
     const frame = requestAnimationFrame(() => {
       const el = document.getElementById(`bookmark-line-${targetIndex}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.scrollIntoView({ behavior: "smooth", block });
       setHighlightedLine(targetIndex);
-      setPendingScrollLineIndex(undefined);
+      setPendingScroll(undefined);
       setTimeout(() => setHighlightedLine(undefined), 1200);
     });
     return () => cancelAnimationFrame(frame);
-  }, [currentStory?.id, pendingScrollLineIndex]);
+  }, [currentStory?.id, pendingScroll]);
+  // 側欄「本篇大綱」捲動高亮：取「目前閱讀行」（畫面頂端往下 READING_LINE_OFFSET 處）
+  // 之上、最接近的那個標題當作目前段落。
+  //
+  // 這裡刻意不用 IntersectionObserver：標題之間常常隔著幾千字的正文，偵測區只佔畫面
+  // 一小塊，快速捲動（滑鼠滾輪、觸控板甩動）很容易讓標題整個「跳過」偵測區——上一次
+  // callback 標題還在偵測區下方，下一次已經在上方，中間那次「進入」的瞬間沒有任何一次
+  // 取樣真的落在偵測區內，於是完全沒觸發、highlight 就卡住不動，直到捲到下一個標題才會
+  // 「追上」。改成每次捲動都直接重新量測所有標題目前的實際位置，就不會有這種取樣漏接
+  // 的問題。
+  //
+  // 依賴項刻意用 join 後的字串而不是 storyHeadings 陣列本身——storyHeadings 每次 render
+  // 都是全新陣列參考，直接放進 deps 會讓這個 effect 每次 render 都重新掛一次捲動監聽，
+  // 監聽掛上時的初次量測又會觸發 setActiveHeadingLine，形成永遠跑不完的重render迴圈。
+  const storyHeadingAnchorIdsKey = storyHeadings
+    .map((heading) => heading.anchorId)
+    .join(",");
+  useEffect(() => {
+    if (storyHeadings.length === 0) {
+      setActiveHeadingLine(undefined);
+      return;
+    }
+    const elements = storyHeadings
+      .map((heading) => ({
+        lineIndex: heading.lineIndex,
+        el: document.getElementById(heading.anchorId),
+      }))
+      .filter(
+        (item): item is { lineIndex: number; el: HTMLElement } =>
+          item.el !== null,
+      );
+    if (elements.length === 0) {
+      return;
+    }
+    const READING_LINE_OFFSET = 96;
+    let frame: number | null = null;
+    function updateActiveHeading() {
+      frame = null;
+      let current = elements[0].lineIndex;
+      for (const item of elements) {
+        if (item.el.getBoundingClientRect().top <= READING_LINE_OFFSET) {
+          current = item.lineIndex;
+        } else {
+          break;
+        }
+      }
+      setActiveHeadingLine(current);
+    }
+    function handleScroll() {
+      if (frame !== null) {
+        return;
+      }
+      frame = requestAnimationFrame(updateActiveHeading);
+    }
+    updateActiveHeading();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (frame !== null) {
+        cancelAnimationFrame(frame);
+      }
+    };
+  }, [currentStory?.id, storyHeadingAnchorIdsKey]);
   const isShareRoute = Boolean(shareToken);
   const isPrivateOwnerRoute =
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
@@ -744,10 +917,19 @@ export default function StorytellerReader() {
     const isStale =
       bookmark.story_version_id !== bookmark.latest_story_version_id;
     setHistoricalVersionId(isStale ? bookmark.story_version_id : undefined);
-    setPendingScrollLineIndex(bookmark.line_index);
+    setPendingScroll({ lineIndex: bookmark.line_index, block: "center" });
     if (bookmark.story_public_id !== currentStory?.id) {
       navigate(`${basePath}/${bookmark.story_public_id}`);
     }
+  };
+  // 標題有自己的錨點 id（見 storyHeadingAnchorId），跟書籤不同，不用透過 pendingScroll
+  // 這一層共用狀態繞一圈——直接找到錨點元素捲過去就好。
+  const handleJumpToHeading = (heading: StoryHeading) => {
+    // 直接樂觀更新，不用等捲動完成後 scroll-spy 自己抓到，點擊當下就先反白。
+    setActiveHeadingLine(heading.lineIndex);
+    document
+      .getElementById(heading.anchorId)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const showInlineIndex = !isMobile && indexOpen;
   // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用
@@ -1119,6 +1301,9 @@ export default function StorytellerReader() {
               bookmarksEnabled={Boolean(session)}
               bookmarksLoading={projectBookmarksQuery.isLoading}
               onJumpToBookmark={handleJumpToBookmark}
+              headings={storyHeadings}
+              activeHeadingLine={activeHeadingLine}
+              onJumpToHeading={handleJumpToHeading}
             />
           </Box>
         </Drawer>
@@ -1252,6 +1437,9 @@ export default function StorytellerReader() {
                     bookmarksEnabled={Boolean(session)}
                     bookmarksLoading={projectBookmarksQuery.isLoading}
                     onJumpToBookmark={handleJumpToBookmark}
+                    headings={storyHeadings}
+                    activeHeadingLine={activeHeadingLine}
+                    onJumpToHeading={handleJumpToHeading}
                   />
                 </Paper>
               </Grid>
@@ -1286,6 +1474,9 @@ export default function StorytellerReader() {
                   bookmarksEnabled={Boolean(session)}
                   bookmarksLoading={projectBookmarksQuery.isLoading}
                   onJumpToBookmark={handleJumpToBookmark}
+                  headings={storyHeadings}
+                  activeHeadingLine={activeHeadingLine}
+                  onJumpToHeading={handleJumpToHeading}
                 />
               </Paper>
             </Grid>
