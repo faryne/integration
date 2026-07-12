@@ -116,6 +116,7 @@ export default function StorytellerProjectDetail() {
         title="故事專案"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
       >
@@ -154,6 +155,7 @@ export default function StorytellerProjectDetail() {
       description={project.description}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name },
       ]}

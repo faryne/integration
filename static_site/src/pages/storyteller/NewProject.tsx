@@ -120,6 +120,7 @@ export default function StorytellerNewProject() {
         title="編輯專案"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
       >
@@ -212,6 +213,7 @@ export default function StorytellerNewProject() {
       title={isEditing ? "編輯專案" : "建立專案"}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         ...(editingProject
           ? [

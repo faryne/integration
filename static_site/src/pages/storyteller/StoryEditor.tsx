@@ -638,6 +638,7 @@ export default function StorytellerStoryEditor() {
         title="故事編輯器"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
       >
@@ -848,6 +849,7 @@ export default function StorytellerStoryEditor() {
       title={pageTitle}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },
         { label: pageTitle },

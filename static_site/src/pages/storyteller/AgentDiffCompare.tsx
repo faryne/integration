@@ -85,6 +85,7 @@ export default function StorytellerAgentDiffCompare() {
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
         ]}
@@ -103,6 +104,7 @@ export default function StorytellerAgentDiffCompare() {
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
         ]}
@@ -126,6 +128,7 @@ export default function StorytellerAgentDiffCompare() {
         title="Prompt 版本差異比對"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
         ]}
@@ -145,6 +148,7 @@ export default function StorytellerAgentDiffCompare() {
       description="左右對照 AI Agent 設定與 Prompt 內容。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "AI Agent", to: "/storyteller/my/agent" },
         { label: agent.name, to: `/storyteller/my/agent/${agent.id}/edit` },
         { label: "版本比對" },

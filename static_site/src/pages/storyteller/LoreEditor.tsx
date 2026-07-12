@@ -497,6 +497,7 @@ export default function StorytellerLoreEditor() {
         title="設定集編輯器"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
       >
@@ -636,6 +637,7 @@ export default function StorytellerLoreEditor() {
       title={pageTitle}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },
         { label: pageTitle },

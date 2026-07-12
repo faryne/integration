@@ -148,6 +148,7 @@ export default function StorytellerStoryDiffCompare() {
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -166,6 +167,7 @@ export default function StorytellerStoryDiffCompare() {
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -190,6 +192,7 @@ export default function StorytellerStoryDiffCompare() {
         title="版本差異比對"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -215,6 +218,7 @@ export default function StorytellerStoryDiffCompare() {
       description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },
         {

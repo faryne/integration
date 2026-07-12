@@ -371,6 +371,16 @@ const tabPath: Record<"project" | "agent" | "apikey" | "usage", string> = {
   usage: "usage",
 };
 
+const tabBreadcrumbLabel: Record<
+  "project" | "agent" | "apikey" | "usage",
+  string
+> = {
+  project: "故事專案",
+  agent: "AI Agent",
+  apikey: "金鑰管理",
+  usage: "用量報表",
+};
+
 export default function StorytellerHome() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -406,7 +416,8 @@ export default function StorytellerHome() {
       title="我的工作台"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
-        { label: "我的工作台" },
+        { label: "我的工作台", to: "/storyteller/my" },
+        { label: tabBreadcrumbLabel[activeTab] },
       ]}
     >
       {loading ? (

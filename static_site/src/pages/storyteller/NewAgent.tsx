@@ -145,6 +145,7 @@ export default function StorytellerNewAgent() {
         title="編輯 AI Agent"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "編輯 AI Agent" },
         ]}
@@ -164,6 +165,7 @@ export default function StorytellerNewAgent() {
         description="此 Agent 可能不存在或已被刪除。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "找不到 AI Agent" },
         ]}
@@ -180,6 +182,7 @@ export default function StorytellerNewAgent() {
       title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "AI Agent", to: "/storyteller/my/agent" },
         { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },
       ]}

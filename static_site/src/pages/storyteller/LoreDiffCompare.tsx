@@ -109,6 +109,7 @@ export default function StorytellerLoreDiffCompare() {
         description="左右對照設定集標題與 Markdown 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -127,6 +128,7 @@ export default function StorytellerLoreDiffCompare() {
         description="左右對照設定集標題與 Markdown 內容。"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -151,6 +153,7 @@ export default function StorytellerLoreDiffCompare() {
         title="設定集版本差異比對"
         breadcrumbs={[
           { label: "Storyteller", to: "/storyteller" },
+          { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
         ]}
@@ -170,6 +173,7 @@ export default function StorytellerLoreDiffCompare() {
       description="左右對照設定集標題與 Markdown 內容。"
       breadcrumbs={[
         { label: "Storyteller", to: "/storyteller" },
+        { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         {
           label: apiProject.name,
