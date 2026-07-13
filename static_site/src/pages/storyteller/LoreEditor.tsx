@@ -24,7 +24,10 @@ import {
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  STORYTELLER_APP_NAME,
+} from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -483,7 +486,7 @@ export default function StorytellerLoreEditor() {
     return () => window.clearInterval(timer);
   }, [apiProject?.public_id, isNewLore, lore?.id, autoSaveEnabled, showSnack]);
 
-  useTitle(`${pageTitle} - Storyteller`, {
+  useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path: id && loreId ? `/storyteller/my/project/${id}/lore/${loreId}` : "",
     robots: "noindex, nofollow",
   });
@@ -496,7 +499,7 @@ export default function StorytellerLoreEditor() {
       <StorytellerShell
         title="設定集編輯器"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
@@ -636,7 +639,7 @@ export default function StorytellerLoreEditor() {
     <StorytellerShell
       title={pageTitle}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },

@@ -26,6 +26,7 @@ import {
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
+  STORYTELLER_APP_NAME,
   storytellerAgents,
 } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -504,7 +505,7 @@ export default function StorytellerStoryEditor() {
     setOverrideApiKeyId("");
   }, [selectedAgentId]);
 
-  useTitle(`${pageTitle} - Storyteller`, {
+  useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path:
       id && storyId
         ? `/storyteller/my/project/${id}/story/${storyId}${isHistoryRoute ? "/diff" : ""}`
@@ -637,7 +638,7 @@ export default function StorytellerStoryEditor() {
       <StorytellerShell
         title="故事編輯器"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
@@ -848,7 +849,7 @@ export default function StorytellerStoryEditor() {
     <StorytellerShell
       title={pageTitle}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },

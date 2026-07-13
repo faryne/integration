@@ -63,6 +63,7 @@ import {
 } from "@/apis/storyteller.ts";
 import {
   formatStorytellerDate,
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -117,7 +118,10 @@ function extractStoryHeadings(content: string): StoryHeading[] {
     .map(({ paragraph, lineIndex }) => ({
       lineIndex,
       level: paragraph.headingLevel,
-      text: paragraph.runs.map((run) => run.text).join("").trim(),
+      text: paragraph.runs
+        .map((run) => run.text)
+        .join("")
+        .trim(),
       anchorId: paragraph.markerId
         ? storyHeadingAnchorId(paragraph.markerId)
         : `bookmark-line-${lineIndex}`,
@@ -841,19 +845,24 @@ export default function StorytellerReader() {
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
   const shouldUseStorySeo = Boolean(project && !isPrivateOwnerRoute);
 
-  useTitle(project ? `${project.name} - Storyteller` : "Storyteller", {
-    description: shouldUseStorySeo ? project?.description : undefined,
-    path: routeProjectPath
-      ? `/storyteller/story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`
-      : shareToken
-        ? `/storyteller/story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`
-        : "",
-    robots:
-      isShareRoute || isPrivateOwnerRoute
-        ? "noindex, nofollow"
-        : "index, follow",
-    type: shouldUseStorySeo ? "article" : "website",
-  });
+  useTitle(
+    project
+      ? `${project.name} - ${STORYTELLER_APP_NAME}`
+      : STORYTELLER_APP_NAME,
+    {
+      description: shouldUseStorySeo ? project?.description : undefined,
+      path: routeProjectPath
+        ? `/storyteller/story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`
+        : shareToken
+          ? `/storyteller/story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`
+          : "",
+      robots:
+        isShareRoute || isPrivateOwnerRoute
+          ? "noindex, nofollow"
+          : "index, follow",
+      type: shouldUseStorySeo ? "article" : "website",
+    },
+  );
 
   useEffect(() => {
     if (!currentStory?.id) {
@@ -897,7 +906,7 @@ export default function StorytellerReader() {
     return (
       <StorytellerShell
         title="故事"
-        breadcrumbs={[{ label: "Storyteller", to: "/storyteller" }]}
+        breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: "/storyteller" }]}
       >
         <StorytellerLoading label="正在載入故事..." />
       </StorytellerShell>
@@ -1234,7 +1243,7 @@ export default function StorytellerReader() {
       title={project.name}
       description={project.description}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: project.name },
       ]}
       meta={

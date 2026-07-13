@@ -14,7 +14,10 @@ import {
   usePublicStorytellerProject,
   usePublicStorytellerStoryVersions,
 } from "@/apis/storyteller.ts";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  STORYTELLER_APP_NAME,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
@@ -47,15 +50,18 @@ export default function StorytellerStoryVersionDiff() {
   const previous = targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
   const basePath = `/storyteller/story/${projectPath}`;
 
-  useTitle(story ? `${story.title} 版本比較 - Storyteller` : "版本比較", {
-    robots: "noindex, nofollow",
-  });
+  useTitle(
+    story ? `${story.title} 版本比較 - ${STORYTELLER_APP_NAME}` : "版本比較",
+    {
+      robots: "noindex, nofollow",
+    },
+  );
 
   if (projectQuery.isLoading || versionsQuery.isLoading) {
     return (
       <StorytellerShell
         title="版本比較"
-        breadcrumbs={[{ label: "Storyteller", to: "/storyteller" }]}
+        breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: "/storyteller" }]}
       >
         <StorytellerLoading label="正在載入版本比較..." />
       </StorytellerShell>
@@ -92,7 +98,7 @@ export default function StorytellerStoryVersionDiff() {
       title="版本比較"
       description={`${story.title} 的版本比較，僅供查看內容差異，無法在此加入或移除書籤。`}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: project.name, to: `/storyteller/story/${projectPath}` },
         { label: story.title, to: `${basePath}/${story.public_id}` },
         { label: "版本比較" },

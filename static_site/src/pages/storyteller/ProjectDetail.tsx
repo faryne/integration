@@ -31,6 +31,7 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -105,17 +106,22 @@ export default function StorytellerProjectDetail() {
     );
   }, [apiStories]);
 
-  useTitle(project ? `${project.name} - Storyteller` : "Storyteller 專案", {
-    path: id ? `/storyteller/my/project/${id}` : "/storyteller/my/project",
-    robots: "noindex, nofollow",
-  });
+  useTitle(
+    project
+      ? `${project.name} - ${STORYTELLER_APP_NAME}`
+      : `${STORYTELLER_APP_NAME} 專案`,
+    {
+      path: id ? `/storyteller/my/project/${id}` : "/storyteller/my/project",
+      robots: "noindex, nofollow",
+    },
+  );
 
   if (!project && (apiProjectsPending || apiProjectsFetching)) {
     return (
       <StorytellerShell
         title="故事專案"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
@@ -154,7 +160,7 @@ export default function StorytellerProjectDetail() {
       title={project.name}
       description={project.description}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name },

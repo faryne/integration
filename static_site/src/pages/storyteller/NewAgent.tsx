@@ -23,6 +23,7 @@ import {
   useStorytellerAgents,
   useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   StoryEditHistory,
@@ -147,7 +148,7 @@ export default function StorytellerNewAgent() {
     [selectedModel?.price],
   );
 
-  useTitle(`${isEdit ? "編輯" : "建立"} Storyteller AI Agent`, {
+  useTitle(`${isEdit ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`, {
     path: isEdit
       ? `/storyteller/my/agent/${agentId}/edit`
       : "/storyteller/my/agent/new",
@@ -159,7 +160,7 @@ export default function StorytellerNewAgent() {
       <StorytellerShell
         title="編輯 AI Agent"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "編輯 AI Agent" },
@@ -179,7 +180,7 @@ export default function StorytellerNewAgent() {
         title="找不到 AI Agent"
         description="此 Agent 可能不存在或已被刪除。"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "找不到 AI Agent" },
@@ -196,7 +197,7 @@ export default function StorytellerNewAgent() {
     <StorytellerShell
       title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "AI Agent", to: "/storyteller/my/agent" },
         { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },

@@ -28,6 +28,7 @@ import {
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   StorytellerLoading,
@@ -178,9 +179,9 @@ export default function StorytellerProfile() {
         ? gravatarUrl
         : form.avatar_url;
   const displayName =
-    form.pen_name || session?.user.display_name || "Storyteller";
+    form.pen_name || session?.user.display_name || STORYTELLER_APP_NAME;
 
-  useTitle("Storyteller 作者設定", {
+  useTitle(`${STORYTELLER_APP_NAME} 作者設定`, {
     path: "/storyteller/profile",
     robots: "noindex, nofollow",
   });
@@ -272,7 +273,7 @@ export default function StorytellerProfile() {
     <StorytellerShell
       title="作者設定"
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "作者設定" },
       ]}
     >
@@ -280,7 +281,7 @@ export default function StorytellerProfile() {
         <StorytellerLoading label="正在確認登入狀態..." />
       ) : !session ? (
         <CustomLoginRequiredState
-          description="登入後即可維護 Storyteller 作者資訊。"
+          description={`登入後即可維護 ${STORYTELLER_APP_NAME} 作者資訊。`}
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -374,7 +375,7 @@ export default function StorytellerProfile() {
               </FormControl>
               {avatarOption === "custom" && (
                 <TextField
-                  label="Storyteller avatar URL"
+                  label={`${STORYTELLER_APP_NAME} avatar URL`}
                   value={form.avatar_url}
                   onChange={(event) =>
                     setForm((value) => ({

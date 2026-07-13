@@ -5,6 +5,7 @@ import { usePublicStorytellerProjects } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import {
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -31,7 +32,7 @@ export default function StorytellerPublicHome() {
     path: `/storyteller/story/${project.public_id}-${project.slug}`,
   }));
 
-  useTitle("Storyteller 公開故事", {
+  useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {
     path: "/storyteller",
     robots: "index, follow",
   });
@@ -39,7 +40,7 @@ export default function StorytellerPublicHome() {
   return (
     <StorytellerShell
       title="已發佈的故事"
-      breadcrumbs={[{ label: "Storyteller" }]}
+      breadcrumbs={[{ label: STORYTELLER_APP_NAME }]}
       meta={
         !isLoading && (
           <Chip size="small" label={`${publicProjects.length} 部作品`} />
@@ -57,7 +58,7 @@ export default function StorytellerPublicHome() {
         <CustomEmptyState
           icon={<LockOpenIcon fontSize="large" />}
           title="目前還沒有公開故事專案"
-          description="公開的 Storyteller 專案會顯示在這裡。"
+          description={`公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
         />
       ) : (
         <Grid container spacing={2}>

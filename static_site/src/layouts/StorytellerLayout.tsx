@@ -2,6 +2,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import {
   StorytellerThemeModeContext,
   getInitialStorytellerThemeMode,
@@ -86,7 +87,7 @@ export function StorytellerLayout() {
                   fontWeight={800}
                   sx={{ color: "inherit", textDecoration: "none" }}
                 >
-                  Storyteller
+                  {STORYTELLER_APP_NAME}
                 </Typography>
                 <Tooltip
                   title={mode === "dark" ? "切換為日間模式" : "切換為夜間模式"}
@@ -200,7 +201,7 @@ export function StorytellerLayout() {
           </Container>
           <Container component="footer" maxWidth="xl">
             <Divider />
-            <IndependentFooter service_name="StoryTeller" />
+            <IndependentFooter service_name={STORYTELLER_APP_NAME} />
           </Container>
         </Stack>
       </StorytellerThemeModeContext.Provider>

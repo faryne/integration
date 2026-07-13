@@ -11,7 +11,10 @@ import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
 import { CustomDiffLegend } from "@/components/common/CustomDiffLegend.tsx";
 import { CustomDiffSection } from "@/components/common/CustomDiffSection.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  STORYTELLER_APP_NAME,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -70,13 +73,18 @@ export default function StorytellerAgentDiffCompare() {
     0,
   );
 
-  useTitle(agent ? `${agent.name} Prompt 版本比對 - Storyteller` : "Prompt 版本比對", {
-    path:
-      agentId && diffId1 && diffId2
-        ? `/storyteller/my/agent/${agentId}/diff/${diffId1}/${diffId2}`
-        : "",
-    robots: "noindex, nofollow",
-  });
+  useTitle(
+    agent
+      ? `${agent.name} Prompt 版本比對 - ${STORYTELLER_APP_NAME}`
+      : "Prompt 版本比對",
+    {
+      path:
+        agentId && diffId1 && diffId2
+          ? `/storyteller/my/agent/${agentId}/diff/${diffId1}/${diffId2}`
+          : "",
+      robots: "noindex, nofollow",
+    },
+  );
 
   if (loading) {
     return (
@@ -84,7 +92,7 @@ export default function StorytellerAgentDiffCompare() {
         title="Prompt 版本差異比對"
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
@@ -103,7 +111,7 @@ export default function StorytellerAgentDiffCompare() {
         title="Prompt 版本差異比對"
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
@@ -118,16 +126,12 @@ export default function StorytellerAgentDiffCompare() {
     );
   }
 
-  if (
-    agentsLoading ||
-    leftVersion.isLoading ||
-    rightVersion.isLoading
-  ) {
+  if (agentsLoading || leftVersion.isLoading || rightVersion.isLoading) {
     return (
       <StorytellerShell
         title="Prompt 版本差異比對"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "AI Agent", to: "/storyteller/my/agent" },
           { label: "版本比對" },
@@ -147,7 +151,7 @@ export default function StorytellerAgentDiffCompare() {
       title="Prompt 版本差異比對"
       description="左右對照 AI Agent 設定與 Prompt 內容。"
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "AI Agent", to: "/storyteller/my/agent" },
         { label: agent.name, to: `/storyteller/my/agent/${agent.id}/edit` },

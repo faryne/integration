@@ -21,6 +21,7 @@ import {
   useSaveStorytellerProject,
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -88,9 +89,7 @@ export default function StorytellerNewProject() {
     tags: [],
   });
   const [tagInputValue, setTagInputValue] = useState("");
-  const [createdProjectId, setCreatedProjectId] = useState<string | null>(
-    null,
-  );
+  const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [slugWarningOpen, setSlugWarningOpen] = useState(false);
 
   useEffect(() => {
@@ -106,20 +105,25 @@ export default function StorytellerNewProject() {
     }
   }, [editingProject]);
 
-  useTitle(isEditing ? "編輯 Storyteller 專案" : "建立 Storyteller 專案", {
-    path:
-      isEditing && id
-        ? `/storyteller/my/project/${id}/edit`
-        : "/storyteller/my/project/new",
-    robots: "noindex, nofollow",
-  });
+  useTitle(
+    isEditing
+      ? `編輯 ${STORYTELLER_APP_NAME} 專案`
+      : `建立 ${STORYTELLER_APP_NAME} 專案`,
+    {
+      path:
+        isEditing && id
+          ? `/storyteller/my/project/${id}/edit`
+          : "/storyteller/my/project/new",
+      robots: "noindex, nofollow",
+    },
+  );
 
   if (isEditing && !editingProject && (isLoading || isFetching)) {
     return (
       <StorytellerShell
         title="編輯專案"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
         ]}
@@ -188,8 +192,7 @@ export default function StorytellerNewProject() {
     performSave();
   }
 
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
@@ -212,7 +215,7 @@ export default function StorytellerNewProject() {
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         ...(editingProject
@@ -313,9 +316,7 @@ export default function StorytellerNewProject() {
                     ? "變更後，公開頁面顯示與分享用的網址會跟著改變。"
                     : "預設使用專案名稱產生，建立後可以修改。"
                 }
-                value={
-                  isEditing ? input.slug : projectNameToSlug(input.name)
-                }
+                value={isEditing ? input.slug : projectNameToSlug(input.name)}
                 onChange={
                   isEditing
                     ? (event) =>

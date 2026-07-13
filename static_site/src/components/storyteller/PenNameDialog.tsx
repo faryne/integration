@@ -9,6 +9,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useSaveStorytellerUserProfile } from "@/apis/storyteller";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 
 interface PenNameDialogProps {
   open: boolean;
@@ -38,7 +39,7 @@ export function PenNameDialog({ open }: PenNameDialogProps) {
       <DialogTitle>設定筆名</DialogTitle>
       <DialogContent>
         <DialogContentText sx={{ mb: 2 }}>
-          歡迎使用 Storyteller！在開始創作之前，請先設定您的筆名。
+          歡迎使用 {STORYTELLER_APP_NAME}！在開始創作之前，請先設定您的筆名。
         </DialogContentText>
         <TextField
           autoFocus

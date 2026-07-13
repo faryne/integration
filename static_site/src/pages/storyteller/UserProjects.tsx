@@ -41,6 +41,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import {
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -87,11 +88,11 @@ export default function StorytellerUserProjects() {
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 12;
 
-  const {
-    data,
-    isLoading,
-    isError,
-  } = usePublicUserStorytellerProjects(username, page, pageSize);
+  const { data, isLoading, isError } = usePublicUserStorytellerProjects(
+    username,
+    page,
+    pageSize,
+  );
   const author = data?.author;
   const authorUserId = author?.user_id;
   const isOwner = Boolean(authorUserId && session?.user.id === authorUserId);
@@ -110,7 +111,7 @@ export default function StorytellerUserProjects() {
     tab === "favorite-authors" ? username : undefined,
   );
 
-  useTitle(`${username} 的作品 - Storyteller`, {
+  useTitle(`${username} 的作品 - ${STORYTELLER_APP_NAME}`, {
     path: `/storyteller/user/${username}`,
     robots: "index, follow",
   });
@@ -120,7 +121,7 @@ export default function StorytellerUserProjects() {
       <StorytellerShell
         title={`${username} 的作品`}
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: username || "作者" },
         ]}
       >
@@ -163,7 +164,7 @@ export default function StorytellerUserProjects() {
       title={displayName}
       description={author?.bio ? <AuthorBio bio={author.bio} /> : undefined}
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: displayName },
       ]}
       action={
@@ -360,7 +361,7 @@ export default function StorytellerUserProjects() {
                 <CustomEmptyState
                   icon={<LockOpenIcon fontSize="large" />}
                   title="目前沒有公開的作品"
-                  description="這位作者公開的 Storyteller 專案會顯示在這裡。"
+                  description={`這位作者公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
                 />
               ))}
 
@@ -377,7 +378,10 @@ export default function StorytellerUserProjects() {
                 <Grid container spacing={2}>
                   {(favoriteProjectsQuery.data ?? []).map((project) => (
                     <Grid key={project.public_id} size={{ xs: 12, sm: 6 }}>
-                      <FavoriteProjectCard project={project} isOwner={isOwner} />
+                      <FavoriteProjectCard
+                        project={project}
+                        isOwner={isOwner}
+                      />
                     </Grid>
                   ))}
                 </Grid>
@@ -395,10 +399,7 @@ export default function StorytellerUserProjects() {
               ) : (
                 <Grid container spacing={2}>
                   {(favoriteAuthorsQuery.data ?? []).map((favoriteAuthor) => (
-                    <Grid
-                      key={favoriteAuthor.user_id}
-                      size={{ xs: 12, sm: 6 }}
-                    >
+                    <Grid key={favoriteAuthor.user_id} size={{ xs: 12, sm: 6 }}>
                       <FavoriteAuthorCard
                         author={favoriteAuthor}
                         isOwner={isOwner}
@@ -451,8 +452,7 @@ function FavoriteProjectCard({
   const hidden = project.favorite_hidden ?? false;
   const storyCount = project.stories?.length ?? 0;
   const wordCount =
-    project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-    0;
+    project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
   return (
     <StorytellerProjectCard
@@ -529,7 +529,12 @@ function FavoriteAuthorCard({
           alignItems="center"
           justifyContent="space-between"
         >
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ minWidth: 0 }}
+          >
             <Avatar
               src={author.avatar_url}
               alt={author.pen_name || "未命名作者"}

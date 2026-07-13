@@ -27,6 +27,7 @@ import {
   useStorytellerAgentUsageSummary,
   useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import type { StorytellerAgentUsageSummaryRow } from "@/types/storyteller.ts";
 
 const providerLabelMap: Record<string, string> = {
@@ -151,7 +152,9 @@ export function StorytellerAgentUsagePanel() {
     () =>
       filterApiKeyId === null
         ? allGroups
-        : allGroups.filter((group) => group.providerApiKeyId === filterApiKeyId),
+        : allGroups.filter(
+            (group) => group.providerApiKeyId === filterApiKeyId,
+          ),
     [allGroups, filterApiKeyId],
   );
   const totals = useMemo(
@@ -198,7 +201,7 @@ export function StorytellerAgentUsagePanel() {
       </Stack>
 
       <Alert severity="warning" variant="outlined">
-        以下數字為 Storyteller
+        以下數字為 {STORYTELLER_APP_NAME}
         系統記錄到的用量估算，並非供應商官方帳單金額。若同一把金鑰有在別處使用，或供應商計費方式與
         API 回傳的 usage
         有落差，金額會對不上。適合用來觀察相對用量與異常暴增，正式請款請以供應商後台為準。
@@ -319,14 +322,10 @@ function KeyUsageCard({
         </Stack>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            {(
-              keyTotals.inputTokens + keyTotals.outputTokens
-            ).toLocaleString()}{" "}
+            {(keyTotals.inputTokens + keyTotals.outputTokens).toLocaleString()}{" "}
             tokens
           </Typography>
-          <Typography fontWeight={500}>
-            {formatUsd(keyTotals.cost)}
-          </Typography>
+          <Typography fontWeight={500}>{formatUsd(keyTotals.cost)}</Typography>
         </Stack>
       </Stack>
       <Collapse in={open}>
@@ -395,7 +394,11 @@ function AgentUsageRow({
           {agent.agent_name || `Agent #${agent.agent_id}`}
         </TableCell>
         <TableCell
-          sx={{ fontFamily: "monospace", fontSize: 12, color: "text.secondary" }}
+          sx={{
+            fontFamily: "monospace",
+            fontSize: 12,
+            color: "text.secondary",
+          }}
         >
           {agent.model_name}
         </TableCell>

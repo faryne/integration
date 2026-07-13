@@ -1,3 +1,6 @@
+// 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
+export const STORYTELLER_APP_NAME = "Storyteller";
+
 export interface StorytellerProject {
   id: string;
   publicId: string;
@@ -61,8 +64,7 @@ export const storytellerProjects: StorytellerProject[] = [
     publicId: "sky9k2",
     name: "銅色天空檔案",
     slug: "copper-sky",
-    description:
-      "近未來懸疑短篇集。每篇以同一座軌道城市中的匿名委託為開場。",
+    description: "近未來懸疑短篇集。每篇以同一座軌道城市中的匿名委託為開場。",
     storiesCount: 4,
     updatedAt: "2026-06-18T09:10:00+08:00",
     status: "planning",
@@ -237,7 +239,9 @@ export function publicProjectPath(project: StorytellerProject) {
 }
 
 export function getPublicProjects() {
-  return storytellerProjects.filter((project) => project.visibility === "public");
+  return storytellerProjects.filter(
+    (project) => project.visibility === "public",
+  );
 }
 
 export function findProjectByPublicPath(projectPath: string) {
@@ -247,7 +251,9 @@ export function findProjectByPublicPath(projectPath: string) {
 }
 
 export function findProjectByShareToken(shareToken: string) {
-  return storytellerProjects.find((project) => project.shareToken === shareToken);
+  return storytellerProjects.find(
+    (project) => project.shareToken === shareToken,
+  );
 }
 
 export function getStoryDiffs(storyId: string) {

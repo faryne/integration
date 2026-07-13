@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 
 export interface StorytellerBreadcrumbItem {
   label: string;
@@ -50,7 +51,7 @@ export function StorytellerShell({
         }}
       >
         <Stack spacing={2}>
-          <Breadcrumbs aria-label="Storyteller breadcrumbs">
+          <Breadcrumbs aria-label={`${STORYTELLER_APP_NAME} breadcrumbs`}>
             {breadcrumbs.map((item, index) =>
               item.to && index < breadcrumbs.length - 1 ? (
                 <Link
@@ -94,7 +95,12 @@ export function StorytellerShell({
                 )}
                 {meta && (
                   <Box sx={{ mt: 1 }}>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       {meta}
                     </Stack>
                   </Box>

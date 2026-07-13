@@ -28,6 +28,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import {
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -59,7 +60,7 @@ export default function StorytellerFavorites() {
   const isLoading = tab === "stories" ? projectsLoading : authorsLoading;
   const isError = tab === "stories" ? projectsError : authorsError;
 
-  useTitle("Storyteller 我的收藏", {
+  useTitle(`${STORYTELLER_APP_NAME} 我的收藏`, {
     path: "/storyteller/favorites",
     robots: "noindex, nofollow",
   });
@@ -68,7 +69,7 @@ export default function StorytellerFavorites() {
     <StorytellerShell
       title="我的收藏"
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的收藏" },
       ]}
     >
@@ -145,8 +146,7 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   const hidden = project.favorite_hidden ?? false;
   const storyCount = project.stories?.length ?? 0;
   const wordCount =
-    project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-    0;
+    project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
   return (
     <StorytellerProjectCard
@@ -199,11 +199,7 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   );
 }
 
-function FavoriteAuthorCard({
-  author,
-}: {
-  author: StorytellerFavoriteAuthor;
-}) {
+function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
 

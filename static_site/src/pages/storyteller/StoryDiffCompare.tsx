@@ -12,7 +12,10 @@ import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
 import { CustomDiffLegend } from "@/components/common/CustomDiffLegend.tsx";
 import { CustomDiffSection } from "@/components/common/CustomDiffSection.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  STORYTELLER_APP_NAME,
+} from "@/data/storyteller.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -133,13 +136,16 @@ export default function StorytellerStoryDiffCompare() {
     0,
   );
 
-  useTitle(story ? `${story.title} 版本比對 - Storyteller` : "版本比對", {
-    path:
-      id && storyId && diffId1 && diffId2
-        ? `/storyteller/my/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`
-        : "",
-    robots: "noindex, nofollow",
-  });
+  useTitle(
+    story ? `${story.title} 版本比對 - ${STORYTELLER_APP_NAME}` : "版本比對",
+    {
+      path:
+        id && storyId && diffId1 && diffId2
+          ? `/storyteller/my/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`
+          : "",
+      robots: "noindex, nofollow",
+    },
+  );
 
   if (loading) {
     return (
@@ -147,7 +153,7 @@ export default function StorytellerStoryDiffCompare() {
         title="版本差異比對"
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
@@ -166,7 +172,7 @@ export default function StorytellerStoryDiffCompare() {
         title="版本差異比對"
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
@@ -191,7 +197,7 @@ export default function StorytellerStoryDiffCompare() {
       <StorytellerShell
         title="版本差異比對"
         breadcrumbs={[
-          { label: "Storyteller", to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
           { label: "我的工作台", to: "/storyteller/my" },
           { label: "故事專案", to: "/storyteller/my/project" },
           { label: "版本比對" },
@@ -217,7 +223,7 @@ export default function StorytellerStoryDiffCompare() {
       title="版本差異比對"
       description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: "故事專案", to: "/storyteller/my/project" },
         { label: project.name, to: `/storyteller/my/project/${project.id}` },

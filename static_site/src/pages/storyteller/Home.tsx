@@ -30,6 +30,7 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
+  STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
@@ -232,8 +233,8 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
     model: agent.model_name,
     enabled: !agent.is_deleted,
     apiKeyLabel:
-      apiKeys.find((apiKey) => apiKey.id === agent.provider_apikey_id)
-        ?.label ?? null,
+      apiKeys.find((apiKey) => apiKey.id === agent.provider_apikey_id)?.label ??
+      null,
     updatedAt: agent.updated_at,
     apiBacked: true,
   }));
@@ -397,7 +398,7 @@ export default function StorytellerHome() {
     useStorytellerProjects();
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
-  useTitle("Storyteller 我的工作台", {
+  useTitle(`${STORYTELLER_APP_NAME} 我的工作台`, {
     path: `/storyteller/my/${tabPath[activeTab]}`,
     robots: "noindex, nofollow",
   });
@@ -415,7 +416,7 @@ export default function StorytellerHome() {
     <StorytellerShell
       title="我的工作台"
       breadcrumbs={[
-        { label: "Storyteller", to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
         { label: "我的工作台", to: "/storyteller/my" },
         { label: tabBreadcrumbLabel[activeTab] },
       ]}
