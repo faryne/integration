@@ -29,6 +29,12 @@ build-frontend-nekomaid:
 	pnpm deploy:nekomaid && \
 	cd ..
 
+build-frontend-steamloom:
+	cd static_site; \
+	VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	pnpm deploy:steamloom && \
+	cd ..
+
 worker-install:
 	cd workers && npm install
 
