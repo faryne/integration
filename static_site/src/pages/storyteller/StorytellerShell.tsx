@@ -12,7 +12,9 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 
 export interface StorytellerBreadcrumbItem {
   label: string;
@@ -48,8 +50,10 @@ export function StorytellerShell({
           p: { xs: 2, md: 3 },
           borderRadius: 1,
           bgcolor: "background.paper",
+          ...steamPanelTopBarSx,
         }}
       >
+        <SteamRivets />
         <Stack spacing={2}>
           <Breadcrumbs aria-label={`${STORYTELLER_APP_NAME} breadcrumbs`}>
             {breadcrumbs.map((item, index) =>

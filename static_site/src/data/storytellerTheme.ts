@@ -1,3 +1,5 @@
+import type { Theme } from "@mui/material";
+
 // SteamLoom 視覺方向的色彩／字體 token，集中在這裡管理，StorytellerLayout 的 MUI theme
 // 跟需要對應裝飾色的頁面（例如首頁 Hero）共用同一份數值，不要各自硬編一份。
 export interface StorytellerThemeTokens {
@@ -56,3 +58,24 @@ export const storytellerDisplayFontFamily =
 // 按鈕／標籤這類「儀表讀數」字用等寬字，一樣是局部套用不是全站預設字體。
 export const storytellerMonoFontFamily =
   '"JetBrains Mono", "SF Mono", Consolas, "Noto Sans Mono TC", monospace';
+
+/**
+ * 頂部黃銅－銅漸層飾條，套在 position:"relative" 的容器上——跟
+ * components/storyteller/SteamPanelAccent.tsx 的 SteamRivets 一起組成
+ * 「機殼面板」的視覺語彙，StorytellerShell 的頁首跟 StorytellerProjectCard
+ * 共用同一份規則，不要各自刻一份漸層數值。放在這個檔案（不是跟 SteamRivets
+ * 放一起）是因為那個檔案只能匯出元件，不然 fast refresh 會失效。
+ */
+export const steamPanelTopBarSx = {
+  position: "relative",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    insetInline: 0,
+    top: 0,
+    height: 3,
+    borderRadius: "3px 3px 0 0",
+    background: (theme: Theme) =>
+      `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  },
+};
