@@ -113,14 +113,24 @@ export function StorytellerLayout() {
                 alignItems="center"
                 sx={{ flex: 1 }}
               >
-                <Box sx={{ color: "primary.main", display: "flex" }}>
-                  <SteamLoomMark size={30} />
+                <Box
+                  sx={{
+                    color: "primary.main",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                >
+                  <SteamLoomMark size={24} />
                 </Box>
                 <Typography
                   component={RouterLink}
                   to="/storyteller"
                   variant="h6"
-                  sx={{ color: "inherit", textDecoration: "none" }}
+                  sx={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    lineHeight: 1,
+                  }}
                 >
                   {STORYTELLER_APP_NAME}
                 </Typography>
