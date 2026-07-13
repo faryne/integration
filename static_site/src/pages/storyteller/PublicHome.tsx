@@ -1,19 +1,137 @@
+import AddIcon from "@mui/icons-material/Add";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import { Button, Chip, Grid } from "@mui/material";
+import { Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
+import { keyframes } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { Link as RouterLink } from "react-router-dom";
 import { usePublicStorytellerProjects } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
-import { useTitle } from "@/helpers/title.tsx";
+import { GearIcon } from "@/components/storyteller/SteamGearIcon.tsx";
 import {
   STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
-import {
-  StorytellerLoading,
-  StorytellerShell,
-} from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
+
+const spin = keyframes`to { transform: rotate(360deg); }`;
+const spinReverse = keyframes`to { transform: rotate(-360deg); }`;
+const rise = keyframes`
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { opacity: 0.7; }
+  100% { transform: translateY(-160px) scale(1.6); opacity: 0; }
+`;
+
+// Hero 只在公開首頁用，故意不抽到共用元件——目前只有這裡需要蒸汽／齒輪這組裝飾。
+function PublicHomeHero({ projectCount }: { projectCount?: number }) {
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        textAlign: "center",
+        px: 3,
+        py: { xs: 8, md: 11 },
+        mb: 3,
+        borderRadius: 1,
+        border: "1px solid",
+        borderColor: "divider",
+        background: (theme) =>
+          `radial-gradient(ellipse 70% 60% at 50% 0%, ${theme.palette.mode === "dark" ? "rgba(201,151,79,0.12)" : "rgba(138,90,31,0.08)"}, transparent 60%), ${theme.palette.background.paper}`,
+      }}
+    >
+      <Box
+        aria-hidden
+        sx={{
+          position: "absolute",
+          top: -110,
+          right: -110,
+          width: 340,
+          height: 340,
+          color: "primary.main",
+          opacity: 0.14,
+          animation: reduceMotion ? "none" : `${spin} 90s linear infinite`,
+        }}
+      >
+        <GearIcon teeth={12} />
+      </Box>
+      <Box
+        aria-hidden
+        sx={{
+          position: "absolute",
+          bottom: -140,
+          left: -140,
+          width: 280,
+          height: 280,
+          color: "secondary.main",
+          opacity: 0.14,
+          animation: reduceMotion ? "none" : `${spinReverse} 70s linear infinite`,
+        }}
+      >
+        <GearIcon teeth={9} />
+      </Box>
+      {!reduceMotion && (
+        <Box
+          aria-hidden
+          sx={{ position: "absolute", left: "50%", bottom: "34%", pointerEvents: "none" }}
+        >
+          {[0, 2.1, 4.3].map((delay, index) => (
+            <Box
+              key={delay}
+              sx={{
+                position: "absolute",
+                bottom: 0,
+                left: index === 1 ? 26 : index === 2 ? -24 : 0,
+                width: 32 - index * 4,
+                height: 32 - index * 4,
+                borderRadius: "50%",
+                background: (theme) =>
+                  `radial-gradient(circle, ${theme.palette.mode === "dark" ? "rgba(240,230,210,0.22)" : "rgba(90,70,40,0.16)"}, transparent 70%)`,
+                filter: "blur(6px)",
+                animation: `${rise} 7s ease-in infinite`,
+                animationDelay: `${delay}s`,
+              }}
+            />
+          ))}
+        </Box>
+      )}
+
+      <Stack spacing={2.5} alignItems="center" sx={{ position: "relative", maxWidth: 620, mx: "auto" }}>
+        <Typography
+          variant="overline"
+          sx={{ color: "secondary.main", letterSpacing: "0.22em", fontFamily: "monospace" }}
+        >
+          故事，以蒸汽動力紡織
+        </Typography>
+        <Typography variant="h2" sx={{ color: "primary.light" }}>
+          {STORYTELLER_APP_NAME}
+        </Typography>
+        <Typography color="text.secondary" sx={{ fontSize: 17, lineHeight: 1.85 }}>
+          每個故事都是一次紡織：經線是你的世界觀，緯線是角色的選擇，AI Agent
+          只是那具負責供給動力的蒸汽引擎——真正決定花色的，永遠是坐在織機前的你。
+          {typeof projectCount === "number" && `目前已有 ${projectCount} 部作品公開發佈。`}
+        </Typography>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" justifyContent="center">
+          <Button
+            component={RouterLink}
+            to="/storyteller/my/project/new"
+            variant="contained"
+            startIcon={<AddIcon />}
+          >
+            建立故事專案
+          </Button>
+          <Button component={RouterLink} to="/storyteller/my" variant="outlined">
+            我的工作台
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
 
 export default function StorytellerPublicHome() {
   const { data: apiProjects = [], isLoading } = usePublicStorytellerProjects();
@@ -38,20 +156,21 @@ export default function StorytellerPublicHome() {
   });
 
   return (
-    <StorytellerShell
-      title="已發佈的故事"
-      breadcrumbs={[{ label: STORYTELLER_APP_NAME }]}
-      meta={
-        !isLoading && (
+    <Stack spacing={3}>
+      <PublicHomeHero projectCount={isLoading ? undefined : publicProjects.length} />
+
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+      >
+        <Typography variant="h5">已發佈的故事</Typography>
+        {!isLoading && (
           <Chip size="small" label={`${publicProjects.length} 部作品`} />
-        )
-      }
-      action={
-        <Button component={RouterLink} to="/storyteller/my" variant="outlined">
-          我的工作台
-        </Button>
-      }
-    >
+        )}
+      </Stack>
+
       {isLoading ? (
         <StorytellerLoading label="正在載入公開故事..." />
       ) : publicProjects.length === 0 ? (
@@ -106,6 +225,6 @@ export default function StorytellerPublicHome() {
           ))}
         </Grid>
       )}
-    </StorytellerShell>
+    </Stack>
   );
 }

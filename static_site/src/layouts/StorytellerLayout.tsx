@@ -1,8 +1,14 @@
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
+import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import {
+  storytellerDisplayFontFamily,
+  storytellerMonoFontFamily,
+  storytellerThemeTokens,
+} from "@/data/storytellerTheme.ts";
 import {
   StorytellerThemeModeContext,
   getInitialStorytellerThemeMode,
@@ -45,7 +51,35 @@ export function StorytellerLayout() {
     useState<HTMLElement | null>(null);
   // 深色模式套用在整個 Storyteller 產品線（不影響其他子站），記在 localStorage 供下次造訪沿用
   const [mode, setMode] = useState(getInitialStorytellerThemeMode);
-  const theme = useMemo(() => createTheme({ palette: { mode } }), [mode]);
+  const theme = useMemo(() => {
+    const tokens = storytellerThemeTokens[mode];
+    const headingStyle = { fontFamily: storytellerDisplayFontFamily, fontWeight: 700 };
+    return createTheme({
+      palette: {
+        mode,
+        primary: { main: tokens.brass, light: tokens.brassBright, dark: tokens.copper },
+        secondary: { main: tokens.copper },
+        background: { default: tokens.bg, paper: tokens.surface },
+        text: { primary: tokens.text, secondary: tokens.textMuted },
+        divider: tokens.border,
+      },
+      shape: { borderRadius: 3 },
+      typography: {
+        h1: headingStyle,
+        h2: headingStyle,
+        h3: headingStyle,
+        h4: headingStyle,
+        h5: headingStyle,
+        h6: headingStyle,
+        button: {
+          fontFamily: storytellerMonoFontFamily,
+          fontWeight: 700,
+          textTransform: "none",
+          letterSpacing: "0.02em",
+        },
+      },
+    });
+  }, [mode]);
   useEffect(() => {
     window.localStorage.setItem(storytellerThemeModeStorageKey, mode);
   }, [mode]);
@@ -79,12 +113,13 @@ export function StorytellerLayout() {
                 alignItems="center"
                 sx={{ flex: 1 }}
               >
-                <AutoStoriesIcon color="primary" />
+                <Box sx={{ color: "primary.main", display: "flex" }}>
+                  <SteamLoomMark size={30} />
+                </Box>
                 <Typography
                   component={RouterLink}
                   to="/storyteller"
                   variant="h6"
-                  fontWeight={800}
                   sx={{ color: "inherit", textDecoration: "none" }}
                 >
                   {STORYTELLER_APP_NAME}
