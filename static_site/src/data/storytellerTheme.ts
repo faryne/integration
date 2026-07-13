@@ -89,3 +89,21 @@ export const steamTabIndicatorSx = {
       `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
   },
 };
+
+/**
+ * 閱讀頁內文容器用的左側「書背」飾條——直式漸層，跟頁首／卡片的橫向飾條同一組
+ * 顏色，只是方向換成豎的，呼應「翻開一本帳簿」的感覺。
+ */
+export const steamLedgerEdgeSx = {
+  position: "relative",
+  "&::before": {
+    content: '""',
+    position: "absolute",
+    insetBlock: 0,
+    left: 0,
+    width: 4,
+    borderRadius: "3px 0 0 3px",
+    background: (theme: Theme) =>
+      `linear-gradient(180deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  },
+};

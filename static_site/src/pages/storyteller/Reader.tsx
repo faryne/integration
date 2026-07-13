@@ -67,6 +67,10 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import {
+  steamLedgerEdgeSx,
+  steamPanelTopBarSx,
+} from "@/data/storytellerTheme.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -390,6 +394,7 @@ function ChapterNavCard({
         opacity: disabled ? 0.55 : 1,
         overflow: "hidden",
         textAlign: align,
+        ...steamPanelTopBarSx,
       }}
     >
       <Stack
@@ -1004,7 +1009,14 @@ export default function StorytellerReader() {
     </>
   );
   const readerBody = (
-    <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, md: 3 },
+        borderRadius: 1,
+        ...steamLedgerEdgeSx,
+      }}
+    >
       {currentStory ? (
         <Stack spacing={2}>
           <Box>
