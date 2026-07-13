@@ -12,6 +12,7 @@ export function isSteamLoomSite() {
     "www.steamloom.works",
     "steamloom-web.web.app",
     "steamloom-web.firebaseapp.com",
+    "site.steamloom.works",
   ].includes(window.location.hostname);
 }
 
