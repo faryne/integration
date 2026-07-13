@@ -79,3 +79,13 @@ export const steamPanelTopBarSx = {
       `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
   },
 };
+
+/** MUI Tabs 的 indicator 換成同一組漸層，跟頁首／卡片的飾條呼應。 */
+export const steamTabIndicatorSx = {
+  "& .MuiTabs-indicator": {
+    height: 3,
+    borderRadius: "3px 3px 0 0",
+    background: (theme: Theme) =>
+      `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  },
+};

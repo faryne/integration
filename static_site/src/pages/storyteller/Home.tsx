@@ -34,6 +34,7 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import { steamTabIndicatorSx } from "@/data/storytellerTheme.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
@@ -420,6 +421,16 @@ export default function StorytellerHome() {
         { label: "我的工作台", to: "/storyteller/my" },
         { label: tabBreadcrumbLabel[activeTab] },
       ]}
+      meta={
+        session &&
+        !projectsLoading &&
+        !agentsLoading && (
+          <>
+            <Chip size="small" label={`${projects.length} 個故事專案`} />
+            <Chip size="small" label={`${agents.length} 個 AI Agent`} />
+          </>
+        )
+      }
     >
       {loading ? (
         <Stack alignItems="center" sx={{ py: 8 }}>
@@ -433,7 +444,11 @@ export default function StorytellerHome() {
         />
       ) : (
         <Paper variant="outlined" sx={{ borderRadius: 1 }}>
-          <Tabs value={tab} onChange={(_, value) => handleTabChange(value)}>
+          <Tabs
+            value={tab}
+            onChange={(_, value) => handleTabChange(value)}
+            sx={steamTabIndicatorSx}
+          >
             <Tab value="project" label="故事專案" />
             <Tab value="agent" label="AI Agent" />
             <Tab value="apikey" label="金鑰管理" />

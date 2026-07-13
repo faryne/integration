@@ -29,12 +29,17 @@ import {
 } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import {
+  steamPanelTopBarSx,
+  steamTabIndicatorSx,
+} from "@/data/storytellerTheme.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -167,7 +172,11 @@ export default function StorytellerProjectDetail() {
       ]}
     >
       <Stack spacing={3}>
-        <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
+        <Paper
+          variant="outlined"
+          sx={{ p: 2, borderRadius: 1, ...steamPanelTopBarSx }}
+        >
+          <SteamRivets inset={7} />
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={1.5}
@@ -265,6 +274,7 @@ export default function StorytellerProjectDetail() {
                   onChange={(_, value: "stories" | "lores") =>
                     setActiveTab(value)
                   }
+                  sx={steamTabIndicatorSx}
                 >
                   <Tab value="stories" label="故事" />
                   <Tab value="lores" label="設定集" />
