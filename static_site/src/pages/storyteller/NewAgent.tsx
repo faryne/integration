@@ -57,6 +57,15 @@ export default function StorytellerNewAgent() {
     provider_apikey_id: null,
     default_prompt: "",
   });
+  // 編輯模式下，「套用既有 Agent 資料」跟「provider_apikey_id／model_name 沒值時自動帶
+  // 預設」這兩件事必須分先後，不能同一個 render 週期一起跑：agent 剛載入完成的那個
+  // render，input 都還停在最初的預設值（provider: "grok"、model_name/provider_apikey_id
+  // 皆空），下面兩個自動帶預設的 effect 若在這個當下才判斷「目前沒有值」，就會照著
+  // 這個尚未同步的 grok 預設狀態去抓 grok 的 API Key／model 塞進去；即使套用 agent
+  // 資料的 effect 先執行，只要這兩個 effect 用的是同一個 render 算出來的
+  // providerApiKeys／currentProvider（還是 grok 版本），還是會在 agent 資料套用之後
+  // 把值蓋回去。用這個旗標讓自動帶預設的邏輯，等 agent 資料真正套用到 input 後才開始跑。
+  const [agentSynced, setAgentSynced] = useState(!isEdit);
 
   useEffect(() => {
     if (!agent) {
@@ -69,6 +78,7 @@ export default function StorytellerNewAgent() {
       provider_apikey_id: agent.provider_apikey_id,
       default_prompt: agent.default_prompt,
     });
+    setAgentSynced(true);
   }, [agent]);
 
   const providerApiKeys = useMemo(
@@ -77,20 +87,25 @@ export default function StorytellerNewAgent() {
   );
 
   useEffect(() => {
-    if (input.provider_apikey_id || providerApiKeys.length === 0) {
+    if (
+      !agentSynced ||
+      input.provider_apikey_id ||
+      providerApiKeys.length === 0
+    ) {
       return;
     }
     setInput((value) => ({
       ...value,
       provider_apikey_id: providerApiKeys[0].id,
     }));
-  }, [input.provider_apikey_id, providerApiKeys]);
+  }, [agentSynced, input.provider_apikey_id, providerApiKeys]);
 
   useEffect(() => {
     const currentProvider = providerModels.find(
       (item) => item.provider === input.provider,
     );
     if (
+      !agentSynced ||
       input.model_name ||
       !currentProvider ||
       currentProvider.models.length === 0
@@ -101,7 +116,7 @@ export default function StorytellerNewAgent() {
       ...value,
       model_name: currentProvider.models[0]?.name ?? "",
     }));
-  }, [input.model_name, input.provider, providerModels]);
+  }, [agentSynced, input.model_name, input.provider, providerModels]);
 
   const providerOption = providerModels.find(
     (item) => item.provider === input.provider,
