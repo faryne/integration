@@ -20,6 +20,7 @@ import {
   getInitialStorytellerThemeMode,
   storytellerThemeModeStorageKey,
 } from "@/layouts/storytellerThemeMode.tsx";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -114,9 +115,13 @@ export function StorytellerLayout() {
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
 
   const accountMenuItems = [
-    { label: "我的工作台", to: "/storyteller/my", icon: <AutoStoriesIcon /> },
-    { label: "我的收藏", to: "/storyteller/favorites", icon: <FavoriteIcon /> },
-    { label: "我的檔案", to: "/storyteller/profile", icon: <PersonIcon /> },
+    { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
+    {
+      label: "我的收藏",
+      to: steamloomPath("favorites"),
+      icon: <FavoriteIcon />,
+    },
+    { label: "我的檔案", to: steamloomPath("profile"), icon: <PersonIcon /> },
   ];
 
   return (
@@ -144,7 +149,7 @@ export function StorytellerLayout() {
                   </Box>
                   <Typography
                     component={RouterLink}
-                    to="/storyteller"
+                    to={steamloomPath()}
                     variant="h6"
                     sx={{
                       color: "inherit",
@@ -173,7 +178,7 @@ export function StorytellerLayout() {
                 </Stack>
                 <Button
                   component={RouterLink}
-                  to="/storyteller/my/project/new"
+                  to={steamloomPath("my/project/new")}
                   variant="contained"
                   color="primary"
                   startIcon={<AddIcon />}
@@ -187,7 +192,7 @@ export function StorytellerLayout() {
                 </Button>
                 <IconButton
                   component={RouterLink}
-                  to="/storyteller/my/project/new"
+                  to={steamloomPath("my/project/new")}
                   color="primary"
                   aria-label="建立故事專案"
                   sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}

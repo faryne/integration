@@ -16,6 +16,7 @@ import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -141,7 +142,9 @@ export default function StorytellerStoryDiffCompare() {
     {
       path:
         id && storyId && diffId1 && diffId2
-          ? `/storyteller/my/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`
+          ? steamloomPath(
+              `my/project/${id}/story/${storyId}/diff/${diffId1}/${diffId2}`,
+            )
           : "",
       robots: "noindex, nofollow",
     },
@@ -153,9 +156,9 @@ export default function StorytellerStoryDiffCompare() {
         title="版本差異比對"
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -172,9 +175,9 @@ export default function StorytellerStoryDiffCompare() {
         title="版本差異比對"
         description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -197,9 +200,9 @@ export default function StorytellerStoryDiffCompare() {
       <StorytellerShell
         title="版本差異比對"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -223,13 +226,16 @@ export default function StorytellerStoryDiffCompare() {
       title="版本差異比對"
       description="左右對照故事標題與 Markdown 內容，並標示新增、移除與變更行。"
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "故事專案", to: "/storyteller/my/project" },
-        { label: project.name, to: `/storyteller/my/project/${project.id}` },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "故事專案", to: steamloomPath("my/project") },
+        {
+          label: project.name,
+          to: steamloomPath(`my/project/${project.id}`),
+        },
         {
           label: story.title,
-          to: `/storyteller/my/project/${project.id}/story/${story.id}`,
+          to: steamloomPath(`my/project/${project.id}/story/${story.id}`),
         },
         { label: "版本比對" },
       ]}
@@ -237,7 +243,7 @@ export default function StorytellerStoryDiffCompare() {
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${changedCount} 行差異`} color="warning" />
           <Button
-            href={`/storyteller/my/project/${project.id}/story/${story.id}`}
+            href={steamloomPath(`my/project/${project.id}/story/${story.id}`)}
             variant="outlined"
             startIcon={<ArrowBackIcon />}
           >

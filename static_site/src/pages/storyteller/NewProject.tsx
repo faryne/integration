@@ -22,6 +22,7 @@ import {
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -112,8 +113,8 @@ export default function StorytellerNewProject() {
     {
       path:
         isEditing && id
-          ? `/storyteller/my/project/${id}/edit`
-          : "/storyteller/my/project/new",
+          ? steamloomPath(`my/project/${id}/edit`)
+          : steamloomPath("my/project/new"),
       robots: "noindex, nofollow",
     },
   );
@@ -123,9 +124,9 @@ export default function StorytellerNewProject() {
       <StorytellerShell
         title="編輯專案"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
         ]}
       >
         <StorytellerLoading label="正在載入專案資料..." />
@@ -139,14 +140,14 @@ export default function StorytellerNewProject() {
 
   function handleStartFirstStory() {
     if (createdProjectId) {
-      navigate(`/storyteller/my/project/${createdProjectId}/story/new`);
+      navigate(steamloomPath(`my/project/${createdProjectId}/story/new`));
     }
     setCreatedProjectId(null);
   }
 
   function handleGoToProjectHome() {
     if (createdProjectId) {
-      navigate(`/storyteller/my/project/${createdProjectId}`);
+      navigate(steamloomPath(`my/project/${createdProjectId}`));
     }
     setCreatedProjectId(null);
   }
@@ -168,7 +169,7 @@ export default function StorytellerNewProject() {
             return;
           }
           if (isEditing) {
-            navigate(`/storyteller/my/project/${project.public_id}`);
+            navigate(steamloomPath(`my/project/${project.public_id}`));
             return;
           }
           setCreatedProjectId(project.public_id);
@@ -196,16 +197,16 @@ export default function StorytellerNewProject() {
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
-      urlPreview = `${origin}/storyteller/story/${editingProject.public_id}-${input.slug.trim()}`;
+      urlPreview = `${origin}${steamloomPath(`story/${editingProject.public_id}-${input.slug.trim()}`)}`;
     } else if (input.visibility === "unlisted") {
       urlPreview =
         editingProject.visibility === "unlisted" && editingProject.share_token
-          ? `${origin}/storyteller/story/share/${editingProject.share_token}`
+          ? `${origin}${steamloomPath(`story/share/${editingProject.share_token}`)}`
           : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${origin}/storyteller/story/（系統代碼）-${projectNameToSlug(input.name)}`;
+      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`story/（系統代碼）-${projectNameToSlug(input.name)}`)}`;
     } else if (input.visibility === "unlisted") {
       urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
     }
@@ -215,14 +216,14 @@ export default function StorytellerNewProject() {
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "故事專案", to: "/storyteller/my/project" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "故事專案", to: steamloomPath("my/project") },
         ...(editingProject
           ? [
               {
                 label: editingProject.name,
-                to: `/storyteller/my/project/${editingProject.public_id}`,
+                to: steamloomPath(`my/project/${editingProject.public_id}`),
               },
             ]
           : []),
@@ -445,7 +446,7 @@ export default function StorytellerNewProject() {
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button href="/storyteller/my/project" variant="text">
+            <Button href={steamloomPath("my/project")} variant="text">
               返回列表
             </Button>
             <Button

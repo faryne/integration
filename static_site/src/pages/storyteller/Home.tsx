@@ -35,6 +35,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { steamTabIndicatorSx } from "@/data/storytellerTheme.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
@@ -155,7 +156,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                   <>
                     <Button
                       component={RouterLink}
-                      to={`/storyteller/my/project/${project.id}`}
+                      to={steamloomPath(`my/project/${project.id}`)}
                       size="small"
                       variant="outlined"
                     >
@@ -163,7 +164,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     </Button>
                     <Button
                       component={RouterLink}
-                      to={`/storyteller/my/project/${project.id}/edit`}
+                      to={steamloomPath(`my/project/${project.id}/edit`)}
                       size="small"
                       variant="outlined"
                       startIcon={<EditIcon />}
@@ -311,7 +312,7 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <Button
                       component={RouterLink}
-                      to={`/storyteller/my/agent/${agent.id}/edit`}
+                      to={steamloomPath(`my/agent/${agent.id}/edit`)}
                       size="small"
                       variant="outlined"
                       startIcon={<EditIcon />}
@@ -400,7 +401,7 @@ export default function StorytellerHome() {
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
   useTitle(`${STORYTELLER_APP_NAME} 我的工作台`, {
-    path: `/storyteller/my/${tabPath[activeTab]}`,
+    path: steamloomPath(`my/${tabPath[activeTab]}`),
     robots: "noindex, nofollow",
   });
 
@@ -410,15 +411,15 @@ export default function StorytellerHome() {
 
   function handleTabChange(value: "project" | "agent" | "apikey" | "usage") {
     setTab(value);
-    navigate(`/storyteller/my/${tabPath[value]}`);
+    navigate(steamloomPath(`my/${tabPath[value]}`));
   }
 
   return (
     <StorytellerShell
       title="我的工作台"
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
         { label: tabBreadcrumbLabel[activeTab] },
       ]}
       meta={
@@ -470,7 +471,7 @@ export default function StorytellerHome() {
                   {tab === "project" ? (
                     <Button
                       component={RouterLink}
-                      to="/storyteller/my/project/new"
+                      to={steamloomPath("my/project/new")}
                       variant="contained"
                     >
                       建立專案
@@ -478,7 +479,7 @@ export default function StorytellerHome() {
                   ) : (
                     <Button
                       component={RouterLink}
-                      to="/storyteller/my/agent/new"
+                      to={steamloomPath("my/agent/new")}
                       variant="contained"
                     >
                       建立 AI Agent

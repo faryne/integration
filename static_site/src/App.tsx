@@ -11,6 +11,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
+import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 
 // const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
@@ -210,15 +211,81 @@ function AnalyticsTracker() {
   return null;
 }
 
+// Storyteller（SteamLoom）的路由樹跟 galgame/nekomaid 不一樣，節點數多很多——
+// 抽成共用的 fragment，同時給「巢狀在 faryne.dev/storyteller 底下」跟
+// 「steamloom.works 獨立站」兩種掛法共用，不用維護兩份一模一樣的路由清單。
+const storytellerRoutes = (
+  <>
+    <Route path={""} element={<StorytellerPublicHome />} />
+    <Route path={"my"}>
+      <Route path={""} element={<StorytellerHome />} />
+      <Route path={"project"} element={<StorytellerHome />} />
+      <Route path={"agent"} element={<StorytellerHome />} />
+      <Route path={"project/new"} element={<StorytellerNewProject />} />
+      <Route path={"project/:id/edit"} element={<StorytellerNewProject />} />
+      <Route
+        path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
+        element={<StorytellerStoryDiffCompare />}
+      />
+      <Route
+        path={"project/:id/lore/:loreId/diff/:diffId1/:diffId2"}
+        element={<StorytellerLoreDiffCompare />}
+      />
+      <Route
+        path={"agent/:agentId/diff/:diffId1/:diffId2"}
+        element={<StorytellerAgentDiffCompare />}
+      />
+      <Route
+        path={"project/:id/story/:storyId/diff"}
+        element={<StorytellerStoryEditor />}
+      />
+      <Route
+        path={"project/:id/story/:storyId"}
+        element={<StorytellerStoryEditor />}
+      />
+      <Route
+        path={"project/:id/lore/:loreId"}
+        element={<StorytellerLoreEditor />}
+      />
+      <Route path={"project/:id"} element={<StorytellerProjectDetail />} />
+      <Route path={"agent/new"} element={<StorytellerNewAgent />} />
+      <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
+      <Route path={"api-keys"} element={<StorytellerHome />} />
+      <Route path={"usage"} element={<StorytellerHome />} />
+    </Route>
+    <Route path={"user/:username"} element={<StorytellerUserProjects />} />
+    <Route path={"favorites"} element={<StorytellerFavorites />} />
+    <Route path={"profile"} element={<StorytellerProfile />} />
+    <Route path={"story/share/:shareToken"} element={<StorytellerReader />} />
+    <Route
+      path={"story/share/:shareToken/:storyId"}
+      element={<StorytellerReader />}
+    />
+    <Route
+      path={"story/:projectPath/:storyId/versions/:versionId"}
+      element={<StorytellerStoryVersionDiff />}
+    />
+    <Route path={"story/*"} element={<StorytellerReader />} />
+    <Route path={"*"} element={<ErrorPage code={404} />} />
+  </>
+);
+
 function App() {
   const standaloneGalgame = isGalgameSite();
   const standaloneNekomaid = isNekomaidSite();
+  const standaloneSteamLoom = isSteamLoomSite();
 
   return (
     <BrowserRouter>
       <AnalyticsTracker />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+          {standaloneSteamLoom && (
+            <Route path={""} element={<StorytellerLayout />}>
+              {storytellerRoutes}
+            </Route>
+          )}
+
           {standaloneNekomaid && (
             <Route path={""} element={<NekomaidLayout />}>
               <Route path={"/"} element={<Nekomaid />} />
@@ -248,200 +315,143 @@ function App() {
             </Route>
           )}
 
-          {!standaloneGalgame && !standaloneNekomaid && (
-            <>
-              <Route path={"storyteller"} element={<StorytellerLayout />}>
-                <Route path={""} element={<StorytellerPublicHome />} />
-                <Route path={"my"}>
-                  <Route path={""} element={<StorytellerHome />} />
-                  <Route path={"project"} element={<StorytellerHome />} />
-                  <Route path={"agent"} element={<StorytellerHome />} />
-                  <Route
-                    path={"project/new"}
-                    element={<StorytellerNewProject />}
-                  />
-                  <Route
-                    path={"project/:id/edit"}
-                    element={<StorytellerNewProject />}
-                  />
-                  <Route
-                    path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
-                    element={<StorytellerStoryDiffCompare />}
-                  />
-                  <Route
-                    path={"project/:id/lore/:loreId/diff/:diffId1/:diffId2"}
-                    element={<StorytellerLoreDiffCompare />}
-                  />
-                  <Route
-                    path={"agent/:agentId/diff/:diffId1/:diffId2"}
-                    element={<StorytellerAgentDiffCompare />}
-                  />
-                  <Route
-                    path={"project/:id/story/:storyId/diff"}
-                    element={<StorytellerStoryEditor />}
-                  />
-                  <Route
-                    path={"project/:id/story/:storyId"}
-                    element={<StorytellerStoryEditor />}
-                  />
-                  <Route
-                    path={"project/:id/lore/:loreId"}
-                    element={<StorytellerLoreEditor />}
-                  />
-                  <Route
-                    path={"project/:id"}
-                    element={<StorytellerProjectDetail />}
-                  />
-                  <Route path={"agent/new"} element={<StorytellerNewAgent />} />
-                  <Route
-                    path={"agent/:agentId/edit"}
-                    element={<StorytellerNewAgent />}
-                  />
-                  <Route path={"api-keys"} element={<StorytellerHome />} />
-                  <Route path={"usage"} element={<StorytellerHome />} />
+          {!standaloneGalgame &&
+            !standaloneNekomaid &&
+            !standaloneSteamLoom && (
+              <>
+                <Route path={"storyteller"} element={<StorytellerLayout />}>
+                  {storytellerRoutes}
                 </Route>
-                <Route
-                  path={"user/:username"}
-                  element={<StorytellerUserProjects />}
-                />
-                <Route path={"favorites"} element={<StorytellerFavorites />} />
-                <Route path={"profile"} element={<StorytellerProfile />} />
-                <Route
-                  path={"story/share/:shareToken"}
-                  element={<StorytellerReader />}
-                />
-                <Route
-                  path={"story/share/:shareToken/:storyId"}
-                  element={<StorytellerReader />}
-                />
-                <Route
-                  path={"story/:projectPath/:storyId/versions/:versionId"}
-                  element={<StorytellerStoryVersionDiff />}
-                />
-                <Route path={"story/*"} element={<StorytellerReader />} />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
-              </Route>
 
-              <Route path={"galgame"} element={<GalgameLayout />}>
-                <Route path={""} element={<GalgameHome />} />
-                <Route path={"favorites"} element={<GalgameFavorites />} />
-                <Route path={"submit"} element={<GalgameSubmitBrand />} />
-                <Route path={"submit-video"} element={<GalgameSubmitVideo />} />
-                <Route path={"admin"} element={<GalgameAdmin />} />
-                <Route path={":brandSlug"} element={<GalgameBrand />} />
-                <Route
-                  path={":brandSlug/video/:videoId"}
-                  element={<GalgameVideo />}
-                />
-              </Route>
+                <Route path={"galgame"} element={<GalgameLayout />}>
+                  <Route path={""} element={<GalgameHome />} />
+                  <Route path={"favorites"} element={<GalgameFavorites />} />
+                  <Route path={"submit"} element={<GalgameSubmitBrand />} />
+                  <Route
+                    path={"submit-video"}
+                    element={<GalgameSubmitVideo />}
+                  />
+                  <Route path={"admin"} element={<GalgameAdmin />} />
+                  <Route path={":brandSlug"} element={<GalgameBrand />} />
+                  <Route
+                    path={":brandSlug/video/:videoId"}
+                    element={<GalgameVideo />}
+                  />
+                </Route>
 
-              <Route path={"/nekomaid"} element={<NekomaidLayout />}>
-                <Route path={""} element={<Nekomaid />} />
-                <Route path={":site"} element={<Nekomaid />} />
-                <Route path={":site/:authorId"} element={<Nekomaid />} />
-                <Route
-                  path={":site/:authorId/:artworkId"}
-                  element={<Nekomaid />}
-                />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
-              </Route>
+                <Route path={"/nekomaid"} element={<NekomaidLayout />}>
+                  <Route path={""} element={<Nekomaid />} />
+                  <Route path={":site"} element={<Nekomaid />} />
+                  <Route path={":site/:authorId"} element={<Nekomaid />} />
+                  <Route
+                    path={":site/:authorId/:artworkId"}
+                    element={<Nekomaid />}
+                  />
+                  <Route path={"*"} element={<ErrorPage code={404} />} />
+                </Route>
 
-              <Route path={"/"} element={<LabLayout />}>
-                <Route path={""} element={<LabHome />} />
-              </Route>
-              <Route path={""} element={<DefaultLayout />}>
-                <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
-                <Route path={"/av/video"} element={<AVVideo />} />
-                <Route
-                  path={"/av/actress/:name"}
-                  element={<AVActressDetail />}
-                />
-                <Route path={"/av/actress"} element={<AVActress />} />
+                <Route path={"/"} element={<LabLayout />}>
+                  <Route path={""} element={<LabHome />} />
+                </Route>
+                <Route path={""} element={<DefaultLayout />}>
+                  <Route path={"/av/video/:no"} element={<AVVideoDetail />} />
+                  <Route path={"/av/video"} element={<AVVideo />} />
+                  <Route
+                    path={"/av/actress/:name"}
+                    element={<AVActressDetail />}
+                  />
+                  <Route path={"/av/actress"} element={<AVActress />} />
 
-                <Route
-                  path={"/data/tw-stats/:name"}
-                  element={<TwStatsByName />}
-                />
-                <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
+                  <Route
+                    path={"/data/tw-stats/:name"}
+                    element={<TwStatsByName />}
+                  />
+                  <Route path={"/data/tw-stats"} element={<TwStatsIndex />} />
 
-                <Route path={"/data/rates"} element={<RatesIndex />} />
-                <Route path={"/data/nccc"} element={<NCCC />} />
-                <Route path={"/data/nccc/:token"} element={<NCCC />} />
+                  <Route path={"/data/rates"} element={<RatesIndex />} />
+                  <Route path={"/data/nccc"} element={<NCCC />} />
+                  <Route path={"/data/nccc/:token"} element={<NCCC />} />
 
-                <Route
-                  path={"/data/fire/realtime"}
-                  element={<FireDepartmentRealtime />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/cityarea"}
-                  element={<TaipowerNeighborStatistics />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/unit"}
-                  element={<TaipowerNeighborStatistics />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/cityarea/:cityarea"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/unit/:unit"}
-                  element={<TaipowerNeighbor />}
-                />
-                <Route
-                  path={"/data/taipower/neighbor/map"}
-                  element={<TaipowerNeighborMap />}
-                />
+                  <Route
+                    path={"/data/fire/realtime"}
+                    element={<FireDepartmentRealtime />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor"}
+                    element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor/cityarea"}
+                    element={<TaipowerNeighborStatistics />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor/unit"}
+                    element={<TaipowerNeighborStatistics />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor/cityarea/:cityarea"}
+                    element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor/unit/:unit"}
+                    element={<TaipowerNeighbor />}
+                  />
+                  <Route
+                    path={"/data/taipower/neighbor/map"}
+                    element={<TaipowerNeighborMap />}
+                  />
 
-                <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
+                  <Route path={"/tools/crawler"} element={<CrawlerIndex />} />
 
-                <Route
-                  path={"/tools/thread/capture"}
-                  element={<CaptureThread />}
-                />
-                <Route path={"/tools/webshot"} element={<Webshot />} />
-                <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
-                <Route path={"/tools/userscripts"} element={<Userscripts />} />
-                <Route path={"/tools/mcp"} element={<McpTools />} />
+                  <Route
+                    path={"/tools/thread/capture"}
+                    element={<CaptureThread />}
+                  />
+                  <Route path={"/tools/webshot"} element={<Webshot />} />
+                  <Route path={"/tools/webshot/:hash"} element={<Webshot />} />
+                  <Route
+                    path={"/tools/userscripts"}
+                    element={<Userscripts />}
+                  />
+                  <Route path={"/tools/mcp"} element={<McpTools />} />
 
-                <Route path={"/data/etf/yieldmax"} element={<YieldMaxEtfs />} />
-                <Route
-                  path={"/data/etf/yieldmax/:etfCode"}
-                  element={<YieldMaxEtfs />}
-                />
-                <Route path={"/data/etf/twse"} element={<TwseEtf />} />
-                <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
+                  <Route
+                    path={"/data/etf/yieldmax"}
+                    element={<YieldMaxEtfs />}
+                  />
+                  <Route
+                    path={"/data/etf/yieldmax/:etfCode"}
+                    element={<YieldMaxEtfs />}
+                  />
+                  <Route path={"/data/etf/twse"} element={<TwseEtf />} />
+                  <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
 
-                <Route path="/a" element={<h1>Hello</h1>} />
+                  <Route path="/a" element={<h1>Hello</h1>} />
 
-                <Route path={"/about"} element={<About />} />
-                <Route path={"/cv"} element={<Cv />} />
-                <Route path={"/login"} element={<Login />} />
-                <Route
-                  path={"/auth/encrypted-demo"}
-                  element={<EncryptedDemo />}
-                />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
-              </Route>
+                  <Route path={"/about"} element={<About />} />
+                  <Route path={"/cv"} element={<Cv />} />
+                  <Route path={"/login"} element={<Login />} />
+                  <Route
+                    path={"/auth/encrypted-demo"}
+                    element={<EncryptedDemo />}
+                  />
+                  <Route path={"*"} element={<ErrorPage code={404} />} />
+                </Route>
 
-              <Route path={"/modern"} element={<ModernLayout />}>
-                <Route
-                  path={""}
-                  element={
-                    <div>
-                      <h1>Modern Layout Demo</h1>
-                      <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
-                    </div>
-                  }
-                />
-                <Route path={"*"} element={<ErrorPage code={404} />} />
-              </Route>
-            </>
-          )}
+                <Route path={"/modern"} element={<ModernLayout />}>
+                  <Route
+                    path={""}
+                    element={
+                      <div>
+                        <h1>Modern Layout Demo</h1>
+                        <p>這是使用新版 Header 與 Footer 的 ModernLayout。</p>
+                      </div>
+                    }
+                  />
+                  <Route path={"*"} element={<ErrorPage code={404} />} />
+                </Route>
+              </>
+            )}
         </Routes>
       </Suspense>
     </BrowserRouter>

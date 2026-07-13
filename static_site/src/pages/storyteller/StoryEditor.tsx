@@ -29,6 +29,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerAgents,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -307,7 +308,9 @@ export default function StorytellerStoryEditor() {
   );
   const comparePath =
     id && storyId && leftDiffId && rightDiffId
-      ? `/storyteller/my/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`
+      ? steamloomPath(
+          `my/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`,
+        )
       : "";
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
   const selectedAgent =
@@ -508,7 +511,9 @@ export default function StorytellerStoryEditor() {
   useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path:
       id && storyId
-        ? `/storyteller/my/project/${id}/story/${storyId}${isHistoryRoute ? "/diff" : ""}`
+        ? steamloomPath(
+            `my/project/${id}/story/${storyId}${isHistoryRoute ? "/diff" : ""}`,
+          )
         : "",
     robots: "noindex, nofollow",
   });
@@ -638,9 +643,9 @@ export default function StorytellerStoryEditor() {
       <StorytellerShell
         title="故事編輯器"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
         ]}
       >
         <StorytellerLoading label="正在載入故事編輯資料..." />
@@ -686,7 +691,7 @@ export default function StorytellerStoryEditor() {
       return;
     }
 
-    const editorPath = `/storyteller/my/project/${id}/story/${storyId}`;
+    const editorPath = steamloomPath(`my/project/${id}/story/${storyId}`);
     const historyPath = `${editorPath}/diff`;
 
     if (value === "history" && location.pathname !== historyPath) {
@@ -722,7 +727,7 @@ export default function StorytellerStoryEditor() {
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
             navigate(
-              `/storyteller/my/project/${id}/story/${savedStory.public_id}`,
+              steamloomPath(`my/project/${id}/story/${savedStory.public_id}`),
             );
           }
         },
@@ -849,10 +854,13 @@ export default function StorytellerStoryEditor() {
     <StorytellerShell
       title={pageTitle}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "故事專案", to: "/storyteller/my/project" },
-        { label: project.name, to: `/storyteller/my/project/${project.id}` },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "故事專案", to: steamloomPath("my/project") },
+        {
+          label: project.name,
+          to: steamloomPath(`my/project/${project.id}`),
+        },
         { label: pageTitle },
       ]}
       action={

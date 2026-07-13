@@ -24,6 +24,7 @@ import {
   useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   StoryEditHistory,
@@ -133,7 +134,9 @@ export default function StorytellerNewAgent() {
   );
   const comparePath =
     editAgentId && leftVersionId && rightVersionId
-      ? `/storyteller/my/agent/${editAgentId}/diff/${leftVersionId}/${rightVersionId}`
+      ? steamloomPath(
+          `my/agent/${editAgentId}/diff/${leftVersionId}/${rightVersionId}`,
+        )
       : "";
   const modelOptions = useMemo(
     () => providerOption?.models ?? [],
@@ -150,8 +153,8 @@ export default function StorytellerNewAgent() {
 
   useTitle(`${isEdit ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`, {
     path: isEdit
-      ? `/storyteller/my/agent/${agentId}/edit`
-      : "/storyteller/my/agent/new",
+      ? steamloomPath(`my/agent/${agentId}/edit`)
+      : steamloomPath("my/agent/new"),
     robots: "noindex, nofollow",
   });
 
@@ -160,9 +163,9 @@ export default function StorytellerNewAgent() {
       <StorytellerShell
         title="編輯 AI Agent"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "AI Agent", to: steamloomPath("my/agent") },
           { label: "編輯 AI Agent" },
         ]}
       >
@@ -180,9 +183,9 @@ export default function StorytellerNewAgent() {
         title="找不到 AI Agent"
         description="此 Agent 可能不存在或已被刪除。"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "AI Agent", to: steamloomPath("my/agent") },
           { label: "找不到 AI Agent" },
         ]}
       >
@@ -197,9 +200,9 @@ export default function StorytellerNewAgent() {
     <StorytellerShell
       title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "AI Agent", to: "/storyteller/my/agent" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "AI Agent", to: steamloomPath("my/agent") },
         { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },
       ]}
     >
@@ -243,7 +246,7 @@ export default function StorytellerNewAgent() {
                 { id: editAgentId, input },
                 {
                   onSuccess: () => {
-                    navigate("/storyteller/my/agent");
+                    navigate(steamloomPath("my/agent"));
                   },
                 },
               );
@@ -436,7 +439,7 @@ export default function StorytellerNewAgent() {
                     action={
                       <Button
                         component={RouterLink}
-                        to="/storyteller/my/api-keys"
+                        to={steamloomPath("my/api-keys")}
                         size="small"
                       >
                         前往新增
@@ -466,7 +469,7 @@ export default function StorytellerNewAgent() {
               </Grid>
             </Grid>
             <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button href="/storyteller/my/agent" variant="text">
+              <Button href={steamloomPath("my/agent")} variant="text">
                 返回列表
               </Button>
               <Button

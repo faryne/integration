@@ -12,6 +12,7 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -69,7 +70,9 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           height: 280,
           color: "secondary.main",
           opacity: 0.14,
-          animation: reduceMotion ? "none" : `${spinReverse} 70s linear infinite`,
+          animation: reduceMotion
+            ? "none"
+            : `${spinReverse} 70s linear infinite`,
         }}
       >
         <GearIcon teeth={9} />
@@ -77,7 +80,12 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
       {!reduceMotion && (
         <Box
           aria-hidden
-          sx={{ position: "absolute", left: "50%", bottom: "34%", pointerEvents: "none" }}
+          sx={{
+            position: "absolute",
+            left: "50%",
+            bottom: "34%",
+            pointerEvents: "none",
+          }}
         >
           {[0, 2.1, 4.3].map((delay, index) => (
             <Box
@@ -100,31 +108,52 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
         </Box>
       )}
 
-      <Stack spacing={2.5} alignItems="center" sx={{ position: "relative", maxWidth: 620, mx: "auto" }}>
+      <Stack
+        spacing={2.5}
+        alignItems="center"
+        sx={{ position: "relative", maxWidth: 620, mx: "auto" }}
+      >
         <Typography
           variant="overline"
-          sx={{ color: "secondary.main", letterSpacing: "0.22em", fontFamily: "monospace" }}
+          sx={{
+            color: "secondary.main",
+            letterSpacing: "0.22em",
+            fontFamily: "monospace",
+          }}
         >
           故事，以蒸汽動力紡織
         </Typography>
         <Typography variant="h2" sx={{ color: "primary.light" }}>
           {STORYTELLER_APP_NAME}
         </Typography>
-        <Typography color="text.secondary" sx={{ fontSize: 17, lineHeight: 1.85 }}>
+        <Typography
+          color="text.secondary"
+          sx={{ fontSize: 17, lineHeight: 1.85 }}
+        >
           每個故事都是一次紡織：經線是你的世界觀，緯線是角色的選擇，AI Agent
           只是那具負責供給動力的蒸汽引擎——真正決定花色的，永遠是坐在織機前的你。
-          {typeof projectCount === "number" && `目前已有 ${projectCount} 部作品公開發佈。`}
+          {typeof projectCount === "number" &&
+            `目前已有 ${projectCount} 部作品公開發佈。`}
         </Typography>
-        <Stack direction="row" spacing={1.5} flexWrap="wrap" justifyContent="center">
+        <Stack
+          direction="row"
+          spacing={1.5}
+          flexWrap="wrap"
+          justifyContent="center"
+        >
           <Button
             component={RouterLink}
-            to="/storyteller/my/project/new"
+            to={steamloomPath("my/project/new")}
             variant="contained"
             startIcon={<AddIcon />}
           >
             建立故事專案
           </Button>
-          <Button component={RouterLink} to="/storyteller/my" variant="outlined">
+          <Button
+            component={RouterLink}
+            to={steamloomPath("my")}
+            variant="outlined"
+          >
             我的工作台
           </Button>
         </Stack>
@@ -147,17 +176,19 @@ export default function StorytellerPublicHome() {
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
     updatedAt: project.updated_at,
-    path: `/storyteller/story/${project.public_id}-${project.slug}`,
+    path: steamloomPath(`story/${project.public_id}-${project.slug}`),
   }));
 
   useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {
-    path: "/storyteller",
+    path: steamloomPath(),
     robots: "index, follow",
   });
 
   return (
     <Stack spacing={3}>
-      <PublicHomeHero projectCount={isLoading ? undefined : publicProjects.length} />
+      <PublicHomeHero
+        projectCount={isLoading ? undefined : publicProjects.length}
+      />
 
       <Stack
         direction={{ xs: "column", sm: "row" }}

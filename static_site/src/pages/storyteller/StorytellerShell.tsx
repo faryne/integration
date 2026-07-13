@@ -15,6 +15,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 
 export interface StorytellerBreadcrumbItem {
   label: string;
@@ -127,7 +128,7 @@ export function StorytellerPrimaryActions() {
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
       <Button
         component={RouterLink}
-        to="/storyteller/my/project/new"
+        to={steamloomPath("my/project/new")}
         variant="contained"
         startIcon={<AutoStoriesIcon />}
       >
@@ -135,7 +136,7 @@ export function StorytellerPrimaryActions() {
       </Button>
       <Button
         component={RouterLink}
-        to="/storyteller/my/agent/new"
+        to={steamloomPath("my/agent/new")}
         variant="outlined"
         startIcon={<SmartToyIcon />}
       >

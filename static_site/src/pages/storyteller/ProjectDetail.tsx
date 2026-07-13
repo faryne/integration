@@ -41,6 +41,7 @@ import {
   steamTabIndicatorSx,
 } from "@/data/storytellerTheme.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -116,7 +117,9 @@ export default function StorytellerProjectDetail() {
       ? `${project.name} - ${STORYTELLER_APP_NAME}`
       : `${STORYTELLER_APP_NAME} 專案`,
     {
-      path: id ? `/storyteller/my/project/${id}` : "/storyteller/my/project",
+      path: id
+        ? steamloomPath(`my/project/${id}`)
+        : steamloomPath("my/project"),
       robots: "noindex, nofollow",
     },
   );
@@ -126,9 +129,9 @@ export default function StorytellerProjectDetail() {
       <StorytellerShell
         title="故事專案"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
         ]}
       >
         <StorytellerLoading label="正在載入專案..." />
@@ -142,8 +145,8 @@ export default function StorytellerProjectDetail() {
 
   const readerUrl =
     project.visibility === "unlisted" && project.shareToken
-      ? `/storyteller/story/share/${project.shareToken}`
-      : `/storyteller/story/${project.id}-${project.slug}`;
+      ? steamloomPath(`story/share/${project.shareToken}`)
+      : steamloomPath(`story/${project.id}-${project.slug}`);
   const readerUrlLabel =
     project.visibility === "unlisted" ? "親友分享連結" : "故事頁連結";
   const absoluteReaderUrl =
@@ -165,9 +168,9 @@ export default function StorytellerProjectDetail() {
       title={project.name}
       description={project.description}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "故事專案", to: "/storyteller/my/project" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "故事專案", to: steamloomPath("my/project") },
         { label: project.name },
       ]}
     >
@@ -229,7 +232,7 @@ export default function StorytellerProjectDetail() {
               justifyContent={{ xs: "flex-start", md: "flex-end" }}
             >
               <Button
-                href={`/storyteller/my/project/${project.id}/edit`}
+                href={steamloomPath(`my/project/${project.id}/edit`)}
                 variant="outlined"
                 size="small"
               >
@@ -290,7 +293,7 @@ export default function StorytellerProjectDetail() {
                       故事列表
                     </Typography>
                     <Button
-                      href={`/storyteller/my/project/${project.id}/story/new`}
+                      href={steamloomPath(`my/project/${project.id}/story/new`)}
                       variant="contained"
                       sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
                     >
@@ -309,7 +312,7 @@ export default function StorytellerProjectDetail() {
                       設定集列表
                     </Typography>
                     <Button
-                      href={`/storyteller/my/project/${project.id}/lore/new`}
+                      href={steamloomPath(`my/project/${project.id}/lore/new`)}
                       variant="contained"
                       sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
                     >
@@ -421,7 +424,9 @@ export default function StorytellerProjectDetail() {
                           variant="outlined"
                         />
                         <Button
-                          href={`/storyteller/my/project/${project.id}/story/${story.public_id}`}
+                          href={steamloomPath(
+                            `my/project/${project.id}/story/${story.public_id}`,
+                          )}
                           variant="outlined"
                           size="small"
                         >
@@ -464,7 +469,9 @@ export default function StorytellerProjectDetail() {
                           </Typography>
                         </Stack>
                         <Button
-                          href={`/storyteller/my/project/${project.id}/lore/${lore.public_id}`}
+                          href={steamloomPath(
+                            `my/project/${project.id}/lore/${lore.public_id}`,
+                          )}
                           variant="outlined"
                           size="small"
                         >
@@ -531,7 +538,7 @@ export default function StorytellerProjectDetail() {
           onClose={() => setProjectDeleteOpen(false)}
           onConfirm={() =>
             deleteProject.mutate(project.id, {
-              onSuccess: () => navigate("/storyteller/my/project"),
+              onSuccess: () => navigate(steamloomPath("my/project")),
             })
           }
         />

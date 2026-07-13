@@ -29,6 +29,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   StorytellerLoading,
@@ -182,7 +183,7 @@ export default function StorytellerProfile() {
     form.pen_name || session?.user.display_name || STORYTELLER_APP_NAME;
 
   useTitle(`${STORYTELLER_APP_NAME} 作者設定`, {
-    path: "/storyteller/profile",
+    path: steamloomPath("profile"),
     robots: "noindex, nofollow",
   });
 
@@ -273,7 +274,7 @@ export default function StorytellerProfile() {
     <StorytellerShell
       title="作者設定"
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "作者設定" },
       ]}
     >
