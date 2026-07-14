@@ -141,7 +141,6 @@ server {
     listen [::]:443 ssl http2;
     server_name steamloom.works www.steamloom.works;
 
-    # TODO: 確認 acme.sh --install-cert 實際輸出的路徑跟這裡一致，不一致要改。
     ssl_certificate /etc/letsencrypt/live/steamloom.works/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/steamloom.works/privkey.pem;
 
