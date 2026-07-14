@@ -20,7 +20,7 @@ import {
   getInitialStorytellerThemeMode,
   storytellerThemeModeStorageKey,
 } from "@/layouts/storytellerThemeMode.tsx";
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -103,6 +103,22 @@ export function StorytellerLayout() {
   useEffect(() => {
     window.localStorage.setItem(storytellerPaletteStorageKey, palette);
   }, [palette]);
+  // index.html 的 favicon 是所有 Firebase Hosting target 共用的同一份靜態檔案，
+  // steamloom.works 要有自己的圖示只能在 runtime 改 <link rel="icon">，跟 helpers/title.tsx
+  // 動態改 document.head 是同一招；巢狀模式（faryne.dev/storyteller）維持原本的 faryne icon。
+  useEffect(() => {
+    if (!isSteamLoomSite()) {
+      return;
+    }
+    let icon = document.head.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) {
+      icon = document.createElement("link");
+      icon.rel = "icon";
+      document.head.appendChild(icon);
+    }
+    icon.type = "image/svg+xml";
+    icon.href = "/steamloom-icon.svg";
+  }, []);
   const toggleMode = () =>
     setMode((value) => (value === "dark" ? "light" : "dark"));
   const { data: profile, isLoading: isProfileLoading } =

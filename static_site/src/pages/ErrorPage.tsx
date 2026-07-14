@@ -1,6 +1,7 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 
 export interface ErrorPageProps {
   backUrl?: string;
@@ -47,13 +48,56 @@ const fallbackErrorContent = {
     "喵嗚，女僕這邊暫時處理不了主人想看的內容。請稍後再試一次，或先回首頁休息一下喵。",
 };
 
+// SteamLoom 是完全獨立的產品，錯誤頁不套用主站的貓娘女僕人設，改用蒸汽織機的故障意象；
+// 只在 steamloom.works 這個網域生效（isSteamLoomSite 只認網域，不認 /storyteller 巢狀路徑），
+// faryne.dev/storyteller 底下仍維持主站風格。
+const steamloomErrorContent: Record<
+  number,
+  { title: string; message: string }
+> = {
+  400: {
+    title: "齒輪咬合失敗",
+    message:
+      "這份設計圖的規格好像不太對，織機看不懂該怎麼運轉。請確認內容後再送一次。",
+  },
+  401: {
+    title: "還沒有通行憑證",
+    message: "織坊大門鎖著，還沒驗證身分無法進入。請先登入取得憑證。",
+  },
+  403: {
+    title: "這道齒輪鎖住了",
+    message:
+      "這個房間目前上了鎖，暫時不能進去。若覺得不該被擋下，請再確認權限設定。",
+  },
+  404: {
+    title: "找不到這台織機",
+    message: "把整座工坊翻遍了，還是沒找到你要的頁面。先回首頁看看其他故事吧。",
+  },
+  500: {
+    title: "鍋爐燒過頭了",
+    message: "蒸汽鍋爐好像過熱當機。請稍後再試一次，或把狀況交給管理員檢查。",
+  },
+  503: {
+    title: "工坊維護中",
+    message: "師傅正在保養機件，服務暫時無法使用。請稍後再回來看看。",
+  },
+};
+
+const steamloomFallbackErrorContent = {
+  title: "齒輪卡住了",
+  message: "織機這邊暫時處理不了這次的請求。請稍後再試一次，或先回首頁看看。",
+};
+
 export function ErrorPage({
   backUrl,
   code,
   message,
   internalCode,
 }: ErrorPageProps) {
-  const errorContent = defaultErrorContent[code] ?? fallbackErrorContent;
+  const steamloom = isSteamLoomSite();
+  const errorContent = steamloom
+    ? (steamloomErrorContent[code] ?? steamloomFallbackErrorContent)
+    : (defaultErrorContent[code] ?? fallbackErrorContent);
   const buttonHref = backUrl ?? "/";
   const ButtonIcon = backUrl ? ArrowBackIcon : HomeIcon;
   const buttonText = backUrl ? "回前頁" : "回首頁";
@@ -76,8 +120,8 @@ export function ErrorPage({
       >
         <Box
           component="img"
-          src="/faryne-icon-1024.jpg"
-          alt="Faryne mascot"
+          src={steamloom ? "/steamloom-icon.svg" : "/faryne-icon-1024.jpg"}
+          alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
           sx={{
             width: { xs: 180, md: 260 },
             height: { xs: 180, md: 260 },
