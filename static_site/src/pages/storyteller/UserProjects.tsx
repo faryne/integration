@@ -45,6 +45,7 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -112,7 +113,7 @@ export default function StorytellerUserProjects() {
   );
 
   useTitle(`${username} 的作品 - ${STORYTELLER_APP_NAME}`, {
-    path: `/storyteller/user/${username}`,
+    path: steamloomPath(`user/${username}`),
     robots: "index, follow",
   });
 
@@ -121,7 +122,7 @@ export default function StorytellerUserProjects() {
       <StorytellerShell
         title={`${username} 的作品`}
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: username || "作者" },
         ]}
       >
@@ -147,7 +148,7 @@ export default function StorytellerUserProjects() {
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
     updatedAt: project.updated_at,
-    path: `/storyteller/story/${project.public_id}-${project.slug}`,
+    path: steamloomPath(`story/${project.public_id}-${project.slug}`),
   }));
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
@@ -164,7 +165,7 @@ export default function StorytellerUserProjects() {
       title={displayName}
       description={author?.bio ? <AuthorBio bio={author.bio} /> : undefined}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: displayName },
       ]}
       action={
@@ -187,7 +188,11 @@ export default function StorytellerUserProjects() {
               {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
             </Button>
           )}
-          <Button component={RouterLink} to="/storyteller" variant="outlined">
+          <Button
+            component={RouterLink}
+            to={steamloomPath()}
+            variant="outlined"
+          >
             回首頁
           </Button>
         </Stack>
@@ -497,7 +502,7 @@ function FavoriteProjectCard({
       actions={
         <Button
           component={RouterLink}
-          to={`/storyteller/story/${project.public_id}-${project.slug}`}
+          to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
           variant="contained"
         >
           開始閱讀
@@ -582,7 +587,7 @@ function FavoriteAuthorCard({
         {author.pen_name && (
           <Button
             component={RouterLink}
-            to={`/storyteller/user/${encodeURIComponent(author.pen_name)}`}
+            to={steamloomPath(`user/${encodeURIComponent(author.pen_name)}`)}
             variant="contained"
           >
             查看作者

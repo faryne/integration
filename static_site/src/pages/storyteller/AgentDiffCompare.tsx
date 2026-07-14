@@ -15,6 +15,7 @@ import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -80,7 +81,7 @@ export default function StorytellerAgentDiffCompare() {
     {
       path:
         agentId && diffId1 && diffId2
-          ? `/storyteller/my/agent/${agentId}/diff/${diffId1}/${diffId2}`
+          ? steamloomPath(`my/agent/${agentId}/diff/${diffId1}/${diffId2}`)
           : "",
       robots: "noindex, nofollow",
     },
@@ -92,9 +93,9 @@ export default function StorytellerAgentDiffCompare() {
         title="Prompt 版本差異比對"
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "AI Agent", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
@@ -111,9 +112,9 @@ export default function StorytellerAgentDiffCompare() {
         title="Prompt 版本差異比對"
         description="左右對照 AI Agent 設定與 Prompt 內容。"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "AI Agent", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
@@ -131,9 +132,9 @@ export default function StorytellerAgentDiffCompare() {
       <StorytellerShell
         title="Prompt 版本差異比對"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "AI Agent", to: "/storyteller/my/agent" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "AI Agent", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
@@ -151,17 +152,20 @@ export default function StorytellerAgentDiffCompare() {
       title="Prompt 版本差異比對"
       description="左右對照 AI Agent 設定與 Prompt 內容。"
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "AI Agent", to: "/storyteller/my/agent" },
-        { label: agent.name, to: `/storyteller/my/agent/${agent.id}/edit` },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "AI Agent", to: steamloomPath("my/agent") },
+        {
+          label: agent.name,
+          to: steamloomPath(`my/agent/${agent.id}/edit`),
+        },
         { label: "版本比對" },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${changedCount} 行差異`} color="warning" />
           <Button
-            href={`/storyteller/my/agent/${agent.id}/edit`}
+            href={steamloomPath(`my/agent/${agent.id}/edit`)}
             startIcon={<ArrowBackIcon />}
             variant="outlined"
           >

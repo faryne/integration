@@ -67,6 +67,11 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import {
+  steamLedgerEdgeSx,
+  steamPanelTopBarSx,
+} from "@/data/storytellerTheme.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -390,6 +395,7 @@ function ChapterNavCard({
         opacity: disabled ? 0.55 : 1,
         overflow: "hidden",
         textAlign: align,
+        ...steamPanelTopBarSx,
       }}
     >
       <Stack
@@ -637,7 +643,7 @@ export default function StorytellerReader() {
         id: apiProject.public_id,
         name: apiProject.name,
         description: apiProject.description,
-        path: `/storyteller/story/${apiProject.public_id}-${apiProject.slug}`,
+        path: steamloomPath(`story/${apiProject.public_id}-${apiProject.slug}`),
         authorUserId: apiProject.user_id,
         authorPenName: apiProject.author?.pen_name,
         rating: apiProject.rating,
@@ -852,9 +858,13 @@ export default function StorytellerReader() {
     {
       description: shouldUseStorySeo ? project?.description : undefined,
       path: routeProjectPath
-        ? `/storyteller/story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`
+        ? steamloomPath(
+            `story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`,
+          )
         : shareToken
-          ? `/storyteller/story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`
+          ? steamloomPath(
+              `story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`,
+            )
           : "",
       robots:
         isShareRoute || isPrivateOwnerRoute
@@ -906,7 +916,7 @@ export default function StorytellerReader() {
     return (
       <StorytellerShell
         title="故事"
-        breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: "/storyteller" }]}
+        breadcrumbs={[{ label: STORYTELLER_APP_NAME, to: steamloomPath() }]}
       >
         <StorytellerLoading label="正在載入故事..." />
       </StorytellerShell>
@@ -918,7 +928,7 @@ export default function StorytellerReader() {
   }
 
   const basePath = isShareRoute
-    ? `/storyteller/story/share/${shareToken}`
+    ? steamloomPath(`story/share/${shareToken}`)
     : project.path;
   const handleJumpToBookmark = (
     bookmark: StorytellerStoryBookmarkWithStory,
@@ -1004,7 +1014,14 @@ export default function StorytellerReader() {
     </>
   );
   const readerBody = (
-    <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, md: 3 },
+        borderRadius: 1,
+        ...steamLedgerEdgeSx,
+      }}
+    >
       {currentStory ? (
         <Stack spacing={2}>
           <Box>
@@ -1112,7 +1129,9 @@ export default function StorytellerReader() {
                   variant="caption"
                   color="primary"
                   component={RouterLink}
-                  to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
+                  to={steamloomPath(
+                    `user/${encodeURIComponent(project.authorPenName)}`,
+                  )}
                   sx={{
                     textDecoration: "none",
                     "&:hover": { textDecoration: "underline" },
@@ -1243,7 +1262,7 @@ export default function StorytellerReader() {
       title={project.name}
       description={project.description}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: project.name },
       ]}
       meta={
@@ -1269,7 +1288,9 @@ export default function StorytellerReader() {
               label={`作者 ${project.authorPenName}`}
               variant="outlined"
               component={RouterLink}
-              to={`/storyteller/user/${encodeURIComponent(project.authorPenName)}`}
+              to={steamloomPath(
+                `user/${encodeURIComponent(project.authorPenName)}`,
+              )}
               clickable
             />
           )}
@@ -1420,7 +1441,7 @@ export default function StorytellerReader() {
       {project.rating === "restricted" && !isOwner ? (
         <AgeConfirmationGate
           description="此故事專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
-          leaveTo="/storyteller"
+          leaveTo={steamloomPath()}
           panelTitle="限制級故事專案"
         >
           <Grid container spacing={2}>

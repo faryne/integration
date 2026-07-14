@@ -35,6 +35,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import {
   useCreateStorytellerProviderAPIKey,
   useDeleteStorytellerProviderAPIKey,
@@ -356,7 +357,7 @@ function ProviderApiKeyRow({
               <IconButton
                 edge="end"
                 component={RouterLink}
-                to={`/storyteller/my/usage?apikey=${apiKey.id}`}
+                to={steamloomPath(`my/usage?apikey=${apiKey.id}`)}
               >
                 <QueryStatsIcon fontSize="small" />
               </IconButton>

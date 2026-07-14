@@ -24,7 +24,7 @@ map $http_user_agent $is_social_bot {
 server {
     listen 80;
     listen [::]:80;
-    server_name faryne.dev www.faryne.dev neko.maid.tw;
+    server_name faryne.dev www.faryne.dev neko.maid.tw steamloom.works www.steamloom.works;
 
     # Enable this redirect after HTTPS certificates are ready.
     return 301 https://$host$request_uri;
@@ -134,4 +134,42 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name steamloom.works www.steamloom.works;
+
+    ssl_certificate /etc/letsencrypt/live/steamloom.works/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/steamloom.works/privkey.pem;
+
+    # SteamLoom 是獨立站，故事頁面在這個網域是直接掛在根路徑（沒有 /storyteller 前綴）；
+    # 這裡補上 /storyteller 前綴轉給後端，才會對到 service/sns/meta.go 裡 pathCollection
+    # 的 regex（跟 @nekomaid_sns 補 /nekomaid 前綴是同一個道理）。後端會依 X-Forwarded-Host
+    # 判斷是 steamloom.works，自己組出不含 /storyteller 前綴、指向這個網域的 canonical/OG url。
+    location @steamloom_sns {
+        rewrite ^(.*)$ /sns/storyteller$request_uri break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        error_page 418 = @steamloom_sns;
+
+        if ($is_social_bot) {
+            return 418;
+        }
+
+        proxy_pass https://steamloom-web.web.app;
+        proxy_ssl_server_name on;
+        proxy_ssl_name steamloom-web.web.app;
+        proxy_set_header Host steamloom-web.web.app;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
 }

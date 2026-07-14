@@ -1,5 +1,7 @@
+import { steamloomPath } from "@/helpers/steamloom.ts";
+
 // 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
-export const STORYTELLER_APP_NAME = "Storyteller";
+export const STORYTELLER_APP_NAME = "SteamLoom";
 
 export interface StorytellerProject {
   id: string;
@@ -235,7 +237,7 @@ export function getProjectStories(projectId: string) {
 }
 
 export function publicProjectPath(project: StorytellerProject) {
-  return `/storyteller/story/${project.publicId}-${project.slug}`;
+  return steamloomPath(`story/${project.publicId}-${project.slug}`);
 }
 
 export function getPublicProjects() {

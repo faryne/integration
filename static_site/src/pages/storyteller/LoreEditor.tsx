@@ -29,6 +29,7 @@ import {
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -487,7 +488,7 @@ export default function StorytellerLoreEditor() {
   }, [apiProject?.public_id, isNewLore, lore?.id, autoSaveEnabled, showSnack]);
 
   useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
-    path: id && loreId ? `/storyteller/my/project/${id}/lore/${loreId}` : "",
+    path: id && loreId ? steamloomPath(`my/project/${id}/lore/${loreId}`) : "",
     robots: "noindex, nofollow",
   });
 
@@ -499,9 +500,9 @@ export default function StorytellerLoreEditor() {
       <StorytellerShell
         title="設定集編輯器"
         breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-          { label: "我的工作台", to: "/storyteller/my" },
-          { label: "故事專案", to: "/storyteller/my/project" },
+          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+          { label: "我的工作台", to: steamloomPath("my") },
+          { label: "故事專案", to: steamloomPath("my/project") },
         ]}
       >
         <StorytellerLoading label="正在載入設定集..." />
@@ -530,7 +531,9 @@ export default function StorytellerLoreEditor() {
           showSnack("設定集已存檔。");
           if (isNewLore && savedLore?.public_id) {
             navigate(
-              `/storyteller/my/project/${projectID}/lore/${savedLore.public_id}`,
+              steamloomPath(
+                `my/project/${projectID}/lore/${savedLore.public_id}`,
+              ),
             );
           }
         },
@@ -632,17 +635,22 @@ export default function StorytellerLoreEditor() {
 
   const comparePath =
     leftVersionId && rightVersionId
-      ? `/storyteller/my/project/${project.id}/lore/${lore?.id}/diff/${leftVersionId}/${rightVersionId}`
+      ? steamloomPath(
+          `my/project/${project.id}/lore/${lore?.id}/diff/${leftVersionId}/${rightVersionId}`,
+        )
       : "";
 
   return (
     <StorytellerShell
       title={pageTitle}
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
-        { label: "我的工作台", to: "/storyteller/my" },
-        { label: "故事專案", to: "/storyteller/my/project" },
-        { label: project.name, to: `/storyteller/my/project/${project.id}` },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+        { label: "我的工作台", to: steamloomPath("my") },
+        { label: "故事專案", to: steamloomPath("my/project") },
+        {
+          label: project.name,
+          to: steamloomPath(`my/project/${project.id}`),
+        },
         { label: pageTitle },
       ]}
       action={

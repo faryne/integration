@@ -1,7 +1,9 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import { Paper, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
+import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 
 export interface StorytellerProjectCardProps {
@@ -25,8 +27,10 @@ export function StorytellerProjectCard(props: StorytellerProjectCardProps) {
         height: 1,
         boxSizing: "border-box",
         overflow: "hidden",
+        ...steamPanelTopBarSx,
       }}
     >
+      <SteamRivets inset={7} />
       <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
         <Stack
           direction="row"

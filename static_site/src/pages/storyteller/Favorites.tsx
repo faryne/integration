@@ -32,6 +32,7 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
@@ -61,7 +62,7 @@ export default function StorytellerFavorites() {
   const isError = tab === "stories" ? projectsError : authorsError;
 
   useTitle(`${STORYTELLER_APP_NAME} 我的收藏`, {
-    path: "/storyteller/favorites",
+    path: steamloomPath("favorites"),
     robots: "noindex, nofollow",
   });
 
@@ -69,7 +70,7 @@ export default function StorytellerFavorites() {
     <StorytellerShell
       title="我的收藏"
       breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: "/storyteller" },
+        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的收藏" },
       ]}
     >
@@ -189,7 +190,7 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
       actions={
         <Button
           component={RouterLink}
-          to={`/storyteller/story/${project.public_id}-${project.slug}`}
+          to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
           variant="contained"
         >
           開始閱讀
@@ -267,7 +268,7 @@ function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
         {author.pen_name && (
           <Button
             component={RouterLink}
-            to={`/storyteller/user/${encodeURIComponent(author.pen_name)}`}
+            to={steamloomPath(`user/${encodeURIComponent(author.pen_name)}`)}
             variant="contained"
           >
             查看作者
