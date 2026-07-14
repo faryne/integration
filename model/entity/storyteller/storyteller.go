@@ -595,12 +595,20 @@ type FavoriteAuthorOutput struct {
 
 type ProjectOutput struct {
 	Project
-	AverageRating  float64            `gorm:"-" json:"average_rating"`
-	RatingCount    uint64             `gorm:"-" json:"rating_count"`
-	FavoriteCount  uint64             `gorm:"-" json:"favorite_count"`
-	FavoriteHidden bool               `gorm:"-" json:"favorite_hidden,omitempty"`
-	IsFavorite     bool               `gorm:"-" json:"is_favorite"`
-	TagList        []string           `gorm:"-" json:"tags"`
-	Stories        []Story            `gorm:"-" json:"stories,omitempty"`
-	Author         *UserProfileOutput `gorm:"-" json:"author,omitempty"`
+	AverageRating  float64              `gorm:"-" json:"average_rating"`
+	RatingCount    uint64               `gorm:"-" json:"rating_count"`
+	FavoriteCount  uint64               `gorm:"-" json:"favorite_count"`
+	FavoriteHidden bool                 `gorm:"-" json:"favorite_hidden,omitempty"`
+	IsFavorite     bool                 `gorm:"-" json:"is_favorite"`
+	TagList        []string             `gorm:"-" json:"tags"`
+	Stories        []Story              `gorm:"-" json:"stories,omitempty"`
+	Author         *ProjectAuthorOutput `gorm:"-" json:"author,omitempty"`
+}
+
+// ProjectAuthorOutput 只在故事閱讀頁（PublicProject／SharedProject）才會帶
+// FollowerCount——那兩個入口單獨補查一次作者收藏數；其餘會共用 projectOutput 的
+// 專案列表／編輯頁不會多跑這個查詢，FollowerCount 留 nil，前端就不會顯示這個數字。
+type ProjectAuthorOutput struct {
+	UserProfileOutput
+	FollowerCount *uint64 `json:"follower_count,omitempty"`
 }

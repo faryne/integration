@@ -178,6 +178,8 @@ export interface StorytellerUserProfile {
   auto_save_enabled: boolean;
   auto_save_interval_minutes: number;
   created_at: string;
+  // 只有故事閱讀頁的 project.author 會帶這個欄位（後端只在那個入口多查一次）
+  follower_count?: number;
 }
 
 export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {

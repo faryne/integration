@@ -85,7 +85,7 @@ func (s *Service) PublicProject(projectValue string) (*storytellerModel.ProjectO
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project, false)
+	return s.projectOutputWithFollowerCount(project, false)
 }
 
 func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, error) {
@@ -93,7 +93,7 @@ func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, 
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project, false)
+	return s.projectOutputWithFollowerCount(project, false)
 }
 
 func (s *Service) Projects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
@@ -109,7 +109,7 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutput(project, true)
+	return s.projectOutputWithFollowerCount(project, true)
 }
 
 func (s *Service) uniqueProjectSlug(userID uint64, slug string, excludeProjectID uint64) (string, error) {
@@ -1536,7 +1536,25 @@ func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftS
 	if err != nil {
 		return nil, err
 	}
-	output.Author = author
+	output.Author = &storytellerModel.ProjectAuthorOutput{UserProfileOutput: *author}
+	return output, nil
+}
+
+// projectOutputWithFollowerCount 只給故事閱讀頁用：在共用的 projectOutput 之外，
+// 多補一次作者收藏數。放在這裡而不是塞進 projectOutput 本身，是因為 projectOutput
+// 也被專案列表／編輯頁共用，那些地方一次要組多筆，不需要也不該為每筆都多跑一次查詢。
+func (s *Service) projectOutputWithFollowerCount(project *storytellerModel.Project, includeDraftStories bool) (*storytellerModel.ProjectOutput, error) {
+	output, err := s.projectOutput(project, includeDraftStories)
+	if err != nil {
+		return nil, err
+	}
+	if output.Author != nil {
+		followerCount, err := s.repo.AuthorFollowerCount(project.UserID)
+		if err != nil {
+			return nil, err
+		}
+		output.Author.FollowerCount = &followerCount
+	}
 	return output, nil
 }
 

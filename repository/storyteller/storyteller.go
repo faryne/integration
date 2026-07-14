@@ -749,6 +749,19 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 	return uint64(projectCount), stories.StoryCount, stories.WordCount, rankings.RatingCount, uint64(followerCount), rankings.AverageRating, nil
 }
 
+// AuthorFollowerCount 只查作者收藏數這一個數字，不像 PublicAuthorSummary 還要一併算
+// 作品數／字數／評分等統計——故事閱讀頁只需要這一個數字，不用為此多跑一次昂貴的組合查詢。
+func (r *Repository) AuthorFollowerCount(userID uint64) (uint64, error) {
+	var followerCount int64
+	if err := r.db.
+		Table("storyteller_author_favorites").
+		Where("author_user_id = ? AND deleted_at IS NULL", userID).
+		Count(&followerCount).Error; err != nil {
+		return 0, err
+	}
+	return uint64(followerCount), nil
+}
+
 func (r *Repository) ProjectFavoriteCounts(projectIDs []uint64) (map[uint64]uint64, error) {
 	counts := make(map[uint64]uint64, len(projectIDs))
 	if len(projectIDs) == 0 {

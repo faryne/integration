@@ -726,13 +726,11 @@ export default function StorytellerReader() {
       .filter((bookmark) => bookmark.story_version_id === displayVersionId)
       .map((bookmark) => bookmark.line_index),
   );
-  const bookmarkMode: BookmarkMode = isOwner
-    ? "none"
-    : isHistoricalView
-      ? "removeOnly"
-      : displayVersionId
-        ? "full"
-        : "none";
+  const bookmarkMode: BookmarkMode = isHistoricalView
+    ? "removeOnly"
+    : displayVersionId
+      ? "full"
+      : "none";
   const handleToggleBookmark = (lineIndex: number) => {
     if (!session) {
       setLoginPromptOpen(true);
@@ -951,13 +949,19 @@ export default function StorytellerReader() {
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const showInlineIndex = !isMobile && indexOpen;
-  // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用
+  // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用。
+  // 原作看自己的故事時這幾個按鈕改成「顯示但 disabled」而不是整段隱藏，
+  // 讓原作也能看到收藏數／收藏作者數／評分人數與平均分，只是不能對自己按讚評分。
+  const favoriteCount = apiProject?.favorite_count ?? 0;
+  const authorFollowerCount = apiProject?.author?.follower_count ?? 0;
+  const projectRatingCount = apiProject?.rating_count ?? 0;
+  const projectAverageRating = apiProject?.average_rating ?? 0;
   const readerActions = (
     <>
       <Button
         variant={isFavorited ? "contained" : "outlined"}
         startIcon={isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-        disabled={saveFavorite.isPending}
+        disabled={isOwner || saveFavorite.isPending}
         onClick={() => {
           if (!session) {
             setLoginPromptOpen(true);
@@ -970,7 +974,7 @@ export default function StorytellerReader() {
           setFavorite((value) => !value);
         }}
       >
-        {isFavorited ? "已收藏" : "收藏"}
+        {isFavorited ? "已收藏" : "收藏"}（{favoriteCount}）
       </Button>
       {project.authorUserId && (
         <Button
@@ -978,7 +982,7 @@ export default function StorytellerReader() {
           startIcon={
             isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
           }
-          disabled={saveAuthorFavorite.isPending}
+          disabled={isOwner || saveAuthorFavorite.isPending}
           onClick={() => {
             if (!session) {
               setLoginPromptOpen(true);
@@ -987,7 +991,8 @@ export default function StorytellerReader() {
             saveAuthorFavorite.mutate(!isAuthorFavorited);
           }}
         >
-          {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
+          {isAuthorFavorited ? "已收藏作者" : "收藏作者"}（{authorFollowerCount}
+          ）
         </Button>
       )}
       <Paper variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}>
@@ -998,7 +1003,7 @@ export default function StorytellerReader() {
           <Rating
             value={rating}
             precision={0.5}
-            disabled={saveRanking.isPending}
+            disabled={isOwner || saveRanking.isPending}
             onChange={(_, value) => {
               if (!session) {
                 setLoginPromptOpen(true);
@@ -1009,6 +1014,11 @@ export default function StorytellerReader() {
               }
             }}
           />
+          {projectRatingCount > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              {projectRatingCount} 人・平均 {projectAverageRating.toFixed(1)}
+            </Typography>
+          )}
         </Stack>
       </Paper>
     </>
@@ -1359,7 +1369,7 @@ export default function StorytellerReader() {
               ? "收起故事索引"
               : "展開故事索引"}
         </Button>
-        {currentStory && !isOwner && (
+        {currentStory && (
           <Stack
             direction="row"
             spacing={1}
@@ -1385,8 +1395,8 @@ export default function StorytellerReader() {
         }
       />
 
-      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引、非作者可收藏與評分 */}
-      {currentStory && (isMobile || !isOwner) && (
+      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引，收藏與評分快速選單原作也看得到（顯示但 disabled） */}
+      {currentStory && (
         <>
           <Stack
             spacing={1}
@@ -1409,20 +1419,16 @@ export default function StorytellerReader() {
                 </Fab>
               </Zoom>
             )}
-            {!isOwner && (
-              <Zoom in={!actionBarVisible}>
-                <Fab
-                  color="primary"
-                  size="medium"
-                  aria-label="開啟收藏與評分選單"
-                  onClick={(event) =>
-                    setQuickActionsAnchor(event.currentTarget)
-                  }
-                >
-                  {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-                </Fab>
-              </Zoom>
-            )}
+            <Zoom in={!actionBarVisible}>
+              <Fab
+                color="primary"
+                size="medium"
+                aria-label="開啟收藏與評分選單"
+                onClick={(event) => setQuickActionsAnchor(event.currentTarget)}
+              >
+                {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+              </Fab>
+            </Zoom>
           </Stack>
           <Popover
             open={Boolean(quickActionsAnchor)}
