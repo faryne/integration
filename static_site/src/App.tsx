@@ -142,7 +142,12 @@ const GalgameSubmitVideo = lazy(
 );
 const GalgameAdmin = lazy(() => import("@/pages/galgame/admin.tsx"));
 
+// SteamLoom 是完全獨立的產品，這個畫面是唯一的頂層 Suspense fallback，
+// lazy chunk（含 StorytellerLayout 的 ThemeProvider）還沒下載完成前就會顯示，
+// 吃不到 brass 主題色，所以色碼直接寫死跟 favicon/ErrorPage 同一套黃銅色。
 function LoadingFallback() {
+  const steamloom = isSteamLoomSite();
+
   return (
     <Box
       role="status"
@@ -152,8 +157,9 @@ function LoadingFallback() {
         display: "grid",
         placeItems: "center",
         px: 3,
-        background:
-          "linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #f6f7fb 100%)",
+        background: steamloom
+          ? "linear-gradient(180deg, #16110d 0%, #241b14 48%, #16110d 100%)"
+          : "linear-gradient(180deg, #f8fbff 0%, #ffffff 48%, #f6f7fb 100%)",
       }}
     >
       <Stack
@@ -166,34 +172,44 @@ function LoadingFallback() {
       >
         <Box
           component="img"
-          src="/faryne-icon-1024.jpg"
-          alt="Faryne mascot"
+          src={steamloom ? "/steamloom-icon.svg" : "/faryne-icon-1024.jpg"}
+          alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
           sx={{
             width: 112,
             height: 112,
             borderRadius: 4,
             objectFit: "cover",
-            boxShadow: "0 16px 40px rgba(25, 118, 210, 0.18)",
+            boxShadow: steamloom
+              ? "0 16px 40px rgba(201, 151, 79, 0.35)"
+              : "0 16px 40px rgba(25, 118, 210, 0.18)",
           }}
         />
 
-        <CircularProgress size={28} thickness={4} color="primary" />
+        <CircularProgress
+          size={28}
+          thickness={4}
+          sx={{ color: steamloom ? "#c9974f" : "primary.main" }}
+        />
 
         <Box>
           <Typography
             component="p"
             variant="h6"
-            sx={{ fontWeight: 800, color: "text.primary" }}
+            sx={{
+              fontWeight: 800,
+              color: steamloom ? "#e6bd76" : "text.primary",
+            }}
           >
-            女僕正在整理頁面
+            {steamloom ? "齒輪正在對位" : "女僕正在整理頁面"}
           </Typography>
           <Typography
             component="p"
             variant="body2"
-            color="text.secondary"
-            sx={{ mt: 0.5 }}
+            sx={{ mt: 0.5, color: steamloom ? "#c9974f" : "text.secondary" }}
           >
-            請稍等一下，馬上替主人把資料端上來。
+            {steamloom
+              ? "織機正在暖機，馬上把頁面織好。"
+              : "請稍等一下，馬上替主人把資料端上來。"}
           </Typography>
         </Box>
       </Stack>
