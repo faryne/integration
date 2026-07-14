@@ -21,13 +21,19 @@ import (
 )
 
 const (
-	siteName            = "ha2.tw / faryne.dev"
-	nekomaidSiteName    = "難以名狀的抓圖器"
-	defaultFrontendURL  = "https://faryne.dev"
-	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
-	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
-	defaultImagePath    = "/faryne-icon-1024.jpg"
-	nekomaidAPIBase     = "https://faryne.dev/api/nekomaid"
+	siteName             = "ha2.tw / faryne.dev"
+	nekomaidSiteName     = "難以名狀的抓圖器"
+	steamloomSiteName    = "SteamLoom"
+	defaultFrontendURL   = "https://faryne.dev"
+	steamloomOrigin      = "https://steamloom.works"
+	defaultDescription   = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
+	nekomaidDescription  = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
+	steamloomDescription = "SteamLoom 是故事創作與 AI Agent 協作平台，可瀏覽公開故事與親友分享的故事內容。"
+	defaultImagePath     = "/faryne-icon-1024.jpg"
+	nekomaidAPIBase      = "https://faryne.dev/api/nekomaid"
+	// storytellerPathPrefix 是 faryne.dev 上巢狀模式的路徑前綴；steamloom.works 是獨立站，
+	// 同樣的 story 頁面在該網域是直接掛在根路徑，所以組 canonical/OG url 時要把這段去掉。
+	storytellerPathPrefix = "/storyteller"
 )
 
 type pathMeta struct {
@@ -74,13 +80,13 @@ var fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromSer
 var pathCollection = []pathMeta{
 	{
 		Pattern:     regexp.MustCompile(`^/storyteller/story/share/([^/]+)(?:/[^/]+)?$`),
-		Title:       "Storyteller",
+		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerSharedProjectMeta,
 	},
 	{
 		Pattern:     regexp.MustCompile(`^/storyteller/story/([^/]+)(?:/[^/]+)?$`),
-		Title:       "Storyteller",
+		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerPublicProjectMeta,
 	},
@@ -137,16 +143,37 @@ func RenderHTML(req modelSNS.RenderRequest) (string, error) {
 }
 
 func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
+	steamloom := isSteamLoomHost(req.Host)
+
 	frontendOrigin := frontendOrigin()
+	currentSiteName := siteName
+	currentDescription := defaultDescription
+	if steamloom {
+		frontendOrigin = steamloomOrigin
+		currentSiteName = steamloomSiteName
+		currentDescription = steamloomDescription
+	}
+
+	// frontendPath 保留 /storyteller 前綴用來比對 pathCollection（nginx 轉給後端時會補上這段），
+	// publicPath 才是要顯示在 canonical/OG url 上的真實網址：steamloom.works 是獨立站，
+	// 同樣的故事頁面在該網域是掛在根路徑，沒有這段前綴。
 	frontendPath := normalizeFrontendPath(req.Path)
+	publicPath := frontendPath
+	if steamloom {
+		publicPath = strings.TrimPrefix(frontendPath, storytellerPathPrefix)
+		if publicPath == "" {
+			publicPath = "/"
+		}
+	}
+
 	cleanQuery := stripTrackingQuery(req.Query)
-	canonical := withQuery(absoluteURL(frontendOrigin, frontendPath), cleanQuery)
-	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+frontendPath), cleanQuery)
+	canonical := withQuery(absoluteURL(frontendOrigin, publicPath), cleanQuery)
+	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+publicPath), cleanQuery)
 
 	meta := modelSNS.Meta{
-		Title:        siteName,
-		SiteName:     siteName,
-		Description:  defaultDescription,
+		Title:        currentSiteName,
+		SiteName:     currentSiteName,
+		Description:  currentDescription,
 		Canonical:    canonical,
 		OpenGraphURL: openGraphURL,
 		Image:        absoluteURL(frontendOrigin, defaultImagePath),
@@ -476,6 +503,11 @@ func frontendOrigin() string {
 		return defaultFrontendURL
 	}
 	return origin
+}
+
+func isSteamLoomHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "steamloom.works" || host == "www.steamloom.works"
 }
 
 func normalizeFrontendPath(value string) string {

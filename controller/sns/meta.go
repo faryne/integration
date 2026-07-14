@@ -18,6 +18,7 @@ func Render(ctx fiber.Ctx) error {
 	html, err := serviceSNS.RenderHTML(modelSNS.RenderRequest{
 		Path:  ctx.Params("*"),
 		Query: string(ctx.Request().URI().QueryString()),
+		Host:  ctx.Get("X-Forwarded-Host"),
 	})
 	if err != nil {
 		return err

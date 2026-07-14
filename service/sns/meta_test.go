@@ -201,6 +201,82 @@ func TestBuildMetaStorytellerSharedProjectRoute(t *testing.T) {
 	}
 }
 
+func TestBuildMetaSteamLoomPublicStoryRouteIsSelfCanonical(t *testing.T) {
+	originalFetch := fetchStorytellerPublicProjectMeta
+	fetchStorytellerPublicProjectMeta = func(projectPath string) (storytellerProjectMeta, bool) {
+		if projectPath != "abc123-my-story" {
+			t.Fatalf("unexpected project path: %s", projectPath)
+		}
+		return storytellerProjectMeta{
+			Title:       "河燈之城",
+			Description: "一段關於河港、燈影與記憶的故事。",
+		}, true
+	}
+	defer func() {
+		fetchStorytellerPublicProjectMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{
+		Path: "storyteller/story/abc123-my-story/chapter-1",
+		Host: "steamloom.works",
+	})
+
+	if meta.Title != "河燈之城 | SteamLoom" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Canonical != "https://steamloom.works/story/abc123-my-story/chapter-1" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.OpenGraphURL != "https://steamloom.works/sns/story/abc123-my-story/chapter-1" {
+		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
+	}
+	if meta.Robots != "index, follow" {
+		t.Fatalf("unexpected robots: %s", meta.Robots)
+	}
+}
+
+func TestBuildMetaSteamLoomSharedStoryRouteIsSelfCanonical(t *testing.T) {
+	originalFetch := fetchStorytellerSharedProjectMeta
+	fetchStorytellerSharedProjectMeta = func(shareToken string) (storytellerProjectMeta, bool) {
+		if shareToken != "share-token" {
+			t.Fatalf("unexpected share token: %s", shareToken)
+		}
+		return storytellerProjectMeta{
+			Title:       "親友限定故事",
+			Description: "只分享給親友看的故事摘要。",
+		}, true
+	}
+	defer func() {
+		fetchStorytellerSharedProjectMeta = originalFetch
+	}()
+
+	meta := BuildMeta(modelSNS.RenderRequest{
+		Path: "storyteller/story/share/share-token/chapter-1",
+		Host: "www.steamloom.works",
+	})
+
+	if meta.Title != "親友限定故事 | SteamLoom" {
+		t.Fatalf("unexpected title: %s", meta.Title)
+	}
+	if meta.Canonical != "https://steamloom.works/story/share/share-token/chapter-1" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+	if meta.Robots != "noindex, nofollow" {
+		t.Fatalf("unexpected robots: %s", meta.Robots)
+	}
+}
+
+func TestBuildMetaSteamLoomHomeFallsBackToBrandDefaults(t *testing.T) {
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller", Host: "steamloom.works"})
+
+	if meta.SiteName != "SteamLoom" {
+		t.Fatalf("unexpected site name: %s", meta.SiteName)
+	}
+	if meta.Canonical != "https://steamloom.works/" {
+		t.Fatalf("unexpected canonical: %s", meta.Canonical)
+	}
+}
+
 func TestBuildMetaNekomaidRouteUsesProjectSiteName(t *testing.T) {
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "nekomaid"})
 
