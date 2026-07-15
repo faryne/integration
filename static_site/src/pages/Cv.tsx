@@ -214,7 +214,7 @@ const projects: Project[] = [
   {
     name: "主要銀行匯率查詢",
     type: "Web crawler / Data product",
-    link: "https://faryne-firebase.web.app",
+    link: "/data/rates/",
     highlights: [
       "後端使用 PHP / Laravel 爬取主要銀行匯率資料並存入資料庫。",
       "前端透過 Vue 與 API 顯示資料，部署於 Firebase Hosting。",
@@ -223,44 +223,48 @@ const projects: Project[] = [
   {
     name: "主計總處各縣市指標",
     type: "Open data / Web crawler",
-    link: "https://faryne-firebase.web.app",
+    link: "/data/tw-stats/",
     highlights: [
       "使用 Golang 抓取主計總處 XML，整理為 JSON 後存放於 GitHub。",
       "前端使用 Vue.js / Axios 即時讀取 GitHub 上的資料檔案。",
     ],
   },
   {
-    name: "DMM 影片 / 女優搜尋",
+    name: "DMM 影片",
     type: "Search / Data pipeline",
     link: "/av/video",
     highlights: [
-      "使用 Golang 撰寫爬蟲擷取 Fanza 影片與女優資料。",
-      "透過 Logstash 定期從 MySQL 同步資料到 Elasticsearch，並以 Laravel 5 / Vue 建立前端網站。",
+      "使用 Golang 撰寫爬蟲擷取 Fanza 影片資料。",
+      "透過 Logstash 定期從 MySQL 同步資料到 Elasticsearch，並以 Golang / React 建立前端網站。",
+    ],
+  },
+  {
+    name: "女優搜尋",
+    type: "Search / Data pipeline",
+    link: "/av/actress",
+    highlights: [
+      "使用 Golang 撰寫爬蟲擷取女優資料。",
+      "透過 Logstash 定期從 MySQL 同步資料到 Elasticsearch，並以 Golang / React 建立前端網站。",
     ],
   },
   {
     name: "難以名狀的抓圖器",
     type: "Crawler / Image delivery",
-    link: "/nekomaid",
+    link: "https://neko.maid.tw",
     highlights: [
       "即時解析作品圖片位址與標題，抓取圖片後儲存至 AWS S3。",
       "透過 AWS CloudFront 提供圖片存取，並使用 Elasticsearch 處理站內搜尋。",
     ],
   },
   {
-    name: "api.faryne.dev",
-    type: "Personal API",
-    link: "https://github.com/faryne/api.faryne.dev",
+    name: "galgame.tv",
+    type: "Search / Data pipeline",
+    link: "https://galgame.tv",
     highlights: [
-      "以 Golang、Fiber 與 Google App Engine 為基礎的個人 API 專案。",
+      "以 Golang 撰寫爬蟲定時爬取指定 YouTube 頻道中特定主題的影片。分為增量以及全量爬取",
+      "同步資料到 Elasticsearch，並以 Golang / React 建立前端網站。",
     ],
-  },
-  {
-    name: "ha2.tw",
-    type: "Frontend application",
-    link: "https://github.com/faryne/ha2.tw",
-    highlights: ["以 Vue 為基礎串接 API 顯示內容。"],
-  },
+  }
 ];
 
 const education = [
@@ -287,7 +291,7 @@ const contacts: ContactMethod[] = [
     label: "電子郵件",
     icon: <ContactMailIcon />,
     action: "copy",
-    value: ce("v1.Qi5KHT9AcCFLWC0AQVYhGQ"),
+    value: ce("v1.LSU4SxYMKDAGICU2agkgHg"),
   },
   {
     label: "GitHub",
@@ -456,17 +460,6 @@ export default function Cv() {
               與雲端服務維運為主要工作領域。
             </Typography>
             <Stack direction="row" spacing={1.5} sx={{ flexWrap: "wrap" }}>
-              <Button
-                component="a"
-                href="https://faryne.github.io/"
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="contained"
-                color="inherit"
-                endIcon={<OpenInNewIcon />}
-              >
-                原始簡歷
-              </Button>
               <Button
                 component="a"
                 href="https://blog.faryne.dev"
