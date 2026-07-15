@@ -477,9 +477,24 @@ func getTWSEHistoryDivByCode(code string) ([]etf.Share, error) {
 		if !ok {
 			continue
 		}
+		if isDuplicateShareDate(out, share) {
+			fmt.Printf("skip duplicate ETF share date, code: %s, ex_date: %s, payable_date: %s\n", code, share.ExDate, share.PayableDate)
+			continue
+		}
 		out = append(out, share)
 	}
 	return out, nil
+}
+
+// isDuplicateShareDate 檢查 ex_date/payable_date 是否有任一欄位跟既有準備塞入的資料重複。
+// 用來擋掉髒資料雖然通過年份合理性檢查、但日期其實跟正確資料重複的情況（同一筆配息事件被解析成兩筆）。
+func isDuplicateShareDate(existing []etf.Share, share etf.Share) bool {
+	for _, e := range existing {
+		if e.ExDate == share.ExDate || e.PayableDate == share.PayableDate {
+			return true
+		}
+	}
+	return false
 }
 
 func parseTWSEHistoryDivRow(code string, row []any) (etf.Share, bool) {
@@ -555,15 +570,28 @@ func getOTCHistoryDivByCode(code string) ([]etf.Share, error) {
 				amount = decimal.Zero
 			}
 		}
-		d1, _ := helper.ROCFullDateToAD(v.DivDate, time.DateOnly)
-		d2, _ := helper.ROCFullDateToAD(v.InDate, time.DateOnly)
-		out = append(out, etf.Share{
+		d1, d1Error := helper.ROCFullDateToAD(v.DivDate, time.DateOnly)
+		if d1Error != nil {
+			fmt.Printf("invalid exDate: %s, %s\n", v.DivDate, d1Error.Error())
+			continue
+		}
+		d2, d2Error := helper.ROCFullDateToAD(v.InDate, time.DateOnly)
+		if d2Error != nil {
+			fmt.Printf("invalid payableDate: %s, %s\n", v.InDate, d2Error.Error())
+			continue
+		}
+		share := etf.Share{
 			ExDate:      d1,
 			PayableDate: d2,
 			Share:       amount.InexactFloat64(),
 			Code:        code,
 			FilledDate:  time.Date(1900, 1, 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly),
-		})
+		}
+		if isDuplicateShareDate(out, share) {
+			fmt.Printf("skip duplicate ETF share date, code: %s, ex_date: %s, payable_date: %s\n", code, share.ExDate, share.PayableDate)
+			continue
+		}
+		out = append(out, share)
 	}
 	return out, nil
 }
