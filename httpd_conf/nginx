@@ -16,6 +16,9 @@ upstream faryne_api {
     server 127.0.0.1:33333;
 }
 
+# 藏掉 Server response header 裡的版本號（例如 nginx/1.24.0 -> nginx），減少對外洩漏版本資訊。
+server_tokens off;
+
 map $http_user_agent $is_social_bot {
     default 0;
     ~*(facebookexternalhit|Facebot|Twitterbot|Slackbot|Discordbot|LINE|TelegramBot|LinkedInBot) 1;
@@ -62,6 +65,32 @@ server {
         proxy_connect_timeout 30s;
         proxy_send_timeout 300s;
         proxy_read_timeout 300s;
+
+        # 後端掛掉時，讓錯誤回應也帶 CORS header，且格式比照 service/output.CommonOutput，
+        # 前端不用為了這種情況多寫一套解析邏輯。放在具名 location 是因為它是 nginx 自己產生
+        # 回應（不會有 upstream 的 header 混進來），才不會跟正常回應的 Access-Control-Allow-Origin
+        # 重複衝突。502/503/504 各自對應不同成因（連不上／服務端明確拒絕／逾時），分開給訊息。
+        error_page 502 = @api_gateway_down_502;
+        error_page 503 = @api_gateway_down_503;
+        error_page 504 = @api_gateway_down_504;
+    }
+
+    location @api_gateway_down_502 {
+        default_type application/json;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        return 502 '{"code":502,"cost_time":0,"data":null,"custom_code":"502000","uri":"$request_uri","method":"$request_method","message":"後端服務目前無法連線，請稍後再試"}';
+    }
+
+    location @api_gateway_down_503 {
+        default_type application/json;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        return 503 '{"code":503,"cost_time":0,"data":null,"custom_code":"503000","uri":"$request_uri","method":"$request_method","message":"服務暫時維護中，請稍後再試"}';
+    }
+
+    location @api_gateway_down_504 {
+        default_type application/json;
+        add_header 'Access-Control-Allow-Origin' '*' always;
+        return 504 '{"code":504,"cost_time":0,"data":null,"custom_code":"504000","uri":"$request_uri","method":"$request_method","message":"後端服務回應逾時，請稍後再試"}';
     }
 
     # SNS / OG meta routes are rendered by the backend.
