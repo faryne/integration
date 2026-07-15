@@ -84,8 +84,9 @@ func ROCFullDateToAD(input string, format string) (string, error) {
 
 	// 防呆：來源資料偶爾會出現亂碼（如年份 token 被截斷/重複導致多一位數字），
 	// 若不擋下會算出如西元 3817 年這種明顯不合理的日期卻不報錯。
+	// error 訊息同時帶出原始輸入字串與轉換後的結果，方便事後追查是哪筆來源資料異常。
 	if adYear < 1900 || adYear > 2100 {
-		return "", fmt.Errorf("年份超出合理範圍: %d (原始輸入: %s)", adYear, input)
+		return "", fmt.Errorf("年份超出合理範圍: 原始輸入=%s, 轉換結果=%04d-%02d-%02d", input, adYear, m, d)
 	}
 
 	t := time.Date(adYear, time.Month(m), d, 0, 0, 0, 0, time.Local)
