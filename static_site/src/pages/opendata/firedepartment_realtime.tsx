@@ -36,6 +36,11 @@ const supportedFireDepartmentAreas: TWArea[] = [
   "Taichung",
   "Tainan",
   "Kaohsiung",
+  "Keelung",
+  "Ilan",
+  "Yunlin",
+  "HsinchuCity",
+  "Miaoli",
 ];
 
 interface RegionGroup {

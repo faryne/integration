@@ -29,6 +29,11 @@ var realtimeEventFetchers = []realtimeEventFetcher{
 	{Area: "Taichung", Fetch: Taichung},
 	{Area: "Tainan", Fetch: Tainan},
 	{Area: "Kaohsiung", Fetch: Kaohsiung},
+	{Area: "Keelung", Fetch: Keelung},
+	{Area: "Ilan", Fetch: Ilan},
+	{Area: "Yunlin", Fetch: Yunlin},
+	{Area: "HsinchuCity", Fetch: HsinchuCity},
+	{Area: "Miaoli", Fetch: Miaoli},
 }
 
 var realtimeEventsGroup singleflight.Group
