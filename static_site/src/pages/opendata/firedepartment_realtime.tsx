@@ -1,5 +1,6 @@
 import { useFireDepartmentRealtimeEvents } from "@/apis/opendata/firedepartment.ts";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -69,13 +70,33 @@ const getEventKey = (event: DisplayEvent, index: number) =>
     index,
   ].join("-");
 
+const isSupportedArea = (value?: string): value is TWArea =>
+  !!value && supportedFireDepartmentAreas.includes(value as TWArea);
+
 export function FireDepartmentRealtime() {
+  const navigate = useNavigate();
+  const { city } = useParams<{ city?: string }>();
+  const regionFilter: RegionFilter = isSupportedArea(city) ? city : "all";
   const [q, setQ] = useState<string>(new Date().toString());
-  const [regionFilter, setRegionFilter] = useState<RegionFilter>("all");
   const [keyword, setKeyword] = useState("");
   const realtimeEvents = useFireDepartmentRealtimeEvents(q, regionFilter);
 
   useTitle("即時消防出勤記錄");
+
+  useEffect(() => {
+    if (city && !isSupportedArea(city)) {
+      navigate("/data/fire/realtime", { replace: true });
+    }
+  }, [city, navigate]);
+
+  const handleRegionSelect = useCallback(
+    (area: RegionFilter) => {
+      navigate(
+        area === "all" ? "/data/fire/realtime" : `/data/fire/realtime/${area}`,
+      );
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setQ(new Date().toString()), 300000);
@@ -296,7 +317,7 @@ export function FireDepartmentRealtime() {
                 label={`全部縣市 ${allEvents.length}`}
                 color={regionFilter === "all" ? "error" : "default"}
                 variant={regionFilter === "all" ? "filled" : "outlined"}
-                onClick={() => setRegionFilter("all")}
+                onClick={() => handleRegionSelect("all")}
               />
               {supportedFireDepartmentAreas.map((area) => {
                 const eventCount = eventCountByRegion.get(area);
@@ -307,7 +328,7 @@ export function FireDepartmentRealtime() {
                     label={`${getRegionName(area)}${eventCount === undefined ? "" : ` ${eventCount}`}`}
                     color={regionFilter === area ? "error" : "default"}
                     variant={regionFilter === area ? "filled" : "outlined"}
-                    onClick={() => setRegionFilter(area)}
+                    onClick={() => handleRegionSelect(area)}
                   />
                 );
               })}

@@ -393,6 +393,10 @@ function App() {
                     element={<FireDepartmentRealtime />}
                   />
                   <Route
+                    path={"/data/fire/realtime/:city"}
+                    element={<FireDepartmentRealtime />}
+                  />
+                  <Route
                     path={"/data/taipower/neighbor"}
                     element={<TaipowerNeighbor />}
                   />
