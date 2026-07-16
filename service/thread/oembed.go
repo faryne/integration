@@ -12,7 +12,7 @@ import (
 	"github.com/skip2/go-qrcode"
 
 	"faryne.dev/service/chrome_helper"
-	"faryne.dev/service/client"
+	"faryne.dev/service/helper"
 )
 
 type OembedThread struct {
@@ -122,7 +122,7 @@ func OEmbedCapture(uri string) (string, error) {
 		return "", err
 	}
 
-	content, err := client.DoRaw(req)
+	content, err := helper.DoRaw(req)
 	if err != nil {
 		return "", err
 	}

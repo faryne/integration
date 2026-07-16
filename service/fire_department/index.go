@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"faryne.dev/service/client"
+	"faryne.dev/service/helper"
 )
 
 const crawlerRequestTimeout = 5 * time.Second
@@ -24,7 +24,7 @@ type FetchCallback func([]byte) ([]Event, error)
 
 // Fetch 發送 HTTP 請求並使用回調函數處理響應
 func Fetch(req *http.Request, cb FetchCallback) ([]Event, error) {
-	content, err := client.DoRaw(req)
+	content, err := helper.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}

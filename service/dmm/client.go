@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"faryne.dev/service/client"
+	"faryne.dev/service/helper"
 )
 
 func (i *DMM) send(query string, variables map[string]interface{}, out any) error {
@@ -25,7 +25,7 @@ func (i *DMM) send(query string, variables map[string]interface{}, out any) erro
 	req, _ := http.NewRequest(http.MethodPost, "https://api.video.dmm.co.jp/graphql", postBody)
 	req.Header.Set("Content-Type", "application/json")
 
-	content, err := client.DoRaw(req)
+	content, err := helper.DoRaw(req)
 	if err != nil {
 		return err
 	}

@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"faryne.dev/config"
-	"faryne.dev/service/client"
+	"faryne.dev/service/helper"
 )
 
 type WebhookRequest struct {
@@ -82,7 +82,7 @@ func (s *ServiceDiscord) sendRawMessage(ctx context.Context, message string) err
 	req.Header.Set("Content-Type", "application/json")
 
 	// 發送請求並取得原始響應及狀態碼
-	content, statusCode, err := client.DoRawWithStatus(req)
+	content, statusCode, err := helper.DoRawWithStatus(req)
 	if err != nil {
 		return fmt.Errorf("failed to send discord request: %w", err)
 	}

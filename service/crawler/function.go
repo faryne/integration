@@ -12,11 +12,11 @@ import (
 	"github.com/PuerkitoBio/goquery"
 
 	"faryne.dev/config"
-	"faryne.dev/service/client"
+	"faryne.dev/service/helper"
 )
 
 func CrawlByRequest(req *http.Request, selectors []SelectorRequest) (map[string]any, error) {
-	b, err := client.DoRaw(req)
+	b, err := helper.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func CrawlByUrl(uri string, selectors []SelectorRequest) (map[string]any, error)
 	if err != nil {
 		return nil, err
 	}
-	b, err := client.DoRaw(req)
+	b, err := helper.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func CrawlByUrlWithTimeout(uri string, selectors []SelectorRequest, timeout time
 	defer cancel()
 	req = req.WithContext(ctx)
 
-	b, err := client.DoRaw(req)
+	b, err := helper.DoRaw(req)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func CrawlByURLInTaiwanWithTimeout(
 	req = req.WithContext(ctx)
 	req.Header.Set("Authorization", "Bearer "+secret)
 
-	body, statusCode, err := client.DoRawWithStatus(req)
+	body, statusCode, err := helper.DoRawWithStatus(req)
 	if err != nil {
 		return nil, err
 	}
