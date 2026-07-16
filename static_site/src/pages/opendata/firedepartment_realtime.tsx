@@ -1,5 +1,6 @@
 import { useFireDepartmentRealtimeEvents } from "@/apis/opendata/firedepartment.ts";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -29,14 +30,23 @@ import { useTitle } from "@/helpers/title.tsx";
 
 type RegionFilter = "all" | TWArea;
 
-const supportedFireDepartmentAreas: TWArea[] = [
-  "Taipei",
-  "NewTaipei",
-  "Taoyuan",
-  "Taichung",
-  "Tainan",
-  "Kaohsiung",
+interface FireDepartmentAreaGroup {
+  label: string;
+  areas: TWArea[];
+}
+
+const fireDepartmentAreaGroups: FireDepartmentAreaGroup[] = [
+  { label: "北北基", areas: ["Taipei", "NewTaipei", "Keelung"] },
+  { label: "桃竹苗", areas: ["Taoyuan", "HsinchuCity", "Miaoli"] },
+  { label: "中彰投", areas: ["Taichung"] },
+  { label: "雲嘉南", areas: ["Yunlin", "Tainan"] },
+  { label: "高屏", areas: ["Kaohsiung"] },
+  { label: "宜花東", areas: ["Ilan"] },
 ];
+
+const supportedFireDepartmentAreas: TWArea[] = fireDepartmentAreaGroups.flatMap(
+  (group) => group.areas,
+);
 
 interface RegionGroup {
   key: TWArea;
@@ -64,13 +74,33 @@ const getEventKey = (event: DisplayEvent, index: number) =>
     index,
   ].join("-");
 
+const isSupportedArea = (value?: string): value is TWArea =>
+  !!value && supportedFireDepartmentAreas.includes(value as TWArea);
+
 export function FireDepartmentRealtime() {
+  const navigate = useNavigate();
+  const { city } = useParams<{ city?: string }>();
+  const regionFilter: RegionFilter = isSupportedArea(city) ? city : "all";
   const [q, setQ] = useState<string>(new Date().toString());
-  const [regionFilter, setRegionFilter] = useState<RegionFilter>("all");
   const [keyword, setKeyword] = useState("");
   const realtimeEvents = useFireDepartmentRealtimeEvents(q, regionFilter);
 
   useTitle("即時消防出勤記錄");
+
+  useEffect(() => {
+    if (city && !isSupportedArea(city)) {
+      navigate("/data/fire/realtime", { replace: true });
+    }
+  }, [city, navigate]);
+
+  const handleRegionSelect = useCallback(
+    (area: RegionFilter) => {
+      navigate(
+        area === "all" ? "/data/fire/realtime" : `/data/fire/realtime/${area}`,
+      );
+    },
+    [navigate],
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setQ(new Date().toString()), 300000);
@@ -285,27 +315,57 @@ export function FireDepartmentRealtime() {
               </Stack>
             </Stack>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              flexWrap="wrap"
+              useFlexGap
+              alignItems="center"
+            >
               <Chip
                 icon={<PublicIcon />}
                 label={`全部縣市 ${allEvents.length}`}
                 color={regionFilter === "all" ? "error" : "default"}
                 variant={regionFilter === "all" ? "filled" : "outlined"}
-                onClick={() => setRegionFilter("all")}
+                onClick={() => handleRegionSelect("all")}
               />
-              {supportedFireDepartmentAreas.map((area) => {
-                const eventCount = eventCountByRegion.get(area);
+              {fireDepartmentAreaGroups.map((group) => (
+                <Stack
+                  key={group.label}
+                  direction="row"
+                  spacing={0.75}
+                  alignItems="center"
+                  sx={{
+                    pl: 1.5,
+                    borderLeft: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                      fontWeight: 800,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {group.label}
+                  </Typography>
+                  {group.areas.map((area) => {
+                    const eventCount = eventCountByRegion.get(area);
 
-                return (
-                  <Chip
-                    key={area}
-                    label={`${getRegionName(area)}${eventCount === undefined ? "" : ` ${eventCount}`}`}
-                    color={regionFilter === area ? "error" : "default"}
-                    variant={regionFilter === area ? "filled" : "outlined"}
-                    onClick={() => setRegionFilter(area)}
-                  />
-                );
-              })}
+                    return (
+                      <Chip
+                        key={area}
+                        label={`${getRegionName(area)}${eventCount === undefined ? "" : ` ${eventCount}`}`}
+                        color={regionFilter === area ? "error" : "default"}
+                        variant={regionFilter === area ? "filled" : "outlined"}
+                        onClick={() => handleRegionSelect(area)}
+                      />
+                    );
+                  })}
+                </Stack>
+              ))}
             </Stack>
           </Stack>
         </Paper>
