@@ -34,6 +34,10 @@ declare module "@tiptap/core" {
       /** "none" 代表改回一般段落。跟 headingLevel 互斥，設定非 "none" 的引用/清單
        * 種類會把 headingLevel 重置成 0。 */
       setBlockKind: (kind: BlockKindValue) => ReturnType;
+      /** 在游標處分割段落，前半段沿用原本的 markerId，後半段拿新的 markerId、標題重置成
+       * 一般段落——跟使用者按 Enter 完全同一套行為，Enter 快速鍵跟貼上多行文字都靠這個
+       * command，避免兩處各寫一份邏輯、行為兜不起來。 */
+      splitParagraphFresh: () => ReturnType;
     };
   }
 }
@@ -138,6 +142,19 @@ export const MarkerParagraph = Paragraph.extend({
             blockKind: kind,
             headingLevel: DEFAULT_HEADING_LEVEL,
           }),
+      splitParagraphFresh:
+        () =>
+        ({ commands, tr, dispatch }) => {
+          const didSplit = commands.splitBlock();
+          if (!didSplit) return false;
+          if (dispatch) {
+            const { $from } = tr.selection;
+            const paragraphStart = $from.before($from.depth);
+            tr.setNodeAttribute(paragraphStart, "markerId", generateMarkerId());
+            tr.setNodeAttribute(paragraphStart, "headingLevel", 0);
+          }
+          return true;
+        },
     };
   },
 
@@ -237,20 +254,10 @@ export const MarkerParagraph = Paragraph.extend({
           });
         }
 
-        const didSplit = editor.commands.splitBlock();
-        if (!didSplit) return false;
-
-        const { $from: newFrom } = editor.state.selection;
-        const paragraphStart = newFrom.before(newFrom.depth);
-        editor.commands.command(({ tr }) => {
-          tr.setNodeAttribute(paragraphStart, "markerId", generateMarkerId());
-          tr.setNodeAttribute(paragraphStart, "headingLevel", 0);
-          // blockKind 故意不重置：清單/引用中按 Enter（非空行）應該延續同一種類型
-          // （下一個清單項目/引用行），splitBlock 預設就會把目前段落的 blockKind
-          // 原樣複製到新段落，不需要額外處理。
-          return true;
-        });
-        return true;
+        // blockKind 故意不重置：清單/引用中按 Enter（非空行）應該延續同一種類型
+        // （下一個清單項目/引用行），splitBlock 預設就會把目前段落的 blockKind
+        // 原樣複製到新段落，不需要額外處理。
+        return editor.commands.splitParagraphFresh();
       },
     };
   },
