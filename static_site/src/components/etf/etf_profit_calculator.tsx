@@ -416,6 +416,23 @@ export function EtfProfitCalculator({
               實際損益請以券商帳單為準。投資標的過去績效不代表未來表現，使用者應獨立評估風險並自負投資損益。
             </Typography>
           </Box>
+
+          {onSaveTransactions && (
+            <Box sx={{ px: 1, opacity: 0.7 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                component="p"
+                align="center"
+                sx={{ lineHeight: 1.5 }}
+              >
+                🔒
+                儲存聲明：階段式算法的交易紀錄若選擇「同意並儲存」，會與您的帳號綁定保存，下次開啟本頁時自動載入，不需要重新輸入。
+                這些紀錄僅供您本人試算使用，不會公開顯示，也不會提供給其他使用者或第三方查看您的持倉內容。
+                您可以隨時修改後重新儲存以覆蓋舊資料。
+              </Typography>
+            </Box>
+          )}
         </Stack>
       </CardContent>
     </Card>
