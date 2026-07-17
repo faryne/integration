@@ -63,7 +63,13 @@ func (inst *RepositoryETFCode) getCodeCommonSql() string {
 		" 	c.ma20, " +
 		" 	c.ma20_bias_rate " +
 		"FROM " + (&etf.ETF{}).TableName() + " as c " +
-		"LEFT JOIN (SELECT MAX(`ex_date`) as ex_date, `code`, MAX(`share`) as `share`, MAX(`payable_date`) as payable_date FROM " + (&etf.Share{}).TableName() + " WHERE `share` > 0 GROUP BY `code`) tmp ON tmp.code = c.code"
+		"LEFT JOIN (" +
+		"	SELECT `ex_date`, `code`, `share`, `payable_date` FROM (" +
+		"		SELECT `ex_date`, `code`, `share`, `payable_date`, " +
+		"			ROW_NUMBER() OVER (PARTITION BY `code` ORDER BY `ex_date` DESC) AS rn " +
+		"		FROM " + (&etf.Share{}).TableName() + " WHERE `share` > 0" +
+		"	) ranked WHERE rn = 1" +
+		") tmp ON tmp.code = c.code"
 }
 func (inst *RepositoryETFCode) GetAllETF() ([]etf.ETF, error) {
 	var out []etf.ETF
