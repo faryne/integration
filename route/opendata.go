@@ -42,12 +42,23 @@ func OpenData(app *fiber.App) {
 	g51.Get("/code_list", opendata.TwseEtfCodeList)
 	g51.Get("/upcoming/by_date", opendata.TwseUpcomingExETFByDate)
 
-	g51Auth := g51.Group("", authsession.New())
-	g51Auth.Get("/favorites", opendata.TwseEtfFavorites)
-	g51Auth.Post("/:code/favorite", opendata.CreateTwseEtfFavorite)
-	g51Auth.Delete("/:code/favorite", opendata.DeleteTwseEtfFavorite)
-	g51Auth.Get("/:code/transactions", opendata.TwseEtfSavedTransactions)
-	g51Auth.Put("/:code/transactions", opendata.SaveTwseEtfSavedTransactions)
+	// authsession.New() 掛在每個路由自己身上，不透過 g51.Group("", authsession.New())
+	// 建子群組：Fiber v3 的 Group("", middleware) 是用同一個 prefix 註冊一個
+	// methodUse 中介層，之後在這個 prefix 底下註冊的路由（例如下面的 :code/share_info、
+	// :code/ticker）都會先經過這個中介層，等於整個 /twse 都被要求要登入。
+	g51.Get("/favorites", authsession.New(), opendata.TwseEtfFavorites)
+	g51.Post("/:code/favorite", authsession.New(), opendata.CreateTwseEtfFavorite)
+	g51.Delete("/:code/favorite", authsession.New(), opendata.DeleteTwseEtfFavorite)
+	g51.Get(
+		"/:code/transactions",
+		authsession.New(),
+		opendata.TwseEtfSavedTransactions,
+	)
+	g51.Put(
+		"/:code/transactions",
+		authsession.New(),
+		opendata.SaveTwseEtfSavedTransactions,
+	)
 
 	g51a := g51.Group("/:code")
 	g51a.Get("/share_info", opendata.TwseEtfShareInfo)
