@@ -290,11 +290,18 @@ export function StorytellerWysiwygEditor({
       },
       // 白名單規則：不接受任何 HTML 內容。無論剪貼簿裡帶了什麼樣式，
       // 一律只取 text/plain 內容當純文字插入，貼上後格式跑掉是可接受的結果。
+      // 貼上的文字可能帶有換行（例如從其他網站複製多行內容），每個換行都要變成真正的
+      // 段落分割（配新 markerId），不能讓 \n 原封不動塞進單一段落的文字內容裡——那樣
+      // 會跟「一個 \n＝一個段落」的序列化假設對不上，存檔後段落 marker 會露出來變成
+      // 可見文字（見 DevelopDocuments/storyteller/所見即所得編輯器_issue.md）。
       handlePaste: (view, event) => {
         const text = event.clipboardData?.getData("text/plain") ?? "";
         if (text === "") return false;
         event.preventDefault();
-        view.dispatch(view.state.tr.insertText(text));
+        text.split(/\r\n|\r|\n/).forEach((line, index) => {
+          if (index > 0) editor?.commands.splitParagraphFresh();
+          if (line !== "") view.dispatch(view.state.tr.insertText(line));
+        });
         return true;
       },
     },
