@@ -1,8 +1,10 @@
 import { useState } from "react";
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -10,6 +12,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  Snackbar,
   Stack,
   TextField,
   Typography,
@@ -27,7 +30,7 @@ interface TransactionRecordsEditorProps {
   onChange: (records: Transaction[]) => void;
   // 有傳入時顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫，實際持久化 (需登入) 由外部提供
   // 每筆 Transaction 為一個購入批次，若該批次有賣出，賣出資訊會一併帶在同一筆物件內 (buyXxx / sellXxx 同列)，不會拆成獨立的兩筆
-  onSaveTransactions?: (records: Transaction[]) => void;
+  onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
 }
 
 // 階段式介面：可分批輸入多筆購入/賣出交易，各自獨立計算損益後加總
@@ -37,6 +40,24 @@ export function TransactionRecordsEditor({
   onSaveTransactions,
 }: TransactionRecordsEditorProps) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [savedNotice, setSavedNotice] = useState(false);
+
+  const handleConfirmSave = async () => {
+    if (!onSaveTransactions) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      await onSaveTransactions(records);
+      setSaveDialogOpen(false);
+      setSavedNotice(true);
+    } catch {
+      setSaveError("儲存失敗，請稍後再試");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const updateRecord = (index: number, patch: Partial<Transaction>) => {
     const newRecs = [...records];
@@ -179,7 +200,9 @@ export function TransactionRecordsEditor({
           </Button>
           <Dialog
             open={saveDialogOpen}
-            onClose={() => setSaveDialogOpen(false)}
+            onClose={() => {
+              if (!saving) setSaveDialogOpen(false);
+            }}
           >
             <DialogTitle>儲存交易紀錄</DialogTitle>
             <DialogContent>
@@ -197,15 +220,24 @@ export function TransactionRecordsEditor({
                   <li>分享對象：不會提供給第三方，僅與你的帳號綁定保存。</li>
                 </Box>
               </DialogContentText>
+              {saveError && (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  {saveError}
+                </Alert>
+              )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setSaveDialogOpen(false)}>取消</Button>
+              <Button
+                onClick={() => setSaveDialogOpen(false)}
+                disabled={saving}
+              >
+                取消
+              </Button>
               <Button
                 variant="contained"
-                onClick={() => {
-                  onSaveTransactions(records);
-                  setSaveDialogOpen(false);
-                }}
+                onClick={() => void handleConfirmSave()}
+                disabled={saving}
+                startIcon={saving ? <CircularProgress size={16} /> : undefined}
               >
                 同意並儲存
               </Button>
@@ -213,6 +245,12 @@ export function TransactionRecordsEditor({
           </Dialog>
         </>
       )}
+      <Snackbar
+        open={savedNotice}
+        autoHideDuration={2200}
+        onClose={() => setSavedNotice(false)}
+        message="已儲存交易紀錄"
+      />
     </Box>
   );
 }
