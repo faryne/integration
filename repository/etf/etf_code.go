@@ -63,13 +63,14 @@ func (inst *RepositoryETFCode) getCodeCommonSql() string {
 		" 	c.ma20, " +
 		" 	c.ma20_bias_rate " +
 		"FROM " + (&etf.ETF{}).TableName() + " as c " +
-		"LEFT JOIN (" +
-		"	SELECT `ex_date`, `code`, `share`, `payable_date` FROM (" +
-		"		SELECT `ex_date`, `code`, `share`, `payable_date`, " +
-		"			ROW_NUMBER() OVER (PARTITION BY `code` ORDER BY `ex_date` DESC) AS rn " +
-		"		FROM " + (&etf.Share{}).TableName() + " WHERE `share` > 0" +
-		"	) ranked WHERE rn = 1" +
-		") tmp ON tmp.code = c.code"
+		// 部署機是 MySQL 5.7，不支援 ROW_NUMBER() OVER(...)（8.0 才有），
+		// 改用 correlated subquery 依 id 取每檔 ETF 最新一筆 share > 0 的紀錄，
+		// 確保 ex_date/share/payable_date 保證來自同一列，且 id 唯一不會重複列。
+		"LEFT JOIN " + (&etf.Share{}).TableName() + " as tmp ON tmp.id = (" +
+		"	SELECT s2.id FROM " + (&etf.Share{}).TableName() + " as s2 " +
+		"	WHERE s2.code = c.code AND s2.share > 0 " +
+		"	ORDER BY s2.ex_date DESC, s2.id DESC LIMIT 1" +
+		")"
 }
 func (inst *RepositoryETFCode) GetAllETF() ([]etf.ETF, error) {
 	var out []etf.ETF
