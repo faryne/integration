@@ -109,38 +109,40 @@ export function Header({ fullWidth = false }: HeaderProps) {
               </MenuItem>
             ))}
           </Menu>
-          {showLoginButton &&
-            !loading &&
-            (user ? (
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <Tooltip title={user.displayName ?? user.email ?? "已登入"}>
-                  <Avatar
-                    src={user.photoURL ?? undefined}
-                    alt={user.displayName ?? "使用者"}
-                    sx={{ width: 32, height: 32 }}
-                  />
-                </Tooltip>
-                <Tooltip title="登出">
+          {showLoginButton && !loading && (
+            <Box sx={{ ml: "auto", pl: 2 }}>
+              {user ? (
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <Tooltip title={user.displayName ?? user.email ?? "已登入"}>
+                    <Avatar
+                      src={user.photoURL ?? undefined}
+                      alt={user.displayName ?? "使用者"}
+                      sx={{ width: 32, height: 32 }}
+                    />
+                  </Tooltip>
+                  <Tooltip title="登出">
+                    <IconButton
+                      sx={defaultButtonCss}
+                      onClick={() => void logout()}
+                      disabled={submitting}
+                    >
+                      <LogoutIcon />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              ) : (
+                <Tooltip title="使用 Google 登入">
                   <IconButton
                     sx={defaultButtonCss}
-                    onClick={() => void logout()}
+                    onClick={() => void login()}
                     disabled={submitting}
                   >
-                    <LogoutIcon />
+                    <LoginIcon />
                   </IconButton>
                 </Tooltip>
-              </Stack>
-            ) : (
-              <Tooltip title="使用 Google 登入">
-                <IconButton
-                  sx={defaultButtonCss}
-                  onClick={() => void login()}
-                  disabled={submitting}
-                >
-                  <LoginIcon />
-                </IconButton>
-              </Tooltip>
-            ))}
+              )}
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
       <Toolbar />
