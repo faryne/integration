@@ -55,13 +55,18 @@ import {
   useGetTwseEtfInfo,
   useGetTwseEtfTicker,
 } from "@/apis/opendata/twse_etf.ts";
-import type { TwseEtfInfo, TwseEtfShare } from "@/types/etf.ts";
+import type { EtfInfo, TwseEtfInfo, TwseEtfShare } from "@/types/etf.ts";
 import dayjs from "dayjs";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { buildSnsShareUrl, shareUrl } from "@/helpers/share.ts";
 import { DetailDialog } from "@/components/common/DetailDialog.tsx";
 import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
+import {
+  EtfProfitCalculator,
+  type DailyPriceQuote,
+} from "@/components/etf/etf_profit_calculator.tsx";
+import { fetchTwseEtfDailyTicker } from "@/apis/opendata/twse_etf.ts";
 
 const filters = [
   { label: "全部", value: "ALL" },
@@ -517,6 +522,29 @@ const EtfDashboard: React.FC = () => {
   const selectedEtf = routeCode ? (etfByCode.get(routeCode) ?? null) : null;
   const isInvalidRouteCode = !!routeCode && query.isSuccess && !selectedEtf;
   const queryShares = useGetTwseEtfInfo(selectedEtf?.code ?? "");
+  const profitCalculatorData = useMemo<EtfInfo>(
+    () => ({
+      code: selectedEtf?.code ?? "",
+      description: selectedEtf?.name ?? "",
+      distributions: (queryShares.data?.data?.stats ?? []).map((s) => ({
+        per_share: s.share,
+        declared_date: formatDateOrDash(s.ex_date),
+        ex_date: formatDateOrDash(s.ex_date),
+        payable_date: formatDateOrDash(s.payable_date),
+        roc: -1, // 台股境內配息無 ROC 預扣退稅資料
+      })),
+    }),
+    [selectedEtf, queryShares.data],
+  );
+  const handleFetchDailyPrice = useCallback(
+    async (date: string): Promise<DailyPriceQuote | null> => {
+      if (!selectedEtf) return null;
+      const row = await fetchTwseEtfDailyTicker(selectedEtf.code, date);
+      if (!row) return null;
+      return { open: row.open, high: row.max, low: row.min, close: row.close };
+    },
+    [selectedEtf],
+  );
   useTitle(
     isInvalidRouteCode
       ? `找不到 ETF - ${routeCode}`
@@ -1077,6 +1105,7 @@ const EtfDashboard: React.FC = () => {
             >
               <Tab label={"配息紀錄"} />
               <Tab label={"歷史股價"} />
+              <Tab label={"獲利試算"} />
             </Tabs>
             <Divider />
             <Box sx={{ display: dialogTabValue === 0 ? "block" : "none" }}>
@@ -1087,6 +1116,15 @@ const EtfDashboard: React.FC = () => {
                 <EtfCandleChart
                   etfCode={selectedEtf.code}
                   etfName={selectedEtf.name}
+                />
+              )}
+            </Box>
+            <Box sx={{ display: dialogTabValue === 2 ? "block" : "none" }}>
+              {dialogTabValue === 2 && (
+                <EtfProfitCalculator
+                  data={profitCalculatorData}
+                  defaultCurrency="TWD"
+                  onFetchDailyPrice={handleFetchDailyPrice}
                 />
               )}
             </Box>

@@ -74,3 +74,12 @@ export function useGetTwseEtfTicker(
     enabled: enabled && !!code && !!start_date && !!end_date,
   });
 }
+
+// 供試算盈虧的「依日期查詢」功能使用：非 hook，供使用者點擊查詢時直接呼叫
+export async function fetchTwseEtfDailyTicker(code: string, date: string) {
+  const response = await axios.get<CommonResponse<TwseETFTicker[]>>(
+    `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/${code}/ticker`,
+    { params: { start_date: date, end_date: date } },
+  );
+  return response.data.data?.[0] ?? null;
+}
