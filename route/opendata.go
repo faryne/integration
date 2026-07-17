@@ -2,6 +2,7 @@ package route
 
 import (
 	"faryne.dev/controller/opendata"
+	"faryne.dev/middleware/authsession"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -40,6 +41,14 @@ func OpenData(app *fiber.App) {
 	g51 := g5.Group("/twse")
 	g51.Get("/code_list", opendata.TwseEtfCodeList)
 	g51.Get("/upcoming/by_date", opendata.TwseUpcomingExETFByDate)
+
+	g51Auth := g51.Group("", authsession.New())
+	g51Auth.Get("/favorites", opendata.TwseEtfFavorites)
+	g51Auth.Post("/:code/favorite", opendata.CreateTwseEtfFavorite)
+	g51Auth.Delete("/:code/favorite", opendata.DeleteTwseEtfFavorite)
+	g51Auth.Get("/:code/transactions", opendata.TwseEtfSavedTransactions)
+	g51Auth.Put("/:code/transactions", opendata.SaveTwseEtfSavedTransactions)
+
 	g51a := g51.Group("/:code")
 	g51a.Get("/share_info", opendata.TwseEtfShareInfo)
 	g51a.Get("/ticker", opendata.TwseEtfTicker)

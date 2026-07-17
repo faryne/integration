@@ -47,6 +47,8 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import DensitySmallIcon from "@mui/icons-material/DensitySmall";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import ShareIcon from "@mui/icons-material/Share";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 import ApexCharts from "apexcharts/candlestick";
 import { useTitle } from "@/helpers/title.tsx";
 import {
@@ -67,6 +69,15 @@ import {
   type DailyPriceQuote,
 } from "@/components/etf/etf_profit_calculator.tsx";
 import { fetchTwseEtfDailyTicker } from "@/apis/opendata/twse_etf.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import {
+  useSaveTwseEtfFavorite,
+  useTwseEtfFavorites,
+} from "@/apis/opendata/etf_favorites.ts";
+import {
+  useSaveTwseEtfTransactions,
+  useTwseEtfSavedTransactions,
+} from "@/apis/opendata/etf_transactions.ts";
 
 const filters = [
   { label: "全部", value: "ALL" },
@@ -545,6 +556,39 @@ const EtfDashboard: React.FC = () => {
     },
     [selectedEtf],
   );
+
+  const { session } = useAuth();
+  const favoritesQuery = useTwseEtfFavorites();
+  const favoritedCodes = useMemo(
+    () => new Set((favoritesQuery.data ?? []).map((favorite) => favorite.code)),
+    [favoritesQuery.data],
+  );
+  const saveFavoriteMutation = useSaveTwseEtfFavorite();
+  const handleToggleFavorite = useCallback(
+    (etfCode: string) => {
+      saveFavoriteMutation.mutate({
+        code: etfCode,
+        favorited: !favoritedCodes.has(etfCode),
+      });
+    },
+    [favoritedCodes, saveFavoriteMutation],
+  );
+
+  const isProfitTabOpen = dialogTabValue === 2;
+  const savedTransactionsQuery = useTwseEtfSavedTransactions(
+    selectedEtf?.code,
+    isProfitTabOpen,
+  );
+  const saveTransactionsMutation = useSaveTwseEtfTransactions(
+    selectedEtf?.code,
+  );
+  // 已登入時要等已儲存的交易紀錄抓回來才 mount 試算元件，讓 initialTransactions 有正確初始值
+  const canRenderProfitCalculator =
+    isProfitTabOpen &&
+    (!session ||
+      savedTransactionsQuery.isSuccess ||
+      savedTransactionsQuery.isError);
+
   useTitle(
     isInvalidRouteCode
       ? `找不到 ETF - ${routeCode}`
@@ -1038,6 +1082,8 @@ const EtfDashboard: React.FC = () => {
               data={filteredEtfs}
               density={tableDensity}
               onClick={handleOpenByCode}
+              favoritedCodes={session ? favoritedCodes : undefined}
+              onToggleFavorite={session ? handleToggleFavorite : undefined}
             />
           ) : !query.isLoading && !query.isError ? (
             <Grid size={12}>
@@ -1094,6 +1140,14 @@ const EtfDashboard: React.FC = () => {
               handleShare(`/data/etf/twse/${selectedEtf.code}${querySuffix}`)
             }
             shareLabel="分享 ETF 連結"
+            favorite={
+              session
+                ? {
+                    isFavorited: favoritedCodes.has(selectedEtf.code),
+                    onToggle: () => handleToggleFavorite(selectedEtf.code),
+                  }
+                : undefined
+            }
           >
             <EtfDetailSummary etf={selectedEtf} />
             <Tabs
@@ -1119,13 +1173,30 @@ const EtfDashboard: React.FC = () => {
                 />
               )}
             </Box>
-            <Box sx={{ display: dialogTabValue === 2 ? "block" : "none" }}>
-              {dialogTabValue === 2 && (
+            <Box sx={{ display: isProfitTabOpen ? "block" : "none" }}>
+              {canRenderProfitCalculator ? (
                 <EtfProfitCalculator
                   data={profitCalculatorData}
                   defaultCurrency="TWD"
                   onFetchDailyPrice={handleFetchDailyPrice}
+                  initialTransactions={
+                    session ? savedTransactionsQuery.data : undefined
+                  }
+                  onSaveTransactions={
+                    session
+                      ? (records) =>
+                          saveTransactionsMutation.mutateAsync(records)
+                      : undefined
+                  }
                 />
+              ) : (
+                isProfitTabOpen && (
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", py: 6 }}
+                  >
+                    <CircularProgress />
+                  </Box>
+                )
               )}
             </Box>
           </DetailDialog>
@@ -1139,6 +1210,8 @@ const EtfDashboard: React.FC = () => {
         is_show={isDividendTab}
         selected_date={selectedDate.format("YYYY-MM-DD")}
         onClick={handleOpenByCode}
+        favoritedCodes={session ? favoritedCodes : undefined}
+        onToggleFavorite={session ? handleToggleFavorite : undefined}
       />
       <InvestmentRiskDisclaimer />
       <Snackbar
@@ -1159,6 +1232,8 @@ const DividendTable = ({
   is_show,
   selected_date,
   onClick,
+  favoritedCodes,
+  onToggleFavorite,
 }: {
   selected_date: string;
   isLoading: boolean;
@@ -1166,6 +1241,8 @@ const DividendTable = ({
   is_show: boolean;
   data: TwseEtfInfo[];
   onClick?: (etfCode: string) => void;
+  favoritedCodes?: Set<string>;
+  onToggleFavorite?: (etfCode: string) => void;
 }) => (
   <>
     <Box
@@ -1203,7 +1280,12 @@ const DividendTable = ({
       ) : isError ? (
         <Alert severity="error">除息資料載入失敗，請稍後再試。</Alert>
       ) : (
-        <EtfTableList data={data} onClick={onClick} />
+        <EtfTableList
+          data={data}
+          onClick={onClick}
+          favoritedCodes={favoritedCodes}
+          onToggleFavorite={onToggleFavorite}
+        />
       )}
     </Box>
   </>
@@ -1214,11 +1296,15 @@ const EtfTableList = ({
   density = "full",
   onClick,
   noDataText,
+  favoritedCodes,
+  onToggleFavorite,
 }: {
   data: TwseEtfInfo[];
   density?: TableDensity;
   onClick?: (etfCode: string) => void;
   noDataText?: string;
+  favoritedCodes?: Set<string>;
+  onToggleFavorite?: (etfCode: string) => void;
 }) => {
   const [orderBy, setOrderBy] = useState<{
     field: OrderableField;
@@ -1241,7 +1327,7 @@ const EtfTableList = ({
     });
   }, [orderBy, data]);
   const isCompact = density === "compact";
-  const columnCount = isCompact ? 5 : 13;
+  const columnCount = (isCompact ? 5 : 13) + (onToggleFavorite ? 1 : 0);
 
   return (
     <TableContainer
@@ -1261,6 +1347,9 @@ const EtfTableList = ({
       >
         <TableHead>
           <TableRow>
+            {onToggleFavorite && (
+              <TableCell padding="checkbox" sx={{ bgcolor: "#f6f9fc" }} />
+            )}
             <TableCell
               sx={{
                 fontWeight: 900,
@@ -1497,6 +1586,21 @@ const EtfTableList = ({
                   "&:hover": { bgcolor: "rgba(25, 118, 210, 0.06)" },
                 }}
               >
+                {onToggleFavorite && (
+                  <TableCell padding="checkbox">
+                    <IconButton
+                      size="small"
+                      color="warning"
+                      onClick={() => onToggleFavorite(etf.code)}
+                    >
+                      {favoritedCodes?.has(etf.code) ? (
+                        <StarIcon fontSize="small" />
+                      ) : (
+                        <StarBorderIcon fontSize="small" />
+                      )}
+                    </IconButton>
+                  </TableCell>
+                )}
                 <TableCell>
                   <Chip
                     color="primary"

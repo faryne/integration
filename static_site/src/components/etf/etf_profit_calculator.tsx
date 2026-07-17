@@ -48,8 +48,10 @@ export interface EtfProfitCalculatorProps {
   defaultCurrency?: Currency;
   // 依日期取得當日開高低收，供使用者挑選帶入「當前股價」；不同資料來源需自行實作
   onFetchDailyPrice?: (date: string) => Promise<DailyPriceQuote | null>;
-  // 有傳入時，階段式算法會顯示「儲存交易紀錄」授權按鈕；未來將與登入功能綁定
-  onSaveTransactions?: (records: Transaction[]) => void;
+  // 階段式算法初始要帶入的交易紀錄（例如使用者先前已登入儲存過的紀錄）
+  initialTransactions?: Transaction[];
+  // 有傳入時，階段式算法會顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫
+  onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
 }
 
 // 計算單一批次交易（原始股數 + 分割紀錄）在截至目前為止的配息與價差損益
@@ -170,6 +172,7 @@ export function EtfProfitCalculator({
   data,
   defaultCurrency = "USD",
   onFetchDailyPrice,
+  initialTransactions,
   onSaveTransactions,
 }: EtfProfitCalculatorProps) {
   const [tab, setTab] = useState(0);
@@ -198,10 +201,12 @@ export function EtfProfitCalculator({
   const [simpleAvgCost, setSimpleAvgCost] = useState<number>(0);
   const [simpleStartDate, setSimpleStartDate] = useState<string>("");
 
-  // 階段式狀態
-  const [records, setRecords] = useState<Transaction[]>([
-    emptyTransaction("1"),
-  ]);
+  // 階段式狀態：有帶入已儲存的紀錄就用那份，否則維持一列空白列
+  const [records, setRecords] = useState<Transaction[]>(() =>
+    initialTransactions && initialTransactions.length > 0
+      ? initialTransactions
+      : [emptyTransaction("1")],
+  );
 
   const getTrendColor = (value: number) => {
     if (value === 0) return "text.primary";

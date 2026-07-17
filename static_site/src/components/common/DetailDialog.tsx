@@ -13,10 +13,19 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ShareIcon from "@mui/icons-material/Share";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+
+export interface DetailDialogFavoriteProps {
+  isFavorited: boolean;
+  onToggle: () => void;
+  label?: string;
+}
 
 export interface DetailDialogProps {
   badge?: string;
   children: ReactNode;
+  favorite?: DetailDialogFavoriteProps;
   maxWidth?: DialogProps["maxWidth"];
   onClose: () => void;
   onShare?: () => void;
@@ -28,6 +37,7 @@ export interface DetailDialogProps {
 export function DetailDialog({
   badge,
   children,
+  favorite,
   maxWidth = "md",
   onClose,
   onShare,
@@ -76,6 +86,18 @@ export function DetailDialog({
           </Typography>
         </Box>
         <Stack direction="row" spacing={0.5} alignItems="center">
+          {favorite && (
+            <Tooltip
+              title={
+                favorite.label ??
+                (favorite.isFavorited ? "取消最愛" : "加入最愛")
+              }
+            >
+              <IconButton onClick={favorite.onToggle} color="warning">
+                {favorite.isFavorited ? <StarIcon /> : <StarBorderIcon />}
+              </IconButton>
+            </Tooltip>
+          )}
           {onShare && (
             <Tooltip title={shareLabel}>
               <IconButton onClick={onShare}>
