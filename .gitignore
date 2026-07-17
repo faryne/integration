@@ -23,3 +23,5 @@ vue-nekomaid
 logstash
 
 .claude/launch.json
+
+.backup/
