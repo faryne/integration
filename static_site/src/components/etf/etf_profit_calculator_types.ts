@@ -1,23 +1,32 @@
+// 同一筆購入批次可以分好幾次賣出（例如買 4000 股後分 3 次賣掉不同股數/價格）
+export interface SellEvent {
+  id: string;
+  sellDate: string;
+  sellShares: number;
+  sellPrice: number;
+}
+
 export interface Transaction {
   id: string;
   buyDate: string;
   buyShares: number; // 原始購入股數
   buyPrice: number;
-  isSold: boolean;
-  sellDate: string;
-  sellShares: number; // 賣出股數 (需小於等於購入股數)
-  sellPrice: number;
+  sells: SellEvent[]; // 賣出總股數需小於等於購入股數，但不在型別層驗證
 }
+
+export const emptySellEvent = (id: string): SellEvent => ({
+  id,
+  sellDate: "",
+  sellShares: 0,
+  sellPrice: 0,
+});
 
 export const emptyTransaction = (id: string): Transaction => ({
   id,
   buyDate: "",
   buyShares: 0,
   buyPrice: 0,
-  isSold: false,
-  sellDate: "",
-  sellShares: 0,
-  sellPrice: 0,
+  sells: [],
 });
 
 // 單一除息日的配息明細（同一 ex_date 若被多筆交易紀錄命中會加總）

@@ -3,42 +3,40 @@ import {
   Alert,
   Box,
   Button,
-  Checkbox,
   CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
-  DialogTitle,
-  FormControlLabel,
-  IconButton,
   Snackbar,
-  Stack,
-  TextField,
-  Typography,
+  DialogTitle,
 } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import {
   emptyTransaction,
   type Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
+import { TransactionAccordionItem } from "@/components/etf/etf_profit_calculator_transaction_item.tsx";
 
 interface TransactionRecordsEditorProps {
   records: Transaction[];
   onChange: (records: Transaction[]) => void;
   // 有傳入時顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫，實際持久化 (需登入) 由外部提供
-  // 每筆 Transaction 為一個購入批次，若該批次有賣出，賣出資訊會一併帶在同一筆物件內 (buyXxx / sellXxx 同列)，不會拆成獨立的兩筆
+  // 每筆 Transaction 為一個購入批次，可以有 0~多筆賣出紀錄 (sells)
   onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
 }
 
-// 階段式介面：可分批輸入多筆購入/賣出交易，各自獨立計算損益後加總
+// 階段式介面：可分批輸入多筆購入交易，每筆購入又可以分好幾次賣出，各自獨立計算損益後加總。
+// 紀錄可能很長，用 accordion 收合每一筆購入批次，預設只有一筆時展開，多筆時全部收合。
 export function TransactionRecordsEditor({
   records,
   onChange,
   onSaveTransactions,
 }: TransactionRecordsEditorProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(records.length <= 1 ? records.map((r) => r.id) : []),
+  );
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -65,124 +63,41 @@ export function TransactionRecordsEditor({
     onChange(newRecs);
   };
 
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const addRecord = () => {
+    const newRecord = emptyTransaction(Date.now().toString());
+    onChange([...records, newRecord]);
+    setExpandedIds((prev) => new Set(prev).add(newRecord.id));
+  };
+
   return (
     <Box>
       {records.map((rec, index) => (
-        <Box
+        <TransactionAccordionItem
           key={rec.id}
-          sx={{
-            p: 2,
-            mb: 2,
-            border: "1px solid #f0f0f0",
-            borderRadius: 2,
-            bgcolor: "#fafafa",
-          }}
-        >
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <TextField
-                type="date"
-                label="購入日期"
-                size="small"
-                value={rec.buyDate}
-                onChange={(e) =>
-                  updateRecord(index, { buyDate: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                sx={{ width: 180 }}
-              />
-              <TextField
-                label="原始股數"
-                type="number"
-                size="small"
-                value={rec.buyShares || ""}
-                onChange={(e) =>
-                  updateRecord(index, { buyShares: Number(e.target.value) })
-                }
-              />
-              <TextField
-                label="購入單價"
-                type="number"
-                size="small"
-                value={rec.buyPrice || ""}
-                onChange={(e) =>
-                  updateRecord(index, { buyPrice: Number(e.target.value) })
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={rec.isSold}
-                    onChange={(e) =>
-                      updateRecord(index, { isSold: e.target.checked })
-                    }
-                  />
-                }
-                label="有賣出"
-              />
-              <IconButton
-                color="error"
-                onClick={() => onChange(records.filter((r) => r.id !== rec.id))}
-              >
-                <DeleteOutlineIcon />
-              </IconButton>
-            </Stack>
-
-            {rec.isSold && (
-              <Stack
-                direction="row"
-                spacing={2}
-                alignItems="center"
-                sx={{ pl: 4, py: 1, borderLeft: "3px solid #ffc107" }}
-              >
-                <Typography
-                  variant="body2"
-                  color="warning.main"
-                  fontWeight="bold"
-                >
-                  ↳ 賣出：
-                </Typography>
-                <TextField
-                  type="date"
-                  label="賣出日期"
-                  size="small"
-                  value={rec.sellDate}
-                  onChange={(e) =>
-                    updateRecord(index, { sellDate: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ width: 180 }}
-                />
-                <TextField
-                  label="賣出股數"
-                  type="number"
-                  size="small"
-                  value={rec.sellShares || ""}
-                  onChange={(e) =>
-                    updateRecord(index, { sellShares: Number(e.target.value) })
-                  }
-                />
-                <TextField
-                  label="賣出價格"
-                  type="number"
-                  size="small"
-                  value={rec.sellPrice || ""}
-                  onChange={(e) =>
-                    updateRecord(index, { sellPrice: Number(e.target.value) })
-                  }
-                />
-              </Stack>
-            )}
-          </Stack>
-        </Box>
+          record={rec}
+          expanded={expandedIds.has(rec.id)}
+          onToggleExpanded={() => toggleExpanded(rec.id)}
+          onChange={(patch) => updateRecord(index, patch)}
+          onDelete={() => onChange(records.filter((r) => r.id !== rec.id))}
+        />
       ))}
       <Button
         startIcon={<AddCircleOutlineIcon />}
         variant="outlined"
         fullWidth
-        onClick={() =>
-          onChange([...records, emptyTransaction(Date.now().toString())])
-        }
+        onClick={addRecord}
       >
         增加交易紀錄
       </Button>

@@ -7,17 +7,22 @@ import (
 	"time"
 )
 
-// ProfitTransaction 對應前端試算盈虧階段式算法的單筆購入批次（含可選的賣出資訊），
-// JSON tag 直接對齊前端 Transaction 型別的 camelCase 欄位名。
-type ProfitTransaction struct {
+// ProfitSellEvent 是同一筆購入批次底下的一次賣出（一筆購入可以分好幾次賣出）。
+type ProfitSellEvent struct {
 	ID         string  `json:"id"`
-	BuyDate    string  `json:"buyDate"`
-	BuyShares  float64 `json:"buyShares"`
-	BuyPrice   float64 `json:"buyPrice"`
-	IsSold     bool    `json:"isSold"`
 	SellDate   string  `json:"sellDate"`
 	SellShares float64 `json:"sellShares"`
 	SellPrice  float64 `json:"sellPrice"`
+}
+
+// ProfitTransaction 對應前端試算盈虧階段式算法的單筆購入批次（含 0~多筆賣出紀錄），
+// JSON tag 直接對齊前端 Transaction 型別的 camelCase 欄位名。
+type ProfitTransaction struct {
+	ID        string            `json:"id"`
+	BuyDate   string            `json:"buyDate"`
+	BuyShares float64           `json:"buyShares"`
+	BuyPrice  float64           `json:"buyPrice"`
+	Sells     []ProfitSellEvent `json:"sells"`
 }
 
 type ProfitTransactions []ProfitTransaction

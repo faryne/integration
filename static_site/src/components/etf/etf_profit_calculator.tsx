@@ -84,7 +84,6 @@ function calcTransactionsResult(
 
     const factor = getCumulativeFactor(rec.buyDate);
     const buyShares = Number(rec.buyShares);
-    const sellShares = rec.isSold ? Number(rec.sellShares) : 0;
     totalCost += rec.buyPrice * buyShares; // 投入成本以原始購買金額計算，不受分割影響
 
     const processDistributions = (
@@ -125,24 +124,38 @@ function calcTransactionsResult(
         });
     };
 
-    // 已賣出部分的配息與退稅
-    processDistributions(
-      sellShares,
-      rec.buyDate,
-      rec.isSold ? rec.sellDate : null,
-    );
-    // 剩餘持股的配息與退稅
-    processDistributions(buyShares - sellShares, rec.buyDate, null);
+    // 一筆購入可以分好幾次賣出：依賣出日期排序後，切成一段一段的持有區間，
+    // 每段區間內實際持有的股數 = 原始股數扣掉「這段之前」已經賣掉的部分。
+    // 例如買 4000 股分 3 次賣：[買進, 賣1) 持有 4000、[賣1, 賣2) 持有 3500...
+    // 最後一段 [最後一次賣出, 現在] 持有的就是還沒賣掉的剩餘股數。
+    const sortedSells = rec.sells
+      .filter((s) => s.sellDate && s.sellShares > 0)
+      .sort((a, b) => a.sellDate.localeCompare(b.sellDate));
+
+    const adjCost = rec.buyPrice / factor;
+    let cumulativeSold = 0;
+    let windowStart = rec.buyDate;
+    let realizedGain = 0;
+
+    sortedSells.forEach((sell) => {
+      const sharesHeldInWindow = buyShares - cumulativeSold;
+      processDistributions(sharesHeldInWindow, windowStart, sell.sellDate);
+
+      const sellShares = Number(sell.sellShares);
+      realizedGain +=
+        (Number(sell.sellPrice) - adjCost) * (sellShares * factor);
+      cumulativeSold += sellShares;
+      windowStart = sell.sellDate;
+    });
+
+    const remainingShares = buyShares - cumulativeSold;
+    processDistributions(remainingShares, windowStart, null);
 
     // 價差損益：買價需依分割因子換算成目前股數基準下的成本
-    const adjCost = rec.buyPrice / factor;
-    const realizedGain = rec.isSold
-      ? (rec.sellPrice - adjCost) * (sellShares * factor)
-      : 0;
     const unrealizedGain =
-      (currentPrice - adjCost) * ((buyShares - sellShares) * factor);
+      (currentPrice - adjCost) * (remainingShares * factor);
     totalPriceGain += realizedGain + unrealizedGain;
-    finalShares += (buyShares - sellShares) * factor;
+    finalShares += remainingShares * factor;
   });
 
   const breakdown = Array.from(breakdownByExDate.values()).sort((a, b) =>
@@ -223,10 +236,7 @@ export function EtfProfitCalculator({
       buyDate: simpleStartDate,
       buyShares: simpleShares,
       buyPrice: simpleAvgCost,
-      isSold: false,
-      sellDate: "",
-      sellShares: 0,
-      sellPrice: 0,
+      sells: [],
     }),
     [simpleStartDate, simpleShares, simpleAvgCost],
   );
