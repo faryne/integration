@@ -25,7 +25,12 @@ export function useTwseEtfSavedTransactions(code?: string, enabled = true) {
         `${apiBase}/opendata/financial/twse/${code}/transactions`,
         { headers: sessionHeaders(session!.encrypt_key) },
       );
-      return response.data.data ?? [];
+      // 後端已經會補 sells，這裡是第二層防呆：舊格式資料 sells 是 null 不是
+      // []，沒擋住的話計算引擎跟編輯畫面呼叫 .filter/.map 會直接整頁白屏。
+      return (response.data.data ?? []).map((t) => ({
+        ...t,
+        sells: t.sells ?? [],
+      }));
     },
   });
 }

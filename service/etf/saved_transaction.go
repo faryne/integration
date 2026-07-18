@@ -18,7 +18,19 @@ func GetSavedTransactions(userID uint64, code string) (etf.ProfitTransactions, e
 	if row.DeletedAt != nil {
 		return etf.ProfitTransactions{}, nil
 	}
-	return row.Records, nil
+	return normalizeSells(row.Records), nil
+}
+
+// normalizeSells 補上舊格式（改成 sells 陣列之前）存下的紀錄缺少的 Sells 欄位。
+// Go 的 nil slice marshal 成 JSON 會變成 null 而不是 []，前端拿到 null 呼叫
+// .filter/.map 會直接炸掉，所以在這裡統一補成空陣列，不讓舊資料進到前端。
+func normalizeSells(records etf.ProfitTransactions) etf.ProfitTransactions {
+	for i := range records {
+		if records[i].Sells == nil {
+			records[i].Sells = []etf.ProfitSellEvent{}
+		}
+	}
+	return records
 }
 
 // SaveTransactions 整包覆蓋既有紀錄；一個 (user_id, code) 只有一列。
