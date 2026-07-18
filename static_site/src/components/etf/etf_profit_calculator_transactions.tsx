@@ -78,7 +78,8 @@ export function TransactionRecordsEditor({
   const addRecord = () => {
     const newRecord = emptyTransaction(Date.now().toString());
     onChange([...records, newRecord]);
-    setExpandedIds((prev) => new Set(prev).add(newRecord.id));
+    // 新增時把其他已展開的紀錄收起來，只留新增的這筆，讓使用者專注在當前輸入
+    setExpandedIds(new Set([newRecord.id]));
   };
 
   return (
