@@ -29,24 +29,39 @@ export const emptyTransaction = (id: string): Transaction => ({
   sells: [],
 });
 
-// 單一除息日的配息明細（同一 ex_date 若被多筆交易紀錄命中會加總）
-export interface DistributionBreakdownRow {
-  exDate: string;
-  payableDate: string;
-  shares: number;
-  perShare: number;
-  grossAmount: number;
-  netAmount: number;
+// 明細表的一列：可能是配息（同一 ex_date 若被多筆交易紀錄命中會加總成一列）
+// 或一次賣出（每筆賣出各自一列，不合併）。realized 是「除息日是否已過 / 一律
+// 為已處分」，用來在表上標示已實現／未實現。
+export interface ProfitDetailRow {
+  id: string;
+  date: string;
+  type: "dividend" | "sell";
+  description: string;
+  grossAmount: number; // 配息：總配息金額；賣出：已實現損益（可能為負）
+  netAmount: number | null; // 配息稅後實領（僅美股才有意義），賣出固定為 null
+  realized: boolean;
 }
 
 export interface ProfitResult {
-  totalDiv: number;
-  totalPriceGain: number;
-  totalRefund: number;
   totalCost: number;
-  total: number;
-  totalWithRefund: number;
-  breakdown: DistributionBreakdownRow[];
   finalShares: number;
-  priceOnlyRate: number | null;
+  detail: ProfitDetailRow[];
+
+  // 已實現：除息日已過的配息 + 已賣出部分的損益
+  realizedDividend: number;
+  realizedPriceGain: number;
+  realizedRefund: number; // 美股專屬的預估退稅，台股固定為 0
+  realizedTotal: number;
+
+  // 未實現：除息日未到的配息（若已公告金額） + 未賣出部位的帳面損益
+  unrealizedDividend: number;
+  unrealizedPriceGain: number;
+  unrealizedRefund: number;
+  unrealizedTotal: number;
+
+  grandTotal: number; // = realizedTotal + unrealizedTotal
+
+  realizedRate: number | null;
+  unrealizedRate: number | null;
+  grandTotalRate: number | null;
 }

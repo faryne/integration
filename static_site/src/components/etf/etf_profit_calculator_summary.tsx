@@ -1,13 +1,10 @@
-import { Box, Divider, Grid, Tooltip, Typography } from "@mui/material";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { Box, Grid, Typography } from "@mui/material";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
 
 interface ProfitSummaryProps {
   result: ProfitResult;
   currencySymbol: string;
   withholdingRate: number;
-  finalAmount: number;
-  finalRate: number | null;
   getTrendColor: (value: number) => string;
 }
 
@@ -16,75 +13,115 @@ const formatRate = (rate: number | null) =>
     ? "尚無成本可計算"
     : `${rate >= 0 ? "+" : ""}${rate.toFixed(2)}%`;
 
-// 試算結果總結：股價價差 / 累計領息 / 最終盈虧，含美股專屬的預扣退稅區塊
+const formatAmount = (currencySymbol: string, amount: number) =>
+  `${currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+
+// 試算結果總結：已實現盈虧 / 未實現盈虧 / 總盈虧 / 最終持有股數
 export function ProfitSummary({
   result,
   currencySymbol,
   withholdingRate,
-  finalAmount,
-  finalRate,
   getTrendColor,
 }: ProfitSummaryProps) {
+  const realizedCaption =
+    `配息 ${formatAmount(currencySymbol, result.realizedDividend)} + 已處分 ${formatAmount(currencySymbol, result.realizedPriceGain)}` +
+    (withholdingRate > 0
+      ? ` + 預估退稅 ${formatAmount(currencySymbol, result.realizedRefund)}`
+      : "");
+  const unrealizedCaption = `配息(未除息) ${formatAmount(currencySymbol, result.unrealizedDividend)} + 未處分 ${formatAmount(currencySymbol, result.unrealizedPriceGain)}`;
+
   return (
     <Box sx={{ py: 2 }}>
-      <Grid container spacing={2} textAlign="center" sx={{ mb: 2 }}>
-        <Grid size={3}>
-          <Typography variant="caption" color="text.secondary">
-            股價價差
-          </Typography>
-          <Typography
-            variant="h6"
-            sx={{ color: getTrendColor(result.totalPriceGain) }}
-          >
-            {currencySymbol}
-            {result.totalPriceGain.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{ color: getTrendColor(result.totalPriceGain) }}
-          >
-            未含息盈虧率 {formatRate(result.priceOnlyRate)}
-          </Typography>
-        </Grid>
-        <Grid size={3}>
-          <Typography variant="caption" color="text.secondary">
-            累計領息{withholdingRate > 0 ? "（稅後）" : ""}
-          </Typography>
-          <Typography variant="h6" color="primary.main">
-            {currencySymbol}
-            {result.totalDiv.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}
-          </Typography>
-        </Grid>
+      <Grid container spacing={2} textAlign="center">
         <Grid size={3}>
           <Typography
             variant="caption"
             color="text.secondary"
             fontWeight="bold"
           >
-            {withholdingRate > 0 ? "含息總損益" : "最終盈虧"}
+            已實現盈虧
           </Typography>
           <Typography
             variant="h6"
             fontWeight="bold"
-            sx={{ color: getTrendColor(finalAmount) }}
+            sx={{ color: getTrendColor(result.realizedTotal) }}
           >
-            {currencySymbol}
-            {finalAmount.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}
+            {formatAmount(currencySymbol, result.realizedTotal)}
           </Typography>
           <Typography
             variant="caption"
-            fontWeight="bold"
-            sx={{ color: getTrendColor(finalAmount) }}
+            component="p"
+            sx={{ color: getTrendColor(result.realizedTotal) }}
           >
-            含息盈虧率 {formatRate(finalRate)}
+            {formatRate(result.realizedRate)}
+          </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            color="text.secondary"
+            sx={{ lineHeight: 1.4 }}
+          >
+            {realizedCaption}
           </Typography>
         </Grid>
+
+        <Grid size={3}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight="bold"
+          >
+            未實現盈虧
+          </Typography>
+          <Typography
+            variant="h6"
+            fontWeight="bold"
+            sx={{ color: getTrendColor(result.unrealizedTotal) }}
+          >
+            {formatAmount(currencySymbol, result.unrealizedTotal)}
+          </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            sx={{ color: getTrendColor(result.unrealizedTotal) }}
+          >
+            {formatRate(result.unrealizedRate)}
+          </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            color="text.secondary"
+            sx={{ lineHeight: 1.4 }}
+          >
+            {unrealizedCaption}
+          </Typography>
+        </Grid>
+
+        <Grid size={3}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight="bold"
+          >
+            總盈虧
+          </Typography>
+          <Typography
+            variant="h5"
+            fontWeight="bold"
+            sx={{ color: getTrendColor(result.grandTotal) }}
+          >
+            {formatAmount(currencySymbol, result.grandTotal)}
+          </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            fontWeight="bold"
+            sx={{ color: getTrendColor(result.grandTotal) }}
+          >
+            {formatRate(result.grandTotalRate)}
+          </Typography>
+        </Grid>
+
         <Grid size={3}>
           <Typography variant="caption" color="text.secondary">
             最終持有股數
@@ -96,74 +133,6 @@ export function ProfitSummary({
           </Typography>
         </Grid>
       </Grid>
-
-      {withholdingRate > 0 && (
-        <>
-          <Divider sx={{ my: 1, borderStyle: "dashed" }} />
-
-          <Grid container spacing={2} textAlign="center">
-            <Grid size={6}>
-              <Typography variant="caption" color="text.secondary">
-                <Tooltip title="基於歷史 ROC 比例試算之次年退稅總額">
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      cursor: "help",
-                    }}
-                  >
-                    預計退稅 <InfoOutlinedIcon sx={{ fontSize: 12, ml: 0.5 }} />
-                  </Box>
-                </Tooltip>
-              </Typography>
-              <Typography
-                variant="subtitle1"
-                color="success.main"
-                fontWeight="bold"
-              >
-                +{currencySymbol}
-                {result.totalRefund.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </Typography>
-            </Grid>
-            <Grid size={6}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight="bold"
-              >
-                含退稅總額 (最終盈虧)
-              </Typography>
-              <Typography
-                variant="h5"
-                fontWeight="bold"
-                sx={{ color: getTrendColor(result.totalWithRefund) }}
-              >
-                {currencySymbol}
-                {result.totalWithRefund.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                })}
-              </Typography>
-            </Grid>
-          </Grid>
-        </>
-      )}
-
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        component="p"
-        align="center"
-        sx={{ mt: 2, lineHeight: 1.5 }}
-      >
-        * 以上結果不含券商手續費、證券交易稅（賣出時課徵）等交易成本
-        {withholdingRate === 0 &&
-          "，也未扣除單筆配息達起扣金額（目前為 2 萬元）需負擔的二代健保補充保費（費率 2.11%）"}
-        ，實際損益會比試算結果更低。
-      </Typography>
     </Box>
   );
 }

@@ -4,10 +4,7 @@ import {
   Card,
   CardContent,
   Divider,
-  Grid,
   Stack,
-  Tab,
-  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -25,10 +22,11 @@ import {
 import { TransactionRecordsEditor } from "@/components/etf/etf_profit_calculator_transactions.tsx";
 import {
   emptyTransaction,
-  type DistributionBreakdownRow,
+  type ProfitDetailRow,
+  type ProfitResult,
   type Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
-import { ProfitBreakdownTable } from "@/components/etf/etf_profit_calculator_breakdown.tsx";
+import { ProfitDetailTable } from "@/components/etf/etf_profit_calculator_detail.tsx";
 import { ProfitSummary } from "@/components/etf/etf_profit_calculator_summary.tsx";
 
 export type { DailyPriceQuote };
@@ -48,13 +46,24 @@ export interface EtfProfitCalculatorProps {
   defaultCurrency?: Currency;
   // 依日期取得當日開高低收，供使用者挑選帶入「當前股價」；不同資料來源需自行實作
   onFetchDailyPrice?: (date: string) => Promise<DailyPriceQuote | null>;
-  // 階段式算法初始要帶入的交易紀錄（例如使用者先前已登入儲存過的紀錄）
+  // 初始要帶入的交易紀錄（例如使用者先前已登入儲存過的紀錄）
   initialTransactions?: Transaction[];
-  // 有傳入時，階段式算法會顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫
+  // 有傳入時會顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫
   onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
 }
 
-// 計算單一批次交易（原始股數 + 分割紀錄）在截至目前為止的配息與價差損益
+interface DividendAgg {
+  exDate: string;
+  shares: number;
+  perShare: number;
+  grossAmount: number;
+  netAmount: number;
+  realized: boolean;
+}
+
+// 計算全部交易紀錄（原始股數 + 分割紀錄 + 賣出）截至目前為止的損益，並拆成
+// 已實現（除息日已過的配息、已賣出部分的損益）跟未實現（除息日未到的配息、
+// 未賣出部位的帳面損益）兩塊。
 // withholdingRate：美股 NRA 預扣稅率 (YieldMax 等美股 ETF 為 0.3)；台股境內配息無此預扣機制，應傳入 0
 function calcTransactionsResult(
   records: Transaction[],
@@ -62,7 +71,9 @@ function calcTransactionsResult(
   splitEvents: EtfDivideInfo[],
   currentPrice: number,
   withholdingRate: number,
-) {
+): ProfitResult {
+  const today = new Date().toISOString().slice(0, 10);
+
   const getCumulativeFactor = (startDate: string) => {
     if (!startDate) return 1;
     return splitEvents
@@ -72,12 +83,18 @@ function calcTransactionsResult(
       .reduce((acc, event) => acc * event.ratio, 1);
   };
 
-  let totalDiv = 0;
-  let totalPriceGain = 0;
-  let totalRefund = 0;
+  let realizedDividend = 0;
+  let unrealizedDividend = 0;
+  let realizedRefund = 0;
+  let unrealizedRefund = 0;
+  let realizedPriceGain = 0;
+  let unrealizedPriceGain = 0;
   let totalCost = 0;
   let finalShares = 0;
-  const breakdownByExDate = new Map<string, DistributionBreakdownRow>();
+
+  // 配息依 ex_date 聚合（同一天多筆購入紀錄命中會合併成一列）；賣出則每筆各自一列
+  const dividendAgg = new Map<string, DividendAgg>();
+  const sellRows: ProfitDetailRow[] = [];
 
   records.forEach((rec) => {
     if (!rec.buyDate || !rec.buyShares) return;
@@ -101,24 +118,33 @@ function calcTransactionsResult(
           const sharesHeld = shares * factor;
           const currentAmount = d.per_share * sharesHeld;
           const netAmount = currentAmount * (1 - withholdingRate);
-          totalDiv += netAmount;
-          if (withholdingRate > 0 && d.roc > 0) {
-            totalRefund += currentAmount * withholdingRate * (d.roc / 100);
+          const refund =
+            withholdingRate > 0 && d.roc > 0
+              ? currentAmount * withholdingRate * (d.roc / 100)
+              : 0;
+          const isRealized = d.ex_date <= today;
+
+          if (isRealized) {
+            realizedDividend += netAmount;
+            realizedRefund += refund;
+          } else {
+            unrealizedDividend += netAmount;
+            unrealizedRefund += refund;
           }
 
-          const existing = breakdownByExDate.get(d.ex_date);
+          const existing = dividendAgg.get(d.ex_date);
           if (existing) {
             existing.shares += sharesHeld;
             existing.grossAmount += currentAmount;
             existing.netAmount += netAmount;
           } else {
-            breakdownByExDate.set(d.ex_date, {
+            dividendAgg.set(d.ex_date, {
               exDate: d.ex_date,
-              payableDate: d.payable_date,
               shares: sharesHeld,
               perShare: d.per_share,
               grossAmount: currentAmount,
               netAmount,
+              realized: isRealized,
             });
           }
         });
@@ -135,15 +161,24 @@ function calcTransactionsResult(
     const adjCost = rec.buyPrice / factor;
     let cumulativeSold = 0;
     let windowStart = rec.buyDate;
-    let realizedGain = 0;
 
     sortedSells.forEach((sell) => {
       const sharesHeldInWindow = buyShares - cumulativeSold;
       processDistributions(sharesHeldInWindow, windowStart, sell.sellDate);
 
       const sellShares = Number(sell.sellShares);
-      realizedGain +=
-        (Number(sell.sellPrice) - adjCost) * (sellShares * factor);
+      const gain = (Number(sell.sellPrice) - adjCost) * (sellShares * factor);
+      realizedPriceGain += gain;
+      sellRows.push({
+        id: `sell-${rec.id}-${sell.id}`,
+        date: sell.sellDate,
+        type: "sell",
+        description: `賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
+        grossAmount: gain,
+        netAmount: null,
+        realized: true,
+      });
+
       cumulativeSold += sellShares;
       windowStart = sell.sellDate;
     });
@@ -151,33 +186,51 @@ function calcTransactionsResult(
     const remainingShares = buyShares - cumulativeSold;
     processDistributions(remainingShares, windowStart, null);
 
-    // 價差損益：買價需依分割因子換算成目前股數基準下的成本
-    const unrealizedGain =
+    // 未處分（帳面）損益：買價需依分割因子換算成目前股數基準下的成本
+    unrealizedPriceGain +=
       (currentPrice - adjCost) * (remainingShares * factor);
-    totalPriceGain += realizedGain + unrealizedGain;
     finalShares += remainingShares * factor;
   });
 
-  const breakdown = Array.from(breakdownByExDate.values()).sort((a, b) =>
-    a.exDate.localeCompare(b.exDate),
+  const dividendRows: ProfitDetailRow[] = Array.from(dividendAgg.values()).map(
+    (d) => ({
+      id: `dividend-${d.exDate}`,
+      date: d.exDate,
+      type: "dividend",
+      description: `持有 ${d.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} 股 × 每股 ${d.perShare.toFixed(4)}`,
+      grossAmount: d.grossAmount,
+      netAmount: d.netAmount,
+      realized: d.realized,
+    }),
   );
 
-  const total = totalDiv + totalPriceGain;
-  const totalWithRefund = total + totalRefund;
+  const detail = [...dividendRows, ...sellRows].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+
+  const realizedTotal = realizedDividend + realizedPriceGain + realizedRefund;
+  const unrealizedTotal =
+    unrealizedDividend + unrealizedPriceGain + unrealizedRefund;
+  const grandTotal = realizedTotal + unrealizedTotal;
   const rateOf = (gain: number) =>
     totalCost > 0 ? (gain / totalCost) * 100 : null;
 
   return {
-    totalDiv,
-    totalPriceGain,
-    totalRefund,
     totalCost,
-    total,
-    totalWithRefund,
-    breakdown,
     finalShares,
-    // 未含息盈虧率：純股價漲跌相對投入成本的報酬率
-    priceOnlyRate: rateOf(totalPriceGain),
+    detail,
+    realizedDividend,
+    realizedPriceGain,
+    realizedRefund,
+    realizedTotal,
+    unrealizedDividend,
+    unrealizedPriceGain,
+    unrealizedRefund,
+    unrealizedTotal,
+    grandTotal,
+    realizedRate: rateOf(realizedTotal),
+    unrealizedRate: rateOf(unrealizedTotal),
+    grandTotalRate: rateOf(grandTotal),
   };
 }
 
@@ -188,7 +241,6 @@ export function EtfProfitCalculator({
   initialTransactions,
   onSaveTransactions,
 }: EtfProfitCalculatorProps) {
-  const [tab, setTab] = useState(0);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>("TW");
 
@@ -209,12 +261,7 @@ export function EtfProfitCalculator({
     [splitEventRows],
   );
 
-  // 簡式狀態：以「購買當下」的原始股數輸入，內部會依分割紀錄換算至目前股數
-  const [simpleShares, setSimpleShares] = useState<number>(0);
-  const [simpleAvgCost, setSimpleAvgCost] = useState<number>(0);
-  const [simpleStartDate, setSimpleStartDate] = useState<string>("");
-
-  // 階段式狀態：有帶入已儲存的紀錄就用那份，否則維持一列空白列
+  // 交易紀錄：有帶入已儲存的紀錄就用那份，否則維持一列空白列
   const [records, setRecords] = useState<Transaction[]>(() =>
     initialTransactions && initialTransactions.length > 0
       ? initialTransactions
@@ -230,36 +277,7 @@ export function EtfProfitCalculator({
     return isPositive ? "#2e7d32" : "#d32f2f"; // 美股：正數綠、負數紅
   };
 
-  const simpleRecord = useMemo<Transaction>(
-    () => ({
-      id: "simple",
-      buyDate: simpleStartDate,
-      buyShares: simpleShares,
-      buyPrice: simpleAvgCost,
-      sells: [],
-    }),
-    [simpleStartDate, simpleShares, simpleAvgCost],
-  );
-
-  const simpleResult = useMemo(
-    () =>
-      calcTransactionsResult(
-        [simpleRecord],
-        data.distributions,
-        splitEvents,
-        currentPrice,
-        withholdingRate,
-      ),
-    [
-      simpleRecord,
-      data.distributions,
-      splitEvents,
-      currentPrice,
-      withholdingRate,
-    ],
-  );
-
-  const tieredResult = useMemo(
+  const result = useMemo(
     () =>
       calcTransactionsResult(
         records,
@@ -271,13 +289,6 @@ export function EtfProfitCalculator({
     [records, data.distributions, splitEvents, currentPrice, withholdingRate],
   );
 
-  const result = tab === 0 ? simpleResult : tieredResult;
-  // 最終盈虧：美股需扣除預扣稅款 (含息總損益)，台股無預扣直接採用含息總額
-  const finalAmount =
-    withholdingRate > 0 ? result.total : result.totalWithRefund;
-  const finalRate =
-    result.totalCost > 0 ? (finalAmount / result.totalCost) * 100 : null;
-
   return (
     <Card
       sx={{
@@ -287,13 +298,6 @@ export function EtfProfitCalculator({
         boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
       }}
     >
-      <Box sx={{ borderBottom: 1, borderColor: "divider", bgColor: "#f8f9fa" }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth">
-          <Tab label="簡式算法 (Total)" />
-          <Tab label="階段式算法 (Tiered)" />
-        </Tabs>
-      </Box>
-
       <CardContent sx={{ p: 3 }}>
         <Stack spacing={3}>
           <Stack
@@ -350,49 +354,11 @@ export function EtfProfitCalculator({
 
           <Divider />
 
-          {tab === 0 ? (
-            <Grid container spacing={2}>
-              <Grid size={12}>
-                <TextField
-                  label="購買日期"
-                  type="date"
-                  fullWidth
-                  size="small"
-                  value={simpleStartDate}
-                  onChange={(e) => setSimpleStartDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  helperText="需填寫才能正確套用分割/反分割因子與篩選配息紀錄"
-                />
-              </Grid>
-              <Grid size={6}>
-                <TextField
-                  label="購買當下股數"
-                  type="number"
-                  fullWidth
-                  size="small"
-                  value={simpleShares || ""}
-                  onChange={(e) => setSimpleShares(Number(e.target.value))}
-                  helperText="輸入購買當下的原始股數，系統會依分割紀錄換算至目前股數"
-                />
-              </Grid>
-              <Grid size={6}>
-                <TextField
-                  label="購買當下平均成本"
-                  type="number"
-                  fullWidth
-                  size="small"
-                  value={simpleAvgCost || ""}
-                  onChange={(e) => setSimpleAvgCost(Number(e.target.value))}
-                />
-              </Grid>
-            </Grid>
-          ) : (
-            <TransactionRecordsEditor
-              records={records}
-              onChange={setRecords}
-              onSaveTransactions={onSaveTransactions}
-            />
-          )}
+          <TransactionRecordsEditor
+            records={records}
+            onChange={setRecords}
+            onSaveTransactions={onSaveTransactions}
+          />
 
           <Divider />
 
@@ -400,15 +366,14 @@ export function EtfProfitCalculator({
             result={result}
             currencySymbol={currency.symbol}
             withholdingRate={withholdingRate}
-            finalAmount={finalAmount}
-            finalRate={finalRate}
             getTrendColor={getTrendColor}
           />
 
-          <ProfitBreakdownTable
-            rows={result.breakdown}
+          <ProfitDetailTable
+            rows={result.detail}
             currencySymbol={currency.symbol}
             showNetAmount={withholdingRate > 0}
+            getTrendColor={getTrendColor}
           />
 
           <Divider sx={{ my: 2 }} />
