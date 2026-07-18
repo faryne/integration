@@ -173,7 +173,7 @@ function calcTransactionsResult(
         id: `sell-${rec.id}-${sell.id}`,
         date: sell.sellDate,
         type: "sell",
-        description: `賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
+        description: `購入價 ${adjCost.toFixed(4)} → 賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
         grossAmount: gain,
         netAmount: null,
         realized: true,
