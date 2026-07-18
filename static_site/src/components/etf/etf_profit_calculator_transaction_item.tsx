@@ -70,14 +70,17 @@ export function TransactionAccordionItem({
   };
 
   return (
-    <Box sx={{ position: "relative", mb: 1 }}>
-      <Accordion
-        expanded={expanded}
-        onChange={onToggleExpanded}
-        sx={{ "&:before": { display: "none" } }}
-        variant="outlined"
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ pr: 6 }}>
+    <Accordion
+      expanded={expanded}
+      onChange={onToggleExpanded}
+      sx={{ mb: 1, "&:before": { display: "none" } }}
+      variant="outlined"
+    >
+      <Box sx={{ display: "flex", alignItems: "center" }}>
+        <AccordionSummary
+          expandIcon={<ExpandMoreIcon />}
+          sx={{ flex: 1, minWidth: 0 }}
+        >
           <Typography
             variant="body2"
             sx={{
@@ -90,118 +93,116 @@ export function TransactionAccordionItem({
             {summarize(record)}
           </Typography>
         </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
+        <IconButton
+          size="small"
+          color="error"
+          onClick={onDelete}
+          sx={{ mr: 1 }}
+        >
+          <DeleteOutlineIcon fontSize="small" />
+        </IconButton>
+      </Box>
+      <AccordionDetails>
+        <Stack spacing={2}>
+          <Stack
+            direction="row"
+            spacing={2}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <TextField
+              type="date"
+              label="購入日期"
+              size="small"
+              value={record.buyDate}
+              onChange={(e) => onChange({ buyDate: e.target.value })}
+              InputLabelProps={{ shrink: true }}
+              sx={{ width: 180 }}
+            />
+            <TextField
+              label="原始股數"
+              type="number"
+              size="small"
+              value={record.buyShares || ""}
+              onChange={(e) => onChange({ buyShares: Number(e.target.value) })}
+            />
+            <TextField
+              label="購入單價"
+              type="number"
+              size="small"
+              value={record.buyPrice || ""}
+              onChange={(e) => onChange({ buyPrice: Number(e.target.value) })}
+            />
+          </Stack>
+
+          {record.sells.map((sell, sellIndex) => (
             <Stack
+              key={sell.id}
               direction="row"
               spacing={2}
               alignItems="center"
               flexWrap="wrap"
               useFlexGap
+              sx={{ pl: 4, py: 1, borderLeft: "3px solid #ffc107" }}
             >
+              <Typography
+                variant="body2"
+                color="warning.main"
+                fontWeight="bold"
+              >
+                ↳ 賣出 {sellIndex + 1}：
+              </Typography>
               <TextField
                 type="date"
-                label="購入日期"
+                label="賣出日期"
                 size="small"
-                value={record.buyDate}
-                onChange={(e) => onChange({ buyDate: e.target.value })}
+                value={sell.sellDate}
+                onChange={(e) =>
+                  updateSell(sell.id, { sellDate: e.target.value })
+                }
                 InputLabelProps={{ shrink: true }}
                 sx={{ width: 180 }}
               />
               <TextField
-                label="原始股數"
+                label="賣出股數"
                 type="number"
                 size="small"
-                value={record.buyShares || ""}
+                value={sell.sellShares || ""}
                 onChange={(e) =>
-                  onChange({ buyShares: Number(e.target.value) })
+                  updateSell(sell.id, { sellShares: Number(e.target.value) })
                 }
               />
               <TextField
-                label="購入單價"
+                label="賣出價格"
                 type="number"
                 size="small"
-                value={record.buyPrice || ""}
-                onChange={(e) => onChange({ buyPrice: Number(e.target.value) })}
+                value={sell.sellPrice || ""}
+                onChange={(e) =>
+                  updateSell(sell.id, { sellPrice: Number(e.target.value) })
+                }
               />
-            </Stack>
-
-            {record.sells.map((sell, sellIndex) => (
-              <Stack
-                key={sell.id}
-                direction="row"
-                spacing={2}
-                alignItems="center"
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ pl: 4, py: 1, borderLeft: "3px solid #ffc107" }}
-              >
-                <Typography
-                  variant="body2"
-                  color="warning.main"
-                  fontWeight="bold"
-                >
-                  ↳ 賣出 {sellIndex + 1}：
-                </Typography>
-                <TextField
-                  type="date"
-                  label="賣出日期"
-                  size="small"
-                  value={sell.sellDate}
-                  onChange={(e) =>
-                    updateSell(sell.id, { sellDate: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ width: 180 }}
-                />
-                <TextField
-                  label="賣出股數"
-                  type="number"
-                  size="small"
-                  value={sell.sellShares || ""}
-                  onChange={(e) =>
-                    updateSell(sell.id, { sellShares: Number(e.target.value) })
-                  }
-                />
-                <TextField
-                  label="賣出價格"
-                  type="number"
-                  size="small"
-                  value={sell.sellPrice || ""}
-                  onChange={(e) =>
-                    updateSell(sell.id, { sellPrice: Number(e.target.value) })
-                  }
-                />
-                <IconButton
-                  size="small"
-                  color="error"
-                  onClick={() => removeSell(sell.id)}
-                >
-                  <DeleteOutlineIcon fontSize="small" />
-                </IconButton>
-              </Stack>
-            ))}
-
-            <Box>
-              <Button
+              <IconButton
                 size="small"
-                startIcon={<AddCircleOutlineIcon />}
-                onClick={addSell}
+                color="error"
+                onClick={() => removeSell(sell.id)}
               >
-                新增賣出紀錄
-              </Button>
-            </Box>
-          </Stack>
-        </AccordionDetails>
-      </Accordion>
-      <IconButton
-        size="small"
-        color="error"
-        onClick={onDelete}
-        sx={{ position: "absolute", top: 6, right: 40 }}
-      >
-        <DeleteOutlineIcon fontSize="small" />
-      </IconButton>
-    </Box>
+                <DeleteOutlineIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          ))}
+
+          <Box>
+            <Button
+              size="small"
+              startIcon={<AddCircleOutlineIcon />}
+              onClick={addSell}
+            >
+              新增賣出紀錄
+            </Button>
+          </Box>
+        </Stack>
+      </AccordionDetails>
+    </Accordion>
   );
 }
