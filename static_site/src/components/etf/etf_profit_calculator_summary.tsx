@@ -151,6 +151,19 @@ export function ProfitSummary({
           </Grid>
         </>
       )}
+
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        component="p"
+        align="center"
+        sx={{ mt: 2, lineHeight: 1.5 }}
+      >
+        * 以上結果不含券商手續費、證券交易稅（賣出時課徵）等交易成本
+        {withholdingRate === 0 &&
+          "，也未扣除單筆配息達起扣金額（目前為 2 萬元）需負擔的二代健保補充保費（費率 2.11%）"}
+        ，實際損益會比試算結果更低。
+      </Typography>
     </Box>
   );
 }
