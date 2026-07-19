@@ -1,10 +1,9 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Card,
   CardContent,
   Divider,
-  Grid,
   Stack,
   TextField,
   ToggleButton,
@@ -29,7 +28,6 @@ import {
 } from "@/components/etf/etf_profit_calculator_types.ts";
 import { ProfitDetailTable } from "@/components/etf/etf_profit_calculator_detail.tsx";
 import { ProfitSummary } from "@/components/etf/etf_profit_calculator_summary.tsx";
-import { ProfitQuickSummary } from "@/components/etf/etf_profit_calculator_quick_summary.tsx";
 
 export type { DailyPriceQuote };
 
@@ -245,7 +243,6 @@ export function EtfProfitCalculator({
 }: EtfProfitCalculatorProps) {
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>("TW");
-  const detailRef = useRef<HTMLDivElement>(null);
 
   const currency = CURRENCY_META[defaultCurrency];
   // 美股 ETF (如 YieldMax) 配息需預扣 30% NRA 稅款，次年可依 ROC 比例申請退稅；
@@ -303,103 +300,81 @@ export function EtfProfitCalculator({
     >
       <CardContent sx={{ p: 3 }}>
         <Stack spacing={3}>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Stack spacing={3}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    顯示風格：
-                  </Typography>
-                  <ToggleButtonGroup
-                    size="small"
-                    value={displayStyle}
-                    exclusive
-                    onChange={(_, v) => v && setDisplayStyle(v)}
-                  >
-                    <ToggleButton value="TW" sx={{ px: 2 }}>
-                      紅漲綠跌 (台)
-                    </ToggleButton>
-                    <ToggleButton value="US" sx={{ px: 2 }}>
-                      綠漲紅跌 (美)
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                </Stack>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography variant="body2" color="text.secondary">
+              顯示風格：
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              value={displayStyle}
+              exclusive
+              onChange={(_, v) => v && setDisplayStyle(v)}
+            >
+              <ToggleButton value="TW" sx={{ px: 2 }}>
+                紅漲綠跌 (台)
+              </ToggleButton>
+              <ToggleButton value="US" sx={{ px: 2 }}>
+                綠漲紅跌 (美)
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
 
-                <Stack spacing={1}>
-                  <TextField
-                    label={`當前股價 (${currency.label})`}
-                    type="number"
-                    size="small"
-                    fullWidth
-                    value={currentPrice || ""}
-                    onChange={(e) => setCurrentPrice(Number(e.target.value))}
-                    helperText={
-                      splitEvents.length > 0
-                        ? `* 已套用 ${splitEvents.map((o) => o.date).join("、")} 等日期的分割/反分割因子，請對照下方紀錄確認是否正確。`
-                        : ""
-                    }
-                  />
-                  {onFetchDailyPrice && (
-                    <PriceQueryPanel
-                      currencyCode={currency.label}
-                      selectedPrice={currentPrice}
-                      onFetchDailyPrice={onFetchDailyPrice}
-                      onSelectPrice={setCurrentPrice}
-                    />
-                  )}
-                </Stack>
-
-                <SplitEventsEditor
-                  rows={splitEventRows}
-                  onChange={setSplitEventRows}
-                />
-
-                <Divider />
-
-                <TransactionRecordsEditor
-                  records={records}
-                  onChange={setRecords}
-                  onSaveTransactions={onSaveTransactions}
-                />
-              </Stack>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 4 }}>
-              <ProfitQuickSummary
-                result={result}
-                currencySymbol={currency.symbol}
-                getTrendColor={getTrendColor}
-                onJumpToDetail={() =>
-                  detailRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  })
-                }
+          <Stack spacing={1}>
+            <TextField
+              label={`當前股價 (${currency.label})`}
+              type="number"
+              size="small"
+              fullWidth
+              value={currentPrice || ""}
+              onChange={(e) => setCurrentPrice(Number(e.target.value))}
+              helperText={
+                splitEvents.length > 0
+                  ? `* 已套用 ${splitEvents.map((o) => o.date).join("、")} 等日期的分割/反分割因子，請對照下方紀錄確認是否正確。`
+                  : ""
+              }
+            />
+            {onFetchDailyPrice && (
+              <PriceQueryPanel
+                currencyCode={currency.label}
+                selectedPrice={currentPrice}
+                onFetchDailyPrice={onFetchDailyPrice}
+                onSelectPrice={setCurrentPrice}
               />
-            </Grid>
-          </Grid>
+            )}
+          </Stack>
+
+          <SplitEventsEditor
+            rows={splitEventRows}
+            onChange={setSplitEventRows}
+          />
 
           <Divider />
 
-          <Stack spacing={3} ref={detailRef}>
-            <ProfitSummary
-              result={result}
-              currencySymbol={currency.symbol}
-              withholdingRate={withholdingRate}
-              getTrendColor={getTrendColor}
-            />
+          <TransactionRecordsEditor
+            records={records}
+            onChange={setRecords}
+            onSaveTransactions={onSaveTransactions}
+          />
 
-            <ProfitDetailTable
-              rows={result.detail}
-              currencySymbol={currency.symbol}
-              showNetAmount={withholdingRate > 0}
-              getTrendColor={getTrendColor}
-            />
-          </Stack>
+          <Divider />
+
+          <ProfitSummary
+            result={result}
+            currencySymbol={currency.symbol}
+            withholdingRate={withholdingRate}
+            getTrendColor={getTrendColor}
+          />
+
+          <ProfitDetailTable
+            rows={result.detail}
+            currencySymbol={currency.symbol}
+            showNetAmount={withholdingRate > 0}
+            getTrendColor={getTrendColor}
+          />
 
           <Divider sx={{ my: 2 }} />
 
