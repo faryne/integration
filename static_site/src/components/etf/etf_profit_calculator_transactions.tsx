@@ -1,5 +1,8 @@
 import { useState } from "react";
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -10,8 +13,10 @@ import {
   DialogContentText,
   Snackbar,
   DialogTitle,
+  Typography,
 } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
 import {
   emptyTransaction,
@@ -28,7 +33,9 @@ interface TransactionRecordsEditorProps {
 }
 
 // 階段式介面：可分批輸入多筆購入交易，每筆購入又可以分好幾次賣出，各自獨立計算損益後加總。
-// 紀錄可能很長，用 accordion 收合每一筆購入批次，預設只有一筆時展開，多筆時全部收合。
+// 紀錄可能很長，除了每筆購入批次各自用 accordion 收合外，整份清單外面再包一層
+// accordion，方便使用者輸入完直接收起整區塊，不用一直往下捲才能看到試算結果。
+// 每筆購入批次預設只有一筆時展開，多筆時全部收合。
 export function TransactionRecordsEditor({
   records,
   onChange,
@@ -83,90 +90,103 @@ export function TransactionRecordsEditor({
   };
 
   return (
-    <Box>
-      {records.map((rec, index) => (
-        <TransactionAccordionItem
-          key={rec.id}
-          record={rec}
-          expanded={expandedIds.has(rec.id)}
-          onToggleExpanded={() => toggleExpanded(rec.id)}
-          onChange={(patch) => updateRecord(index, patch)}
-          onDelete={() => onChange(records.filter((r) => r.id !== rec.id))}
-        />
-      ))}
-      <Button
-        startIcon={<AddCircleOutlineIcon />}
-        variant="outlined"
-        fullWidth
-        onClick={addRecord}
-      >
-        增加交易紀錄
-      </Button>
-
-      {onSaveTransactions && (
-        <>
+    <Accordion defaultExpanded variant="outlined">
+      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+        <Typography variant="subtitle2">
+          交易紀錄（共 {records.length} 筆）
+        </Typography>
+      </AccordionSummary>
+      <AccordionDetails>
+        <Box>
+          {records.map((rec, index) => (
+            <TransactionAccordionItem
+              key={rec.id}
+              record={rec}
+              expanded={expandedIds.has(rec.id)}
+              onToggleExpanded={() => toggleExpanded(rec.id)}
+              onChange={(patch) => updateRecord(index, patch)}
+              onDelete={() => onChange(records.filter((r) => r.id !== rec.id))}
+            />
+          ))}
           <Button
-            startIcon={<SaveOutlinedIcon />}
-            variant="text"
+            startIcon={<AddCircleOutlineIcon />}
+            variant="outlined"
             fullWidth
-            sx={{ mt: 1 }}
-            onClick={() => setSaveDialogOpen(true)}
+            onClick={addRecord}
           >
-            儲存交易紀錄
+            增加交易紀錄
           </Button>
-          <Dialog
-            open={saveDialogOpen}
-            onClose={() => {
-              if (!saving) setSaveDialogOpen(false);
-            }}
-          >
-            <DialogTitle>儲存交易紀錄</DialogTitle>
-            <DialogContent>
-              <DialogContentText gutterBottom>
-                你即將儲存的持股資訊屬於個人財務隱私，請確認以下內容：
-              </DialogContentText>
-              <DialogContentText component="div" gutterBottom>
-                <Box component="ul" sx={{ pl: 2.5, m: 0 }}>
-                  <li>
-                    儲存範圍：你在此頁面輸入的購買/賣出日期、股數與價格，不包含券商帳號、身分證字號等其他個資。
-                  </li>
-                  <li>
-                    用途：僅用於下次試算時自動帶入，不會用於推薦、廣告或其他分析用途。
-                  </li>
-                  <li>分享對象：不會提供給第三方，僅與你的帳號綁定保存。</li>
-                </Box>
-              </DialogContentText>
-              {saveError && (
-                <Alert severity="error" sx={{ mt: 1 }}>
-                  {saveError}
-                </Alert>
-              )}
-            </DialogContent>
-            <DialogActions>
+
+          {onSaveTransactions && (
+            <>
               <Button
-                onClick={() => setSaveDialogOpen(false)}
-                disabled={saving}
+                startIcon={<SaveOutlinedIcon />}
+                variant="text"
+                fullWidth
+                sx={{ mt: 1 }}
+                onClick={() => setSaveDialogOpen(true)}
               >
-                取消
+                儲存交易紀錄
               </Button>
-              <Button
-                variant="contained"
-                onClick={() => void handleConfirmSave()}
-                disabled={saving}
-                startIcon={saving ? <CircularProgress size={16} /> : undefined}
+              <Dialog
+                open={saveDialogOpen}
+                onClose={() => {
+                  if (!saving) setSaveDialogOpen(false);
+                }}
               >
-                同意並儲存
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </>
-      )}
-      <Snackbar
-        open={savedNotice}
-        autoHideDuration={2200}
-        onClose={() => setSavedNotice(false)}
-        message="已儲存交易紀錄"
-      />
-    </Box>
+                <DialogTitle>儲存交易紀錄</DialogTitle>
+                <DialogContent>
+                  <DialogContentText gutterBottom>
+                    你即將儲存的持股資訊屬於個人財務隱私，請確認以下內容：
+                  </DialogContentText>
+                  <DialogContentText component="div" gutterBottom>
+                    <Box component="ul" sx={{ pl: 2.5, m: 0 }}>
+                      <li>
+                        儲存範圍：你在此頁面輸入的購買/賣出日期、股數與價格，不包含券商帳號、身分證字號等其他個資。
+                      </li>
+                      <li>
+                        用途：僅用於下次試算時自動帶入，不會用於推薦、廣告或其他分析用途。
+                      </li>
+                      <li>
+                        分享對象：不會提供給第三方，僅與你的帳號綁定保存。
+                      </li>
+                    </Box>
+                  </DialogContentText>
+                  {saveError && (
+                    <Alert severity="error" sx={{ mt: 1 }}>
+                      {saveError}
+                    </Alert>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    onClick={() => setSaveDialogOpen(false)}
+                    disabled={saving}
+                  >
+                    取消
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={() => void handleConfirmSave()}
+                    disabled={saving}
+                    startIcon={
+                      saving ? <CircularProgress size={16} /> : undefined
+                    }
+                  >
+                    同意並儲存
+                  </Button>
+                </DialogActions>
+              </Dialog>
+            </>
+          )}
+          <Snackbar
+            open={savedNotice}
+            autoHideDuration={2200}
+            onClose={() => setSavedNotice(false)}
+            message="已儲存交易紀錄"
+          />
+        </Box>
+      </AccordionDetails>
+    </Accordion>
   );
 }
