@@ -357,14 +357,6 @@ export function EtfProfitCalculator({
                   rows={splitEventRows}
                   onChange={setSplitEventRows}
                 />
-
-                <Divider />
-
-                <TransactionRecordsEditor
-                  records={records}
-                  onChange={setRecords}
-                  onSaveTransactions={onSaveTransactions}
-                />
               </Stack>
             </Grid>
 
@@ -382,6 +374,14 @@ export function EtfProfitCalculator({
               />
             </Grid>
           </Grid>
+
+          <Divider />
+
+          <TransactionRecordsEditor
+            records={records}
+            onChange={setRecords}
+            onSaveTransactions={onSaveTransactions}
+          />
 
           <Divider />
 
