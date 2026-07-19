@@ -124,7 +124,7 @@ var cronJobs = []cronJobConfig{
 	},
 	{
 		Name:     "etf-code-share-twse",
-		Schedule: "0 0 * * 1",
+		Schedule: "0 0 * * *",
 		Handler: func() {
 			_, _ = twse.UpdateETFCodeList()
 			twse.UpdateETFShare(enum.StockMarketTWSE)
@@ -132,7 +132,7 @@ var cronJobs = []cronJobConfig{
 	},
 	{
 		Name:     "etf-share-otc",
-		Schedule: "0 0 * * 2",
+		Schedule: "0 1 * * *",
 		Handler: func() {
 			twse.UpdateETFShare(enum.StockMarketOTC)
 		},
