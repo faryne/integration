@@ -3,7 +3,33 @@ import { useEffect } from "react";
 const siteName = "Faryne 的實驗室 by faryne.dev";
 const nekomaidSiteName = "難以名狀的抓圖器";
 const galgameSiteName = "galgame.tv";
-const canonicalOrigin = "https://beta.faryne.dev";
+const defaultCanonicalOrigin = "https://faryne.dev";
+// Firebase 預覽網域跟正式自訂網域會顯示同一份內容，canonical 一律指回自訂網域，
+// 避免 Google 把兩者當成重複內容各自收錄一半。
+const canonicalOriginByHost: Record<string, string> = {
+  "neko.maid.tw": "https://neko.maid.tw",
+  "nekomaid.web.app": "https://neko.maid.tw",
+  "nekomaid.firebaseapp.com": "https://neko.maid.tw",
+  "galgame.tv": "https://galgame.tv",
+  "www.galgame.tv": "https://galgame.tv",
+  "galgame-tv.web.app": "https://galgame.tv",
+  "galgame-tv.firebaseapp.com": "https://galgame.tv",
+  "steamloom.works": "https://steamloom.works",
+  "www.steamloom.works": "https://steamloom.works",
+  "steamloom-web.web.app": "https://steamloom.works",
+  "steamloom-web.firebaseapp.com": "https://steamloom.works",
+  "site.steamloom.works": "https://steamloom.works",
+};
+
+function getCanonicalOrigin() {
+  if (typeof window === "undefined") {
+    return defaultCanonicalOrigin;
+  }
+  return (
+    canonicalOriginByHost[window.location.hostname] ?? defaultCanonicalOrigin
+  );
+}
+
 const defaultDescription =
   "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。";
 const defaultImage = "/faryne-icon-1024.jpg";
@@ -77,7 +103,7 @@ function getDescription(page: string, description?: string) {
   return matchedKey ? pageDescriptions[matchedKey] : defaultDescription;
 }
 
-function toAbsoluteUrl(value: string, origin = canonicalOrigin) {
+function toAbsoluteUrl(value: string, origin = getCanonicalOrigin()) {
   return new URL(value, origin).toString();
 }
 
@@ -171,7 +197,7 @@ export function useSeo(page: string, options: SeoOptions = {}) {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: currentSiteName,
-      url: canonicalOrigin,
+      url: getCanonicalOrigin(),
       description: defaultDescription,
       inLanguage: "zh-Hant-TW",
     });

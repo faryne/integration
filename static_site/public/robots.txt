@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://beta.faryne.dev/sitemap.xml
+Sitemap: https://faryne.dev/sitemap.xml
