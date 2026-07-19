@@ -1213,6 +1213,7 @@ const EtfDashboard: React.FC = () => {
                   data={profitCalculatorData}
                   defaultCurrency="TWD"
                   onFetchDailyPrice={handleFetchDailyPrice}
+                  latestClosePrice={selectedEtf?.latest_close}
                   initialTransactions={
                     session ? savedTransactionsQuery.data : undefined
                   }

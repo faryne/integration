@@ -13,11 +13,14 @@ import {
   DialogContentText,
   Snackbar,
   DialogTitle,
+  Stack,
   Typography,
 } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import {
   emptyTransaction,
   type Transaction,
@@ -30,6 +33,23 @@ interface TransactionRecordsEditorProps {
   // 有傳入時顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫，實際持久化 (需登入) 由外部提供
   // 每筆 Transaction 為一個購入批次，可以有 0~多筆賣出紀錄 (sells)
   onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
+}
+
+type SortDirection = "asc" | "desc";
+
+// 未設定購入日期的紀錄（例如剛新增還沒填的空白列）一律排到最後，方便編輯
+function sortByBuyDate(
+  records: Transaction[],
+  direction: SortDirection,
+): Transaction[] {
+  return [...records].sort((a, b) => {
+    if (!a.buyDate && !b.buyDate) return 0;
+    if (!a.buyDate) return 1;
+    if (!b.buyDate) return -1;
+    return direction === "asc"
+      ? a.buyDate.localeCompare(b.buyDate)
+      : b.buyDate.localeCompare(a.buyDate);
+  });
 }
 
 // 階段式介面：可分批輸入多筆購入交易，每筆購入又可以分好幾次賣出，各自獨立計算損益後加總。
@@ -89,6 +109,12 @@ export function TransactionRecordsEditor({
     setExpandedIds(new Set([newRecord.id]));
   };
 
+  // 排序會直接改動實際的交易紀錄順序（不只是畫面顯示），這樣儲存時存下的就是排序後的順序，
+  // 也方便在填寫賣出紀錄時，依購入日期新舊快速找到要處分的那筆庫存。
+  const handleSort = (direction: SortDirection) => {
+    onChange(sortByBuyDate(records, direction));
+  };
+
   return (
     <Accordion defaultExpanded variant="outlined">
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -98,6 +124,33 @@ export function TransactionRecordsEditor({
       </AccordionSummary>
       <AccordionDetails>
         <Box>
+          <Stack
+            direction="row"
+            justifyContent="flex-end"
+            alignItems="center"
+            spacing={1}
+            sx={{ mb: 1 }}
+          >
+            <Typography variant="caption" color="text.secondary">
+              依購入日期排序：
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ArrowUpwardIcon fontSize="small" />}
+              onClick={() => handleSort("asc")}
+            >
+              舊到新
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ArrowDownwardIcon fontSize="small" />}
+              onClick={() => handleSort("desc")}
+            >
+              新到舊
+            </Button>
+          </Stack>
           {records.map((rec, index) => (
             <TransactionAccordionItem
               key={rec.id}

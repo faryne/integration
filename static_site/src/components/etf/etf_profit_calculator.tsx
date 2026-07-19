@@ -48,6 +48,8 @@ export interface EtfProfitCalculatorProps {
   defaultCurrency?: Currency;
   // 依日期取得當日開高低收，供使用者挑選帶入「當前股價」；不同資料來源需自行實作
   onFetchDailyPrice?: (date: string) => Promise<DailyPriceQuote | null>;
+  // 最近一筆收盤價，作為「當前股價」欄位的預設值，避免試算結果一開始就是全 0
+  latestClosePrice?: number;
   // 初始要帶入的交易紀錄（例如使用者先前已登入儲存過的紀錄）
   initialTransactions?: Transaction[];
   // 有傳入時會顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫
@@ -240,10 +242,13 @@ export function EtfProfitCalculator({
   data,
   defaultCurrency = "USD",
   onFetchDailyPrice,
+  latestClosePrice,
   initialTransactions,
   onSaveTransactions,
 }: EtfProfitCalculatorProps) {
-  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [currentPrice, setCurrentPrice] = useState<number>(
+    () => latestClosePrice ?? 0,
+  );
   const [displayStyle, setDisplayStyle] = useState<DisplayStyle>("TW");
   const detailRef = useRef<HTMLDivElement>(null);
 
