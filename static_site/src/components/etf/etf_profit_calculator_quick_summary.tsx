@@ -1,24 +1,26 @@
 import { Box, Link as MuiLink, Paper, Stack, Typography } from "@mui/material";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
+import { formatCurrencyAmount } from "@/components/etf/etf_profit_calculator_format.ts";
 
 interface ProfitQuickSummaryProps {
   result: ProfitResult;
   currencySymbol: string;
+  amountDecimals: number;
   getTrendColor: (value: number) => string;
   onJumpToDetail: () => void;
 }
-
-const formatAmount = (currencySymbol: string, amount: number) =>
-  `${currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // 交易紀錄一多，左側輸入區塊會拉得很長；這塊常駐在右側（桌面版 sticky），
 // 讓使用者不用一直往下捲就能看到目前的試算結果，點連結可跳到下方完整明細。
 export function ProfitQuickSummary({
   result,
   currencySymbol,
+  amountDecimals,
   getTrendColor,
   onJumpToDetail,
 }: ProfitQuickSummaryProps) {
+  const formatAmount = (amount: number) =>
+    formatCurrencyAmount(currencySymbol, amount, amountDecimals);
   return (
     <Paper
       variant="outlined"
@@ -28,7 +30,7 @@ export function ProfitQuickSummary({
         試算結果
       </Typography>
       <Typography variant="caption" color="text.secondary" component="p">
-        總成本 {formatAmount(currencySymbol, result.totalCost)}
+        總成本 {formatAmount(result.totalCost)}
       </Typography>
       <Stack spacing={1.5} sx={{ mt: 1 }}>
         <Box>
@@ -40,7 +42,7 @@ export function ProfitQuickSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.realizedTotal) }}
           >
-            {formatAmount(currencySymbol, result.realizedTotal)}
+            {formatAmount(result.realizedTotal)}
           </Typography>
         </Box>
         <Box>
@@ -52,7 +54,7 @@ export function ProfitQuickSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.unrealizedTotal) }}
           >
-            {formatAmount(currencySymbol, result.unrealizedTotal)}
+            {formatAmount(result.unrealizedTotal)}
           </Typography>
         </Box>
         <Box>
@@ -64,7 +66,7 @@ export function ProfitQuickSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.grandTotal) }}
           >
-            {formatAmount(currencySymbol, result.grandTotal)}
+            {formatAmount(result.grandTotal)}
           </Typography>
         </Box>
       </Stack>

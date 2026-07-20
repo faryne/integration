@@ -5,6 +5,12 @@ import type {
   Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
 
+// 報酬率 = 損益 / 投入成本，成本為 0（例如還沒填任何交易紀錄）時回傳 null 而不是除以零。
+// 匯出供「我的最愛」總覽頁算加總後的報酬率時重用同一套規則。
+export function computeRate(gain: number, cost: number): number | null {
+  return cost > 0 ? (gain / cost) * 100 : null;
+}
+
 interface DividendAgg {
   exDate: string;
   shares: number;
@@ -165,8 +171,7 @@ export function calcTransactionsResult(
   const unrealizedTotal =
     unrealizedDividend + unrealizedPriceGain + unrealizedRefund;
   const grandTotal = realizedTotal + unrealizedTotal;
-  const rateOf = (gain: number) =>
-    totalCost > 0 ? (gain / totalCost) * 100 : null;
+  const rateOf = (gain: number) => computeRate(gain, totalCost);
 
   return {
     totalCost,

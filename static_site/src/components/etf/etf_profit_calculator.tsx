@@ -73,6 +73,8 @@ export function EtfProfitCalculator({
   // 美股 ETF (如 YieldMax) 配息需預扣 30% NRA 稅款，次年可依 ROC 比例申請退稅；
   // 台股境內配息無此預扣機制，故 TWD 一律不套用
   const withholdingRate = defaultCurrency === "USD" ? 0.3 : 0;
+  // 台幣沒有小數交易，金額顯示取整數；美股常有零點幾美分的配息，維持 2 位小數
+  const amountDecimals = defaultCurrency === "USD" ? 2 : 0;
 
   // 分割/反分割紀錄：以 ETF 資料內建的紀錄為初始值，使用者可自行增減調整
   const [splitEventRows, setSplitEventRows] = useState<SplitEventRow[]>(() =>
@@ -186,6 +188,7 @@ export function EtfProfitCalculator({
               <ProfitQuickSummary
                 result={result}
                 currencySymbol={currency.symbol}
+                amountDecimals={amountDecimals}
                 getTrendColor={getTrendColor}
                 onJumpToDetail={() =>
                   detailRef.current?.scrollIntoView({
@@ -211,6 +214,7 @@ export function EtfProfitCalculator({
             <ProfitSummary
               result={result}
               currencySymbol={currency.symbol}
+              amountDecimals={amountDecimals}
               withholdingRate={withholdingRate}
               getTrendColor={getTrendColor}
             />
@@ -218,6 +222,7 @@ export function EtfProfitCalculator({
             <ProfitDetailTable
               rows={result.detail}
               currencySymbol={currency.symbol}
+              amountDecimals={amountDecimals}
               showNetAmount={withholdingRate > 0}
               getTrendColor={getTrendColor}
             />

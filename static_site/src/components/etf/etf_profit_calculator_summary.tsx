@@ -1,34 +1,34 @@
 import { Box, Grid, Typography } from "@mui/material";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
+import {
+  formatCurrencyAmount,
+  formatRate,
+} from "@/components/etf/etf_profit_calculator_format.ts";
 
 interface ProfitSummaryProps {
   result: ProfitResult;
   currencySymbol: string;
+  amountDecimals: number;
   withholdingRate: number;
   getTrendColor: (value: number) => string;
 }
-
-const formatRate = (rate: number | null) =>
-  rate === null
-    ? "尚無成本可計算"
-    : `${rate >= 0 ? "+" : ""}${rate.toFixed(2)}%`;
-
-const formatAmount = (currencySymbol: string, amount: number) =>
-  `${currencySymbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 // 試算結果總結：已實現盈虧 / 未實現盈虧 / 總盈虧 / 最終持有股數
 export function ProfitSummary({
   result,
   currencySymbol,
+  amountDecimals,
   withholdingRate,
   getTrendColor,
 }: ProfitSummaryProps) {
+  const formatAmount = (amount: number) =>
+    formatCurrencyAmount(currencySymbol, amount, amountDecimals);
   const realizedCaption =
-    `配息 ${formatAmount(currencySymbol, result.realizedDividend)} + 已處分 ${formatAmount(currencySymbol, result.realizedPriceGain)}` +
+    `配息 ${formatAmount(result.realizedDividend)} + 已處分 ${formatAmount(result.realizedPriceGain)}` +
     (withholdingRate > 0
-      ? ` + 預估退稅 ${formatAmount(currencySymbol, result.realizedRefund)}`
+      ? ` + 預估退稅 ${formatAmount(result.realizedRefund)}`
       : "");
-  const unrealizedCaption = `配息(未除息) ${formatAmount(currencySymbol, result.unrealizedDividend)} + 未處分 ${formatAmount(currencySymbol, result.unrealizedPriceGain)}`;
+  const unrealizedCaption = `配息(未除息) ${formatAmount(result.unrealizedDividend)} + 未處分 ${formatAmount(result.unrealizedPriceGain)}`;
 
   return (
     <Box sx={{ py: 2 }}>
@@ -46,14 +46,14 @@ export function ProfitSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.realizedTotal) }}
           >
-            {formatAmount(currencySymbol, result.realizedTotal)}
+            {formatAmount(result.realizedTotal)}
           </Typography>
           <Typography
             variant="caption"
             component="p"
             sx={{ color: getTrendColor(result.realizedTotal) }}
           >
-            {formatRate(result.realizedRate)}
+            {formatRate(result.realizedRate, "尚無成本可計算")}
           </Typography>
           <Typography
             variant="caption"
@@ -78,14 +78,14 @@ export function ProfitSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.unrealizedTotal) }}
           >
-            {formatAmount(currencySymbol, result.unrealizedTotal)}
+            {formatAmount(result.unrealizedTotal)}
           </Typography>
           <Typography
             variant="caption"
             component="p"
             sx={{ color: getTrendColor(result.unrealizedTotal) }}
           >
-            {formatRate(result.unrealizedRate)}
+            {formatRate(result.unrealizedRate, "尚無成本可計算")}
           </Typography>
           <Typography
             variant="caption"
@@ -110,7 +110,7 @@ export function ProfitSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.grandTotal) }}
           >
-            {formatAmount(currencySymbol, result.grandTotal)}
+            {formatAmount(result.grandTotal)}
           </Typography>
           <Typography
             variant="caption"
@@ -118,7 +118,7 @@ export function ProfitSummary({
             fontWeight="bold"
             sx={{ color: getTrendColor(result.grandTotal) }}
           >
-            {formatRate(result.grandTotalRate)}
+            {formatRate(result.grandTotalRate, "尚無成本可計算")}
           </Typography>
         </Grid>
 
@@ -137,7 +137,7 @@ export function ProfitSummary({
             color="text.secondary"
             sx={{ lineHeight: 1.4 }}
           >
-            總成本 {formatAmount(currencySymbol, result.totalCost)}
+            總成本 {formatAmount(result.totalCost)}
           </Typography>
         </Grid>
       </Grid>

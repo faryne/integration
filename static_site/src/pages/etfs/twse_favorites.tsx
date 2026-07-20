@@ -34,7 +34,14 @@ import {
 } from "@/apis/opendata/twse_etf.ts";
 import { useTwseEtfFavoritesTransactions } from "@/apis/opendata/etf_transactions.ts";
 import { EtfDetailDialog } from "@/components/etf/etf_detail_dialog.tsx";
-import { calcTransactionsResult } from "@/components/etf/etf_profit_calculator_engine.ts";
+import {
+  calcTransactionsResult,
+  computeRate,
+} from "@/components/etf/etf_profit_calculator_engine.ts";
+import {
+  formatCurrencyAmount,
+  formatRate,
+} from "@/components/etf/etf_profit_calculator_format.ts";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
 import type { EtfDistribution } from "@/types/etf.ts";
 
@@ -44,14 +51,8 @@ const getTrendColor = (value: number) => {
   return value > 0 ? "#d32f2f" : "#2e7d32";
 };
 
-const formatAmount = (amount: number) =>
-  `NT$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-
-const formatRate = (rate: number | null) =>
-  rate === null ? "--" : `${rate >= 0 ? "+" : ""}${rate.toFixed(2)}%`;
-
-const rateOf = (gain: number, cost: number) =>
-  cost > 0 ? (gain / cost) * 100 : null;
+// 台幣沒有小數交易，金額顯示一律取整數
+const formatAmount = (amount: number) => formatCurrencyAmount("NT$", amount, 0);
 
 interface FavoriteRow {
   code: string;
@@ -399,7 +400,9 @@ export default function TwseEtfFavoritesPage() {
                     component="div"
                     sx={{ color: "inherit", opacity: 0.85 }}
                   >
-                    {formatRate(rateOf(totals.realizedTotal, totals.totalCost))}
+                    {formatRate(
+                      computeRate(totals.realizedTotal, totals.totalCost),
+                    )}
                   </Typography>
                 </TableCell>
                 <TableCell
@@ -417,7 +420,7 @@ export default function TwseEtfFavoritesPage() {
                     sx={{ color: "inherit", opacity: 0.85 }}
                   >
                     {formatRate(
-                      rateOf(totals.unrealizedTotal, totals.totalCost),
+                      computeRate(totals.unrealizedTotal, totals.totalCost),
                     )}
                   </Typography>
                 </TableCell>
@@ -435,7 +438,9 @@ export default function TwseEtfFavoritesPage() {
                     component="div"
                     sx={{ color: "inherit", opacity: 0.85 }}
                   >
-                    {formatRate(rateOf(totals.grandTotal, totals.totalCost))}
+                    {formatRate(
+                      computeRate(totals.grandTotal, totals.totalCost),
+                    )}
                   </Typography>
                 </TableCell>
                 <TableCell

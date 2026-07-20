@@ -11,10 +11,12 @@ import {
   Typography,
 } from "@mui/material";
 import type { ProfitDetailRow } from "@/components/etf/etf_profit_calculator_types.ts";
+import { formatCurrencyAmount } from "@/components/etf/etf_profit_calculator_format.ts";
 
 interface ProfitDetailTableProps {
   rows: ProfitDetailRow[];
   currencySymbol: string;
+  amountDecimals: number;
   showNetAmount: boolean;
   getTrendColor: (value: number) => string;
 }
@@ -29,6 +31,7 @@ const TYPE_LABEL: Record<ProfitDetailRow["type"], string> = {
 export function ProfitDetailTable({
   rows,
   currencySymbol,
+  amountDecimals,
   showNetAmount,
   getTrendColor,
 }: ProfitDetailTableProps) {
@@ -67,16 +70,21 @@ export function ProfitDetailTable({
                       : undefined
                   }
                 >
-                  {currencySymbol}
-                  {row.grossAmount.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                  })}
+                  {formatCurrencyAmount(
+                    currencySymbol,
+                    row.grossAmount,
+                    amountDecimals,
+                  )}
                 </TableCell>
                 {showNetAmount && (
                   <TableCell align="right">
                     {row.netAmount === null
                       ? "—"
-                      : `${currencySymbol}${row.netAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                      : formatCurrencyAmount(
+                          currencySymbol,
+                          row.netAmount,
+                          amountDecimals,
+                        )}
                   </TableCell>
                 )}
                 <TableCell align="center">
