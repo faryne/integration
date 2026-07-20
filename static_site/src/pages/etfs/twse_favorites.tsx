@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Paper,
   Stack,
@@ -164,17 +165,41 @@ export default function TwseEtfFavoritesPage() {
       )}
 
       {session && !isLoading && rows.length > 0 && (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
+        <TableContainer
+          component={Paper}
+          sx={{
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            overflowX: "auto",
+            boxShadow: "0 14px 40px rgba(15, 23, 42, 0.06)",
+          }}
+        >
+          <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
-                <TableCell>股號 / 名稱</TableCell>
-                <TableCell align="right">目前持股數</TableCell>
-                <TableCell align="right">最新收盤價</TableCell>
-                <TableCell align="right">已實現盈虧</TableCell>
-                <TableCell align="right">未實現盈虧</TableCell>
-                <TableCell align="right">總盈虧</TableCell>
-                <TableCell align="right">投入成本</TableCell>
+                {[
+                  "代號",
+                  "名稱",
+                  "目前持股數",
+                  "最新收盤價",
+                  "已實現盈虧",
+                  "未實現盈虧",
+                  "總盈虧",
+                  "投入成本",
+                ].map((label, index) => (
+                  <TableCell
+                    key={label}
+                    align={index === 0 || index === 1 ? "left" : "right"}
+                    sx={{
+                      fontWeight: 900,
+                      bgcolor: "#f6f9fc",
+                      color: "text.secondary",
+                    }}
+                  >
+                    {label}
+                  </TableCell>
+                ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -182,13 +207,37 @@ export default function TwseEtfFavoritesPage() {
                 <TableRow
                   key={row.code}
                   hover
-                  sx={{ cursor: "pointer" }}
-                  onClick={() => setSelectedCode(row.code)}
+                  sx={{
+                    "&:nth-of-type(even)": {
+                      bgcolor: "rgba(2, 132, 199, 0.025)",
+                    },
+                    "&:hover": { bgcolor: "rgba(25, 118, 210, 0.06)" },
+                  }}
                 >
                   <TableCell>
-                    <Typography variant="body2" fontWeight={700}>
-                      {row.code} {row.name}
-                    </Typography>
+                    <Chip
+                      color="primary"
+                      variant="outlined"
+                      label={row.code}
+                      size="small"
+                      sx={{ fontWeight: 900, borderRadius: 1.25 }}
+                      onClick={() => setSelectedCode(row.code)}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700, maxWidth: 260 }}>
+                    <Button
+                      onClick={() => setSelectedCode(row.code)}
+                      variant="text"
+                      sx={{
+                        justifyContent: "flex-start",
+                        px: 0,
+                        textAlign: "left",
+                        fontWeight: 800,
+                        textTransform: "none",
+                      }}
+                    >
+                      {row.name}
+                    </Button>
                   </TableCell>
                   <TableCell align="right">
                     {row.result.finalShares.toLocaleString(undefined, {
@@ -227,17 +276,26 @@ export default function TwseEtfFavoritesPage() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>總計</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                <TableCell
+                  colSpan={2}
+                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
+                >
+                  總計
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
+                >
                   {totals.finalShares.toLocaleString(undefined, {
                     maximumFractionDigits: 4,
                   })}
                 </TableCell>
-                <TableCell />
+                <TableCell sx={{ bgcolor: "#f6f9fc" }} />
                 <TableCell
                   align="right"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
                     color: getTrendColor(totals.realizedTotal),
                   }}
                 >
@@ -246,7 +304,8 @@ export default function TwseEtfFavoritesPage() {
                 <TableCell
                   align="right"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
                     color: getTrendColor(totals.unrealizedTotal),
                   }}
                 >
@@ -255,13 +314,17 @@ export default function TwseEtfFavoritesPage() {
                 <TableCell
                   align="right"
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 900,
+                    bgcolor: "#f6f9fc",
                     color: getTrendColor(totals.grandTotal),
                   }}
                 >
                   {formatAmount(totals.grandTotal)}
                 </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                <TableCell
+                  align="right"
+                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
+                >
                   {formatAmount(totals.totalCost)}
                 </TableCell>
               </TableRow>
