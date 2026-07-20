@@ -131,6 +131,14 @@ export function ProfitSummary({
               maximumFractionDigits: 4,
             })}
           </Typography>
+          <Typography
+            variant="caption"
+            component="p"
+            color="text.secondary"
+            sx={{ lineHeight: 1.4 }}
+          >
+            總成本 {formatAmount(currencySymbol, result.totalCost)}
+          </Typography>
         </Grid>
       </Grid>
 

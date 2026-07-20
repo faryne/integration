@@ -27,6 +27,9 @@ export function ProfitQuickSummary({
       <Typography variant="caption" color="text.secondary" fontWeight="bold">
         試算結果
       </Typography>
+      <Typography variant="caption" color="text.secondary" component="p">
+        總成本 {formatAmount(currencySymbol, result.totalCost)}
+      </Typography>
       <Stack spacing={1.5} sx={{ mt: 1 }}>
         <Box>
           <Typography variant="caption" color="text.secondary">
