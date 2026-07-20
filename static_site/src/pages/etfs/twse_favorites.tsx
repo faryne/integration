@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -25,6 +25,7 @@ import {
   useGetTwseEtfInfoBatch,
 } from "@/apis/opendata/twse_etf.ts";
 import { useTwseEtfFavoritesTransactions } from "@/apis/opendata/etf_transactions.ts";
+import { EtfDetailDialog } from "@/components/etf/etf_detail_dialog.tsx";
 import { calcTransactionsResult } from "@/components/etf/etf_profit_calculator_engine.ts";
 import type { ProfitResult } from "@/components/etf/etf_profit_calculator_types.ts";
 import type { EtfDistribution } from "@/types/etf.ts";
@@ -59,6 +60,7 @@ export default function TwseEtfFavoritesPage() {
   useTitle("我的最愛 ETF - Faryne 的實驗室");
   const navigate = useNavigate();
   const { session } = useAuth();
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   const codeListQuery = useGetTwseEtfCodeList();
   const etfByCode = useMemo(
@@ -181,7 +183,7 @@ export default function TwseEtfFavoritesPage() {
                   key={row.code}
                   hover
                   sx={{ cursor: "pointer" }}
-                  onClick={() => navigate(`/data/etf/twse/${row.code}`)}
+                  onClick={() => setSelectedCode(row.code)}
                 >
                   <TableCell>
                     <Typography variant="body2" fontWeight={700}>
@@ -266,6 +268,15 @@ export default function TwseEtfFavoritesPage() {
             </TableFooter>
           </Table>
         </TableContainer>
+      )}
+
+      {selectedCode && (
+        <EtfDetailDialog
+          key={selectedCode}
+          code={selectedCode}
+          open={!!selectedCode}
+          onClose={() => setSelectedCode(null)}
+        />
       )}
     </Box>
   );

@@ -2,7 +2,6 @@ import React, {
   useState,
   useMemo,
   useEffect,
-  useRef,
   useDeferredValue,
   useCallback,
 } from "react";
@@ -27,7 +26,6 @@ import {
   Chip,
   Stack,
   Button,
-  useTheme,
   Divider,
   TableSortLabel,
   CircularProgress,
@@ -49,35 +47,30 @@ import TableRowsIcon from "@mui/icons-material/TableRows";
 import ShareIcon from "@mui/icons-material/Share";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import ApexCharts from "apexcharts/candlestick";
 import { useTitle } from "@/helpers/title.tsx";
 import {
   useGetTwseEtfCodeList,
   useGetTwseEtfExInfo,
-  useGetTwseEtfInfo,
-  useGetTwseEtfTicker,
 } from "@/apis/opendata/twse_etf.ts";
-import type { EtfInfo, TwseEtfInfo, TwseEtfShare } from "@/types/etf.ts";
+import type { TwseEtfInfo } from "@/types/etf.ts";
 import dayjs from "dayjs";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { buildSnsShareUrl, shareUrl } from "@/helpers/share.ts";
-import { DetailDialog } from "@/components/common/DetailDialog.tsx";
 import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
-import {
-  EtfProfitCalculator,
-  type DailyPriceQuote,
-} from "@/components/etf/etf_profit_calculator.tsx";
-import { fetchTwseEtfDailyTicker } from "@/apis/opendata/twse_etf.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import {
   useSaveTwseEtfFavorite,
   useTwseEtfFavorites,
 } from "@/apis/opendata/etf_favorites.ts";
+import { EtfDetailDialog } from "@/components/etf/etf_detail_dialog.tsx";
 import {
-  useSaveTwseEtfTransactions,
-  useTwseEtfSavedTransactions,
-} from "@/apis/opendata/etf_transactions.ts";
+  formatDateOrDash,
+  formatDecimal,
+  formatPercent,
+  formatSignedPercent,
+  getWinRateTone,
+} from "@/pages/etfs/twse_format_helpers.ts";
 
 const filters = [
   { label: "全部", value: "ALL" },
@@ -148,7 +141,6 @@ type OrderableField =
   | "ma20_bias_rate";
 type OrderableSort = "asc" | "desc";
 type TableDensity = "compact" | "full";
-type TickerViewMode = "chart" | "table";
 
 const strategyOptions: {
   value: StrategyType;
@@ -308,22 +300,6 @@ const matchesTerm = (etf: TwseEtfInfo, term: string) => {
   );
 };
 
-const formatDateOrDash = (value?: string) => {
-  if (!value) return "--";
-  const formatted = dayjs(value).format("YYYY-MM-DD");
-  return formatted !== "0001-01-01" &&
-    formatted !== "1900-01-01" &&
-    formatted !== "Invalid Date"
-    ? formatted
-    : "--";
-};
-
-const getWinRateTone = (winRate: number) => {
-  if (winRate >= 85) return "success.main";
-  if (winRate > 0 && winRate <= 50) return "error.main";
-  return "text.primary";
-};
-
 const getAvgFillStatus = (days: number) => {
   if (days > 0 && days <= 20) {
     return { label: "快", color: "success" as const };
@@ -358,56 +334,6 @@ const getSortValue = (etf: TwseEtfInfo, field: OrderableField) => {
   }
 
   return Number(etf[field]) || 0;
-};
-
-const formatSignedPercent = (value?: number | null) => {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "--";
-  }
-
-  const prefix = value > 0 ? "+" : "";
-  return `${prefix}${value.toFixed(2)}%`;
-};
-
-const formatPercent = (value?: number | null) => {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "--";
-  }
-  return `${value.toFixed(2)}%`;
-};
-
-const formatDecimal = (value?: number | null, digits = 2) => {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "--";
-  }
-  return value.toFixed(digits);
-};
-
-const formatInteger = (value?: number | null) => {
-  if (value === null || value === undefined || Number.isNaN(value)) {
-    return "--";
-  }
-  return Math.round(value).toLocaleString("zh-TW");
-};
-
-const averageClose = <T extends { close: number }>(rows: T[]) => {
-  if (rows.length === 0) return null;
-  return rows.reduce((sum, row) => sum + row.close, 0) / rows.length;
-};
-
-const rangePositionByClose = <T extends { close: number }>(rows: T[]) => {
-  if (rows.length === 0) return null;
-
-  const latest = rows[rows.length - 1];
-  const closes = rows.map((row) => row.close);
-  const high = Math.max(...closes);
-  const low = Math.min(...closes);
-  const range = high - low;
-
-  if (range <= 0) {
-    return 0;
-  }
-  return ((latest.close - low) / range) * 100;
 };
 
 const StatPill = ({
@@ -448,55 +374,6 @@ const StatPill = ({
   </Box>
 );
 
-const DetailStat = ({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: React.ReactNode;
-  tone?: string;
-}) => (
-  <Box
-    sx={{
-      border: "1px solid",
-      borderColor: "divider",
-      borderRadius: 2,
-      p: 1.5,
-      bgcolor: "background.paper",
-      minWidth: { xs: "calc(50% - 8px)", sm: 132 },
-      flex: "1 1 132px",
-    }}
-  >
-    <Typography
-      variant="caption"
-      sx={{ color: "text.secondary", fontWeight: 800 }}
-    >
-      {label}
-    </Typography>
-    <Typography
-      variant="h6"
-      sx={{ fontWeight: 900, lineHeight: 1.2, color: tone ?? "text.primary" }}
-    >
-      {value}
-    </Typography>
-  </Box>
-);
-
-const EtfDetailSummary = ({ etf }: { etf: TwseEtfInfo }) => (
-  <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1} sx={{ mb: 2 }}>
-    <DetailStat label="總除息次數" value={etf.total_ex_count || "--"} />
-    <DetailStat label="成功填息" value={etf.success_fill_count || "--"} />
-    <DetailStat
-      label="勝率"
-      value={etf.win_rate > 0 ? `${etf.win_rate}%` : "--"}
-      tone={getWinRateTone(etf.win_rate)}
-    />
-    <DetailStat label="平均填息日" value={etf.avg_fill_days || "--"} />
-    <DetailStat label="最近除息日" value={formatDateOrDash(etf.ex_date)} />
-  </Stack>
-);
-
 const EtfDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { code } = useParams<{ code?: string }>();
@@ -510,7 +387,6 @@ const EtfDashboard: React.FC = () => {
   ); // 搜尋關鍵字
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [tabValue, setTabValue] = useState(0);
-  const [dialogTabValue, setDialogTabValue] = useState(0);
   const [category, setCategory] = useState<EtfCategory>(() => {
     const value = searchParams.get("category");
     return isEtfCategory(value) ? value : "ALL";
@@ -532,30 +408,6 @@ const EtfDashboard: React.FC = () => {
   );
   const selectedEtf = routeCode ? (etfByCode.get(routeCode) ?? null) : null;
   const isInvalidRouteCode = !!routeCode && query.isSuccess && !selectedEtf;
-  const queryShares = useGetTwseEtfInfo(selectedEtf?.code ?? "");
-  const profitCalculatorData = useMemo<EtfInfo>(
-    () => ({
-      code: selectedEtf?.code ?? "",
-      description: selectedEtf?.name ?? "",
-      distributions: (queryShares.data?.data?.stats ?? []).map((s) => ({
-        per_share: s.share,
-        declared_date: formatDateOrDash(s.ex_date),
-        ex_date: formatDateOrDash(s.ex_date),
-        payable_date: formatDateOrDash(s.payable_date),
-        roc: -1, // 台股境內配息無 ROC 預扣退稅資料
-      })),
-    }),
-    [selectedEtf, queryShares.data],
-  );
-  const handleFetchDailyPrice = useCallback(
-    async (date: string): Promise<DailyPriceQuote | null> => {
-      if (!selectedEtf) return null;
-      const row = await fetchTwseEtfDailyTicker(selectedEtf.code, date);
-      if (!row) return null;
-      return { open: row.open, high: row.max, low: row.min, close: row.close };
-    },
-    [selectedEtf],
-  );
 
   const { session } = useAuth();
   const favoritesQuery = useTwseEtfFavorites();
@@ -573,21 +425,6 @@ const EtfDashboard: React.FC = () => {
     },
     [favoritedCodes, saveFavoriteMutation],
   );
-
-  const isProfitTabOpen = dialogTabValue === 2;
-  const savedTransactionsQuery = useTwseEtfSavedTransactions(
-    selectedEtf?.code,
-    isProfitTabOpen,
-  );
-  const saveTransactionsMutation = useSaveTwseEtfTransactions(
-    selectedEtf?.code,
-  );
-  // 已登入時要等已儲存的交易紀錄抓回來才 mount 試算元件，讓 initialTransactions 有正確初始值
-  const canRenderProfitCalculator =
-    isProfitTabOpen &&
-    (!session ||
-      savedTransactionsQuery.isSuccess ||
-      savedTransactionsQuery.isError);
 
   useTitle(
     isInvalidRouteCode
@@ -667,7 +504,6 @@ const EtfDashboard: React.FC = () => {
 
   const handleOpenByCode = useCallback(
     (etfCode: string) => {
-      setDialogTabValue(0);
       navigate(`/data/etf/twse/${etfCode}${querySuffix}`);
     },
     [navigate, querySuffix],
@@ -1143,79 +979,12 @@ const EtfDashboard: React.FC = () => {
         </Grid>
 
         {selectedEtf && (
-          <DetailDialog
+          <EtfDetailDialog
+            key={selectedEtf.code}
+            code={selectedEtf.code}
             open={!!routeCode}
-            badge={selectedEtf.code}
-            title={selectedEtf.name}
             onClose={handleClose}
-            onShare={() =>
-              handleShare(`/data/etf/twse/${selectedEtf.code}${querySuffix}`)
-            }
-            shareLabel="分享 ETF 連結"
-            favorite={
-              session
-                ? {
-                    isFavorited: favoritedCodes.has(selectedEtf.code),
-                    onToggle: () => handleToggleFavorite(selectedEtf.code),
-                    label: favoritedCodes.has(selectedEtf.code)
-                      ? `將『${selectedEtf.code} - ${selectedEtf.name}』移出最愛`
-                      : `將『${selectedEtf.code} - ${selectedEtf.name}』加入最愛`,
-                  }
-                : undefined
-            }
-          >
-            <EtfDetailSummary etf={selectedEtf} />
-            <Tabs
-              value={dialogTabValue}
-              onChange={(_, newValue) => setDialogTabValue(newValue)}
-              variant="scrollable"
-              allowScrollButtonsMobile
-              sx={{ mb: 1 }}
-            >
-              <Tab label={"配息紀錄"} />
-              <Tab label={"歷史股價"} />
-              <Tab label={"獲利試算"} />
-            </Tabs>
-            <Divider />
-            <Box sx={{ display: dialogTabValue === 0 ? "block" : "none" }}>
-              <EtfHistoryShare data={queryShares.data?.data?.stats ?? []} />
-            </Box>
-            <Box sx={{ display: dialogTabValue === 1 ? "block" : "none" }}>
-              {dialogTabValue === 1 && (
-                <EtfCandleChart
-                  etfCode={selectedEtf.code}
-                  etfName={selectedEtf.name}
-                />
-              )}
-            </Box>
-            <Box sx={{ display: isProfitTabOpen ? "block" : "none" }}>
-              {canRenderProfitCalculator ? (
-                <EtfProfitCalculator
-                  data={profitCalculatorData}
-                  defaultCurrency="TWD"
-                  onFetchDailyPrice={handleFetchDailyPrice}
-                  latestClosePrice={selectedEtf?.latest_close}
-                  initialTransactions={
-                    session ? savedTransactionsQuery.data : undefined
-                  }
-                  onSaveTransactions={
-                    session
-                      ? (records) =>
-                          saveTransactionsMutation.mutateAsync(records)
-                      : undefined
-                  }
-                />
-              ) : (
-                isProfitTabOpen && (
-                  <Box
-                    sx={{ display: "flex", justifyContent: "center", py: 6 }}
-                  >
-                    <CircularProgress />
-                  </Box>
-                )
-              )}
-            </Box>
-          </DetailDialog>
+          />
         )}
       </Box>
 
@@ -1816,839 +1585,6 @@ const EtfTableList = ({
         </TableBody>
       </Table>
     </TableContainer>
-  );
-};
-
-const EtfHistoryShare = ({ data }: { data: TwseEtfShare[] }) => (
-  <>
-    <Typography variant="subtitle1" sx={{ fontWeight: 900, mb: 2 }}>
-      歷史配息紀錄
-    </Typography>
-    <TableContainer
-      component={Paper}
-      variant="outlined"
-      sx={{ borderRadius: 2, overflowX: "auto" }}
-    >
-      <Table size="small" sx={{ minWidth: 760 }}>
-        <TableHead>
-          <TableRow>
-            {[
-              "除息日期",
-              "入帳日期",
-              "配息金額",
-              "單次殖利率",
-              "填息日",
-              "填息所需日曆日",
-            ].map((label) => (
-              <TableCell
-                key={label}
-                align={label === "配息金額" ? "right" : "left"}
-                sx={{
-                  bgcolor: "#f6f9fc",
-                  color: "text.secondary",
-                  fontWeight: 900,
-                }}
-              >
-                {label}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {(data || []).map((record, index) => (
-            <TableRow key={index}>
-              <TableCell>{formatDateOrDash(record.ex_date)}</TableCell>
-              <TableCell>{formatDateOrDash(record.payable_date)}</TableCell>
-              <TableCell
-                align="right"
-                sx={{ color: "success.main", fontWeight: "bold" }}
-              >
-                {record.share > 0 ? record.share.toFixed(4) : "--"}
-              </TableCell>
-              <TableCell>
-                {record.yield_rate > 0 ? record.yield_rate + "%" : "--"}
-              </TableCell>
-              <TableCell>{formatDateOrDash(record.filled_date)}</TableCell>
-              <TableCell>
-                {record.filled_days > 0 ? record.filled_days : "--"}
-              </TableCell>
-            </TableRow>
-          ))}
-          {!data ||
-            (data.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                  尚無配息資料
-                </TableCell>
-              </TableRow>
-            ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </>
-);
-
-const EtfCandleChart = ({
-  etfCode,
-  etfName,
-}: {
-  etfCode: string;
-  etfName: string;
-}) => {
-  const theme = useTheme();
-  const chartRef = useRef<HTMLDivElement>(null);
-  const today = useMemo(() => dayjs().format("YYYY-MM-DD"), []);
-  const [startDate, setStartDate] = useState(
-    dayjs().subtract(3, "month").format("YYYY-MM-DD"),
-  );
-  const [endDate] = useState(dayjs().format("YYYY-MM-DD"));
-  const [selectedEndDate, setSelectedEndDate] = useState(endDate);
-  const [viewMode, setViewMode] = useState<TickerViewMode>("chart");
-
-  const maxEndDate = useMemo(() => {
-    const oneYearLater = dayjs(startDate).add(1, "year");
-    const todayValue = dayjs(today);
-    return (
-      oneYearLater.isBefore(todayValue) ? oneYearLater : todayValue
-    ).format("YYYY-MM-DD");
-  }, [startDate, today]);
-
-  const dateRangeError = useMemo(() => {
-    const start = dayjs(startDate);
-    const end = dayjs(selectedEndDate);
-
-    if (!start.isValid() || !end.isValid()) {
-      return "請選擇有效的日期區間。";
-    }
-
-    if (end.isBefore(start, "day")) {
-      return "結束日期不能早於開始日期。";
-    }
-
-    if (end.isAfter(start.add(1, "year"), "day")) {
-      return "起訖期間最多一年。";
-    }
-
-    if (end.isAfter(dayjs(today), "day")) {
-      return "結束日期不能晚於今日。";
-    }
-
-    return "";
-  }, [selectedEndDate, startDate, today]);
-
-  const canQueryTicker = !dateRangeError;
-
-  const query = useGetTwseEtfTicker(
-    etfCode,
-    startDate,
-    selectedEndDate,
-    canQueryTicker,
-  );
-  const tickerRows = useMemo(
-    () =>
-      [...(query.data?.data ?? [])].sort(
-        (a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf(),
-      ),
-    [query.data?.data],
-  );
-  const calculatedTickerRows = useMemo(
-    () =>
-      tickerRows.map((row, index) => {
-        const rowsToDate = tickerRows.slice(0, index + 1);
-        const rows5 = rowsToDate.slice(-5);
-        const rows20 = rowsToDate.slice(-20);
-        const rows60 = rowsToDate.slice(-60);
-        const rows120 = rowsToDate.slice(-120);
-        const ma5 = rowsToDate.length >= 5 ? averageClose(rows5) : null;
-        const ma20 = rowsToDate.length >= 20 ? averageClose(rows20) : null;
-
-        return {
-          ...row,
-          calculated_ma5: ma5,
-          calculated_ma20: ma20,
-          calculated_ma60:
-            rowsToDate.length >= 60 ? averageClose(rows60) : null,
-          calculated_ma120:
-            rowsToDate.length >= 120 ? averageClose(rows120) : null,
-          calculated_ma20_bias_rate:
-            ma20 !== null && ma20 > 0
-              ? ((row.close - ma20) / ma20) * 100
-              : null,
-          calculated_range_position_20:
-            rowsToDate.length >= 20 ? rangePositionByClose(rows20) : null,
-          calculated_range_position_60:
-            rowsToDate.length >= 60 ? rangePositionByClose(rows60) : null,
-          calculated_range_position_120:
-            rowsToDate.length >= 120 ? rangePositionByClose(rows120) : null,
-        };
-      }),
-    [tickerRows],
-  );
-  const indicatorVisibility = useMemo(
-    () => ({
-      ma5: calculatedTickerRows.length >= 5,
-      ma20: calculatedTickerRows.length >= 20,
-      ma60: calculatedTickerRows.length >= 60,
-      ma120: calculatedTickerRows.length >= 120,
-      range20: calculatedTickerRows.length >= 20,
-      range60: calculatedTickerRows.length >= 60,
-      range120: calculatedTickerRows.length >= 120,
-    }),
-    [calculatedTickerRows.length],
-  );
-  const tickerTableRows = useMemo(
-    () =>
-      [...calculatedTickerRows].sort(
-        (a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf(),
-      ),
-    [calculatedTickerRows],
-  );
-  const closeRange = useMemo(() => {
-    return calculatedTickerRows.reduce<{
-      high: (typeof calculatedTickerRows)[number] | null;
-      low: (typeof calculatedTickerRows)[number] | null;
-    }>(
-      (result, row) => {
-        if (!result.high || row.close > result.high.close) {
-          result.high = row;
-        }
-
-        if (!result.low || row.close < result.low.close) {
-          result.low = row;
-        }
-
-        return result;
-      },
-      { high: null, low: null },
-    );
-  }, [calculatedTickerRows]);
-  const tickerStats = useMemo(() => {
-    const first = calculatedTickerRows[0] ?? null;
-    const latest =
-      calculatedTickerRows[calculatedTickerRows.length - 1] ?? null;
-    const high = closeRange.high;
-    const low = closeRange.low;
-    const range = high && low ? high.close - low.close : 0;
-    const returnRate =
-      first && latest && first.close > 0
-        ? ((latest.close - first.close) / first.close) * 100
-        : null;
-    const position =
-      latest && low && range > 0
-        ? ((latest.close - low.close) / range) * 100
-        : null;
-    const amplitude =
-      high && low && low.close > 0 ? (range / low.close) * 100 : null;
-
-    return {
-      amplitude,
-      high,
-      latest,
-      low,
-      position,
-      returnRate,
-    };
-  }, [calculatedTickerRows, closeRange.high, closeRange.low]);
-  const tickerTableColumnCount =
-    8 +
-    Number(indicatorVisibility.range20) +
-    Number(indicatorVisibility.range60) +
-    Number(indicatorVisibility.range120) +
-    Number(indicatorVisibility.ma5) +
-    Number(indicatorVisibility.ma20) +
-    Number(indicatorVisibility.ma60) +
-    Number(indicatorVisibility.ma120) +
-    Number(indicatorVisibility.ma20);
-
-  // 將資料轉換為 ApexCharts 格式
-  const series = useMemo(
-    () => [
-      {
-        data: tickerRows.map((item) => ({
-          x: dayjs(item.date).format("YYYY-MM-DD"),
-          y: [item.open, item.max, item.min, item.close],
-        })),
-      },
-    ],
-    [tickerRows],
-  );
-
-  const options: ApexCharts.ApexOptions = useMemo(
-    () => ({
-      chart: {
-        type: "candlestick",
-        height: 350,
-        toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            selection: true,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true,
-          },
-        },
-        animations: { enabled: true },
-        fontFamily: theme.typography.fontFamily,
-        background: "transparent",
-      },
-      title: {
-        text: `${etfName} (${etfCode}) 股價走勢 ${startDate} ~ ${selectedEndDate}`,
-        align: "left",
-        style: {
-          fontSize: "18px",
-          fontWeight: 600,
-          color: theme.palette.text.primary,
-        },
-      },
-      xaxis: {
-        type: "datetime",
-        labels: {
-          datetimeFormatter: {
-            year: "yyyy",
-            month: "MMM 'yy",
-            day: "dd MMM",
-            hour: "HH:mm",
-          },
-          style: { colors: theme.palette.text.secondary },
-        },
-        tooltip: { enabled: false },
-      },
-      yaxis: {
-        tooltip: { enabled: true },
-        labels: {
-          formatter: (val) => val.toFixed(2),
-          style: { colors: theme.palette.text.secondary },
-        },
-        forceNiceScale: true,
-      },
-      tooltip: {
-        enabled: true,
-        theme: theme.palette.mode,
-        shared: true,
-        intersect: false,
-        x: {
-          format: "yyyy-MM-dd",
-        },
-        fixed: {
-          enabled: false,
-          position: "topRight",
-        },
-        custom: ({ seriesIndex, dataPointIndex, w }) => {
-          // apexcharts 的 series 型別是 candlestick 的物件陣列（含 data）跟
-          // pie/donut 用的純數字陣列（number[]）的聯集，但這張圖固定是 candlestick，
-          // 一定是前者，所以在這裡窄化型別，不影響其他圖表共用的型別定義。
-          const seriesEntry = w.config.series?.[seriesIndex] as
-            { data?: { x: string | number; y: number[] }[] } | undefined;
-          const point = seriesEntry?.data?.[dataPointIndex];
-          const values = point?.y ?? [];
-          const [open, high, low, close] = values;
-          const date = point?.x ? dayjs(point.x).format("YYYY-MM-DD") : "--";
-          const rows = [
-            ["開盤", open],
-            ["最高", high],
-            ["最低", low],
-            ["收盤", close],
-          ];
-
-          return `
-            <div style="min-width: 152px; padding: 10px 12px; color: ${theme.palette.text.primary};">
-              <div style="font-size: 12px; font-weight: 800; color: ${theme.palette.text.secondary}; margin-bottom: 8px;">
-                ${date}
-              </div>
-              ${rows
-                .map(
-                  ([label, value]) => `
-                    <div style="display: flex; justify-content: space-between; gap: 18px; font-size: 12px; line-height: 1.7;">
-                      <span style="color: ${theme.palette.text.secondary};">${label}</span>
-                      <strong>${Number(value).toFixed(2)}</strong>
-                    </div>
-                  `,
-                )
-                .join("")}
-            </div>
-          `;
-        },
-      },
-      plotOptions: {
-        candlestick: {
-          colors: {
-            upward: "#ef5350", // 台灣習慣：漲紅
-            downward: "#26a69a", // 台灣習慣：跌綠
-          },
-          wick: {
-            useFillColor: true,
-          },
-        },
-      },
-      grid: {
-        borderColor: theme.palette.divider,
-        strokeDashArray: 4,
-      },
-    }),
-    [
-      etfCode,
-      etfName,
-      selectedEndDate,
-      startDate,
-      theme.palette.divider,
-      theme.palette.mode,
-      theme.palette.text.primary,
-      theme.palette.text.secondary,
-      theme.typography.fontFamily,
-    ],
-  );
-
-  useEffect(() => {
-    if (
-      !chartRef.current ||
-      viewMode !== "chart" ||
-      dateRangeError ||
-      query.isLoading ||
-      query.isError
-    ) {
-      return;
-    }
-
-    const chart = new ApexCharts(chartRef.current, {
-      ...options,
-      series,
-    });
-
-    chart.render();
-
-    return () => {
-      chart.destroy();
-    };
-  }, [
-    dateRangeError,
-    options,
-    query.isError,
-    query.isLoading,
-    series,
-    viewMode,
-  ]);
-
-  return (
-    <Box
-      sx={{
-        width: "100%",
-        mt: 2,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-      }}
-    >
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.5}
-        alignItems={{ xs: "stretch", sm: "flex-start" }}
-        sx={{ mb: 2 }}
-      >
-        <TextField
-          label="開始日期"
-          type="date"
-          size="small"
-          value={startDate}
-          onChange={(event) => {
-            const nextStartDate = event.target.value;
-            setStartDate(nextStartDate);
-            const nextMaxEndDate = dayjs(nextStartDate)
-              .add(1, "year")
-              .format("YYYY-MM-DD");
-
-            if (dayjs(selectedEndDate).isAfter(nextMaxEndDate, "day")) {
-              setSelectedEndDate(
-                dayjs(nextMaxEndDate).isAfter(today, "day")
-                  ? today
-                  : nextMaxEndDate,
-              );
-            }
-          }}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: {
-              max: selectedEndDate,
-            },
-          }}
-          sx={{ minWidth: { sm: 180 } }}
-        />
-        <TextField
-          label="結束日期"
-          type="date"
-          size="small"
-          value={selectedEndDate}
-          onChange={(event) => {
-            setSelectedEndDate(event.target.value);
-          }}
-          error={!!dateRangeError}
-          helperText={dateRangeError || "最多查詢一年區間"}
-          slotProps={{
-            inputLabel: { shrink: true },
-            htmlInput: {
-              min: startDate,
-              max: maxEndDate,
-            },
-          }}
-          sx={{ minWidth: { sm: 180 } }}
-        />
-      </Stack>
-
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.5}
-        justifyContent="space-between"
-        alignItems={{ xs: "stretch", sm: "center" }}
-        sx={{ mb: 1.5 }}
-      >
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={viewMode}
-          onChange={(_, nextMode: TickerViewMode | null) => {
-            if (nextMode) {
-              setViewMode(nextMode);
-            }
-          }}
-          aria-label="歷史股價顯示模式"
-          sx={{
-            "& .MuiToggleButton-root": {
-              px: 1.5,
-              fontWeight: 800,
-              borderRadius: 1.5,
-            },
-          }}
-        >
-          <ToggleButton value="chart">K 線圖</ToggleButton>
-          <ToggleButton value="table">表格</ToggleButton>
-        </ToggleButtonGroup>
-      </Stack>
-
-      <Stack
-        direction="row"
-        spacing={1}
-        useFlexGap
-        flexWrap="wrap"
-        sx={{ mb: 2 }}
-      >
-        <DetailStat
-          label="最新收盤"
-          value={
-            tickerStats.latest ? (
-              <Box>
-                {tickerStats.latest.close.toFixed(2)}
-                <Typography variant="caption" display="block">
-                  {dayjs(tickerStats.latest.date).format("YYYY-MM-DD")}
-                </Typography>
-              </Box>
-            ) : (
-              "--"
-            )
-          }
-          tone="primary.main"
-        />
-        <DetailStat
-          label="區間最高收盤"
-          value={
-            tickerStats.high ? (
-              <Box>
-                {tickerStats.high.close.toFixed(2)}
-                <Typography variant="caption" display="block">
-                  {dayjs(tickerStats.high.date).format("YYYY-MM-DD")}
-                </Typography>
-              </Box>
-            ) : (
-              "--"
-            )
-          }
-          tone="error.main"
-        />
-        <DetailStat
-          label="區間最低收盤"
-          value={
-            tickerStats.low ? (
-              <Box>
-                {tickerStats.low.close.toFixed(2)}
-                <Typography variant="caption" display="block">
-                  {dayjs(tickerStats.low.date).format("YYYY-MM-DD")}
-                </Typography>
-              </Box>
-            ) : (
-              "--"
-            )
-          }
-          tone="success.main"
-        />
-        <DetailStat
-          label="區間報酬"
-          value={formatSignedPercent(tickerStats.returnRate)}
-          tone={
-            tickerStats.returnRate && tickerStats.returnRate >= 0
-              ? "error.main"
-              : "success.main"
-          }
-        />
-        <DetailStat
-          label="區間位置"
-          value={
-            tickerStats.position === null
-              ? "--"
-              : `${tickerStats.position.toFixed(2)}%`
-          }
-        />
-        <DetailStat
-          label="區間振幅"
-          value={
-            tickerStats.amplitude === null
-              ? "--"
-              : `${tickerStats.amplitude.toFixed(2)}%`
-          }
-        />
-        {indicatorVisibility.ma5 && (
-          <DetailStat
-            label="MA5"
-            value={formatDecimal(tickerStats.latest?.calculated_ma5)}
-          />
-        )}
-        {indicatorVisibility.ma20 && (
-          <DetailStat
-            label="MA20"
-            value={formatDecimal(tickerStats.latest?.calculated_ma20)}
-          />
-        )}
-        {indicatorVisibility.ma20 && (
-          <DetailStat
-            label="MA20 乖離"
-            value={formatSignedPercent(
-              tickerStats.latest?.calculated_ma20_bias_rate,
-            )}
-            tone={
-              (tickerStats.latest?.calculated_ma20_bias_rate ?? 0) >= 0
-                ? "error.main"
-                : "success.main"
-            }
-          />
-        )}
-        {indicatorVisibility.ma60 && (
-          <DetailStat
-            label="MA60"
-            value={formatDecimal(tickerStats.latest?.calculated_ma60)}
-          />
-        )}
-        {indicatorVisibility.ma120 && (
-          <DetailStat
-            label="MA120"
-            value={formatDecimal(tickerStats.latest?.calculated_ma120)}
-          />
-        )}
-        {indicatorVisibility.range20 && (
-          <DetailStat
-            label="月區間位置"
-            value={formatPercent(
-              tickerStats.latest?.calculated_range_position_20,
-            )}
-          />
-        )}
-        {indicatorVisibility.range60 && (
-          <DetailStat
-            label="季區間位置"
-            value={formatPercent(
-              tickerStats.latest?.calculated_range_position_60,
-            )}
-          />
-        )}
-        {indicatorVisibility.range120 && (
-          <DetailStat
-            label="半年區間位置"
-            value={formatPercent(
-              tickerStats.latest?.calculated_range_position_120,
-            )}
-          />
-        )}
-      </Stack>
-
-      {dateRangeError ? (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {dateRangeError}
-        </Alert>
-      ) : query.isLoading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : query.isError ? (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          股價資料載入失敗，請稍後再試。
-        </Alert>
-      ) : null}
-      {viewMode === "chart" ? (
-        <Box ref={chartRef} sx={{ minHeight: 350 }} />
-      ) : (
-        <TableContainer
-          component={Paper}
-          variant="outlined"
-          sx={{ borderRadius: 2, overflowX: "auto" }}
-        >
-          <Table size="small" sx={{ minWidth: tickerTableColumnCount * 96 }}>
-            <TableHead>
-              <TableRow>
-                {[
-                  "日期",
-                  "開盤",
-                  "最高",
-                  "最低",
-                  "收盤",
-                  ...(indicatorVisibility.range20 ? ["月區間位置"] : []),
-                  ...(indicatorVisibility.range60 ? ["季區間位置"] : []),
-                  ...(indicatorVisibility.range120 ? ["半年區間位置"] : []),
-                  ...(indicatorVisibility.ma5 ? ["MA5"] : []),
-                  ...(indicatorVisibility.ma20 ? ["MA20"] : []),
-                  ...(indicatorVisibility.ma20 ? ["MA20 乖離"] : []),
-                  ...(indicatorVisibility.ma60 ? ["MA60"] : []),
-                  ...(indicatorVisibility.ma120 ? ["MA120"] : []),
-                  "成交量",
-                  "成交金額",
-                  "交易筆數",
-                ].map((label) => (
-                  <TableCell
-                    key={label}
-                    align={label === "日期" ? "left" : "right"}
-                    sx={{
-                      bgcolor: "#f6f9fc",
-                      color: "text.secondary",
-                      fontWeight: 900,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {label}
-                  </TableCell>
-                ))}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tickerTableRows.length > 0 ? (
-                tickerTableRows.map((row) => {
-                  const isHighClose =
-                    closeRange.high?.date === row.date &&
-                    closeRange.high?.close === row.close;
-                  const isLowClose =
-                    closeRange.low?.date === row.date &&
-                    closeRange.low?.close === row.close;
-
-                  return (
-                    <TableRow
-                      key={row.date}
-                      hover
-                      sx={{
-                        bgcolor: isHighClose
-                          ? "rgba(239, 83, 80, 0.08)"
-                          : isLowClose
-                            ? "rgba(38, 166, 154, 0.08)"
-                            : undefined,
-                      }}
-                    >
-                      <TableCell>
-                        {dayjs(row.date).format("YYYY-MM-DD")}
-                      </TableCell>
-                      <TableCell align="right">{row.open.toFixed(2)}</TableCell>
-                      <TableCell align="right">{row.max.toFixed(2)}</TableCell>
-                      <TableCell align="right">{row.min.toFixed(2)}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 900 }}>
-                        <Stack
-                          direction="row"
-                          spacing={0.75}
-                          justifyContent="flex-end"
-                          alignItems="center"
-                        >
-                          <span>{row.close.toFixed(2)}</span>
-                          {isHighClose && (
-                            <Chip
-                              size="small"
-                              label="區間最高"
-                              color="error"
-                              variant="outlined"
-                              sx={{ height: 22, borderRadius: 1 }}
-                            />
-                          )}
-                          {isLowClose && (
-                            <Chip
-                              size="small"
-                              label="區間最低"
-                              color="success"
-                              variant="outlined"
-                              sx={{ height: 22, borderRadius: 1 }}
-                            />
-                          )}
-                        </Stack>
-                      </TableCell>
-                      {indicatorVisibility.range20 && (
-                        <TableCell align="right">
-                          {formatPercent(row.calculated_range_position_20)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.range60 && (
-                        <TableCell align="right">
-                          {formatPercent(row.calculated_range_position_60)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.range120 && (
-                        <TableCell align="right">
-                          {formatPercent(row.calculated_range_position_120)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.ma5 && (
-                        <TableCell align="right">
-                          {formatDecimal(row.calculated_ma5)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.ma20 && (
-                        <TableCell align="right">
-                          {formatDecimal(row.calculated_ma20)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.ma20 && (
-                        <TableCell align="right">
-                          {formatSignedPercent(row.calculated_ma20_bias_rate)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.ma60 && (
-                        <TableCell align="right">
-                          {formatDecimal(row.calculated_ma60)}
-                        </TableCell>
-                      )}
-                      {indicatorVisibility.ma120 && (
-                        <TableCell align="right">
-                          {formatDecimal(row.calculated_ma120)}
-                        </TableCell>
-                      )}
-                      <TableCell align="right">
-                        {formatInteger(row.volume)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatInteger(row.trading_money)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {formatInteger(row.trading_turnover)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={tickerTableColumnCount}
-                    align="center"
-                    sx={{ py: 3 }}
-                  >
-                    查無股價資料
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Box>
   );
 };
 
