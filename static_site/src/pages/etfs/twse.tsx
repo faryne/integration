@@ -521,7 +521,6 @@ const EtfDashboard: React.FC = () => {
   });
   const [tableDensity, setTableDensity] = useState<TableDensity>("full");
   const [shareNotice, setShareNotice] = useState("");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const routeCode = code?.trim().toUpperCase() ?? "";
 
   const query = useGetTwseEtfCodeList();
@@ -661,18 +660,10 @@ const EtfDashboard: React.FC = () => {
       return (
         matchesCategory(category, code) &&
         matchesStrategy(selectedStrategy, etf) &&
-        matchesTerm(etf, term) &&
-        (!favoritesOnly || favoritedCodes.has(code))
+        matchesTerm(etf, term)
       );
     });
-  }, [
-    deferredSearchTerm,
-    allEtfs,
-    category,
-    selectedStrategy,
-    favoritesOnly,
-    favoritedCodes,
-  ]);
+  }, [deferredSearchTerm, allEtfs, category, selectedStrategy]);
 
   const handleOpenByCode = useCallback(
     (etfCode: string) => {
@@ -722,13 +713,11 @@ const EtfDashboard: React.FC = () => {
   const hasActiveFilters =
     searchTerm.trim() !== "" ||
     category !== "ALL" ||
-    selectedStrategy !== "all" ||
-    favoritesOnly;
+    selectedStrategy !== "all";
   const handleResetFilters = () => {
     setSearchTerm("");
     setCategory("ALL");
     setSelectedStrategy("all");
-    setFavoritesOnly(false);
   };
   const handleDensityChange = (
     _: React.MouseEvent<HTMLElement>,
@@ -861,10 +850,10 @@ const EtfDashboard: React.FC = () => {
         >
           {session && (
             <Button
-              variant={favoritesOnly ? "contained" : "outlined"}
+              variant="outlined"
               color="warning"
-              startIcon={favoritesOnly ? <StarIcon /> : <StarBorderIcon />}
-              onClick={() => setFavoritesOnly((v) => !v)}
+              startIcon={<StarIcon />}
+              onClick={() => navigate(`/data/etf/twse/favorites`)}
               sx={{ mb: 2, fontWeight: 800, borderRadius: 2 }}
             >
               只看我的最愛（{favoritedCodes.size}）
@@ -1080,16 +1069,6 @@ const EtfDashboard: React.FC = () => {
                 sx={{ borderRadius: 1.25, fontWeight: 800 }}
               />
             )}
-            {favoritesOnly && (
-              <Chip
-                size="small"
-                icon={<StarIcon fontSize="small" />}
-                label="只看我的最愛"
-                color="warning"
-                onDelete={() => setFavoritesOnly(false)}
-                sx={{ borderRadius: 1.25, fontWeight: 800 }}
-              />
-            )}
             <Button
               size="small"
               startIcon={<RestartAltIcon />}
@@ -1147,7 +1126,6 @@ const EtfDashboard: React.FC = () => {
                   {searchTerm.trim() && (
                     <Chip label={`搜尋：${searchTerm.trim()}`} size="small" />
                   )}
-                  {favoritesOnly && <Chip label="只看我的最愛" size="small" />}
                 </Stack>
                 {hasActiveFilters && (
                   <Button

@@ -1,5 +1,10 @@
 import axios from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type { Transaction } from "@/components/etf/etf_profit_calculator_types.ts";
@@ -14,24 +19,39 @@ function savedTransactionsQueryKey(code?: string, userId?: number) {
   return ["twse-etf", "saved-transactions", code, userId];
 }
 
+async function fetchSavedTransactions(code: string, encryptKey: string) {
+  const response = await axios.get<CommonResponse<Transaction[]>>(
+    `${apiBase}/opendata/financial/twse/${code}/transactions`,
+    { headers: sessionHeaders(encryptKey) },
+  );
+  // 後端已經會補 sells，這裡是第二層防呆：舊格式資料 sells 是 null 不是
+  // []，沒擋住的話計算引擎跟編輯畫面呼叫 .filter/.map 會直接整頁白屏。
+  return (response.data.data ?? []).map((t) => ({
+    ...t,
+    sells: t.sells ?? [],
+  }));
+}
+
 // 只在「獲利試算」分頁打開且已登入時由呼叫端用 enabled 控制是否要抓
 export function useTwseEtfSavedTransactions(code?: string, enabled = true) {
   const { session } = useAuth();
   return useQuery({
     queryKey: savedTransactionsQueryKey(code, session?.user.id),
     enabled: Boolean(enabled && session?.encrypt_key && code),
-    queryFn: async () => {
-      const response = await axios.get<CommonResponse<Transaction[]>>(
-        `${apiBase}/opendata/financial/twse/${code}/transactions`,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
-      // 後端已經會補 sells，這裡是第二層防呆：舊格式資料 sells 是 null 不是
-      // []，沒擋住的話計算引擎跟編輯畫面呼叫 .filter/.map 會直接整頁白屏。
-      return (response.data.data ?? []).map((t) => ({
-        ...t,
-        sells: t.sells ?? [],
-      }));
-    },
+    queryFn: () => fetchSavedTransactions(code!, session!.encrypt_key),
+  });
+}
+
+// 「我的最愛」總覽頁用：一次抓多支 ETF 的已儲存交易紀錄，queryKey 跟單支版本
+// 共用同一把 key，兩邊會共享快取。
+export function useTwseEtfFavoritesTransactions(codes: string[]) {
+  const { session } = useAuth();
+  return useQueries({
+    queries: codes.map((code) => ({
+      queryKey: savedTransactionsQueryKey(code, session?.user.id),
+      enabled: Boolean(session?.encrypt_key),
+      queryFn: () => fetchSavedTransactions(code, session!.encrypt_key),
+    })),
   });
 }
 

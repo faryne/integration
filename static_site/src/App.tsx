@@ -126,6 +126,7 @@ const YieldMaxEtfs = lazy(() =>
   })),
 );
 const TwseEtf = lazy(() => import("@/pages/etfs/twse.tsx"));
+const TwseEtfFavorites = lazy(() => import("@/pages/etfs/twse_favorites.tsx"));
 const Userscripts = lazy(() => import("@/pages/tools/userscripts.tsx"));
 const Webshot = lazy(() => import("@/pages/tools/webshot.tsx"));
 const McpTools = lazy(() => import("@/pages/tools/mcp.tsx"));
@@ -444,6 +445,10 @@ function App() {
                     element={<YieldMaxEtfs />}
                   />
                   <Route path={"/data/etf/twse"} element={<TwseEtf />} />
+                  <Route
+                    path={"/data/etf/twse/favorites"}
+                    element={<TwseEtfFavorites />}
+                  />
                   <Route path={"/data/etf/twse/:code"} element={<TwseEtf />} />
 
                   <Route path="/a" element={<h1>Hello</h1>} />

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import type {
   TwseEtfInfo,
@@ -33,6 +33,22 @@ export function useGetTwseEtfInfo(code: string) {
     enabled: !!code,
   });
 }
+// 「我的最愛」總覽頁用：一次抓多支 ETF 的配息紀錄，queryKey 跟單支版本共用同一把 key。
+export function useGetTwseEtfInfoBatch(codes: string[]) {
+  return useQueries({
+    queries: codes.map((code) => ({
+      queryKey: ["opendata/twse/etf_info", code],
+      queryFn: async () => {
+        const response = await axios.get<CommonResponse<TwseEtfShareDetail>>(
+          `${import.meta.env.VITE_API_BASE}/opendata/financial/twse/${code}/share_info`,
+        );
+        return response.data;
+      },
+      enabled: !!code,
+    })),
+  });
+}
+
 export function useGetTwseEtfExInfo(date: string, enabled = true) {
   return useQuery({
     queryKey: ["opendata/twse/etf_ex_info", date],
