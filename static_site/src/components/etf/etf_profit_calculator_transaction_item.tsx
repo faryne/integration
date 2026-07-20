@@ -9,6 +9,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -26,14 +27,15 @@ interface TransactionAccordionItemProps {
   onDelete: () => void;
 }
 
+function getSoldShares(record: Transaction) {
+  return record.sells.reduce((sum, s) => sum + (s.sellShares || 0), 0);
+}
+
 function summarize(record: Transaction) {
   const buyDate = record.buyDate || "未設定日期";
   const shares = record.buyShares || 0;
   const price = record.buyPrice || 0;
-  const soldShares = record.sells.reduce(
-    (sum, s) => sum + (s.sellShares || 0),
-    0,
-  );
+  const soldShares = getSoldShares(record);
   const remaining = shares - soldShares;
 
   let text = `${buyDate} 購入 ${shares.toLocaleString()} 股 @ ${price}`;
@@ -69,6 +71,9 @@ export function TransactionAccordionItem({
     });
   };
 
+  const soldShares = getSoldShares(record);
+  const oversold = record.buyShares > 0 && soldShares > record.buyShares;
+
   return (
     <Accordion
       expanded={expanded}
@@ -83,6 +88,7 @@ export function TransactionAccordionItem({
         >
           <Typography
             variant="body2"
+            color={oversold ? "error" : undefined}
             sx={{
               fontWeight: 700,
               overflow: "hidden",
@@ -136,61 +142,86 @@ export function TransactionAccordionItem({
             />
           </Stack>
 
-          {record.sells.map((sell, sellIndex) => (
+          {record.sells.map((sell, sellIndex) => {
+            const dateBeforeBuy =
+              !!sell.sellDate &&
+              !!record.buyDate &&
+              sell.sellDate < record.buyDate;
+            return (
+              <Stack
+                key={sell.id}
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ pl: 4, py: 1, borderLeft: "3px solid #ffc107" }}
+              >
+                <Typography
+                  variant="body2"
+                  color="warning.main"
+                  fontWeight="bold"
+                >
+                  ↳ 賣出 {sellIndex + 1}：
+                </Typography>
+                <TextField
+                  type="date"
+                  label="賣出日期"
+                  size="small"
+                  value={sell.sellDate}
+                  onChange={(e) =>
+                    updateSell(sell.id, { sellDate: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                  error={dateBeforeBuy}
+                  helperText={dateBeforeBuy ? "早於購入日期" : undefined}
+                  sx={{ width: 180 }}
+                />
+                <TextField
+                  label="賣出股數"
+                  type="number"
+                  size="small"
+                  value={sell.sellShares || ""}
+                  onChange={(e) =>
+                    updateSell(sell.id, {
+                      sellShares: Number(e.target.value),
+                    })
+                  }
+                />
+                <TextField
+                  label="賣出價格"
+                  type="number"
+                  size="small"
+                  value={sell.sellPrice || ""}
+                  onChange={(e) =>
+                    updateSell(sell.id, { sellPrice: Number(e.target.value) })
+                  }
+                />
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => removeSell(sell.id)}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            );
+          })}
+
+          {oversold && (
             <Stack
-              key={sell.id}
               direction="row"
-              spacing={2}
+              spacing={0.5}
               alignItems="center"
-              flexWrap="wrap"
-              useFlexGap
-              sx={{ pl: 4, py: 1, borderLeft: "3px solid #ffc107" }}
+              sx={{ color: "error.main" }}
             >
-              <Typography
-                variant="body2"
-                color="warning.main"
-                fontWeight="bold"
-              >
-                ↳ 賣出 {sellIndex + 1}：
+              <WarningAmberIcon fontSize="small" />
+              <Typography variant="caption">
+                賣出股數總和（{soldShares.toLocaleString()}）超過購入股數（
+                {record.buyShares.toLocaleString()}），請確認
               </Typography>
-              <TextField
-                type="date"
-                label="賣出日期"
-                size="small"
-                value={sell.sellDate}
-                onChange={(e) =>
-                  updateSell(sell.id, { sellDate: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                sx={{ width: 180 }}
-              />
-              <TextField
-                label="賣出股數"
-                type="number"
-                size="small"
-                value={sell.sellShares || ""}
-                onChange={(e) =>
-                  updateSell(sell.id, { sellShares: Number(e.target.value) })
-                }
-              />
-              <TextField
-                label="賣出價格"
-                type="number"
-                size="small"
-                value={sell.sellPrice || ""}
-                onChange={(e) =>
-                  updateSell(sell.id, { sellPrice: Number(e.target.value) })
-                }
-              />
-              <IconButton
-                size="small"
-                color="error"
-                onClick={() => removeSell(sell.id)}
-              >
-                <DeleteOutlineIcon fontSize="small" />
-              </IconButton>
             </Stack>
-          ))}
+          )}
 
           <Box>
             <Button
