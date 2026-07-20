@@ -57,6 +57,23 @@ func (inst *RepositoryETFShare) GetETFShareByCode(code string) ([]etf.Share, err
 	return out, err
 }
 
+// GetETFShareByCodes 一次查多個代號的配息紀錄，取代呼叫端對每個代號各打一次
+// GetETFShareByCode，供「我的最愛」總覽頁批次彙整損益時使用。
+func (inst *RepositoryETFShare) GetETFShareByCodes(codes []string) ([]etf.Share, error) {
+	var out = make([]etf.Share, 0)
+	if len(codes) == 0 {
+		return out, nil
+	}
+	err := inst.GetDB().
+		Select(inst.getFields()).
+		Table((&etf.Share{}).TableName()+" as s").
+		Where("s.code IN ?", codes).
+		Order("s.code, s.ex_date DESC").
+		Find(&out).
+		Error
+	return out, err
+}
+
 func (inst *RepositoryETFShare) getUpcomingExETF() *gorm.DB {
 	return inst.GetDB().
 		Select(inst.getFields()).

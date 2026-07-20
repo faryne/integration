@@ -47,6 +47,7 @@ func OpenData(app *fiber.App) {
 	// methodUse 中介層，之後在這個 prefix 底下註冊的路由（例如下面的 :code/share_info、
 	// :code/ticker）都會先經過這個中介層，等於整個 /twse 都被要求要登入。
 	g51.Get("/favorites", authsession.New(), opendata.TwseEtfFavorites)
+	g51.Get("/favorites/batch", authsession.New(), opendata.TwseEtfFavoritesBatch)
 	g51.Post("/:code/favorite", authsession.New(), opendata.CreateTwseEtfFavorite)
 	g51.Delete("/:code/favorite", authsession.New(), opendata.DeleteTwseEtfFavorite)
 	g51.Get(

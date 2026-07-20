@@ -2,9 +2,12 @@ import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import type { TwseEtfShare } from "@/types/etf.ts";
+import type { Transaction } from "@/components/etf/etf_profit_calculator_types.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
 const favoritesQueryKey = ["twse-etf", "favorites"];
+const favoritesBatchQueryKey = ["twse-etf", "favorites-batch"];
 
 function sessionHeaders(encryptKey: string) {
   return { "X-Encrypt-Key": encryptKey };
@@ -33,6 +36,37 @@ export function useTwseEtfFavorites() {
   });
 }
 
+export interface TwseEtfFavoriteBatchItem {
+  code: string;
+  distributions: TwseEtfShare[];
+  transactions: Transaction[];
+}
+
+// 「我的最愛」總覽頁用：後端一次回傳全部收藏 ETF 的配息紀錄＋已儲存交易紀錄，
+// 取代原本「N 支收藏各打配息紀錄 + 交易紀錄兩支 API」（收藏一多就是 2N 個並行請求）。
+export function useTwseEtfFavoritesBatch() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [...favoritesBatchQueryKey, session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<TwseEtfFavoriteBatchItem[]>
+      >(`${apiBase}/opendata/financial/twse/favorites/batch`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      // 後端已經會補 sells，這裡是第二層防呆，跟單支交易紀錄的 API 一致。
+      return (response.data.data ?? []).map((item) => ({
+        ...item,
+        transactions: item.transactions.map((t) => ({
+          ...t,
+          sells: t.sells ?? [],
+        })),
+      }));
+    },
+  });
+}
+
 export function useSaveTwseEtfFavorite() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -57,6 +91,7 @@ export function useSaveTwseEtfFavorite() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: favoritesBatchQueryKey });
     },
   });
 }

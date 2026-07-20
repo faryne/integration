@@ -27,6 +27,19 @@ func (inst *RepositoryETFSavedTransaction) Find(userID uint64, code string) (*et
 	return &row, err
 }
 
+// FindByUserAndCodes 一次查多個代號的已儲存交易紀錄，同樣不篩選 deleted_at，
+// 由呼叫端自行判斷是否要當成「未儲存」處理。供「我的最愛」總覽頁批次彙整損益時使用。
+func (inst *RepositoryETFSavedTransaction) FindByUserAndCodes(userID uint64, codes []string) ([]etf.SavedTransaction, error) {
+	var rows = make([]etf.SavedTransaction, 0)
+	if len(codes) == 0 {
+		return rows, nil
+	}
+	err := inst.GetDB().
+		Where("user_id = ? AND code IN ?", userID, codes).
+		Find(&rows).Error
+	return rows, err
+}
+
 func (inst *RepositoryETFSavedTransaction) Save(row *etf.SavedTransaction) error {
 	return inst.GetDB().Save(row).Error
 }

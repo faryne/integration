@@ -1,10 +1,5 @@
 import axios from "axios";
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type { Transaction } from "@/components/etf/etf_profit_calculator_types.ts";
@@ -39,19 +34,6 @@ export function useTwseEtfSavedTransactions(code?: string, enabled = true) {
     queryKey: savedTransactionsQueryKey(code, session?.user.id),
     enabled: Boolean(enabled && session?.encrypt_key && code),
     queryFn: () => fetchSavedTransactions(code!, session!.encrypt_key),
-  });
-}
-
-// 「我的最愛」總覽頁用：一次抓多支 ETF 的已儲存交易紀錄，queryKey 跟單支版本
-// 共用同一把 key，兩邊會共享快取。
-export function useTwseEtfFavoritesTransactions(codes: string[]) {
-  const { session } = useAuth();
-  return useQueries({
-    queries: codes.map((code) => ({
-      queryKey: savedTransactionsQueryKey(code, session?.user.id),
-      enabled: Boolean(session?.encrypt_key),
-      queryFn: () => fetchSavedTransactions(code, session!.encrypt_key),
-    })),
   });
 }
 

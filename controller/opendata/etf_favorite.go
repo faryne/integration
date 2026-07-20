@@ -23,6 +23,25 @@ func TwseEtfFavorites(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+// TwseEtfFavoritesBatch returns the logged-in user's favorited TWSE ETF codes
+// together with each one's dividend history and saved profit-calculator
+// transactions in a single response, instead of the caller having to fan out
+// one request per favorite for each of those two resources.
+// @Summary Get favorited TWSE ETFs with dividend history and saved transactions
+// @Tags OpenData TWSE
+// @Produce json
+// @Success 200 {object} output.CommonOutput
+// @Failure 401 {object} output.CommonOutput
+// @Failure 500 {object} output.CommonOutput
+// @Router /opendata/financial/twse/favorites/batch [get]
+func TwseEtfFavoritesBatch(ctx fiber.Ctx) error {
+	rows, err := etfService.ListFavoritesBatch(authsession.Session(ctx).UserId)
+	if err != nil {
+		return output.DBError(err)
+	}
+	return output.Success(rows)
+}
+
 // CreateTwseEtfFavorite adds an ETF code to the logged-in user's favorites.
 // @Summary Add a TWSE ETF to favorites
 // @Tags OpenData TWSE

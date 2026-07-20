@@ -26,13 +26,9 @@ import { useTitle } from "@/helpers/title.tsx";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import {
   useSaveTwseEtfFavorite,
-  useTwseEtfFavorites,
+  useTwseEtfFavoritesBatch,
 } from "@/apis/opendata/etf_favorites.ts";
-import {
-  useGetTwseEtfCodeList,
-  useGetTwseEtfInfoBatch,
-} from "@/apis/opendata/twse_etf.ts";
-import { useTwseEtfFavoritesTransactions } from "@/apis/opendata/etf_transactions.ts";
+import { useGetTwseEtfCodeList } from "@/apis/opendata/twse_etf.ts";
 import { EtfDetailDialog } from "@/components/etf/etf_detail_dialog.tsx";
 import {
   calcTransactionsResult,
@@ -107,12 +103,14 @@ export default function TwseEtfFavoritesPage() {
     [codeListQuery.data],
   );
 
-  const favoritesQuery = useTwseEtfFavorites();
-  const favoriteCodes = useMemo(
-    () => (favoritesQuery.data ?? []).map((f) => f.code),
-    [favoritesQuery.data],
+  // 一支 API 同時拿回配息紀錄跟已儲存交易紀錄，取代原本各支收藏各打兩支 API
+  // 的做法；收藏清單本身也直接從這支回應算出，不用再另外呼叫 useTwseEtfFavorites。
+  const favoritesBatchQuery = useTwseEtfFavoritesBatch();
+  const favoriteItems = favoritesBatchQuery.data ?? [];
+  const favoritedCodes = useMemo(
+    () => new Set(favoriteItems.map((item) => item.code)),
+    [favoriteItems],
   );
-  const favoritedCodes = useMemo(() => new Set(favoriteCodes), [favoriteCodes]);
   const saveFavoriteMutation = useSaveTwseEtfFavorite();
   const handleToggleFavorite = (code: string) => {
     saveFavoriteMutation.mutate({
@@ -121,36 +119,28 @@ export default function TwseEtfFavoritesPage() {
     });
   };
 
-  const infoQueries = useGetTwseEtfInfoBatch(favoriteCodes);
-  const transactionsQueries = useTwseEtfFavoritesTransactions(favoriteCodes);
-
-  const isLoading =
-    favoritesQuery.isLoading ||
-    codeListQuery.isLoading ||
-    infoQueries.some((q) => q.isLoading) ||
-    transactionsQueries.some((q) => q.isLoading);
+  const isLoading = favoritesBatchQuery.isLoading || codeListQuery.isLoading;
 
   const rows = useMemo<FavoriteRow[]>(
     () =>
-      favoriteCodes.map((code, index) => {
-        const etf = etfByCode.get(code);
-        const distributions: EtfDistribution[] = (
-          infoQueries[index]?.data?.data?.stats ?? []
-        ).map((s) => ({
-          per_share: s.share,
-          declared_date: s.ex_date,
-          ex_date: s.ex_date,
-          payable_date: s.payable_date,
-          roc: -1, // 台股境內配息無 ROC 預扣退稅資料
-        }));
-        const records = transactionsQueries[index]?.data ?? [];
+      favoriteItems.map((item) => {
+        const etf = etfByCode.get(item.code);
+        const distributions: EtfDistribution[] = item.distributions.map(
+          (s) => ({
+            per_share: s.share,
+            declared_date: s.ex_date,
+            ex_date: s.ex_date,
+            payable_date: s.payable_date,
+            roc: -1, // 台股境內配息無 ROC 預扣退稅資料
+          }),
+        );
         const latestClose = etf?.latest_close ?? 0;
         return {
-          code,
-          name: etf?.name ?? code,
+          code: item.code,
+          name: etf?.name ?? item.code,
           latestClose,
           result: calcTransactionsResult(
-            records,
+            item.transactions,
             distributions,
             [],
             latestClose,
@@ -158,7 +148,7 @@ export default function TwseEtfFavoritesPage() {
           ),
         };
       }),
-    [favoriteCodes, etfByCode, infoQueries, transactionsQueries],
+    [favoriteItems, etfByCode],
   );
 
   const totals = useMemo(
