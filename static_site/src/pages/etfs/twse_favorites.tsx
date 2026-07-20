@@ -62,6 +62,30 @@ const emptyTotals = {
   grandTotal: 0,
 };
 
+const columns = [
+  { label: "代號", align: "left" as const },
+  { label: "名稱", align: "left" as const },
+  { label: "目前持股數", align: "right" as const },
+  { label: "最新收盤價", align: "right" as const },
+  {
+    label: "已實現盈虧",
+    align: "right" as const,
+    tooltip: "除息日已過的配息 ＋ 已賣出部位的損益",
+  },
+  {
+    label: "未實現盈虧",
+    align: "right" as const,
+    tooltip:
+      "除息日未到的配息（若已公告金額） ＋ 未賣出部位的帳面損益（依最新收盤價估算）",
+  },
+  {
+    label: "總盈虧",
+    align: "right" as const,
+    tooltip: "已實現盈虧 ＋ 未實現盈虧",
+  },
+  { label: "投入成本", align: "right" as const },
+];
+
 // 我的最愛 ETF 總覽：彙整每支已收藏 ETF 的已儲存交易紀錄，重用獲利試算的
 // 計算引擎算出目前持股數、已實現/未實現/總盈虧與投入成本，列表 + 總計列呈現。
 export default function TwseEtfFavoritesPage() {
@@ -194,26 +218,32 @@ export default function TwseEtfFavoritesPage() {
             <TableHead>
               <TableRow>
                 <TableCell padding="checkbox" sx={{ bgcolor: "#f6f9fc" }} />
-                {[
-                  "代號",
-                  "名稱",
-                  "目前持股數",
-                  "最新收盤價",
-                  "已實現盈虧",
-                  "未實現盈虧",
-                  "總盈虧",
-                  "投入成本",
-                ].map((label, index) => (
+                {columns.map((col) => (
                   <TableCell
-                    key={label}
-                    align={index === 0 || index === 1 ? "left" : "right"}
+                    key={col.label}
+                    align={col.align}
                     sx={{
                       fontWeight: 900,
                       bgcolor: "#f6f9fc",
                       color: "text.secondary",
                     }}
                   >
-                    {label}
+                    {col.tooltip ? (
+                      <Tooltip title={col.tooltip} arrow>
+                        <Box
+                          component="span"
+                          sx={{
+                            borderBottom: "1px dashed",
+                            borderColor: "text.secondary",
+                            cursor: "help",
+                          }}
+                        >
+                          {col.label}
+                        </Box>
+                      </Tooltip>
+                    ) : (
+                      col.label
+                    )}
                   </TableCell>
                 ))}
               </TableRow>
@@ -368,6 +398,22 @@ export default function TwseEtfFavoritesPage() {
             </TableFooter>
           </Table>
         </TableContainer>
+      )}
+
+      {session && !isLoading && rows.length > 0 && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          component="p"
+          align="center"
+          sx={{ mt: 2, lineHeight: 1.5 }}
+        >
+          ⚠️
+          以上結果不含券商手續費、證券交易稅（賣出時課徵）等交易成本，也未扣除單筆配息達起扣金額（目前為
+          2 萬元）需負擔的二代健保補充保費（費率
+          2.11%），實際損益會比試算結果更低。資料依每支 ETF
+          已儲存的交易紀錄試算，僅供參考，不保證數據之即時性與準確性，實際損益請以券商帳單為準。
+        </Typography>
       )}
 
       {selectedCode && (
