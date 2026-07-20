@@ -55,10 +55,13 @@ export function useTwseEtfFavoritesBatch() {
       >(`${apiBase}/opendata/financial/twse/favorites/batch`, {
         headers: sessionHeaders(session!.encrypt_key),
       });
-      // 後端已經會補 sells，這裡是第二層防呆，跟單支交易紀錄的 API 一致。
+      // 後端已經會補 distributions/sells，這裡是第二層防呆：Go 的 nil slice
+      // marshal 成 JSON 會是 null 不是 []，沒擋住呼叫 .map() 會直接整頁白屏
+      // （跟單支交易紀錄的 sells 是同一種問題）。
       return (response.data.data ?? []).map((item) => ({
         ...item,
-        transactions: item.transactions.map((t) => ({
+        distributions: item.distributions ?? [],
+        transactions: (item.transactions ?? []).map((t) => ({
           ...t,
           sells: t.sells ?? [],
         })),

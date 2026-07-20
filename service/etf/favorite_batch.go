@@ -57,6 +57,11 @@ func getSharesByCodesCached(codes []string) (map[string][]etf.Share, error) {
 					missing = append(missing, codes[i])
 					continue
 				}
+				if rows == nil {
+					// 防呆舊快取：修 nil slice 這個 bug 之前寫進去的快取值可能是
+					// 字面上的 "null"，unmarshal 不會報錯但會拿到 nil，一樣要擋掉。
+					rows = []etf.Share{}
+				}
 				result[codes[i]] = rows
 			}
 		}
@@ -75,7 +80,13 @@ func getSharesByCodesCached(codes []string) (map[string][]etf.Share, error) {
 		byCode[row.Code] = append(byCode[row.Code], row)
 	}
 	for _, code := range missing {
-		result[code] = byCode[code] // 沒有配息紀錄的代號會是 nil，一樣要寫入快取，避免每次都重查
+		shares := byCode[code]
+		if shares == nil {
+			// map 查不到值會拿到 nil slice，Go 的 nil slice marshal 成 JSON 會是
+			// null 不是 []，前端 .map() 會直接炸掉（跟交易紀錄的 sells 是同一種問題）。
+			shares = []etf.Share{}
+		}
+		result[code] = shares
 	}
 
 	if redisClient != nil {
