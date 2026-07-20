@@ -1179,6 +1179,9 @@ const EtfDashboard: React.FC = () => {
                 ? {
                     isFavorited: favoritedCodes.has(selectedEtf.code),
                     onToggle: () => handleToggleFavorite(selectedEtf.code),
+                    label: favoritedCodes.has(selectedEtf.code)
+                      ? `將『${selectedEtf.code} - ${selectedEtf.name}』移出最愛`
+                      : `將『${selectedEtf.code} - ${selectedEtf.name}』加入最愛`,
                   }
                 : undefined
             }
@@ -1623,17 +1626,25 @@ const EtfTableList = ({
               >
                 {onToggleFavorite && (
                   <TableCell padding="checkbox">
-                    <IconButton
-                      size="small"
-                      color="warning"
-                      onClick={() => onToggleFavorite(etf.code)}
+                    <Tooltip
+                      title={
+                        favoritedCodes?.has(etf.code)
+                          ? `將『${etf.code} - ${etf.name}』移出最愛`
+                          : `將『${etf.code} - ${etf.name}』加入最愛`
+                      }
                     >
-                      {favoritedCodes?.has(etf.code) ? (
-                        <StarIcon fontSize="small" />
-                      ) : (
-                        <StarBorderIcon fontSize="small" />
-                      )}
-                    </IconButton>
+                      <IconButton
+                        size="small"
+                        color="warning"
+                        onClick={() => onToggleFavorite(etf.code)}
+                      >
+                        {favoritedCodes?.has(etf.code) ? (
+                          <StarIcon fontSize="small" />
+                        ) : (
+                          <StarBorderIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 )}
                 <TableCell>
