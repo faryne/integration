@@ -26,6 +26,7 @@ import {
   type Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
 import { TransactionAccordionItem } from "@/components/etf/etf_profit_calculator_transaction_item.tsx";
+import { hasRecordError } from "@/components/etf/etf_profit_calculator_validation.ts";
 
 interface TransactionRecordsEditorProps {
   records: Transaction[];
@@ -115,6 +116,8 @@ export function TransactionRecordsEditor({
     onChange(sortByBuyDate(records, direction));
   };
 
+  const hasErrors = records.some(hasRecordError);
+
   return (
     <Accordion defaultExpanded variant="outlined">
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -178,9 +181,21 @@ export function TransactionRecordsEditor({
                 fullWidth
                 sx={{ mt: 1 }}
                 onClick={() => setSaveDialogOpen(true)}
+                disabled={hasErrors}
               >
                 儲存交易紀錄
               </Button>
+              {hasErrors && (
+                <Typography
+                  variant="caption"
+                  color="error"
+                  component="p"
+                  align="center"
+                  sx={{ mt: 0.5 }}
+                >
+                  有交易紀錄尚未修正（賣出股數超過購入股數，或賣出日期早於購入日期），請先修正後再儲存
+                </Typography>
+              )}
               <Dialog
                 open={saveDialogOpen}
                 onClose={() => {
@@ -221,7 +236,7 @@ export function TransactionRecordsEditor({
                   <Button
                     variant="contained"
                     onClick={() => void handleConfirmSave()}
-                    disabled={saving}
+                    disabled={saving || hasErrors}
                     startIcon={
                       saving ? <CircularProgress size={16} /> : undefined
                     }

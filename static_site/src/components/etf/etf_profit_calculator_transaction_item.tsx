@@ -18,6 +18,11 @@ import {
   type SellEvent,
   type Transaction,
 } from "@/components/etf/etf_profit_calculator_types.ts";
+import {
+  getSoldShares,
+  isOversold,
+  isSellDateBeforeBuy,
+} from "@/components/etf/etf_profit_calculator_validation.ts";
 
 interface TransactionAccordionItemProps {
   record: Transaction;
@@ -25,10 +30,6 @@ interface TransactionAccordionItemProps {
   onToggleExpanded: () => void;
   onChange: (patch: Partial<Transaction>) => void;
   onDelete: () => void;
-}
-
-function getSoldShares(record: Transaction) {
-  return record.sells.reduce((sum, s) => sum + (s.sellShares || 0), 0);
 }
 
 function summarize(record: Transaction) {
@@ -72,7 +73,7 @@ export function TransactionAccordionItem({
   };
 
   const soldShares = getSoldShares(record);
-  const oversold = record.buyShares > 0 && soldShares > record.buyShares;
+  const oversold = isOversold(record);
 
   return (
     <Accordion
@@ -143,10 +144,10 @@ export function TransactionAccordionItem({
           </Stack>
 
           {record.sells.map((sell, sellIndex) => {
-            const dateBeforeBuy =
-              !!sell.sellDate &&
-              !!record.buyDate &&
-              sell.sellDate < record.buyDate;
+            const dateBeforeBuy = isSellDateBeforeBuy(
+              sell.sellDate,
+              record.buyDate,
+            );
             return (
               <Stack
                 key={sell.id}
