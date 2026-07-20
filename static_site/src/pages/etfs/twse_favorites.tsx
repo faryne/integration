@@ -6,6 +6,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -15,12 +16,18 @@ import {
   TableFooter,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { useTitle } from "@/helpers/title.tsx";
 import { useAuth } from "@/components/auth/AuthContext.ts";
-import { useTwseEtfFavorites } from "@/apis/opendata/etf_favorites.ts";
+import {
+  useSaveTwseEtfFavorite,
+  useTwseEtfFavorites,
+} from "@/apis/opendata/etf_favorites.ts";
 import {
   useGetTwseEtfCodeList,
   useGetTwseEtfInfoBatch,
@@ -74,6 +81,14 @@ export default function TwseEtfFavoritesPage() {
     () => (favoritesQuery.data ?? []).map((f) => f.code),
     [favoritesQuery.data],
   );
+  const favoritedCodes = useMemo(() => new Set(favoriteCodes), [favoriteCodes]);
+  const saveFavoriteMutation = useSaveTwseEtfFavorite();
+  const handleToggleFavorite = (code: string) => {
+    saveFavoriteMutation.mutate({
+      code,
+      favorited: !favoritedCodes.has(code),
+    });
+  };
 
   const infoQueries = useGetTwseEtfInfoBatch(favoriteCodes);
   const transactionsQueries = useTwseEtfFavoritesTransactions(favoriteCodes);
@@ -178,6 +193,7 @@ export default function TwseEtfFavoritesPage() {
           <Table stickyHeader size="small" sx={{ minWidth: 900 }}>
             <TableHead>
               <TableRow>
+                <TableCell padding="checkbox" sx={{ bgcolor: "#f6f9fc" }} />
                 {[
                   "代號",
                   "名稱",
@@ -214,6 +230,27 @@ export default function TwseEtfFavoritesPage() {
                     "&:hover": { bgcolor: "rgba(25, 118, 210, 0.06)" },
                   }}
                 >
+                  <TableCell padding="checkbox">
+                    <Tooltip
+                      title={
+                        favoritedCodes.has(row.code)
+                          ? `將『${row.code} - ${row.name}』移出最愛`
+                          : `將『${row.code} - ${row.name}』加入最愛`
+                      }
+                    >
+                      <IconButton
+                        size="small"
+                        color="warning"
+                        onClick={() => handleToggleFavorite(row.code)}
+                      >
+                        {favoritedCodes.has(row.code) ? (
+                          <StarIcon fontSize="small" />
+                        ) : (
+                          <StarBorderIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <Chip
                       color="primary"
@@ -277,7 +314,7 @@ export default function TwseEtfFavoritesPage() {
             <TableFooter>
               <TableRow>
                 <TableCell
-                  colSpan={2}
+                  colSpan={3}
                   sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
                 >
                   總計
