@@ -47,6 +47,12 @@ const getTrendColor = (value: number) => {
 const formatAmount = (amount: number) =>
   `NT$${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
+const formatRate = (rate: number | null) =>
+  rate === null ? "--" : `${rate >= 0 ? "+" : ""}${rate.toFixed(2)}%`;
+
+const rateOf = (gain: number, cost: number) =>
+  cost > 0 ? (gain / cost) * 100 : null;
+
 interface FavoriteRow {
   code: string;
   name: string;
@@ -319,12 +325,26 @@ export default function TwseEtfFavoritesPage() {
                     sx={{ color: getTrendColor(row.result.realizedTotal) }}
                   >
                     {formatAmount(row.result.realizedTotal)}
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{ color: "inherit", opacity: 0.85 }}
+                    >
+                      {formatRate(row.result.realizedRate)}
+                    </Typography>
                   </TableCell>
                   <TableCell
                     align="right"
                     sx={{ color: getTrendColor(row.result.unrealizedTotal) }}
                   >
                     {formatAmount(row.result.unrealizedTotal)}
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{ color: "inherit", opacity: 0.85 }}
+                    >
+                      {formatRate(row.result.unrealizedRate)}
+                    </Typography>
                   </TableCell>
                   <TableCell
                     align="right"
@@ -334,6 +354,13 @@ export default function TwseEtfFavoritesPage() {
                     }}
                   >
                     {formatAmount(row.result.grandTotal)}
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      sx={{ color: "inherit", opacity: 0.85 }}
+                    >
+                      {formatRate(row.result.grandTotalRate)}
+                    </Typography>
                   </TableCell>
                   <TableCell align="right">
                     {formatAmount(row.result.totalCost)}
@@ -367,6 +394,13 @@ export default function TwseEtfFavoritesPage() {
                   }}
                 >
                   {formatAmount(totals.realizedTotal)}
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ color: "inherit", opacity: 0.85 }}
+                  >
+                    {formatRate(rateOf(totals.realizedTotal, totals.totalCost))}
+                  </Typography>
                 </TableCell>
                 <TableCell
                   align="right"
@@ -377,6 +411,15 @@ export default function TwseEtfFavoritesPage() {
                   }}
                 >
                   {formatAmount(totals.unrealizedTotal)}
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ color: "inherit", opacity: 0.85 }}
+                  >
+                    {formatRate(
+                      rateOf(totals.unrealizedTotal, totals.totalCost),
+                    )}
+                  </Typography>
                 </TableCell>
                 <TableCell
                   align="right"
@@ -387,6 +430,13 @@ export default function TwseEtfFavoritesPage() {
                   }}
                 >
                   {formatAmount(totals.grandTotal)}
+                  <Typography
+                    variant="caption"
+                    component="div"
+                    sx={{ color: "inherit", opacity: 0.85 }}
+                  >
+                    {formatRate(rateOf(totals.grandTotal, totals.totalCost))}
+                  </Typography>
                 </TableCell>
                 <TableCell
                   align="right"
