@@ -47,8 +47,10 @@ const getTrendColor = (value: number) => {
   return value > 0 ? "#d32f2f" : "#2e7d32";
 };
 
-// 台幣沒有小數交易，金額顯示一律取整數
+// 台幣沒有小數交易，損益/成本金額顯示一律取整數
 const formatAmount = (amount: number) => formatCurrencyAmount("NT$", amount, 0);
+// 股價本身是有小數的報價（例如 31.81），跟金額整數化是兩回事，維持 2 位小數
+const formatPrice = (amount: number) => formatCurrencyAmount("NT$", amount, 2);
 
 interface FavoriteRow {
   code: string;
@@ -309,7 +311,7 @@ export default function TwseEtfFavoritesPage() {
                     })}
                   </TableCell>
                   <TableCell align="right">
-                    {formatAmount(row.latestClose)}
+                    {formatPrice(row.latestClose)}
                   </TableCell>
                   <TableCell
                     align="right"
