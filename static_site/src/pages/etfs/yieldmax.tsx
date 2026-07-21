@@ -54,19 +54,19 @@ export function YieldMaxEtfs() {
       : defaultEtfCode;
   const { favorites, toggleFavorite } = useYieldMaxFavorites();
   const [keyword, setKeyword] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const filteredEtfs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
-    if (!normalizedKeyword) {
-      return yieldMaxEtfOptions;
-    }
-
-    return yieldMaxEtfOptions.filter(
-      (etf) =>
+    return yieldMaxEtfOptions.filter((etf) => {
+      if (favoritesOnly && !favorites.has(etf.code)) return false;
+      if (!normalizedKeyword) return true;
+      return (
         etf.code.toLowerCase().includes(normalizedKeyword) ||
-        etf.description.toLowerCase().includes(normalizedKeyword),
-    );
-  }, [keyword]);
+        etf.description.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [keyword, favoritesOnly, favorites]);
 
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState<EtfInfo | null>(null);
@@ -207,18 +207,44 @@ export function YieldMaxEtfs() {
                   }}
                 />
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<RestartAltIcon />}
-                  onClick={() => {
-                    setKeyword("");
-                    navigate(`/data/etf/yieldmax/${defaultEtfCode}`);
-                  }}
-                >
-                  重設
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<RestartAltIcon />}
+                    onClick={() => {
+                      setKeyword("");
+                      navigate(`/data/etf/yieldmax/${defaultEtfCode}`);
+                    }}
+                  >
+                    重設
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={favoritesOnly ? "contained" : "outlined"}
+                    color="warning"
+                    startIcon={
+                      favoritesOnly ? (
+                        <StarIcon fontSize="small" />
+                      ) : (
+                        <StarBorderIcon fontSize="small" />
+                      )
+                    }
+                    onClick={() => setFavoritesOnly((prev) => !prev)}
+                  >
+                    只看我的最愛
+                  </Button>
+                </Stack>
 
+                {filteredEtfs.length === 0 && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: "center", py: 2 }}
+                  >
+                    {favoritesOnly ? "還沒有收藏任何 ETF" : "找不到符合的 ETF"}
+                  </Typography>
+                )}
                 <List
                   dense
                   sx={{

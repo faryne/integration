@@ -56,6 +56,8 @@ export interface EtfProfitCalculatorProps {
   // 儲存位置：account 是登入後綁定帳號存到後端（TWSE）；local 是只存在目前瀏覽器的
   // localStorage，沒有帳號概念（YieldMax）
   storageScope?: "account" | "local";
+  // 明細表超過幾筆先收合、要點「顯示更多」才展開；不傳則用明細表自己的預設值，0 = 不限制
+  detailMaxVisibleRows?: number;
 }
 
 export function EtfProfitCalculator({
@@ -66,6 +68,7 @@ export function EtfProfitCalculator({
   initialTransactions,
   onSaveTransactions,
   storageScope = "account",
+  detailMaxVisibleRows,
 }: EtfProfitCalculatorProps) {
   const [currentPrice, setCurrentPrice] = useState<number>(
     () => latestClosePrice ?? 0,
@@ -230,6 +233,7 @@ export function EtfProfitCalculator({
               amountDecimals={amountDecimals}
               showNetAmount={withholdingRate > 0}
               getTrendColor={getTrendColor}
+              maxVisibleRows={detailMaxVisibleRows}
             />
           </Stack>
 
