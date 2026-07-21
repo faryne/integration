@@ -26,6 +26,21 @@ func (inst *RepositoryETFCode) GetByMarket(market enum.StockMarket) ([]etf.ETF, 
 	return etfs, err
 }
 
+// GetByCodes 只查詢即時報價功能需要的欄位（market 用來組 ex_ch 前綴、latest_close
+// 當作沒有即時價時的 fallback），不需要 GetETFByCode 那種join 一堆歷史配息欄位。
+func (inst *RepositoryETFCode) GetByCodes(codes []string) ([]etf.ETF, error) {
+	var etfs = make([]etf.ETF, 0)
+	if len(codes) == 0 {
+		return etfs, nil
+	}
+	err := inst.GetDB().Table((&etf.ETF{}).TableName()).
+		Select("code, market, latest_close").
+		Where("code IN ?", codes).
+		Find(&etfs).Error
+
+	return etfs, err
+}
+
 func (inst *RepositoryETFCode) UpdateETFCodeBatch(etfs []etf.ETF) error {
 	res := inst.GetDB().Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "code"}},
