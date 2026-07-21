@@ -8,6 +8,9 @@ import type { Transaction } from "@/components/etf/etf_profit_calculator_types.t
 const apiBase = import.meta.env.VITE_API_BASE;
 const favoritesQueryKey = ["twse-etf", "favorites"];
 const favoritesBatchQueryKey = ["twse-etf", "favorites-batch"];
+const favoritesRealtimePriceQueryKey = ["twse-etf", "favorites-realtime-price"];
+// 跟後端即時價格 Redis 快取的 TTL 一致，快取沒換新前端也沒必要問更頻繁
+const realtimePricePollIntervalMs = 10_000;
 
 function sessionHeaders(encryptKey: string) {
   return { "X-Encrypt-Key": encryptKey };
@@ -67,6 +70,41 @@ export function useTwseEtfFavoritesBatch() {
         })),
       }));
     },
+  });
+}
+
+export interface TwseEtfFavoriteRealtimePriceItem {
+  code: string;
+  latest_close: number;
+  live_price: number | null;
+}
+
+// 我的最愛總覽頁用：輪詢收藏 ETF 的即時成交價，不用管現在開不開盤，後端沒有即時價
+// 時 live_price 就是 null，畫面上 fallback 顯示 latest_close。全部代碼都拿不到即時價
+// （代表現在非交易時間）就不再繼續輪詢，避免收盤後還一直空打；要恢復輪詢得重新整頁。
+export function useTwseEtfFavoritesRealtimePrice(enabled: boolean) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [...favoritesRealtimePriceQueryKey, session?.user.id],
+    enabled: enabled && Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<TwseEtfFavoriteRealtimePriceItem[]>
+      >(`${apiBase}/opendata/financial/twse/favorites/realtime_price`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) {
+        return realtimePricePollIntervalMs;
+      }
+      const hasAnyLivePrice = data.some((item) => item.live_price !== null);
+      return hasAnyLivePrice ? realtimePricePollIntervalMs : false;
+    },
+    // 分頁切到背景時暫停輪詢，切回來會自動恢復
+    refetchIntervalInBackground: false,
   });
 }
 
