@@ -10,14 +10,20 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   ABNY: {
     uri: "https://yieldmaxetfs.com/our-etfs/abny/",
     description: "YieldMax ABNB Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.2 }],
   },
   AIYY: {
     uri: "https://yieldmaxetfs.com/our-etfs/aiyy/",
     description: "YieldMax AI Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.1 }],
   },
   AMDY: {
     uri: "https://yieldmaxetfs.com/our-etfs/amdy/",
     description: "YieldMax AMD Option Income Strategy ETF",
+    // 2025-12-08 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-08", ratio: 0.2 }],
   },
   AMZY: {
     uri: "https://yieldmaxetfs.com/our-etfs/amzy/",
@@ -38,6 +44,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   CONY: {
     uri: "https://yieldmaxetfs.com/our-etfs/cony/",
     description: "YieldMax COIN Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.1 }],
   },
   CRCO: {
     uri: "https://yieldmaxetfs.com/our-etfs/crco/",
@@ -46,6 +54,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   CRSH: {
     uri: "https://yieldmaxetfs.com/our-etfs/crsh/",
     description: "YieldMax Short TSLA Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.1 }],
   },
   CVNY: {
     uri: "https://yieldmaxetfs.com/our-etfs/cvny/",
@@ -54,6 +64,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   DIPS: {
     uri: "https://yieldmaxetfs.com/our-etfs/dips/",
     description: "YieldMax Short NVDA Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.1 }],
   },
   DISO: {
     uri: "https://yieldmaxetfs.com/our-etfs/diso/",
@@ -70,6 +82,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   FIAT: {
     uri: "https://yieldmaxetfs.com/our-etfs/fiat/",
     description: "YieldMax Short COIN Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.1 }],
   },
   GMEY: {
     uri: "https://yieldmaxetfs.com/our-etfs/gmey/",
@@ -102,6 +116,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   MRNY: {
     uri: "https://yieldmaxetfs.com/our-etfs/mrny/",
     description: "YieldMax MRNA Option Income Strategy ETF",
+    // 2025-12-01 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-01", ratio: 0.1 }],
   },
   MSFO: {
     uri: "https://yieldmaxetfs.com/our-etfs/msfo/",
@@ -110,6 +126,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   MSTY: {
     uri: "https://yieldmaxetfs.com/our-etfs/msty/",
     description: "YieldMax MSTR Option Income Strategy ETF",
+    // 2025-12-08 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-08", ratio: 0.2 }],
   },
   NFLY: {
     uri: "https://yieldmaxetfs.com/our-etfs/nfly/",
@@ -119,6 +137,12 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
     uri: "https://yieldmaxetfs.com/our-etfs/nvdy/",
     description: "YieldMax NVDA Option Income Strategy ETF",
   },
+  OARK: {
+    uri: "https://yieldmaxetfs.com/our-etfs/oark/",
+    description: "YieldMax Innovation Option Income Strategy ETF",
+    // 2025-12-02 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-02", ratio: 0.2 }],
+  },
   PLTY: {
     uri: "https://yieldmaxetfs.com/our-etfs/plty/",
     description: "YieldMax PLTR Option Income Strategy ETF",
@@ -126,6 +150,8 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   PYPY: {
     uri: "https://yieldmaxetfs.com/our-etfs/pypy/",
     description: "YieldMax PYPL Option Income Strategy ETF",
+    // 2025-12-08 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-08", ratio: 0.2 }],
   },
   RBLY: {
     uri: "https://yieldmaxetfs.com/our-etfs/rbly/",
@@ -146,10 +172,22 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   TSLY: {
     uri: "https://yieldmaxetfs.com/our-etfs/tsly/",
     description: "YieldMax TSLA Option Income Strategy ETF",
+    // TSLY 是唯一經歷過兩次反向分割的基金：2024-02-26 反向分割 1:2（2 股合 1）、
+    // 2025-12-01 反向分割 1:5（5 股合 1）
+    divided_info: [
+      { date: "2024-02-26", ratio: 0.5 },
+      { date: "2025-12-01", ratio: 0.2 },
+    ],
   },
   TSMY: {
     uri: "https://yieldmaxetfs.com/our-etfs/tsmy/",
     description: "YieldMax TSM Option Income Strategy ETF",
+  },
+  ULTY: {
+    uri: "https://yieldmaxetfs.com/our-etfs/ulty/",
+    description: "YieldMax Ultra Option Income Strategy ETF",
+    // 2025-12-01 反向分割 1:10（10 股合 1）
+    divided_info: [{ date: "2025-12-01", ratio: 0.1 }],
   },
   WNTR: {
     uri: "https://yieldmaxetfs.com/our-etfs/wntr/",
@@ -162,10 +200,14 @@ export const yieldMaxEtfs: Record<string, YieldMaxEtfConfig> = {
   XYZY: {
     uri: "https://yieldmaxetfs.com/our-etfs/xyzy/",
     description: "YieldMax XYZ Option Income Strategy ETF",
+    // 2025-12-01 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-01", ratio: 0.2 }],
   },
   YBIT: {
     uri: "https://yieldmaxetfs.com/our-etfs/ybit/",
     description: "YieldMax Bitcoin Option Income Strategy ETF",
+    // 2025-12-01 反向分割 1:5（5 股合 1）
+    divided_info: [{ date: "2025-12-01", ratio: 0.2 }],
   },
 };
 

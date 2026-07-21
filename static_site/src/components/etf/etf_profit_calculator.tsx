@@ -49,10 +49,13 @@ export interface EtfProfitCalculatorProps {
   onFetchDailyPrice?: (date: string) => Promise<DailyPriceQuote | null>;
   // 最近一筆收盤價，作為「當前股價」欄位的預設值，避免試算結果一開始就是全 0
   latestClosePrice?: number;
-  // 初始要帶入的交易紀錄（例如使用者先前已登入儲存過的紀錄）
+  // 初始要帶入的交易紀錄（例如使用者先前已登入儲存過，或存在瀏覽器 localStorage 的紀錄）
   initialTransactions?: Transaction[];
   // 有傳入時會顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫
   onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
+  // 儲存位置：account 是登入後綁定帳號存到後端（TWSE）；local 是只存在目前瀏覽器的
+  // localStorage，沒有帳號概念（YieldMax）
+  storageScope?: "account" | "local";
 }
 
 export function EtfProfitCalculator({
@@ -62,6 +65,7 @@ export function EtfProfitCalculator({
   latestClosePrice,
   initialTransactions,
   onSaveTransactions,
+  storageScope = "account",
 }: EtfProfitCalculatorProps) {
   const [currentPrice, setCurrentPrice] = useState<number>(
     () => latestClosePrice ?? 0,
@@ -206,6 +210,7 @@ export function EtfProfitCalculator({
             records={records}
             onChange={setRecords}
             onSaveTransactions={onSaveTransactions}
+            storageScope={storageScope}
           />
 
           <Divider />
@@ -254,9 +259,18 @@ export function EtfProfitCalculator({
                 sx={{ lineHeight: 1.5 }}
               >
                 🔒
-                儲存聲明：階段式算法的交易紀錄若選擇「同意並儲存」，會與您的帳號綁定保存，下次開啟本頁時自動載入，不需要重新輸入。
-                這些紀錄僅供您本人試算使用，不會公開顯示，也不會提供給其他使用者或第三方查看您的持倉內容。
-                您可以隨時修改後重新儲存以覆蓋舊資料。
+                {storageScope === "local" ? (
+                  <>
+                    儲存聲明：階段式算法的交易紀錄若選擇「同意並儲存」，會存在您目前使用的瀏覽器（localStorage），下次開啟本頁時自動載入，不需要重新輸入。
+                    這些紀錄不會上傳到任何伺服器，只存在本機，換裝置、換瀏覽器或清除瀏覽器資料都會消失。
+                  </>
+                ) : (
+                  <>
+                    儲存聲明：階段式算法的交易紀錄若選擇「同意並儲存」，會與您的帳號綁定保存，下次開啟本頁時自動載入，不需要重新輸入。
+                    這些紀錄僅供您本人試算使用，不會公開顯示，也不會提供給其他使用者或第三方查看您的持倉內容。
+                    您可以隨時修改後重新儲存以覆蓋舊資料。
+                  </>
+                )}
               </Typography>
             </Box>
           )}

@@ -5,6 +5,7 @@ import {
   Chip,
   Container,
   Grid,
+  IconButton,
   InputAdornment,
   List,
   ListItemButton,
@@ -16,6 +17,8 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 import type { EtfInfo } from "@/types/etf.ts";
 import { ETFInfo } from "@/components/etf/etf_info.tsx";
 import { useCrawlerExec } from "@/apis/tools/crawler_exec.ts";
@@ -24,6 +27,7 @@ import { useTitle } from "@/helpers/title.tsx";
 import { yieldMaxEtfOptions, yieldMaxEtfs } from "@/data/yieldmax.ts";
 import { useNavigate, useParams } from "react-router-dom";
 import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
+import { useYieldMaxFavorites } from "@/apis/local/yieldmax_favorites.ts";
 
 interface CrawlerTextField {
   text: string;
@@ -48,6 +52,7 @@ export function YieldMaxEtfs() {
     normalizedEtfCode && yieldMaxEtfs[normalizedEtfCode]
       ? normalizedEtfCode
       : defaultEtfCode;
+  const { favorites, toggleFavorite } = useYieldMaxFavorites();
   const [keyword, setKeyword] = useState("");
   const filteredEtfs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -231,7 +236,29 @@ export function YieldMaxEtfs() {
                             alignItems="center"
                             justifyContent="space-between"
                           >
-                            <Typography fontWeight={800}>{etf.code}</Typography>
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              alignItems="center"
+                            >
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(etf.code);
+                                }}
+                                sx={{ p: 0.25 }}
+                              >
+                                {favorites.has(etf.code) ? (
+                                  <StarIcon fontSize="small" color="warning" />
+                                ) : (
+                                  <StarBorderIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                              <Typography fontWeight={800}>
+                                {etf.code}
+                              </Typography>
+                            </Stack>
                             {active && <Chip size="small" label="目前" />}
                           </Stack>
                           <Typography variant="caption" color="text.secondary">
