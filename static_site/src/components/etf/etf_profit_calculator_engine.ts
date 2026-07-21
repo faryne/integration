@@ -17,6 +17,7 @@ interface DividendAgg {
   perShare: number;
   grossAmount: number;
   netAmount: number;
+  refundAmount: number; // 美股專屬的預估退稅，台股固定為 0
   realized: boolean;
 }
 
@@ -96,6 +97,7 @@ export function calcTransactionsResult(
             existing.shares += sharesHeld;
             existing.grossAmount += currentAmount;
             existing.netAmount += netAmount;
+            existing.refundAmount += refund;
           } else {
             dividendAgg.set(d.ex_date, {
               exDate: d.ex_date,
@@ -103,6 +105,7 @@ export function calcTransactionsResult(
               perShare: d.per_share,
               grossAmount: currentAmount,
               netAmount,
+              refundAmount: refund,
               realized: isRealized,
             });
           }
@@ -135,6 +138,7 @@ export function calcTransactionsResult(
         description: `購入價 ${adjCost.toFixed(4)} → 賣出 ${sellShares.toLocaleString()} 股 @ ${Number(sell.sellPrice).toFixed(4)}`,
         grossAmount: gain,
         netAmount: null,
+        refundAmount: null,
         realized: true,
       });
 
@@ -159,6 +163,7 @@ export function calcTransactionsResult(
       description: `持有 ${d.shares.toLocaleString(undefined, { maximumFractionDigits: 4 })} 股 × 每股 ${d.perShare.toFixed(4)}`,
       grossAmount: d.grossAmount,
       netAmount: d.netAmount,
+      refundAmount: d.refundAmount > 0 ? d.refundAmount : null,
       realized: d.realized,
     }),
   );

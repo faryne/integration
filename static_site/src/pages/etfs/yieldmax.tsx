@@ -5,6 +5,7 @@ import {
   Chip,
   Container,
   Grid,
+  IconButton,
   InputAdornment,
   List,
   ListItemButton,
@@ -16,7 +17,9 @@ import {
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import type { EtfInfo } from "@/types/etf.ts";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+import type { EtfDistribution, EtfInfo } from "@/types/etf.ts";
 import { ETFInfo } from "@/components/etf/etf_info.tsx";
 import { useCrawlerExec } from "@/apis/tools/crawler_exec.ts";
 import dayjs from "dayjs";
@@ -24,6 +27,7 @@ import { useTitle } from "@/helpers/title.tsx";
 import { yieldMaxEtfOptions, yieldMaxEtfs } from "@/data/yieldmax.ts";
 import { useNavigate, useParams } from "react-router-dom";
 import { InvestmentRiskDisclaimer } from "@/components/etf/InvestmentRiskDisclaimer.tsx";
+import { useYieldMaxFavorites } from "@/apis/local/yieldmax_favorites.ts";
 
 interface CrawlerTextField {
   text: string;
@@ -48,20 +52,21 @@ export function YieldMaxEtfs() {
     normalizedEtfCode && yieldMaxEtfs[normalizedEtfCode]
       ? normalizedEtfCode
       : defaultEtfCode;
+  const { favorites, toggleFavorite } = useYieldMaxFavorites();
   const [keyword, setKeyword] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const filteredEtfs = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
-    if (!normalizedKeyword) {
-      return yieldMaxEtfOptions;
-    }
-
-    return yieldMaxEtfOptions.filter(
-      (etf) =>
+    return yieldMaxEtfOptions.filter((etf) => {
+      if (favoritesOnly && !favorites.has(etf.code)) return false;
+      if (!normalizedKeyword) return true;
+      return (
         etf.code.toLowerCase().includes(normalizedKeyword) ||
-        etf.description.toLowerCase().includes(normalizedKeyword),
-    );
-  }, [keyword]);
+        etf.description.toLowerCase().includes(normalizedKeyword)
+      );
+    });
+  }, [keyword, favoritesOnly, favorites]);
 
   const [loading, setLoading] = useState(false);
   const [rawData, setRawData] = useState<EtfInfo | null>(null);
@@ -123,11 +128,8 @@ export function YieldMaxEtfs() {
   useEffect(() => {
     setLoading(!(queryCrawler.isSuccess || queryCrawler.isError));
     if (queryCrawler.isSuccess) {
-      setRawData({
-        code: activeTab,
-        description: yieldMaxEtfs[activeTab].description,
-        divided_info: yieldMaxEtfs[activeTab].divided_info ?? undefined,
-        distributions: queryCrawler.data.data.distributions.map(
+      const parsedDistributions: EtfDistribution[] =
+        queryCrawler.data.data.distributions.map(
           (distribution: YieldMaxDistributionCrawlerResult) => ({
             per_share: parseFloat(
               distribution.children.share.text.replace("$", ""),
@@ -146,7 +148,24 @@ export function YieldMaxEtfs() {
                 ? -1
                 : parseFloat(distribution.children.roc.text.replace("%", "")),
           }),
-        ),
+        );
+
+      // YieldMax 官網的配息表常常同一個除息日出現兩筆重複資料（一筆有 ROC，
+      // 一筆 ROC 還沒公布顯示 nan），若不去重，獲利試算會把同一筆配息的持股數算兩次。
+      // 同一除息日保留有 ROC 資料的那筆。
+      const dedupedByExDate = new Map<string, EtfDistribution>();
+      parsedDistributions.forEach((d) => {
+        const existing = dedupedByExDate.get(d.ex_date);
+        if (!existing || (existing.roc === -1 && d.roc !== -1)) {
+          dedupedByExDate.set(d.ex_date, d);
+        }
+      });
+
+      setRawData({
+        code: activeTab,
+        description: yieldMaxEtfs[activeTab].description,
+        divided_info: yieldMaxEtfs[activeTab].divided_info ?? undefined,
+        distributions: [...dedupedByExDate.values()],
       });
     }
   }, [queryCrawler.isPending, queryCrawler.isSuccess, queryCrawler.isError]);
@@ -188,18 +207,44 @@ export function YieldMaxEtfs() {
                   }}
                 />
 
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<RestartAltIcon />}
-                  onClick={() => {
-                    setKeyword("");
-                    navigate(`/data/etf/yieldmax/${defaultEtfCode}`);
-                  }}
-                >
-                  重設
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<RestartAltIcon />}
+                    onClick={() => {
+                      setKeyword("");
+                      navigate(`/data/etf/yieldmax/${defaultEtfCode}`);
+                    }}
+                  >
+                    重設
+                  </Button>
+                  <Button
+                    size="small"
+                    variant={favoritesOnly ? "contained" : "outlined"}
+                    color="warning"
+                    startIcon={
+                      favoritesOnly ? (
+                        <StarIcon fontSize="small" />
+                      ) : (
+                        <StarBorderIcon fontSize="small" />
+                      )
+                    }
+                    onClick={() => setFavoritesOnly((prev) => !prev)}
+                  >
+                    只看我的最愛
+                  </Button>
+                </Stack>
 
+                {filteredEtfs.length === 0 && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ textAlign: "center", py: 2 }}
+                  >
+                    {favoritesOnly ? "還沒有收藏任何 ETF" : "找不到符合的 ETF"}
+                  </Typography>
+                )}
                 <List
                   dense
                   sx={{
@@ -231,7 +276,29 @@ export function YieldMaxEtfs() {
                             alignItems="center"
                             justifyContent="space-between"
                           >
-                            <Typography fontWeight={800}>{etf.code}</Typography>
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              alignItems="center"
+                            >
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(etf.code);
+                                }}
+                                sx={{ p: 0.25 }}
+                              >
+                                {favorites.has(etf.code) ? (
+                                  <StarIcon fontSize="small" color="warning" />
+                                ) : (
+                                  <StarBorderIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                              <Typography fontWeight={800}>
+                                {etf.code}
+                              </Typography>
+                            </Stack>
                             {active && <Chip size="small" label="目前" />}
                           </Stack>
                           <Typography variant="caption" color="text.secondary">

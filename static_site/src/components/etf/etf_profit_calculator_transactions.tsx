@@ -34,6 +34,9 @@ interface TransactionRecordsEditorProps {
   // 有傳入時顯示「儲存交易紀錄」授權按鈕；使用者同意後才會呼叫，實際持久化 (需登入) 由外部提供
   // 每筆 Transaction 為一個購入批次，可以有 0~多筆賣出紀錄 (sells)
   onSaveTransactions?: (records: Transaction[]) => Promise<void> | void;
+  // 儲存位置：account 是登入後綁定帳號存到後端（TWSE）；local 是只存在目前瀏覽器的
+  // localStorage，沒有帳號概念（YieldMax），兩者的同意聲明文字不一樣
+  storageScope?: "account" | "local";
 }
 
 type SortDirection = "asc" | "desc";
@@ -53,7 +56,7 @@ function sortByBuyDate(
   });
 }
 
-// 階段式介面：可分批輸入多筆購入交易，每筆購入又可以分好幾次賣出，各自獨立計算損益後加總。
+// 可分批輸入多筆購入交易，每筆購入又可以分好幾次賣出，各自獨立計算損益後加總。
 // 紀錄可能很長，除了每筆購入批次各自用 accordion 收合外，整份清單外面再包一層
 // accordion，方便使用者輸入完直接收起整區塊，不用一直往下捲才能看到試算結果。
 // 每筆購入批次預設只有一筆時展開，多筆時全部收合。
@@ -61,6 +64,7 @@ export function TransactionRecordsEditor({
   records,
   onChange,
   onSaveTransactions,
+  storageScope = "account",
 }: TransactionRecordsEditorProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () => new Set(records.length <= 1 ? records.map((r) => r.id) : []),
@@ -216,7 +220,9 @@ export function TransactionRecordsEditor({
                         用途：僅用於下次試算時自動帶入，不會用於推薦、廣告或其他分析用途。
                       </li>
                       <li>
-                        分享對象：不會提供給第三方，僅與你的帳號綁定保存。
+                        {storageScope === "local"
+                          ? "分享對象：不會上傳到任何伺服器，只存在你目前使用的瀏覽器裡（清除瀏覽器資料或換裝置會消失）。"
+                          : "分享對象：不會提供給第三方，僅與你的帳號綁定保存。"}
                       </li>
                     </Box>
                   </DialogContentText>

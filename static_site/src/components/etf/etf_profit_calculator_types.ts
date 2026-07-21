@@ -39,6 +39,7 @@ export interface ProfitDetailRow {
   description: string;
   grossAmount: number; // 配息：總配息金額；賣出：已實現損益（可能為負）
   netAmount: number | null; // 配息稅後實領（僅美股才有意義），賣出固定為 null
+  refundAmount: number | null; // 配息的預估退稅（僅美股 ROC > 0 時才有值），賣出固定為 null
   realized: boolean;
 }
 
