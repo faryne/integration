@@ -19,7 +19,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
-import type { EtfInfo } from "@/types/etf.ts";
+import type { EtfDistribution, EtfInfo } from "@/types/etf.ts";
 import { ETFInfo } from "@/components/etf/etf_info.tsx";
 import { useCrawlerExec } from "@/apis/tools/crawler_exec.ts";
 import dayjs from "dayjs";
@@ -128,11 +128,8 @@ export function YieldMaxEtfs() {
   useEffect(() => {
     setLoading(!(queryCrawler.isSuccess || queryCrawler.isError));
     if (queryCrawler.isSuccess) {
-      setRawData({
-        code: activeTab,
-        description: yieldMaxEtfs[activeTab].description,
-        divided_info: yieldMaxEtfs[activeTab].divided_info ?? undefined,
-        distributions: queryCrawler.data.data.distributions.map(
+      const parsedDistributions: EtfDistribution[] =
+        queryCrawler.data.data.distributions.map(
           (distribution: YieldMaxDistributionCrawlerResult) => ({
             per_share: parseFloat(
               distribution.children.share.text.replace("$", ""),
@@ -151,7 +148,24 @@ export function YieldMaxEtfs() {
                 ? -1
                 : parseFloat(distribution.children.roc.text.replace("%", "")),
           }),
-        ),
+        );
+
+      // YieldMax 官網的配息表常常同一個除息日出現兩筆重複資料（一筆有 ROC，
+      // 一筆 ROC 還沒公布顯示 nan），若不去重，獲利試算會把同一筆配息的持股數算兩次。
+      // 同一除息日保留有 ROC 資料的那筆。
+      const dedupedByExDate = new Map<string, EtfDistribution>();
+      parsedDistributions.forEach((d) => {
+        const existing = dedupedByExDate.get(d.ex_date);
+        if (!existing || (existing.roc === -1 && d.roc !== -1)) {
+          dedupedByExDate.set(d.ex_date, d);
+        }
+      });
+
+      setRawData({
+        code: activeTab,
+        description: yieldMaxEtfs[activeTab].description,
+        divided_info: yieldMaxEtfs[activeTab].divided_info ?? undefined,
+        distributions: [...dedupedByExDate.values()],
       });
     }
   }, [queryCrawler.isPending, queryCrawler.isSuccess, queryCrawler.isError]);

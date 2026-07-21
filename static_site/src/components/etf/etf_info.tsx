@@ -14,7 +14,7 @@ import {
   Button,
   MenuItem,
   TextField,
-  Collapse,
+  Drawer,
 } from "@mui/material";
 import { useState, useMemo } from "react";
 import type { EtfInfo } from "@/types/etf.ts";
@@ -62,16 +62,23 @@ export function ETFInfo({ data }: EtfTableProps) {
       <Typography variant="h5" gutterBottom>
         {data.code} - {data.description}{" "}
         <Button
-          onClick={() => setCalOpen((prev) => !prev)}
+          onClick={() => setCalOpen(true)}
           variant="contained"
           color="primary"
           size="small"
           sx={{ ml: 2 }}
         >
-          {calOpen ? "收起試算" : "試算盈虧"}
+          試算盈虧
         </Button>
       </Typography>
-      <Collapse in={calOpen} unmountOnExit sx={{ mb: 3 }}>
+      <Drawer
+        open={calOpen}
+        anchor="right"
+        onClose={() => setCalOpen(false)}
+        slotProps={{
+          paper: { sx: { width: { xs: "100%", sm: 500, md: 720 }, p: 2 } },
+        }}
+      >
         <EtfProfitCalculator
           key={data.code}
           data={data}
@@ -80,7 +87,7 @@ export function ETFInfo({ data }: EtfTableProps) {
           onSaveTransactions={savedTransactions.save}
           storageScope="local"
         />
-      </Collapse>
+      </Drawer>
       <Stack direction={"column"} spacing={3}>
         <Stack
           direction="row"
