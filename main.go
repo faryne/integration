@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -406,7 +407,19 @@ func gracefulRestart(runtime *appRuntime) error {
 	if err != nil {
 		return err
 	}
-	return syscall.Exec(path, os.Args, os.Environ())
+	// 重啟後不應再帶 -reload，否則新 process 開機完會立刻判斷 reload==true 再次重啟，造成無限迴圈
+	return syscall.Exec(path, argsWithoutReload(), os.Environ())
+}
+
+func argsWithoutReload() []string {
+	args := make([]string, 0, len(os.Args))
+	for _, a := range os.Args {
+		if a == "-reload" || a == "--reload" || strings.HasPrefix(a, "-reload=") || strings.HasPrefix(a, "--reload=") {
+			continue
+		}
+		args = append(args, a)
+	}
+	return args
 }
 
 func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
