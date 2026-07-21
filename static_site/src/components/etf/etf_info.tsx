@@ -79,14 +79,19 @@ export function ETFInfo({ data }: EtfTableProps) {
           paper: { sx: { width: { xs: "100%", sm: 500, md: 720 }, p: 2 } },
         }}
       >
-        <EtfProfitCalculator
-          key={data.code}
-          data={data}
-          defaultCurrency="USD"
-          initialTransactions={savedTransactions.records}
-          onSaveTransactions={savedTransactions.save}
-          storageScope="local"
-        />
+        {/* Drawer paper 是 flex column，Card 預設 overflow:hidden 會被 flexbox
+            擠壓成剛好塞滿可視高度而不是跟著內容變高，導致下面的明細被裁掉、
+            無法捲動；用 flexShrink: 0 讓它保持原本內容高度，改由 paper 本身捲動 */}
+        <Box sx={{ flexShrink: 0 }}>
+          <EtfProfitCalculator
+            key={data.code}
+            data={data}
+            defaultCurrency="USD"
+            initialTransactions={savedTransactions.records}
+            onSaveTransactions={savedTransactions.save}
+            storageScope="local"
+          />
+        </Box>
       </Drawer>
       <Stack direction={"column"} spacing={3}>
         <Stack
