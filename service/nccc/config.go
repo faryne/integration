@@ -78,8 +78,9 @@ func stringFieldNamesList() []string {
 }
 
 type dataSetConfig struct {
-	URL  string
-	Text string
+	URL          string
+	Text         string
+	ExcludeTypes []string // 官網未提供的 TYPE 組合，展開網址時要排除
 }
 
 var dataSets = map[string]dataSetConfig{
@@ -97,7 +98,7 @@ var dataSets = map[string]dataSetConfig{
 	"gneder_ai":         {URL: "/Gender%20X%20Annual%20Income/BANK_%{AREA}_FD_AI_%{GENDER}.CSV", Text: "性別Ｘ年收入消費型態"},
 	"gender_ce":         {URL: "/Gender%20X%20Classified%20Employment/BANK_%{AREA}_FD_CE_%{GENDER}.CSV", Text: "性別Ｘ職業別消費型態"},
 	"gender_ee":         {URL: "/Gender%20X%20Education%20Level/BANK_%{AREA}_FD_EL_%{GENDER}.CSV", Text: "性別Ｘ教育程度消費型態"},
-	"by_industry_total": {URL: "/NCCC%20Open%20Data/Industry/NCCC_TWN_%{TYPE}.CSV", Text: "各產業類別消費型態"},
+	"by_industry_total": {URL: "/NCCC%20Open%20Data/Industry/NCCC_TWN_%{TYPE}.CSV", Text: "各產業類別消費型態", ExcludeTypes: []string{"OT"}},
 	"by_region_total":   {URL: "/NCCC%20Open%20Data/Location/NCCC_%{AREA}.CSV", Text: "各地區消費型態"},
 	"by_ec_total":       {URL: "/NCCC%20Open%20Data/Location%20EC/NCCC_TWN_EC.CSV", Text: "網路購物消費型態"},
 }

@@ -109,7 +109,7 @@ func (s *Service) Download(ctx context.Context, dataSetKey ...string) ([]Downloa
 	totalFiles := 0
 	expandedURLs := make(map[string][]string, len(keys))
 	for _, dataSetKey := range keys {
-		urls := expandDataSetURLs(dataSets[dataSetKey].URL)
+		urls := expandDataSetURLs(dataSets[dataSetKey].URL, dataSets[dataSetKey].ExcludeTypes...)
 		expandedURLs[dataSetKey] = urls
 		totalFiles += len(urls)
 	}
@@ -244,7 +244,12 @@ func applyBrowserHeaders(req *http.Request) {
 	req.Header.Set("Referer", baseURL+"/")
 }
 
-func expandDataSetURLs(pattern string) []string {
+func expandDataSetURLs(pattern string, excludeTypes ...string) []string {
+	exclude := make(map[string]struct{}, len(excludeTypes))
+	for _, t := range excludeTypes {
+		exclude[t] = struct{}{}
+	}
+
 	output := []string{pattern}
 	keys := make([]string, 0, len(defaultPlaceholders))
 	for key := range defaultPlaceholders {
@@ -254,6 +259,15 @@ func expandDataSetURLs(pattern string) []string {
 
 	for _, key := range keys {
 		values := defaultPlaceholders[key]
+		if key == "TYPE" && len(exclude) > 0 {
+			filtered := make([]string, 0, len(values))
+			for _, value := range values {
+				if _, skip := exclude[value]; !skip {
+					filtered = append(filtered, value)
+				}
+			}
+			values = filtered
+		}
 		next := make([]string, 0, len(output)*len(values))
 		for _, current := range output {
 			if !strings.Contains(current, "%{"+key+"}") {
