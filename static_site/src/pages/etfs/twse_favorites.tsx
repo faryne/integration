@@ -60,7 +60,6 @@ interface FavoriteRow {
 }
 
 const emptyTotals = {
-  finalShares: 0,
   totalCost: 0,
   realizedTotal: 0,
   unrealizedTotal: 0,
@@ -157,7 +156,6 @@ export default function TwseEtfFavoritesPage() {
     () =>
       rows.reduce((acc, row) => {
         return {
-          finalShares: acc.finalShares + row.result.finalShares,
           totalCost: acc.totalCost + row.result.totalCost,
           realizedTotal: acc.realizedTotal + row.result.realizedTotal,
           unrealizedTotal: acc.unrealizedTotal + row.result.unrealizedTotal,
@@ -364,19 +362,12 @@ export default function TwseEtfFavoritesPage() {
             <TableFooter>
               <TableRow>
                 <TableCell
-                  colSpan={3}
+                  colSpan={4}
                   sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
                 >
                   總計
                 </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{ fontWeight: 900, bgcolor: "#f6f9fc" }}
-                >
-                  {totals.finalShares.toLocaleString(undefined, {
-                    maximumFractionDigits: 4,
-                  })}
-                </TableCell>
+                {/* 持股數是不同 ETF 各自的股數，加總沒有意義，這欄留空 */}
                 <TableCell sx={{ bgcolor: "#f6f9fc" }} />
                 <TableCell
                   align="right"
