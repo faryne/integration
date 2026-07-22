@@ -27,6 +27,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import {
   useSaveTwseEtfFavorite,
   useTwseEtfFavoritesBatch,
+  useTwseEtfFavoritesRealtimePrice,
 } from "@/apis/opendata/etf_favorites.ts";
 import { useGetTwseEtfCodeList } from "@/apis/opendata/twse_etf.ts";
 import { EtfDetailDialog } from "@/components/etf/etf_detail_dialog.tsx";
@@ -55,7 +56,8 @@ const formatPrice = (amount: number) => formatCurrencyAmount("NT$", amount, 2);
 interface FavoriteRow {
   code: string;
   name: string;
-  latestClose: number;
+  currentPrice: number;
+  isLive: boolean;
   result: ProfitResult;
 }
 
@@ -70,7 +72,11 @@ const columns = [
   { label: "代號", align: "left" as const },
   { label: "名稱", align: "left" as const },
   { label: "目前持股數", align: "right" as const },
-  { label: "最新收盤價", align: "right" as const },
+  {
+    label: "目前股價",
+    align: "right" as const,
+    tooltip: "開盤時間顯示即時成交價，非交易時間或還沒開盤時顯示最新收盤價",
+  },
   {
     label: "已實現盈虧",
     align: "right" as const,
@@ -122,6 +128,21 @@ export default function TwseEtfFavoritesPage() {
 
   const isLoading = favoritesBatchQuery.isLoading || codeListQuery.isLoading;
 
+  // 輪詢收藏 ETF 的即時成交價，更新目前股價跟盈虧數字；後端會自己判斷開不開盤，
+  // 前端不用管，全部代碼都拿不到即時價時這支 hook 會自動停止繼續輪詢。
+  const realtimePriceQuery = useTwseEtfFavoritesRealtimePrice(
+    favoriteItems.length > 0,
+  );
+  const livePriceByCode = useMemo(() => {
+    const map = new Map<string, number>();
+    (realtimePriceQuery.data ?? []).forEach((item) => {
+      if (item.live_price !== null) {
+        map.set(item.code, item.live_price);
+      }
+    });
+    return map;
+  }, [realtimePriceQuery.data]);
+
   const rows = useMemo<FavoriteRow[]>(
     () =>
       favoriteItems.map((item) => {
@@ -136,20 +157,23 @@ export default function TwseEtfFavoritesPage() {
           }),
         );
         const latestClose = etf?.latest_close ?? 0;
+        const livePrice = livePriceByCode.get(item.code);
+        const currentPrice = livePrice ?? latestClose;
         return {
           code: item.code,
           name: etf?.name ?? item.code,
-          latestClose,
+          currentPrice,
+          isLive: livePrice !== undefined,
           result: calcTransactionsResult(
             item.transactions,
             distributions,
             [],
-            latestClose,
+            currentPrice,
             0,
           ),
         };
       }),
-    [favoriteItems, etfByCode],
+    [favoriteItems, etfByCode, livePriceByCode],
   );
 
   const totals = useMemo(
@@ -309,7 +333,14 @@ export default function TwseEtfFavoritesPage() {
                     })}
                   </TableCell>
                   <TableCell align="right">
-                    {formatPrice(row.latestClose)}
+                    {formatPrice(row.currentPrice)}
+                    <Typography
+                      variant="caption"
+                      component="div"
+                      color={row.isLive ? "success.main" : "text.secondary"}
+                    >
+                      {row.isLive ? "即時" : "收盤"}
+                    </Typography>
                   </TableCell>
                   <TableCell
                     align="right"

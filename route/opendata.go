@@ -48,6 +48,7 @@ func OpenData(app *fiber.App) {
 	// :code/ticker）都會先經過這個中介層，等於整個 /twse 都被要求要登入。
 	g51.Get("/favorites", authsession.New(), opendata.TwseEtfFavorites)
 	g51.Get("/favorites/batch", authsession.New(), opendata.TwseEtfFavoritesBatch)
+	g51.Get("/favorites/realtime_price", authsession.New(), opendata.TwseEtfFavoritesRealtimePrices)
 	g51.Post("/:code/favorite", authsession.New(), opendata.CreateTwseEtfFavorite)
 	g51.Delete("/:code/favorite", authsession.New(), opendata.DeleteTwseEtfFavorite)
 	g51.Get(
