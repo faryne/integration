@@ -761,6 +761,7 @@ export default function StorytellerLoreEditor() {
           <StorytellerWysiwygEditor
             value={content}
             onChange={setContent}
+            exportBaseName={title}
             toolbarExtra={
               <StorytellerEditorSideTabs
                 value={sidePanel}

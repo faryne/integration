@@ -1013,6 +1013,7 @@ export default function StorytellerStoryEditor() {
           <StorytellerWysiwygEditor
             value={content}
             onChange={setContent}
+            exportBaseName={storyTitle}
             toolbarExtra={
               <StorytellerEditorSideTabs
                 value={sidePanel}

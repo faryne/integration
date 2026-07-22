@@ -1,5 +1,6 @@
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import DeleteIcon from "@mui/icons-material/Delete";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
 import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
 import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
@@ -55,6 +56,10 @@ import {
   TEXT_COLOR_CSS,
   TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
+import {
+  buildExportFileName,
+  exportContentToMarkdown,
+} from "./wysiwygCore/exportMarkdown";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
@@ -235,6 +240,14 @@ export interface StorytellerWysiwygEditorProps {
   onChange: (markdown: string) => void;
   /** 塞在工具列最右側的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
+  /**
+   * 匯出檔名的基底（通常是故事/設定集標題，編輯器自己不知道標題，由頁面層提供）。
+   * 有提供才會在工具列顯示「匯出 markdown」按鈕；實際檔名是
+   * `[標題]_[timestamp].md`（見 buildExportFileName），timestamp 在按下當下才產生。
+   * 匯出內容是把自訂白名單語法轉成標準 markdown（見 exportMarkdown.ts 的轉換規則），
+   * 不是原始 content——原始格式含內部 marker 語法，不該外洩。
+   */
+  exportBaseName?: string;
 }
 
 /**
@@ -250,6 +263,7 @@ export function StorytellerWysiwygEditor({
   value,
   onChange,
   toolbarExtra,
+  exportBaseName,
 }: StorytellerWysiwygEditorProps) {
   const lastEmittedRef = useRef(value);
 
@@ -589,6 +603,19 @@ export function StorytellerWysiwygEditor({
     setFootnoteDialogOpen(false);
   };
 
+  // 匯出標準 markdown 檔：value 是父層同步回來的最新內容（onUpdate → onChange →
+  // 父層 state → value prop），不用另外從 editor 重新序列化。純前端下載，不經後端。
+  const handleExportMarkdown = () => {
+    const markdown = exportContentToMarkdown(value);
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = buildExportFileName(exportBaseName ?? "");
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const activeMarks = [
     editorState.bold && "bold",
     editorState.italic && "italic",
@@ -817,6 +844,23 @@ export function StorytellerWysiwygEditor({
               </span>
             </Tooltip>
           </ToggleButtonGroup>
+
+          {exportBaseName !== undefined && (
+            <>
+              <Divider orientation="vertical" flexItem />
+
+              <ToggleButtonGroup size="small">
+                <Tooltip title="匯出 markdown 檔案">
+                  <ToggleButton
+                    value="export-markdown"
+                    onClick={handleExportMarkdown}
+                  >
+                    <FileDownloadIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              </ToggleButtonGroup>
+            </>
+          )}
 
           {toolbarExtra && (
             <>
