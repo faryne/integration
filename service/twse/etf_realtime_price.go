@@ -10,9 +10,11 @@ import (
 	"faryne.dev/model/enum"
 )
 
-// RealtimePriceUrl 是證交所盤中即時報價 API，非正式文件化的公開端點（給官網自己前端用），
-// 行為可能隨時變動，不保證長期穩定。
-const RealtimePriceUrl = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp"
+// RealtimePriceUrl 是證交所零股盤中即時報價 API，非正式文件化的公開端點（給官網自己
+// 前端用），行為可能隨時變動，不保證長期穩定。改用零股（而不是整股 getStockInfo.jsp）
+// 是因為實測發現整股那支目前拿不到最新成交價（連證交所官網自己前端也一樣），零股這支
+// 才有正常資料；ETF 本來零股交易也比較活絡，撮合價會緊貼整股，拿來當「目前股價」夠用。
+const RealtimePriceUrl = "https://mis.twse.com.tw/stock/api/getOddInfo.jsp"
 
 // realtimePriceBatchSize：實測這支 API 一次最多可以帶約 140 檔（超過會回 rtcode
 // 9999 或直接 414 URI 太長），這裡抓保守一點的安全邊界。
@@ -32,8 +34,9 @@ type realtimePriceResponse struct {
 	Rtcode   string              `json:"rtcode"`
 }
 
+// realtimeExCh 零股 API 的上市代碼前綴是 tse（不是整股那支的 twse），上櫃一樣是 otc。
 func realtimeExCh(code RealtimePriceCode) string {
-	prefix := "twse"
+	prefix := "tse"
 	if code.Market == enum.StockMarketOTC {
 		prefix = "otc"
 	}
