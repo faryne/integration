@@ -61,15 +61,19 @@ type toolCallParams struct {
 }
 
 func NewServer(name, version string) *Server {
-	s := &Server{
-		name:    name,
-		version: version,
-		tools:   make(map[string]Tool),
-	}
+	s := newBareServer(name, version)
 	s.registerBuiltInTools()
 	s.registerAVTools()
 	s.registerNekomaidTools()
 	return s
+}
+
+func newBareServer(name, version string) *Server {
+	return &Server{
+		name:    name,
+		version: version,
+		tools:   make(map[string]Tool),
+	}
 }
 
 func (s *Server) RegisterTool(tool Tool) error {

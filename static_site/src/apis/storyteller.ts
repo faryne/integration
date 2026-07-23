@@ -20,6 +20,9 @@ import type {
   StorytellerLore,
   StorytellerLoreRequest,
   StorytellerLoreVersion,
+  StorytellerPersonalAccessToken,
+  StorytellerPersonalAccessTokenCreated,
+  StorytellerPersonalAccessTokenRequest,
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
@@ -557,6 +560,61 @@ export function useUpdateStorytellerProviderAPIKey() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "provider-apikeys"],
+      });
+    },
+  });
+}
+
+export function useStorytellerPersonalAccessTokens() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "personal-access-tokens", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerPersonalAccessToken[]>
+      >(`${apiBase}/storyteller/personal-access-tokens`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useCreateStorytellerPersonalAccessToken() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StorytellerPersonalAccessTokenRequest) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerPersonalAccessTokenCreated>
+      >(`${apiBase}/storyteller/personal-access-tokens`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "personal-access-tokens"],
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerPersonalAccessToken() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/personal-access-tokens/${id}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "personal-access-tokens"],
       });
     },
   });

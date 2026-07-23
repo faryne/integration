@@ -57,6 +57,26 @@ export interface StorytellerProviderAPIKeyUpdateRequest {
   api_key?: string;
 }
 
+export interface StorytellerPersonalAccessToken {
+  id: number;
+  label: string;
+  token_prefix: string;
+  last_used_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface StorytellerPersonalAccessTokenRequest {
+  label: string;
+  expires_in_days?: number;
+}
+
+// 明碼 token 只在建立當下回傳一次，之後只查得到 StorytellerPersonalAccessToken。
+export interface StorytellerPersonalAccessTokenCreated
+  extends StorytellerPersonalAccessToken {
+  token: string;
+}
+
 export interface StorytellerAgentModelOption {
   id: number;
   name: string;

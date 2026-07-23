@@ -421,6 +421,44 @@ func (UserProfile) TableName() string {
 	return "storyteller_users"
 }
 
+// PersonalAccessToken 供外部工具（如 MCP client）以 Bearer token 存取 storyteller API，
+// 只存 SHA-256 雜湊，明碼只在建立當下回傳一次。
+type PersonalAccessToken struct {
+	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID      uint64     `gorm:"column:user_id" json:"user_id"`
+	Label       string     `gorm:"column:label" json:"label"`
+	TokenHash   string     `gorm:"column:token_hash" json:"-"`
+	TokenPrefix string     `gorm:"column:token_prefix" json:"token_prefix"`
+	LastUsedAt  *time.Time `gorm:"column:last_used_at" json:"last_used_at"`
+	ExpiresAt   *time.Time `gorm:"column:expires_at" json:"expires_at"`
+	IsDeleted   bool       `gorm:"column:is_deleted" json:"-"`
+	DeletedAt   *time.Time `gorm:"column:deleted_at" json:"-"`
+	CreatedAt   time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (PersonalAccessToken) TableName() string { return "storyteller_personal_access_tokens" }
+
+type PersonalAccessTokenRequest struct {
+	Label         string `json:"label"`
+	ExpiresInDays *int   `json:"expires_in_days"`
+}
+
+type PersonalAccessTokenOutput struct {
+	ID          uint64     `json:"id"`
+	Label       string     `json:"label"`
+	TokenPrefix string     `json:"token_prefix"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// PersonalAccessTokenCreateOutput 多帶一個明碼 Token，只在建立當下回傳一次，之後查不到。
+type PersonalAccessTokenCreateOutput struct {
+	PersonalAccessTokenOutput
+	Token string `json:"token"`
+}
+
 type ProjectRequest struct {
 	Name        string            `json:"name"`
 	Slug        string            `json:"slug"`
