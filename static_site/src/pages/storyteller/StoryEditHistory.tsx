@@ -87,11 +87,20 @@ export function StoryEditHistory({
   }
 
   const itemById = new Map((allItems ?? items).map((item) => [item.id, item]));
+  // 版本號用建立順序編號（最舊 = 1），不是後端的 DB id——DB id 不連續、對使用者沒有意義，
+  // 這個編號也不會因為之後新增/刪除版本而讓既有版本被重新編號（往前數，不是往後數）。
+  const versionNumberById = new Map(
+    [...(allItems ?? items)]
+      .reverse()
+      .map((item, index) => [item.id, index + 1]),
+  );
   const describeReferencedVersion = (versionId: string) => {
+    const seq = versionNumberById.get(versionId);
+    return seq !== undefined ? `版本 #${seq}` : `版本 #${versionId}`;
+  };
+  const referencedVersionTooltip = (versionId: string) => {
     const referenced = itemById.get(versionId);
-    return referenced
-      ? formatStorytellerDate(referenced.createdAt)
-      : `#${versionId}`;
+    return referenced ? `建立於 ${formatStorytellerDate(referenced.createdAt)}` : "";
   };
 
   return (
@@ -140,7 +149,8 @@ export function StoryEditHistory({
               <TableCell padding="checkbox" align="center">
                 新
               </TableCell>
-              <TableCell>版本</TableCell>
+              <TableCell align="center">版本號</TableCell>
+              <TableCell>標題</TableCell>
               <TableCell>來源</TableCell>
               <TableCell>字數</TableCell>
               <TableCell>建立時間</TableCell>
@@ -179,26 +189,33 @@ export function StoryEditHistory({
                     }}
                   />
                 </TableCell>
+                <TableCell align="center">
+                  <Chip size="small" label={`#${versionNumberById.get(item.id) ?? item.id}`} />
+                </TableCell>
                 <TableCell>
                   <Stack spacing={0.5}>
                     <Typography fontWeight={800}>{item.title}</Typography>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                       {item.revertedFromVersionId && (
-                        <Tooltip title={`版本 #${item.revertedFromVersionId}`}>
+                        <Tooltip
+                          title={referencedVersionTooltip(item.revertedFromVersionId)}
+                        >
                           <Chip
                             size="small"
                             variant="outlined"
-                            label={`回復自 ${describeReferencedVersion(item.revertedFromVersionId)} 的版本`}
+                            label={`回復自${describeReferencedVersion(item.revertedFromVersionId)}`}
                           />
                         </Tooltip>
                       )}
                       {item.conflictedWithVersionId && (
-                        <Tooltip title={`版本 #${item.conflictedWithVersionId}`}>
+                        <Tooltip
+                          title={referencedVersionTooltip(item.conflictedWithVersionId)}
+                        >
                           <Chip
                             size="small"
                             color="warning"
                             variant="outlined"
-                            label={`與 ${describeReferencedVersion(item.conflictedWithVersionId)} 的版本衝突`}
+                            label={`與${describeReferencedVersion(item.conflictedWithVersionId)}衝突`}
                           />
                         </Tooltip>
                       )}
