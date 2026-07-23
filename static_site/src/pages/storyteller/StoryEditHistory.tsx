@@ -1,10 +1,11 @@
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
-import HistoryIcon from "@mui/icons-material/History";
+import RestoreIcon from "@mui/icons-material/Restore";
 import {
   Alert,
   Button,
   Chip,
   CircularProgress,
+  IconButton,
   Pagination,
   Paper,
   Radio,
@@ -15,6 +16,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
@@ -25,6 +27,10 @@ export interface StoryEditHistoryItem {
   source: string;
   createdAt: string;
   words: number;
+  // 這個版本是「回復到某個舊版本」產生的，帶那個來源版本的 id。
+  revertedFromVersionId?: string | null;
+  // 存檔當下 base_version_id 已經不是最新版本，帶當時真正最新的那個版本 id。
+  conflictedWithVersionId?: string | null;
 }
 
 interface StoryEditHistoryProps {
@@ -42,6 +48,11 @@ interface StoryEditHistoryProps {
   page?: number;
   pageCount?: number;
   onPageChange?: (page: number) => void;
+  // 不傳 onRevert 就不顯示「操作」這欄；currentVersionId 是目前真正最新的版本 id，
+  // 那一列不會顯示回復按鈕（回復到自己沒有意義）。
+  onRevert?: (versionId: string) => void;
+  revertingVersionId?: string | null;
+  currentVersionId?: string;
 }
 
 export function StoryEditHistory({
@@ -59,6 +70,9 @@ export function StoryEditHistory({
   page = 1,
   pageCount = 1,
   onPageChange,
+  onRevert,
+  revertingVersionId,
+  currentVersionId,
 }: StoryEditHistoryProps) {
   if (isNewItem) {
     return (
@@ -118,6 +132,7 @@ export function StoryEditHistory({
               <TableCell>來源</TableCell>
               <TableCell>字數</TableCell>
               <TableCell>建立時間</TableCell>
+              {onRevert && <TableCell align="center">操作</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -153,10 +168,24 @@ export function StoryEditHistory({
                   />
                 </TableCell>
                 <TableCell>
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <HistoryIcon color="primary" />
-                    <Stack spacing={0.5}>
-                      <Typography fontWeight={800}>{item.title}</Typography>
+                  <Stack spacing={0.5}>
+                    <Typography fontWeight={800}>{item.title}</Typography>
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                      {item.revertedFromVersionId && (
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={`回復自版本 #${item.revertedFromVersionId}`}
+                        />
+                      )}
+                      {item.conflictedWithVersionId && (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                          label={`與版本 #${item.conflictedWithVersionId} 衝突`}
+                        />
+                      )}
                     </Stack>
                   </Stack>
                 </TableCell>
@@ -165,6 +194,27 @@ export function StoryEditHistory({
                 </TableCell>
                 <TableCell>{item.words.toLocaleString()}</TableCell>
                 <TableCell>{formatStorytellerDate(item.createdAt)}</TableCell>
+                {onRevert && (
+                  <TableCell align="center">
+                    {item.id !== currentVersionId && (
+                      <Tooltip title="回復到這個版本">
+                        <span>
+                          <IconButton
+                            size="small"
+                            disabled={revertingVersionId === item.id}
+                            onClick={() => onRevert(item.id)}
+                          >
+                            {revertingVersionId === item.id ? (
+                              <CircularProgress size={18} />
+                            ) : (
+                              <RestoreIcon fontSize="small" />
+                            )}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

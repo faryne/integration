@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  useRevertStorytellerStoryVersion,
   useRunStorytellerAgent,
   useSaveStorytellerStory,
   useStorytellerAgents,
@@ -212,6 +213,10 @@ export default function StorytellerStoryEditor() {
           enabled: agent.enabled,
         }));
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
+  const revertStoryVersion = useRevertStorytellerStoryVersion(
+    apiProject?.public_id,
+    apiStory?.public_id,
+  );
   const runAgent = useRunStorytellerAgent(
     apiProject?.public_id,
     apiStory?.public_id,
@@ -270,6 +275,11 @@ export default function StorytellerStoryEditor() {
   const autoSaveDefaultsAppliedRef = useRef(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  // 存檔成功後端才發現這次帶的 base_version_id 已經不是最新版本（例如中途被
+  // MCP 工具或另一個分頁動過）；內容還是照常存成新版本了，這裡只是提醒使用者
+  // 去編輯歷史看一下，不會擋下存檔或自動存檔。
+  const [versionConflict, setVersionConflict] = useState(false);
+  const latestVersionIdRef = useRef<number | undefined>(undefined);
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
@@ -297,6 +307,12 @@ export default function StorytellerStoryEditor() {
         source: storytellerVersionSourceLabel(version.source),
         createdAt: version.created_at,
         words: version.word_count,
+        revertedFromVersionId: version.reverted_from_version_id
+          ? String(version.reverted_from_version_id)
+          : null,
+        conflictedWithVersionId: version.conflicted_with_version_id
+          ? String(version.conflicted_with_version_id)
+          : null,
       }))
     : [];
   const totalHistoryPages = Math.max(
@@ -464,6 +480,16 @@ export default function StorytellerStoryEditor() {
   }, [isHistoryRoute]);
 
   useEffect(() => {
+    latestVersionIdRef.current = apiStoryVersions[0]?.id;
+    // 最新版本本身就帶著衝突標記時也要顯示提示，不只靠這次存檔當下的回應——
+    // 這樣就算使用者錯過當下的提示（例如自動存檔時人不在畫面前），重新整理或
+    // 回來看編輯頁時一樣看得到。
+    if (apiStoryVersions[0]?.conflicted_with_version_id != null) {
+      setVersionConflict(true);
+    }
+  }, [apiStoryVersions]);
+
+  useEffect(() => {
     setStoryTitle(story?.title ?? "");
     setStorySummary(story?.summary ?? "");
     setStoryStatus(story?.status ?? "completed");
@@ -614,13 +640,17 @@ export default function StorytellerStoryEditor() {
               sort: latestDraft.sort,
               content: latestDraft.content,
               save_trigger: "auto",
+              base_version_id: latestVersionIdRef.current,
             },
           },
           {
-            onSuccess: () => {
+            onSuccess: (savedStory) => {
               lastSavedDraftRef.current = currentDraft;
               setSaveMessage("已自動存檔。");
               setSaveMessageVisible(true);
+              if (savedStory?.version_conflict) {
+                setVersionConflict(true);
+              }
             },
             onSettled: () => {
               autoSaveRunningRef.current = false;
@@ -721,6 +751,7 @@ export default function StorytellerStoryEditor() {
           sort: story?.sort ?? 0,
           content,
           save_trigger: "manual",
+          base_version_id: isNewStory ? undefined : latestVersionIdRef.current,
         },
       },
       {
@@ -732,6 +763,9 @@ export default function StorytellerStoryEditor() {
             navigate(
               steamloomPath(`my/project/${id}/story/${savedStory.public_id}`),
             );
+          }
+          if (savedStory?.version_conflict) {
+            setVersionConflict(true);
           }
         },
       },
@@ -899,10 +933,32 @@ export default function StorytellerStoryEditor() {
       hideHeading
       headerContent={
         <Stack spacing={2}>
-          {saveStory.isError && (
-            <Alert severity="error" variant="outlined">
-              存檔失敗，請確認登入狀態與欄位內容。
+          {versionConflict ? (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              onClose={() => setVersionConflict(false)}
+              action={
+                <Button
+                  size="small"
+                  onClick={() => {
+                    handleSidePanelChange("history");
+                    setVersionConflict(false);
+                  }}
+                >
+                  查看編輯歷史
+                </Button>
+              }
+            >
+              剛剛存檔完成後才發現這篇故事在中途被更新過（可能是另一個分頁，或透過
+              MCP 連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
             </Alert>
+          ) : (
+            saveStory.isError && (
+              <Alert severity="error" variant="outlined">
+                存檔失敗，請確認登入狀態與欄位內容。
+              </Alert>
+            )
           )}
           <Grid container spacing={2} alignItems="flex-start">
             <Grid size={{ xs: 12, md: 5 }}>
@@ -1053,6 +1109,25 @@ export default function StorytellerStoryEditor() {
                     page={historyPage}
                     pageCount={totalHistoryPages}
                     onPageChange={setHistoryPage}
+                    currentVersionId={
+                      apiStoryVersions[0]?.id !== undefined
+                        ? String(apiStoryVersions[0].id)
+                        : undefined
+                    }
+                    revertingVersionId={
+                      revertStoryVersion.isPending
+                        ? String(revertStoryVersion.variables)
+                        : null
+                    }
+                    onRevert={(versionId) => {
+                      revertStoryVersion.mutate(Number(versionId), {
+                        onSuccess: () => {
+                          setVersionConflict(false);
+                          setSaveMessage("已回復到這個版本。");
+                          setSaveMessageVisible(true);
+                        },
+                      });
+                    }}
                   />
                 </Paper>
               )}

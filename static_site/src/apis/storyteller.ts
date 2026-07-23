@@ -1220,6 +1220,27 @@ export function useStorytellerStoryVersion(
   });
 }
 
+export function useRevertStorytellerStoryVersion(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (versionId: number) => {
+      const response = await axios.post<CommonResponse<StorytellerStory>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/versions/${versionId}/revert`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
 export function useStorytellerLores(projectPublicId?: string) {
   const { session } = useAuth();
   return useQuery({
@@ -1330,6 +1351,27 @@ export function useStorytellerLoreVersion(
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;
+    },
+  });
+}
+
+export function useRevertStorytellerLoreVersion(
+  projectPublicId?: string,
+  lorePublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (versionId: number) => {
+      const response = await axios.post<CommonResponse<StorytellerLore>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/versions/${versionId}/revert`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }

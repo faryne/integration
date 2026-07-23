@@ -90,11 +90,20 @@ type storytellerProjectDetail struct {
 type storytellerStoryDetail struct {
 	storytellerStorySummary
 	Content string `json:"content"`
+	// VersionID 是這次回傳內容對應的版本 id，寫回時帶成 base_version_id 可以讓後端
+	// 檢查內容有沒有被別的呼叫端動過（例如網頁編輯頁同時在編輯）。
+	VersionID uint64 `json:"version_id"`
+	// VersionConflict 只在 upsert 時可能為 true：代表帶入的 base_version_id 已經
+	// 不是最新版本，但內容依然照常寫入、接在最新版本後面，沒有被拒絕或蓋掉；
+	// 建議重新呼叫 storyteller_get_story 確認有沒有需要一併處理的內容。
+	VersionConflict bool `json:"version_conflict,omitempty"`
 }
 
 type storytellerLoreDetail struct {
 	storytellerLoreSummary
-	Content string `json:"content"`
+	Content         string `json:"content"`
+	VersionID       uint64 `json:"version_id"`
+	VersionConflict bool   `json:"version_conflict,omitempty"`
 }
 
 func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storytellerProjectSummary {
@@ -141,13 +150,14 @@ type storytellerStoryArguments struct {
 }
 
 type storytellerUpsertStoryArguments struct {
-	ProjectPublicID string `json:"project_public_id"`
-	StoryPublicID   string `json:"story_public_id"`
-	Title           string `json:"title"`
-	Summary         string `json:"summary"`
-	Status          string `json:"status"`
-	Sort            int    `json:"sort"`
-	Content         string `json:"content"`
+	ProjectPublicID string  `json:"project_public_id"`
+	StoryPublicID   string  `json:"story_public_id"`
+	Title           string  `json:"title"`
+	Summary         string  `json:"summary"`
+	Status          string  `json:"status"`
+	Sort            int     `json:"sort"`
+	Content         string  `json:"content"`
+	BaseVersionID   *uint64 `json:"base_version_id"`
 }
 
 type storytellerLoreArguments struct {
@@ -156,10 +166,11 @@ type storytellerLoreArguments struct {
 }
 
 type storytellerUpsertLoreArguments struct {
-	ProjectPublicID string `json:"project_public_id"`
-	LorePublicID    string `json:"lore_public_id"`
-	Title           string `json:"title"`
-	Content         string `json:"content"`
+	ProjectPublicID string  `json:"project_public_id"`
+	LorePublicID    string  `json:"lore_public_id"`
+	Title           string  `json:"title"`
+	Content         string  `json:"content"`
+	BaseVersionID   *uint64 `json:"base_version_id"`
 }
 
 func (s *Server) registerStorytellerTools() {
@@ -225,8 +236,10 @@ func (s *Server) registerStorytellerTools() {
 	})
 
 	_ = s.RegisterTool(Tool{
-		Name:        "storyteller_get_story",
-		Description: "Get a story's full content by project_public_id and story_public_id.",
+		Name: "storyteller_get_story",
+		Description: "Get a story's full content by project_public_id and story_public_id. " +
+			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_story " +
+			"to detect if someone else (e.g. the web editor) changed the story in the meantime.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"story_public_id":   stringSchema("Story public_id, as returned by storyteller_get_project."),
@@ -247,6 +260,7 @@ func (s *Server) registerStorytellerTools() {
 			return jsonTextResult(storytellerStoryDetail{
 				storytellerStorySummary: toStorytellerStorySummary(*story),
 				Content:                 story.LatestContent,
+				VersionID:               derefUint64(story.LatestVersionID),
 			})
 		},
 	})
@@ -254,7 +268,11 @@ func (s *Server) registerStorytellerTools() {
 	_ = s.RegisterTool(Tool{
 		Name: "storyteller_upsert_story",
 		Description: "Create or update a story. Omit story_public_id to create a new story; " +
-			"pass an existing story_public_id to overwrite its content (this creates a new version, the previous content is not lost).",
+			"pass an existing story_public_id to overwrite its content (this creates a new version, the previous content is not lost). " +
+			"Pass base_version_id (from storyteller_get_story) to detect if someone else's edit (e.g. from the web editor) happened " +
+			"in the meantime: the write always succeeds and is saved as a new version either way, but the response's " +
+			"version_conflict is true if the story had moved on past base_version_id — consider re-fetching with " +
+			"storyteller_get_story afterwards to check nothing important got lost.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"story_public_id":   stringSchema("Existing story public_id to update. Omit to create a new story."),
@@ -263,6 +281,7 @@ func (s *Server) registerStorytellerTools() {
 			"status":            stringSchema("draft or completed, defaults to completed."),
 			"sort":              integerSchema("Display order among the project's stories."),
 			"content":           stringSchema("Full story content in markdown."),
+			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
@@ -274,19 +293,21 @@ func (s *Server) registerStorytellerTools() {
 				return nil, err
 			}
 			input := storytellerModel.StoryRequest{
-				Title:   args.Title,
-				Summary: args.Summary,
-				Status:  storytellerModel.StoryStatus(args.Status),
-				Sort:    args.Sort,
-				Content: args.Content,
+				Title:         args.Title,
+				Summary:       args.Summary,
+				Status:        storytellerModel.StoryStatus(args.Status),
+				Sort:          args.Sort,
+				Content:       args.Content,
+				BaseVersionID: args.BaseVersionID,
 			}
 			source := storytellerSourceFromContext(ctx)
 			service := storytellerService.NewService()
 			var story *storytellerModel.Story
+			var conflicted bool
 			if args.StoryPublicID == "" {
 				story, err = service.CreateStory(userID, args.ProjectPublicID, input, source)
 			} else {
-				story, err = service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, source)
+				story, conflicted, err = service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, source)
 			}
 			if err != nil {
 				return nil, err
@@ -294,6 +315,8 @@ func (s *Server) registerStorytellerTools() {
 			return jsonTextResult(storytellerStoryDetail{
 				storytellerStorySummary: toStorytellerStorySummary(*story),
 				Content:                 story.LatestContent,
+				VersionID:               derefUint64(story.LatestVersionID),
+				VersionConflict:         conflicted,
 			})
 		},
 	})
@@ -322,8 +345,10 @@ func (s *Server) registerStorytellerTools() {
 	})
 
 	_ = s.RegisterTool(Tool{
-		Name:        "storyteller_get_lore",
-		Description: "Get a lore/worldbuilding entry's full content by project_public_id and lore_public_id.",
+		Name: "storyteller_get_lore",
+		Description: "Get a lore/worldbuilding entry's full content by project_public_id and lore_public_id. " +
+			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_lore " +
+			"to detect if someone else (e.g. the web editor) changed it in the meantime.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Lore public_id, as returned by storyteller_get_project."),
@@ -343,6 +368,7 @@ func (s *Server) registerStorytellerTools() {
 			}
 			return jsonTextResult(storytellerLoreDetail{
 				storytellerLoreSummary: toStorytellerLoreSummary(*lore),
+				VersionID:              derefUint64(lore.LatestVersionID),
 				Content:                lore.LatestContent,
 			})
 		},
@@ -351,12 +377,16 @@ func (s *Server) registerStorytellerTools() {
 	_ = s.RegisterTool(Tool{
 		Name: "storyteller_upsert_lore",
 		Description: "Create or update a lore/worldbuilding entry. Omit lore_public_id to create a new one; " +
-			"pass an existing lore_public_id to overwrite its content (this creates a new version, the previous content is not lost).",
+			"pass an existing lore_public_id to overwrite its content (this creates a new version, the previous content is not lost). " +
+			"Pass base_version_id (from storyteller_get_lore) to detect if someone else's edit happened in the meantime: the write " +
+			"always succeeds and is saved as a new version either way, but the response's version_conflict is true if the entry had " +
+			"moved on past base_version_id — consider re-fetching with storyteller_get_lore afterwards to check nothing important got lost.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Existing lore public_id to update. Omit to create a new entry."),
 			"title":             stringSchema("Lore title, required."),
 			"content":           stringSchema("Full lore content in markdown."),
+			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
@@ -368,17 +398,19 @@ func (s *Server) registerStorytellerTools() {
 				return nil, err
 			}
 			input := storytellerModel.LoreRequest{
-				Title:   args.Title,
-				Content: args.Content,
+				Title:         args.Title,
+				Content:       args.Content,
+				BaseVersionID: args.BaseVersionID,
 			}
 			source := storytellerSourceFromContext(ctx)
 			service := storytellerService.NewService()
 			var lore *storytellerModel.Lore
+			var conflicted bool
 			var err2 error
 			if args.LorePublicID == "" {
 				lore, err2 = service.CreateLore(userID, args.ProjectPublicID, input, source)
 			} else {
-				lore, err2 = service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, source)
+				lore, conflicted, err2 = service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, source)
 			}
 			if err2 != nil {
 				return nil, err2
@@ -386,6 +418,8 @@ func (s *Server) registerStorytellerTools() {
 			return jsonTextResult(storytellerLoreDetail{
 				storytellerLoreSummary: toStorytellerLoreSummary(*lore),
 				Content:                lore.LatestContent,
+				VersionID:              derefUint64(lore.LatestVersionID),
+				VersionConflict:        conflicted,
 			})
 		},
 	})
@@ -412,4 +446,11 @@ func (s *Server) registerStorytellerTools() {
 			return textResult("deleted"), nil
 		},
 	})
+}
+
+func derefUint64(v *uint64) uint64 {
+	if v == nil {
+		return 0
+	}
+	return *v
 }

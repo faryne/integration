@@ -112,9 +112,13 @@ export interface StorytellerStory {
   status: "draft" | "completed";
   sort: number;
   latest_content: string;
+  latest_version_id: number | null;
   word_count: number;
   created_at: string;
   updated_at: string;
+  // 只有存檔（PUT）的回應才有意義：這次存檔帶的 base_version_id 已經不是最新版本，
+  // 但內容照樣存成新版本，沒有被拒絕；GET 回來的資料不會有這個欄位。
+  version_conflict?: boolean;
 }
 
 export interface StorytellerStoryVersion {
@@ -124,6 +128,10 @@ export interface StorytellerStoryVersion {
   summary: string;
   content: string;
   source: string;
+  // 這個版本是「回復到某個舊版本」產生的，記錄回復的來源版本；一般存檔不會有值。
+  reverted_from_version_id: number | null;
+  // 存檔當下 base_version_id 已經不是最新版本，記錄當時真正最新的那個版本。
+  conflicted_with_version_id: number | null;
   word_count: number;
   created_at: string;
   updated_at: string;
@@ -157,9 +165,11 @@ export interface StorytellerLore {
   project_id: number;
   title: string;
   latest_content: string;
+  latest_version_id: number | null;
   word_count: number;
   created_at: string;
   updated_at: string;
+  version_conflict?: boolean;
 }
 
 export interface StorytellerLoreVersion {
@@ -168,6 +178,8 @@ export interface StorytellerLoreVersion {
   title: string;
   content: string;
   source: string;
+  reverted_from_version_id: number | null;
+  conflicted_with_version_id: number | null;
   word_count: number;
   created_at: string;
   updated_at: string;
@@ -322,12 +334,16 @@ export interface StorytellerStoryRequest {
   sort: number;
   content: string;
   save_trigger?: "auto" | "manual";
+  // 帶入目前手上內容對應的版本 id；若這篇故事的最新版本已經不是這個 id，
+  // 後端會拒絕這次存檔並回 409，代表內容被別的地方（例如 MCP 工具）動過。
+  base_version_id?: number;
 }
 
 export interface StorytellerLoreRequest {
   title: string;
   content: string;
   save_trigger?: "auto" | "manual";
+  base_version_id?: number;
 }
 
 export interface StorytellerUserProfileRequest {

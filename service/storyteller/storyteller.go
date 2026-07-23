@@ -711,18 +711,20 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	return story, nil
 }
 
-func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest, source string) (*storytellerModel.Story, error) {
+// UpdateStory 存檔並塞入新版本；回傳的 conflicted 只是「這次存檔的 base_version_id
+// 已經不是最新版本」的提示旗標，不會拒絕寫入，內容照樣存成新版本。
+func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest, source string) (story *storytellerModel.Story, conflicted bool, err error) {
 	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	story, err := s.repo.Story(project.ID, storyPublicID)
+	story, err = s.repo.Story(project.ID, storyPublicID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	story.Title = strings.TrimSpace(input.Title)
 	story.Summary = strings.TrimSpace(input.Summary)
@@ -731,7 +733,32 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.LatestContent = input.Content
 	story.WordCount = wordCount(input.Content)
 	version := buildStoryVersion(*story, source)
-	if err := s.repo.UpdateStoryWithVersion(story, version); err != nil {
+	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID)
+	if err != nil {
+		return nil, false, err
+	}
+	return story, conflicted, nil
+}
+
+// RevertStory 把故事內容回復到某個舊版本：讀出那個版本的內容，當成一次新的存檔寫入，
+// 不會回頭改寫歷史，新版本會記下 RevertedFromVersionID。只回復 Title／Summary／Content，
+// Status／Sort 這些故事層級的設定不受影響。
+func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID string, targetVersionID uint64, source string) (*storytellerModel.Story, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.repo.StoryVersion(story.ID, targetVersionID)
+	if err != nil {
+		return nil, err
+	}
+	story.Title = target.Title
+	story.Summary = target.Summary
+	story.LatestContent = target.Content
+	story.WordCount = target.WordCount
+	version := buildStoryVersion(*story, source)
+	version.RevertedFromVersionID = &target.ID
+	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil); err != nil {
 		return nil, err
 	}
 	return story, nil
@@ -1043,23 +1070,47 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	return lore, nil
 }
 
-func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreRequest, source string) (*storytellerModel.Lore, error) {
+// UpdateLore 的 conflicted 語意跟 UpdateStory 一樣：只是提示旗標，不會拒絕寫入。
+func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreRequest, source string) (lore *storytellerModel.Lore, conflicted bool, err error) {
 	if err := validateLore(input); err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	lore, err := s.repo.Lore(project.ID, lorePublicID)
+	lore, err = s.repo.Lore(project.ID, lorePublicID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	lore.Title = strings.TrimSpace(input.Title)
 	lore.LatestContent = input.Content
 	lore.WordCount = wordCount(input.Content)
 	version := buildLoreVersion(*lore, source)
-	if err := s.repo.UpdateLoreWithVersion(lore, version); err != nil {
+	conflicted, err = s.repo.UpdateLoreWithVersion(lore, version, input.BaseVersionID)
+	if err != nil {
+		return nil, false, err
+	}
+	return lore, conflicted, nil
+}
+
+// RevertLore 的邏輯跟 RevertStory 一樣：把設定集內容回復到某個舊版本，
+// 當成一次新的存檔寫入，新版本記下 RevertedFromVersionID。
+func (s *Service) RevertLore(userID uint64, projectPublicID, lorePublicID string, targetVersionID uint64, source string) (*storytellerModel.Lore, error) {
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	target, err := s.repo.LoreVersion(lore.ID, targetVersionID)
+	if err != nil {
+		return nil, err
+	}
+	lore.Title = target.Title
+	lore.LatestContent = target.Content
+	lore.WordCount = target.WordCount
+	version := buildLoreVersion(*lore, source)
+	version.RevertedFromVersionID = &target.ID
+	if _, err := s.repo.UpdateLoreWithVersion(lore, version, nil); err != nil {
 		return nil, err
 	}
 	return lore, nil
