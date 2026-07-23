@@ -293,6 +293,23 @@ export function storytellerProjectRatingColor(
   return "success";
 }
 
+// 對應後端 story/lore version 的 source 欄位：web_auto／web_manual 是網頁編輯頁
+// 自己存的，"mcp:<token label>" 是外部工具透過 MCP 用哪把 Personal Access Token 寫入的。
+// source 可能因為資料庫還沒跑過補欄位的 migration、或本來就是舊資料而缺值，一律當手動存檔。
+export function storytellerVersionSourceLabel(source: string | null | undefined) {
+  if (!source) {
+    return "手動存檔";
+  }
+  if (source === "web_auto") {
+    return "自動存檔";
+  }
+  if (source.startsWith("mcp:")) {
+    const label = source.slice("mcp:".length);
+    return label ? `透過 MCP 使用 PAT「${label}」操作` : "透過 MCP 操作";
+  }
+  return "手動存檔";
+}
+
 export function projectStatusLabel(status: StorytellerProject["status"]) {
   if (status === "drafting") {
     return "撰寫中";

@@ -255,33 +255,40 @@ func (AgentPromptVersion) TableName() string {
 }
 
 type Story struct {
-	ID            uint64      `gorm:"column:id;primaryKey" json:"id"`
-	PublicID      string      `gorm:"column:public_id" json:"public_id"`
-	ProjectID     uint64      `gorm:"column:project_id" json:"project_id"`
-	Title         string      `gorm:"column:title" json:"title"`
-	Summary       string      `gorm:"column:summary" json:"summary"`
-	Status        StoryStatus `gorm:"column:status" json:"status"`
-	Sort          int         `gorm:"column:sort" json:"sort"`
-	LatestContent string      `gorm:"column:latest_content" json:"latest_content"`
-	WordCount     uint        `gorm:"column:word_count" json:"word_count"`
-	IsDeleted     bool        `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt     *time.Time  `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt     time.Time   `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time   `gorm:"column:updated_at" json:"updated_at"`
+	ID              uint64      `gorm:"column:id;primaryKey" json:"id"`
+	PublicID        string      `gorm:"column:public_id" json:"public_id"`
+	ProjectID       uint64      `gorm:"column:project_id" json:"project_id"`
+	Title           string      `gorm:"column:title" json:"title"`
+	Summary         string      `gorm:"column:summary" json:"summary"`
+	Status          StoryStatus `gorm:"column:status" json:"status"`
+	Sort            int         `gorm:"column:sort" json:"sort"`
+	LatestContent   string      `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID *uint64     `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount       uint        `gorm:"column:word_count" json:"word_count"`
+	IsDeleted       bool        `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt       *time.Time  `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time   `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time   `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Story) TableName() string { return "storyteller_stories" }
 
 type StoryVersion struct {
-	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	StoryID   uint64     `gorm:"column:story_id" json:"story_id"`
-	Title     string     `gorm:"column:title" json:"title"`
-	Summary   string     `gorm:"column:summary" json:"summary"`
-	Content   string     `gorm:"column:content" json:"content"`
-	WordCount uint       `gorm:"column:word_count" json:"word_count"`
-	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID      uint64 `gorm:"column:id;primaryKey" json:"id"`
+	StoryID uint64 `gorm:"column:story_id" json:"story_id"`
+	Title   string `gorm:"column:title" json:"title"`
+	Summary string `gorm:"column:summary" json:"summary"`
+	Content string `gorm:"column:content" json:"content"`
+	Source  string `gorm:"column:source" json:"source"`
+	// RevertedFromVersionID：這個版本是使用者「回復到某個舊版本」產生的，記錄回復的來源版本。
+	RevertedFromVersionID *uint64 `gorm:"column:reverted_from_version_id" json:"reverted_from_version_id"`
+	// ConflictedWithVersionID：存檔當下 base_version_id 已經不是最新版本，記錄當時真正
+	// 最新的那個版本，讓編輯歷史事後也能看出這個版本是不是蓋在衝突上，不只依賴當次回應。
+	ConflictedWithVersionID *uint64    `gorm:"column:conflicted_with_version_id" json:"conflicted_with_version_id"`
+	WordCount               uint       `gorm:"column:word_count" json:"word_count"`
+	DeletedAt               *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt               time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryVersion) TableName() string { return "storyteller_story_versions" }
@@ -314,29 +321,34 @@ type StoryBookmarkOutput struct {
 }
 
 type Lore struct {
-	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
-	PublicID      string     `gorm:"column:public_id" json:"public_id"`
-	ProjectID     uint64     `gorm:"column:project_id" json:"project_id"`
-	Title         string     `gorm:"column:title" json:"title"`
-	LatestContent string     `gorm:"column:latest_content" json:"latest_content"`
-	WordCount     uint       `gorm:"column:word_count" json:"word_count"`
-	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID              uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID        string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID       uint64     `gorm:"column:project_id" json:"project_id"`
+	Title           string     `gorm:"column:title" json:"title"`
+	LatestContent   string     `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount       uint       `gorm:"column:word_count" json:"word_count"`
+	IsDeleted       bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Lore) TableName() string { return "storyteller_lores" }
 
+// LoreVersion 的 RevertedFromVersionID／ConflictedWithVersionID 語意跟 StoryVersion 一樣。
 type LoreVersion struct {
-	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	LoreID    uint64     `gorm:"column:lore_id" json:"lore_id"`
-	Title     string     `gorm:"column:title" json:"title"`
-	Content   string     `gorm:"column:content" json:"content"`
-	WordCount uint       `gorm:"column:word_count" json:"word_count"`
-	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID                      uint64     `gorm:"column:id;primaryKey" json:"id"`
+	LoreID                  uint64     `gorm:"column:lore_id" json:"lore_id"`
+	Title                   string     `gorm:"column:title" json:"title"`
+	Content                 string     `gorm:"column:content" json:"content"`
+	Source                  string     `gorm:"column:source" json:"source"`
+	RevertedFromVersionID   *uint64    `gorm:"column:reverted_from_version_id" json:"reverted_from_version_id"`
+	ConflictedWithVersionID *uint64    `gorm:"column:conflicted_with_version_id" json:"conflicted_with_version_id"`
+	WordCount               uint       `gorm:"column:word_count" json:"word_count"`
+	DeletedAt               *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt               time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
@@ -421,6 +433,44 @@ func (UserProfile) TableName() string {
 	return "storyteller_users"
 }
 
+// PersonalAccessToken 供外部工具（如 MCP client）以 Bearer token 存取 storyteller API，
+// 只存 SHA-256 雜湊，明碼只在建立當下回傳一次。
+type PersonalAccessToken struct {
+	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID      uint64     `gorm:"column:user_id" json:"user_id"`
+	Label       string     `gorm:"column:label" json:"label"`
+	TokenHash   string     `gorm:"column:token_hash" json:"-"`
+	TokenPrefix string     `gorm:"column:token_prefix" json:"token_prefix"`
+	LastUsedAt  *time.Time `gorm:"column:last_used_at" json:"last_used_at"`
+	ExpiresAt   *time.Time `gorm:"column:expires_at" json:"expires_at"`
+	IsDeleted   bool       `gorm:"column:is_deleted" json:"-"`
+	DeletedAt   *time.Time `gorm:"column:deleted_at" json:"-"`
+	CreatedAt   time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (PersonalAccessToken) TableName() string { return "storyteller_personal_access_tokens" }
+
+type PersonalAccessTokenRequest struct {
+	Label         string `json:"label"`
+	ExpiresInDays *int   `json:"expires_in_days"`
+}
+
+type PersonalAccessTokenOutput struct {
+	ID          uint64     `json:"id"`
+	Label       string     `json:"label"`
+	TokenPrefix string     `json:"token_prefix"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+// PersonalAccessTokenCreateOutput 多帶一個明碼 Token，只在建立當下回傳一次，之後查不到。
+type PersonalAccessTokenCreateOutput struct {
+	PersonalAccessTokenOutput
+	Token string `json:"token"`
+}
+
 type ProjectRequest struct {
 	Name        string            `json:"name"`
 	Slug        string            `json:"slug"`
@@ -482,11 +532,20 @@ type StoryRequest struct {
 	Status  StoryStatus `json:"status"`
 	Sort    int         `json:"sort"`
 	Content string      `json:"content"`
+	// SaveTrigger 只有網頁編輯頁會帶，用來讓後端記錄這次存檔是自動存檔還是手動存檔；
+	// 值只會是 "auto" 或 "manual"，其他呼叫端（如 MCP）留空即可。
+	SaveTrigger string `json:"save_trigger,omitempty"`
+	// BaseVersionID 是呼叫端目前手上內容對應的版本 id；更新時如果這篇故事的最新版本
+	// 已經不是這個 id，代表內容被別的呼叫端動過，後端會拒絕這次存檔並回 409，
+	// 不會覆蓋掉那個更新。留空（nil）就不檢查，直接往最新版本後面接一版。
+	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
 }
 
 type LoreRequest struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title         string  `json:"title"`
+	Content       string  `json:"content"`
+	SaveTrigger   string  `json:"save_trigger,omitempty"`
+	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
 }
 
 type ProjectRankingRequest struct {

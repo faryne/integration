@@ -186,6 +186,18 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+    # MCP endpoint for external tools (Codex / Grok Builds 等) 存取 storyteller CRUD。
+    # 這個網域跟 @steamloom_sns 一樣沒有 /storyteller 前綴，補上前綴轉給後端對到
+    # route.StorytellerMCP 註冊的 /storyteller/mcp。
+    location /mcp {
+        rewrite ^/mcp(.*)$ /storyteller/mcp$1 break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
     location / {
         error_page 418 = @steamloom_sns;
 

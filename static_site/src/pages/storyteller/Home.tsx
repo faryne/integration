@@ -39,6 +39,7 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
+import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
@@ -367,21 +368,22 @@ function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   );
 }
 
-const tabPath: Record<"project" | "agent" | "apikey" | "usage", string> = {
+type StorytellerHomeTab = "project" | "agent" | "apikey" | "usage" | "mcp";
+
+const tabPath: Record<StorytellerHomeTab, string> = {
   project: "project",
   agent: "agent",
   apikey: "api-keys",
   usage: "usage",
+  mcp: "mcp",
 };
 
-const tabBreadcrumbLabel: Record<
-  "project" | "agent" | "apikey" | "usage",
-  string
-> = {
+const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
   project: "故事專案",
   agent: "AI Agent",
   apikey: "金鑰管理",
   usage: "用量報表",
+  mcp: "MCP 連接",
 };
 
 export default function StorytellerHome() {
@@ -393,7 +395,9 @@ export default function StorytellerHome() {
       ? "apikey"
       : location.pathname.endsWith("/usage")
         ? "usage"
-        : "project";
+        : location.pathname.endsWith("/mcp")
+          ? "mcp"
+          : "project";
   const [tab, setTab] = useState(activeTab);
   const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } =
@@ -409,7 +413,7 @@ export default function StorytellerHome() {
     setTab(activeTab);
   }, [activeTab]);
 
-  function handleTabChange(value: "project" | "agent" | "apikey" | "usage") {
+  function handleTabChange(value: StorytellerHomeTab) {
     setTab(value);
     navigate(steamloomPath(`my/${tabPath[value]}`));
   }
@@ -454,11 +458,12 @@ export default function StorytellerHome() {
             <Tab value="agent" label="AI Agent" />
             <Tab value="apikey" label="金鑰管理" />
             <Tab value="usage" label="用量報表" />
+            <Tab value="mcp" label="MCP 連接" />
           </Tabs>
           <Divider />
           <Box sx={{ p: { xs: 2, md: 3 } }}>
             <Stack spacing={2}>
-              {tab !== "apikey" && tab !== "usage" && (
+              {tab !== "apikey" && tab !== "usage" && tab !== "mcp" && (
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1.5}
@@ -497,8 +502,10 @@ export default function StorytellerHome() {
                 <AgentCards agents={agents} />
               ) : tab === "apikey" ? (
                 <StorytellerApiKeyPanel />
-              ) : (
+              ) : tab === "usage" ? (
                 <StorytellerAgentUsagePanel />
+              ) : (
+                <StorytellerMcpPanel />
               )}
             </Stack>
           </Box>

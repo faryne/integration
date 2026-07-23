@@ -15,11 +15,12 @@ func TestBuildLoreVersion(t *testing.T) {
 		WordCount:     8,
 	}
 
-	version := buildLoreVersion(lore)
+	version := buildLoreVersion(lore, "web_manual")
 
 	require.Equal(t, uint64(42), version.LoreID)
 	require.Equal(t, "帝國曆法", version.Title)
 	require.Equal(t, "一年有十三個月。", version.Content)
+	require.Equal(t, "web_manual", version.Source)
 	require.Equal(t, uint(8), version.WordCount)
 }
 

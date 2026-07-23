@@ -440,11 +440,19 @@ func CreateStory(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreateStory(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	row, err := storyteller.NewService().CreateStory(authsession.Session(ctx).UserId, ctx.Params("project"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
 	return output.Success(row)
+}
+
+// storyUpdateOutput 在正常的故事欄位外多帶一個 version_conflict，標記這次存檔用的
+// base_version_id 是不是已經不是最新版本（例如被 MCP 工具或另一個分頁動過）；
+// 只是提示旗標，內容一樣照常存成新版本，前端自己決定要不要提醒使用者。
+type storyUpdateOutput struct {
+	storytellerModel.Story
+	VersionConflict bool `json:"version_conflict"`
 }
 
 func UpdateStory(ctx fiber.Ctx) error {
@@ -452,11 +460,11 @@ func UpdateStory(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().UpdateStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input)
+	row, conflicted, err := storyteller.NewService().UpdateStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	return output.Success(row)
+	return output.Success(storyUpdateOutput{Story: *row, VersionConflict: conflicted})
 }
 
 func DeleteStory(ctx fiber.Ctx) error {
@@ -485,6 +493,21 @@ func StoryVersion(ctx fiber.Ctx) error {
 			return output.NotFound(errors.New("storyteller story version not found"))
 		}
 		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func RevertStoryVersion(ctx fiber.Ctx) error {
+	versionID, err := parseUint(ctx.Params("version"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().RevertStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), versionID, "web_manual")
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story version not found"))
+		}
+		return output.BadRequest(err)
 	}
 	return output.Success(row)
 }
@@ -591,11 +614,17 @@ func CreateLore(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreateLore(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	row, err := storyteller.NewService().CreateLore(authsession.Session(ctx).UserId, ctx.Params("project"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
 	return output.Success(row)
+}
+
+// loreUpdateOutput 的 version_conflict 語意跟 storyUpdateOutput 一樣。
+type loreUpdateOutput struct {
+	storytellerModel.Lore
+	VersionConflict bool `json:"version_conflict"`
 }
 
 func UpdateLore(ctx fiber.Ctx) error {
@@ -603,11 +632,11 @@ func UpdateLore(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().UpdateLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input)
+	row, conflicted, err := storyteller.NewService().UpdateLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	return output.Success(row)
+	return output.Success(loreUpdateOutput{Lore: *row, VersionConflict: conflicted})
 }
 
 func DeleteLore(ctx fiber.Ctx) error {
@@ -636,6 +665,21 @@ func LoreVersion(ctx fiber.Ctx) error {
 			return output.NotFound(errors.New("storyteller lore version not found"))
 		}
 		return output.DBError(err)
+	}
+	return output.Success(row)
+}
+
+func RevertLoreVersion(ctx fiber.Ctx) error {
+	versionID, err := parseUint(ctx.Params("version"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().RevertLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), versionID, "web_manual")
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore version not found"))
+		}
+		return output.BadRequest(err)
 	}
 	return output.Success(row)
 }
@@ -843,6 +887,15 @@ func DeleteUserProfile(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]bool{"deleted": true})
+}
+
+// webVersionSource 把前端帶來的 save_trigger 轉成存進 story/lore version 的 source 標記，
+// 讓編輯歷史分得出這個版本是自動存檔還是手動按下存檔（未帶值的舊呼叫端一律當手動）。
+func webVersionSource(saveTrigger string) string {
+	if saveTrigger == "auto" {
+		return "web_auto"
+	}
+	return "web_manual"
 }
 
 func parseUint(value string) (uint64, error) {

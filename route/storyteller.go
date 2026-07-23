@@ -51,6 +51,10 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/provider-apikeys/:apikey", storyteller.DeleteProviderAPIKey)
 	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
 
+	authenticated.Get("/personal-access-tokens", storyteller.PersonalAccessTokens)
+	authenticated.Post("/personal-access-tokens", storyteller.CreatePersonalAccessToken)
+	authenticated.Delete("/personal-access-tokens/:token", storyteller.DeletePersonalAccessToken)
+
 	authenticated.Get("/usage/summary", storyteller.AgentUsageSummary)
 	authenticated.Get("/usage/logs", storyteller.AgentUsageLogs)
 
@@ -72,6 +76,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story/chat-messages", storyteller.StoryChatMessages)
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
+	authenticated.Post("/projects/:project/stories/:story/versions/:version/revert", storyteller.RevertStoryVersion)
 
 	authenticated.Get("/projects/:project/lores", storyteller.Lores)
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
@@ -82,4 +87,5 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/lores/:lore/chat-messages", storyteller.LoreChatMessages)
 	authenticated.Get("/projects/:project/lores/:lore/versions", storyteller.LoreVersions)
 	authenticated.Get("/projects/:project/lores/:lore/versions/:version", storyteller.LoreVersion)
+	authenticated.Post("/projects/:project/lores/:lore/versions/:version/revert", storyteller.RevertLoreVersion)
 }

@@ -622,18 +622,43 @@ func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, versi
 			return err
 		}
 		version.StoryID = story.ID
-		return tx.Create(version).Error
+		if err := tx.Create(version).Error; err != nil {
+			return err
+		}
+		story.LatestVersionID = &version.ID
+		return tx.Model(story).Update("latest_version_id", version.ID).Error
 	})
 }
 
-func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(story).Error; err != nil {
-			return err
+// UpdateStoryWithVersion 存檔並塞入新版本，永遠會寫入（不會因為版本衝突拒絕寫入）。
+// baseVersionID 非 nil 時，會在同一個 transaction 裡鎖住這篇故事目前最新的版本列
+// 一併檢查，如果跟呼叫端帶來的 baseVersionID 對不上，把當時真正最新的版本 id 記到
+// 新版本的 ConflictedWithVersionID 上並回傳 conflicted=true，內容一樣照常存成新版本，
+// 不會被拒絕或蓋掉。
+func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion, baseVersionID *uint64) (conflicted bool, err error) {
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		if baseVersionID != nil {
+			var latest storytellerModel.StoryVersion
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("story_id = ? AND deleted_at IS NULL", story.ID).
+				Order("created_at DESC, id DESC").
+				First(&latest).Error
+			if err != nil {
+				return err
+			}
+			if latest.ID != *baseVersionID {
+				conflicted = true
+				version.ConflictedWithVersionID = &latest.ID
+			}
 		}
 		version.StoryID = story.ID
-		return tx.Create(version).Error
+		if err := tx.Create(version).Error; err != nil {
+			return err
+		}
+		story.LatestVersionID = &version.ID
+		return tx.Save(story).Error
 	})
+	return conflicted, err
 }
 
 func (r *Repository) DeleteStory(row *storytellerModel.Story) error {
@@ -647,18 +672,40 @@ func (r *Repository) CreateLoreWithVersion(lore *storytellerModel.Lore, version 
 			return err
 		}
 		version.LoreID = lore.ID
-		return tx.Create(version).Error
+		if err := tx.Create(version).Error; err != nil {
+			return err
+		}
+		lore.LatestVersionID = &version.ID
+		return tx.Model(lore).Update("latest_version_id", version.ID).Error
 	})
 }
 
-func (r *Repository) UpdateLoreWithVersion(lore *storytellerModel.Lore, version *storytellerModel.LoreVersion) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Save(lore).Error; err != nil {
-			return err
+// UpdateLoreWithVersion 存檔並塞入新版本，baseVersionID 的併發檢查邏輯跟
+// UpdateStoryWithVersion 一樣：只記錄 ConflictedWithVersionID／回報 conflicted，永遠照常寫入。
+func (r *Repository) UpdateLoreWithVersion(lore *storytellerModel.Lore, version *storytellerModel.LoreVersion, baseVersionID *uint64) (conflicted bool, err error) {
+	err = r.db.Transaction(func(tx *gorm.DB) error {
+		if baseVersionID != nil {
+			var latest storytellerModel.LoreVersion
+			err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+				Where("lore_id = ? AND deleted_at IS NULL", lore.ID).
+				Order("created_at DESC, id DESC").
+				First(&latest).Error
+			if err != nil {
+				return err
+			}
+			if latest.ID != *baseVersionID {
+				conflicted = true
+				version.ConflictedWithVersionID = &latest.ID
+			}
 		}
 		version.LoreID = lore.ID
-		return tx.Create(version).Error
+		if err := tx.Create(version).Error; err != nil {
+			return err
+		}
+		lore.LatestVersionID = &version.ID
+		return tx.Save(lore).Error
 	})
+	return conflicted, err
 }
 
 func (r *Repository) DeleteLore(row *storytellerModel.Lore) error {

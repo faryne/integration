@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  useRevertStorytellerLoreVersion,
   useRunStorytellerLoreAgent,
   useSaveStorytellerLore,
   useStorytellerAgents,
@@ -27,6 +28,7 @@ import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
+  storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -151,6 +153,11 @@ export default function StorytellerLoreEditor() {
       String(autoSaveIntervalMinutesDefault) as AutoSaveSelectValue,
     );
   const autoSaveDefaultsAppliedRef = useRef(false);
+  // 存檔成功後端才發現這次帶的 base_version_id 已經不是最新版本（例如中途被
+  // MCP 工具或另一個分頁動過）；內容還是照常存成新版本了，這裡只是提醒使用者
+  // 去編輯歷史看一下，不會擋下存檔或自動存檔。
+  const [versionConflict, setVersionConflict] = useState(false);
+  const latestVersionIdRef = useRef<number | undefined>(undefined);
   const { data: userProfile } = useStorytellerUserProfile();
 
   const {
@@ -175,6 +182,10 @@ export default function StorytellerLoreEditor() {
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);
+  const revertLoreVersion = useRevertStorytellerLoreVersion(
+    apiProject?.public_id,
+    apiLore?.public_id,
+  );
   const runAgent = useRunStorytellerLoreAgent(
     apiProject?.public_id,
     apiLore?.public_id,
@@ -358,9 +369,15 @@ export default function StorytellerLoreEditor() {
   const loreHistoryItems: StoryEditHistoryItem[] = versions.map((version) => ({
     id: String(version.id),
     title: version.title,
-    source: "手動編輯",
+    source: storytellerVersionSourceLabel(version.source),
     createdAt: version.created_at,
     words: version.word_count,
+    revertedFromVersionId: version.reverted_from_version_id
+      ? String(version.reverted_from_version_id)
+      : null,
+    conflictedWithVersionId: version.conflicted_with_version_id
+      ? String(version.conflicted_with_version_id)
+      : null,
   }));
   const showSnack = (message: string, severity: AlertColor = "success") => {
     setSnack(message);
@@ -377,6 +394,13 @@ export default function StorytellerLoreEditor() {
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
   }, [lore?.content, lore?.title]);
+
+  useEffect(() => {
+    latestVersionIdRef.current = versions[0]?.id;
+    if (versions[0]?.conflicted_with_version_id != null) {
+      setVersionConflict(true);
+    }
+  }, [versions]);
 
   useEffect(() => {
     currentDraftRef.current = serializeLoreDraft(title, content);
@@ -466,15 +490,21 @@ export default function StorytellerLoreEditor() {
             input: {
               title: latestDraft.title,
               content: latestDraft.content,
+              save_trigger: "auto",
+              base_version_id: latestVersionIdRef.current,
             },
           },
           {
-            onSuccess: () => {
+            onSuccess: (savedLore) => {
               lastSavedDraftRef.current = currentDraft;
               showSnack("已自動存檔。");
+              if (savedLore?.version_conflict) {
+                setVersionConflict(true);
+              }
             },
-            onError: (error) =>
-              showSnack(errorMessage(error, "設定集自動存檔失敗。"), "error"),
+            onError: (error) => {
+              showSnack(errorMessage(error, "設定集自動存檔失敗。"), "error");
+            },
             onSettled: () => {
               autoSaveRunningRef.current = false;
             },
@@ -523,7 +553,12 @@ export default function StorytellerLoreEditor() {
     saveLore.mutate(
       {
         lorePublicId: isNewLore ? undefined : lore?.id,
-        input: { title, content },
+        input: {
+          title,
+          content,
+          save_trigger: "manual",
+          base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
+        },
       },
       {
         onSuccess: (savedLore) => {
@@ -536,9 +571,13 @@ export default function StorytellerLoreEditor() {
               ),
             );
           }
+          if (savedLore?.version_conflict) {
+            setVersionConflict(true);
+          }
         },
-        onError: (error) =>
-          showSnack(errorMessage(error, "設定集存檔失敗。"), "error"),
+        onError: (error) => {
+          showSnack(errorMessage(error, "設定集存檔失敗。"), "error");
+        },
       },
     );
   }
@@ -679,10 +718,32 @@ export default function StorytellerLoreEditor() {
       hideHeading
       headerContent={
         <Stack spacing={2}>
-          {saveLore.isError && (
-            <Alert severity="error" variant="outlined">
-              {errorMessage(saveLore.error, "設定集存檔失敗。")}
+          {versionConflict ? (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              onClose={() => setVersionConflict(false)}
+              action={
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setSidePanel("history");
+                    setVersionConflict(false);
+                  }}
+                >
+                  查看編輯歷史
+                </Button>
+              }
+            >
+              剛剛存檔完成後才發現這篇設定集在中途被更新過（可能是另一個分頁，或透過
+              MCP 連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
             </Alert>
+          ) : (
+            saveLore.isError && (
+              <Alert severity="error" variant="outlined">
+                {errorMessage(saveLore.error, "設定集存檔失敗。")}
+              </Alert>
+            )
           )}
           <Grid container spacing={2} alignItems="flex-start">
             <Grid size={{ xs: 12, md: 5 }}>
@@ -796,6 +857,24 @@ export default function StorytellerLoreEditor() {
                     isRightVersionDisabled={isRightVersionDisabled}
                     isNewItem={isNewLore}
                     newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+                    currentVersionId={
+                      versions[0]?.id !== undefined
+                        ? String(versions[0].id)
+                        : undefined
+                    }
+                    revertingVersionId={
+                      revertLoreVersion.isPending
+                        ? String(revertLoreVersion.variables)
+                        : null
+                    }
+                    onRevert={(versionId) => {
+                      revertLoreVersion.mutate(Number(versionId), {
+                        onSuccess: () => {
+                          setVersionConflict(false);
+                          showSnack("已回復到這個版本。");
+                        },
+                      });
+                    }}
                   />
                 </Paper>
               )}

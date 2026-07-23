@@ -269,6 +269,7 @@ const storytellerRoutes = (
       <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
+      <Route path={"mcp"} element={<StorytellerHome />} />
     </Route>
     <Route path={"user/:username"} element={<StorytellerUserProjects />} />
     <Route path={"favorites"} element={<StorytellerFavorites />} />

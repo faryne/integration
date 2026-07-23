@@ -15,6 +15,7 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
+  storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -75,7 +76,7 @@ export default function StorytellerStoryDiffCompare() {
         title: leftVersion.data.title,
         summary: leftVersion.data.summary,
         content: leftVersion.data.content,
-        source: "手動編輯",
+        source: storytellerVersionSourceLabel(leftVersion.data.source),
         createdAt: leftVersion.data.created_at,
         words: leftVersion.data.word_count,
       }
@@ -86,7 +87,7 @@ export default function StorytellerStoryDiffCompare() {
         title: rightVersion.data.title,
         summary: rightVersion.data.summary,
         content: rightVersion.data.content,
-        source: "手動編輯",
+        source: storytellerVersionSourceLabel(rightVersion.data.source),
         createdAt: rightVersion.data.created_at,
         words: rightVersion.data.word_count,
       }
