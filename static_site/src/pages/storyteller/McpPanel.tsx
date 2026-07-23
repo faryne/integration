@@ -42,7 +42,7 @@ import type {
 // /api-integration 呼叫路徑；兩個網域各自有 nginx 對應規則，這裡照網域顯示對的網址。
 const mcpEndpoint = isSteamLoomSite()
   ? "https://steamloom.works/mcp"
-  : "https://faryne.dev/api-integration/storyteller/mcp";
+  : "https://faryne.dev/api-integration/storyteller-mcp";
 
 const expiresInDaysOptions = [
   { value: "30", label: "30 天" },
