@@ -27,6 +27,7 @@ import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
+  storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -358,7 +359,7 @@ export default function StorytellerLoreEditor() {
   const loreHistoryItems: StoryEditHistoryItem[] = versions.map((version) => ({
     id: String(version.id),
     title: version.title,
-    source: "手動編輯",
+    source: storytellerVersionSourceLabel(version.source),
     createdAt: version.created_at,
     words: version.word_count,
   }));
@@ -466,6 +467,7 @@ export default function StorytellerLoreEditor() {
             input: {
               title: latestDraft.title,
               content: latestDraft.content,
+              save_trigger: "auto",
             },
           },
           {
@@ -523,7 +525,7 @@ export default function StorytellerLoreEditor() {
     saveLore.mutate(
       {
         lorePublicId: isNewLore ? undefined : lore?.id,
-        input: { title, content },
+        input: { title, content, save_trigger: "manual" },
       },
       {
         onSuccess: (savedLore) => {

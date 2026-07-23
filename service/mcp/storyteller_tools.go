@@ -9,10 +9,11 @@ import (
 	storytellerService "faryne.dev/service/storyteller"
 )
 
-// storytellerMCPContextKey 用來把已通過 PAT 驗證的 userID 塞進 context，讓底下的
-// tool handler 可以取用；不透過 middleware 直接帶參數是因為 ToolHandler 簽章統一
-// 只有 (ctx, arguments)，這是唯一能跨 controller 傳遞身分的管道。
+// storytellerMCPContextKey 用來把已通過 PAT 驗證的 userID／寫入來源標記塞進
+// context，讓底下的 tool handler 可以取用；不透過 middleware 直接帶參數是因為
+// ToolHandler 簽章統一只有 (ctx, arguments)，這是唯一能跨 controller 傳遞身分的管道。
 type storytellerMCPContextKey struct{}
+type storytellerMCPSourceContextKey struct{}
 
 var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyteller user")
 
@@ -26,6 +27,20 @@ func storytellerUserIDFromContext(ctx context.Context) (uint64, error) {
 		return 0, errStorytellerMCPUnauthenticated
 	}
 	return userID, nil
+}
+
+// WithStorytellerSource 帶入這次寫入要記在 story/lore version 裡的來源標記，
+// 慣例是 "mcp:<token label>"，讓編輯歷史看得出是哪把 Personal Access Token 寫的。
+func WithStorytellerSource(ctx context.Context, source string) context.Context {
+	return context.WithValue(ctx, storytellerMCPSourceContextKey{}, source)
+}
+
+func storytellerSourceFromContext(ctx context.Context) string {
+	source, _ := ctx.Value(storytellerMCPSourceContextKey{}).(string)
+	if source == "" {
+		return "mcp"
+	}
+	return source
 }
 
 // NewStorytellerServer 建立一個只掛 storyteller CRUD 工具的獨立 server 實例，
@@ -265,12 +280,13 @@ func (s *Server) registerStorytellerTools() {
 				Sort:    args.Sort,
 				Content: args.Content,
 			}
+			source := storytellerSourceFromContext(ctx)
 			service := storytellerService.NewService()
 			var story *storytellerModel.Story
 			if args.StoryPublicID == "" {
-				story, err = service.CreateStory(userID, args.ProjectPublicID, input)
+				story, err = service.CreateStory(userID, args.ProjectPublicID, input, source)
 			} else {
-				story, err = service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input)
+				story, err = service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, source)
 			}
 			if err != nil {
 				return nil, err
@@ -355,13 +371,14 @@ func (s *Server) registerStorytellerTools() {
 				Title:   args.Title,
 				Content: args.Content,
 			}
+			source := storytellerSourceFromContext(ctx)
 			service := storytellerService.NewService()
 			var lore *storytellerModel.Lore
 			var err2 error
 			if args.LorePublicID == "" {
-				lore, err2 = service.CreateLore(userID, args.ProjectPublicID, input)
+				lore, err2 = service.CreateLore(userID, args.ProjectPublicID, input, source)
 			} else {
-				lore, err2 = service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input)
+				lore, err2 = service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, source)
 			}
 			if err2 != nil {
 				return nil, err2

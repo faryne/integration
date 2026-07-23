@@ -19,10 +19,12 @@ var server = serviceMCP.NewStorytellerServer("steamloom.works", "http")
 // tools/list。
 func Handle(ctx fiber.Ctx) error {
 	userID := storytellerpat.UserID(ctx)
-	requestCtx, cancel := context.WithTimeout(
+	source := "mcp:" + storytellerpat.TokenLabel(ctx)
+	baseCtx := serviceMCP.WithStorytellerSource(
 		serviceMCP.WithStorytellerUserID(context.Background(), userID),
-		requestTimeout,
+		source,
 	)
+	requestCtx, cancel := context.WithTimeout(baseCtx, requestTimeout)
 	defer cancel()
 
 	resp, shouldReply, err := server.HandleJSONRPC(requestCtx, ctx.Body())

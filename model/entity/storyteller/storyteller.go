@@ -278,6 +278,7 @@ type StoryVersion struct {
 	Title     string     `gorm:"column:title" json:"title"`
 	Summary   string     `gorm:"column:summary" json:"summary"`
 	Content   string     `gorm:"column:content" json:"content"`
+	Source    string     `gorm:"column:source" json:"source"`
 	WordCount uint       `gorm:"column:word_count" json:"word_count"`
 	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
@@ -333,6 +334,7 @@ type LoreVersion struct {
 	LoreID    uint64     `gorm:"column:lore_id" json:"lore_id"`
 	Title     string     `gorm:"column:title" json:"title"`
 	Content   string     `gorm:"column:content" json:"content"`
+	Source    string     `gorm:"column:source" json:"source"`
 	WordCount uint       `gorm:"column:word_count" json:"word_count"`
 	DeletedAt *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
@@ -520,11 +522,15 @@ type StoryRequest struct {
 	Status  StoryStatus `json:"status"`
 	Sort    int         `json:"sort"`
 	Content string      `json:"content"`
+	// SaveTrigger 只有網頁編輯頁會帶，用來讓後端記錄這次存檔是自動存檔還是手動存檔；
+	// 值只會是 "auto" 或 "manual"，其他呼叫端（如 MCP）留空即可。
+	SaveTrigger string `json:"save_trigger,omitempty"`
 }
 
 type LoreRequest struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title       string `json:"title"`
+	Content     string `json:"content"`
+	SaveTrigger string `json:"save_trigger,omitempty"`
 }
 
 type ProjectRankingRequest struct {

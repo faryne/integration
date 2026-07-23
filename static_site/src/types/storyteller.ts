@@ -123,6 +123,7 @@ export interface StorytellerStoryVersion {
   title: string;
   summary: string;
   content: string;
+  source: string;
   word_count: number;
   created_at: string;
   updated_at: string;
@@ -166,6 +167,7 @@ export interface StorytellerLoreVersion {
   lore_id: number;
   title: string;
   content: string;
+  source: string;
   word_count: number;
   created_at: string;
   updated_at: string;
@@ -319,11 +321,13 @@ export interface StorytellerStoryRequest {
   status: "draft" | "completed";
   sort: number;
   content: string;
+  save_trigger?: "auto" | "manual";
 }
 
 export interface StorytellerLoreRequest {
   title: string;
   content: string;
+  save_trigger?: "auto" | "manual";
 }
 
 export interface StorytellerUserProfileRequest {

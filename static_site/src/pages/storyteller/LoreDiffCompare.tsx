@@ -15,6 +15,7 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
+  storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -220,9 +221,11 @@ export default function StorytellerLoreDiffCompare() {
             leftTitle="舊版本"
             rightTitle="新版本"
             leftMetadataLabels={[
+              storytellerVersionSourceLabel(leftVersion.data.source),
               formatStorytellerDate(leftVersion.data.created_at),
             ]}
             rightMetadataLabels={[
+              storytellerVersionSourceLabel(rightVersion.data.source),
               formatStorytellerDate(rightVersion.data.created_at),
             ]}
           />

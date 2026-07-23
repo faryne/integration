@@ -440,7 +440,7 @@ func CreateStory(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreateStory(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	row, err := storyteller.NewService().CreateStory(authsession.Session(ctx).UserId, ctx.Params("project"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
@@ -452,7 +452,7 @@ func UpdateStory(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().UpdateStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input)
+	row, err := storyteller.NewService().UpdateStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
@@ -591,7 +591,7 @@ func CreateLore(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreateLore(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	row, err := storyteller.NewService().CreateLore(authsession.Session(ctx).UserId, ctx.Params("project"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
@@ -603,7 +603,7 @@ func UpdateLore(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().UpdateLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input)
+	row, err := storyteller.NewService().UpdateLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input, webVersionSource(input.SaveTrigger))
 	if err != nil {
 		return output.BadRequest(err)
 	}
@@ -843,6 +843,15 @@ func DeleteUserProfile(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]bool{"deleted": true})
+}
+
+// webVersionSource 把前端帶來的 save_trigger 轉成存進 story/lore version 的 source 標記，
+// 讓編輯歷史分得出這個版本是自動存檔還是手動按下存檔（未帶值的舊呼叫端一律當手動）。
+func webVersionSource(saveTrigger string) string {
+	if saveTrigger == "auto" {
+		return "web_auto"
+	}
+	return "web_manual"
 }
 
 func parseUint(value string) (uint64, error) {

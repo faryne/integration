@@ -79,24 +79,25 @@ func (s *Service) DeletePersonalAccessToken(userID, id uint64) error {
 	return s.repo.DeletePersonalAccessToken(row)
 }
 
-// AuthenticatePersonalAccessToken 驗證明碼 token 並回傳所屬 userID，供 MCP 等外部
-// 呼叫端使用；驗證通過會非同步更新 last_used_at，不影響回應時間。
-func (s *Service) AuthenticatePersonalAccessToken(token string) (uint64, error) {
+// AuthenticatePersonalAccessToken 驗證明碼 token 並回傳所屬 userID 與這把 token 的
+// label，供 MCP 等外部呼叫端使用；label 用來在編輯歷史標記「透過哪把 token 寫入」。
+// 驗證通過會非同步更新 last_used_at，不影響回應時間。
+func (s *Service) AuthenticatePersonalAccessToken(token string) (userID uint64, label string, err error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return 0, errPersonalAccessTokenInvalid
+		return 0, "", errPersonalAccessTokenInvalid
 	}
 	row, err := s.repo.PersonalAccessTokenByHash(helper.SHA256Hex(token))
 	if err != nil {
-		return 0, errPersonalAccessTokenInvalid
+		return 0, "", errPersonalAccessTokenInvalid
 	}
 	if row.ExpiresAt != nil && row.ExpiresAt.Before(time.Now()) {
-		return 0, errPersonalAccessTokenInvalid
+		return 0, "", errPersonalAccessTokenInvalid
 	}
 	go func(id uint64) {
 		_ = s.repo.TouchPersonalAccessTokenLastUsed(id)
 	}(row.ID)
-	return row.UserID, nil
+	return row.UserID, row.Label, nil
 }
 
 func personalAccessTokenOutput(row storytellerModel.PersonalAccessToken) storytellerModel.PersonalAccessTokenOutput {

@@ -28,6 +28,7 @@ import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
   storytellerAgents,
+  storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -293,7 +294,7 @@ export default function StorytellerStoryEditor() {
     ? apiStoryVersions.map((version) => ({
         id: String(version.id),
         title: version.title,
-        source: "手動編輯",
+        source: storytellerVersionSourceLabel(version.source),
         createdAt: version.created_at,
         words: version.word_count,
       }))
@@ -612,6 +613,7 @@ export default function StorytellerStoryEditor() {
               status: latestDraft.status,
               sort: latestDraft.sort,
               content: latestDraft.content,
+              save_trigger: "auto",
             },
           },
           {
@@ -718,6 +720,7 @@ export default function StorytellerStoryEditor() {
           status: storyStatus,
           sort: story?.sort ?? 0,
           content,
+          save_trigger: "manual",
         },
       },
       {

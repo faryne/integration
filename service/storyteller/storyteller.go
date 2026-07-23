@@ -685,7 +685,7 @@ func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*
 	return s.repo.Story(project.ID, storyPublicID)
 }
 
-func (s *Service) CreateStory(userID uint64, projectPublicID string, input storytellerModel.StoryRequest) (*storytellerModel.Story, error) {
+func (s *Service) CreateStory(userID uint64, projectPublicID string, input storytellerModel.StoryRequest, source string) (*storytellerModel.Story, error) {
 	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
 		return nil, err
@@ -704,14 +704,14 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		LatestContent: input.Content,
 		WordCount:     wordCount(input.Content),
 	}
-	version := buildStoryVersion(*story)
+	version := buildStoryVersion(*story, source)
 	if err := s.repo.CreateStoryWithVersion(story, version); err != nil {
 		return nil, err
 	}
 	return story, nil
 }
 
-func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest) (*storytellerModel.Story, error) {
+func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest, source string) (*storytellerModel.Story, error) {
 	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
 		return nil, err
@@ -730,7 +730,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.Sort = input.Sort
 	story.LatestContent = input.Content
 	story.WordCount = wordCount(input.Content)
-	version := buildStoryVersion(*story)
+	version := buildStoryVersion(*story, source)
 	if err := s.repo.UpdateStoryWithVersion(story, version); err != nil {
 		return nil, err
 	}
@@ -1021,7 +1021,7 @@ func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*st
 	return s.repo.Lore(project.ID, lorePublicID)
 }
 
-func (s *Service) CreateLore(userID uint64, projectPublicID string, input storytellerModel.LoreRequest) (*storytellerModel.Lore, error) {
+func (s *Service) CreateLore(userID uint64, projectPublicID string, input storytellerModel.LoreRequest, source string) (*storytellerModel.Lore, error) {
 	if err := validateLore(input); err != nil {
 		return nil, err
 	}
@@ -1036,14 +1036,14 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 		LatestContent: input.Content,
 		WordCount:     wordCount(input.Content),
 	}
-	version := buildLoreVersion(*lore)
+	version := buildLoreVersion(*lore, source)
 	if err := s.repo.CreateLoreWithVersion(lore, version); err != nil {
 		return nil, err
 	}
 	return lore, nil
 }
 
-func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreRequest) (*storytellerModel.Lore, error) {
+func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string, input storytellerModel.LoreRequest, source string) (*storytellerModel.Lore, error) {
 	if err := validateLore(input); err != nil {
 		return nil, err
 	}
@@ -1058,7 +1058,7 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	lore.Title = strings.TrimSpace(input.Title)
 	lore.LatestContent = input.Content
 	lore.WordCount = wordCount(input.Content)
-	version := buildLoreVersion(*lore)
+	version := buildLoreVersion(*lore, source)
 	if err := s.repo.UpdateLoreWithVersion(lore, version); err != nil {
 		return nil, err
 	}
@@ -1777,21 +1777,23 @@ func validateSNSLinks(links storytellerModel.SNSLinks) error {
 	return nil
 }
 
-func buildStoryVersion(story storytellerModel.Story) *storytellerModel.StoryVersion {
+func buildStoryVersion(story storytellerModel.Story, source string) *storytellerModel.StoryVersion {
 	return &storytellerModel.StoryVersion{
 		StoryID:   story.ID,
 		Title:     story.Title,
 		Summary:   story.Summary,
 		Content:   story.LatestContent,
+		Source:    source,
 		WordCount: story.WordCount,
 	}
 }
 
-func buildLoreVersion(lore storytellerModel.Lore) *storytellerModel.LoreVersion {
+func buildLoreVersion(lore storytellerModel.Lore, source string) *storytellerModel.LoreVersion {
 	return &storytellerModel.LoreVersion{
 		LoreID:    lore.ID,
 		Title:     lore.Title,
 		Content:   lore.LatestContent,
+		Source:    source,
 		WordCount: lore.WordCount,
 	}
 }
