@@ -848,6 +848,7 @@ export default function StorytellerLoreEditor() {
                 >
                   <StoryEditHistory
                     items={loreHistoryItems}
+                    allItems={loreHistoryItems}
                     loading={versionsLoading}
                     leftVersionId={leftVersionId}
                     rightVersionId={rightVersionId}

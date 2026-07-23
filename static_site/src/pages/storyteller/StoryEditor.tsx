@@ -1097,6 +1097,7 @@ export default function StorytellerStoryEditor() {
                 >
                   <StoryEditHistory
                     items={visibleStoryDiffs}
+                    allItems={storyDiffs}
                     loading={apiStoryVersionsLoading}
                     leftVersionId={leftDiffId}
                     rightVersionId={rightDiffId}

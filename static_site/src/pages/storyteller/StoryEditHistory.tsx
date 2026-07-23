@@ -35,6 +35,9 @@ export interface StoryEditHistoryItem {
 
 interface StoryEditHistoryProps {
   items: StoryEditHistoryItem[];
+  // 「回復自」「衝突」chip 要顯示對方版本的建立時間，得從完整（未分頁）清單查，
+  // 不然分到別頁的版本會查不到。不傳就退回用 items 自己查（可能查不到分頁外的版本）。
+  allItems?: StoryEditHistoryItem[];
   loading?: boolean;
   leftVersionId: string;
   rightVersionId: string;
@@ -57,6 +60,7 @@ interface StoryEditHistoryProps {
 
 export function StoryEditHistory({
   items,
+  allItems,
   loading = false,
   leftVersionId,
   rightVersionId,
@@ -81,6 +85,14 @@ export function StoryEditHistory({
       </Alert>
     );
   }
+
+  const itemById = new Map((allItems ?? items).map((item) => [item.id, item]));
+  const describeReferencedVersion = (versionId: string) => {
+    const referenced = itemById.get(versionId);
+    return referenced
+      ? formatStorytellerDate(referenced.createdAt)
+      : `#${versionId}`;
+  };
 
   return (
     <Stack spacing={2}>
@@ -172,19 +184,23 @@ export function StoryEditHistory({
                     <Typography fontWeight={800}>{item.title}</Typography>
                     <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                       {item.revertedFromVersionId && (
-                        <Chip
-                          size="small"
-                          variant="outlined"
-                          label={`回復自版本 #${item.revertedFromVersionId}`}
-                        />
+                        <Tooltip title={`版本 #${item.revertedFromVersionId}`}>
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`回復自 ${describeReferencedVersion(item.revertedFromVersionId)} 的版本`}
+                          />
+                        </Tooltip>
                       )}
                       {item.conflictedWithVersionId && (
-                        <Chip
-                          size="small"
-                          color="warning"
-                          variant="outlined"
-                          label={`與版本 #${item.conflictedWithVersionId} 衝突`}
-                        />
+                        <Tooltip title={`版本 #${item.conflictedWithVersionId}`}>
+                          <Chip
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                            label={`與 ${describeReferencedVersion(item.conflictedWithVersionId)} 的版本衝突`}
+                          />
+                        </Tooltip>
                       )}
                     </Stack>
                   </Stack>
