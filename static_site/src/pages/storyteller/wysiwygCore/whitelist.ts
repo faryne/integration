@@ -131,14 +131,31 @@ export function generateMarkerId(): string {
   return crypto.randomUUID();
 }
 
-/** 把註解文字裡的反斜線／雙引號跳脫，才能安全塞進 `comment="..."` 屬性字串。順序：反斜線一定要先跳脫。 */
+/**
+ * 把註解文字裡的反斜線／雙引號／換行跳脫，才能安全塞進 `comment="..."` 屬性字串。
+ * 順序固定：反斜線一定要最先跳脫，換行（\r/\n）一定要最後跳脫——不然真換行跳脫出來的
+ * `\n` 兩個字元會被反斜線那步再跳脫一次，變成 `\\n`。
+ *
+ * 換行一定要跳脫，因為 parser（parser.ts 的 parseMarkdownToParagraphs）是用
+ * `content.split("\n")` 把 markdown 切成一行一段落，屬性值裡若留著真正的換行字元，
+ * 會把這個 marker 的開頭跟收尾標記切到不同「行」去，解析端因此找不到收尾、整段
+ * fallback 成顯示原始 marker 語法（曾經在 prod 重現過的 bug）。
+ */
 export function escapeMarkerComment(text: string): string {
-  return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n");
 }
 
-/** escapeMarkerComment 的反向操作：把 `\X` 還原成 `X`，不管 X 是什麼字元。 */
+/** escapeMarkerComment 的反向操作：`\n`／`\r` 還原成真正的換行／回車，其餘 `\X` 還原成 `X`。 */
 export function unescapeMarkerComment(escaped: string): string {
-  return escaped.replace(/\\(.)/g, "$1");
+  return escaped.replace(/\\(.)/g, (_match, char: string) => {
+    if (char === "n") return "\n";
+    if (char === "r") return "\r";
+    return char;
+  });
 }
 
 /* ------------------------------------------------------------------ *
