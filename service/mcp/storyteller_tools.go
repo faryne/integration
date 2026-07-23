@@ -17,6 +17,14 @@ type storytellerMCPSourceContextKey struct{}
 
 var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyteller user")
 
+// storytellerContentSyntaxHint 描述編輯器實際支援的語法子集（不是完整 GFM，見
+// wysiwygCore/parser.ts／whitelist.ts），只列「能用什麼」，不列「不能用什麼」——
+// 沒提到的語法（表格、code block、待辦清單、~~刪除線~~、標準 [text](url) 連結等）
+// 目前解析器不認得，寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。
+const storytellerContentSyntaxHint = "Content uses this app's own limited markdown-like syntax, not full GFM: " +
+	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
+	"blockquote (> text), bullet list (- item), and ordered list (1. item). Anything else is a plain paragraph."
+
 func WithStorytellerUserID(ctx context.Context, userID uint64) context.Context {
 	return context.WithValue(ctx, storytellerMCPContextKey{}, userID)
 }
@@ -280,7 +288,7 @@ func (s *Server) registerStorytellerTools() {
 			"summary":           stringSchema("Short summary shown in listings."),
 			"status":            stringSchema("draft or completed, defaults to completed."),
 			"sort":              integerSchema("Display order among the project's stories."),
-			"content":           stringSchema("Full story content in markdown."),
+			"content":           stringSchema("Full story content. " + storytellerContentSyntaxHint),
 			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
@@ -385,7 +393,7 @@ func (s *Server) registerStorytellerTools() {
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Existing lore public_id to update. Omit to create a new entry."),
 			"title":             stringSchema("Lore title, required."),
-			"content":           stringSchema("Full lore content in markdown."),
+			"content":           stringSchema("Full lore content. " + storytellerContentSyntaxHint),
 			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
