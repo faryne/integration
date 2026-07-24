@@ -280,6 +280,14 @@ const storytellerRoutes = (
       <Route path={"mcp"} element={<StorytellerHome />} />
     </Route>
     <Route path={"user/:username"} element={<StorytellerUserProjects />} />
+    <Route
+      path={"user/:username/favorite-projects"}
+      element={<StorytellerUserProjects />}
+    />
+    <Route
+      path={"user/:username/favorite-authors"}
+      element={<StorytellerUserProjects />}
+    />
     <Route path={"favorites"} element={<StorytellerFavorites />} />
     <Route path={"profile"} element={<StorytellerProfile />} />
     <Route path={"story/share/:shareToken"} element={<StorytellerReader />} />

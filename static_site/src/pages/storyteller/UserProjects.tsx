@@ -1,11 +1,15 @@
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
+import FacebookIcon from "@mui/icons-material/Facebook";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import InstagramIcon from "@mui/icons-material/Instagram";
 import LanguageIcon from "@mui/icons-material/Language";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import XIcon from "@mui/icons-material/X";
+import YouTubeIcon from "@mui/icons-material/YouTube";
 import {
   Avatar,
   Box,
@@ -25,6 +29,8 @@ import {
 import { useState } from "react";
 import {
   Link as RouterLink,
+  useLocation,
+  useNavigate,
   useParams,
   useSearchParams,
 } from "react-router-dom";
@@ -71,6 +77,15 @@ const SNS_TYPE_LABEL: Record<string, string> = {
   youtube: "YouTube",
 };
 
+// Threads／Plurk／巴哈姆特／Discord 在 MUI icons-material（Material Symbols）裡沒有對應品牌圖示，
+// 沒有精確圖示的平台就沿用通用的 LanguageIcon，避免用不相關的圖示誤導使用者。
+const SNS_TYPE_ICON: Record<string, typeof LanguageIcon> = {
+  x: XIcon,
+  facebook: FacebookIcon,
+  instagram: InstagramIcon,
+  youtube: YouTubeIcon,
+};
+
 function formatJoinedMonth(input: string) {
   return new Intl.DateTimeFormat("zh-TW", {
     year: "numeric",
@@ -80,14 +95,34 @@ function formatJoinedMonth(input: string) {
 
 type ProfileTab = "projects" | "favorite-projects" | "favorite-authors";
 
+const tabBreadcrumbLabel: Record<ProfileTab, string> = {
+  projects: "作品",
+  "favorite-projects": "收藏的作品",
+  "favorite-authors": "收藏的作家",
+};
+
 export default function StorytellerUserProjects() {
   const { session } = useAuth();
   const { username } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [tab, setTab] = useState<ProfileTab>("projects");
+  const tab: ProfileTab = location.pathname.endsWith("/favorite-projects")
+    ? "favorite-projects"
+    : location.pathname.endsWith("/favorite-authors")
+      ? "favorite-authors"
+      : "projects";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 12;
+
+  function handleTabChange(value: ProfileTab) {
+    navigate(
+      steamloomPath(
+        value === "projects" ? `user/${username}` : `user/${username}/${value}`,
+      ),
+    );
+  }
 
   const { data, isLoading, isError } = usePublicUserStorytellerProjects(
     username,
@@ -166,7 +201,8 @@ export default function StorytellerUserProjects() {
       description={author?.bio ? <AuthorBio bio={author.bio} /> : undefined}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: displayName },
+        { label: displayName, to: steamloomPath(`user/${username}`) },
+        { label: tabBreadcrumbLabel[tab] },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -232,19 +268,22 @@ export default function StorytellerUserProjects() {
               </Stack>
               {snsEntries.length > 0 && (
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {snsEntries.map(([type, url]) => (
-                    <Chip
-                      key={type}
-                      size="small"
-                      icon={<LanguageIcon />}
-                      component="a"
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      clickable
-                      label={SNS_TYPE_LABEL[type] ?? type}
-                    />
-                  ))}
+                  {snsEntries.map(([type, url]) => {
+                    const SnsIcon = SNS_TYPE_ICON[type] ?? LanguageIcon;
+                    return (
+                      <Chip
+                        key={type}
+                        size="small"
+                        icon={<SnsIcon />}
+                        component="a"
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        clickable
+                        label={SNS_TYPE_LABEL[type] ?? type}
+                      />
+                    );
+                  })}
                 </Stack>
               )}
               <Stack spacing={1}>
@@ -281,7 +320,7 @@ export default function StorytellerUserProjects() {
           <Stack spacing={2}>
             <Tabs
               value={tab}
-              onChange={(_, value: ProfileTab) => setTab(value)}
+              onChange={(_, value: ProfileTab) => handleTabChange(value)}
               aria-label="作者內容分類"
               variant="scrollable"
               allowScrollButtonsMobile
