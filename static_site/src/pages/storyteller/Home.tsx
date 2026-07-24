@@ -1,5 +1,8 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import LockIcon from "@mui/icons-material/Lock";
+import PeopleIcon from "@mui/icons-material/People";
+import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import {
@@ -13,6 +16,9 @@ import {
   Stack,
   Tab,
   Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
@@ -20,6 +26,7 @@ import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
   useDeleteStorytellerAgent,
   useDeleteStorytellerProject,
+  useSaveStorytellerProject,
   useStorytellerAgents,
   useStorytellerProjects,
   useStorytellerProviderAPIKeys,
@@ -78,17 +85,12 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     name: string;
     apiBacked: boolean;
   } | null>(null);
+  const saveProject = useSaveStorytellerProject();
   const rows = projects.map((project) => ({
     id: project.public_id,
     name: project.name,
     description: project.description,
-    statusLabel:
-      project.visibility === "public"
-        ? "已公開"
-        : project.visibility === "unlisted"
-          ? "與親友分享"
-          : "完全不公開",
-    statusColor: project.visibility === "private" ? "default" : "primary",
+    visibility: project.visibility,
     storiesCount: project.stories?.length ?? 0,
     rating: project.rating,
     tags: project.tags ?? [],
@@ -99,7 +101,28 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     averageRating: project.average_rating,
     updatedAt: project.updated_at,
     apiBacked: true,
+    raw: project,
   }));
+
+  function handleVisibilityChange(
+    project: StorytellerProject,
+    visibility: StorytellerProject["visibility"] | null,
+  ) {
+    if (!visibility || visibility === project.visibility) {
+      return;
+    }
+    saveProject.mutate({
+      publicId: project.public_id,
+      input: {
+        name: project.name,
+        slug: project.slug,
+        description: project.description,
+        visibility,
+        rating: project.rating,
+        tags: project.tags ?? [],
+      },
+    });
+  }
 
   return (
     <>
@@ -123,13 +146,35 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                 description={project.description}
                 updatedAt={project.updatedAt}
                 tags={project.tags}
+                headerAction={
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={project.visibility}
+                    disabled={saveProject.isPending}
+                    onChange={(_, value) =>
+                      handleVisibilityChange(project.raw, value)
+                    }
+                  >
+                    <ToggleButton value="private">
+                      <Tooltip title="完全不公開">
+                        <LockIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                    <ToggleButton value="unlisted">
+                      <Tooltip title="與親友分享">
+                        <PeopleIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                    <ToggleButton value="public">
+                      <Tooltip title="已公開">
+                        <PublicIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                }
                 chips={
                   <>
-                    <Chip
-                      size="small"
-                      label={project.statusLabel}
-                      color={project.statusColor as "primary" | "default"}
-                    />
                     <Chip
                       size="small"
                       color={storytellerProjectRatingColor(project.rating)}

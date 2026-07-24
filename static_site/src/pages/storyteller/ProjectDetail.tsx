@@ -6,11 +6,13 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Button,
   Chip,
+  FormControlLabel,
   Grid,
   Menu,
   MenuItem,
   Paper,
   Stack,
+  Switch,
   Tab,
   Tabs,
   Tooltip,
@@ -420,16 +422,42 @@ export default function StorytellerProjectDetail() {
                             {formatStorytellerDate(story.updated_at)}
                           </Typography>
                         </Stack>
-                        <Chip
-                          size="small"
-                          label={
-                            story.status === "completed" ? "公開中" : "撰寫中"
+                        <Tooltip
+                          title={
+                            story.status === "completed"
+                              ? "公開中，點一下改為撰寫中"
+                              : "撰寫中，點一下改為公開"
                           }
-                          color={
-                            story.status === "completed" ? "success" : "warning"
-                          }
-                          variant="outlined"
-                        />
+                        >
+                          <FormControlLabel
+                            sx={{ mr: 0 }}
+                            control={
+                              <Switch
+                                size="small"
+                                color="success"
+                                checked={story.status === "completed"}
+                                disabled={saveStory.isPending}
+                                onChange={(event) =>
+                                  saveStory.mutate({
+                                    storyPublicId: story.public_id,
+                                    input: {
+                                      title: story.title,
+                                      summary: story.summary,
+                                      status: event.target.checked
+                                        ? "completed"
+                                        : "draft",
+                                      sort: story.sort,
+                                      content: story.latest_content,
+                                    },
+                                  })
+                                }
+                              />
+                            }
+                            label={
+                              story.status === "completed" ? "公開中" : "撰寫中"
+                            }
+                          />
+                        </Tooltip>
                         <Button
                           href={steamloomPath(
                             `my/project/${project.id}/story/${story.public_id}`,
