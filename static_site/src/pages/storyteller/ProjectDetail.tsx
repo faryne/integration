@@ -17,7 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
   useDeleteStorytellerLore,
@@ -58,6 +58,10 @@ const emptyStories: StorytellerStory[] = [];
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab: "stories" | "lores" = location.pathname.endsWith("/lores")
+    ? "lores"
+    : "stories";
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
@@ -65,7 +69,6 @@ export default function StorytellerProjectDetail() {
   );
   const [deleteLoreTarget, setDeleteLoreTarget] =
     useState<StorytellerLore | null>(null);
-  const [activeTab, setActiveTab] = useState<"stories" | "lores">("stories");
   const [projectDeleteOpen, setProjectDeleteOpen] = useState(false);
   const [linkMenuAnchor, setLinkMenuAnchor] = useState<HTMLElement | null>(
     null,
@@ -118,7 +121,7 @@ export default function StorytellerProjectDetail() {
       : `${STORYTELLER_APP_NAME} 專案`,
     {
       path: id
-        ? steamloomPath(`my/project/${id}`)
+        ? steamloomPath(`my/project/${id}/${activeTab}`)
         : steamloomPath("my/project"),
       robots: "noindex, nofollow",
     },
@@ -171,7 +174,11 @@ export default function StorytellerProjectDetail() {
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
         { label: "故事專案", to: steamloomPath("my/project") },
-        { label: project.name },
+        {
+          label: project.name,
+          to: steamloomPath(`my/project/${project.id}`),
+        },
+        { label: activeTab === "lores" ? "設定集" : "故事" },
       ]}
     >
       <Stack spacing={3}>
@@ -275,7 +282,7 @@ export default function StorytellerProjectDetail() {
                 <Tabs
                   value={activeTab}
                   onChange={(_, value: "stories" | "lores") =>
-                    setActiveTab(value)
+                    navigate(steamloomPath(`my/project/${project.id}/${value}`))
                   }
                   sx={steamTabIndicatorSx}
                 >

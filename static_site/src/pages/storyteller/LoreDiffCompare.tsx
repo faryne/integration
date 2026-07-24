@@ -189,6 +189,10 @@ export default function StorytellerLoreDiffCompare() {
           to: steamloomPath(`my/project/${apiProject.public_id}`),
         },
         {
+          label: "設定集",
+          to: steamloomPath(`my/project/${apiProject.public_id}/lores`),
+        },
+        {
           label: apiLore.title,
           to: steamloomPath(
             `my/project/${apiProject.public_id}/lore/${apiLore.public_id}`,

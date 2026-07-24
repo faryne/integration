@@ -235,6 +235,10 @@ export default function StorytellerStoryDiffCompare() {
           to: steamloomPath(`my/project/${project.id}`),
         },
         {
+          label: "故事",
+          to: steamloomPath(`my/project/${project.id}/stories`),
+        },
+        {
           label: story.title,
           to: steamloomPath(`my/project/${project.id}/story/${story.id}`),
         },

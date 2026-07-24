@@ -898,6 +898,10 @@ export default function StorytellerStoryEditor() {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
         },
+        {
+          label: "故事",
+          to: steamloomPath(`my/project/${project.id}/stories`),
+        },
         { label: pageTitle },
       ]}
       action={
@@ -951,7 +955,8 @@ export default function StorytellerStoryEditor() {
               }
             >
               剛剛存檔完成後才發現這篇故事在中途被更新過（可能是另一個分頁，或透過
-              MCP 連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
+              MCP
+              連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
             </Alert>
           ) : (
             saveStory.isError && (
