@@ -11,8 +11,9 @@ export function sortedGroup(
 }
 
 // flattenGroupedStories 依照工作台故事列表相同的分組順序展開成一維陣列：
-// 未分冊故事在前，接著依冊的 sort 依序列出每一冊底下的故事。閱讀頁的
-// 上一章／下一章導覽跟目錄編號都用這個順序，確保跟工作台看到的順序一致。
+// 依冊的 sort 依序列出每一冊底下的故事，未分冊故事排在最後（當作還沒收進
+// 任何冊的內容）。閱讀頁的上一章／下一章導覽跟目錄編號都用這個順序，確保
+// 跟工作台看到的順序一致。
 export function flattenGroupedStories(
   stories: StorytellerStory[],
   volumes: StorytellerStory[],
@@ -21,7 +22,7 @@ export function flattenGroupedStories(
     (left, right) => left.sort - right.sort,
   );
   return [
-    ...sortedGroup(stories, null),
     ...orderedVolumes.flatMap((volume) => sortedGroup(stories, volume.id)),
+    ...sortedGroup(stories, null),
   ];
 }
