@@ -6,6 +6,7 @@ import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutli
 import LinkIcon from "@mui/icons-material/Link";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
+  Box,
   Button,
   Chip,
   FormControlLabel,
@@ -302,6 +303,26 @@ export default function StorytellerProjectDetail() {
   }
   const projectId = project.id;
 
+  // renderDropEndZone 補一塊有實際高度的拖放目標，放在每份清單最後一項的後面。
+  // 沒有這塊的話，清單的容器範圍會直接貼齊最後一項卡片的下緣，容器本身的
+  // onDrop（放到最後）永遠踩不到，使用者只能拖到「插在某一項之前」，
+  // 想排到最後得先繞道排到倒數第二再把原本最後一項往前搬。
+  function renderDropEndZone(onDrop: () => void) {
+    return (
+      <Box
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          // 這塊常常嵌在自己也有 onDrop 的容器裡（冊卡片、未分冊故事清單），
+          // 不擋掉冒泡的話同一次放開滑鼠會把 handleDropStory／handleDropVolume
+          // 疊加執行兩次。
+          event.stopPropagation();
+          onDrop();
+        }}
+        sx={{ minHeight: 16 }}
+      />
+    );
+  }
+
   function renderStoryRow(story: StorytellerStory) {
     return (
       <Paper
@@ -446,7 +467,7 @@ export default function StorytellerProjectDetail() {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
         },
-        { label: activeTab === "lores" ? "設定集" : "故事" },
+        { label: activeTab === "lores" ? "設定集" : "故事與冊" },
       ]}
     >
       <Stack spacing={3}>
@@ -554,7 +575,7 @@ export default function StorytellerProjectDetail() {
                   }
                   sx={steamTabIndicatorSx}
                 >
-                  <Tab value="stories" label="故事" />
+                  <Tab value="stories" label="故事與冊" />
                   <Tab value="lores" label="設定集" />
                 </Tabs>
                 {activeTab === "stories" && (
@@ -565,7 +586,7 @@ export default function StorytellerProjectDetail() {
                     alignItems={{ xs: "stretch", sm: "center" }}
                   >
                     <Typography variant="h6" fontWeight={800}>
-                      故事列表
+                      故事與冊
                     </Typography>
                     <Stack direction="row" spacing={1}>
                       <Button
@@ -620,26 +641,14 @@ export default function StorytellerProjectDetail() {
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>
-                    <Stack
-                      spacing={1.5}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => handleDropStory(null, null)}
-                      sx={{ minHeight: 8 }}
-                    >
-                      {sortedGroup(orderedStories, null).length === 0 &&
-                        apiVolumes.length > 0 && (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ fontStyle: "italic" }}
-                          >
-                            未分冊故事會顯示在這裡，可拖曳到下方的冊中。
-                          </Typography>
-                        )}
-                      {sortedGroup(orderedStories, null).map((story) =>
-                        renderStoryRow(story),
-                      )}
-                    </Stack>
+                    {apiVolumes.length > 0 && (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <MenuBookIcon fontSize="small" color="primary" />
+                        <Typography variant="subtitle2" color="text.secondary">
+                          冊
+                        </Typography>
+                      </Stack>
+                    )}
                     {orderedVolumes.map((volume) => {
                       const children = sortedGroup(orderedStories, volume.id);
                       return (
@@ -738,10 +747,52 @@ export default function StorytellerProjectDetail() {
                             ) : (
                               children.map((story) => renderStoryRow(story))
                             )}
+                            {renderDropEndZone(() => {
+                              if (draggingVolumeId) {
+                                handleDropVolume(volume.public_id);
+                              } else {
+                                handleDropStory(volume.id, null);
+                              }
+                            })}
                           </Stack>
                         </Paper>
                       );
                     })}
+                    {apiVolumes.length > 0 &&
+                      renderDropEndZone(() => {
+                        if (draggingVolumeId) {
+                          handleDropVolume(null);
+                        }
+                      })}
+                    {apiVolumes.length > 0 && (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <ArticleIcon fontSize="small" color="action" />
+                        <Typography variant="subtitle2" color="text.secondary">
+                          未分冊故事
+                        </Typography>
+                      </Stack>
+                    )}
+                    <Stack
+                      spacing={1.5}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handleDropStory(null, null)}
+                      sx={{ minHeight: 8 }}
+                    >
+                      {sortedGroup(orderedStories, null).length === 0 &&
+                        apiVolumes.length > 0 && (
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ fontStyle: "italic" }}
+                          >
+                            未分冊故事會顯示在這裡，可拖曳到上方的冊中。
+                          </Typography>
+                        )}
+                      {sortedGroup(orderedStories, null).map((story) =>
+                        renderStoryRow(story),
+                      )}
+                      {renderDropEndZone(() => handleDropStory(null, null))}
+                    </Stack>
                   </Stack>
                 ) : apiLoresLoading ? (
                   <StorytellerLoading label="正在載入設定集..." />

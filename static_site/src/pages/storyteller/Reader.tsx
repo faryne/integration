@@ -208,20 +208,6 @@ function StoryIndex({
         </Typography>
       </Stack>
       <Divider />
-      <Stack spacing={0.5}>
-        {ungrouped.map((story) => (
-          <Button
-            key={story.id}
-            component={RouterLink}
-            to={`${basePath}/${story.id}`}
-            variant={currentStoryId === story.id ? "contained" : "text"}
-            sx={{ justifyContent: "flex-start", textAlign: "left" }}
-            onClick={onNavigate}
-          >
-            {storyIndexLabel(story)}. {story.title}
-          </Button>
-        ))}
-      </Stack>
       {volumes.map((volume) => {
         const children = stories.filter(
           (story) => story.parentId === volume.id,
@@ -273,6 +259,34 @@ function StoryIndex({
           </Stack>
         );
       })}
+      {ungrouped.length > 0 && (
+        <Stack spacing={0.5}>
+          {volumes.length > 0 && (
+            <>
+              <Divider />
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ pl: 1 }}
+              >
+                未分冊故事
+              </Typography>
+            </>
+          )}
+          {ungrouped.map((story) => (
+            <Button
+              key={story.id}
+              component={RouterLink}
+              to={`${basePath}/${story.id}`}
+              variant={currentStoryId === story.id ? "contained" : "text"}
+              sx={{ justifyContent: "flex-start", textAlign: "left" }}
+              onClick={onNavigate}
+            >
+              {storyIndexLabel(story)}. {story.title}
+            </Button>
+          ))}
+        </Stack>
+      )}
     </Stack>
   );
 }
