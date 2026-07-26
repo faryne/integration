@@ -314,6 +314,13 @@ export default function StorytellerProjectDetail() {
         }}
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
+          // 正在拖曳的是「冊」而不是故事時，不要在這裡吃掉事件——讓它冒泡到
+          // 外層冊卡片的 onDrop，才能把冊排到「目前排最前面的那個冊」前面。
+          // 不然一個冊只要底下已經有故事，整張卡片幾乎都會被故事列擋住，
+          // 拖曳冊排序時完全點不到冊本身能接收 drop 的空隙。
+          if (draggingVolumeId) {
+            return;
+          }
           event.stopPropagation();
           handleDropStory(story.parent_id, story.public_id);
         }}
