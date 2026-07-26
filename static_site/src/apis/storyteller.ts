@@ -35,6 +35,8 @@ import type {
   StorytellerStoryChatMessagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
+  StorytellerStoryVolumeActivity,
+  StorytellerStoryVolumeRequest,
   StorytellerUserProfile,
   StorytellerUserProfileRequest,
 } from "@/types/storyteller.ts";
@@ -918,6 +920,79 @@ export function useDeleteStorytellerStory(projectPublicId?: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerVolumes(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "volumes", projectPublicId, session?.user.id],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerStory[]>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/volumes`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// useSaveStorytellerVolume 建立／重新命名一冊，跟 useSaveStorytellerStory 分開——
+// 冊只有標題可以編輯，不會誤帶內容/摘要/狀態欄位。
+export function useSaveStorytellerVolume(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      volumePublicId,
+      input,
+    }: {
+      volumePublicId?: string;
+      input: StorytellerStoryVolumeRequest;
+    }) => {
+      const base = `${apiBase}/storyteller/projects/${projectPublicId}/volumes`;
+      const url = volumePublicId ? `${base}/${volumePublicId}` : base;
+      const response = volumePublicId
+        ? await axios.put<CommonResponse<StorytellerStory>>(url, input, {
+            headers: sessionHeaders(session!.encrypt_key),
+          })
+        : await axios.post<CommonResponse<StorytellerStory>>(url, input, {
+            headers: sessionHeaders(session!.encrypt_key),
+          });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// useStorytellerVolumeActivity：目前沒有對應顯示畫面（見開發文件），先把 API 接起來，
+// 之後要做冊的活動時間軸／通知功能可以直接用。
+export function useStorytellerVolumeActivity(
+  projectPublicId?: string,
+  volumePublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "volume-activity",
+      projectPublicId,
+      volumePublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && volumePublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryVolumeActivity>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/volumes/${volumePublicId}/activity`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }

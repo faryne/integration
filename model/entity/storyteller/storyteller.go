@@ -255,9 +255,13 @@ func (AgentPromptVersion) TableName() string {
 }
 
 type Story struct {
-	ID              uint64      `gorm:"column:id;primaryKey" json:"id"`
-	PublicID        string      `gorm:"column:public_id" json:"public_id"`
-	ProjectID       uint64      `gorm:"column:project_id" json:"project_id"`
+	ID        uint64 `gorm:"column:id;primaryKey" json:"id"`
+	PublicID  string `gorm:"column:public_id" json:"public_id"`
+	ProjectID uint64 `gorm:"column:project_id" json:"project_id"`
+	// ParentID：所屬冊（另一筆 is_volume=true 的 Story）的 id，NULL 代表未分冊或本身就是一冊。
+	ParentID *uint64 `gorm:"column:parent_id" json:"parent_id"`
+	// IsVolume：是否為冊——只有標題、不使用內容欄位的容器故事，不能巢狀（IsVolume=true 時 ParentID 必為 nil）。
+	IsVolume        bool        `gorm:"column:is_volume" json:"is_volume"`
 	Title           string      `gorm:"column:title" json:"title"`
 	Summary         string      `gorm:"column:summary" json:"summary"`
 	Status          StoryStatus `gorm:"column:status" json:"status"`
@@ -272,6 +276,38 @@ type Story struct {
 }
 
 func (Story) TableName() string { return "storyteller_stories" }
+
+// StoryVolumeEvent 記錄故事的冊隸屬關係異動（新增到某冊、搬到另一冊、移出冊、
+// 故事在某冊裡被刪除），FromVolumeID／ToVolumeID 皆可為 nil 代表「沒有冊」。
+// 查詢一冊的異動時間軸用 `WHERE from_volume_id = :id OR to_volume_id = :id`，
+// 同一筆紀錄會同時出現在來源冊跟目標冊的時間軸裡。
+type StoryVolumeEvent struct {
+	ID           uint64    `gorm:"column:id;primaryKey" json:"id"`
+	StoryID      uint64    `gorm:"column:story_id" json:"story_id"`
+	FromVolumeID *uint64   `gorm:"column:from_volume_id" json:"from_volume_id"`
+	ToVolumeID   *uint64   `gorm:"column:to_volume_id" json:"to_volume_id"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+}
+
+func (StoryVolumeEvent) TableName() string { return "storyteller_story_volume_events" }
+
+// StoryVolumeEventOutput 附上故事標題，供冊活動歷史畫面顯示使用，不用另外查一次故事列表比對。
+type StoryVolumeEventOutput struct {
+	ID            uint64    `gorm:"column:id" json:"id"`
+	StoryID       uint64    `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID string    `gorm:"column:story_public_id" json:"story_public_id"`
+	StoryTitle    string    `gorm:"column:story_title" json:"story_title"`
+	FromVolumeID  *uint64   `gorm:"column:from_volume_id" json:"from_volume_id"`
+	ToVolumeID    *uint64   `gorm:"column:to_volume_id" json:"to_volume_id"`
+	CreatedAt     time.Time `gorm:"column:created_at" json:"created_at"`
+}
+
+// StoryVolumeActivity 是一冊的活動歷史：Events 是冊隸屬關係異動（新增/搬移/移出/刪除），
+// Versions 是衍生查詢——底下故事（依目前 parent_id）存檔產生的版本記錄。
+type StoryVolumeActivity struct {
+	Events   []StoryVolumeEventOutput `json:"events"`
+	Versions []StoryVersion           `json:"versions"`
+}
 
 type StoryVersion struct {
 	ID      uint64 `gorm:"column:id;primaryKey" json:"id"`
@@ -539,6 +575,18 @@ type StoryRequest struct {
 	// 已經不是這個 id，代表內容被別的呼叫端動過，後端會拒絕這次存檔並回 409，
 	// 不會覆蓋掉那個更新。留空（nil）就不檢查，直接往最新版本後面接一版。
 	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
+	// ParentID 是所屬冊的 public_id；空字串或 nil 代表移出冊／不分冊。
+	// 只能指向 is_volume=true 的故事，後端會驗證。
+	ParentID *string `json:"parent_id,omitempty"`
+}
+
+// StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
+// 只有標題欄位——冊沒有內容／摘要／狀態可以編輯。
+type StoryVolumeRequest struct {
+	Title string `json:"title"`
+	// Sort 用來排彼此之間的順序，跟 StoryRequest.Sort 一樣是每次存檔都要帶目前值，
+	// 不是只有拖曳排序時才送——重新命名時如果沒帶，會把 sort 洗成 0。
+	Sort int `json:"sort"`
 }
 
 type LoreRequest struct {
@@ -654,14 +702,17 @@ type FavoriteAuthorOutput struct {
 
 type ProjectOutput struct {
 	Project
-	AverageRating  float64              `gorm:"-" json:"average_rating"`
-	RatingCount    uint64               `gorm:"-" json:"rating_count"`
-	FavoriteCount  uint64               `gorm:"-" json:"favorite_count"`
-	FavoriteHidden bool                 `gorm:"-" json:"favorite_hidden,omitempty"`
-	IsFavorite     bool                 `gorm:"-" json:"is_favorite"`
-	TagList        []string             `gorm:"-" json:"tags"`
-	Stories        []Story              `gorm:"-" json:"stories,omitempty"`
-	Author         *ProjectAuthorOutput `gorm:"-" json:"author,omitempty"`
+	AverageRating  float64  `gorm:"-" json:"average_rating"`
+	RatingCount    uint64   `gorm:"-" json:"rating_count"`
+	FavoriteCount  uint64   `gorm:"-" json:"favorite_count"`
+	FavoriteHidden bool     `gorm:"-" json:"favorite_hidden,omitempty"`
+	IsFavorite     bool     `gorm:"-" json:"is_favorite"`
+	TagList        []string `gorm:"-" json:"tags"`
+	Stories        []Story  `gorm:"-" json:"stories,omitempty"`
+	// Volumes 讓閱讀頁／工作台故事列表可以把 Stories 依冊分組顯示，不需要另外呼叫
+	// 只給登入使用者用的 /projects/:project/volumes。
+	Volumes []Story              `gorm:"-" json:"volumes,omitempty"`
+	Author  *ProjectAuthorOutput `gorm:"-" json:"author,omitempty"`
 }
 
 // ProjectAuthorOutput 只在故事閱讀頁（PublicProject／SharedProject）才會帶

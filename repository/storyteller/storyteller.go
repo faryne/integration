@@ -345,9 +345,11 @@ func agentPromptVersionFromAgent(agent *storytellerModel.Agent) *storytellerMode
 	}
 }
 
+// Stories 只回傳一般故事（is_volume = 0），冊不會混在這份列表裡——所有既有呼叫端
+// （字數統計、故事列表、MCP 回傳）因此不用改判斷邏輯。要拿冊列表請用 Volumes。
 func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+	err := r.db.Where("project_id = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
@@ -358,12 +360,12 @@ func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error)
 func (r *Repository) StoriesPage(projectID uint64, offset, limit int) ([]storytellerModel.Story, int64, error) {
 	var total int64
 	if err := r.db.Model(&storytellerModel.Story{}).
-		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Where("project_id = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+	err := r.db.Where("project_id = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Order("sort ASC, id ASC").
 		Offset(offset).Limit(limit).
 		Find(&rows).Error
@@ -372,10 +374,28 @@ func (r *Repository) StoriesPage(projectID uint64, offset, limit int) ([]storyte
 
 func (r *Repository) PublishedStories(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
+	err := r.db.Where("project_id = ? AND status = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
+}
+
+// Volumes 回傳一個專案底下的冊列表（is_volume = 1），跟 Stories 分開拿。
+func (r *Repository) Volumes(projectID uint64) ([]storytellerModel.Story, error) {
+	rows := make([]storytellerModel.Story, 0)
+	err := r.db.Where("project_id = ? AND is_volume = 1 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Order("sort ASC, id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+// VolumeChildrenCount 給刪除冊時的非空檢查用。
+func (r *Repository) VolumeChildrenCount(volumeID uint64) (int64, error) {
+	var count int64
+	err := r.db.Model(&storytellerModel.Story{}).
+		Where("parent_id = ? AND is_deleted = 0 AND deleted_at IS NULL", volumeID).
+		Count(&count).Error
+	return count, err
 }
 
 func (r *Repository) Story(projectID uint64, publicID string) (*storytellerModel.Story, error) {
@@ -415,6 +435,40 @@ func (r *Repository) PublishedStory(projectID uint64, publicID string) (*storyte
 		projectID, publicID, storytellerModel.StoryStatusCompleted,
 	).First(&row).Error
 	return &row, err
+}
+
+// StoryVolumeEvents 回傳一冊的隸屬異動時間軸：這一冊被搬入／搬出／新增/刪除的所有紀錄，
+// 同一筆紀錄只要跟這個冊有關（不論是來源冊還是目標冊）都會出現。
+func (r *Repository) StoryVolumeEvents(volumeID uint64) ([]storytellerModel.StoryVolumeEventOutput, error) {
+	rows := make([]storytellerModel.StoryVolumeEventOutput, 0)
+	err := r.db.
+		Table("storyteller_story_volume_events AS events").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = events.story_id").
+		Where("events.from_volume_id = ? OR events.to_volume_id = ?", volumeID, volumeID).
+		Select(`events.id,
+			events.story_id,
+			stories.public_id AS story_public_id,
+			stories.title AS story_title,
+			events.from_volume_id,
+			events.to_volume_id,
+			events.created_at`).
+		Order("events.created_at DESC, events.id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+// ChildStoryVersions 是「內容變動」歷史的衍生查詢：直接 join 目前 parent_id 屬於這一冊的
+// 故事的版本記錄，不需要另外維護資料表。
+func (r *Repository) ChildStoryVersions(volumeID uint64) ([]storytellerModel.StoryVersion, error) {
+	rows := make([]storytellerModel.StoryVersion, 0)
+	err := r.db.
+		Table("storyteller_story_versions AS versions").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = versions.story_id").
+		Where("stories.parent_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL AND versions.deleted_at IS NULL", volumeID).
+		Select("versions.*").
+		Order("versions.created_at DESC, versions.id DESC").
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *Repository) StoryBookmarks(userID, storyID uint64) ([]storytellerModel.StoryBookmark, error) {
@@ -649,7 +703,9 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	return rows, total, err
 }
 
-func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion) error {
+// CreateStoryWithVersion 存檔並塞入第一筆版本。volumeEvent 非 nil 時（建立時直接指定
+// 冊），在同一個 transaction 裡一併寫入冊隸屬異動記錄，跟故事存檔綁在一起、失敗就一起回滾。
+func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion, volumeEvent *storytellerModel.StoryVolumeEvent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(story).Error; err != nil {
 			return err
@@ -659,7 +715,14 @@ func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, versi
 			return err
 		}
 		story.LatestVersionID = &version.ID
-		return tx.Model(story).Update("latest_version_id", version.ID).Error
+		if err := tx.Model(story).Update("latest_version_id", version.ID).Error; err != nil {
+			return err
+		}
+		if volumeEvent != nil {
+			volumeEvent.StoryID = story.ID
+			return tx.Create(volumeEvent).Error
+		}
+		return nil
 	})
 }
 
@@ -667,8 +730,8 @@ func (r *Repository) CreateStoryWithVersion(story *storytellerModel.Story, versi
 // baseVersionID 非 nil 時，會在同一個 transaction 裡鎖住這篇故事目前最新的版本列
 // 一併檢查，如果跟呼叫端帶來的 baseVersionID 對不上，把當時真正最新的版本 id 記到
 // 新版本的 ConflictedWithVersionID 上並回傳 conflicted=true，內容一樣照常存成新版本，
-// 不會被拒絕或蓋掉。
-func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion, baseVersionID *uint64) (conflicted bool, err error) {
+// 不會被拒絕或蓋掉。volumeEvent 非 nil 時（parent_id 有變化），一併寫入冊隸屬異動記錄。
+func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, version *storytellerModel.StoryVersion, baseVersionID *uint64, volumeEvent *storytellerModel.StoryVolumeEvent) (conflicted bool, err error) {
 	err = r.db.Transaction(func(tx *gorm.DB) error {
 		if baseVersionID != nil {
 			var latest storytellerModel.StoryVersion
@@ -689,14 +752,33 @@ func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, versi
 			return err
 		}
 		story.LatestVersionID = &version.ID
-		return tx.Save(story).Error
+		if err := tx.Save(story).Error; err != nil {
+			return err
+		}
+		if volumeEvent != nil {
+			volumeEvent.StoryID = story.ID
+			return tx.Create(volumeEvent).Error
+		}
+		return nil
 	})
 	return conflicted, err
 }
 
-func (r *Repository) DeleteStory(row *storytellerModel.Story) error {
-	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
+// DeleteStory 軟刪除故事。volumeEvent 非 nil 時（被刪除的故事當下有 parent_id），
+// 在同一個 transaction 裡一併補寫一筆 to_volume_id=NULL 的冊隸屬異動記錄，
+// 否則冊被刪掉一篇故事後，時間軸上會完全看不出這篇曾經存在過。
+func (r *Repository) DeleteStory(row *storytellerModel.Story, volumeEvent *storytellerModel.StoryVolumeEvent) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		now := time.Now()
+		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error; err != nil {
+			return err
+		}
+		if volumeEvent != nil {
+			volumeEvent.StoryID = row.ID
+			return tx.Create(volumeEvent).Error
+		}
+		return nil
+	})
 }
 
 func (r *Repository) CreateLoreWithVersion(lore *storytellerModel.Lore, version *storytellerModel.LoreVersion) error {
