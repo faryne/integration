@@ -353,6 +353,23 @@ func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error)
 	return rows, err
 }
 
+// StoriesPage 是 Stories 的分頁版本，給 MCP 這種需要控制單次回應大小的呼叫端用；
+// 網頁前端一次要拿全部，繼續呼叫不分頁的 Stories，不要互相取代。
+func (r *Repository) StoriesPage(projectID uint64, offset, limit int) ([]storytellerModel.Story, int64, error) {
+	var total int64
+	if err := r.db.Model(&storytellerModel.Story{}).
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]storytellerModel.Story, 0)
+	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Order("sort ASC, id ASC").
+		Offset(offset).Limit(limit).
+		Find(&rows).Error
+	return rows, total, err
+}
+
 func (r *Repository) PublishedStories(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
 	err := r.db.Where("project_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
@@ -456,6 +473,22 @@ func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {
 		Order("updated_at DESC, id DESC").
 		Find(&rows).Error
 	return rows, err
+}
+
+// LoresPage 是 Lores 的分頁版本，語意跟 StoriesPage 一樣。
+func (r *Repository) LoresPage(projectID uint64, offset, limit int) ([]storytellerModel.Lore, int64, error) {
+	var total int64
+	if err := r.db.Model(&storytellerModel.Lore{}).
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]storytellerModel.Lore, 0)
+	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Order("updated_at DESC, id DESC").
+		Offset(offset).Limit(limit).
+		Find(&rows).Error
+	return rows, total, err
 }
 
 func (r *Repository) Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error) {

@@ -677,6 +677,25 @@ func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerM
 	return s.repo.Stories(project.ID)
 }
 
+// StoriesPage 給 MCP 這種需要控制單次回應大小的呼叫端用，語意跟 StoryChatMessages
+// 的分頁一樣：page 從 1 起算，pageSize 預設 20、上限 100。
+func (s *Service) StoriesPage(userID uint64, projectPublicID string, page, pageSize int) ([]storytellerModel.Story, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.repo.StoriesPage(project.ID, (page-1)*pageSize, pageSize)
+}
+
 func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
@@ -1038,6 +1057,24 @@ func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerMod
 		return nil, err
 	}
 	return s.repo.Lores(project.ID)
+}
+
+// LoresPage 的分頁語意跟 StoriesPage 一樣。
+func (s *Service) LoresPage(userID uint64, projectPublicID string, page, pageSize int) ([]storytellerModel.Lore, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, 0, err
+	}
+	return s.repo.LoresPage(project.ID, (page-1)*pageSize, pageSize)
 }
 
 func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*storytellerModel.Lore, error) {

@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -24,6 +25,11 @@ var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyte
 const storytellerContentSyntaxHint = "Content uses this app's own limited markdown-like syntax, not full GFM: " +
 	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
 	"blockquote (> text), bullet list (- item), and ordered list (1. item). Anything else is a plain paragraph."
+
+// storytellerProjectDetailListCap 是 storyteller_get_project 嵌進去的 story/lore
+// 清單上限，避免專案很大時單次回應塞爆 agent 的 context；超過的部分要另外呼叫
+// storyteller_list_stories/storyteller_list_lores 分頁拉。
+const storytellerProjectDetailListCap = 50
 
 func WithStorytellerUserID(ctx context.Context, userID uint64) context.Context {
 	return context.WithValue(ctx, storytellerMCPContextKey{}, userID)
@@ -91,8 +97,27 @@ type storytellerLoreSummary struct {
 
 type storytellerProjectDetail struct {
 	storytellerProjectSummary
-	Stories []storytellerStorySummary `json:"stories"`
-	Lores   []storytellerLoreSummary  `json:"lores"`
+	// Stories/Lores 最多回 storytellerProjectDetailListCap 筆；StoryCount/LoreCount
+	// 是這個專案實際總數，超過上限時代表還有更多，要另外呼叫
+	// storyteller_list_stories/storyteller_list_lores 分頁拉。
+	Stories    []storytellerStorySummary `json:"stories"`
+	StoryCount int64                     `json:"story_count"`
+	Lores      []storytellerLoreSummary  `json:"lores"`
+	LoreCount  int64                     `json:"lore_count"`
+}
+
+type storytellerStoryListOutput struct {
+	Stories    []storytellerStorySummary `json:"stories"`
+	TotalCount int64                     `json:"total_count"`
+	Page       int                       `json:"page"`
+	PageSize   int                       `json:"page_size"`
+}
+
+type storytellerLoreListOutput struct {
+	Lores      []storytellerLoreSummary `json:"lores"`
+	TotalCount int64                    `json:"total_count"`
+	Page       int                      `json:"page"`
+	PageSize   int                      `json:"page_size"`
 }
 
 type storytellerStoryDetail struct {
@@ -157,6 +182,12 @@ type storytellerStoryArguments struct {
 	StoryPublicID   string `json:"story_public_id"`
 }
 
+type storytellerListPageArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	Page            int    `json:"page"`
+	PageSize        int    `json:"page_size"`
+}
+
 type storytellerUpsertStoryArguments struct {
 	ProjectPublicID string  `json:"project_public_id"`
 	StoryPublicID   string  `json:"story_public_id"`
@@ -204,8 +235,13 @@ func (s *Server) registerStorytellerTools() {
 	})
 
 	_ = s.RegisterTool(Tool{
-		Name:        "storyteller_get_project",
-		Description: "Get a project's detail, including its story and lore lists (titles/summaries only, use storyteller_get_story or storyteller_get_lore for full content).",
+		Name: "storyteller_get_project",
+		Description: fmt.Sprintf(
+			"Get a project's detail, including its story and lore lists (titles/summaries only, use storyteller_get_story "+
+				"or storyteller_get_lore for full content). Stories/lores are capped at %d each; check story_count/lore_count "+
+				"and use storyteller_list_stories/storyteller_list_lores to page through the rest if there are more.",
+			storytellerProjectDetailListCap,
+		),
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id, as returned by storyteller_list_projects."),
 		}, []string{"project_public_id"}),
@@ -223,12 +259,16 @@ func (s *Server) registerStorytellerTools() {
 			if err != nil {
 				return nil, err
 			}
-			lores, err := service.Lores(userID, args.ProjectPublicID)
+			stories, storyCount, err := service.StoriesPage(userID, args.ProjectPublicID, 1, storytellerProjectDetailListCap)
 			if err != nil {
 				return nil, err
 			}
-			storySummaries := make([]storytellerStorySummary, 0, len(project.Stories))
-			for _, story := range project.Stories {
+			lores, loreCount, err := service.LoresPage(userID, args.ProjectPublicID, 1, storytellerProjectDetailListCap)
+			if err != nil {
+				return nil, err
+			}
+			storySummaries := make([]storytellerStorySummary, 0, len(stories))
+			for _, story := range stories {
 				storySummaries = append(storySummaries, toStorytellerStorySummary(story))
 			}
 			loreSummaries := make([]storytellerLoreSummary, 0, len(lores))
@@ -238,7 +278,89 @@ func (s *Server) registerStorytellerTools() {
 			return jsonTextResult(storytellerProjectDetail{
 				storytellerProjectSummary: toStorytellerProjectSummary(*project),
 				Stories:                   storySummaries,
+				StoryCount:                storyCount,
 				Lores:                     loreSummaries,
+				LoreCount:                 loreCount,
+			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_list_stories",
+		Description: "Paginate a project's stories (titles/summaries only, use storyteller_get_story for full content). " +
+			"Use this when a project has more stories than storyteller_get_project's embedded list shows (see its story_count).",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"page":              integerSchema("Page number, starting at 1. Defaults to 1."),
+			"page_size":         integerSchema("Items per page, defaults to 20, capped at 100."),
+		}, []string{"project_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerListPageArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			page := normalizedPage(args.Page)
+			pageSize := args.PageSize
+			if pageSize < 1 {
+				pageSize = 20
+			}
+			stories, total, err := storytellerService.NewService().StoriesPage(userID, args.ProjectPublicID, page, pageSize)
+			if err != nil {
+				return nil, err
+			}
+			summaries := make([]storytellerStorySummary, 0, len(stories))
+			for _, story := range stories {
+				summaries = append(summaries, toStorytellerStorySummary(story))
+			}
+			return jsonTextResult(storytellerStoryListOutput{
+				Stories:    summaries,
+				TotalCount: total,
+				Page:       page,
+				PageSize:   pageSize,
+			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_list_lores",
+		Description: "Paginate a project's lore/worldbuilding entries (titles only, use storyteller_get_lore for full content). " +
+			"Use this when a project has more lores than storyteller_get_project's embedded list shows (see its lore_count).",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"page":              integerSchema("Page number, starting at 1. Defaults to 1."),
+			"page_size":         integerSchema("Items per page, defaults to 20, capped at 100."),
+		}, []string{"project_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerListPageArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			page := normalizedPage(args.Page)
+			pageSize := args.PageSize
+			if pageSize < 1 {
+				pageSize = 20
+			}
+			lores, total, err := storytellerService.NewService().LoresPage(userID, args.ProjectPublicID, page, pageSize)
+			if err != nil {
+				return nil, err
+			}
+			summaries := make([]storytellerLoreSummary, 0, len(lores))
+			for _, lore := range lores {
+				summaries = append(summaries, toStorytellerLoreSummary(lore))
+			}
+			return jsonTextResult(storytellerLoreListOutput{
+				Lores:      summaries,
+				TotalCount: total,
+				Page:       page,
+				PageSize:   pageSize,
 			})
 		},
 	})
