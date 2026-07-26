@@ -78,6 +78,13 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
 	authenticated.Post("/projects/:project/stories/:story/versions/:version/revert", storyteller.RevertStoryVersion)
 
+	authenticated.Get("/projects/:project/volumes", storyteller.Volumes)
+	authenticated.Post("/projects/:project/volumes", storyteller.CreateVolume)
+	authenticated.Put("/projects/:project/volumes/:volume", storyteller.UpdateVolume)
+	authenticated.Get("/projects/:project/volumes/:volume/activity", storyteller.VolumeActivity)
+	// 冊本身也是一筆 story，刪除沿用既有的 DELETE /projects/:project/stories/:story，
+	// 非空檢查在 Service.DeleteStory 裡做，不需要另外開一條刪除路由。
+
 	authenticated.Get("/projects/:project/lores", storyteller.Lores)
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
 	authenticated.Get("/projects/:project/lores/:lore", storyteller.Lore)

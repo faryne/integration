@@ -16,6 +16,8 @@ export interface StorytellerProject {
   created_at: string;
   updated_at: string;
   stories?: StorytellerStory[];
+  // 讓閱讀頁／工作台故事列表可以把 stories 依冊分組顯示，不用另外呼叫只給登入者用的 API。
+  volumes?: StorytellerStory[];
   author?: StorytellerUserProfile;
 }
 
@@ -72,8 +74,7 @@ export interface StorytellerPersonalAccessTokenRequest {
 }
 
 // 明碼 token 只在建立當下回傳一次，之後只查得到 StorytellerPersonalAccessToken。
-export interface StorytellerPersonalAccessTokenCreated
-  extends StorytellerPersonalAccessToken {
+export interface StorytellerPersonalAccessTokenCreated extends StorytellerPersonalAccessToken {
   token: string;
 }
 
@@ -107,6 +108,10 @@ export interface StorytellerStory {
   id: number;
   public_id: string;
   project_id: number;
+  // 所屬冊（另一筆 is_volume=true 的故事）的 public_id 對應 id；NULL 代表未分冊或本身就是一冊。
+  parent_id: number | null;
+  // 是否為冊——只有標題、不使用內容欄位的容器故事。
+  is_volume: boolean;
   title: string;
   summary: string;
   status: "draft" | "completed";
@@ -119,6 +124,27 @@ export interface StorytellerStory {
   // 只有存檔（PUT）的回應才有意義：這次存檔帶的 base_version_id 已經不是最新版本，
   // 但內容照樣存成新版本，沒有被拒絕；GET 回來的資料不會有這個欄位。
   version_conflict?: boolean;
+}
+
+export interface StorytellerStoryVolumeRequest {
+  title: string;
+  // 跟 StorytellerStoryRequest.sort 一樣，每次存檔都要帶目前值，不是只有拖曳排序才送。
+  sort: number;
+}
+
+export interface StorytellerStoryVolumeEvent {
+  id: number;
+  story_id: number;
+  story_public_id: string;
+  story_title: string;
+  from_volume_id: number | null;
+  to_volume_id: number | null;
+  created_at: string;
+}
+
+export interface StorytellerStoryVolumeActivity {
+  events: StorytellerStoryVolumeEvent[];
+  versions: StorytellerStoryVersion[];
 }
 
 export interface StorytellerStoryVersion {
@@ -337,6 +363,8 @@ export interface StorytellerStoryRequest {
   // 帶入目前手上內容對應的版本 id；若這篇故事的最新版本已經不是這個 id，
   // 後端會拒絕這次存檔並回 409，代表內容被別的地方（例如 MCP 工具）動過。
   base_version_id?: number;
+  // 所屬冊的 public_id；空字串或不帶代表移出冊／不分冊。只能指向一冊，後端會驗證。
+  parent_id?: string;
 }
 
 export interface StorytellerLoreRequest {

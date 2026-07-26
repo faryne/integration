@@ -6,12 +6,16 @@ import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HistoryIcon from "@mui/icons-material/History";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
   Button,
+  ButtonBase,
   Chip,
+  Collapse,
   Divider,
   Drawer,
   Fab,
@@ -39,6 +43,7 @@ import {
   type FootnoteNumbering,
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
+import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
@@ -88,6 +93,14 @@ interface ReaderStory {
   content: string;
   sort: number;
   updatedAt: string;
+  // 所屬冊的 id，null 代表未分冊；只用來在故事索引分組顯示，不影響上一章/下一章導覽
+  // （導覽沿用 stories 陣列本身已經是「未分冊優先、接著依冊順序」排好的線性順序）。
+  parentId: number | null;
+}
+
+interface ReaderVolume {
+  id: number;
+  title: string;
 }
 
 interface ReaderProject {
@@ -101,6 +114,7 @@ interface ReaderProject {
   tags: string[];
   wordCount: number;
   stories: ReaderStory[];
+  volumes: ReaderVolume[];
 }
 
 interface StoryHeading {
@@ -136,15 +150,55 @@ function extractStoryHeadings(content: string): StoryHeading[] {
 
 function StoryIndex({
   stories,
+  volumes,
   currentStoryId,
   basePath,
   onNavigate,
 }: {
   stories: ReaderStory[];
+  volumes: ReaderVolume[];
   currentStoryId?: string;
   basePath: string;
   onNavigate?: () => void;
 }) {
+  // stories 本身已經是「未分冊優先、接著依冊順序」排好的線性順序（見
+  // flattenGroupedStories），編號直接用這個順序的 index，分組只是視覺上加標題/分隔線，
+  // 不影響編號，讀者看到的章節序號跟上一章/下一章導覽會是同一套。
+  function storyIndexLabel(story: ReaderStory) {
+    return stories.findIndex((item) => item.id === story.id) + 1;
+  }
+  const currentVolumeId =
+    stories.find((story) => story.id === currentStoryId)?.parentId ?? null;
+  // 預設展開「目前所在的那一冊」，其餘冊收合；使用者手動展開/收合過的冊維持原狀，
+  // 只有換到別的冊時才會額外把那一冊加進展開清單，不會反過來收掉使用者已經打開的冊。
+  const [expandedVolumeIds, setExpandedVolumeIds] = useState<Set<number>>(
+    () => new Set(currentVolumeId !== null ? [currentVolumeId] : []),
+  );
+  useEffect(() => {
+    if (currentVolumeId === null) {
+      return;
+    }
+    setExpandedVolumeIds((previous) => {
+      if (previous.has(currentVolumeId)) {
+        return previous;
+      }
+      return new Set(previous).add(currentVolumeId);
+    });
+  }, [currentVolumeId]);
+
+  function toggleVolume(volumeId: number) {
+    setExpandedVolumeIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(volumeId)) {
+        next.delete(volumeId);
+      } else {
+        next.add(volumeId);
+      }
+      return next;
+    });
+  }
+
+  const ungrouped = stories.filter((story) => story.parentId === null);
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={1} alignItems="center">
@@ -154,18 +208,71 @@ function StoryIndex({
         </Typography>
       </Stack>
       <Divider />
-      {stories.map((story, index) => (
-        <Button
-          key={story.id}
-          component={RouterLink}
-          to={`${basePath}/${story.id}`}
-          variant={currentStoryId === story.id ? "contained" : "text"}
-          sx={{ justifyContent: "flex-start", textAlign: "left" }}
-          onClick={onNavigate}
-        >
-          {index + 1}. {story.title}
-        </Button>
-      ))}
+      <Stack spacing={0.5}>
+        {ungrouped.map((story) => (
+          <Button
+            key={story.id}
+            component={RouterLink}
+            to={`${basePath}/${story.id}`}
+            variant={currentStoryId === story.id ? "contained" : "text"}
+            sx={{ justifyContent: "flex-start", textAlign: "left" }}
+            onClick={onNavigate}
+          >
+            {storyIndexLabel(story)}. {story.title}
+          </Button>
+        ))}
+      </Stack>
+      {volumes.map((volume) => {
+        const children = stories.filter(
+          (story) => story.parentId === volume.id,
+        );
+        if (children.length === 0) {
+          return null;
+        }
+        const expanded = expandedVolumeIds.has(volume.id);
+        return (
+          <Stack key={volume.id} spacing={0.5}>
+            <Divider />
+            <Stack
+              component={ButtonBase}
+              onClick={() => toggleVolume(volume.id)}
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ borderRadius: 1, px: 1, py: 0.5, width: 1 }}
+            >
+              <Typography
+                variant="subtitle2"
+                color="text.secondary"
+                sx={{ textAlign: "left" }}
+              >
+                {volume.title}
+              </Typography>
+              {expanded ? (
+                <ExpandLessIcon fontSize="small" color="action" />
+              ) : (
+                <ExpandMoreIcon fontSize="small" color="action" />
+              )}
+            </Stack>
+            <Collapse in={expanded}>
+              <Stack spacing={0.5}>
+                {children.map((story) => (
+                  <Button
+                    key={story.id}
+                    component={RouterLink}
+                    to={`${basePath}/${story.id}`}
+                    variant={currentStoryId === story.id ? "contained" : "text"}
+                    sx={{ justifyContent: "flex-start", textAlign: "left" }}
+                    onClick={onNavigate}
+                  >
+                    {storyIndexLabel(story)}. {story.title}
+                  </Button>
+                ))}
+              </Stack>
+            </Collapse>
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }
@@ -209,6 +316,7 @@ function StoryOutline({
 
 function StoryIndexPanel({
   stories,
+  volumes,
   currentStoryId,
   basePath,
   onNavigate,
@@ -221,6 +329,7 @@ function StoryIndexPanel({
   onJumpToHeading,
 }: {
   stories: ReaderStory[];
+  volumes: ReaderVolume[];
   currentStoryId?: string;
   basePath: string;
   onNavigate?: () => void;
@@ -274,6 +383,7 @@ function StoryIndexPanel({
       {tab === "toc" ? (
         <StoryIndex
           stories={stories}
+          volumes={volumes}
           currentStoryId={currentStoryId}
           basePath={basePath}
           onNavigate={onNavigate}
@@ -652,17 +762,25 @@ export default function StorytellerReader() {
           (total, story) => total + story.word_count,
           0,
         ),
-        stories: (apiProject.stories ?? []).map((story) => ({
+        stories: flattenGroupedStories(
+          apiProject.stories ?? [],
+          apiProject.volumes ?? [],
+        ).map((story) => ({
           id: story.public_id,
           title: story.title,
           summary: story.summary,
           content: story.latest_content,
           sort: story.sort,
           updatedAt: story.updated_at,
+          parentId: story.parent_id,
         })),
+        volumes: [...(apiProject.volumes ?? [])]
+          .sort((left, right) => left.sort - right.sort)
+          .map((volume) => ({ id: volume.id, title: volume.title })),
       }
     : undefined;
   const stories = project?.stories ?? [];
+  const volumes = project?.volumes ?? [];
   const currentStoryId = routeStoryId;
   const currentStory = currentStoryId
     ? stories.find((story) => story.id === currentStoryId)
@@ -1334,6 +1452,7 @@ export default function StorytellerReader() {
             </Stack>
             <StoryIndexPanel
               stories={stories}
+              volumes={volumes}
               currentStoryId={currentStory?.id}
               basePath={basePath}
               onNavigate={() => setMobileIndexOpen(false)}
@@ -1467,6 +1586,7 @@ export default function StorytellerReader() {
                 >
                   <StoryIndexPanel
                     stories={stories}
+                    volumes={volumes}
                     currentStoryId={currentStory?.id}
                     basePath={basePath}
                     bookmarks={projectBookmarks}
@@ -1504,6 +1624,7 @@ export default function StorytellerReader() {
               >
                 <StoryIndexPanel
                   stories={stories}
+                  volumes={volumes}
                   currentStoryId={currentStory?.id}
                   basePath={basePath}
                   bookmarks={projectBookmarks}

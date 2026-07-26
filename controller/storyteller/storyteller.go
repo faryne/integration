@@ -474,6 +474,46 @@ func DeleteStory(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"deleted": true})
 }
 
+func Volumes(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().Volumes(authsession.Session(ctx).UserId, ctx.Params("project"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func CreateVolume(ctx fiber.Ctx) error {
+	var input storytellerModel.StoryVolumeRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateVolume(authsession.Session(ctx).UserId, ctx.Params("project"), input, webVersionSource(""))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func UpdateVolume(ctx fiber.Ctx) error {
+	var input storytellerModel.StoryVolumeRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().UpdateVolume(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("volume"), input, webVersionSource(""))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func VolumeActivity(ctx fiber.Ctx) error {
+	row, err := storyteller.NewService().VolumeActivity(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("volume"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func StoryVersions(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().StoryVersions(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"))
 	if err != nil {

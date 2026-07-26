@@ -713,9 +713,14 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	if err != nil {
 		return nil, err
 	}
+	parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
+	if err != nil {
+		return nil, err
+	}
 	story := &storytellerModel.Story{
 		PublicID:      randomID(),
 		ProjectID:     project.ID,
+		ParentID:      parentID(parent),
 		Title:         strings.TrimSpace(input.Title),
 		Summary:       strings.TrimSpace(input.Summary),
 		Status:        input.Status,
@@ -724,14 +729,16 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		WordCount:     wordCount(input.Content),
 	}
 	version := buildStoryVersion(*story, source)
-	if err := s.repo.CreateStoryWithVersion(story, version); err != nil {
+	volumeEvent := volumeMoveEvent(nil, story.ParentID)
+	if err := s.repo.CreateStoryWithVersion(story, version, volumeEvent); err != nil {
 		return nil, err
 	}
 	return story, nil
 }
 
 // UpdateStory 存檔並塞入新版本；回傳的 conflicted 只是「這次存檔的 base_version_id
-// 已經不是最新版本」的提示旗標，不會拒絕寫入，內容照樣存成新版本。
+// 已經不是最新版本」的提示旗標，不會拒絕寫入，內容照樣存成新版本。冊只能透過
+// CreateVolume／UpdateVolume 編輯，這個一般故事的更新入口會擋下 is_volume=true 的故事。
 func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryRequest, source string) (story *storytellerModel.Story, conflicted bool, err error) {
 	input = normalizeStoryRequest(input)
 	if err := validateStory(input); err != nil {
@@ -745,6 +752,21 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	if err != nil {
 		return nil, false, err
 	}
+	if story.IsVolume {
+		return nil, false, errors.New("cannot edit a volume through the story endpoint")
+	}
+	// ParentID == nil 代表這次存檔沒有要動冊隸屬（例如狀態切換、拖曳排序、一般編輯頁存檔），
+	// 維持故事目前的 parent_id 不動；只有明確帶了 parent_id（含空字串代表移出冊）才處理。
+	var volumeEvent *storytellerModel.StoryVolumeEvent
+	if input.ParentID != nil {
+		parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
+		if err != nil {
+			return nil, false, err
+		}
+		previousParentID := story.ParentID
+		story.ParentID = parentID(parent)
+		volumeEvent = volumeMoveEvent(previousParentID, story.ParentID)
+	}
 	story.Title = strings.TrimSpace(input.Title)
 	story.Summary = strings.TrimSpace(input.Summary)
 	story.Status = input.Status
@@ -752,11 +774,50 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.LatestContent = input.Content
 	story.WordCount = wordCount(input.Content)
 	version := buildStoryVersion(*story, source)
-	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID)
+	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID, volumeEvent)
 	if err != nil {
 		return nil, false, err
 	}
 	return story, conflicted, nil
+}
+
+// resolveVolumeParent 把呼叫端帶來的冊 public_id 轉成內部的 Story：留空代表不分冊，
+// 目標必須存在且是冊（is_volume=true），否則視為請求錯誤——不支援冊中冊，一般故事
+// 也不能把 parent_id 指到另一篇一般故事。
+func (s *Service) resolveVolumeParent(projectID uint64, volumePublicID *string) (*storytellerModel.Story, error) {
+	if volumePublicID == nil || strings.TrimSpace(*volumePublicID) == "" {
+		return nil, nil
+	}
+	parent, err := s.repo.Story(projectID, strings.TrimSpace(*volumePublicID))
+	if err != nil {
+		return nil, err
+	}
+	if !parent.IsVolume {
+		return nil, errors.New("parent_id must reference a volume")
+	}
+	return parent, nil
+}
+
+func parentID(parent *storytellerModel.Story) *uint64 {
+	if parent == nil {
+		return nil
+	}
+	return &parent.ID
+}
+
+// volumeMoveEvent 比較異動前後的冊隸屬，沒變化就不需要寫紀錄。
+func volumeMoveEvent(from, to *uint64) *storytellerModel.StoryVolumeEvent {
+	if uint64PtrEqual(from, to) {
+		return nil
+	}
+	return &storytellerModel.StoryVolumeEvent{FromVolumeID: from, ToVolumeID: to}
+}
+
+func uint64PtrEqual(a, b *uint64) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // RevertStory 把故事內容回復到某個舊版本：讀出那個版本的內容，當成一次新的存檔寫入，
@@ -777,12 +838,15 @@ func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID stri
 	story.WordCount = target.WordCount
 	version := buildStoryVersion(*story, source)
 	version.RevertedFromVersionID = &target.ID
-	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil); err != nil {
+	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil, nil); err != nil {
 		return nil, err
 	}
 	return story, nil
 }
 
+// DeleteStory 刪除一般故事或一冊。冊非空（底下還有故事）不能刪除，避免誤刪整冊內容；
+// 一般故事若當下有 parent_id，補寫一筆 to_volume_id=NULL 的冊隸屬異動記錄，
+// 否則冊被刪掉一篇故事後，時間軸上會完全看不出這篇曾經存在過。
 func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID string) error {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
@@ -792,7 +856,100 @@ func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID stri
 	if err != nil {
 		return err
 	}
-	return s.repo.DeleteStory(story)
+	if story.IsVolume {
+		childrenCount, err := s.repo.VolumeChildrenCount(story.ID)
+		if err != nil {
+			return err
+		}
+		if childrenCount > 0 {
+			return errors.New("cannot delete a volume that still has stories")
+		}
+	}
+	volumeEvent := volumeMoveEvent(story.ParentID, nil)
+	return s.repo.DeleteStory(story, volumeEvent)
+}
+
+// Volumes 回傳一個專案底下的冊列表，跟一般故事列表分開拿。
+func (s *Service) Volumes(userID uint64, projectPublicID string) ([]storytellerModel.Story, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.Volumes(project.ID)
+}
+
+// CreateVolume 建立一冊：只有標題，內容／摘要／狀態欄位不使用，也不能有 parent_id（不支援冊中冊）。
+func (s *Service) CreateVolume(userID uint64, projectPublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
+	if err := validateVolume(input); err != nil {
+		return nil, err
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	volume := &storytellerModel.Story{
+		PublicID:  randomID(),
+		ProjectID: project.ID,
+		IsVolume:  true,
+		Title:     strings.TrimSpace(input.Title),
+		Sort:      input.Sort,
+		Status:    storytellerModel.StoryStatusCompleted,
+	}
+	version := buildStoryVersion(*volume, source)
+	if err := s.repo.CreateStoryWithVersion(volume, version, nil); err != nil {
+		return nil, err
+	}
+	return volume, nil
+}
+
+// UpdateVolume 重新命名一冊，跟一般故事的 UpdateStory 分開，只能改標題。
+func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
+	if err := validateVolume(input); err != nil {
+		return nil, err
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := s.repo.Story(project.ID, volumePublicID)
+	if err != nil {
+		return nil, err
+	}
+	if !volume.IsVolume {
+		return nil, errors.New("target is not a volume")
+	}
+	volume.Title = strings.TrimSpace(input.Title)
+	volume.Sort = input.Sort
+	version := buildStoryVersion(*volume, source)
+	if _, err := s.repo.UpdateStoryWithVersion(volume, version, nil, nil); err != nil {
+		return nil, err
+	}
+	return volume, nil
+}
+
+// VolumeActivity 組合一冊的活動歷史：Events 是冊隸屬異動（新增/搬移/移出/刪除），
+// Versions 是衍生查詢——底下故事（依目前 parent_id）存檔產生的版本記錄。
+func (s *Service) VolumeActivity(userID uint64, projectPublicID, volumePublicID string) (*storytellerModel.StoryVolumeActivity, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	volume, err := s.repo.Story(project.ID, volumePublicID)
+	if err != nil {
+		return nil, err
+	}
+	if !volume.IsVolume {
+		return nil, errors.New("target is not a volume")
+	}
+	events, err := s.repo.StoryVolumeEvents(volume.ID)
+	if err != nil {
+		return nil, err
+	}
+	versions, err := s.repo.ChildStoryVersions(volume.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.StoryVolumeActivity{Events: events, Versions: versions}, nil
 }
 
 func (s *Service) StoryVersions(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryVersion, error) {
@@ -1620,6 +1777,11 @@ func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftS
 		return nil, err
 	}
 	output.Stories = stories
+	volumes, err := s.repo.Volumes(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output.Volumes = volumes
 	author, err := s.authorOutput(project.UserID)
 	if err != nil {
 		return nil, err
@@ -2274,6 +2436,13 @@ func validateStory(input storytellerModel.StoryRequest) error {
 	case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
 	default:
 		return fmt.Errorf("invalid status")
+	}
+	return nil
+}
+
+func validateVolume(input storytellerModel.StoryVolumeRequest) error {
+	if strings.TrimSpace(input.Title) == "" {
+		return errors.New("title is required")
 	}
 	return nil
 }
