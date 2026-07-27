@@ -121,7 +121,9 @@ export default function StorytellerImageEpisodeReader() {
           <Chip
             label={project.name}
             component={RouterLink}
-            to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
+            to={steamloomPath(
+              `story/${project.public_id}-${project.slug}/images`,
+            )}
             variant="outlined"
             clickable
           />
@@ -293,10 +295,10 @@ export default function StorytellerImageEpisodeReader() {
                 <Button
                   component={RouterLink}
                   to={steamloomPath(
-                    `story/${project.public_id}-${project.slug}`,
+                    `story/${project.public_id}-${project.slug}/images`,
                   )}
                 >
-                  回到作品首頁
+                  回到圖像作品目次
                 </Button>
               </Stack>
             </Paper>

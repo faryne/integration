@@ -44,10 +44,7 @@ import {
   type FootnoteNumbering,
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
-import {
-  listImageEpisodes,
-  type StorytellerImageEpisodeMock,
-} from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
+import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -156,14 +153,12 @@ function extractStoryHeadings(content: string): StoryHeading[] {
 function StoryIndex({
   stories,
   volumes,
-  imageEpisodes,
   currentStoryId,
   basePath,
   onNavigate,
 }: {
   stories: ReaderStory[];
   volumes: ReaderVolume[];
-  imageEpisodes: StorytellerImageEpisodeMock[];
   currentStoryId?: string;
   basePath: string;
   onNavigate?: () => void;
@@ -294,27 +289,6 @@ function StoryIndex({
           ))}
         </Stack>
       )}
-      {imageEpisodes.length > 0 && (
-        <Stack spacing={0.5}>
-          <Divider />
-          <Typography variant="subtitle2" color="text.secondary" sx={{ pl: 1 }}>
-            圖像作品（Mockup）
-          </Typography>
-          {imageEpisodes.map((episode) => (
-            <Button
-              key={episode.id}
-              component={RouterLink}
-              to={`${basePath}/image/${episode.id}`}
-              variant="text"
-              startIcon={<CollectionsIcon fontSize="small" />}
-              sx={{ justifyContent: "flex-start", textAlign: "left" }}
-              onClick={onNavigate}
-            >
-              {episode.title}
-            </Button>
-          ))}
-        </Stack>
-      )}
     </Stack>
   );
 }
@@ -359,7 +333,6 @@ function StoryOutline({
 function StoryIndexPanel({
   stories,
   volumes,
-  imageEpisodes,
   currentStoryId,
   basePath,
   onNavigate,
@@ -373,7 +346,6 @@ function StoryIndexPanel({
 }: {
   stories: ReaderStory[];
   volumes: ReaderVolume[];
-  imageEpisodes: StorytellerImageEpisodeMock[];
   currentStoryId?: string;
   basePath: string;
   onNavigate?: () => void;
@@ -428,7 +400,6 @@ function StoryIndexPanel({
         <StoryIndex
           stories={stories}
           volumes={volumes}
-          imageEpisodes={imageEpisodes}
           currentStoryId={currentStoryId}
           basePath={basePath}
           onNavigate={onNavigate}
@@ -1475,6 +1446,16 @@ export default function StorytellerReader() {
             color={storytellerProjectRatingColor(project.rating)}
             variant="outlined"
           />
+          {imageEpisodes.length > 0 && (
+            <Chip
+              label={`圖像作品 ${imageEpisodes.length} 話（Mockup）`}
+              variant="outlined"
+              icon={<CollectionsIcon fontSize="small" />}
+              component={RouterLink}
+              to={`${basePath}/images`}
+              clickable
+            />
+          )}
           <Box sx={{ flexBasis: "100%" }}>
             <StorytellerTagChips tags={project.tags} sx={{ mt: 1 }} />
           </Box>
@@ -1499,7 +1480,6 @@ export default function StorytellerReader() {
             <StoryIndexPanel
               stories={stories}
               volumes={volumes}
-              imageEpisodes={imageEpisodes}
               currentStoryId={currentStory?.id}
               basePath={basePath}
               onNavigate={() => setMobileIndexOpen(false)}
@@ -1634,7 +1614,6 @@ export default function StorytellerReader() {
                   <StoryIndexPanel
                     stories={stories}
                     volumes={volumes}
-                    imageEpisodes={imageEpisodes}
                     currentStoryId={currentStory?.id}
                     basePath={basePath}
                     bookmarks={projectBookmarks}
@@ -1673,7 +1652,6 @@ export default function StorytellerReader() {
                 <StoryIndexPanel
                   stories={stories}
                   volumes={volumes}
-                  imageEpisodes={imageEpisodes}
                   currentStoryId={currentStory?.id}
                   basePath={basePath}
                   bookmarks={projectBookmarks}

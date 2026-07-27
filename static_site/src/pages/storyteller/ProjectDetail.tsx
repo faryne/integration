@@ -484,15 +484,12 @@ export default function StorytellerProjectDetail() {
   }
 
   // content_type 只是「預設優先顯示哪個畫面」的偏好：專案是圖像類型時，工作台
-  // 這顆主要連結直接帶讀者進第一話，而不是丟到通常沒有故事可選的文字故事索引。
-  const defaultImageEpisode = imageEpisodes[0];
+  // 這顆主要連結帶讀者進圖像作品目次頁，而不是通常沒有故事可選的文字故事索引。
   const readerUrl =
     project.visibility === "unlisted" && project.shareToken
       ? steamloomPath(`story/share/${project.shareToken}`)
-      : project.contentType === "image" && defaultImageEpisode
-        ? steamloomPath(
-            `story/${project.id}-${project.slug}/image/${defaultImageEpisode.id}`,
-          )
+      : project.contentType === "image"
+        ? steamloomPath(`story/${project.id}-${project.slug}/images`)
         : steamloomPath(`story/${project.id}-${project.slug}`);
   const readerUrlLabel =
     project.visibility === "unlisted" ? "親友分享連結" : "作品頁連結";
