@@ -744,10 +744,10 @@ export default function StorytellerProjectDetail() {
                           sx={{ width: 200, p: 1.5, borderRadius: 1 }}
                         >
                           <Stack spacing={1}>
-                            {episode.coverDataUrl ? (
+                            {episode.pageDataUrls[0] ? (
                               <Box
                                 component="img"
-                                src={episode.coverDataUrl}
+                                src={episode.pageDataUrls[0]}
                                 alt={episode.title}
                                 sx={{
                                   width: "100%",
@@ -773,9 +773,18 @@ export default function StorytellerProjectDetail() {
                               variant="caption"
                               color="text.secondary"
                             >
-                              {episode.pageCount} 頁
+                              {episode.pageDataUrls.length} 頁
                             </Typography>
                             <StorytellerTagChips tags={episode.tags} />
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              href={steamloomPath(
+                                `story/${project.id}-${project.slug}/image/${episode.id}`,
+                              )}
+                            >
+                              閱讀（Mockup）
+                            </Button>
                             <Button
                               size="small"
                               color="error"

@@ -182,15 +182,16 @@ export default function StorytellerImageEpisodeEditor() {
       return;
     }
     setSaving(true);
-    const coverDataUrl = await readAsDataURL(pages[0].file);
+    const pageDataUrls = await Promise.all(
+      pages.map((page) => readAsDataURL(page.file)),
+    );
     const pendingTag = tagInputValue.trim();
     saveImageEpisode({
       projectId: project.public_id,
       title: title.trim(),
       summary: summary.trim(),
       tags: normalizeTags(pendingTag ? [...tags, pendingTag] : tags),
-      pageCount: pages.length,
-      coverDataUrl,
+      pageDataUrls,
     });
     navigate(steamloomPath(`my/project/${project.public_id}`));
   }

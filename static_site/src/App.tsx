@@ -107,6 +107,9 @@ const StorytellerLoreDiffCompare = lazy(
   () => import("@/pages/storyteller/LoreDiffCompare.tsx"),
 );
 const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
+const StorytellerImageEpisodeReader = lazy(
+  () => import("@/pages/storyteller/ImageEpisodeReader.tsx"),
+);
 const StorytellerStoryVersionDiff = lazy(
   () => import("@/pages/storyteller/StoryVersionDiff.tsx"),
 );
@@ -309,6 +312,10 @@ const storytellerRoutes = (
     <Route
       path={"story/:projectPath/:storyId/versions/:versionId"}
       element={<StorytellerStoryVersionDiff />}
+    />
+    <Route
+      path={"story/:projectPath/image/:episodeId"}
+      element={<StorytellerImageEpisodeReader />}
     />
     <Route path={"story/*"} element={<StorytellerReader />} />
     <Route path={"*"} element={<ErrorPage code={404} />} />

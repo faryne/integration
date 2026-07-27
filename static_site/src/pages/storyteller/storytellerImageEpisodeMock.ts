@@ -9,8 +9,8 @@ export interface StorytellerImageEpisodeMock {
   title: string;
   summary: string;
   tags: string[];
-  pageCount: number;
-  coverDataUrl: string | null;
+  // 每一頁的圖片內容（data URL），依閱讀順序排列；pageDataUrls[0] 當封面縮圖用。
+  pageDataUrls: string[];
   updatedAt: string;
 }
 
@@ -51,8 +51,7 @@ export function saveImageEpisode(input: {
   title: string;
   summary: string;
   tags: string[];
-  pageCount: number;
-  coverDataUrl: string | null;
+  pageDataUrls: string[];
 }): StorytellerImageEpisodeMock {
   const episode: StorytellerImageEpisodeMock = {
     id: `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -60,12 +59,23 @@ export function saveImageEpisode(input: {
     title: input.title,
     summary: input.summary,
     tags: input.tags,
-    pageCount: input.pageCount,
-    coverDataUrl: input.coverDataUrl,
+    pageDataUrls: input.pageDataUrls,
     updatedAt: new Date().toISOString(),
   };
   writeAll([...readAll(), episode]);
   return episode;
+}
+
+export function getImageEpisode(
+  projectId: string | undefined,
+  episodeId: string | undefined,
+): StorytellerImageEpisodeMock | undefined {
+  if (!projectId || !episodeId) {
+    return undefined;
+  }
+  return listImageEpisodes(projectId).find(
+    (episode) => episode.id === episodeId,
+  );
 }
 
 export function deleteImageEpisode(id: string) {
