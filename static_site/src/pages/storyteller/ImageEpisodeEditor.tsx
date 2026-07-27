@@ -97,7 +97,7 @@ export default function StorytellerImageEpisodeEditor() {
       ? [
           {
             label: project.name,
-            to: steamloomPath(`my/project/${project.public_id}`),
+            to: steamloomPath(`my/project/${project.public_id}/images`),
           },
         ]
       : []),
@@ -193,7 +193,7 @@ export default function StorytellerImageEpisodeEditor() {
       tags: normalizeTags(pendingTag ? [...tags, pendingTag] : tags),
       pageDataUrls,
     });
-    navigate(steamloomPath(`my/project/${project.public_id}`));
+    navigate(steamloomPath(`my/project/${project.public_id}/images`));
   }
 
   return (
@@ -378,7 +378,7 @@ export default function StorytellerImageEpisodeEditor() {
             </Box>
             <Stack direction="row" spacing={1} justifyContent="flex-end">
               <Button
-                href={steamloomPath(`my/project/${project.public_id}`)}
+                href={steamloomPath(`my/project/${project.public_id}/images`)}
                 variant="text"
               >
                 返回列表
