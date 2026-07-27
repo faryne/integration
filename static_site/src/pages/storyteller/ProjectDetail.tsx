@@ -483,12 +483,19 @@ export default function StorytellerProjectDetail() {
     );
   }
 
+  // content_type 只是「預設優先顯示哪個畫面」的偏好：專案是圖像類型時，工作台
+  // 這顆主要連結直接帶讀者進第一話，而不是丟到通常沒有故事可選的文字故事索引。
+  const defaultImageEpisode = imageEpisodes[0];
   const readerUrl =
     project.visibility === "unlisted" && project.shareToken
       ? steamloomPath(`story/share/${project.shareToken}`)
-      : steamloomPath(`story/${project.id}-${project.slug}`);
+      : project.contentType === "image" && defaultImageEpisode
+        ? steamloomPath(
+            `story/${project.id}-${project.slug}/image/${defaultImageEpisode.id}`,
+          )
+        : steamloomPath(`story/${project.id}-${project.slug}`);
   const readerUrlLabel =
-    project.visibility === "unlisted" ? "親友分享連結" : "故事頁連結";
+    project.visibility === "unlisted" ? "親友分享連結" : "作品頁連結";
   const absoluteReaderUrl =
     typeof window === "undefined"
       ? readerUrl
