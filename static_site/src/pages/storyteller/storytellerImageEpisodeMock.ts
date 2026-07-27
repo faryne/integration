@@ -7,6 +7,8 @@ export interface StorytellerImageEpisodeMock {
   id: string;
   projectId: string;
   title: string;
+  summary: string;
+  tags: string[];
   pageCount: number;
   coverDataUrl: string | null;
   updatedAt: string;
@@ -47,6 +49,8 @@ export function listImageEpisodes(
 export function saveImageEpisode(input: {
   projectId: string;
   title: string;
+  summary: string;
+  tags: string[];
   pageCount: number;
   coverDataUrl: string | null;
 }): StorytellerImageEpisodeMock {
@@ -54,6 +58,8 @@ export function saveImageEpisode(input: {
     id: `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     projectId: input.projectId,
     title: input.title,
+    summary: input.summary,
+    tags: input.tags,
     pageCount: input.pageCount,
     coverDataUrl: input.coverDataUrl,
     updatedAt: new Date().toISOString(),

@@ -741,7 +741,7 @@ export default function StorytellerProjectDetail() {
                         <Paper
                           key={episode.id}
                           variant="outlined"
-                          sx={{ width: 160, p: 1.5, borderRadius: 1 }}
+                          sx={{ width: 200, p: 1.5, borderRadius: 1 }}
                         >
                           <Stack spacing={1}>
                             {episode.coverDataUrl ? (
@@ -775,6 +775,7 @@ export default function StorytellerProjectDetail() {
                             >
                               {episode.pageCount} 頁
                             </Typography>
+                            <StorytellerTagChips tags={episode.tags} />
                             <Button
                               size="small"
                               color="error"

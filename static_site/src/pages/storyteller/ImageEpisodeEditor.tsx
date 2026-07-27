@@ -3,8 +3,10 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
+  Chip,
   IconButton,
   Paper,
   Stack,
@@ -41,6 +43,20 @@ function readAsDataURL(file: File): Promise<string> {
   });
 }
 
+const maxTagCount = 12;
+const maxTagLength = 24;
+
+function normalizeTags(tags: string[]) {
+  return Array.from(
+    new Set(
+      tags
+        .flatMap((tag) => tag.split(/[,，]/))
+        .map((tag) => tag.trim().slice(0, maxTagLength))
+        .filter(Boolean),
+    ),
+  ).slice(0, maxTagCount);
+}
+
 export default function StorytellerImageEpisodeEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,6 +69,9 @@ export default function StorytellerImageEpisodeEditor() {
   const project = projects.find((item) => item.public_id === id);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInputValue, setTagInputValue] = useState("");
   const [pages, setPages] = useState<PendingPage[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -164,9 +183,12 @@ export default function StorytellerImageEpisodeEditor() {
     }
     setSaving(true);
     const coverDataUrl = await readAsDataURL(pages[0].file);
+    const pendingTag = tagInputValue.trim();
     saveImageEpisode({
       projectId: project.public_id,
       title: title.trim(),
+      summary: summary.trim(),
+      tags: normalizeTags(pendingTag ? [...tags, pendingTag] : tags),
       pageCount: pages.length,
       coverDataUrl,
     });
@@ -189,6 +211,56 @@ export default function StorytellerImageEpisodeEditor() {
               placeholder="例如：第一話　序章"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
+            />
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              maxRows={12}
+              label="基本描述"
+              placeholder="簡短描述這一話的重點、劇情或目前狀態。"
+              value={summary}
+              onChange={(event) => setSummary(event.target.value)}
+            />
+            <Autocomplete
+              multiple
+              freeSolo
+              fullWidth
+              options={[]}
+              value={tags}
+              inputValue={tagInputValue}
+              onInputChange={(_, newInputValue, reason) => {
+                if (reason === "input" && /[,，]/.test(newInputValue)) {
+                  const segments = newInputValue.split(/[,，]/);
+                  const remainder = segments.pop() ?? "";
+                  setTags((current) =>
+                    normalizeTags([...current, ...segments]),
+                  );
+                  setTagInputValue(remainder.trimStart());
+                  return;
+                }
+                setTagInputValue(newInputValue);
+              }}
+              onChange={(_, newValue) => setTags(normalizeTags(newValue))}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip
+                    variant="outlined"
+                    size="small"
+                    label={option}
+                    {...getTagProps({ index })}
+                    key={option}
+                  />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="標籤"
+                  helperText={`跟專案的標籤是分開的兩組。輸入後按 Enter，或用「,」「，」分隔新增多個，最多 ${maxTagCount} 個，每個最多 ${maxTagLength} 字。`}
+                  placeholder={tags.length === 0 ? "分鏡, 全彩, 短篇" : ""}
+                />
+              )}
             />
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
