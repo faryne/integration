@@ -8,6 +8,7 @@ import {
   Paper,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -24,6 +25,8 @@ import {
   useStorytellerStories,
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
@@ -157,6 +160,7 @@ export default function StorytellerStoryEditor() {
   const { id, storyId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewStory = storyId === "new";
   const isHistoryRoute = location.pathname.endsWith("/diff");
   const {
@@ -664,6 +668,34 @@ export default function StorytellerStoryEditor() {
     return () => window.clearInterval(timer);
   }, [apiProject?.public_id, isNewStory, story?.id, autoSaveEnabled]);
 
+  const storyShellBreadcrumbs = [
+    { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+    { label: "我的工作台", to: steamloomPath("my") },
+    { label: "故事專案", to: steamloomPath("my/project") },
+  ];
+
+  if (authLoading) {
+    return (
+      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      </StorytellerShell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
+        <CustomLoginRequiredState
+          description="登入後即可編輯這篇故事。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
+      </StorytellerShell>
+    );
+  }
+
   if (
     (!project && (apiProjectsPending || apiProjectsFetching)) ||
     (apiProject &&
@@ -672,14 +704,7 @@ export default function StorytellerStoryEditor() {
       (apiStoriesPending || apiStoriesFetching))
   ) {
     return (
-      <StorytellerShell
-        title="故事編輯器"
-        breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
-        ]}
-      >
+      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
         <StorytellerLoading label="正在載入故事編輯資料..." />
       </StorytellerShell>
     );
