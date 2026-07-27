@@ -880,6 +880,7 @@ func (s *Service) Volumes(userID uint64, projectPublicID string) ([]storytellerM
 
 // CreateVolume 建立一冊：只有標題，內容／摘要／狀態欄位不使用，也不能有 parent_id（不支援冊中冊）。
 func (s *Service) CreateVolume(userID uint64, projectPublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
+	input = normalizeVolumeRequest(input)
 	if err := validateVolume(input); err != nil {
 		return nil, err
 	}
@@ -893,7 +894,7 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 		IsVolume:  true,
 		Title:     strings.TrimSpace(input.Title),
 		Sort:      input.Sort,
-		Status:    storytellerModel.StoryStatusCompleted,
+		Status:    input.Status,
 	}
 	version := buildStoryVersion(*volume, source)
 	if err := s.repo.CreateStoryWithVersion(volume, version, nil); err != nil {
@@ -902,8 +903,11 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 	return volume, nil
 }
 
-// UpdateVolume 重新命名一冊，跟一般故事的 UpdateStory 分開，只能改標題。
+// UpdateVolume 重新命名／切換公開狀態，跟一般故事的 UpdateStory 分開，不能改內容。
+// Status 關閉（draft）時，底下所有故事一律不對外顯示，不管故事自己的 status 是什麼，
+// 見 Repository.PublishedStories／PublishedVolumes 的過濾邏輯。
 func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
+	input = normalizeVolumeRequest(input)
 	if err := validateVolume(input); err != nil {
 		return nil, err
 	}
@@ -920,6 +924,7 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 	}
 	volume.Title = strings.TrimSpace(input.Title)
 	volume.Sort = input.Sort
+	volume.Status = input.Status
 	version := buildStoryVersion(*volume, source)
 	if _, err := s.repo.UpdateStoryWithVersion(volume, version, nil, nil); err != nil {
 		return nil, err
@@ -1777,7 +1782,12 @@ func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftS
 		return nil, err
 	}
 	output.Stories = stories
-	volumes, err := s.repo.Volumes(project.ID)
+	var volumes []storytellerModel.Story
+	if includeDraftStories {
+		volumes, err = s.repo.Volumes(project.ID)
+	} else {
+		volumes, err = s.repo.PublishedVolumes(project.ID)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -2158,6 +2168,13 @@ func normalizeStoryRequest(input storytellerModel.StoryRequest) storytellerModel
 	return input
 }
 
+func normalizeVolumeRequest(input storytellerModel.StoryVolumeRequest) storytellerModel.StoryVolumeRequest {
+	if input.Status == "" {
+		input.Status = storytellerModel.StoryStatusCompleted
+	}
+	return input
+}
+
 func normalizeAgentRequest(input storytellerModel.AgentRequest) storytellerModel.AgentRequest {
 	if input.Provider == "" {
 		input.Provider = storytellerModel.AgentProviderGrok
@@ -2443,6 +2460,11 @@ func validateStory(input storytellerModel.StoryRequest) error {
 func validateVolume(input storytellerModel.StoryVolumeRequest) error {
 	if strings.TrimSpace(input.Title) == "" {
 		return errors.New("title is required")
+	}
+	switch input.Status {
+	case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
+	default:
+		return fmt.Errorf("invalid status")
 	}
 	return nil
 }

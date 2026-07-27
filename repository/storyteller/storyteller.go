@@ -372,18 +372,37 @@ func (r *Repository) StoriesPage(projectID uint64, offset, limit int) ([]storyte
 	return rows, total, err
 }
 
+// PublishedStories 只回傳「自己是 completed，而且沒有掛在一個 draft 冊底下」的故事：
+// 冊關閉（draft）時，底下所有故事一律不對外顯示，不管故事自己的 status 是什麼，
+// 靠 LEFT JOIN 回自己的 parent 冊，比對 parent 的 status 做到這個級聯關閉的效果。
 func (r *Repository) PublishedStories(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND status = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
+	err := r.db.
+		Table("storyteller_stories AS stories").
+		Joins("LEFT JOIN storyteller_stories AS parent ON parent.id = stories.parent_id").
+		Where("stories.project_id = ? AND stories.status = ? AND stories.is_volume = 0 AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
+		Where("stories.parent_id IS NULL OR parent.status = ?", storytellerModel.StoryStatusCompleted).
+		Order("stories.sort ASC, stories.id ASC").
+		Select("stories.*").
+		Find(&rows).Error
+	return rows, err
+}
+
+// Volumes 回傳一個專案底下的冊列表（is_volume = 1），跟 Stories 分開拿。給登入的作者
+// 自己管理用，不篩選 status——公開頁要用 PublishedVolumes。
+func (r *Repository) Volumes(projectID uint64) ([]storytellerModel.Story, error) {
+	rows := make([]storytellerModel.Story, 0)
+	err := r.db.Where("project_id = ? AND is_volume = 1 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
 }
 
-// Volumes 回傳一個專案底下的冊列表（is_volume = 1），跟 Stories 分開拿。
-func (r *Repository) Volumes(projectID uint64) ([]storytellerModel.Story, error) {
+// PublishedVolumes 是 Volumes 的公開版本，只回傳 status=completed 的冊，給不含草稿的
+// 專案輸出（公開閱讀頁／分享頁）用。
+func (r *Repository) PublishedVolumes(projectID uint64) ([]storytellerModel.Story, error) {
 	rows := make([]storytellerModel.Story, 0)
-	err := r.db.Where("project_id = ? AND is_volume = 1 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+	err := r.db.Where("project_id = ? AND is_volume = 1 AND status = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, storytellerModel.StoryStatusCompleted).
 		Order("sort ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
