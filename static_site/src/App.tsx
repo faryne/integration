@@ -94,6 +94,9 @@ const StorytellerAgentDiffCompare = lazy(
 const StorytellerStoryEditor = lazy(
   () => import("@/pages/storyteller/StoryEditor.tsx"),
 );
+const StorytellerImageEpisodeEditor = lazy(
+  () => import("@/pages/storyteller/ImageEpisodeEditor.tsx"),
+);
 const StorytellerLoreEditor = lazy(
   () => import("@/pages/storyteller/LoreEditor.tsx"),
 );
@@ -261,12 +264,20 @@ const storytellerRoutes = (
         element={<StorytellerStoryEditor />}
       />
       <Route
+        path={"project/:id/image/:episodeId"}
+        element={<StorytellerImageEpisodeEditor />}
+      />
+      <Route
         path={"project/:id/lore/:loreId"}
         element={<StorytellerLoreEditor />}
       />
       <Route path={"project/:id"} element={<StorytellerProjectDetail />} />
       <Route
         path={"project/:id/stories"}
+        element={<StorytellerProjectDetail />}
+      />
+      <Route
+        path={"project/:id/images"}
         element={<StorytellerProjectDetail />}
       />
       <Route

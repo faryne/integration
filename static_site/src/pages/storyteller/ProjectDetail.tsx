@@ -60,6 +60,11 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import { StorytellerVolumeDialog } from "@/pages/storyteller/StorytellerVolumeDialog.tsx";
+import {
+  deleteImageEpisode,
+  listImageEpisodes,
+  type StorytellerImageEpisodeMock,
+} from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { sortedGroup } from "@/pages/storyteller/storytellerVolumes.ts";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 
@@ -73,9 +78,13 @@ export default function StorytellerProjectDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, loading, login, submitting } = useAuth();
-  const activeTab: "stories" | "lores" = location.pathname.endsWith("/lores")
+  const activeTab: "stories" | "images" | "lores" = location.pathname.endsWith(
+    "/lores",
+  )
     ? "lores"
-    : "stories";
+    : location.pathname.endsWith("/images")
+      ? "images"
+      : "stories";
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [orderedVolumes, setOrderedVolumes] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
@@ -144,6 +153,19 @@ export default function StorytellerProjectDetail() {
       [...apiVolumes].sort((left, right) => left.sort - right.sort),
     );
   }, [apiVolumes]);
+
+  const [imageEpisodes, setImageEpisodes] = useState<
+    StorytellerImageEpisodeMock[]
+  >([]);
+
+  useEffect(() => {
+    setImageEpisodes(listImageEpisodes(apiProject?.public_id));
+  }, [apiProject?.public_id]);
+
+  function handleDeleteImageEpisode(episodeId: string) {
+    deleteImageEpisode(episodeId);
+    setImageEpisodes(listImageEpisodes(apiProject?.public_id));
+  }
 
   // handleDropVolume 把拖曳中的冊放到 targetVolumeId 前面（null 代表放到最後），
   // 只重排冊彼此之間的順序，跟故事的 parent_id 無關。
@@ -493,7 +515,14 @@ export default function StorytellerProjectDetail() {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
         },
-        { label: activeTab === "lores" ? "設定集" : "故事與冊" },
+        {
+          label:
+            activeTab === "lores"
+              ? "設定集"
+              : activeTab === "images"
+                ? "圖像與冊"
+                : "故事與冊",
+        },
       ]}
     >
       <Stack spacing={3}>
@@ -610,12 +639,13 @@ export default function StorytellerProjectDetail() {
               <Stack spacing={2}>
                 <Tabs
                   value={activeTab}
-                  onChange={(_, value: "stories" | "lores") =>
+                  onChange={(_, value: "stories" | "images" | "lores") =>
                     navigate(steamloomPath(`my/project/${project.id}/${value}`))
                   }
                   sx={steamTabIndicatorSx}
                 >
                   <Tab value="stories" label="故事與冊" />
+                  <Tab value="images" label="圖像與冊" />
                   <Tab value="lores" label="設定集" />
                 </Tabs>
                 {activeTab === "stories" && (
@@ -649,6 +679,26 @@ export default function StorytellerProjectDetail() {
                     </Stack>
                   </Stack>
                 )}
+                {activeTab === "images" && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Typography variant="h6" fontWeight={800}>
+                      圖像與冊
+                    </Typography>
+                    <Button
+                      href={steamloomPath(`my/project/${project.id}/image/new`)}
+                      variant="contained"
+                      startIcon={<CollectionsIcon />}
+                      sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                    >
+                      上傳圖像作品（Mockup）
+                    </Button>
+                  </Stack>
+                )}
                 {activeTab === "lores" && (
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -666,6 +716,78 @@ export default function StorytellerProjectDetail() {
                     >
                       建立設定集
                     </Button>
+                  </Stack>
+                )}
+                {activeTab === "images" && imageEpisodes.length === 0 && (
+                  <CustomEmptyState
+                    icon={<CollectionsIcon fontSize="large" />}
+                    title="尚未建立圖像作品"
+                    description="使用上方的「上傳圖像作品」開始建立第一話（目前是 mockup，僅存在這台裝置，尚未串接後端）。"
+                  />
+                )}
+                {activeTab === "images" && imageEpisodes.length > 0 && (
+                  <Stack spacing={1}>
+                    <Typography variant="caption" color="text.secondary">
+                      目前是
+                      mockup，內容僅存在這台裝置的瀏覽器裡，尚未串接後端。
+                    </Typography>
+                    <Stack
+                      direction="row"
+                      flexWrap="wrap"
+                      useFlexGap
+                      spacing={1.5}
+                    >
+                      {imageEpisodes.map((episode) => (
+                        <Paper
+                          key={episode.id}
+                          variant="outlined"
+                          sx={{ width: 160, p: 1.5, borderRadius: 1 }}
+                        >
+                          <Stack spacing={1}>
+                            {episode.coverDataUrl ? (
+                              <Box
+                                component="img"
+                                src={episode.coverDataUrl}
+                                alt={episode.title}
+                                sx={{
+                                  width: "100%",
+                                  height: 120,
+                                  objectFit: "cover",
+                                  borderRadius: 0.5,
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  width: "100%",
+                                  height: 120,
+                                  borderRadius: 0.5,
+                                  bgcolor: "action.hover",
+                                }}
+                              />
+                            )}
+                            <Typography variant="body2" fontWeight={700} noWrap>
+                              {episode.title}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {episode.pageCount} 頁
+                            </Typography>
+                            <Button
+                              size="small"
+                              color="error"
+                              onClick={() =>
+                                handleDeleteImageEpisode(episode.id)
+                              }
+                            >
+                              刪除
+                            </Button>
+                          </Stack>
+                        </Paper>
+                      ))}
+                    </Stack>
                   </Stack>
                 )}
                 {activeTab === "stories" &&
@@ -905,15 +1027,15 @@ export default function StorytellerProjectDetail() {
                       {renderDropEndZone(() => handleDropStory(null, null))}
                     </Stack>
                   </Stack>
-                ) : apiLoresLoading ? (
+                ) : activeTab === "lores" && apiLoresLoading ? (
                   <StorytellerLoading label="正在載入設定集..." />
-                ) : apiLores.length === 0 ? (
+                ) : activeTab === "lores" && apiLores.length === 0 ? (
                   <CustomEmptyState
                     icon={<MenuBookIcon fontSize="large" />}
                     title="尚未建立設定集"
                     description="使用上方的「建立設定集」記錄世界觀、角色規則與劇本設定。"
                   />
-                ) : (
+                ) : activeTab === "lores" ? (
                   apiLores.map((lore) => (
                     <Paper
                       key={lore.public_id}
@@ -950,7 +1072,7 @@ export default function StorytellerProjectDetail() {
                       </Stack>
                     </Paper>
                   ))
-                )}
+                ) : null}
               </Stack>
             </Paper>
           </Grid>
