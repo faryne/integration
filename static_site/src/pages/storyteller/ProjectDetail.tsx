@@ -34,7 +34,9 @@ import {
   useStorytellerStories,
   useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
@@ -69,6 +71,7 @@ export default function StorytellerProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { session, loading, login, submitting } = useAuth();
   const activeTab: "stories" | "lores" = location.pathname.endsWith("/lores")
     ? "lores"
     : "stories";
@@ -283,16 +286,37 @@ export default function StorytellerProjectDetail() {
     },
   );
 
+  const projectShellBreadcrumbs = [
+    { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+    { label: "我的工作台", to: steamloomPath("my") },
+    { label: "故事專案", to: steamloomPath("my/project") },
+  ];
+
+  if (loading) {
+    return (
+      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      </StorytellerShell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
+        <CustomLoginRequiredState
+          description="登入後即可查看這個故事專案。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
+      </StorytellerShell>
+    );
+  }
+
   if (!project && (apiProjectsPending || apiProjectsFetching)) {
     return (
-      <StorytellerShell
-        title="故事專案"
-        breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
-        ]}
-      >
+      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
         <StorytellerLoading label="正在載入專案..." />
       </StorytellerShell>
     );

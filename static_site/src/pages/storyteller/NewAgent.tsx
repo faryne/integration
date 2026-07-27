@@ -23,6 +23,8 @@ import {
   useStorytellerAgents,
   useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -36,6 +38,7 @@ import type { StorytellerAgentRequest } from "@/types/storyteller.ts";
 export default function StorytellerNewAgent() {
   const navigate = useNavigate();
   const { agentId } = useParams();
+  const { session, loading: authLoading, login, submitting } = useAuth();
   const editAgentId = agentId ? Number(agentId) : undefined;
   const isEdit = Number.isFinite(editAgentId);
   const {
@@ -157,6 +160,44 @@ export default function StorytellerNewAgent() {
       : steamloomPath("my/agent/new"),
     robots: "noindex, nofollow",
   });
+
+  const newAgentShellBreadcrumbs = [
+    { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+    { label: "我的工作台", to: steamloomPath("my") },
+    { label: "AI Agent", to: steamloomPath("my/agent") },
+  ];
+
+  if (authLoading) {
+    return (
+      <StorytellerShell
+        title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
+        breadcrumbs={newAgentShellBreadcrumbs}
+      >
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      </StorytellerShell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <StorytellerShell
+        title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
+        breadcrumbs={newAgentShellBreadcrumbs}
+      >
+        <CustomLoginRequiredState
+          description={
+            isEdit
+              ? "登入後即可編輯這個 AI Agent。"
+              : "登入後即可建立 AI Agent。"
+          }
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
+      </StorytellerShell>
+    );
+  }
 
   if (isEdit && !agent && (agentsLoading || agentsFetching)) {
     return (

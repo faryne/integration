@@ -8,6 +8,7 @@ import {
   Paper,
   Stack,
   TextField,
+  Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,6 +25,8 @@ import {
   useStorytellerStories,
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   formatStorytellerDate,
@@ -114,6 +117,7 @@ function errorMessage(error: unknown, fallback: string) {
 export default function StorytellerLoreEditor() {
   const { id, loreId } = useParams();
   const navigate = useNavigate();
+  const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewLore = loreId === "new";
   const currentDraftRef = useRef(serializeLoreDraft("", ""));
   const lastSavedDraftRef = useRef(serializeLoreDraft("", ""));
@@ -522,19 +526,40 @@ export default function StorytellerLoreEditor() {
     robots: "noindex, nofollow",
   });
 
+  const loreShellBreadcrumbs = [
+    { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+    { label: "我的工作台", to: steamloomPath("my") },
+    { label: "故事專案", to: steamloomPath("my/project") },
+  ];
+
+  if (authLoading) {
+    return (
+      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      </StorytellerShell>
+    );
+  }
+
+  if (!session) {
+    return (
+      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
+        <CustomLoginRequiredState
+          description="登入後即可編輯這份設定集。"
+          onLogin={() => void login()}
+          submitting={submitting}
+        />
+      </StorytellerShell>
+    );
+  }
+
   if (
     (!project && (projectsPending || projectsFetching)) ||
     (apiProject && !isNewLore && !lore && (loresPending || loresFetching))
   ) {
     return (
-      <StorytellerShell
-        title="設定集編輯器"
-        breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
-        ]}
-      >
+      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
         <StorytellerLoading label="正在載入設定集..." />
       </StorytellerShell>
     );
