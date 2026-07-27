@@ -130,6 +130,8 @@ export interface StorytellerStoryVolumeRequest {
   title: string;
   // 跟 StorytellerStoryRequest.sort 一樣，每次存檔都要帶目前值，不是只有拖曳排序才送。
   sort: number;
+  // 冊本身的公開／撰寫中狀態。關閉（draft）時，底下所有故事一律不對外顯示。
+  status: "draft" | "completed";
 }
 
 export interface StorytellerStoryVolumeEvent {

@@ -172,7 +172,7 @@ export default function StorytellerProjectDetail() {
       }
       saveVolume.mutate({
         volumePublicId: item.public_id,
-        input: { title: item.title, sort: index },
+        input: { title: item.title, sort: index, status: item.status },
       });
     });
   }
@@ -702,7 +702,47 @@ export default function StorytellerProjectDetail() {
                                 label={`${children.length} 篇`}
                               />
                             </Stack>
-                            <Stack direction="row" spacing={1}>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                            >
+                              <Tooltip
+                                title={
+                                  volume.status === "completed"
+                                    ? "公開中，點一下改為撰寫中（底下故事會一併隱藏）"
+                                    : "撰寫中，底下故事目前一律不對外顯示，點一下改為公開"
+                                }
+                              >
+                                <FormControlLabel
+                                  sx={{ mr: 0 }}
+                                  control={
+                                    <Switch
+                                      size="small"
+                                      color="success"
+                                      checked={volume.status === "completed"}
+                                      disabled={saveVolume.isPending}
+                                      onChange={(event) =>
+                                        saveVolume.mutate({
+                                          volumePublicId: volume.public_id,
+                                          input: {
+                                            title: volume.title,
+                                            sort: volume.sort,
+                                            status: event.target.checked
+                                              ? "completed"
+                                              : "draft",
+                                          },
+                                        })
+                                      }
+                                    />
+                                  }
+                                  label={
+                                    volume.status === "completed"
+                                      ? "公開中"
+                                      : "撰寫中"
+                                  }
+                                />
+                              </Tooltip>
                               <Button
                                 size="small"
                                 variant="outlined"
@@ -899,6 +939,10 @@ export default function StorytellerProjectDetail() {
                   volumeDialogTarget && volumeDialogTarget !== "new"
                     ? volumeDialogTarget.sort
                     : apiVolumes.length,
+                status:
+                  volumeDialogTarget && volumeDialogTarget !== "new"
+                    ? volumeDialogTarget.status
+                    : "completed",
               },
             },
             { onSuccess: () => setVolumeDialogTarget(null) },
