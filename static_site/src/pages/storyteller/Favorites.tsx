@@ -110,7 +110,7 @@ export default function StorytellerFavorites() {
               <CustomEmptyState
                 icon={<FavoriteIcon fontSize="large" />}
                 title="尚未收藏故事"
-                description="在故事閱讀頁按下收藏後，會在此列出故事專案。"
+                description="在故事閱讀頁按下收藏後，會在此列出創作專案。"
               />
             ) : (
               <Grid container spacing={2}>

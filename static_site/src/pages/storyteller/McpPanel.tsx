@@ -93,7 +93,7 @@ export function StorytellerMcpPanel() {
           <Typography variant="h6">什麼是 MCP 連接？</Typography>
           <Typography color="text.secondary">
             透過 MCP（Model Context Protocol），你可以讓 Codex、Grok Builds
-            等外部工具直接讀寫你的故事專案、故事內容與世界觀設定，不需要手動複製貼上。
+            等外部工具直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。
             這個連接只開放故事／設定集的 CRUD，不會碰到你站內設定的 AI Agent 或 API
             Key。
           </Typography>

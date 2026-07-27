@@ -7,6 +7,8 @@ export interface StorytellerProject {
   description: string;
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
+  // 建立後不可變更，前端建立專案時鎖定選擇的類型。
+  content_type: "text" | "image";
   tags: string[];
   share_token: string;
   rating_count: number;
@@ -260,6 +262,8 @@ export interface StorytellerProjectRequest {
   description: string;
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
+  // 只有建立時採用，更新專案時後端一律忽略、維持建立當下的值。
+  content_type: "text" | "image";
   tags: string[];
 }
 

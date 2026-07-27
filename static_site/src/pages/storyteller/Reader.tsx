@@ -1579,9 +1579,9 @@ export default function StorytellerReader() {
 
       {project.rating === "restricted" && !isOwner ? (
         <AgeConfirmationGate
-          description="此故事專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
+          description="此創作專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
           leaveTo={steamloomPath()}
-          panelTitle="限制級故事專案"
+          panelTitle="限制級創作專案"
         >
           <Grid container spacing={2}>
             {showInlineIndex && (

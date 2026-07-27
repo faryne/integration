@@ -1,4 +1,5 @@
 import ArticleIcon from "@mui/icons-material/Article";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
@@ -119,6 +120,7 @@ export default function StorytellerProjectDetail() {
               : "完全不公開",
         storiesCount: apiProject.stories?.length ?? 0,
         updatedAt: apiProject.updated_at,
+        contentType: apiProject.content_type,
       }
     : undefined;
   const { data: apiStories = emptyStories, isLoading: apiStoriesLoading } =
@@ -289,12 +291,12 @@ export default function StorytellerProjectDetail() {
   const projectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "故事專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/project") },
   ];
 
   if (loading) {
     return (
-      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
+      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
         <Stack alignItems="center" sx={{ py: 8 }}>
           <Typography color="text.secondary">正在確認登入狀態...</Typography>
         </Stack>
@@ -304,9 +306,9 @@ export default function StorytellerProjectDetail() {
 
   if (!session) {
     return (
-      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
+      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
         <CustomLoginRequiredState
-          description="登入後即可查看這個故事專案。"
+          description="登入後即可查看這個創作專案。"
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -316,7 +318,7 @@ export default function StorytellerProjectDetail() {
 
   if (!project && (apiProjectsPending || apiProjectsFetching)) {
     return (
-      <StorytellerShell title="故事專案" breadcrumbs={projectShellBreadcrumbs}>
+      <StorytellerShell title="創作專案" breadcrumbs={projectShellBreadcrumbs}>
         <StorytellerLoading label="正在載入專案..." />
       </StorytellerShell>
     );
@@ -486,7 +488,7 @@ export default function StorytellerProjectDetail() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "故事專案", to: steamloomPath("my/project") },
+        { label: "創作專案", to: steamloomPath("my/project") },
         {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
@@ -531,6 +533,20 @@ export default function StorytellerProjectDetail() {
                   前往
                 </MenuItem>
               </Menu>
+              <Chip
+                size="small"
+                variant="outlined"
+                icon={
+                  project.contentType === "image" ? (
+                    <CollectionsIcon />
+                  ) : (
+                    <ArticleIcon />
+                  )
+                }
+                label={
+                  project.contentType === "image" ? "圖片／漫畫" : "文字故事"
+                }
+              />
               <Chip label={project.statusLabel} color="primary" />
               <Chip
                 label={`${orderedStories.length || project.storiesCount} 篇故事`}

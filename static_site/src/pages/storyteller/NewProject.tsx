@@ -1,3 +1,5 @@
+import ArticleIcon from "@mui/icons-material/Article";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
@@ -15,7 +17,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProject,
@@ -32,6 +34,27 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
+
+const contentTypeOptions: {
+  value: StorytellerProjectRequest["content_type"];
+  label: string;
+  description: string;
+  icon: ReactNode;
+}[] = [
+  {
+    value: "text",
+    label: "文字故事",
+    description: "小說、劇本等純文字創作，支援所見即所得編輯器與 AI 共同創作。",
+    icon: <ArticleIcon color="primary" fontSize="large" />,
+  },
+  {
+    value: "image",
+    label: "圖片／漫畫",
+    description:
+      "漫畫、插畫、寫真等圖像創作，逐頁上傳，支援單頁／跨頁閱讀模式。",
+    icon: <CollectionsIcon color="primary" fontSize="large" />,
+  },
+];
 
 function projectNameToSlug(name: string) {
   return name
@@ -90,6 +113,7 @@ export default function StorytellerNewProject() {
     description: "",
     visibility: "private",
     rating: "general",
+    content_type: "text",
     tags: [],
   });
   const [tagInputValue, setTagInputValue] = useState("");
@@ -104,6 +128,7 @@ export default function StorytellerNewProject() {
         description: editingProject.description,
         visibility: editingProject.visibility,
         rating: editingProject.rating,
+        content_type: editingProject.content_type,
         tags: editingProject.tags ?? [],
       });
     }
@@ -125,7 +150,7 @@ export default function StorytellerNewProject() {
   const newProjectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "故事專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/project") },
   ];
 
   if (authLoading) {
@@ -253,7 +278,7 @@ export default function StorytellerNewProject() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "故事專案", to: steamloomPath("my/project") },
+        { label: "創作專案", to: steamloomPath("my/project") },
         ...(editingProject
           ? [
               {
@@ -328,6 +353,55 @@ export default function StorytellerNewProject() {
             </Alert>
           )}
           <Grid container spacing={2}>
+            <Grid size={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                預設顯示類型
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                {contentTypeOptions.map((option) => {
+                  const selected = input.content_type === option.value;
+                  return (
+                    <Paper
+                      key={option.value}
+                      variant="outlined"
+                      onClick={() =>
+                        setInput((value) => ({
+                          ...value,
+                          content_type: option.value,
+                        }))
+                      }
+                      sx={{
+                        flex: 1,
+                        p: 2,
+                        borderRadius: 1,
+                        cursor: "pointer",
+                        borderWidth: selected ? 2 : 1,
+                        borderColor: selected ? "primary.main" : "divider",
+                      }}
+                    >
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        {option.icon}
+                        <Stack sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700}>
+                            {option.label}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {option.description}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: "block" }}
+              >
+                只決定專案首頁預設優先顯示的畫面，隨時可以修改；同一個專案之後可以同時擁有文字故事與圖像作品。
+              </Typography>
+            </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 required

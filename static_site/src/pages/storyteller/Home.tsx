@@ -1,3 +1,5 @@
+import ArticleIcon from "@mui/icons-material/Article";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
@@ -91,6 +93,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     name: project.name,
     description: project.description,
     visibility: project.visibility,
+    contentType: project.content_type,
     storiesCount: project.stories?.length ?? 0,
     rating: project.rating,
     tags: project.tags ?? [],
@@ -119,6 +122,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         description: project.description,
         visibility,
         rating: project.rating,
+        content_type: project.content_type,
         tags: project.tags ?? [],
       },
     });
@@ -134,8 +138,8 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
       {rows.length === 0 ? (
         <CustomEmptyState
           icon={<AutoStoriesIcon fontSize="large" />}
-          title="目前還沒有故事專案"
-          description="可以使用上方的「建立專案」開始建立第一個故事專案。"
+          title="目前還沒有創作專案"
+          description="可以使用上方的「建立專案」開始建立第一個創作專案。"
         />
       ) : (
         <Grid container spacing={2}>
@@ -175,6 +179,22 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                 }
                 chips={
                   <>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      icon={
+                        project.contentType === "image" ? (
+                          <CollectionsIcon />
+                        ) : (
+                          <ArticleIcon />
+                        )
+                      }
+                      label={
+                        project.contentType === "image"
+                          ? "圖片／漫畫"
+                          : "文字故事"
+                      }
+                    />
                     <Chip
                       size="small"
                       color={storytellerProjectRatingColor(project.rating)}
@@ -424,7 +444,7 @@ const tabPath: Record<StorytellerHomeTab, string> = {
 };
 
 const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
-  project: "故事專案",
+  project: "創作專案",
   agent: "AI Agent",
   apikey: "金鑰管理",
   usage: "用量報表",
@@ -476,7 +496,7 @@ export default function StorytellerHome() {
         !projectsLoading &&
         !agentsLoading && (
           <>
-            <Chip size="small" label={`${projects.length} 個故事專案`} />
+            <Chip size="small" label={`${projects.length} 個創作專案`} />
             <Chip size="small" label={`${agents.length} 個 AI Agent`} />
           </>
         )
@@ -499,7 +519,7 @@ export default function StorytellerHome() {
             onChange={(_, value) => handleTabChange(value)}
             sx={steamTabIndicatorSx}
           >
-            <Tab value="project" label="故事專案" />
+            <Tab value="project" label="創作專案" />
             <Tab value="agent" label="AI Agent" />
             <Tab value="apikey" label="金鑰管理" />
             <Tab value="usage" label="用量報表" />
@@ -516,7 +536,7 @@ export default function StorytellerHome() {
                   alignItems={{ xs: "stretch", sm: "center" }}
                 >
                   <Typography variant="h6" fontWeight={800}>
-                    {tab === "project" ? "最近的故事專案" : "可用的 AI Agent"}
+                    {tab === "project" ? "最近的創作專案" : "可用的 AI Agent"}
                   </Typography>
                   {tab === "project" ? (
                     <Button
@@ -538,7 +558,7 @@ export default function StorytellerHome() {
                 </Stack>
               )}
               {tab === "project" && projectsLoading ? (
-                <StorytellerLoading label="正在載入故事專案..." />
+                <StorytellerLoading label="正在載入創作專案..." />
               ) : tab === "project" ? (
                 <ProjectCards projects={projects} />
               ) : tab === "agent" && agentsLoading ? (

@@ -119,7 +119,7 @@ export default function StorytellerLoreDiffCompare() {
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
+          { label: "創作專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -138,7 +138,7 @@ export default function StorytellerLoreDiffCompare() {
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
+          { label: "創作專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -163,7 +163,7 @@ export default function StorytellerLoreDiffCompare() {
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "故事專案", to: steamloomPath("my/project") },
+          { label: "創作專案", to: steamloomPath("my/project") },
           { label: "版本比對" },
         ]}
       >
@@ -183,7 +183,7 @@ export default function StorytellerLoreDiffCompare() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "故事專案", to: steamloomPath("my/project") },
+        { label: "創作專案", to: steamloomPath("my/project") },
         {
           label: apiProject.name,
           to: steamloomPath(`my/project/${apiProject.public_id}`),

@@ -147,7 +147,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             variant="contained"
             startIcon={<AddIcon />}
           >
-            建立故事專案
+            建立創作專案
           </Button>
           <Button
             component={RouterLink}
@@ -207,7 +207,7 @@ export default function StorytellerPublicHome() {
       ) : publicProjects.length === 0 ? (
         <CustomEmptyState
           icon={<LockOpenIcon fontSize="large" />}
-          title="目前還沒有公開故事專案"
+          title="目前還沒有公開創作專案"
           description={`公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
         />
       ) : (

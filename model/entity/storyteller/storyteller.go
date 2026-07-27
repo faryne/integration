@@ -23,6 +23,16 @@ const (
 	ProjectRatingRestricted ProjectRating = "restricted"
 )
 
+// ProjectContentType 只是專案預設顯示 layout 的偏好，可隨時修改；不限制專案底下
+// 的故事／冊只能是單一類型，同一個專案未來可以同時有文字故事與圖像作品（詳見
+// DevelopDocuments/storyteller/漫畫插圖閱讀器.md）。
+type ProjectContentType string
+
+const (
+	ProjectContentTypeText  ProjectContentType = "text"
+	ProjectContentTypeImage ProjectContentType = "image"
+)
+
 type SNSType string
 
 const (
@@ -133,19 +143,20 @@ const (
 )
 
 type Project struct {
-	ID          uint64            `gorm:"column:id;primaryKey" json:"id"`
-	PublicID    string            `gorm:"column:public_id" json:"public_id"`
-	UserID      uint64            `gorm:"column:user_id" json:"user_id"`
-	Name        string            `gorm:"column:name" json:"name"`
-	Slug        string            `gorm:"column:slug" json:"slug"`
-	Description string            `gorm:"column:description" json:"description"`
-	Visibility  ProjectVisibility `gorm:"column:visibility" json:"visibility"`
-	Rating      ProjectRating     `gorm:"column:rating" json:"rating"`
-	Tags        string            `gorm:"column:tags" json:"-"`
-	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
-	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt   time.Time         `gorm:"column:updated_at" json:"updated_at"`
+	ID          uint64             `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string             `gorm:"column:public_id" json:"public_id"`
+	UserID      uint64             `gorm:"column:user_id" json:"user_id"`
+	Name        string             `gorm:"column:name" json:"name"`
+	Slug        string             `gorm:"column:slug" json:"slug"`
+	Description string             `gorm:"column:description" json:"description"`
+	Visibility  ProjectVisibility  `gorm:"column:visibility" json:"visibility"`
+	Rating      ProjectRating      `gorm:"column:rating" json:"rating"`
+	ContentType ProjectContentType `gorm:"column:content_type" json:"content_type"`
+	Tags        string             `gorm:"column:tags" json:"-"`
+	ShareToken  string             `gorm:"column:share_token" json:"share_token"`
+	DeletedAt   *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt   time.Time          `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time          `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
@@ -508,12 +519,13 @@ type PersonalAccessTokenCreateOutput struct {
 }
 
 type ProjectRequest struct {
-	Name        string            `json:"name"`
-	Slug        string            `json:"slug"`
-	Description string            `json:"description"`
-	Visibility  ProjectVisibility `json:"visibility"`
-	Rating      ProjectRating     `json:"rating"`
-	Tags        []string          `json:"tags"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description string             `json:"description"`
+	Visibility  ProjectVisibility  `json:"visibility"`
+	Rating      ProjectRating      `json:"rating"`
+	ContentType ProjectContentType `json:"content_type"`
+	Tags        []string           `json:"tags"`
 }
 
 type AgentRequest struct {

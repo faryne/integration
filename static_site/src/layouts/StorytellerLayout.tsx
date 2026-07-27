@@ -204,13 +204,13 @@ export function StorytellerLayout() {
                     display: { xs: "none", sm: "inline-flex" },
                   }}
                 >
-                  建立故事專案
+                  建立創作專案
                 </Button>
                 <IconButton
                   component={RouterLink}
                   to={steamloomPath("my/project/new")}
                   color="primary"
-                  aria-label="建立故事專案"
+                  aria-label="建立創作專案"
                   sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
                 >
                   <AddIcon />
