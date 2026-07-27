@@ -407,8 +407,8 @@ export default function StorytellerProjectDetail() {
           <Tooltip
             title={
               story.status === "completed"
-                ? "公開中，點一下改為撰寫中"
-                : "撰寫中，點一下改為公開"
+                ? "公開中，點一下改為未公開"
+                : "未公開，點一下改為公開中"
             }
           >
             <FormControlLabel
@@ -433,7 +433,7 @@ export default function StorytellerProjectDetail() {
                   }
                 />
               }
-              label={story.status === "completed" ? "公開中" : "撰寫中"}
+              label={story.status === "completed" ? "公開中" : "未公開"}
             />
           </Tooltip>
           <Button
@@ -673,6 +673,14 @@ export default function StorytellerProjectDetail() {
                         </Typography>
                       </Stack>
                     )}
+                    {apiVolumes.length > 0 &&
+                      renderDropEndZone(() => {
+                        if (draggingVolumeId) {
+                          handleDropVolume(
+                            orderedVolumes[0]?.public_id ?? null,
+                          );
+                        }
+                      })}
                     {orderedVolumes.map((volume) => {
                       const children = sortedGroup(orderedStories, volume.id);
                       return (
@@ -734,8 +742,8 @@ export default function StorytellerProjectDetail() {
                               <Tooltip
                                 title={
                                   volume.status === "completed"
-                                    ? "公開中，點一下改為撰寫中（底下故事會一併隱藏）"
-                                    : "撰寫中，底下故事目前一律不對外顯示，點一下改為公開"
+                                    ? "公開中，點一下改為未公開（底下故事會一併隱藏）"
+                                    : "未公開，底下故事目前一律不對外顯示，點一下改為公開中"
                                 }
                               >
                                 <FormControlLabel
@@ -763,7 +771,7 @@ export default function StorytellerProjectDetail() {
                                   label={
                                     volume.status === "completed"
                                       ? "公開中"
-                                      : "撰寫中"
+                                      : "未公開"
                                   }
                                 />
                               </Tooltip>
@@ -800,6 +808,17 @@ export default function StorytellerProjectDetail() {
                             </Stack>
                           </Stack>
                           <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                            {children.length > 0 &&
+                              renderDropEndZone(() => {
+                                if (draggingVolumeId) {
+                                  handleDropVolume(volume.public_id);
+                                } else {
+                                  handleDropStory(
+                                    volume.id,
+                                    children[0]?.public_id ?? null,
+                                  );
+                                }
+                              })}
                             {children.length === 0 ? (
                               <Typography
                                 variant="body2"
@@ -842,19 +861,31 @@ export default function StorytellerProjectDetail() {
                       onDrop={() => handleDropStory(null, null)}
                       sx={{ minHeight: 8 }}
                     >
-                      {sortedGroup(orderedStories, null).length === 0 &&
-                        apiVolumes.length > 0 && (
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ fontStyle: "italic" }}
-                          >
-                            未分冊故事會顯示在這裡，可拖曳到上方的冊中。
-                          </Typography>
-                        )}
-                      {sortedGroup(orderedStories, null).map((story) =>
-                        renderStoryRow(story),
-                      )}
+                      {(() => {
+                        const ungrouped = sortedGroup(orderedStories, null);
+                        return (
+                          <>
+                            {ungrouped.length === 0 &&
+                              apiVolumes.length > 0 && (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{ fontStyle: "italic" }}
+                                >
+                                  未分冊故事會顯示在這裡，可拖曳到上方的冊中。
+                                </Typography>
+                              )}
+                            {ungrouped.length > 0 &&
+                              renderDropEndZone(() =>
+                                handleDropStory(
+                                  null,
+                                  ungrouped[0]?.public_id ?? null,
+                                ),
+                              )}
+                            {ungrouped.map((story) => renderStoryRow(story))}
+                          </>
+                        );
+                      })()}
                       {renderDropEndZone(() => handleDropStory(null, null))}
                     </Stack>
                   </Stack>
