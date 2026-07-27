@@ -587,7 +587,7 @@ type StoryVolumeRequest struct {
 	// Sort 用來排彼此之間的順序，跟 StoryRequest.Sort 一樣是每次存檔都要帶目前值，
 	// 不是只有拖曳排序時才送——重新命名時如果沒帶，會把 sort 洗成 0。
 	Sort int `json:"sort"`
-	// Status 是冊本身的公開／撰寫中狀態。冊關閉（draft）時，底下所有故事一律不對外顯示，
+	// Status 是冊本身的公開／未公開狀態。冊關閉（draft）時，底下所有故事一律不對外顯示，
 	// 不管故事自己的 status 是什麼——見 Repository.PublishedStories 的 join 邏輯。
 	Status StoryStatus `json:"status"`
 }
