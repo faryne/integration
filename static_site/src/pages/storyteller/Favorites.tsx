@@ -31,6 +31,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
+  storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -39,6 +40,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { AuthorBio } from "@/pages/storyteller/UserProjects.tsx";
 import type {
   StorytellerFavoriteAuthor,
@@ -190,7 +192,11 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
       actions={
         <Button
           component={RouterLink}
-          to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
+          to={storytellerReaderPath(
+            project,
+            storyCount,
+            listImageEpisodes(project.public_id).length,
+          )}
           variant="contained"
         >
           開始閱讀

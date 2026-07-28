@@ -25,7 +25,10 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import {
+  STORYTELLER_APP_NAME,
+  storytellerReaderPath,
+} from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -33,6 +36,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
 
 const contentTypeOptions: {
@@ -257,16 +261,21 @@ export default function StorytellerNewProject() {
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
-      urlPreview = `${origin}${steamloomPath(`story/${editingProject.public_id}-${input.slug.trim()}`)}`;
+      const readerPath = storytellerReaderPath(
+        { ...editingProject, slug: input.slug.trim() },
+        editingProject.stories?.length ?? 0,
+        listImageEpisodes(editingProject.public_id).length,
+      );
+      urlPreview = `${origin}${readerPath}`;
     } else if (input.visibility === "unlisted") {
       urlPreview =
         editingProject.visibility === "unlisted" && editingProject.share_token
-          ? `${origin}${steamloomPath(`story/share/${editingProject.share_token}`)}`
+          ? `${origin}${steamloomPath(`work/share/${editingProject.share_token}`)}`
           : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`story/（系統代碼）-${projectNameToSlug(input.name)}`)}`;
+      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}/stories`)}`;
     } else if (input.visibility === "unlisted") {
       urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
     }

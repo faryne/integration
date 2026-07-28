@@ -45,6 +45,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
+  storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import {
   steamPanelTopBarSx,
@@ -483,14 +484,18 @@ export default function StorytellerProjectDetail() {
     );
   }
 
-  // content_type 只是「預設優先顯示哪個畫面」的偏好：專案是圖像類型時，工作台
-  // 這顆主要連結帶讀者進圖像作品目次頁，而不是通常沒有故事可選的文字故事索引。
   const readerUrl =
     project.visibility === "unlisted" && project.shareToken
-      ? steamloomPath(`story/share/${project.shareToken}`)
-      : project.contentType === "image"
-        ? steamloomPath(`story/${project.id}-${project.slug}/images`)
-        : steamloomPath(`story/${project.id}-${project.slug}`);
+      ? steamloomPath(`work/share/${project.shareToken}`)
+      : storytellerReaderPath(
+          {
+            public_id: project.id,
+            slug: project.slug,
+            content_type: project.contentType,
+          },
+          apiStories.length,
+          imageEpisodes.length,
+        );
   const readerUrlLabel =
     project.visibility === "unlisted" ? "親友分享連結" : "作品頁連結";
   const absoluteReaderUrl =
@@ -784,7 +789,7 @@ export default function StorytellerProjectDetail() {
                               size="small"
                               variant="outlined"
                               href={steamloomPath(
-                                `story/${project.id}-${project.slug}/image/${episode.id}`,
+                                `work/${project.id}-${project.slug}/image/${episode.id}`,
                               )}
                             >
                               閱讀（Mockup）

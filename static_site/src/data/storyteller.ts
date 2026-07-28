@@ -240,6 +240,37 @@ export function publicProjectPath(project: StorytellerProject) {
   return steamloomPath(`story/${project.publicId}-${project.slug}`);
 }
 
+// content_type 只是「預設優先顯示哪個畫面」的偏好，不是內容類型鎖：偏好的那邊剛好
+// 沒內容（例如專案設成圖像但其實先寫了一堆文字故事）時，要 fallback 到真的有內容的
+// 一邊，不然讀者點進去只會看到空畫面。work/{project}/stories 與 .../images 是各自
+// 獨立、明確的路由，這裡決定要連去哪一個。
+export function storytellerReaderFamily(
+  contentType: "text" | "image",
+  storiesCount: number,
+  imageEpisodesCount: number,
+): "stories" | "images" {
+  const preferred = contentType === "image" ? "images" : "stories";
+  const hasStories = storiesCount > 0;
+  const hasImages = imageEpisodesCount > 0;
+  if (preferred === "images") {
+    return hasImages ? "images" : hasStories ? "stories" : "images";
+  }
+  return hasStories ? "stories" : hasImages ? "images" : "stories";
+}
+
+export function storytellerReaderPath(
+  project: { public_id: string; slug: string; content_type: "text" | "image" },
+  storiesCount: number,
+  imageEpisodesCount: number,
+) {
+  const family = storytellerReaderFamily(
+    project.content_type,
+    storiesCount,
+    imageEpisodesCount,
+  );
+  return steamloomPath(`work/${project.public_id}-${project.slug}/${family}`);
+}
+
 export function getPublicProjects() {
   return storytellerProjects.filter(
     (project) => project.visibility === "public",
@@ -296,7 +327,9 @@ export function storytellerProjectRatingColor(
 // 對應後端 story/lore version 的 source 欄位：web_auto／web_manual 是網頁編輯頁
 // 自己存的，"mcp:<token label>" 是外部工具透過 MCP 用哪把 Personal Access Token 寫入的。
 // source 可能因為資料庫還沒跑過補欄位的 migration、或本來就是舊資料而缺值，一律當手動存檔。
-export function storytellerVersionSourceLabel(source: string | null | undefined) {
+export function storytellerVersionSourceLabel(
+  source: string | null | undefined,
+) {
   if (!source) {
     return "手動存檔";
   }

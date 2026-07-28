@@ -9,8 +9,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import GridViewIcon from "@mui/icons-material/GridView";
 import HistoryIcon from "@mui/icons-material/History";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
+import ViewListIcon from "@mui/icons-material/ViewList";
 import {
   Box,
   Button,
@@ -44,9 +46,17 @@ import {
   type FootnoteNumbering,
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
-import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
+import {
+  listImageEpisodes,
+  type StorytellerImageEpisodeMock,
+} from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
@@ -248,7 +258,7 @@ function StoryIndex({
                   <Button
                     key={story.id}
                     component={RouterLink}
-                    to={`${basePath}/${story.id}`}
+                    to={`${basePath}/story/${story.id}`}
                     variant={currentStoryId === story.id ? "contained" : "text"}
                     sx={{ justifyContent: "flex-start", textAlign: "left" }}
                     onClick={onNavigate}
@@ -279,7 +289,7 @@ function StoryIndex({
             <Button
               key={story.id}
               component={RouterLink}
-              to={`${basePath}/${story.id}`}
+              to={`${basePath}/story/${story.id}`}
               variant={currentStoryId === story.id ? "contained" : "text"}
               sx={{ justifyContent: "flex-start", textAlign: "left" }}
               onClick={onNavigate}
@@ -482,6 +492,183 @@ function StoryIndexPanel({
   );
 }
 
+function ImageIndexPanel({
+  episodes,
+  currentEpisodeId,
+  basePath,
+  tocView,
+  onTocViewChange,
+  onNavigate,
+}: {
+  episodes: StorytellerImageEpisodeMock[];
+  currentEpisodeId?: string;
+  basePath: string;
+  tocView: "title" | "thumbnail";
+  onTocViewChange: (view: "title" | "thumbnail") => void;
+  onNavigate?: () => void;
+}) {
+  return (
+    <Stack spacing={2}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between">
+        <Stack direction="row" spacing={1} alignItems="center">
+          <CollectionsIcon color="primary" />
+          <Typography variant="h6" fontWeight={800}>
+            圖像目次
+          </Typography>
+        </Stack>
+        <Stack direction="row">
+          <Tooltip title="標題列表">
+            <IconButton
+              size="small"
+              color={tocView === "title" ? "primary" : "default"}
+              onClick={() => onTocViewChange("title")}
+            >
+              <ViewListIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="縮圖">
+            <IconButton
+              size="small"
+              color={tocView === "thumbnail" ? "primary" : "default"}
+              onClick={() => onTocViewChange("thumbnail")}
+            >
+              <GridViewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+      <Divider />
+      {episodes.length === 0 ? (
+        <Typography variant="body2" color="text.secondary">
+          這個專案還沒有圖像作品。
+        </Typography>
+      ) : tocView === "thumbnail" ? (
+        <Grid container spacing={1}>
+          {episodes.map((episode) => (
+            <Grid key={episode.id} size={6}>
+              <ButtonBase
+                component={RouterLink}
+                to={`${basePath}/image/${episode.id}`}
+                onClick={onNavigate}
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  width: 1,
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  border: "2px solid",
+                  borderColor:
+                    currentEpisodeId === episode.id
+                      ? "primary.main"
+                      : "divider",
+                }}
+              >
+                {episode.pageDataUrls[0] ? (
+                  <Box
+                    component="img"
+                    src={episode.pageDataUrls[0]}
+                    alt={episode.title}
+                    sx={{ width: 1, height: 96, objectFit: "cover" }}
+                  />
+                ) : (
+                  <Box sx={{ width: 1, height: 96, bgcolor: "action.hover" }} />
+                )}
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{ px: 0.5, py: 0.5, width: 1, textAlign: "left" }}
+                >
+                  {episode.title}
+                </Typography>
+              </ButtonBase>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Stack spacing={0.5}>
+          {episodes.map((episode) => (
+            <Button
+              key={episode.id}
+              component={RouterLink}
+              to={`${basePath}/image/${episode.id}`}
+              variant={currentEpisodeId === episode.id ? "contained" : "text"}
+              sx={{ justifyContent: "flex-start", textAlign: "left" }}
+              onClick={onNavigate}
+            >
+              {episode.title}
+            </Button>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+function ReaderIndexPanel({
+  activeTab,
+  stories,
+  volumes,
+  currentStoryId,
+  imageEpisodes,
+  currentEpisodeId,
+  tocView,
+  onTocViewChange,
+  basePath,
+  onNavigate,
+  bookmarks,
+  bookmarksEnabled,
+  bookmarksLoading,
+  onJumpToBookmark,
+  headings,
+  activeHeadingLine,
+  onJumpToHeading,
+}: {
+  activeTab: "story" | "image";
+  stories: ReaderStory[];
+  volumes: ReaderVolume[];
+  currentStoryId?: string;
+  imageEpisodes: StorytellerImageEpisodeMock[];
+  currentEpisodeId?: string;
+  tocView: "title" | "thumbnail";
+  onTocViewChange: (view: "title" | "thumbnail") => void;
+  basePath: string;
+  onNavigate?: () => void;
+  bookmarks: StorytellerStoryBookmarkWithStory[];
+  bookmarksEnabled: boolean;
+  bookmarksLoading: boolean;
+  onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
+  headings: StoryHeading[];
+  activeHeadingLine?: number;
+  onJumpToHeading: (heading: StoryHeading) => void;
+}) {
+  return activeTab === "story" ? (
+    <StoryIndexPanel
+      stories={stories}
+      volumes={volumes}
+      currentStoryId={currentStoryId}
+      basePath={basePath}
+      onNavigate={onNavigate}
+      bookmarks={bookmarks}
+      bookmarksEnabled={bookmarksEnabled}
+      bookmarksLoading={bookmarksLoading}
+      onJumpToBookmark={onJumpToBookmark}
+      headings={headings}
+      activeHeadingLine={activeHeadingLine}
+      onJumpToHeading={onJumpToHeading}
+    />
+  ) : (
+    <ImageIndexPanel
+      episodes={imageEpisodes}
+      currentEpisodeId={currentEpisodeId}
+      basePath={basePath}
+      tocView={tocView}
+      onTocViewChange={onTocViewChange}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
 function ChapterNavCard({
   label,
   title,
@@ -662,23 +849,25 @@ function StoryContentLines({
   );
 }
 
-export default function StorytellerReader() {
+export default function StorytellerReader({
+  forcedTab,
+}: {
+  // 每條路由都是具名、不重疊的（.../stories、.../story/:storyId、.../images、
+  // .../image/:episodeId），不需要再靠網址片段猜要顯示哪個 tab，註冊路由時直接指定。
+  forcedTab: "story" | "image";
+}) {
   const { session, loading: authLoading } = useAuth();
   const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { shareToken } = params;
-  const routeStoryPath = params["*"];
-  const routeStoryParts = routeStoryPath?.split("/").filter(Boolean) ?? [];
-  const routeStoryId =
-    params.storyId ??
-    (routeStoryParts.length > 1
-      ? routeStoryParts[routeStoryParts.length - 1]
-      : undefined);
-  const routeProjectPath = routeStoryPath
-    ? routeStoryParts.slice(0, routeStoryId ? -1 : undefined).join("/")
-    : params.projectPath;
+  const routeEpisodeId = params.episodeId;
+  const routeStoryId = params.storyId;
+  const routeProjectPath = params.projectPath;
+  const activeTab = forcedTab;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [indexOpen, setIndexOpen] = useState(true);
+  const [pageIndex, setPageIndex] = useState(0);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
@@ -769,7 +958,7 @@ export default function StorytellerReader() {
         id: apiProject.public_id,
         name: apiProject.name,
         description: apiProject.description,
-        path: steamloomPath(`story/${apiProject.public_id}-${apiProject.slug}`),
+        path: steamloomPath(`work/${apiProject.public_id}-${apiProject.slug}`),
         authorUserId: apiProject.user_id,
         authorPenName: apiProject.author?.pen_name,
         rating: apiProject.rating,
@@ -798,10 +987,14 @@ export default function StorytellerReader() {
   const stories = project?.stories ?? [];
   const volumes = project?.volumes ?? [];
   const imageEpisodes = listImageEpisodes(project?.id);
+  const tocView: "title" | "thumbnail" =
+    searchParams.get("tocView") === "thumbnail" ? "thumbnail" : "title";
   const currentStoryId = routeStoryId;
   const currentStory = currentStoryId
     ? stories.find((story) => story.id === currentStoryId)
-    : (stories.find((story) => story.sort === 0) ?? stories[0]);
+    : activeTab === "story"
+      ? (stories.find((story) => story.sort === 0) ?? stories[0])
+      : undefined;
   const currentStoryIndex = currentStory
     ? stories.findIndex((story) => story.id === currentStory.id)
     : -1;
@@ -811,6 +1004,23 @@ export default function StorytellerReader() {
     currentStoryIndex >= 0 && currentStoryIndex < stories.length - 1
       ? stories[currentStoryIndex + 1]
       : undefined;
+  const currentEpisode = routeEpisodeId
+    ? imageEpisodes.find((episode) => episode.id === routeEpisodeId)
+    : activeTab === "image"
+      ? imageEpisodes[0]
+      : undefined;
+  const currentEpisodeIndex = currentEpisode
+    ? imageEpisodes.findIndex((episode) => episode.id === currentEpisode.id)
+    : -1;
+  const previousEpisode =
+    currentEpisodeIndex > 0
+      ? imageEpisodes[currentEpisodeIndex - 1]
+      : undefined;
+  const nextEpisode =
+    currentEpisodeIndex >= 0 && currentEpisodeIndex < imageEpisodes.length - 1
+      ? imageEpisodes[currentEpisodeIndex + 1]
+      : undefined;
+  const totalEpisodePages = currentEpisode?.pageDataUrls.length ?? 0;
   const latestVersionQuery = usePublicStorytellerStoryLatestVersion(
     apiProject?.public_id,
     currentStory?.id,
@@ -904,6 +1114,9 @@ export default function StorytellerReader() {
   );
   const projectBookmarks = projectBookmarksQuery.data ?? [];
   useEffect(() => {
+    setPageIndex(0);
+  }, [currentEpisode?.id]);
+  useEffect(() => {
     if (!pendingScroll) {
       return;
     }
@@ -984,6 +1197,20 @@ export default function StorytellerReader() {
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
   const shouldUseStorySeo = Boolean(project && !isPrivateOwnerRoute);
 
+  // 分享連結沒有圖像家族、也沒有明確的 /stories 區段（維持原本簡單的
+  // work/share/:token[/:storyId] 形狀），只有一般閱讀連結才會用到 stories/images/story
+  // 這幾個明確區段。
+  const canonicalPathSuffix = routeEpisodeId
+    ? `/image/${routeEpisodeId}`
+    : currentStoryId
+      ? isShareRoute
+        ? `/${currentStoryId}`
+        : `/story/${currentStoryId}`
+      : isShareRoute
+        ? ""
+        : activeTab === "image"
+          ? "/images"
+          : "/stories";
   useTitle(
     project
       ? `${project.name} - ${STORYTELLER_APP_NAME}`
@@ -991,13 +1218,9 @@ export default function StorytellerReader() {
     {
       description: shouldUseStorySeo ? project?.description : undefined,
       path: routeProjectPath
-        ? steamloomPath(
-            `story/${routeProjectPath}${currentStoryId ? `/${currentStoryId}` : ""}`,
-          )
+        ? steamloomPath(`work/${routeProjectPath}${canonicalPathSuffix}`)
         : shareToken
-          ? steamloomPath(
-              `story/share/${shareToken}${currentStoryId ? `/${currentStoryId}` : ""}`,
-            )
+          ? steamloomPath(`work/share/${shareToken}${canonicalPathSuffix}`)
           : "",
       robots:
         isShareRoute || isPrivateOwnerRoute
@@ -1061,8 +1284,26 @@ export default function StorytellerReader() {
   }
 
   const basePath = isShareRoute
-    ? steamloomPath(`story/share/${shareToken}`)
+    ? steamloomPath(`work/share/${shareToken}`)
     : project.path;
+  // 點外層故事/圖像 tab 直接導去對應家族的路由（.../stories 或 .../images），
+  // 讓該路由自己的 forcedTab 決定要顯示哪個 tab 的第一篇內容；分享連結沒有圖像家族，
+  // 一律導回故事列表。
+  function handleTabChange(tab: "story" | "image") {
+    if (isShareRoute) {
+      navigate(steamloomPath(`work/share/${shareToken}`));
+      return;
+    }
+    navigate(`${basePath}/${tab === "image" ? "images" : "stories"}`);
+  }
+  function handleTocViewChange(view: "title" | "thumbnail") {
+    const next = new URLSearchParams(searchParams);
+    next.set("tocView", view);
+    setSearchParams(next);
+  }
+  function goToImagePage(index: number) {
+    setPageIndex(Math.min(Math.max(index, 0), totalEpisodePages - 1));
+  }
   const handleJumpToBookmark = (
     bookmark: StorytellerStoryBookmarkWithStory,
   ) => {
@@ -1071,7 +1312,7 @@ export default function StorytellerReader() {
     setHistoricalVersionId(isStale ? bookmark.story_version_id : undefined);
     setPendingScroll({ lineIndex: bookmark.line_index, block: "center" });
     if (bookmark.story_public_id !== currentStory?.id) {
-      navigate(`${basePath}/${bookmark.story_public_id}`);
+      navigate(`${basePath}/story/${bookmark.story_public_id}`);
     }
   };
   // 標題有自己的錨點 id（見 storyHeadingAnchorId），跟書籤不同，不用透過 pendingScroll
@@ -1167,7 +1408,183 @@ export default function StorytellerReader() {
         ...steamLedgerEdgeSx,
       }}
     >
-      {currentStory ? (
+      {activeTab === "image" ? (
+        currentEpisode ? (
+          <Stack spacing={2}>
+            <Box>
+              <Typography component="h1" variant="h4" fontWeight={800}>
+                {currentEpisode.title}
+              </Typography>
+              {currentEpisode.summary && (
+                <Typography color="text.secondary" sx={{ mt: 1 }}>
+                  {currentEpisode.summary}
+                </Typography>
+              )}
+              <StorytellerTagChips tags={currentEpisode.tags} sx={{ mt: 1 }} />
+            </Box>
+            <Divider />
+            <Stack spacing={1.5}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Chip
+                  size="small"
+                  label="圖像閱讀 Mockup"
+                  color="warning"
+                  variant="outlined"
+                />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontFamily: "monospace" }}
+                >
+                  {String(pageIndex + 1).padStart(3, "0")} /{" "}
+                  {String(totalEpisodePages).padStart(3, "0")}
+                </Typography>
+              </Stack>
+              <Box
+                sx={{
+                  position: "relative",
+                  bgcolor: "background.default",
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={currentEpisode.pageDataUrls[pageIndex]}
+                  alt={`第 ${pageIndex + 1} 頁`}
+                  sx={{
+                    maxWidth: "100%",
+                    maxHeight: "70vh",
+                    display: "block",
+                  }}
+                />
+                <Box
+                  onClick={() => goToImagePage(pageIndex - 1)}
+                  sx={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "50%",
+                    cursor: pageIndex > 0 ? "pointer" : "default",
+                  }}
+                />
+                <Box
+                  onClick={() => goToImagePage(pageIndex + 1)}
+                  sx={{
+                    position: "absolute",
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "50%",
+                    cursor:
+                      pageIndex < totalEpisodePages - 1 ? "pointer" : "default",
+                  }}
+                />
+              </Box>
+              <Stack direction="row" justifyContent="space-between">
+                <IconButton
+                  disabled={pageIndex === 0}
+                  onClick={() => goToImagePage(pageIndex - 1)}
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+                <IconButton
+                  disabled={pageIndex >= totalEpisodePages - 1}
+                  onClick={() => goToImagePage(pageIndex + 1)}
+                >
+                  <ArrowForwardIcon />
+                </IconButton>
+              </Stack>
+              <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+                {currentEpisode.pageDataUrls.map((url, index) => (
+                  <Box
+                    key={index}
+                    component="img"
+                    src={url}
+                    alt={`縮圖 ${index + 1}`}
+                    onClick={() => goToImagePage(index)}
+                    sx={{
+                      width: 56,
+                      height: 76,
+                      objectFit: "cover",
+                      borderRadius: 0.5,
+                      cursor: "pointer",
+                      border: "2px solid",
+                      borderColor:
+                        index === pageIndex ? "primary.main" : "transparent",
+                    }}
+                  />
+                ))}
+              </Stack>
+            </Stack>
+            <Divider />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "minmax(0, 1fr)",
+                  md: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 1.5,
+                minWidth: 0,
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <ChapterNavCard
+                  label="上一話"
+                  title={previousEpisode?.title ?? "沒有上一話"}
+                  to={
+                    previousEpisode
+                      ? `${basePath}/image/${previousEpisode.id}`
+                      : undefined
+                  }
+                  disabled={!previousEpisode}
+                  align="left"
+                />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <ChapterNavCard
+                  label="本話"
+                  title={currentEpisode.title}
+                  align="center"
+                  disabled
+                />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <ChapterNavCard
+                  label="下一話"
+                  title={nextEpisode?.title ?? "沒有下一話"}
+                  to={
+                    nextEpisode
+                      ? `${basePath}/image/${nextEpisode.id}`
+                      : undefined
+                  }
+                  disabled={!nextEpisode}
+                  align="right"
+                />
+              </Box>
+            </Box>
+          </Stack>
+        ) : (
+          <Stack spacing={2}>
+            <Typography component="h1" variant="h4" fontWeight={800}>
+              {project.name}
+            </Typography>
+            <Typography color="text.secondary">
+              {project.description}
+            </Typography>
+            <Divider />
+            <Typography>這個專案還沒有圖像作品。</Typography>
+          </Stack>
+        )
+      ) : currentStory ? (
         <Stack spacing={2}>
           <Box>
             <Stack
@@ -1232,7 +1649,7 @@ export default function StorytellerReader() {
                           ? {}
                           : {
                               component: RouterLink,
-                              to: `${basePath}/${currentStory.id}/versions/${version.id}`,
+                              to: `${basePath}/story/${currentStory.id}/versions/${version.id}`,
                             })}
                         onClick={() => setVersionListOpen(false)}
                         sx={{
@@ -1364,7 +1781,9 @@ export default function StorytellerReader() {
                 label="上一章"
                 title={previousStory?.title ?? "沒有上一章"}
                 to={
-                  previousStory ? `${basePath}/${previousStory.id}` : undefined
+                  previousStory
+                    ? `${basePath}/story/${previousStory.id}`
+                    : undefined
                 }
                 disabled={!previousStory}
                 align="left"
@@ -1382,7 +1801,7 @@ export default function StorytellerReader() {
               <ChapterNavCard
                 label="下一章"
                 title={nextStory?.title ?? "沒有下一章"}
-                to={nextStory ? `${basePath}/${nextStory.id}` : undefined}
+                to={nextStory ? `${basePath}/story/${nextStory.id}` : undefined}
                 disabled={!nextStory}
                 align="right"
               />
@@ -1448,12 +1867,9 @@ export default function StorytellerReader() {
           />
           {imageEpisodes.length > 0 && (
             <Chip
-              label={`圖像作品 ${imageEpisodes.length} 話（Mockup）`}
+              label={`${imageEpisodes.length} 話`}
               variant="outlined"
               icon={<CollectionsIcon fontSize="small" />}
-              component={RouterLink}
-              to={`${basePath}/images`}
-              clickable
             />
           )}
           <Box sx={{ flexBasis: "100%" }}>
@@ -1471,16 +1887,21 @@ export default function StorytellerReader() {
           <Box sx={{ width: 320, maxWidth: "86vw", p: 2 }}>
             <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
               <IconButton
-                aria-label="關閉故事索引"
+                aria-label="關閉索引"
                 onClick={() => setMobileIndexOpen(false)}
               >
                 <CloseIcon />
               </IconButton>
             </Stack>
-            <StoryIndexPanel
+            <ReaderIndexPanel
+              activeTab={activeTab}
               stories={stories}
               volumes={volumes}
               currentStoryId={currentStory?.id}
+              imageEpisodes={imageEpisodes}
+              currentEpisodeId={currentEpisode?.id}
+              tocView={tocView}
+              onTocViewChange={handleTocViewChange}
               basePath={basePath}
               onNavigate={() => setMobileIndexOpen(false)}
               bookmarks={projectBookmarks}
@@ -1502,20 +1923,46 @@ export default function StorytellerReader() {
         justifyContent="space-between"
         sx={{ mb: 2 }}
       >
-        <Button
-          variant="outlined"
-          startIcon={<MenuBookIcon />}
-          onClick={() =>
-            isMobile ? setMobileIndexOpen(true) : setIndexOpen((open) => !open)
-          }
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          alignItems="center"
         >
-          {isMobile
-            ? "開啟故事索引"
-            : indexOpen
-              ? "收起故事索引"
-              : "展開故事索引"}
-        </Button>
-        {currentStory && (
+          <Button
+            variant="outlined"
+            startIcon={<MenuBookIcon />}
+            onClick={() =>
+              isMobile
+                ? setMobileIndexOpen(true)
+                : setIndexOpen((open) => !open)
+            }
+          >
+            {isMobile ? "開啟索引" : indexOpen ? "收起索引" : "展開索引"}
+          </Button>
+          {!isShareRoute && (
+            <Stack direction="row" spacing={0.5}>
+              <Button
+                size="small"
+                variant={activeTab === "story" ? "contained" : "outlined"}
+                startIcon={<AutoStoriesIcon fontSize="small" />}
+                onClick={() => handleTabChange("story")}
+              >
+                故事
+              </Button>
+              <Button
+                size="small"
+                variant={activeTab === "image" ? "contained" : "outlined"}
+                startIcon={<CollectionsIcon fontSize="small" />}
+                onClick={() => handleTabChange("image")}
+              >
+                圖像
+              </Button>
+            </Stack>
+          )}
+        </Stack>
+        {(currentStory || currentEpisode) && (
           <Stack
             direction="row"
             spacing={1}
@@ -1541,8 +1988,8 @@ export default function StorytellerReader() {
         }
       />
 
-      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開故事索引，收藏與評分快速選單原作也看得到（顯示但 disabled） */}
-      {currentStory && (
+      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開索引，收藏與評分快速選單原作也看得到（顯示但 disabled） */}
+      {(currentStory || currentEpisode) && (
         <>
           <Stack
             spacing={1}
@@ -1558,7 +2005,7 @@ export default function StorytellerReader() {
               <Zoom in={!actionBarVisible}>
                 <Fab
                   size="medium"
-                  aria-label="開啟故事索引"
+                  aria-label="開啟索引"
                   onClick={() => setMobileIndexOpen(true)}
                 >
                   <MenuBookIcon />
@@ -1611,10 +2058,15 @@ export default function StorytellerReader() {
                     overflowY: "auto",
                   }}
                 >
-                  <StoryIndexPanel
+                  <ReaderIndexPanel
+                    activeTab={activeTab}
                     stories={stories}
                     volumes={volumes}
                     currentStoryId={currentStory?.id}
+                    imageEpisodes={imageEpisodes}
+                    currentEpisodeId={currentEpisode?.id}
+                    tocView={tocView}
+                    onTocViewChange={handleTocViewChange}
                     basePath={basePath}
                     bookmarks={projectBookmarks}
                     bookmarksEnabled={Boolean(session)}
@@ -1649,10 +2101,15 @@ export default function StorytellerReader() {
                   overflowY: "auto",
                 }}
               >
-                <StoryIndexPanel
+                <ReaderIndexPanel
+                  activeTab={activeTab}
                   stories={stories}
                   volumes={volumes}
                   currentStoryId={currentStory?.id}
+                  imageEpisodes={imageEpisodes}
+                  currentEpisodeId={currentEpisode?.id}
+                  tocView={tocView}
+                  onTocViewChange={handleTocViewChange}
                   basePath={basePath}
                   bookmarks={projectBookmarks}
                   bookmarksEnabled={Boolean(session)}

@@ -1,5 +1,12 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  useParams,
+  Navigate,
+} from "react-router-dom";
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { DefaultLayout } from "./layouts/DefaultLayout.tsx";
 import { ModernLayout } from "./layouts/ModernLayout.tsx";
@@ -11,7 +18,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
-import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 
 // const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
@@ -107,12 +114,6 @@ const StorytellerLoreDiffCompare = lazy(
   () => import("@/pages/storyteller/LoreDiffCompare.tsx"),
 );
 const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
-const StorytellerImageEpisodeReader = lazy(
-  () => import("@/pages/storyteller/ImageEpisodeReader.tsx"),
-);
-const StorytellerImageEpisodeList = lazy(
-  () => import("@/pages/storyteller/ImageEpisodeList.tsx"),
-);
 const StorytellerStoryVersionDiff = lazy(
   () => import("@/pages/storyteller/StoryVersionDiff.tsx"),
 );
@@ -237,6 +238,29 @@ function AnalyticsTracker() {
   return null;
 }
 
+// storyteller 閱讀頁的路由前綴從 story/ 改名成 work/ 之後，舊的 story/... 網址
+// 一律導向對應的新網址，不能直接讓人踩到 404（怕有人存了舊連結或分享連結還在流通）。
+function LegacyStorytellerRedirect({
+  to,
+}: {
+  to: (params: Readonly<Record<string, string | undefined>>) => string;
+}) {
+  const params = useParams();
+  return <Navigate to={steamloomPath(to(params))} replace />;
+}
+
+// 舊的 story/* 萬用路由涵蓋兩種形狀：story/{projectPath}（裸 path）跟
+// story/{projectPath}/{storyId}，只能靠實際路徑片段數量分辨，沒辦法用具名參數表示。
+function LegacyStorytellerCatchAllRedirect() {
+  const params = useParams();
+  const parts = (params["*"] ?? "").split("/").filter(Boolean);
+  const [projectPath, storyId] = parts;
+  const target = storyId
+    ? `work/${projectPath}/story/${storyId}`
+    : `work/${projectPath}/stories`;
+  return <Navigate to={steamloomPath(target)} replace />;
+}
+
 // Storyteller（SteamLoom）的路由樹跟 galgame/nekomaid 不一樣，節點數多很多——
 // 抽成共用的 fragment，同時給「巢狀在 faryne.dev/storyteller 底下」跟
 // 「steamloom.works 獨立站」兩種掛法共用，不用維護兩份一模一樣的路由清單。
@@ -307,24 +331,68 @@ const storytellerRoutes = (
     />
     <Route path={"favorites"} element={<StorytellerFavorites />} />
     <Route path={"profile"} element={<StorytellerProfile />} />
-    <Route path={"story/share/:shareToken"} element={<StorytellerReader />} />
     <Route
-      path={"story/share/:shareToken/:storyId"}
-      element={<StorytellerReader />}
+      path={"work/:projectPath/stories"}
+      element={<StorytellerReader forcedTab="story" />}
     />
     <Route
-      path={"story/:projectPath/:storyId/versions/:versionId"}
+      path={"work/:projectPath/story/:storyId"}
+      element={<StorytellerReader forcedTab="story" />}
+    />
+    <Route
+      path={"work/:projectPath/story/:storyId/versions/:versionId"}
       element={<StorytellerStoryVersionDiff />}
     />
     <Route
-      path={"story/:projectPath/images"}
-      element={<StorytellerImageEpisodeList />}
+      path={"work/:projectPath/images"}
+      element={<StorytellerReader forcedTab="image" />}
+    />
+    <Route
+      path={"work/:projectPath/image/:episodeId"}
+      element={<StorytellerReader forcedTab="image" />}
+    />
+    <Route
+      path={"work/share/:shareToken"}
+      element={<StorytellerReader forcedTab="story" />}
+    />
+    <Route
+      path={"work/share/:shareToken/:storyId"}
+      element={<StorytellerReader forcedTab="story" />}
+    />
+    {/* 下面全部是舊 story/ 前綴網址的導向，不留 404，怕有人存了舊連結或分享連結還在流通。 */}
+    <Route
+      path={"story/share/:shareToken"}
+      element={
+        <LegacyStorytellerRedirect to={(p) => `work/share/${p.shareToken}`} />
+      }
+    />
+    <Route
+      path={"story/share/:shareToken/:storyId"}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) => `work/share/${p.shareToken}/${p.storyId}`}
+        />
+      }
+    />
+    <Route
+      path={"story/:projectPath/:storyId/versions/:versionId"}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) =>
+            `work/${p.projectPath}/story/${p.storyId}/versions/${p.versionId}`
+          }
+        />
+      }
     />
     <Route
       path={"story/:projectPath/image/:episodeId"}
-      element={<StorytellerImageEpisodeReader />}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) => `work/${p.projectPath}/image/${p.episodeId}`}
+        />
+      }
     />
-    <Route path={"story/*"} element={<StorytellerReader />} />
+    <Route path={"story/*"} element={<LegacyStorytellerCatchAllRedirect />} />
     <Route path={"*"} element={<ErrorPage code={404} />} />
   </>
 );

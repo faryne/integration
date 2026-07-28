@@ -50,6 +50,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
+  storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -60,6 +61,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import type {
   StorytellerFavoriteAuthor,
   StorytellerProject,
@@ -183,7 +185,11 @@ export default function StorytellerUserProjects() {
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
     updatedAt: project.updated_at,
-    path: steamloomPath(`story/${project.public_id}-${project.slug}`),
+    path: storytellerReaderPath(
+      project,
+      project.stories?.length ?? 0,
+      listImageEpisodes(project.public_id).length,
+    ),
   }));
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
@@ -541,7 +547,11 @@ function FavoriteProjectCard({
       actions={
         <Button
           component={RouterLink}
-          to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
+          to={storytellerReaderPath(
+            project,
+            storyCount,
+            listImageEpisodes(project.public_id).length,
+          )}
           variant="contained"
         >
           開始閱讀
