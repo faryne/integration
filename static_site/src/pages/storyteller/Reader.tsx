@@ -1335,9 +1335,10 @@ export default function StorytellerReader({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const showInlineIndex = !isMobile && indexOpen;
-  // 收藏／收藏作者／評分控制項，供頂端功能列與右下角快速選單共用。
-  // 原作看自己的故事時這幾個按鈕改成「顯示但 disabled」而不是整段隱藏，
-  // 讓原作也能看到收藏數／收藏作者數／評分人數與平均分，只是不能對自己按讚評分。
+  // 追蹤專案／追蹤作者／評分控制項，放在 Hero Card 的互動列，右下角快速選單
+  // （頂端功能列捲出畫面後）也共用同一組。原作看自己的故事時這幾個按鈕改成
+  // 「顯示但 disabled」而不是整段隱藏，讓原作也能看到追蹤數／評分人數與平均分，
+  // 只是不能對自己按讚評分。
   const favoriteCount = apiProject?.favorite_count ?? 0;
   const authorFollowerCount = apiProject?.author?.follower_count ?? 0;
   const projectRatingCount = apiProject?.rating_count ?? 0;
@@ -1360,7 +1361,7 @@ export default function StorytellerReader({
           setFavorite((value) => !value);
         }}
       >
-        {isFavorited ? "已收藏" : "收藏"}（{favoriteCount}）
+        {isFavorited ? "已追蹤專案" : "追蹤專案"}（{favoriteCount}）
       </Button>
       {project.authorUserId && (
         <Button
@@ -1377,7 +1378,7 @@ export default function StorytellerReader({
             saveAuthorFavorite.mutate(!isAuthorFavorited);
           }}
         >
-          {isAuthorFavorited ? "已收藏作者" : "收藏作者"}（{authorFollowerCount}
+          {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}（{authorFollowerCount}
           ）
         </Button>
       )}
@@ -1869,6 +1870,18 @@ export default function StorytellerReader({
           <Box sx={{ flexBasis: "100%" }}>
             <StorytellerTagChips tags={project.tags} sx={{ mt: 1 }} />
           </Box>
+          <Box sx={{ flexBasis: "100%" }}>
+            <Divider sx={{ my: 1.5 }} />
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              {readerActions}
+            </Stack>
+          </Box>
         </>
       }
     >
@@ -1961,32 +1974,15 @@ export default function StorytellerReader({
             {isTabPending && <CircularProgress size={20} />}
           </Stack>
         )}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: { xs: "center", md: "flex-end" },
-            flex: { md: 1 },
-          }}
-        >
-          {(currentStory || currentEpisode) && (
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              flexWrap="wrap"
-              useFlexGap
-              justifyContent={{ xs: "center", md: "flex-end" }}
-            >
-              {readerActions}
-            </Stack>
-          )}
-        </Box>
+        {/* 追蹤／評分已經搬到上面 Hero Card 的互動列，這裡留一個等寬的空 Box，
+            單純是為了讓中間的故事/圖像 tab 維持置中，不用刻意再放東西平衡。 */}
+        <Box sx={{ flex: { md: 1 } }} />
       </Stack>
 
       <LoginPromptDialog
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
-        description="收藏故事、收藏作者、評分故事或加入書籤需要登入。是否要現在登入？"
+        description="追蹤專案、追蹤作者、評分故事或加入書籤需要登入。是否要現在登入？"
       />
       <CustomSnackbar
         open={bookmarkSnackbar.open}
