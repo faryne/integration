@@ -18,6 +18,7 @@ import {
   Button,
   ButtonBase,
   Chip,
+  CircularProgress,
   Collapse,
   Divider,
   Drawer,
@@ -28,13 +29,15 @@ import {
   Popover,
   Rating,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   Zoom,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import {
   StorytellerFootnoteSection,
   StorytellerWysiwygMarkdown,
@@ -866,6 +869,11 @@ export default function StorytellerReader({
   const activeTab = forcedTab;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // 切故事/圖像 tab 是靠 navigate() 換路由觸發整個元件重新渲染（甚至重新掛載），
+  // 用 useTransition 包起來，才能在畫面還沒切換完成前顯示 loading，不會讓使用者
+  // 覺得點了沒反應；就算目前資料都是同步取得、幾乎感覺不到延遲，之後圖像作品接上
+  // 真正的後端 API 時，這裡也不用再改。
+  const [isTabPending, startTabTransition] = useTransition();
   const [indexOpen, setIndexOpen] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
@@ -1290,11 +1298,13 @@ export default function StorytellerReader({
   // 讓該路由自己的 forcedTab 決定要顯示哪個 tab 的第一篇內容；分享連結沒有圖像家族，
   // 一律導回故事列表。
   function handleTabChange(tab: "story" | "image") {
-    if (isShareRoute) {
-      navigate(steamloomPath(`work/share/${shareToken}`));
-      return;
-    }
-    navigate(`${basePath}/${tab === "image" ? "images" : "stories"}`);
+    startTabTransition(() => {
+      if (isShareRoute) {
+        navigate(steamloomPath(`work/share/${shareToken}`));
+        return;
+      }
+      navigate(`${basePath}/${tab === "image" ? "images" : "stories"}`);
+    });
   }
   function handleTocViewChange(view: "title" | "thumbnail") {
     const next = new URLSearchParams(searchParams);
@@ -1573,16 +1583,7 @@ export default function StorytellerReader({
             </Box>
           </Stack>
         ) : (
-          <Stack spacing={2}>
-            <Typography component="h1" variant="h4" fontWeight={800}>
-              {project.name}
-            </Typography>
-            <Typography color="text.secondary">
-              {project.description}
-            </Typography>
-            <Divider />
-            <Typography>這個專案還沒有圖像作品。</Typography>
-          </Stack>
+          <Typography color="text.secondary">目前還沒有圖像作品。</Typography>
         )
       ) : currentStory ? (
         <Stack spacing={2}>
@@ -1809,14 +1810,7 @@ export default function StorytellerReader({
           </Box>
         </Stack>
       ) : (
-        <Stack spacing={2}>
-          <Typography component="h1" variant="h4" fontWeight={800}>
-            {project.name}
-          </Typography>
-          <Typography color="text.secondary">{project.description}</Typography>
-          <Divider />
-          <Typography>請從左側索引選擇故事章節開始閱讀。</Typography>
-        </Stack>
+        <Typography color="text.secondary">目前還沒有故事作品。</Typography>
       )}
     </Paper>
   );
@@ -1942,23 +1936,26 @@ export default function StorytellerReader({
             {isMobile ? "開啟索引" : indexOpen ? "收起索引" : "展開索引"}
           </Button>
           {!isShareRoute && (
-            <Stack direction="row" spacing={0.5}>
-              <Button
-                size="small"
-                variant={activeTab === "story" ? "contained" : "outlined"}
-                startIcon={<AutoStoriesIcon fontSize="small" />}
-                onClick={() => handleTabChange("story")}
+            <Stack direction="row" spacing={1} alignItems="center">
+              <ToggleButtonGroup
+                value={activeTab}
+                exclusive
+                disabled={isTabPending}
+                onChange={(_, value: "story" | "image" | null) =>
+                  value && handleTabChange(value)
+                }
+                color="primary"
               >
-                故事
-              </Button>
-              <Button
-                size="small"
-                variant={activeTab === "image" ? "contained" : "outlined"}
-                startIcon={<CollectionsIcon fontSize="small" />}
-                onClick={() => handleTabChange("image")}
-              >
-                圖像
-              </Button>
+                <ToggleButton value="story" sx={{ px: 2.5, fontWeight: 700 }}>
+                  <AutoStoriesIcon fontSize="small" sx={{ mr: 1 }} />
+                  故事
+                </ToggleButton>
+                <ToggleButton value="image" sx={{ px: 2.5, fontWeight: 700 }}>
+                  <CollectionsIcon fontSize="small" sx={{ mr: 1 }} />
+                  圖像
+                </ToggleButton>
+              </ToggleButtonGroup>
+              {isTabPending && <CircularProgress size={20} />}
             </Stack>
           )}
         </Stack>
