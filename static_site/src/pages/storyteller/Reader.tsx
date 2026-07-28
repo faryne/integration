@@ -1913,16 +1913,16 @@ export default function StorytellerReader({
       <Stack
         ref={actionBarRef}
         direction={{ xs: "column", md: "row" }}
-        spacing={1}
-        justifyContent="space-between"
+        spacing={1.5}
+        alignItems="center"
         sx={{ mb: 2 }}
       >
-        <Stack
-          direction="row"
-          spacing={1}
-          flexWrap="wrap"
-          useFlexGap
-          alignItems="center"
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: { xs: "center", md: "flex-start" },
+            flex: { md: 1 },
+          }}
         >
           <Button
             variant="outlined"
@@ -1935,41 +1935,52 @@ export default function StorytellerReader({
           >
             {isMobile ? "開啟索引" : indexOpen ? "收起索引" : "展開索引"}
           </Button>
-          {!isShareRoute && (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <ToggleButtonGroup
-                value={activeTab}
-                exclusive
-                disabled={isTabPending}
-                onChange={(_, value: "story" | "image" | null) =>
-                  value && handleTabChange(value)
-                }
-                color="primary"
-              >
-                <ToggleButton value="story" sx={{ px: 2.5, fontWeight: 700 }}>
-                  <AutoStoriesIcon fontSize="small" sx={{ mr: 1 }} />
-                  故事
-                </ToggleButton>
-                <ToggleButton value="image" sx={{ px: 2.5, fontWeight: 700 }}>
-                  <CollectionsIcon fontSize="small" sx={{ mr: 1 }} />
-                  圖像
-                </ToggleButton>
-              </ToggleButtonGroup>
-              {isTabPending && <CircularProgress size={20} />}
-            </Stack>
-          )}
-        </Stack>
-        {(currentStory || currentEpisode) && (
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            flexWrap="wrap"
-            useFlexGap
-          >
-            {readerActions}
+        </Box>
+        {/* 人的視線習慣先落在正中間，故事/圖像 tab 擺中間比較容易一眼看出自己在哪一邊；
+            左右兩側包一層 flex:1 的 Box，讓中間這組不管左右內容多寬都能保持置中。 */}
+        {!isShareRoute && (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ToggleButtonGroup
+              value={activeTab}
+              exclusive
+              disabled={isTabPending}
+              onChange={(_, value: "story" | "image" | null) =>
+                value && handleTabChange(value)
+              }
+              color="primary"
+            >
+              <ToggleButton value="story" sx={{ px: 2.5, fontWeight: 700 }}>
+                <AutoStoriesIcon fontSize="small" sx={{ mr: 1 }} />
+                故事
+              </ToggleButton>
+              <ToggleButton value="image" sx={{ px: 2.5, fontWeight: 700 }}>
+                <CollectionsIcon fontSize="small" sx={{ mr: 1 }} />
+                圖像
+              </ToggleButton>
+            </ToggleButtonGroup>
+            {isTabPending && <CircularProgress size={20} />}
           </Stack>
         )}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: { xs: "center", md: "flex-end" },
+            flex: { md: 1 },
+          }}
+        >
+          {(currentStory || currentEpisode) && (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+              justifyContent={{ xs: "center", md: "flex-end" }}
+            >
+              {readerActions}
+            </Stack>
+          )}
+        </Box>
       </Stack>
 
       <LoginPromptDialog
