@@ -51,7 +51,7 @@ import type {
   StorytellerProviderAPIKeyRequest,
 } from "@/types/storyteller.ts";
 
-// 金鑰管理是「我的工作台」底下與故事專案／AI Agent 並排的分頁內容，
+// 金鑰管理是「我的工作台」底下與創作專案／AI Agent 並排的分頁內容，
 // 不再是獨立頁面，所以這裡只輸出內容本體，外層標題／麵包屑交給 Home.tsx 的 StorytellerShell。
 export function StorytellerApiKeyPanel() {
   const { data: providerModels = [] } = useStorytellerAgentProviderModels();

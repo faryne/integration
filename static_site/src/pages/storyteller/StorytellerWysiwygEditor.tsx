@@ -248,6 +248,12 @@ export interface StorytellerWysiwygEditorProps {
    * 不是原始 content——原始格式含內部 marker 語法，不該外洩。
    */
   exportBaseName?: string;
+  /**
+   * 白名單：只列出的功能才會啟用，不提供（undefined）就全部啟用——維持既有頁面
+   * （StoryEditor／LoreEditor）行為不變。目前只有腳注／註解可以關，其餘工具列
+   * 功能不受影響。
+   */
+  enabledFeatures?: Array<"footnote" | "comment">;
 }
 
 /**
@@ -264,7 +270,10 @@ export function StorytellerWysiwygEditor({
   onChange,
   toolbarExtra,
   exportBaseName,
+  enabledFeatures,
 }: StorytellerWysiwygEditorProps) {
+  const isFeatureEnabled = (feature: "footnote" | "comment") =>
+    enabledFeatures === undefined || enabledFeatures.includes(feature);
   const lastEmittedRef = useRef(value);
 
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
@@ -806,44 +815,54 @@ export function StorytellerWysiwygEditor({
             </Tooltip>
           </ToggleButtonGroup>
 
-          <Divider orientation="vertical" flexItem />
+          {isFeatureEnabled("footnote") && (
+            <>
+              <Divider orientation="vertical" flexItem />
 
-          <ToggleButtonGroup size="small">
-            <Tooltip title={editorState.hasFootnote ? "編輯腳注" : "加腳注"}>
-              <ToggleButton
-                value="footnote"
-                selected={editorState.hasFootnote}
-                onClick={handleOpenFootnoteDialog}
-              >
-                <NoteAltIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            <Tooltip
-              title={
-                editorState.hasComment
-                  ? "編輯註解"
-                  : canOpenCommentDialog
-                    ? "加註解"
-                    : "請先選取要加註解的文字"
-              }
-            >
-              <span>
-                <ToggleButton
-                  value="add-comment"
-                  selected={editorState.hasComment}
-                  disabled={!canOpenCommentDialog}
-                  onClick={handleOpenCommentDialog}
+              <ToggleButtonGroup size="small">
+                <Tooltip
+                  title={editorState.hasFootnote ? "編輯腳注" : "加腳注"}
                 >
-                  <AddCommentIcon fontSize="small" />
-                </ToggleButton>
-              </span>
-            </Tooltip>
-          </ToggleButtonGroup>
+                  <ToggleButton
+                    value="footnote"
+                    selected={editorState.hasFootnote}
+                    onClick={handleOpenFootnoteDialog}
+                  >
+                    <NoteAltIcon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              </ToggleButtonGroup>
+            </>
+          )}
+
+          {isFeatureEnabled("comment") && (
+            <>
+              <Divider orientation="vertical" flexItem />
+
+              <ToggleButtonGroup size="small">
+                <Tooltip
+                  title={
+                    editorState.hasComment
+                      ? "編輯註解"
+                      : canOpenCommentDialog
+                        ? "加註解"
+                        : "請先選取要加註解的文字"
+                  }
+                >
+                  <span>
+                    <ToggleButton
+                      value="add-comment"
+                      selected={editorState.hasComment}
+                      disabled={!canOpenCommentDialog}
+                      onClick={handleOpenCommentDialog}
+                    >
+                      <AddCommentIcon fontSize="small" />
+                    </ToggleButton>
+                  </span>
+                </Tooltip>
+              </ToggleButtonGroup>
+            </>
+          )}
 
           {exportBaseName !== undefined && (
             <>
@@ -1076,55 +1095,63 @@ export function StorytellerWysiwygEditor({
           </ListItemText>
         </MenuItem>
 
-        <Divider />
+        {isFeatureEnabled("footnote") && (
+          <>
+            <Divider />
 
-        <MenuItem
-          onClick={() => {
-            closeContextMenu();
-            handleOpenFootnoteDialog();
-          }}
-        >
-          <ListItemIcon>
-            <NoteAltIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {editorState.hasFootnote ? "編輯腳注" : "加腳注"}
-          </ListItemText>
-        </MenuItem>
-        {editorState.hasFootnote && (
-          <MenuItem
-            onClick={() => {
-              closeContextMenu();
-              handleRemoveFootnote();
-            }}
-          >
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>移除腳注</ListItemText>
-          </MenuItem>
+            <MenuItem
+              onClick={() => {
+                closeContextMenu();
+                handleOpenFootnoteDialog();
+              }}
+            >
+              <ListItemIcon>
+                <NoteAltIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>
+                {editorState.hasFootnote ? "編輯腳注" : "加腳注"}
+              </ListItemText>
+            </MenuItem>
+            {editorState.hasFootnote && (
+              <MenuItem
+                onClick={() => {
+                  closeContextMenu();
+                  handleRemoveFootnote();
+                }}
+              >
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>移除腳注</ListItemText>
+              </MenuItem>
+            )}
+          </>
         )}
 
-        <Divider />
+        {isFeatureEnabled("comment") && (
+          <>
+            <Divider />
 
-        <MenuItem
-          onClick={handleContextMenuAddOrEditComment}
-          disabled={!canOpenCommentDialog}
-        >
-          <ListItemIcon>
-            <AddCommentIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {editorState.hasComment ? "編輯註解" : "加註解"}
-          </ListItemText>
-        </MenuItem>
-        {editorState.hasComment && (
-          <MenuItem onClick={handleContextMenuRemoveComment}>
-            <ListItemIcon>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>移除註解</ListItemText>
-          </MenuItem>
+            <MenuItem
+              onClick={handleContextMenuAddOrEditComment}
+              disabled={!canOpenCommentDialog}
+            >
+              <ListItemIcon>
+                <AddCommentIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>
+                {editorState.hasComment ? "編輯註解" : "加註解"}
+              </ListItemText>
+            </MenuItem>
+            {editorState.hasComment && (
+              <MenuItem onClick={handleContextMenuRemoveComment}>
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>移除註解</ListItemText>
+              </MenuItem>
+            )}
+          </>
         )}
       </Menu>
 

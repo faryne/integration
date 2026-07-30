@@ -1,5 +1,7 @@
+import ArticleIcon from "@mui/icons-material/Article";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import InstagramIcon from "@mui/icons-material/Instagram";
@@ -48,8 +50,7 @@ import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import {
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
+  storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -170,21 +171,7 @@ export default function StorytellerUserProjects() {
     return <ErrorPage code={404} />;
   }
 
-  const items = (data?.items || []).map((project) => ({
-    id: project.public_id,
-    name: project.name,
-    description: project.description,
-    storiesCount: project.stories?.length ?? 0,
-    rating: project.rating,
-    averageRating: project.average_rating,
-    favoriteCount: project.favorite_count,
-    tags: project.tags ?? [],
-    wordCount:
-      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-      0,
-    updatedAt: project.updated_at,
-    path: steamloomPath(`story/${project.public_id}-${project.slug}`),
-  }));
+  const items = data?.items || [];
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
   const displayName = author?.pen_name || username || "作者";
@@ -294,9 +281,15 @@ export default function StorytellerUserProjects() {
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">字數</Typography>
+                  <Typography color="text.secondary">故事數目</Typography>
                   <Typography fontWeight={700}>
-                    {(author?.word_count ?? 0).toLocaleString()}
+                    {author?.story_count ?? 0}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">圖像作品數目</Typography>
+                  <Typography fontWeight={700}>
+                    {author?.image_story_count ?? 0}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
@@ -335,50 +328,20 @@ export default function StorytellerUserProjects() {
                 <Stack spacing={3}>
                   <Grid container spacing={2}>
                     {items.map((project) => (
-                      <Grid key={project.id} size={{ xs: 12, sm: 6 }}>
+                      <Grid key={project.public_id} size={{ xs: 12, sm: 6 }}>
                         <StorytellerProjectCard
-                          name={project.name}
-                          description={project.description}
-                          updatedAt={project.updatedAt}
-                          tags={project.tags}
-                          chips={
-                            <>
-                              <Chip
-                                size="small"
-                                icon={<LockOpenIcon />}
-                                label="公開閱讀"
-                              />
-                              <Chip
-                                size="small"
-                                color={storytellerProjectRatingColor(
-                                  project.rating,
-                                )}
-                                label={storytellerProjectRatingLabel(
-                                  project.rating,
-                                )}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.storiesCount} 篇故事`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.wordCount.toLocaleString()} 字`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`平均 ${project.averageRating.toFixed(1)}`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.favoriteCount} 人收藏`}
-                              />
-                            </>
+                          project={project}
+                          extraChips={
+                            <Chip
+                              size="small"
+                              icon={<LockOpenIcon />}
+                              label="公開閱讀"
+                            />
                           }
                           actions={
                             <Button
                               component={RouterLink}
-                              to={project.path}
+                              to={storytellerReaderPath(project)}
                               variant="contained"
                             >
                               開始閱讀
@@ -494,17 +457,10 @@ function FavoriteProjectCard({
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
-  const storyCount = project.stories?.length ?? 0;
-  const wordCount =
-    project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
   return (
     <StorytellerProjectCard
-      name={project.name}
-      description={project.description}
-      updatedAt={project.updated_at}
-      authorName={project.author?.pen_name}
-      tags={project.tags}
+      project={project}
       headerAction={
         isOwner && (
           <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
@@ -521,27 +477,13 @@ function FavoriteProjectCard({
           </Tooltip>
         )
       }
-      chips={
-        <>
-          <Chip
-            size="small"
-            color={storytellerProjectRatingColor(project.rating)}
-            label={storytellerProjectRatingLabel(project.rating)}
-          />
-          <Chip size="small" label={`${storyCount} 篇故事`} />
-          <Chip size="small" label={`${wordCount.toLocaleString()} 字`} />
-          <Chip
-            size="small"
-            label={`平均 ${project.average_rating.toFixed(1)}`}
-          />
-          <Chip size="small" label={`${project.favorite_count} 人收藏`} />
-          {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
-        </>
+      extraChips={
+        hidden && <Chip size="small" color="warning" label="對外隱藏中" />
       }
       actions={
         <Button
           component={RouterLink}
-          to={steamloomPath(`story/${project.public_id}-${project.slug}`)}
+          to={storytellerReaderPath(project)}
           variant="contained"
         >
           開始閱讀
@@ -614,8 +556,18 @@ function FavoriteAuthorCard({
           <Chip size="small" label={`${author.project_count} 個專案`} />
           <Chip
             size="small"
-            label={`${author.word_count.toLocaleString()} 字`}
+            variant="outlined"
+            icon={<ArticleIcon />}
+            label={`${author.story_count} 篇故事`}
           />
+          {author.image_story_count > 0 && (
+            <Chip
+              size="small"
+              variant="outlined"
+              icon={<CollectionsIcon />}
+              label={`${author.image_story_count} 話`}
+            />
+          )}
           <Chip
             size="small"
             label={`平均 ${author.average_rating.toFixed(1)}`}

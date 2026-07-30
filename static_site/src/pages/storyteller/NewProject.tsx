@@ -1,3 +1,5 @@
+import ArticleIcon from "@mui/icons-material/Article";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
@@ -15,7 +17,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProject,
@@ -23,7 +25,10 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import {
+  STORYTELLER_APP_NAME,
+  storytellerReaderPath,
+} from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -32,6 +37,27 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
+
+const contentTypeOptions: {
+  value: StorytellerProjectRequest["content_type"];
+  label: string;
+  description: string;
+  icon: ReactNode;
+}[] = [
+  {
+    value: "text",
+    label: "文字故事",
+    description: "小說、劇本等純文字創作，支援所見即所得編輯器與 AI 共同創作。",
+    icon: <ArticleIcon color="primary" fontSize="large" />,
+  },
+  {
+    value: "image",
+    label: "圖片／漫畫",
+    description:
+      "漫畫、插畫、寫真等圖像創作，逐頁上傳，支援單頁／跨頁閱讀模式。",
+    icon: <CollectionsIcon color="primary" fontSize="large" />,
+  },
+];
 
 function projectNameToSlug(name: string) {
   return name
@@ -90,6 +116,7 @@ export default function StorytellerNewProject() {
     description: "",
     visibility: "private",
     rating: "general",
+    content_type: "text",
     tags: [],
   });
   const [tagInputValue, setTagInputValue] = useState("");
@@ -104,6 +131,7 @@ export default function StorytellerNewProject() {
         description: editingProject.description,
         visibility: editingProject.visibility,
         rating: editingProject.rating,
+        content_type: editingProject.content_type,
         tags: editingProject.tags ?? [],
       });
     }
@@ -125,7 +153,7 @@ export default function StorytellerNewProject() {
   const newProjectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "故事專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/project") },
   ];
 
   if (authLoading) {
@@ -232,16 +260,20 @@ export default function StorytellerNewProject() {
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
-      urlPreview = `${origin}${steamloomPath(`story/${editingProject.public_id}-${input.slug.trim()}`)}`;
+      const readerPath = storytellerReaderPath({
+        ...editingProject,
+        slug: input.slug.trim(),
+      });
+      urlPreview = `${origin}${readerPath}`;
     } else if (input.visibility === "unlisted") {
       urlPreview =
         editingProject.visibility === "unlisted" && editingProject.share_token
-          ? `${origin}${steamloomPath(`story/share/${editingProject.share_token}`)}`
+          ? `${origin}${steamloomPath(`work/share/${editingProject.share_token}`)}`
           : "儲存後系統會建立新的分享網址，可到專案頁面查看。";
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`story/（系統代碼）-${projectNameToSlug(input.name)}`)}`;
+      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}/stories`)}`;
     } else if (input.visibility === "unlisted") {
       urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
     }
@@ -253,7 +285,7 @@ export default function StorytellerNewProject() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "故事專案", to: steamloomPath("my/project") },
+        { label: "創作專案", to: steamloomPath("my/project") },
         ...(editingProject
           ? [
               {
@@ -328,6 +360,55 @@ export default function StorytellerNewProject() {
             </Alert>
           )}
           <Grid container spacing={2}>
+            <Grid size={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                預設顯示類型
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                {contentTypeOptions.map((option) => {
+                  const selected = input.content_type === option.value;
+                  return (
+                    <Paper
+                      key={option.value}
+                      variant="outlined"
+                      onClick={() =>
+                        setInput((value) => ({
+                          ...value,
+                          content_type: option.value,
+                        }))
+                      }
+                      sx={{
+                        flex: 1,
+                        p: 2,
+                        borderRadius: 1,
+                        cursor: "pointer",
+                        borderWidth: selected ? 2 : 1,
+                        borderColor: selected ? "primary.main" : "divider",
+                      }}
+                    >
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        {option.icon}
+                        <Stack sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={700}>
+                            {option.label}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {option.description}
+                          </Typography>
+                        </Stack>
+                      </Stack>
+                    </Paper>
+                  );
+                })}
+              </Stack>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: "block" }}
+              >
+                只是給讀者瀏覽時的參考標示，隨時可以修改；同一個專案本來就可以同時擁有文字故事與圖像作品，冊也能混著放。
+              </Typography>
+            </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 required

@@ -2,8 +2,12 @@ package mcp
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -79,13 +83,17 @@ type storytellerProjectSummary struct {
 }
 
 type storytellerStorySummary struct {
-	PublicID  string    `json:"public_id"`
-	Title     string    `json:"title"`
-	Summary   string    `json:"summary"`
-	Status    string    `json:"status"`
-	Sort      int       `json:"sort"`
-	WordCount uint      `json:"word_count"`
-	UpdatedAt time.Time `json:"updated_at"`
+	PublicID string `json:"public_id"`
+	Title    string `json:"title"`
+	Summary  string `json:"summary"`
+	Status   string `json:"status"`
+	Sort     int    `json:"sort"`
+	// ContentType 是 "text"（一般文字故事，storyteller_upsert_story／storyteller_get_story
+	// 的 content 是文字）或 "image"（話，內容是圖片頁面，改用 storyteller_upsert_image_story
+	// 寫入，storyteller_get_story 回應改看 pages 欄位，content 對這種故事是空的）。
+	ContentType string    `json:"content_type"`
+	WordCount   uint      `json:"word_count"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type storytellerLoreSummary struct {
@@ -122,7 +130,14 @@ type storytellerLoreListOutput struct {
 
 type storytellerStoryDetail struct {
 	storytellerStorySummary
-	Content string `json:"content"`
+	// Content 只有 content_type=text 的故事會填值；content_type=image 的話這欄是空的，
+	// 改看 Pages。
+	Content string `json:"content,omitempty"`
+	// Pages 只有 content_type=image 的故事（話）會填值：每一頁的 id/key/description/sort，
+	// 加上簽過名、可以直接開啟查看的 image_url。key 要原樣保留、之後呼叫
+	// storyteller_upsert_image_story 更新這一話時要用同一組 key 帶回去，不然這頁會被當
+	// 成新頁面處理（其實還是同一個 S3 物件，只是書籤等關聯資料會對不上舊的 id）。
+	Pages []storytellerModel.StoryImagePageOutput `json:"pages,omitempty"`
 	// VersionID 是這次回傳內容對應的版本 id，寫回時帶成 base_version_id 可以讓後端
 	// 檢查內容有沒有被別的呼叫端動過（例如網頁編輯頁同時在編輯）。
 	VersionID uint64 `json:"version_id"`
@@ -154,13 +169,14 @@ func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storyte
 
 func toStorytellerStorySummary(story storytellerModel.Story) storytellerStorySummary {
 	return storytellerStorySummary{
-		PublicID:  story.PublicID,
-		Title:     story.Title,
-		Summary:   story.Summary,
-		Status:    string(story.Status),
-		Sort:      story.Sort,
-		WordCount: story.WordCount,
-		UpdatedAt: story.UpdatedAt,
+		PublicID:    story.PublicID,
+		Title:       story.Title,
+		Summary:     story.Summary,
+		Status:      string(story.Status),
+		Sort:        story.Sort,
+		ContentType: string(story.ContentType),
+		WordCount:   story.WordCount,
+		UpdatedAt:   story.UpdatedAt,
 	}
 }
 
@@ -197,6 +213,34 @@ type storytellerUpsertStoryArguments struct {
 	Sort            int     `json:"sort"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerPresignImageUploadArguments struct {
+	ProjectPublicID string   `json:"project_public_id"`
+	ContentTypes    []string `json:"content_types"`
+}
+
+// storytellerImagePageArguments 是 storyteller_upsert_image_story 的單一頁面：Key 一定要是
+// storyteller_presign_image_upload 給的 key，且該 key 對應的檔案要先實際 PUT 上傳完成，
+// 不然存檔時的檔案大小檢查（HeadObject）會找不到物件而失敗。ID 留空代表新頁面，伺服器
+// 會生一個；更新既有話時，既有頁面要把 storyteller_get_story 回傳的 id/key 原樣帶回來，
+// 不然這頁會被當成全新頁面（書籤等關聯資料會跟舊的 id 對不上）。頁面順序＝陣列順序，
+// 不需要（也不支援）另外帶 sort。
+type storytellerImagePageArguments struct {
+	ID          string `json:"id"`
+	Key         string `json:"key"`
+	Description string `json:"description"`
+}
+
+type storytellerUpsertImageStoryArguments struct {
+	ProjectPublicID string                          `json:"project_public_id"`
+	StoryPublicID   string                          `json:"story_public_id"`
+	Title           string                          `json:"title"`
+	Summary         string                          `json:"summary"`
+	Status          string                          `json:"status"`
+	Sort            int                             `json:"sort"`
+	Pages           []storytellerImagePageArguments `json:"pages"`
+	BaseVersionID   *uint64                         `json:"base_version_id"`
 }
 
 type storytellerLoreArguments struct {
@@ -368,8 +412,13 @@ func (s *Server) registerStorytellerTools() {
 	_ = s.RegisterTool(Tool{
 		Name: "storyteller_get_story",
 		Description: "Get a story's full content by project_public_id and story_public_id. " +
+			"For content_type=text stories, content holds the story text. For content_type=image stories " +
+			"(a \"話\"), content is empty and pages holds each page's id/key/description/sort plus a signed " +
+			"image_url you can fetch directly; to create or edit an image story use storyteller_presign_image_upload " +
+			"and storyteller_upsert_image_story instead of storyteller_upsert_story. " +
 			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_story " +
-			"to detect if someone else (e.g. the web editor) changed the story in the meantime.",
+			"(or storyteller_upsert_image_story) to detect if someone else (e.g. the web editor) changed the story " +
+			"in the meantime.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"story_public_id":   stringSchema("Story public_id, as returned by storyteller_get_project."),
@@ -383,21 +432,34 @@ func (s *Server) registerStorytellerTools() {
 			if err := decodeArguments(arguments, &args); err != nil {
 				return nil, err
 			}
-			story, err := storytellerService.NewService().Story(userID, args.ProjectPublicID, args.StoryPublicID)
+			service := storytellerService.NewService()
+			story, err := service.Story(userID, args.ProjectPublicID, args.StoryPublicID)
 			if err != nil {
 				return nil, err
 			}
-			return jsonTextResult(storytellerStoryDetail{
+			detail := storytellerStoryDetail{
 				storytellerStorySummary: toStorytellerStorySummary(*story),
-				Content:                 story.LatestContent,
 				VersionID:               derefUint64(story.LatestVersionID),
-			})
+			}
+			if story.ContentType == storytellerModel.ProjectContentTypeImage {
+				pages, err := service.ImageStoryPages(userID, args.ProjectPublicID, args.StoryPublicID)
+				if err != nil {
+					return nil, err
+				}
+				detail.Pages = pages
+			} else {
+				detail.Content = story.LatestContent
+			}
+			return jsonTextResult(detail)
 		},
 	})
 
 	_ = s.RegisterTool(Tool{
 		Name: "storyteller_upsert_story",
-		Description: "Create or update a story. Omit story_public_id to create a new story; " +
+		Description: "Create or update a text story (prose content). For image stories (\"話\", a sequence of " +
+			"image pages) use storyteller_presign_image_upload + storyteller_upsert_image_story instead — this tool " +
+			"always creates content_type=text stories and cannot be used for image content. " +
+			"Omit story_public_id to create a new story; " +
 			"pass an existing story_public_id to overwrite its content (this creates a new version, the previous content is not lost). " +
 			"Pass base_version_id (from storyteller_get_story) to detect if someone else's edit (e.g. from the web editor) happened " +
 			"in the meantime: the write always succeeds and is saved as a new version either way, but the response's " +
@@ -445,6 +507,140 @@ func (s *Server) registerStorytellerTools() {
 			return jsonTextResult(storytellerStoryDetail{
 				storytellerStorySummary: toStorytellerStorySummary(*story),
 				Content:                 story.LatestContent,
+				VersionID:               derefUint64(story.LatestVersionID),
+				VersionConflict:         conflicted,
+			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_presign_image_upload",
+		Description: "Step 1 of creating/editing an image story (\"話\"): get presigned S3 PUT URLs, one per file " +
+			"you want to upload. For each returned {key, upload_url}, PUT the raw image bytes to upload_url with a " +
+			"Content-Type header matching the content_type you declared for that file (the signature won't validate " +
+			"otherwise). Only image/jpeg, image/png, image/webp, and image/gif are accepted; there's a server-side " +
+			"cap on how many files you can request per call. After uploading, call storyteller_upsert_image_story " +
+			"with the returned keys to actually create or update the story.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"content_types": map[string]interface{}{
+				"type":        "array",
+				"description": "One MIME type per file you intend to upload, in the same order you'll list pages later. Each must be image/jpeg, image/png, image/webp, or image/gif.",
+				"items":       map[string]interface{}{"type": "string"},
+				"minItems":    1,
+			},
+		}, []string{"project_public_id", "content_types"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerPresignImageUploadArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			uploads, err := storytellerService.NewService().PresignImageUpload(ctx, userID, args.ProjectPublicID, args.ContentTypes)
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(uploads)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_upsert_image_story",
+		Description: "Step 2: create or update an image story (\"話\") using keys obtained from " +
+			"storyteller_presign_image_upload (after you've actually PUT the file bytes to their upload_url). " +
+			"Omit story_public_id to create a new one; pass an existing story_public_id to overwrite its pages " +
+			"(this creates a new version, the previous content is not lost). Pages are ordered by their position " +
+			"in the pages array — list them in the order they should appear. When updating an existing story, " +
+			"re-fetch it with storyteller_get_story first and pass back the id/key of any existing pages you want " +
+			"to keep (in your desired order, mixed in with any new pages); omitting an existing page removes it " +
+			"from the story. content_type is fixed to image and cannot be changed once created.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"story_public_id":   stringSchema("Existing story public_id to update. Omit to create a new image story."),
+			"title":             stringSchema("Story title, required."),
+			"summary":           stringSchema("Short summary shown in listings."),
+			"status":            stringSchema("draft or completed, defaults to completed."),
+			"sort":              integerSchema("Display order among the project's stories."),
+			"pages": map[string]interface{}{
+				"type":        "array",
+				"description": "The pages in display order. Each needs a key from storyteller_presign_image_upload (for existing pages being kept, reuse the key/id storyteller_get_story returned).",
+				"minItems":    1,
+				"items": map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"id":          stringSchema("Omit for new pages (the server generates one). For an existing page you're keeping, pass back the id storyteller_get_story returned so bookmarks etc. stay attached to it."),
+						"key":         stringSchema("The S3 key for this page: from storyteller_presign_image_upload for a new page, or the existing page's key (from storyteller_get_story) if you're keeping it unchanged."),
+						"description": stringSchema("Optional per-page caption/description text."),
+					},
+					"required": []string{"key"},
+				},
+			},
+			"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+		}, []string{"project_public_id", "title", "pages"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerUpsertImageStoryArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			if len(args.Pages) == 0 {
+				return nil, errors.New("pages must not be empty")
+			}
+			pages := make([]storytellerModel.StoryImagePage, 0, len(args.Pages))
+			for i, page := range args.Pages {
+				key := strings.TrimSpace(page.Key)
+				if key == "" {
+					return nil, fmt.Errorf("pages[%d].key is required", i)
+				}
+				id := strings.TrimSpace(page.ID)
+				if id == "" {
+					id = storytellerRandomPageID()
+				}
+				pages = append(pages, storytellerModel.StoryImagePage{
+					ID:          id,
+					Key:         key,
+					Description: page.Description,
+					Sort:        i,
+				})
+			}
+			content, err := json.Marshal(storytellerModel.StoryImageContent{Pages: pages})
+			if err != nil {
+				return nil, err
+			}
+			input := storytellerModel.StoryRequest{
+				Title:         args.Title,
+				Summary:       args.Summary,
+				Status:        storytellerModel.StoryStatus(args.Status),
+				Sort:          args.Sort,
+				Content:       string(content),
+				BaseVersionID: args.BaseVersionID,
+				ContentType:   storytellerModel.ProjectContentTypeImage,
+			}
+			source := storytellerSourceFromContext(ctx)
+			service := storytellerService.NewService()
+			var story *storytellerModel.Story
+			var conflicted bool
+			if args.StoryPublicID == "" {
+				story, err = service.CreateStory(userID, args.ProjectPublicID, input, source)
+			} else {
+				story, conflicted, err = service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, source)
+			}
+			if err != nil {
+				return nil, err
+			}
+			pagesOutput, err := service.ImageStoryPages(userID, args.ProjectPublicID, story.PublicID)
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(storytellerStoryDetail{
+				storytellerStorySummary: toStorytellerStorySummary(*story),
+				Pages:                   pagesOutput,
 				VersionID:               derefUint64(story.LatestVersionID),
 				VersionConflict:         conflicted,
 			})
@@ -583,4 +779,15 @@ func derefUint64(v *uint64) uint64 {
 		return 0
 	}
 	return *v
+}
+
+// storytellerRandomPageID 給沒帶 id 的新圖片頁面生一個 id，比照
+// service/storyteller/storyteller.go 的 randomID() 做法（那邊是 unexported，
+// 不同 package 呼叫不到，這裡另外生一份一樣邏輯的小函式，不值得為此互相 export）。
+func storytellerRandomPageID() string {
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(buf)
 }

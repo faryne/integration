@@ -234,7 +234,7 @@ type storytellerProjectMeta struct {
 }
 
 func fetchStorytellerPublicProjectMetaFromService(projectPath string) (storytellerProjectMeta, bool) {
-	project, err := storyteller.NewService().PublicProject(projectPath)
+	project, err := storyteller.NewService().PublicProject(projectPath, 0)
 	if err != nil || project == nil {
 		return storytellerProjectMeta{}, false
 	}

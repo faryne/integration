@@ -40,6 +40,11 @@ type envConfig struct {
 
 	StorytellerAgentAPIKeyActiveKeyID string `env:"STORYTELLER_AGENT_API_KEY_ACTIVE_KEY_ID"`
 	StorytellerAgentAPIKeyMasterKeys  string `env:"STORYTELLER_AGENT_API_KEY_MASTER_KEYS"`
+
+	// StorytellerCloudFrontKeyPairID／PrivateKeyFile 是 storyteller 圖像頁專用的簽名 key，
+	// 跟共用的 CloudFrontKeyPairID（nekomaid 在用）分開，不共用私鑰。
+	StorytellerCloudFrontKeyPairID      string `env:"STORYTELLER_CLOUDFRONT_KEY_PAIR_ID"`
+	StorytellerCloudFrontPrivateKeyFile string `env:"STORYTELLER_CLOUDFRONT_PRIVATE_KEY_FILE"`
 }
 
 var loadEnvConfig envConfig

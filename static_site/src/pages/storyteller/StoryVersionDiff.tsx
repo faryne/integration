@@ -49,7 +49,7 @@ export default function StorytellerStoryVersionDiff() {
   );
   const target = targetIndex >= 0 ? versions[targetIndex] : undefined;
   const previous = targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
-  const basePath = steamloomPath(`story/${projectPath}`);
+  const basePath = steamloomPath(`work/${projectPath}/story`);
 
   useTitle(
     story ? `${story.title} 版本比較 - ${STORYTELLER_APP_NAME}` : "版本比較",
@@ -100,7 +100,10 @@ export default function StorytellerStoryVersionDiff() {
       description={`${story.title} 的版本比較，僅供查看內容差異，無法在此加入或移除書籤。`}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: project.name, to: steamloomPath(`story/${projectPath}`) },
+        {
+          label: project.name,
+          to: steamloomPath(`work/${projectPath}/stories`),
+        },
         { label: story.title, to: `${basePath}/${story.public_id}` },
         { label: "版本比較" },
       ]}

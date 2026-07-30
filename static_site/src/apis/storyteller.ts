@@ -17,6 +17,7 @@ import type {
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
   StorytellerFavoriteAuthor,
+  StorytellerImagePageUploadOutput,
   StorytellerLore,
   StorytellerLoreRequest,
   StorytellerLoreVersion,
@@ -33,6 +34,7 @@ import type {
   StorytellerStoryBookmark,
   StorytellerStoryBookmarkWithStory,
   StorytellerStoryChatMessagePage,
+  StorytellerStoryImagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
   StorytellerStoryVolumeActivity,
@@ -168,14 +170,18 @@ export function useSaveFavoriteAuthorVisibility(authorUserId?: number) {
   });
 }
 
+// 帶上登入者的 encrypt key（若有）讓後端可以辨識「正在看自己私人/不公開連結專案的作者
+// 本人」——跟 usePublicFavoriteStorytellerProjects 是同一組模式，見後端 optionalViewerID。
 export function usePublicStorytellerProject(projectPath?: string) {
+  const { session } = useAuth();
   return useQuery({
-    queryKey: ["storyteller", "public-project", projectPath],
+    queryKey: ["storyteller", "public-project", projectPath, session?.user.id],
     enabled: Boolean(projectPath),
     retry: false,
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerProject>>(
         `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
       );
       return response.data.data;
     },
@@ -997,21 +1003,123 @@ export function useStorytellerVolumeActivity(
   });
 }
 
+// usePresignStorytellerImageUpload 拿 count 組可以直接 PUT 上傳到 S3 的網址，不綁定到
+// 特定的話——上傳完成後直接用 useSaveStorytellerStory 建立一筆 content_type=image 的故事，
+// content 帶上這些 key 組成的 JSON（見 StorytellerStoryImagePage）。
+export function usePresignStorytellerImageUpload(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (contentTypes: string[]) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerImagePageUploadOutput[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/image-pages/presign`,
+        { content_types: contentTypes },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// useStorytellerImageStoryPages 是作者管理頁／預覽用的版本，不限公開狀態。
+export function useStorytellerImageStoryPages(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "image-story-pages",
+      projectPublicId,
+      storyPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/image-pages`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// usePublicStorytellerImageStoryPages／useSharedStorytellerImageStoryPages 是閱讀頁用的
+// 版本，只有已發布的話才讀得到，不需要登入——跟 usePublicStorytellerProject／
+// useSharedStorytellerProject 是同一組模式。
+export function usePublicStorytellerImageStoryPages(
+  projectPath?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-image-story-pages",
+      projectPath,
+      storyPublicId,
+    ],
+    enabled: Boolean(projectPath && storyPublicId),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}/stories/${storyPublicId}/image-pages`,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSharedStorytellerImageStoryPages(
+  shareToken?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "shared-image-story-pages",
+      shareToken,
+      storyPublicId,
+    ],
+    enabled: Boolean(shareToken && storyPublicId),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/story/share/${shareToken}/stories/${storyPublicId}/image-pages`,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// 帶上登入者的 encrypt key（若有），讓故事本人預覽自己私人專案裡的草稿故事時，
+// 這條公開路由也能正常回傳版本資訊（見後端 optionalViewerID）。
 export function usePublicStorytellerStoryLatestVersion(
   projectPublicId?: string,
   storyPublicId?: string,
 ) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: [
       "storyteller",
       "public-story-latest-version",
       projectPublicId,
       storyPublicId,
+      session?.user.id,
     ],
     enabled: Boolean(projectPublicId && storyPublicId),
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerStoryVersion>>(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/latest-version`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
       );
       return response.data.data;
     },
@@ -1022,12 +1130,14 @@ export function usePublicStorytellerStoryVersions(
   projectPublicId?: string,
   storyPublicId?: string,
 ) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: [
       "storyteller",
       "public-story-versions",
       projectPublicId,
       storyPublicId,
+      session?.user.id,
     ],
     enabled: Boolean(projectPublicId && storyPublicId),
     queryFn: async () => {
@@ -1035,6 +1145,7 @@ export function usePublicStorytellerStoryVersions(
         CommonResponse<StorytellerStoryVersion[]>
       >(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/versions`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
       );
       return response.data.data ?? [];
     },
@@ -1114,9 +1225,11 @@ export function useStorytellerStoryBookmarks(
   });
 }
 
+// lineId 對文字故事是行號的字串形式，對圖片故事（話）是頁面 id；versionId 只有文字
+// 書籤需要（圖片書籤不綁版本），可以省略。
 interface StorytellerStoryBookmarkInput {
-  versionId: number;
-  lineIndex: number;
+  lineId: string;
+  versionId?: number;
 }
 
 export function useCreateStorytellerStoryBookmark(
@@ -1127,14 +1240,14 @@ export function useCreateStorytellerStoryBookmark(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
+      lineId,
       versionId,
-      lineIndex,
     }: StorytellerStoryBookmarkInput) => {
       const response = await axios.post<
         CommonResponse<StorytellerStoryBookmark>
       >(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
-        { version_id: versionId, line_index: lineIndex },
+        { version_id: versionId ?? 0, line_id: lineId },
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;
@@ -1158,13 +1271,13 @@ export function useDeleteStorytellerStoryBookmark(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
+      lineId,
       versionId,
-      lineIndex,
     }: StorytellerStoryBookmarkInput) => {
       const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
         {
-          data: { version_id: versionId, line_index: lineIndex },
+          data: { version_id: versionId ?? 0, line_id: lineId },
           headers: sessionHeaders(session!.encrypt_key),
         },
       );

@@ -7,6 +7,8 @@ export interface StorytellerProject {
   description: string;
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
+  // 建立後不可變更，前端建立專案時鎖定選擇的類型。
+  content_type: "text" | "image";
   tags: string[];
   share_token: string;
   rating_count: number;
@@ -112,6 +114,9 @@ export interface StorytellerStory {
   parent_id: number | null;
   // 是否為冊——只有標題、不使用內容欄位的容器故事。
   is_volume: boolean;
+  // text=一般文字故事；image=圖像作品（「話」），latest_content 是 JSON（頁面陣列），
+  // 不是 markdown，不要直接當文字渲染。建立後不可變更。
+  content_type: "text" | "image";
   title: string;
   summary: string;
   status: "draft" | "completed";
@@ -132,6 +137,27 @@ export interface StorytellerStoryVolumeRequest {
   sort: number;
   // 冊本身的公開／未公開狀態。關閉（draft）時，底下所有故事一律不對外顯示。
   status: "draft" | "completed";
+  // 給讀者看的說明文字。
+  summary: string;
+  // 只有建立時會用到（決定底下要掛文字故事還是圖像頁），更新時後端會忽略此欄位。
+  content_type?: "text" | "image";
+}
+
+// StorytellerStoryImagePage 是「話」（content_type=image 的故事）JSON 內容裡的單一頁面，
+// 讀取時由後端簽好 image_url 才回傳，不是存在 DB 裡的原始形狀。
+export interface StorytellerStoryImagePage {
+  id: string;
+  // 只有作者本人的管理頁（useStorytellerImageStoryPages）會有值，公開／分享閱讀頁
+  // 不會回傳——編輯既有話時用來重組完整 JSON 存回去，不用重新上傳沒改過的頁面。
+  key?: string;
+  image_url: string;
+  description: string;
+  sort: number;
+}
+
+export interface StorytellerImagePageUploadOutput {
+  key: string;
+  upload_url: string;
 }
 
 export interface StorytellerStoryVolumeEvent {
@@ -165,12 +191,14 @@ export interface StorytellerStoryVersion {
   updated_at: string;
 }
 
+// line_id 對文字故事是行號的字串形式（"0"、"12"...），對圖片故事（話）是頁面 id。
+// story_version_id 只有文字書籤會有值——圖片頁面 id 不隨版本變動，不綁定特定版本。
 export interface StorytellerStoryBookmark {
   id: number;
   user_id: number;
   story_id: number;
-  story_version_id: number;
-  line_index: number;
+  story_version_id?: number | null;
+  line_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -180,10 +208,13 @@ export interface StorytellerStoryBookmarkWithStory {
   story_id: number;
   story_public_id: string;
   story_title: string;
-  story_version_id: number;
-  latest_story_version_id: number;
-  line_index: number;
-  line_preview: string;
+  content_type: "text" | "image";
+  story_version_id?: number | null;
+  latest_story_version_id?: number;
+  line_id: string;
+  line_preview?: string;
+  page_sort?: number;
+  thumbnail_url?: string;
   created_at: string;
 }
 
@@ -247,7 +278,7 @@ export interface StorytellerUserProfile {
 export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
   project_count: number;
   story_count: number;
-  word_count: number;
+  image_story_count: number;
   rating_count: number;
   average_rating: number;
   follower_count: number;
@@ -260,6 +291,8 @@ export interface StorytellerProjectRequest {
   description: string;
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
+  // 只有建立時採用，更新專案時後端一律忽略、維持建立當下的值。
+  content_type: "text" | "image";
   tags: string[];
 }
 
@@ -367,6 +400,8 @@ export interface StorytellerStoryRequest {
   base_version_id?: number;
   // 所屬冊的 public_id；空字串或不帶代表移出冊／不分冊。只能指向一冊，後端會驗證。
   parent_id?: string;
+  // 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時後端會忽略此欄位。
+  content_type?: "text" | "image";
 }
 
 export interface StorytellerLoreRequest {

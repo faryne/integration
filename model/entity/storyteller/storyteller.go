@@ -23,6 +23,16 @@ const (
 	ProjectRatingRestricted ProjectRating = "restricted"
 )
 
+// ProjectContentType 只是專案預設顯示 layout 的偏好，可隨時修改；不限制專案底下
+// 的故事／冊只能是單一類型，同一個專案未來可以同時有文字故事與圖像作品（詳見
+// DevelopDocuments/storyteller/漫畫插圖閱讀器.md）。
+type ProjectContentType string
+
+const (
+	ProjectContentTypeText  ProjectContentType = "text"
+	ProjectContentTypeImage ProjectContentType = "image"
+)
+
 type SNSType string
 
 const (
@@ -133,19 +143,20 @@ const (
 )
 
 type Project struct {
-	ID          uint64            `gorm:"column:id;primaryKey" json:"id"`
-	PublicID    string            `gorm:"column:public_id" json:"public_id"`
-	UserID      uint64            `gorm:"column:user_id" json:"user_id"`
-	Name        string            `gorm:"column:name" json:"name"`
-	Slug        string            `gorm:"column:slug" json:"slug"`
-	Description string            `gorm:"column:description" json:"description"`
-	Visibility  ProjectVisibility `gorm:"column:visibility" json:"visibility"`
-	Rating      ProjectRating     `gorm:"column:rating" json:"rating"`
-	Tags        string            `gorm:"column:tags" json:"-"`
-	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
-	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt   time.Time         `gorm:"column:updated_at" json:"updated_at"`
+	ID          uint64             `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string             `gorm:"column:public_id" json:"public_id"`
+	UserID      uint64             `gorm:"column:user_id" json:"user_id"`
+	Name        string             `gorm:"column:name" json:"name"`
+	Slug        string             `gorm:"column:slug" json:"slug"`
+	Description string             `gorm:"column:description" json:"description"`
+	Visibility  ProjectVisibility  `gorm:"column:visibility" json:"visibility"`
+	Rating      ProjectRating      `gorm:"column:rating" json:"rating"`
+	ContentType ProjectContentType `gorm:"column:content_type" json:"content_type"`
+	Tags        string             `gorm:"column:tags" json:"-"`
+	ShareToken  string             `gorm:"column:share_token" json:"share_token"`
+	DeletedAt   *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt   time.Time          `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time          `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
@@ -261,18 +272,22 @@ type Story struct {
 	// ParentID：所屬冊（另一筆 is_volume=true 的 Story）的 id，NULL 代表未分冊或本身就是一冊。
 	ParentID *uint64 `gorm:"column:parent_id" json:"parent_id"`
 	// IsVolume：是否為冊——只有標題、不使用內容欄位的容器故事，不能巢狀（IsVolume=true 時 ParentID 必為 nil）。
-	IsVolume        bool        `gorm:"column:is_volume" json:"is_volume"`
-	Title           string      `gorm:"column:title" json:"title"`
-	Summary         string      `gorm:"column:summary" json:"summary"`
-	Status          StoryStatus `gorm:"column:status" json:"status"`
-	Sort            int         `gorm:"column:sort" json:"sort"`
-	LatestContent   string      `gorm:"column:latest_content" json:"latest_content"`
-	LatestVersionID *uint64     `gorm:"column:latest_version_id" json:"latest_version_id"`
-	WordCount       uint        `gorm:"column:word_count" json:"word_count"`
-	IsDeleted       bool        `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt       *time.Time  `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time   `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time   `gorm:"column:updated_at" json:"updated_at"`
+	IsVolume bool `gorm:"column:is_volume" json:"is_volume"`
+	// ContentType：text=一般文字故事，LatestContent 是 markdown；image=圖像作品（「話」），
+	// LatestContent 是 JSON（見 StoryImageContent），不能用 wordCount 之類的文字邏輯處理。
+	// 建立時決定，UpdateStory／UpdateVolume 都不可變更——跟 Project.ContentType 是不同層級的欄位，不要混用。
+	ContentType     ProjectContentType `gorm:"column:content_type" json:"content_type"`
+	Title           string             `gorm:"column:title" json:"title"`
+	Summary         string             `gorm:"column:summary" json:"summary"`
+	Status          StoryStatus        `gorm:"column:status" json:"status"`
+	Sort            int                `gorm:"column:sort" json:"sort"`
+	LatestContent   string             `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID *uint64            `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount       uint               `gorm:"column:word_count" json:"word_count"`
+	IsDeleted       bool               `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt       *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time          `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time          `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Story) TableName() string { return "storyteller_stories" }
@@ -329,31 +344,43 @@ type StoryVersion struct {
 
 func (StoryVersion) TableName() string { return "storyteller_story_versions" }
 
+// StoryBookmark 同時承載文字書籤（逐行）與圖片書籤（逐頁）：LineID 對文字故事是行號的
+// 字串形式（"0"、"12"...），對圖片故事是 StoryImagePage.ID。StoryVersionID 只有文字書籤
+// 會填——文字內容逐版本可能不同，line_id 指到的行要綁定特定版本才能判斷是否過期；
+// 圖片頁面 id 本身穩定、不隨版本變動，圖片書籤故意留 NULL，不受版本更新影響。
 type StoryBookmark struct {
 	ID             uint64    `gorm:"column:id;primaryKey" json:"id"`
 	UserID         uint64    `gorm:"column:user_id" json:"user_id"`
 	StoryID        uint64    `gorm:"column:story_id" json:"story_id"`
-	StoryVersionID uint64    `gorm:"column:story_version_id" json:"story_version_id"`
-	LineIndex      int       `gorm:"column:line_index" json:"line_index"`
+	StoryVersionID *uint64   `gorm:"column:story_version_id" json:"story_version_id,omitempty"`
+	LineID         string    `gorm:"column:line_id" json:"line_id"`
 	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt      time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryBookmark) TableName() string { return "storyteller_story_bookmarks" }
 
-// StoryBookmarkOutput 附上所屬章節的 public_id／標題，供讀者頁側欄書籤列表
-// 跨章節顯示與產生跳轉連結使用。LatestStoryVersionID 是該章節「目前」的最新版本，
-// 讓前端可以比對書籤當初的版本是否已經過期。
+// StoryBookmarkOutput 附上所屬章節的 public_id／標題／內容類型，供讀者頁側欄書籤列表
+// 跨章節顯示與產生跳轉連結使用。LatestStoryVersionID／LinePreview 只對文字書籤有意義
+// （文字書籤才綁 story_version_id，用來比對是否已經過期）；PageSort／ThumbnailURL 只對
+// 圖片書籤有意義，兩者都需要解析 LatestContent 的 JSON 才能算出來，SQL 查不到，由
+// service 層依 ContentType 分開填入。
 type StoryBookmarkOutput struct {
-	ID                   uint64    `gorm:"column:id" json:"id"`
-	StoryID              uint64    `gorm:"column:story_id" json:"story_id"`
-	StoryPublicID        string    `gorm:"column:story_public_id" json:"story_public_id"`
-	StoryTitle           string    `gorm:"column:story_title" json:"story_title"`
-	StoryVersionID       uint64    `gorm:"column:story_version_id" json:"story_version_id"`
-	LatestStoryVersionID uint64    `gorm:"column:latest_story_version_id" json:"latest_story_version_id"`
-	LineIndex            int       `gorm:"column:line_index" json:"line_index"`
-	LinePreview          string    `gorm:"column:line_preview" json:"line_preview"`
-	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at"`
+	ID                   uint64             `gorm:"column:id" json:"id"`
+	StoryID              uint64             `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID        string             `gorm:"column:story_public_id" json:"story_public_id"`
+	StoryTitle           string             `gorm:"column:story_title" json:"story_title"`
+	ContentType          ProjectContentType `gorm:"column:content_type" json:"content_type"`
+	StoryVersionID       *uint64            `gorm:"column:story_version_id" json:"story_version_id,omitempty"`
+	LatestStoryVersionID uint64             `gorm:"column:latest_story_version_id" json:"latest_story_version_id,omitempty"`
+	LineID               string             `gorm:"column:line_id" json:"line_id"`
+	LinePreview          string             `gorm:"column:line_preview" json:"line_preview,omitempty"`
+	// PageSort 不能加 omitempty——第一頁的排序值就是 0，omitempty 會把這個合法值
+	// 誤判成「空值」整欄從 JSON 消失，前端讀到 undefined 後 (page_sort ?? -1) < 0
+	// 就會把第一頁的書籤誤判成「頁面已被刪除」。
+	PageSort     int       `gorm:"-" json:"page_sort"`
+	ThumbnailURL string    `gorm:"-" json:"thumbnail_url,omitempty"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
 }
 
 type Lore struct {
@@ -508,12 +535,13 @@ type PersonalAccessTokenCreateOutput struct {
 }
 
 type ProjectRequest struct {
-	Name        string            `json:"name"`
-	Slug        string            `json:"slug"`
-	Description string            `json:"description"`
-	Visibility  ProjectVisibility `json:"visibility"`
-	Rating      ProjectRating     `json:"rating"`
-	Tags        []string          `json:"tags"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+	Description string             `json:"description"`
+	Visibility  ProjectVisibility  `json:"visibility"`
+	Rating      ProjectRating      `json:"rating"`
+	ContentType ProjectContentType `json:"content_type"`
+	Tags        []string           `json:"tags"`
 }
 
 type AgentRequest struct {
@@ -578,6 +606,8 @@ type StoryRequest struct {
 	// ParentID 是所屬冊的 public_id；空字串或 nil 代表移出冊／不分冊。
 	// 只能指向 is_volume=true 的故事，後端會驗證。
 	ParentID *string `json:"parent_id,omitempty"`
+	// ContentType 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時忽略此欄位。
+	ContentType ProjectContentType `json:"content_type,omitempty"`
 }
 
 // StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
@@ -590,6 +620,51 @@ type StoryVolumeRequest struct {
 	// Status 是冊本身的公開／未公開狀態。冊關閉（draft）時，底下所有故事一律不對外顯示，
 	// 不管故事自己的 status 是什麼——見 Repository.PublishedStories 的 join 邏輯。
 	Status StoryStatus `json:"status"`
+	// Summary 是這一冊／話給讀者看的說明文字。
+	Summary string `json:"summary"`
+	// ContentType 只有建立時會用到（決定底下要掛文字故事還是圖像頁），更新時忽略此欄位。
+	ContentType ProjectContentType `json:"content_type,omitempty"`
+}
+
+// StoryImagePage 是「話」（Story.ContentType=image）JSON 內容裡的單一頁面。
+type StoryImagePage struct {
+	ID          string `json:"id"`
+	Key         string `json:"key"`
+	Description string `json:"description"`
+	Sort        int    `json:"sort"`
+}
+
+// StoryImageContent 是 Story.LatestContent／StoryVersion.Content 在 ContentType=image
+// 時實際存放的 JSON 結構，取代原本獨立的 storyteller_image_pages 表——一「話」的所有頁面
+// 就是一筆 Story 存檔，版本歷史／回復完全沿用既有的 Story 機制，不需要另外處理。
+type StoryImageContent struct {
+	Pages []StoryImagePage `json:"pages"`
+}
+
+// StoryImagePageOutput 是讀取時輸出用的形狀，ImageURL 是簽過名的 CloudFront 網址
+// （讀取當下才簽，不落地存）。Key 只有作者本人的管理頁（Service.ImageStoryPages）
+// 會填值，用來讓編輯頁重組完整 JSON 存回去；公開／分享閱讀頁（PublicImageStoryPages／
+// SharedImageStoryPages）不會填這個欄位，讀者不需要也不該拿到原始 S3 key。
+type StoryImagePageOutput struct {
+	ID          string `json:"id"`
+	Key         string `json:"key,omitempty"`
+	ImageURL    string `json:"image_url"`
+	Description string `json:"description"`
+	Sort        int    `json:"sort"`
+}
+
+// ImagePageUploadRequest 是 presign 請求，逐檔案帶 content type：一來讓伺服器能驗證
+// 是不是允許的圖片類型，二來把它綁進 S3 PutObjectInput.ContentType，讓上傳當下送出的
+// Content-Type header 必須跟這裡宣告的一致，signature 才會過。
+type ImagePageUploadRequest struct {
+	ContentTypes []string `json:"content_types"`
+}
+
+// ImagePageUploadOutput 是單張圖的 presigned PUT 網址跟對應的 S3 object key，
+// 呼叫端上傳成功後把 Key 原樣帶回 ImagePageRequest.Key 供後續建立頁面時關聯。
+type ImagePageUploadOutput struct {
+	Key       string `json:"key"`
+	UploadURL string `json:"upload_url"`
 }
 
 type LoreRequest struct {
@@ -694,13 +769,13 @@ type UserProfileOutput struct {
 
 type FavoriteAuthorOutput struct {
 	UserProfileOutput
-	ProjectCount  uint64  `json:"project_count"`
-	StoryCount    uint64  `json:"story_count"`
-	WordCount     uint64  `json:"word_count"`
-	RatingCount   uint64  `json:"rating_count"`
-	AverageRating float64 `json:"average_rating"`
-	FollowerCount uint64  `json:"follower_count"`
-	Hidden        bool    `json:"hidden,omitempty"`
+	ProjectCount    uint64  `json:"project_count"`
+	StoryCount      uint64  `json:"story_count"`
+	ImageStoryCount uint64  `json:"image_story_count"`
+	RatingCount     uint64  `json:"rating_count"`
+	AverageRating   float64 `json:"average_rating"`
+	FollowerCount   uint64  `json:"follower_count"`
+	Hidden          bool    `json:"hidden,omitempty"`
 }
 
 type ProjectOutput struct {
