@@ -331,33 +331,33 @@ const storytellerRoutes = (
     />
     <Route path={"favorites"} element={<StorytellerFavorites />} />
     <Route path={"profile"} element={<StorytellerProfile />} />
-    <Route
-      path={"work/:projectPath/stories"}
-      element={<StorytellerReader forcedTab="story" />}
-    />
+    <Route path={"work/:projectPath/stories"} element={<StorytellerReader />} />
     <Route
       path={"work/:projectPath/story/:storyId"}
-      element={<StorytellerReader forcedTab="story" />}
+      element={<StorytellerReader />}
     />
     <Route
       path={"work/:projectPath/story/:storyId/versions/:versionId"}
       element={<StorytellerStoryVersionDiff />}
     />
+    {/* 故事與話已經合併成同一份序列，不再有獨立的 /images 家族入口，
+        舊連結導回 /stories（統一序列的第一篇會是原本 images 排最前面的話）。 */}
     <Route
       path={"work/:projectPath/images"}
-      element={<StorytellerReader forcedTab="image" />}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) => `work/${p.projectPath}/stories`}
+        />
+      }
     />
     <Route
       path={"work/:projectPath/image/:episodeId"}
-      element={<StorytellerReader forcedTab="image" />}
+      element={<StorytellerReader />}
     />
-    <Route
-      path={"work/share/:shareToken"}
-      element={<StorytellerReader forcedTab="story" />}
-    />
+    <Route path={"work/share/:shareToken"} element={<StorytellerReader />} />
     <Route
       path={"work/share/:shareToken/:storyId"}
-      element={<StorytellerReader forcedTab="story" />}
+      element={<StorytellerReader />}
     />
     {/* 下面全部是舊 story/ 前綴網址的導向，不留 404，怕有人存了舊連結或分享連結還在流通。 */}
     <Route

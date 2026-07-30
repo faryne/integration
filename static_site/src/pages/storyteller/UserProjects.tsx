@@ -61,7 +61,6 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import type {
   StorytellerFavoriteAuthor,
   StorytellerProject,
@@ -176,7 +175,9 @@ export default function StorytellerUserProjects() {
     id: project.public_id,
     name: project.name,
     description: project.description,
-    storiesCount: project.stories?.length ?? 0,
+    storiesCount: (project.stories ?? []).filter(
+      (story) => story.content_type !== "image",
+    ).length,
     rating: project.rating,
     averageRating: project.average_rating,
     favoriteCount: project.favorite_count,
@@ -185,11 +186,7 @@ export default function StorytellerUserProjects() {
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
     updatedAt: project.updated_at,
-    path: storytellerReaderPath(
-      project,
-      project.stories?.length ?? 0,
-      listImageEpisodes(project.public_id).length,
-    ),
+    path: storytellerReaderPath(project),
   }));
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
@@ -500,7 +497,9 @@ function FavoriteProjectCard({
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
-  const storyCount = project.stories?.length ?? 0;
+  const storyCount = (project.stories ?? []).filter(
+    (story) => story.content_type !== "image",
+  ).length;
   const wordCount =
     project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
@@ -547,11 +546,7 @@ function FavoriteProjectCard({
       actions={
         <Button
           component={RouterLink}
-          to={storytellerReaderPath(
-            project,
-            storyCount,
-            listImageEpisodes(project.public_id).length,
-          )}
+          to={storytellerReaderPath(project)}
           variant="contained"
         >
           開始閱讀

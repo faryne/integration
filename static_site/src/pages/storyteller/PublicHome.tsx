@@ -17,7 +17,6 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
-import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 
 const spin = keyframes`to { transform: rotate(360deg); }`;
 const spinReverse = keyframes`to { transform: rotate(-360deg); }`;
@@ -170,7 +169,9 @@ export default function StorytellerPublicHome() {
     id: project.public_id,
     name: project.name,
     description: project.description,
-    storiesCount: project.stories?.length ?? 0,
+    storiesCount: (project.stories ?? []).filter(
+      (story) => story.content_type !== "image",
+    ).length,
     rating: project.rating,
     tags: project.tags ?? [],
     authorName: project.author?.pen_name,
@@ -178,11 +179,7 @@ export default function StorytellerPublicHome() {
       project.stories?.reduce((total, story) => total + story.word_count, 0) ??
       0,
     updatedAt: project.updated_at,
-    path: storytellerReaderPath(
-      project,
-      project.stories?.length ?? 0,
-      listImageEpisodes(project.public_id).length,
-    ),
+    path: storytellerReaderPath(project),
   }));
 
   useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {

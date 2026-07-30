@@ -29,6 +29,7 @@ import {
   useDeleteStorytellerLore,
   useDeleteStorytellerStory,
   useSaveStorytellerVolume,
+  useStorytellerImageStoryPages,
   useStorytellerLores,
   useStorytellerProjects,
   useSaveStorytellerStory,
@@ -61,11 +62,6 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import { StorytellerVolumeDialog } from "@/pages/storyteller/StorytellerVolumeDialog.tsx";
-import {
-  deleteImageEpisode,
-  listImageEpisodes,
-  type StorytellerImageEpisodeMock,
-} from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { sortedGroup } from "@/pages/storyteller/storytellerVolumes.ts";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 
@@ -74,18 +70,145 @@ import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
 const emptyStories: StorytellerStory[] = [];
 const emptyVolumes: StorytellerStory[] = [];
 
+// StoryRow 是「作品與冊」統一列表裡的單一列，文字故事跟話（content_type=image）
+// 共用同一列樣式，只有圖示／字數或頁數／編輯連結不同。話的頁數需要另外呼叫
+// useStorytellerImageStoryPages 才知道，文字故事則不需要（gate 掉，不會多打 API）。
+function StoryRow({
+  story,
+  projectId,
+  draggingStoryId,
+  saving,
+  onDragStart,
+  onDragOverAllowVolumeOnly,
+  onDrop,
+  onTogglePublish,
+  onDelete,
+}: {
+  story: StorytellerStory;
+  projectId: string;
+  draggingStoryId: string | null;
+  saving: boolean;
+  onDragStart: () => void;
+  onDragOverAllowVolumeOnly: boolean;
+  onDrop: () => void;
+  onTogglePublish: (checked: boolean) => void;
+  onDelete: () => void;
+}) {
+  const isImage = story.content_type === "image";
+  const { data: pages = [] } = useStorytellerImageStoryPages(
+    isImage ? projectId : undefined,
+    isImage ? story.public_id : undefined,
+  );
+  return (
+    <Paper
+      draggable
+      variant="outlined"
+      onDragStart={onDragStart}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        // 正在拖曳的是「冊」而不是故事時，不要在這裡吃掉事件——讓它冒泡到
+        // 外層冊卡片的 onDrop，才能把冊排到「目前排最前面的那個冊」前面。
+        if (onDragOverAllowVolumeOnly) {
+          return;
+        }
+        event.stopPropagation();
+        onDrop();
+      }}
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        cursor: "grab",
+        opacity: draggingStoryId === story.public_id ? 0.55 : 1,
+      }}
+    >
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Tooltip title="拖放調整故事順序，或拖到別的冊／未分冊區塊">
+          <DragIndicatorIcon color="disabled" />
+        </Tooltip>
+        {isImage ? (
+          <CollectionsIcon color="primary" />
+        ) : (
+          <ArticleIcon color="primary" />
+        )}
+        <Stack sx={{ flex: 1, minWidth: 0 }}>
+          <Typography fontWeight={800}>{story.title}</Typography>
+          {story.summary.trim() && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
+                overflow: "hidden",
+              }}
+            >
+              {story.summary}
+            </Typography>
+          )}
+          <Typography variant="body2" color="text.secondary">
+            {isImage
+              ? `${pages.length} 頁`
+              : `${story.word_count.toLocaleString()} 字`}{" "}
+            · {formatStorytellerDate(story.updated_at)}
+          </Typography>
+        </Stack>
+        <Tooltip
+          title={
+            story.status === "completed"
+              ? "公開中，點一下改為未公開"
+              : "未公開，點一下改為公開中"
+          }
+        >
+          <FormControlLabel
+            sx={{ mr: 0 }}
+            control={
+              <Switch
+                size="small"
+                color="success"
+                checked={story.status === "completed"}
+                disabled={saving}
+                onChange={(event) => onTogglePublish(event.target.checked)}
+              />
+            }
+            label={story.status === "completed" ? "公開中" : "未公開"}
+          />
+        </Tooltip>
+        <Button
+          href={steamloomPath(
+            `my/project/${projectId}/${isImage ? "image" : "story"}/${story.public_id}`,
+          )}
+          variant="outlined"
+          size="small"
+        >
+          編輯
+        </Button>
+        <Button
+          color="error"
+          variant="contained"
+          size="small"
+          startIcon={<DeleteIcon />}
+          onClick={onDelete}
+        >
+          刪除
+        </Button>
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function StorytellerProjectDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { session, loading, login, submitting } = useAuth();
-  const activeTab: "stories" | "images" | "lores" = location.pathname.endsWith(
-    "/lores",
-  )
+  // 故事與話（圖像作品）已經合併成同一份列表，不再分開分頁；舊的 /images 網址
+  // 沿用同一顆 "stories" tab，維持舊書籤／連結可以打開。
+  const activeTab: "stories" | "lores" = location.pathname.endsWith("/lores")
     ? "lores"
-    : location.pathname.endsWith("/images")
-      ? "images"
-      : "stories";
+    : "stories";
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [orderedVolumes, setOrderedVolumes] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
@@ -128,7 +251,9 @@ export default function StorytellerProjectDetail() {
             : apiProject.visibility === "unlisted"
               ? "與親友分享"
               : "完全不公開",
-        storiesCount: apiProject.stories?.length ?? 0,
+        storiesCount: (apiProject.stories ?? []).filter(
+          (story) => story.content_type !== "image",
+        ).length,
         updatedAt: apiProject.updated_at,
         contentType: apiProject.content_type,
       }
@@ -137,6 +262,11 @@ export default function StorytellerProjectDetail() {
     useStorytellerStories(apiProject?.public_id);
   const { data: apiVolumes = emptyVolumes, isLoading: apiVolumesLoading } =
     useStorytellerVolumes(apiProject?.public_id);
+  // imageStoryCount 只用來給上方 meta chip 顯示「幾話」，作品與冊本身的列表
+  // 已經不分文字／圖像，兩種都在 orderedStories／orderedVolumes 裡混著顯示。
+  const imageStoryCount = apiStories.filter(
+    (story) => story.content_type === "image",
+  ).length;
   const { data: apiLores = [], isLoading: apiLoresLoading } =
     useStorytellerLores(apiProject?.public_id);
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
@@ -154,19 +284,6 @@ export default function StorytellerProjectDetail() {
       [...apiVolumes].sort((left, right) => left.sort - right.sort),
     );
   }, [apiVolumes]);
-
-  const [imageEpisodes, setImageEpisodes] = useState<
-    StorytellerImageEpisodeMock[]
-  >([]);
-
-  useEffect(() => {
-    setImageEpisodes(listImageEpisodes(apiProject?.public_id));
-  }, [apiProject?.public_id]);
-
-  function handleDeleteImageEpisode(episodeId: string) {
-    deleteImageEpisode(episodeId);
-    setImageEpisodes(listImageEpisodes(apiProject?.public_id));
-  }
 
   // handleDropVolume 把拖曳中的冊放到 targetVolumeId 前面（null 代表放到最後），
   // 只重排冊彼此之間的順序，跟故事的 parent_id 無關。
@@ -200,7 +317,12 @@ export default function StorytellerProjectDetail() {
       }
       saveVolume.mutate({
         volumePublicId: item.public_id,
-        input: { title: item.title, sort: index, status: item.status },
+        input: {
+          title: item.title,
+          sort: index,
+          status: item.status,
+          summary: item.summary,
+        },
       });
     });
   }
@@ -223,6 +345,7 @@ export default function StorytellerProjectDetail() {
       setDraggingStoryId(null);
       return;
     }
+    // 冊是通用容器，文字故事跟話可以混著放在同一冊裡，不用檢查類型是否相符。
     const sourceVolumeId = draggingStory.parent_id;
     const remaining = orderedStories.filter(
       (item) => item.public_id !== draggingStoryId,
@@ -361,7 +484,7 @@ export default function StorytellerProjectDetail() {
       <Box
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
-          // 這塊常常嵌在自己也有 onDrop 的容器裡（冊卡片、未分冊故事清單），
+          // 這塊常常嵌在自己也有 onDrop 的容器裡（冊卡片、未分冊作品清單），
           // 不擋掉冒泡的話同一次放開滑鼠會把 handleDropStory／handleDropVolume
           // 疊加執行兩次。
           event.stopPropagation();
@@ -374,128 +497,42 @@ export default function StorytellerProjectDetail() {
 
   function renderStoryRow(story: StorytellerStory) {
     return (
-      <Paper
+      <StoryRow
         key={story.public_id}
-        draggable
-        variant="outlined"
+        story={story}
+        projectId={projectId}
+        draggingStoryId={draggingStoryId}
+        saving={saveStory.isPending}
+        onDragOverAllowVolumeOnly={Boolean(draggingVolumeId)}
         onDragStart={() => {
           setDraggingVolumeId(null);
           setDraggingStoryId(story.public_id);
         }}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={(event) => {
-          // 正在拖曳的是「冊」而不是故事時，不要在這裡吃掉事件——讓它冒泡到
-          // 外層冊卡片的 onDrop，才能把冊排到「目前排最前面的那個冊」前面。
-          // 不然一個冊只要底下已經有故事，整張卡片幾乎都會被故事列擋住，
-          // 拖曳冊排序時完全點不到冊本身能接收 drop 的空隙。
-          if (draggingVolumeId) {
-            return;
-          }
-          event.stopPropagation();
-          handleDropStory(story.parent_id, story.public_id);
-        }}
-        sx={{
-          p: 2,
-          borderRadius: 1,
-          cursor: "grab",
-          opacity: draggingStoryId === story.public_id ? 0.55 : 1,
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Tooltip title="拖放調整故事順序，或拖到別的冊／未分冊區塊">
-            <DragIndicatorIcon color="disabled" />
-          </Tooltip>
-          <ArticleIcon color="primary" />
-          <Stack sx={{ flex: 1, minWidth: 0 }}>
-            <Typography fontWeight={800}>{story.title}</Typography>
-            {story.summary.trim() && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  overflowWrap: "anywhere",
-                  wordBreak: "break-word",
-                  display: "-webkit-box",
-                  WebkitBoxOrient: "vertical",
-                  WebkitLineClamp: 2,
-                  overflow: "hidden",
-                }}
-              >
-                {story.summary}
-              </Typography>
-            )}
-            <Typography variant="body2" color="text.secondary">
-              {story.word_count.toLocaleString()} 字 ·{" "}
-              {formatStorytellerDate(story.updated_at)}
-            </Typography>
-          </Stack>
-          <Tooltip
-            title={
-              story.status === "completed"
-                ? "公開中，點一下改為未公開"
-                : "未公開，點一下改為公開中"
-            }
-          >
-            <FormControlLabel
-              sx={{ mr: 0 }}
-              control={
-                <Switch
-                  size="small"
-                  color="success"
-                  checked={story.status === "completed"}
-                  disabled={saveStory.isPending}
-                  onChange={(event) =>
-                    saveStory.mutate({
-                      storyPublicId: story.public_id,
-                      input: {
-                        title: story.title,
-                        summary: story.summary,
-                        status: event.target.checked ? "completed" : "draft",
-                        sort: story.sort,
-                        content: story.latest_content,
-                      },
-                    })
-                  }
-                />
-              }
-              label={story.status === "completed" ? "公開中" : "未公開"}
-            />
-          </Tooltip>
-          <Button
-            href={steamloomPath(
-              `my/project/${projectId}/story/${story.public_id}`,
-            )}
-            variant="outlined"
-            size="small"
-          >
-            編輯
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            size="small"
-            startIcon={<DeleteIcon />}
-            onClick={() => setDeleteTarget(story)}
-          >
-            刪除
-          </Button>
-        </Stack>
-      </Paper>
+        onDrop={() => handleDropStory(story.parent_id, story.public_id)}
+        onTogglePublish={(checked) =>
+          saveStory.mutate({
+            storyPublicId: story.public_id,
+            input: {
+              title: story.title,
+              summary: story.summary,
+              status: checked ? "completed" : "draft",
+              sort: story.sort,
+              content: story.latest_content,
+            },
+          })
+        }
+        onDelete={() => setDeleteTarget(story)}
+      />
     );
   }
 
   const readerUrl =
     project.visibility === "unlisted" && project.shareToken
       ? steamloomPath(`work/share/${project.shareToken}`)
-      : storytellerReaderPath(
-          {
-            public_id: project.id,
-            slug: project.slug,
-            content_type: project.contentType,
-          },
-          apiStories.length,
-          imageEpisodes.length,
-        );
+      : storytellerReaderPath({
+          public_id: project.id,
+          slug: project.slug,
+        });
   const readerUrlLabel =
     project.visibility === "unlisted" ? "親友分享連結" : "作品頁連結";
   const absoluteReaderUrl =
@@ -525,12 +562,7 @@ export default function StorytellerProjectDetail() {
           to: steamloomPath(`my/project/${project.id}`),
         },
         {
-          label:
-            activeTab === "lores"
-              ? "設定集"
-              : activeTab === "images"
-                ? "圖像與冊"
-                : "故事與冊",
+          label: activeTab === "lores" ? "設定集" : "作品與冊",
         },
       ]}
     >
@@ -587,8 +619,19 @@ export default function StorytellerProjectDetail() {
               />
               <Chip label={project.statusLabel} color="primary" />
               <Chip
-                label={`${orderedStories.length || project.storiesCount} 篇故事`}
+                label={`${
+                  orderedStories.filter(
+                    (story) => story.content_type !== "image",
+                  ).length || project.storiesCount
+                } 篇故事`}
               />
+              {imageStoryCount > 0 && (
+                <Chip
+                  icon={<CollectionsIcon />}
+                  variant="outlined"
+                  label={`${imageStoryCount} 話`}
+                />
+              )}
               <Chip
                 label={storytellerProjectRatingLabel(project.rating)}
                 color={storytellerProjectRatingColor(project.rating)}
@@ -648,13 +691,12 @@ export default function StorytellerProjectDetail() {
               <Stack spacing={2}>
                 <Tabs
                   value={activeTab}
-                  onChange={(_, value: "stories" | "images" | "lores") =>
+                  onChange={(_, value: "stories" | "lores") =>
                     navigate(steamloomPath(`my/project/${project.id}/${value}`))
                   }
                   sx={steamTabIndicatorSx}
                 >
-                  <Tab value="stories" label="故事與冊" />
-                  <Tab value="images" label="圖像與冊" />
+                  <Tab value="stories" label="作品與冊" />
                   <Tab value="lores" label="設定集" />
                 </Tabs>
                 {activeTab === "stories" && (
@@ -665,9 +707,14 @@ export default function StorytellerProjectDetail() {
                     alignItems={{ xs: "stretch", sm: "center" }}
                   >
                     <Typography variant="h6" fontWeight={800}>
-                      故事與冊
+                      作品與冊
                     </Typography>
-                    <Stack direction="row" spacing={1}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       <Button
                         variant="outlined"
                         startIcon={<CreateNewFolderIcon />}
@@ -681,31 +728,22 @@ export default function StorytellerProjectDetail() {
                           `my/project/${project.id}/story/new`,
                         )}
                         variant="contained"
+                        startIcon={<ArticleIcon />}
                         sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
                       >
                         建立故事
                       </Button>
+                      <Button
+                        href={steamloomPath(
+                          `my/project/${project.id}/image/new`,
+                        )}
+                        variant="contained"
+                        startIcon={<CollectionsIcon />}
+                        sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                      >
+                        上傳圖像作品
+                      </Button>
                     </Stack>
-                  </Stack>
-                )}
-                {activeTab === "images" && (
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1.5}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "stretch", sm: "center" }}
-                  >
-                    <Typography variant="h6" fontWeight={800}>
-                      圖像與冊
-                    </Typography>
-                    <Button
-                      href={steamloomPath(`my/project/${project.id}/image/new`)}
-                      variant="contained"
-                      startIcon={<CollectionsIcon />}
-                      sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
-                    >
-                      上傳圖像作品（Mockup）
-                    </Button>
                   </Stack>
                 )}
                 {activeTab === "lores" && (
@@ -727,88 +765,6 @@ export default function StorytellerProjectDetail() {
                     </Button>
                   </Stack>
                 )}
-                {activeTab === "images" && imageEpisodes.length === 0 && (
-                  <CustomEmptyState
-                    icon={<CollectionsIcon fontSize="large" />}
-                    title="尚未建立圖像作品"
-                    description="使用上方的「上傳圖像作品」開始建立第一話（目前是 mockup，僅存在這台裝置，尚未串接後端）。"
-                  />
-                )}
-                {activeTab === "images" && imageEpisodes.length > 0 && (
-                  <Stack spacing={1}>
-                    <Typography variant="caption" color="text.secondary">
-                      目前是
-                      mockup，內容僅存在這台裝置的瀏覽器裡，尚未串接後端。
-                    </Typography>
-                    <Stack
-                      direction="row"
-                      flexWrap="wrap"
-                      useFlexGap
-                      spacing={1.5}
-                    >
-                      {imageEpisodes.map((episode) => (
-                        <Paper
-                          key={episode.id}
-                          variant="outlined"
-                          sx={{ width: 200, p: 1.5, borderRadius: 1 }}
-                        >
-                          <Stack spacing={1}>
-                            {episode.pageDataUrls[0] ? (
-                              <Box
-                                component="img"
-                                src={episode.pageDataUrls[0]}
-                                alt={episode.title}
-                                sx={{
-                                  width: "100%",
-                                  height: 120,
-                                  objectFit: "cover",
-                                  borderRadius: 0.5,
-                                }}
-                              />
-                            ) : (
-                              <Box
-                                sx={{
-                                  width: "100%",
-                                  height: 120,
-                                  borderRadius: 0.5,
-                                  bgcolor: "action.hover",
-                                }}
-                              />
-                            )}
-                            <Typography variant="body2" fontWeight={700} noWrap>
-                              {episode.title}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {episode.pageDataUrls.length} 頁
-                            </Typography>
-                            <StorytellerTagChips tags={episode.tags} />
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              href={steamloomPath(
-                                `work/${project.id}-${project.slug}/image/${episode.id}`,
-                              )}
-                            >
-                              閱讀（Mockup）
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              onClick={() =>
-                                handleDeleteImageEpisode(episode.id)
-                              }
-                            >
-                              刪除
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      ))}
-                    </Stack>
-                  </Stack>
-                )}
                 {activeTab === "stories" &&
                 (apiStoriesLoading || apiVolumesLoading) ? (
                   <StorytellerLoading label="正在載入故事列表..." />
@@ -817,8 +773,8 @@ export default function StorytellerProjectDetail() {
                   apiVolumes.length === 0 ? (
                   <CustomEmptyState
                     icon={<ArticleIcon fontSize="large" />}
-                    title="尚未建立故事"
-                    description="使用上方的「建立故事」開始撰寫第一篇故事。"
+                    title="尚未建立任何作品"
+                    description="使用上方的「建立故事」開始撰寫，或「上傳圖像作品」建立第一話。"
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>
@@ -920,6 +876,7 @@ export default function StorytellerProjectDetail() {
                                             status: event.target.checked
                                               ? "completed"
                                               : "draft",
+                                            summary: volume.summary,
                                           },
                                         })
                                       }
@@ -1008,7 +965,7 @@ export default function StorytellerProjectDetail() {
                       <Stack direction="row" spacing={1} alignItems="center">
                         <ArticleIcon fontSize="small" color="action" />
                         <Typography variant="subtitle2" color="text.secondary">
-                          未分冊故事
+                          未分冊作品
                         </Typography>
                       </Stack>
                     )}
@@ -1029,7 +986,7 @@ export default function StorytellerProjectDetail() {
                                   color="text.secondary"
                                   sx={{ fontStyle: "italic" }}
                                 >
-                                  未分冊故事會顯示在這裡，可拖曳到上方的冊中。
+                                  未分冊作品會顯示在這裡，可拖曳到上方的冊中。
                                 </Typography>
                               )}
                             {ungrouped.length > 0 &&
@@ -1100,10 +1057,12 @@ export default function StorytellerProjectDetail() {
       {deleteTarget && (
         <ConfirmNameDialog
           open
-          title="刪除故事"
-          description="刪除後會移除這篇故事與其版本資料。請輸入故事名稱確認。"
+          title={deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"}
+          description={`刪除後會移除這${deleteTarget.content_type === "image" ? "話" : "篇故事"}與其版本資料。請輸入${deleteTarget.content_type === "image" ? "話" : "故事"}名稱確認。`}
           confirmName={deleteTarget.title}
-          confirmLabel="刪除故事"
+          confirmLabel={
+            deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"
+          }
           loading={deleteStory.isPending}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() =>
@@ -1155,6 +1114,10 @@ export default function StorytellerProjectDetail() {
                   volumeDialogTarget && volumeDialogTarget !== "new"
                     ? volumeDialogTarget.status
                     : "completed",
+                summary:
+                  volumeDialogTarget && volumeDialogTarget !== "new"
+                    ? volumeDialogTarget.summary
+                    : "",
               },
             },
             { onSuccess: () => setVolumeDialogTarget(null) },

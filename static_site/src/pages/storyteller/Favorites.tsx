@@ -40,7 +40,6 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import { AuthorBio } from "@/pages/storyteller/UserProjects.tsx";
 import type {
   StorytellerFavoriteAuthor,
@@ -147,7 +146,9 @@ export default function StorytellerFavorites() {
 function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
-  const storyCount = project.stories?.length ?? 0;
+  const storyCount = (project.stories ?? []).filter(
+    (story) => story.content_type !== "image",
+  ).length;
   const wordCount =
     project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
@@ -192,11 +193,7 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
       actions={
         <Button
           component={RouterLink}
-          to={storytellerReaderPath(
-            project,
-            storyCount,
-            listImageEpisodes(project.public_id).length,
-          )}
+          to={storytellerReaderPath(project)}
           variant="contained"
         >
           開始閱讀

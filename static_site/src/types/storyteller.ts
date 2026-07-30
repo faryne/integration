@@ -114,6 +114,9 @@ export interface StorytellerStory {
   parent_id: number | null;
   // 是否為冊——只有標題、不使用內容欄位的容器故事。
   is_volume: boolean;
+  // text=一般文字故事；image=圖像作品（「話」），latest_content 是 JSON（頁面陣列），
+  // 不是 markdown，不要直接當文字渲染。建立後不可變更。
+  content_type: "text" | "image";
   title: string;
   summary: string;
   status: "draft" | "completed";
@@ -134,6 +137,27 @@ export interface StorytellerStoryVolumeRequest {
   sort: number;
   // 冊本身的公開／未公開狀態。關閉（draft）時，底下所有故事一律不對外顯示。
   status: "draft" | "completed";
+  // 給讀者看的說明文字。
+  summary: string;
+  // 只有建立時會用到（決定底下要掛文字故事還是圖像頁），更新時後端會忽略此欄位。
+  content_type?: "text" | "image";
+}
+
+// StorytellerStoryImagePage 是「話」（content_type=image 的故事）JSON 內容裡的單一頁面，
+// 讀取時由後端簽好 image_url 才回傳，不是存在 DB 裡的原始形狀。
+export interface StorytellerStoryImagePage {
+  id: string;
+  // 只有作者本人的管理頁（useStorytellerImageStoryPages）會有值，公開／分享閱讀頁
+  // 不會回傳——編輯既有話時用來重組完整 JSON 存回去，不用重新上傳沒改過的頁面。
+  key?: string;
+  image_url: string;
+  description: string;
+  sort: number;
+}
+
+export interface StorytellerImagePageUploadOutput {
+  key: string;
+  upload_url: string;
 }
 
 export interface StorytellerStoryVolumeEvent {
@@ -186,6 +210,26 @@ export interface StorytellerStoryBookmarkWithStory {
   latest_story_version_id: number;
   line_index: number;
   line_preview: string;
+  created_at: string;
+}
+
+export interface StorytellerImageBookmark {
+  id: number;
+  user_id: number;
+  story_id: number;
+  page_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerImageBookmarkWithStory {
+  id: number;
+  story_id: number;
+  story_public_id: string;
+  story_title: string;
+  page_id: string;
+  page_sort: number;
+  thumbnail_url?: string;
   created_at: string;
 }
 
@@ -371,6 +415,8 @@ export interface StorytellerStoryRequest {
   base_version_id?: number;
   // 所屬冊的 public_id；空字串或不帶代表移出冊／不分冊。只能指向一冊，後端會驗證。
   parent_id?: string;
+  // 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時後端會忽略此欄位。
+  content_type?: "text" | "image";
 }
 
 export interface StorytellerLoreRequest {

@@ -16,6 +16,8 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
 	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
+	group.Get("/story/:project/stories/:story/image-pages", storyteller.PublicImageStoryPages)
+	group.Get("/story/share/:token/stories/:story/image-pages", storyteller.SharedImageStoryPages)
 
 	authenticated := group.Group("", authsession.New())
 	authenticated.Get("/user", storyteller.UserProfile)
@@ -44,6 +46,10 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/story/:project/stories/:story/bookmarks", storyteller.StoryBookmarks)
 	authenticated.Post("/story/:project/stories/:story/bookmarks", storyteller.CreateStoryBookmark)
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)
+	authenticated.Get("/story/:project/image-bookmarks", storyteller.ProjectImageBookmarks)
+	authenticated.Get("/story/:project/stories/:story/image-bookmarks", storyteller.StoryImageBookmarks)
+	authenticated.Post("/story/:project/stories/:story/image-bookmarks", storyteller.CreateStoryImageBookmark)
+	authenticated.Delete("/story/:project/stories/:story/image-bookmarks", storyteller.DeleteStoryImageBookmark)
 
 	authenticated.Get("/provider-apikeys", storyteller.ProviderAPIKeys)
 	authenticated.Post("/provider-apikeys", storyteller.CreateProviderAPIKey)
@@ -77,6 +83,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
 	authenticated.Post("/projects/:project/stories/:story/versions/:version/revert", storyteller.RevertStoryVersion)
+	authenticated.Get("/projects/:project/stories/:story/image-pages", storyteller.ImageStoryPages)
 
 	authenticated.Get("/projects/:project/volumes", storyteller.Volumes)
 	authenticated.Post("/projects/:project/volumes", storyteller.CreateVolume)
@@ -84,6 +91,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/volumes/:volume/activity", storyteller.VolumeActivity)
 	// 冊本身也是一筆 story，刪除沿用既有的 DELETE /projects/:project/stories/:story，
 	// 非空檢查在 Service.DeleteStory 裡做，不需要另外開一條刪除路由。
+
+	authenticated.Post("/projects/:project/image-pages/presign", storyteller.PresignImageUpload)
 
 	authenticated.Get("/projects/:project/lores", storyteller.Lores)
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)

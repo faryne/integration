@@ -19,7 +19,8 @@ export interface StorytellerVolumeDialogProps {
 }
 
 // 冊只有標題可以編輯，刻意不共用 StoryEditor.tsx——冊沒有內容／摘要／狀態，
-// 沒有 AI Agent 面板／字數統計的需求，用一個輕量對話框處理就好。
+// 沒有 AI Agent 面板／字數統計的需求，用一個輕量對話框處理就好。冊本身是通用容器，
+// 文字故事跟話（圖像作品）可以混著放在同一冊裡，不需要選類型。
 export function StorytellerVolumeDialog(props: StorytellerVolumeDialogProps) {
   const [title, setTitle] = useState(props.initialTitle ?? "");
   const isEditing = Boolean(props.initialTitle);

@@ -3,6 +3,18 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 // 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
 export const STORYTELLER_APP_NAME = "SteamLoom";
 
+// 圖像作品上傳限制：跟後端 service/storyteller/upload.go 的
+// maxImagePagesPerUpload／maxImagePageSizeBytes／allowedImagePageContentTypes 對應，
+// 前端這邊只是先擋一次給使用者即時回饋，實際防濫用還是靠後端驗證。
+export const STORYTELLER_IMAGE_PAGE_MAX_COUNT = 60;
+export const STORYTELLER_IMAGE_PAGE_MAX_BYTES = 15 * 1024 * 1024;
+export const STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+];
+
 export interface StorytellerProject {
   id: string;
   publicId: string;
@@ -240,34 +252,22 @@ export function publicProjectPath(project: StorytellerProject) {
   return steamloomPath(`story/${project.publicId}-${project.slug}`);
 }
 
-// content_type 只是「預設優先顯示哪個畫面」的偏好，不是內容類型鎖：偏好的那邊剛好
-// 沒內容（例如專案設成圖像但其實先寫了一堆文字故事）時，要 fallback 到真的有內容的
-// 一邊，不然讀者點進去只會看到空畫面。work/{project}/stories 與 .../images 是各自
-// 獨立、明確的路由，這裡決定要連去哪一個。
-export function storytellerReaderFamily(
-  contentType: "text" | "image",
-  storiesCount: number,
-  imageEpisodesCount: number,
-): "stories" | "images" {
-  const preferred = contentType === "image" ? "images" : "stories";
-  const hasStories = storiesCount > 0;
-  const hasImages = imageEpisodesCount > 0;
-  if (preferred === "images") {
-    return hasImages ? "images" : hasStories ? "stories" : "images";
-  }
-  return hasStories ? "stories" : hasImages ? "images" : "stories";
+// storytellerImageEpisodeCount 算一個專案有幾話（content_type=image 的故事）。
+// project.stories 在專案列表／詳情 API 裡已經內含，不用另外打 API 拿。
+export function storytellerImageEpisodeCount(
+  stories: Array<{ content_type: "text" | "image" }> | undefined,
+) {
+  return (stories ?? []).filter((story) => story.content_type === "image")
+    .length;
 }
 
-export function storytellerReaderPath(
-  project: { public_id: string; slug: string; content_type: "text" | "image" },
-  storiesCount: number,
-  imageEpisodesCount: number,
-) {
-  const family = storytellerReaderFamily(
-    project.content_type,
-    storiesCount,
-    imageEpisodesCount,
-  );
+// 故事與話已經合併成同一份依序排列的序列，閱讀頁不再分故事/圖像兩個家族，
+// 一律連到 stories 這個統一入口（序列裡第一篇是誰由後端排序決定，不用在這裡猜）。
+export function storytellerReaderPath(project: {
+  public_id: string;
+  slug: string;
+}) {
+  const family = "stories";
   return steamloomPath(`work/${project.public_id}-${project.slug}/${family}`);
 }
 

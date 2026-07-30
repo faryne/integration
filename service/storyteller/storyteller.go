@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -711,6 +712,15 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	if err := validateStory(input); err != nil {
 		return nil, err
 	}
+	if input.ContentType == storytellerModel.ProjectContentTypeImage {
+		keys, err := imagePageKeys(input.Content)
+		if err != nil {
+			return nil, err
+		}
+		if err := validateImagePageSizes(keys); err != nil {
+			return nil, err
+		}
+	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
@@ -723,12 +733,13 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		PublicID:      randomID(),
 		ProjectID:     project.ID,
 		ParentID:      parentID(parent),
+		ContentType:   input.ContentType,
 		Title:         strings.TrimSpace(input.Title),
 		Summary:       strings.TrimSpace(input.Summary),
 		Status:        input.Status,
 		Sort:          input.Sort,
 		LatestContent: input.Content,
-		WordCount:     wordCount(input.Content),
+		WordCount:     storyWordCount(input.ContentType, input.Content),
 	}
 	version := buildStoryVersion(*story, source)
 	volumeEvent := volumeMoveEvent(nil, story.ParentID)
@@ -757,6 +768,15 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	if story.IsVolume {
 		return nil, false, errors.New("cannot edit a volume through the story endpoint")
 	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		keys, err := imagePageKeys(input.Content)
+		if err != nil {
+			return nil, false, err
+		}
+		if err := validateImagePageSizes(keys); err != nil {
+			return nil, false, err
+		}
+	}
 	// ParentID == nil 代表這次存檔沒有要動冊隸屬（例如狀態切換、拖曳排序、一般編輯頁存檔），
 	// 維持故事目前的 parent_id 不動；只有明確帶了 parent_id（含空字串代表移出冊）才處理。
 	var volumeEvent *storytellerModel.StoryVolumeEvent
@@ -774,7 +794,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.Status = input.Status
 	story.Sort = input.Sort
 	story.LatestContent = input.Content
-	story.WordCount = wordCount(input.Content)
+	story.WordCount = storyWordCount(story.ContentType, input.Content)
 	version := buildStoryVersion(*story, source)
 	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID, volumeEvent)
 	if err != nil {
@@ -891,12 +911,14 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 		return nil, err
 	}
 	volume := &storytellerModel.Story{
-		PublicID:  randomID(),
-		ProjectID: project.ID,
-		IsVolume:  true,
-		Title:     strings.TrimSpace(input.Title),
-		Sort:      input.Sort,
-		Status:    input.Status,
+		PublicID:    randomID(),
+		ProjectID:   project.ID,
+		IsVolume:    true,
+		ContentType: input.ContentType,
+		Title:       strings.TrimSpace(input.Title),
+		Summary:     input.Summary,
+		Sort:        input.Sort,
+		Status:      input.Status,
 	}
 	version := buildStoryVersion(*volume, source)
 	if err := s.repo.CreateStoryWithVersion(volume, version, nil); err != nil {
@@ -905,7 +927,8 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 	return volume, nil
 }
 
-// UpdateVolume 重新命名／切換公開狀態，跟一般故事的 UpdateStory 分開，不能改內容。
+// UpdateVolume 重新命名／改摘要／切換公開狀態，跟一般故事的 UpdateStory 分開，不能改內容。
+// ContentType 建立後不可變更，這裡刻意忽略請求裡帶的值，永遠維持建立時的設定。
 // Status 關閉（draft）時，底下所有故事一律不對外顯示，不管故事自己的 status 是什麼，
 // 見 Repository.PublishedStories／PublishedVolumes 的過濾邏輯。
 func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
@@ -925,6 +948,7 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 		return nil, errors.New("target is not a volume")
 	}
 	volume.Title = strings.TrimSpace(input.Title)
+	volume.Summary = input.Summary
 	volume.Sort = input.Sort
 	volume.Status = input.Status
 	version := buildStoryVersion(*volume, source)
@@ -932,6 +956,99 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 		return nil, err
 	}
 	return volume, nil
+}
+
+// ImageStoryPages 是作者管理頁／預覽用的圖像頁列表，不限公開狀態（可以看到草稿）。
+// 「話」現在就是一筆 ContentType=image 的一般 Story，LatestContent 存 StoryImageContent
+// 的 JSON，這裡讀出來後逐一把 key 簽成可讀的 CloudFront 網址，不落地存簽名結果。
+func (s *Service) ImageStoryPages(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryImagePageOutput, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if story.ContentType != storytellerModel.ProjectContentTypeImage {
+		return nil, errors.New("story is not an image story")
+	}
+	return signStoryImageContent(story.LatestContent, true)
+}
+
+// PublicImageStoryPages 是公開閱讀頁用的版本，只有已發布（completed）的話才能讀到。
+func (s *Service) PublicImageStoryPages(projectValue, storyPublicID string) ([]storytellerModel.StoryImagePageOutput, error) {
+	publicID := strings.SplitN(projectValue, "-", 2)[0]
+	project, err := s.repo.ProjectByPublicID(publicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.publishedImageStoryPages(project, storyPublicID)
+}
+
+// SharedImageStoryPages 是分享連結閱讀頁用的版本，邏輯跟 PublicImageStoryPages 一樣，
+// 只是專案改用 share token 找。
+func (s *Service) SharedImageStoryPages(token, storyPublicID string) ([]storytellerModel.StoryImagePageOutput, error) {
+	project, err := s.repo.ProjectByShareToken(strings.TrimSpace(token))
+	if err != nil {
+		return nil, err
+	}
+	return s.publishedImageStoryPages(project, storyPublicID)
+}
+
+func (s *Service) publishedImageStoryPages(project *storytellerModel.Project, storyPublicID string) ([]storytellerModel.StoryImagePageOutput, error) {
+	story, err := s.repo.PublishedStory(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if story.ContentType != storytellerModel.ProjectContentTypeImage {
+		return nil, errors.New("image story not found")
+	}
+	return signStoryImageContent(story.LatestContent, false)
+}
+
+// imagePageKeys 解析 StoryImageContent JSON，取出每一頁的 S3 key，供存檔前的
+// validateImagePageSizes 檢查檔案大小用。
+func imagePageKeys(rawContent string) ([]string, error) {
+	var content storytellerModel.StoryImageContent
+	if strings.TrimSpace(rawContent) != "" {
+		if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
+			return nil, fmt.Errorf("parse image story content: %w", err)
+		}
+	}
+	keys := make([]string, 0, len(content.Pages))
+	for _, page := range content.Pages {
+		keys = append(keys, page.Key)
+	}
+	return keys, nil
+}
+
+// signStoryImageContent 解析 Story.LatestContent 的 StoryImageContent JSON，
+// 把每一頁的 key 簽成可讀的 CloudFront 網址。includeKey 只有作者本人的管理頁會傳
+// true，把原始 S3 key 一併回傳給編輯頁重組完整 JSON 用；公開／分享閱讀頁一律 false。
+func signStoryImageContent(rawContent string, includeKey bool) ([]storytellerModel.StoryImagePageOutput, error) {
+	var content storytellerModel.StoryImageContent
+	if strings.TrimSpace(rawContent) != "" {
+		if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
+			return nil, fmt.Errorf("parse image story content: %w", err)
+		}
+	}
+	outputs := make([]storytellerModel.StoryImagePageOutput, 0, len(content.Pages))
+	for _, page := range content.Pages {
+		imageURL, err := signImageURL(page.Key)
+		if err != nil {
+			return nil, err
+		}
+		key := ""
+		if includeKey {
+			key = page.Key
+		}
+		outputs = append(outputs, storytellerModel.StoryImagePageOutput{
+			ID:          page.ID,
+			Key:         key,
+			ImageURL:    imageURL,
+			Description: page.Description,
+			Sort:        page.Sort,
+		})
+	}
+	sort.Slice(outputs, func(i, j int) bool { return outputs[i].Sort < outputs[j].Sort })
+	return outputs, nil
 }
 
 // VolumeActivity 組合一冊的活動歷史：Events 是冊隸屬異動（新增/搬移/移出/刪除），
@@ -975,18 +1092,24 @@ func (s *Service) StoryVersion(userID uint64, projectPublicID, storyPublicID str
 	return s.repo.StoryVersion(story.ID, versionID)
 }
 
-// publicPublishedStory 回傳讀者可讀取的故事（專案為公開或不公開連結、故事狀態為公開中），
-// 供書籤與版本查詢等「讀者視角」功能共用權限判斷，不要求使用者為專案擁有者。
-func (s *Service) publicPublishedStory(projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
-	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+// publicPublishedStory 回傳讀者可讀取的故事：專案為公開／不公開連結時，任何人都能看
+// 已公開的故事；專案是私人的，就只有專案本人能看，而且不受 status=completed 限制
+// （本人在 Reader 頁預覽/操作自己的私人草稿時，書籤等功能不該被 visibility 或 status 擋掉）。
+// 供書籤與版本查詢等「讀者視角」功能共用權限判斷。userID 傳 0 代表呼叫端本來就沒有登入
+// 狀態可用（例如未加驗證的公開路由），行為等同純粹的公開/不公開連結存取。
+func (s *Service) publicPublishedStory(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
+	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
 	if err != nil {
 		return nil, err
+	}
+	if userID != 0 && project.UserID == userID {
+		return s.repo.Story(project.ID, storyPublicID)
 	}
 	return s.repo.PublishedStory(project.ID, storyPublicID)
 }
 
 func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string) (*storytellerModel.StoryVersion, error) {
-	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	story, err := s.publicPublishedStory(0, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -994,7 +1117,7 @@ func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string
 }
 
 func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string) ([]storytellerModel.StoryVersion, error) {
-	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	story, err := s.publicPublishedStory(0, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1002,7 +1125,7 @@ func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string) ([]
 }
 
 func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryBookmarkOutput, error) {
-	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
+	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1174,7 +1297,7 @@ func extractFootnoteWordCount(content string) uint {
 }
 
 func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryBookmark, error) {
-	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	story, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1182,7 +1305,7 @@ func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID s
 }
 
 func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
-	story, err := s.publicPublishedStory(projectPublicID, storyPublicID)
+	story, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1209,10 +1332,117 @@ func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPubli
 }
 
 func (s *Service) DeleteStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) error {
-	if _, err := s.publicPublishedStory(projectPublicID, storyPublicID); err != nil {
+	if _, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID); err != nil {
 		return err
 	}
 	return s.repo.DeleteStoryBookmark(userID, versionID, lineIndex)
+}
+
+// publicPublishedImageStory 跟 publicPublishedStory 一樣驗證讀者能看到這篇，額外擋下
+// content_type 不是 image 的故事——圖片書籤只能掛在「話」上。
+func (s *Service) publicPublishedImageStory(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
+	story, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if story.ContentType != storytellerModel.ProjectContentTypeImage {
+		return nil, errors.New("story is not an image episode")
+	}
+	return story, nil
+}
+
+func (s *Service) StoryImageBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryImageBookmark, error) {
+	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryImageBookmarks(userID, story.ID)
+}
+
+func (s *Service) CreateStoryImageBookmark(userID uint64, projectPublicID, storyPublicID, pageID string) (*storytellerModel.StoryImageBookmark, error) {
+	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	pageExists := false
+	for _, page := range mustParseImageContent(story.LatestContent).Pages {
+		if page.ID == pageID {
+			pageExists = true
+			break
+		}
+	}
+	if !pageExists {
+		return nil, errors.New("page not found in this episode")
+	}
+	if existing, err := s.repo.StoryImageBookmark(userID, story.ID, pageID); err == nil {
+		return existing, nil
+	}
+	row := &storytellerModel.StoryImageBookmark{
+		UserID:  userID,
+		StoryID: story.ID,
+		PageID:  pageID,
+	}
+	if err := s.repo.CreateStoryImageBookmark(row); err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+func (s *Service) DeleteStoryImageBookmark(userID uint64, projectPublicID, storyPublicID, pageID string) error {
+	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteStoryImageBookmark(userID, story.ID, pageID)
+}
+
+// ProjectImageBookmarks 组出專案內所有圖片書籤，逐一解析所屬話目前的內容 JSON，
+// 算出書籤指到的頁面現在排第幾頁、簽出縮圖網址；頁面已經被刪除的書籤 PageSort 回 -1，
+// 前端可以用這個判斷書籤已經失效。
+func (s *Service) ProjectImageBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryImageBookmarkOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.repo.ProjectStoryImageBookmarks(userID, project.ID)
+	if err != nil {
+		return nil, err
+	}
+	contentByStoryID := make(map[uint64]storytellerModel.StoryImageContent)
+	for i := range rows {
+		content, ok := contentByStoryID[rows[i].StoryID]
+		if !ok {
+			story, err := s.repo.Story(project.ID, rows[i].StoryPublicID)
+			if err != nil {
+				return nil, err
+			}
+			content = mustParseImageContent(story.LatestContent)
+			contentByStoryID[rows[i].StoryID] = content
+		}
+		rows[i].PageSort = -1
+		for _, page := range content.Pages {
+			if page.ID != rows[i].PageID {
+				continue
+			}
+			rows[i].PageSort = page.Sort
+			if imageURL, err := signImageURL(page.Key); err == nil {
+				rows[i].ThumbnailURL = imageURL
+			}
+			break
+		}
+	}
+	return rows, nil
+}
+
+// mustParseImageContent 解析失敗時回傳空內容而不是錯誤——書籤查詢/校驗刻意用寬鬆處理，
+// 遇到壞掉的舊資料只當作「這頁找不到了」，不要讓整個書籤列表／加書籤動作直接炸掉。
+func mustParseImageContent(rawContent string) storytellerModel.StoryImageContent {
+	var content storytellerModel.StoryImageContent
+	if strings.TrimSpace(rawContent) == "" {
+		return content
+	}
+	_ = json.Unmarshal([]byte(rawContent), &content)
+	return content
 }
 
 func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerModel.Lore, error) {
@@ -2175,13 +2405,29 @@ func normalizeStoryRequest(input storytellerModel.StoryRequest) storytellerModel
 	if input.Status == "" {
 		input.Status = storytellerModel.StoryStatusCompleted
 	}
+	if input.ContentType == "" {
+		input.ContentType = storytellerModel.ProjectContentTypeText
+	}
 	return input
+}
+
+// storyWordCount 只對文字故事做字數統計；image 類型的 content 是 JSON（見
+// StoryImageContent），拿去跑文字解析邏輯只會得到沒有意義的數字。
+func storyWordCount(contentType storytellerModel.ProjectContentType, content string) uint {
+	if contentType == storytellerModel.ProjectContentTypeImage {
+		return 0
+	}
+	return wordCount(content)
 }
 
 func normalizeVolumeRequest(input storytellerModel.StoryVolumeRequest) storytellerModel.StoryVolumeRequest {
 	if input.Status == "" {
 		input.Status = storytellerModel.StoryStatusCompleted
 	}
+	if input.ContentType == "" {
+		input.ContentType = storytellerModel.ProjectContentTypeText
+	}
+	input.Summary = strings.TrimSpace(input.Summary)
 	return input
 }
 
@@ -2464,6 +2710,11 @@ func validateStory(input storytellerModel.StoryRequest) error {
 	default:
 		return fmt.Errorf("invalid status")
 	}
+	switch input.ContentType {
+	case storytellerModel.ProjectContentTypeText, storytellerModel.ProjectContentTypeImage:
+	default:
+		return fmt.Errorf("invalid content_type")
+	}
 	return nil
 }
 
@@ -2475,6 +2726,11 @@ func validateVolume(input storytellerModel.StoryVolumeRequest) error {
 	case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
 	default:
 		return fmt.Errorf("invalid status")
+	}
+	switch input.ContentType {
+	case storytellerModel.ProjectContentTypeText, storytellerModel.ProjectContentTypeImage:
+	default:
+		return fmt.Errorf("invalid content_type")
 	}
 	return nil
 }

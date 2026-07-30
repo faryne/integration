@@ -17,6 +17,9 @@ import type {
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
   StorytellerFavoriteAuthor,
+  StorytellerImageBookmark,
+  StorytellerImageBookmarkWithStory,
+  StorytellerImagePageUploadOutput,
   StorytellerLore,
   StorytellerLoreRequest,
   StorytellerLoreVersion,
@@ -33,6 +36,7 @@ import type {
   StorytellerStoryBookmark,
   StorytellerStoryBookmarkWithStory,
   StorytellerStoryChatMessagePage,
+  StorytellerStoryImagePage,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
   StorytellerStoryVolumeActivity,
@@ -997,6 +1001,103 @@ export function useStorytellerVolumeActivity(
   });
 }
 
+// usePresignStorytellerImageUpload 拿 count 組可以直接 PUT 上傳到 S3 的網址，不綁定到
+// 特定的話——上傳完成後直接用 useSaveStorytellerStory 建立一筆 content_type=image 的故事，
+// content 帶上這些 key 組成的 JSON（見 StorytellerStoryImagePage）。
+export function usePresignStorytellerImageUpload(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (contentTypes: string[]) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerImagePageUploadOutput[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/image-pages/presign`,
+        { content_types: contentTypes },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// useStorytellerImageStoryPages 是作者管理頁／預覽用的版本，不限公開狀態。
+export function useStorytellerImageStoryPages(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "image-story-pages",
+      projectPublicId,
+      storyPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/image-pages`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+// usePublicStorytellerImageStoryPages／useSharedStorytellerImageStoryPages 是閱讀頁用的
+// 版本，只有已發布的話才讀得到，不需要登入——跟 usePublicStorytellerProject／
+// useSharedStorytellerProject 是同一組模式。
+export function usePublicStorytellerImageStoryPages(
+  projectPath?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "public-image-story-pages",
+      projectPath,
+      storyPublicId,
+    ],
+    enabled: Boolean(projectPath && storyPublicId),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}/stories/${storyPublicId}/image-pages`,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSharedStorytellerImageStoryPages(
+  shareToken?: string,
+  storyPublicId?: string,
+) {
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "shared-image-story-pages",
+      shareToken,
+      storyPublicId,
+    ],
+    enabled: Boolean(shareToken && storyPublicId),
+    retry: false,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerStoryImagePage[]>
+      >(
+        `${apiBase}/storyteller/story/share/${shareToken}/stories/${storyPublicId}/image-pages`,
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
 export function usePublicStorytellerStoryLatestVersion(
   projectPublicId?: string,
   storyPublicId?: string,
@@ -1176,6 +1277,113 @@ export function useDeleteStorytellerStoryBookmark(
       });
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "project-bookmarks"],
+      });
+    },
+  });
+}
+
+export function useStorytellerProjectImageBookmarks(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "project-image-bookmarks",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerImageBookmarkWithStory[]>
+      >(`${apiBase}/storyteller/story/${projectPublicId}/image-bookmarks`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useStorytellerImageBookmarks(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "image-bookmarks",
+      projectPublicId,
+      storyPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerImageBookmark[]>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/image-bookmarks`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+interface StorytellerImageBookmarkInput {
+  pageId: string;
+}
+
+export function useCreateStorytellerImageBookmark(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId }: StorytellerImageBookmarkInput) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerImageBookmark>
+      >(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/image-bookmarks`,
+        { page_id: pageId },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "image-bookmarks"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "project-image-bookmarks"],
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerImageBookmark(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pageId }: StorytellerImageBookmarkInput) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/image-bookmarks`,
+        {
+          data: { page_id: pageId },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "image-bookmarks"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "project-image-bookmarks"],
       });
     },
   });

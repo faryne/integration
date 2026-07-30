@@ -36,7 +36,6 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import { listImageEpisodes } from "@/pages/storyteller/storytellerImageEpisodeMock.ts";
 import type { StorytellerProjectRequest } from "@/types/storyteller.ts";
 
 const contentTypeOptions: {
@@ -261,11 +260,10 @@ export default function StorytellerNewProject() {
   let urlPreview: string | null = null;
   if (isEditing && editingProject) {
     if (input.visibility === "public") {
-      const readerPath = storytellerReaderPath(
-        { ...editingProject, slug: input.slug.trim() },
-        editingProject.stories?.length ?? 0,
-        listImageEpisodes(editingProject.public_id).length,
-      );
+      const readerPath = storytellerReaderPath({
+        ...editingProject,
+        slug: input.slug.trim(),
+      });
       urlPreview = `${origin}${readerPath}`;
     } else if (input.visibility === "unlisted") {
       urlPreview =
@@ -408,7 +406,7 @@ export default function StorytellerNewProject() {
                 color="text.secondary"
                 sx={{ mt: 0.5, display: "block" }}
               >
-                只決定專案首頁預設優先顯示的畫面，隨時可以修改；同一個專案之後可以同時擁有文字故事與圖像作品。
+                只是給讀者瀏覽時的參考標示，隨時可以修改；同一個專案本來就可以同時擁有文字故事與圖像作品，冊也能混著放。
               </Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>

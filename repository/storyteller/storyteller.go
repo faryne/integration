@@ -59,6 +59,24 @@ func (r *Repository) ProjectByPublicIDForFavorite(publicID string) (*storyteller
 	return &row, err
 }
 
+// ProjectByPublicIDForReader 給「讀者視角」的功能用（書籤、版本查詢）：公開／不公開連結
+// 的專案本來就對任何人開放；私人專案則只有本人（userID 對上 user_id）能通過——讓作者
+// 自己在 Reader 頁預覽/操作自己的私人草稿時，書籤等功能不會被 visibility 擋掉。
+// userID 為 0（未登入）時第二個條件恆假，行為等同 ProjectByPublicIDForFavorite。
+func (r *Repository) ProjectByPublicIDForReader(userID uint64, publicID string) (*storytellerModel.Project, error) {
+	var row storytellerModel.Project
+	err := r.db.Where(
+		"public_id = ? AND deleted_at IS NULL AND (visibility IN ? OR user_id = ?)",
+		publicID,
+		[]storytellerModel.ProjectVisibility{
+			storytellerModel.ProjectVisibilityPublic,
+			storytellerModel.ProjectVisibilityUnlisted,
+		},
+		userID,
+	).First(&row).Error
+	return &row, err
+}
+
 func (r *Repository) ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error) {
 	var row storytellerModel.Project
 	err := r.db.Where("user_id = ? AND public_id = ? AND deleted_at IS NULL", userID, publicID).
@@ -538,6 +556,53 @@ func (r *Repository) DeleteStoryBookmark(userID, versionID uint64, lineIndex int
 	return r.db.
 		Where("user_id = ? AND story_version_id = ? AND line_index = ?", userID, versionID, lineIndex).
 		Delete(&storytellerModel.StoryBookmark{}).Error
+}
+
+func (r *Repository) StoryImageBookmarks(userID, storyID uint64) ([]storytellerModel.StoryImageBookmark, error) {
+	rows := make([]storytellerModel.StoryImageBookmark, 0)
+	err := r.db.
+		Where("user_id = ? AND story_id = ?", userID, storyID).
+		Order("created_at DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+// ProjectStoryImageBookmarks 帶回 bookmarks + 所屬話的 public_id／標題；PageSort／
+// ThumbnailURL 這兩欄要解析 LatestContent 的 JSON 才能算，SQL 做不到，交給 service 層
+// 組好之後再簽網址、填回這兩欄。
+func (r *Repository) ProjectStoryImageBookmarks(userID, projectID uint64) ([]storytellerModel.StoryImageBookmarkOutput, error) {
+	rows := make([]storytellerModel.StoryImageBookmarkOutput, 0)
+	err := r.db.
+		Table("storyteller_story_image_bookmarks AS bookmarks").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
+		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
+		Select(`bookmarks.id,
+			bookmarks.story_id,
+			stories.public_id AS story_public_id,
+			stories.title AS story_title,
+			bookmarks.page_id,
+			bookmarks.created_at`).
+		Order("bookmarks.created_at DESC, bookmarks.id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) StoryImageBookmark(userID, storyID uint64, pageID string) (*storytellerModel.StoryImageBookmark, error) {
+	var row storytellerModel.StoryImageBookmark
+	err := r.db.
+		Where("user_id = ? AND story_id = ? AND page_id = ?", userID, storyID, pageID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateStoryImageBookmark(row *storytellerModel.StoryImageBookmark) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) DeleteStoryImageBookmark(userID, storyID uint64, pageID string) error {
+	return r.db.
+		Where("user_id = ? AND story_id = ? AND page_id = ?", userID, storyID, pageID).
+		Delete(&storytellerModel.StoryImageBookmark{}).Error
 }
 
 func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {
