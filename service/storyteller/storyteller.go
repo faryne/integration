@@ -1600,7 +1600,7 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	projectCount, storyCount, wordCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.UserID)
+	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.UserID)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -1608,7 +1608,7 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 		UserProfileOutput: *userProfileOutput(profile),
 		ProjectCount:      projectCount,
 		StoryCount:        storyCount,
-		WordCount:         wordCount,
+		ImageStoryCount:   imageStoryCount,
 		RatingCount:       ratingCount,
 		AverageRating:     averageRating,
 		FollowerCount:     followerCount,
@@ -2043,7 +2043,7 @@ func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.Favorit
 	if err != nil {
 		return nil, err
 	}
-	projectCount, storyCount, wordCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
+	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
 	if err != nil {
 		return nil, err
 	}
@@ -2051,7 +2051,7 @@ func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.Favorit
 		UserProfileOutput: *author,
 		ProjectCount:      projectCount,
 		StoryCount:        storyCount,
-		WordCount:         wordCount,
+		ImageStoryCount:   imageStoryCount,
 		RatingCount:       ratingCount,
 		AverageRating:     averageRating,
 		FollowerCount:     followerCount,

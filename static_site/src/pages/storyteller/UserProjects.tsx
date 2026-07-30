@@ -1,5 +1,7 @@
+import ArticleIcon from "@mui/icons-material/Article";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import InstagramIcon from "@mui/icons-material/Instagram";
@@ -279,9 +281,15 @@ export default function StorytellerUserProjects() {
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">字數</Typography>
+                  <Typography color="text.secondary">故事數目</Typography>
                   <Typography fontWeight={700}>
-                    {(author?.word_count ?? 0).toLocaleString()}
+                    {author?.story_count ?? 0}
+                  </Typography>
+                </Stack>
+                <Stack direction="row" justifyContent="space-between">
+                  <Typography color="text.secondary">圖像作品數目</Typography>
+                  <Typography fontWeight={700}>
+                    {author?.image_story_count ?? 0}
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
@@ -548,8 +556,18 @@ function FavoriteAuthorCard({
           <Chip size="small" label={`${author.project_count} 個專案`} />
           <Chip
             size="small"
-            label={`${author.word_count.toLocaleString()} 字`}
+            variant="outlined"
+            icon={<ArticleIcon />}
+            label={`${author.story_count} 篇故事`}
           />
+          {author.image_story_count > 0 && (
+            <Chip
+              size="small"
+              variant="outlined"
+              icon={<CollectionsIcon />}
+              label={`${author.image_story_count} 話`}
+            />
+          )}
           <Chip
             size="small"
             label={`平均 ${author.average_rating.toFixed(1)}`}

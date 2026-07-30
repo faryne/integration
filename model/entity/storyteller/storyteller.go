@@ -769,13 +769,13 @@ type UserProfileOutput struct {
 
 type FavoriteAuthorOutput struct {
 	UserProfileOutput
-	ProjectCount  uint64  `json:"project_count"`
-	StoryCount    uint64  `json:"story_count"`
-	WordCount     uint64  `json:"word_count"`
-	RatingCount   uint64  `json:"rating_count"`
-	AverageRating float64 `json:"average_rating"`
-	FollowerCount uint64  `json:"follower_count"`
-	Hidden        bool    `json:"hidden,omitempty"`
+	ProjectCount    uint64  `json:"project_count"`
+	StoryCount      uint64  `json:"story_count"`
+	ImageStoryCount uint64  `json:"image_story_count"`
+	RatingCount     uint64  `json:"rating_count"`
+	AverageRating   float64 `json:"average_rating"`
+	FollowerCount   uint64  `json:"follower_count"`
+	Hidden          bool    `json:"hidden,omitempty"`
 }
 
 type ProjectOutput struct {

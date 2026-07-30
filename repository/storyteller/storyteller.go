@@ -938,6 +938,10 @@ func (r *Repository) SaveAuthorFavorite(row *storytellerModel.AuthorFavorite) er
 	return r.db.Save(row).Error
 }
 
+// PublicAuthorSummary 回傳作者頁統計：projectCount, storyCount（文字故事，不含話）,
+// imageStoryCount（話）, ratingCount, followerCount, averageRating。故事數目跟話數目
+// 分開算，跟專案卡片「N 篇故事／N 話」的語意一致；字數不在這裡統計——圖片描述算不算
+// 字數很曖昧，乾脆不在作者頁呈現這個指標，只留故事/話的數目。
 func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64, uint64, uint64, float64, error) {
 	var projectCount int64
 	if err := r.db.
@@ -947,13 +951,17 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 		return 0, 0, 0, 0, 0, 0, err
 	}
 	type storyResult struct {
-		StoryCount uint64
-		WordCount  uint64
+		StoryCount      uint64
+		ImageStoryCount uint64
 	}
 	var stories storyResult
 	if err := r.db.
 		Table("storyteller_projects AS projects").
-		Select("COUNT(stories.id) AS story_count, COALESCE(SUM(stories.word_count), 0) AS word_count").
+		Select(
+			"COUNT(CASE WHEN stories.content_type != ? THEN stories.id END) AS story_count, COUNT(CASE WHEN stories.content_type = ? THEN stories.id END) AS image_story_count",
+			storytellerModel.ProjectContentTypeImage,
+			storytellerModel.ProjectContentTypeImage,
+		).
 		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.status = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", storytellerModel.StoryStatusCompleted).
 		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
 		Scan(&stories).Error; err != nil {
@@ -979,7 +987,7 @@ func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64,
 		Count(&followerCount).Error; err != nil {
 		return 0, 0, 0, 0, 0, 0, err
 	}
-	return uint64(projectCount), stories.StoryCount, stories.WordCount, rankings.RatingCount, uint64(followerCount), rankings.AverageRating, nil
+	return uint64(projectCount), stories.StoryCount, stories.ImageStoryCount, rankings.RatingCount, uint64(followerCount), rankings.AverageRating, nil
 }
 
 // AuthorFollowerCount 只查作者收藏數這一個數字，不像 PublicAuthorSummary 還要一併算

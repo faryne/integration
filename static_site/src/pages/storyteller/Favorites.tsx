@@ -1,3 +1,5 @@
+import ArticleIcon from "@mui/icons-material/Article";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -88,7 +90,7 @@ export default function StorytellerFavorites() {
             onChange={(_, value: "stories" | "authors") => setTab(value)}
             aria-label="收藏分類"
           >
-            <Tab value="stories" label="故事" />
+            <Tab value="stories" label="作品" />
             <Tab value="authors" label="作者" />
           </Tabs>
 
@@ -96,7 +98,7 @@ export default function StorytellerFavorites() {
             <StorytellerLoading
               label={
                 tab === "stories"
-                  ? "正在載入收藏故事..."
+                  ? "正在載入收藏作品..."
                   : "正在載入收藏作者..."
               }
             />
@@ -108,8 +110,8 @@ export default function StorytellerFavorites() {
             projects.length === 0 ? (
               <CustomEmptyState
                 icon={<FavoriteIcon fontSize="large" />}
-                title="尚未收藏故事"
-                description="在故事閱讀頁按下收藏後，會在此列出創作專案。"
+                title="尚未收藏作品"
+                description="在作品閱讀頁按下收藏後，會在此列出創作專案。"
               />
             ) : (
               <Grid container spacing={2}>
@@ -124,7 +126,7 @@ export default function StorytellerFavorites() {
             <CustomEmptyState
               icon={<PersonIcon fontSize="large" />}
               title="尚未收藏作者"
-              description="在故事閱讀頁按下收藏作者後，會在此列出作者。"
+              description="在作品閱讀頁按下收藏作者後，會在此列出作者。"
             />
           ) : (
             <Grid container spacing={2}>
@@ -231,11 +233,20 @@ function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
         {author.bio && <AuthorBio bio={author.bio} />}
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip size="small" label={`${author.project_count} 個專案`} />
-          <Chip size="small" label={`${author.story_count} 篇故事`} />
           <Chip
             size="small"
-            label={`${author.word_count.toLocaleString()} 字`}
+            variant="outlined"
+            icon={<ArticleIcon />}
+            label={`${author.story_count} 篇故事`}
           />
+          {author.image_story_count > 0 && (
+            <Chip
+              size="small"
+              variant="outlined"
+              icon={<CollectionsIcon />}
+              label={`${author.image_story_count} 話`}
+            />
+          )}
           <Chip size="small" label={`${author.rating_count} 人評分`} />
           <Chip
             size="small"

@@ -1,3 +1,4 @@
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArticleIcon from "@mui/icons-material/Article";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
@@ -9,9 +10,12 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
   Button,
+  ButtonGroup,
   Chip,
   FormControlLabel,
   Grid,
+  ListItemIcon,
+  ListItemText,
   Menu,
   MenuItem,
   Paper,
@@ -22,7 +26,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
@@ -228,6 +232,10 @@ export default function StorytellerProjectDetail() {
   const [linkMenuAnchor, setLinkMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
+  const [createMenuAnchor, setCreateMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
   const {
     data: apiProjects = [],
@@ -604,7 +612,6 @@ export default function StorytellerProjectDetail() {
                 </MenuItem>
               </Menu>
               <Chip
-                size="small"
                 variant="outlined"
                 icon={
                   project.contentType === "image" ? (
@@ -725,26 +732,59 @@ export default function StorytellerProjectDetail() {
                       >
                         新增冊
                       </Button>
-                      <Button
-                        href={steamloomPath(
-                          `my/project/${project.id}/story/new`,
-                        )}
+                      <ButtonGroup
+                        ref={createButtonGroupRef}
                         variant="contained"
-                        startIcon={<ArticleIcon />}
                         sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
                       >
-                        建立故事
-                      </Button>
-                      <Button
-                        href={steamloomPath(
-                          `my/project/${project.id}/image/new`,
-                        )}
-                        variant="contained"
-                        startIcon={<CollectionsIcon />}
-                        sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
+                        <Button
+                          onClick={() =>
+                            setCreateMenuAnchor(createButtonGroupRef.current)
+                          }
+                          sx={{ flex: { xs: 1, sm: "initial" } }}
+                        >
+                          建立
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() =>
+                            setCreateMenuAnchor(createButtonGroupRef.current)
+                          }
+                          sx={{ px: 0.5 }}
+                        >
+                          <ArrowDropDownIcon />
+                        </Button>
+                      </ButtonGroup>
+                      <Menu
+                        anchorEl={createMenuAnchor}
+                        open={Boolean(createMenuAnchor)}
+                        onClose={() => setCreateMenuAnchor(null)}
                       >
-                        上傳圖像作品
-                      </Button>
+                        <MenuItem
+                          component="a"
+                          href={steamloomPath(
+                            `my/project/${project.id}/story/new`,
+                          )}
+                          onClick={() => setCreateMenuAnchor(null)}
+                        >
+                          <ListItemIcon>
+                            <ArticleIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>故事</ListItemText>
+                        </MenuItem>
+                        <MenuItem
+                          component="a"
+                          href={steamloomPath(
+                            `my/project/${project.id}/image/new`,
+                          )}
+                          onClick={() => setCreateMenuAnchor(null)}
+                        >
+                          <ListItemIcon>
+                            <CollectionsIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>圖像</ListItemText>
+                        </MenuItem>
+                      </Menu>
                     </Stack>
                   </Stack>
                 )}
@@ -776,7 +816,7 @@ export default function StorytellerProjectDetail() {
                   <CustomEmptyState
                     icon={<ArticleIcon fontSize="large" />}
                     title="尚未建立任何作品"
-                    description="使用上方的「建立故事」開始撰寫，或「上傳圖像作品」建立第一話。"
+                    description="使用上方的「建立」選擇「故事」開始撰寫，或選擇「圖像」建立第一話。"
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>

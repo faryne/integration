@@ -278,7 +278,7 @@ export interface StorytellerUserProfile {
 export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
   project_count: number;
   story_count: number;
-  word_count: number;
+  image_story_count: number;
   rating_count: number;
   average_rating: number;
   follower_count: number;
