@@ -9,8 +9,6 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { GearIcon } from "@/components/storyteller/SteamGearIcon.tsx";
 import {
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -164,23 +162,8 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
 }
 
 export default function StorytellerPublicHome() {
-  const { data: apiProjects = [], isLoading } = usePublicStorytellerProjects();
-  const publicProjects = apiProjects.map((project) => ({
-    id: project.public_id,
-    name: project.name,
-    description: project.description,
-    storiesCount: (project.stories ?? []).filter(
-      (story) => story.content_type !== "image",
-    ).length,
-    rating: project.rating,
-    tags: project.tags ?? [],
-    authorName: project.author?.pen_name,
-    wordCount:
-      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-      0,
-    updatedAt: project.updated_at,
-    path: storytellerReaderPath(project),
-  }));
+  const { data: publicProjects = [], isLoading } =
+    usePublicStorytellerProjects();
 
   useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {
     path: steamloomPath(),
@@ -216,39 +199,16 @@ export default function StorytellerPublicHome() {
       ) : (
         <Grid container spacing={2}>
           {publicProjects.map((project) => (
-            <Grid key={project.id} size={{ xs: 12, md: 6, lg: 4 }}>
+            <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
               <StorytellerProjectCard
-                name={project.name}
-                description={project.description}
-                updatedAt={project.updatedAt}
-                authorName={project.authorName}
-                tags={project.tags}
-                chips={
-                  <>
-                    <Chip
-                      size="small"
-                      icon={<LockOpenIcon />}
-                      label="公開閱讀"
-                    />
-                    <Chip
-                      size="small"
-                      color={storytellerProjectRatingColor(project.rating)}
-                      label={storytellerProjectRatingLabel(project.rating)}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${project.storiesCount} 篇故事`}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${project.wordCount.toLocaleString()} 字`}
-                    />
-                  </>
+                project={project}
+                extraChips={
+                  <Chip size="small" icon={<LockOpenIcon />} label="公開閱讀" />
                 }
                 actions={
                   <Button
                     component={RouterLink}
-                    to={project.path}
+                    to={storytellerReaderPath(project)}
                     variant="contained"
                   >
                     開始閱讀

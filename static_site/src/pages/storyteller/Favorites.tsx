@@ -29,8 +29,6 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import {
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -146,19 +144,10 @@ export default function StorytellerFavorites() {
 function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
-  const storyCount = (project.stories ?? []).filter(
-    (story) => story.content_type !== "image",
-  ).length;
-  const wordCount =
-    project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
   return (
     <StorytellerProjectCard
-      name={project.name}
-      description={project.description}
-      updatedAt={project.updated_at}
-      authorName={project.author?.pen_name}
-      tags={project.tags}
+      project={project}
       headerAction={
         <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
           <span>
@@ -173,22 +162,8 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
           </span>
         </Tooltip>
       }
-      chips={
-        <>
-          <Chip
-            size="small"
-            color={storytellerProjectRatingColor(project.rating)}
-            label={storytellerProjectRatingLabel(project.rating)}
-          />
-          <Chip size="small" label={`${storyCount} 篇故事`} />
-          <Chip size="small" label={`${wordCount.toLocaleString()} 字`} />
-          <Chip size="small" label={`${project.rating_count} 人評分`} />
-          <Chip
-            size="small"
-            label={`平均 ${project.average_rating.toFixed(1)}`}
-          />
-          {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
-        </>
+      extraChips={
+        hidden && <Chip size="small" color="warning" label="對外隱藏中" />
       }
       actions={
         <Button

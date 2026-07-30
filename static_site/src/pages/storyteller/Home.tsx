@@ -1,5 +1,3 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import CollectionsIcon from "@mui/icons-material/Collections";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
@@ -40,8 +38,6 @@ import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { steamTabIndicatorSx } from "@/data/storytellerTheme.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -85,27 +81,8 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
-    apiBacked: boolean;
   } | null>(null);
   const saveProject = useSaveStorytellerProject();
-  const rows = projects.map((project) => ({
-    id: project.public_id,
-    name: project.name,
-    description: project.description,
-    visibility: project.visibility,
-    contentType: project.content_type,
-    storiesCount: project.stories?.length ?? 0,
-    rating: project.rating,
-    tags: project.tags ?? [],
-    wordCount:
-      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-      0,
-    ratingCount: project.rating_count,
-    averageRating: project.average_rating,
-    updatedAt: project.updated_at,
-    apiBacked: true,
-    raw: project,
-  }));
 
   function handleVisibilityChange(
     project: StorytellerProject,
@@ -135,7 +112,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           刪除專案失敗，請確認登入狀態後再試一次。
         </Alert>
       )}
-      {rows.length === 0 ? (
+      {projects.length === 0 ? (
         <CustomEmptyState
           icon={<AutoStoriesIcon fontSize="large" />}
           title="目前還沒有創作專案"
@@ -143,13 +120,10 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         />
       ) : (
         <Grid container spacing={2}>
-          {rows.map((project) => (
-            <Grid key={project.id} size={{ xs: 12, md: 4 }}>
+          {projects.map((project) => (
+            <Grid key={project.public_id} size={{ xs: 12, md: 4 }}>
               <StorytellerProjectCard
-                name={project.name}
-                description={project.description}
-                updatedAt={project.updatedAt}
-                tags={project.tags}
+                project={project}
                 headerAction={
                   <ToggleButtonGroup
                     size="small"
@@ -157,7 +131,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     value={project.visibility}
                     disabled={saveProject.isPending}
                     onChange={(_, value) =>
-                      handleVisibilityChange(project.raw, value)
+                      handleVisibilityChange(project, value)
                     }
                   >
                     <ToggleButton value="private">
@@ -177,52 +151,11 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     </ToggleButton>
                   </ToggleButtonGroup>
                 }
-                chips={
-                  <>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      icon={
-                        project.contentType === "image" ? (
-                          <CollectionsIcon />
-                        ) : (
-                          <ArticleIcon />
-                        )
-                      }
-                      label={
-                        project.contentType === "image"
-                          ? "圖片／漫畫"
-                          : "文字故事"
-                      }
-                    />
-                    <Chip
-                      size="small"
-                      color={storytellerProjectRatingColor(project.rating)}
-                      label={storytellerProjectRatingLabel(project.rating)}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${project.storiesCount} 篇故事`}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${project.wordCount.toLocaleString()} 字`}
-                    />
-                    <Chip
-                      size="small"
-                      label={`${project.ratingCount} 人評分`}
-                    />
-                    <Chip
-                      size="small"
-                      label={`平均 ${project.averageRating.toFixed(1)}`}
-                    />
-                  </>
-                }
                 actions={
                   <>
                     <Button
                       component={RouterLink}
-                      to={steamloomPath(`my/project/${project.id}`)}
+                      to={steamloomPath(`my/project/${project.public_id}`)}
                       size="small"
                       variant="outlined"
                     >
@@ -230,11 +163,10 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     </Button>
                     <Button
                       component={RouterLink}
-                      to={steamloomPath(`my/project/${project.id}/edit`)}
+                      to={steamloomPath(`my/project/${project.public_id}/edit`)}
                       size="small"
                       variant="outlined"
                       startIcon={<EditIcon />}
-                      disabled={!project.apiBacked}
                     >
                       編輯
                     </Button>
@@ -243,12 +175,10 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                       color="error"
                       variant="contained"
                       startIcon={<DeleteIcon />}
-                      disabled={!project.apiBacked}
                       onClick={() =>
                         setDeleteTarget({
-                          id: project.id,
+                          id: project.public_id,
                           name: project.name,
-                          apiBacked: project.apiBacked,
                         })
                       }
                     >
@@ -271,10 +201,6 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           loading={deleteProject.isPending}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => {
-            if (!deleteTarget.apiBacked) {
-              setDeleteTarget(null);
-              return;
-            }
             deleteProject.mutate(deleteTarget.id, {
               onSuccess: () => setDeleteTarget(null),
             });

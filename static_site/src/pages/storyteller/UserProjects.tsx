@@ -48,8 +48,6 @@ import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import {
   STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -171,23 +169,7 @@ export default function StorytellerUserProjects() {
     return <ErrorPage code={404} />;
   }
 
-  const items = (data?.items || []).map((project) => ({
-    id: project.public_id,
-    name: project.name,
-    description: project.description,
-    storiesCount: (project.stories ?? []).filter(
-      (story) => story.content_type !== "image",
-    ).length,
-    rating: project.rating,
-    averageRating: project.average_rating,
-    favoriteCount: project.favorite_count,
-    tags: project.tags ?? [],
-    wordCount:
-      project.stories?.reduce((total, story) => total + story.word_count, 0) ??
-      0,
-    updatedAt: project.updated_at,
-    path: storytellerReaderPath(project),
-  }));
+  const items = data?.items || [];
 
   const totalPages = Math.ceil((data?.total || 0) / pageSize);
   const displayName = author?.pen_name || username || "作者";
@@ -338,50 +320,20 @@ export default function StorytellerUserProjects() {
                 <Stack spacing={3}>
                   <Grid container spacing={2}>
                     {items.map((project) => (
-                      <Grid key={project.id} size={{ xs: 12, sm: 6 }}>
+                      <Grid key={project.public_id} size={{ xs: 12, sm: 6 }}>
                         <StorytellerProjectCard
-                          name={project.name}
-                          description={project.description}
-                          updatedAt={project.updatedAt}
-                          tags={project.tags}
-                          chips={
-                            <>
-                              <Chip
-                                size="small"
-                                icon={<LockOpenIcon />}
-                                label="公開閱讀"
-                              />
-                              <Chip
-                                size="small"
-                                color={storytellerProjectRatingColor(
-                                  project.rating,
-                                )}
-                                label={storytellerProjectRatingLabel(
-                                  project.rating,
-                                )}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.storiesCount} 篇故事`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.wordCount.toLocaleString()} 字`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`平均 ${project.averageRating.toFixed(1)}`}
-                              />
-                              <Chip
-                                size="small"
-                                label={`${project.favoriteCount} 人收藏`}
-                              />
-                            </>
+                          project={project}
+                          extraChips={
+                            <Chip
+                              size="small"
+                              icon={<LockOpenIcon />}
+                              label="公開閱讀"
+                            />
                           }
                           actions={
                             <Button
                               component={RouterLink}
-                              to={project.path}
+                              to={storytellerReaderPath(project)}
                               variant="contained"
                             >
                               開始閱讀
@@ -497,19 +449,10 @@ function FavoriteProjectCard({
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
-  const storyCount = (project.stories ?? []).filter(
-    (story) => story.content_type !== "image",
-  ).length;
-  const wordCount =
-    project.stories?.reduce((total, story) => total + story.word_count, 0) ?? 0;
 
   return (
     <StorytellerProjectCard
-      name={project.name}
-      description={project.description}
-      updatedAt={project.updated_at}
-      authorName={project.author?.pen_name}
-      tags={project.tags}
+      project={project}
       headerAction={
         isOwner && (
           <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
@@ -526,22 +469,8 @@ function FavoriteProjectCard({
           </Tooltip>
         )
       }
-      chips={
-        <>
-          <Chip
-            size="small"
-            color={storytellerProjectRatingColor(project.rating)}
-            label={storytellerProjectRatingLabel(project.rating)}
-          />
-          <Chip size="small" label={`${storyCount} 篇故事`} />
-          <Chip size="small" label={`${wordCount.toLocaleString()} 字`} />
-          <Chip
-            size="small"
-            label={`平均 ${project.average_rating.toFixed(1)}`}
-          />
-          <Chip size="small" label={`${project.favorite_count} 人收藏`} />
-          {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
-        </>
+      extraChips={
+        hidden && <Chip size="small" color="warning" label="對外隱藏中" />
       }
       actions={
         <Button
