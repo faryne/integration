@@ -80,13 +80,17 @@ func (s *Service) PublicProjects() ([]storytellerModel.ProjectOutput, error) {
 	return s.projectOutputs(projects, false)
 }
 
-func (s *Service) PublicProject(projectValue string) (*storytellerModel.ProjectOutput, error) {
+// PublicProject 是故事閱讀頁用的主要專案讀取——viewerID 是可選的（見 controller 的
+// optionalViewerID），用來讓專案本人即使在瀏覽私人／不公開連結的專案時，這條公開路由
+// 也不會 404，並且能看到草稿故事；一般訪客（viewerID=0 或非本人）行為不變。
+func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytellerModel.ProjectOutput, error) {
 	publicID := strings.SplitN(projectValue, "-", 2)[0]
-	project, err := s.repo.ProjectByPublicID(publicID)
+	project, err := s.repo.ProjectByPublicIDForPublicReader(viewerID, publicID)
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputWithFollowerCount(project, false)
+	isOwner := viewerID != 0 && project.UserID == viewerID
+	return s.projectOutputWithFollowerCount(project, isOwner)
 }
 
 func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, error) {
@@ -1108,22 +1112,28 @@ func (s *Service) publicPublishedStory(userID uint64, projectPublicID, storyPubl
 	return s.repo.PublishedStory(project.ID, storyPublicID)
 }
 
-func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string) (*storytellerModel.StoryVersion, error) {
-	story, err := s.publicPublishedStory(0, projectPublicID, storyPublicID)
+// viewerID 同 PublicProject，是可選的（見 controller 的 optionalViewerID）——讓故事本人
+// 預覽自己私人專案裡的草稿故事時，這條公開路由也能正常回傳版本資訊。
+func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string, viewerID uint64) (*storytellerModel.StoryVersion, error) {
+	story, err := s.publicPublishedStory(viewerID, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
 	return s.repo.LatestStoryVersion(story.ID)
 }
 
-func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string) ([]storytellerModel.StoryVersion, error) {
-	story, err := s.publicPublishedStory(0, projectPublicID, storyPublicID)
+func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string, viewerID uint64) ([]storytellerModel.StoryVersion, error) {
+	story, err := s.publicPublishedStory(viewerID, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
 	return s.repo.StoryVersions(story.ID)
 }
 
+// ProjectStoryBookmarks 组出專案內所有書籤（文字＋圖片混在一起，依 content_type 分開
+// 處理）：文字書籤去掉行內容裡的 marker 語法；圖片書籤逐一解析所屬話目前的內容 JSON，
+// 算出書籤指到的頁面現在排第幾頁、簽出縮圖網址——頁面已經被刪除的書籤 PageSort 回 -1，
+// 前端可以用這個判斷書籤已經失效。
 func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryBookmarkOutput, error) {
 	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
 	if err != nil {
@@ -1133,8 +1143,32 @@ func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) (
 	if err != nil {
 		return nil, err
 	}
+	contentByStoryID := make(map[uint64]storytellerModel.StoryImageContent)
 	for i := range rows {
-		rows[i].LinePreview = stripBookmarkLineMarker(rows[i].LinePreview)
+		if rows[i].ContentType != storytellerModel.ProjectContentTypeImage {
+			rows[i].LinePreview = stripBookmarkLineMarker(rows[i].LinePreview)
+			continue
+		}
+		content, ok := contentByStoryID[rows[i].StoryID]
+		if !ok {
+			story, err := s.repo.Story(project.ID, rows[i].StoryPublicID)
+			if err != nil {
+				return nil, err
+			}
+			content = mustParseImageContent(story.LatestContent)
+			contentByStoryID[rows[i].StoryID] = content
+		}
+		rows[i].PageSort = -1
+		for _, page := range content.Pages {
+			if page.ID != rows[i].LineID {
+				continue
+			}
+			rows[i].PageSort = page.Sort
+			if imageURL, err := signImageURL(page.Key); err == nil {
+				rows[i].ThumbnailURL = imageURL
+			}
+			break
+		}
 	}
 	return rows, nil
 }
@@ -1304,11 +1338,37 @@ func (s *Service) StoryBookmarks(userID uint64, projectPublicID, storyPublicID s
 	return s.repo.StoryBookmarks(userID, story.ID)
 }
 
-func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
+// CreateStoryBookmark 依故事的 content_type 分兩條路：文字故事沿用原本「只能對最新版本
+// 加書籤」規則，lineID 是行號的字串形式，綁定 versionID；圖片故事（話）的 lineID 是
+// StoryImagePage.ID，不綁版本（story_version_id 留 NULL），但要求該頁必須存在於目前的
+// 內容裡才能加書籤。versionID 對圖片故事沒有意義，呼叫端可以傳 0。
+func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPublicID, lineID string, versionID uint64) (*storytellerModel.StoryBookmark, error) {
 	story, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
+
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		pageExists := false
+		for _, page := range mustParseImageContent(story.LatestContent).Pages {
+			if page.ID == lineID {
+				pageExists = true
+				break
+			}
+		}
+		if !pageExists {
+			return nil, errors.New("page not found in this episode")
+		}
+		if existing, err := s.repo.StoryBookmark(userID, story.ID, nil, lineID); err == nil {
+			return existing, nil
+		}
+		row := &storytellerModel.StoryBookmark{UserID: userID, StoryID: story.ID, LineID: lineID}
+		if err := s.repo.CreateStoryBookmark(row); err != nil {
+			return nil, err
+		}
+		return row, nil
+	}
+
 	latest, err := s.repo.LatestStoryVersion(story.ID)
 	if err != nil {
 		return nil, err
@@ -1316,14 +1376,14 @@ func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPubli
 	if latest.ID != versionID {
 		return nil, errors.New("只能對最新版本加入書籤")
 	}
-	if existing, err := s.repo.StoryBookmark(userID, versionID, lineIndex); err == nil {
+	if existing, err := s.repo.StoryBookmark(userID, story.ID, &versionID, lineID); err == nil {
 		return existing, nil
 	}
 	row := &storytellerModel.StoryBookmark{
 		UserID:         userID,
 		StoryID:        story.ID,
-		StoryVersionID: versionID,
-		LineIndex:      lineIndex,
+		StoryVersionID: &versionID,
+		LineID:         lineID,
 	}
 	if err := s.repo.CreateStoryBookmark(row); err != nil {
 		return nil, err
@@ -1331,107 +1391,15 @@ func (s *Service) CreateStoryBookmark(userID uint64, projectPublicID, storyPubli
 	return row, nil
 }
 
-func (s *Service) DeleteStoryBookmark(userID uint64, projectPublicID, storyPublicID string, versionID uint64, lineIndex int) error {
-	if _, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID); err != nil {
-		return err
-	}
-	return s.repo.DeleteStoryBookmark(userID, versionID, lineIndex)
-}
-
-// publicPublishedImageStory 跟 publicPublishedStory 一樣驗證讀者能看到這篇，額外擋下
-// content_type 不是 image 的故事——圖片書籤只能掛在「話」上。
-func (s *Service) publicPublishedImageStory(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
+func (s *Service) DeleteStoryBookmark(userID uint64, projectPublicID, storyPublicID, lineID string, versionID uint64) error {
 	story, err := s.publicPublishedStory(userID, projectPublicID, storyPublicID)
 	if err != nil {
-		return nil, err
-	}
-	if story.ContentType != storytellerModel.ProjectContentTypeImage {
-		return nil, errors.New("story is not an image episode")
-	}
-	return story, nil
-}
-
-func (s *Service) StoryImageBookmarks(userID uint64, projectPublicID, storyPublicID string) ([]storytellerModel.StoryImageBookmark, error) {
-	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
-	if err != nil {
-		return nil, err
-	}
-	return s.repo.StoryImageBookmarks(userID, story.ID)
-}
-
-func (s *Service) CreateStoryImageBookmark(userID uint64, projectPublicID, storyPublicID, pageID string) (*storytellerModel.StoryImageBookmark, error) {
-	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
-	if err != nil {
-		return nil, err
-	}
-	pageExists := false
-	for _, page := range mustParseImageContent(story.LatestContent).Pages {
-		if page.ID == pageID {
-			pageExists = true
-			break
-		}
-	}
-	if !pageExists {
-		return nil, errors.New("page not found in this episode")
-	}
-	if existing, err := s.repo.StoryImageBookmark(userID, story.ID, pageID); err == nil {
-		return existing, nil
-	}
-	row := &storytellerModel.StoryImageBookmark{
-		UserID:  userID,
-		StoryID: story.ID,
-		PageID:  pageID,
-	}
-	if err := s.repo.CreateStoryImageBookmark(row); err != nil {
-		return nil, err
-	}
-	return row, nil
-}
-
-func (s *Service) DeleteStoryImageBookmark(userID uint64, projectPublicID, storyPublicID, pageID string) error {
-	story, err := s.publicPublishedImageStory(userID, projectPublicID, storyPublicID)
-	if err != nil {
 		return err
 	}
-	return s.repo.DeleteStoryImageBookmark(userID, story.ID, pageID)
-}
-
-// ProjectImageBookmarks 组出專案內所有圖片書籤，逐一解析所屬話目前的內容 JSON，
-// 算出書籤指到的頁面現在排第幾頁、簽出縮圖網址；頁面已經被刪除的書籤 PageSort 回 -1，
-// 前端可以用這個判斷書籤已經失效。
-func (s *Service) ProjectImageBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryImageBookmarkOutput, error) {
-	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
-	if err != nil {
-		return nil, err
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		return s.repo.DeleteStoryBookmark(userID, story.ID, nil, lineID)
 	}
-	rows, err := s.repo.ProjectStoryImageBookmarks(userID, project.ID)
-	if err != nil {
-		return nil, err
-	}
-	contentByStoryID := make(map[uint64]storytellerModel.StoryImageContent)
-	for i := range rows {
-		content, ok := contentByStoryID[rows[i].StoryID]
-		if !ok {
-			story, err := s.repo.Story(project.ID, rows[i].StoryPublicID)
-			if err != nil {
-				return nil, err
-			}
-			content = mustParseImageContent(story.LatestContent)
-			contentByStoryID[rows[i].StoryID] = content
-		}
-		rows[i].PageSort = -1
-		for _, page := range content.Pages {
-			if page.ID != rows[i].PageID {
-				continue
-			}
-			rows[i].PageSort = page.Sort
-			if imageURL, err := signImageURL(page.Key); err == nil {
-				rows[i].ThumbnailURL = imageURL
-			}
-			break
-		}
-	}
-	return rows, nil
+	return s.repo.DeleteStoryBookmark(userID, story.ID, &versionID, lineID)
 }
 
 // mustParseImageContent 解析失敗時回傳空內容而不是錯誤——書籤查詢/校驗刻意用寬鬆處理，

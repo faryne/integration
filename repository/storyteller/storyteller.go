@@ -39,6 +39,20 @@ func (r *Repository) ProjectByPublicID(publicID string) (*storytellerModel.Proje
 	return &row, err
 }
 
+// ProjectByPublicIDForPublicReader 給主要內容閱讀頁（PublicProject／版本查詢）用：只放行
+// 真正公開的專案，或是專案本人（userID 對上 user_id）——刻意不像 ProjectByPublicIDForReader
+// 那樣連 unlisted 都放行，因為 unlisted 的訪問邊界是「知道分享連結」，不該用猜 public_id
+// 就能直接看到內容；本人預覽自己私人／不公開連結的草稿則不受此限制。userID 為 0
+// （未登入或匿名訪客）時第二個條件恆假，行為等同 ProjectByPublicID。
+func (r *Repository) ProjectByPublicIDForPublicReader(userID uint64, publicID string) (*storytellerModel.Project, error) {
+	var row storytellerModel.Project
+	err := r.db.Where(
+		"public_id = ? AND deleted_at IS NULL AND (visibility = ? OR user_id = ?)",
+		publicID, storytellerModel.ProjectVisibilityPublic, userID,
+	).First(&row).Error
+	return &row, err
+}
+
 func (r *Repository) ProjectByShareToken(token string) (*storytellerModel.Project, error) {
 	var row storytellerModel.Project
 	err := r.db.Where("share_token = ? AND visibility = ? AND deleted_at IS NULL", token, storytellerModel.ProjectVisibilityUnlisted).
@@ -512,39 +526,55 @@ func (r *Repository) StoryBookmarks(userID, storyID uint64) ([]storytellerModel.
 	rows := make([]storytellerModel.StoryBookmark, 0)
 	err := r.db.
 		Where("user_id = ? AND story_id = ?", userID, storyID).
-		Order("story_version_id DESC, line_index ASC").
+		Order("story_version_id DESC, line_id ASC").
 		Find(&rows).Error
 	return rows, err
 }
 
+// ProjectStoryBookmarks 對故事版本用 LEFT JOIN——圖片書籤的 story_version_id 是 NULL，
+// INNER JOIN 會直接把這些書籤濾掉。line_preview／latest_story_version_id 只在文字書籤
+// （story_version_id 不是 NULL）才有意義，圖片書籤的 PageSort／ThumbnailURL 需要解析
+// LatestContent 的 JSON，SQL 做不到，交給 service 層依 content_type 分開組好再填入。
 func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytellerModel.StoryBookmarkOutput, error) {
 	rows := make([]storytellerModel.StoryBookmarkOutput, 0)
 	err := r.db.
 		Table("storyteller_story_bookmarks AS bookmarks").
 		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
-		Joins("INNER JOIN storyteller_story_versions AS versions ON versions.id = bookmarks.story_version_id").
+		Joins("LEFT JOIN storyteller_story_versions AS versions ON versions.id = bookmarks.story_version_id").
 		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
 		Select(`bookmarks.id,
 			bookmarks.story_id,
 			stories.public_id AS story_public_id,
 			stories.title AS story_title,
+			stories.content_type AS content_type,
 			bookmarks.story_version_id,
-			bookmarks.line_index,
+			bookmarks.line_id,
 			bookmarks.created_at,
-			(SELECT v.id FROM storyteller_story_versions AS v
-				WHERE v.story_id = bookmarks.story_id AND v.deleted_at IS NULL
-				ORDER BY v.created_at DESC, v.id DESC LIMIT 1) AS latest_story_version_id,
-			TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(versions.content, '\n', bookmarks.line_index + 1), '\n', -1)) AS line_preview`).
+			CASE WHEN bookmarks.story_version_id IS NOT NULL THEN
+				(SELECT v.id FROM storyteller_story_versions AS v
+					WHERE v.story_id = bookmarks.story_id AND v.deleted_at IS NULL
+					ORDER BY v.created_at DESC, v.id DESC LIMIT 1)
+				ELSE NULL END AS latest_story_version_id,
+			CASE WHEN bookmarks.story_version_id IS NOT NULL THEN
+				TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(versions.content, '\n', CAST(bookmarks.line_id AS UNSIGNED) + 1), '\n', -1))
+				ELSE NULL END AS line_preview`).
 		Order("bookmarks.created_at DESC, bookmarks.id DESC").
 		Find(&rows).Error
 	return rows, err
 }
 
-func (r *Repository) StoryBookmark(userID, versionID uint64, lineIndex int) (*storytellerModel.StoryBookmark, error) {
+// StoryBookmark 查單一書籤是否存在：versionID 為 nil 代表圖片書籤（line_id 是頁面 id，
+// 不綁版本），這時只用 user_id + story_id + line_id 比對；文字書籤則額外比對
+// story_version_id，同一行在不同版本算不同書籤。
+func (r *Repository) StoryBookmark(userID, storyID uint64, versionID *uint64, lineID string) (*storytellerModel.StoryBookmark, error) {
 	var row storytellerModel.StoryBookmark
-	err := r.db.
-		Where("user_id = ? AND story_version_id = ? AND line_index = ?", userID, versionID, lineIndex).
-		First(&row).Error
+	query := r.db.Where("user_id = ? AND story_id = ? AND line_id = ?", userID, storyID, lineID)
+	if versionID != nil {
+		query = query.Where("story_version_id = ?", *versionID)
+	} else {
+		query = query.Where("story_version_id IS NULL")
+	}
+	err := query.First(&row).Error
 	return &row, err
 }
 
@@ -552,57 +582,14 @@ func (r *Repository) CreateStoryBookmark(row *storytellerModel.StoryBookmark) er
 	return r.db.Create(row).Error
 }
 
-func (r *Repository) DeleteStoryBookmark(userID, versionID uint64, lineIndex int) error {
-	return r.db.
-		Where("user_id = ? AND story_version_id = ? AND line_index = ?", userID, versionID, lineIndex).
-		Delete(&storytellerModel.StoryBookmark{}).Error
-}
-
-func (r *Repository) StoryImageBookmarks(userID, storyID uint64) ([]storytellerModel.StoryImageBookmark, error) {
-	rows := make([]storytellerModel.StoryImageBookmark, 0)
-	err := r.db.
-		Where("user_id = ? AND story_id = ?", userID, storyID).
-		Order("created_at DESC").
-		Find(&rows).Error
-	return rows, err
-}
-
-// ProjectStoryImageBookmarks 帶回 bookmarks + 所屬話的 public_id／標題；PageSort／
-// ThumbnailURL 這兩欄要解析 LatestContent 的 JSON 才能算，SQL 做不到，交給 service 層
-// 組好之後再簽網址、填回這兩欄。
-func (r *Repository) ProjectStoryImageBookmarks(userID, projectID uint64) ([]storytellerModel.StoryImageBookmarkOutput, error) {
-	rows := make([]storytellerModel.StoryImageBookmarkOutput, 0)
-	err := r.db.
-		Table("storyteller_story_image_bookmarks AS bookmarks").
-		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
-		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
-		Select(`bookmarks.id,
-			bookmarks.story_id,
-			stories.public_id AS story_public_id,
-			stories.title AS story_title,
-			bookmarks.page_id,
-			bookmarks.created_at`).
-		Order("bookmarks.created_at DESC, bookmarks.id DESC").
-		Find(&rows).Error
-	return rows, err
-}
-
-func (r *Repository) StoryImageBookmark(userID, storyID uint64, pageID string) (*storytellerModel.StoryImageBookmark, error) {
-	var row storytellerModel.StoryImageBookmark
-	err := r.db.
-		Where("user_id = ? AND story_id = ? AND page_id = ?", userID, storyID, pageID).
-		First(&row).Error
-	return &row, err
-}
-
-func (r *Repository) CreateStoryImageBookmark(row *storytellerModel.StoryImageBookmark) error {
-	return r.db.Create(row).Error
-}
-
-func (r *Repository) DeleteStoryImageBookmark(userID, storyID uint64, pageID string) error {
-	return r.db.
-		Where("user_id = ? AND story_id = ? AND page_id = ?", userID, storyID, pageID).
-		Delete(&storytellerModel.StoryImageBookmark{}).Error
+func (r *Repository) DeleteStoryBookmark(userID, storyID uint64, versionID *uint64, lineID string) error {
+	query := r.db.Where("user_id = ? AND story_id = ? AND line_id = ?", userID, storyID, lineID)
+	if versionID != nil {
+		query = query.Where("story_version_id = ?", *versionID)
+	} else {
+		query = query.Where("story_version_id IS NULL")
+	}
+	return query.Delete(&storytellerModel.StoryBookmark{}).Error
 }
 
 func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {

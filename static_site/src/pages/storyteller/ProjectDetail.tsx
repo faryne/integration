@@ -619,6 +619,8 @@ export default function StorytellerProjectDetail() {
               />
               <Chip label={project.statusLabel} color="primary" />
               <Chip
+                icon={<ArticleIcon />}
+                variant="outlined"
                 label={`${
                   orderedStories.filter(
                     (story) => story.content_type !== "image",

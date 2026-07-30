@@ -59,9 +59,7 @@ import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   useStorytellerProject,
-  useCreateStorytellerImageBookmark,
   useCreateStorytellerStoryBookmark,
-  useDeleteStorytellerImageBookmark,
   useDeleteStorytellerStoryBookmark,
   usePublicStorytellerImageStoryPages,
   usePublicStorytellerStoryLatestVersion,
@@ -73,12 +71,10 @@ import {
   useSharedStorytellerImageStoryPages,
   useSharedStorytellerProject,
   useStorytellerAuthorFavorite,
-  useStorytellerImageBookmarks,
   useStorytellerImageStoryPages,
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
   useStorytellerProjectBookmarks,
-  useStorytellerProjectImageBookmarks,
   useStorytellerStoryBookmarks,
 } from "@/apis/storyteller.ts";
 import {
@@ -99,10 +95,7 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
-import type {
-  StorytellerImageBookmarkWithStory,
-  StorytellerStoryBookmarkWithStory,
-} from "@/types/storyteller.ts";
+import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 
 // ReaderItem 是故事與話（圖像作品）合併後的統一序列元素——冊現在是通用容器，
 // 兩種類型可以混著放在同一冊裡，閱讀頁不再分開兩個家族，只依 sort／冊順序
@@ -371,11 +364,9 @@ function ReaderIndexPanel({
   basePath,
   onNavigate,
   bookmarks,
-  imageBookmarks,
   bookmarksEnabled,
   bookmarksLoading,
   onJumpToBookmark,
-  onJumpToImageBookmark,
   headings,
   activeHeadingLine,
   onJumpToHeading,
@@ -386,11 +377,9 @@ function ReaderIndexPanel({
   basePath: string;
   onNavigate?: () => void;
   bookmarks: StorytellerStoryBookmarkWithStory[];
-  imageBookmarks: StorytellerImageBookmarkWithStory[];
   bookmarksEnabled: boolean;
   bookmarksLoading: boolean;
   onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
-  onJumpToImageBookmark: (bookmark: StorytellerImageBookmarkWithStory) => void;
   headings: StoryHeading[];
   activeHeadingLine?: number;
   onJumpToHeading: (heading: StoryHeading) => void;
@@ -421,10 +410,7 @@ function ReaderIndexPanel({
           onClick={() => setTab("bookmarks")}
           sx={{ flex: 1 }}
         >
-          書籤
-          {bookmarks.length + imageBookmarks.length > 0
-            ? ` ${bookmarks.length + imageBookmarks.length}`
-            : ""}
+          書籤{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
         </Button>
         {hasOutline && (
           <Button
@@ -464,128 +450,232 @@ function ReaderIndexPanel({
             <Typography variant="body2" color="text.secondary">
               載入書籤中...
             </Typography>
-          ) : bookmarks.length === 0 && imageBookmarks.length === 0 ? (
+          ) : bookmarks.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
               還沒有加入任何書籤，閱讀時點擊每行左側或圖像頁的書籤圖示即可加入。
             </Typography>
           ) : (
-            <>
-              {bookmarks.map((bookmark) => {
-                const item = items.find(
-                  (candidate) => candidate.id === bookmark.story_public_id,
-                );
-                const isStale =
-                  bookmark.story_version_id !==
+            bookmarks.map((bookmark) => {
+              const item = items.find(
+                (candidate) => candidate.id === bookmark.story_public_id,
+              );
+              const isImage = bookmark.content_type === "image";
+              const isStale = isImage
+                ? (bookmark.page_sort ?? -1) < 0
+                : bookmark.story_version_id !==
                   bookmark.latest_story_version_id;
-                const lineText = bookmark.line_preview.trim();
-                const snippet =
-                  lineText.length > 10 ? `${lineText.slice(0, 10)}…` : lineText;
-                return (
-                  <Paper
-                    key={`text-${bookmark.id}`}
-                    variant="outlined"
-                    sx={{ p: 1, borderRadius: 1, cursor: "pointer" }}
-                    onClick={() => {
-                      onJumpToBookmark(bookmark);
-                      onNavigate?.();
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
-                    >
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block" }}
+              const lineText = (bookmark.line_preview ?? "").trim();
+              const snippet =
+                lineText.length > 10 ? `${lineText.slice(0, 10)}…` : lineText;
+              return (
+                <Paper
+                  key={bookmark.id}
+                  variant="outlined"
+                  sx={{ p: 1, borderRadius: 1, cursor: "pointer" }}
+                  onClick={() => {
+                    onJumpToBookmark(bookmark);
+                    onNavigate?.();
+                  }}
+                >
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    {isImage && bookmark.thumbnail_url && (
+                      <Box
+                        component="img"
+                        src={bookmark.thumbnail_url}
+                        alt={item?.title ?? bookmark.story_title}
+                        sx={{
+                          width: 40,
+                          height: 54,
+                          objectFit: "cover",
+                          borderRadius: 0.5,
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
                       >
-                        {item?.title ?? bookmark.story_title}
-                      </Typography>
-                      {isStale && (
-                        <Chip
-                          size="small"
-                          label="非最新版本"
-                          color="warning"
-                          variant="outlined"
-                          sx={{ height: 18, fontSize: 11 }}
-                        />
-                      )}
-                    </Stack>
-                    <Typography variant="body2" color="text.secondary">
-                      {snippet || "（空白段落）"}
-                    </Typography>
-                  </Paper>
-                );
-              })}
-              {imageBookmarks.map((bookmark) => {
-                const item = items.find(
-                  (candidate) => candidate.id === bookmark.story_public_id,
-                );
-                const isStale = bookmark.page_sort < 0;
-                return (
-                  <Paper
-                    key={`image-${bookmark.id}`}
-                    variant="outlined"
-                    sx={{ p: 1, borderRadius: 1, cursor: "pointer" }}
-                    onClick={() => {
-                      onJumpToImageBookmark(bookmark);
-                      onNavigate?.();
-                    }}
-                  >
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      {bookmark.thumbnail_url && (
-                        <Box
-                          component="img"
-                          src={bookmark.thumbnail_url}
-                          alt={item?.title ?? bookmark.story_title}
-                          sx={{
-                            width: 40,
-                            height: 54,
-                            objectFit: "cover",
-                            borderRadius: 0.5,
-                            flexShrink: 0,
-                          }}
-                        />
-                      )}
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Stack
-                          direction="row"
-                          alignItems="center"
-                          justifyContent="space-between"
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: "block" }}
                         >
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                            sx={{ display: "block" }}
-                          >
-                            {item?.title ?? bookmark.story_title}
-                          </Typography>
-                          {isStale && (
-                            <Chip
-                              size="small"
-                              label="頁面已移除"
-                              color="warning"
-                              variant="outlined"
-                              sx={{ height: 18, fontSize: 11 }}
-                            />
-                          )}
-                        </Stack>
-                        <Typography variant="body2" color="text.secondary">
-                          {isStale
-                            ? "（書籤指向的頁面已被刪除）"
-                            : `第 ${bookmark.page_sort + 1} 頁`}
+                          {item?.title ?? bookmark.story_title}
                         </Typography>
-                      </Box>
-                    </Stack>
-                  </Paper>
-                );
-              })}
-            </>
+                        {isStale && (
+                          <Chip
+                            size="small"
+                            label={isImage ? "頁面已移除" : "非最新版本"}
+                            color="warning"
+                            variant="outlined"
+                            sx={{ height: 18, fontSize: 11 }}
+                          />
+                        )}
+                      </Stack>
+                      <Typography variant="body2" color="text.secondary">
+                        {isImage
+                          ? isStale
+                            ? "（書籤指向的頁面已被刪除）"
+                            : `第 ${(bookmark.page_sort ?? 0) + 1} 頁`
+                          : snippet || "（空白段落）"}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+              );
+            })
           )}
         </Stack>
       )}
     </Stack>
+  );
+}
+
+// 比照 YouTube 播放器的進度列：滑鼠移到軌道上的某個位置會浮出該頁的縮圖預覽，點擊
+// 直接跳到那一頁。頁面是離散的（不是連續時間），滑鼠位置會吸附到最近的一頁，不會有
+// 「中間值」。頁數只有 1 頁時沒有可跳的地方，直接不渲染。
+function ImagePageScrubber({
+  pages,
+  currentIndex,
+  onJump,
+}: {
+  pages: ReaderImagePage[];
+  currentIndex: number;
+  onJump: (index: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const total = pages.length;
+
+  function indexFromPointer(clientX: number): number {
+    const track = trackRef.current;
+    if (!track || total <= 1) {
+      return 0;
+    }
+    const rect = track.getBoundingClientRect();
+    const ratio = (clientX - rect.left) / rect.width;
+    return Math.min(Math.max(Math.round(ratio * (total - 1)), 0), total - 1);
+  }
+
+  if (total <= 1) {
+    return null;
+  }
+
+  const hoverPage = hoverIndex !== null ? pages[hoverIndex] : null;
+  const percentOf = (index: number) => (index / (total - 1)) * 100;
+
+  return (
+    <Box sx={{ position: "relative" }}>
+      {hoverPage && hoverIndex !== null && (
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            left: `${percentOf(hoverIndex)}%`,
+            transform: "translateX(-50%)",
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          <Paper
+            variant="outlined"
+            sx={{
+              width: 84,
+              overflow: "hidden",
+              borderRadius: 1,
+              borderWidth: 2,
+              borderColor: "primary.main",
+              boxShadow: 3,
+            }}
+          >
+            <Box
+              component="img"
+              src={hoverPage.imageUrl}
+              alt={`第 ${hoverIndex + 1} 頁預覽`}
+              sx={{
+                width: "100%",
+                height: 112,
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                textAlign: "center",
+                py: 0.25,
+                bgcolor: "background.paper",
+              }}
+            >
+              第 {hoverIndex + 1} 頁
+            </Typography>
+          </Paper>
+        </Box>
+      )}
+      <Box
+        ref={trackRef}
+        onMouseMove={(event) => setHoverIndex(indexFromPointer(event.clientX))}
+        onMouseLeave={() => setHoverIndex(null)}
+        onClick={(event) => onJump(indexFromPointer(event.clientX))}
+        sx={{
+          position: "relative",
+          height: 20,
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            height: 6,
+            borderRadius: 3,
+            bgcolor: "action.disabledBackground",
+            overflow: "hidden",
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: `${percentOf(currentIndex)}%`,
+              bgcolor: "primary.main",
+              transition: "width .12s",
+            }}
+          />
+        </Box>
+        {pages.map((page, index) => (
+          <Box
+            key={page.id}
+            sx={{
+              position: "absolute",
+              left: `${percentOf(index)}%`,
+              top: "50%",
+              transform: "translate(-50%, -50%)",
+              width: index === currentIndex ? 12 : 8,
+              height: index === currentIndex ? 12 : 8,
+              borderRadius: "50%",
+              bgcolor:
+                index === currentIndex
+                  ? "primary.main"
+                  : index < currentIndex
+                    ? "primary.light"
+                    : "background.paper",
+              border: "2px solid",
+              borderColor: index === currentIndex ? "primary.main" : "divider",
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+      </Box>
+    </Box>
   );
 }
 
@@ -1032,17 +1122,20 @@ export default function StorytellerReader() {
     apiProject?.public_id,
     currentStory?.id,
   );
+  // 文字／圖片書籤共用同一張表、同一組 API——不管 currentItem 是故事還是話，都用同一份
+  // query／mutation，靠 line_id（文字存行號字串、圖片存頁面 id）與 story_version_id
+  // （只有文字書籤會填）分辨用途，不需要為圖片書籤另外開一組 hook。
   const bookmarksQuery = useStorytellerStoryBookmarks(
     apiProject?.public_id,
-    currentStory?.id,
+    currentItem?.id,
   );
   const createBookmark = useCreateStorytellerStoryBookmark(
     apiProject?.public_id,
-    currentStory?.id,
+    currentItem?.id,
   );
   const deleteBookmark = useDeleteStorytellerStoryBookmark(
     apiProject?.public_id,
-    currentStory?.id,
+    currentItem?.id,
   );
   const latestVersionId = latestVersionQuery.data?.id;
   const versions = versionsQuery.data ?? [];
@@ -1072,7 +1165,7 @@ export default function StorytellerReader() {
   const bookmarkedLines = new Set(
     (bookmarksQuery.data ?? [])
       .filter((bookmark) => bookmark.story_version_id === displayVersionId)
-      .map((bookmark) => bookmark.line_index),
+      .map((bookmark) => Number(bookmark.line_id)),
   );
   const bookmarkMode: BookmarkMode = isHistoricalView
     ? "removeOnly"
@@ -1094,7 +1187,7 @@ export default function StorytellerReader() {
     setPendingBookmarkLines((prev) => new Set(prev).add(lineIndex));
     const mutation = isBookmarked ? deleteBookmark : createBookmark;
     mutation.mutate(
-      { versionId: displayVersionId, lineIndex },
+      { versionId: displayVersionId, lineId: String(lineIndex) },
       {
         onSuccess: () => {
           setBookmarkSnackbar({
@@ -1116,20 +1209,12 @@ export default function StorytellerReader() {
     apiProject?.public_id,
   );
   const projectBookmarks = projectBookmarksQuery.data ?? [];
-  const imageBookmarksQuery = useStorytellerImageBookmarks(
-    apiProject?.public_id,
-    currentEpisode?.id,
-  );
-  const createImageBookmark = useCreateStorytellerImageBookmark(
-    apiProject?.public_id,
-    currentEpisode?.id,
-  );
-  const deleteImageBookmark = useDeleteStorytellerImageBookmark(
-    apiProject?.public_id,
-    currentEpisode?.id,
-  );
+  // 圖片書籤沒有 story_version_id（不綁版本）——用這個分辨 bookmarksQuery 裡哪些
+  // 屬於目前這話的圖片書籤，line_id 就是頁面 id。
   const bookmarkedPageIds = new Set(
-    (imageBookmarksQuery.data ?? []).map((bookmark) => bookmark.page_id),
+    (bookmarksQuery.data ?? [])
+      .filter((bookmark) => bookmark.story_version_id == null)
+      .map((bookmark) => bookmark.line_id),
   );
   const handleToggleImageBookmark = (pageId: string) => {
     if (!session) {
@@ -1141,9 +1226,9 @@ export default function StorytellerReader() {
     }
     const isBookmarked = bookmarkedPageIds.has(pageId);
     setPendingImageBookmarkPages((prev) => new Set(prev).add(pageId));
-    const mutation = isBookmarked ? deleteImageBookmark : createImageBookmark;
+    const mutation = isBookmarked ? deleteBookmark : createBookmark;
     mutation.mutate(
-      { pageId },
+      { lineId: pageId },
       {
         onSuccess: () => {
           setBookmarkSnackbar({
@@ -1161,10 +1246,6 @@ export default function StorytellerReader() {
       },
     );
   };
-  const projectImageBookmarksQuery = useStorytellerProjectImageBookmarks(
-    apiProject?.public_id,
-  );
-  const projectImageBookmarks = projectImageBookmarksQuery.data ?? [];
   useEffect(() => {
     setPageIndex(0);
   }, [currentEpisode?.id]);
@@ -1390,29 +1471,34 @@ export default function StorytellerReader() {
   function goToImagePage(index: number) {
     setPageIndex(Math.min(Math.max(index, 0), totalEpisodePages - 1));
   }
+  // 文字／圖片書籤共用一個入口，依 content_type 分流：文字書籤沿用行內捲動＋版本過期
+  // 判斷；圖片書籤把目標頁面 id 放進 hash，不管是不是同一話都直接 navigate——上面的
+  // hash 消化 effect 會在頁面清單載入完成後找到對應頁面並跳過去，同一話只是 hash
+  // 換了個值，一樣會觸發（因為 effect 依賴 location.hash）。
   const handleJumpToBookmark = (
     bookmark: StorytellerStoryBookmarkWithStory,
   ) => {
+    if (bookmark.content_type === "image") {
+      if ((bookmark.page_sort ?? -1) < 0) {
+        return;
+      }
+      navigate(
+        `${basePath}/image/${bookmark.story_public_id}#${encodeURIComponent(bookmark.line_id)}`,
+      );
+      return;
+    }
     const isStale =
       bookmark.story_version_id !== bookmark.latest_story_version_id;
-    setHistoricalVersionId(isStale ? bookmark.story_version_id : undefined);
-    setPendingScroll({ lineIndex: bookmark.line_index, block: "center" });
+    setHistoricalVersionId(
+      isStale ? (bookmark.story_version_id ?? undefined) : undefined,
+    );
+    setPendingScroll({
+      lineIndex: Number(bookmark.line_id),
+      block: "center",
+    });
     if (bookmark.story_public_id !== currentStory?.id) {
       navigate(`${basePath}/story/${bookmark.story_public_id}`);
     }
-  };
-  // 圖片書籤深連結：把目標頁面 id 放進 hash，不管是不是同一話都直接 navigate——
-  // 上面的 hash 消化 effect 會在頁面清單載入完成後找到對應頁面並跳過去，同一話
-  // 只是 hash 換了個值，一樣會觸發（因為 effect 依賴 location.hash）。
-  const handleJumpToImageBookmark = (
-    bookmark: StorytellerImageBookmarkWithStory,
-  ) => {
-    if (bookmark.page_sort < 0) {
-      return;
-    }
-    navigate(
-      `${basePath}/image/${bookmark.story_public_id}#${encodeURIComponent(bookmark.page_id)}`,
-    );
   };
   // 標題有自己的錨點 id（見 storyHeadingAnchorId），跟書籤不同，不用透過 pendingScroll
   // 這一層共用狀態繞一圈——直接找到錨點元素捲過去就好。
@@ -1520,50 +1606,9 @@ export default function StorytellerReader() {
           <Stack spacing={1.5}>
             <Stack
               direction="row"
-              justifyContent="space-between"
+              justifyContent="flex-end"
               alignItems="center"
             >
-              {currentEpisodePages[pageIndex] && (
-                <Tooltip
-                  title={
-                    bookmarkedPageIds.has(currentEpisodePages[pageIndex].id)
-                      ? "移除書籤"
-                      : "加入書籤"
-                  }
-                >
-                  <span>
-                    <IconButton
-                      size="small"
-                      aria-label={
-                        bookmarkedPageIds.has(currentEpisodePages[pageIndex].id)
-                          ? "移除書籤"
-                          : "加入書籤"
-                      }
-                      disabled={pendingImageBookmarkPages.has(
-                        currentEpisodePages[pageIndex].id,
-                      )}
-                      onClick={() =>
-                        handleToggleImageBookmark(
-                          currentEpisodePages[pageIndex].id,
-                        )
-                      }
-                      color={
-                        bookmarkedPageIds.has(currentEpisodePages[pageIndex].id)
-                          ? "primary"
-                          : "default"
-                      }
-                    >
-                      {bookmarkedPageIds.has(
-                        currentEpisodePages[pageIndex].id,
-                      ) ? (
-                        <BookmarkIcon fontSize="small" />
-                      ) : (
-                        <BookmarkBorderIcon fontSize="small" />
-                      )}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -1616,7 +1661,70 @@ export default function StorytellerReader() {
                     pageIndex < totalEpisodePages - 1 ? "pointer" : "default",
                 }}
               />
+              {/* 加書籤按鈕刻意做成「浮在圖片右上角、有文字標籤」的樣式，而不是塞在
+                  頁碼旁邊的小 icon button——那個位置太不起眼，使用者容易完全沒注意到。
+                  這裡疊在兩個換頁用的透明區塊之上，需要明確給 zIndex 才點得到。 */}
+              {currentEpisodePages[pageIndex] &&
+                (() => {
+                  const currentPageId = currentEpisodePages[pageIndex].id;
+                  const isBookmarked = bookmarkedPageIds.has(currentPageId);
+                  return (
+                    <Tooltip title={isBookmarked ? "移除書籤" : "加入書籤"}>
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 12,
+                          right: 12,
+                          zIndex: 2,
+                        }}
+                      >
+                        <Button
+                          size="small"
+                          variant={isBookmarked ? "contained" : "outlined"}
+                          disabled={pendingImageBookmarkPages.has(
+                            currentPageId,
+                          )}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleToggleImageBookmark(currentPageId);
+                          }}
+                          startIcon={
+                            isBookmarked ? (
+                              <BookmarkIcon fontSize="small" />
+                            ) : (
+                              <BookmarkBorderIcon fontSize="small" />
+                            )
+                          }
+                          sx={{
+                            backdropFilter: "blur(8px)",
+                            fontWeight: 700,
+                            color: "#fff",
+                            borderColor: "rgba(255,255,255,0.5)",
+                            bgcolor: isBookmarked
+                              ? "rgba(245, 158, 11, 0.9)"
+                              : "rgba(15, 23, 42, 0.55)",
+                            "&:hover": {
+                              bgcolor: isBookmarked
+                                ? "rgba(245, 158, 11, 1)"
+                                : "rgba(15, 23, 42, 0.75)",
+                              borderColor: "rgba(255,255,255,0.7)",
+                            },
+                          }}
+                        >
+                          {isBookmarked ? "已加入書籤" : "加入書籤"}
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  );
+                })()}
             </Box>
+            {/* 進度列緊貼在圖片下面，視覺上歸屬圖片這個區塊——跟 YouTube 播放器的
+                進度列會貼著影片畫面下緣，換頁按鈕才是再下一層的操作列，是同一個道理。 */}
+            <ImagePageScrubber
+              pages={currentEpisodePages}
+              currentIndex={pageIndex}
+              onJump={goToImagePage}
+            />
             <Stack direction="row" justifyContent="space-between">
               <IconButton
                 disabled={pageIndex === 0}
@@ -1631,27 +1739,8 @@ export default function StorytellerReader() {
                 <ArrowForwardIcon />
               </IconButton>
             </Stack>
-            <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-              {currentEpisodePages.map((page, index) => (
-                <Box
-                  key={page.id}
-                  component="img"
-                  src={page.imageUrl}
-                  alt={`縮圖 ${index + 1}`}
-                  onClick={() => goToImagePage(index)}
-                  sx={{
-                    width: 56,
-                    height: 76,
-                    objectFit: "cover",
-                    borderRadius: 0.5,
-                    cursor: "pointer",
-                    border: "2px solid",
-                    borderColor:
-                      index === pageIndex ? "primary.main" : "transparent",
-                  }}
-                />
-              ))}
-            </Stack>
+            {/* 文字說明緊接在換頁按鈕後面，不要被縮圖列隔開——縮圖列是跳頁用的
+                導覽工具，不是這一頁的內容，擺在文字前面會打斷「看圖→看說明」的視線。 */}
             {currentEpisodePages[pageIndex]?.description && (
               <Box sx={{ px: { xs: 0, md: 1 } }}>
                 <StorytellerWysiwygMarkdown showFootnoteSection={false}>
@@ -1982,11 +2071,9 @@ export default function StorytellerReader() {
               basePath={basePath}
               onNavigate={() => setMobileIndexOpen(false)}
               bookmarks={projectBookmarks}
-              imageBookmarks={projectImageBookmarks}
               bookmarksEnabled={Boolean(session)}
               bookmarksLoading={projectBookmarksQuery.isLoading}
               onJumpToBookmark={handleJumpToBookmark}
-              onJumpToImageBookmark={handleJumpToImageBookmark}
               headings={storyHeadings}
               activeHeadingLine={activeHeadingLine}
               onJumpToHeading={handleJumpToHeading}
@@ -2102,11 +2189,9 @@ export default function StorytellerReader() {
                     currentItemId={currentItem?.id}
                     basePath={basePath}
                     bookmarks={projectBookmarks}
-                    imageBookmarks={projectImageBookmarks}
                     bookmarksEnabled={Boolean(session)}
                     bookmarksLoading={projectBookmarksQuery.isLoading}
                     onJumpToBookmark={handleJumpToBookmark}
-                    onJumpToImageBookmark={handleJumpToImageBookmark}
                     headings={storyHeadings}
                     activeHeadingLine={activeHeadingLine}
                     onJumpToHeading={handleJumpToHeading}
@@ -2142,11 +2227,9 @@ export default function StorytellerReader() {
                   currentItemId={currentItem?.id}
                   basePath={basePath}
                   bookmarks={projectBookmarks}
-                  imageBookmarks={projectImageBookmarks}
                   bookmarksEnabled={Boolean(session)}
                   bookmarksLoading={projectBookmarksQuery.isLoading}
                   onJumpToBookmark={handleJumpToBookmark}
-                  onJumpToImageBookmark={handleJumpToImageBookmark}
                   headings={storyHeadings}
                   activeHeadingLine={activeHeadingLine}
                   onJumpToHeading={handleJumpToHeading}

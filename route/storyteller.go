@@ -46,10 +46,6 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/story/:project/stories/:story/bookmarks", storyteller.StoryBookmarks)
 	authenticated.Post("/story/:project/stories/:story/bookmarks", storyteller.CreateStoryBookmark)
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)
-	authenticated.Get("/story/:project/image-bookmarks", storyteller.ProjectImageBookmarks)
-	authenticated.Get("/story/:project/stories/:story/image-bookmarks", storyteller.StoryImageBookmarks)
-	authenticated.Post("/story/:project/stories/:story/image-bookmarks", storyteller.CreateStoryImageBookmark)
-	authenticated.Delete("/story/:project/stories/:story/image-bookmarks", storyteller.DeleteStoryImageBookmark)
 
 	authenticated.Get("/provider-apikeys", storyteller.ProviderAPIKeys)
 	authenticated.Post("/provider-apikeys", storyteller.CreateProviderAPIKey)

@@ -78,7 +78,7 @@ func PublicFavoriteAuthors(ctx fiber.Ctx) error {
 }
 
 func PublicProject(ctx fiber.Ctx) error {
-	row, err := storyteller.NewService().PublicProject(ctx.Params("project"))
+	row, err := storyteller.NewService().PublicProject(ctx.Params("project"), optionalViewerID(ctx))
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller project not found"))
@@ -595,7 +595,7 @@ func RevertStoryVersion(ctx fiber.Ctx) error {
 }
 
 func PublicStoryLatestVersion(ctx fiber.Ctx) error {
-	row, err := storyteller.NewService().PublicStoryLatestVersion(ctx.Params("project"), ctx.Params("story"))
+	row, err := storyteller.NewService().PublicStoryLatestVersion(ctx.Params("project"), ctx.Params("story"), optionalViewerID(ctx))
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller story not found"))
@@ -606,7 +606,7 @@ func PublicStoryLatestVersion(ctx fiber.Ctx) error {
 }
 
 func PublicStoryVersions(ctx fiber.Ctx) error {
-	rows, err := storyteller.NewService().PublicStoryVersions(ctx.Params("project"), ctx.Params("story"))
+	rows, err := storyteller.NewService().PublicStoryVersions(ctx.Params("project"), ctx.Params("story"), optionalViewerID(ctx))
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller story not found"))
@@ -627,9 +627,11 @@ func ProjectStoryBookmarks(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+// storyBookmarkRequest 同時給文字與圖片書籤用：文字故事帶 version_id + line_id
+// （行號的字串形式）；圖片故事（話）只帶 line_id（頁面 id），version_id 可以省略。
 type storyBookmarkRequest struct {
 	VersionID uint64 `json:"version_id"`
-	LineIndex int    `json:"line_index"`
+	LineID    string `json:"line_id"`
 }
 
 func StoryBookmarks(ctx fiber.Ctx) error {
@@ -648,7 +650,7 @@ func CreateStoryBookmark(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreateStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.VersionID, input.LineIndex)
+	row, err := storyteller.NewService().CreateStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.LineID, input.VersionID)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller story not found"))
@@ -663,62 +665,7 @@ func DeleteStoryBookmark(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	if err := storyteller.NewService().DeleteStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.VersionID, input.LineIndex); err != nil {
-		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller story not found"))
-		}
-		return output.BadRequest(err)
-	}
-	return output.Success(map[string]bool{"deleted": true})
-}
-
-func ProjectImageBookmarks(ctx fiber.Ctx) error {
-	rows, err := storyteller.NewService().ProjectImageBookmarks(authsession.Session(ctx).UserId, ctx.Params("project"))
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller project not found"))
-		}
-		return output.DBError(err)
-	}
-	return output.Success(rows)
-}
-
-type storyImageBookmarkRequest struct {
-	PageID string `json:"page_id"`
-}
-
-func StoryImageBookmarks(ctx fiber.Ctx) error {
-	rows, err := storyteller.NewService().StoryImageBookmarks(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"))
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller story not found"))
-		}
-		return output.DBError(err)
-	}
-	return output.Success(rows)
-}
-
-func CreateStoryImageBookmark(ctx fiber.Ctx) error {
-	var input storyImageBookmarkRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
-	}
-	row, err := storyteller.NewService().CreateStoryImageBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.PageID)
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller story not found"))
-		}
-		return output.BadRequest(err)
-	}
-	return output.Success(row)
-}
-
-func DeleteStoryImageBookmark(ctx fiber.Ctx) error {
-	var input storyImageBookmarkRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
-	}
-	if err := storyteller.NewService().DeleteStoryImageBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.PageID); err != nil {
+	if err := storyteller.NewService().DeleteStoryBookmark(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input.LineID, input.VersionID); err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller story not found"))
 		}

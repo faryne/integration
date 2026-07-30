@@ -191,12 +191,14 @@ export interface StorytellerStoryVersion {
   updated_at: string;
 }
 
+// line_id 對文字故事是行號的字串形式（"0"、"12"...），對圖片故事（話）是頁面 id。
+// story_version_id 只有文字書籤會有值——圖片頁面 id 不隨版本變動，不綁定特定版本。
 export interface StorytellerStoryBookmark {
   id: number;
   user_id: number;
   story_id: number;
-  story_version_id: number;
-  line_index: number;
+  story_version_id?: number | null;
+  line_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -206,29 +208,12 @@ export interface StorytellerStoryBookmarkWithStory {
   story_id: number;
   story_public_id: string;
   story_title: string;
-  story_version_id: number;
-  latest_story_version_id: number;
-  line_index: number;
-  line_preview: string;
-  created_at: string;
-}
-
-export interface StorytellerImageBookmark {
-  id: number;
-  user_id: number;
-  story_id: number;
-  page_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface StorytellerImageBookmarkWithStory {
-  id: number;
-  story_id: number;
-  story_public_id: string;
-  story_title: string;
-  page_id: string;
-  page_sort: number;
+  content_type: "text" | "image";
+  story_version_id?: number | null;
+  latest_story_version_id?: number;
+  line_id: string;
+  line_preview?: string;
+  page_sort?: number;
   thumbnail_url?: string;
   created_at: string;
 }

@@ -344,61 +344,43 @@ type StoryVersion struct {
 
 func (StoryVersion) TableName() string { return "storyteller_story_versions" }
 
+// StoryBookmark 同時承載文字書籤（逐行）與圖片書籤（逐頁）：LineID 對文字故事是行號的
+// 字串形式（"0"、"12"...），對圖片故事是 StoryImagePage.ID。StoryVersionID 只有文字書籤
+// 會填——文字內容逐版本可能不同，line_id 指到的行要綁定特定版本才能判斷是否過期；
+// 圖片頁面 id 本身穩定、不隨版本變動，圖片書籤故意留 NULL，不受版本更新影響。
 type StoryBookmark struct {
 	ID             uint64    `gorm:"column:id;primaryKey" json:"id"`
 	UserID         uint64    `gorm:"column:user_id" json:"user_id"`
 	StoryID        uint64    `gorm:"column:story_id" json:"story_id"`
-	StoryVersionID uint64    `gorm:"column:story_version_id" json:"story_version_id"`
-	LineIndex      int       `gorm:"column:line_index" json:"line_index"`
+	StoryVersionID *uint64   `gorm:"column:story_version_id" json:"story_version_id,omitempty"`
+	LineID         string    `gorm:"column:line_id" json:"line_id"`
 	CreatedAt      time.Time `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt      time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryBookmark) TableName() string { return "storyteller_story_bookmarks" }
 
-// StoryBookmarkOutput 附上所屬章節的 public_id／標題，供讀者頁側欄書籤列表
-// 跨章節顯示與產生跳轉連結使用。LatestStoryVersionID 是該章節「目前」的最新版本，
-// 讓前端可以比對書籤當初的版本是否已經過期。
+// StoryBookmarkOutput 附上所屬章節的 public_id／標題／內容類型，供讀者頁側欄書籤列表
+// 跨章節顯示與產生跳轉連結使用。LatestStoryVersionID／LinePreview 只對文字書籤有意義
+// （文字書籤才綁 story_version_id，用來比對是否已經過期）；PageSort／ThumbnailURL 只對
+// 圖片書籤有意義，兩者都需要解析 LatestContent 的 JSON 才能算出來，SQL 查不到，由
+// service 層依 ContentType 分開填入。
 type StoryBookmarkOutput struct {
-	ID                   uint64    `gorm:"column:id" json:"id"`
-	StoryID              uint64    `gorm:"column:story_id" json:"story_id"`
-	StoryPublicID        string    `gorm:"column:story_public_id" json:"story_public_id"`
-	StoryTitle           string    `gorm:"column:story_title" json:"story_title"`
-	StoryVersionID       uint64    `gorm:"column:story_version_id" json:"story_version_id"`
-	LatestStoryVersionID uint64    `gorm:"column:latest_story_version_id" json:"latest_story_version_id"`
-	LineIndex            int       `gorm:"column:line_index" json:"line_index"`
-	LinePreview          string    `gorm:"column:line_preview" json:"line_preview"`
-	CreatedAt            time.Time `gorm:"column:created_at" json:"created_at"`
-}
-
-// StoryImageBookmark 是圖像頁的書籤，比照 StoryBookmark 但指向「單一圖片」而非某一行
-// 文字——page_id 是 StoryImagePage.ID，內容穩定（不像 line_index 是位置，會隨編輯跑掉），
-// 所以不需要像文字書籤那樣額外綁定 story_version_id 判斷是否過期。
-type StoryImageBookmark struct {
-	ID        uint64    `gorm:"column:id;primaryKey" json:"id"`
-	UserID    uint64    `gorm:"column:user_id" json:"user_id"`
-	StoryID   uint64    `gorm:"column:story_id" json:"story_id"`
-	PageID    string    `gorm:"column:page_id" json:"page_id"`
-	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
-}
-
-func (StoryImageBookmark) TableName() string { return "storyteller_story_image_bookmarks" }
-
-// StoryImageBookmarkOutput 附上所屬話的 public_id／標題與該頁的簽名縮圖網址，供讀者頁
-// 側欄書籤列表跨話顯示與產生跳轉連結使用。PageSort 是該頁目前在話裡的排序索引，找不到
-// （頁面已被刪除）時是 -1，前端可以用這個判斷書籤是否已經失效。PageSort／ThumbnailURL
-// 這兩欄需要解析 LatestContent 的 JSON 才能算出來，SQL 查不到，由 service 層填入，
-// 不是 repository 那段 SQL Select 的欄位。
-type StoryImageBookmarkOutput struct {
-	ID            uint64    `gorm:"column:id" json:"id"`
-	StoryID       uint64    `gorm:"column:story_id" json:"story_id"`
-	StoryPublicID string    `gorm:"column:story_public_id" json:"story_public_id"`
-	StoryTitle    string    `gorm:"column:story_title" json:"story_title"`
-	PageID        string    `gorm:"column:page_id" json:"page_id"`
-	PageSort      int       `gorm:"-" json:"page_sort"`
-	ThumbnailURL  string    `gorm:"-" json:"thumbnail_url,omitempty"`
-	CreatedAt     time.Time `gorm:"column:created_at" json:"created_at"`
+	ID                   uint64             `gorm:"column:id" json:"id"`
+	StoryID              uint64             `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID        string             `gorm:"column:story_public_id" json:"story_public_id"`
+	StoryTitle           string             `gorm:"column:story_title" json:"story_title"`
+	ContentType          ProjectContentType `gorm:"column:content_type" json:"content_type"`
+	StoryVersionID       *uint64            `gorm:"column:story_version_id" json:"story_version_id,omitempty"`
+	LatestStoryVersionID uint64             `gorm:"column:latest_story_version_id" json:"latest_story_version_id,omitempty"`
+	LineID               string             `gorm:"column:line_id" json:"line_id"`
+	LinePreview          string             `gorm:"column:line_preview" json:"line_preview,omitempty"`
+	// PageSort 不能加 omitempty——第一頁的排序值就是 0，omitempty 會把這個合法值
+	// 誤判成「空值」整欄從 JSON 消失，前端讀到 undefined 後 (page_sort ?? -1) < 0
+	// 就會把第一頁的書籤誤判成「頁面已被刪除」。
+	PageSort     int       `gorm:"-" json:"page_sort"`
+	ThumbnailURL string    `gorm:"-" json:"thumbnail_url,omitempty"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
 }
 
 type Lore struct {
