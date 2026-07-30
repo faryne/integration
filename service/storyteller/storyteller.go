@@ -82,7 +82,13 @@ func (s *Service) PublicProjects() ([]storytellerModel.ProjectOutput, error) {
 
 // PublicProject 是故事閱讀頁用的主要專案讀取——viewerID 是可選的（見 controller 的
 // optionalViewerID），用來讓專案本人即使在瀏覽私人／不公開連結的專案時，這條公開路由
-// 也不會 404，並且能看到草稿故事；一般訪客（viewerID=0 或非本人）行為不變。
+// 也不會 404；一般訪客（viewerID=0 或非本人）行為不變。
+//
+// 草稿故事只有在專案「不是真正公開」時才連本人一起顯示：私人／不公開連結專案本來就
+// 沒有外部訪客看得到這條路由（要嘛整個私有、要嘛得先透過分享連結），本人從這裡看到
+// 等同單純的個人預覽，維持顯示草稿沒問題。但專案一旦是 public，這條路由就是「讀者
+// 實際看到的樣子」——本人如果也連草稿一起看到，會誤以為草稿故事外洩到公開閱讀頁，
+// 所以公開專案一律排除草稿，跟訪客看到的一致；本人要看/管草稿請回工作台。
 func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytellerModel.ProjectOutput, error) {
 	publicID := strings.SplitN(projectValue, "-", 2)[0]
 	project, err := s.repo.ProjectByPublicIDForPublicReader(viewerID, publicID)
@@ -90,7 +96,8 @@ func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytel
 		return nil, err
 	}
 	isOwner := viewerID != 0 && project.UserID == viewerID
-	return s.projectOutputWithFollowerCount(project, isOwner)
+	includeDraftStories := isOwner && project.Visibility != storytellerModel.ProjectVisibilityPublic
+	return s.projectOutputWithFollowerCount(project, includeDraftStories)
 }
 
 func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, error) {
