@@ -17,7 +17,9 @@ import {
   Button,
   ButtonBase,
   Chip,
+  CircularProgress,
   Collapse,
+  Dialog,
   Divider,
   Drawer,
   Fab,
@@ -945,6 +947,10 @@ export default function StorytellerReader() {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [indexOpen, setIndexOpen] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
+  // 目前這張圖是否已經載入完成——圖片頁切換時（換頁或換話）重置，載入完成前顯示
+  // loading，避免容器高度因為圖片還沒下載完、瀏覽器抓不到尺寸而跳動。
+  const [currentPageLoaded, setCurrentPageLoaded] = useState(false);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
@@ -1249,6 +1255,9 @@ export default function StorytellerReader() {
   useEffect(() => {
     setPageIndex(0);
   }, [currentEpisode?.id]);
+  useEffect(() => {
+    setCurrentPageLoaded(false);
+  }, [currentEpisode?.id, pageIndex]);
   useEffect(() => {
     if (!pendingScroll) {
       return;
@@ -1625,45 +1634,49 @@ export default function StorytellerReader() {
                 borderRadius: 1,
                 overflow: "hidden",
                 display: "flex",
+                alignItems: "center",
                 justifyContent: "center",
+                // 容器高度固定，不隨圖片原始尺寸撐高／縮小——換頁時畫面才不會跳動。
+                height: "min(70vh, 800px)",
               }}
             >
+              {!currentPageLoaded && (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress size={32} />
+                </Box>
+              )}
               <Box
                 component="img"
+                // ref 用來處理圖片其實已經在瀏覽器快取裡、掛載當下就已經 complete 的情況——
+                // 這種情況下 onLoad 可能不會再觸發，得靠 .complete 補一次判斷。
+                ref={(el: HTMLImageElement | null) => {
+                  if (el?.complete) {
+                    setCurrentPageLoaded(true);
+                  }
+                }}
                 src={currentEpisodePages[pageIndex]?.imageUrl}
                 alt={`第 ${pageIndex + 1} 頁`}
+                onLoad={() => setCurrentPageLoaded(true)}
+                onClick={() => currentPageLoaded && setImageLightboxOpen(true)}
                 sx={{
                   maxWidth: "100%",
-                  maxHeight: "70vh",
-                  display: "block",
-                }}
-              />
-              <Box
-                onClick={() => goToImagePage(pageIndex - 1)}
-                sx={{
-                  position: "absolute",
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "50%",
-                  cursor: pageIndex > 0 ? "pointer" : "default",
-                }}
-              />
-              <Box
-                onClick={() => goToImagePage(pageIndex + 1)}
-                sx={{
-                  position: "absolute",
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: "50%",
-                  cursor:
-                    pageIndex < totalEpisodePages - 1 ? "pointer" : "default",
+                  maxHeight: "100%",
+                  display: currentPageLoaded ? "block" : "none",
+                  cursor: currentPageLoaded ? "zoom-in" : "default",
                 }}
               />
               {/* 加書籤按鈕刻意做成「浮在圖片右上角、有文字標籤」的樣式，而不是塞在
                   頁碼旁邊的小 icon button——那個位置太不起眼，使用者容易完全沒注意到。
-                  這裡疊在兩個換頁用的透明區塊之上，需要明確給 zIndex 才點得到。 */}
+                  這裡疊在圖片本身之上（點圖片會進原圖模式），需要明確給 zIndex 才點得到，
+                  按鈕自己的 onClick 也要 stopPropagation，不然點下去會連帶把圖片點開。 */}
               {currentEpisodePages[pageIndex] &&
                 (() => {
                   const currentPageId = currentEpisodePages[pageIndex].id;
@@ -1718,6 +1731,91 @@ export default function StorytellerReader() {
                   );
                 })()}
             </Box>
+            {/* 原圖模式：點縮小尺寸顯示的圖片會進來這裡，用原始比例（不裁切、不縮放
+                塞進固定容器）瀏覽；換頁沿用同一套 goToImagePage，鍵盤左右鍵也共用
+                最上層那個 keydown effect，不用在這裡另外接一份。 */}
+            <Dialog
+              fullScreen
+              open={imageLightboxOpen}
+              onClose={() => setImageLightboxOpen(false)}
+              PaperProps={{ sx: { bgcolor: "#020617", color: "#f8fafc" } }}
+            >
+              <Box
+                sx={{
+                  alignItems: "center",
+                  bgcolor: "rgba(2, 6, 23, 0.92)",
+                  borderBottom: "1px solid rgba(248,250,252,0.12)",
+                  display: "flex",
+                  gap: 1,
+                  justifyContent: "space-between",
+                  px: { xs: 1, md: 2 },
+                  py: 1,
+                }}
+              >
+                <Stack direction="row" spacing={1}>
+                  <IconButton
+                    aria-label="上一頁"
+                    disabled={pageIndex === 0}
+                    onClick={() => goToImagePage(pageIndex - 1)}
+                    sx={{ color: "#f8fafc" }}
+                  >
+                    <ArrowBackIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    aria-label="下一頁"
+                    disabled={pageIndex >= totalEpisodePages - 1}
+                    onClick={() => goToImagePage(pageIndex + 1)}
+                    sx={{ color: "#f8fafc" }}
+                  >
+                    <ArrowForwardIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+                <Typography
+                  fontWeight={900}
+                  sx={{
+                    minWidth: 0,
+                    overflow: "hidden",
+                    textAlign: "center",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  variant="body2"
+                >
+                  {currentEpisode.title}（第 {pageIndex + 1} /{" "}
+                  {totalEpisodePages} 頁）
+                </Typography>
+                <IconButton
+                  aria-label="關閉"
+                  onClick={() => setImageLightboxOpen(false)}
+                  sx={{ color: "#f8fafc" }}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
+              <Box
+                onClick={() => setImageLightboxOpen(false)}
+                sx={{
+                  height: "calc(100vh - 57px)",
+                  width: "100vw",
+                  overflow: "auto",
+                  display: "flex",
+                  justifyContent: "center",
+                  cursor: "zoom-out",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={currentEpisodePages[pageIndex]?.imageUrl}
+                  alt={`第 ${pageIndex + 1} 頁（原圖）`}
+                  sx={{
+                    display: "block",
+                    height: "auto",
+                    maxWidth: "none",
+                    width: "auto",
+                  }}
+                />
+              </Box>
+            </Dialog>
             {/* 進度列緊貼在圖片下面，視覺上歸屬圖片這個區塊——跟 YouTube 播放器的
                 進度列會貼著影片畫面下緣，換頁按鈕才是再下一層的操作列，是同一個道理。 */}
             <ImagePageScrubber
