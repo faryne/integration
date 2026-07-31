@@ -207,6 +207,11 @@ var cronJobs = []cronJobConfig{
 		Schedule: "",
 		Handler:  storytellerService.RunRotateStorytellerAgentAPIKeys,
 	},
+	{
+		Name:     "storyteller-search-sync",
+		Schedule: "",
+		Handler:  storytellerService.RunSyncStorytellerSearchIndex,
+	},
 	// 台電相關 job 手動執行
 	{
 		Name:     "taipower-neighbor-backfill",
