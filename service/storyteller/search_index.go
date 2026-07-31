@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/model/enum"
@@ -25,6 +26,7 @@ const searchWorksIndex = "storyteller_works"
 type workSearchDocument struct {
 	StoryPublicID   string   `json:"story_public_id"`
 	ProjectPublicID string   `json:"project_public_id"`
+	ProjectSlug     string   `json:"project_slug"`
 	ProjectName     string   `json:"project_name"`
 	Title           string   `json:"title"`
 	Summary         string   `json:"summary"`
@@ -33,8 +35,10 @@ type workSearchDocument struct {
 	Rating          string   `json:"rating"`
 	AuthorPenName   string   `json:"author_pen_name"`
 	CoverImageKey   string   `json:"cover_image_key,omitempty"`
-	CreatedAt       int64    `json:"created_at"`
-	UpdatedAt       int64    `json:"updated_at"`
+	// 存 RFC3339 字串而不是 unix timestamp：dynamic mapping 會自動把它偵測成 date 型別
+	// （排序照樣可以用），API 輸出也可以直接原樣回傳給前端，不用另外轉換格式。
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // storyPubliclyVisible 判斷一篇一般故事現在是不是讀者看得到：專案要 public、故事本身要
@@ -104,6 +108,7 @@ func buildWorkDocument(project *storytellerModel.Project, story *storytellerMode
 	return &workSearchDocument{
 		StoryPublicID:   story.PublicID,
 		ProjectPublicID: project.PublicID,
+		ProjectSlug:     project.Slug,
 		ProjectName:     project.Name,
 		Title:           story.Title,
 		Summary:         story.Summary,
@@ -112,8 +117,8 @@ func buildWorkDocument(project *storytellerModel.Project, story *storytellerMode
 		Rating:          string(project.Rating),
 		AuthorPenName:   authorPenName,
 		CoverImageKey:   coverImageKey,
-		CreatedAt:       story.CreatedAt.Unix(),
-		UpdatedAt:       story.UpdatedAt.Unix(),
+		CreatedAt:       story.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:       story.UpdatedAt.Format(time.RFC3339),
 	}, nil
 }
 

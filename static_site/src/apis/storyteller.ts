@@ -5,7 +5,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type { CommonResponse } from "@/apis/interfaces.ts";
+import type { CommonResponse, EsPagination } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
@@ -41,6 +41,7 @@ import type {
   StorytellerStoryVolumeRequest,
   StorytellerUserProfile,
   StorytellerUserProfileRequest,
+  StorytellerWorkSearchResult,
 } from "@/types/storyteller.ts";
 
 const apiBase = import.meta.env.VITE_API_BASE;
@@ -58,6 +59,38 @@ export function usePublicStorytellerProjects() {
       );
       return response.data.data ?? [];
     },
+  });
+}
+
+export interface StorytellerSearchParams {
+  keyword?: string;
+  tag?: string;
+  rating?: string;
+  author?: string;
+}
+
+// 全站作品搜尋，cursor-based 無限捲動載入——每次「載入更多」用上一頁回傳的
+// next_cursor 接著查，不是傳統頁碼換頁（ES deep pagination 用 search_after 比較划算）。
+export function useStorytellerSearch(params: StorytellerSearchParams) {
+  return useInfiniteQuery({
+    queryKey: ["storyteller", "search", params],
+    initialPageParam: "",
+    queryFn: async ({ pageParam }) => {
+      const response = await axios.get<
+        CommonResponse<EsPagination<StorytellerWorkSearchResult[]>>
+      >(`${apiBase}/storyteller/search`, {
+        params: {
+          keyword: params.keyword || undefined,
+          tag: params.tag || undefined,
+          rating: params.rating || undefined,
+          author: params.author || undefined,
+          cursor: pageParam || undefined,
+        },
+      });
+      return response.data.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage?.has_next ? lastPage.next_cursor : undefined,
   });
 }
 

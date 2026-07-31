@@ -26,6 +26,7 @@ type WorkSearchRequest struct {
 type WorkSearchResult struct {
 	StoryPublicID   string   `json:"story_public_id"`
 	ProjectPublicID string   `json:"project_public_id"`
+	ProjectSlug     string   `json:"project_slug"`
 	ProjectName     string   `json:"project_name"`
 	Title           string   `json:"title"`
 	Summary         string   `json:"summary"`
@@ -33,18 +34,21 @@ type WorkSearchResult struct {
 	Rating          string   `json:"rating"`
 	AuthorPenName   string   `json:"author_pen_name"`
 	CoverImageURL   string   `json:"cover_image_url,omitempty"`
+	UpdatedAt       string   `json:"updated_at"`
 }
 
 func workSearchResultFromDocument(doc workSearchDocument) WorkSearchResult {
 	result := WorkSearchResult{
 		StoryPublicID:   doc.StoryPublicID,
 		ProjectPublicID: doc.ProjectPublicID,
+		ProjectSlug:     doc.ProjectSlug,
 		ProjectName:     doc.ProjectName,
 		Title:           doc.Title,
 		Summary:         doc.Summary,
 		Tags:            doc.Tags,
 		Rating:          doc.Rating,
 		AuthorPenName:   doc.AuthorPenName,
+		UpdatedAt:       doc.UpdatedAt,
 	}
 	if doc.CoverImageKey != "" {
 		if url, err := signImageURL(doc.CoverImageKey); err == nil {
@@ -71,7 +75,11 @@ func (s *Service) SearchWorks(req WorkSearchRequest) (raw *entity.ElasticSearchR
 		"size": perPage,
 		"sort": []map[string]any{
 			{"updated_at": map[string]any{"order": "desc"}},
-			{"story_public_id.keyword": map[string]any{"order": "desc"}},
+			// story_public_id 本身就是 keyword 型別（見 search_index.go 的 mapping），
+			// 不是 dynamic mapping 那種 text+keyword 多欄位，不能寫成 story_public_id.keyword
+			// ——ES 對不存在的排序欄位會回錯誤，而 service/search.Search 目前不檢查回應
+			// 是不是錯誤，會把錯誤 JSON 硬解成空結果，變成「200 OK 但 0 筆」不容易發現。
+			{"story_public_id": map[string]any{"order": "desc"}},
 		},
 	}
 	if cursorValue == "" {

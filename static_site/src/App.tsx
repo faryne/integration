@@ -79,6 +79,7 @@ const NCCC = lazy(() => import("@/pages/opendata/nccc.tsx"));
 const StorytellerPublicHome = lazy(
   () => import("@/pages/storyteller/PublicHome.tsx"),
 );
+const StorytellerSearch = lazy(() => import("@/pages/storyteller/Search.tsx"));
 const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
 const StorytellerFavorites = lazy(
   () => import("@/pages/storyteller/Favorites.tsx"),
@@ -267,6 +268,7 @@ function LegacyStorytellerCatchAllRedirect() {
 const storytellerRoutes = (
   <>
     <Route path={""} element={<StorytellerPublicHome />} />
+    <Route path={"search"} element={<StorytellerSearch />} />
     <Route path={"my"}>
       <Route path={""} element={<StorytellerHome />} />
       <Route path={"project"} element={<StorytellerHome />} />
