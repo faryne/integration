@@ -28,8 +28,10 @@ import DarkModeIcon from "@mui/icons-material/DarkMode";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LoginIcon from "@mui/icons-material/Login";
+import CloseIcon from "@mui/icons-material/Close";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   AppBar,
   Avatar,
@@ -44,18 +46,34 @@ import {
   Menu,
   MenuItem,
   Stack,
+  TextField,
   ThemeProvider,
   Toolbar,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, Outlet } from "react-router-dom";
+import { Link as RouterLink, Outlet, useNavigate } from "react-router-dom";
 
 export function StorytellerLayout() {
   const { user, session, loading, submitting, login, logout } = useAuth();
+  const navigate = useNavigate();
   const [accountMenuAnchor, setAccountMenuAnchor] =
     useState<HTMLElement | null>(null);
+  // 搜尋圖示點開才展開的輸入框，不佔用常駐 header 空間；送出後導去搜尋頁並收合。
+  const [quickSearchOpen, setQuickSearchOpen] = useState(false);
+  const [quickSearchKeyword, setQuickSearchKeyword] = useState("");
+
+  function submitQuickSearch() {
+    const keyword = quickSearchKeyword.trim();
+    navigate(
+      steamloomPath(
+        keyword ? `search?keyword=${encodeURIComponent(keyword)}` : "search",
+      ),
+    );
+    setQuickSearchOpen(false);
+    setQuickSearchKeyword("");
+  }
   // 深色模式套用在整個 Storyteller 產品線（不影響其他子站），記在 localStorage 供下次造訪沿用
   const [mode, setMode] = useState(getInitialStorytellerThemeMode);
   // 色系（黃銅／鋼鐵／銅綠／紅銅）也是整個產品線共用一份，記在 localStorage 供下次造訪沿用；
@@ -175,6 +193,71 @@ export function StorytellerLayout() {
                   >
                     {STORYTELLER_APP_NAME}
                   </Typography>
+                  {quickSearchOpen ? (
+                    <Stack
+                      component="form"
+                      direction="row"
+                      alignItems="center"
+                      spacing={0.5}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        submitQuickSearch();
+                      }}
+                    >
+                      <TextField
+                        autoFocus
+                        size="small"
+                        variant="standard"
+                        placeholder="搜尋作品..."
+                        value={quickSearchKeyword}
+                        onChange={(event) =>
+                          setQuickSearchKeyword(event.target.value)
+                        }
+                        onBlur={() => {
+                          if (!quickSearchKeyword.trim()) {
+                            setQuickSearchOpen(false);
+                          }
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Escape") {
+                            setQuickSearchOpen(false);
+                            setQuickSearchKeyword("");
+                          }
+                        }}
+                        sx={{ width: { xs: 120, sm: 200 } }}
+                      />
+                      <IconButton
+                        type="submit"
+                        aria-label="送出搜尋"
+                        color="inherit"
+                        size="small"
+                      >
+                        <SearchIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        aria-label="關閉搜尋"
+                        color="inherit"
+                        size="small"
+                        onClick={() => {
+                          setQuickSearchOpen(false);
+                          setQuickSearchKeyword("");
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  ) : (
+                    <Tooltip title="搜尋作品">
+                      <IconButton
+                        aria-label="搜尋作品"
+                        color="inherit"
+                        size="small"
+                        onClick={() => setQuickSearchOpen(true)}
+                      >
+                        <SearchIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip
                     title={
                       mode === "dark" ? "切換為日間模式" : "切換為夜間模式"

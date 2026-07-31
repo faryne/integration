@@ -271,6 +271,20 @@ export function storytellerReaderPath(project: {
   return steamloomPath(`work/${project.public_id}-${project.slug}/${family}`);
 }
 
+// storytellerSearchResultPath 組出搜尋結果單篇作品的閱讀連結。沒有 content_type 欄位可以
+// 判斷文字/圖像，靠 cover_image_url 有沒有值反推（圖像作品才會有封面），跟卡片本身判斷
+// 要不要顯示縮圖是同一個依據，兩處故意用同一個欄位以避免不一致。
+export function storytellerSearchResultPath(result: {
+  project_public_id: string;
+  project_slug: string;
+  story_public_id: string;
+  cover_image_url?: string;
+}) {
+  const projectPath = `${result.project_public_id}-${result.project_slug}`;
+  const family = result.cover_image_url ? "image" : "story";
+  return steamloomPath(`work/${projectPath}/${family}/${result.story_public_id}`);
+}
+
 export function getPublicProjects() {
   return storytellerProjects.filter(
     (project) => project.visibility === "public",

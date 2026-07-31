@@ -422,3 +422,19 @@ export interface StorytellerUserProfileRequest {
   auto_save_enabled: boolean;
   auto_save_interval_minutes: number;
 }
+
+// 全站作品搜尋（GET /storyteller/search）的單筆結果，文字故事／圖像作品共用同一個形狀。
+// 沒有 content_type 欄位：cover_image_url 有沒有值就代表是不是圖像作品，不用重複表達。
+export interface StorytellerWorkSearchResult {
+  story_public_id: string;
+  project_public_id: string;
+  project_slug: string;
+  project_name: string;
+  title: string;
+  summary: string;
+  tags: string[];
+  rating: "general" | "guidance" | "restricted";
+  author_pen_name: string;
+  cover_image_url?: string;
+  updated_at: string;
+}
