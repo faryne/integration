@@ -682,6 +682,24 @@ func Lores(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+// LoresPage 是 Lores 的分頁版本，只給工作台的設定集列表用（該頁面不需要一次拿全部）；
+// LoreEditor／StoryEditor／LoreDiffCompare 那些要完整清單（@lore: 引用選單、版本比較）
+// 的地方繼續呼叫不分頁的 Lores，兩邊不互相取代。
+func LoresPage(ctx fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
+	rows, total, err := storyteller.NewService().LoresPage(authsession.Session(ctx).UserId, ctx.Params("project"), page, pageSize)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{
+		"lores":       rows,
+		"total_count": total,
+		"page":        page,
+		"page_size":   pageSize,
+	})
+}
+
 func Lore(ctx fiber.Ctx) error {
 	row, err := storyteller.NewService().Lore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"))
 	if err != nil {
