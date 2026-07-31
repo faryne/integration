@@ -211,6 +211,7 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	if err := s.repo.UpdateProject(project); err != nil {
 		return nil, err
 	}
+	s.resyncProjectSearchIndex(project)
 	return s.projectOutput(project, true)
 }
 
@@ -219,7 +220,11 @@ func (s *Service) DeleteProject(userID uint64, publicID string) error {
 	if err != nil {
 		return err
 	}
-	return s.repo.DeleteProject(project)
+	if err := s.repo.DeleteProject(project); err != nil {
+		return err
+	}
+	s.removeProjectSearchIndex(project.PublicID)
+	return nil
 }
 
 func (s *Service) Agents(userID uint64) ([]storytellerModel.Agent, error) {
@@ -757,6 +762,7 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	if err := s.repo.CreateStoryWithVersion(story, version, volumeEvent); err != nil {
 		return nil, err
 	}
+	s.syncStorySearchIndex(project, story)
 	return story, nil
 }
 
@@ -811,6 +817,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	if err != nil {
 		return nil, false, err
 	}
+	s.syncStorySearchIndex(project, story)
 	return story, conflicted, nil
 }
 
@@ -857,7 +864,11 @@ func uint64PtrEqual(a, b *uint64) bool {
 // 不會回頭改寫歷史，新版本會記下 RevertedFromVersionID。只回復 Title／Summary／Content，
 // Status／Sort 這些故事層級的設定不受影響。
 func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID string, targetVersionID uint64, source string) (*storytellerModel.Story, error) {
-	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	story, err := s.repo.Story(project.ID, storyPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -874,6 +885,7 @@ func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID stri
 	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil, nil); err != nil {
 		return nil, err
 	}
+	s.syncStorySearchIndex(project, story)
 	return story, nil
 }
 
@@ -899,7 +911,11 @@ func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID stri
 		}
 	}
 	volumeEvent := volumeMoveEvent(story.ParentID, nil)
-	return s.repo.DeleteStory(story, volumeEvent)
+	if err := s.repo.DeleteStory(story, volumeEvent); err != nil {
+		return err
+	}
+	s.removeStorySearchDocument(story.PublicID)
+	return nil
 }
 
 // Volumes 回傳一個專案底下的冊列表，跟一般故事列表分開拿。
@@ -966,6 +982,7 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 	if _, err := s.repo.UpdateStoryWithVersion(volume, version, nil, nil); err != nil {
 		return nil, err
 	}
+	s.resyncProjectSearchIndex(project)
 	return volume, nil
 }
 

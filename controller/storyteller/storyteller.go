@@ -5,10 +5,12 @@ import (
 	"strconv"
 	"strings"
 
+	"faryne.dev/controller/helper"
 	"faryne.dev/middleware/authsession"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
 	authService "faryne.dev/service/auth"
+	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	"faryne.dev/service/storyteller"
 	"github.com/gofiber/fiber/v3"
@@ -28,6 +30,35 @@ func optionalViewerID(ctx fiber.Ctx) uint64 {
 		return 0
 	}
 	return session.UserId
+}
+
+// SearchWorks 是全站作品搜尋（文字故事／圖像作品共用），公開端點、不需要登入。
+func SearchWorks(ctx fiber.Ctx) error {
+	var req storyteller.WorkSearchRequest
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
+	}
+	raw, rows, currentOffset, err := storyteller.NewService().SearchWorks(req)
+	if err != nil {
+		return output.ESError(err)
+	}
+	var nextSearchAfter []any
+	if len(raw.Hits.Hits) > 0 {
+		nextSearchAfter = raw.Hits.Hits[len(raw.Hits.Hits)-1].Sort
+	}
+	pagination, err := serviceHelper.PaginateByES(ctx, serviceHelper.ESPaginateInput[[]storyteller.WorkSearchResult]{
+		Data:            rows,
+		Total:           raw.Hits.Total.Value,
+		PerPage:         req.PerPageValue(storyteller.SearchResultPageSize),
+		CurrentCursor:   req.Cursor,
+		CurrentOffset:   currentOffset,
+		NextSearchAfter: nextSearchAfter,
+		RowsCount:       int64(len(rows)),
+	})
+	if err != nil {
+		return output.ESError(err)
+	}
+	return output.Success(pagination)
 }
 
 func PublicProjects(ctx fiber.Ctx) error {

@@ -456,6 +456,14 @@ func (r *Repository) Story(projectID uint64, publicID string) (*storytellerModel
 	return &row, err
 }
 
+// StoryByID 用內部 ID 查故事，給只有 parent_id（沒有 public_id）的場合用，例如搜尋索引
+// 同步時要判斷一篇故事掛的冊目前是不是 completed。
+func (r *Repository) StoryByID(id uint64) (*storytellerModel.Story, error) {
+	var row storytellerModel.Story
+	err := r.db.Where("id = ? AND is_deleted = 0 AND deleted_at IS NULL", id).First(&row).Error
+	return &row, err
+}
+
 func (r *Repository) StoryVersions(storyID uint64) ([]storytellerModel.StoryVersion, error) {
 	rows := make([]storytellerModel.StoryVersion, 0)
 	err := r.db.Where("story_id = ? AND deleted_at IS NULL", storyID).
