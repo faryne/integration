@@ -91,6 +91,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/image-pages/presign", storyteller.PresignImageUpload)
 
 	authenticated.Get("/projects/:project/lores", storyteller.Lores)
+	authenticated.Get("/projects/:project/lores/page", storyteller.LoresPage)
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)
 	authenticated.Get("/projects/:project/lores/:lore", storyteller.Lore)
 	authenticated.Put("/projects/:project/lores/:lore", storyteller.UpdateLore)

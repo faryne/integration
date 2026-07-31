@@ -1444,6 +1444,48 @@ export function useStorytellerLores(projectPublicId?: string) {
   });
 }
 
+// 分頁版本，只給工作台的設定集列表用——LoreEditor／StoryEditor／LoreDiffCompare
+// 那些要完整清單（@lore: 引用選單、版本比較）的地方繼續用 useStorytellerLores。
+export function useStorytellerLoresPage(
+  projectPublicId?: string,
+  page = 1,
+  pageSize = 20,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "lores-page",
+      projectPublicId,
+      page,
+      pageSize,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<{
+          lores: StorytellerLore[];
+          total_count: number;
+          page: number;
+          page_size: number;
+        }>
+      >(`${apiBase}/storyteller/projects/${projectPublicId}/lores/page`, {
+        params: { page, per_page: pageSize },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return (
+        response.data.data ?? {
+          lores: [],
+          total_count: 0,
+          page,
+          page_size: pageSize,
+        }
+      );
+    },
+  });
+}
+
 export function useSaveStorytellerLore(projectPublicId?: string) {
   const { session } = useAuth();
   const queryClient = useQueryClient();

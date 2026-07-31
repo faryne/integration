@@ -18,6 +18,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  Pagination,
   Paper,
   Stack,
   Switch,
@@ -34,7 +35,7 @@ import {
   useDeleteStorytellerStory,
   useSaveStorytellerVolume,
   useStorytellerImageStoryPages,
-  useStorytellerLores,
+  useStorytellerLoresPage,
   useStorytellerProjects,
   useSaveStorytellerStory,
   useStorytellerStories,
@@ -222,6 +223,8 @@ export default function StorytellerProjectDetail() {
   );
   const [deleteLoreTarget, setDeleteLoreTarget] =
     useState<StorytellerLore | null>(null);
+  const [loresPage, setLoresPage] = useState(1);
+  const loresPageSize = 20;
   // volumeDialogTarget："new" 代表新增冊，StorytellerStory 代表重新命名該冊。
   const [volumeDialogTarget, setVolumeDialogTarget] = useState<
     "new" | StorytellerStory | null
@@ -275,8 +278,19 @@ export default function StorytellerProjectDetail() {
   const imageStoryCount = apiStories.filter(
     (story) => story.content_type === "image",
   ).length;
-  const { data: apiLores = [], isLoading: apiLoresLoading } =
-    useStorytellerLores(apiProject?.public_id);
+  const { data: loresPageData, isLoading: apiLoresLoading } =
+    useStorytellerLoresPage(apiProject?.public_id, loresPage, loresPageSize);
+  const apiLores = loresPageData?.lores ?? [];
+  const loresTotalPages = Math.ceil(
+    (loresPageData?.total_count ?? 0) / loresPageSize,
+  );
+  // 刪掉某一頁最後一筆設定集之後，總頁數會變少；目前頁碼如果超出新的總頁數，
+  // 自動退回最後一頁，不然會卡在一個查不到資料、顯示成空清單的頁碼上。
+  useEffect(() => {
+    if (loresTotalPages > 0 && loresPage > loresTotalPages) {
+      setLoresPage(loresTotalPages);
+    }
+  }, [loresPage, loresTotalPages]);
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const saveVolume = useSaveStorytellerVolume(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
@@ -1054,42 +1068,60 @@ export default function StorytellerProjectDetail() {
                     description="使用上方的「建立設定集」記錄世界觀、角色規則與劇本設定。"
                   />
                 ) : activeTab === "lores" ? (
-                  apiLores.map((lore) => (
-                    <Paper
-                      key={lore.public_id}
-                      variant="outlined"
-                      sx={{ p: 2, borderRadius: 1 }}
-                    >
-                      <Stack direction="row" spacing={1.5} alignItems="center">
-                        <MenuBookIcon color="primary" />
-                        <Stack sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography fontWeight={800}>{lore.title}</Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {lore.word_count.toLocaleString()} 字 ·{" "}
-                            {formatStorytellerDate(lore.updated_at)}
-                          </Typography>
+                  <>
+                    {apiLores.map((lore) => (
+                      <Paper
+                        key={lore.public_id}
+                        variant="outlined"
+                        sx={{ p: 2, borderRadius: 1 }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1.5}
+                          alignItems="center"
+                        >
+                          <MenuBookIcon color="primary" />
+                          <Stack sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography fontWeight={800}>
+                              {lore.title}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {lore.word_count.toLocaleString()} 字 ·{" "}
+                              {formatStorytellerDate(lore.updated_at)}
+                            </Typography>
+                          </Stack>
+                          <Button
+                            href={steamloomPath(
+                              `my/project/${project.id}/lore/${lore.public_id}`,
+                            )}
+                            variant="outlined"
+                            size="small"
+                          >
+                            編輯
+                          </Button>
+                          <Button
+                            color="error"
+                            variant="contained"
+                            size="small"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => setDeleteLoreTarget(lore)}
+                          >
+                            刪除
+                          </Button>
                         </Stack>
-                        <Button
-                          href={steamloomPath(
-                            `my/project/${project.id}/lore/${lore.public_id}`,
-                          )}
-                          variant="outlined"
-                          size="small"
-                        >
-                          編輯
-                        </Button>
-                        <Button
-                          color="error"
-                          variant="contained"
-                          size="small"
-                          startIcon={<DeleteIcon />}
-                          onClick={() => setDeleteLoreTarget(lore)}
-                        >
-                          刪除
-                        </Button>
-                      </Stack>
-                    </Paper>
-                  ))
+                      </Paper>
+                    ))}
+                    {loresTotalPages > 1 && (
+                      <Box sx={{ display: "flex", justifyContent: "center" }}>
+                        <Pagination
+                          count={loresTotalPages}
+                          page={loresPage}
+                          onChange={(_, value) => setLoresPage(value)}
+                          color="primary"
+                        />
+                      </Box>
+                    )}
+                  </>
                 ) : null}
               </Stack>
             </Paper>
