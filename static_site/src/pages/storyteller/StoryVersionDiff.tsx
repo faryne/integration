@@ -29,6 +29,7 @@ import {
 import { renderFootnoteNote } from "@/pages/storyteller/wysiwygCore/footnoteRender.tsx";
 import {
   extractFootnoteNotesForDiff,
+  parseMarkdownToParagraphs,
   stripMarkerForDiffContent,
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 
@@ -80,6 +81,50 @@ export default function StorytellerStoryVersionDiff() {
     stripMarkerForDiffContent(target.content),
   );
   const changedCount = diffLines.filter((line) => line.state !== "same").length;
+
+  // 逐行預先算好左右兩欄各自「這一行在目前這串連續有序清單裡排第幾個」——儲存內容裡
+  // 每個有序清單項目的前綴永遠是固定的 "1. "，真正編號交給渲染端的原生 <ol> 接續處理，
+  // 但這裡是逐行各自呼叫一次 StorytellerWysiwygMarkdown（每個實例天生只有一個 <li>），
+  // 瀏覽器沒辦法跨實例接續，所以要自己算好傳進去，用 <ol start={N}> 補回視覺上的連續
+  // 編號（見 StorytellerWysiwygMarkdown 的 orderedListStart 說明，跟 Reader.tsx 的
+  // StoryContentLines 同一套修法）。左右兩欄是各自獨立的內容流：state 為 same 的行代表
+  // 兩欄內容目前一致，計數器要同步往前，遇到空行也要同步歸零；只有單邊有內容的行
+  // （added/removed，或 changed 裡剛好某一邊 trim 後是空的），只推進那一邊，另一邊維持
+  // 不變——因為那一版的清單其實沒有中斷，只是這一行沒有被顯示在該欄。用一般 for 迴圈
+  // 直接在函式作用域裡累加，不透過 .map() 的 callback 閉包改外層變數（React Compiler
+  // 的靜態分析會把這種寫法當成不安全的 render 期間 mutation 擋下來）。
+  const leftOrderedListStarts: number[] = [];
+  const rightOrderedListStarts: number[] = [];
+  let leftListRun = 0;
+  let rightListRun = 0;
+  for (const line of diffLines) {
+    if (line.state === "same") {
+      if (!line.right.trim()) {
+        leftListRun = 0;
+        rightListRun = 0;
+      } else {
+        const isNumber =
+          parseMarkdownToParagraphs(line.right)[0].blockKind === "number";
+        leftListRun = isNumber ? leftListRun + 1 : 0;
+        rightListRun = isNumber ? rightListRun + 1 : 0;
+      }
+    } else {
+      if (line.left.trim()) {
+        leftListRun =
+          parseMarkdownToParagraphs(line.left)[0].blockKind === "number"
+            ? leftListRun + 1
+            : 0;
+      }
+      if (line.right.trim()) {
+        rightListRun =
+          parseMarkdownToParagraphs(line.right)[0].blockKind === "number"
+            ? rightListRun + 1
+            : 0;
+      }
+    }
+    leftOrderedListStarts.push(leftListRun);
+    rightOrderedListStarts.push(rightListRun);
+  }
 
   // 腳注拆成獨立區塊比對，不跟著本文那一行進入上面的 diffLines——閱讀頁把腳注放在故事
   // 尾端渲染，diff 也比照辦理。兩邊都沒有腳注時就不顯示這個區塊。
@@ -148,7 +193,7 @@ export default function StorytellerStoryVersionDiff() {
           </Box>
           <Divider />
           <Stack spacing={0.25}>
-            {diffLines.map((line) => {
+            {diffLines.map((line, i) => {
               if (line.state === "same") {
                 if (!line.right.trim()) {
                   return <Box key={line.index} sx={{ height: 12 }} />;
@@ -158,7 +203,9 @@ export default function StorytellerStoryVersionDiff() {
                     key={line.index}
                     sx={{ typography: "body1", lineHeight: 1.9 }}
                   >
-                    <StorytellerWysiwygMarkdown>
+                    <StorytellerWysiwygMarkdown
+                      orderedListStart={rightOrderedListStarts[i] || undefined}
+                    >
                       {line.right}
                     </StorytellerWysiwygMarkdown>
                   </Box>
@@ -179,7 +226,9 @@ export default function StorytellerStoryVersionDiff() {
                         "& *": { textDecoration: "line-through" },
                       }}
                     >
-                      <StorytellerWysiwygMarkdown>
+                      <StorytellerWysiwygMarkdown
+                        orderedListStart={leftOrderedListStarts[i] || undefined}
+                      >
                         {line.left}
                       </StorytellerWysiwygMarkdown>
                     </Box>
@@ -194,7 +243,11 @@ export default function StorytellerStoryVersionDiff() {
                         py: 0.25,
                       }}
                     >
-                      <StorytellerWysiwygMarkdown>
+                      <StorytellerWysiwygMarkdown
+                        orderedListStart={
+                          rightOrderedListStarts[i] || undefined
+                        }
+                      >
                         {line.right}
                       </StorytellerWysiwygMarkdown>
                     </Box>
