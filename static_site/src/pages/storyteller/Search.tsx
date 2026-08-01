@@ -6,19 +6,28 @@ import {
   Chip,
   Grid,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
   MenuItem,
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useStorytellerSearch } from "@/apis/storyteller.ts";
+import {
+  useStorytellerProjectSearch,
+  useStorytellerSearch,
+} from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { steamTabIndicatorSx } from "@/data/storytellerTheme.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerProjectSearchCard } from "@/pages/storyteller/StorytellerProjectSearchCard.tsx";
 import { StorytellerWorkCard } from "@/pages/storyteller/StorytellerWorkCard.tsx";
+
+type SearchView = "story" | "project";
 
 const ratingOptions: { value: string; label: string }[] = [
   { value: "", label: "所有分級" },
@@ -32,6 +41,8 @@ export default function StorytellerSearch() {
   const keyword = searchParams.get("keyword") ?? "";
   const tag = searchParams.get("tag") ?? "";
   const rating = searchParams.get("rating") ?? "";
+  const view: SearchView =
+    searchParams.get("view") === "project" ? "project" : "story";
   const [keywordInput, setKeywordInput] = useState(keyword);
 
   // 這個頁面在同一個 route 上只靠 query string 換頁時不會重新 mount（例如從 header
@@ -47,13 +58,30 @@ export default function StorytellerSearch() {
     robots: "noindex, nofollow",
   });
 
-  const search = useStorytellerSearch({ keyword, tag, rating });
-  const results = search.data?.pages.flatMap((page) => page.data) ?? [];
+  const storySearch = useStorytellerSearch(
+    { keyword, tag, rating },
+    view === "story",
+  );
+  const projectSearch = useStorytellerProjectSearch(
+    { keyword, tag, rating },
+    view === "project",
+  );
+  const search = view === "story" ? storySearch : projectSearch;
+  const storyResults =
+    storySearch.data?.pages.flatMap((page) => page.data) ?? [];
+  const projectResults =
+    projectSearch.data?.pages.flatMap((page) => page.data) ?? [];
+  const results = view === "story" ? storyResults : projectResults;
   const total = search.data?.pages[0]?.total ?? 0;
 
-  function applyFilters(next: { keyword?: string; tag?: string; rating?: string }) {
+  function applyFilters(next: {
+    keyword?: string;
+    tag?: string;
+    rating?: string;
+    view?: string;
+  }) {
     const params = new URLSearchParams(searchParams);
-    const merged = { keyword, tag, rating, ...next };
+    const merged = { keyword, tag, rating, view, ...next };
     (["keyword", "tag", "rating"] as const).forEach((key) => {
       if (merged[key]) {
         params.set(key, merged[key]!);
@@ -61,6 +89,11 @@ export default function StorytellerSearch() {
         params.delete(key);
       }
     });
+    if (merged.view === "project") {
+      params.set("view", "project");
+    } else {
+      params.delete("view");
+    }
     setSearchParams(params);
   }
 
@@ -141,6 +174,15 @@ export default function StorytellerSearch() {
         )}
       </Box>
 
+      <Tabs
+        value={view}
+        onChange={(_, nextView: SearchView) => applyFilters({ view: nextView })}
+        sx={steamTabIndicatorSx}
+      >
+        <Tab value="story" label="依故事" />
+        <Tab value="project" label="依專案" />
+      </Tabs>
+
       {!search.isLoading && (
         <Stack
           direction="row"
@@ -148,7 +190,9 @@ export default function StorytellerSearch() {
           alignItems="baseline"
           color="text.secondary"
         >
-          <Typography variant="body2">共找到 {total} 筆結果</Typography>
+          <Typography variant="body2">
+            共找到 {total} {view === "story" ? "篇故事" : "個專案"}
+          </Typography>
         </Stack>
       )}
 
@@ -160,10 +204,10 @@ export default function StorytellerSearch() {
           title="沒有符合的作品"
           description="換個關鍵字，或是拿掉一些篩選條件試試。"
         />
-      ) : (
+      ) : view === "story" ? (
         <>
           <Grid container spacing={2}>
-            {results.map((result) => (
+            {storyResults.map((result) => (
               <Grid key={result.story_public_id} size={{ xs: 12, sm: 6, md: 4 }}>
                 <StorytellerWorkCard
                   result={result}
@@ -172,14 +216,38 @@ export default function StorytellerSearch() {
               </Grid>
             ))}
           </Grid>
-          {search.hasNextPage && (
+          {storySearch.hasNextPage && (
             <Stack alignItems="center">
               <Button
                 variant="outlined"
-                disabled={search.isFetchingNextPage}
-                onClick={() => void search.fetchNextPage()}
+                disabled={storySearch.isFetchingNextPage}
+                onClick={() => void storySearch.fetchNextPage()}
               >
-                {search.isFetchingNextPage ? "載入中..." : "載入更多結果"}
+                {storySearch.isFetchingNextPage ? "載入中..." : "載入更多結果"}
+              </Button>
+            </Stack>
+          )}
+        </>
+      ) : (
+        <>
+          <Grid container spacing={2}>
+            {projectResults.map((result) => (
+              <Grid key={result.project_public_id} size={{ xs: 12, sm: 6, md: 4 }}>
+                <StorytellerProjectSearchCard
+                  result={result}
+                  onTagClick={(nextTag) => applyFilters({ tag: nextTag })}
+                />
+              </Grid>
+            ))}
+          </Grid>
+          {projectSearch.hasNextPage && (
+            <Stack alignItems="center">
+              <Button
+                variant="outlined"
+                disabled={projectSearch.isFetchingNextPage}
+                onClick={() => void projectSearch.fetchNextPage()}
+              >
+                {projectSearch.isFetchingNextPage ? "載入中..." : "載入更多結果"}
               </Button>
             </Stack>
           )}

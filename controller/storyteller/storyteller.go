@@ -61,6 +61,32 @@ func SearchWorks(ctx fiber.Ctx) error {
 	return output.Success(pagination)
 }
 
+// SearchProjectsGrouped 是全站作品搜尋的「依專案分組」版本：篩選條件跟 SearchWorks
+// 完全一樣，差別是同一個專案命中的多篇故事會收成一組，見 Service.SearchProjectsGrouped。
+func SearchProjectsGrouped(ctx fiber.Ctx) error {
+	var req storyteller.WorkSearchRequest
+	if err := helper.BindQuery(ctx, &req); err != nil {
+		return err
+	}
+	rows, total, currentOffset, nextSearchAfter, err := storyteller.NewService().SearchProjectsGrouped(req)
+	if err != nil {
+		return output.ESError(err)
+	}
+	pagination, err := serviceHelper.PaginateByES(ctx, serviceHelper.ESPaginateInput[[]storyteller.ProjectSearchResult]{
+		Data:            rows,
+		Total:           total,
+		PerPage:         req.PerPageValue(storyteller.SearchResultPageSize),
+		CurrentCursor:   req.Cursor,
+		CurrentOffset:   currentOffset,
+		NextSearchAfter: nextSearchAfter,
+		RowsCount:       int64(len(rows)),
+	})
+	if err != nil {
+		return output.ESError(err)
+	}
+	return output.Success(pagination)
+}
+
 func PublicProjects(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().PublicProjects()
 	if err != nil {

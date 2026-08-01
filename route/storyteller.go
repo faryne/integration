@@ -9,6 +9,7 @@ import (
 func Storyteller(app *fiber.App) {
 	group := app.Group("/storyteller")
 	group.Get("/search", storyteller.SearchWorks)
+	group.Get("/search/projects", storyteller.SearchProjectsGrouped)
 	group.Get("/projects/public", storyteller.PublicProjects)
 	group.Get("/user/:username", storyteller.PublicUserProjects)
 	group.Get("/user/:username/favorites/projects", storyteller.PublicFavoriteProjects)

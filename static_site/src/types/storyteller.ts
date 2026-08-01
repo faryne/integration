@@ -438,3 +438,17 @@ export interface StorytellerWorkSearchResult {
   cover_image_url?: string;
   updated_at: string;
 }
+
+// 全站作品搜尋「依專案分組」版本（GET /storyteller/search/projects）的單筆結果。
+// matches 是這個專案裡命中的故事（最多幾篇，後端決定），matched_story_count 是
+// 這個專案總共有幾篇故事命中——可能比 matches 顯示的還多。
+export interface StorytellerProjectSearchResult {
+  project_public_id: string;
+  project_slug: string;
+  project_name: string;
+  rating: "general" | "guidance" | "restricted";
+  tags: string[];
+  author_pen_name: string;
+  matched_story_count: number;
+  matches: StorytellerWorkSearchResult[];
+}
