@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strings"
 
 	"faryne.dev/model/entity"
@@ -101,7 +102,7 @@ func (s *Service) SearchWorks(req WorkSearchRequest) (raw *entity.ElasticSearchR
 	}
 	applyWorkSearchFilters(q, keyword, tag, rating, author)
 
-	raw, docs, err := search.Search[workSearchDocument, WorkSearchResult](searchWorksIndex, q, workSearchResultFromDocument)
+	raw, docs, err := search.Search[workSearchDocument, WorkSearchResult](searchWorksIndex(), q, workSearchResultFromDocument)
 	if err != nil {
 		return nil, nil, 0, err
 	}
@@ -268,7 +269,7 @@ func rawSearch(ctx context.Context, query map[string]any) (*projectGroupedSearch
 	}
 	resp, err := es.Search(
 		es.Search.WithContext(ctx),
-		es.Search.WithIndex(searchWorksIndex),
+		es.Search.WithIndex(searchWorksIndex()),
 		es.Search.WithBody(&buf),
 		es.Search.WithTrackTotalHits(true),
 	)
@@ -277,7 +278,10 @@ func rawSearch(ctx context.Context, query map[string]any) (*projectGroupedSearch
 	}
 	defer resp.Body.Close()
 	if resp.IsError() {
-		return nil, fmt.Errorf("search storyteller works grouped by project failed: status=%s", resp.Status())
+		// 帶上 ES 回應內文（reason/type），不然只看 status code 猜不到到底是哪裡錯，
+		// 之前 story_public_id.keyword 那個 bug 就是吃過這個虧。
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("search storyteller works grouped by project failed: status=%s body=%s", resp.Status(), string(body))
 	}
 	var parsed projectGroupedSearchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
@@ -17,8 +18,83 @@ import (
 )
 
 // searchWorksIndex 是文字故事／圖像作品共用的搜尋索引，一篇一般故事（非冊）對應一筆文件，
-// 沒有另外拆 text/image 兩套索引。
-const searchWorksIndex = "storyteller_works"
+// 沒有另外拆 text/image 兩套索引。名字讀環境變數（STORYTELLER_SEARCH_INDEX），本機開發
+// 可以蓋成不同名字，避免跟正式環境共用同一個 ES cluster 時互相污染資料。
+func searchWorksIndex() string {
+	return config.EnvConfig().StorytellerSearchIndex
+}
+
+// searchWorksIndexMapping 明確指定 analyzer，不能靠 dynamic mapping：中文全文欄位
+// （title/summary/content/project_name）用 ES 內建的 cjk analyzer（bigram，不需要另外裝
+// IK 之類的分詞外掛，繁簡體都不是問題）；tags／author_pen_name 保留 .keyword 子欄位是為了
+// 配合程式碼裡 tags.keyword／author_pen_name.keyword 這種精準篩選查詢；story_public_id／
+// project_public_id／project_slug／rating 直接是 keyword，不能再加 .keyword 尾巴；
+// cover_image_key 設 index:false，這欄位從來不被拿來查詢。
+const searchWorksIndexMapping = `{
+  "mappings": {
+    "properties": {
+      "story_public_id": { "type": "keyword" },
+      "project_public_id": { "type": "keyword" },
+      "project_slug": { "type": "keyword" },
+      "project_name": {
+        "type": "text",
+        "analyzer": "cjk",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "title": { "type": "text", "analyzer": "cjk" },
+      "summary": { "type": "text", "analyzer": "cjk" },
+      "content": { "type": "text", "analyzer": "cjk" },
+      "tags": {
+        "type": "text",
+        "analyzer": "cjk",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "rating": { "type": "keyword" },
+      "author_pen_name": {
+        "type": "text",
+        "analyzer": "cjk",
+        "fields": { "keyword": { "type": "keyword" } }
+      },
+      "cover_image_key": { "type": "keyword", "index": false },
+      "created_at": { "type": "date" },
+      "updated_at": { "type": "date" }
+    }
+  }
+}`
+
+// CreateSearchIndex 建立搜尋索引，indexName 留空就用 STORYTELLER_SEARCH_INDEX 設定的名字。
+// 供 main.go 的手動指令（-cmd=storyteller-search-create-index）呼叫，環境遷移／本機另開
+// 一個測試用 index 時不用再手動打 curl、憑印象記 mapping 長怎樣。
+func CreateSearchIndex(ctx context.Context, indexName string) error {
+	if strings.TrimSpace(indexName) == "" {
+		indexName = searchWorksIndex()
+	}
+	es := client.GetElasticSearch(enum.ESDefault)
+	if es == nil {
+		return fmt.Errorf("elasticsearch client is not initialized")
+	}
+	resp, err := es.Indices.Create(
+		indexName,
+		es.Indices.Create.WithContext(ctx),
+		es.Indices.Create.WithBody(strings.NewReader(searchWorksIndexMapping)),
+	)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.IsError() {
+		return fmt.Errorf("create storyteller search index failed: status=%s index=%s", resp.Status(), indexName)
+	}
+	return nil
+}
+
+// RunCreateStorytellerSearchIndex 是 main.go 手動指令的入口，比照 RunSyncStorytellerSearchIndex
+// 同一種寫法。indexName 留空就用預設 index。
+func RunCreateStorytellerSearchIndex(indexName string) {
+	if err := CreateSearchIndex(context.Background(), indexName); err != nil {
+		log.Logger().Error("Storyteller search index create failed: " + err.Error())
+	}
+}
 
 // workSearchDocument 是索引文件的形狀。CoverImageKey 只有圖像作品會有值（第一頁的 S3 key，
 // 前端要自己簽名成可讀網址，不能把簽名網址存進索引——CloudFront 簽名網址有效期限很短，
@@ -237,7 +313,7 @@ func indexWorkDocument(ctx context.Context, doc *workSearchDocument) error {
 		return err
 	}
 	resp, err := es.Index(
-		searchWorksIndex,
+		searchWorksIndex(),
 		bytes.NewReader(body),
 		es.Index.WithContext(ctx),
 		es.Index.WithDocumentID(doc.StoryPublicID),
@@ -259,7 +335,7 @@ func deleteWorkDocument(ctx context.Context, storyPublicID string) error {
 		return fmt.Errorf("elasticsearch client is not initialized")
 	}
 	resp, err := es.Delete(
-		searchWorksIndex,
+		searchWorksIndex(),
 		storyPublicID,
 		es.Delete.WithContext(ctx),
 		es.Delete.WithRefresh("true"),
@@ -289,7 +365,7 @@ func deleteWorksByProject(ctx context.Context, projectPublicID string) error {
 		return err
 	}
 	resp, err := es.DeleteByQuery(
-		[]string{searchWorksIndex},
+		[]string{searchWorksIndex()},
 		&buf,
 		es.DeleteByQuery.WithContext(ctx),
 		es.DeleteByQuery.WithRefresh(true),

@@ -41,16 +41,17 @@ var buildVersion = "development"
 var cmdName = ""
 
 var commandParams = commandParameter.Registry{
-	"brandId":        commandParameter.New("eroge_brands numeric ID", nil),
-	"brandIds":       commandParameter.New("comma-separated eroge_brands numeric IDs, or all for every approved brand", nil),
-	"brandName":      commandParameter.New("eroge brand name", nil),
-	"csvFile":        commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
-	"ncccKey":        commandParameter.New("single NCCC data set key, e.g. gender", nil),
-	"playlist":       commandParameter.New("public YouTube playlist URL or ID", nil),
-	"youtubeChannel": commandParameter.New("YouTube @handle or UC... channel ID", nil),
-	"youtubeURL":     commandParameter.New("YouTube brand page URL", nil),
-	"yearMonthFrom":  commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
-	"yearMonthTo":    commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
+	"brandId":         commandParameter.New("eroge_brands numeric ID", nil),
+	"brandIds":        commandParameter.New("comma-separated eroge_brands numeric IDs, or all for every approved brand", nil),
+	"brandName":       commandParameter.New("eroge brand name", nil),
+	"csvFile":         commandParameter.New("path to a pipe-delimited eroge brand CSV file", nil),
+	"ncccKey":         commandParameter.New("single NCCC data set key, e.g. gender", nil),
+	"searchIndexName": commandParameter.New("optional Elasticsearch index name for storyteller search; defaults to STORYTELLER_SEARCH_INDEX", nil),
+	"playlist":        commandParameter.New("public YouTube playlist URL or ID", nil),
+	"youtubeChannel":  commandParameter.New("YouTube @handle or UC... channel ID", nil),
+	"youtubeURL":      commandParameter.New("YouTube brand page URL", nil),
+	"yearMonthFrom":   commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
+	"yearMonthTo":     commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
 }
 
 type cronJobConfig struct {
@@ -211,6 +212,13 @@ var cronJobs = []cronJobConfig{
 		Name:     "storyteller-search-sync",
 		Schedule: "",
 		Handler:  storytellerService.RunSyncStorytellerSearchIndex,
+	},
+	{
+		Name:     "storyteller-search-create-index",
+		Schedule: "",
+		Handler: func() {
+			storytellerService.RunCreateStorytellerSearchIndex(commandParams.Value("searchIndexName"))
+		},
 	},
 	// 台電相關 job 手動執行
 	{

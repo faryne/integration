@@ -41,6 +41,10 @@ type envConfig struct {
 	StorytellerAgentAPIKeyActiveKeyID string `env:"STORYTELLER_AGENT_API_KEY_ACTIVE_KEY_ID"`
 	StorytellerAgentAPIKeyMasterKeys  string `env:"STORYTELLER_AGENT_API_KEY_MASTER_KEYS"`
 
+	// StorytellerSearchIndex 沒設就沿用正式環境本來的名字，本機開發要另外測索引時
+	// 才需要在 .env 蓋成不同名字，避免本機測試資料寫進正式環境共用的同一個 ES cluster。
+	StorytellerSearchIndex string `env:"STORYTELLER_SEARCH_INDEX,default=storyteller_works"`
+
 	// StorytellerCloudFrontKeyPairID／PrivateKeyFile 是 storyteller 圖像頁專用的簽名 key，
 	// 跟共用的 CloudFrontKeyPairID（nekomaid 在用）分開，不共用私鑰。
 	StorytellerCloudFrontKeyPairID      string `env:"STORYTELLER_CLOUDFRONT_KEY_PAIR_ID"`
