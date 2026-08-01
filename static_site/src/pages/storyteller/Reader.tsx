@@ -360,6 +360,90 @@ function StoryOutline({
   );
 }
 
+// 頁面描述本身是 whitelist markdown（含 marker 屬性、粗體斜體等語法），列表預覽只需要
+// 純文字片段，不能直接把原始字串塞進 Typography——會連 [markerId] 這種內部標記語法都
+// 原樣顯示出來。用跟 extractStoryHeadings 抽標題文字一樣的做法：解析成段落後只取每個
+// run 的 text，marks／marker 屬性都會在解析階段被拆掉，不會出現在結果字串裡。
+function plainTextFromMarkdown(content: string): string {
+  return parseMarkdownToParagraphs(content)
+    .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
+    .join(" ")
+    .trim();
+}
+
+// 圖像作品版的「本篇大綱」——沒有標題可抽，改成列出每一頁的縮圖（沿用已經載入、
+// 簽過名的 imageUrl，不用另外拉縮圖資源）跟描述前幾個字，點擊直接跳頁。
+function ImagePageOutline({
+  pages,
+  activeIndex,
+  onJumpToPage,
+}: {
+  pages: ReaderImagePage[];
+  activeIndex: number;
+  onJumpToPage: (index: number) => void;
+}) {
+  return (
+    <Stack spacing={0.5}>
+      {pages.map((page, index) => {
+        const isActive = index === activeIndex;
+        const description = plainTextFromMarkdown(page.description);
+        return (
+          <Paper
+            key={page.id}
+            variant="outlined"
+            sx={{
+              p: 1,
+              borderRadius: 1,
+              cursor: "pointer",
+              bgcolor: isActive ? "action.selected" : undefined,
+              borderColor: isActive ? "primary.main" : undefined,
+            }}
+            onClick={() => onJumpToPage(index)}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Box
+                component="img"
+                src={page.imageUrl}
+                alt={`第 ${index + 1} 頁`}
+                sx={{
+                  width: 40,
+                  height: 54,
+                  objectFit: "cover",
+                  borderRadius: 0.5,
+                  flexShrink: 0,
+                }}
+              />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography
+                  variant="caption"
+                  color={isActive ? "primary.main" : "text.secondary"}
+                  fontWeight={isActive ? 700 : 400}
+                  sx={{ display: "block" }}
+                >
+                  第 {index + 1} 頁
+                </Typography>
+                {description && (
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {description}
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
+          </Paper>
+        );
+      })}
+    </Stack>
+  );
+}
+
 function ReaderIndexPanel({
   items,
   volumes,
@@ -375,6 +459,9 @@ function ReaderIndexPanel({
   headings,
   activeHeadingLine,
   onJumpToHeading,
+  imagePages,
+  activeImagePageIndex,
+  onJumpToImagePage,
 }: {
   items: ReaderItem[];
   volumes: ReaderVolume[];
@@ -390,12 +477,19 @@ function ReaderIndexPanel({
   headings: StoryHeading[];
   activeHeadingLine?: number;
   onJumpToHeading: (heading: StoryHeading) => void;
+  imagePages: ReaderImagePage[];
+  activeImagePageIndex: number;
+  onJumpToImagePage: (index: number) => void;
 }) {
   const [tab, setTab] = useState<"toc" | "bookmarks" | "outline">("toc");
-  const hasOutline = headings.length > 0;
+  // 文字故事用標題抽「本篇大綱」，圖像作品沒有標題，改用頁面清單當「頁面一覽」——
+  // 兩者互斥（一個 item 只會是其中一種內容類型），共用同一個分頁槽位，只是內容跟
+  // 標籤依目前是哪種類型決定。
+  const hasOutline = headings.length > 0 || imagePages.length > 0;
+  const outlineLabel = imagePages.length > 0 ? "頁面一覽" : "本篇大綱";
   useEffect(() => {
-    // 切到沒有標題（或沒有本篇大綱可言的圖像作品）時，「本篇大綱」分頁會消失，
-    // 這時候如果還停在該分頁要退回目錄，不然畫面會變成沒有任何分頁按鈕顯示為選取中。
+    // 切到沒有標題／頁面可列的內容時，大綱分頁會消失，這時候如果還停在該分頁要退回
+    // 目錄，不然畫面會變成沒有任何分頁按鈕顯示為選取中。
     if (tab === "outline" && !hasOutline) {
       setTab("toc");
     }
@@ -426,7 +520,7 @@ function ReaderIndexPanel({
             onClick={() => setTab("outline")}
             sx={{ flex: 1 }}
           >
-            本篇大綱
+            {outlineLabel}
           </Button>
         )}
       </Stack>
@@ -437,6 +531,15 @@ function ReaderIndexPanel({
           currentItemId={currentItemId}
           basePath={basePath}
           onNavigate={onNavigate}
+        />
+      ) : tab === "outline" && imagePages.length > 0 ? (
+        <ImagePageOutline
+          pages={imagePages}
+          activeIndex={activeImagePageIndex}
+          onJumpToPage={(index) => {
+            onJumpToImagePage(index);
+            onNavigate?.();
+          }}
         />
       ) : tab === "outline" && hasOutline ? (
         <StoryOutline
@@ -2265,6 +2368,9 @@ export default function StorytellerReader() {
               headings={storyHeadings}
               activeHeadingLine={activeHeadingLine}
               onJumpToHeading={handleJumpToHeading}
+              imagePages={currentEpisodePages}
+              activeImagePageIndex={pageIndex}
+              onJumpToImagePage={goToImagePage}
             />
           </Box>
         </Drawer>
@@ -2385,6 +2491,9 @@ export default function StorytellerReader() {
                     headings={storyHeadings}
                     activeHeadingLine={activeHeadingLine}
                     onJumpToHeading={handleJumpToHeading}
+                    imagePages={currentEpisodePages}
+                    activeImagePageIndex={pageIndex}
+                    onJumpToImagePage={goToImagePage}
                   />
                 </Paper>
               </Grid>
@@ -2425,6 +2534,9 @@ export default function StorytellerReader() {
                   headings={storyHeadings}
                   activeHeadingLine={activeHeadingLine}
                   onJumpToHeading={handleJumpToHeading}
+                  imagePages={currentEpisodePages}
+                  activeImagePageIndex={pageIndex}
+                  onJumpToImagePage={goToImagePage}
                 />
               </Paper>
             </Grid>
