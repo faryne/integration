@@ -858,15 +858,32 @@ function StoryContentLines({
   footnoteIdPrefix: string;
 }) {
   const lines = content.split("\n");
+  // 逐行預先解析一次：isBlank 沿用原本判斷空行的邏輯（新版內容每行都被 marker 包住，
+  // 就算段落本身是空的，原始字串也不會是空字串，要用解析結果的實際文字判斷，不是看
+  // 原始字串是否為空白，不然舊資料的空行間距在遷移後會失效）；orderedListStart 是這一行
+  // 在目前這串連續有序清單裡排第幾個——原生 <ol> 沒辦法跨越逐行渲染的多個
+  // StorytellerWysiwygMarkdown 實例接續編號（每個實例天生只有一個 <li>），所以自己算好
+  // 傳進去，讓它用 <ol start={N}> 補回視覺上的連續編號（見該元件的 orderedListStart 說明）。
+  // 兩者共用同一次 parseMarkdownToParagraphs 呼叫，跟下面的 JSX .map() 分開算好、避免
+  // 邏輯重複一份、也避免在 render callback 裡放 mutable 變數。
+  // 用一般 for 迴圈直接在這個函式的作用域裡累加，不透過 .map() 的 callback 閉包改外層
+  // 變數——React Compiler 的靜態分析會把「在 callback 裡改外層變數」當成不安全的
+  // render 期間 mutation 擋下來，一般 for 迴圈就不會有這個問題。
+  const parsedLines: { isBlank: boolean; orderedListStart: number }[] = [];
+  let orderedListRunLength = 0;
+  for (const line of lines) {
+    const paragraph = parseMarkdownToParagraphs(line)[0];
+    const isBlank = paragraph.runs.every((run) => run.text.trim() === "");
+    orderedListRunLength =
+      !isBlank && paragraph.blockKind === "number"
+        ? orderedListRunLength + 1
+        : 0;
+    parsedLines.push({ isBlank, orderedListStart: orderedListRunLength });
+  }
   return (
     <Stack spacing={0.25}>
       {lines.map((line, index) => {
-        // 新版內容每行都會被 marker 包住（例如 `⟦id⟧⟦/id⟧`），就算段落本身是空的，
-        // 原始字串也不會是空字串——用解析結果的實際文字判斷是不是空行，而不是直接看
-        // 原始字串是否為空白，不然舊資料的空行間距（用來排版）在遷移後會失效。
-        const isBlankLine = parseMarkdownToParagraphs(line)[0].runs.every(
-          (run) => run.text.trim() === "",
-        );
+        const { isBlank: isBlankLine, orderedListStart } = parsedLines[index];
         if (isBlankLine) {
           return <Box key={index} sx={{ height: 12 }} />;
         }
@@ -923,6 +940,7 @@ function StoryContentLines({
                 footnoteNumbering={footnoteNumbering}
                 footnoteIdPrefix={footnoteIdPrefix}
                 showFootnoteSection={false}
+                orderedListStart={orderedListStart || undefined}
               >
                 {line}
               </StorytellerWysiwygMarkdown>
