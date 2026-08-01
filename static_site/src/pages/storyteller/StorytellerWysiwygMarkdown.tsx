@@ -41,6 +41,16 @@ interface StorytellerWysiwygMarkdownProps {
    * 重複渲染。預設 true（單一元件涵蓋全部內容時的行為，向後相容）。
    */
   showFootnoteSection?: boolean;
+  /**
+   * 有序清單項目的起始編號，只有逐行渲染（見 footnoteNumbering 的說明）才需要傳。
+   * 儲存的內容裡每個有序清單項目的前綴永遠是固定的 "1. "（見 whitelist.ts 的
+   * BLOCK_KIND_NUMBER_CANONICAL_PREFIX），真正的編號完全交給原生 <ol> 接續算——但
+   * 逐行渲染時每個實例天生只有一個 <li>，瀏覽器沒辦法跨實例接續，所以呼叫端要自己
+   * 算「這一行在目前這串連續有序清單裡排第幾個」再傳進來，這裡用 <ol start={N}>
+   * 補回視覺上的連續編號。不提供時預設 1（單一元件涵蓋全部內容時，group 內本來就是
+   * 從第一個項目開始，向後相容）。
+   */
+  orderedListStart?: number;
 }
 
 // 引用/清單在閱讀頁走真正的巢狀 DOM（跟編輯區的 CSS 錯覺分組不同，見
@@ -265,6 +275,7 @@ export function StorytellerWysiwygMarkdown({
   footnoteNumbering: externalFootnoteNumbering,
   footnoteIdPrefix: externalFootnoteIdPrefix,
   showFootnoteSection = true,
+  orderedListStart,
 }: StorytellerWysiwygMarkdownProps) {
   const paragraphs = parseMarkdownToParagraphs(children);
   // useId() 一定要無條件呼叫（Hook 規則），就算外部有提供 footnoteIdPrefix 也一樣呼叫，
@@ -310,7 +321,11 @@ export function StorytellerWysiwygMarkdown({
               ? "ul"
               : "ol";
         return (
-          <Box component={WrapperTag} key={`block-group-${groupIndex}`}>
+          <Box
+            component={WrapperTag}
+            key={`block-group-${groupIndex}`}
+            {...(WrapperTag === "ol" ? { start: orderedListStart ?? 1 } : {})}
+          >
             {group.items.map(({ paragraph, index }) => (
               <Box
                 component={ItemTag}
