@@ -1,10 +1,23 @@
 import AddIcon from "@mui/icons-material/Add";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import { Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import {
+  Box,
+  Button,
+  Chip,
+  Grid,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { keyframes } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-import { Link as RouterLink } from "react-router-dom";
-import { usePublicStorytellerProjects } from "@/apis/storyteller.ts";
+import { useEffect, useState } from "react";
+import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import {
+  usePublicStorytellerProjects,
+  useStorytellerProjectSearch,
+} from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { GearIcon } from "@/components/storyteller/SteamGearIcon.tsx";
 import {
@@ -14,6 +27,7 @@ import {
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
+import { StorytellerProjectSearchCard } from "@/pages/storyteller/StorytellerProjectSearchCard.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 
 const spin = keyframes`to { transform: rotate(360deg); }`;
@@ -164,11 +178,39 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
 export default function StorytellerPublicHome() {
   const { data: publicProjects = [], isLoading } =
     usePublicStorytellerProjects();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const keyword = searchParams.get("keyword") ?? "";
+  const [keywordInput, setKeywordInput] = useState(keyword);
+  const isSearching = keyword.trim() !== "";
+
+  // 跟 Search.tsx 同一個理由：這個 route 只靠 query string 換頁不會重新 mount，
+  // keywordInput 是 controlled input 自己的狀態，URL 的 keyword 外部變動時要手動同步。
+  useEffect(() => {
+    setKeywordInput(keyword);
+  }, [keyword]);
+
+  const projectSearch = useStorytellerProjectSearch(
+    { keyword },
+    isSearching,
+  );
+  const searchResults =
+    projectSearch.data?.pages.flatMap((page) => page.data) ?? [];
+  const searchTotal = projectSearch.data?.pages[0]?.total ?? 0;
 
   useTitle(`${STORYTELLER_APP_NAME} 公開故事`, {
     path: steamloomPath(),
     robots: "index, follow",
   });
+
+  function submitKeyword() {
+    const params = new URLSearchParams(searchParams);
+    if (keywordInput.trim()) {
+      params.set("keyword", keywordInput.trim());
+    } else {
+      params.delete("keyword");
+    }
+    setSearchParams(params);
+  }
 
   return (
     <Stack spacing={3}>
@@ -177,18 +219,101 @@ export default function StorytellerPublicHome() {
       />
 
       <Stack
+        component="form"
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1.5}
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitKeyword();
+        }}
+      >
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="搜尋專案名稱、標題、內文……"
+          value={keywordInput}
+          onChange={(event) => setKeywordInput(event.target.value)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <SearchIcon
+                  fontSize="small"
+                  sx={{ mr: 1, color: "text.secondary" }}
+                />
+              ),
+            },
+          }}
+        />
+        <Button type="submit" variant="contained" sx={{ whiteSpace: "nowrap" }}>
+          搜尋
+        </Button>
+        {isSearching && (
+          <Button
+            component={RouterLink}
+            to={steamloomPath(`search?keyword=${encodeURIComponent(keyword)}`)}
+            variant="text"
+            sx={{ whiteSpace: "nowrap" }}
+          >
+            進階搜尋
+          </Button>
+        )}
+      </Stack>
+
+      <Stack
         direction={{ xs: "column", sm: "row" }}
         spacing={1.5}
         justifyContent="space-between"
         alignItems={{ xs: "flex-start", sm: "center" }}
       >
-        <Typography variant="h5">已發佈的故事</Typography>
-        {!isLoading && (
-          <Chip size="small" label={`${publicProjects.length} 部作品`} />
-        )}
+        <Typography variant="h5">
+          {isSearching ? "搜尋結果" : "已發佈的故事"}
+        </Typography>
+        {isSearching
+          ? !projectSearch.isLoading && (
+              <Chip size="small" label={`${searchTotal} 個專案`} />
+            )
+          : !isLoading && (
+              <Chip size="small" label={`${publicProjects.length} 部作品`} />
+            )}
       </Stack>
 
-      {isLoading ? (
+      {isSearching ? (
+        projectSearch.isLoading ? (
+          <StorytellerLoading label="正在搜尋..." />
+        ) : searchResults.length === 0 ? (
+          <CustomEmptyState
+            icon={<LockOpenIcon fontSize="large" />}
+            title="沒有符合的專案"
+            description="換個關鍵字試試，或是清空搜尋框看看全部公開作品。"
+          />
+        ) : (
+          <>
+            <Grid container spacing={2}>
+              {searchResults.map((result) => (
+                <Grid
+                  key={result.project_public_id}
+                  size={{ xs: 12, md: 6, lg: 4 }}
+                >
+                  <StorytellerProjectSearchCard result={result} />
+                </Grid>
+              ))}
+            </Grid>
+            {projectSearch.hasNextPage && (
+              <Stack alignItems="center">
+                <Button
+                  variant="outlined"
+                  disabled={projectSearch.isFetchingNextPage}
+                  onClick={() => void projectSearch.fetchNextPage()}
+                >
+                  {projectSearch.isFetchingNextPage
+                    ? "載入中..."
+                    : "載入更多結果"}
+                </Button>
+              </Stack>
+            )}
+          </>
+        )
+      ) : isLoading ? (
         <StorytellerLoading label="正在載入公開故事..." />
       ) : publicProjects.length === 0 ? (
         <CustomEmptyState

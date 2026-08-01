@@ -27,6 +27,7 @@ import type {
   StorytellerProject,
   StorytellerProjectRanking,
   StorytellerProjectRequest,
+  StorytellerProjectSearchResult,
   StorytellerProviderAPIKey,
   StorytellerProviderAPIKeyRequest,
   StorytellerProviderAPIKeyUpdateRequest,
@@ -71,14 +72,48 @@ export interface StorytellerSearchParams {
 
 // 全站作品搜尋，cursor-based 無限捲動載入——每次「載入更多」用上一頁回傳的
 // next_cursor 接著查，不是傳統頁碼換頁（ES deep pagination 用 search_after 比較划算）。
-export function useStorytellerSearch(params: StorytellerSearchParams) {
+// enabled 給搜尋頁的「依故事／依專案」Tab 切換用，沒切到的那個 tab 不用真的發request。
+export function useStorytellerSearch(
+  params: StorytellerSearchParams,
+  enabled = true,
+) {
   return useInfiniteQuery({
     queryKey: ["storyteller", "search", params],
+    enabled,
     initialPageParam: "",
     queryFn: async ({ pageParam }) => {
       const response = await axios.get<
         CommonResponse<EsPagination<StorytellerWorkSearchResult[]>>
       >(`${apiBase}/storyteller/search`, {
+        params: {
+          keyword: params.keyword || undefined,
+          tag: params.tag || undefined,
+          rating: params.rating || undefined,
+          author: params.author || undefined,
+          cursor: pageParam || undefined,
+        },
+      });
+      return response.data.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage?.has_next ? lastPage.next_cursor : undefined,
+  });
+}
+
+// 全站作品搜尋「依專案分組」版本，篩選條件跟 useStorytellerSearch 共用同一個
+// StorytellerSearchParams 形狀，差別只在打的 API 路徑跟回傳資料的分組方式。
+export function useStorytellerProjectSearch(
+  params: StorytellerSearchParams,
+  enabled = true,
+) {
+  return useInfiniteQuery({
+    queryKey: ["storyteller", "search-projects", params],
+    enabled,
+    initialPageParam: "",
+    queryFn: async ({ pageParam }) => {
+      const response = await axios.get<
+        CommonResponse<EsPagination<StorytellerProjectSearchResult[]>>
+      >(`${apiBase}/storyteller/search/projects`, {
         params: {
           keyword: params.keyword || undefined,
           tag: params.tag || undefined,
