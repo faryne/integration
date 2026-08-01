@@ -6,6 +6,7 @@ import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import ArticleIcon from "@mui/icons-material/Article";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
@@ -369,6 +370,8 @@ function ReaderIndexPanel({
   bookmarksEnabled,
   bookmarksLoading,
   onJumpToBookmark,
+  onDeleteBookmark,
+  pendingDeleteBookmarkIds,
   headings,
   activeHeadingLine,
   onJumpToHeading,
@@ -382,6 +385,8 @@ function ReaderIndexPanel({
   bookmarksEnabled: boolean;
   bookmarksLoading: boolean;
   onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
+  onDeleteBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
+  pendingDeleteBookmarkIds: Set<number>;
   headings: StoryHeading[];
   activeHeadingLine?: number;
   onJumpToHeading: (heading: StoryHeading) => void;
@@ -525,6 +530,20 @@ function ReaderIndexPanel({
                           : snippet || "（空白段落）"}
                       </Typography>
                     </Box>
+                    <Tooltip title="刪除書籤">
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={pendingDeleteBookmarkIds.has(bookmark.id)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onDeleteBookmark(bookmark);
+                          }}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
                   </Stack>
                 </Paper>
               );
@@ -1157,10 +1176,15 @@ export default function StorytellerReader() {
     apiProject?.public_id,
     currentItem?.id,
   );
+  // 刪除不像建立那樣綁定「目前正在看的這篇作品」——書籤側欄要能刪專案裡任何一篇
+  // 作品的書籤（例如清掉別篇已經失效的舊書籤），所以 storyPublicId 是每次呼叫
+  // mutate() 時才帶，不是 hook 建構參數。
   const deleteBookmark = useDeleteStorytellerStoryBookmark(
     apiProject?.public_id,
-    currentItem?.id,
   );
+  const [pendingDeleteBookmarkIds, setPendingDeleteBookmarkIds] = useState<
+    Set<number>
+  >(new Set());
   const latestVersionId = latestVersionQuery.data?.id;
   const versions = versionsQuery.data ?? [];
   const historicalVersionIndex = historicalVersionId
@@ -1201,7 +1225,11 @@ export default function StorytellerReader() {
       setLoginPromptOpen(true);
       return;
     }
-    if (!displayVersionId || pendingBookmarkLines.has(lineIndex)) {
+    if (
+      !displayVersionId ||
+      !currentItem ||
+      pendingBookmarkLines.has(lineIndex)
+    ) {
       return;
     }
     const isBookmarked = bookmarkedLines.has(lineIndex);
@@ -1209,25 +1237,33 @@ export default function StorytellerReader() {
       return;
     }
     setPendingBookmarkLines((prev) => new Set(prev).add(lineIndex));
-    const mutation = isBookmarked ? deleteBookmark : createBookmark;
-    mutation.mutate(
-      { versionId: displayVersionId, lineId: String(lineIndex) },
-      {
-        onSuccess: () => {
-          setBookmarkSnackbar({
-            open: true,
-            message: isBookmarked ? "書籤已刪除" : "書籤已加入",
-          });
-        },
-        onSettled: () => {
-          setPendingBookmarkLines((prev) => {
-            const next = new Set(prev);
-            next.delete(lineIndex);
-            return next;
-          });
-        },
+    const lineId = String(lineIndex);
+    const mutationOptions = {
+      onSuccess: () => {
+        setBookmarkSnackbar({
+          open: true,
+          message: isBookmarked ? "書籤已刪除" : "書籤已加入",
+        });
       },
-    );
+      onSettled: () => {
+        setPendingBookmarkLines((prev) => {
+          const next = new Set(prev);
+          next.delete(lineIndex);
+          return next;
+        });
+      },
+    };
+    if (isBookmarked) {
+      deleteBookmark.mutate(
+        { storyPublicId: currentItem.id, versionId: displayVersionId, lineId },
+        mutationOptions,
+      );
+    } else {
+      createBookmark.mutate(
+        { versionId: displayVersionId, lineId },
+        mutationOptions,
+      );
+    }
   };
   const projectBookmarksQuery = useStorytellerProjectBookmarks(
     apiProject?.public_id,
@@ -1245,25 +1281,59 @@ export default function StorytellerReader() {
       setLoginPromptOpen(true);
       return;
     }
-    if (pendingImageBookmarkPages.has(pageId)) {
+    if (!currentItem || pendingImageBookmarkPages.has(pageId)) {
       return;
     }
     const isBookmarked = bookmarkedPageIds.has(pageId);
     setPendingImageBookmarkPages((prev) => new Set(prev).add(pageId));
-    const mutation = isBookmarked ? deleteBookmark : createBookmark;
-    mutation.mutate(
-      { lineId: pageId },
+    const mutationOptions = {
+      onSuccess: () => {
+        setBookmarkSnackbar({
+          open: true,
+          message: isBookmarked ? "書籤已刪除" : "書籤已加入",
+        });
+      },
+      onSettled: () => {
+        setPendingImageBookmarkPages((prev) => {
+          const next = new Set(prev);
+          next.delete(pageId);
+          return next;
+        });
+      },
+    };
+    if (isBookmarked) {
+      deleteBookmark.mutate(
+        { storyPublicId: currentItem.id, lineId: pageId },
+        mutationOptions,
+      );
+    } else {
+      createBookmark.mutate({ lineId: pageId }, mutationOptions);
+    }
+  };
+  // 書籤側欄列出的可能是別篇作品的書籤（跟目前開著的 currentItem 無關），所以刪除
+  // 用的 storyPublicId／versionId 都要從該筆書籤本身讀，不能沿用上面兩個 handler
+  // 綁在目前作品上的邏輯；pending 狀態也要用書籤列自己的 id（跨作品 lineId 可能撞號）。
+  const handleDeleteBookmarkFromList = (
+    bookmark: StorytellerStoryBookmarkWithStory,
+  ) => {
+    if (pendingDeleteBookmarkIds.has(bookmark.id)) {
+      return;
+    }
+    setPendingDeleteBookmarkIds((prev) => new Set(prev).add(bookmark.id));
+    deleteBookmark.mutate(
+      {
+        storyPublicId: bookmark.story_public_id,
+        lineId: bookmark.line_id,
+        versionId: bookmark.story_version_id ?? undefined,
+      },
       {
         onSuccess: () => {
-          setBookmarkSnackbar({
-            open: true,
-            message: isBookmarked ? "書籤已刪除" : "書籤已加入",
-          });
+          setBookmarkSnackbar({ open: true, message: "書籤已刪除" });
         },
         onSettled: () => {
-          setPendingImageBookmarkPages((prev) => {
+          setPendingDeleteBookmarkIds((prev) => {
             const next = new Set(prev);
-            next.delete(pageId);
+            next.delete(bookmark.id);
             return next;
           });
         },
@@ -2190,6 +2260,8 @@ export default function StorytellerReader() {
               bookmarksEnabled={Boolean(session)}
               bookmarksLoading={projectBookmarksQuery.isLoading}
               onJumpToBookmark={handleJumpToBookmark}
+              onDeleteBookmark={handleDeleteBookmarkFromList}
+              pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
               headings={storyHeadings}
               activeHeadingLine={activeHeadingLine}
               onJumpToHeading={handleJumpToHeading}
@@ -2308,6 +2380,8 @@ export default function StorytellerReader() {
                     bookmarksEnabled={Boolean(session)}
                     bookmarksLoading={projectBookmarksQuery.isLoading}
                     onJumpToBookmark={handleJumpToBookmark}
+                    onDeleteBookmark={handleDeleteBookmarkFromList}
+                    pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
                     headings={storyHeadings}
                     activeHeadingLine={activeHeadingLine}
                     onJumpToHeading={handleJumpToHeading}
@@ -2346,6 +2420,8 @@ export default function StorytellerReader() {
                   bookmarksEnabled={Boolean(session)}
                   bookmarksLoading={projectBookmarksQuery.isLoading}
                   onJumpToBookmark={handleJumpToBookmark}
+                  onDeleteBookmark={handleDeleteBookmarkFromList}
+                  pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
                   headings={storyHeadings}
                   activeHeadingLine={activeHeadingLine}
                   onJumpToHeading={handleJumpToHeading}

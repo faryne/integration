@@ -1331,17 +1331,23 @@ export function useCreateStorytellerStoryBookmark(
   });
 }
 
-export function useDeleteStorytellerStoryBookmark(
-  projectPublicId?: string,
-  storyPublicId?: string,
-) {
+// 刪除跟建立分開設計：建立永遠是「對目前正在看的這篇作品」加書籤，storyPublicId
+// 綁在 hook 建構時就固定；但書籤側欄的刪除要能刪專案裡任何一篇作品的書籤（使用者
+// 在瀏覽故事 A 時，也可能想順手刪掉故事 B 底下已經失效的舊書籤），所以 storyPublicId
+// 改成隨每次呼叫傳，不綁在 hook 上。
+interface StorytellerStoryBookmarkDeleteInput extends StorytellerStoryBookmarkInput {
+  storyPublicId: string;
+}
+
+export function useDeleteStorytellerStoryBookmark(projectPublicId?: string) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
+      storyPublicId,
       lineId,
       versionId,
-    }: StorytellerStoryBookmarkInput) => {
+    }: StorytellerStoryBookmarkDeleteInput) => {
       const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
         `${apiBase}/storyteller/story/${projectPublicId}/stories/${storyPublicId}/bookmarks`,
         {
