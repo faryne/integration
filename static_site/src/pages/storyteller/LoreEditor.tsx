@@ -58,7 +58,7 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
-import { storytellerAssetMarkdown } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
+import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
@@ -74,7 +74,10 @@ import {
   insertStoryMention,
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
-import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import {
+  StorytellerWysiwygEditor,
+  type StorytellerWysiwygEditorHandle,
+} from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 
@@ -149,6 +152,7 @@ export default function StorytellerLoreEditor() {
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
+  const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
   // 只存在這次編輯 session，不落 DB：初始值取自 profile 的全域預設，使用者可以依當次需要另外調整
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [autoSaveIntervalMinutes, setAutoSaveIntervalMinutes] = useState(
@@ -577,12 +581,14 @@ export default function StorytellerLoreEditor() {
   }
 
   function insertAsset(asset: StorytellerAsset) {
-    setContent(
-      (current) =>
-        `${current.trimEnd()}${current.trim() ? "\n\n" : ""}${storytellerAssetMarkdown(asset)}`,
-    );
+    const inserted = editorRef.current?.insertAsset({
+      publicId: asset.public_id,
+      src: asset.preview_url,
+      alt: asset.alt_text || storytellerAssetTitle(asset),
+      projectPublicId: apiProject?.public_id,
+    });
     setAssetPickerOpen(false);
-    showSnack("已插入資產。");
+    showSnack(inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。");
   }
 
   function handleSave() {
@@ -866,6 +872,7 @@ export default function StorytellerLoreEditor() {
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
           <StorytellerWysiwygEditor
+            ref={editorRef}
             value={content}
             onChange={setContent}
             exportBaseName={title}

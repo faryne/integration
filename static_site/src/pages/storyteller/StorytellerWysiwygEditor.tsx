@@ -45,6 +45,8 @@ import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import {
   type MouseEvent,
   type ReactNode,
+  forwardRef,
+  useImperativeHandle,
   useEffect,
   useRef,
   useState,
@@ -258,6 +260,15 @@ export interface StorytellerWysiwygEditorProps {
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
 }
 
+export interface StorytellerWysiwygEditorHandle {
+  insertAsset: (asset: {
+    publicId: string;
+    src?: string;
+    alt?: string;
+    projectPublicId?: string;
+  }) => boolean;
+}
+
 /**
  * 故事/設定集內容的所見即所得編輯器，對外是單純的 { value, onChange } 字串介面
  * （跟原本的 TextField 相容），內部負責 markdown 字串跟 Tiptap doc 的雙向轉換。
@@ -267,14 +278,20 @@ export interface StorytellerWysiwygEditorProps {
  * 不能再讓下面的 effect 重新 setContent 一次，不然每打一個字游標就會被重置。
  * lastEmittedRef 就是用來分辨這兩種情況。
  */
-export function StorytellerWysiwygEditor({
-  value,
-  onChange,
-  toolbarExtra,
-  projectPublicId,
-  exportBaseName,
-  enabledFeatures,
-}: StorytellerWysiwygEditorProps) {
+export const StorytellerWysiwygEditor = forwardRef<
+  StorytellerWysiwygEditorHandle,
+  StorytellerWysiwygEditorProps
+>(function StorytellerWysiwygEditor(
+  {
+    value,
+    onChange,
+    toolbarExtra,
+    projectPublicId,
+    exportBaseName,
+    enabledFeatures,
+  },
+  ref,
+) {
   const isFeatureEnabled = (feature: "footnote" | "comment" | "asset") =>
     enabledFeatures === undefined || enabledFeatures.includes(feature);
   const assetEnabled = isFeatureEnabled("asset");
@@ -352,6 +369,37 @@ export function StorytellerWysiwygEditor({
       markdownToDoc(value, projectPublicId, assetEnabled),
     );
   }, [value, projectPublicId, assetEnabled, editor]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertAsset: (asset) => {
+        if (!editor || !assetEnabled || !asset.publicId) return false;
+        return editor
+          .chain()
+          .focus()
+          .insertContent([
+            {
+              type: "paragraph",
+              attrs: { markerId: "", headingLevel: 0, blockKind: "none" },
+              content: [
+                {
+                  type: "assetImage",
+                  attrs: {
+                    publicId: asset.publicId,
+                    src: asset.src ?? "",
+                    alt: asset.alt ?? "",
+                    projectPublicId: asset.projectPublicId ?? projectPublicId ?? "",
+                  },
+                },
+              ],
+            },
+          ])
+          .run();
+      },
+    }),
+    [assetEnabled, editor, projectPublicId],
+  );
 
   const editorState = useEditorState({
     editor,
@@ -1472,4 +1520,4 @@ export function StorytellerWysiwygEditor({
       )}
     </Box>
   );
-}
+});

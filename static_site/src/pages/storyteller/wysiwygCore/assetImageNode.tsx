@@ -57,6 +57,7 @@ function AssetImageView({
         component="span"
         variant="outlined"
         contentEditable={false}
+        data-drag-handle
         onDoubleClick={openDialog}
         sx={{
           my: 1,
@@ -65,7 +66,7 @@ function AssetImageView({
           overflow: "hidden",
           borderColor: selected ? "primary.main" : "divider",
           boxShadow: selected ? 1 : 0,
-          cursor: "pointer",
+          cursor: "grab",
         }}
       >
         {previewUrl ? (
