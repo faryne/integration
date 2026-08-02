@@ -5,7 +5,11 @@ import {
   type ParsedParagraph,
   type ParsedRun,
 } from "./parser";
-import type { MarkName } from "./whitelist";
+import {
+  ASSET_URI_PREFIX,
+  sanitizeMarkdownImageAlt,
+  type MarkName,
+} from "./whitelist";
 
 /**
  * 「自訂白名單語法 → 標準 markdown」匯出轉換器。
@@ -69,6 +73,8 @@ function wrapWithMarks(text: string, marks: MarkName[]): string {
  */
 function sameExportFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
+    !a.assetPublicId &&
+    !b.assetPublicId &&
     a.marks.length === b.marks.length &&
     a.marks.every((mark, i) => mark === b.marks[i]) &&
     a.href === b.href &&
@@ -104,6 +110,14 @@ function exportInline(
   const merged = mergeRunsForExport(runs);
   let output = "";
   merged.forEach((run, index) => {
+    if (run.assetPublicId) {
+      output += `![${sanitizeMarkdownImageAlt(run.assetAlt ?? "")}](${ASSET_URI_PREFIX}${run.assetPublicId})`;
+      return;
+    }
+    if (run.assetSrc) {
+      output += `![${sanitizeMarkdownImageAlt(run.assetAlt ?? "")}](${run.assetSrc})`;
+      return;
+    }
     let piece = wrapWithMarks(run.text, run.marks);
     if (run.href) {
       piece = `[${piece}](${run.href})`;

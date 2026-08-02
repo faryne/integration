@@ -87,6 +87,44 @@ const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
 };
 
 function renderRun(run: ParsedRun, key: number): ReactNode {
+  if (run.assetSrc || run.assetPublicId) {
+    return (
+      <Box
+        key={key}
+        component="span"
+        sx={{
+          display: "block",
+          my: 1,
+          overflow: "hidden",
+          borderRadius: 1,
+          bgcolor: "background.default",
+        }}
+      >
+        {run.assetSrc ? (
+          <Box
+            component="img"
+            src={run.assetSrc}
+            alt={run.assetAlt ?? ""}
+            sx={{
+              width: "100%",
+              maxHeight: { xs: 420, md: 640 },
+              objectFit: "contain",
+              display: "block",
+            }}
+          />
+        ) : (
+          <Typography
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: "block", p: 2 }}
+          >
+            資產：{run.assetAlt || run.assetPublicId}
+          </Typography>
+        )}
+      </Box>
+    );
+  }
   let node: ReactNode = run.text;
   for (const mark of run.marks) {
     const Tag = MARK_TAG[mark];

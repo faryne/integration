@@ -240,6 +240,8 @@ export interface StorytellerWysiwygEditorProps {
   onChange: (markdown: string) => void;
   /** 塞在工具列最右側的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
+  /** 資產 node 用來查詢同專案 preview URL；不提供時只會顯示 asset id 佔位。 */
+  projectPublicId?: string;
   /**
    * 匯出檔名的基底（通常是故事/設定集標題，編輯器自己不知道標題，由頁面層提供）。
    * 有提供才會在工具列顯示「匯出 markdown」按鈕；實際檔名是
@@ -250,10 +252,10 @@ export interface StorytellerWysiwygEditorProps {
   exportBaseName?: string;
   /**
    * 白名單：只列出的功能才會啟用，不提供（undefined）就全部啟用——維持既有頁面
-   * （StoryEditor／LoreEditor）行為不變。目前只有腳注／註解可以關，其餘工具列
+   * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘工具列
    * 功能不受影響。
    */
-  enabledFeatures?: Array<"footnote" | "comment">;
+  enabledFeatures?: Array<"footnote" | "comment" | "asset">;
 }
 
 /**
@@ -269,11 +271,13 @@ export function StorytellerWysiwygEditor({
   value,
   onChange,
   toolbarExtra,
+  projectPublicId,
   exportBaseName,
   enabledFeatures,
 }: StorytellerWysiwygEditorProps) {
-  const isFeatureEnabled = (feature: "footnote" | "comment") =>
+  const isFeatureEnabled = (feature: "footnote" | "comment" | "asset") =>
     enabledFeatures === undefined || enabledFeatures.includes(feature);
+  const assetEnabled = isFeatureEnabled("asset");
   const lastEmittedRef = useRef(value);
 
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
@@ -305,7 +309,7 @@ export function StorytellerWysiwygEditor({
 
   const editor = useEditor({
     extensions: wysiwygCoreExtensions,
-    content: markdownToDoc(value),
+    content: markdownToDoc(value, projectPublicId, assetEnabled),
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -344,8 +348,10 @@ export function StorytellerWysiwygEditor({
     if (!editor) return;
     if (value === lastEmittedRef.current) return;
     lastEmittedRef.current = value;
-    editor.commands.setContent(markdownToDoc(value));
-  }, [value, editor]);
+    editor.commands.setContent(
+      markdownToDoc(value, projectPublicId, assetEnabled),
+    );
+  }, [value, projectPublicId, assetEnabled, editor]);
 
   const editorState = useEditorState({
     editor,

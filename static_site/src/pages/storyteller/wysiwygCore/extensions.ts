@@ -10,6 +10,7 @@ import Text from "@tiptap/extension-text";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 
+import { AssetImage } from "./assetImageNode";
 import { BgColor, TextColor } from "./inlineColorMarks";
 import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
@@ -27,6 +28,7 @@ export const wysiwygCoreExtensions = [
   Document,
   MarkerParagraph,
   Text,
+  AssetImage,
   Bold,
   Italic,
   Underline,

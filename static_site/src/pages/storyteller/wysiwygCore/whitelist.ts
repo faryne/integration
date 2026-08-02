@@ -224,6 +224,26 @@ export const BG_COLOR_VALUES = [
 ] as const;
 export type BgColorValue = (typeof BG_COLOR_VALUES)[number];
 
+/* --- asset image（資產圖片）段落內容 --- */
+
+export const ASSET_URI_PREFIX = "steamloom-asset://";
+export const ASSET_PUBLIC_ID_PATTERN_SOURCE = "[A-Za-z0-9._~-]+";
+export const MARKDOWN_IMAGE_PATTERN = /^!\[([^\]\n\r]*)\]\(([^)\s]+)\)$/;
+const ASSET_URI_PATTERN = new RegExp(
+  `^${ASSET_URI_PREFIX}(${ASSET_PUBLIC_ID_PATTERN_SOURCE})$`,
+);
+
+export function assetPublicIdFromUri(uri: string): string | null {
+  return uri.match(ASSET_URI_PATTERN)?.[1] ?? null;
+}
+
+export function sanitizeMarkdownImageAlt(alt: string): string {
+  return alt
+    .replaceAll("[", " ")
+    .replaceAll("]", " ")
+    .replace(/[\n\r]/g, " ");
+}
+
 /* --- a（連結）行內 marker 的屬性 --- */
 
 export const MARKER_HREF_ATTR = "href";

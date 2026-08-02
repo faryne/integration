@@ -5,10 +5,12 @@ import {
   Button,
   Chip,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1118,16 +1120,20 @@ export default function StorytellerStoryEditor() {
             value={content}
             onChange={setContent}
             exportBaseName={storyTitle}
+            projectPublicId={apiProject?.public_id}
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
-                <Button
-                  size="small"
-                  startIcon={<ImageIcon />}
-                  disabled={!apiProject}
-                  onClick={() => setAssetPickerOpen(true)}
-                >
-                  插入資產
-                </Button>
+                <Tooltip title="插入資產">
+                  <span>
+                    <IconButton
+                      size="small"
+                      disabled={!apiProject}
+                      onClick={() => setAssetPickerOpen(true)}
+                    >
+                      <ImageIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
                   onChange={handleSidePanelChange}

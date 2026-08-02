@@ -1142,6 +1142,33 @@ export function useStorytellerAssets(
   });
 }
 
+export function useStorytellerAsset(
+  projectPublicId?: string,
+  assetPublicId?: string,
+  enabled = true,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "asset",
+      projectPublicId,
+      assetPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(
+      enabled && session?.encrypt_key && projectPublicId && assetPublicId,
+    ),
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerAsset>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/assets/${assetPublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+  });
+}
+
 // 資產上傳分兩段：先拿 presigned PUT URL，瀏覽器直傳 S3，完成後再 confirm 建立 DB row。
 // 這裡包成一個 mutation，讓資產管理頁不用知道中間 API 細節。
 export function useUploadStorytellerAssets(projectPublicId?: string) {

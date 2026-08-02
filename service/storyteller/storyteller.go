@@ -1333,6 +1333,10 @@ var footnoteOpenPattern = regexp.MustCompile(
 	`⟦footnote-([^⟧\s]+) note="((?:[^"\\]|\\.)*)"⟧`,
 )
 
+// markdownImagePattern 對應前端 whitelist.ts 的 MARKDOWN_IMAGE_PATTERN；資產在作者端是
+// steamloom-asset://，公開閱讀端可能已被簽成 https URL。字數計算不應把 URI 算進正文。
+var markdownImagePattern = regexp.MustCompile(`!\[([^\]\r\n]*)\]\((?:steamloom-asset://[A-Za-z0-9._~-]+|https?://[^)\s]+)\)`)
+
 // extractFootnoteNotes 依文件出現順序收集每一則腳注的原始內文（尚未拿掉粗體等 delimiter），
 // 同一個 id 只收集一次——正常存檔的內容裡一個 id 本來就只會出現一次開頭標記，這裡加上
 // dedupe 只是防禦性處理，避免不正常/手動改過的資料被重複計算字數。
@@ -1362,6 +1366,7 @@ func stripStoryInlineMarkers(content string) string {
 func stripBookmarkLineMarker(line string) string {
 	headingLevel, blockPrefix, content := splitHeadingAndMarkerContent(line)
 	content = stripStoryInlineMarkers(content)
+	content = markdownImagePattern.ReplaceAllString(content, "$1")
 	if headingLevel > 0 {
 		return strings.Repeat("#", headingLevel) + " " + content
 	}
@@ -2377,6 +2382,7 @@ func wordCount(content string) uint {
 	for _, line := range strings.Split(content, "\n") {
 		_, _, clean := splitHeadingAndMarkerContent(line)
 		clean = stripStoryInlineMarkers(clean)
+		clean = markdownImagePattern.ReplaceAllString(clean, "")
 		builder.WriteString(stripDelimitersFrom(clean, wordCountInlineDelimiters))
 	}
 	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")

@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   ALIGNMENT_VALUES,
+  assetPublicIdFromUri,
   BG_COLOR_VALUES,
   BLOCK_KIND_BULLET_PREFIX,
   BLOCK_KIND_NUMBER_PARSE_PATTERN,
@@ -16,6 +17,7 @@ import {
   INLINE_MARKER_TYPES,
   isSafeHref,
   LINK_TARGET_VALUES,
+  MARKDOWN_IMAGE_PATTERN,
   MARKER_ALIGN_ATTR,
   MARKER_BG_COLOR_ATTR,
   MARKER_CLOSE,
@@ -28,6 +30,7 @@ import {
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
   PARSE_DELIMITERS,
+  sanitizeMarkdownImageAlt,
   TEXT_COLOR_VALUES,
   unescapeMarkerComment,
   type AlignmentValue,
@@ -43,6 +46,10 @@ import {
 export interface ParsedRun {
   text: string;
   marks: MarkName[];
+  /** Storyteller 資產圖片：存檔時仍輸出 steamloom-asset://，編輯器內 render 成圖片 node。 */
+  assetPublicId?: string;
+  assetSrc?: string;
+  assetAlt?: string;
   /** 文字前景色（span 行內 marker），沒設定就是 undefined。 */
   textColor?: TextColorValue;
   /** 文字背景色（span 行內 marker），沒設定就是 undefined。 */
@@ -302,6 +309,8 @@ function parseInline(text: string): ParsedRun[] {
 /** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結＋腳注＋註解），normalizeRuns 用來決定能不能合併。 */
 function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
+    !a.assetPublicId &&
+    !b.assetPublicId &&
     a.marks.length === b.marks.length &&
     a.marks.every((mark, i) => mark === b.marks[i]) &&
     a.textColor === b.textColor &&
@@ -464,14 +473,42 @@ function extractMarker(line: string): {
  * 標題／引用／清單三者互斥：只有在沒有標題前綴時才會嘗試比對引用/清單前綴，兩者不會
  * 同時生效（headingLevel > 0 時 blockKind 一律是 "none"）。
  */
-function parseLine(line: string): ParsedParagraph {
+interface ParseLineOptions {
+  enableAssets: boolean;
+}
+
+function parseLine(
+  line: string,
+  options: ParseLineOptions = { enableAssets: true },
+): ParsedParagraph {
   const { headingLevel, content: afterHeading } = extractHeading(line);
   const { blockKind, content: afterBlockKind } =
     headingLevel > 0
       ? { blockKind: DEFAULT_BLOCK_KIND, content: afterHeading }
       : extractBlockKind(afterHeading);
   const { markerId, align, content } = extractMarker(afterBlockKind);
-  const runs = normalizeRuns(parseInline(content));
+  const assetMatch = options.enableAssets
+    ? content.match(MARKDOWN_IMAGE_PATTERN)
+    : null;
+  const assetSrc = assetMatch?.[2] ?? "";
+  const assetPublicId = assetPublicIdFromUri(assetSrc);
+  const safeAssetSrc = assetPublicId
+    ? undefined
+    : isSafeHref(assetSrc)
+      ? assetSrc
+      : undefined;
+  const runs =
+    assetMatch && (assetPublicId || safeAssetSrc)
+      ? [
+          {
+            text: "",
+            marks: [],
+            assetAlt: sanitizeMarkdownImageAlt(assetMatch[1]),
+            assetPublicId: assetPublicId ?? undefined,
+            assetSrc: safeAssetSrc,
+          },
+        ]
+      : normalizeRuns(parseInline(content));
 
   return { markerId, align, headingLevel, blockKind, runs };
 }
@@ -518,8 +555,11 @@ export function stripMarkerForDiffContent(content: string): string {
  * 刻意用原始字串直接 split("\n")，不 trim、不特別處理空字串——要跟
  * `content.split("\n")`（書籤 line_index、版本 diff 用的陣列）逐一對應。
  */
-export function parseMarkdownToParagraphs(markdown: string): ParsedParagraph[] {
-  return markdown.split("\n").map(parseLine);
+export function parseMarkdownToParagraphs(
+  markdown: string,
+  options: ParseLineOptions = { enableAssets: true },
+): ParsedParagraph[] {
+  return markdown.split("\n").map((line) => parseLine(line, options));
 }
 
 /**
@@ -621,7 +661,10 @@ function runToTiptapMarks(
 }
 
 /** 把段落陣列組成 Tiptap 可以直接 setContent 的 doc JSON。 */
-export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
+export function paragraphsToDoc(
+  paragraphs: ParsedParagraph[],
+  projectPublicId = "",
+): JSONContent {
   return {
     type: "doc",
     content: paragraphs.map((paragraph) => ({
@@ -633,8 +676,19 @@ export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
         blockKind: paragraph.blockKind,
       },
       content: paragraph.runs
-        .filter((run) => run.text !== "")
+        .filter((run) => run.text !== "" || run.assetPublicId || run.assetSrc)
         .map((run) => {
+          if (run.assetPublicId || run.assetSrc) {
+            return {
+              type: "assetImage",
+              attrs: {
+                publicId: run.assetPublicId ?? "",
+                src: run.assetSrc ?? "",
+                alt: run.assetAlt ?? "",
+                projectPublicId,
+              },
+            };
+          }
           const marks = runToTiptapMarks(run);
           return {
             type: "text",
@@ -646,6 +700,13 @@ export function paragraphsToDoc(paragraphs: ParsedParagraph[]): JSONContent {
   };
 }
 
-export function markdownToDoc(markdown: string): JSONContent {
-  return paragraphsToDoc(parseMarkdownToParagraphs(markdown));
+export function markdownToDoc(
+  markdown: string,
+  projectPublicId = "",
+  enableAssets = true,
+): JSONContent {
+  return paragraphsToDoc(
+    parseMarkdownToParagraphs(markdown, { enableAssets }),
+    projectPublicId,
+  );
 }

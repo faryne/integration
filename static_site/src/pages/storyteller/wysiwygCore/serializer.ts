@@ -17,9 +17,11 @@ import {
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
   MARK_SYNTAX_WHITELIST,
+  ASSET_URI_PREFIX,
   blockKindPrefix,
   escapeMarkerComment,
   generateInlineMarkerId,
+  sanitizeMarkdownImageAlt,
   type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
@@ -198,15 +200,30 @@ function closeWrapper(wrapper: InlineWrapper, id: string | null): string {
  * 純開關 delimiter 跟帶值 span 行內 marker 都走同一套堆疊邏輯（span 開/關時記得帶上同一個 id）。
  */
 function serializeParagraphInline(paragraph: JSONContent): string {
-  const textNodes = (paragraph.content ?? []).filter(
-    (node) => node.type === "text",
+  const inlineNodes = (paragraph.content ?? []).filter(
+    (node) => node.type === "text" || node.type === "assetImage",
   );
 
   let output = "";
   let openStack: InlineWrapper[] = [];
   let openIds: (string | null)[] = [];
 
-  for (const node of textNodes) {
+  for (const node of inlineNodes) {
+    if (node.type === "assetImage") {
+      for (let i = openStack.length - 1; i >= 0; i--) {
+        output += closeWrapper(openStack[i], openIds[i]);
+      }
+      openStack = [];
+      openIds = [];
+      const alt = sanitizeMarkdownImageAlt(String(node.attrs?.alt ?? ""));
+      const publicId = String(node.attrs?.publicId ?? "");
+      const src = publicId
+        ? `${ASSET_URI_PREFIX}${publicId}`
+        : String(node.attrs?.src ?? "");
+      output += `![${alt}](${src})`;
+      continue;
+    }
+
     const target = wrappersOf(node);
 
     let commonLength = 0;
