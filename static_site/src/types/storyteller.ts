@@ -150,6 +150,7 @@ export interface StorytellerStoryImagePage {
   // 只有作者本人的管理頁（useStorytellerImageStoryPages）會有值，公開／分享閱讀頁
   // 不會回傳——編輯既有話時用來重組完整 JSON 存回去，不用重新上傳沒改過的頁面。
   key?: string;
+  asset_public_id?: string;
   image_url: string;
   description: string;
   sort: number;

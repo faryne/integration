@@ -5,6 +5,7 @@ import (
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"gorm.io/gorm"
 )
 
 func (r *Repository) Assets(projectID uint64, collectionID *uint64, uncategorizedOnly bool, assetType, keyword string, offset, limit int) ([]storytellerModel.Asset, int64, error) {
@@ -39,6 +40,16 @@ func (r *Repository) Asset(projectID uint64, publicID string) (*storytellerModel
 	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
 		First(&row).Error
 	return &row, err
+}
+
+func (r *Repository) AssetsByPublicIDs(projectID uint64, publicIDs []string) ([]storytellerModel.Asset, error) {
+	rows := make([]storytellerModel.Asset, 0)
+	if len(publicIDs) == 0 {
+		return rows, nil
+	}
+	err := r.db.Where("project_id = ? AND public_id IN ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicIDs).
+		Find(&rows).Error
+	return rows, err
 }
 
 func (r *Repository) AssetByS3Key(projectID uint64, key string) (*storytellerModel.Asset, error) {
@@ -98,6 +109,19 @@ func (r *Repository) AssetReferenceCounts(assetIDs []uint64) (map[uint64]int64, 
 		counts[row.AssetID] = row.Count
 	}
 	return counts, nil
+}
+
+func (r *Repository) ReplaceAssetReferences(targetType string, targetID uint64, rows []storytellerModel.AssetReference) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("target_type = ? AND target_id = ?", targetType, targetID).
+			Delete(&storytellerModel.AssetReference{}).Error; err != nil {
+			return err
+		}
+		if len(rows) == 0 {
+			return nil
+		}
+		return tx.Create(&rows).Error
+	})
 }
 
 func (r *Repository) AssetCollections(projectID uint64) ([]storytellerModel.AssetCollection, error) {

@@ -286,9 +286,10 @@ type storytellerUpsertAssetCollectionArguments struct {
 // 不然這頁會被當成全新頁面（書籤等關聯資料會跟舊的 id 對不上）。頁面順序＝陣列順序，
 // 不需要（也不支援）另外帶 sort。
 type storytellerImagePageArguments struct {
-	ID          string `json:"id"`
-	Key         string `json:"key"`
-	Description string `json:"description"`
+	ID            string `json:"id"`
+	Key           string `json:"key"`
+	AssetPublicID string `json:"asset_public_id"`
+	Description   string `json:"description"`
 }
 
 type storytellerUpsertImageStoryArguments struct {
@@ -917,12 +918,12 @@ func (s *Server) registerStorytellerTools() {
 
 	_ = s.RegisterTool(Tool{
 		Name: "storyteller_upsert_image_story",
-		Description: "Step 2: create or update an image story (\"話\") using keys obtained from " +
-			"storyteller_presign_image_upload (after you've actually PUT the file bytes to their upload_url). " +
+		Description: "Step 2: create or update an image story (\"話\") using asset_public_id values from " +
+			"storyteller_confirm_asset_upload, or legacy keys obtained from storyteller_presign_image_upload. " +
 			"Omit story_public_id to create a new one; pass an existing story_public_id to overwrite its pages " +
 			"(this creates a new version, the previous content is not lost). Pages are ordered by their position " +
 			"in the pages array — list them in the order they should appear. When updating an existing story, " +
-			"re-fetch it with storyteller_get_story first and pass back the id/key of any existing pages you want " +
+			"re-fetch it with storyteller_get_story first and pass back the id plus asset_public_id or key of any existing pages you want " +
 			"to keep (in your desired order, mixed in with any new pages); omitting an existing page removes it " +
 			"from the story. content_type is fixed to image and cannot be changed once created.",
 		InputSchema: objectSchema(map[string]interface{}{
@@ -934,16 +935,16 @@ func (s *Server) registerStorytellerTools() {
 			"sort":              integerSchema("Display order among the project's stories."),
 			"pages": map[string]interface{}{
 				"type":        "array",
-				"description": "The pages in display order. Each needs a key from storyteller_presign_image_upload (for existing pages being kept, reuse the key/id storyteller_get_story returned).",
+				"description": "The pages in display order. Each needs either asset_public_id from asset upload/lookup or a legacy key from storyteller_presign_image_upload.",
 				"minItems":    1,
 				"items": map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
-						"id":          stringSchema("Omit for new pages (the server generates one). For an existing page you're keeping, pass back the id storyteller_get_story returned so bookmarks etc. stay attached to it."),
-						"key":         stringSchema("The S3 key for this page: from storyteller_presign_image_upload for a new page, or the existing page's key (from storyteller_get_story) if you're keeping it unchanged."),
-						"description": stringSchema("Optional per-page caption/description text."),
+						"id":              stringSchema("Omit for new pages (the server generates one). For an existing page you're keeping, pass back the id storyteller_get_story returned so bookmarks etc. stay attached to it."),
+						"key":             stringSchema("Legacy S3 key for this page: from storyteller_presign_image_upload for a new page, or the existing page's key if keeping it unchanged."),
+						"asset_public_id": stringSchema("Preferred. Asset public_id belonging to the same project."),
+						"description":     stringSchema("Optional per-page caption/description text."),
 					},
-					"required": []string{"key"},
 				},
 			},
 			"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
@@ -963,18 +964,20 @@ func (s *Server) registerStorytellerTools() {
 			pages := make([]storytellerModel.StoryImagePage, 0, len(args.Pages))
 			for i, page := range args.Pages {
 				key := strings.TrimSpace(page.Key)
-				if key == "" {
-					return nil, fmt.Errorf("pages[%d].key is required", i)
+				assetPublicID := strings.TrimSpace(page.AssetPublicID)
+				if key == "" && assetPublicID == "" {
+					return nil, fmt.Errorf("pages[%d] needs key or asset_public_id", i)
 				}
 				id := strings.TrimSpace(page.ID)
 				if id == "" {
 					id = storytellerRandomPageID()
 				}
 				pages = append(pages, storytellerModel.StoryImagePage{
-					ID:          id,
-					Key:         key,
-					Description: page.Description,
-					Sort:        i,
+					ID:            id,
+					Key:           key,
+					AssetPublicID: assetPublicID,
+					Description:   page.Description,
+					Sort:          i,
 				})
 			}
 			content, err := json.Marshal(storytellerModel.StoryImageContent{Pages: pages})

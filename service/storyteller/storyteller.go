@@ -728,17 +728,16 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	if err := validateStory(input); err != nil {
 		return nil, err
 	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
 	if input.ContentType == storytellerModel.ProjectContentTypeImage {
-		keys, err := imagePageKeys(input.Content)
+		input.Content, err = s.normalizeImageStoryContent(project.ID, input.Content)
 		if err != nil {
 			return nil, err
 		}
-		if err := validateImagePageSizes(keys); err != nil {
-			return nil, err
-		}
-	}
-	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
-	if err != nil {
+	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	}
 	parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
@@ -760,6 +759,13 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	version := buildStoryVersion(*story, source)
 	volumeEvent := volumeMoveEvent(nil, story.ParentID)
 	if err := s.repo.CreateStoryWithVersion(story, version, volumeEvent); err != nil {
+		return nil, err
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		if err := s.syncImageStoryAssetReferences(project.ID, story); err != nil {
+			return nil, err
+		}
+	} else if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetStory, story.ID, story.LatestVersionID, story.LatestContent); err != nil {
 		return nil, err
 	}
 	s.syncStorySearchIndex(project, story)
@@ -786,13 +792,12 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		return nil, false, errors.New("cannot edit a volume through the story endpoint")
 	}
 	if story.ContentType == storytellerModel.ProjectContentTypeImage {
-		keys, err := imagePageKeys(input.Content)
+		input.Content, err = s.normalizeImageStoryContent(project.ID, input.Content)
 		if err != nil {
 			return nil, false, err
 		}
-		if err := validateImagePageSizes(keys); err != nil {
-			return nil, false, err
-		}
+	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+		return nil, false, err
 	}
 	// ParentID == nil 代表這次存檔沒有要動冊隸屬（例如狀態切換、拖曳排序、一般編輯頁存檔），
 	// 維持故事目前的 parent_id 不動；只有明確帶了 parent_id（含空字串代表移出冊）才處理。
@@ -815,6 +820,13 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	version := buildStoryVersion(*story, source)
 	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID, volumeEvent)
 	if err != nil {
+		return nil, false, err
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		if err := s.syncImageStoryAssetReferences(project.ID, story); err != nil {
+			return nil, false, err
+		}
+	} else if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetStory, story.ID, story.LatestVersionID, story.LatestContent); err != nil {
 		return nil, false, err
 	}
 	s.syncStorySearchIndex(project, story)
@@ -879,10 +891,25 @@ func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID stri
 	story.Title = target.Title
 	story.Summary = target.Summary
 	story.LatestContent = target.Content
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		story.LatestContent, err = s.normalizeImageStoryContent(project.ID, story.LatestContent)
+		if err != nil {
+			return nil, err
+		}
+	} else if err := s.validateMarkdownAssetReferences(project.ID, story.LatestContent); err != nil {
+		return nil, err
+	}
 	story.WordCount = target.WordCount
 	version := buildStoryVersion(*story, source)
 	version.RevertedFromVersionID = &target.ID
 	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil, nil); err != nil {
+		return nil, err
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		if err := s.syncImageStoryAssetReferences(project.ID, story); err != nil {
+			return nil, err
+		}
+	} else if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetStory, story.ID, story.LatestVersionID, story.LatestContent); err != nil {
 		return nil, err
 	}
 	s.syncStorySearchIndex(project, story)
@@ -912,6 +939,13 @@ func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID stri
 	}
 	volumeEvent := volumeMoveEvent(story.ParentID, nil)
 	if err := s.repo.DeleteStory(story, volumeEvent); err != nil {
+		return err
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		if err := s.repo.ReplaceAssetReferences(assetReferenceTargetImageStory, story.ID, nil); err != nil {
+			return err
+		}
+	} else if err := s.repo.ReplaceAssetReferences(assetReferenceTargetStory, story.ID, nil); err != nil {
 		return err
 	}
 	s.removeStorySearchDocument(story.PublicID)
@@ -1068,11 +1102,12 @@ func signStoryImageContent(rawContent string, includeKey bool) ([]storytellerMod
 			key = page.Key
 		}
 		outputs = append(outputs, storytellerModel.StoryImagePageOutput{
-			ID:          page.ID,
-			Key:         key,
-			ImageURL:    imageURL,
-			Description: page.Description,
-			Sort:        page.Sort,
+			ID:            page.ID,
+			Key:           key,
+			AssetPublicID: page.AssetPublicID,
+			ImageURL:      imageURL,
+			Description:   page.Description,
+			Sort:          page.Sort,
 		})
 	}
 	sort.Slice(outputs, func(i, j int) bool { return outputs[i].Sort < outputs[j].Sort })
@@ -1143,7 +1178,17 @@ func (s *Service) PublicStoryLatestVersion(projectPublicID, storyPublicID string
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.LatestStoryVersion(story.ID)
+	version, err := s.repo.LatestStoryVersion(story.ID)
+	if err != nil {
+		return nil, err
+	}
+	if story.ContentType != storytellerModel.ProjectContentTypeImage {
+		version.Content, err = s.signAssetURIsInContent(story.ProjectID, version.Content)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return version, nil
 }
 
 func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string, viewerID uint64) ([]storytellerModel.StoryVersion, error) {
@@ -1151,7 +1196,20 @@ func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string, vie
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.StoryVersions(story.ID)
+	rows, err := s.repo.StoryVersions(story.ID)
+	if err != nil {
+		return nil, err
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		return rows, nil
+	}
+	for i := range rows {
+		rows[i].Content, err = s.signAssetURIsInContent(story.ProjectID, rows[i].Content)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return rows, nil
 }
 
 // ProjectStoryBookmarks 组出專案內所有書籤（文字＋圖片混在一起，依 content_type 分開
@@ -1479,6 +1537,9 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err != nil {
 		return nil, err
 	}
+	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+		return nil, err
+	}
 	lore := &storytellerModel.Lore{
 		PublicID:      randomID(),
 		ProjectID:     project.ID,
@@ -1488,6 +1549,9 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	}
 	version := buildLoreVersion(*lore, source)
 	if err := s.repo.CreateLoreWithVersion(lore, version); err != nil {
+		return nil, err
+	}
+	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
 		return nil, err
 	}
 	return lore, nil
@@ -1502,6 +1566,9 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return nil, false, err
 	}
+	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+		return nil, false, err
+	}
 	lore, err = s.repo.Lore(project.ID, lorePublicID)
 	if err != nil {
 		return nil, false, err
@@ -1514,13 +1581,20 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return nil, false, err
 	}
+	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
+		return nil, false, err
+	}
 	return lore, conflicted, nil
 }
 
 // RevertLore 的邏輯跟 RevertStory 一樣：把設定集內容回復到某個舊版本，
 // 當成一次新的存檔寫入，新版本記下 RevertedFromVersionID。
 func (s *Service) RevertLore(userID uint64, projectPublicID, lorePublicID string, targetVersionID uint64, source string) (*storytellerModel.Lore, error) {
-	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore, err := s.repo.Lore(project.ID, lorePublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -1530,10 +1604,16 @@ func (s *Service) RevertLore(userID uint64, projectPublicID, lorePublicID string
 	}
 	lore.Title = target.Title
 	lore.LatestContent = target.Content
+	if err := s.validateMarkdownAssetReferences(project.ID, lore.LatestContent); err != nil {
+		return nil, err
+	}
 	lore.WordCount = target.WordCount
 	version := buildLoreVersion(*lore, source)
 	version.RevertedFromVersionID = &target.ID
 	if _, err := s.repo.UpdateLoreWithVersion(lore, version, nil); err != nil {
+		return nil, err
+	}
+	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
 		return nil, err
 	}
 	return lore, nil
@@ -1548,7 +1628,10 @@ func (s *Service) DeleteLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return err
 	}
-	return s.repo.DeleteLore(lore)
+	if err := s.repo.DeleteLore(lore); err != nil {
+		return err
+	}
+	return s.repo.ReplaceAssetReferences(assetReferenceTargetLore, lore.ID, nil)
 }
 
 func (s *Service) LoreVersions(userID uint64, projectPublicID, lorePublicID string) ([]storytellerModel.LoreVersion, error) {

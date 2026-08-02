@@ -724,10 +724,11 @@ type StoryVolumeRequest struct {
 
 // StoryImagePage 是「話」（Story.ContentType=image）JSON 內容裡的單一頁面。
 type StoryImagePage struct {
-	ID          string `json:"id"`
-	Key         string `json:"key"`
-	Description string `json:"description"`
-	Sort        int    `json:"sort"`
+	ID            string `json:"id"`
+	Key           string `json:"key"`
+	AssetPublicID string `json:"asset_public_id,omitempty"`
+	Description   string `json:"description"`
+	Sort          int    `json:"sort"`
 }
 
 // StoryImageContent 是 Story.LatestContent／StoryVersion.Content 在 ContentType=image
@@ -742,11 +743,12 @@ type StoryImageContent struct {
 // 會填值，用來讓編輯頁重組完整 JSON 存回去；公開／分享閱讀頁（PublicImageStoryPages／
 // SharedImageStoryPages）不會填這個欄位，讀者不需要也不該拿到原始 S3 key。
 type StoryImagePageOutput struct {
-	ID          string `json:"id"`
-	Key         string `json:"key,omitempty"`
-	ImageURL    string `json:"image_url"`
-	Description string `json:"description"`
-	Sort        int    `json:"sort"`
+	ID            string `json:"id"`
+	Key           string `json:"key,omitempty"`
+	AssetPublicID string `json:"asset_public_id,omitempty"`
+	ImageURL      string `json:"image_url"`
+	Description   string `json:"description"`
+	Sort          int    `json:"sort"`
 }
 
 // ImagePageUploadRequest 是 presign 請求，逐檔案帶 content type：一來讓伺服器能驗證
