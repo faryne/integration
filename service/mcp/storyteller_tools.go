@@ -275,6 +275,7 @@ type storytellerUpsertAssetCollectionArguments struct {
 	ProjectPublicID    string `json:"project_public_id"`
 	CollectionPublicID string `json:"collection_public_id"`
 	Name               string `json:"name"`
+	Description        string `json:"description"`
 	Sort               int    `json:"sort"`
 }
 
@@ -821,6 +822,7 @@ func (s *Server) registerStorytellerTools() {
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"name":              stringSchema("Collection name."),
+			"description":       stringSchema("Optional note describing what this asset collection is for."),
 			"sort":              integerSchema("Display order among asset collections."),
 		}, []string{"project_public_id", "name"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
@@ -832,7 +834,7 @@ func (s *Server) registerStorytellerTools() {
 			if err := decodeArguments(arguments, &args); err != nil {
 				return nil, err
 			}
-			collection, err := storytellerService.NewService().CreateAssetCollection(userID, args.ProjectPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Sort: args.Sort})
+			collection, err := storytellerService.NewService().CreateAssetCollection(userID, args.ProjectPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Description: args.Description, Sort: args.Sort})
 			if err != nil {
 				return nil, err
 			}
@@ -847,6 +849,7 @@ func (s *Server) registerStorytellerTools() {
 			"project_public_id":    stringSchema("Project public_id."),
 			"collection_public_id": stringSchema("Asset collection public_id."),
 			"name":                 stringSchema("Collection name."),
+			"description":          stringSchema("Optional note describing what this asset collection is for."),
 			"sort":                 integerSchema("Display order among asset collections."),
 		}, []string{"project_public_id", "collection_public_id", "name"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
@@ -858,7 +861,7 @@ func (s *Server) registerStorytellerTools() {
 			if err := decodeArguments(arguments, &args); err != nil {
 				return nil, err
 			}
-			collection, err := storytellerService.NewService().UpdateAssetCollection(userID, args.ProjectPublicID, args.CollectionPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Sort: args.Sort})
+			collection, err := storytellerService.NewService().UpdateAssetCollection(userID, args.ProjectPublicID, args.CollectionPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Description: args.Description, Sort: args.Sort})
 			if err != nil {
 				return nil, err
 			}

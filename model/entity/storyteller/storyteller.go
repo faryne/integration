@@ -230,15 +230,16 @@ type Asset struct {
 func (Asset) TableName() string { return "storyteller_assets" }
 
 type AssetCollection struct {
-	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
-	PublicID  string     `gorm:"column:public_id" json:"public_id"`
-	ProjectID uint64     `gorm:"column:project_id" json:"project_id"`
-	Name      string     `gorm:"column:name" json:"name"`
-	Sort      int        `gorm:"column:sort" json:"sort"`
-	IsDeleted bool       `gorm:"column:is_deleted" json:"-"`
-	DeletedAt *time.Time `gorm:"column:deleted_at" json:"-"`
-	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID   uint64     `gorm:"column:project_id" json:"project_id"`
+	Name        string     `gorm:"column:name" json:"name"`
+	Description *string    `gorm:"column:description" json:"description"`
+	Sort        int        `gorm:"column:sort" json:"sort"`
+	IsDeleted   bool       `gorm:"column:is_deleted" json:"-"`
+	DeletedAt   *time.Time `gorm:"column:deleted_at" json:"-"`
+	CreatedAt   time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AssetCollection) TableName() string { return "storyteller_asset_collections" }
@@ -801,8 +802,9 @@ type AssetMoveRequest struct {
 }
 
 type AssetCollectionRequest struct {
-	Name string `json:"name"`
-	Sort int    `json:"sort"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Sort        int    `json:"sort"`
 }
 
 type AssetOutput struct {
@@ -833,14 +835,15 @@ type AssetPageOutput struct {
 }
 
 type AssetCollectionOutput struct {
-	ID         uint64    `json:"id"`
-	PublicID   string    `json:"public_id"`
-	ProjectID  uint64    `json:"project_id"`
-	Name       string    `json:"name"`
-	Sort       int       `json:"sort"`
-	AssetCount int64     `json:"asset_count"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID          uint64    `json:"id"`
+	PublicID    string    `json:"public_id"`
+	ProjectID   uint64    `json:"project_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Sort        int       `json:"sort"`
+	AssetCount  int64     `json:"asset_count"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type LoreRequest struct {

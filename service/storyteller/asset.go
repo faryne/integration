@@ -454,11 +454,13 @@ func (s *Service) CreateAssetCollection(userID uint64, projectPublicID string, i
 	if name == "" {
 		return nil, errors.New("collection name is required")
 	}
+	description := strings.TrimSpace(input.Description)
 	row := &storytellerModel.AssetCollection{
-		PublicID:  randomID(),
-		ProjectID: project.ID,
-		Name:      name,
-		Sort:      input.Sort,
+		PublicID:    randomID(),
+		ProjectID:   project.ID,
+		Name:        name,
+		Description: &description,
+		Sort:        input.Sort,
 	}
 	if err := s.repo.CreateAssetCollection(row); err != nil {
 		return nil, err
@@ -480,7 +482,9 @@ func (s *Service) UpdateAssetCollection(userID uint64, projectPublicID, collecti
 	if name == "" {
 		return nil, errors.New("collection name is required")
 	}
+	description := strings.TrimSpace(input.Description)
 	row.Name = name
+	row.Description = &description
 	row.Sort = input.Sort
 	if err := s.repo.UpdateAssetCollection(row); err != nil {
 		return nil, err
@@ -514,13 +518,21 @@ func (s *Service) DeleteAssetCollection(userID uint64, projectPublicID, collecti
 
 func assetCollectionOutput(row storytellerModel.AssetCollection, assetCount int64) storytellerModel.AssetCollectionOutput {
 	return storytellerModel.AssetCollectionOutput{
-		ID:         row.ID,
-		PublicID:   row.PublicID,
-		ProjectID:  row.ProjectID,
-		Name:       row.Name,
-		Sort:       row.Sort,
-		AssetCount: assetCount,
-		CreatedAt:  row.CreatedAt,
-		UpdatedAt:  row.UpdatedAt,
+		ID:          row.ID,
+		PublicID:    row.PublicID,
+		ProjectID:   row.ProjectID,
+		Name:        row.Name,
+		Description: assetCollectionDescription(row.Description),
+		Sort:        row.Sort,
+		AssetCount:  assetCount,
+		CreatedAt:   row.CreatedAt,
+		UpdatedAt:   row.UpdatedAt,
 	}
+}
+
+func assetCollectionDescription(description *string) string {
+	if description == nil {
+		return ""
+	}
+	return strings.TrimSpace(*description)
 }

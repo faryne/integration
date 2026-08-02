@@ -185,6 +185,7 @@ export interface StorytellerAssetCollection {
   public_id: string;
   project_id: number;
   name: string;
+  description: string;
   sort: number;
   asset_count: number;
   created_at: string;
@@ -193,6 +194,7 @@ export interface StorytellerAssetCollection {
 
 export interface StorytellerAssetCollectionRequest {
   name: string;
+  description: string;
   sort: number;
 }
 

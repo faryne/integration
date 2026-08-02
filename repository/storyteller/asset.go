@@ -120,7 +120,7 @@ func (r *Repository) CreateAssetCollection(row *storytellerModel.AssetCollection
 }
 
 func (r *Repository) UpdateAssetCollection(row *storytellerModel.AssetCollection) error {
-	return r.db.Model(row).Updates(map[string]any{"name": row.Name, "sort": row.Sort}).Error
+	return r.db.Model(row).Updates(map[string]any{"name": row.Name, "description": row.Description, "sort": row.Sort}).Error
 }
 
 func (r *Repository) DeleteAssetCollection(row *storytellerModel.AssetCollection) error {

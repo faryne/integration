@@ -1,10 +1,12 @@
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditIcon from "@mui/icons-material/Edit";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
 import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {
   Box,
@@ -29,8 +31,10 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material";
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import {
   useDeleteStorytellerAssetCollection,
   useDeleteStorytellerAsset,
@@ -105,7 +109,23 @@ function collectionForm(
 ): StorytellerAssetCollectionRequest {
   return {
     name: collection?.name ?? "",
+    description: collection?.description ?? "",
     sort: collection?.sort ?? 0,
+  };
+}
+
+function dropTargetSx(active: boolean): SxProps<Theme> {
+  return {
+    borderRadius: 1,
+    outline: active ? "2px solid" : "1px dashed transparent",
+    outlineColor: active ? "primary.main" : "transparent",
+    outlineOffset: 2,
+    bgcolor: active ? "action.selected" : "transparent",
+    transition: "background-color 120ms ease, outline-color 120ms ease",
+    "&:hover": {
+      outlineColor: "primary.main",
+      bgcolor: "action.hover",
+    },
   };
 }
 
@@ -141,6 +161,13 @@ export function StorytellerAssetManager({
   const [deleteTarget, setDeleteTarget] = useState<StorytellerAsset | null>(
     null,
   );
+  const [draggingAsset, setDraggingAsset] = useState<StorytellerAsset | null>(
+    null,
+  );
+  const [assetMoveMenu, setAssetMoveMenu] = useState<{
+    anchorEl: HTMLElement;
+    asset: StorytellerAsset;
+  } | null>(null);
   const [uploadMenuAnchor, setUploadMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -208,7 +235,11 @@ export function StorytellerAssetManager({
 
   function openCreateCollection() {
     setEditingCollection(null);
-    setCollectionFormData({ name: "", sort: collections.length * 10 });
+    setCollectionFormData({
+      name: "",
+      description: "",
+      sort: collections.length * 10,
+    });
     setCollectionDialogOpen(true);
   }
 
@@ -264,6 +295,7 @@ export function StorytellerAssetManager({
 
   async function moveAssetTo(asset: StorytellerAsset, collectionId: string) {
     if ((asset.collection_id ?? "") === collectionId) {
+      setAssetMoveMenu(null);
       return;
     }
     try {
@@ -271,6 +303,7 @@ export function StorytellerAssetManager({
         assetPublicId: asset.public_id,
         collectionId,
       });
+      setAssetMoveMenu(null);
       setSnack({ message: "資產已移動。", severity: "success" });
     } catch (error) {
       setSnack({
@@ -278,6 +311,43 @@ export function StorytellerAssetManager({
         severity: "error",
       });
     }
+  }
+
+  function canDropDraggingAsset(collectionId: string) {
+    return Boolean(
+      draggingAsset && (draggingAsset.collection_id ?? "") !== collectionId,
+    );
+  }
+
+  function handleAssetDragStart(
+    event: DragEvent<HTMLElement>,
+    asset: StorytellerAsset,
+  ) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", asset.public_id);
+    setDraggingAsset(asset);
+  }
+
+  function handleCollectionDragOver(
+    event: DragEvent<HTMLElement>,
+    collectionId: string,
+  ) {
+    if (!canDropDraggingAsset(collectionId)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleCollectionDrop(
+    event: DragEvent<HTMLElement>,
+    collectionId: string,
+  ) {
+    event.preventDefault();
+    if (draggingAsset) {
+      void moveAssetTo(draggingAsset, collectionId);
+    }
+    setDraggingAsset(null);
   }
 
   async function handleFiles(files: FileList | null) {
@@ -401,6 +471,12 @@ export function StorytellerAssetManager({
     setUploadMenuAnchor(null);
     fileInputRef.current?.click();
   };
+  const assetCollectionName = (asset: StorytellerAsset) =>
+    asset.collection_id
+      ? (collections.find(
+          (collection) => collection.public_id === asset.collection_id,
+        )?.name ?? "資產集")
+      : "未分類";
 
   return (
     <Stack spacing={2.5}>
@@ -482,6 +558,48 @@ export function StorytellerAssetManager({
         </Stack>
       </Stack>
 
+      <Menu
+        anchorEl={assetMoveMenu?.anchorEl ?? null}
+        open={Boolean(assetMoveMenu)}
+        onClose={() => setAssetMoveMenu(null)}
+      >
+        <MenuItem
+          disabled={
+            moveAsset.isPending ||
+            (assetMoveMenu?.asset.collection_id ?? "") === ""
+          }
+          onClick={() =>
+            assetMoveMenu && void moveAssetTo(assetMoveMenu.asset, "")
+          }
+        >
+          <ListItemIcon>
+            <FolderIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>移到未分類</ListItemText>
+        </MenuItem>
+        {collections.map((collection) => (
+          <MenuItem
+            key={collection.public_id}
+            disabled={
+              moveAsset.isPending ||
+              assetMoveMenu?.asset.collection_id === collection.public_id
+            }
+            onClick={() =>
+              assetMoveMenu &&
+              void moveAssetTo(assetMoveMenu.asset, collection.public_id)
+            }
+          >
+            <ListItemIcon>
+              <FolderIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary={collection.name}
+              secondary={collection.description || undefined}
+            />
+          </MenuItem>
+        ))}
+      </Menu>
+
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
           size="small"
@@ -494,51 +612,73 @@ export function StorytellerAssetManager({
         >
           全部
         </Button>
-        <Button
-          size="small"
-          variant={
-            activeCollectionId === uncategorizedCollectionId
-              ? "contained"
-              : "outlined"
-          }
-          onClick={() => {
-            setActiveCollectionId(uncategorizedCollectionId);
-            setPage(1);
-          }}
-        >
-          未分類
-        </Button>
+        <Tooltip title="可將資產拖曳到這裡，移到未分類">
+          <Button
+            size="small"
+            variant={
+              activeCollectionId === uncategorizedCollectionId
+                ? "contained"
+                : "outlined"
+            }
+            startIcon={<DragIndicatorIcon />}
+            onDragOver={(event) => handleCollectionDragOver(event, "")}
+            onDrop={(event) => handleCollectionDrop(event, "")}
+            onClick={() => {
+              setActiveCollectionId(uncategorizedCollectionId);
+              setPage(1);
+            }}
+            sx={dropTargetSx(canDropDraggingAsset(""))}
+          >
+            未分類
+          </Button>
+        </Tooltip>
         {collections.map((collection) => (
           <ButtonGroup
             key={collection.public_id}
             size="small"
+            onDragOver={(event) =>
+              handleCollectionDragOver(event, collection.public_id)
+            }
+            onDrop={(event) =>
+              handleCollectionDrop(event, collection.public_id)
+            }
             variant={
               activeCollectionId === collection.public_id
                 ? "contained"
                 : "outlined"
             }
+            sx={dropTargetSx(canDropDraggingAsset(collection.public_id))}
           >
-            <Button
-              onClick={() => {
-                setActiveCollectionId(collection.public_id);
-                setPage(1);
-              }}
-              sx={{ maxWidth: 220 }}
+            <Tooltip
+              title={
+                collection.description
+                  ? `可將資產拖曳到「${collection.name}」。用途：${collection.description}`
+                  : `可將資產拖曳到「${collection.name}」`
+              }
             >
-              <Box
-                component="span"
-                sx={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+              <Button
+                onClick={() => {
+                  setActiveCollectionId(collection.public_id);
+                  setPage(1);
                 }}
+                sx={{ maxWidth: 220 }}
               >
-                {collection.name}
-              </Box>
-              <Box component="span" sx={{ ml: 0.75, opacity: 0.72 }}>
-                {collection.asset_count}
-              </Box>
-            </Button>
+                <DragIndicatorIcon fontSize="small" sx={{ mr: 0.5 }} />
+                <Box
+                  component="span"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {collection.name}
+                </Box>
+                <Box component="span" sx={{ ml: 0.75, opacity: 0.72 }}>
+                  {collection.asset_count}
+                </Box>
+              </Button>
+            </Tooltip>
             <Tooltip title="編輯資產集">
               <Button onClick={() => openEditCollection(collection)}>
                 <EditIcon fontSize="small" />
@@ -551,15 +691,13 @@ export function StorytellerAssetManager({
                   : "刪除資產集"
               }
             >
-              <span>
-                <Button
-                  color="error"
-                  disabled={collection.asset_count > 0}
-                  onClick={() => setCollectionDeleteTarget(collection)}
-                >
-                  <DeleteIcon fontSize="small" />
-                </Button>
-              </span>
+              <Button
+                color="error"
+                disabled={collection.asset_count > 0}
+                onClick={() => setCollectionDeleteTarget(collection)}
+              >
+                <DeleteIcon fontSize="small" />
+              </Button>
             </Tooltip>
           </ButtonGroup>
         ))}
@@ -631,37 +769,156 @@ export function StorytellerAssetManager({
         <Grid container spacing={2}>
           {assets.map((asset) => (
             <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  borderRadius: 1,
-                  overflow: "hidden",
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
+              <Tooltip
+                title="可拖曳到上方資產集移動"
+                enterDelay={450}
+                disableInteractive
               >
-                <Box
-                  component="img"
-                  src={asset.preview_url}
-                  alt={asset.alt_text || asset.title || asset.original_filename}
+                <Paper
+                  variant="outlined"
+                  draggable
+                  onDragStart={(event) => handleAssetDragStart(event, asset)}
+                  onDragEnd={() => setDraggingAsset(null)}
                   sx={{
-                    width: "100%",
-                    aspectRatio: "16 / 10",
-                    objectFit: "cover",
-                    bgcolor: "background.default",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    cursor: "grab",
+                    opacity:
+                      draggingAsset?.public_id === asset.public_id ? 0.55 : 1,
                   }}
-                />
-                <Stack spacing={1.25} sx={{ p: 1.5, flex: 1 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="flex-start"
-                    justifyContent="space-between"
-                  >
-                    <Stack sx={{ minWidth: 0 }}>
+                >
+                  <Box
+                    component="img"
+                    src={asset.preview_url}
+                    alt={
+                      asset.alt_text || asset.title || asset.original_filename
+                    }
+                    sx={{
+                      width: "100%",
+                      aspectRatio: "16 / 10",
+                      objectFit: "cover",
+                      bgcolor: "background.default",
+                    }}
+                  />
+                  <Stack spacing={1.25} sx={{ p: 1.5, flex: 1 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="flex-start"
+                      justifyContent="space-between"
+                    >
+                      <Stack sx={{ minWidth: 0 }}>
+                        <Typography
+                          fontWeight={800}
+                          sx={{
+                            overflowWrap: "anywhere",
+                            display: "-webkit-box",
+                            WebkitBoxOrient: "vertical",
+                            WebkitLineClamp: 2,
+                            overflow: "hidden",
+                          }}
+                        >
+                          {asset.title ||
+                            asset.original_filename ||
+                            "未命名資產"}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatStorytellerDate(asset.created_at)}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={0.5}>
+                        <Tooltip title="拖曳卡片到上方資產集可移動">
+                          <Box
+                            sx={{
+                              width: 30,
+                              height: 30,
+                              display: "grid",
+                              placeItems: "center",
+                              color: "text.secondary",
+                              cursor: "grab",
+                              borderRadius: 1,
+                              "&:hover": {
+                                bgcolor: "action.hover",
+                                color: "primary.main",
+                              },
+                            }}
+                          >
+                            <DragIndicatorIcon fontSize="small" />
+                          </Box>
+                        </Tooltip>
+                        <Tooltip title="編輯資產資訊">
+                          <IconButton
+                            size="small"
+                            onClick={() => openEdit(asset)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip
+                          title={
+                            asset.reference_count > 0
+                              ? "仍被作品引用，不能刪除"
+                              : "刪除資產"
+                          }
+                        >
+                          <span>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              disabled={asset.reference_count > 0}
+                              onClick={() => setDeleteTarget(asset)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="移動資產">
+                          <IconButton
+                            size="small"
+                            onClick={(event) =>
+                              setAssetMoveMenu({
+                                anchorEl: event.currentTarget,
+                                asset,
+                              })
+                            }
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
+                      <Chip
+                        size="small"
+                        icon={<FolderIcon />}
+                        label={assetCollectionName(asset)}
+                      />
+                      <Chip size="small" label={asset.mime_type} />
+                      <Chip
+                        size="small"
+                        label={formatFileSize(asset.file_size)}
+                      />
+                      <Chip size="small" label={imageSizeLabel(asset)} />
+                      {asset.reference_count > 0 && (
+                        <Chip
+                          size="small"
+                          color="warning"
+                          label={`引用 ${asset.reference_count}`}
+                        />
+                      )}
+                    </Stack>
+                    {asset.description.trim() && (
                       <Typography
-                        fontWeight={800}
+                        variant="body2"
+                        color="text.secondary"
                         sx={{
                           overflowWrap: "anywhere",
                           display: "-webkit-box",
@@ -670,93 +927,12 @@ export function StorytellerAssetManager({
                           overflow: "hidden",
                         }}
                       >
-                        {asset.title || asset.original_filename || "未命名資產"}
+                        {asset.description}
                       </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatStorytellerDate(asset.created_at)}
-                      </Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={0.5}>
-                      <Tooltip title="編輯資產資訊">
-                        <IconButton
-                          size="small"
-                          onClick={() => openEdit(asset)}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip
-                        title={
-                          asset.reference_count > 0
-                            ? "仍被作品引用，不能刪除"
-                            : "刪除資產"
-                        }
-                      >
-                        <span>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            disabled={asset.reference_count > 0}
-                            onClick={() => setDeleteTarget(asset)}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </Stack>
-                  </Stack>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Chip size="small" label={asset.mime_type} />
-                    <Chip
-                      size="small"
-                      label={formatFileSize(asset.file_size)}
-                    />
-                    <Chip size="small" label={imageSizeLabel(asset)} />
-                    {asset.reference_count > 0 && (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={`引用 ${asset.reference_count}`}
-                      />
                     )}
                   </Stack>
-                  <TextField
-                    select
-                    size="small"
-                    label="所屬資產集"
-                    value={asset.collection_id ?? ""}
-                    disabled={moveAsset.isPending}
-                    onChange={(event) =>
-                      void moveAssetTo(asset, event.target.value)
-                    }
-                  >
-                    <MenuItem value="">未分類</MenuItem>
-                    {collections.map((collection) => (
-                      <MenuItem
-                        key={collection.public_id}
-                        value={collection.public_id}
-                      >
-                        {collection.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  {asset.description.trim() && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{
-                        overflowWrap: "anywhere",
-                        display: "-webkit-box",
-                        WebkitBoxOrient: "vertical",
-                        WebkitLineClamp: 2,
-                        overflow: "hidden",
-                      }}
-                    >
-                      {asset.description}
-                    </Typography>
-                  )}
-                </Stack>
-              </Paper>
+                </Paper>
+              </Tooltip>
             </Grid>
           ))}
         </Grid>
@@ -848,6 +1024,18 @@ export function StorytellerAssetManager({
                 setCollectionFormData((current) => ({
                   ...current,
                   name: event.target.value,
+                }))
+              }
+            />
+            <TextField
+              label="用途筆記"
+              value={collectionFormData.description}
+              multiline
+              minRows={3}
+              onChange={(event) =>
+                setCollectionFormData((current) => ({
+                  ...current,
+                  description: event.target.value,
                 }))
               }
             />
