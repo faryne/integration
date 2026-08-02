@@ -1,3 +1,4 @@
+import ImageIcon from "@mui/icons-material/Image";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
@@ -54,6 +55,8 @@ import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
+import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { storytellerAssetMarkdown } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
@@ -74,6 +77,7 @@ import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parse
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
+  StorytellerAsset,
   StorytellerStoryChatMessage,
 } from "@/types/storyteller.ts";
 
@@ -247,6 +251,7 @@ export default function StorytellerStoryEditor() {
     isHistoryRoute ? "history" : null,
   );
   const [content, setContent] = useState(story?.content ?? "");
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [replyTarget, setReplyTarget] =
     useState<StorytellerAgentPanelMessage | null>(null);
@@ -758,6 +763,16 @@ export default function StorytellerStoryEditor() {
     }
   }
 
+  function insertAsset(asset: StorytellerAsset) {
+    setContent(
+      (current) =>
+        `${current.trimEnd()}${current.trim() ? "\n\n" : ""}${storytellerAssetMarkdown(asset)}`,
+    );
+    setAssetPickerOpen(false);
+    setSaveMessage("已插入資產。");
+    setSaveMessageVisible(true);
+  }
+
   function handleSaveStory() {
     if (!apiProject?.public_id) {
       lastSavedDraftRef.current = currentDraftRef.current;
@@ -1104,10 +1119,20 @@ export default function StorytellerStoryEditor() {
             onChange={setContent}
             exportBaseName={storyTitle}
             toolbarExtra={
-              <StorytellerEditorSideTabs
-                value={sidePanel}
-                onChange={handleSidePanelChange}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  size="small"
+                  startIcon={<ImageIcon />}
+                  disabled={!apiProject}
+                  onClick={() => setAssetPickerOpen(true)}
+                >
+                  插入資產
+                </Button>
+                <StorytellerEditorSideTabs
+                  value={sidePanel}
+                  onChange={handleSidePanelChange}
+                />
+              </Stack>
             }
           />
         </Grid>
@@ -1294,6 +1319,13 @@ export default function StorytellerStoryEditor() {
           </Grid>
         )}
       </Grid>
+      <StorytellerAssetPickerDialog
+        open={assetPickerOpen}
+        projectPublicId={apiProject?.public_id}
+        title="插入故事資產"
+        onClose={() => setAssetPickerOpen(false)}
+        onSelect={insertAsset}
+      />
     </StorytellerShell>
   );
 }

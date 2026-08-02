@@ -1,3 +1,4 @@
+import ImageIcon from "@mui/icons-material/Image";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
@@ -54,6 +55,8 @@ import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
+import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { storytellerAssetMarkdown } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
@@ -71,6 +74,7 @@ import {
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 const aiMessagesPerPage = 10;
 const autoSaveIntervalMinutesMin = 2;
@@ -142,6 +146,7 @@ export default function StorytellerLoreEditor() {
   const [rightVersionId, setRightVersionId] = useState("");
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   // 只存在這次編輯 session，不落 DB：初始值取自 profile 的全域預設，使用者可以依當次需要另外調整
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [autoSaveIntervalMinutes, setAutoSaveIntervalMinutes] = useState(
@@ -569,6 +574,15 @@ export default function StorytellerLoreEditor() {
     return <ErrorPage code={404} />;
   }
 
+  function insertAsset(asset: StorytellerAsset) {
+    setContent(
+      (current) =>
+        `${current.trimEnd()}${current.trim() ? "\n\n" : ""}${storytellerAssetMarkdown(asset)}`,
+    );
+    setAssetPickerOpen(false);
+    showSnack("已插入資產。");
+  }
+
   function handleSave() {
     const projectID = project?.id;
     if (!projectID) {
@@ -854,11 +868,21 @@ export default function StorytellerLoreEditor() {
             onChange={setContent}
             exportBaseName={title}
             toolbarExtra={
-              <StorytellerEditorSideTabs
-                value={sidePanel}
-                onChange={setSidePanel}
-                historyDisabled={isNewLore}
-              />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Button
+                  size="small"
+                  startIcon={<ImageIcon />}
+                  disabled={!project}
+                  onClick={() => setAssetPickerOpen(true)}
+                >
+                  插入資產
+                </Button>
+                <StorytellerEditorSideTabs
+                  value={sidePanel}
+                  onChange={setSidePanel}
+                  historyDisabled={isNewLore}
+                />
+              </Stack>
             }
           />
         </Grid>
@@ -1051,6 +1075,13 @@ export default function StorytellerLoreEditor() {
         message={snack}
         severity={snackSeverity}
         onClose={() => setSnack("")}
+      />
+      <StorytellerAssetPickerDialog
+        open={assetPickerOpen}
+        projectPublicId={apiProject?.public_id}
+        title="插入設定資產"
+        onClose={() => setAssetPickerOpen(false)}
+        onSelect={insertAsset}
       />
     </StorytellerShell>
   );

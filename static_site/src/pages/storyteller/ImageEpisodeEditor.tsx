@@ -18,15 +18,14 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import axios from "axios";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  usePresignStorytellerImageUpload,
   useSaveStorytellerStory,
   useStorytellerImageStoryPages,
   useStorytellerProjects,
   useStorytellerStories,
+  useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
@@ -43,7 +42,9 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 interface PendingPage {
   id: string;
@@ -52,13 +53,12 @@ interface PendingPage {
   file?: File;
   previewUrl: string;
   description: string;
+  // 新流程以資產 public id 串接圖像頁；舊資料仍可能只有 uploadedKey。
+  assetPublicId?: string;
   // 這一頁成功上傳到 S3 後記錄下來的 object key；既有頁面載入當下就有，
   // 重試時也用這個判斷哪些頁不用重新上傳。
   uploadedKey?: string;
 }
-
-// 同時間最多幾個上傳中的 PUT 請求，避免使用者一次選幾十張圖時全部同時發出去。
-const uploadConcurrency = 3;
 
 export default function StorytellerImageEpisodeEditor() {
   const { id, episodeId } = useParams();
@@ -87,7 +87,7 @@ export default function StorytellerImageEpisodeEditor() {
   );
 
   const saveStory = useSaveStorytellerStory(project?.public_id);
-  const presignUpload = usePresignStorytellerImageUpload(project?.public_id);
+  const uploadAssets = useUploadStorytellerAssets(project?.public_id);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -97,6 +97,7 @@ export default function StorytellerImageEpisodeEditor() {
   const [dragOver, setDragOver] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [progress, setProgress] = useState<
     Record<string, { loaded: number; total: number }>
   >({});
@@ -119,6 +120,7 @@ export default function StorytellerImageEpisodeEditor() {
         id: page.id,
         previewUrl: page.image_url,
         description: page.description,
+        assetPublicId: page.asset_public_id,
         uploadedKey: page.key,
       })),
     );
@@ -262,6 +264,25 @@ export default function StorytellerImageEpisodeEditor() {
     setPages((current) => [...current, ...nextPages]);
   }
 
+  function addAssetPage(asset: StorytellerAsset) {
+    if (pages.length >= STORYTELLER_IMAGE_PAGE_MAX_COUNT) {
+      setFileWarning(`一話最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 頁`);
+      setAssetPickerOpen(false);
+      return;
+    }
+    setPages((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        previewUrl: asset.preview_url,
+        description: "",
+        assetPublicId: asset.public_id,
+      },
+    ]);
+    setFileWarning(null);
+    setAssetPickerOpen(false);
+  }
+
   function removePage(pageId: string) {
     setPages((current) => {
       const target = current.find((page) => page.id === pageId);
@@ -302,67 +323,50 @@ export default function StorytellerImageEpisodeEditor() {
     setPhase("uploading");
     setUploadError(null);
     try {
-      // 只上傳還沒成功過的頁面——重試時已經上傳好的頁面不用重來。
+      // 只上傳還沒建立資產的本機頁面——重試時已經拿到 asset_public_id/key 的頁面不用重來。
       const pendingIndexes = pages
-        .map((page, index) => (page.uploadedKey ? null : index))
+        .map((page, index) =>
+          page.assetPublicId || page.uploadedKey ? null : index,
+        )
         .filter((index): index is number => index !== null);
 
-      // resolvedKeys 是函式內的本地變數，不能靠讀 pages state 組最後的 content——
+      // resolvedAssetIds/resolvedKeys 是函式內的本地變數，不能靠讀 pages state 組最後的 content——
       // 同一次函式執行內看不到自己剛 setPages 寫回去的結果，會讀到舊的快照。
+      const resolvedAssetIds = pages.map((page) => page.assetPublicId);
       const resolvedKeys = pages.map((page) => page.uploadedKey);
 
       if (pendingIndexes.length > 0) {
-        const uploads = await presignUpload.mutateAsync(
-          pendingIndexes.map((pageIndex) => pages[pageIndex].file!.type),
-        );
-        let cursor = 0;
-        async function worker() {
-          while (cursor < pendingIndexes.length) {
-            const uploadIndex = cursor++;
-            const pageIndex = pendingIndexes[uploadIndex];
-            const page = pages[pageIndex];
-            const target = uploads[uploadIndex];
-            // pendingIndexes 只挑「沒有 uploadedKey」的頁面，這種頁面一定是透過
-            // addFiles 新增的、一定有 file——既有頁面載入時就帶著 uploadedKey，
-            // 不會落在這裡；這裡防禦性擋一下，避免資料流一旦出錯就整支炸掉。
-            if (!page.file) {
-              continue;
-            }
-            const file = page.file;
-            await axios.put(target.upload_url, file, {
-              headers: { "Content-Type": file.type },
-              onUploadProgress: (event) => {
-                setProgress((current) => ({
-                  ...current,
-                  [page.id]: {
-                    loaded: event.loaded,
-                    total: event.total ?? file.size,
-                  },
-                }));
-              },
-            });
-            resolvedKeys[pageIndex] = target.key;
-            setPages((current) =>
-              current.map((item, index) =>
-                index === pageIndex
-                  ? { ...item, uploadedKey: target.key }
-                  : item,
-              ),
-            );
-          }
+        const uploadedAssets = await uploadAssets.mutateAsync({
+          files: pendingIndexes.map((pageIndex) => pages[pageIndex].file!),
+          onProgress: (uploadIndex, loaded, total) => {
+            const page = pages[pendingIndexes[uploadIndex]];
+            setProgress((current) => ({
+              ...current,
+              [page.id]: { loaded, total },
+            }));
+          },
+        });
+        uploadedAssets.forEach((asset, uploadIndex) => {
+          const pageIndex = pendingIndexes[uploadIndex];
+          resolvedAssetIds[pageIndex] = asset.public_id;
+          setPages((current) =>
+            current.map((item, index) =>
+              index === pageIndex
+                ? { ...item, assetPublicId: asset.public_id }
+                : item,
+            ),
+          );
+        });
+        if (uploadedAssets.length !== pendingIndexes.length) {
+          throw new Error("部分圖片沒有完成資產建立，請重試。");
         }
-        await Promise.all(
-          Array.from(
-            { length: Math.min(uploadConcurrency, pendingIndexes.length) },
-            worker,
-          ),
-        );
       }
 
       const content = JSON.stringify({
         pages: pages.map((page, index) => ({
           id: page.id,
-          key: resolvedKeys[index],
+          key: resolvedKeys[index] || undefined,
+          asset_public_id: resolvedAssetIds[index] || undefined,
           description: page.description,
           sort: index,
         })),
@@ -399,7 +403,7 @@ export default function StorytellerImageEpisodeEditor() {
     0,
   );
   const uploadedBytes = pages.reduce((sum, page) => {
-    if (page.uploadedKey) {
+    if (page.assetPublicId || page.uploadedKey) {
       return sum + (page.file?.size ?? 0);
     }
     const pageProgress = progress[page.id];
@@ -500,6 +504,16 @@ export default function StorytellerImageEpisodeEditor() {
                   onChange={(event) => addFiles(event.target.files)}
                 />
               </Box>
+              <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<CollectionsIcon />}
+                  disabled={isSubmitting}
+                  onClick={() => setAssetPickerOpen(true)}
+                >
+                  從資產集加入
+                </Button>
+              </Stack>
               {pages.length > 0 && (
                 <Stack
                   direction="row"
@@ -613,13 +627,14 @@ export default function StorytellerImageEpisodeEditor() {
                 <Stack spacing={1}>
                   {pages.map((page, index) => {
                     const pageProgress = progress[page.id];
-                    const percent = page.uploadedKey
-                      ? 100
-                      : pageProgress
-                        ? Math.round(
-                            (pageProgress.loaded / pageProgress.total) * 100,
-                          )
-                        : 0;
+                    const percent =
+                      page.assetPublicId || page.uploadedKey
+                        ? 100
+                        : pageProgress
+                          ? Math.round(
+                              (pageProgress.loaded / pageProgress.total) * 100,
+                            )
+                          : 0;
                     return (
                       <Box key={page.id}>
                         <Stack
@@ -692,6 +707,13 @@ export default function StorytellerImageEpisodeEditor() {
           <Button onClick={() => setEditingPageId(null)}>完成</Button>
         </DialogActions>
       </Dialog>
+      <StorytellerAssetPickerDialog
+        open={assetPickerOpen}
+        projectPublicId={project.public_id}
+        title="從資產集加入頁面"
+        onClose={() => setAssetPickerOpen(false)}
+        onSelect={addAssetPage}
+      />
     </StorytellerShell>
   );
 }
