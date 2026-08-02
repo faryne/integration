@@ -830,25 +830,6 @@ export function StorytellerAssetManager({
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="拖曳卡片到上方資產集可移動">
-                          <Box
-                            sx={{
-                              width: 30,
-                              height: 30,
-                              display: "grid",
-                              placeItems: "center",
-                              color: "text.secondary",
-                              cursor: "grab",
-                              borderRadius: 1,
-                              "&:hover": {
-                                bgcolor: "action.hover",
-                                color: "primary.main",
-                              },
-                            }}
-                          >
-                            <DragIndicatorIcon fontSize="small" />
-                          </Box>
-                        </Tooltip>
                         <Tooltip title="編輯資產資訊">
                           <IconButton
                             size="small"

@@ -1402,17 +1402,29 @@ func stripStoryInlineMarkers(content string) string {
 	return storyInlineMarkerPattern.ReplaceAllString(content, "")
 }
 
-// stripBookmarkLineMarker 去掉書籤預覽文字裡的段落 marker（含 align/comment/commentColor
-// 屬性）跟行內 marker（span 顏色等），保留標題／引用／清單前綴，只留下可讀文字。邏輯跟
-// 前端 stripMarkerForDiffLine 一致，方便未來對照維護。
-func stripBookmarkLineMarker(line string) string {
+// stripReadableLineMarkup 去掉故事行裡的段落 marker（含 align/comment/commentColor 屬性）
+// 跟行內 marker（span 顏色等），保留標題／引用／清單前綴，只留下可讀文字。imageReplacement
+// 由呼叫端決定，避免書籤側欄露出檔名，但搜尋索引仍可吃到 alt/title。
+func stripReadableLineMarkup(line, imageReplacement string) string {
 	headingLevel, blockPrefix, content := splitHeadingAndMarkerContent(line)
 	content = stripStoryInlineMarkers(content)
-	content = markdownImagePattern.ReplaceAllString(content, "$1")
+	content = markdownImagePattern.ReplaceAllString(content, imageReplacement)
 	if headingLevel > 0 {
 		return strings.Repeat("#", headingLevel) + " " + content
 	}
 	return blockPrefix + content
+}
+
+// stripBookmarkLineMarker 給 Reader 書籤側欄摘要使用。資產圖片的 alt 常是原始檔名，
+// 不該在讀者介面露出，因此統一用短文案表示這行是圖片。
+func stripBookmarkLineMarker(line string) string {
+	return stripReadableLineMarkup(line, "（圖片）")
+}
+
+// stripSearchIndexLineMarker 給搜尋索引用；這裡保留圖片 alt/title，方便使用者用資產命名
+// 找到包含該圖片的內容。
+func stripSearchIndexLineMarker(line string) string {
+	return stripReadableLineMarkup(line, "$1")
 }
 
 // wordCountInlineDelimiters 比照前端 whitelist.ts 的 PARSE_DELIMITERS，長的寫法要排在前面

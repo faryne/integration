@@ -98,6 +98,12 @@ func (r *Repository) ProjectByPublicIDForUser(userID uint64, publicID string) (*
 	return &row, err
 }
 
+func (r *Repository) ProjectByID(id uint64) (*storytellerModel.Project, error) {
+	var row storytellerModel.Project
+	err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&row).Error
+	return &row, err
+}
+
 func (r *Repository) CreateProject(row *storytellerModel.Project) error {
 	return r.db.Create(row).Error
 }
@@ -383,6 +389,14 @@ func (r *Repository) Stories(projectID uint64) ([]storytellerModel.Story, error)
 	rows := make([]storytellerModel.Story, 0)
 	err := r.db.Where("project_id = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Order("sort ASC, id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ImageStoriesForAssetBackfill() ([]storytellerModel.Story, error) {
+	rows := make([]storytellerModel.Story, 0)
+	err := r.db.Where("content_type = ? AND is_volume = 0 AND is_deleted = 0 AND deleted_at IS NULL", storytellerModel.ProjectContentTypeImage).
+		Order("project_id ASC, id ASC").
 		Find(&rows).Error
 	return rows, err
 }

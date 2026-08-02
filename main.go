@@ -220,6 +220,11 @@ var cronJobs = []cronJobConfig{
 			storytellerService.RunCreateStorytellerSearchIndex(commandParams.Value("searchIndexName"))
 		},
 	},
+	{
+		Name:     "storyteller-backfill-image-story-assets",
+		Schedule: "",
+		Handler:  storytellerService.RunBackfillImageStoryAssets,
+	},
 	// 台電相關 job 手動執行
 	{
 		Name:     "taipower-neighbor-backfill",

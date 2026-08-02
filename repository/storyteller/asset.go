@@ -124,6 +124,29 @@ func (r *Repository) ReplaceAssetReferences(targetType string, targetID uint64, 
 	})
 }
 
+func (r *Repository) SaveImageStoryAssetBackfill(story *storytellerModel.Story, references []storytellerModel.AssetReference) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(story).UpdateColumn("latest_content", story.LatestContent).Error; err != nil {
+			return err
+		}
+		if story.LatestVersionID != nil {
+			if err := tx.Model(&storytellerModel.StoryVersion{}).
+				Where("id = ? AND story_id = ? AND deleted_at IS NULL", *story.LatestVersionID, story.ID).
+				UpdateColumn("content", story.LatestContent).Error; err != nil {
+				return err
+			}
+		}
+		if err := tx.Where("target_type = ? AND target_id = ?", "image_story", story.ID).
+			Delete(&storytellerModel.AssetReference{}).Error; err != nil {
+			return err
+		}
+		if len(references) == 0 {
+			return nil
+		}
+		return tx.Create(&references).Error
+	})
+}
+
 func (r *Repository) AssetCollections(projectID uint64) ([]storytellerModel.AssetCollection, error) {
 	rows := make([]storytellerModel.AssetCollection, 0)
 	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).

@@ -162,8 +162,8 @@ func storyIndexContent(story *storytellerModel.Story) (content string, coverImag
 	return strings.Join(descriptions, "\n"), coverImageKey, nil
 }
 
-// plainTextFromStoryContent 逐行拿掉段落／行內 marker 語法，只留讀者實際看得到的文字，
-// 沿用既有書籤預覽（stripBookmarkLineMarker）的清理邏輯，不用另外寫一套。
+// plainTextFromStoryContent 逐行拿掉段落／行內 marker 語法，只留讀者實際看得到的文字。
+// 搜尋索引保留圖片 alt/title，避免資產命名從索引裡消失。
 func plainTextFromStoryContent(raw string) string {
 	if strings.TrimSpace(raw) == "" {
 		return ""
@@ -171,7 +171,7 @@ func plainTextFromStoryContent(raw string) string {
 	lines := strings.Split(raw, "\n")
 	cleaned := make([]string, 0, len(lines))
 	for _, line := range lines {
-		cleaned = append(cleaned, stripBookmarkLineMarker(line))
+		cleaned = append(cleaned, stripSearchIndexLineMarker(line))
 	}
 	return strings.Join(cleaned, "\n")
 }
