@@ -74,7 +74,6 @@ import {
   useSharedStorytellerImageStoryPages,
   useSharedStorytellerProject,
   useStorytellerAuthorFavorite,
-  useStorytellerImageStoryPages,
   useStorytellerProjectFavorite,
   useStorytellerProjectRanking,
   useStorytellerProjectBookmarks,
@@ -995,7 +994,9 @@ function StoryContentLines({
   let orderedListRunLength = 0;
   for (const line of lines) {
     const paragraph = parseMarkdownToParagraphs(line)[0];
-    const isBlank = paragraph.runs.every((run) => run.text.trim() === "");
+    const isBlank = paragraph.runs.every(
+      (run) => !run.assetSrc && !run.assetPublicId && run.text.trim() === "",
+    );
     orderedListRunLength =
       !isBlank && paragraph.blockKind === "number"
         ? orderedListRunLength + 1
@@ -1235,23 +1236,17 @@ export default function StorytellerReader() {
     currentItem?.contentType === "image" ? currentItem : undefined;
   // 圖像頁只在真的打開某一話時才抓，不在專案列表層級一次抓所有話——跟專案本身的
   // owner／public／shared 三種讀取路徑對稱（見上面 apiProject 的組法）。
-  const ownerImagePagesQuery = useStorytellerImageStoryPages(
-    isOwner ? apiProject?.public_id : undefined,
-    isOwner ? currentEpisode?.id : undefined,
-  );
   const publicImagePagesQuery = usePublicStorytellerImageStoryPages(
-    !isOwner && !shareToken ? routeProjectPath : undefined,
-    !isOwner && !shareToken ? currentEpisode?.id : undefined,
+    !shareToken ? routeProjectPath : undefined,
+    !shareToken ? currentEpisode?.id : undefined,
   );
   const sharedImagePagesQuery = useSharedStorytellerImageStoryPages(
     shareToken,
     currentEpisode?.id,
   );
-  const apiEpisodePages = isOwner
-    ? ownerImagePagesQuery.data
-    : shareToken
-      ? sharedImagePagesQuery.data
-      : publicImagePagesQuery.data;
+  const apiEpisodePages = shareToken
+    ? sharedImagePagesQuery.data
+    : publicImagePagesQuery.data;
   const currentEpisodePages: ReaderImagePage[] = (apiEpisodePages ?? []).map(
     (page) => ({
       id: page.id,

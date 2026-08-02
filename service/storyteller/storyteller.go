@@ -90,14 +90,18 @@ func (s *Service) PublicProjects() ([]storytellerModel.ProjectOutput, error) {
 // 實際看到的樣子」——本人如果也連草稿一起看到，會誤以為草稿故事外洩到公開閱讀頁，
 // 所以公開專案一律排除草稿，跟訪客看到的一致；本人要看/管草稿請回工作台。
 func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytellerModel.ProjectOutput, error) {
-	publicID := strings.SplitN(projectValue, "-", 2)[0]
+	publicID := publicProjectIDFromPath(projectValue)
 	project, err := s.repo.ProjectByPublicIDForPublicReader(viewerID, publicID)
 	if err != nil {
 		return nil, err
 	}
 	isOwner := viewerID != 0 && project.UserID == viewerID
 	includeDraftStories := isOwner && project.Visibility != storytellerModel.ProjectVisibilityPublic
-	return s.projectOutputWithFollowerCount(project, includeDraftStories)
+	output, err := s.projectOutputWithFollowerCount(project, includeDraftStories)
+	if err != nil {
+		return nil, err
+	}
+	return output, s.signProjectOutputAssetURIs(project.ID, output)
 }
 
 func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, error) {
@@ -105,7 +109,11 @@ func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, 
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputWithFollowerCount(project, false)
+	output, err := s.projectOutputWithFollowerCount(project, false)
+	if err != nil {
+		return nil, err
+	}
+	return output, s.signProjectOutputAssetURIs(project.ID, output)
 }
 
 func (s *Service) Projects(userID uint64) ([]storytellerModel.ProjectOutput, error) {
@@ -122,6 +130,10 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 		return nil, err
 	}
 	return s.projectOutputWithFollowerCount(project, true)
+}
+
+func publicProjectIDFromPath(projectValue string) string {
+	return strings.SplitN(strings.TrimSpace(projectValue), "-", 2)[0]
 }
 
 func (s *Service) uniqueProjectSlug(userID uint64, slug string, excludeProjectID uint64) (string, error) {
@@ -1031,17 +1043,19 @@ func (s *Service) ImageStoryPages(userID uint64, projectPublicID, storyPublicID 
 	if story.ContentType != storytellerModel.ProjectContentTypeImage {
 		return nil, errors.New("story is not an image story")
 	}
-	return signStoryImageContent(story.LatestContent, true)
+	return s.signStoryImageContent(story.ProjectID, story.LatestContent, true)
 }
 
 // PublicImageStoryPages 是公開閱讀頁用的版本，只有已發布（completed）的話才能讀到。
-func (s *Service) PublicImageStoryPages(projectValue, storyPublicID string) ([]storytellerModel.StoryImagePageOutput, error) {
-	publicID := strings.SplitN(projectValue, "-", 2)[0]
-	project, err := s.repo.ProjectByPublicID(publicID)
+func (s *Service) PublicImageStoryPages(projectValue, storyPublicID string, viewerID uint64) ([]storytellerModel.StoryImagePageOutput, error) {
+	story, err := s.publicPublishedStory(viewerID, publicProjectIDFromPath(projectValue), storyPublicID)
 	if err != nil {
 		return nil, err
 	}
-	return s.publishedImageStoryPages(project, storyPublicID)
+	if story.ContentType != storytellerModel.ProjectContentTypeImage {
+		return nil, errors.New("image story not found")
+	}
+	return s.signReaderStoryImageContent(story.ProjectID, story.LatestContent)
 }
 
 // SharedImageStoryPages 是分享連結閱讀頁用的版本，邏輯跟 PublicImageStoryPages 一樣，
@@ -1062,7 +1076,21 @@ func (s *Service) publishedImageStoryPages(project *storytellerModel.Project, st
 	if story.ContentType != storytellerModel.ProjectContentTypeImage {
 		return nil, errors.New("image story not found")
 	}
-	return signStoryImageContent(story.LatestContent, false)
+	return s.signReaderStoryImageContent(project.ID, story.LatestContent)
+}
+
+func (s *Service) signReaderStoryImageContent(projectID uint64, rawContent string) ([]storytellerModel.StoryImagePageOutput, error) {
+	outputs, err := s.signStoryImageContent(projectID, rawContent, false)
+	if err != nil {
+		return nil, err
+	}
+	for i := range outputs {
+		outputs[i].Description, err = s.signAssetURIsInContent(projectID, outputs[i].Description)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return outputs, nil
 }
 
 // imagePageKeys 解析 StoryImageContent JSON，取出每一頁的 S3 key，供存檔前的
@@ -1084,26 +1112,40 @@ func imagePageKeys(rawContent string) ([]string, error) {
 // signStoryImageContent 解析 Story.LatestContent 的 StoryImageContent JSON，
 // 把每一頁的 key 簽成可讀的 CloudFront 網址。includeKey 只有作者本人的管理頁會傳
 // true，把原始 S3 key 一併回傳給編輯頁重組完整 JSON 用；公開／分享閱讀頁一律 false。
-func signStoryImageContent(rawContent string, includeKey bool) ([]storytellerModel.StoryImagePageOutput, error) {
+func (s *Service) signStoryImageContent(projectID uint64, rawContent string, includeKey bool) ([]storytellerModel.StoryImagePageOutput, error) {
 	var content storytellerModel.StoryImageContent
 	if strings.TrimSpace(rawContent) != "" {
 		if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
 			return nil, fmt.Errorf("parse image story content: %w", err)
 		}
 	}
+	publicIDs := make([]string, 0, len(content.Pages))
+	for _, page := range content.Pages {
+		if strings.TrimSpace(page.Key) == "" && strings.TrimSpace(page.AssetPublicID) != "" {
+			publicIDs = append(publicIDs, strings.TrimSpace(page.AssetPublicID))
+		}
+	}
+	assets, err := s.assetsByPublicID(projectID, uniqueStrings(publicIDs))
+	if err != nil {
+		return nil, err
+	}
 	outputs := make([]storytellerModel.StoryImagePageOutput, 0, len(content.Pages))
 	for _, page := range content.Pages {
-		imageURL, err := signImageURL(page.Key)
+		key := strings.TrimSpace(page.Key)
+		if key == "" && strings.TrimSpace(page.AssetPublicID) != "" {
+			key = assets[strings.TrimSpace(page.AssetPublicID)].S3Key
+		}
+		imageURL, err := signImageURL(key)
 		if err != nil {
 			return nil, err
 		}
-		key := ""
+		outputKey := ""
 		if includeKey {
-			key = page.Key
+			outputKey = key
 		}
 		outputs = append(outputs, storytellerModel.StoryImagePageOutput{
 			ID:            page.ID,
-			Key:           key,
+			Key:           outputKey,
 			AssetPublicID: page.AssetPublicID,
 			ImageURL:      imageURL,
 			Description:   page.Description,
@@ -2128,6 +2170,20 @@ func (s *Service) projectOutputWithFollowerCount(project *storytellerModel.Proje
 		output.Author.FollowerCount = &followerCount
 	}
 	return output, nil
+}
+
+func (s *Service) signProjectOutputAssetURIs(projectID uint64, output *storytellerModel.ProjectOutput) error {
+	for i := range output.Stories {
+		if output.Stories[i].ContentType == storytellerModel.ProjectContentTypeImage {
+			continue
+		}
+		content, err := s.signAssetURIsInContent(projectID, output.Stories[i].LatestContent)
+		if err != nil {
+			return err
+		}
+		output.Stories[i].LatestContent = content
+	}
+	return nil
 }
 
 func (s *Service) authorOutput(userID uint64) (*storytellerModel.UserProfileOutput, error) {

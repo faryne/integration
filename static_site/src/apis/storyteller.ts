@@ -1405,12 +1405,14 @@ export function usePublicStorytellerImageStoryPages(
   projectPath?: string,
   storyPublicId?: string,
 ) {
+  const { session } = useAuth();
   return useQuery({
     queryKey: [
       "storyteller",
       "public-image-story-pages",
       projectPath,
       storyPublicId,
+      session?.user.id,
     ],
     enabled: Boolean(projectPath && storyPublicId),
     retry: false,
@@ -1419,6 +1421,7 @@ export function usePublicStorytellerImageStoryPages(
         CommonResponse<StorytellerStoryImagePage[]>
       >(
         `${apiBase}/storyteller/story/${encodeURIComponent(projectPath!)}/stories/${storyPublicId}/image-pages`,
+        session ? { headers: sessionHeaders(session.encrypt_key) } : undefined,
       );
       return response.data.data ?? [];
     },

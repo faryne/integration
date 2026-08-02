@@ -592,7 +592,7 @@ func ImageStoryPages(ctx fiber.Ctx) error {
 }
 
 func PublicImageStoryPages(ctx fiber.Ctx) error {
-	rows, err := storyteller.NewService().PublicImageStoryPages(ctx.Params("project"), ctx.Params("story"))
+	rows, err := storyteller.NewService().PublicImageStoryPages(ctx.Params("project"), ctx.Params("story"), optionalViewerID(ctx))
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller image story not found"))
