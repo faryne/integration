@@ -316,6 +316,10 @@ const storytellerRoutes = (
         path={"project/:id/lores"}
         element={<StorytellerProjectDetail />}
       />
+      <Route
+        path={"project/:id/assets"}
+        element={<StorytellerProjectDetail />}
+      />
       <Route path={"agent/new"} element={<StorytellerNewAgent />} />
       <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />

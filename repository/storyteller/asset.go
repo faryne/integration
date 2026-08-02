@@ -1,0 +1,92 @@
+package storyteller
+
+import (
+	"strings"
+	"time"
+
+	storytellerModel "faryne.dev/model/entity/storyteller"
+)
+
+func (r *Repository) Assets(projectID uint64, assetType, keyword string, offset, limit int) ([]storytellerModel.Asset, int64, error) {
+	rows := make([]storytellerModel.Asset, 0)
+	query := r.db.Model(&storytellerModel.Asset{}).
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID)
+	if strings.TrimSpace(assetType) != "" {
+		query = query.Where("asset_type = ?", strings.TrimSpace(assetType))
+	}
+	if strings.TrimSpace(keyword) != "" {
+		like := "%" + strings.TrimSpace(keyword) + "%"
+		query = query.Where("title LIKE ? OR original_filename LIKE ? OR alt_text LIKE ? OR description LIKE ?", like, like, like, like)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	err := query.Order("created_at DESC, id DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&rows).Error
+	return rows, total, err
+}
+
+func (r *Repository) Asset(projectID uint64, publicID string) (*storytellerModel.Asset, error) {
+	var row storytellerModel.Asset
+	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) AssetByS3Key(projectID uint64, key string) (*storytellerModel.Asset, error) {
+	var row storytellerModel.Asset
+	err := r.db.Where("project_id = ? AND s3_key = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, key).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateAsset(row *storytellerModel.Asset) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) UpdateAsset(row *storytellerModel.Asset) error {
+	return r.db.Model(row).Updates(map[string]any{
+		"title":       row.Title,
+		"alt_text":    row.AltText,
+		"description": row.Description,
+		"metadata":    row.Metadata,
+	}).Error
+}
+
+func (r *Repository) DeleteAsset(row *storytellerModel.Asset) error {
+	now := time.Now()
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
+}
+
+func (r *Repository) AssetReferenceCount(assetID uint64) (int64, error) {
+	var count int64
+	err := r.db.Model(&storytellerModel.AssetReference{}).
+		Where("asset_id = ?", assetID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *Repository) AssetReferenceCounts(assetIDs []uint64) (map[uint64]int64, error) {
+	counts := make(map[uint64]int64)
+	if len(assetIDs) == 0 {
+		return counts, nil
+	}
+	var rows []struct {
+		AssetID uint64
+		Count   int64
+	}
+	if err := r.db.Model(&storytellerModel.AssetReference{}).
+		Select("asset_id, COUNT(*) AS count").
+		Where("asset_id IN ?", assetIDs).
+		Group("asset_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.AssetID] = row.Count
+	}
+	return counts, nil
+}

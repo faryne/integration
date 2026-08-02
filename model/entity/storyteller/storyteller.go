@@ -33,6 +33,14 @@ const (
 	ProjectContentTypeImage ProjectContentType = "image"
 )
 
+type AssetType string
+
+const (
+	AssetTypeImage AssetType = "image"
+	AssetTypeAudio AssetType = "audio"
+	AssetTypeVideo AssetType = "video"
+)
+
 type SNSType string
 
 const (
@@ -160,6 +168,78 @@ type Project struct {
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
+
+// AssetMetadata 存媒體類型各自不同的補充資訊。第一版 image 會寫入 width/height；
+// 未來 audio/video 可以加 duration_seconds、codec 等，不需要一直替 assets 表加 nullable 欄位。
+type AssetMetadata map[string]any
+
+func (m AssetMetadata) Value() (driver.Value, error) {
+	if m == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(m)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (m *AssetMetadata) Scan(value any) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	var data []byte
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into AssetMetadata", value)
+	}
+	if len(data) == 0 {
+		*m = nil
+		return nil
+	}
+	return json.Unmarshal(data, m)
+}
+
+type Asset struct {
+	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
+	PublicID         string        `gorm:"column:public_id" json:"public_id"`
+	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
+	ProjectID        uint64        `gorm:"column:project_id" json:"project_id"`
+	AssetType        AssetType     `gorm:"column:asset_type" json:"asset_type"`
+	MimeType         string        `gorm:"column:mime_type" json:"mime_type"`
+	FileExt          string        `gorm:"column:file_ext" json:"file_ext"`
+	FileSize         uint64        `gorm:"column:file_size" json:"file_size"`
+	Metadata         AssetMetadata `gorm:"column:metadata;type:json" json:"metadata"`
+	S3Key            string        `gorm:"column:s3_key" json:"-"`
+	OriginalFilename string        `gorm:"column:original_filename" json:"original_filename"`
+	Title            string        `gorm:"column:title" json:"title"`
+	AltText          string        `gorm:"column:alt_text" json:"alt_text"`
+	Description      string        `gorm:"column:description" json:"description"`
+	IsDeleted        bool          `gorm:"column:is_deleted" json:"-"`
+	DeletedAt        *time.Time    `gorm:"column:deleted_at" json:"-"`
+	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time     `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (Asset) TableName() string { return "storyteller_assets" }
+
+type AssetReference struct {
+	ID              uint64    `gorm:"column:id;primaryKey" json:"id"`
+	AssetID         uint64    `gorm:"column:asset_id" json:"asset_id"`
+	TargetType      string    `gorm:"column:target_type" json:"target_type"`
+	TargetID        uint64    `gorm:"column:target_id" json:"target_id"`
+	TargetVersionID *uint64   `gorm:"column:target_version_id" json:"target_version_id"`
+	ReferenceKey    string    `gorm:"column:reference_key" json:"reference_key"`
+	CreatedAt       time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AssetReference) TableName() string { return "storyteller_asset_references" }
 
 type Agent struct {
 	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
@@ -665,6 +745,65 @@ type ImagePageUploadRequest struct {
 type ImagePageUploadOutput struct {
 	Key       string `json:"key"`
 	UploadURL string `json:"upload_url"`
+}
+
+type AssetUploadFileRequest struct {
+	ContentType      string `json:"content_type"`
+	OriginalFilename string `json:"original_filename"`
+}
+
+type AssetUploadRequest struct {
+	Files []AssetUploadFileRequest `json:"files"`
+}
+
+type AssetUploadOutput struct {
+	Key              string `json:"key"`
+	UploadURL        string `json:"upload_url"`
+	ContentType      string `json:"content_type"`
+	OriginalFilename string `json:"original_filename"`
+}
+
+type AssetConfirmRequest struct {
+	Key              string        `json:"key"`
+	ContentType      string        `json:"content_type"`
+	OriginalFilename string        `json:"original_filename"`
+	Title            string        `json:"title"`
+	AltText          string        `json:"alt_text"`
+	Description      string        `json:"description"`
+	Metadata         AssetMetadata `json:"metadata"`
+}
+
+type AssetUpdateRequest struct {
+	Title       string        `json:"title"`
+	AltText     string        `json:"alt_text"`
+	Description string        `json:"description"`
+	Metadata    AssetMetadata `json:"metadata"`
+}
+
+type AssetOutput struct {
+	ID               uint64        `json:"id"`
+	PublicID         string        `json:"public_id"`
+	ProjectID        uint64        `json:"project_id"`
+	AssetType        AssetType     `json:"asset_type"`
+	MimeType         string        `json:"mime_type"`
+	FileExt          string        `json:"file_ext"`
+	FileSize         uint64        `json:"file_size"`
+	Metadata         AssetMetadata `json:"metadata"`
+	OriginalFilename string        `json:"original_filename"`
+	Title            string        `json:"title"`
+	AltText          string        `json:"alt_text"`
+	Description      string        `json:"description"`
+	PreviewURL       string        `json:"preview_url"`
+	ReferenceCount   int64         `json:"reference_count"`
+	CreatedAt        time.Time     `json:"created_at"`
+	UpdatedAt        time.Time     `json:"updated_at"`
+}
+
+type AssetPageOutput struct {
+	Assets     []AssetOutput `json:"assets"`
+	TotalCount int64         `json:"total_count"`
+	Page       int           `json:"page"`
+	PageSize   int           `json:"page_size"`
 }
 
 type LoreRequest struct {

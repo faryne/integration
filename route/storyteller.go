@@ -92,6 +92,13 @@ func Storyteller(app *fiber.App) {
 
 	authenticated.Post("/projects/:project/image-pages/presign", storyteller.PresignImageUpload)
 
+	authenticated.Get("/projects/:project/assets", storyteller.Assets)
+	authenticated.Post("/projects/:project/assets/presign", storyteller.PresignAssetUpload)
+	authenticated.Post("/projects/:project/assets/confirm", storyteller.ConfirmAssetUpload)
+	authenticated.Get("/projects/:project/assets/:asset", storyteller.Asset)
+	authenticated.Put("/projects/:project/assets/:asset", storyteller.UpdateAsset)
+	authenticated.Delete("/projects/:project/assets/:asset", storyteller.DeleteAsset)
+
 	authenticated.Get("/projects/:project/lores", storyteller.Lores)
 	authenticated.Get("/projects/:project/lores/page", storyteller.LoresPage)
 	authenticated.Post("/projects/:project/lores", storyteller.CreateLore)

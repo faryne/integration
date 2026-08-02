@@ -66,6 +66,7 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
+import { StorytellerAssetManager } from "@/pages/storyteller/StorytellerAssetManager.tsx";
 import { StorytellerVolumeDialog } from "@/pages/storyteller/StorytellerVolumeDialog.tsx";
 import { sortedGroup } from "@/pages/storyteller/storytellerVolumes.ts";
 import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
@@ -211,9 +212,12 @@ export default function StorytellerProjectDetail() {
   const { session, loading, login, submitting } = useAuth();
   // 故事與話（圖像作品）已經合併成同一份列表，不再分開分頁；舊的 /images 網址
   // 沿用同一顆 "stories" tab，維持舊書籤／連結可以打開。
-  const activeTab: "stories" | "lores" = location.pathname.endsWith("/lores")
-    ? "lores"
-    : "stories";
+  const activeTab: "stories" | "lores" | "assets" =
+    location.pathname.endsWith("/lores")
+      ? "lores"
+      : location.pathname.endsWith("/assets")
+        ? "assets"
+        : "stories";
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [orderedVolumes, setOrderedVolumes] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
@@ -584,7 +588,12 @@ export default function StorytellerProjectDetail() {
           to: steamloomPath(`my/project/${project.id}`),
         },
         {
-          label: activeTab === "lores" ? "設定集" : "作品與冊",
+          label:
+            activeTab === "lores"
+              ? "設定集"
+              : activeTab === "assets"
+                ? "資產集"
+                : "作品與冊",
         },
       ]}
     >
@@ -714,13 +723,14 @@ export default function StorytellerProjectDetail() {
               <Stack spacing={2}>
                 <Tabs
                   value={activeTab}
-                  onChange={(_, value: "stories" | "lores") =>
+                  onChange={(_, value: "stories" | "lores" | "assets") =>
                     navigate(steamloomPath(`my/project/${project.id}/${value}`))
                   }
                   sx={steamTabIndicatorSx}
                 >
                   <Tab value="stories" label="作品與冊" />
                   <Tab value="lores" label="設定集" />
+                  <Tab value="assets" label="資產集" />
                 </Tabs>
                 {activeTab === "stories" && (
                   <Stack
@@ -820,6 +830,9 @@ export default function StorytellerProjectDetail() {
                       建立設定集
                     </Button>
                   </Stack>
+                )}
+                {activeTab === "assets" && (
+                  <StorytellerAssetManager projectPublicId={project.id} />
                 )}
                 {activeTab === "stories" &&
                 (apiStoriesLoading || apiVolumesLoading) ? (

@@ -1,0 +1,325 @@
+package storyteller
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
+
+	storytellerModel "faryne.dev/model/entity/storyteller"
+
+	"faryne.dev/config"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	_ "golang.org/x/image/webp"
+)
+
+const (
+	assetKeyPrefix                = "steamloom/assets/"
+	maxAssetImageSizeBytes        = maxImagePageSizeBytes
+	maxAssetUploadFilesPerPresign = maxImagePagesPerUpload
+	maxImageHeaderReadBytes       = 4 * 1024 * 1024
+)
+
+var allowedAssetImageContentTypes = map[string]string{
+	"image/jpeg": "jpg",
+	"image/png":  "png",
+	"image/webp": "webp",
+	"image/gif":  "gif",
+}
+
+func randomAssetKey() string {
+	return assetKeyPrefix + time.Now().Format("2006/01/02") + "/" + randomID()
+}
+
+func normalizeAssetPage(page, pageSize int) (int, int) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 24
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	return page, pageSize
+}
+
+func normalizeAssetMetadata(metadata storytellerModel.AssetMetadata) storytellerModel.AssetMetadata {
+	if metadata == nil {
+		return storytellerModel.AssetMetadata{}
+	}
+	return metadata
+}
+
+func (s *Service) Assets(userID uint64, projectPublicID, assetType, keyword string, page, pageSize int) (*storytellerModel.AssetPageOutput, error) {
+	page, pageSize = normalizeAssetPage(page, pageSize)
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	rows, total, err := s.repo.Assets(project.ID, assetType, keyword, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	counts, err := s.assetReferenceCounts(rows)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.AssetOutput, 0, len(rows))
+	for _, row := range rows {
+		output, err := s.assetOutput(row, counts[row.ID])
+		if err != nil {
+			return nil, err
+		}
+		outputs = append(outputs, output)
+	}
+	return &storytellerModel.AssetPageOutput{
+		Assets:     outputs,
+		TotalCount: total,
+		Page:       page,
+		PageSize:   pageSize,
+	}, nil
+}
+
+func (s *Service) Asset(userID uint64, projectPublicID, assetPublicID string) (*storytellerModel.AssetOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return nil, err
+	}
+	count, err := s.repo.AssetReferenceCount(asset.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, count)
+	return &output, err
+}
+
+func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, projectPublicID string, input storytellerModel.AssetUploadRequest) ([]storytellerModel.AssetUploadOutput, error) {
+	if len(input.Files) == 0 {
+		return nil, errors.New("files must not be empty")
+	}
+	if len(input.Files) > maxAssetUploadFilesPerPresign {
+		return nil, fmt.Errorf("最多一次只能上傳 %d 個資產", maxAssetUploadFilesPerPresign)
+	}
+	if _, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID); err != nil {
+		return nil, err
+	}
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	presignClient := s3.NewPresignClient(client)
+	outputs := make([]storytellerModel.AssetUploadOutput, 0, len(input.Files))
+	for _, file := range input.Files {
+		contentType := strings.TrimSpace(file.ContentType)
+		if _, ok := allowedAssetImageContentTypes[contentType]; !ok {
+			return nil, fmt.Errorf("不支援的檔案類型: %s", contentType)
+		}
+		key := randomAssetKey()
+		request, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
+			Bucket:      aws.String(config.EnvConfig().S3Bucket),
+			Key:         aws.String(key),
+			ContentType: aws.String(contentType),
+		}, s3.WithPresignExpires(imageUploadPresignTTL))
+		if err != nil {
+			return nil, fmt.Errorf("presign asset upload url: %w", err)
+		}
+		outputs = append(outputs, storytellerModel.AssetUploadOutput{
+			Key:              key,
+			UploadURL:        request.URL,
+			ContentType:      contentType,
+			OriginalFilename: strings.TrimSpace(file.OriginalFilename),
+		})
+	}
+	return outputs, nil
+}
+
+func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, input storytellerModel.AssetConfirmRequest) (*storytellerModel.AssetOutput, error) {
+	key := strings.TrimSpace(input.Key)
+	contentType := strings.TrimSpace(input.ContentType)
+	if key == "" || !strings.HasPrefix(key, assetKeyPrefix) {
+		return nil, errors.New("invalid asset key")
+	}
+	fileExt, ok := allowedAssetImageContentTypes[contentType]
+	if !ok {
+		return nil, fmt.Errorf("不支援的檔案類型: %s", contentType)
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	if existing, err := s.repo.AssetByS3Key(project.ID, key); err == nil && existing.ID != 0 {
+		count, err := s.repo.AssetReferenceCount(existing.ID)
+		if err != nil {
+			return nil, err
+		}
+		output, err := s.assetOutput(*existing, count)
+		return &output, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	head, err := client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(config.EnvConfig().S3Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("讀取資產資訊失敗: %w", err)
+	}
+	if head.ContentType != nil && *head.ContentType != "" && *head.ContentType != contentType {
+		return nil, fmt.Errorf("上傳檔案類型不一致: %s", *head.ContentType)
+	}
+	fileSize := uint64(0)
+	if head.ContentLength != nil {
+		if *head.ContentLength > maxAssetImageSizeBytes {
+			return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
+		}
+		fileSize = uint64(*head.ContentLength)
+	}
+	metadata := normalizeAssetMetadata(input.Metadata)
+	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
+		return nil, err
+	}
+	asset := &storytellerModel.Asset{
+		PublicID:         randomID(),
+		UserID:           project.UserID,
+		ProjectID:        project.ID,
+		AssetType:        storytellerModel.AssetTypeImage,
+		MimeType:         contentType,
+		FileExt:          assetFileExt(fileExt, input.OriginalFilename),
+		FileSize:         fileSize,
+		Metadata:         metadata,
+		S3Key:            key,
+		OriginalFilename: strings.TrimSpace(input.OriginalFilename),
+		Title:            strings.TrimSpace(input.Title),
+		AltText:          strings.TrimSpace(input.AltText),
+		Description:      strings.TrimSpace(input.Description),
+	}
+	if asset.Title == "" {
+		asset.Title = asset.OriginalFilename
+	}
+	if err := s.repo.CreateAsset(asset); err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, 0)
+	return &output, err
+}
+
+func (s *Service) UpdateAsset(userID uint64, projectPublicID, assetPublicID string, input storytellerModel.AssetUpdateRequest) (*storytellerModel.AssetOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return nil, err
+	}
+	asset.Title = strings.TrimSpace(input.Title)
+	asset.AltText = strings.TrimSpace(input.AltText)
+	asset.Description = strings.TrimSpace(input.Description)
+	asset.Metadata = normalizeAssetMetadata(input.Metadata)
+	if err := s.repo.UpdateAsset(asset); err != nil {
+		return nil, err
+	}
+	count, err := s.repo.AssetReferenceCount(asset.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, count)
+	return &output, err
+}
+
+func (s *Service) DeleteAsset(userID uint64, projectPublicID, assetPublicID string) error {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return err
+	}
+	count, err := s.repo.AssetReferenceCount(asset.ID)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("這個資產仍被作品引用，不能刪除")
+	}
+	return s.repo.DeleteAsset(asset)
+}
+
+func fillImageSizeMetadata(ctx context.Context, client *s3.Client, key string, metadata storytellerModel.AssetMetadata) error {
+	object, err := client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(config.EnvConfig().S3Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return fmt.Errorf("讀取圖片內容失敗: %w", err)
+	}
+	defer object.Body.Close()
+	cfg, _, err := image.DecodeConfig(io.LimitReader(object.Body, maxImageHeaderReadBytes))
+	if err != nil {
+		return fmt.Errorf("解析圖片尺寸失敗: %w", err)
+	}
+	metadata["width"] = cfg.Width
+	metadata["height"] = cfg.Height
+	return nil
+}
+
+func assetFileExt(defaultExt, filename string) string {
+	ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(strings.TrimSpace(filename))), ".")
+	if ext != "" && len(ext) <= 16 {
+		return ext
+	}
+	return defaultExt
+}
+
+func (s *Service) assetReferenceCounts(rows []storytellerModel.Asset) (map[uint64]int64, error) {
+	ids := make([]uint64, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	return s.repo.AssetReferenceCounts(ids)
+}
+
+func (s *Service) assetOutput(asset storytellerModel.Asset, referenceCount int64) (storytellerModel.AssetOutput, error) {
+	previewURL, err := signImageURL(asset.S3Key)
+	if err != nil {
+		return storytellerModel.AssetOutput{}, err
+	}
+	return storytellerModel.AssetOutput{
+		ID:               asset.ID,
+		PublicID:         asset.PublicID,
+		ProjectID:        asset.ProjectID,
+		AssetType:        asset.AssetType,
+		MimeType:         asset.MimeType,
+		FileExt:          asset.FileExt,
+		FileSize:         asset.FileSize,
+		Metadata:         normalizeAssetMetadata(asset.Metadata),
+		OriginalFilename: asset.OriginalFilename,
+		Title:            asset.Title,
+		AltText:          asset.AltText,
+		Description:      asset.Description,
+		PreviewURL:       previewURL,
+		ReferenceCount:   referenceCount,
+		CreatedAt:        asset.CreatedAt,
+		UpdatedAt:        asset.UpdatedAt,
+	}, nil
+}

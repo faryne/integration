@@ -160,6 +160,46 @@ export interface StorytellerImagePageUploadOutput {
   upload_url: string;
 }
 
+export interface StorytellerAsset {
+  id: number;
+  public_id: string;
+  project_id: number;
+  asset_type: "image" | "audio" | "video";
+  mime_type: string;
+  file_ext: string;
+  file_size: number;
+  metadata: Record<string, unknown>;
+  original_filename: string;
+  title: string;
+  alt_text: string;
+  description: string;
+  preview_url: string;
+  reference_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerAssetPage {
+  assets: StorytellerAsset[];
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
+export interface StorytellerAssetUploadOutput {
+  key: string;
+  upload_url: string;
+  content_type: string;
+  original_filename: string;
+}
+
+export interface StorytellerAssetUpdateRequest {
+  title: string;
+  alt_text: string;
+  description: string;
+  metadata: Record<string, unknown>;
+}
+
 export interface StorytellerStoryVolumeEvent {
   id: number;
   story_id: number;
