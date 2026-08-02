@@ -31,6 +31,9 @@ export function CustomDiffPane({
   side,
   title,
 }: CustomDiffPaneProps) {
+  const lineNumber = (line: CustomDiffLine) =>
+    side === "left" ? line.leftIndex : line.rightIndex;
+
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
       <Stack spacing={1} sx={{ p: 2, bgcolor: "background.default" }}>
@@ -76,7 +79,7 @@ export function CustomDiffPane({
               component="span"
               sx={{ color: "text.secondary", userSelect: "none" }}
             >
-              {line.index}
+              {lineNumber(line) ?? " "}
             </Box>
             <Box component="span">
               {side === "left" ? line.left : line.right || " "}
