@@ -210,6 +210,7 @@ type Asset struct {
 	PublicID         string        `gorm:"column:public_id" json:"public_id"`
 	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
 	ProjectID        uint64        `gorm:"column:project_id" json:"project_id"`
+	CollectionID     *uint64       `gorm:"column:collection_id" json:"collection_id"`
 	AssetType        AssetType     `gorm:"column:asset_type" json:"asset_type"`
 	MimeType         string        `gorm:"column:mime_type" json:"mime_type"`
 	FileExt          string        `gorm:"column:file_ext" json:"file_ext"`
@@ -227,6 +228,20 @@ type Asset struct {
 }
 
 func (Asset) TableName() string { return "storyteller_assets" }
+
+type AssetCollection struct {
+	ID        uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID  string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID uint64     `gorm:"column:project_id" json:"project_id"`
+	Name      string     `gorm:"column:name" json:"name"`
+	Sort      int        `gorm:"column:sort" json:"sort"`
+	IsDeleted bool       `gorm:"column:is_deleted" json:"-"`
+	DeletedAt *time.Time `gorm:"column:deleted_at" json:"-"`
+	CreatedAt time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AssetCollection) TableName() string { return "storyteller_asset_collections" }
 
 type AssetReference struct {
 	ID              uint64    `gorm:"column:id;primaryKey" json:"id"`
@@ -766,6 +781,7 @@ type AssetUploadOutput struct {
 type AssetConfirmRequest struct {
 	Key              string        `json:"key"`
 	ContentType      string        `json:"content_type"`
+	CollectionID     string        `json:"collection_id"`
 	OriginalFilename string        `json:"original_filename"`
 	Title            string        `json:"title"`
 	AltText          string        `json:"alt_text"`
@@ -780,10 +796,20 @@ type AssetUpdateRequest struct {
 	Metadata    AssetMetadata `json:"metadata"`
 }
 
+type AssetMoveRequest struct {
+	CollectionID string `json:"collection_id"`
+}
+
+type AssetCollectionRequest struct {
+	Name string `json:"name"`
+	Sort int    `json:"sort"`
+}
+
 type AssetOutput struct {
 	ID               uint64        `json:"id"`
 	PublicID         string        `json:"public_id"`
 	ProjectID        uint64        `json:"project_id"`
+	CollectionID     string        `json:"collection_id,omitempty"`
 	AssetType        AssetType     `json:"asset_type"`
 	MimeType         string        `json:"mime_type"`
 	FileExt          string        `json:"file_ext"`
@@ -804,6 +830,17 @@ type AssetPageOutput struct {
 	TotalCount int64         `json:"total_count"`
 	Page       int           `json:"page"`
 	PageSize   int           `json:"page_size"`
+}
+
+type AssetCollectionOutput struct {
+	ID         uint64    `json:"id"`
+	PublicID   string    `json:"public_id"`
+	ProjectID  uint64    `json:"project_id"`
+	Name       string    `json:"name"`
+	Sort       int       `json:"sort"`
+	AssetCount int64     `json:"asset_count"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 type LoreRequest struct {

@@ -164,6 +164,7 @@ export interface StorytellerAsset {
   id: number;
   public_id: string;
   project_id: number;
+  collection_id?: string;
   asset_type: "image" | "audio" | "video";
   mime_type: string;
   file_ext: string;
@@ -177,6 +178,22 @@ export interface StorytellerAsset {
   reference_count: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface StorytellerAssetCollection {
+  id: number;
+  public_id: string;
+  project_id: number;
+  name: string;
+  sort: number;
+  asset_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerAssetCollectionRequest {
+  name: string;
+  sort: number;
 }
 
 export interface StorytellerAssetPage {

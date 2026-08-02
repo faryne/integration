@@ -17,6 +17,8 @@ import type {
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
   StorytellerAsset,
+  StorytellerAssetCollection,
+  StorytellerAssetCollectionRequest,
   StorytellerAssetPage,
   StorytellerAssetUpdateRequest,
   StorytellerAssetUploadOutput,
@@ -1099,6 +1101,7 @@ export function useStorytellerAssets(
   page = 1,
   pageSize = 24,
   keyword = "",
+  collectionId = "",
 ) {
   const { session } = useAuth();
   return useQuery({
@@ -1109,21 +1112,24 @@ export function useStorytellerAssets(
       page,
       pageSize,
       keyword,
+      collectionId,
       session?.user.id,
     ],
     enabled: Boolean(session?.encrypt_key && projectPublicId),
     queryFn: async () => {
-      const response = await axios.get<
-        CommonResponse<StorytellerAssetPage>
-      >(`${apiBase}/storyteller/projects/${projectPublicId}/assets`, {
-        params: {
-          page,
-          page_size: pageSize,
-          asset_type: "image",
-          keyword: keyword.trim() || undefined,
+      const response = await axios.get<CommonResponse<StorytellerAssetPage>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/assets`,
+        {
+          params: {
+            page,
+            page_size: pageSize,
+            asset_type: "image",
+            collection_id: collectionId || undefined,
+            keyword: keyword.trim() || undefined,
+          },
+          headers: sessionHeaders(session!.encrypt_key),
         },
-        headers: sessionHeaders(session!.encrypt_key),
-      });
+      );
       return (
         response.data.data ?? {
           assets: [],
@@ -1144,9 +1150,11 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
   return useMutation({
     mutationFn: async ({
       files,
+      collectionId,
       onProgress,
     }: {
       files: File[];
+      collectionId?: string;
       onProgress?: (index: number, loaded: number, total: number) => void;
     }) => {
       const presign = await axios.post<
@@ -1178,6 +1186,7 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
           {
             key: target.key,
             content_type: file.type,
+            collection_id: collectionId || "",
             original_filename: file.name,
             title: file.name,
             alt_text: "",
@@ -1191,6 +1200,102 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
         }
       }
       return assets;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useStorytellerAssetCollections(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "asset-collections",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAssetCollection[]>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/asset-collections`,
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSaveStorytellerAssetCollection(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      collectionPublicId,
+      input,
+    }: {
+      collectionPublicId?: string;
+      input: StorytellerAssetCollectionRequest;
+    }) => {
+      const base = `${apiBase}/storyteller/projects/${projectPublicId}/asset-collections`;
+      const response = collectionPublicId
+        ? await axios.put<CommonResponse<StorytellerAssetCollection>>(
+            `${base}/${collectionPublicId}`,
+            input,
+            { headers: sessionHeaders(session!.encrypt_key) },
+          )
+        : await axios.post<CommonResponse<StorytellerAssetCollection>>(
+            base,
+            input,
+            { headers: sessionHeaders(session!.encrypt_key) },
+          );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useDeleteStorytellerAssetCollection(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (collectionPublicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/asset-collections/${collectionPublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useMoveStorytellerAsset(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      assetPublicId,
+      collectionId,
+    }: {
+      assetPublicId: string;
+      collectionId: string;
+    }) => {
+      const response = await axios.put<CommonResponse<StorytellerAsset>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/assets/${assetPublicId}/move`,
+        { collection_id: collectionId },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });

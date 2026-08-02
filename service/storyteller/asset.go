@@ -24,6 +24,7 @@ import (
 
 const (
 	assetKeyPrefix                = "steamloom/assets/"
+	assetCollectionUncategorized  = "__uncategorized__"
 	maxAssetImageSizeBytes        = maxImagePageSizeBytes
 	maxAssetUploadFilesPerPresign = maxImagePagesPerUpload
 	maxImageHeaderReadBytes       = 4 * 1024 * 1024
@@ -60,13 +61,21 @@ func normalizeAssetMetadata(metadata storytellerModel.AssetMetadata) storyteller
 	return metadata
 }
 
-func (s *Service) Assets(userID uint64, projectPublicID, assetType, keyword string, page, pageSize int) (*storytellerModel.AssetPageOutput, error) {
+func (s *Service) Assets(userID uint64, projectPublicID, collectionPublicID, assetType, keyword string, page, pageSize int) (*storytellerModel.AssetPageOutput, error) {
 	page, pageSize = normalizeAssetPage(page, pageSize)
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
 	}
-	rows, total, err := s.repo.Assets(project.ID, assetType, keyword, (page-1)*pageSize, pageSize)
+	collectionID, uncategorizedOnly, err := s.resolveAssetCollectionFilter(project.ID, collectionPublicID)
+	if err != nil {
+		return nil, err
+	}
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	rows, total, err := s.repo.Assets(project.ID, collectionID, uncategorizedOnly, assetType, keyword, (page-1)*pageSize, pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +85,7 @@ func (s *Service) Assets(userID uint64, projectPublicID, assetType, keyword stri
 	}
 	outputs := make([]storytellerModel.AssetOutput, 0, len(rows))
 	for _, row := range rows {
-		output, err := s.assetOutput(row, counts[row.ID])
+		output, err := s.assetOutput(row, collectionPublicIDs, counts[row.ID])
 		if err != nil {
 			return nil, err
 		}
@@ -103,7 +112,11 @@ func (s *Service) Asset(userID uint64, projectPublicID, assetPublicID string) (*
 	if err != nil {
 		return nil, err
 	}
-	output, err := s.assetOutput(*asset, count)
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, collectionPublicIDs, count)
 	return &output, err
 }
 
@@ -166,8 +179,16 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 		if err != nil {
 			return nil, err
 		}
-		output, err := s.assetOutput(*existing, count)
+		collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+		if err != nil {
+			return nil, err
+		}
+		output, err := s.assetOutput(*existing, collectionPublicIDs, count)
 		return &output, err
+	}
+	collectionID, err := s.resolveAssetCollectionID(project.ID, input.CollectionID)
+	if err != nil {
+		return nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -201,6 +222,7 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 		PublicID:         randomID(),
 		UserID:           project.UserID,
 		ProjectID:        project.ID,
+		CollectionID:     collectionID,
 		AssetType:        storytellerModel.AssetTypeImage,
 		MimeType:         contentType,
 		FileExt:          assetFileExt(fileExt, input.OriginalFilename),
@@ -218,7 +240,11 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 	if err := s.repo.CreateAsset(asset); err != nil {
 		return nil, err
 	}
-	output, err := s.assetOutput(*asset, 0)
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, collectionPublicIDs, 0)
 	return &output, err
 }
 
@@ -242,7 +268,40 @@ func (s *Service) UpdateAsset(userID uint64, projectPublicID, assetPublicID stri
 	if err != nil {
 		return nil, err
 	}
-	output, err := s.assetOutput(*asset, count)
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, collectionPublicIDs, count)
+	return &output, err
+}
+
+func (s *Service) MoveAsset(userID uint64, projectPublicID, assetPublicID string, input storytellerModel.AssetMoveRequest) (*storytellerModel.AssetOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return nil, err
+	}
+	collectionID, err := s.resolveAssetCollectionID(project.ID, input.CollectionID)
+	if err != nil {
+		return nil, err
+	}
+	asset.CollectionID = collectionID
+	if err := s.repo.MoveAsset(asset); err != nil {
+		return nil, err
+	}
+	count, err := s.repo.AssetReferenceCount(asset.ID)
+	if err != nil {
+		return nil, err
+	}
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*asset, collectionPublicIDs, count)
 	return &output, err
 }
 
@@ -299,15 +358,20 @@ func (s *Service) assetReferenceCounts(rows []storytellerModel.Asset) (map[uint6
 	return s.repo.AssetReferenceCounts(ids)
 }
 
-func (s *Service) assetOutput(asset storytellerModel.Asset, referenceCount int64) (storytellerModel.AssetOutput, error) {
+func (s *Service) assetOutput(asset storytellerModel.Asset, collectionPublicIDs map[uint64]string, referenceCount int64) (storytellerModel.AssetOutput, error) {
 	previewURL, err := signImageURL(asset.S3Key)
 	if err != nil {
 		return storytellerModel.AssetOutput{}, err
+	}
+	collectionPublicID := ""
+	if asset.CollectionID != nil {
+		collectionPublicID = collectionPublicIDs[*asset.CollectionID]
 	}
 	return storytellerModel.AssetOutput{
 		ID:               asset.ID,
 		PublicID:         asset.PublicID,
 		ProjectID:        asset.ProjectID,
+		CollectionID:     collectionPublicID,
 		AssetType:        asset.AssetType,
 		MimeType:         asset.MimeType,
 		FileExt:          asset.FileExt,
@@ -322,4 +386,141 @@ func (s *Service) assetOutput(asset storytellerModel.Asset, referenceCount int64
 		CreatedAt:        asset.CreatedAt,
 		UpdatedAt:        asset.UpdatedAt,
 	}, nil
+}
+
+func (s *Service) resolveAssetCollectionID(projectID uint64, collectionPublicID string) (*uint64, error) {
+	collectionPublicID = strings.TrimSpace(collectionPublicID)
+	if collectionPublicID == "" {
+		return nil, nil
+	}
+	collection, err := s.repo.AssetCollection(projectID, collectionPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return &collection.ID, nil
+}
+
+func (s *Service) resolveAssetCollectionFilter(projectID uint64, collectionPublicID string) (*uint64, bool, error) {
+	collectionPublicID = strings.TrimSpace(collectionPublicID)
+	if collectionPublicID == assetCollectionUncategorized {
+		return nil, true, nil
+	}
+	collectionID, err := s.resolveAssetCollectionID(projectID, collectionPublicID)
+	return collectionID, false, err
+}
+
+func (s *Service) assetCollectionPublicIDMap(projectID uint64) (map[uint64]string, error) {
+	collections, err := s.repo.AssetCollections(projectID)
+	if err != nil {
+		return nil, err
+	}
+	output := make(map[uint64]string, len(collections))
+	for _, collection := range collections {
+		output[collection.ID] = collection.PublicID
+	}
+	return output, nil
+}
+
+func (s *Service) AssetCollections(userID uint64, projectPublicID string) ([]storytellerModel.AssetCollectionOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.repo.AssetCollections(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uint64, 0, len(rows))
+	for _, row := range rows {
+		ids = append(ids, row.ID)
+	}
+	counts, err := s.repo.AssetCollectionAssetCounts(ids)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.AssetCollectionOutput, 0, len(rows))
+	for _, row := range rows {
+		outputs = append(outputs, assetCollectionOutput(row, counts[row.ID]))
+	}
+	return outputs, nil
+}
+
+func (s *Service) CreateAssetCollection(userID uint64, projectPublicID string, input storytellerModel.AssetCollectionRequest) (*storytellerModel.AssetCollectionOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, errors.New("collection name is required")
+	}
+	row := &storytellerModel.AssetCollection{
+		PublicID:  randomID(),
+		ProjectID: project.ID,
+		Name:      name,
+		Sort:      input.Sort,
+	}
+	if err := s.repo.CreateAssetCollection(row); err != nil {
+		return nil, err
+	}
+	output := assetCollectionOutput(*row, 0)
+	return &output, nil
+}
+
+func (s *Service) UpdateAssetCollection(userID uint64, projectPublicID, collectionPublicID string, input storytellerModel.AssetCollectionRequest) (*storytellerModel.AssetCollectionOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.repo.AssetCollection(project.ID, strings.TrimSpace(collectionPublicID))
+	if err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, errors.New("collection name is required")
+	}
+	row.Name = name
+	row.Sort = input.Sort
+	if err := s.repo.UpdateAssetCollection(row); err != nil {
+		return nil, err
+	}
+	count, err := s.repo.AssetCollectionAssetCount(row.ID)
+	if err != nil {
+		return nil, err
+	}
+	output := assetCollectionOutput(*row, count)
+	return &output, nil
+}
+
+func (s *Service) DeleteAssetCollection(userID uint64, projectPublicID, collectionPublicID string) error {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return err
+	}
+	row, err := s.repo.AssetCollection(project.ID, strings.TrimSpace(collectionPublicID))
+	if err != nil {
+		return err
+	}
+	count, err := s.repo.AssetCollectionAssetCount(row.ID)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("collection 內仍有資產，不能刪除")
+	}
+	return s.repo.DeleteAssetCollection(row)
+}
+
+func assetCollectionOutput(row storytellerModel.AssetCollection, assetCount int64) storytellerModel.AssetCollectionOutput {
+	return storytellerModel.AssetCollectionOutput{
+		ID:         row.ID,
+		PublicID:   row.PublicID,
+		ProjectID:  row.ProjectID,
+		Name:       row.Name,
+		Sort:       row.Sort,
+		AssetCount: assetCount,
+		CreatedAt:  row.CreatedAt,
+		UpdatedAt:  row.UpdatedAt,
+	}
 }

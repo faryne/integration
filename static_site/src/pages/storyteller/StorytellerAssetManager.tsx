@@ -1,7 +1,9 @@
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
+import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {
@@ -30,7 +32,11 @@ import {
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import {
+  useDeleteStorytellerAssetCollection,
   useDeleteStorytellerAsset,
+  useMoveStorytellerAsset,
+  useSaveStorytellerAssetCollection,
+  useStorytellerAssetCollections,
   useStorytellerAssets,
   useUpdateStorytellerAsset,
   useUploadStorytellerAssets,
@@ -46,10 +52,13 @@ import {
 } from "@/data/storyteller.ts";
 import type {
   StorytellerAsset,
+  StorytellerAssetCollection,
+  StorytellerAssetCollectionRequest,
   StorytellerAssetUpdateRequest,
 } from "@/types/storyteller.ts";
 
 const assetPageSize = 24;
+const uncategorizedCollectionId = "__uncategorized__";
 
 interface UploadProgress {
   name: string;
@@ -91,6 +100,15 @@ function editForm(asset: StorytellerAsset): StorytellerAssetUpdateRequest {
   };
 }
 
+function collectionForm(
+  collection?: StorytellerAssetCollection,
+): StorytellerAssetCollectionRequest {
+  return {
+    name: collection?.name ?? "",
+    sort: collection?.sort ?? 0,
+  };
+}
+
 export function StorytellerAssetManager({
   projectPublicId,
 }: {
@@ -106,17 +124,26 @@ export function StorytellerAssetManager({
   const [editingAsset, setEditingAsset] = useState<StorytellerAsset | null>(
     null,
   );
+  const [activeCollectionId, setActiveCollectionId] = useState("");
   const [form, setForm] = useState<StorytellerAssetUpdateRequest>({
     title: "",
     alt_text: "",
     description: "",
     metadata: {},
   });
+  const [editingCollection, setEditingCollection] =
+    useState<StorytellerAssetCollection | null>(null);
+  const [collectionFormData, setCollectionFormData] =
+    useState<StorytellerAssetCollectionRequest>(collectionForm());
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
+  const [collectionDeleteTarget, setCollectionDeleteTarget] =
+    useState<StorytellerAssetCollection | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StorytellerAsset | null>(
     null,
   );
-  const [uploadMenuAnchor, setUploadMenuAnchor] =
-    useState<HTMLElement | null>(null);
+  const [uploadMenuAnchor, setUploadMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
   const [uploadProgress, setUploadProgress] = useState<
     Record<number, UploadProgress>
@@ -126,11 +153,17 @@ export function StorytellerAssetManager({
     page,
     assetPageSize,
     keyword,
+    activeCollectionId,
   );
+  const collectionsQuery = useStorytellerAssetCollections(projectPublicId);
   const uploadAssets = useUploadStorytellerAssets(projectPublicId);
   const updateAsset = useUpdateStorytellerAsset(projectPublicId);
   const deleteAsset = useDeleteStorytellerAsset(projectPublicId);
+  const saveCollection = useSaveStorytellerAssetCollection(projectPublicId);
+  const deleteCollection = useDeleteStorytellerAssetCollection(projectPublicId);
+  const moveAsset = useMoveStorytellerAsset(projectPublicId);
   const assets = assetsQuery.data?.assets ?? [];
+  const collections = collectionsQuery.data ?? [];
   const totalPages = Math.ceil(
     (assetsQuery.data?.total_count ?? 0) / assetPageSize,
   );
@@ -140,6 +173,19 @@ export function StorytellerAssetManager({
       setPage(totalPages);
     }
   }, [page, totalPages]);
+
+  useEffect(() => {
+    if (
+      activeCollectionId &&
+      activeCollectionId !== uncategorizedCollectionId &&
+      !collections.some(
+        (collection) => collection.public_id === activeCollectionId,
+      )
+    ) {
+      setActiveCollectionId("");
+      setPage(1);
+    }
+  }, [activeCollectionId, collections]);
 
   // 上傳中關閉或重新整理頁面容易留下已 PUT 但尚未 confirm 的孤兒檔案；
   // 比照圖像作品頁，至少攔瀏覽器層級離開，提醒使用者等進度跑完。
@@ -158,6 +204,80 @@ export function StorytellerAssetManager({
   function openEdit(asset: StorytellerAsset) {
     setEditingAsset(asset);
     setForm(editForm(asset));
+  }
+
+  function openCreateCollection() {
+    setEditingCollection(null);
+    setCollectionFormData({ name: "", sort: collections.length * 10 });
+    setCollectionDialogOpen(true);
+  }
+
+  function openEditCollection(collection: StorytellerAssetCollection) {
+    setEditingCollection(collection);
+    setCollectionFormData(collectionForm(collection));
+    setCollectionDialogOpen(true);
+  }
+
+  async function saveAssetCollection() {
+    try {
+      const saved = await saveCollection.mutateAsync({
+        collectionPublicId: editingCollection?.public_id,
+        input: collectionFormData,
+      });
+      if (!editingCollection && saved?.public_id) {
+        setActiveCollectionId(saved.public_id);
+        setPage(1);
+      }
+      setSnack({
+        message: editingCollection ? "資產集已更新。" : "資產集已建立。",
+        severity: "success",
+      });
+      setCollectionDialogOpen(false);
+      setEditingCollection(null);
+    } catch (error) {
+      setSnack({
+        message: errorMessage(error, "資產集儲存失敗。"),
+        severity: "error",
+      });
+    }
+  }
+
+  async function confirmDeleteCollection() {
+    if (!collectionDeleteTarget) {
+      return;
+    }
+    try {
+      await deleteCollection.mutateAsync(collectionDeleteTarget.public_id);
+      if (activeCollectionId === collectionDeleteTarget.public_id) {
+        setActiveCollectionId("");
+        setPage(1);
+      }
+      setSnack({ message: "資產集已刪除。", severity: "success" });
+      setCollectionDeleteTarget(null);
+    } catch (error) {
+      setSnack({
+        message: errorMessage(error, "資產集刪除失敗。"),
+        severity: "error",
+      });
+    }
+  }
+
+  async function moveAssetTo(asset: StorytellerAsset, collectionId: string) {
+    if ((asset.collection_id ?? "") === collectionId) {
+      return;
+    }
+    try {
+      await moveAsset.mutateAsync({
+        assetPublicId: asset.public_id,
+        collectionId,
+      });
+      setSnack({ message: "資產已移動。", severity: "success" });
+    } catch (error) {
+      setSnack({
+        message: errorMessage(error, "資產移動失敗。"),
+        severity: "error",
+      });
+    }
   }
 
   async function handleFiles(files: FileList | null) {
@@ -203,6 +323,10 @@ export function StorytellerAssetManager({
     try {
       const uploaded = await uploadAssets.mutateAsync({
         files: images,
+        collectionId:
+          activeCollectionId === uncategorizedCollectionId
+            ? ""
+            : activeCollectionId,
         onProgress: (index, loaded, total) => {
           setUploadProgress((current) => ({
             ...current,
@@ -306,6 +430,13 @@ export function StorytellerAssetManager({
           >
             重新整理
           </Button>
+          <Button
+            variant="outlined"
+            startIcon={<CreateNewFolderIcon />}
+            onClick={openCreateCollection}
+          >
+            建立資產集
+          </Button>
           <ButtonGroup
             variant="contained"
             sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
@@ -349,6 +480,89 @@ export function StorytellerAssetManager({
             onChange={(event) => void handleFiles(event.target.files)}
           />
         </Stack>
+      </Stack>
+
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Button
+          size="small"
+          variant={activeCollectionId === "" ? "contained" : "outlined"}
+          startIcon={<FolderIcon />}
+          onClick={() => {
+            setActiveCollectionId("");
+            setPage(1);
+          }}
+        >
+          全部
+        </Button>
+        <Button
+          size="small"
+          variant={
+            activeCollectionId === uncategorizedCollectionId
+              ? "contained"
+              : "outlined"
+          }
+          onClick={() => {
+            setActiveCollectionId(uncategorizedCollectionId);
+            setPage(1);
+          }}
+        >
+          未分類
+        </Button>
+        {collections.map((collection) => (
+          <ButtonGroup
+            key={collection.public_id}
+            size="small"
+            variant={
+              activeCollectionId === collection.public_id
+                ? "contained"
+                : "outlined"
+            }
+          >
+            <Button
+              onClick={() => {
+                setActiveCollectionId(collection.public_id);
+                setPage(1);
+              }}
+              sx={{ maxWidth: 220 }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {collection.name}
+              </Box>
+              <Box component="span" sx={{ ml: 0.75, opacity: 0.72 }}>
+                {collection.asset_count}
+              </Box>
+            </Button>
+            <Tooltip title="編輯資產集">
+              <Button onClick={() => openEditCollection(collection)}>
+                <EditIcon fontSize="small" />
+              </Button>
+            </Tooltip>
+            <Tooltip
+              title={
+                collection.asset_count > 0
+                  ? "資產集內仍有資產，不能刪除"
+                  : "刪除資產集"
+              }
+            >
+              <span>
+                <Button
+                  color="error"
+                  disabled={collection.asset_count > 0}
+                  onClick={() => setCollectionDeleteTarget(collection)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </Button>
+              </span>
+            </Tooltip>
+          </ButtonGroup>
+        ))}
       </Stack>
 
       {uploadPhase === "uploading" && (
@@ -464,7 +678,10 @@ export function StorytellerAssetManager({
                     </Stack>
                     <Stack direction="row" spacing={0.5}>
                       <Tooltip title="編輯資產資訊">
-                        <IconButton size="small" onClick={() => openEdit(asset)}>
+                        <IconButton
+                          size="small"
+                          onClick={() => openEdit(asset)}
+                        >
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -490,7 +707,10 @@ export function StorytellerAssetManager({
                   </Stack>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <Chip size="small" label={asset.mime_type} />
-                    <Chip size="small" label={formatFileSize(asset.file_size)} />
+                    <Chip
+                      size="small"
+                      label={formatFileSize(asset.file_size)}
+                    />
                     <Chip size="small" label={imageSizeLabel(asset)} />
                     {asset.reference_count > 0 && (
                       <Chip
@@ -500,6 +720,26 @@ export function StorytellerAssetManager({
                       />
                     )}
                   </Stack>
+                  <TextField
+                    select
+                    size="small"
+                    label="所屬資產集"
+                    value={asset.collection_id ?? ""}
+                    disabled={moveAsset.isPending}
+                    onChange={(event) =>
+                      void moveAssetTo(asset, event.target.value)
+                    }
+                  >
+                    <MenuItem value="">未分類</MenuItem>
+                    {collections.map((collection) => (
+                      <MenuItem
+                        key={collection.public_id}
+                        value={collection.public_id}
+                      >
+                        {collection.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                   {asset.description.trim() && (
                     <Typography
                       variant="body2"
@@ -545,7 +785,10 @@ export function StorytellerAssetManager({
               label="標題"
               value={form.title}
               onChange={(event) =>
-                setForm((current) => ({ ...current, title: event.target.value }))
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
               }
             />
             <TextField
@@ -584,6 +827,62 @@ export function StorytellerAssetManager({
         </DialogActions>
       </Dialog>
 
+      <Dialog
+        open={collectionDialogOpen}
+        onClose={() => {
+          setCollectionDialogOpen(false);
+          setEditingCollection(null);
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          {editingCollection ? "編輯資產集" : "建立資產集"}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="名稱"
+              value={collectionFormData.name}
+              onChange={(event) =>
+                setCollectionFormData((current) => ({
+                  ...current,
+                  name: event.target.value,
+                }))
+              }
+            />
+            <TextField
+              label="排序"
+              type="number"
+              value={collectionFormData.sort}
+              onChange={(event) =>
+                setCollectionFormData((current) => ({
+                  ...current,
+                  sort: Number(event.target.value),
+                }))
+              }
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setCollectionDialogOpen(false);
+              setEditingCollection(null);
+            }}
+          >
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            disabled={saveCollection.isPending}
+            onClick={() => void saveAssetCollection()}
+          >
+            {saveCollection.isPending ? "儲存中" : "儲存"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <ConfirmNameDialog
         open={Boolean(deleteTarget)}
         title="刪除資產"
@@ -598,6 +897,17 @@ export function StorytellerAssetManager({
         loading={deleteAsset.isPending}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
+      />
+
+      <ConfirmNameDialog
+        open={Boolean(collectionDeleteTarget)}
+        title="刪除資產集"
+        description="刪除前請先把資產集內的資產移到其他資產集或未分類。"
+        confirmName={collectionDeleteTarget?.name ?? ""}
+        confirmLabel="刪除"
+        loading={deleteCollection.isPending}
+        onClose={() => setCollectionDeleteTarget(null)}
+        onConfirm={() => void confirmDeleteCollection()}
       />
 
       <CustomSnackbar

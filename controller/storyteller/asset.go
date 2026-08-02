@@ -18,6 +18,7 @@ func Assets(ctx fiber.Ctx) error {
 	rows, err := storyteller.NewService().Assets(
 		authsession.Session(ctx).UserId,
 		ctx.Params("project"),
+		ctx.Query("collection_id"),
 		ctx.Query("asset_type"),
 		ctx.Query("keyword"),
 		page,
@@ -79,10 +80,70 @@ func UpdateAsset(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func MoveAsset(ctx fiber.Ctx) error {
+	var input storytellerModel.AssetMoveRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().MoveAsset(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("asset"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller asset not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func DeleteAsset(ctx fiber.Ctx) error {
 	if err := storyteller.NewService().DeleteAsset(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("asset")); err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller asset not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
+}
+
+func AssetCollections(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().AssetCollections(authsession.Session(ctx).UserId, ctx.Params("project"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func CreateAssetCollection(ctx fiber.Ctx) error {
+	var input storytellerModel.AssetCollectionRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateAssetCollection(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func UpdateAssetCollection(ctx fiber.Ctx) error {
+	var input storytellerModel.AssetCollectionRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().UpdateAssetCollection(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("collection"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller asset collection not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteAssetCollection(ctx fiber.Ctx) error {
+	if err := storyteller.NewService().DeleteAssetCollection(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("collection")); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller asset collection not found"))
 		}
 		return output.BadRequest(err)
 	}

@@ -227,6 +227,7 @@ type storytellerAssetArguments struct {
 
 type storytellerListAssetsArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
+	CollectionID    string `json:"collection_id"`
 	AssetType       string `json:"asset_type"`
 	Keyword         string `json:"keyword"`
 	Page            int    `json:"page"`
@@ -242,6 +243,7 @@ type storytellerConfirmAssetUploadArguments struct {
 	ProjectPublicID  string                         `json:"project_public_id"`
 	Key              string                         `json:"key"`
 	ContentType      string                         `json:"content_type"`
+	CollectionID     string                         `json:"collection_id"`
 	OriginalFilename string                         `json:"original_filename"`
 	Title            string                         `json:"title"`
 	AltText          string                         `json:"alt_text"`
@@ -256,6 +258,24 @@ type storytellerUpdateAssetArguments struct {
 	AltText         string                         `json:"alt_text"`
 	Description     string                         `json:"description"`
 	Metadata        storytellerModel.AssetMetadata `json:"metadata"`
+}
+
+type storytellerMoveAssetArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	AssetPublicID   string `json:"asset_public_id"`
+	CollectionID    string `json:"collection_id"`
+}
+
+type storytellerAssetCollectionArguments struct {
+	ProjectPublicID    string `json:"project_public_id"`
+	CollectionPublicID string `json:"collection_public_id"`
+}
+
+type storytellerUpsertAssetCollectionArguments struct {
+	ProjectPublicID    string `json:"project_public_id"`
+	CollectionPublicID string `json:"collection_public_id"`
+	Name               string `json:"name"`
+	Sort               int    `json:"sort"`
 }
 
 // storytellerImagePageArguments 是 storyteller_upsert_image_story 的單一頁面：Key 一定要是
@@ -590,6 +610,7 @@ func (s *Server) registerStorytellerTools() {
 		Description: "List image assets belonging to a storyteller project. Assets are project-scoped and cannot be used across projects.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
+			"collection_id":     stringSchema("Optional asset collection public_id. Omit for all assets, or pass __uncategorized__ for uncategorized assets."),
 			"asset_type":        stringSchema("Optional. Currently only image is supported."),
 			"keyword":           stringSchema("Optional keyword matched against title, original filename, alt text, or description."),
 			"page":              integerSchema("Page number, defaults to 1."),
@@ -604,7 +625,7 @@ func (s *Server) registerStorytellerTools() {
 			if err := decodeArguments(arguments, &args); err != nil {
 				return nil, err
 			}
-			page, err := storytellerService.NewService().Assets(userID, args.ProjectPublicID, args.AssetType, args.Keyword, args.Page, args.PageSize)
+			page, err := storytellerService.NewService().Assets(userID, args.ProjectPublicID, args.CollectionID, args.AssetType, args.Keyword, args.Page, args.PageSize)
 			if err != nil {
 				return nil, err
 			}
@@ -680,6 +701,7 @@ func (s *Server) registerStorytellerTools() {
 			"project_public_id": stringSchema("Project public_id."),
 			"key":               stringSchema("S3 key returned by storyteller_presign_asset_upload."),
 			"content_type":      stringSchema("MIME type declared during presign."),
+			"collection_id":     stringSchema("Optional asset collection public_id. Omit to keep the asset uncategorized."),
 			"original_filename": stringSchema("Original filename for display."),
 			"title":             stringSchema("Optional asset title."),
 			"alt_text":          stringSchema("Optional alt text."),
@@ -698,6 +720,7 @@ func (s *Server) registerStorytellerTools() {
 			asset, err := storytellerService.NewService().ConfirmAssetUpload(userID, args.ProjectPublicID, storytellerModel.AssetConfirmRequest{
 				Key:              args.Key,
 				ContentType:      args.ContentType,
+				CollectionID:     args.CollectionID,
 				OriginalFilename: args.OriginalFilename,
 				Title:            args.Title,
 				AltText:          args.AltText,
@@ -741,6 +764,128 @@ func (s *Server) registerStorytellerTools() {
 				return nil, err
 			}
 			return jsonTextResult(asset)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_move_asset",
+		Description: "Move a project asset into an asset collection, or pass an empty collection_id to make it uncategorized.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"asset_public_id":   stringSchema("Asset public_id."),
+			"collection_id":     stringSchema("Target asset collection public_id. Empty string moves the asset back to uncategorized."),
+		}, []string{"project_public_id", "asset_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerMoveAssetArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			asset, err := storytellerService.NewService().MoveAsset(userID, args.ProjectPublicID, args.AssetPublicID, storytellerModel.AssetMoveRequest{CollectionID: args.CollectionID})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(asset)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_list_asset_collections",
+		Description: "List asset collections belonging to a storyteller project, including asset counts.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+		}, []string{"project_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerAssetCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collections, err := storytellerService.NewService().AssetCollections(userID, args.ProjectPublicID)
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collections)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_create_asset_collection",
+		Description: "Create an asset collection inside a storyteller project.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"name":              stringSchema("Collection name."),
+			"sort":              integerSchema("Display order among asset collections."),
+		}, []string{"project_public_id", "name"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerUpsertAssetCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collection, err := storytellerService.NewService().CreateAssetCollection(userID, args.ProjectPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Sort: args.Sort})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collection)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_update_asset_collection",
+		Description: "Rename an asset collection or update its display order.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id":    stringSchema("Project public_id."),
+			"collection_public_id": stringSchema("Asset collection public_id."),
+			"name":                 stringSchema("Collection name."),
+			"sort":                 integerSchema("Display order among asset collections."),
+		}, []string{"project_public_id", "collection_public_id", "name"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerUpsertAssetCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collection, err := storytellerService.NewService().UpdateAssetCollection(userID, args.ProjectPublicID, args.CollectionPublicID, storytellerModel.AssetCollectionRequest{Name: args.Name, Sort: args.Sort})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collection)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_delete_asset_collection",
+		Description: "Soft-delete an empty asset collection. Fails while the collection still contains assets.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id":    stringSchema("Project public_id."),
+			"collection_public_id": stringSchema("Asset collection public_id."),
+		}, []string{"project_public_id", "collection_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerAssetCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			if err := storytellerService.NewService().DeleteAssetCollection(userID, args.ProjectPublicID, args.CollectionPublicID); err != nil {
+				return nil, err
+			}
+			return textResult("deleted"), nil
 		},
 	})
 
