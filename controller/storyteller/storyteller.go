@@ -745,7 +745,7 @@ func Lores(ctx fiber.Ctx) error {
 func LoresPage(ctx fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "10"))
-	rows, total, err := storyteller.NewService().LoresPage(authsession.Session(ctx).UserId, ctx.Params("project"), page, pageSize)
+	rows, total, err := storyteller.NewService().LoresPage(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Query("collection_id"), page, pageSize)
 	if err != nil {
 		return output.BadRequest(err)
 	}
@@ -755,6 +755,51 @@ func LoresPage(ctx fiber.Ctx) error {
 		"page":        page,
 		"page_size":   pageSize,
 	})
+}
+
+func LoreCollections(ctx fiber.Ctx) error {
+	rows, err := storyteller.NewService().LoreCollections(authsession.Session(ctx).UserId, ctx.Params("project"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(rows)
+}
+
+func CreateLoreCollection(ctx fiber.Ctx) error {
+	var input storytellerModel.LoreCollectionRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().CreateLoreCollection(authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func UpdateLoreCollection(ctx fiber.Ctx) error {
+	var input storytellerModel.LoreCollectionRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().UpdateLoreCollection(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("collection"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore collection not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func DeleteLoreCollection(ctx fiber.Ctx) error {
+	if err := storyteller.NewService().DeleteLoreCollection(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("collection")); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore collection not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"deleted": true})
 }
 
 func Lore(ctx fiber.Ctx) error {
@@ -796,6 +841,21 @@ func UpdateLore(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(loreUpdateOutput{Lore: *row, VersionConflict: conflicted})
+}
+
+func MoveLore(ctx fiber.Ctx) error {
+	var input storytellerModel.LoreMoveRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().MoveLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
 }
 
 func DeleteLore(ctx fiber.Ctx) error {

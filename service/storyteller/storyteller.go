@@ -1559,11 +1559,15 @@ func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerMod
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Lores(project.ID)
+	rows, err := s.repo.Lores(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	return rows, s.fillLoreCollectionPublicIDs(project.ID, rows)
 }
 
 // LoresPage 的分頁語意跟 StoriesPage 一樣。
-func (s *Service) LoresPage(userID uint64, projectPublicID string, page, pageSize int) ([]storytellerModel.Lore, int64, error) {
+func (s *Service) LoresPage(userID uint64, projectPublicID, collectionPublicID string, page, pageSize int) ([]storytellerModel.Lore, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -1577,7 +1581,15 @@ func (s *Service) LoresPage(userID uint64, projectPublicID string, page, pageSiz
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.repo.LoresPage(project.ID, (page-1)*pageSize, pageSize)
+	collectionID, uncategorizedOnly, err := s.resolveLoreCollectionFilter(project.ID, collectionPublicID)
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, total, err := s.repo.LoresPage(project.ID, collectionID, uncategorizedOnly, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return rows, total, s.fillLoreCollectionPublicIDs(project.ID, rows)
 }
 
 func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*storytellerModel.Lore, error) {
@@ -1585,7 +1597,11 @@ func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*st
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Lore(project.ID, lorePublicID)
+	row, err := s.repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	return row, s.fillLoreCollectionPublicID(project.ID, row)
 }
 
 func (s *Service) CreateLore(userID uint64, projectPublicID string, input storytellerModel.LoreRequest, source string) (*storytellerModel.Lore, error) {
@@ -1599,9 +1615,17 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	}
+	var collectionID *uint64
+	if input.CollectionID != nil {
+		collectionID, err = s.resolveLoreCollectionID(project.ID, *input.CollectionID)
+		if err != nil {
+			return nil, err
+		}
+	}
 	lore := &storytellerModel.Lore{
 		PublicID:      randomID(),
 		ProjectID:     project.ID,
+		CollectionID:  collectionID,
 		Title:         strings.TrimSpace(input.Title),
 		LatestContent: input.Content,
 		WordCount:     wordCount(input.Content),
@@ -1611,6 +1635,9 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 		return nil, err
 	}
 	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
+		return nil, err
+	}
+	if err := s.fillLoreCollectionPublicID(project.ID, lore); err != nil {
 		return nil, err
 	}
 	return lore, nil
@@ -1632,6 +1659,13 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return nil, false, err
 	}
+	if input.CollectionID != nil {
+		collectionID, err := s.resolveLoreCollectionID(project.ID, *input.CollectionID)
+		if err != nil {
+			return nil, false, err
+		}
+		lore.CollectionID = collectionID
+	}
 	lore.Title = strings.TrimSpace(input.Title)
 	lore.LatestContent = input.Content
 	lore.WordCount = wordCount(input.Content)
@@ -1641,6 +1675,9 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 		return nil, false, err
 	}
 	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
+		return nil, false, err
+	}
+	if err := s.fillLoreCollectionPublicID(project.ID, lore); err != nil {
 		return nil, false, err
 	}
 	return lore, conflicted, nil

@@ -18,7 +18,6 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  Pagination,
   Paper,
   Stack,
   Switch,
@@ -31,11 +30,9 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
-  useDeleteStorytellerLore,
   useDeleteStorytellerStory,
   useSaveStorytellerVolume,
   useStorytellerImageStoryPages,
-  useStorytellerLoresPage,
   useStorytellerProjects,
   useSaveStorytellerStory,
   useStorytellerStories,
@@ -67,9 +64,10 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import { StorytellerAssetManager } from "@/pages/storyteller/StorytellerAssetManager.tsx";
+import { StorytellerLoreManager } from "@/pages/storyteller/StorytellerLoreManager.tsx";
 import { StorytellerVolumeDialog } from "@/pages/storyteller/StorytellerVolumeDialog.tsx";
 import { sortedGroup } from "@/pages/storyteller/storytellerVolumes.ts";
-import type { StorytellerLore, StorytellerStory } from "@/types/storyteller.ts";
+import type { StorytellerStory } from "@/types/storyteller.ts";
 
 // 穩定的空陣列參考：查詢尚未回傳資料時（例如登入狀態剛載入、query 被停用）
 // 用同一個參考當預設值，避免每次 render 都產生新陣列，觸發下方 useEffect 無限重渲染
@@ -225,10 +223,6 @@ export default function StorytellerProjectDetail() {
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
     null,
   );
-  const [deleteLoreTarget, setDeleteLoreTarget] =
-    useState<StorytellerLore | null>(null);
-  const [loresPage, setLoresPage] = useState(1);
-  const loresPageSize = 20;
   // volumeDialogTarget："new" 代表新增冊，StorytellerStory 代表重新命名該冊。
   const [volumeDialogTarget, setVolumeDialogTarget] = useState<
     "new" | StorytellerStory | null
@@ -282,23 +276,9 @@ export default function StorytellerProjectDetail() {
   const imageStoryCount = apiStories.filter(
     (story) => story.content_type === "image",
   ).length;
-  const { data: loresPageData, isLoading: apiLoresLoading } =
-    useStorytellerLoresPage(apiProject?.public_id, loresPage, loresPageSize);
-  const apiLores = loresPageData?.lores ?? [];
-  const loresTotalPages = Math.ceil(
-    (loresPageData?.total_count ?? 0) / loresPageSize,
-  );
-  // 刪掉某一頁最後一筆設定集之後，總頁數會變少；目前頁碼如果超出新的總頁數，
-  // 自動退回最後一頁，不然會卡在一個查不到資料、顯示成空清單的頁碼上。
-  useEffect(() => {
-    if (loresTotalPages > 0 && loresPage > loresTotalPages) {
-      setLoresPage(loresTotalPages);
-    }
-  }, [loresPage, loresTotalPages]);
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const saveVolume = useSaveStorytellerVolume(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
-  const deleteLore = useDeleteStorytellerLore(apiProject?.public_id);
   const deleteProject = useDeleteStorytellerProject();
 
   useEffect(() => {
@@ -711,12 +691,6 @@ export default function StorytellerProjectDetail() {
             刪除故事失敗，請確認登入狀態後再試一次。
           </Typography>
         )}
-        {deleteLore.isError && (
-          <Typography color="error">
-            刪除設定集失敗，請確認登入狀態後再試一次。
-          </Typography>
-        )}
-
         <Grid container spacing={2}>
           <Grid size={12}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -813,23 +787,7 @@ export default function StorytellerProjectDetail() {
                   </Stack>
                 )}
                 {activeTab === "lores" && (
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1.5}
-                    justifyContent="space-between"
-                    alignItems={{ xs: "stretch", sm: "center" }}
-                  >
-                    <Typography variant="h6" fontWeight={800}>
-                      設定集列表
-                    </Typography>
-                    <Button
-                      href={steamloomPath(`my/project/${project.id}/lore/new`)}
-                      variant="contained"
-                      sx={{ alignSelf: { xs: "stretch", sm: "center" } }}
-                    >
-                      建立設定集
-                    </Button>
-                  </Stack>
+                  <StorytellerLoreManager projectPublicId={project.id} />
                 )}
                 {activeTab === "assets" && (
                   <StorytellerAssetManager projectPublicId={project.id} />
@@ -1072,69 +1030,6 @@ export default function StorytellerProjectDetail() {
                       {renderDropEndZone(() => handleDropStory(null, null))}
                     </Stack>
                   </Stack>
-                ) : activeTab === "lores" && apiLoresLoading ? (
-                  <StorytellerLoading label="正在載入設定集..." />
-                ) : activeTab === "lores" && apiLores.length === 0 ? (
-                  <CustomEmptyState
-                    icon={<MenuBookIcon fontSize="large" />}
-                    title="尚未建立設定集"
-                    description="使用上方的「建立設定集」記錄世界觀、角色規則與劇本設定。"
-                  />
-                ) : activeTab === "lores" ? (
-                  <>
-                    {apiLores.map((lore) => (
-                      <Paper
-                        key={lore.public_id}
-                        variant="outlined"
-                        sx={{ p: 2, borderRadius: 1 }}
-                      >
-                        <Stack
-                          direction="row"
-                          spacing={1.5}
-                          alignItems="center"
-                        >
-                          <MenuBookIcon color="primary" />
-                          <Stack sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography fontWeight={800}>
-                              {lore.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {lore.word_count.toLocaleString()} 字 ·{" "}
-                              {formatStorytellerDate(lore.updated_at)}
-                            </Typography>
-                          </Stack>
-                          <Button
-                            href={steamloomPath(
-                              `my/project/${project.id}/lore/${lore.public_id}`,
-                            )}
-                            variant="outlined"
-                            size="small"
-                          >
-                            編輯
-                          </Button>
-                          <Button
-                            color="error"
-                            variant="contained"
-                            size="small"
-                            startIcon={<DeleteIcon />}
-                            onClick={() => setDeleteLoreTarget(lore)}
-                          >
-                            刪除
-                          </Button>
-                        </Stack>
-                      </Paper>
-                    ))}
-                    {loresTotalPages > 1 && (
-                      <Box sx={{ display: "flex", justifyContent: "center" }}>
-                        <Pagination
-                          count={loresTotalPages}
-                          page={loresPage}
-                          onChange={(_, value) => setLoresPage(value)}
-                          color="primary"
-                        />
-                      </Box>
-                    )}
-                  </>
                 ) : null}
               </Stack>
             </Paper>
@@ -1155,22 +1050,6 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
-            })
-          }
-        />
-      )}
-      {deleteLoreTarget && (
-        <ConfirmNameDialog
-          open
-          title="刪除設定集"
-          description="刪除後會移除這份設定集與其版本資料。請輸入設定集名稱確認。"
-          confirmName={deleteLoreTarget.title}
-          confirmLabel="刪除設定集"
-          loading={deleteLore.isPending}
-          onClose={() => setDeleteLoreTarget(null)}
-          onConfirm={() =>
-            deleteLore.mutate(deleteLoreTarget.public_id, {
-              onSuccess: () => setDeleteLoreTarget(null),
             })
           }
         />

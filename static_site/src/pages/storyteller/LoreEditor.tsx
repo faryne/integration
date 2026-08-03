@@ -21,6 +21,7 @@ import {
   useSaveStorytellerLore,
   useStorytellerAgents,
   useStorytellerLoreChatMessages,
+  useStorytellerLoreCollections,
   useStorytellerLoreVersions,
   useStorytellerLores,
   useStorytellerProjects,
@@ -101,11 +102,12 @@ function clampAutoSaveIntervalMinutes(value: number) {
 
 interface LoreDraft {
   title: string;
+  collectionId: string;
   content: string;
 }
 
-function serializeLoreDraft(title: string, content: string) {
-  return JSON.stringify({ title, content });
+function serializeLoreDraft(title: string, collectionId: string, content: string) {
+  return JSON.stringify({ title, collectionId, content });
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -128,14 +130,19 @@ export default function StorytellerLoreEditor() {
   const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewLore = loreId === "new";
-  const currentDraftRef = useRef(serializeLoreDraft("", ""));
-  const lastSavedDraftRef = useRef(serializeLoreDraft("", ""));
-  const latestDraftRef = useRef<LoreDraft>({ title: "", content: "" });
+  const currentDraftRef = useRef(serializeLoreDraft("", "", ""));
+  const lastSavedDraftRef = useRef(serializeLoreDraft("", "", ""));
+  const latestDraftRef = useRef<LoreDraft>({
+    title: "",
+    collectionId: "",
+    content: "",
+  });
   const autoSaveRunningRef = useRef(false);
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     null,
   );
   const [title, setTitle] = useState("");
+  const [selectedCollectionId, setSelectedCollectionId] = useState("");
   const [content, setContent] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [replyTarget, setReplyTarget] =
@@ -187,6 +194,8 @@ export default function StorytellerLoreEditor() {
     isFetching: loresFetching,
   } = useStorytellerLores(apiProject?.public_id);
   const apiLore = apiLores.find((item) => item.public_id === loreId);
+  const { data: loreCollections = [], isLoading: loreCollectionsLoading } =
+    useStorytellerLoreCollections(apiProject?.public_id);
   const { data: apiStories = [] } = useStorytellerStories(
     apiProject?.public_id,
   );
@@ -223,10 +232,11 @@ export default function StorytellerLoreEditor() {
   const lore = apiLore
     ? {
         id: apiLore.public_id,
-        title: apiLore.title,
-        content: apiLore.latest_content,
-        updatedAt: apiLore.updated_at,
-      }
+      title: apiLore.title,
+      collectionId: apiLore.collection_id ?? "",
+      content: apiLore.latest_content,
+      updatedAt: apiLore.updated_at,
+    }
     : undefined;
   const pageTitle = isNewLore
     ? "建立設定集"
@@ -398,17 +408,24 @@ export default function StorytellerLoreEditor() {
     setSnack(message);
     setSnackSeverity(severity);
   };
+  const selectedCollectionExists =
+    selectedCollectionId === "" ||
+    loreCollections.some(
+      (collection) => collection.public_id === selectedCollectionId,
+    );
 
   useEffect(() => {
     setTitle(lore?.title ?? "");
+    setSelectedCollectionId(lore?.collectionId ?? "");
     setContent(lore?.content ?? "");
     const savedDraft = serializeLoreDraft(
       lore?.title ?? "",
+      lore?.collectionId ?? "",
       lore?.content ?? "",
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
-  }, [lore?.content, lore?.title]);
+  }, [lore?.collectionId, lore?.content, lore?.title]);
 
   useEffect(() => {
     latestVersionIdRef.current = versions[0]?.id;
@@ -418,9 +435,13 @@ export default function StorytellerLoreEditor() {
   }, [versions]);
 
   useEffect(() => {
-    currentDraftRef.current = serializeLoreDraft(title, content);
-    latestDraftRef.current = { title, content };
-  }, [content, title]);
+    currentDraftRef.current = serializeLoreDraft(
+      title,
+      selectedCollectionId,
+      content,
+    );
+    latestDraftRef.current = { title, collectionId: selectedCollectionId, content };
+  }, [content, selectedCollectionId, title]);
 
   useEffect(() => {
     saveLoreRef.current = saveLore;
@@ -504,6 +525,7 @@ export default function StorytellerLoreEditor() {
             lorePublicId: lore.id,
             input: {
               title: latestDraft.title,
+              collection_id: latestDraft.collectionId,
               content: latestDraft.content,
               save_trigger: "auto",
               base_version_id: latestVersionIdRef.current,
@@ -602,6 +624,7 @@ export default function StorytellerLoreEditor() {
         lorePublicId: isNewLore ? undefined : lore?.id,
         input: {
           title,
+          collection_id: selectedCollectionId,
           content,
           save_trigger: "manual",
           base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
@@ -798,7 +821,7 @@ export default function StorytellerLoreEditor() {
             )
           )}
           <Grid container spacing={2} alignItems="flex-start">
-            <Grid size={{ xs: 12, md: 5 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 label="設定集標題"
                 value={title}
@@ -808,8 +831,30 @@ export default function StorytellerLoreEditor() {
                 placeholder="請輸入設定集標題"
               />
             </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                select
+                fullWidth
+                label="分類"
+                value={selectedCollectionId}
+                disabled={loreCollectionsLoading}
+                onChange={(event) =>
+                  setSelectedCollectionId(event.target.value)
+                }
+              >
+                <MenuItem value="">未分類</MenuItem>
+                {!selectedCollectionExists && (
+                  <MenuItem value={selectedCollectionId}>目前分類</MenuItem>
+                )}
+                {loreCollections.map((collection) => (
+                  <MenuItem key={collection.public_id} value={collection.public_id}>
+                    {collection.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
             {apiProject && (
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <Stack spacing={1}>
                   <TextField
                     select
@@ -853,7 +898,7 @@ export default function StorytellerLoreEditor() {
                 </Stack>
               </Grid>
             )}
-            <Grid size={{ xs: 12, md: 3 }}>
+            <Grid size={{ xs: 12, md: 2 }}>
               <Button
                 fullWidth
                 startIcon={<SaveIcon />}

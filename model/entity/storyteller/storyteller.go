@@ -244,6 +244,21 @@ type AssetCollection struct {
 
 func (AssetCollection) TableName() string { return "storyteller_asset_collections" }
 
+type LoreCollection struct {
+	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID   uint64     `gorm:"column:project_id" json:"project_id"`
+	Name        string     `gorm:"column:name" json:"name"`
+	Description *string    `gorm:"column:description" json:"description"`
+	Sort        int        `gorm:"column:sort" json:"sort"`
+	IsDeleted   bool       `gorm:"column:is_deleted" json:"-"`
+	DeletedAt   *time.Time `gorm:"column:deleted_at" json:"-"`
+	CreatedAt   time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (LoreCollection) TableName() string { return "storyteller_lore_collections" }
+
 type AssetReference struct {
 	ID              uint64    `gorm:"column:id;primaryKey" json:"id"`
 	AssetID         uint64    `gorm:"column:asset_id" json:"asset_id"`
@@ -480,17 +495,19 @@ type StoryBookmarkOutput struct {
 }
 
 type Lore struct {
-	ID              uint64     `gorm:"column:id;primaryKey" json:"id"`
-	PublicID        string     `gorm:"column:public_id" json:"public_id"`
-	ProjectID       uint64     `gorm:"column:project_id" json:"project_id"`
-	Title           string     `gorm:"column:title" json:"title"`
-	LatestContent   string     `gorm:"column:latest_content" json:"latest_content"`
-	LatestVersionID *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
-	WordCount       uint       `gorm:"column:word_count" json:"word_count"`
-	IsDeleted       bool       `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID                 uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID           string     `gorm:"column:public_id" json:"public_id"`
+	ProjectID          uint64     `gorm:"column:project_id" json:"project_id"`
+	CollectionID       *uint64    `gorm:"column:collection_id" json:"-"`
+	CollectionPublicID string     `gorm:"-" json:"collection_id,omitempty"`
+	Title              string     `gorm:"column:title" json:"title"`
+	LatestContent      string     `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID    *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount          uint       `gorm:"column:word_count" json:"word_count"`
+	IsDeleted          bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt          *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt          time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Lore) TableName() string { return "storyteller_lores" }
@@ -853,6 +870,29 @@ type LoreRequest struct {
 	Content       string  `json:"content"`
 	SaveTrigger   string  `json:"save_trigger,omitempty"`
 	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
+	CollectionID  *string `json:"collection_id,omitempty"`
+}
+
+type LoreMoveRequest struct {
+	CollectionID string `json:"collection_id"`
+}
+
+type LoreCollectionRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Sort        int    `json:"sort"`
+}
+
+type LoreCollectionOutput struct {
+	ID          uint64    `json:"id"`
+	PublicID    string    `json:"public_id"`
+	ProjectID   uint64    `json:"project_id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Sort        int       `json:"sort"`
+	LoreCount   int64     `json:"lore_count"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 type ProjectRankingRequest struct {

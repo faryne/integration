@@ -97,10 +97,11 @@ type storytellerStorySummary struct {
 }
 
 type storytellerLoreSummary struct {
-	PublicID  string    `json:"public_id"`
-	Title     string    `json:"title"`
-	WordCount uint      `json:"word_count"`
-	UpdatedAt time.Time `json:"updated_at"`
+	PublicID     string    `json:"public_id"`
+	Title        string    `json:"title"`
+	CollectionID string    `json:"collection_id,omitempty"`
+	WordCount    uint      `json:"word_count"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type storytellerProjectDetail struct {
@@ -182,10 +183,11 @@ func toStorytellerStorySummary(story storytellerModel.Story) storytellerStorySum
 
 func toStorytellerLoreSummary(lore storytellerModel.Lore) storytellerLoreSummary {
 	return storytellerLoreSummary{
-		PublicID:  lore.PublicID,
-		Title:     lore.Title,
-		WordCount: lore.WordCount,
-		UpdatedAt: lore.UpdatedAt,
+		PublicID:     lore.PublicID,
+		Title:        lore.Title,
+		CollectionID: lore.CollectionPublicID,
+		WordCount:    lore.WordCount,
+		UpdatedAt:    lore.UpdatedAt,
 	}
 }
 
@@ -200,6 +202,7 @@ type storytellerStoryArguments struct {
 
 type storytellerListPageArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
+	CollectionID    string `json:"collection_id"`
 	Page            int    `json:"page"`
 	PageSize        int    `json:"page_size"`
 }
@@ -312,8 +315,28 @@ type storytellerUpsertLoreArguments struct {
 	ProjectPublicID string  `json:"project_public_id"`
 	LorePublicID    string  `json:"lore_public_id"`
 	Title           string  `json:"title"`
+	CollectionID    *string `json:"collection_id"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerMoveLoreArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	LorePublicID    string `json:"lore_public_id"`
+	CollectionID    string `json:"collection_id"`
+}
+
+type storytellerLoreCollectionArguments struct {
+	ProjectPublicID    string `json:"project_public_id"`
+	CollectionPublicID string `json:"collection_public_id"`
+}
+
+type storytellerUpsertLoreCollectionArguments struct {
+	ProjectPublicID    string `json:"project_public_id"`
+	CollectionPublicID string `json:"collection_public_id"`
+	Name               string `json:"name"`
+	Description        string `json:"description"`
+	Sort               int    `json:"sort"`
 }
 
 func (s *Server) registerStorytellerTools() {
@@ -367,7 +390,7 @@ func (s *Server) registerStorytellerTools() {
 			if err != nil {
 				return nil, err
 			}
-			lores, loreCount, err := service.LoresPage(userID, args.ProjectPublicID, 1, storytellerProjectDetailListCap)
+			lores, loreCount, err := service.LoresPage(userID, args.ProjectPublicID, "", 1, storytellerProjectDetailListCap)
 			if err != nil {
 				return nil, err
 			}
@@ -435,6 +458,7 @@ func (s *Server) registerStorytellerTools() {
 			"Use this when a project has more lores than storyteller_get_project's embedded list shows (see its lore_count).",
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
+			"collection_id":     stringSchema("Optional lore collection public_id. Omit for all lores, or pass __uncategorized__ for uncategorized lores."),
 			"page":              integerSchema("Page number, starting at 1. Defaults to 1."),
 			"page_size":         integerSchema("Items per page, defaults to 20, capped at 100."),
 		}, []string{"project_public_id"}),
@@ -452,7 +476,7 @@ func (s *Server) registerStorytellerTools() {
 			if pageSize < 1 {
 				pageSize = 20
 			}
-			lores, total, err := storytellerService.NewService().LoresPage(userID, args.ProjectPublicID, page, pageSize)
+			lores, total, err := storytellerService.NewService().LoresPage(userID, args.ProjectPublicID, args.CollectionID, page, pageSize)
 			if err != nil {
 				return nil, err
 			}
@@ -1042,6 +1066,130 @@ func (s *Server) registerStorytellerTools() {
 	})
 
 	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_list_lore_collections",
+		Description: "List lore/worldbuilding collections belonging to a storyteller project, including lore counts.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+		}, []string{"project_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerLoreCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collections, err := storytellerService.NewService().LoreCollections(userID, args.ProjectPublicID)
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collections)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_create_lore_collection",
+		Description: "Create a lore/worldbuilding collection inside a storyteller project.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"name":              stringSchema("Collection name."),
+			"description":       stringSchema("Optional note describing what this lore collection is for."),
+			"sort":              integerSchema("Display order among lore collections."),
+		}, []string{"project_public_id", "name"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerUpsertLoreCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collection, err := storytellerService.NewService().CreateLoreCollection(userID, args.ProjectPublicID, storytellerModel.LoreCollectionRequest{Name: args.Name, Description: args.Description, Sort: args.Sort})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collection)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_update_lore_collection",
+		Description: "Rename a lore/worldbuilding collection, update its note, or update its display order.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id":    stringSchema("Project public_id."),
+			"collection_public_id": stringSchema("Lore collection public_id."),
+			"name":                 stringSchema("Collection name."),
+			"description":          stringSchema("Optional note describing what this lore collection is for."),
+			"sort":                 integerSchema("Display order among lore collections."),
+		}, []string{"project_public_id", "collection_public_id", "name"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerUpsertLoreCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			collection, err := storytellerService.NewService().UpdateLoreCollection(userID, args.ProjectPublicID, args.CollectionPublicID, storytellerModel.LoreCollectionRequest{Name: args.Name, Description: args.Description, Sort: args.Sort})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(collection)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_delete_lore_collection",
+		Description: "Soft-delete an empty lore/worldbuilding collection. Fails while the collection still contains lores.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id":    stringSchema("Project public_id."),
+			"collection_public_id": stringSchema("Lore collection public_id."),
+		}, []string{"project_public_id", "collection_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerLoreCollectionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			if err := storytellerService.NewService().DeleteLoreCollection(userID, args.ProjectPublicID, args.CollectionPublicID); err != nil {
+				return nil, err
+			}
+			return textResult("deleted"), nil
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_move_lore",
+		Description: "Move a lore/worldbuilding entry into a lore collection, or pass an empty collection_id to make it uncategorized.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"lore_public_id":    stringSchema("Lore public_id."),
+			"collection_id":     stringSchema("Target lore collection public_id. Empty string moves the lore back to uncategorized."),
+		}, []string{"project_public_id", "lore_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerMoveLoreArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			lore, err := storytellerService.NewService().MoveLore(userID, args.ProjectPublicID, args.LorePublicID, storytellerModel.LoreMoveRequest{CollectionID: args.CollectionID})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(toStorytellerLoreSummary(*lore))
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
 		Name: "storyteller_get_lore",
 		Description: "Get a lore/worldbuilding entry's full content by project_public_id and lore_public_id. " +
 			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_lore " +
@@ -1082,6 +1230,7 @@ func (s *Server) registerStorytellerTools() {
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Existing lore public_id to update. Omit to create a new entry."),
 			"title":             stringSchema("Lore title, required."),
+			"collection_id":     stringSchema("Optional lore collection public_id. Omit to preserve the current collection on update; pass empty string or __uncategorized__ to clear it."),
 			"content":           stringSchema("Full lore content. " + storytellerContentSyntaxHint),
 			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
@@ -1096,6 +1245,7 @@ func (s *Server) registerStorytellerTools() {
 			}
 			input := storytellerModel.LoreRequest{
 				Title:         args.Title,
+				CollectionID:  args.CollectionID,
 				Content:       args.Content,
 				BaseVersionID: args.BaseVersionID,
 			}

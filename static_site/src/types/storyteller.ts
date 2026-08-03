@@ -282,6 +282,7 @@ export interface StorytellerLore {
   id: number;
   public_id: string;
   project_id: number;
+  collection_id?: string;
   title: string;
   latest_content: string;
   latest_version_id: number | null;
@@ -300,6 +301,18 @@ export interface StorytellerLoreVersion {
   reverted_from_version_id: number | null;
   conflicted_with_version_id: number | null;
   word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerLoreCollection {
+  id: number;
+  public_id: string;
+  project_id: number;
+  name: string;
+  description: string;
+  sort: number;
+  lore_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -469,6 +482,13 @@ export interface StorytellerLoreRequest {
   content: string;
   save_trigger?: "auto" | "manual";
   base_version_id?: number;
+  collection_id?: string;
+}
+
+export interface StorytellerLoreCollectionRequest {
+  name: string;
+  description?: string;
+  sort?: number;
 }
 
 export interface StorytellerUserProfileRequest {

@@ -623,15 +623,20 @@ func (r *Repository) Lores(projectID uint64) ([]storytellerModel.Lore, error) {
 }
 
 // LoresPage 是 Lores 的分頁版本，語意跟 StoriesPage 一樣。
-func (r *Repository) LoresPage(projectID uint64, offset, limit int) ([]storytellerModel.Lore, int64, error) {
+func (r *Repository) LoresPage(projectID uint64, collectionID *uint64, uncategorizedOnly bool, offset, limit int) ([]storytellerModel.Lore, int64, error) {
+	query := r.db.Model(&storytellerModel.Lore{}).
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID)
+	if uncategorizedOnly {
+		query = query.Where("collection_id IS NULL")
+	} else if collectionID != nil {
+		query = query.Where("collection_id = ?", *collectionID)
+	}
 	var total int64
-	if err := r.db.Model(&storytellerModel.Lore{}).
-		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
-		Count(&total).Error; err != nil {
+	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 	rows := make([]storytellerModel.Lore, 0)
-	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+	err := query.
 		Order("updated_at DESC, id DESC").
 		Offset(offset).Limit(limit).
 		Find(&rows).Error
@@ -643,6 +648,68 @@ func (r *Repository) Lore(projectID uint64, publicID string) (*storytellerModel.
 	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
 		First(&row).Error
 	return &row, err
+}
+
+func (r *Repository) MoveLore(row *storytellerModel.Lore) error {
+	return r.db.Model(row).Update("collection_id", row.CollectionID).Error
+}
+
+func (r *Repository) LoreCollections(projectID uint64) ([]storytellerModel.LoreCollection, error) {
+	rows := make([]storytellerModel.LoreCollection, 0)
+	err := r.db.Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Order("sort ASC, id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) LoreCollection(projectID uint64, publicID string) (*storytellerModel.LoreCollection, error) {
+	var row storytellerModel.LoreCollection
+	err := r.db.Where("project_id = ? AND public_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, publicID).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateLoreCollection(row *storytellerModel.LoreCollection) error {
+	return r.db.Create(row).Error
+}
+
+func (r *Repository) UpdateLoreCollection(row *storytellerModel.LoreCollection) error {
+	return r.db.Model(row).Updates(map[string]any{"name": row.Name, "description": row.Description, "sort": row.Sort}).Error
+}
+
+func (r *Repository) DeleteLoreCollection(row *storytellerModel.LoreCollection) error {
+	now := time.Now()
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
+}
+
+func (r *Repository) LoreCollectionLoreCount(collectionID uint64) (int64, error) {
+	var count int64
+	err := r.db.Model(&storytellerModel.Lore{}).
+		Where("collection_id = ? AND is_deleted = 0 AND deleted_at IS NULL", collectionID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *Repository) LoreCollectionLoreCounts(collectionIDs []uint64) (map[uint64]int64, error) {
+	counts := make(map[uint64]int64)
+	if len(collectionIDs) == 0 {
+		return counts, nil
+	}
+	var rows []struct {
+		CollectionID uint64
+		Count        int64
+	}
+	if err := r.db.Model(&storytellerModel.Lore{}).
+		Select("collection_id, COUNT(*) AS count").
+		Where("collection_id IN ? AND is_deleted = 0 AND deleted_at IS NULL", collectionIDs).
+		Group("collection_id").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.CollectionID] = row.Count
+	}
+	return counts, nil
 }
 
 func (r *Repository) LoreVersions(loreID uint64) ([]storytellerModel.LoreVersion, error) {

@@ -25,6 +25,8 @@ import type {
   StorytellerFavoriteAuthor,
   StorytellerImagePageUploadOutput,
   StorytellerLore,
+  StorytellerLoreCollection,
+  StorytellerLoreCollectionRequest,
   StorytellerLoreRequest,
   StorytellerLoreVersion,
   StorytellerPersonalAccessToken,
@@ -1806,6 +1808,7 @@ export function useStorytellerLores(projectPublicId?: string) {
 // 那些要完整清單（@lore: 引用選單、版本比較）的地方繼續用 useStorytellerLores。
 export function useStorytellerLoresPage(
   projectPublicId?: string,
+  collectionId = "",
   page = 1,
   pageSize = 20,
 ) {
@@ -1815,6 +1818,7 @@ export function useStorytellerLoresPage(
       "storyteller",
       "lores-page",
       projectPublicId,
+      collectionId,
       page,
       pageSize,
       session?.user.id,
@@ -1829,7 +1833,7 @@ export function useStorytellerLoresPage(
           page_size: number;
         }>
       >(`${apiBase}/storyteller/projects/${projectPublicId}/lores/page`, {
-        params: { page, per_page: pageSize },
+        params: { collection_id: collectionId, page, per_page: pageSize },
         headers: sessionHeaders(session!.encrypt_key),
       });
       return (
@@ -1840,6 +1844,99 @@ export function useStorytellerLoresPage(
           page_size: pageSize,
         }
       );
+    },
+  });
+}
+
+export function useStorytellerLoreCollections(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "lore-collections",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerLoreCollection[]>
+      >(`${apiBase}/storyteller/projects/${projectPublicId}/lore-collections`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useSaveStorytellerLoreCollection(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      collectionPublicId,
+      input,
+    }: {
+      collectionPublicId?: string;
+      input: StorytellerLoreCollectionRequest;
+    }) => {
+      const base = `${apiBase}/storyteller/projects/${projectPublicId}/lore-collections`;
+      const response = collectionPublicId
+        ? await axios.put<CommonResponse<StorytellerLoreCollection>>(
+            `${base}/${collectionPublicId}`,
+            input,
+            { headers: sessionHeaders(session!.encrypt_key) },
+          )
+        : await axios.post<CommonResponse<StorytellerLoreCollection>>(
+            base,
+            input,
+            { headers: sessionHeaders(session!.encrypt_key) },
+          );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useDeleteStorytellerLoreCollection(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (collectionPublicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lore-collections/${collectionPublicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+export function useMoveStorytellerLore(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      lorePublicId,
+      collectionId,
+    }: {
+      lorePublicId: string;
+      collectionId: string;
+    }) => {
+      const response = await axios.put<CommonResponse<StorytellerLore>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/move`,
+        { collection_id: collectionId },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }
