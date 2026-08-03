@@ -27,6 +27,7 @@ import {
   useStorytellerStoryVersions,
   useStorytellerStories,
   useStorytellerUserProfile,
+  useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
@@ -119,6 +120,7 @@ interface EditorStory {
   content: string;
   updatedAt: string;
   sort: number;
+  parentId: number | null;
 }
 
 interface EditorAgent {
@@ -136,6 +138,7 @@ interface StoryDraft {
   status: "draft" | "completed";
   content: string;
   sort: number;
+  parentPublicId: string;
 }
 
 interface OptimisticChatMessage {
@@ -155,12 +158,14 @@ function serializeStoryDraft(
   title: string,
   summary: string,
   status: "draft" | "completed",
+  parentPublicId: string,
   content: string,
 ) {
   return JSON.stringify({
     title,
     summary,
     status,
+    parentPublicId,
     content,
   });
 }
@@ -191,6 +196,9 @@ export default function StorytellerStoryEditor() {
     isFetching: apiStoriesFetching,
   } = useStorytellerStories(apiProject?.public_id);
   const { data: apiLores = [] } = useStorytellerLores(apiProject?.public_id);
+  const { data: apiVolumes = [] } = useStorytellerVolumes(
+    apiProject?.public_id,
+  );
   const apiStory = apiStories.find((item) => item.public_id === storyId);
   const story: EditorStory | undefined = apiStory
     ? {
@@ -201,6 +209,7 @@ export default function StorytellerStoryEditor() {
         content: apiStory.latest_content,
         updatedAt: apiStory.updated_at,
         sort: apiStory.sort,
+        parentId: apiStory.parent_id,
       }
     : undefined;
   const { data: apiAgents = [] } = useStorytellerAgents();
@@ -252,6 +261,7 @@ export default function StorytellerStoryEditor() {
   const [storyStatus, setStoryStatus] = useState<"draft" | "completed">(
     story?.status ?? "completed",
   );
+  const [selectedVolumeId, setSelectedVolumeId] = useState("");
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     isHistoryRoute ? "history" : null,
   );
@@ -298,9 +308,11 @@ export default function StorytellerStoryEditor() {
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
   const [historyPage, setHistoryPage] = useState(1);
-  const currentDraftRef = useRef(serializeStoryDraft("", "", "completed", ""));
+  const currentDraftRef = useRef(
+    serializeStoryDraft("", "", "completed", "", ""),
+  );
   const lastSavedDraftRef = useRef(
-    serializeStoryDraft("", "", "completed", ""),
+    serializeStoryDraft("", "", "completed", "", ""),
   );
   const latestDraftRef = useRef<StoryDraft>({
     title: "",
@@ -308,6 +320,7 @@ export default function StorytellerStoryEditor() {
     status: "completed",
     content: "",
     sort: 0,
+    parentPublicId: "",
   });
   const saveStoryRef = useRef(saveStory);
   const autoSaveRunningRef = useRef(false);
@@ -509,21 +522,37 @@ export default function StorytellerStoryEditor() {
     setStorySummary(story?.summary ?? "");
     setStoryStatus(story?.status ?? "completed");
     setContent(story?.content ?? "");
+    const parentVolume = apiVolumes.find(
+      (volume) => volume.id === story?.parentId,
+    );
+    if (isNewStory || story?.parentId === null || parentVolume) {
+      setSelectedVolumeId(parentVolume?.public_id ?? "");
+    }
     const savedDraft = serializeStoryDraft(
       story?.title ?? "",
       story?.summary ?? "",
       story?.status ?? "completed",
+      parentVolume?.public_id ?? "",
       story?.content ?? "",
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
-  }, [story?.content, story?.status, story?.summary, story?.title]);
+  }, [
+    apiVolumes,
+    isNewStory,
+    story?.content,
+    story?.parentId,
+    story?.status,
+    story?.summary,
+    story?.title,
+  ]);
 
   useEffect(() => {
     currentDraftRef.current = serializeStoryDraft(
       storyTitle,
       storySummary,
       storyStatus,
+      selectedVolumeId,
       content,
     );
     latestDraftRef.current = {
@@ -532,8 +561,16 @@ export default function StorytellerStoryEditor() {
       status: storyStatus,
       content,
       sort: story?.sort ?? 0,
+      parentPublicId: selectedVolumeId,
     };
-  }, [content, story?.sort, storyStatus, storySummary, storyTitle]);
+  }, [
+    content,
+    selectedVolumeId,
+    story?.sort,
+    storyStatus,
+    storySummary,
+    storyTitle,
+  ]);
 
   useEffect(() => {
     saveStoryRef.current = saveStory;
@@ -654,6 +691,7 @@ export default function StorytellerStoryEditor() {
               status: latestDraft.status,
               sort: latestDraft.sort,
               content: latestDraft.content,
+              parent_id: latestDraft.parentPublicId,
               save_trigger: "auto",
               base_version_id: latestVersionIdRef.current,
             },
@@ -798,6 +836,7 @@ export default function StorytellerStoryEditor() {
           status: storyStatus,
           sort: story?.sort ?? 0,
           content,
+          parent_id: selectedVolumeId,
           save_trigger: "manual",
           base_version_id: isNewStory ? undefined : latestVersionIdRef.current,
         },
@@ -1082,7 +1121,7 @@ export default function StorytellerStoryEditor() {
                 {saveStory.isPending ? "存檔中" : "存檔"}
               </Button>
             </Grid>
-            <Grid size={12}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
@@ -1095,6 +1134,23 @@ export default function StorytellerStoryEditor() {
               >
                 <MenuItem value="draft">未公開</MenuItem>
                 <MenuItem value="completed">公開中</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="冊"
+                value={selectedVolumeId}
+                onChange={(event) => setSelectedVolumeId(event.target.value)}
+                helperText="未選擇時視為不分冊。"
+              >
+                <MenuItem value="">不分冊</MenuItem>
+                {apiVolumes.map((volume) => (
+                  <MenuItem key={volume.public_id} value={volume.public_id}>
+                    {volume.title}
+                  </MenuItem>
+                ))}
               </TextField>
             </Grid>
             <Grid size={12}>

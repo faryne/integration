@@ -25,6 +25,7 @@ import {
   useStorytellerImageStoryPages,
   useStorytellerProjects,
   useStorytellerStories,
+  useStorytellerVolumes,
   useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -74,6 +75,8 @@ export default function StorytellerImageEpisodeEditor() {
 
   const { data: apiStories = [], isLoading: isStoriesLoading } =
     useStorytellerStories(!isNewEpisode ? project?.public_id : undefined);
+  const { data: apiVolumes = [], isLoading: isVolumesLoading } =
+    useStorytellerVolumes(project?.public_id);
   const existingStory = !isNewEpisode
     ? apiStories.find((story) => story.public_id === episodeId)
     : undefined;
@@ -93,6 +96,7 @@ export default function StorytellerImageEpisodeEditor() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [status, setStatus] = useState<"draft" | "completed">("completed");
+  const [selectedVolumeId, setSelectedVolumeId] = useState("");
   const [pages, setPages] = useState<PendingPage[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -112,9 +116,16 @@ export default function StorytellerImageEpisodeEditor() {
     if (isNewEpisode || initialized || !existingStory || !isPagesLoaded) {
       return;
     }
+    const parentVolume = apiVolumes.find(
+      (volume) => volume.id === existingStory.parent_id,
+    );
+    if (existingStory.parent_id !== null && !parentVolume && isVolumesLoading) {
+      return;
+    }
     setTitle(existingStory.title);
     setSummary(existingStory.summary);
     setStatus(existingStory.status);
+    setSelectedVolumeId(parentVolume?.public_id ?? "");
     setPages(
       existingPages.map((page) => ({
         id: page.id,
@@ -125,7 +136,15 @@ export default function StorytellerImageEpisodeEditor() {
       })),
     );
     setInitialized(true);
-  }, [isNewEpisode, initialized, existingStory, existingPages, isPagesLoaded]);
+  }, [
+    apiVolumes,
+    isNewEpisode,
+    initialized,
+    existingStory,
+    existingPages,
+    isPagesLoaded,
+    isVolumesLoading,
+  ]);
 
   // 只在卸載時清理，不隨 pages 變動重跑（否則每次新增頁面都會把舊的 URL 一併撤銷）。
   // 既有頁面的 previewUrl 是遠端網址不是 blob URL，revokeObjectURL 對它是安全的
@@ -210,7 +229,11 @@ export default function StorytellerImageEpisodeEditor() {
   }
 
   if (!isNewEpisode && !initialized) {
-    if (isStoriesLoading || isPagesLoading) {
+    if (
+      isStoriesLoading ||
+      isPagesLoading ||
+      (existingStory?.parent_id !== null && isVolumesLoading)
+    ) {
       return (
         <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
           <StorytellerLoading label="正在載入話的資料..." />
@@ -381,6 +404,7 @@ export default function StorytellerImageEpisodeEditor() {
           sort: existingStory?.sort ?? 0,
           content,
           content_type: "image",
+          parent_id: selectedVolumeId,
         },
       });
 
@@ -465,6 +489,22 @@ export default function StorytellerImageEpisodeEditor() {
             >
               <MenuItem value="draft">未公開</MenuItem>
               <MenuItem value="completed">公開中</MenuItem>
+            </TextField>
+            <TextField
+              fullWidth
+              select
+              label="冊"
+              value={selectedVolumeId}
+              disabled={isSubmitting}
+              onChange={(event) => setSelectedVolumeId(event.target.value)}
+              helperText="未選擇時視為不分冊。"
+            >
+              <MenuItem value="">不分冊</MenuItem>
+              {apiVolumes.map((volume) => (
+                <MenuItem key={volume.public_id} value={volume.public_id}>
+                  {volume.title}
+                </MenuItem>
+              ))}
             </TextField>
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>

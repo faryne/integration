@@ -4,9 +4,9 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import FolderIcon from "@mui/icons-material/Folder";
 import LinkIcon from "@mui/icons-material/Link";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  Pagination,
   Paper,
   Stack,
   Switch,
@@ -26,7 +27,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import type { SxProps, Theme } from "@mui/material";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useDeleteStorytellerProject,
@@ -73,6 +75,23 @@ import type { StorytellerStory } from "@/types/storyteller.ts";
 // 用同一個參考當預設值，避免每次 render 都產生新陣列，觸發下方 useEffect 無限重渲染
 const emptyStories: StorytellerStory[] = [];
 const emptyVolumes: StorytellerStory[] = [];
+const storyPageSize = 20;
+const ungroupedStoryCollectionId = "__ungrouped__";
+
+function dropTargetSx(active: boolean): SxProps<Theme> {
+  return {
+    borderRadius: 1,
+    outline: active ? "2px solid" : "1px dashed transparent",
+    outlineColor: active ? "primary.main" : "transparent",
+    outlineOffset: 2,
+    bgcolor: active ? "action.selected" : "transparent",
+    transition: "background-color 120ms ease, outline-color 120ms ease",
+    "&:hover": {
+      outlineColor: "primary.main",
+      bgcolor: "action.hover",
+    },
+  };
+}
 
 // StoryRow 是「作品與冊」統一列表裡的單一列，文字故事跟話（content_type=image）
 // 共用同一列樣式，只有圖示／字數或頁數／編輯連結不同。話的頁數需要另外呼叫
@@ -220,6 +239,8 @@ export default function StorytellerProjectDetail() {
   const [orderedVolumes, setOrderedVolumes] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
   const [draggingVolumeId, setDraggingVolumeId] = useState<string | null>(null);
+  const [activeStoryCollectionId, setActiveStoryCollectionId] = useState("");
+  const [storiesPage, setStoriesPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<StorytellerStory | null>(
     null,
   );
@@ -276,6 +297,26 @@ export default function StorytellerProjectDetail() {
   const imageStoryCount = apiStories.filter(
     (story) => story.content_type === "image",
   ).length;
+  const activeStoryVolume = orderedVolumes.find(
+    (volume) => volume.public_id === activeStoryCollectionId,
+  );
+  const activeStoryParentId =
+    activeStoryCollectionId === ungroupedStoryCollectionId
+      ? null
+      : activeStoryVolume?.id;
+  const visibleStories =
+    activeStoryCollectionId === ""
+      ? orderedStories
+      : activeStoryCollectionId === ungroupedStoryCollectionId
+        ? sortedGroup(orderedStories, null)
+        : activeStoryVolume
+          ? sortedGroup(orderedStories, activeStoryVolume.id)
+          : [];
+  const storiesTotalPages = Math.ceil(visibleStories.length / storyPageSize);
+  const pagedStories = visibleStories.slice(
+    (storiesPage - 1) * storyPageSize,
+    storiesPage * storyPageSize,
+  );
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
   const saveVolume = useSaveStorytellerVolume(apiProject?.public_id);
   const deleteStory = useDeleteStorytellerStory(apiProject?.public_id);
@@ -290,6 +331,28 @@ export default function StorytellerProjectDetail() {
       [...apiVolumes].sort((left, right) => left.sort - right.sort),
     );
   }, [apiVolumes]);
+
+  useEffect(() => {
+    setStoriesPage(1);
+  }, [activeStoryCollectionId]);
+
+  useEffect(() => {
+    if (storiesTotalPages > 0 && storiesPage > storiesTotalPages) {
+      setStoriesPage(storiesTotalPages);
+    }
+  }, [storiesPage, storiesTotalPages]);
+
+  useEffect(() => {
+    if (
+      activeStoryCollectionId &&
+      activeStoryCollectionId !== ungroupedStoryCollectionId &&
+      !orderedVolumes.some(
+        (volume) => volume.public_id === activeStoryCollectionId,
+      )
+    ) {
+      setActiveStoryCollectionId("");
+    }
+  }, [activeStoryCollectionId, orderedVolumes]);
 
   // handleDropVolume 把拖曳中的冊放到 targetVolumeId 前面（null 代表放到最後），
   // 只重排冊彼此之間的順序，跟故事的 parent_id 無關。
@@ -425,6 +488,71 @@ export default function StorytellerProjectDetail() {
             : {}),
         },
       });
+    });
+  }
+
+  function storyCountForVolume(volumeID: number | null) {
+    return sortedGroup(orderedStories, volumeID).length;
+  }
+
+  function canDropDraggingStory(parentID: number | null) {
+    const draggingStory = orderedStories.find(
+      (story) => story.public_id === draggingStoryId,
+    );
+    return Boolean(draggingStory && draggingStory.parent_id !== parentID);
+  }
+
+  function handleUngroupedDragOver(event: DragEvent<HTMLElement>) {
+    if (!canDropDraggingStory(null)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleUngroupedDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    if (draggingStoryId) {
+      handleDropStory(null, null);
+    }
+  }
+
+  function handleVolumeCollectionDragOver(
+    event: DragEvent<HTMLElement>,
+    volume: StorytellerStory,
+  ) {
+    if (
+      (draggingVolumeId && draggingVolumeId !== volume.public_id) ||
+      canDropDraggingStory(volume.id)
+    ) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    }
+  }
+
+  function handleVolumeCollectionDrop(
+    event: DragEvent<HTMLElement>,
+    volume: StorytellerStory,
+  ) {
+    event.preventDefault();
+    if (draggingVolumeId) {
+      handleDropVolume(volume.public_id);
+      return;
+    }
+    if (draggingStoryId) {
+      handleDropStory(volume.id, null);
+    }
+  }
+
+  function toggleVolumeStatus(volume: StorytellerStory) {
+    saveVolume.mutate({
+      volumePublicId: volume.public_id,
+      input: {
+        title: volume.title,
+        sort: volume.sort,
+        status: volume.status === "completed" ? "draft" : "completed",
+        summary: volume.summary,
+      },
     });
   }
 
@@ -805,230 +933,183 @@ export default function StorytellerProjectDetail() {
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>
-                    {apiVolumes.length > 0 && (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <MenuBookIcon fontSize="small" color="primary" />
-                        <Typography variant="subtitle2" color="text.secondary">
-                          冊
-                        </Typography>
-                      </Stack>
-                    )}
-                    {apiVolumes.length > 0 &&
-                      renderDropEndZone(() => {
-                        if (draggingVolumeId) {
-                          handleDropVolume(
-                            orderedVolumes[0]?.public_id ?? null,
-                          );
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Button
+                        size="small"
+                        variant={
+                          activeStoryCollectionId === ""
+                            ? "contained"
+                            : "outlined"
                         }
-                      })}
-                    {orderedVolumes.map((volume) => {
-                      const children = sortedGroup(orderedStories, volume.id);
-                      return (
-                        <Paper
-                          key={volume.public_id}
-                          variant="outlined"
-                          sx={{
-                            p: 2,
-                            borderRadius: 1,
-                            borderStyle: "dashed",
-                            opacity:
-                              draggingVolumeId === volume.public_id ? 0.55 : 1,
-                          }}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={() => {
-                            if (draggingVolumeId) {
-                              handleDropVolume(volume.public_id);
-                            } else {
-                              handleDropStory(volume.id, null);
-                            }
-                          }}
+                        startIcon={<FolderIcon />}
+                        onClick={() => setActiveStoryCollectionId("")}
+                      >
+                        全部
+                      </Button>
+                      <Tooltip title="可將作品拖曳到這裡，移到未分冊">
+                        <Button
+                          size="small"
+                          variant={
+                            activeStoryCollectionId ===
+                            ungroupedStoryCollectionId
+                              ? "contained"
+                              : "outlined"
+                          }
+                          startIcon={<DragIndicatorIcon />}
+                          onClick={() =>
+                            setActiveStoryCollectionId(
+                              ungroupedStoryCollectionId,
+                            )
+                          }
+                          onDragOver={handleUngroupedDragOver}
+                          onDrop={handleUngroupedDrop}
+                          sx={dropTargetSx(canDropDraggingStory(null))}
                         >
-                          <Stack
-                            direction="row"
-                            spacing={1}
-                            alignItems="center"
-                            justifyContent="space-between"
-                            flexWrap="wrap"
-                            useFlexGap
+                          未分冊
+                        </Button>
+                      </Tooltip>
+                      {orderedVolumes.map((volume) => {
+                        const storyCount = storyCountForVolume(volume.id);
+                        const canDropHere = Boolean(
+                          (draggingVolumeId &&
+                            draggingVolumeId !== volume.public_id) ||
+                            canDropDraggingStory(volume.id),
+                        );
+                        return (
+                          <ButtonGroup
+                            key={volume.public_id}
+                            size="small"
                             draggable
                             onDragStart={() => {
                               setDraggingStoryId(null);
                               setDraggingVolumeId(volume.public_id);
                             }}
-                            sx={{ cursor: "grab" }}
+                            onDragEnd={() => setDraggingVolumeId(null)}
+                            onDragOver={(event) =>
+                              handleVolumeCollectionDragOver(event, volume)
+                            }
+                            onDrop={(event) =>
+                              handleVolumeCollectionDrop(event, volume)
+                            }
+                            variant={
+                              activeStoryCollectionId === volume.public_id
+                                ? "contained"
+                                : "outlined"
+                            }
+                            sx={{
+                              ...dropTargetSx(canDropHere),
+                              opacity:
+                                draggingVolumeId === volume.public_id
+                                  ? 0.55
+                                  : 1,
+                            }}
                           >
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems="center"
+                            <Tooltip
+                              title={
+                                volume.summary
+                                  ? `可將作品拖曳到「${volume.title}」。摘要：${volume.summary}`
+                                  : `可將作品拖曳到「${volume.title}」`
+                              }
                             >
-                              <Tooltip title="拖放調整冊的順序">
-                                <DragIndicatorIcon color="disabled" />
-                              </Tooltip>
-                              <MenuBookIcon color="primary" />
-                              <Typography fontWeight={800}>
-                                {volume.title}
-                              </Typography>
-                              <Chip
-                                size="small"
-                                label={`${children.length} 篇`}
-                              />
-                            </Stack>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems="center"
-                            >
-                              <Tooltip
-                                title={
-                                  volume.status === "completed"
-                                    ? "公開中，點一下改為未公開（底下故事會一併隱藏）"
-                                    : "未公開，底下故事目前一律不對外顯示，點一下改為公開中"
-                                }
-                              >
-                                <FormControlLabel
-                                  sx={{ mr: 0 }}
-                                  control={
-                                    <Switch
-                                      size="small"
-                                      color="success"
-                                      checked={volume.status === "completed"}
-                                      disabled={saveVolume.isPending}
-                                      onChange={(event) =>
-                                        saveVolume.mutate({
-                                          volumePublicId: volume.public_id,
-                                          input: {
-                                            title: volume.title,
-                                            sort: volume.sort,
-                                            status: event.target.checked
-                                              ? "completed"
-                                              : "draft",
-                                            summary: volume.summary,
-                                          },
-                                        })
-                                      }
-                                    />
-                                  }
-                                  label={
-                                    volume.status === "completed"
-                                      ? "公開中"
-                                      : "未公開"
-                                  }
-                                />
-                              </Tooltip>
                               <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<DriveFileRenameOutlineIcon />}
+                                onClick={() =>
+                                  setActiveStoryCollectionId(volume.public_id)
+                                }
+                                sx={{ maxWidth: 220 }}
+                              >
+                                <DragIndicatorIcon
+                                  fontSize="small"
+                                  sx={{ mr: 0.5 }}
+                                />
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {volume.title}
+                                </Box>
+                                <Box
+                                  component="span"
+                                  sx={{ ml: 0.75, opacity: 0.72 }}
+                                >
+                                  {storyCount}
+                                </Box>
+                              </Button>
+                            </Tooltip>
+                            <Tooltip
+                              title={
+                                volume.status === "completed"
+                                  ? "公開中，點一下改為未公開（底下故事會一併隱藏）"
+                                  : "未公開，底下故事目前一律不對外顯示，點一下改為公開中"
+                              }
+                            >
+                              <Button
+                                disabled={saveVolume.isPending}
+                                onClick={() => toggleVolumeStatus(volume)}
+                              >
+                                {volume.status === "completed"
+                                  ? "公開"
+                                  : "未公開"}
+                              </Button>
+                            </Tooltip>
+                            <Tooltip title="編輯冊">
+                              <Button
                                 onClick={() => setVolumeDialogTarget(volume)}
                               >
-                                重新命名
+                                <EditIcon fontSize="small" />
                               </Button>
-                              <Tooltip
-                                title={
-                                  children.length > 0
-                                    ? "冊非空不能刪除，請先移出底下的故事"
-                                    : ""
-                                }
-                              >
-                                <span>
-                                  <Button
-                                    size="small"
-                                    color="error"
-                                    variant="contained"
-                                    startIcon={<DeleteIcon />}
-                                    disabled={children.length > 0}
-                                    onClick={() =>
-                                      setDeleteVolumeTarget(volume)
-                                    }
-                                  >
-                                    刪除
-                                  </Button>
-                                </span>
-                              </Tooltip>
-                            </Stack>
-                          </Stack>
-                          <Stack spacing={1.5} sx={{ mt: 1.5 }}>
-                            {children.length > 0 &&
-                              renderDropEndZone(() => {
-                                if (draggingVolumeId) {
-                                  handleDropVolume(volume.public_id);
-                                } else {
-                                  handleDropStory(
-                                    volume.id,
-                                    children[0]?.public_id ?? null,
-                                  );
-                                }
-                              })}
-                            {children.length === 0 ? (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ fontStyle: "italic" }}
-                              >
-                                拖曳故事到這裡加入這一冊。
-                              </Typography>
-                            ) : (
-                              children.map((story) => renderStoryRow(story))
-                            )}
-                            {renderDropEndZone(() => {
-                              if (draggingVolumeId) {
-                                handleDropVolume(volume.public_id);
-                              } else {
-                                handleDropStory(volume.id, null);
+                            </Tooltip>
+                            <Tooltip
+                              title={
+                                storyCount > 0
+                                  ? "冊非空不能刪除，請先移出底下的故事"
+                                  : "刪除冊"
                               }
-                            })}
-                          </Stack>
-                        </Paper>
-                      );
-                    })}
-                    {apiVolumes.length > 0 &&
-                      renderDropEndZone(() => {
-                        if (draggingVolumeId) {
-                          handleDropVolume(null);
-                        }
+                            >
+                              <Button
+                                color="error"
+                                disabled={storyCount > 0}
+                                onClick={() => setDeleteVolumeTarget(volume)}
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </Button>
+                            </Tooltip>
+                          </ButtonGroup>
+                        );
                       })}
-                    {apiVolumes.length > 0 && (
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <ArticleIcon fontSize="small" color="action" />
-                        <Typography variant="subtitle2" color="text.secondary">
-                          未分冊作品
-                        </Typography>
+                    </Stack>
+
+                    {visibleStories.length === 0 ? (
+                      <CustomEmptyState
+                        icon={<ArticleIcon fontSize="large" />}
+                        title="目前沒有作品"
+                        description="可以從上方建立作品，或把其他作品拖曳到這個分類。"
+                      />
+                    ) : (
+                      <Stack spacing={1.5}>
+                        {pagedStories.map((story) => renderStoryRow(story))}
+                        {activeStoryCollectionId !== "" &&
+                          activeStoryParentId !== undefined &&
+                          renderDropEndZone(() =>
+                            handleDropStory(activeStoryParentId, null),
+                          )}
+                        {storiesTotalPages > 1 && (
+                          <Box
+                            sx={{ display: "flex", justifyContent: "center" }}
+                          >
+                            <Pagination
+                              count={storiesTotalPages}
+                              page={storiesPage}
+                              onChange={(_, value) => setStoriesPage(value)}
+                              color="primary"
+                            />
+                          </Box>
+                        )}
                       </Stack>
                     )}
-                    <Stack
-                      spacing={1.5}
-                      onDragOver={(event) => event.preventDefault()}
-                      onDrop={() => handleDropStory(null, null)}
-                      sx={{ minHeight: 8 }}
-                    >
-                      {(() => {
-                        const ungrouped = sortedGroup(orderedStories, null);
-                        return (
-                          <>
-                            {ungrouped.length === 0 &&
-                              apiVolumes.length > 0 && (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ fontStyle: "italic" }}
-                                >
-                                  未分冊作品會顯示在這裡，可拖曳到上方的冊中。
-                                </Typography>
-                              )}
-                            {ungrouped.length > 0 &&
-                              renderDropEndZone(() =>
-                                handleDropStory(
-                                  null,
-                                  ungrouped[0]?.public_id ?? null,
-                                ),
-                              )}
-                            {ungrouped.map((story) => renderStoryRow(story))}
-                          </>
-                        );
-                      })()}
-                      {renderDropEndZone(() => handleDropStory(null, null))}
-                    </Stack>
                   </Stack>
                 ) : null}
               </Stack>
@@ -1086,7 +1167,15 @@ export default function StorytellerProjectDetail() {
                     : "",
               },
             },
-            { onSuccess: () => setVolumeDialogTarget(null) },
+            {
+              onSuccess: (savedVolume) => {
+                if (volumeDialogTarget === "new" && savedVolume?.public_id) {
+                  setActiveStoryCollectionId(savedVolume.public_id);
+                  setStoriesPage(1);
+                }
+                setVolumeDialogTarget(null);
+              },
+            },
           )
         }
       />
@@ -1101,7 +1190,12 @@ export default function StorytellerProjectDetail() {
           onClose={() => setDeleteVolumeTarget(null)}
           onConfirm={() =>
             deleteStory.mutate(deleteVolumeTarget.public_id, {
-              onSuccess: () => setDeleteVolumeTarget(null),
+              onSuccess: () => {
+                if (activeStoryCollectionId === deleteVolumeTarget.public_id) {
+                  setActiveStoryCollectionId("");
+                }
+                setDeleteVolumeTarget(null);
+              },
             })
           }
         />
