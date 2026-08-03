@@ -3,10 +3,10 @@ import ArticleIcon from "@mui/icons-material/Article";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import LinkIcon from "@mui/icons-material/Link";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import {
   Box,
   Button,
@@ -14,6 +14,7 @@ import {
   Chip,
   FormControlLabel,
   Grid,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -105,6 +106,7 @@ function StoryRow({
   onDragOverAllowVolumeOnly,
   onDrop,
   onTogglePublish,
+  onOpenMoveMenu,
   onDelete,
 }: {
   story: StorytellerStory;
@@ -115,6 +117,7 @@ function StoryRow({
   onDragOverAllowVolumeOnly: boolean;
   onDrop: () => void;
   onTogglePublish: (checked: boolean) => void;
+  onOpenMoveMenu: (anchorEl: HTMLElement) => void;
   onDelete: () => void;
 }) {
   const isImage = story.content_type === "image";
@@ -123,31 +126,29 @@ function StoryRow({
     isImage ? story.public_id : undefined,
   );
   return (
-    <Paper
-      draggable
-      variant="outlined"
-      onDragStart={onDragStart}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        // 正在拖曳的是「冊」而不是故事時，不要在這裡吃掉事件——讓它冒泡到
-        // 外層冊卡片的 onDrop，才能把冊排到「目前排最前面的那個冊」前面。
-        if (onDragOverAllowVolumeOnly) {
-          return;
-        }
-        event.stopPropagation();
-        onDrop();
-      }}
-      sx={{
-        p: 2,
-        borderRadius: 1,
-        cursor: "grab",
-        opacity: draggingStoryId === story.public_id ? 0.55 : 1,
-      }}
-    >
-      <Stack direction="row" spacing={1.5} alignItems="center">
-        <Tooltip title="拖放調整故事順序，或拖到別的冊／未分冊區塊">
-          <DragIndicatorIcon color="disabled" />
-        </Tooltip>
+    <Tooltip title="可拖曳調整作品順序，或拖到上方冊分類">
+      <Paper
+        draggable
+        variant="outlined"
+        onDragStart={onDragStart}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          // 正在拖曳的是「冊」而不是故事時，不要在這裡吃掉事件——讓它冒泡到
+          // 外層冊卡片的 onDrop，才能把冊排到「目前排最前面的那個冊」前面。
+          if (onDragOverAllowVolumeOnly) {
+            return;
+          }
+          event.stopPropagation();
+          onDrop();
+        }}
+        sx={{
+          p: 2,
+          borderRadius: 1,
+          cursor: "grab",
+          opacity: draggingStoryId === story.public_id ? 0.55 : 1,
+        }}
+      >
+        <Stack direction="row" spacing={1.5} alignItems="center">
         {isImage ? (
           <CollectionsIcon color="primary" />
         ) : (
@@ -199,26 +200,41 @@ function StoryRow({
             label={story.status === "completed" ? "公開中" : "未公開"}
           />
         </Tooltip>
-        <Button
-          href={steamloomPath(
-            `my/project/${projectId}/${isImage ? "image" : "story"}/${story.public_id}`,
-          )}
-          variant="outlined"
-          size="small"
-        >
-          編輯
-        </Button>
-        <Button
-          color="error"
-          variant="contained"
-          size="small"
-          startIcon={<DeleteIcon />}
-          onClick={onDelete}
-        >
-          刪除
-        </Button>
-      </Stack>
-    </Paper>
+        <Tooltip title="移動作品">
+          <IconButton
+            size="small"
+            onClick={(event) => onOpenMoveMenu(event.currentTarget)}
+            aria-label="移動作品"
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="編輯作品">
+          <IconButton
+            component="a"
+            href={steamloomPath(
+              `my/project/${projectId}/${isImage ? "image" : "story"}/${story.public_id}`,
+            )}
+            size="small"
+            color="primary"
+            aria-label="編輯作品"
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="刪除作品">
+          <IconButton
+            color="error"
+            size="small"
+            onClick={onDelete}
+            aria-label="刪除作品"
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+        </Stack>
+      </Paper>
+    </Tooltip>
   );
 }
 
@@ -257,6 +273,10 @@ export default function StorytellerProjectDetail() {
   const [createMenuAnchor, setCreateMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
+  const [storyMoveMenu, setStoryMoveMenu] = useState<{
+    anchorEl: HTMLElement;
+    story: StorytellerStory;
+  } | null>(null);
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
   const {
@@ -556,6 +576,41 @@ export default function StorytellerProjectDetail() {
     });
   }
 
+  function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
+    const targetVolume = volumePublicId
+      ? orderedVolumes.find((volume) => volume.public_id === volumePublicId)
+      : undefined;
+    if (volumePublicId && !targetVolume) {
+      setStoryMoveMenu(null);
+      return;
+    }
+    const nextParentID = targetVolume?.id ?? null;
+    if (story.parent_id === nextParentID) {
+      setStoryMoveMenu(null);
+      return;
+    }
+    const nextSort = storyCountForVolume(nextParentID);
+    setOrderedStories((previous) =>
+      previous.map((item) =>
+        item.public_id === story.public_id
+          ? { ...item, parent_id: nextParentID, sort: nextSort }
+          : item,
+      ),
+    );
+    setStoryMoveMenu(null);
+    saveStory.mutate({
+      storyPublicId: story.public_id,
+      input: {
+        title: story.title,
+        summary: story.summary,
+        status: story.status,
+        sort: nextSort,
+        content: story.latest_content,
+        parent_id: volumePublicId,
+      },
+    });
+  }
+
   useTitle(
     project
       ? `${project.name} - ${STORYTELLER_APP_NAME}`
@@ -655,6 +710,7 @@ export default function StorytellerProjectDetail() {
             },
           })
         }
+        onOpenMoveMenu={(anchorEl) => setStoryMoveMenu({ anchorEl, story })}
         onDelete={() => setDeleteTarget(story)}
       />
     );
@@ -788,22 +844,25 @@ export default function StorytellerProjectDetail() {
               useFlexGap
               justifyContent={{ xs: "flex-start", md: "flex-end" }}
             >
-              <Button
-                href={steamloomPath(`my/project/${project.id}/edit`)}
-                variant="outlined"
-                size="small"
-              >
-                編輯專案
-              </Button>
-              <Button
-                color="error"
-                variant="contained"
-                size="small"
-                startIcon={<DeleteIcon />}
-                onClick={() => setProjectDeleteOpen(true)}
-              >
-                刪除專案
-              </Button>
+              <ButtonGroup size="small" variant="outlined">
+                <Tooltip title="編輯專案">
+                  <Button
+                    href={steamloomPath(`my/project/${project.id}/edit`)}
+                    aria-label="編輯專案"
+                  >
+                    <EditIcon fontSize="small" />
+                  </Button>
+                </Tooltip>
+                <Tooltip title="刪除專案">
+                  <Button
+                    color="error"
+                    onClick={() => setProjectDeleteOpen(true)}
+                    aria-label="刪除專案"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </Button>
+                </Tooltip>
+              </ButtonGroup>
             </Stack>
           </Stack>
           <StorytellerTagChips tags={project.tags} sx={{ mt: 1.5 }} />
@@ -911,6 +970,51 @@ export default function StorytellerProjectDetail() {
                           <ListItemText>圖像</ListItemText>
                         </MenuItem>
                       </Menu>
+                      <Menu
+                        anchorEl={storyMoveMenu?.anchorEl ?? null}
+                        open={Boolean(storyMoveMenu)}
+                        onClose={() => setStoryMoveMenu(null)}
+                      >
+                        <MenuItem
+                          disabled={
+                            saveStory.isPending ||
+                            storyMoveMenu?.story.parent_id === null
+                          }
+                          onClick={() =>
+                            storyMoveMenu &&
+                            moveStoryToVolume(storyMoveMenu.story, "")
+                          }
+                        >
+                          <ListItemIcon>
+                            <FolderIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>移到未分冊</ListItemText>
+                        </MenuItem>
+                        {orderedVolumes.map((volume) => (
+                          <MenuItem
+                            key={volume.public_id}
+                            disabled={
+                              saveStory.isPending ||
+                              storyMoveMenu?.story.parent_id === volume.id
+                            }
+                            onClick={() =>
+                              storyMoveMenu &&
+                              moveStoryToVolume(
+                                storyMoveMenu.story,
+                                volume.public_id,
+                              )
+                            }
+                          >
+                            <ListItemIcon>
+                              <FolderIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={volume.title}
+                              secondary={volume.summary || undefined}
+                            />
+                          </MenuItem>
+                        ))}
+                      </Menu>
                     </Stack>
                   </Stack>
                 )}
@@ -955,7 +1059,6 @@ export default function StorytellerProjectDetail() {
                               ? "contained"
                               : "outlined"
                           }
-                          startIcon={<DragIndicatorIcon />}
                           onClick={() =>
                             setActiveStoryCollectionId(
                               ungroupedStoryCollectionId,
@@ -1017,10 +1120,6 @@ export default function StorytellerProjectDetail() {
                                 }
                                 sx={{ maxWidth: 220 }}
                               >
-                                <DragIndicatorIcon
-                                  fontSize="small"
-                                  sx={{ mr: 0.5 }}
-                                />
                                 <Box
                                   component="span"
                                   sx={{

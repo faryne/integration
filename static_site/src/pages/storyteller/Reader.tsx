@@ -1093,6 +1093,7 @@ export default function StorytellerReader() {
   const [currentPageLoaded, setCurrentPageLoaded] = useState(false);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
+  const [mobileProjectInfoOpen, setMobileProjectInfoOpen] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [pendingBookmarkLines, setPendingBookmarkLines] = useState<Set<number>>(
@@ -1780,6 +1781,87 @@ export default function StorytellerReader() {
       </Paper>
     </>
   );
+  const projectDescription = project.description ? (
+    <Box
+      component="span"
+      sx={{
+        display: { xs: "-webkit-box", md: "block" },
+        overflow: { xs: mobileProjectInfoOpen ? "visible" : "hidden", md: "visible" },
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: { xs: mobileProjectInfoOpen ? "unset" : 2, md: "unset" },
+      }}
+    >
+      {project.description}
+    </Box>
+  ) : undefined;
+  const projectPrimaryMeta = (
+    <>
+      <Chip
+        label={
+          isPrivateOwnerRoute
+            ? "私人預覽"
+            : isShareRoute
+              ? "專用連結"
+              : "公開閱讀"
+        }
+        color={
+          isPrivateOwnerRoute
+            ? "default"
+            : isShareRoute
+              ? "warning"
+              : "success"
+        }
+      />
+      {project.authorPenName && (
+        <Chip
+          label={`作者 ${project.authorPenName}`}
+          variant="outlined"
+          component={RouterLink}
+          to={steamloomPath(
+            `user/${encodeURIComponent(project.authorPenName)}`,
+          )}
+          clickable
+        />
+      )}
+      <Chip
+        label={`${items.filter((item) => item.contentType !== "image").length} 篇故事`}
+        variant="outlined"
+        icon={<ArticleIcon fontSize="small" />}
+      />
+      {items.some((item) => item.contentType === "image") && (
+        <Chip
+          label={`${items.filter((item) => item.contentType === "image").length} 話`}
+          variant="outlined"
+          icon={<CollectionsIcon fontSize="small" />}
+        />
+      )}
+    </>
+  );
+  const projectSecondaryMeta = (
+    <>
+      <Chip label={`${project.wordCount.toLocaleString()} 字`} />
+      <Chip
+        label={storytellerProjectRatingLabel(project.rating)}
+        color={storytellerProjectRatingColor(project.rating)}
+        variant="outlined"
+      />
+      <Box sx={{ flexBasis: "100%" }}>
+        <StorytellerTagChips tags={project.tags} sx={{ mt: 1 }} />
+      </Box>
+      <Box sx={{ flexBasis: "100%" }}>
+        <Divider sx={{ my: 1.5 }} />
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
+          {readerActions}
+        </Stack>
+      </Box>
+    </>
+  );
   const readerBody = (
     <Paper
       variant="outlined"
@@ -2263,71 +2345,55 @@ export default function StorytellerReader() {
   return (
     <StorytellerShell
       title={project.name}
-      description={project.description}
+      description={projectDescription}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: project.name },
       ]}
       meta={
         <>
-          <Chip
-            label={
-              isPrivateOwnerRoute
-                ? "私人預覽"
-                : isShareRoute
-                  ? "專用連結"
-                  : "公開閱讀"
-            }
-            color={
-              isPrivateOwnerRoute
-                ? "default"
-                : isShareRoute
-                  ? "warning"
-                  : "success"
-            }
-          />
-          {project.authorPenName && (
-            <Chip
-              label={`作者 ${project.authorPenName}`}
+          <Box
+            sx={{
+              display: { xs: "flex", md: "none" },
+              flexBasis: "100%",
+              justifyContent: "flex-end",
+            }}
+          >
+            <Button
+              size="small"
               variant="outlined"
-              component={RouterLink}
-              to={steamloomPath(
-                `user/${encodeURIComponent(project.authorPenName)}`,
-              )}
-              clickable
-            />
-          )}
-          <Chip
-            label={`${items.filter((item) => item.contentType !== "image").length} 篇故事`}
-            variant="outlined"
-            icon={<ArticleIcon fontSize="small" />}
-          />
-          {items.some((item) => item.contentType === "image") && (
-            <Chip
-              label={`${items.filter((item) => item.contentType === "image").length} 話`}
-              variant="outlined"
-              icon={<CollectionsIcon fontSize="small" />}
-            />
-          )}
-          <Chip label={`${project.wordCount.toLocaleString()} 字`} />
-          <Chip
-            label={storytellerProjectRatingLabel(project.rating)}
-            color={storytellerProjectRatingColor(project.rating)}
-            variant="outlined"
-          />
-          <Box sx={{ flexBasis: "100%" }}>
-            <StorytellerTagChips tags={project.tags} sx={{ mt: 1 }} />
+              endIcon={
+                mobileProjectInfoOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />
+              }
+              aria-expanded={mobileProjectInfoOpen}
+              onClick={() => setMobileProjectInfoOpen((open) => !open)}
+            >
+              {mobileProjectInfoOpen ? "收起資訊" : "展開資訊"}
+            </Button>
           </Box>
-          <Box sx={{ flexBasis: "100%" }}>
-            <Divider sx={{ my: 1.5 }} />
+          <Box sx={{ display: { xs: "block", md: "none" }, flexBasis: "100%" }}>
+            <Collapse in={mobileProjectInfoOpen} timeout="auto">
+              <Stack
+                direction="row"
+                spacing={1}
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ pt: 1 }}
+              >
+                {projectPrimaryMeta}
+                {projectSecondaryMeta}
+              </Stack>
+            </Collapse>
+          </Box>
+          <Box sx={{ display: { xs: "none", md: "block" }, flexBasis: "100%" }}>
             <Stack
               direction="row"
               spacing={1}
-              alignItems="center"
               flexWrap="wrap"
               useFlexGap
             >
-              {readerActions}
+              {projectPrimaryMeta}
+              {projectSecondaryMeta}
             </Stack>
           </Box>
         </>
