@@ -23,6 +23,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import {
+  useStorytellerAsset,
   useStorytellerAssetCollections,
   useStorytellerAssets,
   useStorytellerLoreCollections,
@@ -38,6 +39,7 @@ import {
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { useTitle } from "@/helpers/title.tsx";
 import {
   WorkspaceMobileNav,
   WorkspacePane,
@@ -45,6 +47,7 @@ import {
 } from "./ProjectWorkspacePreviewComponents.tsx";
 import { useWorkspaceListActions } from "./ProjectWorkspacePreviewActions.tsx";
 import { WorkspaceAssetPanel } from "./ProjectWorkspacePreviewRows.tsx";
+import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
 import StorytellerStoryEditor from "./StoryEditor.tsx";
@@ -61,14 +64,13 @@ const lorePageSize = 20;
 const assetPageSize = 24;
 
 export default function StorytellerProjectWorkspacePreview() {
-  const { id, storyId, loreId, collectionId } = useParams();
+  const { id, storyId, loreId, assetId, collectionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [storyPage, setStoryPage] = useState(1);
   const [lorePage, setLorePage] = useState(1);
   const [assetPage, setAssetPage] = useState(1);
@@ -80,7 +82,9 @@ export default function StorytellerProjectWorkspacePreview() {
       ? "story"
       : location.pathname.includes("/lore/")
         ? "lore"
-        : "";
+        : location.pathname.includes("/asset/")
+          ? "asset"
+          : "";
   const isNewStoryRoute = storyId === "new" && routeEditorType === "story";
   const isNewImageRoute = storyId === "new" && routeEditorType === "image";
   // 設定集不用像故事/圖像那樣先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
@@ -88,10 +92,13 @@ export default function StorytellerProjectWorkspacePreview() {
   // 設定集（loreId=真正的 public_id）都直接把 loreId 原樣交給 LoreEditor 處理，
   // 它自己會用 lorePublicId === "new" 判斷是不是新建。
   const isLoreRoute = Boolean(loreId) && routeEditorType === "lore";
+  // 資產沒有獨立的「新建」空白編輯頁（資產本來就是上傳建立），所以只有編輯既有
+  // 資產這一種情況需要路由，直接用資產 id 換真正的資產資料（見下面 routeAssetQuery）。
+  const isAssetRoute = Boolean(assetId) && routeEditorType === "asset";
   // 側邊欄目前選到哪個分組／收藏集要能被 URL 完整表示，重新整理或直接貼連結都要
   // 還原到同一個畫面。瀏覽路由（/stories|lores|assets(/:collectionId)?）直接從
-  // 網址參數還原；故事/圖像/設定集編輯器路由本身不帶分組資訊（網址是
-  // /story|image|lore/:xxxId），改用開啟編輯器當下附加的 ?from= 查詢參數記住
+  // 網址參數還原；故事/圖像/設定集/資產編輯器路由本身不帶分組資訊（網址是
+  // /story|image|lore|asset/:xxxId），改用開啟編輯器當下附加的 ?from= 查詢參數記住
   // 「使用者是從哪個分組點進來的」，讓側邊欄高亮、麵包屑、「回列表」在編輯畫面
   // 底下都還能正確對應，不需要额外的 state 或依賴瀏覽器歷史記錄。
   const browsingSection: WorkspaceSection = location.pathname.includes("/lores")
@@ -101,7 +108,12 @@ export default function StorytellerProjectWorkspacePreview() {
       : "stories";
   const selected: SelectedNode = routeEditorType
     ? {
-        section: routeEditorType === "lore" ? "lores" : "stories",
+        section:
+          routeEditorType === "lore"
+            ? "lores"
+            : routeEditorType === "asset"
+              ? "assets"
+              : "stories",
         collectionId: searchParams.get("from") ?? "",
       }
     : { section: browsingSection, collectionId: collectionId ?? "" };
@@ -125,6 +137,10 @@ export default function StorytellerProjectWorkspacePreview() {
     assetKeyword,
     selected.collectionId === ungroupedId ? "" : selected.collectionId,
   );
+  const routeAssetQuery = useStorytellerAsset(
+    id,
+    isAssetRoute ? assetId : undefined,
+  );
 
   const stories = storiesQuery.data ?? [];
   const volumes = volumesQuery.data ?? [];
@@ -136,18 +152,16 @@ export default function StorytellerProjectWorkspacePreview() {
       ? stories.find((story) => !story.is_volume && story.public_id === storyId)
       : undefined;
   const routeSelectedItem: SelectedItem | null =
-    routeStory && routeEditorType
-      ? { type: "story", row: routeStory }
-      : selectedItem;
-  // 故事／圖像／設定集編輯器（不管是編輯既有作品還是「新建」）在右欄要出血滿版顯示，
-  // 不能跟列表頁共用中間那圈 maxWidth+置中的窄欄容器——那是給列表閱讀用的排版，編輯器
-  // 需要盡量用滿右欄寬度才有 Notion 風工作台的感覺。
+    routeStory && routeEditorType ? { type: "story", row: routeStory } : null;
+  // 故事／圖像／設定集／資產編輯器（不管是編輯既有作品還是「新建」）在右欄要出血
+  // 滿版顯示，不能跟列表頁共用中間那圈 maxWidth+置中的窄欄容器——那是給列表閱讀
+  // 用的排版，編輯器需要盡量用滿右欄寬度才有 Notion 風工作台的感覺。
   const showBleedEditor =
     isNewStoryRoute ||
     isNewImageRoute ||
     isLoreRoute ||
-    routeSelectedItem?.type === "story" ||
-    routeSelectedItem?.type === "asset";
+    isAssetRoute ||
+    routeSelectedItem?.type === "story";
 
   const storyRows = useMemo(() => {
     const parentId =
@@ -241,7 +255,6 @@ export default function StorytellerProjectWorkspacePreview() {
   }
 
   function selectNode(section: WorkspaceSection, targetCollectionId: string) {
-    setSelectedItem(null);
     setStoryPage(1);
     setLorePage(1);
     setAssetPage(1);
@@ -249,38 +262,53 @@ export default function StorytellerProjectWorkspacePreview() {
   }
 
   function openStoryInWorkspace(item: SelectedItem) {
-    // 帶上 ?from= 記住目前是從哪個分組點進編輯器——故事/圖像/設定集編輯器的路由
-    // 本身不含分組資訊，沒有這個查詢參數的話，編輯畫面底下的側邊欄高亮／麵包屑／
-    // 「回列表」都沒辦法對回原本瀏覽的分組。
+    // 帶上 ?from= 記住目前是從哪個分組點進編輯器——故事/圖像/設定集/資產編輯器的
+    // 路由本身不含分組資訊，沒有這個查詢參數的話，編輯畫面底下的側邊欄高亮／
+    // 麵包屑／「回列表」都沒辦法對回原本瀏覽的分組。
     const fromSuffix = selected.collectionId
       ? `?from=${encodeURIComponent(selected.collectionId)}`
       : "";
-    if (item.type === "story") {
-      const segment = item.row.content_type === "image" ? "image" : "story";
-      navigate(
-        steamloomPath(
-          `my/workspace/${id}/${segment}/${item.row.public_id}${fromSuffix}`,
-        ),
-      );
-      return;
-    }
-    if (item.type === "lore") {
-      navigate(
-        steamloomPath(
-          `my/workspace/${id}/lore/${item.row.public_id}${fromSuffix}`,
-        ),
-      );
-      return;
-    }
-    setSelectedItem(item);
+    const segment =
+      item.type === "story"
+        ? item.row.content_type === "image"
+          ? "image"
+          : "story"
+        : item.type === "lore"
+          ? "lore"
+          : "asset";
+    navigate(
+      steamloomPath(
+        `my/workspace/${id}/${segment}/${item.row.public_id}${fromSuffix}`,
+      ),
+    );
   }
 
   function closeWorkspaceEditor() {
-    setSelectedItem(null);
     navigate(
       steamloomPath(browsingPath(selected.section, selected.collectionId)),
     );
   }
+
+  // 故事/圖像/設定集編輯器自己會呼叫 useTitle 設定更精確的標題（存檔後的故事標題
+  // 之類），這裡的標題主要是給「列表瀏覽」跟「資產面板」（資產沒有獨立頁面元件，
+  // 不會自己設標題）用；編輯器路由掛載時兩邊都會各自呼叫一次 useTitle，但子元件
+  // 的 effect 先跑，之後只要子元件的標題相關資料一變動就會重新蓋回正確標題，
+  // 不會卡住停在這裡設的通用標題。
+  const workspaceTitleContext =
+    isAssetRoute && routeAssetQuery.data
+      ? storytellerAssetTitle(routeAssetQuery.data)
+      : collectionBreadcrumbLabel === "全部"
+        ? sectionBreadcrumbLabel
+        : `${collectionBreadcrumbLabel} · ${sectionBreadcrumbLabel}`;
+  const workspaceTitle = project?.name
+    ? `${workspaceTitleContext} - ${project.name}`
+    : workspaceTitleContext;
+  useTitle(`${workspaceTitle} - ${STORYTELLER_APP_NAME}`, {
+    path: id
+      ? steamloomPath(browsingPath(selected.section, selected.collectionId))
+      : undefined,
+    robots: "noindex, nofollow",
+  });
 
   const listActions = useWorkspaceListActions({
     projectId: id,
@@ -433,13 +461,18 @@ export default function StorytellerProjectWorkspacePreview() {
                   projectId={id}
                   storyPublicId={routeSelectedItem.row.public_id}
                 />
-              ) : routeSelectedItem?.type === "asset" ? (
+              ) : isAssetRoute && routeAssetQuery.data ? (
                 <WorkspaceAssetPanel
-                  asset={routeSelectedItem.row}
+                  asset={routeAssetQuery.data}
                   assetCollections={assetCollections}
                   projectId={id ?? ""}
                   onDeleted={closeWorkspaceEditor}
                 />
+              ) : isAssetRoute && routeAssetQuery.isLoading ? (
+                <WorkspaceCentered>
+                  <CircularProgress size={24} />
+                  <Typography color="text.secondary">載入資產中...</Typography>
+                </WorkspaceCentered>
               ) : null}
             </EditorBleedContainer>
           ) : (
