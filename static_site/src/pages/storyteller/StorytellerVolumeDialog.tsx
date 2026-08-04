@@ -8,6 +8,14 @@ import {
   TextField,
 } from "@mui/material";
 import { useEffect, useState } from "react";
+import {
+  workspaceDialogActionsSx,
+  workspaceDialogBackdropSx,
+  workspaceDialogContentSx,
+  workspaceDialogPaperSx,
+  workspaceDialogTitleSx,
+  workspaceTextFieldSx,
+} from "./ProjectWorkspacePreviewDialogStyles.ts";
 
 export interface StorytellerVolumeDialogProps {
   open: boolean;
@@ -32,9 +40,20 @@ export function StorytellerVolumeDialog(props: StorytellerVolumeDialogProps) {
   }, [props.open, props.initialTitle]);
 
   return (
-    <Dialog open={props.open} onClose={props.onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{isEditing ? "重新命名冊" : "新增冊"}</DialogTitle>
-      <DialogContent>
+    <Dialog
+      open={props.open}
+      onClose={props.onClose}
+      maxWidth="xs"
+      fullWidth
+      slotProps={{
+        paper: { sx: workspaceDialogPaperSx },
+        backdrop: { sx: workspaceDialogBackdropSx },
+      }}
+    >
+      <DialogTitle sx={workspaceDialogTitleSx}>
+        {isEditing ? "重新命名冊" : "新增冊"}
+      </DialogTitle>
+      <DialogContent sx={workspaceDialogContentSx}>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <TextField
             autoFocus
@@ -43,10 +62,11 @@ export function StorytellerVolumeDialog(props: StorytellerVolumeDialogProps) {
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="例如：第一冊"
+            sx={workspaceTextFieldSx}
           />
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={workspaceDialogActionsSx}>
         <Button onClick={props.onClose}>取消</Button>
         <Button
           variant="contained"

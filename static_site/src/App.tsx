@@ -90,6 +90,9 @@ const StorytellerProfile = lazy(
 const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
+const StorytellerProjectWorkspacePreview = lazy(
+  () => import("@/pages/storyteller/ProjectWorkspacePreview.tsx"),
+);
 const StorytellerNewProject = lazy(
   () => import("@/pages/storyteller/NewProject.tsx"),
 );
@@ -319,6 +322,10 @@ const storytellerRoutes = (
       <Route
         path={"project/:id/assets"}
         element={<StorytellerProjectDetail />}
+      />
+      <Route
+        path={"workspace/:id"}
+        element={<StorytellerProjectWorkspacePreview />}
       />
       <Route path={"agent/new"} element={<StorytellerNewAgent />} />
       <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
