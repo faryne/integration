@@ -14,7 +14,12 @@ import {
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { Link as RouterLink, useParams } from "react-router-dom";
+import {
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import {
   useStorytellerAssetCollections,
   useStorytellerAssets,
@@ -38,6 +43,8 @@ import {
 } from "./ProjectWorkspacePreviewComponents.tsx";
 import { useWorkspaceListActions } from "./ProjectWorkspacePreviewActions.tsx";
 import { EditorPlaceholder } from "./ProjectWorkspacePreviewRows.tsx";
+import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
+import StorytellerStoryEditor from "./StoryEditor.tsx";
 import {
   nodeTitle,
   ungroupedId,
@@ -51,7 +58,9 @@ const lorePageSize = 20;
 const assetPageSize = 24;
 
 export default function StorytellerProjectWorkspacePreview() {
-  const { id } = useParams();
+  const { id, storyId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -90,6 +99,19 @@ export default function StorytellerProjectWorkspacePreview() {
   const loreCollections = loreCollectionsQuery.data ?? [];
   const assetCollections = assetCollectionsQuery.data ?? [];
   const project = projectQuery.data;
+  const routeEditorType = location.pathname.includes("/image/")
+    ? "image"
+    : location.pathname.includes("/story/")
+      ? "story"
+      : "";
+  const routeStory = storyId
+    ? stories.find((story) => !story.is_volume && story.public_id === storyId)
+    : undefined;
+  const routeSelectedItem: SelectedItem | null =
+    routeStory && routeEditorType
+      ? { type: "story", row: routeStory }
+      : selectedItem;
+  const isRouteEditorOpen = Boolean(routeStory && routeEditorType);
 
   const storyRows = useMemo(() => {
     const parentId =
@@ -144,6 +166,25 @@ export default function StorytellerProjectWorkspacePreview() {
     setStoryPage(1);
     setLorePage(1);
     setAssetPage(1);
+    if (isRouteEditorOpen) {
+      navigate(steamloomPath(`my/workspace/${id}`));
+    }
+  }
+
+  function openStoryInWorkspace(story: SelectedItem) {
+    if (story.type !== "story") {
+      setSelectedItem(story);
+      return;
+    }
+    const segment = story.row.content_type === "image" ? "image" : "story";
+    navigate(
+      steamloomPath(`my/workspace/${id}/${segment}/${story.row.public_id}`),
+    );
+  }
+
+  function closeWorkspaceEditor() {
+    setSelectedItem(null);
+    navigate(steamloomPath(`my/workspace/${id}`));
   }
 
   const listActions = useWorkspaceListActions({
@@ -259,16 +300,42 @@ export default function StorytellerProjectWorkspacePreview() {
             sx={{
               px: { xs: 2.25, md: 9 },
               py: { xs: 2.5, md: 6 },
-              maxWidth: selectedItem ? 1120 : 980,
+              maxWidth: routeSelectedItem ? 1120 : 980,
               mx: "auto",
             }}
           >
-            {selectedItem ? (
-              <EditorPlaceholder
-                item={selectedItem}
-                projectId={id ?? ""}
-                onBack={() => setSelectedItem(null)}
-              />
+            {routeSelectedItem ? (
+              routeSelectedItem.type === "story" &&
+              routeSelectedItem.row.content_type !== "image" ? (
+                <Stack spacing={2}>
+                  <Box>
+                    <Button onClick={closeWorkspaceEditor}>回列表</Button>
+                  </Box>
+                  <StorytellerStoryEditor
+                    embedded
+                    projectId={id}
+                    storyPublicId={routeSelectedItem.row.public_id}
+                  />
+                </Stack>
+              ) : routeSelectedItem.type === "story" &&
+                routeSelectedItem.row.content_type === "image" ? (
+                <Stack spacing={2}>
+                  <Box>
+                    <Button onClick={closeWorkspaceEditor}>回列表</Button>
+                  </Box>
+                  <StorytellerImageEpisodeEditor
+                    embedded
+                    projectId={id}
+                    episodePublicId={routeSelectedItem.row.public_id}
+                  />
+                </Stack>
+              ) : (
+                <EditorPlaceholder
+                  item={routeSelectedItem}
+                  projectId={id ?? ""}
+                  onBack={closeWorkspaceEditor}
+                />
+              )
             ) : (
               <WorkspacePane
                 title={activeTitle}
@@ -281,7 +348,7 @@ export default function StorytellerProjectWorkspacePreview() {
                   loresPageQuery.isLoading ||
                   assetsQuery.isLoading
                 }
-                onSelectItem={setSelectedItem}
+                onSelectItem={openStoryInWorkspace}
                 actions={listActions.actions}
                 titleActions={listActions.titleActions}
                 pagination={

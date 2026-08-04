@@ -30,6 +30,7 @@ export function StorytellerShell({
   action,
   headerContent,
   hideHeading = false,
+  plain = false,
   children,
 }: {
   title: string;
@@ -41,8 +42,75 @@ export function StorytellerShell({
   action?: ReactNode;
   headerContent?: ReactNode;
   hideHeading?: boolean;
+  plain?: boolean;
   children: ReactNode;
 }) {
+  const header = (
+    <Stack spacing={2}>
+      {breadcrumbs.length > 0 && (
+        <Breadcrumbs aria-label={`${STORYTELLER_APP_NAME} breadcrumbs`}>
+          {breadcrumbs.map((item, index) =>
+            item.to && index < breadcrumbs.length - 1 ? (
+              <Link
+                key={item.to}
+                component={RouterLink}
+                to={item.to}
+                underline="hover"
+                color="inherit"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <Typography key={item.label} color="text.primary">
+                {item.label}
+              </Typography>
+            ),
+          )}
+        </Breadcrumbs>
+      )}
+
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        spacing={2}
+        alignItems={{ xs: "flex-start", md: "center" }}
+        justifyContent="space-between"
+      >
+        {hideHeading ? (
+          <Box sx={{ flex: 1 }} />
+        ) : (
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography component="h1" variant="h4" fontWeight={800}>
+              {title}
+            </Typography>
+            {description && (
+              <Typography component="div" color="text.secondary" sx={{ mt: 1 }}>
+                {description}
+              </Typography>
+            )}
+            {meta && (
+              <Box sx={{ mt: 1 }}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                  {meta}
+                </Stack>
+              </Box>
+            )}
+          </Box>
+        )}
+        {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+      </Stack>
+      {headerContent}
+    </Stack>
+  );
+
+  if (plain) {
+    return (
+      <Stack spacing={3}>
+        {header}
+        {children}
+      </Stack>
+    );
+  }
+
   return (
     <Stack spacing={3}>
       <Paper
@@ -55,67 +123,7 @@ export function StorytellerShell({
         }}
       >
         <SteamRivets />
-        <Stack spacing={2}>
-          <Breadcrumbs aria-label={`${STORYTELLER_APP_NAME} breadcrumbs`}>
-            {breadcrumbs.map((item, index) =>
-              item.to && index < breadcrumbs.length - 1 ? (
-                <Link
-                  key={item.to}
-                  component={RouterLink}
-                  to={item.to}
-                  underline="hover"
-                  color="inherit"
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <Typography key={item.label} color="text.primary">
-                  {item.label}
-                </Typography>
-              ),
-            )}
-          </Breadcrumbs>
-
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={2}
-            alignItems={{ xs: "flex-start", md: "center" }}
-            justifyContent="space-between"
-          >
-            {hideHeading ? (
-              <Box sx={{ flex: 1 }} />
-            ) : (
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography component="h1" variant="h4" fontWeight={800}>
-                  {title}
-                </Typography>
-                {description && (
-                  <Typography
-                    component="div"
-                    color="text.secondary"
-                    sx={{ mt: 1 }}
-                  >
-                    {description}
-                  </Typography>
-                )}
-                {meta && (
-                  <Box sx={{ mt: 1 }}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      flexWrap="wrap"
-                      useFlexGap
-                    >
-                      {meta}
-                    </Stack>
-                  </Box>
-                )}
-              </Box>
-            )}
-            {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
-          </Stack>
-          {headerContent}
-        </Stack>
+        {header}
       </Paper>
 
       {children}

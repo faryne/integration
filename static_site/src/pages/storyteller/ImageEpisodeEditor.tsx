@@ -1,7 +1,10 @@
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import EditNoteIcon from "@mui/icons-material/EditNote";
+import FolderIcon from "@mui/icons-material/Folder";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   Alert,
   Box,
@@ -40,6 +43,11 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
+  WorkspaceEditableSummary,
+  WorkspaceEditableTitle,
+  WorkspaceEditorSelectButton,
+} from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -61,8 +69,20 @@ interface PendingPage {
   uploadedKey?: string;
 }
 
-export default function StorytellerImageEpisodeEditor() {
-  const { id, episodeId } = useParams();
+export interface StorytellerImageEpisodeEditorProps {
+  embedded?: boolean;
+  projectId?: string;
+  episodePublicId?: string;
+}
+
+export default function StorytellerImageEpisodeEditor({
+  embedded = false,
+  projectId,
+  episodePublicId,
+}: StorytellerImageEpisodeEditorProps = {}) {
+  const params = useParams();
+  const id = projectId ?? params.id;
+  const episodeId = episodePublicId ?? params.episodeId;
   const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const {
@@ -196,7 +216,10 @@ export default function StorytellerImageEpisodeEditor() {
 
   if (authLoading) {
     return (
-      <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
+      <StorytellerShell
+        title={pageTitle}
+        breadcrumbs={embedded ? [] : shellBreadcrumbs}
+      >
         <Stack alignItems="center" sx={{ py: 8 }}>
           <Typography color="text.secondary">正在確認登入狀態...</Typography>
         </Stack>
@@ -206,7 +229,10 @@ export default function StorytellerImageEpisodeEditor() {
 
   if (!session) {
     return (
-      <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
+      <StorytellerShell
+        title={pageTitle}
+        breadcrumbs={embedded ? [] : shellBreadcrumbs}
+      >
         <CustomLoginRequiredState
           description="登入後即可上傳圖像作品。"
           onLogin={() => void login()}
@@ -218,7 +244,10 @@ export default function StorytellerImageEpisodeEditor() {
 
   if (!project && (isLoading || isFetching)) {
     return (
-      <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
+      <StorytellerShell
+        title={pageTitle}
+        breadcrumbs={embedded ? [] : shellBreadcrumbs}
+      >
         <StorytellerLoading label="正在載入專案資料..." />
       </StorytellerShell>
     );
@@ -235,7 +264,10 @@ export default function StorytellerImageEpisodeEditor() {
       (existingStory?.parent_id !== null && isVolumesLoading)
     ) {
       return (
-        <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
+        <StorytellerShell
+          title={pageTitle}
+          breadcrumbs={embedded ? [] : shellBreadcrumbs}
+        >
           <StorytellerLoading label="正在載入話的資料..." />
         </StorytellerShell>
       );
@@ -409,7 +441,9 @@ export default function StorytellerImageEpisodeEditor() {
       });
 
       setPhase("idle");
-      navigate(steamloomPath(`my/project/${project.public_id}/images`));
+      if (!embedded) {
+        navigate(steamloomPath(`my/project/${project.public_id}/images`));
+      }
     } catch (error) {
       setPhase("error");
       setUploadError(
@@ -436,9 +470,88 @@ export default function StorytellerImageEpisodeEditor() {
   const overallPercent =
     totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
   const isSubmitting = phase === "uploading";
+  const statusOptions = [
+    {
+      value: "draft",
+      label: "未公開",
+      icon: <VisibilityOffIcon fontSize="small" />,
+    },
+    {
+      value: "completed",
+      label: "公開中",
+      icon: <VisibilityIcon fontSize="small" />,
+    },
+  ];
+  const volumeOptions = [
+    { value: "", label: "不分冊", icon: <FolderIcon fontSize="small" /> },
+    ...apiVolumes.map((volume) => ({
+      value: volume.public_id,
+      label: volume.title,
+      icon: <FolderIcon fontSize="small" />,
+    })),
+  ];
+  const embeddedHeaderContent = embedded ? (
+    <Stack spacing={2.25}>
+      <WorkspaceEditableTitle
+        value={title}
+        disabled={isSubmitting}
+        placeholder="未命名圖像作品"
+        onChange={setTitle}
+      />
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <WorkspaceEditorSelectButton
+          icon={
+            status === "completed" ? (
+              <VisibilityIcon fontSize="small" />
+            ) : (
+              <VisibilityOffIcon fontSize="small" />
+            )
+          }
+          label="狀態"
+          value={status}
+          options={statusOptions}
+          disabled={isSubmitting}
+          onChange={(value) => setStatus(value as "draft" | "completed")}
+        />
+        <WorkspaceEditorSelectButton
+          icon={<FolderIcon fontSize="small" />}
+          label="冊"
+          value={selectedVolumeId}
+          options={volumeOptions}
+          disabled={isSubmitting}
+          onChange={setSelectedVolumeId}
+        />
+      </Stack>
+      <WorkspaceEditableSummary
+        value={summary}
+        disabled={isSubmitting}
+        placeholder="新增描述..."
+        onChange={setSummary}
+      />
+    </Stack>
+  ) : undefined;
 
   return (
-    <StorytellerShell title={pageTitle} breadcrumbs={shellBreadcrumbs}>
+    <StorytellerShell
+      title={pageTitle}
+      breadcrumbs={embedded ? [] : shellBreadcrumbs}
+      hideHeading={embedded}
+      plain={embedded}
+      headerContent={embeddedHeaderContent}
+      action={
+        embedded && (
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<CollectionsIcon />}
+            disabled={!title.trim() || pages.length === 0 || isSubmitting}
+            onClick={() => void handleSubmit()}
+          >
+            {isSubmitting ? "處理中..." : phase === "error" ? "重試" : "儲存"}
+          </Button>
+        )
+      }
+    >
       <Stack spacing={2}>
         {phase === "error" && uploadError && (
           <Alert severity="error" variant="outlined">
@@ -454,58 +567,70 @@ export default function StorytellerImageEpisodeEditor() {
             {fileWarning}
           </Alert>
         )}
-        <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+        <Paper
+          variant={embedded ? "elevation" : "outlined"}
+          elevation={0}
+          sx={{
+            p: embedded ? 0 : { xs: 2, md: 3 },
+            borderRadius: 1,
+            bgcolor: "transparent",
+          }}
+        >
           <Stack spacing={3}>
-            <TextField
-              required
-              fullWidth
-              label="話名稱"
-              placeholder="例如：第一話　序章"
-              value={title}
-              disabled={isSubmitting}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-            <TextField
-              fullWidth
-              multiline
-              minRows={2}
-              maxRows={12}
-              label="基本描述"
-              placeholder="這段文字給讀者看，簡短描述這一話的重點、劇情或目前狀態。"
-              value={summary}
-              disabled={isSubmitting}
-              onChange={(event) => setSummary(event.target.value)}
-            />
-            <TextField
-              fullWidth
-              select
-              label="話狀態"
-              value={status}
-              disabled={isSubmitting}
-              onChange={(event) =>
-                setStatus(event.target.value as "draft" | "completed")
-              }
-              helperText="未公開的話不會出現在公開閱讀頁與作品索引。"
-            >
-              <MenuItem value="draft">未公開</MenuItem>
-              <MenuItem value="completed">公開中</MenuItem>
-            </TextField>
-            <TextField
-              fullWidth
-              select
-              label="冊"
-              value={selectedVolumeId}
-              disabled={isSubmitting}
-              onChange={(event) => setSelectedVolumeId(event.target.value)}
-              helperText="未選擇時視為不分冊。"
-            >
-              <MenuItem value="">不分冊</MenuItem>
-              {apiVolumes.map((volume) => (
-                <MenuItem key={volume.public_id} value={volume.public_id}>
-                  {volume.title}
-                </MenuItem>
-              ))}
-            </TextField>
+            {!embedded && (
+              <>
+                <TextField
+                  required
+                  fullWidth
+                  label="話名稱"
+                  placeholder="例如：第一話　序章"
+                  value={title}
+                  disabled={isSubmitting}
+                  onChange={(event) => setTitle(event.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  maxRows={12}
+                  label="基本描述"
+                  placeholder="這段文字給讀者看，簡短描述這一話的重點、劇情或目前狀態。"
+                  value={summary}
+                  disabled={isSubmitting}
+                  onChange={(event) => setSummary(event.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  select
+                  label="話狀態"
+                  value={status}
+                  disabled={isSubmitting}
+                  onChange={(event) =>
+                    setStatus(event.target.value as "draft" | "completed")
+                  }
+                  helperText="未公開的話不會出現在公開閱讀頁與作品索引。"
+                >
+                  <MenuItem value="draft">未公開</MenuItem>
+                  <MenuItem value="completed">公開中</MenuItem>
+                </TextField>
+                <TextField
+                  fullWidth
+                  select
+                  label="冊"
+                  value={selectedVolumeId}
+                  disabled={isSubmitting}
+                  onChange={(event) => setSelectedVolumeId(event.target.value)}
+                  helperText="未選擇時視為不分冊。"
+                >
+                  <MenuItem value="">不分冊</MenuItem>
+                  {apiVolumes.map((volume) => (
+                    <MenuItem key={volume.public_id} value={volume.public_id}>
+                      {volume.title}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </>
+            )}
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 頁面（{pages.length} 頁）
@@ -696,29 +821,31 @@ export default function StorytellerImageEpisodeEditor() {
                 </Stack>
               </Box>
             )}
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button
-                href={steamloomPath(`my/project/${project.public_id}/images`)}
-                variant="text"
-                disabled={isSubmitting}
-              >
-                返回列表
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<CollectionsIcon />}
-                disabled={!title.trim() || pages.length === 0 || isSubmitting}
-                onClick={() => void handleSubmit()}
-              >
-                {isSubmitting
-                  ? "處理中..."
-                  : phase === "error"
-                    ? "重試"
-                    : isNewEpisode
-                      ? "上傳"
-                      : "儲存"}
-              </Button>
-            </Stack>
+            {!embedded && (
+              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                <Button
+                  href={steamloomPath(`my/project/${project.public_id}/images`)}
+                  variant="text"
+                  disabled={isSubmitting}
+                >
+                  返回列表
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<CollectionsIcon />}
+                  disabled={!title.trim() || pages.length === 0 || isSubmitting}
+                  onClick={() => void handleSubmit()}
+                >
+                  {isSubmitting
+                    ? "處理中..."
+                    : phase === "error"
+                      ? "重試"
+                      : isNewEpisode
+                        ? "上傳"
+                        : "儲存"}
+                </Button>
+              </Stack>
+            )}
           </Stack>
         </Paper>
       </Stack>

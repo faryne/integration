@@ -327,6 +327,14 @@ const storytellerRoutes = (
         path={"workspace/:id"}
         element={<StorytellerProjectWorkspacePreview />}
       />
+      <Route
+        path={"workspace/:id/story/:storyId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/image/:storyId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
       <Route path={"agent/new"} element={<StorytellerNewAgent />} />
       <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />

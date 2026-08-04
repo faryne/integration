@@ -607,7 +607,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           size="small"
           component={RouterLink}
           to={steamloomPath(
-            `my/project/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}`,
+            `my/workspace/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}`,
           )}
         >
           <EditIcon fontSize="small" />

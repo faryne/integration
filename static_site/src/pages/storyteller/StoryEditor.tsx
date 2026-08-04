@@ -1,7 +1,12 @@
 import ImageIcon from "@mui/icons-material/Image";
+import FolderIcon from "@mui/icons-material/Folder";
 import SaveIcon from "@mui/icons-material/Save";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Grid,
@@ -13,7 +18,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   useRevertStorytellerStoryVersion,
@@ -59,6 +64,11 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import {
+  WorkspaceEditableSummary,
+  WorkspaceEditableTitle,
+  WorkspaceEditorSelectButton,
+} from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   buildStorytellerAgentReferenceContent,
@@ -170,8 +180,20 @@ function serializeStoryDraft(
   });
 }
 
-export default function StorytellerStoryEditor() {
-  const { id, storyId } = useParams();
+export interface StorytellerStoryEditorProps {
+  embedded?: boolean;
+  projectId?: string;
+  storyPublicId?: string;
+}
+
+export default function StorytellerStoryEditor({
+  embedded = false,
+  projectId,
+  storyPublicId,
+}: StorytellerStoryEditorProps = {}) {
+  const params = useParams();
+  const id = projectId ?? params.id;
+  const storyId = storyPublicId ?? params.storyId;
   const location = useLocation();
   const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
@@ -723,26 +745,75 @@ export default function StorytellerStoryEditor() {
     { label: "創作專案", to: steamloomPath("my/project") },
   ];
 
-  if (authLoading) {
-    return (
-      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+  function renderEditorFrame({
+    title,
+    breadcrumbs,
+    action,
+    headerContent,
+    children,
+  }: {
+    title: string;
+    breadcrumbs: Array<{ label: string; to?: string }>;
+    action?: ReactNode;
+    headerContent?: ReactNode;
+    children: ReactNode;
+  }) {
+    if (embedded) {
+      return (
+        <Stack spacing={2.5} sx={{ pb: 4 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+          >
+            <Typography variant="h4" fontWeight={800} color="primary.main">
+              {title}
+            </Typography>
+            {action}
+          </Stack>
+          {headerContent}
+          <Box>{children}</Box>
         </Stack>
+      );
+    }
+    return (
+      <StorytellerShell
+        title={title}
+        breadcrumbs={breadcrumbs}
+        action={action}
+        hideHeading
+        headerContent={headerContent}
+      >
+        {children}
       </StorytellerShell>
     );
   }
 
+  if (authLoading) {
+    return renderEditorFrame({
+      title: "故事編輯器",
+      breadcrumbs: storyShellBreadcrumbs,
+      children: (
+        <Stack alignItems="center" sx={{ py: 8 }}>
+          <Typography color="text.secondary">正在確認登入狀態...</Typography>
+        </Stack>
+      ),
+    });
+  }
+
   if (!session) {
-    return (
-      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
+    return renderEditorFrame({
+      title: "故事編輯器",
+      breadcrumbs: storyShellBreadcrumbs,
+      children: (
         <CustomLoginRequiredState
           description="登入後即可編輯這篇故事。"
           onLogin={() => void login()}
           submitting={submitting}
         />
-      </StorytellerShell>
-    );
+      ),
+    });
   }
 
   if (
@@ -752,11 +823,11 @@ export default function StorytellerStoryEditor() {
       !story &&
       (apiStoriesPending || apiStoriesFetching))
   ) {
-    return (
-      <StorytellerShell title="故事編輯器" breadcrumbs={storyShellBreadcrumbs}>
-        <StorytellerLoading label="正在載入故事編輯資料..." />
-      </StorytellerShell>
-    );
+    return renderEditorFrame({
+      title: "故事編輯器",
+      breadcrumbs: storyShellBreadcrumbs,
+      children: <StorytellerLoading label="正在載入故事編輯資料..." />,
+    });
   }
 
   if (!project || (!isNewStory && !story)) {
@@ -793,6 +864,9 @@ export default function StorytellerStoryEditor() {
   function handleSidePanelChange(value: StorytellerEditorSidePanel | null) {
     setSidePanel(value);
 
+    if (embedded) {
+      return;
+    }
     if (!id || !storyId || isNewStory) {
       return;
     }
@@ -815,7 +889,9 @@ export default function StorytellerStoryEditor() {
       projectPublicId: apiProject?.public_id,
     });
     setAssetPickerOpen(false);
-    setSaveMessage(inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。");
+    setSaveMessage(
+      inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。",
+    );
     setSaveMessageVisible(true);
   }
 
@@ -974,31 +1050,314 @@ export default function StorytellerStoryEditor() {
     return "System";
   }
 
+  const statusOptions = [
+    {
+      value: "draft",
+      label: "未公開",
+      icon: <VisibilityOffIcon fontSize="small" />,
+    },
+    {
+      value: "completed",
+      label: "公開中",
+      icon: <VisibilityIcon fontSize="small" />,
+    },
+  ];
+  const volumeOptions = [
+    { value: "", label: "不分冊", icon: <FolderIcon fontSize="small" /> },
+    ...apiVolumes.map((volume) => ({
+      value: volume.public_id,
+      label: volume.title,
+      icon: <FolderIcon fontSize="small" />,
+    })),
+  ];
+  const autoSaveOptions = [
+    {
+      value: "off",
+      label: "不自動存檔",
+      icon: <ScheduleIcon fontSize="small" />,
+    },
+    ...autoSavePresetMinutes.map((minutes) => ({
+      value: String(minutes),
+      label: `每 ${minutes} 分鐘`,
+      icon: <ScheduleIcon fontSize="small" />,
+    })),
+    {
+      value: "custom",
+      label: "自訂頻率",
+      icon: <ScheduleIcon fontSize="small" />,
+    },
+  ];
+  const storyEditorHeaderContent = embedded ? (
+    <Stack spacing={2.25}>
+      {versionConflict ? (
+        <Alert
+          severity="warning"
+          variant="outlined"
+          onClose={() => setVersionConflict(false)}
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                handleSidePanelChange("history");
+                setVersionConflict(false);
+              }}
+            >
+              查看編輯歷史
+            </Button>
+          }
+        >
+          剛剛存檔完成後才發現這篇故事在中途被更新過，已經接在最新版本後面存成新版了。
+        </Alert>
+      ) : (
+        saveStory.isError && (
+          <Alert severity="error" variant="outlined">
+            存檔失敗，請確認登入狀態與欄位內容。
+          </Alert>
+        )
+      )}
+      <WorkspaceEditableTitle
+        value={storyTitle}
+        onChange={setStoryTitle}
+        placeholder="未命名故事"
+      />
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <WorkspaceEditorSelectButton
+          icon={
+            storyStatus === "completed" ? (
+              <VisibilityIcon fontSize="small" />
+            ) : (
+              <VisibilityOffIcon fontSize="small" />
+            )
+          }
+          label="狀態"
+          value={storyStatus}
+          options={statusOptions}
+          onChange={(value) => setStoryStatus(value as "draft" | "completed")}
+        />
+        <WorkspaceEditorSelectButton
+          icon={<FolderIcon fontSize="small" />}
+          label="冊"
+          value={selectedVolumeId}
+          options={volumeOptions}
+          onChange={setSelectedVolumeId}
+        />
+        {apiProject && (
+          <WorkspaceEditorSelectButton
+            icon={<ScheduleIcon fontSize="small" />}
+            label="自動存檔"
+            value={autoSaveSelectValue}
+            options={autoSaveOptions}
+            onChange={(value) =>
+              handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+            }
+          >
+            {autoSaveSelectValue === "custom" && (
+              <TextField
+                type="number"
+                size="small"
+                label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                value={autoSaveIntervalInput}
+                slotProps={{
+                  htmlInput: {
+                    min: autoSaveIntervalMinutesMin,
+                    max: autoSaveIntervalMinutesMax,
+                    step: 1,
+                  },
+                }}
+                onChange={(event) =>
+                  setAutoSaveIntervalInput(event.target.value)
+                }
+                onBlur={commitAutoSaveInterval}
+                sx={{ width: 140 }}
+              />
+            )}
+          </WorkspaceEditorSelectButton>
+        )}
+      </Stack>
+      <WorkspaceEditableSummary
+        value={storySummary}
+        onChange={setStorySummary}
+        placeholder="新增摘要..."
+      />
+    </Stack>
+  ) : (
+    <Stack spacing={2}>
+      {versionConflict ? (
+        <Alert
+          severity="warning"
+          variant="outlined"
+          onClose={() => setVersionConflict(false)}
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                handleSidePanelChange("history");
+                setVersionConflict(false);
+              }}
+            >
+              查看編輯歷史
+            </Button>
+          }
+        >
+          剛剛存檔完成後才發現這篇故事在中途被更新過（可能是另一個分頁，或透過
+          MCP
+          連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
+        </Alert>
+      ) : (
+        saveStory.isError && (
+          <Alert severity="error" variant="outlined">
+            存檔失敗，請確認登入狀態與欄位內容。
+          </Alert>
+        )
+      )}
+      <Grid container spacing={2} alignItems="flex-start">
+        <Grid size={{ xs: 12, md: 5 }}>
+          <TextField
+            required
+            fullWidth
+            label="故事標題"
+            value={storyTitle}
+            onChange={(event) => setStoryTitle(event.target.value)}
+            placeholder="請輸入故事標題"
+            helperText="列表與編輯頁標題以此欄位為主。"
+          />
+        </Grid>
+        {apiProject && (
+          <Grid size={{ xs: 12, md: 4 }}>
+            <Stack spacing={1}>
+              <TextField
+                select
+                fullWidth
+                label="自動存檔"
+                value={autoSaveSelectValue}
+                onChange={(event) =>
+                  handleAutoSaveSelectChange(
+                    event.target.value as AutoSaveSelectValue,
+                  )
+                }
+              >
+                <MenuItem value="off">不自動存檔</MenuItem>
+                {autoSavePresetMinutes.map((minutes) => (
+                  <MenuItem key={minutes} value={String(minutes)}>
+                    每 {minutes} 分鐘
+                  </MenuItem>
+                ))}
+                <MenuItem value="custom">自訂頻率…</MenuItem>
+              </TextField>
+              {autoSaveSelectValue === "custom" && (
+                <TextField
+                  type="number"
+                  size="small"
+                  fullWidth
+                  label={`自訂頻率（${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘）`}
+                  value={autoSaveIntervalInput}
+                  slotProps={{
+                    htmlInput: {
+                      min: autoSaveIntervalMinutesMin,
+                      max: autoSaveIntervalMinutesMax,
+                      step: 1,
+                    },
+                  }}
+                  onChange={(event) =>
+                    setAutoSaveIntervalInput(event.target.value)
+                  }
+                  onBlur={commitAutoSaveInterval}
+                />
+              )}
+            </Stack>
+          </Grid>
+        )}
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<SaveIcon />}
+            sx={{ py: 1.7 }}
+            disabled={saveStory.isPending}
+            onClick={handleSaveStory}
+          >
+            {saveStory.isPending ? "存檔中" : "存檔"}
+          </Button>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            select
+            label="故事狀態"
+            value={storyStatus}
+            onChange={(event) =>
+              setStoryStatus(event.target.value as "draft" | "completed")
+            }
+            helperText="未公開的故事不會出現在公開閱讀頁與故事索引。"
+          >
+            <MenuItem value="draft">未公開</MenuItem>
+            <MenuItem value="completed">公開中</MenuItem>
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            select
+            label="冊"
+            value={selectedVolumeId}
+            onChange={(event) => setSelectedVolumeId(event.target.value)}
+            helperText="未選擇時視為不分冊。"
+          >
+            <MenuItem value="">不分冊</MenuItem>
+            {apiVolumes.map((volume) => (
+              <MenuItem key={volume.public_id} value={volume.public_id}>
+                {volume.title}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={12}>
+          <TextField
+            fullWidth
+            multiline
+            minRows={2}
+            maxRows={12}
+            label="故事摘要"
+            value={storySummary}
+            onChange={(event) => setStorySummary(event.target.value)}
+            placeholder="簡短描述這篇故事的重點、章節目的或目前狀態。"
+          />
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+
   return (
     <StorytellerShell
       title={pageTitle}
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/project") },
-        {
-          label: project.name,
-          to: steamloomPath(`my/project/${project.id}`),
-        },
-        {
-          label: "故事",
-          to: steamloomPath(`my/project/${project.id}/stories`),
-        },
-        { label: pageTitle },
-      ]}
+      breadcrumbs={
+        embedded
+          ? []
+          : [
+              { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+              { label: "我的工作台", to: steamloomPath("my") },
+              { label: "創作專案", to: steamloomPath("my/project") },
+              {
+                label: project.name,
+                to: steamloomPath(`my/project/${project.id}`),
+              },
+              {
+                label: "故事",
+                to: steamloomPath(`my/project/${project.id}/stories`),
+              },
+              { label: pageTitle },
+            ]
+      }
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${wordCount.toLocaleString()} 字`} />
-          <Chip
-            label={storyStatus === "completed" ? "公開中" : "未公開"}
-            color={storyStatus === "completed" ? "success" : "warning"}
-            variant="outlined"
-          />
+          {!embedded && (
+            <Chip
+              label={storyStatus === "completed" ? "公開中" : "未公開"}
+              color={storyStatus === "completed" ? "success" : "warning"}
+              variant="outlined"
+            />
+          )}
           {story ? (
             <>
               <Chip
@@ -1019,155 +1378,22 @@ export default function StorytellerStoryEditor() {
           ) : (
             <Chip label="尚未存檔" color="warning" />
           )}
+          {embedded && (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={saveStory.isPending}
+              onClick={handleSaveStory}
+            >
+              {saveStory.isPending ? "存檔中" : "存檔"}
+            </Button>
+          )}
         </Stack>
       }
       hideHeading
-      headerContent={
-        <Stack spacing={2}>
-          {versionConflict ? (
-            <Alert
-              severity="warning"
-              variant="outlined"
-              onClose={() => setVersionConflict(false)}
-              action={
-                <Button
-                  size="small"
-                  onClick={() => {
-                    handleSidePanelChange("history");
-                    setVersionConflict(false);
-                  }}
-                >
-                  查看編輯歷史
-                </Button>
-              }
-            >
-              剛剛存檔完成後才發現這篇故事在中途被更新過（可能是另一個分頁，或透過
-              MCP
-              連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
-            </Alert>
-          ) : (
-            saveStory.isError && (
-              <Alert severity="error" variant="outlined">
-                存檔失敗，請確認登入狀態與欄位內容。
-              </Alert>
-            )
-          )}
-          <Grid container spacing={2} alignItems="flex-start">
-            <Grid size={{ xs: 12, md: 5 }}>
-              <TextField
-                required
-                fullWidth
-                label="故事標題"
-                value={storyTitle}
-                onChange={(event) => setStoryTitle(event.target.value)}
-                placeholder="請輸入故事標題"
-                helperText="列表與編輯頁標題以此欄位為主。"
-              />
-            </Grid>
-            {apiProject && (
-              <Grid size={{ xs: 12, md: 4 }}>
-                <Stack spacing={1}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="自動存檔"
-                    value={autoSaveSelectValue}
-                    onChange={(event) =>
-                      handleAutoSaveSelectChange(
-                        event.target.value as AutoSaveSelectValue,
-                      )
-                    }
-                  >
-                    <MenuItem value="off">不自動存檔</MenuItem>
-                    {autoSavePresetMinutes.map((minutes) => (
-                      <MenuItem key={minutes} value={String(minutes)}>
-                        每 {minutes} 分鐘
-                      </MenuItem>
-                    ))}
-                    <MenuItem value="custom">自訂頻率…</MenuItem>
-                  </TextField>
-                  {autoSaveSelectValue === "custom" && (
-                    <TextField
-                      type="number"
-                      size="small"
-                      fullWidth
-                      label={`自訂頻率（${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘）`}
-                      value={autoSaveIntervalInput}
-                      slotProps={{
-                        htmlInput: {
-                          min: autoSaveIntervalMinutesMin,
-                          max: autoSaveIntervalMinutesMax,
-                          step: 1,
-                        },
-                      }}
-                      onChange={(event) =>
-                        setAutoSaveIntervalInput(event.target.value)
-                      }
-                      onBlur={commitAutoSaveInterval}
-                    />
-                  )}
-                </Stack>
-              </Grid>
-            )}
-            <Grid size={{ xs: 12, md: 3 }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<SaveIcon />}
-                sx={{ py: 1.7 }}
-                disabled={saveStory.isPending}
-                onClick={handleSaveStory}
-              >
-                {saveStory.isPending ? "存檔中" : "存檔"}
-              </Button>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label="故事狀態"
-                value={storyStatus}
-                onChange={(event) =>
-                  setStoryStatus(event.target.value as "draft" | "completed")
-                }
-                helperText="未公開的故事不會出現在公開閱讀頁與故事索引。"
-              >
-                <MenuItem value="draft">未公開</MenuItem>
-                <MenuItem value="completed">公開中</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                select
-                label="冊"
-                value={selectedVolumeId}
-                onChange={(event) => setSelectedVolumeId(event.target.value)}
-                helperText="未選擇時視為不分冊。"
-              >
-                <MenuItem value="">不分冊</MenuItem>
-                {apiVolumes.map((volume) => (
-                  <MenuItem key={volume.public_id} value={volume.public_id}>
-                    {volume.title}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                maxRows={12}
-                label="故事摘要"
-                value={storySummary}
-                onChange={(event) => setStorySummary(event.target.value)}
-                placeholder="簡短描述這篇故事的重點、章節目的或目前狀態。"
-              />
-            </Grid>
-          </Grid>
-        </Stack>
-      }
+      plain={embedded}
+      headerContent={storyEditorHeaderContent}
     >
       <CustomSnackbar
         open={saveMessageVisible}
