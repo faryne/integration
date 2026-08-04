@@ -328,11 +328,35 @@ const storytellerRoutes = (
         element={<StorytellerProjectWorkspacePreview />}
       />
       <Route
+        path={"workspace/:id/stories/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lores"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lores/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/assets"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/assets/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
         path={"workspace/:id/story/:storyId"}
         element={<StorytellerProjectWorkspacePreview />}
       />
       <Route
         path={"workspace/:id/image/:storyId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lore/:loreId"}
         element={<StorytellerProjectWorkspacePreview />}
       />
       <Route path={"agent/new"} element={<StorytellerNewAgent />} />

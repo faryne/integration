@@ -1,7 +1,6 @@
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArticleIcon from "@mui/icons-material/Article";
 import CollectionsIcon from "@mui/icons-material/Collections";
-import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import FileUploadIcon from "@mui/icons-material/FileUpload";
@@ -36,7 +35,6 @@ import {
   useSaveStorytellerLoreCollection,
   useSaveStorytellerStory,
   useSaveStorytellerVolume,
-  useUpdateStorytellerAsset,
   useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -49,7 +47,6 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerVolumeDialog } from "./StorytellerVolumeDialog.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import {
-  AssetEditDialog,
   CollectionDialog,
   MoveMenu,
   UploadProgressToast,
@@ -64,7 +61,6 @@ import {
 import type {
   StorytellerAsset,
   StorytellerAssetCollection,
-  StorytellerAssetUpdateRequest,
   StorytellerLore,
   StorytellerLoreCollection,
   StorytellerStory,
@@ -90,15 +86,6 @@ function errorMessage(error: unknown, fallback: string) {
     return message || fallback;
   }
   return fallback;
-}
-
-function assetEditForm(asset: StorytellerAsset): StorytellerAssetUpdateRequest {
-  return {
-    title: asset.title,
-    alt_text: asset.alt_text,
-    description: asset.description,
-    metadata: asset.metadata ?? {},
-  };
 }
 
 export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
@@ -155,11 +142,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     useState<StorytellerAssetCollection | null>(null);
   const [collectionName, setCollectionName] = useState("");
   const [collectionDescription, setCollectionDescription] = useState("");
-  const [editingAsset, setEditingAsset] = useState<StorytellerAsset | null>(
-    null,
-  );
-  const [assetForm, setAssetForm] =
-    useState<StorytellerAssetUpdateRequest | null>(null);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
   const [uploadProgress, setUploadProgress] = useState<
     Record<number, WorkspaceUploadProgressRow>
@@ -175,7 +157,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const saveAssetCollection = useSaveStorytellerAssetCollection(projectId);
   const deleteAssetCollection = useDeleteStorytellerAssetCollection(projectId);
   const moveAsset = useMoveStorytellerAsset(projectId);
-  const updateAsset = useUpdateStorytellerAsset(projectId);
   const deleteAsset = useDeleteStorytellerAsset(projectId);
   const uploadAssets = useUploadStorytellerAssets(projectId);
 
@@ -236,6 +217,92 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       sort: storyCountForVolume(nextParentId),
     });
     setStoryMoveMenu(null);
+  }
+
+  // 工作台的作品列表一次只顯示「目前選到的那一組」（某一冊、未分冊，或全部作品
+  // 混在一起），跟舊版管理頁「所有冊＋未分冊同時攤開」的畫面不一樣，沒辦法直接
+  // 把故事拖到另一個看不到的冊——跨冊搬移還是走既有的「移動到冊」選單。這裡只
+  // 處理「同一組內」重新排序：把 draggedPublicId 插到 beforePublicId 前面
+  // （null 代表插到最後），只送真的動到 sort 的那幾筆存檔請求。
+  function reorderStory(
+    draggedPublicId: string,
+    beforePublicId: string | null,
+  ) {
+    if (draggedPublicId === beforePublicId) {
+      return;
+    }
+    const parentId =
+      selected.collectionId === ungroupedId
+        ? null
+        : (volumes.find((volume) => volume.public_id === selected.collectionId)
+            ?.id ?? null);
+    const group = stories
+      .filter((story) => !story.is_volume && story.parent_id === parentId)
+      .sort((left, right) => left.sort - right.sort);
+    const dragged = group.find((story) => story.public_id === draggedPublicId);
+    if (!dragged) {
+      return;
+    }
+    const remaining = group.filter(
+      (story) => story.public_id !== draggedPublicId,
+    );
+    const insertIndex = beforePublicId
+      ? remaining.findIndex((story) => story.public_id === beforePublicId)
+      : remaining.length;
+    remaining.splice(
+      insertIndex < 0 ? remaining.length : insertIndex,
+      0,
+      dragged,
+    );
+    remaining.forEach((story, index) => {
+      if (story.sort !== index) {
+        saveStoryPatch(story, { sort: index });
+      }
+    });
+  }
+
+  // 冊本身是側邊欄裡一個扁平清單（不像作品列表會依目前選到的分組而被過濾／分頁），
+  // 拖曳排序不用像 reorderStory 那樣先框出「同一組」，直接在全部冊之間重新插入
+  // 位置即可，邏輯比照舊版管理頁的 handleDropVolume。
+  function reorderVolume(
+    draggedPublicId: string,
+    beforePublicId: string | null,
+  ) {
+    if (draggedPublicId === beforePublicId) {
+      return;
+    }
+    const ordered = [...volumes].sort((left, right) => left.sort - right.sort);
+    const dragged = ordered.find(
+      (volume) => volume.public_id === draggedPublicId,
+    );
+    if (!dragged) {
+      return;
+    }
+    const remaining = ordered.filter(
+      (volume) => volume.public_id !== draggedPublicId,
+    );
+    const insertIndex = beforePublicId
+      ? remaining.findIndex((volume) => volume.public_id === beforePublicId)
+      : remaining.length;
+    remaining.splice(
+      insertIndex < 0 ? remaining.length : insertIndex,
+      0,
+      dragged,
+    );
+    remaining.forEach((volume, index) => {
+      if (volume.sort === index) {
+        return;
+      }
+      saveVolume.mutate({
+        volumePublicId: volume.public_id,
+        input: {
+          title: volume.title,
+          sort: index,
+          status: volume.status,
+          summary: volume.summary,
+        },
+      });
+    });
   }
 
   function toggleVolumeStatus(volume: StorytellerStory) {
@@ -396,6 +463,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     }
   }
 
+  // 帶去故事/圖像/設定集編輯器路由的查詢參數：一方面讓新建作品能預設放進目前
+  // 瀏覽的冊/分類，一方面讓編輯器畫面底下的側邊欄高亮／麵包屑／「回列表」都能
+  // 對回目前這個分組（見 ProjectWorkspacePreview.tsx 的 selected 推導邏輯）。
+  const fromQuery = selected.collectionId
+    ? `?from=${encodeURIComponent(selected.collectionId)}`
+    : "";
   const currentVolume = volumes.find(
     (volume) => volume.public_id === selected.collectionId,
   );
@@ -507,13 +580,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const actions =
     selected.section === "stories" ? (
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <Button
-          variant="outlined"
-          startIcon={<CreateNewFolderIcon />}
-          onClick={() => setVolumeDialogTarget("new")}
-        >
-          新增冊
-        </Button>
         <ButtonGroup ref={createButtonGroupRef} variant="contained">
           <Button
             onClick={() => setCreateMenuAnchor(createButtonGroupRef.current)}
@@ -532,15 +598,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     ) : selected.section === "lores" ? (
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
-          variant="outlined"
-          startIcon={<CreateNewFolderIcon />}
-          onClick={() => openCollectionDialog("lore", "new")}
-        >
-          建立分類
-        </Button>
-        <Button
           component={RouterLink}
-          to={steamloomPath(`my/project/${projectId}/lore/new`)}
+          to={steamloomPath(`my/workspace/${projectId}/lore/new${fromQuery}`)}
           variant="contained"
         >
           建立設定集
@@ -560,13 +619,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClick={onRefreshAssets}
         >
           重新整理
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<CreateNewFolderIcon />}
-          onClick={() => openCollectionDialog("asset", "new")}
-        >
-          建立資產集
         </Button>
         <Button
           variant="contained"
@@ -607,7 +659,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           size="small"
           component={RouterLink}
           to={steamloomPath(
-            `my/workspace/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}`,
+            `my/workspace/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}${fromQuery}`,
           )}
         >
           <EditIcon fontSize="small" />
@@ -651,7 +703,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         <IconButton
           size="small"
           component={RouterLink}
-          to={steamloomPath(`my/project/${projectId}/lore/${lore.public_id}`)}
+          to={steamloomPath(
+            `my/workspace/${projectId}/lore/${lore.public_id}${fromQuery}`,
+          )}
         >
           <EditIcon fontSize="small" />
         </IconButton>
@@ -680,17 +734,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <MoreVertIcon fontSize="small" />
         </IconButton>
       </Tooltip>
-      <Tooltip title="編輯資產資訊">
-        <IconButton
-          size="small"
-          onClick={() => {
-            setEditingAsset(asset);
-            setAssetForm(assetEditForm(asset));
-          }}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
       <Tooltip title="刪除資產">
         <IconButton
           size="small"
@@ -712,7 +755,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       >
         <MenuItem
           component={RouterLink}
-          to={steamloomPath(`my/project/${projectId}/story/new`)}
+          to={steamloomPath(`my/workspace/${projectId}/story/new${fromQuery}`)}
           onClick={() => setCreateMenuAnchor(null)}
         >
           <ListItemIcon>
@@ -722,7 +765,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         </MenuItem>
         <MenuItem
           component={RouterLink}
-          to={steamloomPath(`my/project/${projectId}/image/new`)}
+          to={steamloomPath(`my/workspace/${projectId}/image/new${fromQuery}`)}
           onClick={() => setCreateMenuAnchor(null)}
         >
           <ListItemIcon>
@@ -842,27 +885,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             : void submitAssetCollection()
         }
       />
-      {editingAsset && assetForm && (
-        <AssetEditDialog
-          open
-          form={assetForm}
-          loading={updateAsset.isPending}
-          onChange={setAssetForm}
-          onClose={() => setEditingAsset(null)}
-          onSubmit={async () => {
-            try {
-              await updateAsset.mutateAsync({
-                assetPublicId: editingAsset.public_id,
-                input: assetForm,
-              });
-              setEditingAsset(null);
-              setSnack("資產資訊已更新。");
-            } catch (error) {
-              setSnack(errorMessage(error, "資產資訊更新失敗。"));
-            }
-          }}
-        />
-      )}
       {deleteStoryTarget && (
         <WorkspaceConfirmNameDialog
           open
@@ -1014,5 +1036,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     renderStoryActions,
     renderLoreActions,
     renderAssetActions,
+    reorderStory,
+    reorderVolume,
+    onCreateVolume: () => setVolumeDialogTarget("new"),
+    onCreateLoreCollection: () => openCollectionDialog("lore", "new"),
+    onCreateAssetCollection: () => openCollectionDialog("asset", "new"),
   };
 }

@@ -1,6 +1,7 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DescriptionIcon from "@mui/icons-material/Description";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
@@ -10,6 +11,7 @@ import {
   Collapse,
   Divider,
   Grid,
+  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
@@ -51,6 +53,10 @@ export function WorkspaceSidebar({
   loreCollections,
   assetCollections,
   onSelect,
+  onCreateVolume,
+  onCreateLoreCollection,
+  onCreateAssetCollection,
+  onReorderVolume,
 }: {
   selected: SelectedNode;
   stories: StorytellerStory[];
@@ -66,6 +72,10 @@ export function WorkspaceSidebar({
     asset_count: number;
   }>;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
+  onCreateVolume?: () => void;
+  onCreateLoreCollection?: () => void;
+  onCreateAssetCollection?: () => void;
+  onReorderVolume?: (draggedId: string, beforeId: string | null) => void;
 }) {
   const storyCount = stories.filter((story) => !story.is_volume).length;
   const ungroupedStoryCount = stories.filter(
@@ -90,6 +100,8 @@ export function WorkspaceSidebar({
             })),
           ]}
           onSelect={onSelect}
+          onCreate={onCreateVolume}
+          onReorder={onReorderVolume}
         />
         <SidebarGroup
           title="設定集"
@@ -106,6 +118,7 @@ export function WorkspaceSidebar({
             })),
           ]}
           onSelect={onSelect}
+          onCreate={onCreateLoreCollection}
         />
         <SidebarGroup
           title="資產集"
@@ -122,6 +135,7 @@ export function WorkspaceSidebar({
             })),
           ]}
           onSelect={onSelect}
+          onCreate={onCreateAssetCollection}
         />
       </Box>
       <WorkspaceSidebarFooter />
@@ -136,6 +150,8 @@ function SidebarGroup({
   selected,
   rows,
   onSelect,
+  onCreate,
+  onReorder,
 }: {
   title: string;
   section: WorkspaceSection;
@@ -143,7 +159,10 @@ function SidebarGroup({
   selected: SelectedNode;
   rows: Array<{ id: string; label: string; count?: number }>;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
+  onCreate?: () => void;
+  onReorder?: (draggedId: string, beforeId: string | null) => void;
 }) {
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   return (
     <Box>
       <Stack
@@ -160,76 +179,133 @@ function SidebarGroup({
         >
           {title}
         </Typography>
+        {onCreate && (
+          <Tooltip title={`新增${title}`}>
+            <IconButton
+              size="small"
+              onClick={onCreate}
+              sx={{ ml: "auto", p: 0.375 }}
+            >
+              <CreateNewFolderIcon fontSize="inherit" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Stack>
       <List dense disablePadding sx={{ mt: 0.5 }}>
         {rows.map((row) => {
           const hasChildren = row.id !== "" && (row.count ?? 0) > 0;
+          // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳
+          // 排序，也不能當拖放目標。
+          const reorderable =
+            Boolean(onReorder) && row.id !== "" && row.id !== ungroupedId;
           return (
-            <ListItemButton
+            <Tooltip
               key={`${section}-${row.id}`}
-              selected={
-                selected.section === section && selected.collectionId === row.id
-              }
-              onClick={() => onSelect(section, row.id)}
-              sx={{
-                borderRadius: 1,
-                my: 0.125,
-                minHeight: 30,
-                px: 1,
-                color: "text.secondary",
-                "&:hover": {
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
-                },
-                "&.Mui-selected": {
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
-                  color: "text.primary",
-                  borderLeft: 3,
-                  borderLeftColor: "primary.main",
-                  pl: 0.625,
-                },
-                "&.Mui-selected:hover": {
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
-                },
-              }}
+              title={reorderable ? "可拖曳調整順序" : ""}
+              placement="right"
             >
-              <Box
+              <ListItemButton
+                selected={
+                  selected.section === section &&
+                  selected.collectionId === row.id
+                }
+                onClick={() => onSelect(section, row.id)}
+                draggable={reorderable}
+                onDragStart={
+                  reorderable ? () => setDraggingId(row.id) : undefined
+                }
+                onDragOver={
+                  reorderable ? (event) => event.preventDefault() : undefined
+                }
+                onDrop={
+                  reorderable
+                    ? (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (draggingId) {
+                          onReorder?.(draggingId, row.id);
+                        }
+                        setDraggingId(null);
+                      }
+                    : undefined
+                }
                 sx={{
-                  width: 16,
-                  lineHeight: 0,
-                  visibility: hasChildren ? "visible" : "hidden",
+                  borderRadius: 1,
+                  my: 0.125,
+                  minHeight: 30,
+                  px: 1,
+                  color: "text.secondary",
+                  cursor: reorderable ? "grab" : undefined,
+                  opacity: draggingId === row.id ? 0.55 : 1,
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
+                  },
+                  "&.Mui-selected": {
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
+                    color: "text.primary",
+                    borderLeft: 3,
+                    borderLeftColor: "primary.main",
+                    pl: 0.625,
+                  },
+                  "&.Mui-selected:hover": {
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
+                  },
                 }}
               >
-                <KeyboardArrowRightIcon fontSize="inherit" />
-              </Box>
-              <ListItemIcon
-                sx={{
-                  minWidth: 26,
-                  color:
-                    selected.section === section &&
-                    selected.collectionId === row.id
-                      ? "primary.main"
-                      : "inherit",
-                }}
-              >
-                <FolderIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText
-                primary={row.label}
-                primaryTypographyProps={{
-                  fontWeight: 700,
-                  noWrap: true,
-                  fontSize: 13,
-                }}
-              />
-              {row.count !== undefined && (
-                <Typography variant="caption" color="text.secondary">
-                  {row.count}
-                </Typography>
-              )}
-            </ListItemButton>
+                <Box
+                  sx={{
+                    width: 16,
+                    lineHeight: 0,
+                    visibility: hasChildren ? "visible" : "hidden",
+                  }}
+                >
+                  <KeyboardArrowRightIcon fontSize="inherit" />
+                </Box>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 26,
+                    color:
+                      selected.section === section &&
+                      selected.collectionId === row.id
+                        ? "primary.main"
+                        : "inherit",
+                  }}
+                >
+                  <FolderIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary={row.label}
+                  primaryTypographyProps={{
+                    fontWeight: 700,
+                    noWrap: true,
+                    fontSize: 13,
+                  }}
+                />
+                {row.count !== undefined && (
+                  <Typography variant="caption" color="text.secondary">
+                    {row.count}
+                  </Typography>
+                )}
+              </ListItemButton>
+            </Tooltip>
           );
         })}
+        {onReorder && (
+          // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
+          // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
+          <Box
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (draggingId) {
+                onReorder(draggingId, null);
+              }
+              setDraggingId(null);
+            }}
+            sx={{ minHeight: 10 }}
+          />
+        )}
       </List>
       <Divider sx={{ my: 0.75, opacity: 0.35 }} />
     </Box>
@@ -387,6 +463,7 @@ export function WorkspacePane({
   renderStoryActions,
   renderLoreActions,
   renderAssetActions,
+  onReorderStory,
 }: {
   title: string;
   selected: SelectedNode;
@@ -405,7 +482,14 @@ export function WorkspacePane({
   renderStoryActions?: (story: StorytellerStory) => ReactNode;
   renderLoreActions?: (lore: StorytellerLore) => ReactNode;
   renderAssetActions?: (asset: StorytellerAsset) => ReactNode;
+  // 只有「單一分組」的作品清單（某一冊、或未分冊）才能拖曳排序——「全部作品」
+  // 混雜多個分組又沒有視覺分隔，拖曳語意不明確，由呼叫端決定要不要傳這個 callback。
+  onReorderStory?: (
+    draggedPublicId: string,
+    beforePublicId: string | null,
+  ) => void;
 }) {
+  const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
   const count =
     selected.section === "stories"
       ? stories.length
@@ -456,8 +540,32 @@ export function WorkspacePane({
               story={story}
               actions={renderStoryActions?.(story)}
               onClick={() => onSelectItem({ type: "story", row: story })}
+              reorderable={Boolean(onReorderStory)}
+              dragging={draggingStoryId === story.public_id}
+              onDragStart={() => setDraggingStoryId(story.public_id)}
+              onDropRow={() => {
+                if (draggingStoryId) {
+                  onReorderStory?.(draggingStoryId, story.public_id);
+                }
+                setDraggingStoryId(null);
+              }}
             />
           ))}
+          {onReorderStory && stories.length > 0 && (
+            // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
+            // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
+            <Box
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggingStoryId) {
+                  onReorderStory(draggingStoryId, null);
+                }
+                setDraggingStoryId(null);
+              }}
+              sx={{ minHeight: 16 }}
+            />
+          )}
           {!loading && stories.length === 0 && (
             <WorkspaceEmptyState
               icon={<ArticleIcon />}

@@ -155,7 +155,7 @@ function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                   <>
                     <Button
                       component={RouterLink}
-                      to={steamloomPath(`my/project/${project.public_id}`)}
+                      to={steamloomPath(`my/workspace/${project.public_id}`)}
                       size="small"
                       variant="outlined"
                     >

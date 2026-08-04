@@ -19,7 +19,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   useRevertStorytellerStoryVersion,
   useRunStorytellerAgent,
@@ -196,8 +201,13 @@ export default function StorytellerStoryEditor({
   const storyId = storyPublicId ?? params.storyId;
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewStory = storyId === "new";
+  // 從工作台指定冊建立新故事時，工作台會在網址帶上 ?from=<volumePublicId>，
+  // 用來預設把新故事放進使用者當下瀏覽的那一冊；不是新故事、或帶的值不是真的
+  // 存在的冊（例如 from=未分冊的內部代號）就不採用，交給下面既有邏輯處理。
+  const defaultVolumeIdFromQuery = searchParams.get("from") ?? "";
   const isHistoryRoute = location.pathname.endsWith("/diff");
   const {
     data: apiProjects = [],
@@ -547,7 +557,12 @@ export default function StorytellerStoryEditor({
     const parentVolume = apiVolumes.find(
       (volume) => volume.id === story?.parentId,
     );
-    if (isNewStory || story?.parentId === null || parentVolume) {
+    if (isNewStory) {
+      const defaultVolume = apiVolumes.find(
+        (volume) => volume.public_id === defaultVolumeIdFromQuery,
+      );
+      setSelectedVolumeId(defaultVolume?.public_id ?? "");
+    } else if (story?.parentId === null || parentVolume) {
       setSelectedVolumeId(parentVolume?.public_id ?? "");
     }
     const savedDraft = serializeStoryDraft(
@@ -561,6 +576,7 @@ export default function StorytellerStoryEditor({
     lastSavedDraftRef.current = savedDraft;
   }, [
     apiVolumes,
+    defaultVolumeIdFromQuery,
     isNewStory,
     story?.content,
     story?.parentId,
@@ -923,8 +939,15 @@ export default function StorytellerStoryEditor({
           setSaveMessage("故事已存檔。");
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
+            // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
+            // 換成存好之後的真正 public_id，不能整個跳回舊版獨立編輯頁——不然
+            // 剛剛才做的「新建也在右欄出血顯示」等於白做。
             navigate(
-              steamloomPath(`my/project/${id}/story/${savedStory.public_id}`),
+              steamloomPath(
+                embedded
+                  ? `my/workspace/${id}/story/${savedStory.public_id}`
+                  : `my/project/${id}/story/${savedStory.public_id}`,
+              ),
             );
           }
           if (savedStory?.version_conflict) {

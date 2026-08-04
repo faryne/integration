@@ -22,7 +22,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useSaveStorytellerStory,
   useStorytellerImageStoryPages,
@@ -84,6 +84,10 @@ export default function StorytellerImageEpisodeEditor({
   const id = projectId ?? params.id;
   const episodeId = episodePublicId ?? params.episodeId;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // 從工作台指定冊上傳新話時，工作台會在網址帶上 ?from=<volumePublicId>，
+  // 預設把新話放進使用者當下瀏覽的那一冊。
+  const defaultVolumeIdFromQuery = searchParams.get("from") ?? "";
   const { session, loading: authLoading, login, submitting } = useAuth();
   const {
     data: projects = [],
@@ -165,6 +169,18 @@ export default function StorytellerImageEpisodeEditor({
     isPagesLoaded,
     isVolumesLoading,
   ]);
+
+  useEffect(() => {
+    if (!isNewEpisode || !defaultVolumeIdFromQuery) {
+      return;
+    }
+    const defaultVolume = apiVolumes.find(
+      (volume) => volume.public_id === defaultVolumeIdFromQuery,
+    );
+    if (defaultVolume) {
+      setSelectedVolumeId(defaultVolume.public_id);
+    }
+  }, [isNewEpisode, defaultVolumeIdFromQuery, apiVolumes]);
 
   // 只在卸載時清理，不隨 pages 變動重跑（否則每次新增頁面都會把舊的 URL 一併撤銷）。
   // 既有頁面的 previewUrl 是遠端網址不是 blob URL，revokeObjectURL 對它是安全的
@@ -427,7 +443,7 @@ export default function StorytellerImageEpisodeEditor({
         })),
       });
 
-      await saveStory.mutateAsync({
+      const savedStory = await saveStory.mutateAsync({
         storyPublicId: existingStory?.public_id,
         input: {
           title: title.trim(),
@@ -443,6 +459,15 @@ export default function StorytellerImageEpisodeEditor({
       setPhase("idle");
       if (!embedded) {
         navigate(steamloomPath(`my/project/${project.public_id}/images`));
+      } else if (isNewEpisode && savedStory?.public_id) {
+        // embedded（工作台）模式下，新建話存檔成功後要把網址從 .../image/new
+        // 換成真正的 public_id，不然 isNewEpisode 永遠是 true，下一次存檔又會
+        // 走建立流程、變成建出重複的話。
+        navigate(
+          steamloomPath(
+            `my/workspace/${project.public_id}/image/${savedStory.public_id}`,
+          ),
+        );
       }
     } catch (error) {
       setPhase("error");

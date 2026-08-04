@@ -1,3 +1,4 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import {
   Box,
@@ -19,6 +20,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import {
   useStorytellerAssetCollections,
@@ -42,8 +44,9 @@ import {
   WorkspaceSidebar,
 } from "./ProjectWorkspacePreviewComponents.tsx";
 import { useWorkspaceListActions } from "./ProjectWorkspacePreviewActions.tsx";
-import { EditorPlaceholder } from "./ProjectWorkspacePreviewRows.tsx";
+import { WorkspaceAssetPanel } from "./ProjectWorkspacePreviewRows.tsx";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
+import StorytellerLoreEditor from "./LoreEditor.tsx";
 import StorytellerStoryEditor from "./StoryEditor.tsx";
 import {
   nodeTitle,
@@ -58,21 +61,50 @@ const lorePageSize = 20;
 const assetPageSize = 24;
 
 export default function StorytellerProjectWorkspacePreview() {
-  const { id, storyId } = useParams();
+  const { id, storyId, loreId, collectionId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { session, loading: authLoading, login, submitting } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [selected, setSelected] = useState<SelectedNode>({
-    section: "stories",
-    collectionId: "",
-  });
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
   const [storyPage, setStoryPage] = useState(1);
   const [lorePage, setLorePage] = useState(1);
   const [assetPage, setAssetPage] = useState(1);
   const [assetKeyword, setAssetKeyword] = useState("");
+
+  const routeEditorType = location.pathname.includes("/image/")
+    ? "image"
+    : location.pathname.includes("/story/")
+      ? "story"
+      : location.pathname.includes("/lore/")
+        ? "lore"
+        : "";
+  const isNewStoryRoute = storyId === "new" && routeEditorType === "story";
+  const isNewImageRoute = storyId === "new" && routeEditorType === "image";
+  // 設定集不用像故事/圖像那樣先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
+  // 路徑本身（/lore/）就已經決定好要開 LoreEditor，新建（loreId=new）跟編輯既有
+  // 設定集（loreId=真正的 public_id）都直接把 loreId 原樣交給 LoreEditor 處理，
+  // 它自己會用 lorePublicId === "new" 判斷是不是新建。
+  const isLoreRoute = Boolean(loreId) && routeEditorType === "lore";
+  // 側邊欄目前選到哪個分組／收藏集要能被 URL 完整表示，重新整理或直接貼連結都要
+  // 還原到同一個畫面。瀏覽路由（/stories|lores|assets(/:collectionId)?）直接從
+  // 網址參數還原；故事/圖像/設定集編輯器路由本身不帶分組資訊（網址是
+  // /story|image|lore/:xxxId），改用開啟編輯器當下附加的 ?from= 查詢參數記住
+  // 「使用者是從哪個分組點進來的」，讓側邊欄高亮、麵包屑、「回列表」在編輯畫面
+  // 底下都還能正確對應，不需要额外的 state 或依賴瀏覽器歷史記錄。
+  const browsingSection: WorkspaceSection = location.pathname.includes("/lores")
+    ? "lores"
+    : location.pathname.includes("/assets")
+      ? "assets"
+      : "stories";
+  const selected: SelectedNode = routeEditorType
+    ? {
+        section: routeEditorType === "lore" ? "lores" : "stories",
+        collectionId: searchParams.get("from") ?? "",
+      }
+    : { section: browsingSection, collectionId: collectionId ?? "" };
 
   const projectQuery = useStorytellerProject(id);
   const projectsQuery = useStorytellerProjects();
@@ -99,19 +131,23 @@ export default function StorytellerProjectWorkspacePreview() {
   const loreCollections = loreCollectionsQuery.data ?? [];
   const assetCollections = assetCollectionsQuery.data ?? [];
   const project = projectQuery.data;
-  const routeEditorType = location.pathname.includes("/image/")
-    ? "image"
-    : location.pathname.includes("/story/")
-      ? "story"
-      : "";
-  const routeStory = storyId
-    ? stories.find((story) => !story.is_volume && story.public_id === storyId)
-    : undefined;
+  const routeStory =
+    storyId && storyId !== "new"
+      ? stories.find((story) => !story.is_volume && story.public_id === storyId)
+      : undefined;
   const routeSelectedItem: SelectedItem | null =
     routeStory && routeEditorType
       ? { type: "story", row: routeStory }
       : selectedItem;
-  const isRouteEditorOpen = Boolean(routeStory && routeEditorType);
+  // 故事／圖像／設定集編輯器（不管是編輯既有作品還是「新建」）在右欄要出血滿版顯示，
+  // 不能跟列表頁共用中間那圈 maxWidth+置中的窄欄容器——那是給列表閱讀用的排版，編輯器
+  // 需要盡量用滿右欄寬度才有 Notion 風工作台的感覺。
+  const showBleedEditor =
+    isNewStoryRoute ||
+    isNewImageRoute ||
+    isLoreRoute ||
+    routeSelectedItem?.type === "story" ||
+    routeSelectedItem?.type === "asset";
 
   const storyRows = useMemo(() => {
     const parentId =
@@ -139,6 +175,13 @@ export default function StorytellerProjectWorkspacePreview() {
     (storyPage - 1) * storyPageSize,
     storyPage * storyPageSize,
   );
+  // 拖曳排序只在「單一分組」且沒有分頁時開放——「全部作品」混雜多個冊/未分冊、
+  // 又沒有像舊版管理頁那樣攤開所有分組的視覺分隔，拖曳語意不明確；筆數超過一頁
+  // 也沒辦法用原生 HTML5 拖放跨頁搬動，乾脆只在同一頁看得到整組時才開放。
+  const canReorderStories =
+    selected.section === "stories" &&
+    selected.collectionId !== "" &&
+    storyTotalPages <= 1;
   const loreTotalPages = Math.max(
     1,
     Math.ceil((loresPageQuery.data?.total_count ?? 0) / lorePageSize),
@@ -159,32 +202,84 @@ export default function StorytellerProjectWorkspacePreview() {
       (collection) => collection.public_id === selected.collectionId,
     )?.name ||
     "工作台";
+  // 麵包屑最後兩段要跟著目前選到的分組／收藏集走：「作品/設定集/資產集」＋
+  // 「冊標題｜未分冊｜未分類｜全部」，跟左側側邊欄、右欄標題呈現的是同一組資訊，
+  // 只是縮寫成更適合塞進麵包屑的短字串（不重複「全部作品」這種完整敘述）。
+  const sectionBreadcrumbLabel =
+    selected.section === "stories"
+      ? "作品"
+      : selected.section === "lores"
+        ? "設定集"
+        : "資產集";
+  const collectionBreadcrumbLabel =
+    selected.collectionId === ""
+      ? "全部"
+      : selected.collectionId === ungroupedId
+        ? selected.section === "stories"
+          ? "未分冊"
+          : "未分類"
+        : (volumes.find((volume) => volume.public_id === selected.collectionId)
+            ?.title ??
+          loreCollections.find(
+            (collection) => collection.public_id === selected.collectionId,
+          )?.name ??
+          assetCollections.find(
+            (collection) => collection.public_id === selected.collectionId,
+          )?.name ??
+          "");
 
-  function selectNode(section: WorkspaceSection, collectionId: string) {
-    setSelected({ section, collectionId });
+  // 把「分組＋收藏集」換算成瀏覽路由：沒有 collectionId 時，作品區用裸路徑
+  // （既有連結大量指向 my/workspace/:id，維持相容），設定集／資產集區則是
+  // /lores、/assets（沒有對應的「裸路徑」慣例，直接用分組名稱）。
+  function browsingPath(section: WorkspaceSection, targetCollectionId: string) {
+    if (!targetCollectionId) {
+      return section === "stories"
+        ? `my/workspace/${id}`
+        : `my/workspace/${id}/${section}`;
+    }
+    return `my/workspace/${id}/${section}/${targetCollectionId}`;
+  }
+
+  function selectNode(section: WorkspaceSection, targetCollectionId: string) {
     setSelectedItem(null);
     setStoryPage(1);
     setLorePage(1);
     setAssetPage(1);
-    if (isRouteEditorOpen) {
-      navigate(steamloomPath(`my/workspace/${id}`));
-    }
+    navigate(steamloomPath(browsingPath(section, targetCollectionId)));
   }
 
-  function openStoryInWorkspace(story: SelectedItem) {
-    if (story.type !== "story") {
-      setSelectedItem(story);
+  function openStoryInWorkspace(item: SelectedItem) {
+    // 帶上 ?from= 記住目前是從哪個分組點進編輯器——故事/圖像/設定集編輯器的路由
+    // 本身不含分組資訊，沒有這個查詢參數的話，編輯畫面底下的側邊欄高亮／麵包屑／
+    // 「回列表」都沒辦法對回原本瀏覽的分組。
+    const fromSuffix = selected.collectionId
+      ? `?from=${encodeURIComponent(selected.collectionId)}`
+      : "";
+    if (item.type === "story") {
+      const segment = item.row.content_type === "image" ? "image" : "story";
+      navigate(
+        steamloomPath(
+          `my/workspace/${id}/${segment}/${item.row.public_id}${fromSuffix}`,
+        ),
+      );
       return;
     }
-    const segment = story.row.content_type === "image" ? "image" : "story";
-    navigate(
-      steamloomPath(`my/workspace/${id}/${segment}/${story.row.public_id}`),
-    );
+    if (item.type === "lore") {
+      navigate(
+        steamloomPath(
+          `my/workspace/${id}/lore/${item.row.public_id}${fromSuffix}`,
+        ),
+      );
+      return;
+    }
+    setSelectedItem(item);
   }
 
   function closeWorkspaceEditor() {
     setSelectedItem(null);
-    navigate(steamloomPath(`my/workspace/${id}`));
+    navigate(
+      steamloomPath(browsingPath(selected.section, selected.collectionId)),
+    );
   }
 
   const listActions = useWorkspaceListActions({
@@ -247,6 +342,7 @@ export default function StorytellerProjectWorkspacePreview() {
       title={project?.name ?? "專案"}
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
+      trail={[sectionBreadcrumbLabel, collectionBreadcrumbLabel]}
       action={
         <Button component={RouterLink} to={steamloomPath(`my/project/${id}`)}>
           舊管理頁
@@ -282,6 +378,10 @@ export default function StorytellerProjectWorkspacePreview() {
               loreCollections={loreCollections}
               assetCollections={assetCollections}
               onSelect={selectNode}
+              onCreateVolume={listActions.onCreateVolume}
+              onCreateLoreCollection={listActions.onCreateLoreCollection}
+              onCreateAssetCollection={listActions.onCreateAssetCollection}
+              onReorderVolume={listActions.reorderVolume}
             />
           </Box>
         )}
@@ -294,49 +394,56 @@ export default function StorytellerProjectWorkspacePreview() {
               loreCollections={loreCollections}
               assetCollections={assetCollections}
               onSelect={selectNode}
+              onCreateVolume={listActions.onCreateVolume}
+              onCreateLoreCollection={listActions.onCreateLoreCollection}
+              onCreateAssetCollection={listActions.onCreateAssetCollection}
+              onReorderVolume={listActions.reorderVolume}
             />
           )}
-          <Box
-            sx={{
-              px: { xs: 2.25, md: 9 },
-              py: { xs: 2.5, md: 6 },
-              maxWidth: routeSelectedItem ? 1120 : 980,
-              mx: "auto",
-            }}
-          >
-            {routeSelectedItem ? (
-              routeSelectedItem.type === "story" &&
-              routeSelectedItem.row.content_type !== "image" ? (
-                <Stack spacing={2}>
-                  <Box>
-                    <Button onClick={closeWorkspaceEditor}>回列表</Button>
-                  </Box>
-                  <StorytellerStoryEditor
-                    embedded
-                    projectId={id}
-                    storyPublicId={routeSelectedItem.row.public_id}
-                  />
-                </Stack>
-              ) : routeSelectedItem.type === "story" &&
-                routeSelectedItem.row.content_type === "image" ? (
-                <Stack spacing={2}>
-                  <Box>
-                    <Button onClick={closeWorkspaceEditor}>回列表</Button>
-                  </Box>
-                  <StorytellerImageEpisodeEditor
-                    embedded
-                    projectId={id}
-                    episodePublicId={routeSelectedItem.row.public_id}
-                  />
-                </Stack>
-              ) : (
-                <EditorPlaceholder
-                  item={routeSelectedItem}
-                  projectId={id ?? ""}
-                  onBack={closeWorkspaceEditor}
+          {showBleedEditor ? (
+            <EditorBleedContainer onBack={closeWorkspaceEditor}>
+              {isNewStoryRoute ? (
+                <StorytellerStoryEditor
+                  embedded
+                  projectId={id}
+                  storyPublicId="new"
                 />
-              )
-            ) : (
+              ) : isNewImageRoute ? (
+                <StorytellerImageEpisodeEditor
+                  embedded
+                  projectId={id}
+                  episodePublicId="new"
+                />
+              ) : isLoreRoute ? (
+                <StorytellerLoreEditor
+                  embedded
+                  projectId={id}
+                  lorePublicId={loreId}
+                />
+              ) : routeSelectedItem?.type === "story" &&
+                routeSelectedItem.row.content_type === "image" ? (
+                <StorytellerImageEpisodeEditor
+                  embedded
+                  projectId={id}
+                  episodePublicId={routeSelectedItem.row.public_id}
+                />
+              ) : routeSelectedItem?.type === "story" ? (
+                <StorytellerStoryEditor
+                  embedded
+                  projectId={id}
+                  storyPublicId={routeSelectedItem.row.public_id}
+                />
+              ) : routeSelectedItem?.type === "asset" ? (
+                <WorkspaceAssetPanel
+                  asset={routeSelectedItem.row}
+                  assetCollections={assetCollections}
+                  projectId={id ?? ""}
+                  onDeleted={closeWorkspaceEditor}
+                />
+              ) : null}
+            </EditorBleedContainer>
+          ) : (
+            <WorkspaceBleedContainer>
               <WorkspacePane
                 title={activeTitle}
                 selected={selected}
@@ -373,9 +480,12 @@ export default function StorytellerProjectWorkspacePreview() {
                 renderStoryActions={listActions.renderStoryActions}
                 renderLoreActions={listActions.renderLoreActions}
                 renderAssetActions={listActions.renderAssetActions}
+                onReorderStory={
+                  canReorderStories ? listActions.reorderStory : undefined
+                }
               />
-            )}
-          </Box>
+            </WorkspaceBleedContainer>
+          )}
         </Box>
       </Box>
       {listActions.dialogs}
@@ -387,6 +497,7 @@ function WorkspaceChrome({
   title,
   projectId,
   projects = [],
+  trail = [],
   action,
   children,
 }: {
@@ -398,6 +509,9 @@ function WorkspaceChrome({
     slug: string;
     updated_at: string;
   }>;
+  // 麵包屑接在專案名稱後面的其餘段落，例如 ["作品", "桌布集"]——由呼叫端依目前
+  // 選到的分組／收藏集組好，這裡只負責照順序插上分隔符號渲染。
+  trail?: string[];
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -508,6 +622,24 @@ function WorkspaceChrome({
               ▾
             </Typography>
           </Stack>
+          {trail
+            .filter((segment) => segment)
+            .map((segment, index) => (
+              <Stack
+                key={index}
+                direction="row"
+                alignItems="center"
+                spacing={0.75}
+                sx={{ minWidth: 0 }}
+              >
+                <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
+                  &gt;
+                </Typography>
+                <Typography color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                  {segment}
+                </Typography>
+              </Stack>
+            ))}
         </Stack>
         {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
       </Stack>
@@ -553,6 +685,54 @@ function WorkspaceChrome({
       </Menu>
       {children}
     </Box>
+  );
+}
+
+// 右欄的出血容器——不管是列表還是編輯器都用滿欄寬，不像舊版那樣置中收窄成一欄
+// 文章排版，只留最基本的內距讓內容不會貼齊邊框。
+function WorkspaceBleedContainer({ children }: { children: ReactNode }) {
+  return (
+    <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 } }}>{children}</Box>
+  );
+}
+
+// 編輯器（既有作品或新建）額外在最上面放「回列表」，用帶圖示的膠囊按鈕取代純文字
+// 連結——編輯器內容本身很大一片，純文字連結太不顯眼，容易讓人找不到返回的路。
+function EditorBleedContainer({
+  onBack,
+  children,
+}: {
+  onBack: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <WorkspaceBleedContainer>
+      <Stack spacing={2}>
+        <Box>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<ArrowBackIcon fontSize="small" />}
+            onClick={onBack}
+            sx={{
+              borderRadius: 999,
+              px: 1.5,
+              color: "text.secondary",
+              borderColor: (theme) =>
+                theme.palette.mode === "dark" ? "#3a3a3a" : "#d8d5cd",
+              "&:hover": {
+                color: "primary.main",
+                borderColor: "primary.main",
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+              },
+            }}
+          >
+            回列表
+          </Button>
+        </Box>
+        {children}
+      </Stack>
+    </WorkspaceBleedContainer>
   );
 }
 

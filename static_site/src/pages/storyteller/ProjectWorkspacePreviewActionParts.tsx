@@ -23,7 +23,6 @@ import {
   workspaceDialogTitleSx,
   workspaceTextFieldSx,
 } from "./ProjectWorkspacePreviewDialogStyles.ts";
-import type { StorytellerAssetUpdateRequest } from "@/types/storyteller.ts";
 
 export interface WorkspaceUploadProgressRow {
   name: string;
@@ -204,76 +203,6 @@ export function CollectionDialog({
           disabled={loading || !name.trim()}
           onClick={onSubmit}
         >
-          儲存
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-export function AssetEditDialog({
-  open,
-  form,
-  loading,
-  onChange,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean;
-  form: StorytellerAssetUpdateRequest;
-  loading: boolean;
-  onChange: (form: StorytellerAssetUpdateRequest) => void;
-  onClose: () => void;
-  onSubmit: () => void;
-}) {
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="sm"
-      slotProps={{
-        paper: { sx: workspaceDialogPaperSx },
-        backdrop: { sx: workspaceDialogBackdropSx },
-      }}
-    >
-      <DialogTitle sx={workspaceDialogTitleSx}>編輯資產資訊</DialogTitle>
-      <DialogContent sx={workspaceDialogContentSx}>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
-            label="標題"
-            value={form.title}
-            onChange={(event) =>
-              onChange({ ...form, title: event.target.value })
-            }
-            fullWidth
-            sx={workspaceTextFieldSx}
-          />
-          <TextField
-            label="替代文字"
-            value={form.alt_text}
-            onChange={(event) =>
-              onChange({ ...form, alt_text: event.target.value })
-            }
-            fullWidth
-            sx={workspaceTextFieldSx}
-          />
-          <TextField
-            label="描述"
-            value={form.description}
-            onChange={(event) =>
-              onChange({ ...form, description: event.target.value })
-            }
-            fullWidth
-            multiline
-            minRows={3}
-            sx={workspaceTextFieldSx}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={workspaceDialogActionsSx}>
-        <Button onClick={onClose}>取消</Button>
-        <Button variant="contained" disabled={loading} onClick={onSubmit}>
           儲存
         </Button>
       </DialogActions>
