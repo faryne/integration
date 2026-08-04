@@ -565,30 +565,45 @@ function WorkspaceChrome({
           direction="row"
           alignItems="center"
           spacing={0.75}
-          sx={{ minWidth: 0 }}
+          sx={{
+            minWidth: 0,
+            overflowX: "auto",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+          }}
         >
-          <Typography
-            component={RouterLink}
-            to={steamloomPath()}
-            color="text.secondary"
-            sx={{ textDecoration: "none", flexShrink: 0 }}
+          {/* 窄螢幕優先讓「目前選到哪個分組/收藏集」有空間顯示，站名跟「我的工作台」
+              這兩段先收起來——真的還是放不下時，整條麵包屑本身可以橫向捲動（見外層
+              overflowX），文字內容永遠不會被硬擠到看不見。 */}
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={0.75}
+            sx={{ display: { xs: "none", sm: "flex" }, flexShrink: 0 }}
           >
-            {STORYTELLER_APP_NAME}
-          </Typography>
-          <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
-            &gt;
-          </Typography>
-          <Typography
-            component={RouterLink}
-            to={steamloomPath("my")}
-            color="text.secondary"
-            sx={{ textDecoration: "none", flexShrink: 0 }}
-          >
-            我的工作台
-          </Typography>
-          <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
-            &gt;
-          </Typography>
+            <Typography
+              component={RouterLink}
+              to={steamloomPath()}
+              color="text.secondary"
+              sx={{ textDecoration: "none", flexShrink: 0 }}
+            >
+              {STORYTELLER_APP_NAME}
+            </Typography>
+            <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
+              &gt;
+            </Typography>
+            <Typography
+              component={RouterLink}
+              to={steamloomPath("my")}
+              color="text.secondary"
+              sx={{ textDecoration: "none", flexShrink: 0 }}
+            >
+              我的工作台
+            </Typography>
+            <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
+              &gt;
+            </Typography>
+          </Stack>
           <Stack
             component={RouterLink}
             to={projectId ? steamloomPath(`my/workspace/${projectId}`) : "#"}
@@ -604,14 +619,14 @@ function WorkspaceChrome({
               }
             }}
             sx={{
-              minWidth: 0,
+              flexShrink: 0,
               color: "primary.main",
               textDecoration: "none",
               fontWeight: 800,
               "&:hover": { color: "primary.dark" },
             }}
           >
-            <Typography fontWeight={800} noWrap sx={{ minWidth: 0 }}>
+            <Typography fontWeight={800} noWrap>
               {title}
             </Typography>
             <Typography
@@ -630,12 +645,12 @@ function WorkspaceChrome({
                 direction="row"
                 alignItems="center"
                 spacing={0.75}
-                sx={{ minWidth: 0 }}
+                sx={{ flexShrink: 0 }}
               >
                 <Typography color="text.secondary" sx={{ flexShrink: 0 }}>
                   &gt;
                 </Typography>
-                <Typography color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+                <Typography color="text.secondary" noWrap>
                   {segment}
                 </Typography>
               </Stack>
