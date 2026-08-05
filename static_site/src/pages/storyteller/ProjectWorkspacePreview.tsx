@@ -10,7 +10,6 @@ import {
 import axios from "axios";
 import { useMemo, useState } from "react";
 import {
-  Link as RouterLink,
   useLocation,
   useNavigate,
   useParams,
@@ -433,11 +432,6 @@ export default function StorytellerProjectWorkspacePreview() {
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
       trail={[sectionBreadcrumbLabel, collectionBreadcrumbLabel]}
-      action={
-        <Button component={RouterLink} to={steamloomPath(`my/project/${id}`)}>
-          舊管理頁
-        </Button>
-      }
     >
       <Box
         sx={{
