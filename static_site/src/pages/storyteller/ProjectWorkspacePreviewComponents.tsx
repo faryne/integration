@@ -8,6 +8,7 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
+  CircularProgress,
   Collapse,
   Divider,
   Grid,
@@ -29,6 +30,7 @@ import {
   type StorytellerPaletteName,
 } from "@/data/storytellerTheme.ts";
 import { useStorytellerPalette } from "@/layouts/storytellerPaletteMode.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
   ungroupedId,
   type SelectedItem,
@@ -101,6 +103,7 @@ export function WorkspaceSidebar({
           ]}
           onSelect={onSelect}
           onCreate={onCreateVolume}
+          createLabel="新增冊"
           onReorder={onReorderVolume}
         />
         <SidebarGroup
@@ -151,6 +154,7 @@ function SidebarGroup({
   rows,
   onSelect,
   onCreate,
+  createLabel,
   onReorder,
 }: {
   title: string;
@@ -160,6 +164,10 @@ function SidebarGroup({
   rows: Array<{ id: string; label: string; count?: number }>;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
   onCreate?: () => void;
+  // 新增按鈕的 tooltip 文字——預設沿用區塊標題「新增{title}」，但「作品與冊」
+  // 這個按鈕實際上只會新增「冊」，不會新增「作品」，沿用預設會變成語意不對的
+  // 「新增作品與冊」，所以呼叫端可以自己指定更精確的文字。
+  createLabel?: string;
   onReorder?: (draggedId: string, beforeId: string | null) => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -180,7 +188,7 @@ function SidebarGroup({
           {title}
         </Typography>
         {onCreate && (
-          <Tooltip title={`新增${title}`}>
+          <Tooltip title={createLabel ?? `新增${title}`}>
             <IconButton
               size="small"
               onClick={onCreate}
@@ -456,6 +464,8 @@ export function WorkspacePane({
   lores,
   assets,
   loading,
+  errorCode,
+  errorBackUrl,
   onSelectItem,
   actions,
   titleActions,
@@ -471,6 +481,12 @@ export function WorkspacePane({
   lores: StorytellerLore[];
   assets: StorytellerAsset[];
   loading: boolean;
+  // API 請求失敗時要顯示對應的錯誤頁，跟「請求成功但真的沒有資料」的空狀態
+  // 分開處理，不能只看陣列是不是空的就顯示「沒有作品」——那樣使用者會誤以為
+  // 這個分類真的沒東西，而不是資料根本沒載入成功。
+  errorCode?: number;
+  // 錯誤頁「回前頁」按鈕的目標——工作台根目錄，不是整個網站的首頁。
+  errorBackUrl?: string;
   onSelectItem: (item: SelectedItem) => void;
   actions?: ReactNode;
   titleActions?: ReactNode;
@@ -532,121 +548,137 @@ export function WorkspacePane({
         </Box>
         {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
       </Stack>
-      {selected.section === "stories" && (
-        <Stack spacing={0.5}>
-          {stories.map((story) => (
-            <StoryRow
-              key={story.public_id}
-              story={story}
-              actions={renderStoryActions?.(story)}
-              onClick={() => onSelectItem({ type: "story", row: story })}
-              reorderable={Boolean(onReorderStory)}
-              dragging={draggingStoryId === story.public_id}
-              onDragStart={() => setDraggingStoryId(story.public_id)}
-              onDropRow={() => {
-                if (draggingStoryId) {
-                  onReorderStory?.(draggingStoryId, story.public_id);
-                }
-                setDraggingStoryId(null);
-              }}
-            />
-          ))}
-          {onReorderStory && stories.length > 0 && (
-            // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
-            // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
-            <Box
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (draggingStoryId) {
-                  onReorderStory(draggingStoryId, null);
-                }
-                setDraggingStoryId(null);
-              }}
-              sx={{ minHeight: 16 }}
-            />
-          )}
-          {!loading && stories.length === 0 && (
-            <WorkspaceEmptyState
-              icon={<ArticleIcon />}
-              title="沒有作品"
-              description="這個分類目前沒有作品。"
-            />
-          )}
-          {pagination && pagination.count > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}>
-              <Pagination
-                count={pagination.count}
-                page={pagination.page}
-                onChange={(_, page) => pagination.onChange(page)}
-                color="primary"
-              />
-            </Box>
-          )}
+      {loading ? (
+        <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
+          <CircularProgress size={28} />
         </Stack>
-      )}
-      {selected.section === "lores" && (
-        <Stack spacing={0.5}>
-          {lores.map((lore) => (
-            <LoreRow
-              key={lore.public_id}
-              lore={lore}
-              actions={renderLoreActions?.(lore)}
-              onClick={() => onSelectItem({ type: "lore", row: lore })}
-            />
-          ))}
-          {!loading && lores.length === 0 && (
-            <WorkspaceEmptyState
-              icon={<DescriptionIcon />}
-              title="沒有設定"
-              description="這個分類目前沒有設定。"
-            />
-          )}
-          {pagination && pagination.count > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}>
-              <Pagination
-                count={pagination.count}
-                page={pagination.page}
-                onChange={(_, page) => pagination.onChange(page)}
-                color="primary"
-              />
-            </Box>
-          )}
-        </Stack>
-      )}
-      {selected.section === "assets" && (
-        <Grid container spacing={1.5}>
-          {assets.map((asset) => (
-            <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
-              <AssetCard
-                asset={asset}
-                actions={renderAssetActions?.(asset)}
-                onClick={() => onSelectItem({ type: "asset", row: asset })}
-              />
-            </Grid>
-          ))}
-          {!loading && assets.length === 0 && (
-            <Grid size={12}>
-              <WorkspaceEmptyState
-                icon={<CollectionsIcon />}
-                title="沒有資產"
-                description="這個分類目前沒有資產。"
-              />
-            </Grid>
-          )}
-          {pagination && pagination.count > 1 && (
-            <Grid size={12}>
-              <Box sx={{ display: "flex", justifyContent: "center", pt: 1 }}>
-                <Pagination
-                  count={pagination.count}
-                  page={pagination.page}
-                  onChange={(_, page) => pagination.onChange(page)}
-                  color="primary"
+      ) : errorCode ? (
+        <ErrorPage compact code={errorCode} backUrl={errorBackUrl} />
+      ) : (
+        <>
+          {selected.section === "stories" && (
+            <Stack spacing={0.5}>
+              {stories.map((story) => (
+                <StoryRow
+                  key={story.public_id}
+                  story={story}
+                  actions={renderStoryActions?.(story)}
+                  onClick={() => onSelectItem({ type: "story", row: story })}
+                  reorderable={Boolean(onReorderStory)}
+                  dragging={draggingStoryId === story.public_id}
+                  onDragStart={() => setDraggingStoryId(story.public_id)}
+                  onDropRow={() => {
+                    if (draggingStoryId) {
+                      onReorderStory?.(draggingStoryId, story.public_id);
+                    }
+                    setDraggingStoryId(null);
+                  }}
                 />
-              </Box>
+              ))}
+              {onReorderStory && stories.length > 0 && (
+                // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
+                // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
+                <Box
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (draggingStoryId) {
+                      onReorderStory(draggingStoryId, null);
+                    }
+                    setDraggingStoryId(null);
+                  }}
+                  sx={{ minHeight: 16 }}
+                />
+              )}
+              {stories.length === 0 && (
+                <WorkspaceEmptyState
+                  icon={<ArticleIcon />}
+                  title="沒有作品"
+                  description="這個分類目前沒有作品。"
+                />
+              )}
+              {pagination && pagination.count > 1 && (
+                <Box
+                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                >
+                  <Pagination
+                    count={pagination.count}
+                    page={pagination.page}
+                    onChange={(_, page) => pagination.onChange(page)}
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </Stack>
+          )}
+          {selected.section === "lores" && (
+            <Stack spacing={0.5}>
+              {lores.map((lore) => (
+                <LoreRow
+                  key={lore.public_id}
+                  lore={lore}
+                  actions={renderLoreActions?.(lore)}
+                  onClick={() => onSelectItem({ type: "lore", row: lore })}
+                />
+              ))}
+              {lores.length === 0 && (
+                <WorkspaceEmptyState
+                  icon={<DescriptionIcon />}
+                  title="沒有設定"
+                  description="這個分類目前沒有設定。"
+                />
+              )}
+              {pagination && pagination.count > 1 && (
+                <Box
+                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                >
+                  <Pagination
+                    count={pagination.count}
+                    page={pagination.page}
+                    onChange={(_, page) => pagination.onChange(page)}
+                    color="primary"
+                  />
+                </Box>
+              )}
+            </Stack>
+          )}
+          {selected.section === "assets" && (
+            <Grid container spacing={1.5}>
+              {assets.map((asset) => (
+                <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <AssetCard
+                    asset={asset}
+                    actions={renderAssetActions?.(asset)}
+                    onClick={() => onSelectItem({ type: "asset", row: asset })}
+                  />
+                </Grid>
+              ))}
+              {assets.length === 0 && (
+                <Grid size={12}>
+                  <WorkspaceEmptyState
+                    icon={<CollectionsIcon />}
+                    title="沒有資產"
+                    description="這個分類目前沒有資產。"
+                  />
+                </Grid>
+              )}
+              {pagination && pagination.count > 1 && (
+                <Grid size={12}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "center", pt: 1 }}
+                  >
+                    <Pagination
+                      count={pagination.count}
+                      page={pagination.page}
+                      onChange={(_, page) => pagination.onChange(page)}
+                      color="primary"
+                    />
+                  </Box>
+                </Grid>
+              )}
             </Grid>
           )}
-        </Grid>
+        </>
       )}
     </Stack>
   );

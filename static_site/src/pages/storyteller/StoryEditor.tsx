@@ -69,6 +69,7 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
@@ -339,6 +340,7 @@ export default function StorytellerStoryEditor({
   const latestVersionIdRef = useRef<number | undefined>(undefined);
   const [leftDiffId, setLeftDiffId] = useState("");
   const [rightDiffId, setRightDiffId] = useState("");
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const currentDraftRef = useRef(
     serializeStoryDraft("", "", "completed", "", ""),
@@ -383,12 +385,15 @@ export default function StorytellerStoryEditor({
     (historyPage - 1) * historyPerPage,
     historyPage * historyPerPage,
   );
-  const comparePath =
-    id && storyId && leftDiffId && rightDiffId
-      ? steamloomPath(
-          `my/project/${id}/story/${storyId}/diff/${leftDiffId}/${rightDiffId}`,
-        )
-      : "";
+  // 版本比對改用 modal 顯示，不用再走獨立頁面——apiStoryVersions 本來就已經載入
+  // 每個版本的完整 content，直接從這裡找出使用者選的左右版本傳給 dialog，不用
+  // 像舊版獨立頁面那樣另外發請求重新拉一次。
+  const leftCompareVersion = apiStoryVersions.find(
+    (version) => String(version.id) === leftDiffId,
+  );
+  const rightCompareVersion = apiStoryVersions.find(
+    (version) => String(version.id) === rightDiffId,
+  );
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
   const selectedAgent =
     agentRows.find((agent) => agent.id === selectedAgentId) ?? agentRows[0];
@@ -847,7 +852,21 @@ export default function StorytellerStoryEditor({
   }
 
   if (!project || (!isNewStory && !story)) {
-    return <ErrorPage code={404} />;
+    return (
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={
+          embedded
+            ? steamloomPath(
+                defaultVolumeIdFromQuery
+                  ? `my/workspace/${id}/stories/${defaultVolumeIdFromQuery}`
+                  : `my/workspace/${id}`,
+              )
+            : undefined
+        }
+      />
+    );
   }
 
   function isRightDiffDisabled(diffId: string) {
@@ -1474,7 +1493,7 @@ export default function StorytellerStoryEditor({
                     loading={apiStoryVersionsLoading}
                     leftVersionId={leftDiffId}
                     rightVersionId={rightDiffId}
-                    comparePath={comparePath}
+                    onCompare={() => setCompareDialogOpen(true)}
                     onLeftVersionChange={handleLeftDiffChange}
                     onRightVersionChange={setRightDiffId}
                     isRightVersionDisabled={isRightDiffDisabled}
@@ -1643,6 +1662,37 @@ export default function StorytellerStoryEditor({
         title="插入故事資產"
         onClose={() => setAssetPickerOpen(false)}
         onSelect={insertAsset}
+      />
+      <StorytellerVersionCompareDialog
+        open={compareDialogOpen}
+        onClose={() => setCompareDialogOpen(false)}
+        itemTitle={storyTitle.trim() || story?.title || "未命名故事"}
+        leftVersion={
+          leftCompareVersion
+            ? {
+                title: leftCompareVersion.title,
+                summary: leftCompareVersion.summary,
+                content: leftCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  leftCompareVersion.source,
+                ),
+                createdAt: leftCompareVersion.created_at,
+              }
+            : null
+        }
+        rightVersion={
+          rightCompareVersion
+            ? {
+                title: rightCompareVersion.title,
+                summary: rightCompareVersion.summary,
+                content: rightCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  rightCompareVersion.source,
+                ),
+                createdAt: rightCompareVersion.created_at,
+              }
+            : null
+        }
       />
     </StorytellerShell>
   );

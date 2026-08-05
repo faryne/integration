@@ -264,7 +264,7 @@ export default function StorytellerNewAgent() {
               loading={promptVersionsLoading}
               leftVersionId={leftVersionId}
               rightVersionId={rightVersionId}
-              comparePath={comparePath}
+              onCompare={() => comparePath && navigate(comparePath)}
               onLeftVersionChange={setLeftVersionId}
               onRightVersionChange={setRightVersionId}
               isRightVersionDisabled={(versionId) =>

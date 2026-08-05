@@ -8,6 +8,10 @@ export interface ErrorPageProps {
   code: number;
   message?: string;
   internalCode?: string;
+  // 嵌在別的容器裡（例如工作台右欄，本身已經有自己的內距與有限寬度）時用——
+  // 拿掉以整頁為前提設計的 70vh 置中高度跟 Container 自己的左右內距，不然
+  // 兩層內距疊在一起、加上跟外層寬度不成比例的高度，看起來會很不對勁。
+  compact?: boolean;
 }
 
 const defaultErrorContent: Record<number, { title: string; message: string }> =
@@ -93,6 +97,7 @@ export function ErrorPage({
   code,
   message,
   internalCode,
+  compact = false,
 }: ErrorPageProps) {
   const steamloom = isSteamLoomSite();
   const errorContent = steamloom
@@ -105,26 +110,38 @@ export function ErrorPage({
   return (
     <Container
       maxWidth="md"
-      sx={{
-        minHeight: "70vh",
-        display: "flex",
-        alignItems: "center",
-        py: { xs: 6, md: 10 },
-      }}
+      disableGutters={compact}
+      sx={
+        compact
+          ? {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: { xs: "50vh", md: "60vh" },
+              py: { xs: 3, md: 4 },
+            }
+          : {
+              minHeight: "70vh",
+              display: "flex",
+              alignItems: "center",
+              py: { xs: 6, md: 10 },
+            }
+      }
     >
       <Stack
         direction={{ xs: "column", md: "row" }}
-        spacing={{ xs: 4, md: 6 }}
+        spacing={{ xs: 3, md: 4 }}
         alignItems="center"
-        sx={{ width: "100%" }}
+        justifyContent="center"
+        sx={compact ? { width: "auto" } : { width: "100%" }}
       >
         <Box
           component="img"
           src={steamloom ? "/steamloom-icon.svg" : "/faryne-icon-1024.jpg"}
           alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
           sx={{
-            width: { xs: 180, md: 260 },
-            height: { xs: 180, md: 260 },
+            width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
+            height: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
             objectFit: "cover",
             borderRadius: 4,
             boxShadow: 3,

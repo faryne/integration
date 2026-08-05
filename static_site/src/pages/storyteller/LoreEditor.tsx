@@ -61,6 +61,7 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import {
   WorkspaceEditableTitle,
   WorkspaceEditorSelectButton,
@@ -182,6 +183,7 @@ export default function StorytellerLoreEditor({
   const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -653,7 +655,21 @@ export default function StorytellerLoreEditor({
   }
 
   if (!project || (!isNewLore && !lore)) {
-    return <ErrorPage code={404} />;
+    return (
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={
+          embedded
+            ? steamloomPath(
+                defaultCollectionIdFromQuery
+                  ? `my/workspace/${id}/lores/${defaultCollectionIdFromQuery}`
+                  : `my/workspace/${id}/lores`,
+              )
+            : undefined
+        }
+      />
+    );
   }
 
   function insertAsset(asset: StorytellerAsset) {
@@ -800,12 +816,14 @@ export default function StorytellerLoreEditor({
     }
   }
 
-  const comparePath =
-    leftVersionId && rightVersionId
-      ? steamloomPath(
-          `my/project/${project.id}/lore/${lore?.id}/diff/${leftVersionId}/${rightVersionId}`,
-        )
-      : "";
+  // 版本比對改用 modal 顯示，不用再走獨立頁面——versions 本來就已經載入每個版本的
+  // 完整 content，直接從這裡找出使用者選的左右版本傳給 dialog。
+  const leftCompareVersion = versions.find(
+    (version) => String(version.id) === leftVersionId,
+  );
+  const rightCompareVersion = versions.find(
+    (version) => String(version.id) === rightVersionId,
+  );
 
   const collectionOptions = [
     { value: "", label: "未分類", icon: <FolderIcon fontSize="small" /> },
@@ -1148,7 +1166,7 @@ export default function StorytellerLoreEditor({
                     loading={versionsLoading}
                     leftVersionId={leftVersionId}
                     rightVersionId={rightVersionId}
-                    comparePath={comparePath}
+                    onCompare={() => setCompareDialogOpen(true)}
                     onLeftVersionChange={handleLeftVersionChange}
                     onRightVersionChange={setRightVersionId}
                     isRightVersionDisabled={isRightVersionDisabled}
@@ -1324,6 +1342,35 @@ export default function StorytellerLoreEditor({
         title="插入設定資產"
         onClose={() => setAssetPickerOpen(false)}
         onSelect={insertAsset}
+      />
+      <StorytellerVersionCompareDialog
+        open={compareDialogOpen}
+        onClose={() => setCompareDialogOpen(false)}
+        itemTitle={title.trim() || lore?.title || "設定集"}
+        leftVersion={
+          leftCompareVersion
+            ? {
+                title: leftCompareVersion.title,
+                content: leftCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  leftCompareVersion.source,
+                ),
+                createdAt: leftCompareVersion.created_at,
+              }
+            : null
+        }
+        rightVersion={
+          rightCompareVersion
+            ? {
+                title: rightCompareVersion.title,
+                content: rightCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  rightCompareVersion.source,
+                ),
+                createdAt: rightCompareVersion.created_at,
+              }
+            : null
+        }
       />
     </StorytellerShell>
   );

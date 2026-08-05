@@ -13,6 +13,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import axios from "axios";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import {
@@ -40,6 +41,7 @@ import {
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
   WorkspaceMobileNav,
   WorkspacePane,
@@ -87,10 +89,16 @@ export default function StorytellerProjectWorkspacePreview() {
           : "";
   const isNewStoryRoute = storyId === "new" && routeEditorType === "story";
   const isNewImageRoute = storyId === "new" && routeEditorType === "image";
-  // 設定集不用像故事/圖像那樣先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
-  // 路徑本身（/lore/）就已經決定好要開 LoreEditor，新建（loreId=new）跟編輯既有
-  // 設定集（loreId=真正的 public_id）都直接把 loreId 原樣交給 LoreEditor 處理，
-  // 它自己會用 lorePublicId === "new" 判斷是不是新建。
+  // 故事／圖像／設定集都不用先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
+  // 路徑本身（/story|image|lore/）就已經決定好要開哪個編輯器，直接把 id 原樣交給
+  // 對應的編輯器元件處理；元件自己會用 apiStory/apiLore 找不找得到資料判斷是不是
+  // 新建，找不到又不是新建時也是元件自己回傳 <ErrorPage code={404} />，不用在
+  // 這裡先做一次「找不到就不渲染」的守門，不然反而會讓編輯器內建的 404 處理
+  // 永遠沒有機會執行（只會安靜地顯示空白，這是原本的 bug）。
+  const isExistingStoryRoute =
+    Boolean(storyId) && storyId !== "new" && routeEditorType === "story";
+  const isExistingImageRoute =
+    Boolean(storyId) && storyId !== "new" && routeEditorType === "image";
   const isLoreRoute = Boolean(loreId) && routeEditorType === "lore";
   // 資產沒有獨立的「新建」空白編輯頁（資產本來就是上傳建立），所以只有編輯既有
   // 資產這一種情況需要路由，直接用資產 id 換真正的資產資料（見下面 routeAssetQuery）。
@@ -147,21 +155,16 @@ export default function StorytellerProjectWorkspacePreview() {
   const loreCollections = loreCollectionsQuery.data ?? [];
   const assetCollections = assetCollectionsQuery.data ?? [];
   const project = projectQuery.data;
-  const routeStory =
-    storyId && storyId !== "new"
-      ? stories.find((story) => !story.is_volume && story.public_id === storyId)
-      : undefined;
-  const routeSelectedItem: SelectedItem | null =
-    routeStory && routeEditorType ? { type: "story", row: routeStory } : null;
   // 故事／圖像／設定集／資產編輯器（不管是編輯既有作品還是「新建」）在右欄要出血
   // 滿版顯示，不能跟列表頁共用中間那圈 maxWidth+置中的窄欄容器——那是給列表閱讀
   // 用的排版，編輯器需要盡量用滿右欄寬度才有 Notion 風工作台的感覺。
   const showBleedEditor =
     isNewStoryRoute ||
     isNewImageRoute ||
+    isExistingStoryRoute ||
+    isExistingImageRoute ||
     isLoreRoute ||
-    isAssetRoute ||
-    routeSelectedItem?.type === "story";
+    isAssetRoute;
 
   const storyRows = useMemo(() => {
     const parentId =
@@ -204,6 +207,69 @@ export default function StorytellerProjectWorkspacePreview() {
     1,
     Math.ceil((assetsQuery.data?.total_count ?? 0) / assetPageSize),
   );
+  // 網址上帶的 collectionId 是「全部」「未分冊/未分類」以外的具體值時，要確認
+  // 那個冊/分類/資產集真的存在——不然貼一個打錯字或已經被刪除的 id 進網址，
+  // 畫面只會安靜地顯示「沒有作品」，看起來像是那個冊本來就是空的，而不是這個
+  // 冊根本不存在。等對應的分組清單載入完成才判斷，避免清單還沒回來時被誤判。
+  const activeCollections =
+    selected.section === "stories"
+      ? volumes
+      : selected.section === "lores"
+        ? loreCollections
+        : assetCollections;
+  const activeCollectionsLoading =
+    selected.section === "stories"
+      ? volumesQuery.isLoading
+      : selected.section === "lores"
+        ? loreCollectionsQuery.isLoading
+        : assetCollectionsQuery.isLoading;
+  const isSpecialCollectionId =
+    selected.collectionId === "" || selected.collectionId === ungroupedId;
+  const isUnknownCollection =
+    !isSpecialCollectionId &&
+    !activeCollectionsLoading &&
+    !activeCollections.some(
+      (collection) => collection.public_id === selected.collectionId,
+    );
+  // 右欄的載入/錯誤狀態只看「目前分組實際在用的那個 query」，不是三個 query
+  // OR 在一起——不然瀏覽作品時，如果背景的資產 query 剛好出錯，會把整個作品
+  // 列表誤判成載入失敗。指定了具體 collectionId 時也要等對應的分組清單一起
+  // 載入完，不然還沒判斷出是不是未知冊之前會先閃一下空清單。isError 時進一步
+  // 從 axios 錯誤拿出真正的 HTTP 狀態碼，沒有的話（不是 axios 錯誤）退回 500，
+  // 交給 <ErrorPage/> 顯示對應文案；「請求成功但真的沒有資料」跟這裡完全無關，
+  // 那個情境是 errorCode 維持 undefined，畫面上走 WorkspacePane 自己的
+  // 「沒有作品/設定/資產」空狀態。
+  const activeListLoading =
+    (selected.section === "stories"
+      ? storiesQuery.isLoading
+      : selected.section === "lores"
+        ? loresPageQuery.isLoading
+        : assetsQuery.isLoading) ||
+    (!isSpecialCollectionId && activeCollectionsLoading);
+  const activeListIsError =
+    selected.section === "stories"
+      ? storiesQuery.isError
+      : selected.section === "lores"
+        ? loresPageQuery.isError
+        : assetsQuery.isError;
+  const activeListError =
+    selected.section === "stories"
+      ? storiesQuery.error
+      : selected.section === "lores"
+        ? loresPageQuery.error
+        : assetsQuery.error;
+  // isUnknownCollection 要比原始的 query 錯誤優先判斷——設定集／資產集的清單
+  // 是後端依 collectionId 篩選的，帶一個不存在的 id 過去，後端會直接回
+  // 400（無效參數），不像作品是純前端用 volumes 清單過濾、後端請求本身不會出錯。
+  // 兩種情況使用者看到的都應該是「這個冊/分類找不到」的 404，不是依內部實作
+  // 細節而異的 400 或 404 混雜。
+  const activeListErrorCode = isUnknownCollection
+    ? 404
+    : activeListIsError
+      ? axios.isAxiosError(activeListError)
+        ? (activeListError.response?.status ?? 500)
+        : 500
+      : undefined;
 
   const activeTitle =
     nodeTitle(selected.section, selected.collectionId) ||
@@ -448,18 +514,17 @@ export default function StorytellerProjectWorkspacePreview() {
                   projectId={id}
                   lorePublicId={loreId}
                 />
-              ) : routeSelectedItem?.type === "story" &&
-                routeSelectedItem.row.content_type === "image" ? (
+              ) : isExistingImageRoute ? (
                 <StorytellerImageEpisodeEditor
                   embedded
                   projectId={id}
-                  episodePublicId={routeSelectedItem.row.public_id}
+                  episodePublicId={storyId}
                 />
-              ) : routeSelectedItem?.type === "story" ? (
+              ) : isExistingStoryRoute ? (
                 <StorytellerStoryEditor
                   embedded
                   projectId={id}
-                  storyPublicId={routeSelectedItem.row.public_id}
+                  storyPublicId={storyId}
                 />
               ) : isAssetRoute && routeAssetQuery.data ? (
                 <WorkspaceAssetPanel
@@ -473,6 +538,18 @@ export default function StorytellerProjectWorkspacePreview() {
                   <CircularProgress size={24} />
                   <Typography color="text.secondary">載入資產中...</Typography>
                 </WorkspaceCentered>
+              ) : isAssetRoute ? (
+                <ErrorPage
+                  compact
+                  backUrl={steamloomPath(
+                    browsingPath(selected.section, selected.collectionId),
+                  )}
+                  code={
+                    axios.isAxiosError(routeAssetQuery.error)
+                      ? (routeAssetQuery.error.response?.status ?? 404)
+                      : 404
+                  }
+                />
               ) : null}
             </EditorBleedContainer>
           ) : (
@@ -483,11 +560,9 @@ export default function StorytellerProjectWorkspacePreview() {
                 stories={visibleStoryRows}
                 lores={loresPageQuery.data?.lores ?? []}
                 assets={assetsQuery.data?.assets ?? []}
-                loading={
-                  storiesQuery.isLoading ||
-                  loresPageQuery.isLoading ||
-                  assetsQuery.isLoading
-                }
+                loading={activeListLoading}
+                errorCode={activeListErrorCode}
+                errorBackUrl={steamloomPath(`my/workspace/${id}`)}
                 onSelectItem={openStoryInWorkspace}
                 actions={listActions.actions}
                 titleActions={listActions.titleActions}

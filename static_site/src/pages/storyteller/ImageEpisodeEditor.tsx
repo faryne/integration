@@ -270,7 +270,21 @@ export default function StorytellerImageEpisodeEditor({
   }
 
   if (!project) {
-    return <ErrorPage code={404} />;
+    return (
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={
+          embedded
+            ? steamloomPath(
+                defaultVolumeIdFromQuery
+                  ? `my/workspace/${id}/stories/${defaultVolumeIdFromQuery}`
+                  : `my/workspace/${id}`,
+              )
+            : undefined
+        }
+      />
+    );
   }
 
   if (!isNewEpisode && !initialized) {
@@ -289,7 +303,21 @@ export default function StorytellerImageEpisodeEditor({
       );
     }
     if (!existingStory || existingStory.content_type !== "image") {
-      return <ErrorPage code={404} />;
+      return (
+        <ErrorPage
+          code={404}
+          compact={embedded}
+          backUrl={
+            embedded
+              ? steamloomPath(
+                  defaultVolumeIdFromQuery
+                    ? `my/workspace/${id}/stories/${defaultVolumeIdFromQuery}`
+                    : `my/workspace/${id}`,
+                )
+              : undefined
+          }
+        />
+      );
     }
   }
 
