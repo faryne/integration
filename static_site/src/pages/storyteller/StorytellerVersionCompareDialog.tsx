@@ -1,3 +1,5 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import {
   Chip,
@@ -29,6 +31,14 @@ export interface StorytellerVersionCompareEntry {
   title: string;
   summary?: string;
   content: string;
+  // 內容欄位的標題——故事/設定集是「內容」，AI Agent 是「Prompt 內容」；預設「內容」。
+  contentLabel?: string;
+  // 內容以外，額外需要逐欄比對的簡單文字欄位（例如 AI Agent 的供應商／模型名稱），
+  // 依序插在摘要跟內容中間；左右版本用 key 對應。
+  extraFields?: { key: string; label: string; value: string }[];
+  // 是否額外拉出腳注區塊比對——只有故事/設定集的內容會經過 wysiwyg 解析器，
+  // AI Agent 的 prompt 是純文字，沒有腳注語法，預設仍是 true 但由呼叫端關掉。
+  includeFootnotes?: boolean;
   source: string;
   createdAt: string;
 }
@@ -53,7 +63,7 @@ export function StorytellerVersionCompareDialog({
     if (!leftVersion || !rightVersion) {
       return [];
     }
-    return [
+    const sections = [
       {
         key: "title",
         title: "標題",
@@ -72,9 +82,18 @@ export function StorytellerVersionCompareDialog({
             },
           ]
         : []),
+      ...(leftVersion.extraFields ?? []).map((field) => ({
+        key: field.key,
+        title: field.label,
+        lines: buildCustomLineDiff(
+          field.value,
+          rightVersion.extraFields?.find((item) => item.key === field.key)
+            ?.value ?? "",
+        ),
+      })),
       {
         key: "content",
-        title: "內容",
+        title: leftVersion.contentLabel ?? "內容",
         // 濾掉 marker/align/comment 屬性再比對——這個對話框是純文字 diff（不會經過
         // 我們的解析器渲染），不濾掉的話使用者會直接看到 `⟦uuid⟧...⟦/uuid⟧` 這種
         // 內部語法，且無關的屬性異動會被誤判成內容變更。
@@ -83,15 +102,18 @@ export function StorytellerVersionCompareDialog({
           stripMarkerForDiffContent(rightVersion.content),
         ),
       },
-      {
+    ];
+    if (leftVersion.includeFootnotes ?? true) {
+      sections.push({
         key: "footnotes",
         title: "腳注",
         lines: buildCustomLineDiff(
           extractFootnoteNotesForDiff(leftVersion.content).join("\n"),
           extractFootnoteNotesForDiff(rightVersion.content).join("\n"),
         ),
-      },
-    ];
+      });
+    }
+    return sections;
   }, [leftVersion, rightVersion]);
 
   const changedCount = diffSections.reduce(
@@ -144,8 +166,10 @@ export function StorytellerVersionCompareDialog({
             <Stack
               direction={{ xs: "column", sm: "row" }}
               spacing={{ xs: 1, sm: 2 }}
+              justifyContent="space-between"
             >
               <Stack direction="row" spacing={1} alignItems="center">
+                <ArrowBackIcon fontSize="small" color="disabled" />
                 <Typography variant="body2" color="text.secondary">
                   舊版本
                 </Typography>
@@ -162,6 +186,7 @@ export function StorytellerVersionCompareDialog({
                 <Typography variant="body2" color="text.secondary">
                   {formatStorytellerDate(rightVersion.createdAt)}
                 </Typography>
+                <ArrowForwardIcon fontSize="small" color="disabled" />
               </Stack>
             </Stack>
             <CustomDiffLegend />

@@ -320,7 +320,7 @@ function SidebarGroup({
   );
 }
 
-function WorkspaceSidebarFooter() {
+export function WorkspaceSidebarFooter() {
   const { palette, setPalette } = useStorytellerPalette();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const currentPalette = storytellerPaletteMeta[palette];

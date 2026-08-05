@@ -93,12 +93,6 @@ const StorytellerProjectDetail = lazy(
 const StorytellerProjectWorkspacePreview = lazy(
   () => import("@/pages/storyteller/ProjectWorkspacePreview.tsx"),
 );
-const StorytellerNewProject = lazy(
-  () => import("@/pages/storyteller/NewProject.tsx"),
-);
-const StorytellerNewAgent = lazy(
-  () => import("@/pages/storyteller/NewAgent.tsx"),
-);
 const StorytellerAgentDiffCompare = lazy(
   () => import("@/pages/storyteller/AgentDiffCompare.tsx"),
 );
@@ -276,8 +270,8 @@ const storytellerRoutes = (
       <Route path={""} element={<StorytellerHome />} />
       <Route path={"project"} element={<StorytellerHome />} />
       <Route path={"agent"} element={<StorytellerHome />} />
-      <Route path={"project/new"} element={<StorytellerNewProject />} />
-      <Route path={"project/:id/edit"} element={<StorytellerNewProject />} />
+      <Route path={"project/new"} element={<StorytellerHome />} />
+      <Route path={"project/:id/edit"} element={<StorytellerHome />} />
       <Route
         path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
         element={<StorytellerStoryDiffCompare />}
@@ -363,8 +357,8 @@ const storytellerRoutes = (
         path={"workspace/:id/asset/:assetId"}
         element={<StorytellerProjectWorkspacePreview />}
       />
-      <Route path={"agent/new"} element={<StorytellerNewAgent />} />
-      <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
+      <Route path={"agent/new"} element={<StorytellerHome />} />
+      <Route path={"agent/:agentId/edit"} element={<StorytellerHome />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />

@@ -96,7 +96,13 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export default function StorytellerNewProject() {
+export interface StorytellerNewProjectProps {
+  embedded?: boolean;
+}
+
+export default function StorytellerNewProject({
+  embedded = false,
+}: StorytellerNewProjectProps = {}) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { session, loading: authLoading, login, submitting } = useAuth();
@@ -156,61 +162,90 @@ export default function StorytellerNewProject() {
     { label: "創作專案", to: steamloomPath("my/project") },
   ];
 
-  if (authLoading) {
+  // embedded（帳號工作台）模式下不重複套用一層 StorytellerShell 的頂欄跟麵包屑——
+  // Home.tsx 外面已經有 WorkspaceChrome＋側邊欄提供同樣的定位資訊，這裡只需要
+  // plain 顯示內容本身。
+  function renderFrame(
+    title: string,
+    breadcrumbs: typeof newProjectShellBreadcrumbs,
+    children: ReactNode,
+  ) {
     return (
       <StorytellerShell
-        title={isEditing ? "編輯專案" : "建立專案"}
-        breadcrumbs={newProjectShellBreadcrumbs}
+        title={title}
+        breadcrumbs={embedded ? [] : breadcrumbs}
+        plain={embedded}
+        hideHeading={embedded}
       >
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
-        </Stack>
+        {children}
       </StorytellerShell>
+    );
+  }
+
+  if (authLoading) {
+    return renderFrame(
+      isEditing ? "編輯專案" : "建立專案",
+      newProjectShellBreadcrumbs,
+      <Stack alignItems="center" sx={{ py: 8 }}>
+        <Typography color="text.secondary">正在確認登入狀態...</Typography>
+      </Stack>,
     );
   }
 
   if (!session) {
-    return (
-      <StorytellerShell
-        title={isEditing ? "編輯專案" : "建立專案"}
-        breadcrumbs={newProjectShellBreadcrumbs}
-      >
-        <CustomLoginRequiredState
-          description={
-            isEditing ? "登入後即可編輯這個專案。" : "登入後即可建立新專案。"
-          }
-          onLogin={() => void login()}
-          submitting={submitting}
-        />
-      </StorytellerShell>
+    return renderFrame(
+      isEditing ? "編輯專案" : "建立專案",
+      newProjectShellBreadcrumbs,
+      <CustomLoginRequiredState
+        description={
+          isEditing ? "登入後即可編輯這個專案。" : "登入後即可建立新專案。"
+        }
+        onLogin={() => void login()}
+        submitting={submitting}
+      />,
     );
   }
 
   if (isEditing && !editingProject && (isLoading || isFetching)) {
-    return (
-      <StorytellerShell
-        title="編輯專案"
-        breadcrumbs={newProjectShellBreadcrumbs}
-      >
-        <StorytellerLoading label="正在載入專案資料..." />
-      </StorytellerShell>
+    return renderFrame(
+      "編輯專案",
+      newProjectShellBreadcrumbs,
+      <StorytellerLoading label="正在載入專案資料..." />,
     );
   }
 
   if (isEditing && !editingProject) {
-    return <ErrorPage code={404} />;
+    return (
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={embedded ? steamloomPath("my/project") : undefined}
+      />
+    );
   }
 
   function handleStartFirstStory() {
     if (createdProjectId) {
-      navigate(steamloomPath(`my/project/${createdProjectId}/story/new`));
+      navigate(
+        steamloomPath(
+          embedded
+            ? `my/workspace/${createdProjectId}/story/new`
+            : `my/project/${createdProjectId}/story/new`,
+        ),
+      );
     }
     setCreatedProjectId(null);
   }
 
   function handleGoToProjectHome() {
     if (createdProjectId) {
-      navigate(steamloomPath(`my/project/${createdProjectId}`));
+      navigate(
+        steamloomPath(
+          embedded
+            ? `my/workspace/${createdProjectId}`
+            : `my/project/${createdProjectId}`,
+        ),
+      );
     }
     setCreatedProjectId(null);
   }
@@ -232,7 +267,11 @@ export default function StorytellerNewProject() {
             return;
           }
           if (isEditing) {
-            navigate(steamloomPath(`my/project/${project.public_id}`));
+            navigate(
+              steamloomPath(
+                embedded ? "my/project" : `my/project/${project.public_id}`,
+              ),
+            );
             return;
           }
           setCreatedProjectId(project.public_id);
@@ -282,20 +321,28 @@ export default function StorytellerNewProject() {
   return (
     <StorytellerShell
       title={isEditing ? "編輯專案" : "建立專案"}
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/project") },
-        ...(editingProject
-          ? [
-              {
-                label: editingProject.name,
-                to: steamloomPath(`my/project/${editingProject.public_id}`),
-              },
+      breadcrumbs={
+        embedded
+          ? []
+          : [
+              { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+              { label: "我的工作台", to: steamloomPath("my") },
+              { label: "創作專案", to: steamloomPath("my/project") },
+              ...(editingProject
+                ? [
+                    {
+                      label: editingProject.name,
+                      to: steamloomPath(
+                        `my/project/${editingProject.public_id}`,
+                      ),
+                    },
+                  ]
+                : []),
+              { label: isEditing ? "編輯專案" : "建立專案" },
             ]
-          : []),
-        { label: isEditing ? "編輯專案" : "建立專案" },
-      ]}
+      }
+      plain={embedded}
+      hideHeading={embedded}
     >
       <Dialog open={Boolean(createdProjectId)} maxWidth="xs" fullWidth>
         <DialogTitle>專案建立成功</DialogTitle>
