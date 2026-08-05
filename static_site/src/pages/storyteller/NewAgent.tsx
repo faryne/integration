@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
 import {
   useStorytellerAgentPromptVersions,
@@ -28,14 +28,45 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
 import { StorytellerShell } from "@/pages/storyteller/StorytellerShell.tsx";
-import type { StorytellerAgentRequest } from "@/types/storyteller.ts";
+import {
+  StorytellerVersionCompareDialog,
+  type StorytellerVersionCompareEntry,
+} from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import type {
+  StorytellerAgentPromptVersion,
+  StorytellerAgentRequest,
+} from "@/types/storyteller.ts";
 
-export default function StorytellerNewAgent() {
+function agentVersionToCompareEntry(
+  version: StorytellerAgentPromptVersion,
+): StorytellerVersionCompareEntry {
+  return {
+    title: version.name,
+    content: version.default_prompt,
+    contentLabel: "Prompt 內容",
+    includeFootnotes: false,
+    extraFields: [
+      { key: "provider", label: "AI 供應商", value: version.provider },
+      { key: "model", label: "模型名稱", value: version.model_name },
+    ],
+    source: version.provider,
+    createdAt: version.created_at,
+  };
+}
+
+export interface StorytellerNewAgentProps {
+  embedded?: boolean;
+}
+
+export default function StorytellerNewAgent({
+  embedded = false,
+}: StorytellerNewAgentProps = {}) {
   const navigate = useNavigate();
   const { agentId } = useParams();
   const { session, loading: authLoading, login, submitting } = useAuth();
@@ -55,6 +86,7 @@ export default function StorytellerNewAgent() {
   const [tab, setTab] = useState("settings");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [input, setInput] = useState<StorytellerAgentRequest>({
     name: "",
     provider: "grok",
@@ -135,12 +167,12 @@ export default function StorytellerNewAgent() {
       words: Array.from(version.default_prompt ?? "").length,
     }),
   );
-  const comparePath =
-    editAgentId && leftVersionId && rightVersionId
-      ? steamloomPath(
-          `my/agent/${editAgentId}/diff/${leftVersionId}/${rightVersionId}`,
-        )
-      : "";
+  const leftCompareVersion = promptVersions.find(
+    (version) => String(version.id) === leftVersionId,
+  );
+  const rightCompareVersion = promptVersions.find(
+    (version) => String(version.id) === rightVersionId,
+  );
   const modelOptions = useMemo(
     () => providerOption?.models ?? [],
     [providerOption?.models],
@@ -167,86 +199,102 @@ export default function StorytellerNewAgent() {
     { label: "AI Agent", to: steamloomPath("my/agent") },
   ];
 
-  if (authLoading) {
+  // embedded（帳號工作台）模式下不重複套用一層 StorytellerShell 的頂欄跟麵包屑——
+  // Home.tsx 外面已經有 WorkspaceChrome＋側邊欄提供同樣的定位資訊，這裡只需要
+  // plain 顯示內容本身。
+  function renderFrame(
+    title: string,
+    breadcrumbs: Array<{ label: string; to?: string }>,
+    children: ReactNode,
+  ) {
     return (
       <StorytellerShell
-        title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
-        breadcrumbs={newAgentShellBreadcrumbs}
+        title={title}
+        breadcrumbs={embedded ? [] : breadcrumbs}
+        plain={embedded}
+        hideHeading={embedded}
       >
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
-        </Stack>
+        {children}
       </StorytellerShell>
+    );
+  }
+
+  if (authLoading) {
+    return renderFrame(
+      isEdit ? "編輯 AI Agent" : "建立 AI Agent",
+      newAgentShellBreadcrumbs,
+      <Stack alignItems="center" sx={{ py: 8 }}>
+        <Typography color="text.secondary">正在確認登入狀態...</Typography>
+      </Stack>,
     );
   }
 
   if (!session) {
-    return (
-      <StorytellerShell
-        title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
-        breadcrumbs={newAgentShellBreadcrumbs}
-      >
-        <CustomLoginRequiredState
-          description={
-            isEdit
-              ? "登入後即可編輯這個 AI Agent。"
-              : "登入後即可建立 AI Agent。"
-          }
-          onLogin={() => void login()}
-          submitting={submitting}
-        />
-      </StorytellerShell>
+    return renderFrame(
+      isEdit ? "編輯 AI Agent" : "建立 AI Agent",
+      newAgentShellBreadcrumbs,
+      <CustomLoginRequiredState
+        description={
+          isEdit ? "登入後即可編輯這個 AI Agent。" : "登入後即可建立 AI Agent。"
+        }
+        onLogin={() => void login()}
+        submitting={submitting}
+      />,
     );
   }
 
   if (isEdit && !agent && (agentsLoading || agentsFetching)) {
-    return (
-      <StorytellerShell
-        title="編輯 AI Agent"
-        breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "AI Agent", to: steamloomPath("my/agent") },
-          { label: "編輯 AI Agent" },
-        ]}
-      >
-        <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
-          <CircularProgress size={28} />
-          <Typography color="text.secondary">正在載入 Agent 設定...</Typography>
-        </Stack>
-      </StorytellerShell>
+    return renderFrame(
+      "編輯 AI Agent",
+      [...newAgentShellBreadcrumbs, { label: "編輯 AI Agent" }],
+      <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
+        <CircularProgress size={28} />
+        <Typography color="text.secondary">正在載入 Agent 設定...</Typography>
+      </Stack>,
     );
   }
 
   if (isEdit && !agent) {
     return (
-      <StorytellerShell
-        title="找不到 AI Agent"
-        description="此 Agent 可能不存在或已被刪除。"
-        breadcrumbs={[
-          { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-          { label: "我的工作台", to: steamloomPath("my") },
-          { label: "AI Agent", to: steamloomPath("my/agent") },
-          { label: "找不到 AI Agent" },
-        ]}
-      >
-        <Alert severity="error" variant="outlined">
-          找不到指定的 AI Agent。
-        </Alert>
-      </StorytellerShell>
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={embedded ? steamloomPath("my/agent") : undefined}
+      />
     );
   }
 
   return (
     <StorytellerShell
       title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "AI Agent", to: steamloomPath("my/agent") },
-        { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },
-      ]}
+      breadcrumbs={
+        embedded
+          ? []
+          : [
+              { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+              { label: "我的工作台", to: steamloomPath("my") },
+              { label: "AI Agent", to: steamloomPath("my/agent") },
+              { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },
+            ]
+      }
+      plain={embedded}
+      hideHeading={embedded}
     >
+      <StorytellerVersionCompareDialog
+        open={compareDialogOpen}
+        onClose={() => setCompareDialogOpen(false)}
+        itemTitle={agent?.name ?? "AI Agent"}
+        leftVersion={
+          leftCompareVersion
+            ? agentVersionToCompareEntry(leftCompareVersion)
+            : null
+        }
+        rightVersion={
+          rightCompareVersion
+            ? agentVersionToCompareEntry(rightCompareVersion)
+            : null
+        }
+      />
       <Paper variant="outlined" sx={{ borderRadius: 1 }}>
         {isEdit && (
           <>
@@ -264,7 +312,7 @@ export default function StorytellerNewAgent() {
               loading={promptVersionsLoading}
               leftVersionId={leftVersionId}
               rightVersionId={rightVersionId}
-              comparePath={comparePath}
+              onCompare={() => setCompareDialogOpen(true)}
               onLeftVersionChange={setLeftVersionId}
               onRightVersionChange={setRightVersionId}
               isRightVersionDisabled={(versionId) =>

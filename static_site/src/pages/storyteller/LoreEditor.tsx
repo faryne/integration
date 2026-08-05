@@ -1,5 +1,7 @@
+import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
 import SaveIcon from "@mui/icons-material/Save";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import {
   Alert,
   Button,
@@ -14,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useRevertStorytellerLoreVersion,
   useRunStorytellerLoreAgent,
@@ -59,6 +61,11 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import {
+  WorkspaceEditableTitle,
+  WorkspaceEditorSelectButton,
+} from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   buildStorytellerAgentReferenceContent,
@@ -106,7 +113,11 @@ interface LoreDraft {
   content: string;
 }
 
-function serializeLoreDraft(title: string, collectionId: string, content: string) {
+function serializeLoreDraft(
+  title: string,
+  collectionId: string,
+  content: string,
+) {
   return JSON.stringify({ title, collectionId, content });
 }
 
@@ -125,9 +136,25 @@ function errorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export default function StorytellerLoreEditor() {
-  const { id, loreId } = useParams();
+export interface StorytellerLoreEditorProps {
+  embedded?: boolean;
+  projectId?: string;
+  lorePublicId?: string;
+}
+
+export default function StorytellerLoreEditor({
+  embedded = false,
+  projectId,
+  lorePublicId,
+}: StorytellerLoreEditorProps = {}) {
+  const params = useParams();
+  const id = projectId ?? params.id;
+  const loreId = lorePublicId ?? params.loreId;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // 從工作台指定分類建立新設定集時，工作台會在網址帶上 ?from=<collectionPublicId>，
+  // 預設把新設定集放進使用者當下瀏覽的那個分類。
+  const defaultCollectionIdFromQuery = searchParams.get("from") ?? "";
   const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewLore = loreId === "new";
   const currentDraftRef = useRef(serializeLoreDraft("", "", ""));
@@ -156,6 +183,7 @@ export default function StorytellerLoreEditor() {
   const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
+  const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [snack, setSnack] = useState("");
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -232,11 +260,11 @@ export default function StorytellerLoreEditor() {
   const lore = apiLore
     ? {
         id: apiLore.public_id,
-      title: apiLore.title,
-      collectionId: apiLore.collection_id ?? "",
-      content: apiLore.latest_content,
-      updatedAt: apiLore.updated_at,
-    }
+        title: apiLore.title,
+        collectionId: apiLore.collection_id ?? "",
+        content: apiLore.latest_content,
+        updatedAt: apiLore.updated_at,
+      }
     : undefined;
   const pageTitle = isNewLore
     ? "建立設定集"
@@ -415,17 +443,29 @@ export default function StorytellerLoreEditor() {
     );
 
   useEffect(() => {
+    const defaultCollectionId = isNewLore
+      ? (loreCollections.find(
+          (collection) => collection.public_id === defaultCollectionIdFromQuery,
+        )?.public_id ?? "")
+      : (lore?.collectionId ?? "");
     setTitle(lore?.title ?? "");
-    setSelectedCollectionId(lore?.collectionId ?? "");
+    setSelectedCollectionId(defaultCollectionId);
     setContent(lore?.content ?? "");
     const savedDraft = serializeLoreDraft(
       lore?.title ?? "",
-      lore?.collectionId ?? "",
+      defaultCollectionId,
       lore?.content ?? "",
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
-  }, [lore?.collectionId, lore?.content, lore?.title]);
+  }, [
+    lore?.collectionId,
+    lore?.content,
+    lore?.title,
+    isNewLore,
+    defaultCollectionIdFromQuery,
+    loreCollections,
+  ]);
 
   useEffect(() => {
     latestVersionIdRef.current = versions[0]?.id;
@@ -440,7 +480,11 @@ export default function StorytellerLoreEditor() {
       selectedCollectionId,
       content,
     );
-    latestDraftRef.current = { title, collectionId: selectedCollectionId, content };
+    latestDraftRef.current = {
+      title,
+      collectionId: selectedCollectionId,
+      content,
+    };
   }, [content, selectedCollectionId, title]);
 
   useEffect(() => {
@@ -567,7 +611,11 @@ export default function StorytellerLoreEditor() {
 
   if (authLoading) {
     return (
-      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
+      <StorytellerShell
+        title="設定集編輯器"
+        breadcrumbs={embedded ? [] : loreShellBreadcrumbs}
+        plain={embedded}
+      >
         <Stack alignItems="center" sx={{ py: 8 }}>
           <Typography color="text.secondary">正在確認登入狀態...</Typography>
         </Stack>
@@ -577,7 +625,11 @@ export default function StorytellerLoreEditor() {
 
   if (!session) {
     return (
-      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
+      <StorytellerShell
+        title="設定集編輯器"
+        breadcrumbs={embedded ? [] : loreShellBreadcrumbs}
+        plain={embedded}
+      >
         <CustomLoginRequiredState
           description="登入後即可編輯這份設定集。"
           onLogin={() => void login()}
@@ -592,14 +644,32 @@ export default function StorytellerLoreEditor() {
     (apiProject && !isNewLore && !lore && (loresPending || loresFetching))
   ) {
     return (
-      <StorytellerShell title="設定集編輯器" breadcrumbs={loreShellBreadcrumbs}>
+      <StorytellerShell
+        title="設定集編輯器"
+        breadcrumbs={embedded ? [] : loreShellBreadcrumbs}
+        plain={embedded}
+      >
         <StorytellerLoading label="正在載入設定集..." />
       </StorytellerShell>
     );
   }
 
   if (!project || (!isNewLore && !lore)) {
-    return <ErrorPage code={404} />;
+    return (
+      <ErrorPage
+        code={404}
+        compact={embedded}
+        backUrl={
+          embedded
+            ? steamloomPath(
+                defaultCollectionIdFromQuery
+                  ? `my/workspace/${id}/lores/${defaultCollectionIdFromQuery}`
+                  : `my/workspace/${id}/lores`,
+              )
+            : undefined
+        }
+      />
+    );
   }
 
   function insertAsset(asset: StorytellerAsset) {
@@ -635,9 +705,13 @@ export default function StorytellerLoreEditor() {
           lastSavedDraftRef.current = currentDraftRef.current;
           showSnack("設定集已存檔。");
           if (isNewLore && savedLore?.public_id) {
+            // embedded（工作台）模式下要留在工作台右欄，把網址從 .../lore/new
+            // 換成存好之後的真正 public_id，不能跳回舊版獨立編輯頁。
             navigate(
               steamloomPath(
-                `my/project/${projectID}/lore/${savedLore.public_id}`,
+                embedded
+                  ? `my/workspace/${projectID}/lore/${savedLore.public_id}`
+                  : `my/project/${projectID}/lore/${savedLore.public_id}`,
               ),
             );
           }
@@ -742,30 +816,268 @@ export default function StorytellerLoreEditor() {
     }
   }
 
-  const comparePath =
-    leftVersionId && rightVersionId
-      ? steamloomPath(
-          `my/project/${project.id}/lore/${lore?.id}/diff/${leftVersionId}/${rightVersionId}`,
+  // 版本比對改用 modal 顯示，不用再走獨立頁面——versions 本來就已經載入每個版本的
+  // 完整 content，直接從這裡找出使用者選的左右版本傳給 dialog。
+  const leftCompareVersion = versions.find(
+    (version) => String(version.id) === leftVersionId,
+  );
+  const rightCompareVersion = versions.find(
+    (version) => String(version.id) === rightVersionId,
+  );
+
+  const collectionOptions = [
+    { value: "", label: "未分類", icon: <FolderIcon fontSize="small" /> },
+    ...(!selectedCollectionExists
+      ? [
+          {
+            value: selectedCollectionId,
+            label: "目前分類",
+            icon: <FolderIcon fontSize="small" />,
+          },
+        ]
+      : []),
+    ...loreCollections.map((collection) => ({
+      value: collection.public_id,
+      label: collection.name,
+      icon: <FolderIcon fontSize="small" />,
+    })),
+  ];
+  const autoSaveOptions = [
+    {
+      value: "off",
+      label: "不自動存檔",
+      icon: <ScheduleIcon fontSize="small" />,
+    },
+    ...autoSavePresetMinutes.map((minutes) => ({
+      value: String(minutes),
+      label: `每 ${minutes} 分鐘`,
+      icon: <ScheduleIcon fontSize="small" />,
+    })),
+    {
+      value: "custom",
+      label: "自訂頻率",
+      icon: <ScheduleIcon fontSize="small" />,
+    },
+  ];
+  const loreEditorHeaderContent = embedded ? (
+    <Stack spacing={2.25}>
+      {versionConflict ? (
+        <Alert
+          severity="warning"
+          variant="outlined"
+          onClose={() => setVersionConflict(false)}
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                setSidePanel("history");
+                setVersionConflict(false);
+              }}
+            >
+              查看編輯歷史
+            </Button>
+          }
+        >
+          剛剛存檔完成後才發現這篇設定集在中途被更新過，已經接在最新版本後面存成新版了。
+        </Alert>
+      ) : (
+        saveLore.isError && (
+          <Alert severity="error" variant="outlined">
+            {errorMessage(saveLore.error, "設定集存檔失敗。")}
+          </Alert>
         )
-      : "";
+      )}
+      <WorkspaceEditableTitle
+        value={title}
+        onChange={setTitle}
+        placeholder="未命名設定集"
+      />
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <WorkspaceEditorSelectButton
+          icon={<FolderIcon fontSize="small" />}
+          label="分類"
+          value={selectedCollectionId}
+          options={collectionOptions}
+          disabled={loreCollectionsLoading}
+          onChange={setSelectedCollectionId}
+        />
+        {apiProject && (
+          <WorkspaceEditorSelectButton
+            icon={<ScheduleIcon fontSize="small" />}
+            label="自動存檔"
+            value={autoSaveSelectValue}
+            options={autoSaveOptions}
+            onChange={(value) =>
+              handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+            }
+          >
+            {autoSaveSelectValue === "custom" && (
+              <TextField
+                type="number"
+                size="small"
+                label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                value={autoSaveIntervalInput}
+                slotProps={{
+                  htmlInput: {
+                    min: autoSaveIntervalMinutesMin,
+                    max: autoSaveIntervalMinutesMax,
+                    step: 1,
+                  },
+                }}
+                onChange={(event) =>
+                  setAutoSaveIntervalInput(event.target.value)
+                }
+                onBlur={commitAutoSaveInterval}
+                sx={{ width: 140 }}
+              />
+            )}
+          </WorkspaceEditorSelectButton>
+        )}
+      </Stack>
+    </Stack>
+  ) : (
+    <Stack spacing={2}>
+      {versionConflict ? (
+        <Alert
+          severity="warning"
+          variant="outlined"
+          onClose={() => setVersionConflict(false)}
+          action={
+            <Button
+              size="small"
+              onClick={() => {
+                setSidePanel("history");
+                setVersionConflict(false);
+              }}
+            >
+              查看編輯歷史
+            </Button>
+          }
+        >
+          剛剛存檔完成後才發現這篇設定集在中途被更新過（可能是另一個分頁，或透過
+          MCP
+          連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
+        </Alert>
+      ) : (
+        saveLore.isError && (
+          <Alert severity="error" variant="outlined">
+            {errorMessage(saveLore.error, "設定集存檔失敗。")}
+          </Alert>
+        )
+      )}
+      <Grid container spacing={2} alignItems="flex-start">
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="設定集標題"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            fullWidth
+            required
+            placeholder="請輸入設定集標題"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 3 }}>
+          <TextField
+            select
+            fullWidth
+            label="分類"
+            value={selectedCollectionId}
+            disabled={loreCollectionsLoading}
+            onChange={(event) => setSelectedCollectionId(event.target.value)}
+          >
+            <MenuItem value="">未分類</MenuItem>
+            {!selectedCollectionExists && (
+              <MenuItem value={selectedCollectionId}>目前分類</MenuItem>
+            )}
+            {loreCollections.map((collection) => (
+              <MenuItem key={collection.public_id} value={collection.public_id}>
+                {collection.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        {apiProject && (
+          <Grid size={{ xs: 12, md: 3 }}>
+            <Stack spacing={1}>
+              <TextField
+                select
+                fullWidth
+                label="自動存檔"
+                value={autoSaveSelectValue}
+                onChange={(event) =>
+                  handleAutoSaveSelectChange(
+                    event.target.value as AutoSaveSelectValue,
+                  )
+                }
+              >
+                <MenuItem value="off">不自動存檔</MenuItem>
+                {autoSavePresetMinutes.map((minutes) => (
+                  <MenuItem key={minutes} value={String(minutes)}>
+                    每 {minutes} 分鐘
+                  </MenuItem>
+                ))}
+                <MenuItem value="custom">自訂頻率…</MenuItem>
+              </TextField>
+              {autoSaveSelectValue === "custom" && (
+                <TextField
+                  type="number"
+                  size="small"
+                  fullWidth
+                  label={`自訂頻率（${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘）`}
+                  value={autoSaveIntervalInput}
+                  slotProps={{
+                    htmlInput: {
+                      min: autoSaveIntervalMinutesMin,
+                      max: autoSaveIntervalMinutesMax,
+                      step: 1,
+                    },
+                  }}
+                  onChange={(event) =>
+                    setAutoSaveIntervalInput(event.target.value)
+                  }
+                  onBlur={commitAutoSaveInterval}
+                />
+              )}
+            </Stack>
+          </Grid>
+        )}
+        <Grid size={{ xs: 12, md: 2 }}>
+          <Button
+            fullWidth
+            startIcon={<SaveIcon />}
+            variant="contained"
+            onClick={handleSave}
+            disabled={saveLore.isPending}
+            sx={{ py: 1.7 }}
+          >
+            {saveLore.isPending ? "存檔中" : "存檔"}
+          </Button>
+        </Grid>
+      </Grid>
+    </Stack>
+  );
 
   return (
     <StorytellerShell
       title={pageTitle}
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/project") },
-        {
-          label: project.name,
-          to: steamloomPath(`my/project/${project.id}`),
-        },
-        {
-          label: "設定集",
-          to: steamloomPath(`my/project/${project.id}/lores`),
-        },
-        { label: pageTitle },
-      ]}
+      breadcrumbs={
+        embedded
+          ? []
+          : [
+              { label: STORYTELLER_APP_NAME, to: steamloomPath() },
+              { label: "我的工作台", to: steamloomPath("my") },
+              { label: "創作專案", to: steamloomPath("my/project") },
+              {
+                label: project.name,
+                to: steamloomPath(`my/project/${project.id}`),
+              },
+              {
+                label: "設定集",
+                to: steamloomPath(`my/project/${project.id}/lores`),
+              },
+              { label: pageTitle },
+            ]
+      }
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Chip label={`${wordCount.toLocaleString()} 字`} />
@@ -787,132 +1099,22 @@ export default function StorytellerLoreEditor() {
           ) : (
             <Chip label="尚未存檔" color="warning" />
           )}
+          {embedded && (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={saveLore.isPending}
+              onClick={handleSave}
+            >
+              {saveLore.isPending ? "存檔中" : "存檔"}
+            </Button>
+          )}
         </Stack>
       }
       hideHeading
-      headerContent={
-        <Stack spacing={2}>
-          {versionConflict ? (
-            <Alert
-              severity="warning"
-              variant="outlined"
-              onClose={() => setVersionConflict(false)}
-              action={
-                <Button
-                  size="small"
-                  onClick={() => {
-                    setSidePanel("history");
-                    setVersionConflict(false);
-                  }}
-                >
-                  查看編輯歷史
-                </Button>
-              }
-            >
-              剛剛存檔完成後才發現這篇設定集在中途被更新過（可能是另一個分頁，或透過
-              MCP
-              連上的工具），已經接在最新版本後面存成新版了，方便的話去編輯歷史確認一下有沒有需要注意的地方。
-            </Alert>
-          ) : (
-            saveLore.isError && (
-              <Alert severity="error" variant="outlined">
-                {errorMessage(saveLore.error, "設定集存檔失敗。")}
-              </Alert>
-            )
-          )}
-          <Grid container spacing={2} alignItems="flex-start">
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label="設定集標題"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                fullWidth
-                required
-                placeholder="請輸入設定集標題"
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                select
-                fullWidth
-                label="分類"
-                value={selectedCollectionId}
-                disabled={loreCollectionsLoading}
-                onChange={(event) =>
-                  setSelectedCollectionId(event.target.value)
-                }
-              >
-                <MenuItem value="">未分類</MenuItem>
-                {!selectedCollectionExists && (
-                  <MenuItem value={selectedCollectionId}>目前分類</MenuItem>
-                )}
-                {loreCollections.map((collection) => (
-                  <MenuItem key={collection.public_id} value={collection.public_id}>
-                    {collection.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            {apiProject && (
-              <Grid size={{ xs: 12, md: 3 }}>
-                <Stack spacing={1}>
-                  <TextField
-                    select
-                    fullWidth
-                    label="自動存檔"
-                    value={autoSaveSelectValue}
-                    onChange={(event) =>
-                      handleAutoSaveSelectChange(
-                        event.target.value as AutoSaveSelectValue,
-                      )
-                    }
-                  >
-                    <MenuItem value="off">不自動存檔</MenuItem>
-                    {autoSavePresetMinutes.map((minutes) => (
-                      <MenuItem key={minutes} value={String(minutes)}>
-                        每 {minutes} 分鐘
-                      </MenuItem>
-                    ))}
-                    <MenuItem value="custom">自訂頻率…</MenuItem>
-                  </TextField>
-                  {autoSaveSelectValue === "custom" && (
-                    <TextField
-                      type="number"
-                      size="small"
-                      fullWidth
-                      label={`自訂頻率（${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘）`}
-                      value={autoSaveIntervalInput}
-                      slotProps={{
-                        htmlInput: {
-                          min: autoSaveIntervalMinutesMin,
-                          max: autoSaveIntervalMinutesMax,
-                          step: 1,
-                        },
-                      }}
-                      onChange={(event) =>
-                        setAutoSaveIntervalInput(event.target.value)
-                      }
-                      onBlur={commitAutoSaveInterval}
-                    />
-                  )}
-                </Stack>
-              </Grid>
-            )}
-            <Grid size={{ xs: 12, md: 2 }}>
-              <Button
-                fullWidth
-                startIcon={<SaveIcon />}
-                variant="contained"
-                onClick={handleSave}
-                disabled={saveLore.isPending}
-                sx={{ py: 1.7 }}
-              >
-                {saveLore.isPending ? "存檔中" : "存檔"}
-              </Button>
-            </Grid>
-          </Grid>
-        </Stack>
-      }
+      plain={embedded}
+      headerContent={loreEditorHeaderContent}
     >
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
@@ -964,7 +1166,7 @@ export default function StorytellerLoreEditor() {
                     loading={versionsLoading}
                     leftVersionId={leftVersionId}
                     rightVersionId={rightVersionId}
-                    comparePath={comparePath}
+                    onCompare={() => setCompareDialogOpen(true)}
                     onLeftVersionChange={handleLeftVersionChange}
                     onRightVersionChange={setRightVersionId}
                     isRightVersionDisabled={isRightVersionDisabled}
@@ -1140,6 +1342,35 @@ export default function StorytellerLoreEditor() {
         title="插入設定資產"
         onClose={() => setAssetPickerOpen(false)}
         onSelect={insertAsset}
+      />
+      <StorytellerVersionCompareDialog
+        open={compareDialogOpen}
+        onClose={() => setCompareDialogOpen(false)}
+        itemTitle={title.trim() || lore?.title || "設定集"}
+        leftVersion={
+          leftCompareVersion
+            ? {
+                title: leftCompareVersion.title,
+                content: leftCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  leftCompareVersion.source,
+                ),
+                createdAt: leftCompareVersion.created_at,
+              }
+            : null
+        }
+        rightVersion={
+          rightCompareVersion
+            ? {
+                title: rightCompareVersion.title,
+                content: rightCompareVersion.content,
+                source: storytellerVersionSourceLabel(
+                  rightCompareVersion.source,
+                ),
+                createdAt: rightCompareVersion.created_at,
+              }
+            : null
+        }
       />
     </StorytellerShell>
   );

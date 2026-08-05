@@ -90,11 +90,8 @@ const StorytellerProfile = lazy(
 const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
-const StorytellerNewProject = lazy(
-  () => import("@/pages/storyteller/NewProject.tsx"),
-);
-const StorytellerNewAgent = lazy(
-  () => import("@/pages/storyteller/NewAgent.tsx"),
+const StorytellerProjectWorkspacePreview = lazy(
+  () => import("@/pages/storyteller/ProjectWorkspacePreview.tsx"),
 );
 const StorytellerAgentDiffCompare = lazy(
   () => import("@/pages/storyteller/AgentDiffCompare.tsx"),
@@ -273,8 +270,8 @@ const storytellerRoutes = (
       <Route path={""} element={<StorytellerHome />} />
       <Route path={"project"} element={<StorytellerHome />} />
       <Route path={"agent"} element={<StorytellerHome />} />
-      <Route path={"project/new"} element={<StorytellerNewProject />} />
-      <Route path={"project/:id/edit"} element={<StorytellerNewProject />} />
+      <Route path={"project/new"} element={<StorytellerHome />} />
+      <Route path={"project/:id/edit"} element={<StorytellerHome />} />
       <Route
         path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
         element={<StorytellerStoryDiffCompare />}
@@ -320,8 +317,48 @@ const storytellerRoutes = (
         path={"project/:id/assets"}
         element={<StorytellerProjectDetail />}
       />
-      <Route path={"agent/new"} element={<StorytellerNewAgent />} />
-      <Route path={"agent/:agentId/edit"} element={<StorytellerNewAgent />} />
+      <Route
+        path={"workspace/:id"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/stories/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lores"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lores/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/assets"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/assets/:collectionId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/story/:storyId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/image/:storyId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/lore/:loreId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/asset/:assetId"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route path={"agent/new"} element={<StorytellerHome />} />
+      <Route path={"agent/:agentId/edit"} element={<StorytellerHome />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />

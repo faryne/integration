@@ -18,6 +18,7 @@ const paletteOrder: StorytellerPaletteName[] = [
   "roseCopper",
   "inkBlack",
   "silver",
+  "plainWhite",
 ];
 
 /** 頁尾下方的色系切換器——同一套齒輪／鉚釘機構，只換色溫。 */

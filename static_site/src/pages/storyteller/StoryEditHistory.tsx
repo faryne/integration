@@ -41,7 +41,7 @@ interface StoryEditHistoryProps {
   loading?: boolean;
   leftVersionId: string;
   rightVersionId: string;
-  comparePath: string;
+  onCompare: () => void;
   onLeftVersionChange: (versionId: string) => void;
   onRightVersionChange: (versionId: string) => void;
   isRightVersionDisabled?: (versionId: string) => boolean;
@@ -64,7 +64,7 @@ export function StoryEditHistory({
   loading = false,
   leftVersionId,
   rightVersionId,
-  comparePath,
+  onCompare,
   onLeftVersionChange,
   onRightVersionChange,
   isRightVersionDisabled,
@@ -100,7 +100,9 @@ export function StoryEditHistory({
   };
   const referencedVersionTooltip = (versionId: string) => {
     const referenced = itemById.get(versionId);
-    return referenced ? `建立於 ${formatStorytellerDate(referenced.createdAt)}` : "";
+    return referenced
+      ? `建立於 ${formatStorytellerDate(referenced.createdAt)}`
+      : "";
   };
 
   return (
@@ -120,8 +122,8 @@ export function StoryEditHistory({
           選擇兩個版本後可以比對標題與 Markdown 內容差異。
         </Typography>
         <Button
-          href={comparePath || undefined}
-          disabled={!comparePath}
+          onClick={onCompare}
+          disabled={!leftVersionId || !rightVersionId}
           variant="contained"
           startIcon={<CompareArrowsIcon />}
         >
@@ -190,15 +192,25 @@ export function StoryEditHistory({
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <Chip size="small" label={`#${versionNumberById.get(item.id) ?? item.id}`} />
+                  <Chip
+                    size="small"
+                    label={`#${versionNumberById.get(item.id) ?? item.id}`}
+                  />
                 </TableCell>
                 <TableCell>
                   <Stack spacing={0.5}>
                     <Typography fontWeight={800}>{item.title}</Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       {item.revertedFromVersionId && (
                         <Tooltip
-                          title={referencedVersionTooltip(item.revertedFromVersionId)}
+                          title={referencedVersionTooltip(
+                            item.revertedFromVersionId,
+                          )}
                         >
                           <Chip
                             size="small"
@@ -209,7 +221,9 @@ export function StoryEditHistory({
                       )}
                       {item.conflictedWithVersionId && (
                         <Tooltip
-                          title={referencedVersionTooltip(item.conflictedWithVersionId)}
+                          title={referencedVersionTooltip(
+                            item.conflictedWithVersionId,
+                          )}
                         >
                           <Chip
                             size="small"

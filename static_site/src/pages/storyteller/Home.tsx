@@ -1,507 +1,242 @@
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import LockIcon from "@mui/icons-material/Lock";
-import PeopleIcon from "@mui/icons-material/People";
-import PublicIcon from "@mui/icons-material/Public";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import {
   Box,
-  Alert,
   Button,
   Chip,
-  Divider,
-  Grid,
-  Paper,
+  CircularProgress,
   Stack,
-  Tab,
-  Tabs,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
-import { useEffect, useState } from "react";
-import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
-  useDeleteStorytellerAgent,
-  useDeleteStorytellerProject,
-  useSaveStorytellerProject,
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import {
   useStorytellerAgents,
   useStorytellerProjects,
-  useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
-import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
-import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
-import {
-  formatStorytellerDate,
-  STORYTELLER_APP_NAME,
-} from "@/data/storyteller.ts";
-import { steamTabIndicatorSx } from "@/data/storytellerTheme.ts";
+import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { AgentCards, ProjectCards } from "@/pages/storyteller/HomeCards.tsx";
+import {
+  HomeMobileNav,
+  HomeSidebar,
+} from "@/pages/storyteller/HomeSidebar.tsx";
+import {
+  tabBreadcrumbLabel,
+  tabPath,
+  type StorytellerHomeTab,
+} from "@/pages/storyteller/homeTabs.ts";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
-import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
+import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
+import StorytellerNewAgent from "@/pages/storyteller/NewAgent.tsx";
+import StorytellerNewProject from "@/pages/storyteller/NewProject.tsx";
 import {
-  StorytellerLoading,
-  StorytellerShell,
-} from "@/pages/storyteller/StorytellerShell.tsx";
-import type {
-  StorytellerAgent,
-  StorytellerProject,
-} from "@/types/storyteller.ts";
-
-const agentPromptSummaryLength = 120;
-
-function agentPromptPlainTextSummary(prompt: string) {
-  // AI Agent 卡片只顯示 Prompt 摘要，避免 Markdown 或 HTML-like 語法影響列表掃描。
-  const plainText = prompt
-    .replace(/<[^>]*>/g, " ")
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/\[([^\]]+)]\([^)]+\)/g, "$1")
-    .replace(/[*_~>#|\-[\]]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!plainText) {
-    return "未設定 Prompt 摘要。";
-  }
-  const characters = Array.from(plainText);
-  return characters.length > agentPromptSummaryLength
-    ? `${characters.slice(0, agentPromptSummaryLength).join("")}...`
-    : plainText;
-}
-
-function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
-  const deleteProject = useDeleteStorytellerProject();
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const saveProject = useSaveStorytellerProject();
-
-  function handleVisibilityChange(
-    project: StorytellerProject,
-    visibility: StorytellerProject["visibility"] | null,
-  ) {
-    if (!visibility || visibility === project.visibility) {
-      return;
-    }
-    saveProject.mutate({
-      publicId: project.public_id,
-      input: {
-        name: project.name,
-        slug: project.slug,
-        description: project.description,
-        visibility,
-        rating: project.rating,
-        content_type: project.content_type,
-        tags: project.tags ?? [],
-      },
-    });
-  }
-
-  return (
-    <>
-      {deleteProject.isError && (
-        <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
-          刪除專案失敗，請確認登入狀態後再試一次。
-        </Alert>
-      )}
-      {projects.length === 0 ? (
-        <CustomEmptyState
-          icon={<AutoStoriesIcon fontSize="large" />}
-          title="目前還沒有創作專案"
-          description="可以使用上方的「建立專案」開始建立第一個創作專案。"
-        />
-      ) : (
-        <Grid container spacing={2}>
-          {projects.map((project) => (
-            <Grid key={project.public_id} size={{ xs: 12, md: 4 }}>
-              <StorytellerProjectCard
-                project={project}
-                headerAction={
-                  <ToggleButtonGroup
-                    size="small"
-                    exclusive
-                    value={project.visibility}
-                    disabled={saveProject.isPending}
-                    onChange={(_, value) =>
-                      handleVisibilityChange(project, value)
-                    }
-                  >
-                    <ToggleButton value="private">
-                      <Tooltip title="完全不公開">
-                        <LockIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="unlisted">
-                      <Tooltip title="與親友分享">
-                        <PeopleIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="public">
-                      <Tooltip title="已公開">
-                        <PublicIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                }
-                actions={
-                  <>
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(`my/project/${project.public_id}`)}
-                      size="small"
-                      variant="outlined"
-                    >
-                      開啟專案
-                    </Button>
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(`my/project/${project.public_id}/edit`)}
-                      size="small"
-                      variant="outlined"
-                      startIcon={<EditIcon />}
-                    >
-                      編輯
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="contained"
-                      startIcon={<DeleteIcon />}
-                      onClick={() =>
-                        setDeleteTarget({
-                          id: project.public_id,
-                          name: project.name,
-                        })
-                      }
-                    >
-                      刪除
-                    </Button>
-                  </>
-                }
-              />
-            </Grid>
-          ))}
-        </Grid>
-      )}
-      {deleteTarget && (
-        <ConfirmNameDialog
-          open
-          title="刪除專案"
-          description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
-          confirmName={deleteTarget.name}
-          confirmLabel="刪除專案"
-          loading={deleteProject.isPending}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={() => {
-            deleteProject.mutate(deleteTarget.id, {
-              onSuccess: () => setDeleteTarget(null),
-            });
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
-  const deleteAgent = useDeleteStorytellerAgent();
-  const { data: apiKeys = [] } = useStorytellerProviderAPIKeys();
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: number;
-    name: string;
-    apiBacked: boolean;
-  } | null>(null);
-  const rows = agents.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    promptSummary: agentPromptPlainTextSummary(agent.default_prompt),
-    provider: agent.provider,
-    model: agent.model_name,
-    enabled: !agent.is_deleted,
-    apiKeyLabel:
-      apiKeys.find((apiKey) => apiKey.id === agent.provider_apikey_id)?.label ??
-      null,
-    updatedAt: agent.updated_at,
-    apiBacked: true,
-  }));
-
-  return (
-    <>
-      {rows.length === 0 ? (
-        <CustomEmptyState
-          icon={<SmartToyIcon fontSize="large" />}
-          title="目前還沒有 AI Agent"
-          description="可以使用上方的「建立 AI Agent」新增可在故事編輯器中使用的 Agent。"
-        />
-      ) : (
-        <Grid container spacing={2}>
-          {rows.map((agent) => (
-            <Grid key={agent.id} size={{ xs: 12, md: 4 }}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  height: 1,
-                  boxSizing: "border-box",
-                  overflow: "hidden",
-                }}
-              >
-                <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    sx={{ minWidth: 0 }}
-                  >
-                    <SmartToyIcon
-                      color={agent.enabled ? "primary" : "disabled"}
-                    />
-                    <Typography
-                      variant="h6"
-                      fontWeight={800}
-                      sx={{ minWidth: 0, overflowWrap: "anywhere" }}
-                    >
-                      {agent.name}
-                    </Typography>
-                  </Stack>
-                  <Typography
-                    color="text.secondary"
-                    sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
-                  >
-                    {agent.promptSummary}
-                  </Typography>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    flexWrap="wrap"
-                    useFlexGap
-                    sx={{ minWidth: 0 }}
-                  >
-                    <Chip size="small" label={agent.provider} />
-                    <Chip size="small" label={agent.model} />
-                    {agent.apiKeyLabel ? (
-                      <Chip size="small" label={`Key：${agent.apiKeyLabel}`} />
-                    ) : (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label="未綁定 API Key"
-                      />
-                    )}
-                  </Stack>
-                  <Typography variant="caption" color="text.secondary">
-                    更新於 {formatStorytellerDate(agent.updatedAt)}
-                  </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(`my/agent/${agent.id}/edit`)}
-                      size="small"
-                      variant="outlined"
-                      startIcon={<EditIcon />}
-                      disabled={!agent.apiBacked}
-                    >
-                      編輯
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="contained"
-                      startIcon={<DeleteIcon />}
-                      disabled={!agent.apiBacked}
-                      onClick={() =>
-                        setDeleteTarget({
-                          id: Number(agent.id),
-                          name: agent.name,
-                          apiBacked: agent.apiBacked,
-                        })
-                      }
-                    >
-                      刪除
-                    </Button>
-                  </Stack>
-                </Stack>
-              </Paper>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-      {deleteTarget && (
-        <ConfirmNameDialog
-          open
-          title="刪除 AI Agent"
-          description="刪除後此 Agent 將無法在故事編輯器中使用。請輸入 Agent 名稱確認。"
-          confirmName={deleteTarget.name}
-          confirmLabel="刪除 Agent"
-          loading={deleteAgent.isPending}
-          onClose={() => setDeleteTarget(null)}
-          onConfirm={() => {
-            if (!deleteTarget.apiBacked) {
-              setDeleteTarget(null);
-              return;
-            }
-            deleteAgent.mutate(deleteTarget.id, {
-              onSuccess: () => setDeleteTarget(null),
-            });
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-type StorytellerHomeTab = "project" | "agent" | "apikey" | "usage" | "mcp";
-
-const tabPath: Record<StorytellerHomeTab, string> = {
-  project: "project",
-  agent: "agent",
-  apikey: "api-keys",
-  usage: "usage",
-  mcp: "mcp",
-};
-
-const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
-  project: "創作專案",
-  agent: "AI Agent",
-  apikey: "金鑰管理",
-  usage: "用量報表",
-  mcp: "MCP 連接",
-};
+  EditorBleedContainer,
+  WorkspaceBleedContainer,
+  WorkspaceCentered,
+  WorkspaceChrome,
+} from "@/pages/storyteller/WorkspaceChrome.tsx";
 
 export default function StorytellerHome() {
   const location = useLocation();
   const navigate = useNavigate();
-  const activeTab = location.pathname.endsWith("/agent")
-    ? "agent"
-    : location.pathname.endsWith("/api-keys")
-      ? "apikey"
-      : location.pathname.endsWith("/usage")
-        ? "usage"
-        : location.pathname.endsWith("/mcp")
-          ? "mcp"
-          : "project";
-  const [tab, setTab] = useState(activeTab);
+  const params = useParams();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { session, loading, login, submitting } = useAuth();
   const { data: projects = [], isLoading: projectsLoading } =
     useStorytellerProjects();
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
-  useTitle(`${STORYTELLER_APP_NAME} 我的工作台`, {
-    path: steamloomPath(`my/${tabPath[activeTab]}`),
+
+  // 建立/編輯專案／AI Agent 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
+  // 比照 ProjectWorkspacePreview 的 routeEditorType：路徑本身就決定了要不要在
+  // 右欄顯示表單，不用等資料載入完成才知道。
+  const isProjectFormRoute =
+    location.pathname.endsWith("/project/new") ||
+    (location.pathname.includes("/project/") &&
+      location.pathname.endsWith("/edit"));
+  const isAgentFormRoute =
+    location.pathname.endsWith("/agent/new") ||
+    (location.pathname.includes("/agent/") &&
+      location.pathname.endsWith("/edit"));
+  const showBleedEditor = isProjectFormRoute || isAgentFormRoute;
+
+  const activeTab: StorytellerHomeTab = location.pathname.includes("/agent")
+    ? "agent"
+    : location.pathname.includes("/api-keys")
+      ? "apikey"
+      : location.pathname.includes("/usage")
+        ? "usage"
+        : location.pathname.includes("/mcp")
+          ? "mcp"
+          : "project";
+
+  const homeTitle = isProjectFormRoute
+    ? `${params.id ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} 專案`
+    : isAgentFormRoute
+      ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`
+      : `${STORYTELLER_APP_NAME} 我的工作台`;
+  useTitle(homeTitle, {
+    path: location.pathname,
     robots: "noindex, nofollow",
   });
 
-  useEffect(() => {
-    setTab(activeTab);
-  }, [activeTab]);
+  function selectTab(tab: StorytellerHomeTab) {
+    navigate(steamloomPath(`my/${tabPath[tab]}`));
+  }
 
-  function handleTabChange(value: StorytellerHomeTab) {
-    setTab(value);
-    navigate(steamloomPath(`my/${tabPath[value]}`));
+  function closeEmbeddedForm() {
+    navigate(steamloomPath(isProjectFormRoute ? "my/project" : "my/agent"));
+  }
+
+  if (loading) {
+    return (
+      <WorkspaceChrome
+        title="我的工作台"
+        titleDropdown={false}
+        showHomeCrumb={false}
+      >
+        <WorkspaceCentered>
+          <CircularProgress size={24} />
+          <Typography color="text.secondary">確認登入狀態...</Typography>
+        </WorkspaceCentered>
+      </WorkspaceChrome>
+    );
+  }
+  if (!session) {
+    return (
+      <WorkspaceChrome
+        title="我的工作台"
+        titleDropdown={false}
+        showHomeCrumb={false}
+      >
+        <WorkspaceCentered>
+          <AutoStoriesIcon color="primary" />
+          <Box>
+            <Typography fontWeight={900}>需要登入</Typography>
+            <Typography variant="body2" color="text.secondary">
+              登入後即可查看我的工作台。
+            </Typography>
+          </Box>
+          <Button variant="contained" onClick={() => void login()}>
+            {submitting ? "登入中" : "使用 Google 登入"}
+          </Button>
+        </WorkspaceCentered>
+      </WorkspaceChrome>
+    );
   }
 
   return (
-    <StorytellerShell
+    <WorkspaceChrome
       title="我的工作台"
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的工作台", to: steamloomPath("my") },
-        { label: tabBreadcrumbLabel[activeTab] },
-      ]}
-      meta={
-        session &&
+      titleDropdown={false}
+      showHomeCrumb={false}
+      trail={[tabBreadcrumbLabel[activeTab]]}
+      action={
         !projectsLoading &&
         !agentsLoading && (
-          <>
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={`${projects.length} 個創作專案`} />
             <Chip size="small" label={`${agents.length} 個 AI Agent`} />
-          </>
+          </Stack>
         )
       }
     >
-      {loading ? (
-        <Stack alignItems="center" sx={{ py: 8 }}>
-          <Typography color="text.secondary">正在確認登入狀態...</Typography>
-        </Stack>
-      ) : !session ? (
-        <CustomLoginRequiredState
-          description="登入後即可查看我的工作台。"
-          onLogin={() => void login()}
-          submitting={submitting}
-        />
-      ) : (
-        <Paper variant="outlined" sx={{ borderRadius: 1 }}>
-          <Tabs
-            value={tab}
-            onChange={(_, value) => handleTabChange(value)}
-            sx={steamTabIndicatorSx}
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr)" },
+          flex: 1,
+          minHeight: 0,
+          bgcolor: (theme) =>
+            theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+        }}
+      >
+        {!isMobile && (
+          <Box
+            sx={{
+              borderRight: 1,
+              borderColor: (theme) =>
+                theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
+              bgcolor: (theme) =>
+                theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
           >
-            <Tab value="project" label="創作專案" />
-            <Tab value="agent" label="AI Agent" />
-            <Tab value="apikey" label="金鑰管理" />
-            <Tab value="usage" label="用量報表" />
-            <Tab value="mcp" label="MCP 連接" />
-          </Tabs>
-          <Divider />
-          <Box sx={{ p: { xs: 2, md: 3 } }}>
-            <Stack spacing={2}>
-              {tab !== "apikey" && tab !== "usage" && tab !== "mcp" && (
-                <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1.5}
-                  justifyContent="space-between"
-                  alignItems={{ xs: "stretch", sm: "center" }}
-                >
-                  <Typography variant="h6" fontWeight={800}>
-                    {tab === "project" ? "最近的創作專案" : "可用的 AI Agent"}
-                  </Typography>
-                  {tab === "project" ? (
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath("my/project/new")}
-                      variant="contained"
-                    >
-                      建立專案
-                    </Button>
-                  ) : (
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath("my/agent/new")}
-                      variant="contained"
-                    >
-                      建立 AI Agent
-                    </Button>
-                  )}
-                </Stack>
-              )}
-              {tab === "project" && projectsLoading ? (
-                <StorytellerLoading label="正在載入創作專案..." />
-              ) : tab === "project" ? (
-                <ProjectCards projects={projects} />
-              ) : tab === "agent" && agentsLoading ? (
-                <StorytellerLoading label="正在載入 AI Agent..." />
-              ) : tab === "agent" ? (
-                <AgentCards agents={agents} />
-              ) : tab === "apikey" ? (
-                <StorytellerApiKeyPanel />
-              ) : tab === "usage" ? (
-                <StorytellerAgentUsagePanel />
-              ) : (
-                <StorytellerMcpPanel />
-              )}
-            </Stack>
+            <HomeSidebar activeTab={activeTab} onSelect={selectTab} />
           </Box>
-        </Paper>
-      )}
-    </StorytellerShell>
+        )}
+        <Box sx={{ minWidth: 0, overflow: "auto" }}>
+          {isMobile && (
+            <HomeMobileNav activeTab={activeTab} onSelect={selectTab} />
+          )}
+          {showBleedEditor ? (
+            <EditorBleedContainer onBack={closeEmbeddedForm}>
+              {isProjectFormRoute ? (
+                <StorytellerNewProject embedded />
+              ) : (
+                <StorytellerNewAgent embedded />
+              )}
+            </EditorBleedContainer>
+          ) : (
+            <WorkspaceBleedContainer>
+              <Stack spacing={2}>
+                {activeTab === "project" || activeTab === "agent" ? (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    justifyContent="space-between"
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                  >
+                    <Typography variant="h6" fontWeight={800}>
+                      {activeTab === "project"
+                        ? "最近的創作專案"
+                        : "可用的 AI Agent"}
+                    </Typography>
+                    <Button
+                      component={RouterLink}
+                      to={steamloomPath(
+                        activeTab === "project"
+                          ? "my/project/new"
+                          : "my/agent/new",
+                      )}
+                      variant="contained"
+                    >
+                      {activeTab === "project" ? "建立專案" : "建立 AI Agent"}
+                    </Button>
+                  </Stack>
+                ) : null}
+                {activeTab === "project" && projectsLoading ? (
+                  <StorytellerLoading label="正在載入創作專案..." />
+                ) : activeTab === "project" ? (
+                  <ProjectCards projects={projects} />
+                ) : activeTab === "agent" && agentsLoading ? (
+                  <StorytellerLoading label="正在載入 AI Agent..." />
+                ) : activeTab === "agent" ? (
+                  <AgentCards agents={agents} />
+                ) : activeTab === "apikey" ? (
+                  <StorytellerApiKeyPanel />
+                ) : activeTab === "usage" ? (
+                  <StorytellerAgentUsagePanel />
+                ) : (
+                  <StorytellerMcpPanel />
+                )}
+              </Stack>
+            </WorkspaceBleedContainer>
+          )}
+        </Box>
+      </Box>
+    </WorkspaceChrome>
   );
 }

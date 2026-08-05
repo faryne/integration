@@ -31,7 +31,8 @@ export type StorytellerPaletteName =
   | "violetCopper"
   | "roseCopper"
   | "inkBlack"
-  | "silver";
+  | "silver"
+  | "plainWhite";
 
 // label 有兩兩一組刻意對照的組合（bronze/malachite 偏綠、cobalt/violetCopper 偏藍紫），
 // swatch 照色相排列，方便 SteamPaletteSwitcher 用同一個順序畫成一圈色環。
@@ -49,6 +50,7 @@ export const storytellerPaletteMeta: Record<
   roseCopper: { label: "紅銅", swatch: "#c94f5c" },
   inkBlack: { label: "墨黑", swatch: "#938d85" },
   silver: { label: "銀白", swatch: "#838d95" },
+  plainWhite: { label: "素白", swatch: "#f8fafc" },
 };
 
 export const storytellerThemeTokens: Record<
@@ -353,6 +355,38 @@ export const storytellerThemeTokens: Record<
       borderStrong: "#707275",
       text: "#191a1a",
       textMuted: "#474849",
+    },
+  },
+  plainWhite: {
+    // 素白是給功能密集工作台用的低裝飾色盤：白底、灰階介面，
+    // 只保留高辨識藍作為主要互動色，避免跟其他主題色盤一樣有強烈蒸汽色調。
+    dark: {
+      brass: "#60a5fa",
+      brassBright: "#93c5fd",
+      copper: "#3b82f6",
+      patina: "#9ca3af",
+      ember: "#ef4444",
+      bg: "#111827",
+      surface: "#1f2937",
+      surfaceRaised: "#263244",
+      border: "#374151",
+      borderStrong: "#4b5563",
+      text: "#f9fafb",
+      textMuted: "#cbd5e1",
+    },
+    light: {
+      brass: "#2563eb",
+      brassBright: "#3b82f6",
+      copper: "#1d4ed8",
+      patina: "#6b7280",
+      ember: "#dc2626",
+      bg: "#ffffff",
+      surface: "#f8fafc",
+      surfaceRaised: "#ffffff",
+      border: "#d1d5db",
+      borderStrong: "#9ca3af",
+      text: "#111827",
+      textMuted: "#4b5563",
     },
   },
 };
