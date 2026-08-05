@@ -1,7 +1,24 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useState } from "react";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+
+// 主站錯誤頁的貓娘插圖有好幾張，每次進到錯誤頁隨機挑一張，避免每次都看到同一張。
+const faryneMascotImages = [
+  "/error-page/ErrorPage-1.webp",
+  "/error-page/ErrorPage-2.webp",
+  "/error-page/ErrorPage-3.webp",
+  "/error-page/ErrorPage-4.webp",
+  "/error-page/ErrorPage-5.webp",
+  "/error-page/ErrorPage-6.webp",
+];
+
+function pickRandomFaryneMascotImage() {
+  return faryneMascotImages[
+    Math.floor(Math.random() * faryneMascotImages.length)
+  ];
+}
 
 export interface ErrorPageProps {
   backUrl?: string;
@@ -103,6 +120,9 @@ export function ErrorPage({
   const errorContent = steamloom
     ? (steamloomErrorContent[code] ?? steamloomFallbackErrorContent)
     : (defaultErrorContent[code] ?? fallbackErrorContent);
+  // 用 useState 的 lazy initializer 只在第一次掛載時抽一張，避免每次重新渲染
+  // （例如切換 compact 相關 state）就重抽換圖，畫面看起來會一直閃動。
+  const [faryneMascotImage] = useState(pickRandomFaryneMascotImage);
   const buttonHref = backUrl ?? "/";
   const ButtonIcon = backUrl ? ArrowBackIcon : HomeIcon;
   const buttonText = backUrl ? "回前頁" : "回首頁";
@@ -137,7 +157,7 @@ export function ErrorPage({
       >
         <Box
           component="img"
-          src={steamloom ? "/steamloom-icon.svg" : "/faryne-icon-1024.jpg"}
+          src={steamloom ? "/steamloom-icon.svg" : faryneMascotImage}
           alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
           sx={{
             width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
