@@ -77,6 +77,7 @@ export function StoryRow({
   story,
   onClick,
   actions,
+  collectionChip,
   reorderable,
   dragging,
   onDragStart,
@@ -85,6 +86,9 @@ export function StoryRow({
   story: StorytellerStory;
   onClick: () => void;
   actions?: ReactNode;
+  // 「全部作品」等混合分組的列表才需要標出這一列實際屬於哪一冊——已經篩選到
+  // 單一分組時，每一列都屬於同一冊，標出來只是噪音，由呼叫端決定要不要傳。
+  collectionChip?: ReactNode;
   reorderable?: boolean;
   dragging?: boolean;
   onDragStart?: () => void;
@@ -140,6 +144,7 @@ export function StoryRow({
               · 更新於 {formatStorytellerDate(story.updated_at)}
             </Typography>
           </Box>
+          {collectionChip}
           <Chip
             size="small"
             label={isPublic ? "公開" : "草稿"}
@@ -178,10 +183,12 @@ export function LoreRow({
   lore,
   onClick,
   actions,
+  collectionChip,
 }: {
   lore: StorytellerLore;
   onClick: () => void;
   actions?: ReactNode;
+  collectionChip?: ReactNode;
 }) {
   return (
     <Paper
@@ -211,6 +218,7 @@ export function LoreRow({
             {formatStorytellerDate(lore.updated_at)}
           </Typography>
         </Box>
+        {collectionChip}
         {actions && (
           <Box
             onClick={(event) => event.stopPropagation()}
@@ -228,10 +236,12 @@ export function AssetCard({
   asset,
   onClick,
   actions,
+  collectionChip,
 }: {
   asset: StorytellerAsset;
   onClick: () => void;
   actions?: ReactNode;
+  collectionChip?: ReactNode;
 }) {
   return (
     <Paper
@@ -269,6 +279,7 @@ export function AssetCard({
             <Typography variant="body2" color="text.secondary" noWrap>
               引用 {asset.reference_count} 次 · {asset.mime_type}
             </Typography>
+            {collectionChip && <Box sx={{ mt: 0.5 }}>{collectionChip}</Box>}
           </Box>
           {actions && (
             <Box

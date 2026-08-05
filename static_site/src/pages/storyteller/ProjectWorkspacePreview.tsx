@@ -550,10 +550,16 @@ export default function StorytellerProjectWorkspacePreview() {
                 stories={visibleStoryRows}
                 lores={loresPageQuery.data?.lores ?? []}
                 assets={assetsQuery.data?.assets ?? []}
+                volumes={volumes}
+                loreCollections={loreCollections}
+                assetCollections={assetCollections}
                 loading={activeListLoading}
                 errorCode={activeListErrorCode}
                 errorBackUrl={steamloomPath(`my/workspace/${id}`)}
                 onSelectItem={openStoryInWorkspace}
+                onSelectCollection={(collectionId) =>
+                  selectNode(selected.section, collectionId)
+                }
                 actions={listActions.actions}
                 titleActions={listActions.titleActions}
                 pagination={

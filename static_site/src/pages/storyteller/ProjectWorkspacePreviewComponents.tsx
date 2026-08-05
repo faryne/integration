@@ -8,6 +8,7 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
+  Chip,
   CircularProgress,
   Collapse,
   Divider,
@@ -463,10 +464,14 @@ export function WorkspacePane({
   stories,
   lores,
   assets,
+  volumes,
+  loreCollections,
+  assetCollections,
   loading,
   errorCode,
   errorBackUrl,
   onSelectItem,
+  onSelectCollection,
   actions,
   titleActions,
   pagination,
@@ -480,6 +485,11 @@ export function WorkspacePane({
   stories: StorytellerStory[];
   lores: StorytellerLore[];
   assets: StorytellerAsset[];
+  // 用來把故事/設定/資產各自的 parent_id／collection_id 換成冊／設定集／資產集
+  // 名稱——只有「全部」這種混合分組的列表才需要標出每一列實際屬於哪個分組。
+  volumes: StorytellerStory[];
+  loreCollections: Array<{ public_id: string; name: string }>;
+  assetCollections: Array<{ public_id: string; name: string }>;
   loading: boolean;
   // API 請求失敗時要顯示對應的錯誤頁，跟「請求成功但真的沒有資料」的空狀態
   // 分開處理，不能只看陣列是不是空的就顯示「沒有作品」——那樣使用者會誤以為
@@ -488,6 +498,8 @@ export function WorkspacePane({
   // 錯誤頁「回前頁」按鈕的目標——工作台根目錄，不是整個網站的首頁。
   errorBackUrl?: string;
   onSelectItem: (item: SelectedItem) => void;
+  // 點擊列表項目上標出的冊／設定集／資產集 chip 時，直接切換到那個分組。
+  onSelectCollection: (collectionId: string) => void;
   actions?: ReactNode;
   titleActions?: ReactNode;
   pagination?: {
@@ -506,6 +518,24 @@ export function WorkspacePane({
   ) => void;
 }) {
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
+  function collectionChipFor(label: string | undefined, collectionId: string) {
+    if (!label) {
+      return undefined;
+    }
+    return (
+      <Chip
+        size="small"
+        variant="outlined"
+        icon={<FolderIcon fontSize="small" />}
+        label={label}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelectCollection(collectionId);
+        }}
+        sx={{ height: 22, borderRadius: 1, fontWeight: 700 }}
+      />
+    );
+  }
   const count =
     selected.section === "stories"
       ? stories.length
@@ -558,23 +588,32 @@ export function WorkspacePane({
         <>
           {selected.section === "stories" && (
             <Stack spacing={0.5}>
-              {stories.map((story) => (
-                <StoryRow
-                  key={story.public_id}
-                  story={story}
-                  actions={renderStoryActions?.(story)}
-                  onClick={() => onSelectItem({ type: "story", row: story })}
-                  reorderable={Boolean(onReorderStory)}
-                  dragging={draggingStoryId === story.public_id}
-                  onDragStart={() => setDraggingStoryId(story.public_id)}
-                  onDropRow={() => {
-                    if (draggingStoryId) {
-                      onReorderStory?.(draggingStoryId, story.public_id);
-                    }
-                    setDraggingStoryId(null);
-                  }}
-                />
-              ))}
+              {stories.map((story) => {
+                const volume = volumes.find(
+                  (item) => item.id === story.parent_id,
+                );
+                return (
+                  <StoryRow
+                    key={story.public_id}
+                    story={story}
+                    actions={renderStoryActions?.(story)}
+                    collectionChip={collectionChipFor(
+                      volume?.title,
+                      volume?.public_id ?? "",
+                    )}
+                    onClick={() => onSelectItem({ type: "story", row: story })}
+                    reorderable={Boolean(onReorderStory)}
+                    dragging={draggingStoryId === story.public_id}
+                    onDragStart={() => setDraggingStoryId(story.public_id)}
+                    onDropRow={() => {
+                      if (draggingStoryId) {
+                        onReorderStory?.(draggingStoryId, story.public_id);
+                      }
+                      setDraggingStoryId(null);
+                    }}
+                  />
+                );
+              })}
               {onReorderStory && stories.length > 0 && (
                 // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
                 // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
@@ -613,14 +652,23 @@ export function WorkspacePane({
           )}
           {selected.section === "lores" && (
             <Stack spacing={0.5}>
-              {lores.map((lore) => (
-                <LoreRow
-                  key={lore.public_id}
-                  lore={lore}
-                  actions={renderLoreActions?.(lore)}
-                  onClick={() => onSelectItem({ type: "lore", row: lore })}
-                />
-              ))}
+              {lores.map((lore) => {
+                const collection = loreCollections.find(
+                  (item) => item.public_id === lore.collection_id,
+                );
+                return (
+                  <LoreRow
+                    key={lore.public_id}
+                    lore={lore}
+                    actions={renderLoreActions?.(lore)}
+                    collectionChip={collectionChipFor(
+                      collection?.name,
+                      collection?.public_id ?? "",
+                    )}
+                    onClick={() => onSelectItem({ type: "lore", row: lore })}
+                  />
+                );
+              })}
               {lores.length === 0 && (
                 <WorkspaceEmptyState
                   icon={<DescriptionIcon />}
@@ -644,15 +692,26 @@ export function WorkspacePane({
           )}
           {selected.section === "assets" && (
             <Grid container spacing={1.5}>
-              {assets.map((asset) => (
-                <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
-                  <AssetCard
-                    asset={asset}
-                    actions={renderAssetActions?.(asset)}
-                    onClick={() => onSelectItem({ type: "asset", row: asset })}
-                  />
-                </Grid>
-              ))}
+              {assets.map((asset) => {
+                const collection = assetCollections.find(
+                  (item) => item.public_id === asset.collection_id,
+                );
+                return (
+                  <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                    <AssetCard
+                      asset={asset}
+                      actions={renderAssetActions?.(asset)}
+                      collectionChip={collectionChipFor(
+                        collection?.name,
+                        collection?.public_id ?? "",
+                      )}
+                      onClick={() =>
+                        onSelectItem({ type: "asset", row: asset })
+                      }
+                    />
+                  </Grid>
+                );
+              })}
               {assets.length === 0 && (
                 <Grid size={12}>
                   <WorkspaceEmptyState
