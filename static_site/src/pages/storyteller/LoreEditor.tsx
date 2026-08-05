@@ -64,6 +64,7 @@ import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAss
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import {
   WorkspaceEditableTitle,
+  WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
@@ -859,6 +860,43 @@ export default function StorytellerLoreEditor({
       icon: <ScheduleIcon fontSize="small" />,
     },
   ];
+  // 字數／更新時間／自動存檔狀態的 chip 列，加上存檔按鈕——embedded 模式下要跟
+  // 標題排在同一列（見下面 WorkspaceEditorHeaderRow），非 embedded 模式則維持
+  // 原本透過 StorytellerShell 的 action 插槽顯示。
+  const loreEditorActionContent = (
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Chip label={`${wordCount.toLocaleString()} 字`} />
+      {lore ? (
+        <>
+          <Chip label={`更新於 ${formatStorytellerDate(lore.updatedAt)}`} />
+          {apiProject && (
+            <Chip
+              color={autoSaveEnabled ? "success" : "default"}
+              variant="outlined"
+              label={
+                autoSaveEnabled
+                  ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
+                  : "自動存檔已關閉"
+              }
+            />
+          )}
+        </>
+      ) : (
+        <Chip label="尚未存檔" color="warning" />
+      )}
+      {embedded && (
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<SaveIcon />}
+          disabled={saveLore.isPending}
+          onClick={handleSave}
+        >
+          {saveLore.isPending ? "存檔中" : "存檔"}
+        </Button>
+      )}
+    </Stack>
+  );
   const loreEditorHeaderContent = embedded ? (
     <Stack spacing={2.25}>
       {versionConflict ? (
@@ -887,10 +925,15 @@ export default function StorytellerLoreEditor({
           </Alert>
         )
       )}
-      <WorkspaceEditableTitle
-        value={title}
-        onChange={setTitle}
-        placeholder="未命名設定集"
+      <WorkspaceEditorHeaderRow
+        title={
+          <WorkspaceEditableTitle
+            value={title}
+            onChange={setTitle}
+            placeholder="未命名設定集"
+          />
+        }
+        actions={loreEditorActionContent}
       />
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <WorkspaceEditorSelectButton
@@ -1078,40 +1121,7 @@ export default function StorytellerLoreEditor({
               { label: pageTitle },
             ]
       }
-      action={
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label={`${wordCount.toLocaleString()} 字`} />
-          {lore ? (
-            <>
-              <Chip label={`更新於 ${formatStorytellerDate(lore.updatedAt)}`} />
-              {apiProject && (
-                <Chip
-                  color={autoSaveEnabled ? "success" : "default"}
-                  variant="outlined"
-                  label={
-                    autoSaveEnabled
-                      ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                      : "自動存檔已關閉"
-                  }
-                />
-              )}
-            </>
-          ) : (
-            <Chip label="尚未存檔" color="warning" />
-          )}
-          {embedded && (
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={saveLore.isPending}
-              onClick={handleSave}
-            >
-              {saveLore.isPending ? "存檔中" : "存檔"}
-            </Button>
-          )}
-        </Stack>
-      }
+      action={embedded ? undefined : loreEditorActionContent}
       hideHeading
       plain={embedded}
       headerContent={loreEditorHeaderContent}

@@ -18,6 +18,28 @@ export interface WorkspaceEditorSelectOption {
   icon?: ReactNode;
 }
 
+// 嵌入編輯器（故事/圖像/設定集/資產）標題列共用排版——標題（WorkspaceEditableTitle）
+// 靠左，字數/更新時間等 chip 與存檔按鈕靠右，同一列顯示，不要疊成兩列。
+export function WorkspaceEditorHeaderRow({
+  title,
+  actions,
+}: {
+  title: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <Stack
+      direction={{ xs: "column", sm: "row" }}
+      spacing={1.5}
+      justifyContent="space-between"
+      alignItems={{ xs: "flex-start", sm: "center" }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0 }}>{title}</Box>
+      {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+    </Stack>
+  );
+}
+
 export function WorkspaceEditableTitle({
   value,
   placeholder,

@@ -73,6 +73,7 @@ import { StorytellerVersionCompareDialog } from "@/pages/storyteller/Storyteller
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
+  WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
@@ -1129,6 +1130,50 @@ export default function StorytellerStoryEditor({
       icon: <ScheduleIcon fontSize="small" />,
     },
   ];
+  // 字數／更新時間／自動存檔狀態的 chip 列，加上存檔按鈕——embedded 模式下要跟
+  // 標題排在同一列（見下面 WorkspaceEditorHeaderRow），非 embedded 模式則維持
+  // 原本透過 StorytellerShell 的 action 插槽顯示。
+  const storyEditorActionContent = (
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Chip label={`${wordCount.toLocaleString()} 字`} />
+      {!embedded && (
+        <Chip
+          label={storyStatus === "completed" ? "公開中" : "未公開"}
+          color={storyStatus === "completed" ? "success" : "warning"}
+          variant="outlined"
+        />
+      )}
+      {story ? (
+        <>
+          <Chip label={`更新於 ${formatStorytellerDate(story.updatedAt)}`} />
+          {apiProject && (
+            <Chip
+              color={autoSaveEnabled ? "success" : "default"}
+              variant="outlined"
+              label={
+                autoSaveEnabled
+                  ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
+                  : "自動存檔已關閉"
+              }
+            />
+          )}
+        </>
+      ) : (
+        <Chip label="尚未存檔" color="warning" />
+      )}
+      {embedded && (
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<SaveIcon />}
+          disabled={saveStory.isPending}
+          onClick={handleSaveStory}
+        >
+          {saveStory.isPending ? "存檔中" : "存檔"}
+        </Button>
+      )}
+    </Stack>
+  );
   const storyEditorHeaderContent = embedded ? (
     <Stack spacing={2.25}>
       {versionConflict ? (
@@ -1157,10 +1202,15 @@ export default function StorytellerStoryEditor({
           </Alert>
         )
       )}
-      <WorkspaceEditableTitle
-        value={storyTitle}
-        onChange={setStoryTitle}
-        placeholder="未命名故事"
+      <WorkspaceEditorHeaderRow
+        title={
+          <WorkspaceEditableTitle
+            value={storyTitle}
+            onChange={setStoryTitle}
+            placeholder="未命名故事"
+          />
+        }
+        actions={storyEditorActionContent}
       />
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <WorkspaceEditorSelectButton
@@ -1390,49 +1440,7 @@ export default function StorytellerStoryEditor({
               { label: pageTitle },
             ]
       }
-      action={
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip label={`${wordCount.toLocaleString()} 字`} />
-          {!embedded && (
-            <Chip
-              label={storyStatus === "completed" ? "公開中" : "未公開"}
-              color={storyStatus === "completed" ? "success" : "warning"}
-              variant="outlined"
-            />
-          )}
-          {story ? (
-            <>
-              <Chip
-                label={`更新於 ${formatStorytellerDate(story.updatedAt)}`}
-              />
-              {apiProject && (
-                <Chip
-                  color={autoSaveEnabled ? "success" : "default"}
-                  variant="outlined"
-                  label={
-                    autoSaveEnabled
-                      ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                      : "自動存檔已關閉"
-                  }
-                />
-              )}
-            </>
-          ) : (
-            <Chip label="尚未存檔" color="warning" />
-          )}
-          {embedded && (
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={saveStory.isPending}
-              onClick={handleSaveStory}
-            >
-              {saveStory.isPending ? "存檔中" : "存檔"}
-            </Button>
-          )}
-        </Stack>
-      }
+      action={embedded ? undefined : storyEditorActionContent}
       hideHeading
       plain={embedded}
       headerContent={storyEditorHeaderContent}

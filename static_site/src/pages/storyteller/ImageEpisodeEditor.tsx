@@ -45,6 +45,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
+  WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import {
@@ -543,13 +544,31 @@ export default function StorytellerImageEpisodeEditor({
       icon: <FolderIcon fontSize="small" />,
     })),
   ];
+  // 存檔按鈕只在 embedded 模式下顯示，且要跟標題排在同一列（見下面
+  // WorkspaceEditorHeaderRow），非 embedded 模式沒有對應的 action 內容。
+  const imageEditorActionContent = embedded ? (
+    <Button
+      size="small"
+      variant="contained"
+      startIcon={<CollectionsIcon />}
+      disabled={!title.trim() || pages.length === 0 || isSubmitting}
+      onClick={() => void handleSubmit()}
+    >
+      {isSubmitting ? "處理中..." : phase === "error" ? "重試" : "儲存"}
+    </Button>
+  ) : undefined;
   const embeddedHeaderContent = embedded ? (
     <Stack spacing={2.25}>
-      <WorkspaceEditableTitle
-        value={title}
-        disabled={isSubmitting}
-        placeholder="未命名圖像作品"
-        onChange={setTitle}
+      <WorkspaceEditorHeaderRow
+        title={
+          <WorkspaceEditableTitle
+            value={title}
+            disabled={isSubmitting}
+            placeholder="未命名圖像作品"
+            onChange={setTitle}
+          />
+        }
+        actions={imageEditorActionContent}
       />
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <WorkspaceEditorSelectButton
@@ -591,19 +610,6 @@ export default function StorytellerImageEpisodeEditor({
       hideHeading={embedded}
       plain={embedded}
       headerContent={embeddedHeaderContent}
-      action={
-        embedded && (
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<CollectionsIcon />}
-            disabled={!title.trim() || pages.length === 0 || isSubmitting}
-            onClick={() => void handleSubmit()}
-          >
-            {isSubmitting ? "處理中..." : phase === "error" ? "重試" : "儲存"}
-          </Button>
-        )
-      }
     >
       <Stack spacing={2}>
         {phase === "error" && uploadError && (

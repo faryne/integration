@@ -69,35 +69,41 @@ export function StorytellerShell({
         </Breadcrumbs>
       )}
 
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        spacing={2}
-        alignItems={{ xs: "flex-start", md: "center" }}
-        justifyContent="space-between"
-      >
-        {hideHeading ? (
-          <Box sx={{ flex: 1 }} />
-        ) : (
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography component="h1" variant="h4" fontWeight={800}>
-              {title}
-            </Typography>
-            {description && (
-              <Typography component="div" color="text.secondary" sx={{ mt: 1 }}>
-                {description}
+      {(!hideHeading || action) && (
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+        >
+          {hideHeading ? (
+            <Box sx={{ flex: 1 }} />
+          ) : (
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography component="h1" variant="h4" fontWeight={800}>
+                {title}
               </Typography>
-            )}
-            {meta && (
-              <Box sx={{ mt: 1 }}>
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  {meta}
-                </Stack>
-              </Box>
-            )}
-          </Box>
-        )}
-        {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
-      </Stack>
+              {description && (
+                <Typography
+                  component="div"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  {description}
+                </Typography>
+              )}
+              {meta && (
+                <Box sx={{ mt: 1 }}>
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    {meta}
+                  </Stack>
+                </Box>
+              )}
+            </Box>
+          )}
+          {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+        </Stack>
+      )}
       {headerContent}
     </Stack>
   );

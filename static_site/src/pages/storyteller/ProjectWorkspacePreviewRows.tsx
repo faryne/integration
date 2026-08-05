@@ -29,6 +29,7 @@ import { formatStorytellerDate } from "@/data/storyteller.ts";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
+  WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "./ProjectWorkspaceEditorControls.tsx";
 import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
@@ -353,48 +354,49 @@ export function WorkspaceAssetPanel({
     }
   }
 
+  const assetActionContent = (
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Chip label={`引用 ${asset.reference_count} 次 · ${asset.mime_type}`} />
+      <Button
+        size="small"
+        variant={metadataOpen ? "contained" : "outlined"}
+        startIcon={<InfoOutlinedIcon fontSize="small" />}
+        onClick={() => setMetadataOpen((value) => !value)}
+      >
+        詳細資訊
+      </Button>
+      <Button
+        size="small"
+        color="error"
+        variant="outlined"
+        startIcon={<DeleteIcon fontSize="small" />}
+        onClick={() => setDeleteOpen(true)}
+      >
+        刪除
+      </Button>
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<SaveIcon fontSize="small" />}
+        disabled={saving}
+        onClick={handleSave}
+      >
+        {saving ? "儲存中" : "儲存"}
+      </Button>
+    </Stack>
+  );
+
   return (
     <Stack spacing={2.25}>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        alignItems={{ xs: "flex-start", sm: "center" }}
-        spacing={1}
-      >
-        <Chip label={`引用 ${asset.reference_count} 次 · ${asset.mime_type}`} />
-        <Stack direction="row" spacing={1}>
-          <Button
-            size="small"
-            variant={metadataOpen ? "contained" : "outlined"}
-            startIcon={<InfoOutlinedIcon fontSize="small" />}
-            onClick={() => setMetadataOpen((value) => !value)}
-          >
-            詳細資訊
-          </Button>
-          <Button
-            size="small"
-            color="error"
-            variant="outlined"
-            startIcon={<DeleteIcon fontSize="small" />}
-            onClick={() => setDeleteOpen(true)}
-          >
-            刪除
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<SaveIcon fontSize="small" />}
-            disabled={saving}
-            onClick={handleSave}
-          >
-            {saving ? "儲存中" : "儲存"}
-          </Button>
-        </Stack>
-      </Stack>
-      <WorkspaceEditableTitle
-        value={title}
-        onChange={setTitle}
-        placeholder="未命名資產"
+      <WorkspaceEditorHeaderRow
+        title={
+          <WorkspaceEditableTitle
+            value={title}
+            onChange={setTitle}
+            placeholder="未命名資產"
+          />
+        }
+        actions={assetActionContent}
       />
       <Collapse in={metadataOpen} timeout="auto" unmountOnExit>
         <Stack
