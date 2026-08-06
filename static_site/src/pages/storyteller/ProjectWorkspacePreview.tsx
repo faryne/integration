@@ -43,6 +43,7 @@ import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
 import StorytellerStoryEditor from "./StoryEditor.tsx";
 import {
+  backendUncategorizedFilterId,
   nodeTitle,
   ungroupedId,
   type SelectedItem,
@@ -129,7 +130,9 @@ export default function StorytellerProjectWorkspacePreview() {
   const assetCollectionsQuery = useStorytellerAssetCollections(id);
   const loresPageQuery = useStorytellerLoresPage(
     selected.section === "lores" ? id : undefined,
-    selected.collectionId === ungroupedId ? "" : selected.collectionId,
+    selected.collectionId === ungroupedId
+      ? backendUncategorizedFilterId
+      : selected.collectionId,
     lorePage,
     lorePageSize,
   );
@@ -138,7 +141,9 @@ export default function StorytellerProjectWorkspacePreview() {
     assetPage,
     assetPageSize,
     assetKeyword,
-    selected.collectionId === ungroupedId ? "" : selected.collectionId,
+    selected.collectionId === ungroupedId
+      ? backendUncategorizedFilterId
+      : selected.collectionId,
   );
   const routeAssetQuery = useStorytellerAsset(
     id,

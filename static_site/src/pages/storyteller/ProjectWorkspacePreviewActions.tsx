@@ -602,7 +602,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           to={steamloomPath(`my/workspace/${projectId}/lore/new${fromQuery}`)}
           variant="contained"
         >
-          建立設定集
+          建立設定
         </Button>
       </Stack>
     ) : (
