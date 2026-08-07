@@ -54,6 +54,7 @@ import {
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 interface PendingPage {
@@ -68,6 +69,38 @@ interface PendingPage {
   // 這一頁成功上傳到 S3 後記錄下來的 object key；既有頁面載入當下就有，
   // 重試時也用這個判斷哪些頁不用重新上傳。
   uploadedKey?: string;
+}
+
+// 離開頁面前示警用的頁面快照——File 物件本身不能拿去比對（同一個 File 物件
+// JSON.stringify 只會得到 {}），改用「檔名+大小」或已經上傳好的 asset id／key
+// 當作這一頁的識別依據，加上頁面說明文字，足以判斷「頁面清單有沒有實質變動」。
+function pendingPageSignature(page: PendingPage) {
+  const source =
+    page.assetPublicId ??
+    page.uploadedKey ??
+    (page.file ? `${page.file.name}:${page.file.size}` : "");
+  return `${source}|${page.description}`;
+}
+
+function serializeEpisodeDraft(
+  title: string,
+  summary: string,
+  status: "draft" | "completed",
+  selectedVolumeId: string,
+  pages: PendingPage[],
+) {
+  return JSON.stringify({
+    title,
+    summary,
+    status,
+    selectedVolumeId,
+    pages: pages.map(pendingPageSignature),
+  });
+}
+
+// 標題空白又一張圖都沒加，就算跟初始狀態不同也不用示警——沒有東西值得保護。
+function isEpisodeDraftEmpty(title: string, pages: PendingPage[]) {
+  return title.trim() === "" && pages.length === 0;
 }
 
 export interface StorytellerImageEpisodeEditorProps {
@@ -136,6 +169,12 @@ export default function StorytellerImageEpisodeEditor({
   // 編輯既有話時，existingStory／existingPages 都載入完成才把資料灌進表單一次；
   // 之後使用者自己編輯的內容不能被這個 effect 再蓋回去，所以只做一次。
   const [initialized, setInitialized] = useState(false);
+  // 離開頁面前示警用的「已存檔」快照——新建話時維持初始空白值即可；編輯既有話
+  // 時等下面的 hydration effect 把資料灌進表單後，一併把這個 ref 設成同一份資料，
+  // 不能靠讀 title／pages 這些 state，同一個 effect 內看不到自己剛 setState 的結果。
+  const lastSavedDraftRef = useRef(
+    serializeEpisodeDraft("", "", "completed", "", []),
+  );
 
   useEffect(() => {
     if (isNewEpisode || initialized || !existingStory || !isPagesLoaded) {
@@ -147,18 +186,24 @@ export default function StorytellerImageEpisodeEditor({
     if (existingStory.parent_id !== null && !parentVolume && isVolumesLoading) {
       return;
     }
+    const hydratedPages = existingPages.map((page) => ({
+      id: page.id,
+      previewUrl: page.image_url,
+      description: page.description,
+      assetPublicId: page.asset_public_id,
+      uploadedKey: page.key,
+    }));
     setTitle(existingStory.title);
     setSummary(existingStory.summary);
     setStatus(existingStory.status);
     setSelectedVolumeId(parentVolume?.public_id ?? "");
-    setPages(
-      existingPages.map((page) => ({
-        id: page.id,
-        previewUrl: page.image_url,
-        description: page.description,
-        assetPublicId: page.asset_public_id,
-        uploadedKey: page.key,
-      })),
+    setPages(hydratedPages);
+    lastSavedDraftRef.current = serializeEpisodeDraft(
+      existingStory.title,
+      existingStory.summary,
+      existingStory.status,
+      parentVolume?.public_id ?? "",
+      hydratedPages,
     );
     setInitialized(true);
   }, [
@@ -192,19 +237,50 @@ export default function StorytellerImageEpisodeEditor({
     };
   }, []);
 
-  // 上傳中重新整理或關閉分頁需要噴出確認對話框——只擋瀏覽器層級的離開，
-  // App 內路由切換的攔截這次不做。
-  useEffect(() => {
-    if (phase !== "uploading") {
-      return;
+  // 判斷「有沒有值得保護的未存檔變更」——上傳中一定算（半途離開會弄丟已經在傳的
+  // 檔案）；沒在上傳時，只在「跟上次存檔的版本不同」且「標題跟頁面不是兩個都
+  // 空白」才算。beforeunload（瀏覽器層級離開）跟工作台的 leave guard（App 內
+  // 「回列表」／側邊欄切換）共用同一份邏輯，不要各自重算一次。
+  function hasUnsavedEpisodeChanges() {
+    if (phase === "uploading") {
+      return true;
     }
+    const currentDraft = serializeEpisodeDraft(
+      title,
+      summary,
+      status,
+      selectedVolumeId,
+      pages,
+    );
+    const isDirty = currentDraft !== lastSavedDraftRef.current;
+    const isEmpty = isEpisodeDraftEmpty(title, pages);
+    return isDirty && !isEmpty;
+  }
+
+  // 重新整理或關閉分頁前示警。只擋瀏覽器層級的離開，App 內路由切換交給下面的
+  // workspace leave guard 處理。
+  useEffect(() => {
     function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnsavedEpisodeChanges()) {
+        return;
+      }
       event.preventDefault();
       event.returnValue = "";
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [phase]);
+  }, [phase, title, summary, status, selectedVolumeId, pages]);
+
+  // embedded 模式下才需要讓工作台知道「離開前要不要確認」——非 embedded 的獨立頁面
+  // 沒有工作台側邊欄／回列表按鈕可以攔。這裡不能像 Story/LoreEditor 一樣只註冊
+  // 一次：hasUnsavedEpisodeChanges 讀的 phase／title／pages 都是一般 state 不是
+  // ref，閉包會固定在註冊當下那次 render，所以要隨這些值變動重新註冊一次。
+  useEffect(() => {
+    if (!embedded) {
+      return;
+    }
+    return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges);
+  }, [embedded, phase, title, summary, status, selectedVolumeId, pages]);
 
   const pageTitle = isNewEpisode ? "上傳圖像作品" : "編輯圖像作品";
 
@@ -486,6 +562,21 @@ export default function StorytellerImageEpisodeEditor({
       });
 
       setPhase("idle");
+      // 存檔成功後要把「離開頁面示警」的基準往前推，不然嵌入模式下沒有整頁跳轉的
+      // 既有話存完檔，畫面還在同一頁，卻繼續被判定成「有未存檔變更」。跟上面組
+      // content 用的邏輯一樣，直接用 resolvedAssetIds/resolvedKeys 這兩個本地變數，
+      // 不能等 pages state 事後才追上來。
+      lastSavedDraftRef.current = serializeEpisodeDraft(
+        title,
+        summary,
+        status,
+        selectedVolumeId,
+        pages.map((page, index) => ({
+          ...page,
+          assetPublicId: resolvedAssetIds[index] || page.assetPublicId,
+          uploadedKey: resolvedKeys[index] || page.uploadedKey,
+        })),
+      );
       if (!embedded) {
         navigate(steamloomPath(`my/project/${project.public_id}/images`));
       } else if (isNewEpisode && savedStory?.public_id) {

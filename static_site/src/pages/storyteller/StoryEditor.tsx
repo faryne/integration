@@ -70,6 +70,7 @@ import {
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
@@ -169,6 +170,22 @@ interface OptimisticChatMessage {
   resultSelection?: StorytellerAgentTextSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
+}
+
+// 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
+// wordCount 顯示跟「離開頁面前要不要示警」的空白判斷都靠這個共用，不要分開重算兩次。
+function storyContentWordCount(content: string) {
+  const cleanText = parseMarkdownToParagraphs(content)
+    .flatMap((paragraph) => paragraph.runs)
+    .map((run) => run.text)
+    .join("");
+  return cleanText.replace(/\s+/g, "").length;
+}
+
+// 標題跟內容都是空的，就算跟已存檔版本不同也不用示警——沒有東西值得保護，
+// 使用者離開後頂多是回到空白畫面，不會有「辛苦寫的東西不見了」的感覺。
+function isStoryDraftEmpty(title: string, content: string) {
+  return title.trim() === "" && storyContentWordCount(content) === 0;
 }
 
 function serializeStoryDraft(
@@ -616,6 +633,42 @@ export default function StorytellerStoryEditor({
     storyTitle,
   ]);
 
+  // 判斷「有沒有值得保護的未存檔變更」——跟上次存檔的版本不同，且標題跟內容不是
+  // 兩個都空白。beforeunload（瀏覽器層級離開）跟工作台的 leave guard（App 內
+  // 「回列表」／側邊欄切換）共用同一份邏輯，不要各自重算一次。
+  function hasUnsavedStoryChanges() {
+    const isDirty = currentDraftRef.current !== lastSavedDraftRef.current;
+    const isEmpty = isStoryDraftEmpty(
+      latestDraftRef.current.title,
+      latestDraftRef.current.content,
+    );
+    return isDirty && !isEmpty;
+  }
+
+  // 重新整理／關閉分頁前示警。只註冊一次（deps 是空陣列），事件觸發當下才去讀
+  // ref 裡的最新值，不用每次打字都重新掛一次 listener。
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!hasUnsavedStoryChanges()) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  // embedded 模式下才需要讓工作台知道「離開前要不要確認」——非 embedded 的獨立頁面
+  // 沒有工作台側邊欄／回列表按鈕可以攔。註冊的函式只讀 ref，不用隨著內容變動
+  // 重新註冊，掛載時註冊一次、卸載時交給 cleanup 自動取消即可。
+  useEffect(() => {
+    if (!embedded) {
+      return;
+    }
+    return registerWorkspaceLeaveGuard(hasUnsavedStoryChanges);
+  }, [embedded]);
+
   useEffect(() => {
     saveStoryRef.current = saveStory;
   }, [saveStory]);
@@ -641,15 +694,7 @@ export default function StorytellerStoryEditor({
     robots: "noindex, nofollow",
   });
 
-  // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號，
-  // 不然新編輯器產生的內容會讓字數被這些不算「故事內容」的字元灌水。
-  const wordCount = useMemo(() => {
-    const cleanText = parseMarkdownToParagraphs(content)
-      .flatMap((paragraph) => paragraph.runs)
-      .map((run) => run.text)
-      .join("");
-    return cleanText.replace(/\s+/g, "").length;
-  }, [content]);
+  const wordCount = useMemo(() => storyContentWordCount(content), [content]);
 
   // 編輯頁開關預設值取自 profile 設定，只在第一次拿到資料時套用一次，
   // 避免使用者在這次編輯 session 已經自己調整過，卻被之後的 profile 重新整理蓋掉。

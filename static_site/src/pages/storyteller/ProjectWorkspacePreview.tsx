@@ -3,6 +3,10 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Typography,
   useMediaQuery,
   useTheme,
@@ -56,6 +60,7 @@ import {
   WorkspaceCentered,
   WorkspaceChrome,
 } from "./WorkspaceChrome.tsx";
+import { hasUnsavedWorkspaceChanges } from "./WorkspaceLeaveGuard.ts";
 
 const storyPageSize = 20;
 const lorePageSize = 20;
@@ -73,6 +78,21 @@ export default function StorytellerProjectWorkspacePreview() {
   const [lorePage, setLorePage] = useState(1);
   const [assetPage, setAssetPage] = useState(1);
   const [assetKeyword, setAssetKeyword] = useState("");
+  // App 內離開編輯器前的確認——「回列表」按鈕跟側邊欄切換分組都會先呼叫
+  // guardedNavigate，有未存檔變更時先把實際要執行的動作存起來、彈出確認對話框，
+  // 使用者按「離開」才真的執行；沒有未存檔變更（或不在編輯器內）就直接放行，
+  // 不會多一次確認的打斷。
+  const [pendingNavigation, setPendingNavigation] = useState<
+    (() => void) | null
+  >(null);
+
+  function guardedNavigate(action: () => void) {
+    if (hasUnsavedWorkspaceChanges()) {
+      setPendingNavigation(() => action);
+      return;
+    }
+    action();
+  }
 
   const routeEditorType = location.pathname.includes("/image/")
     ? "image"
@@ -321,10 +341,12 @@ export default function StorytellerProjectWorkspacePreview() {
   }
 
   function selectNode(section: WorkspaceSection, targetCollectionId: string) {
-    setStoryPage(1);
-    setLorePage(1);
-    setAssetPage(1);
-    navigate(steamloomPath(browsingPath(section, targetCollectionId)));
+    guardedNavigate(() => {
+      setStoryPage(1);
+      setLorePage(1);
+      setAssetPage(1);
+      navigate(steamloomPath(browsingPath(section, targetCollectionId)));
+    });
   }
 
   function openStoryInWorkspace(item: SelectedItem) {
@@ -350,9 +372,11 @@ export default function StorytellerProjectWorkspacePreview() {
   }
 
   function closeWorkspaceEditor() {
-    navigate(
-      steamloomPath(browsingPath(selected.section, selected.collectionId)),
-    );
+    guardedNavigate(() => {
+      navigate(
+        steamloomPath(browsingPath(selected.section, selected.collectionId)),
+      );
+    });
   }
 
   // 故事/圖像/設定集編輯器自己會呼叫 useTitle 設定更精確的標題（存檔後的故事標題
@@ -598,6 +622,32 @@ export default function StorytellerProjectWorkspacePreview() {
         </Box>
       </Box>
       {listActions.dialogs}
+      <Dialog
+        open={pendingNavigation !== null}
+        onClose={() => setPendingNavigation(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>你有尚未儲存的變更</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            離開這個編輯畫面後，還沒存檔的變更會遺失，確定要離開嗎？
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingNavigation(null)}>取消</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => {
+              pendingNavigation?.();
+              setPendingNavigation(null);
+            }}
+          >
+            離開
+          </Button>
+        </DialogActions>
+      </Dialog>
     </WorkspaceChrome>
   );
 }
