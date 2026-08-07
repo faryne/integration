@@ -30,6 +30,25 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
 	"blockquote (> text), bullet list (- item), and ordered list (1. item). Anything else is a plain paragraph."
 
+// storytellerContentMarkerHint 說明內容裡可能出現的兩種行內 marker——footnote（讀者
+// 看得到）跟 comment（只有作者看得到的私人註解）。這兩種標記語法本身長得幾乎一樣，
+// 只從字面看不出語意差異，MCP client 讀到 ⟦comment-...⟧ 這種字串容易誤判成沒看過的
+// 亂碼直接砍掉或忽略；補上這段說明，讓 AI 讀寫時都知道怎麼處理：footnote 的錨定文字
+// 跟腳注本身都要保留在原地，comment 則要當成「作者留給你的編輯指示」來讀（可以依照
+// 註解內容調整寫法），但註解文字本身絕對不能出現在改寫後的正文或任何要給讀者看的
+// 地方——這是跟 storytellerContentSyntaxHint 分開成獨立常數的原因，一個講格式語法，
+// 一個講「這個東西代表什麼、能不能給讀者看」，混在一起描述容易讓 agent 抓不到重點。
+const storytellerContentMarkerHint = "The content may also contain two kinds of bracket markers written by the " +
+	"web editor, both wrapping a run of text: ⟦footnote-<id> note=\"...\"⟧anchored text⟦/footnote-<id>⟧ and " +
+	"⟦comment-<id> comment=\"...\" commentColor=\"...\"⟧highlighted text⟦/comment-<id>⟧ (id is an opaque generated " +
+	"string; keep it as-is if you reproduce or move a marker). Footnotes are reader-facing: keep the anchored " +
+	"text and the footnote wrapping intact when rewriting nearby text, unless the user asks you to remove that " +
+	"footnote. Comments are private, author-only editorial notes that are never shown to readers — treat a " +
+	"comment's text as an instruction from the author about how they want the highlighted span rewritten, but " +
+	"never copy the comment's own text into the visible story content or surface it to anyone who isn't the " +
+	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
+	"remove it later) unless you're explicitly asked to delete it."
+
 // storytellerProjectDetailListCap 是 storyteller_get_project 嵌進去的 story/lore
 // 清單上限，避免專案很大時單次回應塞爆 agent 的 context；超過的部分要另外呼叫
 // storyteller_list_stories/storyteller_list_lores 分頁拉。
@@ -502,7 +521,7 @@ func (s *Server) registerStorytellerTools() {
 			"and storyteller_upsert_image_story instead of storyteller_upsert_story. " +
 			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_story " +
 			"(or storyteller_upsert_image_story) to detect if someone else (e.g. the web editor) changed the story " +
-			"in the meantime.",
+			"in the meantime. " + storytellerContentMarkerHint,
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"story_public_id":   stringSchema("Story public_id, as returned by storyteller_get_project."),
@@ -556,8 +575,10 @@ func (s *Server) registerStorytellerTools() {
 			"summary":           stringSchema("Short summary shown in listings."),
 			"status":            stringSchema("draft or completed, defaults to completed."),
 			"sort":              integerSchema("Display order among the project's stories."),
-			"content":           stringSchema("Full story content. " + storytellerContentSyntaxHint),
-			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+			"content": stringSchema(
+				"Full story content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
+			),
+			"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
@@ -1193,7 +1214,8 @@ func (s *Server) registerStorytellerTools() {
 		Name: "storyteller_get_lore",
 		Description: "Get a lore/worldbuilding entry's full content by project_public_id and lore_public_id. " +
 			"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_lore " +
-			"to detect if someone else (e.g. the web editor) changed it in the meantime.",
+			"to detect if someone else (e.g. the web editor) changed it in the meantime. " +
+			storytellerContentMarkerHint,
 		InputSchema: objectSchema(map[string]interface{}{
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Lore public_id, as returned by storyteller_get_project."),
@@ -1231,8 +1253,10 @@ func (s *Server) registerStorytellerTools() {
 			"lore_public_id":    stringSchema("Existing lore public_id to update. Omit to create a new entry."),
 			"title":             stringSchema("Lore title, required."),
 			"collection_id":     stringSchema("Optional lore collection public_id. Omit to preserve the current collection on update; pass empty string or __uncategorized__ to clear it."),
-			"content":           stringSchema("Full lore content. " + storytellerContentSyntaxHint),
-			"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
+			"content": stringSchema(
+				"Full lore content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
+			),
+			"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
