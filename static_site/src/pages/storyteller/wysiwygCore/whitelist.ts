@@ -57,12 +57,25 @@ export const DEFAULT_HEADING_LEVEL: HeadingLevel = 0;
  * serializer.ts），切換時另一種要重置成預設值（見 markerParagraph.ts 的
  * setBlockKind／setHeadingLevel 命令）。第一版不支援巢狀引用/清單。
  */
-export const BLOCK_KIND_VALUES = ["none", "quote", "bullet", "number"] as const;
+export const BLOCK_KIND_VALUES = [
+  "none",
+  "quote",
+  "bullet",
+  "number",
+  "hr",
+] as const;
 export type BlockKindValue = (typeof BLOCK_KIND_VALUES)[number];
 export const DEFAULT_BLOCK_KIND: BlockKindValue = "none";
 
 export const BLOCK_KIND_QUOTE_PREFIX = "> ";
 export const BLOCK_KIND_BULLET_PREFIX = "- ";
+/**
+ * 分隔線（水平線），2026-08-08 加入。跟引用/清單不同，這個 blockKind 的段落本身不接受
+ * 任何行內內容——語法只是行首固定的 `---`，沒有「前綴 + 後面接內容」的概念（見
+ * markerParagraph.ts 的 insertHorizontalRule 命令：套用時會強制清空該段落文字，並自動
+ * 在後面插入一個新段落把游標移過去，使用者不需要、也不應該對著分隔線那一行繼續打字）。
+ */
+export const BLOCK_KIND_HR_PREFIX = "---";
 /**
  * 有序清單一律自動編號：解析時接受任何「數字 + `. `」（不要求數字連續正確，使用者
  * 打字、或編輯過程中插入/刪除項目時不需要手動調整後面項目的數字），但存進去的數字
@@ -84,6 +97,8 @@ export function blockKindPrefix(blockKind: BlockKindValue): string {
       return BLOCK_KIND_BULLET_PREFIX;
     case "number":
       return BLOCK_KIND_NUMBER_CANONICAL_PREFIX;
+    case "hr":
+      return BLOCK_KIND_HR_PREFIX;
     default:
       return "";
   }

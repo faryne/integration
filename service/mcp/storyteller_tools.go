@@ -24,11 +24,13 @@ var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyte
 
 // storytellerContentSyntaxHint 描述編輯器實際支援的語法子集（不是完整 GFM，見
 // wysiwygCore/parser.ts／whitelist.ts），只列「能用什麼」，不列「不能用什麼」——
-// 沒提到的語法（表格、code block、待辦清單、~~刪除線~~、標準 [text](url) 連結等）
-// 目前解析器不認得，寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。
+// 沒提到的語法（表格、code block、待辦清單、~~刪除線~~、標準 [text](url) 連結等）目前
+// 解析器不認得，寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。分隔線
+// 2026-08-08 加入解析器支援，因此也補進這份清單。
 const storytellerContentSyntaxHint = "Content uses this app's own limited markdown-like syntax, not full GFM: " +
 	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
-	"blockquote (> text), bullet list (- item), and ordered list (1. item). Anything else is a plain paragraph."
+	"blockquote (> text), bullet list (- item), ordered list (1. item), and horizontal rule (a line " +
+	"containing only ---). Anything else is a plain paragraph."
 
 // storytellerContentMarkerHint 說明內容裡可能出現的兩種行內 marker——footnote（讀者
 // 看得到）跟 comment（只有作者看得到的私人註解）。這兩種標記語法本身長得幾乎一樣，

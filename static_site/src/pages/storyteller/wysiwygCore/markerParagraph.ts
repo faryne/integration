@@ -1,7 +1,12 @@
 import { InputRule, mergeAttributes } from "@tiptap/core";
 import Paragraph from "@tiptap/extension-paragraph";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type Transaction,
+} from "@tiptap/pm/state";
 
 import {
   DEFAULT_BLOCK_KIND,
@@ -38,6 +43,9 @@ declare module "@tiptap/core" {
        * 一般段落——跟使用者按 Enter 完全同一套行為，Enter 快速鍵跟貼上多行文字都靠這個
        * command，避免兩處各寫一份邏輯、行為兜不起來。 */
       splitParagraphFresh: () => ReturnType;
+      /** 把目前段落轉成分隔線（強制清空文字內容），並在後面插入一個新的預設段落把游標
+       * 移過去——輸入 `---` 的 input rule 跟工具列的插入分隔線按鈕都呼叫這個 command。 */
+      insertHorizontalRule: () => ReturnType;
     };
   }
 }
@@ -53,12 +61,13 @@ function headingTag(level: HeadingLevel): string {
  * - headingLevel（0-6）決定要渲染成 <p> 還是 <h1>~<h6>；沒有另外開一個 heading node type，
  *   是因為 marker 的分割/合併/自動補 id 邏輯只寫在這一個地方，標題本質上仍是「一個段落」，
  *   拆成兩個 node type 只會讓 marker 邏輯要維護兩份。
- * - blockKind（"none"/"quote"/"bullet"/"number"）決定這個段落是不是引用/清單項目，
- *   2026-07-10 加入，跟 headingLevel 互斥（見 setHeadingLevel／setBlockKind 命令）。
- *   沒有另外開 Blockquote/BulletList/OrderedList node type——跟標題同樣的理由：這裡
- *   仍然是「一個段落」，連續同 blockKind 的段落要合併成一個視覺區塊（`<blockquote>`／
- *   `<ul>`／`<ol>`）純粹是渲染時的事：閱讀頁（`StorytellerWysiwygMarkdown.tsx`，純
- *   React 渲染，沒有 schema 限制）直接輸出真正巢狀的 DOM；編輯區（這裡，受 ProseMirror
+ * - blockKind（"none"/"quote"/"bullet"/"number"/"hr"）決定這個段落是不是引用/清單/
+ *   分隔線，2026-07-10 加入（分隔線 "hr" 2026-08-08 加入），跟 headingLevel 互斥（見
+ *   setHeadingLevel／setBlockKind 命令）。沒有另外開 Blockquote/BulletList/OrderedList/
+ *   HorizontalRule node type——跟標題同樣的理由：這裡仍然是「一個段落」，連續同
+ *   blockKind 的段落要合併成一個視覺區塊（`<blockquote>`／`<ul>`／`<ol>`）純粹是渲染時
+ *   的事：閱讀頁（`StorytellerWysiwygMarkdown.tsx`，純 React 渲染，沒有 schema 限制）
+ *   直接輸出真正巢狀的 DOM；編輯區（這裡，受 ProseMirror
  *   flat 段落 schema 限制）改用 CSS 對相鄰同 `data-block-kind` 段落做視覺分組（見
  *   `StorytellerWysiwygEditor.tsx` 的樣式），沒有真的 DOM 巢狀。
  * - Enter 分割段落時，游標前半段沿用原本的 markerId，後半段拿新的 markerId、標題重置成
@@ -155,6 +164,40 @@ export const MarkerParagraph = Paragraph.extend({
           }
           return true;
         },
+      insertHorizontalRule:
+        () =>
+        ({ state, dispatch }) => {
+          const { $from } = state.selection;
+          const paragraphStart = $from.before($from.depth);
+          const paragraphNode = $from.parent;
+          const paragraphEnd = paragraphStart + paragraphNode.nodeSize;
+          if (dispatch) {
+            const tr = state.tr;
+            if (paragraphNode.content.size > 0) {
+              tr.delete(paragraphStart + 1, paragraphEnd - 1);
+            }
+            tr.setNodeAttribute(
+              paragraphStart,
+              "blockKind",
+              "hr" satisfies BlockKindValue,
+            );
+            tr.setNodeAttribute(
+              paragraphStart,
+              "headingLevel",
+              DEFAULT_HEADING_LEVEL,
+            );
+            const insertPos = tr.mapping.map(paragraphEnd);
+            const newParagraph = state.schema.nodes.paragraph.create({
+              markerId: generateMarkerId(),
+              headingLevel: DEFAULT_HEADING_LEVEL,
+              blockKind: DEFAULT_BLOCK_KIND,
+            });
+            tr.insert(insertPos, newParagraph);
+            tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 1)));
+            dispatch(tr.scrollIntoView());
+          }
+          return true;
+        },
     };
   },
 
@@ -214,6 +257,12 @@ export const MarkerParagraph = Paragraph.extend({
       applyPrefixInputRule(/^\d+\. $/, {
         blockKind: "number" satisfies BlockKindValue,
         headingLevel: DEFAULT_HEADING_LEVEL,
+      }),
+      new InputRule({
+        find: /^---$/,
+        handler: ({ chain }) => {
+          chain().insertHorizontalRule().run();
+        },
       }),
     ];
   },

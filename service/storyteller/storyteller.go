@@ -1313,9 +1313,9 @@ var storyMarkerPattern = regexp.MustCompile(
 // blockKindPrefixPattern 比照前端 whitelist.ts 的 blockKindPrefix：引用 `> `、無序清單
 // `- `、有序清單「數字 + `. `」（數字不驗證連續性，任何數字都算數，見前端
 // BLOCK_KIND_NUMBER_PARSE_PATTERN 的說明——有序清單一律自動編號，存進去的數字本身
-// 沒有意義）。跟標題前綴互斥，splitHeadingAndMarkerContent 只有在沒有標題前綴時
-// 才會嘗試比對這個 pattern。
-var blockKindPrefixPattern = regexp.MustCompile(`^(?:> |- |\d+\. )`)
+// 沒有意義）、分隔線 `---`。跟標題前綴互斥，splitHeadingAndMarkerContent 只有在沒有
+// 標題前綴時才會嘗試比對這個 pattern。
+var blockKindPrefixPattern = regexp.MustCompile(`^(?:---|> |- |\d+\. )`)
 
 // splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）、引用/清單前綴（回傳
 // blockPrefix，跟標題互斥，只有沒有標題時才會比對）跟段落 marker（含 align 屬性），

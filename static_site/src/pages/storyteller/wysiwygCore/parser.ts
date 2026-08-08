@@ -5,6 +5,7 @@ import {
   assetPublicIdFromUri,
   BG_COLOR_VALUES,
   BLOCK_KIND_BULLET_PREFIX,
+  BLOCK_KIND_HR_PREFIX,
   BLOCK_KIND_NUMBER_PARSE_PATTERN,
   BLOCK_KIND_QUOTE_PREFIX,
   blockKindPrefix,
@@ -402,6 +403,12 @@ function extractBlockKind(line: string): {
   blockKind: BlockKindValue;
   content: string;
 } {
+  if (line.startsWith(BLOCK_KIND_HR_PREFIX)) {
+    return {
+      blockKind: "hr",
+      content: line.slice(BLOCK_KIND_HR_PREFIX.length),
+    };
+  }
   if (line.startsWith(BLOCK_KIND_QUOTE_PREFIX)) {
     return {
       blockKind: "quote",

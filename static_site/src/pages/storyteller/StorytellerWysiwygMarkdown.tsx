@@ -1,4 +1,4 @@
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useId, type CSSProperties, type ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
@@ -75,6 +75,12 @@ const BLOCK_GROUP_SX = {
   },
   "& li": {
     lineHeight: 1.5,
+  },
+  "& hr": {
+    margin: "1.5em 0",
+    border: "none",
+    borderTop: "1px solid",
+    borderColor: "divider",
   },
 } as const;
 
@@ -348,6 +354,18 @@ export function StorytellerWysiwygMarkdown({
                 footnoteIdPrefix,
               )}
             </HeadingOrParagraphTag>
+          );
+        }
+
+        if (group.blockKind === "hr") {
+          // 分隔線沒有行內內容可渲染，也不需要像引用/清單那樣合併成一個容器——
+          // 連續幾條分隔線就是各自獨立的幾條 <hr>。
+          return (
+            <Fragment key={`block-group-${groupIndex}`}>
+              {group.items.map(({ paragraph, index }) => (
+                <hr key={paragraph.markerId ?? index} />
+              ))}
+            </Fragment>
           );
         }
 

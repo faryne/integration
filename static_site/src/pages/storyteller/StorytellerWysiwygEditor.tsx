@@ -12,6 +12,7 @@ import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
@@ -85,6 +86,7 @@ import {
   type TextColorValue,
 } from "./wysiwygCore/whitelist";
 import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 
 interface HoveredComment {
   text: string;
@@ -220,6 +222,17 @@ const BLOCK_KIND_SX = {
   "& [data-block-kind='number']:first-child": {
     counterReset: "storyteller-ordered-list",
   },
+  // 分隔線本身不接受行內內容（見 markerParagraph.ts 的 insertHorizontalRule 說明），這裡
+  // 只是防禦性地把文字視覺隱藏（萬一有舊資料或極端操作讓文字混進這個段落），真正畫出來
+  // 的線是 border-top，不是靠段落的文字內容。
+  "& [data-block-kind='hr']": {
+    minHeight: "1em",
+    margin: "0.5em 0",
+    borderTop: "1px solid",
+    borderColor: "divider",
+    fontSize: 0,
+    lineHeight: 0,
+  },
 } as const;
 
 const BLOCK_KIND_OPTIONS: {
@@ -324,6 +337,10 @@ export const StorytellerWysiwygEditor = forwardRef<
   const [hoveredFootnote, setHoveredFootnote] =
     useState<HoveredFootnote | null>(null);
 
+  const isComposingRef = useRef(false);
+  const latestValueRef = useRef(value);
+  latestValueRef.current = value;
+
   const editor = useEditor({
     extensions: wysiwygCoreExtensions,
     content: markdownToDoc(value, projectPublicId, assetEnabled),
@@ -361,9 +378,40 @@ export const StorytellerWysiwygEditor = forwardRef<
     },
   });
 
+  // 注音／拼音等 IME 選字期間，瀏覽器會用 compositionstart～compositionend 包住整段合成
+  // 輸入；這段期間如果外部同步呼叫 editor.commands.setContent 整份換掉 ProseMirror 文件，
+  // 會打斷合成中的 DOM 節點，導致游標跳到文件最後，或是把還沒選字的注音符號原樣提交
+  // 成文字。IME 合成中先記下來延後處理，等 compositionend 再用當下最新的 value 補做一次
+  // 同步（而不是用合成開始當下快照的舊值，避免蓋掉使用者剛選好的字）。
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const syncFromLatestValue = () => {
+      if (latestValueRef.current === lastEmittedRef.current) return;
+      lastEmittedRef.current = latestValueRef.current;
+      editor.commands.setContent(
+        markdownToDoc(latestValueRef.current, projectPublicId, assetEnabled),
+      );
+    };
+    const handleCompositionStart = () => {
+      isComposingRef.current = true;
+    };
+    const handleCompositionEnd = () => {
+      isComposingRef.current = false;
+      syncFromLatestValue();
+    };
+    dom.addEventListener("compositionstart", handleCompositionStart);
+    dom.addEventListener("compositionend", handleCompositionEnd);
+    return () => {
+      dom.removeEventListener("compositionstart", handleCompositionStart);
+      dom.removeEventListener("compositionend", handleCompositionEnd);
+    };
+  }, [editor, projectPublicId, assetEnabled]);
+
   useEffect(() => {
     if (!editor) return;
     if (value === lastEmittedRef.current) return;
+    if (isComposingRef.current) return;
     lastEmittedRef.current = value;
     editor.commands.setContent(
       markdownToDoc(value, projectPublicId, assetEnabled),
@@ -389,7 +437,8 @@ export const StorytellerWysiwygEditor = forwardRef<
                     publicId: asset.publicId,
                     src: asset.src ?? "",
                     alt: asset.alt ?? "",
-                    projectPublicId: asset.projectPublicId ?? projectPublicId ?? "",
+                    projectPublicId:
+                      asset.projectPublicId ?? projectPublicId ?? "",
                   },
                 },
               ],
@@ -583,6 +632,12 @@ export const StorytellerWysiwygEditor = forwardRef<
   const toggleBlockKind = (kind: Exclude<BlockKindValue, "none">) => {
     const next = editorState.blockKind === kind ? DEFAULT_BLOCK_KIND : kind;
     editor.chain().focus().setBlockKind(next).run();
+  };
+
+  // 分隔線是一次性插入動作（不是像引用/清單那樣「切換目前段落的持續狀態」），所以不走
+  // toggleBlockKind／ToggleButton selected 那套邏輯，單純呼叫 insertHorizontalRule。
+  const handleInsertHorizontalRule = () => {
+    editor.chain().focus().insertHorizontalRule().run();
   };
 
   // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
@@ -816,6 +871,11 @@ export const StorytellerWysiwygEditor = forwardRef<
                 </ToggleButton>
               </Tooltip>
             ))}
+            <Tooltip title="插入分隔線">
+              <ToggleButton value="hr" onClick={handleInsertHorizontalRule}>
+                <HorizontalRuleIcon fontSize="small" />
+              </ToggleButton>
+            </Tooltip>
           </ToggleButtonGroup>
 
           <Divider orientation="vertical" flexItem />
@@ -934,6 +994,9 @@ export const StorytellerWysiwygEditor = forwardRef<
               </ToggleButtonGroup>
             </>
           )}
+
+          <Divider orientation="vertical" flexItem />
+          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
 
           {toolbarExtra && (
             <>
