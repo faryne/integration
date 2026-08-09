@@ -485,7 +485,7 @@ type StoryBookmarkOutput struct {
 	StoryVersionID       *uint64            `gorm:"column:story_version_id" json:"story_version_id,omitempty"`
 	LatestStoryVersionID uint64             `gorm:"column:latest_story_version_id" json:"latest_story_version_id,omitempty"`
 	LineID               string             `gorm:"column:line_id" json:"line_id"`
-	LinePreview          string             `gorm:"column:line_preview" json:"line_preview,omitempty"`
+	LinePreview          string             `gorm:"-" json:"line_preview,omitempty"`
 	// PageSort 不能加 omitempty——第一頁的排序值就是 0，omitempty 會把這個合法值
 	// 誤判成「空值」整欄從 JSON 消失，前端讀到 undefined 後 (page_sort ?? -1) < 0
 	// 就會把第一頁的書籤誤判成「頁面已被刪除」。

@@ -63,6 +63,7 @@ export const BLOCK_KIND_VALUES = [
   "bullet",
   "number",
   "hr",
+  "table-row",
 ] as const;
 export type BlockKindValue = (typeof BLOCK_KIND_VALUES)[number];
 export const DEFAULT_BLOCK_KIND: BlockKindValue = "none";
@@ -87,6 +88,20 @@ export const BLOCK_KIND_NUMBER_CANONICAL_PREFIX = "1. ";
 /** 解析有序清單前綴用的寬鬆比對規則（任何數字＋`. `），跟上面固定輸出的 canonical 前綴分開。 */
 export const BLOCK_KIND_NUMBER_PARSE_PATTERN = /^\d+\. /;
 
+/**
+ * 表格列，2026-08-08 加入。跟引用/清單一樣是「前綴 + 後面接內容」，但內容本身還有一層
+ * 「用 `|` 分隔儲存格」的結構——這一層刻意不放進解析器（parser.ts 的 ParsedParagraph 仍然
+ * 只有扁平的 `runs`，跟其他 blockKind 一樣），改成在渲染端（StorytellerWysiwygMarkdown.tsx
+ * 的 splitRunsIntoCells）對「已經解析完粗體/顏色等行內語法之後」的 ParsedRun[] 依
+ * `run.text` 裡的字面 `|` 字元切欄位。這是刻意的順序：如果反過來在「還沒解析行內語法的
+ * 原始字串」上直接用 `|` 切，會誤切到 footnote/連結等 marker 屬性值（`note="..."`／
+ * `href="..."`）裡剛好含有的 `|` 字元，把 marker 語法切壞；解析完的 run 裡，屬性值是
+ * 獨立欄位（run.footnoteNote／run.href 等），不會混進 run.text，這時候切才安全。也因此
+ * 編輯器裡打字時的體驗很單純：`|` 就是一個普通字元，使用者自己輸入 `|` 來分隔欄位，
+ * 編輯區不會、也不需要真的長出表格網格（真正的 <table> 巢狀 DOM 只在閱讀頁渲染）。
+ */
+export const BLOCK_KIND_TABLE_ROW_PREFIX = "|";
+
 /** 依 blockKind 回傳序列化/diff 顯示要用的行首前綴，`"none"` 回傳空字串。parser.ts
  * 的 stripMarkerForDiffLine 跟 serializer.ts 的 serializeParagraph 共用同一份規則。 */
 export function blockKindPrefix(blockKind: BlockKindValue): string {
@@ -99,6 +114,8 @@ export function blockKindPrefix(blockKind: BlockKindValue): string {
       return BLOCK_KIND_NUMBER_CANONICAL_PREFIX;
     case "hr":
       return BLOCK_KIND_HR_PREFIX;
+    case "table-row":
+      return BLOCK_KIND_TABLE_ROW_PREFIX;
     default:
       return "";
   }
@@ -243,7 +260,6 @@ export type BgColorValue = (typeof BG_COLOR_VALUES)[number];
 
 export const ASSET_URI_PREFIX = "steamloom-asset://";
 export const ASSET_PUBLIC_ID_PATTERN_SOURCE = "[A-Za-z0-9._~-]+";
-export const MARKDOWN_IMAGE_PATTERN = /^!\[([^\]\n\r]*)\]\(([^)\s]+)\)$/;
 const ASSET_URI_PATTERN = new RegExp(
   `^${ASSET_URI_PREFIX}(${ASSET_PUBLIC_ID_PATTERN_SOURCE})$`,
 );

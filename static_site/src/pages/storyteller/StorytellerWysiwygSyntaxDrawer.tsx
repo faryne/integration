@@ -16,6 +16,7 @@ import {
   BLOCK_KIND_HR_PREFIX,
   BLOCK_KIND_NUMBER_CANONICAL_PREFIX,
   BLOCK_KIND_QUOTE_PREFIX,
+  BLOCK_KIND_TABLE_ROW_PREFIX,
   HEADING_LEVELS,
   MARK_SYNTAX_WHITELIST,
   type MarkName,
@@ -117,6 +118,15 @@ export function StorytellerWysiwygSyntaxDrawer({
       label: "分隔線",
       syntax: BLOCK_KIND_HR_PREFIX,
       description: "獨立一行打三個減號，會自動變成分隔線並換到下一行。",
+    },
+    {
+      label: "表格列",
+      syntax:
+        `${BLOCK_KIND_TABLE_ROW_PREFIX} A ${BLOCK_KIND_TABLE_ROW_PREFIX} B ${BLOCK_KIND_TABLE_ROW_PREFIX} CC ${BLOCK_KIND_TABLE_ROW_PREFIX}\n` +
+        `${BLOCK_KIND_TABLE_ROW_PREFIX}--${BLOCK_KIND_TABLE_ROW_PREFIX}--${BLOCK_KIND_TABLE_ROW_PREFIX}--${BLOCK_KIND_TABLE_ROW_PREFIX}\n` +
+        `${BLOCK_KIND_TABLE_ROW_PREFIX} 1 ${BLOCK_KIND_TABLE_ROW_PREFIX} 2 ${BLOCK_KIND_TABLE_ROW_PREFIX} 3 ${BLOCK_KIND_TABLE_ROW_PREFIX}`,
+      description:
+        "每一行是一個表格列，自己打 | 分隔欄位；連續幾行都是表格列會合併成一個表格。第二列打全是 - 的分隔列（比照標準 markdown 表頭寫法）會把第一列變成粗體表頭，分隔列本身不會顯示出來；不打分隔列的話所有列都當一般資料列。欄位內只支援粗體/斜體/底線/上下標，不支援顏色/連結/腳注/註解。",
     },
   ];
 

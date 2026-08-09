@@ -5,7 +5,9 @@ import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
   computeFootnoteNumbering,
+  groupParagraphsByBlockKind,
   parseMarkdownToParagraphs,
+  splitRunsIntoCells,
   storyHeadingAnchorId,
   type FootnoteListEntry,
   type FootnoteNumbering,
@@ -13,11 +15,7 @@ import {
   type ParsedRun,
 } from "./wysiwygCore/parser";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
-import {
-  isSafeHref,
-  type BlockKindValue,
-  type MarkName,
-} from "./wysiwygCore/whitelist";
+import { isSafeHref, type MarkName } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
@@ -81,6 +79,21 @@ const BLOCK_GROUP_SX = {
     border: "none",
     borderTop: "1px solid",
     borderColor: "divider",
+  },
+  "& table": {
+    margin: "0 0 0.5em 0",
+    borderCollapse: "collapse",
+    width: "100%",
+  },
+  "& td, & th": {
+    border: "1px solid",
+    borderColor: "divider",
+    padding: "6px 10px",
+    verticalAlign: "top",
+  },
+  "& th": {
+    backgroundColor: "action.hover",
+    fontWeight: 700,
   },
 } as const;
 
@@ -211,36 +224,25 @@ function renderParagraphRuns(
   return nodes;
 }
 
-interface ParagraphGroup {
-  blockKind: BlockKindValue;
-  items: { paragraph: ParsedParagraph; index: number }[];
-}
+/** 每個儲存格去除頭尾空白後只剩下 -／: 字元（例如 `---`、`:--:`），視為表格分隔列的一格。 */
+const TABLE_SEPARATOR_CELL_PATTERN = /^:?-+:?$/;
 
 /**
- * 把連續同 blockKind（引用/清單）的段落分成一組，"none"（一般段落/標題）的段落
- * 永遠各自獨立成一組——只有引用/清單需要合併成一個 <blockquote>/<ul>/<ol> 容器，
- * 一般段落跟標題本來就是各自獨立渲染，不需要合併。
+ * 標準 markdown 表格慣例在表頭列後面接一列 `|---|---|---|` 當分隔列——這是主要支援的
+ * 輸入方式（見 whitelist.ts 的 BLOCK_KIND_TABLE_ROW_PREFIX 說明）。偵測到分隔列就不當
+ * 資料列渲染，而是把它前一列改渲染成 <thead><th>。儲存內容本身沒有 header/body 的
+ * 概念，這是渲染時才做的判斷；沒打分隔列的話所有列都當一般資料列。
  */
-function groupParagraphsByBlockKind(
-  paragraphs: ParsedParagraph[],
-): ParagraphGroup[] {
-  const groups: ParagraphGroup[] = [];
-  paragraphs.forEach((paragraph, index) => {
-    const last = groups[groups.length - 1];
-    if (
-      last &&
-      last.blockKind === paragraph.blockKind &&
-      paragraph.blockKind !== "none"
-    ) {
-      last.items.push({ paragraph, index });
-    } else {
-      groups.push({
-        blockKind: paragraph.blockKind,
-        items: [{ paragraph, index }],
-      });
-    }
-  });
-  return groups;
+function isTableSeparatorRow(paragraph: ParsedParagraph): boolean {
+  const cells = splitRunsIntoCells(paragraph.runs);
+  return cells.every((cell) =>
+    TABLE_SEPARATOR_CELL_PATTERN.test(
+      cell
+        .map((run) => run.text)
+        .join("")
+        .trim(),
+    ),
+  );
 }
 
 /** 渲染一個段落的行內內容（runs），不含外層標籤——給一般段落/標題跟清單/引用項目共用。 */
@@ -366,6 +368,68 @@ export function StorytellerWysiwygMarkdown({
                 <hr key={paragraph.markerId ?? index} />
               ))}
             </Fragment>
+          );
+        }
+
+        if (group.blockKind === "table-row") {
+          // 連續的表格列合併成一個 <table>，每個段落是一個 <tr>；儲存格是渲染時才用
+          // splitRunsIntoCells 從已解析的 runs 切出來的（見 whitelist.ts 的
+          // BLOCK_KIND_TABLE_ROW_PREFIX 說明），不是解析階段就存成巢狀結構。
+          const rows = group.items;
+          const hasHeaderSeparator =
+            rows.length > 1 && isTableSeparatorRow(rows[1].paragraph);
+          const headerItem = hasHeaderSeparator ? rows[0] : null;
+          const bodyItems = rows.filter(({ paragraph }, itemIndex) => {
+            if (hasHeaderSeparator && itemIndex <= 1) return false;
+            return !isTableSeparatorRow(paragraph);
+          });
+          return (
+            <Box component="table" key={`block-group-${groupIndex}`}>
+              {headerItem && (
+                <thead>
+                  <tr>
+                    {splitRunsIntoCells(headerItem.paragraph.runs).map(
+                      (cellRuns, cellIndex) => (
+                        <th
+                          key={cellIndex}
+                          style={{ textAlign: headerItem.paragraph.align }}
+                        >
+                          {cellRuns.length === 0
+                            ? " "
+                            : renderParagraphRuns(
+                                cellRuns,
+                                footnoteNumbering.numbers,
+                                footnoteIdPrefix,
+                              )}
+                        </th>
+                      ),
+                    )}
+                  </tr>
+                </thead>
+              )}
+              <tbody>
+                {bodyItems.map(({ paragraph, index }) => (
+                  <tr key={paragraph.markerId ?? index}>
+                    {splitRunsIntoCells(paragraph.runs).map(
+                      (cellRuns, cellIndex) => (
+                        <td
+                          key={cellIndex}
+                          style={{ textAlign: paragraph.align }}
+                        >
+                          {cellRuns.length === 0
+                            ? " "
+                            : renderParagraphRuns(
+                                cellRuns,
+                                footnoteNumbering.numbers,
+                                footnoteIdPrefix,
+                              )}
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </Box>
           );
         }
 

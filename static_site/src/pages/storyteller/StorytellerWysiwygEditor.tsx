@@ -18,6 +18,7 @@ import LinkOffIcon from "@mui/icons-material/LinkOff";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
+import TableRowsIcon from "@mui/icons-material/TableRows";
 import {
   Box,
   Button,
@@ -233,6 +234,15 @@ const BLOCK_KIND_SX = {
     fontSize: 0,
     lineHeight: 0,
   },
+  // 表格列在編輯區就是一般文字段落，`|` 是使用者自己打出來的字面字元（見 whitelist.ts 的
+  // BLOCK_KIND_TABLE_ROW_PREFIX 說明，編輯區故意不做真的表格網格），這裡只用底色/等寬字體
+  // 給一個「這是表格列」的視覺提示，不是真的欄位邊界。
+  "& [data-block-kind='table-row']": {
+    fontFamily: "monospace",
+    backgroundColor: "action.hover",
+    borderRadius: "4px",
+    padding: "2px 6px",
+  },
 } as const;
 
 const BLOCK_KIND_OPTIONS: {
@@ -243,6 +253,7 @@ const BLOCK_KIND_OPTIONS: {
   { value: "quote", label: "引用", Icon: FormatQuoteIcon },
   { value: "bullet", label: "無序清單", Icon: FormatListBulletedIcon },
   { value: "number", label: "有序清單", Icon: FormatListNumberedIcon },
+  { value: "table-row", label: "表格列（用 | 分隔欄位）", Icon: TableRowsIcon },
 ];
 
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
