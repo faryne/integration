@@ -8,6 +8,7 @@ import {
   BLOCK_KIND_HR_PREFIX,
   BLOCK_KIND_NUMBER_PARSE_PATTERN,
   BLOCK_KIND_QUOTE_PREFIX,
+  BLOCK_KIND_TABLE_ROW_PREFIX,
   blockKindPrefix,
   COMMENT_COLOR_VALUES,
   DEFAULT_ALIGNMENT,
@@ -18,7 +19,6 @@ import {
   INLINE_MARKER_TYPES,
   isSafeHref,
   LINK_TARGET_VALUES,
-  MARKDOWN_IMAGE_PATTERN,
   MARKER_ALIGN_ATTR,
   MARKER_BG_COLOR_ATTR,
   MARKER_CLOSE,
@@ -140,6 +140,13 @@ const INLINE_MARKER_OPEN = new RegExp(
   "y",
 );
 
+// 行內圖片語法的開頭（sticky，用法跟 INLINE_MARKER_OPEN 一樣）：group 1 = alt 文字／
+// group 2 = 來源網址（資產 URI 或外部連結，安不安全交給呼叫端的 assetPublicIdFromUri／
+// isSafeHref 判斷）。刻意不要求整段內容從頭到尾只有這個語法——圖片本來就可能出現在
+// 段落裡任何位置、前後還有其他文字（例如編輯器裡先打字、中間插入圖片、後面接著打字），
+// 舊版用整行 anchor 的 pattern 只要圖片語法後面多一個字就整段失敗、原樣外洩成文字。
+const INLINE_IMAGE_OPEN = /!\[([^\]\n\r]*)\]\(([^)\s]+)\)/y;
+
 /** 從屬性字串（例如 ` textColor="red"` 或 ` href="https://..." target="_blank"`）抽出認得、且值合法的屬性。 */
 function parseInlineAttrs(attrBlob: string): InlineAttrs {
   const result: InlineAttrs = {};
@@ -226,11 +233,35 @@ type NextToken =
       id: string;
       attrs: InlineAttrs;
       openEnd: number;
+    }
+  | {
+      index: number;
+      kind: "image";
+      alt: string;
+      src: string;
+      matchEnd: number;
     };
 
-/** 從左到右找出下一個「特殊記號」——行內 marker 開頭或行內樣式 delimiter，先出現的優先。 */
-function findNextToken(text: string): NextToken | null {
+/** 從左到右找出下一個「特殊記號」——行內 marker 開頭、圖片語法開頭，或行內樣式
+ * delimiter，先出現的優先。enableAssets 為 false 時完全不比對圖片語法（給停用資產
+ * 功能的編輯器實例用，見 ParseLineOptions 的說明），圖片語法的字面文字原樣落在
+ * plain text run 裡。 */
+function findNextToken(text: string, enableAssets: boolean): NextToken | null {
   for (let i = 0; i < text.length; i++) {
+    if (enableAssets && text[i] === "!") {
+      INLINE_IMAGE_OPEN.lastIndex = i;
+      const match = INLINE_IMAGE_OPEN.exec(text);
+      if (match && match.index === i) {
+        return {
+          index: i,
+          kind: "image",
+          alt: match[1],
+          src: match[2],
+          matchEnd: i + match[0].length,
+        };
+      }
+      continue;
+    }
     if (text[i] === MARKER_OPEN) {
       INLINE_MARKER_OPEN.lastIndex = i;
       const match = INLINE_MARKER_OPEN.exec(text);
@@ -257,17 +288,47 @@ function findNextToken(text: string): NextToken | null {
 
 /**
  * 非白名單語法（標題、清單、表格、程式碼區塊等）一律不會被比對到，會原封不動落在
- * plain text run 裡，滿足「略過解析、以純文字顯示」的規則。行內樣式（粗體等 delimiter）
- * 跟行內 marker（span 顏色）在這裡一起處理，兩者都可以互相巢狀（顏色包粗體、粗體包顏色）。
+ * plain text run 裡，滿足「略過解析、以純文字顯示」的規則。行內樣式（粗體等 delimiter）、
+ * 行內 marker（span 顏色）、資產圖片在這裡一起處理，都可以互相巢狀／跟其他文字混在
+ * 同一個段落裡（顏色包粗體、粗體包顏色、圖片前後接著文字）。
  */
-function parseInline(text: string): ParsedRun[] {
+function parseInline(text: string, enableAssets: boolean): ParsedRun[] {
   if (text === "") return [];
 
-  const token = findNextToken(text);
+  const token = findNextToken(text, enableAssets);
   if (!token) return [{ text, marks: [] }];
 
   const before = text.slice(0, token.index);
   const beforeRuns: ParsedRun[] = before ? [{ text: before, marks: [] }] : [];
+
+  if (token.kind === "image") {
+    const assetPublicId = assetPublicIdFromUri(token.src);
+    const safeAssetSrc = assetPublicId
+      ? undefined
+      : isSafeHref(token.src)
+        ? token.src
+        : undefined;
+    const after = text.slice(token.matchEnd);
+    if (!assetPublicId && !safeAssetSrc) {
+      // 來源不合法（既不是資產 URI 也不是安全的外部連結）：跟其他找不到合法收尾的
+      // token 一樣，整個記號當純文字，繼續往後掃描。
+      return [
+        { text: text.slice(0, token.matchEnd), marks: [] },
+        ...parseInline(after, enableAssets),
+      ];
+    }
+    return [
+      ...beforeRuns,
+      {
+        text: "",
+        marks: [],
+        assetAlt: sanitizeMarkdownImageAlt(token.alt),
+        assetPublicId: assetPublicId ?? undefined,
+        assetSrc: safeAssetSrc,
+      },
+      ...parseInline(after, enableAssets),
+    ];
+  }
 
   if (token.kind === "delimiter") {
     const delimiter = token.delimiter.delimiter;
@@ -277,16 +338,16 @@ function parseInline(text: string): ParsedRun[] {
       // 找不到對應的結尾記號：把這個記號（連同前面的純文字）當純文字，繼續往後掃描。
       return [
         { text: text.slice(0, searchFrom), marks: [] },
-        ...parseInline(text.slice(searchFrom)),
+        ...parseInline(text.slice(searchFrom), enableAssets),
       ];
     }
     const innerRaw = text.slice(searchFrom, closeIndex);
     const after = text.slice(closeIndex + delimiter.length);
-    const innerRuns = parseInline(innerRaw).map((run) => ({
+    const innerRuns = parseInline(innerRaw, enableAssets).map((run) => ({
       ...run,
       marks: [...run.marks, token.delimiter.markName],
     }));
-    return [...beforeRuns, ...innerRuns, ...parseInline(after)];
+    return [...beforeRuns, ...innerRuns, ...parseInline(after, enableAssets)];
   }
 
   // token.kind === "marker"：找對應 id 的結束標記 ⟦/<id>⟧。
@@ -296,15 +357,15 @@ function parseInline(text: string): ParsedRun[] {
     // 找不到結束標記：開頭標記整段當純文字，繼續往後掃描。
     return [
       { text: text.slice(0, token.openEnd), marks: [] },
-      ...parseInline(text.slice(token.openEnd)),
+      ...parseInline(text.slice(token.openEnd), enableAssets),
     ];
   }
   const innerRaw = text.slice(token.openEnd, closeIndex);
   const after = text.slice(closeIndex + closeTag.length);
-  const innerRuns = parseInline(innerRaw).map((run) =>
+  const innerRuns = parseInline(innerRaw, enableAssets).map((run) =>
     applyInlineAttrs(run, token.attrs, token.id),
   );
-  return [...beforeRuns, ...innerRuns, ...parseInline(after)];
+  return [...beforeRuns, ...innerRuns, ...parseInline(after, enableAssets)];
 }
 
 /** 兩個 run 的「格式」是否完全相同（marks 序列＋顏色＋連結＋腳注＋註解），normalizeRuns 用來決定能不能合併。 */
@@ -312,6 +373,8 @@ function sameFormatting(a: ParsedRun, b: ParsedRun): boolean {
   return (
     !a.assetPublicId &&
     !b.assetPublicId &&
+    !a.assetSrc &&
+    !b.assetSrc &&
     a.marks.length === b.marks.length &&
     a.marks.every((mark, i) => mark === b.marks[i]) &&
     a.textColor === b.textColor &&
@@ -334,6 +397,52 @@ function normalizeRuns(runs: ParsedRun[]): ParsedRun[] {
     }
   }
   return merged;
+}
+
+/** 一個儲存格「空白」：完全沒有 run，或所有 run 都不是資產圖片、文字內容 trim 完是空字串。
+ * 給 splitRunsIntoCells 判斷開頭/結尾的裝飾用儲存格能不能丟——裝飾用的 `|` 前後常常會
+ * 帶著使用者自己打字習慣留下的空白（例如收尾多打一格空白才換行），不能只看陣列長度是不是
+ * 0，那樣切出來「只有一個空白字元」的 run 不會被判定成空。 */
+function isBlankCell(cell: ParsedRun[]): boolean {
+  return cell.every(
+    (run) => !run.assetPublicId && !run.assetSrc && run.text.trim() === "",
+  );
+}
+
+/**
+ * 表格列渲染用：把一個 table-row 段落已經解析完成的 runs 依字面 `|` 字元切成多個儲存格。
+ * 必須在 parseInline 之後才能安全地做這件事——見 whitelist.ts 的 BLOCK_KIND_TABLE_ROW_PREFIX
+ * 說明，這時候 marker 的屬性值（footnoteNote／href 等）已經跟 run.text 分開，切 `|` 不會
+ * 誤切到屬性值裡剛好出現的 `|` 字元。資產圖片 run（沒有 text 概念）整個算進目前儲存格，
+ * 不參與切割。開頭/結尾的空白儲存格都視為裝飾用途丟棄——table-row 的行首 `|` 本來就會被
+ * blockKind 前綴（見 BLOCK_KIND_TABLE_ROW_PREFIX）自動吃掉一個，使用者如果比照常見
+ * markdown 表格習慣「每一列開頭結尾都打 `|`」（`| a | b | c |`），實際存進 runs 的文字
+ * 就會多出一個開頭的空欄；結尾同理（收尾的 `|` 是裝飾，不代表真的多一欄，就算後面還多打了
+ * 一格空白也一樣是裝飾）。兩邊都丟，不管使用者打不打這兩側的裝飾用 `|`、打不打尾隨空白，
+ * 都能切出正確的欄數，但至少保留一個儲存格，不會切出 0 欄。
+ */
+export function splitRunsIntoCells(runs: ParsedRun[]): ParsedRun[][] {
+  const cells: ParsedRun[][] = [[]];
+  for (const run of runs) {
+    if (
+      (run.assetPublicId ?? run.assetSrc) !== undefined ||
+      !run.text.includes("|")
+    ) {
+      cells[cells.length - 1].push(run);
+      continue;
+    }
+    run.text.split("|").forEach((piece, index) => {
+      if (index > 0) cells.push([]);
+      if (piece !== "") cells[cells.length - 1].push({ ...run, text: piece });
+    });
+  }
+  if (cells.length > 1 && isBlankCell(cells[0])) {
+    cells.shift();
+  }
+  if (cells.length > 1 && isBlankCell(cells[cells.length - 1])) {
+    cells.pop();
+  }
+  return cells;
 }
 
 /**
@@ -425,6 +534,12 @@ function extractBlockKind(line: string): {
       content: line.slice(BLOCK_KIND_BULLET_PREFIX.length),
     };
   }
+  if (line.startsWith(BLOCK_KIND_TABLE_ROW_PREFIX)) {
+    return {
+      blockKind: "table-row",
+      content: line.slice(BLOCK_KIND_TABLE_ROW_PREFIX.length),
+    };
+  }
   return { blockKind: DEFAULT_BLOCK_KIND, content: line };
 }
 
@@ -494,28 +609,9 @@ function parseLine(
       ? { blockKind: DEFAULT_BLOCK_KIND, content: afterHeading }
       : extractBlockKind(afterHeading);
   const { markerId, align, content } = extractMarker(afterBlockKind);
-  const assetMatch = options.enableAssets
-    ? content.match(MARKDOWN_IMAGE_PATTERN)
-    : null;
-  const assetSrc = assetMatch?.[2] ?? "";
-  const assetPublicId = assetPublicIdFromUri(assetSrc);
-  const safeAssetSrc = assetPublicId
-    ? undefined
-    : isSafeHref(assetSrc)
-      ? assetSrc
-      : undefined;
-  const runs =
-    assetMatch && (assetPublicId || safeAssetSrc)
-      ? [
-          {
-            text: "",
-            marks: [],
-            assetAlt: sanitizeMarkdownImageAlt(assetMatch[1]),
-            assetPublicId: assetPublicId ?? undefined,
-            assetSrc: safeAssetSrc,
-          },
-        ]
-      : normalizeRuns(parseInline(content));
+  // 圖片語法（連同其他行內樣式/marker）都交給 parseInline 的 tokenizer 統一處理，見那邊
+  // 的說明——不再要求整段內容從頭到尾只有圖片語法，圖片前後接著其他文字也能正確解析。
+  const runs = normalizeRuns(parseInline(content, options.enableAssets));
 
   return { markerId, align, headingLevel, blockKind, runs };
 }
@@ -567,6 +663,42 @@ export function parseMarkdownToParagraphs(
   options: ParseLineOptions = { enableAssets: true },
 ): ParsedParagraph[] {
   return markdown.split("\n").map((line) => parseLine(line, options));
+}
+
+export interface ParagraphGroup {
+  blockKind: BlockKindValue;
+  items: { paragraph: ParsedParagraph; index: number }[];
+}
+
+/**
+ * 把連續同 blockKind（引用/清單/表格列等）的段落分成一組，"none"（一般段落/標題）的
+ * 段落永遠各自獨立成一組——只有引用/清單/表格這類需要合併成一個 <blockquote>/<ul>/<ol>/
+ * <table> 容器，一般段落跟標題本來就是各自獨立渲染，不需要合併。`items[].index` 是段落
+ * 在傳入的 `paragraphs` 陣列裡的原始位置，呼叫端若是傳整篇故事的完整段落陣列（而不是
+ * 單行），這個 index 就等於原始行號——閱讀頁的書籤機制拿這個當「這一組的定位點」用
+ * （見 Reader.tsx），不是只給 StorytellerWysiwygMarkdown 這個渲染元件內部用，所以獨立
+ * 匯出、不是渲染邏輯的私有細節。
+ */
+export function groupParagraphsByBlockKind(
+  paragraphs: ParsedParagraph[],
+): ParagraphGroup[] {
+  const groups: ParagraphGroup[] = [];
+  paragraphs.forEach((paragraph, index) => {
+    const last = groups[groups.length - 1];
+    if (
+      last &&
+      last.blockKind === paragraph.blockKind &&
+      paragraph.blockKind !== "none"
+    ) {
+      last.items.push({ paragraph, index });
+    } else {
+      groups.push({
+        blockKind: paragraph.blockKind,
+        items: [{ paragraph, index }],
+      });
+    }
+  });
+  return groups;
 }
 
 /**

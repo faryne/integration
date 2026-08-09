@@ -44,6 +44,7 @@ import {
 } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import {
   computeFootnoteNumbering,
+  groupParagraphsByBlockKind,
   parseMarkdownToParagraphs,
   storyHeadingAnchorId,
   type FootnoteNumbering,
@@ -956,6 +957,18 @@ function ContentMetaHeader({
 
 type BookmarkMode = "full" | "removeOnly" | "none";
 
+/**
+ * 書籤／捲動高亮／DOM 錨點的定位單位是「渲染分組」（見 groupParagraphsByBlockKind），
+ * 不是原始行號：一般段落/標題（blockKind "none"）永遠各自獨立成一組，locator 就是它
+ * 自己那一行；引用/清單/表格/分隔線這類會合併成一組的，locator 是這一組第一行的原始
+ * 行號——跟 StorytellerWysiwygMarkdown 在閱讀頁把這些行合併渲染成一個
+ * <blockquote>/<ul>/<table> 的分組結果完全一致，書籤／書籤預覽（Go 後端的
+ * groupStoryLinesByBlockKind）、捲動跳轉三邊都要用同一套規則，不然書籤會停在跟畫面上
+ * 看到的分組對不起來的位置。2026-08-09 起從「逐行」改成「逐組」，理由：以前每行各自
+ * 一個書籤按鈕，對著表格裡的某一列下書籤會很怪（見設計討論）；有序清單也因此不再需要
+ * orderedListStart 接續 hack——整組清單現在一次交給一個 StorytellerWysiwygMarkdown
+ * 實例渲染，原生 <ol> 自己就能連續編號。
+ */
 function StoryContentLines({
   content,
   bookmarkedLines,
@@ -971,53 +984,42 @@ function StoryContentLines({
   pendingLines: Set<number>;
   bookmarkMode: BookmarkMode;
   highlightedLine?: number;
-  onToggleBookmark: (lineIndex: number) => void;
+  onToggleBookmark: (groupIndex: number) => void;
   // 整篇故事共用的腳注編號＋DOM id 前綴（見 StorytellerWysiwygMarkdown 的
-  // footnoteNumbering／footnoteIdPrefix 說明）——這裡逐行渲染，每一行都要用同一份，
-  // 不能讓每行各自算，不然編號會從 1 重來、腳注清單也會每行各渲染一次。
+  // footnoteNumbering／footnoteIdPrefix 說明）——這裡逐組渲染，每一組都要用同一份，
+  // 不能讓每組各自算，不然編號會從 1 重來、腳注清單也會每組各渲染一次。
   footnoteNumbering: FootnoteNumbering;
   footnoteIdPrefix: string;
 }) {
   const lines = content.split("\n");
-  // 逐行預先解析一次：isBlank 沿用原本判斷空行的邏輯（新版內容每行都被 marker 包住，
-  // 就算段落本身是空的，原始字串也不會是空字串，要用解析結果的實際文字判斷，不是看
-  // 原始字串是否為空白，不然舊資料的空行間距在遷移後會失效）；orderedListStart 是這一行
-  // 在目前這串連續有序清單裡排第幾個——原生 <ol> 沒辦法跨越逐行渲染的多個
-  // StorytellerWysiwygMarkdown 實例接續編號（每個實例天生只有一個 <li>），所以自己算好
-  // 傳進去，讓它用 <ol start={N}> 補回視覺上的連續編號（見該元件的 orderedListStart 說明）。
-  // 兩者共用同一次 parseMarkdownToParagraphs 呼叫，跟下面的 JSX .map() 分開算好、避免
-  // 邏輯重複一份、也避免在 render callback 裡放 mutable 變數。
-  // 用一般 for 迴圈直接在這個函式的作用域裡累加，不透過 .map() 的 callback 閉包改外層
-  // 變數——React Compiler 的靜態分析會把「在 callback 裡改外層變數」當成不安全的
-  // render 期間 mutation 擋下來，一般 for 迴圈就不會有這個問題。
-  const parsedLines: { isBlank: boolean; orderedListStart: number }[] = [];
-  let orderedListRunLength = 0;
-  for (const line of lines) {
-    const paragraph = parseMarkdownToParagraphs(line)[0];
-    const isBlank = paragraph.runs.every(
-      (run) => !run.assetSrc && !run.assetPublicId && run.text.trim() === "",
-    );
-    orderedListRunLength =
-      !isBlank && paragraph.blockKind === "number"
-        ? orderedListRunLength + 1
-        : 0;
-    parsedLines.push({ isBlank, orderedListStart: orderedListRunLength });
-  }
+  const groups = groupParagraphsByBlockKind(parseMarkdownToParagraphs(content));
   return (
     <Stack spacing={0.25}>
-      {lines.map((line, index) => {
-        const { isBlank: isBlankLine, orderedListStart } = parsedLines[index];
-        if (isBlankLine) {
-          return <Box key={index} sx={{ height: 12 }} />;
+      {groups.map((group) => {
+        const groupIndex = group.items[0].index;
+        // 空行判斷沿用原本邏輯（新版內容每行都被 marker 包住，就算段落本身是空的，原始
+        // 字串也不會是空字串，要用解析結果的實際文字判斷）——只有 "none" 分組（單行）
+        // 才可能是純粹的空行間距，引用/清單/表格這類多行分組不會是空行，不需要判斷。
+        if (group.blockKind === "none") {
+          const isBlank = group.items[0].paragraph.runs.every(
+            (run) =>
+              !run.assetSrc && !run.assetPublicId && run.text.trim() === "",
+          );
+          if (isBlank) {
+            return <Box key={groupIndex} sx={{ height: 12 }} />;
+          }
         }
-        const isBookmarked = bookmarkedLines.has(index);
+        const isBookmarked = bookmarkedLines.has(groupIndex);
         const showIcon =
           bookmarkMode === "full" ||
           (bookmarkMode === "removeOnly" && isBookmarked);
+        const groupContent = group.items
+          .map(({ index }) => lines[index])
+          .join("\n");
         return (
           <Box
-            key={index}
-            id={`bookmark-line-${index}`}
+            key={groupIndex}
+            id={`bookmark-line-${groupIndex}`}
             sx={{
               display: "flex",
               alignItems: "flex-start",
@@ -1025,7 +1027,7 @@ function StoryContentLines({
               borderRadius: 1,
               transition: "background-color .6s",
               bgcolor:
-                highlightedLine === index ? "action.selected" : undefined,
+                highlightedLine === groupIndex ? "action.selected" : undefined,
               "&:hover .bookmark-ghost": { opacity: 1 },
             }}
           >
@@ -1039,8 +1041,8 @@ function StoryContentLines({
                     <IconButton
                       size="small"
                       aria-label={isBookmarked ? "移除書籤" : "加入書籤"}
-                      disabled={pendingLines.has(index)}
-                      onClick={() => onToggleBookmark(index)}
+                      disabled={pendingLines.has(groupIndex)}
+                      onClick={() => onToggleBookmark(groupIndex)}
                       className={isBookmarked ? undefined : "bookmark-ghost"}
                       sx={{
                         opacity: isBookmarked ? 1 : 0,
@@ -1063,9 +1065,8 @@ function StoryContentLines({
                 footnoteNumbering={footnoteNumbering}
                 footnoteIdPrefix={footnoteIdPrefix}
                 showFootnoteSection={false}
-                orderedListStart={orderedListStart || undefined}
               >
-                {line}
+                {groupContent}
               </StorytellerWysiwygMarkdown>
             </Box>
           </Box>
@@ -1319,7 +1320,11 @@ export default function StorytellerReader() {
     : displayVersionId
       ? "full"
       : "none";
-  const handleToggleBookmark = (lineIndex: number) => {
+  // groupIndex 是 StoryContentLines 分組後、這一組第一行的原始行號（見該元件開頭的
+  // 說明）——存進 API 的 lineId 因此不再是「使用者點的那一行」，而是「使用者點的那一組
+  // 的錨點行」；一般段落/標題本來就是單行一組，行為跟以前沒有差別，差別只在引用/清單/
+  // 表格這類會合併成一組的情況。
+  const handleToggleBookmark = (groupIndex: number) => {
     if (!session) {
       setLoginPromptOpen(true);
       return;
@@ -1327,16 +1332,16 @@ export default function StorytellerReader() {
     if (
       !displayVersionId ||
       !currentItem ||
-      pendingBookmarkLines.has(lineIndex)
+      pendingBookmarkLines.has(groupIndex)
     ) {
       return;
     }
-    const isBookmarked = bookmarkedLines.has(lineIndex);
+    const isBookmarked = bookmarkedLines.has(groupIndex);
     if (isHistoricalView && !isBookmarked) {
       return;
     }
-    setPendingBookmarkLines((prev) => new Set(prev).add(lineIndex));
-    const lineId = String(lineIndex);
+    setPendingBookmarkLines((prev) => new Set(prev).add(groupIndex));
+    const lineId = String(groupIndex);
     const mutationOptions = {
       onSuccess: () => {
         setBookmarkSnackbar({
@@ -1347,7 +1352,7 @@ export default function StorytellerReader() {
       onSettled: () => {
         setPendingBookmarkLines((prev) => {
           const next = new Set(prev);
-          next.delete(lineIndex);
+          next.delete(groupIndex);
           return next;
         });
       },
@@ -1786,9 +1791,15 @@ export default function StorytellerReader() {
       component="span"
       sx={{
         display: { xs: "-webkit-box", md: "block" },
-        overflow: { xs: mobileProjectInfoOpen ? "visible" : "hidden", md: "visible" },
+        overflow: {
+          xs: mobileProjectInfoOpen ? "visible" : "hidden",
+          md: "visible",
+        },
         WebkitBoxOrient: "vertical",
-        WebkitLineClamp: { xs: mobileProjectInfoOpen ? "unset" : 2, md: "unset" },
+        WebkitLineClamp: {
+          xs: mobileProjectInfoOpen ? "unset" : 2,
+          md: "unset",
+        },
       }}
     >
       {project.description}
@@ -1805,11 +1816,7 @@ export default function StorytellerReader() {
               : "公開閱讀"
         }
         color={
-          isPrivateOwnerRoute
-            ? "default"
-            : isShareRoute
-              ? "warning"
-              : "success"
+          isPrivateOwnerRoute ? "default" : isShareRoute ? "warning" : "success"
         }
       />
       {project.authorPenName && (
@@ -2386,12 +2393,7 @@ export default function StorytellerReader() {
             </Collapse>
           </Box>
           <Box sx={{ display: { xs: "none", md: "block" }, flexBasis: "100%" }}>
-            <Stack
-              direction="row"
-              spacing={1}
-              flexWrap="wrap"
-              useFlexGap
-            >
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {projectPrimaryMeta}
               {projectSecondaryMeta}
             </Stack>

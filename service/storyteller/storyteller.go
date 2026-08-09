@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1255,9 +1256,10 @@ func (s *Service) PublicStoryVersions(projectPublicID, storyPublicID string, vie
 }
 
 // ProjectStoryBookmarks 组出專案內所有書籤（文字＋圖片混在一起，依 content_type 分開
-// 處理）：文字書籤去掉行內容裡的 marker 語法；圖片書籤逐一解析所屬話目前的內容 JSON，
-// 算出書籤指到的頁面現在排第幾頁、簽出縮圖網址——頁面已經被刪除的書籤 PageSort 回 -1，
-// 前端可以用這個判斷書籤已經失效。
+// 處理）：文字書籤把對應版本內容分組（groupStoryLinesByBlockKind），找出 line_id 指到的
+// 那一組取預覽文字；圖片書籤逐一解析所屬話目前的內容 JSON，算出書籤指到的頁面現在排第
+// 幾頁、簽出縮圖網址——頁面已經被刪除的書籤 PageSort 回 -1，前端可以用這個判斷書籤已經
+// 失效。文字書籤的分組結果用 version id 快取，同一個版本被多筆書籤指到時不用重複解析。
 func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) ([]storytellerModel.StoryBookmarkOutput, error) {
 	project, err := s.repo.ProjectByPublicIDForReader(userID, projectPublicID)
 	if err != nil {
@@ -1268,9 +1270,27 @@ func (s *Service) ProjectStoryBookmarks(userID uint64, projectPublicID string) (
 		return nil, err
 	}
 	contentByStoryID := make(map[uint64]storytellerModel.StoryImageContent)
+	groupsByVersionID := make(map[uint64][]storyLineGroup)
 	for i := range rows {
 		if rows[i].ContentType != storytellerModel.ProjectContentTypeImage {
-			rows[i].LinePreview = stripBookmarkLineMarker(rows[i].LinePreview)
+			if rows[i].StoryVersionID == nil {
+				continue
+			}
+			versionID := *rows[i].StoryVersionID
+			groups, ok := groupsByVersionID[versionID]
+			if !ok {
+				version, err := s.repo.StoryVersion(rows[i].StoryID, versionID)
+				if err != nil {
+					// 版本可能已被刪除（例如軟刪除的舊版本）；書籤預覽寬鬆處理，找不到就留空，
+					// 不能讓整個書籤列表因為單一筆壞資料整個掛掉。快取這個失敗結果，避免同一個
+					// 版本被多筆書籤指到時重複查詢。
+					groupsByVersionID[versionID] = nil
+					continue
+				}
+				groups = groupStoryLinesByBlockKind(version.Content)
+				groupsByVersionID[versionID] = groups
+			}
+			rows[i].LinePreview = storyBookmarkLinePreview(groups, rows[i].LineID)
 			continue
 		}
 		content, ok := contentByStoryID[rows[i].StoryID]
@@ -1313,9 +1333,134 @@ var storyMarkerPattern = regexp.MustCompile(
 // blockKindPrefixPattern 比照前端 whitelist.ts 的 blockKindPrefix：引用 `> `、無序清單
 // `- `、有序清單「數字 + `. `」（數字不驗證連續性，任何數字都算數，見前端
 // BLOCK_KIND_NUMBER_PARSE_PATTERN 的說明——有序清單一律自動編號，存進去的數字本身
-// 沒有意義）、分隔線 `---`。跟標題前綴互斥，splitHeadingAndMarkerContent 只有在沒有
-// 標題前綴時才會嘗試比對這個 pattern。
-var blockKindPrefixPattern = regexp.MustCompile(`^(?:---|> |- |\d+\. )`)
+// 沒有意義）、分隔線 `---`、表格列開頭的 `|`（列內其餘的 `|` 是儲存格分隔符，不是這裡
+// 要剝掉的行首前綴，字數/書籤預覽會照原樣留著，不特別拆欄位）。跟標題前綴互斥，
+// splitHeadingAndMarkerContent 只有在沒有標題前綴時才會嘗試比對這個 pattern。
+var blockKindPrefixPattern = regexp.MustCompile(`^(?:---|> |- |\d+\. |\|)`)
+
+// storyBlockKind 對應前端 whitelist.ts 的 BlockKindValue，只列 Go 端分組邏輯需要區分的
+// 種類（none 代表一般段落/標題，不會跟其他行合併成一組）。
+type storyBlockKind string
+
+const (
+	storyBlockKindNone     storyBlockKind = "none"
+	storyBlockKindQuote    storyBlockKind = "quote"
+	storyBlockKindBullet   storyBlockKind = "bullet"
+	storyBlockKindNumber   storyBlockKind = "number"
+	storyBlockKindHR       storyBlockKind = "hr"
+	storyBlockKindTableRow storyBlockKind = "table-row"
+)
+
+// blockKindFromPrefix 把 splitHeadingAndMarkerContent 算出來的 headingLevel／blockPrefix
+// 轉成分類用的 storyBlockKind。有序清單的前綴不是固定字串（「數字 + `. `」，數字不驗證
+// 連續性），沒辦法用字面比對，所以用刪去法：排除掉其他三種固定前綴跟空字串後，只要
+// blockKindPrefixPattern 有比對到東西，剩下的可能就只有有序清單——這個假設綁定
+// blockKindPrefixPattern 目前只有這五種 alternative，之後若要再加新的 blockKind 前綴，
+// 這裡也要跟著補一個明確的 case，不能只靠刪去法。
+func blockKindFromPrefix(headingLevel int, blockPrefix string) storyBlockKind {
+	if headingLevel > 0 || blockPrefix == "" {
+		return storyBlockKindNone
+	}
+	switch blockPrefix {
+	case "---":
+		return storyBlockKindHR
+	case "> ":
+		return storyBlockKindQuote
+	case "- ":
+		return storyBlockKindBullet
+	case "|":
+		return storyBlockKindTableRow
+	default:
+		return storyBlockKindNumber
+	}
+}
+
+// storyLineGroup 對應前端 parser.ts 的 groupParagraphsByBlockKind：把連續同 blockKind 的行
+// 合成一組，"none"（一般段落/標題）永遠各自獨立成一組。startIndex 是這組第一行在
+// content.split("\n") 陣列裡的位置（0-based）——書籤的定位單位是「組」而不是原始行號
+// （2026-08-08 起，見 storyteller_story_bookmarks 的欄位說明），startIndex 就是存進
+// StoryBookmark.LineID 的值，兩邊的分組規則必須完全一致，否則書籤定位會跟前端渲染出來的
+// 分組對不上。
+type storyLineGroup struct {
+	blockKind  storyBlockKind
+	startIndex int
+	lines      []string
+}
+
+func groupStoryLinesByBlockKind(content string) []storyLineGroup {
+	lines := strings.Split(content, "\n")
+	groups := make([]storyLineGroup, 0, len(lines))
+	for i, line := range lines {
+		headingLevel, blockPrefix, _ := splitHeadingAndMarkerContent(line)
+		kind := blockKindFromPrefix(headingLevel, blockPrefix)
+		if n := len(groups); n > 0 && groups[n-1].blockKind == kind && kind != storyBlockKindNone {
+			groups[n-1].lines = append(groups[n-1].lines, line)
+			continue
+		}
+		groups = append(groups, storyLineGroup{blockKind: kind, startIndex: i, lines: []string{line}})
+	}
+	return groups
+}
+
+// storyBlockKindLabel 書籤摘要用的區塊類型標籤。quote/bullet/number/table-row 是好幾行
+// 合併成一組的書籤（見 groupStoryLinesByBlockKind），單看第一行原始文字（`> `／`- `／
+// `|` 這些前綴字元）不容易一眼看出這是引用/清單/表格，前面加個標籤讓書籤列表好辨識；
+// 分隔線完全沒有文字內容，只能靠標籤。"none"（一般段落/標題）不需要標籤，段落本身的
+// 文字就很清楚。
+func storyBlockKindLabel(kind storyBlockKind) string {
+	switch kind {
+	case storyBlockKindQuote:
+		return "引用"
+	case storyBlockKindBullet, storyBlockKindNumber:
+		return "清單"
+	case storyBlockKindHR:
+		return "分隔線"
+	case storyBlockKindTableRow:
+		return "表格"
+	default:
+		return ""
+	}
+}
+
+// stripBookmarkLinePreviewContent 跟 stripReadableLineMarkup 一樣去掉段落 marker／行內
+// marker／圖片語法，但不把 blockKind 前綴加回去——只給有 storyBlockKindLabel 的書籤預覽
+// 用，標籤已經說明這是什麼類型，原始前綴字元（`> `／`- `／`|` 等）留著只是多餘、也不乾淨。
+func stripBookmarkLinePreviewContent(line string) string {
+	_, _, content := splitHeadingAndMarkerContent(line)
+	content = stripStoryInlineMarkers(content)
+	return markdownImagePattern.ReplaceAllString(content, "（圖片）")
+}
+
+// storyBookmarkLinePreview 在分組結果裡找出 lineID（=組的起始行號字串）對應的那一組，
+// 回傳預覽文字：有標籤的類型（引用/清單/表格/分隔線）前面加上 `[標籤]`，分隔線本身沒有
+// 文字內容，只顯示標籤；其餘沿用去除 marker 語法後的第一行文字。多行的組（引用/清單/
+// 表格）加上省略號提示還有更多內容，書籤列表只需要一眼認出是哪一段，不用把整組塞進預覽。
+func storyBookmarkLinePreview(groups []storyLineGroup, lineID string) string {
+	startIndex, err := strconv.Atoi(lineID)
+	if err != nil {
+		return ""
+	}
+	for _, group := range groups {
+		if group.startIndex != startIndex {
+			continue
+		}
+		label := storyBlockKindLabel(group.blockKind)
+		if group.blockKind == storyBlockKindHR {
+			return "[" + label + "]"
+		}
+		var preview string
+		if label != "" {
+			preview = "[" + label + "] " + stripBookmarkLinePreviewContent(group.lines[0])
+		} else {
+			preview = stripBookmarkLineMarker(group.lines[0])
+		}
+		if len(group.lines) > 1 {
+			preview += " ⋯"
+		}
+		return preview
+	}
+	return ""
+}
 
 // splitHeadingAndMarkerContent 拿掉標題前綴（回傳 headingLevel）、引用/清單前綴（回傳
 // blockPrefix，跟標題互斥，只有沒有標題時才會比對）跟段落 marker（含 align 屬性），

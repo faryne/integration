@@ -553,16 +553,17 @@ func (r *Repository) StoryBookmarks(userID, storyID uint64) ([]storytellerModel.
 	return rows, err
 }
 
-// ProjectStoryBookmarks 對故事版本用 LEFT JOIN——圖片書籤的 story_version_id 是 NULL，
-// INNER JOIN 會直接把這些書籤濾掉。line_preview／latest_story_version_id 只在文字書籤
-// （story_version_id 不是 NULL）才有意義，圖片書籤的 PageSort／ThumbnailURL 需要解析
-// LatestContent 的 JSON，SQL 做不到，交給 service 層依 content_type 分開組好再填入。
+// ProjectStoryBookmarks 只查書籤本身＋所屬故事的基本資訊；圖片書籤的 PageSort／
+// ThumbnailURL、文字書籤的 LinePreview 都需要解析內容（圖片是 LatestContent 的 JSON，
+// 文字是把 line_id 對應的段落分組解析出來），SQL 做不到，交給 service 層依 content_type
+// 分開組好再填入——文字書籤的分組邏輯必須跟前端 groupParagraphsByBlockKind 完全一致
+// （見 groupStoryLinesByBlockKind 的說明），不能再像以前那樣用 SQL 字串位置硬切一行，
+// 那招只適用「行＝定位單位」，換成「組＝定位單位」後沒辦法在 SQL 裡表達分組規則。
 func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytellerModel.StoryBookmarkOutput, error) {
 	rows := make([]storytellerModel.StoryBookmarkOutput, 0)
 	err := r.db.
 		Table("storyteller_story_bookmarks AS bookmarks").
 		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = bookmarks.story_id").
-		Joins("LEFT JOIN storyteller_story_versions AS versions ON versions.id = bookmarks.story_version_id").
 		Where("bookmarks.user_id = ? AND stories.project_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", userID, projectID).
 		Select(`bookmarks.id,
 			bookmarks.story_id,
@@ -576,10 +577,7 @@ func (r *Repository) ProjectStoryBookmarks(userID, projectID uint64) ([]storytel
 				(SELECT v.id FROM storyteller_story_versions AS v
 					WHERE v.story_id = bookmarks.story_id AND v.deleted_at IS NULL
 					ORDER BY v.created_at DESC, v.id DESC LIMIT 1)
-				ELSE NULL END AS latest_story_version_id,
-			CASE WHEN bookmarks.story_version_id IS NOT NULL THEN
-				TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(versions.content, '\n', CAST(bookmarks.line_id AS UNSIGNED) + 1), '\n', -1))
-				ELSE NULL END AS line_preview`).
+				ELSE NULL END AS latest_story_version_id`).
 		Order("bookmarks.created_at DESC, bookmarks.id DESC").
 		Find(&rows).Error
 	return rows, err
