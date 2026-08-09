@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
+import CableIcon from "@mui/icons-material/Cable";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import PublicIcon from "@mui/icons-material/Public";
@@ -54,6 +55,12 @@ const featureHighlights: FeatureHighlight[] = [
     title: "AI Agent（選用）",
     description:
       "帶上你自己的模型 API Key，設定 Agent 幫忙改寫或延伸故事內容。",
+  },
+  {
+    icon: <CableIcon fontSize="small" />,
+    title: "MCP 連接（選用）",
+    description:
+      "讓 Claude Code、Codex 等外部工具透過 MCP 直接讀寫你的故事與設定集，不用手動複製貼上。",
   },
   {
     icon: <BookmarkIcon fontSize="small" />,
