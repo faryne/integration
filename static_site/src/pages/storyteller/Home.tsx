@@ -35,7 +35,9 @@ import {
 } from "@/pages/storyteller/homeTabs.ts";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
+import { StorytellerFavoritesContent } from "@/pages/storyteller/Favorites.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
+import { StorytellerProfileContent } from "@/pages/storyteller/Profile.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import StorytellerNewAgent from "@/pages/storyteller/NewAgent.tsx";
 import StorytellerNewProject from "@/pages/storyteller/NewProject.tsx";
@@ -79,13 +81,19 @@ export default function StorytellerHome() {
         ? "usage"
         : location.pathname.includes("/mcp")
           ? "mcp"
-          : "project";
+          : location.pathname.includes("/favorites")
+            ? "favorites"
+            : location.pathname.includes("/profile")
+              ? "profile"
+              : "project";
 
   const homeTitle = isProjectFormRoute
     ? `${params.id ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} 專案`
     : isAgentFormRoute
       ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`
-      : `${STORYTELLER_APP_NAME} 我的工作台`;
+      : activeTab === "favorites" || activeTab === "profile"
+        ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
+        : `${STORYTELLER_APP_NAME} 我的工作台`;
   useTitle(homeTitle, {
     path: location.pathname,
     robots: "noindex, nofollow",
@@ -143,6 +151,8 @@ export default function StorytellerHome() {
       showHomeCrumb={false}
       trail={[tabBreadcrumbLabel[activeTab]]}
       action={
+        activeTab !== "favorites" &&
+        activeTab !== "profile" &&
         !projectsLoading &&
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -229,6 +239,10 @@ export default function StorytellerHome() {
                   <StorytellerApiKeyPanel />
                 ) : activeTab === "usage" ? (
                   <StorytellerAgentUsagePanel />
+                ) : activeTab === "favorites" ? (
+                  <StorytellerFavoritesContent />
+                ) : activeTab === "profile" ? (
+                  <StorytellerProfileContent />
                 ) : (
                   <StorytellerMcpPanel />
                 )}

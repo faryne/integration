@@ -98,8 +98,8 @@ type ProfileTab = "projects" | "favorite-projects" | "favorite-authors";
 
 const tabBreadcrumbLabel: Record<ProfileTab, string> = {
   projects: "作品",
-  "favorite-projects": "收藏的作品",
-  "favorite-authors": "收藏的作家",
+  "favorite-projects": "追蹤的作品",
+  "favorite-authors": "追蹤的作家",
 };
 
 export default function StorytellerUserProjects() {
@@ -208,7 +208,7 @@ export default function StorytellerUserProjects() {
                 saveAuthorFavorite.mutate(!isAuthorFavorited);
               }}
             >
-              {isAuthorFavorited ? "已收藏作者" : "收藏作者"}
+              {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}
             </Button>
           )}
           <Button
@@ -224,7 +224,7 @@ export default function StorytellerUserProjects() {
       <LoginPromptDialog
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
-        description="收藏作者需要登入。是否要現在登入？"
+        description="追蹤作者需要登入。是否要現在登入？"
       />
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>
@@ -299,7 +299,7 @@ export default function StorytellerUserProjects() {
                   </Typography>
                 </Stack>
                 <Stack direction="row" justifyContent="space-between">
-                  <Typography color="text.secondary">被收藏</Typography>
+                  <Typography color="text.secondary">被追蹤</Typography>
                   <Typography fontWeight={700}>
                     {author?.follower_count ?? 0} 人
                   </Typography>
@@ -319,8 +319,8 @@ export default function StorytellerUserProjects() {
               allowScrollButtonsMobile
             >
               <Tab value="projects" label="作品" />
-              <Tab value="favorite-projects" label="收藏的作品" />
-              <Tab value="favorite-authors" label="收藏的作家" />
+              <Tab value="favorite-projects" label="追蹤的作品" />
+              <Tab value="favorite-authors" label="追蹤的作家" />
             </Tabs>
 
             {tab === "projects" &&
@@ -374,12 +374,12 @@ export default function StorytellerUserProjects() {
 
             {tab === "favorite-projects" &&
               (favoriteProjectsQuery.isLoading ? (
-                <StorytellerLoading label="正在載入收藏的作品..." />
+                <StorytellerLoading label="正在載入追蹤的作品..." />
               ) : (favoriteProjectsQuery.data ?? []).length === 0 ? (
                 <CustomEmptyState
                   icon={<FavoriteIcon fontSize="large" />}
-                  title="沒有公開的收藏作品"
-                  description="這位作者收藏的公開作品會顯示在這裡。"
+                  title="沒有公開的追蹤作品"
+                  description="這位作者追蹤的公開作品會顯示在這裡。"
                 />
               ) : (
                 <Grid container spacing={2}>
@@ -396,12 +396,12 @@ export default function StorytellerUserProjects() {
 
             {tab === "favorite-authors" &&
               (favoriteAuthorsQuery.isLoading ? (
-                <StorytellerLoading label="正在載入收藏的作家..." />
+                <StorytellerLoading label="正在載入追蹤的作家..." />
               ) : (favoriteAuthorsQuery.data ?? []).length === 0 ? (
                 <CustomEmptyState
                   icon={<PersonIcon fontSize="large" />}
-                  title="沒有公開的收藏作家"
-                  description="這位作者收藏的作家會顯示在這裡。"
+                  title="沒有公開的追蹤作家"
+                  description="這位作者追蹤的作家會顯示在這裡。"
                 />
               ) : (
                 <Grid container spacing={2}>
@@ -572,7 +572,7 @@ function FavoriteAuthorCard({
             size="small"
             label={`平均 ${author.average_rating.toFixed(1)}`}
           />
-          <Chip size="small" label={`${author.follower_count} 人收藏`} />
+          <Chip size="small" label={`${author.follower_count} 人追蹤`} />
           {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
         </Stack>
         {author.pen_name && (

@@ -26,28 +26,20 @@ import {
   useSaveFavoriteAuthorVisibility,
   useSaveFavoriteProjectVisibility,
 } from "@/apis/storyteller.ts";
-import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
-import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
-import {
-  STORYTELLER_APP_NAME,
-  storytellerReaderPath,
-} from "@/data/storyteller.ts";
+import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
-import { useTitle } from "@/helpers/title.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
-import {
-  StorytellerLoading,
-  StorytellerShell,
-} from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import { AuthorBio } from "@/pages/storyteller/UserProjects.tsx";
 import type {
   StorytellerFavoriteAuthor,
   StorytellerProject,
 } from "@/types/storyteller.ts";
 
-export default function StorytellerFavorites() {
-  const { session, loading, login, submitting } = useAuth();
+// 「我的追蹤」的內容——掛在 /my 工作台殼底下（見 Home.tsx），登入狀態已經由
+// Home.tsx 統一擋過，這裡不用再自己判斷 session。
+export function StorytellerFavoritesContent() {
   const [tab, setTab] = useState<"stories" | "authors">("stories");
   const {
     data: projects = [],
@@ -62,84 +54,59 @@ export default function StorytellerFavorites() {
   const isLoading = tab === "stories" ? projectsLoading : authorsLoading;
   const isError = tab === "stories" ? projectsError : authorsError;
 
-  useTitle(`${STORYTELLER_APP_NAME} 我的收藏`, {
-    path: steamloomPath("favorites"),
-    robots: "noindex, nofollow",
-  });
-
   return (
-    <StorytellerShell
-      title="我的收藏"
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "我的收藏" },
-      ]}
-    >
-      {loading ? (
-        <StorytellerLoading label="正在確認登入狀態..." />
-      ) : !session ? (
-        <CustomLoginRequiredState
-          description="登入後即可查看我的收藏。"
-          onLogin={() => void login()}
-          submitting={submitting}
+    <Stack spacing={2}>
+      <Tabs
+        value={tab}
+        onChange={(_, value: "stories" | "authors") => setTab(value)}
+        aria-label="追蹤分類"
+      >
+        <Tab value="stories" label="作品" />
+        <Tab value="authors" label="作者" />
+      </Tabs>
+
+      {isLoading ? (
+        <StorytellerLoading
+          label={
+            tab === "stories" ? "正在載入追蹤作品..." : "正在載入追蹤作者..."
+          }
+        />
+      ) : isError ? (
+        <Alert severity="error" variant="outlined">
+          讀取追蹤清單失敗，請確認登入狀態後再試一次。
+        </Alert>
+      ) : tab === "stories" ? (
+        projects.length === 0 ? (
+          <CustomEmptyState
+            icon={<FavoriteIcon fontSize="large" />}
+            title="尚未追蹤作品"
+            description="在作品閱讀頁按下追蹤後，會在此列出創作專案。"
+          />
+        ) : (
+          <Grid container spacing={2}>
+            {projects.map((project) => (
+              <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
+                <FavoriteProjectCard project={project} />
+              </Grid>
+            ))}
+          </Grid>
+        )
+      ) : authors.length === 0 ? (
+        <CustomEmptyState
+          icon={<PersonIcon fontSize="large" />}
+          title="尚未追蹤作者"
+          description="在作品閱讀頁按下追蹤作者後，會在此列出作者。"
         />
       ) : (
-        <Stack spacing={2}>
-          <Tabs
-            value={tab}
-            onChange={(_, value: "stories" | "authors") => setTab(value)}
-            aria-label="收藏分類"
-          >
-            <Tab value="stories" label="作品" />
-            <Tab value="authors" label="作者" />
-          </Tabs>
-
-          {isLoading ? (
-            <StorytellerLoading
-              label={
-                tab === "stories"
-                  ? "正在載入收藏作品..."
-                  : "正在載入收藏作者..."
-              }
-            />
-          ) : isError ? (
-            <Alert severity="error" variant="outlined">
-              讀取收藏失敗，請確認登入狀態後再試一次。
-            </Alert>
-          ) : tab === "stories" ? (
-            projects.length === 0 ? (
-              <CustomEmptyState
-                icon={<FavoriteIcon fontSize="large" />}
-                title="尚未收藏作品"
-                description="在作品閱讀頁按下收藏後，會在此列出創作專案。"
-              />
-            ) : (
-              <Grid container spacing={2}>
-                {projects.map((project) => (
-                  <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
-                    <FavoriteProjectCard project={project} />
-                  </Grid>
-                ))}
-              </Grid>
-            )
-          ) : authors.length === 0 ? (
-            <CustomEmptyState
-              icon={<PersonIcon fontSize="large" />}
-              title="尚未收藏作者"
-              description="在作品閱讀頁按下收藏作者後，會在此列出作者。"
-            />
-          ) : (
-            <Grid container spacing={2}>
-              {authors.map((author) => (
-                <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
-                  <FavoriteAuthorCard author={author} />
-                </Grid>
-              ))}
+        <Grid container spacing={2}>
+          {authors.map((author) => (
+            <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
+              <FavoriteAuthorCard author={author} />
             </Grid>
-          )}
-        </Stack>
+          ))}
+        </Grid>
       )}
-    </StorytellerShell>
+    </Stack>
   );
 }
 

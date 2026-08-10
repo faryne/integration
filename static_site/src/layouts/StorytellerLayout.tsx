@@ -156,11 +156,15 @@ export function StorytellerLayout() {
   const accountMenuItems = [
     { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
     {
-      label: "我的收藏",
-      to: steamloomPath("favorites"),
+      label: "我的追蹤",
+      to: steamloomPath("my/favorites"),
       icon: <FavoriteIcon />,
     },
-    { label: "我的檔案", to: steamloomPath("profile"), icon: <PersonIcon /> },
+    {
+      label: "我的檔案",
+      to: steamloomPath("my/profile"),
+      icon: <PersonIcon />,
+    },
   ];
 
   return (
