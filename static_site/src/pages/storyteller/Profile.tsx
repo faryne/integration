@@ -29,13 +29,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
-import { steamloomPath } from "@/helpers/steamloom.ts";
-import { useTitle } from "@/helpers/title.tsx";
-import {
-  StorytellerLoading,
-  StorytellerShell,
-} from "@/pages/storyteller/StorytellerShell.tsx";
-import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
 
@@ -161,8 +155,10 @@ function snsLinksFromRows(rows: SNSLinkRow[]): Record<string, string> {
   return links;
 }
 
-export default function StorytellerProfile() {
-  const { session, user, loading, login, submitting } = useAuth();
+// 「我的檔案」的內容——掛在 /my 工作台殼底下（見 Home.tsx），登入狀態已經由
+// Home.tsx 統一擋過，這裡不用再自己判斷 session。
+export function StorytellerProfileContent() {
+  const { session, user } = useAuth();
   const profileQuery = useStorytellerUserProfile();
   const saveProfile = useSaveStorytellerUserProfile();
   const [form, setForm] = useState<StorytellerUserProfileRequest>(emptyForm);
@@ -181,11 +177,6 @@ export default function StorytellerProfile() {
         : form.avatar_url;
   const displayName =
     form.pen_name || session?.user.display_name || STORYTELLER_APP_NAME;
-
-  useTitle(`${STORYTELLER_APP_NAME} 作者設定`, {
-    path: steamloomPath("profile"),
-    robots: "noindex, nofollow",
-  });
 
   useEffect(() => {
     if (!email) {
@@ -271,22 +262,8 @@ export default function StorytellerProfile() {
   };
 
   return (
-    <StorytellerShell
-      title="作者設定"
-      breadcrumbs={[
-        { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: "作者設定" },
-      ]}
-    >
-      {loading ? (
-        <StorytellerLoading label="正在確認登入狀態..." />
-      ) : !session ? (
-        <CustomLoginRequiredState
-          description={`登入後即可維護 ${STORYTELLER_APP_NAME} 作者資訊。`}
-          onLogin={() => void login()}
-          submitting={submitting}
-        />
-      ) : profileQuery.isLoading ? (
+    <>
+      {profileQuery.isLoading ? (
         <StorytellerLoading label="正在載入作者設定..." />
       ) : (
         <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
@@ -477,7 +454,7 @@ export default function StorytellerProfile() {
                       }
                     />
                   }
-                  label="隱藏我收藏的作品"
+                  label="隱藏我追蹤的作品"
                 />
                 <FormControlLabel
                   control={
@@ -491,7 +468,7 @@ export default function StorytellerProfile() {
                       }
                     />
                   }
-                  label="隱藏我收藏的作家"
+                  label="隱藏我追蹤的作家"
                 />
               </Stack>
             </Box>
@@ -574,6 +551,6 @@ export default function StorytellerProfile() {
         severity={severity}
         onClose={() => setMessage("")}
       />
-    </StorytellerShell>
+    </>
   );
 }

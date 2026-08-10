@@ -81,12 +81,6 @@ const StorytellerPublicHome = lazy(
 );
 const StorytellerSearch = lazy(() => import("@/pages/storyteller/Search.tsx"));
 const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
-const StorytellerFavorites = lazy(
-  () => import("@/pages/storyteller/Favorites.tsx"),
-);
-const StorytellerProfile = lazy(
-  () => import("@/pages/storyteller/Profile.tsx"),
-);
 const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
@@ -362,6 +356,8 @@ const storytellerRoutes = (
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />
+      <Route path={"favorites"} element={<StorytellerHome />} />
+      <Route path={"profile"} element={<StorytellerHome />} />
     </Route>
     <Route path={"user/:username"} element={<StorytellerUserProjects />} />
     <Route
@@ -372,8 +368,16 @@ const storytellerRoutes = (
       path={"user/:username/favorite-authors"}
       element={<StorytellerUserProjects />}
     />
-    <Route path={"favorites"} element={<StorytellerFavorites />} />
-    <Route path={"profile"} element={<StorytellerProfile />} />
+    {/* 「我的追蹤」「我的檔案」已經併進 /my 工作台殼（見 Home.tsx 的側邊欄分組），
+        這兩條舊的獨立路由只保留轉址，避免外部書籤或舊連結失效。 */}
+    <Route
+      path={"favorites"}
+      element={<Navigate to={steamloomPath("my/favorites")} replace />}
+    />
+    <Route
+      path={"profile"}
+      element={<Navigate to={steamloomPath("my/profile")} replace />}
+    />
     <Route path={"work/:projectPath/stories"} element={<StorytellerReader />} />
     <Route
       path={"work/:projectPath/story/:storyId"}

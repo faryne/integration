@@ -16,12 +16,12 @@ import type { StorytellerProject } from "@/types/storyteller.ts";
 export interface StorytellerProjectCardProps {
   project: StorytellerProject;
   // 右上角、左下操作列刻意留給呼叫端傳——每個頁面對同一個專案能做的操作不同
-  // （工作台能編輯/刪除、收藏頁能取消收藏、公開頁只能開始閱讀），這兩塊沒有
+  // （工作台能編輯/刪除、追蹤頁能取消追蹤、公開頁只能開始閱讀），這兩塊沒有
   // 「標準答案」；其餘資訊（內容類型、篇數/話數、字數、評分、標籤、作者、更新時間）
   // 一律由這個元件自己從 project 算，呼叫端不用也不該自己重算一次，避免各頁資訊分岔。
   headerAction?: ReactNode;
   actions: ReactNode;
-  // 少數真的因為「頁面情境」而不是「專案本身」才有意義的徽章，例如收藏頁的
+  // 少數真的因為「頁面情境」而不是「專案本身」才有意義的徽章，例如追蹤頁的
   // 「對外隱藏中」、公開列表頁的「公開閱讀」——這些跟 project 資料無關，
   // 是「你透過什麼情境看到這張卡片」，所以留給呼叫端補在標準 chips 後面。
   extraChips?: ReactNode;
@@ -137,7 +137,7 @@ export function StorytellerProjectCard({
             size="small"
             label={`平均 ${project.average_rating.toFixed(1)}`}
           />
-          <Chip size="small" label={`${project.favorite_count} 人收藏`} />
+          <Chip size="small" label={`${project.favorite_count} 人追蹤`} />
           {extraChips}
         </Stack>
         <StorytellerTagChips tags={project.tags} />

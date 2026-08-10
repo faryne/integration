@@ -131,7 +131,7 @@ export function usePublicUserStorytellerProjects(
 }
 
 // 帶上登入者的 encrypt key（若有）讓後端可以辨識「正在看自己頁面的作者本人」，
-// 藉此在回應中夾帶隱藏中的收藏項目，讓作者能在自己的公開頁上管理它們。
+// 藉此在回應中夾帶隱藏中的追蹤項目，讓作者能在自己的公開頁上管理它們。
 export function usePublicFavoriteStorytellerProjects(username?: string) {
   const { session } = useAuth();
   return useQuery({

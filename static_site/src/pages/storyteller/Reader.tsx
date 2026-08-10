@@ -1126,7 +1126,7 @@ export default function StorytellerReader() {
     number | undefined
   >(undefined);
   const navigate = useNavigate();
-  // 頂端功能列（索引開關＋收藏／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
+  // 頂端功能列（索引開關＋追蹤／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
   const [actionBarVisible, setActionBarVisible] = useState(true);
   // 右下角快速按鈕展開的選單錨點
   const [quickActionsAnchor, setQuickActionsAnchor] =
@@ -2470,7 +2470,7 @@ export default function StorytellerReader() {
         }
       />
 
-      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開索引，收藏與評分快速選單原作也看得到（顯示但 disabled） */}
+      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開索引，追蹤與評分快速選單原作也看得到（顯示但 disabled） */}
       {(currentStory || currentEpisode) && (
         <>
           <Stack
@@ -2498,7 +2498,7 @@ export default function StorytellerReader() {
               <Fab
                 color="primary"
                 size="medium"
-                aria-label="開啟收藏與評分選單"
+                aria-label="開啟追蹤與評分選單"
                 onClick={(event) => setQuickActionsAnchor(event.currentTarget)}
               >
                 {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
