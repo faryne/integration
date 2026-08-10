@@ -2,6 +2,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
 import { SteamPaletteSwitcher } from "@/components/storyteller/SteamPaletteSwitcher.tsx";
+import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
@@ -147,6 +148,10 @@ export function StorytellerLayout() {
 
   const showPenNameDialog =
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
+  // 只有「這次真的完成第一次筆名設定」才彈功能導覽（見 PenNameDialog 的 onCompleted
+  // 說明），不是每次 showPenNameDialog 變化都跳——例如筆名已經設定過的老使用者，
+  // showPenNameDialog 一開始就是 false，不會經過這個 callback。
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
 
   const accountMenuItems = [
     { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
@@ -163,7 +168,14 @@ export function StorytellerLayout() {
       <StorytellerThemeModeContext.Provider value={{ mode, toggleMode }}>
         <StorytellerPaletteContext.Provider value={{ palette, setPalette }}>
           <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-            <PenNameDialog open={Boolean(showPenNameDialog)} />
+            <PenNameDialog
+              open={Boolean(showPenNameDialog)}
+              onCompleted={() => setShowWelcomeGuide(true)}
+            />
+            <WelcomeGuideDialog
+              open={showWelcomeGuide}
+              onClose={() => setShowWelcomeGuide(false)}
+            />
             <AppBar position="sticky" color="default" elevation={0}>
               <Toolbar>
                 <Stack
