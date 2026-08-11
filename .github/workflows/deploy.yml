@@ -64,7 +64,7 @@ jobs:
         run: $(go env GOPATH)/bin/swag init -g main.go -o docs
 
       - name: Build backend
-        run: GOOS=linux GOARCH=amd64 go build -o apidev main.go
+        run: GOOS=linux GOARCH=amd64 go build -o apidev .
 
 #      - name: Deploy to Remote Server
 #        uses: appleboy/scp-action@v0.1.7
