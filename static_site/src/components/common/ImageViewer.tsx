@@ -39,12 +39,14 @@ export function ImageViewer({
   children,
   initialIndex = 0,
   onImageError,
+  onIndexChange,
   photos,
   title,
 }: {
   children?: ReactNode;
   initialIndex?: number;
   onImageError?: () => void;
+  onIndexChange?: (index: number) => void;
   photos: ImageViewerPhoto[];
   title: string;
 }) {
@@ -53,6 +55,7 @@ export function ImageViewer({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const [loadedFlags, setLoadedFlags] = useState<boolean[]>([]);
   const [naturalHeights, setNaturalHeights] = useState<number[]>([]);
   const [naturalWidths, setNaturalWidths] = useState<number[]>([]);
   const [puzzleOpen, setPuzzleOpen] = useState(false);
@@ -66,6 +69,11 @@ export function ImageViewer({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
   const renderedErrorNotifiedRef = useRef(false);
+  const currentIndexRef = useRef(0);
+  // 圖片來源是簽了時效的 url，背景重新整理只是換掉 query string，用不含
+  // query 的路徑當作「這批圖片是不是同一份作品」的依據，避免每次換簽名網址
+  // 都被誤判成新的作品而把目前看到第幾張的位置歸零。
+  const photoIdentityRef = useRef<string>("");
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
   const currentDescription = currentPhoto?.description?.trim();
@@ -79,7 +87,9 @@ export function ImageViewer({
   const hasThumbnails = thumbnails.some(Boolean);
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < photos.length - 1;
-  const allImagesLoaded = photos.length > 0 && loadedCount >= photos.length;
+  // 只等目前這張圖準備好就能顯示畫面，不用整批（可能 40 幾張）都載完，
+  // 其餘照片繼續在背景預讀。
+  const currentPhotoReady = photos.length > 0 && (loadedFlags[currentIndex] ?? false);
   const canPlayPuzzle =
     expanded &&
     currentNaturalWidth > 0 &&
@@ -100,10 +110,11 @@ export function ImageViewer({
     setSlideTransition({ direction, index: currentIndex, photo: currentPhoto });
     setCurrentIndex(normalized);
     setExpanded(false);
+    onIndexChange?.(normalized);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    if (!isCarousel || !allImagesLoaded || expanded || dialogOpen) {
+    if (!isCarousel || !currentPhotoReady || expanded || dialogOpen) {
       return;
     }
     const touch = event.touches[0];
@@ -114,7 +125,7 @@ export function ImageViewer({
   const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
-    if (!start || !isCarousel || !allImagesLoaded || expanded || dialogOpen) {
+    if (!start || !isCarousel || !currentPhotoReady || expanded || dialogOpen) {
       return;
     }
 
@@ -170,20 +181,47 @@ export function ImageViewer({
   };
 
   useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
+
+  useEffect(() => {
     let cancelled = false;
     renderedErrorNotifiedRef.current = false;
+
+    // 路徑相同、只有簽名 query string 不同，代表這只是背景換了一批新的簽名
+    // 網址（同一份作品），此時保留使用者目前看到第幾張，不要跳回第一張。
+    const identity = photos.map((photo) => photo.url.split("?")[0]).join("|");
+    const isSamePhotoSet = identity !== "" && identity === photoIdentityRef.current;
+    photoIdentityRef.current = identity;
+    const priorityIndex = photos.length
+      ? Math.min(
+          Math.max(
+            isSamePhotoSet ? currentIndexRef.current : initialIndex,
+            0,
+          ),
+          photos.length - 1,
+        )
+      : 0;
+
     setLoadedCount(0);
+    setLoadedFlags(Array.from({ length: photos.length }, () => false));
     setDialogOpen(false);
     setPuzzleOpen(false);
     thumbnailRefs.current = thumbnailRefs.current.slice(0, photos.length);
     setNaturalHeights(Array.from({ length: photos.length }, () => 0));
     setNaturalWidths(Array.from({ length: photos.length }, () => 0));
-    setCurrentIndex(
-      photos.length > 0
-        ? Math.min(Math.max(initialIndex, 0), photos.length - 1)
-        : 0,
-    );
-    setExpanded(false);
+    if (!isSamePhotoSet) {
+      setCurrentIndex(
+        photos.length > 0
+          ? Math.min(Math.max(initialIndex, 0), photos.length - 1)
+          : 0,
+      );
+      setExpanded(false);
+    } else {
+      setCurrentIndex((index) =>
+        photos.length > 0 ? Math.min(index, photos.length - 1) : 0,
+      );
+    }
     setSlideTransition(null);
     setSlideEntered(false);
 
@@ -197,8 +235,15 @@ export function ImageViewer({
     // 圖片來源是有時效的 CloudFront signed url，頁面閒置太久後可能已過期（403）。
     // 這裡偵測到 onerror 就通知外部重新取一批新的簽名網址，而不是把錯誤畫面一直卡著。
     let erroredOnce = false;
-    photos.forEach((photo, index) => {
-      const url = photo.url;
+    // 目前正在看的那張優先送出請求，其餘依原本順序在背景繼續預讀，
+    // 這樣長篇漫畫不用等全部載完才看得到畫面。
+    const loadOrder = [
+      priorityIndex,
+      ...photos.map((_, index) => index).filter((index) => index !== priorityIndex),
+    ];
+    loadOrder.forEach((index) => {
+      const photo = photos[index];
+      const url = photo?.url;
       if (!url) {
         return;
       }
@@ -213,6 +258,11 @@ export function ImageViewer({
             const nextHeights = [...heights];
             nextHeights[index] = image.naturalHeight;
             return nextHeights;
+          });
+          setLoadedFlags((flags) => {
+            const nextFlags = [...flags];
+            nextFlags[index] = true;
+            return nextFlags;
           });
           setLoadedCount((count) => count + 1);
         }
@@ -272,7 +322,7 @@ export function ImageViewer({
   }, [slideTransition]);
 
   useEffect(() => {
-    if (!allImagesLoaded || !hasThumbnails) {
+    if (!hasThumbnails) {
       return;
     }
 
@@ -281,10 +331,10 @@ export function ImageViewer({
       block: "nearest",
       inline: "nearest",
     });
-  }, [allImagesLoaded, currentIndex, hasThumbnails]);
+  }, [currentIndex, hasThumbnails]);
 
   useEffect(() => {
-    if (!isCarousel || !allImagesLoaded) {
+    if (!isCarousel || !currentPhotoReady) {
       return;
     }
 
@@ -310,7 +360,7 @@ export function ImageViewer({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
-    allImagesLoaded,
+    currentPhotoReady,
     canGoNext,
     canGoPrev,
     currentIndex,
@@ -320,7 +370,7 @@ export function ImageViewer({
   ]);
 
   useLayoutEffect(() => {
-    if (!expanded || !allImagesLoaded) {
+    if (!expanded || !currentPhotoReady) {
       return;
     }
 
@@ -337,7 +387,7 @@ export function ImageViewer({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [allImagesLoaded, currentIndex, expanded]);
+  }, [currentPhotoReady, currentIndex, expanded]);
 
   if (!currentPhoto) {
     return null;
@@ -355,7 +405,7 @@ export function ImageViewer({
         }}
       >
         <Stack spacing={1.5}>
-          {!allImagesLoaded ? (
+          {!currentPhotoReady ? (
             <Box
               sx={{
                 alignItems: "center",
@@ -818,7 +868,7 @@ export function ImageViewer({
             </Box>
           )}
 
-          {allImagesLoaded && currentDescription && (
+          {currentPhotoReady && currentDescription && (
             <Typography
               color="text.primary"
               sx={{
@@ -835,7 +885,7 @@ export function ImageViewer({
             </Typography>
           )}
 
-          {allImagesLoaded && (
+          {currentPhotoReady && (
             <Typography
               color="text.secondary"
               textAlign="center"

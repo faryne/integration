@@ -242,12 +242,16 @@ function DetailContent({
   recommendations,
   forceRecommendationBlur,
   onImageError,
+  initialPhotoIndex,
+  onPhotoIndexChange,
 }: {
   artwork: NekomaidArtwork;
   authorName: string;
   recommendations: NekomaidArtwork[];
   forceRecommendationBlur: boolean;
   onImageError?: () => void;
+  initialPhotoIndex?: number;
+  onPhotoIndexChange?: (index: number) => void;
 }) {
   const viewerAnchorRef = useRef<HTMLDivElement | null>(null);
   const photos = artwork.photos ?? [];
@@ -303,7 +307,9 @@ function DetailContent({
           </VideoViewer>
         ) : (
           <ImageViewer
+            initialIndex={initialPhotoIndex}
             onImageError={onImageError}
+            onIndexChange={onPhotoIndexChange}
             photos={imagePhotos}
             title={viewerTitle}
           >
@@ -325,6 +331,19 @@ function DetailPage({
   artworkId: string;
 }) {
   const detail = useNekomaidArtworkDetail(site, authorId, artworkId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = Number.parseInt(searchParams.get("p") ?? "", 10);
+  const initialPhotoIndex =
+    Number.isFinite(pageParam) && pageParam > 0 ? pageParam - 1 : 0;
+  const handlePhotoIndexChange = (index: number) => {
+    const next = new URLSearchParams(searchParams);
+    if (index > 0) {
+      next.set("p", String(index + 1));
+    } else {
+      next.delete("p");
+    }
+    setSearchParams(next, { replace: true });
+  };
   const artwork = detail.data?.artwork;
   const author = detail.data?.author;
   const recommendations = detail.data?.recommendations?.slice(0, 24) ?? [];
@@ -348,8 +367,23 @@ function DetailPage({
   const confirmR18 = () => {
     setR18ConfirmedCookie();
   };
-  // signed url 逾時（頁面閒置太久）造成圖片載入失敗時，重新打 API 換一批新的簽名網址
+  // signed url 逾時（頁面閒置太久）造成圖片載入失敗時，重新打 API 換一批新的簽名網址。
+  // 一定要有重試上限與冷卻時間：如果圖片是因為其他原因（CDN 掛掉、網路擋掉）
+  // 而不是單純過期而失敗，重新拿到的網址還是會壞，不做限制的話會無限重打 API。
+  const imageErrorRetryRef = useRef({ artworkKey: "", attempts: 0, lastAt: 0 });
   const handleImageError = () => {
+    const artworkKey = `${site}/${authorId}/${artworkId}`;
+    const retry = imageErrorRetryRef.current;
+    if (retry.artworkKey !== artworkKey) {
+      imageErrorRetryRef.current = { artworkKey, attempts: 0, lastAt: 0 };
+    }
+    const state = imageErrorRetryRef.current;
+    const now = Date.now();
+    if (state.attempts >= 3 || now - state.lastAt < 30_000) {
+      return;
+    }
+    state.attempts += 1;
+    state.lastAt = now;
     if (!detail.isFetching) {
       detail.refetch();
     }
@@ -388,6 +422,8 @@ function DetailPage({
           recommendations={recommendations}
           forceRecommendationBlur={requiresAgeConfirmation && !r18Confirmed}
           onImageError={handleImageError}
+          initialPhotoIndex={initialPhotoIndex}
+          onPhotoIndexChange={handlePhotoIndexChange}
         />
       ) : (
         <AgeConfirmationPanel
