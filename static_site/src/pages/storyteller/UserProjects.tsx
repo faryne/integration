@@ -193,13 +193,13 @@ export default function StorytellerUserProjects() {
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {authorUserId && !isOwner && (
+          {authorUserId && (
             <Button
               variant={isAuthorFavorited ? "contained" : "outlined"}
               startIcon={
                 isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
               }
-              disabled={saveAuthorFavorite.isPending}
+              disabled={isOwner || saveAuthorFavorite.isPending}
               onClick={() => {
                 if (!session) {
                   setLoginPromptOpen(true);

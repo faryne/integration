@@ -2171,23 +2171,19 @@ export default function StorytellerReader() {
             authorPenName={project.authorPenName}
             updatedAt={currentStory.updatedAt}
             rightAction={
-              !isOwner && (
-                <Tooltip title="版本歷史">
-                  <IconButton
-                    size="small"
-                    aria-label="版本歷史"
-                    onClick={() => setVersionListOpen((open) => !open)}
-                    sx={{
-                      flexShrink: 0,
-                      color: versionListOpen
-                        ? "primary.main"
-                        : "text.secondary",
-                    }}
-                  >
-                    <HistoryIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              )
+              <Tooltip title="版本歷史">
+                <IconButton
+                  size="small"
+                  aria-label="版本歷史"
+                  onClick={() => setVersionListOpen((open) => !open)}
+                  sx={{
+                    flexShrink: 0,
+                    color: versionListOpen ? "primary.main" : "text.secondary",
+                  }}
+                >
+                  <HistoryIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             }
           >
             {versionListOpen && (
