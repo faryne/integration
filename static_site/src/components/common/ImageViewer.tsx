@@ -38,11 +38,13 @@ export interface ImageViewerPhoto {
 export function ImageViewer({
   children,
   initialIndex = 0,
+  onImageError,
   photos,
   title,
 }: {
   children?: ReactNode;
   initialIndex?: number;
+  onImageError?: () => void;
   photos: ImageViewerPhoto[];
   title: string;
 }) {
@@ -63,6 +65,7 @@ export function ImageViewer({
   const thumbnailRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const suppressClickRef = useRef(false);
+  const renderedErrorNotifiedRef = useRef(false);
   const isCarousel = photos.length > 1;
   const currentPhoto = photos[currentIndex];
   const currentDescription = currentPhoto?.description?.trim();
@@ -158,8 +161,17 @@ export function ImageViewer({
     setExpanded(true);
   };
 
+  const handleRenderedImageError = () => {
+    if (renderedErrorNotifiedRef.current) {
+      return;
+    }
+    renderedErrorNotifiedRef.current = true;
+    onImageError?.();
+  };
+
   useEffect(() => {
     let cancelled = false;
+    renderedErrorNotifiedRef.current = false;
     setLoadedCount(0);
     setDialogOpen(false);
     setPuzzleOpen(false);
@@ -182,6 +194,9 @@ export function ImageViewer({
       };
     }
 
+    // 圖片來源是有時效的 CloudFront signed url，頁面閒置太久後可能已過期（403）。
+    // 這裡偵測到 onerror 就通知外部重新取一批新的簽名網址，而不是把錯誤畫面一直卡著。
+    let erroredOnce = false;
     photos.forEach((photo, index) => {
       const url = photo.url;
       if (!url) {
@@ -204,14 +219,20 @@ export function ImageViewer({
       };
       const image = new Image();
       image.onload = markLoaded;
-      image.onerror = markLoaded;
+      image.onerror = () => {
+        if (!erroredOnce) {
+          erroredOnce = true;
+          onImageError?.();
+        }
+        markLoaded();
+      };
       image.src = url;
     });
 
     return () => {
       cancelled = true;
     };
-  }, [initialIndex, photos]);
+  }, [initialIndex, onImageError, photos]);
 
   useEffect(() => {
     const updateViewportSize = () => {
@@ -515,6 +536,7 @@ export function ImageViewer({
                           component="img"
                           src={slideTransition.photo.url}
                           alt={`${title} ${slideTransition.index + 1}`}
+                          onError={handleRenderedImageError}
                           sx={{
                             borderRadius: 1,
                             boxShadow: "0 18px 50px rgba(0, 0, 0, 0.28)",
@@ -538,6 +560,7 @@ export function ImageViewer({
                         component="img"
                         src={currentPhoto.url}
                         alt={`${title} ${currentIndex + 1}`}
+                        onError={handleRenderedImageError}
                         sx={{
                           borderRadius: expanded ? 0 : 1,
                           boxShadow: expanded
@@ -913,6 +936,7 @@ export function ImageViewer({
             component="img"
             src={currentPhoto.url}
             alt={`${title} ${currentIndex + 1}`}
+            onError={handleRenderedImageError}
             sx={{
               display: "block",
               height: "auto",

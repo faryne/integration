@@ -170,11 +170,9 @@ func searchByRequest(req SearchRequest, path string) (*nekomaid.ArtworkSearchRes
 		case "illust":
 			search.SetQuery(map[string]any{"match": map[string]any{"photos_cnt": 1}}, true, q)
 			search.SetQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
-			search.SetQuery(map[string]any{"match": map[string]any{"r18": false}}, true, q)
 		case "manga":
 			search.SetQuery(map[string]any{"range": map[string]any{"photos_cnt": map[string]any{"gte": 2}}}, true, q)
 			search.SetQuery(map[string]any{"match": map[string]any{"gif": 0}}, true, q)
-			search.SetQuery(map[string]any{"match": map[string]any{"r18": false}}, true, q)
 		case "ugoira", "animated", "gif":
 			search.SetQuery(map[string]any{
 				"bool": map[string]any{

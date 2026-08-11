@@ -241,11 +241,13 @@ function DetailContent({
   authorName,
   recommendations,
   forceRecommendationBlur,
+  onImageError,
 }: {
   artwork: NekomaidArtwork;
   authorName: string;
   recommendations: NekomaidArtwork[];
   forceRecommendationBlur: boolean;
+  onImageError?: () => void;
 }) {
   const viewerAnchorRef = useRef<HTMLDivElement | null>(null);
   const photos = artwork.photos ?? [];
@@ -300,7 +302,11 @@ function DetailContent({
             {infoPanel}
           </VideoViewer>
         ) : (
-          <ImageViewer photos={imagePhotos} title={viewerTitle}>
+          <ImageViewer
+            onImageError={onImageError}
+            photos={imagePhotos}
+            title={viewerTitle}
+          >
             {infoPanel}
           </ImageViewer>
         )}
@@ -342,6 +348,12 @@ function DetailPage({
   const confirmR18 = () => {
     setR18ConfirmedCookie();
   };
+  // signed url 逾時（頁面閒置太久）造成圖片載入失敗時，重新打 API 換一批新的簽名網址
+  const handleImageError = () => {
+    if (!detail.isFetching) {
+      detail.refetch();
+    }
+  };
 
   useTitle(artwork?.title ?? "難以名狀的抓圖器", {
     description: detailDescription,
@@ -375,6 +387,7 @@ function DetailPage({
           authorName={authorLabel}
           recommendations={recommendations}
           forceRecommendationBlur={requiresAgeConfirmation && !r18Confirmed}
+          onImageError={handleImageError}
         />
       ) : (
         <AgeConfirmationPanel
