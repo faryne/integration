@@ -9,14 +9,28 @@ export interface CustomDiffLine {
   state: CustomDiffState;
 }
 
-function alignLineDiff(leftLines: string[], rightLines: string[]) {
+// 段落文字＋這段話在「含空行」的原始行陣列裡的真實行號（1-based）——診斷
+// 用的行號要對得上原文，不能因為下面把空行濾掉重排就跟著錯位。
+interface IndexedLine {
+  text: string;
+  originalIndex: number;
+}
+
+function indexedNonBlankLines(content: string): IndexedLine[] {
+  return content
+    .split("\n")
+    .map((text, i) => ({ text, originalIndex: i + 1 }))
+    .filter((line) => line.text.trim() !== "");
+}
+
+function alignLineDiff(leftLines: IndexedLine[], rightLines: IndexedLine[]) {
   const lcs = Array.from({ length: leftLines.length + 1 }, () =>
     Array<number>(rightLines.length + 1).fill(0),
   );
   for (let i = leftLines.length - 1; i >= 0; i--) {
     for (let j = rightLines.length - 1; j >= 0; j--) {
       lcs[i][j] =
-        leftLines[i] === rightLines[j]
+        leftLines[i].text === rightLines[j].text
           ? lcs[i + 1][j + 1] + 1
           : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
     }
@@ -26,13 +40,13 @@ function alignLineDiff(leftLines: string[], rightLines: string[]) {
   let leftIndex = 0;
   let rightIndex = 0;
   while (leftIndex < leftLines.length && rightIndex < rightLines.length) {
-    if (leftLines[leftIndex] === rightLines[rightIndex]) {
+    if (leftLines[leftIndex].text === rightLines[rightIndex].text) {
       raw.push({
         index: raw.length + 1,
-        leftIndex: leftIndex + 1,
-        rightIndex: rightIndex + 1,
-        left: leftLines[leftIndex],
-        right: rightLines[rightIndex],
+        leftIndex: leftLines[leftIndex].originalIndex,
+        rightIndex: rightLines[rightIndex].originalIndex,
+        left: leftLines[leftIndex].text,
+        right: rightLines[rightIndex].text,
         state: "same",
       });
       leftIndex++;
@@ -42,8 +56,8 @@ function alignLineDiff(leftLines: string[], rightLines: string[]) {
     ) {
       raw.push({
         index: raw.length + 1,
-        leftIndex: leftIndex + 1,
-        left: leftLines[leftIndex],
+        leftIndex: leftLines[leftIndex].originalIndex,
+        left: leftLines[leftIndex].text,
         right: "",
         state: "removed",
       });
@@ -51,9 +65,9 @@ function alignLineDiff(leftLines: string[], rightLines: string[]) {
     } else {
       raw.push({
         index: raw.length + 1,
-        rightIndex: rightIndex + 1,
+        rightIndex: rightLines[rightIndex].originalIndex,
         left: "",
-        right: rightLines[rightIndex],
+        right: rightLines[rightIndex].text,
         state: "added",
       });
       rightIndex++;
@@ -63,8 +77,8 @@ function alignLineDiff(leftLines: string[], rightLines: string[]) {
   while (leftIndex < leftLines.length) {
     raw.push({
       index: raw.length + 1,
-      leftIndex: leftIndex + 1,
-      left: leftLines[leftIndex],
+      leftIndex: leftLines[leftIndex].originalIndex,
+      left: leftLines[leftIndex].text,
       right: "",
       state: "removed",
     });
@@ -73,9 +87,9 @@ function alignLineDiff(leftLines: string[], rightLines: string[]) {
   while (rightIndex < rightLines.length) {
     raw.push({
       index: raw.length + 1,
-      rightIndex: rightIndex + 1,
+      rightIndex: rightLines[rightIndex].originalIndex,
       left: "",
-      right: rightLines[rightIndex],
+      right: rightLines[rightIndex].text,
       state: "added",
     });
     rightIndex++;
@@ -211,11 +225,34 @@ function compactChangedBlocks(raw: CustomDiffLine[]) {
   return lines;
 }
 
+// 段落之間原本一律隔一個空行，這裡把空行整個從比對輸入拿掉，只留下真正有
+// 內容的段落去跑 LCS／配對——空行到處都長一樣，讓它們也參與比對只會白白
+// 提供大量「免費」的巧合配對，把本來該算同一個編輯區塊的段落切成一堆各自
+// 只有一兩行的破碎 block，配對時看不到真正該比較的對象，導致明明相似的
+// 兩段話因為被空行拆到不同 block 而配不成一對。渲染要的段落間距，改成算完
+// diff 後統一補回單一空行間隔。
+function withParagraphSpacers(lines: CustomDiffLine[]): CustomDiffLine[] {
+  const result: CustomDiffLine[] = [];
+  lines.forEach((line, i) => {
+    result.push({ ...line, index: result.length + 1 });
+    if (i < lines.length - 1) {
+      result.push({
+        index: result.length + 1,
+        left: "",
+        right: "",
+        state: "same",
+      });
+    }
+  });
+  return result;
+}
+
 export function buildCustomLineDiff(
   left: string,
   right: string,
 ): CustomDiffLine[] {
-  const leftLines = left.split("\n");
-  const rightLines = right.split("\n");
-  return compactChangedBlocks(alignLineDiff(leftLines, rightLines));
+  const leftLines = indexedNonBlankLines(left);
+  const rightLines = indexedNonBlankLines(right);
+  const compacted = compactChangedBlocks(alignLineDiff(leftLines, rightLines));
+  return withParagraphSpacers(compacted);
 }
