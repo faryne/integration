@@ -228,6 +228,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	app.Use(cors.New(cors.Config{
 		ExposeHeaders: []string{"X-Session-Expires-At"},
 	}))
+	app.Use(maintenanceMiddleware())
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
 	route.OpenData(app)

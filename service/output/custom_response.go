@@ -40,3 +40,7 @@ func Unauthorized(err error) error {
 func NotFound(err error) error {
 	return New(fiber.StatusNotFound, CustomCodeNotFound, nil, err.Error())
 }
+
+func Maintenance(message string, data any) error {
+	return New(fiber.StatusServiceUnavailable, CustomCodeMaintenance, data, message)
+}

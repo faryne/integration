@@ -12,6 +12,12 @@ type envConfig struct {
 	ChromePath       string `env:"CHROME_PATH"`
 	FrontendPath     string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
 
+	// MaintenanceMode 手動維護開關；有設 MaintenanceStart／MaintenanceEnd 任一個時，
+	// 改用時間區間判斷是否進維護模式，MaintenanceMode 這個值會被忽略。
+	MaintenanceMode  bool   `env:"MAINTENANCE_MODE,default=false"`
+	MaintenanceStart string `env:"MAINTENANCE_START"`
+	MaintenanceEnd   string `env:"MAINTENANCE_END"`
+
 	CFWorkerProxyURL    string `env:"CF_WORKER_PROXY_URL"`
 	CFWorkerProxySecret string `env:"CF_WORKER_PROXY_SECRET"`
 

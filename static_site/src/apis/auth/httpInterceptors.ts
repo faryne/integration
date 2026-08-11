@@ -2,9 +2,12 @@ import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig }
 import { createAuthSession, type AuthSession } from "@/apis/auth/session.ts";
 import { clearSession, setSession, touchSessionExpiry } from "@/apis/auth/sessionStore.ts";
 import { getFirebaseAuth } from "@/lib/firebase.ts";
+import { setMaintenanceState } from "@/apis/maintenanceStore.ts";
 
 const SESSION_EXPIRES_HEADER = "x-session-expires-at";
 const ENCRYPT_KEY_HEADER = "X-Encrypt-Key";
+// 對應後端 service/output/code.go 的 CustomCodeMaintenance
+const MAINTENANCE_CUSTOM_CODE = "503001";
 
 interface RetriableConfig extends InternalAxiosRequestConfig {
   _sessionRetried?: boolean;
@@ -34,10 +37,25 @@ export function installAuthInterceptors() {
     if (typeof expiresAt === "string") {
       touchSessionExpiry(expiresAt);
     }
+    setMaintenanceState({ active: false });
     return response;
   });
 
   axios.interceptors.response.use(undefined, async (error: AxiosError) => {
+    const maintenanceBody = error.response?.data as
+      | { custom_code?: string; data?: { retry_at?: string } }
+      | undefined;
+    if (
+      error.response?.status === 503 &&
+      maintenanceBody?.custom_code === MAINTENANCE_CUSTOM_CODE
+    ) {
+      setMaintenanceState({
+        active: true,
+        retryAt: maintenanceBody.data?.retry_at,
+      });
+      return Promise.reject(error);
+    }
+
     const config = error.config as RetriableConfig | undefined;
     const headers =
       config?.headers instanceof AxiosHeaders
