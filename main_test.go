@@ -7,7 +7,7 @@ import (
 )
 
 func TestNCCCDownloadCronRunsMonthlyOnFifteenth(t *testing.T) {
-	for _, job := range cronJobs {
+	for _, job := range cronJobs["nccc"].Jobs {
 		if job.Name == "nccc-download" {
 			require.Equal(t, "12 3 15 * *", job.Schedule)
 			return
