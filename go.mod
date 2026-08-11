@@ -17,10 +17,10 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/go-redis/redis/v7 v7.4.1
 	github.com/goccy/go-json v0.10.6
-	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/gofiber/fiber/v3 v3.1.0
 	github.com/gofiber/swagger/v2 v2.0.0-20260208141700-e4cb1aaf502c
 	github.com/gofiber/utils/v2 v2.0.2
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/joho/godotenv v1.5.1
 	github.com/robfig/cron/v3 v3.0.0
 	github.com/shopspring/decimal v1.4.0
@@ -135,4 +135,5 @@ require (
 	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/plugin/dbresolver v1.6.2 // indirect
 )

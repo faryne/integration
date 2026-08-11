@@ -512,7 +512,11 @@ func loadCommandSettings(inputEnvFile string) error {
 		enum.DBNekomaid: config.EnvConfig().NekomaidDSN,
 	}
 	for key, conn := range dbConnections {
-		connError := client.InitMySql(key, conn)
+		var replicaDSNs []string
+		if key == enum.DBWalolita && config.EnvConfig().WalolitaSlaveDSN != "" {
+			replicaDSNs = append(replicaDSNs, config.EnvConfig().WalolitaSlaveDSN)
+		}
+		connError := client.InitMySql(key, conn, replicaDSNs...)
 		if connError != nil {
 			_ = client.CloseMySqlConnections()
 			return connError
