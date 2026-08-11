@@ -11,4 +11,5 @@ const (
 	CustomCodeDBError              CustomCode = "500001" // DB 錯誤
 	CustomCodeESError              CustomCode = "500002" // SearchError
 	CustomCodeExternalServiceError CustomCode = "500003" // External Service Error
+	CustomCodeMaintenance          CustomCode = "503001" // 網站維護中
 )

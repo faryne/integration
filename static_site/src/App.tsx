@@ -19,6 +19,24 @@ import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
+import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
+
+function formatMaintenanceRetryMessage(retryAt: string | null) {
+  if (!retryAt) {
+    return undefined;
+  }
+  const retryDate = new Date(retryAt);
+  if (Number.isNaN(retryDate.getTime())) {
+    return undefined;
+  }
+  const formatted = retryDate.toLocaleString("zh-TW", {
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `預計 ${formatted} 恢復服務，請稍後再回來看看。`;
+}
 
 // const Home = lazy(() => import("@/pages/Home.tsx"));
 const LabHome = lazy(() => import("@/pages/LabHome.tsx"));
@@ -448,6 +466,16 @@ function App() {
   const standaloneGalgame = isGalgameSite();
   const standaloneNekomaid = isNekomaidSite();
   const standaloneSteamLoom = isSteamLoomSite();
+  const maintenanceState = useMaintenanceState();
+
+  if (maintenanceState.active) {
+    return (
+      <ErrorPage
+        code={503}
+        message={formatMaintenanceRetryMessage(maintenanceState.retryAt)}
+      />
+    );
+  }
 
   return (
     <BrowserRouter>
