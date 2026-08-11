@@ -15,17 +15,10 @@ import (
 	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
 	"faryne.dev/route"
-	avService "faryne.dev/service/av"
 	"faryne.dev/service/client"
-	erogeService "faryne.dev/service/eroge"
 	"faryne.dev/service/log"
-	"faryne.dev/service/nccc"
 	"faryne.dev/service/output"
-	storytellerService "faryne.dev/service/storyteller"
-	"faryne.dev/service/taipower"
-	"faryne.dev/service/twse"
 	"faryne.dev/service/validation"
-	vtuberService "faryne.dev/service/vtuber"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/logger"
@@ -52,228 +45,6 @@ var commandParams = commandParameter.Registry{
 	"youtubeURL":      commandParameter.New("YouTube brand page URL", nil),
 	"yearMonthFrom":   commandParameter.New("start month in YYYY-MM format", commandParameter.YearMonth),
 	"yearMonthTo":     commandParameter.New("end month in YYYY-MM format", commandParameter.YearMonth),
-}
-
-type cronJobConfig struct {
-	Name     string
-	Schedule string
-	Handler  func()
-}
-
-var cronJobs = []cronJobConfig{
-	{
-		Name:     "eroge-youtube-add-brand",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunAddBrand(
-				commandParams.Value("brandName"),
-				commandParams.Value("youtubeChannel"),
-			)
-		},
-	},
-	{
-		Name:     "eroge-youtube-import-brands",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunImportBrands(commandParams.Value("csvFile"))
-		},
-	},
-	{
-		Name:     "eroge-youtube-update-brand",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunUpdateBrand(
-				commandParams.Value("brandId"),
-				commandParams.Value("youtubeURL"),
-			)
-		},
-	},
-	{
-		Name:     "eroge-youtube-delete-brand",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunDeleteBrand(commandParams.Value("brandId"))
-		},
-	},
-	{
-		Name:     "eroge-youtube-import-playlist-brands",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunImportPlaylistBrands(commandParams.Value("playlist"))
-		},
-	},
-	{
-		Name:     "eroge-youtube-resync-brand-videos",
-		Schedule: "",
-		Handler: func() {
-			erogeService.RunResyncBrandVideos(commandParams.Value("brandIds"))
-		},
-	},
-	{
-		Name:     "eroge-youtube-backfill-video-duration",
-		Schedule: "",
-		Handler:  erogeService.RunBackfillVideoDuration,
-	},
-	{
-		Name:     "eroge-youtube-brands",
-		Schedule: "15 2 * * 1",
-		Handler:  erogeService.RunBrandSync,
-	},
-	{
-		Name:     "eroge-youtube-videos",
-		Schedule: "45 */8 * * *",
-		Handler:  erogeService.RunVideoSync,
-	},
-	{
-		Name:     "etf-code-share-twse",
-		Schedule: "0 0 * * *",
-		Handler: func() {
-			_, _ = twse.UpdateETFCodeList()
-			twse.UpdateETFShare(enum.StockMarketTWSE)
-		},
-	},
-	{
-		Name:     "etf-share-otc",
-		Schedule: "0 1 * * *",
-		Handler: func() {
-			twse.UpdateETFShare(enum.StockMarketOTC)
-		},
-	},
-	{
-		Name:     "etf-ticker-daily",
-		Schedule: "0 15 * * *",
-		Handler: func() {
-			d := time.Now().Format(time.DateOnly)
-			twse.UpdateETFTicker("twse", d)
-			twse.UpdateETFTicker("otc", d)
-		},
-	},
-	{
-		Name:     "etf-ex-info",
-		Schedule: "7 16 * * 1-5",
-		Handler: func() {
-			twse.UpdateExPriceAndYieldRate()
-			twse.UpdateFilledDays()
-			twse.UpdateETFWinRate()
-		},
-	},
-	{
-		Name:     "etf-monthly-price",
-		Schedule: "0 1 1 * *",
-		Handler: func() {
-			now := time.Now()
-			lastMonth := now.AddDate(0, -1, 0)
-			s := twse.NewETFMonthlyPriceService()
-			_ = s.UpdateMonthlyPriceByMonth(lastMonth.Year(), int(lastMonth.Month()))
-		},
-	},
-	{
-		Name:     "etf-notify-ex",
-		Schedule: "0 8 * * *",
-		Handler: func() {
-			_ = twse.NotifyUpcomingETFEx()
-		},
-	},
-	{
-		Name:     "vtuber-hololive-talents",
-		Schedule: "30 2 * * 1",
-		Handler:  vtuberService.RunSyncTalentChannels,
-	},
-	{
-		Name:     "av-sync-xcity",
-		Schedule: "37 1 * * 3",
-		Handler: func() {
-			avService.SyncXCityActressesCron()
-		},
-	},
-	{
-		Name:     "nccc-download",
-		Schedule: "12 3 15 * *",
-		Handler: func() {
-			nccc.RunDownload(commandParams.Value("ncccKey"))
-		},
-	},
-	{
-		Name:     "nccc-clear-indexes",
-		Schedule: "",
-		Handler:  nccc.RunClearIndexes,
-	},
-	{
-		Name:     "storyteller-sync-agent-models-weekly",
-		Schedule: "20 4 * * 1",
-		Handler:  storytellerService.RunSyncStorytellerAgentModels,
-	},
-	{
-		Name:     "storyteller-rotate-agent-api-keys",
-		Schedule: "",
-		Handler:  storytellerService.RunRotateStorytellerAgentAPIKeys,
-	},
-	{
-		Name:     "storyteller-search-sync",
-		Schedule: "",
-		Handler:  storytellerService.RunSyncStorytellerSearchIndex,
-	},
-	{
-		Name:     "storyteller-search-create-index",
-		Schedule: "",
-		Handler: func() {
-			storytellerService.RunCreateStorytellerSearchIndex(commandParams.Value("searchIndexName"))
-		},
-	},
-	{
-		Name:     "storyteller-backfill-image-story-assets",
-		Schedule: "",
-		Handler:  storytellerService.RunBackfillImageStoryAssets,
-	},
-	// 台電相關 job 手動執行
-	{
-		Name:     "taipower-neighbor-backfill",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.NewNeighborService().Backfill(); err != nil {
-				log.Logger().Error("Taipower neighbor backfill failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-monthly",
-		Schedule: "",
-		Handler: func() {
-			if _, err := taipower.NewNeighborService().CrawlPreviousMonth(); err != nil {
-				log.Logger().Error("Taipower neighbor monthly crawl failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-range",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.NewNeighborService().CrawlRange(
-				commandParams.Value("yearMonthFrom"),
-				commandParams.Value("yearMonthTo"),
-			); err != nil {
-				log.Logger().Error("Taipower neighbor range crawl failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-sync-es",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.NewNeighborService().SyncAllToElasticsearch(); err != nil {
-				log.Logger().Error("Taipower neighbor Elasticsearch sync failed: " + err.Error())
-			}
-		},
-	},
-	{
-		Name:     "taipower-neighbor-generate-statistics",
-		Schedule: "",
-		Handler: func() {
-			if err := taipower.GenerateNeighborStatisticsFiles(); err != nil {
-				log.Logger().Error("Taipower neighbor statistics generation failed: " + err.Error())
-			}
-		},
-	},
 }
 
 type appRuntime struct {
@@ -476,14 +247,19 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor,
 	)))
 
-	for _, job := range cronJobs {
-		if job.Schedule == "" {
+	for _, group := range cronJobs {
+		if !group.Enabled {
 			continue
 		}
-		jobName := job.Name
-		c.AddFunc(job.Schedule, func() {
-			runCronJob(jobName)
-		})
+		for _, job := range group.Jobs {
+			if job.Schedule == "" || !job.Enabled {
+				continue
+			}
+			jobName := job.Name
+			c.AddFunc(job.Schedule, func() {
+				runCronJob(jobName)
+			})
+		}
 	}
 
 	c.Start()
@@ -554,25 +330,4 @@ func loadEnvSettings(inputEnvFile string) error {
 	}
 	config.InitEnvConfig()
 	return nil
-}
-
-func executeCommand(name string) {
-	log.Logger().Info("Executing command: " + name)
-	found := false
-	for _, job := range cronJobs {
-		if job.Name == name {
-			job.Handler()
-			found = true
-			break
-		}
-	}
-	if !found {
-		log.Logger().Error("Unknown command: " + name)
-	}
-	log.Logger().Info("Command execution finished")
-}
-
-func runCronJob(name string) {
-	log.Logger().Info("CronJob triggered: " + name)
-	executeCommand(name)
 }
