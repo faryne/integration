@@ -2208,12 +2208,8 @@ export default function StorytellerReader() {
                     return (
                       <Box
                         key={version.id}
-                        {...(isLatest
-                          ? {}
-                          : {
-                              component: RouterLink,
-                              to: `${basePath}/story/${currentStory.id}/versions/${version.id}`,
-                            })}
+                        component={RouterLink}
+                        to={`${basePath}/story/${currentStory.id}/versions/${version.id}`}
                         onClick={() => setVersionListOpen(false)}
                         sx={{
                           display: "flex",
@@ -2226,10 +2222,8 @@ export default function StorytellerReader() {
                           borderColor: "divider",
                           textDecoration: "none",
                           color: "inherit",
-                          cursor: isLatest ? "default" : "pointer",
-                          "&:hover": isLatest
-                            ? undefined
-                            : { bgcolor: "action.hover" },
+                          cursor: "pointer",
+                          "&:hover": { bgcolor: "action.hover" },
                         }}
                       >
                         <Typography variant="body2">{label}</Typography>
