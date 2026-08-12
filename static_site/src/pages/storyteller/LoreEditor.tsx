@@ -651,7 +651,7 @@ export default function StorytellerLoreEditor({
   const loreShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
   if (authLoading) {
@@ -1153,7 +1153,7 @@ export default function StorytellerLoreEditor({
           : [
               { label: STORYTELLER_APP_NAME, to: steamloomPath() },
               { label: "我的工作台", to: steamloomPath("my") },
-              { label: "創作專案", to: steamloomPath("my/project") },
+              { label: "創作專案", to: steamloomPath("my/projects") },
               {
                 label: project.name,
                 to: steamloomPath(`my/project/${project.id}`),

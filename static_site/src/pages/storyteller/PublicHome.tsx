@@ -156,7 +156,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
         >
           <Button
             component={RouterLink}
-            to={steamloomPath("my/project/new")}
+            to={steamloomPath("my/projects/new")}
             variant="contained"
             startIcon={<AddIcon />}
           >
@@ -189,10 +189,7 @@ export default function StorytellerPublicHome() {
     setKeywordInput(keyword);
   }, [keyword]);
 
-  const projectSearch = useStorytellerProjectSearch(
-    { keyword },
-    isSearching,
-  );
+  const projectSearch = useStorytellerProjectSearch({ keyword }, isSearching);
   const searchResults =
     projectSearch.data?.pages.flatMap((page) => page.data) ?? [];
   const searchTotal = projectSearch.data?.pages[0]?.total ?? 0;

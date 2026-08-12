@@ -142,7 +142,7 @@ export function StorytellerPrimaryActions() {
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
       <Button
         component={RouterLink}
-        to={steamloomPath("my/project/new")}
+        to={steamloomPath("my/projects/new")}
         variant="contained"
         startIcon={<AutoStoriesIcon />}
       >

@@ -2,7 +2,7 @@ export type StorytellerHomeTab =
   "project" | "agent" | "apikey" | "usage" | "mcp" | "favorites" | "profile";
 
 export const tabPath: Record<StorytellerHomeTab, string> = {
-  project: "project",
+  project: "projects",
   agent: "agent",
   apikey: "api-keys",
   usage: "usage",

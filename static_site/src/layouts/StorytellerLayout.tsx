@@ -293,7 +293,7 @@ export function StorytellerLayout() {
                 </Stack>
                 <Button
                   component={RouterLink}
-                  to={steamloomPath("my/project/new")}
+                  to={steamloomPath("my/projects/new")}
                   variant="contained"
                   color="primary"
                   startIcon={<AddIcon />}
@@ -307,7 +307,7 @@ export function StorytellerLayout() {
                 </Button>
                 <IconButton
                   component={RouterLink}
-                  to={steamloomPath("my/project/new")}
+                  to={steamloomPath("my/projects/new")}
                   color="primary"
                   aria-label="建立創作專案"
                   sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
