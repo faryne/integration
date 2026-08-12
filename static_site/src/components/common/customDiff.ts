@@ -125,8 +125,9 @@ function lineSimilarity(a: string, b: string): number {
 }
 
 // 判斷「移除的這行」跟「新增的那行」算不算同一句話的改寫版本，而不是純粹
-// 兩件不相干的事。閾值抓 0.5：字面改動一半以內都還算「同一句話在改寫」。
-const CHANGED_PAIR_SIMILARITY_THRESHOLD = 0.5;
+// 兩件不相干的事。0.6 以下太容易把共享半句描寫、但其實已經移位或重寫的段落
+// 硬湊成 changed；收緊一點，讓它們各自留在新增／刪除比較接近常見 diff viewer。
+const CHANGED_PAIR_SIMILARITY_THRESHOLD = 0.6;
 
 // 一個 block 內可能同時混著好幾行「移除」跟好幾行「新增」（例如一段話被整段
 // 改寫、中間又夾雜真正全新的段落）。原本的作法是單純按出現順序把第 i 個移除
@@ -183,9 +184,41 @@ function pairChangedLines(
 
 function compactChangedBlocks(raw: CustomDiffLine[]) {
   const lines: CustomDiffLine[] = [];
+  const pushLine = (line: CustomDiffLine) => {
+    lines.push({ ...line, index: lines.length + 1 });
+  };
+  const pushChangedPair = (
+    removedLine: CustomDiffLine,
+    addedLine: CustomDiffLine,
+  ) => {
+    lines.push({
+      index: lines.length + 1,
+      leftIndex: removedLine.leftIndex,
+      rightIndex: addedLine.rightIndex,
+      left: removedLine.left,
+      right: addedLine.right,
+      state: "changed",
+    });
+  };
+  const pushUnpairedRange = (
+    removed: CustomDiffLine[],
+    added: CustomDiffLine[],
+    removedStart: number,
+    removedEnd: number,
+    addedStart: number,
+    addedEnd: number,
+  ) => {
+    for (let i = removedStart; i < removedEnd; i++) {
+      pushLine(removed[i]);
+    }
+    for (let j = addedStart; j < addedEnd; j++) {
+      pushLine(added[j]);
+    }
+  };
+
   for (let index = 0; index < raw.length;) {
     if (raw[index].state === "same") {
-      lines.push({ ...raw[index], index: lines.length + 1 });
+      pushLine(raw[index]);
       index++;
       continue;
     }
@@ -198,29 +231,32 @@ function compactChangedBlocks(raw: CustomDiffLine[]) {
     const removed = block.filter((line) => line.state === "removed");
     const added = block.filter((line) => line.state === "added");
     const pairs = pairChangedLines(removed, added);
-    const pairedRemoved = new Set(pairs.map((pair) => pair.removedIndex));
-    const pairedAdded = new Set(pairs.map((pair) => pair.addedIndex));
+    let removedCursor = 0;
+    let addedCursor = 0;
 
+    // 配對行是這個 hunk 裡的 anchor；anchor 之間未配對的內容照 GitHub 類 diff
+    // 的習慣先列刪除、再列新增，避免把弱相關行硬塞在同一列。
     for (const pair of pairs) {
-      lines.push({
-        index: lines.length + 1,
-        leftIndex: removed[pair.removedIndex].leftIndex,
-        rightIndex: added[pair.addedIndex].rightIndex,
-        left: removed[pair.removedIndex].left,
-        right: added[pair.addedIndex].right,
-        state: "changed",
-      });
+      pushUnpairedRange(
+        removed,
+        added,
+        removedCursor,
+        pair.removedIndex,
+        addedCursor,
+        pair.addedIndex,
+      );
+      pushChangedPair(removed[pair.removedIndex], added[pair.addedIndex]);
+      removedCursor = pair.removedIndex + 1;
+      addedCursor = pair.addedIndex + 1;
     }
-    for (let i = 0; i < removed.length; i++) {
-      if (!pairedRemoved.has(i)) {
-        lines.push({ ...removed[i], index: lines.length + 1 });
-      }
-    }
-    for (let j = 0; j < added.length; j++) {
-      if (!pairedAdded.has(j)) {
-        lines.push({ ...added[j], index: lines.length + 1 });
-      }
-    }
+    pushUnpairedRange(
+      removed,
+      added,
+      removedCursor,
+      removed.length,
+      addedCursor,
+      added.length,
+    );
   }
   return lines;
 }
