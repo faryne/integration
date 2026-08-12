@@ -204,3 +204,17 @@ func (r *Repository) AssetCollectionAssetCounts(collectionIDs []uint64) (map[uin
 	}
 	return counts, nil
 }
+
+// AssetProjectCounts 給工作台側邊欄「全部資產」「未分類」用，理由同
+// LoreProjectCounts——這兩個虛擬節點不對應任何一筆 AssetCollection 資料列。
+func (r *Repository) AssetProjectCounts(projectID uint64) (total int64, uncategorized int64, err error) {
+	var row struct {
+		Total         int64
+		Uncategorized int64
+	}
+	err = r.db.Model(&storytellerModel.Asset{}).
+		Select("COUNT(*) AS total, SUM(CASE WHEN collection_id IS NULL THEN 1 ELSE 0 END) AS uncategorized").
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Scan(&row).Error
+	return row.Total, row.Uncategorized, err
+}

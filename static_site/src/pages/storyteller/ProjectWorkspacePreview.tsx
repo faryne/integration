@@ -1,4 +1,6 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import {
   Box,
   Button,
@@ -7,6 +9,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -79,6 +83,8 @@ export default function StorytellerProjectWorkspacePreview() {
   const [lorePage, setLorePage] = useState(1);
   const [assetPage, setAssetPage] = useState(1);
   const [assetKeyword, setAssetKeyword] = useState("");
+  // 整個側邊欄（不是個別分組）的收合開關，給螢幕較窄或想專心看右欄內容時用。
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // App 內離開編輯器前的確認——「回列表」按鈕跟側邊欄切換分組都會先呼叫
   // guardedNavigate，有未存檔變更時先把實際要執行的動作存起來、彈出確認對話框，
   // 使用者按「離開」才真的執行；沒有未存檔變更（或不在編輯器內）就直接放行，
@@ -486,7 +492,12 @@ export default function StorytellerProjectWorkspacePreview() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr)" },
+          gridTemplateColumns: {
+            xs: "1fr",
+            md: sidebarCollapsed
+              ? "36px minmax(0, 1fr)"
+              : "260px minmax(0, 1fr)",
+          },
           flex: 1,
           minHeight: 0,
           bgcolor: (theme) =>
@@ -494,30 +505,67 @@ export default function StorytellerProjectWorkspacePreview() {
         }}
       >
         {!isMobile && (
-          <Box
-            sx={{
-              borderRight: 1,
-              borderColor: (theme) =>
-                theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
-              minHeight: 0,
-              overflow: "hidden",
-            }}
-          >
-            <WorkspaceSidebar
-              project={project}
-              selected={selected}
-              stories={stories}
-              volumes={volumes}
-              loreCollections={loreCollections}
-              assetCollections={assetCollections}
-              onSelect={selectNode}
-              onCreateVolume={listActions.onCreateVolume}
-              onCreateLoreCollection={listActions.onCreateLoreCollection}
-              onCreateAssetCollection={listActions.onCreateAssetCollection}
-              onReorderVolume={listActions.reorderVolume}
-            />
+          // 外層不能有 overflow:hidden——收合按鈕要浮貼在邊界上，剛好卡在側邊欄
+          // 跟右欄內容的交界，如果 overflow:hidden 套在同一層，按鈕負值定位的
+          // 部分會直接被裁掉（之前的版本就是這樣被切成一半的怪形狀）。真正需要
+          // 裁切捲軸的 overflow:hidden 只留給裡面包側邊欄內容的那一層。
+          <Box sx={{ position: "relative", minHeight: 0 }}>
+            <Box
+              sx={{
+                height: "100%",
+                borderRight: 1,
+                borderColor: (theme) =>
+                  theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
+                bgcolor: (theme) =>
+                  theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
+                minHeight: 0,
+                overflow: "hidden",
+              }}
+            >
+              {!sidebarCollapsed && (
+                <WorkspaceSidebar
+                  project={project}
+                  selected={selected}
+                  stories={stories}
+                  volumes={volumes}
+                  loreCollections={loreCollections}
+                  assetCollections={assetCollections}
+                  onSelect={selectNode}
+                  onCreateVolume={listActions.onCreateVolume}
+                  onCreateLoreCollection={listActions.onCreateLoreCollection}
+                  onCreateAssetCollection={listActions.onCreateAssetCollection}
+                  onReorderVolume={listActions.reorderVolume}
+                />
+              )}
+            </Box>
+            <Tooltip title={sidebarCollapsed ? "展開側邊欄" : "收合側邊欄"}>
+              <IconButton
+                size="small"
+                onClick={() => setSidebarCollapsed((value) => !value)}
+                sx={{
+                  position: "absolute",
+                  top: 12,
+                  right: -13,
+                  zIndex: 2,
+                  width: 26,
+                  height: 26,
+                  bgcolor: "background.paper",
+                  border: 1,
+                  borderColor: (theme) =>
+                    theme.palette.mode === "dark" ? "#3a3a3a" : "#d8d5cd",
+                  "&:hover": {
+                    bgcolor: (theme) =>
+                      theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
+                  },
+                }}
+              >
+                {sidebarCollapsed ? (
+                  <ChevronRightIcon fontSize="small" />
+                ) : (
+                  <ChevronLeftIcon fontSize="small" />
+                )}
+              </IconButton>
+            </Tooltip>
           </Box>
         )}
         <Box sx={{ minWidth: 0, overflow: "auto" }}>

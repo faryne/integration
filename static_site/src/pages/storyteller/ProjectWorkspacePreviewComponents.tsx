@@ -130,8 +130,12 @@ export function WorkspaceSidebar({
           icon={<SettingsIcon fontSize="small" />}
           selected={selected}
           rows={[
-            { id: "", label: "全部設定" },
-            { id: ungroupedId, label: "未分類" },
+            { id: "", label: "全部設定", count: project?.lore_count },
+            {
+              id: ungroupedId,
+              label: "未分類",
+              count: project?.lore_uncategorized_count,
+            },
             ...loreCollections.map((collection) => ({
               id: collection.public_id,
               label: collection.name,
@@ -147,8 +151,12 @@ export function WorkspaceSidebar({
           icon={<CollectionsIcon fontSize="small" />}
           selected={selected}
           rows={[
-            { id: "", label: "全部資產" },
-            { id: ungroupedId, label: "未分類" },
+            { id: "", label: "全部資產", count: project?.asset_count },
+            {
+              id: ungroupedId,
+              label: "未分類",
+              count: project?.asset_uncategorized_count,
+            },
             ...assetCollections.map((collection) => ({
               id: collection.public_id,
               label: collection.name,

@@ -710,6 +710,21 @@ func (r *Repository) LoreCollectionLoreCounts(collectionIDs []uint64) (map[uint6
 	return counts, nil
 }
 
+// LoreProjectCounts 給工作台側邊欄「全部設定」「未分類」用——這兩個是虛擬節點，
+// 不對應任何一筆 LoreCollection 資料列，所以不能沿用 LoreCollectionLoreCounts
+// 那種依 collection_id 分組的做法，得直接對整個專案的 lore 表算。
+func (r *Repository) LoreProjectCounts(projectID uint64) (total int64, uncategorized int64, err error) {
+	var row struct {
+		Total         int64
+		Uncategorized int64
+	}
+	err = r.db.Model(&storytellerModel.Lore{}).
+		Select("COUNT(*) AS total, SUM(CASE WHEN collection_id IS NULL THEN 1 ELSE 0 END) AS uncategorized").
+		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
+		Scan(&row).Error
+	return row.Total, row.Uncategorized, err
+}
+
 func (r *Repository) LoreVersions(loreID uint64) ([]storytellerModel.LoreVersion, error) {
 	rows := make([]storytellerModel.LoreVersion, 0)
 	err := r.db.Where("lore_id = ? AND deleted_at IS NULL", loreID).

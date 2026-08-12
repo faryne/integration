@@ -21,6 +21,12 @@ export interface StorytellerProject {
   // 讓閱讀頁／工作台故事列表可以把 stories 依冊分組顯示，不用另外呼叫只給登入者用的 API。
   volumes?: StorytellerStory[];
   author?: StorytellerUserProfile;
+  // 底下四個只有單一專案詳情（工作台側邊欄「全部設定」「全部資產」「未分類」
+  // 用）才會有值，專案列表／閱讀頁不會帶。
+  lore_count?: number;
+  lore_uncategorized_count?: number;
+  asset_count?: number;
+  asset_uncategorized_count?: number;
 }
 
 export interface StorytellerAgent {
