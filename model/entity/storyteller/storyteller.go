@@ -1012,6 +1012,13 @@ type ProjectOutput struct {
 	// 只給登入使用者用的 /projects/:project/volumes。
 	Volumes []Story              `gorm:"-" json:"volumes,omitempty"`
 	Author  *ProjectAuthorOutput `gorm:"-" json:"author,omitempty"`
+	// 底下四個只有 Service.Project（單一專案詳情，工作台側邊欄用）才會填，專案
+	// 列表／閱讀頁共用的 projectOutput 不會算這幾個查詢，避免列表頁一次組多筆
+	// 專案時被拖慢。
+	LoreCount               uint64 `gorm:"-" json:"lore_count"`
+	LoreUncategorizedCount  uint64 `gorm:"-" json:"lore_uncategorized_count"`
+	AssetCount              uint64 `gorm:"-" json:"asset_count"`
+	AssetUncategorizedCount uint64 `gorm:"-" json:"asset_uncategorized_count"`
 }
 
 // ProjectAuthorOutput 只在故事閱讀頁（PublicProject／SharedProject）才會帶

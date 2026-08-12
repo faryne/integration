@@ -130,7 +130,23 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	if err != nil {
 		return nil, err
 	}
-	return s.projectOutputWithFollowerCount(project, true)
+	output, err := s.projectOutputWithFollowerCount(project, true)
+	if err != nil {
+		return nil, err
+	}
+	loreTotal, loreUncategorized, err := s.repo.LoreProjectCounts(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	assetTotal, assetUncategorized, err := s.repo.AssetProjectCounts(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output.LoreCount = uint64(loreTotal)
+	output.LoreUncategorizedCount = uint64(loreUncategorized)
+	output.AssetCount = uint64(assetTotal)
+	output.AssetUncategorizedCount = uint64(assetUncategorized)
+	return output, nil
 }
 
 func publicProjectIDFromPath(projectValue string) string {
