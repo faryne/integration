@@ -280,10 +280,19 @@ const storytellerRoutes = (
     <Route path={"search"} element={<StorytellerSearch />} />
     <Route path={"my"}>
       <Route path={""} element={<StorytellerHome />} />
-      <Route path={"project"} element={<StorytellerHome />} />
+      <Route path={"projects"} element={<StorytellerHome />} />
       <Route path={"agent"} element={<StorytellerHome />} />
-      <Route path={"project/new"} element={<StorytellerHome />} />
-      <Route path={"project/:id/edit"} element={<StorytellerHome />} />
+      <Route path={"projects/new"} element={<StorytellerHome />} />
+      {/* 編輯專案已經搬進 workspace/:id/edit，跟其他 workspace 系列連結一致——
+          這條舊路由只保留轉址，避免外部書籤或舊連結失效。 */}
+      <Route
+        path={"project/:id/edit"}
+        element={
+          <LegacyStorytellerRedirect
+            to={(params) => `my/workspace/${params.id}/edit`}
+          />
+        }
+      />
       <Route
         path={"project/:id/story/:storyId/diff/:diffId1/:diffId2"}
         element={<StorytellerStoryDiffCompare />}
@@ -331,6 +340,10 @@ const storytellerRoutes = (
       />
       <Route
         path={"workspace/:id"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
+        path={"workspace/:id/edit"}
         element={<StorytellerProjectWorkspacePreview />}
       />
       <Route

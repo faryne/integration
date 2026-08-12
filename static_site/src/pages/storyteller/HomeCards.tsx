@@ -143,7 +143,9 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                     </Button>
                     <Button
                       component={RouterLink}
-                      to={steamloomPath(`my/project/${project.public_id}/edit`)}
+                      to={steamloomPath(
+                        `my/workspace/${project.public_id}/edit`,
+                      )}
                       size="small"
                       variant="outlined"
                       startIcon={<EditIcon />}

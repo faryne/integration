@@ -1,10 +1,16 @@
+import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
+import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
+import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
+import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import RemoveIcon from "@mui/icons-material/Remove";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
@@ -23,15 +29,22 @@ import {
   Stack,
   Tooltip,
   Typography,
+  type SxProps,
+  type Theme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useState, type ReactNode } from "react";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
 import {
   storytellerPaletteMeta,
   type StorytellerPaletteName,
 } from "@/data/storytellerTheme.ts";
+import { storytellerReaderPath } from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerPalette } from "@/layouts/storytellerPaletteMode.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
   ungroupedId,
   type SelectedItem,
@@ -46,10 +59,12 @@ import {
 import type {
   StorytellerAsset,
   StorytellerLore,
+  StorytellerProject,
   StorytellerStory,
 } from "@/types/storyteller.ts";
 
 export function WorkspaceSidebar({
+  project,
   selected,
   stories,
   volumes,
@@ -61,6 +76,7 @@ export function WorkspaceSidebar({
   onCreateAssetCollection,
   onReorderVolume,
 }: {
+  project?: StorytellerProject;
   selected: SelectedNode;
   stories: StorytellerStory[];
   volumes: StorytellerStory[];
@@ -87,6 +103,7 @@ export function WorkspaceSidebar({
   return (
     <Stack sx={{ height: 1, color: "text.secondary" }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 1, pb: 0 }}>
+        {project && <ProjectActionsGroup project={project} />}
         <SidebarGroup
           title="作品與冊"
           section="stories"
@@ -172,6 +189,7 @@ function SidebarGroup({
   onReorder?: (draggedId: string, beforeId: string | null) => void;
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(true);
   return (
     <Box>
       <Stack
@@ -180,6 +198,19 @@ function SidebarGroup({
         spacing={1}
         sx={{ px: 1, py: 0.75 }}
       >
+        <Tooltip title={expanded ? "收合" : "展開"}>
+          <IconButton
+            size="small"
+            onClick={() => setExpanded((value) => !value)}
+            sx={{ p: 0.375 }}
+          >
+            {expanded ? (
+              <RemoveIcon fontSize="inherit" />
+            ) : (
+              <AddIcon fontSize="inherit" />
+            )}
+          </IconButton>
+        </Tooltip>
         <Box sx={{ lineHeight: 0, opacity: 0.82 }}>{icon}</Box>
         <Typography
           variant="caption"
@@ -200,126 +231,282 @@ function SidebarGroup({
           </Tooltip>
         )}
       </Stack>
-      <List dense disablePadding sx={{ mt: 0.5 }}>
-        {rows.map((row) => {
-          const hasChildren = row.id !== "" && (row.count ?? 0) > 0;
-          // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳
-          // 排序，也不能當拖放目標。
-          const reorderable =
-            Boolean(onReorder) && row.id !== "" && row.id !== ungroupedId;
-          return (
-            <Tooltip
-              key={`${section}-${row.id}`}
-              title={reorderable ? "可拖曳調整順序" : ""}
-              placement="right"
-            >
-              <ListItemButton
-                selected={
-                  selected.section === section &&
-                  selected.collectionId === row.id
-                }
-                onClick={() => onSelect(section, row.id)}
-                draggable={reorderable}
-                onDragStart={
-                  reorderable ? () => setDraggingId(row.id) : undefined
-                }
-                onDragOver={
-                  reorderable ? (event) => event.preventDefault() : undefined
-                }
-                onDrop={
-                  reorderable
-                    ? (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        if (draggingId) {
-                          onReorder?.(draggingId, row.id);
-                        }
-                        setDraggingId(null);
-                      }
-                    : undefined
-                }
-                sx={{
-                  borderRadius: 1,
-                  my: 0.125,
-                  minHeight: 30,
-                  px: 1,
-                  color: "text.secondary",
-                  cursor: reorderable ? "grab" : undefined,
-                  opacity: draggingId === row.id ? 0.55 : 1,
-                  "&:hover": {
-                    bgcolor: (theme) =>
-                      theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
-                  },
-                  "&.Mui-selected": {
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
-                    color: "text.primary",
-                    borderLeft: 3,
-                    borderLeftColor: "primary.main",
-                    pl: 0.625,
-                  },
-                  "&.Mui-selected:hover": {
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
-                  },
-                }}
+      <Collapse in={expanded} timeout="auto">
+        <List dense disablePadding sx={{ mt: 0.5 }}>
+          {rows.map((row) => {
+            const hasChildren = row.id !== "" && (row.count ?? 0) > 0;
+            // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳
+            // 排序，也不能當拖放目標。
+            const reorderable =
+              Boolean(onReorder) && row.id !== "" && row.id !== ungroupedId;
+            return (
+              <Tooltip
+                key={`${section}-${row.id}`}
+                title={reorderable ? "可拖曳調整順序" : ""}
+                placement="right"
               >
-                <Box
+                <ListItemButton
+                  selected={
+                    selected.section === section &&
+                    selected.collectionId === row.id
+                  }
+                  onClick={() => onSelect(section, row.id)}
+                  draggable={reorderable}
+                  onDragStart={
+                    reorderable ? () => setDraggingId(row.id) : undefined
+                  }
+                  onDragOver={
+                    reorderable ? (event) => event.preventDefault() : undefined
+                  }
+                  onDrop={
+                    reorderable
+                      ? (event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (draggingId) {
+                            onReorder?.(draggingId, row.id);
+                          }
+                          setDraggingId(null);
+                        }
+                      : undefined
+                  }
                   sx={{
-                    width: 16,
-                    lineHeight: 0,
-                    visibility: hasChildren ? "visible" : "hidden",
+                    borderRadius: 1,
+                    my: 0.125,
+                    minHeight: 30,
+                    px: 1,
+                    color: "text.secondary",
+                    cursor: reorderable ? "grab" : undefined,
+                    opacity: draggingId === row.id ? 0.55 : 1,
+                    "&:hover": {
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
+                    },
+                    "&.Mui-selected": {
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.13),
+                      color: "text.primary",
+                      borderLeft: 3,
+                      borderLeftColor: "primary.main",
+                      pl: 0.625,
+                    },
+                    "&.Mui-selected:hover": {
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, 0.16),
+                    },
                   }}
                 >
-                  <KeyboardArrowRightIcon fontSize="inherit" />
-                </Box>
-                <ListItemIcon
-                  sx={{
-                    minWidth: 26,
-                    color:
-                      selected.section === section &&
-                      selected.collectionId === row.id
-                        ? "primary.main"
-                        : "inherit",
-                  }}
-                >
-                  <FolderIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText
-                  primary={row.label}
-                  primaryTypographyProps={{
-                    fontWeight: 700,
-                    noWrap: true,
-                    fontSize: 13,
-                  }}
-                />
-                {row.count !== undefined && (
-                  <Typography variant="caption" color="text.secondary">
-                    {row.count}
-                  </Typography>
-                )}
-              </ListItemButton>
-            </Tooltip>
-          );
-        })}
-        {onReorder && (
-          // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
-          // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
-          <Box
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={(event) => {
-              event.preventDefault();
-              if (draggingId) {
-                onReorder(draggingId, null);
-              }
-              setDraggingId(null);
-            }}
-            sx={{ minHeight: 10 }}
-          />
-        )}
-      </List>
+                  <Box
+                    sx={{
+                      width: 16,
+                      lineHeight: 0,
+                      visibility: hasChildren ? "visible" : "hidden",
+                    }}
+                  >
+                    <KeyboardArrowRightIcon fontSize="inherit" />
+                  </Box>
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 26,
+                      color:
+                        selected.section === section &&
+                        selected.collectionId === row.id
+                          ? "primary.main"
+                          : "inherit",
+                    }}
+                  >
+                    <FolderIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={row.label}
+                    primaryTypographyProps={{
+                      fontWeight: 700,
+                      noWrap: true,
+                      fontSize: 13,
+                    }}
+                  />
+                  {row.count !== undefined && (
+                    <Typography variant="caption" color="text.secondary">
+                      {row.count}
+                    </Typography>
+                  )}
+                </ListItemButton>
+              </Tooltip>
+            );
+          })}
+          {onReorder && (
+            // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
+            // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
+            <Box
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggingId) {
+                  onReorder(draggingId, null);
+                }
+                setDraggingId(null);
+              }}
+              sx={{ minHeight: 10 }}
+            />
+          )}
+        </List>
+      </Collapse>
       <Divider sx={{ my: 0.75, opacity: 0.35 }} />
     </Box>
   );
 }
+
+// 「編輯專案」「開啟閱讀頁」「刪除專案」這幾個原本只有 /project/:id 那個舊頁面才有的
+// 專案層級操作——Notion 風工作台預覽頁一直沒有對應入口，使用者進來後找不到，補一個
+// 側邊欄群組放這些功能，跟其他分組共用同一套「展開/收合＋列表」視覺語言。
+function ProjectActionsGroup({ project }: { project: StorytellerProject }) {
+  const [expanded, setExpanded] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const deleteProject = useDeleteStorytellerProject();
+  // 「編輯專案」現在是一個真正的路由（my/workspace/:id/edit），跟其他分組列表項目
+  // 一樣要能反映「目前正在這個畫面」——不然使用者點進編輯表單後，側邊欄看起來
+  // 什麼都沒被選中，容易懷疑自己是不是點錯了。
+  const isEditActive = location.pathname.endsWith("/edit");
+  const readerUrl =
+    project.visibility === "unlisted" && project.share_token
+      ? steamloomPath(`work/share/${project.share_token}`)
+      : storytellerReaderPath(project);
+
+  return (
+    <Box>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={1}
+        sx={{ px: 1, py: 0.75 }}
+      >
+        <Tooltip title={expanded ? "收合" : "展開"}>
+          <IconButton
+            size="small"
+            onClick={() => setExpanded((value) => !value)}
+            sx={{ p: 0.375 }}
+          >
+            {expanded ? (
+              <RemoveIcon fontSize="inherit" />
+            ) : (
+              <AddIcon fontSize="inherit" />
+            )}
+          </IconButton>
+        </Tooltip>
+        <Box sx={{ lineHeight: 0, opacity: 0.82 }}>
+          <FolderSpecialIcon fontSize="small" />
+        </Box>
+        <Typography
+          variant="caption"
+          fontWeight={700}
+          sx={{ letterSpacing: 0 }}
+        >
+          專案
+        </Typography>
+      </Stack>
+      <Collapse in={expanded} timeout="auto">
+        <List dense disablePadding sx={{ mt: 0.5 }}>
+          <ListItemButton
+            component={RouterLink}
+            to={steamloomPath(`my/workspace/${project.public_id}/edit`)}
+            selected={isEditActive}
+            sx={sidebarActionRowSx}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 26,
+                color: isEditActive ? "primary.main" : "inherit",
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="編輯專案"
+              primaryTypographyProps={{
+                fontWeight: 700,
+                noWrap: true,
+                fontSize: 13,
+              }}
+            />
+          </ListItemButton>
+          <ListItemButton
+            component="a"
+            href={readerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={sidebarActionRowSx}
+          >
+            <ListItemIcon sx={{ minWidth: 26 }}>
+              <OpenInNewIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="開啟閱讀頁"
+              primaryTypographyProps={{
+                fontWeight: 700,
+                noWrap: true,
+                fontSize: 13,
+              }}
+            />
+          </ListItemButton>
+          <ListItemButton
+            onClick={() => setDeleteOpen(true)}
+            sx={{ ...sidebarActionRowSx, color: "error.main" }}
+          >
+            <ListItemIcon sx={{ minWidth: 26, color: "inherit" }}>
+              <DeleteIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="刪除專案"
+              primaryTypographyProps={{
+                fontWeight: 700,
+                noWrap: true,
+                fontSize: 13,
+              }}
+            />
+          </ListItemButton>
+        </List>
+      </Collapse>
+      <Divider sx={{ my: 0.75, opacity: 0.35 }} />
+      <WorkspaceConfirmNameDialog
+        open={deleteOpen}
+        title="刪除專案"
+        description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
+        confirmName={project.name}
+        confirmLabel="刪除專案"
+        loading={deleteProject.isPending}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() =>
+          deleteProject.mutate(project.public_id, {
+            onSuccess: () => navigate(steamloomPath("my/projects")),
+          })
+        }
+      />
+    </Box>
+  );
+}
+
+const sidebarActionRowSx: SxProps<Theme> = {
+  borderRadius: 1,
+  my: 0.125,
+  minHeight: 30,
+  px: 1,
+  color: "text.secondary",
+  "&:hover": {
+    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8"),
+  },
+  "&.Mui-selected": {
+    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
+    color: "text.primary",
+    borderLeft: 3,
+    borderLeftColor: "primary.main",
+    pl: 0.625,
+  },
+  "&.Mui-selected:hover": {
+    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
+  },
+};
 
 export function WorkspaceSidebarFooter() {
   const { palette, setPalette } = useStorytellerPalette();

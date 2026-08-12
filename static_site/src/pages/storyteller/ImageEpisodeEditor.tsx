@@ -295,7 +295,7 @@ export default function StorytellerImageEpisodeEditor({
   const shellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/projects") },
     ...(project
       ? [
           {

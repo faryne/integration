@@ -45,6 +45,7 @@ import { WorkspaceAssetPanel } from "./ProjectWorkspacePreviewRows.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
+import StorytellerNewProject from "./NewProject.tsx";
 import StorytellerStoryEditor from "./StoryEditor.tsx";
 import {
   backendUncategorizedFilterId,
@@ -102,7 +103,12 @@ export default function StorytellerProjectWorkspacePreview() {
         ? "lore"
         : location.pathname.includes("/asset/")
           ? "asset"
-          : "";
+          : // 「編輯專案」表單（my/workspace/:id/edit）沒有分組概念，跟其他編輯器
+            // 路由不同不是靠 /xxx/:id 這種形狀分辨，直接看網址結尾是不是 /edit。
+            location.pathname.endsWith("/edit")
+            ? "edit"
+            : "";
+  const isEditProjectRoute = routeEditorType === "edit";
   const isNewStoryRoute = storyId === "new" && routeEditorType === "story";
   const isNewImageRoute = storyId === "new" && routeEditorType === "image";
   // 故事／圖像／設定集都不用先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
@@ -130,17 +136,24 @@ export default function StorytellerProjectWorkspacePreview() {
     : location.pathname.includes("/assets")
       ? "assets"
       : "stories";
-  const selected: SelectedNode = routeEditorType
-    ? {
-        section:
-          routeEditorType === "lore"
-            ? "lores"
-            : routeEditorType === "asset"
-              ? "assets"
-              : "stories",
-        collectionId: searchParams.get("from") ?? "",
-      }
-    : { section: browsingSection, collectionId: collectionId ?? "" };
+  // 「編輯專案」是專案層級的操作，跟作品／設定集／資產集三個分組完全無關——
+  // 不能落進下面故事/設定集/資產編輯器共用的「回推屬於哪個分組」邏輯，不然會
+  // 因為 collectionId 剛好都是空字串，被 SidebarGroup 誤判成「目前選到全部作品」，
+  // 連帶把不相干的那一列也一起反白。塞一個不會撞到任何真實 id 的哨兵值，確保
+  // 編輯專案時三個分組都不會被誤選。
+  const selected: SelectedNode = isEditProjectRoute
+    ? { section: "stories", collectionId: "__project_edit__" }
+    : routeEditorType
+      ? {
+          section:
+            routeEditorType === "lore"
+              ? "lores"
+              : routeEditorType === "asset"
+                ? "assets"
+                : "stories",
+          collectionId: searchParams.get("from") ?? "",
+        }
+      : { section: browsingSection, collectionId: collectionId ?? "" };
 
   const projectQuery = useStorytellerProject(id);
   const projectsQuery = useStorytellerProjects();
@@ -184,7 +197,8 @@ export default function StorytellerProjectWorkspacePreview() {
     isExistingStoryRoute ||
     isExistingImageRoute ||
     isLoreRoute ||
-    isAssetRoute;
+    isAssetRoute ||
+    isEditProjectRoute;
 
   const storyRows = useMemo(() => {
     const parentId =
@@ -373,8 +387,15 @@ export default function StorytellerProjectWorkspacePreview() {
 
   function closeWorkspaceEditor() {
     guardedNavigate(() => {
+      // 「編輯專案」的 selected 是特地塞進去、不對應任何真實分組的哨兵值
+      // （見上面 selected 的說明），不能拿去餵 browsingPath——那樣會被誤判成
+      // 「有指定 collectionId」，兜出一個根本不存在的分組網址。直接回專案首頁。
       navigate(
-        steamloomPath(browsingPath(selected.section, selected.collectionId)),
+        steamloomPath(
+          isEditProjectRoute
+            ? `my/workspace/${id}`
+            : browsingPath(selected.section, selected.collectionId),
+        ),
       );
     });
   }
@@ -485,6 +506,7 @@ export default function StorytellerProjectWorkspacePreview() {
             }}
           >
             <WorkspaceSidebar
+              project={project}
               selected={selected}
               stories={stories}
               volumes={volumes}
@@ -501,6 +523,7 @@ export default function StorytellerProjectWorkspacePreview() {
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
           {isMobile && (
             <WorkspaceMobileNav
+              project={project}
               selected={selected}
               stories={stories}
               volumes={volumes}
@@ -515,7 +538,9 @@ export default function StorytellerProjectWorkspacePreview() {
           )}
           {showBleedEditor ? (
             <EditorBleedContainer onBack={closeWorkspaceEditor}>
-              {isNewStoryRoute ? (
+              {isEditProjectRoute ? (
+                <StorytellerNewProject embedded />
+              ) : isNewStoryRoute ? (
                 <StorytellerStoryEditor
                   embedded
                   projectId={id}

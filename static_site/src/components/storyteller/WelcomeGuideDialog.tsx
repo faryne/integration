@@ -125,7 +125,7 @@ export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
         </Button>
         <Button
           component={RouterLink}
-          to={steamloomPath("my/project/new")}
+          to={steamloomPath("my/projects/new")}
           variant="contained"
           onClick={onClose}
         >

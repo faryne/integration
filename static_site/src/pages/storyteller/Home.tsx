@@ -60,13 +60,11 @@ export default function StorytellerHome() {
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
 
-  // 建立/編輯專案／AI Agent 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
+  // 建立專案／AI Agent 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
   // 比照 ProjectWorkspacePreview 的 routeEditorType：路徑本身就決定了要不要在
-  // 右欄顯示表單，不用等資料載入完成才知道。
-  const isProjectFormRoute =
-    location.pathname.endsWith("/project/new") ||
-    (location.pathname.includes("/project/") &&
-      location.pathname.endsWith("/edit"));
+  // 右欄顯示表單，不用等資料載入完成才知道。編輯專案已經搬到
+  // my/workspace/:id/edit（見 ProjectWorkspacePreview.tsx），這裡只剩「建立」。
+  const isProjectFormRoute = location.pathname.endsWith("/projects/new");
   const isAgentFormRoute =
     location.pathname.endsWith("/agent/new") ||
     (location.pathname.includes("/agent/") &&
@@ -88,7 +86,7 @@ export default function StorytellerHome() {
               : "project";
 
   const homeTitle = isProjectFormRoute
-    ? `${params.id ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} 專案`
+    ? `建立 ${STORYTELLER_APP_NAME} 專案`
     : isAgentFormRoute
       ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`
       : activeTab === "favorites" || activeTab === "profile"
@@ -104,7 +102,7 @@ export default function StorytellerHome() {
   }
 
   function closeEmbeddedForm() {
-    navigate(steamloomPath(isProjectFormRoute ? "my/project" : "my/agent"));
+    navigate(steamloomPath(isProjectFormRoute ? "my/projects" : "my/agent"));
   }
 
   if (loading) {
@@ -218,7 +216,7 @@ export default function StorytellerHome() {
                       component={RouterLink}
                       to={steamloomPath(
                         activeTab === "project"
-                          ? "my/project/new"
+                          ? "my/projects/new"
                           : "my/agent/new",
                       )}
                       variant="contained"

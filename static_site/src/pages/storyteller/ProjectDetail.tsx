@@ -149,89 +149,89 @@ function StoryRow({
         }}
       >
         <Stack direction="row" spacing={1.5} alignItems="center">
-        {isImage ? (
-          <CollectionsIcon color="primary" />
-        ) : (
-          <ArticleIcon color="primary" />
-        )}
-        <Stack sx={{ flex: 1, minWidth: 0 }}>
-          <Typography fontWeight={800}>{story.title}</Typography>
-          {story.summary.trim() && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                overflowWrap: "anywhere",
-                wordBreak: "break-word",
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 2,
-                overflow: "hidden",
-              }}
-            >
-              {story.summary}
-            </Typography>
+          {isImage ? (
+            <CollectionsIcon color="primary" />
+          ) : (
+            <ArticleIcon color="primary" />
           )}
-          <Typography variant="body2" color="text.secondary">
-            {isImage
-              ? `${pages.length} 頁`
-              : `${story.word_count.toLocaleString()} 字`}{" "}
-            · {formatStorytellerDate(story.updated_at)}
-          </Typography>
-        </Stack>
-        <Tooltip
-          title={
-            story.status === "completed"
-              ? "公開中，點一下改為未公開"
-              : "未公開，點一下改為公開中"
-          }
-        >
-          <FormControlLabel
-            sx={{ mr: 0 }}
-            control={
-              <Switch
-                size="small"
-                color="success"
-                checked={story.status === "completed"}
-                disabled={saving}
-                onChange={(event) => onTogglePublish(event.target.checked)}
-              />
-            }
-            label={story.status === "completed" ? "公開中" : "未公開"}
-          />
-        </Tooltip>
-        <Tooltip title="移動作品">
-          <IconButton
-            size="small"
-            onClick={(event) => onOpenMoveMenu(event.currentTarget)}
-            aria-label="移動作品"
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="編輯作品">
-          <IconButton
-            component="a"
-            href={steamloomPath(
-              `my/project/${projectId}/${isImage ? "image" : "story"}/${story.public_id}`,
+          <Stack sx={{ flex: 1, minWidth: 0 }}>
+            <Typography fontWeight={800}>{story.title}</Typography>
+            {story.summary.trim() && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  overflowWrap: "anywhere",
+                  wordBreak: "break-word",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 2,
+                  overflow: "hidden",
+                }}
+              >
+                {story.summary}
+              </Typography>
             )}
-            size="small"
-            color="primary"
-            aria-label="編輯作品"
+            <Typography variant="body2" color="text.secondary">
+              {isImage
+                ? `${pages.length} 頁`
+                : `${story.word_count.toLocaleString()} 字`}{" "}
+              · {formatStorytellerDate(story.updated_at)}
+            </Typography>
+          </Stack>
+          <Tooltip
+            title={
+              story.status === "completed"
+                ? "公開中，點一下改為未公開"
+                : "未公開，點一下改為公開中"
+            }
           >
-            <EditIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="刪除作品">
-          <IconButton
-            color="error"
-            size="small"
-            onClick={onDelete}
-            aria-label="刪除作品"
-          >
-            <DeleteIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+            <FormControlLabel
+              sx={{ mr: 0 }}
+              control={
+                <Switch
+                  size="small"
+                  color="success"
+                  checked={story.status === "completed"}
+                  disabled={saving}
+                  onChange={(event) => onTogglePublish(event.target.checked)}
+                />
+              }
+              label={story.status === "completed" ? "公開中" : "未公開"}
+            />
+          </Tooltip>
+          <Tooltip title="移動作品">
+            <IconButton
+              size="small"
+              onClick={(event) => onOpenMoveMenu(event.currentTarget)}
+              aria-label="移動作品"
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="編輯作品">
+            <IconButton
+              component="a"
+              href={steamloomPath(
+                `my/project/${projectId}/${isImage ? "image" : "story"}/${story.public_id}`,
+              )}
+              size="small"
+              color="primary"
+              aria-label="編輯作品"
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="刪除作品">
+            <IconButton
+              color="error"
+              size="small"
+              onClick={onDelete}
+              aria-label="刪除作品"
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Paper>
     </Tooltip>
@@ -245,12 +245,13 @@ export default function StorytellerProjectDetail() {
   const { session, loading, login, submitting } = useAuth();
   // 故事與話（圖像作品）已經合併成同一份列表，不再分開分頁；舊的 /images 網址
   // 沿用同一顆 "stories" tab，維持舊書籤／連結可以打開。
-  const activeTab: "stories" | "lores" | "assets" =
-    location.pathname.endsWith("/lores")
-      ? "lores"
-      : location.pathname.endsWith("/assets")
-        ? "assets"
-        : "stories";
+  const activeTab: "stories" | "lores" | "assets" = location.pathname.endsWith(
+    "/lores",
+  )
+    ? "lores"
+    : location.pathname.endsWith("/assets")
+      ? "assets"
+      : "stories";
   const [orderedStories, setOrderedStories] = useState<StorytellerStory[]>([]);
   const [orderedVolumes, setOrderedVolumes] = useState<StorytellerStory[]>([]);
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
@@ -618,7 +619,7 @@ export default function StorytellerProjectDetail() {
     {
       path: id
         ? steamloomPath(`my/project/${id}/${activeTab}`)
-        : steamloomPath("my/project"),
+        : steamloomPath("my/projects"),
       robots: "noindex, nofollow",
     },
   );
@@ -626,7 +627,7 @@ export default function StorytellerProjectDetail() {
   const projectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
   if (loading) {
@@ -746,7 +747,7 @@ export default function StorytellerProjectDetail() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "創作專案", to: steamloomPath("my/project") },
+        { label: "創作專案", to: steamloomPath("my/projects") },
         {
           label: project.name,
           to: steamloomPath(`my/project/${project.id}`),
@@ -1037,7 +1038,12 @@ export default function StorytellerProjectDetail() {
                   />
                 ) : activeTab === "stories" ? (
                   <Stack spacing={2}>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       <Button
                         size="small"
                         variant={
@@ -1076,7 +1082,7 @@ export default function StorytellerProjectDetail() {
                         const canDropHere = Boolean(
                           (draggingVolumeId &&
                             draggingVolumeId !== volume.public_id) ||
-                            canDropDraggingStory(volume.id),
+                          canDropDraggingStory(volume.id),
                         );
                         return (
                           <ButtonGroup
@@ -1310,7 +1316,7 @@ export default function StorytellerProjectDetail() {
           onClose={() => setProjectDeleteOpen(false)}
           onConfirm={() =>
             deleteProject.mutate(project.id, {
-              onSuccess: () => navigate(steamloomPath("my/project")),
+              onSuccess: () => navigate(steamloomPath("my/projects")),
             })
           }
         />

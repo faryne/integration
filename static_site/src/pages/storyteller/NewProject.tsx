@@ -150,8 +150,8 @@ export default function StorytellerNewProject({
     {
       path:
         isEditing && id
-          ? steamloomPath(`my/project/${id}/edit`)
-          : steamloomPath("my/project/new"),
+          ? steamloomPath(`my/workspace/${id}/edit`)
+          : steamloomPath("my/projects/new"),
       robots: "noindex, nofollow",
     },
   );
@@ -159,7 +159,7 @@ export default function StorytellerNewProject({
   const newProjectShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "創作專案", to: steamloomPath("my/project") },
+    { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
   // embedded（帳號工作台）模式下不重複套用一層 StorytellerShell 的頂欄跟麵包屑——
@@ -219,7 +219,7 @@ export default function StorytellerNewProject({
       <ErrorPage
         code={404}
         compact={embedded}
-        backUrl={embedded ? steamloomPath("my/project") : undefined}
+        backUrl={embedded ? steamloomPath("my/projects") : undefined}
       />
     );
   }
@@ -269,7 +269,9 @@ export default function StorytellerNewProject({
           if (isEditing) {
             navigate(
               steamloomPath(
-                embedded ? "my/project" : `my/project/${project.public_id}`,
+                embedded
+                  ? `my/workspace/${project.public_id}`
+                  : `my/project/${project.public_id}`,
               ),
             );
             return;
@@ -327,7 +329,7 @@ export default function StorytellerNewProject({
           : [
               { label: STORYTELLER_APP_NAME, to: steamloomPath() },
               { label: "我的工作台", to: steamloomPath("my") },
-              { label: "創作專案", to: steamloomPath("my/project") },
+              { label: "創作專案", to: steamloomPath("my/projects") },
               ...(editingProject
                 ? [
                     {
@@ -609,7 +611,7 @@ export default function StorytellerNewProject({
             </Grid>
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
-            <Button href={steamloomPath("my/project")} variant="text">
+            <Button href={steamloomPath("my/projects")} variant="text">
               返回列表
             </Button>
             <Button
