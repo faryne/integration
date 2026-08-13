@@ -9,7 +9,7 @@
 - `所見即所得編輯器notion-like分析_claude_final,.md`——Claude 整合版（含使用者 2026-08-13 拍板）
 - `所見即所得編輯器notion-like分析_codex_final,.md`——Codex 獨立 final 版
 
-上述兩份「_final」文件在表格序列化格式與圖片插入現況兩點上仍有實質分歧，本文件透過 Claude 對 code 的實際查證、以及 Claude 與 Codex 在同一個 Codex CLI session（`019ff88e-5904-7603-bd56-0202486dc89b`）內的兩輪直接對話收斂而成。四份前文不刪除，保留作為分析過程紀錄；後續動工請以本文件為準。
+上述兩份「_final」文件在表格序列化格式與圖片插入現況兩點上仍有實質分歧，本文件透過 Claude 對 code 的實際查證、以及 Claude 與 Codex 在同一個 Codex CLI session（`019ff88e-5904-7603-bd56-0202486dc89b`）內的兩輪直接對話收斂而成。四份前文內容已完全被本文件吸收，已於 commit `7717952` 一併刪除，不再保留；後續動工請以本文件為準。
 
 ## 結論
 
@@ -186,6 +186,34 @@ MCP 層第一版不強制做完整 validation，但 parser／reader 端需要保
 - [ ] CJK IME 實測：注音、拼音、選字中 Enter/Escape/Backspace、組字跨 mark 邊界、表格 cell 內組字
 - [ ] Mobile 實測：右鍵不可用時，是否仍可透過 bubble menu / slash command 完成主要操作
 - [ ] MCP：實際請 AI agent 透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 寫入一次含表格的內容，確認 syntax hint 足夠讓 AI 手寫出合法 table marker
+
+## 分工計畫（2026-08-13，Claude × Codex 在同一 Codex CLI session 內對齊）
+
+實作階段由 Claude 與 Codex 各自獨立開發、避免同時改同一批檔案，每個 phase 完成後交給對方 review，review 過才進下一個依賴它的 phase。工作基準點是 `codex/storyteller-wysiwyg-analysis` branch（commit `7717952` 之後接續開發），不另開新 branch，也不先 merge main。
+
+### Track A（Claude）
+
+- Phase 0：Markdown 自動 render + 刪除線
+- Phase 1：Command Registry，重構工具列/右鍵選單（`StorytellerWysiwygEditor.tsx` 骨架改動集中在這裡）
+- Phase 2：右鍵選單 context-aware 化 + 資產圖片 command 化
+- Phase 4：Bubble Menu
+
+### Track B（Codex）
+
+- Phase 5：真表格全鏈路（TableKit 整合、逐列一行 marker 的 parser/serializer、reader renderer、export、後端 wordCount、MCP hint、舊 table-row 相容、`^\| $` input rule 清理）
+- Phase 3：Slash Command，包含把 `/table` 接上 Phase 5 做好的真表格插入
+
+### Joint（兩邊都做）
+
+- Phase 6：工具列移除（需要 Track A／B 都完成才能驗收）
+- Phase 7：全流程驗證
+
+### 協作規則
+
+1. **Phase 1（Track A）優先完成**：它會大改 `StorytellerWysiwygEditor.tsx` 的工具列/右鍵選單結構，Phase 2/3/4/6 都依賴它，不能兩邊同時動這個檔案。
+2. **Track B 的 Phase 5 先不碰 `StorytellerWysiwygEditor.tsx` 的 toolbar/context menu 區塊**：先把 table node、table marker parser/serializer、reader/export/backend/MCP hint 做好，最多加 editor extension 與 imperative command（例如 `insertTable()`）；真正 UI 入口等 Phase 1（Command Registry）／Phase 3 落地後再接，避免跟 Track A 的大重構撞檔。
+3. **共用檔案（`StorytellerWysiwygMarkdown.tsx`、`exportMarkdown.ts`、後端 wordCount／stripBookmark、diff strip 檔案）兩邊最終都會加自己的 case**（刪除線 vs 表格），衝突面小、屬於「同一個 switch/mapper 加 case」等級，用一般 git merge/rebase 加上互相 review 處理即可，不需要為此把邏輯拆得更碎。誰先完成該檔案的改動，就先留清楚註解與測試案例，另一邊 rebase 後再補自己的 case。
+4. Review 時機：Track A 的 Phase 1 要讓 Codex review 過，Track B 的 Phase 3 才接上；Track B 的 Phase 5 要讓 Claude review 過，Phase 6 工具列移除才動工。
 
 ## 風險清單（合併版，按優先序）
 
