@@ -195,13 +195,37 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 - [ ] 幫 `StorytellerWysiwygSyntaxDrawer`（語法說明側欄）找一個不屬於工具列的新入口
 - [ ] StoryEditor／LoreEditor 實測：autosave、字數、AI agent 附加、匯出 markdown 不受影響
 
-### Phase 7：驗證與收尾
+### Phase 7：圖片版面控制（Track B／Codex 負責，排在 Phase 5 真表格完成之後）
+
+2026-08-13 使用者提出的新需求：資產圖片目前編輯器跟閱讀頁都強制 `width:100%`／`display:block`，沒有靠左/靠右/置中的「文繞圖」（圖片浮動、文字環繞）效果。跟 Claude／Codex 在同一 Codex CLI session 討論後定案，指派給 Track B（Codex），排在 Phase 5 真表格完成之後（表格是資料模型層級的大改動，優先權更高，不要互相搶時間）。
+
+**設計要點（已定案，不是待討論事項）**：
+
+- **不重用段落既有的文字 `align` 屬性**：`align` 預設值就是 `"left"`，若把圖片段落的 `align="left"` 直接解讀成 float-left，所有既有圖片會從目前的 full-width block 靜默變成左浮動窄圖，是破壞性變更。改成在 `assetImage` 節點自己新增獨立的 `layout` 屬性（`block` / `center` / `float-left` / `float-right`），沒有 `layout` 的舊圖片一律當 `block`，行為完全不變，不需要遷移。
+- **寬度第一版固定比例，不做拖曳調整**：`block` 全寬；`center` 約 `min(80%, 720px)` 置中；`float-left`／`float-right` 約 `min(45%, 360px)`；手機螢幕（小於某個 breakpoint）一律退回 `block` 不浮動。拖曳調整寬度另開後續需求，不在第一版範圍。
+- **float 清除規則**：一般段落文字可以環繞在浮動圖片旁邊；標題、引用、清單、分隔線、表格、下一張圖片預設要 `clear: both`，避免版面疊在一起。編輯器跟閱讀頁要套同一套規則，確保編輯時看到的畫面跟讀者看到的一致。
+- **操作入口是圖片專屬的 layout command，不是複用 Phase 1 的文字對齊 command**（`align-left`/`align-center`/`align-right` 語意是文字對齊，跟圖片的 float 語意不同，混用會混淆）；入口先接右鍵選單（游標/selection 在圖片 node 上時顯示）或之後的 Bubble Menu。
+- **匯出 markdown 第一版直接退化**：標準 markdown 沒有文繞圖語法，匯出時全部輸出成一般靠左圖片，不勉強保留浮動效果。
+
+**Checklist**：
+
+- [ ] `assetImageNode.tsx` 的 `assetImage` 節點新增 `layout` 屬性（`block`/`center`/`float-left`/`float-right`，預設 `block`）
+- [ ] 編輯器 NodeView（`AssetImageView`）依 `layout` 套用對應 CSS（float+固定寬度 vs block+置中/全寬），手機退回 `block`
+- [ ] 閱讀頁 `StorytellerWysiwygMarkdown.tsx` 的圖片 render 邏輯同步支援 `layout`，跟編輯器套同一套寬度/breakpoint 規則
+- [ ] 非 paragraph block（標題／引用／清單／分隔線／表格／下一張圖片）預設 `clear: both`，編輯器與閱讀頁都要套用
+- [ ] 圖片專屬的 layout command 加進 `wysiwygCore/commands.ts`（新 group，例如 `image-layout`），right-click 選單在游標/selection 落在圖片 node 上時顯示這組 command
+- [ ] 序列化：`layout` 屬性寫進 `⟦⟧` 段落 marker 或圖片自身語法（實作前需定案存放位置，避免跟既有 `align` 屬性混淆）
+- [ ] 匯出 markdown：圖片一律退化輸出成無浮動效果的一般圖片語法
+- [ ] 舊資料相容：沒有 `layout` 屬性的既有圖片維持 `block` 全寬，行為不變，不需要遷移
+- [ ] 人工瀏覽器實測：三種 layout 在編輯器與閱讀頁的視覺效果、float 後接標題/引用/表格等 block 的 clear 效果、手機斷點退回 block
+
+### Phase 8：驗證與收尾
 
 - [ ] StoryEditor／LoreEditor 全流程實測：autosave、字數、AI agent 附加、匯出 markdown
-- [ ] Reader 實測：標題、引用、清單、真表格、腳注、書籤、行距
+- [ ] Reader 實測：標題、引用、清單、真表格、腳注、書籤、行距、圖片文繞圖
 - [ ] Diff 實測：只改註解／顏色／腳注／刪除線文字時的差異是否符合預期，含表格逐列 diff
 - [ ] CJK IME 實測：注音、拼音、選字中 Enter/Escape/Backspace、組字跨 mark 邊界、表格 cell 內組字
-- [ ] Mobile 實測：右鍵不可用時，是否仍可透過 bubble menu / slash command 完成主要操作
+- [ ] Mobile 實測：右鍵不可用時，是否仍可透過 bubble menu / slash command 完成主要操作；圖片 layout 是否正確退回 block
 - [ ] MCP：實際請 AI agent 透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 寫入一次含表格的內容，確認 syntax hint 足夠讓 AI 手寫出合法 table marker
 
 ## 分工計畫（2026-08-13，Claude × Codex 在同一 Codex CLI session 內對齊）
@@ -220,11 +244,12 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 - Phase 5：真表格全鏈路（TableKit 整合、逐列一行 marker 的 parser/serializer、reader renderer、export、後端 wordCount、MCP hint、舊 table-row 相容、`^\| $` input rule 清理）
 - Phase 3：Slash Command，包含把 `/table` 接上 Phase 5 做好的真表格插入
+- Phase 7：圖片版面控制（2026-08-13 使用者新提出，排在 Phase 5 真表格完成之後再做）
 
 ### Joint（兩邊都做）
 
 - Phase 6：工具列移除（需要 Track A／B 都完成才能驗收）
-- Phase 7：全流程驗證
+- Phase 8：全流程驗證
 
 ### 協作規則
 
@@ -240,7 +265,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 3. **拔工具列後可發現性下降**，這個編輯器功能數量（15 種＋刪除線）比一般 Notion 文件編輯器多。Bubble menu、保留語法說明入口是主要補償手段。
 4. **右鍵在 mobile 幾乎不可用**，需確認 slash／bubble menu 是否足以覆蓋主要操作。
 5. **右鍵選單新增區塊插入選項時，不能破壞既有「選取範圍被收合」的修正**——空白段落右鍵不該觸發任何需要 selection 的項目。
-6. **真表格風險已大幅降低**（本輪對話收斂結果）：原本評估「會打破一行＝一個段落、書籤/diff 都要重新設計」的風險已透過採用逐列一行 marker 格式解除——書籤與 diff 都維持既有 line-based 模型，不需要新資料模型。剩餘風險收斂為：① escape 規則的邊界情況（cell 內含 `|`／`\`／既有 delimiter 混用）需要充分測試；② Tiptap `TableKit` 與現有 `MarkerParagraph` schema 的相容性需要 spike 驗證；③ 表格 cell 內的中文 IME 行為未經實測；④ AI agent 透過 MCP 手寫表格語法的實際可靠度需要在 Phase 7 用真實 MCP 呼叫驗證，不能只靠人工預期 syntax hint 足夠清楚。
+6. **真表格風險已大幅降低**（本輪對話收斂結果）：原本評估「會打破一行＝一個段落、書籤/diff 都要重新設計」的風險已透過採用逐列一行 marker 格式解除——書籤與 diff 都維持既有 line-based 模型，不需要新資料模型。剩餘風險收斂為：① escape 規則的邊界情況（cell 內含 `|`／`\`／既有 delimiter 混用）需要充分測試；② Tiptap `TableKit` 與現有 `MarkerParagraph` schema 的相容性需要 spike 驗證；③ 表格 cell 內的中文 IME 行為未經實測；④ AI agent 透過 MCP 手寫表格語法的實際可靠度需要在 Phase 8 用真實 MCP 呼叫驗證，不能只靠人工預期 syntax hint 足夠清楚。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
