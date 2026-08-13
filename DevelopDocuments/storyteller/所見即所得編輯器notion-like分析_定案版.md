@@ -115,6 +115,22 @@ MCP 層第一版不強制做完整 validation，但 parser／reader 端需要保
 
 排序原則：風險最低、跟其他決策無依賴的先做。表格（Phase 5）排在工具列移除（Phase 6）之前——工具列能不能安全拔掉，取決於 slash／右鍵是不是已涵蓋「所有」區塊操作，而真表格的新增列/欄、刪除列/欄、編輯 cell 也是區塊操作的一部分。
 
+### Phase -1：WYSIWYG Playground（前置項目，Track A 負責，所有 Phase 之前）
+
+使用者提議「複製一套全新編輯器、demo 頁驗證後再抽換」，經 Claude 與 Codex 討論後定案為**不整套複製**：`wysiwygCore/` 的 whitelist／parser／serializer／marker 是編輯器、Reader、diff 頁、匯出、後端字數、MCP 工具共用的格式契約，複製一份會製造雙 parser/serializer，之後容易漂移（Reader 讀不懂新編輯器存的內容、匯出/MCP 格式不一致）；真正需要隔離的是「UI 互動與開發驗證場景」，不是格式核心。且若真的整套複製，最後「抽換」正式頁面這一步本身就是風險，容易漏掉正式頁專屬 props（`toolbarExtra`、`projectPublicId`、`enabledFeatures`、`insertAsset()` ref 等）。
+
+改採建立獨立 demo/playground 頁面，共用同一個 `StorytellerWysiwygEditor` 元件與 `wysiwygCore/`，不做元件複製：
+
+- [ ] 建立 `/storyteller/wysiwyg-demo` 或等效 dev playground route
+- [ ] 掛載同一個 `StorytellerWysiwygEditor`，不複製元件
+- [ ] 用本地 state 管理 `value`/`onChange`
+- [ ] 顯示 raw content textarea／preview／serialized output，方便檢查 marker
+- [ ] 提供幾組 sample content：一般段落、行內 marker、腳注、註解、asset placeholder、舊 `table-row`、未來 table marker sample
+- [ ] 不接 autosave、不接真實 story/lore API、不寫 DB
+- [ ] 若要測 asset insertion，可用 mock asset 或接現有 picker，但不要把 demo 假資料路徑污染正式 editor API
+
+Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground 驗證，驗證過再接進 `StoryEditor.tsx`／`LoreEditor.tsx` 正式頁面。Track B 做 Phase 5 真表格時，也在同一個 playground 加 table sample 與互動驗證，雙方共用同一場驗證，不分兩套 demo。
+
 ### Phase 0：Markdown 自動 render 補齊（獨立先做，風險最低）
 
 - [ ] 修正 Italic 的 input rule，只接受 `*文字*`，排除官方預設會誤吃的單底線 `_文字_`
@@ -193,6 +209,7 @@ MCP 層第一版不強制做完整 validation，但 parser／reader 端需要保
 
 ### Track A（Claude）
 
+- Phase -1：WYSIWYG Playground（前置項目，所有 Phase 之前）
 - Phase 0：Markdown 自動 render + 刪除線
 - Phase 1：Command Registry，重構工具列/右鍵選單（`StorytellerWysiwygEditor.tsx` 骨架改動集中在這裡）
 - Phase 2：右鍵選單 context-aware 化 + 資產圖片 command 化
