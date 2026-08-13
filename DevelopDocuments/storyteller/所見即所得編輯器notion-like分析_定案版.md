@@ -121,27 +121,27 @@ MCP 層第一版不強制做完整 validation，但 parser／reader 端需要保
 
 改採建立獨立 demo/playground 頁面，共用同一個 `StorytellerWysiwygEditor` 元件與 `wysiwygCore/`，不做元件複製：
 
-- [ ] 建立 `/storyteller/wysiwyg-demo` 或等效 dev playground route
-- [ ] 掛載同一個 `StorytellerWysiwygEditor`，不複製元件
-- [ ] 用本地 state 管理 `value`/`onChange`
-- [ ] 顯示 raw content textarea／preview／serialized output，方便檢查 marker
-- [ ] 提供幾組 sample content：一般段落、行內 marker、腳注、註解、asset placeholder、舊 `table-row`、未來 table marker sample
-- [ ] 不接 autosave、不接真實 story/lore API、不寫 DB
-- [ ] 若要測 asset insertion，可用 mock asset 或接現有 picker，但不要把 demo 假資料路徑污染正式 editor API
+- [x] 建立 `/storyteller/wysiwyg-demo` 或等效 dev playground route
+- [x] 掛載同一個 `StorytellerWysiwygEditor`，不複製元件
+- [x] 用本地 state 管理 `value`/`onChange`
+- [ ] 顯示 raw content textarea／preview／serialized output，方便檢查 marker——raw content textarea 已做；Reader preview pane 未做（Codex review 標為 P2，排到 Track B 開始 Phase 5 前補上）
+- [x] 提供幾組 sample content：一般段落、行內 marker、腳注、註解、asset placeholder、舊 `table-row`（未來 table marker sample 待 Phase 5 表格格式定案後再補）
+- [x] 不接 autosave、不接真實 story/lore API、不寫 DB
+- [x] 若要測 asset insertion，可用 mock asset 或接現有 picker，但不要把 demo 假資料路徑污染正式 editor API
 
 Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground 驗證，驗證過再接進 `StoryEditor.tsx`／`LoreEditor.tsx` 正式頁面。Track B 做 Phase 5 真表格時，也在同一個 playground 加 table sample 與互動驗證，雙方共用同一場驗證，不分兩套 demo。
 
 ### Phase 0：Markdown 自動 render 補齊（獨立先做，風險最低）
 
-- [ ] 修正 Italic 的 input rule，只接受 `*文字*`，排除官方預設會誤吃的單底線 `_文字_`
-- [ ] 為 Underline 補 custom InputRule，對應 `++文字++`
-- [ ] 為 Subscript 補 custom InputRule，對應 `~文字~`
-- [ ] 為 Superscript 補 custom InputRule，對應 `^文字^`
-- [ ] 新增刪除線 mark（`--文字--`）：`whitelist.ts` 新增 `strikethrough`／新增 `@tiptap/extension-strike` 或自刻 mark（覆寫官方預設吃 `~~` 的 input rule，改成只認 `--`）／`parser.ts`／`serializer.ts` 加 `ParsedRun.strikethrough`／`StorytellerWysiwygMarkdown.tsx` 套用樣式／`exportMarkdown.ts` 匯出處理／後端 `wordCount()`／`stripBookmarkLineMarker()` 丟棄 `--` delimiter／三個 diff 頁的 `stripMarkerForDiffLine` 一併處理
-- [ ] 補測試：`--`（行內刪除線）與 `---`（行首分隔線）不互相誤判，含段落開頭就是刪除線文字、連續四個以上減號等邊界情況
-- [ ] ~~確認分隔線 `---` 是否已有 input rule~~ **已確認存在（`markerParagraph.ts:265-270`），無需額外工作**
-- [ ] 人工實測中文 IME：組字中途輸入 `*`／`_`／`+`／`~`／`^`／`-` 等符號的行為，退格、快速切換候選字——這是後續所有 Phase 共用的最小 IME 驗證，通過後才進入風險更高的 Phase
-- [ ] Bold/Italic 既有官方 input rule 在目前自訂 `MarkerParagraph` schema 下是否正常運作，需要實際點測
+- [x] 修正 Italic 的 input rule，只接受 `*文字*`，排除官方預設會誤吃的單底線 `_文字_`
+- [x] 為 Underline 補 custom InputRule，對應 `++文字++`
+- [x] 為 Subscript 補 custom InputRule，對應 `~文字~`
+- [x] 為 Superscript 補 custom InputRule，對應 `^文字^`
+- [x] 新增刪除線 mark（`--文字--`）：`whitelist.ts` 新增 `strike`（實作時對齊 Tiptap 官方 mark type name，未沿用文件原本的 `strikethrough`，已與 Codex 對過）／新增 `@tiptap/extension-strike`（覆寫官方預設吃 `~~` 的 input rule，改成只認 `--`）／`serializer.ts`／`exportMarkdown.ts`／`StorytellerWysiwygMarkdown.tsx`／`StorytellerWysiwygSyntaxDrawer.tsx`／工具列與右鍵選單／後端 `wordCount()`／MCP syntax hint 都已補上
+- [x] 補測試：`--`（行內刪除線）與 `---`（行首分隔線）不互相誤判——以 Go 後端測試涵蓋（`wordcount_strikethrough_test.go`），前端沒有既有測試框架，改在 Phase -1 playground 人工瀏覽器實測驗證（見下方 IME 項）
+- [x] ~~確認分隔線 `---` 是否已有 input rule~~ **已確認存在（`markerParagraph.ts:265-270`），無需額外工作**
+- [ ] **人工實測中文 IME：組字中途輸入 `*`／`_`／`+`／`~`／`^`／`-` 等符號的行為，退格、快速切換候選字——尚未完成**。已用瀏覽器自動化對 playground 做過「已組字完成」文字的逐字元真實按鍵測試（`--`／`++`／`~`／`^`／`*`／`_`／`**` 都正確觸發/正確排除），但這不等於「注音/拼音組字中途」的行為，自動化工具無法模擬真正的 IME composition 狀態，需要人工用實體鍵盤搭配輸入法測試才算完成——這是風險清單裡標記最高風險的一項，不要跳過
+- [x] Bold/Italic 既有官方 input rule 在目前自訂 `MarkerParagraph` schema 下是否正常運作，已實測：`**bold**`／`*italic*` 都正確觸發，`_italic_` 正確被排除
 
 ### Phase 1：Command Registry（抽象層，不改變現有 UX）
 
