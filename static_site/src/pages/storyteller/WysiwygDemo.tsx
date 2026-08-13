@@ -54,7 +54,6 @@ export default function WysiwygDemo() {
       publicId: assetPublicId,
       alt: "demo 插入的資產",
     });
-    // eslint-disable-next-line no-console
     console.log("insertAsset result:", inserted);
   }
 

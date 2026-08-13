@@ -1,25 +1,7 @@
-import AddCommentIcon from "@mui/icons-material/AddComment";
 import DeleteIcon from "@mui/icons-material/Delete";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
-import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
-import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
 import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
-import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
-import FormatStrikethroughIcon from "@mui/icons-material/FormatStrikethrough";
-import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
-import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
-import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
-import NoteAltIcon from "@mui/icons-material/NoteAlt";
-import SubscriptIcon from "@mui/icons-material/Subscript";
-import SuperscriptIcon from "@mui/icons-material/Superscript";
-import TableRowsIcon from "@mui/icons-material/TableRows";
 import {
   Box,
   Button,
@@ -62,6 +44,10 @@ import {
   TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
 import {
+  wysiwygCommandsByGroup,
+  type WysiwygCommandContext,
+} from "./wysiwygCore/commands";
+import {
   buildExportFileName,
   exportContentToMarkdown,
 } from "./wysiwygCore/exportMarkdown";
@@ -82,12 +68,15 @@ import {
   TEXT_COLOR_VALUES,
   type AlignmentValue,
   type BgColorValue,
-  type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
   type TextColorValue,
 } from "./wysiwygCore/whitelist";
 import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import {
+  StorytellerWysiwygContextMenu,
+  type ContextMenuPosition,
+} from "./StorytellerWysiwygContextMenu";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 
 interface HoveredComment {
@@ -100,11 +89,6 @@ interface HoveredFootnote {
   /** 這裡放的是還沒解析的腳注原文（含 **粗體** 等限縮語法），渲染時交給 renderFootnoteNote。 */
   text: string;
   rect: DOMRect;
-}
-
-interface ContextMenuPosition {
-  x: number;
-  y: number;
 }
 
 /** 註解底色的實際色值跟顯示名稱，固定色盤（見 whitelist.ts 的 COMMENT_COLOR_VALUES）。 */
@@ -245,17 +229,6 @@ const BLOCK_KIND_SX = {
     padding: "2px 6px",
   },
 } as const;
-
-const BLOCK_KIND_OPTIONS: {
-  value: Exclude<BlockKindValue, "none">;
-  label: string;
-  Icon: typeof FormatQuoteIcon;
-}[] = [
-  { value: "quote", label: "引用", Icon: FormatQuoteIcon },
-  { value: "bullet", label: "無序清單", Icon: FormatListBulletedIcon },
-  { value: "number", label: "有序清單", Icon: FormatListNumberedIcon },
-  { value: "table-row", label: "表格列（用 | 分隔欄位）", Icon: TableRowsIcon },
-];
 
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
   { value: 0, label: "內文" },
@@ -631,29 +604,6 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   const closeContextMenu = () => setContextMenuPosition(null);
 
-  const handleContextMenuAddOrEditComment = () => {
-    closeContextMenu();
-    handleOpenCommentDialog();
-  };
-
-  const handleContextMenuRemoveComment = () => {
-    closeContextMenu();
-    handleRemoveComment();
-  };
-
-  // 引用/清單是段落屬性，跟標題（Select）同一種切換邏輯，但這裡是按鈕形式：再按一次
-  // 目前已經生效的種類會切回一般段落（"none"），符合大多數清單/引用按鈕的直覺行為。
-  const toggleBlockKind = (kind: Exclude<BlockKindValue, "none">) => {
-    const next = editorState.blockKind === kind ? DEFAULT_BLOCK_KIND : kind;
-    editor.chain().focus().setBlockKind(next).run();
-  };
-
-  // 分隔線是一次性插入動作（不是像引用/清單那樣「切換目前段落的持續狀態」），所以不走
-  // toggleBlockKind／ToggleButton selected 那套邏輯，單純呼叫 insertHorizontalRule。
-  const handleInsertHorizontalRule = () => {
-    editor.chain().focus().insertHorizontalRule().run();
-  };
-
   // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
   // 之後鍵入的文字上，跟粗體等行為一致）。選 null 代表清除。
   const applyTextColor = (value: TextColorValue | null) => {
@@ -748,20 +698,22 @@ export const StorytellerWysiwygEditor = forwardRef<
     URL.revokeObjectURL(url);
   };
 
-  const activeMarks = [
-    editorState.bold && "bold",
-    editorState.italic && "italic",
-    editorState.underline && "underline",
-    editorState.subscript && "subscript",
-    editorState.superscript && "superscript",
-    editorState.strike && "strike",
-  ].filter(Boolean) as string[];
+  // Command Registry（wysiwygCore/commands.ts）共用的執行環境：工具列／右鍵選單都靠
+  // 同一份 context 呼叫 command.run，不再各自寫一份 onClick。dialog 開關動作（連結／
+  // 腳注／註解）本來就是這個元件自己的 useState，command 只是呼叫這幾個既有 handler，
+  // 不重新實作對話框邏輯。
+  const commandContext: WysiwygCommandContext = {
+    isFeatureEnabled,
+    canExportMarkdown: exportBaseName !== undefined,
+    openLinkDialog: handleOpenLinkDialog,
+    openFootnoteDialog: handleOpenFootnoteDialog,
+    openCommentDialog: handleOpenCommentDialog,
+    exportMarkdown: handleExportMarkdown,
+  };
 
-  // 註解是行內 marker，套用在「一段選取的文字」上，不像以前的段落屬性版本可以在空
-  // 選取（只有游標）時也套用到整個段落——所以「加註解」只有在真的選了文字，或游標
-  // 已經落在既有註解裡（此時是要編輯/移除，不是新增）時才能開。
-  const canOpenCommentDialog =
-    editorState.hasComment || editorState.hasSelection;
+  const activeMarkIds = wysiwygCommandsByGroup("mark")
+    .filter((command) => command.isActive?.(editor))
+    .map((command) => command.id);
 
   return (
     <Box>
@@ -795,111 +747,61 @@ export const StorytellerWysiwygEditor = forwardRef<
 
           <ToggleButtonGroup
             size="small"
-            value={activeMarks}
+            value={activeMarkIds}
             onChange={() => {}}
           >
-            <Tooltip title="粗體">
-              <ToggleButton
-                value="bold"
-                selected={editorState.bold}
-                onClick={() => editor.chain().focus().toggleBold().run()}
-              >
-                <FormatBoldIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="斜體">
-              <ToggleButton
-                value="italic"
-                selected={editorState.italic}
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-              >
-                <FormatItalicIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="底線">
-              <ToggleButton
-                value="underline"
-                selected={editorState.underline}
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-              >
-                <FormatUnderlinedIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="下標">
-              <ToggleButton
-                value="subscript"
-                selected={editorState.subscript}
-                onClick={() => editor.chain().focus().toggleSubscript().run()}
-              >
-                <SubscriptIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="上標">
-              <ToggleButton
-                value="superscript"
-                selected={editorState.superscript}
-                onClick={() => editor.chain().focus().toggleSuperscript().run()}
-              >
-                <SuperscriptIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="刪除線">
-              <ToggleButton
-                value="strike"
-                selected={editorState.strike}
-                onClick={() => editor.chain().focus().toggleStrike().run()}
-              >
-                <FormatStrikethroughIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={editorState.align}
-            onChange={(_event, value: AlignmentValue | null) => {
-              if (value) editor.chain().focus().setTextAlign(value).run();
-            }}
-          >
-            <Tooltip title="置左">
-              <ToggleButton value="left">
-                <FormatAlignLeftIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="置中">
-              <ToggleButton value="center">
-                <FormatAlignCenterIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="置右">
-              <ToggleButton value="right">
-                <FormatAlignRightIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
+            {wysiwygCommandsByGroup("mark").map((command) => {
+              const Icon = command.icon!;
+              return (
+                <Tooltip key={command.id} title={command.label}>
+                  <ToggleButton
+                    value={command.id}
+                    selected={command.isActive?.(editor) ?? false}
+                    onClick={() => command.run(editor, commandContext)}
+                  >
+                    <Icon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              );
+            })}
           </ToggleButtonGroup>
 
           <Divider orientation="vertical" flexItem />
 
           <ToggleButtonGroup size="small">
-            {BLOCK_KIND_OPTIONS.map(({ value, label, Icon }) => (
-              <Tooltip key={value} title={label}>
-                <ToggleButton
-                  value={value}
-                  selected={editorState.blockKind === value}
-                  onClick={() => toggleBlockKind(value)}
-                >
-                  <Icon fontSize="small" />
-                </ToggleButton>
-              </Tooltip>
-            ))}
-            <Tooltip title="插入分隔線">
-              <ToggleButton value="hr" onClick={handleInsertHorizontalRule}>
-                <HorizontalRuleIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
+            {wysiwygCommandsByGroup("align").map((command) => {
+              const Icon = command.icon!;
+              return (
+                <Tooltip key={command.id} title={command.label}>
+                  <ToggleButton
+                    value={command.id}
+                    selected={command.isActive?.(editor) ?? false}
+                    onClick={() => command.run(editor, commandContext)}
+                  >
+                    <Icon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              );
+            })}
+          </ToggleButtonGroup>
+
+          <Divider orientation="vertical" flexItem />
+
+          <ToggleButtonGroup size="small">
+            {wysiwygCommandsByGroup("block").map((command) => {
+              const Icon = command.icon!;
+              return (
+                <Tooltip key={command.id} title={command.label}>
+                  <ToggleButton
+                    value={command.id}
+                    selected={command.isActive?.(editor) ?? false}
+                    onClick={() => command.run(editor, commandContext)}
+                  >
+                    <Icon fontSize="small" />
+                  </ToggleButton>
+                </Tooltip>
+              );
+            })}
           </ToggleButtonGroup>
 
           <Divider orientation="vertical" flexItem />
@@ -939,85 +841,66 @@ export const StorytellerWysiwygEditor = forwardRef<
             </Tooltip>
           </ToggleButtonGroup>
 
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            <Tooltip title={editorState.hasLink ? "編輯連結" : "加連結"}>
-              <ToggleButton
-                value="link"
-                selected={editorState.hasLink}
-                onClick={handleOpenLinkDialog}
-              >
-                <LinkIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          {isFeatureEnabled("footnote") && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip
-                  title={editorState.hasFootnote ? "編輯腳注" : "加腳注"}
+          {wysiwygCommandsByGroup("annotation")
+            .filter((command) => command.isVisible?.(commandContext) ?? true)
+            .map((command) => {
+              const Icon = command.icon!;
+              const isActive = command.isActive?.(editor) ?? false;
+              const isEnabled = command.isEnabled?.(editor, commandContext) ?? true;
+              const label = isActive && command.activeLabel
+                ? command.activeLabel
+                : command.label;
+              const tooltip =
+                command.id === "comment" && !isEnabled
+                  ? "請先選取要加註解的文字"
+                  : label;
+              return (
+                <Box
+                  key={command.id}
+                  sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <ToggleButton
-                    value="footnote"
-                    selected={editorState.hasFootnote}
-                    onClick={handleOpenFootnoteDialog}
-                  >
-                    <NoteAltIcon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
+                  <Divider orientation="vertical" flexItem sx={{ mr: 2 }} />
+                  <ToggleButtonGroup size="small">
+                    <Tooltip title={tooltip}>
+                      <span>
+                        <ToggleButton
+                          value={command.id}
+                          selected={isActive}
+                          disabled={!isEnabled}
+                          onClick={() => command.run(editor, commandContext)}
+                        >
+                          <Icon fontSize="small" />
+                        </ToggleButton>
+                      </span>
+                    </Tooltip>
+                  </ToggleButtonGroup>
+                </Box>
+              );
+            })}
 
-          {isFeatureEnabled("comment") && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip
-                  title={
-                    editorState.hasComment
-                      ? "編輯註解"
-                      : canOpenCommentDialog
-                        ? "加註解"
-                        : "請先選取要加註解的文字"
-                  }
+          {wysiwygCommandsByGroup("utility")
+            .filter((command) => command.isVisible?.(commandContext) ?? true)
+            .map((command) => {
+              const Icon = command.icon!;
+              return (
+                <Box
+                  key={command.id}
+                  sx={{ display: "flex", alignItems: "center" }}
                 >
-                  <span>
-                    <ToggleButton
-                      value="add-comment"
-                      selected={editorState.hasComment}
-                      disabled={!canOpenCommentDialog}
-                      onClick={handleOpenCommentDialog}
-                    >
-                      <AddCommentIcon fontSize="small" />
-                    </ToggleButton>
-                  </span>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
-
-          {exportBaseName !== undefined && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip title="匯出 markdown 檔案">
-                  <ToggleButton
-                    value="export-markdown"
-                    onClick={handleExportMarkdown}
-                  >
-                    <FileDownloadIcon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
+                  <Divider orientation="vertical" flexItem sx={{ mr: 2 }} />
+                  <ToggleButtonGroup size="small">
+                    <Tooltip title={command.label}>
+                      <ToggleButton
+                        value={command.id}
+                        onClick={() => command.run(editor, commandContext)}
+                      >
+                        <Icon fontSize="small" />
+                      </ToggleButton>
+                    </Tooltip>
+                  </ToggleButtonGroup>
+                </Box>
+              );
+            })}
 
           <Divider orientation="vertical" flexItem />
           <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
@@ -1051,262 +934,16 @@ export const StorytellerWysiwygEditor = forwardRef<
         </Box>
       </Paper>
 
-      <Menu
-        open={contextMenuPosition !== null}
+      <StorytellerWysiwygContextMenu
+        editor={editor}
+        position={contextMenuPosition}
         onClose={closeContextMenu}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenuPosition
-            ? { top: contextMenuPosition.y, left: contextMenuPosition.x }
-            : undefined
-        }
-      >
-        <MenuItem
-          selected={editorState.bold}
-          onClick={() => {
-            editor.chain().focus().toggleBold().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatBoldIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>粗體</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.italic}
-          onClick={() => {
-            editor.chain().focus().toggleItalic().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatItalicIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>斜體</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.underline}
-          onClick={() => {
-            editor.chain().focus().toggleUnderline().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatUnderlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>底線</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.subscript}
-          onClick={() => {
-            editor.chain().focus().toggleSubscript().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <SubscriptIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>下標</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.superscript}
-          onClick={() => {
-            editor.chain().focus().toggleSuperscript().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <SuperscriptIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>上標</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.strike}
-          onClick={() => {
-            editor.chain().focus().toggleStrike().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatStrikethroughIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>刪除線</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", px: 2, pt: 1 }}
-        >
-          文字顏色
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
-          {TEXT_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={TEXT_COLOR_LABELS[color]}
-                aria-pressed={editorState.textColor === color}
-                onClick={() => {
-                  applyTextColor(color);
-                  closeContextMenu();
-                }}
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.textColor === color
-                      ? "text.primary"
-                      : "divider",
-                  bgcolor: TEXT_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem
-          onClick={() => {
-            applyTextColor(null);
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除文字顏色</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", px: 2, pt: 1 }}
-        >
-          文字背景色
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
-          {BG_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={BG_COLOR_LABELS[color]}
-                aria-pressed={editorState.bgColor === color}
-                onClick={() => {
-                  applyBgColor(color);
-                  closeContextMenu();
-                }}
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.bgColor === color ? "text.primary" : "divider",
-                  bgcolor: BG_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem
-          onClick={() => {
-            applyBgColor(null);
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除背景色</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <MenuItem
-          onClick={() => {
-            closeContextMenu();
-            handleOpenLinkDialog();
-          }}
-        >
-          <ListItemIcon>
-            <LinkIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {editorState.hasLink ? "編輯連結" : "加連結"}
-          </ListItemText>
-        </MenuItem>
-
-        {isFeatureEnabled("footnote") && (
-          <>
-            <Divider />
-
-            <MenuItem
-              onClick={() => {
-                closeContextMenu();
-                handleOpenFootnoteDialog();
-              }}
-            >
-              <ListItemIcon>
-                <NoteAltIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>
-                {editorState.hasFootnote ? "編輯腳注" : "加腳注"}
-              </ListItemText>
-            </MenuItem>
-            {editorState.hasFootnote && (
-              <MenuItem
-                onClick={() => {
-                  closeContextMenu();
-                  handleRemoveFootnote();
-                }}
-              >
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>移除腳注</ListItemText>
-              </MenuItem>
-            )}
-          </>
-        )}
-
-        {isFeatureEnabled("comment") && (
-          <>
-            <Divider />
-
-            <MenuItem
-              onClick={handleContextMenuAddOrEditComment}
-              disabled={!canOpenCommentDialog}
-            >
-              <ListItemIcon>
-                <AddCommentIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>
-                {editorState.hasComment ? "編輯註解" : "加註解"}
-              </ListItemText>
-            </MenuItem>
-            {editorState.hasComment && (
-              <MenuItem onClick={handleContextMenuRemoveComment}>
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>移除註解</ListItemText>
-              </MenuItem>
-            )}
-          </>
-        )}
-      </Menu>
+        commandContext={commandContext}
+        onRemoveFootnote={handleRemoveFootnote}
+        onRemoveComment={handleRemoveComment}
+        hasFootnote={editorState.hasFootnote}
+        hasComment={editorState.hasComment}
+      />
 
       <Menu
         open={textColorAnchor !== null}

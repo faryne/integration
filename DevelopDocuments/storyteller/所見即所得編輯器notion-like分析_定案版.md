@@ -145,10 +145,11 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 1：Command Registry（抽象層，不改變現有 UX）
 
-- [ ] 新增 `wysiwygCore/commands.ts`，把現有工具列與右鍵選單裡的每個動作轉成統一 command 描述（`id`／`label`／`scope: inline|block|insert`／`enabled(state)`／`run(editor)`／`aliases`）
-- [ ] 工具列改成從 command registry 產生按鈕
-- [ ] 右鍵選單改成從 command registry 產生項目，JSX 拆成獨立元件
-- [ ] 補一份最小 smoke test，確認每個 command 的 `enabled`/`run` 在空 editor state 下不會爆掉
+- [x] 新增 `wysiwygCore/commands.ts`，把現有工具列與右鍵選單裡的每個動作轉成統一 command 描述——實作時跟原規格有兩點偏離，已記錄理由：① 多加一個 `group` 欄位（mark/align/block/color/annotation/utility）決定 UI 分區，不只是 scope；② `scope` 多一個 `action` 值（匯出這類不動編輯器內容、只是觸發副作用的動作，塞進 inline/block/insert 會誤導）；③ `enabled` 拆成 `isActive`（是否高亮）／`isEnabled`（是否可執行）／`isVisible`（是否該顯示）三個獨立欄位，因為既有 UI 這三種狀態本來就是分開判斷的（例如註解按鈕同時有「未選字時 disabled」跟「選字/游標在既有註解裡時 active」兩種獨立語意），硬塞成一個 `enabled` 會遺失資訊
+- [x] 工具列改成從 command registry 產生按鈕（mark／align／block／annotation／utility 五組都改了；color 的「開啟色盤」觸發按鈕跟 select 標題下拉維持原本 bespoke 寫法，因為它們是「開啟子選單」而不是單一 command，色盤內的每個顏色選項本身仍是 command）
+- [x] 右鍵選單改成從 command registry 產生項目，JSX 拆成獨立元件 `StorytellerWysiwygContextMenu.tsx`；腳注/註解的「快速移除」是右鍵選單獨有的捷徑（工具列沒有對應按鈕），command registry 沒有涵蓋，維持獨立 props 傳入
+- [x] 補一份最小 smoke test，確認每個 command 的 `isActive`/`isEnabled`/`isVisible`/`run` 在空 editor state 下不會爆掉——前端原本完全沒有測試框架，跟使用者確認後新增 vitest（`static_site/vitest.config.ts`，獨立於 `vite.config.ts`，避免牽動正式 build plugin），`pnpm test` 可執行，3 個 test 都過
+- [x] 瀏覽器實測（Phase -1 playground）：mark 切換（工具列＋右鍵選單）、blockKind 切換（引用）、顏色套用（右鍵選單色塊）、腳注快速移除（右鍵選單）、連結對話框開啟（工具列）都跟改版前行為一致，console 無新增錯誤（且意外修掉一個既有的 MUI Fragment-as-Menu-child warning，因為 annotation 群組改用 `.filter().map()` 取代 `{condition && <>...</>}` 片段寫法）
 
 ### Phase 2：右鍵選單 context-aware 化 + 資產圖片 command 化
 
