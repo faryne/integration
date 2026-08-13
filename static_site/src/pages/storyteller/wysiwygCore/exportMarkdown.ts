@@ -24,8 +24,8 @@ import {
  * - 標題/引用/無序清單前綴：本來就是標準語法，原樣輸出。
  * - 有序清單：重新編出真正的連續數字（匯出檔是給人看原始碼的，這是唯一
  *   「數字有意義」的地方；內部儲存永遠是 canonical 的 `1. `）。
- * - 粗體 `**`／斜體 `*`：標準語法直接輸出；底線/上下標標準 markdown 沒有，
- *   轉行內 HTML `<u>`/`<sub>`/`<sup>`（GFM 及多數渲染器接受）。
+ * - 粗體 `**`／斜體 `*`／刪除線 `~~`：標準/GFM 語法直接輸出；底線/上下標標準 markdown
+ *   沒有對應語法，轉行內 HTML `<u>`/`<sub>`/`<sup>`（GFM 及多數渲染器接受）。
  * - 文字顏色/背景色：剝掉樣式、保留文字（標準 markdown 無對應，匯出檔保持乾淨）。
  * - 連結：`[文字](網址)`；target 丟棄。
  * - 腳注：GFM 腳注語法——內文錨點 `[^n]`＋檔案尾端 `[^n]: 內文` 清單，編號沿用
@@ -41,6 +41,7 @@ import {
 const EXPORT_MARK_ORDER_OUTER_TO_INNER: MarkName[] = [
   "bold",
   "underline",
+  "strike",
   "italic",
   "subscript",
   "superscript",
@@ -52,6 +53,8 @@ const EXPORT_MARK_WRAPPERS: Record<MarkName, [string, string]> = {
   underline: ["<u>", "</u>"],
   subscript: ["<sub>", "</sub>"],
   superscript: ["<sup>", "</sup>"],
+  // 刪除線是少數標準 GFM 有對應語法的樣式（~~文字~~），不用像底線/上下標退回 HTML。
+  strike: ["~~", "~~"],
 };
 
 function wrapWithMarks(text: string, marks: MarkName[]): string {

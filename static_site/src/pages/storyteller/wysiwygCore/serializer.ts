@@ -36,6 +36,7 @@ const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
 const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
   "bold",
   "underline",
+  "strike",
   "italic",
   "subscript",
   "superscript",

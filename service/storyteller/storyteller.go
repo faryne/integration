@@ -1607,7 +1607,7 @@ func stripSearchIndexLineMarker(line string) string {
 
 // wordCountInlineDelimiters 比照前端 whitelist.ts 的 PARSE_DELIMITERS，長的寫法要排在前面
 // （例如 ** 要早於 *），避免誤判成短的那個。
-var wordCountInlineDelimiters = []string{"**", "__", "++", "*", "~", "^"}
+var wordCountInlineDelimiters = []string{"**", "__", "++", "--", "*", "~", "^"}
 
 // footnoteInlineDelimiters 比照前端 FOOTNOTE_PARSE_DELIMITERS：腳注內文只接受粗體/斜體/
 // 底線，故意不含 ~/^（上下標）——如果腳注內文剛好打了字面上的 ~ 或 ^，前端限縮版解析器

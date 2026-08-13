@@ -34,6 +34,7 @@ const MARK_LABEL: Record<MarkName, string> = {
   underline: "底線",
   subscript: "下標",
   superscript: "上標",
+  strike: "刪除線",
 };
 
 interface SyntaxItem {
@@ -81,8 +82,9 @@ function SyntaxList({ items }: { items: SyntaxItem[] }) {
  * 說明本編輯器（wysiwygCore）自訂的精簡語法，跟 StorytellerMarkdownSyntaxDrawer 分開
  * 獨立實作——那個 drawer 說明的是標準 Markdown/GFM（remark-gfm），給 LoreEditor 舊版
  * 文字框／AI Agent 面板等地方用；這個編輯器走的是完全不同的自訂括號 marker 語法（見
- * wysiwygCore/whitelist.ts），沒有真正的 `[text](url)` 連結、`~~刪除線~~`、程式碼區塊等
- * GFM 語法，混在一起說明只會誤導使用者去打根本不支援的語法。內容直接從 whitelist.ts
+ * wysiwygCore/whitelist.ts），沒有真正的 `[text](url)` 連結、程式碼區塊等 GFM
+ * 語法（刪除線是有的，但用 `--` 不是 GFM 的 `~~`），混在一起說明只會誤導使用者去打根本
+ * 不支援的語法。內容直接從 whitelist.ts
  * 匯入實際生效的前綴／delimiter 常數組字串，避免像先前 MCP 語法說明那樣，語法白名單更新
  * 了但這裡忘記跟著改。
  */

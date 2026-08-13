@@ -11,6 +11,7 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
 import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
+import FormatStrikethroughIcon from "@mui/icons-material/FormatStrikethrough";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import LinkIcon from "@mui/icons-material/Link";
@@ -471,6 +472,7 @@ export const StorytellerWysiwygEditor = forwardRef<
           underline: false,
           subscript: false,
           superscript: false,
+          strike: false,
           align: "left" as AlignmentValue,
           headingLevel: DEFAULT_HEADING_LEVEL,
           blockKind: DEFAULT_BLOCK_KIND,
@@ -509,6 +511,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         underline: ctx.editor.isActive("underline"),
         subscript: ctx.editor.isActive("subscript"),
         superscript: ctx.editor.isActive("superscript"),
+        strike: ctx.editor.isActive("strike"),
         align,
         headingLevel,
         blockKind,
@@ -751,6 +754,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     editorState.underline && "underline",
     editorState.subscript && "subscript",
     editorState.superscript && "superscript",
+    editorState.strike && "strike",
   ].filter(Boolean) as string[];
 
   // 註解是行內 marker，套用在「一段選取的文字」上，不像以前的段落屬性版本可以在空
@@ -837,6 +841,15 @@ export const StorytellerWysiwygEditor = forwardRef<
                 onClick={() => editor.chain().focus().toggleSuperscript().run()}
               >
                 <SuperscriptIcon fontSize="small" />
+              </ToggleButton>
+            </Tooltip>
+            <Tooltip title="刪除線">
+              <ToggleButton
+                value="strike"
+                selected={editorState.strike}
+                onClick={() => editor.chain().focus().toggleStrike().run()}
+              >
+                <FormatStrikethroughIcon fontSize="small" />
               </ToggleButton>
             </Tooltip>
           </ToggleButtonGroup>
@@ -1107,6 +1120,18 @@ export const StorytellerWysiwygEditor = forwardRef<
             <SuperscriptIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>上標</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={editorState.strike}
+          onClick={() => {
+            editor.chain().focus().toggleStrike().run();
+            closeContextMenu();
+          }}
+        >
+          <ListItemIcon>
+            <FormatStrikethroughIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>刪除線</ListItemText>
         </MenuItem>
 
         <Divider />

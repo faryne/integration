@@ -3,18 +3,21 @@ import Document from "@tiptap/extension-document";
 import Dropcursor from "@tiptap/extension-dropcursor";
 import Gapcursor from "@tiptap/extension-gapcursor";
 import History from "@tiptap/extension-history";
-import Italic from "@tiptap/extension-italic";
-import Subscript from "@tiptap/extension-subscript";
-import Superscript from "@tiptap/extension-superscript";
 import Text from "@tiptap/extension-text";
 import TextAlign from "@tiptap/extension-text-align";
-import Underline from "@tiptap/extension-underline";
 
 import { AssetImage } from "./assetImageNode";
 import { BgColor, TextColor } from "./inlineColorMarks";
 import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
 import { InlineLink } from "./inlineLinkMark";
+import {
+  CustomItalic,
+  CustomStrike,
+  CustomSubscript,
+  CustomSuperscript,
+  CustomUnderline,
+} from "./markInputRules";
 import { MarkerParagraph } from "./markerParagraph";
 import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
 
@@ -30,10 +33,11 @@ export const wysiwygCoreExtensions = [
   Text,
   AssetImage,
   Bold,
-  Italic,
-  Underline,
-  Subscript,
-  Superscript,
+  CustomItalic,
+  CustomUnderline,
+  CustomSubscript,
+  CustomSuperscript,
+  CustomStrike,
   TextColor,
   BgColor,
   InlineLink,

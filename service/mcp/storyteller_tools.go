@@ -24,21 +24,25 @@ var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyte
 
 // storytellerContentSyntaxHint 描述編輯器實際支援的語法子集（不是完整 GFM，見
 // wysiwygCore/parser.ts／whitelist.ts），只列「能用什麼」，不列「不能用什麼」——
-// 沒提到的語法（code block、待辦清單、~~刪除線~~、標準 [text](url) 連結等）目前解析器
-// 不認得，寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。分隔線／表格
+// 沒提到的語法（code block、待辦清單、標準 [text](url) 連結等）目前解析器不認得，
+// 寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。分隔線／表格
 // 2026-08-08 加入解析器支援，因此也補進這份清單——表格每個儲存格只支援粗體/斜體/底線/
-// 上下標這幾種基本行內樣式，不支援連結/腳注/註解（見 whitelist.ts 的
+// 上下標/刪除線這幾種基本行內樣式，不支援連結/腳注/註解（見 whitelist.ts 的
 // BLOCK_KIND_TABLE_ROW_PREFIX 說明：儲存格是用字面 `|` 字元切出來的，連結/腳注的
 // 屬性值是自由格式文字，可能剛好包含 `|` 而被誤切，所以這兩種 marker 不該用在表格裡）。
+// 刪除線 2026-08-13 加入解析器支援，語法是 `--文字--`，故意不用 GFM 慣用的 `~~`，
+// 因為 `~` 已經是這個編輯器的下標語法，兩者共用同一個字元會互相衝突。
 const storytellerContentSyntaxHint = "Content uses this app's own limited markdown-like syntax, not full GFM: " +
-	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
-	"blockquote (> text), bullet list (- item), ordered list (1. item), horizontal rule (a line containing " +
-	"only ---), and tables (each row is its own line: |cell1|cell2|cell3). A table's second row may optionally " +
-	"be a GFM-style separator row (|---|---|---|); when present, the first row renders as a bold header and " +
-	"the separator row itself is not shown — this is purely a rendering convenience, the separator row is not " +
-	"required. Table cells only support the basic inline styles (bold/italic/underline/superscript/subscript) " +
-	"— do not put links, footnotes, or comments inside a table cell, since their attribute values are free " +
-	"text and could contain a literal | that would break the cell split. Anything else is a plain paragraph."
+	"headings (# through ######), **bold**, *italic*, ++underline++, --strikethrough--, ^superscript^, " +
+	"~subscript~, blockquote (> text), bullet list (- item), ordered list (1. item), horizontal rule (a line " +
+	"containing only ---), and tables (each row is its own line: |cell1|cell2|cell3). Note strikethrough uses " +
+	"-- (not GFM's ~~), because ~ is already this editor's subscript syntax. A table's second row may " +
+	"optionally be a GFM-style separator row (|---|---|---|); when present, the first row renders as a bold " +
+	"header and the separator row itself is not shown — this is purely a rendering convenience, the separator " +
+	"row is not required. Table cells only support the basic inline styles (bold/italic/underline/superscript/" +
+	"subscript/strikethrough) — do not put links, footnotes, or comments inside a table cell, since their " +
+	"attribute values are free text and could contain a literal | that would break the cell split. Anything " +
+	"else is a plain paragraph."
 
 // storytellerContentMarkerHint 說明內容裡可能出現的兩種行內 marker——footnote（讀者
 // 看得到）跟 comment（只有作者看得到的私人註解）。這兩種標記語法本身長得幾乎一樣，

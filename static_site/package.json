@@ -34,6 +34,7 @@
     "@tiptap/extension-history": "^3.27.3",
     "@tiptap/extension-italic": "^3.27.3",
     "@tiptap/extension-paragraph": "^3.27.3",
+    "@tiptap/extension-strike": "^3.27.3",
     "@tiptap/extension-subscript": "^3.27.3",
     "@tiptap/extension-superscript": "^3.27.3",
     "@tiptap/extension-text": "^3.27.3",

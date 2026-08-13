@@ -103,6 +103,7 @@ const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
   underline: "u",
   subscript: "sub",
   superscript: "sup",
+  strike: "s",
 };
 
 function renderRun(run: ParsedRun, key: number): ReactNode {
