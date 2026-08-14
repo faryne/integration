@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import AddCommentIcon from "@mui/icons-material/AddComment";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
@@ -18,12 +19,15 @@ import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import TableRowsIcon from "@mui/icons-material/TableRows";
+import TitleIcon from "@mui/icons-material/Title";
 import type { ComponentType } from "react";
 
 import { BG_COLOR_CSS, BG_COLOR_LABELS, TEXT_COLOR_CSS, TEXT_COLOR_LABELS } from "./colorStyles";
 import {
   BG_COLOR_VALUES,
   DEFAULT_BLOCK_KIND,
+  DEFAULT_HEADING_LEVEL,
+  HEADING_LEVELS,
   TEXT_COLOR_VALUES,
   type BlockKindValue,
 } from "./whitelist";
@@ -37,11 +41,13 @@ import {
  */
 
 export type WysiwygCommandGroup =
+  | "heading"
   | "mark"
   | "align"
   | "block"
   | "color"
   | "annotation"
+  | "insert"
   | "utility";
 
 /**
@@ -55,9 +61,14 @@ export interface WysiwygCommandContext {
   isFeatureEnabled: (feature: "footnote" | "comment" | "asset") => boolean;
   /** 只有頁面層有提供 `exportBaseName` 時匯出功能才存在，跟 footnote/comment 一樣是可見性開關。 */
   canExportMarkdown: boolean;
+  /** 只有頁面層有提供 `onRequestInsertAsset` 且資產功能開啟時，插入圖片才存在——
+   * asset picker 是頁面層的 state（StoryEditor／LoreEditor 各自的 Dialog），
+   * command 本身不持有這個 state，只透過這個 callback 觸發它開啟。 */
+  canInsertAsset: boolean;
   openLinkDialog: () => void;
   openFootnoteDialog: () => void;
   openCommentDialog: () => void;
+  openAssetPicker: () => void;
   exportMarkdown: () => void;
 }
 
@@ -142,6 +153,40 @@ const MARK_COMMANDS: WysiwygCommand[] = [
     aliases: ["刪除線", "strike", "strikethrough"],
     isActive: (editor) => editor.isActive("strike"),
     run: (editor) => editor.chain().focus().toggleStrike().run(),
+  },
+];
+
+/** 標題 0（內文）到 6，游標在空白段落／非空段落時的「區塊轉換」都是同一組 command
+ * （Phase 2 右鍵選單新增的情境，工具列本來就有對應的標題 Select，只是那邊不走
+ * command registry——Select 需要單一 value/onChange，不適合拆成多個獨立 toggle
+ * command）。 */
+const HEADING_COMMANDS: WysiwygCommand[] = [
+  DEFAULT_HEADING_LEVEL,
+  ...HEADING_LEVELS,
+].map((level) => ({
+  id: `heading-${level}`,
+  label: level === DEFAULT_HEADING_LEVEL ? "內文" : `標題 ${level}`,
+  group: "heading",
+  scope: "block",
+  icon: TitleIcon,
+  aliases:
+    level === DEFAULT_HEADING_LEVEL
+      ? ["內文", "paragraph", "text"]
+      : [`標題${level}`, `h${level}`],
+  isActive: (editor) => editor.isActive("paragraph", { headingLevel: level }),
+  run: (editor) => editor.chain().focus().setHeadingLevel(level).run(),
+}));
+
+const INSERT_COMMANDS: WysiwygCommand[] = [
+  {
+    id: "insert-image",
+    label: "插入圖片",
+    group: "insert",
+    scope: "insert",
+    icon: AddPhotoAlternateIcon,
+    aliases: ["圖片", "image", "插入資產"],
+    isVisible: (context) => context.canInsertAsset,
+    run: (_editor, context) => context.openAssetPicker(),
   },
 ];
 
@@ -304,11 +349,13 @@ const UTILITY_COMMANDS: WysiwygCommand[] = [
 ];
 
 export const WYSIWYG_COMMANDS: WysiwygCommand[] = [
+  ...HEADING_COMMANDS,
   ...MARK_COMMANDS,
   ...ALIGN_COMMANDS,
   ...BLOCK_KIND_COMMANDS,
   ...COLOR_COMMANDS,
   ...ANNOTATION_COMMANDS,
+  ...INSERT_COMMANDS,
   ...UTILITY_COMMANDS,
 ];
 

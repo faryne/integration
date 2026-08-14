@@ -256,6 +256,16 @@ export interface StorytellerWysiwygEditorProps {
    * 功能不受影響。
    */
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
+  /**
+   * 觸發頁面層開啟資產選擇 Dialog（Phase 2：插入資產 command 化）。asset picker 本身
+   * 是頁面層的 state（StoryEditor／LoreEditor 各自的 `assetPickerOpen`），這個元件
+   * 不持有、也不查 API，只在 slash／右鍵選單的「插入圖片」command 被觸發時呼叫這個
+   * callback，選好之後頁面層照舊呼叫 `ref.current.insertAsset(...)`。沒提供這個 prop
+   * 就代表沒有插入圖片的入口（跟 footnote/comment 的 isFeatureEnabled 開關是分開的
+   * 兩件事：`enabledFeatures` 控制「要不要開放這個功能」，這個 prop 控制「有沒有實際
+   * 可用的插入管道」）。
+   */
+  onRequestInsertAsset?: () => void;
 }
 
 export interface StorytellerWysiwygEditorHandle {
@@ -287,6 +297,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     projectPublicId,
     exportBaseName,
     enabledFeatures,
+    onRequestInsertAsset,
   },
   ref,
 ) {
@@ -451,6 +462,7 @@ export const StorytellerWysiwygEditor = forwardRef<
           blockKind: DEFAULT_BLOCK_KIND,
           hasComment: false,
           hasSelection: false,
+          isCurrentParagraphEmpty: true,
           textColor: null as TextColorValue | null,
           bgColor: null as BgColorValue | null,
           hasLink: false,
@@ -490,6 +502,11 @@ export const StorytellerWysiwygEditor = forwardRef<
         blockKind,
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
+        // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據，跟
+        // markerParagraph.ts 的 Enter 快速鍵判斷「空白清單項按 Enter 要跳出」用的
+        // 是同一種算法（去除頭尾空白後是不是空字串）。
+        isCurrentParagraphEmpty:
+          ctx.editor.state.selection.$from.parent.textContent.trim() === "",
         textColor,
         bgColor,
         hasLink: ctx.editor.isActive("link"),
@@ -705,9 +722,11 @@ export const StorytellerWysiwygEditor = forwardRef<
   const commandContext: WysiwygCommandContext = {
     isFeatureEnabled,
     canExportMarkdown: exportBaseName !== undefined,
+    canInsertAsset: assetEnabled && onRequestInsertAsset !== undefined,
     openLinkDialog: handleOpenLinkDialog,
     openFootnoteDialog: handleOpenFootnoteDialog,
     openCommentDialog: handleOpenCommentDialog,
+    openAssetPicker: () => onRequestInsertAsset?.(),
     exportMarkdown: handleExportMarkdown,
   };
 
@@ -939,10 +958,14 @@ export const StorytellerWysiwygEditor = forwardRef<
         position={contextMenuPosition}
         onClose={closeContextMenu}
         commandContext={commandContext}
+        onRemoveLink={handleRemoveLink}
         onRemoveFootnote={handleRemoveFootnote}
         onRemoveComment={handleRemoveComment}
+        hasLink={editorState.hasLink}
         hasFootnote={editorState.hasFootnote}
         hasComment={editorState.hasComment}
+        hasSelection={editorState.hasSelection}
+        isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
       />
 
       <Menu

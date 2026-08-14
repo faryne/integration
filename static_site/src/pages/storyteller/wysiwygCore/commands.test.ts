@@ -22,9 +22,11 @@ function createStubContext(): WysiwygCommandContext {
   return {
     isFeatureEnabled: () => true,
     canExportMarkdown: true,
+    canInsertAsset: true,
     openLinkDialog: () => {},
     openFootnoteDialog: () => {},
     openCommentDialog: () => {},
+    openAssetPicker: () => {},
     exportMarkdown: () => {},
   };
 }
@@ -73,5 +75,34 @@ describe("WYSIWYG_COMMANDS", () => {
     );
     expect(visible.some((command) => command.id === "footnote")).toBe(false);
     expect(visible.some((command) => command.id === "comment")).toBe(false);
+  });
+
+  it("canInsertAsset 為 false 時（頁面沒提供 onRequestInsertAsset），插入圖片從可見清單消失", () => {
+    const context: WysiwygCommandContext = {
+      ...createStubContext(),
+      canInsertAsset: false,
+    };
+    const visible = WYSIWYG_COMMANDS.filter(
+      (command) => command.isVisible?.(context) ?? true,
+    );
+    expect(visible.some((command) => command.id === "insert-image")).toBe(
+      false,
+    );
+  });
+
+  it("標題 command 涵蓋內文（0）到標題 6，且 id 跟 headingLevel 一一對應", () => {
+    const headingCommands = WYSIWYG_COMMANDS.filter(
+      (command) => command.group === "heading",
+    );
+    const ids = headingCommands.map((command) => command.id).sort();
+    expect(ids).toEqual([
+      "heading-0",
+      "heading-1",
+      "heading-2",
+      "heading-3",
+      "heading-4",
+      "heading-5",
+      "heading-6",
+    ]);
   });
 });

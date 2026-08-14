@@ -100,6 +100,10 @@ export default function WysiwygDemo() {
           ref={editorRef}
           value={content}
           onChange={setContent}
+          // Playground 沒有真的 asset picker Dialog，直接重用 handleInsertAsset
+          // 模擬「頁面層開 picker → 選好資產 → insertAsset」這個流程的最後一步，
+          // 用來驗證右鍵選單「插入圖片」command 有沒有正確觸發到這個 callback。
+          onRequestInsertAsset={handleInsertAsset}
         />
       </Box>
 

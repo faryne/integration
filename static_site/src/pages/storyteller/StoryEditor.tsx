@@ -1528,6 +1528,9 @@ export default function StorytellerStoryEditor({
             onChange={handleEditorContentChange}
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
+            onRequestInsertAsset={
+              apiProject ? () => setAssetPickerOpen(true) : undefined
+            }
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">

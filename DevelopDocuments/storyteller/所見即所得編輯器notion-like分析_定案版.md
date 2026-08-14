@@ -153,10 +153,12 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 2：右鍵選單 context-aware 化 + 資產圖片 command 化
 
-- [ ] 依 selection 狀態分三種選單內容：有選取文字（行內樣式）／游標在空白段落（區塊插入：標題/引用/清單/分隔線/表格/圖片）／游標在非空段落但沒選字（區塊轉換）
-- [ ] 游標落在既有 link/comment/footnote mark 裡時顯示編輯／移除
-- [ ] **資產圖片插入 command 化**（範圍已修正，見上方查證）：把既有「頁面層 `toolbarExtra` 按鈕 → `StorytellerAssetPickerDialog` → `insertAsset`」流程，改成 command registry 的 `insertAsset`/`insertImage` command；command 本身不持有頁面 state，透過 context callback 觸發頁面層開啟 asset picker；slash `/圖片`、右鍵「插入圖片」、既有 toolbarExtra 入口都呼叫同一個 command
-- [ ] 確認 right-click inside selection 不會破壞 selection
+- [x] 依 selection 狀態分兩大類主內容（有選取文字／沒有選取），表格 Phase 5 尚未實作、暫不放進選單：
+  - 有選取文字：行內樣式（mark／文字色／背景色／加連結/腳注/註解）
+  - 沒有選取（不分空白/非空段落，heading/blockKind 對兩者行為一致，比照原本工具列 Select/按鈕永遠可用）：標題（內文/H1-H6，新增到 registry 的 `heading` group）／引用/清單/表格列（既有 block command）／插入分隔線；游標在**空白**段落時才額外顯示「插入圖片」（非空段落插入圖片語意不明確，範圍內排除）
+- [x] 游標落在既有 link/comment/footnote mark 裡時顯示編輯／移除——link 原本只有「編輯連結」（開對話框），這次補上跟 footnote/comment 對稱的「移除連結」快速選項；顯示邏輯是「有選取文字 || 游標在該 mark 裡」，沒有選取又不在既有 mark 裡就不顯示「加」（沒有目標文字）
+- [x] **資產圖片插入 command 化**：新增 `StorytellerWysiwygEditorProps.onRequestInsertAsset` callback prop，`StoryEditor.tsx`／`LoreEditor.tsx` 的 `toolbarExtra`「插入資產」按鈕與新的 `insert-image` command 呼叫同一個 `() => setAssetPickerOpen(true)`；command 本身不持有頁面 state，透過 `WysiwygCommandContext.openAssetPicker` callback 觸發。slash command 是 Phase 3（Track B）的工作，這裡只確保 command registry 跟 context callback 機制就緒，Phase 3 直接複用
+- [x] 確認 right-click inside selection 不會破壞 selection——沿用 Phase 1 已驗證過的既有邏輯（`handleEditorContextMenu` 的 `clickedInsideSelection` 判斷不變），本輪在 playground 重新實測一次：選取文字後在選取範圍內右鍵，選取範圍不收合，選單正確顯示行內樣式（mode A）
 
 ### Phase 3：Slash Command
 
