@@ -19,6 +19,11 @@ import {
   CustomUnderline,
 } from "./markInputRules";
 import { MarkerParagraph } from "./markerParagraph";
+import {
+  StorytellerTable,
+  StorytellerTableCell,
+  StorytellerTableRow,
+} from "./storytellerTable";
 import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
 
 /**
@@ -29,6 +34,9 @@ import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
  */
 export const wysiwygCoreExtensions = [
   Document,
+  StorytellerTable,
+  StorytellerTableRow,
+  StorytellerTableCell,
   MarkerParagraph,
   Text,
   AssetImage,

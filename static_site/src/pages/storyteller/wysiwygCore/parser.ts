@@ -32,7 +32,11 @@ import {
   MARKER_TEXT_COLOR_ATTR,
   PARSE_DELIMITERS,
   sanitizeMarkdownImageAlt,
+  TABLE_MARKER_NAME,
+  TABLE_MARKER_ROW_ID_ATTR,
+  TABLE_MARKER_TABLE_ID_ATTR,
   TEXT_COLOR_VALUES,
+  unescapeTableCell,
   unescapeMarkerComment,
   type AlignmentValue,
   type BgColorValue,
@@ -86,6 +90,10 @@ export interface ParsedParagraph {
   /** 引用/清單種類，跟 headingLevel 互斥（一個段落只能是標題或引用/清單其中一種）。 */
   blockKind: BlockKindValue;
   runs: ParsedRun[];
+  /** 真表格逐列一行 marker：相鄰同 tableId 的 row 會在 paragraphsToDoc/group renderer 裡合併成一張表。 */
+  tableId?: string;
+  rowId?: string;
+  tableCells?: ParsedRun[][];
 }
 
 /** 比照 CommonMark ATX heading：行首 1~6 個 #，後面不能緊接第 7 個 #，再接一個空白。 */
@@ -113,6 +121,12 @@ const LEGACY_PARAGRAPH_COMMENT_PATTERN = new RegExp(
     `(?: ${MARKER_COMMENT_ATTR}="((?:[^"\\\\]|\\\\.)*)")` +
     `(?: ${MARKER_COMMENT_COLOR_ATTR}="(${COMMENT_COLOR_VALUES.join("|")})")?` +
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}([^${MARKER_CLOSE}\\s]*)${MARKER_CLOSE}$`,
+);
+
+const TABLE_MARKER_PATTERN = new RegExp(
+  `^${MARKER_OPEN}${TABLE_MARKER_NAME}` +
+    `((?: [A-Za-z]+="(?:[^"\\\\]|\\\\.)*")*)` +
+    `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}${TABLE_MARKER_NAME}${MARKER_CLOSE}$`,
 );
 
 // 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結、footnote 的內文）。同一個
@@ -189,6 +203,52 @@ function parseInlineAttrs(attrBlob: string): InlineAttrs {
     }
   }
   return result;
+}
+
+function parseTableMarkerAttrs(attrBlob: string): {
+  tableId?: string;
+  rowId?: string;
+} {
+  const result: { tableId?: string; rowId?: string } = {};
+  const attrRe = /([A-Za-z]+)="((?:[^"\\]|\\.)*)"/g;
+  let match: RegExpExecArray | null;
+  while ((match = attrRe.exec(attrBlob)) !== null) {
+    const name = match[1];
+    const value = unescapeMarkerComment(match[2]).trim();
+    if (name === TABLE_MARKER_TABLE_ID_ATTR && value !== "") {
+      result.tableId = value;
+    } else if (name === TABLE_MARKER_ROW_ID_ATTR && value !== "") {
+      result.rowId = value;
+    }
+  }
+  return result;
+}
+
+function splitTableRowText(rowText: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+  for (let index = 0; index < rowText.length; index++) {
+    const char = rowText[index];
+    if (char === "\\") {
+      current += char;
+      if (index < rowText.length - 1) {
+        current += rowText[index + 1];
+        index++;
+      }
+      continue;
+    }
+    if (char === "|") {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  cells.push(current);
+
+  if (cells.length > 1 && cells[0].trim() === "") cells.shift();
+  if (cells.length > 1 && cells[cells.length - 1].trim() === "") cells.pop();
+  return cells.map((cell) => unescapeTableCell(cell.trim()));
 }
 
 /**
@@ -597,12 +657,41 @@ function extractMarker(line: string): {
  */
 interface ParseLineOptions {
   enableAssets: boolean;
+  lineIndex?: number;
+}
+
+function parseTableLine(
+  line: string,
+  options: ParseLineOptions,
+): ParsedParagraph | null {
+  const match = line.match(TABLE_MARKER_PATTERN);
+  if (!match) return null;
+
+  const attrs = parseTableMarkerAttrs(match[1]);
+  const tableId = attrs.tableId ?? `tbl_missing_${options.lineIndex ?? 0}`;
+  const rowId = attrs.rowId ?? `row_${(options.lineIndex ?? 0) + 1}`;
+  const tableCells = splitTableRowText(match[2]).map((cell) =>
+    normalizeRuns(parseInline(cell, options.enableAssets)),
+  );
+  return {
+    markerId: rowId,
+    align: DEFAULT_ALIGNMENT,
+    headingLevel: DEFAULT_HEADING_LEVEL,
+    blockKind: DEFAULT_BLOCK_KIND,
+    runs: [],
+    tableId,
+    rowId,
+    tableCells: tableCells.length > 0 ? tableCells : [[]],
+  };
 }
 
 function parseLine(
   line: string,
   options: ParseLineOptions = { enableAssets: true },
 ): ParsedParagraph {
+  const tableLine = parseTableLine(line, options);
+  if (tableLine) return tableLine;
+
   const { headingLevel, content: afterHeading } = extractHeading(line);
   const { blockKind, content: afterBlockKind } =
     headingLevel > 0
@@ -637,6 +726,13 @@ export function stripInlineMarkers(content: string): string {
  * `⟦uuid⟧...⟦/uuid⟧`、`⟦span-x⟧...⟦/span-x⟧` 這種不該曝光的內部語法。
  */
 export function stripMarkerForDiffLine(line: string): string {
+  const tableLine = parseTableLine(line, { enableAssets: true, lineIndex: 0 });
+  if (tableLine?.tableCells) {
+    return `| ${tableLine.tableCells
+      .map((cell) => stripInlineMarkers(cell.map((run) => run.text).join("")))
+      .join(" | ")} |`;
+  }
+
   const { headingLevel, content: afterHeading } = extractHeading(line);
   const { blockKind, content: afterBlockKind } =
     headingLevel > 0
@@ -662,7 +758,9 @@ export function parseMarkdownToParagraphs(
   markdown: string,
   options: ParseLineOptions = { enableAssets: true },
 ): ParsedParagraph[] {
-  return markdown.split("\n").map((line) => parseLine(line, options));
+  return markdown
+    .split("\n")
+    .map((line, lineIndex) => parseLine(line, { ...options, lineIndex }));
 }
 
 export interface ParagraphGroup {
@@ -738,7 +836,10 @@ export function computeFootnoteNumbering(content: string): FootnoteNumbering {
   const numbers = new Map<string, number>();
   const list: FootnoteListEntry[] = [];
   for (const paragraph of paragraphs) {
-    for (const run of paragraph.runs) {
+    const runs = paragraph.tableCells
+      ? paragraph.tableCells.flat()
+      : paragraph.runs;
+    for (const run of runs) {
       if (run.footnoteId && !numbers.has(run.footnoteId)) {
         numbers.set(run.footnoteId, list.length + 1);
         list.push({ footnoteId: run.footnoteId, note: run.footnoteNote ?? "" });
@@ -799,43 +900,97 @@ function runToTiptapMarks(
   return marks;
 }
 
+function runsToTiptapInline(runs: ParsedRun[], projectPublicId = "") {
+  return runs
+    .filter((run) => run.text !== "" || run.assetPublicId || run.assetSrc)
+    .map((run) => {
+      if (run.assetPublicId || run.assetSrc) {
+        return {
+          type: "assetImage",
+          attrs: {
+            publicId: run.assetPublicId ?? "",
+            src: run.assetSrc ?? "",
+            alt: run.assetAlt ?? "",
+            projectPublicId,
+          },
+        };
+      }
+      const marks = runToTiptapMarks(run);
+      return {
+        type: "text",
+        text: run.text,
+        ...(marks.length > 0 ? { marks } : {}),
+      };
+    });
+}
+
+function paragraphToDocNode(
+  paragraph: ParsedParagraph,
+  projectPublicId = "",
+): JSONContent {
+  return {
+    type: "paragraph",
+    attrs: {
+      markerId: paragraph.markerId,
+      textAlign: paragraph.align,
+      headingLevel: paragraph.headingLevel,
+      blockKind: paragraph.blockKind,
+    },
+    content: runsToTiptapInline(paragraph.runs, projectPublicId),
+  };
+}
+
+function tableRowsToDocNode(
+  rows: ParsedParagraph[],
+  projectPublicId = "",
+): JSONContent {
+  const tableId = rows[0]?.tableId ?? "";
+  const columnCount = Math.max(
+    1,
+    ...rows.map((row) => row.tableCells?.length ?? 0),
+  );
+  return {
+    type: "storytellerTable",
+    attrs: { tableId },
+    content: rows.map((row, rowIndex) => ({
+      type: "tableRow",
+      attrs: { rowId: row.rowId ?? `row_${rowIndex + 1}` },
+      content: Array.from({ length: columnCount }, (_, cellIndex) => ({
+        type: "tableCell",
+        content: runsToTiptapInline(
+          row.tableCells?.[cellIndex] ?? [],
+          projectPublicId,
+        ),
+      })),
+    })),
+  };
+}
+
 /** 把段落陣列組成 Tiptap 可以直接 setContent 的 doc JSON。 */
 export function paragraphsToDoc(
   paragraphs: ParsedParagraph[],
   projectPublicId = "",
 ): JSONContent {
+  const content: JSONContent[] = [];
+  for (let index = 0; index < paragraphs.length; index++) {
+    const paragraph = paragraphs[index];
+    if (!paragraph.tableId) {
+      content.push(paragraphToDocNode(paragraph, projectPublicId));
+      continue;
+    }
+    const tableRows = [paragraph];
+    while (
+      paragraphs[index + 1]?.tableId &&
+      paragraphs[index + 1].tableId === paragraph.tableId
+    ) {
+      tableRows.push(paragraphs[index + 1]);
+      index++;
+    }
+    content.push(tableRowsToDocNode(tableRows, projectPublicId));
+  }
   return {
     type: "doc",
-    content: paragraphs.map((paragraph) => ({
-      type: "paragraph",
-      attrs: {
-        markerId: paragraph.markerId,
-        textAlign: paragraph.align,
-        headingLevel: paragraph.headingLevel,
-        blockKind: paragraph.blockKind,
-      },
-      content: paragraph.runs
-        .filter((run) => run.text !== "" || run.assetPublicId || run.assetSrc)
-        .map((run) => {
-          if (run.assetPublicId || run.assetSrc) {
-            return {
-              type: "assetImage",
-              attrs: {
-                publicId: run.assetPublicId ?? "",
-                src: run.assetSrc ?? "",
-                alt: run.assetAlt ?? "",
-                projectPublicId,
-              },
-            };
-          }
-          const marks = runToTiptapMarks(run);
-          return {
-            type: "text",
-            text: run.text,
-            ...(marks.length > 0 ? { marks } : {}),
-          };
-        }),
-    })),
+    content,
   };
 }
 

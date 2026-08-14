@@ -174,11 +174,11 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 5：真表格（設計已定案，見上方「真表格最終設計」，本 Phase 是實作項目）
 
-- [ ] 評估 Tiptap `TableKit`：schema、commands（新增/刪除列/欄）、cell selection、IME 在 cell 內的行為、paste 行為
+- [ ] 評估 Tiptap `TableKit`：schema、commands（新增/刪除列/欄）、cell selection、IME 在 cell 內的行為、paste 行為——2026-08-14 第一段實作先採用 `@tiptap/pm/tables` primitives + 自有 Tiptap table/tableRow/tableCell nodes，已接 schema 與基礎 row/column command；cell selection、IME、paste 尚未實測，故本項維持未勾
 - [ ] 實作 `/table` 插入真正 table node（預設列/欄數可再定）
 - [ ] cell 內支援基本行內樣式：粗體、斜體、底線、刪除線、文字色、連結、註解（腳注是否允許放 cell 內可另外評估）
 - [ ] 表格的新增列/刪除列/新增欄/刪除欄操作入口：規劃放在表格內的右鍵選單或浮動控制項，這些入口是否齊全，直接影響 Phase 6 工具列移除的驗收
-- [ ] 實作逐列一行 marker 的 parser／serializer（含 escape/unescape 規則）
+- [x] 實作逐列一行 marker 的 parser／serializer（含 escape/unescape 規則）——已支援 `⟦table tableId="..." rowId="..."⟧| cell | cell |⟦/table⟧` 解析成 table node、相鄰同 `tableId` rows group 成同一張表、serializer 拆回逐列一行 marker；cell escape 規則已照定案處理 `\|`／`\\`／`\n`，並補 `tableMarker.test.ts` 覆蓋 round-trip 與欄數不一致補空 cell
 - [ ] 閱讀頁 renderer：把同 `tableId` 相鄰 row group 成真正 `<table>`
 - [ ] 匯出 markdown：輸出標準 markdown table
 - [ ] 後端 word count／書籤 preview 對新 table marker 的 strip 邏輯

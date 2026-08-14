@@ -6,12 +6,7 @@
  */
 
 export type MarkName =
-  | "bold"
-  | "italic"
-  | "underline"
-  | "subscript"
-  | "superscript"
-  | "strike";
+  "bold" | "italic" | "underline" | "subscript" | "superscript" | "strike";
 
 export interface MarkSyntaxRule {
   markName: MarkName;
@@ -148,6 +143,9 @@ export const MARKER_CLOSE = "⟧";
 export const MARKER_CLOSE_SLASH = "/";
 
 export const MARKER_ALIGN_ATTR = "align";
+export const TABLE_MARKER_NAME = "table";
+export const TABLE_MARKER_TABLE_ID_ATTR = "tableId";
+export const TABLE_MARKER_ROW_ID_ATTR = "rowId";
 /** 註解文字，行內 marker（`type="comment"`）的屬性：⟦comment-<id> comment="..."⟧。 */
 export const MARKER_COMMENT_ATTR = "comment";
 /**
@@ -167,6 +165,14 @@ export const DEFAULT_COMMENT_COLOR: CommentColorValue = "yellow";
 
 export function generateMarkerId(): string {
   return crypto.randomUUID();
+}
+
+export function generateTableId(): string {
+  return `tbl_${crypto.randomUUID()}`;
+}
+
+export function generateTableRowId(): string {
+  return `row_${crypto.randomUUID()}`;
 }
 
 /**
@@ -194,6 +200,45 @@ export function unescapeMarkerComment(escaped: string): string {
     if (char === "r") return "\r";
     return char;
   });
+}
+
+/**
+ * 真表格 cell 內容的第二層跳脫。這層只處理「列格式」需要的三種字元：
+ * - `\` → `\\`
+ * - cell 邊界字元 `|` → `\|`
+ * - cell 內換行 → `\n`
+ *
+ * 行內 marker 屬性值（例如 comment/note/href）會先由 escapeMarkerComment 處理，再經過
+ * 這層 table escape；解析時反過來先 table unescape，再交給既有 inline parser。
+ */
+export function escapeTableCell(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "\\n");
+}
+
+/** escapeTableCell 的反向操作；其他反斜線組合保持字面值，不做額外解讀。 */
+export function unescapeTableCell(text: string): string {
+  let output = "";
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (char !== "\\" || index === text.length - 1) {
+      output += char;
+      continue;
+    }
+    const next = text[index + 1];
+    if (next === "|" || next === "\\") {
+      output += next;
+      index++;
+    } else if (next === "n") {
+      output += "\n";
+      index++;
+    } else {
+      output += char;
+    }
+  }
+  return output;
 }
 
 /* ------------------------------------------------------------------ *
