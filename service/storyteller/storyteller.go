@@ -1381,6 +1381,7 @@ const (
 	storyBlockKindBullet   storyBlockKind = "bullet"
 	storyBlockKindNumber   storyBlockKind = "number"
 	storyBlockKindHR       storyBlockKind = "hr"
+	storyBlockKindTable    storyBlockKind = "table"
 	storyBlockKindTableRow storyBlockKind = "table-row"
 )
 
@@ -1418,12 +1419,25 @@ type storyLineGroup struct {
 	blockKind  storyBlockKind
 	startIndex int
 	lines      []string
+	tableID    string
 }
 
 func groupStoryLinesByBlockKind(content string) []storyLineGroup {
 	lines := strings.Split(content, "\n")
 	groups := make([]storyLineGroup, 0, len(lines))
 	for i, line := range lines {
+		if tableID, _, ok := parseStoryTableMarker(line); ok {
+			if tableID == "" {
+				tableID = fmt.Sprintf("tbl_missing_%d", i)
+			}
+			if n := len(groups); n > 0 && groups[n-1].blockKind == storyBlockKindTable && groups[n-1].tableID == tableID {
+				groups[n-1].lines = append(groups[n-1].lines, line)
+				continue
+			}
+			groups = append(groups, storyLineGroup{blockKind: storyBlockKindTable, startIndex: i, lines: []string{line}, tableID: tableID})
+			continue
+		}
+
 		headingLevel, blockPrefix, _ := splitHeadingAndMarkerContent(line)
 		kind := blockKindFromPrefix(headingLevel, blockPrefix)
 		if n := len(groups); n > 0 && groups[n-1].blockKind == kind && kind != storyBlockKindNone {
@@ -1448,17 +1462,101 @@ func storyBlockKindLabel(kind storyBlockKind) string {
 		return "清單"
 	case storyBlockKindHR:
 		return "分隔線"
-	case storyBlockKindTableRow:
+	case storyBlockKindTable, storyBlockKindTableRow:
 		return "表格"
 	default:
 		return ""
 	}
 }
 
+var storyTableMarkerPattern = regexp.MustCompile(`^⟦table((?: [A-Za-z]+="(?:[^"\\]|\\.)*")*)⟧([\s\S]*)⟦/table⟧$`)
+var storyTableAttrPattern = regexp.MustCompile(`([A-Za-z]+)="((?:[^"\\]|\\.)*)"`)
+
+func parseStoryTableMarker(line string) (string, string, bool) {
+	match := storyTableMarkerPattern.FindStringSubmatch(line)
+	if match == nil {
+		return "", "", false
+	}
+	tableID := ""
+	for _, attr := range storyTableAttrPattern.FindAllStringSubmatch(match[1], -1) {
+		if attr[1] == "tableId" {
+			tableID = strings.TrimSpace(unescapeMarkerAttr(attr[2]))
+			break
+		}
+	}
+	return tableID, match[2], true
+}
+
+func unescapeTableCell(cell string) string {
+	var b strings.Builder
+	for i := 0; i < len(cell); i++ {
+		if cell[i] == '\\' && i < len(cell)-1 {
+			switch cell[i+1] {
+			case '|', '\\':
+				b.WriteByte(cell[i+1])
+				i++
+				continue
+			case 'n':
+				b.WriteByte('\n')
+				i++
+				continue
+			}
+		}
+		b.WriteByte(cell[i])
+	}
+	return b.String()
+}
+
+func splitStoryTableCells(rowText string) []string {
+	cells := make([]string, 0, 4)
+	var current strings.Builder
+	for i := 0; i < len(rowText); i++ {
+		if rowText[i] == '\\' {
+			current.WriteByte(rowText[i])
+			if i < len(rowText)-1 {
+				i++
+				current.WriteByte(rowText[i])
+			}
+			continue
+		}
+		if rowText[i] == '|' {
+			cells = append(cells, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteByte(rowText[i])
+	}
+	cells = append(cells, current.String())
+
+	if len(cells) > 1 && strings.TrimSpace(cells[0]) == "" {
+		cells = cells[1:]
+	}
+	if len(cells) > 1 && strings.TrimSpace(cells[len(cells)-1]) == "" {
+		cells = cells[:len(cells)-1]
+	}
+	for i, cell := range cells {
+		cells[i] = unescapeTableCell(strings.TrimSpace(cell))
+	}
+	return cells
+}
+
+func stripStoryTableRowContent(rowText, imageReplacement, separator string) string {
+	cells := splitStoryTableCells(rowText)
+	for i, cell := range cells {
+		cell = stripStoryInlineMarkers(cell)
+		cell = markdownImagePattern.ReplaceAllString(cell, imageReplacement)
+		cells[i] = stripDelimitersFrom(cell, wordCountInlineDelimiters)
+	}
+	return strings.Join(cells, separator)
+}
+
 // stripBookmarkLinePreviewContent 跟 stripReadableLineMarkup 一樣去掉段落 marker／行內
 // marker／圖片語法，但不把 blockKind 前綴加回去——只給有 storyBlockKindLabel 的書籤預覽
 // 用，標籤已經說明這是什麼類型，原始前綴字元（`> `／`- `／`|` 等）留著只是多餘、也不乾淨。
 func stripBookmarkLinePreviewContent(line string) string {
+	if _, rowText, ok := parseStoryTableMarker(line); ok {
+		return stripStoryTableRowContent(rowText, "（圖片）", " | ")
+	}
 	_, _, content := splitHeadingAndMarkerContent(line)
 	content = stripStoryInlineMarkers(content)
 	return markdownImagePattern.ReplaceAllString(content, "（圖片）")
@@ -1584,6 +1682,9 @@ func stripStoryInlineMarkers(content string) string {
 // 跟行內 marker（span 顏色等），保留標題／引用／清單前綴，只留下可讀文字。imageReplacement
 // 由呼叫端決定，避免書籤側欄露出檔名，但搜尋索引仍可吃到 alt/title。
 func stripReadableLineMarkup(line, imageReplacement string) string {
+	if _, rowText, ok := parseStoryTableMarker(line); ok {
+		return stripStoryTableRowContent(rowText, imageReplacement, " | ")
+	}
 	headingLevel, blockPrefix, content := splitHeadingAndMarkerContent(line)
 	content = stripStoryInlineMarkers(content)
 	content = markdownImagePattern.ReplaceAllString(content, imageReplacement)
@@ -2663,6 +2764,10 @@ func buildLoreVersion(lore storytellerModel.Lore, source string) *storytellerMod
 func wordCount(content string) uint {
 	var builder strings.Builder
 	for _, line := range strings.Split(content, "\n") {
+		if _, rowText, ok := parseStoryTableMarker(line); ok {
+			builder.WriteString(stripStoryTableRowContent(rowText, "", ""))
+			continue
+		}
 		_, _, clean := splitHeadingAndMarkerContent(line)
 		clean = stripStoryInlineMarkers(clean)
 		clean = markdownImagePattern.ReplaceAllString(clean, "")
