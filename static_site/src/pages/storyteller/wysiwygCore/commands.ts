@@ -18,7 +18,6 @@ import LinkIcon from "@mui/icons-material/Link";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
-import TableRowsIcon from "@mui/icons-material/TableRows";
 import TitleIcon from "@mui/icons-material/Title";
 import type { ComponentType } from "react";
 
@@ -210,7 +209,7 @@ const ALIGN_COMMANDS: WysiwygCommand[] = (
     editor.chain().focus().setTextAlign(value).run(),
 }));
 
-/** 引用/清單/表格列是「切換目前段落種類」，再按一次會切回一般段落——跟原本
+/** 引用/清單是「切換目前段落種類」，再按一次會切回一般段落——跟原本
  * toggleBlockKind 邏輯一致，只是內聯進各自的 command。 */
 function toggleBlockKindCommand(
   kind: Exclude<BlockKindValue, "none">,
@@ -237,11 +236,6 @@ const BLOCK_KIND_COMMANDS: WysiwygCommand[] = [
   toggleBlockKindCommand("quote", "引用", FormatQuoteIcon),
   toggleBlockKindCommand("bullet", "無序清單", FormatListBulletedIcon),
   toggleBlockKindCommand("number", "有序清單", FormatListNumberedIcon),
-  toggleBlockKindCommand(
-    "table-row",
-    "表格列（用 | 分隔欄位）",
-    TableRowsIcon,
-  ),
   {
     id: "horizontal-rule",
     label: "插入分隔線",

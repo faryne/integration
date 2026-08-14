@@ -258,10 +258,6 @@ export const MarkerParagraph = Paragraph.extend({
         blockKind: "number" satisfies BlockKindValue,
         headingLevel: DEFAULT_HEADING_LEVEL,
       }),
-      applyPrefixInputRule(/^\| $/, {
-        blockKind: "table-row" satisfies BlockKindValue,
-        headingLevel: DEFAULT_HEADING_LEVEL,
-      }),
       new InputRule({
         find: /^---$/,
         handler: ({ chain }) => {

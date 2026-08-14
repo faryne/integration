@@ -105,4 +105,10 @@ describe("WYSIWYG_COMMANDS", () => {
       "heading-6",
     ]);
   });
+
+  it("不再提供舊 table-row 的新建 command", () => {
+    expect(
+      WYSIWYG_COMMANDS.some((command) => command.id === "block-kind-table-row"),
+    ).toBe(false);
+  });
 });
