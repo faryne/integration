@@ -1,6 +1,8 @@
+import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
 import { exportContentToMarkdown } from "./exportMarkdown";
+import { wysiwygCoreExtensions } from "./extensions";
 import {
   groupParagraphsByBlockKind,
   markdownToDoc,
@@ -181,5 +183,63 @@ describe("storyteller table marker", () => {
     ).toBe(
       ["| 角色 | 狀態 |", "| --- | --- |", "| 莉亞 | 完成 |", ""].join("\n"),
     );
+  });
+
+  it("手動 command 將連續舊 table-row 段落轉成真表格並保留行內 mark", () => {
+    const editor = new Editor({
+      extensions: wysiwygCoreExtensions,
+      content: markdownToDoc(
+        [
+          "|⟦r1⟧角色|狀態|備註⟦/r1⟧",
+          "|⟦r2⟧莉亞|**完成**⟦/r2⟧",
+          "⟦p1⟧後文⟦/p1⟧",
+        ].join("\n"),
+      ),
+    });
+
+    try {
+      editor.commands.setTextSelection(1);
+      expect(editor.commands.convertLegacyTableRowsToStorytellerTable()).toBe(
+        true,
+      );
+      const [table, paragraph] = editor.getJSON().content ?? [];
+
+      expect(table).toMatchObject({
+        type: "storytellerTable",
+        content: [
+          {
+            type: "tableRow",
+            content: [
+              { type: "tableCell", content: [{ type: "text", text: "角色" }] },
+              { type: "tableCell", content: [{ type: "text", text: "狀態" }] },
+              { type: "tableCell", content: [{ type: "text", text: "備註" }] },
+            ],
+          },
+          {
+            type: "tableRow",
+            content: [
+              { type: "tableCell", content: [{ type: "text", text: "莉亞" }] },
+              {
+                type: "tableCell",
+                content: [
+                  {
+                    type: "text",
+                    text: "完成",
+                    marks: [{ type: "bold" }],
+                  },
+                ],
+              },
+              { type: "tableCell" },
+            ],
+          },
+        ],
+      });
+      expect(paragraph).toMatchObject({
+        type: "paragraph",
+        content: [{ type: "text", text: "後文" }],
+      });
+    } finally {
+      editor.destroy();
+    }
   });
 });

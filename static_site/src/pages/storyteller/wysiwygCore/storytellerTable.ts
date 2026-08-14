@@ -1,5 +1,9 @@
 import { mergeAttributes, Node } from "@tiptap/core";
-import type { Schema } from "@tiptap/pm/model";
+import {
+  Fragment,
+  type Node as ProseMirrorNode,
+  type Schema,
+} from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import {
   addColumnAfter,
@@ -22,6 +26,8 @@ declare module "@tiptap/core" {
         rows?: number;
         cols?: number;
       }) => ReturnType;
+      /** 將游標所在的連續舊 table-row 段落手動轉成真表格；不做靜默自動轉換。 */
+      convertLegacyTableRowsToStorytellerTable: () => ReturnType;
       addStorytellerTableRowBefore: () => ReturnType;
       addStorytellerTableRowAfter: () => ReturnType;
       deleteStorytellerTableRow: () => ReturnType;
@@ -38,6 +44,55 @@ function createTableCell(schema: Schema) {
 
 function createTableRow(schema: Schema, cols: number) {
   const cells = Array.from({ length: cols }, () => createTableCell(schema));
+  return schema.nodes.tableRow.create({ rowId: generateTableRowId() }, cells);
+}
+
+function topLevelNodeStart(doc: ProseMirrorNode, index: number) {
+  let pos = 0;
+  for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
+  return pos;
+}
+
+function isLegacyTableRow(node: ProseMirrorNode) {
+  return node.type.name === "paragraph" && node.attrs.blockKind === "table-row";
+}
+
+function isBlankLegacyCell(nodes: ProseMirrorNode[]) {
+  return nodes.every((node) => node.isText && (node.text ?? "").trim() === "");
+}
+
+function splitLegacyTableRowCells(row: ProseMirrorNode) {
+  const cells: ProseMirrorNode[][] = [[]];
+  row.content.forEach((child) => {
+    if (!child.isText || !child.text?.includes("|")) {
+      cells[cells.length - 1].push(child);
+      return;
+    }
+    child.text.split("|").forEach((piece, index) => {
+      if (index > 0) cells.push([]);
+      if (piece !== "") {
+        cells[cells.length - 1].push(row.type.schema.text(piece, child.marks));
+      }
+    });
+  });
+  if (cells.length > 1 && isBlankLegacyCell(cells[0])) cells.shift();
+  if (cells.length > 1 && isBlankLegacyCell(cells[cells.length - 1])) {
+    cells.pop();
+  }
+  return cells;
+}
+
+function createTableRowFromLegacy(
+  schema: Schema,
+  cellContents: ProseMirrorNode[][],
+  columnCount: number,
+) {
+  const cells = Array.from({ length: columnCount }, (_, index) =>
+    schema.nodes.tableCell.create(
+      null,
+      Fragment.fromArray(cellContents[index] ?? []),
+    ),
+  );
   return schema.nodes.tableRow.create({ rowId: generateTableRowId() }, cells);
 }
 
@@ -89,6 +144,55 @@ export const StorytellerTable = Node.create({
             const tr = state.tr.replaceSelectionWith(table).scrollIntoView();
             const firstCellPos = tr.selection.from + 3;
             tr.setSelection(TextSelection.near(tr.doc.resolve(firstCellPos)));
+            dispatch(tr);
+          }
+          return true;
+        },
+      convertLegacyTableRowsToStorytellerTable:
+        () =>
+        ({ state, dispatch }) => {
+          const currentIndex = state.selection.$from.index(0);
+          if (currentIndex >= state.doc.childCount) return false;
+          if (!isLegacyTableRow(state.doc.child(currentIndex))) return false;
+
+          let fromIndex = currentIndex;
+          while (
+            fromIndex > 0 &&
+            isLegacyTableRow(state.doc.child(fromIndex - 1))
+          ) {
+            fromIndex--;
+          }
+
+          let toIndex = currentIndex;
+          while (
+            toIndex < state.doc.childCount - 1 &&
+            isLegacyTableRow(state.doc.child(toIndex + 1))
+          ) {
+            toIndex++;
+          }
+
+          const from = topLevelNodeStart(state.doc, fromIndex);
+          const to =
+            topLevelNodeStart(state.doc, toIndex) +
+            state.doc.child(toIndex).nodeSize;
+          const legacyRows = Array.from(
+            { length: toIndex - fromIndex + 1 },
+            (_, i) => splitLegacyTableRowCells(state.doc.child(fromIndex + i)),
+          );
+          const columnCount = Math.max(
+            1,
+            ...legacyRows.map((row) => row.length),
+          );
+          const rows = legacyRows.map((row) =>
+            createTableRowFromLegacy(state.schema, row, columnCount),
+          );
+          const table = state.schema.nodes.storytellerTable.create(
+            { tableId: generateTableId() },
+            rows,
+          );
+          if (dispatch) {
+            const tr = state.tr.replaceWith(from, to, table).scrollIntoView();
+            tr.setSelection(TextSelection.near(tr.doc.resolve(from + 3)));
             dispatch(tr);
           }
           return true;
