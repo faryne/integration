@@ -50,6 +50,12 @@ export type WysiwygCommandGroup =
   | "insert"
   | "utility";
 
+const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
+  "heading",
+  "block",
+  "insert",
+];
+
 /**
  * 比原本三份分析文件寫的 `inline|block|insert` 多一個 `action`——這裡指「不改變文件
  * 內容本身、只是觸發一個副作用」的動作（目前只有匯出 markdown），塞進 inline/block/
@@ -172,7 +178,13 @@ const HEADING_COMMANDS: WysiwygCommand[] = [
   aliases:
     level === DEFAULT_HEADING_LEVEL
       ? ["內文", "paragraph", "text"]
-      : [`標題${level}`, `h${level}`],
+      : [
+          `標題${level}`,
+          `heading${level}`,
+          `heading ${level}`,
+          `title${level}`,
+          `h${level}`,
+        ],
   isActive: (editor) => editor.isActive("paragraph", { headingLevel: level }),
   run: (editor) => editor.chain().focus().setHeadingLevel(level).run(),
 }));
@@ -226,6 +238,7 @@ function toggleBlockKindCommand(
   kind: Exclude<BlockKindValue, "none">,
   label: string,
   icon: ComponentType<{ fontSize?: "small" }>,
+  aliases: string[],
 ): WysiwygCommand {
   return {
     id: `block-kind-${kind}`,
@@ -233,6 +246,7 @@ function toggleBlockKindCommand(
     group: "block",
     scope: "block",
     icon,
+    aliases,
     isActive: (editor) => editor.isActive("paragraph", { blockKind: kind }),
     run: (editor) => {
       const next = editor.isActive("paragraph", { blockKind: kind })
@@ -244,9 +258,27 @@ function toggleBlockKindCommand(
 }
 
 const BLOCK_KIND_COMMANDS: WysiwygCommand[] = [
-  toggleBlockKindCommand("quote", "引用", FormatQuoteIcon),
-  toggleBlockKindCommand("bullet", "無序清單", FormatListBulletedIcon),
-  toggleBlockKindCommand("number", "有序清單", FormatListNumberedIcon),
+  toggleBlockKindCommand("quote", "引用", FormatQuoteIcon, [
+    "引用",
+    "quote",
+    "blockquote",
+  ]),
+  toggleBlockKindCommand("bullet", "無序清單", FormatListBulletedIcon, [
+    "無序清單",
+    "項目清單",
+    "bullet",
+    "bulleted list",
+    "list",
+    "ul",
+  ]),
+  toggleBlockKindCommand("number", "有序清單", FormatListNumberedIcon, [
+    "有序清單",
+    "編號清單",
+    "number",
+    "numbered list",
+    "ordered list",
+    "ol",
+  ]),
   {
     id: "horizontal-rule",
     label: "插入分隔線",
@@ -382,4 +414,36 @@ export function visibleWysiwygCommands(
   return wysiwygCommandsByGroup(group).filter(
     (command) => command.isVisible?.(context) ?? true,
   );
+}
+
+function normalizeSlashQuery(value: string) {
+  return value
+    .trim()
+    .replace(/^\/+/, "")
+    .toLocaleLowerCase()
+    .replace(/\s+/g, "");
+}
+
+function slashCommandSearchValues(command: WysiwygCommand) {
+  return [command.label, command.id, ...(command.aliases ?? [])].map((value) =>
+    normalizeSlashQuery(value),
+  );
+}
+
+/** Slash menu 只提供空區塊可用的 block/insert 類動作；完整行內樣式仍交給 bubble/context menu。 */
+export function slashWysiwygCommands(
+  query: string,
+  editor: Editor,
+  context: WysiwygCommandContext,
+): WysiwygCommand[] {
+  const normalizedQuery = normalizeSlashQuery(query);
+  return SLASH_COMMAND_GROUPS.flatMap((group) =>
+    visibleWysiwygCommands(group, context),
+  ).filter((command) => {
+    if (command.isEnabled && !command.isEnabled(editor, context)) return false;
+    if (normalizedQuery === "") return true;
+    return slashCommandSearchValues(command).some((value) =>
+      value.includes(normalizedQuery),
+    );
+  });
 }

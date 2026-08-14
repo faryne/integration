@@ -163,7 +163,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 ### Phase 3：Slash Command
 
 - [ ] 引入 Tiptap `Suggestion` utility，`/` 觸發，僅限空文字區塊、selection 為空時生效
-- [ ] 中英文 alias
+- [ ] 中英文 alias——2026-08-14 Codex 已在 command registry 補 `slashWysiwygCommands()` resolver，只列出 heading／block／insert 類 command，並補 heading／quote／list／table／image 的中英文 aliases 與 smoke tests；Codex 本地 `tsc -b --noEmit`／target eslint 通過，`vitest` 仍因 sandbox `SecItemCopyMatching failed -50` 無法執行，待 Claude/reviewer 跑正式測試後再打勾
 - [ ] 選擇 command 後正確刪除 `/query` 文字
 - [ ] 人工實測中文 IME：輸入 `/標`、注音組字期間 suggestion menu 的互動、Escape/Enter 行為
 

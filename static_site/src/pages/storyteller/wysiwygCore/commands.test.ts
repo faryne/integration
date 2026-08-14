@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getWysiwygCommand,
+  slashWysiwygCommands,
   WYSIWYG_COMMANDS,
   type WysiwygCommandContext,
 } from "./commands";
@@ -133,6 +134,69 @@ describe("WYSIWYG_COMMANDS", () => {
       expect(table?.type).toBe("storytellerTable");
       expect(table?.content).toHaveLength(3);
       expect(table?.content?.[0].content).toHaveLength(3);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("slash command resolver 只列出 block/insert 類 command，不混入行內樣式", () => {
+    const editor = createEmptyEditor();
+
+    try {
+      const ids = slashWysiwygCommands("", editor, createStubContext()).map(
+        (command) => command.id,
+      );
+      expect(ids).toEqual(
+        expect.arrayContaining([
+          "heading-1",
+          "block-kind-quote",
+          "horizontal-rule",
+          "insert-table",
+          "insert-image",
+        ]),
+      );
+      expect(ids).not.toContain("bold");
+      expect(ids).not.toContain("comment");
+      expect(ids).not.toContain("export-markdown");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("slash command resolver 支援中英文 alias 查詢", () => {
+    const editor = createEmptyEditor();
+
+    try {
+      const context = createStubContext();
+      expect(
+        slashWysiwygCommands("標", editor, context).map(
+          (command) => command.id,
+        ),
+      ).toContain("heading-1");
+      expect(
+        slashWysiwygCommands("blockquote", editor, context).map(
+          (command) => command.id,
+        ),
+      ).toContain("block-kind-quote");
+      expect(
+        slashWysiwygCommands("table", editor, context).map(
+          (command) => command.id,
+        ),
+      ).toContain("insert-table");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("slash command resolver 套用 command registry 的可見性規則", () => {
+    const editor = createEmptyEditor();
+    const context = { ...createStubContext(), canInsertAsset: false };
+
+    try {
+      const ids = slashWysiwygCommands("圖", editor, context).map(
+        (command) => command.id,
+      );
+      expect(ids).not.toContain("insert-image");
     } finally {
       editor.destroy();
     }
