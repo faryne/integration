@@ -1,6 +1,6 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Divider, Paper, Stack, Tooltip } from "@mui/material";
-import type { Editor } from "@tiptap/core";
+import { isTextSelection, type Editor } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useState } from "react";
 
@@ -33,8 +33,11 @@ export function StorytellerWysiwygBubbleMenu({
   const markCommands = wysiwygCommandsByGroup("mark").filter((command) =>
     BUBBLE_MARK_IDS.includes(command.id),
   );
+  // text-color-clear 的 id 也是 "text-color-" 開頭，但它是「清除顏色」的動作，不是
+  // 色票（沒有 previewColor），要排除掉才不會在色票列裡多一顆空白按鈕；清除功能另外
+  // 用固定的 DeleteIcon 按鈕呈現（見下面 JSX）。
   const textColorCommands = wysiwygCommandsByGroup("color").filter(
-    (command) => command.id.startsWith("text-color-"),
+    (command) => command.id.startsWith("text-color-") && command.id !== "text-color-clear",
   );
   const linkCommand = getWysiwygCommand("link")!;
   const commentCommand = getWysiwygCommand("comment")!;
@@ -46,7 +49,21 @@ export function StorytellerWysiwygBubbleMenu({
   }) => command.run(editor, commandContext);
 
   return (
-    <BubbleMenu editor={editor}>
+    <BubbleMenu
+      editor={editor}
+      shouldShow={({ state, from, to }) => {
+        const { selection } = state;
+        // 官方預設 shouldShow 只排除空選取／空文字區塊，沒有排除 NodeSelection
+        // （例如選到 assetImage 這種 atom node）——這裡額外要求是真正的
+        // TextSelection、且選取範圍內有非空白文字，符合「選取文字時顯示」的規格，
+        // 不是「任何非空 selection 都顯示」。
+        return (
+          isTextSelection(selection) &&
+          !selection.empty &&
+          state.doc.textBetween(from, to).trim().length > 0
+        );
+      }}
+    >
       <Paper
         elevation={4}
         sx={{ display: "flex", alignItems: "center", px: 0.5, py: 0.5 }}
