@@ -5,6 +5,8 @@ import Suggestion, {
   type SuggestionProps,
 } from "@tiptap/suggestion";
 import { PluginKey, type EditorState } from "@tiptap/pm/state";
+import { createElement, type ComponentType } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import {
   slashWysiwygCommands,
@@ -60,6 +62,16 @@ export function runSlashCommand(
   command.run(editor, context);
 }
 
+/** 把 command 的 icon（跟工具列/右鍵選單共用同一個 ComponentType）渲染成靜態 SVG
+ * markup，塞進純 DOM 按鈕裡——這個 renderer 是 Suggestion 的 imperative DOM
+ * mount，不是 React tree，用 renderToStaticMarkup 是最小改動的接法。 */
+function renderCommandIconMarkup(
+  icon: ComponentType<{ fontSize?: "small" }> | undefined,
+) {
+  if (!icon) return null;
+  return renderToStaticMarkup(createElement(icon, { fontSize: "small" }));
+}
+
 function renderSlashCommandItems(
   element: HTMLElement,
   props: SlashSuggestionProps,
@@ -69,12 +81,13 @@ function renderSlashCommandItems(
   props.items.forEach((item, index) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = item.label;
     button.dataset.commandId = item.id;
     button.setAttribute("role", "option");
     button.setAttribute("aria-selected", String(index === selectedIndex));
     button.style.cssText = [
-      "display:block",
+      "display:flex",
+      "align-items:center",
+      "gap:8px",
       "width:100%",
       "border:0",
       "background:transparent",
@@ -86,6 +99,23 @@ function renderSlashCommandItems(
     if (index === selectedIndex) {
       button.style.background = "rgba(25, 118, 210, 0.12)";
     }
+
+    const iconMarkup = renderCommandIconMarkup(item.icon);
+    if (iconMarkup) {
+      const iconSpan = document.createElement("span");
+      iconSpan.innerHTML = iconMarkup;
+      iconSpan.style.cssText = [
+        "display:inline-flex",
+        "flex-shrink:0",
+        "color:rgba(0, 0, 0, 0.6)",
+      ].join(";");
+      button.appendChild(iconSpan);
+    }
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = item.label;
+    button.appendChild(labelSpan);
+
     button.addEventListener("mousedown", (event) => {
       event.preventDefault();
       props.command(item);
