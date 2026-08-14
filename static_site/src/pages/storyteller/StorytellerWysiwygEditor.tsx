@@ -73,6 +73,7 @@ import {
   type TextColorValue,
 } from "./wysiwygCore/whitelist";
 import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
 import {
   StorytellerWysiwygContextMenu,
   type ContextMenuPosition,
@@ -953,6 +954,10 @@ export const StorytellerWysiwygEditor = forwardRef<
           onContextMenu={handleEditorContextMenu}
         >
           <EditorContent editor={editor} />
+          <StorytellerWysiwygBubbleMenu
+            editor={editor}
+            commandContext={commandContext}
+          />
         </Box>
       </Paper>
 

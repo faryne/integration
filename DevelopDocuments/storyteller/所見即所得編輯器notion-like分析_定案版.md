@@ -169,8 +169,8 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 4：Bubble Menu
 
-- [ ] 選取文字時顯示：粗體/斜體/底線/文字色/連結/註解
-- [ ] 跟右鍵選單共用同一份 command registry
+- [x] 選取文字時顯示：粗體/斜體/底線/文字色/連結/註解——新檔 `StorytellerWysiwygBubbleMenu.tsx`，用 `@tiptap/react/menus` 的 `BubbleMenu`（注意：`@tiptap/react` 根匯出點沒有這個元件，要從 `/menus`子路徑匯入，不是新增依賴，`@tiptap/extension-bubble-menu` 已經是 `@tiptap/react` 的既有 transitive dependency）；文字色只放常用的文字前景色（不含背景色，Bubble Menu 空間有限，背景色/下標/上標/刪除線/腳注等完整功能仍在右鍵選單/工具列）；註解按鈕遵守 `isFeatureEnabled("comment")` 可見性開關
+- [x] 跟右鍵選單共用同一份 command registry——沒有重新定義任何 command，`markCommands`／`textColorCommands`／`linkCommand`／`commentCommand` 都是從 `wysiwygCommandsByGroup`／`getWysiwygCommand` 取，UI 呈現（浮動小工具列 vs 右鍵選單列表）不同，但底層動作是同一份
 
 ### Phase 5：真表格（設計已定案，見上方「真表格最終設計」，本 Phase 是實作項目）
 
