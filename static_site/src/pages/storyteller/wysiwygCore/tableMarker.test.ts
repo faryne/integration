@@ -76,6 +76,35 @@ describe("storyteller table marker", () => {
     });
   });
 
+  it("malformed table marker 無法 parse 時退回純文字段落，不丟原始內容", () => {
+    const raw = '⟦table tableId="tbl_a" rowId="row_1"⟧| A | B |';
+    const [paragraph] = parseMarkdownToParagraphs(raw);
+
+    expect(paragraph.tableId).toBeUndefined();
+    expect(paragraph.tableCells).toBeUndefined();
+    expect(paragraph.runs.map((run) => run.text).join("")).toBe(raw);
+  });
+
+  it("缺 tableId 時用 per-line fallback，reader 不會誤合併相鄰 table rows", () => {
+    const paragraphs = parseMarkdownToParagraphs(
+      [
+        '⟦table rowId="row_1"⟧| A | B |⟦/table⟧',
+        '⟦table rowId="row_2"⟧| 1 | 2 |⟦/table⟧',
+      ].join("\n"),
+    );
+    const groups = groupParagraphsByBlockKind(paragraphs);
+
+    expect(paragraphs.map((paragraph) => paragraph.tableId)).toEqual([
+      "tbl_missing_0",
+      "tbl_missing_1",
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((group) => group.blockKind)).toEqual([
+      "table",
+      "table",
+    ]);
+  });
+
   it("serialize table node 成逐列一行 marker 並跳脫 cell 邊界字元", () => {
     const doc = {
       type: "doc",

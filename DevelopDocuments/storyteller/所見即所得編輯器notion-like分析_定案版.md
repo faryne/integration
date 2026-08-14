@@ -183,7 +183,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 - [x] 匯出 markdown：輸出標準 markdown table——2026-08-14 已實作新 `⟦table⟧` 與舊 `table-row` 兩種表格的標準 markdown table 匯出，順便修掉一個既有 bug（舊 `table-row` 原本會匯出成錯誤的一般清單，不是表格）；Claude 用 `npx vitest run` 驗證過 `tableMarker.test.ts` 的兩個 export test case（新 table marker、舊 table-row）都通過，字串輸出精確比對過
 - [x] 後端 word count／書籤 preview 對新 table marker 的 strip 邏輯——2026-08-14 已補 Go 端 table marker parser、cell split/unescape（`\|`／`\\`／`\n`）、wordCount、書籤 preview、搜尋 plain text strip，並補 `table_marker_test.go` 覆蓋 escape、圖片 alt、相鄰同 `tableId` 分組與缺失 `tableId` 不合併
 - [x] `storytellerContentMarkerHint`／`storytellerContentSyntaxHint` 補上表格語法範例與規則說明，讓 AI agent 能透過 MCP 讀寫表格——2026-08-14 已明確寫入新 table marker 範例、同表 rows 必須相鄰、`tableId`／`rowId` 保持穩定、cell escape 規則，以及舊 `table-row` 只保留不新增
-- [ ] parser／reader 保護性 fallback：malformed row 不丟資料、無法 parse 退回純文字、`tableId` 缺失時的補救邏輯、row cell 數不一致時補空 cell
+- [x] parser／reader 保護性 fallback：malformed row 不丟資料、無法 parse 退回純文字、`tableId` 缺失時的補救邏輯、row cell 數不一致時補空 cell——2026-08-14 Codex 已補 `tableMarker.test.ts` 測試 malformed table marker 退回純文字、缺 `tableId` 以 per-line fallback 避免 reader grouping 誤合併；row cell 數不一致補空 cell 先前已有測試。Codex 本地已跑 `tsc -b --noEmit`，並用 `tsc` emit parser/whitelist 到 `/private/tmp` 後以 Node smoke 驗證三個 fallback 行為；正式 `vitest` runner 仍因 sandbox 的 `SecItemCopyMatching failed -50` 失敗，需 Claude/reviewer 環境補跑
 - [ ] 舊 `table-row` 資料相容：parser 保留讀取能力，新增內容不再產生 `table-row`，提供手動「轉換成新表格」command，不靜默自動轉
 - [ ] 移除或改接 `markerParagraph.ts` 既有的 `^\| $` input rule（目前會自動產生舊格式 `table-row` 段落），避免打 `| ` 仍能繞過「新增內容不再產生 table-row」的原則
 - [ ] 第一版明確不做：合併儲存格、調整欄寬、排序、公式、巢狀表格、cell-level bookmark、cell-level diff、貼上純文字 pipe table 自動辨識
