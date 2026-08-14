@@ -257,4 +257,52 @@ describe("storyteller table marker", () => {
       editor.destroy();
     }
   });
+
+  it("原生 addRow commands 新增的列也會補穩定 rowId", () => {
+    const editor = new Editor({
+      extensions: wysiwygCoreExtensions,
+      content: markdownToDoc(""),
+    });
+
+    try {
+      editor.commands.insertStorytellerTable({ rows: 1, cols: 1 });
+      expect(editor.commands.addStorytellerTableRowAfter()).toBe(true);
+      expect(editor.commands.addStorytellerTableRowBefore()).toBe(true);
+
+      const table = editor.getJSON().content?.[0] as
+        | { content?: Array<{ attrs?: { rowId?: string } }> }
+        | undefined;
+      const rowIds =
+        table?.content?.map((row) => row.attrs?.rowId) ?? [];
+      expect(rowIds).toHaveLength(3);
+      expect(rowIds.every(Boolean)).toBe(true);
+      expect(new Set(rowIds).size).toBe(rowIds.length);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("table cell 內支援基本 marks 與行內 marker attrs", () => {
+    const [paragraph] = parseMarkdownToParagraphs(
+      [
+        '⟦table tableId="tbl_a" rowId="row_1"⟧|',
+        "**粗體** *斜體* ++底線++ --刪除--",
+        '| ⟦span-c1 textColor="red"⟧紅⟦/span-c1⟧',
+        '⟦a-a1 href="https://example.com" target="_blank"⟧連結⟦/a-a1⟧',
+        '⟦comment-c1 comment="修一下" commentColor="pink"⟧註解⟦/comment-c1⟧ |⟦/table⟧',
+      ].join(" "),
+    );
+    const runs = paragraph.tableCells?.flat() ?? [];
+    const runByText = new Map(runs.map((run) => [run.text, run]));
+
+    expect(runByText.get("粗體")?.marks).toContain("bold");
+    expect(runByText.get("斜體")?.marks).toContain("italic");
+    expect(runByText.get("底線")?.marks).toContain("underline");
+    expect(runByText.get("刪除")?.marks).toContain("strike");
+    expect(runByText.get("紅")?.textColor).toBe("red");
+    expect(runByText.get("連結")?.href).toBe("https://example.com");
+    expect(runByText.get("連結")?.target).toBe("_blank");
+    expect(runByText.get("註解")?.comment).toBe("修一下");
+    expect(runByText.get("註解")?.commentColor).toBe("pink");
+  });
 });

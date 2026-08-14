@@ -4,7 +4,7 @@ import {
   type Node as ProseMirrorNode,
   type Schema,
 } from "@tiptap/pm/model";
-import { TextSelection } from "@tiptap/pm/state";
+import { TextSelection, type Transaction } from "@tiptap/pm/state";
 import {
   addColumnAfter,
   addColumnBefore,
@@ -102,6 +102,31 @@ function createTableRowFromLegacy(
     ),
   );
   return schema.nodes.tableRow.create({ rowId: generateTableRowId() }, cells);
+}
+
+function fillMissingTableRowIds(tr: Transaction) {
+  const updates: number[] = [];
+  tr.doc.descendants((node, pos) => {
+    if (node.type.name === "tableRow" && !node.attrs.rowId) updates.push(pos);
+  });
+  updates.forEach((pos) => {
+    const row = tr.doc.nodeAt(pos);
+    if (row) {
+      tr.setNodeMarkup(pos, undefined, {
+        ...row.attrs,
+        rowId: generateTableRowId(),
+      });
+    }
+  });
+  return tr;
+}
+
+function dispatchWithStableRowIds(
+  dispatch: ((tr: Transaction) => void) | undefined,
+) {
+  return dispatch
+    ? (tr: Transaction) => dispatch(fillMissingTableRowIds(tr))
+    : undefined;
 }
 
 export const StorytellerTable = Node.create({
@@ -208,11 +233,11 @@ export const StorytellerTable = Node.create({
       addStorytellerTableRowBefore:
         () =>
         ({ state, dispatch }) =>
-          addRowBefore(state, dispatch),
+          addRowBefore(state, dispatchWithStableRowIds(dispatch)),
       addStorytellerTableRowAfter:
         () =>
         ({ state, dispatch }) =>
-          addRowAfter(state, dispatch),
+          addRowAfter(state, dispatchWithStableRowIds(dispatch)),
       deleteStorytellerTableRow:
         () =>
         ({ state, dispatch }) =>
