@@ -241,6 +241,22 @@ const BLOCK_KIND_SX = {
     borderRadius: "4px",
     padding: "2px 6px",
   },
+  // 真表格（Phase 5）：storytellerTable/tableRow/tableCell render 成真正的
+  // <table><tr><td>（見 wysiwygCore/storytellerTable.ts），但原本沒有任何邊框樣式，
+  // 使用者插入表格後完全看不出表格範圍在哪。跟閱讀頁 StorytellerWysiwygMarkdown.tsx
+  // 的 BLOCK_GROUP_SX 用同一套邊框樣式，讓編輯區跟閱讀頁視覺一致。
+  "& table": {
+    margin: "0.5em 0",
+    borderCollapse: "collapse",
+    width: "100%",
+  },
+  "& td": {
+    border: "1px solid",
+    borderColor: "divider",
+    padding: "6px 10px",
+    minWidth: "2em",
+    verticalAlign: "top",
+  },
 } as const;
 
 const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [

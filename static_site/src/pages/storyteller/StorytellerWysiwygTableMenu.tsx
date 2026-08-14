@@ -106,6 +106,19 @@ export function StorytellerWysiwygTableMenu({
           >
             刪除欄
           </Button>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+
+          <Button
+            color="error"
+            size="small"
+            startIcon={<DeleteIcon fontSize="small" />}
+            onClick={() =>
+              run(() => editor.chain().focus().deleteStorytellerTable().run())
+            }
+          >
+            刪除表格
+          </Button>
         </Stack>
       </Paper>
     </BubbleMenu>

@@ -16,7 +16,11 @@ import {
   tableEditing,
 } from "@tiptap/pm/tables";
 
-import { generateTableId, generateTableRowId } from "./whitelist";
+import {
+  generateMarkerId,
+  generateTableId,
+  generateTableRowId,
+} from "./whitelist";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -34,6 +38,8 @@ declare module "@tiptap/core" {
       addStorytellerTableColumnBefore: () => ReturnType;
       addStorytellerTableColumnAfter: () => ReturnType;
       deleteStorytellerTableColumn: () => ReturnType;
+      /** 刪除游標所在的整張表格（不是單一列/欄），跟 deleteStorytellerTableRow/Column 分開。 */
+      deleteStorytellerTable: () => ReturnType;
     };
   }
 }
@@ -254,6 +260,33 @@ export const StorytellerTable = Node.create({
         () =>
         ({ state, dispatch }) =>
           deleteColumn(state, dispatch),
+      deleteStorytellerTable:
+        () =>
+        ({ state, dispatch }) => {
+          const tableIndex = state.selection.$from.index(0);
+          if (tableIndex >= state.doc.childCount) return false;
+          if (state.doc.child(tableIndex).type.name !== "storytellerTable") {
+            return false;
+          }
+          const from = topLevelNodeStart(state.doc, tableIndex);
+          const to = from + state.doc.child(tableIndex).nodeSize;
+          if (dispatch) {
+            // Document 的 content 是 `block+`，整份文件不能空——如果表格是唯一內容，
+            // 刪掉後補一個空段落，避免違反 schema。
+            const isOnlyContent = state.doc.childCount === 1;
+            const tr = isOnlyContent
+              ? state.tr.replaceWith(
+                  from,
+                  to,
+                  state.schema.nodes.paragraph.create({
+                    markerId: generateMarkerId(),
+                  }),
+                )
+              : state.tr.delete(from, to);
+            dispatch(tr.scrollIntoView());
+          }
+          return true;
+        },
     };
   },
 
