@@ -12,6 +12,7 @@ import {
   StorytellerWysiwygEditor,
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 
 // Phase -1 WYSIWYG Playground：只在 dev 環境掛載（見 App.tsx 的 import.meta.env.DEV 判斷），
 // 不接 autosave／真實 story or lore API／DB，純粹用來隔離測試編輯器本身的互動與 marker 語法輸出。
@@ -32,6 +33,12 @@ const SAMPLE_CONTENTS: Record<string, string> = {
     "|⟦t1⟧角色|任務|狀態⟦/t1⟧",
     "|⟦t2⟧莉亞|偵查|完成⟦/t2⟧",
     "|⟦t3⟧米菈|支援|取消⟦/t3⟧",
+  ].join("\n"),
+  "真表格（Phase 5）": [
+    '⟦table tableId="tbl_demo" rowId="row_1"⟧| 角色 | 任務 | 狀態 |⟦/table⟧',
+    '⟦table tableId="tbl_demo" rowId="row_2"⟧| 莉亞 | 偵查 | **完成** |⟦/table⟧',
+    '⟦table tableId="tbl_demo" rowId="row_3"⟧| 米菈 | 支援 | --取消-- |⟦/table⟧',
+    "⟦p1⟧表格結束後的一般段落。⟦/p1⟧",
   ].join("\n"),
   "行內樣式測試": [
     "⟦s1⟧++底線++、~下標~、^上標^、--刪除線--（若尚未支援會顯示原字）⟦/s1⟧",
@@ -105,6 +112,13 @@ export default function WysiwygDemo() {
           // 用來驗證右鍵選單「插入圖片」command 有沒有正確觸發到這個 callback。
           onRequestInsertAsset={handleInsertAsset}
         />
+      </Box>
+
+      <Typography variant="subtitle2" gutterBottom>
+        Reader preview（StorytellerWysiwygMarkdown，即讀者實際看到的樣子）
+      </Typography>
+      <Box sx={{ border: "1px solid", borderColor: "divider", p: 2, mb: 3 }}>
+        <StorytellerWysiwygMarkdown>{content}</StorytellerWysiwygMarkdown>
       </Box>
 
       <Typography variant="subtitle2" gutterBottom>
