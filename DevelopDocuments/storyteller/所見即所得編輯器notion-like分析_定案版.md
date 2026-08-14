@@ -179,8 +179,8 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 - [ ] cell 內支援基本行內樣式：粗體、斜體、底線、刪除線、文字色、連結、註解（腳注是否允許放 cell 內可另外評估）
 - [ ] 表格的新增列/刪除列/新增欄/刪除欄操作入口：規劃放在表格內的右鍵選單或浮動控制項，這些入口是否齊全，直接影響 Phase 6 工具列移除的驗收
 - [x] 實作逐列一行 marker 的 parser／serializer（含 escape/unescape 規則）——已支援 `⟦table tableId="..." rowId="..."⟧| cell | cell |⟦/table⟧` 解析成 table node、相鄰同 `tableId` rows group 成同一張表、serializer 拆回逐列一行 marker；cell escape 規則已照定案處理 `\|`／`\\`／`\n`，並補 `tableMarker.test.ts` 覆蓋 round-trip 與欄數不一致補空 cell
-- [ ] 閱讀頁 renderer：把同 `tableId` 相鄰 row group 成真正 `<table>`
-- [ ] 匯出 markdown：輸出標準 markdown table
+- [ ] 閱讀頁 renderer：把同 `tableId` 相鄰 row group 成真正 `<table>`——2026-08-14 Claude 已用 `npx vitest run` 驗證 `groupParagraphsByBlockKind` 的分組邏輯（`tableMarker.test.ts` grouping case 通過），也讀過 `StorytellerWysiwygMarkdown.tsx` 的 renderer 分支程式碼確認邏輯正確；但**還沒有在真實瀏覽器裡看過渲染出來的 `<table>` 長什麼樣**（Playground 目前只有 editor，沒有 Reader preview pane，這是 Phase -1 留下的 P2 待辦，本來要排在 Phase 5 之前補上、Codex 這輪先跳過了），維持未勾，等 Reader preview 補上或直接用 StoryEditor/Reader 頁面實測後再勾
+- [x] 匯出 markdown：輸出標準 markdown table——2026-08-14 已實作新 `⟦table⟧` 與舊 `table-row` 兩種表格的標準 markdown table 匯出，順便修掉一個既有 bug（舊 `table-row` 原本會匯出成錯誤的一般清單，不是表格）；Claude 用 `npx vitest run` 驗證過 `tableMarker.test.ts` 的兩個 export test case（新 table marker、舊 table-row）都通過，字串輸出精確比對過
 - [ ] 後端 word count／書籤 preview 對新 table marker 的 strip 邏輯
 - [ ] `storytellerContentMarkerHint`／`storytellerContentSyntaxHint` 補上表格語法範例與規則說明，讓 AI agent 能透過 MCP 讀寫表格
 - [ ] parser／reader 保護性 fallback：malformed row 不丟資料、無法 parse 退回純文字、`tableId` 缺失時的補救邏輯、row cell 數不一致時補空 cell

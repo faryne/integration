@@ -261,6 +261,16 @@ function renderParagraphContent(
       );
 }
 
+function renderTableCellContent(
+  runs: ParsedRun[],
+  footnoteNumbering: FootnoteNumbering,
+  footnoteIdPrefix: string,
+): ReactNode {
+  return runs.length === 0
+    ? " "
+    : renderParagraphRuns(runs, footnoteNumbering.numbers, footnoteIdPrefix);
+}
+
 /**
  * 故事尾端的腳注清單，獨立匯出成自己的元件——故事內容如果是逐段落/逐行渲染（例如
  * Reader.tsx 要在每行掛書籤功能），這個區塊只應該在整篇故事的最尾端渲染一次，
@@ -369,6 +379,30 @@ export function StorytellerWysiwygMarkdown({
                 <hr key={paragraph.markerId ?? index} />
               ))}
             </Fragment>
+          );
+        }
+
+        if (group.blockKind === "table") {
+          return (
+            <Box component="table" key={`block-group-${groupIndex}`}>
+              <tbody>
+                {group.items.map(({ paragraph, index }) => (
+                  <tr key={paragraph.rowId ?? index}>
+                    {(paragraph.tableCells ?? [[]]).map(
+                      (cellRuns, cellIndex) => (
+                        <td key={cellIndex}>
+                          {renderTableCellContent(
+                            cellRuns,
+                            footnoteNumbering,
+                            footnoteIdPrefix,
+                          )}
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </Box>
           );
         }
 

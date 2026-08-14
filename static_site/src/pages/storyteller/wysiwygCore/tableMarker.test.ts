@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { markdownToDoc, parseMarkdownToParagraphs } from "./parser";
+import { exportContentToMarkdown } from "./exportMarkdown";
+import {
+  groupParagraphsByBlockKind,
+  markdownToDoc,
+  parseMarkdownToParagraphs,
+} from "./parser";
 import { serializeDocToMarkdown } from "./serializer";
 
 describe("storyteller table marker", () => {
@@ -97,6 +102,55 @@ describe("storyteller table marker", () => {
 
     expect(serializeDocToMarkdown(doc)).toBe(
       '⟦table tableId="tbl_a" rowId="row_1"⟧| A\\|B | C\\\\D\\nE |⟦/table⟧',
+    );
+  });
+
+  it("reader grouping 會把相鄰同 tableId 的 rows 合併成 table group", () => {
+    const groups = groupParagraphsByBlockKind(
+      parseMarkdownToParagraphs(
+        [
+          '⟦table tableId="tbl_a" rowId="row_1"⟧| A | B |⟦/table⟧',
+          '⟦table tableId="tbl_a" rowId="row_2"⟧| 1 | 2 |⟦/table⟧',
+          "⟦p1⟧一般段落⟦/p1⟧",
+        ].join("\n"),
+      ),
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0].blockKind).toBe("table");
+    expect(groups[0].tableId).toBe("tbl_a");
+    expect(groups[0].items.map((item) => item.index)).toEqual([0, 1]);
+  });
+
+  it("匯出新 table marker 為標準 markdown table", () => {
+    expect(
+      exportContentToMarkdown(
+        [
+          '⟦table tableId="tbl_a" rowId="row_1"⟧| 角色 | 狀態 |⟦/table⟧',
+          '⟦table tableId="tbl_a" rowId="row_2"⟧| 莉亞 | **完成\\|確認** |⟦/table⟧',
+        ].join("\n"),
+      ),
+    ).toBe(
+      [
+        "| 角色 | 狀態 |",
+        "| --- | --- |",
+        "| 莉亞 | **完成\\|確認** |",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  it("匯出舊 table-row 為標準 markdown table，而不是 numbered list", () => {
+    expect(
+      exportContentToMarkdown(
+        [
+          "|⟦r1⟧角色|狀態⟦/r1⟧",
+          "|⟦r2⟧---|---⟦/r2⟧",
+          "|⟦r3⟧莉亞|完成⟦/r3⟧",
+        ].join("\n"),
+      ),
+    ).toBe(
+      ["| 角色 | 狀態 |", "| --- | --- |", "| 莉亞 | 完成 |", ""].join("\n"),
     );
   });
 });

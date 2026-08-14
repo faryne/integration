@@ -1,7 +1,9 @@
 import {
   computeFootnoteNumbering,
+  groupParagraphsByBlockKind,
   parseFootnoteNoteRuns,
   parseMarkdownToParagraphs,
+  splitRunsIntoCells,
   type ParsedParagraph,
   type ParsedRun,
 } from "./parser";
@@ -139,25 +141,60 @@ function exportInline(
 
 interface ExportGroup {
   blockKind: ParsedParagraph["blockKind"];
+  tableId?: string;
   paragraphs: ParsedParagraph[];
 }
 
-/** 連續同 blockKind（引用/清單）的段落分成一組，"none" 各自獨立——跟閱讀頁的分組規則一致。 */
+const TABLE_SEPARATOR_CELL_PATTERN = /^:?-+:?$/;
+
+/** 連續同 blockKind（引用/清單/表格）的段落分成一組，"none" 各自獨立——跟閱讀頁的分組規則一致。 */
 function groupForExport(paragraphs: ParsedParagraph[]): ExportGroup[] {
-  const groups: ExportGroup[] = [];
-  for (const paragraph of paragraphs) {
-    const last = groups[groups.length - 1];
-    if (
-      last &&
-      last.blockKind === paragraph.blockKind &&
-      paragraph.blockKind !== "none"
-    ) {
-      last.paragraphs.push(paragraph);
-    } else {
-      groups.push({ blockKind: paragraph.blockKind, paragraphs: [paragraph] });
-    }
-  }
-  return groups;
+  return groupParagraphsByBlockKind(paragraphs).map((group) => ({
+    blockKind: group.blockKind === "table" ? "table-row" : group.blockKind,
+    tableId: group.tableId,
+    paragraphs: group.items.map(({ paragraph }) => paragraph),
+  }));
+}
+
+function isExportTableSeparatorRow(cells: ParsedRun[][]): boolean {
+  return cells.every((cell) =>
+    TABLE_SEPARATOR_CELL_PATTERN.test(
+      cell
+        .map((run) => run.text)
+        .join("")
+        .trim(),
+    ),
+  );
+}
+
+function exportTableCell(
+  runs: ParsedRun[],
+  footnoteNumbers: Map<string, number>,
+): string {
+  return exportInline(runs, footnoteNumbers)
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "<br>");
+}
+
+function exportTableRows(
+  rows: ParsedRun[][][],
+  footnoteNumbers: Map<string, number>,
+): string {
+  const visibleRows = rows.filter((row, index) => {
+    if (index === 1 && isExportTableSeparatorRow(row)) return false;
+    return !isExportTableSeparatorRow(row);
+  });
+  if (visibleRows.length === 0) return "";
+
+  const columnCount = Math.max(1, ...visibleRows.map((row) => row.length));
+  const lines = visibleRows.map((row) => {
+    const cells = Array.from({ length: columnCount }, (_, cellIndex) =>
+      exportTableCell(row[cellIndex] ?? [], footnoteNumbers),
+    );
+    return `| ${cells.join(" | ")} |`;
+  });
+  const separator = `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`;
+  return [lines[0], separator, ...lines.slice(1)].join("\n");
 }
 
 /**
@@ -172,6 +209,15 @@ export function exportContentToMarkdown(content: string): string {
 
   const blocks: string[] = [];
   for (const group of groupForExport(paragraphs)) {
+    if (group.tableId) {
+      const table = exportTableRows(
+        group.paragraphs.map((paragraph) => paragraph.tableCells ?? [[]]),
+        footnoteNumbering.numbers,
+      );
+      if (table) blocks.push(table);
+      continue;
+    }
+
     if (group.blockKind === "none") {
       const paragraph = group.paragraphs[0];
       const inline = exportInline(paragraph.runs, footnoteNumbering.numbers);
@@ -181,6 +227,15 @@ export function exportContentToMarkdown(content: string): string {
           ? `${"#".repeat(paragraph.headingLevel)} `
           : "";
       blocks.push(`${headingPrefix}${inline}`);
+      continue;
+    }
+
+    if (group.blockKind === "table-row") {
+      const table = exportTableRows(
+        group.paragraphs.map((paragraph) => splitRunsIntoCells(paragraph.runs)),
+        footnoteNumbering.numbers,
+      );
+      if (table) blocks.push(table);
       continue;
     }
 

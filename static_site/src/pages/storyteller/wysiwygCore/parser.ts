@@ -763,8 +763,11 @@ export function parseMarkdownToParagraphs(
     .map((line, lineIndex) => parseLine(line, { ...options, lineIndex }));
 }
 
+export type ParagraphGroupKind = BlockKindValue | "table";
+
 export interface ParagraphGroup {
-  blockKind: BlockKindValue;
+  blockKind: ParagraphGroupKind;
+  tableId?: string;
   items: { paragraph: ParsedParagraph; index: number }[];
 }
 
@@ -783,6 +786,18 @@ export function groupParagraphsByBlockKind(
   const groups: ParagraphGroup[] = [];
   paragraphs.forEach((paragraph, index) => {
     const last = groups[groups.length - 1];
+    if (paragraph.tableId) {
+      if (last?.blockKind === "table" && last.tableId === paragraph.tableId) {
+        last.items.push({ paragraph, index });
+      } else {
+        groups.push({
+          blockKind: "table",
+          tableId: paragraph.tableId,
+          items: [{ paragraph, index }],
+        });
+      }
+      return;
+    }
     if (
       last &&
       last.blockKind === paragraph.blockKind &&
