@@ -47,6 +47,14 @@ function createTableRow(schema: Schema, cols: number) {
   return schema.nodes.tableRow.create({ rowId: generateTableRowId() }, cells);
 }
 
+function tableRoleForSelf(
+  extension: { name: string },
+  selfName: string,
+  tableRole: "table" | "row" | "cell",
+) {
+  return extension.name === selfName ? { tableRole } : {};
+}
+
 function topLevelNodeStart(doc: ProseMirrorNode, index: number) {
   let pos = 0;
   for (let i = 0; i < index; i++) pos += doc.child(i).nodeSize;
@@ -102,8 +110,8 @@ export const StorytellerTable = Node.create({
   content: "tableRow+",
   isolating: true,
 
-  extendNodeSchema() {
-    return { tableRole: "table" };
+  extendNodeSchema(extension) {
+    return tableRoleForSelf(extension, "storytellerTable", "table");
   },
 
   addAttributes() {
@@ -241,8 +249,8 @@ export const StorytellerTableRow = Node.create({
   name: "tableRow",
   content: "tableCell+",
 
-  extendNodeSchema() {
-    return { tableRole: "row" };
+  extendNodeSchema(extension) {
+    return tableRoleForSelf(extension, "tableRow", "row");
   },
 
   addAttributes() {
@@ -271,8 +279,8 @@ export const StorytellerTableCell = Node.create({
   content: "inline*",
   isolating: true,
 
-  extendNodeSchema() {
-    return { tableRole: "cell" };
+  extendNodeSchema(extension) {
+    return tableRoleForSelf(extension, "tableCell", "cell");
   },
 
   addAttributes() {

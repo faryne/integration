@@ -79,6 +79,7 @@ import {
   type ContextMenuPosition,
 } from "./StorytellerWysiwygContextMenu";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
+import { StorytellerWysiwygTableMenu } from "./StorytellerWysiwygTableMenu";
 
 interface HoveredComment {
   text: string;
@@ -969,6 +970,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             editor={editor}
             commandContext={commandContext}
           />
+          <StorytellerWysiwygTableMenu editor={editor} />
         </Box>
       </Paper>
 

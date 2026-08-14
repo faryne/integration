@@ -242,4 +242,19 @@ describe("storyteller table marker", () => {
       editor.destroy();
     }
   });
+
+  it("table schema role 正確標在各自 node 上，供 prosemirror-tables commands 判斷", () => {
+    const editor = new Editor({
+      extensions: wysiwygCoreExtensions,
+      content: markdownToDoc(""),
+    });
+
+    try {
+      expect(editor.schema.nodes.storytellerTable.spec.tableRole).toBe("table");
+      expect(editor.schema.nodes.tableRow.spec.tableRole).toBe("row");
+      expect(editor.schema.nodes.tableCell.spec.tableRole).toBe("cell");
+    } finally {
+      editor.destroy();
+    }
+  });
 });
