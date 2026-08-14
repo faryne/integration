@@ -175,7 +175,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 ### Phase 5：真表格（設計已定案，見上方「真表格最終設計」，本 Phase 是實作項目）
 
 - [ ] 評估 Tiptap `TableKit`：schema、commands（新增/刪除列/欄）、cell selection、IME 在 cell 內的行為、paste 行為——2026-08-14 第一段實作先採用 `@tiptap/pm/tables` primitives + 自有 Tiptap table/tableRow/tableCell nodes，已接 schema 與基礎 row/column command；cell selection、IME、paste 尚未實測，故本項維持未勾
-- [ ] 實作 `/table` 插入真正 table node（預設列/欄數可再定）
+- [ ] 實作 `/table` 插入真正 table node（預設列/欄數可再定）——2026-08-14 Codex 已新增 command registry 的 `insert-table`，aliases 含 `表格`／`table`／`/table`，執行既有 `insertStorytellerTable({ rows: 3, cols: 3 })` 插入預設 3x3 真表格，並補 command test；Codex 本地 `tsc -b --noEmit`／target eslint 通過，但 jsdom/vitest runner 仍因 sandbox 的 `SecItemCopyMatching failed -50` 失敗，待 Claude/reviewer 跑過正式 `vitest` 後再打勾
 - [ ] cell 內支援基本行內樣式：粗體、斜體、底線、刪除線、文字色、連結、註解（腳注是否允許放 cell 內可另外評估）
 - [ ] 表格的新增列/刪除列/新增欄/刪除欄操作入口：規劃放在表格內的右鍵選單或浮動控制項，這些入口是否齊全，直接影響 Phase 6 工具列移除的驗收
 - [x] 實作逐列一行 marker 的 parser／serializer（含 escape/unescape 規則）——已支援 `⟦table tableId="..." rowId="..."⟧| cell | cell |⟦/table⟧` 解析成 table node、相鄰同 `tableId` rows group 成同一張表、serializer 拆回逐列一行 marker；cell escape 規則已照定案處理 `\|`／`\\`／`\n`，並補 `tableMarker.test.ts` 覆蓋 round-trip 與欄數不一致補空 cell

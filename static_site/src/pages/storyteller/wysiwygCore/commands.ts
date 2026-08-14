@@ -18,6 +18,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
+import TableChartIcon from "@mui/icons-material/TableChart";
 import TitleIcon from "@mui/icons-material/Title";
 import type { ComponentType } from "react";
 
@@ -177,6 +178,16 @@ const HEADING_COMMANDS: WysiwygCommand[] = [
 }));
 
 const INSERT_COMMANDS: WysiwygCommand[] = [
+  {
+    id: "insert-table",
+    label: "插入表格",
+    group: "insert",
+    scope: "insert",
+    icon: TableChartIcon,
+    aliases: ["表格", "table", "/table"],
+    run: (editor) =>
+      editor.chain().focus().insertStorytellerTable({ rows: 3, cols: 3 }).run(),
+  },
   {
     id: "insert-image",
     label: "插入圖片",

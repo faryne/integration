@@ -1,7 +1,11 @@
 import { Editor } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
-import { WYSIWYG_COMMANDS, type WysiwygCommandContext } from "./commands";
+import {
+  getWysiwygCommand,
+  WYSIWYG_COMMANDS,
+  type WysiwygCommandContext,
+} from "./commands";
 import { wysiwygCoreExtensions } from "./extensions";
 import { markdownToDoc } from "./parser";
 
@@ -110,5 +114,27 @@ describe("WYSIWYG_COMMANDS", () => {
     expect(
       WYSIWYG_COMMANDS.some((command) => command.id === "block-kind-table-row"),
     ).toBe(false);
+  });
+
+  it("insert-table command 會插入預設 3x3 真表格", () => {
+    const editor = createEmptyEditor();
+    const command = getWysiwygCommand("insert-table");
+
+    try {
+      expect(command?.aliases).toEqual(
+        expect.arrayContaining(["表格", "table", "/table"]),
+      );
+      command?.run(editor, createStubContext());
+      const [table] = (editor.getJSON().content ?? []) as Array<{
+        type?: string;
+        content?: Array<{ content?: unknown[] }>;
+      }>;
+
+      expect(table?.type).toBe("storytellerTable");
+      expect(table?.content).toHaveLength(3);
+      expect(table?.content?.[0].content).toHaveLength(3);
+    } finally {
+      editor.destroy();
+    }
   });
 });
