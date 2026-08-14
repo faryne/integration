@@ -11,7 +11,6 @@ import {
   Typography,
 } from "@mui/material";
 import type { Editor } from "@tiptap/core";
-import { Fragment } from "react";
 
 import {
   wysiwygCommandsByGroup,
@@ -287,36 +286,42 @@ export function StorytellerWysiwygContextMenu({
           ]}
 
       {annotationCommands.length > 0 && <Divider />}
-      {annotationCommands.map((command) => {
+      {annotationCommands.flatMap((command) => {
         const Icon = command.icon!;
         const isActive = command.isActive?.(editor) ?? false;
         const label =
           isActive && command.activeLabel ? command.activeLabel : command.label;
         const isEnabled = command.isEnabled?.(editor, commandContext) ?? true;
         const quickRemove = quickRemoveFor[command.id];
-        return (
-          <Fragment key={command.id}>
-            <MenuItem disabled={!isEnabled} onClick={() => runAndClose(command)}>
+        const items = [
+          <MenuItem
+            key={command.id}
+            disabled={!isEnabled}
+            onClick={() => runAndClose(command)}
+          >
+            <ListItemIcon>
+              <Icon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{label}</ListItemText>
+          </MenuItem>,
+        ];
+        if (quickRemove) {
+          items.push(
+            <MenuItem
+              key={`${command.id}-remove`}
+              onClick={() => {
+                onClose();
+                quickRemove.onClick();
+              }}
+            >
               <ListItemIcon>
-                <Icon fontSize="small" />
+                <DeleteIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText>{label}</ListItemText>
-            </MenuItem>
-            {quickRemove && (
-              <MenuItem
-                onClick={() => {
-                  onClose();
-                  quickRemove.onClick();
-                }}
-              >
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>{quickRemove.label}</ListItemText>
-              </MenuItem>
-            )}
-          </Fragment>
-        );
+              <ListItemText>{quickRemove.label}</ListItemText>
+            </MenuItem>,
+          );
+        }
+        return items;
       })}
     </Menu>
   );

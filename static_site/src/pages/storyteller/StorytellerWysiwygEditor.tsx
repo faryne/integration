@@ -502,11 +502,14 @@ export const StorytellerWysiwygEditor = forwardRef<
         blockKind,
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
-        // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據，跟
-        // markerParagraph.ts 的 Enter 快速鍵判斷「空白清單項按 Enter 要跳出」用的
-        // 是同一種算法（去除頭尾空白後是不是空字串）。
+        // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據。故意不用
+        // textContent.trim() === ""（那個算法只看文字，asset image 是沒有文字的
+        // inline atom node，只用 textContent 判斷會把「只有一張圖片的段落」誤判成
+        // 空白段落，導致對著既有圖片右鍵還跳出「插入圖片」選項）。改用 content.size
+        // === 0，這是 ProseMirror 對「這個節點底下完全沒有子節點」的定義，atom node
+        // 即使沒有文字也會貢獻自己的 nodeSize，size 就不會是 0。
         isCurrentParagraphEmpty:
-          ctx.editor.state.selection.$from.parent.textContent.trim() === "",
+          ctx.editor.state.selection.$from.parent.content.size === 0,
         textColor,
         bgColor,
         hasLink: ctx.editor.isActive("link"),
