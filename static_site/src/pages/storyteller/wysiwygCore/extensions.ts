@@ -19,6 +19,8 @@ import {
   CustomUnderline,
 } from "./markInputRules";
 import { MarkerParagraph } from "./markerParagraph";
+import { SlashCommand } from "./slashCommandExtension";
+import type { WysiwygCommandContext } from "./commands";
 import {
   StorytellerTable,
   StorytellerTableCell,
@@ -32,31 +34,48 @@ import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
  * 使用者打 `#`、`- ` 這類語法時，schema 裡根本沒有對應節點可以被解析成，
  * 只會原地留在段落文字裡（滿足「非白名單語法略過解析、以純文字顯示」）。
  */
-export const wysiwygCoreExtensions = [
-  Document,
-  StorytellerTable,
-  StorytellerTableRow,
-  StorytellerTableCell,
-  MarkerParagraph,
-  Text,
-  AssetImage,
-  Bold,
-  CustomItalic,
-  CustomUnderline,
-  CustomSubscript,
-  CustomSuperscript,
-  CustomStrike,
-  TextColor,
-  BgColor,
-  InlineLink,
-  InlineFootnote,
-  InlineComment,
-  TextAlign.configure({
-    types: ["paragraph"],
-    alignments: [...ALIGNMENT_VALUES],
-    defaultAlignment: DEFAULT_ALIGNMENT,
-  }),
-  History,
-  Dropcursor,
-  Gapcursor,
-];
+interface WysiwygCoreExtensionOptions {
+  slashCommand?: false | {
+    getCommandContext: () => WysiwygCommandContext | null;
+  };
+}
+
+export function createWysiwygCoreExtensions(
+  options: WysiwygCoreExtensionOptions = {},
+) {
+  return [
+    Document,
+    StorytellerTable,
+    StorytellerTableRow,
+    StorytellerTableCell,
+    MarkerParagraph,
+    Text,
+    AssetImage,
+    Bold,
+    CustomItalic,
+    CustomUnderline,
+    CustomSubscript,
+    CustomSuperscript,
+    CustomStrike,
+    TextColor,
+    BgColor,
+    InlineLink,
+    InlineFootnote,
+    InlineComment,
+    TextAlign.configure({
+      types: ["paragraph"],
+      alignments: [...ALIGNMENT_VALUES],
+      defaultAlignment: DEFAULT_ALIGNMENT,
+    }),
+    ...(options.slashCommand === false
+      ? []
+      : [SlashCommand.configure(options.slashCommand)]),
+    History,
+    Dropcursor,
+    Gapcursor,
+  ];
+}
+
+export const wysiwygCoreExtensions = createWysiwygCoreExtensions({
+  slashCommand: false,
+});

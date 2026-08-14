@@ -162,10 +162,10 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 3：Slash Command
 
-- [ ] 引入 Tiptap `Suggestion` utility，`/` 觸發，僅限空文字區塊、selection 為空時生效
-- [ ] 中英文 alias——2026-08-14 Codex 已在 command registry 補 `slashWysiwygCommands()` resolver，只列出 heading／block／insert 類 command，並補 heading／quote／list／table／image 的中英文 aliases 與 smoke tests；Codex 本地 `tsc -b --noEmit`／target eslint 通過，`vitest` 仍因 sandbox `SecItemCopyMatching failed -50` 無法執行，待 Claude/reviewer 跑正式測試後再打勾
-- [ ] 選擇 command 後正確刪除 `/query` 文字
-- [ ] 人工實測中文 IME：輸入 `/標`、注音組字期間 suggestion menu 的互動、Escape/Enter 行為
+- [x] 引入 Tiptap `Suggestion` utility，`/` 觸發，僅限空文字區塊、selection 為空時生效——2026-08-14 新增 `SlashCommand` extension，使用 `@tiptap/suggestion`、`/` startOfLine 觸發，`canShowSlashCommand()` 限制 selection 為空且目前段落只有 `/query` 時才顯示；Claude 在瀏覽器實測過：非空段落／游標不在段落開頭時打 `/` 不會觸發選單（`canShowSlashCommand` 邏輯確認），空段落打 `/` 正確顯示選單
+- [x] 中英文 alias——2026-08-14 已在 command registry 補 `slashWysiwygCommands()` resolver，只列出 heading／block／insert 類 command，並補 heading／quote／list／table／image 的中英文 aliases；Claude 用 `npx vitest run` 驗證過 smoke tests，並在瀏覽器實測 `/tab` 正確篩到「插入表格」
+- [x] 選擇 command 後正確刪除 `/query` 文字——2026-08-14 新增 `runSlashCommand()`，執行前先 `deleteRange(range)` 再呼叫 command registry 的 `command.run()`；Claude 在瀏覽器實測滑鼠點擊與鍵盤 Enter 兩種選取路徑，確認 `/query` 文字都正確刪除、不殘留（例如 `/table` + Enter 正確插入真表格，doc JSON 裡沒有殘留 `/table` 文字）。過程中發現並修正一個真實 bug：鍵盤 ArrowUp/ArrowDown/Enter/Escape 原本完全沒反應（`onKeyDown` 沒被 Suggestion plugin 呼叫到），改成用 `SlashCommand.addKeyboardShortcuts()`（`priority: 1000`，高於 `MarkerParagraph` 預設 100 的優先權）攔截這四個鍵，透過 WeakMap 存的 controller 呼叫同一份選取邏輯；修好後 Claude 重新在瀏覽器逐一測過 ArrowDown（highlight 正確移動）、Enter（正確執行 highlight 中的 command）、Escape（選單關閉、不執行 command、`/` 文字保留）、滑鼠點擊（無 regression）
+- [ ] 人工實測中文 IME：輸入 `/標`、注音組字期間 suggestion menu 的互動、Escape/Enter 行為——已用瀏覽器自動化對「已組字完成」文字做過逐字元真實按鍵測試（ArrowDown／Enter／Escape／滑鼠都確認正確），但這不等於「注音/拼音組字中途」的行為，自動化工具無法模擬真正的 IME composition 狀態，維持未勾，跟其他 IME 高風險項一起排到 Phase 8
 
 ### Phase 4：Bubble Menu
 

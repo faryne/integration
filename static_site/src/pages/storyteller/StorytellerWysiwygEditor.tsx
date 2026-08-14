@@ -72,7 +72,7 @@ import {
   type HeadingLevel,
   type TextColorValue,
 } from "./wysiwygCore/whitelist";
-import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import { createWysiwygCoreExtensions } from "./wysiwygCore/extensions";
 import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
 import {
   StorytellerWysiwygContextMenu,
@@ -348,10 +348,15 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
+  const slashCommandContextRef = useRef<WysiwygCommandContext | null>(null);
   latestValueRef.current = value;
 
   const editor = useEditor({
-    extensions: wysiwygCoreExtensions,
+    extensions: createWysiwygCoreExtensions({
+      slashCommand: {
+        getCommandContext: () => slashCommandContextRef.current,
+      },
+    }),
     content: markdownToDoc(value, projectPublicId, assetEnabled),
     immediatelyRender: false,
     editorProps: {
@@ -745,6 +750,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     openAssetPicker: () => onRequestInsertAsset?.(),
     exportMarkdown: handleExportMarkdown,
   };
+  slashCommandContextRef.current = commandContext;
 
   const activeMarkIds = wysiwygCommandsByGroup("mark")
     .filter((command) => command.isActive?.(editor))
