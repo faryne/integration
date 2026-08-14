@@ -186,6 +186,17 @@ const BLOCK_KIND_SX = {
     fontStyle: "italic",
     color: "text.secondary",
   },
+  // 編輯區的段落是扁平陣列，沒有真的 <blockquote> 容器包住相鄰引用行（跟閱讀頁
+  // StorytellerWysiwygMarkdown.tsx 的 BLOCK_GROUP_SX 不一樣，那邊是真的巢狀渲染，
+  // 見上面的檔案說明）。HEADING_TYPOGRAPHY_SX 給每個 <p> 都加了 0.5em 的
+  // margin-bottom，相鄰引用行之間會被這個 margin 撐出間隙，讓左側邊框斷成一截一截，
+  // 而不是一條連續的引用線。用 negative margin-top + 等量 padding-top 把下一行的
+  // 邊框「拉」上去補滿間隙，文字位置不受影響（padding 抵銷 margin），只是視覺上讓
+  // 連續引用行的邊框看起來連在一起。
+  "& [data-block-kind='quote'] + [data-block-kind='quote']": {
+    marginTop: "-0.5em",
+    paddingTop: "0.5em",
+  },
   "& [data-block-kind='bullet'], & [data-block-kind='number']": {
     position: "relative",
     paddingLeft: "24px",
