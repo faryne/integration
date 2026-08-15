@@ -13,6 +13,9 @@ export const HEADING_TYPOGRAPHY_SX = {
     lineHeight: 1.5,
     fontWeight: 400,
     fontSize: "1em",
+    // 頁面上方有 fixed 的 ModernHeader，捲動到標題時要預留同等高度，
+    // 否則標題會被 header 蓋住，看起來像是捲到下一行去了
+    scrollMarginTop: 80,
   },
   "& h1": { fontSize: "1.8em", fontWeight: 700 },
   "& h2": { fontSize: "1.5em", fontWeight: 700 },

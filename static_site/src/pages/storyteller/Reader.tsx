@@ -914,7 +914,7 @@ function ContentMetaHeader({
           component="h1"
           variant="h4"
           fontWeight={800}
-          sx={{ scrollMarginTop: 24 }}
+          sx={{ scrollMarginTop: 80 }}
         >
           {title}
         </Typography>
@@ -1075,6 +1075,10 @@ function StoryContentLines({
     </Stack>
   );
 }
+
+// 跳到標題時要空出的高度，跟頂端 sticky AppBar 的高度（64px）加一點緩衝對齊，
+// 見 handleJumpToHeading 的說明。
+const HEADING_SCROLL_OFFSET = 80;
 
 export default function StorytellerReader() {
   const { session, loading: authLoading } = useAuth();
@@ -1706,9 +1710,18 @@ export default function StorytellerReader() {
   const handleJumpToHeading = (heading: StoryHeading) => {
     // 直接樂觀更新，不用等捲動完成後 scroll-spy 自己抓到，點擊當下就先反白。
     setActiveHeadingLine(heading.lineIndex);
-    document
-      .getElementById(heading.anchorId)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = document.getElementById(heading.anchorId);
+    if (!el) {
+      return;
+    }
+    // 原本用 scrollIntoView 配 CSS scroll-margin-top 讓標題落在頂端 sticky
+    // AppBar 下方，但 AppBar 是 position: sticky（不是 fixed），smooth 捲動
+    // 期間跟它互動時，瀏覽器算出來的最終停留位置會比預期多捲過好幾段——實測
+    // 只要拿掉 sticky header 就會準。改成自己算目標 scrollY 再用
+    // window.scrollTo 捲，就不會受這個互動影響。
+    const targetTop =
+      el.getBoundingClientRect().top + window.scrollY - HEADING_SCROLL_OFFSET;
+    window.scrollTo({ top: Math.max(targetTop, 0), behavior: "smooth" });
   };
   const showInlineIndex = !isMobile && indexOpen;
   // 追蹤專案／追蹤作者／評分控制項，放在 Hero Card 的互動列，右下角快速選單
