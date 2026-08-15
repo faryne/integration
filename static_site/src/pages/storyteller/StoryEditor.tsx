@@ -366,6 +366,12 @@ export default function StorytellerStoryEditor({
   const lastSavedDraftRef = useRef(
     serializeStoryDraft("", "", "completed", "", ""),
   );
+  // WYSIWYG 編輯器掛載時可能會對還沒 migrate 過的舊資料自動補 marker id
+  // （見 markerParagraph.ts 的 backfillMarkerIds），這個補值動作會經由
+  // onChange 回報一次「跟原始存檔內容不同」的字串——這不是使用者手動編輯，
+  // 不該被當成未存檔變更。掛載後第一次收到編輯器回報的內容時，把它視為新的
+  // 存檔基準，而不是拿 API 回來的原始字串當基準。
+  const hasCapturedInitialEditorContentRef = useRef(false);
   const latestDraftRef = useRef<StoryDraft>({
     title: "",
     summary: "",
@@ -597,6 +603,7 @@ export default function StorytellerStoryEditor({
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
+    hasCapturedInitialEditorContentRef.current = false;
   }, [
     apiVolumes,
     defaultVolumeIdFromQuery,
@@ -632,6 +639,22 @@ export default function StorytellerStoryEditor({
     storySummary,
     storyTitle,
   ]);
+
+  // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
+  // 把它同時當成新的存檔基準，避免這次自動補值被誤判成使用者變更。
+  function handleEditorContentChange(nextContent: string) {
+    setContent(nextContent);
+    if (!hasCapturedInitialEditorContentRef.current) {
+      hasCapturedInitialEditorContentRef.current = true;
+      lastSavedDraftRef.current = serializeStoryDraft(
+        storyTitle,
+        storySummary,
+        storyStatus,
+        selectedVolumeId,
+        nextContent,
+      );
+    }
+  }
 
   // 判斷「有沒有值得保護的未存檔變更」——跟上次存檔的版本不同，且標題跟內容不是
   // 兩個都空白。beforeunload（瀏覽器層級離開）跟工作台的 leave guard（App 內
@@ -1502,7 +1525,7 @@ export default function StorytellerStoryEditor({
           <StorytellerWysiwygEditor
             ref={editorRef}
             value={content}
-            onChange={setContent}
+            onChange={handleEditorContentChange}
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
             toolbarExtra={

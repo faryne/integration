@@ -176,6 +176,10 @@ export default function StorytellerLoreEditor({
   const isNewLore = loreId === "new";
   const currentDraftRef = useRef(serializeLoreDraft("", "", ""));
   const lastSavedDraftRef = useRef(serializeLoreDraft("", "", ""));
+  // 理由同 StoryEditor.tsx：WYSIWYG 編輯器掛載時可能對還沒 migrate 過的舊資料
+  // 自動補 marker id，這不是使用者變更，掛載後第一次收到編輯器回報的內容時
+  // 要把它當成新的存檔基準。
+  const hasCapturedInitialEditorContentRef = useRef(false);
   const latestDraftRef = useRef<LoreDraft>({
     title: "",
     collectionId: "",
@@ -467,6 +471,7 @@ export default function StorytellerLoreEditor({
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
+    hasCapturedInitialEditorContentRef.current = false;
   }, [
     lore?.collectionId,
     lore?.content,
@@ -495,6 +500,20 @@ export default function StorytellerLoreEditor({
       content,
     };
   }, [content, selectedCollectionId, title]);
+
+  // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
+  // 把它同時當成新的存檔基準，避免這次自動補值被誤判成使用者變更。
+  function handleEditorContentChange(nextContent: string) {
+    setContent(nextContent);
+    if (!hasCapturedInitialEditorContentRef.current) {
+      hasCapturedInitialEditorContentRef.current = true;
+      lastSavedDraftRef.current = serializeLoreDraft(
+        title,
+        selectedCollectionId,
+        nextContent,
+      );
+    }
+  }
 
   // 判斷「有沒有值得保護的未存檔變更」——跟上次存檔的版本不同，且標題跟內容不是
   // 兩個都空白。beforeunload（瀏覽器層級離開）跟工作台的 leave guard（App 內
@@ -1175,7 +1194,7 @@ export default function StorytellerLoreEditor({
           <StorytellerWysiwygEditor
             ref={editorRef}
             value={content}
-            onChange={setContent}
+            onChange={handleEditorContentChange}
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
             toolbarExtra={
