@@ -169,7 +169,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 4：Bubble Menu
 
-- [x] 選取文字時顯示：粗體/斜體/底線/文字色/連結/註解——新檔 `StorytellerWysiwygBubbleMenu.tsx`，用 `@tiptap/react/menus` 的 `BubbleMenu`（注意：`@tiptap/react` 根匯出點沒有這個元件，要從 `/menus`子路徑匯入，不是新增依賴，`@tiptap/extension-bubble-menu` 已經是 `@tiptap/react` 的既有 transitive dependency）；文字色只放常用的文字前景色（不含背景色，Bubble Menu 空間有限，背景色/下標/上標/刪除線/腳注等完整功能仍在右鍵選單/工具列）；註解按鈕遵守 `isFeatureEnabled("comment")` 可見性開關
+- [x] 選取文字時顯示：粗體/斜體/底線/下標/上標/刪除線/文字色/連結/腳注/註解——新檔 `StorytellerWysiwygBubbleMenu.tsx`，用 `@tiptap/react/menus` 的 `BubbleMenu`（注意：`@tiptap/react` 根匯出點沒有這個元件，要從 `/menus`子路徑匯入，不是新增依賴，`@tiptap/extension-bubble-menu` 已經是 `@tiptap/react` 的既有 transitive dependency）；文字色只放常用的文字前景色（不含背景色，使用頻率低於前景色，仍只在右鍵選單/工具列提供）；註解／腳注按鈕分別遵守 `isFeatureEnabled("comment")`／`isFeatureEnabled("footnote")` 可見性開關。2026-08-16 依使用者要求把 Bubble Menu 從「常用行內樣式子集」擴充成含下標/上標/刪除線/腳注的完整行內操作集合；Claude 用 `npx vitest run` 確認 30 個測試不受影響，並在瀏覽器實測：選取文字後 bubble menu 正確顯示全部 10 個按鈕、點「腳注」正確開啟「加腳注」dialog、點「下標」正確 toggle mark（`editor.isActive('subscript')` 確認）
 - [x] 跟右鍵選單共用同一份 command registry——沒有重新定義任何 command，`markCommands`／`textColorCommands`／`linkCommand`／`commentCommand` 都是從 `wysiwygCommandsByGroup`／`getWysiwygCommand` 取，UI 呈現（浮動小工具列 vs 右鍵選單列表）不同，但底層動作是同一份
 
 ### Phase 5：真表格（設計已定案，見上方「真表格最終設計」，本 Phase 是實作項目）

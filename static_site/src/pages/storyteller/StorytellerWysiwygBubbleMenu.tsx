@@ -15,12 +15,20 @@ interface StorytellerWysiwygBubbleMenuProps {
   commandContext: WysiwygCommandContext;
 }
 
-const BUBBLE_MARK_IDS = ["bold", "italic", "underline"];
+const BUBBLE_MARK_IDS = [
+  "bold",
+  "italic",
+  "underline",
+  "subscript",
+  "superscript",
+  "strike",
+];
 
 /**
  * Bubble Menu（Phase 4）：選取文字時顯示的浮動小工具列，是拔工具列後的可發現性補償
- * （見定案文件風險清單第 3 點）。只收斂最常用的行內樣式，不是右鍵選單的縮小版——
- * 完整功能（下標/上標/刪除線/背景色/腳注等）還是要靠右鍵選單或工具列。
+ * （見定案文件風險清單第 3 點）。涵蓋常用行內樣式（粗體/斜體/底線/下標/上標/刪除線/
+ * 文字色/連結/註解/腳注）；背景色空間有限、且使用頻率低於前景色，仍只在右鍵選單/
+ * 工具列提供。
  *
  * 跟右鍵選單一樣消費同一份 command registry，不重新定義任何動作。
  */
@@ -40,8 +48,10 @@ export function StorytellerWysiwygBubbleMenu({
     (command) => command.id.startsWith("text-color-") && command.id !== "text-color-clear",
   );
   const linkCommand = getWysiwygCommand("link")!;
+  const footnoteCommand = getWysiwygCommand("footnote")!;
   const commentCommand = getWysiwygCommand("comment")!;
   const LinkIcon = linkCommand.icon!;
+  const FootnoteIcon = footnoteCommand.icon!;
   const CommentIcon = commentCommand.icon!;
 
   const run = (command: {
@@ -233,6 +243,39 @@ export function StorytellerWysiwygBubbleMenu({
               <LinkIcon fontSize="small" />
             </Box>
           </Tooltip>
+
+          {(footnoteCommand.isVisible?.(commandContext) ?? true) && (
+            <Tooltip
+              title={
+                footnoteCommand.isActive?.(editor) ? "編輯腳注" : "加腳注"
+              }
+            >
+              <Box
+                component="button"
+                type="button"
+                aria-label="腳注"
+                aria-pressed={footnoteCommand.isActive?.(editor) ?? false}
+                onClick={() => run(footnoteCommand)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 30,
+                  height: 30,
+                  border: "none",
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  bgcolor: footnoteCommand.isActive?.(editor)
+                    ? "action.selected"
+                    : "transparent",
+                  color: "text.primary",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <FootnoteIcon fontSize="small" />
+              </Box>
+            </Tooltip>
+          )}
 
           {(commentCommand.isVisible?.(commandContext) ?? true) && (
             <Tooltip
