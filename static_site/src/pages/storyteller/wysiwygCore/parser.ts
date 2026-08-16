@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   ALIGNMENT_VALUES,
+  assetImageLayoutFromTitle,
   assetPublicIdFromUri,
   BG_COLOR_VALUES,
   BLOCK_KIND_BULLET_PREFIX,
@@ -39,6 +40,7 @@ import {
   unescapeTableCell,
   unescapeMarkerComment,
   type AlignmentValue,
+  type AssetImageLayoutValue,
   type BgColorValue,
   type BlockKindValue,
   type CommentColorValue,
@@ -55,6 +57,7 @@ export interface ParsedRun {
   assetPublicId?: string;
   assetSrc?: string;
   assetAlt?: string;
+  assetLayout?: AssetImageLayoutValue;
   /** 文字前景色（span 行內 marker），沒設定就是 undefined。 */
   textColor?: TextColorValue;
   /** 文字背景色（span 行內 marker），沒設定就是 undefined。 */
@@ -156,10 +159,12 @@ const INLINE_MARKER_OPEN = new RegExp(
 
 // 行內圖片語法的開頭（sticky，用法跟 INLINE_MARKER_OPEN 一樣）：group 1 = alt 文字／
 // group 2 = 來源網址（資產 URI 或外部連結，安不安全交給呼叫端的 assetPublicIdFromUri／
+// group 3 = 可選 title。Phase 7 用 title 存 assetImage 自己的 layout（例如
+// `"layout=float-left"`），因為 layout 屬於圖片 node，不屬於外層段落 align。
 // isSafeHref 判斷）。刻意不要求整段內容從頭到尾只有這個語法——圖片本來就可能出現在
 // 段落裡任何位置、前後還有其他文字（例如編輯器裡先打字、中間插入圖片、後面接著打字），
 // 舊版用整行 anchor 的 pattern 只要圖片語法後面多一個字就整段失敗、原樣外洩成文字。
-const INLINE_IMAGE_OPEN = /!\[([^\]\n\r]*)\]\(([^)\s]+)\)/y;
+const INLINE_IMAGE_OPEN = /!\[([^\]\n\r]*)\]\(([^)\s]+)(?:\s+"([^"\n\r]*)")?\)/y;
 
 /** 從屬性字串（例如 ` textColor="red"` 或 ` href="https://..." target="_blank"`）抽出認得、且值合法的屬性。 */
 function parseInlineAttrs(attrBlob: string): InlineAttrs {
@@ -299,6 +304,7 @@ type NextToken =
       kind: "image";
       alt: string;
       src: string;
+      title?: string;
       matchEnd: number;
     };
 
@@ -317,6 +323,7 @@ function findNextToken(text: string, enableAssets: boolean): NextToken | null {
           kind: "image",
           alt: match[1],
           src: match[2],
+          title: match[3],
           matchEnd: i + match[0].length,
         };
       }
@@ -383,6 +390,7 @@ function parseInline(text: string, enableAssets: boolean): ParsedRun[] {
         text: "",
         marks: [],
         assetAlt: sanitizeMarkdownImageAlt(token.alt),
+        assetLayout: assetImageLayoutFromTitle(token.title),
         assetPublicId: assetPublicId ?? undefined,
         assetSrc: safeAssetSrc,
       },
@@ -926,6 +934,7 @@ function runsToTiptapInline(runs: ParsedRun[], projectPublicId = "") {
             publicId: run.assetPublicId ?? "",
             src: run.assetSrc ?? "",
             alt: run.assetAlt ?? "",
+            layout: run.assetLayout,
             projectPublicId,
           },
         };

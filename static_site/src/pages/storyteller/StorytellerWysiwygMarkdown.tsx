@@ -1,6 +1,10 @@
 import { Fragment, useId, type CSSProperties, type ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 
+import {
+  assetImageFrameSx,
+  CLEAR_FLOATING_ASSET_SX,
+} from "./wysiwygCore/assetImageLayout";
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
@@ -112,13 +116,8 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
       <Box
         key={key}
         component="span"
-        sx={{
-          display: "block",
-          my: 1,
-          overflow: "hidden",
-          borderRadius: 1,
-          bgcolor: "background.default",
-        }}
+        data-asset-layout={run.assetLayout}
+        sx={assetImageFrameSx(run.assetLayout)}
       >
         {run.assetSrc ? (
           <Box
@@ -343,7 +342,7 @@ export function StorytellerWysiwygMarkdown({
     externalFootnoteNumbering ?? computeFootnoteNumbering(children);
 
   return (
-    <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX]}>
+    <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX, CLEAR_FLOATING_ASSET_SX]}>
       {groupParagraphsByBlockKind(paragraphs).map((group, groupIndex) => {
         if (group.blockKind === "none") {
           const { paragraph, index } = group.items[0];

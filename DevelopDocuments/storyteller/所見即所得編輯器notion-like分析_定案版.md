@@ -211,15 +211,15 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 **Checklist**：
 
-- [ ] `assetImageNode.tsx` 的 `assetImage` 節點新增 `layout` 屬性（`block`/`center`/`float-left`/`float-right`，預設 `block`）
-- [ ] 編輯器 NodeView（`AssetImageView`）依 `layout` 套用對應 CSS（float+固定寬度 vs block+置中/全寬），手機退回 `block`
-- [ ] 閱讀頁 `StorytellerWysiwygMarkdown.tsx` 的圖片 render 邏輯同步支援 `layout`，跟編輯器套同一套寬度/breakpoint 規則
-- [ ] 非 paragraph block（標題／引用／清單／分隔線／表格／下一張圖片）預設 `clear: both`，編輯器與閱讀頁都要套用
+- [x] `assetImageNode.tsx` 的 `assetImage` 節點新增 `layout` 屬性（`block`/`center`/`float-left`/`float-right`，預設 `block`）——2026-08-16 已新增 layout 白名單與 node attr，舊資料預設 `block`；Claude/reviewer 跑 `npx vitest run` 確認通過
+- [x] 編輯器 NodeView（`AssetImageView`）依 `layout` 套用對應 CSS（float+固定寬度 vs block+置中/全寬），手機退回 `block`——2026-08-16 已抽出共用 `assetImageFrameSx()` 並套進 editor NodeView；Claude 在 Playground 用 `editor.commands.setContent()` 直接建構 float-left 圖片，瀏覽器 `getComputedStyle` 確認 `float: left`、`width: 360px`（符合 `min(45%, 360px)`），畫面上文字確實環繞在圖片旁邊；center／float-right／手機斷點尚未實測，先只驗證 float-left 這條路徑
+- [x] 閱讀頁 `StorytellerWysiwygMarkdown.tsx` 的圖片 render 邏輯同步支援 `layout`，跟編輯器套同一套寬度/breakpoint 規則——2026-08-16 已接同一套 `assetImageFrameSx()`；Claude 用 Playground 的 raw content textarea 輸入含 `"layout=float-left"` title 的真實 markdown 語法（不是繞過 parser 直接建 doc），確認 Reader pane 也正確 render 出 `float: left`，跟編輯器一致
+- [x] 非 paragraph block（標題／引用／清單／分隔線／表格／下一張圖片）預設 `clear: both`，編輯器與閱讀頁都要套用——2026-08-16 已新增共用 `CLEAR_FLOATING_ASSET_SX` 並套進 editor/reader；Claude 確認編輯器與 Reader 的 `<h1>` 元素（標題在這個扁平 schema 裡實際上是渲染成真正的 `<h1>`~`<h6>`，不是 `<p>`）都拿到 `clear: both`，浮動圖片後面接的標題正確被推到浮動圖片下方，不會疊在一起
 - [ ] 圖片專屬的 layout command 加進 `wysiwygCore/commands.ts`（新 group，例如 `image-layout`），right-click 選單在游標/selection 落在圖片 node 上時顯示這組 command
-- [ ] 序列化：`layout` 屬性寫進 `⟦⟧` 段落 marker 或圖片自身語法（實作前需定案存放位置，避免跟既有 `align` 屬性混淆）
-- [ ] 匯出 markdown：圖片一律退化輸出成無浮動效果的一般圖片語法
-- [ ] 舊資料相容：沒有 `layout` 屬性的既有圖片維持 `block` 全寬，行為不變，不需要遷移
-- [ ] 人工瀏覽器實測：三種 layout 在編輯器與閱讀頁的視覺效果、float 後接標題/引用/表格等 block 的 clear 效果、手機斷點退回 block
+- [x] 序列化：`layout` 屬性寫進 `⟦⟧` 段落 marker 或圖片自身語法（實作前需定案存放位置，避免跟既有 `align` 屬性混淆）——2026-08-16 定案採圖片自身 markdown title：非 `block` 輸出 `![alt](steamloom-asset://id "layout=float-left")`，`block` 省略 title 維持舊格式；Claude 跑 `npx vitest run` 確認 parser/serializer round-trip 測試通過（過程中抓到一個測試斷言錯誤：匯出單一 block 的既有慣例是結尾一個 `\n`，不是 `\n\n`，已請 Codex 修正）
+- [x] 匯出 markdown：圖片一律退化輸出成無浮動效果的一般圖片語法——2026-08-16 已補 export test，確認 layout title 不出現在匯出 markdown；Claude 用 `npx vitest run` 驗證通過
+- [x] 舊資料相容：沒有 `layout` 屬性的既有圖片維持 `block` 全寬，行為不變，不需要遷移——2026-08-16 已補舊圖片 parse/serialize 測試；Claude 用 `npx vitest run` 驗證通過，另外在 Playground 用「基本語法」sample 的既有圖片確認畫面沒有變化（仍是 `display: block`、全寬）
+- [ ] 人工瀏覽器實測：三種 layout 在編輯器與閱讀頁的視覺效果、float 後接標題/引用/表格等 block 的 clear 效果、手機斷點退回 block——Claude 已用瀏覽器自動化驗證過 float-left 一種 layout（含編輯器/Reader 視覺效果與標題 clear 效果），center／float-right／手機斷點斷點退回 block 這幾項還沒測，維持未勾
 
 ### Phase 8：驗證與收尾
 

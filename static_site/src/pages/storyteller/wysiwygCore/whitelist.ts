@@ -311,6 +311,14 @@ export type BgColorValue = (typeof BG_COLOR_VALUES)[number];
 
 export const ASSET_URI_PREFIX = "steamloom-asset://";
 export const ASSET_PUBLIC_ID_PATTERN_SOURCE = "[A-Za-z0-9._~-]+";
+export const ASSET_IMAGE_LAYOUT_VALUES = [
+  "block",
+  "center",
+  "float-left",
+  "float-right",
+] as const;
+export type AssetImageLayoutValue = (typeof ASSET_IMAGE_LAYOUT_VALUES)[number];
+export const DEFAULT_ASSET_IMAGE_LAYOUT: AssetImageLayoutValue = "block";
 const ASSET_URI_PATTERN = new RegExp(
   `^${ASSET_URI_PREFIX}(${ASSET_PUBLIC_ID_PATTERN_SOURCE})$`,
 );
@@ -324,6 +332,27 @@ export function sanitizeMarkdownImageAlt(alt: string): string {
     .replaceAll("[", " ")
     .replaceAll("]", " ")
     .replace(/[\n\r]/g, " ");
+}
+
+export function isAssetImageLayoutValue(
+  value: string,
+): value is AssetImageLayoutValue {
+  return (ASSET_IMAGE_LAYOUT_VALUES as readonly string[]).includes(value);
+}
+
+export function normalizeAssetImageLayout(
+  value: unknown,
+): AssetImageLayoutValue {
+  return typeof value === "string" && isAssetImageLayoutValue(value)
+    ? value
+    : DEFAULT_ASSET_IMAGE_LAYOUT;
+}
+
+export function assetImageLayoutFromTitle(
+  title: string | undefined,
+): AssetImageLayoutValue {
+  const value = title?.trim().match(/^layout=([A-Za-z-]+)$/)?.[1] ?? "";
+  return normalizeAssetImageLayout(value);
 }
 
 /* --- a（連結）行內 marker 的屬性 --- */

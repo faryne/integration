@@ -22,6 +22,8 @@ import {
 } from "@tiptap/react";
 import { useState } from "react";
 import { useStorytellerAsset } from "@/apis/storyteller.ts";
+import { assetImageFrameSx } from "./assetImageLayout";
+import { DEFAULT_ASSET_IMAGE_LAYOUT } from "./whitelist";
 
 function AssetImageView({
   node,
@@ -34,6 +36,7 @@ function AssetImageView({
   const projectPublicId =
     (node.attrs.projectPublicId as string | undefined) ?? "";
   const alt = (node.attrs.alt as string | undefined) ?? "";
+  const layout = node.attrs.layout;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [altDraft, setAltDraft] = useState(alt);
   const assetQuery = useStorytellerAsset(projectPublicId, publicId);
@@ -58,12 +61,10 @@ function AssetImageView({
         variant="outlined"
         contentEditable={false}
         data-drag-handle
+        data-asset-layout={layout}
         onDoubleClick={openDialog}
         sx={{
-          my: 1,
-          width: "100%",
-          display: "inline-block",
-          overflow: "hidden",
+          ...assetImageFrameSx(layout),
           borderColor: selected ? "primary.main" : "divider",
           boxShadow: selected ? 1 : 0,
           cursor: "grab",
@@ -169,6 +170,7 @@ export const AssetImage = Node.create({
       src: { default: "" },
       alt: { default: "" },
       projectPublicId: { default: "" },
+      layout: { default: DEFAULT_ASSET_IMAGE_LAYOUT },
     };
   },
 

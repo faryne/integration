@@ -43,6 +43,7 @@ import {
   TEXT_COLOR_CSS,
   TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
+import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
 import {
   wysiwygCommandsByGroup,
   type WysiwygCommandContext,
@@ -982,6 +983,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             INLINE_COLOR_SX,
             FOOTNOTE_HIGHLIGHT_SX,
             BLOCK_KIND_SX,
+            CLEAR_FLOATING_ASSET_SX,
           ]}
           onMouseOver={handleEditorMouseOver}
           onMouseOut={handleEditorMouseOut}

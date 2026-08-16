@@ -1,7 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
 
 import {
+  ASSET_URI_PREFIX,
+  blockKindPrefix,
   DEFAULT_ALIGNMENT,
+  DEFAULT_ASSET_IMAGE_LAYOUT,
   DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
@@ -18,10 +21,9 @@ import {
   MARKER_OPEN,
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
-  MARK_SYNTAX_WHITELIST,
-  ASSET_URI_PREFIX,
-  blockKindPrefix,
   generateInlineMarkerId,
+  MARK_SYNTAX_WHITELIST,
+  normalizeAssetImageLayout,
   sanitizeMarkdownImageAlt,
   TABLE_MARKER_NAME,
   TABLE_MARKER_ROW_ID_ATTR,
@@ -31,6 +33,7 @@ import {
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
+import { assetImageLayoutTitle } from "./assetImageLayout";
 
 const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
   MARK_SYNTAX_WHITELIST.map((rule) => [rule.markName, rule.canonicalDelimiter]),
@@ -225,7 +228,10 @@ function serializeParagraphInline(paragraph: JSONContent): string {
       const src = publicId
         ? `${ASSET_URI_PREFIX}${publicId}`
         : String(node.attrs?.src ?? "");
-      output += `![${alt}](${src})`;
+      const layout = normalizeAssetImageLayout(
+        node.attrs?.layout ?? DEFAULT_ASSET_IMAGE_LAYOUT,
+      );
+      output += `![${alt}](${src}${assetImageLayoutTitle(layout)})`;
       continue;
     }
 
