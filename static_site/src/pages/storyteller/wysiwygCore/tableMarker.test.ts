@@ -10,6 +10,19 @@ import {
 } from "./parser";
 import { serializeDocToMarkdown } from "./serializer";
 
+function selectTextByContent(editor: Editor, text: string) {
+  let range: { from: number; to: number } | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && node.text === text) {
+      range = { from: pos, to: pos + text.length };
+      return false;
+    }
+    return true;
+  });
+  if (!range) throw new Error(`找不到測試文字：${text}`);
+  editor.commands.setTextSelection(range);
+}
+
 describe("storyteller table marker", () => {
   it("把相鄰同 tableId 的 table row marker 解析成同一個 table node", () => {
     const doc = markdownToDoc(
@@ -304,5 +317,76 @@ describe("storyteller table marker", () => {
     expect(runByText.get("連結")?.target).toBe("_blank");
     expect(runByText.get("註解")?.comment).toBe("修一下");
     expect(runByText.get("註解")?.commentColor).toBe("pink");
+  });
+
+  it("table cell 內可透過 editor commands 套用行內樣式並正確序列化", () => {
+    const editor = new Editor({
+      extensions: wysiwygCoreExtensions,
+      content: markdownToDoc(
+        '⟦table tableId="tbl_a" rowId="row_1"⟧| 粗體 | 斜體 | 底線 | 刪除 | 紅字 | 連結 | 註解 |⟦/table⟧',
+      ),
+    });
+
+    try {
+      selectTextByContent(editor, "粗體");
+      expect(editor.commands.toggleBold()).toBe(true);
+      selectTextByContent(editor, "斜體");
+      expect(editor.commands.toggleItalic()).toBe(true);
+      selectTextByContent(editor, "底線");
+      expect(editor.commands.toggleUnderline()).toBe(true);
+      selectTextByContent(editor, "刪除");
+      expect(editor.commands.toggleStrike()).toBe(true);
+      selectTextByContent(editor, "紅字");
+      expect(editor.commands.setTextColor("red")).toBe(true);
+      selectTextByContent(editor, "連結");
+      expect(
+        editor.commands.setLink({
+          href: "https://example.com",
+          target: "_blank",
+        }),
+      ).toBe(true);
+      selectTextByContent(editor, "註解");
+      expect(
+        editor.commands.setComment({
+          comment: "修一下",
+          commentColor: "pink",
+        }),
+      ).toBe(true);
+
+      expect(editor.view.dom.querySelector("strong")?.textContent).toBe(
+        "粗體",
+      );
+      expect(editor.view.dom.querySelector("em")?.textContent).toBe("斜體");
+      expect(editor.view.dom.querySelector("u")?.textContent).toBe("底線");
+      expect(editor.view.dom.querySelector("s")?.textContent).toBe("刪除");
+      expect(
+        editor.view.dom.querySelector(".wysiwyg-textcolor-red")?.textContent,
+      ).toBe("紅字");
+      const link = editor.view.dom.querySelector("a.wysiwyg-link");
+      expect(link?.textContent).toBe("連結");
+      expect(link?.getAttribute("href")).toBe("https://example.com");
+      const comment = editor.view.dom.querySelector(".wysiwyg-has-comment");
+      expect(comment?.textContent).toBe("註解");
+      expect(comment?.getAttribute("data-comment")).toBe("修一下");
+      expect(comment?.classList.contains("wysiwyg-comment-color-pink")).toBe(
+        true,
+      );
+
+      const serialized = serializeDocToMarkdown(editor.getJSON());
+      expect(serialized).toContain(
+        "| **粗體** | *斜體* | ++底線++ | --刪除-- |",
+      );
+      expect(serialized).toMatch(
+        /⟦(span-[^ ]+) textColor="red"⟧紅字⟦\/\1⟧/,
+      );
+      expect(serialized).toMatch(
+        /⟦(a-[^ ]+) href="https:\/\/example\.com" target="_blank"⟧連結⟦\/\1⟧/,
+      );
+      expect(serialized).toMatch(
+        /⟦(comment-[^ ]+) comment="修一下" commentColor="pink"⟧註解⟦\/\1⟧/,
+      );
+    } finally {
+      editor.destroy();
+    }
   });
 });
