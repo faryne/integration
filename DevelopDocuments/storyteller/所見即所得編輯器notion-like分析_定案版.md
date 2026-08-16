@@ -227,14 +227,14 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 2026-08-16 使用者要求把「驗證與收尾」拆成兩塊：Claude/Codex 能繼續用程式或瀏覽器自動化完成的項目留在 Phase 8；真的只能靠人工才能驗證的項目移到新增的 Phase 9，並附完整測試步驟。以下是重新分類、改寫過的 Phase 8——每一項都應該由 Claude 或 Codex 自己完成，不需要使用者操作或提供真實帳號。
 
 - [x] 表格 cell 內行內樣式的 UI 層級驗證：在真表格 cell 內套用粗體／斜體／底線／刪除線／文字色／連結／註解，瀏覽器 `getComputedStyle`／DOM 確認 render 正確（parser 層級已在 Phase 5 驗證過，這項補的是「UI 操作＋畫面呈現」，不是 IME）——2026-08-16 Codex 先在 `tableMarker.test.ts` 補了 jsdom 層級測試（他這輪 sandbox 沒有瀏覽器可用），套用 bold/italic/underline/strike/textColor/link/comment 在表格 cell 內，確認 DOM（`strong`/`em`/`u`/`s`/`.wysiwyg-textcolor-red`/`a.wysiwyg-link`/`.wysiwyg-has-comment`）與序列化 markdown 都正確；Claude 用瀏覽器自動化補上真實 `getComputedStyle` 驗證（直接用 `editor.commands.setContent()` 建構含 bold/italic/strike/link 的 `storytellerTable` doc node），確認 `fontWeight:"700"`、`fontStyle:"italic"`、`textDecorationLine:"line-through"`、連結 href 與顏色都正確，console 無新增錯誤
-- [ ] Reader 實測（DOM/CSS 層級）：標題、引用、清單、真表格、腳注、圖片文繞圖，透過 Playground 的 Reader preview pane 用瀏覽器自動化逐項確認 render 正確；書籤高亮邏輯要先確認實際運作的層級（前端 Reader 元件內、或依賴後端書籤資料），確認後一併納入這項或另外拆出
-- [ ] Diff 邏輯補 Vitest（不是 Go 後端測試——diff 是前端邏輯，主要在 `components/common/customDiff.ts` 的 `buildCustomLineDiff()` 與 `wysiwygCore/parser.ts` 的 `stripMarkerForDiffContent()`／`stripMarkerForDiffLine()`，`StoryVersionDiff.tsx`／`StoryDiffCompare.tsx`／`LoreDiffCompare.tsx`／`StorytellerVersionCompareDialog.tsx` 都是消費端）：
-  - `markerId` 改變不應造成 diff
-  - `align`／文字色／背景色／註解屬性改變不應造成本文 diff（只是樣式變了，文字沒變）
-  - `--刪除線--` 內容變更應該造成 diff，但 delimiter 本身（`--`）不應該製造假差異
+- [x] Reader 實測（DOM/CSS 層級）：標題、引用、清單、真表格、腳注、圖片文繞圖，透過 Playground 的 Reader preview pane 用瀏覽器自動化逐項確認 render 正確——2026-08-16 Claude 用「基本語法」與「真表格（Phase 5）」兩個 sample 確認：標題 `h2`、引用 `blockquote`（1 個）、清單 `ul`/`ol` 都有渲染、腳注連結與錨點 `href` 正確配對（`#_r_4_fn-note-...` / `#_r_4_fn-anchor-...`）、真表格在 Reader 端渲染出 `<table>`（3 rows / 9 cells，`display:table`／`border-collapse:collapse`）且內容與編輯器一致、粗體/斜體/文字色/註解的 inline mark 都有對應 DOM（`strong`/`em`/color/`comment` class）。書籤高亮邏輯確認是前端邏輯（`Reader.tsx` 的 `bookmark-line-{lineIndex}`／`storyHeadingAnchorId`），但需要真實帳號的書籤資料才能觸發，Playground 沒有登入也沒接真實 API 測不到，已移到 Phase 9.2 由使用者用真實帳號測
+- [x] Diff 邏輯補 Vitest（不是 Go 後端測試——diff 是前端邏輯，主要在 `components/common/customDiff.ts` 的 `buildCustomLineDiff()` 與 `wysiwygCore/parser.ts` 的 `stripMarkerForDiffContent()`／`stripMarkerForDiffLine()`，`StoryVersionDiff.tsx`／`StoryDiffCompare.tsx`／`LoreDiffCompare.tsx`／`StorytellerVersionCompareDialog.tsx` 都是消費端）——2026-08-16 全部完成，新增 `lineDiff.test.ts`（7 個測試）＋ Codex 的 `tableDiff.test.ts`（2 個測試），`npx tsc -b --noEmit` 乾淨、`npx vitest run` 40/40 通過：
+  - [x] `markerId` 改變不應造成 diff
+  - [x] `align`／文字色／背景色／註解屬性改變不應造成本文 diff（只是樣式變了，文字沒變）
+  - [x] `--刪除線--` 內容變更應該造成 diff，但 delimiter 本身（`--`）不應該製造假差異
   - [x] 新 table marker 逐列 diff：改某一列的 cell 內容，只應該影響那一行的 diff，不牽動其他列——2026-08-16 Codex 新增 `tableDiff.test.ts`，用 `buildCustomLineDiff()` 驗證通過
   - [x] `tableId`／`rowId` 改變但 cell 文字沒變，不應造成 diff——2026-08-16 同上，`tableDiff.test.ts` 已覆蓋
-  - footnote 內容進 footnote diff 區塊，不該混進本文 diff
+  - [x] footnote 內容進 footnote diff 區塊，不該混進本文 diff——2026-08-16 確認 `StoryVersionDiff.tsx` 用 `extractFootnoteNotesForDiff()` 把腳注抽成獨立區塊、跑自己的 `buildCustomLineDiff()`；`lineDiff.test.ts` 驗證 footnote note 內容改變本文 diff 看不到差異、但 `extractFootnoteNotesForDiff()` 抽出的獨立 diff 能正確看到差異
 - [ ] Mobile CSS/breakpoint 自動化：resize_window 模擬手機寬度，程式化確認 bubble menu／slash command 在窄螢幕下仍能觸發並正常運作、圖片 layout 正確退回 block（延續 Phase 7 圖片 mobile 斷點驗證的做法，這次涵蓋整個編輯器）
 - [ ] MCP 實測：透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 這類 MCP tool 直接寫入一次含真表格的內容，確認 `storytellerContentSyntaxHint`／`storytellerContentMarkerHint` 的說明足夠讓 AI agent 手寫出合法的 table marker、寫入後能被前端正確 parse／render——2026-08-16 **目前被部署狀態卡住，還不能測**：Claude 用 `ToolSearch` 查過目前實際連線的 `storyteller_upsert_story` MCP tool，發現它的參數說明還是舊版（`each row is its own line: |cell1|cell2|cell3` 那種舊 table-row 語法），代表 Phase 5 的 table marker MCP hint 更新（`service/mcp/storyteller_tools.go`）跟後端 parser 改動都只存在於 `codex/storyteller-wysiwyg-analysis` branch，還沒 merge 進 `main`、也還沒部署，Claude/Codex 都沒有部署權限。現在用真實 MCP tool 測只會測到舊版後端，結果沒有代表性，容易誤判成「沒問題」；這項要等 branch 部署後才能真正測，先維持未勾、標記為卡在部署依賴
 - [x] StoryEditor／LoreEditor 程式碼審查型驗收——2026-08-16 已在 Phase 6 完成：確認 `toolbarExtra`／`useImperativeHandle` 介面沒變、`StoryEditor.tsx`／`LoreEditor.tsx` 整個 Phase 6 期間零改動；真實頁面的人工操作驗收見 Phase 9
@@ -300,6 +300,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 - [ ] 點右上角的匯出圖示，確認會下載一個 `.md` 檔案，打開檔案確認內容看起來合理（沒有亂碼、沒有殘留 `⟦⟧` 這種內部標記語法外洩）
 - [ ] 點右上角插入資產的按鈕（或在空白段落打 `/圖片`），確認資產選擇視窗能正常開啟、選圖後能正確插入
 - [ ] 以上每一步是否都跟你印象中「拔工具列之前」的行為一致（只是操作入口從工具列變成右上角 action 區／右鍵選單／`/` 指令／選取文字後的浮動選單），任何一步不一樣（消失的功能、跑版、存檔失敗等）記錄下來，附上是 StoryEditor 還是 LoreEditor、做到第幾步發現的
+- [ ] 在 Reader（讀者頁面）加一個書籤，確認捲動／高亮能正確跳到對應段落——2026-08-16 Claude 已用 Playground 確認標題／引用／清單／真表格／腳注在 Reader 的 DOM/CSS render 都正確（見 Phase 8），但書籤高亮（`Reader.tsx` 的 `bookmark-line-{lineIndex}`／`storyHeadingAnchorId`）雖然是前端邏輯，實際觸發需要真實帳號建立過的書籤資料，Playground 沒有登入也沒有接真實 API，測不到，所以歸類到這裡
 
 #### 9.3 表格 cell 貼上（paste）行為
 
