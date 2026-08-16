@@ -19,6 +19,7 @@ import {
   CustomUnderline,
 } from "./markInputRules";
 import { MarkerParagraph } from "./markerParagraph";
+import { EmptyParagraphPlaceholder } from "./placeholderExtension";
 import { SlashCommand } from "./slashCommandExtension";
 import type { WysiwygCommandContext } from "./commands";
 import {
@@ -67,6 +68,7 @@ export function createWysiwygCoreExtensions(
       alignments: [...ALIGNMENT_VALUES],
       defaultAlignment: DEFAULT_ALIGNMENT,
     }),
+    EmptyParagraphPlaceholder,
     ...(options.slashCommand === false
       ? []
       : [SlashCommand.configure(options.slashCommand)]),

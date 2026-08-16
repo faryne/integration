@@ -154,6 +154,17 @@ const FOOTNOTE_HIGHLIGHT_SX = {
   },
 } as const;
 
+const PLACEHOLDER_SX = {
+  "& .wysiwyg-empty-paragraph::before": {
+    content: "attr(data-placeholder)",
+    float: "left",
+    height: 0,
+    color: "text.disabled",
+    pointerEvents: "none",
+    userSelect: "none",
+  },
+} as const;
+
 // 引用/清單（blockKind）2026-07-10 加入：編輯區的段落 schema 是扁平的（每個段落都是
 // 獨立的 <p> node，沒有真的 <blockquote>/<ul>/<ol> 巢狀，見 markerParagraph.ts 的說明），
 // 所以「連續同 blockKind 的段落看起來像一個整體」純粹是 CSS 錯覺：相鄰同 data-block-kind
@@ -752,6 +763,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             COMMENT_HIGHLIGHT_SX,
             INLINE_COLOR_SX,
             FOOTNOTE_HIGHLIGHT_SX,
+            PLACEHOLDER_SX,
             BLOCK_KIND_SX,
             CLEAR_FLOATING_ASSET_SX,
           ]}
