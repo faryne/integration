@@ -1049,6 +1049,23 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 	return volume, nil
 }
 
+// DeleteVolume 刪冊：先確認 target 真的是冊（不是一般故事），非空冊由內部呼叫的
+// DeleteStory／VolumeChildrenCount 檢查擋掉，跟 UpdateVolume 的檢查方式一致。
+func (s *Service) DeleteVolume(userID uint64, projectPublicID, volumePublicID string) error {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return err
+	}
+	volume, err := s.repo.Story(project.ID, volumePublicID)
+	if err != nil {
+		return err
+	}
+	if !volume.IsVolume {
+		return errors.New("target is not a volume")
+	}
+	return s.DeleteStory(userID, projectPublicID, volumePublicID)
+}
+
 // ImageStoryPages 是作者管理頁／預覽用的圖像頁列表，不限公開狀態（可以看到草稿）。
 // 「話」現在就是一筆 ContentType=image 的一般 Story，LatestContent 存 StoryImageContent
 // 的 JSON，這裡讀出來後逐一把 key 簽成可讀的 CloudFront 網址，不落地存簽名結果。
