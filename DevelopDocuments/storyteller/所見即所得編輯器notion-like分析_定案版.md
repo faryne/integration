@@ -236,7 +236,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
   - `tableId`／`rowId` 改變但 cell 文字沒變，不應造成 diff
   - footnote 內容進 footnote diff 區塊，不該混進本文 diff
 - [ ] Mobile CSS/breakpoint 自動化：resize_window 模擬手機寬度，程式化確認 bubble menu／slash command 在窄螢幕下仍能觸發並正常運作、圖片 layout 正確退回 block（延續 Phase 7 圖片 mobile 斷點驗證的做法，這次涵蓋整個編輯器）
-- [ ] MCP 實測：透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 這類 MCP tool 直接寫入一次含真表格的內容，確認 `storytellerContentSyntaxHint`／`storytellerContentMarkerHint` 的說明足夠讓 AI agent 手寫出合法的 table marker、寫入後能被前端正確 parse／render；這項不需要使用者操作，只需要一個可以用來測試的 project（跟使用者要一個測試用 project，不要污染正式資料）
+- [ ] MCP 實測：透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 這類 MCP tool 直接寫入一次含真表格的內容，確認 `storytellerContentSyntaxHint`／`storytellerContentMarkerHint` 的說明足夠讓 AI agent 手寫出合法的 table marker、寫入後能被前端正確 parse／render——2026-08-16 **目前被部署狀態卡住，還不能測**：Claude 用 `ToolSearch` 查過目前實際連線的 `storyteller_upsert_story` MCP tool，發現它的參數說明還是舊版（`each row is its own line: |cell1|cell2|cell3` 那種舊 table-row 語法），代表 Phase 5 的 table marker MCP hint 更新（`service/mcp/storyteller_tools.go`）跟後端 parser 改動都只存在於 `codex/storyteller-wysiwyg-analysis` branch，還沒 merge 進 `main`、也還沒部署，Claude/Codex 都沒有部署權限。現在用真實 MCP tool 測只會測到舊版後端，結果沒有代表性，容易誤判成「沒問題」；這項要等 branch 部署後才能真正測，先維持未勾、標記為卡在部署依賴
 - [x] StoryEditor／LoreEditor 程式碼審查型驗收——2026-08-16 已在 Phase 6 完成：確認 `toolbarExtra`／`useImperativeHandle` 介面沒變、`StoryEditor.tsx`／`LoreEditor.tsx` 整個 Phase 6 期間零改動；真實頁面的人工操作驗收見 Phase 9
 
 ### Phase 9：人工驗收案例（無法自動化，需要使用者親自操作）
