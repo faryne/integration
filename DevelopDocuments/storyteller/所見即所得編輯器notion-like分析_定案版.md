@@ -235,7 +235,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
   - [x] 新 table marker 逐列 diff：改某一列的 cell 內容，只應該影響那一行的 diff，不牽動其他列——2026-08-16 Codex 新增 `tableDiff.test.ts`，用 `buildCustomLineDiff()` 驗證通過
   - [x] `tableId`／`rowId` 改變但 cell 文字沒變，不應造成 diff——2026-08-16 同上，`tableDiff.test.ts` 已覆蓋
   - [x] footnote 內容進 footnote diff 區塊，不該混進本文 diff——2026-08-16 確認 `StoryVersionDiff.tsx` 用 `extractFootnoteNotesForDiff()` 把腳注抽成獨立區塊、跑自己的 `buildCustomLineDiff()`；`lineDiff.test.ts` 驗證 footnote note 內容改變本文 diff 看不到差異、但 `extractFootnoteNotesForDiff()` 抽出的獨立 diff 能正確看到差異
-- [ ] Mobile CSS/breakpoint 自動化：resize_window 模擬手機寬度，程式化確認 bubble menu／slash command 在窄螢幕下仍能觸發並正常運作、圖片 layout 正確退回 block（延續 Phase 7 圖片 mobile 斷點驗證的做法，這次涵蓋整個編輯器）
+- [x] Mobile CSS/breakpoint 自動化：resize_window 模擬手機寬度，程式化確認 bubble menu／slash command 在窄螢幕下仍能觸發並正常運作、圖片 layout 正確退回 block（圖片部分已在 Phase 7 驗證過）——2026-08-16 Claude 驗證：整體版面在 375px 寬度正確收窄成單欄（確認過標題／段落／清單／圖片區塊都沒有橫向溢出或跑版）；區塊命令選單（右鍵/`/`／點空白段落觸發的那個，含標題/對齊/引用/清單/分隔線）在 375px 下完整可讀、無截斷；bubble menu 10 個按鈕全部量過 `getBoundingClientRect`，最後一顆「註解」右緣在 x=356，在 375px 視窗內沒有溢出——**過程中發現一個瀏覽器自動化測試工具本身的限制，不是產品 bug**：在 mobile 模擬模式下用 `computer` 工具的 click/double_click/triple_click 點文字，會被這個工具的 mouse-to-touch 轉譯成類似 `contextmenu` 事件，直接跳出區塊命令選單、蓋掉正常的「點擊放游標」行為，導致沒辦法用點擊在窄螢幕下框選文字；改用「先在桌面寬度框選文字觸發 bubble menu，再 resize 到手機寬度」的方式繞過去做版面驗證。這個工具限制本身很接近使用者實際會遇到的疑問（手機上點一下文字到底是選字還是跳選單），因此已經在 Phase 9.4「Mobile 真實裝置觸控體感」註記提醒優先確認這一點
 - [ ] MCP 實測：透過 `storyteller_upsert_story`／`storyteller_upsert_lore` 這類 MCP tool 直接寫入一次含真表格的內容，確認 `storytellerContentSyntaxHint`／`storytellerContentMarkerHint` 的說明足夠讓 AI agent 手寫出合法的 table marker、寫入後能被前端正確 parse／render——2026-08-16 **目前被部署狀態卡住，還不能測**：Claude 用 `ToolSearch` 查過目前實際連線的 `storyteller_upsert_story` MCP tool，發現它的參數說明還是舊版（`each row is its own line: |cell1|cell2|cell3` 那種舊 table-row 語法），代表 Phase 5 的 table marker MCP hint 更新（`service/mcp/storyteller_tools.go`）跟後端 parser 改動都只存在於 `codex/storyteller-wysiwyg-analysis` branch，還沒 merge 進 `main`、也還沒部署，Claude/Codex 都沒有部署權限。現在用真實 MCP tool 測只會測到舊版後端，結果沒有代表性，容易誤判成「沒問題」；這項要等 branch 部署後才能真正測，先維持未勾、標記為卡在部署依賴
 - [x] StoryEditor／LoreEditor 程式碼審查型驗收——2026-08-16 已在 Phase 6 完成：確認 `toolbarExtra`／`useImperativeHandle` 介面沒變、`StoryEditor.tsx`／`LoreEditor.tsx` 整個 Phase 6 期間零改動；真實頁面的人工操作驗收見 Phase 9
 
@@ -259,9 +259,9 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 **測試環境**：在 Playground（`/storyteller/wysiwyg-demo`，選「空白」樣本）或任一 Story/Lore 編輯頁面都可以測，用你平常慣用的注音或拼音輸入法。
 
 **案例 1：符號自動轉換不誤判組字中的按鍵**
-- [ ] 在編輯器空白處，開始用注音/拼音打一段中文字（例如打「測試」，但先不要按 Enter/空白選字，讓候選字視窗保持開著）
-- [ ] 在候選字視窗開著、還沒選字完成的狀態下，按看看數字鍵/符號鍵切換候選字，確認畫面沒有誤觸發任何自動轉換（例如不會突然冒出粗體/刪除線效果）
-- [ ] 完成選字後，實際打 `**文字**` 確認變粗體
+- [x] 在編輯器空白處，開始用注音/拼音打一段中文字（例如打「測試」，但先不要按 Enter/空白選字，讓候選字視窗保持開著）
+- [x] 在候選字視窗開著、還沒選字完成的狀態下，按看看數字鍵/符號鍵切換候選字，確認畫面沒有誤觸發任何自動轉換（例如不會突然冒出粗體/刪除線效果）
+- [ ] 完成選字後，實際打 `**文字**` 確認變粗體  => 毫無反應，變成 `**文字**`
 - [ ] 打 `*文字*` 確認變斜體
 - [ ] 打 `++文字++` 確認變底線
 - [ ] 打 `~文字~` 確認變下標
@@ -322,7 +322,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 - [ ] 確認畫面排版正常，看得到右上角的小 action 區，沒有橫向格式工具列
 - [ ] 手指點一下空白段落，確認有沒有跳出鍵盤，並確認能不能看到 placeholder 提示文字
 - [ ] 打 `/` 試試看 slash 選單會不會跳出來、觸控點選選單項目是否順暢
-- [ ] 選取一段文字（長按拖曳選取範圍），確認選取文字後有沒有跳出 bubble menu（浮動小工具列），點裡面的按鈕（例如粗體）確認能正常套用
+- [ ] 選取一段文字（長按拖曳選取範圍），確認選取文字後有沒有跳出 bubble menu（浮動小工具列），點裡面的按鈕（例如粗體）確認能正常套用——**這項建議優先測**：Claude 用瀏覽器自動化測 Phase 8 手機斷點時，發現這個工具本身在手機模擬模式下，單純「點一下」文字會被轉譯成類似長按/右鍵的行為、直接跳出區塊命令選單而不是把游標放在文字上，這讓 Claude 沒辦法在自動化測試裡完整重現「單指點一下 vs 長按拖曳選字」這兩種手勢的差異；不確定這是測試工具的模擬限制、還是編輯器本身在真實手機上點文字的行為也有類似的模糊地帶（例如單指點一下會不會誤觸發某個選單），需要用真實手機確認一次
 - [ ] 嘗試長按段落，看看有沒有辦法叫出右鍵選單的替代方案（這個編輯器的右鍵選單在手機上可能完全叫不出來，這是預期中的已知限制，重點是確認「除了右鍵以外的入口（slash／bubble menu）是否已經足夠涵蓋主要操作」）
 - [ ] 如果有圖片，確認圖片版面（全寬/置中/靠左/靠右環繞）在手機上是否都正確退回全寬顯示，不會有跑版的浮動效果
 - [ ] 記錄：用的是什麼手機/瀏覽器、哪個操作在手機上不順或做不到（即使右鍵選單在手機上不可用是預期內的限制，但如果某個操作完全沒有替代入口，這是需要記錄下來的落差）
