@@ -192,7 +192,7 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 - [ ] 驗收條件：slash command 已涵蓋所有區塊操作，含 Phase 5 的表格插入與表格內新增/刪除列欄操作
 - [ ] 驗收條件：右鍵選單已涵蓋所有行內操作與區塊操作
-- [ ] 驗收條件：中文 IME 在 Phase 0／Phase 3／Phase 5（表格內 IME）都已實測過，沒有已知問題
+- [ ] 驗收條件：中文 IME 在 Phase 0／Phase 3／Phase 5（表格內 IME）都已實測過，沒有已知問題——2026-08-16 使用者確認：這項排到最後，等他自己整體驗收時再做人工測試，不阻塞 Phase 6 其他項目先進行
 - [ ] 移除工具列（已定案完全拔除，不保留極簡求助 icon）
 - [ ] 幫 `StorytellerWysiwygSyntaxDrawer`（語法說明側欄）找一個不屬於工具列的新入口
 - [ ] StoryEditor／LoreEditor 實測：autosave、字數、AI agent 附加、匯出 markdown 不受影響
