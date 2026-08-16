@@ -27,6 +27,7 @@ import {
   Typography,
 } from "@mui/material";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import {
   type MouseEvent,
   type ReactNode,
@@ -45,6 +46,7 @@ import {
 } from "./wysiwygCore/colorStyles";
 import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
 import {
+  hasAssetImageLayoutTarget,
   wysiwygCommandsByGroup,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
@@ -502,6 +504,7 @@ export const StorytellerWysiwygEditor = forwardRef<
           bgColor: null as BgColorValue | null,
           hasLink: false,
           hasFootnote: false,
+          hasAssetImage: false,
         };
       }
       const align =
@@ -549,6 +552,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         bgColor,
         hasLink: ctx.editor.isActive("link"),
         hasFootnote: ctx.editor.isActive("footnote"),
+        hasAssetImage: hasAssetImageLayoutTarget(ctx.editor),
       };
     },
   });
@@ -652,7 +656,26 @@ export const StorytellerWysiwygEditor = forwardRef<
     const { from, to } = editor.state.selection;
     const clickedInsideSelection = result.pos >= from && result.pos <= to;
     if (!clickedInsideSelection) {
-      editor.commands.setTextSelection(result.pos);
+      const clickedAssetImage = (event.target as HTMLElement).closest(
+        "[data-asset-layout]",
+      );
+      if (clickedAssetImage) {
+        const state = editor.view.state;
+        const pos = [result.inside, result.pos, result.pos - 1].find(
+          (candidate) =>
+            candidate >= 0 &&
+            state.doc.nodeAt(candidate)?.type.name === "assetImage",
+        );
+        if (pos !== undefined) {
+          editor.view.dispatch(
+            state.tr.setSelection(NodeSelection.create(state.doc, pos)),
+          );
+        } else {
+          editor.commands.setTextSelection(result.pos);
+        }
+      } else {
+        editor.commands.setTextSelection(result.pos);
+      }
     }
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   };
@@ -1011,6 +1034,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         hasComment={editorState.hasComment}
         hasSelection={editorState.hasSelection}
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
+        hasAssetImage={editorState.hasAssetImage}
       />
 
       <Menu

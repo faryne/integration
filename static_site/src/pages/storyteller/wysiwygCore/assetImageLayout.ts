@@ -1,10 +1,25 @@
 import type { SxProps, Theme } from "@mui/material/styles";
 
 import {
+  ASSET_IMAGE_LAYOUT_VALUES,
   DEFAULT_ASSET_IMAGE_LAYOUT,
   normalizeAssetImageLayout,
   type AssetImageLayoutValue,
 } from "./whitelist";
+
+export const ASSET_IMAGE_LAYOUT_LABELS: Record<
+  AssetImageLayoutValue,
+  string
+> = {
+  block: "圖片全寬",
+  center: "圖片置中",
+  "float-left": "圖片靠左環繞",
+  "float-right": "圖片靠右環繞",
+};
+
+export const ASSET_IMAGE_LAYOUT_OPTIONS = ASSET_IMAGE_LAYOUT_VALUES.map(
+  (value) => ({ value, label: ASSET_IMAGE_LAYOUT_LABELS[value] }),
+);
 
 export function assetImageLayoutTitle(layout: AssetImageLayoutValue) {
   return layout === DEFAULT_ASSET_IMAGE_LAYOUT ? "" : ` "layout=${layout}"`;

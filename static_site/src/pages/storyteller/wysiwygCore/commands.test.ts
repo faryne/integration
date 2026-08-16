@@ -9,6 +9,7 @@ import {
 } from "./commands";
 import { wysiwygCoreExtensions } from "./extensions";
 import { markdownToDoc } from "./parser";
+import { serializeDocToMarkdown } from "./serializer";
 
 /**
  * Command Registry 的最小 smoke test（Phase 1 checklist 要求）：確認每個 command 的
@@ -135,6 +136,33 @@ describe("WYSIWYG_COMMANDS", () => {
       expect(table?.content).toHaveLength(3);
       expect(table?.content?.[0].content).toHaveLength(3);
     } finally {
+      editor.destroy();
+    }
+  });
+
+  it("image-layout command 只在選到圖片時啟用，並更新 assetImage layout", () => {
+    const emptyEditor = createEmptyEditor();
+    const editor = new Editor({
+      extensions: wysiwygCoreExtensions,
+      content: markdownToDoc("⟦p1⟧![圖](steamloom-asset://asset_1)⟦/p1⟧"),
+    });
+    const command = getWysiwygCommand("image-layout-float-right");
+
+    try {
+      expect(command).toBeDefined();
+      expect(command?.isEnabled?.(emptyEditor, createStubContext())).toBe(
+        false,
+      );
+
+      editor.commands.setNodeSelection(1);
+      expect(command?.isEnabled?.(editor, createStubContext())).toBe(true);
+      command?.run(editor, createStubContext());
+
+      expect(serializeDocToMarkdown(editor.getJSON())).toBe(
+        '⟦p1⟧![圖](steamloom-asset://asset_1 "layout=float-right")⟦/p1⟧',
+      );
+    } finally {
+      emptyEditor.destroy();
       editor.destroy();
     }
   });

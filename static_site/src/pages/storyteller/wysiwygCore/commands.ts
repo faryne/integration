@@ -20,15 +20,20 @@ import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import TitleIcon from "@mui/icons-material/Title";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
 
 import { BG_COLOR_CSS, BG_COLOR_LABELS, TEXT_COLOR_CSS, TEXT_COLOR_LABELS } from "./colorStyles";
+import { ASSET_IMAGE_LAYOUT_LABELS } from "./assetImageLayout";
 import {
+  ASSET_IMAGE_LAYOUT_VALUES,
   BG_COLOR_VALUES,
   DEFAULT_BLOCK_KIND,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
+  normalizeAssetImageLayout,
   TEXT_COLOR_VALUES,
+  type AssetImageLayoutValue,
   type BlockKindValue,
 } from "./whitelist";
 
@@ -48,6 +53,7 @@ export type WysiwygCommandGroup =
   | "color"
   | "annotation"
   | "insert"
+  | "image-layout"
   | "utility";
 
 const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
@@ -211,6 +217,83 @@ const INSERT_COMMANDS: WysiwygCommand[] = [
     run: (_editor, context) => context.openAssetPicker(),
   },
 ];
+
+export function findAssetImageAtSelection(editor: Editor) {
+  const { selection } = editor.state;
+  if (
+    selection instanceof NodeSelection &&
+    selection.node.type.name === "assetImage"
+  ) {
+    return { pos: selection.from, node: selection.node };
+  }
+  const { $from } = selection;
+  const parentStart = $from.start();
+  const before = $from.parent.childBefore($from.parentOffset);
+  if (before.node?.type.name === "assetImage") {
+    return { pos: parentStart + before.offset, node: before.node };
+  }
+  const after = $from.parent.childAfter($from.parentOffset);
+  if (after.node?.type.name === "assetImage") {
+    return { pos: parentStart + after.offset, node: after.node };
+  }
+  return null;
+}
+
+export function hasAssetImageLayoutTarget(editor: Editor) {
+  return findAssetImageAtSelection(editor) !== null;
+}
+
+function setAssetImageLayout(
+  editor: Editor,
+  layout: AssetImageLayoutValue,
+) {
+  editor
+    .chain()
+    .focus()
+    .command(({ state, dispatch }) => {
+      const target = findAssetImageAtSelection(editor);
+      if (!target) return false;
+      if (dispatch) {
+        dispatch(
+          state.tr.setNodeMarkup(target.pos, undefined, {
+            ...target.node.attrs,
+            layout,
+          }),
+        );
+      }
+      return true;
+    })
+    .run();
+}
+
+const IMAGE_LAYOUT_ICONS: Record<
+  AssetImageLayoutValue,
+  ComponentType<{ fontSize?: "small" }>
+> = {
+  block: AddPhotoAlternateIcon,
+  center: FormatAlignCenterIcon,
+  "float-left": FormatAlignLeftIcon,
+  "float-right": FormatAlignRightIcon,
+};
+
+const IMAGE_LAYOUT_COMMANDS: WysiwygCommand[] = ASSET_IMAGE_LAYOUT_VALUES.map(
+  (layout) => ({
+    id: `image-layout-${layout}`,
+    label: ASSET_IMAGE_LAYOUT_LABELS[layout],
+    group: "image-layout",
+    scope: "block",
+    icon: IMAGE_LAYOUT_ICONS[layout],
+    isActive: (editor) => {
+      const target = findAssetImageAtSelection(editor);
+      return (
+        normalizeAssetImageLayout(target?.node.attrs.layout) === layout &&
+        target !== null
+      );
+    },
+    isEnabled: (editor) => hasAssetImageLayoutTarget(editor),
+    run: (editor) => setAssetImageLayout(editor, layout),
+  }),
+);
 
 const ALIGN_LABELS = { left: "置左", center: "置中", right: "置右" } as const;
 const ALIGN_ICONS = {
@@ -393,6 +476,7 @@ export const WYSIWYG_COMMANDS: WysiwygCommand[] = [
   ...COLOR_COMMANDS,
   ...ANNOTATION_COMMANDS,
   ...INSERT_COMMANDS,
+  ...IMAGE_LAYOUT_COMMANDS,
   ...UTILITY_COMMANDS,
 ];
 

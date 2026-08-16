@@ -8,6 +8,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Paper,
   Stack,
   TextField,
@@ -20,12 +21,25 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStorytellerAsset } from "@/apis/storyteller.ts";
-import { assetImageFrameSx } from "./assetImageLayout";
-import { DEFAULT_ASSET_IMAGE_LAYOUT } from "./whitelist";
+import {
+  ASSET_IMAGE_LAYOUT_OPTIONS,
+  assetImageFrameSx,
+} from "./assetImageLayout";
+import {
+  OPEN_ASSET_IMAGE_SETTINGS_EVENT,
+  type OpenAssetImageSettingsEventDetail,
+} from "./assetImageEvents";
+import {
+  DEFAULT_ASSET_IMAGE_LAYOUT,
+  normalizeAssetImageLayout,
+  type AssetImageLayoutValue,
+} from "./whitelist";
 
 function AssetImageView({
+  editor,
+  getPos,
   node,
   selected,
   updateAttributes,
@@ -36,9 +50,11 @@ function AssetImageView({
   const projectPublicId =
     (node.attrs.projectPublicId as string | undefined) ?? "";
   const alt = (node.attrs.alt as string | undefined) ?? "";
-  const layout = node.attrs.layout;
+  const layout = normalizeAssetImageLayout(node.attrs.layout);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [altDraft, setAltDraft] = useState(alt);
+  const [layoutDraft, setLayoutDraft] =
+    useState<AssetImageLayoutValue>(layout);
   const assetQuery = useStorytellerAsset(projectPublicId, publicId);
   const asset = assetQuery.data;
   const previewUrl = asset?.preview_url || src;
@@ -46,13 +62,36 @@ function AssetImageView({
 
   function openDialog() {
     setAltDraft(alt);
+    setLayoutDraft(layout);
     setDialogOpen(true);
   }
 
-  function saveAlt() {
-    updateAttributes({ alt: altDraft.trim() });
+  function saveSettings() {
+    updateAttributes({ alt: altDraft.trim(), layout: layoutDraft });
     setDialogOpen(false);
   }
+
+  function deleteAsset() {
+    setDialogOpen(false);
+    deleteNode();
+  }
+
+  useEffect(() => {
+    const root = editor.view.dom;
+    const openSettings = (event: Event) => {
+      const detail = (event as CustomEvent<OpenAssetImageSettingsEventDetail>)
+        .detail;
+      if (typeof getPos === "function" && getPos() === detail?.pos) {
+        setAltDraft(alt);
+        setLayoutDraft(layout);
+        setDialogOpen(true);
+      }
+    };
+    root.addEventListener(OPEN_ASSET_IMAGE_SETTINGS_EVENT, openSettings);
+    return () => {
+      root.removeEventListener(OPEN_ASSET_IMAGE_SETTINGS_EVENT, openSettings);
+    };
+  }, [alt, editor.view.dom, getPos, layout]);
 
   return (
     <NodeViewWrapper as="span">
@@ -116,7 +155,7 @@ function AssetImageView({
             {title}
           </Typography>
           <Stack component="span" direction="row" spacing={0.5}>
-            <Tooltip title="調整資產文字">
+            <Tooltip title="圖片設定">
               <IconButton size="small" onClick={openDialog}>
                 <EditIcon fontSize="inherit" />
               </IconButton>
@@ -136,21 +175,44 @@ function AssetImageView({
         fullWidth
         maxWidth="sm"
       >
-        <DialogTitle>調整資產文字</DialogTitle>
+        <DialogTitle>圖片設定</DialogTitle>
         <DialogContent>
-          <TextField
-            label="替代文字"
-            value={altDraft}
-            onChange={(event) => setAltDraft(event.target.value)}
-            fullWidth
-            sx={{ mt: 1 }}
-          />
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              label="替代文字"
+              value={altDraft}
+              onChange={(event) => setAltDraft(event.target.value)}
+              fullWidth
+            />
+            <TextField
+              select
+              label="版面"
+              value={layoutDraft}
+              onChange={(event) =>
+                setLayoutDraft(
+                  normalizeAssetImageLayout(event.target.value),
+                )
+              }
+              fullWidth
+            >
+              {ASSET_IMAGE_LAYOUT_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>取消</Button>
-          <Button variant="contained" onClick={saveAlt}>
-            套用
+        <DialogActions sx={{ justifyContent: "space-between" }}>
+          <Button color="error" onClick={deleteAsset}>
+            刪除圖片
           </Button>
+          <Stack direction="row" spacing={1}>
+            <Button onClick={() => setDialogOpen(false)}>取消</Button>
+            <Button variant="contained" onClick={saveSettings}>
+              套用
+            </Button>
+          </Stack>
         </DialogActions>
       </Dialog>
     </NodeViewWrapper>

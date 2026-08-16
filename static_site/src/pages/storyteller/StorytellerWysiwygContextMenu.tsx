@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   Box,
   Divider,
@@ -13,10 +14,15 @@ import {
 import type { Editor } from "@tiptap/core";
 
 import {
+  findAssetImageAtSelection,
   wysiwygCommandsByGroup,
   type WysiwygCommand,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
+import {
+  OPEN_ASSET_IMAGE_SETTINGS_EVENT,
+  type OpenAssetImageSettingsEventDetail,
+} from "./wysiwygCore/assetImageEvents";
 
 export interface ContextMenuPosition {
   x: number;
@@ -38,6 +44,7 @@ interface StorytellerWysiwygContextMenuProps {
   hasComment: boolean;
   hasSelection: boolean;
   isCurrentParagraphEmpty: boolean;
+  hasAssetImage: boolean;
 }
 
 /**
@@ -64,9 +71,40 @@ export function StorytellerWysiwygContextMenu({
   hasComment,
   hasSelection,
   isCurrentParagraphEmpty,
+  hasAssetImage,
 }: StorytellerWysiwygContextMenuProps) {
   const runAndClose = (command: WysiwygCommand) => {
     command.run(editor, commandContext);
+    onClose();
+  };
+  const openAssetImageSettings = () => {
+    const target = findAssetImageAtSelection(editor);
+    if (target) {
+      editor.view.dom.dispatchEvent(
+        new CustomEvent<OpenAssetImageSettingsEventDetail>(
+          OPEN_ASSET_IMAGE_SETTINGS_EVENT,
+          { detail: { pos: target.pos } },
+        ),
+      );
+    }
+    onClose();
+  };
+  const deleteAssetImage = () => {
+    const target = findAssetImageAtSelection(editor);
+    if (target) {
+      editor
+        .chain()
+        .focus()
+        .command(({ state, dispatch }) => {
+          if (dispatch) {
+            dispatch(
+              state.tr.delete(target.pos, target.pos + target.node.nodeSize),
+            );
+          }
+          return true;
+        })
+        .run();
+    }
     onClose();
   };
 
@@ -80,6 +118,7 @@ export function StorytellerWysiwygContextMenu({
   // 只能編輯/移除既有的，不顯示「加」——沒有目標文字。
   const annotationCommands = wysiwygCommandsByGroup("annotation").filter(
     (command) =>
+      !hasAssetImage &&
       (command.isVisible?.(commandContext) ?? true) &&
       (hasSelection || (command.isActive?.(editor) ?? false)),
   );
@@ -89,6 +128,7 @@ export function StorytellerWysiwygContextMenu({
   const showInsertImage =
     isCurrentParagraphEmpty &&
     (insertImageCommand?.isVisible?.(commandContext) ?? false);
+  const imageLayoutCommands = wysiwygCommandsByGroup("image-layout");
 
   const quickRemoveFor: Record<
     string,
@@ -112,7 +152,38 @@ export function StorytellerWysiwygContextMenu({
         position ? { top: position.y, left: position.x } : undefined
       }
     >
-      {hasSelection
+      {hasAssetImage
+        ? [
+            <MenuItem key="asset-image-settings" onClick={openAssetImageSettings}>
+              <ListItemIcon>
+                <EditIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>圖片設定</ListItemText>
+            </MenuItem>,
+            <MenuItem key="asset-image-delete" onClick={deleteAssetImage}>
+              <ListItemIcon>
+                <DeleteIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>刪除圖片</ListItemText>
+            </MenuItem>,
+            <Divider key="asset-image-layout-divider" />,
+            ...imageLayoutCommands.map((command) => {
+              const Icon = command.icon!;
+              return (
+                <MenuItem
+                  key={command.id}
+                  selected={command.isActive?.(editor) ?? false}
+                  onClick={() => runAndClose(command)}
+                >
+                  <ListItemIcon>
+                    <Icon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>{command.label}</ListItemText>
+                </MenuItem>
+              );
+            }),
+          ]
+        : hasSelection
         ? [
             ...wysiwygCommandsByGroup("mark").map((command) => {
               const Icon = command.icon!;
