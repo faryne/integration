@@ -128,6 +128,7 @@ export function StorytellerWysiwygContextMenu({
   const showInsertImage =
     isCurrentParagraphEmpty &&
     (insertImageCommand?.isVisible?.(commandContext) ?? false);
+  const alignCommands = wysiwygCommandsByGroup("align");
   const imageLayoutCommands = wysiwygCommandsByGroup("image-layout");
 
   const quickRemoveFor: Record<
@@ -322,6 +323,22 @@ export function StorytellerWysiwygContextMenu({
               );
             }),
             <Divider key="heading-block-divider" />,
+            ...alignCommands.map((command) => {
+              const Icon = command.icon!;
+              return (
+                <MenuItem
+                  key={command.id}
+                  selected={command.isActive?.(editor) ?? false}
+                  onClick={() => runAndClose(command)}
+                >
+                  <ListItemIcon>
+                    <Icon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>{command.label}</ListItemText>
+                </MenuItem>
+              );
+            }),
+            <Divider key="align-block-divider" />,
             ...wysiwygCommandsByGroup("block").map((command) => {
               const Icon = command.icon!;
               return (

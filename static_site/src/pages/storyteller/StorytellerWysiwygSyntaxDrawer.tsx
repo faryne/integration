@@ -22,8 +22,8 @@ import {
 } from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygSyntaxDrawerProps {
-  /** 跟 StorytellerWysiwygEditor 同一個 prop：哪些功能有出現在工具列上，drawer 內容要
-   * 照樣篩選，不要介紹使用者眼前工具列根本沒有的按鈕。 */
+  /** 跟 StorytellerWysiwygEditor 同一個 prop：哪些功能在目前頁面啟用，drawer 內容要
+   * 照樣篩選，不要介紹使用者眼前根本不能用的功能。 */
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
 }
 
@@ -122,22 +122,22 @@ export function StorytellerWysiwygSyntaxDrawer({
     },
   ];
 
-  const toolbarOnlyItems: SyntaxItem[] = [
+  const menuOnlyItems: SyntaxItem[] = [
     {
       label: "文字顏色／背景色",
-      syntax: "選取文字 → 工具列色盤按鈕",
+      syntax: "選取文字 → 右鍵選單／Bubble Menu 色盤",
       description: "沒有打字捷徑，固定色盤可選。",
     },
     {
       label: "連結",
-      syntax: "選取文字 → 工具列連結按鈕",
+      syntax: "選取文字 → 右鍵選單／Bubble Menu 連結按鈕",
       description: "只接受 http(s) 開頭的網址。",
     },
     ...(isEnabled("footnote")
       ? [
           {
             label: "腳注",
-            syntax: "選取文字 → 工具列腳注按鈕",
+            syntax: "選取文字 → 右鍵選單／Bubble Menu 腳注按鈕",
             description: "讀者在閱讀頁看得到，內容顯示在文章最尾端。",
           },
         ]
@@ -146,7 +146,7 @@ export function StorytellerWysiwygSyntaxDrawer({
       ? [
           {
             label: "註解",
-            syntax: "選取文字 → 工具列註解按鈕",
+            syntax: "選取文字 → 右鍵選單／Bubble Menu 註解按鈕",
             description: "只有作者自己看得到，讀者端完全不會出現。",
           },
         ]
@@ -155,7 +155,7 @@ export function StorytellerWysiwygSyntaxDrawer({
       ? [
           {
             label: "插入圖片",
-            syntax: "工具列插入圖片按鈕",
+            syntax: "空白段落輸入 /圖片，或在空白段落右鍵插入圖片",
             description: "從專案的資產集裡選圖插入。",
           },
         ]
@@ -192,7 +192,7 @@ export function StorytellerWysiwygSyntaxDrawer({
             <Typography variant="body2" color="text.secondary">
               這是本編輯器自訂的精簡語法，不是完整
               Markdown／GFM——打下面的符號會自動轉換
-              成對應格式；顏色、連結等則要透過工具列按鈕套用，沒有打字捷徑。
+              成對應格式；顏色、連結等則要透過選單套用，沒有打字捷徑。
             </Typography>
             <Divider />
             <Stack spacing={1.25}>
@@ -206,8 +206,8 @@ export function StorytellerWysiwygSyntaxDrawer({
             </Stack>
             <Divider />
             <Stack spacing={1.25}>
-              <Typography fontWeight={800}>只能透過工具列套用</Typography>
-              <SyntaxList items={toolbarOnlyItems} />
+              <Typography fontWeight={800}>只能透過選單套用</Typography>
+              <SyntaxList items={menuOnlyItems} />
             </Stack>
           </Stack>
         </Box>

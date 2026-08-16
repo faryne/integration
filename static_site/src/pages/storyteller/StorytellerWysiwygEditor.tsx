@@ -12,6 +12,7 @@ import {
   DialogTitle,
   Divider,
   FormControlLabel,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -795,9 +796,50 @@ export const StorytellerWysiwygEditor = forwardRef<
   const activeMarkIds = wysiwygCommandsByGroup("mark")
     .filter((command) => command.isActive?.(editor))
     .map((command) => command.id);
+  const utilityCommands = wysiwygCommandsByGroup("utility").filter(
+    (command) => command.isVisible?.(commandContext) ?? true,
+  );
 
   return (
     <Box>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 0.75,
+            py: 0.5,
+            bgcolor: "background.paper",
+          }}
+        >
+          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
+          {utilityCommands.map((command) => {
+            const Icon = command.icon!;
+            return (
+              <Tooltip key={command.id} title={command.label}>
+                <IconButton
+                  aria-label={command.label}
+                  size="small"
+                  onClick={() => command.run(editor, commandContext)}
+                >
+                  <Icon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            );
+          })}
+          {toolbarExtra && (
+            <>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                {toolbarExtra}
+              </Box>
+            </>
+          )}
+        </Paper>
+      </Box>
+
       <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
         <Stack
           direction="row"
@@ -958,40 +1000,6 @@ export const StorytellerWysiwygEditor = forwardRef<
                 </Box>
               );
             })}
-
-          {wysiwygCommandsByGroup("utility")
-            .filter((command) => command.isVisible?.(commandContext) ?? true)
-            .map((command) => {
-              const Icon = command.icon!;
-              return (
-                <Box
-                  key={command.id}
-                  sx={{ display: "flex", alignItems: "center" }}
-                >
-                  <Divider orientation="vertical" flexItem sx={{ mr: 2 }} />
-                  <ToggleButtonGroup size="small">
-                    <Tooltip title={command.label}>
-                      <ToggleButton
-                        value={command.id}
-                        onClick={() => command.run(editor, commandContext)}
-                      >
-                        <Icon fontSize="small" />
-                      </ToggleButton>
-                    </Tooltip>
-                  </ToggleButtonGroup>
-                </Box>
-              );
-            })}
-
-          <Divider orientation="vertical" flexItem />
-          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
-
-          {toolbarExtra && (
-            <>
-              <Divider orientation="vertical" flexItem />
-              <Box sx={{ ml: "auto" }}>{toolbarExtra}</Box>
-            </>
-          )}
         </Stack>
       </Paper>
 

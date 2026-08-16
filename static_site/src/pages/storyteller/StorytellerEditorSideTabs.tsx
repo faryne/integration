@@ -10,10 +10,9 @@ interface StorytellerEditorSideTabsProps {
   historyDisabled?: boolean;
 }
 
-// AI Agent／編輯歷史收合成兩顆切換按鈕，塞在 StorytellerWysiwygEditor 工具列的
-// toolbarExtra 插槽裡：預設收起，讓作者能專注在編輯區本身；點開哪個就在原本的
-// 側欄位置展開對應內容，再點一次收合（exclusive ToggleButtonGroup 本身就支援
-// 點選中項目變成 null 取消選取）。
+// AI Agent／編輯歷史收合成兩顆切換按鈕，交給 StorytellerWysiwygEditor 的文件層級
+// action 區呈現：預設收起，讓作者能專注在編輯區本身；點開哪個就在原本的側欄位置展開
+// 對應內容，再點一次收合（exclusive ToggleButtonGroup 本身就支援點選中項目變成 null）。
 export function StorytellerEditorSideTabs({
   value,
   onChange,

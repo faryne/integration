@@ -190,11 +190,11 @@ Phase 0–4（含最高風險的中文 IME 測試）都先在這個 playground �
 
 ### Phase 6：工具列移除（獨立、放最後、需驗收條件）
 
-- [ ] 驗收條件：slash command 已涵蓋所有區塊操作，含 Phase 5 的表格插入與表格內新增/刪除列欄操作
-- [ ] 驗收條件：右鍵選單已涵蓋所有行內操作與區塊操作
+- [x] 驗收條件：slash command 已涵蓋所有區塊操作，含 Phase 5 的表格插入與表格內新增/刪除列欄操作——2026-08-16 Codex 逐一盤點過：標題／引用／清單／分隔線／插入表格都有 slash command；表格內新增/刪除列欄不是走 slash（設計上是游標進入表格後由 `StorytellerWysiwygTableMenu` 浮動選單提供，符合「不靠格式工具列」的精神，不要求每個操作都得是 slash 指令），Claude 核對過這個判斷合理，沒有發現缺口
+- [x] 驗收條件：右鍵選單已涵蓋所有行內操作與區塊操作——2026-08-16 Codex 盤點發現工具列拔除前唯一明確缺口是段落對齊（`align-left`／`align-center`／`align-right`）只存在於格式工具列；已補進右鍵選單的「無選取」段落操作區（heading 與 block commands 之間）。Claude 用 `npx vitest run` 確認 30 個測試不受影響，並在瀏覽器實測：右鍵選單正確顯示置左/置中/置右三個選項，點「置中」後 `editor.getJSON()` 確認 `textAlign: "center"` 正確套用
 - [ ] 驗收條件：中文 IME 在 Phase 0／Phase 3／Phase 5（表格內 IME）都已實測過，沒有已知問題——2026-08-16 使用者確認：這項排到最後，等他自己整體驗收時再做人工測試，不阻塞 Phase 6 其他項目先進行
 - [ ] 移除工具列（已定案完全拔除，不保留極簡求助 icon）
-- [ ] 幫 `StorytellerWysiwygSyntaxDrawer`（語法說明側欄）找一個不屬於工具列的新入口
+- [x] 幫 `StorytellerWysiwygSyntaxDrawer`（語法說明側欄）找一個不屬於工具列的新入口——2026-08-16 Codex 已新增編輯器右上角的文件層級 action 區，承接語法說明、匯出 markdown、以及原本 `toolbarExtra` 插槽（插入資產／AI Agent／編輯歷史）；格式工具列內原本的 utility／syntax／toolbarExtra 入口已移出（格式工具列本體仍保留，等下一段才真的拔除）。Claude 在瀏覽器實測：新的右上角 action 區正確顯示、點語法說明圖示正確開啟 drawer（且文案已同步更新成「透過選單套用」，不再提「工具列」），DOM 確認 `[aria-label="支援的語法"]` 只有 1 個（沒有跟格式工具列重複），`toolbarExtra` prop 介面完全沒變（`StoryEditor.tsx`／`LoreEditor.tsx` 呼叫端不用改），只是 render 位置從格式工具列尾端搬到新的 action 區
 - [ ] StoryEditor／LoreEditor 實測：autosave、字數、AI agent 附加、匯出 markdown 不受影響
 
 ### Phase 7：圖片版面控制（Track B／Codex 負責，排在 Phase 5 真表格完成之後）
