@@ -1,6 +1,3 @@
-import DeleteIcon from "@mui/icons-material/Delete";
-import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
-import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import {
   Box,
@@ -13,17 +10,9 @@ import {
   Divider,
   FormControlLabel,
   IconButton,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
   Paper,
-  Select,
-  type SelectChangeEvent,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -41,9 +30,7 @@ import {
 
 import {
   BG_COLOR_CSS,
-  BG_COLOR_LABELS,
   TEXT_COLOR_CSS,
-  TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
 import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
 import {
@@ -60,21 +47,12 @@ import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
-  ALIGNMENT_VALUES,
   BG_COLOR_VALUES,
-  BLOCK_KIND_VALUES,
   COMMENT_COLOR_VALUES,
-  DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
-  DEFAULT_HEADING_LEVEL,
-  HEADING_LEVELS,
   isSafeHref,
   TEXT_COLOR_VALUES,
-  type AlignmentValue,
-  type BgColorValue,
   type CommentColorValue,
-  type HeadingLevel,
-  type TextColorValue,
 } from "./wysiwygCore/whitelist";
 import { createWysiwygCoreExtensions } from "./wysiwygCore/extensions";
 import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
@@ -263,21 +241,16 @@ const BLOCK_KIND_SX = {
   },
 } as const;
 
-const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
-  { value: 0, label: "內文" },
-  ...HEADING_LEVELS.map((level) => ({ value: level, label: `標題 ${level}` })),
-];
-
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
-  /** 塞在工具列最右側的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
+  /** 塞在文件層級 action 區的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
   /** 資產 node 用來查詢同專案 preview URL；不提供時只會顯示 asset id 佔位。 */
   projectPublicId?: string;
   /**
    * 匯出檔名的基底（通常是故事/設定集標題，編輯器自己不知道標題，由頁面層提供）。
-   * 有提供才會在工具列顯示「匯出 markdown」按鈕；實際檔名是
+   * 有提供才會在文件層級 action 區顯示「匯出 markdown」按鈕；實際檔名是
    * `[標題]_[timestamp].md`（見 buildExportFileName），timestamp 在按下當下才產生。
    * 匯出內容是把自訂白名單語法轉成標準 markdown（見 exportMarkdown.ts 的轉換規則），
    * 不是原始 content——原始格式含內部 marker 語法，不該外洩。
@@ -285,7 +258,7 @@ export interface StorytellerWysiwygEditorProps {
   exportBaseName?: string;
   /**
    * 白名單：只列出的功能才會啟用，不提供（undefined）就全部啟用——維持既有頁面
-   * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘工具列
+   * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘編輯器
    * 功能不受影響。
    */
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
@@ -351,10 +324,6 @@ export const StorytellerWysiwygEditor = forwardRef<
   );
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
-  const [textColorAnchor, setTextColorAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const [bgColorAnchor, setBgColorAnchor] = useState<HTMLElement | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [hrefDraft, setHrefDraft] = useState("");
   const [openInNewTab, setOpenInNewTab] = useState(false);
@@ -489,56 +458,15 @@ export const StorytellerWysiwygEditor = forwardRef<
     selector: (ctx) => {
       if (!ctx.editor) {
         return {
-          bold: false,
-          italic: false,
-          underline: false,
-          subscript: false,
-          superscript: false,
-          strike: false,
-          align: "left" as AlignmentValue,
-          headingLevel: DEFAULT_HEADING_LEVEL,
-          blockKind: DEFAULT_BLOCK_KIND,
           hasComment: false,
           hasSelection: false,
           isCurrentParagraphEmpty: true,
-          textColor: null as TextColorValue | null,
-          bgColor: null as BgColorValue | null,
           hasLink: false,
           hasFootnote: false,
           hasAssetImage: false,
         };
       }
-      const align =
-        ALIGNMENT_VALUES.find((v) => ctx.editor!.isActive({ textAlign: v })) ??
-        "left";
-      const headingLevel =
-        HEADING_LEVELS.find((level) =>
-          ctx.editor!.isActive("paragraph", { headingLevel: level }),
-        ) ?? DEFAULT_HEADING_LEVEL;
-      const blockKind =
-        BLOCK_KIND_VALUES.find(
-          (kind) =>
-            kind !== DEFAULT_BLOCK_KIND &&
-            ctx.editor!.isActive("paragraph", { blockKind: kind }),
-        ) ?? DEFAULT_BLOCK_KIND;
-      const textColor =
-        TEXT_COLOR_VALUES.find((value) =>
-          ctx.editor!.isActive("textColor", { value }),
-        ) ?? null;
-      const bgColor =
-        BG_COLOR_VALUES.find((value) =>
-          ctx.editor!.isActive("bgColor", { value }),
-        ) ?? null;
       return {
-        bold: ctx.editor.isActive("bold"),
-        italic: ctx.editor.isActive("italic"),
-        underline: ctx.editor.isActive("underline"),
-        subscript: ctx.editor.isActive("subscript"),
-        superscript: ctx.editor.isActive("superscript"),
-        strike: ctx.editor.isActive("strike"),
-        align,
-        headingLevel,
-        blockKind,
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
         // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據。故意不用
@@ -549,8 +477,6 @@ export const StorytellerWysiwygEditor = forwardRef<
         // 即使沒有文字也會貢獻自己的 nodeSize，size 就不會是 0。
         isCurrentParagraphEmpty:
           ctx.editor.state.selection.$from.parent.content.size === 0,
-        textColor,
-        bgColor,
         hasLink: ctx.editor.isActive("link"),
         hasFootnote: ctx.editor.isActive("footnote"),
         hasAssetImage: hasAssetImageLayoutTarget(ctx.editor),
@@ -683,26 +609,6 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   const closeContextMenu = () => setContextMenuPosition(null);
 
-  // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
-  // 之後鍵入的文字上，跟粗體等行為一致）。選 null 代表清除。
-  const applyTextColor = (value: TextColorValue | null) => {
-    setTextColorAnchor(null);
-    if (value === null) {
-      editor.chain().focus().unsetTextColor().run();
-    } else {
-      editor.chain().focus().setTextColor(value).run();
-    }
-  };
-
-  const applyBgColor = (value: BgColorValue | null) => {
-    setBgColorAnchor(null);
-    if (value === null) {
-      editor.chain().focus().unsetBgColor().run();
-    } else {
-      editor.chain().focus().setBgColor(value).run();
-    }
-  };
-
   // 開連結 Dialog：如果游標目前就在一個既有連結裡，把 href/target 帶出來預填，
   // 這樣「編輯連結」跟「新增連結」共用同一個 Dialog，使用者不用先移除再重加。
   const handleOpenLinkDialog = () => {
@@ -777,10 +683,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     URL.revokeObjectURL(url);
   };
 
-  // Command Registry（wysiwygCore/commands.ts）共用的執行環境：工具列／右鍵選單都靠
-  // 同一份 context 呼叫 command.run，不再各自寫一份 onClick。dialog 開關動作（連結／
-  // 腳注／註解）本來就是這個元件自己的 useState，command 只是呼叫這幾個既有 handler，
-  // 不重新實作對話框邏輯。
+  // Command Registry（wysiwygCore/commands.ts）共用的執行環境：右鍵選單、slash、
+  // Bubble Menu、文件 action 區都靠同一份 context 呼叫 command.run。dialog 開關動作
+  // （連結／腳注／註解）本來就是這個元件自己的 useState，command 只是呼叫既有 handler。
   const commandContext: WysiwygCommandContext = {
     isFeatureEnabled,
     canExportMarkdown: exportBaseName !== undefined,
@@ -793,9 +698,6 @@ export const StorytellerWysiwygEditor = forwardRef<
   };
   slashCommandContextRef.current = commandContext;
 
-  const activeMarkIds = wysiwygCommandsByGroup("mark")
-    .filter((command) => command.isActive?.(editor))
-    .map((command) => command.id);
   const utilityCommands = wysiwygCommandsByGroup("utility").filter(
     (command) => command.isVisible?.(commandContext) ?? true,
   );
@@ -840,169 +742,6 @@ export const StorytellerWysiwygEditor = forwardRef<
         </Paper>
       </Box>
 
-      <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
-        <Stack
-          direction="row"
-          spacing={2}
-          flexWrap="wrap"
-          useFlexGap
-          alignItems="center"
-        >
-          <Select
-            size="small"
-            value={editorState.headingLevel}
-            onChange={(event: SelectChangeEvent<number>) =>
-              editor
-                .chain()
-                .focus()
-                .setHeadingLevel(Number(event.target.value) as HeadingLevel)
-                .run()
-            }
-          >
-            {HEADING_LEVEL_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup
-            size="small"
-            value={activeMarkIds}
-            onChange={() => {}}
-          >
-            {wysiwygCommandsByGroup("mark").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <Tooltip key={command.id} title={command.label}>
-                  <ToggleButton
-                    value={command.id}
-                    selected={command.isActive?.(editor) ?? false}
-                    onClick={() => command.run(editor, commandContext)}
-                  >
-                    <Icon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              );
-            })}
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            {wysiwygCommandsByGroup("align").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <Tooltip key={command.id} title={command.label}>
-                  <ToggleButton
-                    value={command.id}
-                    selected={command.isActive?.(editor) ?? false}
-                    onClick={() => command.run(editor, commandContext)}
-                  >
-                    <Icon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              );
-            })}
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            {wysiwygCommandsByGroup("block").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <Tooltip key={command.id} title={command.label}>
-                  <ToggleButton
-                    value={command.id}
-                    selected={command.isActive?.(editor) ?? false}
-                    onClick={() => command.run(editor, commandContext)}
-                  >
-                    <Icon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              );
-            })}
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            <Tooltip title="文字顏色">
-              <ToggleButton
-                value="text-color"
-                selected={editorState.textColor !== null}
-                onClick={(event) => setTextColorAnchor(event.currentTarget)}
-              >
-                <FormatColorTextIcon
-                  fontSize="small"
-                  sx={{
-                    color: editorState.textColor
-                      ? TEXT_COLOR_CSS[editorState.textColor]
-                      : undefined,
-                  }}
-                />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="文字背景色">
-              <ToggleButton
-                value="bg-color"
-                selected={editorState.bgColor !== null}
-                onClick={(event) => setBgColorAnchor(event.currentTarget)}
-              >
-                <FormatColorFillIcon
-                  fontSize="small"
-                  sx={{
-                    color: editorState.bgColor
-                      ? BG_COLOR_CSS[editorState.bgColor]
-                      : undefined,
-                  }}
-                />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          {wysiwygCommandsByGroup("annotation")
-            .filter((command) => command.isVisible?.(commandContext) ?? true)
-            .map((command) => {
-              const Icon = command.icon!;
-              const isActive = command.isActive?.(editor) ?? false;
-              const isEnabled = command.isEnabled?.(editor, commandContext) ?? true;
-              const label = isActive && command.activeLabel
-                ? command.activeLabel
-                : command.label;
-              const tooltip =
-                command.id === "comment" && !isEnabled
-                  ? "請先選取要加註解的文字"
-                  : label;
-              return (
-                <Box
-                  key={command.id}
-                  sx={{ display: "flex", alignItems: "center" }}
-                >
-                  <Divider orientation="vertical" flexItem sx={{ mr: 2 }} />
-                  <ToggleButtonGroup size="small">
-                    <Tooltip title={tooltip}>
-                      <span>
-                        <ToggleButton
-                          value={command.id}
-                          selected={isActive}
-                          disabled={!isEnabled}
-                          onClick={() => command.run(editor, commandContext)}
-                        >
-                          <Icon fontSize="small" />
-                        </ToggleButton>
-                      </span>
-                    </Tooltip>
-                  </ToggleButtonGroup>
-                </Box>
-              );
-            })}
-        </Stack>
-      </Paper>
-
       <Paper
         variant="outlined"
         sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
@@ -1044,82 +783,6 @@ export const StorytellerWysiwygEditor = forwardRef<
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
       />
-
-      <Menu
-        open={textColorAnchor !== null}
-        anchorEl={textColorAnchor}
-        onClose={() => setTextColorAnchor(null)}
-      >
-        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
-          {TEXT_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={TEXT_COLOR_LABELS[color]}
-                aria-pressed={editorState.textColor === color}
-                onClick={() => applyTextColor(color)}
-                sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.textColor === color
-                      ? "text.primary"
-                      : "divider",
-                  bgcolor: TEXT_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem onClick={() => applyTextColor(null)}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除文字顏色</ListItemText>
-        </MenuItem>
-      </Menu>
-
-      <Menu
-        open={bgColorAnchor !== null}
-        anchorEl={bgColorAnchor}
-        onClose={() => setBgColorAnchor(null)}
-      >
-        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
-          {BG_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={BG_COLOR_LABELS[color]}
-                aria-pressed={editorState.bgColor === color}
-                onClick={() => applyBgColor(color)}
-                sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.bgColor === color ? "text.primary" : "divider",
-                  bgcolor: BG_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem onClick={() => applyBgColor(null)}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除背景色</ListItemText>
-        </MenuItem>
-      </Menu>
 
       <Dialog
         open={commentDialogOpen}
