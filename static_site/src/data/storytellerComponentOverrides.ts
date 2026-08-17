@@ -239,10 +239,21 @@ export function storytellerComponentOverrides(): Components<Theme> {
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          backgroundColor: v("surfaceRaised"),
-          border: `1px solid ${v("borderSubtle")}`,
-        },
+        // 只有 `color="default"`（沒特別指定語意色）的 Chip 才套用我們的
+        // surfaceRaised/borderSubtle 換皮——`color="primary"`／`"success"`
+        // 這類語意色 Chip，MUI 內建就會配一組保證看得清楚的文字色（通常是白
+        // 字），如果不分青紅皂白把所有 Chip 背景都強制改成偏淺的
+        // surfaceRaised，會把「白字配語意色背景」的組合變成「白字配淺色背
+        // 景」，字直接看不見（Faryne 實測發現：專案卡片上的可見度標籤 Chip
+        // 文字整個消失）。只鎖 `ownerState.color === "default"` 就不會動到
+        // 語意色 Chip 原本的配色邏輯。
+        root: ({ ownerState }) =>
+          ownerState.color === "default" || ownerState.color === undefined
+            ? {
+                backgroundColor: v("surfaceRaised"),
+                border: `1px solid ${v("borderSubtle")}`,
+              }
+            : {},
         deleteIcon: { color: v("textMuted") },
       },
     },
