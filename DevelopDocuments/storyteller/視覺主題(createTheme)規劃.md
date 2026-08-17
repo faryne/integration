@@ -22,6 +22,54 @@
 
 **2026-08-17 更新**：Faryne 在 Phase 9.1 案例 3 實測發現右鍵選單跟 slash 選單顏色風格不一致（root cause 跟修法見 [所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) 的「已知 Bug 記錄」第 7 項），Faryne 認為 createTheme 施作時間還沒定，這個具體 bug 不該卡在後面，已經提前處理掉了：`StorytellerLayout.tsx` 的 `createTheme()` 已經開了 `cssVariables: true`（MUI 會把 palette 同步成 `--mui-palette-*` CSS variables），slash 選單也已經改吃這些變數。這代表 Phase A／B 開始時，`cssVariables` 這個底層開關已經不用再開一次，可以直接沿用；`slashCommandExtension.tsx` 也已經是一個「手刻 DOM 吃 CSS variables」的參考範例，Phase C 要處理 bubble menu／table menu／context menu 時可以照抄同樣的模式。
 
+## 工作 Checklist（2026-08-17 新增，實際施作用）
+
+Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一個 Phase 全部打勾後 commit 一次（不是每個 checkbox 都各自 commit）——跟這份文件其他地方一樣，勾了才代表真的做完＋驗證過，不是「打算做」。範圍只到 Phase A~E（實際 createTheme 視覺工作）；Phase F（閱讀頁版面比照工作台）跟 Phase G（圖片相關功能性問題）都還沒排定範圍/時程，不在這次施作範圍內，不會出現在下面的 checklist 裡。
+
+### Phase A：Theme semantic token 整理
+- [ ] 在 `storytellerTheme.ts` 或新檔案定義 semantic token 型別（`storyteller.surface.base/raised/overlay`、`border.subtle/strong`、`text.primary/muted`、`accent.main/hover`、`focusRing`、`danger`、`selection`、`editor.paper`、`editor.menu`）
+- [ ] 把現有 11 色系 × light/dark 的 raw token（brass/copper/patina...）對應到 semantic token，兩者要能雙向查——component override（Phase B）跟手刻 DOM（Phase C）都要用得到
+- [ ] 確認 semantic token 也透過 `cssVariables` 曝露成 CSS custom property（例如 `--storyteller-surface-base`），讓手刻 DOM 元件能比照 `slashCommandExtension.tsx` 現在讀 `var(--mui-palette-*)` 的方式直接讀取，不用另外傳 theme context
+- [ ] 驗證：`npx vitest run` 確認沒有既有測試因為顏色結構調整而壞掉；抽 2~3 組色系（`brass-dark`、`plainWhite-light`、`inkBlack-dark`）視覺確認顏色沒有跑掉
+
+### Phase B：MUI components override（第一批）
+- [ ] `MuiDialog`／`MuiDialogTitle`／`MuiDialogContent`／`MuiDialogActions`
+- [ ] `MuiMenu`／`MuiMenuItem`／`MuiPopover`
+- [ ] `MuiTooltip`
+- [ ] `MuiTextField`／`MuiOutlinedInput`／`MuiInputLabel`／`MuiFormHelperText`
+- [ ] `MuiButton`／`MuiIconButton`
+- [ ] `MuiTabs`／`MuiTab`
+- [ ] `MuiDrawer`
+- [ ] 驗證：2~3 組代表性色系（同 Phase A）視覺抽查每個元件在 light/dark 下的呈現，特別確認 focus outline 沒有被拿掉、只是換顏色
+
+#### Phase B 第二批（低優先，第一批確認沒問題後再排）
+- [ ] `MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbar`／`MuiAlert`／`MuiDivider`／`MuiChip`
+
+### Phase C：Editor 專屬操作 UI 對齊
+- [ ] Slash menu（`slashCommandExtension.tsx`）確認讀取 Phase A 的 semantic token（現況是直接讀 `var(--mui-palette-*)`，跟 Phase A 的 semantic token 是不是同一組要對齊，不一致的話要改掉）
+- [ ] Bubble menu（`StorytellerWysiwygBubbleMenu.tsx`）——目前是純 MUI 元件（Box/Paper/Stack），Phase B 做完應該會自動吃到新樣式，這裡是驗證，不是重寫
+- [ ] Context menu（`StorytellerWysiwygContextMenu.tsx`）——同上，純 MUI `<Menu>`，驗證 Phase B 做完後樣式正確，包含新加的文字背景色 popover
+- [ ] Table menu（`StorytellerWysiwygTableMenu.tsx`）確認樣式來源、對齊 semantic token
+- [ ] Image settings dialog（`assetImageNode.tsx` 裡的 `<Dialog>`）驗證 Phase B 做完後樣式正確
+- [ ] 驗證：右鍵選單、slash 選單、bubble menu 三者放在同一個畫面比對，視覺風格（背景色、邊框、圓角、hover 狀態）應該一致，不再有「三種不同選單長相」的違和感
+
+### Phase D：節慶活動 overlay 機制
+- [ ] 定義 `StorytellerSeasonalTheme` 型別跟資料結構（`id`／`label`／`overlayTokens`／`decorations`／`canAutoActivate`，`activeWindow` 可以先省略）
+- [ ] 實作 `base + seasonal overlay` 的 merge 邏輯，`season: "none"` 時完全不影響現有畫面
+- [ ] UI：在 `SteamPaletteSwitcher` 附近加節慶選擇/關閉的開關，存 localStorage（比照現有 palette/mode 機制）
+- [ ] 做 1 個示範節慶（建議聖誕節，時間點較近、素材較好找）的 overlay token，範圍限定：accent 色／背景 subtle tint／少量裝飾／button-menu hover 微調，不碰核心文字對比度、不改 danger/success 語意色
+- [ ] 驗證：切換節慶 overlay 開/關，確認核心文字對比度、既有色系呈現都沒被破壞，只有預期範圍內的裝飾變化
+
+### Phase E：無障礙功能 audit／修正
+- [ ] Slash command：鍵盤導覽、IME 組字期間按鍵攔截、Escape/Enter 語意、補 `aria-activedescendant`
+- [ ] Bubble menu：確認螢幕閱讀器能理解目前狀態（選取文字後浮動選單出現這件事本身要能被輔助技術偵測到）
+- [ ] 右鍵選單：確認 mobile／keyboard-only 情境下有替代入口能做到同樣的事（不能只靠右鍵這一種入口）
+- [ ] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾
+- [ ] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑
+- [ ] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA
+- [ ] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`
+- [ ] 驗證：跑過對比度檢查 script 沒有異常；鍵盤（不用滑鼠/觸控）走過一次「開始寫作 → 套用格式 → 插入表格/圖片 → 存檔」的完整流程確認可行
+
 ## 工作階段與依賴順序
 
 ```
