@@ -121,6 +121,13 @@ function renderSlashCommandItems(
       props.command(item);
     });
     element.appendChild(button);
+    // 選單本身會 overflow:auto 捲動（見 mount 裡的 max-height），純滑鼠操作時使用者
+    // 自己捲得到，但鍵盤上下鍵切換 selectedIndex 只是重繪 background 高亮、不會讓
+    // 捲軸跟著移動——沒有這行的話，選到清單底部的項目（例如插入表格/圖片）時，
+    // 高亮的按鈕會被捲到看不見的地方，使用者只看得到上面沒被選到的項目。
+    if (index === selectedIndex) {
+      button.scrollIntoView({ block: "nearest" });
+    }
   });
 }
 
@@ -214,7 +221,11 @@ export const SlashCommand = Extension.create<SlashCommandExtensionOptions>({
   addOptions() {
     return {
       getCommandContext: () => null,
-      maxItems: 8,
+      // 空白 `/` 沒有篩選字時，這個上限決定使用者第一眼能看到哪些功能——8 剛好會被
+      // heading 群組（內文＋標題1~6，7 項）吃掉大半，導致表格／圖片等 insert 群組的
+      // command 永遠露不出來（見選單本身已有 max-height + 捲動，見下方 render 裡的
+      // 260px），所以拉高到能涵蓋目前 registry 全部 slash command（13 項）再留一點餘裕。
+      maxItems: 20,
     };
   },
 
