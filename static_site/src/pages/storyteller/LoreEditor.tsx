@@ -986,7 +986,19 @@ export default function StorytellerLoreEditor({
     </Stack>
   );
   const loreEditorHeaderContent = embedded ? (
-    <Stack spacing={2.25}>
+    <Stack
+      spacing={2.25}
+      sx={{
+        // 跟 StoryEditor.tsx 同一套理由／同一套做法：sticky 釘在工作台右欄
+        // 面板頂部，捲動編輯器內文時標題／摘要／存檔按鈕維持在畫面上。
+        position: "sticky",
+        top: 0,
+        zIndex: 2,
+        pb: 1.5,
+        bgcolor: (theme) =>
+          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+      }}
+    >
       {versionConflict ? (
         <Alert
           severity="warning"
