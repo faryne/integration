@@ -289,7 +289,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - [ ] 記錄結果：中文輸入法的候選字操作（選字、Escape 取消）跟 slash 選單的操作會不會互相干擾、誤觸發（記錄任何不符預期的行為：發生時機、按了什麼鍵、結果是什麼） => 應該要與本案例的第二項一起看 => 見上方第 2、4 項備註
 
 **案例 3：表格 cell 內中文組字**
-- [x] 用 `/table` 或右鍵插入一張真表格  => 滑鼠右鍵功能選單沒有「插入表格」。另外發現「滑鼠右鍵」和「slash」指令出現的功能選單顏色與風格不一致 => 2026-08-17：兩項都已修。「沒有插入表格」root cause 跟解法見「已知 Bug 記錄」第 5 項；「顏色風格不一致」原本判斷要排進 Phase C 一起做，Faryne 指出 createTheme 施作時間還沒定不該卡在後面，改成當下就處理——開 MUI `cssVariables: true`、slash 選單改吃 `var(--mui-palette-*)`，不用整套 Phase C 的 semantic token 系統就能解掉，root cause 跟解法見「已知 Bug 記錄」第 7 項，待 Faryne 在真實登入頁面複測深色/淺色模式下右鍵選單跟 slash 選單是否已經視覺一致
+- [x] 用 `/table` 或右鍵插入一張真表格  => 滑鼠右鍵功能選單沒有「插入表格」。另外發現「滑鼠右鍵」和「slash」指令出現的功能選單顏色與風格不一致 => 2026-08-17：兩項都已修。「沒有插入表格」root cause 跟解法見「已知 Bug 記錄」第 5 項；「顏色風格不一致」原本判斷要排進 Phase C 一起做，Faryne 指出 createTheme 施作時間還沒定不該卡在後面，改成當下就處理——開 MUI `cssVariables: true`、slash 選單改吃 `var(--mui-palette-*)`，不用整套 Phase C 的 semantic token 系統就能解掉，root cause 跟解法見「已知 Bug 記錄」第 7 項。**但 Faryne 在真實登入頁面複測時，發現這個修法帶出一個新問題：slash 選單每個項目前面的 icon 完全消失**（Playground 正常、真實頁面不正常，重新整理也沒用），原因還沒查出來，記錄在「已知 Bug 記錄」第 8 項，等 createTheme 工作開始時一併查
 - [x] 點進任一個 cell，用輸入法打一段中文（組字中途候選字視窗開著時，確認畫面顯示正常、沒有跑到別的 cell 去）
 - [ ] 打完後用 Tab／Shift-Tab 切換到別的 cell，確認切換不會打斷正在進行的組字（如果剛好在組字中途按 Tab，建議也測一次，確認候選字不會殘留或消失文字） => 會打斷選字，並且跳到下一個 cell  => 2026-08-17 已修，root cause 跟解法見「已知 Bug 記錄」第 4 項，待 Faryne 用真實輸入法覆測確認
 - [ ] 記錄結果：cell 內中文輸入是否跟一般段落一樣順暢，Tab 切換會不會弄丟文字或打斷輸入 => 同第三項，選字時按下 tab 會跳到下一個 cell。另外發現在輸入注音符號時，表格會有抖動導致寬度變化。例如輸入到「中ㄨ」階段時，cell 寬度會有所變化，直到輸入成「中文」後才又正常。 => 2026-08-17：Tab 打斷組字已修（見上）；欄寬抖動問題 root cause 已查明（`table-layout:auto`），但涉及要不要一併做欄寬管理機制，這次先不修，記在「已知 Bug 記錄」第 6 項
@@ -301,15 +301,15 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 **測試步驟**（StoryEditor 跟 LoreEditor 各做一次，兩邊 UI 應該一致）：
 - [x] 打開任一個故事（或設定集）的編輯頁面
 - [x] 確認右上角看得到一個小的 action 區（語法說明「？」icon、匯出 icon、插入資產/AI Agent/編輯歷史相關按鈕），確認**沒有**看到舊的格式工具列（不會有一整排粗體/斜體/標題下拉那種橫向工具列）
-- [ ] 在內文隨便改一小段文字（例如加一句話）
-- [ ] 等幾秒，確認畫面上有出現 autosave 相關的提示（存檔中/已儲存之類的訊息，跟你熟悉的既有行為一致）
-- [ ] 重新整理整個頁面，確認剛剛改的內容還在（代表真的存檔成功，不是只在畫面上而已）
-- [ ] 看一下字數顯示的地方，確認數字有跟著你剛剛加的文字更新
-- [ ] 點開 AI Agent 面板（右上角 action 區的機器人 icon），試著用 AI 附加/插入一段內容，確認附加的內容有正確同步進編輯器內文
+- [x] 在內文隨便改一小段文字（例如加一句話）
+- [x] 等幾秒，確認畫面上有出現 autosave 相關的提示（存檔中/已儲存之類的訊息，跟你熟悉的既有行為一致）
+- [x] 重新整理整個頁面，確認剛剛改的內容還在（代表真的存檔成功，不是只在畫面上而已）
+- [x] 看一下字數顯示的地方，確認數字有跟著你剛剛加的文字更新
+- [x] 點開 AI Agent 面板（右上角 action 區的機器人 icon），試著用 AI 附加/插入一段內容，確認附加的內容有正確同步進編輯器內文
 - [ ] 點右上角的匯出圖示，確認會下載一個 `.md` 檔案，打開檔案確認內容看起來合理（沒有亂碼、沒有殘留 `⟦⟧` 這種內部標記語法外洩）
-- [ ] 點右上角插入資產的按鈕（或在空白段落打 `/圖片`），確認資產選擇視窗能正常開啟、選圖後能正確插入
-- [ ] 以上每一步是否都跟你印象中「拔工具列之前」的行為一致（只是操作入口從工具列變成右上角 action 區／右鍵選單／`/` 指令／選取文字後的浮動選單），任何一步不一樣（消失的功能、跑版、存檔失敗等）記錄下來，附上是 StoryEditor 還是 LoreEditor、做到第幾步發現的
-- [ ] 在 Reader（讀者頁面）加一個書籤，確認捲動／高亮能正確跳到對應段落——2026-08-16 Claude 已用 Playground 確認標題／引用／清單／真表格／腳注在 Reader 的 DOM/CSS render 都正確（見 Phase 8），但書籤高亮（`Reader.tsx` 的 `bookmark-line-{lineIndex}`／`storyHeadingAnchorId`）雖然是前端邏輯，實際觸發需要真實帳號建立過的書籤資料，Playground 沒有登入也沒有接真實 API，測不到，所以歸類到這裡
+- [x] 點右上角插入資產的按鈕（或在空白段落打 `/圖片`），確認資產選擇視窗能正常開啟、選圖後能正確插入
+- [x] 以上每一步是否都跟你印象中「拔工具列之前」的行為一致（只是操作入口從工具列變成右上角 action 區／右鍵選單／`/` 指令／選取文字後的浮動選單），任何一步不一樣（消失的功能、跑版、存檔失敗等）記錄下來，附上是 StoryEditor 還是 LoreEditor、做到第幾步發現的
+- [x] 在 Reader（讀者頁面）加一個書籤，確認捲動／高亮能正確跳到對應段落——2026-08-16 Claude 已用 Playground 確認標題／引用／清單／真表格／腳注在 Reader 的 DOM/CSS render 都正確（見 Phase 8），但書籤高亮（`Reader.tsx` 的 `bookmark-line-{lineIndex}`／`storyHeadingAnchorId`）雖然是前端邏輯，實際觸發需要真實帳號建立過的書籤資料，Playground 沒有登入也沒有接真實 API，測不到，所以歸類到這裡
 
 #### 9.3 表格 cell 貼上（paste）行為
 
@@ -459,6 +459,17 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 40/40 通過。瀏覽器驗證：在有套用 `StorytellerLayout` 的公開頁面（`/storyteller` 首頁）切換深色/淺色模式，讀 `getComputedStyle(document.documentElement)` 確認 `--mui-palette-background-paper`／`--mui-palette-text-primary` 等變數會隨模式即時更新成正確色碼；另外在 `document.body` 下建立一個套用同樣 `var(--mui-palette-*)` 樣式的測試元素（模擬 Suggestion 選單用 portal 掛到 body、不在 React tree 內的情境），確認深色/淺色模式下都能正確讀到對應顏色，不是退回 fallback 值。Playground（沒有 `ThemeProvider` 包起來的頁面）另外截圖確認外觀維持原本白底黑字，沒有跑版。
 - **範圍說明**：這次只修了 slash 選單，因為這是這次實測明確指出的項目；bubble menu／table menu 目前是吃 MUI `<Paper>`/`<Menu>` 元件本身（不是手刻 DOM 寫死顏色），沒有這個問題，不需要一起動。`cssVariables: true` 這個底層開關留著，之後 Phase C 如果要做更完整的 component override，也可以繼續用同一套 CSS variables，不衝突。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
+### 8.（未解決，原因待查）真實登入頁面上，slash 選單每個項目前面的 icon 完全不見
+
+- **現象**：Faryne 在真實頁面（`localhost:5173/storyteller/my/workspace/.../lore/...`，登入後的 LoreEditor）打 `/` 叫出選單，「內文」「標題 1~6」「引用」每一項前面都沒有 icon，文字直接貼齊最左邊，跟 icon 應該佔用的位置完全沒有空隙（不是 icon 顏色跟背景一樣看不見，比較像是 icon 那個 DOM 元素根本沒被建立出來）。Playground（`/storyteller/wysiwyg-demo`）用一模一樣的 command registry 跟 renderer 測，icon 完全正常。
+- **已排除的可能性**：
+  - 不是有兩份不同的元件——整個 codebase 搜過，`slashCommandExtension.tsx` 只有一份，右鍵選單／slash 選單／Playground／真實頁面全部吃同一份 command registry 跟同一個 renderer。
+  - 不是 build 方式不同——Faryne 用的是自己另外開的 `localhost:5173` dev server（`npm run dev`），跟 Claude 測試用的 dev server 是同一種 Vite dev 模式，不是 production build，原本懷疑的「`react-dom/server`（`renderToStaticMarkup` 用的套件）在 build 後的環境解析方式不同」這個方向排除。
+  - 不是 HMR 沒吃到最新程式碼——Cmd+Shift+R 強制重新整理後問題還在，排除「瀏覽器裡還在跑修改前的舊版 JS」這個可能性。
+  - Console 沒有任何跟 `renderToStaticMarkup`／icon 渲染相關的錯誤，只有既有的 SSR pseudo-class 警告（跟這個問題無關）。
+- **目前唯一還沒排除、但也還沒證實的方向**：icon 是透過 `renderCommandIconMarkup()`（[slashCommandExtension.tsx:68-73](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx#L68)）呼叫 `renderToStaticMarkup(createElement(icon, {fontSize:"small"}))` 動態產生 SVG 字串、再用 `innerHTML` 塞進手刻的 DOM——這整段是在 React tree 之外執行的（不是 JSX 渲染），跟 Playground 唯一環境差異是真實頁面被 `StorytellerLayout` 的 `ThemeProvider` 包住（含這次新開的 `cssVariables: true`）。有沒有可能 `renderToStaticMarkup` 在被 `ThemeProvider`/`cssVariables` context 包住的情況下呼叫行為不同（例如 MUI icon 元件內部呼叫 `useTheme()` 時，因為 `renderToStaticMarkup` 是脫離正常 React tree 的獨立同步渲染、拿不到外層 context，導致跟平常不同的 code path），純屬猜測，還沒驗證過。
+- **狀態**：未解決。Faryne 決定先記錄下來，等 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 正式開始施作、要重新處理 slash 選單樣式時一併查——屆時很可能會把這個手刻 DOM + `renderToStaticMarkup` 的作法整個換掉（改成用真正的 MUI 元件或至少不再脫離 React tree 渲染 icon），不一定需要先查出目前這個做法為什麼在真實頁面失效。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
