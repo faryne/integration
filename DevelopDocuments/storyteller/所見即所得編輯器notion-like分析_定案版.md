@@ -282,25 +282,25 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 
 **案例 2：`/` slash command 選單與組字互動**
 - [x] 在空白段落，用輸入法打「/標」（斜線加注音一個字，例如打「/」再打「標」這個字，中途讓候選字視窗開著）
-- [x] 觀察 slash 選單在候選字視窗開著的狀態下會不會正常顯示、有沒有跑版或抖動
+- [ ] 觀察 slash 選單在候選字視窗開著的狀態下會不會正常顯示、有沒有跑版或抖動：如果在候選字視窗選字時， menu 會跟著消失。Notion 是選字視窗及功能列都存在 => 2026-08-17 Claude 查證：根因很可能跟第 4 項（Escape 誤關選單）同一個問題——我們的 ArrowDown/ArrowUp 也沒檢查 composing 就搶去操作 slash 選單，可能跟 IME 候選字視窗自己的方向鍵選字互相干擾。已跟 Escape 一起修（見「已知 Bug 記錄」第 3 項），但這項本身描述的「選字時 menu 消失」沒辦法用瀏覽器自動化精準複現候選字視窗互動，建議 Faryne 重新測一次確認是否已解決
 - [x] 選字完成後，確認選單內容有沒有正確篩選出「標題」相關選項
-- [ ] 測試組字期間按 Escape：確認是取消輸入法候選字，還是不小心關掉了 slash 選單（預期應該是先關輸入法候選字，不影響 slash 選單）：輸入 `/圖` 組字過程中按下 esc 後變成取消選字也關閉 slash 選單
-- [ ] 測試組字期間按 Enter：確認是完成選字，還是不小心觸發了 slash 選單裡的項目
-- [ ] 記錄結果：中文輸入法的候選字操作（選字、Escape 取消）跟 slash 選單的操作會不會互相干擾、誤觸發（記錄任何不符預期的行為：發生時機、按了什麼鍵、結果是什麼）
+- [ ] 測試組字期間按 Escape：確認是取消輸入法候選字，還是不小心關掉了 slash 選單（預期應該是先關輸入法候選字，不影響 slash 選單）：輸入 `/圖` 組字過程中按下 esc 後變成取消選字也關閉 slash 選單 => 確認取消候選字，但功能選單也消失，應該同本案例第二項 => 2026-08-17 已修，root cause 跟解法見「已知 Bug 記錄」第 3 項，待 Faryne 用真實輸入法覆測確認
+- [x] 測試組字期間按 Enter：確認是完成選字，還是不小心觸發了 slash 選單裡的項目 => 確認完成選字，功能選單出現。
+- [ ] 記錄結果：中文輸入法的候選字操作（選字、Escape 取消）跟 slash 選單的操作會不會互相干擾、誤觸發（記錄任何不符預期的行為：發生時機、按了什麼鍵、結果是什麼） => 應該要與本案例的第二項一起看 => 見上方第 2、4 項備註
 
 **案例 3：表格 cell 內中文組字**
-- [ ] 用 `/table` 或右鍵插入一張真表格
-- [ ] 點進任一個 cell，用輸入法打一段中文（組字中途候選字視窗開著時，確認畫面顯示正常、沒有跑到別的 cell 去）
-- [ ] 打完後用 Tab／Shift-Tab 切換到別的 cell，確認切換不會打斷正在進行的組字（如果剛好在組字中途按 Tab，建議也測一次，確認候選字不會殘留或消失文字）
-- [ ] 記錄結果：cell 內中文輸入是否跟一般段落一樣順暢，Tab 切換會不會弄丟文字或打斷輸入
+- [ ] 用 `/table` 或右鍵插入一張真表格  => 滑鼠右鍵功能選單沒有「插入表格」。另外發現「滑鼠右鍵」和「slash」指令出現的功能選單顏色與風格不一致 => 2026-08-17：「沒有插入表格」已修，root cause 跟解法見「已知 Bug 記錄」第 5 項；「顏色風格不一致」不是這次一起修的 bug，屬於已經規劃好的視覺工作項，見 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 的 Phase C（editor 專屬操作 UI 對齊同一套 token），排在 Phase 9 驗收之後處理
+- [x] 點進任一個 cell，用輸入法打一段中文（組字中途候選字視窗開著時，確認畫面顯示正常、沒有跑到別的 cell 去）
+- [ ] 打完後用 Tab／Shift-Tab 切換到別的 cell，確認切換不會打斷正在進行的組字（如果剛好在組字中途按 Tab，建議也測一次，確認候選字不會殘留或消失文字） => 會打斷選字，並且跳到下一個 cell  => 2026-08-17 已修，root cause 跟解法見「已知 Bug 記錄」第 4 項，待 Faryne 用真實輸入法覆測確認
+- [ ] 記錄結果：cell 內中文輸入是否跟一般段落一樣順暢，Tab 切換會不會弄丟文字或打斷輸入 => 同第三項，選字時按下 tab 會跳到下一個 cell。另外發現在輸入注音符號時，表格會有抖動導致寬度變化。例如輸入到「中ㄨ」階段時，cell 寬度會有所變化，直到輸入成「中文」後才又正常。 => 2026-08-17：Tab 打斷組字已修（見上）；欄寬抖動問題 root cause 已查明（`table-layout:auto`），但涉及要不要一併做欄寬管理機制，這次先不修，記在「已知 Bug 記錄」第 6 項
 
 #### 9.2 StoryEditor／LoreEditor 真實頁面操作
 
 **為什麼不能自動化**：這幾項都需要你自己的登入帳號跟真實的 story/lore 資料，Claude 跟 Codex 的環境都沒有這個權限，也不會主動去借用你的登入狀態。
 
 **測試步驟**（StoryEditor 跟 LoreEditor 各做一次，兩邊 UI 應該一致）：
-- [ ] 打開任一個故事（或設定集）的編輯頁面
-- [ ] 確認右上角看得到一個小的 action 區（語法說明「？」icon、匯出 icon、插入資產/AI Agent/編輯歷史相關按鈕），確認**沒有**看到舊的格式工具列（不會有一整排粗體/斜體/標題下拉那種橫向工具列）
+- [x] 打開任一個故事（或設定集）的編輯頁面
+- [x] 確認右上角看得到一個小的 action 區（語法說明「？」icon、匯出 icon、插入資產/AI Agent/編輯歷史相關按鈕），確認**沒有**看到舊的格式工具列（不會有一整排粗體/斜體/標題下拉那種橫向工具列）
 - [ ] 在內文隨便改一小段文字（例如加一句話）
 - [ ] 等幾秒，確認畫面上有出現 autosave 相關的提示（存檔中/已儲存之類的訊息，跟你熟悉的既有行為一致）
 - [ ] 重新整理整個頁面，確認剛剛改的內容還在（代表真的存檔成功，不是只在畫面上而已）
@@ -416,6 +416,36 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **Root cause**：`renderSlashCommandItems`（同一個檔案）在 ArrowDown／ArrowUp 觸發時只是重新畫過一次按鈕、把 `selectedIndex` 對應的按鈕加上高亮背景色，從來沒有呼叫 `scrollIntoView` 之類的方法把高亮項目捲進可視範圍。
 - **解法**：在 render 迴圈裡，`index === selectedIndex` 的按鈕額外呼叫 `button.scrollIntoView({ block: "nearest" })`。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
+### 3. IME 組字期間按 Escape，slash 選單會被一起關掉（Phase 9.1 案例 2 實測發現）
+
+- **現象**：打 `/圖` 進入 slash 選單後，用注音組字打「圖」還沒選完字，這時按 Escape 原本應該只取消輸入法候選字（跟 Notion 一樣），結果連 slash 選單也一起被關掉了。
+- **Root cause**：`SlashCommand` extension 的 `addKeyboardShortcuts()`（[slashCommandExtension.tsx](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）把 `ArrowDown`／`ArrowUp`／`Enter`／`Escape` 都直接綁去操作 slash 選單，完全沒有檢查 `this.editor.view.composing`（IME 是否正在組字中）。IME 候選字視窗開著時按 Escape，瀏覽器一樣會送出真實的 `keydown` Escape 事件，我們的 handler 不分青紅皂白攔下來當成「使用者要關 slash 選單」處理，跟 IME 自己取消候選字的行為搶在一起。
+- **解法**：`handleKey()` 開頭加一行 `if (this.editor.view.composing) return false;`，組字中一律不攔截，讓瀏覽器/輸入法自己處理完這次按鍵，slash 選單狀態完全不受影響。四個鍵（含 ArrowDown/ArrowUp，理由：IME 候選字視窗常見也用方向鍵挑字，同一類風險一併防範；Enter 目前實測沒出包，但同樣邏輯下不特別排除)一併加上這個保護，不是只修 Escape 一項。
+- **驗證方式**：因為真實 IME 組字沒辦法用瀏覽器自動化模擬（見 9.1 開頭說明），改用 `dispatchEvent(new CompositionEvent('compositionstart', ...))` 讓 `editor.view.composing` 真的變成 `true`（這是瀏覽器原生事件，ProseMirror 自己會監聽並更新這個狀態，不是憑空模擬），再送出帶 `isComposing:true` 的 Escape `keydown`，確認 slash 選單維持開啟。這個驗證方式能確認「程式邏輯正確反應 composing 狀態」，但沒辦法完全複現真實輸入法的每一種按鍵時序，建議 Faryne 之後用真實輸入法重新走一次 9.1 案例 2 確認。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
+### 4. IME 組字期間按 Tab，會打斷組字並跳到下一個表格 cell（Phase 9.1 案例 3 實測發現）
+
+- **現象**：在真表格 cell 裡用注音打字，組字還沒完成時按 Tab，游標直接跳到下一個 cell，正在組字的內容被打斷。
+- **Root cause**：`StorytellerTableCell`（[storytellerTable.ts](../../static_site/src/pages/storyteller/wysiwygCore/storytellerTable.ts)）的 `addKeyboardShortcuts()` 把 `Tab`／`Shift-Tab` 直接綁去呼叫 `goToNextCell()`，同樣沒有檢查 `editor.view.composing`。組字中的文字其實還沒真正寫進 ProseMirror 文件，一按 Tab 就換到別的 cell（換節點），等於把還沒 commit 的組字內容整個丟掉。
+- **解法**：`Tab`／`Shift-Tab` 的 handler 開頭加 `this.editor.view.composing ? false : goToNextCell(...)`，組字中直接回傳 `false`，不執行跳 cell，讓輸入法/瀏覽器自己處理這次 Tab。
+- **驗證方式**：同上一項，用 `dispatchEvent(new CompositionEvent('compositionstart', ...))` 讓真正的 `editor.view.composing` 變 `true`，送出帶 `isComposing:true` 的 Tab `keydown`，確認 `window.getSelection()` 對應的 cell 內容沒有改變（游標留在原 cell）；接著送 `compositionend` 恢復非組字狀態，確認正常 Tab 依然能正確跳到下一個 cell（沒有把功能整個關掉，只是組字期間不跳）。同樣建議之後用真實輸入法覆測一次。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
+### 5. 右鍵選單缺少「插入表格」（Phase 9.1 案例 3 實測發現）
+
+- **現象**：游標在空白段落按右鍵，選單裡沒有「插入表格」這個選項（`/table` slash 指令跟工具列拔除前的行為都有這個功能，只有右鍵選單漏掉）。
+- **Root cause**：`StorytellerWysiwygContextMenu.tsx` 在「沒有選取文字」的分支裡，只有從 `wysiwygCommandsByGroup("insert")` 挑出 `insert-image` 一個 command 特別渲染（`insertImageCommand`），`insert-table` 從來沒有被挑出來渲染過，等於整個 `insert` 群組裡的表格 command 從拆右鍵選單成獨立元件（Phase 2）以來就沒被接上。
+- **解法**：新增 `insertTableCommand`（同樣從 `insert` 群組挑出 `insert-table`），跟 `insertImageCommand`放在同一個「插入」分隔線區塊一起渲染。跟 slash 選單的行為看齊：不像 `insert-image` 限制只能在空段落插入（因為 `insert-table` 本身在 registry 裡沒有 `isVisible`/空段落限制，slash 選單本來就不管段落是否為空都會顯示這個 command），表格是插入獨立節點，插在非空段落內容前後也合理。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
+### 6.（待修，非本次一起修）真表格 cell 組字期間，欄位寬度會跳動
+
+- **現象**：在表格 cell 內用注音組字，隨著候選字內容變化（例如「中」→「中ㄨ」→「中文」），cell 的寬度會跟著抖動，直到組字完成才穩定下來。
+- **Root cause**：表格目前完全沒有設定 `table-layout` CSS 屬性，用的是瀏覽器預設的 `table-layout: auto`——這個演算法會即時依照目前每個 cell 實際內容的寬度重新計算欄寬，組字過程中每個中間狀態（不同字數的候選字）寬度都不一樣，欄寬自然跟著抖動。
+- **為什麼沒有直接修**：最直覺的修法是換成 `table-layout: fixed`，但這需要搭配明確的欄寬設定（例如 `colgroup`/`col` 或第一列固定寬度），而目前這個真表格完全沒有欄寬管理機制（沒有 column resizing、沒有存欄寬資料）。如果只是單純切 `table-layout: fixed` 而不補欄寬設定，瀏覽器會把所有欄位拉成等寬，等於用「解決組字抖動」的代價換來「破壞既有依內容自動調整寬度的版面」（例如目前範例表格「狀態」欄本來就比較窄，換成 fixed 沒有欄寬設定會被拉成跟其他欄一樣寬）。這牽涉到要不要一併做欄寬管理，範圍比單純修一個抖動問題大，所以先記錄 root cause，不在這次一起動。
+- **狀態**：未修，待評估是否要一併做表格欄寬管理機制後再處理。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 

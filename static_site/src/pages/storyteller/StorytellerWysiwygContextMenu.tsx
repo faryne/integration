@@ -128,6 +128,13 @@ export function StorytellerWysiwygContextMenu({
   const showInsertImage =
     isCurrentParagraphEmpty &&
     (insertImageCommand?.isVisible?.(commandContext) ?? false);
+  // insert-table 原本漏掉了——這裡跟 insertImageCommand 一樣是從 "insert" 群組挑出
+  // 單一 command，但先前只挑了 insert-image，insert-table 完全沒被渲染過，右鍵選單
+  // 因此永遠不會出現「插入表格」（使用者實測發現，Phase 9.1 案例 3）。跟 slash 選單
+  // 的行為看齊：不限制只能在空段落插入（表格是獨立節點，插在非空段落也合理）。
+  const insertTableCommand = wysiwygCommandsByGroup("insert").find(
+    (c) => c.id === "insert-table",
+  );
   const alignCommands = wysiwygCommandsByGroup("align");
   const imageLayoutCommands = wysiwygCommandsByGroup("image-layout");
 
@@ -354,22 +361,46 @@ export function StorytellerWysiwygContextMenu({
                 </MenuItem>
               );
             }),
-            ...(showInsertImage && insertImageCommand
-              ? (() => {
-                  const InsertImageIcon = insertImageCommand.icon!;
-                  return [
-                    <Divider key="insert-divider" />,
-                    <MenuItem
-                      key={insertImageCommand.id}
-                      onClick={() => runAndClose(insertImageCommand)}
-                    >
-                      <ListItemIcon>
-                        <InsertImageIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>{insertImageCommand.label}</ListItemText>
-                    </MenuItem>,
-                  ];
-                })()
+            ...(insertTableCommand || (showInsertImage && insertImageCommand)
+              ? [
+                  <Divider key="insert-divider" />,
+                  ...(insertTableCommand
+                    ? (() => {
+                        const InsertTableIcon = insertTableCommand.icon!;
+                        return [
+                          <MenuItem
+                            key={insertTableCommand.id}
+                            onClick={() => runAndClose(insertTableCommand)}
+                          >
+                            <ListItemIcon>
+                              <InsertTableIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>
+                              {insertTableCommand.label}
+                            </ListItemText>
+                          </MenuItem>,
+                        ];
+                      })()
+                    : []),
+                  ...(showInsertImage && insertImageCommand
+                    ? (() => {
+                        const InsertImageIcon = insertImageCommand.icon!;
+                        return [
+                          <MenuItem
+                            key={insertImageCommand.id}
+                            onClick={() => runAndClose(insertImageCommand)}
+                          >
+                            <ListItemIcon>
+                              <InsertImageIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText>
+                              {insertImageCommand.label}
+                            </ListItemText>
+                          </MenuItem>,
+                        ];
+                      })()
+                    : []),
+                ]
               : []),
           ]}
 

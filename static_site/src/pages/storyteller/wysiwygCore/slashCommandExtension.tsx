@@ -230,8 +230,15 @@ export const SlashCommand = Extension.create<SlashCommandExtensionOptions>({
   },
 
   addKeyboardShortcuts() {
-    const handleKey = (key: SlashCommandKey) =>
-      activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false;
+    // IME 組字期間（候選字視窗開著）這幾個鍵可能是輸入法自己在用（例如注音候選字
+    // 選字、取消組字），不是操作 slash 選單——使用者實測發現組字中按 Escape 會被
+    // 我們搶先攔截，同時取消候選字「跟」關掉 slash 選單，但預期應該只取消候選字
+    // （Phase 9.1 案例 2）。composing 時一律回傳 false，讓瀏覽器/輸入法先處理完，
+    // 不要搶在 compositionend 之前動 slash 選單的狀態。
+    const handleKey = (key: SlashCommandKey) => {
+      if (this.editor.view.composing) return false;
+      return activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false;
+    };
     return {
       ArrowDown: () => handleKey("ArrowDown"),
       ArrowUp: () => handleKey("ArrowUp"),

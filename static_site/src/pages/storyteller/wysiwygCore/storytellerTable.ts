@@ -291,10 +291,19 @@ export const StorytellerTable = Node.create({
   },
 
   addKeyboardShortcuts() {
+    // IME 組字期間按 Tab 不能跳 cell——組字中的文字還沒真正寫進文件，一旦切換 cell
+    // (ProseMirror selection 換節點) 會直接打斷 compositionend、弄丟正在輸入的字，
+    // 使用者實測發現這個問題（Phase 9.1 案例 3）。回傳 false 讓瀏覽器/輸入法自己
+    // 處理這次 Tab，不要搶在組字完成前跳走。
     return {
-      Tab: () => goToNextCell(1)(this.editor.state, this.editor.view.dispatch),
+      Tab: () =>
+        this.editor.view.composing
+          ? false
+          : goToNextCell(1)(this.editor.state, this.editor.view.dispatch),
       "Shift-Tab": () =>
-        goToNextCell(-1)(this.editor.state, this.editor.view.dispatch),
+        this.editor.view.composing
+          ? false
+          : goToNextCell(-1)(this.editor.state, this.editor.view.dispatch),
     };
   },
 
