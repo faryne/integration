@@ -880,6 +880,34 @@ export default function StorytellerStoryEditor({
     );
   }
 
+  // Ctrl/Cmd+S 手動存檔快捷鍵——工具列拔除後，存檔按鈕只在文件層級 action 區，
+  // 長篇寫作時要存檔得把頁面捲回最上面，Phase 9.5 人工測試反映這個麻煩，尤其
+  // 行動版更明顯。用 ref 存最新的 handleSaveStory／pending 狀態，避免每次
+  // render 都要重新掛一次 listener。
+  //
+  // 已知 Bug 記錄：這段 hook 原本寫在 `if (authLoading)`／`if (!session)` 等
+  // early return 之後（`handleSaveStory` 定義的旁邊），導致未登入／載入中的
+  // render 完全不會呼叫這三個 hook，登入後的 render 才會呼叫，違反 Rules of
+  // Hooks（"Rendered more hooks than during the previous render"）。
+  // `handleSaveStory` 是 function 宣告會整個 hoist，所以搬到所有 early return
+  // 之前一樣讀得到，不需要跟著搬。
+  const handleSaveStoryRef = useRef(handleSaveStory);
+  handleSaveStoryRef.current = handleSaveStory;
+  const isSavingRef = useRef(saveStory.isPending);
+  isSavingRef.current = saveStory.isPending;
+  useEffect(() => {
+    function handleSaveHotkey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+        return;
+      }
+      event.preventDefault();
+      if (isSavingRef.current) return;
+      handleSaveStoryRef.current();
+    }
+    window.addEventListener("keydown", handleSaveHotkey);
+    return () => window.removeEventListener("keydown", handleSaveHotkey);
+  }, []);
+
   if (authLoading) {
     return renderEditorFrame({
       title: "故事編輯器",
@@ -1045,27 +1073,6 @@ export default function StorytellerStoryEditor({
       },
     );
   }
-
-  // Ctrl/Cmd+S 手動存檔快捷鍵——工具列拔除後，存檔按鈕只在文件層級 action 區，
-  // 長篇寫作時要存檔得把頁面捲回最上面，Phase 9.5 人工測試反映這個麻煩，尤其
-  // 行動版更明顯。用 ref 存最新的 handleSaveStory／pending 狀態，避免每次
-  // render 都要重新掛一次 listener。
-  const handleSaveStoryRef = useRef(handleSaveStory);
-  handleSaveStoryRef.current = handleSaveStory;
-  const isSavingRef = useRef(saveStory.isPending);
-  isSavingRef.current = saveStory.isPending;
-  useEffect(() => {
-    function handleSaveHotkey(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
-        return;
-      }
-      event.preventDefault();
-      if (isSavingRef.current) return;
-      handleSaveStoryRef.current();
-    }
-    window.addEventListener("keydown", handleSaveHotkey);
-    return () => window.removeEventListener("keydown", handleSaveHotkey);
-  }, []);
 
   function runSelectedAgent(
     mode?: StorytellerAgentRunMode,

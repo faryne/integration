@@ -673,6 +673,31 @@ export default function StorytellerLoreEditor({
     { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
+  // Ctrl/Cmd+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
+  // （Phase 9.5 人工測試反映的問題）。
+  //
+  // 已知 Bug 記錄：原本寫在 `if (authLoading)` 等 early return 之後，導致
+  // 未登入／載入中的 render 不會呼叫這三個 hook，登入後才會呼叫，違反
+  // Rules of Hooks（StoryEditor.tsx 也有同樣的問題，一起搬到這裡修）。
+  // `handleSave` 是 function 宣告會整個 hoist，搬到 early return 之前一樣
+  // 讀得到，不需要跟著搬。
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  const isSavingLoreRef = useRef(saveLore.isPending);
+  isSavingLoreRef.current = saveLore.isPending;
+  useEffect(() => {
+    function handleSaveHotkey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+        return;
+      }
+      event.preventDefault();
+      if (isSavingLoreRef.current) return;
+      handleSaveRef.current();
+    }
+    window.addEventListener("keydown", handleSaveHotkey);
+    return () => window.removeEventListener("keydown", handleSaveHotkey);
+  }, []);
+
   if (authLoading) {
     return (
       <StorytellerShell
@@ -789,25 +814,6 @@ export default function StorytellerLoreEditor({
       },
     );
   }
-
-  // Ctrl/Cmd+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
-  // （Phase 9.5 人工測試反映的問題）。
-  const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
-  const isSavingLoreRef = useRef(saveLore.isPending);
-  isSavingLoreRef.current = saveLore.isPending;
-  useEffect(() => {
-    function handleSaveHotkey(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
-        return;
-      }
-      event.preventDefault();
-      if (isSavingLoreRef.current) return;
-      handleSaveRef.current();
-    }
-    window.addEventListener("keydown", handleSaveHotkey);
-    return () => window.removeEventListener("keydown", handleSaveHotkey);
-  }, []);
 
   function runSelectedAgent() {
     if (!canRunAgent || !selectedAgent) {

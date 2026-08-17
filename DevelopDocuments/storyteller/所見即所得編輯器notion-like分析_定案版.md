@@ -569,6 +569,14 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器驗證：用 JS 建立兩個分別是 1676px／902.66px 寬的容器，套用同一條 `45%` 規則，確認算出來的比例（`imgWidth / containerWidth`）兩邊都是 `0.44999...`，完全一致（改動前這兩個容器算出來的寬度會被 360px 上限打斷，比例明顯不同）。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
+### 11. StoryEditor／LoreEditor 觸發「Rendered more hooks than during the previous render」（Faryne 真實登入頁面實測發現，2026-08-18）
+
+- **現象**：開啟 `/storyteller/my/workspace/<projectId>/story/<storyId>`，console 噴出 `React has detected a change in the order of Hooks called by StorytellerStoryEditor`，接著 `Uncaught Error: Rendered more hooks than during the previous render.`，錯誤堆疊指到 `StoryEditor.tsx:1053:30` 的 `useRef`。
+- **Root cause**：Ctrl/Cmd+S 存檔快捷鍵（[StoryEditor.tsx](../../static_site/src/pages/storyteller/StoryEditor.tsx)、[LoreEditor.tsx](../../static_site/src/pages/storyteller/LoreEditor.tsx)）加的時候，`useRef`／`useRef`／`useEffect` 這三個 hook 被放在 `if (authLoading) return ...`／`if (!session) return ...`／載入中／404 這幾個 early return **之後**——未登入或載入中的那次 render 提早 return，完全不會呼叫這三個 hook；等到登入完成、拿到資料的下一次 render，這三個 hook 才第一次被呼叫，違反 Rules of Hooks（同一元件每次 render 呼叫的 hook 數量／順序必須完全一致）。這是登入流程一定會經歷「先 loading/未登入 render，再登入後 render」的必經路徑，不是邊角案例，一登入就會炸。
+- **解法**：把這三個 hook（`handleSaveStoryRef`／`isSavingRef`／`useEffect` 掛 keydown listener；LoreEditor 對應的 `handleSaveRef`／`isSavingLoreRef`）搬到所有 early return 之前。`handleSaveStory`／`handleSave` 是用 `function` 宣告（不是 `const` 箭頭函式），會整個被 hoist，所以 `useRef(handleSaveStory)` 搬到它文字定義之前一樣讀得到，不需要把整個函式也搬過去；`saveStory`／`saveLore`（mutation hook）本來就定義在所有 early return 之前，`.isPending` 一樣讀得到。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。這個 bug 只有登入後才會觸發，且需要真的走過「未登入→登入」或「載入中→載入完成」這種 render 切換才會炸（單純已登入狀態下重新整理，可能因為第一次 render 就直接拿到 session 而不會觸發，跟第一次是誰發現無關，是 render 路徑的問題），沒有免登入頁面能重現，這次沒有另外用瀏覽器截圖驗證，改用程式碼審查確認兩個檔案裡所有 hook 呼叫都已經在任何 `return` 之前、且呼叫順序在每次 render 都固定不變。麻煩 Faryne 重新整理原本出錯的頁面確認 console 不再噴這個錯誤。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |
