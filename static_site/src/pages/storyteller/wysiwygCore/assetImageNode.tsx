@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useStorytellerAsset } from "@/apis/storyteller.ts";
 import {
   ASSET_IMAGE_LAYOUT_OPTIONS,
+  ASSET_IMAGE_SIZE_OPTIONS,
   assetImageFrameSx,
 } from "./assetImageLayout";
 import {
@@ -33,8 +34,11 @@ import {
 } from "./assetImageEvents";
 import {
   DEFAULT_ASSET_IMAGE_LAYOUT,
+  DEFAULT_ASSET_IMAGE_SIZE,
   normalizeAssetImageLayout,
+  normalizeAssetImageSize,
   type AssetImageLayoutValue,
+  type AssetImageSizeValue,
 } from "./whitelist";
 
 function AssetImageView({
@@ -51,10 +55,12 @@ function AssetImageView({
     (node.attrs.projectPublicId as string | undefined) ?? "";
   const alt = (node.attrs.alt as string | undefined) ?? "";
   const layout = normalizeAssetImageLayout(node.attrs.layout);
+  const size = normalizeAssetImageSize(node.attrs.size);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [altDraft, setAltDraft] = useState(alt);
   const [layoutDraft, setLayoutDraft] =
     useState<AssetImageLayoutValue>(layout);
+  const [sizeDraft, setSizeDraft] = useState<AssetImageSizeValue>(size);
   const assetQuery = useStorytellerAsset(projectPublicId, publicId);
   const asset = assetQuery.data;
   const previewUrl = asset?.preview_url || src;
@@ -63,11 +69,16 @@ function AssetImageView({
   function openDialog() {
     setAltDraft(alt);
     setLayoutDraft(layout);
+    setSizeDraft(size);
     setDialogOpen(true);
   }
 
   function saveSettings() {
-    updateAttributes({ alt: altDraft.trim(), layout: layoutDraft });
+    updateAttributes({
+      alt: altDraft.trim(),
+      layout: layoutDraft,
+      size: sizeDraft,
+    });
     setDialogOpen(false);
   }
 
@@ -84,6 +95,7 @@ function AssetImageView({
       if (typeof getPos === "function" && getPos() === detail?.pos) {
         setAltDraft(alt);
         setLayoutDraft(layout);
+        setSizeDraft(size);
         setDialogOpen(true);
       }
     };
@@ -91,7 +103,7 @@ function AssetImageView({
     return () => {
       root.removeEventListener(OPEN_ASSET_IMAGE_SETTINGS_EVENT, openSettings);
     };
-  }, [alt, editor.view.dom, getPos, layout]);
+  }, [alt, editor.view.dom, getPos, layout, size]);
 
   return (
     <NodeViewWrapper as="span">
@@ -101,9 +113,10 @@ function AssetImageView({
         contentEditable={false}
         data-drag-handle
         data-asset-layout={layout}
+        data-asset-size={size}
         onDoubleClick={openDialog}
         sx={{
-          ...assetImageFrameSx(layout),
+          ...assetImageFrameSx(layout, size),
           borderColor: selected ? "primary.main" : "divider",
           boxShadow: selected ? 1 : 0,
           cursor: "grab",
@@ -201,6 +214,21 @@ function AssetImageView({
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              select
+              label="尺寸"
+              value={sizeDraft}
+              onChange={(event) =>
+                setSizeDraft(normalizeAssetImageSize(event.target.value))
+              }
+              fullWidth
+            >
+              {ASSET_IMAGE_SIZE_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ justifyContent: "space-between" }}>
@@ -233,6 +261,7 @@ export const AssetImage = Node.create({
       alt: { default: "" },
       projectPublicId: { default: "" },
       layout: { default: DEFAULT_ASSET_IMAGE_LAYOUT },
+      size: { default: DEFAULT_ASSET_IMAGE_SIZE },
     };
   },
 

@@ -273,21 +273,28 @@ Claude／Codex 建議的施作順序（跟項目編號無關）：**1 匯出格�
   - Reader 端的表格 cell render 要正確處理 `<br>`
   - MCP 的 `storytellerContentSyntaxHint` 要補充說明：cell 內想要換行要用 `\n`
 
-#### 8.1.3 插入圖片尺寸調整
+#### 8.1.3 插入圖片尺寸調整 ✅ 已實作（2026-08-17）
 
 - **現況問題**：插入的圖片完全沒有尺寸調整功能——`assetImageNode.tsx` 目前的 width 設定是寫死的（block 版面 `100%`，float 版面固定 360px，見 Phase 7 記錄），使用者沒有任何手動調整圖片尺寸的入口。
 - **建議方向**：第一版不做拖曳 resize（會牽涉 NodeView、selection、mobile、儲存格式、undo/redo，成本不小），改成在既有「圖片設定」dialog 裡加尺寸選項（例如 `原尺寸／大／中／小`，或百分比選項，float 圖跟 block 圖可能需要不同的選項區間）。
 - **儲存格式**：延續 Phase 7 已經在用的 image title metadata 模式（例如目前已有 `layout=float-left`），加一個 `size=medium` 這類語意化欄位——不建議一開始就存 pixel 數值，語意化的 preset（small/medium/large）在響應式排版跟不同閱讀容器寬度下比較好處理，不用另外處理「這個 pixel 數字在手機上還合理嗎」的問題。
 - **風險**：Reader／編輯器／匯出三邊都要吃到同一個 size 設定並保持行為一致；float 圖尺寸選太大會壓縮文字欄寬，需要有上限；mobile 斷點仍然要強制退回合理寬度（不能讓使用者選的 size 在手機上把版面撐爆）；markdown 匯出沒有標準的圖片尺寸語法，可能只能退化忽略尺寸、或改用 HTML `<img>` tag（這點會跟 8.1.1 的匯出格式重整互相影響，兩者可能需要一起考慮）。
+- **實作結果**：如規劃所述，在「圖片設定」dialog 加了「尺寸」下拉（小／中／大，預設「大」跟改動前的唯一行為完全一樣，舊資料不用遷移）：
+  - `whitelist.ts` 新增 `ASSET_IMAGE_SIZE_VALUES`／`normalizeAssetImageSize`／`assetImageSizeFromTitle`，title 格式從單一 `layout=xxx` 擴充成可以同時帶 `layout=xxx size=yyy`（順序不拘、缺一個就用預設值，向下相容）
+  - `assetImageLayout.ts` 新增 `assetImageTitle(layout, size)`（取代原本的 `assetImageLayoutTitle`）跟三組 layout 各自的 size 換算表（block: 40%/70%/100%，center: min(40%,360px)/min(60%,540px)/min(80%,720px)，float: min(25%,220px)/min(35%,300px)/min(45%,360px)——large 完全沿用 Phase 7 原本寫死的數字，不是重新設計）；mobile 斷點沿用既有規則，一律強制全寬，size 只影響桌面/平板
+  - `assetImageNode.tsx`（編輯器）／`StorytellerWysiwygMarkdown.tsx`（Reader）都改用同一份 `assetImageFrameSx(layout, size)`，兩邊視覺保持一致
+  - `parser.ts`／`serializer.ts` 同步支援 `assetSize`／`size` 欄位的解析與序列化
+  - 驗證：`assetImageLayout.test.ts` 新增 4 個測試（含「舊圖片沒有 size 時預設 large、行為/寬度完全不變」的向下相容測試），`npx vitest run` 43/43 通過（原 40 + 新增 3）；`npx tsc -b --noEmit` 乾淨；瀏覽器實測：圖片設定 dialog 選「靠左環繞＋小」，確認實際寬度變成 `220px`（對應 `min(25%,220px)`）、Reader 端同步顯示同樣寬度、raw markdown 正確輸出 `"layout=float-left size=small"`
 
-#### 8.1.4 表格欄寬（column width）調整
+#### 8.1.4 表格欄寬（column width）調整 ⚠️ 第一階段已實作（2026-08-17），第二階段（手動 resize）未做
 
 - **現況問題**：延續「已知 Bug 記錄」第 6 項——表格目前用瀏覽器預設的 `table-layout: auto`，完全沒有欄寬管理機制，這不只是組字時會抖動的美觀問題，也代表使用者沒有任何辦法讓某一欄變寬/變窄。
 - **建議方向（分兩階段，第一階段先解決穩定性，不是完整功能）**：
   - **第一階段**：不做拖曳，先改成更穩定的欄寬策略（例如切到接近 `table-layout: fixed` 但要搭配平均欄寬或依內容比例分配的邏輯、cell 內容 overflow/wrap 的處理），目的是先消除組字抖動，不追求「使用者可以手動調整」。
   - **第二階段**：真正的手動 column resize——需要研究 `prosemirror-tables` 套件本身附的 `columnResizing` plugin 能不能直接套用、table cell schema 需要支援 `colwidth` 屬性。
-- **儲存格式是這個功能最關鍵的設計問題**：目前真表格是「逐列一行 marker」格式（`⟦table tableId rowId⟧| ... |⟦/table⟧`），欄寬理論上是「整張表格」的屬性，不是「某一列」的屬性，所以不能每一列各自存一份欄寬（會有多份資料互相打架、以誰為準的問題）。可能的做法是規定「只有第一列（或某個固定角色的列）帶欄寬 metadata，其他列的欄寬欄位留空／忽略」，但這會讓 `serializer`／`parser`／diff／MCP hint 全部要跟著更新，不是一個小改動。
+- **儲存格式是這個功能最關鍵的設計問題**：目前真表格是「逐列一行 marker」格式（`⟦table tableId rowId⟧| ... |⟦/table⟧`），欄寬理論上是「整張表格」的屬性，不是「某一列」的屬性，所以不能每一列各自存一份欄寬（會有多份資料互相打架、以誰為準的問題）。可能的做法是規定「只有第一列（或某個固定角色的列）帶欄寬 metadata，其他列的欄寬欄位留空／忽略」，但這會讓 `serializer`／`parser`／diff／MCP hint 全部要跟著更新，不是一個小改動。**這個儲存格式問題在第二階段（手動 resize）才會碰到，第一階段完全不需要處理**，第一階段沒有任何欄寬資料要存。
 - **列高**：建議先不做。列高通常可以靠內容自然撐開，文字編輯器情境下手動調列高的需求本來就弱，硬做只會增加 mobile／Reader／匯出的複雜度，先不排進第一版，除非之後有明確的使用需求再評估。
+- **第一階段實作結果**：2026-08-17 Faryne 確認範圍只做第一階段（穩定/防抖動），不含手動 resize。改動：編輯器（`StorytellerWysiwygEditor.tsx`）跟 Reader（`StorytellerWysiwygMarkdown.tsx`）的表格 CSS 都加上 `table-layout: fixed`（原本沒設定，預設是 `auto`）＋ `td`/`th` 補 `word-break: break-word`（fixed 之後欄寬不會再依內容撐開，長字串需要明講才會正確換行不撐破欄寬）。**副作用（刻意接受，不是 bug）**：沒有指定任何欄寬資訊時，瀏覽器在 `table-layout:fixed` 下會把可用寬度平均分配給每一欄，所以原本「內容窄的欄自然比較窄」（例如範例表格「狀態」欄）的效果會消失，變成所有欄等寬——這是「先求穩定，不做手動調整」這個範圍下無法避免的取捨，等第二階段做手動 resize 時使用者才能自己調回想要的比例。驗證：瀏覽器實測在真表格 cell 內用 `insertText` 塞入長字串，確認欄寬（`getBoundingClientRect().width`）改動前後完全不變（原本會抖動變寬，現在維持一致）；`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過（這項純 CSS 改動沒有新增對應的 vitest 案例，用瀏覽器直接驗證欄寬數值）。
 
 ### Phase 9：人工驗收案例（無法自動化，需要使用者親自操作）
 
@@ -380,9 +387,9 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 **為什麼不能自動化**：瀏覽器自動化可以模擬手機螢幕寬度（CSS breakpoint 已經測過），但沒辦法模擬真實觸控手勢的手感（長按、雙指縮放、滑動選字）跟真實手機瀏覽器的行為差異。
 
 **測試步驟**（用手機瀏覽器打開任一 Story/Lore 編輯頁面）：
-- [ ] 確認畫面排版正常，看得到右上角的小 action 區，沒有橫向格式工具列
+- [x] 確認畫面排版正常，看得到右上角的小 action 區，沒有橫向格式工具列
 - [ ] 手指點一下空白段落，確認有沒有跳出鍵盤，並確認能不能看到 placeholder 提示文字
-- [ ] 打 `/` 試試看 slash 選單會不會跳出來、觸控點選選單項目是否順暢
+- [x] 打 `/` 試試看 slash 選單會不會跳出來、觸控點選選單項目是否順暢
 - [ ] 選取一段文字（長按拖曳選取範圍），確認選取文字後有沒有跳出 bubble menu（浮動小工具列），點裡面的按鈕（例如粗體）確認能正常套用——**這項建議優先測**：Claude 用瀏覽器自動化測 Phase 8 手機斷點時，發現這個工具本身在手機模擬模式下，單純「點一下」文字會被轉譯成類似長按/右鍵的行為、直接跳出區塊命令選單而不是把游標放在文字上，這讓 Claude 沒辦法在自動化測試裡完整重現「單指點一下 vs 長按拖曳選字」這兩種手勢的差異；不確定這是測試工具的模擬限制、還是編輯器本身在真實手機上點文字的行為也有類似的模糊地帶（例如單指點一下會不會誤觸發某個選單），需要用真實手機確認一次
 - [ ] 嘗試長按段落，看看有沒有辦法叫出右鍵選單的替代方案（這個編輯器的右鍵選單在手機上可能完全叫不出來，這是預期中的已知限制，重點是確認「除了右鍵以外的入口（slash／bubble menu）是否已經足夠涵蓋主要操作」）
 - [ ] 如果有圖片，確認圖片版面（全寬/置中/靠左/靠右環繞）在手機上是否都正確退回全寬顯示，不會有跑版的浮動效果

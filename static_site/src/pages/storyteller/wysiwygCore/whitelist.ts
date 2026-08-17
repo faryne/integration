@@ -348,11 +348,45 @@ export function normalizeAssetImageLayout(
     : DEFAULT_ASSET_IMAGE_LAYOUT;
 }
 
+/** Phase 8.1.3：圖片尺寸 preset，跟 layout 一樣用語意化名稱（不存 pixel），方便不同
+ * layout／閱讀容器寬度下各自換算成合理的實際寬度，見 assetImageLayout.ts 的換算表。 */
+export const ASSET_IMAGE_SIZE_VALUES = ["small", "medium", "large"] as const;
+export type AssetImageSizeValue = (typeof ASSET_IMAGE_SIZE_VALUES)[number];
+export const DEFAULT_ASSET_IMAGE_SIZE: AssetImageSizeValue = "large";
+
+export function isAssetImageSizeValue(
+  value: string,
+): value is AssetImageSizeValue {
+  return (ASSET_IMAGE_SIZE_VALUES as readonly string[]).includes(value);
+}
+
+export function normalizeAssetImageSize(value: unknown): AssetImageSizeValue {
+  return typeof value === "string" && isAssetImageSizeValue(value)
+    ? value
+    : DEFAULT_ASSET_IMAGE_SIZE;
+}
+
+/** title 字串裡找 `key=value`（例如 `layout=float-left size=medium`），順序不拘、
+ * 缺其中一個 key 就用預設值——這樣舊資料只有 `layout=xxx`（沒有 size）能繼續正常
+ * 解析成 size=large（現在的預設值本來就等於舊版唯一支援的呈現效果），不用遷移。 */
+function assetImageTitleValue(
+  title: string | undefined,
+  key: "layout" | "size",
+): string {
+  const pattern = new RegExp(`(?:^|\\s)${key}=([A-Za-z0-9-]+)`);
+  return title?.match(pattern)?.[1] ?? "";
+}
+
 export function assetImageLayoutFromTitle(
   title: string | undefined,
 ): AssetImageLayoutValue {
-  const value = title?.trim().match(/^layout=([A-Za-z-]+)$/)?.[1] ?? "";
-  return normalizeAssetImageLayout(value);
+  return normalizeAssetImageLayout(assetImageTitleValue(title, "layout"));
+}
+
+export function assetImageSizeFromTitle(
+  title: string | undefined,
+): AssetImageSizeValue {
+  return normalizeAssetImageSize(assetImageTitleValue(title, "size"));
 }
 
 /* --- a（連結）行內 marker 的屬性 --- */

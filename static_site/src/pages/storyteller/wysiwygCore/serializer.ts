@@ -5,6 +5,7 @@ import {
   blockKindPrefix,
   DEFAULT_ALIGNMENT,
   DEFAULT_ASSET_IMAGE_LAYOUT,
+  DEFAULT_ASSET_IMAGE_SIZE,
   DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
@@ -24,6 +25,7 @@ import {
   generateInlineMarkerId,
   MARK_SYNTAX_WHITELIST,
   normalizeAssetImageLayout,
+  normalizeAssetImageSize,
   sanitizeMarkdownImageAlt,
   TABLE_MARKER_NAME,
   TABLE_MARKER_ROW_ID_ATTR,
@@ -33,7 +35,7 @@ import {
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
-import { assetImageLayoutTitle } from "./assetImageLayout";
+import { assetImageTitle } from "./assetImageLayout";
 
 const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
   MARK_SYNTAX_WHITELIST.map((rule) => [rule.markName, rule.canonicalDelimiter]),
@@ -231,7 +233,10 @@ function serializeParagraphInline(paragraph: JSONContent): string {
       const layout = normalizeAssetImageLayout(
         node.attrs?.layout ?? DEFAULT_ASSET_IMAGE_LAYOUT,
       );
-      output += `![${alt}](${src}${assetImageLayoutTitle(layout)})`;
+      const size = normalizeAssetImageSize(
+        node.attrs?.size ?? DEFAULT_ASSET_IMAGE_SIZE,
+      );
+      output += `![${alt}](${src}${assetImageTitle(layout, size)})`;
       continue;
     }
 

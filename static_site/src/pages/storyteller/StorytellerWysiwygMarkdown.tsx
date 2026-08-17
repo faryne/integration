@@ -88,12 +88,18 @@ const BLOCK_GROUP_SX = {
     margin: "0 0 0.5em 0",
     borderCollapse: "collapse",
     width: "100%",
+    // 跟編輯區同一套改動（見 StorytellerWysiwygEditor.tsx 同樣位置的說明）：改
+    // table-layout:auto 為 fixed，避免欄寬隨內容即時重新計算而抖動，這裡的表格
+    // 是唯讀閱讀頁不會有組字問題，但欄寬計算邏輯要跟編輯區一致，不然編輯區看到
+    // 的欄寬比例跟閱讀頁顯示的會不一樣。
+    tableLayout: "fixed",
   },
   "& td, & th": {
     border: "1px solid",
     borderColor: "divider",
     padding: "6px 10px",
     verticalAlign: "top",
+    wordBreak: "break-word",
   },
   "& th": {
     backgroundColor: "action.hover",
@@ -117,7 +123,8 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
         key={key}
         component="span"
         data-asset-layout={run.assetLayout}
-        sx={assetImageFrameSx(run.assetLayout)}
+        data-asset-size={run.assetSize}
+        sx={assetImageFrameSx(run.assetLayout, run.assetSize)}
       >
         {run.assetSrc ? (
           <Box

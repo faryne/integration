@@ -80,4 +80,79 @@ describe("asset image layout", () => {
       ),
     ).toBe("![圖](steamloom-asset://asset_1)\n");
   });
+
+  it("Phase 8.1.3：從圖片 title 解析 assetImage size，layout／size 可以同時存在", () => {
+    const content =
+      '⟦p1⟧![圖](steamloom-asset://asset_1 "layout=float-left size=small")⟦/p1⟧';
+    const [paragraph] = parseMarkdownToParagraphs(content);
+
+    expect(paragraph.runs[0]).toMatchObject({
+      assetPublicId: "asset_1",
+      assetLayout: "float-left",
+      assetSize: "small",
+    });
+
+    const reparsedDoc = markdownToDoc(
+      serializeDocToMarkdown(markdownToDoc(content)),
+    );
+    expect(reparsedDoc.content?.[0].content?.[0].attrs).toMatchObject({
+      layout: "float-left",
+      size: "small",
+    });
+  });
+
+  it("size 沒特別調整時（預設 large）title 不輸出 size= 這段，維持跟改動前一樣簡潔", () => {
+    expect(
+      serializeDocToMarkdown({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            attrs: { markerId: "p1", headingLevel: 0, blockKind: "none" },
+            content: [
+              {
+                type: "assetImage",
+                attrs: {
+                  publicId: "asset_1",
+                  alt: "左圖",
+                  layout: "float-left",
+                  size: "large",
+                },
+              },
+            ],
+          },
+          {
+            type: "paragraph",
+            attrs: { markerId: "p2", headingLevel: 0, blockKind: "none" },
+            content: [
+              {
+                type: "assetImage",
+                attrs: {
+                  publicId: "asset_2",
+                  alt: "小圖",
+                  layout: "block",
+                  size: "small",
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(
+      [
+        '⟦p1⟧![左圖](steamloom-asset://asset_1 "layout=float-left")⟦/p1⟧',
+        '⟦p2⟧![小圖](steamloom-asset://asset_2 "size=small")⟦/p2⟧',
+      ].join("\n"),
+    );
+  });
+
+  it("舊圖片沒有 size 時預設 large，行為/寬度跟改動前完全一樣", () => {
+    const doc = markdownToDoc(
+      '⟦p1⟧![舊圖](steamloom-asset://asset_1 "layout=float-left")⟦/p1⟧',
+    );
+    expect(doc.content?.[0].content?.[0].attrs).toMatchObject({
+      layout: "float-left",
+      size: "large",
+    });
+  });
 });

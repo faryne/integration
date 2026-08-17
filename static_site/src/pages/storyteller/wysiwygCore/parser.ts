@@ -3,6 +3,7 @@ import type { JSONContent } from "@tiptap/core";
 import {
   ALIGNMENT_VALUES,
   assetImageLayoutFromTitle,
+  assetImageSizeFromTitle,
   assetPublicIdFromUri,
   BG_COLOR_VALUES,
   BLOCK_KIND_BULLET_PREFIX,
@@ -41,6 +42,7 @@ import {
   unescapeMarkerComment,
   type AlignmentValue,
   type AssetImageLayoutValue,
+  type AssetImageSizeValue,
   type BgColorValue,
   type BlockKindValue,
   type CommentColorValue,
@@ -58,6 +60,7 @@ export interface ParsedRun {
   assetSrc?: string;
   assetAlt?: string;
   assetLayout?: AssetImageLayoutValue;
+  assetSize?: AssetImageSizeValue;
   /** 文字前景色（span 行內 marker），沒設定就是 undefined。 */
   textColor?: TextColorValue;
   /** 文字背景色（span 行內 marker），沒設定就是 undefined。 */
@@ -391,6 +394,7 @@ function parseInline(text: string, enableAssets: boolean): ParsedRun[] {
         marks: [],
         assetAlt: sanitizeMarkdownImageAlt(token.alt),
         assetLayout: assetImageLayoutFromTitle(token.title),
+        assetSize: assetImageSizeFromTitle(token.title),
         assetPublicId: assetPublicId ?? undefined,
         assetSrc: safeAssetSrc,
       },
@@ -935,6 +939,7 @@ function runsToTiptapInline(runs: ParsedRun[], projectPublicId = "") {
             src: run.assetSrc ?? "",
             alt: run.assetAlt ?? "",
             layout: run.assetLayout,
+            size: run.assetSize,
             projectPublicId,
           },
         };

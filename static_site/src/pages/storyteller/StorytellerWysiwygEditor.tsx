@@ -242,6 +242,13 @@ const BLOCK_KIND_SX = {
     margin: "0.5em 0",
     borderCollapse: "collapse",
     width: "100%",
+    // Phase 8.1.4 階段一：原本沒設定 table-layout，瀏覽器預設用 auto，會即時依
+    // 每個 cell 目前實際內容寬度重新計算欄寬——中文組字過程中每個候選字階段的
+    // 寬度都不同，欄寬就跟著抖動（已知 Bug 記錄第 6 項）。改成 fixed 後，欄寬只
+    // 在沒有任何欄寬資訊時才由瀏覽器依「第一列」cell 數平均分配一次，之後內容
+    // 增減只在同一個欄寬內 wrap，不會再重新計算整欄寬度。這是穩定/防抖動用的
+    // 最小改動，還沒做到使用者可以手動調欄寬（那是階段二，見 Phase 8.1.4）。
+    tableLayout: "fixed",
   },
   "& td": {
     border: "1px solid",
@@ -249,6 +256,9 @@ const BLOCK_KIND_SX = {
     padding: "6px 10px",
     minWidth: "2em",
     verticalAlign: "top",
+    // table-layout:fixed 之後，cell 寬度不會再依內容撐開，長字串/長網址需要明講
+    // 才會正確換行，不然會撐破欄寬。
+    wordBreak: "break-word",
   },
 } as const;
 
