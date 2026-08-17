@@ -15,6 +15,7 @@ import {
   storytellerSemanticTokensToCssVariables,
   toStorytellerSemanticTokens,
 } from "@/data/storytellerSemanticTheme.ts";
+import { storytellerComponentOverrides } from "@/data/storytellerComponentOverrides.ts";
 import {
   StorytellerPaletteContext,
   getInitialStorytellerPalette,
@@ -125,6 +126,12 @@ export function StorytellerLayout() {
           letterSpacing: "0.02em",
         },
       },
+      // Phase B 第一批：Dialog/Menu/Tooltip/Button/IconButton 換皮，見
+      // storytellerComponentOverrides.ts 說明。這組 override 不吃 tokens／
+      // mode／palette，全部透過 CSS variable 解析，不用放進 useMemo 的
+      // 依賴考量（跟 theme 一起在 [mode, palette] 變動時重建也沒差，純粹
+      // 只是同一個 createTheme() 呼叫裡的靜態設定）。
+      components: storytellerComponentOverrides(),
     });
   }, [mode, palette]);
   // Phase A（視覺主題規劃）：semantic token 曝露成 CSS variable，掛在 :root 上。

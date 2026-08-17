@@ -32,15 +32,15 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [x] 確認 semantic token 也透過 `cssVariables` 曝露成 CSS custom property（例如 `--storyteller-surface-base`）——`storytellerSemanticTokensToCssVariables()` 產生 14 組 `--storyteller-*` 變數，`StorytellerLayout.tsx` 用 `<GlobalStyles>` 掛在 `:root` 上，跟 `theme` 用同一份 `[mode, palette]` 依賴確保同步。沒有依賴 MUI 的 `cssVariables` 自動產生機制（那個只認識標準 palette 欄位，semantic token 這種自訂命名塞不進去），改成手動注入，行為更可預期
 - [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過（既有測試沒有因為新增檔案而壞掉）。瀏覽器實測：`brass-dark`（預設）、`plainWhite-light`、`inkBlack-dark` 三組色系，讀 `getComputedStyle(document.documentElement)` 的 14 個 `--storyteller-*` 變數，逐一比對跟對應 raw token 完全一致；切換深色/淺色模式、切換色系都會即時更新，沒有殘留舊值
 
-### Phase B：MUI components override（第一批）
-- [ ] `MuiDialog`／`MuiDialogTitle`／`MuiDialogContent`／`MuiDialogActions`
-- [ ] `MuiMenu`／`MuiMenuItem`／`MuiPopover`
-- [ ] `MuiTooltip`
-- [ ] `MuiTextField`／`MuiOutlinedInput`／`MuiInputLabel`／`MuiFormHelperText`
-- [ ] `MuiButton`／`MuiIconButton`
-- [ ] `MuiTabs`／`MuiTab`
-- [ ] `MuiDrawer`
-- [ ] 驗證：2~3 組代表性色系（同 Phase A）視覺抽查每個元件在 light/dark 下的呈現，特別確認 focus outline 沒有被拿掉、只是換顏色
+### Phase B：MUI components override（第一批：Dialog／Menu／Tooltip／Button／IconButton）✅ 已完成（2026-08-17）
+- [x] `MuiDialog`／`MuiDialogTitle`／`MuiDialogActions`（`MuiDialogContent` 沒有另外覆寫——內容排版本來就該讓各自的 Dialog 內容自己決定，不該在 theme 層統一 padding/背景）
+- [x] `MuiMenu`／`MuiMenuItem`／`MuiPopover`
+- [x] `MuiTooltip`
+- [x] `MuiButton`／`MuiIconButton`（沒有分別覆寫，兩者共用底層 `MuiButtonBase`，改一次兩邊都吃到）
+- [ ] `MuiTextField`／`MuiOutlinedInput`／`MuiInputLabel`／`MuiFormHelperText`（第二批，見下）
+- [ ] `MuiTabs`／`MuiTab`（第二批，見下）
+- [ ] `MuiDrawer`（第二批，見下）
+- [x] 驗證：新增 [storytellerComponentOverrides.ts](../../static_site/src/data/storytellerComponentOverrides.ts)，接上 `StorytellerLayout.tsx` 的 `createTheme({ components: storytellerComponentOverrides() })`。全部用 `var(--storyteller-*)` 字串字面值（跟 slash menu 同模式），不用重新算 `[mode, palette]`。`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器實測：brass-dark，`/storyteller` 公開首頁 hover 搜尋圖示，`getComputedStyle('.MuiTooltip-tooltip')` 讀出 `bg: rgb(47,36,25)`／`border: 1px solid rgb(74,58,40)`／`color: rgb(240,230,210)`，逐一對應 `surfaceOverlay`／`borderSubtle`／`textPrimary` token 完全一致，證明 CSS variable 機制端到端可用。**Dialog／Menu／MenuItem／`MuiButtonBase` focus-visible 這四項沒有找到不需要登入就能觸發的頁面**（`/storyteller/wysiwyg-demo` Playground 完全沒套 ThemeProvider；`/storyteller/work/...` 的版本歷史清單經 DOM 檢查是手刻 div、不是 `MuiMenu`；工作台頁面需要登入，登入會觸發 Firebase Auth 彈窗，依照標準禁止代為完成登入），只靠 TypeScript slot 名稱型別檢查通過＋跟 Tooltip 相同的 `var()` 機制做間接佐證，未做這四項的即時畫面確認。之後 Faryne 自己在已登入頁面（例如編輯圖片設定的 `<Dialog>`、右鍵選單 `<Menu>`）看一眼視覺有沒有跑掉即可，不需要另外排查。
 
 #### Phase B 第二批（低優先，第一批確認沒問題後再排）
 - [ ] `MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbar`／`MuiAlert`／`MuiDivider`／`MuiChip`
