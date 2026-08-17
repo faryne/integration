@@ -129,7 +129,12 @@ function AssetImageView({
             alt={title}
             sx={{
               width: "100%",
-              maxHeight: 360,
+              // 跟 StorytellerWysiwygMarkdown.tsx（Reader）的圖片 maxHeight 對齊——
+              // 原本編輯器寫死 360，Reader 是 { xs: 420, md: 640 }，同一張直式構圖的
+              // 圖片在兩邊顯示的實際高度差快兩倍，連帶讓文繞圖的段落數量也不一樣，
+              // 編輯區看到的排版跟讀者實際看到的不一致（2026-08-17 使用者截圖比對
+              // 發現）。閱讀頁才是給讀者看的最終呈現，編輯器跟著閱讀頁的數值走。
+              maxHeight: { xs: 420, md: 640 },
               objectFit: "contain",
               display: "block",
               bgcolor: "background.default",
