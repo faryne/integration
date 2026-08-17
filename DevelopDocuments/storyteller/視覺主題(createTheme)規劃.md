@@ -20,6 +20,8 @@
 
 所以 Faryne 列的四個工作項裡，「明暗變化」「色系變化」的**資料層**已經有了，缺的是**套用範圍**——目前這層 theme 只影響顏色跟字體，元件的結構性樣式完全沒動過。
 
+**2026-08-17 更新**：Faryne 在 Phase 9.1 案例 3 實測發現右鍵選單跟 slash 選單顏色風格不一致（root cause 跟修法見 [所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) 的「已知 Bug 記錄」第 7 項），Faryne 認為 createTheme 施作時間還沒定，這個具體 bug 不該卡在後面，已經提前處理掉了：`StorytellerLayout.tsx` 的 `createTheme()` 已經開了 `cssVariables: true`（MUI 會把 palette 同步成 `--mui-palette-*` CSS variables），slash 選單也已經改吃這些變數。這代表 Phase A／B 開始時，`cssVariables` 這個底層開關已經不用再開一次，可以直接沿用；`slashCommandExtension.tsx` 也已經是一個「手刻 DOM 吃 CSS variables」的參考範例，Phase C 要處理 bubble menu／table menu／context menu 時可以照抄同樣的模式。
+
 ## 工作階段與依賴順序
 
 ```

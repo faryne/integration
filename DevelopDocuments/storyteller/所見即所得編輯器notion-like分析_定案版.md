@@ -289,7 +289,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - [ ] 記錄結果：中文輸入法的候選字操作（選字、Escape 取消）跟 slash 選單的操作會不會互相干擾、誤觸發（記錄任何不符預期的行為：發生時機、按了什麼鍵、結果是什麼） => 應該要與本案例的第二項一起看 => 見上方第 2、4 項備註
 
 **案例 3：表格 cell 內中文組字**
-- [ ] 用 `/table` 或右鍵插入一張真表格  => 滑鼠右鍵功能選單沒有「插入表格」。另外發現「滑鼠右鍵」和「slash」指令出現的功能選單顏色與風格不一致 => 2026-08-17：「沒有插入表格」已修，root cause 跟解法見「已知 Bug 記錄」第 5 項；「顏色風格不一致」確認算 bug（兩個選單各自寫死樣式，slash 選單背景色甚至寫死 `#fff`、深色模式下會不跟著變），root cause 見「已知 Bug 記錄」第 7 項，解法排進 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) Phase C 一起處理，等 Phase 9 驗收跑完再動
+- [x] 用 `/table` 或右鍵插入一張真表格  => 滑鼠右鍵功能選單沒有「插入表格」。另外發現「滑鼠右鍵」和「slash」指令出現的功能選單顏色與風格不一致 => 2026-08-17：兩項都已修。「沒有插入表格」root cause 跟解法見「已知 Bug 記錄」第 5 項；「顏色風格不一致」原本判斷要排進 Phase C 一起做，Faryne 指出 createTheme 施作時間還沒定不該卡在後面，改成當下就處理——開 MUI `cssVariables: true`、slash 選單改吃 `var(--mui-palette-*)`，不用整套 Phase C 的 semantic token 系統就能解掉，root cause 跟解法見「已知 Bug 記錄」第 7 項，待 Faryne 在真實登入頁面複測深色/淺色模式下右鍵選單跟 slash 選單是否已經視覺一致
 - [x] 點進任一個 cell，用輸入法打一段中文（組字中途候選字視窗開著時，確認畫面顯示正常、沒有跑到別的 cell 去）
 - [ ] 打完後用 Tab／Shift-Tab 切換到別的 cell，確認切換不會打斷正在進行的組字（如果剛好在組字中途按 Tab，建議也測一次，確認候選字不會殘留或消失文字） => 會打斷選字，並且跳到下一個 cell  => 2026-08-17 已修，root cause 跟解法見「已知 Bug 記錄」第 4 項，待 Faryne 用真實輸入法覆測確認
 - [ ] 記錄結果：cell 內中文輸入是否跟一般段落一樣順暢，Tab 切換會不會弄丟文字或打斷輸入 => 同第三項，選字時按下 tab 會跳到下一個 cell。另外發現在輸入注音符號時，表格會有抖動導致寬度變化。例如輸入到「中ㄨ」階段時，cell 寬度會有所變化，直到輸入成「中文」後才又正常。 => 2026-08-17：Tab 打斷組字已修（見上）；欄寬抖動問題 root cause 已查明（`table-layout:auto`），但涉及要不要一併做欄寬管理機制，這次先不修，記在「已知 Bug 記錄」第 6 項
@@ -454,8 +454,11 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
   - 右鍵選單（`StorytellerWysiwygContextMenu.tsx`）直接吃 MUI `<Menu>`，沒有任何客製樣式，長相就是 MUI Paper 的預設外觀，會跟著 `StorytellerLayout` 的 `createTheme`（`mode`／`palette`）一起變化。
   - slash 選單（`slashCommandExtension.tsx` 的 `createSlashCommandRenderer`）是純手刻 DOM，`mount()` 裡用 `style.cssText` 寫死了 `background:#fff`、`border:1px solid rgba(0,0,0,0.12)`、文字色 `rgba(0,0,0,0.6)` 這些顏色，完全沒有讀取 theme token，也不會跟著切換深色模式或色系。
   - 兩者不只是「風格不同」，深色模式下問題會更明顯：右鍵選單會正確變深色，slash 選單因為背景色寫死 `#fff`，深色模式下會是一塊突兀的白色方塊。
-- **為什麼沒有直接修**：這正是 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 規劃的 Phase C（「Editor 專屬操作 UI 對齊」）要處理的項目——slash／bubble／context/table/image 這些手刻元件要一起接上同一套 semantic token，不是單獨修 slash 選單的顏色就能一次到位（bubble menu、table menu 大概率也有類似「顏色寫死沒吃 theme」的問題，需要一併盤點）。單獨先修 slash 選單的顏色，之後 Phase C 又要整套重做，等於做兩次工。
-- **狀態**：未修，已排進 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) Phase C，等 Phase 9 人工驗收跑完、Faryne 安排時間處理 createTheme 系列工作時一併做。
+- **原本的判斷（已推翻）**：一開始覺得這件事該排進 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 的 Phase C 一起做。但 Faryne 指出：createTheme 那個大工作的實際施作時間還沒定，這個具體的 bug 不該被卡在一個沒有時程的大案子後面，於是改成當下就處理。
+- **解法**：不需要等 Phase C 那套完整的 semantic token 系統，用一個小步驟就能解決根本問題——在 `StorytellerLayout.tsx` 的 `createTheme()` 加一行 `cssVariables: true`。這是 MUI v6+ 內建的功能，開了之後 MUI 會把目前 palette 的每個顏色同步寫成 `--mui-palette-*` 這種 CSS custom property 掛在 `<html>` 上，會隨 `mode`／`palette` 切換即時更新。這樣手刻 DOM（不在 React tree 裡吃 `sx` 的那種）也能直接用 `var(--mui-palette-background-paper)` 這類語法讀到當下顏色，不用另外傳遞 theme context 進去。接著把 `slashCommandExtension.tsx` 裡寫死的 `#fff`／`rgba(0,0,0,...)` 全部換成對應的 `var(--mui-palette-*, 原本的值)`（背景吃 `background-paper`、文字吃 `text-primary`、邊框吃 `divider`、選取高亮吃 `action-selected`、圖示吃 `text-secondary`；保留第二個 fallback 參數，這樣沒有 `ThemeProvider` 的頁面——例如 dev-only 的 Playground——外觀完全不受影響）。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 40/40 通過。瀏覽器驗證：在有套用 `StorytellerLayout` 的公開頁面（`/storyteller` 首頁）切換深色/淺色模式，讀 `getComputedStyle(document.documentElement)` 確認 `--mui-palette-background-paper`／`--mui-palette-text-primary` 等變數會隨模式即時更新成正確色碼；另外在 `document.body` 下建立一個套用同樣 `var(--mui-palette-*)` 樣式的測試元素（模擬 Suggestion 選單用 portal 掛到 body、不在 React tree 內的情境），確認深色/淺色模式下都能正確讀到對應顏色，不是退回 fallback 值。Playground（沒有 `ThemeProvider` 包起來的頁面）另外截圖確認外觀維持原本白底黑字，沒有跑版。
+- **範圍說明**：這次只修了 slash 選單，因為這是這次實測明確指出的項目；bubble menu／table menu 目前是吃 MUI `<Paper>`/`<Menu>` 元件本身（不是手刻 DOM 寫死顏色），沒有這個問題，不需要一起動。`cssVariables: true` 這個底層開關留著，之後 Phase C 如果要做更完整的 component override，也可以繼續用同一套 CSS variables，不衝突。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 

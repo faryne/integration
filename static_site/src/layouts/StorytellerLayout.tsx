@@ -87,6 +87,12 @@ export function StorytellerLayout() {
       fontWeight: 700,
     };
     return createTheme({
+      // 開 CSS variables 模式：MUI 會把目前的 palette 值同步寫成 `--mui-palette-*`
+      // 這種 CSS custom property，掛在 <html> 上。這樣手刻 DOM（不吃 MUI 元件、
+      // 不在 React tree 裡用 sx 的那種，例如 slash 選單）也能直接用 var(...) 讀到
+      // 當下的顏色，不用把顏色寫死或另外傳遞 theme context 進去——見已知 Bug 記錄
+      // 第 7 項，slash 選單原本 background 寫死 #fff，深色模式下不會跟著變。
+      cssVariables: true,
       palette: {
         mode,
         primary: {
