@@ -36,23 +36,33 @@ export const ASSET_IMAGE_SIZE_OPTIONS = ASSET_IMAGE_SIZE_VALUES.map(
 );
 
 /** 三種 layout 各自的 size 換算表——每種 layout 的「大」都維持原本（Phase 7 定案）
- * 的寬度，不是新加的，只是原本寫死的值現在對應到 large；small／medium 是新加的兩檔，
- * 用同一套視覺比例縮小，不是照統一比例硬乘（block 全寬縮小後如果只乘同一個比例，
- * 中/小尺寸會比 float 版面還寬，比例上不合理，所以三組各自訂一份數字）。 */
+ * 的百分比，不是新加的，只是原本寫死的值現在對應到 large；small／medium 是新加的
+ * 兩檔，用同一套視覺比例縮小，不是照統一比例硬乘（block 全寬縮小後如果只乘同一個
+ * 比例，中/小尺寸會比 float 版面還寬，比例上不合理，所以三組各自訂一份數字）。
+ *
+ * 2026-08-17 拿掉原本 `min(百分比, px上限)` 裡的 px 上限，改成純百分比：編輯器
+ * 內文欄寬（無上限，跟著視窗變化）常常遠寬於閱讀頁內文欄寬（~900px 上下），原本
+ * 那組 px 上限剛好卡在閱讀頁的欄寬附近——這代表閱讀頁幾乎不受這個上限影響（百分比
+ * 跟上限本來就接近），但編輯器欄寬只要超過臨界值（float 大約 800~900px、center
+ * 800px），上限就會先卡住百分比，導致同一個 size 在編輯器跟閱讀頁呈現出完全不同
+ * 的相對比例（使用者截圖比對發現，見已知 Bug 記錄第 10 項的後續討論）。拿掉上限
+ * 後，兩邊都純粹照百分比算，比例才會一致；圖片本身的 <img> 還有 maxHeight 頂著
+ * （見 assetImageNode.tsx／StorytellerWysiwygMarkdown.tsx），直式構圖的圖片寬度
+ * 撐大後還是會先被高度上限跟 objectFit:contain 頂住縮回來，不會無限跟著容器變大。 */
 const BLOCK_SIZE_WIDTH: Record<AssetImageSizeValue, string> = {
   small: "40%",
   medium: "70%",
   large: "100%",
 };
 const CENTER_SIZE_WIDTH: Record<AssetImageSizeValue, string> = {
-  small: "min(40%, 360px)",
-  medium: "min(60%, 540px)",
-  large: "min(80%, 720px)",
+  small: "40%",
+  medium: "60%",
+  large: "80%",
 };
 const FLOAT_SIZE_WIDTH: Record<AssetImageSizeValue, string> = {
-  small: "min(25%, 220px)",
-  medium: "min(35%, 300px)",
-  large: "min(45%, 360px)",
+  small: "25%",
+  medium: "35%",
+  large: "45%",
 };
 
 /** 組回圖片 markdown 語法的 title 字串——layout／size 各自等於預設值時省略那個

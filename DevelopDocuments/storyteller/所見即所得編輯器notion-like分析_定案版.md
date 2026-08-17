@@ -555,12 +555,16 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器驗證（`resize_window` 切到 mobile preset，確認 `matchMedia("(pointer: coarse)").matches` 為 `true`）：在段落上建立一段真實文字選取，dispatch 原生 `contextmenu` 事件，確認選單沒有跳出來（`[role="menu"]` 不存在）、選取範圍完全沒被動到（前後 `window.getSelection().toString()` 一致）、`event.defaultPrevented` 是 `false`（沒有攔截，原生行為可以繼續）；切回桌面寬度（`matchMedia` 確認 `false`）重複同樣測試，確認右鍵選單正常跳出（截圖確認），沒有回歸。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
-### 10. 圖片文繞圖的高度上限，編輯器跟閱讀頁不一致（2026-08-17 使用者截圖比對發現）
+### 10. 圖片文繞圖的比例，編輯器跟閱讀頁不一致（2026-08-17 使用者截圖比對發現）
 
-- **現象**：Faryne 貼了編輯頁跟閱讀頁的截圖比對，同一段含直式構圖圖片的內容，兩邊排版明顯不同——閱讀頁的圖片顯著比編輯器裡看到的大，連帶讓文繞圖時「跟圖片並排的段落數量」也不一樣（閱讀頁因為圖片較高，需要更多段落文字才夠把 float 填滿，後面段落才會 clear 掉下來變全寬；編輯器圖片較矮，很快就 clear 了）。
-- **Root cause**：`assetImageNode.tsx`（編輯器）跟 `StorytellerWysiwygMarkdown.tsx`（Reader）圖片的 `maxHeight` 設定本來就不一樣——編輯器寫死 `360`，Reader 是 `{ xs: 420, md: 640 }`，桌面版將近編輯器的兩倍高。兩邊寬度計算都吃同一份 `assetImageFrameSx()`（Phase 8.1.3 做的），所以寬度一致，但高度上限差很多，同一張直式圖片在兩邊實際渲染出來的大小自然不同。`git blame` 查過，這個落差是 2026-08-02 的舊 commit，不是這幾天的改動造成的，只是這次因為 Phase 8.1.3 順便統一了寬度計算，高度沒對齊的問題才被凸顯出來。
-- **解法**：把編輯器的 `maxHeight` 從寫死的 `360` 改成跟 Reader 一致的 `{ xs: 420, md: 640 }`——閱讀頁才是給讀者看的最終呈現，編輯器的預覽應該跟著閱讀頁的數值走，不是反過來。
-- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。因為 dev 環境的 Playground 沒有真實可載入的圖片（資產預覽會顯示「找不到資產預覽」佔位文字，不會實際渲染 `<img>`），沒辦法直接量測渲染後的實際圖片高度；這次驗證方式是確認兩邊程式碼的 `maxHeight` 數值現在逐字相同（`{ xs: 420, md: 640 }`），且 Reader 端這個數值本身已經在正式環境跑了兩週多沒出過問題，風險低。**建議 Faryne 之後用真實圖片（真實登入頁面）覆測一次，確認編輯器跟閱讀頁的圖片大小現在看起來一致。**
+- **現象**：Faryne 貼了編輯頁跟閱讀頁的截圖比對，同一段含直式構圖圖片的內容，兩邊排版明顯不同——閱讀頁的圖片顯著比編輯器裡看到的大，連帶讓文繞圖時「跟圖片並排的段落數量」也不一樣。
+- **第一次診斷（已推翻）**：一開始懷疑是 `maxHeight` 不一致（編輯器寫死 `360`，Reader 是 `{ xs: 420, md: 640 }`），已經把編輯器的 `maxHeight` 對齊成跟 Reader 一致。但改完後 Faryne 再截圖比對，比例還是不對，判斷「沒改到核心」。
+- **真正的 root cause**：請 Faryne 在瀏覽器 devtools 直接量測兩邊圖片的實際 render 尺寸，數字顯示**圖片本身渲染出來的 px 完全一樣**（`imgWidth:220`／`imgHeight:479.39`，兩邊逐位元相同）——代表 maxHeight 從頭到尾都不是問題，圖片沒有「變小」，是兩邱的**內文欄寬差太多**：編輯器內文欄寬（`.tiptap.ProseMirror`）實測 **1676px**，閱讀頁內文欄寬（`<p>`）實測 **902px**，將近兩倍差距。Size preset 原本的公式是 `min(百分比, px上限)`（例如 float 大圖是 `min(45%, 360px)`），這個 px 上限剛好卡在閱讀頁的欄寬附近（900px 上下），代表閱讀頁幾乎不受上限影響、百分比正常發揮；但編輯器欄寬一旦超過臨界值（float 約 800~900px、center 約 800px），上限就會先卡住百分比——同一個 size 選項因此在兩邊呈現出完全不同的「佔內文欄寬比例」（編輯器只佔 13%，閱讀頁接近 25%），不是圖片大小的問題，是**相對比例**的問題。
+- **解法**：拿掉 `FLOAT_SIZE_WIDTH`／`CENTER_SIZE_WIDTH`（[assetImageLayout.ts](../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）裡的 px 上限，改成純百分比（跟原本就是純百分比的 `BLOCK_SIZE_WIDTH` 一致）。拿掉上限後，圖片寬度直接跟著各自的內文欄寬等比例縮放，兩邊「佔比」永遠一致，不會再被一個針對特定欄寬校準出來的 px 上限打亂比例。圖片本身還有 `maxHeight`＋`objectFit:contain` 頂著（[assetImageNode.tsx](../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)／[StorytellerWysiwygMarkdown.tsx](../../static_site/src/pages/storyteller/StorytellerWysiwygMarkdown.tsx)），直式構圖的圖片在很寬的容器裡撐大到一定程度後，會先被高度上限頂住縮回來，不會無限跟著容器變大。
+- **考慮過但沒採用的方向**：
+  - 方案 2（把編輯器內文欄寬也加上限，縮到接近閱讀頁的 ~900px）——會變成整個編輯頁版面風格的改動（置中窄欄寫作），影響範圍遠大於這次的圖片問題，而且閱讀頁的 902px 本身不是刻意選定的常數（`Reader.tsx` 完全沒有 `maxWidth`／`Container` 設定，902px 只是側邊欄目錄佔掉之後剩下的空間，會隨視窗寬度浮動），沒有一個穩定的目標值可以精準對齊。
+  - 「把閱讀頁做成跟工作台一樣全出血」——Faryne 提出後雙方討論過，這個方向會犧牲閱讀頁對真實讀者的閱讀舒適度（長文一行字數過長不利閱讀），且閱讀頁使用者是讀者本人、不是作者，影響的優先序不同，不適合為了這次圖片比例問題順便改掉。討論結論：**這其實是「閱讀頁整體版面比照工作台」這個更大的產品目標，跟 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 的精神一致，記錄進那份文件的後續方向，另外排時間處理，不在這次一起做**。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器驗證：用 JS 建立兩個分別是 1676px／902.66px 寬的容器，套用同一條 `45%` 規則，確認算出來的比例（`imgWidth / containerWidth`）兩邊都是 `0.44999...`，完全一致（改動前這兩個容器算出來的寬度會被 360px 上限打斷，比例明顯不同）。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
