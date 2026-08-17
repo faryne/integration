@@ -12,6 +12,10 @@ import {
   storytellerThemeTokens,
 } from "@/data/storytellerTheme.ts";
 import {
+  storytellerSemanticTokensToCssVariables,
+  toStorytellerSemanticTokens,
+} from "@/data/storytellerSemanticTheme.ts";
+import {
   StorytellerPaletteContext,
   getInitialStorytellerPalette,
   storytellerPaletteStorageKey,
@@ -41,6 +45,7 @@ import {
   Container,
   createTheme,
   Divider,
+  GlobalStyles,
   IconButton,
   ListItemIcon,
   ListItemText,
@@ -122,6 +127,15 @@ export function StorytellerLayout() {
       },
     });
   }, [mode, palette]);
+  // Phase A（視覺主題規劃）：semantic token 曝露成 CSS variable，掛在 :root 上。
+  // 跟 theme 用同一份 [mode, palette] 依賴、同一份 tokens 來源，確保兩邊永遠同步
+  // ——不會有「MUI palette 已經換色系了，但 --storyteller-* 還是舊值」這種不一致。
+  const storytellerCssVariables = useMemo(() => {
+    const tokens = storytellerThemeTokens[palette][mode];
+    return storytellerSemanticTokensToCssVariables(
+      toStorytellerSemanticTokens(tokens),
+    );
+  }, [mode, palette]);
   useEffect(() => {
     window.localStorage.setItem(storytellerThemeModeStorageKey, mode);
   }, [mode]);
@@ -175,6 +189,7 @@ export function StorytellerLayout() {
 
   return (
     <ThemeProvider theme={theme}>
+      <GlobalStyles styles={{ ":root": storytellerCssVariables }} />
       <StorytellerThemeModeContext.Provider value={{ mode, toggleMode }}>
         <StorytellerPaletteContext.Provider value={{ palette, setPalette }}>
           <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>

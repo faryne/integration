@@ -26,11 +26,11 @@
 
 Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一個 Phase 全部打勾後 commit 一次（不是每個 checkbox 都各自 commit）——跟這份文件其他地方一樣，勾了才代表真的做完＋驗證過，不是「打算做」。範圍只到 Phase A~E（實際 createTheme 視覺工作）；Phase F（閱讀頁版面比照工作台）跟 Phase G（圖片相關功能性問題）都還沒排定範圍/時程，不在這次施作範圍內，不會出現在下面的 checklist 裡。
 
-### Phase A：Theme semantic token 整理
-- [ ] 在 `storytellerTheme.ts` 或新檔案定義 semantic token 型別（`storyteller.surface.base/raised/overlay`、`border.subtle/strong`、`text.primary/muted`、`accent.main/hover`、`focusRing`、`danger`、`selection`、`editor.paper`、`editor.menu`）
-- [ ] 把現有 11 色系 × light/dark 的 raw token（brass/copper/patina...）對應到 semantic token，兩者要能雙向查——component override（Phase B）跟手刻 DOM（Phase C）都要用得到
-- [ ] 確認 semantic token 也透過 `cssVariables` 曝露成 CSS custom property（例如 `--storyteller-surface-base`），讓手刻 DOM 元件能比照 `slashCommandExtension.tsx` 現在讀 `var(--mui-palette-*)` 的方式直接讀取，不用另外傳 theme context
-- [ ] 驗證：`npx vitest run` 確認沒有既有測試因為顏色結構調整而壞掉；抽 2~3 組色系（`brass-dark`、`plainWhite-light`、`inkBlack-dark`）視覺確認顏色沒有跑掉
+### Phase A：Theme semantic token 整理 ✅ 已完成（2026-08-17）
+- [x] 在 `storytellerTheme.ts` 或新檔案定義 semantic token 型別（`storyteller.surface.base/raised/overlay`、`border.subtle/strong`、`text.primary/muted`、`accent.main/hover`、`focusRing`、`danger`、`selection`、`editor.paper`、`editor.menu`）——新增獨立檔案 [storytellerSemanticTheme.ts](../../static_site/src/data/storytellerSemanticTheme.ts)（不是塞進已經 450 行的 `storytellerTheme.ts`），定義 `StorytellerSemanticTokens` 介面，14 個 key 都照規劃列的名字
+- [x] 把現有 11 色系 × light/dark 的 raw token（brass/copper/patina...）對應到 semantic token——`toStorytellerSemanticTokens()` 做轉換，映射表：`surfaceBase←bg`、`surfaceRaised←surface`、`surfaceOverlay←surfaceRaised`、`borderSubtle←border`、`borderStrong←borderStrong`、`textPrimary←text`、`textMuted←textMuted`、`accentMain←brass`、`accentHover←focusRing←selection←brassBright`、`danger←ember`、`editorPaper←surface`、`editorMenu←surfaceRaised`。順便把原本完全沒被用到的 `surfaceRaised`／`borderStrong`／`ember` 三個 raw token 派上用場（`git grep` 確認過，Phase A 之前這三個 key 只有定義、沒有任何地方讀取）
+- [x] 確認 semantic token 也透過 `cssVariables` 曝露成 CSS custom property（例如 `--storyteller-surface-base`）——`storytellerSemanticTokensToCssVariables()` 產生 14 組 `--storyteller-*` 變數，`StorytellerLayout.tsx` 用 `<GlobalStyles>` 掛在 `:root` 上，跟 `theme` 用同一份 `[mode, palette]` 依賴確保同步。沒有依賴 MUI 的 `cssVariables` 自動產生機制（那個只認識標準 palette 欄位，semantic token 這種自訂命名塞不進去），改成手動注入，行為更可預期
+- [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過（既有測試沒有因為新增檔案而壞掉）。瀏覽器實測：`brass-dark`（預設）、`plainWhite-light`、`inkBlack-dark` 三組色系，讀 `getComputedStyle(document.documentElement)` 的 14 個 `--storyteller-*` 變數，逐一比對跟對應 raw token 完全一致；切換深色/淺色模式、切換色系都會即時更新，沒有殘留舊值
 
 ### Phase B：MUI components override（第一批）
 - [ ] `MuiDialog`／`MuiDialogTitle`／`MuiDialogContent`／`MuiDialogActions`
