@@ -15,9 +15,9 @@ const v = (key: keyof typeof STORYTELLER_CSS_VARIABLE_NAMES) =>
  * 視覺方向（跟規劃文件一致）：低調工業感，不要浮誇蒸汽龐克。重點是邊框／
  * surface 層次／hover-focus 狀態一致，不是到處加裝飾。
  *
- * 第二批（TextField／Tabs／Drawer）於此補上；更多元件（Select／Autocomplete／
- * Switch／Radio／Checkbox／Snackbar／Alert／Divider／Chip）之後再排，見規劃
- * 文件 checklist。
+ * 第二批（TextField／Tabs／Drawer）與後續（Select／Autocomplete／Switch／
+ * Radio／Checkbox／Snackbar／Alert／Divider／Chip）都已補上，Phase B 清單
+ * 全數完成，見規劃文件 checklist。
  */
 export function storytellerComponentOverrides(): Components<Theme> {
   return {
@@ -167,6 +167,83 @@ export function storytellerComponentOverrides(): Components<Theme> {
           backgroundImage: "none",
           border: `1px solid ${v("borderSubtle")}`,
         },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        icon: { color: v("textMuted") },
+      },
+    },
+    MuiAutocomplete: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: v("surfaceOverlay"),
+          backgroundImage: "none",
+          border: `1px solid ${v("borderSubtle")}`,
+        },
+        option: {
+          '&[aria-selected="true"]': { backgroundColor: v("selection") },
+          "&:hover": { backgroundColor: v("surfaceRaised") },
+        },
+      },
+    },
+    MuiSwitch: {
+      styleOverrides: {
+        track: { backgroundColor: v("borderStrong") },
+        thumb: { backgroundColor: v("textMuted") },
+        switchBase: {
+          "&.Mui-checked": {
+            color: v("accentMain"),
+            "& + .MuiSwitch-track": { backgroundColor: v("accentMain") },
+          },
+        },
+      },
+    },
+    MuiRadio: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          "&.Mui-checked": { color: v("accentMain") },
+        },
+      },
+    },
+    MuiCheckbox: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          "&.Mui-checked": { color: v("accentMain") },
+        },
+      },
+    },
+    MuiSnackbarContent: {
+      styleOverrides: {
+        root: {
+          backgroundColor: v("surfaceOverlay"),
+          color: v("textPrimary"),
+          border: `1px solid ${v("borderSubtle")}`,
+        },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          backgroundColor: v("surfaceRaised"),
+          border: `1px solid ${v("borderSubtle")}`,
+        },
+      },
+    },
+    MuiDivider: {
+      styleOverrides: {
+        root: { borderColor: v("borderSubtle") },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: v("surfaceRaised"),
+          border: `1px solid ${v("borderSubtle")}`,
+        },
+        deleteIcon: { color: v("textMuted") },
       },
     },
   };

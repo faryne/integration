@@ -45,12 +45,11 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
   瀏覽器實測（brass-dark）：
   - Tooltip：`/storyteller` 公開首頁 hover 搜尋圖示，`getComputedStyle('.MuiTooltip-tooltip')` 讀出 `bg: rgb(47,36,25)`／`border: 1px solid rgb(74,58,40)`／`color: rgb(240,230,210)`，逐一對應 `surfaceOverlay`／`borderSubtle`／`textPrimary` token 完全一致。
   - `MuiOutlinedInput`：公開首頁搜尋框，focus 時 `.MuiOutlinedInput-notchedOutline` border `rgb(201,151,79)`＝`accentMain`（`#c9974f`）、寬度 2px；blur 後回到 `rgb(74,58,40)`＝`borderSubtle`，兩個狀態都對上。
-  - 以上兩項證明 CSS variable 機制端到端可用（第一批／第二批用同一套 `var()` 寫法，機制相同）。
+  - `MuiChip`／`MuiDivider`：公開首頁故事卡片上的「3 部作品」「圖片／漫畫」「普通級」等 32 個 Chip，`backgroundColor: rgb(36,27,20)` 精確對上 `surfaceRaised`（`#241b14`），`border`／分隔線的 `rgb(74,58,40)` 對上 `borderSubtle`。
+  - 以上三項證明 CSS variable 機制端到端可用（第一批／第二批／後續都用同一套 `var()` 寫法，機制相同）。
 
-  **沒有即時畫面確認的項目**：Dialog／Menu／MenuItem／`MuiButtonBase` focus-visible／`MuiTabs`／`MuiTab`／`MuiDrawer`。逐一排查過公開（免登入）頁面找不到觸發點：`/storyteller/wysiwyg-demo` Playground 完全沒套 ThemeProvider；`/storyteller/work/...` 閱讀頁的「版本歷史」清單經 DOM 檢查是手刻 div、不是 `MuiMenu`；閱讀頁的「目錄／書籤／頁面一覽」切換鈕經 DOM 檢查是 `MuiButton`（contained/outlined），不是 `MuiTabs`；行動版寬度下「開啟索引」按鈕點擊後 DOM 查無 `.MuiDrawer-root`（索引面板是 inline 收合，不是 Modal Drawer）；工作台頁面需要登入，登入會觸發 Firebase Auth 彈窗，依照標準禁止代為完成登入。這七項只靠 TypeScript slot 名稱型別檢查通過＋跟已驗證的 Tooltip／OutlinedInput 相同的 `var()` 機制做間接佐證。之後 Faryne 自己在已登入頁面（例如編輯圖片設定的 `<Dialog>`、右鍵選單 `<Menu>`、工作台裡如果有用到 Tabs/Drawer 的地方）看一眼視覺有沒有跑掉即可，不需要另外排查。
-
-#### Phase B 後續（低優先，之後再排）
-- [ ] `MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbar`／`MuiAlert`／`MuiDivider`／`MuiChip`
+  **沒有即時畫面確認的項目**：Dialog／Menu／MenuItem／`MuiButtonBase` focus-visible／`MuiTabs`／`MuiTab`／`MuiDrawer`／`MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbarContent`／`MuiAlert`。逐一排查過公開（免登入）頁面找不到觸發點：`/storyteller/wysiwyg-demo` Playground 完全沒套 ThemeProvider；`/storyteller/work/...` 閱讀頁的「版本歷史」清單經 DOM 檢查是手刻 div、不是 `MuiMenu`；閱讀頁的「目錄／書籤／頁面一覽」切換鈕經 DOM 檢查是 `MuiButton`（contained/outlined），不是 `MuiTabs`；行動版寬度下「開啟索引」按鈕點擊後 DOM 查無 `.MuiDrawer-root`（索引面板是 inline 收合，不是 Modal Drawer）；公開頁面沒有 Select/Autocomplete/Switch/Radio/Checkbox/Snackbar/Alert 的使用場景；工作台頁面需要登入，登入會觸發 Firebase Auth 彈窗，依照標準禁止代為完成登入。這些項目只靠 TypeScript slot 名稱型別檢查通過＋跟已驗證的 Tooltip／OutlinedInput／Chip／Divider 相同的 `var()` 機制做間接佐證。之後 Faryne 自己在已登入頁面看一眼視覺有沒有跑掉即可，不需要另外排查。
+- [x] `MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbar`／`MuiAlert`／`MuiDivider`／`MuiChip`（原本規劃為低優先「後續」項目，2026-08-18 一併做完，做法/驗證狀況同上）
 
 ### Phase C：Editor 專屬操作 UI 對齊
 - [ ] Slash menu（`slashCommandExtension.tsx`）確認讀取 Phase A 的 semantic token（現況是直接讀 `var(--mui-palette-*)`，跟 Phase A 的 semantic token 是不是同一組要對齊，不一致的話要改掉）
