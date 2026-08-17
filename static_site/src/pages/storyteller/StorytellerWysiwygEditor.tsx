@@ -262,6 +262,20 @@ const BLOCK_KIND_SX = {
   },
 } as const;
 
+/** 觸控裝置（手指是主要輸入方式）的長按本身就會觸發原生 contextmenu 事件——這是
+ * 使用者長按開始選字的手勢，不是想叫出選單。真機實測（Phase 9.4）發現我們的
+ * `handleEditorContextMenu` 不分裝置一律搶下這個事件、還會把選取範圍收合成單點，
+ * 導致長按選字整個失敗。用 `pointer: coarse` 判斷主要輸入是不是觸控（跟滑鼠精準
+ * 指標的裝置分開），不是用螢幕寬度斷點——寬度斷點測的是「螢幕多寬」，這裡真正要
+ * 分辨的是「使用者用什麼方式操作」，桌面瀏覽器把視窗縮到很窄仍然是滑鼠右鍵。 */
+function isTouchPrimaryDevice(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
+
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
@@ -595,6 +609,10 @@ export const StorytellerWysiwygEditor = forwardRef<
   // 粗體/顏色/連結等動作會套用到「空選取」上，等於失效。只有右鍵點在選取範圍「外面」
   // 時才收合成單點（沿用原本「右鍵任何地方都能開加註解選單」的行為）。
   const handleEditorContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    // 觸控裝置直接放行，不搶這個事件、不動選取範圍——讓原生長按選字／系統選單接手，
+    // 格式化改靠已經驗證過的 bubble menu（選字後自動跳出）跟 slash 選單（空段落插入
+    // 區塊），這兩個入口本來就涵蓋右鍵選單能做的事，不需要另外做行動版工具列。
+    if (isTouchPrimaryDevice()) return;
     event.preventDefault();
     const result = editor.view.posAtCoords({
       left: event.clientX,

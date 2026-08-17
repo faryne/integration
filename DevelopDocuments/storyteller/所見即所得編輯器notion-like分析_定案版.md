@@ -388,12 +388,18 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 
 **測試步驟**（用手機瀏覽器打開任一 Story/Lore 編輯頁面）：
 - [x] 確認畫面排版正常，看得到右上角的小 action 區，沒有橫向格式工具列
-- [ ] 手指點一下空白段落，確認有沒有跳出鍵盤，並確認能不能看到 placeholder 提示文字
+- [x] 手指點一下空白段落，確認有沒有跳出鍵盤，並確認能不能看到 placeholder 提示文字
 - [x] 打 `/` 試試看 slash 選單會不會跳出來、觸控點選選單項目是否順暢
-- [ ] 選取一段文字（長按拖曳選取範圍），確認選取文字後有沒有跳出 bubble menu（浮動小工具列），點裡面的按鈕（例如粗體）確認能正常套用——**這項建議優先測**：Claude 用瀏覽器自動化測 Phase 8 手機斷點時，發現這個工具本身在手機模擬模式下，單純「點一下」文字會被轉譯成類似長按/右鍵的行為、直接跳出區塊命令選單而不是把游標放在文字上，這讓 Claude 沒辦法在自動化測試裡完整重現「單指點一下 vs 長按拖曳選字」這兩種手勢的差異；不確定這是測試工具的模擬限制、還是編輯器本身在真實手機上點文字的行為也有類似的模糊地帶（例如單指點一下會不會誤觸發某個選單），需要用真實手機確認一次
-- [ ] 嘗試長按段落，看看有沒有辦法叫出右鍵選單的替代方案（這個編輯器的右鍵選單在手機上可能完全叫不出來，這是預期中的已知限制，重點是確認「除了右鍵以外的入口（slash／bubble menu）是否已經足夠涵蓋主要操作」）
-- [ ] 如果有圖片，確認圖片版面（全寬/置中/靠左/靠右環繞）在手機上是否都正確退回全寬顯示，不會有跑版的浮動效果
-- [ ] 記錄：用的是什麼手機/瀏覽器、哪個操作在手機上不順或做不到（即使右鍵選單在手機上不可用是預期內的限制，但如果某個操作完全沒有替代入口，這是需要記錄下來的落差）
+- [x] 選取一段文字（長按拖曳選取範圍），確認選取文字後有沒有跳出 bubble menu（浮動小工具列），點裡面的按鈕（例如粗體）確認能正常套用——**這項建議優先測**：Claude 用瀏覽器自動化測 Phase 8 手機斷點時，發現這個工具本身在手機模擬模式下，單純「點一下」文字會被轉譯成類似長按/右鍵的行為、直接跳出區塊命令選單而不是把游標放在文字上，這讓 Claude 沒辦法在自動化測試裡完整重現「單指點一下 vs 長按拖曳選字」這兩種手勢的差異；不確定這是測試工具的模擬限制、還是編輯器本身在真實手機上點文字的行為也有類似的模糊地帶（例如單指點一下會不會誤觸發某個選單），需要用真實手機確認一次 => 2026-08-17 Faryne 用 Samsung S24 Ultra／Chrome 實測，證實這不是測試工具的模擬限制，是真的 bug——長按選字會連帶觸發右鍵選單邏輯，導致選取失敗。已查出 root cause 並修好，見「已知 Bug 記錄」第 9 項
+- [x] 嘗試長按段落，看看有沒有辦法叫出右鍵選單的替代方案（這個編輯器的右鍵選單在手機上可能完全叫不出來，這是預期中的已知限制，重點是確認「除了右鍵以外的入口（slash／bubble menu）是否已經足夠涵蓋主要操作」）=> 2026-08-17 討論結論：不做行動版工具列，觸控裝置直接不觸發右鍵選單邏輯，讓原生長按選字正常運作，格式化改靠 bubble menu＋slash 兩個入口涵蓋（見已知 Bug 記錄第 9 項的修法）
+- [x] 如果有圖片，確認圖片版面（全寬/置中/靠左/靠右環繞）在手機上是否都正確退回全寬顯示，不會有跑版的浮動效果
+- [x] 記錄：用的是什麼手機/瀏覽器、哪個操作在手機上不順或做不到（即使右鍵選單在手機上不可用是預期內的限制，但如果某個操作完全沒有替代入口，這是需要記錄下來的落差）
+
+使用手機：Samsung S24 Ultra 瀏覽器：Chrome
+選取幾個文字和選取整段時，會觸發滑鼠右鍵動作，連帶讓選取操作先失敗。
+思考是不是要讓行動版保留可收縮的完整工具列，並拔掉右鍵功能？
+
+=> 2026-08-17 已修，不用加回工具列，見「已知 Bug 記錄」第 9 項。9.4 到此全部確認完成。
 
 #### 9.5 長篇寫作體感（Placeholder／Slash／Bubble Menu／右鍵選單綜合）
 
@@ -529,6 +535,14 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
   - Console 沒有任何跟 `renderToStaticMarkup`／icon 渲染相關的錯誤，只有既有的 SSR pseudo-class 警告（跟這個問題無關）。
 - **目前唯一還沒排除、但也還沒證實的方向**：icon 是透過 `renderCommandIconMarkup()`（[slashCommandExtension.tsx:68-73](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx#L68)）呼叫 `renderToStaticMarkup(createElement(icon, {fontSize:"small"}))` 動態產生 SVG 字串、再用 `innerHTML` 塞進手刻的 DOM——這整段是在 React tree 之外執行的（不是 JSX 渲染），跟 Playground 唯一環境差異是真實頁面被 `StorytellerLayout` 的 `ThemeProvider` 包住（含這次新開的 `cssVariables: true`）。有沒有可能 `renderToStaticMarkup` 在被 `ThemeProvider`/`cssVariables` context 包住的情況下呼叫行為不同（例如 MUI icon 元件內部呼叫 `useTheme()` 時，因為 `renderToStaticMarkup` 是脫離正常 React tree 的獨立同步渲染、拿不到外層 context，導致跟平常不同的 code path），純屬猜測，還沒驗證過。
 - **狀態**：未解決。Faryne 決定先記錄下來，等 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 正式開始施作、要重新處理 slash 選單樣式時一併查——屆時很可能會把這個手刻 DOM + `renderToStaticMarkup` 的作法整個換掉（改成用真正的 MUI 元件或至少不再脫離 React tree 渲染 icon），不一定需要先查出目前這個做法為什麼在真實頁面失效。
+
+### 9. 手機真機上長按選字會被右鍵選單邏輯搶走，導致選取失敗（Phase 9.4 真機實測發現）
+
+- **現象**：Faryne 用 Samsung S24 Ultra／Chrome 實測，長按拖曳選取文字時會觸發類似滑鼠右鍵的動作，選取操作因此失敗。這推翻了 Phase 8 手機斷點驗證時的假設——當時 Claude 用瀏覽器自動化測試工具在 mobile 模擬模式下也觀察到類似現象（點擊被轉譯成 contextmenu），但因為無法排除是「測試工具本身的模擬限制」還是「編輯器真的有這個問題」，當時只能記錄疑點、標記需要真機覆測（見 Phase 9.4 案例第 4 項備註）。這次真機測試證實：**不是測試工具的問題，是編輯器本身的真實 bug**。
+- **Root cause**：`StorytellerWysiwygEditor.tsx` 的 `handleEditorContextMenu`（[StorytellerWysiwygEditor.tsx:597](../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx#L597)）不分裝置、一律在 `contextmenu` 事件觸發時呼叫 `event.preventDefault()`，而且只要點擊/觸控位置不在「目前已存在的選取範圍內」，就會直接把選取範圍收合成單一游標（`editor.commands.setTextSelection(result.pos)`）。行動裝置上長按（開始選字的手勢）本身就會觸發瀏覽器原生的 `contextmenu` 事件——使用者才剛長按要開始選字，選取範圍還沒真的選出來（或選取還在進行中），我們的 handler 就搶先把它當成「使用者要叫出右鍵選單」處理，選取範圍因此被收合掉，長按選字整個失敗。
+- **解法**：不做行動版工具列（不重新引入拔掉的複雜度）。改成用 `window.matchMedia("(pointer: coarse)")` 判斷「主要輸入是不是觸控」（不是用螢幕寬度斷點——寬度斷點測的是螢幕多寬，這裡要分辨的是使用者用什麼方式操作，桌面瀏覽器縮視窗到很窄仍然是滑鼠右鍵），觸控裝置上 `handleEditorContextMenu` 直接 early return，完全不攔截這個事件，讓原生長按選字／系統選單正常運作。格式化功能改靠已經驗證過的兩個入口：選字完成後 bubble menu 會自動跳出（`StorytellerWysiwygBubbleMenu.tsx` 的 `shouldShow` 只看「目前有沒有非空文字選取」，不管這個選取是滑鼠拖出來的還是手指長按拖出來的，原生選字不再被搶走後應該正常觸發）；空段落插入區塊則靠 `/` slash command（Phase 9.4 已經測過在手機上正常運作）。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器驗證（`resize_window` 切到 mobile preset，確認 `matchMedia("(pointer: coarse)").matches` 為 `true`）：在段落上建立一段真實文字選取，dispatch 原生 `contextmenu` 事件，確認選單沒有跳出來（`[role="menu"]` 不存在）、選取範圍完全沒被動到（前後 `window.getSelection().toString()` 一致）、`event.defaultPrevented` 是 `false`（沒有攔截，原生行為可以繼續）；切回桌面寬度（`matchMedia` 確認 `false`）重複同樣測試，確認右鍵選單正常跳出（截圖確認），沒有回歸。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
