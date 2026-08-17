@@ -783,7 +783,16 @@ export const StorytellerWysiwygEditor = forwardRef<
 
       <Paper
         variant="outlined"
-        sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
+        sx={{
+          p: 2,
+          // 原本桌面版固定 560px，視窗越高、下方留白越多（Faryne 實測反映）。
+          // 改用視窗高度扣掉上方 header/工具列/頁面留白的估計值，讓編輯區跟著
+          // 視窗變高變矮；手機版維持固定 420px（小螢幕高度本來就不夠，用
+          // calc 反而容易算出過小或負值）。
+          height: { xs: 420, md: "calc(100vh - 320px)" },
+          minHeight: { md: 420 },
+          overflow: "auto",
+        }}
       >
         <Box
           sx={[
