@@ -156,6 +156,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   return {
+    server: {
+      // 用 ngrok 之類的工具把本機 dev server 開給手機連進來測時，把 ngrok
+      // 給的網域加進這個陣列（例如 "xxxx.ngrok-free.app"）。這個網址每次
+      // 重開 ngrok 都會變，是個人本機測試用的設定，不要把實際網址 commit
+      // 進來。
+      allowedHosts: ["localhost"],
+    },
     build: {
       rollupOptions: {
         output: {
