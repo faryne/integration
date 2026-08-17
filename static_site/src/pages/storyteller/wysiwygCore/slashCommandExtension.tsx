@@ -95,15 +95,15 @@ function renderSlashCommandItems(
       "text-align:left",
       "font:inherit",
       // <button> 在部分瀏覽器的 UA 樣式會有自己的文字色（不像一般行內元素會自動
-      // 繼承），這裡明講 inherit，才吃得到外層 element 設的 --mui-palette-text-primary。
+      // 繼承），這裡明講 inherit，才吃得到外層 element 設的 --storyteller-text-primary。
       "color:inherit",
       "cursor:pointer",
     ].join(";");
     if (index === selectedIndex) {
-      // 原本寫死 MUI 預設藍（跟 palette 完全無關），改用 action.selected 才會
-      // 跟右鍵選單 MenuItem 的 selected 高亮色一致、也會跟著色系切換。
-      button.style.background =
-        "var(--mui-palette-action-selected, rgba(25, 118, 210, 0.12))";
+      // Phase C：改吃 Phase A 的 semantic token，跟右鍵選單 MenuItem 的
+      // `.Mui-selected`（storytellerComponentOverrides.ts 裡也是 selection）
+      // 用同一個顏色來源，不再各自對應不同的 CSS variable 命名空間。
+      button.style.background = "var(--storyteller-selection, rgba(25, 118, 210, 0.12))";
     }
 
     const iconMarkup = renderCommandIconMarkup(item.icon);
@@ -113,7 +113,7 @@ function renderSlashCommandItems(
       iconSpan.style.cssText = [
         "display:inline-flex",
         "flex-shrink:0",
-        "color:var(--mui-palette-text-secondary, rgba(0, 0, 0, 0.6))",
+        "color:var(--storyteller-text-muted, rgba(0, 0, 0, 0.6))",
       ].join(";");
       button.appendChild(iconSpan);
     }
@@ -152,16 +152,18 @@ function createSlashCommandRenderer() {
       "max-width:280px",
       "max-height:260px",
       "overflow:auto",
-      "border:1px solid var(--mui-palette-divider, rgba(0, 0, 0, 0.12))",
+      "border:1px solid var(--storyteller-border-subtle, rgba(0, 0, 0, 0.12))",
       "border-radius:6px",
       // 這個選單是純手刻 DOM，不在 React tree 裡吃 MUI sx，原本顏色是寫死的
       // #fff／黑色系列，深色模式下會變成一塊突兀的白色方塊（已知 Bug 記錄第 7
-      // 項）。StorytellerLayout 的 theme 開了 cssVariables，這裡改吃
-      // var(--mui-palette-*) 就能跟著 mode/色系即時變化，不用另外傳 theme
-      // context 進來；MUI 沒開 cssVariables 的頁面（例如 Playground）會退回
-      // fallback 值，維持原本外觀。
-      "background:var(--mui-palette-background-paper, #fff)",
-      "color:var(--mui-palette-text-primary, rgba(0, 0, 0, 0.87))",
+      // 項）。先前暫用 MUI 自動產生的 var(--mui-palette-*)（cssVariables:
+      // true 開的）過渡；Phase A 定案 semantic token 之後，這裡改吃
+      // var(--storyteller-editor-menu) 等 `--storyteller-*` 變數，跟右鍵
+      // 選單／Dialog／Bubble menu 用同一組 token 來源，不再各自對應不同
+      // 命名空間。MUI 沒開這組 CSS variable 的頁面（例如 Playground）會
+      // 退回 fallback 值，維持原本外觀。
+      "background:var(--storyteller-editor-menu, #fff)",
+      "color:var(--storyteller-text-primary, rgba(0, 0, 0, 0.87))",
       "box-shadow:0 6px 18px rgba(0, 0, 0, 0.18)",
       "padding:4px 0",
     ].join(";");

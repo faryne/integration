@@ -85,7 +85,17 @@ export function StorytellerWysiwygBubbleMenu({
     >
       <Paper
         elevation={4}
-        sx={{ display: "flex", alignItems: "center", px: 0.5, py: 0.5 }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          px: 0.5,
+          py: 0.5,
+          // Phase C：預設 Paper 背景是 background.paper（＝ semantic
+          // surfaceRaised），比 Dialog/Menu/slash 選單用的 surfaceOverlay
+          // 低一層，並排比較時會看起來比其他選單「淡一階」。這裡跟 Table
+          // menu 一樣明講吃 editorMenu token，統一浮動選單的層次。
+          bgcolor: "var(--storyteller-editor-menu)",
+        }}
       >
         <Stack direction="row" spacing={0.25} alignItems="center">
           {markCommands.map((command) => {
@@ -167,6 +177,7 @@ export function StorytellerWysiwygBubbleMenu({
                   p: 1,
                   zIndex: 1,
                   whiteSpace: "nowrap",
+                  bgcolor: "var(--storyteller-editor-menu)",
                 }}
               >
                 <Stack direction="row" spacing={1}>
@@ -269,6 +280,7 @@ export function StorytellerWysiwygBubbleMenu({
                   p: 1,
                   zIndex: 1,
                   whiteSpace: "nowrap",
+                  bgcolor: "var(--storyteller-editor-menu)",
                 }}
               >
                 <Stack direction="row" spacing={1}>

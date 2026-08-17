@@ -28,7 +28,15 @@ export function StorytellerWysiwygTableMenu({
       <Paper
         elevation={4}
         onMouseDown={(event) => event.preventDefault()}
-        sx={{ display: "flex", alignItems: "center", px: 0.75, py: 0.5 }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          px: 0.75,
+          py: 0.5,
+          // Phase C：跟 Bubble menu 一樣明講吃 editorMenu token，統一浮動
+          // 選單的層次（見 StorytellerWysiwygBubbleMenu.tsx 同樣的註解）。
+          bgcolor: "var(--storyteller-editor-menu)",
+        }}
       >
         <Stack direction="row" spacing={0.5} alignItems="center">
           <Button

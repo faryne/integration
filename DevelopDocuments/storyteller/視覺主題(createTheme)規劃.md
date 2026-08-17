@@ -51,13 +51,13 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
   **沒有即時畫面確認的項目**：Dialog／Menu／MenuItem／`MuiButtonBase` focus-visible／`MuiTabs`／`MuiTab`／`MuiDrawer`／`MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbarContent`／`MuiAlert`。逐一排查過公開（免登入）頁面找不到觸發點：`/storyteller/wysiwyg-demo` Playground 完全沒套 ThemeProvider；`/storyteller/work/...` 閱讀頁的「版本歷史」清單經 DOM 檢查是手刻 div、不是 `MuiMenu`；閱讀頁的「目錄／書籤／頁面一覽」切換鈕經 DOM 檢查是 `MuiButton`（contained/outlined），不是 `MuiTabs`；行動版寬度下「開啟索引」按鈕點擊後 DOM 查無 `.MuiDrawer-root`（索引面板是 inline 收合，不是 Modal Drawer）；公開頁面沒有 Select/Autocomplete/Switch/Radio/Checkbox/Snackbar/Alert 的使用場景；工作台頁面需要登入，登入會觸發 Firebase Auth 彈窗，依照標準禁止代為完成登入。這些項目只靠 TypeScript slot 名稱型別檢查通過＋跟已驗證的 Tooltip／OutlinedInput／Chip／Divider 相同的 `var()` 機制做間接佐證。之後 Faryne 自己在已登入頁面看一眼視覺有沒有跑掉即可，不需要另外排查。
 - [x] `MuiSelect`／`MuiAutocomplete`／`MuiSwitch`／`MuiRadio`／`MuiCheckbox`／`MuiSnackbar`／`MuiAlert`／`MuiDivider`／`MuiChip`（原本規劃為低優先「後續」項目，2026-08-18 一併做完，做法/驗證狀況同上）
 
-### Phase C：Editor 專屬操作 UI 對齊
-- [ ] Slash menu（`slashCommandExtension.tsx`）確認讀取 Phase A 的 semantic token（現況是直接讀 `var(--mui-palette-*)`，跟 Phase A 的 semantic token 是不是同一組要對齊，不一致的話要改掉）
-- [ ] Bubble menu（`StorytellerWysiwygBubbleMenu.tsx`）——目前是純 MUI 元件（Box/Paper/Stack），Phase B 做完應該會自動吃到新樣式，這裡是驗證，不是重寫
-- [ ] Context menu（`StorytellerWysiwygContextMenu.tsx`）——同上，純 MUI `<Menu>`，驗證 Phase B 做完後樣式正確，包含新加的文字背景色 popover
-- [ ] Table menu（`StorytellerWysiwygTableMenu.tsx`）確認樣式來源、對齊 semantic token
-- [ ] Image settings dialog（`assetImageNode.tsx` 裡的 `<Dialog>`）驗證 Phase B 做完後樣式正確
-- [ ] 驗證：右鍵選單、slash 選單、bubble menu 三者放在同一個畫面比對，視覺風格（背景色、邊框、圓角、hover 狀態）應該一致，不再有「三種不同選單長相」的違和感
+### Phase C：Editor 專屬操作 UI 對齊 ✅ 已完成（2026-08-18）
+- [x] Slash menu（`slashCommandExtension.tsx`）——原本讀 `var(--mui-palette-*)`（Phase A 之前的過渡寫法），改成直接讀 `var(--storyteller-editor-menu)`／`--storyteller-text-primary`／`--storyteller-border-subtle`／`--storyteller-text-muted`；選中項目的高亮色也從 `--mui-palette-action-selected`（半透明、跟主色連動但不是任何一個 semantic token）改成 `--storyteller-selection`，跟右鍵選單 `MenuItem.Mui-selected` 用同一個顏色來源
+- [x] Bubble menu（`StorytellerWysiwygBubbleMenu.tsx`）——實際檢查發現不是「Phase B 做完自動對齊」：`<Paper elevation={4}>` 沒有另外設 `bgcolor`，會落到 MUI 預設的 `background.paper`（＝ semantic `surfaceRaised`），比 Dialog/Menu/slash 選單統一使用的 `surfaceOverlay` 低一層，並排比較時會「淡一階」。主工具列 Paper 跟兩個色票 popover Paper 都補上明講的 `bgcolor: "var(--storyteller-editor-menu)"`（＝`surfaceOverlay`），跟其他選單拉齊層次
+- [x] Context menu（`StorytellerWysiwygContextMenu.tsx`）——純 MUI `<Menu>`，Phase B 的 `MuiMenu`／`MuiMenuItem` override 直接吃到，不需要改 code；`divider`（swatch 邊框用的 `borderColor: "divider"`）在 `StorytellerLayout.tsx` 的 `createTheme()` 裡本來就設成 `tokens.border`（＝semantic `borderSubtle`），跟其他選單邊框色是同一個值，確認過沒有另外要改的地方
+- [x] Table menu（`StorytellerWysiwygTableMenu.tsx`）——跟 Bubble menu 同樣的 Paper 層次問題，同樣補上 `bgcolor: "var(--storyteller-editor-menu)"`
+- [x] Image settings dialog（`assetImageNode.tsx` 裡的 `<Dialog>`）——純 MUI `<Dialog>`，Phase B 的 `MuiDialog` override 直接吃到，不需要改 code
+- [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。**這四個手刻/半手刻選單（slash／bubble／table menu）都在 editor 內才會出現，沒有免登入頁面可以觸發彈出畫面**（跟 Phase B 遇到的限制相同：Playground 路由完全沒套 `StorytellerLayout`／ThemeProvider，`/storyteller/work/...` 工作台需要登入），所以改用等效驗證：直接在已載入 `StorytellerLayout` 的公開頁面讀 `getComputedStyle(document.documentElement)`，確認 `--storyteller-editor-menu` 跟 `--storyteller-surface-overlay` 數值完全相同（`#2f2419`，brass-dark）——這代表 Bubble/Table menu 新加的 `bgcolor: var(--storyteller-editor-menu)` 跟 Dialog/Menu 用的 `surfaceOverlay` 背景色一定是同一個值，選單背景層次在 token 層級上已經對齊，不再是「三種不同選單長相」；`--storyteller-selection`／`--storyteller-border-subtle`／`--storyteller-text-primary`／`--storyteller-text-muted` 也都讀出預期的 hex 值。實際彈出畫面的並排截圖留給 Faryne 自己在已登入的 editor 頁面順手看一眼即可。
 
 ### Phase D：節慶活動 overlay 機制
 - [ ] 定義 `StorytellerSeasonalTheme` 型別跟資料結構（`id`／`label`／`overlayTokens`／`decorations`／`canAutoActivate`，`activeWindow` 可以先省略）
