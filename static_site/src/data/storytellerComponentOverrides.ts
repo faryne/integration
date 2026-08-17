@@ -15,8 +15,9 @@ const v = (key: keyof typeof STORYTELLER_CSS_VARIABLE_NAMES) =>
  * 視覺方向（跟規劃文件一致）：低調工業感，不要浮誇蒸汽龐克。重點是邊框／
  * surface 層次／hover-focus 狀態一致，不是到處加裝飾。
  *
- * 第二批（TextField／Tabs／Drawer）跟其他更多元件之後再補，見規劃文件
- * checklist。
+ * 第二批（TextField／Tabs／Drawer）於此補上；更多元件（Select／Autocomplete／
+ * Switch／Radio／Checkbox／Snackbar／Alert／Divider／Chip）之後再排，見規劃
+ * 文件 checklist。
  */
 export function storytellerComponentOverrides(): Components<Theme> {
   return {
@@ -101,6 +102,70 @@ export function storytellerComponentOverrides(): Components<Theme> {
             outline: `2px solid ${v("focusRing")}`,
             outlineOffset: 2,
           },
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: v("borderSubtle"),
+          },
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: v("borderStrong"),
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: v("accentMain"),
+            borderWidth: 2,
+          },
+          "&.Mui-error .MuiOutlinedInput-notchedOutline": {
+            borderColor: v("danger"),
+          },
+        },
+      },
+    },
+    MuiInputLabel: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          "&.Mui-focused": { color: v("accentMain") },
+          "&.Mui-error": { color: v("danger") },
+        },
+      },
+    },
+    MuiFormHelperText: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          "&.Mui-error": { color: v("danger") },
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          backgroundColor: v("accentMain"),
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          "&.Mui-selected": { color: v("textPrimary") },
+          "&.Mui-focusVisible": {
+            outline: `2px solid ${v("focusRing")}`,
+            outlineOffset: -2,
+          },
+        },
+      },
+    },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: v("surfaceOverlay"),
+          backgroundImage: "none",
+          border: `1px solid ${v("borderSubtle")}`,
         },
       },
     },
