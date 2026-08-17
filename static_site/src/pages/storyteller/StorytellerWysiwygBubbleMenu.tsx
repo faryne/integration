@@ -27,8 +27,13 @@ const BUBBLE_MARK_IDS = [
 /**
  * Bubble Menu（Phase 4）：選取文字時顯示的浮動小工具列，是拔工具列後的可發現性補償
  * （見定案文件風險清單第 3 點）。涵蓋常用行內樣式（粗體/斜體/底線/下標/上標/刪除線/
- * 文字色/連結/註解/腳注）；背景色空間有限、且使用頻率低於前景色，仍只在右鍵選單/
- * 工具列提供。
+ * 文字色/背景色/連結/註解/腳注）。
+ *
+ * 2026-08-17 補上背景色：Phase 4 當初的設計是「背景色空間有限、使用頻率較低，
+ * 交給右鍵選單/工具列」，但 Phase 6 已經把工具列整個拔掉，且觸控裝置上右鍵選單
+ * 現在會直接放行給原生長按選字用（見已知 Bug 記錄第 9 項），不會跳出我們的選單
+ * ——等於行動裝置上背景色完全沒有入口。Phase 9.5 人工測試也指出這個落差，因此
+ * 補進 bubble menu，跟文字色用同一套 popover 樣式。
  *
  * 跟右鍵選單一樣消費同一份 command registry，不重新定義任何動作。
  */
@@ -36,16 +41,20 @@ export function StorytellerWysiwygBubbleMenu({
   editor,
   commandContext,
 }: StorytellerWysiwygBubbleMenuProps) {
-  const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [textColorMenuOpen, setTextColorMenuOpen] = useState(false);
+  const [bgColorMenuOpen, setBgColorMenuOpen] = useState(false);
 
   const markCommands = wysiwygCommandsByGroup("mark").filter((command) =>
     BUBBLE_MARK_IDS.includes(command.id),
   );
-  // text-color-clear 的 id 也是 "text-color-" 開頭，但它是「清除顏色」的動作，不是
-  // 色票（沒有 previewColor），要排除掉才不會在色票列裡多一顆空白按鈕；清除功能另外
-  // 用固定的 DeleteIcon 按鈕呈現（見下面 JSX）。
+  // text-color-clear／bg-color-clear 的 id 也是對應前綴開頭，但它們是「清除顏色」的
+  // 動作，不是色票（沒有 previewColor），要排除掉才不會在色票列裡多一顆空白按鈕；
+  // 清除功能另外用固定的 DeleteIcon 按鈕呈現（見下面 JSX）。
   const textColorCommands = wysiwygCommandsByGroup("color").filter(
     (command) => command.id.startsWith("text-color-") && command.id !== "text-color-clear",
+  );
+  const bgColorCommands = wysiwygCommandsByGroup("color").filter(
+    (command) => command.id.startsWith("bg-color-") && command.id !== "bg-color-clear",
   );
   const linkCommand = getWysiwygCommand("link")!;
   const footnoteCommand = getWysiwygCommand("footnote")!;
@@ -119,7 +128,7 @@ export function StorytellerWysiwygBubbleMenu({
                 component="button"
                 type="button"
                 aria-label="文字顏色"
-                onClick={() => setColorMenuOpen((open) => !open)}
+                onClick={() => setTextColorMenuOpen((open) => !open)}
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -129,7 +138,7 @@ export function StorytellerWysiwygBubbleMenu({
                   border: "none",
                   borderRadius: 1,
                   cursor: "pointer",
-                  bgcolor: colorMenuOpen ? "action.selected" : "transparent",
+                  bgcolor: textColorMenuOpen ? "action.selected" : "transparent",
                   "&:hover": { bgcolor: "action.hover" },
                 }}
               >
@@ -147,7 +156,7 @@ export function StorytellerWysiwygBubbleMenu({
                 />
               </Box>
             </Tooltip>
-            {colorMenuOpen && (
+            {textColorMenuOpen && (
               <Paper
                 elevation={4}
                 sx={{
@@ -170,7 +179,7 @@ export function StorytellerWysiwygBubbleMenu({
                         aria-pressed={command.isActive?.(editor) ?? false}
                         onClick={() => {
                           run(command);
-                          setColorMenuOpen(false);
+                          setTextColorMenuOpen(false);
                         }}
                         sx={{
                           width: 20,
@@ -194,7 +203,109 @@ export function StorytellerWysiwygBubbleMenu({
                       aria-label="清除文字顏色"
                       onClick={() => {
                         run(getWysiwygCommand("text-color-clear")!);
-                        setColorMenuOpen(false);
+                        setTextColorMenuOpen(false);
+                      }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 20,
+                        height: 20,
+                        border: "none",
+                        cursor: "pointer",
+                        bgcolor: "transparent",
+                      }}
+                    >
+                      <DeleteIcon fontSize="inherit" />
+                    </Box>
+                  </Tooltip>
+                </Stack>
+              </Paper>
+            )}
+          </Box>
+
+          <Box sx={{ position: "relative" }}>
+            <Tooltip title="文字背景色">
+              <Box
+                component="button"
+                type="button"
+                aria-label="文字背景色"
+                onClick={() => setBgColorMenuOpen((open) => !open)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 30,
+                  height: 30,
+                  border: "none",
+                  borderRadius: 1,
+                  cursor: "pointer",
+                  bgcolor: bgColorMenuOpen ? "action.selected" : "transparent",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: "50%",
+                    border: "2px solid",
+                    borderColor: "divider",
+                    bgcolor:
+                      bgColorCommands.find((c) => c.isActive?.(editor))
+                        ?.previewColor ?? "transparent",
+                  }}
+                />
+              </Box>
+            </Tooltip>
+            {bgColorMenuOpen && (
+              <Paper
+                elevation={4}
+                sx={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  mt: 0.5,
+                  p: 1,
+                  zIndex: 1,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Stack direction="row" spacing={1}>
+                  {bgColorCommands.map((command) => (
+                    <Tooltip key={command.id} title={command.label}>
+                      <Box
+                        component="button"
+                        type="button"
+                        aria-label={command.label}
+                        aria-pressed={command.isActive?.(editor) ?? false}
+                        onClick={() => {
+                          run(command);
+                          setBgColorMenuOpen(false);
+                        }}
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: "2px solid",
+                          borderColor: command.isActive?.(editor)
+                            ? "text.primary"
+                            : "divider",
+                          bgcolor: command.previewColor,
+                          cursor: "pointer",
+                          p: 0,
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+                  <Tooltip title="清除文字背景色">
+                    <Box
+                      component="button"
+                      type="button"
+                      aria-label="清除文字背景色"
+                      onClick={() => {
+                        run(getWysiwygCommand("bg-color-clear")!);
+                        setBgColorMenuOpen(false);
                       }}
                       sx={{
                         display: "flex",

@@ -790,6 +790,25 @@ export default function StorytellerLoreEditor({
     );
   }
 
+  // Ctrl/Cmd+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
+  // （Phase 9.5 人工測試反映的問題）。
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  const isSavingLoreRef = useRef(saveLore.isPending);
+  isSavingLoreRef.current = saveLore.isPending;
+  useEffect(() => {
+    function handleSaveHotkey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+        return;
+      }
+      event.preventDefault();
+      if (isSavingLoreRef.current) return;
+      handleSaveRef.current();
+    }
+    window.addEventListener("keydown", handleSaveHotkey);
+    return () => window.removeEventListener("keydown", handleSaveHotkey);
+  }, []);
+
   function runSelectedAgent() {
     if (!canRunAgent || !selectedAgent) {
       return;

@@ -162,6 +162,19 @@ Faryne 具體提出的方向：**把閱讀頁的側邊欄／內文寬度比例�
 
 **狀態**：僅記錄方向與待釐清問題，尚未排時程、尚未細part工作項目，等前面幾個 Phase 有進度後再回頭評估。
 
+### Phase G：圖片相關問題集中處理（2026-08-17 新增，從 Phase 9.5／9.6 人工測試移過來）
+
+Faryne 完成 Phase 9.5／9.6 人工測試後，覺得圖片相關的問題有點多、不要每次一個一個修，決定統一挪到這裡集中處理，等真的要動的時候一起排。跟這份文件其他 Phase 不同的是：**這幾項是功能性的互動 bug，不是視覺樣式問題**，只是因為都跟圖片有關、且時間點上想跟 createTheme 一起排，所以放在同一份文件追蹤，不代表都要用 theme override 的方式解決。
+
+已知項目（都還沒查 root cause，只記錄現象）：
+
+1. **圖片後面接「引用」會跟圖片重疊**——[所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) Phase 9.6 實測發現，圖片文繞圖時如果緊接著一個引用區塊，畫面會跑版/疊在一起。懷疑方向：`CLEAR_FLOATING_ASSET_SX`（[assetImageLayout.ts](../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）目前設定 `clear:both` 的選擇器是 `& h1~h6, & [data-block-kind], & table, & [data-asset-layout]`，還沒實際確認引用區塊的 DOM 結構有沒有被這個選擇器涵蓋到。
+2. **圖片置中時，焦點在圖片上按 Enter 不會斷行**——NodeSelection（選到圖片本身）狀態下按 Enter 沒有反應，預期應該要跟 Notion 一樣，在圖片後面插入一個新段落。
+3. **圖片置中/全寬後，緊接著用 slash 插入分隔線，圖片會消失/被吃掉**——但如果先斷一行、隔一行再用 slash 插入分隔線就正常。懷疑跟 slash command 的 range 計算或分隔線插入邏輯在緊鄰 atom node（圖片）時的位置判斷有關，還沒深入查。這個算是比較明確的資料完整性風險（圖片內容不見了），三項裡優先度應該最高。
+4. **插入資產功能加說明文字欄位，並在閱讀頁顯示**——這是功能請求，不是 bug。目前圖片只有「替代文字」（`alt`，主要給無障礙/SEO 用），Faryne 想要一個給讀者看的「圖片說明」欄位，類似圖說/caption 的概念，跟 `alt` 是不同用途、不應該共用同一個欄位。
+
+**狀態**：僅收斂記錄現象，尚未排優先序、尚未查 root cause，等真的要處理時再展開。
+
 ## 結論
 
 這件事值得做，方向是**用 MUI 的 theme override 機制把 storyteller 的互動元件視覺收斂成一套產品自己的語言，而不是移除 MUI 或重刻一套 UI framework**。現有的明暗模式跟色系切換基礎設施已經很完整，真正要做的工作集中在 Phase A（token 整理）跟 Phase B（component override），這兩個做完視覺落差感就會大幅改善；Phase C／D／E 可以視時間陸續往後排，彼此依賴關係已經在上面列清楚。
