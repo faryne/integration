@@ -591,6 +591,14 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
   - 游標在圖片後面另一個真正空白的段落（原本就能正常運作的情境，用來確認沒有破壞正常路徑）：分隔線正確插入成獨立段落、圖片維持原樣、後面自動補一個新空段落可以繼續輸入，序列化格式（`---⟦markerId⟧⟦/markerId⟧`）也跟 `parser.ts` 的 `extractBlockKind` 對得上，能正確 round-trip。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
+### 13. 圖片選取狀態下按 Enter，新段落插到圖片上面而不是下面（[視覺主題規劃.md](視覺主題(createTheme)規劃.md) Phase G 項目 2，2026-08-18 查明並修復）
+
+- **現象**：滑鼠單點編輯器裡的圖片（選到圖片本身，NodeSelection）後按 Enter，預期應該跟 Notion 一樣在圖片後面插入新段落，實際卻是插到圖片**上面**。原本的記錄以為是「沒反應」，Faryne 這次描述得更準確：是方向反了，不是沒反應。
+- **Root cause**：`markerParagraph.ts` 的 `Enter` 快捷鍵 handler 直接用 `editor.state.selection.$from` 的位置呼叫 `splitParagraphFresh()`（=`splitBlock()`），沒有檢查目前是不是 `NodeSelection`。ProseMirror 的 `NodeSelection.$from` 落在被選取節點的**前面**（段落開頭），不是「游標在節點後面」——所以在這個位置分割段落，分出來的新段落自然接在圖片前面，不是後面。
+- **解法**：`Enter` handler 開頭加一個 `selection instanceof NodeSelection` 分支：圖片目前的使用慣例是「一張圖片獨占一個段落」，所以直接在圖片所在的整個段落之後（`$from.after($from.depth)`）插入一個新的空段落、把游標移過去，不呼叫 `splitParagraphFresh()`（那個是給文字游標用的，位置語意不一樣）。原本的文字段落 Enter 邏輯完全不動，只是多一個 NodeSelection 的分支提早 return。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證（沿用第 12 項的做法）：對圖片的 DOM 節點（`[data-asset-layout]`）dispatch 完整 mousedown/mouseup/click 事件序列，確認產生真正的 ProseMirror `NodeSelection`（DOM 上出現 `.ProseMirror-selectednode` class），再 dispatch 一個 `keydown: Enter` 事件到編輯器——`computer` 工具的 `key: "Return"` 這次沒有觸發 ProseMirror 的 keymap（原因不明，改用 JS 直接 dispatch KeyboardEvent 就正常觸發，`defaultPrevented` 變 `true` 證實有 handler 接住）。確認新段落正確插入在圖片跟後段文字之間（`[前段文字, image, 新空段落, 後段文字]`），游標也正確移到新段落可以馬上打字；另外測了一般文字段落按 Enter（非圖片）確認沒有回歸，行為跟修改前一致。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |

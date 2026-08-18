@@ -2,6 +2,7 @@ import { InputRule, mergeAttributes } from "@tiptap/core";
 import Paragraph from "@tiptap/extension-paragraph";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
+  NodeSelection,
   Plugin,
   PluginKey,
   TextSelection,
@@ -293,7 +294,33 @@ export const MarkerParagraph = Paragraph.extend({
       ...headingShortcuts,
       Enter: () => {
         const { editor } = this;
-        const { $from } = editor.state.selection;
+        const { selection } = editor.state;
+
+        // 選到的是 atom node（例如圖片）本身，不是文字游標——NodeSelection 的
+        // $from 落在節點「前面」（段落開頭），如果照下面 splitParagraphFresh
+        // 的邏輯用 $from 位置分割，會把新段落插到圖片上面而不是下面（已知 Bug
+        // 記錄第 13 項：使用者實測發現方向反了）。圖片目前的使用慣例是「一張
+        // 圖片獨占一個段落」，所以直接在圖片所在的整個段落之後插入新段落，等同
+        // 「在圖片後面插入新段落」，游標移過去讓使用者可以接著打字。
+        if (selection instanceof NodeSelection) {
+          const { $from } = selection;
+          const paragraphEnd = $from.after($from.depth);
+          return editor.commands.command(({ tr, dispatch, state }) => {
+            if (dispatch) {
+              const newParagraph = state.schema.nodes.paragraph.create({
+                markerId: generateMarkerId(),
+                headingLevel: DEFAULT_HEADING_LEVEL,
+                blockKind: DEFAULT_BLOCK_KIND,
+              });
+              tr.insert(paragraphEnd, newParagraph);
+              tr.setSelection(TextSelection.near(tr.doc.resolve(paragraphEnd + 1)));
+              dispatch(tr.scrollIntoView());
+            }
+            return true;
+          });
+        }
+
+        const { $from } = selection;
         const currentBlockKind = ($from.parent.attrs.blockKind ??
           DEFAULT_BLOCK_KIND) as BlockKindValue;
         const isCurrentParagraphEmpty = $from.parent.textContent.trim() === "";
