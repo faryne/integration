@@ -117,8 +117,21 @@ function AssetImageView({
         onDoubleClick={openDialog}
         sx={{
           ...assetImageFrameSx(layout, size),
-          borderColor: selected ? "primary.main" : "divider",
-          boxShadow: selected ? 1 : 0,
+          // 選取狀態（NodeSelection，例如點圖片、或已知 Bug 記錄第 14 項的
+          // Backspace 先選取）原本只換邊框顏色＋一級陰影，太不明顯，使用者反映
+          // 看不出來焦點在圖片上。改成邊框加粗＋外面再加一圈用 selection token
+          // 的 outline「光暈」，跟背景色系無關，任何色系/明暗模式下都能一眼看到。
+          borderColor: selected
+            ? "var(--storyteller-selection, #e6bd76)"
+            : "divider",
+          borderWidth: selected ? 2 : 1,
+          outline: selected
+            ? "3px solid var(--storyteller-selection, #e6bd76)"
+            : "none",
+          outlineOffset: 3,
+          boxShadow: selected ? 3 : 0,
+          transition:
+            "border-color 0.15s ease, outline-color 0.15s ease, box-shadow 0.15s ease",
           cursor: "grab",
         }}
       >
