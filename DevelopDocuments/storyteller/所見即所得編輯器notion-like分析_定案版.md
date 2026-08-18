@@ -625,6 +625,18 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 Faryne 提供的 debug log（`parentOffset: 5, blockKind: 'quote', text: 'abcde'`）確認重現條件後修正，接著重新驗證三個情境都正確：(1) 圖片緊接游標前面按 Backspace 仍正確變成選取狀態（`nodeSelected: true`，回歸測試通過，第 14 項沒有被這次修正破壞）；(2) 引用區塊內「abcde」游標在文字尾端按 Backspace，確認不再產生 `.ProseMirror-selectednode`（`nodeSelected: false`，回歸已修復，不會再誤判成 atom）；(3) 空白引用行按 Backspace 仍正確重置 `blockKind`（第 15 項沒有被破壞）。
 - **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
 
+### 17. 空白標題（heading）行按 Backspace 沒有跳出格式，直接合併掉、跟空白引用/清單行的手感不一致（2026-08-18 查明並修復）
+
+- **現象**：Faryne 拿示例圖測試：在第三行插入 H1（H2~H6 應該同理），打字後用 Backspace 把文字刪光，預期游標應該留在第三行（變回一般段落），實際卻跳回第二行尾端——整個空白標題段落被合併掉了。同時測了插入 hr 分隔線接著按 Backspace，發現行為完全不一樣（分隔線那行直接消失，游標留在原本插入 hr 時自動產生的空段落開頭），Faryne 問這兩者為什麼不一致，`clear:both` 不是都套用了嗎。
+- **釐清**：`clear:both` 只是 CSS 排版效果（float 環繞的清除規則），跟 Backspace 這裡的 JS 合併邏輯完全無關，兩者「看起來都有 clear:both」只是巧合。真正決定行為的是兩個完全不同的屬性機制：
+  - 標題用 `headingLevel`，跟引用/清單用的 `blockKind` 是兩個獨立、互斥的屬性。
+  - 分隔線（`blockKind: "hr"`）本身沒有可打字的文字內容——插入當下就自動在後面產生一個新空段落、游標移過去，使用者是在這個「全新的空段落」按 Backspace，不是在分隔線本身的段落裡打字又刪光，情境跟標題／引用/清單完全不同。
+- **Root cause**：第 15 項幫「空白引用/清單行按 Backspace 先跳出格式」加的保護，判斷式只檢查了 `blockKind`，沒有涵蓋 `headingLevel`。空白標題按 Backspace 因此沒有這層保護，直接落到 ProseMirror 預設的「跟前一段合併」，把整個空白標題段落吃掉，游標停在被合併的前一行尾端。
+- **解法**：把第 15 項的「格式跳出」判斷式擴大，`blockKind !== "none"` 改成 `blockKind !== "none" || headingLevel !== 0`，符合任一個且段落是空的，第一次 Backspace 就把兩個屬性都重置回預設值（跟 Enter 分割時「標題重置成一般段落」的既有邏輯一致），不做合併。
+- **分隔線（hr）維持原樣，不算 bug**：用同一套 debug 方式實測分隔線後方空段落按 Backspace，確認分隔線那一行會被直接合併吃掉、消失，游標留在（合併後變成上一行的）空段落開頭——這其實跟 Notion 等多數編輯器對分隔線的處理一致（分隔線沒有內容需要保護，一按 Backspace 就直接刪，不像圖片那樣需要先選取確認），判斷這個行為本身沒問題，不需要修改。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證：設定「一般段落＋一般段落＋空白 H1」，dispatch 一次 `keydown: Backspace`，確認 DOM 上第三個元素從 `<H1>` 變成 `<P>`（`blockKind: null`），且**仍然是獨立的第三個元素**（沒有跟第二行合併），跟修復前「整個消失、只剩兩個元素」的行為明顯不同。
+- **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |

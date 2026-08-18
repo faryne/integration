@@ -367,17 +367,30 @@ export const MarkerParagraph = Paragraph.extend({
         // 使用者按第二次 Backspace 才真的合併——這是 Notion 等多數編輯器的標準
         // 手感，也讓後續合併邏輯吃到的是兩個 blockKind 一致（都是一般段落）的
         // 段落，不用擔心 blockKind 不一致時 merge 行為不穩定。
+        //
+        // 這裡的「格式」涵蓋 blockKind（引用/清單）跟 headingLevel（標題）兩種
+        // 互斥屬性——Faryne 實測發現空白標題（例如打完字又刪光的 H1）按
+        // Backspace 沒有這層保護，直接合併掉整個標題段落、游標跳到前一行尾端，
+        // 跟空白引用/清單行「先跳出格式」的手感不一致，這裡一併補上。
         const currentBlockKind = ($from.parent.attrs.blockKind ??
           DEFAULT_BLOCK_KIND) as BlockKindValue;
+        const currentHeadingLevel = ($from.parent.attrs.headingLevel ??
+          DEFAULT_HEADING_LEVEL) as HeadingLevel;
         const isCurrentParagraphEmpty = $from.parent.textContent.trim() === "";
         if (
           $from.parentOffset === 0 &&
-          currentBlockKind !== DEFAULT_BLOCK_KIND &&
+          (currentBlockKind !== DEFAULT_BLOCK_KIND ||
+            currentHeadingLevel !== DEFAULT_HEADING_LEVEL) &&
           isCurrentParagraphEmpty
         ) {
           const paragraphStart = $from.before($from.depth);
           return editor.commands.command(({ tr }) => {
             tr.setNodeAttribute(paragraphStart, "blockKind", DEFAULT_BLOCK_KIND);
+            tr.setNodeAttribute(
+              paragraphStart,
+              "headingLevel",
+              DEFAULT_HEADING_LEVEL,
+            );
             return true;
           });
         }
