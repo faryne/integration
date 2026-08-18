@@ -238,7 +238,7 @@ Faryne 完成 Phase 9.5／9.6 人工測試後，覺得圖片相關的問題有�
 
 已知項目（都還沒查 root cause，只記錄現象）：
 
-1. **圖片後面接「引用」會跟圖片重疊**——[所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) Phase 9.6 實測發現，圖片文繞圖時如果緊接著一個引用區塊，畫面會跑版/疊在一起。懷疑方向：`CLEAR_FLOATING_ASSET_SX`（[assetImageLayout.ts](../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）目前設定 `clear:both` 的選擇器是 `& h1~h6, & [data-block-kind], & table, & [data-asset-layout]`，還沒實際確認引用區塊的 DOM 結構有沒有被這個選擇器涵蓋到。
+1. ~~**圖片後面接「引用」會跟圖片重疊**~~ ✅ **Faryne 複測確認已隨項目 5 的其他修正一併解決（2026-08-18）**——插入引用會正確跳到圖片下方，不再重疊，`CLEAR_FLOATING_ASSET_SX` 的 `clear:both` 本身沒問題。過程中連帶挖出一個新問題：見項目 5 延伸的「已知 Bug 記錄」第 15 項（空白引用/清單行按 Backspace 沒有跳出格式）。
 2. ~~**圖片置中時，焦點在圖片上按 Enter 不會斷行**~~ ✅ **已修（2026-08-18）**。實際現象比原記錄更明確：不是「沒反應」，是方向反了——會在圖片**上面**插入新段落，不是下面。Root cause／解法／驗證方式詳見 [所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) 的「已知 Bug 記錄」第 13 項；簡述：`markerParagraph.ts` 的 `Enter` handler 沒檢查 `NodeSelection`，直接拿 `$from` 位置去分割——但 NodeSelection 的 `$from` 落在節點「前面」，分割出來的新段落自然排到圖片上面。加了 `NodeSelection` 分支，改成在圖片所在段落之後插入新段落。
 3. ~~**圖片置中/全寬後，緊接著用 slash 插入分隔線，圖片會消失/被吃掉**~~ ✅ **已修（2026-08-18）**。Root cause／解法／驗證方式詳見 [所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) 的「已知 Bug 記錄」第 12 項；簡述：`isTextOnlySlashQuery` 的文字比對沒把圖片這種 inline atom 算進去，誤判「游標緊接圖片後面」跟「段落是空的」一樣，讓 slash 選單在不該出現的地方跳出來，`insertHorizontalRule` 又會把「目前段落」內容整個刪掉——兩層都修了（slash 選單源頭擋掉＋`insertHorizontalRule` 改成搬移保留內容，不再直接刪除）。
 4. **插入資產功能加說明文字欄位，並在閱讀頁顯示**——這是功能請求，不是 bug。目前圖片只有「替代文字」（`alt`，主要給無障礙/SEO 用），Faryne 想要一個給讀者看的「圖片說明」欄位，類似圖說/caption 的概念，跟 `alt` 是不同用途、不應該共用同一個欄位。
@@ -246,7 +246,7 @@ Faryne 完成 Phase 9.5／9.6 人工測試後，覺得圖片相關的問題有�
 
 **驗證方式更新（2026-08-18）**：這幾項原本被認為「只能在真實登入頁面手動確認」，卡住 Faryne 需要陪同逐一檢查。後來發現 `/storyteller/wysiwyg-demo` Playground（dev-only、免登入，掛的是正式 `StorytellerWysiwygEditor`）就能拿來程式化重現／驗證這類編輯器互動 bug：用瀏覽器 JS 直接操作原始內容 textarea 設初始狀態、`dispatchEvent` 觸發選單裡的 command 按鈕，不需要真人手動點擊或登入。之後 Phase G 剩下的項目（1、2）優先用這個方式查。
 
-**狀態**：項目 2、3、5 已修（項目 5 第二次 Backspace 刪除的驗證還有缺口，見上）。項目 1 還沒查 root cause，項目 4 是功能請求，尚未排優先序，等真的要處理時再展開。
+**狀態**：項目 1、2、3、5 已修（項目 1 是項目 5 的副作用一併解決；過程中挖出新的已知 Bug 第 15 項——空白引用/清單行按 Backspace 沒有跳出格式，已修但「跳出格式後的合併」待人工複測）。項目 4 是功能請求，尚未排優先序，等真的要處理時再展開。
 
 ## 結論
 

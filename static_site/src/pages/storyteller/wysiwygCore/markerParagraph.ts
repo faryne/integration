@@ -358,6 +358,30 @@ export const MarkerParagraph = Paragraph.extend({
         const { $from } = selection;
         if ($from.parent.type.name !== "paragraph") return false;
 
+        // 已知 Bug 記錄第 15 項：空白的引用/清單行按 Backspace 清空文字後，
+        // blockKind 屬性沒有跟著重置，畫面上還是一個空的引用/清單框，容易讓人
+        // 以為「刪不掉」；接著在這個空白引用/清單行上再按一次 Backspace，會直接
+        // 走 ProseMirror 對「不同 blockKind 段落合併」的預設路徑，實測結果不乾淨
+        // （會刪到前一行文字、引用框卻還留著）。跟 Enter 已經有的「空白清單/引用
+        // 行跳出格式」邏輯比照辦理，Backspace 也先跳出格式（變回一般段落）再讓
+        // 使用者按第二次 Backspace 才真的合併——這是 Notion 等多數編輯器的標準
+        // 手感，也讓後續合併邏輯吃到的是兩個 blockKind 一致（都是一般段落）的
+        // 段落，不用擔心 blockKind 不一致時 merge 行為不穩定。
+        const currentBlockKind = ($from.parent.attrs.blockKind ??
+          DEFAULT_BLOCK_KIND) as BlockKindValue;
+        const isCurrentParagraphEmpty = $from.parent.textContent.trim() === "";
+        if (
+          $from.parentOffset === 0 &&
+          currentBlockKind !== DEFAULT_BLOCK_KIND &&
+          isCurrentParagraphEmpty
+        ) {
+          const paragraphStart = $from.before($from.depth);
+          return editor.commands.command(({ tr }) => {
+            tr.setNodeAttribute(paragraphStart, "blockKind", DEFAULT_BLOCK_KIND);
+            return true;
+          });
+        }
+
         // 已知 Bug 記錄第 14 項：圖片（inline atom）緊接在游標前面時，按 Backspace
         // 會直接把圖片刪掉、沒有「先選取再刪除」的緩衝機會。實測（Faryne 提供的
         // debug log）發現真正的情境比原本設想的更常見：float 環繞排版時，圖片
