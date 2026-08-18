@@ -395,12 +395,18 @@ export const MarkerParagraph = Paragraph.extend({
         // 邏輯接手時，事件會落到瀏覽器原生的 contenteditable 行為，直接把那個
         // `contenteditable=false` 的圖片節點刪掉，完全沒有先選取的機會。
         //
-        // 這裡分兩種情境找出「緊接在游標前面的 atom」：
+        // 這裡分兩種情境找出「緊接在游標前面的 atom」。注意：ProseMirror 的
+        // `node.isAtom` 定義是 `isLeaf || spec.atom`，純文字節點也是 leaf（沒有
+        // 子內容），所以文字節點的 `isAtom` 也會是 `true`——不能只檢查
+        // `isAtom`，一定要額外排除 `isText`，只鎖定「圖片」這種真正的自訂 atom
+        // 節點，不然一般文字也會被誤判成atom整段選取，導致按一次 Backspace
+        // 把整段文字都刪掉（Faryne 實測發現：引用區塊內打字，游標不在段落開頭
+        // 時按 Backspace 整段文字消失，root cause 就是這個誤判）。
         let atomPos: number | null = null;
         if ($from.parentOffset > 0) {
           // 情境一：游標前面在同一個段落內就有內容——檢查緊接在前面的是不是 atom。
           const nodeBefore = $from.nodeBefore;
-          if (nodeBefore?.isAtom) {
+          if (nodeBefore && nodeBefore.isAtom && !nodeBefore.isText) {
             atomPos = $from.pos - nodeBefore.nodeSize;
           }
         } else {
@@ -412,7 +418,9 @@ export const MarkerParagraph = Paragraph.extend({
             const isSoleAtomParagraph =
               prevNode?.type.name === "paragraph" &&
               prevNode.childCount === 1 &&
-              (prevNode.firstChild?.isAtom ?? false);
+              !!prevNode.firstChild &&
+              prevNode.firstChild.isAtom &&
+              !prevNode.firstChild.isText;
             if (isSoleAtomParagraph && prevNode) {
               atomPos = paragraphStart - prevNode.nodeSize + 1;
             }

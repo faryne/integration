@@ -617,6 +617,14 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證：設定「一般段落＋空白引用段落」，游標移到空白引用行，dispatch 一次 `keydown: Backspace`，確認 DOM 上該段落的 `data-block-kind` 從 `"quote"` 變成 `null`（一般段落），畫面上引用框的左邊框樣式也隨之消失。**沒有獨立驗證「跳出格式後的第二次 Backspace 合併」這一步**——這個自動化環境目前沒辦法可靠觸發 ProseMirror 對「兩個一般段落合併」這種預設 `joinBackward` 行為（連完全沒有自訂程式碼涉入的「純兩個一般段落合併」都測不出來，確認是工具本身的限制，不是這次改動的問題），麻煩 Faryne 之後在真實瀏覽器複測完整流程：引用行文字刪光 → 確認變回一般段落 → 再按一次 Backspace → 確認乾淨合併進前一行、沒有刪錯內容。
 - **狀態**：格式重置（第一次 Backspace）已修並驗證通過；跳出格式後的合併（第二次 Backspace）待 Faryne 人工複測確認。與本節文件更新同一個 commit 一併送出。
 
+### 16.（第 14 項修復帶出的回歸）引用區塊內打字，游標不在段落開頭時按 Backspace，整段文字被一次刪光（2026-08-18 查明並修復）
+
+- **現象**：Faryne 複測第 14／15 項時，在引用區塊內打「abcde」，游標移到文字中間想刪掉「de」，結果按一次 Backspace 整段「abcde」全部消失，不是預期的刪一個字。單點一次 Backspace，不是按住連發造成的。
+- **Root cause**：這是第 14 項那次修復（`markerParagraph.ts` 的 `Backspace` handler）帶出的回歸，對 ProseMirror 的 `node.isAtom` 有根本性的誤解。`isAtom` 的實際定義是 `isLeaf || spec.atom`，而「純文字節點」本身也是 leaf node（沒有子內容）——代表**一般文字節點的 `isAtom` 也是 `true`**，不是只有像圖片這種真正自訂的 atom 節點才會是 `true`。第 14 項的判斷式 `nodeBefore?.isAtom`／`prevNode.firstChild?.isAtom` 沒有排除文字節點，游標前面只要是文字（不只是圖片），就會被誤判成「緊接在游標前面的 atom」，整個文字節點（可能是一整段連續文字）被當成單一節點選取／處理，導致按一次 Backspace 就把整段文字弄不見。這個回歸不限於引用區塊，任何段落只要游標不在最開頭（`parentOffset > 0`）按 Backspace 都會中招，只是 Faryne 剛好是在測引用區塊時發現的。
+- **解法**：`isAtom` 檢查一律加上 `&& !nodeBefore.isText`（情境一）／`&& !prevNode.firstChild.isText`（情境二），只鎖定「圖片」這種真正的自訂 atom 節點，明確排除文字節點。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 Faryne 提供的 debug log（`parentOffset: 5, blockKind: 'quote', text: 'abcde'`）確認重現條件後修正，接著重新驗證三個情境都正確：(1) 圖片緊接游標前面按 Backspace 仍正確變成選取狀態（`nodeSelected: true`，回歸測試通過，第 14 項沒有被這次修正破壞）；(2) 引用區塊內「abcde」游標在文字尾端按 Backspace，確認不再產生 `.ProseMirror-selectednode`（`nodeSelected: false`，回歸已修復，不會再誤判成 atom）；(3) 空白引用行按 Backspace 仍正確重置 `blockKind`（第 15 項沒有被破壞）。
+- **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |
