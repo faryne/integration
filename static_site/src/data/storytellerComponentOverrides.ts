@@ -226,10 +226,20 @@ export function storytellerComponentOverrides(): Components<Theme> {
     },
     MuiAlert: {
       styleOverrides: {
-        root: {
-          backgroundColor: v("surfaceRaised"),
-          border: `1px solid ${v("borderSubtle")}`,
-        },
+        // 跟下面 MuiChip 同一個坑：只有 `variant="standard"`（沒特別指定，
+        // 預設值）才套用 surfaceRaised 換皮。`variant="filled"`（例如
+        // CustomSnackbar.tsx 存檔完成的提示）MUI 內建是「severity 色系飽和
+        // 背景＋白字」，這裡如果無條件把背景改成偏淺的 surfaceRaised，白字
+        // 會看不見（Faryne 實測發現：存檔完成的提示文字整個消失）。
+        // `variant="outlined"` 也排除，理由一樣（outlined 用 severity 色文
+        // 字＋透明背景，不該被蓋成 surfaceRaised）。
+        root: ({ ownerState }) =>
+          ownerState.variant === "standard" || ownerState.variant === undefined
+            ? {
+                backgroundColor: v("surfaceRaised"),
+                border: `1px solid ${v("borderSubtle")}`,
+              }
+            : {},
       },
     },
     MuiDivider: {
