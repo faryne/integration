@@ -59,12 +59,12 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [x] Image settings dialog（`assetImageNode.tsx` 裡的 `<Dialog>`）——純 MUI `<Dialog>`，Phase B 的 `MuiDialog` override 直接吃到，不需要改 code
 - [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。**這四個手刻/半手刻選單（slash／bubble／table menu）都在 editor 內才會出現，沒有免登入頁面可以觸發彈出畫面**（跟 Phase B 遇到的限制相同：Playground 路由完全沒套 `StorytellerLayout`／ThemeProvider，`/storyteller/work/...` 工作台需要登入），所以改用等效驗證：直接在已載入 `StorytellerLayout` 的公開頁面讀 `getComputedStyle(document.documentElement)`，確認 `--storyteller-editor-menu` 跟 `--storyteller-surface-overlay` 數值完全相同（`#2f2419`，brass-dark）——這代表 Bubble/Table menu 新加的 `bgcolor: var(--storyteller-editor-menu)` 跟 Dialog/Menu 用的 `surfaceOverlay` 背景色一定是同一個值，選單背景層次在 token 層級上已經對齊，不再是「三種不同選單長相」；`--storyteller-selection`／`--storyteller-border-subtle`／`--storyteller-text-primary`／`--storyteller-text-muted` 也都讀出預期的 hex 值。實際彈出畫面的並排截圖留給 Faryne 自己在已登入的 editor 頁面順手看一眼即可。
 
-### Phase D：節慶活動 overlay 機制
-- [ ] 定義 `StorytellerSeasonalTheme` 型別跟資料結構（`id`／`label`／`overlayTokens`／`decorations`／`canAutoActivate`，`activeWindow` 可以先省略）
-- [ ] 實作 `base + seasonal overlay` 的 merge 邏輯，`season: "none"` 時完全不影響現有畫面
-- [ ] UI：在 `SteamPaletteSwitcher` 附近加節慶選擇/關閉的開關，存 localStorage（比照現有 palette/mode 機制）
-- [ ] 做 1 個示範節慶（建議聖誕節，時間點較近、素材較好找）的 overlay token，範圍限定：accent 色／背景 subtle tint／少量裝飾／button-menu hover 微調，不碰核心文字對比度、不改 danger/success 語意色
-- [ ] 驗證：切換節慶 overlay 開/關，確認核心文字對比度、既有色系呈現都沒被破壞，只有預期範圍內的裝飾變化
+### Phase D：節慶活動 overlay 機制 ✅ 已完成（2026-08-18）
+- [x] 定義 `StorytellerSeasonalTheme` 型別跟資料結構——新增 [storytellerSeasonalTheme.ts](../../static_site/src/data/storytellerSeasonalTheme.ts)，`StorytellerSeasonalOverlayTokens` 刻意用 `Pick` 限定只能覆寫 `accentMain`／`accentHover`／`focusRing`／`selection`／`borderStrong` 這五個裝飾性 key（型別層級擋住，不是靠口頭約定），`activeWindow`／`decorations` 兩個第一版用不到的欄位如規劃保留但不強制填
+- [x] 實作 `base + seasonal overlay` 的 merge 邏輯——`mergeStorytellerSeasonalTokens(base, seasonId)` 用 `{ ...base, ...overlayTokens }`，`season: "none"` 對應的 `overlayTokens` 是空物件，回傳值在數值上等於 base 本身
+- [x] UI：新增 [SteamSeasonalSwitcher.tsx](../../static_site/src/components/storyteller/SteamSeasonalSwitcher.tsx)，放在 `SteamPaletteSwitcher` 正下方（`StorytellerLayout.tsx` 頁尾），點節慶按鈕＝切換 active/inactive（再點一次已啟用的節慶＝關掉，不需要另外一顆關閉鈕）；新增 [storytellerSeasonalMode.tsx](../../static_site/src/layouts/storytellerSeasonalMode.tsx) 提供 Context＋localStorage 存取，完全比照既有 `storytellerPaletteMode.tsx`／`storytellerThemeMode.tsx` 的寫法（同一套「未選過或存的值不合法時退回預設」邏輯）
+- [x] 示範節慶：中秋節（Faryne 指定，不是文件原本建議的聖誕節）。`accentMain #e6b143`／`accentHover #f5cc6e`／`focusRing #f5cc6e`／`selection #f0c26a`／`borderStrong #8a6a3a`，月光金色調，比預設 brass（`#c9974f`）更亮更黃；只動這五個 key，不碰 `surfaceBase`／`textPrimary`／`textMuted`，也不去動 danger（MUI severity 色系是元件層自己決定，不歸這層管）
+- [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器實測（brass-dark）：切到「中秋節」後 `getComputedStyle(document.documentElement)` 讀出的 5 個 `--storyteller-*` 變數精確對上 overlay 設定值；`/storyteller` 公開首頁搜尋框 focus 邊框從 `rgb(201,151,79)`（brass accentMain）變成 `rgb(230,177,67)`（中秋 accentMain）；AppBar／首頁 Hero 按鈕等直接吃 `theme.palette.primary`（＝ `tokens.brass`，不經過 semantic 層）的地方顏色不變，符合「只換裝飾性強調色，不是整站變色」的設計；關閉節慶後 `localStorage` 存回 `"none"`、`accentMain` 精確回到 brass 原值 `#c9974f`，畫面截圖確認首頁視覺跟切換節慶前逐位元一致。**Faryne 要求的收尾動作已完成**：實測完把節慶切回「無」（`none`），commit 送出時預設狀態是關閉的，不影響任何既有使用者。
 
 ### Phase E：無障礙功能 audit／修正
 - [ ] Slash command：鍵盤導覽、IME 組字期間按鍵攔截、Escape/Enter 語意、補 `aria-activedescendant`

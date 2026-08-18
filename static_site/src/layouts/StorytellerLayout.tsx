@@ -2,6 +2,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
 import { SteamPaletteSwitcher } from "@/components/storyteller/SteamPaletteSwitcher.tsx";
+import { SteamSeasonalSwitcher } from "@/components/storyteller/SteamSeasonalSwitcher.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
@@ -15,6 +16,7 @@ import {
   storytellerSemanticTokensToCssVariables,
   toStorytellerSemanticTokens,
 } from "@/data/storytellerSemanticTheme.ts";
+import { mergeStorytellerSeasonalTokens } from "@/data/storytellerSeasonalTheme.ts";
 import { storytellerComponentOverrides } from "@/data/storytellerComponentOverrides.ts";
 import {
   StorytellerPaletteContext,
@@ -26,6 +28,11 @@ import {
   getInitialStorytellerThemeMode,
   storytellerThemeModeStorageKey,
 } from "@/layouts/storytellerThemeMode.tsx";
+import {
+  StorytellerSeasonalContext,
+  getInitialStorytellerSeason,
+  storytellerSeasonalStorageKey,
+} from "@/layouts/storytellerSeasonalMode.tsx";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -86,6 +93,9 @@ export function StorytellerLayout() {
   // 色系（黃銅／鋼鐵／銅綠／紅銅）也是整個產品線共用一份，記在 localStorage 供下次造訪沿用；
   // 齒輪、鉚釘這些機構本身不受色系影響，只有 storytellerThemeTokens 的色碼會變。
   const [palette, setPalette] = useState(getInitialStorytellerPalette);
+  // Phase D：節慶主題（預設「無」，不影響任何人），疊在 palette/mode 決定的
+  // base semantic token 上面，只覆寫少數強調色 key，見 storytellerSeasonalTheme.ts。
+  const [season, setSeason] = useState(getInitialStorytellerSeason);
   const theme = useMemo(() => {
     const tokens = storytellerThemeTokens[palette][mode];
     const headingStyle = {
@@ -137,18 +147,28 @@ export function StorytellerLayout() {
   // Phase A（視覺主題規劃）：semantic token 曝露成 CSS variable，掛在 :root 上。
   // 跟 theme 用同一份 [mode, palette] 依賴、同一份 tokens 來源，確保兩邊永遠同步
   // ——不會有「MUI palette 已經換色系了，但 --storyteller-* 還是舊值」這種不一致。
+  // Phase D：節慶 overlay 疊在 semantic token 這層（不是疊在 raw palette token
+  // 上），所以只影響吃 --storyteller-* 的手刻 DOM／Phase B component override，
+  // 不影響 MUI theme.palette.primary 本身（AppBar／contained Button 這類直接
+  // 讀 tokens.brass 的地方維持色系本色，節慶只換裝飾性強調色，不是整站變色）。
   const storytellerCssVariables = useMemo(() => {
     const tokens = storytellerThemeTokens[palette][mode];
     return storytellerSemanticTokensToCssVariables(
-      toStorytellerSemanticTokens(tokens),
+      mergeStorytellerSeasonalTokens(
+        toStorytellerSemanticTokens(tokens),
+        season,
+      ),
     );
-  }, [mode, palette]);
+  }, [mode, palette, season]);
   useEffect(() => {
     window.localStorage.setItem(storytellerThemeModeStorageKey, mode);
   }, [mode]);
   useEffect(() => {
     window.localStorage.setItem(storytellerPaletteStorageKey, palette);
   }, [palette]);
+  useEffect(() => {
+    window.localStorage.setItem(storytellerSeasonalStorageKey, season);
+  }, [season]);
   // index.html 的 favicon 是所有 Firebase Hosting target 共用的同一份靜態檔案，
   // steamloom.works 要有自己的圖示只能在 runtime 改 <link rel="icon">，跟 helpers/title.tsx
   // 動態改 document.head 是同一招；巢狀模式（faryne.dev/storyteller）維持原本的 faryne icon。
@@ -199,227 +219,236 @@ export function StorytellerLayout() {
       <GlobalStyles styles={{ ":root": storytellerCssVariables }} />
       <StorytellerThemeModeContext.Provider value={{ mode, toggleMode }}>
         <StorytellerPaletteContext.Provider value={{ palette, setPalette }}>
-          <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-            <PenNameDialog
-              open={Boolean(showPenNameDialog)}
-              onCompleted={() => setShowWelcomeGuide(true)}
-            />
-            <WelcomeGuideDialog
-              open={showWelcomeGuide}
-              onClose={() => setShowWelcomeGuide(false)}
-            />
-            <AppBar position="sticky" color="default" elevation={0}>
-              <Toolbar>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  sx={{ flex: 1 }}
-                >
-                  <Box
-                    sx={{
-                      color: "primary.main",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+          <StorytellerSeasonalContext.Provider value={{ season, setSeason }}>
+            <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+              <PenNameDialog
+                open={Boolean(showPenNameDialog)}
+                onCompleted={() => setShowWelcomeGuide(true)}
+              />
+              <WelcomeGuideDialog
+                open={showWelcomeGuide}
+                onClose={() => setShowWelcomeGuide(false)}
+              />
+              <AppBar position="sticky" color="default" elevation={0}>
+                <Toolbar>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ flex: 1 }}
                   >
-                    <SteamLoomMark size={24} />
-                  </Box>
-                  <Typography
-                    component={RouterLink}
-                    to={steamloomPath()}
-                    variant="h6"
-                    sx={{
-                      color: "inherit",
-                      textDecoration: "none",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {STORYTELLER_APP_NAME}
-                  </Typography>
-                  {quickSearchOpen ? (
-                    <Stack
-                      component="form"
-                      direction="row"
-                      alignItems="center"
-                      spacing={0.5}
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        submitQuickSearch();
+                    <Box
+                      sx={{
+                        color: "primary.main",
+                        display: "flex",
+                        alignItems: "center",
                       }}
                     >
-                      <TextField
-                        autoFocus
-                        size="small"
-                        variant="standard"
-                        placeholder="搜尋作品..."
-                        value={quickSearchKeyword}
-                        onChange={(event) =>
-                          setQuickSearchKeyword(event.target.value)
-                        }
-                        onBlur={() => {
-                          if (!quickSearchKeyword.trim()) {
-                            setQuickSearchOpen(false);
-                          }
+                      <SteamLoomMark size={24} />
+                    </Box>
+                    <Typography
+                      component={RouterLink}
+                      to={steamloomPath()}
+                      variant="h6"
+                      sx={{
+                        color: "inherit",
+                        textDecoration: "none",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {STORYTELLER_APP_NAME}
+                    </Typography>
+                    {quickSearchOpen ? (
+                      <Stack
+                        component="form"
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.5}
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          submitQuickSearch();
                         }}
-                        onKeyDown={(event) => {
-                          if (event.key === "Escape") {
+                      >
+                        <TextField
+                          autoFocus
+                          size="small"
+                          variant="standard"
+                          placeholder="搜尋作品..."
+                          value={quickSearchKeyword}
+                          onChange={(event) =>
+                            setQuickSearchKeyword(event.target.value)
+                          }
+                          onBlur={() => {
+                            if (!quickSearchKeyword.trim()) {
+                              setQuickSearchOpen(false);
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Escape") {
+                              setQuickSearchOpen(false);
+                              setQuickSearchKeyword("");
+                            }
+                          }}
+                          sx={{ width: { xs: 120, sm: 200 } }}
+                        />
+                        <IconButton
+                          type="submit"
+                          aria-label="送出搜尋"
+                          color="inherit"
+                          size="small"
+                        >
+                          <SearchIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          aria-label="關閉搜尋"
+                          color="inherit"
+                          size="small"
+                          onClick={() => {
                             setQuickSearchOpen(false);
                             setQuickSearchKeyword("");
-                          }
-                        }}
-                        sx={{ width: { xs: 120, sm: 200 } }}
-                      />
-                      <IconButton
-                        type="submit"
-                        aria-label="送出搜尋"
-                        color="inherit"
-                        size="small"
-                      >
-                        <SearchIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        aria-label="關閉搜尋"
-                        color="inherit"
-                        size="small"
-                        onClick={() => {
-                          setQuickSearchOpen(false);
-                          setQuickSearchKeyword("");
-                        }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  ) : (
-                    <Tooltip title="搜尋作品">
-                      <IconButton
-                        aria-label="搜尋作品"
-                        color="inherit"
-                        size="small"
-                        onClick={() => setQuickSearchOpen(true)}
-                      >
-                        <SearchIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip
-                    title={
-                      mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
-                    }
-                  >
-                    <IconButton
-                      aria-label={
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    ) : (
+                      <Tooltip title="搜尋作品">
+                        <IconButton
+                          aria-label="搜尋作品"
+                          color="inherit"
+                          size="small"
+                          onClick={() => setQuickSearchOpen(true)}
+                        >
+                          <SearchIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip
+                      title={
                         mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
                       }
-                      color="inherit"
-                      onClick={toggleMode}
-                      size="small"
                     >
-                      {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-                <Button
-                  component={RouterLink}
-                  to={steamloomPath("my/projects/new")}
-                  variant="contained"
-                  color="primary"
-                  startIcon={<AddIcon />}
-                  sx={{
-                    mr: 1,
-                    whiteSpace: "nowrap",
-                    display: { xs: "none", sm: "inline-flex" },
-                  }}
-                >
-                  建立創作專案
-                </Button>
-                <IconButton
-                  component={RouterLink}
-                  to={steamloomPath("my/projects/new")}
-                  color="primary"
-                  aria-label="建立創作專案"
-                  sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
-                >
-                  <AddIcon />
-                </IconButton>
-                {session ? (
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Tooltip title="帳號選單">
                       <IconButton
-                        onClick={(event) =>
-                          setAccountMenuAnchor(event.currentTarget)
+                        aria-label={
+                          mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
                         }
-                        aria-label="帳號選單"
-                        sx={{ borderRadius: 5, pr: 0.5 }}
+                        color="inherit"
+                        onClick={toggleMode}
+                        size="small"
                       >
-                        <Avatar
-                          src={photoURL}
-                          alt={displayName}
-                          sx={{ width: 32, height: 32 }}
-                        />
-                        <ArrowDropDownIcon fontSize="small" />
+                        {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
                       </IconButton>
                     </Tooltip>
-                    <Menu
-                      anchorEl={accountMenuAnchor}
-                      open={Boolean(accountMenuAnchor)}
-                      onClose={() => setAccountMenuAnchor(null)}
-                      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                      transformOrigin={{ vertical: "top", horizontal: "right" }}
-                    >
-                      <Box sx={{ px: 2, py: 1 }}>
-                        <Typography variant="body2" fontWeight={700}>
-                          {profile?.pen_name || displayName}
-                        </Typography>
-                      </Box>
-                      <Divider />
-                      {accountMenuItems.map((item) => (
-                        <MenuItem
-                          key={item.to}
-                          component={RouterLink}
-                          to={item.to}
-                          onClick={() => setAccountMenuAnchor(null)}
+                  </Stack>
+                  <Button
+                    component={RouterLink}
+                    to={steamloomPath("my/projects/new")}
+                    variant="contained"
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    sx={{
+                      mr: 1,
+                      whiteSpace: "nowrap",
+                      display: { xs: "none", sm: "inline-flex" },
+                    }}
+                  >
+                    建立創作專案
+                  </Button>
+                  <IconButton
+                    component={RouterLink}
+                    to={steamloomPath("my/projects/new")}
+                    color="primary"
+                    aria-label="建立創作專案"
+                    sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                  {session ? (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Tooltip title="帳號選單">
+                        <IconButton
+                          onClick={(event) =>
+                            setAccountMenuAnchor(event.currentTarget)
+                          }
+                          aria-label="帳號選單"
+                          sx={{ borderRadius: 5, pr: 0.5 }}
                         >
-                          <ListItemIcon>{item.icon}</ListItemIcon>
-                          <ListItemText primary={item.label} />
-                        </MenuItem>
-                      ))}
-                      <Divider />
-                      <MenuItem
-                        disabled={submitting}
-                        onClick={() => {
-                          setAccountMenuAnchor(null);
-                          void logout();
+                          <Avatar
+                            src={photoURL}
+                            alt={displayName}
+                            sx={{ width: 32, height: 32 }}
+                          />
+                          <ArrowDropDownIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Menu
+                        anchorEl={accountMenuAnchor}
+                        open={Boolean(accountMenuAnchor)}
+                        onClose={() => setAccountMenuAnchor(null)}
+                        anchorOrigin={{
+                          vertical: "bottom",
+                          horizontal: "right",
+                        }}
+                        transformOrigin={{
+                          vertical: "top",
+                          horizontal: "right",
                         }}
                       >
-                        <ListItemIcon>
-                          <LogoutIcon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText primary="登出" />
-                      </MenuItem>
-                    </Menu>
-                  </Stack>
-                ) : (
-                  <Button
-                    variant="contained"
-                    startIcon={<LoginIcon />}
-                    disabled={loading || submitting}
-                    onClick={() => void login()}
-                  >
-                    登入
-                  </Button>
-                )}
-              </Toolbar>
-            </AppBar>
-            <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
-              <Outlet />
-            </Container>
-            <Container component="footer" maxWidth="xl">
-              <Divider />
-              <IndependentFooter service_name={STORYTELLER_APP_NAME} />
-              <SteamPaletteSwitcher />
-            </Container>
-          </Stack>
+                        <Box sx={{ px: 2, py: 1 }}>
+                          <Typography variant="body2" fontWeight={700}>
+                            {profile?.pen_name || displayName}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        {accountMenuItems.map((item) => (
+                          <MenuItem
+                            key={item.to}
+                            component={RouterLink}
+                            to={item.to}
+                            onClick={() => setAccountMenuAnchor(null)}
+                          >
+                            <ListItemIcon>{item.icon}</ListItemIcon>
+                            <ListItemText primary={item.label} />
+                          </MenuItem>
+                        ))}
+                        <Divider />
+                        <MenuItem
+                          disabled={submitting}
+                          onClick={() => {
+                            setAccountMenuAnchor(null);
+                            void logout();
+                          }}
+                        >
+                          <ListItemIcon>
+                            <LogoutIcon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText primary="登出" />
+                        </MenuItem>
+                      </Menu>
+                    </Stack>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      startIcon={<LoginIcon />}
+                      disabled={loading || submitting}
+                      onClick={() => void login()}
+                    >
+                      登入
+                    </Button>
+                  )}
+                </Toolbar>
+              </AppBar>
+              <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
+                <Outlet />
+              </Container>
+              <Container component="footer" maxWidth="xl">
+                <Divider />
+                <IndependentFooter service_name={STORYTELLER_APP_NAME} />
+                <SteamPaletteSwitcher />
+                <SteamSeasonalSwitcher />
+              </Container>
+            </Stack>
+          </StorytellerSeasonalContext.Provider>
         </StorytellerPaletteContext.Provider>
       </StorytellerThemeModeContext.Provider>
     </ThemeProvider>
