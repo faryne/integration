@@ -347,6 +347,68 @@ export const MarkerParagraph = Paragraph.extend({
         // 原樣複製到新段落，不需要額外處理。
         return editor.commands.splitParagraphFresh();
       },
+      Backspace: () => {
+        const { editor } = this;
+        const { state } = editor;
+        const { selection } = state;
+
+        // 只處理「游標是空選取」的情境；有選取範圍交給 ProseMirror 預設的刪除
+        // 選取內容處理，不用管。
+        if (!selection.empty) return false;
+        const { $from } = selection;
+        if ($from.parent.type.name !== "paragraph") return false;
+
+        // 已知 Bug 記錄第 14 項：圖片（inline atom）緊接在游標前面時，按 Backspace
+        // 會直接把圖片刪掉、沒有「先選取再刪除」的緩衝機會。實測（Faryne 提供的
+        // debug log）發現真正的情境比原本設想的更常見：float 環繞排版時，圖片
+        // 跟後面的文字其實是**同一個段落**（圖片是 inline atom，緊接著文字），不是
+        // 「圖片自己獨占一個段落」——這代表游標在「圖片後文字最前面」時
+        // parentOffset 是 1（緊接在圖片這個 atom 後面），不是 0。
+        //
+        // ProseMirror 內建的 joinBackward／selectNodeBackward 都是設計給「游標在
+        // 段落最開頭（parentOffset === 0），要處理的是前一個獨立段落」這種情境，
+        // 完全沒有覆蓋「游標緊接在同段落內的 atom 後面」——這個情境沒有任何 JS
+        // 邏輯接手時，事件會落到瀏覽器原生的 contenteditable 行為，直接把那個
+        // `contenteditable=false` 的圖片節點刪掉，完全沒有先選取的機會。
+        //
+        // 這裡分兩種情境找出「緊接在游標前面的 atom」：
+        let atomPos: number | null = null;
+        if ($from.parentOffset > 0) {
+          // 情境一：游標前面在同一個段落內就有內容——檢查緊接在前面的是不是 atom。
+          const nodeBefore = $from.nodeBefore;
+          if (nodeBefore?.isAtom) {
+            atomPos = $from.pos - nodeBefore.nodeSize;
+          }
+        } else {
+          // 情境二：游標在段落最開頭——檢查「前一個段落」是不是整個只有一個 atom
+          // （圖片獨占一個段落的舊排版方式，例如 block/center/全寬 layout）。
+          const paragraphStart = $from.before($from.depth);
+          if (paragraphStart > 0) {
+            const prevNode = state.doc.resolve(paragraphStart).nodeBefore;
+            const isSoleAtomParagraph =
+              prevNode?.type.name === "paragraph" &&
+              prevNode.childCount === 1 &&
+              (prevNode.firstChild?.isAtom ?? false);
+            if (isSoleAtomParagraph && prevNode) {
+              atomPos = paragraphStart - prevNode.nodeSize + 1;
+            }
+          }
+        }
+
+        if (atomPos === null) return false;
+
+        // 第一次 Backspace 只把圖片轉成 NodeSelection（反白選取，使用者看得到選到
+        // 的是圖片），真的要刪除得再按一次 Backspace（那次選取狀態下的 Backspace
+        // 是 ProseMirror 對 NodeSelection 的預設行為，不需要另外處理）——比照
+        // Notion／Google Docs 對圖片/附件的慣例。
+        return editor.commands.command(({ tr, dispatch }) => {
+          if (dispatch) {
+            tr.setSelection(NodeSelection.create(tr.doc, atomPos));
+            dispatch(tr.scrollIntoView());
+          }
+          return true;
+        });
+      },
     };
   },
 

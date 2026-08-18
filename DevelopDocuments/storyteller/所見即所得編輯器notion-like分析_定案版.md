@@ -599,6 +599,15 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證（沿用第 12 項的做法）：對圖片的 DOM 節點（`[data-asset-layout]`）dispatch 完整 mousedown/mouseup/click 事件序列，確認產生真正的 ProseMirror `NodeSelection`（DOM 上出現 `.ProseMirror-selectednode` class），再 dispatch 一個 `keydown: Enter` 事件到編輯器——`computer` 工具的 `key: "Return"` 這次沒有觸發 ProseMirror 的 keymap（原因不明，改用 JS 直接 dispatch KeyboardEvent 就正常觸發，`defaultPrevented` 變 `true` 證實有 handler 接住）。確認新段落正確插入在圖片跟後段文字之間（`[前段文字, image, 新空段落, 後段文字]`），游標也正確移到新段落可以馬上打字；另外測了一般文字段落按 Enter（非圖片）確認沒有回歸，行為跟修改前一致。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
+### 14. 游標在圖片後面第一行文字開頭按 Backspace，圖片直接被刪除、沒有反悔機會（[視覺主題規劃.md](視覺主題(createTheme)規劃.md) Phase G 項目 5，2026-08-18 查明並修復）
+
+- **現象**：圖片後面緊接著文字，游標在那段文字最開頭按 Backspace，圖片直接整個消失。Faryne 指出：行為上可以說是「正確」的，但沒有給使用者反悔的機會，容易手滑弄丟圖片，問有沒有更好的 UX。第一次修法（見下方修正過程）在自動化 Playground 測試中看似成功，但 Faryne 在真實頁面複測完全無效、一按依舊直接刪除，靠 Faryne 提供的 console debug log 才抓到真正的結構性原因。
+- **修正過程中的誤判**：一開始以為「圖片一定獨占一個段落，游標在下一個段落開頭（`parentOffset === 0`）」，照這個假設寫的第一版只檢查「前一個段落唯一內容是單一 atom」這個情境。Faryne 複測回報依舊直接刪除；加上 debug log 後，Faryne 提供的實際資料顯示 `parentOffset: 1`、`firstChildType: "assetImage"`——真正的文件結構是**圖片和後面的文字同屬一個段落**（float 環繞排版時，圖片是段落最前面的 inline atom，文字緊接在後面），不是兩個獨立段落。第一版的判斷式完全沒涵蓋到這個情境，所以每次都直接 `return false`、放行給預設行為。
+- **Root cause**：`markerParagraph.ts` 原本完全沒有自訂 Backspace 邏輯，靠 ProseMirror 預設的 `joinBackward`/`selectNodeBackward` 處理——但這兩個內建 command 都是設計給「游標在段落最開頭（`parentOffset === 0`），要處理的是前一個獨立段落」這種情境，完全沒有覆蓋「游標緊接在同一個段落內的 atom 後面（`parentOffset > 0`，緊接在 inline atom 之後）」——這個情境沒有任何 ProseMirror JS 邏輯接手時，事件會落到瀏覽器原生的 contenteditable 行為，直接把那個 `contenteditable=false` 的圖片節點刪掉，完全沒有先選取的機會。
+- **解法**：加一個 `Backspace` handler，分兩種情境找出「緊接在游標前面的 atom」：(1) 游標前面在同一個段落內就有內容（`parentOffset > 0`）時，用 `$from.nodeBefore` 檢查緊接在前面的是不是 atom；(2) 游標在段落最開頭（`parentOffset === 0`）時，檢查前一個獨立段落是不是整個只有一個 atom（涵蓋圖片獨占一個段落的排版方式，例如 block/center/全寬 layout）。兩種情境符合任一個，第一次 Backspace 都只把該 atom 轉成 `NodeSelection`（反白選取），不刪除，仿照 Notion／Google Docs 對圖片、附件的慣例；其餘情境（一般文字合併）完全不受影響，維持原本的 `joinBackward` 行為。選取狀態下要不要再刪除，交給 ProseMirror 對 `NodeSelection` 的既有處理，不需要額外寫程式碼。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證，**這次刻意重現「圖片跟文字同一段落」的真實結構**（不是第一版誤判的「兩個獨立段落」）：游標移到圖片後文字最開頭（先打測試字元確認游標位置精確落在圖片跟文字交界處，再重置內容測試），dispatch 一次 `keydown: Backspace`，確認圖片沒有被刪除、且 DOM 上出現 `.ProseMirror-selectednode`（真的變成選取狀態，不是沒反應）。**驗證仍有缺口**：沒辦法在這個自動化環境裡讓「選取狀態下的第二次 Backspace」觸發真的刪除，懷疑是工具限制（`deleteSelection` 是 ProseMirror 內建、完全沒被這次改動碰到的邏輯），麻煩 Faryne 之後在真實瀏覽器手動確認：選到圖片後連續按兩次 Backspace，第二次是否真的會刪除圖片；也麻煩優先確認**這次修正過的「同段落」情境**是否真的解決了，畢竟上一版就是在這個情境栽了跟頭。
+- **狀態**：第一段（先選取不刪除）已修並在正確重現的情境下驗證通過；第二段（選取狀態下刪除）待 Faryne 人工複測確認。與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |
