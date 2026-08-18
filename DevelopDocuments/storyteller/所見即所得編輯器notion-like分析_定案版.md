@@ -645,6 +645,22 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 實際模擬使用者輸入（`computer.type` 逐字打 `---`，走真正的瀏覽器輸入事件，不是 dispatch 合成事件）：確認結果是乾淨的 `---⟦markerId⟧⟦/markerId⟧`（分隔線，空內容）接一個全新的空段落，沒有殘留的 `--` 文字。這次修改沒有動到 `insertHorizontalRule()` 本身或 slash 選單那條觸發路徑，第 12 項（slash 選單插入分隔線保留圖片）不受影響，不需要重新驗證。
 - **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
 
+### 19. 游標在表格內按 Enter 完全沒反應（折衷方案：只在最後一個 cell 尾端才斷行，2026-08-18 討論定案並實作）
+
+- **現象**：Faryne 測完圖片相關的 Enter/Backspace 問題後，接著測表格，發現游標在表格 cell 內按 Enter 完全沒反應。
+- **Root cause**：`markerParagraph.ts` 的 `Enter` handler 最後一定會呼叫 `editor.commands.splitParagraphFresh()`（內部呼叫 `commands.splitBlock()`），沒考慮到游標可能不在 `markerParagraph` 段落裡——`storytellerTable.ts` 的 `TableCell` 的 `content` 是 `"inline*"`（cell 內直接放 inline 內容，不像一般段落有 `paragraph` 包一層；符合這個 schema「一行一段落」的設計，cell 本來就只該放一行文字），`splitBlock()` 在這種結構裡一定失敗，整個 `Enter` handler 回傳 `false`，游標卡在原地沒反應。
+- **設計討論過程（第一版做法被推翻，記錄下來避免以後重複討論）**：
+  - 第一版做法是「偵測到游標在表格內（往上找 `storytellerTable` 祖先）就直接跳到表格後面插入新段落」，比照第 13 項圖片 `NodeSelection` 按 Enter 的處理方式，且涵蓋文字游標在 cell 內、以及 ProseMirror 表格外掛（`tableEditing()`）產生的 `CellSelection`（表格實際的選取型別，**不是**跟圖片一樣的 `NodeSelection`——圖片是 `atom: true` 自訂節點，表格走 `prosemirror-tables` 那一套，選取機制完全不同，沒辦法透過點擊直接拿到整個表格的 `NodeSelection`）兩種情境。
+  - Faryne 複測後指出：這個做法變成「游標**停在** cell 內（不需要刻意選取，打字的預設狀態）按 Enter 就跳出表格」，跟圖片的情境不對等——圖片是「刻意選取整個節點」才觸發，cell 內打字是編輯的日常狀態，太容易被誤觸（例如打字打到一半手滑按 Enter，就整個跳出表格）。多數編輯器（包含 Notion）在表格 cell 內按 Enter 本來就不會斷行/跳出，這其實比較接近業界慣例。
+  - 討論後確認：表格目前沒有像圖片那種「點一下選取整個節點」的手勢（沒有 `contenteditable=false` 的可點擊外框），要做到「跟圖片對等」需要先做一個新的「選取整個表格」手勢，範圍變成另一個功能，不是這次要處理的 bug 修復；但完全恢復成「cell 內 Enter 什麼都不做」，Faryne 認為還是需要某種方式能斷行，只是這次先不追求跟圖片完全對等的觸發方式。
+  - **最終定案（折衷方案）**：只有游標在**最後一個 cell**（最後一列、最後一欄）、且在**文字最尾端**時，Enter 才在表格後面插入新段落——語意上「打到表格最後一格的最後面了，Enter 自然是要繼續往下」，不需要額外的選取手勢，也不會在編輯中間任何一個 cell 時被誤觸。其他情況（不是最後一個 cell、或在 cell 文字中間）Enter 一律不做任何事，等同修改前的行為。「選中整個表格再斷行」這個跟圖片對等的完整手勢，明確記錄為之後仍要面對的問題，這次不做。
+- **解法**：`Enter` handler 加一段判斷：`$from.parent.type.name === "tableCell"` 時，檢查 `parentOffset` 是否等於該 cell 內容長度（文字尾端）、且該 cell 是所在列的最後一欄（`$from.index(rowDepth) === row.childCount - 1`）、且該列是表格的最後一列（`$from.index(tableDepth) === table.childCount - 1`）——三個條件都成立才在表格後面插入新段落，其餘一律回傳 `false`（不做任何事）。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 透過 `editor.commands.setTextSelection(pos)` 精準定位游標（比滑鼠點擊座標可靠），測了三種情境：
+  - 游標在最後一個 cell 文字尾端按 Enter：正確在表格後面插入新段落。
+  - 游標在最後一個 cell 文字中間按 Enter：沒有任何變化（正確不觸發）。
+  - 游標在第一個 cell 文字尾端按 Enter：沒有任何變化（正確不觸發，不是最後一個 cell）。
+- **狀態**：已修並驗證通過（折衷方案）。「選取整個表格再斷行」的完整手勢待之後另外排時間處理。與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |

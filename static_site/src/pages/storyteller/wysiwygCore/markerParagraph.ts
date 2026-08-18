@@ -341,6 +341,51 @@ export const MarkerParagraph = Paragraph.extend({
         }
 
         const { $from } = selection;
+
+        // 已知 Bug 記錄第 19 項：表格沒有像圖片那樣「點一下選取整個節點」的手勢
+        // （TableCell 走 ProseMirror 表格外掛的 CellSelection，不是 NodeSelection），
+        // 跟 Faryne 討論後決定不要「游標在任何一個 cell 裡按 Enter 都跳出表格」
+        // ——這在編輯中間某個 cell 時太容易誤觸，多數編輯器（包含 Notion）在表格
+        // cell 內按 Enter 本來就不會斷行/跳出。改成只在「游標在最後一個 cell、
+        // 且在文字最尾端」時，Enter 才在表格後面插入新段落並把游標移過去——這是
+        // 目前沒有選取手勢之下，語意最不模糊的折衷位置（「打到表格最後一格的最
+        // 後面了，Enter 自然是要繼續往下」）；其他情況（不是最後一個 cell、或在
+        // cell 文字中間）Enter 一律不做任何事，維持修改前的行為。這是折衷方案，
+        // 「選中整個表格再斷行」這個更完整的手勢之後仍要另外討論。
+        if ($from.parent.type.name === "tableCell") {
+          const isAtCellEnd = $from.parentOffset === $from.parent.content.size;
+          const cellDepth = $from.depth;
+          const rowDepth = cellDepth - 1;
+          const tableDepth = cellDepth - 2;
+          const isLastCellInRow =
+            $from.index(rowDepth) === $from.node(rowDepth).childCount - 1;
+          const isLastRowInTable =
+            $from.index(tableDepth) === $from.node(tableDepth).childCount - 1;
+          if (
+            isAtCellEnd &&
+            isLastCellInRow &&
+            isLastRowInTable &&
+            $from.node(tableDepth).type.name === "storytellerTable"
+          ) {
+            const tableEnd = $from.after(tableDepth);
+            return editor.commands.command(({ tr, dispatch, state }) => {
+              if (dispatch) {
+                const newParagraph = state.schema.nodes.paragraph.create({
+                  markerId: generateMarkerId(),
+                  headingLevel: DEFAULT_HEADING_LEVEL,
+                  blockKind: DEFAULT_BLOCK_KIND,
+                });
+                tr.insert(tableEnd, newParagraph);
+                tr.setSelection(TextSelection.near(tr.doc.resolve(tableEnd + 1)));
+                dispatch(tr.scrollIntoView());
+              }
+              return true;
+            });
+          }
+          return false;
+        }
+        if ($from.parent.type.name !== "paragraph") return false;
+
         const currentBlockKind = ($from.parent.attrs.blockKind ??
           DEFAULT_BLOCK_KIND) as BlockKindValue;
         const isCurrentParagraphEmpty = $from.parent.textContent.trim() === "";
