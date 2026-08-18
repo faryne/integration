@@ -43,8 +43,10 @@ declare module "@tiptap/core" {
        * 一般段落——跟使用者按 Enter 完全同一套行為，Enter 快速鍵跟貼上多行文字都靠這個
        * command，避免兩處各寫一份邏輯、行為兜不起來。 */
       splitParagraphFresh: () => ReturnType;
-      /** 把目前段落轉成分隔線（強制清空文字內容），並在後面插入一個新的預設段落把游標
-       * 移過去——輸入 `---` 的 input rule 跟工具列的插入分隔線按鈕都呼叫這個 command。 */
+      /** 把目前段落轉成分隔線，段落原有內容（如果有）會被移到後面新插入的段落，游標
+       * 也跟著移過去——輸入 `---` 的 input rule、工具列／右鍵選單／slash 選單的插入
+       * 分隔線都呼叫這個 command。已知 Bug 記錄第 11 項：早期版本是直接刪除原內容，
+       * 圖片（inline atom）緊接在游標前時會被整個吃掉，現在改成搬移保留。 */
       insertHorizontalRule: () => ReturnType;
     };
   }
@@ -171,9 +173,16 @@ export const MarkerParagraph = Paragraph.extend({
           const paragraphStart = $from.before($from.depth);
           const paragraphNode = $from.parent;
           const paragraphEnd = paragraphStart + paragraphNode.nodeSize;
+          // 保留原段落內容（例如圖片這種 inline atom，或使用者原本就在打的文字），
+          // 搬到分隔線後面新插入的段落，不要整個丟掉——原本的做法是直接
+          // tr.delete 清空，圖片緊接在游標前時會連圖片一起被吃掉（已知 Bug
+          // 記錄第 11 項）。輸入 `---` 觸發的 input rule 這個 fragment 通常是空的
+          // （`---` 三個字元本身已經被 input rule 自己的 range 刪掉），所以這個改
+          // 動不影響原本「打 --- 變成分隔線」的行為。
+          const leftoverContent = paragraphNode.content;
           if (dispatch) {
             const tr = state.tr;
-            if (paragraphNode.content.size > 0) {
+            if (leftoverContent.size > 0) {
               tr.delete(paragraphStart + 1, paragraphEnd - 1);
             }
             tr.setNodeAttribute(
@@ -187,11 +196,14 @@ export const MarkerParagraph = Paragraph.extend({
               DEFAULT_HEADING_LEVEL,
             );
             const insertPos = tr.mapping.map(paragraphEnd);
-            const newParagraph = state.schema.nodes.paragraph.create({
-              markerId: generateMarkerId(),
-              headingLevel: DEFAULT_HEADING_LEVEL,
-              blockKind: DEFAULT_BLOCK_KIND,
-            });
+            const newParagraph = state.schema.nodes.paragraph.create(
+              {
+                markerId: generateMarkerId(),
+                headingLevel: DEFAULT_HEADING_LEVEL,
+                blockKind: DEFAULT_BLOCK_KIND,
+              },
+              leftoverContent,
+            );
             tr.insert(insertPos, newParagraph);
             tr.setSelection(TextSelection.near(tr.doc.resolve(insertPos + 1)));
             dispatch(tr.scrollIntoView());

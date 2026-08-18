@@ -577,6 +577,20 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。這個 bug 只有登入後才會觸發，且需要真的走過「未登入→登入」或「載入中→載入完成」這種 render 切換才會炸（單純已登入狀態下重新整理，可能因為第一次 render 就直接拿到 session 而不會觸發，跟第一次是誰發現無關，是 render 路徑的問題），沒有免登入頁面能重現，這次沒有另外用瀏覽器截圖驗證，改用程式碼審查確認兩個檔案裡所有 hook 呼叫都已經在任何 `return` 之前、且呼叫順序在每次 render 都固定不變。麻煩 Faryne 重新整理原本出錯的頁面確認 console 不再噴這個錯誤。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
+### 12. 圖片後面緊接著用 slash 插入分隔線，圖片被吃掉（[視覺主題規劃.md](視覺主題(createTheme)規劃.md) Phase G 項目 3，2026-08-18 查明並修復）
+
+- **現象**：圖片置中/全寬後，游標緊接在圖片後面（跟圖片同一段落），這時用 slash 選單插入分隔線，圖片會整個消失，序列化出來的內容也壞掉（多出帶亂數 UUID 的空 marker）。先斷一行、隔一行再用 slash 插入分隔線就正常——這個線索是 root cause 的關鍵。
+- **Root cause**（兩層問題疊加）：
+  1. `assetImage` 是 `inline: true` 的 atom node（[assetImageNode.tsx](../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)），活在 markerParagraph 內，跟文字同一層級。`isTextOnlySlashQuery`（[slashCommandExtension.tsx](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）判斷「目前段落是不是空的／只有 query 文字」時用 `$from.parent.textBetween(...)`，這個 API 預設把非文字的 atom 當成長度 0 處理——代表「游標緊接在圖片後面」在這個檢查眼裡跟「段落真的是空的」一模一樣，於是誤判成可以觸發 slash 選單。
+  2. `insertHorizontalRule`（[markerParagraph.ts](../../static_site/src/pages/storyteller/wysiwygCore/markerParagraph.ts)）原本的實作是「目前段落轉成分隔線，原內容直接刪掉、換一個新空段落接在後面」，設計時想的是使用者打 `---` 這種本來就該被清掉的 query 文字，沒考慮到「目前段落」可能還有圖片這種需要保留的 atom 內容。第 1 點誤判之後，slash 選單把 `/分隔` 這串 query 文字刪掉，剩下的圖片就被這裡的邏輯當成「原內容」一起清空了。
+- **解法**：
+  1. `isTextOnlySlashQuery` 的 `textBetween` 呼叫加上 `leafText` 參數（傳入 Object Replacement Character `￼`，ProseMirror 自己內部處理 atom 文字比對時的慣例字元），讓任何 atom 都會在文字結果裡留下一個佔位字元，`textBefore.startsWith("/")` 這類純文字判斷式就不會再把「圖片後面」誤判成「空段落」——這樣游標緊接圖片時，slash 選單直接不會跳出來，從入口就擋掉。
+  2. `insertHorizontalRule` 額外補上第二層防護（避免以後有其他入口，例如右鍵選單的「插入分隔線」，繞過 slash 選單直接呼叫這個 command 時一樣把內容吃掉）：原本「目前段落」的內容（不管是圖片還是文字）不再直接刪除，改成搬到分隔線後面新插入的段落，游標一樣跟過去。這樣不管從哪個入口觸發，只要目前段落還有內容，都會被保留、不會憑空消失。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。**這次改用 Playground（`/storyteller/wysiwyg-demo`，dev-only、免登入）做程式化驗證**，不需要 Faryne 陪同在真實登入頁面手動確認——這個頁面掛的是真正的 `StorytellerWysiwygEditor`，透過瀏覽器 JS 直接操作原始內容 textarea 設初始狀態、`dispatchEvent` 觸發 slash 選單裡的 command 按鈕，兩種情境都測過：
+  - 游標緊接在圖片後面（跟原始 bug 報告完全一致的情境）：確認 slash 選單的 command 按鈕清單是空的（`menuButtons: []`），選單根本不會跳出來，圖片完全沒被動到。
+  - 游標在圖片後面另一個真正空白的段落（原本就能正常運作的情境，用來確認沒有破壞正常路徑）：分隔線正確插入成獨立段落、圖片維持原樣、後面自動補一個新空段落可以繼續輸入，序列化格式（`---⟦markerId⟧⟦/markerId⟧`）也跟 `parser.ts` 的 `extractBlockKind` 對得上，能正確 round-trip。
+- **狀態**：已修，與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |

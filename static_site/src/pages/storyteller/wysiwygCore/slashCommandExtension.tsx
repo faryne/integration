@@ -29,17 +29,35 @@ const activeSlashCommandControllers = new WeakMap<
   { onKeyDown: (key: SlashCommandKey) => boolean }
 >();
 
+// ProseMirror `textBetween` 預設把非文字的 leaf node（例如 assetImage 這種
+// atom）當成長度 0 的空字串，不會出現在回傳的文字裡——這代表「游標緊接在一張
+// 圖片後面」在這裡看起來跟「段落真的是空的」一模一樣，會誤判成可以觸發 slash
+// 選單。傳入 leafText 讓每個 atom 都貢獻一個不可能出現在使用者輸入裡的佔位字元
+// （Unicode Object Replacement Character），這樣段落裡只要有圖片這類 atom，
+// textBefore/textAfter 就不會再等於純文字判斷式預期的樣子，slash 選單改成正確
+// 判斷「不是真的空段落」而不顯示。已知 Bug 記錄第 11 項：這個誤判是圖片後面
+// 緊接著用 slash 插入分隔線會把圖片吃掉的根本原因（`insertHorizontalRule` 在
+// 「以為段落只有 query 文字、其實還有圖片 atom」的情況下，把整個段落內容連同
+// 圖片一起清空）。
+const ATOM_PLACEHOLDER = "￼";
+
 function isTextOnlySlashQuery(state: EditorState, range: Range) {
   const { selection } = state;
   if (!selection.empty) return false;
   const $from = selection.$from;
   if ($from.parent.type.name !== "paragraph") return false;
 
-  const textBefore = $from.parent.textBetween(0, $from.parentOffset, "");
+  const textBefore = $from.parent.textBetween(
+    0,
+    $from.parentOffset,
+    "",
+    ATOM_PLACEHOLDER,
+  );
   const textAfter = $from.parent.textBetween(
     $from.parentOffset,
     $from.parent.content.size,
     "",
+    ATOM_PLACEHOLDER,
   );
   return (
     textBefore.startsWith("/") &&

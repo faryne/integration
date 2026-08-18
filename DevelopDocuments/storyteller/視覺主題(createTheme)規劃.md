@@ -240,10 +240,12 @@ Faryne 完成 Phase 9.5／9.6 人工測試後，覺得圖片相關的問題有�
 
 1. **圖片後面接「引用」會跟圖片重疊**——[所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) Phase 9.6 實測發現，圖片文繞圖時如果緊接著一個引用區塊，畫面會跑版/疊在一起。懷疑方向：`CLEAR_FLOATING_ASSET_SX`（[assetImageLayout.ts](../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）目前設定 `clear:both` 的選擇器是 `& h1~h6, & [data-block-kind], & table, & [data-asset-layout]`，還沒實際確認引用區塊的 DOM 結構有沒有被這個選擇器涵蓋到。
 2. **圖片置中時，焦點在圖片上按 Enter 不會斷行**——NodeSelection（選到圖片本身）狀態下按 Enter 沒有反應，預期應該要跟 Notion 一樣，在圖片後面插入一個新段落。
-3. **圖片置中/全寬後，緊接著用 slash 插入分隔線，圖片會消失/被吃掉**——但如果先斷一行、隔一行再用 slash 插入分隔線就正常。懷疑跟 slash command 的 range 計算或分隔線插入邏輯在緊鄰 atom node（圖片）時的位置判斷有關，還沒深入查。這個算是比較明確的資料完整性風險（圖片內容不見了），三項裡優先度應該最高。
+3. ~~**圖片置中/全寬後，緊接著用 slash 插入分隔線，圖片會消失/被吃掉**~~ ✅ **已修（2026-08-18）**。Root cause／解法／驗證方式詳見 [所見即所得編輯器notion-like分析_定案版.md](所見即所得編輯器notion-like分析_定案版.md) 的「已知 Bug 記錄」第 12 項；簡述：`isTextOnlySlashQuery` 的文字比對沒把圖片這種 inline atom 算進去，誤判「游標緊接圖片後面」跟「段落是空的」一樣，讓 slash 選單在不該出現的地方跳出來，`insertHorizontalRule` 又會把「目前段落」內容整個刪掉——兩層都修了（slash 選單源頭擋掉＋`insertHorizontalRule` 改成搬移保留內容，不再直接刪除）。
 4. **插入資產功能加說明文字欄位，並在閱讀頁顯示**——這是功能請求，不是 bug。目前圖片只有「替代文字」（`alt`，主要給無障礙/SEO 用），Faryne 想要一個給讀者看的「圖片說明」欄位，類似圖說/caption 的概念，跟 `alt` 是不同用途、不應該共用同一個欄位。
 
-**狀態**：僅收斂記錄現象，尚未排優先序、尚未查 root cause，等真的要處理時再展開。
+**驗證方式更新（2026-08-18）**：這幾項原本被認為「只能在真實登入頁面手動確認」，卡住 Faryne 需要陪同逐一檢查。後來發現 `/storyteller/wysiwyg-demo` Playground（dev-only、免登入，掛的是正式 `StorytellerWysiwygEditor`）就能拿來程式化重現／驗證這類編輯器互動 bug：用瀏覽器 JS 直接操作原始內容 textarea 設初始狀態、`dispatchEvent` 觸發選單裡的 command 按鈕，不需要真人手動點擊或登入。之後 Phase G 剩下的項目（1、2）優先用這個方式查。
+
+**狀態**：項目 3 已修。項目 1、2 還沒查 root cause，項目 4 是功能請求，尚未排優先序，等真的要處理時再展開。
 
 ## 結論
 
