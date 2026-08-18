@@ -1258,15 +1258,21 @@ export default function StorytellerStoryEditor({
         <Chip label="尚未存檔" color="warning" />
       )}
       {embedded && (
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<SaveIcon />}
-          disabled={saveStory.isPending}
-          onClick={handleSaveStory}
-        >
-          {saveStory.isPending ? "存檔中" : "存檔"}
-        </Button>
+        // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+        // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
+        <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+          <span>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={saveStory.isPending}
+              onClick={handleSaveStory}
+            >
+              {saveStory.isPending ? "存檔中" : "存檔"}
+            </Button>
+          </span>
+        </Tooltip>
       )}
     </Stack>
   );
@@ -1472,16 +1478,22 @@ export default function StorytellerStoryEditor({
           </Grid>
         )}
         <Grid size={{ xs: 12, md: 3 }}>
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<SaveIcon />}
-            sx={{ py: 1.7 }}
-            disabled={saveStory.isPending}
-            onClick={handleSaveStory}
-          >
-            {saveStory.isPending ? "存檔中" : "存檔"}
-          </Button>
+          {/* Button 有 fullWidth，包裹用的 span 要是 block 才不會把寬度收縮
+              回內容寬度（inline span 預設不會撐滿）。 */}
+          <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+            <span style={{ display: "block" }}>
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<SaveIcon />}
+                sx={{ py: 1.7 }}
+                disabled={saveStory.isPending}
+                onClick={handleSaveStory}
+              >
+                {saveStory.isPending ? "存檔中" : "存檔"}
+              </Button>
+            </span>
+          </Tooltip>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
