@@ -177,9 +177,10 @@ export const MarkerParagraph = Paragraph.extend({
           // 保留原段落內容（例如圖片這種 inline atom，或使用者原本就在打的文字），
           // 搬到分隔線後面新插入的段落，不要整個丟掉——原本的做法是直接
           // tr.delete 清空，圖片緊接在游標前時會連圖片一起被吃掉（已知 Bug
-          // 記錄第 11 項）。輸入 `---` 觸發的 input rule 這個 fragment 通常是空的
-          // （`---` 三個字元本身已經被 input rule 自己的 range 刪掉），所以這個改
-          // 動不影響原本「打 --- 變成分隔線」的行為。
+          // 記錄第 11 項）。輸入 `---` 觸發的 input rule 呼叫這個 command 之前
+          // 必須先把比對到的 "---" 文字自己刪掉（見 addInputRules 那條 rule 的
+          // 註解／已知 Bug 記錄第 18 項），這裡收到的 fragment 才會是真的空的，
+          // 不會把 "---" 觸發文字誤當成「使用者想保留的內容」搬到新段落去。
           const leftoverContent = paragraphNode.content;
           if (dispatch) {
             const tr = state.tr;
@@ -273,8 +274,27 @@ export const MarkerParagraph = Paragraph.extend({
       }),
       new InputRule({
         find: /^---$/,
-        handler: ({ chain }) => {
-          chain().insertHorizontalRule().run();
+        // 已知 Bug 記錄第 18 項：這裡原本沒有刪除比對到的 "---" 文字就直接呼叫
+        // insertHorizontalRule()，跟其他 input rule（標題/引用/清單）都會先
+        // `tr.delete(range.from, range.to)` 不一樣。過去能正常運作是因為
+        // insertHorizontalRule() 舊版實作會無條件清空整個段落內容，"---" 文字
+        // 沒被單獨刪除也會被那個清空邏輯一起帶走，剛好掩蓋了這裡少刪的問題。
+        // Bug #12/#14 修復把 insertHorizontalRule() 改成「保留段落原有內容、
+        // 搬到分隔線後面的新段落」（避免圖片被連帶吃掉），這裡的 "---" 文字因此
+        // 變成「原有內容」被一併保留、搬到新段落，畫面上分隔線下一行多出一行
+        // "--"（regex 是 `^---$`，實際觸發時最後一個 `-` 通常還沒被這個 handler
+        // 看到，所以留下的是頭兩個字元）。這裡補上跟其他 input rule 一致的
+        // `tr.delete(range.from, range.to)`，觸發文字先被刪乾淨，
+        // insertHorizontalRule() 收到的段落內容就會是真的空的，不會再有東西
+        // 可以「保留」。
+        handler: ({ chain, range }) => {
+          chain()
+            .command(({ tr }) => {
+              tr.delete(range.from, range.to);
+              return true;
+            })
+            .insertHorizontalRule()
+            .run();
         },
       }),
     ];

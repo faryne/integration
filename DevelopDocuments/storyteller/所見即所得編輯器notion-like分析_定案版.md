@@ -637,6 +637,14 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證：設定「一般段落＋一般段落＋空白 H1」，dispatch 一次 `keydown: Backspace`，確認 DOM 上第三個元素從 `<H1>` 變成 `<P>`（`blockKind: null`），且**仍然是獨立的第三個元素**（沒有跟第二行合併），跟修復前「整個消失、只剩兩個元素」的行為明顯不同。
 - **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
 
+### 18.（第 12 項修復帶出的回歸）手動輸入 `---` 轉成分隔線後，下一行多出殘留的 `--` 文字（2026-08-18 查明並修復）
+
+- **現象**：Faryne 手動輸入 `---`（觸發自動轉換分隔線的 input rule），畫面上分隔線正確出現，但下一行多出一段殘留的「--」文字，不是預期的乾淨空白段落。
+- **Root cause**：這是第 12 項那次修復（`markerParagraph.ts` 的 `insertHorizontalRule` command）帶出的回歸。`---` 的 `InputRule`（`addInputRules()`）原本的寫法只有 `chain().insertHorizontalRule().run()`，從來沒有自己刪除比對到的 `"---"` 文字——這點跟其他 input rule（標題／引用／清單）都會先 `tr.delete(range.from, range.to)` 不一樣。過去這樣寫沒出過問題，是因為 `insertHorizontalRule()` 舊版實作會**無條件**清空整個段落內容，`"---"` 文字沒被 input rule 自己刪掉也會被這個清空邏輯一起帶走，兩個「沒做該做的事」剛好互相掩蓋。第 12 項把 `insertHorizontalRule()` 改成「保留段落原有內容、搬到分隔線後面的新段落」（避免圖片被連帶吃掉）之後，這個掩蓋就消失了——`"---"` 文字現在被當成「使用者想保留的原有內容」，跟著搬到新段落去，變成畫面上殘留的一行文字。
+- **解法**：比照其他 input rule 的寫法，`---` 的 `InputRule` handler 也先 `tr.delete(range.from, range.to)` 把比對到的觸發文字刪乾淨，`insertHorizontalRule()` 收到的段落內容就會是真的空的，不會再有「原有內容」可以誤搬。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 實際模擬使用者輸入（`computer.type` 逐字打 `---`，走真正的瀏覽器輸入事件，不是 dispatch 合成事件）：確認結果是乾淨的 `---⟦markerId⟧⟦/markerId⟧`（分隔線，空內容）接一個全新的空段落，沒有殘留的 `--` 文字。這次修改沒有動到 `insertHorizontalRule()` 本身或 slash 選單那條觸發路徑，第 12 項（slash 選單插入分隔線保留圖片）不受影響，不需要重新驗證。
+- **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
+
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 
 | 項目 | Claude 原始立場 | Codex 立場 | 收斂結果 |
