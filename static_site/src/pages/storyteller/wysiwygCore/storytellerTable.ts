@@ -4,7 +4,7 @@ import {
   type Node as ProseMirrorNode,
   type Schema,
 } from "@tiptap/pm/model";
-import { TextSelection, type Transaction } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import {
   addColumnAfter,
   addColumnBefore,
@@ -166,6 +166,63 @@ export const StorytellerTable = Node.create({
     ];
   },
 
+  // 已知 Bug 記錄第 19 項／Phase G 項目 7：圖片可以直接點一下選取整個節點
+  // （NodeSelection），表格原本沒有對應手勢——點進 cell 只會拿到游標或
+  // CellSelection，沒辦法像圖片一樣單純選中「整張表格」，導致刪除/複製整張
+  // 表格、Enter 跳出表格這類「對整個表格做操作」的功能都卡住。跟 Codex
+  // 討論後採用的做法：左上角加一個可點的 grip handle，點下去直接 dispatch
+  // 一個涵蓋整個表格節點的 NodeSelection（要搭配下面 addProseMirrorPlugins
+  // 的 `allowTableNodeSelection: true`，不然 tableEditing() 預設會把 table
+  // 的 NodeSelection 正規化回涵蓋全部 cell 的 CellSelection）。選到之後
+  // Backspace／Enter 不需要另外寫程式碼：Backspace 走 ProseMirror 對
+  // NodeSelection 的預設 deleteSelection（跟圖片「選取狀態下第二次
+  // Backspace 會刪除」是同一套機制，Faryne 已經測過圖片那條路徑沒問題）；
+  // Enter 走 markerParagraph.ts 既有的「NodeSelection 就在節點後面插入新
+  // 段落」邏輯（原本是為圖片寫的，是通用邏輯，不用另外改）。
+  addNodeView() {
+    return ({ node, getPos }) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "storyteller-table-wrapper";
+
+      const grip = document.createElement("button");
+      grip.type = "button";
+      grip.className = "storyteller-table-grip";
+      grip.setAttribute("aria-label", "選取整張表格");
+      grip.setAttribute("contenteditable", "false");
+      grip.addEventListener("mousedown", (event) => {
+        // preventDefault 避免這個 mousedown 被 tableEditing() 自己的 cell
+        // 拖曳選取邏輯攔截——grip 在表格外面、不在任何 cell 上，理論上不會
+        // 衝突，但保險起見還是擋掉瀏覽器預設的 focus/選取行為。
+        event.preventDefault();
+        const pos = typeof getPos === "function" ? getPos() : null;
+        if (pos == null) return;
+        const { view } = this.editor;
+        const tr = view.state.tr.setSelection(
+          NodeSelection.create(view.state.doc, pos),
+        );
+        view.dispatch(tr);
+      });
+      wrapper.appendChild(grip);
+
+      const table = document.createElement("table");
+      table.setAttribute("data-storyteller-table", "");
+      table.setAttribute("data-table-id", node.attrs.tableId ?? "");
+      const tbody = document.createElement("tbody");
+      table.appendChild(tbody);
+      wrapper.appendChild(table);
+
+      return {
+        dom: wrapper,
+        contentDOM: tbody,
+        update: (updatedNode) => {
+          if (updatedNode.type.name !== "storytellerTable") return false;
+          table.setAttribute("data-table-id", updatedNode.attrs.tableId ?? "");
+          return true;
+        },
+      };
+    };
+  },
+
   addCommands() {
     return {
       insertStorytellerTable:
@@ -308,7 +365,10 @@ export const StorytellerTable = Node.create({
   },
 
   addProseMirrorPlugins() {
-    return [tableEditing()];
+    // allowTableNodeSelection: true——沒開的話 tableEditing() 會把整張表格的
+    // NodeSelection 正規化回涵蓋全部 cell 的 CellSelection，grip handle 點下去
+    // 等於白做（見上面 addNodeView 的說明）。
+    return [tableEditing({ allowTableNodeSelection: true })];
   },
 });
 

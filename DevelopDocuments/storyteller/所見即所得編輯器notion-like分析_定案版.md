@@ -659,7 +659,30 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
   - 游標在最後一個 cell 文字尾端按 Enter：正確在表格後面插入新段落。
   - 游標在最後一個 cell 文字中間按 Enter：沒有任何變化（正確不觸發）。
   - 游標在第一個 cell 文字尾端按 Enter：沒有任何變化（正確不觸發，不是最後一個 cell）。
-- **狀態**：已修並驗證通過（折衷方案）。「選取整個表格再斷行」的完整手勢待之後另外排時間處理。與本節文件更新同一個 commit 一併送出。
+- **狀態**：⚠️ **已被第 20 項取代，這一版折衷方案的程式碼已經移除**。第 20 項補上「選取整個表格」的 grip handle 之後，這裡的折衷方案（最後一個 cell 尾端才斷行）跟 grip 選取後 Enter 兩條路徑並存會讓規則不一致，Faryne 確認後拿掉這個折衷方案，統一只透過「grip 選取整個表格 → Enter」斷行；表格 cell 內按 Enter 一律恢復成「什麼都不做」。這裡的討論過程原樣保留（記錄「為什麼一開始這樣設計」），實際程式碼行為請以第 20 項為準。
+
+### 20. 補上「選取整個表格」的手勢，取代第 19 項的折衷方案（[視覺主題規劃.md](視覺主題(createTheme)規劃.md) Phase G 項目 7，2026-08-18 跟 Codex 討論設計後實作）
+
+- **背景**：第 19 項討論時發現的缺口——圖片可以直接點一下選取整個節點（`contenteditable=false`，變成 `NodeSelection`），表格完全沒有對應的手勢，點進 cell 只會拿到游標或 `CellSelection`。這個缺口不只影響 Enter 斷行，刪除整張表格、複製整張表格、未來任何「對整個表格做操作」的功能都會卡在同一個問題上。
+- **設計討論**：找 Codex 討論了三個方案：(1) 表格左上角一個可點的 grip handle；(2) 點擊表格外框邊界；(3) 用涵蓋全部 cell 的 `CellSelection` 模擬 `NodeSelection` 的效果。Codex 建議採用方案 1，理由：
+  - 方案 2（點外框邊界）跟現有 `tableEditing()` 攔截 cell mousedown/拖曳選取的邏輯、以及未來可能做的欄寬調整熱區衝突風險高，不建議當主要手勢。
+  - 方案 3（`CellSelection` 涵蓋全部 cell）不建議直接當「整張表格」的 canonical 狀態——`Backspace`／`Copy` 在 `CellSelection` 語意下的預設行為偏向清空 cell 或走 cell-level slice，要對齊「整張表格」的意圖需要大量特判，維護成本比做一個真正的 `NodeSelection` 高。
+  - `@tiptap/pm/tables` 的 `tableEditing()` 有 `allowTableNodeSelection` 選項，預設 `false` 時會把表格的 `NodeSelection` 正規化回涵蓋全部 cell 的 `CellSelection`——這是採用方案 1 的技術前提，沒開這個選項 grip handle 點了也沒用。
+- **實作**：
+  1. `storytellerTable.ts` 的 `StorytellerTable` 節點從單純的 `renderHTML` 改成 `addNodeView()`：在原本的 `<table>` 外面包一層 `.storyteller-table-wrapper`，左上角放一顆 `.storyteller-table-grip` 按鈕；按鈕的 `mousedown` handler 呼叫 `event.preventDefault()`（避免被 `tableEditing()` 自己的 cell 拖曳邏輯搶走），透過 `getPos()` 拿到表格節點位置，直接 `dispatch` 一個 `NodeSelection.create(doc, pos)`。
+  2. `addProseMirrorPlugins()` 的 `tableEditing()` 加上 `{ allowTableNodeSelection: true }`。
+  3. 視覺回饋：`StorytellerWysiwygEditor.tsx` 幫 `.storyteller-table-wrapper.ProseMirror-selectednode` 加上跟圖片節點同一組 `--storyteller-selection` semantic token 的金色 outline 光暈（跟已知 Bug 記錄第 14 項後續追加的圖片選取視覺強化用同一套語言）；grip 按鈕平常隱藏，hover 表格或表格被選中時才顯示，避免每張表格都常駐掛一顆按鈕造成視覺雜訊。
+  4. Faryne 確認「grip 選取後就能斷行」符合預期後，指出第 19 項的折衷方案（最後一個 cell 尾端才斷行）現在多餘了，跟 grip 選取後 Enter 兩條路徑並存會讓規則不一致——拿掉 `markerParagraph.ts` 裡第 19 項加的那段「偵測最後一個 cell 尾端」邏輯，`Enter` handler 對 `tableCell` 只剩一行 `if ($from.parent.type.name !== "paragraph") return false`，cell 內按 Enter 統一恢復成「什麼都不做」。斷行只透過「grip 選取整個表格 → Enter」這一條路徑，跟圖片「選取整個節點 → Enter」的操作手感完全對等。
+- **實作過程中發現並修好的真正 bug**：原本以為「選到表格之後不需要另外寫 Backspace／Enter 的處理邏輯，直接吃圖片的通用邏輯就好」，但拿掉第 19 項的折衷方案、改成完全依賴 grip 選取後實測，**Enter 完全沒反應**——`console.warn` debug（沿用前幾項的除錯模式，且這次連續踩了兩次 Vite HMR／dev server 快取懷疑陷阱，最後靠在瀏覽器 console 直接呼叫 `$from.after($from.depth)` 才抓到真正原因）發現：`markerParagraph.ts` 的 `Enter` handler 對 `NodeSelection` 的通用處理原本用 `$from.after($from.depth)` 算插入位置——圖片是 `inline: true` 的 atom、巢狀在段落裡（`$from.depth` 至少是 1），這個算法沒問題；但表格是 `group: "block"`、直接掛在文件最上層（`$from.depth` 是 0），`$from.after(0)` 會直接拋出 `RangeError: There is no position after the top-level node`，整個 handler 因為例外而悄悄失敗（外層 keymap 吞掉例外，Enter 看起來像沒反應，這是圖片那條路徑從來沒暴露過的邊界情況）。改用 `selection.to`（`NodeSelection` 自帶的「節點結束位置」，定義是 `pos + node.nodeSize`，單純位置加總，不管節點在哪個巢狀深度都不會有這個邊界情況）取代 `$from.after($from.depth)`，圖片跟表格兩種情境都驗證正確，這個算法本身現在對所有巢狀深度都成立，不用再分情境處理。
+- **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 驗證：
+  - 點擊 grip 按鈕後，`editor.state.selection.constructor.name` 確認是 `NodeSelection`（不是 `CellSelection`），`selection.node.type.name` 確認是 `"storytellerTable"`。
+  - DOM 上 `.storyteller-table-wrapper` 出現 `.ProseMirror-selectednode` class，金色 outline 正確顯示（截圖確認）。
+  - 選到表格後按 Enter（包含表格是文件裡唯一/第一個節點的邊界情況，`$from.depth === 0` 那個真正踩雷的情境）：確認在表格後面正確插入新段落。
+  - 選到表格後按 Backspace：確認整張表格（連同 wrapper）被刪除，只剩前後段落，沒有殘留。
+  - 圖片選取後按 Enter（回歸測試，確認 `selection.to` 取代 `$from.after($from.depth)` 沒有破壞第 13 項的圖片行為）：確認正確在圖片後面插入新段落。
+  - 表格 cell 內（不點 grip）直接按 Enter：確認正確恢復成「什麼都不做」，跟第 19 項拿掉折衷方案後的預期一致。
+  - 一般情境下點進 cell 打字（不點 grip）：確認正常輸入，沒有回歸。
+- **狀態**：已修並驗證通過。與本節文件更新同一個 commit 一併送出。
 
 ## 兩份前文的分歧與收斂紀錄（含本輪 Codex CLI 對話新增項目）
 

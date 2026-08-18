@@ -316,15 +316,23 @@ export const MarkerParagraph = Paragraph.extend({
         const { editor } = this;
         const { selection } = editor.state;
 
-        // 選到的是 atom node（例如圖片）本身，不是文字游標——NodeSelection 的
-        // $from 落在節點「前面」（段落開頭），如果照下面 splitParagraphFresh
-        // 的邏輯用 $from 位置分割，會把新段落插到圖片上面而不是下面（已知 Bug
-        // 記錄第 13 項：使用者實測發現方向反了）。圖片目前的使用慣例是「一張
-        // 圖片獨占一個段落」，所以直接在圖片所在的整個段落之後插入新段落，等同
-        // 「在圖片後面插入新段落」，游標移過去讓使用者可以接著打字。
+        // 選到的是節點本身（圖片這種 inline atom，或表格這種 block 節點）——
+        // NodeSelection 的 $from 落在節點「前面」，如果照下面 splitParagraphFresh
+        // 的邏輯用 $from 位置分割，會把新段落插到節點上面而不是下面（已知 Bug
+        // 記錄第 13 項：圖片實測發現方向反了）。改用整個節點後面插入新段落，
+        // 游標移過去讓使用者可以接著打字。
+        //
+        // 插入位置一定要用 selection.to（NodeSelection 自帶的「節點結束位置」，
+        // 定義是 `pos + node.nodeSize`），不能用 $from.after($from.depth)——
+        // 已知 Bug 記錄第 20 項：表格（`group: "block"`，直接掛在文件最上層，
+        // $from.depth 是 0）用 $from.after(0) 會直接拋出 RangeError: There is
+        // no position after the top-level node，整個 handler 因為例外而悄悄
+        // 失敗（外層 keymap 吞掉例外，Enter 看起來像沒反應）。圖片是 inline
+        // atom、巢狀在段落裡（depth 至少是 1）才沒踩到這個問題，這裡改用
+        // selection.to 是因為它用單純的位置加總計算，不管節點在哪個巢狀深度
+        // 都不會有這個邊界情況。
         if (selection instanceof NodeSelection) {
-          const { $from } = selection;
-          const paragraphEnd = $from.after($from.depth);
+          const nodeEnd = selection.to;
           return editor.commands.command(({ tr, dispatch, state }) => {
             if (dispatch) {
               const newParagraph = state.schema.nodes.paragraph.create({
@@ -332,8 +340,8 @@ export const MarkerParagraph = Paragraph.extend({
                 headingLevel: DEFAULT_HEADING_LEVEL,
                 blockKind: DEFAULT_BLOCK_KIND,
               });
-              tr.insert(paragraphEnd, newParagraph);
-              tr.setSelection(TextSelection.near(tr.doc.resolve(paragraphEnd + 1)));
+              tr.insert(nodeEnd, newParagraph);
+              tr.setSelection(TextSelection.near(tr.doc.resolve(nodeEnd + 1)));
               dispatch(tr.scrollIntoView());
             }
             return true;
@@ -342,48 +350,14 @@ export const MarkerParagraph = Paragraph.extend({
 
         const { $from } = selection;
 
-        // 已知 Bug 記錄第 19 項：表格沒有像圖片那樣「點一下選取整個節點」的手勢
-        // （TableCell 走 ProseMirror 表格外掛的 CellSelection，不是 NodeSelection），
-        // 跟 Faryne 討論後決定不要「游標在任何一個 cell 裡按 Enter 都跳出表格」
-        // ——這在編輯中間某個 cell 時太容易誤觸，多數編輯器（包含 Notion）在表格
-        // cell 內按 Enter 本來就不會斷行/跳出。改成只在「游標在最後一個 cell、
-        // 且在文字最尾端」時，Enter 才在表格後面插入新段落並把游標移過去——這是
-        // 目前沒有選取手勢之下，語意最不模糊的折衷位置（「打到表格最後一格的最
-        // 後面了，Enter 自然是要繼續往下」）；其他情況（不是最後一個 cell、或在
-        // cell 文字中間）Enter 一律不做任何事，維持修改前的行為。這是折衷方案，
-        // 「選中整個表格再斷行」這個更完整的手勢之後仍要另外討論。
-        if ($from.parent.type.name === "tableCell") {
-          const isAtCellEnd = $from.parentOffset === $from.parent.content.size;
-          const cellDepth = $from.depth;
-          const rowDepth = cellDepth - 1;
-          const tableDepth = cellDepth - 2;
-          const isLastCellInRow =
-            $from.index(rowDepth) === $from.node(rowDepth).childCount - 1;
-          const isLastRowInTable =
-            $from.index(tableDepth) === $from.node(tableDepth).childCount - 1;
-          if (
-            isAtCellEnd &&
-            isLastCellInRow &&
-            isLastRowInTable &&
-            $from.node(tableDepth).type.name === "storytellerTable"
-          ) {
-            const tableEnd = $from.after(tableDepth);
-            return editor.commands.command(({ tr, dispatch, state }) => {
-              if (dispatch) {
-                const newParagraph = state.schema.nodes.paragraph.create({
-                  markerId: generateMarkerId(),
-                  headingLevel: DEFAULT_HEADING_LEVEL,
-                  blockKind: DEFAULT_BLOCK_KIND,
-                });
-                tr.insert(tableEnd, newParagraph);
-                tr.setSelection(TextSelection.near(tr.doc.resolve(tableEnd + 1)));
-                dispatch(tr.scrollIntoView());
-              }
-              return true;
-            });
-          }
-          return false;
-        }
+        // 已知 Bug 記錄第 19／20 項：表格 cell 內按 Enter 一律不做任何事，跟多數
+        // 編輯器（包含 Notion）一致——游標停在 cell 內是打字的日常狀態，不該被
+        // Enter 意外帶出表格。第 19 項原本有一版「游標在最後一個 cell 尾端才
+        // 斷行」的折衷方案，但第 20 項補上表格左上角的 grip handle（點一下選取
+        // 整個表格，變成真正的 NodeSelection）之後，那個折衷方案就多餘了——
+        // 斷行統一走「先用 grip 選取整個表格，再按 Enter」這條路徑（走上面的
+        // NodeSelection 分支，跟圖片同一套邏輯），不需要在 cell 內特別處理，
+        // 兩條路徑並存反而讓規則變得不一致，所以拿掉。
         if ($from.parent.type.name !== "paragraph") return false;
 
         const currentBlockKind = ($from.parent.attrs.blockKind ??

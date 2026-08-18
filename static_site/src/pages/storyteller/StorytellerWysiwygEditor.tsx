@@ -238,8 +238,53 @@ const BLOCK_KIND_SX = {
   // <table><tr><td>（見 wysiwygCore/storytellerTable.ts），但原本沒有任何邊框樣式，
   // 使用者插入表格後完全看不出表格範圍在哪。跟閱讀頁 StorytellerWysiwygMarkdown.tsx
   // 的 BLOCK_GROUP_SX 用同一套邊框樣式，讓編輯區跟閱讀頁視覺一致。
-  "& table": {
+  //
+  // 已知 Bug 記錄第 19 項／Phase G 項目 7：table 外面現在包了一層
+  // .storyteller-table-wrapper（見 storytellerTable.ts 的 addNodeView），用來放
+  // 「選取整張表格」的 grip handle。原本 table 自己的 margin 搬到 wrapper 上
+  // （wrapper 才是現在的最外層區塊），table 本身的 margin 歸零避免疊加。
+  "& .storyteller-table-wrapper": {
+    position: "relative",
     margin: "0.5em 0",
+  },
+  "& .storyteller-table-grip": {
+    position: "absolute",
+    top: -12,
+    left: -12,
+    width: 22,
+    height: 22,
+    padding: 0,
+    lineHeight: 0,
+    border: "1px solid",
+    borderColor: "divider",
+    borderRadius: "6px",
+    bgcolor: "background.paper",
+    cursor: "pointer",
+    // 平常隱藏，hover 表格或選到表格時才出現——跟圖片節點常駐顯示的設定/刪除
+    // 按鈕不同，表格這裡希望預設乾淨，不要每張表格都掛一顆按鈕。
+    opacity: 0,
+    transition: "opacity 0.15s ease, border-color 0.15s ease",
+    zIndex: 1,
+    "&:hover": { borderColor: "primary.main" },
+  },
+  "& .storyteller-table-wrapper:hover .storyteller-table-grip": {
+    opacity: 1,
+  },
+  // ProseMirror 選到節點時，class 會直接加在 NodeView 回傳的 dom（也就是這個
+  // wrapper）上——跟圖片節點的選取樣式用同一組 selection token，形成一致的
+  // 「選到了」視覺語言，不用另外發明一套顏色。
+  "& .storyteller-table-wrapper.ProseMirror-selectednode": {
+    outline: "3px solid var(--storyteller-selection, #e6bd76)",
+    outlineOffset: 3,
+    borderRadius: "6px",
+  },
+  "& .storyteller-table-wrapper.ProseMirror-selectednode .storyteller-table-grip":
+    {
+      opacity: 1,
+      borderColor: "var(--storyteller-selection, #e6bd76)",
+    },
+  "& table": {
+    margin: 0,
     borderCollapse: "collapse",
     width: "100%",
     // Phase 8.1.4 階段一：原本沒設定 table-layout，瀏覽器預設用 auto，會即時依
