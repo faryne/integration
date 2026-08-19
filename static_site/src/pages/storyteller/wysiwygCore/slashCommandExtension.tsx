@@ -131,7 +131,22 @@ function SlashCommandList({
           index > 0 && items[index - 1].group !== item.group;
         return (
           <Box key={item.id} component="span" sx={{ display: "block" }}>
-            {showDividerBefore ? <Divider /> : null}
+            {showDividerBefore ? (
+              // `<Divider>` 預設顏色吃 `theme.palette.divider`——右鍵選單在
+              // `StorytellerLayout` 的 `ThemeProvider` 底下能吃到 storyteller
+              // 主題明講的偏灰色，但 slash 選單是獨立的 `createRoot`（見
+              // `createSlashCommandRenderer` 的說明），沒有包在任何
+              // `ThemeProvider` 裡，只能退回 MUI 內建預設值（深色系、低透明度
+              // 的黑），在深色模式的深色背景上幾乎看不見（Faryne 實測回報：
+              // 要仔細看才看得出來）。跟選單其他顏色一樣明講吃
+              // `var(--storyteller-border-subtle)`，不依賴 theme context。
+              <Divider
+                sx={{
+                  borderColor:
+                    "var(--storyteller-border-subtle, rgba(0, 0, 0, 0.12))",
+                }}
+              />
+            ) : null}
             <Box
               component="button"
               type="button"
