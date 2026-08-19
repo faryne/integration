@@ -66,15 +66,17 @@ const FLOAT_SIZE_WIDTH: Record<AssetImageSizeValue, string> = {
 };
 
 /** 組回圖片 markdown 語法的 title 字串——layout／size 各自等於預設值時省略那個
- * key，兩個都是預設值就整個 title 都不輸出，維持跟改動前一樣「預設值不留痕跡」
- * 的匯出風格，不會讓沒特別調過設定的舊圖片語法多長出一截。 */
+ * key，caption 為空也省略，全部都省略時整個 title 都不輸出，維持跟改動前一樣
+ * 「預設值不留痕跡」的匯出風格，不會讓沒特別調過設定的舊圖片語法多長出一截。 */
 export function assetImageTitle(
   layout: AssetImageLayoutValue,
   size: AssetImageSizeValue,
+  caption = "",
 ) {
   const parts: string[] = [];
   if (layout !== DEFAULT_ASSET_IMAGE_LAYOUT) parts.push(`layout=${layout}`);
   if (size !== DEFAULT_ASSET_IMAGE_SIZE) parts.push(`size=${size}`);
+  if (caption) parts.push(`caption=${encodeURIComponent(caption)}`);
   return parts.length > 0 ? ` "${parts.join(" ")}"` : "";
 }
 

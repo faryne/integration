@@ -236,7 +236,8 @@ function serializeParagraphInline(paragraph: JSONContent): string {
       const size = normalizeAssetImageSize(
         node.attrs?.size ?? DEFAULT_ASSET_IMAGE_SIZE,
       );
-      output += `![${alt}](${src}${assetImageTitle(layout, size)})`;
+      const caption = String(node.attrs?.caption ?? "");
+      output += `![${alt}](${src}${assetImageTitle(layout, size, caption)})`;
       continue;
     }
 

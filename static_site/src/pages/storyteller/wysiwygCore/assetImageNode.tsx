@@ -54,10 +54,12 @@ function AssetImageView({
   const projectPublicId =
     (node.attrs.projectPublicId as string | undefined) ?? "";
   const alt = (node.attrs.alt as string | undefined) ?? "";
+  const caption = (node.attrs.caption as string | undefined) ?? "";
   const layout = normalizeAssetImageLayout(node.attrs.layout);
   const size = normalizeAssetImageSize(node.attrs.size);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [altDraft, setAltDraft] = useState(alt);
+  const [captionDraft, setCaptionDraft] = useState(caption);
   const [layoutDraft, setLayoutDraft] =
     useState<AssetImageLayoutValue>(layout);
   const [sizeDraft, setSizeDraft] = useState<AssetImageSizeValue>(size);
@@ -68,6 +70,7 @@ function AssetImageView({
 
   function openDialog() {
     setAltDraft(alt);
+    setCaptionDraft(caption);
     setLayoutDraft(layout);
     setSizeDraft(size);
     setDialogOpen(true);
@@ -76,6 +79,7 @@ function AssetImageView({
   function saveSettings() {
     updateAttributes({
       alt: altDraft.trim(),
+      caption: captionDraft.trim(),
       layout: layoutDraft,
       size: sizeDraft,
     });
@@ -94,6 +98,7 @@ function AssetImageView({
         .detail;
       if (typeof getPos === "function" && getPos() === detail?.pos) {
         setAltDraft(alt);
+        setCaptionDraft(caption);
         setLayoutDraft(layout);
         setSizeDraft(size);
         setDialogOpen(true);
@@ -103,7 +108,7 @@ function AssetImageView({
     return () => {
       root.removeEventListener(OPEN_ASSET_IMAGE_SETTINGS_EVENT, openSettings);
     };
-  }, [alt, editor.view.dom, getPos, layout, size]);
+  }, [alt, caption, editor.view.dom, getPos, layout, size]);
 
   return (
     <NodeViewWrapper as="span">
@@ -169,6 +174,23 @@ function AssetImageView({
             </Typography>
           </Box>
         )}
+        {caption ? (
+          <Typography
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              px: 1.25,
+              pt: 0.75,
+              fontStyle: "italic",
+              textAlign: "center",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {caption}
+          </Typography>
+        ) : null}
         <Stack
           component="span"
           direction="row"
@@ -211,9 +233,19 @@ function AssetImageView({
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
               label="替代文字"
+              helperText="給無障礙輔助工具／SEO 用，不會顯示在畫面上"
               value={altDraft}
               onChange={(event) => setAltDraft(event.target.value)}
               fullWidth
+            />
+            <TextField
+              label="圖說"
+              helperText="顯示給讀者看的說明文字，留空則不顯示"
+              value={captionDraft}
+              onChange={(event) => setCaptionDraft(event.target.value)}
+              fullWidth
+              multiline
+              maxRows={3}
             />
             <TextField
               select
@@ -277,6 +309,7 @@ export const AssetImage = Node.create({
       publicId: { default: "" },
       src: { default: "" },
       alt: { default: "" },
+      caption: { default: "" },
       projectPublicId: { default: "" },
       layout: { default: DEFAULT_ASSET_IMAGE_LAYOUT },
       size: { default: DEFAULT_ASSET_IMAGE_SIZE },

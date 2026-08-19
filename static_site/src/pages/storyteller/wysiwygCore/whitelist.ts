@@ -368,12 +368,15 @@ export function normalizeAssetImageSize(value: unknown): AssetImageSizeValue {
 
 /** title 字串裡找 `key=value`（例如 `layout=float-left size=medium`），順序不拘、
  * 缺其中一個 key 就用預設值——這樣舊資料只有 `layout=xxx`（沒有 size）能繼續正常
- * 解析成 size=large（現在的預設值本來就等於舊版唯一支援的呈現效果），不用遷移。 */
+ * 解析成 size=large（現在的預設值本來就等於舊版唯一支援的呈現效果），不用遷移。
+ * value 用 `\S+`（非空白）而不是限定字元集，是為了讓 `caption` 這種自由文字（經
+ * `encodeURIComponent` 編碼後不含空白，但字元集比 layout/size 的固定列舉值寬）
+ * 也能共用同一個解析函式；layout/size 本來的值域本來就是 `\S+` 的子集，行為不變。 */
 function assetImageTitleValue(
   title: string | undefined,
-  key: "layout" | "size",
+  key: "layout" | "size" | "caption",
 ): string {
-  const pattern = new RegExp(`(?:^|\\s)${key}=([A-Za-z0-9-]+)`);
+  const pattern = new RegExp(`(?:^|\\s)${key}=(\\S+)`);
   return title?.match(pattern)?.[1] ?? "";
 }
 
@@ -387,6 +390,21 @@ export function assetImageSizeFromTitle(
   title: string | undefined,
 ): AssetImageSizeValue {
   return normalizeAssetImageSize(assetImageTitleValue(title, "size"));
+}
+
+/** 圖說（給讀者看的說明文字，跟 alt 替代文字用途不同）：塞進 title 字串的
+ * `caption=` key，值用 `encodeURIComponent` 編碼——caption 是自由文字（可能有
+ * 空白、中文、標點），跟 layout/size 的固定列舉值不同，不能直接塞進以空白分隔
+ * token 的 title 字串，編碼後才不會破壞 title 的 token 切分或跟外層的 `"..."`
+ * markdown title 引號衝突。 */
+export function assetImageCaptionFromTitle(title: string | undefined): string {
+  const raw = assetImageTitleValue(title, "caption");
+  if (!raw) return "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return "";
+  }
 }
 
 /* --- a（連結）行內 marker 的屬性 --- */

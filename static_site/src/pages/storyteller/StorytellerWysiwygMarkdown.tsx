@@ -148,6 +148,22 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
             資產：{run.assetAlt || run.assetPublicId}
           </Typography>
         )}
+        {run.assetCaption ? (
+          <Typography
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              pt: 0.75,
+              fontStyle: "italic",
+              textAlign: "center",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {run.assetCaption}
+          </Typography>
+        ) : null}
       </Box>
     );
   }

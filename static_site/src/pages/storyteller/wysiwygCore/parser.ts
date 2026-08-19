@@ -2,6 +2,7 @@ import type { JSONContent } from "@tiptap/core";
 
 import {
   ALIGNMENT_VALUES,
+  assetImageCaptionFromTitle,
   assetImageLayoutFromTitle,
   assetImageSizeFromTitle,
   assetPublicIdFromUri,
@@ -59,6 +60,9 @@ export interface ParsedRun {
   assetPublicId?: string;
   assetSrc?: string;
   assetAlt?: string;
+  /** 圖說：給讀者看的說明文字，跟 assetAlt（無障礙/SEO 用的替代文字）用途不同、
+   * 各自獨立存放，不互相取代。 */
+  assetCaption?: string;
   assetLayout?: AssetImageLayoutValue;
   assetSize?: AssetImageSizeValue;
   /** 文字前景色（span 行內 marker），沒設定就是 undefined。 */
@@ -393,6 +397,7 @@ function parseInline(text: string, enableAssets: boolean): ParsedRun[] {
         text: "",
         marks: [],
         assetAlt: sanitizeMarkdownImageAlt(token.alt),
+        assetCaption: assetImageCaptionFromTitle(token.title),
         assetLayout: assetImageLayoutFromTitle(token.title),
         assetSize: assetImageSizeFromTitle(token.title),
         assetPublicId: assetPublicId ?? undefined,
@@ -938,6 +943,7 @@ function runsToTiptapInline(runs: ParsedRun[], projectPublicId = "") {
             publicId: run.assetPublicId ?? "",
             src: run.assetSrc ?? "",
             alt: run.assetAlt ?? "",
+            caption: run.assetCaption ?? "",
             layout: run.assetLayout,
             size: run.assetSize,
             projectPublicId,
