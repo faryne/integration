@@ -11,6 +11,16 @@
 
 上述兩份「_final」文件在表格序列化格式與圖片插入現況兩點上仍有實質分歧，本文件透過 Claude 對 code 的實際查證、以及 Claude 與 Codex 在同一個 Codex CLI session（`019ff88e-5904-7603-bd56-0202486dc89b`）內的兩輪直接對話收斂而成。四份前文內容已完全被本文件吸收，已於 commit `7717952` 一併刪除，不再保留；後續動工請以本文件為準。
 
+## 本機自動化測試現在可以直接進登入頁面（2026-08-19 新增）
+
+已知 Bug 記錄第 8 項（slash 選單 icon 消失／完全叫不出來）修復過程反覆卡了五輪，主要原因是 Claude 沒有登入權限，每次都要靠 Faryne 在真實頁面手動測、貼 console 診斷資料回來，才能一步步縮小範圍——雙方都很疲憊。Faryne 提議做一個 dev-only 假登入機制，Claude 查證現有認證架構後實作：
+
+- **後端**：新增 `POST /auth/dev-session`（`route/auth.go`／`controller/auth/session.go`／`service/auth/session.go`），完全跳過 Firebase JWT 驗證，直接用固定測試身分（`firebase_uid: dev-local-claude-test`）簽發合法的 `encrypt_key` session，複用現有 `authsession` middleware 跟全部既有 API。只在環境變數 `ENABLE_DEV_AUTH_BYPASS=true` 時才會註冊這條路由（staging／正式環境不會設這個值，路由表裡完全不存在這一條），service 層再重複檢查一次做防禦性寫法。
+- **前端**：`AuthProvider.tsx` 原本邏輯是 Firebase 回報 `currentUser === null` 就無條件清掉 session，假登入 session 沒有對應的真實 Firebase 使用者，一定會被立刻清掉。改成只在 `import.meta.env.DEV` 且 session 的 `firebase_uid` 帶 `dev-local-` 前綴時才放行，正式建置環境跟真實使用者完全不受影響。
+- **使用方式**：本機 Go 後端開 `ENABLE_DEV_AUTH_BYPASS=true`（`.env` 加這行、重啟），呼叫 `POST /auth/dev-session` 拿到 `{user, encrypt_key, expires_at}`，用瀏覽器工具直接 `localStorage.setItem("faryne.auth.session", JSON.stringify(session))` 後導到任何 `/storyteller/my/...` 頁面即可，不用手動點 Google 登入彈窗。
+- **驗證**：已在真實登入頁面（非 Playground）走完整流程——建立測試專案／故事、進 `StorytellerWysiwygEditor`、打 `/` 確認 slash 選單 icon／分隔線都正確、選取後正確套用格式；測試資料事後已刪除。
+- **狀態**：功能已上線（commit `81c5ed1`／`9fff4f3`）。之後任何「只有登入後才會出現」的行為問題，Claude 可以直接自己重現驗證，不需要再靠 Faryne 一輪輪回報 console 診斷資料。
+
 ## 結論
 
 1. **保留 Tiptap / ProseMirror，不換 editor framework**。這是操作入口改版，不是重寫編輯器。
