@@ -1,5 +1,4 @@
 import { Extension, type Editor, type Range } from "@tiptap/core";
-import { ReactRenderer } from "@tiptap/react";
 import Suggestion, {
   exitSuggestion,
   type SuggestionKeyDownProps,
@@ -7,6 +6,8 @@ import Suggestion, {
 } from "@tiptap/suggestion";
 import { PluginKey, type EditorState } from "@tiptap/pm/state";
 import { Box, Divider, Paper } from "@mui/material";
+import { flushSync } from "react-dom";
+import { createRoot, type Root } from "react-dom/client";
 
 import {
   slashWysiwygCommands,
@@ -181,7 +182,22 @@ function SlashCommandList({
 }
 
 function createSlashCommandRenderer() {
-  let renderer: ReactRenderer<unknown, SlashCommandListProps> | null = null;
+  // 用 `react-dom/client` 的 `createRoot` 直接掛一個獨立、自給自足的 React root，
+  // 不透過 `@tiptap/react` 的 `ReactRenderer`。原因：`ReactRenderer` 內部靠
+  // `editor.contentComponent?.setRenderer(...)` 把內容透過 portal 掛進
+  // `EditorContent` 自己的 React tree，這個 `contentComponent` 是 `EditorContent`
+  // 掛載時才會設好的內部狀態——如果因為某些條件（例如頁面的掛載/資料載入時序跟
+  // Playground 不同）在 `contentComponent` 還沒就緒時呼叫，`ReactRenderer` 會
+  // 靜默什麼都不渲染（不丟例外，`setRenderer` 呼叫在 optional chaining 下直接被
+  // 吞掉）。Faryne 實測發現真實頁面用 `ReactRenderer` 版本時 slash 選單完全叫不
+  // 出來（不是 icon 消失，是整個選單都不見），跟這個內部依賴的失效模式完全吻合，
+  // Playground 沒事只是因為那邊的掛載時序剛好沒踩到。改用 `createRoot` 後
+  // 選單是一個完全獨立的 React root，不依賴 `EditorContent` 的任何內部狀態，
+  // 跟原本手刻 DOM 版本一樣「在任何環境都能穩定掛上」，只是內容改成真正的 JSX
+  // （修掉 icon 消失的原始問題）。顏色一樣吃 `var(--storyteller-*)` CSS
+  // variable（掛在 `:root` 上，跟 React tree 位置無關），不需要 ThemeProvider
+  // context 就能正確上色，跟舊版行為一致。
+  let root: Root | null = null;
   let unmount: (() => void) | null = null;
   let latestProps: SlashSuggestionProps | null = null;
   let selectedIndex = 0;
@@ -194,22 +210,27 @@ function createSlashCommandRenderer() {
     };
   }
 
+  function renderList() {
+    root?.render(<SlashCommandList {...componentProps()} />);
+  }
+
   function mount(props: SlashSuggestionProps) {
     selectedIndex = 0;
     latestProps = props;
-    renderer = new ReactRenderer(SlashCommandList, {
-      editor: props.editor,
-      props: componentProps(),
-    });
+    const element = document.createElement("div");
+    root = createRoot(element);
+    // 掛載當下同步 render，讓 `props.mount()` 量測位置（floating-ui 的
+    // `autoUpdate`）時 element 裡已經有實際內容跟尺寸，不會先量到空盒子。
+    flushSync(renderList);
     activeSlashCommandControllers.set(props.editor, controller);
-    unmount = props.mount(renderer.element);
+    unmount = props.mount(element);
   }
 
   function update(props: SlashSuggestionProps) {
-    if (!renderer) return;
+    if (!root) return;
     latestProps = props;
     selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
-    renderer.updateProps(componentProps());
+    renderList();
   }
 
   const controller = {
@@ -217,14 +238,14 @@ function createSlashCommandRenderer() {
       if (!latestProps || latestProps.items.length === 0) return false;
       if (key === "ArrowDown") {
         selectedIndex = (selectedIndex + 1) % latestProps.items.length;
-        renderer?.updateProps(componentProps());
+        renderList();
         return true;
       }
       if (key === "ArrowUp") {
         selectedIndex =
           (selectedIndex + latestProps.items.length - 1) %
           latestProps.items.length;
-        renderer?.updateProps(componentProps());
+        renderList();
         return true;
       }
       if (key === "Enter") {
@@ -246,9 +267,9 @@ function createSlashCommandRenderer() {
       controller.onKeyDown(event.key as SlashCommandKey),
     onExit() {
       unmount?.();
-      renderer?.destroy();
+      root?.unmount();
       if (latestProps) activeSlashCommandControllers.delete(latestProps.editor);
-      renderer = null;
+      root = null;
       unmount = null;
       latestProps = null;
       selectedIndex = 0;
