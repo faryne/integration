@@ -85,6 +85,8 @@ interface SlashCommandListProps {
   items: WysiwygCommand[];
   selectedIndex: number;
   onSelect: (item: WysiwygCommand) => void;
+  listboxId: string;
+  getOptionId: (index: number) => string;
 }
 
 /** 選單本體改用真正的 React／MUI 元件（跟右鍵選單同一套 command → icon+label 呈現
@@ -101,11 +103,14 @@ function SlashCommandList({
   items,
   selectedIndex,
   onSelect,
+  listboxId,
+  getOptionId,
 }: SlashCommandListProps) {
   return (
     <Paper
       elevation={4}
       role="listbox"
+      id={listboxId}
       sx={{
         // z-index 不能設在這裡：`Paper` 預設 `position:static`，CSS 規定
         // z-index 對 `position:static` 元素完全沒作用，設了也會被忽略。真正
@@ -151,6 +156,7 @@ function SlashCommandList({
               component="button"
               type="button"
               role="option"
+              id={getOptionId(index)}
               aria-selected={selected}
               data-command-id={item.id}
               onMouseDown={(event) => {
@@ -201,6 +207,31 @@ function SlashCommandList({
   );
 }
 
+let slashCommandListboxCounter = 0;
+
+/** 真正的鍵盤 focus 全程留在 ProseMirror 的 contenteditable 上（打字、上下鍵都是
+ * editor 自己處理，不會把 focus 移到選單的 DOM 節點），這是典型的「virtual focus」
+ * 情境（跟 combobox/command palette 同一類）——螢幕閱讀器沒辦法從「focus 移動」
+ * 知道使用者現在選到哪個選項，要靠 `aria-activedescendant` 明講。這裡直接在
+ * `editor.view.dom`（真正持有 focus 的元素）上設 `aria-expanded`／`aria-controls`
+ * （指到選單的 id）／`aria-activedescendant`（指到目前高亮選項的 id），選單關閉時
+ * 全部清掉。 */
+function setEditorSlashAriaState(
+  editor: Editor,
+  state: { listboxId: string; activeOptionId: string } | null,
+) {
+  const dom = editor.view.dom;
+  if (!state) {
+    dom.removeAttribute("aria-expanded");
+    dom.removeAttribute("aria-controls");
+    dom.removeAttribute("aria-activedescendant");
+    return;
+  }
+  dom.setAttribute("aria-expanded", "true");
+  dom.setAttribute("aria-controls", state.listboxId);
+  dom.setAttribute("aria-activedescendant", state.activeOptionId);
+}
+
 function createSlashCommandRenderer() {
   // 用 `react-dom/client` 的 `createRoot` 直接掛一個獨立、自給自足的 React root，
   // 不透過 `@tiptap/react` 的 `ReactRenderer`。原因：`ReactRenderer` 內部靠
@@ -221,17 +252,38 @@ function createSlashCommandRenderer() {
   let unmount: (() => void) | null = null;
   let latestProps: SlashSuggestionProps | null = null;
   let selectedIndex = 0;
+  const listboxId = `storyteller-slash-listbox-${++slashCommandListboxCounter}`;
+  const getOptionId = (index: number) => `${listboxId}-option-${index}`;
 
   function componentProps(): SlashCommandListProps {
     return {
       items: latestProps?.items ?? [],
       selectedIndex,
       onSelect: (item) => latestProps?.command(item),
+      listboxId,
+      getOptionId,
     };
   }
 
   function renderList() {
     root?.render(<SlashCommandList {...componentProps()} />);
+  }
+
+  // render 選單內容 + 同步 editor 上的 aria-activedescendant，兩件事永遠一起發生
+  // （selectedIndex 一變就要兩邊都更新，分開呼叫容易漏掉其中一邊）。
+  function renderAndSyncAria() {
+    renderList();
+    if (!latestProps) return;
+    if (latestProps.items.length === 0) {
+      // query 篩選到沒有任何符合的 command 時，沒有選項可以指——清掉
+      // aria-activedescendant，不要讓它繼續指向一個已經不存在的舊選項 id。
+      setEditorSlashAriaState(latestProps.editor, null);
+      return;
+    }
+    setEditorSlashAriaState(latestProps.editor, {
+      listboxId,
+      activeOptionId: getOptionId(selectedIndex),
+    });
   }
 
   function mount(props: SlashSuggestionProps) {
@@ -248,7 +300,7 @@ function createSlashCommandRenderer() {
     root = createRoot(element);
     // 掛載當下同步 render，讓 `props.mount()` 量測位置（floating-ui 的
     // `autoUpdate`）時 element 裡已經有實際內容跟尺寸，不會先量到空盒子。
-    flushSync(renderList);
+    flushSync(renderAndSyncAria);
     activeSlashCommandControllers.set(props.editor, controller);
     unmount = props.mount(element);
   }
@@ -257,7 +309,7 @@ function createSlashCommandRenderer() {
     if (!root) return;
     latestProps = props;
     selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
-    renderList();
+    renderAndSyncAria();
   }
 
   const controller = {
@@ -265,14 +317,14 @@ function createSlashCommandRenderer() {
       if (!latestProps || latestProps.items.length === 0) return false;
       if (key === "ArrowDown") {
         selectedIndex = (selectedIndex + 1) % latestProps.items.length;
-        renderList();
+        renderAndSyncAria();
         return true;
       }
       if (key === "ArrowUp") {
         selectedIndex =
           (selectedIndex + latestProps.items.length - 1) %
           latestProps.items.length;
-        renderList();
+        renderAndSyncAria();
         return true;
       }
       if (key === "Enter") {
@@ -295,7 +347,10 @@ function createSlashCommandRenderer() {
     onExit() {
       unmount?.();
       root?.unmount();
-      if (latestProps) activeSlashCommandControllers.delete(latestProps.editor);
+      if (latestProps) {
+        activeSlashCommandControllers.delete(latestProps.editor);
+        setEditorSlashAriaState(latestProps.editor, null);
+      }
       root = null;
       unmount = null;
       latestProps = null;
