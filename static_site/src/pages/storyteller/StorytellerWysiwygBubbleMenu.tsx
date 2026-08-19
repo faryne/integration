@@ -2,7 +2,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Box, Divider, Paper, Stack, Tooltip } from "@mui/material";
 import { isTextSelection, type Editor } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   getWysiwygCommand,
@@ -43,6 +43,18 @@ export function StorytellerWysiwygBubbleMenu({
 }: StorytellerWysiwygBubbleMenuProps) {
   const [textColorMenuOpen, setTextColorMenuOpen] = useState(false);
   const [bgColorMenuOpen, setBgColorMenuOpen] = useState(false);
+  // 色票子選單是自訂的小 popover（不是 MUI Menu），Escape 要能關閉並把 focus
+  // 還給觸發它的按鈕——不然鍵盤使用者關閉子選單後會不知道 focus 掉去哪裡。
+  const textColorTriggerRef = useRef<HTMLButtonElement>(null);
+  const bgColorTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeTextColorMenu = () => {
+    setTextColorMenuOpen(false);
+    textColorTriggerRef.current?.focus();
+  };
+  const closeBgColorMenu = () => {
+    setBgColorMenuOpen(false);
+    bgColorTriggerRef.current?.focus();
+  };
 
   const markCommands = wysiwygCommandsByGroup("mark").filter((command) =>
     BUBBLE_MARK_IDS.includes(command.id),
@@ -85,6 +97,8 @@ export function StorytellerWysiwygBubbleMenu({
     >
       <Paper
         elevation={4}
+        role="toolbar"
+        aria-label="文字格式工具列"
         sx={{
           display: "flex",
           alignItems: "center",
@@ -137,7 +151,11 @@ export function StorytellerWysiwygBubbleMenu({
               <Box
                 component="button"
                 type="button"
+                ref={textColorTriggerRef}
                 aria-label="文字顏色"
+                aria-haspopup="true"
+                aria-expanded={textColorMenuOpen}
+                aria-controls="bubble-menu-text-color-popover"
                 onClick={() => setTextColorMenuOpen((open) => !open)}
                 sx={{
                   display: "flex",
@@ -169,6 +187,15 @@ export function StorytellerWysiwygBubbleMenu({
             {textColorMenuOpen && (
               <Paper
                 elevation={4}
+                id="bubble-menu-text-color-popover"
+                role="group"
+                aria-label="文字顏色選項"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.stopPropagation();
+                    closeTextColorMenu();
+                  }
+                }}
                 sx={{
                   position: "absolute",
                   top: "100%",
@@ -190,7 +217,7 @@ export function StorytellerWysiwygBubbleMenu({
                         aria-pressed={command.isActive?.(editor) ?? false}
                         onClick={() => {
                           run(command);
-                          setTextColorMenuOpen(false);
+                          closeTextColorMenu();
                         }}
                         sx={{
                           width: 20,
@@ -214,7 +241,7 @@ export function StorytellerWysiwygBubbleMenu({
                       aria-label="清除文字顏色"
                       onClick={() => {
                         run(getWysiwygCommand("text-color-clear")!);
-                        setTextColorMenuOpen(false);
+                        closeTextColorMenu();
                       }}
                       sx={{
                         display: "flex",
@@ -240,7 +267,11 @@ export function StorytellerWysiwygBubbleMenu({
               <Box
                 component="button"
                 type="button"
+                ref={bgColorTriggerRef}
                 aria-label="文字背景色"
+                aria-haspopup="true"
+                aria-expanded={bgColorMenuOpen}
+                aria-controls="bubble-menu-bg-color-popover"
                 onClick={() => setBgColorMenuOpen((open) => !open)}
                 sx={{
                   display: "flex",
@@ -272,6 +303,15 @@ export function StorytellerWysiwygBubbleMenu({
             {bgColorMenuOpen && (
               <Paper
                 elevation={4}
+                id="bubble-menu-bg-color-popover"
+                role="group"
+                aria-label="文字背景色選項"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.stopPropagation();
+                    closeBgColorMenu();
+                  }
+                }}
                 sx={{
                   position: "absolute",
                   top: "100%",
@@ -293,7 +333,7 @@ export function StorytellerWysiwygBubbleMenu({
                         aria-pressed={command.isActive?.(editor) ?? false}
                         onClick={() => {
                           run(command);
-                          setBgColorMenuOpen(false);
+                          closeBgColorMenu();
                         }}
                         sx={{
                           width: 20,
@@ -317,7 +357,7 @@ export function StorytellerWysiwygBubbleMenu({
                       aria-label="清除文字背景色"
                       onClick={() => {
                         run(getWysiwygCommand("bg-color-clear")!);
-                        setBgColorMenuOpen(false);
+                        closeBgColorMenu();
                       }}
                       sx={{
                         display: "flex",

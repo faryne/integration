@@ -68,7 +68,7 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 
 ### Phase E：無障礙功能 audit／修正
 - [x] Slash command：鍵盤導覽、IME 組字期間按鍵攔截、Escape/Enter 語意、補 `aria-activedescendant`——2026-08-19 完成。鍵盤導覽（上下鍵/Enter/Escape）、IME 組字期間暫停攔截這幾項在 slash 選單這次連續三輪修復（見所見即所得編輯器notion-like分析_定案版.md 已知 Bug 記錄第 8 項）時就已經到位，本次只需要補 `aria-activedescendant`：真正的鍵盤 focus 全程留在 ProseMirror 的 contenteditable 上（典型「virtual focus」情境），螢幕閱讀器沒辦法從「focus 移動」知道使用者選到哪個選項，改在 `editor.view.dom`（真正持有 focus 的元素）上設 `aria-expanded`／`aria-controls`（指到選單 id）／`aria-activedescendant`（指到目前高亮選項 id），選單關閉時全部清掉；選單本身跟每個選項補上對應的 `id`。已用假登入機制在真實登入頁面驗證：開啟時三個屬性正確設定、`ArrowDown` 後 `aria-activedescendant` 正確指到下一個選項、`Escape` 關閉後三個屬性正確清空，console 無錯誤。
-- [ ] Bubble menu：確認螢幕閱讀器能理解目前狀態（選取文字後浮動選單出現這件事本身要能被輔助技術偵測到）
+- [x] Bubble menu：確認螢幕閱讀器能理解目前狀態（選取文字後浮動選單出現這件事本身要能被輔助技術偵測到）——2026-08-19 完成。個別按鈕本來就有 `aria-label`／`aria-pressed`（沿用既有寫法），這次補的是缺口：①外層 `Paper` 補 `role="toolbar"` `aria-label="文字格式工具列"`，讓輔助技術能把浮動的一整排按鈕辨識成一個有名字的工具列，而不是一堆孤立的按鈕；②文字顏色／背景色是自訂的小 popover（不是 MUI Menu），觸發按鈕補 `aria-haspopup="true"`／`aria-expanded`／`aria-controls`，popover 本身補 `id`／`role="group"`／`aria-label`；③補 Escape 關閉 popover 並把 focus 還給觸發按鈕（原本沒有任何鍵盤關閉路徑，開了只能用滑鼠點色票或點外面關掉，而且點外面也沒有實作，等於鍵盤使用者打開後關不掉）。已用假登入機制在 Playground 驗證（`role="toolbar"` 正確出現、`aria-expanded` 開合狀態正確、Escape 後 popover 消失且 focus 正確回到觸發按鈕），console 無新增錯誤。
 - [ ] 右鍵選單：確認 mobile／keyboard-only 情境下有替代入口能做到同樣的事（不能只靠右鍵這一種入口）
 - [ ] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾
 - [ ] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑
