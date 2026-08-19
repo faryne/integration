@@ -1081,7 +1081,12 @@ export const StorytellerWysiwygEditor = forwardRef<
               variant="caption"
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
-              右鍵可編輯或移除註解
+              {/* 觸控/鍵盤操作者沒有右鍵，右鍵不是唯一入口（見已知 Bug 記錄第 9
+                  項：觸控裝置的右鍵事件已放行給原生長按選字，不會跳出我們的
+                  選單）——選取文字後叫出的格式列（bubble menu）「加註解」按鈕
+                  在選到既有註解時會變成「編輯註解」，對話框裡也有「移除註解」
+                  按鈕，不寫死成「右鍵」這一種說法。 */}
+              右鍵，或選取文字後用格式列可編輯／移除註解
             </Typography>
           </Paper>
         </Box>
@@ -1106,7 +1111,7 @@ export const StorytellerWysiwygEditor = forwardRef<
               variant="caption"
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
-              右鍵可編輯或移除腳注
+              右鍵，或選取文字後用格式列可編輯／移除腳注
             </Typography>
           </Paper>
         </Box>

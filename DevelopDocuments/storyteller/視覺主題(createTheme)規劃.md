@@ -69,7 +69,12 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 ### Phase E：無障礙功能 audit／修正
 - [x] Slash command：鍵盤導覽、IME 組字期間按鍵攔截、Escape/Enter 語意、補 `aria-activedescendant`——2026-08-19 完成。鍵盤導覽（上下鍵/Enter/Escape）、IME 組字期間暫停攔截這幾項在 slash 選單這次連續三輪修復（見所見即所得編輯器notion-like分析_定案版.md 已知 Bug 記錄第 8 項）時就已經到位，本次只需要補 `aria-activedescendant`：真正的鍵盤 focus 全程留在 ProseMirror 的 contenteditable 上（典型「virtual focus」情境），螢幕閱讀器沒辦法從「focus 移動」知道使用者選到哪個選項，改在 `editor.view.dom`（真正持有 focus 的元素）上設 `aria-expanded`／`aria-controls`（指到選單 id）／`aria-activedescendant`（指到目前高亮選項 id），選單關閉時全部清掉；選單本身跟每個選項補上對應的 `id`。已用假登入機制在真實登入頁面驗證：開啟時三個屬性正確設定、`ArrowDown` 後 `aria-activedescendant` 正確指到下一個選項、`Escape` 關閉後三個屬性正確清空，console 無錯誤。
 - [x] Bubble menu：確認螢幕閱讀器能理解目前狀態（選取文字後浮動選單出現這件事本身要能被輔助技術偵測到）——2026-08-19 完成。個別按鈕本來就有 `aria-label`／`aria-pressed`（沿用既有寫法），這次補的是缺口：①外層 `Paper` 補 `role="toolbar"` `aria-label="文字格式工具列"`，讓輔助技術能把浮動的一整排按鈕辨識成一個有名字的工具列，而不是一堆孤立的按鈕；②文字顏色／背景色是自訂的小 popover（不是 MUI Menu），觸發按鈕補 `aria-haspopup="true"`／`aria-expanded`／`aria-controls`，popover 本身補 `id`／`role="group"`／`aria-label`；③補 Escape 關閉 popover 並把 focus 還給觸發按鈕（原本沒有任何鍵盤關閉路徑，開了只能用滑鼠點色票或點外面關掉，而且點外面也沒有實作，等於鍵盤使用者打開後關不掉）。已用假登入機制在 Playground 驗證（`role="toolbar"` 正確出現、`aria-expanded` 開合狀態正確、Escape 後 popover 消失且 focus 正確回到觸發按鈕），console 無新增錯誤。
-- [ ] 右鍵選單：確認 mobile／keyboard-only 情境下有替代入口能做到同樣的事（不能只靠右鍵這一種入口）
+- [x] 右鍵選單：確認 mobile／keyboard-only 情境下有替代入口能做到同樣的事（不能只靠右鍵這一種入口）——2026-08-19 完成，逐項盤點結果：
+  - 標題／區塊種類／對齊／插入表格／插入圖片：slash 選單（打 `/`）都有對應入口，跟右鍵選單共用 `BLOCK_OPERATION_GROUPS`（見已知 Bug 記錄第 8 項），觸控/鍵盤都能用。
+  - 圖片版面設定：圖片節點本來就有一直可見（不需 hover/右鍵）的「圖片設定」`IconButton`，加上雙擊直接開對話框，兩條路徑都不靠右鍵。
+  - 連結／腳注／註解的新增、編輯、移除：bubble menu（選取文字後浮動出現，觸控長按選字／鍵盤 Shift+方向鍵都能觸發）的對應按鈕會開 Dialog，Dialog 裡都有明講的「移除」按鈕（`handleRemoveLink`／`handleRemoveFootnote`／`handleRemoveComment`），右鍵選單的「快速移除」只是這條路徑的捷徑，不是唯一入口。
+  - 文字/背景顏色：Phase 4 已經因為同樣的理由（觸控裝置右鍵事件放行給原生長按選字，見已知 Bug 記錄第 9 項）補進 bubble menu，不靠右鍵。
+  - **抓到一個真的問題並修掉**：註解／腳注的 hover tooltip 文字寫死「右鍵可編輯或移除」，這句話對摸不到右鍵的使用者是錯誤資訊（雖然這個 tooltip 本身是滑鼠 hover 觸發、觸控使用者本來就看不到，但螢幕閱讀器/切換裝置使用者可能用滑鼠模擬操作看得到）。改成「右鍵，或選取文字後用格式列可編輯／移除」，跟 `StorytellerWysiwygSyntaxDrawer.tsx`（語法說明側欄）原本就正確並列兩條路徑的寫法一致。已用瀏覽器實測確認新文案正確渲染。
 - [ ] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾
 - [ ] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑
 - [x] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA——2026-08-19 已完成，見下方「對比度檢查結果」小節
