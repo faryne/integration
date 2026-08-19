@@ -107,13 +107,11 @@ function SlashCommandList({
       elevation={4}
       role="listbox"
       sx={{
-        // 舊版手刻 DOM 有明講 z-index:1500——真實頁面（例如 sticky 置頂的標題列，
-        // 見 StoryEditor.tsx/LoreEditor.tsx 的 embeddedHeaderContent，zIndex:2）
-        // 會蓋過沒有明講 z-index 的元素。這裡改用 MUI Paper 元件後漏掉了這個設定，
-        // 選單雖然正確掛進 DOM、位置尺寸都對，畫面上卻被其他區塊蓋住看不見
-        // （Faryne 實測回報：real page 完全叫不出來，但 Playground 正常——
-        // Playground 沒有 sticky header 之類會搶堆疊順序的元素，才沒踩到）。
-        zIndex: 1500,
+        // z-index 不能設在這裡：`Paper` 預設 `position:static`，CSS 規定
+        // z-index 對 `position:static` 元素完全沒作用，設了也會被忽略。真正
+        // 決定「會不會被其他區塊蓋住」的是外層 wrapper `<div>`（`props.mount()`
+        // 掛載、`position:absolute` 的那個），z-index 要設在那裡，見下面
+        // `createSlashCommandRenderer()` 的 `element.style.zIndex`。
         minWidth: 180,
         maxWidth: 280,
         maxHeight: 260,
@@ -225,6 +223,13 @@ function createSlashCommandRenderer() {
     selectedIndex = 0;
     latestProps = props;
     const element = document.createElement("div");
+    // `props.mount()` 會把這個 element 直接掛進 `document.body`（或設定的
+    // container）並套用 `position:absolute` 定位——它才是「這個選單在整個頁面
+    // 的堆疊順序裡排第幾層」的那個節點，z-index 要設在這裡才會生效，設在裡面
+    // 的 React 內容（`position:static`）沒有用（CSS 規定 z-index 只對有明確
+    // `position` 的元素有效）。真實頁面有 sticky 置頂的標題列等元素會搶堆疊
+    // 順序（見 StoryEditor.tsx／LoreEditor.tsx 的 zIndex:2），這裡要蓋過去。
+    element.style.zIndex = "1500";
     root = createRoot(element);
     // 掛載當下同步 render，讓 `props.mount()` 量測位置（floating-ui 的
     // `autoUpdate`）時 element 裡已經有實際內容跟尺寸，不會先量到空盒子。
