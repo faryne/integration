@@ -1,12 +1,12 @@
 import { Extension, type Editor, type Range } from "@tiptap/core";
+import { ReactRenderer } from "@tiptap/react";
 import Suggestion, {
   exitSuggestion,
   type SuggestionKeyDownProps,
   type SuggestionProps,
 } from "@tiptap/suggestion";
 import { PluginKey, type EditorState } from "@tiptap/pm/state";
-import { createElement, type ComponentType } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { Box, Divider, Paper } from "@mui/material";
 
 import {
   slashWysiwygCommands,
@@ -80,123 +80,136 @@ export function runSlashCommand(
   command.run(editor, context);
 }
 
-/** 把 command 的 icon（跟工具列/右鍵選單共用同一個 ComponentType）渲染成靜態 SVG
- * markup，塞進純 DOM 按鈕裡——這個 renderer 是 Suggestion 的 imperative DOM
- * mount，不是 React tree，用 renderToStaticMarkup 是最小改動的接法。 */
-function renderCommandIconMarkup(
-  icon: ComponentType<{ fontSize?: "small" }> | undefined,
-) {
-  if (!icon) return null;
-  return renderToStaticMarkup(createElement(icon, { fontSize: "small" }));
+interface SlashCommandListProps {
+  items: WysiwygCommand[];
+  selectedIndex: number;
+  onSelect: (item: WysiwygCommand) => void;
 }
 
-function renderSlashCommandItems(
-  element: HTMLElement,
-  props: SlashSuggestionProps,
-  selectedIndex: number,
-) {
-  element.replaceChildren();
-  props.items.forEach((item, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.dataset.commandId = item.id;
-    button.setAttribute("role", "option");
-    button.setAttribute("aria-selected", String(index === selectedIndex));
-    button.style.cssText = [
-      "display:flex",
-      "align-items:center",
-      "gap:8px",
-      "width:100%",
-      "border:0",
-      "background:transparent",
-      "padding:6px 10px",
-      "text-align:left",
-      "font:inherit",
-      // <button> 在部分瀏覽器的 UA 樣式會有自己的文字色（不像一般行內元素會自動
-      // 繼承），這裡明講 inherit，才吃得到外層 element 設的 --storyteller-text-primary。
-      "color:inherit",
-      "cursor:pointer",
-    ].join(";");
-    if (index === selectedIndex) {
-      // Phase C：改吃 Phase A 的 semantic token，跟右鍵選單 MenuItem 的
-      // `.Mui-selected`（storytellerComponentOverrides.ts 裡也是 selection）
-      // 用同一個顏色來源，不再各自對應不同的 CSS variable 命名空間。
-      button.style.background = "var(--storyteller-selection, rgba(25, 118, 210, 0.12))";
-    }
-
-    const iconMarkup = renderCommandIconMarkup(item.icon);
-    if (iconMarkup) {
-      const iconSpan = document.createElement("span");
-      iconSpan.innerHTML = iconMarkup;
-      iconSpan.style.cssText = [
-        "display:inline-flex",
-        "flex-shrink:0",
-        "color:var(--storyteller-text-muted, rgba(0, 0, 0, 0.6))",
-      ].join(";");
-      button.appendChild(iconSpan);
-    }
-
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = item.label;
-    button.appendChild(labelSpan);
-
-    button.addEventListener("mousedown", (event) => {
-      event.preventDefault();
-      props.command(item);
-    });
-    element.appendChild(button);
-    // 選單本身會 overflow:auto 捲動（見 mount 裡的 max-height），純滑鼠操作時使用者
-    // 自己捲得到，但鍵盤上下鍵切換 selectedIndex 只是重繪 background 高亮、不會讓
-    // 捲軸跟著移動——沒有這行的話，選到清單底部的項目（例如插入表格/圖片）時，
-    // 高亮的按鈕會被捲到看不見的地方，使用者只看得到上面沒被選到的項目。
-    if (index === selectedIndex) {
-      button.scrollIntoView({ block: "nearest" });
-    }
-  });
+/** 選單本體改用真正的 React／MUI 元件（跟右鍵選單同一套 command → icon+label 呈現
+ * 方式），透過 `ReactRenderer` 掛進 editor 自己的 React tree（見下方
+ * `createSlashCommandRenderer`）——取代原本手刻 DOM + `renderToStaticMarkup` 的
+ * 做法。原本的做法在 Playground 正常、但在真實登入頁面（`StorytellerLayout` 的
+ * `ThemeProvider` 底下）icon 完全消失（已知 Bug 記錄第 8 項，未解決）；懷疑是
+ * `renderToStaticMarkup` 在脫離正常 React tree 的情況下同步渲染 MUI icon 元件
+ * 行為不同。`ReactRenderer` 是 Tiptap 官方建議的 suggestion popup 渲染方式，會把
+ * 內容掛進 editor 所在的同一棵 React tree（透過 portal），不再脫離 context，
+ * 順便讓 icon 渲染跟右鍵選單一樣是「真的 JSX」，不用另外維護一套字串拼接的
+ * 手刻 DOM 邏輯。 */
+function SlashCommandList({
+  items,
+  selectedIndex,
+  onSelect,
+}: SlashCommandListProps) {
+  return (
+    <Paper
+      elevation={4}
+      role="listbox"
+      sx={{
+        minWidth: 180,
+        maxWidth: 280,
+        maxHeight: 260,
+        overflow: "auto",
+        bgcolor: "var(--storyteller-editor-menu, #fff)",
+        color: "var(--storyteller-text-primary, rgba(0, 0, 0, 0.87))",
+        py: 0.5,
+      }}
+    >
+      {items.map((item, index) => {
+        const Icon = item.icon;
+        const selected = index === selectedIndex;
+        // 跟右鍵選單一樣在群組交界處畫分隔線（標題／區塊／插入三組），單純
+        // 比對相鄰項目的 `group` 是否變化——不用另外硬寫群組順序，query 篩選
+        // 後不管剩哪些群組、順序有沒有跳號都能算對交界。
+        const showDividerBefore =
+          index > 0 && items[index - 1].group !== item.group;
+        return (
+          <Box key={item.id} component="span" sx={{ display: "block" }}>
+            {showDividerBefore ? <Divider /> : null}
+            <Box
+              component="button"
+              type="button"
+              role="option"
+              aria-selected={selected}
+              data-command-id={item.id}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onSelect(item);
+              }}
+              // 鍵盤上下鍵切換 selectedIndex 只是重繪高亮、不會讓選單的捲軸跟著移動
+              // ——沒有這個 ref 的話，選到清單底部的項目（例如插入表格/圖片）時，
+              // 高亮的按鈕會被捲到看不見的地方，使用者只看得到上面沒被選到的項目。
+              ref={(node: HTMLButtonElement | null) => {
+                if (selected) node?.scrollIntoView({ block: "nearest" });
+              }}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                width: "100%",
+                border: 0,
+                bgcolor: selected
+                  ? "var(--storyteller-selection, rgba(25, 118, 210, 0.12))"
+                  : "transparent",
+                color: "inherit",
+                font: "inherit",
+                textAlign: "left",
+                px: 1.25,
+                py: 0.75,
+                cursor: "pointer",
+              }}
+            >
+              {Icon ? (
+                <Box
+                  component="span"
+                  sx={{
+                    display: "inline-flex",
+                    flexShrink: 0,
+                    color: "var(--storyteller-text-muted, rgba(0, 0, 0, 0.6))",
+                  }}
+                >
+                  <Icon fontSize="small" />
+                </Box>
+              ) : null}
+              <Box component="span">{item.label}</Box>
+            </Box>
+          </Box>
+        );
+      })}
+    </Paper>
+  );
 }
 
 function createSlashCommandRenderer() {
-  let element: HTMLElement | null = null;
+  let renderer: ReactRenderer<unknown, SlashCommandListProps> | null = null;
   let unmount: (() => void) | null = null;
   let latestProps: SlashSuggestionProps | null = null;
   let selectedIndex = 0;
 
+  function componentProps(): SlashCommandListProps {
+    return {
+      items: latestProps?.items ?? [],
+      selectedIndex,
+      onSelect: (item) => latestProps?.command(item),
+    };
+  }
+
   function mount(props: SlashSuggestionProps) {
-    element = document.createElement("div");
-    element.setAttribute("role", "listbox");
-    element.style.cssText = [
-      "z-index:1500",
-      "min-width:180px",
-      "max-width:280px",
-      "max-height:260px",
-      "overflow:auto",
-      "border:1px solid var(--storyteller-border-subtle, rgba(0, 0, 0, 0.12))",
-      "border-radius:6px",
-      // 這個選單是純手刻 DOM，不在 React tree 裡吃 MUI sx，原本顏色是寫死的
-      // #fff／黑色系列，深色模式下會變成一塊突兀的白色方塊（已知 Bug 記錄第 7
-      // 項）。先前暫用 MUI 自動產生的 var(--mui-palette-*)（cssVariables:
-      // true 開的）過渡；Phase A 定案 semantic token 之後，這裡改吃
-      // var(--storyteller-editor-menu) 等 `--storyteller-*` 變數，跟右鍵
-      // 選單／Dialog／Bubble menu 用同一組 token 來源，不再各自對應不同
-      // 命名空間。MUI 沒開這組 CSS variable 的頁面（例如 Playground）會
-      // 退回 fallback 值，維持原本外觀。
-      "background:var(--storyteller-editor-menu, #fff)",
-      "color:var(--storyteller-text-primary, rgba(0, 0, 0, 0.87))",
-      "box-shadow:0 6px 18px rgba(0, 0, 0, 0.18)",
-      "padding:4px 0",
-    ].join(";");
     selectedIndex = 0;
     latestProps = props;
-    renderSlashCommandItems(element, props, selectedIndex);
+    renderer = new ReactRenderer(SlashCommandList, {
+      editor: props.editor,
+      props: componentProps(),
+    });
     activeSlashCommandControllers.set(props.editor, controller);
-    unmount = props.mount(element);
+    unmount = props.mount(renderer.element);
   }
 
   function update(props: SlashSuggestionProps) {
-    if (!element) return;
+    if (!renderer) return;
     latestProps = props;
     selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
-    renderSlashCommandItems(element, props, selectedIndex);
+    renderer.updateProps(componentProps());
   }
 
   const controller = {
@@ -204,18 +217,14 @@ function createSlashCommandRenderer() {
       if (!latestProps || latestProps.items.length === 0) return false;
       if (key === "ArrowDown") {
         selectedIndex = (selectedIndex + 1) % latestProps.items.length;
-        if (element) {
-          renderSlashCommandItems(element, latestProps, selectedIndex);
-        }
+        renderer?.updateProps(componentProps());
         return true;
       }
       if (key === "ArrowUp") {
         selectedIndex =
           (selectedIndex + latestProps.items.length - 1) %
           latestProps.items.length;
-        if (element) {
-          renderSlashCommandItems(element, latestProps, selectedIndex);
-        }
+        renderer?.updateProps(componentProps());
         return true;
       }
       if (key === "Enter") {
@@ -237,9 +246,9 @@ function createSlashCommandRenderer() {
       controller.onKeyDown(event.key as SlashCommandKey),
     onExit() {
       unmount?.();
-      element?.remove();
+      renderer?.destroy();
       if (latestProps) activeSlashCommandControllers.delete(latestProps.editor);
-      element = null;
+      renderer = null;
       unmount = null;
       latestProps = null;
       selectedIndex = 0;

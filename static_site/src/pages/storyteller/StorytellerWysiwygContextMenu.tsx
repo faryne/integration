@@ -14,6 +14,7 @@ import {
 import type { Editor } from "@tiptap/core";
 
 import {
+  BLOCK_OPERATION_GROUPS,
   findAssetImageAtSelection,
   wysiwygCommandsByGroup,
   type WysiwygCommand,
@@ -135,7 +136,6 @@ export function StorytellerWysiwygContextMenu({
   const insertTableCommand = wysiwygCommandsByGroup("insert").find(
     (c) => c.id === "insert-table",
   );
-  const alignCommands = wysiwygCommandsByGroup("align");
   const imageLayoutCommands = wysiwygCommandsByGroup("image-layout");
 
   const quickRemoveFor: Record<
@@ -314,53 +314,30 @@ export function StorytellerWysiwygContextMenu({
             </MenuItem>,
           ]
         : [
-            ...wysiwygCommandsByGroup("heading").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <MenuItem
-                  key={command.id}
-                  selected={command.isActive?.(editor) ?? false}
-                  onClick={() => runAndClose(command)}
-                >
-                  <ListItemIcon>
-                    <Icon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>{command.label}</ListItemText>
-                </MenuItem>
-              );
-            }),
-            <Divider key="heading-block-divider" />,
-            ...alignCommands.map((command) => {
-              const Icon = command.icon!;
-              return (
-                <MenuItem
-                  key={command.id}
-                  selected={command.isActive?.(editor) ?? false}
-                  onClick={() => runAndClose(command)}
-                >
-                  <ListItemIcon>
-                    <Icon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>{command.label}</ListItemText>
-                </MenuItem>
-              );
-            }),
-            <Divider key="align-block-divider" />,
-            ...wysiwygCommandsByGroup("block").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <MenuItem
-                  key={command.id}
-                  selected={command.isActive?.(editor) ?? false}
-                  onClick={() => runAndClose(command)}
-                >
-                  <ListItemIcon>
-                    <Icon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>{command.label}</ListItemText>
-                </MenuItem>
-              );
-            }),
+            // 標題／對齊／區塊種類三組共用 commands.ts 的 BLOCK_OPERATION_GROUPS
+            // 清單（跟 slash 選單同一份來源，見該常數的說明），group 交界處插入
+            // 分隔線——不再各自手寫三個幾乎一樣的 `.map()` 區塊，也不會再發生
+            // 「這裡新增一組 group、slash 選單忘記同步」的落差。
+            ...BLOCK_OPERATION_GROUPS.flatMap((group, groupIndex) => [
+              ...(groupIndex > 0
+                ? [<Divider key={`${group}-group-divider`} />]
+                : []),
+              ...wysiwygCommandsByGroup(group).map((command) => {
+                const Icon = command.icon!;
+                return (
+                  <MenuItem
+                    key={command.id}
+                    selected={command.isActive?.(editor) ?? false}
+                    onClick={() => runAndClose(command)}
+                  >
+                    <ListItemIcon>
+                      <Icon fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText>{command.label}</ListItemText>
+                  </MenuItem>
+                );
+              }),
+            ]),
             ...(insertTableCommand || (showInsertImage && insertImageCommand)
               ? [
                   <Divider key="insert-divider" />,

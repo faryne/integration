@@ -56,9 +56,23 @@ export type WysiwygCommandGroup =
   | "image-layout"
   | "utility";
 
-const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
+/**
+ * 「沒有選取文字」時要顯示的區塊操作分組，依顯示順序排列——右鍵選單的「無選取」
+ * 分支跟 slash 選單都直接引用這份清單，不再各自維護一份。以前 slash 選單另外
+ * 寫死一份 `SLASH_COMMAND_GROUPS`，右鍵選單則是在 JSX 裡手動一個個列出
+ * `wysiwygCommandsByGroup("heading")`／`wysiwygCommandsByGroup("align")`／
+ * `wysiwygCommandsByGroup("block")`——新增 `align` group 時只改到右鍵選單那份，
+ * slash 選單完全沒同步更新，兩邊悄悄長出落差（見已知 Bug 記錄）。改成兩邊都讀
+ * 同一份陣列後，之後不管是新增 group 還是調整順序，只要改這裡一個地方。
+ */
+export const BLOCK_OPERATION_GROUPS: WysiwygCommandGroup[] = [
   "heading",
+  "align",
   "block",
+];
+
+const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
+  ...BLOCK_OPERATION_GROUPS,
   "insert",
 ];
 
