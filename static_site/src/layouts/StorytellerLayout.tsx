@@ -157,6 +157,7 @@ export function StorytellerLayout() {
       mergeStorytellerSeasonalTokens(
         toStorytellerSemanticTokens(tokens),
         season,
+        mode,
       ),
     );
   }, [mode, palette, season]);

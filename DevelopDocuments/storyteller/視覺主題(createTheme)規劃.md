@@ -72,9 +72,22 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [ ] 右鍵選單：確認 mobile／keyboard-only 情境下有替代入口能做到同樣的事（不能只靠右鍵這一種入口）
 - [ ] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾
 - [ ] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑
-- [ ] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA
+- [x] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA——2026-08-19 已完成，見下方「對比度檢查結果」小節
 - [ ] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`
 - [ ] 驗證：跑過對比度檢查 script 沒有異常；鍵盤（不用滑鼠/觸控）走過一次「開始寫作 → 套用格式 → 插入表格/圖片 → 存檔」的完整流程確認可行
+
+#### 對比度檢查結果（2026-08-19）
+
+新增 [`storytellerContrastCheck.ts`](../../static_site/src/data/storytellerContrastCheck.ts)（純函式：WCAG 相對亮度/對比度公式）＋ [`storytellerContrastCheck.test.ts`](../../static_site/src/data/storytellerContrastCheck.test.ts)（`npx vitest run` 自動跑），涵蓋 11 色系 × light/dark ×（無節慶／中秋節）＝44 組 semantic token 組合，每組檢查四類：
+
+- **文字/背景**（`textPrimary`／`textMuted` 對三種 surface）：**440 個檢查裡這類零失敗**，全部組合過 WCAG AA（4.5:1）。
+- **按鈕**（MUI `contrastText` 自動判斷 vs `accentMain`）：大量失敗。Root cause：MUI 沒有明講 `primary.contrastText` 時用 `contrastThreshold`（預設 3）自動選黑字/白字，比 WCAG AA 文字要求的 4.5:1 寬鬆；`accentMain` 是中亮度品牌色，很多色系兩種選擇都不夠格。
+- **選單 active 狀態**（`textPrimary` 對 `selection`）：同樣大量失敗，原因類似——`selection`（`brassBright`）也是中亮度強調色，全彩文字疊上去對比常常不夠。
+- **focus ring**：
+  - **已修**：中秋節 overlay 的 `focusRing` 原本淺色/深色模式共用同一組固定色值（`#f5cc6e`），淺色模式下對比度只有 1.0~1.3（實質看不見）——Root cause 是這組色值明顯只用深色模式肉眼看過，沒檢查過淺色模式。`storytellerSeasonalTheme.ts` 的 `overlayTokens` 改成分 `light`/`dark` 兩份，`mergeStorytellerSeasonalTokens()` 多一個 `mode` 參數；淺色模式的 `focusRing` 換成 `#6b4a1f`（11 色系淺色模式全部背景 worst-case 對比度 4.61:1，超過要求的 3:1 有餘裕）。已在瀏覽器驗證（`getComputedStyle` 讀 `--storyteller-focus-ring` 精確等於新值）。
+  - **未修（已知）**：少數色系（brass／verdigris／bronze／malachite）淺色模式的 focusRing 沿用 `accentHover`，跟淺色 surface 對比不到 3:1，屬於下面「未修」範圍的一部分。
+
+**未修的部分為什麼先卡住，不直接動手**：按鈕跟選單 active 這兩類要修，本質是「幫 11 組手動調過色相/明度的色系，各自另外設計一組能同時滿足『達到 AA』又『視覺上還算搭』的按鈕/選單配色」——不是改一兩個數字的 bug fix，是會實際改變每個色系觀感的視覺設計決策，牽涉到現有「HSL 色相旋轉＋降飽和度」生成邏輯要不要跟著調整。跟 Faryne 討論方向後再動，目前用 `storytellerContrastCheck.test.ts` 卡住已知失敗數量（75 筆）當防護網——之後任何新增的失敗（不管是這兩類裡新增，還是別的類別出現失敗）都會讓測試立刻紅燈，不會被悄悄蓋過去。
 
 ## 目前可觀察到的視覺變化（2026-08-18，給 Faryne 參考）
 

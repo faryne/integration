@@ -27,7 +27,11 @@ export interface StorytellerSeasonalTheme {
   /** 之後要做「依日期自動建議套用」（Phase D 觸發機制第 3 層，這次不做）時
    * 用，第一版留空即可，不影響手動開關的行為。 */
   activeWindow?: { startMonthDay: string; endMonthDay: string };
-  overlayTokens: StorytellerSeasonalOverlayTokens;
+  /** 分 light/dark 兩份——Phase D 第一版曾經只給一組固定色值，兩種模式共用，
+   * Phase E 對比度檢查抓到 `focusRing` 在淺色模式下對比度只有 1.0~1.3（實質
+   * 上看不見），因為那組色值明顯只用深色模式肉眼看過。淺色/深色背景亮度差異
+   * 太大，裝飾色不可能同一組數值在兩邊都維持可用對比度，所以拆開。 */
+  overlayTokens: Record<"light" | "dark", StorytellerSeasonalOverlayTokens>;
   /** 裝飾性 asset（例如角落小圖案）路徑，第一版先留空，機制驗證過沒問題
    * 之後要加裝飾只是加資料，不用再動架構。 */
   decorations?: { cornerAsset?: string };
@@ -45,7 +49,7 @@ export const storytellerSeasonalThemes: Record<
   none: {
     id: "none",
     label: "無節慶主題",
-    overlayTokens: {},
+    overlayTokens: { light: {}, dark: {} },
     canAutoActivate: false,
   },
   // 示範節慶（Phase D 第一版）：中秋節。月光金＋暖琥珀邊框，只換強調色/選取色
@@ -55,22 +59,38 @@ export const storytellerSeasonalThemes: Record<
     id: "midAutumn",
     label: "中秋節",
     overlayTokens: {
-      accentMain: "#e6b143",
-      accentHover: "#f5cc6e",
-      focusRing: "#f5cc6e",
-      selection: "#f0c26a",
-      borderStrong: "#8a6a3a",
+      dark: {
+        accentMain: "#e6b143",
+        accentHover: "#f5cc6e",
+        focusRing: "#f5cc6e",
+        selection: "#f0c26a",
+        borderStrong: "#8a6a3a",
+      },
+      // accentMain／accentHover／selection／borderStrong 在淺色模式下已經過
+      // Phase E 對比度檢查確認沒問題（淺色背景本身偏淡，跟這幾個中亮度暖色調
+      // 的對比還夠），只有 focusRing 這個原本給深色模式用的亮金色在淺色背景上
+      // 幾乎看不見，換成更深的琥珀棕（跟 borderStrong 同一個色相家族，只是
+      // 拉深到淺色背景也能看清楚），11 色系 light 模式全部背景 worst-case
+      // 對比度 4.61:1，超過 focus ring 要求的 3:1 有餘裕。
+      light: {
+        accentMain: "#e6b143",
+        accentHover: "#f5cc6e",
+        focusRing: "#6b4a1f",
+        selection: "#f0c26a",
+        borderStrong: "#8a6a3a",
+      },
     },
     canAutoActivate: true,
   },
 };
 
-/** `base + seasonal overlay` 的 merge 邏輯：`overlayTokens` 有值的 key 蓋掉
- * base 對應的值，沒覆寫的 key 維持 base 原值。`season: "none"` 時
- * `overlayTokens` 是空物件，回傳的物件在數值上等於 base 本身。 */
+/** `base + seasonal overlay` 的 merge 邏輯：`overlayTokens[mode]` 有值的 key
+ * 蓋掉 base 對應的值，沒覆寫的 key 維持 base 原值。`season: "none"` 時
+ * `overlayTokens` 兩種模式都是空物件，回傳的物件在數值上等於 base 本身。 */
 export function mergeStorytellerSeasonalTokens(
   base: StorytellerSemanticTokens,
   seasonId: StorytellerSeasonId,
+  mode: "light" | "dark",
 ): StorytellerSemanticTokens {
-  return { ...base, ...storytellerSeasonalThemes[seasonId].overlayTokens };
+  return { ...base, ...storytellerSeasonalThemes[seasonId].overlayTokens[mode] };
 }
