@@ -27,6 +27,24 @@ import { AuthContext } from "@/components/auth/AuthContext.ts";
 const RENEW_BEFORE_EXPIRY_MS = 30 * 60 * 1000;
 const MIN_RENEW_DELAY_MS = 5 * 1000;
 
+// 跟後端 service/auth/session.go 的 devAuthFirebaseUID 前綴對應——本機開發自動化測試
+// 用 POST /auth/dev-session 換到的 session 沒有對應的真實 Firebase 使用者，Firebase
+// SDK 初始化完成後一定會回報 currentUser === null，若照一般邏輯無條件清掉 session，
+// 剛注入的假登入狀態會立刻被洗掉。只在 dev build 且 session 明顯是這個假登入身分時
+// 放行，正式建置環境／真實使用者的登出偵測完全不受影響。
+const DEV_BYPASS_FIREBASE_UID_PREFIX = "dev-local-";
+
+function isDevBypassSession() {
+  if (!import.meta.env.DEV) {
+    return false;
+  }
+  return (
+    getSessionSnapshot()?.user.firebase_uid.startsWith(
+      DEV_BYPASS_FIREBASE_UID_PREFIX,
+    ) ?? false
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const firebaseAuth = useMemo(() => getFirebaseAuth(), []);
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         unsubscribe = onAuthStateChanged(firebaseAuth.auth, (currentUser) => {
           setUser(currentUser);
-          if (!currentUser) {
+          if (!currentUser && !isDevBypassSession()) {
             clearStoredSession();
           }
           setLoading(false);
