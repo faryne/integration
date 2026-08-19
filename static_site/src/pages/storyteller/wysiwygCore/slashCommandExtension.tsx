@@ -107,6 +107,13 @@ function SlashCommandList({
       elevation={4}
       role="listbox"
       sx={{
+        // 舊版手刻 DOM 有明講 z-index:1500——真實頁面（例如 sticky 置頂的標題列，
+        // 見 StoryEditor.tsx/LoreEditor.tsx 的 embeddedHeaderContent，zIndex:2）
+        // 會蓋過沒有明講 z-index 的元素。這裡改用 MUI Paper 元件後漏掉了這個設定，
+        // 選單雖然正確掛進 DOM、位置尺寸都對，畫面上卻被其他區塊蓋住看不見
+        // （Faryne 實測回報：real page 完全叫不出來，但 Playground 正常——
+        // Playground 沒有 sticky header 之類會搶堆疊順序的元素，才沒踩到）。
+        zIndex: 1500,
         minWidth: 180,
         maxWidth: 280,
         maxHeight: 260,
