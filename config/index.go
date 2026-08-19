@@ -56,6 +56,13 @@ type envConfig struct {
 	// 跟共用的 CloudFrontKeyPairID（nekomaid 在用）分開，不共用私鑰。
 	StorytellerCloudFrontKeyPairID      string `env:"STORYTELLER_CLOUDFRONT_KEY_PAIR_ID"`
 	StorytellerCloudFrontPrivateKeyFile string `env:"STORYTELLER_CLOUDFRONT_PRIVATE_KEY_FILE"`
+
+	// EnableDevAuthBypass 只給本機開發自動化測試用（例如 Claude Code 的瀏覽器工具
+	// 需要免走 Firebase 登入彈窗、直接進工作台頁面）——開了才會註冊
+	// `POST /auth/dev-session`，簽發固定測試帳號的合法 session，完全複用既有
+	// authsession middleware／API，不影響任何其他路由。預設 false；千萬不要在
+	// staging／正式環境的環境變數裡打開這個值。
+	EnableDevAuthBypass bool `env:"ENABLE_DEV_AUTH_BYPASS,default=false"`
 }
 
 var loadEnvConfig envConfig

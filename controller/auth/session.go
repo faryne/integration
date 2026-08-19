@@ -29,6 +29,16 @@ func CreateSession(ctx fiber.Ctx) error {
 	return output.Success(resp)
 }
 
+// CreateDevSession 只在 route/auth.go 確認 `ENABLE_DEV_AUTH_BYPASS=true` 才會被註冊到路由上，
+// 生產／staging 環境不會開這個環境變數，這個 handler 完全不會存在於那些環境的路由表裡。
+func CreateDevSession(ctx fiber.Ctx) error {
+	resp, err := authService.CreateDevSession()
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(resp)
+}
+
 func DestroySession(ctx fiber.Ctx) error {
 	encryptKey := strings.TrimSpace(ctx.Get("X-Encrypt-Key"))
 	if encryptKey == "" {
