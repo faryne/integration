@@ -13,7 +13,7 @@
 ## 現況盤點（開始規劃前務必先確認，很多基礎其實已經做好了）
 
 - `src/layouts/StorytellerLayout.tsx` 已經有 `createTheme()`，套用 `storytellerThemeTokens[palette][mode]`，包含 `palette`／`shape.borderRadius`／`typography`。**目前完全沒有 `components:` overrides**——Dialog／Menu／TextField／Tabs／Drawer 這些元件的邊框、圓角、陰影、hover/focus 狀態，全部還是 MUI 原生樣式，只有顏色跟字體吃到 storyteller 的 token。
-- **明暗模式已經做好**：`mode: "light" | "dark"`，由 `StorytellerThemeModeContext`（[storytellerThemeMode.tsx](../../static_site/src/layouts/storytellerThemeMode.tsx)）管理，存 localStorage，預設跟隨系統 `prefers-color-scheme`，UI 上有切換按鈕（`StorytellerLayout.tsx` header）。
+- **明暗模式已經做好**：`mode: "light" | "dark"`，由 `StorytellerThemeModeContext`（[storytellerThemeMode.tsx](../../../static_site/src/layouts/storytellerThemeMode.tsx)）管理，存 localStorage，預設跟隨系統 `prefers-color-scheme`，UI 上有切換按鈕（`StorytellerLayout.tsx` header）。
 - **色系切換已經做好**：`src/data/storytellerTheme.ts` 定義了 11 組色系（brass／bronze／malachite／verdigris／steel／cobalt／violetCopper／roseCopper／inkBlack／silver／plainWhite），每組都有 light/dark 兩份 token（brass/copper/patina/ember/bg/surface/surfaceRaised/border/borderStrong/text/textMuted），由 `SteamPaletteSwitcher` 元件切換，存 localStorage。
 - **節慶活動主題完全沒有**：程式碼裡搜不到任何 seasonal/holiday 相關機制。
 - **無障礙功能幾乎沒有專門處理**：只有 `PublicHome.tsx` 有一點點，editor／reader 相關頁面沒有系統性處理過。
@@ -27,7 +27,7 @@
 Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一個 Phase 全部打勾後 commit 一次（不是每個 checkbox 都各自 commit）——跟這份文件其他地方一樣，勾了才代表真的做完＋驗證過，不是「打算做」。範圍只到 Phase A~E（實際 createTheme 視覺工作）；Phase F（閱讀頁版面比照工作台）跟 Phase G（圖片相關功能性問題）都還沒排定範圍/時程，不在這次施作範圍內，不會出現在下面的 checklist 裡。
 
 ### Phase A：Theme semantic token 整理 ✅ 已完成（2026-08-17）
-- [x] 在 `storytellerTheme.ts` 或新檔案定義 semantic token 型別（`storyteller.surface.base/raised/overlay`、`border.subtle/strong`、`text.primary/muted`、`accent.main/hover`、`focusRing`、`danger`、`selection`、`editor.paper`、`editor.menu`）——新增獨立檔案 [storytellerSemanticTheme.ts](../../static_site/src/data/storytellerSemanticTheme.ts)（不是塞進已經 450 行的 `storytellerTheme.ts`），定義 `StorytellerSemanticTokens` 介面，14 個 key 都照規劃列的名字
+- [x] 在 `storytellerTheme.ts` 或新檔案定義 semantic token 型別（`storyteller.surface.base/raised/overlay`、`border.subtle/strong`、`text.primary/muted`、`accent.main/hover`、`focusRing`、`danger`、`selection`、`editor.paper`、`editor.menu`）——新增獨立檔案 [storytellerSemanticTheme.ts](../../../static_site/src/data/storytellerSemanticTheme.ts)（不是塞進已經 450 行的 `storytellerTheme.ts`），定義 `StorytellerSemanticTokens` 介面，14 個 key 都照規劃列的名字
 - [x] 把現有 11 色系 × light/dark 的 raw token（brass/copper/patina...）對應到 semantic token——`toStorytellerSemanticTokens()` 做轉換，映射表：`surfaceBase←bg`、`surfaceRaised←surface`、`surfaceOverlay←surfaceRaised`、`borderSubtle←border`、`borderStrong←borderStrong`、`textPrimary←text`、`textMuted←textMuted`、`accentMain←brass`、`accentHover←focusRing←selection←brassBright`、`danger←ember`、`editorPaper←surface`、`editorMenu←surfaceRaised`。順便把原本完全沒被用到的 `surfaceRaised`／`borderStrong`／`ember` 三個 raw token 派上用場（`git grep` 確認過，Phase A 之前這三個 key 只有定義、沒有任何地方讀取）
 - [x] 確認 semantic token 也透過 `cssVariables` 曝露成 CSS custom property（例如 `--storyteller-surface-base`）——`storytellerSemanticTokensToCssVariables()` 產生 14 組 `--storyteller-*` 變數，`StorytellerLayout.tsx` 用 `<GlobalStyles>` 掛在 `:root` 上，跟 `theme` 用同一份 `[mode, palette]` 依賴確保同步。沒有依賴 MUI 的 `cssVariables` 自動產生機制（那個只認識標準 palette 欄位，semantic token 這種自訂命名塞不進去），改成手動注入，行為更可預期
 - [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過（既有測試沒有因為新增檔案而壞掉）。瀏覽器實測：`brass-dark`（預設）、`plainWhite-light`、`inkBlack-dark` 三組色系，讀 `getComputedStyle(document.documentElement)` 的 14 個 `--storyteller-*` 變數，逐一比對跟對應 raw token 完全一致；切換深色/淺色模式、切換色系都會即時更新，沒有殘留舊值
@@ -40,7 +40,7 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [x] `MuiTextField`／`MuiOutlinedInput`／`MuiInputLabel`／`MuiFormHelperText`
 - [x] `MuiTabs`／`MuiTab`
 - [x] `MuiDrawer`
-- [x] 驗證：新增 [storytellerComponentOverrides.ts](../../static_site/src/data/storytellerComponentOverrides.ts)，接上 `StorytellerLayout.tsx` 的 `createTheme({ components: storytellerComponentOverrides() })`。全部用 `var(--storyteller-*)` 字串字面值（跟 slash menu 同模式），不用重新算 `[mode, palette]`。`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。
+- [x] 驗證：新增 [storytellerComponentOverrides.ts](../../../static_site/src/data/storytellerComponentOverrides.ts)，接上 `StorytellerLayout.tsx` 的 `createTheme({ components: storytellerComponentOverrides() })`。全部用 `var(--storyteller-*)` 字串字面值（跟 slash menu 同模式），不用重新算 `[mode, palette]`。`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。
 
   瀏覽器實測（brass-dark）：
   - Tooltip：`/storyteller` 公開首頁 hover 搜尋圖示，`getComputedStyle('.MuiTooltip-tooltip')` 讀出 `bg: rgb(47,36,25)`／`border: 1px solid rgb(74,58,40)`／`color: rgb(240,230,210)`，逐一對應 `surfaceOverlay`／`borderSubtle`／`textPrimary` token 完全一致。
@@ -60,9 +60,9 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。**這四個手刻/半手刻選單（slash／bubble／table menu）都在 editor 內才會出現，沒有免登入頁面可以觸發彈出畫面**（跟 Phase B 遇到的限制相同：Playground 路由完全沒套 `StorytellerLayout`／ThemeProvider，`/storyteller/work/...` 工作台需要登入），所以改用等效驗證：直接在已載入 `StorytellerLayout` 的公開頁面讀 `getComputedStyle(document.documentElement)`，確認 `--storyteller-editor-menu` 跟 `--storyteller-surface-overlay` 數值完全相同（`#2f2419`，brass-dark）——這代表 Bubble/Table menu 新加的 `bgcolor: var(--storyteller-editor-menu)` 跟 Dialog/Menu 用的 `surfaceOverlay` 背景色一定是同一個值，選單背景層次在 token 層級上已經對齊，不再是「三種不同選單長相」；`--storyteller-selection`／`--storyteller-border-subtle`／`--storyteller-text-primary`／`--storyteller-text-muted` 也都讀出預期的 hex 值。實際彈出畫面的並排截圖留給 Faryne 自己在已登入的 editor 頁面順手看一眼即可。
 
 ### Phase D：節慶活動 overlay 機制 ✅ 已完成（2026-08-18）
-- [x] 定義 `StorytellerSeasonalTheme` 型別跟資料結構——新增 [storytellerSeasonalTheme.ts](../../static_site/src/data/storytellerSeasonalTheme.ts)，`StorytellerSeasonalOverlayTokens` 刻意用 `Pick` 限定只能覆寫 `accentMain`／`accentHover`／`focusRing`／`selection`／`borderStrong` 這五個裝飾性 key（型別層級擋住，不是靠口頭約定），`activeWindow`／`decorations` 兩個第一版用不到的欄位如規劃保留但不強制填
+- [x] 定義 `StorytellerSeasonalTheme` 型別跟資料結構——新增 [storytellerSeasonalTheme.ts](../../../static_site/src/data/storytellerSeasonalTheme.ts)，`StorytellerSeasonalOverlayTokens` 刻意用 `Pick` 限定只能覆寫 `accentMain`／`accentHover`／`focusRing`／`selection`／`borderStrong` 這五個裝飾性 key（型別層級擋住，不是靠口頭約定），`activeWindow`／`decorations` 兩個第一版用不到的欄位如規劃保留但不強制填
 - [x] 實作 `base + seasonal overlay` 的 merge 邏輯——`mergeStorytellerSeasonalTokens(base, seasonId)` 用 `{ ...base, ...overlayTokens }`，`season: "none"` 對應的 `overlayTokens` 是空物件，回傳值在數值上等於 base 本身
-- [x] UI：新增 [SteamSeasonalSwitcher.tsx](../../static_site/src/components/storyteller/SteamSeasonalSwitcher.tsx)，放在 `SteamPaletteSwitcher` 正下方（`StorytellerLayout.tsx` 頁尾），點節慶按鈕＝切換 active/inactive（再點一次已啟用的節慶＝關掉，不需要另外一顆關閉鈕）；新增 [storytellerSeasonalMode.tsx](../../static_site/src/layouts/storytellerSeasonalMode.tsx) 提供 Context＋localStorage 存取，完全比照既有 `storytellerPaletteMode.tsx`／`storytellerThemeMode.tsx` 的寫法（同一套「未選過或存的值不合法時退回預設」邏輯）
+- [x] UI：新增 [SteamSeasonalSwitcher.tsx](../../../static_site/src/components/storyteller/SteamSeasonalSwitcher.tsx)，放在 `SteamPaletteSwitcher` 正下方（`StorytellerLayout.tsx` 頁尾），點節慶按鈕＝切換 active/inactive（再點一次已啟用的節慶＝關掉，不需要另外一顆關閉鈕）；新增 [storytellerSeasonalMode.tsx](../../../static_site/src/layouts/storytellerSeasonalMode.tsx) 提供 Context＋localStorage 存取，完全比照既有 `storytellerPaletteMode.tsx`／`storytellerThemeMode.tsx` 的寫法（同一套「未選過或存的值不合法時退回預設」邏輯）
 - [x] 示範節慶：中秋節（Faryne 指定，不是文件原本建議的聖誕節）。`accentMain #e6b143`／`accentHover #f5cc6e`／`focusRing #f5cc6e`／`selection #f0c26a`／`borderStrong #8a6a3a`，月光金色調，比預設 brass（`#c9974f`）更亮更黃；只動這五個 key，不碰 `surfaceBase`／`textPrimary`／`textMuted`，也不去動 danger（MUI severity 色系是元件層自己決定，不歸這層管）
 - [x] 驗證：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器實測（brass-dark）：切到「中秋節」後 `getComputedStyle(document.documentElement)` 讀出的 5 個 `--storyteller-*` 變數精確對上 overlay 設定值；`/storyteller` 公開首頁搜尋框 focus 邊框從 `rgb(201,151,79)`（brass accentMain）變成 `rgb(230,177,67)`（中秋 accentMain）；AppBar／首頁 Hero 按鈕等直接吃 `theme.palette.primary`（＝ `tokens.brass`，不經過 semantic 層）的地方顏色不變，符合「只換裝飾性強調色，不是整站變色」的設計；關閉節慶後 `localStorage` 存回 `"none"`、`accentMain` 精確回到 brass 原值 `#c9974f`，畫面截圖確認首頁視覺跟切換節慶前逐位元一致。**Faryne 要求的收尾動作已完成**：實測完把節慶切回「無」（`none`），commit 送出時預設狀態是關閉的，不影響任何既有使用者。
 
@@ -89,7 +89,7 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 
 #### 對比度檢查結果（2026-08-19）
 
-新增 [`storytellerContrastCheck.ts`](../../static_site/src/data/storytellerContrastCheck.ts)（純函式：WCAG 相對亮度/對比度公式）＋ [`storytellerContrastCheck.test.ts`](../../static_site/src/data/storytellerContrastCheck.test.ts)（`npx vitest run` 自動跑），涵蓋 11 色系 × light/dark ×（無節慶／中秋節）＝44 組 semantic token 組合，每組檢查四類：
+新增 [`storytellerContrastCheck.ts`](../../../static_site/src/data/storytellerContrastCheck.ts)（純函式：WCAG 相對亮度/對比度公式）＋ [`storytellerContrastCheck.test.ts`](../../../static_site/src/data/storytellerContrastCheck.test.ts)（`npx vitest run` 自動跑），涵蓋 11 色系 × light/dark ×（無節慶／中秋節）＝44 組 semantic token 組合，每組檢查四類：
 
 - **文字/背景**（`textPrimary`／`textMuted` 對三種 surface）：**440 個檢查裡這類零失敗**，全部組合過 WCAG AA（4.5:1）。
 - **按鈕**（MUI `contrastText` 自動判斷 vs `accentMain`）：✅ **已修（2026-08-20）**。原本大量失敗：MUI 沒有明講 `primary.contrastText` 時用 `contrastThreshold`（預設 3）自動選黑字/白字，比 WCAG AA 文字要求的 4.5:1 寬鬆；`accentMain` 是中亮度品牌色，很多色系兩種選擇都不夠格——這不是換個判斷邏輯能解的，是同一塊背景色沒辦法同時跟純黑、純白都達到 4.5:1，色彩學的硬限制。也試過乾脆拿 `accentMain` 本身當文字色（放棄整塊實色背景），結果發現這條路也不通：`accentMain` 疊在一般 surface 上當文字，22 組色系裡一樣有不過關的（bronze 淺色模式只有 2.66:1）。真正的解法是**不要整塊實色背景**：`storytellerComponentOverrides.ts` 新增 `accentTonalBackground()`，`MuiButton` 的 `containedPrimary` 改成 `color-mix()` 把 `accentMain` 用 30% 疊在 `surfaceRaised` 上（實測掃過 10%~40%，30% worst case 6.18:1，餘裕充足），文字固定用已證實「全部色系都過關」的 `textPrimary`，不是 `accentMain` 本身。視覺上是淡色調的「tonal」按鈕，不是原本飽和度很高的實色填滿。
@@ -173,7 +173,7 @@ Phase E：無障礙功能 audit／修正（Faryne 明確要求排最後）
 
 ### Phase C：Editor 專屬操作 UI 對齊
 
-Slash menu、Bubble menu、Context menu（[commands.ts](../../static_site/src/pages/storyteller/wysiwygCore/commands.ts) 系列）、Table menu、Image settings dialog——這些原本就不是吃 MUI 元件的純手刻 DOM/React 元件，不受 Phase B 的 `components override` 影響，需要另外確認它們是不是吃到跟 Phase A 同一套 semantic token（現況是各自硬寫 `rgba(0,0,0,0.12)` 這類寫死的顏色，例如 `StorytellerWysiwygBubbleMenu.tsx`、`slashCommandExtension.tsx` 裡都有），這個 Phase 就是把這些硬寫的顏色抽換成 semantic token，讓自訂元件跟 MUI 元件視覺統一。
+Slash menu、Bubble menu、Context menu（[commands.ts](../../../static_site/src/pages/storyteller/wysiwygCore/commands.ts) 系列）、Table menu、Image settings dialog——這些原本就不是吃 MUI 元件的純手刻 DOM/React 元件，不受 Phase B 的 `components override` 影響，需要另外確認它們是不是吃到跟 Phase A 同一套 semantic token（現況是各自硬寫 `rgba(0,0,0,0.12)` 這類寫死的顏色，例如 `StorytellerWysiwygBubbleMenu.tsx`、`slashCommandExtension.tsx` 裡都有），這個 Phase 就是把這些硬寫的顏色抽換成 semantic token，讓自訂元件跟 MUI 元件視覺統一。
 
 ### Phase D：節慶活動 overlay 機制
 

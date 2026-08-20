@@ -257,7 +257,7 @@ Claude／Codex 建議的施作順序（跟項目編號無關）：**1 匯出格�
 
 #### 8.1.1 匯出格式契約重整
 
-- **現況問題**：「匯出 markdown」功能名稱暗示「匯出後打開就能看到跟網頁一樣的東西」，但實際上內容含圖片時，圖片網址是內部專用的 `steamloom-asset://{publicId}` scheme（[exportMarkdown.ts:119](../../static_site/src/pages/storyteller/wysiwygCore/exportMarkdown.ts#L119)），不是任何標準 markdown 檢視器認得的 URL，下載後打開圖片一定是壞掉的（找不到圖片）。
+- **現況問題**：「匯出 markdown」功能名稱暗示「匯出後打開就能看到跟網頁一樣的東西」，但實際上內容含圖片時，圖片網址是內部專用的 `steamloom-asset://{publicId}` scheme（[exportMarkdown.ts:119](../../../static_site/src/pages/storyteller/wysiwygCore/exportMarkdown.ts#L119)），不是任何標準 markdown 檢視器認得的 URL，下載後打開圖片一定是壞掉的（找不到圖片）。
 - **不建議**：直接拿掉「匯出 markdown」——它仍有價值：純文字備份、丟給 AI 用、版本留存、搬到其他工具後再手動整理圖片。問題不在於這個功能沒用，是它被包裝成「完整視覺匯出」但做不到。
 - **建議方向**：拆成兩個語意清楚的功能，不要混在一起：
   - 「匯出 Markdown」：定位成文字/結構匯出，圖片是內部連結這件事要讓使用者知道（例如匯出按鈕旁註明，或圖片替代文字提示這是內部資產連結）。
@@ -270,7 +270,7 @@ Claude／Codex 建議的施作順序（跟項目編號無關）：**1 匯出格�
 #### 8.1.2 表格 cell 內軟斷行（soft break）／多行貼上
 
 - **現況問題**：Phase 9.3 實測發現，貼上多行文字（或試算表多個相鄰儲存格）到表格 cell 內，全部內容會被擠成一行；使用者手動按 Enter 也沒辦法在 cell 內建立新的一行。
-- **Root cause**（非 bug，是既有 schema 設計的直接結果）：`StorytellerTableCell` 的 `content` 是 `"inline*"`（[storytellerTable.ts:346](../../static_site/src/pages/storyteller/wysiwygCore/storytellerTable.ts#L346)），只能放行內內容，不能放 `paragraph` 這種 block 節點——這是刻意維持「一行＝一個段落」這個貫穿全專案的不變量（表格 cell 本身就不是一個 paragraph，不該讓它變成能放多個 paragraph 的容器，否則書籤/diff 的 line-based 模型會被打破）。
+- **Root cause**（非 bug，是既有 schema 設計的直接結果）：`StorytellerTableCell` 的 `content` 是 `"inline*"`（[storytellerTable.ts:346](../../../static_site/src/pages/storyteller/wysiwygCore/storytellerTable.ts#L346)），只能放行內內容，不能放 `paragraph` 這種 block 節點——這是刻意維持「一行＝一個段落」這個貫穿全專案的不變量（表格 cell 本身就不是一個 paragraph，不該讓它變成能放多個 paragraph 的容器，否則書籤/diff 的 line-based 模型會被打破）。
 - **建議方向（折衷方案）**：導入 Tiptap 的 `HardBreak`（對應 `<br>`）——這是 inline 節點，不违反 `content:"inline*"` schema，也不會讓 cell 變成能放多個段落。具體：
   - `Shift+Enter` 在 cell 內插入 hard break（一般段落如果也想要這個行為可以一併評估，但這次範圍先限定在表格 cell）
   - 貼上多行文字／試算表多列到 cell 內時，轉成 hard break 而不是壓成一行純文字
@@ -278,7 +278,7 @@ Claude／Codex 建議的施作順序（跟項目編號無關）：**1 匯出格�
   - Parser 看到 cell 內容裡的 `\n` 還原成 hard break
   - Markdown 匯出：cell 內的 hard break 輸出成 `<br>`（GFM table 慣例）
 - **風險**：
-  - 全域 `handlePaste`（[StorytellerWysiwygEditor.tsx](../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx)）原本是為一般段落設計的貼上邏輯，要避免在表格 cell 內誤用一般段落的拆段邏輯（例如錯誤觸發 `splitParagraphFresh()`）
+  - 全域 `handlePaste`（[StorytellerWysiwygEditor.tsx](../../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx)）原本是為一般段落設計的貼上邏輯，要避免在表格 cell 內誤用一般段落的拆段邏輯（例如錯誤觸發 `splitParagraphFresh()`）
   - Diff 的 strip 邏輯（`stripMarkerForDiffLine()` 等）要把 hard break 轉成人類看得懂的呈現，不然 diff 畫面可能看不出差異在哪
   - Reader 端的表格 cell render 要正確處理 `<br>`
   - MCP 的 `storytellerContentSyntaxHint` 要補充說明：cell 內想要換行要用 `\n`
@@ -494,7 +494,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 ### 1. Slash command 選單空白 `/` 時看不到「插入表格」「插入圖片」
 
 - **現象**：在空白段落打 `/`（不打任何篩選字），選單只看得到「內文」「標題 1~6」「引用」，插入表格／插入圖片／清單／分隔線等功能完全不會出現，只有先打出正確關鍵字（例如「/表格」）才篩得到——但使用者不知道要打這幾個字，等於功能被隱藏。
-- **Root cause**：`SlashCommand` extension（[slashCommandExtension.tsx](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）預設 `maxItems: 8`，而候選清單照群組排列 `heading`（內文＋標題1~6，共 7 項）→ `block`（引用／無序清單／有序清單／插入分隔線，共 4 項）→ `insert`（插入表格／插入圖片，共 2 項），空白查詢時前 8 項剛好被「heading 全部 7 項＋block 第 1 項（引用）」吃滿，`insert` 群組的兩個 command 永遠排不進截斷範圍。
+- **Root cause**：`SlashCommand` extension（[slashCommandExtension.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）預設 `maxItems: 8`，而候選清單照群組排列 `heading`（內文＋標題1~6，共 7 項）→ `block`（引用／無序清單／有序清單／插入分隔線，共 4 項）→ `insert`（插入表格／插入圖片，共 2 項），空白查詢時前 8 項剛好被「heading 全部 7 項＋block 第 1 項（引用）」吃滿，`insert` 群組的兩個 command 永遠排不進截斷範圍。
 - **解法**：把 `maxItems` 從 8 調高到 20（目前 registry 總共只有 13 個 slash command，20 留一點餘裕），選單本身已有 `max-height:260px` + `overflow:auto`，調高上限後配合既有捲動機制即可讓全部功能可見。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
 
@@ -508,7 +508,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 ### 3. IME 組字期間按 Escape，slash 選單會被一起關掉（Phase 9.1 案例 2 實測發現）
 
 - **現象**：打 `/圖` 進入 slash 選單後，用注音組字打「圖」還沒選完字，這時按 Escape 原本應該只取消輸入法候選字（跟 Notion 一樣），結果連 slash 選單也一起被關掉了。
-- **Root cause**：`SlashCommand` extension 的 `addKeyboardShortcuts()`（[slashCommandExtension.tsx](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）把 `ArrowDown`／`ArrowUp`／`Enter`／`Escape` 都直接綁去操作 slash 選單，完全沒有檢查 `this.editor.view.composing`（IME 是否正在組字中）。IME 候選字視窗開著時按 Escape，瀏覽器一樣會送出真實的 `keydown` Escape 事件，我們的 handler 不分青紅皂白攔下來當成「使用者要關 slash 選單」處理，跟 IME 自己取消候選字的行為搶在一起。
+- **Root cause**：`SlashCommand` extension 的 `addKeyboardShortcuts()`（[slashCommandExtension.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）把 `ArrowDown`／`ArrowUp`／`Enter`／`Escape` 都直接綁去操作 slash 選單，完全沒有檢查 `this.editor.view.composing`（IME 是否正在組字中）。IME 候選字視窗開著時按 Escape，瀏覽器一樣會送出真實的 `keydown` Escape 事件，我們的 handler 不分青紅皂白攔下來當成「使用者要關 slash 選單」處理，跟 IME 自己取消候選字的行為搶在一起。
 - **解法**：`handleKey()` 開頭加一行 `if (this.editor.view.composing) return false;`，組字中一律不攔截，讓瀏覽器/輸入法自己處理完這次按鍵，slash 選單狀態完全不受影響。四個鍵（含 ArrowDown/ArrowUp，理由：IME 候選字視窗常見也用方向鍵挑字，同一類風險一併防範；Enter 目前實測沒出包，但同樣邏輯下不特別排除)一併加上這個保護，不是只修 Escape 一項。
 - **驗證方式**：因為真實 IME 組字沒辦法用瀏覽器自動化模擬（見 9.1 開頭說明），改用 `dispatchEvent(new CompositionEvent('compositionstart', ...))` 讓 `editor.view.composing` 真的變成 `true`（這是瀏覽器原生事件，ProseMirror 自己會監聽並更新這個狀態，不是憑空模擬），再送出帶 `isComposing:true` 的 Escape `keydown`，確認 slash 選單維持開啟。這個驗證方式能確認「程式邏輯正確反應 composing 狀態」，但沒辦法完全複現真實輸入法的每一種按鍵時序，建議 Faryne 之後用真實輸入法重新走一次 9.1 案例 2 確認。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
@@ -516,7 +516,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 ### 4. IME 組字期間按 Tab，會打斷組字並跳到下一個表格 cell（Phase 9.1 案例 3 實測發現）
 
 - **現象**：在真表格 cell 裡用注音打字，組字還沒完成時按 Tab，游標直接跳到下一個 cell，正在組字的內容被打斷。
-- **Root cause**：`StorytellerTableCell`（[storytellerTable.ts](../../static_site/src/pages/storyteller/wysiwygCore/storytellerTable.ts)）的 `addKeyboardShortcuts()` 把 `Tab`／`Shift-Tab` 直接綁去呼叫 `goToNextCell()`，同樣沒有檢查 `editor.view.composing`。組字中的文字其實還沒真正寫進 ProseMirror 文件，一按 Tab 就換到別的 cell（換節點），等於把還沒 commit 的組字內容整個丟掉。
+- **Root cause**：`StorytellerTableCell`（[storytellerTable.ts](../../../static_site/src/pages/storyteller/wysiwygCore/storytellerTable.ts)）的 `addKeyboardShortcuts()` 把 `Tab`／`Shift-Tab` 直接綁去呼叫 `goToNextCell()`，同樣沒有檢查 `editor.view.composing`。組字中的文字其實還沒真正寫進 ProseMirror 文件，一按 Tab 就換到別的 cell（換節點），等於把還沒 commit 的組字內容整個丟掉。
 - **解法**：`Tab`／`Shift-Tab` 的 handler 開頭加 `this.editor.view.composing ? false : goToNextCell(...)`，組字中直接回傳 `false`，不執行跳 cell，讓輸入法/瀏覽器自己處理這次 Tab。
 - **驗證方式**：同上一項，用 `dispatchEvent(new CompositionEvent('compositionstart', ...))` 讓真正的 `editor.view.composing` 變 `true`，送出帶 `isComposing:true` 的 Tab `keydown`，確認 `window.getSelection()` 對應的 cell 內容沒有改變（游標留在原 cell）；接著送 `compositionend` 恢復非組字狀態，確認正常 Tab 依然能正確跳到下一個 cell（沒有把功能整個關掉，只是組字期間不跳）。同樣建議之後用真實輸入法覆測一次。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
@@ -578,7 +578,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 ### 9. 手機真機上長按選字會被右鍵選單邏輯搶走，導致選取失敗（Phase 9.4 真機實測發現）
 
 - **現象**：Faryne 用 Samsung S24 Ultra／Chrome 實測，長按拖曳選取文字時會觸發類似滑鼠右鍵的動作，選取操作因此失敗。這推翻了 Phase 8 手機斷點驗證時的假設——當時 Claude 用瀏覽器自動化測試工具在 mobile 模擬模式下也觀察到類似現象（點擊被轉譯成 contextmenu），但因為無法排除是「測試工具本身的模擬限制」還是「編輯器真的有這個問題」，當時只能記錄疑點、標記需要真機覆測（見 Phase 9.4 案例第 4 項備註）。這次真機測試證實：**不是測試工具的問題，是編輯器本身的真實 bug**。
-- **Root cause**：`StorytellerWysiwygEditor.tsx` 的 `handleEditorContextMenu`（[StorytellerWysiwygEditor.tsx:597](../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx#L597)）不分裝置、一律在 `contextmenu` 事件觸發時呼叫 `event.preventDefault()`，而且只要點擊/觸控位置不在「目前已存在的選取範圍內」，就會直接把選取範圍收合成單一游標（`editor.commands.setTextSelection(result.pos)`）。行動裝置上長按（開始選字的手勢）本身就會觸發瀏覽器原生的 `contextmenu` 事件——使用者才剛長按要開始選字，選取範圍還沒真的選出來（或選取還在進行中），我們的 handler 就搶先把它當成「使用者要叫出右鍵選單」處理，選取範圍因此被收合掉，長按選字整個失敗。
+- **Root cause**：`StorytellerWysiwygEditor.tsx` 的 `handleEditorContextMenu`（[StorytellerWysiwygEditor.tsx:597](../../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx#L597)）不分裝置、一律在 `contextmenu` 事件觸發時呼叫 `event.preventDefault()`，而且只要點擊/觸控位置不在「目前已存在的選取範圍內」，就會直接把選取範圍收合成單一游標（`editor.commands.setTextSelection(result.pos)`）。行動裝置上長按（開始選字的手勢）本身就會觸發瀏覽器原生的 `contextmenu` 事件——使用者才剛長按要開始選字，選取範圍還沒真的選出來（或選取還在進行中），我們的 handler 就搶先把它當成「使用者要叫出右鍵選單」處理，選取範圍因此被收合掉，長按選字整個失敗。
 - **解法**：不做行動版工具列（不重新引入拔掉的複雜度）。改成用 `window.matchMedia("(pointer: coarse)")` 判斷「主要輸入是不是觸控」（不是用螢幕寬度斷點——寬度斷點測的是螢幕多寬，這裡要分辨的是使用者用什麼方式操作，桌面瀏覽器縮視窗到很窄仍然是滑鼠右鍵），觸控裝置上 `handleEditorContextMenu` 直接 early return，完全不攔截這個事件，讓原生長按選字／系統選單正常運作。格式化功能改靠已經驗證過的兩個入口：選字完成後 bubble menu 會自動跳出（`StorytellerWysiwygBubbleMenu.tsx` 的 `shouldShow` 只看「目前有沒有非空文字選取」，不管這個選取是滑鼠拖出來的還是手指長按拖出來的，原生選字不再被搶走後應該正常觸發）；空段落插入區塊則靠 `/` slash command（Phase 9.4 已經測過在手機上正常運作）。
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。瀏覽器驗證（`resize_window` 切到 mobile preset，確認 `matchMedia("(pointer: coarse)").matches` 為 `true`）：在段落上建立一段真實文字選取，dispatch 原生 `contextmenu` 事件，確認選單沒有跳出來（`[role="menu"]` 不存在）、選取範圍完全沒被動到（前後 `window.getSelection().toString()` 一致）、`event.defaultPrevented` 是 `false`（沒有攔截，原生行為可以繼續）；切回桌面寬度（`matchMedia` 確認 `false`）重複同樣測試，確認右鍵選單正常跳出（截圖確認），沒有回歸。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
@@ -588,7 +588,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **現象**：Faryne 貼了編輯頁跟閱讀頁的截圖比對，同一段含直式構圖圖片的內容，兩邊排版明顯不同——閱讀頁的圖片顯著比編輯器裡看到的大，連帶讓文繞圖時「跟圖片並排的段落數量」也不一樣。
 - **第一次診斷（已推翻）**：一開始懷疑是 `maxHeight` 不一致（編輯器寫死 `360`，Reader 是 `{ xs: 420, md: 640 }`），已經把編輯器的 `maxHeight` 對齊成跟 Reader 一致。但改完後 Faryne 再截圖比對，比例還是不對，判斷「沒改到核心」。
 - **真正的 root cause**：請 Faryne 在瀏覽器 devtools 直接量測兩邊圖片的實際 render 尺寸，數字顯示**圖片本身渲染出來的 px 完全一樣**（`imgWidth:220`／`imgHeight:479.39`，兩邊逐位元相同）——代表 maxHeight 從頭到尾都不是問題，圖片沒有「變小」，是兩邱的**內文欄寬差太多**：編輯器內文欄寬（`.tiptap.ProseMirror`）實測 **1676px**，閱讀頁內文欄寬（`<p>`）實測 **902px**，將近兩倍差距。Size preset 原本的公式是 `min(百分比, px上限)`（例如 float 大圖是 `min(45%, 360px)`），這個 px 上限剛好卡在閱讀頁的欄寬附近（900px 上下），代表閱讀頁幾乎不受上限影響、百分比正常發揮；但編輯器欄寬一旦超過臨界值（float 約 800~900px、center 約 800px），上限就會先卡住百分比——同一個 size 選項因此在兩邊呈現出完全不同的「佔內文欄寬比例」（編輯器只佔 13%，閱讀頁接近 25%），不是圖片大小的問題，是**相對比例**的問題。
-- **解法**：拿掉 `FLOAT_SIZE_WIDTH`／`CENTER_SIZE_WIDTH`（[assetImageLayout.ts](../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）裡的 px 上限，改成純百分比（跟原本就是純百分比的 `BLOCK_SIZE_WIDTH` 一致）。拿掉上限後，圖片寬度直接跟著各自的內文欄寬等比例縮放，兩邊「佔比」永遠一致，不會再被一個針對特定欄寬校準出來的 px 上限打亂比例。圖片本身還有 `maxHeight`＋`objectFit:contain` 頂著（[assetImageNode.tsx](../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)／[StorytellerWysiwygMarkdown.tsx](../../static_site/src/pages/storyteller/StorytellerWysiwygMarkdown.tsx)），直式構圖的圖片在很寬的容器裡撐大到一定程度後，會先被高度上限頂住縮回來，不會無限跟著容器變大。
+- **解法**：拿掉 `FLOAT_SIZE_WIDTH`／`CENTER_SIZE_WIDTH`（[assetImageLayout.ts](../../../static_site/src/pages/storyteller/wysiwygCore/assetImageLayout.ts)）裡的 px 上限，改成純百分比（跟原本就是純百分比的 `BLOCK_SIZE_WIDTH` 一致）。拿掉上限後，圖片寬度直接跟著各自的內文欄寬等比例縮放，兩邊「佔比」永遠一致，不會再被一個針對特定欄寬校準出來的 px 上限打亂比例。圖片本身還有 `maxHeight`＋`objectFit:contain` 頂著（[assetImageNode.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)／[StorytellerWysiwygMarkdown.tsx](../../../static_site/src/pages/storyteller/StorytellerWysiwygMarkdown.tsx)），直式構圖的圖片在很寬的容器裡撐大到一定程度後，會先被高度上限頂住縮回來，不會無限跟著容器變大。
 - **考慮過但沒採用的方向**：
   - 方案 2（把編輯器內文欄寬也加上限，縮到接近閱讀頁的 ~900px）——會變成整個編輯頁版面風格的改動（置中窄欄寫作），影響範圍遠大於這次的圖片問題，而且閱讀頁的 902px 本身不是刻意選定的常數（`Reader.tsx` 完全沒有 `maxWidth`／`Container` 設定，902px 只是側邊欄目錄佔掉之後剩下的空間，會隨視窗寬度浮動），沒有一個穩定的目標值可以精準對齊。
   - 「把閱讀頁做成跟工作台一樣全出血」——Faryne 提出後雙方討論過，這個方向會犧牲閱讀頁對真實讀者的閱讀舒適度（長文一行字數過長不利閱讀），且閱讀頁使用者是讀者本人、不是作者，影響的優先序不同，不適合為了這次圖片比例問題順便改掉。討論結論：**這其實是「閱讀頁整體版面比照工作台」這個更大的產品目標，跟 [視覺主題(createTheme)規劃.md](視覺主題(createTheme)規劃.md) 的精神一致，記錄進那份文件的後續方向，另外排時間處理，不在這次一起做**。
@@ -598,7 +598,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 ### 11. StoryEditor／LoreEditor 觸發「Rendered more hooks than during the previous render」（Faryne 真實登入頁面實測發現，2026-08-18）
 
 - **現象**：開啟 `/storyteller/my/workspace/<projectId>/story/<storyId>`，console 噴出 `React has detected a change in the order of Hooks called by StorytellerStoryEditor`，接著 `Uncaught Error: Rendered more hooks than during the previous render.`，錯誤堆疊指到 `StoryEditor.tsx:1053:30` 的 `useRef`。
-- **Root cause**：Ctrl/Cmd+S 存檔快捷鍵（[StoryEditor.tsx](../../static_site/src/pages/storyteller/StoryEditor.tsx)、[LoreEditor.tsx](../../static_site/src/pages/storyteller/LoreEditor.tsx)）加的時候，`useRef`／`useRef`／`useEffect` 這三個 hook 被放在 `if (authLoading) return ...`／`if (!session) return ...`／載入中／404 這幾個 early return **之後**——未登入或載入中的那次 render 提早 return，完全不會呼叫這三個 hook；等到登入完成、拿到資料的下一次 render，這三個 hook 才第一次被呼叫，違反 Rules of Hooks（同一元件每次 render 呼叫的 hook 數量／順序必須完全一致）。這是登入流程一定會經歷「先 loading/未登入 render，再登入後 render」的必經路徑，不是邊角案例，一登入就會炸。
+- **Root cause**：Ctrl/Cmd+S 存檔快捷鍵（[StoryEditor.tsx](../../../static_site/src/pages/storyteller/StoryEditor.tsx)、[LoreEditor.tsx](../../../static_site/src/pages/storyteller/LoreEditor.tsx)）加的時候，`useRef`／`useRef`／`useEffect` 這三個 hook 被放在 `if (authLoading) return ...`／`if (!session) return ...`／載入中／404 這幾個 early return **之後**——未登入或載入中的那次 render 提早 return，完全不會呼叫這三個 hook；等到登入完成、拿到資料的下一次 render，這三個 hook 才第一次被呼叫，違反 Rules of Hooks（同一元件每次 render 呼叫的 hook 數量／順序必須完全一致）。這是登入流程一定會經歷「先 loading/未登入 render，再登入後 render」的必經路徑，不是邊角案例，一登入就會炸。
 - **解法**：把這三個 hook（`handleSaveStoryRef`／`isSavingRef`／`useEffect` 掛 keydown listener；LoreEditor 對應的 `handleSaveRef`／`isSavingLoreRef`）搬到所有 early return 之前。`handleSaveStory`／`handleSave` 是用 `function` 宣告（不是 `const` 箭頭函式），會整個被 hoist，所以 `useRef(handleSaveStory)` 搬到它文字定義之前一樣讀得到，不需要把整個函式也搬過去；`saveStory`／`saveLore`（mutation hook）本來就定義在所有 early return 之前，`.isPending` 一樣讀得到。
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。這個 bug 只有登入後才會觸發，且需要真的走過「未登入→登入」或「載入中→載入完成」這種 render 切換才會炸（單純已登入狀態下重新整理，可能因為第一次 render 就直接拿到 session 而不會觸發，跟第一次是誰發現無關，是 render 路徑的問題），沒有免登入頁面能重現，這次沒有另外用瀏覽器截圖驗證，改用程式碼審查確認兩個檔案裡所有 hook 呼叫都已經在任何 `return` 之前、且呼叫順序在每次 render 都固定不變。麻煩 Faryne 重新整理原本出錯的頁面確認 console 不再噴這個錯誤。
 - **狀態**：已修，與本節文件更新同一個 commit 一併送出。
@@ -607,8 +607,8 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 
 - **現象**：圖片置中/全寬後，游標緊接在圖片後面（跟圖片同一段落），這時用 slash 選單插入分隔線，圖片會整個消失，序列化出來的內容也壞掉（多出帶亂數 UUID 的空 marker）。先斷一行、隔一行再用 slash 插入分隔線就正常——這個線索是 root cause 的關鍵。
 - **Root cause**（兩層問題疊加）：
-  1. `assetImage` 是 `inline: true` 的 atom node（[assetImageNode.tsx](../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)），活在 markerParagraph 內，跟文字同一層級。`isTextOnlySlashQuery`（[slashCommandExtension.tsx](../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）判斷「目前段落是不是空的／只有 query 文字」時用 `$from.parent.textBetween(...)`，這個 API 預設把非文字的 atom 當成長度 0 處理——代表「游標緊接在圖片後面」在這個檢查眼裡跟「段落真的是空的」一模一樣，於是誤判成可以觸發 slash 選單。
-  2. `insertHorizontalRule`（[markerParagraph.ts](../../static_site/src/pages/storyteller/wysiwygCore/markerParagraph.ts)）原本的實作是「目前段落轉成分隔線，原內容直接刪掉、換一個新空段落接在後面」，設計時想的是使用者打 `---` 這種本來就該被清掉的 query 文字，沒考慮到「目前段落」可能還有圖片這種需要保留的 atom 內容。第 1 點誤判之後，slash 選單把 `/分隔` 這串 query 文字刪掉，剩下的圖片就被這裡的邏輯當成「原內容」一起清空了。
+  1. `assetImage` 是 `inline: true` 的 atom node（[assetImageNode.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)），活在 markerParagraph 內，跟文字同一層級。`isTextOnlySlashQuery`（[slashCommandExtension.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/slashCommandExtension.tsx)）判斷「目前段落是不是空的／只有 query 文字」時用 `$from.parent.textBetween(...)`，這個 API 預設把非文字的 atom 當成長度 0 處理——代表「游標緊接在圖片後面」在這個檢查眼裡跟「段落真的是空的」一模一樣，於是誤判成可以觸發 slash 選單。
+  2. `insertHorizontalRule`（[markerParagraph.ts](../../../static_site/src/pages/storyteller/wysiwygCore/markerParagraph.ts)）原本的實作是「目前段落轉成分隔線，原內容直接刪掉、換一個新空段落接在後面」，設計時想的是使用者打 `---` 這種本來就該被清掉的 query 文字，沒考慮到「目前段落」可能還有圖片這種需要保留的 atom 內容。第 1 點誤判之後，slash 選單把 `/分隔` 這串 query 文字刪掉，剩下的圖片就被這裡的邏輯當成「原內容」一起清空了。
 - **解法**：
   1. `isTextOnlySlashQuery` 的 `textBetween` 呼叫加上 `leafText` 參數（傳入 Object Replacement Character `￼`，ProseMirror 自己內部處理 atom 文字比對時的慣例字元），讓任何 atom 都會在文字結果裡留下一個佔位字元，`textBefore.startsWith("/")` 這類純文字判斷式就不會再把「圖片後面」誤判成「空段落」——這樣游標緊接圖片時，slash 選單直接不會跳出來，從入口就擋掉。
   2. `insertHorizontalRule` 額外補上第二層防護（避免以後有其他入口，例如右鍵選單的「插入分隔線」，繞過 slash 選單直接呼叫這個 command 時一樣把內容吃掉）：原本「目前段落」的內容（不管是圖片還是文字）不再直接刪除，改成搬到分隔線後面新插入的段落，游標一樣跟過去。這樣不管從哪個入口觸發，只要目前段落還有內容，都會被保留、不會憑空消失。
@@ -632,7 +632,7 @@ Claude 用瀏覽器自動化逐字元測試過（`**bold**`／`**測試文字**`
 - **Root cause**：`markerParagraph.ts` 原本完全沒有自訂 Backspace 邏輯，靠 ProseMirror 預設的 `joinBackward`/`selectNodeBackward` 處理——但這兩個內建 command 都是設計給「游標在段落最開頭（`parentOffset === 0`），要處理的是前一個獨立段落」這種情境，完全沒有覆蓋「游標緊接在同一個段落內的 atom 後面（`parentOffset > 0`，緊接在 inline atom 之後）」——這個情境沒有任何 ProseMirror JS 邏輯接手時，事件會落到瀏覽器原生的 contenteditable 行為，直接把那個 `contenteditable=false` 的圖片節點刪掉，完全沒有先選取的機會。
 - **解法**：加一個 `Backspace` handler，分兩種情境找出「緊接在游標前面的 atom」：(1) 游標前面在同一個段落內就有內容（`parentOffset > 0`）時，用 `$from.nodeBefore` 檢查緊接在前面的是不是 atom；(2) 游標在段落最開頭（`parentOffset === 0`）時，檢查前一個獨立段落是不是整個只有一個 atom（涵蓋圖片獨占一個段落的排版方式，例如 block/center/全寬 layout）。兩種情境符合任一個，第一次 Backspace 都只把該 atom 轉成 `NodeSelection`（反白選取），不刪除，仿照 Notion／Google Docs 對圖片、附件的慣例；其餘情境（一般文字合併）完全不受影響，維持原本的 `joinBackward` 行為。選取狀態下要不要再刪除，交給 ProseMirror 對 `NodeSelection` 的既有處理，不需要額外寫程式碼。
 - **驗證**：`npx tsc -b --noEmit` 乾淨、`npx vitest run` 43/43 通過。用 `/storyteller/wysiwyg-demo` Playground 程式化驗證，**這次刻意重現「圖片跟文字同一段落」的真實結構**（不是第一版誤判的「兩個獨立段落」）：游標移到圖片後文字最開頭（先打測試字元確認游標位置精確落在圖片跟文字交界處，再重置內容測試），dispatch 一次 `keydown: Backspace`，確認圖片沒有被刪除、且 DOM 上出現 `.ProseMirror-selectednode`（真的變成選取狀態，不是沒反應）。**驗證仍有缺口**：沒辦法在這個自動化環境裡讓「選取狀態下的第二次 Backspace」觸發真的刪除，懷疑是工具限制（`deleteSelection` 是 ProseMirror 內建、完全沒被這次改動碰到的邏輯），麻煩 Faryne 之後在真實瀏覽器手動確認：選到圖片後連續按兩次 Backspace，第二次是否真的會刪除圖片；也麻煩優先確認**這次修正過的「同段落」情境**是否真的解決了，畢竟上一版就是在這個情境栽了跟頭。
-- **選取狀態視覺強化（2026-08-18 追加）**：Faryne 確認選取行為本身沒問題後，反映「選到但看不太出來」——原本的選取樣式（[assetImageNode.tsx](../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)）只換邊框顏色（`divider` → `primary.main`）加一級陰影，1px 邊框太細、顏色差異不夠明顯，容易錯過。改成邊框加粗到 2px＋外面再加一圈 3px 的 `outline`（用 Phase A 的 `selection` semantic token，`var(--storyteller-selection, #e6bd76)`，跟 MenuItem 選取狀態同一個顏色語意），形成清楚的「光暈」效果，不管背景色系/明暗模式都能一眼看到。瀏覽器驗證：Playground 點擊圖片，`getComputedStyle` 讀出 `outline: rgb(230,189,118) solid 3px`、`borderColor: rgb(230,189,118)`、`borderWidth: 2px`，精確對上 fallback 色碼。
+- **選取狀態視覺強化（2026-08-18 追加）**：Faryne 確認選取行為本身沒問題後，反映「選到但看不太出來」——原本的選取樣式（[assetImageNode.tsx](../../../static_site/src/pages/storyteller/wysiwygCore/assetImageNode.tsx)）只換邊框顏色（`divider` → `primary.main`）加一級陰影，1px 邊框太細、顏色差異不夠明顯，容易錯過。改成邊框加粗到 2px＋外面再加一圈 3px 的 `outline`（用 Phase A 的 `selection` semantic token，`var(--storyteller-selection, #e6bd76)`，跟 MenuItem 選取狀態同一個顏色語意），形成清楚的「光暈」效果，不管背景色系/明暗模式都能一眼看到。瀏覽器驗證：Playground 點擊圖片，`getComputedStyle` 讀出 `outline: rgb(230,189,118) solid 3px`、`borderColor: rgb(230,189,118)`、`borderWidth: 2px`，精確對上 fallback 色碼。
 - **狀態**：✅ Faryne 已在真實瀏覽器複測確認：選取狀態下第二次 Backspace 會正確刪除圖片，兩段行為都沒問題。連同選取視覺強化，這個項目全部完成。
 
 ### 15. 空白引用/清單行按 Backspace，格式沒有跟著重置、接著再刪會刪到前一行文字（Phase G 項目 5 延伸，2026-08-18 查明並修復）
