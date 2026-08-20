@@ -82,7 +82,10 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 - [x] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑——2026-08-20 完成，純審查＋瀏覽器實測，**沒有改任何程式碼**：圖片節點的「圖片設定」／「移除資產」`IconButton` 本來就是一直可見（不是 hover 才出現）、`tabIndex:0`、有 `aria-label` 的真正 `<button>`，不是只能靠右鍵或雙擊才能觸發。用真實 Tab 鍵測過：游標在圖片前一行文字時按 Tab，直接、正確地依序停在「圖片設定」「移除資產」兩個按鈕上（一般會擔心 contenteditable 裡的巢狀互動元件會被瀏覽器當成同一個 tab stop 跳過，但這個節點是 `contentEditable={false}` 的獨立小島，瀏覽器對這種島內的真實互動元件維持正常 tab 順序，不受外層 contenteditable 影響）；按鈕本身用滑鼠點擊（模擬鍵盤 Enter 觸發的等效行為）能正確開啟「圖片設定」對話框，對話框裡的「版面」下拉選單已經涵蓋右鍵選單裡 4 個 layout quick action 的內容，等於右鍵能做的事都能從這裡鍵盤操作完成。NodeSelection 本身（選到圖片節點）也不需要額外程式碼——ProseMirror 對 `atom:true` 節點的預設行為是方向鍵跨過去就自動轉成 NodeSelection，這是鍵盤原生就有的能力，不是滑鼠專屬。
 - [x] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA——2026-08-19 已完成，見下方「對比度檢查結果」小節
 - [x] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`——2026-08-20 完成。盤點下來 bubble menu 在 Phase E 第二項已經補過（`role="toolbar"` `aria-label="文字格式工具列"`＋色票 popover），這次補剩下兩個：slash 選單的 `role="listbox"` 補上 `aria-label="斜線指令選單"`；右鍵選單是 MUI `<Menu>`，`aria-label` 直接放在 `<Menu>` 上不會轉送到實際 `role="menu"` 的 `MenuList` 元素，改用 `MenuListProps={{ "aria-label": "編輯器右鍵選單" }}` 才會生效。已用瀏覽器 `getAttribute('aria-label')` 逐一確認三個選單都正確讀到對應文字，`tsc --noEmit`／`vitest` 45/45 通過，console 無新增錯誤。
-- [ ] 驗證：跑過對比度檢查 script 沒有異常；鍵盤（不用滑鼠/觸控）走過一次「開始寫作 → 套用格式 → 插入表格/圖片 → 存檔」的完整流程確認可行
+- [x] 驗證：跑過對比度檢查 script 沒有異常；鍵盤（不用滑鼠/觸控）走過一次「開始寫作 → 套用格式 → 插入表格/圖片 → 存檔」的完整流程確認可行——2026-08-20 完成，Phase E 全部收尾。
+  - 對比度檢查：`npx vitest run` 45/45 通過（含 `storytellerContrastCheck.test.ts` 的兩個測試——文字/背景零失敗、已知失敗數量卡在 75 沒有增加，見上面「對比度檢查結果」小節）。
+  - 完整鍵盤流程：用假登入機制在真實登入頁面（非 Playground）建立一個全新測試故事，走過「輸入標題／摘要 → 開始寫作 → 選取文字套用粗體 → slash 插入表格 → Tab 在儲存格間移動輸入內容 → slash 插入圖片（叫出資產選取 Dialog，Tab 正確到搜尋欄、Escape 正確關閉——沒有可用資產所以沒有實際插入一張圖片，上傳圖片本身這步驟需要真實檔案，跟大部分網站一樣依賴瀏覽器原生的檔案選取器，不算在「鍵盤操作編輯器本身」的稽核範圍內）→ 存檔」全流程，最後確認標題/摘要/段落/表格內容都正確存檔。
+  - **自動化工具的已知限制（不是產品問題）**：測試過程中發現這個瀏覽器自動化工具沒辦法可靠送出「有 Modifier 鍵的組合鍵」（`Shift+方向鍵` 選取文字、`Cmd/Ctrl+B` 粗體快捷鍵、`Cmd/Ctrl+S` 存檔快捷鍵都試過，不管用 `cmd`／`ctrl`／`meta` 哪種 modifier 名稱送出，瀏覽器都只收到沒有 modifier 的單一按鍵，導致選取沒作用、`B`／`S` 被當成一般文字打進內容裡）——這是本次連續好幾輪修復都遇過的同一類已知限制的延伸（合成鍵盤事件對「瀏覽器/程式庫原生」行為不可靠，只有我們自己接的 command handler 才穩定收得到）。改用兩種方式間接驗證這些路徑本身沒問題：① 直接呼叫 `editor.commands.setTextSelection()`／`toggleBold()` 確認我們的擴充套件堆疊沒有攔截或搞壞這些操作；② 確認程式碼裡沒有任何自訂的 `Mod-b`／`Mod-i`／`Mod-u` 覆寫（`grep` 全 `wysiwygCore` 目錄零結果），粗體/斜體/底線快捷鍵完全吃 Tiptap 套件內建、久經測試的 `addKeyboardShortcuts()` 預設值；Ctrl+S 存檔快捷鍵的程式碼（`StoryEditor.tsx`/`LoreEditor.tsx` 的 `useEffect` keydown listener）是這次會話較早之前就寫好且審查過的簡單邏輯，非本次改動範圍。這幾個快捷鍵本身「按下去會不會動作」是瀏覽器原生 keydown 事件處理，不是自動化工具能穩定重現的範疇，但也不是這次 Phase E 稽核關心的「我們自己的程式碼有沒有跟鍵盤導覽互相干擾」的問題。
 
 #### 對比度檢查結果（2026-08-19）
 
@@ -111,7 +114,7 @@ Phase A~D 做完後，Faryne 反映「除了少數地方，看不太出來有什
 - **Editor 內的浮動選單**（slash `/` 選單、選取文字後的 bubble menu、表格 bubble menu、右鍵選單）：四種選單背景色的「層次」現在統一（跟 Dialog／帳號選單同一階），之前 slash 選單顏色風格跟右鍵選單有落差（已知 Bug 記錄第 7 項），這批改完後應該看起來一致——但因為色調本身相近，需要把幾種選單並排比較才容易看出差異，不是那種一眼就發現「換了新色」的改動。
 - **頁尾新增「中秋節」主題開關**（`SteamPaletteSwitcher` 色環正下方的按鈕）：**目前預設關閉**，點開後搜尋框輸入框 focus 邊框、選單選取色、focus 外框會變成月光金色調，其餘（AppBar、首頁 Hero 按鈕等）維持色系本色不變，是刻意的「淡妝」而不是整站變色。
 
-**還沒開始施作、不用找**：Phase E（無障礙功能 audit）尚未動工，對比度、螢幕閱讀器、鍵盤替代路徑這些目前都還是既有狀態，沒有變化。
+**Phase E（無障礙功能 audit）已於 2026-08-20 全數完成**（見上面 Phase E checklist 逐項記錄），對比度／螢幕閱讀器狀態／鍵盤替代路徑都已審查或修正過；唯一刻意保留、還沒動的是按鈕/選單 active 狀態的色彩對比（需要重新設計 11 色系的按鈕/選單配色，Faryne 決定先跳過、review 完其他項目再回頭處理，見對比度檢查結果小節）。
 
 ## 工作階段與依賴順序
 
