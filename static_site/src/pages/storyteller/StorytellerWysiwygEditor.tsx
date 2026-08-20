@@ -305,6 +305,24 @@ const BLOCK_KIND_SX = {
     // 才會正確換行，不然會撐破欄寬。
     wordBreak: "break-word",
   },
+  // Phase E：`@tiptap/pm/tables` 的 `tableEditing()` 在使用者用 Shift+方向鍵／
+  // 拖曳跨 cell 選取多個儲存格時，會自動幫選到的 `<td>` 加上 `.selectedCell`
+  // class（跟 decoration 機制本身沒問題，用 `document.querySelectorAll` 驗證過
+  // class 確實會出現）——但這個 class 全站完全沒有對應的 CSS，選取範圍在畫面上
+  // 一片空白，使用者完全看不出來選了哪些 cell，多選狀態下按 Backspace／套格式
+  // 因此無法預期會發生什麼事。跟圖片/表格的 NodeSelection 用同一組 selection
+  // token，統一「選到了」的視覺語言。
+  "& td.selectedCell": {
+    position: "relative",
+    "&::after": {
+      content: '""',
+      position: "absolute",
+      inset: 0,
+      backgroundColor: "var(--storyteller-selection, #e6bd76)",
+      opacity: 0.25,
+      pointerEvents: "none",
+    },
+  },
 } as const;
 
 /** 觸控裝置（手指是主要輸入方式）的長按本身就會觸發原生 contextmenu 事件——這是

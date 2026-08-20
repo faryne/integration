@@ -75,7 +75,10 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
   - 連結／腳注／註解的新增、編輯、移除：bubble menu（選取文字後浮動出現，觸控長按選字／鍵盤 Shift+方向鍵都能觸發）的對應按鈕會開 Dialog，Dialog 裡都有明講的「移除」按鈕（`handleRemoveLink`／`handleRemoveFootnote`／`handleRemoveComment`），右鍵選單的「快速移除」只是這條路徑的捷徑，不是唯一入口。
   - 文字/背景顏色：Phase 4 已經因為同樣的理由（觸控裝置右鍵事件放行給原生長按選字，見已知 Bug 記錄第 9 項）補進 bubble menu，不靠右鍵。
   - **抓到一個真的問題並修掉**：註解／腳注的 hover tooltip 文字寫死「右鍵可編輯或移除」，這句話對摸不到右鍵的使用者是錯誤資訊（雖然這個 tooltip 本身是滑鼠 hover 觸發、觸控使用者本來就看不到，但螢幕閱讀器/切換裝置使用者可能用滑鼠模擬操作看得到）。改成「右鍵，或選取文字後用格式列可編輯／移除」，跟 `StorytellerWysiwygSyntaxDrawer.tsx`（語法說明側欄）原本就正確並列兩條路徑的寫法一致。已用瀏覽器實測確認新文案正確渲染。
-- [ ] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾
+- [x] 表格 cell 選取：確認 ProseMirror table selection 機制跟一般 keyboard navigation 沒有互相干擾——2026-08-20 完成。
+  - **程式碼審查**：`markerParagraph.ts` 的 Backspace handler 一開始就檢查 `!selection.empty` 才處理，`CellSelection`（跨多個儲存格選取）本身 `.empty` 是 `false`，會直接 `return false` 交給 `tableEditing()` 自己的 `deleteCellSelection` 處理，不會被攔截；Enter handler 對 `CellSelection` 解析出來的 `$from.parent` 是 `tableCell`（不是 `paragraph`），一樣安全地 `return false` 不做任何事。Tab／Shift-Tab 是我們自己接的 `goToNextCell`，含 IME 組字期間暫停攔截。程式碼層面沒有互相干擾。
+  - **瀏覽器實測**：Tab／Shift-Tab 用真實按鍵測過，正確在 cell 之間移動且不吃掉文字。多選 cell 這件事（`CellSelection`）在這次測試環境下用真實鍵盤手勢（Shift+方向鍵在 cell 邊界跨儲存格）沒能穩定重現——跟這次連續 slash 選單修復時遇到的同一個已知限制一樣，`computer` 工具的合成鍵盤事件對「ProseMirror/第三方套件自己的預設 keymap 邏輯」不可靠，不是我們自己接的 command 才會這樣。改用兩個更直接的方式驗證：① 直接用 `CellSelection` 建構子建立一個真正跨兩個儲存格的選取並 dispatch，確認 `.selectedCell` decoration class 正確出現在兩個 `<td>` 上；② 直接呼叫 `deleteCellSelection(state, dispatch)`（`tableEditing()` 背後實際處理 Backspace 的函式）確認能正確清空選取儲存格的內容、選取狀態維持不變、不拋錯——這就是「Backspace 鍵真的按下去」最終會執行的程式碼路徑，等於間接驗證了鍵盤路徑本身沒問題，只是自動化工具沒辦法用合成事件觸發到它。
+  - **抓到一個真的問題並修掉**：`CellSelection` 選到的儲存格完全沒有對應的 CSS——`tableEditing()` 有正確加上 `.selectedCell` class，但全站沒有任何樣式規則吃這個 class，使用者選取多個儲存格時畫面上完全看不出來選了哪些格子。補上 `& td.selectedCell` 規則，跟圖片/表格 NodeSelection 用同一組 `var(--storyteller-selection)` token（半透明疊色，不搶走文字可讀性）。已用瀏覽器截圖＋`getComputedStyle` 確認新樣式正確套用。
 - [ ] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑
 - [x] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA——2026-08-19 已完成，見下方「對比度檢查結果」小節
 - [ ] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`
