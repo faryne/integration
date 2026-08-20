@@ -176,8 +176,13 @@ function SlashCommandList({
                 gap: 1,
                 width: "100%",
                 border: 0,
+                // Phase E 對比度檢查抓到：整塊實色 `selection` 背景疊上全對比度文字，
+                // 很多色系不夠 WCAG AA（見 storytellerComponentOverrides.ts 的
+                // `selectionStateLayer` 說明，跟右鍵選單/MuiAutocomplete 用同一招、
+                // 同一個 22% 數值——實測掃過的安全值）。這裡沒有 MUI theme 可以共用
+                // 那個 helper，直接用 `color-mix()` 內嵌同樣的邏輯。
                 bgcolor: selected
-                  ? "var(--storyteller-selection, rgba(25, 118, 210, 0.12))"
+                  ? "color-mix(in srgb, var(--storyteller-selection, #1976d2) 22%, transparent)"
                   : "transparent",
                 color: "inherit",
                 font: "inherit",

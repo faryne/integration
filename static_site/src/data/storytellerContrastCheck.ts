@@ -43,20 +43,22 @@ export function contrastRatio(hexA: string, hexB: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/**
- * MUI `createPalette` 在沒有明講 `contrastText` 時的自動決定邏輯（`getContrastText`）：
- * 用 `getContrastRatio(background, '#fff')` 是否 >= `contrastThreshold`（預設 3）
- * 決定要用深色字（`rgba(0, 0, 0, 0.87)`）還是白字（`#fff`）。MUI 的 `getContrastRatio`
- * 只吃 RGB 通道算亮度，會忽略 alpha（也就是說 MUI 自己的判斷邏輯把
- * `rgba(0,0,0,0.87)` 當成純黑 `#000000` 處理，這是 MUI 本身已知的簡化，不是這裡
- * 的近似誤差）——這裡刻意原樣重現這個邏輯，才能算出「MUI 實際上會選哪個顏色」。
- */
-const MUI_CONTRAST_THRESHOLD = 3;
-
-export function muiAutoContrastText(background: string): "#000000" | "#ffffff" {
-  return contrastRatio(background, "#ffffff") >= MUI_CONTRAST_THRESHOLD
-    ? "#000000"
-    : "#ffffff";
+/** 對應 CSS `color-mix(in srgb, foreground <percent>%, background)`——sRGB 色版
+ * 直接線性內插，跟瀏覽器對這個 CSS function 的實作邏輯一致。`storytellerComponentOverrides.ts`
+ * 的 `selectionStateLayer()`／`accentTonalBackground()` 都是拿這個技巧把飽和度較高
+ * 的強調色淡化，而不是整塊實色背景——這裡重現同一個公式，才能算出「畫面上實際
+ * 疊色完的顏色」，不是只測未疊色前的原始 token。 */
+export function compositeColor(
+  foreground: string,
+  background: string,
+  percent: number,
+): string {
+  const alpha = percent / 100;
+  const [fr, fg, fb] = hexToRgb(foreground);
+  const [br, bg, bb] = hexToRgb(background);
+  const mix = (f: number, b: number) => Math.round(f * alpha + b * (1 - alpha));
+  const toHex = (c: number) => c.toString(16).padStart(2, "0");
+  return `#${toHex(mix(fr, br))}${toHex(mix(fg, bg))}${toHex(mix(fb, bb))}`;
 }
 
 export type ContrastCategory = "text" | "button" | "menu-active" | "focus-ring";
@@ -152,29 +154,32 @@ export function checkStorytellerContrast(): ContrastCheckResult[] {
           required: 4.5,
         });
 
-        // 2. 按鈕：MUI `createTheme` 沒有明講 `primary.contrastText`，是自動算的
-        //    （見 muiAutoContrastText 說明）——實際檢查 MUI 選出來的字色在
-        //    accentMain 背景上是否真的達到 AA，而不是只信任 MUI 的內部判斷
-        //    （MUI 的判斷用 threshold 3，比 WCAG AA 文字要求的 4.5 寬鬆）。
+        // 2. 按鈕：原本 MuiButton contained 直接拿 accentMain 當實色背景，MUI
+        //    自動判斷 contrastText（threshold 3，比 WCAG AA 文字要求的 4.5 寬鬆）
+        //    常常兩種選擇都不夠格——2026-08-20 改成跟選單 active 同一招的淡色調
+        //    （`accentTonalBackground()`，accentMain 用 30% 疊在 surfaceRaised
+        //    上）＋固定用 textPrimary 當文字色，這裡驗證的是「畫面上實際疊色完
+        //    的樣子」，不是原本的實色背景。
         pushResult(results, {
           ...common,
           category: "button",
-          label: "MuiButton contained：contrastText / accentMain",
-          foreground: muiAutoContrastText(tokens.accentMain),
-          background: tokens.accentMain,
+          label: "MuiButton containedPrimary：textPrimary / 30% accentMain 疊 surfaceRaised",
+          foreground: tokens.textPrimary,
+          background: compositeColor(tokens.accentMain, tokens.surfaceRaised, 30),
           required: 4.5,
         });
 
-        // 3. menu active 狀態：MuiMenuItem `.Mui-selected` 只換背景色（見
-        //    storytellerComponentOverrides.ts），文字顏色沒有另外覆寫、維持
-        //    textPrimary——slash 選單選中項目的高亮背景也是同一個 selection
-        //    token（見 slashCommandExtension.tsx），同一組檢查涵蓋兩邊。
+        // 3. menu active 狀態：原本 MuiMenuItem `.Mui-selected` 直接拿 selection
+        //    當實色背景，textPrimary 疊上去常常不夠——2026-08-20 改成
+        //    `selectionStateLayer()`，selection 用 22% 疊在 surfaceOverlay 上
+        //    （state layer 概念），文字顏色不變。slash 選單選中項目背景、
+        //    MuiAutocomplete 選中項目都是同一招同一個 22%，這裡一組檢查涵蓋。
         pushResult(results, {
           ...common,
           category: "menu-active",
-          label: "textPrimary / selection（選單 active 背景）",
+          label: "textPrimary / 22% selection 疊 surfaceOverlay",
           foreground: tokens.textPrimary,
-          background: tokens.selection,
+          background: compositeColor(tokens.selection, tokens.surfaceOverlay, 22),
           required: 4.5,
         });
 

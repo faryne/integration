@@ -92,13 +92,13 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
 新增 [`storytellerContrastCheck.ts`](../../static_site/src/data/storytellerContrastCheck.ts)（純函式：WCAG 相對亮度/對比度公式）＋ [`storytellerContrastCheck.test.ts`](../../static_site/src/data/storytellerContrastCheck.test.ts)（`npx vitest run` 自動跑），涵蓋 11 色系 × light/dark ×（無節慶／中秋節）＝44 組 semantic token 組合，每組檢查四類：
 
 - **文字/背景**（`textPrimary`／`textMuted` 對三種 surface）：**440 個檢查裡這類零失敗**，全部組合過 WCAG AA（4.5:1）。
-- **按鈕**（MUI `contrastText` 自動判斷 vs `accentMain`）：大量失敗。Root cause：MUI 沒有明講 `primary.contrastText` 時用 `contrastThreshold`（預設 3）自動選黑字/白字，比 WCAG AA 文字要求的 4.5:1 寬鬆；`accentMain` 是中亮度品牌色，很多色系兩種選擇都不夠格。
-- **選單 active 狀態**（`textPrimary` 對 `selection`）：同樣大量失敗，原因類似——`selection`（`brassBright`）也是中亮度強調色，全彩文字疊上去對比常常不夠。
+- **按鈕**（MUI `contrastText` 自動判斷 vs `accentMain`）：✅ **已修（2026-08-20）**。原本大量失敗：MUI 沒有明講 `primary.contrastText` 時用 `contrastThreshold`（預設 3）自動選黑字/白字，比 WCAG AA 文字要求的 4.5:1 寬鬆；`accentMain` 是中亮度品牌色，很多色系兩種選擇都不夠格——這不是換個判斷邏輯能解的，是同一塊背景色沒辦法同時跟純黑、純白都達到 4.5:1，色彩學的硬限制。也試過乾脆拿 `accentMain` 本身當文字色（放棄整塊實色背景），結果發現這條路也不通：`accentMain` 疊在一般 surface 上當文字，22 組色系裡一樣有不過關的（bronze 淺色模式只有 2.66:1）。真正的解法是**不要整塊實色背景**：`storytellerComponentOverrides.ts` 新增 `accentTonalBackground()`，`MuiButton` 的 `containedPrimary` 改成 `color-mix()` 把 `accentMain` 用 30% 疊在 `surfaceRaised` 上（實測掃過 10%~40%，30% worst case 6.18:1，餘裕充足），文字固定用已證實「全部色系都過關」的 `textPrimary`，不是 `accentMain` 本身。視覺上是淡色調的「tonal」按鈕，不是原本飽和度很高的實色填滿。
+- **選單 active 狀態**（`textPrimary` 對 `selection`）：✅ **已修（2026-08-20）**。原因跟按鈕類似——`selection`（`brassBright`）也是中亮度強調色，整塊實色背景 + 全彩文字對比常常不夠。同一招：`selectionStateLayer()` 用 `color-mix()` 把 `selection` 用 22% 疊在 `surfaceOverlay` 上（state layer 概念，worst case 6.56:1），不是整塊實色填滿；文字顏色不變。套用範圍：`MuiMenuItem` `.Mui-selected`（涵蓋右鍵選單／帳號選單等所有 MUI Menu）、`MuiAutocomplete` 的 `[aria-selected="true"]`、slash 選單自己手刻的選中狀態（`slashCommandExtension.tsx` 用同樣的 `color-mix()` 邏輯，沒有共用的 MUI theme 可以呼叫 helper，直接內嵌）。
 - **focus ring**：
   - **已修**：中秋節 overlay 的 `focusRing` 原本淺色/深色模式共用同一組固定色值（`#f5cc6e`），淺色模式下對比度只有 1.0~1.3（實質看不見）——Root cause 是這組色值明顯只用深色模式肉眼看過，沒檢查過淺色模式。`storytellerSeasonalTheme.ts` 的 `overlayTokens` 改成分 `light`/`dark` 兩份，`mergeStorytellerSeasonalTokens()` 多一個 `mode` 參數；淺色模式的 `focusRing` 換成 `#6b4a1f`（11 色系淺色模式全部背景 worst-case 對比度 4.61:1，超過要求的 3:1 有餘裕）。已在瀏覽器驗證（`getComputedStyle` 讀 `--storyteller-focus-ring` 精確等於新值）。
-  - **未修（已知）**：少數色系（brass／verdigris／bronze／malachite）淺色模式的 focusRing 沿用 `accentHover`，跟淺色 surface 對比不到 3:1，屬於下面「未修」範圍的一部分。
+  - **未修（已知，範圍很小）**：少數色系（brass／verdigris／bronze／malachite）淺色模式的 focusRing 沿用 `accentHover`，跟淺色 surface 對比不到 3:1——性質跟按鈕/選單不一樣，這是單一 token 數值需要重新選色（不是「整塊實色背景」這種用法問題），故意留到之後再處理。
 
-**未修的部分為什麼先卡住，不直接動手**：按鈕跟選單 active 這兩類要修，本質是「幫 11 組手動調過色相/明度的色系，各自另外設計一組能同時滿足『達到 AA』又『視覺上還算搭』的按鈕/選單配色」——不是改一兩個數字的 bug fix，是會實際改變每個色系觀感的視覺設計決策，牽涉到現有「HSL 色相旋轉＋降飽和度」生成邏輯要不要跟著調整。跟 Faryne 討論方向後再動，目前用 `storytellerContrastCheck.test.ts` 卡住已知失敗數量（75 筆）當防護網——之後任何新增的失敗（不管是這兩類裡新增，還是別的類別出現失敗）都會讓測試立刻紅燈，不會被悄悄蓋過去。
+**按鈕／選單 active 的驗證**：改動前後都跑過 `storytellerContrastCheck.test.ts`——已知失敗數量從 75 筆降到 10 筆（只剩上面的 focus ring 未修部分），按鈕跟選單 active 兩個類別在全部 44 組色系＋模式＋節慶組合下**零失敗**。瀏覽器實測（真實登入頁面，非 Playground）：`getComputedStyle` 確認「建立創作專案」按鈕背景是 `color-mix()` 疊色後的淡褐色（不是原本飽和度高的實色）、文字是 `textPrimary` 對應的深棕色；下拉選單選中項目背景讀出 `color(srgb ... / 0.22)`——精確等於 `selectionStateLayer(22)` 的 22% alpha，跟程式碼設計完全吻合；console 無新增錯誤。這兩類**不用重新設計 11 組色系的 token 數值**就解決了，跟原本評估「要嘛調色系、要嘛換視覺語言」的預期不同——實際做法是後者（換掉「整塊實色背景」這個用法本身），影響範圍小很多。
 
 ## 目前可觀察到的視覺變化（2026-08-18，給 Faryne 參考）
 

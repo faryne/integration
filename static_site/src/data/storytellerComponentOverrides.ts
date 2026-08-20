@@ -6,6 +6,43 @@ const v = (key: keyof typeof STORYTELLER_CSS_VARIABLE_NAMES) =>
   `var(${STORYTELLER_CSS_VARIABLE_NAMES[key]})`;
 
 /**
+ * Phase E 對比度檢查抓到的問題：選單「選中項目」原本直接拿 `selection` token
+ * 當實色背景、上面疊 `textPrimary`——`selection` 是中亮度的強調色，拿來當
+ * 「選取狀態的高亮邊框/outline」（圖片、表格 NodeSelection）對比度沒問題，
+ * 但整塊實色背景 + 全對比度文字這個用法，22 組色系有一半以上不達 WCAG AA
+ * （4.5:1），是色彩學的硬限制，不是選錯顏色。
+ *
+ * 改成「半透明色層蓋在原本背景上」（Material Design 的 state layer 概念，很多
+ * 產品的選單選中態其實都是這樣做），不用重新設計 11 組色系的 `selection` 數值：
+ * `color-mix()` 把 `selection` 跟 `surfaceOverlay` 混出一個貼近原本背景亮度、
+ * 只帶一點強調色的淡色調，文字顏色完全不用動。22% 是實測掃過 10%~50% 找出來的
+ * 安全值（`npx vitest run` 對比度檢查跑過全部色系＋中秋節 overlay，worst case
+ * 6.56:1，比 4.5:1 要求有充足餘裕；35% 以上開始有色系會低於 4.5:1）。
+ */
+function selectionStateLayer(percent: number) {
+  return `color-mix(in srgb, ${v("selection")} ${percent}%, transparent)`;
+}
+
+/**
+ * Phase E 對比度檢查也抓到 `MuiButton` `contained` 的另一半問題：MUI 沒有明講
+ * `primary.contrastText` 時用 `contrastThreshold`（預設 3）自動選黑字/白字，門檻
+ * 比 WCAG AA 文字要求的 4.5:1 寬鬆，`accentMain` 是中亮度品牌色，很多色系兩種
+ * 選擇都不夠格——這不是換個判斷邏輯能解的，是同一塊背景色沒辦法同時跟純黑、純白
+ * 都達到 4.5:1，色彩學的硬限制。
+ *
+ * 改成跟選單 active 狀態同一招：不用整塊實色 `accentMain` 背景，改成淡色調
+ * （`accentMain` 用 `color-mix()` 疊一點在 `surfaceRaised` 上）＋固定用
+ * `textPrimary` 當文字色（不是 `accentMain` 本身——實測發現 `accentMain` 拿來
+ * 當文字疊在一般 surface 上，也不是每個色系都過 4.5:1，例如 bronze 淺色模式只有
+ * 2.66:1；只有已經證實「22 組色系 × 三種 surface 全部過關」的 `textPrimary`
+ * 才穩）。30% 是實測掃過 10%~40% 找出來的安全值，worst case 6.18:1，比 4.5:1
+ * 要求有餘裕，視覺上仍看得出是「調過色」的按鈕，不是普通中性按鈕。
+ */
+function accentTonalBackground(percent: number) {
+  return `color-mix(in srgb, ${v("accentMain")} ${percent}%, ${v("surfaceRaised")})`;
+}
+
+/**
  * Phase B（視覺主題規劃）第一批：Dialog／Menu／Tooltip／Button／IconButton 的
  * MUI `components` override，直接吃 Phase A 曝露的 `--storyteller-*` CSS
  * variable，不需要跟著 `theme`／`[mode, palette]` 重新產生——CSS var 在
@@ -43,8 +80,8 @@ export function storytellerComponentOverrides(): Components<Theme> {
       styleOverrides: {
         root: {
           "&:hover": { backgroundColor: v("surfaceRaised") },
-          "&.Mui-selected": { backgroundColor: v("selection") },
-          "&.Mui-selected:hover": { backgroundColor: v("selection") },
+          "&.Mui-selected": { backgroundColor: selectionStateLayer(22) },
+          "&.Mui-selected:hover": { backgroundColor: selectionStateLayer(22) },
         },
       },
     },
@@ -101,6 +138,30 @@ export function storytellerComponentOverrides(): Components<Theme> {
           "&.Mui-focusVisible": {
             outline: `2px solid ${v("focusRing")}`,
             outlineOffset: 2,
+          },
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        // 只改 containedPrimary（`variant="contained"` 沒指定 `color` 時的預設，
+        // 也是 `color="primary"` 明講時的 slot）——`accentMain` 是 `primary.main`，
+        // 這是這次對比度問題的來源。`containedSecondary`／`containedError` 等
+        // 沒有一起改：這次對比度檢查只驗證過 primary，範圍故意卡住不擴大。
+        containedPrimary: {
+          backgroundColor: accentTonalBackground(30),
+          color: v("textPrimary"),
+          boxShadow: "none",
+          "&:hover": {
+            backgroundColor: accentTonalBackground(40),
+            boxShadow: "none",
+          },
+          "&:active": {
+            backgroundColor: accentTonalBackground(48),
+          },
+          "&.Mui-disabled": {
+            backgroundColor: accentTonalBackground(12),
+            color: v("textMuted"),
           },
         },
       },
@@ -182,7 +243,9 @@ export function storytellerComponentOverrides(): Components<Theme> {
           border: `1px solid ${v("borderSubtle")}`,
         },
         option: {
-          '&[aria-selected="true"]': { backgroundColor: v("selection") },
+          '&[aria-selected="true"]': {
+            backgroundColor: selectionStateLayer(22),
+          },
           "&:hover": { backgroundColor: v("surfaceRaised") },
         },
       },
