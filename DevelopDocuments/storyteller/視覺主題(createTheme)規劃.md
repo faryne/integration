@@ -81,7 +81,7 @@ Faryne 確認後才開始動工。每個 Phase 完成一個項目就打勾，一
   - **抓到一個真的問題並修掉**：`CellSelection` 選到的儲存格完全沒有對應的 CSS——`tableEditing()` 有正確加上 `.selectedCell` class，但全站沒有任何樣式規則吃這個 class，使用者選取多個儲存格時畫面上完全看不出來選了哪些格子。補上 `& td.selectedCell` 規則，跟圖片/表格 NodeSelection 用同一組 `var(--storyteller-selection)` token（半透明疊色，不搶走文字可讀性）。已用瀏覽器截圖＋`getComputedStyle` 確認新樣式正確套用。
 - [x] 圖片版面控制：NodeSelection、圖片設定 dialog、右鍵入口都要有鍵盤可達的替代路徑——2026-08-20 完成，純審查＋瀏覽器實測，**沒有改任何程式碼**：圖片節點的「圖片設定」／「移除資產」`IconButton` 本來就是一直可見（不是 hover 才出現）、`tabIndex:0`、有 `aria-label` 的真正 `<button>`，不是只能靠右鍵或雙擊才能觸發。用真實 Tab 鍵測過：游標在圖片前一行文字時按 Tab，直接、正確地依序停在「圖片設定」「移除資產」兩個按鈕上（一般會擔心 contenteditable 裡的巢狀互動元件會被瀏覽器當成同一個 tab stop 跳過，但這個節點是 `contentEditable={false}` 的獨立小島，瀏覽器對這種島內的真實互動元件維持正常 tab 順序，不受外層 contenteditable 影響）；按鈕本身用滑鼠點擊（模擬鍵盤 Enter 觸發的等效行為）能正確開啟「圖片設定」對話框，對話框裡的「版面」下拉選單已經涵蓋右鍵選單裡 4 個 layout quick action 的內容，等於右鍵能做的事都能從這裡鍵盤操作完成。NodeSelection 本身（選到圖片節點）也不需要額外程式碼——ProseMirror 對 `atom:true` 節點的預設行為是方向鍵跨過去就自動轉成 NodeSelection，這是鍵盤原生就有的能力，不是滑鼠專屬。
 - [x] 寫一支對比度檢查 script，跑過全部色系組合（11 色系 × light/dark，若 Phase D 已完成則含節慶 overlay），檢查文字/背景、按鈕、menu active 狀態、focus ring 至少過 WCAG AA——2026-08-19 已完成，見下方「對比度檢查結果」小節
-- [ ] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`
+- [x] 對 slash／bubble／context menu 補齊明確的 `aria-label`／`role`——2026-08-20 完成。盤點下來 bubble menu 在 Phase E 第二項已經補過（`role="toolbar"` `aria-label="文字格式工具列"`＋色票 popover），這次補剩下兩個：slash 選單的 `role="listbox"` 補上 `aria-label="斜線指令選單"`；右鍵選單是 MUI `<Menu>`，`aria-label` 直接放在 `<Menu>` 上不會轉送到實際 `role="menu"` 的 `MenuList` 元素，改用 `MenuListProps={{ "aria-label": "編輯器右鍵選單" }}` 才會生效。已用瀏覽器 `getAttribute('aria-label')` 逐一確認三個選單都正確讀到對應文字，`tsc --noEmit`／`vitest` 45/45 通過，console 無新增錯誤。
 - [ ] 驗證：跑過對比度檢查 script 沒有異常；鍵盤（不用滑鼠/觸控）走過一次「開始寫作 → 套用格式 → 插入表格/圖片 → 存檔」的完整流程確認可行
 
 #### 對比度檢查結果（2026-08-19）

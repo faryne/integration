@@ -110,6 +110,7 @@ function SlashCommandList({
     <Paper
       elevation={4}
       role="listbox"
+      aria-label="斜線指令選單"
       id={listboxId}
       sx={{
         // z-index 不能設在這裡：`Paper` 預設 `position:static`，CSS 規定

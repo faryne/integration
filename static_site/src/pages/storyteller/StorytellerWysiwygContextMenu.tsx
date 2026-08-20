@@ -159,6 +159,10 @@ export function StorytellerWysiwygContextMenu({
       anchorPosition={
         position ? { top: position.y, left: position.x } : undefined
       }
+      // MUI `<Menu>` 自己不會幫實際持有 `role="menu"` 的 `MenuList` 加上可辨識的
+      // 名字——`aria-label` 直接放在 `<Menu>` 上不會轉送到那個元素，要透過
+      // `MenuListProps` 才行。
+      MenuListProps={{ "aria-label": "編輯器右鍵選單" }}
     >
       {hasAssetImage
         ? [
