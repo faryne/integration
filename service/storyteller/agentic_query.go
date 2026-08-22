@@ -17,7 +17,12 @@ type AgenticQueryOutput struct {
 	// Steps 是 agent 這輪對話呼叫過哪些工具、各自結果——之後 Phase 6 前端要顯示
 	// 「正在呼叫哪個工具」的過程提示，直接讀這份資料即可。
 	Steps []AgentLoopStep
-	Usage *AIProviderUsage
+	// Proposals 是這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具
+	// 呼叫（見 CaptureWriteToolsAsProposals）。前端要把某個 Proposal 的
+	// ToolName／Arguments 原樣送回 ApplyAgentProposal 才會真的落地；使用者不理會
+	// 的提案就讓它留在這輪對話歷史裡，不會自動生效、也不會過期需要清理。
+	Proposals []AgentProposal
+	Usage     *AIProviderUsage
 }
 
 // RunStoryAgenticQuery 是 Phase 4 把 Phase 3 雛型收斂成的第一個正式可呼叫功能：
@@ -26,19 +31,22 @@ type AgenticQueryOutput struct {
 // RunAgent／RunLoreAgent：那組是單輪、無工具呼叫能力的「改寫/擴寫/翻譯」skill
 // 式功能，這個是多輪、會自己查資料的問答功能，兩者刻意分開、互不影響）。
 //
-// 這輪刻意只開放唯讀工具（ReadOnlyStorytellerTools），並用 ScopeToolsToProject
-// 把每個工具呼叫都鎖在 projectPublicID 底下：Phase 5 的「提案 -> diff -> 確認 ->
-// revert」寫入安全機制還沒做，在那之前讓 agent 能自主呼叫寫入/刪除工具是不負責任
-// 的，等 Phase 5 做完再開放寫入工具給這個入口。
+// Phase 5 起，寫入類工具也會被列進去（透過 CaptureWriteToolsAsProposals 包一層，
+// 呼叫時不會真的執行，只會被記錄成 Proposals），讓 agent 可以規劃「應該怎麼改」，
+// 但實際落地一定要等使用者呼叫 ApplyAgentProposal 明確確認——ScopeToolsToProject
+// 仍然把每個工具呼叫（不管唯讀還是寫入提案）都鎖在 projectPublicID 底下。
 func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string) (*AgenticQueryOutput, error) {
-	tools := ScopeToolsToProject(ReadOnlyStorytellerTools(), projectPublicID)
-	return runStoryAgenticQuery(ctx, s.repo, NewAIProvider, tools, userID, projectPublicID, storyPublicID, agentID, userPrompt)
+	writeToolNames := WriteStorytellerToolNames()
+	tools := StorytellerToolRegistry().All()
+	tools = CaptureWriteToolsAsProposals(tools, writeToolNames)
+	tools = ScopeToolsToProject(tools, projectPublicID)
+	return runStoryAgenticQuery(ctx, s.repo, NewAIProvider, tools, writeToolNames, userID, projectPublicID, storyPublicID, agentID, userPrompt)
 }
 
 // runStoryAgenticQuery 是 RunStoryAgenticQuery 拆出來、可注入 repo／provider
 // factory／tools 的版本，比照既有 runAgent 的測試模式（agentRunRepository 這個
 // interface 已經涵蓋這裡需要的全部 5 個方法，不用另外定義一個新 interface）。
-func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string) (*AgenticQueryOutput, error) {
+func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string) (*AgenticQueryOutput, error) {
 	if strings.TrimSpace(userPrompt) == "" {
 		return nil, errAgenticQueryEmptyPrompt
 	}
@@ -98,6 +106,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		ModelName: agent.ModelName,
 		Result:    loopResult.FinalText,
 		Steps:     loopResult.Steps,
+		Proposals: ExtractProposals(loopResult, writeToolNames),
 		Usage:     loopResult.Usage,
 	}
 	chat, messages := buildAgenticQueryChat(userID, story.ID, *agent, userPrompt, output)
@@ -120,13 +129,22 @@ func (e agenticQueryError) Error() string { return string(e) }
 func agenticQuerySystemPrompt(agent storytellerModel.Agent, projectPublicID string) string {
 	base := strings.TrimSpace(`You are Storyteller's writing assistant, running in agentic mode: you can call
 read-only tools (storyteller_get_*, storyteller_list_*) to look up the user's stories, lore/worldbuilding
-entries, and assets before answering, instead of only seeing what's pasted into this conversation.
+entries, and assets before answering, instead of only seeing what's pasted into this conversation. You can
+also call write tools (e.g. storyteller_upsert_story, storyteller_delete_story, storyteller_revert_story) to
+propose a change — but these calls do NOT take effect immediately. Each write call is intercepted and recorded
+as a pending proposal for the user to review and explicitly confirm; you will get back a message saying so,
+not a confirmation that the change happened.
 
 Rules:
 - Follow the purpose, tone, and constraints configured for this Agent.
-- Only call tools when you actually need information you don't already have; don't call a tool "just in
-  case" if the user's question doesn't require it.
+- Only call tools when you actually need information you don't already have, or when the user is asking you
+  to make a concrete change; don't call a tool "just in case" if it isn't needed.
 - Every tool call must use the project_public_id given below — you have no access to any other project.
+- When proposing a write, pass the FULL intended final state as the tool arguments (e.g. for
+  storyteller_upsert_story, include the complete updated content, not just a diff or a description of the
+  change) — the user will see exactly what you pass as the proposed new state.
+- After proposing one or more writes, tell the user in your final answer what you've prepared for them to
+  review; never claim a write has already been applied.
 - If a tool call fails or returns unexpected data, explain what you tried and continue with the best answer
   you can give, don't just give up silently.
 - Answer in the language the user wrote in.`)
@@ -169,10 +187,19 @@ func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
 		Name  string `json:"name"`
 		Error string `json:"error,omitempty"`
 	}
+	type proposalLogEntry struct {
+		ToolCallID string                 `json:"tool_call_id"`
+		ToolName   string                 `json:"tool_name"`
+		Arguments  map[string]interface{} `json:"arguments"`
+	}
 	type queryMetadata struct {
 		Mode      string             `json:"mode"`
 		StepCount int                `json:"step_count"`
 		ToolCalls []toolCallLogEntry `json:"tool_calls,omitempty"`
+		// Proposals 存下來讓聊天歷史重新載入時，前端還看得到這輪對話當初提出過
+		// 哪些待確認的寫入提案（不代表還沒被套用或還沒過期，前端要自己比對這篇
+		// 故事/設定集目前的版本判斷這個提案是否還有意義）。
+		Proposals []proposalLogEntry `json:"proposals,omitempty"`
 	}
 	meta := queryMetadata{Mode: "agentic_query", StepCount: len(output.Steps)}
 	for _, step := range output.Steps {
@@ -183,6 +210,13 @@ func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
 			}
 			meta.ToolCalls = append(meta.ToolCalls, entry)
 		}
+	}
+	for _, proposal := range output.Proposals {
+		meta.Proposals = append(meta.Proposals, proposalLogEntry{
+			ToolCallID: proposal.ToolCallID,
+			ToolName:   proposal.ToolName,
+			Arguments:  proposal.Arguments,
+		})
 	}
 	body, err := json.Marshal(meta)
 	if err != nil {

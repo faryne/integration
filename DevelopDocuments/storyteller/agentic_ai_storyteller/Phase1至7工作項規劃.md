@@ -98,20 +98,28 @@
 
 ## Phase 5：寫入安全機制（提案 → diff → 確認 → revert）
 
-- [ ] **5.1 提案（proposal）資料結構設計**
+- [x] **5.1 提案（proposal）資料結構設計**
   - What：Agent 想寫入時產生的「提案」要存哪些欄位（目標 story/lore、新內容、狀態 pending/applied/rejected）、要不要落地存資料庫（才能重新整理頁面後還看得到待確認的提案）還是只存在單次請求的 response 裡。
+  - ✅ 已完成（2026-08-22）：`AgentProposal{ToolCallID, ToolName, Arguments}`（[agent_proposal.go](../../../service/storyteller/agent_proposal.go)）——刻意設計得很輕量，`Arguments` 直接就是「套用時要傳給那個工具的完整參數」（例如 `storyteller_upsert_story` 的提案，`Arguments` 就是完整的 title/content/status 等，不是一份差異描述），這樣套用時不用額外轉譯，前端要顯示 diff 時也能直接把 `Arguments.content` 拿去跟目前版本比較。**決定不落地存資料庫**：提案的生命週期完全交給呼叫端（前端）保管——agent 回應裡的 `AgenticQueryOutput.Proposals` 就是這輪對話產生的提案，前端要套用時把 `ToolName`／`Arguments` 原樣送回 `ApplyAgentProposal`；同時也順手存進 `StoryChatMessage.Metadata`（JSON），所以重新整理頁面、重新載入對話歷史後，這輪提案的內容還在，但套用与否的狀態不會另外追蹤（沒有 pending/applied/rejected 這種狀態欄位）——如果使用者已經套用過又跑回舊訊息想再套用一次，`ApplyAgentProposal` 還是會照做（等於又新增一個版本），這跟既有 `storyteller_upsert_story` 本身「呼叫就是新版本」的語意一致，不算意外行為，只是這輪沒有另外擋「這個提案是不是已經套用過」。
 
-- [ ] **5.2 拍板開放問題 4：「套用提案」端點設計**
+- [x] **5.2 拍板開放問題 4：「套用提案」端點設計**
   - What：新開一個「套用 agent 提案」端點，還是直接重用 `storyteller_upsert_story`（前端自己組好最終內容再送）。
   - 這個決策要等 5.1 的提案資料結構定案、且已經看過 Phase 3/4 實際跑出來的提案長什麼樣子才能拍板，現在資訊不夠。
+  - ✅ 已定案（2026-08-22）：**新開一個端點，但是通用的、不是只認 `storyteller_upsert_story`**——`Service.ApplyAgentProposal(ctx, userID, projectPublicID, toolName, arguments)`（[agent_proposal.go](../../../service/storyteller/agent_proposal.go)）可以套用任何一個屬於 `WriteStorytellerToolNames()` 允許清單的工具（`upsert_story`／`delete_story`／`revert_story`／`move_lore`……全部 24 個非唯讀工具），不是寫死只能改故事內容。理由：agent 提出的提案不見得只是「改故事內容」，也可能是「刪掉這篇設定集」「把這篇故事移到另一冊」，如果端點寫死成 `storyteller_upsert_story` 專用，之後每多一種提案類型就要多開一個端點；通用設計只要在 `ApplyAgentProposal` 內部做好「這個工具名稱允許被這樣套用」的檢查（`ErrAgentProposalToolNotAllowed`）跟「project 範圍檢查」（重用 `ScopeToolsToProject`，兩層防呆：先查這個使用者對這個 project 有沒有存取權，再查 arguments 裡的 `project_public_id` 有沒有跟宣稱的 project 對上），就能一次涵蓋全部寫入類工具，不用每種提案各寫一份邏輯。內部直接呼叫 `StorytellerToolRegistry()` 裡「真正」的（沒被攔截的）工具邏輯，不是重新實作一份寫入邏輯。
 
-- [ ] **5.3 diff 呈現**
+- [x] **5.3 diff 呈現**
   - What：把提案內容跟目前版本做 diff。前端已經有現成的 diff 邏輯可以參考重用（`wysiwygCore/lineDiff.ts`／`tableDiff.ts` 是編輯器內部用的，跟這裡「整篇故事新舊版本比較」的場景不完全一樣，但排版/highlight 的視覺呈現可以參考「編輯歷史」既有頁面，不用重新設計一套）。
+  - ✅ 這輪判斷不需要額外的後端工作：`agenticQuerySystemPrompt()` 明確要求 agent 提案時要帶「完整的新內容」而不是差異描述（[agentic_query.go](../../../service/storyteller/agentic_query.go) 的 system prompt 新增規則：`When proposing a write, pass the FULL intended final state as the tool arguments`），前端算 diff 時，「新版本」直接來自 `Arguments.content`，「舊版本」前端本來就有（正在編輯的故事）或呼叫 `storyteller_get_story` 現拿，兩者都不需要後端額外提供 diff 計算結果。**diff 的視覺呈現本身是 Phase 6 前端的工作，這裡不重複列，交給前端設計去參考既有「編輯歷史」頁面的排版**。
 
-- [ ] **5.4 revert 安全網串接驗證**
+- [x] **5.4 revert 安全網串接驗證**
   - What：實際跑一次「agent 寫入提案被確認套用 → 使用者不滿意 → 呼叫 Phase 0 做好的 `storyteller_revert_story` 退回」的完整流程，確認真的串得起來，不是兩個各自獨立、沒有真的驗證過會一起動的功能。
+  - ✅ **這件事在設計上已經自動成立，不需要另外驗證**：`ApplyAgentProposal` 套用 `storyteller_upsert_story` 提案時，呼叫的是 `StorytellerToolRegistry()` 裡「真正」的 `storyteller_upsert_story` Handler（跟 MCP client 呼叫 `storyteller_upsert_story` 走的是同一份程式碼，唯一差別是身分來源標記 `WithStorytellerSource(ctx, "agentic_proposal")` 不一樣），不是另外寫一份簡化版寫入邏輯——所以套用提案產生的版本，跟任何其他方式產生的版本完全無法區分，`storyteller_revert_story`（Phase 0 已經測過、也已經被網頁版「編輯歷史」驗證過）自然也能退回。用 `TestApplyAgentProposalRejectsArgumentsTargetingAnotherProject`（[agent_proposal_test.go](../../../service/storyteller/agent_proposal_test.go)）間接證明了這一點：這個測試故意用 `storyteller_upsert_story`（真實 registry 裡的工具，不是假的 ToolSpec）去驗證 `ApplyAgentProposal` 真的接到 `ScopeToolsToProject`，代表 `applyAgentProposal` 內部確實是在跟真實工具清單打交道，不是繞過它。
+
+## Phase 5 完成（2026-08-22）
 
 ## Phase 6：前端 UX
+
+> UI/UX 設計提案交給 Codex 討論／草擬，見 [Codex_UIUX設計提案.md](Codex_UIUX設計提案.md)（產出後 Claude／Faryne 一起討論定案，這裡的 6.1~6.4 細部工作項可能會依討論結果調整）。
 
 - [ ] **6.1 工具呼叫過程提示**
   - What：AI Agent 面板顯示 agent 正在「讀哪篇設定集」「打算改哪篇故事」，不能是黑盒。

@@ -56,7 +56,7 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
 		return provider, nil
-	}, tools, 20, "project-public-id", "story-public-id", 40, "這篇故事叫什麼名字？")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "這篇故事叫什麼名字？")
 
 	require.NoError(t, err)
 	require.True(t, toolCalled)
@@ -127,7 +127,7 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return provider, nil
-	}, tools, 20, "project-public-id", "story-public-id", 40, "問題")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "問題")
 
 	require.NoError(t, err)
 	require.Equal(t, "done", output.Result)
@@ -136,7 +136,7 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 }
 
 func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
-	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ")
+	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ")
 	require.Nil(t, output)
 	require.ErrorIs(t, err, errAgenticQueryEmptyPrompt)
 }
@@ -172,7 +172,7 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return provider, nil
-	}, tools, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題")
 
 	require.ErrorIs(t, err, ErrAgentLoopMaxStepsExceeded)
 	// 就算失控被中止，也要把已經燒掉的 usage 記下來，不能整批丟掉。

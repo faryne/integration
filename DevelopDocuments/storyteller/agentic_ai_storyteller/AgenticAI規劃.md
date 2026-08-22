@@ -111,6 +111,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 - What：Agent 要修改內容時不直接寫入，先產生「提案」；前端跟目前版本做 diff 顯示；使用者確認後才真的呼叫寫入工具；就算確認後才發現不對，Phase 0 補的 `storyteller_revert_story`/`storyteller_revert_lore` 是安全網。
 - 待決（開放問題 4）：「套用提案」要新開一個端點，還是直接重用 `storyteller_upsert_story`，前端自己組好最終內容再送——等 Phase 4 的 orchestration 定型、實際看到提案資料長什麼樣子再拍板，現在資訊不夠沒辦法先決定。
+- **2026-08-22 已完成（後端）／已定案（開放問題 4）**：新開一個通用端點 `Service.ApplyAgentProposal()`，可以套用任何允許清單內的寫入工具（不是寫死只認 `storyteller_upsert_story`），內部直接呼叫 registry 裡「真正」的工具邏輯，跟 revert 安全網天生就是同一套程式碼、不用另外驗證會不會兜不起來。`RunStoryAgenticQuery` 現在會把寫入類工具也列進 agent 可呼叫的清單，但呼叫時被攔截、只記錄成 `Proposals`，不會真的執行。**Diff 呈現本身留給 Phase 6 前端**，後端已確保提案 `Arguments` 帶的是完整新內容（不是差異描述），前端算 diff 不需要後端額外支援。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 5.1~5.4。
 
 ### Phase 6：前端 UX
 
