@@ -78,7 +78,9 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 **已定案（開放問題 6）**：不直接跳去做 provider tool-calling，先把 MCP 這層原本就該有、但沒做的讀寫能力補齊，當作之後 AAS 唯一要依賴的底層，也當作「project 範圍限縮」這個設計怎麼落到 tool handler 裡的第一個實驗場。
 
-詳細工作項、分工（Claude／Codex）、驗證方式見獨立文件：[MCP核心補強工作項_2026-08-22.md](MCP核心補強工作項_2026-08-22.md)。涵蓋 `storyteller_revert_story`／`storyteller_revert_lore`、`storyteller_upsert_story` 補 `volume_public_id`、新增 `MoveStory` service 方法＋`storyteller_move_story` 工具。
+詳細工作項、分工（Claude／Codex）、驗證方式見獨立文件：[MCP核心補強工作項_2026-08-22.md](MCP核心補強工作項_2026-08-22.md)。涵蓋 `storyteller_revert_story`／`storyteller_revert_lore`、`storyteller_upsert_story` 補 `volume_public_id`、新增 `MoveStory` service 方法＋`storyteller_move_story` 工具。**2026-08-22 已完成**（commit `4b85820`）。
+
+> **Phase 1~7 的展開工作項**（checkbox、What/Why/Where/How）見獨立文件：[Phase1至7工作項規劃.md](Phase1至7工作項規劃.md)。以下每個 Phase 只保留決策摘要，執行細節以那份文件為準，兩邊如果之後對不上以工作項文件的最新狀態為準（決策本身變了才回來改這裡）。
 
 ### Phase 1：Tool Registry 抽象層
 
