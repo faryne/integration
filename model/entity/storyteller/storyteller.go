@@ -948,6 +948,65 @@ type AgentRunResponse struct {
 	FinishReason string         `json:"finish_reason,omitempty"`
 }
 
+// AgenticQueryRequest 是 AAS 聊天視窗送出一則需求的請求體。ProviderAPIKeyID／
+// ModelName 都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定
+// 的 key／model（可以跟 Agent 記錄的 provider 不同）——這是聊天視窗「切換 API
+// Key」功能的請求介面。
+type AgenticQueryRequest struct {
+	UserPrompt       string  `json:"user_prompt"`
+	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
+	ModelName        string  `json:"model_name,omitempty"`
+}
+
+// AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，
+// 也可能是被攔截成提案的寫入類工具）。
+type AgenticToolCallOutput struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments"`
+}
+
+// AgenticToolResultOutput 是單一次工具呼叫的結果；Error 非空代表這次呼叫失敗，
+// Content 是給前端顯示的錯誤說明（同一份文字也餵回去給模型看過）。
+type AgenticToolResultOutput struct {
+	Content string `json:"content"`
+	Error   string `json:"error,omitempty"`
+}
+
+// AgenticStepOutput 是 agent loop 裡的一輪：這輪要求呼叫哪些工具、各自的結果
+// （ToolCalls／Results 用同一個索引對應）。
+type AgenticStepOutput struct {
+	ToolCalls []AgenticToolCallOutput   `json:"tool_calls"`
+	Results   []AgenticToolResultOutput `json:"results"`
+}
+
+// AgenticProposalOutput 是 agent 這輪對話裡想呼叫、但被攔下來、還沒真的執行的
+// 寫入類工具呼叫。前端要套用時把 ToolName／Arguments 原樣送回
+// POST .../agentic-proposals/apply。
+type AgenticProposalOutput struct {
+	ToolCallID string                 `json:"tool_call_id"`
+	ToolName   string                 `json:"tool_name"`
+	Arguments  map[string]interface{} `json:"arguments"`
+}
+
+// AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
+type AgenticQueryResponse struct {
+	AgentID   uint64                  `json:"agent_id"`
+	Provider  AgentProvider           `json:"provider"`
+	ModelName string                  `json:"model_name"`
+	Result    string                  `json:"result"`
+	Steps     []AgenticStepOutput     `json:"steps"`
+	Proposals []AgenticProposalOutput `json:"proposals"`
+	Usage     *AgentRunUsage          `json:"usage,omitempty"`
+}
+
+// ApplyAgentProposalRequest 是前端把先前收到的 AgenticProposalOutput 原樣送回、
+// 要求真的套用這個寫入提案的請求體。
+type ApplyAgentProposalRequest struct {
+	ToolName  string                 `json:"tool_name"`
+	Arguments map[string]interface{} `json:"arguments"`
+}
+
 type StoryChatMessageOutput struct {
 	ID        uint64          `json:"id"`
 	ChatID    uint64          `json:"chat_id"`

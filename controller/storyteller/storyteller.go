@@ -462,6 +462,82 @@ func RunLoreAgent(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+// RunStoryAgenticQuery 是 AAS（agentic AI storyteller）聊天視窗的送出需求端點，
+// 對照既有 RunAgent（單輪、無工具呼叫能力的改寫/擴寫/翻譯 skill）：這個是多輪、
+// 會自己呼叫唯讀工具查資料、寫入類工具會被攔截成待確認提案的問答功能，兩者刻意
+// 分開的路由，不共用同一個 handler。
+func RunStoryAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunStoryAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("story"),
+		agentID,
+		input.UserPrompt,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID: input.ProviderAPIKeyID,
+			ModelName:        input.ModelName,
+		},
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or story not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		// ErrAgentLoopMaxStepsExceeded 這種情況 result 仍然有值（累積到中止那刻
+		// 的 Steps/Usage 已經記進 usage log／chat 歷史），所以不能直接回錯誤了事，
+		// 要把已經算出來的部分回給前端，只是額外標一個警告文字讓前端知道沒拿到
+		// 最終答案。
+		if result != nil {
+			response := result.ToResponse()
+			return output.Success(map[string]interface{}{
+				"result":  response,
+				"warning": err.Error(),
+			})
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、被攔截下來還沒真的執行
+// 的寫入類工具呼叫。前端要把當初收到的 AgenticProposalOutput.ToolName／
+// Arguments 原樣送回來，這裡不做跨請求的提案查詢/儲存，提案的生命週期完全交給
+// 前端自己保管。
+func ApplyAgentProposal(ctx fiber.Ctx) error {
+	var input storytellerModel.ApplyAgentProposalRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().ApplyAgentProposal(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		input.ToolName,
+		input.Arguments,
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project not found"))
+		}
+		if errors.Is(err, storyteller.ErrAgentProposalToolNotAllowed) || errors.Is(err, storyteller.ErrAgentToolScopeViolation) {
+			return output.Unauthorized(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
+}
+
 func isAgentProviderError(err error) bool {
 	return errors.Is(err, storyteller.ErrAIProviderInvalidAPIKey) ||
 		errors.Is(err, storyteller.ErrAIProviderRateLimited) ||

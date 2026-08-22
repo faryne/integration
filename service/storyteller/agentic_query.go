@@ -25,6 +25,60 @@ type AgenticQueryOutput struct {
 	Usage     *AIProviderUsage
 }
 
+// ToResponse 把內部表示轉成 HTTP 回應用的 DTO（model/entity/storyteller 那份），
+// 讓 controller 不用自己重新攤平這幾層巢狀結構，也讓「內部資料形狀」跟「API 回應
+// 格式」保持獨立，之後要調整內部實作不會直接牽動到 wire format。
+func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse {
+	steps := make([]storytellerModel.AgenticStepOutput, 0, len(o.Steps))
+	for _, step := range o.Steps {
+		calls := make([]storytellerModel.AgenticToolCallOutput, 0, len(step.ToolCalls))
+		for _, call := range step.ToolCalls {
+			calls = append(calls, storytellerModel.AgenticToolCallOutput{
+				ID:        call.ID,
+				Name:      call.Name,
+				Arguments: call.Arguments,
+			})
+		}
+		results := make([]storytellerModel.AgenticToolResultOutput, 0, len(step.Results))
+		for _, result := range step.Results {
+			out := storytellerModel.AgenticToolResultOutput{Content: result.Content}
+			if result.Err != nil {
+				out.Error = result.Err.Error()
+			}
+			results = append(results, out)
+		}
+		steps = append(steps, storytellerModel.AgenticStepOutput{ToolCalls: calls, Results: results})
+	}
+
+	proposals := make([]storytellerModel.AgenticProposalOutput, 0, len(o.Proposals))
+	for _, p := range o.Proposals {
+		proposals = append(proposals, storytellerModel.AgenticProposalOutput{
+			ToolCallID: p.ToolCallID,
+			ToolName:   p.ToolName,
+			Arguments:  p.Arguments,
+		})
+	}
+
+	var usage *storytellerModel.AgentRunUsage
+	if o.Usage != nil {
+		usage = &storytellerModel.AgentRunUsage{
+			InputTokens:  o.Usage.InputTokens,
+			OutputTokens: o.Usage.OutputTokens,
+			TotalTokens:  o.Usage.TotalTokens,
+		}
+	}
+
+	return storytellerModel.AgenticQueryResponse{
+		AgentID:   o.AgentID,
+		Provider:  o.Provider,
+		ModelName: o.ModelName,
+		Result:    o.Result,
+		Steps:     steps,
+		Proposals: proposals,
+		Usage:     usage,
+	}
+}
+
 // AgenticQueryOptions 是這次呼叫要不要覆寫 Agent 預設 provider/key/model 的選項，
 // 兩者互相獨立、都可以留空沿用 Agent 的預設值。這是「Agent 只是人設/prompt，
 // 用哪把 key／哪個 model 是每次呼叫當下的選擇」這個方向的落地：聊天視窗要做 key

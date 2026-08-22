@@ -96,15 +96,15 @@ type Message struct {
 // ToolCall 是 provider 回傳的一次工具呼叫請求，或是（塞進 Message.ToolCalls 時）
 // 呼叫端要回報給 provider「這次對話曾經要求呼叫過這個工具」的記錄。
 type ToolCall struct {
-	ID        string
-	Name      string
-	Arguments map[string]interface{}
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments"`
 }
 
 type AIProviderUsage struct {
-	InputTokens  int
-	OutputTokens int
-	TotalTokens  int
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+	TotalTokens  int `json:"total_tokens"`
 }
 
 // endpoint 只有 self-hosted provider 會用到（自架的 OpenAI 相容 API 位址），
