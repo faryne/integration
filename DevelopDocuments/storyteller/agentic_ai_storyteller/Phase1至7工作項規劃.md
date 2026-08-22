@@ -132,18 +132,24 @@
 
 > UI/UX 設計提案交給 Codex 討論／草擬，見 [Codex_UIUX設計提案.md](Codex_UIUX設計提案.md)（產出後 Claude／Faryne 一起討論定案，這裡的 6.1~6.4 細部工作項可能會依討論結果調整）。
 
-- [ ] **6.1 工具呼叫過程提示**
+- [x] **6.1 工具呼叫過程提示**
   - What：AI Agent 面板顯示 agent 正在「讀哪篇設定集」「打算改哪篇故事」，不能是黑盒。
+  - ✅ 已完成（2026-08-22）：[StorytellerAgenticPanel.tsx](../../../static_site/src/pages/storyteller/StorytellerAgenticPanel.tsx) 的 `ToolTraceSummary`——收合狀態只顯示「讀取 N 項」摘要，展開後逐筆列出工具動作（中文化，`TOOL_ACTION_LABELS` 對照表）、參數、成功/失敗。**這輪只做完成後一次呈現，沒有做 streaming／執行中即時更新**（Codex_UIUX設計提案.md 的實作優先順序建議本來就是先做完成後呈現，streaming 排在最後，等 HTTP route／後端 event 格式穩定後再做）。
 
-- [ ] **6.2 diff 卡片 + 確認/取消**
+- [x] **6.2 diff 卡片 + 確認/取消**
   - What：接上 Phase 5.3 的 diff 呈現，跳出確認/取消 button，比照現有「編輯歷史」頁面視覺，不重新設計。
+  - ✅ 已完成（2026-08-22）：[StorytellerAgenticProposalCard.tsx](../../../static_site/src/pages/storyteller/StorytellerAgenticProposalCard.tsx)——`storyteller_upsert_story` 類提案直接**重用**既有 `StorytellerVersionCompareDialog`／`CustomDiffSection`（左：目前版本，右：提案內容），完全沒有重新設計一套 diff UI；delete/move/revert 這類沒有 diff 可看的危險操作，套用前多一層明確列出後果的 confirm dialog，呼應 Codex 提案「危險操作」那節的建議。**沒做的部分**：多提案「逐項檢視」review queue（Codex 提案的 stepper／split 版面）這輪沒刻，目前多個提案就是各自獨立的卡片依序排列，使用者一張一張處理，不影響功能完整性，只是體驗上少了「一次聚焦一個」的引導。
 
-- [ ] **6.3 執行後摘要 + revert 入口**
+- [x] **6.3 執行後摘要 + revert 入口**
   - What：agent 動作完成後要能一眼看出「剛剛改了什麼」，並直接連到 Phase 0 做好的 revert 能力。
+  - ✅ 已完成（2026-08-22）：提案卡片套用成功後狀態變「已套用」，出現「查看變更」（重開 diff dialog 比對）跟「回復到套用前版本」（重用既有 `useRevertStorytellerStoryVersion`，套用當下先記錄 `preApplyVersionId`，回退時直接呼叫）。**沒做的部分**：Codex 提案裡「編輯歷史 panel 標記來源為 AI Agent、新版本 title 加 `來自提案 #1` chip」這類編輯歷史頁面本身的視覺強化沒有做，這屬於錦上添花、不影響核心「找得到回退入口」這個安全網功能。
 
-- [ ] **6.4 拍板開放問題 5：Agent 實體怎麼開關 agentic 模式**
+- [x] **6.4 拍板開放問題 5：Agent 實體怎麼開關 agentic 模式**
   - What：用一個新欄位（例如 `Agent.ToolsEnabled`）在既有 `Agent` 實體上開關，還是設計成完全獨立的新實體。
   - 這個決策牽動這個 Phase 的 UI 要不要新增一種「Agent 類型」選擇入口，等 Phase 3 實際做完一家 provider、知道 Agent 設定要多存哪些欄位（例如 Claude API 版本、tool 清單版本）之後再一起決定。
+  - ✅ 已定案（2026-08-22）：**兩者都不需要**。AAS 做成故事編輯頁側欄的**第三個獨立分頁**（「AI 問答」，跟既有「AI Agent」單輪 skill 面板並列，用 `AutoAwesomeIcon` 區分），任何既有 `Agent`（人設/prompt）都可以直接拿來跑 AAS，不需要在 `Agent` 資料表加開關欄位，也不需要另一種實體——區分「這是單輪改寫還是多輪問答」的是使用者當下點的是哪個分頁，不是 Agent 本身的屬性。這個決定也連帶簡化了 Phase 4.4 那個「Agent 只保留人設/prompt」的方向：Agent 完全不用知道自己會被拿去做單輪還是多輪的事。
+
+**Phase 6 完成（核心功能）**（2026-08-22）：AAS 現在有完整、真的可以打的前端——「AI 問答」分頁、可切換 API Key、工具軌跡、提案卡片＋diff 確認、套用/回退，本機端對端驗證過整條鏈路（見 commit 訊息）。**明確排除、留給之後的部分**：手機版專屬排版（目前沿用桌面版的既有 RWD 斷點，沒有做 Codex 提案裡的 fullscreen sticky bottom bar／stepper 這類手機專屬互動）、多提案 review queue、streaming 即時狀態、聊天歷史重新整理後還原（目前 `StorytellerAgenticPanel` 的訊息是元件內部 local state，重新整理頁面會消失——後端已經有把工具呼叫/提案存進 `StoryChatMessage.Metadata`，只是前端還沒做「重新載入時解析 metadata 還原成 AAS 訊息格式」這一步）。
 
 ## Phase 7：OpenAI／Grok adapter 擴充（排最後）
 

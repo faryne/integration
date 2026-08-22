@@ -117,6 +117,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 - What：AI Agent 面板要多顯示「正在呼叫哪個工具」的過程提示、寫入提案的 diff 卡片＋確認/取消、執行後的變更摘要＋revert 入口（第 3.6 節）。
 - 待決（開放問題 5）：agentic 模式要不要用一個新欄位（例如 `Agent.ToolsEnabled`）在既有 `Agent` 實體上開關，還是設計成完全獨立的新實體——這也牽動這個 Phase 的 UI 要不要新增一種「Agent 類型」的選擇入口，等 Phase 3 實際做完一家 provider、知道 Agent 設定要多存哪些欄位（例如 Claude API 版本、tool 清單版本）之後再一起決定。
+- **2026-08-22 已完成（核心功能）／已定案（開放問題 5）**：兩者都不用——AAS 做成故事編輯頁側欄的獨立第三分頁「AI 問答」，任何既有 Agent 都能直接拿來用，不用改 `Agent` 資料表也不用新實體。工具軌跡、diff 卡片（重用既有 `StorytellerVersionCompareDialog`，沒有重新設計）、套用/回退都做完並本機端對端驗證過。**明確排除**：手機版專屬排版、多提案 review queue、streaming、聊天歷史重新整理後還原——這些留到之後有需要再排，不影響核心功能完整性。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 6.1~6.4。
 
 ### Phase 7（排在最後，Claude 打通後再議）：OpenAI／Grok adapter 擴充
 
