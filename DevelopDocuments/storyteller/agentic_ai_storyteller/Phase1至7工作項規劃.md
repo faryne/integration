@@ -10,45 +10,38 @@
 
 目標：把「工具定義＋執行邏輯」從 MCP server 抽出來，變成 MCP 跟未來的 agent runner 都能共用的一份東西。
 
-- [ ] **1.1 盤點現況，決定切法**
-  - What：讀完 `service/mcp/storyteller_tools.go` 現有全部工具（`registerStorytellerTools()` 裡的每個 `RegisterTool` 呼叫），列出共通結構（`Name`/`Description`/`InputSchema`/`Handler` 四件事）跟目前檔案大小。
-  - Why：在動手抽象化之前要先知道現況有多少工具、有沒有已經不一致的寫法，不然容易抽出一個套不進去一半工具的抽象。
-  - Where：`service/mcp/storyteller_tools.go`（目前單一檔案，已經破千行，跟這份專案「單一檔案超過 500 行就要審視」的慣例衝突，這次順便評估要不要拆）。
-  - How：純閱讀+整理，產出一份簡短清單（可以直接寫在這個 checkbox 底下的完成記錄），不改程式碼。
+- [x] **1.1 盤點現況，決定切法**
+  - What：讀完 `service/mcp/storyteller_tools.go` 現有全部工具，列出共通結構跟目前檔案大小。
+  - ✅ 已完成（2026-08-22）：`registerStorytellerTools()`（[storyteller_tools.go:411](../../../service/mcp/storyteller_tools.go)）目前掛了 **35 個工具**，檔案本身 **1598 行**，遠超這份專案「單一檔案超過 500 行就要審視」的門檻。共通結構完全一致：每個都是 `_ = s.RegisterTool(Tool{Name, Description, InputSchema: objectSchema(...), Handler: func(ctx, arguments) (*CallToolResult, error) {...}})`，Handler 內部固定是「`storytellerUserIDFromContext` 取 userID → `decodeArguments` 解析參數 struct → 呼叫 `storytellerService.NewService()` 的某個方法 → `jsonTextResult(...)` 或 `textResult("deleted")` 包裝回傳」，沒有例外，非常適合抽成 registry。這個 MCP server 是**專案自己手刻的**（`service/mcp/server.go`），不是套用外部 MCP SDK——`Tool`/`ToolHandler`/`CallToolResult` 都是這個 repo 自己定義的型別，不是綁死的第三方協定型別。額外發現一個關鍵限制：`service/mcp` 已經 import `service/storyteller`（`storytellerService "faryne.dev/service/storyteller"`），如果 Phase 1.2 的共用型別放在 `service/mcp` 底下，之後 agent runner（會放在 `service/storyteller`）要重用就會 import 回 `service/mcp`，形成循環 import——**所以共用型別必須放在 `service/storyteller`，由 `service/mcp` 單向 import，不能反過來**。
 
-- [ ] **1.2 定義共用的工具描述型別**
-  - What：設計一個跟現有 MCP SDK 的 `Tool` struct（`Name`/`Description`/`InputSchema`/`Handler`）**不綁死**的中介型別，例如 `StorytellerToolSpec`，用來描述「這個工具長什麼樣、怎麼執行」，之後 MCP 層跟 agent runner 層各自把它轉譯成自己需要的格式。
-  - Why：如果直接讓 agent runner 依賴 MCP SDK 的 `Tool` struct，等於 agent runner 被迫綁定 MCP protocol 的型別，之後 MCP SDK 版本升級或行為調整時會波及不相關的 agent runner 邏輯。
-  - Where：新增檔案（暫定 `service/storyteller/tool_registry.go`，實際命名到動手時再確認）。
-  - How：`InputSchema` 部分可以直接沿用現有 `objectSchema()`/`stringSchema()`/`integerSchema()` 這幾個 helper 產出的 JSON Schema 格式（六家 provider 的 tool-calling 大多也是吃 JSON Schema，格式上不用整套重寫）；`Handler` 簽名要設計成不依賴 MCP 的 `context.Context, map[string]interface{}) (*CallToolResult, error)`，而是更中性的 `(ctx context.Context, args map[string]interface{}) (interface{}, error)` 之類，實際簽名等寫的時候再定。
+- [x] **1.2 定義共用的工具描述型別**
+  - What：設計一個跟 MCP 傳輸層不綁死的中介型別，描述「這個工具長什麼樣、怎麼執行」。
+  - ✅ 已完成（2026-08-22）：新增 [tool_registry.go](../../../service/storyteller/tool_registry.go)，定義 `ToolHandlerFunc`（`func(ctx, arguments) (interface{}, error)`，刻意不回傳 MCP 的 `*CallToolResult`——回傳值交給呼叫端自己決定怎麼包裝，MCP 包成 `CallToolResult`，之後 agent runner 包成 tool_result content block）、`ToolSpec`（`Name`/`Description`/`InputSchema`/`Handler`）、`ToolRegistry`（`Register()`/`All()`，`All()` 回傳 slice 拷貝避免呼叫端改到內部狀態）。`InputSchema` 沿用 JSON Schema 格式，不重新設計。放在 `service/storyteller` 而不是 `service/mcp`，對應 1.1 發現的循環 import 限制。`go build ./...` 過。
 
 - [ ] **1.3 把現有 MCP 工具改成從 registry 讀取**
-  - What：把 `storyteller_tools.go` 裡的工具定義搬進新的 registry，`registerStorytellerTools()` 改成迴圈讀 registry、逐一轉成 MCP SDK 的 `Tool` 再 `RegisterTool()`。
+  - What：把 `storyteller_tools.go` 裡 35 個工具的定義搬進 `service/storyteller` 底下的 `ToolRegistry`，`service/mcp/storyteller_tools.go` 的 `registerStorytellerTools()` 改成迴圈讀 registry、把每個 `ToolSpec` 轉成 MCP 的 `Tool` 再 `RegisterTool()`（`ToolHandlerFunc` 回傳的 `interface{}` 依型別包成 `jsonTextResult`／`textResult`：字串就是 `textResult`，其餘型別就是 `jsonTextResult`）。
   - Why：這是驗證 1.2 設計的抽象層是不是真的好用的唯一方式——如果套用到全部既有工具會很痛苦，代表設計要調整。
-  - Where：`service/mcp/storyteller_tools.go` + 新的 registry 檔案。
-  - How：**這是一次純重構**，外部行為（MCP client 看到的工具清單、呼叫結果）必須完全不變，做完要重跑一次 `go test ./service/mcp/...` 確認沒有任何既有測試壞掉，最好也用之前 Phase 0 驗證過的方式（dev-only 假登入 + 手動呼叫幾個工具）抽測一下，因為這次改動面比 Phase 0 大很多，光靠 `go build`/`go vet` 不夠。
+  - Where：新增 `service/storyteller` 底下的檔案（因為 35 個工具搬過去內容量不小，建議依領域拆成多個檔案，例如 `tool_registry_project.go`／`tool_registry_story.go`／`tool_registry_lore.go`／`tool_registry_asset.go`／`tool_registry_volume.go`，不要塞一個大檔案又超過 500 行）；`service/mcp/storyteller_tools.go` 大幅簡化，只剩 registry→Tool 的轉譯迴圈。
+  - How：**這是一次純重構**，外部行為（MCP client 看到的工具清單、呼叫結果的 JSON 內容）必須逐一核對完全不變，尤其原本用 `jsonTextResult`／`textResult` 兩種不同包裝方式的工具，搬過去、轉譯迴圈重新包裝後結果格式不能變。做完要重跑一次 `go test ./service/mcp/...` 確認沒有任何既有測試壞掉，並用 dev-only 假登入 + 本機 `/mcp` endpoint 抽測至少 5-6 個橫跨不同領域（story/lore/asset/volume/project）的工具呼叫，確認回傳內容跟改之前一致，因為這次改動面（35 個工具）比 Phase 0（4 個工具）大很多，光靠 `go build`/`go vet` 不夠。
 
 ## Phase 2：`AIProvider` interface 擴充
 
 目標：讓現有六家 provider 的抽象層能夠支援 tool-calling，同時不破壞現有單輪模式（現有的改寫/擴寫/翻譯等 skill 式功能要維持能動）。
 
-- [ ] **2.1 六家 provider tool-calling 格式研究**
-  - What：逐一查證 Claude、OpenAI、Grok（xAI）、Gemini、OpenRouter、Self-hosted 的 tool-calling API 實際格式（request 怎麼帶 tools、response 怎麼回 tool_calls、多輪對話怎麼把 tool_result 餵回去）。
-  - Why：這是 [AgenticAI規劃.md](AgenticAI規劃.md) 第 3.1 節列出來、還沒真的做的調查工作，Phase 2/3 動工前必須先有實測依據，不能只憑印象設計統一格式。
-  - Where：純研究，產出一份對照表（可以直接寫進這個 checkbox 底下）。
-  - How：Claude 跟 OpenAI 兩家是這輪的必查項（Phase 3/7 都要用到），Grok 排在 Phase 7 才要細查，但這裡可以先粗略確認它是不是真的完全遵循 OpenAI 格式。Gemini/OpenRouter/Self-hosted 這輪只需要確認「大概是什麼形狀」，不用深查。
+- [x] **2.1 六家 provider tool-calling 格式研究**
+  - ✅ 已完成（2026-08-22，依既有知識確認，非即時查最新文件）：
+    - **Claude**（Messages API）：request 的 `tools` 陣列每項是 `{name, description, input_schema}`（欄位叫 `input_schema` 不是 `parameters`）；`messages[].content` 可以是純字串也可以是 content block 陣列，要支援 tool-calling 就一律用陣列形式；assistant 回應要求呼叫工具時，`content` 陣列裡會混雜 `{type:"text",...}` 跟 `{type:"tool_use", id, name, input}`（`input` 已經是解析好的 JSON object，不是字串）；下一輪要把結果餵回去時，包成一則 **role="user"** 訊息、`content: [{type:"tool_result", tool_use_id, content}]`——Claude 沒有獨立的 "tool" role。
+    - **OpenAI**（Chat Completions API）：request 的 `tools` 陣列每項是 `{type:"function", function:{name, description, parameters}}`；assistant 回應要求呼叫工具時在 `message.tool_calls` 陣列，每項 `{id, type:"function", function:{name, arguments}}`，**`arguments` 是 JSON 編碼過的字串，不是巢狀 object**（跟 Claude 的 `input` 不一樣，這是最容易搞混的地方）；下一輪把結果餵回去是獨立的 **role="tool"** 訊息，帶 `tool_call_id` 對應到那次呼叫。
+    - **Grok（xAI）**：官方文件宣稱 API 相容 OpenAI Chat Completions 格式，tool-calling 欄位推定完全比照上面 OpenAI 的格式；這次沒有實際打 API 驗證（沒有可用的 xAI API key），這輪先假設成立，Phase 7 真的要上線前務必用真實 API key 跑一次驗證，不能只憑文件宣稱。
+    - **OpenRouter**：本身是轉發層，request/response 格式也是 OpenAI 相容，tool-calling 能不能用完全看背後實際選的模型支不支援，OpenRouter 自己不额外處理。
+    - **Self-hosted**：現有假設是 OpenAI 相容端點（vLLM/Ollama 這類），tool-calling 支不支援看使用者自架的服務版本，這輪不特別處理，跟 OpenAI/Grok/OpenRouter 共用同一套轉譯邏輯，能不能用是執行期才知道的事。
+    - **Gemini**：`functionDeclarations`（宣告工具，放在 `tools` 底下）／`functionCall`（模型要求呼叫，出現在 `candidates[].content.parts[].functionCall`）／`functionResponse`（回報結果）三個獨立概念，格式跟上面兩家都不同，這輪不實作（見 2.3）。
 
-- [ ] **2.2 擴充 `AIProviderRequest`/`AIProviderResponse`**
-  - What：`AIProviderRequest` 加 `Tools []ToolDefinition`、把現有單一 `SystemPrompt`/`UserPrompt` 換成 `Messages []Message`（要相容既有單輪呼叫端，可能需要保留舊欄位＋新欄位並存一段時間，或提供一個 helper 把舊式呼叫轉成新式 `Messages`）；`AIProviderResponse` 加 `ToolCalls []ToolCall`。
-  - Why：對應開放問題 2 的定案（擴充既有介面，不另開 `AgenticProvider`）。
-  - Where：`service/storyteller/ai_provider.go`。
-  - How：**現有呼叫端（`runAgent()`，[storyteller.go:641](../../../service/storyteller/storyteller.go)）不能壞**——這是這個 Phase 最大的風險，`AgentRunMode` 那組 skill 式功能完全不用 tools/多輪對話，擴充完介面後要重新確認這條路徑還是照原本的方式運作，不能因為改了 struct 定義就要求呼叫端多做事。
+- [x] **2.2 擴充 `AIProviderRequest`/`AIProviderResponse`**
+  - ✅ 已完成（2026-08-22）：`AIProviderRequest` 加 `Tools []ToolDefinition`、`Messages []Message`；`AIProviderResponse` 加 `ToolCalls []ToolCall`。**純加法擴充，沒有動任何既有欄位**——`SystemPrompt`/`UserPrompt` 原封不動保留，`Tools`/`Messages` 都留空時，`generateOpenAICompatible()`／`ClaudeProvider.Generate()` 走的分支（`buildOpenAIMessages`/`buildClaudeMessages` 在 `len(req.Messages)==0` 時）產出的 request body 跟擴充前逐位元組相同。`runAgent()`（[storyteller.go:641](../../../service/storyteller/storyteller.go)）完全沒有改動，也不需要改動——risk 有實際驗證：既有 `TestGrokProviderGenerate`／`TestGeminiProviderGenerate` 兩個測試完全沒改就直接通過，證明單輪路徑行為沒變。
 
-- [ ] **2.3 六個 provider adapter 各自處理 tools 欄位**
-  - What：`Tools` 非空時，各 adapter 要嘛正確轉譯成自己的 API 格式，要嘛（暫不支援的 provider）明確回錯誤或忽略，不能悄悄不管。
-  - Why：避免使用者以為某個 provider 支援 agentic 模式，結果工具呼叫請求被默默丟掉。
-  - Where：`service/storyteller/ai_provider.go` 裡各 provider 的 `Generate()` 實作。
-  - How：這輪先讓 Claude、OpenAI 兩家的 adapter 正確處理 `Tools`（呼應 Phase 3/7 的順序），其餘四家先回傳明確的 `ErrAIProviderUnsupported`（沿用既有錯誤變數）或等價錯誤，等之後真的要做才補。
+- [x] **2.3 六個 provider adapter 各自處理 tools 欄位**
+  - ✅ 已完成（2026-08-22），**比原計畫多涵蓋兩家**：原本計畫只做 Claude／OpenAI，但 `generateOpenAICompatible()` 這個函式本來就是 Grok／OpenAI／OpenRouter／Self-hosted 四個 provider 共用的同一份實作（因為它們都宣稱是 OpenAI wire-format 相容），幫 OpenAI 補 tools 支援等於這四家全部一起拿到，沒有額外成本，也沒有必要刻意用 provider 別名去擋掉 Grok/OpenRouter/Self-hosted 讓它們維持不支援——那樣反而要多寫排除邏輯。所以實際結果是 **Claude、OpenAI、Grok、OpenRouter、Self-hosted 五家都支援 tools**，只有 **Gemini** 這輪明確回傳 `ErrAIProviderUnsupported`（[ai_provider.go](../../../service/storyteller/ai_provider.go) `GeminiProvider.Generate()` 開頭擋掉 `len(req.Tools) > 0` 的情況）。已補 6 個新測試（`TestOpenAICompatibleGenerateWithTools`／`TestOpenAICompatibleGenerateWithMessagesHistory`／`TestClaudeProviderGenerateWithTools`／`TestClaudeProviderGenerateWithToolResultMessage`／`TestGeminiProviderGenerateRejectsTools`，涵蓋 tools 欄位正確帶入 request、response 的 tool_calls 正確解析成統一格式、多輪 Messages 含 tool role 正確轉譯、Gemini 正確拒絕），全部通過，既有測試也全數通過不受影響。
 
 ## Phase 3：Claude tool-calling adapter（第一個打通的 provider）
 

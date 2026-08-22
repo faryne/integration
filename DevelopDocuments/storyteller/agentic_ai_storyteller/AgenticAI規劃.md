@@ -91,10 +91,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 ### Phase 2：`AIProvider` interface 擴充
 
-**已定案（開放問題 2）**：擴充既有介面，不另開 `AgenticProvider`。`AIProviderRequest` 加 `Tools []ToolDefinition`、把單一 `SystemPrompt`/`UserPrompt` 換成 `Messages []Message`；`AIProviderResponse` 加 `ToolCalls []ToolCall`。六個 provider 的 adapter 各自把統一格式轉譯成自己的 API 格式，不支援 tools 的 provider 就是這個欄位被忽略。
-
-- Where：`service/storyteller/ai_provider.go`。
-- 待辦：這個 Phase 動工前，要先把第 3.1 節列的六家 provider tool-calling 格式差異做一次實際的 API 文件查證（不能只憑印象），確認 `ToolDefinition`/`ToolCall` 的統一格式欄位夠不夠涵蓋 Claude/OpenAI 兩家的需求（Grok 排在 Phase 4 之後才做，屆時再回頭確認欄位夠不夠用）。
+**已定案（開放問題 2）**：擴充既有介面，不另開 `AgenticProvider`。`AIProviderRequest` 加 `Tools []ToolDefinition`、`Messages []Message`（純加法，`SystemPrompt`/`UserPrompt` 原封不動保留）；`AIProviderResponse` 加 `ToolCalls []ToolCall`。**2026-08-22 已完成**：實際結果比原計畫涵蓋更廣——Claude、OpenAI、Grok、OpenRouter、Self-hosted 五家都支援 tools（後四家共用同一份 OpenAI 相容轉譯邏輯，順帶一起做），只有 Gemini（獨立的 function-calling 格式）這輪明確回錯誤。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 2.1~2.3。
 
 ### Phase 3：Claude tool-calling adapter（第一個打通的 provider）
 
