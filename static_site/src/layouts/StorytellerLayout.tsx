@@ -2,7 +2,6 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
 import { SteamPaletteSwitcher } from "@/components/storyteller/SteamPaletteSwitcher.tsx";
-import { SteamSeasonalSwitcher } from "@/components/storyteller/SteamSeasonalSwitcher.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
@@ -446,7 +445,6 @@ export function StorytellerLayout() {
                 <Divider />
                 <IndependentFooter service_name={STORYTELLER_APP_NAME} />
                 <SteamPaletteSwitcher />
-                <SteamSeasonalSwitcher />
               </Container>
             </Stack>
           </StorytellerSeasonalContext.Provider>
