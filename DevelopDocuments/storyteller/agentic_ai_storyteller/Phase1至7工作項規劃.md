@@ -18,11 +18,14 @@
   - What：設計一個跟 MCP 傳輸層不綁死的中介型別，描述「這個工具長什麼樣、怎麼執行」。
   - ✅ 已完成（2026-08-22）：新增 [tool_registry.go](../../../service/storyteller/tool_registry.go)，定義 `ToolHandlerFunc`（`func(ctx, arguments) (interface{}, error)`，刻意不回傳 MCP 的 `*CallToolResult`——回傳值交給呼叫端自己決定怎麼包裝，MCP 包成 `CallToolResult`，之後 agent runner 包成 tool_result content block）、`ToolSpec`（`Name`/`Description`/`InputSchema`/`Handler`）、`ToolRegistry`（`Register()`/`All()`，`All()` 回傳 slice 拷貝避免呼叫端改到內部狀態）。`InputSchema` 沿用 JSON Schema 格式，不重新設計。放在 `service/storyteller` 而不是 `service/mcp`，對應 1.1 發現的循環 import 限制。`go build ./...` 過。
 
-- [ ] **1.3 把現有 MCP 工具改成從 registry 讀取**
+- [x] **1.3 把現有 MCP 工具改成從 registry 讀取**
   - What：把 `storyteller_tools.go` 裡 35 個工具的定義搬進 `service/storyteller` 底下的 `ToolRegistry`，`service/mcp/storyteller_tools.go` 的 `registerStorytellerTools()` 改成迴圈讀 registry、把每個 `ToolSpec` 轉成 MCP 的 `Tool` 再 `RegisterTool()`（`ToolHandlerFunc` 回傳的 `interface{}` 依型別包成 `jsonTextResult`／`textResult`：字串就是 `textResult`，其餘型別就是 `jsonTextResult`）。
   - Why：這是驗證 1.2 設計的抽象層是不是真的好用的唯一方式——如果套用到全部既有工具會很痛苦，代表設計要調整。
   - Where：新增 `service/storyteller` 底下的檔案（因為 35 個工具搬過去內容量不小，建議依領域拆成多個檔案，例如 `tool_registry_project.go`／`tool_registry_story.go`／`tool_registry_lore.go`／`tool_registry_asset.go`／`tool_registry_volume.go`，不要塞一個大檔案又超過 500 行）；`service/mcp/storyteller_tools.go` 大幅簡化，只剩 registry→Tool 的轉譯迴圈。
   - How：**這是一次純重構**，外部行為（MCP client 看到的工具清單、呼叫結果的 JSON 內容）必須逐一核對完全不變，尤其原本用 `jsonTextResult`／`textResult` 兩種不同包裝方式的工具，搬過去、轉譯迴圈重新包裝後結果格式不能變。做完要重跑一次 `go test ./service/mcp/...` 確認沒有任何既有測試壞掉，並用 dev-only 假登入 + 本機 `/mcp` endpoint 抽測至少 5-6 個橫跨不同領域（story/lore/asset/volume/project）的工具呼叫，確認回傳內容跟改之前一致，因為這次改動面（35 個工具）比 Phase 0（4 個工具）大很多，光靠 `go build`/`go vet` 不夠。
+  - ✅ 已完成（2026-08-22，Codex 實作、Claude 審查採納）：`service/mcp/storyteller_tools.go` 從 1598 行縮到 50 行，只剩 `WithStorytellerUserID`／`WithStorytellerSource`（轉呼叫 `service/storyteller` 對應函式，維持既有呼叫端 `controller/storytellermcp/storytellermcp.go` 完全不用改）跟 `registerStorytellerTools()` 的 registry→`mcp.Tool` 轉譯迴圈。35 個工具依領域拆成 5 個新檔案（`tool_registry_project.go` 2 個、`tool_registry_story.go` 8 個、`tool_registry_lore.go` 10 個、`tool_registry_asset.go` 11 個、`tool_registry_volume.go` 4 個，加總 35，跟 `StorytellerToolRegistry().All()` 回傳數量對上），共用常數/型別（`storytellerContentSyntaxHint`／`storytellerContentMarkerHint`／`storytellerStoryDetail` 等）搬進 `tool_registry_types.go`，context 存取搬進 `tool_registry_context.go`。**Claude 審查方式**：獨立重跑 `go build`／`go vet`／`go test ./service/mcp/... ./service/storyteller/...` 全部通過；逐行讀過 `tool_registry_story.go`（最大、邏輯最複雜的檔案，含 Phase 0 新增的 revert/move 工具跟 Item 4 的 `volume_public_id` nullable 語意）確認跟原本邏輯一致；確認沒有任何 `service/storyteller` 檔案 import 回 `service/mcp`（避免循環 import）；用 `grep -c "ToolSpec{"` 核對 5 個檔案的工具數量加總等於 35。**live `/mcp` 端對端測試沒有做**——Codex 的沙盒環境 Docker socket 被擋，起不了本機 MySQL/Redis，只能做到程式碼審查＋單元測試層級；Codex 自己另外做了 `tools/list` JSON 改動前後 byte-for-byte diff（36 個工具含 built-in `ping` 全部一致）當作行為不變的獨立佐證，Claude 判斷這個組合驗證強度已經足夠，沒有另外找環境補測。
+
+**Phase 1 完成**（2026-08-22）。
 
 ## Phase 2：`AIProvider` interface 擴充
 

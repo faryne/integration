@@ -1,6 +1,9 @@
 package storyteller
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // ToolHandlerFunc 執行一次工具呼叫。回傳值故意用 interface{}，不綁定任何傳輸協定的
 // 結果格式——MCP server 會把它包成 CallToolResult（string 包成純文字 content，其餘
@@ -45,4 +48,105 @@ func (r *ToolRegistry) All() []ToolSpec {
 	out := make([]ToolSpec, len(r.specs))
 	copy(out, r.specs)
 	return out
+}
+
+// StorytellerToolRegistry 建立 MCP server 與 agent runner 共用的 storyteller 工具清單。
+func StorytellerToolRegistry() *ToolRegistry {
+	specsByName := make(map[string]ToolSpec, 35)
+	for _, specs := range [][]ToolSpec{
+		storytellerProjectToolSpecs(),
+		storytellerStoryToolSpecs(),
+		storytellerLoreToolSpecs(),
+		storytellerAssetToolSpecs(),
+		storytellerVolumeToolSpecs(),
+	} {
+		for _, spec := range specs {
+			specsByName[spec.Name] = spec
+		}
+	}
+
+	registry := NewToolRegistry()
+	for _, name := range []string{
+		"storyteller_list_projects",
+		"storyteller_get_project",
+		"storyteller_list_stories",
+		"storyteller_list_lores",
+		"storyteller_get_story",
+		"storyteller_upsert_story",
+		"storyteller_revert_story",
+		"storyteller_move_story",
+		"storyteller_presign_image_upload",
+		"storyteller_list_assets",
+		"storyteller_get_asset",
+		"storyteller_presign_asset_upload",
+		"storyteller_confirm_asset_upload",
+		"storyteller_update_asset",
+		"storyteller_move_asset",
+		"storyteller_list_asset_collections",
+		"storyteller_create_asset_collection",
+		"storyteller_update_asset_collection",
+		"storyteller_delete_asset_collection",
+		"storyteller_delete_asset",
+		"storyteller_upsert_image_story",
+		"storyteller_delete_story",
+		"storyteller_list_lore_collections",
+		"storyteller_create_lore_collection",
+		"storyteller_update_lore_collection",
+		"storyteller_delete_lore_collection",
+		"storyteller_list_volumes",
+		"storyteller_create_volume",
+		"storyteller_update_volume",
+		"storyteller_delete_volume",
+		"storyteller_move_lore",
+		"storyteller_get_lore",
+		"storyteller_upsert_lore",
+		"storyteller_revert_lore",
+		"storyteller_delete_lore",
+	} {
+		registry.Register(specsByName[name])
+	}
+	return registry
+}
+
+func decodeArguments(arguments map[string]interface{}, out interface{}) error {
+	body, err := json.Marshal(arguments)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, out)
+}
+
+func normalizedPage(page int) int {
+	if page <= 0 {
+		return 1
+	}
+	return page
+}
+
+func objectSchema(properties map[string]interface{}, required []string) map[string]interface{} {
+	schema := map[string]interface{}{
+		"type":       "object",
+		"properties": map[string]interface{}{},
+	}
+	if properties != nil {
+		schema["properties"] = properties
+	}
+	if len(required) > 0 {
+		schema["required"] = required
+	}
+	return schema
+}
+
+func stringSchema(description string) map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "string",
+		"description": description,
+	}
+}
+
+func integerSchema(description string) map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "integer",
+		"description": description,
+	}
 }

@@ -86,8 +86,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 - What：把「工具定義（JSON schema）＋執行邏輯」從 MCP server 的 `RegisterTool` 呼叫裡抽出來，變成一份 MCP 跟站內 agent runner 都能共用的 registry（第 3.3 節）。
 - Why：避免之後 agent runner 自己重寫一份跟 MCP 幾乎一樣的工具清單，兩邊各自維護、各自修 bug。
-- Where：預計新增在 `service/storyteller` 或 `service/mcp` 底下的獨立 package，實際切法要看 Phase 0 做完後 `storyteller_tools.go` 的實際結構再決定（現在還沒動手拆，先不猜死）。
-- How：Phase 0 做完、工具清單穩定下來之後再排，這個 Phase 動工前要先確認 Phase 0 沒有再冒出新的工具缺口。
+- **2026-08-22 已完成**：型別／抽象層設計（`ToolSpec`/`ToolHandlerFunc`/`ToolRegistry`）由 Claude 做，放在 `service/storyteller/tool_registry.go`，避免 `service/mcp` 已經 import `service/storyteller` 造成循環 import；35 個既有工具的實際搬移（機械式重構，`service/mcp/storyteller_tools.go` 1598→50 行）交給 Codex、Claude 逐行審查後採納。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 1.1~1.3。
 
 ### Phase 2：`AIProvider` interface 擴充
 
