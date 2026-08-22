@@ -78,6 +78,63 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 }
 
+// TestRunStoryAgenticQueryPropagatesStorytellerContextToTools 是一個迴歸測試：
+// tool_registry_*.go 裡的真實工具（storyteller_get_story 等）都是靠
+// storytellerUserIDFromContext／storytellerSourceFromContext 從 ctx 拿身分，不是
+// 走參數傳遞。之前這個函式漏了在呼叫 RunAgentLoop 前把身分塞進 ctx，導致真實工具
+// 呼叫必定失敗（"missing authenticated storyteller user"）——之前的測試都用不會
+// 檢查 ctx 的假 Handler，沒測出這個洞。這裡故意寫一個會檢查 ctx 的假 Handler，
+// 確保這個洞不會再回來。
+func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+	}
+	callCount := 0
+	provider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			callCount++
+			if callCount == 1 {
+				return &AIProviderResponse{ToolCalls: []ToolCall{{ID: "toolu_1", Name: "check_context_tool"}}}, nil
+			}
+			return &AIProviderResponse{Result: "done"}, nil
+		},
+	}
+
+	var observedUserID uint64
+	var observedSource string
+	tools := []ToolSpec{{
+		Name: "check_context_tool",
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			observedUserID = userID
+			observedSource = storytellerSourceFromContext(ctx)
+			return "ok", nil
+		},
+	}}
+
+	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return provider, nil
+	}, tools, 20, "project-public-id", "story-public-id", 40, "問題")
+
+	require.NoError(t, err)
+	require.Equal(t, "done", output.Result)
+	require.Equal(t, uint64(20), observedUserID)
+	require.Equal(t, "agentic_query", observedSource)
+}
+
 func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
 	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ")
 	require.Nil(t, output)

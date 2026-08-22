@@ -67,6 +67,14 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		return nil, err
 	}
 
+	// 這組工具的 Handler（storyteller_get_story 等）內部都是靠
+	// storytellerUserIDFromContext／storytellerSourceFromContext 從 ctx 拿身分，
+	// 不是走參數傳遞（MCP 那層也是同樣的機制，見 tool_registry_context.go）——
+	// 這裡呼叫的是同一份底層工具邏輯，一定要先把身分塞進 ctx，不然每個工具呼叫
+	// 都會因為 storytellerUserIDFromContext 拿不到值而失敗。
+	ctx = WithStorytellerUserID(ctx, userID)
+	ctx = WithStorytellerSource(ctx, "agentic_query")
+
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
