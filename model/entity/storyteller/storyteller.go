@@ -723,6 +723,13 @@ type StoryRequest struct {
 	ContentType ProjectContentType `json:"content_type,omitempty"`
 }
 
+// StoryMoveRequest 是「只搬移冊歸屬、不動內容」的專用請求，跟 LoreMoveRequest 對稱。
+// 刻意跟 StoryRequest 分開，讓呼叫端不用先讀出目前的 title/content 才能搬移故事。
+type StoryMoveRequest struct {
+	// VolumePublicID 是目標冊的 public_id；空字串代表移出冊／不分冊。
+	VolumePublicID string `json:"volume_public_id"`
+}
+
 // StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
 // 只有標題欄位——冊沒有內容／摘要／狀態可以編輯。
 type StoryVolumeRequest struct {

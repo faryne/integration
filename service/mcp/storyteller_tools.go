@@ -250,7 +250,20 @@ type storytellerUpsertStoryArguments struct {
 	Status          string  `json:"status"`
 	Sort            int     `json:"sort"`
 	Content         string  `json:"content"`
+	VolumePublicID  *string `json:"volume_public_id"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerStoryVersionArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id"`
+	TargetVersionID uint64 `json:"target_version_id"`
+}
+
+type storytellerMoveStoryArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id"`
+	VolumePublicID  string `json:"volume_public_id"`
 }
 
 type storytellerPresignImageUploadArguments struct {
@@ -353,6 +366,12 @@ type storytellerUpsertLoreArguments struct {
 	CollectionID    *string `json:"collection_id"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerLoreVersionArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	LorePublicID    string `json:"lore_public_id"`
+	TargetVersionID uint64 `json:"target_version_id"`
 }
 
 type storytellerMoveLoreArguments struct {
@@ -609,7 +628,8 @@ func (s *Server) registerStorytellerTools() {
 			"content": stringSchema(
 				"Full story content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 			),
-			"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+			"volume_public_id": stringSchema("Optional, but semantically important. Omit to preserve the story's current volume membership on update; pass an empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
+			"base_version_id":  integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
 		}, []string{"project_public_id", "title"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
@@ -627,6 +647,7 @@ func (s *Server) registerStorytellerTools() {
 				Sort:          args.Sort,
 				Content:       args.Content,
 				BaseVersionID: args.BaseVersionID,
+				ParentID:      args.VolumePublicID,
 			}
 			source := storytellerSourceFromContext(ctx)
 			service := storytellerService.NewService()
@@ -646,6 +667,62 @@ func (s *Server) registerStorytellerTools() {
 				VersionID:               derefUint64(story.LatestVersionID),
 				VersionConflict:         conflicted,
 			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_revert_story",
+		Description: "Revert a story to a previous version by creating a new latest version from target_version_id. " +
+			"There is currently no MCP tool that lists a story's version history; target_version_id can only come " +
+			"from storyteller_get_story (for the current version id) or from the user checking \"編輯歷史\" in the web app.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"story_public_id":   stringSchema("Story public_id."),
+			"target_version_id": integerSchema("Version id to restore from."),
+		}, []string{"project_public_id", "story_public_id", "target_version_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerStoryVersionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			story, err := storytellerService.NewService().RevertStory(userID, args.ProjectPublicID, args.StoryPublicID, args.TargetVersionID, "mcp")
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(storytellerStoryDetail{
+				storytellerStorySummary: toStorytellerStorySummary(*story),
+				Content:                 story.LatestContent,
+				VersionID:               derefUint64(story.LatestVersionID),
+			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "storyteller_move_story",
+		Description: "Move a story into a volume, or pass an empty volume_public_id to move it out of any volume.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"story_public_id":   stringSchema("Story public_id."),
+			"volume_public_id":  stringSchema("Target volume public_id. Empty string moves the story out of any volume."),
+		}, []string{"project_public_id", "story_public_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerMoveStoryArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			story, err := storytellerService.NewService().MoveStory(userID, args.ProjectPublicID, args.StoryPublicID, storytellerModel.StoryMoveRequest{VolumePublicID: args.VolumePublicID})
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(toStorytellerStorySummary(*story))
 		},
 	})
 
@@ -1443,6 +1520,37 @@ func (s *Server) registerStorytellerTools() {
 				Content:                lore.LatestContent,
 				VersionID:              derefUint64(lore.LatestVersionID),
 				VersionConflict:        conflicted,
+			})
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name: "storyteller_revert_lore",
+		Description: "Revert a lore/worldbuilding entry to a previous version by creating a new latest version from target_version_id. " +
+			"There is currently no MCP tool that lists a lore entry's version history; target_version_id can only come " +
+			"from storyteller_get_lore (for the current version id) or from the user checking \"編輯歷史\" in the web app.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"project_public_id": stringSchema("Project public_id."),
+			"lore_public_id":    stringSchema("Lore public_id."),
+			"target_version_id": integerSchema("Version id to restore from."),
+		}, []string{"project_public_id", "lore_public_id", "target_version_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			userID, err := storytellerUserIDFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			var args storytellerLoreVersionArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			lore, err := storytellerService.NewService().RevertLore(userID, args.ProjectPublicID, args.LorePublicID, args.TargetVersionID, "mcp")
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(storytellerLoreDetail{
+				storytellerLoreSummary: toStorytellerLoreSummary(*lore),
+				Content:                lore.LatestContent,
+				VersionID:              derefUint64(lore.LatestVersionID),
 			})
 		},
 	})

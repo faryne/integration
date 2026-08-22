@@ -937,6 +937,22 @@ func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, versi
 	return conflicted, err
 }
 
+// MoveStory 只更新 parent_id（冊隸屬），不建立新的 StoryVersion——跟 MoveLore 對稱，
+// 純粹分類異動不算內容變更。volumeEvent 非 nil 時（parent_id 真的有變化）一併寫入
+// 冊隸屬異動記錄，時間軸邏輯跟 UpdateStoryWithVersion 一致。
+func (r *Repository) MoveStory(story *storytellerModel.Story, volumeEvent *storytellerModel.StoryVolumeEvent) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(story).Update("parent_id", story.ParentID).Error; err != nil {
+			return err
+		}
+		if volumeEvent != nil {
+			volumeEvent.StoryID = story.ID
+			return tx.Create(volumeEvent).Error
+		}
+		return nil
+	})
+}
+
 // DeleteStory 軟刪除故事。volumeEvent 非 nil 時（被刪除的故事當下有 parent_id），
 // 在同一個 transaction 裡一併補寫一筆 to_volume_id=NULL 的冊隸屬異動記錄，
 // 否則冊被刪掉一篇故事後，時間軸上會完全看不出這篇曾經存在過。

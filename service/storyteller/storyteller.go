@@ -862,6 +862,34 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	return story, conflicted, nil
 }
 
+// MoveStory 只搬移故事所屬的冊，不動 title/summary/status/content，也不建立新版本
+// （比照 MoveLore：純粹分類異動不算內容變更）。跟 UpdateStory 不同，呼叫端不需要先讀出
+// 目前的 title/content 才能搬移，避免 agent 類的呼叫端漏帶內容而意外覆蓋掉故事。
+func (s *Service) MoveStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryMoveRequest) (*storytellerModel.Story, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	story, err := s.repo.Story(project.ID, strings.TrimSpace(storyPublicID))
+	if err != nil {
+		return nil, err
+	}
+	if story.IsVolume {
+		return nil, errors.New("cannot move a volume itself")
+	}
+	parent, err := s.resolveVolumeParent(project.ID, &input.VolumePublicID)
+	if err != nil {
+		return nil, err
+	}
+	previousParentID := story.ParentID
+	story.ParentID = parentID(parent)
+	volumeEvent := volumeMoveEvent(previousParentID, story.ParentID)
+	if err := s.repo.MoveStory(story, volumeEvent); err != nil {
+		return nil, err
+	}
+	return story, nil
+}
+
 // resolveVolumeParent 把呼叫端帶來的冊 public_id 轉成內部的 Story：留空代表不分冊，
 // 目標必須存在且是冊（is_volume=true），否則視為請求錯誤——不支援冊中冊，一般故事
 // 也不能把 parent_id 指到另一篇一般故事。
