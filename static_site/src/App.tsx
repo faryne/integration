@@ -117,6 +117,9 @@ const StorytellerImageEpisodeEditor = lazy(
 const StorytellerLoreEditor = lazy(
   () => import("@/pages/storyteller/LoreEditor.tsx"),
 );
+const StorytellerWysiwygDemo = lazy(
+  () => import("@/pages/storyteller/WysiwygDemo.tsx"),
+);
 const StorytellerStoryDiffCompare = lazy(
   () => import("@/pages/storyteller/StoryDiffCompare.tsx"),
 );
@@ -495,6 +498,13 @@ function App() {
       <AnalyticsTracker />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>
+          {import.meta.env.DEV && (
+            <Route
+              path="storyteller/wysiwyg-demo"
+              element={<StorytellerWysiwygDemo />}
+            />
+          )}
+
           {standaloneSteamLoom && (
             <Route path={""} element={<StorytellerLayout />}>
               {storytellerRoutes}

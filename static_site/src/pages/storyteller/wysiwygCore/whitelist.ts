@@ -6,7 +6,7 @@
  */
 
 export type MarkName =
-  "bold" | "italic" | "underline" | "subscript" | "superscript";
+  "bold" | "italic" | "underline" | "subscript" | "superscript" | "strike";
 
 export interface MarkSyntaxRule {
   markName: MarkName;
@@ -19,6 +19,7 @@ export interface MarkSyntaxRule {
 export const MARK_SYNTAX_WHITELIST: MarkSyntaxRule[] = [
   { markName: "bold", delimiters: ["**", "__"], canonicalDelimiter: "**" },
   { markName: "underline", delimiters: ["++"], canonicalDelimiter: "++" },
+  { markName: "strike", delimiters: ["--"], canonicalDelimiter: "--" },
   { markName: "italic", delimiters: ["*"], canonicalDelimiter: "*" },
   { markName: "subscript", delimiters: ["~"], canonicalDelimiter: "~" },
   { markName: "superscript", delimiters: ["^"], canonicalDelimiter: "^" },
@@ -142,6 +143,9 @@ export const MARKER_CLOSE = "⟧";
 export const MARKER_CLOSE_SLASH = "/";
 
 export const MARKER_ALIGN_ATTR = "align";
+export const TABLE_MARKER_NAME = "table";
+export const TABLE_MARKER_TABLE_ID_ATTR = "tableId";
+export const TABLE_MARKER_ROW_ID_ATTR = "rowId";
 /** 註解文字，行內 marker（`type="comment"`）的屬性：⟦comment-<id> comment="..."⟧。 */
 export const MARKER_COMMENT_ATTR = "comment";
 /**
@@ -161,6 +165,14 @@ export const DEFAULT_COMMENT_COLOR: CommentColorValue = "yellow";
 
 export function generateMarkerId(): string {
   return crypto.randomUUID();
+}
+
+export function generateTableId(): string {
+  return `tbl_${crypto.randomUUID()}`;
+}
+
+export function generateTableRowId(): string {
+  return `row_${crypto.randomUUID()}`;
 }
 
 /**
@@ -188,6 +200,45 @@ export function unescapeMarkerComment(escaped: string): string {
     if (char === "r") return "\r";
     return char;
   });
+}
+
+/**
+ * 真表格 cell 內容的第二層跳脫。這層只處理「列格式」需要的三種字元：
+ * - `\` → `\\`
+ * - cell 邊界字元 `|` → `\|`
+ * - cell 內換行 → `\n`
+ *
+ * 行內 marker 屬性值（例如 comment/note/href）會先由 escapeMarkerComment 處理，再經過
+ * 這層 table escape；解析時反過來先 table unescape，再交給既有 inline parser。
+ */
+export function escapeTableCell(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "\\n");
+}
+
+/** escapeTableCell 的反向操作；其他反斜線組合保持字面值，不做額外解讀。 */
+export function unescapeTableCell(text: string): string {
+  let output = "";
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (char !== "\\" || index === text.length - 1) {
+      output += char;
+      continue;
+    }
+    const next = text[index + 1];
+    if (next === "|" || next === "\\") {
+      output += next;
+      index++;
+    } else if (next === "n") {
+      output += "\n";
+      index++;
+    } else {
+      output += char;
+    }
+  }
+  return output;
 }
 
 /* ------------------------------------------------------------------ *
@@ -260,6 +311,14 @@ export type BgColorValue = (typeof BG_COLOR_VALUES)[number];
 
 export const ASSET_URI_PREFIX = "steamloom-asset://";
 export const ASSET_PUBLIC_ID_PATTERN_SOURCE = "[A-Za-z0-9._~-]+";
+export const ASSET_IMAGE_LAYOUT_VALUES = [
+  "block",
+  "center",
+  "float-left",
+  "float-right",
+] as const;
+export type AssetImageLayoutValue = (typeof ASSET_IMAGE_LAYOUT_VALUES)[number];
+export const DEFAULT_ASSET_IMAGE_LAYOUT: AssetImageLayoutValue = "block";
 const ASSET_URI_PATTERN = new RegExp(
   `^${ASSET_URI_PREFIX}(${ASSET_PUBLIC_ID_PATTERN_SOURCE})$`,
 );
@@ -273,6 +332,79 @@ export function sanitizeMarkdownImageAlt(alt: string): string {
     .replaceAll("[", " ")
     .replaceAll("]", " ")
     .replace(/[\n\r]/g, " ");
+}
+
+export function isAssetImageLayoutValue(
+  value: string,
+): value is AssetImageLayoutValue {
+  return (ASSET_IMAGE_LAYOUT_VALUES as readonly string[]).includes(value);
+}
+
+export function normalizeAssetImageLayout(
+  value: unknown,
+): AssetImageLayoutValue {
+  return typeof value === "string" && isAssetImageLayoutValue(value)
+    ? value
+    : DEFAULT_ASSET_IMAGE_LAYOUT;
+}
+
+/** Phase 8.1.3：圖片尺寸 preset，跟 layout 一樣用語意化名稱（不存 pixel），方便不同
+ * layout／閱讀容器寬度下各自換算成合理的實際寬度，見 assetImageLayout.ts 的換算表。 */
+export const ASSET_IMAGE_SIZE_VALUES = ["small", "medium", "large"] as const;
+export type AssetImageSizeValue = (typeof ASSET_IMAGE_SIZE_VALUES)[number];
+export const DEFAULT_ASSET_IMAGE_SIZE: AssetImageSizeValue = "large";
+
+export function isAssetImageSizeValue(
+  value: string,
+): value is AssetImageSizeValue {
+  return (ASSET_IMAGE_SIZE_VALUES as readonly string[]).includes(value);
+}
+
+export function normalizeAssetImageSize(value: unknown): AssetImageSizeValue {
+  return typeof value === "string" && isAssetImageSizeValue(value)
+    ? value
+    : DEFAULT_ASSET_IMAGE_SIZE;
+}
+
+/** title 字串裡找 `key=value`（例如 `layout=float-left size=medium`），順序不拘、
+ * 缺其中一個 key 就用預設值——這樣舊資料只有 `layout=xxx`（沒有 size）能繼續正常
+ * 解析成 size=large（現在的預設值本來就等於舊版唯一支援的呈現效果），不用遷移。
+ * value 用 `\S+`（非空白）而不是限定字元集，是為了讓 `caption` 這種自由文字（經
+ * `encodeURIComponent` 編碼後不含空白，但字元集比 layout/size 的固定列舉值寬）
+ * 也能共用同一個解析函式；layout/size 本來的值域本來就是 `\S+` 的子集，行為不變。 */
+function assetImageTitleValue(
+  title: string | undefined,
+  key: "layout" | "size" | "caption",
+): string {
+  const pattern = new RegExp(`(?:^|\\s)${key}=(\\S+)`);
+  return title?.match(pattern)?.[1] ?? "";
+}
+
+export function assetImageLayoutFromTitle(
+  title: string | undefined,
+): AssetImageLayoutValue {
+  return normalizeAssetImageLayout(assetImageTitleValue(title, "layout"));
+}
+
+export function assetImageSizeFromTitle(
+  title: string | undefined,
+): AssetImageSizeValue {
+  return normalizeAssetImageSize(assetImageTitleValue(title, "size"));
+}
+
+/** 圖說（給讀者看的說明文字，跟 alt 替代文字用途不同）：塞進 title 字串的
+ * `caption=` key，值用 `encodeURIComponent` 編碼——caption 是自由文字（可能有
+ * 空白、中文、標點），跟 layout/size 的固定列舉值不同，不能直接塞進以空白分隔
+ * token 的 title 字串，編碼後才不會破壞 title 的 token 切分或跟外層的 `"..."`
+ * markdown title 引號衝突。 */
+export function assetImageCaptionFromTitle(title: string | undefined): string {
+  const raw = assetImageTitleValue(title, "caption");
+  if (!raw) return "";
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return "";
+  }
 }
 
 /* --- a（連結）行內 marker 的屬性 --- */

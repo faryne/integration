@@ -1,10 +1,16 @@
 import type { JSONContent } from "@tiptap/core";
 
 import {
+  ASSET_URI_PREFIX,
+  blockKindPrefix,
   DEFAULT_ALIGNMENT,
+  DEFAULT_ASSET_IMAGE_LAYOUT,
+  DEFAULT_ASSET_IMAGE_SIZE,
   DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
   DEFAULT_HEADING_LEVEL,
+  escapeMarkerComment,
+  escapeTableCell,
   MARKER_ALIGN_ATTR,
   MARKER_BG_COLOR_ATTR,
   MARKER_CLOSE,
@@ -16,17 +22,20 @@ import {
   MARKER_OPEN,
   MARKER_TARGET_ATTR,
   MARKER_TEXT_COLOR_ATTR,
-  MARK_SYNTAX_WHITELIST,
-  ASSET_URI_PREFIX,
-  blockKindPrefix,
-  escapeMarkerComment,
   generateInlineMarkerId,
+  MARK_SYNTAX_WHITELIST,
+  normalizeAssetImageLayout,
+  normalizeAssetImageSize,
   sanitizeMarkdownImageAlt,
+  TABLE_MARKER_NAME,
+  TABLE_MARKER_ROW_ID_ATTR,
+  TABLE_MARKER_TABLE_ID_ATTR,
   type BlockKindValue,
   type CommentColorValue,
   type HeadingLevel,
   type MarkName,
 } from "./whitelist";
+import { assetImageTitle } from "./assetImageLayout";
 
 const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
   MARK_SYNTAX_WHITELIST.map((rule) => [rule.markName, rule.canonicalDelimiter]),
@@ -36,6 +45,7 @@ const CANONICAL_DELIMITER: Record<MarkName, string> = Object.fromEntries(
 const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
   "bold",
   "underline",
+  "strike",
   "italic",
   "subscript",
   "superscript",
@@ -220,7 +230,14 @@ function serializeParagraphInline(paragraph: JSONContent): string {
       const src = publicId
         ? `${ASSET_URI_PREFIX}${publicId}`
         : String(node.attrs?.src ?? "");
-      output += `![${alt}](${src})`;
+      const layout = normalizeAssetImageLayout(
+        node.attrs?.layout ?? DEFAULT_ASSET_IMAGE_LAYOUT,
+      );
+      const size = normalizeAssetImageSize(
+        node.attrs?.size ?? DEFAULT_ASSET_IMAGE_SIZE,
+      );
+      const caption = String(node.attrs?.caption ?? "");
+      output += `![${alt}](${src}${assetImageTitle(layout, size, caption)})`;
       continue;
     }
 
@@ -287,14 +304,42 @@ function serializeParagraph(paragraph: JSONContent): string {
   return `${prefix}${MARKER_OPEN}${markerId}${alignAttr}${MARKER_CLOSE}${inline}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${markerId}${MARKER_CLOSE}`;
 }
 
+function serializeTable(table: JSONContent, tableIndex: number): string[] {
+  const tableId =
+    (table.attrs?.tableId as string | null | undefined) ??
+    `tbl_${tableIndex + 1}`;
+  return (table.content ?? [])
+    .filter((row) => row.type === "tableRow")
+    .map((row, rowIndex) => {
+      const rowId =
+        (row.attrs?.rowId as string | null | undefined) ??
+        `row_${rowIndex + 1}`;
+      const cells = (row.content ?? [])
+        .filter((cell) => cell.type === "tableCell")
+        .map((cell) => escapeTableCell(serializeParagraphInline(cell).trim()));
+      const rowText = `| ${cells.join(" | ")} |`;
+      return (
+        `${MARKER_OPEN}${TABLE_MARKER_NAME} ` +
+        `${TABLE_MARKER_TABLE_ID_ATTR}="${escapeMarkerComment(tableId)}" ` +
+        `${TABLE_MARKER_ROW_ID_ATTR}="${escapeMarkerComment(rowId)}"` +
+        `${MARKER_CLOSE}${rowText}${MARKER_OPEN}${MARKER_CLOSE_SLASH}${TABLE_MARKER_NAME}${MARKER_CLOSE}`
+      );
+    });
+}
+
 /**
  * 把 Tiptap 的 doc JSON 序列化成白名單規則下的自訂 markdown 字串。
  * 段落之間用單一 `\n` 接（不是空行），跟 parseMarkdownToParagraphs 的 split("\n") 對稱，
  * 也是為了讓 content.split("\n") 的陣列位置跟書籤 line_index／版本 diff 保持一致。
  */
 export function serializeDocToMarkdown(doc: JSONContent): string {
-  return (doc.content ?? [])
-    .filter((node) => node.type === "paragraph")
-    .map(serializeParagraph)
-    .join("\n");
+  const lines: string[] = [];
+  (doc.content ?? []).forEach((node, nodeIndex) => {
+    if (node.type === "paragraph") {
+      lines.push(serializeParagraph(node));
+    } else if (node.type === "storytellerTable") {
+      lines.push(...serializeTable(node, nodeIndex));
+    }
+  });
+  return lines.join("\n");
 }

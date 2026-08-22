@@ -1,6 +1,10 @@
 import { Fragment, useId, type CSSProperties, type ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
 
+import {
+  assetImageFrameSx,
+  CLEAR_FLOATING_ASSET_SX,
+} from "./wysiwygCore/assetImageLayout";
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
@@ -84,12 +88,18 @@ const BLOCK_GROUP_SX = {
     margin: "0 0 0.5em 0",
     borderCollapse: "collapse",
     width: "100%",
+    // 跟編輯區同一套改動（見 StorytellerWysiwygEditor.tsx 同樣位置的說明）：改
+    // table-layout:auto 為 fixed，避免欄寬隨內容即時重新計算而抖動，這裡的表格
+    // 是唯讀閱讀頁不會有組字問題，但欄寬計算邏輯要跟編輯區一致，不然編輯區看到
+    // 的欄寬比例跟閱讀頁顯示的會不一樣。
+    tableLayout: "fixed",
   },
   "& td, & th": {
     border: "1px solid",
     borderColor: "divider",
     padding: "6px 10px",
     verticalAlign: "top",
+    wordBreak: "break-word",
   },
   "& th": {
     backgroundColor: "action.hover",
@@ -103,6 +113,7 @@ const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
   underline: "u",
   subscript: "sub",
   superscript: "sup",
+  strike: "s",
 };
 
 function renderRun(run: ParsedRun, key: number): ReactNode {
@@ -111,13 +122,9 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
       <Box
         key={key}
         component="span"
-        sx={{
-          display: "block",
-          my: 1,
-          overflow: "hidden",
-          borderRadius: 1,
-          bgcolor: "background.default",
-        }}
+        data-asset-layout={run.assetLayout}
+        data-asset-size={run.assetSize}
+        sx={assetImageFrameSx(run.assetLayout, run.assetSize)}
       >
         {run.assetSrc ? (
           <Box
@@ -141,6 +148,22 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
             資產：{run.assetAlt || run.assetPublicId}
           </Typography>
         )}
+        {run.assetCaption ? (
+          <Typography
+            component="span"
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              display: "block",
+              pt: 0.75,
+              fontStyle: "italic",
+              textAlign: "center",
+              overflowWrap: "anywhere",
+            }}
+          >
+            {run.assetCaption}
+          </Typography>
+        ) : null}
       </Box>
     );
   }
@@ -260,6 +283,16 @@ function renderParagraphContent(
       );
 }
 
+function renderTableCellContent(
+  runs: ParsedRun[],
+  footnoteNumbering: FootnoteNumbering,
+  footnoteIdPrefix: string,
+): ReactNode {
+  return runs.length === 0
+    ? " "
+    : renderParagraphRuns(runs, footnoteNumbering.numbers, footnoteIdPrefix);
+}
+
 /**
  * 故事尾端的腳注清單，獨立匯出成自己的元件——故事內容如果是逐段落/逐行渲染（例如
  * Reader.tsx 要在每行掛書籤功能），這個區塊只應該在整篇故事的最尾端渲染一次，
@@ -332,7 +365,7 @@ export function StorytellerWysiwygMarkdown({
     externalFootnoteNumbering ?? computeFootnoteNumbering(children);
 
   return (
-    <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX]}>
+    <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX, CLEAR_FLOATING_ASSET_SX]}>
       {groupParagraphsByBlockKind(paragraphs).map((group, groupIndex) => {
         if (group.blockKind === "none") {
           const { paragraph, index } = group.items[0];
@@ -368,6 +401,30 @@ export function StorytellerWysiwygMarkdown({
                 <hr key={paragraph.markerId ?? index} />
               ))}
             </Fragment>
+          );
+        }
+
+        if (group.blockKind === "table") {
+          return (
+            <Box component="table" key={`block-group-${groupIndex}`}>
+              <tbody>
+                {group.items.map(({ paragraph, index }) => (
+                  <tr key={paragraph.rowId ?? index}>
+                    {(paragraph.tableCells ?? [[]]).map(
+                      (cellRuns, cellIndex) => (
+                        <td key={cellIndex}>
+                          {renderTableCellContent(
+                            cellRuns,
+                            footnoteNumbering,
+                            footnoteIdPrefix,
+                          )}
+                        </td>
+                      ),
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </Box>
           );
         }
 

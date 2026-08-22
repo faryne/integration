@@ -15,8 +15,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerAssets } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 
@@ -73,6 +75,20 @@ export function StorytellerAssetPickerDialog({
               icon={<ImageIcon />}
               title="沒有可用資產"
               description="請先在資產集上傳圖片。"
+              action={
+                projectPublicId ? (
+                  <Button
+                    component={RouterLink}
+                    to={steamloomPath(`my/workspace/${projectPublicId}/assets`)}
+                    target="_blank"
+                    rel="noopener"
+                    size="small"
+                    variant="outlined"
+                  >
+                    前往資產集上傳
+                  </Button>
+                ) : undefined
+              }
             />
           ) : (
             <Grid container spacing={1.5}>

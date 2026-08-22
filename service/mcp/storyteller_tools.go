@@ -24,31 +24,35 @@ var errStorytellerMCPUnauthenticated = errors.New("missing authenticated storyte
 
 // storytellerContentSyntaxHint 描述編輯器實際支援的語法子集（不是完整 GFM，見
 // wysiwygCore/parser.ts／whitelist.ts），只列「能用什麼」，不列「不能用什麼」——
-// 沒提到的語法（code block、待辦清單、~~刪除線~~、標準 [text](url) 連結等）目前解析器
-// 不認得，寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。分隔線／表格
-// 2026-08-08 加入解析器支援，因此也補進這份清單——表格每個儲存格只支援粗體/斜體/底線/
-// 上下標這幾種基本行內樣式，不支援連結/腳注/註解（見 whitelist.ts 的
-// BLOCK_KIND_TABLE_ROW_PREFIX 說明：儲存格是用字面 `|` 字元切出來的，連結/腳注的
-// 屬性值是自由格式文字，可能剛好包含 `|` 而被誤切，所以這兩種 marker 不該用在表格裡）。
+// 沒提到的語法（code block、待辦清單、標準 [text](url) 連結等）目前解析器不認得，
+// 寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。新表格 2026-08-14
+// 改成逐列一行的 `⟦table ...⟧` marker，取代舊的 pipe-only table-row；舊格式仍可讀，
+// 但 AI agent 不應新增。
+// 刪除線 2026-08-13 加入解析器支援，語法是 `--文字--`，故意不用 GFM 慣用的 `~~`，
+// 因為 `~` 已經是這個編輯器的下標語法，兩者共用同一個字元會互相衝突。
 const storytellerContentSyntaxHint = "Content uses this app's own limited markdown-like syntax, not full GFM: " +
-	"headings (# through ######), **bold**, *italic*, ++underline++, ^superscript^, ~subscript~, " +
-	"blockquote (> text), bullet list (- item), ordered list (1. item), horizontal rule (a line containing " +
-	"only ---), and tables (each row is its own line: |cell1|cell2|cell3). A table's second row may optionally " +
-	"be a GFM-style separator row (|---|---|---|); when present, the first row renders as a bold header and " +
-	"the separator row itself is not shown — this is purely a rendering convenience, the separator row is not " +
-	"required. Table cells only support the basic inline styles (bold/italic/underline/superscript/subscript) " +
-	"— do not put links, footnotes, or comments inside a table cell, since their attribute values are free " +
-	"text and could contain a literal | that would break the cell split. Anything else is a plain paragraph."
+	"headings (# through ######), **bold**, *italic*, ++underline++, --strikethrough--, ^superscript^, " +
+	"~subscript~, blockquote (> text), bullet list (- item), ordered list (1. item), horizontal rule (a line " +
+	"containing only ---), and tables. New tables use one bracket-marked row per line, for example " +
+	"⟦table tableId=\"tbl_1\" rowId=\"row_1\"⟧| Character | Status |⟦/table⟧ followed immediately by more rows " +
+	"with the same tableId; adjacent rows with the same tableId render as one table. Keep tableId and rowId as " +
+	"stable opaque ids when editing existing rows; create simple unique ids when adding rows. In table cells, " +
+	"escape a literal pipe as \\|, a literal backslash as \\\\, and a cell line break as \\n. Table cells may use " +
+	"the same inline styles and bracket markers as normal text. Legacy pipe-only rows like |cell1|cell2| may " +
+	"exist in old content; preserve them if editing nearby, but do not create new legacy table-row content. " +
+	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. Anything " +
+	"else is a plain paragraph."
 
-// storytellerContentMarkerHint 說明內容裡可能出現的兩種行內 marker——footnote（讀者
-// 看得到）跟 comment（只有作者看得到的私人註解）。這兩種標記語法本身長得幾乎一樣，
+// storytellerContentMarkerHint 說明內容裡可能出現的 bracket marker：footnote（讀者
+// 看得到）、comment（只有作者看得到的私人註解），以及 block-level table row。行內
+// 標記語法本身長得幾乎一樣，
 // 只從字面看不出語意差異，MCP client 讀到 ⟦comment-...⟧ 這種字串容易誤判成沒看過的
 // 亂碼直接砍掉或忽略；補上這段說明，讓 AI 讀寫時都知道怎麼處理：footnote 的錨定文字
 // 跟腳注本身都要保留在原地，comment 則要當成「作者留給你的編輯指示」來讀（可以依照
 // 註解內容調整寫法），但註解文字本身絕對不能出現在改寫後的正文或任何要給讀者看的
 // 地方——這是跟 storytellerContentSyntaxHint 分開成獨立常數的原因，一個講格式語法，
 // 一個講「這個東西代表什麼、能不能給讀者看」，混在一起描述容易讓 agent 抓不到重點。
-const storytellerContentMarkerHint = "The content may also contain two kinds of bracket markers written by the " +
+const storytellerContentMarkerHint = "The content may also contain bracket markers written by the " +
 	"web editor, both wrapping a run of text: ⟦footnote-<id> note=\"...\"⟧anchored text⟦/footnote-<id>⟧ and " +
 	"⟦comment-<id> comment=\"...\" commentColor=\"...\"⟧highlighted text⟦/comment-<id>⟧ (id is an opaque generated " +
 	"string; keep it as-is if you reproduce or move a marker). Footnotes are reader-facing: keep the anchored " +
@@ -57,7 +61,9 @@ const storytellerContentMarkerHint = "The content may also contain two kinds of 
 	"comment's text as an instruction from the author about how they want the highlighted span rewritten, but " +
 	"never copy the comment's own text into the visible story content or surface it to anyone who isn't the " +
 	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
-	"remove it later) unless you're explicitly asked to delete it."
+	"remove it later) unless you're explicitly asked to delete it. Table rows are block-level markers: " +
+	"⟦table tableId=\"...\" rowId=\"...\"⟧| cell | cell |⟦/table⟧. Keep rows from the same table adjacent and keep " +
+	"their tableId/rowId values stable when editing existing tables."
 
 // storytellerProjectDetailListCap 是 storyteller_get_project 嵌進去的 story/lore
 // 清單上限，避免專案很大時單次回應塞爆 agent 的 context；超過的部分要另外呼叫

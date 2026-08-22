@@ -134,9 +134,11 @@ export function StoryRow({
             )}
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography fontWeight={900} noWrap>
-              {story.title}
-            </Typography>
+            <Tooltip title={story.title}>
+              <Typography fontWeight={900} noWrap>
+                {story.title}
+              </Typography>
+            </Tooltip>
             <Typography variant="body2" color="text.secondary" noWrap>
               {isImage
                 ? `${storyPageCount(story)} 頁`
@@ -210,9 +212,11 @@ export function LoreRow({
           <DescriptionIcon fontSize="small" />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography fontWeight={900} noWrap>
-            {lore.title}
-          </Typography>
+          <Tooltip title={lore.title}>
+            <Typography fontWeight={900} noWrap>
+              {lore.title}
+            </Typography>
+          </Tooltip>
           <Typography variant="body2" color="text.secondary" noWrap>
             {lore.word_count.toLocaleString()} 字 · 更新於{" "}
             {formatStorytellerDate(lore.updated_at)}

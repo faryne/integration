@@ -1,7 +1,9 @@
 import {
   computeFootnoteNumbering,
+  groupParagraphsByBlockKind,
   parseFootnoteNoteRuns,
   parseMarkdownToParagraphs,
+  splitRunsIntoCells,
   type ParsedParagraph,
   type ParsedRun,
 } from "./parser";
@@ -24,8 +26,8 @@ import {
  * - 標題/引用/無序清單前綴：本來就是標準語法，原樣輸出。
  * - 有序清單：重新編出真正的連續數字（匯出檔是給人看原始碼的，這是唯一
  *   「數字有意義」的地方；內部儲存永遠是 canonical 的 `1. `）。
- * - 粗體 `**`／斜體 `*`：標準語法直接輸出；底線/上下標標準 markdown 沒有，
- *   轉行內 HTML `<u>`/`<sub>`/`<sup>`（GFM 及多數渲染器接受）。
+ * - 粗體 `**`／斜體 `*`／刪除線 `~~`：標準/GFM 語法直接輸出；底線/上下標標準 markdown
+ *   沒有對應語法，轉行內 HTML `<u>`/`<sub>`/`<sup>`（GFM 及多數渲染器接受）。
  * - 文字顏色/背景色：剝掉樣式、保留文字（標準 markdown 無對應，匯出檔保持乾淨）。
  * - 連結：`[文字](網址)`；target 丟棄。
  * - 腳注：GFM 腳注語法——內文錨點 `[^n]`＋檔案尾端 `[^n]: 內文` 清單，編號沿用
@@ -41,6 +43,7 @@ import {
 const EXPORT_MARK_ORDER_OUTER_TO_INNER: MarkName[] = [
   "bold",
   "underline",
+  "strike",
   "italic",
   "subscript",
   "superscript",
@@ -52,6 +55,8 @@ const EXPORT_MARK_WRAPPERS: Record<MarkName, [string, string]> = {
   underline: ["<u>", "</u>"],
   subscript: ["<sub>", "</sub>"],
   superscript: ["<sup>", "</sup>"],
+  // 刪除線是少數標準 GFM 有對應語法的樣式（~~文字~~），不用像底線/上下標退回 HTML。
+  strike: ["~~", "~~"],
 };
 
 function wrapWithMarks(text: string, marks: MarkName[]): string {
@@ -136,25 +141,60 @@ function exportInline(
 
 interface ExportGroup {
   blockKind: ParsedParagraph["blockKind"];
+  tableId?: string;
   paragraphs: ParsedParagraph[];
 }
 
-/** 連續同 blockKind（引用/清單）的段落分成一組，"none" 各自獨立——跟閱讀頁的分組規則一致。 */
+const TABLE_SEPARATOR_CELL_PATTERN = /^:?-+:?$/;
+
+/** 連續同 blockKind（引用/清單/表格）的段落分成一組，"none" 各自獨立——跟閱讀頁的分組規則一致。 */
 function groupForExport(paragraphs: ParsedParagraph[]): ExportGroup[] {
-  const groups: ExportGroup[] = [];
-  for (const paragraph of paragraphs) {
-    const last = groups[groups.length - 1];
-    if (
-      last &&
-      last.blockKind === paragraph.blockKind &&
-      paragraph.blockKind !== "none"
-    ) {
-      last.paragraphs.push(paragraph);
-    } else {
-      groups.push({ blockKind: paragraph.blockKind, paragraphs: [paragraph] });
-    }
-  }
-  return groups;
+  return groupParagraphsByBlockKind(paragraphs).map((group) => ({
+    blockKind: group.blockKind === "table" ? "table-row" : group.blockKind,
+    tableId: group.tableId,
+    paragraphs: group.items.map(({ paragraph }) => paragraph),
+  }));
+}
+
+function isExportTableSeparatorRow(cells: ParsedRun[][]): boolean {
+  return cells.every((cell) =>
+    TABLE_SEPARATOR_CELL_PATTERN.test(
+      cell
+        .map((run) => run.text)
+        .join("")
+        .trim(),
+    ),
+  );
+}
+
+function exportTableCell(
+  runs: ParsedRun[],
+  footnoteNumbers: Map<string, number>,
+): string {
+  return exportInline(runs, footnoteNumbers)
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, "<br>");
+}
+
+function exportTableRows(
+  rows: ParsedRun[][][],
+  footnoteNumbers: Map<string, number>,
+): string {
+  const visibleRows = rows.filter((row, index) => {
+    if (index === 1 && isExportTableSeparatorRow(row)) return false;
+    return !isExportTableSeparatorRow(row);
+  });
+  if (visibleRows.length === 0) return "";
+
+  const columnCount = Math.max(1, ...visibleRows.map((row) => row.length));
+  const lines = visibleRows.map((row) => {
+    const cells = Array.from({ length: columnCount }, (_, cellIndex) =>
+      exportTableCell(row[cellIndex] ?? [], footnoteNumbers),
+    );
+    return `| ${cells.join(" | ")} |`;
+  });
+  const separator = `| ${Array.from({ length: columnCount }, () => "---").join(" | ")} |`;
+  return [lines[0], separator, ...lines.slice(1)].join("\n");
 }
 
 /**
@@ -169,6 +209,15 @@ export function exportContentToMarkdown(content: string): string {
 
   const blocks: string[] = [];
   for (const group of groupForExport(paragraphs)) {
+    if (group.tableId) {
+      const table = exportTableRows(
+        group.paragraphs.map((paragraph) => paragraph.tableCells ?? [[]]),
+        footnoteNumbering.numbers,
+      );
+      if (table) blocks.push(table);
+      continue;
+    }
+
     if (group.blockKind === "none") {
       const paragraph = group.paragraphs[0];
       const inline = exportInline(paragraph.runs, footnoteNumbering.numbers);
@@ -178,6 +227,15 @@ export function exportContentToMarkdown(content: string): string {
           ? `${"#".repeat(paragraph.headingLevel)} `
           : "";
       blocks.push(`${headingPrefix}${inline}`);
+      continue;
+    }
+
+    if (group.blockKind === "table-row") {
+      const table = exportTableRows(
+        group.paragraphs.map((paragraph) => splitRunsIntoCells(paragraph.runs)),
+        footnoteNumbering.numbers,
+      );
+      if (table) blocks.push(table);
       continue;
     }
 

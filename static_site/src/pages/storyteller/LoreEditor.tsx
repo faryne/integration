@@ -673,6 +673,31 @@ export default function StorytellerLoreEditor({
     { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
+  // Ctrl/Cmd+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
+  // （Phase 9.5 人工測試反映的問題）。
+  //
+  // 已知 Bug 記錄：原本寫在 `if (authLoading)` 等 early return 之後，導致
+  // 未登入／載入中的 render 不會呼叫這三個 hook，登入後才會呼叫，違反
+  // Rules of Hooks（StoryEditor.tsx 也有同樣的問題，一起搬到這裡修）。
+  // `handleSave` 是 function 宣告會整個 hoist，搬到 early return 之前一樣
+  // 讀得到，不需要跟著搬。
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  const isSavingLoreRef = useRef(saveLore.isPending);
+  isSavingLoreRef.current = saveLore.isPending;
+  useEffect(() => {
+    function handleSaveHotkey(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+        return;
+      }
+      event.preventDefault();
+      if (isSavingLoreRef.current) return;
+      handleSaveRef.current();
+    }
+    window.addEventListener("keydown", handleSaveHotkey);
+    return () => window.removeEventListener("keydown", handleSaveHotkey);
+  }, []);
+
   if (authLoading) {
     return (
       <StorytellerShell
@@ -948,20 +973,38 @@ export default function StorytellerLoreEditor({
         <Chip label="尚未存檔" color="warning" />
       )}
       {embedded && (
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<SaveIcon />}
-          disabled={saveLore.isPending}
-          onClick={handleSave}
-        >
-          {saveLore.isPending ? "存檔中" : "存檔"}
-        </Button>
+        // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+        // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
+        <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+          <span>
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<SaveIcon />}
+              disabled={saveLore.isPending}
+              onClick={handleSave}
+            >
+              {saveLore.isPending ? "存檔中" : "存檔"}
+            </Button>
+          </span>
+        </Tooltip>
       )}
     </Stack>
   );
   const loreEditorHeaderContent = embedded ? (
-    <Stack spacing={2.25}>
+    <Stack
+      spacing={2.25}
+      sx={{
+        // 跟 StoryEditor.tsx 同一套理由／同一套做法：sticky 釘在工作台右欄
+        // 面板頂部，捲動編輯器內文時標題／摘要／存檔按鈕維持在畫面上。
+        position: "sticky",
+        top: 0,
+        zIndex: 2,
+        pb: 1.5,
+        bgcolor: (theme) =>
+          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+      }}
+    >
       {versionConflict ? (
         <Alert
           severity="warning"
@@ -1148,16 +1191,22 @@ export default function StorytellerLoreEditor({
           </Grid>
         )}
         <Grid size={{ xs: 12, md: 2 }}>
-          <Button
-            fullWidth
-            startIcon={<SaveIcon />}
-            variant="contained"
-            onClick={handleSave}
-            disabled={saveLore.isPending}
-            sx={{ py: 1.7 }}
-          >
-            {saveLore.isPending ? "存檔中" : "存檔"}
-          </Button>
+          {/* Button 有 fullWidth，包裹用的 span 要是 block 才不會把寬度收縮
+              回內容寬度。 */}
+          <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+            <span style={{ display: "block" }}>
+              <Button
+                fullWidth
+                startIcon={<SaveIcon />}
+                variant="contained"
+                onClick={handleSave}
+                disabled={saveLore.isPending}
+                sx={{ py: 1.7 }}
+              >
+                {saveLore.isPending ? "存檔中" : "存檔"}
+              </Button>
+            </span>
+          </Tooltip>
         </Grid>
       </Grid>
     </Stack>
@@ -1197,6 +1246,9 @@ export default function StorytellerLoreEditor({
             onChange={handleEditorContentChange}
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
+            onRequestInsertAsset={
+              project ? () => setAssetPickerOpen(true) : undefined
+            }
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">
@@ -1205,6 +1257,7 @@ export default function StorytellerLoreEditor({
                       size="small"
                       disabled={!project}
                       onClick={() => setAssetPickerOpen(true)}
+                      aria-label="插入資產"
                     >
                       <ImageIcon fontSize="small" />
                     </IconButton>

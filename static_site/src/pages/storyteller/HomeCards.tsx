@@ -114,17 +114,17 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
                       handleVisibilityChange(project, value)
                     }
                   >
-                    <ToggleButton value="private">
+                    <ToggleButton value="private" aria-label="完全不公開">
                       <Tooltip title="完全不公開">
                         <LockIcon fontSize="small" />
                       </Tooltip>
                     </ToggleButton>
-                    <ToggleButton value="unlisted">
+                    <ToggleButton value="unlisted" aria-label="與親友分享">
                       <Tooltip title="與親友分享">
                         <PeopleIcon fontSize="small" />
                       </Tooltip>
                     </ToggleButton>
-                    <ToggleButton value="public">
+                    <ToggleButton value="public" aria-label="已公開">
                       <Tooltip title="已公開">
                         <PublicIcon fontSize="small" />
                       </Tooltip>

@@ -5,12 +5,14 @@ interface CustomEmptyStateProps {
   icon: ReactNode;
   title: string;
   description: string;
+  action?: ReactNode;
 }
 
 export function CustomEmptyState({
   icon,
   title,
   description,
+  action,
 }: CustomEmptyStateProps) {
   return (
     <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
@@ -22,6 +24,7 @@ export function CustomEmptyState({
             {description}
           </Typography>
         </Stack>
+        {action}
       </Stack>
     </Paper>
   );

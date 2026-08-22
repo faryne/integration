@@ -1,24 +1,4 @@
-import AddCommentIcon from "@mui/icons-material/AddComment";
-import DeleteIcon from "@mui/icons-material/Delete";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
-import FormatAlignLeftIcon from "@mui/icons-material/FormatAlignLeft";
-import FormatAlignRightIcon from "@mui/icons-material/FormatAlignRight";
-import FormatBoldIcon from "@mui/icons-material/FormatBold";
-import FormatColorFillIcon from "@mui/icons-material/FormatColorFill";
-import FormatColorTextIcon from "@mui/icons-material/FormatColorText";
-import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
-import FormatListNumberedIcon from "@mui/icons-material/FormatListNumbered";
-import FormatQuoteIcon from "@mui/icons-material/FormatQuote";
-import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
-import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
-import LinkIcon from "@mui/icons-material/Link";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
-import NoteAltIcon from "@mui/icons-material/NoteAlt";
-import SubscriptIcon from "@mui/icons-material/Subscript";
-import SuperscriptIcon from "@mui/icons-material/Superscript";
-import TableRowsIcon from "@mui/icons-material/TableRows";
 import {
   Box,
   Button,
@@ -29,21 +9,15 @@ import {
   DialogTitle,
   Divider,
   FormControlLabel,
-  ListItemIcon,
-  ListItemText,
-  Menu,
-  MenuItem,
+  IconButton,
   Paper,
-  Select,
-  type SelectChangeEvent,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { NodeSelection } from "@tiptap/pm/state";
 import {
   type MouseEvent,
   type ReactNode,
@@ -56,10 +30,14 @@ import {
 
 import {
   BG_COLOR_CSS,
-  BG_COLOR_LABELS,
   TEXT_COLOR_CSS,
-  TEXT_COLOR_LABELS,
 } from "./wysiwygCore/colorStyles";
+import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
+import {
+  hasAssetImageLayoutTarget,
+  wysiwygCommandsByGroup,
+  type WysiwygCommandContext,
+} from "./wysiwygCore/commands";
 import {
   buildExportFileName,
   exportContentToMarkdown,
@@ -69,25 +47,21 @@ import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
-  ALIGNMENT_VALUES,
   BG_COLOR_VALUES,
-  BLOCK_KIND_VALUES,
   COMMENT_COLOR_VALUES,
-  DEFAULT_BLOCK_KIND,
   DEFAULT_COMMENT_COLOR,
-  DEFAULT_HEADING_LEVEL,
-  HEADING_LEVELS,
   isSafeHref,
   TEXT_COLOR_VALUES,
-  type AlignmentValue,
-  type BgColorValue,
-  type BlockKindValue,
   type CommentColorValue,
-  type HeadingLevel,
-  type TextColorValue,
 } from "./wysiwygCore/whitelist";
-import { wysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import { createWysiwygCoreExtensions } from "./wysiwygCore/extensions";
+import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
+import {
+  StorytellerWysiwygContextMenu,
+  type ContextMenuPosition,
+} from "./StorytellerWysiwygContextMenu";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
+import { StorytellerWysiwygTableMenu } from "./StorytellerWysiwygTableMenu";
 
 interface HoveredComment {
   text: string;
@@ -99,11 +73,6 @@ interface HoveredFootnote {
   /** 這裡放的是還沒解析的腳注原文（含 **粗體** 等限縮語法），渲染時交給 renderFootnoteNote。 */
   text: string;
   rect: DOMRect;
-}
-
-interface ContextMenuPosition {
-  x: number;
-  y: number;
 }
 
 /** 註解底色的實際色值跟顯示名稱，固定色盤（見 whitelist.ts 的 COMMENT_COLOR_VALUES）。 */
@@ -185,6 +154,17 @@ const FOOTNOTE_HIGHLIGHT_SX = {
   },
 } as const;
 
+const PLACEHOLDER_SX = {
+  "& .wysiwyg-empty-paragraph::before": {
+    content: "attr(data-placeholder)",
+    float: "left",
+    height: 0,
+    color: "text.disabled",
+    pointerEvents: "none",
+    userSelect: "none",
+  },
+} as const;
+
 // 引用/清單（blockKind）2026-07-10 加入：編輯區的段落 schema 是扁平的（每個段落都是
 // 獨立的 <p> node，沒有真的 <blockquote>/<ul>/<ol> 巢狀，見 markerParagraph.ts 的說明），
 // 所以「連續同 blockKind 的段落看起來像一個整體」純粹是 CSS 錯覺：相鄰同 data-block-kind
@@ -199,6 +179,17 @@ const BLOCK_KIND_SX = {
     paddingLeft: "12px",
     fontStyle: "italic",
     color: "text.secondary",
+  },
+  // 編輯區的段落是扁平陣列，沒有真的 <blockquote> 容器包住相鄰引用行（跟閱讀頁
+  // StorytellerWysiwygMarkdown.tsx 的 BLOCK_GROUP_SX 不一樣，那邊是真的巢狀渲染，
+  // 見上面的檔案說明）。HEADING_TYPOGRAPHY_SX 給每個 <p> 都加了 0.5em 的
+  // margin-bottom，相鄰引用行之間會被這個 margin 撐出間隙，讓左側邊框斷成一截一截，
+  // 而不是一條連續的引用線。用 negative margin-top + 等量 padding-top 把下一行的
+  // 邊框「拉」上去補滿間隙，文字位置不受影響（padding 抵銷 margin），只是視覺上讓
+  // 連續引用行的邊框看起來連在一起。
+  "& [data-block-kind='quote'] + [data-block-kind='quote']": {
+    marginTop: "-0.5em",
+    paddingTop: "0.5em",
   },
   "& [data-block-kind='bullet'], & [data-block-kind='number']": {
     position: "relative",
@@ -243,34 +234,121 @@ const BLOCK_KIND_SX = {
     borderRadius: "4px",
     padding: "2px 6px",
   },
+  // 真表格（Phase 5）：storytellerTable/tableRow/tableCell render 成真正的
+  // <table><tr><td>（見 wysiwygCore/storytellerTable.ts），但原本沒有任何邊框樣式，
+  // 使用者插入表格後完全看不出表格範圍在哪。跟閱讀頁 StorytellerWysiwygMarkdown.tsx
+  // 的 BLOCK_GROUP_SX 用同一套邊框樣式，讓編輯區跟閱讀頁視覺一致。
+  //
+  // 已知 Bug 記錄第 19 項／Phase G 項目 7：table 外面現在包了一層
+  // .storyteller-table-wrapper（見 storytellerTable.ts 的 addNodeView），用來放
+  // 「選取整張表格」的 grip handle。原本 table 自己的 margin 搬到 wrapper 上
+  // （wrapper 才是現在的最外層區塊），table 本身的 margin 歸零避免疊加。
+  "& .storyteller-table-wrapper": {
+    position: "relative",
+    margin: "0.5em 0",
+  },
+  "& .storyteller-table-grip": {
+    position: "absolute",
+    top: -12,
+    left: -12,
+    width: 22,
+    height: 22,
+    padding: 0,
+    lineHeight: 0,
+    border: "1px solid",
+    borderColor: "divider",
+    borderRadius: "6px",
+    bgcolor: "background.paper",
+    cursor: "pointer",
+    // 平常隱藏，hover 表格或選到表格時才出現——跟圖片節點常駐顯示的設定/刪除
+    // 按鈕不同，表格這裡希望預設乾淨，不要每張表格都掛一顆按鈕。
+    opacity: 0,
+    transition: "opacity 0.15s ease, border-color 0.15s ease",
+    zIndex: 1,
+    "&:hover": { borderColor: "primary.main" },
+  },
+  "& .storyteller-table-wrapper:hover .storyteller-table-grip": {
+    opacity: 1,
+  },
+  // ProseMirror 選到節點時，class 會直接加在 NodeView 回傳的 dom（也就是這個
+  // wrapper）上——跟圖片節點的選取樣式用同一組 selection token，形成一致的
+  // 「選到了」視覺語言，不用另外發明一套顏色。
+  "& .storyteller-table-wrapper.ProseMirror-selectednode": {
+    outline: "3px solid var(--storyteller-selection, #e6bd76)",
+    outlineOffset: 3,
+    borderRadius: "6px",
+  },
+  "& .storyteller-table-wrapper.ProseMirror-selectednode .storyteller-table-grip":
+    {
+      opacity: 1,
+      borderColor: "var(--storyteller-selection, #e6bd76)",
+    },
+  "& table": {
+    margin: 0,
+    borderCollapse: "collapse",
+    width: "100%",
+    // Phase 8.1.4 階段一：原本沒設定 table-layout，瀏覽器預設用 auto，會即時依
+    // 每個 cell 目前實際內容寬度重新計算欄寬——中文組字過程中每個候選字階段的
+    // 寬度都不同，欄寬就跟著抖動（已知 Bug 記錄第 6 項）。改成 fixed 後，欄寬只
+    // 在沒有任何欄寬資訊時才由瀏覽器依「第一列」cell 數平均分配一次，之後內容
+    // 增減只在同一個欄寬內 wrap，不會再重新計算整欄寬度。這是穩定/防抖動用的
+    // 最小改動，還沒做到使用者可以手動調欄寬（那是階段二，見 Phase 8.1.4）。
+    tableLayout: "fixed",
+  },
+  "& td": {
+    border: "1px solid",
+    borderColor: "divider",
+    padding: "6px 10px",
+    minWidth: "2em",
+    verticalAlign: "top",
+    // table-layout:fixed 之後，cell 寬度不會再依內容撐開，長字串/長網址需要明講
+    // 才會正確換行，不然會撐破欄寬。
+    wordBreak: "break-word",
+  },
+  // Phase E：`@tiptap/pm/tables` 的 `tableEditing()` 在使用者用 Shift+方向鍵／
+  // 拖曳跨 cell 選取多個儲存格時，會自動幫選到的 `<td>` 加上 `.selectedCell`
+  // class（跟 decoration 機制本身沒問題，用 `document.querySelectorAll` 驗證過
+  // class 確實會出現）——但這個 class 全站完全沒有對應的 CSS，選取範圍在畫面上
+  // 一片空白，使用者完全看不出來選了哪些 cell，多選狀態下按 Backspace／套格式
+  // 因此無法預期會發生什麼事。跟圖片/表格的 NodeSelection 用同一組 selection
+  // token，統一「選到了」的視覺語言。
+  "& td.selectedCell": {
+    position: "relative",
+    "&::after": {
+      content: '""',
+      position: "absolute",
+      inset: 0,
+      backgroundColor: "var(--storyteller-selection, #e6bd76)",
+      opacity: 0.25,
+      pointerEvents: "none",
+    },
+  },
 } as const;
 
-const BLOCK_KIND_OPTIONS: {
-  value: Exclude<BlockKindValue, "none">;
-  label: string;
-  Icon: typeof FormatQuoteIcon;
-}[] = [
-  { value: "quote", label: "引用", Icon: FormatQuoteIcon },
-  { value: "bullet", label: "無序清單", Icon: FormatListBulletedIcon },
-  { value: "number", label: "有序清單", Icon: FormatListNumberedIcon },
-  { value: "table-row", label: "表格列（用 | 分隔欄位）", Icon: TableRowsIcon },
-];
-
-const HEADING_LEVEL_OPTIONS: { value: HeadingLevel; label: string }[] = [
-  { value: 0, label: "內文" },
-  ...HEADING_LEVELS.map((level) => ({ value: level, label: `標題 ${level}` })),
-];
+/** 觸控裝置（手指是主要輸入方式）的長按本身就會觸發原生 contextmenu 事件——這是
+ * 使用者長按開始選字的手勢，不是想叫出選單。真機實測（Phase 9.4）發現我們的
+ * `handleEditorContextMenu` 不分裝置一律搶下這個事件、還會把選取範圍收合成單點，
+ * 導致長按選字整個失敗。用 `pointer: coarse` 判斷主要輸入是不是觸控（跟滑鼠精準
+ * 指標的裝置分開），不是用螢幕寬度斷點——寬度斷點測的是「螢幕多寬」，這裡真正要
+ * 分辨的是「使用者用什麼方式操作」，桌面瀏覽器把視窗縮到很窄仍然是滑鼠右鍵。 */
+function isTouchPrimaryDevice(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
 
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
-  /** 塞在工具列最右側的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
+  /** 塞在文件層級 action 區的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
   /** 資產 node 用來查詢同專案 preview URL；不提供時只會顯示 asset id 佔位。 */
   projectPublicId?: string;
   /**
    * 匯出檔名的基底（通常是故事/設定集標題，編輯器自己不知道標題，由頁面層提供）。
-   * 有提供才會在工具列顯示「匯出 markdown」按鈕；實際檔名是
+   * 有提供才會在文件層級 action 區顯示「匯出 markdown」按鈕；實際檔名是
    * `[標題]_[timestamp].md`（見 buildExportFileName），timestamp 在按下當下才產生。
    * 匯出內容是把自訂白名單語法轉成標準 markdown（見 exportMarkdown.ts 的轉換規則），
    * 不是原始 content——原始格式含內部 marker 語法，不該外洩。
@@ -278,10 +356,20 @@ export interface StorytellerWysiwygEditorProps {
   exportBaseName?: string;
   /**
    * 白名單：只列出的功能才會啟用，不提供（undefined）就全部啟用——維持既有頁面
-   * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘工具列
+   * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘編輯器
    * 功能不受影響。
    */
   enabledFeatures?: Array<"footnote" | "comment" | "asset">;
+  /**
+   * 觸發頁面層開啟資產選擇 Dialog（Phase 2：插入資產 command 化）。asset picker 本身
+   * 是頁面層的 state（StoryEditor／LoreEditor 各自的 `assetPickerOpen`），這個元件
+   * 不持有、也不查 API，只在 slash／右鍵選單的「插入圖片」command 被觸發時呼叫這個
+   * callback，選好之後頁面層照舊呼叫 `ref.current.insertAsset(...)`。沒提供這個 prop
+   * 就代表沒有插入圖片的入口（跟 footnote/comment 的 isFeatureEnabled 開關是分開的
+   * 兩件事：`enabledFeatures` 控制「要不要開放這個功能」，這個 prop 控制「有沒有實際
+   * 可用的插入管道」）。
+   */
+  onRequestInsertAsset?: () => void;
 }
 
 export interface StorytellerWysiwygEditorHandle {
@@ -313,6 +401,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     projectPublicId,
     exportBaseName,
     enabledFeatures,
+    onRequestInsertAsset,
   },
   ref,
 ) {
@@ -333,10 +422,6 @@ export const StorytellerWysiwygEditor = forwardRef<
   );
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
-  const [textColorAnchor, setTextColorAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const [bgColorAnchor, setBgColorAnchor] = useState<HTMLElement | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [hrefDraft, setHrefDraft] = useState("");
   const [openInNewTab, setOpenInNewTab] = useState(false);
@@ -350,10 +435,15 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
+  const slashCommandContextRef = useRef<WysiwygCommandContext | null>(null);
   latestValueRef.current = value;
 
   const editor = useEditor({
-    extensions: wysiwygCoreExtensions,
+    extensions: createWysiwygCoreExtensions({
+      slashCommand: {
+        getCommandContext: () => slashCommandContextRef.current,
+      },
+    }),
     content: markdownToDoc(value, projectPublicId, assetEnabled),
     immediatelyRender: false,
     editorProps: {
@@ -466,58 +556,28 @@ export const StorytellerWysiwygEditor = forwardRef<
     selector: (ctx) => {
       if (!ctx.editor) {
         return {
-          bold: false,
-          italic: false,
-          underline: false,
-          subscript: false,
-          superscript: false,
-          align: "left" as AlignmentValue,
-          headingLevel: DEFAULT_HEADING_LEVEL,
-          blockKind: DEFAULT_BLOCK_KIND,
           hasComment: false,
           hasSelection: false,
-          textColor: null as TextColorValue | null,
-          bgColor: null as BgColorValue | null,
+          isCurrentParagraphEmpty: true,
           hasLink: false,
           hasFootnote: false,
+          hasAssetImage: false,
         };
       }
-      const align =
-        ALIGNMENT_VALUES.find((v) => ctx.editor!.isActive({ textAlign: v })) ??
-        "left";
-      const headingLevel =
-        HEADING_LEVELS.find((level) =>
-          ctx.editor!.isActive("paragraph", { headingLevel: level }),
-        ) ?? DEFAULT_HEADING_LEVEL;
-      const blockKind =
-        BLOCK_KIND_VALUES.find(
-          (kind) =>
-            kind !== DEFAULT_BLOCK_KIND &&
-            ctx.editor!.isActive("paragraph", { blockKind: kind }),
-        ) ?? DEFAULT_BLOCK_KIND;
-      const textColor =
-        TEXT_COLOR_VALUES.find((value) =>
-          ctx.editor!.isActive("textColor", { value }),
-        ) ?? null;
-      const bgColor =
-        BG_COLOR_VALUES.find((value) =>
-          ctx.editor!.isActive("bgColor", { value }),
-        ) ?? null;
       return {
-        bold: ctx.editor.isActive("bold"),
-        italic: ctx.editor.isActive("italic"),
-        underline: ctx.editor.isActive("underline"),
-        subscript: ctx.editor.isActive("subscript"),
-        superscript: ctx.editor.isActive("superscript"),
-        align,
-        headingLevel,
-        blockKind,
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
-        textColor,
-        bgColor,
+        // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據。故意不用
+        // textContent.trim() === ""（那個算法只看文字，asset image 是沒有文字的
+        // inline atom node，只用 textContent 判斷會把「只有一張圖片的段落」誤判成
+        // 空白段落，導致對著既有圖片右鍵還跳出「插入圖片」選項）。改用 content.size
+        // === 0，這是 ProseMirror 對「這個節點底下完全沒有子節點」的定義，atom node
+        // 即使沒有文字也會貢獻自己的 nodeSize，size 就不會是 0。
+        isCurrentParagraphEmpty:
+          ctx.editor.state.selection.$from.parent.content.size === 0,
         hasLink: ctx.editor.isActive("link"),
         hasFootnote: ctx.editor.isActive("footnote"),
+        hasAssetImage: hasAssetImageLayoutTarget(ctx.editor),
       };
     },
   });
@@ -612,6 +672,10 @@ export const StorytellerWysiwygEditor = forwardRef<
   // 粗體/顏色/連結等動作會套用到「空選取」上，等於失效。只有右鍵點在選取範圍「外面」
   // 時才收合成單點（沿用原本「右鍵任何地方都能開加註解選單」的行為）。
   const handleEditorContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    // 觸控裝置直接放行，不搶這個事件、不動選取範圍——讓原生長按選字／系統選單接手，
+    // 格式化改靠已經驗證過的 bubble menu（選字後自動跳出）跟 slash 選單（空段落插入
+    // 區塊），這兩個入口本來就涵蓋右鍵選單能做的事，不需要另外做行動版工具列。
+    if (isTouchPrimaryDevice()) return;
     event.preventDefault();
     const result = editor.view.posAtCoords({
       left: event.clientX,
@@ -621,55 +685,31 @@ export const StorytellerWysiwygEditor = forwardRef<
     const { from, to } = editor.state.selection;
     const clickedInsideSelection = result.pos >= from && result.pos <= to;
     if (!clickedInsideSelection) {
-      editor.commands.setTextSelection(result.pos);
+      const clickedAssetImage = (event.target as HTMLElement).closest(
+        "[data-asset-layout]",
+      );
+      if (clickedAssetImage) {
+        const state = editor.view.state;
+        const pos = [result.inside, result.pos, result.pos - 1].find(
+          (candidate) =>
+            candidate >= 0 &&
+            state.doc.nodeAt(candidate)?.type.name === "assetImage",
+        );
+        if (pos !== undefined) {
+          editor.view.dispatch(
+            state.tr.setSelection(NodeSelection.create(state.doc, pos)),
+          );
+        } else {
+          editor.commands.setTextSelection(result.pos);
+        }
+      } else {
+        editor.commands.setTextSelection(result.pos);
+      }
     }
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   };
 
   const closeContextMenu = () => setContextMenuPosition(null);
-
-  const handleContextMenuAddOrEditComment = () => {
-    closeContextMenu();
-    handleOpenCommentDialog();
-  };
-
-  const handleContextMenuRemoveComment = () => {
-    closeContextMenu();
-    handleRemoveComment();
-  };
-
-  // 引用/清單是段落屬性，跟標題（Select）同一種切換邏輯，但這裡是按鈕形式：再按一次
-  // 目前已經生效的種類會切回一般段落（"none"），符合大多數清單/引用按鈕的直覺行為。
-  const toggleBlockKind = (kind: Exclude<BlockKindValue, "none">) => {
-    const next = editorState.blockKind === kind ? DEFAULT_BLOCK_KIND : kind;
-    editor.chain().focus().setBlockKind(next).run();
-  };
-
-  // 分隔線是一次性插入動作（不是像引用/清單那樣「切換目前段落的持續狀態」），所以不走
-  // toggleBlockKind／ToggleButton selected 那套邏輯，單純呼叫 insertHorizontalRule。
-  const handleInsertHorizontalRule = () => {
-    editor.chain().focus().insertHorizontalRule().run();
-  };
-
-  // 文字顏色／背景色都是行內 mark，套在目前的選取範圍上（沒有選取時 setMark 會套在
-  // 之後鍵入的文字上，跟粗體等行為一致）。選 null 代表清除。
-  const applyTextColor = (value: TextColorValue | null) => {
-    setTextColorAnchor(null);
-    if (value === null) {
-      editor.chain().focus().unsetTextColor().run();
-    } else {
-      editor.chain().focus().setTextColor(value).run();
-    }
-  };
-
-  const applyBgColor = (value: BgColorValue | null) => {
-    setBgColorAnchor(null);
-    if (value === null) {
-      editor.chain().focus().unsetBgColor().run();
-    } else {
-      editor.chain().focus().setBgColor(value).run();
-    }
-  };
 
   // 開連結 Dialog：如果游標目前就在一個既有連結裡，把 href/target 帶出來預填，
   // 這樣「編輯連結」跟「新增連結」共用同一個 Dialog，使用者不用先移除再重加。
@@ -745,282 +785,77 @@ export const StorytellerWysiwygEditor = forwardRef<
     URL.revokeObjectURL(url);
   };
 
-  const activeMarks = [
-    editorState.bold && "bold",
-    editorState.italic && "italic",
-    editorState.underline && "underline",
-    editorState.subscript && "subscript",
-    editorState.superscript && "superscript",
-  ].filter(Boolean) as string[];
+  // Command Registry（wysiwygCore/commands.ts）共用的執行環境：右鍵選單、slash、
+  // Bubble Menu、文件 action 區都靠同一份 context 呼叫 command.run。dialog 開關動作
+  // （連結／腳注／註解）本來就是這個元件自己的 useState，command 只是呼叫既有 handler。
+  const commandContext: WysiwygCommandContext = {
+    isFeatureEnabled,
+    canExportMarkdown: exportBaseName !== undefined,
+    canInsertAsset: assetEnabled && onRequestInsertAsset !== undefined,
+    openLinkDialog: handleOpenLinkDialog,
+    openFootnoteDialog: handleOpenFootnoteDialog,
+    openCommentDialog: handleOpenCommentDialog,
+    openAssetPicker: () => onRequestInsertAsset?.(),
+    exportMarkdown: handleExportMarkdown,
+  };
+  slashCommandContextRef.current = commandContext;
 
-  // 註解是行內 marker，套用在「一段選取的文字」上，不像以前的段落屬性版本可以在空
-  // 選取（只有游標）時也套用到整個段落——所以「加註解」只有在真的選了文字，或游標
-  // 已經落在既有註解裡（此時是要編輯/移除，不是新增）時才能開。
-  const canOpenCommentDialog =
-    editorState.hasComment || editorState.hasSelection;
+  const utilityCommands = wysiwygCommandsByGroup("utility").filter(
+    (command) => command.isVisible?.(commandContext) ?? true,
+  );
 
   return (
     <Box>
-      <Paper variant="outlined" sx={{ p: 1, mb: 1 }}>
-        <Stack
-          direction="row"
-          spacing={2}
-          flexWrap="wrap"
-          useFlexGap
-          alignItems="center"
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+        <Paper
+          variant="outlined"
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0.5,
+            px: 0.75,
+            py: 0.5,
+            bgcolor: "background.paper",
+          }}
         >
-          <Select
-            size="small"
-            value={editorState.headingLevel}
-            onChange={(event: SelectChangeEvent<number>) =>
-              editor
-                .chain()
-                .focus()
-                .setHeadingLevel(Number(event.target.value) as HeadingLevel)
-                .run()
-            }
-          >
-            {HEADING_LEVEL_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup
-            size="small"
-            value={activeMarks}
-            onChange={() => {}}
-          >
-            <Tooltip title="粗體">
-              <ToggleButton
-                value="bold"
-                selected={editorState.bold}
-                onClick={() => editor.chain().focus().toggleBold().run()}
-              >
-                <FormatBoldIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="斜體">
-              <ToggleButton
-                value="italic"
-                selected={editorState.italic}
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-              >
-                <FormatItalicIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="底線">
-              <ToggleButton
-                value="underline"
-                selected={editorState.underline}
-                onClick={() => editor.chain().focus().toggleUnderline().run()}
-              >
-                <FormatUnderlinedIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="下標">
-              <ToggleButton
-                value="subscript"
-                selected={editorState.subscript}
-                onClick={() => editor.chain().focus().toggleSubscript().run()}
-              >
-                <SubscriptIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="上標">
-              <ToggleButton
-                value="superscript"
-                selected={editorState.superscript}
-                onClick={() => editor.chain().focus().toggleSuperscript().run()}
-              >
-                <SuperscriptIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={editorState.align}
-            onChange={(_event, value: AlignmentValue | null) => {
-              if (value) editor.chain().focus().setTextAlign(value).run();
-            }}
-          >
-            <Tooltip title="置左">
-              <ToggleButton value="left">
-                <FormatAlignLeftIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="置中">
-              <ToggleButton value="center">
-                <FormatAlignCenterIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="置右">
-              <ToggleButton value="right">
-                <FormatAlignRightIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            {BLOCK_KIND_OPTIONS.map(({ value, label, Icon }) => (
-              <Tooltip key={value} title={label}>
-                <ToggleButton
-                  value={value}
-                  selected={editorState.blockKind === value}
-                  onClick={() => toggleBlockKind(value)}
+          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
+          {utilityCommands.map((command) => {
+            const Icon = command.icon!;
+            return (
+              <Tooltip key={command.id} title={command.label}>
+                <IconButton
+                  aria-label={command.label}
+                  size="small"
+                  onClick={() => command.run(editor, commandContext)}
                 >
                   <Icon fontSize="small" />
-                </ToggleButton>
+                </IconButton>
               </Tooltip>
-            ))}
-            <Tooltip title="插入分隔線">
-              <ToggleButton value="hr" onClick={handleInsertHorizontalRule}>
-                <HorizontalRuleIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            <Tooltip title="文字顏色">
-              <ToggleButton
-                value="text-color"
-                selected={editorState.textColor !== null}
-                onClick={(event) => setTextColorAnchor(event.currentTarget)}
-              >
-                <FormatColorTextIcon
-                  fontSize="small"
-                  sx={{
-                    color: editorState.textColor
-                      ? TEXT_COLOR_CSS[editorState.textColor]
-                      : undefined,
-                  }}
-                />
-              </ToggleButton>
-            </Tooltip>
-            <Tooltip title="文字背景色">
-              <ToggleButton
-                value="bg-color"
-                selected={editorState.bgColor !== null}
-                onClick={(event) => setBgColorAnchor(event.currentTarget)}
-              >
-                <FormatColorFillIcon
-                  fontSize="small"
-                  sx={{
-                    color: editorState.bgColor
-                      ? BG_COLOR_CSS[editorState.bgColor]
-                      : undefined,
-                  }}
-                />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          <Divider orientation="vertical" flexItem />
-
-          <ToggleButtonGroup size="small">
-            <Tooltip title={editorState.hasLink ? "編輯連結" : "加連結"}>
-              <ToggleButton
-                value="link"
-                selected={editorState.hasLink}
-                onClick={handleOpenLinkDialog}
-              >
-                <LinkIcon fontSize="small" />
-              </ToggleButton>
-            </Tooltip>
-          </ToggleButtonGroup>
-
-          {isFeatureEnabled("footnote") && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip
-                  title={editorState.hasFootnote ? "編輯腳注" : "加腳注"}
-                >
-                  <ToggleButton
-                    value="footnote"
-                    selected={editorState.hasFootnote}
-                    onClick={handleOpenFootnoteDialog}
-                  >
-                    <NoteAltIcon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
-
-          {isFeatureEnabled("comment") && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip
-                  title={
-                    editorState.hasComment
-                      ? "編輯註解"
-                      : canOpenCommentDialog
-                        ? "加註解"
-                        : "請先選取要加註解的文字"
-                  }
-                >
-                  <span>
-                    <ToggleButton
-                      value="add-comment"
-                      selected={editorState.hasComment}
-                      disabled={!canOpenCommentDialog}
-                      onClick={handleOpenCommentDialog}
-                    >
-                      <AddCommentIcon fontSize="small" />
-                    </ToggleButton>
-                  </span>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
-
-          {exportBaseName !== undefined && (
-            <>
-              <Divider orientation="vertical" flexItem />
-
-              <ToggleButtonGroup size="small">
-                <Tooltip title="匯出 markdown 檔案">
-                  <ToggleButton
-                    value="export-markdown"
-                    onClick={handleExportMarkdown}
-                  >
-                    <FileDownloadIcon fontSize="small" />
-                  </ToggleButton>
-                </Tooltip>
-              </ToggleButtonGroup>
-            </>
-          )}
-
-          <Divider orientation="vertical" flexItem />
-          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
-
+            );
+          })}
           {toolbarExtra && (
             <>
-              <Divider orientation="vertical" flexItem />
-              <Box sx={{ ml: "auto" }}>{toolbarExtra}</Box>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                {toolbarExtra}
+              </Box>
             </>
           )}
-        </Stack>
-      </Paper>
+        </Paper>
+      </Box>
 
       <Paper
         variant="outlined"
-        sx={{ p: 2, height: { xs: 420, md: 560 }, overflow: "auto" }}
+        sx={{
+          p: 2,
+          // 原本桌面版固定 560px，視窗越高、下方留白越多（Faryne 實測反映）。
+          // 改用視窗高度扣掉上方 header/工具列/頁面留白的估計值，讓編輯區跟著
+          // 視窗變高變矮；手機版維持固定 420px（小螢幕高度本來就不夠，用
+          // calc 反而容易算出過小或負值）。
+          height: { xs: 420, md: "calc(100vh - 320px)" },
+          minHeight: { md: 420 },
+          overflow: "auto",
+        }}
       >
         <Box
           sx={[
@@ -1028,336 +863,38 @@ export const StorytellerWysiwygEditor = forwardRef<
             COMMENT_HIGHLIGHT_SX,
             INLINE_COLOR_SX,
             FOOTNOTE_HIGHLIGHT_SX,
+            PLACEHOLDER_SX,
             BLOCK_KIND_SX,
+            CLEAR_FLOATING_ASSET_SX,
           ]}
           onMouseOver={handleEditorMouseOver}
           onMouseOut={handleEditorMouseOut}
           onContextMenu={handleEditorContextMenu}
         >
           <EditorContent editor={editor} />
+          <StorytellerWysiwygBubbleMenu
+            editor={editor}
+            commandContext={commandContext}
+          />
+          <StorytellerWysiwygTableMenu editor={editor} />
         </Box>
       </Paper>
 
-      <Menu
-        open={contextMenuPosition !== null}
+      <StorytellerWysiwygContextMenu
+        editor={editor}
+        position={contextMenuPosition}
         onClose={closeContextMenu}
-        anchorReference="anchorPosition"
-        anchorPosition={
-          contextMenuPosition
-            ? { top: contextMenuPosition.y, left: contextMenuPosition.x }
-            : undefined
-        }
-      >
-        <MenuItem
-          selected={editorState.bold}
-          onClick={() => {
-            editor.chain().focus().toggleBold().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatBoldIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>粗體</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.italic}
-          onClick={() => {
-            editor.chain().focus().toggleItalic().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatItalicIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>斜體</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.underline}
-          onClick={() => {
-            editor.chain().focus().toggleUnderline().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <FormatUnderlinedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>底線</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.subscript}
-          onClick={() => {
-            editor.chain().focus().toggleSubscript().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <SubscriptIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>下標</ListItemText>
-        </MenuItem>
-        <MenuItem
-          selected={editorState.superscript}
-          onClick={() => {
-            editor.chain().focus().toggleSuperscript().run();
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <SuperscriptIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>上標</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", px: 2, pt: 1 }}
-        >
-          文字顏色
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
-          {TEXT_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={TEXT_COLOR_LABELS[color]}
-                aria-pressed={editorState.textColor === color}
-                onClick={() => {
-                  applyTextColor(color);
-                  closeContextMenu();
-                }}
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.textColor === color
-                      ? "text.primary"
-                      : "divider",
-                  bgcolor: TEXT_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem
-          onClick={() => {
-            applyTextColor(null);
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除文字顏色</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", px: 2, pt: 1 }}
-        >
-          文字背景色
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ px: 2, py: 1 }}>
-          {BG_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={BG_COLOR_LABELS[color]}
-                aria-pressed={editorState.bgColor === color}
-                onClick={() => {
-                  applyBgColor(color);
-                  closeContextMenu();
-                }}
-                sx={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.bgColor === color ? "text.primary" : "divider",
-                  bgcolor: BG_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem
-          onClick={() => {
-            applyBgColor(null);
-            closeContextMenu();
-          }}
-        >
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除背景色</ListItemText>
-        </MenuItem>
-
-        <Divider />
-
-        <MenuItem
-          onClick={() => {
-            closeContextMenu();
-            handleOpenLinkDialog();
-          }}
-        >
-          <ListItemIcon>
-            <LinkIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>
-            {editorState.hasLink ? "編輯連結" : "加連結"}
-          </ListItemText>
-        </MenuItem>
-
-        {isFeatureEnabled("footnote") && (
-          <>
-            <Divider />
-
-            <MenuItem
-              onClick={() => {
-                closeContextMenu();
-                handleOpenFootnoteDialog();
-              }}
-            >
-              <ListItemIcon>
-                <NoteAltIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>
-                {editorState.hasFootnote ? "編輯腳注" : "加腳注"}
-              </ListItemText>
-            </MenuItem>
-            {editorState.hasFootnote && (
-              <MenuItem
-                onClick={() => {
-                  closeContextMenu();
-                  handleRemoveFootnote();
-                }}
-              >
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>移除腳注</ListItemText>
-              </MenuItem>
-            )}
-          </>
-        )}
-
-        {isFeatureEnabled("comment") && (
-          <>
-            <Divider />
-
-            <MenuItem
-              onClick={handleContextMenuAddOrEditComment}
-              disabled={!canOpenCommentDialog}
-            >
-              <ListItemIcon>
-                <AddCommentIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>
-                {editorState.hasComment ? "編輯註解" : "加註解"}
-              </ListItemText>
-            </MenuItem>
-            {editorState.hasComment && (
-              <MenuItem onClick={handleContextMenuRemoveComment}>
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>移除註解</ListItemText>
-              </MenuItem>
-            )}
-          </>
-        )}
-      </Menu>
-
-      <Menu
-        open={textColorAnchor !== null}
-        anchorEl={textColorAnchor}
-        onClose={() => setTextColorAnchor(null)}
-      >
-        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
-          {TEXT_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={TEXT_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={TEXT_COLOR_LABELS[color]}
-                aria-pressed={editorState.textColor === color}
-                onClick={() => applyTextColor(color)}
-                sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.textColor === color
-                      ? "text.primary"
-                      : "divider",
-                  bgcolor: TEXT_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem onClick={() => applyTextColor(null)}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除文字顏色</ListItemText>
-        </MenuItem>
-      </Menu>
-
-      <Menu
-        open={bgColorAnchor !== null}
-        anchorEl={bgColorAnchor}
-        onClose={() => setBgColorAnchor(null)}
-      >
-        <Stack direction="row" spacing={1} sx={{ px: 1.5, py: 1 }}>
-          {BG_COLOR_VALUES.map((color) => (
-            <Tooltip key={color} title={BG_COLOR_LABELS[color]}>
-              <Box
-                component="button"
-                type="button"
-                aria-label={BG_COLOR_LABELS[color]}
-                aria-pressed={editorState.bgColor === color}
-                onClick={() => applyBgColor(color)}
-                sx={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: "50%",
-                  border: "2px solid",
-                  borderColor:
-                    editorState.bgColor === color ? "text.primary" : "divider",
-                  bgcolor: BG_COLOR_CSS[color],
-                  cursor: "pointer",
-                  p: 0,
-                }}
-              />
-            </Tooltip>
-          ))}
-        </Stack>
-        <MenuItem onClick={() => applyBgColor(null)}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>清除背景色</ListItemText>
-        </MenuItem>
-      </Menu>
+        commandContext={commandContext}
+        onRemoveLink={handleRemoveLink}
+        onRemoveFootnote={handleRemoveFootnote}
+        onRemoveComment={handleRemoveComment}
+        hasLink={editorState.hasLink}
+        hasFootnote={editorState.hasFootnote}
+        hasComment={editorState.hasComment}
+        hasSelection={editorState.hasSelection}
+        isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
+        hasAssetImage={editorState.hasAssetImage}
+      />
 
       <Dialog
         open={commentDialogOpen}
@@ -1562,7 +1099,12 @@ export const StorytellerWysiwygEditor = forwardRef<
               variant="caption"
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
-              右鍵可編輯或移除註解
+              {/* 觸控/鍵盤操作者沒有右鍵，右鍵不是唯一入口（見已知 Bug 記錄第 9
+                  項：觸控裝置的右鍵事件已放行給原生長按選字，不會跳出我們的
+                  選單）——選取文字後叫出的格式列（bubble menu）「加註解」按鈕
+                  在選到既有註解時會變成「編輯註解」，對話框裡也有「移除註解」
+                  按鈕，不寫死成「右鍵」這一種說法。 */}
+              右鍵，或選取文字後用格式列可編輯／移除註解
             </Typography>
           </Paper>
         </Box>
@@ -1587,7 +1129,7 @@ export const StorytellerWysiwygEditor = forwardRef<
               variant="caption"
               sx={{ color: "grey.400", display: "block", mt: 0.5 }}
             >
-              右鍵可編輯或移除腳注
+              右鍵，或選取文字後用格式列可編輯／移除腳注
             </Typography>
           </Paper>
         </Box>

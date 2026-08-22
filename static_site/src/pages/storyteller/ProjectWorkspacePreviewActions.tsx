@@ -640,8 +640,17 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Stack>
     );
 
+  // 手機斷點下觸控目標容易太小太擠（原本 IconButton size="small" 加上緊貼的
+  // 間距，實測約 30x30px 且互相黏在一起），桌面滑鼠操作不需要放大，只在 xs
+  // 斷點加大 padding／間距，其餘尺寸不變。
+  const touchTargetSx = { p: { xs: 1.25, sm: 0.625 } };
+
   const renderStoryActions = (story: StorytellerStory) => (
-    <Stack direction="row" spacing={0.5} alignItems="center">
+    <Stack
+      direction="row"
+      spacing={{ xs: 1, sm: 0.5 }}
+      alignItems="center"
+    >
       <Tooltip title={story.status === "completed" ? "改為草稿" : "公開"}>
         <span>
           <Switch
@@ -657,6 +666,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="編輯作品">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           component={RouterLink}
           to={steamloomPath(
             `my/workspace/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}${fromQuery}`,
@@ -668,6 +678,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="移動到冊">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           onClick={(event) =>
             setStoryMoveMenu({ anchorEl: event.currentTarget, story })
           }
@@ -678,6 +689,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="刪除作品">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           color="error"
           onClick={() => setDeleteStoryTarget(story)}
         >
@@ -688,10 +700,11 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   );
 
   const renderLoreActions = (lore: StorytellerLore) => (
-    <Stack direction="row" spacing={0.5}>
+    <Stack direction="row" spacing={{ xs: 1, sm: 0.5 }}>
       <Tooltip title="移動設定集">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           onClick={(event) =>
             setLoreMoveMenu({ anchorEl: event.currentTarget, lore })
           }
@@ -702,6 +715,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="編輯設定集">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           component={RouterLink}
           to={steamloomPath(
             `my/workspace/${projectId}/lore/${lore.public_id}${fromQuery}`,
@@ -713,6 +727,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="刪除設定集">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           color="error"
           onClick={() => setDeleteLoreTarget(lore)}
         >
@@ -723,10 +738,11 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   );
 
   const renderAssetActions = (asset: StorytellerAsset) => (
-    <Stack direction="row" spacing={0.25}>
+    <Stack direction="row" spacing={{ xs: 1, sm: 0.25 }}>
       <Tooltip title="移動資產">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           onClick={(event) =>
             setAssetMoveMenu({ anchorEl: event.currentTarget, asset })
           }
@@ -737,6 +753,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       <Tooltip title="刪除資產">
         <IconButton
           size="small"
+          sx={touchTargetSx}
           color="error"
           onClick={() => setDeleteAssetTarget(asset)}
         >

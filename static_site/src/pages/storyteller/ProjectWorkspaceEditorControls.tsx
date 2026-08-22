@@ -71,6 +71,12 @@ export function WorkspaceEditableTitle({
         lineHeight: 1.12,
         letterSpacing: 0,
         "&::placeholder": { color: "text.disabled" },
+        // a11y：拿掉瀏覽器預設 focus 外框後一定要補一個看得見的替代方案，不能
+        // 整個消失（跟 MuiButtonBase 的 focus-visible 處理原則一致）。
+        "&:focus-visible": {
+          outline: "2px solid var(--storyteller-focus-ring)",
+          outlineOffset: 2,
+        },
       }}
     />
   );
@@ -107,6 +113,10 @@ export function WorkspaceEditableSummary({
         fontSize: 16,
         lineHeight: 1.7,
         "&::placeholder": { color: "text.disabled" },
+        "&:focus-visible": {
+          outline: "2px solid var(--storyteller-focus-ring)",
+          outlineOffset: 2,
+        },
       }}
     />
   );
