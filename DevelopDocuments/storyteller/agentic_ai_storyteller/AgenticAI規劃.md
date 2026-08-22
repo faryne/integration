@@ -70,20 +70,62 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 - 寫入提案出現時，跳出 diff 卡片＋確認/取消 button（比照現有「編輯歷史」diff 頁面的視覺，不用重新設計一套）。
 - 執行完之後要能一眼看出「剛剛 agent 幫我改了什麼」，並且能直接連到 revert 入口。
 
-## 四、需要新增/調整的工具清單
+## 四、專案總體工作項路線圖（Phase 化）
 
-- [ ] `storyteller_revert_story`／`storyteller_revert_lore`（MCP 工具，包一層呼叫既有 `RevertStory`／`RevertLoreVersion` service 方法，前次聊天已定調要做）。
-- [ ] Tool registry 抽象層（第 3.3 節），MCP 跟站內 agent runner 共用。
-- [ ] `AIProvider` / `AIProviderRequest` / `AIProviderResponse` 擴充 tools/messages 欄位（第 3.2 節）。
-- [ ] Claude / OpenAI / Grok 三個 provider 各自的 tool-calling adapter（把統一格式轉譯成各家 API 格式，並把各家回傳的 tool_calls 轉回統一格式）。
-- [ ] Agent loop 的 orchestration（呼叫 provider → 收到 tool_calls → 執行 → 把結果餵回去 → 重複，直到 provider 回傳最終文字答案），要決定放在 `service/storyteller` 底下新的檔案，或是獨立成一個 package。
-- [ ] 「套用 agent 提案」的 diff 確認端點/流程（第 3.4 節），前端 UX 調整（第 3.6 節）。
+跟開放問題 2/3/6 拍板後，把原本的扁平清單改成分期路線圖。每個 Phase 完成才進下一個，中間如果發現前面的決策要調整（例如 Phase 3 實測 Claude tool_use 發現跟預期不一樣），回來更新這份文件再繼續，不要邊做邊在程式碼裡默默改設計。
 
-## 五、待討論的開放問題（下一步要逐項拍板）
+### Phase 0：MCP 核心補強（進行中）
 
-1. 先做 Claude 一家打通全流程，還是一開始就要求 Claude/OpenAI/Grok 三家平行做？（建議先一家。）
-2. `AIProvider` interface 走「擴充既有介面」還是「另開 AgenticProvider」（第 3.2 節）？
-3. Agent 授權範圍要不要限縮到單一 project，還是沿用「使用者能存取的全部」（第 3.5 節）？
-4. 「套用提案」要新開一個端點，還是直接重用 `storyteller_upsert_story`，前端自己組好最終內容再送？
-5. 這個 agentic 模式要不要用一個新欄位（例如 `Agent.ToolsEnabled`）在既有 Agent 實體上開關，還是設計成完全獨立的一種新實體？
-6. 要不要先在 MCP 那邊補完 revert 工具（範圍小、風險低），當作驗證「tool registry 共用」這個設計方向的第一個實驗，再進入 provider tool-calling 這個大工程？（建議：先做這個，當墊腳石。）
+**已定案（開放問題 6）**：不直接跳去做 provider tool-calling，先把 MCP 這層原本就該有、但沒做的讀寫能力補齊，當作之後 AAS 唯一要依賴的底層，也當作「project 範圍限縮」這個設計怎麼落到 tool handler 裡的第一個實驗場。
+
+詳細工作項、分工（Claude／Codex）、驗證方式見獨立文件：[MCP核心補強工作項_2026-08-22.md](MCP核心補強工作項_2026-08-22.md)。涵蓋 `storyteller_revert_story`／`storyteller_revert_lore`、`storyteller_upsert_story` 補 `volume_public_id`、新增 `MoveStory` service 方法＋`storyteller_move_story` 工具。
+
+### Phase 1：Tool Registry 抽象層
+
+- What：把「工具定義（JSON schema）＋執行邏輯」從 MCP server 的 `RegisterTool` 呼叫裡抽出來，變成一份 MCP 跟站內 agent runner 都能共用的 registry（第 3.3 節）。
+- Why：避免之後 agent runner 自己重寫一份跟 MCP 幾乎一樣的工具清單，兩邊各自維護、各自修 bug。
+- Where：預計新增在 `service/storyteller` 或 `service/mcp` 底下的獨立 package，實際切法要看 Phase 0 做完後 `storyteller_tools.go` 的實際結構再決定（現在還沒動手拆，先不猜死）。
+- How：Phase 0 做完、工具清單穩定下來之後再排，這個 Phase 動工前要先確認 Phase 0 沒有再冒出新的工具缺口。
+
+### Phase 2：`AIProvider` interface 擴充
+
+**已定案（開放問題 2）**：擴充既有介面，不另開 `AgenticProvider`。`AIProviderRequest` 加 `Tools []ToolDefinition`、把單一 `SystemPrompt`/`UserPrompt` 換成 `Messages []Message`；`AIProviderResponse` 加 `ToolCalls []ToolCall`。六個 provider 的 adapter 各自把統一格式轉譯成自己的 API 格式，不支援 tools 的 provider 就是這個欄位被忽略。
+
+- Where：`service/storyteller/ai_provider.go`。
+- 待辦：這個 Phase 動工前，要先把第 3.1 節列的六家 provider tool-calling 格式差異做一次實際的 API 文件查證（不能只憑印象），確認 `ToolDefinition`/`ToolCall` 的統一格式欄位夠不夠涵蓋 Claude/OpenAI 兩家的需求（Grok 排在 Phase 4 之後才做，屆時再回頭確認欄位夠不夠用）。
+
+### Phase 3：Claude tool-calling adapter（第一個打通的 provider）
+
+- What：只做 Claude 一家的完整 tool-calling adapter（`tool_use`/`tool_result` content block），驗證 Phase 1 的 tool registry ＋ Phase 2 的 interface 擴充兜得起來。
+- Why：Claude 的 tool-calling API 最成熟、我們也最熟悉，先打通一家再擴散風險最低（第 3.1 節建議）。
+- 待辦：這個 Phase 還沒展開細部工作項，等 Phase 1/2 做完再回來寫。
+
+### Phase 4：Agent loop orchestration ＋ project 範圍限縮
+
+**已定案（開放問題 3）**：AAS 的操作範圍限縮到使用者明確授權的單一 project，不能跨專案讀寫。Tool registry 組出來的每個工具呼叫，都要把 `project_id` 綁進 handler 的過濾條件，agent 物理上碰不到別的專案。
+
+- What：呼叫 provider → 收到 `tool_calls` → 執行（帶著 project 範圍限制）→ 把結果餵回去 → 重複，直到 provider 回傳最終文字答案。
+- Where：待定，可能是 `service/storyteller` 底下新檔案，或獨立成一個 package（要看 Phase 1 的 tool registry 實際落地方式）。
+- 跟 OAuth 規劃的交集：先用「使用者 session + project_id 參數」的簡化版本，之後 OAuth scope（例如 `project:{id}:read`/`project:{id}:write`）接上來時要能相容，不要現在做出以後要打掉重做的設計。
+
+### Phase 5：寫入安全機制（提案 → diff → 確認 → revert）
+
+- What：Agent 要修改內容時不直接寫入，先產生「提案」；前端跟目前版本做 diff 顯示；使用者確認後才真的呼叫寫入工具；就算確認後才發現不對，Phase 0 補的 `storyteller_revert_story`/`storyteller_revert_lore` 是安全網。
+- 待決（開放問題 4）：「套用提案」要新開一個端點，還是直接重用 `storyteller_upsert_story`，前端自己組好最終內容再送——等 Phase 4 的 orchestration 定型、實際看到提案資料長什麼樣子再拍板，現在資訊不夠沒辦法先決定。
+
+### Phase 6：前端 UX
+
+- What：AI Agent 面板要多顯示「正在呼叫哪個工具」的過程提示、寫入提案的 diff 卡片＋確認/取消、執行後的變更摘要＋revert 入口（第 3.6 節）。
+- 待決（開放問題 5）：agentic 模式要不要用一個新欄位（例如 `Agent.ToolsEnabled`）在既有 `Agent` 實體上開關，還是設計成完全獨立的新實體——這也牽動這個 Phase 的 UI 要不要新增一種「Agent 類型」的選擇入口，等 Phase 3 實際做完一家 provider、知道 Agent 設定要多存哪些欄位（例如 Claude API 版本、tool 清單版本）之後再一起決定。
+
+### Phase 7（排在最後，Claude 打通後再議）：OpenAI／Grok adapter 擴充
+
+- 比照 Phase 3 的做法各自補上 tool-calling adapter，Gemini／OpenRouter／Self-hosted 這三個視實際需求排，不是這輪的必做項目。
+
+## 五、尚待拍板的開放問題
+
+開放問題 2、3、6 已經確認（見上面對應 Phase 的「已定案」段落），以下是還沒拍板、會在對應 Phase 動工前需要決定的：
+
+1. 先做 Claude 一家打通全流程，還是一開始就要求 Claude/OpenAI/Grok 三家平行做？（建議先一家，已反映在 Phase 3/7 的順序上，但還沒正式拍板。）
+4. 「套用提案」要新開一個端點，還是直接重用 `storyteller_upsert_story`（Phase 5 動工前拍板）。
+5. Agentic 模式要不要用新欄位開關既有 `Agent` 實體，還是設計成新實體（Phase 6 動工前拍板）。
