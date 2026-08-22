@@ -71,21 +71,30 @@
 
 ## Phase 4：Agent loop orchestration ＋ project 範圍限縮
 
-- [ ] **4.1 補上 project 範圍限縮**
+- [x] **4.1 補上 project 範圍限縮**
   - What：Tool registry 組出來的每個工具呼叫，綁進呼叫當下授權的 `project_id`，agent 物理上碰不到別的專案（呼應開放問題 3 的定案）。
   - Where：Phase 1 的 tool registry 執行邏輯裡；`RunAgentLoop`（[agent_loop.go](../../../service/storyteller/agent_loop.go)）目前完全沒做這個檢查，呼叫端傳什麼 `Tools` 就是什麼，這是 Phase 3 雛型故意留下的缺口，Phase 4 要補上。
   - How：具體怎麼綁（在 handler 簽名裡多一個 `projectPublicID` 參數、還是在 registry 組工具清單時就把 project_id 閉包進去）等 Phase 1 的 registry 設計定型才能確定。
+  - ✅ 已完成（2026-08-22）：新增 [agent_scope.go](../../../service/storyteller/agent_scope.go) 的 `ScopeToolsToProject(tools, authorizedProjectPublicID)`——不是改 tool registry 本身，而是包一層 Handler：每次呼叫先比對 `arguments["project_public_id"]`（storyteller 全部工具共用的慣例欄位名稱，35 個工具都是這個 key）是否等於授權的 project，不符合（含完全沒帶這個欄位）直接拒絕，連底層 Handler 都不會執行到。這個做法不用改 Phase 1 的 registry 結構，也不用一個一個工具客製化，35 個工具全部自動套用同一套檢查。已有測試 `TestScopeToolsToProjectBlocksMismatchedProject` 驗證跨專案／缺欄位兩種情境都被擋下、正確專案才會真的執行。
 
-- [ ] **4.2 loop 終止條件與上限**
+- [x] **4.2 loop 終止條件與上限**
   - What：避免 agent 陷入無限迴圈（一直呼叫工具、一直不給最終答案）燒光 token／請求時間，要有最大步數上限，超過就強制中止並回報。
   - Why：這是所有 agentic 系統的標準風險控制，沒有明確上限的話一次失控呼叫可能把使用者的 API 額度燒光。
   - **Phase 3.2 已經先做了一個保守版本**：`agent_loop.go` 裡的 `agentLoopMaxSteps = 8` 是寫死的常數，超過會回 `ErrAgentLoopMaxStepsExceeded`（已有測試 `TestRunAgentLoopStopsAtMaxSteps` 驗證）。這個 Phase 要做的是把它從寫死常數改成可設定（例如依 provider 或使用情境給不同上限），機制本身不用重寫。
+  - ✅ 已完成（2026-08-22）：`agentLoopMaxSteps` 改名 `defaultAgentLoopMaxSteps`，`AgentLoopRequest` 新增 `MaxSteps int` 欄位，留空（0 或負數）時用預設值 8，呼叫端可以自己覆寫。順便修掉一個發現的小問題：原本撞到步數上限時會把已經累積的 `Steps`／`Usage` 整批丟掉（回傳 `nil, ErrAgentLoopMaxStepsExceeded`），這輪改成連中止的情況也回傳累積到那一刻的 `result`——步數上限被觸發通常代表已經燒了好幾輪 token，呼叫端需要知道燒了多少才能記進 usage log，不能因為沒拿到最終答案就假裝這些呼叫沒發生過（這點在 4.3 的 `runStoryAgenticQuery` 也有專門測試 `TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded` 驗證）。
 
-- [ ] **4.3 usage/cost 記錄**
+- [x] **4.3 usage/cost 記錄**
   - What：比照現有 `AgentUsageLog`（[storyteller.go:704](../../../service/storyteller/storyteller.go) `buildAgentUsageLog`），agent loop 跑完要記錄總共呼叫幾次 provider、消耗多少 token，不能因為變成多輪就漏了既有的用量追蹤。
+  - ✅ 已完成（2026-08-22）：`AgentLoopResult` 新增 `Usage *AIProviderUsage`，`RunAgentLoop` 每一輪（含中間要工具的輪次跟給出最終答案的那一輪）都累加進去（`sumAgentLoopUsage`）。持久化的部分見 4.4——`buildAgenticQueryUsageLog()` 沿用既有 `buildAgentUsageLog` 的欄位慣例，寫進同一張 `storyteller_agent_usage_logs` 表，不需要新增資料表或欄位。**沒有做 DB schema 異動**：`AgentUsageLog` 是「一次呼叫一筆」的既有設計，這裡就是把「一次呼叫」的定義從「一次 provider.Generate()」改成「一次 RunAgentLoop（可能內含多輪 provider.Generate()）」，欄位語意不變。
 
-- [ ] **4.4 從 Phase 3 的雛型收斂成正式功能**
+- [x] **4.4 從 Phase 3 的雛型收斂成正式功能**
   - What：把 3.2 的迴圈雛型接上 4.1/4.2/4.3，變成正式可以被 API 呼叫的能力。
+  - ✅ 已完成（2026-08-22）：新增 [agentic_query.go](../../../service/storyteller/agentic_query.go) 的 `Service.RunStoryAgenticQuery(ctx, userID, projectPublicID, storyPublicID, agentID, userPrompt)`——對照既有 `RunAgent`/`RunLoreAgent`（單輪、無工具呼叫能力的「改寫/擴寫/翻譯」skill 式功能）新增的多輪、會自己查資料的問答功能，兩者刻意分開、互不影響。內部串起：讀 project/story/agent → 解析 provider API key → **只給唯讀工具**（`ReadOnlyStorytellerTools()`，新增在 [agent_scope.go](../../../service/storyteller/agent_scope.go)，篩出 `storyteller_get_*`／`storyteller_list_*` 前綴，共 11 個，排除掉全部 24 個寫入/刪除/搬移類工具）並套用 `ScopeToolsToProject` → 呼叫 `RunAgentLoop` → 結果比照 `runAgent` 既有慣例存進 `StoryChat`/`StoryChatMessage`/`AgentUsageLog`（工具呼叫過程壓縮成 JSON 存進 `StoryChatMessage.Metadata`，因為現有 `ChatMessageRole` 只有 system/user/assistant 三種、沒有獨立的 tool 角色，這輪刻意不做 DB schema 異動去加一個新角色）。
+    - **這輪刻意只開放唯讀工具，不開放任何寫入能力**：Phase 5 的「提案 → diff → 確認 → revert」寫入安全機制還沒做，在那之前讓 agent 自主呼叫 `storyteller_upsert_story`／`storyteller_delete_story` 這類工具是不負責任的，等 Phase 5 做完再開放。
+    - 比照 `runAgent` 的既有測試模式（抽出 `runStoryAgenticQuery`，注入 `agentRunRepository`／`aiProviderFactory`，重用既有的 `fakeAgentRunRepository` mock，不用另外定義一個新 interface），寫了 3 個測試：完整流程（工具呼叫→最終答案→正確持久化）、空 prompt 拒絕、步數上限中止時 usage 仍正確持久化。
+    - 目前**還沒有 HTTP route／controller 曝露**這個功能——這是刻意的：現有的 storyteller HTTP API／controller 曝露方式要配合 Phase 6 前端 UX（要顯示工具呼叫過程、diff 卡片）一起設計，這輪只做到「Service 層可以被 Go 程式碼呼叫」，不是「可以被 HTTP 呼叫」，避免在前端設計定案前就把 API contract 卡死。
+
+## Phase 4 完成（2026-08-22）
 
 ## Phase 5：寫入安全機制（提案 → diff → 確認 → revert）
 

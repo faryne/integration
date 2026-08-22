@@ -131,10 +131,14 @@ func TestRunAgentLoopStopsAtMaxSteps(t *testing.T) {
 		APIKey:    "test-key",
 		ModelName: "claude-test",
 		Tools:     tools,
+		MaxSteps:  3,
 	})
 
-	require.Nil(t, result)
 	require.ErrorIs(t, err, ErrAgentLoopMaxStepsExceeded)
+	// 就算被中止，也要拿得到累積到目前為止的 Steps，讓呼叫端知道燒了幾輪，
+	// 不能因為沒拿到最終答案就把已經發生的呼叫紀錄整批丟掉。
+	require.NotNil(t, result)
+	require.Len(t, result.Steps, 3)
 }
 
 var errAgentLoopTestToolFailure = &agentLoopTestError{"tool exploded"}

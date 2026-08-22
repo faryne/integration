@@ -105,6 +105,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 - What：呼叫 provider → 收到 `tool_calls` → 執行（帶著 project 範圍限制）→ 把結果餵回去 → 重複，直到 provider 回傳最終文字答案。
 - Where：待定，可能是 `service/storyteller` 底下新檔案，或獨立成一個 package（要看 Phase 1 的 tool registry 實際落地方式）。
 - 跟 OAuth 規劃的交集：先用「使用者 session + project_id 參數」的簡化版本，之後 OAuth scope（例如 `project:{id}:read`/`project:{id}:write`）接上來時要能相容，不要現在做出以後要打掉重做的設計。
+- **2026-08-22 已完成**：`Service.RunStoryAgenticQuery()` 是第一個「正式可被 Go 程式碼呼叫」的完整功能（project 範圍限縮＋可設定步數上限＋usage 記錄都串起來了），但**這輪刻意只開放唯讀工具**，寫入類工具要等 Phase 5 的安全機制做完才開放；也還沒接 HTTP route，留給 Phase 6 前端設計定案後再一起接。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 4.1~4.4。
 
 ### Phase 5：寫入安全機制（提案 → diff → 確認 → revert）
 

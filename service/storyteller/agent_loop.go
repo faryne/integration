@@ -17,9 +17,8 @@ import (
 // 一次失控呼叫可能把使用者的 API 額度燒光。
 var ErrAgentLoopMaxStepsExceeded = errors.New("agent loop exceeded max steps")
 
-// agentLoopMaxSteps 這輪先寫死一個保守值，Phase 4 會做成可設定（可能依 provider／
-// 使用情境給不同上限）。
-const agentLoopMaxSteps = 8
+// defaultAgentLoopMaxSteps 是 AgentLoopRequest.MaxSteps 留空（0）時的預設上限。
+const defaultAgentLoopMaxSteps = 8
 
 // AgentLoopRequest 是跑一次 agent loop 需要的輸入。
 type AgentLoopRequest struct {
@@ -28,9 +27,14 @@ type AgentLoopRequest struct {
 	ModelName    string
 	SystemPrompt string
 	UserPrompt   string
-	// Tools 是這次對話允許呼叫的工具，呼叫端自己決定要開放哪些（例如 Phase 3
-	// 驗證期間只給唯讀工具）。
+	// Tools 是這次對話允許呼叫的工具，呼叫端自己決定要開放哪些（例如 project
+	// 範圍限縮／唯讀限制都是呼叫端在組這份清單時就要處理好，見 ScopeToolsToProject
+	// 跟 ReadOnlyStorytellerTools）。
 	Tools []ToolSpec
+	// MaxSteps 是這輪對話最多允許幾次「provider 要求呼叫工具」的來回，超過會被
+	// 強制中止並回傳 ErrAgentLoopMaxStepsExceeded。留空（0 或負數）使用
+	// defaultAgentLoopMaxSteps。
+	MaxSteps int
 }
 
 // AgentLoopResult 是跑完一輪 loop 的結果。
@@ -39,6 +43,9 @@ type AgentLoopResult struct {
 	// Steps 記錄每一輪呼叫了哪些工具、各自的結果，方便除錯，也對應之後 Phase 6
 	// 「正在呼叫哪個工具」的過程提示會需要的資料。
 	Steps []AgentLoopStep
+	// Usage 是這輪對話全部 provider.Generate() 呼叫（工具呼叫的中間輪次加上給出
+	// 最終答案的那一輪）加總的 token 用量，nil 代表 provider 完全沒回傳用量資訊。
+	Usage *AIProviderUsage
 }
 
 // AgentLoopStep 是 loop 裡的一輪：provider 要求呼叫哪些工具，以及各自的執行結果
@@ -71,10 +78,15 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 		})
 	}
 
+	maxSteps := req.MaxSteps
+	if maxSteps <= 0 {
+		maxSteps = defaultAgentLoopMaxSteps
+	}
+
 	messages := []Message{{Role: "user", Content: req.UserPrompt}}
 	result := &AgentLoopResult{}
 
-	for step := 0; step < agentLoopMaxSteps; step++ {
+	for step := 0; step < maxSteps; step++ {
 		resp, err := req.Provider.Generate(ctx, AIProviderRequest{
 			APIKey:       req.APIKey,
 			ModelName:    req.ModelName,
@@ -85,6 +97,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 		if err != nil {
 			return nil, err
 		}
+		result.Usage = sumAgentLoopUsage(result.Usage, resp.Usage)
 		if len(resp.ToolCalls) == 0 {
 			result.FinalText = resp.Result
 			return result, nil
@@ -108,7 +121,26 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 		}
 		result.Steps = append(result.Steps, loopStep)
 	}
-	return nil, ErrAgentLoopMaxStepsExceeded
+	// 回傳累積到目前為止的 result（Usage／Steps），不要整批丟掉——步數上限被觸發
+	// 通常代表 provider 已經燒了好幾輪 token，呼叫端需要知道燒了多少才能記進
+	// usage log，不能因為最後沒拿到最終答案就假裝這些呼叫沒發生過。
+	return result, ErrAgentLoopMaxStepsExceeded
+}
+
+// sumAgentLoopUsage 累加多輪 provider 呼叫的 token 用量，任一輪沒有回傳用量資訊
+// （nil）就跳過那一輪，不會讓整個加總變成 0 或 panic。
+func sumAgentLoopUsage(total, step *AIProviderUsage) *AIProviderUsage {
+	if step == nil {
+		return total
+	}
+	if total == nil {
+		total = &AIProviderUsage{}
+	}
+	return &AIProviderUsage{
+		InputTokens:  total.InputTokens + step.InputTokens,
+		OutputTokens: total.OutputTokens + step.OutputTokens,
+		TotalTokens:  total.TotalTokens + step.TotalTokens,
+	}
 }
 
 func executeAgentLoopTool(ctx context.Context, toolByName map[string]ToolSpec, call ToolCall) (resultText string, callErr error) {
