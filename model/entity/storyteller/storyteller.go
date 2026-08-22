@@ -666,13 +666,19 @@ type AgentRequest struct {
 }
 
 type AgentRunRequest struct {
-	Mode             AgentRunMode `json:"mode"`
-	Instruction      string       `json:"instruction"`
-	FullContent      string       `json:"full_content"`
-	SelectedContent  string       `json:"selected_content"`
-	SelectionStart   *int         `json:"selection_start"`
-	SelectionEnd     *int         `json:"selection_end"`
-	ProviderAPIKeyID *uint64      `json:"provider_apikey_id,omitempty"`
+	Mode            AgentRunMode `json:"mode"`
+	Instruction     string       `json:"instruction"`
+	FullContent     string       `json:"full_content"`
+	SelectedContent string       `json:"selected_content"`
+	SelectionStart  *int         `json:"selection_start"`
+	SelectionEnd    *int         `json:"selection_end"`
+	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
+	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
+	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
+	// ModelName 留空時沿用 Agent 記錄的預設 model；帶值時這次呼叫改用這個 model
+	// 名稱——跟 ProviderAPIKeyID 是各自獨立的覆寫，可以只換 key、只換 model，
+	// 或兩個一起換。
+	ModelName string `json:"model_name,omitempty"`
 }
 
 type ProviderAPIKeyRequest struct {

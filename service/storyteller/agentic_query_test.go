@@ -56,7 +56,7 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
 		return provider, nil
-	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "這篇故事叫什麼名字？")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "這篇故事叫什麼名字？", AgenticQueryOptions{})
 
 	require.NoError(t, err)
 	require.True(t, toolCalled)
@@ -127,7 +127,7 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return provider, nil
-	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "問題")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "問題", AgenticQueryOptions{})
 
 	require.NoError(t, err)
 	require.Equal(t, "done", output.Result)
@@ -135,8 +135,49 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 	require.Equal(t, "agentic_query", observedSource)
 }
 
+// TestRunStoryAgenticQueryAppliesProviderAndModelOverride 驗證聊天視窗傳進來的
+// key／model 覆寫（AgenticQueryOptions）會真的被套用，且跟 Agent 記錄的預設值
+// 可以不一樣——呼應「Agent 只是人設/prompt，用哪把 key／哪個 model 是每次呼叫
+// 當下的選擇」這個方向。
+func TestRunStoryAgenticQueryAppliesProviderAndModelOverride(t *testing.T) {
+	agentDefaultKeyID := uint64(50)
+	overrideKeyID := uint64(51)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderGrok,
+			ModelName:        "grok-test",
+			ProviderAPIKeyID: &agentDefaultKeyID,
+		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, overrideKeyID, 20, storytellerModel.AgentProviderClaude, "override-secret-key"),
+	}
+	provider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			require.Equal(t, "override-secret-key", req.APIKey)
+			require.Equal(t, "claude-override-model", req.ModelName)
+			return &AIProviderResponse{Result: "answered with claude"}, nil
+		},
+	}
+
+	output, err := runStoryAgenticQuery(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
+		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
+		return provider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, "問題", AgenticQueryOptions{
+		ProviderAPIKeyID: &overrideKeyID,
+		ModelName:        "claude-override-model",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "answered with claude", output.Result)
+	require.Equal(t, storytellerModel.AgentProviderClaude, output.Provider)
+	require.Equal(t, "claude-override-model", output.ModelName)
+}
+
 func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
-	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ")
+	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ", AgenticQueryOptions{})
 	require.Nil(t, output)
 	require.ErrorIs(t, err, errAgenticQueryEmptyPrompt)
 }
@@ -172,7 +213,7 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 
 	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return provider, nil
-	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題")
+	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題", AgenticQueryOptions{})
 
 	require.ErrorIs(t, err, ErrAgentLoopMaxStepsExceeded)
 	// 就算失控被中止，也要把已經燒掉的 usage 記下來，不能整批丟掉。

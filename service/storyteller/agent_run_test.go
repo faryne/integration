@@ -229,6 +229,57 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, 18, repo.usage.TotalTokens)
 }
 
+// TestRunAgentProviderAPIKeyOverrideCanCrossProvider 驗證「Agent 只是人設/prompt，
+// 這次要用哪把 key／哪個 model 是各自獨立的覆寫」——覆寫的 key 可以跟 Agent 記錄的
+// provider 不一樣（這裡 Agent 設定的是 Grok，覆寫後改用一把 Claude 的 key），
+// 這種情況不該被 errAgentProviderAPIKeyMismatch 擋下來，且實際呼叫 provider 跟
+// 記錄下來的 output.Provider／ModelName 都要反映「這次真的用了什麼」，不是 Agent
+// 的靜態預設值。
+func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
+	agentDefaultKeyID := uint64(50)
+	overrideKeyID := uint64(51)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderGrok,
+			ModelName:        "grok-test",
+			ProviderAPIKeyID: &agentDefaultKeyID,
+			DefaultPrompt:    "Use concise prose.",
+		},
+		// mock 的 ProviderAPIKey() 不看傳入的 id，直接回傳這把——用來模擬「覆寫的
+		// key id 解析出一把 provider 完全不同的 key」這個情境。
+		providerAPIKey: encryptedTestProviderAPIKey(t, overrideKeyID, 20, storytellerModel.AgentProviderClaude, "override-secret-key"),
+	}
+	provider := &fakeAIProvider{
+		response: &AIProviderResponse{
+			Result:       "rewritten with claude",
+			FinishReason: "stop",
+			Usage:        &AIProviderUsage{InputTokens: 3, OutputTokens: 2, TotalTokens: 5},
+		},
+	}
+
+	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
+		// 一定是覆寫 key 自己的 provider（Claude），不是 Agent 記錄的 Grok。
+		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
+		return provider, nil
+	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+		Mode:             storytellerModel.AgentRunModeCustomChapter,
+		Instruction:      "rewrite with claude instead",
+		FullContent:      "full chapter",
+		ProviderAPIKeyID: &overrideKeyID,
+		ModelName:        "claude-override-model",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "override-secret-key", provider.request.APIKey)
+	require.Equal(t, "claude-override-model", provider.request.ModelName)
+	require.Equal(t, storytellerModel.AgentProviderClaude, output.Provider)
+	require.Equal(t, "claude-override-model", output.ModelName)
+}
+
 func TestRunAgentStoryNotFound(t *testing.T) {
 	repo := &fakeAgentRunRepository{
 		project:  &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},

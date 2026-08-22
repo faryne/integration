@@ -574,7 +574,10 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err != nil {
 		return nil, err
 	}
-	provider, err := NewAIProvider(agent.Provider, providerAPIKeyRow.Endpoint)
+	// provider／modelName 用「這次實際解析出來的」，不是 Agent 記錄的靜態預設——
+	// key 覆寫時 providerAPIKeyRow.Provider 可能跟 agent.Provider 不同。
+	modelName := resolveAgentModelName(agent, input.ModelName)
+	provider, err := NewAIProvider(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -585,7 +588,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
 	response, err := provider.Generate(ctx, AIProviderRequest{
 		APIKey:       apiKey,
-		ModelName:    agent.ModelName,
+		ModelName:    modelName,
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
 	})
@@ -594,8 +597,8 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	}
 	output := &storytellerModel.AgentRunResponse{
 		AgentID:      agent.ID,
-		Provider:     agent.Provider,
-		ModelName:    agent.ModelName,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
 		Mode:         input.Mode,
 		Result:       response.Result,
 		FinishReason: response.FinishReason,
@@ -620,9 +623,19 @@ var (
 	errAgentProviderAPIKeyMismatch      = errors.New("provider api key does not match agent provider")
 )
 
+// resolveAgentProviderAPIKey 解析這次呼叫實際要用哪把 key。Agent 本身的
+// prompt／人設跟「預設用哪把 key」是分開的兩件事——沒有 overrideID 時沿用
+// Agent 綁定的預設 key（這條路徑維持舊行為，要求 key 的 provider 跟 Agent 記錄的
+// provider 一致，理論上這兩者本來就該一致，這裡只是防呆）；呼叫端明確帶了
+// overrideID 時，代表「這次就是要用另一把 key 執行」，可能連 provider 都不同
+// （例如這個 Agent 原本設定成 Claude，這次想試試看用 OpenAI 的 key 跑同一份
+// prompt），這種情況故意不擋，呼叫端要自己決定要用哪把 key 的 Provider／
+// ModelName（見 runAgent／runStoryAgenticQuery 改用 key 本身的 Provider，不是
+// Agent 記錄的 Provider）。
 func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerModel.ProviderAPIKey, error), userID uint64, agent *storytellerModel.Agent, overrideID *uint64) (*storytellerModel.ProviderAPIKey, error) {
 	keyID := agent.ProviderAPIKeyID
-	if overrideID != nil {
+	overridden := overrideID != nil
+	if overridden {
 		keyID = overrideID
 	}
 	if keyID == nil {
@@ -632,7 +645,7 @@ func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerMode
 	if err != nil {
 		return nil, err
 	}
-	if key.Provider != agent.Provider {
+	if !overridden && key.Provider != agent.Provider {
 		return nil, errAgentProviderAPIKeyMismatch
 	}
 	return key, nil
@@ -658,7 +671,8 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	if err != nil {
 		return nil, err
 	}
-	provider, err := providerFactory(agent.Provider, providerAPIKeyRow.Endpoint)
+	modelName := resolveAgentModelName(agent, input.ModelName)
+	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -669,7 +683,7 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
 	response, err := provider.Generate(ctx, AIProviderRequest{
 		APIKey:       apiKey,
-		ModelName:    agent.ModelName,
+		ModelName:    modelName,
 		SystemPrompt: systemPrompt,
 		UserPrompt:   userPrompt,
 	})
@@ -678,8 +692,8 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	}
 	output := &storytellerModel.AgentRunResponse{
 		AgentID:      agent.ID,
-		Provider:     agent.Provider,
-		ModelName:    agent.ModelName,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
 		Mode:         input.Mode,
 		Result:       response.Result,
 		FinishReason: response.FinishReason,
@@ -709,12 +723,24 @@ func buildAgentUsageLog(userID, providerAPIKeyID uint64, agent storytellerModel.
 		UserID:           userID,
 		ProviderAPIKeyID: providerAPIKeyID,
 		AgentID:          agent.ID,
-		Provider:         agent.Provider,
-		ModelName:        agent.ModelName,
-		InputTokens:      output.Usage.InputTokens,
-		OutputTokens:     output.Usage.OutputTokens,
-		TotalTokens:      output.Usage.TotalTokens,
+		// Provider／ModelName 記錄的是這次「實際」用了哪家／哪個 model（來自
+		// output，已經套用過 key／model 覆寫的解析結果），不是 Agent 記錄的
+		// 靜態預設值——Agent 跟 provider/key/model 剝離之後，這兩者不一定相同。
+		Provider:     output.Provider,
+		ModelName:    output.ModelName,
+		InputTokens:  output.Usage.InputTokens,
+		OutputTokens: output.Usage.OutputTokens,
+		TotalTokens:  output.Usage.TotalTokens,
 	}
+}
+
+// resolveAgentModelName 留空 override 時沿用 Agent 記錄的預設 model，帶值時這次
+// 呼叫改用這個 model 名稱——跟 resolveAgentProviderAPIKey 是各自獨立的覆寫。
+func resolveAgentModelName(agent *storytellerModel.Agent, override string) string {
+	if strings.TrimSpace(override) != "" {
+		return strings.TrimSpace(override)
+	}
+	return agent.ModelName
 }
 
 func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerModel.Story, error) {

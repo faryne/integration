@@ -117,6 +117,17 @@
 
 ## Phase 5 完成（2026-08-22）
 
+### 追加：Agent 與 provider/key/model 剝離（2026-08-22）
+
+跟 Faryne 討論 mockup 時定案：`Agent` 只保留人設/prompt，用哪把 key／哪個 model 是每次呼叫當下的獨立選擇，不是 Agent 本身固定綁死的屬性——這是聊天視窗要做「切換 API Key」功能的前提。
+
+- ✅ 已完成：`resolveAgentProviderAPIKey`（[storyteller.go](../../../service/storyteller/storyteller.go)）放寬——沒有 override 時維持舊行為（要求 key 的 provider 跟 Agent 記錄的一致），**有 override 時不再要求 provider 一致**，代表覆寫的 key 可以跟 Agent 原本設定的 provider 完全不同（例如 Agent 原本設定 Grok，這次想用 Claude 的 key 跑同一份 prompt）。新增 `resolveAgentModelName()` 做同樣性質的 model 覆寫（`AgentRunRequest` 新增 `ModelName` 欄位，跟既有的 `ProviderAPIKeyID` 一樣是選填、互相獨立的覆寫）。
+- `runAgent`／`RunLoreAgent`（既有單輪 skill 系統）跟新的 `runStoryAgenticQuery`（AAS）都改用「這次實際解析出來的」provider／model（`providerAPIKeyRow.Provider`／`resolveAgentModelName(...)` 的結果），不再假設一定等於 Agent 記錄的靜態值——包含寫進 `AgentUsageLog` 的用量記錄也一併修正，確保跨 provider 覆寫時用量記到正確的 provider/model，不會誤記成 Agent 的預設值。
+- `RunStoryAgenticQuery` 新增 `AgenticQueryOptions{ProviderAPIKeyID, ModelName}` 參數，聊天視窗的「切換 key」功能可以直接把使用者選的 key id 傳進來，不需要為了換 key 複製一份 Agent。
+- **對話 context 的決定**：不做「不同 key 各自開一個 tab、聊天記錄分開存」。換 key（甚至換 provider）是同一串對話裡逐次呼叫可以自由更換的執行選項，不會分岔出新的對話串——這技術上安全，因為 Phase 2 設計的 `Message`/`ToolCall` 中介格式本來就是 provider 中立的，每一輪呼叫時才依照當下選的 provider 現轉譯，換 key 不會讓既有對話歷史損毀或格式對不上。使用者要開新對話串，走既有的「new chat」機制，不是靠切 key 觸發。
+- 新增 3 個測試（`TestRunAgentProviderAPIKeyOverrideCanCrossProvider`／`TestRunStoryAgenticQueryAppliesProviderAndModelOverride`）驗證跨 provider 覆寫確實生效、且用量正確記到覆寫後的 provider/model，不是 Agent 的靜態預設值。全部既有測試不受影響（沒有覆寫時行為逐位元組不變）。
+- **範圍**：這輪只動後端邏輯，`Agent`／`ProviderAPIKey` 的資料表結構完全沒變（`Agent.ProviderAPIKeyID`/`ModelName` 繼續當「預設值」用，不是被移除，只是不再是唯一選項）——沒有新增 migration。
+
 ## Phase 6：前端 UX
 
 > UI/UX 設計提案交給 Codex 討論／草擬，見 [Codex_UIUX設計提案.md](Codex_UIUX設計提案.md)（產出後 Claude／Faryne 一起討論定案，這裡的 6.1~6.4 細部工作項可能會依討論結果調整）。

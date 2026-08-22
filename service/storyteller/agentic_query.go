@@ -25,6 +25,16 @@ type AgenticQueryOutput struct {
 	Usage     *AIProviderUsage
 }
 
+// AgenticQueryOptions 是這次呼叫要不要覆寫 Agent 預設 provider/key/model 的選項，
+// 兩者互相獨立、都可以留空沿用 Agent 的預設值。這是「Agent 只是人設/prompt，
+// 用哪把 key／哪個 model 是每次呼叫當下的選擇」這個方向的落地：聊天視窗要做 key
+// 切換功能時，把使用者選的 key id（可能連 provider 都跟 Agent 預設的不一樣）帶
+// 進 ProviderAPIKeyID 即可，不需要因此複製一份 Agent。
+type AgenticQueryOptions struct {
+	ProviderAPIKeyID *uint64
+	ModelName        string
+}
+
 // RunStoryAgenticQuery 是 Phase 4 把 Phase 3 雛型收斂成的第一個正式可呼叫功能：
 // 在故事編輯頁的 AI Agent 對話裡，讓 agent 可以自己讀這個 project 底下的故事／
 // 設定集／資產再回答，不是只能看呼叫端主動塞進 prompt 裡的內容（對照既有的
@@ -35,18 +45,18 @@ type AgenticQueryOutput struct {
 // 呼叫時不會真的執行，只會被記錄成 Proposals），讓 agent 可以規劃「應該怎麼改」，
 // 但實際落地一定要等使用者呼叫 ApplyAgentProposal 明確確認——ScopeToolsToProject
 // 仍然把每個工具呼叫（不管唯讀還是寫入提案）都鎖在 projectPublicID 底下。
-func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string) (*AgenticQueryOutput, error) {
+func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	writeToolNames := WriteStorytellerToolNames()
 	tools := StorytellerToolRegistry().All()
 	tools = CaptureWriteToolsAsProposals(tools, writeToolNames)
 	tools = ScopeToolsToProject(tools, projectPublicID)
-	return runStoryAgenticQuery(ctx, s.repo, NewAIProvider, tools, writeToolNames, userID, projectPublicID, storyPublicID, agentID, userPrompt)
+	return runStoryAgenticQuery(ctx, s.repo, NewAIProvider, tools, writeToolNames, userID, projectPublicID, storyPublicID, agentID, userPrompt, opts)
 }
 
 // runStoryAgenticQuery 是 RunStoryAgenticQuery 拆出來、可注入 repo／provider
 // factory／tools 的版本，比照既有 runAgent 的測試模式（agentRunRepository 這個
 // interface 已經涵蓋這裡需要的全部 5 個方法，不用另外定義一個新 interface）。
-func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string) (*AgenticQueryOutput, error) {
+func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	if strings.TrimSpace(userPrompt) == "" {
 		return nil, errAgenticQueryEmptyPrompt
 	}
@@ -62,11 +72,15 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	if err != nil {
 		return nil, err
 	}
-	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, nil)
+	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, opts.ProviderAPIKeyID)
 	if err != nil {
 		return nil, err
 	}
-	provider, err := providerFactory(agent.Provider, providerAPIKeyRow.Endpoint)
+	// provider／modelName 用「這次實際解析出來的」，不是 Agent 記錄的靜態預設——
+	// Agent 只保留人設/prompt，key／model 各自獨立覆寫，可能連 provider 都跟
+	// Agent 原本設定的不一樣（見 resolveAgentProviderAPIKey 的說明）。
+	modelName := resolveAgentModelName(agent, opts.ModelName)
+	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +100,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
-		ModelName:    agent.ModelName,
+		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID),
 		UserPrompt:   userPrompt,
 		Tools:        tools,
@@ -102,8 +116,8 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 
 	output := &AgenticQueryOutput{
 		AgentID:   agent.ID,
-		Provider:  agent.Provider,
-		ModelName: agent.ModelName,
+		Provider:  providerAPIKeyRow.Provider,
+		ModelName: modelName,
 		Result:    loopResult.FinalText,
 		Steps:     loopResult.Steps,
 		Proposals: ExtractProposals(loopResult, writeToolNames),
@@ -235,10 +249,12 @@ func buildAgenticQueryUsageLog(userID, providerAPIKeyID uint64, agent storytelle
 		UserID:           userID,
 		ProviderAPIKeyID: providerAPIKeyID,
 		AgentID:          agent.ID,
-		Provider:         agent.Provider,
-		ModelName:        agent.ModelName,
-		InputTokens:      output.Usage.InputTokens,
-		OutputTokens:     output.Usage.OutputTokens,
-		TotalTokens:      output.Usage.TotalTokens,
+		// Provider／ModelName 用這次「實際」解析出來的（output 已經套用過
+		// key／model 覆寫），不是 Agent 記錄的靜態預設。
+		Provider:     output.Provider,
+		ModelName:    output.ModelName,
+		InputTokens:  output.Usage.InputTokens,
+		OutputTokens: output.Usage.OutputTokens,
+		TotalTokens:  output.Usage.TotalTokens,
 	}
 }
