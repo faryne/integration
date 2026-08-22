@@ -998,6 +998,10 @@ type AgenticQueryResponse struct {
 	Steps     []AgenticStepOutput     `json:"steps"`
 	Proposals []AgenticProposalOutput `json:"proposals"`
 	Usage     *AgentRunUsage          `json:"usage,omitempty"`
+	// Warning 非空代表這輪對話撞到步數上限被強制中止（沒有真的拿到最終答案），
+	// 但 Result／Steps／Proposals／Usage 仍然是累積到中止那刻的真實資料，不是
+	// 空殼——前端要把這個情況當成「部分結果＋警告」呈現，不是整個當失敗處理。
+	Warning string `json:"warning,omitempty"`
 }
 
 // ApplyAgentProposalRequest 是前端把先前收到的 AgenticProposalOutput 原樣送回、

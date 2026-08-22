@@ -9,6 +9,8 @@ import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
+  StorytellerAgenticQueryRequest,
+  StorytellerAgenticQueryResponse,
   StorytellerAgentPromptVersion,
   StorytellerAgentProviderModels,
   StorytellerAgentRunRequest,
@@ -16,6 +18,7 @@ import type {
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
+  StorytellerApplyAgentProposalRequest,
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
   StorytellerPersonalAccessTokenRequest,
@@ -398,6 +401,64 @@ export function useRunStorytellerAgent(
       await queryClient.invalidateQueries({
         queryKey: ["storyteller", "story-chat-messages"],
       });
+    },
+  });
+}
+
+// AAS（agentic AI storyteller）：多輪、會自己呼叫唯讀工具查資料的問答功能，跟
+// 上面 useRunStorytellerAgent（單輪、無工具呼叫能力的改寫/擴寫/翻譯）是刻意分開
+// 的兩個 hook，對應後端不同的路由，UI 上也是不同的互動模式，不要合併。
+export function useRunStorytellerAgenticQuery(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      input,
+    }: {
+      agentId: number;
+      input: StorytellerAgenticQueryRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgenticQueryResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["storyteller", "story-chat-messages"],
+      });
+    },
+  });
+}
+
+// 套用先前 useRunStorytellerAgenticQuery 回傳、被攔下來還沒真的執行的寫入類
+// 工具呼叫。呼叫端要把當初收到的 StorytellerAgenticProposal 的 tool_name／
+// arguments 原樣送回來。
+export function useApplyStorytellerAgentProposal(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StorytellerApplyAgentProposalRequest) => {
+      const response = await axios.post<CommonResponse<unknown>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/apply`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    // 套用可能是改故事/設定集內容、也可能是刪除/搬移，影響範圍不固定，直接把
+    // 整個 storyteller 底下的快取都標記過期，跟既有 useRevertStorytellerStoryVersion
+    // 的做法一致，不用一一列出可能受影響的 query key。
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }

@@ -64,6 +64,7 @@ import {
   type StorytellerAgentPanelAgent,
   type StorytellerAgentPanelMessage,
 } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import { StorytellerAgenticPanel } from "@/pages/storyteller/StorytellerAgenticPanel.tsx";
 import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
@@ -1786,6 +1787,23 @@ export default function StorytellerStoryEditor({
                   replyTarget={replyTarget}
                   onReply={setReplyTarget}
                   onCancelReply={() => setReplyTarget(null)}
+                />
+              )}
+
+              {sidePanel === "agentic" && (
+                <StorytellerAgenticPanel
+                  projectPublicId={apiProject?.public_id}
+                  storyPublicId={apiStory?.public_id}
+                  agentId={
+                    selectedAgentId ? Number(selectedAgentId) : undefined
+                  }
+                  currentStory={{
+                    title: storyTitle,
+                    summary: storySummary,
+                    content,
+                    versionId: apiStory?.latest_version_id ?? null,
+                    updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
+                  }}
                 />
               )}
             </Stack>

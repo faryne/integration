@@ -1267,6 +1267,7 @@ export default function StorytellerLoreEditor({
                   value={sidePanel}
                   onChange={setSidePanel}
                   historyDisabled={isNewLore}
+                  agenticDisabled
                 />
               </Stack>
             }

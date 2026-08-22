@@ -417,6 +417,60 @@ export interface StorytellerAgentRunResponse {
   finish_reason?: string;
 }
 
+// AAS（agentic AI storyteller）：多輪、會自己呼叫工具查資料的問答功能，跟上面
+// 單輪無工具呼叫能力的 StorytellerAgentRunRequest／Response（改寫/擴寫/翻譯）
+// 是刻意分開的兩組型別，對應後端兩條不同的路由。
+export interface StorytellerAgenticQueryRequest {
+  user_prompt: string;
+  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的
+  // key／model（可以跟 Agent 記錄的 provider 不同）——這是切換 API Key 功能的
+  // 請求介面。
+  provider_apikey_id?: number;
+  model_name?: string;
+}
+
+export interface StorytellerAgenticToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface StorytellerAgenticToolResult {
+  content: string;
+  error?: string;
+}
+
+export interface StorytellerAgenticStep {
+  tool_calls: StorytellerAgenticToolCall[];
+  results: StorytellerAgenticToolResult[];
+}
+
+// 這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具呼叫。要套用時
+// 把 tool_name／arguments 原樣送回 useApplyStorytellerAgentProposal。
+export interface StorytellerAgenticProposal {
+  tool_call_id: string;
+  tool_name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface StorytellerAgenticQueryResponse {
+  agent_id: number;
+  provider: string;
+  model_name: string;
+  result: string;
+  steps: StorytellerAgenticStep[];
+  proposals: StorytellerAgenticProposal[];
+  usage?: StorytellerAgentRunUsage;
+  // 非空代表這輪對話撞到步數上限被強制中止，沒有真的拿到最終答案，但其餘欄位
+  // 仍然是累積到中止那刻的真實資料，不是空殼——當成「部分結果＋警告」呈現。
+  warning?: string;
+}
+
+export interface StorytellerApplyAgentProposalRequest {
+  tool_name: string;
+  arguments: Record<string, unknown>;
+}
+
 export interface StorytellerStoryChatMessage {
   id: number;
   chat_id: number;

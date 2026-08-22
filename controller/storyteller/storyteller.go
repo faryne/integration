@@ -496,14 +496,13 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		}
 		// ErrAgentLoopMaxStepsExceeded 這種情況 result 仍然有值（累積到中止那刻
 		// 的 Steps/Usage 已經記進 usage log／chat 歷史），所以不能直接回錯誤了事，
-		// 要把已經算出來的部分回給前端，只是額外標一個警告文字讓前端知道沒拿到
-		// 最終答案。
+		// 要把已經算出來的部分回給前端，只是標一個 warning 讓前端知道沒拿到最終
+		// 答案——回應形狀跟正常成功時完全一樣（都是 AgenticQueryResponse），前端
+		// 不用另外處理一種特殊的錯誤回應格式。
 		if result != nil {
 			response := result.ToResponse()
-			return output.Success(map[string]interface{}{
-				"result":  response,
-				"warning": err.Error(),
-			})
+			response.Warning = err.Error()
+			return output.Success(response)
 		}
 		return output.BadRequest(err)
 	}
