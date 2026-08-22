@@ -96,7 +96,7 @@ MCP 那組工具（[storyteller_tools.go](../../../service/mcp/storyteller_tools
 
 - What：只做 Claude 一家的完整 tool-calling adapter（`tool_use`/`tool_result` content block），驗證 Phase 1 的 tool registry ＋ Phase 2 的 interface 擴充兜得起來。
 - Why：Claude 的 tool-calling API 最成熟、我們也最熟悉，先打通一家再擴散風險最低（第 3.1 節建議）。
-- 待辦：這個 Phase 還沒展開細部工作項，等 Phase 1/2 做完再回來寫。
+- **2026-08-22 已完成**：`RunAgentLoop()`（`service/storyteller/agent_loop.go`）跑通完整迴圈，含步數上限跟工具失敗不中止整輪兩個雛型就先做的安全設計。**唯一沒做到的**：這個環境沒有可用的 Claude API key，沒辦法真的打真實 API 驗證「模型本身會不會正確判斷該不該呼叫工具」，改用 mock 測試證明 loop 機制正確，真實 API 驗證要等 Faryne 自己用有效 key 測。詳細見 [Phase1至7工作項規劃.md](Phase1至7工作項規劃.md) 3.1~3.3。
 
 ### Phase 4：Agent loop orchestration ＋ project 範圍限縮
 

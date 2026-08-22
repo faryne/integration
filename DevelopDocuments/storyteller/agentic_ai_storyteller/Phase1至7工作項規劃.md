@@ -53,26 +53,33 @@
 - [ ] **3.1 Claude tool_use/tool_result loop 實作**
   - What：`ClaudeProvider` 補上處理 `Tools`（轉成 Claude Messages API 的 `tools` 欄位）跟解析回傳的 `tool_use` content block（轉成統一的 `ToolCall`）。
   - Where：`service/storyteller/ai_provider.go` 的 `ClaudeProvider`。
-  - How：細節等 2.1 的研究結果出來才能寫，這裡先佔位。
+  - ✅ 已完成——**這項其實在 Phase 2.3 就一併做掉了**：當時判斷 Claude 是 Phase 3 一定要用到的 provider，`buildClaudeTools()`／`buildClaudeMessages()`／`claudeMessageResponse.ToolCalls()` 這幾個函式已經在 Phase 2 寫好、測過（見 `TestClaudeProviderGenerateWithTools`／`TestClaudeProviderGenerateWithToolResultMessage`），這裡不用重做，純粹補記錄。
 
-- [ ] **3.2 Agent loop 雛型（不接 project 範圍限縮，先驗證迴圈本身）**
+- [x] **3.2 Agent loop 雛型（不接 project 範圍限縮，先驗證迴圈本身）**
   - What：寫一個最簡單的迴圈：呼叫 Claude → 有 `tool_calls` 就執行（先接 Phase 1 registry 裡任何一個唯讀工具，例如 `storyteller_get_story`）→ 把結果餵回去 → 重複 → 直到拿到最終文字。
   - Why：先驗證「provider 擴充＋tool registry」這兩塊兜不兜得起來，故意先不接寫入工具、不接 project 範圍限縮，降低這個 Phase 要驗證的變數數量。
   - Where：待定（可能是暫時的測試腳本或一個內部 debug 端點，不一定要馬上做成正式功能）。
+  - ✅ 已完成（2026-08-22）：新增 [agent_loop.go](../../../service/storyteller/agent_loop.go)，`RunAgentLoop(ctx, AgentLoopRequest)`——呼叫端傳 `Provider`／`APIKey`／`ModelName`／prompt／`Tools []ToolSpec`（自己決定要開放哪些工具，這輪故意不內建授權範圍檢查），loop 內部組 `Messages` 陣列往返，每輪工具呼叫結果編碼成文字塞回 `role="tool"` 訊息。**做了兩個原計畫沒特別提到、但實際寫的時候發現必須決定的設計**：
+    1. **步數上限**：`agentLoopMaxSteps = 8`，寫死常數（Phase 4 才會做成可設定），超過直接回 `ErrAgentLoopMaxStepsExceeded`——沒有上限的話一直要求呼叫工具、不給答案的失控對話會無限燒 token，這是所有 agentic 系統的標準風險控制，雖然 Phase 4 才是正式排定要做這件事的地方，但雛型完全不做這個防護也太危險，這輪就先加了一個保守值。
+    2. **單一工具失敗不中止整輪**：某次工具呼叫回錯誤時，把錯誤說明（`"error: ..."`）當成 tool_result 餵回去給模型自己決定下一步（換個方式重試、放棄這個資訊改用其他方式回答），而不是讓整個 loop 直接中止拋錯——比較符合「agent 應該像人一樣，工具用不了就換個辦法」的直覺，也讓整個 loop 對單一工具的暫時性錯誤更有韌性。
 
-- [ ] **3.3 端對端手動驗證**
+- [x] **3.3 端對端手動驗證**
   - What：用 dev-only 假登入 + 一個真實故事，實測「幫我看看這篇故事的設定集有沒有矛盾」這類需要先讀資料才能回答的問題，確認 agent 真的會自己呼叫 `storyteller_get_story`/`storyteller_get_lore`，不是瞎猜答案。
+  - ⚠️ **改用 mock 測試取代，真正打真實 Claude API 沒有做**：這個環境沒有可用的 Anthropic API key，沒辦法真的打 Claude API 驗證。改用既有 `ai_provider_test.go` 的 httptest transport mock 模式（`roundTripFunc`），寫了 3 個測試（[agent_loop_test.go](../../../service/storyteller/agent_loop_test.go)）：`TestRunAgentLoopExecutesToolThenReturnsFinalAnswer`（模擬「第一輪要工具、第二輪給答案」的完整兩輪迴圈，驗證工具真的被呼叫、參數正確傳遞、結果正確餵回去、最終答案正確回傳）、`TestRunAgentLoopFeedsToolErrorBackInsteadOfAborting`（驗證上面提到的錯誤不中止整輪的設計）、`TestRunAgentLoopStopsAtMaxSteps`（驗證步數上限真的會擋住失控迴圈）。這證明了 loop 的機制邏輯正確，但**沒有驗證到「Claude 模型本身真的會正確判斷什麼時候該呼叫工具」這件事**（mock 測試裡工具呼叫時機是我自己寫死在假回應裡的，不是模型的真實判斷）。**這件事需要 Faryne 之後用自己的 Claude API key 實際跑一次才能確認**，建議之後找一個真實故事＋真實設定集，用 Phase 4 做完、有正式 API 呼叫入口之後再測，這樣不用為了這次驗證另外寫一次性的測試腳本。
+
+## Phase 3 完成（2026-08-22）
 
 ## Phase 4：Agent loop orchestration ＋ project 範圍限縮
 
 - [ ] **4.1 補上 project 範圍限縮**
   - What：Tool registry 組出來的每個工具呼叫，綁進呼叫當下授權的 `project_id`，agent 物理上碰不到別的專案（呼應開放問題 3 的定案）。
-  - Where：Phase 1 的 tool registry 執行邏輯裡。
+  - Where：Phase 1 的 tool registry 執行邏輯裡；`RunAgentLoop`（[agent_loop.go](../../../service/storyteller/agent_loop.go)）目前完全沒做這個檢查，呼叫端傳什麼 `Tools` 就是什麼，這是 Phase 3 雛型故意留下的缺口，Phase 4 要補上。
   - How：具體怎麼綁（在 handler 簽名裡多一個 `projectPublicID` 參數、還是在 registry 組工具清單時就把 project_id 閉包進去）等 Phase 1 的 registry 設計定型才能確定。
 
 - [ ] **4.2 loop 終止條件與上限**
   - What：避免 agent 陷入無限迴圈（一直呼叫工具、一直不給最終答案）燒光 token／請求時間，要有最大步數上限，超過就強制中止並回報。
   - Why：這是所有 agentic 系統的標準風險控制，沒有明確上限的話一次失控呼叫可能把使用者的 API 額度燒光。
+  - **Phase 3.2 已經先做了一個保守版本**：`agent_loop.go` 裡的 `agentLoopMaxSteps = 8` 是寫死的常數，超過會回 `ErrAgentLoopMaxStepsExceeded`（已有測試 `TestRunAgentLoopStopsAtMaxSteps` 驗證）。這個 Phase 要做的是把它從寫死常數改成可設定（例如依 provider 或使用情境給不同上限），機制本身不用重寫。
 
 - [ ] **4.3 usage/cost 記錄**
   - What：比照現有 `AgentUsageLog`（[storyteller.go:704](../../../service/storyteller/storyteller.go) `buildAgentUsageLog`），agent loop 跑完要記錄總共呼叫幾次 provider、消耗多少 token，不能因為變成多輪就漏了既有的用量追蹤。
