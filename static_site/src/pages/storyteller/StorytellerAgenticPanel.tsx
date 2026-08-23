@@ -19,6 +19,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   useRunStorytellerAgent,
   useRunStorytellerAgenticQuery,
@@ -27,6 +28,7 @@ import {
   useStorytellerStoryChatMessages,
 } from "@/apis/storyteller/agent.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
@@ -439,7 +441,8 @@ export function StorytellerAgenticPanel({
     setModelNameOverride("");
   }, [activeAgentId]);
 
-  const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
+  const { data: providerApiKeys = [], isLoading: providerApiKeysLoading } =
+    useStorytellerProviderAPIKeys();
   const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
   // 换 key 可以跨 provider（見 Agent／provider/key/model 解耦），所以這裡不再
   // 依 selectedAgent.provider 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
@@ -632,7 +635,12 @@ export function StorytellerAgenticPanel({
           .slice(0, 6);
 
   const pending = runSkillMutation.isPending || runAgenticQuery.isPending;
+  // Skill 已經跟 provider/model/apikey 剝離，「Agent 預設金鑰」不再保證真的有預設可
+  // 用——完全沒有任何一把 key 時，不管選哪個 Agent、打哪個指令都注定失敗，直接整個
+  // 鎖死送出跟模型 chip，用 Alert 導去金鑰管理，比讓使用者送出後才看到後端錯誤好。
+  const hasAnyApiKey = providerApiKeys.length > 0;
   const canRun =
+    hasAnyApiKey &&
     Boolean(prompt.trim()) &&
     Boolean(projectPublicId) &&
     Boolean(storyPublicId) &&
@@ -884,6 +892,23 @@ export function StorytellerAgenticPanel({
               新故事第一次存檔後才能使用 AI 助理。
             </Alert>
           )}
+          {!providerApiKeysLoading && !hasAnyApiKey && (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              action={
+                <Button
+                  component={RouterLink}
+                  to={steamloomPath("my/api-keys")}
+                  size="small"
+                >
+                  前往設定
+                </Button>
+              }
+            >
+              請先至「金鑰管理」建立至少一把 API Key，AI 助理才能真的呼叫模型。
+            </Alert>
+          )}
         </Stack>
 
         <Stack
@@ -1051,6 +1076,7 @@ export function StorytellerAgenticPanel({
               color="inherit"
               endIcon={<KeyboardArrowDownIcon fontSize="small" />}
               onClick={(event) => setApiKeyMenuAnchor(event.currentTarget)}
+              disabled={!hasAnyApiKey}
               sx={{ color: "text.secondary", textTransform: "none" }}
             >
               {overriddenApiKey
@@ -1096,7 +1122,10 @@ export function StorytellerAgenticPanel({
                 }
                 setModelMenuAnchor(event.currentTarget);
               }}
-              disabled={modelOptions.length === 0 && !providerAllowsCustomModel}
+              disabled={
+                !hasAnyApiKey ||
+                (modelOptions.length === 0 && !providerAllowsCustomModel)
+              }
               sx={{ color: "text.secondary", textTransform: "none" }}
             >
               {modelNameOverride || selectedAgent?.model || "預設模型"}

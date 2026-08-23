@@ -66,11 +66,6 @@ function estimateCostUsd(
   );
 }
 
-// 專案／故事-設定集／單次執行明細是三個各自獨立的 <Table>（巢狀在 TableCell 裡），
-// 沒有共用欄寬機制，「輸入」「輸出」欄位不會自動對齊；固定寬度讓三層看起來像同一組欄位。
-const tokenColumnWidth = 110;
-const costColumnWidth = 100;
-
 function formatUsd(value: number) {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -303,6 +298,13 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+// 整個 Key 底下只有一張表、一個 <TableHead>——輸入／輸出／估算費用欄位不管是
+// 專案彙總列、故事/設定集彙總列、還是最底層單次執行明細列，全部是同一張表裡的
+// TableRow，天然共用同一組欄寬，不需要像三個各自獨立巢狀 <Table> 那樣另外做
+// 對齊處理。專案／故事列沒有 Skill／模型／估算費用可顯示的地方，一律印「－」。
+const usageLogPageSize = 20;
+const usageTableColumnCount = 6;
+
 function KeyUsageCard({
   group,
   month,
@@ -354,21 +356,24 @@ function KeyUsageCard({
       </Stack>
       <Collapse in={open}>
         <TableContainer>
-          <Table size="small" sx={{ tableLayout: "fixed" }}>
+          <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>專案</TableCell>
-                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                  輸入
+                <TableCell>項目</TableCell>
+                <TableCell>Skill</TableCell>
+                <TableCell
+                  sx={{ fontFamily: "monospace", fontSize: 12 }}
+                >
+                  模型
                 </TableCell>
-                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                  輸出
-                </TableCell>
+                <TableCell align="right">輸入</TableCell>
+                <TableCell align="right">輸出</TableCell>
+                <TableCell align="right">估算費用</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {projectGroups.map((projectGroup) => (
-                <ProjectUsageRow
+                <ProjectUsageRows
                   key={projectGroup.projectId ?? "none"}
                   projectGroup={projectGroup}
                   providerApiKeyId={group.providerApiKeyId}
@@ -383,7 +388,7 @@ function KeyUsageCard({
   );
 }
 
-function ProjectUsageRow({
+function ProjectUsageRows({
   projectGroup,
   providerApiKeyId,
   month,
@@ -418,47 +423,30 @@ function ProjectUsageRow({
           />
           {projectGroup.projectName}
         </TableCell>
-        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+        <TableCell>－</TableCell>
+        <TableCell>－</TableCell>
+        <TableCell align="right">
           {projectTotals.inputTokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+        <TableCell align="right">
           {projectTotals.outputTokens.toLocaleString()}
         </TableCell>
+        <TableCell align="right">－</TableCell>
       </TableRow>
-      {open && (
-        <TableRow>
-          <TableCell colSpan={3} sx={{ p: 0, bgcolor: "action.hover" }}>
-            <Table size="small" sx={{ tableLayout: "fixed" }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ pl: 5 }}>故事／設定集</TableCell>
-                  <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                    輸入
-                  </TableCell>
-                  <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                    輸出
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {projectGroup.items.map((item) => (
-                  <StoryLoreUsageRow
-                    key={`${item.story_id ?? "s"}-${item.lore_id ?? "l"}`}
-                    item={item}
-                    providerApiKeyId={providerApiKeyId}
-                    month={month}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </TableCell>
-        </TableRow>
-      )}
+      {open &&
+        projectGroup.items.map((item) => (
+          <StoryLoreUsageRows
+            key={`${item.story_id ?? "s"}-${item.lore_id ?? "l"}`}
+            item={item}
+            providerApiKeyId={providerApiKeyId}
+            month={month}
+          />
+        ))}
     </>
   );
 }
 
-function StoryLoreUsageRow({
+function StoryLoreUsageRows({
   item,
   providerApiKeyId,
   month,
@@ -478,7 +466,7 @@ function StoryLoreUsageRow({
         sx={{ cursor: "pointer" }}
         onClick={() => setOpen((value) => !value)}
       >
-        <TableCell sx={{ pl: 5 }}>
+        <TableCell sx={{ pl: 4 }}>
           <ExpandMoreIcon
             fontSize="small"
             sx={{
@@ -491,32 +479,29 @@ function StoryLoreUsageRow({
           />
           {title}
         </TableCell>
-        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+        <TableCell>－</TableCell>
+        <TableCell>－</TableCell>
+        <TableCell align="right">
           {item.input_tokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+        <TableCell align="right">
           {item.output_tokens.toLocaleString()}
         </TableCell>
+        <TableCell align="right">－</TableCell>
       </TableRow>
       {open && (
-        <TableRow>
-          <TableCell colSpan={3} sx={{ p: 0, bgcolor: "action.hover" }}>
-            <AgentUsageLogTable
-              providerApiKeyId={providerApiKeyId}
-              storyId={item.story_id}
-              loreId={item.lore_id}
-              month={month}
-            />
-          </TableCell>
-        </TableRow>
+        <AgentUsageLogRows
+          providerApiKeyId={providerApiKeyId}
+          storyId={item.story_id}
+          loreId={item.lore_id}
+          month={month}
+        />
       )}
     </>
   );
 }
 
-const usageLogPageSize = 20;
-
-function AgentUsageLogTable({
+function AgentUsageLogRows({
   providerApiKeyId,
   storyId,
   loreId,
@@ -542,89 +527,76 @@ function AgentUsageLogTable({
 
   if (isLoading) {
     return (
-      <Stack alignItems="center" sx={{ py: 2 }}>
-        <CircularProgress size={20} />
-      </Stack>
+      <TableRow>
+        <TableCell colSpan={usageTableColumnCount} align="center" sx={{ py: 2 }}>
+          <CircularProgress size={18} />
+        </TableCell>
+      </TableRow>
     );
   }
 
   if (items.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-        這個月沒有執行紀錄。
-      </Typography>
+      <TableRow>
+        <TableCell
+          colSpan={usageTableColumnCount}
+          sx={{ pl: 8, color: "text.secondary" }}
+        >
+          這個月沒有執行紀錄。
+        </TableCell>
+      </TableRow>
     );
   }
 
   return (
-    <Stack spacing={0}>
-      <Table size="small" sx={{ tableLayout: "fixed" }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ pl: 8 }}>時間</TableCell>
-            <TableCell>Skill</TableCell>
+    <>
+      {items.map((row) => {
+        const cost = estimateCostUsd(
+          row.model_name,
+          row.input_tokens,
+          row.output_tokens,
+        );
+        return (
+          <TableRow key={row.id}>
+            <TableCell sx={{ pl: 8, color: "text.secondary" }}>
+              {new Date(row.created_at).toLocaleString()}
+            </TableCell>
+            <TableCell>{row.agent_name || "－"}</TableCell>
             <TableCell
-              sx={{ fontFamily: "monospace", fontSize: 12 }}
+              sx={{
+                fontFamily: "monospace",
+                fontSize: 12,
+                color: "text.secondary",
+              }}
             >
-              模型
+              {row.model_name}
             </TableCell>
-            <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-              輸入
+            <TableCell align="right">
+              {row.input_tokens.toLocaleString()}
             </TableCell>
-            <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-              輸出
+            <TableCell align="right">
+              {row.output_tokens.toLocaleString()}
             </TableCell>
-            <TableCell align="right" sx={{ width: costColumnWidth }}>
-              估算費用
+            <TableCell align="right">
+              {cost === null ? "－" : formatUsd(cost)}
             </TableCell>
           </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map((row) => {
-            const cost = estimateCostUsd(
-              row.model_name,
-              row.input_tokens,
-              row.output_tokens,
-            );
-            return (
-              <TableRow key={row.id}>
-                <TableCell sx={{ pl: 8, color: "text.secondary" }}>
-                  {new Date(row.created_at).toLocaleString()}
-                </TableCell>
-                <TableCell>{row.agent_name || "－"}</TableCell>
-                <TableCell
-                  sx={{
-                    fontFamily: "monospace",
-                    fontSize: 12,
-                    color: "text.secondary",
-                  }}
-                >
-                  {row.model_name}
-                </TableCell>
-                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                  {row.input_tokens.toLocaleString()}
-                </TableCell>
-                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
-                  {row.output_tokens.toLocaleString()}
-                </TableCell>
-                <TableCell align="right" sx={{ width: costColumnWidth }}>
-                  {cost === null ? "－" : formatUsd(cost)}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+        );
+      })}
       {totalPages > 1 && (
-        <Stack direction="row" justifyContent="flex-end" sx={{ p: 1 }}>
-          <Pagination
-            size="small"
-            count={totalPages}
-            page={page}
-            onChange={(_, value) => setPage(value)}
-          />
-        </Stack>
+        <TableRow>
+          <TableCell colSpan={usageTableColumnCount} sx={{ p: 1 }}>
+            <Stack direction="row" justifyContent="flex-end">
+              <Pagination
+                size="small"
+                count={totalPages}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+              />
+            </Stack>
+          </TableCell>
+        </TableRow>
       )}
-    </Stack>
+    </>
   );
 }

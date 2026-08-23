@@ -40,7 +40,6 @@ import {
   useCreateStorytellerProviderAPIKey,
   useDeleteStorytellerProviderAPIKey,
   useStorytellerAgentProviderModels,
-  useStorytellerAgents,
   useStorytellerProviderAPIKeys,
   useTestStorytellerProviderAPIKey,
   useUpdateStorytellerProviderAPIKey,
@@ -56,14 +55,9 @@ import type {
 export function StorytellerApiKeyPanel() {
   const { data: providerModels = [] } = useStorytellerAgentProviderModels();
   const { data: apiKeys = [], isLoading } = useStorytellerProviderAPIKeys();
-  const { data: agents = [] } = useStorytellerAgents();
   const createApiKey = useCreateStorytellerProviderAPIKey();
   const deleteApiKey = useDeleteStorytellerProviderAPIKey();
 
-  const boundAgentNames = (apiKeyId: number) =>
-    agents
-      .filter((agent) => agent.provider_apikey_id === apiKeyId)
-      .map((agent) => agent.name);
   const [input, setInput] = useState<StorytellerProviderAPIKeyRequest>({
     provider: "grok",
     label: "",
@@ -247,7 +241,6 @@ export function StorytellerApiKeyPanel() {
                   <ProviderApiKeyRow
                     apiKey={apiKey}
                     providerOption={providerOption(apiKey.provider)}
-                    boundAgentNames={boundAgentNames(apiKey.id)}
                     onDelete={() => deleteApiKey.mutate(apiKey.id)}
                     deletePending={deleteApiKey.isPending}
                   />
@@ -276,13 +269,11 @@ const testCooldownSeconds = 30;
 function ProviderApiKeyRow({
   apiKey,
   providerOption,
-  boundAgentNames,
   onDelete,
   deletePending,
 }: {
   apiKey: StorytellerProviderAPIKey;
   providerOption: StorytellerAgentProviderModels | undefined;
-  boundAgentNames: string[];
   onDelete: () => void;
   deletePending: boolean;
 }) {
@@ -496,20 +487,6 @@ function ProviderApiKeyRow({
               <Typography variant="body1">
                 {apiKey.label || "（未命名）"}
               </Typography>
-              {boundAgentNames.length > 0 ? (
-                <Tooltip title={boundAgentNames.join("、")} arrow>
-                  <Chip
-                    size="small"
-                    label={`使用中：${boundAgentNames.length} 個 Agent`}
-                  />
-                </Tooltip>
-              ) : (
-                <Chip
-                  size="small"
-                  variant="outlined"
-                  label="未被任何 Agent 使用"
-                />
-              )}
             </Stack>
           }
           secondary={
@@ -561,17 +538,6 @@ function ProviderApiKeyRow({
               確定要刪除「{apiKey.label || "（未命名）"}
               」這把金鑰嗎？此操作無法復原。
             </Typography>
-            {boundAgentNames.length > 0 ? (
-              <Alert severity="warning" variant="outlined">
-                目前有 {boundAgentNames.length} 個 AI Agent 使用這把金鑰：
-                {boundAgentNames.join("、")}。刪除後這些 Agent
-                會失去綁定的金鑰，需要重新指定才能繼續使用。
-              </Alert>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                目前沒有 AI Agent 使用這把金鑰。
-              </Typography>
-            )}
           </Stack>
         </DialogContent>
         <DialogActions>
