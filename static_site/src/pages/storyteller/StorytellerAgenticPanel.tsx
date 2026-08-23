@@ -400,21 +400,30 @@ export function StorytellerAgenticPanel({
     : undefined;
   // 實際生效的 provider：換了 key 就看 key 自己的 provider，沒換就沿用 Agent 記錄的。
   const effectiveProvider = overriddenApiKey?.provider ?? selectedAgent?.provider;
-  const modelOptions =
-    providerModelsList.find((entry) => entry.provider === effectiveProvider)
-      ?.models ?? [];
+  const effectiveProviderModelInfo = providerModelsList.find(
+    (entry) => entry.provider === effectiveProvider,
+  );
+  const modelOptions = effectiveProviderModelInfo?.models ?? [];
+  // self_hosted／openrouter 這類 provider 沒有固定模型清單（models 可能是空的），
+  // 改成讓使用者直接輸入模型名稱，而不是完全選不了。
+  const providerAllowsCustomModel = Boolean(
+    effectiveProviderModelInfo?.allow_custom_model,
+  );
+  const [customModelInput, setCustomModelInput] = useState("");
 
   // 換掉的 key 屬於不同 provider 時，先前選的模型覆寫可能不在新 provider 的清單裡，
   // 清掉讓畫面回到顯示 Agent／key 預設模型，避免送出時帶著看似選了、實際上跟
-  // 目前 provider 對不上的模型名稱。
+  // 目前 provider 對不上的模型名稱。允許自訂模型名稱的 provider（models 清單
+  // 本來就是空的）不受這條規則影響，不然使用者剛打完字就會被清空。
   useEffect(() => {
     if (
       modelNameOverride &&
+      !providerAllowsCustomModel &&
       !modelOptions.some((model) => model.name === modelNameOverride)
     ) {
       setModelNameOverride("");
     }
-  }, [modelOptions, modelNameOverride]);
+  }, [modelOptions, modelNameOverride, providerAllowsCustomModel]);
 
   const runSkillMutation = useRunStorytellerAgent(
     projectPublicId,
@@ -974,39 +983,84 @@ export function StorytellerAgenticPanel({
               variant="text"
               color="inherit"
               endIcon={<KeyboardArrowDownIcon fontSize="small" />}
-              onClick={(event) => setModelMenuAnchor(event.currentTarget)}
-              disabled={modelOptions.length === 0}
+              onClick={(event) => {
+                if (providerAllowsCustomModel && modelOptions.length === 0) {
+                  setCustomModelInput(modelNameOverride);
+                }
+                setModelMenuAnchor(event.currentTarget);
+              }}
+              disabled={modelOptions.length === 0 && !providerAllowsCustomModel}
               sx={{ color: "text.secondary", textTransform: "none" }}
             >
               {modelNameOverride || selectedAgent?.model || "預設模型"}
             </Button>
-            <Menu
-              anchorEl={modelMenuAnchor}
-              open={Boolean(modelMenuAnchor)}
-              onClose={() => setModelMenuAnchor(null)}
-            >
-              <MenuItem
-                selected={modelNameOverride === ""}
-                onClick={() => {
-                  setModelNameOverride("");
-                  setModelMenuAnchor(null);
-                }}
+            {providerAllowsCustomModel && modelOptions.length === 0 ? (
+              <Menu
+                anchorEl={modelMenuAnchor}
+                open={Boolean(modelMenuAnchor)}
+                onClose={() => setModelMenuAnchor(null)}
               >
-                Agent 預設模型
-              </MenuItem>
-              {modelOptions.map((model) => (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{ p: 1 }}
+                >
+                  <TextField
+                    autoFocus
+                    size="small"
+                    label="自訂模型名稱"
+                    placeholder="例如：llama-3.1-70b"
+                    value={customModelInput}
+                    onChange={(event) => setCustomModelInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        setModelNameOverride(customModelInput.trim());
+                        setModelMenuAnchor(null);
+                      }
+                    }}
+                  />
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => {
+                      setModelNameOverride(customModelInput.trim());
+                      setModelMenuAnchor(null);
+                    }}
+                  >
+                    套用
+                  </Button>
+                </Stack>
+              </Menu>
+            ) : (
+              <Menu
+                anchorEl={modelMenuAnchor}
+                open={Boolean(modelMenuAnchor)}
+                onClose={() => setModelMenuAnchor(null)}
+              >
                 <MenuItem
-                  key={model.id}
-                  selected={modelNameOverride === model.name}
+                  selected={modelNameOverride === ""}
                   onClick={() => {
-                    setModelNameOverride(model.name);
+                    setModelNameOverride("");
                     setModelMenuAnchor(null);
                   }}
                 >
-                  {model.label || model.name}
+                  Agent 預設模型
                 </MenuItem>
-              ))}
-            </Menu>
+                {modelOptions.map((model) => (
+                  <MenuItem
+                    key={model.id}
+                    selected={modelNameOverride === model.name}
+                    onClick={() => {
+                      setModelNameOverride(model.name);
+                      setModelMenuAnchor(null);
+                    }}
+                  >
+                    {model.label || model.name}
+                  </MenuItem>
+                ))}
+              </Menu>
+            )}
           </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <StorytellerMarkdownSyntaxLink />
