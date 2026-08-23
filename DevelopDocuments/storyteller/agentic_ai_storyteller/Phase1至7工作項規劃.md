@@ -198,6 +198,13 @@
   - `selectedAgentId`／`onSelectedAgentChange` 這組 prop 整個拿掉，狀態收斂成 `StorytellerAgenticPanel.tsx` 內部的 `activeAgentId`，`StoryEditor.tsx` 對應的 state／effect 一併清掉。
   - 已用真實瀏覽器驗證：建立兩個 Agent（含一個名稱帶空白），點 chip 選「Plot Doctor」會把 `/Plot Doctor ` 塞進輸入框，送出後 chip 正確切換顯示，過程沒有觸發任何 API 呼叫。
 
+- [x] **8.10 「AI Agent」全面改名「Skill」、管理頁拿掉供應商欄位、用量報表改依 project/story/lore 分組**：✅ 完成（2026-08-23）。
+  - 管理頁（`Home.tsx`／`HomeCards.tsx`／`NewAgent.tsx`／`AgentDiffCompare.tsx`／`homeTabs.ts`）所有使用者可見的「AI Agent」字樣改成「Skill」；Skill 卡片跟編輯歷史 diff 不再顯示 AI 供應商／模型名稱／API Key（跟人設已脫鉤，顯示只會製造假警訊）；建立/編輯表單提醒文字改 `warning` 語氣，明確提醒要先到金鑰管理建立至少一把 API Key。
+  - 用量報表從「Key -> Agent」改成「Key -> Project -> Story/Lore」三層。`storyteller_agent_usage_logs` 沒有 story_id/lore_id 欄位，透過既有的 `chat_id -> storyteller_story_chats -> storyteller_stories/storyteller_lores.project_id` 兩層 join 反查，**不需要 migration**。粗顆粒分組後拿掉了彙總層級的「估算費用」（可能混合多個 model，沒辦法準確估算），費用估算只留在最底層單次執行明細（`AgentUsageLogRow`，仍是單一 model_name）；drill-down 篩選條件從 `agent_id` 改成 `story_id`／`lore_id`（互斥），明細列表加回 `agent_name` 當純資訊性欄位。
+  - Agent 名稱正規化：`normalizeAgentName` 在新增/編輯時把內部連續空白收斂成單一空格（原本 `strings.TrimSpace` 只清頭尾），避免「看起來一樣」的名稱在 AI 助理打 `/名稱` 卻對不上（因為指令識別直接吃 `name` 現有的樣子，不像別的欄位有額外的一次性 migration 機制）。**舊資料沒有主動批次修正**——沿用到現有 Agent 編輯過一次才會套用正規化，若正式環境的既有資料需要一次性處理，需要另外確認環境（是否為 prod）後再排。
+  - AI 助理輸入框的 slash 指令提示文字補充：一次只解析最前面那一個指令，後面再打的 `/` 一律當純文字，不支援 `/rewrite /色文作家 ...` 這種串接寫法。
+  - 已用真實瀏覽器操作驗證：Skill 列表卡片不再顯示供應商/模型/金鑰、用量報表頁面在新的 join 查詢下正常載入（無 SQL 錯誤，空月份正確顯示空狀態）、編輯頁警示文字與麵包屑正確顯示「Skill」。
+
 ## 未來待辦（尚未排時程，先記著）
 
 Faryne 2026-08-23 提出，目前只記錄方向，**不要主動實作**，等哪天明確說要動工才處理：
