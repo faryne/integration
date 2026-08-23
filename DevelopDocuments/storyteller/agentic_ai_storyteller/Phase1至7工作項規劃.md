@@ -188,3 +188,14 @@
   - 前端同步移除「沒有綁定 API Key 的 Agent 不出現在選單」的舊過濾邏輯（`StoryEditor.tsx`／`LoreEditor.tsx`）——這條件在 key 可每次呼叫覆寫之後已經不成立，留著會讓新建的 Agent 完全選不到；`LoreEditor.tsx` 的金鑰覆寫下拉也比照 AI 助理面板改成不限 provider。
   - Usage 記錄不用額外處理：`buildAgentUsageLog`／`buildAgenticQueryUsageLog` 從 Phase 5 的 provider/key/model 解耦工作開始，就已經記錄「這次實際解析出來的」`output.Provider`／`output.ModelName`，不是 Agent 記錄的靜態預設值，跟這次改動天然對齊。
   - 已用真實瀏覽器操作驗證：建立一個完全沒有 provider/model/key 的 Agent，在 AI 助理面板選到它、換上金鑰跟模型後送出 `/rewrite`，請求真的打到 xAI API（假 key 拿到真實的 401 錯誤），證實整條路徑可用。
+
+- [x] **8.8 模型 chip 支援 self_hosted／openrouter 這類無固定清單的 provider**：✅ 完成（2026-08-23）。這兩個 provider 的 `models` 清單本來就是空的（`allow_custom_model: true`），8.7 剛做完的模型 chip 原本只認固定清單，清單空就整顆 disabled，等於這類 provider 永遠選不到模型。改成清單為空但 `allow_custom_model` 時，改彈出一個小輸入框讓使用者直接打模型名稱；同時修掉一個連帶的 bug——原本「換 provider 時清空不在清單裡的模型覆寫」那個 `useEffect` 沒有放過這個情況，會讓使用者剛打完字就被清空。已用真實瀏覽器驗證（self_hosted 金鑰＋沒有 provider 的 Agent，輸入自訂模型名稱送出，請求確實帶著這個模型名稱打到自架端點）。
+
+## 未來待辦（尚未排時程，先記著）
+
+Faryne 2026-08-23 提出，目前只記錄方向，**不要主動實作**，等哪天明確說要動工才處理：
+
+- **`storyteller_agents` 的 `provider`／`model_name`／`provider_apikey_id` 三欄位全數移除**（真的做 schema migration，不是 8.7 那種只改前端表單、欄位留著的做法）。8.7 已經讓這三欄位在應用層變成完全不用的死欄位，這是收尾動作。
+- **`storyteller_story_chats` 的 `agent_id` 移除**。
+- **`storyteller_story_chat_messages` 的 `agent_id` 在沒有使用任何 slash 指令（也就是純 agentic 多輪問答）時永遠為 `0`**——反映 agentic 對話本質上不綁定單一 Agent 人設的方向，跟 skill（slash command）訊息才需要記錄「這句是哪個 Agent 人設說的」不同。
+- 這幾項牽動 migration、既有資料回填、以及所有讀寫這幾個欄位的程式碼（訊息列表渲染、usage 報表等），動工前要先盤點完整影響範圍，不是這輪小改動。
