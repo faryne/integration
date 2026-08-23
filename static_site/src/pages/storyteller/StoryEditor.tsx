@@ -229,7 +229,6 @@ export default function StorytellerStoryEditor({
   const agentRows: EditorAgent[] =
     apiAgents.length > 0
       ? apiAgents
-          .filter((agent) => agent.provider_apikey_id !== null)
           .map((agent) => ({
             id: String(agent.id),
             name: agent.name,

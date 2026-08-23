@@ -269,7 +269,6 @@ func (s *Service) AgentProviderModels() ([]storytellerModel.AgentProviderModels,
 }
 
 func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
-	input = normalizeAgentRequest(input)
 	providerModel, err := s.validateAgent(input, true)
 	if err != nil {
 		return nil, err
@@ -293,7 +292,6 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 }
 
 func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
-	input = normalizeAgentRequest(input)
 	providerModel, err := s.validateAgent(input, false)
 	if err != nil {
 		return nil, err
@@ -577,6 +575,9 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	// provider／modelName 用「這次實際解析出來的」，不是 Agent 記錄的靜態預設——
 	// key 覆寫時 providerAPIKeyRow.Provider 可能跟 agent.Provider 不同。
 	modelName := resolveAgentModelName(agent, input.ModelName)
+	if strings.TrimSpace(modelName) == "" {
+		return nil, errAgentModelNameNotConfigured
+	}
 	provider, err := NewAIProvider(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
@@ -621,6 +622,11 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 var (
 	errAgentProviderAPIKeyNotConfigured = errors.New("agent has no provider api key configured")
 	errAgentProviderAPIKeyMismatch      = errors.New("provider api key does not match agent provider")
+	// errAgentModelNameNotConfigured：Agent 跟 provider/model 剝離之後，人設本身
+	// 可能完全沒有記錄預設 model；呼叫端（單輪 skill／AI 助理的 model chip）沒有
+	// 額外指定 model 時，與其把空字串送進 AI provider 換一個難懂的原始錯誤，不如
+	// 在這裡就擋下來給明確訊息。
+	errAgentModelNameNotConfigured = errors.New("agent has no default model configured; please select a model")
 )
 
 // resolveAgentProviderAPIKey 解析這次呼叫實際要用哪把 key。Agent 本身的
@@ -672,6 +678,9 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 		return nil, err
 	}
 	modelName := resolveAgentModelName(agent, input.ModelName)
+	if strings.TrimSpace(modelName) == "" {
+		return nil, errAgentModelNameNotConfigured
+	}
 	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
@@ -2954,13 +2963,6 @@ func normalizeVolumeRequest(input storytellerModel.StoryVolumeRequest) storytell
 	return input
 }
 
-func normalizeAgentRequest(input storytellerModel.AgentRequest) storytellerModel.AgentRequest {
-	if input.Provider == "" {
-		input.Provider = storytellerModel.AgentProviderGrok
-	}
-	return input
-}
-
 const (
 	autoSaveIntervalMinutesDefault = 5
 	autoSaveIntervalMinutesMin     = 2
@@ -2992,9 +2994,17 @@ func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) stor
 	return input
 }
 
+// validateAgent 驗證 Agent 設定。provider/model_name/provider_apikey_id 三欄位
+// 已經跟 Agent 的人設剝離——AI 助理面板改用 key／model chip 讓使用者每次呼叫時
+// 自行指定，Agent 管理頁不再收集這三個欄位（見 Phase1至7工作項規劃.md Phase 8
+// 後續）。欄位本身仍保留在資料表跟這個 struct 上（沒有 migration，向下相容舊
+// 資料），所以這裡只在 input.Provider 有值時才驗證成組——留空整組略過即可。
 func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) (*storytellerModel.AgentProviderModels, error) {
 	if strings.TrimSpace(input.Name) == "" {
 		return nil, errors.New("name is required")
+	}
+	if strings.TrimSpace(string(input.Provider)) == "" {
+		return nil, nil
 	}
 	provider, err := s.repo.AgentProviderModel(input.Provider, strings.TrimSpace(input.ModelName))
 	if err != nil {

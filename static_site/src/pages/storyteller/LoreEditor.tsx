@@ -250,8 +250,7 @@ export default function StorytellerLoreEditor({
   );
   const { data: versions = [], isLoading: versionsLoading } =
     useStorytellerLoreVersions(apiProject?.public_id, apiLore?.public_id);
-  const { data: allAgents = [] } = useStorytellerAgents();
-  const agents = allAgents.filter((agent) => agent.provider_apikey_id !== null);
+  const { data: agents = [] } = useStorytellerAgents();
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);
@@ -293,9 +292,10 @@ export default function StorytellerLoreEditor({
   const wordCount = useMemo(() => loreContentWordCount(content), [content]);
   const selectedAgent =
     agents.find((agent) => String(agent.id) === selectedAgentId) ?? agents[0];
-  const overrideApiKeyOptions = providerApiKeys.filter(
-    (apiKey) => apiKey.provider === selectedAgent?.provider,
-  );
+  // 换 key 可以跨 provider（Agent 已跟 provider/key/model 剝離，見
+  // StorytellerAgenticPanel.tsx 同樣的處理），這裡不再依 selectedAgent.provider
+  // 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
+  const overrideApiKeyOptions = providerApiKeys;
   const panelAgents: StorytellerAgentPanelAgent[] = agents.map((agent) => ({
     id: String(agent.id),
     name: agent.name,
@@ -1355,11 +1355,11 @@ export default function StorytellerLoreEditor({
                   promptWarning={aiPayloadError}
                   promptExtras={
                     <>
-                      {overrideApiKeyOptions.length > 1 && (
+                      {overrideApiKeyOptions.length > 0 && (
                         <TextField
                           select
                           size="small"
-                          label="使用其他金鑰執行一次"
+                          label="使用哪把 API Key"
                           value={overrideApiKeyId}
                           onChange={(event) =>
                             setOverrideApiKeyId(event.target.value)

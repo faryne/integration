@@ -134,6 +134,9 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	// Agent 只保留人設/prompt，key／model 各自獨立覆寫，可能連 provider 都跟
 	// Agent 原本設定的不一樣（見 resolveAgentProviderAPIKey 的說明）。
 	modelName := resolveAgentModelName(agent, opts.ModelName)
+	if strings.TrimSpace(modelName) == "" {
+		return nil, errAgentModelNameNotConfigured
+	}
 	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
