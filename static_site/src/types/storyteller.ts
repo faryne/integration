@@ -399,6 +399,7 @@ export interface StorytellerAgentRunRequest {
   selection_start?: number;
   selection_end?: number;
   provider_apikey_id?: number;
+  model_name?: string;
 }
 
 export interface StorytellerAgentRunUsage {

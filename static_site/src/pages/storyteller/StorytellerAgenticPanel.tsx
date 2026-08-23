@@ -1,4 +1,5 @@
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SendIcon from "@mui/icons-material/Send";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
@@ -8,6 +9,7 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  Menu,
   MenuItem,
   Paper,
   Stack,
@@ -19,6 +21,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   useRunStorytellerAgent,
   useRunStorytellerAgenticQuery,
+  useStorytellerAgentProviderModels,
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
 } from "@/apis/storyteller/agent.ts";
@@ -345,6 +348,13 @@ export function StorytellerAgenticPanel({
 }) {
   const [prompt, setPrompt] = useState("");
   const [providerApiKeyId, setProviderApiKeyId] = useState("");
+  const [modelNameOverride, setModelNameOverride] = useState("");
+  const [apiKeyMenuAnchor, setApiKeyMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [modelMenuAnchor, setModelMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
   const [replyTarget, setReplyTarget] =
     useState<StorytellerAgentPanelMessage | null>(null);
   const [optimisticSkillMessage, setOptimisticSkillMessage] =
@@ -374,15 +384,38 @@ export function StorytellerAgenticPanel({
     agents.find((agent) => agent.id === selectedAgentId) ?? agents[0];
   const agentIdNumeric = Number(selectedAgent?.id);
 
-  // 換 Agent 後，之前選的覆寫金鑰不一定屬於新 Agent 的供應商，重置回「使用預設」
+  // 換 Agent 後，之前選的覆寫金鑰／模型不一定跟新 Agent 相容，重置回「使用預設」
   useEffect(() => {
     setProviderApiKeyId("");
+    setModelNameOverride("");
   }, [selectedAgentId]);
 
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
-  const overrideApiKeyOptions = providerApiKeys.filter(
-    (apiKey) => apiKey.provider === selectedAgent?.provider,
-  );
+  const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
+  // 换 key 可以跨 provider（見 Agent／provider/key/model 解耦），所以這裡不再
+  // 依 selectedAgent.provider 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
+  const overrideApiKeyOptions = providerApiKeys;
+  const overriddenApiKey = providerApiKeyId
+    ? providerApiKeys.find((apiKey) => String(apiKey.id) === providerApiKeyId)
+    : undefined;
+  // 實際生效的 provider：換了 key 就看 key 自己的 provider，沒換就沿用 Agent 記錄的。
+  const effectiveProvider = overriddenApiKey?.provider ?? selectedAgent?.provider;
+  const modelOptions =
+    providerModelsList.find((entry) => entry.provider === effectiveProvider)
+      ?.models ?? [];
+
+  // 換掉的 key 屬於不同 provider 時，先前選的模型覆寫可能不在新 provider 的清單裡，
+  // 清掉讓畫面回到顯示 Agent／key 預設模型，避免送出時帶著看似選了、實際上跟
+  // 目前 provider 對不上的模型名稱。
+  useEffect(() => {
+    if (
+      modelNameOverride &&
+      !modelOptions.some((model) => model.name === modelNameOverride)
+    ) {
+      setModelNameOverride("");
+    }
+  }, [modelOptions, modelNameOverride]);
+
   const runSkillMutation = useRunStorytellerAgent(
     projectPublicId,
     storyPublicId,
@@ -578,6 +611,7 @@ export function StorytellerAgenticPanel({
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
+          model_name: modelNameOverride || undefined,
         },
       },
       {
@@ -618,6 +652,7 @@ export function StorytellerAgenticPanel({
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
+          model_name: modelNameOverride || undefined,
         },
       },
       {
@@ -727,23 +762,6 @@ export function StorytellerAgenticPanel({
                 </MenuItem>
               ))}
             </TextField>
-            {overrideApiKeyOptions.length > 1 && (
-              <TextField
-                select
-                size="small"
-                label="使用哪把 API Key"
-                value={providerApiKeyId}
-                onChange={(event) => setProviderApiKeyId(event.target.value)}
-                sx={{ flex: 1, minWidth: 180 }}
-              >
-                <MenuItem value="">Agent 預設</MenuItem>
-                {overrideApiKeyOptions.map((apiKey) => (
-                  <MenuItem key={apiKey.id} value={String(apiKey.id)}>
-                    {apiKey.label || `金鑰 #${apiKey.id}`}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
           </Stack>
           {!storyPublicId && (
             <Alert severity="info" variant="outlined">
@@ -910,6 +928,86 @@ export function StorytellerAgenticPanel({
             error={Boolean(payloadError)}
             helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
           />
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
+              onClick={(event) => setApiKeyMenuAnchor(event.currentTarget)}
+              sx={{ color: "text.secondary", textTransform: "none" }}
+            >
+              {overriddenApiKey
+                ? overriddenApiKey.label || `金鑰 #${overriddenApiKey.id}`
+                : "預設金鑰"}
+            </Button>
+            <Menu
+              anchorEl={apiKeyMenuAnchor}
+              open={Boolean(apiKeyMenuAnchor)}
+              onClose={() => setApiKeyMenuAnchor(null)}
+            >
+              <MenuItem
+                selected={providerApiKeyId === ""}
+                onClick={() => {
+                  setProviderApiKeyId("");
+                  setApiKeyMenuAnchor(null);
+                }}
+              >
+                Agent 預設金鑰
+              </MenuItem>
+              {overrideApiKeyOptions.map((apiKey) => (
+                <MenuItem
+                  key={apiKey.id}
+                  selected={providerApiKeyId === String(apiKey.id)}
+                  onClick={() => {
+                    setProviderApiKeyId(String(apiKey.id));
+                    setApiKeyMenuAnchor(null);
+                  }}
+                >
+                  {apiKey.label || `金鑰 #${apiKey.id}`}（{apiKey.provider}）
+                </MenuItem>
+              ))}
+            </Menu>
+
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
+              onClick={(event) => setModelMenuAnchor(event.currentTarget)}
+              disabled={modelOptions.length === 0}
+              sx={{ color: "text.secondary", textTransform: "none" }}
+            >
+              {modelNameOverride || selectedAgent?.model || "預設模型"}
+            </Button>
+            <Menu
+              anchorEl={modelMenuAnchor}
+              open={Boolean(modelMenuAnchor)}
+              onClose={() => setModelMenuAnchor(null)}
+            >
+              <MenuItem
+                selected={modelNameOverride === ""}
+                onClick={() => {
+                  setModelNameOverride("");
+                  setModelMenuAnchor(null);
+                }}
+              >
+                Agent 預設模型
+              </MenuItem>
+              {modelOptions.map((model) => (
+                <MenuItem
+                  key={model.id}
+                  selected={modelNameOverride === model.name}
+                  onClick={() => {
+                    setModelNameOverride(model.name);
+                    setModelMenuAnchor(null);
+                  }}
+                >
+                  {model.label || model.name}
+                </MenuItem>
+              ))}
+            </Menu>
+          </Stack>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <StorytellerMarkdownSyntaxLink />
             <Button
