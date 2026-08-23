@@ -199,8 +199,20 @@ func TestBuildAgentRunPrompts(t *testing.T) {
 	require.Contains(t, userPrompt, "User instruction:\nMake it sharper.")
 	require.NotContains(t, userPrompt, "Current chapter full content:")
 	require.NotContains(t, userPrompt, "Full chapter.")
-	require.Contains(t, userPrompt, "Current selected text:")
+	require.Contains(t, userPrompt, "Current selected text (a focus hint, not the only editable scope):")
 	require.Contains(t, userPrompt, "Only output the rewritten text.")
+}
+
+func TestBuildAgentRunPromptsFallsBackToFullContentWhenSelectionModeHasNoSelection(t *testing.T) {
+	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
+		Mode:        storytellerModel.AgentRunModeCustomSelection,
+		Instruction: "Make it sharper.",
+		FullContent: "Full chapter.",
+	})
+
+	require.Contains(t, userPrompt, "Current chapter full content:")
+	require.Contains(t, userPrompt, "Full chapter.")
+	require.NotContains(t, userPrompt, "STORY_SELECTED_CONTENT")
 }
 
 func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {

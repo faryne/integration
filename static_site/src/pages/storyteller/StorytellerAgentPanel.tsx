@@ -409,7 +409,7 @@ export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
   );
 }
 
-interface StorytellerAgentMessageProps {
+export interface StorytellerAgentMessageProps {
   message: StorytellerAgentPanelMessage;
   enableReplace: boolean;
   enableInsert: boolean;
@@ -422,7 +422,9 @@ interface StorytellerAgentMessageProps {
   isReplyTarget?: boolean;
 }
 
-function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
+// 由 StorytellerAgenticPanel.tsx（「AI 助理」面板）在渲染 skill（slash command）
+// 觸發的訊息時複用，維持一套訊息泡泡樣式與套用按鈕邏輯，不重複刻一份。
+export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
   const { message } = props;
   const isUser = message.role === "user";
   const canApply = !isUser && message.content.trim() !== "";
@@ -504,22 +506,23 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
             useFlexGap
             sx={{ mt: 1 }}
           >
-            {props.enableReplace && message.isCurrentResult && (
-              <Button
-                size="small"
-                variant="outlined"
-                disabled={!message.resultSelection}
-                onClick={() =>
-                  props.onApplyText(
-                    message.content,
-                    "replace",
-                    message.resultSelection ?? null,
-                  )
-                }
-              >
-                取代選取
-              </Button>
-            )}
+            {props.enableReplace &&
+              message.isCurrentResult &&
+              message.resultSelection && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() =>
+                    props.onApplyText(
+                      message.content,
+                      "replace",
+                      message.resultSelection ?? null,
+                    )
+                  }
+                >
+                  取代選取
+                </Button>
+              )}
             {props.enableInsert && (
               <Button
                 size="small"

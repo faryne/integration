@@ -157,36 +157,25 @@
 - [ ] **7.2 Grok tool-calling adapter**：先驗證 2.1 節「Grok 是否真的完全遵循 OpenAI 格式」的假設，如果驗證為真，跟 7.1 大部分共用；如果有差異，才需要獨立的轉譯邏輯。
 - [ ] **7.3（視需求排）Gemini／OpenRouter／Self-hosted**：不是這輪必做項目，等前面都做完、真的有需求再排。
 
-## Phase 8：AI Agent 降級為「AI 助理」裡的 slash command skill（2026-08-22 討論定案，尚未實作）
+## Phase 8：AI Agent 降級為「AI 助理」裡的 slash command skill（2026-08-22 討論定案，2026-08-23 完成 8.1~8.4、8.6）
 
-跟 Faryne 討論 Phase 6 mockup 後續時定案的方向：既有「AI Agent」單輪改寫/擴寫/翻譯工具列面板，跟新的「AI 問答」（**重新命名為「AI 助理」**）兩個面板疊床架屋，決定把前者降級成後者裡可以用 slash command 觸發的 skill，不再是獨立的工具列入口。**這輪只列工作項，Faryne 還在想其他事情，確認後才會排進度動工。**
+跟 Faryne 討論 Phase 6 mockup 後續時定案的方向：既有「AI Agent」單輪改寫/擴寫/翻譯工具列面板，跟新的「AI 問答」（**重新命名為「AI 助理」**）兩個面板疊床架屋，決定把前者降級成後者裡可以用 slash command 觸發的 skill，不再是獨立的工具列入口。
 
-- [ ] **8.1 面板重新命名**：`StorytellerEditorSideTabs.tsx` 的「AI 問答」toggle button 文案／tooltip 改成「AI 助理」；`StorytellerAgenticPanel.tsx` 的空狀態文案、標題等處同步改名。純文案異動，`sidePanel` 內部值 `"agentic"` 不用改。
+- [x] **8.1 面板重新命名**：`StorytellerEditorSideTabs.tsx` 的「AI 問答」toggle button 文案／tooltip 改成「AI 助理」；`StorytellerAgenticPanel.tsx` 的空狀態文案、標題等處同步改名。✅ 完成（2026-08-23）：故事編輯頁的獨立「AI Agent」工具列入口也一併移除（`StorytellerEditorSideTabs.tsx` 新增 `aiTabHidden` prop）；設定集編輯頁（LoreEditor）AAS 還沒接上，繼續保留舊的「AI Agent」入口不受影響。
 
-- [ ] **8.2 選取文字從「必要條件」放寬成「聚焦參考」**
-  - What：`validateSelectionAgentRunRequest`（[storyteller.go](../../../service/storyteller/storyteller.go)）目前對 `rewrite_selection`／`expand_selection`／`translate_selection`／`custom_selection` 這幾個 mode 強制要求 `selected_content`/`selection_start`/`selection_end`，沒有就擋掉。要放寬成：沒有選取時退到跟 `custom_chapter` 一樣的行為（吃整篇/整段內容當上下文），有選取時才帶進去當聚焦提示，不再是「沒選就不能用」。
-  - Why：Faryne 明確定案「選取文字是參考不是條件」——slash command 要能在沒有選取任何文字的情況下也正常運作，不然使用者每次要用 `/rewrite` 之類的指令都得先選字，體驗上是倒退。
-  - Where：後端 `storyteller.go` 的 `validateSelectionAgentRunRequest`／`agentRunModeRequiresSelection`；前端呼叫端（新的 slash command 分派邏輯）要決定「有沒有選取」時分別怎麼組 `AgentRunRequest`。
-  - How：後端驗證邏輯改成允許選取欄位全部留空（不再是「這個 mode 就一定要選取」），`buildAgentRunPrompts` 那邊本來就已經有處理「有沒有 selected content」的分支邏輯，順著改。
+- [x] **8.2 選取文字從「必要條件」放寬成「聚焦參考」**
+  - ✅ 完成（2026-08-23）：`validateSelectionAgentRunRequest` 改成選取欄位整組留空時直接放行（退回跟 `custom_chapter` 一樣吃整篇內容），只有「帶了其中一個欄位但不成組」才擋；`buildAgentRunPrompts` 改用 `hasSelection` 判斷是否要放入選取文字段落，沒選取時走整篇內容段落。補了對應單元測試（`TestValidateAgentRunRequest`／`TestBuildAgentRunPromptsFallsBackToFullContentWhenSelectionModeHasNoSelection`）。
 
-- [ ] **8.3 AI 助理輸入框加上 slash command 解析**
-  - What：在 `StorytellerAgenticPanel.tsx` 的輸入框偵測 `/` 開頭的指令（例如 `/rewrite 改得更懸疑`），解析出「要用哪個 skill mode」跟「後面的 instruction 文字」，改呼叫既有的 `useRunStorytellerAgent`（單輪 `/run` 端點），不是 `useRunStorytellerAgenticQuery`（AAS 多輪）。
-  - Why：兩條路徑（單輪 skill／多輪 agentic）技術上完全獨立，不需要合併後端邏輯，只是同一個輸入框依語法分派到不同的 API。
-  - Where：新檔案或 `StorytellerAgenticPanel.tsx` 內新增一個 slash command 解析函式；`rewrite`／`expand`／`translate`／`continue`／`custom` 對應 `AgentRunMode` 的既有值。
-  - How：**要跟先前討論過的另一種 slash command（`/agent-name` 選人設）分開命名空間**，避免使用者打 `/` 出來的自動完成清單混在一起分不清楚是「選 skill 動作」還是「選 Agent 人設」——具體語法（例如用不同前綴、還是靠清單分組區隔）留到動工時再定，這裡先记录這個限制。
+- [x] **8.3 AI 助理輸入框加上 slash command 解析**
+  - ✅ 完成（2026-08-23）：`StorytellerAgenticPanel.tsx` 新增 `parseSkillSlashCommand`，開頭 `/rewrite`／`/expand`／`/translate`／`/continue`／`/custom` 對應到既有 `AgentRunMode`，解析成功就走 `useRunStorytellerAgent`（單輪），否則走 `useRunStorytellerAgenticQuery`（多輪）。輸入框下方有固定提示文字列出可用指令。
+  - 命名空間釐清：跟「`/agent-name` 選人設」討論的是同一輪會話裡更早的構想，從未真的實作，程式碼裡目前只有這一套 slash command，不存在衝突，不需要另外分前綴。
 
-- [ ] **8.4 訊息呈現依「來源」分流**
-  - What：同一個訊息串裡，slash command（skill）觸發的回應要用舊的「取代選取／插入游標／附加末尾／複製」按鈕組呈現，agentic 觸發的回應維持現有的工具軌跡＋提案卡片呈現，需要在訊息資料結構裡標記「這則訊息是哪種來源」。
-  - Where：`StorytellerAgenticPanel.tsx` 的 `AgenticChatMessage` 型別要加一個來源欄位（例如 `kind: "skill" | "agentic"`），渲染時依這個欄位切換成對應的 UI 區塊。
+- [x] **8.4 訊息呈現依「來源」分流**
+  - ✅ 完成（2026-08-23）：`PanelMessage` 改成 `kind: "skill" | "agentic"` 的 discriminated union，`sortKey` 讓兩種來源的訊息（skill 歷史來自資料庫、有真實時間戳；agentic 只存在這次 session，用遞增序號保留在時間軸最後）能正確交錯排序。skill 訊息重用匯出的 `StorytellerAgentMessage`（`StorytellerAgentPanel.tsx`）維持舊按鈕組樣式；agentic 訊息維持既有工具軌跡＋提案卡片樣式。
 
-- [ ] **8.5 「取代選取」加 diff 確認 + 可選的覆蓋前存檔檢查點**
-  - What：「取代選取」這個動作（會真的蓋掉既有文字的唯一一個）按下去後，先跳 `StorytellerVersionCompareDialog` 顯示目前選取內容 vs AI 建議內容的 diff，使用者確認後才真的執行本地取代；diff 對話框裡可選「覆蓋前先存檔」，勾選的話會在真的取代之前先呼叫一次既有的故事存檔 API，確保有一個「覆蓋前」的版本可以從編輯歷史退回。
-  - Why：Faryne 定案這個組合可行，是比現在的設計更安全的做法——現在按下「取代選取」是立即本地覆蓋，沒有事先確認、也不保證覆蓋前有一個明確的版本檢查點（純靠使用者剛好記得的自動存檔時間點）。
-  - Where：`StorytellerAgentPanel.tsx`（或未來整合進 `StorytellerAgenticPanel.tsx` 之後的同一個元件）的取代選取按鈕邏輯；重用 [StorytellerVersionCompareDialog.tsx](../../../static_site/src/pages/storyteller/StorytellerVersionCompareDialog.tsx)。
-  - How：**插入游標／附加末尾／複製這三個動作維持原樣、不用 diff 確認**——這幾個本質上是新增內容，不會讓任何既有文字消失，硬加確認流程只是多餘的摩擦，只有「取代選取」這種有覆蓋風險的動作才需要這一層。
-  - 附帶決定（見 8.6）：取代選取按鈕本身也要跟著改成有選取才顯示。
+- [ ] **8.5 「取代選取」加 diff 確認 + 可選的覆蓋前存檔檢查點**（暫緩，見下方發現）
+  - 實作 8.1~8.4 前發現：「取代選取」「插入游標」這兩個動作在正式呼叫端**目前完全沒開**——[StoryEditor.tsx](../../../static_site/src/pages/storyteller/StoryEditor.tsx) 舊呼叫一路寫死 `enableReplace={false}`／`enableInsert={false}`，因為所見即所得編輯器（[StorytellerWysiwygEditor.tsx](../../../static_site/src/pages/storyteller/StorytellerWysiwygEditor.tsx)）目前只透過 `ref` 暴露 `insertAsset`，沒有游標位置／選取範圍的讀寫 API。
+  - Faryne 確認（2026-08-23）：這輪先只做「附加末尾」「複製」等現有能做的動作（已在 8.3/8.4 內含），取代選取／插入游標維持隱藏，這一項留到之後決定要不要先補編輯器的選取範圍 API 再回頭做。
+  - What／Why／Where／How 維持原規劃內容不變，等要動工時再看。
 
-- [ ] **8.6 「取代選取」按鈕只在有選取時顯示**
-  - What：`StorytellerAgentPanel.tsx` 的 `StorytellerAgentMessage` 目前是 `disabled={!message.resultSelection}`（按鈕一直顯示、沒選取時顯示但變灰），改成沒有選取時直接不渲染這顆按鈕（`{Boolean(message.resultSelection) && <Button>...}` 的寫法），不是維持顯示再讓它處於 disabled 狀態。
-  - Why：Faryne 確認這樣呈現更好——沒有選取範圍時本來就不可能執行「取代」，顯示一顆永遠按不下去的灰色按鈕沒有意義。
-  - Where：`static_site/src/pages/storyteller/StorytellerAgentPanel.tsx` 的 `canApply`／`enableReplace` 那段渲染邏輯（[StorytellerAgentPanel.tsx:499-522](../../../static_site/src/pages/storyteller/StorytellerAgentPanel.tsx)）。這是最小、最independent的一項，其實現在就可以單獨做，不一定要等 8.1~8.5 都排定才動工。
+- [x] **8.6 「取代選取」按鈕只在有選取時顯示**：✅ 完成（2026-08-23）。`StorytellerAgentMessage`（`StorytellerAgentPanel.tsx`）的按鈕邏輯改成 `message.resultSelection` 存在才渲染，不再是「一直顯示、沒選取時 disabled」。因為 8.5 的發現，目前正式呼叫端這顆按鈕本來就不會出現（`resultSelection` 恆為 `null`），但邏輯本身已經照定案的方向修好，之後補上選取範圍 API 後不用再回頭改這裡。

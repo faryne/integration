@@ -13,9 +13,13 @@ interface StorytellerEditorSideTabsProps {
   onChange: (value: StorytellerEditorSidePanel | null) => void;
   historyDisabled?: boolean;
   agenticDisabled?: boolean;
+  // 故事編輯頁已經把舊的單輪 AI Agent 降級成「AI 助理」面板裡的 slash command
+  // （見 Phase1至7工作項規劃.md Phase 8），不再需要獨立入口；設定集編輯頁的
+  // AAS 還沒接上，AI Agent 仍是唯一入口，所以這顆按鈕留給它繼續用。
+  aiTabHidden?: boolean;
 }
 
-// AI Agent／AI 問答／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
+// AI 助理／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
 // 的文件層級 action 區呈現：預設收起，讓作者能專注在編輯區本身；點開哪個就在原本
 // 的側欄位置展開對應內容，再點一次收合（exclusive ToggleButtonGroup 本身就支援
 // 點選中項目變成 null）。
@@ -24,6 +28,7 @@ export function StorytellerEditorSideTabs({
   onChange,
   historyDisabled,
   agenticDisabled,
+  aiTabHidden,
 }: StorytellerEditorSideTabsProps) {
   return (
     <ToggleButtonGroup
@@ -32,17 +37,19 @@ export function StorytellerEditorSideTabs({
       onChange={(_, next: StorytellerEditorSidePanel | null) => onChange(next)}
       size="small"
     >
-      <ToggleButton value="ai" aria-label="AI Agent">
-        <Tooltip title="AI Agent">
-          <SmartToyIcon fontSize="small" />
-        </Tooltip>
-      </ToggleButton>
+      {!aiTabHidden && (
+        <ToggleButton value="ai" aria-label="AI Agent">
+          <Tooltip title="AI Agent">
+            <SmartToyIcon fontSize="small" />
+          </Tooltip>
+        </ToggleButton>
+      )}
       <ToggleButton
         value="agentic"
         disabled={agenticDisabled}
-        aria-label="AI 問答"
+        aria-label="AI 助理"
       >
-        <Tooltip title="AI 問答（會自己讀資料、可提出修改提案）">
+        <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
           <AutoAwesomeIcon fontSize="small" />
         </Tooltip>
       </ToggleButton>

@@ -3079,11 +3079,12 @@ Agent default configuration:
 		"Task mode:\n" + string(input.Mode),
 		"User instruction:\n" + agentRunPromptInstruction(input.Instruction),
 	}
-	if !agentRunModeRequiresSelection(input.Mode) && strings.TrimSpace(input.FullContent) != "" {
+	hasSelection := agentRunModeRequiresSelection(input.Mode) && strings.TrimSpace(input.SelectedContent) != ""
+	if !hasSelection && strings.TrimSpace(input.FullContent) != "" {
 		sections = append(sections, "Current chapter full content:\n<<<STORY_FULL_CONTENT\n"+input.FullContent+"\nSTORY_FULL_CONTENT")
 	}
-	if agentRunModeRequiresSelection(input.Mode) {
-		sections = append(sections, "Current selected text:\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
+	if hasSelection {
+		sections = append(sections, "Current selected text (a focus hint, not the only editable scope):\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
 	}
 	sections = append(sections, "Output requirements:\n"+agentRunOutputInstruction(input.Mode))
 	return systemPrompt, strings.Join(sections, "\n\n")
@@ -3205,9 +3206,16 @@ func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
 	}
 }
 
+// validateSelectionAgentRunRequest 允許選取欄位整組留空（沒選字時退回整篇內容當上下文，
+// 見 buildAgentRunPrompts 的 hasSelection 判斷）；一旦帶了選取欄位，就要成組且合法。
 func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) error {
-	if strings.TrimSpace(input.SelectedContent) == "" {
-		return errors.New("selected_content is required")
+	hasSelectedContent := strings.TrimSpace(input.SelectedContent) != ""
+	hasSelectionRange := input.SelectionStart != nil || input.SelectionEnd != nil
+	if !hasSelectedContent && !hasSelectionRange {
+		return nil
+	}
+	if !hasSelectedContent {
+		return errors.New("selected_content is required when selection_start/selection_end is provided")
 	}
 	if input.SelectionStart == nil {
 		return errors.New("selection_start is required")

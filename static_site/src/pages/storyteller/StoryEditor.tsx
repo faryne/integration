@@ -27,13 +27,10 @@ import {
 } from "react-router-dom";
 import {
   useRevertStorytellerStoryVersion,
-  useRunStorytellerAgent,
   useSaveStorytellerStory,
   useStorytellerAgents,
   useStorytellerLores,
   useStorytellerProjects,
-  useStorytellerProviderAPIKeys,
-  useStorytellerStoryChatMessages,
   useStorytellerStoryVersions,
   useStorytellerStories,
   useStorytellerUserProfile,
@@ -59,11 +56,7 @@ import {
   StoryEditHistory,
   type StoryEditHistoryItem,
 } from "@/pages/storyteller/StoryEditHistory.tsx";
-import {
-  StorytellerAgentPanel,
-  type StorytellerAgentPanelAgent,
-  type StorytellerAgentPanelMessage,
-} from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import { type StorytellerAgentPanelAgent } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import { StorytellerAgenticPanel } from "@/pages/storyteller/StorytellerAgenticPanel.tsx";
 import {
   StorytellerEditorSideTabs,
@@ -80,18 +73,7 @@ import {
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
-  buildStorytellerAgentReferenceContent,
-  buildStorytellerAgentReplyQuote,
-  buildStorytellerAgentReplyReferenceContent,
-  composeStorytellerAgentInstructionWithReply,
-  resolveStorytellerAgentReferences,
-} from "@/pages/storyteller/storytellerAgentReferences.ts";
-import {
   applyStorytellerAgentText,
-  currentLoreMentionQuery,
-  currentStoryMentionQuery,
-  insertLoreMention,
-  insertStoryMention,
   type StorytellerAgentTextSelection,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
 import {
@@ -99,22 +81,13 @@ import {
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
-import type {
-  StorytellerAgentRunMode,
-  StorytellerAgentRunResponse,
-  StorytellerAsset,
-  StorytellerStoryChatMessage,
-} from "@/types/storyteller.ts";
+import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 const historyPerPage = 5;
 const autoSaveIntervalMinutesMin = 2;
 const autoSaveIntervalMinutesMax = 60;
 const autoSaveIntervalMinutesDefault = 5;
 const autoSavePresetMinutes = [2, 5, 10];
-const aiMessagesPerPage = 10;
-const aiInstructionMaxCharacters = 4000;
-const aiFullContentMaxCharacters = 60000;
-const aiTotalPayloadMaxCharacters = 80000;
 
 type AutoSaveSelectValue = "off" | "custom" | `${number}`;
 
@@ -158,19 +131,6 @@ interface StoryDraft {
   content: string;
   sort: number;
   parentPublicId: string;
-}
-
-interface OptimisticChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  agent_id: number;
-  agent_name: string;
-  mode?: StorytellerAgentRunMode;
-  usage?: StorytellerAgentRunResponse["usage"];
-  resultSelection?: StorytellerAgentTextSelection | null;
-  isLoading?: boolean;
-  isCurrentResult?: boolean;
 }
 
 // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
@@ -291,23 +251,8 @@ export default function StorytellerStoryEditor({
     apiProject?.public_id,
     apiStory?.public_id,
   );
-  const runAgent = useRunStorytellerAgent(
-    apiProject?.public_id,
-    apiStory?.public_id,
-  );
   const { data: apiStoryVersions = [], isLoading: apiStoryVersionsLoading } =
     useStorytellerStoryVersions(apiProject?.public_id, apiStory?.public_id);
-  const {
-    data: aiMessagesPages,
-    isLoading: aiMessagesLoading,
-    hasNextPage: hasMoreAiMessages,
-    isFetchingNextPage: loadingMoreAiMessages,
-    fetchNextPage: fetchMoreAiMessages,
-  } = useStorytellerStoryChatMessages(
-    apiProject?.public_id,
-    apiStory?.public_id,
-    aiMessagesPerPage,
-  );
   const [storyTitle, setStoryTitle] = useState(story?.title ?? "");
   const [storySummary, setStorySummary] = useState(story?.summary ?? "");
   const [storyStatus, setStoryStatus] = useState<"draft" | "completed">(
@@ -320,21 +265,9 @@ export default function StorytellerStoryEditor({
   const [content, setContent] = useState(story?.content ?? "");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [replyTarget, setReplyTarget] =
-    useState<StorytellerAgentPanelMessage | null>(null);
-  const [aiResult, setAiResult] = useState<StorytellerAgentRunResponse | null>(
-    null,
-  );
-  const [aiResultSelection, setAiResultSelection] =
-    useState<StorytellerAgentTextSelection | null>(null);
-  const [optimisticMessage, setOptimisticMessage] =
-    useState<OptimisticChatMessage | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState(
     agentRows[0]?.id ?? "",
   );
-  const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
-  const [overrideApiKeyId, setOverrideApiKeyId] = useState("");
   // 只存在這次編輯 session，不落 DB：初始值取自 profile 的全域預設，使用者可以依當次需要另外調整
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [autoSaveIntervalMinutes, setAutoSaveIntervalMinutes] = useState(
@@ -383,7 +316,6 @@ export default function StorytellerStoryEditor({
   });
   const saveStoryRef = useRef(saveStory);
   const autoSaveRunningRef = useRef(false);
-  const pendingMessageIdRef = useRef(0);
   const pageTitle = isNewStory
     ? "建立故事"
     : storyTitle.trim() || story?.title || "未命名故事";
@@ -420,115 +352,6 @@ export default function StorytellerStoryEditor({
     (version) => String(version.id) === rightDiffId,
   );
   const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
-  const selectedAgent =
-    agentRows.find((agent) => agent.id === selectedAgentId) ?? agentRows[0];
-  const selectedAgentNumericId = Number(selectedAgent?.id);
-  const overrideApiKeyOptions = providerApiKeys.filter(
-    (apiKey) => apiKey.provider === selectedAgent?.provider,
-  );
-  // 第 1 頁是最新訊息，載入更早的訊息時往後翻頁；顯示時要反過來，最早的頁在最上面
-  const aiMessages = (aiMessagesPages?.pages ?? [])
-    .slice()
-    .reverse()
-    .flatMap((page) => page.items);
-  const visibleAiMessages = aiResult
-    ? aiMessages.filter(
-        (message) =>
-          !(
-            message.role === "assistant" &&
-            message.agent_id === aiResult.agent_id &&
-            message.content.trim() === aiResult.result.trim()
-          ),
-      )
-    : aiMessages;
-  const transientMessages: OptimisticChatMessage[] = [];
-  if (optimisticMessage) {
-    transientMessages.push(optimisticMessage);
-  }
-  if (aiResult) {
-    transientMessages.push({
-      id: `agent-result-${aiResult.agent_id}-${aiResult.result.length}`,
-      role: "assistant",
-      content: aiResult.result,
-      agent_id: aiResult.agent_id,
-      agent_name: selectedAgent?.name ?? "AI Agent",
-      mode: aiResult.mode,
-      usage: aiResult.usage,
-      resultSelection: aiResultSelection,
-      isCurrentResult: true,
-    });
-  }
-  const agentPromptReferences = resolveStorytellerAgentReferences({
-    prompt: aiPrompt,
-    currentStory: apiStory
-      ? {
-          kind: "story",
-          id: apiStory.public_id,
-          title: storyTitle.trim() || apiStory.title,
-          content,
-        }
-      : null,
-    stories: apiStories
-      .filter((item) => item.public_id !== apiStory?.public_id)
-      .map((item) => ({
-        kind: "story" as const,
-        id: item.public_id,
-        title: item.title,
-        content: item.latest_content,
-      })),
-    lores: apiLores.map((item) => ({
-      kind: "lore" as const,
-      id: item.public_id,
-      title: item.title,
-      content: item.latest_content,
-    })),
-  });
-  const replyReferenceTarget = replyTarget
-    ? {
-        id: replyTarget.id,
-        speaker: replyTarget.speaker,
-        content: replyTarget.content,
-      }
-    : null;
-  const agentReferenceContent = [
-    buildStorytellerAgentReferenceContent(agentPromptReferences),
-    buildStorytellerAgentReplyReferenceContent(replyReferenceTarget),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-  const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
-  const aiPromptLength = Array.from(aiPrompt).length;
-  const aiInstructionPayloadLength =
-    aiPromptLength + (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
-  const aiReferenceContentLength = Array.from(agentReferenceContent).length;
-  const aiPayloadLength = aiInstructionPayloadLength + aiReferenceContentLength;
-  const aiPayloadError =
-    aiInstructionPayloadLength > aiInstructionMaxCharacters
-      ? `輸入需求最多 ${aiInstructionMaxCharacters.toLocaleString()} 字。`
-      : aiReferenceContentLength > aiFullContentMaxCharacters
-        ? `引用內容最多 ${aiFullContentMaxCharacters.toLocaleString()} 字。`
-        : aiPayloadLength > aiTotalPayloadMaxCharacters
-          ? `單次 Agent payload 最多 ${aiTotalPayloadMaxCharacters.toLocaleString()} 字。`
-          : "";
-  const chatMessages: StorytellerAgentPanelMessage[] = [
-    ...visibleAiMessages.map((message) => ({
-      id: String(message.id),
-      role: message.role,
-      content: message.content,
-      speaker: messageSpeaker(message),
-    })),
-    ...transientMessages.map((message) => ({
-      id: String(message.id),
-      role: message.role,
-      content: message.content,
-      speaker: messageSpeaker(message),
-      mode: message.mode,
-      usage: message.usage,
-      resultSelection: message.resultSelection,
-      isLoading: message.isLoading,
-      isCurrentResult: message.isCurrentResult,
-    })),
-  ];
   const panelAgents: StorytellerAgentPanelAgent[] = agentRows.map((agent) => ({
     id: agent.id,
     name: agent.name,
@@ -537,31 +360,18 @@ export default function StorytellerStoryEditor({
     prompt: agent.purpose,
     enabled: agent.enabled,
   }));
-  const storyMentionQuery = currentStoryMentionQuery(aiPrompt);
-  const loreMentionQuery = currentLoreMentionQuery(aiPrompt);
-  const storyMentionOptions =
-    storyMentionQuery === null
-      ? []
-      : apiStories
-          .filter((item) => item.public_id !== apiStory?.public_id)
-          .filter((item) =>
-            item.title.toLowerCase().includes(storyMentionQuery.toLowerCase()),
-          )
-          .slice(0, 6);
-  const loreMentionOptions =
-    loreMentionQuery === null
-      ? []
-      : apiLores
-          .filter((item) =>
-            item.title.toLowerCase().includes(loreMentionQuery.toLowerCase()),
-          )
-          .slice(0, 6);
-  const canRunAgent =
-    Boolean(apiProject?.public_id && apiStory?.public_id) &&
-    Number.isFinite(selectedAgentNumericId) &&
-    Boolean(selectedAgent?.enabled) &&
-    aiPayloadError === "" &&
-    !runAgent.isPending;
+  const agenticOtherStories = apiStories
+    .filter((item) => item.public_id !== apiStory?.public_id)
+    .map((item) => ({
+      id: item.public_id,
+      title: item.title,
+      content: item.latest_content,
+    }));
+  const agenticLores = apiLores.map((item) => ({
+    id: item.public_id,
+    title: item.title,
+    content: item.latest_content,
+  }));
 
   useEffect(() => {
     if (isHistoryRoute) {
@@ -702,11 +512,6 @@ export default function StorytellerStoryEditor({
       setSelectedAgentId(agentRows[0]?.id ?? "");
     }
   }, [agentRows, selectedAgentId]);
-
-  // 換 Agent 後，之前選的覆寫金鑰不一定屬於新 Agent 的供應商，重置回「使用預設」
-  useEffect(() => {
-    setOverrideApiKeyId("");
-  }, [selectedAgentId]);
 
   useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path:
@@ -1075,65 +880,6 @@ export default function StorytellerStoryEditor({
     );
   }
 
-  function runSelectedAgent(
-    mode?: StorytellerAgentRunMode,
-    instructionOverride?: string,
-  ) {
-    const rawInstruction = instructionOverride ?? aiPrompt;
-    const trimmedInstruction = instructionOverride
-      ? instructionOverride
-      : normalizeInstructionForRun(rawInstruction);
-    const instruction = composeStorytellerAgentInstructionWithReply(
-      trimmedInstruction,
-      replyReferenceTarget,
-    );
-    if (!canRunAgent) {
-      return;
-    }
-    // 「取代選取範圍」這次先停用（見 StorytellerAgentPanel 的 enableReplace/enableInsert），
-    // 所以這裡不需要再追蹤 textarea 的選取範圍，固定傳 null。
-    const resultSelection = null;
-    const nextMode = mode ?? "custom_chapter";
-    pendingMessageIdRef.current += 1;
-    setOptimisticMessage({
-      id: `pending-${pendingMessageIdRef.current}`,
-      role: "user",
-      content: instruction.trim() || "（未輸入需求）",
-      agent_id: selectedAgentNumericId,
-      agent_name: selectedAgent?.name ?? "AI Agent",
-    });
-    setAiPrompt("");
-    setReplyTarget(null);
-
-    runAgent.mutate(
-      {
-        agentId: selectedAgentNumericId,
-        input: {
-          mode: nextMode,
-          instruction,
-          full_content: agentReferenceContent,
-          selected_content: "",
-          provider_apikey_id: overrideApiKeyId
-            ? Number(overrideApiKeyId)
-            : undefined,
-        },
-      },
-      {
-        onSuccess: (result) => {
-          setAiResult(result ?? null);
-          setAiResultSelection(resultSelection);
-        },
-        onSettled: () => {
-          setOptimisticMessage(null);
-        },
-      },
-    );
-  }
-
-  function normalizeInstructionForRun(value: string) {
-    return value.trim();
-  }
-
   function applyAgentText(
     result: string,
     action: "replace" | "insert" | "append" | "copy",
@@ -1159,35 +905,6 @@ export default function StorytellerStoryEditor({
       },
       onAfterApply: () => {},
     });
-  }
-
-  function aiErrorMessage(error: unknown) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "response" in error &&
-      typeof error.response === "object" &&
-      error.response !== null &&
-      "data" in error.response
-    ) {
-      const data = error.response.data as { message?: string };
-      if (data.message) {
-        return data.message;
-      }
-    }
-    return "AI Agent 呼叫失敗，請確認 Agent 設定與後端狀態。";
-  }
-
-  function messageSpeaker(
-    message: StorytellerStoryChatMessage | OptimisticChatMessage,
-  ) {
-    if (message.role === "assistant") {
-      return message.agent_name || selectedAgent?.name || "AI Agent";
-    }
-    if (message.role === "user") {
-      return userProfile?.pen_name || "使用者";
-    }
-    return "System";
   }
 
   const statusOptions = [
@@ -1605,6 +1322,7 @@ export default function StorytellerStoryEditor({
                 <StorytellerEditorSideTabs
                   value={sidePanel}
                   onChange={handleSidePanelChange}
+                  aiTabHidden
                 />
               </Stack>
             }
@@ -1662,141 +1380,13 @@ export default function StorytellerStoryEditor({
                 </Paper>
               )}
 
-              {sidePanel === "ai" && (
-                <StorytellerAgentPanel
-                  agents={panelAgents}
-                  selectedAgentId={selectedAgentId}
-                  onSelectedAgentChange={setSelectedAgentId}
-                  messages={chatMessages}
-                  messagesLoading={aiMessagesLoading}
-                  pending={runAgent.isPending}
-                  unavailableMessage={
-                    !apiStory?.public_id
-                      ? "新故事第一次存檔後才能呼叫 AI Agent。"
-                      : undefined
-                  }
-                  emptyTitle="還沒有 AI Agent 對話紀錄"
-                  emptyDescription="送出需求後，這個故事的 AI Agent 對話會顯示在這裡。"
-                  hasMoreHistory={Boolean(hasMoreAiMessages)}
-                  loadingMoreHistory={loadingMoreAiMessages}
-                  onLoadMoreHistory={() => void fetchMoreAiMessages()}
-                  errorMessage={
-                    runAgent.isError ? aiErrorMessage(runAgent.error) : ""
-                  }
-                  prompt={aiPrompt}
-                  onPromptChange={setAiPrompt}
-                  promptPlaceholder="可輸入 Markdown。使用 @thisStory 引用本篇故事，或輸入 @story:、@lore: 從候選清單插入引用。"
-                  promptError={Boolean(aiPayloadError)}
-                  promptHelperText={`${aiPromptLength.toLocaleString()} / ${aiInstructionMaxCharacters.toLocaleString()} 字`}
-                  promptWarning={aiPayloadError}
-                  promptExtras={
-                    <>
-                      {overrideApiKeyOptions.length > 1 && (
-                        <TextField
-                          select
-                          size="small"
-                          label="使用其他金鑰執行一次"
-                          value={overrideApiKeyId}
-                          onChange={(event) =>
-                            setOverrideApiKeyId(event.target.value)
-                          }
-                          sx={{ minWidth: 220 }}
-                        >
-                          <MenuItem value="">使用 Agent 預設金鑰</MenuItem>
-                          {overrideApiKeyOptions.map((apiKey) => (
-                            <MenuItem key={apiKey.id} value={String(apiKey.id)}>
-                              {apiKey.label || `金鑰 #${apiKey.id}`}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      )}
-                      {agentPromptReferences.length > 0 && (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          flexWrap="wrap"
-                          useFlexGap
-                        >
-                          {agentPromptReferences.map((reference) => (
-                            <Chip
-                              key={reference.token}
-                              size="small"
-                              color={
-                                reference.token === "@thisStory"
-                                  ? "primary"
-                                  : "default"
-                              }
-                              label={reference.title}
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                      {storyMentionOptions.length > 0 && (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          flexWrap="wrap"
-                          useFlexGap
-                        >
-                          {storyMentionOptions.map((item) => (
-                            <Button
-                              key={item.public_id}
-                              size="small"
-                              variant="outlined"
-                              onClick={() =>
-                                setAiPrompt((current) =>
-                                  insertStoryMention(current, item.title),
-                                )
-                              }
-                            >
-                              {item.title}
-                            </Button>
-                          ))}
-                        </Stack>
-                      )}
-                      {loreMentionOptions.length > 0 && (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          flexWrap="wrap"
-                          useFlexGap
-                        >
-                          {loreMentionOptions.map((item) => (
-                            <Button
-                              key={item.public_id}
-                              size="small"
-                              variant="outlined"
-                              onClick={() =>
-                                setAiPrompt((current) =>
-                                  insertLoreMention(current, item.title),
-                                )
-                              }
-                            >
-                              設定集：{item.title}
-                            </Button>
-                          ))}
-                        </Stack>
-                      )}
-                    </>
-                  }
-                  canRun={canRunAgent}
-                  onRun={() => runSelectedAgent()}
-                  onApplyText={applyAgentText}
-                  enableReplace={false}
-                  enableInsert={false}
-                  replyTarget={replyTarget}
-                  onReply={setReplyTarget}
-                  onCancelReply={() => setReplyTarget(null)}
-                />
-              )}
-
               {sidePanel === "agentic" && (
                 <StorytellerAgenticPanel
                   projectPublicId={apiProject?.public_id}
                   storyPublicId={apiStory?.public_id}
-                  agentId={
-                    selectedAgentId ? Number(selectedAgentId) : undefined
-                  }
+                  agents={panelAgents}
+                  selectedAgentId={selectedAgentId}
+                  onSelectedAgentChange={setSelectedAgentId}
                   currentStory={{
                     title: storyTitle,
                     summary: storySummary,
@@ -1804,6 +1394,10 @@ export default function StorytellerStoryEditor({
                     versionId: apiStory?.latest_version_id ?? null,
                     updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
                   }}
+                  otherStories={agenticOtherStories}
+                  lores={agenticLores}
+                  penName={userProfile?.pen_name}
+                  onApplyText={applyAgentText}
                 />
               )}
             </Stack>

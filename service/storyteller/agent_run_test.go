@@ -106,14 +106,22 @@ func TestValidateAgentRunRequest(t *testing.T) {
 			wantErr: "selected_content must be 20000 characters or less",
 		},
 		{
-			name: "selection missing content",
+			name: "selection mode without any selection falls back to full-content context",
+			input: storytellerModel.AgentRunRequest{
+				Mode:        storytellerModel.AgentRunModeCustomSelection,
+				Instruction: "process without selecting text",
+				FullContent: "full chapter",
+			},
+		},
+		{
+			name: "selection range without content",
 			input: storytellerModel.AgentRunRequest{
 				Mode:           storytellerModel.AgentRunModeCustomSelection,
 				Instruction:    "process selection",
 				SelectionStart: &start,
 				SelectionEnd:   &end,
 			},
-			wantErr: "selected_content is required",
+			wantErr: "selected_content is required when selection_start/selection_end is provided",
 		},
 		{
 			name: "selection missing start",
@@ -208,7 +216,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
 	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
-	require.Contains(t, provider.request.UserPrompt, "Current selected text:")
+	require.Contains(t, provider.request.UserPrompt, "Current selected text (a focus hint, not the only editable scope):")
 	require.Contains(t, provider.request.UserPrompt, "Output requirements:")
 	require.NotNil(t, repo.chat)
 	require.NotNil(t, repo.chat.StoryID)
