@@ -264,9 +264,6 @@ export default function StorytellerStoryEditor({
   const [content, setContent] = useState(story?.content ?? "");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
-  const [selectedAgentId, setSelectedAgentId] = useState(
-    agentRows[0]?.id ?? "",
-  );
   // 只存在這次編輯 session，不落 DB：初始值取自 profile 的全域預設，使用者可以依當次需要另外調整
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [autoSaveIntervalMinutes, setAutoSaveIntervalMinutes] = useState(
@@ -505,12 +502,6 @@ export default function StorytellerStoryEditor({
   useEffect(() => {
     saveStoryRef.current = saveStory;
   }, [saveStory]);
-
-  useEffect(() => {
-    if (!agentRows.some((agent) => agent.id === selectedAgentId)) {
-      setSelectedAgentId(agentRows[0]?.id ?? "");
-    }
-  }, [agentRows, selectedAgentId]);
 
   useTitle(`${pageTitle} - ${STORYTELLER_APP_NAME}`, {
     path:
@@ -1384,8 +1375,6 @@ export default function StorytellerStoryEditor({
                   projectPublicId={apiProject?.public_id}
                   storyPublicId={apiStory?.public_id}
                   agents={panelAgents}
-                  selectedAgentId={selectedAgentId}
-                  onSelectedAgentChange={setSelectedAgentId}
                   currentStory={{
                     title: storyTitle,
                     summary: storySummary,

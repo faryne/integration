@@ -9,6 +9,7 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  ListSubheader,
   Menu,
   MenuItem,
   Paper,
@@ -88,7 +89,16 @@ const SKILL_SLASH_COMMANDS: Record<string, StorytellerAgentRunMode> = {
   continue: "continue_chapter",
   custom: "custom_chapter",
 };
-const SKILL_SLASH_COMMAND_HINT = "可用指令：/rewrite /expand /translate /continue /custom（不加指令則直接問答）";
+// 給上方指令／人設選單顯示用的中文說明，跟 SKILL_SLASH_COMMANDS 的 key 一一對應。
+const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
+  rewrite: "改寫",
+  expand: "擴寫",
+  translate: "翻譯",
+  continue: "續寫",
+  custom: "自訂指令",
+};
+const SKILL_SLASH_COMMAND_HINT =
+  "可用指令：/rewrite /expand /translate /continue /custom（單輪 skill）、/<Agent 名稱> 切換人設（不加指令則直接問答）";
 
 function parseSkillSlashCommand(
   value: string,
@@ -102,6 +112,37 @@ function parseSkillSlashCommand(
     return null;
   }
   return { mode, instruction: match[2] };
+}
+
+// /<Agent 名稱> 切換人設——不透過下拉選單，靠打字（或點上方 chip 塞入字串）。
+// Agent 名稱可能含空白（例如 "Plot Doctor"），不能只切第一個詞，改成看輸入是否
+// 以某個 Agent 名稱開頭；同名前綴（例如「色文」跟「色文作家」）取最長的那個，
+// 避免比對到錯誤的 Agent。skill mode 指令（/rewrite 等）是保留字，優先權更高，
+// 呼叫端要先跑 parseSkillSlashCommand 沒中才輪到這裡。
+function matchAgentNameCommand(
+  value: string,
+  agents: StorytellerAgentPanelAgent[],
+): { agentId: string; instruction: string } | null {
+  if (!value.startsWith("/")) {
+    return null;
+  }
+  const rest = value.slice(1);
+  let best: { agentId: string; nameLength: number; instruction: string } | null =
+    null;
+  for (const agent of agents) {
+    const name = agent.name.trim();
+    if (!name || !rest.toLowerCase().startsWith(name.toLowerCase())) {
+      continue;
+    }
+    if (!best || name.length > best.nameLength) {
+      best = {
+        agentId: agent.id,
+        nameLength: name.length,
+        instruction: rest.slice(name.length).trim(),
+      };
+    }
+  }
+  return best ? { agentId: best.agentId, instruction: best.instruction } : null;
 }
 
 const skillMessagesPerPage = 10;
@@ -321,8 +362,6 @@ export function StorytellerAgenticPanel({
   projectPublicId,
   storyPublicId,
   agents,
-  selectedAgentId,
-  onSelectedAgentChange,
   currentStory,
   otherStories,
   lores,
@@ -333,8 +372,6 @@ export function StorytellerAgenticPanel({
   projectPublicId?: string;
   storyPublicId?: string;
   agents: StorytellerAgentPanelAgent[];
-  selectedAgentId: string;
-  onSelectedAgentChange: (agentId: string) => void;
   currentStory: StorytellerAgenticCurrentStory;
   otherStories: { id: string; title: string; content: string }[];
   lores: { id: string; title: string; content: string }[];
@@ -346,6 +383,15 @@ export function StorytellerAgenticPanel({
   ) => void;
   onStoryChanged?: () => void;
 }) {
+  // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
+  // 這裡只保留「目前是哪一個」的內部狀態，agents 清單變動（新增/刪除/重新整理）時
+  // 若目前選的 id 已經不在清單裡，退回清單第一個。
+  const [activeAgentId, setActiveAgentId] = useState(agents[0]?.id ?? "");
+  useEffect(() => {
+    if (!agents.some((agent) => agent.id === activeAgentId)) {
+      setActiveAgentId(agents[0]?.id ?? "");
+    }
+  }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
   const [providerApiKeyId, setProviderApiKeyId] = useState("");
   const [modelNameOverride, setModelNameOverride] = useState("");
@@ -353,6 +399,9 @@ export function StorytellerAgenticPanel({
     null,
   );
   const [modelMenuAnchor, setModelMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [agentMenuAnchor, setAgentMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
   const [replyTarget, setReplyTarget] =
@@ -381,14 +430,14 @@ export function StorytellerAgenticPanel({
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
 
   const selectedAgent =
-    agents.find((agent) => agent.id === selectedAgentId) ?? agents[0];
+    agents.find((agent) => agent.id === activeAgentId) ?? agents[0];
   const agentIdNumeric = Number(selectedAgent?.id);
 
   // 換 Agent 後，之前選的覆寫金鑰／模型不一定跟新 Agent 相容，重置回「使用預設」
   useEffect(() => {
     setProviderApiKeyId("");
     setModelNameOverride("");
-  }, [selectedAgentId]);
+  }, [activeAgentId]);
 
   const { data: providerApiKeys = [] } = useStorytellerProviderAPIKeys();
   const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
@@ -704,16 +753,44 @@ export function StorytellerAgenticPanel({
   }
 
   function handleSend() {
+    const trimmed = prompt.trim();
+    if (!trimmed) {
+      return;
+    }
+    // /<Agent 名稱> 純粹是切人設，不打 API，所以不受 canRun（需要 project/story/
+    // 目前 Agent 可用）限制——就算目前選到的 Agent 是停用狀態，也要能透過這個指令
+    // 換到別的 Agent。
+    const agentSwitch = matchAgentNameCommand(trimmed, agents);
+    if (agentSwitch) {
+      setActiveAgentId(agentSwitch.agentId);
+      setPrompt(agentSwitch.instruction);
+      return;
+    }
     if (!canRun || !Number.isFinite(agentIdNumeric)) {
       return;
     }
-    const trimmed = prompt.trim();
     const slash = parseSkillSlashCommand(trimmed);
     if (slash) {
       runSkill(slash.mode, slash.instruction);
       return;
     }
     runAgentic(composeStorytellerAgentInstructionWithReply(trimmed, replyReferenceTarget));
+  }
+
+  function insertAgentSlashPrefix(name: string) {
+    setPrompt((current) => {
+      const existing = matchAgentNameCommand(current, agents);
+      const rest = existing ? existing.instruction : current;
+      return `/${name} ${rest}`;
+    });
+  }
+
+  function insertSkillSlashPrefix(word: string) {
+    setPrompt((current) => {
+      const existing = parseSkillSlashCommand(current);
+      const rest = existing ? existing.instruction : current;
+      return `/${word} ${rest}`;
+    });
   }
 
   function handleReply(message: StorytellerAgentPanelMessage) {
@@ -757,20 +834,50 @@ export function StorytellerAgenticPanel({
                 AI 助理
               </Typography>
             </Stack>
-            <TextField
-              select
+            <Button
               size="small"
-              label="選擇 Agent"
-              value={selectedAgent?.id ?? ""}
-              onChange={(event) => onSelectedAgentChange(event.target.value)}
-              sx={{ flex: 1, minWidth: 160 }}
+              variant="text"
+              color="inherit"
+              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
+              onClick={(event) => setAgentMenuAnchor(event.currentTarget)}
+              sx={{ color: "text.secondary", textTransform: "none" }}
             >
+              {selectedAgent?.name ?? "尚未建立 Agent"}
+            </Button>
+            <Menu
+              anchorEl={agentMenuAnchor}
+              open={Boolean(agentMenuAnchor)}
+              onClose={() => setAgentMenuAnchor(null)}
+            >
+              <ListSubheader>切換人設（/Agent 名稱）</ListSubheader>
+              {agents.length === 0 && (
+                <MenuItem disabled>尚未建立任何 Agent</MenuItem>
+              )}
               {agents.map((agent) => (
-                <MenuItem key={agent.id} value={agent.id}>
+                <MenuItem
+                  key={agent.id}
+                  selected={agent.id === selectedAgent?.id}
+                  onClick={() => {
+                    insertAgentSlashPrefix(agent.name);
+                    setAgentMenuAnchor(null);
+                  }}
+                >
                   {agent.name}
                 </MenuItem>
               ))}
-            </TextField>
+              <ListSubheader>單輪指令</ListSubheader>
+              {Object.entries(SKILL_SLASH_COMMANDS).map(([word]) => (
+                <MenuItem
+                  key={word}
+                  onClick={() => {
+                    insertSkillSlashPrefix(word);
+                    setAgentMenuAnchor(null);
+                  }}
+                >
+                  /{word}（{SKILL_SLASH_COMMAND_LABELS[word]}）
+                </MenuItem>
+              ))}
+            </Menu>
           </Stack>
           {!storyPublicId && (
             <Alert severity="info" variant="outlined">
