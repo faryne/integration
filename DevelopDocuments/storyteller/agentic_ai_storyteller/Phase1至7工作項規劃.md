@@ -191,6 +191,13 @@
 
 - [x] **8.8 模型 chip 支援 self_hosted／openrouter 這類無固定清單的 provider**：✅ 完成（2026-08-23）。這兩個 provider 的 `models` 清單本來就是空的（`allow_custom_model: true`），8.7 剛做完的模型 chip 原本只認固定清單，清單空就整顆 disabled，等於這類 provider 永遠選不到模型。改成清單為空但 `allow_custom_model` 時，改彈出一個小輸入框讓使用者直接打模型名稱；同時修掉一個連帶的 bug——原本「換 provider 時清空不在清單裡的模型覆寫」那個 `useEffect` 沒有放過這個情況，會讓使用者剛打完字就被清空。已用真實瀏覽器驗證（self_hosted 金鑰＋沒有 provider 的 Agent，輸入自訂模型名稱送出，請求確實帶著這個模型名稱打到自架端點）。
 
+- [x] **8.9 拿掉「選擇 Agent」下拉，改用 `/Agent名稱` slash 指令切換人設**：✅ 完成（2026-08-23）。Faryne 確認 Agent 選擇已經定案走 slash 指令，標題列的下拉選單直接拿掉。
+  - 設計討論過兩個方案：（a）比照 WYSIWYG 編輯器，打 `/` 即時彈出自動完成選單；（b）留一顆小 chip，點開選單後把 `/名稱 ` 塞進輸入框、不直接送出。Faryne 選 (b)，工作量小很多，(a) 如果之後真的需要再做。
+  - chip 選單同時列出所有 Agent（切換人設）跟既有的 `/rewrite` `/expand` `/translate` `/continue` `/custom`（單輪指令，附中文說明），一次滿足「兩者都要能從選單發現」的需求。
+  - 實際切換邏輯（`matchAgentNameCommand`）純靠文字解析：輸入是否以某個 Agent 名稱開頭（取最長匹配，處理 `Plot Doctor` 這種帶空白的名稱），跟直接手打指令是同一條路徑，chip 只是「打字捷徑」，不另外维護一套切換 state 的機制。純切換（沒有附帶指令文字）不吃 `canRun` 的 project/story/目前 Agent 可用等限制，因為它本身不打 API。
+  - `selectedAgentId`／`onSelectedAgentChange` 這組 prop 整個拿掉，狀態收斂成 `StorytellerAgenticPanel.tsx` 內部的 `activeAgentId`，`StoryEditor.tsx` 對應的 state／effect 一併清掉。
+  - 已用真實瀏覽器驗證：建立兩個 Agent（含一個名稱帶空白），點 chip 選「Plot Doctor」會把 `/Plot Doctor ` 塞進輸入框，送出後 chip 正確切換顯示，過程沒有觸發任何 API 呼叫。
+
 ## 未來待辦（尚未排時程，先記著）
 
 Faryne 2026-08-23 提出，目前只記錄方向，**不要主動實作**，等哪天明確說要動工才處理：
