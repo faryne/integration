@@ -179,3 +179,12 @@
   - What／Why／Where／How 維持原規劃內容不變，等要動工時再看。
 
 - [x] **8.6 「取代選取」按鈕只在有選取時顯示**：✅ 完成（2026-08-23）。`StorytellerAgentMessage`（`StorytellerAgentPanel.tsx`）的按鈕邏輯改成 `message.resultSelection` 存在才渲染，不再是「一直顯示、沒選取時 disabled」。因為 8.5 的發現，目前正式呼叫端這顆按鈕本來就不會出現（`resultSelection` 恆為 `null`），但邏輯本身已經照定案的方向修好，之後補上選取範圍 API 後不用再回頭改這裡。
+
+- [x] **8.7 AI 助理面板改用 key／模型 chip，AI Agent 管理頁移除 provider/model/apikey 欄位**：✅ 完成（2026-08-23）。
+  - `StorytellerAgenticPanel.tsx` 把「使用哪把 API Key」從標題列全寬下拉，改成輸入框下方仿 Claude Code CLI 狀態列樣式的小型 chip（點開才彈選單），新增對應的「模型」chip，可獨立覆寫這次呼叫的 `model_name`（後端早就支援，前端這次補上入口）；金鑰清單改列使用者所有 provider 的 key（不再依 Agent 的 provider 篩選），對齊已支援的跨 provider 換 key 能力；換了不同 provider 的 key，模型 chip 候選清單自動切換、先前選的模型若不在新清單裡會自動清空。
+  - Faryne 決定 AI Agent 管理頁（`NewAgent.tsx`）的建立/編輯表單直接移除 AI 供應商／模型名稱／API Key 三個欄位，改成表單只留 Agent 名稱＋預設 prompt；Agent 跟 provider/model/apikey 完全脫鉤，每次呼叫時在 AI 助理面板的 chip 指定。**這輪決定先只改前端表單，欄位本身留在 `storyteller_agents` 資料表上（沒有 migration）**，編輯既有 Agent 時原本的值原樣保留、原樣送回。
+  - 未來若要做「/agent-name 選人設」slash command，指令名稱直接用現有的 `name` 欄位，不另外加 `command_name` 欄位（此構想本身還沒排進度，這裡只是先定案要用哪個欄位）。
+  - 後端配合放寬：`validateAgent` 在 `Provider` 留空時整組略過驗證；移除 `normalizeAgentRequest` 幫空白 Provider 補 `grok` 預設的邏輯（這行原本讓「留空」送不出去，一路回報 invalid provider）；`runAgent`／`RunLoreAgent`／`runStoryAgenticQuery` 三處新增 `errAgentModelNameNotConfigured` 檢查，Agent 沒有預設 model 且這次呼叫也沒覆寫時給清楚錯誤，不把空字串送進 AI provider。
+  - 前端同步移除「沒有綁定 API Key 的 Agent 不出現在選單」的舊過濾邏輯（`StoryEditor.tsx`／`LoreEditor.tsx`）——這條件在 key 可每次呼叫覆寫之後已經不成立，留著會讓新建的 Agent 完全選不到；`LoreEditor.tsx` 的金鑰覆寫下拉也比照 AI 助理面板改成不限 provider。
+  - Usage 記錄不用額外處理：`buildAgentUsageLog`／`buildAgenticQueryUsageLog` 從 Phase 5 的 provider/key/model 解耦工作開始，就已經記錄「這次實際解析出來的」`output.Provider`／`output.ModelName`，不是 Agent 記錄的靜態預設值，跟這次改動天然對齊。
+  - 已用真實瀏覽器操作驗證：建立一個完全沒有 provider/model/key 的 Agent，在 AI 助理面板選到它、換上金鑰跟模型後送出 `/rewrite`，請求真的打到 xAI API（假 key 拿到真實的 401 錯誤），證實整條路徑可用。
