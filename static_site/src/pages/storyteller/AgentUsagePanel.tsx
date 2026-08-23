@@ -66,6 +66,11 @@ function estimateCostUsd(
   );
 }
 
+// 專案／故事-設定集／單次執行明細是三個各自獨立的 <Table>（巢狀在 TableCell 裡），
+// 沒有共用欄寬機制，「輸入」「輸出」欄位不會自動對齊；固定寬度讓三層看起來像同一組欄位。
+const tokenColumnWidth = 110;
+const costColumnWidth = 100;
+
 function formatUsd(value: number) {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -349,12 +354,16 @@ function KeyUsageCard({
       </Stack>
       <Collapse in={open}>
         <TableContainer>
-          <Table size="small">
+          <Table size="small" sx={{ tableLayout: "fixed" }}>
             <TableHead>
               <TableRow>
                 <TableCell>專案</TableCell>
-                <TableCell align="right">輸入</TableCell>
-                <TableCell align="right">輸出</TableCell>
+                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+                  輸入
+                </TableCell>
+                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+                  輸出
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -409,22 +418,26 @@ function ProjectUsageRow({
           />
           {projectGroup.projectName}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
           {projectTotals.inputTokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
           {projectTotals.outputTokens.toLocaleString()}
         </TableCell>
       </TableRow>
       {open && (
         <TableRow>
           <TableCell colSpan={3} sx={{ p: 0, bgcolor: "action.hover" }}>
-            <Table size="small">
+            <Table size="small" sx={{ tableLayout: "fixed" }}>
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ pl: 5 }}>故事／設定集</TableCell>
-                  <TableCell align="right">輸入</TableCell>
-                  <TableCell align="right">輸出</TableCell>
+                  <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+                    輸入
+                  </TableCell>
+                  <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+                    輸出
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -478,10 +491,10 @@ function StoryLoreUsageRow({
           />
           {title}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
           {item.input_tokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right">
+        <TableCell align="right" sx={{ width: tokenColumnWidth }}>
           {item.output_tokens.toLocaleString()}
         </TableCell>
       </TableRow>
@@ -545,7 +558,7 @@ function AgentUsageLogTable({
 
   return (
     <Stack spacing={0}>
-      <Table size="small">
+      <Table size="small" sx={{ tableLayout: "fixed" }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{ pl: 8 }}>時間</TableCell>
@@ -555,9 +568,15 @@ function AgentUsageLogTable({
             >
               模型
             </TableCell>
-            <TableCell align="right">輸入</TableCell>
-            <TableCell align="right">輸出</TableCell>
-            <TableCell align="right">估算費用</TableCell>
+            <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+              輸入
+            </TableCell>
+            <TableCell align="right" sx={{ width: tokenColumnWidth }}>
+              輸出
+            </TableCell>
+            <TableCell align="right" sx={{ width: costColumnWidth }}>
+              估算費用
+            </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -582,13 +601,13 @@ function AgentUsageLogTable({
                 >
                   {row.model_name}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
                   {row.input_tokens.toLocaleString()}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ width: tokenColumnWidth }}>
                   {row.output_tokens.toLocaleString()}
                 </TableCell>
-                <TableCell align="right">
+                <TableCell align="right" sx={{ width: costColumnWidth }}>
                   {cost === null ? "－" : formatUsd(cost)}
                 </TableCell>
               </TableRow>
