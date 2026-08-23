@@ -435,22 +435,33 @@ export function StorytellerAgenticPanel({
     agents.find((agent) => agent.id === activeAgentId) ?? agents[0];
   const agentIdNumeric = Number(selectedAgent?.id);
 
-  // 換 Agent 後，之前選的覆寫金鑰／模型不一定跟新 Agent 相容，重置回「使用預設」
-  useEffect(() => {
-    setProviderApiKeyId("");
-    setModelNameOverride("");
-  }, [activeAgentId]);
-
   const { data: providerApiKeys = [], isLoading: providerApiKeysLoading } =
     useStorytellerProviderAPIKeys();
   const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
   // 换 key 可以跨 provider（見 Agent／provider/key/model 解耦），所以這裡不再
   // 依 selectedAgent.provider 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
   const overrideApiKeyOptions = providerApiKeys;
+  // Skill 已經跟 provider/key/model 完全剝離，不存在「Agent 自己的預設 key」這回事
+  // 了（新建的 Skill 一律沒有綁定，見 Phase 8.7）；金鑰/模型變成純粹的 session 選擇，
+  // 不隨切換 Agent 重置——只要目前選的 key 還在清單裡就保留，沒有才自動挑第一把。
+  useEffect(() => {
+    if (
+      providerApiKeyId &&
+      overrideApiKeyOptions.some(
+        (apiKey) => String(apiKey.id) === providerApiKeyId,
+      )
+    ) {
+      return;
+    }
+    if (overrideApiKeyOptions.length > 0) {
+      setProviderApiKeyId(String(overrideApiKeyOptions[0].id));
+    }
+  }, [overrideApiKeyOptions, providerApiKeyId]);
   const overriddenApiKey = providerApiKeyId
     ? providerApiKeys.find((apiKey) => String(apiKey.id) === providerApiKeyId)
     : undefined;
-  // 實際生效的 provider：換了 key 就看 key 自己的 provider，沒換就沿用 Agent 記錄的。
+  // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定
+  // 選了一把），沒有 key 時才退回 Agent 記錄的（多半也是空字串）。
   const effectiveProvider = overriddenApiKey?.provider ?? selectedAgent?.provider;
   const effectiveProviderModelInfo = providerModelsList.find(
     (entry) => entry.provider === effectiveProvider,
@@ -463,18 +474,19 @@ export function StorytellerAgenticPanel({
   );
   const [customModelInput, setCustomModelInput] = useState("");
 
-  // 換掉的 key 屬於不同 provider 時，先前選的模型覆寫可能不在新 provider 的清單裡，
-  // 清掉讓畫面回到顯示 Agent／key 預設模型，避免送出時帶著看似選了、實際上跟
-  // 目前 provider 對不上的模型名稱。允許自訂模型名稱的 provider（models 清單
-  // 本來就是空的）不受這條規則影響，不然使用者剛打完字就會被清空。
+  // 跟金鑰同理，不存在「Agent 自己的預設模型」——固定清單的 provider 沒選過模型時
+  // 自動挑清單第一個；換了不同 provider 的 key、先前選的模型不在新清單裡時，同樣
+  // 改選新清單第一個，而不是清空退回一個不存在的「預設」。允許自訂模型名稱的
+  // provider（models 清單本來就是空的）不受這條規則影響，不然使用者剛打完字就會
+  // 被清空、清單也沒有東西可以自動選。
   useEffect(() => {
-    if (
-      modelNameOverride &&
-      !providerAllowsCustomModel &&
-      !modelOptions.some((model) => model.name === modelNameOverride)
-    ) {
-      setModelNameOverride("");
+    if (providerAllowsCustomModel || modelOptions.length === 0) {
+      return;
     }
+    if (modelOptions.some((model) => model.name === modelNameOverride)) {
+      return;
+    }
+    setModelNameOverride(modelOptions[0].name);
   }, [modelOptions, modelNameOverride, providerAllowsCustomModel]);
 
   const runSkillMutation = useRunStorytellerAgent(
@@ -1088,15 +1100,6 @@ export function StorytellerAgenticPanel({
               open={Boolean(apiKeyMenuAnchor)}
               onClose={() => setApiKeyMenuAnchor(null)}
             >
-              <MenuItem
-                selected={providerApiKeyId === ""}
-                onClick={() => {
-                  setProviderApiKeyId("");
-                  setApiKeyMenuAnchor(null);
-                }}
-              >
-                Agent 預設金鑰
-              </MenuItem>
               {overrideApiKeyOptions.map((apiKey) => (
                 <MenuItem
                   key={apiKey.id}
@@ -1174,15 +1177,6 @@ export function StorytellerAgenticPanel({
                 open={Boolean(modelMenuAnchor)}
                 onClose={() => setModelMenuAnchor(null)}
               >
-                <MenuItem
-                  selected={modelNameOverride === ""}
-                  onClick={() => {
-                    setModelNameOverride("");
-                    setModelMenuAnchor(null);
-                  }}
-                >
-                  Agent 預設模型
-                </MenuItem>
                 {modelOptions.map((model) => (
                   <MenuItem
                     key={model.id}
