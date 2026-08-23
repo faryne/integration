@@ -278,7 +278,7 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 	}
 	agent := &storytellerModel.Agent{
 		UserID:           userID,
-		Name:             strings.TrimSpace(input.Name),
+		Name:             normalizeAgentName(input.Name),
 		Provider:         input.Provider,
 		ModelName:        strings.TrimSpace(input.ModelName),
 		AgentModelID:     agentModelID(providerModel),
@@ -303,7 +303,7 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 	if err != nil {
 		return nil, err
 	}
-	agent.Name = strings.TrimSpace(input.Name)
+	agent.Name = normalizeAgentName(input.Name)
 	agent.Provider = input.Provider
 	agent.ModelName = strings.TrimSpace(input.ModelName)
 	agent.AgentModelID = agentModelID(providerModel)
@@ -470,16 +470,15 @@ func (s *Service) AgentUsageSummary(userID uint64, month string) ([]storytellerM
 	return s.repo.AgentUsageSummary(userID, from, to)
 }
 
-func (s *Service) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, month string, page, pageSize int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
+func (s *Service) AgentUsageLogs(userID, providerAPIKeyID uint64, storyID, loreID *uint64, month string, page, pageSize int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
 	from, to, err := parseUsageMonth(month)
 	if err != nil {
 		return nil, 0, err
 	}
-	// 確認這把 Key 與這個 Agent 都屬於呼叫者本人，避免用別人的 id 猜出用量明細。
+	// 確認這把 Key 屬於呼叫者本人，避免用別人的 id 猜出用量明細；story_id／lore_id
+	// 不用另外查權限——底下查詢本來就已經用 logs.user_id 篩過，帶不屬於自己的
+	// story/lore id 只會查到空結果，不會洩漏別人的資料。
 	if _, err := s.repo.ProviderAPIKey(userID, providerAPIKeyID); err != nil {
-		return nil, 0, err
-	}
-	if _, err := s.repo.Agent(userID, agentID); err != nil {
 		return nil, 0, err
 	}
 	if page < 1 {
@@ -491,7 +490,7 @@ func (s *Service) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, month
 	if pageSize > usageLogPageSizeMax {
 		pageSize = usageLogPageSizeMax
 	}
-	return s.repo.AgentUsageLogs(userID, providerAPIKeyID, agentID, from, to, (page-1)*pageSize, pageSize)
+	return s.repo.AgentUsageLogs(userID, providerAPIKeyID, storyID, loreID, from, to, (page-1)*pageSize, pageSize)
 }
 
 func (s *Service) validateProviderAPIKeyRequest(input storytellerModel.ProviderAPIKeyRequest) error {
@@ -3020,6 +3019,14 @@ func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIK
 		return nil, errors.New("provider_apikey_id is required")
 	}
 	return provider, nil
+}
+
+// normalizeAgentName 除了裁頭尾空白，還把內部連續空白（例如不小心打了兩個空格）
+// 收斂成單一空格——Agent 名稱同時是 AI 助理裡 /<名稱> slash 指令要逐字比對的
+// 目標字串（見 StorytellerAgenticPanel.tsx 的 matchAgentNameCommand），內部空白
+// 不一致會讓「看起來一樣」的名稱打指令卻打不中，很難肉眼發現。
+func normalizeAgentName(name string) string {
+	return strings.Join(strings.Fields(name), " ")
 }
 
 func agentModelID(providerModel *storytellerModel.AgentProviderModels) *uint64 {

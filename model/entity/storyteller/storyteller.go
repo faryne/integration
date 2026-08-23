@@ -1023,15 +1023,25 @@ type StoryChatMessageOutput struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
-// AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 Agent 的 token 用量加總，
-// 前端依 provider_apikey_id 再依 agent_id 分組即可組出「Key -> Agent」兩層報表。
+// AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 project/story/lore 的
+// token 用量加總，前端依 provider_apikey_id 再依 project_id、story_id/lore_id
+// 分組組出「Key -> Project -> Story/Lore」三層報表。Agent 已跟 provider/key/model
+// 剝離，不再是有意義的分組依據（見 Phase1至7工作項規劃.md Phase 8.7），改成
+// project/story/lore；StoryID／LoreID 互斥，兩者皆空代表這筆用量記錄關聯不到
+// 任何故事或設定集（例如對應的 chat 已被刪除）。
 type AgentUsageSummaryRow struct {
 	ProviderAPIKeyID    uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
 	Provider            AgentProvider `gorm:"column:provider" json:"provider"`
 	ProviderAPIKeyLabel string        `gorm:"column:provider_apikey_label" json:"provider_apikey_label"`
-	AgentID             uint64        `gorm:"column:agent_id" json:"agent_id"`
-	AgentName           string        `gorm:"column:agent_name" json:"agent_name"`
-	ModelName           string        `gorm:"column:model_name" json:"model_name"`
+	ProjectID           *uint64       `gorm:"column:project_id" json:"project_id"`
+	ProjectPublicID     string        `gorm:"column:project_public_id" json:"project_public_id,omitempty"`
+	ProjectName         string        `gorm:"column:project_name" json:"project_name,omitempty"`
+	StoryID             *uint64       `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID       string        `gorm:"column:story_public_id" json:"story_public_id,omitempty"`
+	StoryTitle          string        `gorm:"column:story_title" json:"story_title,omitempty"`
+	LoreID              *uint64       `gorm:"column:lore_id" json:"lore_id"`
+	LorePublicID        string        `gorm:"column:lore_public_id" json:"lore_public_id,omitempty"`
+	LoreTitle           string        `gorm:"column:lore_title" json:"lore_title,omitempty"`
 	InputTokens         int64         `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens        int64         `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens         int64         `gorm:"column:total_tokens" json:"total_tokens"`
@@ -1039,9 +1049,11 @@ type AgentUsageSummaryRow struct {
 }
 
 // AgentUsageLogRow 是單次執行的明細，StoryTitle/LoreTitle 兩者互斥，依該次執行是故事還是世界觀設定而定。
+// AgentName 是這次實際用的 Skill 人設名稱，純資訊性欄位（不是分組依據）。
 type AgentUsageLogRow struct {
 	ID           uint64    `gorm:"column:id" json:"id"`
 	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	AgentName    string    `gorm:"column:agent_name" json:"agent_name,omitempty"`
 	ModelName    string    `gorm:"column:model_name" json:"model_name"`
 	InputTokens  int       `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens int       `gorm:"column:output_tokens" json:"output_tokens"`

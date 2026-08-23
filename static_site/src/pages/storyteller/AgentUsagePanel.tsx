@@ -81,30 +81,25 @@ function recentMonthOptions(count = 12) {
   );
 }
 
-interface UsageTotals {
+interface TokenTotals {
   inputTokens: number;
   outputTokens: number;
-  cost: number;
 }
 
-function sumUsage(
-  rows: { model_name: string; input_tokens: number; output_tokens: number }[],
-): UsageTotals {
-  return rows.reduce<UsageTotals>(
+// project／story／lore 這個粒度的分組可能混合多個不同 model 的用量（同一個
+// story 可能先後用 Grok 又用 Claude），沒辦法像以前「一列一定只有一個
+// model_name」那樣直接估算費用——費用估算只在最底層的單次執行明細
+// （AgentUsageLogTable，每一列都還是單一 model_name）才準確、才顯示。
+function sumTokens(
+  rows: { input_tokens: number; output_tokens: number }[],
+): TokenTotals {
+  return rows.reduce<TokenTotals>(
     (acc, row) => {
       acc.inputTokens += row.input_tokens;
       acc.outputTokens += row.output_tokens;
-      const cost = estimateCostUsd(
-        row.model_name,
-        row.input_tokens,
-        row.output_tokens,
-      );
-      if (cost !== null) {
-        acc.cost += cost;
-      }
       return acc;
     },
-    { inputTokens: 0, outputTokens: 0, cost: 0 },
+    { inputTokens: 0, outputTokens: 0 },
   );
 }
 
@@ -112,7 +107,7 @@ interface KeyGroup {
   providerApiKeyId: number;
   provider: string;
   label: string;
-  agents: StorytellerAgentUsageSummaryRow[];
+  items: StorytellerAgentUsageSummaryRow[];
 }
 
 function groupByProviderAPIKey(
@@ -126,11 +121,38 @@ function groupByProviderAPIKey(
         providerApiKeyId: row.provider_apikey_id,
         provider: row.provider,
         label: row.provider_apikey_label,
-        agents: [],
+        items: [],
       };
       groups.set(row.provider_apikey_id, group);
     }
-    group.agents.push(row);
+    group.items.push(row);
+  }
+  return Array.from(groups.values());
+}
+
+interface ProjectGroup {
+  projectId: number | null;
+  projectName: string;
+  items: StorytellerAgentUsageSummaryRow[];
+}
+
+// project_id 為 null 代表這筆用量記錄的 chat 關聯不到任何故事/設定集（例如對應
+// 的 chat 已被刪除），另外歸一組顯示，不能直接漏掉這筆用量。
+function groupByProject(rows: StorytellerAgentUsageSummaryRow[]): ProjectGroup[] {
+  const groups = new Map<number, ProjectGroup>();
+  const key = (projectId: number | null) => projectId ?? -1;
+  for (const row of rows) {
+    const groupKey = key(row.project_id);
+    let group = groups.get(groupKey);
+    if (!group) {
+      group = {
+        projectId: row.project_id,
+        projectName: row.project_name || "（無法歸屬到專案）",
+        items: [],
+      };
+      groups.set(groupKey, group);
+    }
+    group.items.push(row);
   }
   return Array.from(groups.values());
 }
@@ -158,7 +180,7 @@ export function StorytellerAgentUsagePanel() {
     [allGroups, filterApiKeyId],
   );
   const totals = useMemo(
-    () => sumUsage(groups.flatMap((group) => group.agents)),
+    () => sumTokens(groups.flatMap((group) => group.items)),
     [groups],
   );
 
@@ -233,7 +255,6 @@ export function StorytellerAgentUsagePanel() {
           label="輸出 tokens"
           value={totals.outputTokens.toLocaleString()}
         />
-        <SummaryCard label="估算費用" value={formatUsd(totals.cost)} />
       </Grid>
 
       {isLoading ? (
@@ -287,7 +308,8 @@ function KeyUsageCard({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const keyTotals = useMemo(() => sumUsage(group.agents), [group.agents]);
+  const keyTotals = useMemo(() => sumTokens(group.items), [group.items]);
+  const projectGroups = useMemo(() => groupByProject(group.items), [group.items]);
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 1, overflow: "hidden" }}>
@@ -320,31 +342,26 @@ function KeyUsageCard({
           />
           <Typography noWrap>{group.label || "（未命名）"}</Typography>
         </Stack>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            {(keyTotals.inputTokens + keyTotals.outputTokens).toLocaleString()}{" "}
-            tokens
-          </Typography>
-          <Typography fontWeight={500}>{formatUsd(keyTotals.cost)}</Typography>
-        </Stack>
+        <Typography variant="body2" color="text.secondary">
+          {(keyTotals.inputTokens + keyTotals.outputTokens).toLocaleString()}{" "}
+          tokens
+        </Typography>
       </Stack>
       <Collapse in={open}>
         <TableContainer>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Agent</TableCell>
-                <TableCell>模型</TableCell>
+                <TableCell>專案</TableCell>
                 <TableCell align="right">輸入</TableCell>
                 <TableCell align="right">輸出</TableCell>
-                <TableCell align="right">估算費用</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {group.agents.map((agent) => (
-                <AgentUsageRow
-                  key={`${agent.agent_id}-${agent.model_name}`}
-                  agent={agent}
+              {projectGroups.map((projectGroup) => (
+                <ProjectUsageRow
+                  key={projectGroup.projectId ?? "none"}
+                  projectGroup={projectGroup}
                   providerApiKeyId={group.providerApiKeyId}
                   month={month}
                 />
@@ -357,20 +374,19 @@ function KeyUsageCard({
   );
 }
 
-function AgentUsageRow({
-  agent,
+function ProjectUsageRow({
+  projectGroup,
   providerApiKeyId,
   month,
 }: {
-  agent: StorytellerAgentUsageSummaryRow;
+  projectGroup: ProjectGroup;
   providerApiKeyId: number;
   month: string;
 }) {
   const [open, setOpen] = useState(false);
-  const cost = estimateCostUsd(
-    agent.model_name,
-    agent.input_tokens,
-    agent.output_tokens,
+  const projectTotals = useMemo(
+    () => sumTokens(projectGroup.items),
+    [projectGroup.items],
   );
 
   return (
@@ -391,33 +407,91 @@ function AgentUsageRow({
               transition: "transform 0.15s",
             }}
           />
-          {agent.agent_name || `Agent #${agent.agent_id}`}
-        </TableCell>
-        <TableCell
-          sx={{
-            fontFamily: "monospace",
-            fontSize: 12,
-            color: "text.secondary",
-          }}
-        >
-          {agent.model_name}
+          {projectGroup.projectName}
         </TableCell>
         <TableCell align="right">
-          {agent.input_tokens.toLocaleString()}
+          {projectTotals.inputTokens.toLocaleString()}
         </TableCell>
         <TableCell align="right">
-          {agent.output_tokens.toLocaleString()}
-        </TableCell>
-        <TableCell align="right" sx={{ fontWeight: 500 }}>
-          {cost === null ? "－" : formatUsd(cost)}
+          {projectTotals.outputTokens.toLocaleString()}
         </TableCell>
       </TableRow>
       {open && (
         <TableRow>
-          <TableCell colSpan={5} sx={{ p: 0, bgcolor: "action.hover" }}>
+          <TableCell colSpan={3} sx={{ p: 0, bgcolor: "action.hover" }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ pl: 5 }}>故事／設定集</TableCell>
+                  <TableCell align="right">輸入</TableCell>
+                  <TableCell align="right">輸出</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {projectGroup.items.map((item) => (
+                  <StoryLoreUsageRow
+                    key={`${item.story_id ?? "s"}-${item.lore_id ?? "l"}`}
+                    item={item}
+                    providerApiKeyId={providerApiKeyId}
+                    month={month}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  );
+}
+
+function StoryLoreUsageRow({
+  item,
+  providerApiKeyId,
+  month,
+}: {
+  item: StorytellerAgentUsageSummaryRow;
+  providerApiKeyId: number;
+  month: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const title =
+    item.story_title || item.lore_title || "（無法歸屬到故事／設定集）";
+
+  return (
+    <>
+      <TableRow
+        hover
+        sx={{ cursor: "pointer" }}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <TableCell sx={{ pl: 5 }}>
+          <ExpandMoreIcon
+            fontSize="small"
+            sx={{
+              verticalAlign: "middle",
+              mr: 0.5,
+              color: "text.disabled",
+              transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform 0.15s",
+            }}
+          />
+          {title}
+        </TableCell>
+        <TableCell align="right">
+          {item.input_tokens.toLocaleString()}
+        </TableCell>
+        <TableCell align="right">
+          {item.output_tokens.toLocaleString()}
+        </TableCell>
+      </TableRow>
+      {open && (
+        <TableRow>
+          <TableCell colSpan={3} sx={{ p: 0, bgcolor: "action.hover" }}>
             <AgentUsageLogTable
               providerApiKeyId={providerApiKeyId}
-              agentId={agent.agent_id}
+              storyId={item.story_id}
+              loreId={item.lore_id}
               month={month}
             />
           </TableCell>
@@ -431,17 +505,20 @@ const usageLogPageSize = 20;
 
 function AgentUsageLogTable({
   providerApiKeyId,
-  agentId,
+  storyId,
+  loreId,
   month,
 }: {
   providerApiKeyId: number;
-  agentId: number;
+  storyId: number | null;
+  loreId: number | null;
   month: string;
 }) {
   const [page, setPage] = useState(1);
   const { data, isLoading } = useStorytellerAgentUsageLogs(
     providerApiKeyId,
-    agentId,
+    storyId,
+    loreId,
     month,
     page,
     usageLogPageSize,
@@ -461,7 +538,7 @@ function AgentUsageLogTable({
   if (items.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-        這個月沒有這個 Agent 的執行紀錄。
+        這個月沒有執行紀錄。
       </Typography>
     );
   }
@@ -471,11 +548,16 @@ function AgentUsageLogTable({
       <Table size="small">
         <TableHead>
           <TableRow>
-            <TableCell sx={{ pl: 5 }}>時間</TableCell>
-            <TableCell>故事／設定</TableCell>
+            <TableCell sx={{ pl: 8 }}>時間</TableCell>
+            <TableCell>Skill</TableCell>
+            <TableCell
+              sx={{ fontFamily: "monospace", fontSize: 12 }}
+            >
+              模型
+            </TableCell>
             <TableCell align="right">輸入</TableCell>
             <TableCell align="right">輸出</TableCell>
-            <TableCell align="right">費用</TableCell>
+            <TableCell align="right">估算費用</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -487,11 +569,18 @@ function AgentUsageLogTable({
             );
             return (
               <TableRow key={row.id}>
-                <TableCell sx={{ pl: 5, color: "text.secondary" }}>
+                <TableCell sx={{ pl: 8, color: "text.secondary" }}>
                   {new Date(row.created_at).toLocaleString()}
                 </TableCell>
-                <TableCell>
-                  {row.story_title || row.lore_title || "－"}
+                <TableCell>{row.agent_name || "－"}</TableCell>
+                <TableCell
+                  sx={{
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    color: "text.secondary",
+                  }}
+                >
+                  {row.model_name}
                 </TableCell>
                 <TableCell align="right">
                   {row.input_tokens.toLocaleString()}

@@ -308,17 +308,24 @@ func AgentUsageLogs(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	agentID, err := parseUint(ctx.Query("agent_id"))
+	storyID, err := parseOptionalUint(ctx.Query("story_id"))
 	if err != nil {
 		return output.BadRequest(err)
+	}
+	loreID, err := parseOptionalUint(ctx.Query("lore_id"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	if storyID == nil && loreID == nil {
+		return output.BadRequest(errors.New("story_id or lore_id is required"))
 	}
 	month := ctx.Query("month")
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "20"))
-	rows, total, err := storyteller.NewService().AgentUsageLogs(authsession.Session(ctx).UserId, providerAPIKeyID, agentID, month, page, pageSize)
+	rows, total, err := storyteller.NewService().AgentUsageLogs(authsession.Session(ctx).UserId, providerAPIKeyID, storyID, loreID, month, page, pageSize)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("provider api key or agent not found"))
+			return output.NotFound(errors.New("provider api key not found"))
 		}
 		return output.BadRequest(err)
 	}
@@ -1198,4 +1205,17 @@ func parseUint(value string) (uint64, error) {
 		return 0, errors.New("invalid id")
 	}
 	return id, nil
+}
+
+// parseOptionalUint 給 story_id／lore_id 這種「可以不帶，但帶了就要是合法 id」
+// 的 query 參數用，空字串回傳 nil 不算錯誤。
+func parseOptionalUint(value string) (*uint64, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	id, err := parseUint(value)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }

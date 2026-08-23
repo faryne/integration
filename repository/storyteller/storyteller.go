@@ -761,36 +761,61 @@ func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryCha
 
 func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]storytellerModel.AgentUsageSummaryRow, error) {
 	rows := make([]storytellerModel.AgentUsageSummaryRow, 0)
+	// project_id 沒有直接存在 usage log 上，透過 chat_id -> story_chats.story_id/
+	// lore_id -> stories/lores.project_id 兩層 join 反查；story_id/lore_id
+	// 互斥，COALESCE 兩邊的 project_id 剛好就是實際所屬專案。
 	err := r.db.Table("storyteller_agent_usage_logs AS logs").
 		Select(`logs.provider_apikey_id,
 			logs.provider,
 			apikeys.label AS provider_apikey_label,
-			logs.agent_id,
-			agents.name AS agent_name,
-			logs.model_name,
+			COALESCE(stories.project_id, lores.project_id) AS project_id,
+			projects.public_id AS project_public_id,
+			projects.name AS project_name,
+			chats.story_id,
+			stories.public_id AS story_public_id,
+			stories.title AS story_title,
+			chats.lore_id,
+			lores.public_id AS lore_public_id,
+			lores.title AS lore_title,
 			SUM(logs.input_tokens) AS input_tokens,
 			SUM(logs.output_tokens) AS output_tokens,
 			SUM(logs.total_tokens) AS total_tokens,
 			COUNT(*) AS run_count`).
 		// "keys" 是 MySQL 保留字，當別名會造成語法錯誤，改用 apikeys
 		Joins("LEFT JOIN storyteller_provider_apikeys AS apikeys ON apikeys.id = logs.provider_apikey_id").
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = logs.agent_id").
+		Joins("LEFT JOIN storyteller_story_chats AS chats ON chats.id = logs.chat_id").
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Joins("LEFT JOIN storyteller_projects AS projects ON projects.id = COALESCE(stories.project_id, lores.project_id)").
 		Where("logs.user_id = ? AND logs.created_at >= ? AND logs.created_at < ?", userID, from, to).
-		Group("logs.provider_apikey_id, logs.provider, apikeys.label, logs.agent_id, agents.name, logs.model_name").
-		Order("logs.provider_apikey_id ASC, logs.agent_id ASC").
+		Group(`logs.provider_apikey_id, logs.provider, apikeys.label,
+			COALESCE(stories.project_id, lores.project_id), projects.public_id, projects.name,
+			chats.story_id, stories.public_id, stories.title,
+			chats.lore_id, lores.public_id, lores.title`).
+		Order("logs.provider_apikey_id ASC, project_id ASC").
 		Scan(&rows).Error
 	return rows, err
 }
 
-func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, from, to time.Time, offset, limit int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
+// AgentUsageLogs 撈某把 key 底下、指定故事或設定集（storyID／loreID 互斥，
+// 至少要帶一個，對應 AgentUsageSummary 分組出的某個 story/lore 節點）的單次
+// 執行明細；agent_name 是資訊性欄位，一併 join 進來顯示，不是篩選條件。
+func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID uint64, storyID, loreID *uint64, from, to time.Time, offset, limit int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
 	base := r.db.Table("storyteller_agent_usage_logs AS logs").
 		Joins("LEFT JOIN storyteller_story_chats AS chats ON chats.id = logs.chat_id").
 		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
 		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = logs.agent_id").
 		Where(
-			"logs.user_id = ? AND logs.provider_apikey_id = ? AND logs.agent_id = ? AND logs.created_at >= ? AND logs.created_at < ?",
-			userID, providerAPIKeyID, agentID, from, to,
+			"logs.user_id = ? AND logs.provider_apikey_id = ? AND logs.created_at >= ? AND logs.created_at < ?",
+			userID, providerAPIKeyID, from, to,
 		)
+	if storyID != nil {
+		base = base.Where("chats.story_id = ?", *storyID)
+	}
+	if loreID != nil {
+		base = base.Where("chats.lore_id = ?", *loreID)
+	}
 
 	var total int64
 	if err := base.Session(&gorm.Session{}).Count(&total).Error; err != nil {
@@ -801,6 +826,7 @@ func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID, agentID uint64, fr
 	err := base.Session(&gorm.Session{}).
 		Select(`logs.id,
 			logs.created_at,
+			agents.name AS agent_name,
 			logs.model_name,
 			logs.input_tokens,
 			logs.output_tokens,

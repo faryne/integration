@@ -491,13 +491,22 @@ export interface StorytellerStoryChatMessagePage {
   per_page: number;
 }
 
+// 分組依 project -> story/lore，不再依 Agent（見 Phase1至7工作項規劃.md
+// Phase 8.7）；story_id／lore_id 互斥，兩者皆空代表這筆用量記錄關聯不到任何
+// 故事或設定集。
 export interface StorytellerAgentUsageSummaryRow {
   provider_apikey_id: number;
   provider: string;
   provider_apikey_label: string;
-  agent_id: number;
-  agent_name: string;
-  model_name: string;
+  project_id: number | null;
+  project_public_id?: string;
+  project_name?: string;
+  story_id: number | null;
+  story_public_id?: string;
+  story_title?: string;
+  lore_id: number | null;
+  lore_public_id?: string;
+  lore_title?: string;
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;
@@ -507,6 +516,7 @@ export interface StorytellerAgentUsageSummaryRow {
 export interface StorytellerAgentUsageLogRow {
   id: number;
   created_at: string;
+  agent_name?: string;
   model_name: string;
   input_tokens: number;
   output_tokens: number;

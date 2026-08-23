@@ -31,18 +31,8 @@ function buildAgentDiffSections(
   return [
     {
       key: "name",
-      title: "AI Agent 名稱",
+      title: "Skill 名稱",
       lines: buildCustomLineDiff(left.name, right.name),
-    },
-    {
-      key: "provider",
-      title: "AI 供應商",
-      lines: buildCustomLineDiff(left.provider, right.provider),
-    },
-    {
-      key: "model",
-      title: "模型名稱",
-      lines: buildCustomLineDiff(left.model_name, right.model_name),
     },
     {
       key: "prompt",
@@ -91,11 +81,11 @@ export default function StorytellerAgentDiffCompare() {
     return (
       <StorytellerShell
         title="Prompt 版本差異比對"
-        description="左右對照 AI Agent 設定與 Prompt 內容。"
+        description="左右對照 Skill 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "AI Agent", to: steamloomPath("my/agent") },
+          { label: "Skill", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
@@ -110,16 +100,16 @@ export default function StorytellerAgentDiffCompare() {
     return (
       <StorytellerShell
         title="Prompt 版本差異比對"
-        description="左右對照 AI Agent 設定與 Prompt 內容。"
+        description="左右對照 Skill 設定與 Prompt 內容。"
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "AI Agent", to: steamloomPath("my/agent") },
+          { label: "Skill", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
         <CustomLoginRequiredState
-          description="登入後即可查看 AI Agent Prompt 編輯歷史比對。"
+          description="登入後即可查看 Skill Prompt 編輯歷史比對。"
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -134,7 +124,7 @@ export default function StorytellerAgentDiffCompare() {
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
-          { label: "AI Agent", to: steamloomPath("my/agent") },
+          { label: "Skill", to: steamloomPath("my/agent") },
           { label: "版本比對" },
         ]}
       >
@@ -150,11 +140,11 @@ export default function StorytellerAgentDiffCompare() {
   return (
     <StorytellerShell
       title="Prompt 版本差異比對"
-      description="左右對照 AI Agent 設定與 Prompt 內容。"
+      description="左右對照 Skill 設定與 Prompt 內容。"
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
-        { label: "AI Agent", to: steamloomPath("my/agent") },
+        { label: "Skill", to: steamloomPath("my/agent") },
         {
           label: agent.name,
           to: steamloomPath(`my/agent/${agent.id}/edit`),
@@ -169,7 +159,7 @@ export default function StorytellerAgentDiffCompare() {
             startIcon={<ArrowBackIcon />}
             variant="outlined"
           >
-            回 AI Agent
+            回 Skill
           </Button>
         </Stack>
       }

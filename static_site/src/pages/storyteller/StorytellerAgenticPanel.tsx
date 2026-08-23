@@ -98,7 +98,7 @@ const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
   custom: "自訂指令",
 };
 const SKILL_SLASH_COMMAND_HINT =
-  "可用指令：/rewrite /expand /translate /continue /custom（單輪 skill）、/<Agent 名稱> 切換人設（不加指令則直接問答）";
+  "可用指令：/rewrite /expand /translate /continue /custom（單輪 skill）、/<Agent 名稱> 切換人設（不加指令則直接問答）。一次只會解析最前面那一個指令，後面再打的 / 一律當成一般文字。";
 
 function parseSkillSlashCommand(
   value: string,

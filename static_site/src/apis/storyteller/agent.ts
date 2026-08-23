@@ -240,9 +240,12 @@ export function useStorytellerAgentUsageSummary(month: string) {
   });
 }
 
+// storyId／loreId 互斥，對應 usage summary 分組出的某個 story/lore 節點，
+// 不再用 agentId 篩選（見 Phase1至7工作項規劃.md Phase 8.7）。
 export function useStorytellerAgentUsageLogs(
   providerApiKeyId: number,
-  agentId: number,
+  storyId: number | null,
+  loreId: number | null,
   month: string,
   page: number,
   perPage = 20,
@@ -254,19 +257,24 @@ export function useStorytellerAgentUsageLogs(
       "usage-logs",
       session?.user.id,
       providerApiKeyId,
-      agentId,
+      storyId,
+      loreId,
       month,
       page,
       perPage,
     ],
-    enabled: Boolean(session?.encrypt_key) && Boolean(month),
+    enabled:
+      Boolean(session?.encrypt_key) &&
+      Boolean(month) &&
+      (storyId !== null || loreId !== null),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAgentUsageLogPage>
       >(`${apiBase}/storyteller/usage/logs`, {
         params: {
           provider_apikey_id: providerApiKeyId,
-          agent_id: agentId,
+          story_id: storyId ?? undefined,
+          lore_id: loreId ?? undefined,
           month,
           page,
           per_page: perPage,

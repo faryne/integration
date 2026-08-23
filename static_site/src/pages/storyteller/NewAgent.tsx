@@ -47,11 +47,7 @@ function agentVersionToCompareEntry(
     content: version.default_prompt,
     contentLabel: "Prompt 內容",
     includeFootnotes: false,
-    extraFields: [
-      { key: "provider", label: "AI 供應商", value: version.provider },
-      { key: "model", label: "模型名稱", value: version.model_name },
-    ],
-    source: version.provider,
+    source: "Skill",
     createdAt: version.created_at,
   };
 }
@@ -121,7 +117,7 @@ export default function StorytellerNewAgent({
     (version) => String(version.id) === rightVersionId,
   );
 
-  useTitle(`${isEdit ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`, {
+  useTitle(`${isEdit ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} Skill`, {
     path: isEdit
       ? steamloomPath(`my/agent/${agentId}/edit`)
       : steamloomPath("my/agent/new"),
@@ -131,7 +127,7 @@ export default function StorytellerNewAgent({
   const newAgentShellBreadcrumbs = [
     { label: STORYTELLER_APP_NAME, to: steamloomPath() },
     { label: "我的工作台", to: steamloomPath("my") },
-    { label: "AI Agent", to: steamloomPath("my/agent") },
+    { label: "Skill", to: steamloomPath("my/agent") },
   ];
 
   // embedded（帳號工作台）模式下不重複套用一層 StorytellerShell 的頂欄跟麵包屑——
@@ -156,7 +152,7 @@ export default function StorytellerNewAgent({
 
   if (authLoading) {
     return renderFrame(
-      isEdit ? "編輯 AI Agent" : "建立 AI Agent",
+      isEdit ? "編輯 Skill" : "建立 Skill",
       newAgentShellBreadcrumbs,
       <Stack alignItems="center" sx={{ py: 8 }}>
         <Typography color="text.secondary">正在確認登入狀態...</Typography>
@@ -166,11 +162,11 @@ export default function StorytellerNewAgent({
 
   if (!session) {
     return renderFrame(
-      isEdit ? "編輯 AI Agent" : "建立 AI Agent",
+      isEdit ? "編輯 Skill" : "建立 Skill",
       newAgentShellBreadcrumbs,
       <CustomLoginRequiredState
         description={
-          isEdit ? "登入後即可編輯這個 AI Agent。" : "登入後即可建立 AI Agent。"
+          isEdit ? "登入後即可編輯這個 Skill。" : "登入後即可建立 Skill。"
         }
         onLogin={() => void login()}
         submitting={submitting}
@@ -180,11 +176,11 @@ export default function StorytellerNewAgent({
 
   if (isEdit && !agent && (agentsLoading || agentsFetching)) {
     return renderFrame(
-      "編輯 AI Agent",
-      [...newAgentShellBreadcrumbs, { label: "編輯 AI Agent" }],
+      "編輯 Skill",
+      [...newAgentShellBreadcrumbs, { label: "編輯 Skill" }],
       <Stack alignItems="center" spacing={1.5} sx={{ py: 6 }}>
         <CircularProgress size={28} />
-        <Typography color="text.secondary">正在載入 Agent 設定...</Typography>
+        <Typography color="text.secondary">正在載入 Skill 設定...</Typography>
       </Stack>,
     );
   }
@@ -201,15 +197,15 @@ export default function StorytellerNewAgent({
 
   return (
     <StorytellerShell
-      title={isEdit ? "編輯 AI Agent" : "建立 AI Agent"}
+      title={isEdit ? "編輯 Skill" : "建立 Skill"}
       breadcrumbs={
         embedded
           ? []
           : [
               { label: STORYTELLER_APP_NAME, to: steamloomPath() },
               { label: "我的工作台", to: steamloomPath("my") },
-              { label: "AI Agent", to: steamloomPath("my/agent") },
-              { label: isEdit ? "編輯 AI Agent" : "建立 AI Agent" },
+              { label: "Skill", to: steamloomPath("my/agent") },
+              { label: isEdit ? "編輯 Skill" : "建立 Skill" },
             ]
       }
       plain={embedded}
@@ -218,7 +214,7 @@ export default function StorytellerNewAgent({
       <StorytellerVersionCompareDialog
         open={compareDialogOpen}
         onClose={() => setCompareDialogOpen(false)}
-        itemTitle={agent?.name ?? "AI Agent"}
+        itemTitle={agent?.name ?? "Skill"}
         leftVersion={
           leftCompareVersion
             ? agentVersionToCompareEntry(leftCompareVersion)
@@ -255,7 +251,7 @@ export default function StorytellerNewAgent({
                   leftVersionId && Number(versionId) <= Number(leftVersionId),
                 )
               }
-              newItemMessage="建立或更新 AI Agent 後才會產生 Prompt 編輯歷史。"
+              newItemMessage="建立或更新 Skill 後才會產生 Prompt 編輯歷史。"
               helperMessage="請依序選擇要比對的新舊 Prompt 版本後再按下「比對選取版本」。"
             />
           </Stack>
@@ -278,21 +274,22 @@ export default function StorytellerNewAgent({
           >
             {saveAgent.isError && (
               <Alert severity="error" variant="outlined">
-                {isEdit ? "更新" : "建立"} AI Agent
+                {isEdit ? "更新" : "建立"} Skill
                 失敗，請確認登入狀態與欄位內容。
               </Alert>
             )}
-            <Alert severity="info" variant="outlined">
+            <Alert severity="warning" variant="outlined">
               AI 供應商／模型／API Key 不在這裡設定——改成在「AI
-              助理」對話框下方隨時切換要用哪把金鑰、哪個模型，同一個
-              Agent（人設）可以搭配任何一把已建立的金鑰使用。
+              助理」對話框下方隨時切換要用哪把金鑰、哪個模型。記得先到
+              「金鑰管理」建立至少一把 API Key，這個 Skill 才能真的搭配
+              使用；同一個 Skill（人設）可以搭配任何一把已建立的金鑰。
             </Alert>
             <Grid container spacing={2}>
               <Grid size={12}>
                 <TextField
                   required
                   fullWidth
-                  label="Agent 名稱"
+                  label="Skill 名稱"
                   placeholder="例如：Plot Doctor"
                   value={input.name}
                   onChange={(event) =>
@@ -309,8 +306,8 @@ export default function StorytellerNewAgent({
                   multiline
                   minRows={5}
                   maxRows={12}
-                  label="Agent 預設 prompt"
-                  placeholder="描述此 Agent 適合做什麼，例如續寫、改寫、世界觀校對或章節節奏分析。"
+                  label="Skill 預設 prompt"
+                  placeholder="描述此 Skill 適合做什麼，例如續寫、改寫、世界觀校對或章節節奏分析。"
                   value={input.default_prompt}
                   onChange={(event) =>
                     setInput((value) => ({
@@ -336,8 +333,8 @@ export default function StorytellerNewAgent({
                     ? "更新中"
                     : "建立中"
                   : isEdit
-                    ? "更新 AI Agent"
-                    : "建立 AI Agent"}
+                    ? "更新 Skill"
+                    : "建立 Skill"}
               </Button>
             </Stack>
           </Stack>
