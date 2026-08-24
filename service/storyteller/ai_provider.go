@@ -107,25 +107,47 @@ type AIProviderUsage struct {
 	TotalTokens  int `json:"total_tokens"`
 }
 
+const (
+	// aiProviderDefaultTimeout 是單輪 skill（改寫/擴寫/翻譯）用的逾時——單輪呼叫
+	// 通常幾秒到十幾秒內就回來，這個值原本就是照這個情境訂的。
+	aiProviderDefaultTimeout = 60 * time.Second
+	// aiProviderAgenticTimeout 給 AAS 多輪 tool-calling 迴圈用。同一個 60 秒是為
+	// 單輪設計的，AAS 每一步都要先讀前面工具回傳的資料再組織回應，單步耗時本來
+	// 就比單輪高，沿用同一個值很容易誤傷正常但比較慢的一步；獨立拉高，不影響
+	// 單輪 skill 那條路徑。
+	aiProviderAgenticTimeout = 180 * time.Second
+)
+
 // endpoint 只有 self-hosted provider 會用到（自架的 OpenAI 相容 API 位址），
 // 其餘固定 provider 一律沿用各自的預設常數，忽略傳入值。
 func NewAIProvider(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
+	return newAIProviderWithTimeout(provider, endpoint, aiProviderDefaultTimeout)
+}
+
+// NewAgenticAIProvider 是 AAS（多輪 tool-calling）專用的 provider 工廠，唯一差異
+// 是逾時時間，見 aiProviderAgenticTimeout 的說明。
+func NewAgenticAIProvider(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
+	return newAIProviderWithTimeout(provider, endpoint, aiProviderAgenticTimeout)
+}
+
+func newAIProviderWithTimeout(provider storytellerModel.AgentProvider, endpoint string, timeout time.Duration) (AIProvider, error) {
+	httpClient := &http.Client{Timeout: timeout}
 	switch provider {
 	case storytellerModel.AgentProviderGrok:
-		return NewGrokProvider(defaultGrokChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+		return NewGrokProvider(defaultGrokChatCompletionsURL, httpClient), nil
 	case storytellerModel.AgentProviderOpenAI:
-		return NewOpenAICompatibleProvider(defaultOpenAIChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+		return NewOpenAICompatibleProvider(defaultOpenAIChatCompletionsURL, httpClient), nil
 	case storytellerModel.AgentProviderOpenRouter:
-		return NewOpenAICompatibleProvider(defaultOpenRouterChatCompletionsURL, &http.Client{Timeout: 60 * time.Second}), nil
+		return NewOpenAICompatibleProvider(defaultOpenRouterChatCompletionsURL, httpClient), nil
 	case storytellerModel.AgentProviderClaude:
-		return NewClaudeProvider(defaultClaudeMessagesURL, &http.Client{Timeout: 60 * time.Second}), nil
+		return NewClaudeProvider(defaultClaudeMessagesURL, httpClient), nil
 	case storytellerModel.AgentProviderGemini:
-		return NewGeminiProvider(defaultGeminiGenerateContentBaseURL, &http.Client{Timeout: 60 * time.Second}), nil
+		return NewGeminiProvider(defaultGeminiGenerateContentBaseURL, httpClient), nil
 	case storytellerModel.AgentProviderSelfHosted:
 		if strings.TrimSpace(endpoint) == "" {
 			return nil, ErrAIProviderMissingEndpoint
 		}
-		return NewOpenAICompatibleProvider(strings.TrimSpace(endpoint), &http.Client{Timeout: 60 * time.Second}), nil
+		return NewOpenAICompatibleProvider(strings.TrimSpace(endpoint), httpClient), nil
 	default:
 		return nil, ErrAIProviderUnsupported
 	}

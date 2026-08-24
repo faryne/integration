@@ -104,7 +104,7 @@ func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, proje
 	tools := StorytellerToolRegistry().All()
 	tools = CaptureWriteToolsAsProposals(tools, writeToolNames)
 	tools = ScopeToolsToProject(tools, projectPublicID)
-	return runStoryAgenticQuery(ctx, s.repo, NewAIProvider, tools, writeToolNames, userID, projectPublicID, storyPublicID, agentID, userPrompt, opts)
+	return runStoryAgenticQuery(ctx, s.repo, NewAgenticAIProvider, tools, writeToolNames, userID, projectPublicID, storyPublicID, agentID, userPrompt, opts)
 }
 
 // runStoryAgenticQuery 是 RunStoryAgenticQuery 拆出來、可注入 repo／provider
@@ -158,7 +158,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
-		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID),
+		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, story.PublicID, story.Title),
 		UserPrompt:   userPrompt,
 		Tools:        tools,
 	})
@@ -197,7 +197,7 @@ type agenticQueryError string
 
 func (e agenticQueryError) Error() string { return string(e) }
 
-func agenticQuerySystemPrompt(agent storytellerModel.Agent, projectPublicID string) string {
+func agenticQuerySystemPrompt(agent storytellerModel.Agent, projectPublicID, currentStoryPublicID, currentStoryTitle string) string {
 	base := strings.TrimSpace(`You are Storyteller's writing assistant, running in agentic mode: you can call
 read-only tools (storyteller_get_*, storyteller_list_*) to look up the user's stories, lore/worldbuilding
 entries, and assets before answering, instead of only seeing what's pasted into this conversation. You can
@@ -218,12 +218,30 @@ Rules:
   review; never claim a write has already been applied.
 - If a tool call fails or returns unexpected data, explain what you tried and continue with the best answer
   you can give, don't just give up silently.
-- Answer in the language the user wrote in.`)
+- Answer in the language the user wrote in.
+
+Reference syntax — the user's message may contain "@" references that the frontend does not expand for you;
+you are expected to resolve them yourself with tools before answering:
+- "@thisStory" means the story currently open in the editor (its story_public_id is given below) — call
+  storyteller_get_story with that id to read it.
+- "@story:<title>" refers to a different story by title — call storyteller_list_stories to find the one whose
+  title matches, then storyteller_get_story to read it. If nothing matches closely, say so instead of guessing.
+- "@lore:<title>" refers to a lore/worldbuilding entry by title — same pattern with storyteller_list_lores and
+  storyteller_get_lore.
+- Only resolve a reference if the user's message actually needs its content to answer; don't fetch every
+  reference reflexively if the question doesn't depend on it.`)
 	instructions := strings.TrimSpace(agent.DefaultPrompt)
 	if instructions != "" {
 		base = base + "\n\nAgent-specific instructions:\n" + instructions
 	}
-	return base + "\n\nAuthorized project_public_id for this conversation: " + projectPublicID
+	base = base + "\n\nAuthorized project_public_id for this conversation: " + projectPublicID
+	if strings.TrimSpace(currentStoryPublicID) != "" {
+		base = base + "\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + currentStoryPublicID
+		if strings.TrimSpace(currentStoryTitle) != "" {
+			base = base + ", title=" + currentStoryTitle
+		}
+	}
+	return base
 }
 
 func buildAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
