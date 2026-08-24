@@ -38,6 +38,7 @@ import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx
 import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import {
+  StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
   type StorytellerAgentPanelAgent,
   type StorytellerAgentPanelMessage,
@@ -337,7 +338,7 @@ function AgenticAssistantMessage({
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
             <CircularProgress size={18} />
             <Typography variant="body2" color="text.secondary">
-              處理中...
+              <StorytellerAgentLoadingHint />
             </Typography>
           </Stack>
         ) : (

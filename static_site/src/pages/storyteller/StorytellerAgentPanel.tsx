@@ -1,6 +1,7 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ReplyIcon from "@mui/icons-material/Reply";
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import type {
   StorytellerAgentRunMode,
@@ -39,6 +40,39 @@ export type StorytellerAgentApplyAction =
   | "insert"
   | "append"
   | "copy";
+
+// AI 助理一輪呼叫可能要跑好幾秒到好幾十秒（多輪工具呼叫時尤其明顯），純轉圈圈
+// 容易讓使用者懷疑「是不是壞了、關掉分頁會不會就消失了」。這裡先用便宜的做法
+// 讓文字不定時輪替，至少感覺得到「還在動」——之後如果要做 SSE 步驟即時推播
+// 再取代掉這個。
+const AGENT_LOADING_HINTS = [
+  "處理中…",
+  "AI 正在讀取資料…",
+  "還在努力生成內容…",
+  "整理輸出格式中…",
+  "快好了，請再等一下…",
+];
+
+const agentLoadingHintRotateSeconds = 3;
+
+export function StorytellerAgentLoadingHint() {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    setElapsedSeconds(0);
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const hintIndex =
+    Math.floor(elapsedSeconds / agentLoadingHintRotateSeconds) %
+    AGENT_LOADING_HINTS.length;
+  return (
+    <>
+      {AGENT_LOADING_HINTS[hintIndex]}（已等待 {elapsedSeconds} 秒）
+    </>
+  );
+}
 
 export interface StorytellerAgentMessageProps {
   message: StorytellerAgentPanelMessage;
@@ -104,7 +138,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
             <CircularProgress size={18} />
             <Typography variant="body2" color="text.secondary">
-              處理中...
+              <StorytellerAgentLoadingHint />
             </Typography>
           </Stack>
         ) : (
