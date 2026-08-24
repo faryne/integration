@@ -105,7 +105,7 @@ const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
   custom: "自訂指令",
 };
 const SKILL_SLASH_COMMAND_HINT =
-  "可用指令：/rewrite /expand /translate /continue /custom（單輪 skill）、/<Agent 名稱> 切換人設（不加指令則直接問答）。一次只會解析最前面那一個指令，後面再打的 / 一律當成一般文字。";
+  "打 / 可觸發單輪 skill 或切換人設，也可以用上方選單插入；完整說明見下方「指令 / 引用說明」。";
 
 function parseSkillSlashCommand(
   value: string,
@@ -1026,7 +1026,7 @@ export function StorytellerAgenticPanel({
               onClick={(event) => setAgentMenuAnchor(event.currentTarget)}
               sx={{ color: "text.secondary", textTransform: "none" }}
             >
-              {selectedAgent?.name ?? "尚未建立 Agent"}
+              {agents.length === 0 ? "尚未建立 Agent" : "未選擇人設"}
             </Button>
             <Menu
               anchorEl={agentMenuAnchor}
@@ -1037,10 +1037,14 @@ export function StorytellerAgenticPanel({
               {agents.length === 0 && (
                 <MenuItem disabled>尚未建立任何 Agent</MenuItem>
               )}
+              {agents.length > 0 && (
+                <MenuItem selected onClick={() => setAgentMenuAnchor(null)}>
+                  未選擇
+                </MenuItem>
+              )}
               {agents.map((agent) => (
                 <MenuItem
                   key={agent.id}
-                  selected={agent.id === selectedAgent?.id}
                   onClick={() => {
                     insertAgentSlashPrefix(agent.name);
                     setAgentMenuAnchor(null);
@@ -1370,7 +1374,7 @@ export function StorytellerAgenticPanel({
               variant="text"
               onClick={() => setReferenceDrawerOpen(true)}
             >
-              引用標籤說明
+              指令 / 引用說明
             </Button>
           </Stack>
           {promptReferences.length > 0 && (
@@ -1435,6 +1439,7 @@ export function StorytellerAgenticPanel({
       <StorytellerAgentReferenceDrawer
         open={referenceDrawerOpen}
         onClose={() => setReferenceDrawerOpen(false)}
+        agents={agents}
       />
     </Paper>
   );
