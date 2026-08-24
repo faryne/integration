@@ -201,9 +201,24 @@
 - [x] **8.10 「AI Agent」全面改名「Skill」、管理頁拿掉供應商欄位、用量報表改依 project/story/lore 分組**：✅ 完成（2026-08-23）。
   - 管理頁（`Home.tsx`／`HomeCards.tsx`／`NewAgent.tsx`／`AgentDiffCompare.tsx`／`homeTabs.ts`）所有使用者可見的「AI Agent」字樣改成「Skill」；Skill 卡片跟編輯歷史 diff 不再顯示 AI 供應商／模型名稱／API Key（跟人設已脫鉤，顯示只會製造假警訊）；建立/編輯表單提醒文字改 `warning` 語氣，明確提醒要先到金鑰管理建立至少一把 API Key。
   - 用量報表從「Key -> Agent」改成「Key -> Project -> Story/Lore」三層。`storyteller_agent_usage_logs` 沒有 story_id/lore_id 欄位，透過既有的 `chat_id -> storyteller_story_chats -> storyteller_stories/storyteller_lores.project_id` 兩層 join 反查，**不需要 migration**。粗顆粒分組後拿掉了彙總層級的「估算費用」（可能混合多個 model，沒辦法準確估算），費用估算只留在最底層單次執行明細（`AgentUsageLogRow`，仍是單一 model_name）；drill-down 篩選條件從 `agent_id` 改成 `story_id`／`lore_id`（互斥），明細列表加回 `agent_name` 當純資訊性欄位。
-  - Agent 名稱正規化：`normalizeAgentName` 在新增/編輯時把內部連續空白收斂成單一空格（原本 `strings.TrimSpace` 只清頭尾），避免「看起來一樣」的名稱在 AI 助理打 `/名稱` 卻對不上（因為指令識別直接吃 `name` 現有的樣子，不像別的欄位有額外的一次性 migration 機制）。**舊資料沒有主動批次修正**——沿用到現有 Agent 編輯過一次才會套用正規化，若正式環境的既有資料需要一次性處理，需要另外確認環境（是否為 prod）後再排。
+  - Agent 名稱正規化：`normalizeAgentName` 在新增/編輯時把內部連續空白收斂成單一空格（原本 `strings.TrimSpace` 只清頭尾），避免「看起來一樣」的名稱在 AI 助理打 `/名稱` 卻對不上（因為指令識別直接吃 `name` 現有的樣子，不像別的欄位有額外的一次性 migration 機制）。舊資料的一次性正規化後來補了 migration（見 8.11 前的補充），這裡不用再回頭處理。
   - AI 助理輸入框的 slash 指令提示文字補充：一次只解析最前面那一個指令，後面再打的 `/` 一律當純文字，不支援 `/rewrite /色文作家 ...` 這種串接寫法。
   - 已用真實瀏覽器操作驗證：Skill 列表卡片不再顯示供應商/模型/金鑰、用量報表頁面在新的 join 查詢下正常載入（無 SQL 錯誤，空月份正確顯示空狀態）、編輯頁警示文字與麵包屑正確顯示「Skill」。
+
+- [x] **8.10.1 補上 Agent 名稱正規化 migration + 用量報表輸入/輸出欄位對齊**：✅ 完成（2026-08-23）。
+  - 新增 `migration/20260823200000-normalize_storyteller_agent_names.sql`，一次性把既有 `storyteller_agents.name` 的內部連續空白收斂成單一空格（MySQL 5.7 沒有 `REGEXP_REPLACE`，用 10 層巢狀 `REPLACE` 收斂），已在本機套用。
+  - 用量報表三層巢狀表格（Key -> Project -> Story/Lore -> 執行明細）原本各自獨立 `TableHead`，欄寬各自 auto layout，「輸入」「輸出」完全對不齊；先用 `table-layout: fixed` + 固定像素寬治標，後來 Faryne 建議「乾脆一個 Key 卡片只用一張表、一個表頭」，改成專案列、故事/設定集列、單次執行明細列全部是同一張表裡的 `TableRow`，天然共用欄寬，沒資料的欄位（Skill／模型／估算費用）印「－」，比治標的固定寬度更簡單也更乾淨。
+
+- [x] **8.11 AI 助理鎖住無金鑰狀態、拿掉「Agent 預設金鑰／模型」選項、金鑰管理拿掉綁定 Agent 數**：✅ 完成（2026-08-23）。
+  - 帳號完全沒有任何一把 API Key 時，AI 助理面板的「送出」「金鑰」「模型」三顆全部鎖死，補上 warning Alert 導去金鑰管理。
+  - 「Agent 預設金鑰」「Agent 預設模型」這兩個選單選項拿掉——Skill 已經跟 provider/key/model 剝離，新建的 Skill 一律沒有綁定，這兩個選項在絕大多數情況下對應到一個不存在的「預設」，選了只會在送出時撞到後端錯誤。改成金鑰/模型清單載入後自動選第一個可用的，不再需要一個代表「留空、交給後端解析」的中介狀態；金鑰/模型選擇也不再隨著切換 Agent 重置（兩者現在是跟 Agent 無關的 session 選擇）。
+  - 金鑰管理頁（`ApiKeyManagement.tsx`）拿掉「使用中：N 個 Agent」／「未被任何 Agent 使用」chip，以及刪除確認對話框裡「刪除後這些 Agent 會失去綁定金鑰」的警告——這兩處都是基於已經作廢的舊資料模型（Skill 沒有「綁定金鑰」這個概念了），繼續顯示只會誤導。
+  - 已用真實瀏覽器操作驗證：刪掉帳號底下最後一把金鑰後三顆全部鎖死並顯示提示；建立一把金鑰後開啟 AI 助理，金鑰／模型 chip 自動帶出真實值，選單裡確認不再出現「Agent 預設金鑰」或「Agent 預設模型」字樣；金鑰管理頁的金鑰列表不再顯示綁定數量 chip。
+
+- [x] **8.12 AAS 逾時時間獨立拉高、`@` 引用改交給 AI provider 透過 MCP 自己解析**：✅ 完成（2026-08-24）。
+  - **逾時**：所有 AI provider 的 `http.Client{Timeout: 60 * time.Second}` 原本是為單輪 skill 設計的，AAS 多輪 tool-calling 每一步都要先讀前面工具回傳的資料再組織回應，沿用同一個值很容易誤傷正常但比較慢的一步。新增 `aiProviderAgenticTimeout`（180 秒）跟對應的 `NewAgenticAIProvider` 工廠函式，只有 `RunStoryAgenticQuery` 改用這個，單輪 skill 路徑維持 60 秒不變。連帶把 `httpd_conf/nginx` baseline 設定的 `proxy_send/read_timeout` 從 300s 拉到 600s，避免調高後 Go 那邊還在正常跑、卻先被 nginx 這層掐斷連線。確認過調高不會造成「連線掛著不釋放」——Go 的 `http.Client.Timeout` 到時間會自動取消釋放，調高只是「同時卡住的請求各自占用資源的時間變長」，是容量規劃問題不是洩漏；outbound／inbound 的 keep-alive 都已經是預設打開，跟 Timeout 是兩個獨立設定不用另外處理。
+  - **`@` 引用**：`@thisStory`／`@story:標題`／`@lore:標題` 這幾種引用，原本只有單輪 skill 路徑會展開成完整內容塞進 `full_content`，AAS（`runAgentic`）完全沒接這段——使用者打 `@thisStory` 送出後，「@thisStory」這幾個字元原封不動送給模型，模型不知道那是什麼意思；畫面上引用 chip 照樣會顯示（chip 計算不分模式都會跑），容易誤以為已經展開。改成前端不展開、只保留 chip 顯示（純視覺確認），交給 AI provider 自己透過既有的唯讀工具解析：`agenticQuerySystemPrompt` 新增 `currentStoryPublicID`／`currentStoryTitle` 參數，把「目前開著的故事是哪一篇」寫進 system prompt（這個資訊後端本來就從路由參數 `storyPublicID` 拿得到），同時說明 `@thisStory`／`@story:`／`@lore:` 該呼叫哪個工具查。決定全部交給 MCP（含 `@thisStory`，不特別为它做前端預先注入省一輪工具呼叫）——考量是 Faryne 之後會有多平台（Mac／Windows standalone app），這樣不管哪個平台送 `runAgentic` 都只要原封不動轉發使用者輸入的文字，不用各自處理 `@` 展開。
+  - 已用真實瀏覽器/curl 操作驗證：ad-hoc 測試印出組好的 system prompt 確認 story_public_id／title 有正確帶入；對 `agentic-query` 端點送出含 `@thisStory` 的請求，請求正確組成並打到真實 xAI API（假 key 拿到真實的 401 錯誤，證實整條路徑沒有因為這次改動而壞掉）。
 
 ## 未來待辦（尚未排時程，先記著）
 
