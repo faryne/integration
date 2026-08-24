@@ -118,6 +118,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Put("/projects/:project/lores/:lore/move", storyteller.MoveLore)
 	authenticated.Delete("/projects/:project/lores/:lore", storyteller.DeleteLore)
 	authenticated.Post("/projects/:project/lores/:lore/agents/:agent/run", storyteller.RunLoreAgent)
+	authenticated.Post("/projects/:project/lores/:lore/agents/:agent/agentic-query", storyteller.RunLoreAgenticQuery)
 	authenticated.Get("/projects/:project/lores/:lore/chat-messages", storyteller.LoreChatMessages)
 	authenticated.Get("/projects/:project/lores/:lore/versions", storyteller.LoreVersions)
 	authenticated.Get("/projects/:project/lores/:lore/versions/:version", storyteller.LoreVersion)

@@ -177,17 +177,22 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				"storyteller_get_story afterwards to check nothing important got lost.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
-				"story_public_id":   stringSchema("Existing story public_id to update. Omit to create a new story."),
-				"title":             stringSchema("Story title, required."),
-				"summary":           stringSchema("Short summary shown in listings."),
-				"status":            stringSchema("draft or completed, defaults to completed."),
-				"sort":              integerSchema("Display order among the project's stories."),
+				"story_public_id": stringSchema("Existing story public_id to update. Omit ONLY when you actually want to create a brand " +
+					"new, separate story — omitting it while intending to update an existing one (e.g. \"@thisStory\" or a story " +
+					"you just read via storyteller_get_story/storyteller_list_stories) silently creates a duplicate instead of " +
+					"updating it. If you have a story_public_id in hand for the item you mean, always pass it back here."),
+				"title":   stringSchema("Story title, required."),
+				"summary": stringSchema("Short summary shown in listings."),
+				"status":  stringSchema("draft or completed, defaults to completed."),
+				"sort":    integerSchema("Display order among the project's stories."),
 				"content": stringSchema(
-					"Full story content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
+					"Full story content, required. Writing the content into your chat reply instead of this argument does " +
+						"NOT count — the proposal card shown to the user is built purely from this argument, so if you leave " +
+						"it out the user sees an empty diff and an empty overwrite. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 				),
 				"volume_public_id": stringSchema("Optional, but semantically important. Omit to preserve the story's current volume membership on update; pass an empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
 				"base_version_id":  integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
-			}, []string{"project_public_id", "title"}),
+			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
 				if err != nil {

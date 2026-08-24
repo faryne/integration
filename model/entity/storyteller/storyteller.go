@@ -679,6 +679,12 @@ type AgentRunRequest struct {
 	// 名稱——跟 ProviderAPIKeyID 是各自獨立的覆寫，可以只換 key、只換 model，
 	// 或兩個一起換。
 	ModelName string `json:"model_name,omitempty"`
+	// IgnoreAgentPersona 為 true 時，這次呼叫的 system prompt 不附加這個 Agent 的
+	// DefaultPrompt（人設）——URL 上的 :agent 仍然決定用哪把 key／哪個 model。前端
+	// 對 /rewrite /expand /translate /continue /custom 這幾個「單輪 skill」指令，
+	// 沒有額外指定 Agent 人設時帶這個 true，跟 agentic 問答那邊的同名欄位是同一個
+	// 設計：沒有明確指定人設的呼叫，就不該套用任何人設。
+	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
 }
 
 type ProviderAPIKeyRequest struct {
@@ -956,6 +962,11 @@ type AgenticQueryRequest struct {
 	UserPrompt       string  `json:"user_prompt"`
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
 	ModelName        string  `json:"model_name,omitempty"`
+	// IgnoreAgentPersona 為 true 時，這輪呼叫的 system prompt 不附加這個 Agent 的
+	// DefaultPrompt（人設/skill 指令）——URL 上的 :agent 仍然決定用哪把 key／哪個
+	// model，只是「這輪不套用它的人設」。前端在使用者沒有明確打 /<Agent 名稱> 前綴
+	// 的訊息帶這個 true，避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
+	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
 }
 
 // AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，

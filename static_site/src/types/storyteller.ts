@@ -400,6 +400,10 @@ export interface StorytellerAgentRunRequest {
   selection_end?: number;
   provider_apikey_id?: number;
   model_name?: string;
+  // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand
+  // /translate /continue /custom 這幾個單輪 skill 指令沒有額外指定人設，一律帶
+  // 這個 true。
+  ignore_agent_persona?: boolean;
 }
 
 export interface StorytellerAgentRunUsage {
@@ -428,6 +432,10 @@ export interface StorytellerAgenticQueryRequest {
   // 請求介面。
   provider_apikey_id?: number;
   model_name?: string;
+  // true 時這輪呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model
+  // 還是照這個 Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免
+  // 前一輪切換過的人設無聲沿用到不相關的後續訊息。
+  ignore_agent_persona?: boolean;
 }
 
 export interface StorytellerAgenticToolCall {

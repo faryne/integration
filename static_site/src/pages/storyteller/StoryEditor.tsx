@@ -1372,8 +1372,9 @@ export default function StorytellerStoryEditor({
 
               {sidePanel === "agentic" && (
                 <StorytellerAgenticPanel
+                  targetKind="story"
                   projectPublicId={apiProject?.public_id}
-                  storyPublicId={apiStory?.public_id}
+                  targetPublicId={apiStory?.public_id}
                   agents={panelAgents}
                   currentStory={{
                     title: storyTitle,

@@ -252,14 +252,19 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"moved on past base_version_id — consider re-fetching with storyteller_get_lore afterwards to check nothing important got lost.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
-				"lore_public_id":    stringSchema("Existing lore public_id to update. Omit to create a new entry."),
-				"title":             stringSchema("Lore title, required."),
-				"collection_id":     stringSchema("Optional lore collection public_id. Omit to preserve the current collection on update; pass empty string or __uncategorized__ to clear it."),
+				"lore_public_id": stringSchema("Existing lore public_id to update. Omit ONLY when you actually want to create a brand " +
+					"new, separate lore entry — omitting it while intending to update an existing one (e.g. \"@thisLore\" or an " +
+					"entry you just read via storyteller_get_lore/storyteller_list_lores) silently creates a duplicate instead of " +
+					"updating it. If you have a lore_public_id in hand for the item you mean, always pass it back here."),
+				"title":         stringSchema("Lore title, required."),
+				"collection_id": stringSchema("Optional lore collection public_id. Omit to preserve the current collection on update; pass empty string or __uncategorized__ to clear it."),
 				"content": stringSchema(
-					"Full lore content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
+					"Full lore content, required. Writing the content into your chat reply instead of this argument does " +
+						"NOT count — the proposal card shown to the user is built purely from this argument, so if you leave " +
+						"it out the user sees an empty diff and an empty overwrite. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 				),
 				"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
-			}, []string{"project_public_id", "title"}),
+			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
 				if err != nil {

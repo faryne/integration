@@ -354,6 +354,8 @@ type fakeAgentRunRepository struct {
 	projectErr        error
 	story             *storytellerModel.Story
 	storyErr          error
+	lore              *storytellerModel.Lore
+	loreErr           error
 	agent             *storytellerModel.Agent
 	agentErr          error
 	providerAPIKey    *storytellerModel.ProviderAPIKey
@@ -370,6 +372,10 @@ func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*stor
 
 func (r *fakeAgentRunRepository) Story(uint64, string) (*storytellerModel.Story, error) {
 	return r.story, r.storyErr
+}
+
+func (r *fakeAgentRunRepository) Lore(uint64, string) (*storytellerModel.Lore, error) {
+	return r.lore, r.loreErr
 }
 
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {

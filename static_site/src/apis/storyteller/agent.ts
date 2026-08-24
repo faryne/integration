@@ -447,6 +447,39 @@ export function useRunStorytellerAgenticQuery(
   });
 }
 
+// useRunStorytellerAgenticQuery 的設定集版本——同一顆 StorytellerAgenticPanel
+// 面板兩邊共用，差別只在故事/設定集這條軸線，見後端 RunLoreAgenticQuery 的說明。
+export function useRunStorytellerLoreAgenticQuery(
+  projectPublicId?: string,
+  lorePublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      input,
+    }: {
+      agentId: number;
+      input: StorytellerAgenticQueryRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgenticQueryResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["storyteller", "lore-chat-messages"],
+      });
+    },
+  });
+}
+
 // 套用先前 useRunStorytellerAgenticQuery 回傳、被攔下來還沒真的執行的寫入類
 // 工具呼叫。呼叫端要把當初收到的 StorytellerAgenticProposal 的 tool_name／
 // arguments 原樣送回來。

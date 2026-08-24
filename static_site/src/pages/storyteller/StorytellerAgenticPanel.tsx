@@ -1,5 +1,7 @@
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import ReplyIcon from "@mui/icons-material/Reply";
 import SendIcon from "@mui/icons-material/Send";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
@@ -23,7 +25,10 @@ import { Link as RouterLink } from "react-router-dom";
 import {
   useRunStorytellerAgent,
   useRunStorytellerAgenticQuery,
+  useRunStorytellerLoreAgent,
+  useRunStorytellerLoreAgenticQuery,
   useStorytellerAgentProviderModels,
+  useStorytellerLoreChatMessages,
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
 } from "@/apis/storyteller/agent.ts";
@@ -276,19 +281,34 @@ function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
 
 function AgenticAssistantMessage({
   message,
+  targetKind,
   projectPublicId,
-  storyPublicId,
+  targetPublicId,
   currentStory,
   onStoryChanged,
+  onApplyText,
+  onReply,
+  isReplyTarget,
 }: {
   message: Extract<PanelMessage, { kind: "agentic" }>;
+  targetKind: "story" | "lore";
   projectPublicId?: string;
-  storyPublicId?: string;
+  targetPublicId?: string;
   currentStory: StorytellerAgenticCurrentStory;
   onStoryChanged?: () => void;
+  onApplyText?: (
+    content: string,
+    action: StorytellerAgentApplyAction,
+    selection: StorytellerAgentPanelSelection | null,
+  ) => void;
+  onReply?: (message: StorytellerAgentPanelMessage) => void;
+  isReplyTarget?: boolean;
 }) {
+  const isUser = message.role === "user";
+  const canApply = !isUser && !message.isLoading && message.content.trim() !== "";
   return (
     <Box
+      data-agent-message-id={message.id}
       sx={{
         display: "flex",
         justifyContent: message.role === "user" ? "flex-end" : "flex-start",
@@ -302,7 +322,9 @@ function AgenticAssistantMessage({
           bgcolor: message.role === "user" ? "primary.main" : "background.paper",
           color: message.role === "user" ? "primary.contrastText" : "text.primary",
           border: message.role === "user" ? 0 : "1px solid",
-          borderColor: "divider",
+          borderColor: isReplyTarget ? "primary.main" : "divider",
+          outline: isReplyTarget ? "2px solid" : "none",
+          outlineColor: "primary.main",
         }}
       >
         <Typography
@@ -340,8 +362,9 @@ function AgenticAssistantMessage({
                 key={proposal.tool_call_id || index}
                 index={index}
                 proposal={proposal}
+                targetKind={targetKind}
                 projectPublicId={projectPublicId}
-                storyPublicId={storyPublicId}
+                targetPublicId={targetPublicId}
                 currentStory={currentStory}
                 onApplied={onStoryChanged}
               />
@@ -355,14 +378,57 @@ function AgenticAssistantMessage({
             sx={{ mt: 1 }}
           />
         ) : null}
+        {canApply && onApplyText && (
+          <Stack
+            direction="row"
+            spacing={1}
+            flexWrap="wrap"
+            useFlexGap
+            sx={{ mt: 1 }}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => onApplyText(message.content, "append", null)}
+            >
+              附加末尾
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ContentCopyIcon />}
+              onClick={() => onApplyText(message.content, "copy", null)}
+            >
+              複製
+            </Button>
+            {onReply && (
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<ReplyIcon />}
+                onClick={() =>
+                  onReply({
+                    id: message.id,
+                    role: message.role,
+                    content: message.content,
+                    speaker: "AI 助理",
+                  })
+                }
+              >
+                回覆
+              </Button>
+            )}
+          </Stack>
+        )}
       </Box>
     </Box>
   );
 }
 
 export function StorytellerAgenticPanel({
+  targetKind,
   projectPublicId,
-  storyPublicId,
+  targetPublicId,
   agents,
   currentStory,
   otherStories,
@@ -371,8 +437,12 @@ export function StorytellerAgenticPanel({
   onApplyText,
   onStoryChanged,
 }: {
+  // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
+  // 這個軸線——決定要打哪一組 API（.../stories/:id/... 還是 .../lores/:id/...）、
+  // system prompt 的 @thisStory／@thisLore 指向哪一筆。
+  targetKind: "story" | "lore";
   projectPublicId?: string;
-  storyPublicId?: string;
+  targetPublicId?: string;
   agents: StorytellerAgentPanelAgent[];
   currentStory: StorytellerAgenticCurrentStory;
   otherStories: { id: string; title: string; content: string }[];
@@ -489,13 +559,39 @@ export function StorytellerAgenticPanel({
     setModelNameOverride(modelOptions[0].name);
   }, [modelOptions, modelNameOverride, providerAllowsCustomModel]);
 
-  const runSkillMutation = useRunStorytellerAgent(
+  // Rules of Hooks 不能依 targetKind 條件呼叫其中一組——story／lore 兩組 hook 都
+  // 固定呼叫，只把當下不是目標種類那組的 publicId 傳 undefined（hook 內部本來就
+  // 靠 publicId 是否存在決定要不要真的送 request），下面再依 targetKind 挑其中
+  // 一組的結果來用。
+  const runSkillMutationStory = useRunStorytellerAgent(
     projectPublicId,
-    storyPublicId,
+    targetKind === "story" ? targetPublicId : undefined,
   );
-  const runAgenticQuery = useRunStorytellerAgenticQuery(
+  const runSkillMutationLore = useRunStorytellerLoreAgent(
     projectPublicId,
-    storyPublicId,
+    targetKind === "lore" ? targetPublicId : undefined,
+  );
+  const runSkillMutation =
+    targetKind === "lore" ? runSkillMutationLore : runSkillMutationStory;
+  const runAgenticQueryStory = useRunStorytellerAgenticQuery(
+    projectPublicId,
+    targetKind === "story" ? targetPublicId : undefined,
+  );
+  const runAgenticQueryLore = useRunStorytellerLoreAgenticQuery(
+    projectPublicId,
+    targetKind === "lore" ? targetPublicId : undefined,
+  );
+  const runAgenticQuery =
+    targetKind === "lore" ? runAgenticQueryLore : runAgenticQueryStory;
+  const storyMessagesQuery = useStorytellerStoryChatMessages(
+    projectPublicId,
+    targetKind === "story" ? targetPublicId : undefined,
+    skillMessagesPerPage,
+  );
+  const loreMessagesQuery = useStorytellerLoreChatMessages(
+    projectPublicId,
+    targetKind === "lore" ? targetPublicId : undefined,
+    skillMessagesPerPage,
   );
   const {
     data: skillMessagesPages,
@@ -503,11 +599,7 @@ export function StorytellerAgenticPanel({
     hasNextPage: hasMoreSkillHistory,
     isFetchingNextPage: loadingMoreSkillHistory,
     fetchNextPage: fetchMoreSkillHistory,
-  } = useStorytellerStoryChatMessages(
-    projectPublicId,
-    storyPublicId,
-    skillMessagesPerPage,
-  );
+  } = targetKind === "lore" ? loreMessagesQuery : storyMessagesQuery;
 
   // 第 1 頁是最新訊息，載入更早的訊息時往後翻頁；顯示時要反過來，最早的頁在最上面
   const rawSkillMessages: StorytellerStoryChatMessage[] = (
@@ -540,15 +632,56 @@ export function StorytellerAgenticPanel({
     return "System";
   }
 
+  // agentic_query 模式的 assistant 訊息會把這輪的 tool_calls/proposals 存進
+  // metadata（見後端 agenticQueryOutputMetadata）；重新載入歷史時要從這裡解析
+  // 回 steps/proposals，畫面上的「工作軌跡」才不會在切分頁重新掛載後消失。
+  function parseAgenticMetadata(metadata?: string): {
+    steps?: StorytellerAgenticStep[];
+    proposals?: StorytellerAgenticProposal[];
+  } | null {
+    if (!metadata) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(metadata) as {
+        steps?: StorytellerAgenticStep[];
+        proposals?: StorytellerAgenticProposal[];
+      };
+      if (
+        (!parsed.steps || parsed.steps.length === 0) &&
+        (!parsed.proposals || parsed.proposals.length === 0)
+      ) {
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
-    (message) => ({
-      kind: "skill",
-      sortKey: new Date(message.created_at).getTime(),
-      id: String(message.id),
-      role: message.role,
-      content: message.content,
-      speaker: skillMessageSpeaker(message),
-    }),
+    (message) => {
+      const agentic = parseAgenticMetadata(message.metadata);
+      if (agentic && message.role !== "system") {
+        return {
+          kind: "agentic",
+          sortKey: new Date(message.created_at).getTime(),
+          id: String(message.id),
+          role: message.role,
+          content: message.content,
+          steps: agentic.steps,
+          proposals: agentic.proposals,
+        };
+      }
+      return {
+        kind: "skill",
+        sortKey: new Date(message.created_at).getTime(),
+        id: String(message.id),
+        role: message.role,
+        content: message.content,
+        speaker: skillMessageSpeaker(message),
+      };
+    },
   );
   const skillTransientMessages: PanelMessage[] = [];
   if (optimisticSkillMessage) {
@@ -655,7 +788,7 @@ export function StorytellerAgenticPanel({
     hasAnyApiKey &&
     Boolean(prompt.trim()) &&
     Boolean(projectPublicId) &&
-    Boolean(storyPublicId) &&
+    Boolean(targetPublicId) &&
     Number.isFinite(agentIdNumeric) &&
     Boolean(selectedAgent?.enabled) &&
     payloadError === "" &&
@@ -686,6 +819,7 @@ export function StorytellerAgenticPanel({
           instruction,
           full_content: referenceContent,
           selected_content: "",
+          ignore_agent_persona: true,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -710,7 +844,11 @@ export function StorytellerAgenticPanel({
     );
   }
 
-  function runAgentic(instruction: string) {
+  function runAgentic(
+    instruction: string,
+    options?: { agentId?: number; ignoreAgentPersona?: boolean },
+  ) {
+    const targetAgentId = options?.agentId ?? agentIdNumeric;
     const userSortKey = nextSessionSortKey();
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
@@ -724,9 +862,10 @@ export function StorytellerAgenticPanel({
 
     runAgenticQuery.mutate(
       {
-        agentId: agentIdNumeric,
+        agentId: targetAgentId,
         input: {
           user_prompt: instruction,
+          ignore_agent_persona: options?.ignoreAgentPersona ?? false,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -777,13 +916,35 @@ export function StorytellerAgenticPanel({
     if (!trimmed) {
       return;
     }
-    // /<Agent 名稱> 純粹是切人設，不打 API，所以不受 canRun（需要 project/story/
-    // 目前 Agent 可用）限制——就算目前選到的 Agent 是停用狀態，也要能透過這個指令
-    // 換到別的 Agent。
+    // /<Agent 名稱> 只影響「這一則」訊息要用哪個 Agent——解析完直接連同剩下的指令
+    // 內容一起送出，不寫回任何持久 state，下一則沒有前綴的訊息不會被這次切換影響
+    // （見 feedback：色文作家等一次性人設不該無聲沿用到後續不相關的對話）。
     const agentSwitch = matchAgentNameCommand(trimmed, agents);
     if (agentSwitch) {
-      setActiveAgentId(agentSwitch.agentId);
-      setPrompt(agentSwitch.instruction);
+      const instruction = agentSwitch.instruction.trim();
+      if (!instruction) {
+        // 只打了 /Agent 名稱、後面還沒接指令內容——先把前綴吃掉讓使用者繼續打字，
+        // 不強迫送出空白訊息。
+        setPrompt("");
+        return;
+      }
+      const targetAgent = agents.find((agent) => agent.id === agentSwitch.agentId);
+      const targetAgentId = Number(agentSwitch.agentId);
+      if (
+        !hasAnyApiKey ||
+        !projectPublicId ||
+        !targetPublicId ||
+        !Number.isFinite(targetAgentId) ||
+        !targetAgent?.enabled ||
+        payloadError !== "" ||
+        pending
+      ) {
+        return;
+      }
+      runAgentic(
+        composeStorytellerAgentInstructionWithReply(instruction, replyReferenceTarget),
+        { agentId: targetAgentId, ignoreAgentPersona: false },
+      );
       return;
     }
     if (!canRun || !Number.isFinite(agentIdNumeric)) {
@@ -794,7 +955,10 @@ export function StorytellerAgenticPanel({
       runSkill(slash.mode, slash.instruction);
       return;
     }
-    runAgentic(composeStorytellerAgentInstructionWithReply(trimmed, replyReferenceTarget));
+    runAgentic(
+      composeStorytellerAgentInstructionWithReply(trimmed, replyReferenceTarget),
+      { ignoreAgentPersona: true },
+    );
   }
 
   function insertAgentSlashPrefix(name: string) {
@@ -899,9 +1063,11 @@ export function StorytellerAgenticPanel({
               ))}
             </Menu>
           </Stack>
-          {!storyPublicId && (
+          {!targetPublicId && (
             <Alert severity="info" variant="outlined">
-              新故事第一次存檔後才能使用 AI 助理。
+              {targetKind === "lore"
+                ? "新設定集第一次存檔後才能使用 AI 助理。"
+                : "新故事第一次存檔後才能使用 AI 助理。"}
             </Alert>
           )}
           {!providerApiKeysLoading && !hasAnyApiKey && (
@@ -979,10 +1145,14 @@ export function StorytellerAgenticPanel({
                   <AgenticAssistantMessage
                     key={message.id}
                     message={message}
+                    targetKind={targetKind}
                     projectPublicId={projectPublicId}
-                    storyPublicId={storyPublicId}
+                    targetPublicId={targetPublicId}
                     currentStory={currentStory}
                     onStoryChanged={onStoryChanged}
+                    onApplyText={onApplyText}
+                    onReply={handleReply}
+                    isReplyTarget={replyTarget?.id === message.id}
                   />
                 ),
               )}
@@ -1010,8 +1180,9 @@ export function StorytellerAgenticPanel({
                     content: "",
                     isLoading: true,
                   }}
+                  targetKind={targetKind}
                   projectPublicId={projectPublicId}
-                  storyPublicId={storyPublicId}
+                  targetPublicId={targetPublicId}
                   currentStory={currentStory}
                   onStoryChanged={onStoryChanged}
                 />

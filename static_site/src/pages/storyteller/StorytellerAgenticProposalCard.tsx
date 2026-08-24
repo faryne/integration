@@ -13,10 +13,12 @@ import {
 } from "@mui/material";
 import { useApplyStorytellerAgentProposal } from "@/apis/storyteller/agent.ts";
 import { useRevertStorytellerStoryVersion } from "@/apis/storyteller/story.ts";
+import { useRevertStorytellerLoreVersion } from "@/apis/storyteller/lore.ts";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
 
 const UPSERT_STORY_TOOL = "storyteller_upsert_story";
+const UPSERT_LORE_TOOL = "storyteller_upsert_lore";
 
 // 給前端顯示用的中文動作標籤，對照 Codex_UIUX設計提案.md 的建議：工具名稱不該
 // 直接裸露給使用者看。之後新增工具時記得一併補這裡，沒對應到的就照原樣顯示
@@ -62,15 +64,17 @@ export interface StorytellerAgenticCurrentStory {
 export function StorytellerAgenticProposalCard({
   index,
   proposal,
+  targetKind,
   projectPublicId,
-  storyPublicId,
+  targetPublicId,
   currentStory,
   onApplied,
 }: {
   index: number;
   proposal: StorytellerAgenticProposal;
+  targetKind: "story" | "lore";
   projectPublicId?: string;
-  storyPublicId?: string;
+  targetPublicId?: string;
   currentStory: StorytellerAgenticCurrentStory;
   onApplied?: () => void;
 }) {
@@ -86,12 +90,22 @@ export function StorytellerAgenticProposalCard({
   const [errorMessage, setErrorMessage] = useState("");
 
   const apply = useApplyStorytellerAgentProposal(projectPublicId);
-  const revert = useRevertStorytellerStoryVersion(
+  // Rules of Hooks 不能依 targetKind 條件呼叫其中一個——兩個 revert hook 都固定
+  // 呼叫，未命中的那個因為沒真的被觸發 mutate 不會有副作用，下面依 targetKind
+  // 只挑其中一個的 mutate/isPending 來用。
+  const revertStory = useRevertStorytellerStoryVersion(
     projectPublicId,
-    storyPublicId,
+    targetKind === "story" ? targetPublicId : undefined,
   );
+  const revertLore = useRevertStorytellerLoreVersion(
+    projectPublicId,
+    targetKind === "lore" ? targetPublicId : undefined,
+  );
+  const revert = targetKind === "lore" ? revertLore : revertStory;
 
-  const isUpsertStory = proposal.tool_name === UPSERT_STORY_TOOL;
+  const isUpsertStory =
+    proposal.tool_name === UPSERT_STORY_TOOL ||
+    proposal.tool_name === UPSERT_LORE_TOOL;
   const proposedTitle =
     typeof proposal.arguments.title === "string"
       ? proposal.arguments.title

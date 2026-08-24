@@ -33,6 +33,7 @@ type Service struct {
 type agentRunRepository interface {
 	ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error)
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
+	Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error
@@ -927,11 +928,20 @@ func (s *Service) MoveStory(userID uint64, projectPublicID, storyPublicID string
 // resolveVolumeParent 把呼叫端帶來的冊 public_id 轉成內部的 Story：留空代表不分冊，
 // 目標必須存在且是冊（is_volume=true），否則視為請求錯誤——不支援冊中冊，一般故事
 // 也不能把 parent_id 指到另一篇一般故事。
+//
+// AI Agent 呼叫 storyteller_upsert_story 時，即使工具描述寫明「省略這個 key 代表維持
+// 原冊籍歸屬」，觀察到 Grok 有時還是會把這個可省略欄位填成 Python 風格的 "None" 字面
+// 字串，而不是真的不帶這個 key。這裡把它當成跟空字串同義處理，不然會真的去找一本叫
+// "None" 的冊，查無結果，套用提案就會失敗（外層看到的是誤導性的「project not found」）。
 func (s *Service) resolveVolumeParent(projectID uint64, volumePublicID *string) (*storytellerModel.Story, error) {
-	if volumePublicID == nil || strings.TrimSpace(*volumePublicID) == "" {
+	if volumePublicID == nil {
 		return nil, nil
 	}
-	parent, err := s.repo.Story(projectID, strings.TrimSpace(*volumePublicID))
+	value := strings.TrimSpace(*volumePublicID)
+	if value == "" || value == "None" {
+		return nil, nil
+	}
+	parent, err := s.repo.Story(projectID, value)
 	if err != nil {
 		return nil, err
 	}
@@ -3083,14 +3093,17 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (string, string) {
 	systemPrompt := strings.TrimSpace(`You are Storyteller's writing assistant. Help the user process story text.
 
-Rules:
-- Follow the purpose, tone, and constraints configured for this Agent.
+Rules:`)
+	if !input.IgnoreAgentPersona {
+		systemPrompt += "\n- Follow the purpose, tone, and constraints configured for this Agent."
+	}
+	systemPrompt += `
 - Unless the user asks for analysis, output content that can be placed directly back into the story.
 - Do not include unrelated prefaces, conclusions, or explanations.
-- Do not store, disclose, or request sensitive information.
-
-Agent default configuration:
-` + strings.TrimSpace(agent.DefaultPrompt))
+- Do not store, disclose, or request sensitive information.`
+	if !input.IgnoreAgentPersona {
+		systemPrompt += "\n\nAgent default configuration:\n" + strings.TrimSpace(agent.DefaultPrompt)
+	}
 
 	sections := []string{
 		"Task mode:\n" + string(input.Mode),

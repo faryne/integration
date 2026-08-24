@@ -87,6 +87,10 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 type AgenticQueryOptions struct {
 	ProviderAPIKeyID *uint64
 	ModelName        string
+	// IgnoreAgentPersona 見 storytellerModel.AgenticQueryRequest 的說明：true 時
+	// system prompt 略過這個 Agent 的 DefaultPrompt，但 key／model／usage log／
+	// chat 記錄仍然照常用這個 Agent。
+	IgnoreAgentPersona bool
 }
 
 // RunStoryAgenticQuery 是 Phase 4 把 Phase 3 雛型收斂成的第一個正式可呼叫功能：
@@ -158,7 +162,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
-		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, story.PublicID, story.Title),
+		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetStory, story.PublicID, story.Title, opts.IgnoreAgentPersona),
 		UserPrompt:   userPrompt,
 		Tools:        tools,
 	})
@@ -191,13 +195,104 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	return output, nil
 }
 
+// RunLoreAgenticQuery 是 RunStoryAgenticQuery 的設定集版本——同一顆前端面板
+// （StorytellerAgenticPanel）、同一套工具、同一套 Proposal／ApplyAgentProposal
+// 機制，差別只在「目前是哪一筆在編輯」換成 Lore，system prompt 的 @thisLore
+// 指向也跟著換（見 agenticQuerySystemPrompt）。
+func (s *Service) RunLoreAgenticQuery(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
+	writeToolNames := WriteStorytellerToolNames()
+	tools := StorytellerToolRegistry().All()
+	tools = CaptureWriteToolsAsProposals(tools, writeToolNames)
+	tools = ScopeToolsToProject(tools, projectPublicID)
+	return runLoreAgenticQuery(ctx, s.repo, NewAgenticAIProvider, tools, writeToolNames, userID, projectPublicID, lorePublicID, agentID, userPrompt, opts)
+}
+
+func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, lorePublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
+	if strings.TrimSpace(userPrompt) == "" {
+		return nil, errAgenticQueryEmptyPrompt
+	}
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore, err := repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	agent, err := repo.Agent(userID, agentID)
+	if err != nil {
+		return nil, err
+	}
+	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, opts.ProviderAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
+	modelName := resolveAgentModelName(agent, opts.ModelName)
+	if strings.TrimSpace(modelName) == "" {
+		return nil, errAgentModelNameNotConfigured
+	}
+	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
+	if err != nil {
+		return nil, err
+	}
+	apiKey, err := decryptProviderAPIKey(providerAPIKeyRow)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx = WithStorytellerUserID(ctx, userID)
+	ctx = WithStorytellerSource(ctx, "agentic_query")
+
+	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
+		Provider:     provider,
+		APIKey:       apiKey,
+		ModelName:    modelName,
+		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetLore, lore.PublicID, lore.Title, opts.IgnoreAgentPersona),
+		UserPrompt:   userPrompt,
+		Tools:        tools,
+	})
+	if loopResult == nil {
+		return nil, loopErr
+	}
+
+	output := &AgenticQueryOutput{
+		AgentID:   agent.ID,
+		Provider:  providerAPIKeyRow.Provider,
+		ModelName: modelName,
+		Result:    loopResult.FinalText,
+		Steps:     loopResult.Steps,
+		Proposals: ExtractProposals(loopResult, writeToolNames),
+		Usage:     loopResult.Usage,
+	}
+	chat, messages := buildLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, output)
+	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	if err := repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
+		return nil, err
+	}
+	if loopErr != nil {
+		return output, loopErr
+	}
+	return output, nil
+}
+
 var errAgenticQueryEmptyPrompt = agenticQueryError("user_prompt is required")
 
 type agenticQueryError string
 
 func (e agenticQueryError) Error() string { return string(e) }
 
-func agenticQuerySystemPrompt(agent storytellerModel.Agent, projectPublicID, currentStoryPublicID, currentStoryTitle string) string {
+// agenticQueryCurrentTargetKind 標出這輪對話是從故事編輯頁還是設定集編輯頁的 AI
+// 助理面板發起——兩邊共用同一顆前端面板、同一套工具，差別只在「@thisStory／
+// @thisLore」目前指的是哪一筆，以及要記進 storyteller_story_chats 的是 StoryID
+// 還是 LoreID（見 buildAgenticQueryChat／buildLoreAgenticQueryChat）。
+type agenticQueryCurrentTargetKind string
+
+const (
+	agenticQueryCurrentTargetStory agenticQueryCurrentTargetKind = "story"
+	agenticQueryCurrentTargetLore  agenticQueryCurrentTargetKind = "lore"
+)
+
+func agenticQuerySystemPrompt(agent storytellerModel.Agent, projectPublicID string, currentKind agenticQueryCurrentTargetKind, currentPublicID, currentTitle string, ignoreAgentPersona bool) string {
 	base := strings.TrimSpace(`You are Storyteller's writing assistant, running in agentic mode: you can call
 read-only tools (storyteller_get_*, storyteller_list_*) to look up the user's stories, lore/worldbuilding
 entries, and assets before answering, instead of only seeing what's pasted into this conversation. You can
@@ -206,14 +301,25 @@ propose a change — but these calls do NOT take effect immediately. Each write 
 as a pending proposal for the user to review and explicitly confirm; you will get back a message saying so,
 not a confirmation that the change happened.
 
-Rules:
-- Follow the purpose, tone, and constraints configured for this Agent.
+Rules:`)
+	if !ignoreAgentPersona {
+		base += "\n- Follow the purpose, tone, and constraints configured for this Agent."
+	}
+	base += `
 - Only call tools when you actually need information you don't already have, or when the user is asking you
   to make a concrete change; don't call a tool "just in case" if it isn't needed.
 - Every tool call must use the project_public_id given below — you have no access to any other project.
-- When proposing a write, pass the FULL intended final state as the tool arguments (e.g. for
-  storyteller_upsert_story, include the complete updated content, not just a diff or a description of the
-  change) — the user will see exactly what you pass as the proposed new state.
+- When proposing a write (storyteller_upsert_story, storyteller_upsert_lore, or any other write tool with a
+  content-bearing argument), pass the FULL intended final content as that tool argument, not just a diff or a
+  description of the change. The proposal card the user reviews is rendered purely from the arguments you pass
+  — it does NOT read your chat reply. Writing the content out in your chat reply instead of (or in addition to)
+  the tool argument does not count: the user will see an empty or stale diff and, if they approve it, an empty
+  or stale overwrite. Never describe content you didn't actually put in the argument.
+- When the intent is to UPDATE an existing story or lore entry (including "@thisStory"/"@thisLore", or anything
+  you already have a public_id for from storyteller_get_story/get_lore/list_stories/list_lores), you MUST pass
+  that story_public_id/lore_public_id back in the upsert call. Omitting it does not mean "keep everything else
+  the same" — it means "create a brand new, separate item" — so leaving it out when you meant to update silently
+  creates a duplicate instead, and the user's edit area won't show any change at all.
 - After proposing one or more writes, tell the user in your final answer what you've prepared for them to
   review; never claim a write has already been applied.
 - If a tool call fails or returns unexpected data, explain what you tried and continue with the best answer
@@ -222,23 +328,29 @@ Rules:
 
 Reference syntax — the user's message may contain "@" references that the frontend does not expand for you;
 you are expected to resolve them yourself with tools before answering:
-- "@thisStory" means the story currently open in the editor (its story_public_id is given below) — call
-  storyteller_get_story with that id to read it.
-- "@story:<title>" refers to a different story by title — call storyteller_list_stories to find the one whose
-  title matches, then storyteller_get_story to read it. If nothing matches closely, say so instead of guessing.
+- "@thisStory" means the story currently open in the editor (only meaningful when the current context below is
+  a story) — call storyteller_get_story with its story_public_id, given below, to read it.
+- "@thisLore" means the lore/worldbuilding entry currently open in the editor (only meaningful when the current
+  context below is a lore entry) — call storyteller_get_lore with its lore_public_id, given below, to read it.
+- "@story:<title>" refers to a story by title — call storyteller_list_stories to find the one whose title
+  matches, then storyteller_get_story to read it. If nothing matches closely, say so instead of guessing.
 - "@lore:<title>" refers to a lore/worldbuilding entry by title — same pattern with storyteller_list_lores and
   storyteller_get_lore.
 - Only resolve a reference if the user's message actually needs its content to answer; don't fetch every
-  reference reflexively if the question doesn't depend on it.`)
+  reference reflexively if the question doesn't depend on it.`
 	instructions := strings.TrimSpace(agent.DefaultPrompt)
-	if instructions != "" {
+	if instructions != "" && !ignoreAgentPersona {
 		base = base + "\n\nAgent-specific instructions:\n" + instructions
 	}
 	base = base + "\n\nAuthorized project_public_id for this conversation: " + projectPublicID
-	if strings.TrimSpace(currentStoryPublicID) != "" {
-		base = base + "\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + currentStoryPublicID
-		if strings.TrimSpace(currentStoryTitle) != "" {
-			base = base + ", title=" + currentStoryTitle
+	if strings.TrimSpace(currentPublicID) != "" {
+		if currentKind == agenticQueryCurrentTargetLore {
+			base = base + "\nCurrent lore (what \"@thisLore\" refers to): lore_public_id=" + currentPublicID
+		} else {
+			base = base + "\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + currentPublicID
+		}
+		if strings.TrimSpace(currentTitle) != "" {
+			base = base + ", title=" + currentTitle
 		}
 	}
 	return base
@@ -250,11 +362,27 @@ func buildAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent,
 		AgentID: agent.ID,
 		UserID:  userID,
 	}
-	messages := []storytellerModel.StoryChatMessage{
+	return chat, agenticQueryChatMessages(agent, userPrompt, output)
+}
+
+// buildLoreAgenticQueryChat 是 buildAgenticQueryChat 的設定集版本，見
+// RunLoreAgenticQuery 的說明。
+func buildLoreAgenticQueryChat(userID, loreID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+	chat := &storytellerModel.StoryChat{
+		LoreID:  &loreID,
+		AgentID: agent.ID,
+		UserID:  userID,
+	}
+	return chat, agenticQueryChatMessages(agent, userPrompt, output)
+}
+
+func agenticQueryChatMessages(agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) []storytellerModel.StoryChatMessage {
+	return []storytellerModel.StoryChatMessage{
 		{
-			AgentID: &agent.ID,
-			Role:    storytellerModel.ChatMessageRoleUser,
-			Content: userPrompt,
+			AgentID:  &agent.ID,
+			Role:     storytellerModel.ChatMessageRoleUser,
+			Content:  userPrompt,
+			Metadata: "{}",
 		},
 		{
 			AgentID:  &agent.ID,
@@ -263,53 +391,39 @@ func buildAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent,
 			Metadata: agenticQueryOutputMetadata(output),
 		},
 	}
-	return chat, messages
 }
 
-// agenticQueryOutputMetadata 把這輪呼叫過的工具記成 JSON，存進既有 StoryChatMessage
-// 的 Metadata 欄位（沿用 agentRunOutputMetadata 的既有慣例）。這個 repo 的
-// ChatMessageRole 目前只有 system/user/assistant 三種，沒有獨立的 "tool" 角色，
-// 要幫這個加一個新角色是 DB schema 異動，這輪刻意不做（範圍控制）——多輪工具呼叫
-// 的完整過程改用這個 metadata JSON 壓縮記錄，不逐則存成獨立訊息列。
+// agenticQueryOutputMetadata 把這輪呼叫過的工具過程記成 JSON，存進既有
+// StoryChatMessage 的 Metadata 欄位（沿用 agentRunOutputMetadata 的既有慣例）。
+// 這個 repo 的 ChatMessageRole 目前只有 system/user/assistant 三種，沒有獨立的
+// "tool" 角色，要幫這個加一個新角色是 DB schema 異動，這輪刻意不做（範圍
+// 控制）——多輪工具呼叫的完整過程改用這個 metadata JSON 記錄，不逐則存成獨立
+// 訊息列。
+//
+// Steps/Proposals 直接重用 output.ToResponse() 轉出來的 DTO，跟這輪對話當下
+// 回給前端的 AgenticQueryResponse 是同一份形狀（tool_calls 含 arguments、
+// results 含完整 content），這樣前端重新載入歷史訊息時解析 metadata 才能還原出
+// 跟當下即時畫面一樣的「工作軌跡」，而不是只剩工具名稱的殘缺版本。
 func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
-	type toolCallLogEntry struct {
-		Name  string `json:"name"`
-		Error string `json:"error,omitempty"`
-	}
-	type proposalLogEntry struct {
-		ToolCallID string                 `json:"tool_call_id"`
-		ToolName   string                 `json:"tool_name"`
-		Arguments  map[string]interface{} `json:"arguments"`
-	}
 	type queryMetadata struct {
-		Mode      string             `json:"mode"`
-		StepCount int                `json:"step_count"`
-		ToolCalls []toolCallLogEntry `json:"tool_calls,omitempty"`
+		Mode      string                               `json:"mode"`
+		StepCount int                                  `json:"step_count"`
+		Steps     []storytellerModel.AgenticStepOutput `json:"steps,omitempty"`
 		// Proposals 存下來讓聊天歷史重新載入時，前端還看得到這輪對話當初提出過
 		// 哪些待確認的寫入提案（不代表還沒被套用或還沒過期，前端要自己比對這篇
 		// 故事/設定集目前的版本判斷這個提案是否還有意義）。
-		Proposals []proposalLogEntry `json:"proposals,omitempty"`
+		Proposals []storytellerModel.AgenticProposalOutput `json:"proposals,omitempty"`
 	}
-	meta := queryMetadata{Mode: "agentic_query", StepCount: len(output.Steps)}
-	for _, step := range output.Steps {
-		for i, call := range step.ToolCalls {
-			entry := toolCallLogEntry{Name: call.Name}
-			if i < len(step.Results) && step.Results[i].Err != nil {
-				entry.Error = step.Results[i].Err.Error()
-			}
-			meta.ToolCalls = append(meta.ToolCalls, entry)
-		}
-	}
-	for _, proposal := range output.Proposals {
-		meta.Proposals = append(meta.Proposals, proposalLogEntry{
-			ToolCallID: proposal.ToolCallID,
-			ToolName:   proposal.ToolName,
-			Arguments:  proposal.Arguments,
-		})
+	response := output.ToResponse()
+	meta := queryMetadata{
+		Mode:      "agentic_query",
+		StepCount: len(output.Steps),
+		Steps:     response.Steps,
+		Proposals: response.Proposals,
 	}
 	body, err := json.Marshal(meta)
 	if err != nil {
-		return ""
+		return "{}"
 	}
 	return string(body)
 }

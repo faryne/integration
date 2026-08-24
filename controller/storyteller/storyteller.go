@@ -490,8 +490,9 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		agentID,
 		input.UserPrompt,
 		storyteller.AgenticQueryOptions{
-			ProviderAPIKeyID: input.ProviderAPIKeyID,
-			ModelName:        input.ModelName,
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
 		},
 	)
 	if err != nil {
@@ -506,6 +507,48 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		// 要把已經算出來的部分回給前端，只是標一個 warning 讓前端知道沒拿到最終
 		// 答案——回應形狀跟正常成功時完全一樣（都是 AgenticQueryResponse），前端
 		// 不用另外處理一種特殊的錯誤回應格式。
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// RunLoreAgenticQuery 是 RunStoryAgenticQuery 的設定集版本，見
+// storyteller.RunLoreAgenticQuery 的說明——同一個 ApplyAgentProposal 端點就能
+// 套用兩邊產生的提案，不需要另外分開。
+func RunLoreAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunLoreAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("lore"),
+		agentID,
+		input.UserPrompt,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
+		},
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or lore not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
 		if result != nil {
 			response := result.ToResponse()
 			response.Warning = err.Error()
