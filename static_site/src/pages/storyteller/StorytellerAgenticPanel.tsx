@@ -876,6 +876,11 @@ export function StorytellerAgenticPanel({
     };
     setAgenticMessages((prev) => [...prev, userMessage]);
     setPrompt("");
+    // 回覆摘要只該陪著這一次送出的內容，訊息本身已經把 replyReferenceTarget
+    // 組進 instruction 裡了（見兩個呼叫端都用 composeStorytellerAgentInstructionWithReply）
+    // ——送出後就該清空，不然使用者送完下一則訊息時，輸入框上方還會一直卡著
+    // 上一次回覆的摘要，跟這次送出的內容完全對不上。
+    setReplyTarget(null);
 
     runAgenticQuery.mutate(
       {

@@ -806,6 +806,8 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		}
 	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
+	} else {
+		input.Content = backfillStoryMarkerIds(input.Content)
 	}
 	parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
 	if err != nil {
@@ -865,6 +867,8 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		}
 	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
+	} else {
+		input.Content = backfillStoryMarkerIds(input.Content)
 	}
 	// ParentID == nil 代表這次存檔沒有要動冊隸屬（例如狀態切換、拖曳排序、一般編輯頁存檔），
 	// 維持故事目前的 parent_id 不動；只有明確帶了 parent_id（含空字串代表移出冊）才處理。
@@ -1700,6 +1704,54 @@ func splitHeadingAndMarkerContent(line string) (int, string, string) {
 	return headingLevel, blockPrefix, content
 }
 
+// backfillStoryMarkerIds 幫任何還沒有段落 markerId 的行補一個新的，行為對應前端
+// wysiwygCore/markerParagraph.ts 的 appendTransaction 自動補 id 機制——那套機制
+// 綁在活著的 Tiptap 編輯器實例上，只有內容真的流過網頁編輯器的 setContent／
+// onUpdate 才會觸發。MCP 用 PAT 直接呼叫 storyteller_upsert_story／
+// storyteller_upsert_lore、或 AI agent 提案套用時，內容從沒進過編輯器，一路
+// 存到這裡都不會有 markerId；markerId 是書籤/標題錨點/閱讀頁 TOC 的定位依據，
+// 沒有的話這些功能都連不到對應段落。統一在存檔前這個關卡補齊，前端／MCP／
+// AI 都不用管這件事，也不用在各自的呼叫端各刻一份——已經有合法 markerId 的行
+// 原樣跳過，對任何內容重複呼叫都是 no-op，可以安全地無條件套用在每一次存檔。
+//
+// 逐行處理（跟前端 serializeDocToMarkdown 的「一行一段落」慣例對稱），表格列
+// 有自己的 tableId／rowId 機制，不歸這裡管，直接跳過。
+func backfillStoryMarkerIds(content string) string {
+	lines := strings.Split(content, "\n")
+	changed := false
+	for i, line := range lines {
+		if _, _, ok := parseStoryTableMarker(line); ok {
+			continue
+		}
+		headingLevel := 0
+		for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
+			headingLevel++
+		}
+		prefixEnd := 0
+		if headingLevel > 0 && headingLevel < len(line) && line[headingLevel] == ' ' {
+			prefixEnd = headingLevel + 1
+		}
+		rest := line[prefixEnd:]
+		blockPrefix := ""
+		if prefixEnd == 0 {
+			if match := blockKindPrefixPattern.FindString(rest); match != "" {
+				blockPrefix = match
+				rest = rest[len(match):]
+			}
+		}
+		if match := storyMarkerPattern.FindStringSubmatch(rest); match != nil && match[1] == match[3] && match[1] != "" {
+			continue
+		}
+		newMarkerId := randomID()
+		lines[i] = line[:prefixEnd] + blockPrefix + "⟦" + newMarkerId + "⟧" + rest + "⟦/" + newMarkerId + "⟧"
+		changed = true
+	}
+	if !changed {
+		return content
+	}
+	return strings.Join(lines, "\n")
+}
+
 // storyInlineMarkerPattern 比照前端 wysiwygCore/parser.ts 的行內 marker（span 文字顏色、
 // a 連結、footnote 腳注、comment 註解等）：`⟦<type>-<id> attr="..."⟧` 開頭跟
 // `⟦/<type>-<id>⟧` 結尾。這裡不管配對、單純把記號本身抽掉（保留被包住的文字），因為
@@ -1969,6 +2021,7 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	}
+	input.Content = backfillStoryMarkerIds(input.Content)
 	var collectionID *uint64
 	if input.CollectionID != nil {
 		collectionID, err = s.resolveLoreCollectionID(project.ID, *input.CollectionID)
@@ -2009,6 +2062,7 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
 	}
+	input.Content = backfillStoryMarkerIds(input.Content)
 	lore, err = s.repo.Lore(project.ID, lorePublicID)
 	if err != nil {
 		return nil, false, err

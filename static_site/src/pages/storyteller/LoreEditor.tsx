@@ -652,6 +652,8 @@ export default function StorytellerLoreEditor({
   ) {
     const args = proposal.arguments;
     const nextTitle = typeof args.title === "string" ? args.title : title;
+    // 段落 markerId 不用在這裡處理——後端存檔時統一補齊（見
+    // backfillStoryMarkerIds），這裡送什麼內容過去都不用擔心。
     const nextContent =
       typeof args.content === "string" ? args.content : content;
     const nextCollectionId =
@@ -684,10 +686,16 @@ export default function StorytellerLoreEditor({
         },
         {
           onSuccess: (savedLore) => {
+            // 後端存檔時會補齊段落 markerId（見 backfillStoryMarkerIds），實際存進
+            // DB 的內容跟這裡送出去的 nextContent 不會逐字一樣——改用回應帶回來的
+            // latest_content 同步編輯區，不然編輯區顯示的 markerId 會跟資料庫裡的
+            // 對不上（各自隨機產生），書籤等功能定位會失準。
+            const savedContent = savedLore?.latest_content ?? nextContent;
+            setContent(savedContent);
             const savedDraft = serializeLoreDraft(
               nextTitle,
               nextCollectionId,
-              nextContent,
+              savedContent,
             );
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
