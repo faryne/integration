@@ -192,6 +192,84 @@ func rejectAgentProposalByID(repo agentRunRepository, userID uint64, projectPubl
 	return nil
 }
 
+// ErrAgentProposalNotAcknowledgeable 代表這筆提案的工具不是 upsert_story／
+// upsert_lore，不能走「只標記、不執行」這條路——刪除/搬移/回退這類操作沒有
+// 編輯區可以承接內容，前端唯一能做的就是真的呼叫 ApplyAgentProposal 執行，
+// 不能假裝已經套用。
+var ErrAgentProposalNotAcknowledgeable = errors.New("only upsert proposals can be marked applied without executing")
+
+// MarkAgentProposalApplied 把一筆 upsert_story／upsert_lore 提案標成 applied，
+// 但不執行底層工具——用在前端已經把提案內容填進編輯區、透過一般存檔 API
+// （save_trigger=agent_apply）自己寫入過一次之後，只需要把這筆提案的狀態
+// 收尾，不需要（也不該）讓後端再用提案裡的舊參數重寫一次，蓋掉使用者存檔
+// 當下可能已經手動調整過的內容。
+func (s *Service) MarkAgentProposalApplied(ctx context.Context, userID uint64, projectPublicID, proposalPublicID string) error {
+	return markAgentProposalAppliedByID(s.repo, userID, projectPublicID, proposalPublicID)
+}
+
+func markAgentProposalAppliedByID(repo agentRunRepository, userID uint64, projectPublicID, proposalPublicID string) error {
+	if _, err := repo.ProjectByPublicIDForUser(userID, projectPublicID); err != nil {
+		return err
+	}
+	proposal, err := repo.AgentProposalByPublicIDForUser(userID, proposalPublicID)
+	if err != nil {
+		return err
+	}
+	if !isUpsertProposalTool(strings.TrimSpace(proposal.ToolName)) {
+		return ErrAgentProposalNotAcknowledgeable
+	}
+	if proposal.Status != storytellerModel.AgentProposalStatusPending {
+		return ErrAgentProposalAlreadyResolved
+	}
+	now := time.Now()
+	rows, err := repo.UpdateAgentProposalStatus(proposal.ID, storytellerModel.AgentProposalStatusApplied, &now)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrAgentProposalAlreadyResolved
+	}
+	return nil
+}
+
+// ResetAgentProposalToPending 把一筆 applied 的提案退回 pending、清掉
+// applied_at——用在使用者按下「回復到套用前版本」把故事/設定集內容退回去之後，
+// 這筆提案代表的決定也要一併撤銷：不這樣做的話，提案會永遠卡在 applied，
+// 畫面上只剩「查看變更」能按，使用者沒辦法回頭改變主意重新套用或改成否決。
+func (s *Service) ResetAgentProposalToPending(ctx context.Context, userID uint64, projectPublicID, proposalPublicID string) error {
+	return resetAgentProposalToPendingByID(s.repo, userID, projectPublicID, proposalPublicID)
+}
+
+func resetAgentProposalToPendingByID(repo agentRunRepository, userID uint64, projectPublicID, proposalPublicID string) error {
+	if _, err := repo.ProjectByPublicIDForUser(userID, projectPublicID); err != nil {
+		return err
+	}
+	proposal, err := repo.AgentProposalByPublicIDForUser(userID, proposalPublicID)
+	if err != nil {
+		return err
+	}
+	if proposal.Status != storytellerModel.AgentProposalStatusApplied {
+		return ErrAgentProposalAlreadyResolved
+	}
+	rows, err := repo.ResetAppliedAgentProposalToPending(proposal.ID)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrAgentProposalAlreadyResolved
+	}
+	return nil
+}
+
+const (
+	upsertStoryToolName = "storyteller_upsert_story"
+	upsertLoreToolName  = "storyteller_upsert_lore"
+)
+
+func isUpsertProposalTool(toolName string) bool {
+	return toolName == upsertStoryToolName || toolName == upsertLoreToolName
+}
+
 func applyAgentProposal(ctx context.Context, repo agentRunRepository, userID uint64, projectPublicID, toolName string, arguments map[string]interface{}) (interface{}, error) {
 	toolName = strings.TrimSpace(toolName)
 	if !WriteStorytellerToolNames()[toolName] {

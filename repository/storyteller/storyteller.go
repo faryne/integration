@@ -805,6 +805,22 @@ func (r *Repository) UpdateAgentProposalStatus(id uint64, status storytellerMode
 	return result.RowsAffected, result.Error
 }
 
+// ResetAppliedAgentProposalToPending 把一筆已經 applied 的提案退回 pending、清掉
+// applied_at——用在「回復到套用前版本」把內容退回去之後，這筆提案代表的決定
+// 也要一併撤銷，讓使用者能重新選擇套用或否決，不能卡在只剩「查看變更」可以
+// 按、卻永遠沒辦法重新套用的死路。Where 條件鎖 status='applied'，理由跟
+// UpdateAgentProposalStatus 一樣：避免跟另一個並發請求（例如使用者連點兩次
+// 「回復到套用前版本」）互相覆蓋。
+func (r *Repository) ResetAppliedAgentProposalToPending(id uint64) (int64, error) {
+	result := r.db.Model(&storytellerModel.AgentProposal{}).
+		Where("id = ? AND status = ?", id, storytellerModel.AgentProposalStatusApplied).
+		Updates(map[string]interface{}{
+			"status":     storytellerModel.AgentProposalStatusPending,
+			"applied_at": nil,
+		})
+	return result.RowsAffected, result.Error
+}
+
 func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]storytellerModel.AgentUsageSummaryRow, error) {
 	rows := make([]storytellerModel.AgentUsageSummaryRow, 0)
 	// project_id 沒有直接存在 usage log 上，透過 chat_id -> story_chats.story_id/

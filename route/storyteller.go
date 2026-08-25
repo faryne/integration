@@ -79,6 +79,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/stories/:story/agents/:agent/run", storyteller.RunAgent)
 	authenticated.Post("/projects/:project/stories/:story/agents/:agent/agentic-query", storyteller.RunStoryAgenticQuery)
 	authenticated.Post("/projects/:project/agentic-proposals/:proposal/apply", storyteller.ApplyAgentProposal)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/mark-applied", storyteller.MarkAgentProposalApplied)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reset", storyteller.ResetAgentProposal)
 	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reject", storyteller.RejectAgentProposal)
 	authenticated.Get("/projects/:project/stories/:story/chat-messages", storyteller.StoryChatMessages)
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)

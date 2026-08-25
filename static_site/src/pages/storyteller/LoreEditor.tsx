@@ -72,7 +72,10 @@ import {
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
-import type { StorytellerAsset } from "@/types/storyteller.ts";
+import type {
+  StorytellerAgenticProposal,
+  StorytellerAsset,
+} from "@/types/storyteller.ts";
 
 const autoSaveIntervalMinutesMin = 2;
 const autoSaveIntervalMinutesMax = 60;
@@ -130,6 +133,16 @@ function errorMessage(error: unknown, fallback: string) {
     return data.message || fallback;
   }
   return fallback;
+}
+
+// 這個 repo 的 public_id 一律是 8 bytes 隨機數 hex 編碼（見後端 randomID），固定
+// 16 個小寫十六進位字元——AI 提案裡的 collection_id 偶爾會出現不像這個形狀的
+// 髒值（例如把工具參數說明文字整段誤當成參數值回傳），這種值送到後端只會撞回
+// 400，且使用者完全看不出來是哪個欄位壞的。與其讓整次套用因為一個根本不像 id
+// 的髒欄位失敗，不如當作「AI 沒有真的要動這個欄位」直接忽略、保留目前分類，
+// 讓套用照樣能成功；欄位長得像合法 id 就正常信任，讓後端做最終的存在性驗證。
+function looksLikeStorytellerPublicId(value: string) {
+  return /^[0-9a-f]{16}$/.test(value);
 }
 
 export interface StorytellerLoreEditorProps {
@@ -629,6 +642,70 @@ export default function StorytellerLoreEditor({
     );
   }
 
+  // AI 助理提案卡片「套用提案」在提案目標剛好是目前這篇設定集時走這條路：把
+  // 提案帶的欄位填進編輯區、立刻用一般存檔 API 存一次（save_trigger 特別標成
+  // agent_apply，編輯歷史看得出這個版本是套用 AI 提案存的），失敗時整個
+  // reject，讓呼叫端（StorytellerAgenticProposalCard）知道不能把提案標成已
+  // 套用。沒帶到的欄位維持目前畫面上的值不動，不會被清空。
+  async function applyAgenticProposalToEditor(
+    proposal: StorytellerAgenticProposal,
+  ) {
+    const args = proposal.arguments;
+    const nextTitle = typeof args.title === "string" ? args.title : title;
+    const nextContent =
+      typeof args.content === "string" ? args.content : content;
+    const nextCollectionId =
+      typeof args.collection_id === "string" &&
+      (args.collection_id === "" ||
+        looksLikeStorytellerPublicId(args.collection_id))
+        ? args.collection_id
+        : selectedCollectionId;
+
+    setTitle(nextTitle);
+    setContent(nextContent);
+    setSelectedCollectionId(nextCollectionId);
+
+    const projectID = project?.id;
+    if (!projectID || isNewLore) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      saveLore.mutate(
+        {
+          lorePublicId: lore?.id,
+          input: {
+            title: nextTitle,
+            collection_id: nextCollectionId,
+            content: nextContent,
+            save_trigger: "agent_apply",
+            base_version_id: latestVersionIdRef.current,
+          },
+        },
+        {
+          onSuccess: (savedLore) => {
+            const savedDraft = serializeLoreDraft(
+              nextTitle,
+              nextCollectionId,
+              nextContent,
+            );
+            currentDraftRef.current = savedDraft;
+            lastSavedDraftRef.current = savedDraft;
+            showSnack("已套用 AI 提案並存檔。");
+            if (savedLore?.version_conflict) {
+              setVersionConflict(true);
+            }
+            resolve();
+          },
+          onError: (error) => {
+            showSnack(errorMessage(error, "套用 AI 提案存檔失敗。"), "error");
+            reject(error instanceof Error ? error : new Error("套用 AI 提案存檔失敗。"));
+          },
+        },
+      );
+    });
+  }
+
   function applyAgentText(
     result: string,
     action: "replace" | "insert" | "append" | "copy",
@@ -1124,6 +1201,7 @@ export default function StorytellerLoreEditor({
                     }))}
                   penName={userProfile?.pen_name}
                   onApplyText={applyAgentText}
+                  onApplyProposalToEditor={applyAgenticProposalToEditor}
                 />
               )}
             </Stack>

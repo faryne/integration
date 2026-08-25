@@ -81,7 +81,10 @@ import {
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
-import type { StorytellerAsset } from "@/types/storyteller.ts";
+import type {
+  StorytellerAgenticProposal,
+  StorytellerAsset,
+} from "@/types/storyteller.ts";
 
 const historyPerPage = 5;
 const autoSaveIntervalMinutesMin = 2;
@@ -147,6 +150,32 @@ function storyContentWordCount(content: string) {
 // 使用者離開後頂多是回到空白畫面，不會有「辛苦寫的東西不見了」的感覺。
 function isStoryDraftEmpty(title: string, content: string) {
   return title.trim() === "" && storyContentWordCount(content) === 0;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    typeof error.response === "object" &&
+    error.response !== null &&
+    "data" in error.response
+  ) {
+    const data = error.response.data as { message?: string };
+    return data.message || fallback;
+  }
+  return fallback;
+}
+
+// 這個 repo 的 public_id 一律是 8 bytes 隨機數 hex 編碼（見後端 randomID），固定
+// 16 個小寫十六進位字元——AI 提案裡的 volume_public_id 偶爾會出現不像這個形狀
+// 的髒值（例如把工具參數說明文字整段誤當成參數值回傳），這種值送到後端只會
+// 撞回 400，而且使用者完全看不出來是哪個欄位壞的。與其讓整次套用因為一個根
+// 本不像 id 的髒欄位失敗，不如當作「AI 沒有真的要動這個欄位」直接忽略、保留
+// 目前的冊別，讓套用照樣能成功；欄位長得像合法 id 就正常信任、照樣送出去，
+// 讓後端做最終的存在性驗證。
+function looksLikeStorytellerPublicId(value: string) {
+  return /^[0-9a-f]{16}$/.test(value);
 }
 
 function serializeStoryDraft(
@@ -870,6 +899,81 @@ export default function StorytellerStoryEditor({
     );
   }
 
+  // AI 助理提案卡片「套用提案」在提案目標剛好是目前這篇故事時走這條路：把提案
+  // 帶的欄位填進編輯區、立刻用一般存檔 API 存一次（save_trigger 特別標成
+  // agent_apply，編輯歷史看得出這個版本是套用 AI 提案存的，不是使用者手動存
+  // 的），失敗時整個 reject，讓呼叫端（StorytellerAgenticProposalCard）知道不
+  // 能把提案標成已套用。沒帶到的欄位（例如 AI 只改了內容、沒動標題）維持目前
+  // 畫面上的值不動，不會被清空。
+  async function applyAgenticProposalToEditor(proposal: StorytellerAgenticProposal) {
+    const args = proposal.arguments;
+    const nextTitle =
+      typeof args.title === "string" ? args.title : storyTitle;
+    const nextSummary =
+      typeof args.summary === "string" ? args.summary : storySummary;
+    const nextStatus =
+      args.status === "draft" || args.status === "completed"
+        ? args.status
+        : storyStatus;
+    const nextContent =
+      typeof args.content === "string" ? args.content : content;
+    const nextVolumeId =
+      typeof args.volume_public_id === "string" &&
+      (args.volume_public_id === "" ||
+        looksLikeStorytellerPublicId(args.volume_public_id))
+        ? args.volume_public_id
+        : selectedVolumeId;
+
+    setStoryTitle(nextTitle);
+    setStorySummary(nextSummary);
+    setStoryStatus(nextStatus);
+    setContent(nextContent);
+    setSelectedVolumeId(nextVolumeId);
+
+    if (!apiProject?.public_id || isNewStory) {
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      saveStory.mutate(
+        {
+          storyPublicId: story?.id,
+          input: {
+            title: nextTitle,
+            summary: nextSummary,
+            status: nextStatus,
+            sort: story?.sort ?? 0,
+            content: nextContent,
+            parent_id: nextVolumeId,
+            save_trigger: "agent_apply",
+            base_version_id: latestVersionIdRef.current,
+          },
+        },
+        {
+          onSuccess: (savedStory) => {
+            const savedDraft = serializeStoryDraft(
+              nextTitle,
+              nextSummary,
+              nextStatus,
+              nextVolumeId,
+              nextContent,
+            );
+            currentDraftRef.current = savedDraft;
+            lastSavedDraftRef.current = savedDraft;
+            setSaveMessage("已套用 AI 提案並存檔。");
+            setSaveMessageVisible(true);
+            if (savedStory?.version_conflict) {
+              setVersionConflict(true);
+            }
+            resolve();
+          },
+          onError: (err) =>
+            reject(new Error(errorMessage(err, "套用 AI 提案存檔失敗。"))),
+        },
+      );
+    });
+  }
+
   function applyAgentText(
     result: string,
     action: "replace" | "insert" | "append" | "copy",
@@ -1387,6 +1491,7 @@ export default function StorytellerStoryEditor({
                   lores={agenticLores}
                   penName={userProfile?.pen_name}
                   onApplyText={applyAgentText}
+                  onApplyProposalToEditor={applyAgenticProposalToEditor}
                 />
               )}
             </Stack>

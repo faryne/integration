@@ -601,6 +601,45 @@ func RejectAgentProposal(ctx fiber.Ctx) error {
 	return output.Success(map[string]any{"status": "rejected"})
 }
 
+// MarkAgentProposalApplied 把一筆 upsert_story／upsert_lore 提案標成 applied，
+// 不執行底層工具——前端已經把提案內容填進編輯區、用一般存檔 API 自己寫入過，
+// 這裡只負責把提案狀態收尾，同時避免後端拿提案裡的舊參數把使用者存檔當下
+// 可能又調整過的內容蓋掉。
+func MarkAgentProposalApplied(ctx fiber.Ctx) error {
+	err := storyteller.NewService().MarkAgentProposalApplied(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "applied"})
+}
+
+// ResetAgentProposal 把一筆已經 applied 的提案退回 pending——前端在「回復到套用
+// 前版本」成功之後呼叫，讓這筆提案的決定跟著撤銷，使用者可以重新選擇套用或
+// 否決，不會卡在只剩「查看變更」可以按的死路。
+func ResetAgentProposal(ctx fiber.Ctx) error {
+	err := storyteller.NewService().ResetAgentProposalToPending(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "pending"})
+}
+
 func isAgentProviderError(err error) bool {
 	return errors.Is(err, storyteller.ErrAIProviderInvalidAPIKey) ||
 		errors.Is(err, storyteller.ErrAIProviderRateLimited) ||
@@ -1250,10 +1289,14 @@ func DeleteUserProfile(ctx fiber.Ctx) error {
 // webVersionSource 把前端帶來的 save_trigger 轉成存進 story/lore version 的 source 標記，
 // 讓編輯歷史分得出這個版本是自動存檔還是手動按下存檔（未帶值的舊呼叫端一律當手動）。
 func webVersionSource(saveTrigger string) string {
-	if saveTrigger == "auto" {
+	switch saveTrigger {
+	case "auto":
 		return "web_auto"
+	case "agent_apply":
+		return "web_agent_apply"
+	default:
+		return "web_manual"
 	}
-	return "web_manual"
 }
 
 func parseUint(value string) (uint64, error) {

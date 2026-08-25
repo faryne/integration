@@ -39,6 +39,7 @@ type agentRunRepository interface {
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
 	AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error)
 	UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error)
+	ResetAppliedAgentProposalToPending(id uint64) (int64, error)
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)

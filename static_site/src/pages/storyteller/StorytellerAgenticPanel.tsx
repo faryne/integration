@@ -292,6 +292,7 @@ function AgenticAssistantMessage({
   currentStory,
   onStoryChanged,
   onApplyText,
+  onApplyProposalToEditor,
   onReply,
   isReplyTarget,
 }: {
@@ -308,6 +309,9 @@ function AgenticAssistantMessage({
     action: StorytellerAgentApplyAction,
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
+  onApplyProposalToEditor?: (
+    proposal: StorytellerAgenticProposal,
+  ) => Promise<void>;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   isReplyTarget?: boolean;
 }) {
@@ -381,6 +385,7 @@ function AgenticAssistantMessage({
                 targetPublicId={targetPublicId}
                 currentStory={currentStory}
                 onApplied={onStoryChanged}
+                onApplyToEditor={onApplyProposalToEditor}
               />
             ))}
           </Stack>
@@ -442,6 +447,7 @@ export function StorytellerAgenticPanel({
   lores,
   penName,
   onApplyText,
+  onApplyProposalToEditor,
   onStoryChanged,
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
@@ -460,6 +466,13 @@ export function StorytellerAgenticPanel({
     action: StorytellerAgentApplyAction,
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
+  // 提案卡片「套用提案」在提案目標剛好是目前這篇時，把提案欄位填進編輯區並
+  // 存一次檔——StoryEditor／LoreEditor 各自實作欄位怎麼對應、怎麼存，這裡只
+  // 負責往下傳。沒帶這個 prop（理論上不會發生，兩個呼叫端都有接）就退回
+  // StorytellerAgenticProposalCard 原本呼叫後端直接套用的行為。
+  onApplyProposalToEditor?: (
+    proposal: StorytellerAgenticProposal,
+  ) => Promise<void>;
   onStoryChanged?: () => void;
 }) {
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
@@ -1166,6 +1179,7 @@ export function StorytellerAgenticPanel({
                     currentStory={currentStory}
                     onStoryChanged={onStoryChanged}
                     onApplyText={onApplyText}
+                    onApplyProposalToEditor={onApplyProposalToEditor}
                     onReply={handleReply}
                     isReplyTarget={replyTarget?.id === message.id}
                   />

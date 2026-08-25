@@ -404,6 +404,15 @@ func (r *fakeAgentRunRepository) UpdateAgentProposalStatus(id uint64, status sto
 	return 1, nil
 }
 
+func (r *fakeAgentRunRepository) ResetAppliedAgentProposalToPending(id uint64) (int64, error) {
+	r.updatedProposalID = id
+	if r.proposal != nil {
+		r.proposal.Status = storytellerModel.AgentProposalStatusPending
+		r.proposal.AppliedAt = nil
+	}
+	return 1, nil
+}
+
 func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	r.chat = chat
 	r.messages = messages

@@ -548,7 +548,7 @@ export interface StorytellerStoryRequest {
   status: "draft" | "completed";
   sort: number;
   content: string;
-  save_trigger?: "auto" | "manual";
+  save_trigger?: "auto" | "manual" | "agent_apply";
   // 帶入目前手上內容對應的版本 id；若這篇故事的最新版本已經不是這個 id，
   // 後端會拒絕這次存檔並回 409，代表內容被別的地方（例如 MCP 工具）動過。
   base_version_id?: number;
@@ -561,7 +561,7 @@ export interface StorytellerStoryRequest {
 export interface StorytellerLoreRequest {
   title: string;
   content: string;
-  save_trigger?: "auto" | "manual";
+  save_trigger?: "auto" | "manual" | "agent_apply";
   base_version_id?: number;
   collection_id?: string;
 }

@@ -505,6 +505,51 @@ export function useApplyStorytellerAgentProposal(projectPublicId?: string) {
   });
 }
 
+// 把一筆 upsert_story／upsert_lore 提案標成 applied，但不執行底層工具——用在
+// 前端已經把提案內容填進編輯區、透過一般存檔 API（save_trigger=agent_apply）
+// 自己寫入過一次之後，只需要把這筆提案的狀態收尾，不能再讓後端拿提案裡的舊
+// 參數重寫一次，蓋掉存檔當下可能已經手動調整過的內容。
+export function useMarkStorytellerAgentProposalApplied(
+  projectPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (proposalPublicId: string) => {
+      const response = await axios.post<CommonResponse<unknown>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${proposalPublicId}/mark-applied`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// 把一筆已經 applied 的提案退回 pending——在「回復到套用前版本」成功之後呼叫，
+// 讓這筆提案的決定跟著撤銷，使用者可以重新選擇套用或否決，不會卡在只剩「查看
+// 變更」可以按、卻永遠沒辦法重新套用的死路。
+export function useResetStorytellerAgentProposal(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (proposalPublicId: string) => {
+      const response = await axios.post<CommonResponse<unknown>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${proposalPublicId}/reset`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
 // 否決一筆還沒被處理的提案——不會真的執行，單純讓「使用者已經看過、決定不
 // 套用」這件事持久化，重新整理頁面後這張提案卡片才不會又打回「待確認」。
 export function useRejectStorytellerAgentProposal(projectPublicId?: string) {
