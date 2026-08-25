@@ -37,6 +37,7 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
+import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
@@ -48,6 +49,7 @@ import {
 import type { StorytellerAgenticCurrentStory } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
 import { StorytellerAgenticProposalCard } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
 import {
+  buildStorytellerAgentMessageLinks,
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
   buildStorytellerAgentReplyReferenceContent,
@@ -285,6 +287,8 @@ function AgenticAssistantMessage({
   targetKind,
   projectPublicId,
   targetPublicId,
+  otherStories,
+  lores,
   currentStory,
   onStoryChanged,
   onApplyText,
@@ -295,6 +299,8 @@ function AgenticAssistantMessage({
   targetKind: "story" | "lore";
   projectPublicId?: string;
   targetPublicId?: string;
+  otherStories: { id: string; title: string; content: string }[];
+  lores: { id: string; title: string; content: string }[];
   currentStory: StorytellerAgenticCurrentStory;
   onStoryChanged?: () => void;
   onApplyText?: (
@@ -307,6 +313,13 @@ function AgenticAssistantMessage({
 }) {
   const isUser = message.role === "user";
   const canApply = !isUser && !message.isLoading && message.content.trim() !== "";
+  const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
+    targetKind,
+    projectPublicId,
+    targetPublicId,
+    otherStories,
+    lores,
+  });
   return (
     <Box
       data-agent-message-id={message.id}
@@ -344,7 +357,7 @@ function AgenticAssistantMessage({
         ) : (
           message.content && (
             <Box sx={{ typography: "body2", mt: 0.5 }}>
-              <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
+              <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
             </Box>
           )
         )}
@@ -459,6 +472,7 @@ export function StorytellerAgenticPanel({
     }
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
+  const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [providerApiKeyId, setProviderApiKeyId] = useState("");
   const [modelNameOverride, setModelNameOverride] = useState("");
   const [apiKeyMenuAnchor, setApiKeyMenuAnchor] = useState<HTMLElement | null>(
@@ -1134,6 +1148,11 @@ export function StorytellerAgenticPanel({
                     onApplyText={onApplyText}
                     onReply={handleReply}
                     isReplyTarget={replyTarget?.id === message.id}
+                    targetKind={targetKind}
+                    projectPublicId={projectPublicId}
+                    targetPublicId={targetPublicId}
+                    otherStories={otherStories}
+                    lores={lores}
                   />
                 ) : (
                   <AgenticAssistantMessage
@@ -1142,6 +1161,8 @@ export function StorytellerAgenticPanel({
                     targetKind={targetKind}
                     projectPublicId={projectPublicId}
                     targetPublicId={targetPublicId}
+                    otherStories={otherStories}
+                    lores={lores}
                     currentStory={currentStory}
                     onStoryChanged={onStoryChanged}
                     onApplyText={onApplyText}
@@ -1177,6 +1198,8 @@ export function StorytellerAgenticPanel({
                   targetKind={targetKind}
                   projectPublicId={projectPublicId}
                   targetPublicId={targetPublicId}
+                  otherStories={otherStories}
+                  lores={lores}
                   currentStory={currentStory}
                   onStoryChanged={onStoryChanged}
                 />
@@ -1235,17 +1258,35 @@ export function StorytellerAgenticPanel({
               </Button>
             </Stack>
           )}
-          <TextField
-            multiline
-            minRows={3}
-            maxRows={8}
-            label="輸入需求"
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            placeholder="例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
-            error={Boolean(payloadError)}
-            helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
-          />
+          <Box sx={{ position: "relative" }}>
+            <TextField
+              multiline
+              minRows={3}
+              maxRows={8}
+              fullWidth
+              inputRef={promptTextareaRef}
+              label="輸入需求"
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              placeholder="例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
+              error={Boolean(payloadError)}
+              helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
+              sx={{
+                "& .MuiInputBase-input": {
+                  color: "transparent",
+                  caretColor: (theme) => theme.palette.text.primary,
+                  "&::placeholder": {
+                    color: "text.secondary",
+                    opacity: 1,
+                  },
+                },
+              }}
+            />
+            <StorytellerPromptHighlightOverlay
+              text={prompt}
+              textareaRef={promptTextareaRef}
+            />
+          </Box>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
               size="small"

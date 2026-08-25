@@ -3,6 +3,7 @@ import ReplyIcon from "@mui/icons-material/Reply";
 import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -85,6 +86,13 @@ export interface StorytellerAgentMessageProps {
   ) => void;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   isReplyTarget?: boolean;
+  // 給 @thisStory／@story:[...] 這類引用 token 解析成真連結用——留空時
+  // （例如載入中的暫時訊息，content 本來就是空字串）直接照原樣顯示，不會出錯。
+  targetKind?: "story" | "lore";
+  projectPublicId?: string;
+  targetPublicId?: string;
+  otherStories?: { id: string; title: string; content: string }[];
+  lores?: { id: string; title: string; content: string }[];
 }
 
 // 由 StorytellerAgenticPanel.tsx（「AI 助理」面板）在渲染 skill（slash command）
@@ -93,6 +101,15 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
   const { message } = props;
   const isUser = message.role === "user";
   const canApply = !isUser && message.content.trim() !== "";
+  const linkedContent = props.targetKind
+    ? buildStorytellerAgentMessageLinks(message.content, {
+        targetKind: props.targetKind,
+        projectPublicId: props.projectPublicId,
+        targetPublicId: props.targetPublicId,
+        otherStories: props.otherStories ?? [],
+        lores: props.lores ?? [],
+      })
+    : message.content;
 
   return (
     <Box
@@ -143,7 +160,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           </Stack>
         ) : (
           <Box sx={{ typography: "body2", mt: 0.5 }}>
-            <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
+            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
           </Box>
         )}
         {!isUser && message.isCurrentResult && (

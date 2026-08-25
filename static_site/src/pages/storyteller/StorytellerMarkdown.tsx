@@ -10,6 +10,29 @@ interface StorytellerMarkdownProps {
 
 function markdownComponents() {
   return {
+    // 對話內容裡的連結一律開新分頁——最常見的來源是 @thisStory／@story:[...]
+    // 這類引用被 linkifyStorytellerAgentReferenceTokens 轉成真連結（見呼叫端），
+    // 點下去應該是「另外開一頁去看那篇」，不是在聊天面板裡整頁跳走。
+    // 顏色故意用 inherit 不寫死：這個元件會被套進使用者訊息泡泡（深色底、淺色
+    // 字）跟 AI 訊息泡泡（淺色底、深色字）兩種完全相反的配色，寫死任何一個固定色
+    // 都會在另一種情境下跟底色疊在一起看不見——靠底線＋粗體做出「這是連結」的
+    // 視覺區隔，文字顏色永遠跟隨當下泡泡本來就設定好、對比一定夠的顏色。
+    a: ({ href, children }: { href?: string; children?: ReactNode }) => (
+      <Box
+        component="a"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        sx={{
+          color: "inherit",
+          fontWeight: 700,
+          textDecoration: "underline",
+          textUnderlineOffset: "2px",
+        }}
+      >
+        {children}
+      </Box>
+    ),
     table: ({ children }: { children?: ReactNode }) => (
       <Box sx={{ overflowX: "auto", my: 2 }}>
         <Box

@@ -343,7 +343,12 @@ you are expected to resolve them yourself with tools before answering:
 - "@lore:<title>" refers to a lore/worldbuilding entry by title — same pattern with storyteller_list_lores and
   storyteller_get_lore.
 - Only resolve a reference if the user's message actually needs its content to answer; don't fetch every
-  reference reflexively if the question doesn't depend on it.`
+  reference reflexively if the question doesn't depend on it.
+- When YOUR OWN final answer mentions a specific story or lore entry by name, refer to it using this same
+  syntax — "@thisStory"/"@thisLore" for the one currently open, or "@story:[exact title]"/"@lore:[exact title]"
+  for any other one (copy the title exactly, including any brackets in it, between the square brackets) —
+  instead of just writing the bare title as plain text. The chat UI turns this syntax into a clickable link
+  straight to that item; plain text does not get that treatment.`
 	instructions := strings.TrimSpace(agent.DefaultPrompt)
 	if instructions != "" && !ignoreAgentPersona {
 		base = base + "\n\nAgent-specific instructions:\n" + instructions
