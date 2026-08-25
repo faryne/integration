@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -362,8 +363,12 @@ type fakeAgentRunRepository struct {
 	providerAPIKeyErr error
 	chat              *storytellerModel.StoryChat
 	messages          []storytellerModel.StoryChatMessage
+	proposals         []storytellerModel.AgentProposal
 	usage             *storytellerModel.AgentUsageLog
 	chatErr           error
+	proposal          *storytellerModel.AgentProposal
+	proposalErr       error
+	updatedProposalID uint64
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -386,9 +391,23 @@ func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerMod
 	return r.providerAPIKey, r.providerAPIKeyErr
 }
 
-func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error {
+func (r *fakeAgentRunRepository) AgentProposalByPublicIDForUser(uint64, string) (*storytellerModel.AgentProposal, error) {
+	return r.proposal, r.proposalErr
+}
+
+func (r *fakeAgentRunRepository) UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error) {
+	r.updatedProposalID = id
+	if r.proposal != nil {
+		r.proposal.Status = status
+		r.proposal.AppliedAt = appliedAt
+	}
+	return 1, nil
+}
+
+func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	r.chat = chat
 	r.messages = messages
+	r.proposals = proposals
 	r.usage = usage
 	return r.chatErr
 }

@@ -541,6 +541,34 @@ type StoryChat struct {
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }
 
+type AgentProposalStatus string
+
+const (
+	AgentProposalStatusPending  AgentProposalStatus = "pending"
+	AgentProposalStatusApplied  AgentProposalStatus = "applied"
+	AgentProposalStatusRejected AgentProposalStatus = "rejected"
+)
+
+// AgentProposal 是 AI 助理提出、被 CaptureWriteToolsAsProposals 攔下來的寫入類工具
+// 呼叫，取代原本只存在 chat message metadata JSON 快照裡的做法——這樣使用者
+// 套用／否決之後，狀態才有地方持久化，不會重新整理頁面就打回「待確認」。
+// ChatID 對應 storyteller_story_chats：每輪 agentic 對話都會建一筆新的 chat，
+// 一個 chat 剛好對應一則 assistant 訊息，不需要另外存 message_id。
+type AgentProposal struct {
+	ID         uint64              `gorm:"column:id;primaryKey" json:"id"`
+	PublicID   string              `gorm:"column:public_id" json:"public_id"`
+	ChatID     uint64              `gorm:"column:chat_id" json:"chat_id"`
+	ToolCallID string              `gorm:"column:tool_call_id" json:"tool_call_id"`
+	ToolName   string              `gorm:"column:tool_name" json:"tool_name"`
+	Arguments  string              `gorm:"column:arguments" json:"arguments"`
+	Status     AgentProposalStatus `gorm:"column:status" json:"status"`
+	AppliedAt  *time.Time          `gorm:"column:applied_at" json:"applied_at"`
+	CreatedAt  time.Time           `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt  time.Time           `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AgentProposal) TableName() string { return "storyteller_agent_proposals" }
+
 type StoryChatMessage struct {
 	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
 	ChatID    uint64          `gorm:"column:chat_id" json:"chat_id"`
@@ -992,12 +1020,15 @@ type AgenticStepOutput struct {
 }
 
 // AgenticProposalOutput 是 agent 這輪對話裡想呼叫、但被攔下來、還沒真的執行的
-// 寫入類工具呼叫。前端要套用時把 ToolName／Arguments 原樣送回
-// POST .../agentic-proposals/apply。
+// 寫入類工具呼叫，現在是持久化的 AgentProposal 資料列（見該型別的說明），不再是
+// 純快照——PublicID／Status 讓前端可以呼叫 POST .../agentic-proposals/:proposal/
+// apply 或 /reject，並且在重新整理頁面後看到正確的最新狀態，不會又打回「待確認」。
 type AgenticProposalOutput struct {
+	PublicID   string                 `json:"public_id"`
 	ToolCallID string                 `json:"tool_call_id"`
 	ToolName   string                 `json:"tool_name"`
 	Arguments  map[string]interface{} `json:"arguments"`
+	Status     AgentProposalStatus    `json:"status"`
 }
 
 // AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
@@ -1015,23 +1046,17 @@ type AgenticQueryResponse struct {
 	Warning string `json:"warning,omitempty"`
 }
 
-// ApplyAgentProposalRequest 是前端把先前收到的 AgenticProposalOutput 原樣送回、
-// 要求真的套用這個寫入提案的請求體。
-type ApplyAgentProposalRequest struct {
-	ToolName  string                 `json:"tool_name"`
-	Arguments map[string]interface{} `json:"arguments"`
-}
-
 type StoryChatMessageOutput struct {
-	ID        uint64          `json:"id"`
-	ChatID    uint64          `json:"chat_id"`
-	Role      ChatMessageRole `json:"role"`
-	Content   string          `json:"content"`
-	Metadata  string          `json:"metadata,omitempty"`
-	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
-	AgentName string          `json:"agent_name"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+	ID        uint64                  `json:"id"`
+	ChatID    uint64                  `json:"chat_id"`
+	Role      ChatMessageRole         `json:"role"`
+	Content   string                  `json:"content"`
+	Metadata  string                  `json:"metadata,omitempty"`
+	Proposals []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
+	AgentID   uint64                  `gorm:"column:agent_id" json:"agent_id"`
+	AgentName string                  `json:"agent_name"`
+	CreatedAt time.Time               `json:"created_at"`
+	UpdatedAt time.Time               `json:"updated_at"`
 }
 
 // AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 project/story/lore 的

@@ -36,7 +36,9 @@ type agentRunRepository interface {
 	Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
-	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error
+	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
+	AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error)
+	UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error)
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)
@@ -613,7 +615,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	}
 	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output)
 	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
-	if err := s.repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
+	if err := s.repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
 	return output, nil
@@ -716,7 +718,7 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	}
 	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output)
 	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
-	if err := repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
+	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
 	return output, nil

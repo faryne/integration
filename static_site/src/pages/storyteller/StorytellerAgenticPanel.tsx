@@ -390,13 +390,6 @@ function AgenticAssistantMessage({
             <Button
               size="small"
               variant="outlined"
-              onClick={() => onApplyText(message.content, "append", null)}
-            >
-              附加末尾
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
               startIcon={<ContentCopyIcon />}
               onClick={() => onApplyText(message.content, "copy", null)}
             >
@@ -633,25 +626,20 @@ export function StorytellerAgenticPanel({
     return "System";
   }
 
-  // agentic_query 模式的 assistant 訊息會把這輪的 tool_calls/proposals 存進
-  // metadata（見後端 agenticQueryOutputMetadata）；重新載入歷史時要從這裡解析
-  // 回 steps/proposals，畫面上的「工作軌跡」才不會在切分頁重新掛載後消失。
+  // agentic_query 模式的 assistant 訊息會把這輪的 tool_calls 存進 metadata（見
+  // 後端 agenticQueryOutputMetadata）；重新載入歷史時要從這裡解析回 steps，畫面
+  // 上的「工作軌跡」才不會在切分頁重新掛載後消失。Proposals 不在 metadata 裡，
+  // 後端直接把 storyteller_agent_proposals 的最新狀態貼在 message.proposals 上
+  // （見 StorytellerStoryChatMessage 的說明），不用另外解析。
   function parseAgenticMetadata(metadata?: string): {
     steps?: StorytellerAgenticStep[];
-    proposals?: StorytellerAgenticProposal[];
   } | null {
     if (!metadata) {
       return null;
     }
     try {
-      const parsed = JSON.parse(metadata) as {
-        steps?: StorytellerAgenticStep[];
-        proposals?: StorytellerAgenticProposal[];
-      };
-      if (
-        (!parsed.steps || parsed.steps.length === 0) &&
-        (!parsed.proposals || parsed.proposals.length === 0)
-      ) {
+      const parsed = JSON.parse(metadata) as { steps?: StorytellerAgenticStep[] };
+      if (!parsed.steps || parsed.steps.length === 0) {
         return null;
       }
       return parsed;
@@ -663,15 +651,16 @@ export function StorytellerAgenticPanel({
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
       const agentic = parseAgenticMetadata(message.metadata);
-      if (agentic && message.role !== "system") {
+      const hasProposals = (message.proposals?.length ?? 0) > 0;
+      if ((agentic || hasProposals) && message.role !== "system") {
         return {
           kind: "agentic",
           sortKey: new Date(message.created_at).getTime(),
           id: String(message.id),
           role: message.role,
           content: message.content,
-          steps: agentic.steps,
-          proposals: agentic.proposals,
+          steps: agentic?.steps,
+          proposals: message.proposals,
         };
       }
       return {

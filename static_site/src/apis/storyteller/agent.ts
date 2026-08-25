@@ -18,7 +18,6 @@ import type {
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
-  StorytellerApplyAgentProposalRequest,
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
   StorytellerPersonalAccessTokenRequest,
@@ -483,14 +482,16 @@ export function useRunStorytellerLoreAgenticQuery(
 // 套用先前 useRunStorytellerAgenticQuery 回傳、被攔下來還沒真的執行的寫入類
 // 工具呼叫。呼叫端要把當初收到的 StorytellerAgenticProposal 的 tool_name／
 // arguments 原樣送回來。
+// 提案的 tool_name／arguments 由後端自己保管（見後端 AgentProposal 的說明），
+// 呼叫端只需要帶 public_id，不用再自己保存/回傳整份提案內容。
 export function useApplyStorytellerAgentProposal(projectPublicId?: string) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: StorytellerApplyAgentProposalRequest) => {
+    mutationFn: async (proposalPublicId: string) => {
       const response = await axios.post<CommonResponse<unknown>>(
-        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/apply`,
-        input,
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${proposalPublicId}/apply`,
+        {},
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data;
@@ -498,6 +499,26 @@ export function useApplyStorytellerAgentProposal(projectPublicId?: string) {
     // 套用可能是改故事/設定集內容、也可能是刪除/搬移，影響範圍不固定，直接把
     // 整個 storyteller 底下的快取都標記過期，跟既有 useRevertStorytellerStoryVersion
     // 的做法一致，不用一一列出可能受影響的 query key。
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// 否決一筆還沒被處理的提案——不會真的執行，單純讓「使用者已經看過、決定不
+// 套用」這件事持久化，重新整理頁面後這張提案卡片才不會又打回「待確認」。
+export function useRejectStorytellerAgentProposal(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (proposalPublicId: string) => {
+      const response = await axios.post<CommonResponse<unknown>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${proposalPublicId}/reject`,
+        {},
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },

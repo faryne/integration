@@ -11,7 +11,10 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useApplyStorytellerAgentProposal } from "@/apis/storyteller/agent.ts";
+import {
+  useApplyStorytellerAgentProposal,
+  useRejectStorytellerAgentProposal,
+} from "@/apis/storyteller/agent.ts";
 import { useRevertStorytellerStoryVersion } from "@/apis/storyteller/story.ts";
 import { useRevertStorytellerLoreVersion } from "@/apis/storyteller/lore.ts";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
@@ -51,7 +54,21 @@ function isDangerousProposal(toolName: string): boolean {
   );
 }
 
-type ProposalStatus = "pending" | "applying" | "applied" | "cancelled" | "error";
+// pending／applied／rejected 是後端的真實狀態（見 StorytellerAgenticProposal）。
+// 這則卡片可能屬於「這次對話 session 裡剛產生」的訊息——那種訊息存在
+// StorytellerAgenticPanel 的 agenticMessages 這個純前端 state 裡，套用/否決
+// 成功後呼叫的 onApplied 只會讓故事/設定集內容跟 TanStack Query 快取重新整理，
+// 不會回頭改寫 agenticMessages 裡那則訊息的 proposal 物件——所以 proposal.status
+// 這個 prop 在同一個 session 裡永遠不會自己變成 applied/rejected，只有等頁面
+// 重新整理、改吃歷史訊息時才會是新的。因此套用/否決成功後要把本地狀態直接
+// 定格在對應的終態，不能只是清空、賭 prop 之後會更新。
+type LocalProposalStatus =
+  | "applying"
+  | "rejecting"
+  | "applied"
+  | "rejected"
+  | "error"
+  | null;
 
 export interface StorytellerAgenticCurrentStory {
   title: string;
@@ -78,18 +95,23 @@ export function StorytellerAgenticProposalCard({
   currentStory: StorytellerAgenticCurrentStory;
   onApplied?: () => void;
 }) {
-  const [status, setStatus] = useState<ProposalStatus>("pending");
+  const [localStatus, setLocalStatus] = useState<LocalProposalStatus>(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // 套用當下的版本 id，讓「回復到套用前版本」按鈕知道要退回哪一版——不能等要
   // revert 時才去讀 currentStory.versionId，那時候父層多半已經因為套用成功
-  // refetch 過，versionId 已經是套用「後」的了。
+  // refetch 過，versionId 已經是套用「後」的了。這個只在當次 session 有效，
+  // 重新整理頁面後（沒有經歷過「剛剛按下套用」那個當下）就不知道要退回哪一版，
+  // 屬於預期內的限制。
   const [preApplyVersionId, setPreApplyVersionId] = useState<number | null>(
     null,
   );
   const [errorMessage, setErrorMessage] = useState("");
 
+  const status = localStatus ?? proposal.status;
+
   const apply = useApplyStorytellerAgentProposal(projectPublicId);
+  const reject = useRejectStorytellerAgentProposal(projectPublicId);
   // Rules of Hooks 不能依 targetKind 條件呼叫其中一個——兩個 revert hook 都固定
   // 呼叫，未命中的那個因為沒真的被觸發 mutate 不會有副作用，下面依 targetKind
   // 只挑其中一個的 mutate/isPending 來用。
@@ -121,23 +143,35 @@ export function StorytellerAgenticProposalCard({
 
   function handleApply() {
     setPreApplyVersionId(currentStory.versionId);
-    setStatus("applying");
+    setLocalStatus("applying");
     setErrorMessage("");
-    apply.mutate(
-      { tool_name: proposal.tool_name, arguments: proposal.arguments },
-      {
-        onSuccess: () => {
-          setStatus("applied");
-          setDiffOpen(false);
-          setConfirmOpen(false);
-          onApplied?.();
-        },
-        onError: (err) => {
-          setStatus("error");
-          setErrorMessage(err instanceof Error ? err.message : "套用失敗");
-        },
+    apply.mutate(proposal.public_id, {
+      onSuccess: () => {
+        setLocalStatus("applied");
+        setDiffOpen(false);
+        setConfirmOpen(false);
+        onApplied?.();
       },
-    );
+      onError: (err) => {
+        setLocalStatus("error");
+        setErrorMessage(err instanceof Error ? err.message : "套用失敗");
+      },
+    });
+  }
+
+  function handleReject() {
+    setLocalStatus("rejecting");
+    setErrorMessage("");
+    reject.mutate(proposal.public_id, {
+      onSuccess: () => {
+        setLocalStatus("rejected");
+        onApplied?.();
+      },
+      onError: (err) => {
+        setLocalStatus("error");
+        setErrorMessage(err instanceof Error ? err.message : "否決失敗");
+      },
+    });
   }
 
   function handleRevert() {
@@ -146,7 +180,6 @@ export function StorytellerAgenticProposalCard({
     }
     revert.mutate(preApplyVersionId, {
       onSuccess: () => {
-        setStatus("pending");
         onApplied?.();
       },
     });
@@ -172,20 +205,22 @@ export function StorytellerAgenticProposalCard({
                 ? "success"
                 : status === "error"
                   ? "error"
-                  : status === "cancelled"
+                  : status === "rejected"
                     ? "default"
                     : "warning"
             }
             label={
               status === "applied"
                 ? "已套用"
-                : status === "cancelled"
-                  ? "已取消"
+                : status === "rejected"
+                  ? "已否決"
                   : status === "applying"
                     ? "套用中"
-                    : status === "error"
-                      ? "套用失敗"
-                      : "待確認"
+                    : status === "rejecting"
+                      ? "否決中"
+                      : status === "error"
+                        ? "操作失敗"
+                        : "待確認"
             }
           />
         </Stack>
@@ -214,13 +249,17 @@ export function StorytellerAgenticProposalCard({
               size="small"
               variant="contained"
               color={dangerous ? "error" : "primary"}
-              disabled={apply.isPending}
+              disabled={apply.isPending || reject.isPending}
               onClick={() => (dangerous ? setConfirmOpen(true) : handleApply())}
             >
               套用提案
             </Button>
-            <Button size="small" onClick={() => setStatus("cancelled")}>
-              取消
+            <Button
+              size="small"
+              disabled={apply.isPending || reject.isPending}
+              onClick={handleReject}
+            >
+              否決
             </Button>
           </Stack>
         )}

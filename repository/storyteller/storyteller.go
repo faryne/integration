@@ -1,6 +1,7 @@
 package storyteller
 
 import (
+	"encoding/json"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -740,7 +741,7 @@ func (r *Repository) LoreVersion(loreID, versionID uint64) (*storytellerModel.Lo
 	return &row, err
 }
 
-func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error {
+func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(chat).Error; err != nil {
 			return err
@@ -751,12 +752,57 @@ func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryCha
 		if err := tx.Create(&messages).Error; err != nil {
 			return err
 		}
+		if len(proposals) > 0 {
+			for i := range proposals {
+				proposals[i].ChatID = chat.ID
+			}
+			if err := tx.Create(&proposals).Error; err != nil {
+				return err
+			}
+		}
 		if usage == nil {
 			return nil
 		}
 		usage.ChatID = chat.ID
 		return tx.Create(usage).Error
 	})
+}
+
+// AgentProposalsByChatIDs 一次撈出多個 chat 底下的所有提案，給 StoryChatMessages／
+// LoreChatMessages 組 message 列表時依 chat_id 分組貼回對應的 assistant 訊息（見
+// AgentProposal 的說明：一個 chat 剛好對應一則 assistant 訊息）。
+func (r *Repository) AgentProposalsByChatIDs(chatIDs []uint64) ([]storytellerModel.AgentProposal, error) {
+	rows := make([]storytellerModel.AgentProposal, 0)
+	if len(chatIDs) == 0 {
+		return rows, nil
+	}
+	err := r.db.Where("chat_id IN ?", chatIDs).Order("id ASC").Find(&rows).Error
+	return rows, err
+}
+
+// AgentProposalByPublicIDForUser 找出指定的提案，同時透過 chat.user_id 確認這筆
+// 提案真的屬於這個使用者——ApplyAgentProposal／RejectAgentProposal 都要先過這關，
+// 不能只信任 URL 上的 project_public_id。
+func (r *Repository) AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error) {
+	var row storytellerModel.AgentProposal
+	err := r.db.
+		Table("storyteller_agent_proposals AS proposals").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = proposals.chat_id").
+		Where("proposals.public_id = ? AND chats.user_id = ?", publicID, userID).
+		Select("proposals.*").
+		First(&row).Error
+	return &row, err
+}
+
+// UpdateAgentProposalStatus 把提案標記成 applied／rejected，appliedAt 只有套用時
+// 才帶值。用 Where 條件把 status='pending' 一併鎖進去，避免同一筆提案被重複套用
+// 或套用/否決互相覆蓋（例如使用者連點兩次按鈕）——不是 pending 就代表已經有人
+// 處理過，更新影響 0 筆，呼叫端要自己判斷 RowsAffected 是不是 0。
+func (r *Repository) UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error) {
+	result := r.db.Model(&storytellerModel.AgentProposal{}).
+		Where("id = ? AND status = ?", id, storytellerModel.AgentProposalStatusPending).
+		Updates(map[string]interface{}{"status": status, "applied_at": appliedAt})
+	return result.RowsAffected, result.Error
 }
 
 func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]storytellerModel.AgentUsageSummaryRow, error) {
@@ -865,6 +911,10 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 		Offset(offset).
 		Limit(limit).
 		Find(&rows).Error
+	if err != nil {
+		return rows, total, err
+	}
+	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
 	}
@@ -896,10 +946,50 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 		Offset(offset).
 		Limit(limit).
 		Find(&rows).Error
+	if err != nil {
+		return rows, total, err
+	}
+	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
 	}
 	return rows, total, err
+}
+
+// attachAgentProposals 把每個 chat 底下的提案貼回對應的 message 列（見
+// AgentProposal 的說明：一個 chat 剛好對應一則 assistant 訊息，用 chat_id 對應
+// 不會有歧義）；Arguments 存的是 JSON 字串，這裡順便解回 map 給前端用。
+func (r *Repository) attachAgentProposals(rows []storytellerModel.StoryChatMessageOutput) error {
+	chatIDs := make([]uint64, 0, len(rows))
+	for _, row := range rows {
+		chatIDs = append(chatIDs, row.ChatID)
+	}
+	proposals, err := r.AgentProposalsByChatIDs(chatIDs)
+	if err != nil {
+		return err
+	}
+	byChatID := make(map[uint64][]storytellerModel.AgenticProposalOutput, len(proposals))
+	for _, p := range proposals {
+		var arguments map[string]interface{}
+		_ = json.Unmarshal([]byte(p.Arguments), &arguments)
+		byChatID[p.ChatID] = append(byChatID[p.ChatID], storytellerModel.AgenticProposalOutput{
+			PublicID:   p.PublicID,
+			ToolCallID: p.ToolCallID,
+			ToolName:   p.ToolName,
+			Arguments:  arguments,
+			Status:     p.Status,
+		})
+	}
+	for i := range rows {
+		// 一個 chat 底下有 user／assistant 兩則訊息，提案只跟著 assistant 那則走
+		// （AI 提出的東西，不是使用者說的話）——user 訊息維持 nil，不然同一筆提案
+		// 會在畫面上重複出現在兩則訊息底下。
+		if rows[i].Role != storytellerModel.ChatMessageRoleAssistant {
+			continue
+		}
+		rows[i].Proposals = byChatID[rows[i].ChatID]
+	}
+	return nil
 }
 
 // CreateStoryWithVersion 存檔並塞入第一筆版本。volumeEvent 非 nil 時（建立時直接指定

@@ -559,25 +559,20 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 	return output.Success(result.ToResponse())
 }
 
-// ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、被攔截下來還沒真的執行
-// 的寫入類工具呼叫。前端要把當初收到的 AgenticProposalOutput.ToolName／
-// Arguments 原樣送回來，這裡不做跨請求的提案查詢/儲存，提案的生命週期完全交給
-// 前端自己保管。
+// ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、存進
+// storyteller_agent_proposals 的寫入類提案。前端只需要帶 public_id——提案的
+// tool_name／arguments 由後端自己查，不再信任前端原樣送回來的值，順便讓套用
+// 之後的狀態有地方持久化（見 AgentProposal 的說明）。
 func ApplyAgentProposal(ctx fiber.Ctx) error {
-	var input storytellerModel.ApplyAgentProposalRequest
-	if err := ctx.Bind().Body(&input); err != nil {
-		return output.BadRequest(err)
-	}
 	result, err := storyteller.NewService().ApplyAgentProposal(
 		ctx.Context(),
 		authsession.Session(ctx).UserId,
 		ctx.Params("project"),
-		input.ToolName,
-		input.Arguments,
+		ctx.Params("proposal"),
 	)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller project not found"))
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
 		}
 		if errors.Is(err, storyteller.ErrAgentProposalToolNotAllowed) || errors.Is(err, storyteller.ErrAgentToolScopeViolation) {
 			return output.Unauthorized(err)
@@ -585,6 +580,25 @@ func ApplyAgentProposal(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(result)
+}
+
+// RejectAgentProposal 把一筆還沒被處理的提案標成 rejected，不會真的執行——單純
+// 讓「使用者已經看過、決定不套用」這件事持久化，重新整理頁面後這張提案卡片才
+// 不會又打回「待確認」。
+func RejectAgentProposal(ctx fiber.Ctx) error {
+	err := storyteller.NewService().RejectAgentProposal(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "rejected"})
 }
 
 func isAgentProviderError(err error) bool {

@@ -454,12 +454,16 @@ export interface StorytellerAgenticStep {
   results: StorytellerAgenticToolResult[];
 }
 
-// 這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具呼叫。要套用時
-// 把 tool_name／arguments 原樣送回 useApplyStorytellerAgentProposal。
+// 這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具呼叫，已經是
+// 後端持久化的資料列（不再是純快照）：public_id 用來呼叫
+// useApplyStorytellerAgentProposal／useRejectStorytellerAgentProposal，status
+// 是後端當下的真實狀態，重新整理頁面也不會跑掉。
 export interface StorytellerAgenticProposal {
+  public_id: string;
   tool_call_id: string;
   tool_name: string;
   arguments: Record<string, unknown>;
+  status: "pending" | "applied" | "rejected";
 }
 
 export interface StorytellerAgenticQueryResponse {
@@ -475,17 +479,15 @@ export interface StorytellerAgenticQueryResponse {
   warning?: string;
 }
 
-export interface StorytellerApplyAgentProposalRequest {
-  tool_name: string;
-  arguments: Record<string, unknown>;
-}
-
 export interface StorytellerStoryChatMessage {
   id: number;
   chat_id: number;
   role: "system" | "user" | "assistant";
   content: string;
   metadata?: string;
+  // 這則訊息（如果是 assistant 那輪 agentic 問答的一部分）當初提出過的寫入提案，
+  // 直接帶最新狀態，不用再從 metadata 解析一份可能過期的快照。
+  proposals?: StorytellerAgenticProposal[];
   agent_id: number;
   agent_name: string;
   created_at: string;

@@ -18,10 +18,12 @@ type AgenticQueryOutput struct {
 	// 「正在呼叫哪個工具」的過程提示，直接讀這份資料即可。
 	Steps []AgentLoopStep
 	// Proposals 是這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具
-	// 呼叫（見 CaptureWriteToolsAsProposals）。前端要把某個 Proposal 的
-	// ToolName／Arguments 原樣送回 ApplyAgentProposal 才會真的落地；使用者不理會
-	// 的提案就讓它留在這輪對話歷史裡，不會自動生效、也不會過期需要清理。
-	Proposals []AgentProposal
+	// 呼叫（見 CaptureWriteToolsAsProposals）——已經是要存進 DB 的資料列形狀
+	// （PublicID 在存檔前就先產生好，見 runStoryAgenticQuery），前端呼叫
+	// POST .../agentic-proposals/:proposal/apply 或 /reject 時用 PublicID
+	// 指名要動哪一筆；使用者不理會的提案就留在 pending，不會自動生效、也不會
+	// 過期需要清理。
+	Proposals []storytellerModel.AgentProposal
 	Usage     *AIProviderUsage
 }
 
@@ -52,10 +54,14 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 
 	proposals := make([]storytellerModel.AgenticProposalOutput, 0, len(o.Proposals))
 	for _, p := range o.Proposals {
+		var arguments map[string]interface{}
+		_ = json.Unmarshal([]byte(p.Arguments), &arguments)
 		proposals = append(proposals, storytellerModel.AgenticProposalOutput{
+			PublicID:   p.PublicID,
 			ToolCallID: p.ToolCallID,
 			ToolName:   p.ToolName,
-			Arguments:  p.Arguments,
+			Arguments:  arguments,
+			Status:     p.Status,
 		})
 	}
 
@@ -181,12 +187,12 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		ModelName: modelName,
 		Result:    loopResult.FinalText,
 		Steps:     loopResult.Steps,
-		Proposals: ExtractProposals(loopResult, writeToolNames),
+		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:     loopResult.Usage,
 	}
 	chat, messages := buildAgenticQueryChat(userID, story.ID, *agent, userPrompt, output)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
-	if err := repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
+	if err := repo.CreateStoryChatWithMessages(chat, messages, output.Proposals, usage); err != nil {
 		return nil, err
 	}
 	if loopErr != nil {
@@ -261,12 +267,12 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		ModelName: modelName,
 		Result:    loopResult.FinalText,
 		Steps:     loopResult.Steps,
-		Proposals: ExtractProposals(loopResult, writeToolNames),
+		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:     loopResult.Usage,
 	}
 	chat, messages := buildLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, output)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
-	if err := repo.CreateStoryChatWithMessages(chat, messages, usage); err != nil {
+	if err := repo.CreateStoryChatWithMessages(chat, messages, output.Proposals, usage); err != nil {
 		return nil, err
 	}
 	if loopErr != nil {
@@ -400,26 +406,24 @@ func agenticQueryChatMessages(agent storytellerModel.Agent, userPrompt string, o
 // 控制）——多輪工具呼叫的完整過程改用這個 metadata JSON 記錄，不逐則存成獨立
 // 訊息列。
 //
-// Steps/Proposals 直接重用 output.ToResponse() 轉出來的 DTO，跟這輪對話當下
-// 回給前端的 AgenticQueryResponse 是同一份形狀（tool_calls 含 arguments、
-// results 含完整 content），這樣前端重新載入歷史訊息時解析 metadata 才能還原出
-// 跟當下即時畫面一樣的「工作軌跡」，而不是只剩工具名稱的殘缺版本。
+// Steps 直接重用 output.ToResponse() 轉出來的 DTO，跟這輪對話當下回給前端的
+// AgenticQueryResponse 是同一份形狀（tool_calls 含 arguments、results 含完整
+// content），這樣前端重新載入歷史訊息時解析 metadata 才能還原出跟當下即時畫面
+// 一樣的「工作軌跡」，而不是只剩工具名稱的殘缺版本。Proposals 不再存在這裡——
+// 已經是 storyteller_agent_proposals 的真實資料列（見 AgentProposal 的說明），
+// 前端讀 StoryChatMessageOutput.Proposals 就有最新狀態，不用再從這份寫死的
+// 快照猜「還沒被套用或還沒過期」。
 func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
 	type queryMetadata struct {
 		Mode      string                               `json:"mode"`
 		StepCount int                                  `json:"step_count"`
 		Steps     []storytellerModel.AgenticStepOutput `json:"steps,omitempty"`
-		// Proposals 存下來讓聊天歷史重新載入時，前端還看得到這輪對話當初提出過
-		// 哪些待確認的寫入提案（不代表還沒被套用或還沒過期，前端要自己比對這篇
-		// 故事/設定集目前的版本判斷這個提案是否還有意義）。
-		Proposals []storytellerModel.AgenticProposalOutput `json:"proposals,omitempty"`
 	}
 	response := output.ToResponse()
 	meta := queryMetadata{
 		Mode:      "agentic_query",
 		StepCount: len(output.Steps),
 		Steps:     response.Steps,
-		Proposals: response.Proposals,
 	}
 	body, err := json.Marshal(meta)
 	if err != nil {
