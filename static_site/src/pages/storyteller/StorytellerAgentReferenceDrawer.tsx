@@ -203,29 +203,6 @@ export function StorytellerAgentReferenceDrawer(
               </Box>
             ))}
           </Stack>
-
-          <Box
-            sx={{
-              borderRadius: 1,
-              bgcolor: "background.default",
-              p: 1.5,
-            }}
-          >
-            <Typography variant="subtitle2" fontWeight={800} gutterBottom>
-              特殊標題
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              標題含空白或中括號時，請使用候選按鈕插入引用。若手動輸入，右中括號需要寫成{" "}
-              <Box component="code" sx={{ fontFamily: "monospace" }}>
-                \]
-              </Box>
-              ，例如{" "}
-              <Box component="code" sx={{ fontFamily: "monospace" }}>
-                @story:[[aaa\] bbb p [CCC\]]
-              </Box>
-              。
-            </Typography>
-          </Box>
         </Stack>
       </Box>
     </Drawer>
