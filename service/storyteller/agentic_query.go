@@ -110,9 +110,10 @@ const (
 	// 尺度防護。
 	agenticQueryReplyContentMaxRunes = 60000
 	// agenticQueryHistoryMessageLimit 是每次呼叫附帶的歷史訊息則數上限（一則使用者
-	// +一則 AI 算兩則）——只抓「最近幾輪」，不是整個對話串，避免對話變長後每輪
-	// 呼叫的 token 成本跟著無上限累加。
-	agenticQueryHistoryMessageLimit = 20
+	// +一則 AI 算兩則，這裡的 10 對應最近 5 輪對話）——只抓「最近幾輪」，不是整個
+	// 對話串，避免對話變長後每輪呼叫的 token 成本跟著無上限累加、拖慢回應時間到
+	// timeout。
+	agenticQueryHistoryMessageLimit = 10
 )
 
 var errAgenticQueryReplyContentTooLong = agenticQueryError(fmt.Sprintf("reply_content must be %d characters or less", agenticQueryReplyContentMaxRunes))
