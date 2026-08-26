@@ -497,21 +497,23 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		// result 非 nil 代表這輪對話至少已經落地一筆 chat（見 AgenticQueryOutput.ChatID
+		// 的說明）——不管是撞到步數上限（ErrAgentLoopMaxStepsExceeded，result 帶
+		// 累積到中止那刻的 Steps/Usage）還是一開始呼叫 provider 就失敗（result 只
+		// 帶 ChatID），都要把 chat_id 回給前端，不能直接回錯誤了事，否則前端沒辦法
+		// 讓即時樂觀更新的泡泡顯示「重送」。回應形狀跟正常成功時完全一樣（都是
+		// AgenticQueryResponse），前端不用另外處理一種特殊的錯誤回應格式，優先權
+		// 排在 NotFound／provider 錯誤判斷之前。
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent or story not found"))
 		}
 		if isAgentProviderError(err) {
 			return output.ExternalServiceError(err)
-		}
-		// ErrAgentLoopMaxStepsExceeded 這種情況 result 仍然有值（累積到中止那刻
-		// 的 Steps/Usage 已經記進 usage log／chat 歷史），所以不能直接回錯誤了事，
-		// 要把已經算出來的部分回給前端，只是標一個 warning 讓前端知道沒拿到最終
-		// 答案——回應形狀跟正常成功時完全一樣（都是 AgenticQueryResponse），前端
-		// 不用另外處理一種特殊的錯誤回應格式。
-		if result != nil {
-			response := result.ToResponse()
-			response.Warning = err.Error()
-			return output.Success(response)
 		}
 		return output.BadRequest(err)
 	}
@@ -545,16 +547,16 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent or lore not found"))
 		}
 		if isAgentProviderError(err) {
 			return output.ExternalServiceError(err)
-		}
-		if result != nil {
-			response := result.ToResponse()
-			response.Warning = err.Error()
-			return output.Success(response)
 		}
 		return output.BadRequest(err)
 	}
@@ -593,16 +595,16 @@ func ResendStoryAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent or story not found"))
 		}
 		if isAgentProviderError(err) {
 			return output.ExternalServiceError(err)
-		}
-		if result != nil {
-			response := result.ToResponse()
-			response.Warning = err.Error()
-			return output.Success(response)
 		}
 		return output.BadRequest(err)
 	}
@@ -637,16 +639,16 @@ func ResendLoreAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent or lore not found"))
 		}
 		if isAgentProviderError(err) {
 			return output.ExternalServiceError(err)
-		}
-		if result != nil {
-			response := result.ToResponse()
-			response.Warning = err.Error()
-			return output.Success(response)
 		}
 		return output.BadRequest(err)
 	}

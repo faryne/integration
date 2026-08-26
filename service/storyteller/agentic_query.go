@@ -11,10 +11,22 @@ import (
 
 // AgenticQueryOutput 是 RunStoryAgenticQuery 的回傳結果。
 type AgenticQueryOutput struct {
-	AgentID   uint64
-	Provider  storytellerModel.AgentProvider
-	ModelName string
-	Result    string
+	AgentID uint64
+	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆——不管最後有沒有拿到
+	// 回覆都會帶回前端（見 runStoryAgenticQuery／resendStoryAgenticQuery 在
+	// RunAgentLoop 失敗時也組一份只帶 ChatID 的 output），讓前端知道「這輪已經
+	// 落地在哪個 chat」，用來：(1) 讓即時樂觀更新的泡泡也能顯示「重送」，不用
+	// 等重新整理頁面；(2) 跟背景重新整理時抓回來的歷史紀錄用 chat_id 對齊去重，
+	// 不會同一輪對話一邊顯示「還在生成」一邊顯示「沒拿到回覆」。
+	ChatID uint64
+	// ChatStatus 反映 ChatID 這筆 chat 在 DB 裡的真實狀態——不能單看 Result／
+	// Warning 猜：撞到步數上限時雖然有 Warning，但已經呼叫過 CompleteChatMessage
+	// 存成 completed；一開始呼叫 provider 就失敗（loopResult 是 nil）則從沒呼叫
+	// CompleteChatMessage，實際還是 pending，之後可以重送。
+	ChatStatus storytellerModel.StoryChatStatus
+	Provider   storytellerModel.AgentProvider
+	ModelName  string
+	Result     string
 	// Steps 是 agent 這輪對話呼叫過哪些工具、各自結果——之後 Phase 6 前端要顯示
 	// 「正在呼叫哪個工具」的過程提示，直接讀這份資料即可。
 	Steps []AgentLoopStep
@@ -76,13 +88,15 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 	}
 
 	return storytellerModel.AgenticQueryResponse{
-		AgentID:   o.AgentID,
-		Provider:  o.Provider,
-		ModelName: o.ModelName,
-		Result:    o.Result,
-		Steps:     steps,
-		Proposals: proposals,
-		Usage:     usage,
+		AgentID:    o.AgentID,
+		ChatID:     o.ChatID,
+		ChatStatus: o.ChatStatus,
+		Provider:   o.Provider,
+		ModelName:  o.ModelName,
+		Result:     o.Result,
+		Steps:      steps,
+		Proposals:  proposals,
+		Usage:      usage,
 	}
 }
 
@@ -266,18 +280,22 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	// 這些資訊記進 usage log／chat 歷史，不能因為沒拿到最終答案就整批丟掉已經
 	// 發生、已經花錢的呼叫紀錄；只有 loopResult 真的是 nil（一開始就失敗，例如
 	// API key 無效）才整個放棄——這種情況 chat 留在 pending，之後可以重送。
+	// 就算是這種硬失敗，還是回傳一份只帶 ChatID 的 output（不是 nil）：前端
+	// 樂觀更新的即時泡泡才拿得到 chat_id，不用等重新整理頁面才有機會重送。
 	if loopResult == nil {
-		return nil, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:   agent.ID,
-		Provider:  providerAPIKeyRow.Provider,
-		ModelName: modelName,
-		Result:    loopResult.FinalText,
-		Steps:     loopResult.Steps,
-		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:     loopResult.Usage,
+		AgentID:    agent.ID,
+		ChatID:     chat.ID,
+		ChatStatus: storytellerModel.StoryChatStatusCompleted,
+		Provider:   providerAPIKeyRow.Provider,
+		ModelName:  modelName,
+		Result:     loopResult.FinalText,
+		Steps:      loopResult.Steps,
+		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:      loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -374,17 +392,19 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		// 重送本身又失敗了——退回 pending，不要卡死在 in_progress 讓之後永遠沒辦法
 		// 再重送一次。
 		_ = repo.ReleaseChatToPending(chatID)
-		return nil, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:   agent.ID,
-		Provider:  providerAPIKeyRow.Provider,
-		ModelName: modelName,
-		Result:    loopResult.FinalText,
-		Steps:     loopResult.Steps,
-		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:     loopResult.Usage,
+		AgentID:    agent.ID,
+		ChatID:     chatID,
+		ChatStatus: storytellerModel.StoryChatStatusCompleted,
+		Provider:   providerAPIKeyRow.Provider,
+		ModelName:  modelName,
+		Result:     loopResult.FinalText,
+		Steps:      loopResult.Steps,
+		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:      loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -468,17 +488,19 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		Tools:        tools,
 	})
 	if loopResult == nil {
-		return nil, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:   agent.ID,
-		Provider:  providerAPIKeyRow.Provider,
-		ModelName: modelName,
-		Result:    loopResult.FinalText,
-		Steps:     loopResult.Steps,
-		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:     loopResult.Usage,
+		AgentID:    agent.ID,
+		ChatID:     chat.ID,
+		ChatStatus: storytellerModel.StoryChatStatusCompleted,
+		Provider:   providerAPIKeyRow.Provider,
+		ModelName:  modelName,
+		Result:     loopResult.FinalText,
+		Steps:      loopResult.Steps,
+		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:      loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -566,17 +588,19 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 	})
 	if loopResult == nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return nil, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:   agent.ID,
-		Provider:  providerAPIKeyRow.Provider,
-		ModelName: modelName,
-		Result:    loopResult.FinalText,
-		Steps:     loopResult.Steps,
-		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:     loopResult.Usage,
+		AgentID:    agent.ID,
+		ChatID:     chatID,
+		ChatStatus: storytellerModel.StoryChatStatusCompleted,
+		Provider:   providerAPIKeyRow.Provider,
+		ModelName:  modelName,
+		Result:     loopResult.FinalText,
+		Steps:      loopResult.Steps,
+		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:      loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)

@@ -1051,13 +1051,21 @@ type AgenticProposalOutput struct {
 
 // AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
 type AgenticQueryResponse struct {
-	AgentID   uint64                  `json:"agent_id"`
-	Provider  AgentProvider           `json:"provider"`
-	ModelName string                  `json:"model_name"`
-	Result    string                  `json:"result"`
-	Steps     []AgenticStepOutput     `json:"steps"`
-	Proposals []AgenticProposalOutput `json:"proposals"`
-	Usage     *AgentRunUsage          `json:"usage,omitempty"`
+	AgentID uint64 `json:"agent_id"`
+	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆，不管有沒有拿到回覆
+	// 都會帶（見 AgenticQueryOutput.ChatID 的說明）——前端用來讓即時樂觀更新的
+	// 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪
+	// 對話重複顯示。
+	ChatID uint64 `json:"chat_id,omitempty"`
+	// ChatStatus 是 ChatID 這筆 chat 在 DB 裡的真實狀態——不能靠 Warning 有沒有值
+	// 猜，見 AgenticQueryOutput.ChatStatus 的說明。
+	ChatStatus StoryChatStatus         `json:"chat_status,omitempty"`
+	Provider   AgentProvider           `json:"provider"`
+	ModelName  string                  `json:"model_name"`
+	Result     string                  `json:"result"`
+	Steps      []AgenticStepOutput     `json:"steps"`
+	Proposals  []AgenticProposalOutput `json:"proposals"`
+	Usage      *AgentRunUsage          `json:"usage,omitempty"`
 	// Warning 非空代表這輪對話撞到步數上限被強制中止（沒有真的拿到最終答案），
 	// 但 Result／Steps／Proposals／Usage 仍然是累積到中止那刻的真實資料，不是
 	// 空殼——前端要把這個情況當成「部分結果＋警告」呈現，不是整個當失敗處理。

@@ -886,8 +886,27 @@ export function StorytellerAgenticPanel({
     });
   }
 
+  // agenticMessages（這次 session 內即時送出、還留著的本地狀態）跟
+  // skillHistoryMessages（背景隨時可能重新抓回來的 DB 資料）之間完全獨立，
+  // 沒有互相知道對方存在——一旦某輪對話的 chat_id 兩邊都有（送出當下就先
+  // 落地問題，見 CreatePendingChatWithUserMessage），任何背景重新整理都會讓
+  // 同一輪對話重複顯示兩次，一邊說「還在生成」一邊說「沒拿到回覆」，互相矛盾。
+  // 用 chat_id 把歷史清單裡「本地已經有更新狀態」的那幾筆過濾掉，本地狀態
+  // 優先（比對內容更精準，也不用等歷史重新抓回來才知道該不該去重）。
+  const liveChatIds = new Set(
+    agenticMessages
+      .map((message) => message.chatId)
+      .filter((chatId): chatId is number => chatId !== undefined),
+  );
+  const dedupedSkillHistoryMessages = skillHistoryMessages.filter(
+    (message) =>
+      message.kind !== "agentic" ||
+      message.chatId === undefined ||
+      !liveChatIds.has(message.chatId),
+  );
+
   const combinedMessages: PanelMessage[] = [
-    ...skillHistoryMessages,
+    ...dedupedSkillHistoryMessages,
     ...skillTransientMessages,
     ...agenticMessages,
   ].sort((a, b) => a.sortKey - b.sortKey);
@@ -1055,10 +1074,11 @@ export function StorytellerAgenticPanel({
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
     const replyContent = replyReferenceTarget?.content || undefined;
     const userSortKey = nextSessionSortKey();
+    const userMessageId = `agentic-user-${userSortKey}`;
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
       sortKey: userSortKey,
-      id: `agentic-user-${userSortKey}`,
+      id: userMessageId,
       role: "user",
       content: instruction,
       agentName: targetAgentName,
@@ -1091,7 +1111,20 @@ export function StorytellerAgenticPanel({
           }
           const assistantSortKey = nextSessionSortKey();
           setAgenticMessages((prev) => [
-            ...prev,
+            // 補上這則剛送出的 user 訊息的 chatId／chatStatus——後端無論成功
+            // 或失敗都會帶 chat_id 回來（見 AgenticQueryOutput.ChatID 的說明），
+            // 讓這個還在畫面上的樂觀泡泡也能顯示「重送」，不用等重新整理頁面；
+            // 同時這個 chatId 也是下面 combinedMessages 去重的依據，避免背景
+            // 重新整理歷史時，同一輪對話因為 pending 訊息被重新抓到而顯示兩次。
+            ...prev.map((message) =>
+              message.kind === "agentic" && message.id === userMessageId
+                ? {
+                    ...message,
+                    chatId: response.chat_id,
+                    chatStatus: response.chat_status,
+                  }
+                : message,
+            ),
             {
               kind: "agentic",
               sortKey: assistantSortKey,
@@ -1103,6 +1136,8 @@ export function StorytellerAgenticPanel({
               usage: response.usage,
               warning: response.warning,
               agentName: targetAgentName,
+              chatId: response.chat_id,
+              chatStatus: response.chat_status,
             },
           ]);
         },
