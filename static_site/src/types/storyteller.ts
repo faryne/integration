@@ -486,6 +486,10 @@ export interface StorytellerAgenticQueryResponse {
 export interface StorytellerStoryChatMessage {
   id: number;
   chat_id: number;
+  // 這則訊息所屬 chat 目前的狀態——pending／in_progress 代表還沒拿到 AI 回覆
+  // （剛送出，或 provider 呼叫失敗/timeout 卡住），這種 user 訊息底下可以顯示
+  // 「重送」按鈕；completed 代表已經有回覆了。
+  chat_status: "pending" | "in_progress" | "completed";
   role: "system" | "user" | "assistant";
   content: string;
   metadata?: string;

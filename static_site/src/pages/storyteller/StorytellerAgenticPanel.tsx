@@ -1,6 +1,7 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import ReplayIcon from "@mui/icons-material/Replay";
 import ReplyIcon from "@mui/icons-material/Reply";
 import SendIcon from "@mui/icons-material/Send";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
@@ -23,6 +24,8 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
+  useResendStorytellerAgenticQuery,
+  useResendStorytellerLoreAgenticQuery,
   useRunStorytellerAgent,
   useRunStorytellerAgenticQuery,
   useRunStorytellerLoreAgent,
@@ -209,6 +212,13 @@ type PanelMessage =
       // 這則實際是哪個 Agent 人設處理的——事後回頭看對話紀錄才追得回「這則
       // 當時發生了什麼事」，見 StorytellerAgentPanel.tsx 的 StorytellerChatBadges。
       agentName?: string;
+      // chatId／chatStatus 只有從歷史載入的訊息才有值（見 skillHistoryMessages）
+      // ——這次 session 內即時送出、還在等待/剛完成的訊息不需要，狀態直接體現在
+      // isLoading／content 上。chatStatus 非 "completed" 代表這則 user 訊息還
+      // 沒拿到 AI 回覆（provider 呼叫失敗／timeout／process 被重啟中斷），可以
+      // 顯示「重送」。
+      chatId?: number;
+      chatStatus?: "pending" | "in_progress" | "completed";
     };
 
 // 工作軌跡只顯示「參數裡的 id 類欄位」（project_public_id／story_public_id／
@@ -322,6 +332,8 @@ function AgenticAssistantMessage({
   onApplyProposalToEditor,
   onReply,
   isReplyTarget,
+  onResend,
+  resendingChatId,
 }: {
   message: Extract<PanelMessage, { kind: "agentic" }>;
   targetKind: "story" | "lore";
@@ -341,10 +353,21 @@ function AgenticAssistantMessage({
   ) => Promise<void>;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   isReplyTarget?: boolean;
+  onResend?: (chatId: number) => void;
+  resendingChatId?: number | null;
 }) {
   const isUser = message.role === "user";
   const canApply =
     !isUser && !message.isLoading && message.content.trim() !== "";
+  // chatId／chatStatus 只有從歷史載入的 user 訊息才有值（見 skillHistoryMessages），
+  // 這次 session 內剛送出的那則永遠是 pending（都還沒重新整理載回來），沒有
+  // chatId 可用，也不需要重送——真的送失敗會走 onError 另外顯示。
+  const resendable =
+    isUser &&
+    message.chatId !== undefined &&
+    message.chatStatus !== undefined &&
+    message.chatStatus !== "completed";
+  const resending = resendable && resendingChatId === message.chatId;
   const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
     targetKind,
     projectPublicId,
@@ -378,6 +401,28 @@ function AgenticAssistantMessage({
         <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
           {message.warning}
         </Alert>
+      )}
+      {resendable && (
+        <Stack spacing={0.5} sx={{ mt: 1 }}>
+          <Alert severity="warning" variant="outlined">
+            {message.chatStatus === "in_progress"
+              ? "正在重送這則訊息……"
+              : "沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重送一次。"}
+          </Alert>
+          {onResend && (
+            <Button
+              {...storytellerChatActionButtonProps}
+              startIcon={
+                resending ? <CircularProgress size={14} /> : <ReplayIcon />
+              }
+              disabled={resending}
+              onClick={() => onResend(message.chatId!)}
+              sx={{ alignSelf: "flex-start" }}
+            >
+              {resending ? "重送中" : "重送"}
+            </Button>
+          )}
+        </Stack>
       )}
       {message.steps && message.steps.length > 0 && (
         <ToolTraceSummary steps={message.steps} />
@@ -639,6 +684,41 @@ export function StorytellerAgenticPanel({
   );
   const runAgenticQuery =
     targetKind === "lore" ? runAgenticQueryLore : runAgenticQueryStory;
+  const resendAgenticQueryStory = useResendStorytellerAgenticQuery(
+    projectPublicId,
+    targetKind === "story" ? targetPublicId : undefined,
+  );
+  const resendAgenticQueryLore = useResendStorytellerLoreAgenticQuery(
+    projectPublicId,
+    targetKind === "lore" ? targetPublicId : undefined,
+  );
+  const resendAgenticQuery =
+    targetKind === "lore" ? resendAgenticQueryLore : resendAgenticQueryStory;
+  // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
+  // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
+  const [resendingChatId, setResendingChatId] = useState<number | null>(null);
+  function handleResend(chatId: number) {
+    if (resendingChatId !== null || !Number.isFinite(agentIdNumeric)) {
+      return;
+    }
+    setResendingChatId(chatId);
+    resendAgenticQuery.mutate(
+      {
+        agentId: agentIdNumeric,
+        chatId,
+        input: {
+          user_prompt: "",
+          provider_apikey_id: providerApiKeyId
+            ? Number(providerApiKeyId)
+            : undefined,
+          model_name: modelNameOverride || undefined,
+        },
+      },
+      {
+        onSettled: () => setResendingChatId(null),
+      },
+    );
+  }
   const storyMessagesQuery = useStorytellerStoryChatMessages(
     projectPublicId,
     targetKind === "story" ? targetPublicId : undefined,
@@ -734,11 +814,32 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  // agentic_query 模式的 mode 值（"agentic_query"）跟 skill 模式那組
+  // StorytellerAgentRunMode 是完全不同的字串空間，故意不共用 parseMessageMode
+  // 的回傳型別，避免混進 skill 那組列舉裡。
+  function isAgenticQueryMode(metadata?: string): boolean {
+    if (!metadata) {
+      return false;
+    }
+    try {
+      const parsed = JSON.parse(metadata) as { mode?: string };
+      return parsed.mode === "agentic_query";
+    } catch {
+      return false;
+    }
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
       const agentic = parseAgenticMetadata(message.metadata);
       const hasProposals = (message.proposals?.length ?? 0) > 0;
-      if ((agentic || hasProposals) && message.role !== "system") {
+      // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
+      // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
+      // 欄位都不存在，兩種都會被誤判成 skill 模式。後端現在 user／assistant 兩則
+      // 訊息都會標 mode:"agentic_query"（見 agenticQueryUserMessageMetadata），
+      // 用這個當主要依據，hasProposals 留著當保險。
+      const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
+      if (isAgentic && message.role !== "system") {
         return {
           kind: "agentic",
           sortKey: new Date(message.created_at).getTime(),
@@ -748,6 +849,8 @@ export function StorytellerAgenticPanel({
           steps: agentic?.steps,
           proposals: message.proposals,
           agentName: message.agent_name || undefined,
+          chatId: message.chat_id,
+          chatStatus: message.chat_status,
         };
       }
       return {
@@ -1288,6 +1391,8 @@ export function StorytellerAgenticPanel({
                     onApplyProposalToEditor={onApplyProposalToEditor}
                     onReply={handleReply}
                     isReplyTarget={replyTarget?.id === message.id}
+                    onResend={handleResend}
+                    resendingChatId={resendingChatId}
                   />
                 ),
               )}

@@ -479,6 +479,77 @@ export function useRunStorytellerLoreAgenticQuery(
   });
 }
 
+// 重新對一則卡在 pending／in_progress（沒拿到回覆）狀態的訊息呼叫 provider——
+// 不是開新的一輪對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。
+// input 只帶金鑰／模型／ignore_agent_persona 這次的選擇，user_prompt／
+// reply_content 不用帶，後端一律讀當初存的那份。
+export function useResendStorytellerAgenticQuery(
+  projectPublicId?: string,
+  storyPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      chatId,
+      input,
+    }: {
+      agentId: number;
+      chatId: number;
+      input: StorytellerAgenticQueryRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgenticQueryResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["storyteller", "story-chat-messages"],
+      });
+    },
+  });
+}
+
+// useResendStorytellerAgenticQuery 的設定集版本。
+export function useResendStorytellerLoreAgenticQuery(
+  projectPublicId?: string,
+  lorePublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      chatId,
+      input,
+    }: {
+      agentId: number;
+      chatId: number;
+      input: StorytellerAgenticQueryRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgenticQueryResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["storyteller", "lore-chat-messages"],
+      });
+    },
+  });
+}
+
 // 套用先前 useRunStorytellerAgenticQuery 回傳、被攔下來還沒真的執行的寫入類
 // 工具呼叫。呼叫端要把當初收到的 StorytellerAgenticProposal 的 tool_name／
 // arguments 原樣送回來。

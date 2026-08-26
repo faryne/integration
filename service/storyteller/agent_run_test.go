@@ -351,26 +351,31 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project           *storytellerModel.Project
-	projectErr        error
-	story             *storytellerModel.Story
-	storyErr          error
-	lore              *storytellerModel.Lore
-	loreErr           error
-	agent             *storytellerModel.Agent
-	agentErr          error
-	providerAPIKey    *storytellerModel.ProviderAPIKey
-	providerAPIKeyErr error
-	chat              *storytellerModel.StoryChat
-	messages          []storytellerModel.StoryChatMessage
-	proposals         []storytellerModel.AgentProposal
-	usage             *storytellerModel.AgentUsageLog
-	chatErr           error
-	proposal          *storytellerModel.AgentProposal
-	proposalErr       error
-	updatedProposalID uint64
-	historyMessages   []storytellerModel.StoryChatMessage
-	historyErr        error
+	project               *storytellerModel.Project
+	projectErr            error
+	story                 *storytellerModel.Story
+	storyErr              error
+	lore                  *storytellerModel.Lore
+	loreErr               error
+	agent                 *storytellerModel.Agent
+	agentErr              error
+	providerAPIKey        *storytellerModel.ProviderAPIKey
+	providerAPIKeyErr     error
+	chat                  *storytellerModel.StoryChat
+	messages              []storytellerModel.StoryChatMessage
+	proposals             []storytellerModel.AgentProposal
+	usage                 *storytellerModel.AgentUsageLog
+	chatErr               error
+	proposal              *storytellerModel.AgentProposal
+	proposalErr           error
+	updatedProposalID     uint64
+	historyMessages       []storytellerModel.StoryChatMessage
+	historyErr            error
+	claimResult           int64
+	claimErr              error
+	released              bool
+	pendingUserMessage    *storytellerModel.StoryChatMessage
+	pendingUserMessageErr error
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -421,6 +426,48 @@ func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerMo
 	r.proposals = proposals
 	r.usage = usage
 	return r.chatErr
+}
+
+// CreatePendingChatWithUserMessage／CompleteChatMessage 是新的兩段式寫入（見
+// 同名的真實 Repository 方法）；假 repo 把兩段的結果合併回同一組 chat／messages
+// 欄位，讓既有測試斷言（repo.chat／repo.messages 長度 2／repo.usage）不用跟著改。
+func (r *fakeAgentRunRepository) CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
+	if chat.ID == 0 {
+		chat.ID = 1
+	}
+	chat.Status = storytellerModel.StoryChatStatusPending
+	userMessage.ChatID = chat.ID
+	r.chat = chat
+	r.messages = []storytellerModel.StoryChatMessage{*userMessage}
+	return r.chatErr
+}
+
+func (r *fakeAgentRunRepository) CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
+	assistantMessage.ChatID = chatID
+	r.messages = append(r.messages, *assistantMessage)
+	r.proposals = proposals
+	r.usage = usage
+	if r.chat != nil {
+		r.chat.Status = storytellerModel.StoryChatStatusCompleted
+	}
+	return r.chatErr
+}
+
+func (r *fakeAgentRunRepository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error) {
+	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
+	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {
+	r.released = true
+	return nil
+}
+
+func (r *fakeAgentRunRepository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
+	return r.pendingUserMessage, r.pendingUserMessageErr
 }
 
 func (r *fakeAgentRunRepository) RecentStoryAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {

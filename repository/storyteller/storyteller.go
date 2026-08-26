@@ -768,6 +768,96 @@ func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryCha
 	})
 }
 
+// CreatePendingChatWithUserMessage 只先落地使用者這則問題，chat 進 pending——
+// AI 的回覆要等 provider 呼叫真的跑完才用 CompleteChatMessage 補進來。這樣即使
+// provider 呼叫中途 timeout／process 被重啟，使用者至少不會連自己問了什麼都找
+// 不到，之後也能用「重送」（ClaimStoryChatForResend／ClaimLoreChatForResend）
+// 補完這輪。
+func (r *Repository) CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
+	chat.Status = storytellerModel.StoryChatStatusPending
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(chat).Error; err != nil {
+			return err
+		}
+		userMessage.ChatID = chat.ID
+		return tx.Create(userMessage).Error
+	})
+}
+
+// CompleteChatMessage 把 AI 的回覆補進一筆之前只存了使用者問題的 chat，取代原本
+// CreateStoryChatWithMessages 一次寫兩則訊息的做法；不限制目前狀態一定要是
+// pending／in_progress——正常流程跟重送流程走到這裡時狀態本來就已經是其中之一，
+// 不需要在這裡重複卡一次 guarded update（真正的搶佔防護在 ClaimStoryChatForResend
+// 那一步）。
+func (r *Repository) CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&storytellerModel.StoryChat{}).
+			Where("id = ?", chatID).
+			Update("status", storytellerModel.StoryChatStatusCompleted).Error; err != nil {
+			return err
+		}
+		assistantMessage.ChatID = chatID
+		if err := tx.Create(assistantMessage).Error; err != nil {
+			return err
+		}
+		if len(proposals) > 0 {
+			for i := range proposals {
+				proposals[i].ChatID = chatID
+			}
+			if err := tx.Create(&proposals).Error; err != nil {
+				return err
+			}
+		}
+		if usage == nil {
+			return nil
+		}
+		usage.ChatID = chatID
+		return tx.Create(usage).Error
+	})
+}
+
+// ClaimStoryChatForResend 把一筆卡在 pending（沒拿到回覆）狀態的 chat 標成
+// in_progress，搶下「這輪由我重送」的資格——guarded update，WHERE 子句同時鎖定
+// user_id／story_id，防止猜測 chat_id 去重送別人的或別篇故事的對話，RowsAffected
+// 為 0 代表這筆不存在、不屬於這個使用者/故事、或已經不是 pending（可能已經被
+// 完成、或已經有另一個重送請求搶先）。
+func (r *Repository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error) {
+	result := r.db.Model(&storytellerModel.StoryChat{}).
+		Where("id = ? AND user_id = ? AND story_id = ? AND status = ?", chatID, userID, storyID, storytellerModel.StoryChatStatusPending).
+		Update("status", storytellerModel.StoryChatStatusInProgress)
+	return result.RowsAffected, result.Error
+}
+
+// ClaimLoreChatForResend 是 ClaimStoryChatForResend 的設定集版本。
+func (r *Repository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
+	result := r.db.Model(&storytellerModel.StoryChat{}).
+		Where("id = ? AND user_id = ? AND lore_id = ? AND status = ?", chatID, userID, loreID, storytellerModel.StoryChatStatusPending).
+		Update("status", storytellerModel.StoryChatStatusInProgress)
+	return result.RowsAffected, result.Error
+}
+
+// ReleaseChatToPending 重送呼叫 provider 失敗時，把狀態從 in_progress 退回
+// pending，讓這則問題之後還能再重送一次，不會因為這次重送剛好也失敗就永遠卡死。
+func (r *Repository) ReleaseChatToPending(chatID uint64) error {
+	return r.db.Model(&storytellerModel.StoryChat{}).
+		Where("id = ? AND status = ?", chatID, storytellerModel.StoryChatStatusInProgress).
+		Update("status", storytellerModel.StoryChatStatusPending).Error
+}
+
+// ChatUserMessage 撈出一個 chat 底下那則使用者訊息——重送要用它當年存的內容當
+// prompt，不相信前端這次重送傳來的文字，避免跟原始問題兜不起來或被竄改。
+func (r *Repository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
+	var message storytellerModel.StoryChatMessage
+	err := r.db.
+		Where("chat_id = ? AND role = ?", chatID, storytellerModel.ChatMessageRoleUser).
+		Order("id ASC").
+		First(&message).Error
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
 // AgentProposalsByChatIDs 一次撈出多個 chat 底下的所有提案，給 StoryChatMessages／
 // LoreChatMessages 組 message 列表時依 chat_id 分組貼回對應的 assistant 訊息（見
 // AgentProposal 的說明：一個 chat 剛好對應一則 assistant 訊息）。
@@ -921,6 +1011,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
+			chats.status AS chat_status,
 			messages.role,
 			messages.content,
 			messages.metadata,
@@ -959,6 +1050,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
+			chats.status AS chat_status,
 			messages.role,
 			messages.content,
 			messages.metadata,

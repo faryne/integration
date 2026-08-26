@@ -42,6 +42,12 @@ type agentRunRepository interface {
 	ResetAppliedAgentProposalToPending(id uint64) (int64, error)
 	RecentStoryAgenticMessages(storyID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
 	RecentLoreAgenticMessages(loreID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
+	CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error
+	CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
+	ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error)
+	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
+	ReleaseChatToPending(chatID uint64) error
+	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)
@@ -3187,11 +3193,16 @@ func agentRunPromptInstruction(instruction string) string {
 	return value
 }
 
+// skill 呼叫（/rewrite 等）一律單輪、同步跑完才存檔，user／assistant 兩則訊息
+// 一次寫入（見 CreateStoryChatWithMessages），沒有 agentic query 那種「先存問題、
+// 等 provider 回應才補回覆」的 pending 階段，所以直接標 completed——不能留空字串，
+// 那不是 StoryChatStatus 這個 ENUM 欄位認得的值。
 func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		StoryID: &storyID,
 		AgentID: agent.ID,
 		UserID:  userID,
+		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
 	return chat, buildAgentRunMessages(agent, input, output)
 }
@@ -3201,6 +3212,7 @@ func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, 
 		LoreID:  &loreID,
 		AgentID: agent.ID,
 		UserID:  userID,
+		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
 	return chat, buildAgentRunMessages(agent, input, output)
 }

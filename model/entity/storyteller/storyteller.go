@@ -529,14 +529,27 @@ type LoreVersion struct {
 
 func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
 
+// StoryChatStatus 標示一輪 agentic 對話目前落地到哪個階段：pending 是只存了
+// 使用者問題、還沒拿到 AI 回覆（剛送出，或 provider 呼叫失敗／timeout 卡住）；
+// in_progress 是重送時搶下的中繼狀態，避免兩個重送請求同時搶著把回覆寫進同一個
+// chat；completed 是已經拿到回覆（正常或撞到步數上限但仍有部分結果）。
+type StoryChatStatus string
+
+const (
+	StoryChatStatusPending    StoryChatStatus = "pending"
+	StoryChatStatusInProgress StoryChatStatus = "in_progress"
+	StoryChatStatusCompleted  StoryChatStatus = "completed"
+)
+
 type StoryChat struct {
-	ID        uint64    `gorm:"column:id;primaryKey" json:"id"`
-	StoryID   *uint64   `gorm:"column:story_id" json:"story_id"`
-	LoreID    *uint64   `gorm:"column:lore_id" json:"lore_id"`
-	AgentID   uint64    `gorm:"column:agent_id" json:"agent_id"`
-	UserID    uint64    `gorm:"column:user_id" json:"user_id"`
-	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
+	StoryID   *uint64         `gorm:"column:story_id" json:"story_id"`
+	LoreID    *uint64         `gorm:"column:lore_id" json:"lore_id"`
+	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
+	UserID    uint64          `gorm:"column:user_id" json:"user_id"`
+	Status    StoryChatStatus `gorm:"column:status" json:"status"`
+	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time       `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }
@@ -1052,16 +1065,21 @@ type AgenticQueryResponse struct {
 }
 
 type StoryChatMessageOutput struct {
-	ID        uint64                  `json:"id"`
-	ChatID    uint64                  `json:"chat_id"`
-	Role      ChatMessageRole         `json:"role"`
-	Content   string                  `json:"content"`
-	Metadata  string                  `json:"metadata,omitempty"`
-	Proposals []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
-	AgentID   uint64                  `gorm:"column:agent_id" json:"agent_id"`
-	AgentName string                  `json:"agent_name"`
-	CreatedAt time.Time               `json:"created_at"`
-	UpdatedAt time.Time               `json:"updated_at"`
+	ID     uint64 `json:"id"`
+	ChatID uint64 `json:"chat_id"`
+	// ChatStatus 是這則訊息所屬 chat 目前的狀態（見 StoryChatStatus）——前端用來
+	// 判斷一則 user 訊息是不是還沒拿到回覆（pending／in_progress），要不要顯示
+	// 「重送」按鈕，不用自己比對同一個 chat_id 底下有沒有 assistant 訊息（分頁時
+	// 兩則訊息可能被拆到不同頁，比對不可靠）。
+	ChatStatus StoryChatStatus         `gorm:"column:chat_status" json:"chat_status"`
+	Role       ChatMessageRole         `json:"role"`
+	Content    string                  `json:"content"`
+	Metadata   string                  `json:"metadata,omitempty"`
+	Proposals  []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
+	AgentID    uint64                  `gorm:"column:agent_id" json:"agent_id"`
+	AgentName  string                  `json:"agent_name"`
+	CreatedAt  time.Time               `json:"created_at"`
+	UpdatedAt  time.Time               `json:"updated_at"`
 }
 
 // AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 project/story/lore 的
