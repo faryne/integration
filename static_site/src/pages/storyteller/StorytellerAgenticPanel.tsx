@@ -41,6 +41,7 @@ import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/Storytell
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
+  StorytellerChatBadges,
   StorytellerChatBubble,
   storytellerChatActionButtonProps,
   type StorytellerAgentPanelAgent,
@@ -202,6 +203,9 @@ type PanelMessage =
       usage?: { total_tokens?: number };
       warning?: string;
       isLoading?: boolean;
+      // 這則實際是哪個 Agent 人設處理的——事後回頭看對話紀錄才追得回「這則
+      // 當時發生了什麼事」，見 StorytellerAgentPanel.tsx 的 StorytellerChatBadges。
+      agentName?: string;
     };
 
 function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
@@ -336,6 +340,7 @@ function AgenticAssistantMessage({
       isUser={isUser}
       isReplyTarget={isReplyTarget}
       speaker={isUser ? "你" : "AI 助理"}
+      badge={<StorytellerChatBadges agentName={message.agentName} />}
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
@@ -661,6 +666,24 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  // skill 訊息的 user 那則存檔時會把 mode 記進 metadata（見後端
+  // agentRunInputMetadata），重新載入歷史時從這裡解析回來，訊息泡泡才標得出
+  // 「這則走了哪個 /指令」。assistant 那則的 metadata 是 finish_reason/usage，
+  // 沒有 mode 欄位，會安全地回傳 undefined。
+  function parseMessageMode(
+    metadata?: string,
+  ): StorytellerAgentRunMode | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(metadata) as { mode?: string };
+      return parsed.mode as StorytellerAgentRunMode | undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
       const agentic = parseAgenticMetadata(message.metadata);
@@ -674,6 +697,7 @@ export function StorytellerAgenticPanel({
           content: message.content,
           steps: agentic?.steps,
           proposals: message.proposals,
+          agentName: message.agent_name || undefined,
         };
       }
       return {
@@ -683,6 +707,12 @@ export function StorytellerAgenticPanel({
         role: message.role,
         content: message.content,
         speaker: skillMessageSpeaker(message),
+        mode: parseMessageMode(message.metadata),
+        // assistant 那則的 speaker 本來就是 agent_name（見 skillMessageSpeaker），
+        // 這裡再標一次是重複——只在 user 那則補上，speaker 是「你」不會透露
+        // 用了哪個 Agent。
+        agentName:
+          message.role === "user" ? message.agent_name || undefined : undefined,
       };
     },
   );
@@ -818,6 +848,8 @@ export function StorytellerAgenticPanel({
       role: "user",
       content: instruction.trim() || "（未輸入需求）",
       speaker: penName || "使用者",
+      mode,
+      agentName: selectedAgent?.name,
     });
     setPrompt("");
     setReplyTarget(null);
@@ -860,6 +892,9 @@ export function StorytellerAgenticPanel({
     options?: { agentId?: number; ignoreAgentPersona?: boolean },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
+    const targetAgentName = agents.find(
+      (agent) => Number(agent.id) === targetAgentId,
+    )?.name;
     const userSortKey = nextSessionSortKey();
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
@@ -867,6 +902,7 @@ export function StorytellerAgenticPanel({
       id: `agentic-user-${userSortKey}`,
       role: "user",
       content: instruction,
+      agentName: targetAgentName,
     };
     setAgenticMessages((prev) => [...prev, userMessage]);
     setPrompt("");
@@ -906,6 +942,7 @@ export function StorytellerAgenticPanel({
               proposals: response.proposals,
               usage: response.usage,
               warning: response.warning,
+              agentName: targetAgentName,
             },
           ]);
         },

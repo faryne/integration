@@ -42,6 +42,30 @@ export interface StorytellerAgentPanelMessage {
   resultSelection?: StorytellerAgentPanelSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
+  // 這則訊息實際是哪個 Agent 人設處理的——不一定等於 speaker（skill 訊息的
+  // speaker 對 user 那則是「你」，不是人設名稱）。用來在泡泡上標「這則走了
+  // 哪個 Agent／哪個指令」，事後回頭看對話紀錄才知道當時發生什麼事。
+  agentName?: string;
+}
+
+// /rewrite／/expand 等 skill 指令的完整 mode 值 -> 中文短標籤，給訊息泡泡上的
+// 「這則走了哪個指令」標籤用。跟 StorytellerAgenticPanel.tsx 的
+// SKILL_SLASH_COMMAND_LABELS（短指令字 -> 中文）是同一份語意，只是這裡的 key
+// 是完整 mode 值（存進 metadata 的就是這個），兩邊分別維護，改的時候要記得對照。
+const AGENT_RUN_MODE_LABELS: Record<StorytellerAgentRunMode, string> = {
+  rewrite_selection: "/rewrite 改寫",
+  expand_selection: "/expand 擴寫",
+  translate_selection: "/translate 翻譯",
+  continue_chapter: "/continue 續寫",
+  custom_selection: "/custom 自訂指令",
+  custom_chapter: "/custom 自訂指令",
+};
+
+export function agentRunModeLabel(mode?: StorytellerAgentRunMode | string) {
+  if (!mode) {
+    return null;
+  }
+  return AGENT_RUN_MODE_LABELS[mode as StorytellerAgentRunMode] ?? null;
 }
 
 export type StorytellerAgentApplyAction =
@@ -104,12 +128,16 @@ export function StorytellerChatBubble({
   isUser,
   isReplyTarget,
   speaker,
+  badge,
   children,
 }: {
   messageId: string;
   isUser: boolean;
   isReplyTarget?: boolean;
   speaker: ReactNode;
+  // 這則訊息實際用了哪個 Agent 人設／哪個 skill 指令——小小一個 Chip 貼在
+  // 說話者名稱旁邊，事後回頭看對話紀錄才追得回「這則當時發生了什麼事」。
+  badge?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -148,17 +176,68 @@ export function StorytellerChatBubble({
           "& blockquote p": { m: 0 },
         }}
       >
-        <Typography
-          variant="caption"
-          fontWeight={700}
-          color={isUser ? "inherit" : "text.secondary"}
-          sx={{ opacity: isUser ? 0.82 : 1 }}
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          useFlexGap
+          flexWrap="wrap"
         >
-          {speaker}
-        </Typography>
+          <Typography
+            variant="caption"
+            fontWeight={700}
+            color={isUser ? "inherit" : "text.secondary"}
+            sx={{ opacity: isUser ? 0.82 : 1 }}
+          >
+            {speaker}
+          </Typography>
+          {badge}
+        </Stack>
         {children}
       </Box>
     </Box>
+  );
+}
+
+// 給 StorytellerChatBubble 的 badge prop 用——mode（走了哪個 skill 指令）跟
+// agentName（實際處理這則的 Agent 人設）各自獨立顯示，兩個都沒有就不渲染
+// 任何東西（一般聊天訊息不用特別標）。
+export function StorytellerChatBadges({
+  mode,
+  agentName,
+}: {
+  mode?: StorytellerAgentRunMode | string;
+  agentName?: string;
+}) {
+  const modeLabel = agentRunModeLabel(mode);
+  if (!modeLabel && !agentName) {
+    return null;
+  }
+  return (
+    <>
+      {modeLabel && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={modeLabel}
+          sx={{
+            height: 18,
+            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
+          }}
+        />
+      )}
+      {agentName && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={agentName}
+          sx={{
+            height: 18,
+            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
+          }}
+        />
+      )}
+    </>
   );
 }
 
@@ -204,6 +283,12 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       isUser={isUser}
       isReplyTarget={props.isReplyTarget}
       speaker={message.speaker}
+      badge={
+        <StorytellerChatBadges
+          mode={message.mode}
+          agentName={message.agentName}
+        />
+      }
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
@@ -225,7 +310,6 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           useFlexGap
           sx={{ mt: 1 }}
         >
-          {message.mode && <Chip size="small" label={message.mode} />}
           {message.usage?.total_tokens ? (
             <Chip size="small" label={`${message.usage.total_tokens} tokens`} />
           ) : null}

@@ -190,7 +190,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:     loopResult.Usage,
 	}
-	chat, messages := buildAgenticQueryChat(userID, story.ID, *agent, userPrompt, output)
+	chat, messages := buildAgenticQueryChat(userID, story.ID, *agent, userPrompt, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
 	if err := repo.CreateStoryChatWithMessages(chat, messages, output.Proposals, usage); err != nil {
 		return nil, err
@@ -270,7 +270,7 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		Proposals: buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:     loopResult.Usage,
 	}
-	chat, messages := buildLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, output)
+	chat, messages := buildLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
 	if err := repo.CreateStoryChatWithMessages(chat, messages, output.Proposals, usage); err != nil {
 		return nil, err
@@ -367,36 +367,52 @@ you are expected to resolve them yourself with tools before answering:
 	return base
 }
 
-func buildAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput, ignoreAgentPersona bool) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		StoryID: &storyID,
 		AgentID: agent.ID,
 		UserID:  userID,
 	}
-	return chat, agenticQueryChatMessages(agent, userPrompt, output)
+	return chat, agenticQueryChatMessages(agent, userPrompt, output, ignoreAgentPersona)
 }
 
 // buildLoreAgenticQueryChat 是 buildAgenticQueryChat 的設定集版本，見
 // RunLoreAgenticQuery 的說明。
-func buildLoreAgenticQueryChat(userID, loreID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildLoreAgenticQueryChat(userID, loreID uint64, agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput, ignoreAgentPersona bool) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		LoreID:  &loreID,
 		AgentID: agent.ID,
 		UserID:  userID,
 	}
-	return chat, agenticQueryChatMessages(agent, userPrompt, output)
+	return chat, agenticQueryChatMessages(agent, userPrompt, output, ignoreAgentPersona)
 }
 
-func agenticQueryChatMessages(agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput) []storytellerModel.StoryChatMessage {
+// messageAgentID 決定訊息列的 agent_id 要不要記——ignoreAgentPersona 為 true
+// 代表這輪沒有明確指定人設（純打字送出的一般問答，見 StorytellerAgenticPanel.tsx
+// 的 runAgentic 預設路徑），這種情況下 agent_id 只是「這次呼叫剛好用哪個 agent
+// 記錄解析 provider/model」的技術細節，不是使用者的刻意選擇，留 NULL 讓前端
+// 的訊息泡泡不要標一個誤導性的 Agent 名稱（見 DevelopDocuments/storyteller/
+// agentic_ai_storyteller/Phase1至7工作項規劃.md 的「未來待辦」第二項）。明確
+// 用 /Agent名稱 切換過的（ignoreAgentPersona=false）才記真正的 agent_id。
+func messageAgentID(agentID uint64, ignoreAgentPersona bool) *uint64 {
+	if ignoreAgentPersona {
+		return nil
+	}
+	id := agentID
+	return &id
+}
+
+func agenticQueryChatMessages(agent storytellerModel.Agent, userPrompt string, output *AgenticQueryOutput, ignoreAgentPersona bool) []storytellerModel.StoryChatMessage {
+	agentID := messageAgentID(agent.ID, ignoreAgentPersona)
 	return []storytellerModel.StoryChatMessage{
 		{
-			AgentID:  &agent.ID,
+			AgentID:  agentID,
 			Role:     storytellerModel.ChatMessageRoleUser,
 			Content:  userPrompt,
 			Metadata: "{}",
 		},
 		{
-			AgentID:  &agent.ID,
+			AgentID:  agentID,
 			Role:     storytellerModel.ChatMessageRoleAssistant,
 			Content:  output.Result,
 			Metadata: agenticQueryOutputMetadata(output),
