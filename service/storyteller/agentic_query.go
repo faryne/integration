@@ -135,9 +135,36 @@ func agenticQueryUserPromptWithReply(userPrompt, replyContent string) string {
 // 每輪只會存 user／assistant 各一則（agenticQueryChatMessages），不會有 tool 角色
 // 的列，不用另外處理工具呼叫中間態。
 func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage) []Message {
-	messages := make([]Message, 0, len(rows))
+	// 依 chat 分組：曾經跑到步數上限（ErrAgentLoopMaxStepsExceeded）或其他中途
+	// 中止的舊紀錄，assistant 那則訊息的 content 可能是空字串——這種內容直接
+	// 送給 provider 會被拒絕（Claude 的 content block 缺了必填的 text 欄位），
+	// 而且 Claude API 要求 user/assistant 嚴格交替，不能只砍掉單則訊息、留下
+	// 落單的另一則。乾脆整個 chat（一問一答）一起跳過，不把不完整的紀錄餵給
+	// 模型，比只補一個空字串佔位更乾淨。
+	byChat := make(map[uint64][]storytellerModel.StoryChatMessage, len(rows))
+	order := make([]uint64, 0, len(rows))
 	for _, row := range rows {
-		messages = append(messages, Message{Role: string(row.Role), Content: row.Content})
+		if _, ok := byChat[row.ChatID]; !ok {
+			order = append(order, row.ChatID)
+		}
+		byChat[row.ChatID] = append(byChat[row.ChatID], row)
+	}
+	messages := make([]Message, 0, len(rows))
+	for _, chatID := range order {
+		chatRows := byChat[chatID]
+		complete := true
+		for _, row := range chatRows {
+			if strings.TrimSpace(row.Content) == "" {
+				complete = false
+				break
+			}
+		}
+		if !complete {
+			continue
+		}
+		for _, row := range chatRows {
+			messages = append(messages, Message{Role: string(row.Role), Content: row.Content})
+		}
 	}
 	return messages
 }
