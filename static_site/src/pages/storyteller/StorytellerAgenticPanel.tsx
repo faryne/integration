@@ -166,6 +166,9 @@ const skillInstructionMaxCharacters = 4000;
 const skillFullContentMaxCharacters = 60000;
 const skillTotalPayloadMaxCharacters = 80000;
 
+const storytellerAgentApiKeyStorageKey = "storyteller-agent-api-key-id";
+const storytellerAgentModelStorageKey = "storyteller-agent-model-name";
+
 // 沿用既有 StoryEditor.tsx 的 aiErrorMessage() 邏輯：後端錯誤訊息在
 // response.data.message，axios 預設的 "Request failed with status code
 // 503" 對使用者沒有意義。
@@ -489,8 +492,36 @@ export function StorytellerAgenticPanel({
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const [providerApiKeyId, setProviderApiKeyId] = useState("");
-  const [modelNameOverride, setModelNameOverride] = useState("");
+  // 金鑰／模型是使用者跨 project 的操作習慣，不屬於任何故事內容，記在
+  // localStorage（不動後端）；重新整理後先拿上次選的當候選，實際有沒有效
+  // 還是交給下面既有的 fallback effect 驗證（key 被刪除、model 不在目前
+  // provider 清單裡都會自動退回清單第一筆，不會照單全收壞掉的殘留值）。
+  const [providerApiKeyId, setProviderApiKeyId] = useState(
+    () => window.localStorage.getItem(storytellerAgentApiKeyStorageKey) ?? "",
+  );
+  const [modelNameOverride, setModelNameOverride] = useState(
+    () => window.localStorage.getItem(storytellerAgentModelStorageKey) ?? "",
+  );
+  useEffect(() => {
+    if (providerApiKeyId) {
+      window.localStorage.setItem(
+        storytellerAgentApiKeyStorageKey,
+        providerApiKeyId,
+      );
+    } else {
+      window.localStorage.removeItem(storytellerAgentApiKeyStorageKey);
+    }
+  }, [providerApiKeyId]);
+  useEffect(() => {
+    if (modelNameOverride) {
+      window.localStorage.setItem(
+        storytellerAgentModelStorageKey,
+        modelNameOverride,
+      );
+    } else {
+      window.localStorage.removeItem(storytellerAgentModelStorageKey);
+    }
+  }, [modelNameOverride]);
   const [apiKeyMenuAnchor, setApiKeyMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
