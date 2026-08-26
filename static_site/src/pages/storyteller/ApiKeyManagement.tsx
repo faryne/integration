@@ -20,14 +20,17 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
   MenuItem,
   Paper,
+  Select,
   Stack,
   TextField,
   Tooltip,
@@ -292,6 +295,14 @@ function ProviderApiKeyRow({
   const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // provider 有內建 model 目錄時，後端沒被告知要測哪個 model 就會自己挑清單
+  // 第一個——目錄裡的名字是跟外部型錄（OpenRouter）同步來的，不保證每個都是
+  // 這個 provider 自己 API 真的認得的名字，挑到失效的那個會讓「連線失敗」
+  // 變成不知道是金鑰壞了還是剛好挑到爛掉的 model，兩種原因分不出來。改成按下
+  // 測試時跳出對話框讓使用者自己選，才不會被目錄裡可能過期的第一筆卡住。
+  const hasModelCatalog = (providerOption?.models.length ?? 0) > 0;
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testDialogModel, setTestDialogModel] = useState("");
   const isTesting =
     testApiKey.isPending && testApiKey.variables?.id === apiKey.id;
 
@@ -334,9 +345,19 @@ function ProviderApiKeyRow({
     );
   }
 
-  function runTest() {
+  function runTest(modelName: string) {
     setCooldownEndsAt(Date.now() + testCooldownSeconds * 1000);
-    testApiKey.mutate({ id: apiKey.id, modelName: testModelName });
+    testApiKey.mutate({ id: apiKey.id, modelName });
+  }
+
+  function openTestDialog() {
+    setTestDialogModel(providerOption?.models[0]?.name ?? "");
+    setTestDialogOpen(true);
+  }
+
+  function confirmTestDialog() {
+    setTestDialogOpen(false);
+    runTest(testDialogModel);
   }
 
   return (
@@ -372,7 +393,11 @@ function ProviderApiKeyRow({
                     isCoolingDown ||
                     (needsTestModelName && !testModelName.trim())
                   }
-                  onClick={runTest}
+                  onClick={
+                    hasModelCatalog
+                      ? openTestDialog
+                      : () => runTest(testModelName)
+                  }
                 >
                   {isTesting ? (
                     <CircularProgress size={20} />
@@ -552,6 +577,46 @@ function ProviderApiKeyRow({
             }}
           >
             刪除金鑰
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={testDialogOpen}
+        onClose={() => setTestDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>選擇要測試的 Model</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              目錄裡的 model 名稱是跟外部型錄同步來的，不保證每一個都還有效——自己選一個確定可用的來測，比讓系統自動挑清單第一個更準。
+            </Typography>
+            <FormControl size="small" fullWidth>
+              <InputLabel id="test-dialog-model-label">Model</InputLabel>
+              <Select
+                labelId="test-dialog-model-label"
+                label="Model"
+                value={testDialogModel}
+                onChange={(event) => setTestDialogModel(event.target.value)}
+              >
+                {providerOption?.models.map((model) => (
+                  <MenuItem key={model.id} value={model.name}>
+                    {model.label || model.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTestDialogOpen(false)}>取消</Button>
+          <Button
+            variant="contained"
+            disabled={!testDialogModel}
+            onClick={confirmTestDialog}
+          >
+            開始測試
           </Button>
         </DialogActions>
       </Dialog>
