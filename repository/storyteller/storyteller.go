@@ -991,7 +991,14 @@ func (r *Repository) RecentStoryAgenticMessages(storyID uint64, limit int) ([]st
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Where("chats.story_id = ? AND messages.deleted_at IS NULL AND messages.metadata LIKE ?", storyID, `%"mode":"agentic_query"%`).
+		Where("chats.story_id = ? AND messages.deleted_at IS NULL", storyID).
+		// metadata 是 JSON column，MySQL 存回去會正規化格式（例如冒號後補一個空白），
+		// 用字串 LIKE 比對格式很脆弱、容易對不上；改用 ->> 這個 JSON path 運算子
+		// 直接取值比對，不受格式影響。agenticQueryChatMessages 只有 assistant 那則
+		// 訊息的 metadata 帶 mode 標記（user 那則固定是 "{}"），這裡用 EXISTS 找
+		// 「同一個 chat 底下有沒有一則 agentic_query 標記的訊息」，這樣 user／
+		// assistant 兩則都會一起被撈出來，不會漏掉使用者當時打的指令。
+		Where("EXISTS (SELECT 1 FROM storyteller_story_chat_messages AS mode_check WHERE mode_check.chat_id = messages.chat_id AND mode_check.metadata->>'$.mode' = ?)", "agentic_query").
 		Order("messages.created_at DESC, messages.id DESC").
 		Limit(limit).
 		Find(&rows).Error
@@ -1010,7 +1017,8 @@ func (r *Repository) RecentLoreAgenticMessages(loreID uint64, limit int) ([]stor
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Where("chats.lore_id = ? AND messages.deleted_at IS NULL AND messages.metadata LIKE ?", loreID, `%"mode":"agentic_query"%`).
+		Where("chats.lore_id = ? AND messages.deleted_at IS NULL", loreID).
+		Where("EXISTS (SELECT 1 FROM storyteller_story_chat_messages AS mode_check WHERE mode_check.chat_id = messages.chat_id AND mode_check.metadata->>'$.mode' = ?)", "agentic_query").
 		Order("messages.created_at DESC, messages.id DESC").
 		Limit(limit).
 		Find(&rows).Error
