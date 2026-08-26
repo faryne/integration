@@ -908,9 +908,14 @@ export function StorytellerAgenticPanel({
     options?: { agentId?: number; ignoreAgentPersona?: boolean },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
-    const targetAgentName = agents.find(
-      (agent) => Number(agent.id) === targetAgentId,
-    )?.name;
+    // 跟後端 messageAgentID 的邏輯對齊：沒有明確切換人設（ignoreAgentPersona
+    // 為 true，一般打字送出的預設路徑）時不要標 Agent 名稱，不然這輪對話還
+    // 沒重新整理、還在畫面上即時顯示的這幾秒，會先秀出當下 chip 選的預設
+    // Agent——跟之後從資料庫重新載入、agent_id 是 NULL 算出來的空白狀態對
+    // 不上，變成畫面閃一下又消失的假訊號。
+    const targetAgentName = options?.ignoreAgentPersona
+      ? undefined
+      : agents.find((agent) => Number(agent.id) === targetAgentId)?.name;
     const userSortKey = nextSessionSortKey();
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
