@@ -622,7 +622,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 			TotalTokens:  response.Usage.TotalTokens,
 		}
 	}
-	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output)
+	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output, response.RawBody)
 	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
 	if err := s.repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
@@ -725,7 +725,7 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 			TotalTokens:  response.Usage.TotalTokens,
 		}
 	}
-	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output)
+	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output, response.RawBody)
 	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
 	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
@@ -3197,28 +3197,36 @@ func agentRunPromptInstruction(instruction string) string {
 // 一次寫入（見 CreateStoryChatWithMessages），沒有 agentic query 那種「先存問題、
 // 等 provider 回應才補回覆」的 pending 階段，所以直接標 completed——不能留空字串，
 // 那不是 StoryChatStatus 這個 ENUM 欄位認得的值。
-func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		StoryID: &storyID,
 		AgentID: agent.ID,
 		UserID:  userID,
 		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
-	return chat, buildAgentRunMessages(agent, input, output)
+	return chat, buildAgentRunMessages(agent, input, output, rawResponse)
 }
 
-func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		LoreID:  &loreID,
 		AgentID: agent.ID,
 		UserID:  userID,
 		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
-	return chat, buildAgentRunMessages(agent, input, output)
+	return chat, buildAgentRunMessages(agent, input, output, rawResponse)
 }
 
-func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse) []storytellerModel.StoryChatMessage {
+// buildAgentRunMessages 的 rawResponse 是這次唯一一次 provider.Generate() 呼叫
+// 收到的原始 response body（skill 模式固定單輪，不像 agentic 模式可能一輪打好幾
+// 次）——包成長度 1 的陣列存進 RawProviderResponse，跟 agentic 那邊
+// （rawProviderResponseJSON）用同一種封裝格式，方便之後兩邊一起查、格式一致。
+func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) []storytellerModel.StoryChatMessage {
 	agentID := agent.ID
+	var rawResponses []string
+	if rawResponse != "" {
+		rawResponses = []string{rawResponse}
+	}
 	return []storytellerModel.StoryChatMessage{
 		{
 			AgentID:  &agentID,
@@ -3227,10 +3235,11 @@ func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.
 			Metadata: agentRunInputMetadata(input),
 		},
 		{
-			AgentID:  &agentID,
-			Role:     storytellerModel.ChatMessageRoleAssistant,
-			Content:  output.Result,
-			Metadata: agentRunOutputMetadata(output),
+			AgentID:             &agentID,
+			Role:                storytellerModel.ChatMessageRoleAssistant,
+			Content:             output.Result,
+			Metadata:            agentRunOutputMetadata(output),
+			RawProviderResponse: rawProviderResponseJSON(rawResponses),
 		},
 	}
 }

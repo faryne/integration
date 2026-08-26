@@ -52,6 +52,11 @@ type AgentLoopResult struct {
 	// Usage 是這輪對話全部 provider.Generate() 呼叫（工具呼叫的中間輪次加上給出
 	// 最終答案的那一輪）加總的 token 用量，nil 代表 provider 完全沒回傳用量資訊。
 	Usage *AIProviderUsage
+	// RawResponses 依序記錄這輪對話「每一次」provider.Generate() 呼叫收到的原始
+	// response body，一個字元都沒有精簡——包含 Steps 沒記錄到的那次（沒有
+	// tool_calls、真正給出最終答案的那一輪）。純粹給除錯／事後追查用，例如比對
+	// provider 自己 console 上的紀錄。
+	RawResponses []string
 }
 
 // AgentLoopStep 是 loop 裡的一輪：provider 要求呼叫哪些工具，以及各自的執行結果
@@ -106,6 +111,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 			return nil, err
 		}
 		result.Usage = sumAgentLoopUsage(result.Usage, resp.Usage)
+		result.RawResponses = append(result.RawResponses, resp.RawBody)
 		if len(resp.ToolCalls) == 0 {
 			result.FinalText = resp.Result
 			return result, nil

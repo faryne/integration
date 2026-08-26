@@ -583,15 +583,21 @@ type AgentProposal struct {
 func (AgentProposal) TableName() string { return "storyteller_agent_proposals" }
 
 type StoryChatMessage struct {
-	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
-	ChatID    uint64          `gorm:"column:chat_id" json:"chat_id"`
-	AgentID   *uint64         `gorm:"column:agent_id" json:"agent_id"`
-	Role      ChatMessageRole `gorm:"column:role" json:"role"`
-	Content   string          `gorm:"column:content" json:"content"`
-	Metadata  string          `gorm:"column:metadata" json:"metadata"`
-	DeletedAt *time.Time      `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at" json:"updated_at"`
+	ID       uint64          `gorm:"column:id;primaryKey" json:"id"`
+	ChatID   uint64          `gorm:"column:chat_id" json:"chat_id"`
+	AgentID  *uint64         `gorm:"column:agent_id" json:"agent_id"`
+	Role     ChatMessageRole `gorm:"column:role" json:"role"`
+	Content  string          `gorm:"column:content" json:"content"`
+	Metadata string          `gorm:"column:metadata" json:"metadata"`
+	// RawProviderResponse 是純除錯用欄位：這則 assistant 訊息生成過程中每一次
+	// provider.Generate() 呼叫收到的原始 response body（JSON 陣列字串，一個
+	// 字元都沒有精簡），跟 Metadata 已經解析過的 tool_calls/results 摘要分開存。
+	// 故意不給 json tag 曝光到 API——可能之後會直接刪掉這個欄位，只供直接查 DB
+	// 除錯用（見 agenticQueryAssistantMessage／buildAgentRunMessages 的說明）。
+	RawProviderResponse *string    `gorm:"column:raw_provider_response" json:"-"`
+	DeletedAt           *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt           time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt           time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryChatMessage) TableName() string {

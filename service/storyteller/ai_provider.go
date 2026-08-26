@@ -68,6 +68,11 @@ type AIProviderResponse struct {
 	// 這個 SDK 的人要先檢查 ToolCalls 再決定要不要把 Result 當成最終答案。
 	ToolCalls    []ToolCall
 	FinishReason string
+	// RawBody 是這次 provider 呼叫收到的原始 HTTP response body，一個字元都
+	// 沒有精簡或改動——純粹留給事後除錯／追查用（例如比對跟 provider 自己
+	// console 上的紀錄是否對得上），正常業務邏輯不應該依賴這個欄位，該解析的
+	// 資訊上面幾個欄位都已經處理好了。
+	RawBody string
 }
 
 // ToolDefinition 描述一個可以被 provider 呼叫的工具，格式直接對應
@@ -224,8 +229,16 @@ func generateOpenAICompatible(ctx context.Context, endpoint string, httpClient *
 		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
 	}
 
+	// 用 io.ReadAll 先把原始 body 讀出來、留一份不動的副本，再用 json.Unmarshal
+	// 解析——不能直接 json.NewDecoder(resp.Body).Decode()，那個會把 body 直接
+	// 吃掉，沒有機會留下未經任何精簡/改動的原文（見 AIProviderResponse.RawBody
+	// 的說明，純粹給除錯用）。
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read response failed", ErrAIProviderUnknown)
+	}
 	var output openAIChatCompletionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+	if err := json.Unmarshal(rawBody, &output); err != nil {
 		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
 	}
 	if len(output.Choices) == 0 {
@@ -248,6 +261,7 @@ func generateOpenAICompatible(ctx context.Context, endpoint string, httpClient *
 			OutputTokens: output.Usage.CompletionTokens,
 			TotalTokens:  output.Usage.TotalTokens,
 		},
+		RawBody: string(rawBody),
 	}, nil
 }
 
@@ -483,8 +497,12 @@ func (p *ClaudeProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
 	}
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read response failed", ErrAIProviderUnknown)
+	}
 	var output claudeMessageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+	if err := json.Unmarshal(rawBody, &output); err != nil {
 		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
 	}
 	result := strings.TrimSpace(output.JoinedText())
@@ -501,6 +519,7 @@ func (p *ClaudeProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 			TotalTokens:  output.Usage.InputTokens + output.Usage.OutputTokens,
 		},
 		FinishReason: output.StopReason,
+		RawBody:      string(rawBody),
 	}, nil
 }
 
@@ -705,8 +724,12 @@ func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return nil, aiProviderStatusError(resp.StatusCode, resp.Body)
 	}
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("%w: read response failed", ErrAIProviderUnknown)
+	}
 	var output geminiGenerateContentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&output); err != nil {
+	if err := json.Unmarshal(rawBody, &output); err != nil {
 		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
 	}
 	result := strings.TrimSpace(output.JoinedText())
@@ -721,6 +744,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 			TotalTokens:  output.UsageMetadata.TotalTokenCount,
 		},
 		FinishReason: output.FinishReason(),
+		RawBody:      string(rawBody),
 	}, nil
 }
 

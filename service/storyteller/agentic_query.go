@@ -38,6 +38,11 @@ type AgenticQueryOutput struct {
 	// 過期需要清理。
 	Proposals []storytellerModel.AgentProposal
 	Usage     *AIProviderUsage
+	// RawResponses 是這輪對話每一次 provider.Generate() 呼叫收到的原始 response
+	// body（見 AgentLoopResult.RawResponses 的說明），直接從 loopResult 帶過來，
+	// 只用來組 agenticQueryAssistantMessage 的 RawProviderResponse 欄位，純除錯
+	// 用途，不會經過 ToResponse() 流到 API 回應。
+	RawResponses []string
 }
 
 // ToResponse 把內部表示轉成 HTTP 回應用的 DTO（model/entity/storyteller 那份），
@@ -287,15 +292,16 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:    agent.ID,
-		ChatID:     chat.ID,
-		ChatStatus: storytellerModel.StoryChatStatusCompleted,
-		Provider:   providerAPIKeyRow.Provider,
-		ModelName:  modelName,
-		Result:     loopResult.FinalText,
-		Steps:      loopResult.Steps,
-		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:      loopResult.Usage,
+		AgentID:      agent.ID,
+		ChatID:       chat.ID,
+		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
+		RawResponses: loopResult.RawResponses,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
+		Result:       loopResult.FinalText,
+		Steps:        loopResult.Steps,
+		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -396,15 +402,16 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:    agent.ID,
-		ChatID:     chatID,
-		ChatStatus: storytellerModel.StoryChatStatusCompleted,
-		Provider:   providerAPIKeyRow.Provider,
-		ModelName:  modelName,
-		Result:     loopResult.FinalText,
-		Steps:      loopResult.Steps,
-		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:      loopResult.Usage,
+		AgentID:      agent.ID,
+		ChatID:       chatID,
+		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
+		RawResponses: loopResult.RawResponses,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
+		Result:       loopResult.FinalText,
+		Steps:        loopResult.Steps,
+		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -492,15 +499,16 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:    agent.ID,
-		ChatID:     chat.ID,
-		ChatStatus: storytellerModel.StoryChatStatusCompleted,
-		Provider:   providerAPIKeyRow.Provider,
-		ModelName:  modelName,
-		Result:     loopResult.FinalText,
-		Steps:      loopResult.Steps,
-		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:      loopResult.Usage,
+		AgentID:      agent.ID,
+		ChatID:       chat.ID,
+		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
+		RawResponses: loopResult.RawResponses,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
+		Result:       loopResult.FinalText,
+		Steps:        loopResult.Steps,
+		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -592,15 +600,16 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:    agent.ID,
-		ChatID:     chatID,
-		ChatStatus: storytellerModel.StoryChatStatusCompleted,
-		Provider:   providerAPIKeyRow.Provider,
-		ModelName:  modelName,
-		Result:     loopResult.FinalText,
-		Steps:      loopResult.Steps,
-		Proposals:  buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:      loopResult.Usage,
+		AgentID:      agent.ID,
+		ChatID:       chatID,
+		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
+		RawResponses: loopResult.RawResponses,
+		Provider:     providerAPIKeyRow.Provider,
+		ModelName:    modelName,
+		Result:       loopResult.FinalText,
+		Steps:        loopResult.Steps,
+		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
@@ -755,11 +764,29 @@ func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt, re
 // 那一則訊息，搭配 repo.CompleteChatMessage 使用。
 func agenticQueryAssistantMessage(agent storytellerModel.Agent, output *AgenticQueryOutput, ignoreAgentPersona bool) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
-		AgentID:  messageAgentID(agent.ID, ignoreAgentPersona),
-		Role:     storytellerModel.ChatMessageRoleAssistant,
-		Content:  output.Result,
-		Metadata: agenticQueryOutputMetadata(output),
+		AgentID:             messageAgentID(agent.ID, ignoreAgentPersona),
+		Role:                storytellerModel.ChatMessageRoleAssistant,
+		Content:             output.Result,
+		Metadata:            agenticQueryOutputMetadata(output),
+		RawProviderResponse: rawProviderResponseJSON(output.RawResponses),
 	}
+}
+
+// rawProviderResponseJSON 把每一輪 provider.Generate() 呼叫收到的原始 response
+// body 陣列封裝成一個 JSON 字串，存進 StoryChatMessage.RawProviderResponse 這個
+// 純除錯用欄位——agentic（可能一輪對話打好幾次 provider）跟 skill（固定一次）
+// 兩條路徑共用同一個封裝方式，之後要比對格式才不會兩邊長得不一樣。空陣列回傳
+// nil，不佔欄位空間，也跟「有記錄但剛好是空」的語意區分開。
+func rawProviderResponseJSON(rawResponses []string) *string {
+	if len(rawResponses) == 0 {
+		return nil
+	}
+	body, err := json.Marshal(rawResponses)
+	if err != nil {
+		return nil
+	}
+	value := string(body)
+	return &value
 }
 
 // agenticQueryUserMessageMetadata 把「回覆」帶的完整內容（見 ReplyContent 的說明）
