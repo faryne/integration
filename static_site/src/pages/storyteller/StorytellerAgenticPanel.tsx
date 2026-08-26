@@ -208,6 +208,21 @@ type PanelMessage =
       agentName?: string;
     };
 
+// 工作軌跡只顯示「參數裡的 id 類欄位」（project_public_id／story_public_id／
+// lore_public_id／collection_id／volume_public_id／base_version_id 等），
+// 其餘欄位一律拋棄——尤其是 storyteller_upsert_story／storyteller_upsert_lore
+// 這類寫入工具，arguments.content 就是 AI 準備寫入的整篇內容，原封不動塞進
+// 這個除錯用的摺疊區塊沒有閱讀價值，只是多一個曝光點；id 類欄位本身是不透明
+// 雜湊值/版本號，看得出「讀了哪篇故事/設定」但不會洩漏內容本身，兩者兼顧。
+// 用尾碼比對（"_id" 結尾或字面 "id"）而不是列舉固定欄位名單，之後
+// tool_registry_*.go 新增工具只要遵循現有命名慣例，這裡不用跟著改。
+function toolCallDisplayArguments(args: Record<string, unknown>): string {
+  return Object.entries(args)
+    .filter(([key]) => key === "id" || key.endsWith("_id"))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join(" ");
+}
+
 function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
   const [expanded, setExpanded] = useState(false);
   const calls = steps.flatMap((step) => step.tool_calls);
@@ -273,7 +288,7 @@ function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {JSON.stringify(call.arguments)}
+                    {toolCallDisplayArguments(call.arguments)}
                   </Typography>
                   <Typography
                     variant="caption"
@@ -633,8 +648,12 @@ export function StorytellerAgenticPanel({
     : rawSkillMessages;
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
+    // skill 指令從不套用 Agent 的人設 prompt（ignore_agent_persona 固定
+    // true），agent_id 純粹是技術上用哪個 provider/model 打的細節，不代表
+    // 「這句是哪個人設說的」——說話者固定顯示「AI 助理」，跟 agentic 模式
+    // 一致，不要秀出可能誤導的 Agent 名稱（見 mode Chip 才是真正該標的資訊）。
     if (message.role === "assistant") {
-      return message.agent_name || selectedAgent?.name || "AI 助理";
+      return "AI 助理";
     }
     if (message.role === "user") {
       return penName || "使用者";
@@ -708,11 +727,9 @@ export function StorytellerAgenticPanel({
         content: message.content,
         speaker: skillMessageSpeaker(message),
         mode: parseMessageMode(message.metadata),
-        // assistant 那則的 speaker 本來就是 agent_name（見 skillMessageSpeaker），
-        // 這裡再標一次是重複——只在 user 那則補上，speaker 是「你」不會透露
-        // 用了哪個 Agent。
-        agentName:
-          message.role === "user" ? message.agent_name || undefined : undefined,
+        // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
+        // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
+        // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
       };
     },
   );
@@ -727,7 +744,7 @@ export function StorytellerAgenticPanel({
       id: `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
       role: "assistant",
       content: skillResult.response.result,
-      speaker: selectedAgent?.name ?? "AI 助理",
+      speaker: "AI 助理",
       mode: skillResult.response.mode,
       usage: skillResult.response.usage,
       resultSelection: skillResult.resultSelection,
@@ -849,7 +866,6 @@ export function StorytellerAgenticPanel({
       content: instruction.trim() || "（未輸入需求）",
       speaker: penName || "使用者",
       mode,
-      agentName: selectedAgent?.name,
     });
     setPrompt("");
     setReplyTarget(null);
@@ -1240,7 +1256,7 @@ export function StorytellerAgenticPanel({
                     id: "skill-pending-loading",
                     role: "assistant",
                     content: "",
-                    speaker: selectedAgent?.name ?? "AI 助理",
+                    speaker: "AI 助理",
                     isLoading: true,
                   }}
                   enableReplace={false}
