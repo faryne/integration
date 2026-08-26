@@ -1,7 +1,15 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ReplyIcon from "@mui/icons-material/Reply";
-import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
-import { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import type { ButtonProps } from "@mui/material";
+import { useEffect, useState, type ReactNode } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
@@ -37,10 +45,7 @@ export interface StorytellerAgentPanelMessage {
 }
 
 export type StorytellerAgentApplyAction =
-  | "replace"
-  | "insert"
-  | "append"
-  | "copy";
+  "replace" | "insert" | "append" | "copy";
 
 // AI 助理一輪呼叫可能要跑好幾秒到好幾十秒（多輪工具呼叫時尤其明顯），純轉圈圈
 // 容易讓使用者懷疑「是不是壞了、關掉分頁會不會就消失了」。這裡先用便宜的做法
@@ -72,6 +77,88 @@ export function StorytellerAgentLoadingHint() {
     <>
       {AGENT_LOADING_HINTS[hintIndex]}（已等待 {elapsedSeconds} 秒）
     </>
+  );
+}
+
+// 泡泡下面那排「附加末尾/複製/回覆」動作鍵，之前用 variant="outlined" 疊在泡泡
+// 下面，等於又是一排跟泡泡本身一樣的方框，看起來像箱子疊箱子。改成無邊框的
+// 文字按鈕，視覺上依附在泡泡上而不是獨立的一排容器——StorytellerAgentMessage／
+// AgenticAssistantMessage 共用同一份，維持兩邊手感一致。
+export const storytellerChatActionButtonProps: Pick<
+  ButtonProps,
+  "size" | "variant"
+> = { size: "small", variant: "text" };
+
+// 訊息泡泡的外觀（圓角、陰影、說話者標籤這層）給 StorytellerAgentMessage（skill
+// 訊息）跟 StorytellerAgenticPanel.tsx 的 AgenticAssistantMessage（agentic 訊息）
+// 共用——這兩個一直是「雙胞胎」，樣式改一邊很容易忘記改另一邊，抽出來後改一次
+// 兩邊自動一起套用。
+//
+// 圓角刻意做成不對稱：貼近說話者那一側的角（使用者泡泡右下、AI 泡泡左下）留小，
+// 其餘三個角放大，做出經典聊天泡泡「尖角指向說話者」的手感，不是四個角一樣的
+// 卡片。原本完全沒有陰影，泡泡直接貼在同色系的面板底色上、只靠一條細邊框分界，
+// 加一層很淺的陰影（MUI 內建 shadows[1]）讓泡泡從底色浮起來，是這次最主要的
+// 「不再像方塊」的來源。
+export function StorytellerChatBubble({
+  messageId,
+  isUser,
+  isReplyTarget,
+  speaker,
+  children,
+}: {
+  messageId: string;
+  isUser: boolean;
+  isReplyTarget?: boolean;
+  speaker: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Box
+      data-agent-message-id={messageId}
+      sx={{
+        display: "flex",
+        justifyContent: isUser ? "flex-end" : "flex-start",
+      }}
+    >
+      <Box
+        sx={{
+          maxWidth: "92%",
+          p: 1.5,
+          borderRadius: "16px",
+          borderBottomRightRadius: isUser ? "4px" : "16px",
+          borderBottomLeftRadius: isUser ? "16px" : "4px",
+          boxShadow: 1,
+          bgcolor: isUser ? "primary.main" : "background.paper",
+          color: isUser ? "primary.contrastText" : "text.primary",
+          border: isUser ? 0 : "1px solid",
+          borderColor: isReplyTarget ? "primary.main" : "divider",
+          outline: isReplyTarget ? "2px solid" : "none",
+          outlineColor: "primary.main",
+          "& blockquote": {
+            m: 0,
+            mt: 0.75,
+            mb: 1,
+            px: 1.25,
+            py: 0.75,
+            borderLeft: "3px solid",
+            borderColor: isUser ? "primary.contrastText" : "primary.main",
+            bgcolor: isUser ? "rgba(255,255,255,0.14)" : "action.hover",
+            borderRadius: 0.5,
+          },
+          "& blockquote p": { m: 0 },
+        }}
+      >
+        <Typography
+          variant="caption"
+          fontWeight={700}
+          color={isUser ? "inherit" : "text.secondary"}
+          sx={{ opacity: isUser ? 0.82 : 1 }}
+        >
+          {speaker}
+        </Typography>
+        {children}
+      </Box>
+    </Box>
   );
 }
 
@@ -112,138 +199,94 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
     : message.content;
 
   return (
-    <Box
-      data-agent-message-id={message.id}
-      sx={{
-        display: "flex",
-        justifyContent: isUser ? "flex-end" : "flex-start",
-      }}
+    <StorytellerChatBubble
+      messageId={message.id}
+      isUser={isUser}
+      isReplyTarget={props.isReplyTarget}
+      speaker={message.speaker}
     >
-      <Box
-        sx={{
-          maxWidth: "92%",
-          p: 1.5,
-          borderRadius: 1,
-          bgcolor: isUser ? "primary.main" : "background.paper",
-          color: isUser ? "primary.contrastText" : "text.primary",
-          border: isUser ? 0 : "1px solid",
-          borderColor: props.isReplyTarget ? "primary.main" : "divider",
-          outline: props.isReplyTarget ? "2px solid" : "none",
-          outlineColor: "primary.main",
-          "& blockquote": {
-            m: 0,
-            mt: 0.75,
-            mb: 1,
-            px: 1.25,
-            py: 0.75,
-            borderLeft: "3px solid",
-            borderColor: isUser ? "primary.contrastText" : "primary.main",
-            bgcolor: isUser ? "rgba(255,255,255,0.14)" : "action.hover",
-            borderRadius: 0.5,
-          },
-          "& blockquote p": { m: 0 },
-        }}
-      >
-        <Typography
-          variant="caption"
-          color={isUser ? "inherit" : "text.secondary"}
-          sx={{ opacity: isUser ? 0.82 : 1 }}
+      {message.isLoading ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <CircularProgress size={18} />
+          <Typography variant="body2" color="text.secondary">
+            <StorytellerAgentLoadingHint />
+          </Typography>
+        </Stack>
+      ) : (
+        <Box sx={{ typography: "body2", mt: 0.5 }}>
+          <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+        </Box>
+      )}
+      {!isUser && message.isCurrentResult && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 1 }}
         >
-          {message.speaker}
-        </Typography>
-        {message.isLoading ? (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-            <CircularProgress size={18} />
-            <Typography variant="body2" color="text.secondary">
-              <StorytellerAgentLoadingHint />
-            </Typography>
-          </Stack>
-        ) : (
-          <Box sx={{ typography: "body2", mt: 0.5 }}>
-            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
-          </Box>
-        )}
-        {!isUser && message.isCurrentResult && (
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            useFlexGap
-            sx={{ mt: 1 }}
-          >
-            {message.mode && <Chip size="small" label={message.mode} />}
-            {message.usage?.total_tokens ? (
-              <Chip
-                size="small"
-                label={`${message.usage.total_tokens} tokens`}
-              />
-            ) : null}
-          </Stack>
-        )}
-        {canApply && (
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            useFlexGap
-            sx={{ mt: 1 }}
-          >
-            {props.enableReplace &&
-              message.isCurrentResult &&
-              message.resultSelection && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  onClick={() =>
-                    props.onApplyText(
-                      message.content,
-                      "replace",
-                      message.resultSelection ?? null,
-                    )
-                  }
-                >
-                  取代選取
-                </Button>
-              )}
-            {props.enableInsert && (
+          {message.mode && <Chip size="small" label={message.mode} />}
+          {message.usage?.total_tokens ? (
+            <Chip size="small" label={`${message.usage.total_tokens} tokens`} />
+          ) : null}
+        </Stack>
+      )}
+      {canApply && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 1 }}
+        >
+          {props.enableReplace &&
+            message.isCurrentResult &&
+            message.resultSelection && (
               <Button
-                size="small"
-                variant="outlined"
+                {...storytellerChatActionButtonProps}
                 onClick={() =>
-                  props.onApplyText(message.content, "insert", null)
+                  props.onApplyText(
+                    message.content,
+                    "replace",
+                    message.resultSelection ?? null,
+                  )
                 }
               >
-                插入游標
+                取代選取
               </Button>
             )}
+          {props.enableInsert && (
             <Button
-              size="small"
-              variant="outlined"
-              onClick={() => props.onApplyText(message.content, "append", null)}
+              {...storytellerChatActionButtonProps}
+              onClick={() => props.onApplyText(message.content, "insert", null)}
             >
-              附加末尾
+              插入游標
             </Button>
+          )}
+          <Button
+            {...storytellerChatActionButtonProps}
+            onClick={() => props.onApplyText(message.content, "append", null)}
+          >
+            附加末尾
+          </Button>
+          <Button
+            {...storytellerChatActionButtonProps}
+            startIcon={<ContentCopyIcon />}
+            onClick={() => props.onApplyText(message.content, "copy", null)}
+          >
+            複製
+          </Button>
+          {props.onReply && (
             <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ContentCopyIcon />}
-              onClick={() => props.onApplyText(message.content, "copy", null)}
+              {...storytellerChatActionButtonProps}
+              startIcon={<ReplyIcon />}
+              onClick={() => props.onReply?.(message)}
             >
-              複製
+              回覆
             </Button>
-            {props.onReply && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ReplyIcon />}
-                onClick={() => props.onReply?.(message)}
-              >
-                回覆
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Box>
-    </Box>
+          )}
+        </Stack>
+      )}
+    </StorytellerChatBubble>
   );
 }

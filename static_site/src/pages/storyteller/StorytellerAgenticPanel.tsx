@@ -41,6 +41,8 @@ import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/Storytell
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
+  StorytellerChatBubble,
+  storytellerChatActionButtonProps,
   type StorytellerAgentPanelAgent,
   type StorytellerAgentPanelMessage,
   type StorytellerAgentApplyAction,
@@ -137,8 +139,11 @@ function matchAgentNameCommand(
     return null;
   }
   const rest = value.slice(1);
-  let best: { agentId: string; nameLength: number; instruction: string } | null =
-    null;
+  let best: {
+    agentId: string;
+    nameLength: number;
+    instruction: string;
+  } | null = null;
   for (const agent of agents) {
     const name = agent.name.trim();
     if (!name || !rest.toLowerCase().startsWith(name.toLowerCase())) {
@@ -316,7 +321,8 @@ function AgenticAssistantMessage({
   isReplyTarget?: boolean;
 }) {
   const isUser = message.role === "user";
-  const canApply = !isUser && !message.isLoading && message.content.trim() !== "";
+  const canApply =
+    !isUser && !message.isLoading && message.content.trim() !== "";
   const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
     targetKind,
     projectPublicId,
@@ -325,115 +331,92 @@ function AgenticAssistantMessage({
     lores,
   });
   return (
-    <Box
-      data-agent-message-id={message.id}
-      sx={{
-        display: "flex",
-        justifyContent: message.role === "user" ? "flex-end" : "flex-start",
-      }}
+    <StorytellerChatBubble
+      messageId={message.id}
+      isUser={isUser}
+      isReplyTarget={isReplyTarget}
+      speaker={isUser ? "你" : "AI 助理"}
     >
-      <Box
-        sx={{
-          maxWidth: "94%",
-          p: 1.5,
-          borderRadius: 1,
-          bgcolor: message.role === "user" ? "primary.main" : "background.paper",
-          color: message.role === "user" ? "primary.contrastText" : "text.primary",
-          border: message.role === "user" ? 0 : "1px solid",
-          borderColor: isReplyTarget ? "primary.main" : "divider",
-          outline: isReplyTarget ? "2px solid" : "none",
-          outlineColor: "primary.main",
-        }}
-      >
-        <Typography
-          variant="caption"
-          color={message.role === "user" ? "inherit" : "text.secondary"}
+      {message.isLoading ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <CircularProgress size={18} />
+          <Typography variant="body2" color="text.secondary">
+            <StorytellerAgentLoadingHint />
+          </Typography>
+        </Stack>
+      ) : (
+        message.content && (
+          <Box sx={{ typography: "body2", mt: 0.5 }}>
+            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+          </Box>
+        )
+      )}
+      {message.warning && (
+        <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+          {message.warning}
+        </Alert>
+      )}
+      {message.steps && message.steps.length > 0 && (
+        <ToolTraceSummary steps={message.steps} />
+      )}
+      {message.proposals && message.proposals.length > 0 && (
+        <Stack spacing={1} sx={{ mt: 1 }}>
+          {message.proposals.map((proposal, index) => (
+            <StorytellerAgenticProposalCard
+              key={proposal.tool_call_id || index}
+              index={index}
+              proposal={proposal}
+              targetKind={targetKind}
+              projectPublicId={projectPublicId}
+              targetPublicId={targetPublicId}
+              currentStory={currentStory}
+              onApplied={onStoryChanged}
+              onApplyToEditor={onApplyProposalToEditor}
+            />
+          ))}
+        </Stack>
+      )}
+      {message.usage?.total_tokens ? (
+        <Chip
+          size="small"
+          label={`${message.usage.total_tokens} tokens`}
+          sx={{ mt: 1 }}
+        />
+      ) : null}
+      {canApply && onApplyText && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 1 }}
         >
-          {message.role === "user" ? "你" : "AI 助理"}
-        </Typography>
-        {message.isLoading ? (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-            <CircularProgress size={18} />
-            <Typography variant="body2" color="text.secondary">
-              <StorytellerAgentLoadingHint />
-            </Typography>
-          </Stack>
-        ) : (
-          message.content && (
-            <Box sx={{ typography: "body2", mt: 0.5 }}>
-              <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
-            </Box>
-          )
-        )}
-        {message.warning && (
-          <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
-            {message.warning}
-          </Alert>
-        )}
-        {message.steps && message.steps.length > 0 && (
-          <ToolTraceSummary steps={message.steps} />
-        )}
-        {message.proposals && message.proposals.length > 0 && (
-          <Stack spacing={1} sx={{ mt: 1 }}>
-            {message.proposals.map((proposal, index) => (
-              <StorytellerAgenticProposalCard
-                key={proposal.tool_call_id || index}
-                index={index}
-                proposal={proposal}
-                targetKind={targetKind}
-                projectPublicId={projectPublicId}
-                targetPublicId={targetPublicId}
-                currentStory={currentStory}
-                onApplied={onStoryChanged}
-                onApplyToEditor={onApplyProposalToEditor}
-              />
-            ))}
-          </Stack>
-        )}
-        {message.usage?.total_tokens ? (
-          <Chip
-            size="small"
-            label={`${message.usage.total_tokens} tokens`}
-            sx={{ mt: 1 }}
-          />
-        ) : null}
-        {canApply && onApplyText && (
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            useFlexGap
-            sx={{ mt: 1 }}
+          <Button
+            {...storytellerChatActionButtonProps}
+            startIcon={<ContentCopyIcon />}
+            onClick={() => onApplyText(message.content, "copy", null)}
           >
+            複製
+          </Button>
+          {onReply && (
             <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ContentCopyIcon />}
-              onClick={() => onApplyText(message.content, "copy", null)}
+              {...storytellerChatActionButtonProps}
+              startIcon={<ReplyIcon />}
+              onClick={() =>
+                onReply({
+                  id: message.id,
+                  role: message.role,
+                  content: message.content,
+                  speaker: "AI 助理",
+                })
+              }
             >
-              複製
+              回覆
             </Button>
-            {onReply && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ReplyIcon />}
-                onClick={() =>
-                  onReply({
-                    id: message.id,
-                    role: message.role,
-                    content: message.content,
-                    speaker: "AI 助理",
-                  })
-                }
-              >
-                回覆
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Box>
-    </Box>
+          )}
+        </Stack>
+      )}
+    </StorytellerChatBubble>
   );
 }
 
@@ -553,7 +536,8 @@ export function StorytellerAgenticPanel({
     : undefined;
   // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定
   // 選了一把），沒有 key 時才退回 Agent 記錄的（多半也是空字串）。
-  const effectiveProvider = overriddenApiKey?.provider ?? selectedAgent?.provider;
+  const effectiveProvider =
+    overriddenApiKey?.provider ?? selectedAgent?.provider;
   const effectiveProviderModelInfo = providerModelsList.find(
     (entry) => entry.provider === effectiveProvider,
   );
@@ -665,7 +649,9 @@ export function StorytellerAgenticPanel({
       return null;
     }
     try {
-      const parsed = JSON.parse(metadata) as { steps?: StorytellerAgenticStep[] };
+      const parsed = JSON.parse(metadata) as {
+        steps?: StorytellerAgenticStep[];
+      };
       if (!parsed.steps || parsed.steps.length === 0) {
         return null;
       }
@@ -731,7 +717,11 @@ export function StorytellerAgenticPanel({
       return;
     }
     node.scrollTop = node.scrollHeight;
-  }, [combinedMessages.length, runSkillMutation.isPending, runAgenticQuery.isPending]);
+  }, [
+    combinedMessages.length,
+    runSkillMutation.isPending,
+    runAgenticQuery.isPending,
+  ]);
 
   const promptReferences = resolveStorytellerAgentReferences({
     prompt,
@@ -755,7 +745,11 @@ export function StorytellerAgenticPanel({
     })),
   });
   const replyReferenceTarget = replyTarget
-    ? { id: replyTarget.id, speaker: replyTarget.speaker, content: replyTarget.content }
+    ? {
+        id: replyTarget.id,
+        speaker: replyTarget.speaker,
+        content: replyTarget.content,
+      }
     : null;
   const referenceContent = [
     buildStorytellerAgentReferenceContent(promptReferences),
@@ -950,7 +944,9 @@ export function StorytellerAgenticPanel({
         setPrompt("");
         return;
       }
-      const targetAgent = agents.find((agent) => agent.id === agentSwitch.agentId);
+      const targetAgent = agents.find(
+        (agent) => agent.id === agentSwitch.agentId,
+      );
       const targetAgentId = Number(agentSwitch.agentId);
       if (
         !hasAnyApiKey ||
@@ -964,7 +960,10 @@ export function StorytellerAgenticPanel({
         return;
       }
       runAgentic(
-        composeStorytellerAgentInstructionWithReply(instruction, replyReferenceTarget),
+        composeStorytellerAgentInstructionWithReply(
+          instruction,
+          replyReferenceTarget,
+        ),
         { agentId: targetAgentId, ignoreAgentPersona: false },
       );
       return;
@@ -978,7 +977,10 @@ export function StorytellerAgenticPanel({
       return;
     }
     runAgentic(
-      composeStorytellerAgentInstructionWithReply(trimmed, replyReferenceTarget),
+      composeStorytellerAgentInstructionWithReply(
+        trimmed,
+        replyReferenceTarget,
+      ),
       { ignoreAgentPersona: true },
     );
   }
@@ -1034,7 +1036,12 @@ export function StorytellerAgenticPanel({
             spacing={1}
             alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 120 }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ minWidth: 120 }}
+            >
               <SmartToyIcon color="primary" />
               <Typography variant="h6" fontWeight={800}>
                 AI 助理
@@ -1376,7 +1383,9 @@ export function StorytellerAgenticPanel({
                     label="自訂模型名稱"
                     placeholder="例如：llama-3.1-70b"
                     value={customModelInput}
-                    onChange={(event) => setCustomModelInput(event.target.value)}
+                    onChange={(event) =>
+                      setCustomModelInput(event.target.value)
+                    }
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
                         setModelNameOverride(customModelInput.trim());
@@ -1433,7 +1442,9 @@ export function StorytellerAgenticPanel({
                 <Chip
                   key={reference.token}
                   size="small"
-                  color={reference.token === "@thisStory" ? "primary" : "default"}
+                  color={
+                    reference.token === "@thisStory" ? "primary" : "default"
+                  }
                   label={reference.title}
                 />
               ))}
@@ -1447,7 +1458,9 @@ export function StorytellerAgenticPanel({
                   size="small"
                   variant="outlined"
                   onClick={() =>
-                    setPrompt((current) => insertStoryMention(current, item.title))
+                    setPrompt((current) =>
+                      insertStoryMention(current, item.title),
+                    )
                   }
                 >
                   {item.title}
@@ -1463,7 +1476,9 @@ export function StorytellerAgenticPanel({
                   size="small"
                   variant="outlined"
                   onClick={() =>
-                    setPrompt((current) => insertLoreMention(current, item.title))
+                    setPrompt((current) =>
+                      insertLoreMention(current, item.title),
+                    )
                   }
                 >
                   設定集：{item.title}
