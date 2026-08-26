@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -97,6 +98,48 @@ type AgenticQueryOptions struct {
 	// system prompt 略過這個 Agent 的 DefaultPrompt，但 key／model／usage log／
 	// chat 記錄仍然照常用這個 Agent。
 	IgnoreAgentPersona bool
+	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容（不是摘要）——
+	// UserPrompt 裡已經帶了一行摘要引言方便人類跟模型定位「在回覆誰」，這裡才是
+	// 真正讓模型讀到完整內容的管道。留空代表這次送出不是在回覆任何訊息。
+	ReplyContent string
+}
+
+const (
+	// agenticQueryReplyContentMaxRunes 比照 skill 模式 full_content 的上限（見
+	// agentRunFullContentMaxRunes），同樣是使用者可能整段貼進來的內容，用一樣的
+	// 尺度防護。
+	agenticQueryReplyContentMaxRunes = 60000
+	// agenticQueryHistoryMessageLimit 是每次呼叫附帶的歷史訊息則數上限（一則使用者
+	// +一則 AI 算兩則）——只抓「最近幾輪」，不是整個對話串，避免對話變長後每輪
+	// 呼叫的 token 成本跟著無上限累加。
+	agenticQueryHistoryMessageLimit = 20
+)
+
+var errAgenticQueryReplyContentTooLong = agenticQueryError(fmt.Sprintf("reply_content must be %d characters or less", agenticQueryReplyContentMaxRunes))
+
+// agenticQueryUserPromptWithReply 把回覆對象的完整內容接在 userPrompt 後面，格式
+// 比照前端 buildStorytellerAgentReplyReferenceContent 已經在用的 fence 寫法，讓
+// skill／agentic 兩條路徑餵給模型的格式一致。userPrompt 本身（見前端
+// composeStorytellerAgentInstructionWithReply）已經帶了一行「> 回覆 XXX：摘要」
+// 方便定位是在回覆誰，這裡不重複標 speaker，只補上摘要沒放完的完整內容。
+func agenticQueryUserPromptWithReply(userPrompt, replyContent string) string {
+	replyContent = strings.TrimSpace(replyContent)
+	if replyContent == "" {
+		return userPrompt
+	}
+	return userPrompt + "\n\nReference reply (full content of the message quoted above):\n<<<REPLY_REFERENCE_CONTENT\n" + replyContent + "\nREPLY_REFERENCE_CONTENT"
+}
+
+// agenticQueryHistoryMessages 把撈出來的歷史訊息列（見 RecentStoryAgenticMessages／
+// RecentLoreAgenticMessages）轉成 provider 要的 Message 陣列——agentic_query 模式
+// 每輪只會存 user／assistant 各一則（agenticQueryChatMessages），不會有 tool 角色
+// 的列，不用另外處理工具呼叫中間態。
+func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage) []Message {
+	messages := make([]Message, 0, len(rows))
+	for _, row := range rows {
+		messages = append(messages, Message{Role: string(row.Role), Content: row.Content})
+	}
+	return messages
 }
 
 // RunStoryAgenticQuery 是 Phase 4 把 Phase 3 雛型收斂成的第一個正式可呼叫功能：
@@ -123,6 +166,9 @@ func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, proje
 func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	if strings.TrimSpace(userPrompt) == "" {
 		return nil, errAgenticQueryEmptyPrompt
+	}
+	if len([]rune(opts.ReplyContent)) > agenticQueryReplyContentMaxRunes {
+		return nil, errAgenticQueryReplyContentTooLong
 	}
 	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
@@ -164,12 +210,18 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	ctx = WithStorytellerUserID(ctx, userID)
 	ctx = WithStorytellerSource(ctx, "agentic_query")
 
+	historyRows, err := repo.RecentStoryAgenticMessages(story.ID, agenticQueryHistoryMessageLimit)
+	if err != nil {
+		return nil, err
+	}
+
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetStory, story.PublicID, story.Title, opts.IgnoreAgentPersona),
-		UserPrompt:   userPrompt,
+		History:      agenticQueryHistoryMessages(historyRows),
+		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, opts.ReplyContent),
 		Tools:        tools,
 	})
 	// loopResult 就算在 loopErr 非 nil 時（例如撞到步數上限）也可能有值——
@@ -217,6 +269,9 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 	if strings.TrimSpace(userPrompt) == "" {
 		return nil, errAgenticQueryEmptyPrompt
 	}
+	if len([]rune(opts.ReplyContent)) > agenticQueryReplyContentMaxRunes {
+		return nil, errAgenticQueryReplyContentTooLong
+	}
 	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
@@ -249,12 +304,18 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 	ctx = WithStorytellerUserID(ctx, userID)
 	ctx = WithStorytellerSource(ctx, "agentic_query")
 
+	historyRows, err := repo.RecentLoreAgenticMessages(lore.ID, agenticQueryHistoryMessageLimit)
+	if err != nil {
+		return nil, err
+	}
+
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetLore, lore.PublicID, lore.Title, opts.IgnoreAgentPersona),
-		UserPrompt:   userPrompt,
+		History:      agenticQueryHistoryMessages(historyRows),
+		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, opts.ReplyContent),
 		Tools:        tools,
 	})
 	if loopResult == nil {

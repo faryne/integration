@@ -436,6 +436,10 @@ export interface StorytellerAgenticQueryRequest {
   // 還是照這個 Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免
   // 前一輪切換過的人設無聲沿用到不相關的後續訊息。
   ignore_agent_persona?: boolean;
+  // 使用者按「回覆」時，被回覆那則訊息的完整內容——user_prompt 裡通常已經帶了
+  // 一行摘要引言（見 composeStorytellerAgentInstructionWithReply），這裡才是讓
+  // 後端把完整內容併入這輪呼叫 prompt 的管道，不帶代表不是在回覆任何訊息。
+  reply_content?: string;
 }
 
 export interface StorytellerAgenticToolCall {

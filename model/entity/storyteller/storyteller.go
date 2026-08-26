@@ -995,6 +995,11 @@ type AgenticQueryRequest struct {
 	// model，只是「這輪不套用它的人設」。前端在使用者沒有明確打 /<Agent 名稱> 前綴
 	// 的訊息帶這個 true，避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
 	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
+	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容——UserPrompt
+	// 裡通常已經帶了一行摘要引言（見前端 composeStorytellerAgentInstructionWithReply），
+	// 這裡才是讓後端把完整內容併入這輪呼叫 prompt 的管道，留空代表不是在回覆
+	// 任何訊息。
+	ReplyContent string `json:"reply_content,omitempty"`
 }
 
 // AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，

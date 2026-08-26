@@ -980,6 +980,49 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	return rows, total, err
 }
 
+// RecentStoryAgenticMessages 撈這個 story 底下最近幾則 agentic_query 模式的訊息
+// （由舊到新排列，方便直接接在這輪呼叫的最前面當對話歷史）。只挑 agentic_query
+// 模式，跳過 /rewrite 等 skill 模式的訊息——兩種語境的口吻差很多，混在一起容易讓
+// 模型誤把 skill 那種單輪改寫指令當成正在對話。每輪 agentic 對話都是各自獨立的
+// storyteller_story_chats 列（見 CreateStoryChatWithMessages），這裡直接跨 chat
+// 撈同一個 story 底下所有訊息、依時間排序，讓「對話串」在模型端也連得起來。
+func (r *Repository) RecentStoryAgenticMessages(storyID uint64, limit int) ([]storytellerModel.StoryChatMessage, error) {
+	rows := make([]storytellerModel.StoryChatMessage, 0)
+	err := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Where("chats.story_id = ? AND messages.deleted_at IS NULL AND messages.metadata LIKE ?", storyID, `%"mode":"agentic_query"%`).
+		Order("messages.created_at DESC, messages.id DESC").
+		Limit(limit).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	return rows, nil
+}
+
+// RecentLoreAgenticMessages 是 RecentStoryAgenticMessages 的設定集版本，見同一段說明。
+func (r *Repository) RecentLoreAgenticMessages(loreID uint64, limit int) ([]storytellerModel.StoryChatMessage, error) {
+	rows := make([]storytellerModel.StoryChatMessage, 0)
+	err := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Where("chats.lore_id = ? AND messages.deleted_at IS NULL AND messages.metadata LIKE ?", loreID, `%"mode":"agentic_query"%`).
+		Order("messages.created_at DESC, messages.id DESC").
+		Limit(limit).
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
+		rows[i], rows[j] = rows[j], rows[i]
+	}
+	return rows, nil
+}
+
 // attachAgentProposals 把每個 chat 底下的提案貼回對應的 message 列（見
 // AgentProposal 的說明：一個 chat 剛好對應一則 assistant 訊息，用 chat_id 對應
 // 不會有歧義）；Arguments 存的是 JSON 字串，這裡順便解回 map 給前端用。

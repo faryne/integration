@@ -493,6 +493,7 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 			ProviderAPIKeyID:   input.ProviderAPIKeyID,
 			ModelName:          input.ModelName,
 			IgnoreAgentPersona: input.IgnoreAgentPersona,
+			ReplyContent:       input.ReplyContent,
 		},
 	)
 	if err != nil {
@@ -540,6 +541,7 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 			ProviderAPIKeyID:   input.ProviderAPIKeyID,
 			ModelName:          input.ModelName,
 			IgnoreAgentPersona: input.IgnoreAgentPersona,
+			ReplyContent:       input.ReplyContent,
 		},
 	)
 	if err != nil {

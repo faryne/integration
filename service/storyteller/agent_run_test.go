@@ -369,6 +369,8 @@ type fakeAgentRunRepository struct {
 	proposal          *storytellerModel.AgentProposal
 	proposalErr       error
 	updatedProposalID uint64
+	historyMessages   []storytellerModel.StoryChatMessage
+	historyErr        error
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -419,6 +421,14 @@ func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerMo
 	r.proposals = proposals
 	r.usage = usage
 	return r.chatErr
+}
+
+func (r *fakeAgentRunRepository) RecentStoryAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {
+	return r.historyMessages, r.historyErr
+}
+
+func (r *fakeAgentRunRepository) RecentLoreAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {
+	return r.historyMessages, r.historyErr
 }
 
 type fakeAIProvider struct {

@@ -40,6 +40,8 @@ type agentRunRepository interface {
 	AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error)
 	UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error)
 	ResetAppliedAgentProposalToPending(id uint64) (int64, error)
+	RecentStoryAgenticMessages(storyID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
+	RecentLoreAgenticMessages(loreID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)

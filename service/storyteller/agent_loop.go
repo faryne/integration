@@ -26,7 +26,13 @@ type AgentLoopRequest struct {
 	APIKey       string
 	ModelName    string
 	SystemPrompt string
-	UserPrompt   string
+	// History 是接在這輪 UserPrompt 之前的先前對話紀錄（依時間由舊到新），讓
+	// provider 看得到之前使用者問過什麼、AI 回答過什麼——agentic query 每輪呼叫
+	// 原本都是從零開始（見呼叫端 runStoryAgenticQuery/runLoreAgenticQuery 組
+	// History 的說明），這裡只負責照順序接在最前面，不做任何過濾/截斷，長度上限
+	// 由呼叫端在組 History 時就決定好。
+	History    []Message
+	UserPrompt string
 	// Tools 是這次對話允許呼叫的工具，呼叫端自己決定要開放哪些（例如 project
 	// 範圍限縮／唯讀限制都是呼叫端在組這份清單時就要處理好，見 ScopeToolsToProject
 	// 跟 ReadOnlyStorytellerTools）。
@@ -83,7 +89,9 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 		maxSteps = defaultAgentLoopMaxSteps
 	}
 
-	messages := []Message{{Role: "user", Content: req.UserPrompt}}
+	messages := make([]Message, 0, len(req.History)+1)
+	messages = append(messages, req.History...)
+	messages = append(messages, Message{Role: "user", Content: req.UserPrompt})
 	result := &AgentLoopResult{}
 
 	for step := 0; step < maxSteps; step++ {

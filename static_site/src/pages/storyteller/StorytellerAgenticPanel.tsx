@@ -947,6 +947,10 @@ export function StorytellerAgenticPanel({
     const targetAgentName = options?.ignoreAgentPersona
       ? undefined
       : agents.find((agent) => Number(agent.id) === targetAgentId)?.name;
+    // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
+    // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
+    // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
+    const replyContent = replyReferenceTarget?.content || undefined;
     const userSortKey = nextSessionSortKey();
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
@@ -970,6 +974,7 @@ export function StorytellerAgenticPanel({
         input: {
           user_prompt: instruction,
           ignore_agent_persona: options?.ignoreAgentPersona ?? false,
+          reply_content: replyContent,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
