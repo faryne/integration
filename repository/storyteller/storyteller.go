@@ -1127,21 +1127,27 @@ func (r *Repository) RecentStoryAgenticMessages(storyID uint64, limit int) ([]st
 				AND chats.status = ?
 				AND EXISTS (
 					SELECT 1
-					FROM storyteller_story_chat_messages AS mode_check
-					WHERE mode_check.chat_id = chats.id
-						AND mode_check.deleted_at IS NULL
-						AND JSON_UNQUOTE(JSON_EXTRACT(mode_check.metadata, '$.mode')) = ?
+					FROM storyteller_story_chat_messages AS pair_check
+					WHERE pair_check.chat_id = chats.id
+						AND pair_check.deleted_at IS NULL
+					GROUP BY pair_check.chat_id
+					HAVING COUNT(*) = 2
+						AND SUM(CASE WHEN pair_check.role = ? THEN 1 ELSE 0 END) = 1
+						AND SUM(CASE WHEN pair_check.role = ? AND JSON_UNQUOTE(JSON_EXTRACT(pair_check.metadata, '$.mode')) = ? THEN 1 ELSE 0 END) = 1
 				)
 			ORDER BY chats.created_at DESC, chats.id DESC
 			LIMIT ?
 		) AS recent_agentic_chats ON recent_agentic_chats.id = messages.chat_id`,
-			storyID, storytellerModel.StoryChatStatusCompleted, "agentic_query", chatLimit).
+			storyID, storytellerModel.StoryChatStatusCompleted,
+			storytellerModel.ChatMessageRoleUser,
+			storytellerModel.ChatMessageRoleAssistant, "agentic_query",
+			chatLimit).
 		Where("messages.deleted_at IS NULL").
 		// metadata 是 JSON column，MySQL 存回去會正規化格式（例如冒號後補一個空白），
 		// 用字串 LIKE 比對格式很脆弱、容易對不上；改用 JSON_EXTRACT 直接取值比對，
-		// 不受格式影響，也比 ->> 對 MySQL 5.7.x 更保守。這裡先用 chat 級子查詢挑出
-		// 最近 completed 的 agentic_query chat，再一次帶回同一 chat 底下的 user／
-		// assistant 訊息，避免 message 級 LIMIT 把一問一答切半。
+		// 不受格式影響，也比 ->> 對 MySQL 5.7.x 更保守。舊版 user 訊息可能沒有
+		// mode 標記，所以只要求 assistant 標成 agentic_query；chat 本身仍必須是
+		// 完整的一問一答，避免孤兒訊息吃掉 history slot。
 		Order("messages.created_at DESC, messages.id DESC").
 		Find(&rows).Error
 	if err != nil {
@@ -1166,15 +1172,21 @@ func (r *Repository) RecentLoreAgenticMessages(loreID uint64, limit int) ([]stor
 				AND chats.status = ?
 				AND EXISTS (
 					SELECT 1
-					FROM storyteller_story_chat_messages AS mode_check
-					WHERE mode_check.chat_id = chats.id
-						AND mode_check.deleted_at IS NULL
-						AND JSON_UNQUOTE(JSON_EXTRACT(mode_check.metadata, '$.mode')) = ?
+					FROM storyteller_story_chat_messages AS pair_check
+					WHERE pair_check.chat_id = chats.id
+						AND pair_check.deleted_at IS NULL
+					GROUP BY pair_check.chat_id
+					HAVING COUNT(*) = 2
+						AND SUM(CASE WHEN pair_check.role = ? THEN 1 ELSE 0 END) = 1
+						AND SUM(CASE WHEN pair_check.role = ? AND JSON_UNQUOTE(JSON_EXTRACT(pair_check.metadata, '$.mode')) = ? THEN 1 ELSE 0 END) = 1
 				)
 			ORDER BY chats.created_at DESC, chats.id DESC
 			LIMIT ?
 		) AS recent_agentic_chats ON recent_agentic_chats.id = messages.chat_id`,
-			loreID, storytellerModel.StoryChatStatusCompleted, "agentic_query", chatLimit).
+			loreID, storytellerModel.StoryChatStatusCompleted,
+			storytellerModel.ChatMessageRoleUser,
+			storytellerModel.ChatMessageRoleAssistant, "agentic_query",
+			chatLimit).
 		Where("messages.deleted_at IS NULL").
 		Order("messages.created_at DESC, messages.id DESC").
 		Find(&rows).Error
