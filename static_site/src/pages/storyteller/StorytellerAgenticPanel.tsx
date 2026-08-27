@@ -413,7 +413,9 @@ function AgenticAssistantMessage({
           </Alert>
           {resendable && onResend && (
             <Button
-              {...storytellerChatActionButtonProps}
+              size="small"
+              variant="contained"
+              color="warning"
               startIcon={
                 resending ? <CircularProgress size={14} /> : <ReplayIcon />
               }
