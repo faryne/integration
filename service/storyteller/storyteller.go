@@ -42,7 +42,7 @@ type agentRunRepository interface {
 	ResetAppliedAgentProposalToPending(id uint64) (int64, error)
 	RecentStoryAgenticMessages(storyID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
 	RecentLoreAgenticMessages(loreID uint64, limit int) ([]storytellerModel.StoryChatMessage, error)
-	CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error
+	CreateInProgressChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error
 	CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
 	ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error)
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)

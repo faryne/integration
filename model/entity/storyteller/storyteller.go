@@ -529,10 +529,9 @@ type LoreVersion struct {
 
 func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
 
-// StoryChatStatus 標示一輪 agentic 對話目前落地到哪個階段：pending 是只存了
-// 使用者問題、還沒拿到 AI 回覆（剛送出，或 provider 呼叫失敗／timeout 卡住）；
-// in_progress 是重送時搶下的中繼狀態，避免兩個重送請求同時搶著把回覆寫進同一個
-// chat；completed 是已經拿到回覆（正常或撞到步數上限但仍有部分結果）。
+// StoryChatStatus 標示一輪 agentic 對話目前落地到哪個階段：in_progress 是已經
+// 存了使用者問題、provider 正在處理；pending 是 provider 第一輪失敗、timeout 或
+// process 中斷後可重送；completed 是已經拿到回覆（正常或撞到步數上限但仍有部分結果）。
 type StoryChatStatus string
 
 const (
@@ -1082,9 +1081,9 @@ type StoryChatMessageOutput struct {
 	ID     uint64 `json:"id"`
 	ChatID uint64 `json:"chat_id"`
 	// ChatStatus 是這則訊息所屬 chat 目前的狀態（見 StoryChatStatus）——前端用來
-	// 判斷一則 user 訊息是不是還沒拿到回覆（pending／in_progress），要不要顯示
-	// 「重送」按鈕，不用自己比對同一個 chat_id 底下有沒有 assistant 訊息（分頁時
-	// 兩則訊息可能被拆到不同頁，比對不可靠）。
+	// 判斷一則 user 訊息是在處理中（in_progress）還是已經可重送（pending），不用
+	// 自己比對同一個 chat_id 底下有沒有 assistant 訊息（分頁時兩則訊息可能被拆到
+	// 不同頁，比對不可靠）。
 	ChatStatus StoryChatStatus         `gorm:"column:chat_status" json:"chat_status"`
 	Role       ChatMessageRole         `json:"role"`
 	Content    string                  `json:"content"`

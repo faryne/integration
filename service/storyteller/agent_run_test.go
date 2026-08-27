@@ -428,14 +428,14 @@ func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerMo
 	return r.chatErr
 }
 
-// CreatePendingChatWithUserMessage／CompleteChatMessage 是新的兩段式寫入（見
+// CreateInProgressChatWithUserMessage／CompleteChatMessage 是新的兩段式寫入（見
 // 同名的真實 Repository 方法）；假 repo 把兩段的結果合併回同一組 chat／messages
 // 欄位，讓既有測試斷言（repo.chat／repo.messages 長度 2／repo.usage）不用跟著改。
-func (r *fakeAgentRunRepository) CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
+func (r *fakeAgentRunRepository) CreateInProgressChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
 	if chat.ID == 0 {
 		chat.ID = 1
 	}
-	chat.Status = storytellerModel.StoryChatStatusPending
+	chat.Status = storytellerModel.StoryChatStatusInProgress
 	userMessage.ChatID = chat.ID
 	r.chat = chat
 	r.messages = []storytellerModel.StoryChatMessage{*userMessage}

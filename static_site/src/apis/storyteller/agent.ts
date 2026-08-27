@@ -28,6 +28,8 @@ import type {
 } from "@/types/storyteller.ts";
 import { apiBase, sessionHeaders } from "./shared.ts";
 
+const agenticQueryTimeoutMs = 390000;
+
 export function useStorytellerAgents() {
   const { session } = useAuth();
   return useQuery({
@@ -434,7 +436,10 @@ export function useRunStorytellerAgenticQuery(
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query`,
         input,
-        { headers: sessionHeaders(session!.encrypt_key) },
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+          timeout: agenticQueryTimeoutMs,
+        },
       );
       return response.data.data;
     },
@@ -467,7 +472,10 @@ export function useRunStorytellerLoreAgenticQuery(
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query`,
         input,
-        { headers: sessionHeaders(session!.encrypt_key) },
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+          timeout: agenticQueryTimeoutMs,
+        },
       );
       return response.data.data;
     },
@@ -479,7 +487,7 @@ export function useRunStorytellerLoreAgenticQuery(
   });
 }
 
-// 重新對一則卡在 pending／in_progress（沒拿到回覆）狀態的訊息呼叫 provider——
+// 重新對一則卡在 pending（沒拿到回覆、已可重送）狀態的訊息呼叫 provider——
 // 不是開新的一輪對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。
 // input 只帶金鑰／模型／ignore_agent_persona 這次的選擇，user_prompt／
 // reply_content 不用帶，後端一律讀當初存的那份。
@@ -504,7 +512,10 @@ export function useResendStorytellerAgenticQuery(
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
         input,
-        { headers: sessionHeaders(session!.encrypt_key) },
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+          timeout: agenticQueryTimeoutMs,
+        },
       );
       return response.data.data;
     },
@@ -538,7 +549,10 @@ export function useResendStorytellerLoreAgenticQuery(
       >(
         `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
         input,
-        { headers: sessionHeaders(session!.encrypt_key) },
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+          timeout: agenticQueryTimeoutMs,
+        },
       );
       return response.data.data;
     },
