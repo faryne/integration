@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
+
+	"faryne.dev/service/log"
+	"go.uber.org/zap"
 )
 
 // 這是 Phase 3 的雛型：只驗證「provider tool-calling 擴充（Phase 2）＋ tool
@@ -19,6 +23,10 @@ var ErrAgentLoopMaxStepsExceeded = errors.New("agent loop exceeded max steps")
 
 // defaultAgentLoopMaxSteps 是 AgentLoopRequest.MaxSteps 留空（0）時的預設上限。
 const defaultAgentLoopMaxSteps = 8
+
+// defaultAgentLoopMaxDuration 是整個 agent loop 的總時間上限。provider 單次呼叫
+// 自己有 timeout，但多輪 tool-calling 不能把「每一步 180 秒」乘到無上限。
+const defaultAgentLoopMaxDuration = 6 * time.Minute
 
 // AgentLoopRequest 是跑一次 agent loop 需要的輸入。
 type AgentLoopRequest struct {
@@ -41,6 +49,8 @@ type AgentLoopRequest struct {
 	// 強制中止並回傳 ErrAgentLoopMaxStepsExceeded。留空（0 或負數）使用
 	// defaultAgentLoopMaxSteps。
 	MaxSteps int
+	// MaxDuration 是整個 loop 的總耗時上限；留空使用 defaultAgentLoopMaxDuration。
+	MaxDuration time.Duration
 }
 
 // AgentLoopResult 是跑完一輪 loop 的結果。
@@ -93,14 +103,22 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 	if maxSteps <= 0 {
 		maxSteps = defaultAgentLoopMaxSteps
 	}
+	maxDuration := req.MaxDuration
+	if maxDuration <= 0 {
+		maxDuration = defaultAgentLoopMaxDuration
+	}
+	loopCtx, cancel := context.WithTimeout(ctx, maxDuration)
+	defer cancel()
 
 	messages := make([]Message, 0, len(req.History)+1)
 	messages = append(messages, req.History...)
 	messages = append(messages, Message{Role: "user", Content: req.UserPrompt})
 	result := &AgentLoopResult{}
+	startedAt := time.Now()
 
 	for step := 0; step < maxSteps; step++ {
-		resp, err := req.Provider.Generate(ctx, AIProviderRequest{
+		stepStartedAt := time.Now()
+		resp, err := req.Provider.Generate(loopCtx, AIProviderRequest{
 			APIKey:       req.APIKey,
 			ModelName:    req.ModelName,
 			SystemPrompt: req.SystemPrompt,
@@ -108,6 +126,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 			Tools:        toolDefs,
 		})
 		if err != nil {
+			logAgentLoopStep(step, maxSteps, time.Since(stepStartedAt), time.Since(startedAt), len(messages), nil, err)
 			// 前面幾輪如果已經真的拿到過 provider 回應（RawResponses／Steps 非空），
 			// 不能因為「這一輪」出錯就把已經發生、已經花錢的東西整批丟掉——比照
 			// 撞步數上限（下面 ErrAgentLoopMaxStepsExceeded 那個 return）的做法，
@@ -121,6 +140,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 			}
 			return nil, err
 		}
+		logAgentLoopStep(step, maxSteps, time.Since(stepStartedAt), time.Since(startedAt), len(messages), resp, nil)
 		result.Usage = sumAgentLoopUsage(result.Usage, resp.Usage)
 		result.RawResponses = append(result.RawResponses, resp.RawBody)
 		if len(resp.ToolCalls) == 0 {
@@ -136,7 +156,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 
 		loopStep := AgentLoopStep{ToolCalls: resp.ToolCalls}
 		for _, call := range resp.ToolCalls {
-			resultText, callErr := executeAgentLoopTool(ctx, toolByName, call)
+			resultText, callErr := executeAgentLoopTool(loopCtx, toolByName, call)
 			loopStep.Results = append(loopStep.Results, AgentLoopToolResult{Content: resultText, Err: callErr})
 			messages = append(messages, Message{
 				Role:       "tool",
@@ -183,6 +203,34 @@ func executeAgentLoopTool(ctx context.Context, toolByName map[string]ToolSpec, c
 		resultText = "error: " + callErr.Error()
 	}
 	return resultText, callErr
+}
+
+func logAgentLoopStep(step, maxSteps int, providerDuration, totalDuration time.Duration, messageCount int, resp *AIProviderResponse, err error) {
+	fields := []zap.Field{
+		zap.Int("step", step+1),
+		zap.Int("max_steps", maxSteps),
+		zap.Int64("provider_duration_ms", providerDuration.Milliseconds()),
+		zap.Int64("total_duration_ms", totalDuration.Milliseconds()),
+		zap.Int("message_count", messageCount),
+	}
+	if resp != nil {
+		fields = append(fields,
+			zap.Int("tool_call_count", len(resp.ToolCalls)),
+			zap.Int("raw_response_bytes", len(resp.RawBody)),
+		)
+		if resp.Usage != nil {
+			fields = append(fields,
+				zap.Int("input_tokens", resp.Usage.InputTokens),
+				zap.Int("output_tokens", resp.Usage.OutputTokens),
+				zap.Int("total_tokens", resp.Usage.TotalTokens),
+			)
+		}
+	}
+	if err != nil {
+		log.Logger().Warn("Storyteller agent loop provider step failed", append(fields, zap.Error(err))...)
+		return
+	}
+	log.Logger().Info("Storyteller agent loop provider step finished", fields...)
 }
 
 // agentLoopToolResultText 把工具的 interface{} 回傳值轉成餵回 provider 的文字：

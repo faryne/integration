@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -12,6 +13,17 @@ import (
 )
 
 type Repository struct{ db *gorm.DB }
+
+// ErrStoryChatNotCompletable 代表這筆 chat 已經完成、還沒被 claim 成 in_progress，
+// 或底下已經有 assistant 訊息。呼叫端不能再補寫第二份 AI 回覆。
+var ErrStoryChatNotCompletable = errors.New("story chat is not completable")
+
+const agenticChatStaleInProgressMinutes = "8"
+const agenticChatOutputStatusSQL = `CASE
+				WHEN chats.status = 'in_progress' AND chats.updated_at < DATE_SUB(NOW(), INTERVAL ` + agenticChatStaleInProgressMinutes + ` MINUTE) THEN 'pending'
+				ELSE chats.status
+			END AS chat_status`
+const agenticChatStaleInProgressClaimSQL = `(status = ? OR (status = ? AND updated_at < DATE_SUB(NOW(), INTERVAL ` + agenticChatStaleInProgressMinutes + ` MINUTE)))`
 
 func NewRepository() *Repository {
 	return &Repository{db: client.GetDB(enum.DBWalolita)}
@@ -768,13 +780,13 @@ func (r *Repository) CreateStoryChatWithMessages(chat *storytellerModel.StoryCha
 	})
 }
 
-// CreatePendingChatWithUserMessage 只先落地使用者這則問題，chat 進 pending——
-// AI 的回覆要等 provider 呼叫真的跑完才用 CompleteChatMessage 補進來。這樣即使
-// provider 呼叫中途 timeout／process 被重啟，使用者至少不會連自己問了什麼都找
-// 不到，之後也能用「重送」（ClaimStoryChatForResend／ClaimLoreChatForResend）
-// 補完這輪。
-func (r *Repository) CreatePendingChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
-	chat.Status = storytellerModel.StoryChatStatusPending
+// CreateInProgressChatWithUserMessage 先落地使用者這則問題，chat 直接進
+// in_progress——代表原始 submit request 正在跑 provider。只有 provider 第一輪就
+// 失敗、process 中斷後被掃描判定 stale，或其他明確失敗情境，才會退回 pending 讓
+// 使用者重送；pending 不能同時代表「正在跑」跟「可重送」，否則前端會在正常等待時
+// 就顯示誤導性的重送按鈕。
+func (r *Repository) CreateInProgressChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
+	chat.Status = storytellerModel.StoryChatStatusInProgress
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(chat).Error; err != nil {
 			return err
@@ -784,15 +796,32 @@ func (r *Repository) CreatePendingChatWithUserMessage(chat *storytellerModel.Sto
 	})
 }
 
-// CompleteChatMessage 把 AI 的回覆補進一筆之前只存了使用者問題的 chat，取代原本
-// CreateStoryChatWithMessages 一次寫兩則訊息的做法；不限制目前狀態一定要是
-// pending／in_progress——正常流程跟重送流程走到這裡時狀態本來就已經是其中之一，
-// 不需要在這裡重複卡一次 guarded update（真正的搶佔防護在 ClaimStoryChatForResend
-// 那一步）。
+// CompleteChatMessage 把 AI 的回覆補進一筆 in_progress chat。這裡也要做狀態與
+// assistant 唯一性防護：初次 submit 和 resend 理論上不會同時跑，但 UI／網路重試／
+// 惡意呼叫都有可能打出競態，不能只靠 Claim*ForResend 擋同類 resend。已 completed
+// 或已有 assistant 的 chat 直接回 ErrStoryChatNotCompletable，不再插入第二份答案。
 func (r *Repository) CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&storytellerModel.StoryChat{}).
+		var chat storytellerModel.StoryChat
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("id = ?", chatID).
+			First(&chat).Error; err != nil {
+			return err
+		}
+		if chat.Status != storytellerModel.StoryChatStatusInProgress {
+			return ErrStoryChatNotCompletable
+		}
+		var assistantCount int64
+		if err := tx.Model(&storytellerModel.StoryChatMessage{}).
+			Where("chat_id = ? AND role = ? AND deleted_at IS NULL", chatID, storytellerModel.ChatMessageRoleAssistant).
+			Count(&assistantCount).Error; err != nil {
+			return err
+		}
+		if assistantCount > 0 {
+			return ErrStoryChatNotCompletable
+		}
+		if err := tx.Model(&storytellerModel.StoryChat{}).
+			Where("id = ? AND status = ?", chatID, storytellerModel.StoryChatStatusInProgress).
 			Update("status", storytellerModel.StoryChatStatusCompleted).Error; err != nil {
 			return err
 		}
@@ -816,14 +845,18 @@ func (r *Repository) CompleteChatMessage(chatID uint64, assistantMessage *storyt
 	})
 }
 
-// ClaimStoryChatForResend 把一筆卡在 pending（沒拿到回覆）狀態的 chat 標成
-// in_progress，搶下「這輪由我重送」的資格——guarded update，WHERE 子句同時鎖定
-// user_id／story_id，防止猜測 chat_id 去重送別人的或別篇故事的對話，RowsAffected
-// 為 0 代表這筆不存在、不屬於這個使用者/故事、或已經不是 pending（可能已經被
-// 完成、或已經有另一個重送請求搶先）。
+// ClaimStoryChatForResend 把 pending 或超時卡住的 in_progress chat 標成
+// in_progress，搶下「這輪由我重送」的資格。WHERE 子句同時鎖定 user_id／
+// story_id，防止猜測 chat_id 去重送別人的或別篇故事的對話；RowsAffected 為 0
+// 代表這筆不存在、不屬於這個使用者/故事、仍在正常處理中、已完成，或已被另一個
+// 重送請求搶先。
 func (r *Repository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error) {
 	result := r.db.Model(&storytellerModel.StoryChat{}).
-		Where("id = ? AND user_id = ? AND story_id = ? AND status = ?", chatID, userID, storyID, storytellerModel.StoryChatStatusPending).
+		Where("id = ? AND user_id = ? AND story_id = ?", chatID, userID, storyID).
+		Where(agenticChatStaleInProgressClaimSQL,
+			storytellerModel.StoryChatStatusPending,
+			storytellerModel.StoryChatStatusInProgress,
+		).
 		Update("status", storytellerModel.StoryChatStatusInProgress)
 	return result.RowsAffected, result.Error
 }
@@ -831,7 +864,11 @@ func (r *Repository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (in
 // ClaimLoreChatForResend 是 ClaimStoryChatForResend 的設定集版本。
 func (r *Repository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
 	result := r.db.Model(&storytellerModel.StoryChat{}).
-		Where("id = ? AND user_id = ? AND lore_id = ? AND status = ?", chatID, userID, loreID, storytellerModel.StoryChatStatusPending).
+		Where("id = ? AND user_id = ? AND lore_id = ?", chatID, userID, loreID).
+		Where(agenticChatStaleInProgressClaimSQL,
+			storytellerModel.StoryChatStatusPending,
+			storytellerModel.StoryChatStatusInProgress,
+		).
 		Update("status", storytellerModel.StoryChatStatusInProgress)
 	return result.RowsAffected, result.Error
 }
@@ -1011,7 +1048,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
-			chats.status AS chat_status,
+			` + agenticChatOutputStatusSQL + `,
 			messages.role,
 			messages.content,
 			messages.metadata,
@@ -1050,7 +1087,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
-			chats.status AS chat_status,
+			` + agenticChatOutputStatusSQL + `,
 			messages.role,
 			messages.content,
 			messages.metadata,
@@ -1080,19 +1117,32 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 // 撈同一個 story 底下所有訊息、依時間排序，讓「對話串」在模型端也連得起來。
 func (r *Repository) RecentStoryAgenticMessages(storyID uint64, limit int) ([]storytellerModel.StoryChatMessage, error) {
 	rows := make([]storytellerModel.StoryChatMessage, 0)
+	chatLimit := agenticHistoryChatLimit(limit)
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
-		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Where("chats.story_id = ? AND messages.deleted_at IS NULL", storyID).
+		Joins(`INNER JOIN (
+			SELECT chats.id
+			FROM storyteller_story_chats AS chats
+			WHERE chats.story_id = ?
+				AND chats.status = ?
+				AND EXISTS (
+					SELECT 1
+					FROM storyteller_story_chat_messages AS mode_check
+					WHERE mode_check.chat_id = chats.id
+						AND mode_check.deleted_at IS NULL
+						AND JSON_UNQUOTE(JSON_EXTRACT(mode_check.metadata, '$.mode')) = ?
+				)
+			ORDER BY chats.created_at DESC, chats.id DESC
+			LIMIT ?
+		) AS recent_agentic_chats ON recent_agentic_chats.id = messages.chat_id`,
+			storyID, storytellerModel.StoryChatStatusCompleted, "agentic_query", chatLimit).
+		Where("messages.deleted_at IS NULL").
 		// metadata 是 JSON column，MySQL 存回去會正規化格式（例如冒號後補一個空白），
-		// 用字串 LIKE 比對格式很脆弱、容易對不上；改用 ->> 這個 JSON path 運算子
-		// 直接取值比對，不受格式影響。agenticQueryChatMessages 只有 assistant 那則
-		// 訊息的 metadata 帶 mode 標記（user 那則固定是 "{}"），這裡用 EXISTS 找
-		// 「同一個 chat 底下有沒有一則 agentic_query 標記的訊息」，這樣 user／
-		// assistant 兩則都會一起被撈出來，不會漏掉使用者當時打的指令。
-		Where("EXISTS (SELECT 1 FROM storyteller_story_chat_messages AS mode_check WHERE mode_check.chat_id = messages.chat_id AND mode_check.metadata->>'$.mode' = ?)", "agentic_query").
+		// 用字串 LIKE 比對格式很脆弱、容易對不上；改用 JSON_EXTRACT 直接取值比對，
+		// 不受格式影響，也比 ->> 對 MySQL 5.7.x 更保守。這裡先用 chat 級子查詢挑出
+		// 最近 completed 的 agentic_query chat，再一次帶回同一 chat 底下的 user／
+		// assistant 訊息，避免 message 級 LIMIT 把一問一答切半。
 		Order("messages.created_at DESC, messages.id DESC").
-		Limit(limit).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -1106,13 +1156,27 @@ func (r *Repository) RecentStoryAgenticMessages(storyID uint64, limit int) ([]st
 // RecentLoreAgenticMessages 是 RecentStoryAgenticMessages 的設定集版本，見同一段說明。
 func (r *Repository) RecentLoreAgenticMessages(loreID uint64, limit int) ([]storytellerModel.StoryChatMessage, error) {
 	rows := make([]storytellerModel.StoryChatMessage, 0)
+	chatLimit := agenticHistoryChatLimit(limit)
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
-		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Where("chats.lore_id = ? AND messages.deleted_at IS NULL", loreID).
-		Where("EXISTS (SELECT 1 FROM storyteller_story_chat_messages AS mode_check WHERE mode_check.chat_id = messages.chat_id AND mode_check.metadata->>'$.mode' = ?)", "agentic_query").
+		Joins(`INNER JOIN (
+			SELECT chats.id
+			FROM storyteller_story_chats AS chats
+			WHERE chats.lore_id = ?
+				AND chats.status = ?
+				AND EXISTS (
+					SELECT 1
+					FROM storyteller_story_chat_messages AS mode_check
+					WHERE mode_check.chat_id = chats.id
+						AND mode_check.deleted_at IS NULL
+						AND JSON_UNQUOTE(JSON_EXTRACT(mode_check.metadata, '$.mode')) = ?
+				)
+			ORDER BY chats.created_at DESC, chats.id DESC
+			LIMIT ?
+		) AS recent_agentic_chats ON recent_agentic_chats.id = messages.chat_id`,
+			loreID, storytellerModel.StoryChatStatusCompleted, "agentic_query", chatLimit).
+		Where("messages.deleted_at IS NULL").
 		Order("messages.created_at DESC, messages.id DESC").
-		Limit(limit).
 		Find(&rows).Error
 	if err != nil {
 		return nil, err
@@ -1121,6 +1185,13 @@ func (r *Repository) RecentLoreAgenticMessages(loreID uint64, limit int) ([]stor
 		rows[i], rows[j] = rows[j], rows[i]
 	}
 	return rows, nil
+}
+
+func agenticHistoryChatLimit(messageLimit int) int {
+	if messageLimit < 2 {
+		return 1
+	}
+	return (messageLimit + 1) / 2
 }
 
 // attachAgentProposals 把每個 chat 底下的提案貼回對應的 message 列（見

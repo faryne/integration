@@ -179,6 +179,14 @@ function agenticErrorMessage(error: unknown): string {
   if (
     typeof error === "object" &&
     error !== null &&
+    "code" in error &&
+    error.code === "ECONNABORTED"
+  ) {
+    return "等待 AI 助理逾時，伺服器可能仍在處理；請稍後重新整理狀態，再決定是否重送。";
+  }
+  if (
+    typeof error === "object" &&
+    error !== null &&
     "response" in error &&
     typeof error.response === "object" &&
     error.response !== null &&
@@ -212,11 +220,8 @@ type PanelMessage =
       // 這則實際是哪個 Agent 人設處理的——事後回頭看對話紀錄才追得回「這則
       // 當時發生了什麼事」，見 StorytellerAgentPanel.tsx 的 StorytellerChatBadges。
       agentName?: string;
-      // chatId／chatStatus 只有從歷史載入的訊息才有值（見 skillHistoryMessages）
-      // ——這次 session 內即時送出、還在等待/剛完成的訊息不需要，狀態直接體現在
-      // isLoading／content 上。chatStatus 非 "completed" 代表這則 user 訊息還
-      // 沒拿到 AI 回覆（provider 呼叫失敗／timeout／process 被重啟中斷），可以
-      // 顯示「重送」。
+      // chatStatus="in_progress" 代表 provider 仍在處理；"pending" 才代表這則
+      // user 訊息沒有拿到 AI 回覆、可以重送。
       chatId?: number;
       chatStatus?: "pending" | "in_progress" | "completed";
     };
@@ -359,14 +364,11 @@ function AgenticAssistantMessage({
   const isUser = message.role === "user";
   const canApply =
     !isUser && !message.isLoading && message.content.trim() !== "";
-  // chatId／chatStatus 只有從歷史載入的 user 訊息才有值（見 skillHistoryMessages），
-  // 這次 session 內剛送出的那則永遠是 pending（都還沒重新整理載回來），沒有
-  // chatId 可用，也不需要重送——真的送失敗會走 onError 另外顯示。
+  // 只有 pending 才代表「已經失敗或中斷，可以重送」；in_progress 是正常處理中，
+  // 不能把它當成錯誤，否則背景 refetch 會在長請求還沒完成時誤導使用者。
   const resendable =
-    isUser &&
-    message.chatId !== undefined &&
-    message.chatStatus !== undefined &&
-    message.chatStatus !== "completed";
+    isUser && message.chatId !== undefined && message.chatStatus === "pending";
+  const processing = isUser && message.chatStatus === "in_progress";
   const resending = resendable && resendingChatId === message.chatId;
   const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
     targetKind,
@@ -402,14 +404,14 @@ function AgenticAssistantMessage({
           {message.warning}
         </Alert>
       )}
-      {resendable && (
+      {(resendable || processing) && (
         <Stack spacing={0.5} sx={{ mt: 1 }}>
-          <Alert severity="warning" variant="outlined">
-            {message.chatStatus === "in_progress"
-              ? "正在重送這則訊息……"
+          <Alert severity={processing ? "info" : "warning"} variant="outlined">
+            {processing
+              ? "AI 助理正在處理這則訊息，請先等這輪完成。"
               : "沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重送一次。"}
           </Alert>
-          {onResend && (
+          {resendable && onResend && (
             <Button
               {...storytellerChatActionButtonProps}
               startIcon={
@@ -889,21 +891,39 @@ export function StorytellerAgenticPanel({
   // agenticMessages（這次 session 內即時送出、還留著的本地狀態）跟
   // skillHistoryMessages（背景隨時可能重新抓回來的 DB 資料）之間完全獨立，
   // 沒有互相知道對方存在——一旦某輪對話的 chat_id 兩邊都有（送出當下就先
-  // 落地問題，見 CreatePendingChatWithUserMessage），任何背景重新整理都會讓
-  // 同一輪對話重複顯示兩次，一邊說「還在生成」一邊說「沒拿到回覆」，互相矛盾。
+  // 落地問題，見 CreateInProgressChatWithUserMessage），任何背景重新整理都會讓
+  // 同一輪對話重複顯示兩次，一邊說「還在生成」一邊說「正在處理」，互相矛盾。
   // 用 chat_id 把歷史清單裡「本地已經有更新狀態」的那幾筆過濾掉，本地狀態
-  // 優先（比對內容更精準，也不用等歷史重新抓回來才知道該不該去重）。
+  // 優先。送出中的本地 user 訊息在 response 回來前還沒有 chat_id，所以同時用
+  // content 擋掉背景 refetch 帶回來的同一則 in_progress user row。
   const liveChatIds = new Set(
     agenticMessages
       .map((message) => message.chatId)
       .filter((chatId): chatId is number => chatId !== undefined),
   );
-  const dedupedSkillHistoryMessages = skillHistoryMessages.filter(
-    (message) =>
-      message.kind !== "agentic" ||
-      message.chatId === undefined ||
-      !liveChatIds.has(message.chatId),
+  const livePendingUserContents = new Set(
+    agenticMessages
+      .filter(
+        (message) =>
+          message.role === "user" &&
+          message.chatId === undefined &&
+          message.content.trim() !== "",
+      )
+      .map((message) => message.content.trim()),
   );
+  const dedupedSkillHistoryMessages = skillHistoryMessages.filter((message) => {
+    if (message.kind !== "agentic") {
+      return true;
+    }
+    if (message.chatId !== undefined && liveChatIds.has(message.chatId)) {
+      return false;
+    }
+    return !(
+      message.role === "user" &&
+      message.chatStatus === "in_progress" &&
+      livePendingUserContents.has(message.content.trim())
+    );
+  });
 
   const combinedMessages: PanelMessage[] = [
     ...dedupedSkillHistoryMessages,
