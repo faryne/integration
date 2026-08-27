@@ -468,7 +468,7 @@ func (p *ClaudeProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 	}
 	body, err := json.Marshal(claudeMessageRequest{
 		Model:     req.ModelName,
-		MaxTokens: 4096,
+		MaxTokens: 8192,
 		System:    req.SystemPrompt,
 		Messages:  buildClaudeMessages(req),
 		Tools:     buildClaudeTools(req.Tools),
