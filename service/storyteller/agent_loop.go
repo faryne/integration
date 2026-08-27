@@ -108,6 +108,17 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 			Tools:        toolDefs,
 		})
 		if err != nil {
+			// 前面幾輪如果已經真的拿到過 provider 回應（RawResponses／Steps 非空），
+			// 不能因為「這一輪」出錯就把已經發生、已經花錢的東西整批丟掉——比照
+			// 撞步數上限（下面 ErrAgentLoopMaxStepsExceeded 那個 return）的做法，
+			// 把累積到目前為止的 result 一起回傳，呼叫端才能把這些原始回應存進
+			// DB，除錯欄位才不會在最需要看到部分結果的失敗情境裡剛好是空的。
+			// 第一輪就出錯（例如 API key 無效）沒有任何東西可保留，維持回傳
+			// nil——這種情況呼叫端會判斷成「這個 chat 完全沒進度」，留在 pending
+			// 狀態，之後才能正確用「重送」處理，不能被誤標成已經完成。
+			if len(result.RawResponses) > 0 || len(result.Steps) > 0 {
+				return result, err
+			}
 			return nil, err
 		}
 		result.Usage = sumAgentLoopUsage(result.Usage, resp.Usage)
