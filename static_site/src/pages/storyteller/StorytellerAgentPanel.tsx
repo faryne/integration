@@ -1,29 +1,17 @@
-import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ReplyIcon from "@mui/icons-material/Reply";
-import SendIcon from "@mui/icons-material/Send";
-import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
-  Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
-  Divider,
-  IconButton,
-  MenuItem,
-  Paper,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import type { ReactNode } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
-import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
-import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
+import type { ButtonProps } from "@mui/material";
+import { useEffect, useState, type ReactNode } from "react";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
-import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
+import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -54,382 +42,107 @@ export interface StorytellerAgentPanelMessage {
   resultSelection?: StorytellerAgentPanelSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
+  // 這則訊息實際是哪個 Agent 人設處理的——不一定等於 speaker（skill 訊息的
+  // speaker 對 user 那則是「你」，不是人設名稱）。用來在泡泡上標「這則走了
+  // 哪個 Agent／哪個指令」，事後回頭看對話紀錄才知道當時發生什麼事。
+  agentName?: string;
+}
+
+// /rewrite／/expand 等 skill 指令的完整 mode 值 -> 中文短標籤，給訊息泡泡上的
+// 「這則走了哪個指令」標籤用。跟 StorytellerAgenticPanel.tsx 的
+// SKILL_SLASH_COMMAND_LABELS（短指令字 -> 中文）是同一份語意，只是這裡的 key
+// 是完整 mode 值（存進 metadata 的就是這個），兩邊分別維護，改的時候要記得對照。
+const AGENT_RUN_MODE_LABELS: Record<StorytellerAgentRunMode, string> = {
+  rewrite_selection: "/rewrite 改寫",
+  expand_selection: "/expand 擴寫",
+  translate_selection: "/translate 翻譯",
+  continue_chapter: "/continue 續寫",
+  custom_selection: "/custom 自訂指令",
+  custom_chapter: "/custom 自訂指令",
+};
+
+export function agentRunModeLabel(mode?: StorytellerAgentRunMode | string) {
+  if (!mode) {
+    return null;
+  }
+  return AGENT_RUN_MODE_LABELS[mode as StorytellerAgentRunMode] ?? null;
 }
 
 export type StorytellerAgentApplyAction =
-  | "replace"
-  | "insert"
-  | "append"
-  | "copy";
+  "replace" | "insert" | "append" | "copy";
 
-interface StorytellerAgentPanelProps {
-  agents: StorytellerAgentPanelAgent[];
-  selectedAgentId: string;
-  onSelectedAgentChange: (agentId: string) => void;
-  messages: StorytellerAgentPanelMessage[];
-  messagesLoading: boolean;
-  pending: boolean;
-  unavailableMessage?: string;
-  emptyTitle: string;
-  emptyDescription: string;
-  hasMoreHistory: boolean;
-  loadingMoreHistory: boolean;
-  onLoadMoreHistory: () => void;
-  errorMessage?: string;
-  prompt: string;
-  onPromptChange: (value: string) => void;
-  promptPlaceholder: string;
-  promptHelperText?: string;
-  promptError?: boolean;
-  promptWarning?: string;
-  promptExtras?: ReactNode;
-  canRun: boolean;
-  onRun: () => void;
-  onApplyText: (
-    text: string,
-    action: StorytellerAgentApplyAction,
-    selection: StorytellerAgentPanelSelection | null,
-  ) => void;
-  enableReplace?: boolean;
-  /** 「插入游標處」需要編輯器暴露文字游標位置，所見即所得編輯器目前還沒有這個對應機制，先隱藏。 */
-  enableInsert?: boolean;
-  replyTarget?: StorytellerAgentPanelMessage | null;
-  onReply?: (message: StorytellerAgentPanelMessage) => void;
-  onCancelReply?: () => void;
-}
+// AI 助理一輪呼叫可能要跑好幾秒到好幾十秒（多輪工具呼叫時尤其明顯），純轉圈圈
+// 容易讓使用者懷疑「是不是壞了、關掉分頁會不會就消失了」。這裡先用便宜的做法
+// 讓文字不定時輪替，至少感覺得到「還在動」——之後如果要做 SSE 步驟即時推播
+// 再取代掉這個。
+const AGENT_LOADING_HINTS = [
+  "處理中…",
+  "AI 正在讀取資料…",
+  "還在努力生成內容…",
+  "整理輸出格式中…",
+  "快好了，請再等一下…",
+];
 
-export function StorytellerAgentPanel(props: StorytellerAgentPanelProps) {
-  const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const selectedAgent =
-    props.agents.find((agent) => agent.id === props.selectedAgentId) ??
-    props.agents[0];
-  const { messagesLoading } = props;
-  const messageCount = props.messages.length;
-  // 記錄「載入更早的訊息」點擊當下的捲動高度；新訊息載入完成後用來校正捲動位置，
-  // 讓畫面停留在原本閱讀的地方，不會因為上方多了內容而往下跳
-  const loadingMoreAnchorRef = useRef<number | null>(null);
+const agentLoadingHintRotateSeconds = 3;
 
-  // 載入完成、訊息增減或處理狀態改變時自動捲到列表底部；
-  // 若是使用者剛按過「載入更早的訊息」（新內容加在最上面），改成校正捲動位置而非捲到底部
-  useLayoutEffect(() => {
-    const node = messagesContainerRef.current;
-    if (!node) {
-      return;
-    }
-    if (loadingMoreAnchorRef.current !== null) {
-      node.scrollTop += node.scrollHeight - loadingMoreAnchorRef.current;
-      loadingMoreAnchorRef.current = null;
-      return;
-    }
-    if (messagesLoading) {
-      return;
-    }
-    node.scrollTop = node.scrollHeight;
-  }, [messageCount, props.pending, messagesLoading]);
-
-  function handleLoadMoreHistory() {
-    loadingMoreAnchorRef.current =
-      messagesContainerRef.current?.scrollHeight ?? null;
-    props.onLoadMoreHistory();
-  }
-
-  function scrollToReplyTarget() {
-    const replyTarget = props.replyTarget;
-    if (!replyTarget) {
-      return;
-    }
-    const node = messagesContainerRef.current?.querySelector(
-      `[data-agent-message-id="${CSS.escape(replyTarget.id)}"]`,
-    );
-    node?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
+export function StorytellerAgentLoadingHint() {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  useEffect(() => {
+    setElapsedSeconds(0);
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const hintIndex =
+    Math.floor(elapsedSeconds / agentLoadingHintRotateSeconds) %
+    AGENT_LOADING_HINTS.length;
   return (
-    <Paper
-      variant="outlined"
-      sx={{
-        borderRadius: 1,
-        overflow: "hidden",
-        position: { lg: "sticky" },
-        top: { lg: 16 },
-      }}
-    >
-      <Stack sx={{ height: { lg: 720 }, maxHeight: { lg: 720 } }}>
-        <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
-          <Stack
-            direction={{ xs: "column", sm: "row", lg: "row" }}
-            spacing={1}
-            alignItems={{ xs: "stretch", sm: "center" }}
-          >
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ minWidth: 120 }}
-            >
-              <SmartToyIcon color="primary" />
-              <Typography variant="h6" fontWeight={800}>
-                AI Agent
-              </Typography>
-            </Stack>
-            <TextField
-              select
-              size="small"
-              label="選擇 Agent"
-              value={selectedAgent?.id ?? ""}
-              onChange={(event) =>
-                props.onSelectedAgentChange(event.target.value)
-              }
-              sx={{ flex: 1, minWidth: 180 }}
-            >
-              {props.agents.map((agent) => (
-                <MenuItem key={agent.id} value={agent.id}>
-                  {agent.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-
-          {selectedAgent && (
-            <>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip
-                  size="small"
-                  label={selectedAgent.enabled ? "可用" : "停用"}
-                  color={selectedAgent.enabled ? "success" : "default"}
-                />
-                <Chip size="small" label={selectedAgent.provider} />
-                <Chip size="small" label={selectedAgent.model} />
-              </Stack>
-              <Tooltip
-                title={
-                  <Box
-                    sx={{
-                      maxWidth: 520,
-                      maxHeight: 320,
-                      overflow: "auto",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {selectedAgent.prompt || "未設定 Prompt。"}
-                  </Box>
-                }
-                placement="bottom-start"
-                enterDelay={400}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{
-                    display: "-webkit-box",
-                    overflow: "hidden",
-                    WebkitBoxOrient: "vertical",
-                    WebkitLineClamp: 2,
-                    cursor: "help",
-                  }}
-                >
-                  {selectedAgent.prompt || "未設定 Prompt。"}
-                </Typography>
-              </Tooltip>
-            </>
-          )}
-
-          {props.unavailableMessage && (
-            <Alert severity="info" variant="outlined">
-              {props.unavailableMessage}
-            </Alert>
-          )}
-        </Stack>
-
-        <Divider />
-
-        <Stack
-          ref={messagesContainerRef}
-          spacing={1.5}
-          sx={{
-            flex: 1,
-            minHeight: { xs: 360, lg: 0 },
-            maxHeight: { xs: 520, lg: 480 },
-            overflow: "auto",
-            bgcolor: "background.default",
-            p: 2,
-          }}
-        >
-          {props.messagesLoading ? (
-            <Stack direction="row" spacing={1} alignItems="center">
-              <CircularProgress size={18} />
-              <Typography variant="body2" color="text.secondary">
-                正在載入 AI Agent 對話紀錄...
-              </Typography>
-            </Stack>
-          ) : props.messages.length > 0 || props.pending ? (
-            <>
-              {props.hasMoreHistory && (
-                <Stack direction="row" justifyContent="center">
-                  <Button
-                    size="small"
-                    variant="text"
-                    disabled={props.loadingMoreHistory}
-                    onClick={handleLoadMoreHistory}
-                    startIcon={
-                      props.loadingMoreHistory ? (
-                        <CircularProgress size={14} />
-                      ) : undefined
-                    }
-                  >
-                    {props.loadingMoreHistory ? "載入中..." : "載入更早的訊息"}
-                  </Button>
-                </Stack>
-              )}
-              {props.messages.map((message) => (
-                <StorytellerAgentMessage
-                  key={message.id}
-                  message={message}
-                  enableReplace={Boolean(props.enableReplace)}
-                  enableInsert={props.enableInsert ?? true}
-                  onApplyText={props.onApplyText}
-                  onReply={props.onReply}
-                  isReplyTarget={props.replyTarget?.id === message.id}
-                />
-              ))}
-              {/* 處理中泡泡固定顯示在列表尾端，位置與稍後的回應一致 */}
-              {props.pending && (
-                <StorytellerAgentMessage
-                  message={{
-                    id: "agent-pending",
-                    role: "assistant",
-                    content: "",
-                    speaker: selectedAgent?.name ?? "AI Agent",
-                    isLoading: true,
-                  }}
-                  enableReplace={false}
-                  enableInsert={false}
-                  onApplyText={props.onApplyText}
-                />
-              )}
-            </>
-          ) : (
-            <CustomEmptyState
-              icon={<SmartToyIcon fontSize="large" />}
-              title={props.emptyTitle}
-              description={props.emptyDescription}
-            />
-          )}
-          {props.errorMessage && (
-            <Alert severity="error" variant="outlined">
-              {props.errorMessage}
-            </Alert>
-          )}
-        </Stack>
-
-        <Divider />
-
-        <Stack spacing={1.5} sx={{ p: 2 }}>
-          {props.replyTarget && (
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{
-                pl: 1.25,
-                pr: 0.5,
-                py: 0.5,
-                borderLeft: "3px solid",
-                borderColor: "primary.main",
-                bgcolor: "action.hover",
-                borderRadius: 0.5,
-              }}
-            >
-              <Box
-                onClick={scrollToReplyTarget}
-                sx={{ flex: 1, minWidth: 0, cursor: "pointer" }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  回覆 {props.replyTarget.speaker}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {props.replyTarget.content}
-                </Typography>
-              </Box>
-              <IconButton size="small" onClick={props.onCancelReply}>
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          )}
-          <TextField
-            multiline
-            minRows={4}
-            maxRows={8}
-            label="輸入需求"
-            value={props.prompt}
-            onChange={(event) => props.onPromptChange(event.target.value)}
-            placeholder={props.promptPlaceholder}
-            error={props.promptError}
-            helperText={props.promptHelperText}
-          />
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <StorytellerMarkdownSyntaxLink />
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setReferenceDrawerOpen(true)}
-            >
-              引用標籤說明
-            </Button>
-          </Stack>
-          {props.promptWarning && (
-            <Alert severity="warning" variant="outlined">
-              {props.promptWarning}
-            </Alert>
-          )}
-          {props.promptExtras}
-          <Button
-            variant="contained"
-            startIcon={<SendIcon />}
-            disabled={!props.canRun}
-            onClick={props.onRun}
-          >
-            {props.pending ? "處理中" : "送出需求"}
-          </Button>
-        </Stack>
-      </Stack>
-      <StorytellerAgentReferenceDrawer
-        open={referenceDrawerOpen}
-        onClose={() => setReferenceDrawerOpen(false)}
-      />
-    </Paper>
+    <>
+      {AGENT_LOADING_HINTS[hintIndex]}（已等待 {elapsedSeconds} 秒）
+    </>
   );
 }
 
-interface StorytellerAgentMessageProps {
-  message: StorytellerAgentPanelMessage;
-  enableReplace: boolean;
-  enableInsert: boolean;
-  onApplyText: (
-    text: string,
-    action: StorytellerAgentApplyAction,
-    selection: StorytellerAgentPanelSelection | null,
-  ) => void;
-  onReply?: (message: StorytellerAgentPanelMessage) => void;
+// 泡泡下面那排「附加末尾/複製/回覆」動作鍵，之前用 variant="outlined" 疊在泡泡
+// 下面，等於又是一排跟泡泡本身一樣的方框，看起來像箱子疊箱子。改成無邊框的
+// 文字按鈕，視覺上依附在泡泡上而不是獨立的一排容器——StorytellerAgentMessage／
+// AgenticAssistantMessage 共用同一份，維持兩邊手感一致。
+export const storytellerChatActionButtonProps: Pick<
+  ButtonProps,
+  "size" | "variant"
+> = { size: "small", variant: "text" };
+
+// 訊息泡泡的外觀（圓角、陰影、說話者標籤這層）給 StorytellerAgentMessage（skill
+// 訊息）跟 StorytellerAgenticPanel.tsx 的 AgenticAssistantMessage（agentic 訊息）
+// 共用——這兩個一直是「雙胞胎」，樣式改一邊很容易忘記改另一邊，抽出來後改一次
+// 兩邊自動一起套用。
+//
+// 圓角刻意做成不對稱：貼近說話者那一側的角（使用者泡泡右下、AI 泡泡左下）留小，
+// 其餘三個角放大，做出經典聊天泡泡「尖角指向說話者」的手感，不是四個角一樣的
+// 卡片。原本完全沒有陰影，泡泡直接貼在同色系的面板底色上、只靠一條細邊框分界，
+// 加一層很淺的陰影（MUI 內建 shadows[1]）讓泡泡從底色浮起來，是這次最主要的
+// 「不再像方塊」的來源。
+export function StorytellerChatBubble({
+  messageId,
+  isUser,
+  isReplyTarget,
+  speaker,
+  badge,
+  children,
+}: {
+  messageId: string;
+  isUser: boolean;
   isReplyTarget?: boolean;
-}
-
-function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
-  const { message } = props;
-  const isUser = message.role === "user";
-  const canApply = !isUser && message.content.trim() !== "";
-
+  speaker: ReactNode;
+  // 這則訊息實際用了哪個 Agent 人設／哪個 skill 指令——小小一個 Chip 貼在
+  // 說話者名稱旁邊，事後回頭看對話紀錄才追得回「這則當時發生了什麼事」。
+  badge?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <Box
-      data-agent-message-id={message.id}
+      data-agent-message-id={messageId}
       sx={{
         display: "flex",
         justifyContent: isUser ? "flex-end" : "flex-start",
@@ -439,12 +152,15 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
         sx={{
           maxWidth: "92%",
           p: 1.5,
-          borderRadius: 1,
+          borderRadius: "16px",
+          borderBottomRightRadius: isUser ? "4px" : "16px",
+          borderBottomLeftRadius: isUser ? "16px" : "4px",
+          boxShadow: 1,
           bgcolor: isUser ? "primary.main" : "background.paper",
           color: isUser ? "primary.contrastText" : "text.primary",
           border: isUser ? 0 : "1px solid",
-          borderColor: props.isReplyTarget ? "primary.main" : "divider",
-          outline: props.isReplyTarget ? "2px solid" : "none",
+          borderColor: isReplyTarget ? "primary.main" : "divider",
+          outline: isReplyTarget ? "2px solid" : "none",
           outlineColor: "primary.main",
           "& blockquote": {
             m: 0,
@@ -460,55 +176,158 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           "& blockquote p": { m: 0 },
         }}
       >
-        <Typography
-          variant="caption"
-          color={isUser ? "inherit" : "text.secondary"}
-          sx={{ opacity: isUser ? 0.82 : 1 }}
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          useFlexGap
+          flexWrap="wrap"
         >
-          {message.speaker}
-        </Typography>
-        {message.isLoading ? (
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-            <CircularProgress size={18} />
-            <Typography variant="body2" color="text.secondary">
-              處理中...
-            </Typography>
-          </Stack>
-        ) : (
-          <Box sx={{ typography: "body2", mt: 0.5 }}>
-            <StorytellerMarkdown>{message.content}</StorytellerMarkdown>
-          </Box>
-        )}
-        {!isUser && message.isCurrentResult && (
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            useFlexGap
-            sx={{ mt: 1 }}
+          <Typography
+            variant="caption"
+            fontWeight={700}
+            color={isUser ? "inherit" : "text.secondary"}
+            sx={{ opacity: isUser ? 0.82 : 1 }}
           >
-            {message.mode && <Chip size="small" label={message.mode} />}
-            {message.usage?.total_tokens ? (
-              <Chip
-                size="small"
-                label={`${message.usage.total_tokens} tokens`}
-              />
-            ) : null}
-          </Stack>
-        )}
-        {canApply && (
-          <Stack
-            direction="row"
-            spacing={1}
-            flexWrap="wrap"
-            useFlexGap
-            sx={{ mt: 1 }}
-          >
-            {props.enableReplace && message.isCurrentResult && (
+            {speaker}
+          </Typography>
+          {badge}
+        </Stack>
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
+// 給 StorytellerChatBubble 的 badge prop 用——mode（走了哪個 skill 指令）跟
+// agentName（實際處理這則的 Agent 人設）各自獨立顯示，兩個都沒有就不渲染
+// 任何東西（一般聊天訊息不用特別標）。
+export function StorytellerChatBadges({
+  mode,
+  agentName,
+}: {
+  mode?: StorytellerAgentRunMode | string;
+  agentName?: string;
+}) {
+  const modeLabel = agentRunModeLabel(mode);
+  if (!modeLabel && !agentName) {
+    return null;
+  }
+  return (
+    <>
+      {modeLabel && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={modeLabel}
+          sx={{
+            height: 18,
+            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
+          }}
+        />
+      )}
+      {agentName && (
+        <Chip
+          size="small"
+          variant="outlined"
+          label={agentName}
+          sx={{
+            height: 18,
+            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export interface StorytellerAgentMessageProps {
+  message: StorytellerAgentPanelMessage;
+  enableReplace: boolean;
+  enableInsert: boolean;
+  onApplyText: (
+    text: string,
+    action: StorytellerAgentApplyAction,
+    selection: StorytellerAgentPanelSelection | null,
+  ) => void;
+  onReply?: (message: StorytellerAgentPanelMessage) => void;
+  isReplyTarget?: boolean;
+  // 給 @thisStory／@story:[...] 這類引用 token 解析成真連結用——留空時
+  // （例如載入中的暫時訊息，content 本來就是空字串）直接照原樣顯示，不會出錯。
+  targetKind?: "story" | "lore";
+  projectPublicId?: string;
+  targetPublicId?: string;
+  otherStories?: { id: string; title: string; content: string }[];
+  lores?: { id: string; title: string; content: string }[];
+}
+
+// 由 StorytellerAgenticPanel.tsx（「AI 助理」面板）在渲染 skill（slash command）
+// 觸發的訊息時複用，維持一套訊息泡泡樣式與套用按鈕邏輯，不重複刻一份。
+export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
+  const { message } = props;
+  const isUser = message.role === "user";
+  const canApply = !isUser && message.content.trim() !== "";
+  const linkedContent = props.targetKind
+    ? buildStorytellerAgentMessageLinks(message.content, {
+        targetKind: props.targetKind,
+        projectPublicId: props.projectPublicId,
+        targetPublicId: props.targetPublicId,
+        otherStories: props.otherStories ?? [],
+        lores: props.lores ?? [],
+      })
+    : message.content;
+
+  return (
+    <StorytellerChatBubble
+      messageId={message.id}
+      isUser={isUser}
+      isReplyTarget={props.isReplyTarget}
+      speaker={message.speaker}
+      badge={
+        <StorytellerChatBadges
+          mode={message.mode}
+          agentName={message.agentName}
+        />
+      }
+    >
+      {message.isLoading ? (
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+          <CircularProgress size={18} />
+          <Typography variant="body2" color="text.secondary">
+            <StorytellerAgentLoadingHint />
+          </Typography>
+        </Stack>
+      ) : (
+        <Box sx={{ typography: "body2", mt: 0.5 }}>
+          <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+        </Box>
+      )}
+      {!isUser && message.isCurrentResult && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 1 }}
+        >
+          {message.usage?.total_tokens ? (
+            <Chip size="small" label={`${message.usage.total_tokens} tokens`} />
+          ) : null}
+        </Stack>
+      )}
+      {canApply && (
+        <Stack
+          direction="row"
+          spacing={1}
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ mt: 1 }}
+        >
+          {props.enableReplace &&
+            message.isCurrentResult &&
+            message.resultSelection && (
               <Button
-                size="small"
-                variant="outlined"
-                disabled={!message.resultSelection}
+                {...storytellerChatActionButtonProps}
                 onClick={() =>
                   props.onApplyText(
                     message.content,
@@ -520,45 +339,38 @@ function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
                 取代選取
               </Button>
             )}
-            {props.enableInsert && (
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={() =>
-                  props.onApplyText(message.content, "insert", null)
-                }
-              >
-                插入游標
-              </Button>
-            )}
+          {props.enableInsert && (
             <Button
-              size="small"
-              variant="outlined"
-              onClick={() => props.onApplyText(message.content, "append", null)}
+              {...storytellerChatActionButtonProps}
+              onClick={() => props.onApplyText(message.content, "insert", null)}
             >
-              附加末尾
+              插入游標
             </Button>
+          )}
+          <Button
+            {...storytellerChatActionButtonProps}
+            onClick={() => props.onApplyText(message.content, "append", null)}
+          >
+            附加末尾
+          </Button>
+          <Button
+            {...storytellerChatActionButtonProps}
+            startIcon={<ContentCopyIcon />}
+            onClick={() => props.onApplyText(message.content, "copy", null)}
+          >
+            複製
+          </Button>
+          {props.onReply && (
             <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ContentCopyIcon />}
-              onClick={() => props.onApplyText(message.content, "copy", null)}
+              {...storytellerChatActionButtonProps}
+              startIcon={<ReplyIcon />}
+              onClick={() => props.onReply?.(message)}
             >
-              複製
+              回覆
             </Button>
-            {props.onReply && (
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ReplyIcon />}
-                onClick={() => props.onReply?.(message)}
-              >
-                回覆
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Box>
-    </Box>
+          )}
+        </Stack>
+      )}
+    </StorytellerChatBubble>
   );
 }

@@ -162,6 +162,11 @@ export default defineConfig(({ mode }) => {
       // 重開 ngrok 都會變，是個人本機測試用的設定，不要把實際網址 commit
       // 進來。
       allowedHosts: ["localhost"],
+      // 固定在 5174：沒有這個設定時，port 被佔用會自動往上加（5175、5176...），
+      // 每次開發 server 的網址就不固定，人工測試很難對上正確的分頁。
+      // strictPort 讓它衝突時直接報錯，而不是默默換一個。
+      port: 5174,
+      strictPort: true,
     },
     build: {
       rollupOptions: {

@@ -399,6 +399,11 @@ export interface StorytellerAgentRunRequest {
   selection_start?: number;
   selection_end?: number;
   provider_apikey_id?: number;
+  model_name?: string;
+  // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand
+  // /translate /continue /custom 這幾個單輪 skill 指令沒有額外指定人設，一律帶
+  // 這個 true。
+  ignore_agent_persona?: boolean;
 }
 
 export interface StorytellerAgentRunUsage {
@@ -417,12 +422,87 @@ export interface StorytellerAgentRunResponse {
   finish_reason?: string;
 }
 
+// AAS（agentic AI storyteller）：多輪、會自己呼叫工具查資料的問答功能，跟上面
+// 單輪無工具呼叫能力的 StorytellerAgentRunRequest／Response（改寫/擴寫/翻譯）
+// 是刻意分開的兩組型別，對應後端兩條不同的路由。
+export interface StorytellerAgenticQueryRequest {
+  user_prompt: string;
+  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的
+  // key／model（可以跟 Agent 記錄的 provider 不同）——這是切換 API Key 功能的
+  // 請求介面。
+  provider_apikey_id?: number;
+  model_name?: string;
+  // true 時這輪呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model
+  // 還是照這個 Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免
+  // 前一輪切換過的人設無聲沿用到不相關的後續訊息。
+  ignore_agent_persona?: boolean;
+  // 使用者按「回覆」時，被回覆那則訊息的完整內容——user_prompt 裡通常已經帶了
+  // 一行摘要引言（見 composeStorytellerAgentInstructionWithReply），這裡才是讓
+  // 後端把完整內容併入這輪呼叫 prompt 的管道，不帶代表不是在回覆任何訊息。
+  reply_content?: string;
+}
+
+export interface StorytellerAgenticToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface StorytellerAgenticToolResult {
+  content: string;
+  error?: string;
+}
+
+export interface StorytellerAgenticStep {
+  tool_calls: StorytellerAgenticToolCall[];
+  results: StorytellerAgenticToolResult[];
+}
+
+// 這輪對話裡 agent 想呼叫、但被攔下來、還沒真的執行的寫入類工具呼叫，已經是
+// 後端持久化的資料列（不再是純快照）：public_id 用來呼叫
+// useApplyStorytellerAgentProposal／useRejectStorytellerAgentProposal，status
+// 是後端當下的真實狀態，重新整理頁面也不會跑掉。
+export interface StorytellerAgenticProposal {
+  public_id: string;
+  tool_call_id: string;
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  status: "pending" | "applied" | "rejected";
+}
+
+export interface StorytellerAgenticQueryResponse {
+  agent_id: number;
+  // 這輪對話落地的 chat id，不管有沒有拿到回覆都會帶——用來讓即時樂觀更新的
+  // 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪對話
+  // 因為 pending 訊息被重新抓到而重複顯示。
+  chat_id?: number;
+  // 這輪對話在 DB 裡的真實狀態——in_progress 是 provider 還在處理，pending
+  // 才是已經中斷或失敗、可以重送。
+  chat_status?: "pending" | "in_progress" | "completed";
+  provider: string;
+  model_name: string;
+  result: string;
+  steps: StorytellerAgenticStep[];
+  proposals: StorytellerAgenticProposal[];
+  usage?: StorytellerAgentRunUsage;
+  // 非空代表這輪對話撞到步數上限被強制中止，沒有真的拿到最終答案，但其餘欄位
+  // 仍然是累積到中止那刻的真實資料，不是空殼——當成「部分結果＋警告」呈現。
+  warning?: string;
+}
+
 export interface StorytellerStoryChatMessage {
   id: number;
   chat_id: number;
+  // 這則訊息所屬 chat 目前的狀態——in_progress 代表 provider 還在處理，
+  // pending 代表已經中斷或失敗，這種 user 訊息底下可以顯示「重送」按鈕；
+  // completed 代表已經有回覆了。
+  chat_status: "pending" | "in_progress" | "completed";
   role: "system" | "user" | "assistant";
   content: string;
   metadata?: string;
+  // 這則訊息（如果是 assistant 那輪 agentic 問答的一部分）當初提出過的寫入提案，
+  // 直接帶最新狀態，不用再從 metadata 解析一份可能過期的快照。
+  proposals?: StorytellerAgenticProposal[];
   agent_id: number;
   agent_name: string;
   created_at: string;
@@ -436,17 +516,30 @@ export interface StorytellerStoryChatMessagePage {
   per_page: number;
 }
 
+// 分組依 project -> story/lore，不再依 Agent（見 Phase1至7工作項規劃.md
+// Phase 8.7）；story_id／lore_id 互斥，兩者皆空代表這筆用量記錄關聯不到任何
+// 故事或設定集。
 export interface StorytellerAgentUsageSummaryRow {
   provider_apikey_id: number;
   provider: string;
   provider_apikey_label: string;
-  agent_id: number;
-  agent_name: string;
-  model_name: string;
+  project_id: number | null;
+  project_public_id?: string;
+  project_name?: string;
+  story_id: number | null;
+  story_public_id?: string;
+  story_title?: string;
+  lore_id: number | null;
+  lore_public_id?: string;
+  lore_title?: string;
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;
   run_count: number;
+  // 這組底下所有紀錄的價格快照算出來的費用總和；組裡任何一筆沒有價格快照
+  // （self_hosted／openrouter 自訂 model 名稱、或還沒回填的舊資料）就不計入，
+  // 缺值不代表 0 元，是「這組完全沒有任何一筆抓得到價格」。
+  estimated_cost_usd?: number;
 }
 
 export interface StorytellerAgentUsageLogRow {
@@ -458,6 +551,14 @@ export interface StorytellerAgentUsageLogRow {
   total_tokens: number;
   story_title?: string;
   lore_title?: string;
+  // 用執行當下的單價快照算出來的估算費用；只有固定模型清單的供應商
+  // （claude/openai/gemini/grok）才查得到單價，self_hosted／openrouter 自訂
+  // model 名稱沒有可靠價格，這裡就不會有值。
+  estimated_cost_usd?: number;
+  // 算 estimated_cost_usd 用的每 token 美金單價，純顯示用途（組計算式給使用者
+  // 核對），不是另外一套算法。
+  input_token_price_usd?: number;
+  output_token_price_usd?: number;
 }
 
 export interface StorytellerAgentUsageLogPage {
@@ -473,7 +574,7 @@ export interface StorytellerStoryRequest {
   status: "draft" | "completed";
   sort: number;
   content: string;
-  save_trigger?: "auto" | "manual";
+  save_trigger?: "auto" | "manual" | "agent_apply";
   // 帶入目前手上內容對應的版本 id；若這篇故事的最新版本已經不是這個 id，
   // 後端會拒絕這次存檔並回 409，代表內容被別的地方（例如 MCP 工具）動過。
   base_version_id?: number;
@@ -486,7 +587,7 @@ export interface StorytellerStoryRequest {
 export interface StorytellerLoreRequest {
   title: string;
   content: string;
-  save_trigger?: "auto" | "manual";
+  save_trigger?: "auto" | "manual" | "agent_apply";
   base_version_id?: number;
   collection_id?: string;
 }

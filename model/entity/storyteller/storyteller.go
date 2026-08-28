@@ -309,19 +309,24 @@ type ProviderAPIKey struct {
 func (ProviderAPIKey) TableName() string { return "storyteller_provider_apikeys" }
 
 // AgentUsageLog 記錄每一次 Agent 執行實際使用的 API Key 與 token 用量，
-// provider/model_name 是執行當下的快照，不會隨著 Agent 或 Key 之後的設定變更而改變。
+// provider/model_name/price 都是執行當下的快照，不會隨著 Agent、Key 或價目表
+// 之後的變更而改變——歷史帳目要反映「當時」的實際花費，不能因為價目表後來調整
+// 就跟著變動，見 AgentModelPrice 的說明。
 type AgentUsageLog struct {
 	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
 	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
 	ProviderAPIKeyID uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
-	AgentID          uint64        `gorm:"column:agent_id" json:"agent_id"`
 	ChatID           uint64        `gorm:"column:chat_id" json:"chat_id"`
 	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
 	ModelName        string        `gorm:"column:model_name" json:"model_name"`
 	InputTokens      int           `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens     int           `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens      int           `gorm:"column:total_tokens" json:"total_tokens"`
-	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+	// Price 是執行當下查到的單價快照（每 token 美金，JSON 字串，格式沿用
+	// storyteller_agent_models.price 的 OpenRouter schema）；self_hosted／
+	// openrouter 自訂 model 名稱或查不到價格的情況維持 nil，不猜成本。
+	Price     *string   `gorm:"column:price" json:"-"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
 }
 
 func (AgentUsageLog) TableName() string { return "storyteller_agent_usage_logs" }
@@ -529,28 +534,74 @@ type LoreVersion struct {
 
 func (LoreVersion) TableName() string { return "storyteller_lore_versions" }
 
+// StoryChatStatus 標示一輪 agentic 對話目前落地到哪個階段：in_progress 是已經
+// 存了使用者問題、provider 正在處理；pending 是 provider 第一輪失敗、timeout 或
+// process 中斷後可重送；completed 是已經拿到回覆（正常或撞到步數上限但仍有部分結果）。
+type StoryChatStatus string
+
+const (
+	StoryChatStatusPending    StoryChatStatus = "pending"
+	StoryChatStatusInProgress StoryChatStatus = "in_progress"
+	StoryChatStatusCompleted  StoryChatStatus = "completed"
+)
+
 type StoryChat struct {
-	ID        uint64    `gorm:"column:id;primaryKey" json:"id"`
-	StoryID   *uint64   `gorm:"column:story_id" json:"story_id"`
-	LoreID    *uint64   `gorm:"column:lore_id" json:"lore_id"`
-	AgentID   uint64    `gorm:"column:agent_id" json:"agent_id"`
-	UserID    uint64    `gorm:"column:user_id" json:"user_id"`
-	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at" json:"updated_at"`
+	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
+	StoryID   *uint64         `gorm:"column:story_id" json:"story_id"`
+	LoreID    *uint64         `gorm:"column:lore_id" json:"lore_id"`
+	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
+	UserID    uint64          `gorm:"column:user_id" json:"user_id"`
+	Status    StoryChatStatus `gorm:"column:status" json:"status"`
+	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt time.Time       `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }
 
+type AgentProposalStatus string
+
+const (
+	AgentProposalStatusPending  AgentProposalStatus = "pending"
+	AgentProposalStatusApplied  AgentProposalStatus = "applied"
+	AgentProposalStatusRejected AgentProposalStatus = "rejected"
+)
+
+// AgentProposal 是 AI 助理提出、被 CaptureWriteToolsAsProposals 攔下來的寫入類工具
+// 呼叫，取代原本只存在 chat message metadata JSON 快照裡的做法——這樣使用者
+// 套用／否決之後，狀態才有地方持久化，不會重新整理頁面就打回「待確認」。
+// ChatID 對應 storyteller_story_chats：每輪 agentic 對話都會建一筆新的 chat，
+// 一個 chat 剛好對應一則 assistant 訊息，不需要另外存 message_id。
+type AgentProposal struct {
+	ID         uint64              `gorm:"column:id;primaryKey" json:"id"`
+	PublicID   string              `gorm:"column:public_id" json:"public_id"`
+	ChatID     uint64              `gorm:"column:chat_id" json:"chat_id"`
+	ToolCallID string              `gorm:"column:tool_call_id" json:"tool_call_id"`
+	ToolName   string              `gorm:"column:tool_name" json:"tool_name"`
+	Arguments  string              `gorm:"column:arguments" json:"arguments"`
+	Status     AgentProposalStatus `gorm:"column:status" json:"status"`
+	AppliedAt  *time.Time          `gorm:"column:applied_at" json:"applied_at"`
+	CreatedAt  time.Time           `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt  time.Time           `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (AgentProposal) TableName() string { return "storyteller_agent_proposals" }
+
 type StoryChatMessage struct {
-	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
-	ChatID    uint64          `gorm:"column:chat_id" json:"chat_id"`
-	AgentID   *uint64         `gorm:"column:agent_id" json:"agent_id"`
-	Role      ChatMessageRole `gorm:"column:role" json:"role"`
-	Content   string          `gorm:"column:content" json:"content"`
-	Metadata  string          `gorm:"column:metadata" json:"metadata"`
-	DeletedAt *time.Time      `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt time.Time       `gorm:"column:updated_at" json:"updated_at"`
+	ID       uint64          `gorm:"column:id;primaryKey" json:"id"`
+	ChatID   uint64          `gorm:"column:chat_id" json:"chat_id"`
+	AgentID  *uint64         `gorm:"column:agent_id" json:"agent_id"`
+	Role     ChatMessageRole `gorm:"column:role" json:"role"`
+	Content  string          `gorm:"column:content" json:"content"`
+	Metadata string          `gorm:"column:metadata" json:"metadata"`
+	// RawProviderResponse 是純除錯用欄位：這則 assistant 訊息生成過程中每一次
+	// provider.Generate() 呼叫收到的原始 response body（JSON 陣列字串，一個
+	// 字元都沒有精簡），跟 Metadata 已經解析過的 tool_calls/results 摘要分開存。
+	// 故意不給 json tag 曝光到 API——可能之後會直接刪掉這個欄位，只供直接查 DB
+	// 除錯用（見 agenticQueryAssistantMessage／buildAgentRunMessages 的說明）。
+	RawProviderResponse *string    `gorm:"column:raw_provider_response" json:"-"`
+	DeletedAt           *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt           time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt           time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (StoryChatMessage) TableName() string {
@@ -666,13 +717,25 @@ type AgentRequest struct {
 }
 
 type AgentRunRequest struct {
-	Mode             AgentRunMode `json:"mode"`
-	Instruction      string       `json:"instruction"`
-	FullContent      string       `json:"full_content"`
-	SelectedContent  string       `json:"selected_content"`
-	SelectionStart   *int         `json:"selection_start"`
-	SelectionEnd     *int         `json:"selection_end"`
-	ProviderAPIKeyID *uint64      `json:"provider_apikey_id,omitempty"`
+	Mode            AgentRunMode `json:"mode"`
+	Instruction     string       `json:"instruction"`
+	FullContent     string       `json:"full_content"`
+	SelectedContent string       `json:"selected_content"`
+	SelectionStart  *int         `json:"selection_start"`
+	SelectionEnd    *int         `json:"selection_end"`
+	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
+	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
+	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
+	// ModelName 留空時沿用 Agent 記錄的預設 model；帶值時這次呼叫改用這個 model
+	// 名稱——跟 ProviderAPIKeyID 是各自獨立的覆寫，可以只換 key、只換 model，
+	// 或兩個一起換。
+	ModelName string `json:"model_name,omitempty"`
+	// IgnoreAgentPersona 為 true 時，這次呼叫的 system prompt 不附加這個 Agent 的
+	// DefaultPrompt（人設）——URL 上的 :agent 仍然決定用哪把 key／哪個 model。前端
+	// 對 /rewrite /expand /translate /continue /custom 這幾個「單輪 skill」指令，
+	// 沒有額外指定 Agent 人設時帶這個 true，跟 agentic 問答那邊的同名欄位是同一個
+	// 設計：沒有明確指定人設的呼叫，就不該套用任何人設。
+	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
 }
 
 type ProviderAPIKeyRequest struct {
@@ -721,6 +784,13 @@ type StoryRequest struct {
 	ParentID *string `json:"parent_id,omitempty"`
 	// ContentType 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時忽略此欄位。
 	ContentType ProjectContentType `json:"content_type,omitempty"`
+}
+
+// StoryMoveRequest 是「只搬移冊歸屬、不動內容」的專用請求，跟 LoreMoveRequest 對稱。
+// 刻意跟 StoryRequest 分開，讓呼叫端不用先讀出目前的 title/content 才能搬移故事。
+type StoryMoveRequest struct {
+	// VolumePublicID 是目標冊的 public_id；空字串代表移出冊／不分冊。
+	VolumePublicID string `json:"volume_public_id"`
 }
 
 // StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
@@ -935,31 +1005,130 @@ type AgentRunResponse struct {
 	FinishReason string         `json:"finish_reason,omitempty"`
 }
 
-type StoryChatMessageOutput struct {
-	ID        uint64          `json:"id"`
-	ChatID    uint64          `json:"chat_id"`
-	Role      ChatMessageRole `json:"role"`
-	Content   string          `json:"content"`
-	Metadata  string          `json:"metadata,omitempty"`
-	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
-	AgentName string          `json:"agent_name"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+// AgenticQueryRequest 是 AAS 聊天視窗送出一則需求的請求體。ProviderAPIKeyID／
+// ModelName 都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定
+// 的 key／model（可以跟 Agent 記錄的 provider 不同）——這是聊天視窗「切換 API
+// Key」功能的請求介面。
+type AgenticQueryRequest struct {
+	UserPrompt       string  `json:"user_prompt"`
+	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
+	ModelName        string  `json:"model_name,omitempty"`
+	// IgnoreAgentPersona 為 true 時，這輪呼叫的 system prompt 不附加這個 Agent 的
+	// DefaultPrompt（人設/skill 指令）——URL 上的 :agent 仍然決定用哪把 key／哪個
+	// model，只是「這輪不套用它的人設」。前端在使用者沒有明確打 /<Agent 名稱> 前綴
+	// 的訊息帶這個 true，避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
+	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
+	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容——UserPrompt
+	// 裡通常已經帶了一行摘要引言（見前端 composeStorytellerAgentInstructionWithReply），
+	// 這裡才是讓後端把完整內容併入這輪呼叫 prompt 的管道，留空代表不是在回覆
+	// 任何訊息。
+	ReplyContent string `json:"reply_content,omitempty"`
 }
 
-// AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 Agent 的 token 用量加總，
-// 前端依 provider_apikey_id 再依 agent_id 分組即可組出「Key -> Agent」兩層報表。
+// AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，
+// 也可能是被攔截成提案的寫入類工具）。
+type AgenticToolCallOutput struct {
+	ID        string                 `json:"id"`
+	Name      string                 `json:"name"`
+	Arguments map[string]interface{} `json:"arguments"`
+}
+
+// AgenticToolResultOutput 是單一次工具呼叫的結果；Error 非空代表這次呼叫失敗，
+// Content 是給前端顯示的錯誤說明（同一份文字也餵回去給模型看過）。
+type AgenticToolResultOutput struct {
+	Content string `json:"content"`
+	Error   string `json:"error,omitempty"`
+}
+
+// AgenticStepOutput 是 agent loop 裡的一輪：這輪要求呼叫哪些工具、各自的結果
+// （ToolCalls／Results 用同一個索引對應）。
+type AgenticStepOutput struct {
+	ToolCalls []AgenticToolCallOutput   `json:"tool_calls"`
+	Results   []AgenticToolResultOutput `json:"results"`
+}
+
+// AgenticProposalOutput 是 agent 這輪對話裡想呼叫、但被攔下來、還沒真的執行的
+// 寫入類工具呼叫，現在是持久化的 AgentProposal 資料列（見該型別的說明），不再是
+// 純快照——PublicID／Status 讓前端可以呼叫 POST .../agentic-proposals/:proposal/
+// apply 或 /reject，並且在重新整理頁面後看到正確的最新狀態，不會又打回「待確認」。
+type AgenticProposalOutput struct {
+	PublicID   string                 `json:"public_id"`
+	ToolCallID string                 `json:"tool_call_id"`
+	ToolName   string                 `json:"tool_name"`
+	Arguments  map[string]interface{} `json:"arguments"`
+	Status     AgentProposalStatus    `json:"status"`
+}
+
+// AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
+type AgenticQueryResponse struct {
+	AgentID uint64 `json:"agent_id"`
+	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆，不管有沒有拿到回覆
+	// 都會帶（見 AgenticQueryOutput.ChatID 的說明）——前端用來讓即時樂觀更新的
+	// 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪
+	// 對話重複顯示。
+	ChatID uint64 `json:"chat_id,omitempty"`
+	// ChatStatus 是 ChatID 這筆 chat 在 DB 裡的真實狀態——不能靠 Warning 有沒有值
+	// 猜，見 AgenticQueryOutput.ChatStatus 的說明。
+	ChatStatus StoryChatStatus         `json:"chat_status,omitempty"`
+	Provider   AgentProvider           `json:"provider"`
+	ModelName  string                  `json:"model_name"`
+	Result     string                  `json:"result"`
+	Steps      []AgenticStepOutput     `json:"steps"`
+	Proposals  []AgenticProposalOutput `json:"proposals"`
+	Usage      *AgentRunUsage          `json:"usage,omitempty"`
+	// Warning 非空代表這輪對話撞到步數上限被強制中止（沒有真的拿到最終答案），
+	// 但 Result／Steps／Proposals／Usage 仍然是累積到中止那刻的真實資料，不是
+	// 空殼——前端要把這個情況當成「部分結果＋警告」呈現，不是整個當失敗處理。
+	Warning string `json:"warning,omitempty"`
+}
+
+type StoryChatMessageOutput struct {
+	ID     uint64 `json:"id"`
+	ChatID uint64 `json:"chat_id"`
+	// ChatStatus 是這則訊息所屬 chat 目前的狀態（見 StoryChatStatus）——前端用來
+	// 判斷一則 user 訊息是在處理中（in_progress）還是已經可重送（pending），不用
+	// 自己比對同一個 chat_id 底下有沒有 assistant 訊息（分頁時兩則訊息可能被拆到
+	// 不同頁，比對不可靠）。
+	ChatStatus StoryChatStatus         `gorm:"column:chat_status" json:"chat_status"`
+	Role       ChatMessageRole         `json:"role"`
+	Content    string                  `json:"content"`
+	Metadata   string                  `json:"metadata,omitempty"`
+	Proposals  []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
+	AgentID    uint64                  `gorm:"column:agent_id" json:"agent_id"`
+	AgentName  string                  `json:"agent_name"`
+	CreatedAt  time.Time               `json:"created_at"`
+	UpdatedAt  time.Time               `json:"updated_at"`
+}
+
+// AgentUsageSummaryRow 是指定月份下，某把 Key 底下某個 project/story/lore 的
+// token 用量加總，前端依 provider_apikey_id 再依 project_id、story_id/lore_id
+// 分組組出「Key -> Project -> Story/Lore」三層報表。Agent 已跟 provider/key/model
+// 剝離，不再是有意義的分組依據（見 Phase1至7工作項規劃.md Phase 8.7），改成
+// project/story/lore；StoryID／LoreID 互斥，兩者皆空代表這筆用量記錄關聯不到
+// 任何故事或設定集（例如對應的 chat 已被刪除）。
 type AgentUsageSummaryRow struct {
 	ProviderAPIKeyID    uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
 	Provider            AgentProvider `gorm:"column:provider" json:"provider"`
 	ProviderAPIKeyLabel string        `gorm:"column:provider_apikey_label" json:"provider_apikey_label"`
-	AgentID             uint64        `gorm:"column:agent_id" json:"agent_id"`
-	AgentName           string        `gorm:"column:agent_name" json:"agent_name"`
-	ModelName           string        `gorm:"column:model_name" json:"model_name"`
+	ProjectID           *uint64       `gorm:"column:project_id" json:"project_id"`
+	ProjectPublicID     string        `gorm:"column:project_public_id" json:"project_public_id,omitempty"`
+	ProjectName         string        `gorm:"column:project_name" json:"project_name,omitempty"`
+	StoryID             *uint64       `gorm:"column:story_id" json:"story_id"`
+	StoryPublicID       string        `gorm:"column:story_public_id" json:"story_public_id,omitempty"`
+	StoryTitle          string        `gorm:"column:story_title" json:"story_title,omitempty"`
+	LoreID              *uint64       `gorm:"column:lore_id" json:"lore_id"`
+	LorePublicID        string        `gorm:"column:lore_public_id" json:"lore_public_id,omitempty"`
+	LoreTitle           string        `gorm:"column:lore_title" json:"lore_title,omitempty"`
 	InputTokens         int64         `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens        int64         `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens         int64         `gorm:"column:total_tokens" json:"total_tokens"`
 	RunCount            int64         `gorm:"column:run_count" json:"run_count"`
+	// EstimatedCostUSD 是這個分組底下所有紀錄的價格快照（logs.price）算出來的
+	// 費用總和；這組裡任何一筆沒有價格快照（self_hosted／openrouter 自訂
+	// model 名稱、或還沒回填的舊資料）就不計入這個總和，SUM 會自動跳過 NULL，
+	// 不會因為缺一筆資料就讓整組變成算不出來——nil 只代表這組底下完全沒有任何
+	// 一筆抓得到價格的紀錄。
+	EstimatedCostUSD *float64 `gorm:"column:estimated_cost_usd" json:"estimated_cost_usd,omitempty"`
 }
 
 // AgentUsageLogRow 是單次執行的明細，StoryTitle/LoreTitle 兩者互斥，依該次執行是故事還是世界觀設定而定。
@@ -972,6 +1141,17 @@ type AgentUsageLogRow struct {
 	TotalTokens  int       `gorm:"column:total_tokens" json:"total_tokens"`
 	StoryTitle   *string   `gorm:"column:story_title" json:"story_title,omitempty"`
 	LoreTitle    *string   `gorm:"column:lore_title" json:"lore_title,omitempty"`
+	// ModelPrice 讀自 logs.price——執行當下寫入的單價快照，不是即時查目前價目表
+	// （見 AgentUsageLog.Price 的說明）。self_hosted／openrouter 自訂 model 名稱
+	// 或當時查不到價格就是 nil，不猜成本。純內部欄位，不直接暴露給前端，只用來
+	// 算 EstimatedCostUSD。
+	ModelPrice       *string  `gorm:"column:model_price" json:"-"`
+	EstimatedCostUSD *float64 `gorm:"-" json:"estimated_cost_usd,omitempty"`
+	// InputTokenPriceUSD／OutputTokenPriceUSD 是從 ModelPrice 解析出來、每 token
+	// 的美金單價，跟 EstimatedCostUSD 一起給前端組「輸入token數×單價+輸出token
+	// 數×單價＝總額」這行計算式用，純顯示用途，不是分開算費用的另一套邏輯。
+	InputTokenPriceUSD  *float64 `gorm:"-" json:"input_token_price_usd,omitempty"`
+	OutputTokenPriceUSD *float64 `gorm:"-" json:"output_token_price_usd,omitempty"`
 }
 
 type UserProfileOutput struct {

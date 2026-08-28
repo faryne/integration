@@ -60,7 +60,7 @@ export default function StorytellerHome() {
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
 
-  // 建立專案／AI Agent 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
+  // 建立專案／Skill 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
   // 比照 ProjectWorkspacePreview 的 routeEditorType：路徑本身就決定了要不要在
   // 右欄顯示表單，不用等資料載入完成才知道。編輯專案已經搬到
   // my/workspace/:id/edit（見 ProjectWorkspacePreview.tsx），這裡只剩「建立」。
@@ -88,7 +88,7 @@ export default function StorytellerHome() {
   const homeTitle = isProjectFormRoute
     ? `建立 ${STORYTELLER_APP_NAME} 專案`
     : isAgentFormRoute
-      ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} AI Agent`
+      ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} Skill`
       : activeTab === "favorites" || activeTab === "profile"
         ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
         : `${STORYTELLER_APP_NAME} 我的工作台`;
@@ -155,7 +155,7 @@ export default function StorytellerHome() {
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={`${projects.length} 個創作專案`} />
-            <Chip size="small" label={`${agents.length} 個 AI Agent`} />
+            <Chip size="small" label={`${agents.length} 個 Skill`} />
           </Stack>
         )
       }
@@ -210,7 +210,7 @@ export default function StorytellerHome() {
                     <Typography variant="h6" fontWeight={800}>
                       {activeTab === "project"
                         ? "最近的創作專案"
-                        : "可用的 AI Agent"}
+                        : "可用的 Skill"}
                     </Typography>
                     <Button
                       component={RouterLink}
@@ -221,7 +221,7 @@ export default function StorytellerHome() {
                       )}
                       variant="contained"
                     >
-                      {activeTab === "project" ? "建立專案" : "建立 AI Agent"}
+                      {activeTab === "project" ? "建立專案" : "建立 Skill"}
                     </Button>
                   </Stack>
                 ) : null}
@@ -230,7 +230,7 @@ export default function StorytellerHome() {
                 ) : activeTab === "project" ? (
                   <ProjectCards projects={projects} />
                 ) : activeTab === "agent" && agentsLoading ? (
-                  <StorytellerLoading label="正在載入 AI Agent..." />
+                  <StorytellerLoading label="正在載入 Skill..." />
                 ) : activeTab === "agent" ? (
                   <AgentCards agents={agents} />
                 ) : activeTab === "apikey" ? (

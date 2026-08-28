@@ -199,8 +199,20 @@ func TestBuildAgentRunPrompts(t *testing.T) {
 	require.Contains(t, userPrompt, "User instruction:\nMake it sharper.")
 	require.NotContains(t, userPrompt, "Current chapter full content:")
 	require.NotContains(t, userPrompt, "Full chapter.")
-	require.Contains(t, userPrompt, "Current selected text:")
+	require.Contains(t, userPrompt, "Current selected text (a focus hint, not the only editable scope):")
 	require.Contains(t, userPrompt, "Only output the rewritten text.")
+}
+
+func TestBuildAgentRunPromptsFallsBackToFullContentWhenSelectionModeHasNoSelection(t *testing.T) {
+	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
+		Mode:        storytellerModel.AgentRunModeCustomSelection,
+		Instruction: "Make it sharper.",
+		FullContent: "Full chapter.",
+	})
+
+	require.Contains(t, userPrompt, "Current chapter full content:")
+	require.Contains(t, userPrompt, "Full chapter.")
+	require.NotContains(t, userPrompt, "STORY_SELECTED_CONTENT")
 }
 
 func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {
@@ -233,6 +245,162 @@ func TestBuildAgentRunPromptsOmitsEmptyFullContent(t *testing.T) {
 
 	require.Contains(t, userPrompt, "User instruction:\nOnly use this request.")
 	require.NotContains(t, userPrompt, "Current chapter full content:")
+}
+
+func TestOpenAICompatibleGenerateWithTools(t *testing.T) {
+	var request openAIChatCompletionRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		return jsonResponse(http.StatusOK, `{
+			"choices": [
+				{
+					"message": {
+						"content": "",
+						"tool_calls": [
+							{"id": "call_1", "type": "function", "function": {"name": "storyteller_get_story", "arguments": "{\"story_public_id\":\"abc\"}"}}
+						]
+					},
+					"finish_reason": "tool_calls"
+				}
+			],
+			"usage": {"prompt_tokens": 20, "completion_tokens": 8, "total_tokens": 28}
+		}`), nil
+	})}
+
+	provider := NewOpenAICompatibleProvider("https://example.test/chat", client)
+	response, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:       "test-key",
+		ModelName:    "gpt-test",
+		SystemPrompt: "system prompt",
+		UserPrompt:   "user prompt",
+		Tools: []ToolDefinition{{
+			Name:        "storyteller_get_story",
+			Description: "Get a story.",
+			InputSchema: map[string]interface{}{"type": "object"},
+		}},
+	})
+
+	require.NoError(t, err)
+	// tools 欄位要正確帶進 request body。
+	require.Len(t, request.Tools, 1)
+	require.Equal(t, "function", request.Tools[0].Type)
+	require.Equal(t, "storyteller_get_story", request.Tools[0].Function.Name)
+	// 只有工具呼叫、沒有文字答案不能被當成空結果拒絕。
+	require.Empty(t, response.Result)
+	require.Len(t, response.ToolCalls, 1)
+	require.Equal(t, "call_1", response.ToolCalls[0].ID)
+	require.Equal(t, "storyteller_get_story", response.ToolCalls[0].Name)
+	// arguments 是 OpenAI 回傳的 JSON 編碼字串，要被解析成 map，不是原始字串。
+	require.Equal(t, "abc", response.ToolCalls[0].Arguments["story_public_id"])
+}
+
+func TestOpenAICompatibleGenerateWithMessagesHistory(t *testing.T) {
+	var request openAIChatCompletionRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		return jsonResponse(http.StatusOK, `{"choices":[{"message":{"content":"final answer"}}]}`), nil
+	})}
+
+	provider := NewOpenAICompatibleProvider("https://example.test/chat", client)
+	_, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:       "test-key",
+		ModelName:    "gpt-test",
+		SystemPrompt: "system prompt",
+		Messages: []Message{
+			{Role: "user", Content: "look up the story"},
+			{Role: "assistant", ToolCalls: []ToolCall{{ID: "call_1", Name: "storyteller_get_story", Arguments: map[string]interface{}{"story_public_id": "abc"}}}},
+			{Role: "tool", ToolCallID: "call_1", Content: `{"title":"測試故事"}`},
+		},
+	})
+
+	require.NoError(t, err)
+	// Messages 非空時取代 SystemPrompt/UserPrompt 的單輪組法，system 訊息還是排最前面。
+	require.Len(t, request.Messages, 4)
+	require.Equal(t, "system", request.Messages[0].Role)
+	require.Equal(t, "user", request.Messages[1].Role)
+	require.Equal(t, "assistant", request.Messages[2].Role)
+	require.Len(t, request.Messages[2].ToolCalls, 1)
+	require.Equal(t, "call_1", request.Messages[2].ToolCalls[0].ID)
+	require.Equal(t, "tool", request.Messages[3].Role)
+	require.Equal(t, "call_1", request.Messages[3].ToolCallID)
+}
+
+func TestClaudeProviderGenerateWithTools(t *testing.T) {
+	var request claudeMessageRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		return jsonResponse(http.StatusOK, `{
+			"content": [
+				{"type": "text", "text": "let me check"},
+				{"type": "tool_use", "id": "toolu_1", "name": "storyteller_get_story", "input": {"story_public_id": "abc"}}
+			],
+			"stop_reason": "tool_use",
+			"usage": {"input_tokens": 10, "output_tokens": 6}
+		}`), nil
+	})}
+
+	provider := NewClaudeProvider("https://example.test/messages", client)
+	response, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:       "test-key",
+		ModelName:    "claude-test",
+		SystemPrompt: "system prompt",
+		UserPrompt:   "user prompt",
+		Tools: []ToolDefinition{{
+			Name:        "storyteller_get_story",
+			Description: "Get a story.",
+			InputSchema: map[string]interface{}{"type": "object"},
+		}},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 1)
+	require.Equal(t, "storyteller_get_story", request.Tools[0].Name)
+	require.Equal(t, "let me check", response.Result)
+	require.Len(t, response.ToolCalls, 1)
+	require.Equal(t, "toolu_1", response.ToolCalls[0].ID)
+	require.Equal(t, "abc", response.ToolCalls[0].Arguments["story_public_id"])
+}
+
+func TestClaudeProviderGenerateWithToolResultMessage(t *testing.T) {
+	var request claudeMessageRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		return jsonResponse(http.StatusOK, `{"content":[{"type":"text","text":"final answer"}],"stop_reason":"end_turn"}`), nil
+	})}
+
+	provider := NewClaudeProvider("https://example.test/messages", client)
+	_, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:    "test-key",
+		ModelName: "claude-test",
+		Messages: []Message{
+			{Role: "user", Content: "look up the story"},
+			{Role: "assistant", ToolCalls: []ToolCall{{ID: "toolu_1", Name: "storyteller_get_story", Arguments: map[string]interface{}{"story_public_id": "abc"}}}},
+			{Role: "tool", ToolCallID: "toolu_1", Content: `{"title":"測試故事"}`},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Len(t, request.Messages, 3)
+	// tool 角色在 Claude 沒有對應 role，要被轉成 user 訊息底下的 tool_result block。
+	require.Equal(t, "user", request.Messages[2].Role)
+	require.Equal(t, "tool_result", request.Messages[2].Content[0].Type)
+	require.Equal(t, "toolu_1", request.Messages[2].Content[0].ToolUseID)
+	// assistant 的 tool_use 要轉成對應的 content block。
+	require.Equal(t, "assistant", request.Messages[1].Role)
+	require.Equal(t, "tool_use", request.Messages[1].Content[0].Type)
+	require.Equal(t, "storyteller_get_story", request.Messages[1].Content[0].Name)
+}
+
+func TestGeminiProviderGenerateRejectsTools(t *testing.T) {
+	provider := NewGeminiProvider("https://example.test/v1beta/models", http.DefaultClient)
+	response, err := provider.Generate(context.Background(), AIProviderRequest{
+		APIKey:    "test-key",
+		ModelName: "gemini-2.5-flash",
+		Tools:     []ToolDefinition{{Name: "storyteller_get_story"}},
+	})
+
+	require.Nil(t, response)
+	require.ErrorIs(t, err, ErrAIProviderUnsupported)
 }
 
 func TestGrokStatusErrorWrapsExpectedSentinel(t *testing.T) {

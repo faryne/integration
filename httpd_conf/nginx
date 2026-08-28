@@ -63,8 +63,12 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
 
         proxy_connect_timeout 30s;
-        proxy_send_timeout 300s;
-        proxy_read_timeout 300s;
+        # AAS（agentic 多輪 tool-calling）單一步驟逾時已經拉到 180s
+        # （service/storyteller/ai_provider.go 的 aiProviderAgenticTimeout），
+        # 最多到 8 步，累加起來可能遠超過舊的 300s，這裡跟著放寬到 600s，
+        # 避免 Go 那邊還在正常跑、卻先被 nginx 這層掐斷連線。
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
 
         # 後端掛掉時，讓錯誤回應也帶 CORS header，且格式比照 service/output.CommonOutput，
         # 前端不用為了這種情況多寫一套解析邏輯。放在具名 location 是因為它是 nginx 自己產生

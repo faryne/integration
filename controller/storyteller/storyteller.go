@@ -308,17 +308,24 @@ func AgentUsageLogs(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	agentID, err := parseUint(ctx.Query("agent_id"))
+	storyID, err := parseOptionalUint(ctx.Query("story_id"))
 	if err != nil {
 		return output.BadRequest(err)
+	}
+	loreID, err := parseOptionalUint(ctx.Query("lore_id"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	if storyID == nil && loreID == nil {
+		return output.BadRequest(errors.New("story_id or lore_id is required"))
 	}
 	month := ctx.Query("month")
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("per_page", "20"))
-	rows, total, err := storyteller.NewService().AgentUsageLogs(authsession.Session(ctx).UserId, providerAPIKeyID, agentID, month, page, pageSize)
+	rows, total, err := storyteller.NewService().AgentUsageLogs(authsession.Session(ctx).UserId, providerAPIKeyID, storyID, loreID, month, page, pageSize)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("provider api key or agent not found"))
+			return output.NotFound(errors.New("provider api key not found"))
 		}
 		return output.BadRequest(err)
 	}
@@ -460,6 +467,273 @@ func RunLoreAgent(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(row)
+}
+
+// RunStoryAgenticQuery 是 AAS（agentic AI storyteller）聊天視窗的送出需求端點，
+// 對照既有 RunAgent（單輪、無工具呼叫能力的改寫/擴寫/翻譯 skill）：這個是多輪、
+// 會自己呼叫唯讀工具查資料、寫入類工具會被攔截成待確認提案的問答功能，兩者刻意
+// 分開的路由，不共用同一個 handler。
+func RunStoryAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunStoryAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("story"),
+		agentID,
+		input.UserPrompt,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
+			ReplyContent:       input.ReplyContent,
+		},
+	)
+	if err != nil {
+		// result 非 nil 代表這輪對話至少已經落地一筆 chat（見 AgenticQueryOutput.ChatID
+		// 的說明）——不管是撞到步數上限（ErrAgentLoopMaxStepsExceeded，result 帶
+		// 累積到中止那刻的 Steps/Usage）還是一開始呼叫 provider 就失敗（result 只
+		// 帶 ChatID），都要把 chat_id 回給前端，不能直接回錯誤了事，否則前端沒辦法
+		// 讓即時樂觀更新的泡泡顯示「重送」。回應形狀跟正常成功時完全一樣（都是
+		// AgenticQueryResponse），前端不用另外處理一種特殊的錯誤回應格式，優先權
+		// 排在 NotFound／provider 錯誤判斷之前。
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or story not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// RunLoreAgenticQuery 是 RunStoryAgenticQuery 的設定集版本，見
+// storyteller.RunLoreAgenticQuery 的說明——同一個 ApplyAgentProposal 端點就能
+// 套用兩邊產生的提案，不需要另外分開。
+func RunLoreAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunLoreAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("lore"),
+		agentID,
+		input.UserPrompt,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
+			ReplyContent:       input.ReplyContent,
+		},
+	)
+	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or lore not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// ResendStoryAgenticQuery 重新對一則卡在 pending（沒拿到回覆，例如 provider
+// timeout 或 process 被重啟中斷）的訊息呼叫 provider——不是開新的一輪對話，答案
+// 會補進同一筆 chat，歷史上的孤兒問題會被補齊，不會另外多出一組重複的問答。
+// user_prompt／reply_content 帶不帶都沒差，後端一律讀當初存的那份，不接受這次
+// 呼叫傳來的文字。
+func ResendStoryAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	chatID, err := parseUint(ctx.Params("chat"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunResendStoryAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("story"),
+		agentID,
+		chatID,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
+		},
+	)
+	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or story not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// ResendLoreAgenticQuery 是 ResendStoryAgenticQuery 的設定集版本。
+func ResendLoreAgenticQuery(ctx fiber.Ctx) error {
+	agentID, err := parseUint(ctx.Params("agent"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	chatID, err := parseUint(ctx.Params("chat"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	var input storytellerModel.AgenticQueryRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().RunResendLoreAgenticQuery(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("lore"),
+		agentID,
+		chatID,
+		storyteller.AgenticQueryOptions{
+			ProviderAPIKeyID:   input.ProviderAPIKeyID,
+			ModelName:          input.ModelName,
+			IgnoreAgentPersona: input.IgnoreAgentPersona,
+		},
+	)
+	if err != nil {
+		if result != nil {
+			response := result.ToResponse()
+			response.Warning = err.Error()
+			return output.Success(response)
+		}
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agent or lore not found"))
+		}
+		if isAgentProviderError(err) {
+			return output.ExternalServiceError(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result.ToResponse())
+}
+
+// ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、存進
+// storyteller_agent_proposals 的寫入類提案。前端只需要帶 public_id——提案的
+// tool_name／arguments 由後端自己查，不再信任前端原樣送回來的值，順便讓套用
+// 之後的狀態有地方持久化（見 AgentProposal 的說明）。
+func ApplyAgentProposal(ctx fiber.Ctx) error {
+	result, err := storyteller.NewService().ApplyAgentProposal(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		if errors.Is(err, storyteller.ErrAgentProposalToolNotAllowed) || errors.Is(err, storyteller.ErrAgentToolScopeViolation) {
+			return output.Unauthorized(err)
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
+}
+
+// RejectAgentProposal 把一筆還沒被處理的提案標成 rejected，不會真的執行——單純
+// 讓「使用者已經看過、決定不套用」這件事持久化，重新整理頁面後這張提案卡片才
+// 不會又打回「待確認」。
+func RejectAgentProposal(ctx fiber.Ctx) error {
+	err := storyteller.NewService().RejectAgentProposal(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "rejected"})
+}
+
+// MarkAgentProposalApplied 把一筆 upsert_story／upsert_lore 提案標成 applied，
+// 不執行底層工具——前端已經把提案內容填進編輯區、用一般存檔 API 自己寫入過，
+// 這裡只負責把提案狀態收尾，同時避免後端拿提案裡的舊參數把使用者存檔當下
+// 可能又調整過的內容蓋掉。
+func MarkAgentProposalApplied(ctx fiber.Ctx) error {
+	err := storyteller.NewService().MarkAgentProposalApplied(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "applied"})
+}
+
+// ResetAgentProposal 把一筆已經 applied 的提案退回 pending——前端在「回復到套用
+// 前版本」成功之後呼叫，讓這筆提案的決定跟著撤銷，使用者可以重新選擇套用或
+// 否決，不會卡在只剩「查看變更」可以按的死路。
+func ResetAgentProposal(ctx fiber.Ctx) error {
+	err := storyteller.NewService().ResetAgentProposalToPending(
+		ctx.Context(),
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(map[string]any{"status": "pending"})
 }
 
 func isAgentProviderError(err error) bool {
@@ -1111,10 +1385,14 @@ func DeleteUserProfile(ctx fiber.Ctx) error {
 // webVersionSource 把前端帶來的 save_trigger 轉成存進 story/lore version 的 source 標記，
 // 讓編輯歷史分得出這個版本是自動存檔還是手動按下存檔（未帶值的舊呼叫端一律當手動）。
 func webVersionSource(saveTrigger string) string {
-	if saveTrigger == "auto" {
+	switch saveTrigger {
+	case "auto":
 		return "web_auto"
+	case "agent_apply":
+		return "web_agent_apply"
+	default:
+		return "web_manual"
 	}
-	return "web_manual"
 }
 
 func parseUint(value string) (uint64, error) {
@@ -1123,4 +1401,17 @@ func parseUint(value string) (uint64, error) {
 		return 0, errors.New("invalid id")
 	}
 	return id, nil
+}
+
+// parseOptionalUint 給 story_id／lore_id 這種「可以不帶，但帶了就要是合法 id」
+// 的 query 參數用，空字串回傳 nil 不算錯誤。
+func parseOptionalUint(value string) (*uint64, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	id, err := parseUint(value)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }

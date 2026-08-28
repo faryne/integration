@@ -8,7 +8,6 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
   Alert,
   Button,
-  Chip,
   Grid,
   Paper,
   Stack,
@@ -23,7 +22,6 @@ import {
   useDeleteStorytellerAgent,
   useDeleteStorytellerProject,
   useSaveStorytellerProject,
-  useStorytellerProviderAPIKeys,
 } from "@/apis/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -38,7 +36,7 @@ import type {
 const agentPromptSummaryLength = 120;
 
 function agentPromptPlainTextSummary(prompt: string) {
-  // AI Agent 卡片只顯示 Prompt 摘要，避免 Markdown 或 HTML-like 語法影響列表掃描。
+  // Skill 卡片只顯示 Prompt 摘要，避免 Markdown 或 HTML-like 語法影響列表掃描。
   const plainText = prompt
     .replace(/<[^>]*>/g, " ")
     .replace(/```[\s\S]*?```/g, " ")
@@ -195,7 +193,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 
 export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const deleteAgent = useDeleteStorytellerAgent();
-  const { data: apiKeys = [] } = useStorytellerProviderAPIKeys();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -205,12 +202,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
     id: agent.id,
     name: agent.name,
     promptSummary: agentPromptPlainTextSummary(agent.default_prompt),
-    provider: agent.provider,
-    model: agent.model_name,
     enabled: !agent.is_deleted,
-    apiKeyLabel:
-      apiKeys.find((apiKey) => apiKey.id === agent.provider_apikey_id)?.label ??
-      null,
     updatedAt: agent.updated_at,
     apiBacked: true,
   }));
@@ -220,8 +212,8 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
       {rows.length === 0 ? (
         <CustomEmptyState
           icon={<SmartToyIcon fontSize="large" />}
-          title="目前還沒有 AI Agent"
-          description="可以使用上方的「建立 AI Agent」新增可在故事編輯器中使用的 Agent。"
+          title="目前還沒有 Skill"
+          description="可以使用上方的「建立 Skill」新增可在故事編輯器中使用的 Skill。"
         />
       ) : (
         <Grid container spacing={2}>
@@ -261,25 +253,6 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
                   >
                     {agent.promptSummary}
                   </Typography>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    flexWrap="wrap"
-                    useFlexGap
-                    sx={{ minWidth: 0 }}
-                  >
-                    <Chip size="small" label={agent.provider} />
-                    <Chip size="small" label={agent.model} />
-                    {agent.apiKeyLabel ? (
-                      <Chip size="small" label={`Key：${agent.apiKeyLabel}`} />
-                    ) : (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label="未綁定 API Key"
-                      />
-                    )}
-                  </Stack>
                   <Typography variant="caption" color="text.secondary">
                     更新於 {formatStorytellerDate(agent.updatedAt)}
                   </Typography>
@@ -320,10 +293,10 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
       {deleteTarget && (
         <ConfirmNameDialog
           open
-          title="刪除 AI Agent"
-          description="刪除後此 Agent 將無法在故事編輯器中使用。請輸入 Agent 名稱確認。"
+          title="刪除 Skill"
+          description="刪除後此 Skill 將無法在故事編輯器中使用。請輸入 Skill 名稱確認。"
           confirmName={deleteTarget.name}
-          confirmLabel="刪除 Agent"
+          confirmLabel="刪除 Skill"
           loading={deleteAgent.isPending}
           onClose={() => setDeleteTarget(null)}
           onConfirm={() => {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -106,14 +107,22 @@ func TestValidateAgentRunRequest(t *testing.T) {
 			wantErr: "selected_content must be 20000 characters or less",
 		},
 		{
-			name: "selection missing content",
+			name: "selection mode without any selection falls back to full-content context",
+			input: storytellerModel.AgentRunRequest{
+				Mode:        storytellerModel.AgentRunModeCustomSelection,
+				Instruction: "process without selecting text",
+				FullContent: "full chapter",
+			},
+		},
+		{
+			name: "selection range without content",
 			input: storytellerModel.AgentRunRequest{
 				Mode:           storytellerModel.AgentRunModeCustomSelection,
 				Instruction:    "process selection",
 				SelectionStart: &start,
 				SelectionEnd:   &end,
 			},
-			wantErr: "selected_content is required",
+			wantErr: "selected_content is required when selection_start/selection_end is provided",
 		},
 		{
 			name: "selection missing start",
@@ -208,7 +217,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
 	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
-	require.Contains(t, provider.request.UserPrompt, "Current selected text:")
+	require.Contains(t, provider.request.UserPrompt, "Current selected text (a focus hint, not the only editable scope):")
 	require.Contains(t, provider.request.UserPrompt, "Output requirements:")
 	require.NotNil(t, repo.chat)
 	require.NotNil(t, repo.chat.StoryID)
@@ -222,11 +231,61 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
 	require.NotNil(t, repo.usage)
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
-	require.Equal(t, uint64(40), repo.usage.AgentID)
 	require.Equal(t, uint64(20), repo.usage.UserID)
 	require.Equal(t, 11, repo.usage.InputTokens)
 	require.Equal(t, 7, repo.usage.OutputTokens)
 	require.Equal(t, 18, repo.usage.TotalTokens)
+}
+
+// TestRunAgentProviderAPIKeyOverrideCanCrossProvider 驗證「Agent 只是人設/prompt，
+// 這次要用哪把 key／哪個 model 是各自獨立的覆寫」——覆寫的 key 可以跟 Agent 記錄的
+// provider 不一樣（這裡 Agent 設定的是 Grok，覆寫後改用一把 Claude 的 key），
+// 這種情況不該被 errAgentProviderAPIKeyMismatch 擋下來，且實際呼叫 provider 跟
+// 記錄下來的 output.Provider／ModelName 都要反映「這次真的用了什麼」，不是 Agent
+// 的靜態預設值。
+func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
+	agentDefaultKeyID := uint64(50)
+	overrideKeyID := uint64(51)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderGrok,
+			ModelName:        "grok-test",
+			ProviderAPIKeyID: &agentDefaultKeyID,
+			DefaultPrompt:    "Use concise prose.",
+		},
+		// mock 的 ProviderAPIKey() 不看傳入的 id，直接回傳這把——用來模擬「覆寫的
+		// key id 解析出一把 provider 完全不同的 key」這個情境。
+		providerAPIKey: encryptedTestProviderAPIKey(t, overrideKeyID, 20, storytellerModel.AgentProviderClaude, "override-secret-key"),
+	}
+	provider := &fakeAIProvider{
+		response: &AIProviderResponse{
+			Result:       "rewritten with claude",
+			FinishReason: "stop",
+			Usage:        &AIProviderUsage{InputTokens: 3, OutputTokens: 2, TotalTokens: 5},
+		},
+	}
+
+	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
+		// 一定是覆寫 key 自己的 provider（Claude），不是 Agent 記錄的 Grok。
+		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
+		return provider, nil
+	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+		Mode:             storytellerModel.AgentRunModeCustomChapter,
+		Instruction:      "rewrite with claude instead",
+		FullContent:      "full chapter",
+		ProviderAPIKeyID: &overrideKeyID,
+		ModelName:        "claude-override-model",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "override-secret-key", provider.request.APIKey)
+	require.Equal(t, "claude-override-model", provider.request.ModelName)
+	require.Equal(t, storytellerModel.AgentProviderClaude, output.Provider)
+	require.Equal(t, "claude-override-model", output.ModelName)
 }
 
 func TestRunAgentStoryNotFound(t *testing.T) {
@@ -291,18 +350,31 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project           *storytellerModel.Project
-	projectErr        error
-	story             *storytellerModel.Story
-	storyErr          error
-	agent             *storytellerModel.Agent
-	agentErr          error
-	providerAPIKey    *storytellerModel.ProviderAPIKey
-	providerAPIKeyErr error
-	chat              *storytellerModel.StoryChat
-	messages          []storytellerModel.StoryChatMessage
-	usage             *storytellerModel.AgentUsageLog
-	chatErr           error
+	project               *storytellerModel.Project
+	projectErr            error
+	story                 *storytellerModel.Story
+	storyErr              error
+	lore                  *storytellerModel.Lore
+	loreErr               error
+	agent                 *storytellerModel.Agent
+	agentErr              error
+	providerAPIKey        *storytellerModel.ProviderAPIKey
+	providerAPIKeyErr     error
+	chat                  *storytellerModel.StoryChat
+	messages              []storytellerModel.StoryChatMessage
+	proposals             []storytellerModel.AgentProposal
+	usage                 *storytellerModel.AgentUsageLog
+	chatErr               error
+	proposal              *storytellerModel.AgentProposal
+	proposalErr           error
+	updatedProposalID     uint64
+	historyMessages       []storytellerModel.StoryChatMessage
+	historyErr            error
+	claimResult           int64
+	claimErr              error
+	released              bool
+	pendingUserMessage    *storytellerModel.StoryChatMessage
+	pendingUserMessageErr error
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -313,6 +385,10 @@ func (r *fakeAgentRunRepository) Story(uint64, string) (*storytellerModel.Story,
 	return r.story, r.storyErr
 }
 
+func (r *fakeAgentRunRepository) Lore(uint64, string) (*storytellerModel.Lore, error) {
+	return r.lore, r.loreErr
+}
+
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {
 	return r.agent, r.agentErr
 }
@@ -321,11 +397,88 @@ func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerMod
 	return r.providerAPIKey, r.providerAPIKeyErr
 }
 
-func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, usage *storytellerModel.AgentUsageLog) error {
+func (r *fakeAgentRunRepository) AgentProposalByPublicIDForUser(uint64, string) (*storytellerModel.AgentProposal, error) {
+	return r.proposal, r.proposalErr
+}
+
+func (r *fakeAgentRunRepository) UpdateAgentProposalStatus(id uint64, status storytellerModel.AgentProposalStatus, appliedAt *time.Time) (int64, error) {
+	r.updatedProposalID = id
+	if r.proposal != nil {
+		r.proposal.Status = status
+		r.proposal.AppliedAt = appliedAt
+	}
+	return 1, nil
+}
+
+func (r *fakeAgentRunRepository) ResetAppliedAgentProposalToPending(id uint64) (int64, error) {
+	r.updatedProposalID = id
+	if r.proposal != nil {
+		r.proposal.Status = storytellerModel.AgentProposalStatusPending
+		r.proposal.AppliedAt = nil
+	}
+	return 1, nil
+}
+
+func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	r.chat = chat
 	r.messages = messages
+	r.proposals = proposals
 	r.usage = usage
 	return r.chatErr
+}
+
+// CreateInProgressChatWithUserMessage／CompleteChatMessage 是新的兩段式寫入（見
+// 同名的真實 Repository 方法）；假 repo 把兩段的結果合併回同一組 chat／messages
+// 欄位，讓既有測試斷言（repo.chat／repo.messages 長度 2／repo.usage）不用跟著改。
+func (r *fakeAgentRunRepository) CreateInProgressChatWithUserMessage(chat *storytellerModel.StoryChat, userMessage *storytellerModel.StoryChatMessage) error {
+	if chat.ID == 0 {
+		chat.ID = 1
+	}
+	chat.Status = storytellerModel.StoryChatStatusInProgress
+	userMessage.ChatID = chat.ID
+	r.chat = chat
+	r.messages = []storytellerModel.StoryChatMessage{*userMessage}
+	return r.chatErr
+}
+
+func (r *fakeAgentRunRepository) CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
+	assistantMessage.ChatID = chatID
+	r.messages = append(r.messages, *assistantMessage)
+	r.proposals = proposals
+	r.usage = usage
+	if r.chat != nil {
+		r.chat.Status = storytellerModel.StoryChatStatusCompleted
+	}
+	return r.chatErr
+}
+
+func (r *fakeAgentRunRepository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error) {
+	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
+	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {
+	r.released = true
+	return nil
+}
+
+func (r *fakeAgentRunRepository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
+	return r.pendingUserMessage, r.pendingUserMessageErr
+}
+
+func (r *fakeAgentRunRepository) RecentStoryAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {
+	return r.historyMessages, r.historyErr
+}
+
+func (r *fakeAgentRunRepository) RecentLoreAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {
+	return r.historyMessages, r.historyErr
+}
+
+func (r *fakeAgentRunRepository) AgentModelPrice(storytellerModel.AgentProvider, string) (*string, error) {
+	return nil, nil
 }
 
 type fakeAIProvider struct {
