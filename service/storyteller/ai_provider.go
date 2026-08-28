@@ -100,6 +100,9 @@ type ToolCall struct {
 	ID        string                 `json:"id"`
 	Name      string                 `json:"name"`
 	Arguments map[string]interface{} `json:"arguments"`
+	// ThoughtSignature 是 Gemini thinking model 回 functionCall part 時附帶的不透明
+	// 簽章；下一輪把同一個 functionCall 回放進 history 時必須原樣帶回去。
+	ThoughtSignature string `json:"thought_signature,omitempty"`
 }
 
 type AIProviderUsage struct {
@@ -749,6 +752,7 @@ type geminiContent struct {
 
 type geminiPart struct {
 	Text             string                  `json:"text,omitempty"`
+	ThoughtSignature string                  `json:"thoughtSignature,omitempty"`
 	FunctionCall     *geminiFunctionCall     `json:"functionCall,omitempty"`
 	FunctionResponse *geminiFunctionResponse `json:"functionResponse,omitempty"`
 }
@@ -814,7 +818,12 @@ func (r geminiGenerateContentResponse) ToolCalls() []ToolCall {
 			if strings.TrimSpace(id) == "" {
 				id = fmt.Sprintf("gemini_call_%d", len(calls)+1)
 			}
-			calls = append(calls, ToolCall{ID: id, Name: part.FunctionCall.Name, Arguments: args})
+			calls = append(calls, ToolCall{
+				ID:               id,
+				Name:             part.FunctionCall.Name,
+				Arguments:        args,
+				ThoughtSignature: part.ThoughtSignature,
+			})
 		}
 	}
 	return calls
@@ -863,7 +872,7 @@ func buildGeminiContents(req AIProviderRequest) []geminiContent {
 					ID:   call.ID,
 					Name: call.Name,
 					Args: call.Arguments,
-				}})
+				}, ThoughtSignature: call.ThoughtSignature})
 			}
 			contents = append(contents, geminiContent{Role: geminiRole(m.Role), Parts: parts})
 		default:

@@ -484,6 +484,54 @@ func TestGeminiProviderRunAgentLoopToolCallingRoundTrip(t *testing.T) {
 	require.Equal(t, "測試故事", second.Contents[2].Parts[0].FunctionResponse.Response["title"])
 }
 
+func TestGeminiProviderRunAgentLoopPreservesThoughtSignature(t *testing.T) {
+	const signature = "EpoGCpcGAXLI2nx/example=="
+	var requests []geminiGenerateContentRequest
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		var request geminiGenerateContentRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&request))
+		requests = append(requests, request)
+		if len(requests) == 1 {
+			return jsonResponse(http.StatusOK, `{
+				"candidates": [{
+					"content": {"role": "model", "parts": [{"thoughtSignature": "`+signature+`", "functionCall": {"id": "gemini_call_1", "name": "get_story_title", "args": {"story_public_id": "abc"}}}]},
+					"finishReason": "STOP"
+				}]
+			}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{
+			"candidates": [{
+				"content": {"role": "model", "parts": [{"text": "這篇故事叫《測試故事》。"}]},
+				"finishReason": "STOP"
+			}]
+		}`), nil
+	})}
+
+	result, err := RunAgentLoop(context.Background(), AgentLoopRequest{
+		Provider:   NewGeminiProvider("https://example.test/v1beta/models", client),
+		APIKey:     "test-key",
+		ModelName:  "gemini-3-flash-preview",
+		UserPrompt: "這篇故事叫什麼名字？",
+		MaxSteps:   2,
+		Tools: []ToolSpec{{
+			Name:        "get_story_title",
+			InputSchema: map[string]interface{}{"type": "object"},
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				return map[string]string{"title": "測試故事"}, nil
+			},
+		}},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "這篇故事叫《測試故事》。", result.FinalText)
+	require.Len(t, result.Steps, 1)
+	require.Equal(t, signature, result.Steps[0].ToolCalls[0].ThoughtSignature)
+	require.Len(t, requests, 2)
+	require.Equal(t, "model", requests[1].Contents[1].Role)
+	require.NotNil(t, requests[1].Contents[1].Parts[0].FunctionCall)
+	require.Equal(t, signature, requests[1].Contents[1].Parts[0].ThoughtSignature)
+}
+
 func TestGrokStatusErrorWrapsExpectedSentinel(t *testing.T) {
 	err := aiProviderStatusError(http.StatusUnauthorized, strings.NewReader(`{"error":"bad key"}`))
 	require.ErrorIs(t, err, ErrAIProviderInvalidAPIKey)
