@@ -37,35 +37,6 @@ const providerLabelMap: Record<string, string> = {
   gemini: "Gemini",
 };
 
-// 粗略費用估算用的單價表（美元／百萬 tokens）。供應商調整定價時需要手動更新這裡；
-// 找不到對應模型時不用預設值瞎猜，直接不顯示費用，只呈現 token 數。
-const modelPricingPerMillionTokens: Record<
-  string,
-  { input: number; output: number }
-> = {
-  "gpt-4o": { input: 2.5, output: 10 },
-  "gpt-4o-mini": { input: 0.15, output: 0.6 },
-  "claude-sonnet-5": { input: 3, output: 15 },
-  "claude-haiku-4.5": { input: 0.8, output: 4 },
-  "grok-4": { input: 3, output: 15 },
-  "gemini-2.5-pro": { input: 1.25, output: 5 },
-};
-
-function estimateCostUsd(
-  modelName: string,
-  inputTokens: number,
-  outputTokens: number,
-) {
-  const pricing = modelPricingPerMillionTokens[modelName];
-  if (!pricing) {
-    return null;
-  }
-  return (
-    (inputTokens / 1_000_000) * pricing.input +
-    (outputTokens / 1_000_000) * pricing.output
-  );
-}
-
 function formatUsd(value: number) {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
@@ -81,26 +52,34 @@ function recentMonthOptions(count = 12) {
   );
 }
 
-interface TokenTotals {
+interface UsageTotals {
   inputTokens: number;
   outputTokens: number;
+  // null 代表這些列裡沒有任何一筆抓得到價格快照（例如全部都是 self_hosted／
+  // openrouter 自訂 model 名稱），不是「花費是 0 元」。
+  costUsd: number | null;
 }
 
-// project／story／lore 這個粒度的分組可能混合多個不同 model 的用量（同一個
-// story 可能先後用 Grok 又用 Claude），沒辦法像以前「一列一定只有一個
-// model_name」那樣直接估算費用——費用估算只在最底層的單次執行明細
-// （AgentUsageLogTable，每一列都還是單一 model_name）才準確、才顯示。
-function sumTokens(
-  rows: { input_tokens: number; output_tokens: number }[],
-): TokenTotals {
-  return rows.reduce<TokenTotals>(
+function sumUsage(
+  rows: {
+    input_tokens: number;
+    output_tokens: number;
+    estimated_cost_usd?: number;
+  }[],
+): UsageTotals {
+  let costUsd: number | null = null;
+  const totals = rows.reduce(
     (acc, row) => {
       acc.inputTokens += row.input_tokens;
       acc.outputTokens += row.output_tokens;
+      if (row.estimated_cost_usd !== undefined) {
+        costUsd = (costUsd ?? 0) + row.estimated_cost_usd;
+      }
       return acc;
     },
     { inputTokens: 0, outputTokens: 0 },
   );
+  return { ...totals, costUsd };
 }
 
 interface KeyGroup {
@@ -180,7 +159,7 @@ export function StorytellerAgentUsagePanel() {
     [allGroups, filterApiKeyId],
   );
   const totals = useMemo(
-    () => sumTokens(groups.flatMap((group) => group.items)),
+    () => sumUsage(groups.flatMap((group) => group.items)),
     [groups],
   );
 
@@ -224,9 +203,7 @@ export function StorytellerAgentUsagePanel() {
 
       <Alert severity="warning" variant="outlined">
         以下數字為 {STORYTELLER_APP_NAME}
-        系統記錄到的用量估算，並非供應商官方帳單金額。若同一把金鑰有在別處使用，或供應商計費方式與
-        API 回傳的 usage
-        有落差，金額會對不上。適合用來觀察相對用量與異常暴增，正式請款請以供應商後台為準。
+        系統記錄到的用量估算，正式請款請以供應商後台為準。
       </Alert>
 
       {filterApiKeyId !== null && (
@@ -254,6 +231,10 @@ export function StorytellerAgentUsagePanel() {
         <SummaryCard
           label="輸出 tokens"
           value={totals.outputTokens.toLocaleString()}
+        />
+        <SummaryCard
+          label="估算總費用"
+          value={totals.costUsd === null ? "－" : formatUsd(totals.costUsd)}
         />
       </Grid>
 
@@ -303,7 +284,7 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
 // TableRow，天然共用同一組欄寬，不需要像三個各自獨立巢狀 <Table> 那樣另外做
 // 對齊處理。專案／故事列沒有 Skill／模型／估算費用可顯示的地方，一律印「－」。
 const usageLogPageSize = 20;
-const usageTableColumnCount = 6;
+const usageTableColumnCount = 5;
 
 function KeyUsageCard({
   group,
@@ -315,7 +296,7 @@ function KeyUsageCard({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const keyTotals = useMemo(() => sumTokens(group.items), [group.items]);
+  const keyTotals = useMemo(() => sumUsage(group.items), [group.items]);
   const projectGroups = useMemo(() => groupByProject(group.items), [group.items]);
 
   return (
@@ -349,10 +330,17 @@ function KeyUsageCard({
           />
           <Typography noWrap>{group.label || "（未命名）"}</Typography>
         </Stack>
-        <Typography variant="body2" color="text.secondary">
-          {(keyTotals.inputTokens + keyTotals.outputTokens).toLocaleString()}{" "}
-          tokens
-        </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="baseline">
+          <Typography variant="body2" color="text.secondary">
+            {(
+              keyTotals.inputTokens + keyTotals.outputTokens
+            ).toLocaleString()}{" "}
+            tokens
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {keyTotals.costUsd === null ? "－" : formatUsd(keyTotals.costUsd)}
+          </Typography>
+        </Stack>
       </Stack>
       <Collapse in={open}>
         <TableContainer>
@@ -360,7 +348,6 @@ function KeyUsageCard({
             <TableHead>
               <TableRow>
                 <TableCell>項目</TableCell>
-                <TableCell>Skill</TableCell>
                 <TableCell
                   sx={{ fontFamily: "monospace", fontSize: 12 }}
                 >
@@ -399,7 +386,7 @@ function ProjectUsageRows({
 }) {
   const [open, setOpen] = useState(false);
   const projectTotals = useMemo(
-    () => sumTokens(projectGroup.items),
+    () => sumUsage(projectGroup.items),
     [projectGroup.items],
   );
 
@@ -424,14 +411,17 @@ function ProjectUsageRows({
           {projectGroup.projectName}
         </TableCell>
         <TableCell>－</TableCell>
-        <TableCell>－</TableCell>
         <TableCell align="right">
           {projectTotals.inputTokens.toLocaleString()}
         </TableCell>
         <TableCell align="right">
           {projectTotals.outputTokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right">－</TableCell>
+        <TableCell align="right">
+          {projectTotals.costUsd === null
+            ? "－"
+            : formatUsd(projectTotals.costUsd)}
+        </TableCell>
       </TableRow>
       {open &&
         projectGroup.items.map((item) => (
@@ -480,14 +470,17 @@ function StoryLoreUsageRows({
           {title}
         </TableCell>
         <TableCell>－</TableCell>
-        <TableCell>－</TableCell>
         <TableCell align="right">
           {item.input_tokens.toLocaleString()}
         </TableCell>
         <TableCell align="right">
           {item.output_tokens.toLocaleString()}
         </TableCell>
-        <TableCell align="right">－</TableCell>
+        <TableCell align="right">
+          {item.estimated_cost_usd === undefined
+            ? "－"
+            : formatUsd(item.estimated_cost_usd)}
+        </TableCell>
       </TableRow>
       {open && (
         <AgentUsageLogRows
@@ -551,17 +544,12 @@ function AgentUsageLogRows({
   return (
     <>
       {items.map((row) => {
-        const cost = estimateCostUsd(
-          row.model_name,
-          row.input_tokens,
-          row.output_tokens,
-        );
+        const cost = row.estimated_cost_usd ?? null;
         return (
           <TableRow key={row.id}>
             <TableCell sx={{ pl: 8, color: "text.secondary" }}>
               {new Date(row.created_at).toLocaleString()}
             </TableCell>
-            <TableCell>{row.agent_name || "－"}</TableCell>
             <TableCell
               sx={{
                 fontFamily: "monospace",

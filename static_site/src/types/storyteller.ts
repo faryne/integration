@@ -536,18 +536,25 @@ export interface StorytellerAgentUsageSummaryRow {
   output_tokens: number;
   total_tokens: number;
   run_count: number;
+  // 這組底下所有紀錄的價格快照算出來的費用總和；組裡任何一筆沒有價格快照
+  // （self_hosted／openrouter 自訂 model 名稱、或還沒回填的舊資料）就不計入，
+  // 缺值不代表 0 元，是「這組完全沒有任何一筆抓得到價格」。
+  estimated_cost_usd?: number;
 }
 
 export interface StorytellerAgentUsageLogRow {
   id: number;
   created_at: string;
-  agent_name?: string;
   model_name: string;
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;
   story_title?: string;
   lore_title?: string;
+  // 用執行當下的單價快照算出來的估算費用；只有固定模型清單的供應商
+  // （claude/openai/gemini/grok）才查得到單價，self_hosted／openrouter 自訂
+  // model 名稱沒有可靠價格，這裡就不會有值。
+  estimated_cost_usd?: number;
 }
 
 export interface StorytellerAgentUsageLogPage {

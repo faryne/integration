@@ -309,19 +309,24 @@ type ProviderAPIKey struct {
 func (ProviderAPIKey) TableName() string { return "storyteller_provider_apikeys" }
 
 // AgentUsageLog 記錄每一次 Agent 執行實際使用的 API Key 與 token 用量，
-// provider/model_name 是執行當下的快照，不會隨著 Agent 或 Key 之後的設定變更而改變。
+// provider/model_name/price 都是執行當下的快照，不會隨著 Agent、Key 或價目表
+// 之後的變更而改變——歷史帳目要反映「當時」的實際花費，不能因為價目表後來調整
+// 就跟著變動，見 AgentModelPrice 的說明。
 type AgentUsageLog struct {
 	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
 	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
 	ProviderAPIKeyID uint64        `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
-	AgentID          uint64        `gorm:"column:agent_id" json:"agent_id"`
 	ChatID           uint64        `gorm:"column:chat_id" json:"chat_id"`
 	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
 	ModelName        string        `gorm:"column:model_name" json:"model_name"`
 	InputTokens      int           `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens     int           `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens      int           `gorm:"column:total_tokens" json:"total_tokens"`
-	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
+	// Price 是執行當下查到的單價快照（每 token 美金，JSON 字串，格式沿用
+	// storyteller_agent_models.price 的 OpenRouter schema）；self_hosted／
+	// openrouter 自訂 model 名稱或查不到價格的情況維持 nil，不猜成本。
+	Price     *string   `gorm:"column:price" json:"-"`
+	CreatedAt time.Time `gorm:"column:created_at" json:"created_at"`
 }
 
 func (AgentUsageLog) TableName() string { return "storyteller_agent_usage_logs" }
@@ -1118,20 +1123,30 @@ type AgentUsageSummaryRow struct {
 	OutputTokens        int64         `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens         int64         `gorm:"column:total_tokens" json:"total_tokens"`
 	RunCount            int64         `gorm:"column:run_count" json:"run_count"`
+	// EstimatedCostUSD 是這個分組底下所有紀錄的價格快照（logs.price）算出來的
+	// 費用總和；這組裡任何一筆沒有價格快照（self_hosted／openrouter 自訂
+	// model 名稱、或還沒回填的舊資料）就不計入這個總和，SUM 會自動跳過 NULL，
+	// 不會因為缺一筆資料就讓整組變成算不出來——nil 只代表這組底下完全沒有任何
+	// 一筆抓得到價格的紀錄。
+	EstimatedCostUSD *float64 `gorm:"column:estimated_cost_usd" json:"estimated_cost_usd,omitempty"`
 }
 
 // AgentUsageLogRow 是單次執行的明細，StoryTitle/LoreTitle 兩者互斥，依該次執行是故事還是世界觀設定而定。
-// AgentName 是這次實際用的 Skill 人設名稱，純資訊性欄位（不是分組依據）。
 type AgentUsageLogRow struct {
 	ID           uint64    `gorm:"column:id" json:"id"`
 	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
-	AgentName    string    `gorm:"column:agent_name" json:"agent_name,omitempty"`
 	ModelName    string    `gorm:"column:model_name" json:"model_name"`
 	InputTokens  int       `gorm:"column:input_tokens" json:"input_tokens"`
 	OutputTokens int       `gorm:"column:output_tokens" json:"output_tokens"`
 	TotalTokens  int       `gorm:"column:total_tokens" json:"total_tokens"`
 	StoryTitle   *string   `gorm:"column:story_title" json:"story_title,omitempty"`
 	LoreTitle    *string   `gorm:"column:lore_title" json:"lore_title,omitempty"`
+	// ModelPrice 讀自 logs.price——執行當下寫入的單價快照，不是即時查目前價目表
+	// （見 AgentUsageLog.Price 的說明）。self_hosted／openrouter 自訂 model 名稱
+	// 或當時查不到價格就是 nil，不猜成本。純內部欄位，不直接暴露給前端，只用來
+	// 算 EstimatedCostUSD。
+	ModelPrice       *string  `gorm:"column:model_price" json:"-"`
+	EstimatedCostUSD *float64 `gorm:"-" json:"estimated_cost_usd,omitempty"`
 }
 
 type UserProfileOutput struct {

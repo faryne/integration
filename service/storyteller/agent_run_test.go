@@ -231,7 +231,6 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
 	require.NotNil(t, repo.usage)
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
-	require.Equal(t, uint64(40), repo.usage.AgentID)
 	require.Equal(t, uint64(20), repo.usage.UserID)
 	require.Equal(t, 11, repo.usage.InputTokens)
 	require.Equal(t, 7, repo.usage.OutputTokens)
@@ -476,6 +475,10 @@ func (r *fakeAgentRunRepository) RecentStoryAgenticMessages(uint64, int) ([]stor
 
 func (r *fakeAgentRunRepository) RecentLoreAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {
 	return r.historyMessages, r.historyErr
+}
+
+func (r *fakeAgentRunRepository) AgentModelPrice(storytellerModel.AgentProvider, string) (*string, error) {
+	return nil, nil
 }
 
 type fakeAIProvider struct {

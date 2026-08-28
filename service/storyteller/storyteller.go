@@ -48,6 +48,11 @@ type agentRunRepository interface {
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
 	ReleaseChatToPending(chatID uint64) error
 	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
+	// AgentModelPrice 回傳固定模型清單供應商（allow_custom_model=0）某個 model
+	// 目前的單價（每 token 美金，JSON 字串），找不到（self_hosted／openrouter
+	// 自訂 model 名稱，或該 model 沒有價格資料）回傳 nil、不報錯——usage log
+	// 寫入時只是拿這個值當「當下」快照，查不到就記不到成本，不影響主流程。
+	AgentModelPrice(provider storytellerModel.AgentProvider, modelName string) (*string, error)
 }
 
 type aiProviderFactory func(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error)
@@ -623,7 +628,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 		}
 	}
 	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output, response.RawBody)
-	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgentUsageLog(s.repo, userID, providerAPIKeyRow.ID, output)
 	if err := s.repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
@@ -726,7 +731,7 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 		}
 	}
 	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output, response.RawBody)
-	usage := buildAgentUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgentUsageLog(repo, userID, providerAPIKeyRow.ID, output)
 	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
@@ -735,19 +740,23 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 
 // buildAgentUsageLog 記錄這次執行「實際解析後」使用的 apikey_id，
 // 不論它來自 request 的單次覆寫還是 Agent 的預設設定；沒有 usage 資訊時不寫入紀錄。
-func buildAgentUsageLog(userID, providerAPIKeyID uint64, agent storytellerModel.Agent, output *storytellerModel.AgentRunResponse) *storytellerModel.AgentUsageLog {
+// Price 是寫入當下查一次 AgentModelPrice 存的快照，之後價目表怎麼變動都不會
+// 回頭影響這筆歷史紀錄（見 AgentUsageLog.Price 的說明）；查價格失敗（找不到、
+// self_hosted／openrouter 自訂名稱）不擋主流程，Price 留 nil 就好。
+func buildAgentUsageLog(repo agentRunRepository, userID, providerAPIKeyID uint64, output *storytellerModel.AgentRunResponse) *storytellerModel.AgentUsageLog {
 	if output == nil || output.Usage == nil {
 		return nil
 	}
+	price, _ := repo.AgentModelPrice(output.Provider, output.ModelName)
 	return &storytellerModel.AgentUsageLog{
 		UserID:           userID,
 		ProviderAPIKeyID: providerAPIKeyID,
-		AgentID:          agent.ID,
 		// Provider／ModelName 記錄的是這次「實際」用了哪家／哪個 model（來自
 		// output，已經套用過 key／model 覆寫的解析結果），不是 Agent 記錄的
 		// 靜態預設值——Agent 跟 provider/key/model 剝離之後，這兩者不一定相同。
 		Provider:     output.Provider,
 		ModelName:    output.ModelName,
+		Price:        price,
 		InputTokens:  output.Usage.InputTokens,
 		OutputTokens: output.Usage.OutputTokens,
 		TotalTokens:  output.Usage.TotalTokens,

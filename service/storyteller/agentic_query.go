@@ -307,7 +307,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
-	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
 	if err := repo.CompleteChatMessage(chat.ID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chat.ID)
 		return nil, err
@@ -419,7 +419,7 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, ignoreAgentPersona)
-	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
@@ -518,7 +518,7 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
-	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
 	if err := repo.CompleteChatMessage(chat.ID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chat.ID)
 		return nil, err
@@ -621,7 +621,7 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, ignoreAgentPersona)
-	usage := buildAgenticQueryUsageLog(userID, providerAPIKeyRow.ID, *agent, output)
+	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
@@ -883,18 +883,20 @@ func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
 
 // buildAgenticQueryUsageLog 沿用既有 buildAgentUsageLog 的欄位慣例，差別只在
 // usage 來源是 AgentLoopResult 累加過的多輪用量，不是單一次 provider 呼叫。
-func buildAgenticQueryUsageLog(userID, providerAPIKeyID uint64, agent storytellerModel.Agent, output *AgenticQueryOutput) *storytellerModel.AgentUsageLog {
+// Price 是寫入當下查一次 AgentModelPrice 存的快照，理由同 buildAgentUsageLog。
+func buildAgenticQueryUsageLog(repo agentRunRepository, userID, providerAPIKeyID uint64, output *AgenticQueryOutput) *storytellerModel.AgentUsageLog {
 	if output == nil || output.Usage == nil {
 		return nil
 	}
+	price, _ := repo.AgentModelPrice(output.Provider, output.ModelName)
 	return &storytellerModel.AgentUsageLog{
 		UserID:           userID,
 		ProviderAPIKeyID: providerAPIKeyID,
-		AgentID:          agent.ID,
 		// Provider／ModelName 用這次「實際」解析出來的（output 已經套用過
 		// key／model 覆寫），不是 Agent 記錄的靜態預設。
 		Provider:     output.Provider,
 		ModelName:    output.ModelName,
+		Price:        price,
 		InputTokens:  output.Usage.InputTokens,
 		OutputTokens: output.Usage.OutputTokens,
 		TotalTokens:  output.Usage.TotalTokens,

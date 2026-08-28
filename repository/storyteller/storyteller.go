@@ -3,6 +3,7 @@ package storyteller
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -293,6 +294,29 @@ func (r *Repository) AgentProviderModel(provider storytellerModel.AgentProvider,
 		Price:       model.Price,
 	}}
 	return output, nil
+}
+
+// AgentModelPrice 查某個固定模型清單供應商（allow_custom_model=0）底下指定
+// model 目前的單價快照（每 token 美金，JSON 字串）。查不到（self_hosted／
+// openrouter 自訂名稱、model 已下架、或該 model 從來沒有價格資料）回傳
+// (nil, nil)，呼叫端拿這個值當 usage log 寫入當下的快照用，找不到不算錯誤。
+func (r *Repository) AgentModelPrice(provider storytellerModel.AgentProvider, modelName string) (*string, error) {
+	var row struct {
+		Price *string `gorm:"column:price"`
+	}
+	err := r.db.Table("storyteller_agent_models AS models").
+		Select("models.price AS price").
+		Joins(`JOIN storyteller_agent_providers AS providers
+			ON providers.id = models.provider_id AND providers.allow_custom_model = 0`).
+		Where("providers.provider = ? AND models.name = ?", provider, modelName).
+		Take(&row).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return row.Price, nil
 }
 
 func (r *Repository) SyncAgentModels(provider storytellerModel.AgentProvider, models []storytellerModel.AgentModelSyncInput) error {
@@ -969,7 +993,11 @@ func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]sto
 			SUM(logs.input_tokens) AS input_tokens,
 			SUM(logs.output_tokens) AS output_tokens,
 			SUM(logs.total_tokens) AS total_tokens,
-			COUNT(*) AS run_count`).
+			COUNT(*) AS run_count,
+			SUM(
+				logs.input_tokens * CAST(JSON_UNQUOTE(JSON_EXTRACT(logs.price, '$.prompt')) AS DECIMAL(20,12))
+				+ logs.output_tokens * CAST(JSON_UNQUOTE(JSON_EXTRACT(logs.price, '$.completion')) AS DECIMAL(20,12))
+			) AS estimated_cost_usd`).
 		// "keys" 是 MySQL 保留字，當別名會造成語法錯誤，改用 apikeys
 		Joins("LEFT JOIN storyteller_provider_apikeys AS apikeys ON apikeys.id = logs.provider_apikey_id").
 		Joins("LEFT JOIN storyteller_story_chats AS chats ON chats.id = logs.chat_id").
@@ -988,13 +1016,12 @@ func (r *Repository) AgentUsageSummary(userID uint64, from, to time.Time) ([]sto
 
 // AgentUsageLogs 撈某把 key 底下、指定故事或設定集（storyID／loreID 互斥，
 // 至少要帶一個，對應 AgentUsageSummary 分組出的某個 story/lore 節點）的單次
-// 執行明細；agent_name 是資訊性欄位，一併 join 進來顯示，不是篩選條件。
+// 執行明細。
 func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID uint64, storyID, loreID *uint64, from, to time.Time, offset, limit int) ([]storytellerModel.AgentUsageLogRow, int64, error) {
 	base := r.db.Table("storyteller_agent_usage_logs AS logs").
 		Joins("LEFT JOIN storyteller_story_chats AS chats ON chats.id = logs.chat_id").
 		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
 		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = logs.agent_id").
 		Where(
 			"logs.user_id = ? AND logs.provider_apikey_id = ? AND logs.created_at >= ? AND logs.created_at < ?",
 			userID, providerAPIKeyID, from, to,
@@ -1015,18 +1042,56 @@ func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID uint64, storyID, lo
 	err := base.Session(&gorm.Session{}).
 		Select(`logs.id,
 			logs.created_at,
-			agents.name AS agent_name,
 			logs.model_name,
 			logs.input_tokens,
 			logs.output_tokens,
 			logs.total_tokens,
 			stories.title AS story_title,
-			lores.title AS lore_title`).
+			lores.title AS lore_title,
+			logs.price AS model_price`).
 		Order("logs.created_at DESC, logs.id DESC").
 		Offset(offset).
 		Limit(limit).
 		Scan(&rows).Error
-	return rows, total, err
+	if err != nil {
+		return nil, 0, err
+	}
+	for i := range rows {
+		rows[i].EstimatedCostUSD = estimateAgentUsageLogCostUSD(rows[i].ModelPrice, rows[i].InputTokens, rows[i].OutputTokens)
+	}
+	return rows, total, nil
+}
+
+// agentModelTokenPrice 對應 storyteller_agent_models.price 這個 JSON 欄位裡跟
+// 費用估算相關的兩個欄位——格式沿用 OpenRouter 的 model catalog schema
+// （prompt/completion，每 token 美金），這份欄位是跟供應商同步下來的，不是本專案
+// 自訂格式，不能改名。
+type agentModelTokenPrice struct {
+	Prompt     string `json:"prompt"`
+	Completion string `json:"completion"`
+}
+
+// estimateAgentUsageLogCostUSD 用 join 到的 model 單價快照估算這筆執行的花費；
+// priceJSON 是 nil（join 不到，例如 self_hosted／openrouter 自訂 model 名稱）或
+// 解析失敗都回傳 nil，不用預設值瞎猜成本。
+func estimateAgentUsageLogCostUSD(priceJSON *string, inputTokens, outputTokens int) *float64 {
+	if priceJSON == nil {
+		return nil
+	}
+	var price agentModelTokenPrice
+	if err := json.Unmarshal([]byte(*priceJSON), &price); err != nil {
+		return nil
+	}
+	promptPrice, err := strconv.ParseFloat(price.Prompt, 64)
+	if err != nil {
+		return nil
+	}
+	completionPrice, err := strconv.ParseFloat(price.Completion, 64)
+	if err != nil {
+		return nil
+	}
+	cost := float64(inputTokens)*promptPrice + float64(outputTokens)*completionPrice
+	return &cost
 }
 
 func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
