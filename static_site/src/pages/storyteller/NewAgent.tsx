@@ -104,8 +104,8 @@ export default function StorytellerNewAgent({
   const agentHistoryItems: StoryEditHistoryItem[] = promptVersions.map(
     (version) => ({
       id: String(version.id),
-      title: `${version.name} / ${version.model_name}`,
-      source: version.provider,
+      title: version.name,
+      source: "",
       createdAt: version.created_at,
       words: Array.from(version.default_prompt ?? "").length,
     }),
@@ -240,6 +240,7 @@ export default function StorytellerNewAgent({
           <Stack sx={{ p: { xs: 2, md: 3 } }}>
             <StoryEditHistory
               items={agentHistoryItems}
+              showSourceColumn={false}
               loading={promptVersionsLoading}
               leftVersionId={leftVersionId}
               rightVersionId={rightVersionId}
@@ -278,12 +279,6 @@ export default function StorytellerNewAgent({
                 失敗，請確認登入狀態與欄位內容。
               </Alert>
             )}
-            <Alert severity="warning" variant="outlined">
-              AI 供應商／模型／API Key 不在這裡設定——改成在「AI
-              助理」對話框下方隨時切換要用哪把金鑰、哪個模型。記得先到
-              「金鑰管理」建立至少一把 API Key，這個 Skill 才能真的搭配
-              使用；同一個 Skill（人設）可以搭配任何一把已建立的金鑰。
-            </Alert>
             <Grid container spacing={2}>
               <Grid size={12}>
                 <TextField

@@ -56,6 +56,10 @@ interface StoryEditHistoryProps {
   onRevert?: (versionId: string) => void;
   revertingVersionId?: string | null;
   currentVersionId?: string;
+  // Agent（Skill）編輯歷史不需要「來源」欄——那格原本顯示的是版本存檔來源
+  // （手動/自動/AI 助理），對 Skill prompt 版本沒有意義，預設仍顯示給
+  // Story／Lore 編輯歷史用。
+  showSourceColumn?: boolean;
 }
 
 export function StoryEditHistory({
@@ -77,6 +81,7 @@ export function StoryEditHistory({
   onRevert,
   revertingVersionId,
   currentVersionId,
+  showSourceColumn = true,
 }: StoryEditHistoryProps) {
   if (isNewItem) {
     return (
@@ -153,7 +158,7 @@ export function StoryEditHistory({
               </TableCell>
               <TableCell align="center">版本號</TableCell>
               <TableCell>標題</TableCell>
-              <TableCell>來源</TableCell>
+              {showSourceColumn && <TableCell>來源</TableCell>}
               <TableCell>字數</TableCell>
               <TableCell>建立時間</TableCell>
               {onRevert && <TableCell align="center">操作</TableCell>}
@@ -236,9 +241,11 @@ export function StoryEditHistory({
                     </Stack>
                   </Stack>
                 </TableCell>
-                <TableCell>
-                  <Chip size="small" label={item.source} />
-                </TableCell>
+                {showSourceColumn && (
+                  <TableCell>
+                    <Chip size="small" label={item.source} />
+                  </TableCell>
+                )}
                 <TableCell>{item.words.toLocaleString()}</TableCell>
                 <TableCell>{formatStorytellerDate(item.createdAt)}</TableCell>
                 {onRevert && (
