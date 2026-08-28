@@ -391,16 +391,97 @@ func TestClaudeProviderGenerateWithToolResultMessage(t *testing.T) {
 	require.Equal(t, "storyteller_get_story", request.Messages[1].Content[0].Name)
 }
 
-func TestGeminiProviderGenerateRejectsTools(t *testing.T) {
-	provider := NewGeminiProvider("https://example.test/v1beta/models", http.DefaultClient)
-	response, err := provider.Generate(context.Background(), AIProviderRequest{
-		APIKey:    "test-key",
-		ModelName: "gemini-2.5-flash",
-		Tools:     []ToolDefinition{{Name: "storyteller_get_story"}},
+func TestGeminiProviderRunAgentLoopToolCallingRoundTrip(t *testing.T) {
+	var requests []geminiGenerateContentRequest
+	var requestPaths []string
+	var requestKeys []string
+	var decodeErr error
+	client := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		var request geminiGenerateContentRequest
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			decodeErr = err
+			return jsonResponse(http.StatusBadRequest, err.Error()), nil
+		}
+		requests = append(requests, request)
+		requestPaths = append(requestPaths, r.URL.Path)
+		requestKeys = append(requestKeys, r.URL.Query().Get("key"))
+		if len(requests) == 1 {
+			return jsonResponse(http.StatusOK, `{
+				"candidates": [{
+					"content": {"role": "model", "parts": [{"functionCall": {"id": "gemini_call_1", "name": "get_story_title", "args": {"story_public_id": "abc"}}}]},
+					"finishReason": "STOP"
+				}],
+				"usageMetadata": {"promptTokenCount": 11, "candidatesTokenCount": 4, "totalTokenCount": 15}
+			}`), nil
+		}
+		return jsonResponse(http.StatusOK, `{
+			"candidates": [{
+				"content": {"role": "model", "parts": [{"text": "這篇故事叫《測試故事》。"}]},
+				"finishReason": "STOP"
+			}],
+			"usageMetadata": {"promptTokenCount": 21, "candidatesTokenCount": 8, "totalTokenCount": 29}
+		}`), nil
+	})}
+
+	toolCalled := false
+	provider := NewGeminiProvider("https://example.test/v1beta/models", client)
+	result, err := RunAgentLoop(context.Background(), AgentLoopRequest{
+		Provider:     provider,
+		APIKey:       "test-key",
+		ModelName:    "gemini-2.5-flash",
+		SystemPrompt: "你是故事編輯助理。",
+		UserPrompt:   "這篇故事叫什麼名字？",
+		MaxSteps:     2,
+		Tools: []ToolSpec{{
+			Name:        "get_story_title",
+			Description: "Get a story's title.",
+			InputSchema: map[string]interface{}{
+				"type":       "object",
+				"properties": map[string]interface{}{"story_public_id": map[string]interface{}{"type": "string"}},
+				"required":   []string{"story_public_id"},
+			},
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				toolCalled = true
+				require.Equal(t, "abc", arguments["story_public_id"])
+				return map[string]string{"title": "測試故事"}, nil
+			},
+		}},
 	})
 
-	require.Nil(t, response)
-	require.ErrorIs(t, err, ErrAIProviderUnsupported)
+	require.NoError(t, decodeErr)
+	require.NoError(t, err)
+	require.True(t, toolCalled, "Gemini 回 functionCall 後，agent loop 應該真的執行工具")
+	require.Equal(t, "這篇故事叫《測試故事》。", result.FinalText)
+	require.Len(t, result.Steps, 1)
+	require.Len(t, result.Steps[0].ToolCalls, 1)
+	require.Equal(t, "gemini_call_1", result.Steps[0].ToolCalls[0].ID)
+	require.Equal(t, "get_story_title", result.Steps[0].ToolCalls[0].Name)
+	require.Len(t, requests, 2)
+	require.Equal(t, []string{"/v1beta/models/gemini-2.5-flash:generateContent", "/v1beta/models/gemini-2.5-flash:generateContent"}, requestPaths)
+	require.Equal(t, []string{"test-key", "test-key"}, requestKeys)
+
+	first := requests[0]
+	require.Len(t, first.Tools, 1)
+	require.Len(t, first.Tools[0].FunctionDeclarations, 1)
+	require.Equal(t, "get_story_title", first.Tools[0].FunctionDeclarations[0].Name)
+	require.Equal(t, "object", first.Tools[0].FunctionDeclarations[0].Parameters["type"])
+	require.Len(t, first.Contents, 1)
+	require.Equal(t, "user", first.Contents[0].Role)
+	require.Equal(t, "這篇故事叫什麼名字？", first.Contents[0].Parts[0].Text)
+
+	second := requests[1]
+	require.Len(t, second.Contents, 3)
+	require.Equal(t, "user", second.Contents[0].Role)
+	require.Equal(t, "model", second.Contents[1].Role)
+	require.NotNil(t, second.Contents[1].Parts[0].FunctionCall)
+	require.Equal(t, "gemini_call_1", second.Contents[1].Parts[0].FunctionCall.ID)
+	require.Equal(t, "get_story_title", second.Contents[1].Parts[0].FunctionCall.Name)
+	require.Equal(t, "abc", second.Contents[1].Parts[0].FunctionCall.Args["story_public_id"])
+	require.Equal(t, "user", second.Contents[2].Role)
+	require.NotNil(t, second.Contents[2].Parts[0].FunctionResponse)
+	require.Equal(t, "gemini_call_1", second.Contents[2].Parts[0].FunctionResponse.ID)
+	require.Equal(t, "get_story_title", second.Contents[2].Parts[0].FunctionResponse.Name)
+	require.Equal(t, "測試故事", second.Contents[2].Parts[0].FunctionResponse.Response["title"])
 }
 
 func TestGrokStatusErrorWrapsExpectedSentinel(t *testing.T) {

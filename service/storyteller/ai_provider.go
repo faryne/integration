@@ -48,15 +48,11 @@ type AIProviderRequest struct {
 	SystemPrompt string
 	UserPrompt   string
 	// Tools 非空時代表這次呼叫允許 provider 主動要求呼叫工具（tool-calling／
-	// function-calling）。目前只有 Claude 跟 OpenAI 相容格式（OpenAI／Grok／
-	// OpenRouter／Self-hosted 共用同一套轉譯邏輯）真的會處理這個欄位，Gemini
-	// 傳了非空 Tools 會回 ErrAIProviderUnsupported——這是 Phase 2 刻意的範圍
-	// 控制，不是遺漏。
+	// function-calling）。各 provider 會轉成自己的 native wire format；呼叫端
+	// 只需要看 AIProviderResponse.ToolCalls。
 	Tools []ToolDefinition
 	// Messages 非空時取代 SystemPrompt/UserPrompt，用來支援多輪對話／
-	// tool-calling loop（agent 呼叫工具、把結果餵回去再問一次）。目前沒有任何
-	// 呼叫端會填這個欄位（agent loop orchestration 排在 Phase 4），先在這個
-	// Phase 把介面跟各 provider 的轉譯邏輯準備好。
+	// tool-calling loop（agent 呼叫工具、把結果餵回去再問一次）。
 	Messages []Message
 }
 
@@ -683,23 +679,12 @@ func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 	if strings.TrimSpace(req.ModelName) == "" {
 		return nil, ErrAIProviderInvalidModel
 	}
-	// Gemini 的 function-calling 格式（functionDeclarations／functionCall）跟
-	// Claude／OpenAI 相容格式都不一樣，這輪 Phase 2 範圍刻意只做 Claude/OpenAI
-	// 相容這兩條路，Gemini 明確拒絕而不是悄悄忽略 Tools（AgenticAI規劃.md
-	// Phase 7 才會排 Gemini adapter）。
-	if len(req.Tools) > 0 {
-		return nil, fmt.Errorf("%w: gemini tool-calling not implemented yet", ErrAIProviderUnsupported)
-	}
 	body, err := json.Marshal(geminiGenerateContentRequest{
 		SystemInstruction: geminiContent{
 			Parts: []geminiPart{{Text: req.SystemPrompt}},
 		},
-		Contents: []geminiContent{
-			{
-				Role:  "user",
-				Parts: []geminiPart{{Text: req.UserPrompt}},
-			},
-		},
+		Contents: buildGeminiContents(req),
+		Tools:    buildGeminiTools(req.Tools),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: encode request failed", ErrAIProviderUnknown)
@@ -733,11 +718,14 @@ func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 		return nil, fmt.Errorf("%w: decode response failed", ErrAIProviderUnknown)
 	}
 	result := strings.TrimSpace(output.JoinedText())
-	if result == "" {
+	toolCalls := output.ToolCalls()
+	// Gemini 可能只回 functionCall、沒有文字；這是合法的中間輪次，不是空結果。
+	if result == "" && len(toolCalls) == 0 {
 		return nil, ErrAIProviderEmptyResult
 	}
 	return &AIProviderResponse{
-		Result: result,
+		Result:    result,
+		ToolCalls: toolCalls,
 		Usage: &AIProviderUsage{
 			InputTokens:  output.UsageMetadata.PromptTokenCount,
 			OutputTokens: output.UsageMetadata.CandidatesTokenCount,
@@ -751,6 +739,7 @@ func (p *GeminiProvider) Generate(ctx context.Context, req AIProviderRequest) (*
 type geminiGenerateContentRequest struct {
 	SystemInstruction geminiContent   `json:"system_instruction"`
 	Contents          []geminiContent `json:"contents"`
+	Tools             []geminiTool    `json:"tools,omitempty"`
 }
 
 type geminiContent struct {
@@ -759,7 +748,31 @@ type geminiContent struct {
 }
 
 type geminiPart struct {
-	Text string `json:"text"`
+	Text             string                  `json:"text,omitempty"`
+	FunctionCall     *geminiFunctionCall     `json:"functionCall,omitempty"`
+	FunctionResponse *geminiFunctionResponse `json:"functionResponse,omitempty"`
+}
+
+type geminiTool struct {
+	FunctionDeclarations []geminiFunctionDeclaration `json:"functionDeclarations,omitempty"`
+}
+
+type geminiFunctionDeclaration struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description,omitempty"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type geminiFunctionCall struct {
+	ID   string                 `json:"id,omitempty"`
+	Name string                 `json:"name"`
+	Args map[string]interface{} `json:"args,omitempty"`
+}
+
+type geminiFunctionResponse struct {
+	ID       string                 `json:"id,omitempty"`
+	Name     string                 `json:"name"`
+	Response map[string]interface{} `json:"response"`
 }
 
 type geminiGenerateContentResponse struct {
@@ -786,9 +799,112 @@ func (r geminiGenerateContentResponse) JoinedText() string {
 	return strings.Join(parts, "\n\n")
 }
 
+func (r geminiGenerateContentResponse) ToolCalls() []ToolCall {
+	var calls []ToolCall
+	for _, candidate := range r.Candidates {
+		for _, part := range candidate.Content.Parts {
+			if part.FunctionCall == nil {
+				continue
+			}
+			args := part.FunctionCall.Args
+			if args == nil {
+				args = map[string]interface{}{}
+			}
+			id := part.FunctionCall.ID
+			if strings.TrimSpace(id) == "" {
+				id = fmt.Sprintf("gemini_call_%d", len(calls)+1)
+			}
+			calls = append(calls, ToolCall{ID: id, Name: part.FunctionCall.Name, Arguments: args})
+		}
+	}
+	return calls
+}
+
 func (r geminiGenerateContentResponse) FinishReason() string {
 	if len(r.Candidates) == 0 {
 		return ""
 	}
 	return r.Candidates[0].FinishReason
+}
+
+// buildGeminiContents 把共用 Message contract 轉成 Gemini native content：
+// assistant 要叫 model，assistant 的 ToolCalls 要回放成 functionCall，tool 結果則
+// 變成 user role 的 functionResponse。這讓 RunAgentLoop 餵回去的 history 能被
+// Gemini 接續理解。
+func buildGeminiContents(req AIProviderRequest) []geminiContent {
+	if len(req.Messages) == 0 {
+		return []geminiContent{{Role: "user", Parts: []geminiPart{{Text: req.UserPrompt}}}}
+	}
+	contents := make([]geminiContent, 0, len(req.Messages))
+	toolCallNames := make(map[string]string)
+	for _, m := range req.Messages {
+		switch {
+		case m.Role == "tool":
+			name := toolCallNames[m.ToolCallID]
+			if strings.TrimSpace(name) == "" {
+				name = m.ToolCallID
+			}
+			contents = append(contents, geminiContent{
+				Role: "user",
+				Parts: []geminiPart{{FunctionResponse: &geminiFunctionResponse{
+					ID:       m.ToolCallID,
+					Name:     name,
+					Response: geminiFunctionResponsePayload(m.Content),
+				}}},
+			})
+		case len(m.ToolCalls) > 0:
+			parts := make([]geminiPart, 0, len(m.ToolCalls)+1)
+			if strings.TrimSpace(m.Content) != "" {
+				parts = append(parts, geminiPart{Text: m.Content})
+			}
+			for _, call := range m.ToolCalls {
+				toolCallNames[call.ID] = call.Name
+				parts = append(parts, geminiPart{FunctionCall: &geminiFunctionCall{
+					ID:   call.ID,
+					Name: call.Name,
+					Args: call.Arguments,
+				}})
+			}
+			contents = append(contents, geminiContent{Role: geminiRole(m.Role), Parts: parts})
+		default:
+			contents = append(contents, geminiContent{
+				Role:  geminiRole(m.Role),
+				Parts: []geminiPart{{Text: m.Content}},
+			})
+		}
+	}
+	return contents
+}
+
+func buildGeminiTools(tools []ToolDefinition) []geminiTool {
+	if len(tools) == 0 {
+		return nil
+	}
+	declarations := make([]geminiFunctionDeclaration, 0, len(tools))
+	for _, t := range tools {
+		declarations = append(declarations, geminiFunctionDeclaration{
+			Name:        t.Name,
+			Description: t.Description,
+			Parameters:  t.InputSchema,
+		})
+	}
+	return []geminiTool{{FunctionDeclarations: declarations}}
+}
+
+func geminiRole(role string) string {
+	if role == "assistant" {
+		return "model"
+	}
+	return role
+}
+
+func geminiFunctionResponsePayload(content string) map[string]interface{} {
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(content), &payload); err == nil && payload != nil {
+		return payload
+	}
+	if strings.HasPrefix(content, "error:") {
+		return map[string]interface{}{"error": strings.TrimSpace(strings.TrimPrefix(content, "error:"))}
+	}
+	return map[string]interface{}{"result": content}
 }
