@@ -14,6 +14,7 @@ import {
   Divider,
   Grid,
   IconButton,
+  Link,
   List,
   ListItem,
   ListItemIcon,
@@ -94,15 +95,7 @@ export function StorytellerMcpPanel() {
           <Typography color="text.secondary">
             透過 MCP（Model Context Protocol），你可以讓 Codex、Grok Builds
             等外部工具直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。
-            這個連接只開放故事／設定集的 CRUD，不會碰到你站內設定的 AI Agent 或 API
-            Key。
           </Typography>
-          <Alert severity="info" variant="outlined">
-            請把下方的連線位址設定進工具的 MCP
-            設定，並附上一組你自己建立的 Personal Access Token 作為 Bearer
-            Token。不同工具的設定畫面不太一樣，若工具支援貼上 JSON
-            設定，請參考建立完成畫面的範例設定進去。
-          </Alert>
           <Stack direction="row" spacing={1} alignItems="center">
             <TextField
               fullWidth
@@ -117,6 +110,21 @@ export function StorytellerMcpPanel() {
               </IconButton>
             </Tooltip>
           </Stack>
+          <Typography variant="body2" color="text.secondary">
+            建立下方 Personal Access Token 後會附上設定範例；不確定怎麼在工具裡設定 MCP client 可參考
+            <Link
+              href="https://modelcontextprotocol.io/docs/develop/connect-remote-servers"
+              target="_blank"
+              rel="noopener"
+              sx={{ ml: 0.5 }}
+            >
+              MCP 官方文件
+            </Link>
+            。
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            目前不支援 SSE，若工具連線卡住可能是這個原因。
+          </Typography>
         </Stack>
       </Paper>
 
@@ -234,8 +242,7 @@ export function StorytellerMcpPanel() {
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Alert severity="warning" variant="outlined">
-              這組 token 只會顯示這一次，請立刻複製並貼到你的 MCP
-              設定裡，離開這個視窗後就無法再次查看完整內容。
+              這組 token 只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
             </Alert>
             {createdToken && (
               <>
@@ -288,11 +295,6 @@ export function StorytellerMcpPanel() {
                     </Tooltip>
                   </Stack>
                 </Box>
-                <Alert severity="info" variant="outlined">
-                  這個 MCP 端點目前只支援單次請求／單次回應，沒有 SSE
-                  streaming。多數工具連線沒問題，但如果你的工具在建立連線時強制要求走
-                  SSE 交握，可能會連不上，建議設定好之後先實際測一次連線。
-                </Alert>
               </>
             )}
           </Stack>
