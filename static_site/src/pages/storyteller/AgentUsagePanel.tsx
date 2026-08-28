@@ -342,7 +342,8 @@ function KeyUsageCard({
             {(
               keyTotals.inputTokens + keyTotals.outputTokens
             ).toLocaleString()}{" "}
-            tokens
+            tokens（入 {keyTotals.inputTokens.toLocaleString()} ／ 出{" "}
+            {keyTotals.outputTokens.toLocaleString()}）
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {keyTotals.costUsd === null ? "－" : formatUsd(keyTotals.costUsd)}
