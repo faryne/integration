@@ -106,6 +106,33 @@ function matchHighlightTokenAt(
   storyTitles: string[],
   loreTitles: string[],
 ): { text: string; kind: "current" | "named" } | null {
+  const match = matchHighlightTokenCandidate(prompt, start, storyTitles, loreTitles);
+  if (!match) {
+    return null;
+  }
+  // AI 有時候會直接自己寫出完整的 markdown 連結，例如
+  // [@thisStory](/my/project/.../story/...)——這種情況 token 本身已經是連結的
+  // label，前面緊接著 "["、後面緊接著 "]("。這裡如果照樣再包一層
+  // linkifyStorytellerAgentReferenceTokens 的 [token](href)，會產生巢狀連結
+  // （[[@thisStory](newHref)](原本的url)），CommonMark 不允許巢狀連結標籤，
+  // react-markdown 解析失敗就整段退回顯示成純文字（使用者看到的「連結沒生
+  // 效」）。偵測到這個情況直接跳過，讓 AI 自己寫好的連結原封不動交給
+  // <StorytellerMarkdown> 處理。
+  const end = start + match.text.length;
+  const alreadyInsideMarkdownLink =
+    prompt[start - 1] === "[" && prompt.slice(end, end + 2) === "](";
+  if (alreadyInsideMarkdownLink) {
+    return null;
+  }
+  return match;
+}
+
+function matchHighlightTokenCandidate(
+  prompt: string,
+  start: number,
+  storyTitles: string[],
+  loreTitles: string[],
+): { text: string; kind: "current" | "named" } | null {
   if (prompt.startsWith("@thisStory", start)) {
     return { text: "@thisStory", kind: "current" };
   }
@@ -248,21 +275,25 @@ export function buildStorytellerAgentMessageLinks(
   if (!options.projectPublicId) {
     return content;
   }
+  // 用 my/workspace/...（ProjectWorkspacePreview 內嵌同一個 StorytellerStoryEditor／
+  // StorytellerLoreEditor，畫面內容一致，只是多包一層 Notion 風工作台外殼）而不是
+  // my/project/...：後者是遷移前的獨立頁面路由，之後會逐步淘汰，AI 助理產生的連結
+  // 直接對齊目前主要的導覽路徑。
   const storyHrefByTitle = new Map(
     options.otherStories.map((story) => [
       story.title,
-      steamloomPath(`my/project/${options.projectPublicId}/story/${story.id}`),
+      steamloomPath(`my/workspace/${options.projectPublicId}/story/${story.id}`),
     ]),
   );
   const loreHrefByTitle = new Map(
     options.lores.map((lore) => [
       lore.title,
-      steamloomPath(`my/project/${options.projectPublicId}/lore/${lore.id}`),
+      steamloomPath(`my/workspace/${options.projectPublicId}/lore/${lore.id}`),
     ]),
   );
   const currentHref = options.targetPublicId
     ? steamloomPath(
-        `my/project/${options.projectPublicId}/${options.targetKind}/${options.targetPublicId}`,
+        `my/workspace/${options.projectPublicId}/${options.targetKind}/${options.targetPublicId}`,
       )
     : null;
   return linkifyStorytellerAgentReferenceTokens(content, {
