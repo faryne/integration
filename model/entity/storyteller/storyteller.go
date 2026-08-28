@@ -1147,6 +1147,11 @@ type AgentUsageLogRow struct {
 	// 算 EstimatedCostUSD。
 	ModelPrice       *string  `gorm:"column:model_price" json:"-"`
 	EstimatedCostUSD *float64 `gorm:"-" json:"estimated_cost_usd,omitempty"`
+	// InputTokenPriceUSD／OutputTokenPriceUSD 是從 ModelPrice 解析出來、每 token
+	// 的美金單價，跟 EstimatedCostUSD 一起給前端組「輸入token數×單價+輸出token
+	// 數×單價＝總額」這行計算式用，純顯示用途，不是分開算費用的另一套邏輯。
+	InputTokenPriceUSD  *float64 `gorm:"-" json:"input_token_price_usd,omitempty"`
+	OutputTokenPriceUSD *float64 `gorm:"-" json:"output_token_price_usd,omitempty"`
 }
 
 type UserProfileOutput struct {

@@ -1058,6 +1058,10 @@ func (r *Repository) AgentUsageLogs(userID, providerAPIKeyID uint64, storyID, lo
 	}
 	for i := range rows {
 		rows[i].EstimatedCostUSD = estimateAgentUsageLogCostUSD(rows[i].ModelPrice, rows[i].InputTokens, rows[i].OutputTokens)
+		if promptPrice, completionPrice, ok := parseAgentModelTokenPrice(rows[i].ModelPrice); ok {
+			rows[i].InputTokenPriceUSD = &promptPrice
+			rows[i].OutputTokenPriceUSD = &completionPrice
+		}
 	}
 	return rows, total, nil
 }
@@ -1071,23 +1075,32 @@ type agentModelTokenPrice struct {
 	Completion string `json:"completion"`
 }
 
-// estimateAgentUsageLogCostUSD 用 join 到的 model 單價快照估算這筆執行的花費；
-// priceJSON 是 nil（join 不到，例如 self_hosted／openrouter 自訂 model 名稱）或
-// 解析失敗都回傳 nil，不用預設值瞎猜成本。
-func estimateAgentUsageLogCostUSD(priceJSON *string, inputTokens, outputTokens int) *float64 {
+// parseAgentModelTokenPrice 解析價格快照，回傳每 token 的美金單價；priceJSON 是
+// nil（join 不到，例如 self_hosted／openrouter 自訂 model 名稱）或解析失敗都回傳
+// ok=false，呼叫端不用預設值瞎猜成本。
+func parseAgentModelTokenPrice(priceJSON *string) (promptPrice, completionPrice float64, ok bool) {
 	if priceJSON == nil {
-		return nil
+		return 0, 0, false
 	}
 	var price agentModelTokenPrice
 	if err := json.Unmarshal([]byte(*priceJSON), &price); err != nil {
-		return nil
+		return 0, 0, false
 	}
 	promptPrice, err := strconv.ParseFloat(price.Prompt, 64)
 	if err != nil {
-		return nil
+		return 0, 0, false
 	}
-	completionPrice, err := strconv.ParseFloat(price.Completion, 64)
+	completionPrice, err = strconv.ParseFloat(price.Completion, 64)
 	if err != nil {
+		return 0, 0, false
+	}
+	return promptPrice, completionPrice, true
+}
+
+// estimateAgentUsageLogCostUSD 用 join 到的 model 單價快照估算這筆執行的花費。
+func estimateAgentUsageLogCostUSD(priceJSON *string, inputTokens, outputTokens int) *float64 {
+	promptPrice, completionPrice, ok := parseAgentModelTokenPrice(priceJSON)
+	if !ok {
 		return nil
 	}
 	cost := float64(inputTokens)*promptPrice + float64(outputTokens)*completionPrice

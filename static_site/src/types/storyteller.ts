@@ -555,6 +555,10 @@ export interface StorytellerAgentUsageLogRow {
   // （claude/openai/gemini/grok）才查得到單價，self_hosted／openrouter 自訂
   // model 名稱沒有可靠價格，這裡就不會有值。
   estimated_cost_usd?: number;
+  // 算 estimated_cost_usd 用的每 token 美金單價，純顯示用途（組計算式給使用者
+  // 核對），不是另外一套算法。
+  input_token_price_usd?: number;
+  output_token_price_usd?: number;
 }
 
 export interface StorytellerAgentUsageLogPage {

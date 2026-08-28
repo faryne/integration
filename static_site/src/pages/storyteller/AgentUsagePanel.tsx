@@ -18,6 +18,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
@@ -39,6 +40,12 @@ const providerLabelMap: Record<string, string> = {
 
 function formatUsd(value: number) {
   return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// 每 token 單價數字很小（例如 0.00000125），toLocaleString
+// 在這個範圍會切成科學記號不好讀，固定用小數點格式顯示、去掉多餘的尾端 0。
+function formatPricePerToken(value: number) {
+  return `$${value.toFixed(8).replace(/0+$/, "").replace(/\.$/, "")}`;
 }
 
 function monthValue(date: Date) {
@@ -566,7 +573,17 @@ function AgentUsageLogRows({
               {row.output_tokens.toLocaleString()}
             </TableCell>
             <TableCell align="right">
-              {cost === null ? "－" : formatUsd(cost)}
+              {cost === null ||
+              row.input_token_price_usd === undefined ||
+              row.output_token_price_usd === undefined ? (
+                "－"
+              ) : (
+                <Tooltip
+                  title={`${row.input_tokens.toLocaleString()}×${formatPricePerToken(row.input_token_price_usd)} + ${row.output_tokens.toLocaleString()}×${formatPricePerToken(row.output_token_price_usd)}`}
+                >
+                  <span>{formatUsd(cost)}</span>
+                </Tooltip>
+              )}
             </TableCell>
           </TableRow>
         );
