@@ -53,14 +53,20 @@ import {
   type StorytellerAgentPanelSelection,
 } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import type { StorytellerAgenticCurrentStory } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
-import { StorytellerAgenticProposalCard } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
+import {
+  StorytellerAgenticProposalCard,
+  proposalActionLabel,
+} from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
 import {
   buildStorytellerAgentMessageLinks,
+  buildStorytellerAgentProposalReferenceContent,
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
   buildStorytellerAgentReplyReferenceContent,
+  composeStorytellerAgentInstructionWithProposalRejection,
   composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
+  summarizeStorytellerAgentProposalArguments,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
   currentLoreMentionQuery,
@@ -335,6 +341,7 @@ function AgenticAssistantMessage({
   onStoryChanged,
   onApplyText,
   onApplyProposalToEditor,
+  onRejectProposalWithFeedback,
   onReply,
   isReplyTarget,
   onResend,
@@ -356,6 +363,11 @@ function AgenticAssistantMessage({
   onApplyProposalToEditor?: (
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
+  onRejectProposalWithFeedback?: (
+    proposal: StorytellerAgenticProposal,
+    feedback: string,
+    proposalIndex: number,
+  ) => void;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   isReplyTarget?: boolean;
   onResend?: (chatId: number) => void;
@@ -444,6 +456,7 @@ function AgenticAssistantMessage({
               currentStory={currentStory}
               onApplied={onStoryChanged}
               onApplyToEditor={onApplyProposalToEditor}
+              onRejectedWithFeedback={onRejectProposalWithFeedback}
             />
           ))}
         </Stack>
@@ -1080,7 +1093,12 @@ export function StorytellerAgenticPanel({
 
   function runAgentic(
     instruction: string,
-    options?: { agentId?: number; ignoreAgentPersona?: boolean },
+    options?: {
+      agentId?: number;
+      ignoreAgentPersona?: boolean;
+      replyContent?: string;
+      preserveComposer?: boolean;
+    },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
     // 跟後端 messageAgentID 的邏輯對齊：沒有明確切換人設（ignoreAgentPersona
@@ -1094,7 +1112,10 @@ export function StorytellerAgenticPanel({
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
-    const replyContent = replyReferenceTarget?.content || undefined;
+    const replyContent =
+      options?.replyContent !== undefined
+        ? options.replyContent || undefined
+        : replyReferenceTarget?.content || undefined;
     const userSortKey = nextSessionSortKey();
     const userMessageId = `agentic-user-${userSortKey}`;
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
@@ -1106,12 +1127,16 @@ export function StorytellerAgenticPanel({
       agentName: targetAgentName,
     };
     setAgenticMessages((prev) => [...prev, userMessage]);
-    setPrompt("");
+    if (!options?.preserveComposer) {
+      setPrompt("");
+    }
     // 回覆摘要只該陪著這一次送出的內容，訊息本身已經把 replyReferenceTarget
     // 組進 instruction 裡了（見兩個呼叫端都用 composeStorytellerAgentInstructionWithReply）
     // ——送出後就該清空，不然使用者送完下一則訊息時，輸入框上方還會一直卡著
     // 上一次回覆的摘要，跟這次送出的內容完全對不上。
-    setReplyTarget(null);
+    if (!options?.preserveComposer) {
+      setReplyTarget(null);
+    }
 
     runAgenticQuery.mutate(
       {
@@ -1257,6 +1282,31 @@ export function StorytellerAgenticPanel({
 
   function handleReply(message: StorytellerAgentPanelMessage) {
     setReplyTarget(message);
+  }
+
+  function handleRejectProposalWithFeedback(
+    proposal: StorytellerAgenticProposal,
+    feedback: string,
+    proposalIndex: number,
+  ) {
+    // 否決 dialog 是獨立輸入，不該清掉使用者正在輸入框裡編輯的一般訊息或回覆草稿。
+    // 被否決提案的完整工具參數只陪這次請求送進 reply_content，用完即拋。前面加一行
+    // 「> 否決提案 #N：xxx（摘要）」的 blockquote 併入 instruction 本身（跟「回覆」
+    // 訊息同一套手法），編號對應卡片上顯示的「修改提案 #N」，同一輪對話有好幾個
+    // 同類型提案時才分得出是否決哪一則。
+    runAgentic(
+      composeStorytellerAgentInstructionWithProposalRejection(
+        feedback.trim(),
+        proposalActionLabel(proposal.tool_name),
+        proposalIndex,
+        summarizeStorytellerAgentProposalArguments(proposal.arguments),
+      ),
+      {
+        ignoreAgentPersona: true,
+        replyContent: buildStorytellerAgentProposalReferenceContent(proposal),
+        preserveComposer: true,
+      },
+    );
   }
 
   function scrollToReplyTarget() {
@@ -1446,6 +1496,9 @@ export function StorytellerAgenticPanel({
                     onStoryChanged={onStoryChanged}
                     onApplyText={onApplyText}
                     onApplyProposalToEditor={onApplyProposalToEditor}
+                    onRejectProposalWithFeedback={
+                      handleRejectProposalWithFeedback
+                    }
                     onReply={handleReply}
                     isReplyTarget={replyTarget?.id === message.id}
                     onResend={handleResend}

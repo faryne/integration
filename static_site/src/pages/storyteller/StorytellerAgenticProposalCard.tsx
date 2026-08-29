@@ -9,6 +9,7 @@ import {
   DialogTitle,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from "@mui/material";
 import {
@@ -60,7 +61,7 @@ const PROPOSAL_ACTION_LABELS: Record<string, string> = {
   storyteller_update_asset: "更新資產資訊",
 };
 
-function proposalActionLabel(toolName: string): string {
+export function proposalActionLabel(toolName: string): string {
   return PROPOSAL_ACTION_LABELS[toolName] ?? toolName;
 }
 
@@ -111,6 +112,7 @@ export function StorytellerAgenticProposalCard({
   currentStory,
   onApplied,
   onApplyToEditor,
+  onRejectedWithFeedback,
 }: {
   index: number;
   proposal: StorytellerAgenticProposal;
@@ -123,10 +125,17 @@ export function StorytellerAgenticProposalCard({
   // 目標是別篇或新建（見下面 sameTargetUpsert 判斷）就沒有編輯區可以填，
   // 維持呼叫後端直接套用的舊行為。
   onApplyToEditor?: (proposal: StorytellerAgenticProposal) => Promise<void>;
+  onRejectedWithFeedback?: (
+    proposal: StorytellerAgenticProposal,
+    feedback: string,
+    index: number,
+  ) => void;
 }) {
   const [localStatus, setLocalStatus] = useState<LocalProposalStatus>(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rejectFeedbackOpen, setRejectFeedbackOpen] = useState(false);
+  const [rejectFeedback, setRejectFeedback] = useState("");
   // 套用當下的版本 id，讓「回復到套用前版本」按鈕知道要退回哪一版——不能等要
   // revert 時才去讀 currentStory.versionId，那時候父層多半已經因為套用成功
   // refetch 過，versionId 已經是套用「後」的了。這個只在當次 session 有效，
@@ -239,16 +248,32 @@ export function StorytellerAgenticProposalCard({
     });
   }
 
+  function handleRejectCancel() {
+    if (reject.isPending) {
+      return;
+    }
+    setRejectFeedbackOpen(false);
+    setRejectFeedback("");
+  }
+
   function handleReject() {
+    const feedback = rejectFeedback.trim();
+    if (!feedback) {
+      return;
+    }
     setLocalStatus("rejecting");
     setErrorMessage("");
     reject.mutate(proposal.public_id, {
       onSuccess: () => {
         setLocalStatus("rejected");
+        setRejectFeedbackOpen(false);
+        setRejectFeedback("");
         onApplied?.();
+        onRejectedWithFeedback?.(proposal, feedback, index);
       },
       onError: (err) => {
         setLocalStatus("error");
+        setRejectFeedbackOpen(false);
         setErrorMessage(resolveErrorMessage(err, "否決失敗"));
       },
     });
@@ -358,7 +383,7 @@ export function StorytellerAgenticProposalCard({
             <Button
               size="small"
               disabled={apply.isPending || markApplied.isPending || reject.isPending}
-              onClick={handleReject}
+              onClick={() => setRejectFeedbackOpen(true)}
             >
               否決
             </Button>
@@ -431,6 +456,41 @@ export function StorytellerAgenticProposalCard({
             disabled={apply.isPending}
           >
             確認執行
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={rejectFeedbackOpen}
+        onClose={handleRejectCancel}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>否決提案</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            value={rejectFeedback}
+            onChange={(event) => setRejectFeedback(event.target.value)}
+            placeholder="哪裡要改？也可以直接說「整段重寫」。"
+            disabled={reject.isPending}
+            sx={{ mt: 0.5 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRejectCancel} disabled={reject.isPending}>
+            取消
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            onClick={handleReject}
+            disabled={reject.isPending || rejectFeedback.trim() === ""}
+          >
+            {reject.isPending ? "送出中" : "送出並否決"}
           </Button>
         </DialogActions>
       </Dialog>

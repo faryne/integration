@@ -1,4 +1,5 @@
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
 
 export type StorytellerAgentReferenceKind = "story" | "lore";
 
@@ -358,6 +359,66 @@ export function buildStorytellerAgentReplyReferenceContent(
     return "";
   }
   return `Reference reply: ${reply.speaker}\n<<<REPLY_REFERENCE_CONTENT\n${reply.content}\nREPLY_REFERENCE_CONTENT`;
+}
+
+export function buildStorytellerAgentProposalReferenceContent(
+  proposal: StorytellerAgenticProposal,
+) {
+  // 否決提案時把 AI 當初想執行的工具與參數原封不動交回下一輪，讓模型自己判斷
+  // 使用者意見是在要求小修、重寫，還是改走另一種操作。
+  return `Reference rejected proposal: ${proposal.tool_name}\n<<<REJECTED_PROPOSAL_REFERENCE_CONTENT\n${JSON.stringify(
+    {
+      tool_name: proposal.tool_name,
+      arguments: proposal.arguments,
+    },
+    null,
+    2,
+  )}\nREJECTED_PROPOSAL_REFERENCE_CONTENT`;
+}
+
+// 跟 buildStorytellerAgentReplyQuote 同一個目的：讓對話列表（樂觀訊息或重新
+// 載入的歷史紀錄）都能一眼看出這則使用者訊息是針對某個被否決的提案而發，不是
+// 憑空提出的新需求——直接把這行 blockquote 併入 instruction 本身送出，不用
+// 改後端 schema。單純的動作標籤（例如「更新故事內容」）在同一輪對話裡如果有
+// 好幾個同類型提案會分不出是哪一個，所以帶上卡片本身就有顯示的「#{index+1}」
+// 編號，加上內容摘要（如果提案的 arguments 裡找得到 title／summary／content
+// 之一）幫助辨識是哪一則。
+export function buildStorytellerAgentProposalRejectionQuote(
+  actionLabel: string,
+  proposalIndex: number,
+  contentSnippet?: string,
+) {
+  const base = `> 否決提案 #${proposalIndex + 1}：${actionLabel}`;
+  return contentSnippet ? `${base}（${contentSnippet}）` : base;
+}
+
+// 從提案的 arguments 猜一段可以幫助辨識「這是哪一個提案」的摘要文字——不同
+// 工具的 arguments 形狀不一樣，依序試 title／summary／content，三個都沒有
+// 就回傳 undefined，呼叫端就只顯示動作標籤跟編號。
+export function summarizeStorytellerAgentProposalArguments(
+  args: Record<string, unknown>,
+): string | undefined {
+  for (const key of ["title", "summary", "content"]) {
+    const value = args[key];
+    if (typeof value === "string" && value.trim() !== "") {
+      return summarizeStorytellerAgentReplyContent(value, 30);
+    }
+  }
+  return undefined;
+}
+
+export function composeStorytellerAgentInstructionWithProposalRejection(
+  instruction: string,
+  actionLabel: string,
+  proposalIndex: number,
+  contentSnippet?: string,
+) {
+  const quote = buildStorytellerAgentProposalRejectionQuote(
+    actionLabel,
+    proposalIndex,
+    contentSnippet,
+  );
+  return instruction.trim() ? `${quote}\n\n${instruction}` : quote;
 }
 
 const storytellerAgentReplyQuoteSummaryMaxCharacters = 60;
