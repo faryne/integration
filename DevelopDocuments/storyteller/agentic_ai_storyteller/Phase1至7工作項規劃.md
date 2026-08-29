@@ -229,3 +229,4 @@ Faryne 2026-08-23 提出，目前只記錄方向，**不要主動實作**，等�
 - **`storyteller_story_chat_messages` 的 `agent_id` 在沒有使用任何 slash 指令（也就是純 agentic 多輪問答）時永遠為 `0`**——反映 agentic 對話本質上不綁定單一 Agent 人設的方向，跟 skill（slash command）訊息才需要記錄「這句是哪個 Agent 人設說的」不同。
 - 這幾項牽動 migration、既有資料回填、以及所有讀寫這幾個欄位的程式碼（訊息列表渲染、usage 報表等），動工前要先盤點完整影響範圍，不是這輪小改動。
 - **各 AI provider 生成參數（`max_tokens`／`temperature`／reasoning effort 等）自訂化**：2026-08-27 因 Claude `max_tokens` 寫死 4096 太小、thinking token 吃滿輸出額度導致 `stop_reason=max_tokens` 頻繁截斷而起，已先應急調到 8192。跟 Codex 討論過完整盤點（各 provider 原生支援哪些參數、哪些能抽成通用層、建議預設值），詳見 [03-ai-provider-abstraction.md](../AIAgent/03-ai-provider-abstraction.md) 的「各 Provider 生成參數盤點」章節。基本對話功能測試完成後開支線處理。
+- **提案（Proposal）否決後的意見回饋機制**：2026-08-28 討論定案，明天（2026-08-29）要請 Claude 把需求整理丟給 Codex 施工，不是長期擱置項。設計細節見 [提案否決回饋機制_2026-08-28.md](提案否決回饋機制_2026-08-28.md)——結論是應該純前端就能做完（借用既有「回覆」功能的 `reply_content` 機制），不用動 backend。
