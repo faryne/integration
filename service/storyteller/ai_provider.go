@@ -120,7 +120,7 @@ const (
 	// 單輪設計的，AAS 每一步都要先讀前面工具回傳的資料再組織回應，單步耗時本來
 	// 就比單輪高，沿用同一個值很容易誤傷正常但比較慢的一步；獨立拉高，不影響
 	// 單輪 skill 那條路徑。
-	aiProviderAgenticTimeout = 180 * time.Second
+	aiProviderAgenticTimeout = 300 * time.Second
 )
 
 // endpoint 只有 self-hosted provider 會用到（自架的 OpenAI 相容 API 位址），

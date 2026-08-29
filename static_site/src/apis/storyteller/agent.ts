@@ -28,7 +28,7 @@ import type {
 } from "@/types/storyteller.ts";
 import { apiBase, sessionHeaders } from "./shared.ts";
 
-const agenticQueryTimeoutMs = 390000;
+const agenticQueryTimeoutMs = 490000;
 
 export function useStorytellerAgents() {
   const { session } = useAuth();

@@ -26,7 +26,7 @@ const defaultAgentLoopMaxSteps = 8
 
 // defaultAgentLoopMaxDuration 是整個 agent loop 的總時間上限。provider 單次呼叫
 // 自己有 timeout，但多輪 tool-calling 不能把「每一步 180 秒」乘到無上限。
-const defaultAgentLoopMaxDuration = 6 * time.Minute
+const defaultAgentLoopMaxDuration = 8 * time.Minute
 
 // AgentLoopRequest 是跑一次 agent loop 需要的輸入。
 type AgentLoopRequest struct {
