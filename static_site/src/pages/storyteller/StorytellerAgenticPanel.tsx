@@ -1747,7 +1747,7 @@ export function StorytellerAgenticPanel({
         top: { lg: 16 },
       }}
     >
-      <Stack sx={{ height: { lg: 720 }, maxHeight: { lg: 720 } }}>
+      <Stack sx={{ maxHeight: { lg: "calc(100vh - 32px)" } }}>
         <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -1845,7 +1845,7 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: { xs: 360, lg: 0 },
+            minHeight: { xs: 360, lg: 320 },
             maxHeight: { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
@@ -2022,6 +2022,10 @@ export function StorytellerAgenticPanel({
               helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
               sx={{
                 "& .MuiInputBase-input": {
+                  // 跟訊息泡泡的 body2 對齊（見 AgenticAssistantMessage 的
+                  // typography: "body2"），輸入框預設用 TextField 的 1rem 明顯
+                  // 比對話內容大一號，改小一點也能塞進更多字。
+                  fontSize: "0.875rem",
                   color: "transparent",
                   caretColor: (theme) => theme.palette.text.primary,
                   "&::placeholder": {
