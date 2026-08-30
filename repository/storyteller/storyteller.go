@@ -919,6 +919,38 @@ func (r *Repository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChat
 	return &message, nil
 }
 
+// StoryChatMessageByIDForUserStory 只回傳指定使用者、指定故事底下的單則訊息內容。
+// 展開「回覆」摘要會直接顯示這則 content，不能只用 message id 查，否則可被猜 id
+// 讀到別人的對話。
+func (r *Repository) StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
+	var message storytellerModel.StoryChatMessage
+	err := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Where("messages.id = ? AND chats.user_id = ? AND chats.story_id = ? AND messages.deleted_at IS NULL", messageID, userID, storyID).
+		Select("messages.*").
+		First(&message).Error
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
+// LoreChatMessageByIDForUserLore 是 StoryChatMessageByIDForUserStory 的設定集版本。
+func (r *Repository) LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
+	var message storytellerModel.StoryChatMessage
+	err := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Where("messages.id = ? AND chats.user_id = ? AND chats.lore_id = ? AND messages.deleted_at IS NULL", messageID, userID, loreID).
+		Select("messages.*").
+		First(&message).Error
+	if err != nil {
+		return nil, err
+	}
+	return &message, nil
+}
+
 // AgentProposalsByChatIDs 一次撈出多個 chat 底下的所有提案，給 StoryChatMessages／
 // LoreChatMessages 組 message 列表時依 chat_id 分組貼回對應的 assistant 訊息（見
 // AgentProposal 的說明：一個 chat 剛好對應一則 assistant 訊息）。
@@ -940,6 +972,23 @@ func (r *Repository) AgentProposalByPublicIDForUser(userID uint64, publicID stri
 		Table("storyteller_agent_proposals AS proposals").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = proposals.chat_id").
 		Where("proposals.public_id = ? AND chats.user_id = ?", publicID, userID).
+		Select("proposals.*").
+		First(&row).Error
+	return &row, err
+}
+
+// AgentProposalByPublicIDForUserProject 除了確認 user_id，也確認 proposal 所屬 chat
+// 底下的 story/lore 屬於 URL 指定 project。展開摘要只需要讀 tool_name/arguments，
+// 但這仍是使用者私有內容，不能讓同一使用者跨 project 亂帶 public_id。
+func (r *Repository) AgentProposalByPublicIDForUserProject(userID, projectID uint64, publicID string) (*storytellerModel.AgentProposal, error) {
+	var row storytellerModel.AgentProposal
+	err := r.db.
+		Table("storyteller_agent_proposals AS proposals").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = proposals.chat_id").
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Where("proposals.public_id = ? AND chats.user_id = ?", publicID, userID).
+		Where("(stories.project_id = ? OR lores.project_id = ?)", projectID, projectID).
 		Select("proposals.*").
 		First(&row).Error
 	return &row, err

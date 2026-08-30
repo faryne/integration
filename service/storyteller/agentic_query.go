@@ -19,6 +19,10 @@ type AgenticQueryOutput struct {
 	// 等重新整理頁面；(2) 跟背景重新整理時抓回來的歷史紀錄用 chat_id 對齊去重，
 	// 不會同一輪對話一邊顯示「還在生成」一邊顯示「沒拿到回覆」。
 	ChatID uint64
+	// 兩個 message id 是給前端 session 內的樂觀訊息換成 DB id 用；如果使用者
+	// 立刻回覆剛產生的 assistant 訊息，新 metadata 才能只存 message id 參照。
+	UserMessageID      uint64
+	AssistantMessageID uint64
 	// ChatStatus 反映 ChatID 這筆 chat 在 DB 裡的真實狀態——不能單看 Result／
 	// Warning 猜：撞到步數上限時雖然有 Warning，但已經呼叫過 CompleteChatMessage
 	// 存成 completed；一開始呼叫 provider 就失敗（loopResult 是 nil）則從沒呼叫
@@ -93,15 +97,17 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 	}
 
 	return storytellerModel.AgenticQueryResponse{
-		AgentID:    o.AgentID,
-		ChatID:     o.ChatID,
-		ChatStatus: o.ChatStatus,
-		Provider:   o.Provider,
-		ModelName:  o.ModelName,
-		Result:     o.Result,
-		Steps:      steps,
-		Proposals:  proposals,
-		Usage:      usage,
+		AgentID:            o.AgentID,
+		ChatID:             o.ChatID,
+		UserMessageID:      o.UserMessageID,
+		AssistantMessageID: o.AssistantMessageID,
+		ChatStatus:         o.ChatStatus,
+		Provider:           o.Provider,
+		ModelName:          o.ModelName,
+		Result:             o.Result,
+		Steps:              steps,
+		Proposals:          proposals,
+		Usage:              usage,
 	}
 }
 
@@ -121,6 +127,9 @@ type AgenticQueryOptions struct {
 	// UserPrompt 裡已經帶了一行摘要引言方便人類跟模型定位「在回覆誰」，這裡才是
 	// 真正讓模型讀到完整內容的管道。留空代表這次送出不是在回覆任何訊息。
 	ReplyContent string
+	// ReplyReference 只用來寫入這則 user message 的 metadata；送 provider 的
+	// prompt 仍使用 ReplyContent，避免送出當下的行為被持久化格式改動影響。
+	ReplyReference *storytellerModel.AgenticReplyReferenceRequest
 }
 
 const (
@@ -268,7 +277,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	// 即使等下 RunAgentLoop 因為 timeout／process 被重啟而拿不到答案，使用者至少
 	// 不會連自己問了什麼都找不到；之後可以用「重送」（見 resendStoryAgenticQuery）
 	// 補完這輪，不用整句重打。
-	chat, userMessage := buildPendingAgenticQueryChat(userID, story.ID, *agent, userPrompt, opts.ReplyContent, opts.IgnoreAgentPersona)
+	chat, userMessage := buildPendingAgenticQueryChat(userID, story.ID, *agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona)
 	if err := repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 		return nil, err
 	}
@@ -291,20 +300,21 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	// 樂觀更新的即時泡泡才拿得到 chat_id，不用等重新整理頁面才有機會重送。
 	if loopResult == nil {
 		_ = repo.ReleaseChatToPending(chat.ID)
-		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, UserMessageID: userMessage.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:      agent.ID,
-		ChatID:       chat.ID,
-		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
-		RawResponses: loopResult.RawResponses,
-		Provider:     providerAPIKeyRow.Provider,
-		ModelName:    modelName,
-		Result:       loopResult.FinalText,
-		Steps:        loopResult.Steps,
-		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:        loopResult.Usage,
+		AgentID:       agent.ID,
+		ChatID:        chat.ID,
+		UserMessageID: userMessage.ID,
+		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
+		RawResponses:  loopResult.RawResponses,
+		Provider:      providerAPIKeyRow.Provider,
+		ModelName:     modelName,
+		Result:        loopResult.FinalText,
+		Steps:         loopResult.Steps,
+		Proposals:     buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:         loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
@@ -312,6 +322,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		_ = repo.ReleaseChatToPending(chat.ID)
 		return nil, err
 	}
+	output.AssistantMessageID = assistantMessage.ID
 	if loopErr != nil {
 		return output, loopErr
 	}
@@ -378,7 +389,11 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		return nil, err
 	}
 	userPrompt := userMessage.Content
-	replyContent := agenticQueryReplyContentFromMetadata(userMessage.Metadata)
+	replyContent, err := agenticQueryReplyContentFromMetadata(repo, userID, project.ID, agenticQueryCurrentTargetStory, story.ID, userMessage.Metadata)
+	if err != nil {
+		_ = repo.ReleaseChatToPending(chatID)
+		return nil, err
+	}
 	ignoreAgentPersona := agenticQueryIgnoreAgentPersonaFromMetadata(userMessage.Metadata, userMessage.AgentID)
 
 	ctx = WithStorytellerUserID(ctx, userID)
@@ -403,20 +418,21 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		// 重送本身又失敗了——退回 pending，不要卡死在 in_progress 讓之後永遠沒辦法
 		// 再重送一次。
 		_ = repo.ReleaseChatToPending(chatID)
-		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, UserMessageID: userMessage.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:      agent.ID,
-		ChatID:       chatID,
-		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
-		RawResponses: loopResult.RawResponses,
-		Provider:     providerAPIKeyRow.Provider,
-		ModelName:    modelName,
-		Result:       loopResult.FinalText,
-		Steps:        loopResult.Steps,
-		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:        loopResult.Usage,
+		AgentID:       agent.ID,
+		ChatID:        chatID,
+		UserMessageID: userMessage.ID,
+		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
+		RawResponses:  loopResult.RawResponses,
+		Provider:      providerAPIKeyRow.Provider,
+		ModelName:     modelName,
+		Result:        loopResult.FinalText,
+		Steps:         loopResult.Steps,
+		Proposals:     buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:         loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, ignoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
@@ -424,6 +440,7 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
 	}
+	output.AssistantMessageID = assistantMessage.ID
 	if loopErr != nil {
 		return output, loopErr
 	}
@@ -486,7 +503,7 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		return nil, err
 	}
 
-	chat, userMessage := buildPendingLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, opts.ReplyContent, opts.IgnoreAgentPersona)
+	chat, userMessage := buildPendingLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona)
 	if err := repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 		return nil, err
 	}
@@ -502,20 +519,21 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 	})
 	if loopResult == nil {
 		_ = repo.ReleaseChatToPending(chat.ID)
-		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chat.ID, UserMessageID: userMessage.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:      agent.ID,
-		ChatID:       chat.ID,
-		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
-		RawResponses: loopResult.RawResponses,
-		Provider:     providerAPIKeyRow.Provider,
-		ModelName:    modelName,
-		Result:       loopResult.FinalText,
-		Steps:        loopResult.Steps,
-		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:        loopResult.Usage,
+		AgentID:       agent.ID,
+		ChatID:        chat.ID,
+		UserMessageID: userMessage.ID,
+		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
+		RawResponses:  loopResult.RawResponses,
+		Provider:      providerAPIKeyRow.Provider,
+		ModelName:     modelName,
+		Result:        loopResult.FinalText,
+		Steps:         loopResult.Steps,
+		Proposals:     buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:         loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, opts.IgnoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
@@ -523,6 +541,7 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		_ = repo.ReleaseChatToPending(chat.ID)
 		return nil, err
 	}
+	output.AssistantMessageID = assistantMessage.ID
 	if loopErr != nil {
 		return output, loopErr
 	}
@@ -582,7 +601,11 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 		return nil, err
 	}
 	userPrompt := userMessage.Content
-	replyContent := agenticQueryReplyContentFromMetadata(userMessage.Metadata)
+	replyContent, err := agenticQueryReplyContentFromMetadata(repo, userID, project.ID, agenticQueryCurrentTargetLore, lore.ID, userMessage.Metadata)
+	if err != nil {
+		_ = repo.ReleaseChatToPending(chatID)
+		return nil, err
+	}
 	ignoreAgentPersona := agenticQueryIgnoreAgentPersonaFromMetadata(userMessage.Metadata, userMessage.AgentID)
 
 	ctx = WithStorytellerUserID(ctx, userID)
@@ -605,20 +628,21 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 	})
 	if loopResult == nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, UserMessageID: userMessage.ID, ChatStatus: storytellerModel.StoryChatStatusPending}, loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:      agent.ID,
-		ChatID:       chatID,
-		ChatStatus:   storytellerModel.StoryChatStatusCompleted,
-		RawResponses: loopResult.RawResponses,
-		Provider:     providerAPIKeyRow.Provider,
-		ModelName:    modelName,
-		Result:       loopResult.FinalText,
-		Steps:        loopResult.Steps,
-		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:        loopResult.Usage,
+		AgentID:       agent.ID,
+		ChatID:        chatID,
+		UserMessageID: userMessage.ID,
+		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
+		RawResponses:  loopResult.RawResponses,
+		Provider:      providerAPIKeyRow.Provider,
+		ModelName:     modelName,
+		Result:        loopResult.FinalText,
+		Steps:         loopResult.Steps,
+		Proposals:     buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:         loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(*agent, output, ignoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(repo, userID, providerAPIKeyRow.ID, output)
@@ -626,10 +650,67 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
 	}
+	output.AssistantMessageID = assistantMessage.ID
 	if loopErr != nil {
 		return output, loopErr
 	}
 	return output, nil
+}
+
+func (s *Service) StoryChatMessageReferenceContent(userID uint64, projectPublicID, storyPublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	return storyChatMessageReferenceContent(s.repo, userID, projectPublicID, storyPublicID, messageID)
+}
+
+func storyChatMessageReferenceContent(repo agentRunRepository, userID uint64, projectPublicID, storyPublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	story, err := repo.Story(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	message, err := repo.StoryChatMessageByIDForUserStory(userID, story.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.AgenticReferenceContentResponse{Content: message.Content}, nil
+}
+
+func (s *Service) LoreChatMessageReferenceContent(userID uint64, projectPublicID, lorePublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	return loreChatMessageReferenceContent(s.repo, userID, projectPublicID, lorePublicID, messageID)
+}
+
+func loreChatMessageReferenceContent(repo agentRunRepository, userID uint64, projectPublicID, lorePublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	lore, err := repo.Lore(project.ID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	message, err := repo.LoreChatMessageByIDForUserLore(userID, lore.ID, messageID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.AgenticReferenceContentResponse{Content: message.Content}, nil
+}
+
+func (s *Service) AgentProposalReferenceContent(userID uint64, projectPublicID, proposalPublicID string) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	return agentProposalReferenceContent(s.repo, userID, projectPublicID, proposalPublicID)
+}
+
+func agentProposalReferenceContent(repo agentRunRepository, userID uint64, projectPublicID, proposalPublicID string) (*storytellerModel.AgenticReferenceContentResponse, error) {
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	proposal, err := repo.AgentProposalByPublicIDForUserProject(userID, project.ID, proposalPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.AgenticReferenceContentResponse{Content: agenticQueryProposalReferenceContent(proposal)}, nil
 }
 
 var errAgenticQueryEmptyPrompt = agenticQueryError("user_prompt is required")
@@ -726,24 +807,24 @@ you are expected to resolve them yourself with tools before answering:
 // buildPendingAgenticQueryChat 組出「先落地使用者問題」那一步要寫的 chat／訊息，
 // 取代原本一次組兩則訊息的 agenticQueryChatMessages——AI 的回覆要等
 // agenticQueryAssistantMessage 在 provider 呼叫真的跑完後才另外組。
-func buildPendingAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent, userPrompt, replyContent string, ignoreAgentPersona bool) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
+func buildPendingAgenticQueryChat(userID, storyID uint64, agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		StoryID: &storyID,
 		AgentID: agent.ID,
 		UserID:  userID,
 	}
-	return chat, pendingAgenticQueryUserMessage(agent, userPrompt, replyContent, ignoreAgentPersona)
+	return chat, pendingAgenticQueryUserMessage(agent, userPrompt, replyReference, ignoreAgentPersona)
 }
 
 // buildPendingLoreAgenticQueryChat 是 buildPendingAgenticQueryChat 的設定集版本，
 // 見 RunLoreAgenticQuery 的說明。
-func buildPendingLoreAgenticQueryChat(userID, loreID uint64, agent storytellerModel.Agent, userPrompt, replyContent string, ignoreAgentPersona bool) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
+func buildPendingLoreAgenticQueryChat(userID, loreID uint64, agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		LoreID:  &loreID,
 		AgentID: agent.ID,
 		UserID:  userID,
 	}
-	return chat, pendingAgenticQueryUserMessage(agent, userPrompt, replyContent, ignoreAgentPersona)
+	return chat, pendingAgenticQueryUserMessage(agent, userPrompt, replyReference, ignoreAgentPersona)
 }
 
 // messageAgentID 決定訊息列的 agent_id 要不要記——ignoreAgentPersona 為 true
@@ -761,12 +842,12 @@ func messageAgentID(agentID uint64, ignoreAgentPersona bool) *uint64 {
 	return &id
 }
 
-func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt, replyContent string, ignoreAgentPersona bool) *storytellerModel.StoryChatMessage {
+func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
 		AgentID:  messageAgentID(agent.ID, ignoreAgentPersona),
 		Role:     storytellerModel.ChatMessageRoleUser,
 		Content:  userPrompt,
-		Metadata: agenticQueryUserMessageMetadata(replyContent, ignoreAgentPersona),
+		Metadata: agenticQueryUserMessageMetadata(replyReference, ignoreAgentPersona),
 	}
 }
 
@@ -799,11 +880,50 @@ func rawProviderResponseJSON(rawResponses []string) *string {
 	return &value
 }
 
-// agenticQueryUserMessageMetadata 把「回覆」帶的完整內容（見 ReplyContent 的說明）
-// 存進使用者這則訊息的 Metadata——UserPrompt 本身已經送給 provider，不需要再存
-// 一份，但重送（resendStoryAgenticQuery／resendLoreAgenticQuery）需要重建當初
-// 完全一樣的 prompt，得把這份原始資料留著，不能只留混進 UserPrompt 裡、已經是
-// fence 格式的版本。
+type agenticQueryReplyReferenceMetadata struct {
+	Kind             string `json:"kind"`
+	MessageID        uint64 `json:"message_id,omitempty"`
+	ProposalPublicID string `json:"proposal_public_id,omitempty"`
+	Summary          string `json:"summary,omitempty"`
+}
+
+const (
+	agenticQueryReplyReferenceKindMessage  = "message"
+	agenticQueryReplyReferenceKindProposal = "proposal"
+)
+
+func normalizeAgenticReplyReference(ref *storytellerModel.AgenticReplyReferenceRequest) *agenticQueryReplyReferenceMetadata {
+	if ref == nil {
+		return nil
+	}
+	switch ref.Kind {
+	case agenticQueryReplyReferenceKindMessage:
+		if ref.MessageID == 0 {
+			return nil
+		}
+		return &agenticQueryReplyReferenceMetadata{
+			Kind:      ref.Kind,
+			MessageID: ref.MessageID,
+			Summary:   strings.TrimSpace(ref.Summary),
+		}
+	case agenticQueryReplyReferenceKindProposal:
+		proposalPublicID := strings.TrimSpace(ref.ProposalPublicID)
+		if proposalPublicID == "" {
+			return nil
+		}
+		return &agenticQueryReplyReferenceMetadata{
+			Kind:             ref.Kind,
+			ProposalPublicID: proposalPublicID,
+			Summary:          strings.TrimSpace(ref.Summary),
+		}
+	default:
+		return nil
+	}
+}
+
+// agenticQueryUserMessageMetadata 只把「回覆／否決提案」的短參照寫進使用者訊息
+// Metadata。完整內容仍透過 request.reply_content 餵給這一輪 provider，但不再
+// 持久化一份重複快照；重送時用 reply_reference 回頭查原始 message/proposal。
 // user 這則訊息一律標 mode:"agentic_query"（跟 skill 模式的 user 訊息一直都會
 // 標自己的 mode 對齊）——之前只有 assistant 那則訊息會標，前端用「metadata 有
 // steps」判斷是不是 agentic 對話，純問答沒呼叫工具時 steps 是空陣列，重新整理
@@ -811,13 +931,17 @@ func rawProviderResponseJSON(rawResponses []string) *string {
 // skill 模式（見 StorytellerAgenticPanel.tsx 的 parseAgenticMetadata／
 // skillHistoryMessages）。兩則訊息都標 mode，前端才能不管有沒有工具呼叫、有
 // 沒有拿到回覆，都能正確辨識出「這是 agentic 對話」。
-func agenticQueryUserMessageMetadata(replyContent string, ignoreAgentPersona bool) string {
+func agenticQueryUserMessageMetadata(replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) string {
 	type userMessageMetadata struct {
-		Mode               string `json:"mode"`
-		ReplyContent       string `json:"reply_content,omitempty"`
-		IgnoreAgentPersona bool   `json:"ignore_agent_persona"`
+		Mode               string                              `json:"mode"`
+		ReplyReference     *agenticQueryReplyReferenceMetadata `json:"reply_reference,omitempty"`
+		IgnoreAgentPersona bool                                `json:"ignore_agent_persona"`
 	}
-	body, err := json.Marshal(userMessageMetadata{Mode: "agentic_query", ReplyContent: replyContent, IgnoreAgentPersona: ignoreAgentPersona})
+	body, err := json.Marshal(userMessageMetadata{
+		Mode:               "agentic_query",
+		ReplyReference:     normalizeAgenticReplyReference(replyReference),
+		IgnoreAgentPersona: ignoreAgentPersona,
+	})
 	if err != nil {
 		return `{"mode":"agentic_query"}`
 	}
@@ -825,15 +949,70 @@ func agenticQueryUserMessageMetadata(replyContent string, ignoreAgentPersona boo
 }
 
 // agenticQueryReplyContentFromMetadata 是 agenticQueryUserMessageMetadata 的反向
-// 操作，重送時用來還原當初的 reply_content。
-func agenticQueryReplyContentFromMetadata(metadata string) string {
+// 操作，重送時用 metadata 裡的參照查回完整內容。舊資料可能仍有 reply_content
+// 快照，先當 fallback 讀掉，避免既有 pending 訊息重送時降級。
+func agenticQueryReplyContentFromMetadata(repo agentRunRepository, userID, projectID uint64, currentKind agenticQueryCurrentTargetKind, currentID uint64, metadata string) (string, error) {
 	var meta struct {
-		ReplyContent string `json:"reply_content"`
+		ReplyContent   string                              `json:"reply_content"`
+		ReplyReference *agenticQueryReplyReferenceMetadata `json:"reply_reference"`
 	}
 	if err := json.Unmarshal([]byte(metadata), &meta); err != nil {
-		return ""
+		return "", nil
 	}
-	return meta.ReplyContent
+	if strings.TrimSpace(meta.ReplyContent) != "" {
+		return meta.ReplyContent, nil
+	}
+	if meta.ReplyReference == nil {
+		return "", nil
+	}
+	switch meta.ReplyReference.Kind {
+	case agenticQueryReplyReferenceKindMessage:
+		message, err := agenticQueryReferencedMessage(repo, userID, currentKind, currentID, meta.ReplyReference.MessageID)
+		if err != nil || message == nil {
+			return "", err
+		}
+		return message.Content, nil
+	case agenticQueryReplyReferenceKindProposal:
+		proposal, err := repo.AgentProposalByPublicIDForUserProject(userID, projectID, meta.ReplyReference.ProposalPublicID)
+		if err != nil {
+			return "", err
+		}
+		return agenticQueryProposalReferenceContent(proposal), nil
+	default:
+		return "", nil
+	}
+}
+
+func agenticQueryReferencedMessage(repo agentRunRepository, userID uint64, currentKind agenticQueryCurrentTargetKind, currentID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
+	if messageID == 0 {
+		return nil, nil
+	}
+	if currentKind == agenticQueryCurrentTargetLore {
+		return repo.LoreChatMessageByIDForUserLore(userID, currentID, messageID)
+	}
+	return repo.StoryChatMessageByIDForUserStory(userID, currentID, messageID)
+}
+
+func agenticQueryProposalReferenceContent(proposal *storytellerModel.AgentProposal) string {
+	var arguments json.RawMessage = []byte("{}")
+	if proposal != nil && json.Valid([]byte(proposal.Arguments)) {
+		arguments = json.RawMessage(proposal.Arguments)
+	}
+	toolName := ""
+	if proposal != nil {
+		toolName = proposal.ToolName
+	}
+	body, err := json.MarshalIndent(struct {
+		ToolName  string          `json:"tool_name"`
+		Arguments json.RawMessage `json:"arguments"`
+	}{
+		ToolName:  toolName,
+		Arguments: arguments,
+	}, "", "  ")
+	if err != nil {
+		body = []byte(`{"tool_name":"","arguments":{}}`)
+	}
+	return "Reference rejected proposal: " + toolName + "\n<<<REJECTED_PROPOSAL_REFERENCE_CONTENT\n" + string(body) + "\nREJECTED_PROPOSAL_REFERENCE_CONTENT"
 }
 
 func agenticQueryIgnoreAgentPersonaFromMetadata(metadata string, agentID *uint64) bool {

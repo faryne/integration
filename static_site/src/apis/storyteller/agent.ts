@@ -9,6 +9,8 @@ import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
+  StorytellerAgenticReferenceContentResponse,
+  StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticQueryRequest,
   StorytellerAgenticQueryResponse,
   StorytellerAgentPromptVersion,
@@ -29,6 +31,35 @@ import type {
 import { apiBase, sessionHeaders } from "./shared.ts";
 
 const agenticQueryTimeoutMs = 490000;
+
+export function useStorytellerAgenticReferenceContent(
+  targetKind: "story" | "lore",
+  projectPublicId?: string,
+  targetPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (reference: StorytellerAgenticReplyReferenceRequest) => {
+      if (reference.kind === "proposal") {
+        const response = await axios.get<
+          CommonResponse<StorytellerAgenticReferenceContentResponse>
+        >(
+          `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${reference.proposal_public_id}/reference-content`,
+          { headers: sessionHeaders(session!.encrypt_key) },
+        );
+        return response.data.data ?? { content: "" };
+      }
+      const section = targetKind === "lore" ? "lores" : "stories";
+      const response = await axios.get<
+        CommonResponse<StorytellerAgenticReferenceContentResponse>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/${section}/${targetPublicId}/chat-messages/${reference.message_id}/reference-content`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data ?? { content: "" };
+    },
+  });
+}
 
 export function useStorytellerAgents() {
   const { session } = useAuth();

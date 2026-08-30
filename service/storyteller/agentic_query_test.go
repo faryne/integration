@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -220,6 +221,192 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 	require.NotNil(t, output)
 	require.NotNil(t, repo.usage)
 	require.Greater(t, repo.usage.TotalTokens, 0)
+}
+
+func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	replyMessageID := uint64(77)
+	userPrompt := "> 回覆 AI 助理：這是摘要\n\n請接著回答"
+	replyContent := "這是被回覆訊息的完整原文\n第二行也要保留"
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+		storyMessage:   &storytellerModel.StoryChatMessage{ID: replyMessageID, Content: replyContent},
+	}
+	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	var initialPrompt string
+	initialProvider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			initialPrompt = req.Messages[len(req.Messages)-1].Content
+			return &AIProviderResponse{Result: "初次回答"}, nil
+		},
+	}
+
+	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return initialProvider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, userPrompt, AgenticQueryOptions{
+		ReplyContent: replyContent,
+		ReplyReference: &storytellerModel.AgenticReplyReferenceRequest{
+			Kind:      "message",
+			MessageID: replyMessageID,
+			Summary:   "> 回覆 AI 助理：這是摘要",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedPrompt, initialPrompt)
+	require.Equal(t, uint64(1001), output.UserMessageID)
+	require.Equal(t, uint64(1002), output.AssistantMessageID)
+	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
+	require.NotContains(t, repo.messages[0].Metadata, replyContent)
+	var metadata struct {
+		ReplyReference struct {
+			Kind      string `json:"kind"`
+			MessageID uint64 `json:"message_id"`
+			Summary   string `json:"summary"`
+		} `json:"reply_reference"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(repo.messages[0].Metadata), &metadata))
+	require.Equal(t, "message", metadata.ReplyReference.Kind)
+	require.Equal(t, replyMessageID, metadata.ReplyReference.MessageID)
+	require.Equal(t, "> 回覆 AI 助理：這是摘要", metadata.ReplyReference.Summary)
+
+	repo.claimResult = 1
+	repo.pendingUserMessage = &repo.messages[0]
+	var resendPrompt string
+	resendProvider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			resendPrompt = req.Messages[len(req.Messages)-1].Content
+			return &AIProviderResponse{Result: "重送回答"}, nil
+		},
+	}
+	resendOutput, err := resendStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return resendProvider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, repo.chat.ID, AgenticQueryOptions{})
+
+	require.NoError(t, err)
+	require.Equal(t, "重送回答", resendOutput.Result)
+	require.Equal(t, expectedPrompt, resendPrompt)
+}
+
+func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePrompt(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	proposal := &storytellerModel.AgentProposal{
+		PublicID:  "proposal-public-id",
+		ToolName:  "storyteller_upsert_story",
+		Arguments: `{"content":"提案完整內容","story_public_id":"story-public-id","title":"新標題"}`,
+	}
+	userPrompt := "> 否決提案 #1：更新故事內容（新標題）\n\n請改小一點"
+	replyContent := agenticQueryProposalReferenceContent(proposal)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey:  encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+		projectProposal: proposal,
+	}
+	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	var initialPrompt string
+	initialProvider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			initialPrompt = req.Messages[len(req.Messages)-1].Content
+			return &AIProviderResponse{Result: "初次回答"}, nil
+		},
+	}
+
+	_, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return initialProvider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, userPrompt, AgenticQueryOptions{
+		ReplyContent: replyContent,
+		ReplyReference: &storytellerModel.AgenticReplyReferenceRequest{
+			Kind:             "proposal",
+			ProposalPublicID: proposal.PublicID,
+			Summary:          "> 否決提案 #1：更新故事內容（新標題）",
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, expectedPrompt, initialPrompt)
+	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
+	require.NotContains(t, repo.messages[0].Metadata, "提案完整內容")
+	var metadata struct {
+		ReplyReference struct {
+			Kind             string `json:"kind"`
+			ProposalPublicID string `json:"proposal_public_id"`
+			Summary          string `json:"summary"`
+		} `json:"reply_reference"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(repo.messages[0].Metadata), &metadata))
+	require.Equal(t, "proposal", metadata.ReplyReference.Kind)
+	require.Equal(t, proposal.PublicID, metadata.ReplyReference.ProposalPublicID)
+	require.Equal(t, "> 否決提案 #1：更新故事內容（新標題）", metadata.ReplyReference.Summary)
+
+	repo.claimResult = 1
+	repo.pendingUserMessage = &repo.messages[0]
+	var resendPrompt string
+	resendProvider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			resendPrompt = req.Messages[len(req.Messages)-1].Content
+			return &AIProviderResponse{Result: "重送回答"}, nil
+		},
+	}
+	resendOutput, err := resendStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return resendProvider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, repo.chat.ID, AgenticQueryOptions{})
+
+	require.NoError(t, err)
+	require.Equal(t, "重送回答", resendOutput.Result)
+	require.Equal(t, expectedPrompt, resendPrompt)
+}
+
+func TestStoryChatMessageReferenceContentUsesUserStoryScopedLookup(t *testing.T) {
+	repo := &fakeAgentRunRepository{
+		project:      &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:        &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		storyMessage: &storytellerModel.StoryChatMessage{ID: 77, Content: "原始訊息內容"},
+	}
+
+	result, err := storyChatMessageReferenceContent(repo, 20, "project-public-id", "story-public-id", 77)
+
+	require.NoError(t, err)
+	require.Equal(t, "原始訊息內容", result.Content)
+	require.Equal(t, uint64(20), repo.storyMessageLookup.userID)
+	require.Equal(t, uint64(30), repo.storyMessageLookup.storyID)
+	require.Equal(t, uint64(77), repo.storyMessageLookup.messageID)
+}
+
+func TestAgentProposalReferenceContentUsesUserProjectScopedLookup(t *testing.T) {
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		projectProposal: &storytellerModel.AgentProposal{
+			PublicID:  "proposal-public-id",
+			ToolName:  "storyteller_upsert_lore",
+			Arguments: `{"lore_public_id":"lore-public-id","content":"設定內容"}`,
+		},
+	}
+
+	result, err := agentProposalReferenceContent(repo, 20, "project-public-id", "proposal-public-id")
+
+	require.NoError(t, err)
+	require.Contains(t, result.Content, "storyteller_upsert_lore")
+	require.Contains(t, result.Content, "設定內容")
+	require.Equal(t, uint64(20), repo.projectProposalLookup.userID)
+	require.Equal(t, uint64(10), repo.projectProposalLookup.projectID)
+	require.Equal(t, "proposal-public-id", repo.projectProposalLookup.publicID)
 }
 
 // fakeSequentialAIProvider 依序回傳不同的 response，讓測試可以模擬多輪對話

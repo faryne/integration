@@ -494,6 +494,7 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 			ModelName:          input.ModelName,
 			IgnoreAgentPersona: input.IgnoreAgentPersona,
 			ReplyContent:       input.ReplyContent,
+			ReplyReference:     input.ReplyReference,
 		},
 	)
 	if err != nil {
@@ -544,6 +545,7 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 			ModelName:          input.ModelName,
 			IgnoreAgentPersona: input.IgnoreAgentPersona,
 			ReplyContent:       input.ReplyContent,
+			ReplyReference:     input.ReplyReference,
 		},
 	)
 	if err != nil {
@@ -653,6 +655,61 @@ func ResendLoreAgenticQuery(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(result.ToResponse())
+}
+
+func StoryChatMessageReferenceContent(ctx fiber.Ctx) error {
+	messageID, err := parseUint(ctx.Params("message"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().StoryChatMessageReferenceContent(
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("story"),
+		messageID,
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story chat message not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
+}
+
+func LoreChatMessageReferenceContent(ctx fiber.Ctx) error {
+	messageID, err := parseUint(ctx.Params("message"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().LoreChatMessageReferenceContent(
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("lore"),
+		messageID,
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore chat message not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
+}
+
+func AgentProposalReferenceContent(ctx fiber.Ctx) error {
+	result, err := storyteller.NewService().AgentProposalReferenceContent(
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project or proposal not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
 }
 
 // ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、存進

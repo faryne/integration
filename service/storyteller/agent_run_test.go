@@ -375,6 +375,18 @@ type fakeAgentRunRepository struct {
 	released              bool
 	pendingUserMessage    *storytellerModel.StoryChatMessage
 	pendingUserMessageErr error
+	storyMessage          *storytellerModel.StoryChatMessage
+	storyMessageErr       error
+	storyMessageLookup    struct{ userID, storyID, messageID uint64 }
+	loreMessage           *storytellerModel.StoryChatMessage
+	loreMessageErr        error
+	loreMessageLookup     struct{ userID, loreID, messageID uint64 }
+	projectProposal       *storytellerModel.AgentProposal
+	projectProposalErr    error
+	projectProposalLookup struct {
+		userID, projectID uint64
+		publicID          string
+	}
 }
 
 func (r *fakeAgentRunRepository) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
@@ -420,6 +432,15 @@ func (r *fakeAgentRunRepository) ResetAppliedAgentProposalToPending(id uint64) (
 }
 
 func (r *fakeAgentRunRepository) CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
+	if chat.ID == 0 {
+		chat.ID = 1
+	}
+	for i := range messages {
+		if messages[i].ID == 0 {
+			messages[i].ID = uint64(1001 + i)
+		}
+		messages[i].ChatID = chat.ID
+	}
 	r.chat = chat
 	r.messages = messages
 	r.proposals = proposals
@@ -436,6 +457,9 @@ func (r *fakeAgentRunRepository) CreateInProgressChatWithUserMessage(chat *story
 	}
 	chat.Status = storytellerModel.StoryChatStatusInProgress
 	userMessage.ChatID = chat.ID
+	if userMessage.ID == 0 {
+		userMessage.ID = 1001
+	}
 	r.chat = chat
 	r.messages = []storytellerModel.StoryChatMessage{*userMessage}
 	return r.chatErr
@@ -443,6 +467,9 @@ func (r *fakeAgentRunRepository) CreateInProgressChatWithUserMessage(chat *story
 
 func (r *fakeAgentRunRepository) CompleteChatMessage(chatID uint64, assistantMessage *storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error {
 	assistantMessage.ChatID = chatID
+	if assistantMessage.ID == 0 {
+		assistantMessage.ID = 1002
+	}
 	r.messages = append(r.messages, *assistantMessage)
 	r.proposals = proposals
 	r.usage = usage
@@ -467,6 +494,27 @@ func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {
 
 func (r *fakeAgentRunRepository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
 	return r.pendingUserMessage, r.pendingUserMessageErr
+}
+
+func (r *fakeAgentRunRepository) StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
+	r.storyMessageLookup = struct{ userID, storyID, messageID uint64 }{userID: userID, storyID: storyID, messageID: messageID}
+	return r.storyMessage, r.storyMessageErr
+}
+
+func (r *fakeAgentRunRepository) LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
+	r.loreMessageLookup = struct{ userID, loreID, messageID uint64 }{userID: userID, loreID: loreID, messageID: messageID}
+	return r.loreMessage, r.loreMessageErr
+}
+
+func (r *fakeAgentRunRepository) AgentProposalByPublicIDForUserProject(userID, projectID uint64, publicID string) (*storytellerModel.AgentProposal, error) {
+	r.projectProposalLookup = struct {
+		userID, projectID uint64
+		publicID          string
+	}{userID: userID, projectID: projectID, publicID: publicID}
+	if r.projectProposal != nil || r.projectProposalErr != nil {
+		return r.projectProposal, r.projectProposalErr
+	}
+	return r.proposal, r.proposalErr
 }
 
 func (r *fakeAgentRunRepository) RecentStoryAgenticMessages(uint64, int) ([]storytellerModel.StoryChatMessage, error) {

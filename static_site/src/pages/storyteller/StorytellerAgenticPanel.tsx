@@ -30,6 +30,7 @@ import {
   useRunStorytellerAgenticQuery,
   useRunStorytellerLoreAgent,
   useRunStorytellerLoreAgenticQuery,
+  useStorytellerAgenticReferenceContent,
   useStorytellerAgentProviderModels,
   useStorytellerLoreChatMessages,
   useStorytellerProviderAPIKeys,
@@ -59,6 +60,7 @@ import {
 } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
 import {
   buildStorytellerAgentMessageLinks,
+  buildStorytellerAgentProposalRejectionQuote,
   buildStorytellerAgentProposalReferenceContent,
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
@@ -67,6 +69,7 @@ import {
   composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
   summarizeStorytellerAgentProposalArguments,
+  type StorytellerAgentReplyTarget,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
   currentLoreMentionQuery,
@@ -78,6 +81,7 @@ import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
   StorytellerAgenticProposal,
+  StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
   StorytellerStoryChatMessage,
 } from "@/types/storyteller.ts";
@@ -178,6 +182,23 @@ const skillTotalPayloadMaxCharacters = 80000;
 const storytellerAgentApiKeyStorageKey = "storyteller-agent-api-key-id";
 const storytellerAgentModelStorageKey = "storyteller-agent-model-name";
 
+function buildAgenticMessageReplyReference(
+  reply: StorytellerAgentReplyTarget | null | undefined,
+): StorytellerAgenticReplyReferenceRequest | undefined {
+  if (!reply || reply.content.trim() === "") {
+    return undefined;
+  }
+  const messageID = Number(reply.id);
+  if (!Number.isInteger(messageID) || messageID <= 0) {
+    return undefined;
+  }
+  return {
+    kind: "message",
+    message_id: messageID,
+    summary: buildStorytellerAgentReplyQuote(reply),
+  };
+}
+
 // 沿用既有 StoryEditor.tsx 的 aiErrorMessage() 邏輯：後端錯誤訊息在
 // response.data.message，axios 預設的 "Request failed with status code
 // 503" 對使用者沒有意義。
@@ -220,6 +241,10 @@ type PanelMessage =
       content: string;
       steps?: StorytellerAgenticStep[];
       proposals?: StorytellerAgenticProposal[];
+      // 新資料只存參照；replyContent 只給舊 metadata.reply_content 或極短暫拿不到
+      // DB id 的本地訊息當 fallback，避免舊資料或 session 中間態整則壞掉。
+      replyReference?: StorytellerAgenticReplyReferenceRequest;
+      replyContent?: string;
       usage?: { total_tokens?: number };
       warning?: string;
       isLoading?: boolean;
@@ -330,6 +355,184 @@ function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
   );
 }
 
+function parseExpandableAgenticQuote(
+  content: string,
+  replyReference?: StorytellerAgenticReplyReferenceRequest,
+  fallbackContent?: string,
+): {
+  quote: string;
+  body: string;
+  replyReference?: StorytellerAgenticReplyReferenceRequest;
+  fallbackContent?: string;
+} | null {
+  const hasReference =
+    (replyReference?.kind === "message" &&
+      Boolean(replyReference.message_id)) ||
+    (replyReference?.kind === "proposal" &&
+      Boolean(replyReference.proposal_public_id));
+  if (!hasReference && !fallbackContent?.trim()) {
+    return null;
+  }
+  const match = content.match(/^(> (?:回覆 .+|否決提案 #\d+：.+))(?:\r?\n|$)/);
+  if (!match) {
+    return null;
+  }
+  return {
+    quote: match[1].replace(/^>\s*/, ""),
+    body: content.slice(match[0].length).replace(/^\r?\n/, ""),
+    replyReference,
+    fallbackContent,
+  };
+}
+
+function AgenticExpandableQuote({
+  quote,
+  body,
+  replyReference,
+  fallbackContent,
+  isUser,
+  linkedBody,
+  loadReferenceContent,
+}: {
+  quote: string;
+  body: string;
+  replyReference?: StorytellerAgenticReplyReferenceRequest;
+  fallbackContent?: string;
+  isUser: boolean;
+  linkedBody: string;
+  loadReferenceContent: (
+    reference: StorytellerAgenticReplyReferenceRequest,
+  ) => Promise<string>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [content, setContent] = useState(fallbackContent ?? "");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function toggleExpanded() {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (content.trim() !== "" || !replyReference) {
+      return;
+    }
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const loaded = await loadReferenceContent(replyReference);
+      if (loaded.trim() === "") {
+        setErrorMessage("找不到原始內容，可能已被刪除或沒有權限讀取。");
+      }
+      setContent(loaded);
+    } catch {
+      setErrorMessage("找不到原始內容，可能已被刪除或沒有權限讀取。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <Box
+        component="blockquote"
+        sx={{
+          overflow: "hidden",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          sx={{
+            cursor: "pointer",
+            borderRadius: 0.5,
+            "&:focus-visible": {
+              outline: "2px solid",
+              outlineColor: isUser ? "primary.contrastText" : "primary.main",
+              outlineOffset: 2,
+            },
+            "&:hover": {
+              bgcolor: isUser ? "rgba(255,255,255,0.08)" : "action.hover",
+            },
+          }}
+          onClick={() => void toggleExpanded()}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            void toggleExpanded();
+          }}
+        >
+          <ExpandMoreIcon
+            fontSize="small"
+            sx={{
+              flex: "0 0 auto",
+              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.15s ease",
+            }}
+          />
+          <Typography variant="body2" sx={{ minWidth: 0 }}>
+            {quote}
+          </Typography>
+        </Stack>
+        <Collapse in={expanded}>
+          <Box
+            sx={{
+              mt: 0.75,
+              pt: 0.75,
+              borderTop: "1px solid",
+              borderColor: isUser ? "rgba(255,255,255,0.28)" : "divider",
+            }}
+          >
+            <Typography
+              variant="caption"
+              component="div"
+              sx={{ mb: 0.5, opacity: 0.78 }}
+            >
+              完整引用內容
+            </Typography>
+            {loading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={14} />
+                <Typography variant="caption">正在載入引用內容...</Typography>
+              </Stack>
+            ) : errorMessage ? (
+              <Alert severity="warning" variant="outlined">
+                {errorMessage}
+              </Alert>
+            ) : (
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  maxHeight: 260,
+                  overflow: "auto",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  fontFamily: "inherit",
+                  fontSize: "0.8125rem",
+                  lineHeight: 1.65,
+                }}
+              >
+                {content}
+              </Box>
+            )}
+          </Box>
+        </Collapse>
+      </Box>
+      {body.trim() !== "" && (
+        <StorytellerMarkdown>{linkedBody}</StorytellerMarkdown>
+      )}
+    </>
+  );
+}
+
 function AgenticAssistantMessage({
   message,
   targetKind,
@@ -382,6 +585,11 @@ function AgenticAssistantMessage({
     isUser && message.chatId !== undefined && message.chatStatus === "pending";
   const processing = isUser && message.chatStatus === "in_progress";
   const resending = resendable && resendingChatId === message.chatId;
+  const referenceContent = useStorytellerAgenticReferenceContent(
+    targetKind,
+    projectPublicId,
+    targetPublicId,
+  );
   const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
     targetKind,
     projectPublicId,
@@ -389,6 +597,22 @@ function AgenticAssistantMessage({
     otherStories,
     lores,
   });
+  const expandableQuote = isUser
+    ? parseExpandableAgenticQuote(
+        message.content,
+        message.replyReference,
+        message.replyContent,
+      )
+    : null;
+  const linkedBody = expandableQuote
+    ? buildStorytellerAgentMessageLinks(expandableQuote.body, {
+        targetKind,
+        projectPublicId,
+        targetPublicId,
+        otherStories,
+        lores,
+      })
+    : "";
   return (
     <StorytellerChatBubble
       messageId={message.id}
@@ -407,7 +631,21 @@ function AgenticAssistantMessage({
       ) : (
         message.content && (
           <Box sx={{ typography: "body2", mt: 0.5 }}>
-            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+            {expandableQuote ? (
+              <AgenticExpandableQuote
+                quote={expandableQuote.quote}
+                body={expandableQuote.body}
+                replyReference={expandableQuote.replyReference}
+                fallbackContent={expandableQuote.fallbackContent}
+                isUser={isUser}
+                linkedBody={linkedBody}
+                loadReferenceContent={async (reference) =>
+                  (await referenceContent.mutateAsync(reference)).content
+                }
+              />
+            ) : (
+              <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+            )}
           </Box>
         )
       )}
@@ -813,6 +1051,57 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  // reply_reference 跟 steps 是不同用途：steps 可為空但回覆參照仍然存在，所以不能
+  // 透過 parseAgenticMetadata 讀，不然純問答回覆會因 steps 空陣列被一起丟掉。
+  // 舊資料可能仍是 reply_content 快照，保留成 fallback，避免舊訊息展開壞掉。
+  function parseAgenticReplyReference(metadata?: string): {
+    replyReference?: StorytellerAgenticReplyReferenceRequest;
+    replyContent?: string;
+  } {
+    if (!metadata) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(metadata) as {
+        reply_content?: unknown;
+        reply_reference?: {
+          kind?: unknown;
+          message_id?: unknown;
+          proposal_public_id?: unknown;
+          summary?: unknown;
+        };
+      };
+      const ref = parsed.reply_reference;
+      const replyReference =
+        ref?.kind === "message" && typeof ref.message_id === "number"
+          ? ({
+              kind: "message",
+              message_id: ref.message_id,
+              summary:
+                typeof ref.summary === "string" ? ref.summary : undefined,
+            } satisfies StorytellerAgenticReplyReferenceRequest)
+          : ref?.kind === "proposal" &&
+              typeof ref.proposal_public_id === "string"
+            ? ({
+                kind: "proposal",
+                proposal_public_id: ref.proposal_public_id,
+                summary:
+                  typeof ref.summary === "string" ? ref.summary : undefined,
+              } satisfies StorytellerAgenticReplyReferenceRequest)
+            : undefined;
+      return {
+        replyReference,
+        replyContent:
+          typeof parsed.reply_content === "string" &&
+          parsed.reply_content.trim() !== ""
+            ? parsed.reply_content
+            : undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+
   // skill 訊息的 user 那則存檔時會把 mode 記進 metadata（見後端
   // agentRunInputMetadata），重新載入歷史時從這裡解析回來，訊息泡泡才標得出
   // 「這則走了哪個 /指令」。assistant 那則的 metadata 是 finish_reason/usage，
@@ -849,6 +1138,7 @@ export function StorytellerAgenticPanel({
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
       const agentic = parseAgenticMetadata(message.metadata);
+      const reply = parseAgenticReplyReference(message.metadata);
       const hasProposals = (message.proposals?.length ?? 0) > 0;
       // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
       // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
@@ -865,6 +1155,8 @@ export function StorytellerAgenticPanel({
           content: message.content,
           steps: agentic?.steps,
           proposals: message.proposals,
+          replyReference: reply.replyReference,
+          replyContent: reply.replyContent,
           agentName: message.agent_name || undefined,
           chatId: message.chat_id,
           chatStatus: message.chat_status,
@@ -892,7 +1184,9 @@ export function StorytellerAgenticPanel({
     skillTransientMessages.push({
       kind: "skill",
       sortKey: Number.MAX_SAFE_INTEGER,
-      id: `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
+      id: skillResult.response.assistant_message_id
+        ? String(skillResult.response.assistant_message_id)
+        : `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
       role: "assistant",
       content: skillResult.response.result,
       speaker: "AI 助理",
@@ -1097,6 +1391,7 @@ export function StorytellerAgenticPanel({
       agentId?: number;
       ignoreAgentPersona?: boolean;
       replyContent?: string;
+      replyReference?: StorytellerAgenticReplyReferenceRequest;
       preserveComposer?: boolean;
     },
   ) {
@@ -1116,6 +1411,9 @@ export function StorytellerAgenticPanel({
       options?.replyContent !== undefined
         ? options.replyContent || undefined
         : replyReferenceTarget?.content || undefined;
+    const replyReference =
+      options?.replyReference ??
+      buildAgenticMessageReplyReference(replyReferenceTarget);
     const userSortKey = nextSessionSortKey();
     const userMessageId = `agentic-user-${userSortKey}`;
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
@@ -1124,6 +1422,8 @@ export function StorytellerAgenticPanel({
       id: userMessageId,
       role: "user",
       content: instruction,
+      replyReference,
+      replyContent: replyReference ? undefined : replyContent,
       agentName: targetAgentName,
     };
     setAgenticMessages((prev) => [...prev, userMessage]);
@@ -1145,6 +1445,7 @@ export function StorytellerAgenticPanel({
           user_prompt: instruction,
           ignore_agent_persona: options?.ignoreAgentPersona ?? false,
           reply_content: replyContent,
+          reply_reference: replyReference,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -1167,6 +1468,9 @@ export function StorytellerAgenticPanel({
               message.kind === "agentic" && message.id === userMessageId
                 ? {
                     ...message,
+                    id: response.user_message_id
+                      ? String(response.user_message_id)
+                      : message.id,
                     chatId: response.chat_id,
                     chatStatus: response.chat_status,
                   }
@@ -1175,7 +1479,9 @@ export function StorytellerAgenticPanel({
             {
               kind: "agentic",
               sortKey: assistantSortKey,
-              id: `agentic-assistant-${assistantSortKey}`,
+              id: response.assistant_message_id
+                ? String(response.assistant_message_id)
+                : `agentic-assistant-${assistantSortKey}`,
               role: "assistant",
               content: response.result,
               steps: response.steps,
@@ -1289,6 +1595,15 @@ export function StorytellerAgenticPanel({
     feedback: string,
     proposalIndex: number,
   ) {
+    const actionLabel = proposalActionLabel(proposal.tool_name);
+    const contentSnippet = summarizeStorytellerAgentProposalArguments(
+      proposal.arguments,
+    );
+    const rejectionQuote = buildStorytellerAgentProposalRejectionQuote(
+      actionLabel,
+      proposalIndex,
+      contentSnippet,
+    );
     // 否決 dialog 是獨立輸入，不該清掉使用者正在輸入框裡編輯的一般訊息或回覆草稿。
     // 被否決提案的完整工具參數只陪這次請求送進 reply_content，用完即拋。前面加一行
     // 「> 否決提案 #N：xxx（摘要）」的 blockquote 併入 instruction 本身（跟「回覆」
@@ -1297,13 +1612,18 @@ export function StorytellerAgenticPanel({
     runAgentic(
       composeStorytellerAgentInstructionWithProposalRejection(
         feedback.trim(),
-        proposalActionLabel(proposal.tool_name),
+        actionLabel,
         proposalIndex,
-        summarizeStorytellerAgentProposalArguments(proposal.arguments),
+        contentSnippet,
       ),
       {
         ignoreAgentPersona: true,
         replyContent: buildStorytellerAgentProposalReferenceContent(proposal),
+        replyReference: {
+          kind: "proposal",
+          proposal_public_id: proposal.public_id,
+          summary: rejectionQuote,
+        },
         preserveComposer: true,
       },
     );

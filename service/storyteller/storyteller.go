@@ -48,6 +48,9 @@ type agentRunRepository interface {
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
 	ReleaseChatToPending(chatID uint64) error
 	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
+	StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
+	LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
+	AgentProposalByPublicIDForUserProject(userID, projectID uint64, publicID string) (*storytellerModel.AgentProposal, error)
 	// AgentModelPrice 回傳固定模型清單供應商（allow_custom_model=0）某個 model
 	// 目前的單價（每 token 美金，JSON 字串），找不到（self_hosted／openrouter
 	// 自訂 model 名稱，或該 model 沒有價格資料）回傳 nil、不報錯——usage log
@@ -632,6 +635,8 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err := s.repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
+	output.UserMessageID = messages[0].ID
+	output.AssistantMessageID = messages[1].ID
 	return output, nil
 }
 
@@ -735,6 +740,8 @@ func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiPr
 	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
+	output.UserMessageID = messages[0].ID
+	output.AssistantMessageID = messages[1].ID
 	return output, nil
 }
 
