@@ -503,6 +503,12 @@ export interface StorytellerAgenticQueryResponse {
   warning?: string;
 }
 
+export interface StorytellerAgenticChatResponse {
+  chat_id: number;
+  chat_status: "pending" | "in_progress" | "completed";
+  messages: StorytellerStoryChatMessage[];
+}
+
 export interface StorytellerAgenticReferenceContentResponse {
   content: string;
 }

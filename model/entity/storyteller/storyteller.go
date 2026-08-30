@@ -1103,6 +1103,12 @@ type AgenticReferenceContentResponse struct {
 	Content string `json:"content"`
 }
 
+type AgenticChatResponse struct {
+	ChatID     uint64                   `json:"chat_id"`
+	ChatStatus StoryChatStatus          `json:"chat_status"`
+	Messages   []StoryChatMessageOutput `json:"messages"`
+}
+
 type StoryChatMessageOutput struct {
 	ID     uint64 `json:"id"`
 	ChatID uint64 `json:"chat_id"`

@@ -21,9 +21,11 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
+  fetchStorytellerAgenticChat,
   useResendStorytellerAgenticQuery,
   useResendStorytellerLoreAgenticQuery,
   useRunStorytellerAgent,
@@ -36,6 +38,7 @@ import {
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
 } from "@/apis/storyteller/agent.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -781,6 +784,8 @@ export function StorytellerAgenticPanel({
   ) => Promise<void>;
   onStoryChanged?: () => void;
 }) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
   // 這裡只保留「目前是哪一個」的內部狀態，agents 清單變動（新增/刪除/重新整理）時
   // 若目前選的 id 已經不在清單裡，退回清單第一個。
@@ -1135,10 +1140,29 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  function agenticPanelMessageFromChatRow(
+    message: StorytellerStoryChatMessage,
+  ): Extract<PanelMessage, { kind: "agentic" }> {
+    const agentic = parseAgenticMetadata(message.metadata);
+    const reply = parseAgenticReplyReference(message.metadata);
+    return {
+      kind: "agentic",
+      sortKey: new Date(message.created_at).getTime(),
+      id: String(message.id),
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content,
+      steps: agentic?.steps,
+      proposals: message.proposals,
+      replyReference: reply.replyReference,
+      replyContent: reply.replyContent,
+      agentName: message.agent_name || undefined,
+      chatId: message.chat_id,
+      chatStatus: message.chat_status,
+    };
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
-      const agentic = parseAgenticMetadata(message.metadata);
-      const reply = parseAgenticReplyReference(message.metadata);
       const hasProposals = (message.proposals?.length ?? 0) > 0;
       // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
       // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
@@ -1147,20 +1171,7 @@ export function StorytellerAgenticPanel({
       // 用這個當主要依據，hasProposals 留著當保險。
       const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
       if (isAgentic && message.role !== "system") {
-        return {
-          kind: "agentic",
-          sortKey: new Date(message.created_at).getTime(),
-          id: String(message.id),
-          role: message.role,
-          content: message.content,
-          steps: agentic?.steps,
-          proposals: message.proposals,
-          replyReference: reply.replyReference,
-          replyContent: reply.replyContent,
-          agentName: message.agent_name || undefined,
-          chatId: message.chat_id,
-          chatStatus: message.chat_status,
-        };
+        return agenticPanelMessageFromChatRow(message);
       }
       return {
         kind: "skill",
@@ -1239,6 +1250,88 @@ export function StorytellerAgenticPanel({
     ...skillTransientMessages,
     ...agenticMessages,
   ].sort((a, b) => a.sortKey - b.sortKey);
+
+  const inProgressAgenticChatIds = Array.from(
+    new Set(
+      combinedMessages.flatMap((message) =>
+        message.kind === "agentic" &&
+        message.role === "user" &&
+        message.chatId !== undefined &&
+        message.chatStatus === "in_progress"
+          ? [message.chatId]
+          : [],
+      ),
+    ),
+  );
+  const inProgressAgenticChatIdsKey = inProgressAgenticChatIds.join(",");
+
+  useEffect(() => {
+    if (
+      !session?.encrypt_key ||
+      !projectPublicId ||
+      !targetPublicId ||
+      inProgressAgenticChatIds.length === 0
+    ) {
+      return;
+    }
+    let stopped = false;
+    const poll = async () => {
+      const results = await Promise.allSettled(
+        inProgressAgenticChatIds.map((chatId) =>
+          fetchStorytellerAgenticChat({
+            targetKind,
+            projectPublicId,
+            targetPublicId,
+            chatId,
+            encryptKey: session.encrypt_key,
+          }),
+        ),
+      );
+      if (stopped) {
+        return;
+      }
+      let shouldRefetchMessages = false;
+      for (const result of results) {
+        if (result.status !== "fulfilled" || !result.value) {
+          continue;
+        }
+        const chat = result.value;
+        const messages = chat.messages
+          .filter((message) => message.role !== "system")
+          .map(agenticPanelMessageFromChatRow);
+        if (messages.length > 0) {
+          setAgenticMessages((prev) => [
+            ...prev.filter((message) => message.chatId !== chat.chat_id),
+            ...messages,
+          ]);
+        }
+        if (chat.chat_status !== "in_progress") {
+          shouldRefetchMessages = true;
+        }
+      }
+      if (shouldRefetchMessages) {
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "storyteller",
+            targetKind === "lore" ? "lore-chat-messages" : "story-chat-messages",
+          ],
+        });
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 3000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    inProgressAgenticChatIdsKey,
+    projectPublicId,
+    queryClient,
+    session?.encrypt_key,
+    targetKind,
+    targetPublicId,
+  ]);
 
   useLayoutEffect(() => {
     const node = messagesContainerRef.current;
@@ -1457,14 +1550,8 @@ export function StorytellerAgenticPanel({
           if (!response) {
             return;
           }
-          const assistantSortKey = nextSessionSortKey();
-          setAgenticMessages((prev) => [
-            // 補上這則剛送出的 user 訊息的 chatId／chatStatus——後端無論成功
-            // 或失敗都會帶 chat_id 回來（見 AgenticQueryOutput.ChatID 的說明），
-            // 讓這個還在畫面上的樂觀泡泡也能顯示「重送」，不用等重新整理頁面；
-            // 同時這個 chatId 也是下面 combinedMessages 去重的依據，避免背景
-            // 重新整理歷史時，同一輪對話因為 pending 訊息被重新抓到而顯示兩次。
-            ...prev.map((message) =>
+          setAgenticMessages((prev) => {
+            const updated = prev.map((message) =>
               message.kind === "agentic" && message.id === userMessageId
                 ? {
                     ...message,
@@ -1475,24 +1562,31 @@ export function StorytellerAgenticPanel({
                     chatStatus: response.chat_status,
                   }
                 : message,
-            ),
-            {
-              kind: "agentic",
-              sortKey: assistantSortKey,
-              id: response.assistant_message_id
-                ? String(response.assistant_message_id)
-                : `agentic-assistant-${assistantSortKey}`,
-              role: "assistant",
-              content: response.result,
-              steps: response.steps,
-              proposals: response.proposals,
-              usage: response.usage,
-              warning: response.warning,
-              agentName: targetAgentName,
-              chatId: response.chat_id,
-              chatStatus: response.chat_status,
-            },
-          ]);
+            );
+            if (response.chat_status !== "completed") {
+              return updated;
+            }
+            const assistantSortKey = nextSessionSortKey();
+            return [
+              ...updated,
+              {
+                kind: "agentic",
+                sortKey: assistantSortKey,
+                id: response.assistant_message_id
+                  ? String(response.assistant_message_id)
+                  : `agentic-assistant-${assistantSortKey}`,
+                role: "assistant",
+                content: response.result,
+                steps: response.steps,
+                proposals: response.proposals,
+                usage: response.usage,
+                warning: response.warning,
+                agentName: targetAgentName,
+                chatId: response.chat_id,
+                chatStatus: response.chat_status,
+              },
+            ];
+          });
         },
         onError: (err) => {
           const errorSortKey = nextSessionSortKey();

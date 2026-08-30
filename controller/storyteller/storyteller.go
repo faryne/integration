@@ -498,6 +498,9 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if errors.Is(err, storyteller.ErrAgenticQueryServerDraining) {
+			return output.Maintenance("伺服器正在重啟，請稍後再試。", nil)
+		}
 		// result 非 nil 代表這輪對話至少已經落地一筆 chat（見 AgenticQueryOutput.ChatID
 		// 的說明）——不管是撞到步數上限（ErrAgentLoopMaxStepsExceeded，result 帶
 		// 累積到中止那刻的 Steps/Usage）還是一開始呼叫 provider 就失敗（result 只
@@ -519,6 +522,21 @@ func RunStoryAgenticQuery(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(result.ToResponse())
+}
+
+func StoryAgenticChat(ctx fiber.Ctx) error {
+	chatID, err := parseUint(ctx.Params("chat"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().StoryAgenticChat(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), chatID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agentic chat not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(result)
 }
 
 // RunLoreAgenticQuery 是 RunStoryAgenticQuery 的設定集版本，見
@@ -549,6 +567,9 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if errors.Is(err, storyteller.ErrAgenticQueryServerDraining) {
+			return output.Maintenance("伺服器正在重啟，請稍後再試。", nil)
+		}
 		if result != nil {
 			response := result.ToResponse()
 			response.Warning = err.Error()
@@ -563,6 +584,21 @@ func RunLoreAgenticQuery(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	return output.Success(result.ToResponse())
+}
+
+func LoreAgenticChat(ctx fiber.Ctx) error {
+	chatID, err := parseUint(ctx.Params("chat"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().LoreAgenticChat(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), chatID)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller agentic chat not found"))
+		}
+		return output.DBError(err)
+	}
+	return output.Success(result)
 }
 
 // ResendStoryAgenticQuery 重新對一則卡在 pending（沒拿到回覆，例如 provider
@@ -597,6 +633,9 @@ func ResendStoryAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if errors.Is(err, storyteller.ErrAgenticQueryServerDraining) {
+			return output.Maintenance("伺服器正在重啟，請稍後再試。", nil)
+		}
 		if result != nil {
 			response := result.ToResponse()
 			response.Warning = err.Error()
@@ -641,6 +680,9 @@ func ResendLoreAgenticQuery(ctx fiber.Ctx) error {
 		},
 	)
 	if err != nil {
+		if errors.Is(err, storyteller.ErrAgenticQueryServerDraining) {
+			return output.Maintenance("伺服器正在重啟，請稍後再試。", nil)
+		}
 		if result != nil {
 			response := result.ToResponse()
 			response.Warning = err.Error()

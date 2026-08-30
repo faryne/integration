@@ -2195,6 +2195,14 @@ func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicI
 	return s.repo.StoryChatMessages(story.ID, (page-1)*pageSize, pageSize)
 }
 
+func (s *Service) StoryAgenticChat(userID uint64, projectPublicID, storyPublicID string, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryAgenticChat(story.ID, chatID)
+}
+
 func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID string, page, pageSize int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
 	if page < 1 {
 		page = 1
@@ -2210,6 +2218,14 @@ func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID 
 		return nil, 0, err
 	}
 	return s.repo.LoreChatMessages(lore.ID, (page-1)*pageSize, pageSize)
+}
+
+func (s *Service) LoreAgenticChat(userID uint64, projectPublicID, lorePublicID string, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.LoreAgenticChat(lore.ID, chatID)
 }
 
 func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.FavoriteAuthorOutput, error) {

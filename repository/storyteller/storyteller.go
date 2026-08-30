@@ -1236,6 +1236,50 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	return rows, total, err
 }
 
+func (r *Repository) StoryAgenticChat(storyID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	return r.agenticChatMessages("chats.story_id = ? AND chats.id = ?", storyID, chatID)
+}
+
+func (r *Repository) LoreAgenticChat(loreID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	return r.agenticChatMessages("chats.lore_id = ? AND chats.id = ?", loreID, chatID)
+}
+
+func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*storytellerModel.AgenticChatResponse, error) {
+	rows := make([]storytellerModel.StoryChatMessageOutput, 0)
+	err := r.db.
+		Table("storyteller_story_chat_messages AS messages").
+		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
+		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
+		Where(where, args...).
+		Where("messages.deleted_at IS NULL").
+		Select(`messages.id,
+			messages.chat_id,
+			` + agenticChatOutputStatusSQL + `,
+			messages.role,
+			messages.content,
+			messages.metadata,
+			messages.created_at,
+			messages.updated_at,
+			COALESCE(messages.agent_id, 0) AS agent_id,
+			COALESCE(agents.name, '') AS agent_name`).
+		Order("messages.created_at ASC, messages.id ASC").
+		Find(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	if err := r.attachAgentProposals(rows); err != nil {
+		return nil, err
+	}
+	return &storytellerModel.AgenticChatResponse{
+		ChatID:     rows[0].ChatID,
+		ChatStatus: rows[0].ChatStatus,
+		Messages:   rows,
+	}, nil
+}
+
 // RecentStoryAgenticMessages 撈這個 story 底下最近幾則 agentic_query 模式的訊息
 // （由舊到新排列，方便直接接在這輪呼叫的最前面當對話歷史）。只挑 agentic_query
 // 模式，跳過 /rewrite 等 skill 模式的訊息——兩種語境的口吻差很多，混在一起容易讓

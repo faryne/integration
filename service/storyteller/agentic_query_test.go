@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/service/background"
 	"github.com/stretchr/testify/require"
 )
 
@@ -181,6 +183,82 @@ func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
 	output, err := runStoryAgenticQuery(context.Background(), &fakeAgentRunRepository{}, nil, nil, nil, 20, "project-public-id", "story-public-id", 40, "   ", AgenticQueryOptions{})
 	require.Nil(t, output)
 	require.ErrorIs(t, err, errAgenticQueryEmptyPrompt)
+}
+
+func TestEnqueueStoryAgenticQueryReturnsInProgressAndBackgroundPersistsResult(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id", Title: "測試故事"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+	}
+	started := make(chan struct{})
+	release := make(chan struct{})
+	provider := &contextCheckingAIProvider{
+		onGenerate: func(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+			close(started)
+			<-release
+			require.NoError(t, ctx.Err())
+			return &AIProviderResponse{Result: "背景回答", Usage: &AIProviderUsage{TotalTokens: 3}}, nil
+		},
+	}
+	tracker := background.NewTracker()
+	reqCtx, cancelRequest := context.WithCancel(context.Background())
+	output, err := enqueueStoryAgenticQuery(reqCtx, repo, tracker, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return provider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, "問題", AgenticQueryOptions{})
+
+	require.NoError(t, err)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	require.Len(t, repo.messages, 1)
+	cancelRequest()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("background provider call did not start")
+	}
+	close(release)
+	tracker.BeginDrain()
+	tracker.Wait()
+
+	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
+	require.Len(t, repo.messages, 2)
+	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
+	require.Equal(t, "背景回答", repo.messages[1].Content)
+	require.NotNil(t, repo.usage)
+	require.Equal(t, 3, repo.usage.TotalTokens)
+}
+
+func TestEnqueueStoryAgenticQueryRejectsWhenBackgroundWorkIsDraining(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+	}
+	tracker := background.NewTracker()
+	tracker.BeginDrain()
+	output, err := enqueueStoryAgenticQuery(context.Background(), repo, tracker, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return &fakeSequentialAIProvider{}, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, "問題", AgenticQueryOptions{})
+
+	require.Nil(t, output)
+	require.ErrorIs(t, err, ErrAgenticQueryServerDraining)
+	require.Nil(t, repo.chat)
 }
 
 func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T) {
@@ -418,4 +496,12 @@ type fakeSequentialAIProvider struct {
 
 func (p *fakeSequentialAIProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
 	return p.onGenerate(req)
+}
+
+type contextCheckingAIProvider struct {
+	onGenerate func(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error)
+}
+
+func (p *contextCheckingAIProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
+	return p.onGenerate(ctx, req)
 }
