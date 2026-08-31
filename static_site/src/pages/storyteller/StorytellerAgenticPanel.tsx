@@ -151,7 +151,7 @@ function parseSkillSlashCommand(
 function matchAgentNameCommand(
   value: string,
   agents: StorytellerAgentPanelAgent[],
-): { agentId: string; instruction: string } | null {
+): { agentId: string; nameLength: number; instruction: string } | null {
   if (!value.startsWith("/")) {
     return null;
   }
@@ -174,7 +174,28 @@ function matchAgentNameCommand(
       };
     }
   }
-  return best ? { agentId: best.agentId, instruction: best.instruction } : null;
+  return best;
+}
+
+// 輸入框高亮疊層要跟 handleSend() 實際送出時的判斷邏輯一致（Agent 名稱優先、
+// skill 指令次之），只有真的會被辨識成指令的前綴才上色，避免 /fuck 這種打錯
+// 或亂打的字也被誤標成「這是合法指令」。
+function recognizedSlashCommandPrefixLength(
+  value: string,
+  agents: StorytellerAgentPanelAgent[],
+): number {
+  if (!value.startsWith("/")) {
+    return 0;
+  }
+  const agentMatch = matchAgentNameCommand(value, agents);
+  if (agentMatch) {
+    return 1 + agentMatch.nameLength;
+  }
+  const skillMatch = value.match(/^\/(\S+)/);
+  if (skillMatch && SKILL_SLASH_COMMANDS[skillMatch[1].toLowerCase()]) {
+    return skillMatch[0].length;
+  }
+  return 0;
 }
 
 const skillMessagesPerPage = 10;
@@ -797,6 +818,16 @@ export function StorytellerAgenticPanel({
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
+  // IME 組字階段的候選底線是瀏覽器畫在「這顆真正的 textarea」上的原生效果，
+  // 文字透明會連底線一起看不見。組字中先讓真正文字變回可見、把 overlay 藏起來
+  // （避免兩層文字疊字），放開選字後再切回預設——組字視覺完全交給瀏覽器原生
+  // 處理，不用自己刻一套。
+  const [isComposingPrompt, setIsComposingPrompt] = useState(false);
+  const [promptSelection, setPromptSelection] = useState({
+    start: 0,
+    end: 0,
+  });
   // 金鑰／模型是使用者跨 project 的操作習慣，不屬於任何故事內容，記在
   // localStorage（不動後端）；重新整理後先拿上次選的當候選，實際有沒有效
   // 還是交給下面既有的 fallback effect 驗證（key 被刪除、model 不在目前
@@ -1393,8 +1424,16 @@ export function StorytellerAgenticPanel({
         : totalPayloadLength > skillTotalPayloadMaxCharacters
           ? `單次 Agent payload 最多 ${skillTotalPayloadMaxCharacters.toLocaleString()} 字。`
           : "";
-  const storyMentionQuery = currentStoryMentionQuery(prompt);
-  const loreMentionQuery = currentLoreMentionQuery(prompt);
+  const storyMentionQuery = currentStoryMentionQuery(
+    prompt,
+    promptSelection.start,
+    promptSelection.end,
+  );
+  const loreMentionQuery = currentLoreMentionQuery(
+    prompt,
+    promptSelection.start,
+    promptSelection.end,
+  );
   const storyMentionOptions =
     storyMentionQuery === null
       ? []
@@ -1677,6 +1716,47 @@ export function StorytellerAgenticPanel({
       const existing = parseSkillSlashCommand(current);
       const rest = existing ? existing.instruction : current;
       return `/${word} ${rest}`;
+    });
+  }
+
+  function syncPromptSelection(
+    target: HTMLInputElement | HTMLTextAreaElement | null =
+      promptTextareaRef.current,
+  ) {
+    if (!target) {
+      return;
+    }
+    if (target.selectionStart === null || target.selectionEnd === null) {
+      return;
+    }
+    const next = {
+      start: target.selectionStart,
+      end: target.selectionEnd,
+    };
+    setPromptSelection((current) =>
+      current.start === next.start && current.end === next.end ? current : next,
+    );
+  }
+
+  function insertPromptMention(kind: "story" | "lore", title: string) {
+    const target = promptTextareaRef.current;
+    const selectionStart = target?.selectionStart ?? promptSelection.start;
+    const selectionEnd = target?.selectionEnd ?? promptSelection.end;
+    const insertion =
+      kind === "lore"
+        ? insertLoreMention(prompt, selectionStart, selectionEnd, title)
+        : insertStoryMention(prompt, selectionStart, selectionEnd, title);
+    setPrompt(insertion.value);
+    setPromptSelection({
+      start: insertion.selectionStart,
+      end: insertion.selectionEnd,
+    });
+    window.requestAnimationFrame(() => {
+      target?.focus();
+      target?.setSelectionRange(
+        insertion.selectionStart,
+        insertion.selectionEnd,
+      );
     });
   }
 
@@ -2016,7 +2096,24 @@ export function StorytellerAgenticPanel({
               inputRef={promptTextareaRef}
               label="輸入需求"
               value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
+              onChange={(event) => {
+                setPrompt(event.target.value);
+                syncPromptSelection(event.target);
+              }}
+              onSelect={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onKeyUp={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onMouseUp={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onCompositionStart={() => setIsComposingPrompt(true)}
+              onCompositionEnd={(event) => {
+                setIsComposingPrompt(false);
+                syncPromptSelection(event.target as HTMLTextAreaElement);
+              }}
               placeholder="例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
               error={Boolean(payloadError)}
               helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
@@ -2026,7 +2123,7 @@ export function StorytellerAgenticPanel({
                   // typography: "body2"），輸入框預設用 TextField 的 1rem 明顯
                   // 比對話內容大一號，改小一點也能塞進更多字。
                   fontSize: "0.875rem",
-                  color: "transparent",
+                  color: isComposingPrompt ? "text.primary" : "transparent",
                   caretColor: (theme) => theme.palette.text.primary,
                   "&::placeholder": {
                     color: "text.secondary",
@@ -2035,10 +2132,16 @@ export function StorytellerAgenticPanel({
                 },
               }}
             />
-            <StorytellerPromptHighlightOverlay
-              text={prompt}
-              textareaRef={promptTextareaRef}
-            />
+            {!isComposingPrompt && (
+              <StorytellerPromptHighlightOverlay
+                text={prompt}
+                textareaRef={promptTextareaRef}
+                slashCommandHighlightLength={recognizedSlashCommandPrefixLength(
+                  prompt,
+                  agents,
+                )}
+              />
+            )}
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
@@ -2184,11 +2287,8 @@ export function StorytellerAgenticPanel({
                   key={item.id}
                   size="small"
                   variant="outlined"
-                  onClick={() =>
-                    setPrompt((current) =>
-                      insertStoryMention(current, item.title),
-                    )
-                  }
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertPromptMention("story", item.title)}
                 >
                   {item.title}
                 </Button>
@@ -2202,11 +2302,8 @@ export function StorytellerAgenticPanel({
                   key={item.id}
                   size="small"
                   variant="outlined"
-                  onClick={() =>
-                    setPrompt((current) =>
-                      insertLoreMention(current, item.title),
-                    )
-                  }
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertPromptMention("lore", item.title)}
                 >
                   設定集：{item.title}
                 </Button>

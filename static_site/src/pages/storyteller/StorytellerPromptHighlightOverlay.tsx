@@ -27,9 +27,16 @@ const MIRRORED_TEXT_STYLE_PROPERTIES = [
 export function StorytellerPromptHighlightOverlay({
   text,
   textareaRef,
+  slashCommandHighlightLength = 0,
 }: {
   text: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
+  /**
+   * 開頭幾個字元要當「slash command」上色，由呼叫端算好傳進來（呼叫端才知道
+   * `/rewrite` 這種 skill 指令或 `/Agent 名稱` 是不是真的存在——這層只負責畫，
+   * 不驗證語意，不然任何 `/亂打` 都會被誤標成合法指令）。
+   */
+  slashCommandHighlightLength?: number;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +85,17 @@ export function StorytellerPromptHighlightOverlay({
     };
   }, [text, textareaRef]);
 
-  const segments = segmentStorytellerAgentPromptForHighlight(text);
+  const slashLength = Math.max(
+    0,
+    Math.min(slashCommandHighlightLength, text.length),
+  );
+  const segments =
+    slashLength > 0
+      ? [
+          { text: text.slice(0, slashLength), kind: "slash-command" as const },
+          ...segmentStorytellerAgentPromptForHighlight(text.slice(slashLength)),
+        ]
+      : segmentStorytellerAgentPromptForHighlight(text);
 
   return (
     <Box
@@ -102,7 +119,13 @@ export function StorytellerPromptHighlightOverlay({
           <Box
             key={index}
             component="span"
-            sx={{ color: "primary.main", fontWeight: 700 }}
+            sx={{
+              color:
+                segment.kind === "slash-command"
+                  ? "secondary.main"
+                  : "primary.main",
+              fontWeight: segment.kind === "slash-command" ? 800 : 700,
+            }}
           >
             {segment.text}
           </Box>

@@ -47,10 +47,11 @@ export function formatStorytellerAgentReferenceToken(
 export interface StorytellerAgentPromptSegment {
   text: string;
   // "current" 是 @thisStory／@thisLore；"named" 是 @story:[...]／@lore:[...]。
-  // 兩者純粹是語法辨識，不代表當下真的解得出對應的故事/設定集——輸入框疊層
-  // highlight 只是視覺提示「這段被認得是引用語法」，語意上有效與否留給送出
-  // 後端去判斷。
-  kind: "current" | "named" | null;
+  // "slash-command" 是輸入框最開頭的 /rewrite 或 /AgentName 這類整則訊息模式前綴。
+  // 這些 segment 純粹是語法辨識，不代表當下真的解得出對應的故事/設定集或指令——
+  // 輸入框疊層 highlight 只是視覺提示「這段被認得是語法」，語意上有效與否留給
+  // 送出後端去判斷。
+  kind: "current" | "named" | "slash-command" | null;
 }
 
 export interface StorytellerAgentKnownReferenceTitles {
