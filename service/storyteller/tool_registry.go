@@ -52,7 +52,7 @@ func (r *ToolRegistry) All() []ToolSpec {
 
 // StorytellerToolRegistry 建立 MCP server 與 agent runner 共用的 storyteller 工具清單。
 func StorytellerToolRegistry() *ToolRegistry {
-	specsByName := make(map[string]ToolSpec, 35)
+	specsByName := make(map[string]ToolSpec, 39)
 	for _, specs := range [][]ToolSpec{
 		storytellerProjectToolSpecs(),
 		storytellerStoryToolSpecs(),
@@ -73,6 +73,8 @@ func StorytellerToolRegistry() *ToolRegistry {
 		"storyteller_list_lores",
 		"storyteller_get_story",
 		"storyteller_upsert_story",
+		"storyteller_patch_story",
+		"storyteller_search_replace_story",
 		"storyteller_revert_story",
 		"storyteller_move_story",
 		"storyteller_presign_image_upload",
@@ -100,6 +102,8 @@ func StorytellerToolRegistry() *ToolRegistry {
 		"storyteller_move_lore",
 		"storyteller_get_lore",
 		"storyteller_upsert_lore",
+		"storyteller_patch_lore",
+		"storyteller_search_replace_lore",
 		"storyteller_revert_lore",
 		"storyteller_delete_lore",
 	} {
@@ -147,6 +151,13 @@ func stringSchema(description string) map[string]interface{} {
 func integerSchema(description string) map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "integer",
+		"description": description,
+	}
+}
+
+func booleanSchema(description string) map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "boolean",
 		"description": description,
 	}
 }
