@@ -28,9 +28,6 @@ func encryptedTestProviderAPIKey(t *testing.T, id, userID uint64, provider story
 }
 
 func TestValidateAgentRunRequest(t *testing.T) {
-	start := 2
-	end := 5
-
 	tests := []struct {
 		name    string
 		input   storytellerModel.AgentRunRequest
@@ -42,8 +39,6 @@ func TestValidateAgentRunRequest(t *testing.T) {
 				Mode:            storytellerModel.AgentRunModeRewriteSelection,
 				Instruction:     "rewrite with more suspense",
 				SelectedContent: "old",
-				SelectionStart:  &start,
-				SelectionEnd:    &end,
 			},
 		},
 		{
@@ -59,14 +54,12 @@ func TestValidateAgentRunRequest(t *testing.T) {
 			input: storytellerModel.AgentRunRequest{
 				Mode:            storytellerModel.AgentRunModeRewriteSelection,
 				SelectedContent: "old",
-				SelectionStart:  &start,
-				SelectionEnd:    &end,
 			},
 		},
 		{
 			name: "chapter mode without instruction",
 			input: storytellerModel.AgentRunRequest{
-				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				Mode:        storytellerModel.AgentRunModeContinueChapter,
 				FullContent: "chapter",
 			},
 		},
@@ -81,7 +74,7 @@ func TestValidateAgentRunRequest(t *testing.T) {
 		{
 			name: "instruction too large",
 			input: storytellerModel.AgentRunRequest{
-				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				Mode:        storytellerModel.AgentRunModeContinueChapter,
 				Instruction: strings.Repeat("a", agentRunInstructionMaxRunes+1),
 			},
 			wantErr: "instruction must be 4000 characters or less",
@@ -89,7 +82,7 @@ func TestValidateAgentRunRequest(t *testing.T) {
 		{
 			name: "full content too large",
 			input: storytellerModel.AgentRunRequest{
-				Mode:        storytellerModel.AgentRunModeCustomChapter,
+				Mode:        storytellerModel.AgentRunModeContinueChapter,
 				Instruction: "process",
 				FullContent: strings.Repeat("a", agentRunFullContentMaxRunes+1),
 			},
@@ -101,8 +94,6 @@ func TestValidateAgentRunRequest(t *testing.T) {
 				Mode:            storytellerModel.AgentRunModeCustomSelection,
 				Instruction:     "process",
 				SelectedContent: strings.Repeat("a", agentRunSelectedContentMaxRunes+1),
-				SelectionStart:  &start,
-				SelectionEnd:    &end,
 			},
 			wantErr: "selected_content must be 20000 characters or less",
 		},
@@ -113,47 +104,6 @@ func TestValidateAgentRunRequest(t *testing.T) {
 				Instruction: "process without selecting text",
 				FullContent: "full chapter",
 			},
-		},
-		{
-			name: "selection range without content",
-			input: storytellerModel.AgentRunRequest{
-				Mode:           storytellerModel.AgentRunModeCustomSelection,
-				Instruction:    "process selection",
-				SelectionStart: &start,
-				SelectionEnd:   &end,
-			},
-			wantErr: "selected_content is required when selection_start/selection_end is provided",
-		},
-		{
-			name: "selection missing start",
-			input: storytellerModel.AgentRunRequest{
-				Mode:            storytellerModel.AgentRunModeCustomSelection,
-				Instruction:     "process selection",
-				SelectedContent: "old",
-				SelectionEnd:    &end,
-			},
-			wantErr: "selection_start is required",
-		},
-		{
-			name: "selection missing end",
-			input: storytellerModel.AgentRunRequest{
-				Mode:            storytellerModel.AgentRunModeCustomSelection,
-				Instruction:     "process selection",
-				SelectedContent: "old",
-				SelectionStart:  &start,
-			},
-			wantErr: "selection_end is required",
-		},
-		{
-			name: "selection end before start",
-			input: storytellerModel.AgentRunRequest{
-				Mode:            storytellerModel.AgentRunModeCustomSelection,
-				Instruction:     "process selection",
-				SelectedContent: "old",
-				SelectionStart:  &end,
-				SelectionEnd:    &start,
-			},
-			wantErr: "selection_end must be greater than selection_start",
 		},
 	}
 
@@ -170,8 +120,6 @@ func TestValidateAgentRunRequest(t *testing.T) {
 }
 
 func TestRunAgent(t *testing.T) {
-	start := 0
-	end := 5
 	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
@@ -202,8 +150,6 @@ func TestRunAgent(t *testing.T) {
 		Instruction:     "rewrite",
 		FullContent:     "full chapter",
 		SelectedContent: "scene",
-		SelectionStart:  &start,
-		SelectionEnd:    &end,
 	})
 
 	require.NoError(t, err)
@@ -274,7 +220,7 @@ func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
 		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
 		return provider, nil
 	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
-		Mode:             storytellerModel.AgentRunModeCustomChapter,
+		Mode:             storytellerModel.AgentRunModeContinueChapter,
 		Instruction:      "rewrite with claude instead",
 		FullContent:      "full chapter",
 		ProviderAPIKeyID: &overrideKeyID,
@@ -295,7 +241,7 @@ func TestRunAgentStoryNotFound(t *testing.T) {
 	}
 
 	output, err := runAgent(context.Background(), repo, nil, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
 	})
@@ -312,7 +258,7 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 	}
 
 	output, err := runAgent(context.Background(), repo, nil, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
 	})
@@ -340,7 +286,7 @@ func TestRunAgentProviderError(t *testing.T) {
 	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return &fakeAIProvider{err: providerErr}, nil
 	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
 	})

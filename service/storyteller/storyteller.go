@@ -3152,9 +3152,8 @@ func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
 	case storytellerModel.AgentRunModeRewriteSelection,
 		storytellerModel.AgentRunModeExpandSelection,
 		storytellerModel.AgentRunModeTranslateSelection,
-		storytellerModel.AgentRunModeCustomSelection:
-		return validateSelectionAgentRunRequest(input)
-	case storytellerModel.AgentRunModeContinueChapter, storytellerModel.AgentRunModeCustomChapter:
+		storytellerModel.AgentRunModeCustomSelection,
+		storytellerModel.AgentRunModeContinueChapter:
 		return nil
 	default:
 		return errors.New("invalid mode")
@@ -3291,9 +3290,6 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 
 func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {
 	value := fmt.Sprintf(`{"mode":%q`, input.Mode)
-	if input.SelectionStart != nil && input.SelectionEnd != nil {
-		value += fmt.Sprintf(`,"selection_start":%d,"selection_end":%d`, *input.SelectionStart, *input.SelectionEnd)
-	}
 	if input.SelectedContent != "" {
 		value += fmt.Sprintf(`,"selected_content_length":%d`, len([]rune(input.SelectedContent)))
 	}
@@ -3341,37 +3337,9 @@ func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
 		return "Only output new content that can continue after the current chapter ending. Do not repeat the full chapter."
 	case storytellerModel.AgentRunModeCustomSelection:
 		return "Follow the user instruction. If analysis is not requested, output text that can be directly applied to the story."
-	case storytellerModel.AgentRunModeCustomChapter:
-		return "Follow the user instruction. If rewriting or continuing, do not repeat the entire chapter."
 	default:
 		return "Follow the user instruction."
 	}
-}
-
-// validateSelectionAgentRunRequest 允許選取欄位整組留空（沒選字時退回整篇內容當上下文，
-// 見 buildAgentRunPrompts 的 hasSelection 判斷）；一旦帶了選取欄位，就要成組且合法。
-func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) error {
-	hasSelectedContent := strings.TrimSpace(input.SelectedContent) != ""
-	hasSelectionRange := input.SelectionStart != nil || input.SelectionEnd != nil
-	if !hasSelectedContent && !hasSelectionRange {
-		return nil
-	}
-	if !hasSelectedContent {
-		return errors.New("selected_content is required when selection_start/selection_end is provided")
-	}
-	if input.SelectionStart == nil {
-		return errors.New("selection_start is required")
-	}
-	if input.SelectionEnd == nil {
-		return errors.New("selection_end is required")
-	}
-	if *input.SelectionStart < 0 {
-		return errors.New("selection_start must be greater than or equal to 0")
-	}
-	if *input.SelectionEnd <= *input.SelectionStart {
-		return errors.New("selection_end must be greater than selection_start")
-	}
-	return nil
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {

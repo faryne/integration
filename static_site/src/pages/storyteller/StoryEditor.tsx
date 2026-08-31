@@ -80,6 +80,7 @@ import {
   StorytellerWysiwygEditor,
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type {
   StorytellerAgenticProposal,
@@ -257,15 +258,14 @@ export default function StorytellerStoryEditor({
   const { data: userProfile } = useStorytellerUserProfile();
   const agentRows: EditorAgent[] =
     apiAgents.length > 0
-      ? apiAgents
-          .map((agent) => ({
-            id: String(agent.id),
-            name: agent.name,
-            provider: agent.provider,
-            model: agent.model_name,
-            purpose: agent.default_prompt,
-            enabled: !agent.is_deleted,
-          }))
+      ? apiAgents.map((agent) => ({
+          id: String(agent.id),
+          name: agent.name,
+          provider: agent.provider,
+          model: agent.model_name,
+          purpose: agent.default_prompt,
+          enabled: !agent.is_deleted,
+        }))
       : storytellerAgents.map((agent) => ({
           id: agent.id,
           name: agent.name,
@@ -290,6 +290,8 @@ export default function StorytellerStoryEditor({
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     isHistoryRoute ? "history" : null,
   );
+  const [pendingSelectionAgentTrigger, setPendingSelectionAgentTrigger] =
+    useState<StorytellerSelectionAgentTrigger | null>(null);
   const [content, setContent] = useState(story?.content ?? "");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
@@ -722,7 +724,10 @@ export default function StorytellerStoryEditor({
   isSavingRef.current = saveStory.isPending;
   useEffect(() => {
     function handleSaveHotkey(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+      if (
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "s"
+      ) {
         return;
       }
       event.preventDefault();
@@ -838,6 +843,13 @@ export default function StorytellerStoryEditor({
     }
   }
 
+  function handleSelectionAgentTrigger(
+    trigger: StorytellerSelectionAgentTrigger,
+  ) {
+    setPendingSelectionAgentTrigger(trigger);
+    handleSidePanelChange("agentic");
+  }
+
   function insertAsset(asset: StorytellerAsset) {
     const inserted = editorRef.current?.insertAsset({
       publicId: asset.public_id,
@@ -905,10 +917,11 @@ export default function StorytellerStoryEditor({
   // 的），失敗時整個 reject，讓呼叫端（StorytellerAgenticProposalCard）知道不
   // 能把提案標成已套用。沒帶到的欄位（例如 AI 只改了內容、沒動標題）維持目前
   // 畫面上的值不動，不會被清空。
-  async function applyAgenticProposalToEditor(proposal: StorytellerAgenticProposal) {
+  async function applyAgenticProposalToEditor(
+    proposal: StorytellerAgenticProposal,
+  ) {
     const args = proposal.arguments;
-    const nextTitle =
-      typeof args.title === "string" ? args.title : storyTitle;
+    const nextTitle = typeof args.title === "string" ? args.title : storyTitle;
     const nextSummary =
       typeof args.summary === "string" ? args.summary : storySummary;
     const nextStatus =
@@ -1404,6 +1417,8 @@ export default function StorytellerStoryEditor({
             onChange={handleEditorContentChange}
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
+            hasSavedTarget={Boolean(apiStory?.public_id)}
+            onSelectionAgentTrigger={handleSelectionAgentTrigger}
             onRequestInsertAsset={
               apiProject ? () => setAssetPickerOpen(true) : undefined
             }
@@ -1500,6 +1515,10 @@ export default function StorytellerStoryEditor({
                   penName={userProfile?.pen_name}
                   onApplyText={applyAgentText}
                   onApplyProposalToEditor={applyAgenticProposalToEditor}
+                  pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+                  onSelectionAgentTriggerApplied={() =>
+                    setPendingSelectionAgentTrigger(null)
+                  }
                 />
               )}
             </Stack>

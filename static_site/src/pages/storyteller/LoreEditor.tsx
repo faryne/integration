@@ -71,6 +71,7 @@ import {
   StorytellerWysiwygEditor,
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
+import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type {
   StorytellerAgenticProposal,
@@ -181,6 +182,8 @@ export default function StorytellerLoreEditor({
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     null,
   );
+  const [pendingSelectionAgentTrigger, setPendingSelectionAgentTrigger] =
+    useState<StorytellerSelectionAgentTrigger | null>(null);
   const [title, setTitle] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
   const [content, setContent] = useState("");
@@ -514,7 +517,10 @@ export default function StorytellerLoreEditor({
   isSavingLoreRef.current = saveLore.isPending;
   useEffect(() => {
     function handleSaveHotkey(event: KeyboardEvent) {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") {
+      if (
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== "s"
+      ) {
         return;
       }
       event.preventDefault();
@@ -707,7 +713,11 @@ export default function StorytellerLoreEditor({
           },
           onError: (error) => {
             showSnack(errorMessage(error, "套用 AI 提案存檔失敗。"), "error");
-            reject(error instanceof Error ? error : new Error("套用 AI 提案存檔失敗。"));
+            reject(
+              error instanceof Error
+                ? error
+                : new Error("套用 AI 提案存檔失敗。"),
+            );
           },
         },
       );
@@ -764,6 +774,13 @@ export default function StorytellerLoreEditor({
     ) {
       setRightVersionId("");
     }
+  }
+
+  function handleSelectionAgentTrigger(
+    trigger: StorytellerSelectionAgentTrigger,
+  ) {
+    setPendingSelectionAgentTrigger(trigger);
+    setSidePanel("agentic");
   }
 
   // 版本比對改用 modal 顯示，不用再走獨立頁面——versions 本來就已經載入每個版本的
@@ -1107,6 +1124,8 @@ export default function StorytellerLoreEditor({
             onChange={handleEditorContentChange}
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
+            hasSavedTarget={Boolean(apiLore?.public_id)}
+            onSelectionAgentTrigger={handleSelectionAgentTrigger}
             onRequestInsertAsset={
               project ? () => setAssetPickerOpen(true) : undefined
             }
@@ -1210,6 +1229,10 @@ export default function StorytellerLoreEditor({
                   penName={userProfile?.pen_name}
                   onApplyText={applyAgentText}
                   onApplyProposalToEditor={applyAgenticProposalToEditor}
+                  pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+                  onSelectionAgentTriggerApplied={() =>
+                    setPendingSelectionAgentTrigger(null)
+                  }
                 />
               )}
             </Stack>

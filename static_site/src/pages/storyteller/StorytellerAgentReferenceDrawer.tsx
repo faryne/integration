@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { StorytellerAgentPanelAgent } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
+import { STORYTELLER_SKILL_USAGE_TEXT } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 
 interface StorytellerAgentReferenceDrawerProps {
   open: boolean;
@@ -22,11 +23,11 @@ interface StorytellerAgentReferenceDrawerProps {
 }
 
 const skillCommandRows = [
-  { token: "/rewrite", label: "改寫", usage: "把選取或整段內容改寫成不同寫法，語氣風格盡量維持不變。" },
-  { token: "/expand", label: "擴寫", usage: "延伸現有內容，補細節、加長篇幅，不改變原本走向。" },
-  { token: "/translate", label: "翻譯", usage: "翻譯成指定語言；沒指定語言時預設翻成繁體中文。" },
-  { token: "/continue", label: "續寫", usage: "接續目前內容繼續往下寫，不重複已有的部分。" },
-  { token: "/custom", label: "自訂指令", usage: "不套用固定模式，照你打的指令自由處理。" },
+  { token: "/rewrite", label: "改寫", usage: STORYTELLER_SKILL_USAGE_TEXT.rewrite },
+  { token: "/expand", label: "擴寫", usage: STORYTELLER_SKILL_USAGE_TEXT.expand },
+  { token: "/translate", label: "翻譯", usage: STORYTELLER_SKILL_USAGE_TEXT.translate },
+  { token: "/continue", label: "續寫", usage: STORYTELLER_SKILL_USAGE_TEXT.continue },
+  { token: "/custom", label: "自訂指令", usage: STORYTELLER_SKILL_USAGE_TEXT.custom },
 ];
 
 const agentPromptExcerptMaxLength = 60;

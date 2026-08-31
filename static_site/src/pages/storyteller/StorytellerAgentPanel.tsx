@@ -58,7 +58,6 @@ const AGENT_RUN_MODE_LABELS: Record<StorytellerAgentRunMode, string> = {
   translate_selection: "/translate 翻譯",
   continue_chapter: "/continue 續寫",
   custom_selection: "/custom 自訂指令",
-  custom_chapter: "/custom 自訂指令",
 };
 
 export function agentRunModeLabel(mode?: StorytellerAgentRunMode | string) {

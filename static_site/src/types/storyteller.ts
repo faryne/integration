@@ -388,16 +388,13 @@ export type StorytellerAgentRunMode =
   | "expand_selection"
   | "translate_selection"
   | "continue_chapter"
-  | "custom_selection"
-  | "custom_chapter";
+  | "custom_selection";
 
 export interface StorytellerAgentRunRequest {
   mode: StorytellerAgentRunMode;
   instruction: string;
   full_content: string;
   selected_content: string;
-  selection_start?: number;
-  selection_end?: number;
   provider_apikey_id?: number;
   model_name?: string;
   // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand

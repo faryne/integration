@@ -80,6 +80,10 @@ import {
   insertLoreMention,
   insertStoryMention,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
+import {
+  truncateStorytellerSelectionPreview,
+  type StorytellerSelectionAgentTrigger,
+} from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
@@ -116,7 +120,15 @@ const SKILL_SLASH_COMMANDS: Record<string, StorytellerAgentRunMode> = {
   expand: "expand_selection",
   translate: "translate_selection",
   continue: "continue_chapter",
-  custom: "custom_chapter",
+  custom: "custom_selection",
+};
+const SELECTION_AGENT_SLASH_WORDS: Partial<
+  Record<StorytellerAgentRunMode, string>
+> = {
+  rewrite_selection: "rewrite",
+  expand_selection: "expand",
+  translate_selection: "translate",
+  custom_selection: "custom",
 };
 // 給上方指令／人設選單顯示用的中文說明，跟 SKILL_SLASH_COMMANDS 的 key 一一對應。
 const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
@@ -779,6 +791,8 @@ export function StorytellerAgenticPanel({
   onApplyText,
   onApplyProposalToEditor,
   onStoryChanged,
+  pendingSelectionAgentTrigger,
+  onSelectionAgentTriggerApplied,
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
   // 這個軸線——決定要打哪一組 API（.../stories/:id/... 還是 .../lores/:id/...）、
@@ -804,6 +818,8 @@ export function StorytellerAgenticPanel({
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
   onStoryChanged?: () => void;
+  pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
+  onSelectionAgentTriggerApplied?: () => void;
 }) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -869,6 +885,9 @@ export function StorytellerAgenticPanel({
   );
   const [replyTarget, setReplyTarget] =
     useState<StorytellerAgentPanelMessage | null>(null);
+  const [selectionAgentTarget, setSelectionAgentTarget] = useState<{
+    selectedText: string;
+  } | null>(null);
   const [optimisticSkillMessage, setOptimisticSkillMessage] =
     useState<PanelMessage | null>(null);
   const [skillResult, setSkillResult] = useState<{
@@ -935,6 +954,33 @@ export function StorytellerAgenticPanel({
     effectiveProviderModelInfo?.allow_custom_model,
   );
   const [customModelInput, setCustomModelInput] = useState("");
+
+  useEffect(() => {
+    if (!pendingSelectionAgentTrigger) {
+      return;
+    }
+    const word =
+      SELECTION_AGENT_SLASH_WORDS[pendingSelectionAgentTrigger.mode] ??
+      "custom";
+    const instruction = pendingSelectionAgentTrigger.instruction.trim();
+    const nextPrompt = `/${word}${instruction ? ` ${instruction}` : ""}`;
+    setSelectionAgentTarget({
+      selectedText: pendingSelectionAgentTrigger.selectedText,
+    });
+    setPrompt(nextPrompt);
+    setPromptSelection({
+      start: nextPrompt.length,
+      end: nextPrompt.length,
+    });
+    onSelectionAgentTriggerApplied?.();
+    window.requestAnimationFrame(() => {
+      promptTextareaRef.current?.focus();
+      promptTextareaRef.current?.setSelectionRange(
+        nextPrompt.length,
+        nextPrompt.length,
+      );
+    });
+  }, [pendingSelectionAgentTrigger, onSelectionAgentTriggerApplied]);
 
   // 跟金鑰同理，不存在「Agent 自己的預設模型」——固定清單的 provider 沒選過模型時
   // 自動挑清單第一個；換了不同 provider 的 key、先前選的模型不在新清單裡時，同樣
@@ -1344,7 +1390,9 @@ export function StorytellerAgenticPanel({
         await queryClient.invalidateQueries({
           queryKey: [
             "storyteller",
-            targetKind === "lore" ? "lore-chat-messages" : "story-chat-messages",
+            targetKind === "lore"
+              ? "lore-chat-messages"
+              : "story-chat-messages",
           ],
         });
       }
@@ -1467,6 +1515,7 @@ export function StorytellerAgenticPanel({
     !pending;
 
   function runSkill(mode: StorytellerAgentRunMode, instructionRaw: string) {
+    const selectedContent = selectionAgentTarget?.selectedText ?? "";
     const instruction = composeStorytellerAgentInstructionWithReply(
       instructionRaw.trim(),
       replyReferenceTarget,
@@ -1483,6 +1532,7 @@ export function StorytellerAgenticPanel({
     });
     setPrompt("");
     setReplyTarget(null);
+    setSelectionAgentTarget(null);
 
     runSkillMutation.mutate(
       {
@@ -1491,7 +1541,7 @@ export function StorytellerAgenticPanel({
           mode,
           instruction,
           full_content: referenceContent,
-          selected_content: "",
+          selected_content: selectedContent,
           ignore_agent_persona: true,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
@@ -1568,6 +1618,7 @@ export function StorytellerAgenticPanel({
     // 上一次回覆的摘要，跟這次送出的內容完全對不上。
     if (!options?.preserveComposer) {
       setReplyTarget(null);
+      setSelectionAgentTarget(null);
     }
 
     runAgenticQuery.mutate(
@@ -1720,8 +1771,8 @@ export function StorytellerAgenticPanel({
   }
 
   function syncPromptSelection(
-    target: HTMLInputElement | HTMLTextAreaElement | null =
-      promptTextareaRef.current,
+    target:
+      HTMLInputElement | HTMLTextAreaElement | null = promptTextareaRef.current,
   ) {
     if (!target) {
       return;
@@ -2083,6 +2134,44 @@ export function StorytellerAgenticPanel({
                 </Typography>
               </Box>
               <Button size="small" onClick={() => setReplyTarget(null)}>
+                取消
+              </Button>
+            </Stack>
+          )}
+          {selectionAgentTarget && (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                pl: 1.25,
+                pr: 0.5,
+                py: 0.5,
+                borderLeft: "3px solid",
+                borderColor: "primary.main",
+                bgcolor: "action.hover",
+                borderRadius: 0.5,
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  選取文字:{" "}
+                  {truncateStorytellerSelectionPreview(
+                    selectionAgentTarget.selectedText,
+                  )}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => setSelectionAgentTarget(null)}
+              >
                 取消
               </Button>
             </Stack>

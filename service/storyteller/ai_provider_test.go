@@ -181,8 +181,6 @@ func TestGrokProviderGenerateRequestValidation(t *testing.T) {
 }
 
 func TestBuildAgentRunPrompts(t *testing.T) {
-	start := 0
-	end := 5
 	systemPrompt, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{
 		DefaultPrompt: "Use a quiet horror tone.",
 	}, storytellerModel.AgentRunRequest{
@@ -190,8 +188,6 @@ func TestBuildAgentRunPrompts(t *testing.T) {
 		Instruction:     "Make it sharper.",
 		FullContent:     "Full chapter.",
 		SelectedContent: "Scene",
-		SelectionStart:  &start,
-		SelectionEnd:    &end,
 	})
 
 	require.Contains(t, systemPrompt, "Use a quiet horror tone.")
@@ -217,7 +213,7 @@ func TestBuildAgentRunPromptsFallsBackToFullContentWhenSelectionModeHasNoSelecti
 
 func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "Analyze the chapter.",
 		FullContent: "Full chapter.",
 	})
@@ -229,7 +225,7 @@ func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {
 
 func TestBuildAgentRunPromptsAllowsEmptyInstruction(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		FullContent: "Full chapter.",
 	})
 
@@ -239,7 +235,7 @@ func TestBuildAgentRunPromptsAllowsEmptyInstruction(t *testing.T) {
 
 func TestBuildAgentRunPromptsOmitsEmptyFullContent(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "Only use this request.",
 	})
 

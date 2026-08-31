@@ -139,7 +139,6 @@ const (
 	AgentRunModeTranslateSelection AgentRunMode = "translate_selection"
 	AgentRunModeContinueChapter    AgentRunMode = "continue_chapter"
 	AgentRunModeCustomSelection    AgentRunMode = "custom_selection"
-	AgentRunModeCustomChapter      AgentRunMode = "custom_chapter"
 )
 
 type ChatMessageRole string
@@ -721,8 +720,6 @@ type AgentRunRequest struct {
 	Instruction     string       `json:"instruction"`
 	FullContent     string       `json:"full_content"`
 	SelectedContent string       `json:"selected_content"`
-	SelectionStart  *int         `json:"selection_start"`
-	SelectionEnd    *int         `json:"selection_end"`
 	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
 	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
