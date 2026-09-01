@@ -619,7 +619,6 @@ function AgenticAssistantMessage({
   // 不能把它當成錯誤，否則背景 refetch 會在長請求還沒完成時誤導使用者。
   const resendable =
     isUser && message.chatId !== undefined && message.chatStatus === "pending";
-  const processing = isUser && message.chatStatus === "in_progress";
   const resending = resendable && resendingChatId === message.chatId;
   const referenceContent = useStorytellerAgenticReferenceContent(
     targetKind,
@@ -690,12 +689,10 @@ function AgenticAssistantMessage({
           {message.warning}
         </Alert>
       )}
-      {(resendable || processing) && (
+      {resendable && (
         <Stack spacing={0.5} sx={{ mt: 1 }}>
-          <Alert severity={processing ? "info" : "warning"} variant="outlined">
-            {processing
-              ? "AI 助理正在處理這則訊息，請先等這輪完成。"
-              : "沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重送一次。"}
+          <Alert severity="warning" variant="outlined">
+            沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重送一次。
           </Alert>
           {resendable && onResend && (
             <Button
@@ -2139,7 +2136,8 @@ export function StorytellerAgenticPanel({
                   onApplyText={onApplyText}
                 />
               )}
-              {runAgenticQuery.isPending && (
+              {(runAgenticQuery.isPending ||
+                inProgressAgenticChatIds.length > 0) && (
                 <AgenticAssistantMessage
                   message={{
                     kind: "agentic",
