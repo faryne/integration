@@ -81,6 +81,68 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 }
 
+func TestAgenticQueryHistoryMessagesMarksAssistantPersonaOnly(t *testing.T) {
+	agentID := uint64(41)
+	rows := []storytellerModel.StoryChatMessage{
+		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求", AgentID: &agentID},
+		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答", AgentID: &agentID},
+		{ID: 3, ChatID: 11, Role: storytellerModel.ChatMessageRoleUser, Content: "一般問答"},
+		{ID: 4, ChatID: 11, Role: storytellerModel.ChatMessageRoleAssistant, Content: "無人設回答"},
+	}
+
+	messages := agenticQueryHistoryMessages(rows, map[uint64]string{agentID: "色文作家"})
+
+	require.Len(t, messages, 4)
+	require.Equal(t, "上一輪需求", messages[0].Content)
+	require.Contains(t, messages[1].Content, `persona_name="色文作家"`)
+	require.Contains(t, messages[1].Content, "do not imitate this persona")
+	require.Contains(t, messages[1].Content, "<<<STORYTELLER_HISTORY_ASSISTANT_MESSAGE_2_CONTENT")
+	require.Contains(t, messages[1].Content, "上一輪回答")
+	require.Equal(t, "一般問答", messages[2].Content)
+	require.Equal(t, "無人設回答", messages[3].Content)
+}
+
+func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	oldAgentID := uint64(41)
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		agent: &storytellerModel.Agent{
+			ID:               40,
+			UserID:           20,
+			Provider:         storytellerModel.AgentProviderClaude,
+			ModelName:        "claude-test",
+			ProviderAPIKeyID: &providerAPIKeyID,
+		},
+		agentsByID:     []storytellerModel.Agent{{ID: oldAgentID, UserID: 20, Name: "文言文"}},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+		historyMessages: []storytellerModel.StoryChatMessage{
+			{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "把前段改寫", AgentID: &oldAgentID},
+			{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "臣聞前段", AgentID: &oldAgentID},
+		},
+	}
+	provider := &fakeSequentialAIProvider{
+		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			require.Equal(t, []uint64{oldAgentID}, repo.agentsByIDLookup.ids)
+			require.Equal(t, uint64(20), repo.agentsByIDLookup.userID)
+			require.Len(t, req.Messages, 3)
+			require.Equal(t, "把前段改寫", req.Messages[0].Content)
+			require.Contains(t, req.Messages[1].Content, `persona_name="文言文"`)
+			require.Contains(t, req.Messages[1].Content, "臣聞前段")
+			require.Contains(t, req.SystemPrompt, "metadata fences that name the persona")
+			return &AIProviderResponse{Result: "這輪回答"}, nil
+		},
+	}
+
+	output, err := runStoryAgenticQuery(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return provider, nil
+	}, nil, nil, 20, "project-public-id", "story-public-id", 40, "這輪問題", AgenticQueryOptions{})
+
+	require.NoError(t, err)
+	require.Equal(t, "這輪回答", output.Result)
+}
+
 // TestRunStoryAgenticQueryPropagatesStorytellerContextToTools 是一個迴歸測試：
 // tool_registry_*.go 裡的真實工具（storyteller_get_story 等）都是靠
 // storytellerUserIDFromContext／storytellerSourceFromContext 從 ctx 拿身分，不是
