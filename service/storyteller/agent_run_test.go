@@ -174,6 +174,7 @@ func TestRunAgent(t *testing.T) {
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)
+	require.JSONEq(t, `{"mode":"rewrite_selection","selected_content":"scene","selected_content_length":5,"full_content_length":12}`, repo.messages[0].Metadata)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
 	require.NotNil(t, repo.usage)

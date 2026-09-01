@@ -11,6 +11,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestAgenticQueryOutputMetadataUsage(t *testing.T) {
+	withUsage := agenticQueryOutputMetadata(&AgenticQueryOutput{
+		Steps: []AgentLoopStep{{
+			ToolCalls: []ToolCall{{ID: "toolu_1", Name: "storyteller_get_story"}},
+		}},
+		Usage: &AIProviderUsage{InputTokens: 5, OutputTokens: 3, TotalTokens: 8},
+	})
+	require.JSONEq(t, `{"mode":"agentic_query","step_count":1,"steps":[{"tool_calls":[{"id":"toolu_1","name":"storyteller_get_story","arguments":null}],"results":[]}],"usage":{"input_tokens":5,"output_tokens":3,"total_tokens":8}}`, withUsage)
+
+	withoutUsage := agenticQueryOutputMetadata(&AgenticQueryOutput{})
+	var metadata map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(withoutUsage), &metadata))
+	require.NotContains(t, metadata, "usage")
+}
+
 func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{

@@ -752,6 +752,12 @@ function AgenticAssistantMessage({
         >
           <Button
             {...storytellerChatActionButtonProps}
+            onClick={() => onApplyText(message.content, "append", null)}
+          >
+            附加末尾
+          </Button>
+          <Button
+            {...storytellerChatActionButtonProps}
             startIcon={<ContentCopyIcon />}
             onClick={() => onApplyText(message.content, "copy", null)}
           >
@@ -1202,6 +1208,64 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  function parseMessageUsage(
+    metadata?: string,
+  ): StorytellerAgentRunResponse["usage"] | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(metadata) as {
+        usage?: StorytellerAgentRunResponse["usage"];
+      };
+      return parsed.usage?.total_tokens ? parsed.usage : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function parseMessageSelectedContent(metadata?: string): string | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+    try {
+      const parsed = JSON.parse(metadata) as {
+        selected_content?: string;
+        selected_content_preview?: string;
+      };
+      const selected =
+        typeof parsed.selected_content === "string"
+          ? parsed.selected_content
+          : parsed.selected_content_preview;
+      return selected && selected.trim() !== "" ? selected : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function skillSelectedContentQuote(selectedContent: string): string {
+    const selected = selectedContent.trim();
+    return selected ? `> ${selected.replace(/\n/g, "\n> ")}` : "";
+  }
+
+  function stripSkillSelectedContentQuote(
+    content: string,
+    selectedContent?: string,
+  ): string {
+    if (!selectedContent) {
+      return content;
+    }
+    const quote = skillSelectedContentQuote(selectedContent);
+    if (!quote) {
+      return content;
+    }
+    if (content === quote) {
+      return "";
+    }
+    const prefix = `${quote}\n\n`;
+    return content.startsWith(prefix) ? content.slice(prefix.length) : content;
+  }
+
   // agentic_query 模式的 mode 值（"agentic_query"）跟 skill 模式那組
   // StorytellerAgentRunMode 是完全不同的字串空間，故意不共用 parseMessageMode
   // 的回傳型別，避免混進 skill 那組列舉裡。
@@ -1232,6 +1296,7 @@ export function StorytellerAgenticPanel({
       proposals: message.proposals,
       replyReference: reply.replyReference,
       replyContent: reply.replyContent,
+      usage: parseMessageUsage(message.metadata),
       agentName: message.agent_name || undefined,
       chatId: message.chat_id,
       chatStatus: message.chat_status,
@@ -1250,14 +1315,20 @@ export function StorytellerAgenticPanel({
       if (isAgentic && message.role !== "system") {
         return agenticPanelMessageFromChatRow(message);
       }
+      const selectedContent = parseMessageSelectedContent(message.metadata);
       return {
         kind: "skill",
         sortKey: new Date(message.created_at).getTime(),
         id: String(message.id),
         role: message.role,
-        content: message.content,
+        content: stripSkillSelectedContentQuote(
+          message.content,
+          selectedContent,
+        ),
         speaker: skillMessageSpeaker(message),
         mode: parseMessageMode(message.metadata),
+        selectedContent,
+        usage: parseMessageUsage(message.metadata),
         // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
         // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
         // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
@@ -1529,6 +1600,7 @@ export function StorytellerAgenticPanel({
       content: instruction.trim() || "（未輸入需求）",
       speaker: penName || "使用者",
       mode,
+      selectedContent: selectedContent.trim() ? selectedContent : undefined,
     });
     setPrompt("");
     setReplyTarget(null);

@@ -38,6 +38,8 @@ export interface StorytellerAgentPanelMessage {
   content: string;
   speaker: string;
   mode?: StorytellerAgentRunMode;
+  // 選字觸發 skill 時保留原始選取段落，讓送出當下與重整後都看得出指令作用範圍。
+  selectedContent?: string;
   usage?: StorytellerAgentRunResponse["usage"];
   resultSelection?: StorytellerAgentPanelSelection | null;
   isLoading?: boolean;
@@ -298,10 +300,31 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
         </Stack>
       ) : (
         <Box sx={{ typography: "body2", mt: 0.5 }}>
-          <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+          {message.selectedContent && (
+            <Typography
+              component="blockquote"
+              variant="body2"
+              sx={{
+                m: 0,
+                mb: message.content.trim() ? 1 : 0,
+                pl: 1.25,
+                py: 0.5,
+                borderLeft: "3px solid",
+                borderColor: "primary.main",
+                color: "text.secondary",
+                fontStyle: "italic",
+                whiteSpace: "pre-wrap",
+              }}
+            >
+              {message.selectedContent}
+            </Typography>
+          )}
+          {message.content.trim() ? (
+            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+          ) : null}
         </Box>
       )}
-      {!isUser && message.isCurrentResult && (
+      {!isUser && message.usage?.total_tokens ? (
         <Stack
           direction="row"
           spacing={1}
@@ -309,11 +332,9 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           useFlexGap
           sx={{ mt: 1 }}
         >
-          {message.usage?.total_tokens ? (
-            <Chip size="small" label={`${message.usage.total_tokens} tokens`} />
-          ) : null}
+          <Chip size="small" label={`${message.usage.total_tokens} tokens`} />
         </Stack>
-      )}
+      ) : null}
       {canApply && (
         <Stack
           direction="row"

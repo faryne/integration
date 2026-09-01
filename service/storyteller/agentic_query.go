@@ -1454,16 +1454,29 @@ func agenticQueryIgnoreAgentPersonaFromMetadata(metadata string, agentID *uint64
 // 前端讀 StoryChatMessageOutput.Proposals 就有最新狀態，不用再從這份寫死的
 // 快照猜「還沒被套用或還沒過期」。
 func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
+	type usageMetadata struct {
+		InputTokens  int `json:"input_tokens"`
+		OutputTokens int `json:"output_tokens"`
+		TotalTokens  int `json:"total_tokens"`
+	}
 	type queryMetadata struct {
 		Mode      string                               `json:"mode"`
 		StepCount int                                  `json:"step_count"`
 		Steps     []storytellerModel.AgenticStepOutput `json:"steps,omitempty"`
+		Usage     *usageMetadata                       `json:"usage,omitempty"`
 	}
 	response := output.ToResponse()
 	meta := queryMetadata{
 		Mode:      "agentic_query",
 		StepCount: len(output.Steps),
 		Steps:     response.Steps,
+	}
+	if output.Usage != nil {
+		meta.Usage = &usageMetadata{
+			InputTokens:  output.Usage.InputTokens,
+			OutputTokens: output.Usage.OutputTokens,
+			TotalTokens:  output.Usage.TotalTokens,
+		}
 	}
 	body, err := json.Marshal(meta)
 	if err != nil {
