@@ -3433,12 +3433,28 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 }
 
 func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {
-	value := fmt.Sprintf(`{"mode":%q`, input.Mode)
-	if input.SelectedContent != "" {
-		value += fmt.Sprintf(`,"selected_content_length":%d`, len([]rune(input.SelectedContent)))
+	type inputMetadata struct {
+		Mode                  storytellerModel.AgentRunMode `json:"mode"`
+		SelectedContent       string                        `json:"selected_content,omitempty"`
+		SelectedContentLength int                           `json:"selected_content_length,omitempty"`
+		FullContentLength     int                           `json:"full_content_length"`
 	}
-	value += fmt.Sprintf(`,"full_content_length":%d`, len([]rune(input.FullContent)))
-	return value + "}"
+	meta := inputMetadata{
+		Mode:              input.Mode,
+		FullContentLength: len([]rune(input.FullContent)),
+	}
+	// 這裡存的 selected_content 要跟 agentRunUserMessageContent 嵌進訊息內容
+	// 的那份完全一致（都用 TrimSpace 過的版本）——前端會拿這個值去反推、
+	// 從 content 裡剝掉重複的 blockquote 前綴，兩邊沒對齊會導致剝不乾淨。
+	if selected := strings.TrimSpace(input.SelectedContent); selected != "" {
+		meta.SelectedContent = selected
+		meta.SelectedContentLength = len([]rune(selected))
+	}
+	body, err := json.Marshal(meta)
+	if err != nil {
+		return "{}"
+	}
+	return string(body)
 }
 
 func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
