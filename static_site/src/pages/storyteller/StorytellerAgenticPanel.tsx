@@ -1589,7 +1589,7 @@ export function StorytellerAgenticPanel({
       sortKey: nextSessionSortKey(),
       id: `skill-pending-${pendingSkillIdRef.current}`,
       role: "user",
-      content: instruction.trim() || "（未輸入需求）",
+      content: instruction.trim(),
       speaker: penName || "使用者",
       mode,
       selectedContent: selectedContent.trim() ? selectedContent : undefined,
