@@ -169,11 +169,36 @@ func agenticQueryUserPromptWithReply(userPrompt, replyContent string) string {
 	return userPrompt + "\n\nReference reply (full content of the message quoted above):\n<<<REPLY_REFERENCE_CONTENT\n" + replyContent + "\nREPLY_REFERENCE_CONTENT"
 }
 
+func agenticQueryHistoryAgentNames(repo agentRunRepository, userID uint64, rows []storytellerModel.StoryChatMessage) (map[uint64]string, error) {
+	seen := make(map[uint64]bool)
+	ids := make([]uint64, 0)
+	for _, row := range rows {
+		if row.AgentID == nil || seen[*row.AgentID] {
+			continue
+		}
+		seen[*row.AgentID] = true
+		ids = append(ids, *row.AgentID)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	agents, err := repo.AgentsByIDs(userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	names := make(map[uint64]string, len(agents))
+	for _, agent := range agents {
+		names[agent.ID] = agent.Name
+	}
+	return names, nil
+}
+
 // agenticQueryHistoryMessages 把撈出來的歷史訊息列（見 RecentStoryAgenticMessages／
 // RecentLoreAgenticMessages）轉成 provider 要的 Message 陣列——agentic_query 模式
 // 每輪只會存 user／assistant 各一則（agenticQueryChatMessages），不會有 tool 角色
-// 的列，不用另外處理工具呼叫中間態。
-func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage) []Message {
+// 的列，不用另外處理工具呼叫中間態。Agent 名稱由呼叫端 batch 查好傳進來，這裡維持
+// 純轉換，不碰 DB。
+func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage, agentNames map[uint64]string) []Message {
 	// 依 chat 分組：曾經跑到步數上限（ErrAgentLoopMaxStepsExceeded）或其他中途
 	// 中止的舊紀錄，assistant 那則訊息的 content 可能是空字串——這種內容直接
 	// 送給 provider 會被拒絕（Claude 的 content block 缺了必填的 text 欄位），
@@ -204,10 +229,25 @@ func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage) []Mes
 			continue
 		}
 		for _, row := range chatRows {
-			messages = append(messages, Message{Role: string(row.Role), Content: row.Content})
+			messages = append(messages, Message{Role: string(row.Role), Content: agenticQueryHistoryContent(row, agentNames)})
 		}
 	}
 	return messages
+}
+
+func agenticQueryHistoryContent(row storytellerModel.StoryChatMessage, agentNames map[uint64]string) string {
+	if row.Role != storytellerModel.ChatMessageRoleAssistant || row.AgentID == nil {
+		return row.Content
+	}
+	personaName := strings.TrimSpace(agentNames[*row.AgentID])
+	if personaName == "" {
+		personaName = fmt.Sprintf("agent_id_%d_name_unavailable", *row.AgentID)
+	}
+	fence := fmt.Sprintf("STORYTELLER_HISTORY_ASSISTANT_MESSAGE_%d_CONTENT", row.ID)
+	return fmt.Sprintf(`[Storyteller history metadata: previous assistant message, persona_name=%q, do not imitate this persona]
+<<<%s
+%s
+%s>>>`, personaName, fence, row.Content, fence)
 }
 
 // RunStoryAgenticQuery 是 Phase 4 把 Phase 3 雛型收斂成的第一個正式可呼叫功能：
@@ -345,6 +385,10 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 	if err != nil {
 		return nil, err
 	}
+	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
+	if err != nil {
+		return nil, err
+	}
 
 	// 送出當下先把使用者的問題落地（chat 進 in_progress），不等 provider 回應——這樣
 	// 即使等下 RunAgentLoop 因為 timeout／process 被重啟而拿不到答案，使用者至少
@@ -360,7 +404,7 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetStory, story.PublicID, story.Title, opts.IgnoreAgentPersona),
-		History:      agenticQueryHistoryMessages(historyRows),
+		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, opts.ReplyContent),
 		Tools:        tools,
 	})
@@ -405,13 +449,18 @@ func runStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provider
 func completeAgenticQuery(ctx context.Context, repo agentRunRepository, provider AIProvider, agentProvider storytellerModel.AgentProvider, apiKey, modelName string, providerAPIKeyID uint64, writeToolNames map[string]bool, tools []ToolSpec, userID uint64, projectPublicID string, currentKind agenticQueryCurrentTargetKind, currentPublicID, currentTitle string, agent storytellerModel.Agent, chatID, userMessageID uint64, userPrompt, replyContent string, ignoreAgentPersona bool, historyRows []storytellerModel.StoryChatMessage) (*AgenticQueryOutput, error) {
 	ctx = WithStorytellerUserID(ctx, userID)
 	ctx = WithStorytellerSource(ctx, "agentic_query")
+	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
+	if err != nil {
+		_ = repo.ReleaseChatToPending(chatID)
+		return &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, UserMessageID: userMessageID, ChatStatus: storytellerModel.StoryChatStatusPending}, err
+	}
 
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(agent, projectPublicID, currentKind, currentPublicID, currentTitle, ignoreAgentPersona),
-		History:      agenticQueryHistoryMessages(historyRows),
+		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, replyContent),
 		Tools:        tools,
 	})
@@ -598,13 +647,18 @@ func resendStoryAgenticQuery(ctx context.Context, repo agentRunRepository, provi
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
 	}
+	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
+	if err != nil {
+		_ = repo.ReleaseChatToPending(chatID)
+		return nil, err
+	}
 
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetStory, story.PublicID, story.Title, ignoreAgentPersona),
-		History:      agenticQueryHistoryMessages(historyRows),
+		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, replyContent),
 		Tools:        tools,
 	})
@@ -759,6 +813,10 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 	if err != nil {
 		return nil, err
 	}
+	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
+	if err != nil {
+		return nil, err
+	}
 
 	chat, userMessage := buildPendingLoreAgenticQueryChat(userID, lore.ID, *agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona)
 	if err := repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
@@ -770,7 +828,7 @@ func runLoreAgenticQuery(ctx context.Context, repo agentRunRepository, providerF
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetLore, lore.PublicID, lore.Title, opts.IgnoreAgentPersona),
-		History:      agenticQueryHistoryMessages(historyRows),
+		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, opts.ReplyContent),
 		Tools:        tools,
 	})
@@ -950,13 +1008,18 @@ func resendLoreAgenticQuery(ctx context.Context, repo agentRunRepository, provid
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
 	}
+	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
+	if err != nil {
+		_ = repo.ReleaseChatToPending(chatID)
+		return nil, err
+	}
 
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     provider,
 		APIKey:       apiKey,
 		ModelName:    modelName,
 		SystemPrompt: agenticQuerySystemPrompt(*agent, projectPublicID, agenticQueryCurrentTargetLore, lore.PublicID, lore.Title, ignoreAgentPersona),
-		History:      agenticQueryHistoryMessages(historyRows),
+		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, replyContent),
 		Tools:        tools,
 	})
@@ -1112,6 +1175,10 @@ Rules:`)
   review; never claim a write has already been applied.
 - If a tool call fails or returns unexpected data, explain what you tried and continue with the best answer
   you can give, don't just give up silently.
+- Some assistant messages in conversation history may be wrapped in STORYTELLER_HISTORY_ASSISTANT_MESSAGE
+  metadata fences that name the persona used for that previous answer. Use the fenced content for facts,
+  story continuity, and user intent, but do not imitate that previous persona's voice; style and tone must
+  follow only the Agent that is active for this current request.
 - Answer in the language the user wrote in.
 
 Reference syntax — the user's message may contain "@" references that the frontend does not expand for you;

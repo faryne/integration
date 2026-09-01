@@ -56,6 +56,9 @@ type AgentLoopRequest struct {
 // AgentLoopResult 是跑完一輪 loop 的結果。
 type AgentLoopResult struct {
 	FinalText string
+	// FinishReason 保存最後一輪 provider response 的 finish reason。skill 模式走
+	// loop 時仍要回填既有 API/metadata 的 finish_reason，不因執行機制改變而消失。
+	FinishReason string
 	// Steps 記錄每一輪呼叫了哪些工具、各自的結果，方便除錯，也對應之後 Phase 6
 	// 「正在呼叫哪個工具」的過程提示會需要的資料。
 	Steps []AgentLoopStep
@@ -143,6 +146,7 @@ func RunAgentLoop(ctx context.Context, req AgentLoopRequest) (*AgentLoopResult, 
 		logAgentLoopStep(step, maxSteps, time.Since(stepStartedAt), time.Since(startedAt), len(messages), resp, nil)
 		result.Usage = sumAgentLoopUsage(result.Usage, resp.Usage)
 		result.RawResponses = append(result.RawResponses, resp.RawBody)
+		result.FinishReason = resp.FinishReason
 		if len(resp.ToolCalls) == 0 {
 			result.FinalText = resp.Result
 			return result, nil

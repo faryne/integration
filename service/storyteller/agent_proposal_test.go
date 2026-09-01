@@ -75,11 +75,13 @@ func TestWriteStorytellerToolNamesExcludesReadOnly(t *testing.T) {
 	require.True(t, writeNames["storyteller_revert_story"])
 	require.False(t, writeNames["storyteller_get_story"])
 	require.False(t, writeNames["storyteller_list_stories"])
+	require.False(t, writeNames["storyteller_list_projects"])
 
-	// 唯讀跟寫入兩份清單合起來應該剛好等於全部 35 個工具，不多不少。
+	// list_projects 沒有 project_public_id，不能放進 skill read-only tools，也不是
+	// 需要提案確認的寫入工具，所以 read/write 兩份清單會比 registry 少這一個。
 	all := StorytellerToolRegistry().All()
 	readOnly := ReadOnlyStorytellerTools()
-	require.Equal(t, len(all), len(readOnly)+len(writeNames))
+	require.Equal(t, len(all)-1, len(readOnly)+len(writeNames))
 }
 
 func TestApplyAgentProposalRejectsToolNotInWriteAllowlist(t *testing.T) {

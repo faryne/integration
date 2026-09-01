@@ -155,6 +155,16 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return &row, err
 }
 
+func (r *Repository) AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error) {
+	rows := make([]storytellerModel.Agent, 0, len(ids))
+	if len(ids) == 0 {
+		return rows, nil
+	}
+	err := r.db.Where("user_id = ? AND id IN ? AND is_deleted = 0 AND deleted_at IS NULL", userID, ids).
+		Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKey, error) {
 	rows := make([]storytellerModel.ProviderAPIKey, 0)
 	err := r.db.Where("user_id = ? AND is_deleted = 0 AND deleted_at IS NULL", userID).

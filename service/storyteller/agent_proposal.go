@@ -96,12 +96,11 @@ func buildAgentProposalRows(proposals []AgentProposal) []storytellerModel.AgentP
 	return rows
 }
 
-// WriteStorytellerToolNames 回傳「非唯讀」工具的名稱集合（StorytellerToolRegistry
-// 扣掉 ReadOnlyStorytellerTools 的部分）：upsert/delete/move/revert/presign/confirm
-// 這類會實際改動資料或需要事後確認的工具。這份清單同時是 CaptureWriteToolsAsProposals
-// 跟 ApplyAgentProposal 的授權允許清單——一個工具名稱只要不在這裡面，就永遠不能
-// 透過 ApplyAgentProposal 執行，防止呼叫端亂傳工具名稱繞過提案機制直接執行唯讀
-// 工具以外的東西。
+// WriteStorytellerToolNames 回傳「真正需要提案確認」的工具名稱集合：
+// StorytellerToolRegistry 扣掉 ReadOnlyStorytellerTools，再排除沒有 project_public_id、
+// 不能被 ScopeToolsToProject 正常授權的 storyteller_list_projects。這份清單同時是
+// CaptureWriteToolsAsProposals 跟 ApplyAgentProposal 的授權允許清單——一個工具名稱
+// 只要不在這裡面，就永遠不能透過 ApplyAgentProposal 執行，防止呼叫端亂傳工具名稱。
 func WriteStorytellerToolNames() map[string]bool {
 	readOnly := make(map[string]bool)
 	for _, spec := range ReadOnlyStorytellerTools() {
@@ -109,7 +108,7 @@ func WriteStorytellerToolNames() map[string]bool {
 	}
 	names := make(map[string]bool)
 	for _, spec := range StorytellerToolRegistry().All() {
-		if !readOnly[spec.Name] {
+		if spec.Name != "storyteller_list_projects" && !readOnly[spec.Name] {
 			names[spec.Name] = true
 		}
 	}
