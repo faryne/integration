@@ -444,7 +444,6 @@ export const StorytellerWysiwygEditor = forwardRef<
   >(null);
   const [selectionAgentInstruction, setSelectionAgentInstruction] =
     useState("");
-
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
   const slashCommandContextRef = useRef<WysiwygCommandContext | null>(null);
@@ -946,6 +945,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         onClose={closeSelectionAgentDialog}
         fullWidth
         maxWidth="sm"
+        disableScrollLock
       >
         <DialogTitle>
           {selectionAgentDialogTarget?.label ?? "AI 指令"}
