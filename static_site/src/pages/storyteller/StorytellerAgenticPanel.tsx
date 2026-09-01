@@ -900,6 +900,7 @@ export function StorytellerAgenticPanel({
     agentId: number;
     response: StorytellerAgentRunResponse;
     resultSelection: StorytellerAgentPanelSelection | null;
+    sortKey: number;
   } | null>(null);
   const [agenticMessages, setAgenticMessages] = useState<
     Extract<PanelMessage, { kind: "agentic" }>[]
@@ -1342,7 +1343,7 @@ export function StorytellerAgenticPanel({
   if (skillResult) {
     skillTransientMessages.push({
       kind: "skill",
-      sortKey: Number.MAX_SAFE_INTEGER,
+      sortKey: skillResult.sortKey,
       id: skillResult.response.assistant_message_id
         ? String(skillResult.response.assistant_message_id)
         : `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
@@ -1594,7 +1595,7 @@ export function StorytellerAgenticPanel({
     pendingSkillIdRef.current += 1;
     setOptimisticSkillMessage({
       kind: "skill",
-      sortKey: Number.MAX_SAFE_INTEGER,
+      sortKey: nextSessionSortKey(),
       id: `skill-pending-${pendingSkillIdRef.current}`,
       role: "user",
       content: instruction.trim() || "（未輸入需求）",
@@ -1630,6 +1631,7 @@ export function StorytellerAgenticPanel({
             agentId: agentIdNumeric,
             response: result,
             resultSelection: null,
+            sortKey: nextSessionSortKey(),
           });
         },
         onSettled: () => {
