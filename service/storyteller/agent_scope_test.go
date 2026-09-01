@@ -48,19 +48,20 @@ func TestReadOnlyStorytellerToolsExcludesWrites(t *testing.T) {
 			hasPrefixAny(spec.Name, "storyteller_get_", "storyteller_list_"),
 			"%s 不是 get_/list_ 開頭的唯讀工具，不該出現在 ReadOnlyStorytellerTools 裡", spec.Name)
 	}
-	// 交叉確認幾個明確是寫入/刪除的工具真的被排除。
+	// 交叉確認寫入/刪除工具，以及沒有 project_public_id 的 list_projects 真的被排除。
 	names := make(map[string]bool, len(tools))
 	for _, spec := range tools {
 		names[spec.Name] = true
 	}
 	for _, writeTool := range []string{
+		"storyteller_list_projects",
 		"storyteller_upsert_story",
 		"storyteller_delete_story",
 		"storyteller_move_story",
 		"storyteller_revert_story",
 		"storyteller_delete_lore",
 	} {
-		require.Falsef(t, names[writeTool], "%s 是寫入類工具，不該出現在 ReadOnlyStorytellerTools 裡", writeTool)
+		require.Falsef(t, names[writeTool], "%s 不該出現在 ReadOnlyStorytellerTools 裡", writeTool)
 	}
 }
 

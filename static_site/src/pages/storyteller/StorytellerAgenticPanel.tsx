@@ -21,20 +21,24 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
+  fetchStorytellerAgenticChat,
   useResendStorytellerAgenticQuery,
   useResendStorytellerLoreAgenticQuery,
   useRunStorytellerAgent,
   useRunStorytellerAgenticQuery,
   useRunStorytellerLoreAgent,
   useRunStorytellerLoreAgenticQuery,
+  useStorytellerAgenticReferenceContent,
   useStorytellerAgentProviderModels,
   useStorytellerLoreChatMessages,
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
 } from "@/apis/storyteller/agent.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -53,14 +57,22 @@ import {
   type StorytellerAgentPanelSelection,
 } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import type { StorytellerAgenticCurrentStory } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
-import { StorytellerAgenticProposalCard } from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
+import {
+  StorytellerAgenticProposalCard,
+  proposalActionLabel,
+} from "@/pages/storyteller/StorytellerAgenticProposalCard.tsx";
 import {
   buildStorytellerAgentMessageLinks,
+  buildStorytellerAgentProposalRejectionQuote,
+  buildStorytellerAgentProposalReferenceContent,
   buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
   buildStorytellerAgentReplyReferenceContent,
+  composeStorytellerAgentInstructionWithProposalRejection,
   composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
+  summarizeStorytellerAgentProposalArguments,
+  type StorytellerAgentReplyTarget,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import {
   currentLoreMentionQuery,
@@ -68,10 +80,15 @@ import {
   insertLoreMention,
   insertStoryMention,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
+import {
+  truncateStorytellerSelectionPreview,
+  type StorytellerSelectionAgentTrigger,
+} from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunResponse,
   StorytellerAgenticProposal,
+  StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
   StorytellerStoryChatMessage,
 } from "@/types/storyteller.ts";
@@ -103,7 +120,15 @@ const SKILL_SLASH_COMMANDS: Record<string, StorytellerAgentRunMode> = {
   expand: "expand_selection",
   translate: "translate_selection",
   continue: "continue_chapter",
-  custom: "custom_chapter",
+  custom: "custom_selection",
+};
+const SELECTION_AGENT_SLASH_WORDS: Partial<
+  Record<StorytellerAgentRunMode, string>
+> = {
+  rewrite_selection: "rewrite",
+  expand_selection: "expand",
+  translate_selection: "translate",
+  custom_selection: "custom",
 };
 // 給上方指令／人設選單顯示用的中文說明，跟 SKILL_SLASH_COMMANDS 的 key 一一對應。
 const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
@@ -138,7 +163,7 @@ function parseSkillSlashCommand(
 function matchAgentNameCommand(
   value: string,
   agents: StorytellerAgentPanelAgent[],
-): { agentId: string; instruction: string } | null {
+): { agentId: string; nameLength: number; instruction: string } | null {
   if (!value.startsWith("/")) {
     return null;
   }
@@ -161,7 +186,28 @@ function matchAgentNameCommand(
       };
     }
   }
-  return best ? { agentId: best.agentId, instruction: best.instruction } : null;
+  return best;
+}
+
+// 輸入框高亮疊層要跟 handleSend() 實際送出時的判斷邏輯一致（Agent 名稱優先、
+// skill 指令次之），只有真的會被辨識成指令的前綴才上色，避免 /fuck 這種打錯
+// 或亂打的字也被誤標成「這是合法指令」。
+function recognizedSlashCommandPrefixLength(
+  value: string,
+  agents: StorytellerAgentPanelAgent[],
+): number {
+  if (!value.startsWith("/")) {
+    return 0;
+  }
+  const agentMatch = matchAgentNameCommand(value, agents);
+  if (agentMatch) {
+    return 1 + agentMatch.nameLength;
+  }
+  const skillMatch = value.match(/^\/(\S+)/);
+  if (skillMatch && SKILL_SLASH_COMMANDS[skillMatch[1].toLowerCase()]) {
+    return skillMatch[0].length;
+  }
+  return 0;
 }
 
 const skillMessagesPerPage = 10;
@@ -171,6 +217,23 @@ const skillTotalPayloadMaxCharacters = 80000;
 
 const storytellerAgentApiKeyStorageKey = "storyteller-agent-api-key-id";
 const storytellerAgentModelStorageKey = "storyteller-agent-model-name";
+
+function buildAgenticMessageReplyReference(
+  reply: StorytellerAgentReplyTarget | null | undefined,
+): StorytellerAgenticReplyReferenceRequest | undefined {
+  if (!reply || reply.content.trim() === "") {
+    return undefined;
+  }
+  const messageID = Number(reply.id);
+  if (!Number.isInteger(messageID) || messageID <= 0) {
+    return undefined;
+  }
+  return {
+    kind: "message",
+    message_id: messageID,
+    summary: buildStorytellerAgentReplyQuote(reply),
+  };
+}
 
 // 沿用既有 StoryEditor.tsx 的 aiErrorMessage() 邏輯：後端錯誤訊息在
 // response.data.message，axios 預設的 "Request failed with status code
@@ -214,6 +277,10 @@ type PanelMessage =
       content: string;
       steps?: StorytellerAgenticStep[];
       proposals?: StorytellerAgenticProposal[];
+      // 新資料只存參照；replyContent 只給舊 metadata.reply_content 或極短暫拿不到
+      // DB id 的本地訊息當 fallback，避免舊資料或 session 中間態整則壞掉。
+      replyReference?: StorytellerAgenticReplyReferenceRequest;
+      replyContent?: string;
       usage?: { total_tokens?: number };
       warning?: string;
       isLoading?: boolean;
@@ -324,6 +391,184 @@ function ToolTraceSummary({ steps }: { steps: StorytellerAgenticStep[] }) {
   );
 }
 
+function parseExpandableAgenticQuote(
+  content: string,
+  replyReference?: StorytellerAgenticReplyReferenceRequest,
+  fallbackContent?: string,
+): {
+  quote: string;
+  body: string;
+  replyReference?: StorytellerAgenticReplyReferenceRequest;
+  fallbackContent?: string;
+} | null {
+  const hasReference =
+    (replyReference?.kind === "message" &&
+      Boolean(replyReference.message_id)) ||
+    (replyReference?.kind === "proposal" &&
+      Boolean(replyReference.proposal_public_id));
+  if (!hasReference && !fallbackContent?.trim()) {
+    return null;
+  }
+  const match = content.match(/^(> (?:回覆 .+|否決提案 #\d+：.+))(?:\r?\n|$)/);
+  if (!match) {
+    return null;
+  }
+  return {
+    quote: match[1].replace(/^>\s*/, ""),
+    body: content.slice(match[0].length).replace(/^\r?\n/, ""),
+    replyReference,
+    fallbackContent,
+  };
+}
+
+function AgenticExpandableQuote({
+  quote,
+  body,
+  replyReference,
+  fallbackContent,
+  isUser,
+  linkedBody,
+  loadReferenceContent,
+}: {
+  quote: string;
+  body: string;
+  replyReference?: StorytellerAgenticReplyReferenceRequest;
+  fallbackContent?: string;
+  isUser: boolean;
+  linkedBody: string;
+  loadReferenceContent: (
+    reference: StorytellerAgenticReplyReferenceRequest,
+  ) => Promise<string>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [content, setContent] = useState(fallbackContent ?? "");
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  async function toggleExpanded() {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (content.trim() !== "" || !replyReference) {
+      return;
+    }
+    setLoading(true);
+    setErrorMessage("");
+    try {
+      const loaded = await loadReferenceContent(replyReference);
+      if (loaded.trim() === "") {
+        setErrorMessage("找不到原始內容，可能已被刪除或沒有權限讀取。");
+      }
+      setContent(loaded);
+    } catch {
+      setErrorMessage("找不到原始內容，可能已被刪除或沒有權限讀取。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <Box
+        component="blockquote"
+        sx={{
+          overflow: "hidden",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={0.75}
+          alignItems="center"
+          role="button"
+          tabIndex={0}
+          aria-expanded={expanded}
+          sx={{
+            cursor: "pointer",
+            borderRadius: 0.5,
+            "&:focus-visible": {
+              outline: "2px solid",
+              outlineColor: isUser ? "primary.contrastText" : "primary.main",
+              outlineOffset: 2,
+            },
+            "&:hover": {
+              bgcolor: isUser ? "rgba(255,255,255,0.08)" : "action.hover",
+            },
+          }}
+          onClick={() => void toggleExpanded()}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") {
+              return;
+            }
+            event.preventDefault();
+            void toggleExpanded();
+          }}
+        >
+          <ExpandMoreIcon
+            fontSize="small"
+            sx={{
+              flex: "0 0 auto",
+              transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.15s ease",
+            }}
+          />
+          <Typography variant="body2" sx={{ minWidth: 0 }}>
+            {quote}
+          </Typography>
+        </Stack>
+        <Collapse in={expanded}>
+          <Box
+            sx={{
+              mt: 0.75,
+              pt: 0.75,
+              borderTop: "1px solid",
+              borderColor: isUser ? "rgba(255,255,255,0.28)" : "divider",
+            }}
+          >
+            <Typography
+              variant="caption"
+              component="div"
+              sx={{ mb: 0.5, opacity: 0.78 }}
+            >
+              完整引用內容
+            </Typography>
+            {loading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={14} />
+                <Typography variant="caption">正在載入引用內容...</Typography>
+              </Stack>
+            ) : errorMessage ? (
+              <Alert severity="warning" variant="outlined">
+                {errorMessage}
+              </Alert>
+            ) : (
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  maxHeight: 260,
+                  overflow: "auto",
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  fontFamily: "inherit",
+                  fontSize: "0.8125rem",
+                  lineHeight: 1.65,
+                }}
+              >
+                {content}
+              </Box>
+            )}
+          </Box>
+        </Collapse>
+      </Box>
+      {body.trim() !== "" && (
+        <StorytellerMarkdown>{linkedBody}</StorytellerMarkdown>
+      )}
+    </>
+  );
+}
+
 function AgenticAssistantMessage({
   message,
   targetKind,
@@ -335,6 +580,7 @@ function AgenticAssistantMessage({
   onStoryChanged,
   onApplyText,
   onApplyProposalToEditor,
+  onRejectProposalWithFeedback,
   onReply,
   isReplyTarget,
   onResend,
@@ -356,6 +602,11 @@ function AgenticAssistantMessage({
   onApplyProposalToEditor?: (
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
+  onRejectProposalWithFeedback?: (
+    proposal: StorytellerAgenticProposal,
+    feedback: string,
+    proposalIndex: number,
+  ) => void;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
   isReplyTarget?: boolean;
   onResend?: (chatId: number) => void;
@@ -370,6 +621,11 @@ function AgenticAssistantMessage({
     isUser && message.chatId !== undefined && message.chatStatus === "pending";
   const processing = isUser && message.chatStatus === "in_progress";
   const resending = resendable && resendingChatId === message.chatId;
+  const referenceContent = useStorytellerAgenticReferenceContent(
+    targetKind,
+    projectPublicId,
+    targetPublicId,
+  );
   const linkedContent = buildStorytellerAgentMessageLinks(message.content, {
     targetKind,
     projectPublicId,
@@ -377,6 +633,22 @@ function AgenticAssistantMessage({
     otherStories,
     lores,
   });
+  const expandableQuote = isUser
+    ? parseExpandableAgenticQuote(
+        message.content,
+        message.replyReference,
+        message.replyContent,
+      )
+    : null;
+  const linkedBody = expandableQuote
+    ? buildStorytellerAgentMessageLinks(expandableQuote.body, {
+        targetKind,
+        projectPublicId,
+        targetPublicId,
+        otherStories,
+        lores,
+      })
+    : "";
   return (
     <StorytellerChatBubble
       messageId={message.id}
@@ -395,7 +667,21 @@ function AgenticAssistantMessage({
       ) : (
         message.content && (
           <Box sx={{ typography: "body2", mt: 0.5 }}>
-            <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+            {expandableQuote ? (
+              <AgenticExpandableQuote
+                quote={expandableQuote.quote}
+                body={expandableQuote.body}
+                replyReference={expandableQuote.replyReference}
+                fallbackContent={expandableQuote.fallbackContent}
+                isUser={isUser}
+                linkedBody={linkedBody}
+                loadReferenceContent={async (reference) =>
+                  (await referenceContent.mutateAsync(reference)).content
+                }
+              />
+            ) : (
+              <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
+            )}
           </Box>
         )
       )}
@@ -444,6 +730,7 @@ function AgenticAssistantMessage({
               currentStory={currentStory}
               onApplied={onStoryChanged}
               onApplyToEditor={onApplyProposalToEditor}
+              onRejectedWithFeedback={onRejectProposalWithFeedback}
             />
           ))}
         </Stack>
@@ -504,6 +791,8 @@ export function StorytellerAgenticPanel({
   onApplyText,
   onApplyProposalToEditor,
   onStoryChanged,
+  pendingSelectionAgentTrigger,
+  onSelectionAgentTriggerApplied,
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
   // 這個軸線——決定要打哪一組 API（.../stories/:id/... 還是 .../lores/:id/...）、
@@ -529,7 +818,11 @@ export function StorytellerAgenticPanel({
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
   onStoryChanged?: () => void;
+  pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
+  onSelectionAgentTriggerApplied?: () => void;
 }) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
   // 這裡只保留「目前是哪一個」的內部狀態，agents 清單變動（新增/刪除/重新整理）時
   // 若目前選的 id 已經不在清單裡，退回清單第一個。
@@ -541,6 +834,16 @@ export function StorytellerAgenticPanel({
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
+  // IME 組字階段的候選底線是瀏覽器畫在「這顆真正的 textarea」上的原生效果，
+  // 文字透明會連底線一起看不見。組字中先讓真正文字變回可見、把 overlay 藏起來
+  // （避免兩層文字疊字），放開選字後再切回預設——組字視覺完全交給瀏覽器原生
+  // 處理，不用自己刻一套。
+  const [isComposingPrompt, setIsComposingPrompt] = useState(false);
+  const [promptSelection, setPromptSelection] = useState({
+    start: 0,
+    end: 0,
+  });
   // 金鑰／模型是使用者跨 project 的操作習慣，不屬於任何故事內容，記在
   // localStorage（不動後端）；重新整理後先拿上次選的當候選，實際有沒有效
   // 還是交給下面既有的 fallback effect 驗證（key 被刪除、model 不在目前
@@ -582,6 +885,9 @@ export function StorytellerAgenticPanel({
   );
   const [replyTarget, setReplyTarget] =
     useState<StorytellerAgentPanelMessage | null>(null);
+  const [selectionAgentTarget, setSelectionAgentTarget] = useState<{
+    selectedText: string;
+  } | null>(null);
   const [optimisticSkillMessage, setOptimisticSkillMessage] =
     useState<PanelMessage | null>(null);
   const [skillResult, setSkillResult] = useState<{
@@ -648,6 +954,33 @@ export function StorytellerAgenticPanel({
     effectiveProviderModelInfo?.allow_custom_model,
   );
   const [customModelInput, setCustomModelInput] = useState("");
+
+  useEffect(() => {
+    if (!pendingSelectionAgentTrigger) {
+      return;
+    }
+    const word =
+      SELECTION_AGENT_SLASH_WORDS[pendingSelectionAgentTrigger.mode] ??
+      "custom";
+    const instruction = pendingSelectionAgentTrigger.instruction.trim();
+    const nextPrompt = `/${word}${instruction ? ` ${instruction}` : ""}`;
+    setSelectionAgentTarget({
+      selectedText: pendingSelectionAgentTrigger.selectedText,
+    });
+    setPrompt(nextPrompt);
+    setPromptSelection({
+      start: nextPrompt.length,
+      end: nextPrompt.length,
+    });
+    onSelectionAgentTriggerApplied?.();
+    window.requestAnimationFrame(() => {
+      promptTextareaRef.current?.focus();
+      promptTextareaRef.current?.setSelectionRange(
+        nextPrompt.length,
+        nextPrompt.length,
+      );
+    });
+  }, [pendingSelectionAgentTrigger, onSelectionAgentTriggerApplied]);
 
   // 跟金鑰同理，不存在「Agent 自己的預設模型」——固定清單的 provider 沒選過模型時
   // 自動挑清單第一個；換了不同 provider 的 key、先前選的模型不在新清單裡時，同樣
@@ -800,6 +1133,57 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  // reply_reference 跟 steps 是不同用途：steps 可為空但回覆參照仍然存在，所以不能
+  // 透過 parseAgenticMetadata 讀，不然純問答回覆會因 steps 空陣列被一起丟掉。
+  // 舊資料可能仍是 reply_content 快照，保留成 fallback，避免舊訊息展開壞掉。
+  function parseAgenticReplyReference(metadata?: string): {
+    replyReference?: StorytellerAgenticReplyReferenceRequest;
+    replyContent?: string;
+  } {
+    if (!metadata) {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(metadata) as {
+        reply_content?: unknown;
+        reply_reference?: {
+          kind?: unknown;
+          message_id?: unknown;
+          proposal_public_id?: unknown;
+          summary?: unknown;
+        };
+      };
+      const ref = parsed.reply_reference;
+      const replyReference =
+        ref?.kind === "message" && typeof ref.message_id === "number"
+          ? ({
+              kind: "message",
+              message_id: ref.message_id,
+              summary:
+                typeof ref.summary === "string" ? ref.summary : undefined,
+            } satisfies StorytellerAgenticReplyReferenceRequest)
+          : ref?.kind === "proposal" &&
+              typeof ref.proposal_public_id === "string"
+            ? ({
+                kind: "proposal",
+                proposal_public_id: ref.proposal_public_id,
+                summary:
+                  typeof ref.summary === "string" ? ref.summary : undefined,
+              } satisfies StorytellerAgenticReplyReferenceRequest)
+            : undefined;
+      return {
+        replyReference,
+        replyContent:
+          typeof parsed.reply_content === "string" &&
+          parsed.reply_content.trim() !== ""
+            ? parsed.reply_content
+            : undefined,
+      };
+    } catch {
+      return {};
+    }
+  }
+
   // skill 訊息的 user 那則存檔時會把 mode 記進 metadata（見後端
   // agentRunInputMetadata），重新載入歷史時從這裡解析回來，訊息泡泡才標得出
   // 「這則走了哪個 /指令」。assistant 那則的 metadata 是 finish_reason/usage，
@@ -833,9 +1217,29 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  function agenticPanelMessageFromChatRow(
+    message: StorytellerStoryChatMessage,
+  ): Extract<PanelMessage, { kind: "agentic" }> {
+    const agentic = parseAgenticMetadata(message.metadata);
+    const reply = parseAgenticReplyReference(message.metadata);
+    return {
+      kind: "agentic",
+      sortKey: new Date(message.created_at).getTime(),
+      id: String(message.id),
+      role: message.role === "assistant" ? "assistant" : "user",
+      content: message.content,
+      steps: agentic?.steps,
+      proposals: message.proposals,
+      replyReference: reply.replyReference,
+      replyContent: reply.replyContent,
+      agentName: message.agent_name || undefined,
+      chatId: message.chat_id,
+      chatStatus: message.chat_status,
+    };
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
     (message) => {
-      const agentic = parseAgenticMetadata(message.metadata);
       const hasProposals = (message.proposals?.length ?? 0) > 0;
       // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
       // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
@@ -844,18 +1248,7 @@ export function StorytellerAgenticPanel({
       // 用這個當主要依據，hasProposals 留著當保險。
       const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
       if (isAgentic && message.role !== "system") {
-        return {
-          kind: "agentic",
-          sortKey: new Date(message.created_at).getTime(),
-          id: String(message.id),
-          role: message.role,
-          content: message.content,
-          steps: agentic?.steps,
-          proposals: message.proposals,
-          agentName: message.agent_name || undefined,
-          chatId: message.chat_id,
-          chatStatus: message.chat_status,
-        };
+        return agenticPanelMessageFromChatRow(message);
       }
       return {
         kind: "skill",
@@ -879,7 +1272,9 @@ export function StorytellerAgenticPanel({
     skillTransientMessages.push({
       kind: "skill",
       sortKey: Number.MAX_SAFE_INTEGER,
-      id: `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
+      id: skillResult.response.assistant_message_id
+        ? String(skillResult.response.assistant_message_id)
+        : `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
       role: "assistant",
       content: skillResult.response.result,
       speaker: "AI 助理",
@@ -932,6 +1327,90 @@ export function StorytellerAgenticPanel({
     ...skillTransientMessages,
     ...agenticMessages,
   ].sort((a, b) => a.sortKey - b.sortKey);
+
+  const inProgressAgenticChatIds = Array.from(
+    new Set(
+      combinedMessages.flatMap((message) =>
+        message.kind === "agentic" &&
+        message.role === "user" &&
+        message.chatId !== undefined &&
+        message.chatStatus === "in_progress"
+          ? [message.chatId]
+          : [],
+      ),
+    ),
+  );
+  const inProgressAgenticChatIdsKey = inProgressAgenticChatIds.join(",");
+
+  useEffect(() => {
+    if (
+      !session?.encrypt_key ||
+      !projectPublicId ||
+      !targetPublicId ||
+      inProgressAgenticChatIds.length === 0
+    ) {
+      return;
+    }
+    let stopped = false;
+    const poll = async () => {
+      const results = await Promise.allSettled(
+        inProgressAgenticChatIds.map((chatId) =>
+          fetchStorytellerAgenticChat({
+            targetKind,
+            projectPublicId,
+            targetPublicId,
+            chatId,
+            encryptKey: session.encrypt_key,
+          }),
+        ),
+      );
+      if (stopped) {
+        return;
+      }
+      let shouldRefetchMessages = false;
+      for (const result of results) {
+        if (result.status !== "fulfilled" || !result.value) {
+          continue;
+        }
+        const chat = result.value;
+        const messages = chat.messages
+          .filter((message) => message.role !== "system")
+          .map(agenticPanelMessageFromChatRow);
+        if (messages.length > 0) {
+          setAgenticMessages((prev) => [
+            ...prev.filter((message) => message.chatId !== chat.chat_id),
+            ...messages,
+          ]);
+        }
+        if (chat.chat_status !== "in_progress") {
+          shouldRefetchMessages = true;
+        }
+      }
+      if (shouldRefetchMessages) {
+        await queryClient.invalidateQueries({
+          queryKey: [
+            "storyteller",
+            targetKind === "lore"
+              ? "lore-chat-messages"
+              : "story-chat-messages",
+          ],
+        });
+      }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 3000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [
+    inProgressAgenticChatIdsKey,
+    projectPublicId,
+    queryClient,
+    session?.encrypt_key,
+    targetKind,
+    targetPublicId,
+  ]);
 
   useLayoutEffect(() => {
     const node = messagesContainerRef.current;
@@ -993,8 +1472,16 @@ export function StorytellerAgenticPanel({
         : totalPayloadLength > skillTotalPayloadMaxCharacters
           ? `單次 Agent payload 最多 ${skillTotalPayloadMaxCharacters.toLocaleString()} 字。`
           : "";
-  const storyMentionQuery = currentStoryMentionQuery(prompt);
-  const loreMentionQuery = currentLoreMentionQuery(prompt);
+  const storyMentionQuery = currentStoryMentionQuery(
+    prompt,
+    promptSelection.start,
+    promptSelection.end,
+  );
+  const loreMentionQuery = currentLoreMentionQuery(
+    prompt,
+    promptSelection.start,
+    promptSelection.end,
+  );
   const storyMentionOptions =
     storyMentionQuery === null
       ? []
@@ -1028,6 +1515,7 @@ export function StorytellerAgenticPanel({
     !pending;
 
   function runSkill(mode: StorytellerAgentRunMode, instructionRaw: string) {
+    const selectedContent = selectionAgentTarget?.selectedText ?? "";
     const instruction = composeStorytellerAgentInstructionWithReply(
       instructionRaw.trim(),
       replyReferenceTarget,
@@ -1044,6 +1532,7 @@ export function StorytellerAgenticPanel({
     });
     setPrompt("");
     setReplyTarget(null);
+    setSelectionAgentTarget(null);
 
     runSkillMutation.mutate(
       {
@@ -1052,7 +1541,7 @@ export function StorytellerAgenticPanel({
           mode,
           instruction,
           full_content: referenceContent,
-          selected_content: "",
+          selected_content: selectedContent,
           ignore_agent_persona: true,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
@@ -1080,7 +1569,13 @@ export function StorytellerAgenticPanel({
 
   function runAgentic(
     instruction: string,
-    options?: { agentId?: number; ignoreAgentPersona?: boolean },
+    options?: {
+      agentId?: number;
+      ignoreAgentPersona?: boolean;
+      replyContent?: string;
+      replyReference?: StorytellerAgenticReplyReferenceRequest;
+      preserveComposer?: boolean;
+    },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
     // 跟後端 messageAgentID 的邏輯對齊：沒有明確切換人設（ignoreAgentPersona
@@ -1094,7 +1589,13 @@ export function StorytellerAgenticPanel({
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
-    const replyContent = replyReferenceTarget?.content || undefined;
+    const replyContent =
+      options?.replyContent !== undefined
+        ? options.replyContent || undefined
+        : replyReferenceTarget?.content || undefined;
+    const replyReference =
+      options?.replyReference ??
+      buildAgenticMessageReplyReference(replyReferenceTarget);
     const userSortKey = nextSessionSortKey();
     const userMessageId = `agentic-user-${userSortKey}`;
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
@@ -1103,15 +1604,22 @@ export function StorytellerAgenticPanel({
       id: userMessageId,
       role: "user",
       content: instruction,
+      replyReference,
+      replyContent: replyReference ? undefined : replyContent,
       agentName: targetAgentName,
     };
     setAgenticMessages((prev) => [...prev, userMessage]);
-    setPrompt("");
+    if (!options?.preserveComposer) {
+      setPrompt("");
+    }
     // 回覆摘要只該陪著這一次送出的內容，訊息本身已經把 replyReferenceTarget
     // 組進 instruction 裡了（見兩個呼叫端都用 composeStorytellerAgentInstructionWithReply）
     // ——送出後就該清空，不然使用者送完下一則訊息時，輸入框上方還會一直卡著
     // 上一次回覆的摘要，跟這次送出的內容完全對不上。
-    setReplyTarget(null);
+    if (!options?.preserveComposer) {
+      setReplyTarget(null);
+      setSelectionAgentTarget(null);
+    }
 
     runAgenticQuery.mutate(
       {
@@ -1120,6 +1628,7 @@ export function StorytellerAgenticPanel({
           user_prompt: instruction,
           ignore_agent_persona: options?.ignoreAgentPersona ?? false,
           reply_content: replyContent,
+          reply_reference: replyReference,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -1131,37 +1640,43 @@ export function StorytellerAgenticPanel({
           if (!response) {
             return;
           }
-          const assistantSortKey = nextSessionSortKey();
-          setAgenticMessages((prev) => [
-            // 補上這則剛送出的 user 訊息的 chatId／chatStatus——後端無論成功
-            // 或失敗都會帶 chat_id 回來（見 AgenticQueryOutput.ChatID 的說明），
-            // 讓這個還在畫面上的樂觀泡泡也能顯示「重送」，不用等重新整理頁面；
-            // 同時這個 chatId 也是下面 combinedMessages 去重的依據，避免背景
-            // 重新整理歷史時，同一輪對話因為 pending 訊息被重新抓到而顯示兩次。
-            ...prev.map((message) =>
+          setAgenticMessages((prev) => {
+            const updated = prev.map((message) =>
               message.kind === "agentic" && message.id === userMessageId
                 ? {
                     ...message,
+                    id: response.user_message_id
+                      ? String(response.user_message_id)
+                      : message.id,
                     chatId: response.chat_id,
                     chatStatus: response.chat_status,
                   }
                 : message,
-            ),
-            {
-              kind: "agentic",
-              sortKey: assistantSortKey,
-              id: `agentic-assistant-${assistantSortKey}`,
-              role: "assistant",
-              content: response.result,
-              steps: response.steps,
-              proposals: response.proposals,
-              usage: response.usage,
-              warning: response.warning,
-              agentName: targetAgentName,
-              chatId: response.chat_id,
-              chatStatus: response.chat_status,
-            },
-          ]);
+            );
+            if (response.chat_status !== "completed") {
+              return updated;
+            }
+            const assistantSortKey = nextSessionSortKey();
+            return [
+              ...updated,
+              {
+                kind: "agentic",
+                sortKey: assistantSortKey,
+                id: response.assistant_message_id
+                  ? String(response.assistant_message_id)
+                  : `agentic-assistant-${assistantSortKey}`,
+                role: "assistant",
+                content: response.result,
+                steps: response.steps,
+                proposals: response.proposals,
+                usage: response.usage,
+                warning: response.warning,
+                agentName: targetAgentName,
+                chatId: response.chat_id,
+                chatStatus: response.chat_status,
+              },
+            ];
+          });
         },
         onError: (err) => {
           const errorSortKey = nextSessionSortKey();
@@ -1255,8 +1770,88 @@ export function StorytellerAgenticPanel({
     });
   }
 
+  function syncPromptSelection(
+    target:
+      HTMLInputElement | HTMLTextAreaElement | null = promptTextareaRef.current,
+  ) {
+    if (!target) {
+      return;
+    }
+    if (target.selectionStart === null || target.selectionEnd === null) {
+      return;
+    }
+    const next = {
+      start: target.selectionStart,
+      end: target.selectionEnd,
+    };
+    setPromptSelection((current) =>
+      current.start === next.start && current.end === next.end ? current : next,
+    );
+  }
+
+  function insertPromptMention(kind: "story" | "lore", title: string) {
+    const target = promptTextareaRef.current;
+    const selectionStart = target?.selectionStart ?? promptSelection.start;
+    const selectionEnd = target?.selectionEnd ?? promptSelection.end;
+    const insertion =
+      kind === "lore"
+        ? insertLoreMention(prompt, selectionStart, selectionEnd, title)
+        : insertStoryMention(prompt, selectionStart, selectionEnd, title);
+    setPrompt(insertion.value);
+    setPromptSelection({
+      start: insertion.selectionStart,
+      end: insertion.selectionEnd,
+    });
+    window.requestAnimationFrame(() => {
+      target?.focus();
+      target?.setSelectionRange(
+        insertion.selectionStart,
+        insertion.selectionEnd,
+      );
+    });
+  }
+
   function handleReply(message: StorytellerAgentPanelMessage) {
     setReplyTarget(message);
+  }
+
+  function handleRejectProposalWithFeedback(
+    proposal: StorytellerAgenticProposal,
+    feedback: string,
+    proposalIndex: number,
+  ) {
+    const actionLabel = proposalActionLabel(proposal.tool_name);
+    const contentSnippet = summarizeStorytellerAgentProposalArguments(
+      proposal.arguments,
+    );
+    const rejectionQuote = buildStorytellerAgentProposalRejectionQuote(
+      actionLabel,
+      proposalIndex,
+      contentSnippet,
+    );
+    // 否決 dialog 是獨立輸入，不該清掉使用者正在輸入框裡編輯的一般訊息或回覆草稿。
+    // 被否決提案的完整工具參數只陪這次請求送進 reply_content，用完即拋。前面加一行
+    // 「> 否決提案 #N：xxx（摘要）」的 blockquote 併入 instruction 本身（跟「回覆」
+    // 訊息同一套手法），編號對應卡片上顯示的「修改提案 #N」，同一輪對話有好幾個
+    // 同類型提案時才分得出是否決哪一則。
+    runAgentic(
+      composeStorytellerAgentInstructionWithProposalRejection(
+        feedback.trim(),
+        actionLabel,
+        proposalIndex,
+        contentSnippet,
+      ),
+      {
+        ignoreAgentPersona: true,
+        replyContent: buildStorytellerAgentProposalReferenceContent(proposal),
+        replyReference: {
+          kind: "proposal",
+          proposal_public_id: proposal.public_id,
+          summary: rejectionQuote,
+        },
+        preserveComposer: true,
+      },
+    );
   }
 
   function scrollToReplyTarget() {
@@ -1283,7 +1878,7 @@ export function StorytellerAgenticPanel({
         top: { lg: 16 },
       }}
     >
-      <Stack sx={{ height: { lg: 720 }, maxHeight: { lg: 720 } }}>
+      <Stack sx={{ maxHeight: { lg: "calc(100vh - 32px)" } }}>
         <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -1381,7 +1976,7 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: { xs: 360, lg: 0 },
+            minHeight: { xs: 360, lg: 320 },
             maxHeight: { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
@@ -1446,6 +2041,9 @@ export function StorytellerAgenticPanel({
                     onStoryChanged={onStoryChanged}
                     onApplyText={onApplyText}
                     onApplyProposalToEditor={onApplyProposalToEditor}
+                    onRejectProposalWithFeedback={
+                      handleRejectProposalWithFeedback
+                    }
                     onReply={handleReply}
                     isReplyTarget={replyTarget?.id === message.id}
                     onResend={handleResend}
@@ -1540,6 +2138,44 @@ export function StorytellerAgenticPanel({
               </Button>
             </Stack>
           )}
+          {selectionAgentTarget && (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                pl: 1.25,
+                pr: 0.5,
+                py: 0.5,
+                borderLeft: "3px solid",
+                borderColor: "primary.main",
+                bgcolor: "action.hover",
+                borderRadius: 0.5,
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  選取文字:{" "}
+                  {truncateStorytellerSelectionPreview(
+                    selectionAgentTarget.selectedText,
+                  )}
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => setSelectionAgentTarget(null)}
+              >
+                取消
+              </Button>
+            </Stack>
+          )}
           <Box sx={{ position: "relative" }}>
             <TextField
               multiline
@@ -1549,13 +2185,34 @@ export function StorytellerAgenticPanel({
               inputRef={promptTextareaRef}
               label="輸入需求"
               value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
+              onChange={(event) => {
+                setPrompt(event.target.value);
+                syncPromptSelection(event.target);
+              }}
+              onSelect={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onKeyUp={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onMouseUp={(event) =>
+                syncPromptSelection(event.target as HTMLTextAreaElement)
+              }
+              onCompositionStart={() => setIsComposingPrompt(true)}
+              onCompositionEnd={(event) => {
+                setIsComposingPrompt(false);
+                syncPromptSelection(event.target as HTMLTextAreaElement);
+              }}
               placeholder="例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
               error={Boolean(payloadError)}
               helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
               sx={{
                 "& .MuiInputBase-input": {
-                  color: "transparent",
+                  // 跟訊息泡泡的 body2 對齊（見 AgenticAssistantMessage 的
+                  // typography: "body2"），輸入框預設用 TextField 的 1rem 明顯
+                  // 比對話內容大一號，改小一點也能塞進更多字。
+                  fontSize: "0.875rem",
+                  color: isComposingPrompt ? "text.primary" : "transparent",
                   caretColor: (theme) => theme.palette.text.primary,
                   "&::placeholder": {
                     color: "text.secondary",
@@ -1564,10 +2221,16 @@ export function StorytellerAgenticPanel({
                 },
               }}
             />
-            <StorytellerPromptHighlightOverlay
-              text={prompt}
-              textareaRef={promptTextareaRef}
-            />
+            {!isComposingPrompt && (
+              <StorytellerPromptHighlightOverlay
+                text={prompt}
+                textareaRef={promptTextareaRef}
+                slashCommandHighlightLength={recognizedSlashCommandPrefixLength(
+                  prompt,
+                  agents,
+                )}
+              />
+            )}
           </Box>
           <Stack direction="row" spacing={1} alignItems="center">
             <Button
@@ -1713,11 +2376,8 @@ export function StorytellerAgenticPanel({
                   key={item.id}
                   size="small"
                   variant="outlined"
-                  onClick={() =>
-                    setPrompt((current) =>
-                      insertStoryMention(current, item.title),
-                    )
-                  }
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertPromptMention("story", item.title)}
                 >
                   {item.title}
                 </Button>
@@ -1731,11 +2391,8 @@ export function StorytellerAgenticPanel({
                   key={item.id}
                   size="small"
                   variant="outlined"
-                  onClick={() =>
-                    setPrompt((current) =>
-                      insertLoreMention(current, item.title),
-                    )
-                  }
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertPromptMention("lore", item.title)}
                 >
                   設定集：{item.title}
                 </Button>

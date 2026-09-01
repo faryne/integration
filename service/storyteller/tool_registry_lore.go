@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"errors"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
@@ -18,6 +19,32 @@ type storytellerUpsertLoreArguments struct {
 	CollectionID    *string `json:"collection_id"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerPatchLoreArguments struct {
+	ProjectPublicID string  `json:"project_public_id"`
+	LorePublicID    string  `json:"lore_public_id"`
+	Title           *string `json:"title"`
+	Content         *string `json:"content"`
+	CollectionID    *string `json:"collection_id"`
+	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+func (a storytellerPatchLoreArguments) hasContentField() bool {
+	return a.Title != nil || a.Content != nil
+}
+
+type storytellerSearchReplaceLoreArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	LorePublicID    string `json:"lore_public_id"`
+	Search          string `json:"search"`
+	Replace         string `json:"replace"`
+	IsRegex         bool   `json:"is_regex"`
+}
+
+type storytellerLoreSearchReplaceOutput struct {
+	storytellerLoreDetail
+	storytellerSearchReplaceOutput
 }
 
 type storytellerLoreVersionArguments struct {
@@ -334,6 +361,114 @@ func storytellerLoreToolSpecs() []ToolSpec {
 		},
 
 		ToolSpec{
+			Name: "storyteller_patch_lore",
+			Description: "Patch selected fields on an existing lore/worldbuilding entry. Omit a field to leave it unchanged. " +
+				"This is deliberately different from storyteller_upsert_lore: upsert has full-overwrite semantics, " +
+				"so omitting title/content there overwrites them with empty values. Use this tool when you only want to change specific fields. " +
+				"At least one of title or content must be provided. collection_id is optional and only changes collection membership when present; empty string or __uncategorized__ clears it.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"lore_public_id":    stringSchema("Existing lore public_id to patch."),
+				"title":             stringSchema("Optional. New lore title. Omit to keep the current title."),
+				"content":           stringSchema("Optional. New full content. Omit to keep the current content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint),
+				"collection_id":     stringSchema("Optional. Omit to keep current collection membership; pass empty string or __uncategorized__ to clear it; pass a lore collection public_id to move it there."),
+				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; version_conflict flags if the lore has moved on since, but the write still happens."),
+			}, []string{"project_public_id", "lore_public_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerPatchLoreArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				if !args.hasContentField() {
+					return nil, errors.New("at least one field to update must be specified")
+				}
+				service := NewService()
+				current, err := service.Lore(userID, args.ProjectPublicID, args.LorePublicID)
+				if err != nil {
+					return nil, err
+				}
+				input := mergeLorePatch(current, args)
+				lore, conflicted, err := service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, storytellerSourceFromContext(ctx))
+				if err != nil {
+					return nil, err
+				}
+				return storytellerLoreDetail{
+					storytellerLoreSummary: toStorytellerLoreSummary(*lore),
+					Content:                lore.LatestContent,
+					VersionID:              derefUint64(lore.LatestVersionID),
+					VersionConflict:        conflicted,
+				}, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_search_replace_lore",
+			Description: "Search and replace inside one existing lore/worldbuilding entry, writing directly with no dry run. " +
+				"Search is case-sensitive. When is_regex is false, search is treated as a literal string via regexp.QuoteMeta; when true, search uses Go RE2 regexp syntax and replace may use $1/${name} capture references. " +
+				"If match_count is 0, nothing is written and no new version is created; otherwise this saves through the same versioned path as storyteller_upsert_lore.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"lore_public_id":    stringSchema("Existing lore public_id to edit."),
+				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i)."),
+				"replace":           stringSchema("Required replacement text. When is_regex=true, Go regexp replacement references such as $1 and ${name} are supported."),
+				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
+			}, []string{"project_public_id", "lore_public_id", "search", "replace"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerSearchReplaceLoreArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				pattern, err := compileStorytellerSearchPattern(args.Search, args.IsRegex)
+				if err != nil {
+					return nil, err
+				}
+				service := NewService()
+				current, err := service.Lore(userID, args.ProjectPublicID, args.LorePublicID)
+				if err != nil {
+					return nil, err
+				}
+				content, matchCount := replaceAllCounting(pattern, current.LatestContent, args.Replace)
+				stats := storytellerSearchReplaceOutput{MatchCount: matchCount, TextMatchCount: matchCount}
+				if matchCount == 0 {
+					return storytellerLoreSearchReplaceOutput{
+						storytellerLoreDetail: storytellerLoreDetail{
+							storytellerLoreSummary: toStorytellerLoreSummary(*current),
+							Content:                current.LatestContent,
+							VersionID:              derefUint64(current.LatestVersionID),
+						},
+						storytellerSearchReplaceOutput: stats,
+					}, nil
+				}
+				input := storytellerModel.LoreRequest{
+					Title:         current.Title,
+					Content:       content,
+					BaseVersionID: current.LatestVersionID,
+				}
+				lore, conflicted, err := service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, storytellerSourceFromContext(ctx))
+				if err != nil {
+					return nil, err
+				}
+				return storytellerLoreSearchReplaceOutput{
+					storytellerLoreDetail: storytellerLoreDetail{
+						storytellerLoreSummary: toStorytellerLoreSummary(*lore),
+						Content:                lore.LatestContent,
+						VersionID:              derefUint64(lore.LatestVersionID),
+						VersionConflict:        conflicted,
+					},
+					storytellerSearchReplaceOutput: stats,
+				}, nil
+			},
+		},
+
+		ToolSpec{
 			Name:        "storyteller_delete_lore",
 			Description: "Delete a lore/worldbuilding entry by project_public_id and lore_public_id.",
 			InputSchema: objectSchema(map[string]interface{}{
@@ -356,4 +491,20 @@ func storytellerLoreToolSpecs() []ToolSpec {
 			},
 		},
 	}
+}
+
+func mergeLorePatch(lore *storytellerModel.Lore, args storytellerPatchLoreArguments) storytellerModel.LoreRequest {
+	input := storytellerModel.LoreRequest{
+		Title:         lore.Title,
+		Content:       lore.LatestContent,
+		CollectionID:  args.CollectionID,
+		BaseVersionID: args.BaseVersionID,
+	}
+	if args.Title != nil {
+		input.Title = *args.Title
+	}
+	if args.Content != nil {
+		input.Content = *args.Content
+	}
+	return input
 }

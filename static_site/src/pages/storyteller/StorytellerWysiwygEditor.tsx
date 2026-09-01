@@ -28,10 +28,7 @@ import {
   useState,
 } from "react";
 
-import {
-  BG_COLOR_CSS,
-  TEXT_COLOR_CSS,
-} from "./wysiwygCore/colorStyles";
+import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
 import {
   hasAssetImageLayoutTarget,
@@ -59,9 +56,14 @@ import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
 import {
   StorytellerWysiwygContextMenu,
   type ContextMenuPosition,
+  type StorytellerSelectionAgentDialogItem,
 } from "./StorytellerWysiwygContextMenu";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 import { StorytellerWysiwygTableMenu } from "./StorytellerWysiwygTableMenu";
+import {
+  truncateStorytellerSelectionPreview,
+  type StorytellerSelectionAgentTrigger,
+} from "./storytellerSelectionAgentTrigger";
 
 interface HoveredComment {
   text: string;
@@ -370,6 +372,9 @@ export interface StorytellerWysiwygEditorProps {
    * 可用的插入管道」）。
    */
   onRequestInsertAsset?: () => void;
+  /** 已存檔的故事/設定集才有 targetPublicId 可以呼叫 AI skill；未存檔時右鍵選單不顯示 AI 項目。 */
+  hasSavedTarget?: boolean;
+  onSelectionAgentTrigger?: (trigger: StorytellerSelectionAgentTrigger) => void;
 }
 
 export interface StorytellerWysiwygEditorHandle {
@@ -402,6 +407,8 @@ export const StorytellerWysiwygEditor = forwardRef<
     exportBaseName,
     enabledFeatures,
     onRequestInsertAsset,
+    hasSavedTarget = false,
+    onSelectionAgentTrigger,
   },
   ref,
 ) {
@@ -432,6 +439,11 @@ export const StorytellerWysiwygEditor = forwardRef<
     useState(false);
   const [hoveredFootnote, setHoveredFootnote] =
     useState<HoveredFootnote | null>(null);
+  const [selectionAgentDialogTarget, setSelectionAgentDialogTarget] = useState<
+    (StorytellerSelectionAgentDialogItem & { selectedText: string }) | null
+  >(null);
+  const [selectionAgentInstruction, setSelectionAgentInstruction] =
+    useState("");
 
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
@@ -785,6 +797,35 @@ export const StorytellerWysiwygEditor = forwardRef<
     URL.revokeObjectURL(url);
   };
 
+  const handleRequestSelectionAgentDialog = (
+    item: StorytellerSelectionAgentDialogItem,
+  ) => {
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+    if (selectedText.trim() === "") {
+      return;
+    }
+    setSelectionAgentInstruction("");
+    setSelectionAgentDialogTarget({ ...item, selectedText });
+  };
+
+  const closeSelectionAgentDialog = () => {
+    setSelectionAgentDialogTarget(null);
+    setSelectionAgentInstruction("");
+  };
+
+  const submitSelectionAgentDialog = () => {
+    if (!selectionAgentDialogTarget) {
+      return;
+    }
+    onSelectionAgentTrigger?.({
+      mode: selectionAgentDialogTarget.mode,
+      selectedText: selectionAgentDialogTarget.selectedText,
+      instruction: selectionAgentInstruction.trim(),
+    });
+    closeSelectionAgentDialog();
+  };
+
   // Command Registry（wysiwygCore/commands.ts）共用的執行環境：右鍵選單、slash、
   // Bubble Menu、文件 action 區都靠同一份 context 呼叫 command.run。dialog 開關動作
   // （連結／腳注／註解）本來就是這個元件自己的 useState，command 只是呼叫既有 handler。
@@ -875,6 +916,8 @@ export const StorytellerWysiwygEditor = forwardRef<
           <StorytellerWysiwygBubbleMenu
             editor={editor}
             commandContext={commandContext}
+            hasSavedTarget={hasSavedTarget}
+            onRequestSelectionAgentDialog={handleRequestSelectionAgentDialog}
           />
           <StorytellerWysiwygTableMenu editor={editor} />
         </Box>
@@ -892,9 +935,68 @@ export const StorytellerWysiwygEditor = forwardRef<
         hasFootnote={editorState.hasFootnote}
         hasComment={editorState.hasComment}
         hasSelection={editorState.hasSelection}
+        hasSavedTarget={hasSavedTarget}
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
+        onRequestSelectionAgentDialog={handleRequestSelectionAgentDialog}
       />
+
+      <Dialog
+        open={selectionAgentDialogTarget !== null}
+        onClose={closeSelectionAgentDialog}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {selectionAgentDialogTarget?.label ?? "AI 指令"}
+        </DialogTitle>
+        <DialogContent>
+          {selectionAgentDialogTarget && (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {selectionAgentDialogTarget.usage}
+                您也可以在下方輸入額外需求，進一步指定想要的方向。
+              </Typography>
+              <Box
+                sx={{
+                  mb: 2,
+                  pl: 1.5,
+                  py: 0.75,
+                  borderLeft: "3px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontStyle: "italic" }}
+                >
+                  {truncateStorytellerSelectionPreview(
+                    selectionAgentDialogTarget.selectedText,
+                  )}
+                </Typography>
+              </Box>
+            </>
+          )}
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={3}
+            label="額外需求（可留空）"
+            value={selectionAgentInstruction}
+            onChange={(event) =>
+              setSelectionAgentInstruction(event.target.value)
+            }
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeSelectionAgentDialog}>取消</Button>
+          <Button variant="contained" onClick={submitSelectionAgentDialog}>
+            套用到 AI 助理
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={commentDialogOpen}

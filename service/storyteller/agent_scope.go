@@ -39,14 +39,16 @@ func ScopeToolsToProject(tools []ToolSpec, authorizedProjectPublicID string) []T
 }
 
 // ReadOnlyStorytellerTools 過濾出唯讀工具（storyteller_get_*／storyteller_list_*），
-// 排除任何會寫入／刪除／搬移資料的工具。Phase 5 的「提案 -> diff -> 確認 ->
-// revert」寫入安全機制做完之前，任何會呼叫 agent loop 的正式功能都應該只用這份
-// 清單，不要把完整的 StorytellerToolRegistry() 直接餵給 provider——在安全機制
-// 就緒之前讓 agent 自主呼叫寫入/刪除工具是不負責任的。
+// 排除任何會寫入／刪除／搬移資料的工具；storyteller_list_projects 也刻意排除，
+// 因為它沒有 project_public_id，包上 ScopeToolsToProject 後一定會被擋，放進去只會
+// 浪費 loop step。
 func ReadOnlyStorytellerTools() []ToolSpec {
 	all := StorytellerToolRegistry().All()
 	out := make([]ToolSpec, 0, len(all))
 	for _, spec := range all {
+		if spec.Name == "storyteller_list_projects" {
+			continue
+		}
 		if strings.HasPrefix(spec.Name, "storyteller_get_") || strings.HasPrefix(spec.Name, "storyteller_list_") {
 			out = append(out, spec)
 		}

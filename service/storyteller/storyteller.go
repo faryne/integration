@@ -25,6 +25,7 @@ import (
 var whitespaceRegexp = regexp.MustCompile(`\s+`)
 var unsafeSlugRegexp = regexp.MustCompile(`[^\p{L}\p{N}._~-]+`)
 var slugUnderscoreRegexp = regexp.MustCompile(`_+`)
+var storytellerReferenceRegexp = regexp.MustCompile(`@(thisStory|thisLore|story:|lore:)`)
 
 type Service struct {
 	repo *storytellerRepo.Repository
@@ -35,6 +36,7 @@ type agentRunRepository interface {
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
 	Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
+	AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
 	AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error)
@@ -48,6 +50,9 @@ type agentRunRepository interface {
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
 	ReleaseChatToPending(chatID uint64) error
 	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
+	StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
+	LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
+	AgentProposalByPublicIDForUserProject(userID, projectID uint64, publicID string) (*storytellerModel.AgentProposal, error)
 	// AgentModelPrice 回傳固定模型清單供應商（allow_custom_model=0）某個 model
 	// 目前的單價（每 token 美金，JSON 字串），找不到（self_hosted／openrouter
 	// 自訂 model 名稱，或該 model 沒有價格資料）回傳 nil、不報錯——usage log
@@ -569,22 +574,64 @@ func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, 
 }
 
 func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	return runLoreAgent(ctx, s.repo, NewAIProvider, nil, userID, projectPublicID, lorePublicID, agentID, input)
+}
+
+type agentRunTarget struct {
+	Kind     agenticQueryCurrentTargetKind
+	ID       uint64
+	PublicID string
+	Title    string
+}
+
+type agentRunTargetLookup func(projectID uint64, publicID string) (agentRunTarget, error)
+
+const (
+	agentRunLoopMaxSteps    = 3
+	agentRunLoopMaxDuration = 2 * time.Minute
+)
+
+func runLoreAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	return runAgentForTarget(ctx, repo, providerFactory, readOnlyTools, userID, projectPublicID, lorePublicID, agentID, input, func(projectID uint64, publicID string) (agentRunTarget, error) {
+		lore, err := repo.Lore(projectID, publicID)
+		if err != nil {
+			return agentRunTarget{}, err
+		}
+		return agentRunTarget{Kind: agenticQueryCurrentTargetLore, ID: lore.ID, PublicID: lore.PublicID, Title: lore.Title}, nil
+	})
+}
+
+func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	return runAgentWithTools(ctx, repo, providerFactory, nil, userID, projectPublicID, storyPublicID, agentID, input)
+}
+
+func runAgentWithTools(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+	return runAgentForTarget(ctx, repo, providerFactory, readOnlyTools, userID, projectPublicID, storyPublicID, agentID, input, func(projectID uint64, publicID string) (agentRunTarget, error) {
+		story, err := repo.Story(projectID, publicID)
+		if err != nil {
+			return agentRunTarget{}, err
+		}
+		return agentRunTarget{Kind: agenticQueryCurrentTargetStory, ID: story.ID, PublicID: story.PublicID, Title: story.Title}, nil
+	})
+}
+
+func runAgentForTarget(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, userID uint64, projectPublicID, targetPublicID string, agentID uint64, input storytellerModel.AgentRunRequest, lookupTarget agentRunTargetLookup) (*storytellerModel.AgentRunResponse, error) {
 	if err := validateAgentRunRequest(input); err != nil {
 		return nil, err
 	}
-	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, err
 	}
-	lore, err := s.repo.Lore(project.ID, lorePublicID)
+	target, err := lookupTarget(project.ID, targetPublicID)
 	if err != nil {
 		return nil, err
 	}
-	agent, err := s.repo.Agent(userID, agentID)
+	agent, err := repo.Agent(userID, agentID)
 	if err != nil {
 		return nil, err
 	}
-	providerAPIKeyRow, err := resolveAgentProviderAPIKey(s.repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
+	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +641,7 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if strings.TrimSpace(modelName) == "" {
 		return nil, errAgentModelNameNotConfigured
 	}
-	provider, err := NewAIProvider(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
+	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -602,13 +649,9 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 	if err != nil {
 		return nil, err
 	}
-	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
-	response, err := provider.Generate(ctx, AIProviderRequest{
-		APIKey:       apiKey,
-		ModelName:    modelName,
-		SystemPrompt: systemPrompt,
-		UserPrompt:   userPrompt,
-	})
+	useLoop := agentRunShouldUseLoop(providerAPIKeyRow.Provider, input)
+	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input, projectPublicID, target, useLoop)
+	result, err := executeAgentRun(ctx, provider, apiKey, modelName, systemPrompt, userPrompt, projectPublicID, readOnlyTools, useLoop, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -617,22 +660,123 @@ func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublic
 		Provider:     providerAPIKeyRow.Provider,
 		ModelName:    modelName,
 		Mode:         input.Mode,
-		Result:       response.Result,
-		FinishReason: response.FinishReason,
+		Result:       result.Text,
+		FinishReason: result.FinishReason,
 	}
-	if response.Usage != nil {
+	if result.Usage != nil {
 		output.Usage = &storytellerModel.AgentRunUsage{
-			InputTokens:  response.Usage.InputTokens,
-			OutputTokens: response.Usage.OutputTokens,
-			TotalTokens:  response.Usage.TotalTokens,
+			InputTokens:  result.Usage.InputTokens,
+			OutputTokens: result.Usage.OutputTokens,
+			TotalTokens:  result.Usage.TotalTokens,
 		}
 	}
-	chat, messages := buildLoreAgentRunChat(userID, lore.ID, *agent, input, output, response.RawBody)
-	usage := buildAgentUsageLog(s.repo, userID, providerAPIKeyRow.ID, output)
-	if err := s.repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
+	var chat *storytellerModel.StoryChat
+	var messages []storytellerModel.StoryChatMessage
+	if target.Kind == agenticQueryCurrentTargetLore {
+		chat, messages = buildLoreAgentRunChat(userID, target.ID, *agent, input, output, result.RawResponses)
+	} else {
+		chat, messages = buildAgentRunChat(userID, target.ID, *agent, input, output, result.RawResponses)
+	}
+	usage := buildAgentUsageLog(repo, userID, providerAPIKeyRow.ID, output)
+	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
 		return nil, err
 	}
+	output.UserMessageID = messages[0].ID
+	output.AssistantMessageID = messages[1].ID
 	return output, nil
+}
+
+type agentRunExecutionResult struct {
+	Text         string
+	FinishReason string
+	Usage        *AIProviderUsage
+	RawResponses []string
+}
+
+func executeAgentRun(ctx context.Context, provider AIProvider, apiKey, modelName, systemPrompt, userPrompt, projectPublicID string, readOnlyTools []ToolSpec, useLoop bool, userID uint64) (*agentRunExecutionResult, error) {
+	if !useLoop {
+		response, err := provider.Generate(ctx, AIProviderRequest{
+			APIKey:       apiKey,
+			ModelName:    modelName,
+			SystemPrompt: systemPrompt,
+			UserPrompt:   userPrompt,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &agentRunExecutionResult{
+			Text:         response.Result,
+			FinishReason: response.FinishReason,
+			Usage:        response.Usage,
+			RawResponses: nonEmptyRawResponses(response.RawBody),
+		}, nil
+	}
+
+	ctx = WithStorytellerUserID(ctx, userID)
+	ctx = WithStorytellerSource(ctx, "agent_skill")
+	loopResult, err := RunAgentLoop(ctx, AgentLoopRequest{
+		Provider:     provider,
+		APIKey:       apiKey,
+		ModelName:    modelName,
+		SystemPrompt: systemPrompt,
+		History:      nil,
+		UserPrompt:   userPrompt,
+		Tools:        ScopeToolsToProject(agentRunReadOnlyTools(readOnlyTools), projectPublicID),
+		MaxSteps:     agentRunLoopMaxSteps,
+		MaxDuration:  agentRunLoopMaxDuration,
+	})
+	if err != nil {
+		return nil, agentRunLoopUserError(err)
+	}
+	if loopResult == nil {
+		return nil, errors.New("AI 沒有產生可用結果，請稍後重試")
+	}
+	return &agentRunExecutionResult{
+		Text:         loopResult.FinalText,
+		FinishReason: loopResult.FinishReason,
+		Usage:        loopResult.Usage,
+		RawResponses: loopResult.RawResponses,
+	}, nil
+}
+
+func nonEmptyRawResponses(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	return []string{raw}
+}
+
+func agentRunReadOnlyTools(tools []ToolSpec) []ToolSpec {
+	if tools == nil {
+		tools = ReadOnlyStorytellerTools()
+	}
+	out := make([]ToolSpec, 0, len(tools))
+	for _, spec := range tools {
+		if spec.Name == "storyteller_list_projects" {
+			continue
+		}
+		if strings.HasPrefix(spec.Name, "storyteller_get_") || strings.HasPrefix(spec.Name, "storyteller_list_") {
+			out = append(out, spec)
+		}
+	}
+	return out
+}
+
+func agentRunLoopUserError(err error) error {
+	if errors.Is(err, ErrAgentLoopMaxStepsExceeded) {
+		return errors.New("AI 查詢引用資料的步驟超過上限，這次 skill 沒有產生可用結果；請縮小引用範圍或重試")
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return errors.New("AI 查詢引用資料逾時，這次 skill 沒有產生可用結果；請稍後重試或縮小引用範圍")
+	}
+	return err
+}
+
+func agentRunShouldUseLoop(provider storytellerModel.AgentProvider, input storytellerModel.AgentRunRequest) bool {
+	if provider == storytellerModel.AgentProviderGemini {
+		return false
+	}
+	return storytellerReferenceRegexp.MatchString(input.Instruction) || storytellerReferenceRegexp.MatchString(input.FullContent)
 }
 
 var (
@@ -671,71 +815,6 @@ func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerMode
 		return nil, errAgentProviderAPIKeyMismatch
 	}
 	return key, nil
-}
-
-func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	if err := validateAgentRunRequest(input); err != nil {
-		return nil, err
-	}
-	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
-	if err != nil {
-		return nil, err
-	}
-	story, err := repo.Story(project.ID, storyPublicID)
-	if err != nil {
-		return nil, err
-	}
-	agent, err := repo.Agent(userID, agentID)
-	if err != nil {
-		return nil, err
-	}
-	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
-	if err != nil {
-		return nil, err
-	}
-	modelName := resolveAgentModelName(agent, input.ModelName)
-	if strings.TrimSpace(modelName) == "" {
-		return nil, errAgentModelNameNotConfigured
-	}
-	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-	apiKey, err := decryptProviderAPIKey(providerAPIKeyRow)
-	if err != nil {
-		return nil, err
-	}
-	systemPrompt, userPrompt := buildAgentRunPrompts(*agent, input)
-	response, err := provider.Generate(ctx, AIProviderRequest{
-		APIKey:       apiKey,
-		ModelName:    modelName,
-		SystemPrompt: systemPrompt,
-		UserPrompt:   userPrompt,
-	})
-	if err != nil {
-		return nil, err
-	}
-	output := &storytellerModel.AgentRunResponse{
-		AgentID:      agent.ID,
-		Provider:     providerAPIKeyRow.Provider,
-		ModelName:    modelName,
-		Mode:         input.Mode,
-		Result:       response.Result,
-		FinishReason: response.FinishReason,
-	}
-	if response.Usage != nil {
-		output.Usage = &storytellerModel.AgentRunUsage{
-			InputTokens:  response.Usage.InputTokens,
-			OutputTokens: response.Usage.OutputTokens,
-			TotalTokens:  response.Usage.TotalTokens,
-		}
-	}
-	chat, messages := buildAgentRunChat(userID, story.ID, *agent, input, output, response.RawBody)
-	usage := buildAgentUsageLog(repo, userID, providerAPIKeyRow.ID, output)
-	if err := repo.CreateStoryChatWithMessages(chat, messages, nil, usage); err != nil {
-		return nil, err
-	}
-	return output, nil
 }
 
 // buildAgentUsageLog 記錄這次執行「實際解析後」使用的 apikey_id，
@@ -2188,6 +2267,14 @@ func (s *Service) StoryChatMessages(userID uint64, projectPublicID, storyPublicI
 	return s.repo.StoryChatMessages(story.ID, (page-1)*pageSize, pageSize)
 }
 
+func (s *Service) StoryAgenticChat(userID uint64, projectPublicID, storyPublicID string, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	story, err := s.storyForUserProject(userID, projectPublicID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.StoryAgenticChat(story.ID, chatID)
+}
+
 func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID string, page, pageSize int) ([]storytellerModel.StoryChatMessageOutput, int64, error) {
 	if page < 1 {
 		page = 1
@@ -2203,6 +2290,14 @@ func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID 
 		return nil, 0, err
 	}
 	return s.repo.LoreChatMessages(lore.ID, (page-1)*pageSize, pageSize)
+}
+
+func (s *Service) LoreAgenticChat(userID uint64, projectPublicID, lorePublicID string, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	lore, err := s.loreForUserProject(userID, projectPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.LoreAgenticChat(lore.ID, chatID)
 }
 
 func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.FavoriteAuthorOutput, error) {
@@ -3129,9 +3224,8 @@ func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
 	case storytellerModel.AgentRunModeRewriteSelection,
 		storytellerModel.AgentRunModeExpandSelection,
 		storytellerModel.AgentRunModeTranslateSelection,
-		storytellerModel.AgentRunModeCustomSelection:
-		return validateSelectionAgentRunRequest(input)
-	case storytellerModel.AgentRunModeContinueChapter, storytellerModel.AgentRunModeCustomChapter:
+		storytellerModel.AgentRunModeCustomSelection,
+		storytellerModel.AgentRunModeContinueChapter:
 		return nil
 	default:
 		return errors.New("invalid mode")
@@ -3164,7 +3258,7 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 	return nil
 }
 
-func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (string, string) {
+func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, projectPublicID string, target agentRunTarget, useTools bool) (string, string) {
 	systemPrompt := strings.TrimSpace(`You are Storyteller's writing assistant. Help the user process story text.
 
 Rules:`)
@@ -3175,8 +3269,38 @@ Rules:`)
 - Unless the user asks for analysis, output content that can be placed directly back into the story.
 - Do not include unrelated prefaces, conclusions, or explanations.
 - Do not store, disclose, or request sensitive information.`
+	if useTools {
+		systemPrompt += `
+- You may call the provided read-only tools to resolve extra @ references, but you cannot write, delete,
+  move, revert, or otherwise persist changes.
+- Every tool call must use the project_public_id given below — you have no access to any other project.
+- Only resolve a reference if the task actually needs its content; don't fetch every reference reflexively.`
+	}
 	if !input.IgnoreAgentPersona {
 		systemPrompt += "\n\nAgent default configuration:\n" + strings.TrimSpace(agent.DefaultPrompt)
+	}
+	systemPrompt += "\n\nAuthorized project_public_id for this skill run: " + projectPublicID
+	if strings.TrimSpace(target.PublicID) != "" {
+		if target.Kind == agenticQueryCurrentTargetLore {
+			systemPrompt += "\nCurrent lore (what \"@thisLore\" refers to): lore_public_id=" + target.PublicID
+		} else {
+			systemPrompt += "\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + target.PublicID
+		}
+		if strings.TrimSpace(target.Title) != "" {
+			systemPrompt += ", title=" + target.Title
+		}
+	}
+	if useTools {
+		systemPrompt += `
+
+Reference syntax — the user's instruction or reference summary may contain @ references that you should
+resolve with read-only tools when needed:
+- "@thisStory" means the story currently open in the editor.
+- "@thisLore" means the lore/worldbuilding entry currently open in the editor.
+- "@story:<title>" or "@story:[title]" refers to a story by title; call storyteller_list_stories first, then
+  storyteller_get_story.
+- "@lore:<title>" or "@lore:[title]" refers to a lore/worldbuilding entry by title; call storyteller_list_lores
+  first, then storyteller_get_lore.`
 	}
 
 	sections := []string{
@@ -3184,14 +3308,61 @@ Rules:`)
 		"User instruction:\n" + agentRunPromptInstruction(input.Instruction),
 	}
 	hasSelection := agentRunModeRequiresSelection(input.Mode) && strings.TrimSpace(input.SelectedContent) != ""
-	if !hasSelection && strings.TrimSpace(input.FullContent) != "" {
-		sections = append(sections, "Current chapter full content:\n<<<STORY_FULL_CONTENT\n"+input.FullContent+"\nSTORY_FULL_CONTENT")
+	fullContent, referenceSummary := agentRunPromptFullContent(input.FullContent, useTools)
+	if !hasSelection && fullContent != "" {
+		sections = append(sections, "User's current unsaved editor content:\n<<<STORY_EDITOR_CONTENT\n"+fullContent+"\nSTORY_EDITOR_CONTENT")
 	}
 	if hasSelection {
-		sections = append(sections, "Current selected text (a focus hint, not the only editable scope):\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
+		sections = append(sections, "User's current selected text from the editor (unsaved; use this exact text, do not refetch it):\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
+	}
+	if referenceSummary != "" {
+		sections = append(sections, "Extra @ references available through read-only tools (fetch only when needed):\n"+referenceSummary)
 	}
 	sections = append(sections, "Output requirements:\n"+agentRunOutputInstruction(input.Mode))
 	return systemPrompt, strings.Join(sections, "\n\n")
+}
+
+func agentRunPromptFullContent(content string, useTools bool) (string, string) {
+	content = strings.TrimSpace(content)
+	if content == "" || !useTools {
+		return content, ""
+	}
+	lines := strings.Split(content, "\n")
+	kept := make([]string, 0, len(lines))
+	references := make([]string, 0)
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if !(strings.HasPrefix(line, "Reference story:") || strings.HasPrefix(line, "Reference lore:")) {
+			kept = append(kept, lines[i])
+			continue
+		}
+		referenceLine := line
+		tokenLine := ""
+		if i+1 < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "Token: @") {
+			tokenLine = strings.TrimSpace(lines[i+1])
+			i++
+		}
+		if i+1 < len(lines) && agentRunReferenceFenceStart(strings.TrimSpace(lines[i+1])) {
+			i += 2
+			for i < len(lines) && !agentRunReferenceFenceEnd(strings.TrimSpace(lines[i])) {
+				i++
+			}
+		}
+		if tokenLine == "" {
+			kept = append(kept, referenceLine)
+			continue
+		}
+		references = append(references, "- "+referenceLine+" / "+tokenLine)
+	}
+	return strings.TrimSpace(strings.Join(kept, "\n")), strings.Join(references, "\n")
+}
+
+func agentRunReferenceFenceStart(line string) bool {
+	return line == "<<<STORY_REFERENCE_CONTENT" || line == "<<<LORE_REFERENCE_CONTENT"
+}
+
+func agentRunReferenceFenceEnd(line string) bool {
+	return line == "STORY_REFERENCE_CONTENT" || line == "LORE_REFERENCE_CONTENT"
 }
 
 func agentRunPromptInstruction(instruction string) string {
@@ -3206,36 +3377,31 @@ func agentRunPromptInstruction(instruction string) string {
 // 一次寫入（見 CreateStoryChatWithMessages），沒有 agentic query 那種「先存問題、
 // 等 provider 回應才補回覆」的 pending 階段，所以直接標 completed——不能留空字串，
 // 那不是 StoryChatStatus 這個 ENUM 欄位認得的值。
-func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponses []string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		StoryID: &storyID,
 		AgentID: agent.ID,
 		UserID:  userID,
 		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
-	return chat, buildAgentRunMessages(agent, input, output, rawResponse)
+	return chat, buildAgentRunMessages(agent, input, output, rawResponses)
 }
 
-func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
+func buildLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponses []string) (*storytellerModel.StoryChat, []storytellerModel.StoryChatMessage) {
 	chat := &storytellerModel.StoryChat{
 		LoreID:  &loreID,
 		AgentID: agent.ID,
 		UserID:  userID,
 		Status:  storytellerModel.StoryChatStatusCompleted,
 	}
-	return chat, buildAgentRunMessages(agent, input, output, rawResponse)
+	return chat, buildAgentRunMessages(agent, input, output, rawResponses)
 }
 
-// buildAgentRunMessages 的 rawResponse 是這次唯一一次 provider.Generate() 呼叫
-// 收到的原始 response body（skill 模式固定單輪，不像 agentic 模式可能一輪打好幾
-// 次）——包成長度 1 的陣列存進 RawProviderResponse，跟 agentic 那邊
-// （rawProviderResponseJSON）用同一種封裝格式，方便之後兩邊一起查、格式一致。
-func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponse string) []storytellerModel.StoryChatMessage {
+// buildAgentRunMessages 的 rawResponses 可能是單次 Generate 的原始 response，也可能
+// 是 tool loop 每一輪 provider response；一律用 rawProviderResponseJSON 存成陣列，
+// 跟 agentic query 的除錯欄位保持同一種封裝格式。
+func buildAgentRunMessages(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, output *storytellerModel.AgentRunResponse, rawResponses []string) []storytellerModel.StoryChatMessage {
 	agentID := agent.ID
-	var rawResponses []string
-	if rawResponse != "" {
-		rawResponses = []string{rawResponse}
-	}
 	return []storytellerModel.StoryChatMessage{
 		{
 			AgentID:  &agentID,
@@ -3268,9 +3434,6 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 
 func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {
 	value := fmt.Sprintf(`{"mode":%q`, input.Mode)
-	if input.SelectionStart != nil && input.SelectionEnd != nil {
-		value += fmt.Sprintf(`,"selection_start":%d,"selection_end":%d`, *input.SelectionStart, *input.SelectionEnd)
-	}
 	if input.SelectedContent != "" {
 		value += fmt.Sprintf(`,"selected_content_length":%d`, len([]rune(input.SelectedContent)))
 	}
@@ -3318,37 +3481,9 @@ func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
 		return "Only output new content that can continue after the current chapter ending. Do not repeat the full chapter."
 	case storytellerModel.AgentRunModeCustomSelection:
 		return "Follow the user instruction. If analysis is not requested, output text that can be directly applied to the story."
-	case storytellerModel.AgentRunModeCustomChapter:
-		return "Follow the user instruction. If rewriting or continuing, do not repeat the entire chapter."
 	default:
 		return "Follow the user instruction."
 	}
-}
-
-// validateSelectionAgentRunRequest 允許選取欄位整組留空（沒選字時退回整篇內容當上下文，
-// 見 buildAgentRunPrompts 的 hasSelection 判斷）；一旦帶了選取欄位，就要成組且合法。
-func validateSelectionAgentRunRequest(input storytellerModel.AgentRunRequest) error {
-	hasSelectedContent := strings.TrimSpace(input.SelectedContent) != ""
-	hasSelectionRange := input.SelectionStart != nil || input.SelectionEnd != nil
-	if !hasSelectedContent && !hasSelectionRange {
-		return nil
-	}
-	if !hasSelectedContent {
-		return errors.New("selected_content is required when selection_start/selection_end is provided")
-	}
-	if input.SelectionStart == nil {
-		return errors.New("selection_start is required")
-	}
-	if input.SelectionEnd == nil {
-		return errors.New("selection_end is required")
-	}
-	if *input.SelectionStart < 0 {
-		return errors.New("selection_start must be greater than or equal to 0")
-	}
-	if *input.SelectionEnd <= *input.SelectionStart {
-		return errors.New("selection_end must be greater than selection_start")
-	}
-	return nil
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {

@@ -1,5 +1,9 @@
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
+import TranslateIcon from "@mui/icons-material/Translate";
+import TuneIcon from "@mui/icons-material/Tune";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import {
   Box,
   Divider,
@@ -12,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { Editor } from "@tiptap/core";
+import type { ComponentType } from "react";
 
 import {
   BLOCK_OPERATION_GROUPS,
@@ -24,6 +29,8 @@ import {
   OPEN_ASSET_IMAGE_SETTINGS_EVENT,
   type OpenAssetImageSettingsEventDetail,
 } from "./wysiwygCore/assetImageEvents";
+import type { StorytellerAgentRunMode } from "@/types/storyteller.ts";
+import { STORYTELLER_SKILL_USAGE_TEXT } from "./storytellerSelectionAgentTrigger";
 
 export interface ContextMenuPosition {
   x: number;
@@ -44,9 +51,56 @@ interface StorytellerWysiwygContextMenuProps {
   hasFootnote: boolean;
   hasComment: boolean;
   hasSelection: boolean;
+  hasSavedTarget: boolean;
   isCurrentParagraphEmpty: boolean;
   hasAssetImage: boolean;
+  onRequestSelectionAgentDialog?: (
+    item: StorytellerSelectionAgentDialogItem,
+  ) => void;
 }
+
+export interface StorytellerSelectionAgentDialogItem {
+  command: string;
+  mode: StorytellerAgentRunMode;
+  label: string;
+  icon: ComponentType<{ fontSize?: "small" }>;
+  usage: string;
+}
+
+// 四顆長得一模一樣的 SmartToyIcon 會讓使用者要滑鼠移過去看 tooltip 才知道是哪個
+// 指令（旁邊粗體/斜體那排一眼就能分辨），改成每個指令各自語意對應的圖示。
+// usage 沿用「指令 / 引用說明」抽屜同一份文案（STORYTELLER_SKILL_USAGE_TEXT）。
+export const SELECTION_AGENT_SKILL_ITEMS: StorytellerSelectionAgentDialogItem[] =
+  [
+    {
+      command: "rewrite",
+      mode: "rewrite_selection",
+      label: "/rewrite 改寫",
+      icon: AutoFixHighIcon,
+      usage: STORYTELLER_SKILL_USAGE_TEXT.rewrite,
+    },
+    {
+      command: "expand",
+      mode: "expand_selection",
+      label: "/expand 擴寫",
+      icon: UnfoldMoreIcon,
+      usage: STORYTELLER_SKILL_USAGE_TEXT.expand,
+    },
+    {
+      command: "translate",
+      mode: "translate_selection",
+      label: "/translate 翻譯",
+      icon: TranslateIcon,
+      usage: STORYTELLER_SKILL_USAGE_TEXT.translate,
+    },
+    {
+      command: "custom",
+      mode: "custom_selection",
+      label: "/custom 自訂指令",
+      icon: TuneIcon,
+      usage: STORYTELLER_SKILL_USAGE_TEXT.custom,
+    },
+  ];
 
 /**
  * 右鍵選單（Phase 2：context-aware 化）。依 selection 狀態分兩大類主內容：
@@ -71,11 +125,19 @@ export function StorytellerWysiwygContextMenu({
   hasFootnote,
   hasComment,
   hasSelection,
+  hasSavedTarget,
   isCurrentParagraphEmpty,
   hasAssetImage,
+  onRequestSelectionAgentDialog,
 }: StorytellerWysiwygContextMenuProps) {
   const runAndClose = (command: WysiwygCommand) => {
     command.run(editor, commandContext);
+    onClose();
+  };
+  const requestSelectionAgentDialog = (
+    item: StorytellerSelectionAgentDialogItem,
+  ) => {
+    onRequestSelectionAgentDialog?.(item);
     onClose();
   };
   const openAssetImageSettings = () => {
@@ -151,6 +213,10 @@ export function StorytellerWysiwygContextMenu({
       : undefined,
   };
 
+  const showSelectionAgentItems = Boolean(
+    hasSavedTarget && onRequestSelectionAgentDialog,
+  );
+
   return (
     <Menu
       open={position !== null}
@@ -166,7 +232,10 @@ export function StorytellerWysiwygContextMenu({
     >
       {hasAssetImage
         ? [
-            <MenuItem key="asset-image-settings" onClick={openAssetImageSettings}>
+            <MenuItem
+              key="asset-image-settings"
+              onClick={openAssetImageSettings}
+            >
               <ListItemIcon>
                 <EditIcon fontSize="small" />
               </ListItemIcon>
@@ -196,137 +265,8 @@ export function StorytellerWysiwygContextMenu({
             }),
           ]
         : hasSelection
-        ? [
-            ...wysiwygCommandsByGroup("mark").map((command) => {
-              const Icon = command.icon!;
-              return (
-                <MenuItem
-                  key={command.id}
-                  selected={command.isActive?.(editor) ?? false}
-                  onClick={() => runAndClose(command)}
-                >
-                  <ListItemIcon>
-                    <Icon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>{command.label}</ListItemText>
-                </MenuItem>
-              );
-            }),
-            <Divider key="mark-color-divider" />,
-            <Typography
-              key="text-color-label"
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", px: 2, pt: 1 }}
-            >
-              文字顏色
-            </Typography>,
-            <Stack
-              key="text-color-swatches"
-              direction="row"
-              spacing={1}
-              sx={{ px: 2, py: 1 }}
-            >
-              {textColorCommands
-                .filter((c) => c.id !== "text-color-clear")
-                .map((command) => (
-                  <Tooltip key={command.id} title={command.label}>
-                    <Box
-                      component="button"
-                      type="button"
-                      aria-label={command.label}
-                      aria-pressed={command.isActive?.(editor) ?? false}
-                      onClick={() => runAndClose(command)}
-                      sx={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        border: "2px solid",
-                        borderColor: command.isActive?.(editor)
-                          ? "text.primary"
-                          : "divider",
-                        bgcolor: command.previewColor,
-                        cursor: "pointer",
-                        p: 0,
-                      }}
-                    />
-                  </Tooltip>
-                ))}
-            </Stack>,
-            <MenuItem
-              key="text-color-clear"
-              onClick={() =>
-                runAndClose(getColorClearCommand(textColorCommands))
-              }
-            >
-              <ListItemIcon>
-                <DeleteIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>清除文字顏色</ListItemText>
-            </MenuItem>,
-            <Divider key="bg-color-divider" />,
-            <Typography
-              key="bg-color-label"
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", px: 2, pt: 1 }}
-            >
-              文字背景色
-            </Typography>,
-            <Stack
-              key="bg-color-swatches"
-              direction="row"
-              spacing={1}
-              sx={{ px: 2, py: 1 }}
-            >
-              {bgColorCommands
-                .filter((c) => c.id !== "bg-color-clear")
-                .map((command) => (
-                  <Tooltip key={command.id} title={command.label}>
-                    <Box
-                      component="button"
-                      type="button"
-                      aria-label={command.label}
-                      aria-pressed={command.isActive?.(editor) ?? false}
-                      onClick={() => runAndClose(command)}
-                      sx={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        border: "2px solid",
-                        borderColor: command.isActive?.(editor)
-                          ? "text.primary"
-                          : "divider",
-                        bgcolor: command.previewColor,
-                        cursor: "pointer",
-                        p: 0,
-                      }}
-                    />
-                  </Tooltip>
-                ))}
-            </Stack>,
-            <MenuItem
-              key="bg-color-clear"
-              onClick={() =>
-                runAndClose(getColorClearCommand(bgColorCommands))
-              }
-            >
-              <ListItemIcon>
-                <DeleteIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>清除背景色</ListItemText>
-            </MenuItem>,
-          ]
-        : [
-            // 標題／對齊／區塊種類三組共用 commands.ts 的 BLOCK_OPERATION_GROUPS
-            // 清單（跟 slash 選單同一份來源，見該常數的說明），group 交界處插入
-            // 分隔線——不再各自手寫三個幾乎一樣的 `.map()` 區塊，也不會再發生
-            // 「這裡新增一組 group、slash 選單忘記同步」的落差。
-            ...BLOCK_OPERATION_GROUPS.flatMap((group, groupIndex) => [
-              ...(groupIndex > 0
-                ? [<Divider key={`${group}-group-divider`} />]
-                : []),
-              ...wysiwygCommandsByGroup(group).map((command) => {
+          ? [
+              ...wysiwygCommandsByGroup("mark").map((command) => {
                 const Icon = command.icon!;
                 return (
                   <MenuItem
@@ -341,49 +281,194 @@ export function StorytellerWysiwygContextMenu({
                   </MenuItem>
                 );
               }),
-            ]),
-            ...(insertTableCommand || (showInsertImage && insertImageCommand)
-              ? [
-                  <Divider key="insert-divider" />,
-                  ...(insertTableCommand
-                    ? (() => {
-                        const InsertTableIcon = insertTableCommand.icon!;
-                        return [
-                          <MenuItem
-                            key={insertTableCommand.id}
-                            onClick={() => runAndClose(insertTableCommand)}
-                          >
-                            <ListItemIcon>
-                              <InsertTableIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText>
-                              {insertTableCommand.label}
-                            </ListItemText>
-                          </MenuItem>,
-                        ];
-                      })()
-                    : []),
-                  ...(showInsertImage && insertImageCommand
-                    ? (() => {
-                        const InsertImageIcon = insertImageCommand.icon!;
-                        return [
-                          <MenuItem
-                            key={insertImageCommand.id}
-                            onClick={() => runAndClose(insertImageCommand)}
-                          >
-                            <ListItemIcon>
-                              <InsertImageIcon fontSize="small" />
-                            </ListItemIcon>
-                            <ListItemText>
-                              {insertImageCommand.label}
-                            </ListItemText>
-                          </MenuItem>,
-                        ];
-                      })()
-                    : []),
-                ]
-              : []),
-          ]}
+              <Divider key="mark-color-divider" />,
+              <Typography
+                key="text-color-label"
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", px: 2, pt: 1 }}
+              >
+                文字顏色
+              </Typography>,
+              <Stack
+                key="text-color-swatches"
+                direction="row"
+                spacing={1}
+                sx={{ px: 2, py: 1 }}
+              >
+                {textColorCommands
+                  .filter((c) => c.id !== "text-color-clear")
+                  .map((command) => (
+                    <Tooltip key={command.id} title={command.label}>
+                      <Box
+                        component="button"
+                        type="button"
+                        aria-label={command.label}
+                        aria-pressed={command.isActive?.(editor) ?? false}
+                        onClick={() => runAndClose(command)}
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          border: "2px solid",
+                          borderColor: command.isActive?.(editor)
+                            ? "text.primary"
+                            : "divider",
+                          bgcolor: command.previewColor,
+                          cursor: "pointer",
+                          p: 0,
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+              </Stack>,
+              <MenuItem
+                key="text-color-clear"
+                onClick={() =>
+                  runAndClose(getColorClearCommand(textColorCommands))
+                }
+              >
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>清除文字顏色</ListItemText>
+              </MenuItem>,
+              <Divider key="bg-color-divider" />,
+              <Typography
+                key="bg-color-label"
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", px: 2, pt: 1 }}
+              >
+                文字背景色
+              </Typography>,
+              <Stack
+                key="bg-color-swatches"
+                direction="row"
+                spacing={1}
+                sx={{ px: 2, py: 1 }}
+              >
+                {bgColorCommands
+                  .filter((c) => c.id !== "bg-color-clear")
+                  .map((command) => (
+                    <Tooltip key={command.id} title={command.label}>
+                      <Box
+                        component="button"
+                        type="button"
+                        aria-label={command.label}
+                        aria-pressed={command.isActive?.(editor) ?? false}
+                        onClick={() => runAndClose(command)}
+                        sx={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          border: "2px solid",
+                          borderColor: command.isActive?.(editor)
+                            ? "text.primary"
+                            : "divider",
+                          bgcolor: command.previewColor,
+                          cursor: "pointer",
+                          p: 0,
+                        }}
+                      />
+                    </Tooltip>
+                  ))}
+              </Stack>,
+              <MenuItem
+                key="bg-color-clear"
+                onClick={() =>
+                  runAndClose(getColorClearCommand(bgColorCommands))
+                }
+              >
+                <ListItemIcon>
+                  <DeleteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>清除背景色</ListItemText>
+              </MenuItem>,
+              ...(showSelectionAgentItems
+                ? [
+                    <Divider key="selection-agent-divider" />,
+                    ...SELECTION_AGENT_SKILL_ITEMS.map((item) => (
+                      <MenuItem
+                        key={`selection-agent-${item.command}`}
+                        onClick={() => requestSelectionAgentDialog(item)}
+                      >
+                        <ListItemIcon>
+                          <item.icon fontSize="small" />
+                        </ListItemIcon>
+                        <ListItemText>{item.label}</ListItemText>
+                      </MenuItem>
+                    )),
+                  ]
+                : []),
+            ]
+          : [
+              // 標題／對齊／區塊種類三組共用 commands.ts 的 BLOCK_OPERATION_GROUPS
+              // 清單（跟 slash 選單同一份來源，見該常數的說明），group 交界處插入
+              // 分隔線——不再各自手寫三個幾乎一樣的 `.map()` 區塊，也不會再發生
+              // 「這裡新增一組 group、slash 選單忘記同步」的落差。
+              ...BLOCK_OPERATION_GROUPS.flatMap((group, groupIndex) => [
+                ...(groupIndex > 0
+                  ? [<Divider key={`${group}-group-divider`} />]
+                  : []),
+                ...wysiwygCommandsByGroup(group).map((command) => {
+                  const Icon = command.icon!;
+                  return (
+                    <MenuItem
+                      key={command.id}
+                      selected={command.isActive?.(editor) ?? false}
+                      onClick={() => runAndClose(command)}
+                    >
+                      <ListItemIcon>
+                        <Icon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>{command.label}</ListItemText>
+                    </MenuItem>
+                  );
+                }),
+              ]),
+              ...(insertTableCommand || (showInsertImage && insertImageCommand)
+                ? [
+                    <Divider key="insert-divider" />,
+                    ...(insertTableCommand
+                      ? (() => {
+                          const InsertTableIcon = insertTableCommand.icon!;
+                          return [
+                            <MenuItem
+                              key={insertTableCommand.id}
+                              onClick={() => runAndClose(insertTableCommand)}
+                            >
+                              <ListItemIcon>
+                                <InsertTableIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText>
+                                {insertTableCommand.label}
+                              </ListItemText>
+                            </MenuItem>,
+                          ];
+                        })()
+                      : []),
+                    ...(showInsertImage && insertImageCommand
+                      ? (() => {
+                          const InsertImageIcon = insertImageCommand.icon!;
+                          return [
+                            <MenuItem
+                              key={insertImageCommand.id}
+                              onClick={() => runAndClose(insertImageCommand)}
+                            >
+                              <ListItemIcon>
+                                <InsertImageIcon fontSize="small" />
+                              </ListItemIcon>
+                              <ListItemText>
+                                {insertImageCommand.label}
+                              </ListItemText>
+                            </MenuItem>,
+                          ];
+                        })()
+                      : []),
+                  ]
+                : []),
+            ]}
 
       {annotationCommands.length > 0 && <Divider />}
       {annotationCommands.flatMap((command) => {

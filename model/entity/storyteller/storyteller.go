@@ -139,7 +139,6 @@ const (
 	AgentRunModeTranslateSelection AgentRunMode = "translate_selection"
 	AgentRunModeContinueChapter    AgentRunMode = "continue_chapter"
 	AgentRunModeCustomSelection    AgentRunMode = "custom_selection"
-	AgentRunModeCustomChapter      AgentRunMode = "custom_chapter"
 )
 
 type ChatMessageRole string
@@ -721,8 +720,6 @@ type AgentRunRequest struct {
 	Instruction     string       `json:"instruction"`
 	FullContent     string       `json:"full_content"`
 	SelectedContent string       `json:"selected_content"`
-	SelectionStart  *int         `json:"selection_start"`
-	SelectionEnd    *int         `json:"selection_end"`
 	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
 	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
@@ -996,13 +993,22 @@ type AgentRunUsage struct {
 }
 
 type AgentRunResponse struct {
-	AgentID      uint64         `json:"agent_id"`
-	Provider     AgentProvider  `json:"provider"`
-	ModelName    string         `json:"model_name"`
-	Mode         AgentRunMode   `json:"mode"`
-	Result       string         `json:"result"`
-	Usage        *AgentRunUsage `json:"usage,omitempty"`
-	FinishReason string         `json:"finish_reason,omitempty"`
+	AgentID            uint64         `json:"agent_id"`
+	UserMessageID      uint64         `json:"user_message_id,omitempty"`
+	AssistantMessageID uint64         `json:"assistant_message_id,omitempty"`
+	Provider           AgentProvider  `json:"provider"`
+	ModelName          string         `json:"model_name"`
+	Mode               AgentRunMode   `json:"mode"`
+	Result             string         `json:"result"`
+	Usage              *AgentRunUsage `json:"usage,omitempty"`
+	FinishReason       string         `json:"finish_reason,omitempty"`
+}
+
+type AgenticReplyReferenceRequest struct {
+	Kind             string `json:"kind"`
+	MessageID        uint64 `json:"message_id,omitempty"`
+	ProposalPublicID string `json:"proposal_public_id,omitempty"`
+	Summary          string `json:"summary,omitempty"`
 }
 
 // AgenticQueryRequest 是 AAS 聊天視窗送出一則需求的請求體。ProviderAPIKeyID／
@@ -1023,6 +1029,10 @@ type AgenticQueryRequest struct {
 	// 這裡才是讓後端把完整內容併入這輪呼叫 prompt 的管道，留空代表不是在回覆
 	// 任何訊息。
 	ReplyContent string `json:"reply_content,omitempty"`
+	// ReplyReference 是送出後持久化用的短參照。ReplyContent 仍負責這一輪 provider
+	// prompt；Metadata 只保存這裡的 message_id / proposal_public_id 與短摘要，避免
+	// 每次回覆都把完整內容再複製一份。
+	ReplyReference *AgenticReplyReferenceRequest `json:"reply_reference,omitempty"`
 }
 
 // AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，
@@ -1067,6 +1077,10 @@ type AgenticQueryResponse struct {
 	// 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪
 	// 對話重複顯示。
 	ChatID uint64 `json:"chat_id,omitempty"`
+	// UserMessageID／AssistantMessageID 讓前端剛送出還沒 refetch 的本地訊息也能
+	// 盡快換成 DB message id；下一輪如果直接按「回覆」，metadata 才能只存參照。
+	UserMessageID      uint64 `json:"user_message_id,omitempty"`
+	AssistantMessageID uint64 `json:"assistant_message_id,omitempty"`
 	// ChatStatus 是 ChatID 這筆 chat 在 DB 裡的真實狀態——不能靠 Warning 有沒有值
 	// 猜，見 AgenticQueryOutput.ChatStatus 的說明。
 	ChatStatus StoryChatStatus         `json:"chat_status,omitempty"`
@@ -1080,6 +1094,16 @@ type AgenticQueryResponse struct {
 	// 但 Result／Steps／Proposals／Usage 仍然是累積到中止那刻的真實資料，不是
 	// 空殼——前端要把這個情況當成「部分結果＋警告」呈現，不是整個當失敗處理。
 	Warning string `json:"warning,omitempty"`
+}
+
+type AgenticReferenceContentResponse struct {
+	Content string `json:"content"`
+}
+
+type AgenticChatResponse struct {
+	ChatID     uint64                   `json:"chat_id"`
+	ChatStatus StoryChatStatus          `json:"chat_status"`
+	Messages   []StoryChatMessageOutput `json:"messages"`
 }
 
 type StoryChatMessageOutput struct {

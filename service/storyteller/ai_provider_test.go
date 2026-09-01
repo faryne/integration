@@ -181,8 +181,6 @@ func TestGrokProviderGenerateRequestValidation(t *testing.T) {
 }
 
 func TestBuildAgentRunPrompts(t *testing.T) {
-	start := 0
-	end := 5
 	systemPrompt, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{
 		DefaultPrompt: "Use a quiet horror tone.",
 	}, storytellerModel.AgentRunRequest{
@@ -190,16 +188,15 @@ func TestBuildAgentRunPrompts(t *testing.T) {
 		Instruction:     "Make it sharper.",
 		FullContent:     "Full chapter.",
 		SelectedContent: "Scene",
-		SelectionStart:  &start,
-		SelectionEnd:    &end,
-	})
+	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id", Title: "測試故事"}, false)
 
 	require.Contains(t, systemPrompt, "Use a quiet horror tone.")
+	require.Contains(t, systemPrompt, "Authorized project_public_id for this skill run: project-public-id")
 	require.Contains(t, userPrompt, "Task mode:\nrewrite_selection")
 	require.Contains(t, userPrompt, "User instruction:\nMake it sharper.")
-	require.NotContains(t, userPrompt, "Current chapter full content:")
+	require.NotContains(t, userPrompt, "User's current unsaved editor content:")
 	require.NotContains(t, userPrompt, "Full chapter.")
-	require.Contains(t, userPrompt, "Current selected text (a focus hint, not the only editable scope):")
+	require.Contains(t, userPrompt, "User's current selected text from the editor")
 	require.Contains(t, userPrompt, "Only output the rewritten text.")
 }
 
@@ -208,43 +205,43 @@ func TestBuildAgentRunPromptsFallsBackToFullContentWhenSelectionModeHasNoSelecti
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "Make it sharper.",
 		FullContent: "Full chapter.",
-	})
+	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id"}, false)
 
-	require.Contains(t, userPrompt, "Current chapter full content:")
+	require.Contains(t, userPrompt, "User's current unsaved editor content:")
 	require.Contains(t, userPrompt, "Full chapter.")
 	require.NotContains(t, userPrompt, "STORY_SELECTED_CONTENT")
 }
 
 func TestBuildAgentRunPromptsIncludesFullContentForChapterMode(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "Analyze the chapter.",
 		FullContent: "Full chapter.",
-	})
+	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id"}, false)
 
-	require.Contains(t, userPrompt, "Current chapter full content:")
+	require.Contains(t, userPrompt, "User's current unsaved editor content:")
 	require.Contains(t, userPrompt, "Full chapter.")
-	require.NotContains(t, userPrompt, "Current selected text:")
+	require.NotContains(t, userPrompt, "User's current selected text")
 }
 
 func TestBuildAgentRunPromptsAllowsEmptyInstruction(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		FullContent: "Full chapter.",
-	})
+	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id"}, false)
 
 	require.Contains(t, userPrompt, "User instruction:\n(No additional instruction was provided.)")
-	require.Contains(t, userPrompt, "Current chapter full content:")
+	require.Contains(t, userPrompt, "User's current unsaved editor content:")
 }
 
 func TestBuildAgentRunPromptsOmitsEmptyFullContent(t *testing.T) {
 	_, userPrompt := buildAgentRunPrompts(storytellerModel.Agent{}, storytellerModel.AgentRunRequest{
-		Mode:        storytellerModel.AgentRunModeCustomChapter,
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "Only use this request.",
-	})
+	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id"}, false)
 
 	require.Contains(t, userPrompt, "User instruction:\nOnly use this request.")
-	require.NotContains(t, userPrompt, "Current chapter full content:")
+	require.NotContains(t, userPrompt, "User's current unsaved editor content:")
 }
 
 func TestOpenAICompatibleGenerateWithTools(t *testing.T) {

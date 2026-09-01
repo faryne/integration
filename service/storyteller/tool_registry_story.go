@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -34,6 +35,30 @@ type storytellerUpsertStoryArguments struct {
 	Content         string  `json:"content"`
 	VolumePublicID  *string `json:"volume_public_id"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+type storytellerPatchStoryArguments struct {
+	ProjectPublicID string  `json:"project_public_id"`
+	StoryPublicID   string  `json:"story_public_id"`
+	Title           *string `json:"title"`
+	Summary         *string `json:"summary"`
+	Status          *string `json:"status"`
+	Sort            *int    `json:"sort"`
+	Content         *string `json:"content"`
+	ParentID        *string `json:"parent_id"`
+	BaseVersionID   *uint64 `json:"base_version_id"`
+}
+
+func (a storytellerPatchStoryArguments) hasContentField() bool {
+	return a.Title != nil || a.Summary != nil || a.Status != nil || a.Sort != nil || a.Content != nil
+}
+
+type storytellerSearchReplaceStoryArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id"`
+	Search          string `json:"search"`
+	Replace         string `json:"replace"`
+	IsRegex         bool   `json:"is_regex"`
 }
 
 type storytellerStoryVersionArguments struct {
@@ -75,6 +100,26 @@ type storytellerUpsertImageStoryArguments struct {
 	Sort            int                             `json:"sort"`
 	Pages           []storytellerImagePageArguments `json:"pages"`
 	BaseVersionID   *uint64                         `json:"base_version_id"`
+}
+
+type storytellerSearchReplaceOutput struct {
+	MatchCount                 int `json:"match_count"`
+	TextMatchCount             int `json:"text_match_count"`
+	ImageDescriptionMatchCount int `json:"image_description_match_count"`
+	AffectedPages              int `json:"affected_pages"`
+}
+
+type storytellerStorySearchReplaceOutput struct {
+	storytellerStoryDetail
+	storytellerSearchReplaceOutput
+}
+
+type storytellerReplaceResult struct {
+	Content                    string
+	MatchCount                 int
+	TextMatchCount             int
+	ImageDescriptionMatchCount int
+	AffectedPages              int
 }
 
 func storytellerStoryToolSpecs() []ToolSpec {
@@ -260,6 +305,114 @@ func storytellerStoryToolSpecs() []ToolSpec {
 					Content:                 story.LatestContent,
 					VersionID:               derefUint64(story.LatestVersionID),
 				}, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_patch_story",
+			Description: "Patch selected fields on an existing story. Omit a field to leave it unchanged. " +
+				"This is deliberately different from storyteller_upsert_story: upsert has full-overwrite semantics, " +
+				"so omitting title/summary/status/sort/content there overwrites them with empty or zero values. " +
+				"Use this tool when you only want to change specific fields. At least one of title, summary, status, sort, or content must be provided. " +
+				"parent_id is optional and only changes volume membership when present; empty string removes the story from any volume.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"story_public_id":   stringSchema("Existing story public_id to patch."),
+				"title":             stringSchema("Optional. New story title. Omit to keep the current title."),
+				"summary":           stringSchema("Optional. New listing summary. Omit to keep the current summary."),
+				"status":            stringSchema("Optional. draft or completed. Omit to keep the current status."),
+				"sort":              integerSchema("Optional. New display order. Omit to keep the current sort."),
+				"content":           stringSchema("Optional. New full content. Omit to keep the current content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint),
+				"parent_id":         stringSchema("Optional. Omit to keep current volume membership; pass empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
+				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; version_conflict flags if the story has moved on since, but the write still happens."),
+			}, []string{"project_public_id", "story_public_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerPatchStoryArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				if !args.hasContentField() {
+					return nil, errors.New("at least one field to update must be specified")
+				}
+				service := NewService()
+				current, err := service.Story(userID, args.ProjectPublicID, args.StoryPublicID)
+				if err != nil {
+					return nil, err
+				}
+				input := mergeStoryPatch(current, args)
+				story, conflicted, err := service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, storytellerSourceFromContext(ctx))
+				if err != nil {
+					return nil, err
+				}
+				return storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, conflicted)
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_search_replace_story",
+			Description: "Search and replace inside one existing story, writing directly with no dry run. " +
+				"For content_type=text stories this targets content. For content_type=image stories this targets only each page's description field, " +
+				"then rebuilds the pages JSON so JSON structure is never searched or modified as raw text. " +
+				"Search is case-sensitive. When is_regex is false, search is treated as a literal string via regexp.QuoteMeta; when true, search uses Go RE2 regexp syntax and replace may use $1/${name} capture references. " +
+				"If match_count is 0, nothing is written and no new version is created; otherwise this saves through the same versioned path as storyteller_upsert_story.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"story_public_id":   stringSchema("Existing story public_id to edit."),
+				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i)."),
+				"replace":           stringSchema("Required replacement text. When is_regex=true, Go regexp replacement references such as $1 and ${name} are supported."),
+				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
+			}, []string{"project_public_id", "story_public_id", "search", "replace"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerSearchReplaceStoryArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				pattern, err := compileStorytellerSearchPattern(args.Search, args.IsRegex)
+				if err != nil {
+					return nil, err
+				}
+				service := NewService()
+				current, err := service.Story(userID, args.ProjectPublicID, args.StoryPublicID)
+				if err != nil {
+					return nil, err
+				}
+				replaceResult, err := replaceStoryContent(current.ContentType, current.LatestContent, pattern, args.Replace)
+				if err != nil {
+					return nil, err
+				}
+				if replaceResult.MatchCount == 0 {
+					detail, err := storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, current, false)
+					if err != nil {
+						return nil, err
+					}
+					return storytellerStorySearchReplaceOutput{storytellerStoryDetail: detail, storytellerSearchReplaceOutput: replaceResult.output()}, nil
+				}
+				input := storytellerModel.StoryRequest{
+					Title:         current.Title,
+					Summary:       current.Summary,
+					Status:        current.Status,
+					Sort:          current.Sort,
+					Content:       replaceResult.Content,
+					ContentType:   current.ContentType,
+					BaseVersionID: current.LatestVersionID,
+				}
+				story, conflicted, err := service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, storytellerSourceFromContext(ctx))
+				if err != nil {
+					return nil, err
+				}
+				detail, err := storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, conflicted)
+				if err != nil {
+					return nil, err
+				}
+				return storytellerStorySearchReplaceOutput{storytellerStoryDetail: detail, storytellerSearchReplaceOutput: replaceResult.output()}, nil
 			},
 		},
 
@@ -455,4 +608,120 @@ func storytellerRandomPageID() string {
 		return ""
 	}
 	return hex.EncodeToString(buf)
+}
+
+func mergeStoryPatch(story *storytellerModel.Story, args storytellerPatchStoryArguments) storytellerModel.StoryRequest {
+	input := storytellerModel.StoryRequest{
+		Title:         story.Title,
+		Summary:       story.Summary,
+		Status:        story.Status,
+		Sort:          story.Sort,
+		Content:       story.LatestContent,
+		ParentID:      args.ParentID,
+		BaseVersionID: args.BaseVersionID,
+		ContentType:   story.ContentType,
+	}
+	if args.Title != nil {
+		input.Title = *args.Title
+	}
+	if args.Summary != nil {
+		input.Summary = *args.Summary
+	}
+	if args.Status != nil {
+		input.Status = storytellerModel.StoryStatus(*args.Status)
+	}
+	if args.Sort != nil {
+		input.Sort = *args.Sort
+	}
+	if args.Content != nil {
+		input.Content = *args.Content
+	}
+	return input
+}
+
+func compileStorytellerSearchPattern(search string, isRegex bool) (*regexp.Regexp, error) {
+	pattern := search
+	if !isRegex {
+		pattern = regexp.QuoteMeta(search)
+	}
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("invalid search pattern: %w", err)
+	}
+	return re, nil
+}
+
+func replaceStoryContent(contentType storytellerModel.ProjectContentType, rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
+	if contentType == storytellerModel.ProjectContentTypeImage {
+		return replaceImageStoryDescriptions(rawContent, pattern, replace)
+	}
+	content, count := replaceAllCounting(pattern, rawContent, replace)
+	return storytellerReplaceResult{
+		Content:        content,
+		MatchCount:     count,
+		TextMatchCount: count,
+	}, nil
+}
+
+func replaceImageStoryDescriptions(rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
+	var content storytellerModel.StoryImageContent
+	if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
+		return storytellerReplaceResult{}, fmt.Errorf("invalid image story content: %w", err)
+	}
+	result := storytellerReplaceResult{}
+	for i := range content.Pages {
+		description, count := replaceAllCounting(pattern, content.Pages[i].Description, replace)
+		if count == 0 {
+			continue
+		}
+		content.Pages[i].Description = description
+		result.MatchCount += count
+		result.ImageDescriptionMatchCount += count
+		result.AffectedPages++
+	}
+	if result.MatchCount == 0 {
+		result.Content = rawContent
+		return result, nil
+	}
+	body, err := json.Marshal(content)
+	if err != nil {
+		return storytellerReplaceResult{}, err
+	}
+	result.Content = string(body)
+	return result, nil
+}
+
+func replaceAllCounting(pattern *regexp.Regexp, input, replace string) (string, int) {
+	matches := pattern.FindAllStringIndex(input, -1)
+	if len(matches) == 0 {
+		return input, 0
+	}
+	return pattern.ReplaceAllString(input, replace), len(matches)
+}
+
+func (r storytellerReplaceResult) output() storytellerSearchReplaceOutput {
+	return storytellerSearchReplaceOutput{
+		MatchCount:                 r.MatchCount,
+		TextMatchCount:             r.TextMatchCount,
+		ImageDescriptionMatchCount: r.ImageDescriptionMatchCount,
+		AffectedPages:              r.AffectedPages,
+	}
+}
+
+func storytellerStoryDetailForOutput(service *Service, userID uint64, projectPublicID string, story *storytellerModel.Story, conflicted bool) (storytellerStoryDetail, error) {
+	detail := storytellerStoryDetail{
+		storytellerStorySummary: toStorytellerStorySummary(*story),
+		VersionID:               derefUint64(story.LatestVersionID),
+		VersionConflict:         conflicted,
+	}
+	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		pages, err := service.ImageStoryPages(userID, projectPublicID, story.PublicID)
+		if err != nil {
+			return storytellerStoryDetail{}, err
+		}
+		detail.Pages = pages
+	} else {
+		detail.Content = story.LatestContent
+	}
+	return detail, nil
 }

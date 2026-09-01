@@ -9,10 +9,18 @@ import {
   wysiwygCommandsByGroup,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
+import {
+  SELECTION_AGENT_SKILL_ITEMS,
+  type StorytellerSelectionAgentDialogItem,
+} from "./StorytellerWysiwygContextMenu";
 
 interface StorytellerWysiwygBubbleMenuProps {
   editor: Editor;
   commandContext: WysiwygCommandContext;
+  hasSavedTarget: boolean;
+  onRequestSelectionAgentDialog?: (
+    item: StorytellerSelectionAgentDialogItem,
+  ) => void;
 }
 
 const BUBBLE_MARK_IDS = [
@@ -40,6 +48,8 @@ const BUBBLE_MARK_IDS = [
 export function StorytellerWysiwygBubbleMenu({
   editor,
   commandContext,
+  hasSavedTarget,
+  onRequestSelectionAgentDialog,
 }: StorytellerWysiwygBubbleMenuProps) {
   const [textColorMenuOpen, setTextColorMenuOpen] = useState(false);
   const [bgColorMenuOpen, setBgColorMenuOpen] = useState(false);
@@ -63,10 +73,12 @@ export function StorytellerWysiwygBubbleMenu({
   // 動作，不是色票（沒有 previewColor），要排除掉才不會在色票列裡多一顆空白按鈕；
   // 清除功能另外用固定的 DeleteIcon 按鈕呈現（見下面 JSX）。
   const textColorCommands = wysiwygCommandsByGroup("color").filter(
-    (command) => command.id.startsWith("text-color-") && command.id !== "text-color-clear",
+    (command) =>
+      command.id.startsWith("text-color-") && command.id !== "text-color-clear",
   );
   const bgColorCommands = wysiwygCommandsByGroup("color").filter(
-    (command) => command.id.startsWith("bg-color-") && command.id !== "bg-color-clear",
+    (command) =>
+      command.id.startsWith("bg-color-") && command.id !== "bg-color-clear",
   );
   const linkCommand = getWysiwygCommand("link")!;
   const footnoteCommand = getWysiwygCommand("footnote")!;
@@ -78,6 +90,9 @@ export function StorytellerWysiwygBubbleMenu({
   const run = (command: {
     run: (editor: Editor, context: WysiwygCommandContext) => void;
   }) => command.run(editor, commandContext);
+  const showSelectionAgentItems = Boolean(
+    hasSavedTarget && onRequestSelectionAgentDialog,
+  );
 
   return (
     <BubbleMenu
@@ -166,7 +181,9 @@ export function StorytellerWysiwygBubbleMenu({
                   border: "none",
                   borderRadius: 1,
                   cursor: "pointer",
-                  bgcolor: textColorMenuOpen ? "action.selected" : "transparent",
+                  bgcolor: textColorMenuOpen
+                    ? "action.selected"
+                    : "transparent",
                   "&:hover": { bgcolor: "action.hover" },
                 }}
               >
@@ -380,7 +397,9 @@ export function StorytellerWysiwygBubbleMenu({
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
 
-          <Tooltip title={linkCommand.isActive?.(editor) ? "編輯連結" : "加連結"}>
+          <Tooltip
+            title={linkCommand.isActive?.(editor) ? "編輯連結" : "加連結"}
+          >
             <Box
               component="button"
               type="button"
@@ -409,9 +428,7 @@ export function StorytellerWysiwygBubbleMenu({
 
           {(footnoteCommand.isVisible?.(commandContext) ?? true) && (
             <Tooltip
-              title={
-                footnoteCommand.isActive?.(editor) ? "編輯腳注" : "加腳注"
-              }
+              title={footnoteCommand.isActive?.(editor) ? "編輯腳注" : "加腳注"}
             >
               <Box
                 component="button"
@@ -469,6 +486,42 @@ export function StorytellerWysiwygBubbleMenu({
                 <CommentIcon fontSize="small" />
               </Box>
             </Tooltip>
+          )}
+
+          {showSelectionAgentItems && (
+            <>
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.25, my: 0.5 }}
+              />
+              {SELECTION_AGENT_SKILL_ITEMS.map((item) => (
+                <Tooltip key={item.command} title={item.label}>
+                  <Box
+                    component="button"
+                    type="button"
+                    aria-label={item.label}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onRequestSelectionAgentDialog?.(item)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 30,
+                      height: 30,
+                      border: "none",
+                      borderRadius: 1,
+                      cursor: "pointer",
+                      bgcolor: "transparent",
+                      color: "text.primary",
+                      "&:hover": { bgcolor: "action.hover" },
+                    }}
+                  >
+                    <item.icon fontSize="small" />
+                  </Box>
+                </Tooltip>
+              ))}
+            </>
           )}
         </Stack>
       </Paper>

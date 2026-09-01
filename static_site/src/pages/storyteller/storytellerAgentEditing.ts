@@ -10,30 +10,126 @@ export interface StorytellerAgentTextSelection {
   text: string;
 }
 
-export function currentStoryMentionQuery(value: string): string | null {
-  const match = value.match(/@story:([^\s\]]*)$/);
-  return match ? match[1] : null;
+export interface StorytellerAgentMentionInsertion {
+  value: string;
+  selectionStart: number;
+  selectionEnd: number;
 }
 
-export function currentLoreMentionQuery(value: string): string | null {
-  const match = value.match(/@lore:([^\s\]]*)$/);
-  return match ? match[1] : null;
+interface StorytellerAgentPartialMention {
+  start: number;
+  end: number;
+  query: string;
 }
 
-export function insertStoryMention(current: string, title: string): string {
-  const token = formatStorytellerAgentReferenceToken("story", title);
-  if (/@story:([^\s\]]*)$/.test(current)) {
-    return current.replace(/@story:([^\s\]]*)$/, token);
+export function currentStoryMentionQuery(
+  value: string,
+  selectionStart = value.length,
+  selectionEnd = selectionStart,
+): string | null {
+  return (
+    findPartialMention(value, selectionStart, selectionEnd, "story")?.query ??
+    null
+  );
+}
+
+export function currentLoreMentionQuery(
+  value: string,
+  selectionStart = value.length,
+  selectionEnd = selectionStart,
+): string | null {
+  return (
+    findPartialMention(value, selectionStart, selectionEnd, "lore")?.query ??
+    null
+  );
+}
+
+export function insertStoryMention(
+  current: string,
+  selectionStart: number,
+  selectionEnd: number,
+  title: string,
+): StorytellerAgentMentionInsertion {
+  return insertMention(current, selectionStart, selectionEnd, "story", title);
+}
+
+export function insertLoreMention(
+  current: string,
+  selectionStart: number,
+  selectionEnd: number,
+  title: string,
+): StorytellerAgentMentionInsertion {
+  return insertMention(current, selectionStart, selectionEnd, "lore", title);
+}
+
+function insertMention(
+  current: string,
+  selectionStart: number,
+  selectionEnd: number,
+  kind: "story" | "lore",
+  title: string,
+): StorytellerAgentMentionInsertion {
+  const token = formatStorytellerAgentReferenceToken(kind, title);
+  const start = clampSelectionIndex(selectionStart, current.length);
+  const end = clampSelectionIndex(selectionEnd, current.length);
+  const rangeStart = Math.min(start, end);
+  const rangeEnd = Math.max(start, end);
+  const partial = findPartialMention(current, rangeStart, rangeEnd, kind);
+  const replaceStart = partial?.start ?? rangeStart;
+  const replaceEnd = partial?.end ?? rangeEnd;
+  const nextValue = `${current.slice(0, replaceStart)}${token}${current.slice(replaceEnd)}`;
+  const nextSelection = replaceStart + token.length;
+  return {
+    value: nextValue,
+    selectionStart: nextSelection,
+    selectionEnd: nextSelection,
+  };
+}
+
+function findPartialMention(
+  value: string,
+  selectionStart: number,
+  selectionEnd: number,
+  kind: "story" | "lore",
+): StorytellerAgentPartialMention | null {
+  if (selectionStart !== selectionEnd) {
+    return null;
   }
-  return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
+  const cursor = clampSelectionIndex(selectionStart, value.length);
+  const prefix = kind === "lore" ? "@lore:" : "@story:";
+  let best: StorytellerAgentPartialMention | null = null;
+  let tokenStart = value.indexOf(prefix);
+  while (tokenStart >= 0 && tokenStart <= cursor) {
+    const rawQueryStart = tokenStart + prefix.length;
+    const bracketed = value[rawQueryStart] === "[";
+    const queryStart = bracketed ? rawQueryStart + 1 : rawQueryStart;
+    const queryEnd = findMentionQueryEnd(value, queryStart);
+    if (cursor >= queryStart && cursor <= queryEnd) {
+      best = {
+        start: tokenStart,
+        end: bracketed && value[queryEnd] === "]" ? queryEnd + 1 : queryEnd,
+        query: value.slice(queryStart, queryEnd),
+      };
+    }
+    tokenStart = value.indexOf(prefix, tokenStart + prefix.length);
+  }
+  return best;
 }
 
-export function insertLoreMention(current: string, title: string): string {
-  const token = formatStorytellerAgentReferenceToken("lore", title);
-  if (/@lore:([^\s\]]*)$/.test(current)) {
-    return current.replace(/@lore:([^\s\]]*)$/, token);
+function findMentionQueryEnd(value: string, queryStart: number) {
+  for (let index = queryStart; index < value.length; index += 1) {
+    if (/[\s\]]/.test(value[index])) {
+      return index;
+    }
   }
-  return current.trimEnd() ? `${current.trimEnd()} ${token}` : token;
+  return value.length;
+}
+
+function clampSelectionIndex(index: number, length: number) {
+  if (!Number.isFinite(index)) {
+    return length;
+  }
+  return Math.max(0, Math.min(index, length));
 }
 
 // 將 AI 回應套用回內文：取代選取／插入游標／附加末尾／複製。

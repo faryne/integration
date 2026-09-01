@@ -15,6 +15,7 @@ import (
 	"faryne.dev/controller/opendata"
 	"faryne.dev/model/enum"
 	"faryne.dev/route"
+	"faryne.dev/service/background"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
@@ -32,6 +33,7 @@ var inputEnvFile = ""
 var reload bool
 var buildVersion = "development"
 var cmdName = ""
+var appBackgroundWork = background.Default()
 
 var commandParams = commandParameter.Registry{
 	"brandId":         commandParameter.New("eroge_brands numeric ID", nil),
@@ -166,6 +168,7 @@ func shutdownAllSettings(runtime *appRuntime) error {
 		return nil
 	}
 	var shutdownErr error
+	beginBackgroundWorkDrain()
 	if runtime.app != nil {
 		shutdownErr = errors.Join(shutdownErr, runtime.app.ShutdownWithTimeout(30*time.Second))
 	}
@@ -177,8 +180,20 @@ func shutdownAllSettings(runtime *appRuntime) error {
 			shutdownErr = errors.Join(shutdownErr, errors.New("cron shutdown timeout"))
 		}
 	}
+	waitBackgroundWorkBeforeShutdown()
 	shutdownErr = errors.Join(shutdownErr, shutdownClients())
 	return shutdownErr
+}
+
+func beginBackgroundWorkDrain() {
+	appBackgroundWork.BeginDrain()
+}
+
+func waitBackgroundWorkBeforeShutdown() {
+	// 背景工作持有的是 appBackgroundWork.Context()，重啟時必須先等它們自然完成，
+	// 不能先 cancel，否則長時間的 provider 呼叫會被我們自己中斷。
+	appBackgroundWork.Wait()
+	appBackgroundWork.Cancel()
 }
 
 func shutdownClients() error {

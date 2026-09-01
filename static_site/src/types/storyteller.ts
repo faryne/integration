@@ -388,16 +388,13 @@ export type StorytellerAgentRunMode =
   | "expand_selection"
   | "translate_selection"
   | "continue_chapter"
-  | "custom_selection"
-  | "custom_chapter";
+  | "custom_selection";
 
 export interface StorytellerAgentRunRequest {
   mode: StorytellerAgentRunMode;
   instruction: string;
   full_content: string;
   selected_content: string;
-  selection_start?: number;
-  selection_end?: number;
   provider_apikey_id?: number;
   model_name?: string;
   // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand
@@ -414,12 +411,21 @@ export interface StorytellerAgentRunUsage {
 
 export interface StorytellerAgentRunResponse {
   agent_id: number;
+  user_message_id?: number;
+  assistant_message_id?: number;
   provider: string;
   model_name: string;
   mode: StorytellerAgentRunMode;
   result: string;
   usage?: StorytellerAgentRunUsage;
   finish_reason?: string;
+}
+
+export interface StorytellerAgenticReplyReferenceRequest {
+  kind: "message" | "proposal";
+  message_id?: number;
+  proposal_public_id?: string;
+  summary?: string;
 }
 
 // AAS（agentic AI storyteller）：多輪、會自己呼叫工具查資料的問答功能，跟上面
@@ -440,6 +446,8 @@ export interface StorytellerAgenticQueryRequest {
   // 一行摘要引言（見 composeStorytellerAgentInstructionWithReply），這裡才是讓
   // 後端把完整內容併入這輪呼叫 prompt 的管道，不帶代表不是在回覆任何訊息。
   reply_content?: string;
+  // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
+  reply_reference?: StorytellerAgenticReplyReferenceRequest;
 }
 
 export interface StorytellerAgenticToolCall {
@@ -476,6 +484,8 @@ export interface StorytellerAgenticQueryResponse {
   // 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪對話
   // 因為 pending 訊息被重新抓到而重複顯示。
   chat_id?: number;
+  user_message_id?: number;
+  assistant_message_id?: number;
   // 這輪對話在 DB 裡的真實狀態——in_progress 是 provider 還在處理，pending
   // 才是已經中斷或失敗、可以重送。
   chat_status?: "pending" | "in_progress" | "completed";
@@ -488,6 +498,16 @@ export interface StorytellerAgenticQueryResponse {
   // 非空代表這輪對話撞到步數上限被強制中止，沒有真的拿到最終答案，但其餘欄位
   // 仍然是累積到中止那刻的真實資料，不是空殼——當成「部分結果＋警告」呈現。
   warning?: string;
+}
+
+export interface StorytellerAgenticChatResponse {
+  chat_id: number;
+  chat_status: "pending" | "in_progress" | "completed";
+  messages: StorytellerStoryChatMessage[];
+}
+
+export interface StorytellerAgenticReferenceContentResponse {
+  content: string;
 }
 
 export interface StorytellerStoryChatMessage {
