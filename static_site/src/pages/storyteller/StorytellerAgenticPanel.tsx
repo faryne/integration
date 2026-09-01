@@ -1227,14 +1227,8 @@ export function StorytellerAgenticPanel({
       return undefined;
     }
     try {
-      const parsed = JSON.parse(metadata) as {
-        selected_content?: string;
-        selected_content_preview?: string;
-      };
-      const selected =
-        typeof parsed.selected_content === "string"
-          ? parsed.selected_content
-          : parsed.selected_content_preview;
+      const parsed = JSON.parse(metadata) as { selected_content?: string };
+      const selected = parsed.selected_content;
       return selected && selected.trim() !== "" ? selected : undefined;
     } catch {
       return undefined;
