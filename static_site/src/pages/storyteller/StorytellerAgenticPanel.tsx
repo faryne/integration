@@ -265,13 +265,12 @@ function agenticErrorMessage(error: unknown): string {
 
 // 同一個對話串裡混了兩種來源的訊息：slash command 觸發的單輪 skill（改寫/擴寫/
 // 翻譯/續寫），跟純文字觸發的多輪 agentic 問答，兩者資料模型跟渲染方式都不同，
-// 用 kind 分流；sortKey 讓 skill 的歷史訊息（存在 DB，可能很舊）跟 agentic 的
-// session 訊息（只存在這次對話，未持久化）能照時間正確交錯顯示。
+// 用 kind 分流。顯示順序完全交給陣列位置決定（歷史訊息本來就照時間排好，
+// session 訊息照送出/收到順序 push），不額外算排序鍵。
 type PanelMessage =
-  | ({ kind: "skill"; sortKey: number } & StorytellerAgentPanelMessage)
+  | ({ kind: "skill" } & StorytellerAgentPanelMessage)
   | {
       kind: "agentic";
-      sortKey: number;
       id: string;
       role: "user" | "assistant";
       content: string;
@@ -891,28 +890,24 @@ export function StorytellerAgenticPanel({
   const [selectionAgentTarget, setSelectionAgentTarget] = useState<{
     selectedText: string;
   } | null>(null);
-  const [optimisticSkillMessage, setOptimisticSkillMessage] =
-    useState<PanelMessage | null>(null);
-  const [skillResult, setSkillResult] = useState<{
-    agentId: number;
-    response: StorytellerAgentRunResponse;
-    resultSelection: StorytellerAgentPanelSelection | null;
-    sortKey: number;
-  } | null>(null);
-  const [agenticMessages, setAgenticMessages] = useState<
-    Extract<PanelMessage, { kind: "agentic" }>[]
-  >([]);
+  // 這次對話 session 內所有還沒被歷史清單取代的訊息（skill 的樂觀訊息/loading/
+  // 結果、agentic 的使用者訊息/loading/回覆/錯誤），一律照送出或收到的順序直接
+  // push 進這一個陣列——顯示順序只看陣列位置，不再用另外一組排序鍵去跟歷史訊息
+  // 的真實時間戳比大小。要更新某一則（例如 loading 換成正式結果）用 id 對應、
+  // 原地替換，絕不用「濾掉舊的、把新的接到陣列尾端」，否則等於重新排到最後面。
+  const [liveMessages, setLiveMessages] = useState<PanelMessage[]>([]);
+  function pushLiveMessage(message: PanelMessage) {
+    setLiveMessages((prev) => [...prev, message]);
+  }
+  function replaceLiveMessage(id: string, next: PanelMessage) {
+    setLiveMessages((prev) => prev.map((m) => (m.id === id ? next : m)));
+  }
+  function removeLiveMessage(id: string) {
+    setLiveMessages((prev) => prev.filter((m) => m.id !== id));
+  }
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const pendingSkillIdRef = useRef(0);
-  // session 訊息（agentic 全部、skill 的樂觀/暫時結果）只存在這次對話，沒有伺服器
-  // 時間戳可用；用一個保留在 epoch 毫秒值上限之上的遞增計數器當排序鍵，保證一定
-  // 排在所有從伺服器讀到的歷史訊息之後，同時避免在 render 中呼叫 Date.now()
-  // 觸發 react-hooks/purity 規則。
-  const sessionSortKeyBaseRef = useRef(Number.MAX_SAFE_INTEGER - 1_000_000);
-  function nextSessionSortKey() {
-    sessionSortKeyBaseRef.current += 1;
-    return sessionSortKeyBaseRef.current;
-  }
+  const pendingAgenticIdRef = useRef(0);
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
 
   const selectedAgent =
@@ -1085,19 +1080,26 @@ export function StorytellerAgenticPanel({
     .slice()
     .reverse()
     .flatMap((page) => page.items);
-  // skillResult 是這次執行剛拿到、尚未確定已經進到（invalidate 後重新抓取的）歷史
-  // 清單裡的暫時結果；一旦歷史清單也出現同樣內容，代表已經是「正式」的那一則，
-  // 這裡先濾掉暫時結果對應的那筆，避免同一則回應顯示兩次。
-  const visibleSkillMessages = skillResult
-    ? rawSkillMessages.filter(
+  // liveMessages 裡這次執行剛拿到、尚未確定已經進到（invalidate 後重新抓取的）
+  // 歷史清單裡的 skill 結果；一旦歷史清單也出現同樣內容，代表已經是「正式」的
+  // 那一則，這裡先濾掉暫時結果對應的那筆，避免同一則回應顯示兩次。
+  const liveSkillAssistantContents = new Set(
+    liveMessages
+      .filter(
         (message) =>
-          !(
-            message.role === "assistant" &&
-            message.agent_id === skillResult.agentId &&
-            message.content.trim() === skillResult.response.result.trim()
-          ),
+          message.kind === "skill" &&
+          message.role === "assistant" &&
+          message.content.trim() !== "",
       )
-    : rawSkillMessages;
+      .map((message) => message.content.trim()),
+  );
+  const visibleSkillMessages = rawSkillMessages.filter(
+    (message) =>
+      !(
+        message.role === "assistant" &&
+        liveSkillAssistantContents.has(message.content.trim())
+      ),
+  );
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
     // skill 指令從不套用 Agent 的人設 prompt（ignore_agent_persona 固定
@@ -1280,7 +1282,6 @@ export function StorytellerAgenticPanel({
     const reply = parseAgenticReplyReference(message.metadata);
     return {
       kind: "agentic",
-      sortKey: new Date(message.created_at).getTime(),
       id: String(message.id),
       role: message.role === "assistant" ? "assistant" : "user",
       content: message.content,
@@ -1310,7 +1311,6 @@ export function StorytellerAgenticPanel({
       const selectedContent = parseMessageSelectedContent(message.metadata);
       return {
         kind: "skill",
-        sortKey: new Date(message.created_at).getTime(),
         id: String(message.id),
         role: message.role,
         content: stripSkillSelectedContentQuote(
@@ -1327,28 +1327,12 @@ export function StorytellerAgenticPanel({
       };
     },
   );
-  const skillTransientMessages: PanelMessage[] = [];
-  if (optimisticSkillMessage) {
-    skillTransientMessages.push(optimisticSkillMessage);
-  }
-  if (skillResult) {
-    skillTransientMessages.push({
-      kind: "skill",
-      sortKey: skillResult.sortKey,
-      id: skillResult.response.assistant_message_id
-        ? String(skillResult.response.assistant_message_id)
-        : `skill-result-${skillResult.agentId}-${skillResult.response.result.length}`,
-      role: "assistant",
-      content: skillResult.response.result,
-      speaker: "AI 助理",
-      mode: skillResult.response.mode,
-      usage: skillResult.response.usage,
-      resultSelection: skillResult.resultSelection,
-      isCurrentResult: true,
-    });
-  }
+  const liveAgenticMessages = liveMessages.filter(
+    (message): message is Extract<PanelMessage, { kind: "agentic" }> =>
+      message.kind === "agentic",
+  );
 
-  // agenticMessages（這次 session 內即時送出、還留著的本地狀態）跟
+  // liveMessages（這次 session 內即時送出、還留著的本地狀態）跟
   // skillHistoryMessages（背景隨時可能重新抓回來的 DB 資料）之間完全獨立，
   // 沒有互相知道對方存在——一旦某輪對話的 chat_id 兩邊都有（送出當下就先
   // 落地問題，見 CreateInProgressChatWithUserMessage），任何背景重新整理都會讓
@@ -1357,12 +1341,12 @@ export function StorytellerAgenticPanel({
   // 優先。送出中的本地 user 訊息在 response 回來前還沒有 chat_id，所以同時用
   // content 擋掉背景 refetch 帶回來的同一則 in_progress user row。
   const liveChatIds = new Set(
-    agenticMessages
+    liveAgenticMessages
       .map((message) => message.chatId)
       .filter((chatId): chatId is number => chatId !== undefined),
   );
   const livePendingUserContents = new Set(
-    agenticMessages
+    liveAgenticMessages
       .filter(
         (message) =>
           message.role === "user" &&
@@ -1385,11 +1369,13 @@ export function StorytellerAgenticPanel({
     );
   });
 
+  // 歷史清單本來就照 created_at 由舊到新排列（見 rawSkillMessages 的翻頁反轉），
+  // liveMessages 則是照送出/收到順序 push 的——兩段直接接起來就是正確順序，
+  // 不需要另外算排序鍵、也不需要重新排序。
   const combinedMessages: PanelMessage[] = [
     ...dedupedSkillHistoryMessages,
-    ...skillTransientMessages,
-    ...agenticMessages,
-  ].sort((a, b) => a.sortKey - b.sortKey);
+    ...liveMessages,
+  ];
 
   const inProgressAgenticChatIds = Array.from(
     new Set(
@@ -1440,10 +1426,27 @@ export function StorytellerAgenticPanel({
           .filter((message) => message.role !== "system")
           .map(agenticPanelMessageFromChatRow);
         if (messages.length > 0) {
-          setAgenticMessages((prev) => [
-            ...prev.filter((message) => message.chatId !== chat.chat_id),
-            ...messages,
-          ]);
+          // 原地替換，不是「濾掉舊的、把新的接到陣列尾端」——這則對話原本在
+          // liveMessages 裡的位置（使用者訊息後面）要保留，換成伺服器版本後
+          // 不能因為 filter+push 被丟到陣列最後面，跑到後續訊息下面去。
+          setLiveMessages((prev) => {
+            const insertAt = prev.findIndex(
+              (message) =>
+                message.kind === "agentic" && message.chatId === chat.chat_id,
+            );
+            const withoutOld = prev.filter(
+              (message) =>
+                !(message.kind === "agentic" && message.chatId === chat.chat_id),
+            );
+            if (insertAt === -1) {
+              return [...withoutOld, ...messages];
+            }
+            return [
+              ...withoutOld.slice(0, insertAt),
+              ...messages,
+              ...withoutOld.slice(insertAt),
+            ];
+          });
         }
         if (chat.chat_status !== "in_progress") {
           shouldRefetchMessages = true;
@@ -1584,15 +1587,23 @@ export function StorytellerAgenticPanel({
       replyReferenceTarget,
     );
     pendingSkillIdRef.current += 1;
-    setOptimisticSkillMessage({
+    const loadingId = `skill-loading-${pendingSkillIdRef.current}`;
+    pushLiveMessage({
       kind: "skill",
-      sortKey: nextSessionSortKey(),
       id: `skill-pending-${pendingSkillIdRef.current}`,
       role: "user",
       content: instruction.trim(),
       speaker: penName || "使用者",
       mode,
       selectedContent: selectedContent.trim() ? selectedContent : undefined,
+    });
+    pushLiveMessage({
+      kind: "skill",
+      id: loadingId,
+      role: "assistant",
+      content: "",
+      speaker: "AI 助理",
+      isLoading: true,
     });
     setPrompt("");
     setReplyTarget(null);
@@ -1616,17 +1627,25 @@ export function StorytellerAgenticPanel({
       {
         onSuccess: (result) => {
           if (!result) {
+            removeLiveMessage(loadingId);
             return;
           }
-          setSkillResult({
-            agentId: agentIdNumeric,
-            response: result,
+          replaceLiveMessage(loadingId, {
+            kind: "skill",
+            id: result.assistant_message_id
+              ? String(result.assistant_message_id)
+              : loadingId,
+            role: "assistant",
+            content: result.result,
+            speaker: "AI 助理",
+            mode: result.mode,
+            usage: result.usage,
             resultSelection: null,
-            sortKey: nextSessionSortKey(),
+            isCurrentResult: true,
           });
         },
-        onSettled: () => {
-          setOptimisticSkillMessage(null);
+        onError: () => {
+          removeLiveMessage(loadingId);
         },
       },
     );
@@ -1661,11 +1680,11 @@ export function StorytellerAgenticPanel({
     const replyReference =
       options?.replyReference ??
       buildAgenticMessageReplyReference(replyReferenceTarget);
-    const userSortKey = nextSessionSortKey();
-    const userMessageId = `agentic-user-${userSortKey}`;
+    pendingAgenticIdRef.current += 1;
+    const userMessageId = `agentic-user-${pendingAgenticIdRef.current}`;
+    const loadingId = `agentic-loading-${pendingAgenticIdRef.current}`;
     const userMessage: Extract<PanelMessage, { kind: "agentic" }> = {
       kind: "agentic",
-      sortKey: userSortKey,
       id: userMessageId,
       role: "user",
       content: instruction,
@@ -1673,7 +1692,14 @@ export function StorytellerAgenticPanel({
       replyContent: replyReference ? undefined : replyContent,
       agentName: targetAgentName,
     };
-    setAgenticMessages((prev) => [...prev, userMessage]);
+    pushLiveMessage(userMessage);
+    pushLiveMessage({
+      kind: "agentic",
+      id: loadingId,
+      role: "assistant",
+      content: "",
+      isLoading: true,
+    });
     if (!options?.preserveComposer) {
       setPrompt("");
     }
@@ -1703,10 +1729,11 @@ export function StorytellerAgenticPanel({
       {
         onSuccess: (response) => {
           if (!response) {
+            removeLiveMessage(loadingId);
             return;
           }
-          setAgenticMessages((prev) => {
-            const updated = prev.map((message) =>
+          setLiveMessages((prev) =>
+            prev.map((message) =>
               message.kind === "agentic" && message.id === userMessageId
                 ? {
                     ...message,
@@ -1717,45 +1744,36 @@ export function StorytellerAgenticPanel({
                     chatStatus: response.chat_status,
                   }
                 : message,
-            );
-            if (response.chat_status !== "completed") {
-              return updated;
-            }
-            const assistantSortKey = nextSessionSortKey();
-            return [
-              ...updated,
-              {
-                kind: "agentic",
-                sortKey: assistantSortKey,
-                id: response.assistant_message_id
-                  ? String(response.assistant_message_id)
-                  : `agentic-assistant-${assistantSortKey}`,
-                role: "assistant",
-                content: response.result,
-                steps: response.steps,
-                proposals: response.proposals,
-                usage: response.usage,
-                warning: response.warning,
-                agentName: targetAgentName,
-                chatId: response.chat_id,
-                chatStatus: response.chat_status,
-              },
-            ];
+            ),
+          );
+          if (response.chat_status !== "completed") {
+            // 還在背景生成，loading 泡泡留著不動，之後靠 polling 換成正式內容。
+            return;
+          }
+          replaceLiveMessage(loadingId, {
+            kind: "agentic",
+            id: response.assistant_message_id
+              ? String(response.assistant_message_id)
+              : loadingId,
+            role: "assistant",
+            content: response.result,
+            steps: response.steps,
+            proposals: response.proposals,
+            usage: response.usage,
+            warning: response.warning,
+            agentName: targetAgentName,
+            chatId: response.chat_id,
+            chatStatus: response.chat_status,
           });
         },
         onError: (err) => {
-          const errorSortKey = nextSessionSortKey();
-          setAgenticMessages((prev) => [
-            ...prev,
-            {
-              kind: "agentic",
-              sortKey: errorSortKey,
-              id: `agentic-error-${errorSortKey}`,
-              role: "assistant",
-              content: "",
-              warning: agenticErrorMessage(err),
-            },
-          ]);
+          replaceLiveMessage(loadingId, {
+            kind: "agentic",
+            id: loadingId,
+            role: "assistant",
+            content: "",
+            warning: agenticErrorMessage(err),
+          });
         },
       },
     );
@@ -2115,40 +2133,6 @@ export function StorytellerAgenticPanel({
                     resendingChatId={resendingChatId}
                   />
                 ),
-              )}
-              {runSkillMutation.isPending && (
-                <StorytellerAgentMessage
-                  message={{
-                    id: "skill-pending-loading",
-                    role: "assistant",
-                    content: "",
-                    speaker: "AI 助理",
-                    isLoading: true,
-                  }}
-                  enableReplace={false}
-                  enableInsert={false}
-                  onApplyText={onApplyText}
-                />
-              )}
-              {(runAgenticQuery.isPending ||
-                inProgressAgenticChatIds.length > 0) && (
-                <AgenticAssistantMessage
-                  message={{
-                    kind: "agentic",
-                    sortKey: Number.MAX_SAFE_INTEGER,
-                    id: "agentic-pending-loading",
-                    role: "assistant",
-                    content: "",
-                    isLoading: true,
-                  }}
-                  targetKind={targetKind}
-                  projectPublicId={projectPublicId}
-                  targetPublicId={targetPublicId}
-                  otherStories={otherStories}
-                  lores={lores}
-                  currentStory={currentStory}
-                  onStoryChanged={onStoryChanged}
-                />
               )}
             </>
           ) : (
