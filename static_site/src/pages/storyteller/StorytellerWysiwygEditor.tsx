@@ -444,6 +444,11 @@ export const StorytellerWysiwygEditor = forwardRef<
   >(null);
   const [selectionAgentInstruction, setSelectionAgentInstruction] =
     useState("");
+  // 額外需求 Dialog 的輸入框：不用 TextField autoFocus，改手動 focus({ preventScroll: true })，
+  // 避免 MUI FocusTrap 的 .focus() 把編輯區 overflow:auto 容器捲回 scrollTop=0。
+  const selectionAgentInputRef = useRef<
+    HTMLInputElement | HTMLTextAreaElement | null
+  >(null);
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
   const slashCommandContextRef = useRef<WysiwygCommandContext | null>(null);
@@ -946,6 +951,17 @@ export const StorytellerWysiwygEditor = forwardRef<
         fullWidth
         maxWidth="sm"
         disableScrollLock
+        disableAutoFocus
+        // disableAutoFocus 讓 FocusTrap 不要自己對第一個 tabbable 呼叫沒帶
+        // preventScroll 的 focus()（那就是編輯區被捲回頂端的根因）；改成等
+        // Dialog 的進場動畫真的跑完（onEntered，不是猜一個 requestAnimationFrame
+        // 的時機）才手動用 preventScroll 補回焦點，這樣文字框還是會自動取得
+        // 游標，只是不會動到編輯區的捲動位置。
+        TransitionProps={{
+          onEntered: () => {
+            selectionAgentInputRef.current?.focus({ preventScroll: true });
+          },
+        }}
       >
         <DialogTitle>
           {selectionAgentDialogTarget?.label ?? "AI 指令"}
@@ -979,7 +995,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             </>
           )}
           <TextField
-            autoFocus
+            inputRef={selectionAgentInputRef}
             fullWidth
             multiline
             minRows={3}
