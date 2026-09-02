@@ -67,6 +67,19 @@ export interface StorytellerProviderAPIKeyUpdateRequest {
   api_key?: string;
 }
 
+export interface StorytellerProviderAPIKeyModel {
+  id: number;
+  provider_apikey_id: number;
+  name: string;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerProviderAPIKeyModelRequest {
+  name: string;
+}
+
 export interface StorytellerPersonalAccessToken {
   id: number;
   label: string;

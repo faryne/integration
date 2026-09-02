@@ -45,6 +45,7 @@ import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx
 import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
+import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
@@ -952,6 +953,10 @@ export function StorytellerAgenticPanel({
   const providerAllowsCustomModel = Boolean(
     effectiveProviderModelInfo?.allow_custom_model,
   );
+  const usesSelfHostedModelPicker =
+    effectiveProvider === "self_hosted" &&
+    providerAllowsCustomModel &&
+    modelOptions.length === 0;
   const [customModelInput, setCustomModelInput] = useState("");
 
   useEffect(() => {
@@ -1303,7 +1308,9 @@ export function StorytellerAgenticPanel({
   // 用這個當主要依據，hasProposals 留著當保險。skill 現在也走背景執行＋輪詢，
   // 歷史清單重新整理跟 polling 換回正式內容都要用同一套判斷、同一份轉換
   // 邏輯，不要各刻一份，不然兩邊分流的判斷準則遲早會兜不起來。
-  function panelMessageFromChatRow(message: StorytellerStoryChatMessage): PanelMessage {
+  function panelMessageFromChatRow(
+    message: StorytellerStoryChatMessage,
+  ): PanelMessage {
     const hasProposals = (message.proposals?.length ?? 0) > 0;
     const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
     if (isAgentic && message.role !== "system") {
@@ -2409,7 +2416,11 @@ export function StorytellerAgenticPanel({
               color="inherit"
               endIcon={<KeyboardArrowDownIcon fontSize="small" />}
               onClick={(event) => {
-                if (providerAllowsCustomModel && modelOptions.length === 0) {
+                if (
+                  providerAllowsCustomModel &&
+                  modelOptions.length === 0 &&
+                  !usesSelfHostedModelPicker
+                ) {
                   setCustomModelInput(modelNameOverride);
                 }
                 setModelMenuAnchor(event.currentTarget);
@@ -2422,7 +2433,24 @@ export function StorytellerAgenticPanel({
             >
               {modelNameOverride || selectedAgent?.model || "預設模型"}
             </Button>
-            {providerAllowsCustomModel && modelOptions.length === 0 ? (
+            {usesSelfHostedModelPicker ? (
+              <Menu
+                anchorEl={modelMenuAnchor}
+                open={Boolean(modelMenuAnchor)}
+                onClose={() => setModelMenuAnchor(null)}
+              >
+                <SelfHostedModelPicker
+                  apiKeyId={providerApiKeyId ? Number(providerApiKeyId) : null}
+                  value={modelNameOverride}
+                  onChange={setModelNameOverride}
+                  onApplied={() => setModelMenuAnchor(null)}
+                  variant="menu"
+                  inputMode="always"
+                  label="自訂模型名稱"
+                  autoFocus
+                />
+              </Menu>
+            ) : providerAllowsCustomModel && modelOptions.length === 0 ? (
               <Menu
                 anchorEl={modelMenuAnchor}
                 open={Boolean(modelMenuAnchor)}

@@ -25,6 +25,8 @@ import type {
   StorytellerPersonalAccessTokenCreated,
   StorytellerPersonalAccessTokenRequest,
   StorytellerProviderAPIKey,
+  StorytellerProviderAPIKeyModel,
+  StorytellerProviderAPIKeyModelRequest,
   StorytellerProviderAPIKeyRequest,
   StorytellerProviderAPIKeyUpdateRequest,
   StorytellerStoryChatMessagePage,
@@ -192,6 +194,88 @@ export function useUpdateStorytellerProviderAPIKey() {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["storyteller", "provider-apikeys"],
+      });
+    },
+  });
+}
+
+function providerAPIKeyModelsQueryKey(
+  userID: number | undefined,
+  apiKeyId: number | null | undefined,
+) {
+  return ["storyteller", "provider-apikey-models", userID, apiKeyId];
+}
+
+export function useStorytellerProviderAPIKeyModels(
+  apiKeyId: number | null | undefined,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: providerAPIKeyModelsQueryKey(session?.user.id, apiKeyId),
+    enabled: Boolean(session?.encrypt_key && apiKeyId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerProviderAPIKeyModel[]>
+      >(`${apiBase}/storyteller/provider-apikeys/${apiKeyId}/models`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useCreateStorytellerProviderAPIKeyModel() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      apiKeyId,
+      input,
+    }: {
+      apiKeyId: number;
+      input: StorytellerProviderAPIKeyModelRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerProviderAPIKeyModel>
+      >(`${apiBase}/storyteller/provider-apikeys/${apiKeyId}/models`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: providerAPIKeyModelsQueryKey(
+          session?.user.id,
+          variables.apiKeyId,
+        ),
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerProviderAPIKeyModel() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      apiKeyId,
+      modelId,
+    }: {
+      apiKeyId: number;
+      modelId: number;
+    }) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/provider-apikeys/${apiKeyId}/models/${modelId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: providerAPIKeyModelsQueryKey(
+          session?.user.id,
+          variables.apiKeyId,
+        ),
       });
     },
   });
