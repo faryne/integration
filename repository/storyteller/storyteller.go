@@ -231,6 +231,50 @@ func (r *Repository) UpdateProviderAPIKey(row *storytellerModel.ProviderAPIKey) 
 	}).Error
 }
 
+func (r *Repository) ProviderAPIKeyModels(providerAPIKeyID uint64) ([]storytellerModel.ProviderAPIKeyModel, error) {
+	rows := make([]storytellerModel.ProviderAPIKeyModel, 0)
+	err := r.db.Where("provider_apikey_id = ?", providerAPIKeyID).
+		Order("sort ASC, created_at ASC, id ASC").
+		Find(&rows).Error
+	return rows, err
+}
+
+func (r *Repository) ProviderAPIKeyModel(providerAPIKeyID, id uint64) (*storytellerModel.ProviderAPIKeyModel, error) {
+	var row storytellerModel.ProviderAPIKeyModel
+	err := r.db.Where("provider_apikey_id = ? AND id = ?", providerAPIKeyID, id).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) ProviderAPIKeyModelByName(providerAPIKeyID uint64, name string) (*storytellerModel.ProviderAPIKeyModel, error) {
+	var row storytellerModel.ProviderAPIKeyModel
+	err := r.db.Where("provider_apikey_id = ? AND name = ?", providerAPIKeyID, name).
+		First(&row).Error
+	return &row, err
+}
+
+func (r *Repository) CreateProviderAPIKeyModel(row *storytellerModel.ProviderAPIKeyModel) error {
+	result := r.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{
+			{Name: "provider_apikey_id"},
+			{Name: "name"},
+		},
+		DoNothing: true,
+	}).Create(row)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		return nil
+	}
+	return r.db.Where("provider_apikey_id = ? AND name = ?", row.ProviderAPIKeyID, row.Name).
+		First(row).Error
+}
+
+func (r *Repository) DeleteProviderAPIKeyModel(row *storytellerModel.ProviderAPIKeyModel) error {
+	return r.db.Delete(row).Error
+}
+
 func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderModels, error) {
 	providers := make([]storytellerModel.AgentProviderSetting, 0)
 	if err := r.db.Where("is_deleted = 0 AND deleted_at IS NULL").
