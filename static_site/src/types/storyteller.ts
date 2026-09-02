@@ -419,6 +419,11 @@ export interface StorytellerAgentRunResponse {
   result: string;
   usage?: StorytellerAgentRunUsage;
   finish_reason?: string;
+  // skill 現在也走背景執行＋輪詢（跟 agentic 對話一樣）：chat_status 是
+  // "in_progress" 時 result/usage/finish_reason 都還沒有值，要用 chat_id
+  // 打 GET .../agentic-query/:chat 輪詢拿最終結果。
+  chat_id?: number;
+  chat_status?: "pending" | "in_progress" | "completed";
 }
 
 export interface StorytellerAgenticReplyReferenceRequest {

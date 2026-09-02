@@ -112,13 +112,14 @@ type AIProviderUsage struct {
 }
 
 const (
-	// aiProviderDefaultTimeout 是單輪 skill（改寫/擴寫/翻譯）用的逾時——單輪呼叫
-	// 通常幾秒到十幾秒內就回來，這個值原本就是照這個情境訂的。
+	// aiProviderDefaultTimeout 只給「呼叫本身還在原始 HTTP request 生命週期內、
+	// 使用者的連線真的在等」這種同步情境用（目前只剩測試金鑰是否可用這一處）。
 	aiProviderDefaultTimeout = 60 * time.Second
-	// aiProviderAgenticTimeout 給 AAS 多輪 tool-calling 迴圈用。同一個 60 秒是為
-	// 單輪設計的，AAS 每一步都要先讀前面工具回傳的資料再組織回應，單步耗時本來
-	// 就比單輪高，沿用同一個值很容易誤傷正常但比較慢的一步；獨立拉高，不影響
-	// 單輪 skill 那條路徑。
+	// aiProviderAgenticTimeout 給所有走背景執行的呼叫用——AAS 多輪 tool-calling
+	// 迴圈，以及 skill（改寫/擴寫/翻譯）現在也是背景執行（見 runAgentForTarget／
+	// completeAgentRun）。背景執行本來就不會卡住使用者的請求，60 秒是為「同步、
+	// 使用者在等」設計的值，用在這裡只會讓合法但比較慢的生成被錯殺；兩條路徑
+	// 現在都共用同一個比較寬鬆的逾時。
 	aiProviderAgenticTimeout = 300 * time.Second
 )
 
@@ -128,8 +129,9 @@ func NewAIProvider(provider storytellerModel.AgentProvider, endpoint string) (AI
 	return newAIProviderWithTimeout(provider, endpoint, aiProviderDefaultTimeout)
 }
 
-// NewAgenticAIProvider 是 AAS（多輪 tool-calling）專用的 provider 工廠，唯一差異
-// 是逾時時間，見 aiProviderAgenticTimeout 的說明。
+// NewAgenticAIProvider 給所有走背景執行的呼叫用，唯一差異是逾時時間，見
+// aiProviderAgenticTimeout 的說明——名字仍叫 Agentic 是歷史命名，實際上 skill
+// 背景執行也共用這個 factory，不是只有 AAS 多輪對話。
 func NewAgenticAIProvider(provider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 	return newAIProviderWithTimeout(provider, endpoint, aiProviderAgenticTimeout)
 }
