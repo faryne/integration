@@ -1,6 +1,7 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ReplyIcon from "@mui/icons-material/Reply";
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -48,6 +49,11 @@ export interface StorytellerAgentPanelMessage {
   // speaker 對 user 那則是「你」，不是人設名稱）。用來在泡泡上標「這則走了
   // 哪個 Agent／哪個指令」，事後回頭看對話紀錄才知道當時發生什麼事。
   agentName?: string;
+  // skill 現在也走背景執行＋輪詢：chatId／chatStatus 讓 loading 中的 skill
+  // 訊息能被跟 agentic 對話同一套 polling 邏輯認出來、換成正式結果；
+  // chatStatus="pending" 代表背景呼叫失敗，沒有拿到回覆。
+  chatId?: number;
+  chatStatus?: "pending" | "in_progress" | "completed";
 }
 
 // /rewrite／/expand 等 skill 指令的完整 mode 值 -> 中文短標籤，給訊息泡泡上的
@@ -323,6 +329,11 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
             <StorytellerMarkdown>{linkedContent}</StorytellerMarkdown>
           ) : null}
         </Box>
+      )}
+      {isUser && message.chatStatus === "pending" && (
+        <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+          沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重新打一次指令試試。
+        </Alert>
       )}
       {!isUser && message.usage?.total_tokens ? (
         <Stack

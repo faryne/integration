@@ -10,6 +10,7 @@ import (
 
 	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/service/background"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -142,10 +143,11 @@ func TestRunAgent(t *testing.T) {
 		},
 	}
 
+	tracker := background.NewTracker()
 	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		require.Equal(t, storytellerModel.AgentProviderGrok, agentProvider)
 		return provider, nil
-	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:            storytellerModel.AgentRunModeRewriteSelection,
 		Instruction:     "rewrite",
 		FullContent:     "full chapter",
@@ -154,12 +156,10 @@ func TestRunAgent(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, uint64(40), output.AgentID)
-	require.Equal(t, storytellerModel.AgentProviderGrok, output.Provider)
-	require.Equal(t, "grok-test", output.ModelName)
-	require.Equal(t, storytellerModel.AgentRunModeRewriteSelection, output.Mode)
-	require.Equal(t, "rewritten text", output.Result)
-	require.Equal(t, "stop", output.FinishReason)
-	require.Equal(t, 11, output.Usage.InputTokens)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	tracker.BeginDrain()
+	tracker.Wait()
+
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
 	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
@@ -171,6 +171,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
 	require.Equal(t, uint64(40), repo.chat.AgentID)
 	require.Equal(t, uint64(20), repo.chat.UserID)
+	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)
@@ -252,24 +253,28 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 		},
 	}}
 
+	tracker := background.NewTracker()
 	output, err := runAgentWithTools(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return provider, nil
-	}, tools, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	}, tools, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事] 改寫語氣",
 		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n這段引用全文不應該送進 provider\nSTORY_REFERENCE_CONTENT",
 	})
 
 	require.NoError(t, err)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	tracker.BeginDrain()
+	tracker.Wait()
+
 	require.True(t, toolCalled)
-	require.Equal(t, "整理後的文字", output.Result)
-	require.Equal(t, "end_turn", output.FinishReason)
-	require.NotNil(t, output.Usage)
-	require.Equal(t, 14, output.Usage.TotalTokens)
 	require.Len(t, repo.messages, 2)
+	require.Equal(t, "整理後的文字", repo.messages[1].Content)
 	require.Contains(t, repo.messages[1].Metadata, `"finish_reason":"end_turn"`)
 	require.NotNil(t, repo.messages[1].RawProviderResponse)
 	require.JSONEq(t, `["{\"step\":1}","{\"step\":2}"]`, *repo.messages[1].RawProviderResponse)
+	require.NotNil(t, repo.usage)
+	require.Equal(t, 14, repo.usage.TotalTokens)
 }
 
 func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
@@ -288,17 +293,22 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 	}
 	provider := &fakeAIProvider{response: &AIProviderResponse{Result: "gemini result"}}
 
+	tracker := background.NewTracker()
 	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		require.Equal(t, storytellerModel.AgentProviderGemini, agentProvider)
 		return provider, nil
-	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事]",
 		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n引用全文\nSTORY_REFERENCE_CONTENT",
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, "gemini result", output.Result)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	tracker.BeginDrain()
+	tracker.Wait()
+
+	require.Equal(t, "gemini result", repo.messages[1].Content)
 	require.Empty(t, provider.request.Tools)
 	require.Empty(t, provider.request.Messages)
 	require.Contains(t, provider.request.UserPrompt, "引用全文")
@@ -336,11 +346,12 @@ func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
 		},
 	}
 
+	tracker := background.NewTracker()
 	output, err := runAgent(context.Background(), repo, func(agentProvider storytellerModel.AgentProvider, endpoint string) (AIProvider, error) {
 		// 一定是覆寫 key 自己的 provider（Claude），不是 Agent 記錄的 Grok。
 		require.Equal(t, storytellerModel.AgentProviderClaude, agentProvider)
 		return provider, nil
-	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:             storytellerModel.AgentRunModeContinueChapter,
 		Instruction:      "rewrite with claude instead",
 		FullContent:      "full chapter",
@@ -349,10 +360,13 @@ func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, "override-secret-key", provider.request.APIKey)
-	require.Equal(t, "claude-override-model", provider.request.ModelName)
 	require.Equal(t, storytellerModel.AgentProviderClaude, output.Provider)
 	require.Equal(t, "claude-override-model", output.ModelName)
+	tracker.BeginDrain()
+	tracker.Wait()
+
+	require.Equal(t, "override-secret-key", provider.request.APIKey)
+	require.Equal(t, "claude-override-model", provider.request.ModelName)
 }
 
 func TestRunAgentStoryNotFound(t *testing.T) {
@@ -361,7 +375,7 @@ func TestRunAgentStoryNotFound(t *testing.T) {
 		storyErr: gorm.ErrRecordNotFound,
 	}
 
-	output, err := runAgent(context.Background(), repo, nil, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	output, err := runAgent(context.Background(), repo, nil, background.NewTracker(), 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
@@ -378,7 +392,7 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 		agentErr: gorm.ErrRecordNotFound,
 	}
 
-	output, err := runAgent(context.Background(), repo, nil, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	output, err := runAgent(context.Background(), repo, nil, background.NewTracker(), 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
@@ -388,6 +402,10 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 	require.ErrorIs(t, err, gorm.ErrRecordNotFound)
 }
 
+// TestRunAgentProviderError 驗證背景呼叫 provider 失敗時，chat 會退回 pending
+// （見 completeAgentRun 的 ReleaseChatToPending），而不是讓使用者一直卡在
+// 「還在處理中」——enqueue 本身不會因為背景失敗而回傳錯誤，跟 agentic query
+// 的背景執行模型一致。
 func TestRunAgentProviderError(t *testing.T) {
 	providerErr := errors.New("provider failed")
 	providerAPIKeyID := uint64(50)
@@ -404,16 +422,22 @@ func TestRunAgentProviderError(t *testing.T) {
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
 
+	tracker := background.NewTracker()
 	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
 		return &fakeAIProvider{err: providerErr}, nil
-	}, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeContinueChapter,
 		Instruction: "analyze",
 		FullContent: "full chapter",
 	})
 
-	require.Nil(t, output)
-	require.ErrorIs(t, err, providerErr)
+	require.NoError(t, err)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	tracker.BeginDrain()
+	tracker.Wait()
+
+	require.True(t, repo.released)
+	require.Len(t, repo.messages, 1)
 }
 
 type fakeAgentRunRepository struct {

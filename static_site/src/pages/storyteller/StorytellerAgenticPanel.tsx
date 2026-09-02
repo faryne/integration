@@ -1296,76 +1296,87 @@ export function StorytellerAgenticPanel({
     };
   }
 
+  // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
+  // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
+  // 欄位都不存在，兩種都會被誤判成 skill 模式。後端現在 user／assistant 兩則
+  // 訊息都會標 mode:"agentic_query"（見 agenticQueryUserMessageMetadata），
+  // 用這個當主要依據，hasProposals 留著當保險。skill 現在也走背景執行＋輪詢，
+  // 歷史清單重新整理跟 polling 換回正式內容都要用同一套判斷、同一份轉換
+  // 邏輯，不要各刻一份，不然兩邊分流的判斷準則遲早會兜不起來。
+  function panelMessageFromChatRow(message: StorytellerStoryChatMessage): PanelMessage {
+    const hasProposals = (message.proposals?.length ?? 0) > 0;
+    const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
+    if (isAgentic && message.role !== "system") {
+      return agenticPanelMessageFromChatRow(message);
+    }
+    const selectedContent = parseMessageSelectedContent(message.metadata);
+    return {
+      kind: "skill",
+      id: String(message.id),
+      role: message.role,
+      content: stripSkillSelectedContentQuote(message.content, selectedContent),
+      speaker: skillMessageSpeaker(message),
+      mode: parseMessageMode(message.metadata),
+      selectedContent,
+      usage: parseMessageUsage(message.metadata),
+      chatId: message.chat_id,
+      chatStatus: message.chat_status,
+      // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
+      // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
+      // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
+    };
+  }
+
   const skillHistoryMessages: PanelMessage[] = visibleSkillMessages.map(
-    (message) => {
-      const hasProposals = (message.proposals?.length ?? 0) > 0;
-      // 判斷是不是 agentic 對話不能只看「metadata 有沒有 steps」——純問答沒呼叫
-      // 工具時 steps 是空陣列，只存了問題還沒拿到回覆的孤兒訊息更是連 steps 這個
-      // 欄位都不存在，兩種都會被誤判成 skill 模式。後端現在 user／assistant 兩則
-      // 訊息都會標 mode:"agentic_query"（見 agenticQueryUserMessageMetadata），
-      // 用這個當主要依據，hasProposals 留著當保險。
-      const isAgentic = isAgenticQueryMode(message.metadata) || hasProposals;
-      if (isAgentic && message.role !== "system") {
-        return agenticPanelMessageFromChatRow(message);
-      }
-      const selectedContent = parseMessageSelectedContent(message.metadata);
-      return {
-        kind: "skill",
-        id: String(message.id),
-        role: message.role,
-        content: stripSkillSelectedContentQuote(
-          message.content,
-          selectedContent,
-        ),
-        speaker: skillMessageSpeaker(message),
-        mode: parseMessageMode(message.metadata),
-        selectedContent,
-        usage: parseMessageUsage(message.metadata),
-        // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
-        // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
-        // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
-      };
-    },
-  );
-  const liveAgenticMessages = liveMessages.filter(
-    (message): message is Extract<PanelMessage, { kind: "agentic" }> =>
-      message.kind === "agentic",
+    panelMessageFromChatRow,
   );
 
   // liveMessages（這次 session 內即時送出、還留著的本地狀態）跟
   // skillHistoryMessages（背景隨時可能重新抓回來的 DB 資料）之間完全獨立，
   // 沒有互相知道對方存在——一旦某輪對話的 chat_id 兩邊都有（送出當下就先
   // 落地問題，見 CreateInProgressChatWithUserMessage），任何背景重新整理都會讓
-  // 同一輪對話重複顯示兩次，一邊說「還在生成」一邊說「正在處理」，互相矛盾。
-  // 用 chat_id 把歷史清單裡「本地已經有更新狀態」的那幾筆過濾掉，本地狀態
-  // 優先。送出中的本地 user 訊息在 response 回來前還沒有 chat_id，所以同時用
-  // content 擋掉背景 refetch 帶回來的同一則 in_progress user row。
+  // 同一輪對話重複顯示兩次。skill 現在也走背景執行，跟 agentic 對話一樣會撞到
+  // 這個問題，兩種 kind 都要用 chat_id 把歷史清單裡「本地已經有更新狀態」的
+  // 那幾筆過濾掉，本地狀態優先。送出中的本地 user 訊息在 response 回來前還
+  // 沒有 chat_id，所以同時用「同 kind + 內容」擋掉背景 refetch 帶回來的同一則
+  // in_progress user row。
   const liveChatIds = new Set(
-    liveAgenticMessages
+    liveMessages
       .map((message) => message.chatId)
       .filter((chatId): chatId is number => chatId !== undefined),
   );
-  const livePendingUserContents = new Set(
-    liveAgenticMessages
-      .filter(
-        (message) =>
-          message.role === "user" &&
-          message.chatId === undefined &&
-          message.content.trim() !== "",
-      )
-      .map((message) => message.content.trim()),
-  );
+  const livePendingUserContentsByKind = {
+    skill: new Set(
+      liveMessages
+        .filter(
+          (message) =>
+            message.kind === "skill" &&
+            message.role === "user" &&
+            message.chatId === undefined &&
+            message.content.trim() !== "",
+        )
+        .map((message) => message.content.trim()),
+    ),
+    agentic: new Set(
+      liveMessages
+        .filter(
+          (message) =>
+            message.kind === "agentic" &&
+            message.role === "user" &&
+            message.chatId === undefined &&
+            message.content.trim() !== "",
+        )
+        .map((message) => message.content.trim()),
+    ),
+  };
   const dedupedSkillHistoryMessages = skillHistoryMessages.filter((message) => {
-    if (message.kind !== "agentic") {
-      return true;
-    }
     if (message.chatId !== undefined && liveChatIds.has(message.chatId)) {
       return false;
     }
     return !(
       message.role === "user" &&
       message.chatStatus === "in_progress" &&
-      livePendingUserContents.has(message.content.trim())
+      livePendingUserContentsByKind[message.kind].has(message.content.trim())
     );
   });
 
@@ -1377,10 +1388,55 @@ export function StorytellerAgenticPanel({
     ...liveMessages,
   ];
 
+  // 剛送出時 loading 泡泡是本地直接 push 的一則真正訊息（見 runSkill／
+  // runAgentic）；但如果是「重新整理頁面時發現歷史裡有一則還在 in_progress
+  // 的使用者訊息」，本地從來沒有 push 過任何東西，純資料庫回來的訊息裡也不會
+  // 有一則「假裝在轉圈圈」的 assistant 列——這裡純粹依渲染順序補一個位置正確
+  // 的 loading 佔位，不寫進任何 state，兩種情境用同一顆 loading 泡泡呈現。
+  const renderedMessages: PanelMessage[] = [];
+  combinedMessages.forEach((message, index) => {
+    renderedMessages.push(message);
+    if (
+      message.role !== "user" ||
+      message.chatStatus !== "in_progress" ||
+      message.chatId === undefined
+    ) {
+      return;
+    }
+    const next = combinedMessages[index + 1];
+    const alreadyHasReply = next?.chatId === message.chatId;
+    if (alreadyHasReply) {
+      return;
+    }
+    const loadingId = `loading-${message.chatId}`;
+    if (message.kind === "skill") {
+      renderedMessages.push({
+        kind: "skill",
+        id: loadingId,
+        role: "assistant",
+        content: "",
+        speaker: "AI 助理",
+        isLoading: true,
+        chatId: message.chatId,
+      });
+    } else {
+      renderedMessages.push({
+        kind: "agentic",
+        id: loadingId,
+        role: "assistant",
+        content: "",
+        isLoading: true,
+        chatId: message.chatId,
+      });
+    }
+  });
+
+  // skill 現在也走背景執行，跟 agentic 對話共用同一套「還在 in_progress 就
+  // polling」機制——不分 kind，只要是使用者訊息、有 chat_id、狀態還在處理中
+  // 就要追。
   const inProgressAgenticChatIds = Array.from(
     new Set(
       combinedMessages.flatMap((message) =>
-        message.kind === "agentic" &&
         message.role === "user" &&
         message.chatId !== undefined &&
         message.chatStatus === "in_progress"
@@ -1424,19 +1480,18 @@ export function StorytellerAgenticPanel({
         const chat = result.value;
         const messages = chat.messages
           .filter((message) => message.role !== "system")
-          .map(agenticPanelMessageFromChatRow);
+          .map(panelMessageFromChatRow);
         if (messages.length > 0) {
           // 原地替換，不是「濾掉舊的、把新的接到陣列尾端」——這則對話原本在
           // liveMessages 裡的位置（使用者訊息後面）要保留，換成伺服器版本後
-          // 不能因為 filter+push 被丟到陣列最後面，跑到後續訊息下面去。
+          // 不能因為 filter+push 被丟到陣列最後面，跑到後續訊息下面去。skill
+          // 現在也走同一套背景執行＋輪詢，比對時不分 kind，只認 chat_id。
           setLiveMessages((prev) => {
             const insertAt = prev.findIndex(
-              (message) =>
-                message.kind === "agentic" && message.chatId === chat.chat_id,
+              (message) => message.chatId === chat.chat_id,
             );
             const withoutOld = prev.filter(
-              (message) =>
-                !(message.kind === "agentic" && message.chatId === chat.chat_id),
+              (message) => message.chatId !== chat.chat_id,
             );
             if (insertAt === -1) {
               return [...withoutOld, ...messages];
@@ -1485,7 +1540,7 @@ export function StorytellerAgenticPanel({
     }
     node.scrollTop = node.scrollHeight;
   }, [
-    combinedMessages.length,
+    renderedMessages.length,
     runSkillMutation.isPending,
     runAgenticQuery.isPending,
   ]);
@@ -1587,10 +1642,11 @@ export function StorytellerAgenticPanel({
       replyReferenceTarget,
     );
     pendingSkillIdRef.current += 1;
+    const userMessageId = `skill-pending-${pendingSkillIdRef.current}`;
     const loadingId = `skill-loading-${pendingSkillIdRef.current}`;
     pushLiveMessage({
       kind: "skill",
-      id: `skill-pending-${pendingSkillIdRef.current}`,
+      id: userMessageId,
       role: "user",
       content: instruction.trim(),
       speaker: penName || "使用者",
@@ -1630,6 +1686,30 @@ export function StorytellerAgenticPanel({
             removeLiveMessage(loadingId);
             return;
           }
+          setLiveMessages((prev) =>
+            prev.map((message) => {
+              if (message.kind === "skill" && message.id === userMessageId) {
+                return {
+                  ...message,
+                  id: result.user_message_id
+                    ? String(result.user_message_id)
+                    : message.id,
+                  chatId: result.chat_id,
+                  chatStatus: result.chat_status,
+                };
+              }
+              // loading 泡泡也要標上 chatId，之後 polling 依 chatId 原地替換時
+              // 才找得到它一併清掉，不然會留下一顆永遠轉圈圈的殘影泡泡。
+              if (message.kind === "skill" && message.id === loadingId) {
+                return { ...message, chatId: result.chat_id };
+              }
+              return message;
+            }),
+          );
+          if (result.chat_status !== "completed") {
+            // 還在背景生成，loading 泡泡留著不動，之後靠 polling 換成正式內容。
+            return;
+          }
           replaceLiveMessage(loadingId, {
             kind: "skill",
             id: result.assistant_message_id
@@ -1642,6 +1722,8 @@ export function StorytellerAgenticPanel({
             usage: result.usage,
             resultSelection: null,
             isCurrentResult: true,
+            chatId: result.chat_id,
+            chatStatus: result.chat_status,
           });
         },
         onError: () => {
@@ -1733,18 +1815,24 @@ export function StorytellerAgenticPanel({
             return;
           }
           setLiveMessages((prev) =>
-            prev.map((message) =>
-              message.kind === "agentic" && message.id === userMessageId
-                ? {
-                    ...message,
-                    id: response.user_message_id
-                      ? String(response.user_message_id)
-                      : message.id,
-                    chatId: response.chat_id,
-                    chatStatus: response.chat_status,
-                  }
-                : message,
-            ),
+            prev.map((message) => {
+              if (message.kind === "agentic" && message.id === userMessageId) {
+                return {
+                  ...message,
+                  id: response.user_message_id
+                    ? String(response.user_message_id)
+                    : message.id,
+                  chatId: response.chat_id,
+                  chatStatus: response.chat_status,
+                };
+              }
+              // loading 泡泡也要標上 chatId，之後 polling 依 chatId 原地替換時
+              // 才找得到它一併清掉，不然會留下一顆永遠轉圈圈的殘影泡泡。
+              if (message.kind === "agentic" && message.id === loadingId) {
+                return { ...message, chatId: response.chat_id };
+              }
+              return message;
+            }),
           );
           if (response.chat_status !== "completed") {
             // 還在背景生成，loading 泡泡留著不動，之後靠 polling 換成正式內容。
@@ -2076,7 +2164,7 @@ export function StorytellerAgenticPanel({
                 正在載入對話紀錄...
               </Typography>
             </Stack>
-          ) : combinedMessages.length > 0 || pending ? (
+          ) : renderedMessages.length > 0 || pending ? (
             <>
               {hasMoreSkillHistory && (
                 <Stack direction="row" justifyContent="center">
@@ -2095,7 +2183,7 @@ export function StorytellerAgenticPanel({
                   </Button>
                 </Stack>
               )}
-              {combinedMessages.map((message) =>
+              {renderedMessages.map((message) =>
                 message.kind === "skill" ? (
                   <StorytellerAgentMessage
                     key={message.id}

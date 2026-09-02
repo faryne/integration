@@ -993,15 +993,24 @@ type AgentRunUsage struct {
 }
 
 type AgentRunResponse struct {
-	AgentID            uint64         `json:"agent_id"`
-	UserMessageID      uint64         `json:"user_message_id,omitempty"`
-	AssistantMessageID uint64         `json:"assistant_message_id,omitempty"`
-	Provider           AgentProvider  `json:"provider"`
-	ModelName          string         `json:"model_name"`
-	Mode               AgentRunMode   `json:"mode"`
-	Result             string         `json:"result"`
-	Usage              *AgentRunUsage `json:"usage,omitempty"`
-	FinishReason       string         `json:"finish_reason,omitempty"`
+	AgentID            uint64          `json:"agent_id"`
+	UserMessageID      uint64          `json:"user_message_id,omitempty"`
+	AssistantMessageID uint64          `json:"assistant_message_id,omitempty"`
+	Provider           AgentProvider   `json:"provider"`
+	ModelName          string          `json:"model_name"`
+	Mode               AgentRunMode    `json:"mode"`
+	Result             string          `json:"result"`
+	Usage              *AgentRunUsage  `json:"usage,omitempty"`
+	FinishReason       string          `json:"finish_reason,omitempty"`
+	// ChatID／ChatStatus 讓 skill 也走跟 agentic 對話一樣的背景執行＋輪詢模式——
+	// request 一落地使用者這則指令就馬上回應，不再讓使用者被 provider 呼叫的
+	// 同步等待時間卡住（也不會再撞到 HTTP client 的固定逾時）。ChatStatus
+	// 是 "in_progress" 時，Result／Usage／FinishReason 都還沒有值，前端要靠
+	// GET .../agentic-query/:chat 輪詢拿到最終結果（見 StoryAgenticChat／
+	// LoreAgenticChat，這兩個 handler 本來就沒有限定只能給 agentic 模式的
+	// chat 用）。
+	ChatID     uint64          `json:"chat_id,omitempty"`
+	ChatStatus StoryChatStatus `json:"chat_status,omitempty"`
 }
 
 type AgenticReplyReferenceRequest struct {
