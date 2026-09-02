@@ -257,7 +257,12 @@ export function SelfHostedModelPicker({
             disabled={!draftName.trim() || isCreating}
             onClick={() => void applyDraftName()}
           >
-            {isCreating ? "儲存中" : "套用"}
+            {isCreating
+              ? "儲存中"
+              : isListUnavailable ||
+                  models.some((model) => model.name === draftName.trim())
+                ? "套用"
+                : "新增並套用"}
           </Button>
         </Stack>
       )}
