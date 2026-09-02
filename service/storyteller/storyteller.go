@@ -420,6 +420,62 @@ func (s *Service) DeleteProviderAPIKey(userID, id uint64) error {
 	return s.repo.DeleteProviderAPIKey(row)
 }
 
+func (s *Service) ProviderAPIKeyModels(userID, providerAPIKeyID uint64) ([]storytellerModel.ProviderAPIKeyModelOutput, error) {
+	key, err := s.selfHostedProviderAPIKey(userID, providerAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.repo.ProviderAPIKeyModels(key.ID)
+	if err != nil {
+		return nil, err
+	}
+	outputs := make([]storytellerModel.ProviderAPIKeyModelOutput, 0, len(rows))
+	for _, row := range rows {
+		outputs = append(outputs, providerAPIKeyModelOutput(row))
+	}
+	return outputs, nil
+}
+
+func (s *Service) CreateProviderAPIKeyModel(userID, providerAPIKeyID uint64, input storytellerModel.ProviderAPIKeyModelRequest) (*storytellerModel.ProviderAPIKeyModelOutput, error) {
+	key, err := s.selfHostedProviderAPIKey(userID, providerAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, errors.New("name is required")
+	}
+	row, err := s.repo.ProviderAPIKeyModelByName(key.ID, name)
+	if err == nil {
+		output := providerAPIKeyModelOutput(*row)
+		return &output, nil
+	}
+	if !repository.IsRecordNotFound(err) {
+		return nil, err
+	}
+	row = &storytellerModel.ProviderAPIKeyModel{
+		ProviderAPIKeyID: key.ID,
+		Name:             name,
+	}
+	if err := s.repo.CreateProviderAPIKeyModel(row); err != nil {
+		return nil, err
+	}
+	output := providerAPIKeyModelOutput(*row)
+	return &output, nil
+}
+
+func (s *Service) DeleteProviderAPIKeyModel(userID, providerAPIKeyID, modelID uint64) error {
+	key, err := s.selfHostedProviderAPIKey(userID, providerAPIKeyID)
+	if err != nil {
+		return err
+	}
+	row, err := s.repo.ProviderAPIKeyModel(key.ID, modelID)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteProviderAPIKeyModel(row)
+}
+
 func (s *Service) TestProviderAPIKey(ctx context.Context, userID, id uint64, modelNameOverride string) error {
 	key, err := s.repo.ProviderAPIKey(userID, id)
 	if err != nil {
@@ -545,6 +601,28 @@ func providerAPIKeyOutput(row storytellerModel.ProviderAPIKey) storytellerModel.
 		CreatedAt:    row.CreatedAt,
 		UpdatedAt:    row.UpdatedAt,
 	}
+}
+
+func providerAPIKeyModelOutput(row storytellerModel.ProviderAPIKeyModel) storytellerModel.ProviderAPIKeyModelOutput {
+	return storytellerModel.ProviderAPIKeyModelOutput{
+		ID:               row.ID,
+		ProviderAPIKeyID: row.ProviderAPIKeyID,
+		Name:             row.Name,
+		Sort:             row.Sort,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
+	}
+}
+
+func (s *Service) selfHostedProviderAPIKey(userID, providerAPIKeyID uint64) (*storytellerModel.ProviderAPIKey, error) {
+	key, err := s.repo.ProviderAPIKey(userID, providerAPIKeyID)
+	if err != nil {
+		return nil, err
+	}
+	if key.Provider != storytellerModel.AgentProviderSelfHosted {
+		return nil, errors.New("provider api key is not self_hosted")
+	}
+	return key, nil
 }
 
 func (s *Service) DeleteAgent(userID, id uint64) error {

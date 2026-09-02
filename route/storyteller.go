@@ -53,6 +53,9 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/provider-apikeys", storyteller.CreateProviderAPIKey)
 	authenticated.Put("/provider-apikeys/:apikey", storyteller.UpdateProviderAPIKey)
 	authenticated.Delete("/provider-apikeys/:apikey", storyteller.DeleteProviderAPIKey)
+	authenticated.Get("/provider-apikeys/:apikey/models", storyteller.ProviderAPIKeyModels)
+	authenticated.Post("/provider-apikeys/:apikey/models", storyteller.CreateProviderAPIKeyModel)
+	authenticated.Delete("/provider-apikeys/:apikey/models/:model", storyteller.DeleteProviderAPIKeyModel)
 	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
 
 	authenticated.Get("/personal-access-tokens", storyteller.PersonalAccessTokens)

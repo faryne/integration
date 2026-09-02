@@ -12,6 +12,7 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SaveIcon from "@mui/icons-material/Save";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   CircularProgress,
@@ -47,6 +48,7 @@ import {
   useTestStorytellerProviderAPIKey,
   useUpdateStorytellerProviderAPIKey,
 } from "@/apis/storyteller.ts";
+import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
 import type {
   StorytellerAgentProviderModels,
   StorytellerProviderAPIKey,
@@ -536,14 +538,15 @@ function ProviderApiKeyRow({
                 </Typography>
               )}
               {needsTestModelName && (
-                <TextField
-                  size="small"
-                  label="測試連線用的 Model Name"
-                  placeholder="例如：llama-3.1-70b"
-                  value={testModelName}
-                  onChange={(event) => setTestModelName(event.target.value)}
-                  sx={{ maxWidth: 320 }}
-                />
+                <Box sx={{ maxWidth: 360 }}>
+                  <SelfHostedModelPicker
+                    apiKeyId={apiKey.id}
+                    value={testModelName}
+                    onChange={setTestModelName}
+                    label="測試連線用的 Model Name"
+                    autoSelectFirst
+                  />
+                </Box>
               )}
             </Stack>
           }
@@ -590,7 +593,8 @@ function ProviderApiKeyRow({
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              目錄裡的 model 名稱是跟外部型錄同步來的，不保證每一個都還有效——自己選一個確定可用的來測，比讓系統自動挑清單第一個更準。
+              目錄裡的 model
+              名稱是跟外部型錄同步來的，不保證每一個都還有效——自己選一個確定可用的來測，比讓系統自動挑清單第一個更準。
             </Typography>
             <FormControl size="small" fullWidth>
               <InputLabel id="test-dialog-model-label">Model</InputLabel>

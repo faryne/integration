@@ -307,6 +307,24 @@ type ProviderAPIKey struct {
 
 func (ProviderAPIKey) TableName() string { return "storyteller_provider_apikeys" }
 
+// ProviderAPIKeyModel 是 self_hosted 金鑰底下的常用模型名稱清單。自架服務沒有
+// 官方型錄，所以只保存使用者實際會貼進 API 的 model name。這張表用真刪
+// （見 Repository.DeleteProviderAPIKeyModel），不需要保留歷史，所以沒有
+// is_deleted/deleted_at 這組軟刪欄位——刪掉的名字直接消失，唯一鍵也不用
+// 額外把 is_deleted 併進去繞開 MySQL 沒有 partial unique index 的限制。
+type ProviderAPIKeyModel struct {
+	ID               uint64    `gorm:"column:id;primaryKey" json:"id"`
+	ProviderAPIKeyID uint64    `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
+	Name             string    `gorm:"column:name" json:"name"`
+	Sort             int       `gorm:"column:sort" json:"sort"`
+	CreatedAt        time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt        time.Time `gorm:"column:updated_at" json:"updated_at"`
+}
+
+func (ProviderAPIKeyModel) TableName() string {
+	return "storyteller_provider_apikey_models"
+}
+
 // AgentUsageLog 記錄每一次 Agent 執行實際使用的 API Key 與 token 用量，
 // provider/model_name/price 都是執行當下的快照，不會隨著 Agent、Key 或價目表
 // 之後的變更而改變——歷史帳目要反映「當時」的實際花費，不能因為價目表後來調整
@@ -763,6 +781,19 @@ type ProviderAPIKeyTestRequest struct {
 	ModelName string `json:"model_name"`
 }
 
+type ProviderAPIKeyModelRequest struct {
+	Name string `json:"name"`
+}
+
+type ProviderAPIKeyModelOutput struct {
+	ID               uint64    `json:"id"`
+	ProviderAPIKeyID uint64    `json:"provider_apikey_id"`
+	Name             string    `json:"name"`
+	Sort             int       `json:"sort"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
 type StoryRequest struct {
 	Title   string      `json:"title"`
 	Summary string      `json:"summary"`
@@ -993,15 +1024,15 @@ type AgentRunUsage struct {
 }
 
 type AgentRunResponse struct {
-	AgentID            uint64          `json:"agent_id"`
-	UserMessageID      uint64          `json:"user_message_id,omitempty"`
-	AssistantMessageID uint64          `json:"assistant_message_id,omitempty"`
-	Provider           AgentProvider   `json:"provider"`
-	ModelName          string          `json:"model_name"`
-	Mode               AgentRunMode    `json:"mode"`
-	Result             string          `json:"result"`
-	Usage              *AgentRunUsage  `json:"usage,omitempty"`
-	FinishReason       string          `json:"finish_reason,omitempty"`
+	AgentID            uint64         `json:"agent_id"`
+	UserMessageID      uint64         `json:"user_message_id,omitempty"`
+	AssistantMessageID uint64         `json:"assistant_message_id,omitempty"`
+	Provider           AgentProvider  `json:"provider"`
+	ModelName          string         `json:"model_name"`
+	Mode               AgentRunMode   `json:"mode"`
+	Result             string         `json:"result"`
+	Usage              *AgentRunUsage `json:"usage,omitempty"`
+	FinishReason       string         `json:"finish_reason,omitempty"`
 	// ChatID／ChatStatus 讓 skill 也走跟 agentic 對話一樣的背景執行＋輪詢模式——
 	// request 一落地使用者這則指令就馬上回應，不再讓使用者被 provider 呼叫的
 	// 同步等待時間卡住（也不會再撞到 HTTP client 的固定逾時）。ChatStatus
