@@ -94,6 +94,10 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
 	authenticated.Post("/projects/:project/stories/:story/versions/:version/revert", storyteller.RevertStoryVersion)
 	authenticated.Get("/projects/:project/stories/:story/image-pages", storyteller.ImageStoryPages)
+	authenticated.Get("/projects/:project/stories/:story/bookmarks", storyteller.StoryWritingBookmarks)
+	authenticated.Post("/projects/:project/stories/:story/bookmarks", storyteller.CreateStoryWritingBookmark)
+	authenticated.Put("/projects/:project/stories/:story/bookmarks", storyteller.UpdateStoryWritingBookmark)
+	authenticated.Delete("/projects/:project/stories/:story/bookmarks", storyteller.DeleteStoryWritingBookmark)
 
 	authenticated.Get("/projects/:project/volumes", storyteller.Volumes)
 	authenticated.Post("/projects/:project/volumes", storyteller.CreateVolume)
@@ -136,4 +140,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project/lores/:lore/versions", storyteller.LoreVersions)
 	authenticated.Get("/projects/:project/lores/:lore/versions/:version", storyteller.LoreVersion)
 	authenticated.Post("/projects/:project/lores/:lore/versions/:version/revert", storyteller.RevertLoreVersion)
+	authenticated.Get("/projects/:project/lores/:lore/bookmarks", storyteller.LoreWritingBookmarks)
+	authenticated.Post("/projects/:project/lores/:lore/bookmarks", storyteller.CreateLoreWritingBookmark)
+	authenticated.Put("/projects/:project/lores/:lore/bookmarks", storyteller.UpdateLoreWritingBookmark)
+	authenticated.Delete("/projects/:project/lores/:lore/bookmarks", storyteller.DeleteLoreWritingBookmark)
 }

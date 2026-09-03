@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useLocation,
@@ -63,6 +64,9 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
+import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
+import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
+import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableSummary,
@@ -313,6 +317,21 @@ export default function StorytellerStoryEditor({
   const autoSaveDefaultsAppliedRef = useRef(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [saveMessageSeverity, setSaveMessageSeverity] =
+    useState<AlertColor>("success");
+  const showEditorSnack = (
+    message: string,
+    severity: AlertColor = "success",
+  ) => {
+    setSaveMessage(message);
+    setSaveMessageSeverity(severity);
+    setSaveMessageVisible(true);
+  };
+  const outline = useStorytellerEditorOutline({
+    projectPublicId: apiProject?.public_id,
+    storyPublicId: apiStory?.public_id,
+    onSnack: showEditorSnack,
+  });
   // 存檔成功後端才發現這次帶的 base_version_id 已經不是最新版本（例如中途被
   // MCP 工具或另一個分頁動過）；內容還是照常存成新版本了，這裡只是提醒使用者
   // 去編輯歷史看一下，不會擋下存檔或自動存檔。
@@ -584,6 +603,7 @@ export default function StorytellerStoryEditor({
     if (next === "off") {
       setAutoSaveEnabled(false);
       setSaveMessage("已關閉自動存檔，記得手動存檔。");
+      setSaveMessageSeverity("success");
       setSaveMessageVisible(true);
       return;
     }
@@ -596,6 +616,7 @@ export default function StorytellerStoryEditor({
     setAutoSaveIntervalMinutes(minutes);
     setAutoSaveIntervalInput(String(minutes));
     setSaveMessage(`已設定每 ${minutes} 分鐘自動存檔。`);
+    setSaveMessageSeverity("success");
     setSaveMessageVisible(true);
   }
 
@@ -640,6 +661,7 @@ export default function StorytellerStoryEditor({
             onSuccess: (savedStory) => {
               lastSavedDraftRef.current = currentDraft;
               setSaveMessage("已自動存檔。");
+              setSaveMessageSeverity("success");
               setSaveMessageVisible(true);
               if (savedStory?.version_conflict) {
                 setVersionConflict(true);
@@ -864,6 +886,7 @@ export default function StorytellerStoryEditor({
     setSaveMessage(
       inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。",
     );
+    setSaveMessageSeverity(inserted ? "success" : "error");
     setSaveMessageVisible(true);
   }
 
@@ -871,6 +894,7 @@ export default function StorytellerStoryEditor({
     if (!apiProject?.public_id) {
       lastSavedDraftRef.current = currentDraftRef.current;
       setSaveMessage("目前使用前端假資料，未送出到後端 API。");
+      setSaveMessageSeverity("info");
       setSaveMessageVisible(true);
       return;
     }
@@ -893,6 +917,7 @@ export default function StorytellerStoryEditor({
         onSuccess: (savedStory) => {
           lastSavedDraftRef.current = currentDraftRef.current;
           setSaveMessage("故事已存檔。");
+          setSaveMessageSeverity("success");
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
             // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
@@ -985,6 +1010,7 @@ export default function StorytellerStoryEditor({
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
             setSaveMessage("已套用 AI 提案並存檔。");
+            setSaveMessageSeverity("success");
             setSaveMessageVisible(true);
             if (savedStory?.version_conflict) {
               setVersionConflict(true);
@@ -1015,10 +1041,12 @@ export default function StorytellerStoryEditor({
       setContent,
       onCopy: () => {
         setSaveMessage("AI 回應已複製。");
+        setSaveMessageSeverity("success");
         setSaveMessageVisible(true);
       },
       onSelectionMismatch: () => {
         setSaveMessage("選取範圍已變更，請改用插入或複製。");
+        setSaveMessageSeverity("error");
         setSaveMessageVisible(true);
       },
       onAfterApply: () => {},
@@ -1454,7 +1482,7 @@ export default function StorytellerStoryEditor({
       <CustomSnackbar
         open={saveMessageVisible}
         message={saveMessage}
-        severity={apiProject ? "success" : "info"}
+        severity={saveMessageSeverity}
         onClose={() => setSaveMessageVisible(false)}
       />
 
@@ -1475,6 +1503,17 @@ export default function StorytellerStoryEditor({
             onRequestInsertAsset={
               apiProject ? () => setAssetPickerOpen(true) : undefined
             }
+            toolbarStart={
+              <StorytellerEditorOutlineToggle
+                open={outline.outlineOpen}
+                onToggle={outline.setOutlineOpen}
+              />
+            }
+            bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
+            canBookmark={outline.canBookmark}
+            onAddBookmark={outline.addBookmark}
+            onRemoveBookmark={outline.removeBookmark}
+            onEditorReady={outline.onEditorReady}
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">
@@ -1497,6 +1536,17 @@ export default function StorytellerStoryEditor({
               </Stack>
             }
           />
+        }
+        leftDock={
+          outline.outlineOpen ? (
+            <StorytellerEditorOutlinePanel
+              editor={outline.editor}
+              bookmarks={outline.bookmarks}
+              loading={outline.bookmarksLoading}
+              onDeleteBookmark={outline.removeBookmark}
+              onUpdateBookmarkNote={outline.saveBookmarkNote}
+            />
+          ) : null
         }
         dock={
           sidePanel && (
@@ -1531,6 +1581,7 @@ export default function StorytellerStoryEditor({
                       onSuccess: () => {
                         setVersionConflict(false);
                         setSaveMessage("已回復到這個版本。");
+                        setSaveMessageSeverity("success");
                         setSaveMessageVisible(true);
                       },
                     });

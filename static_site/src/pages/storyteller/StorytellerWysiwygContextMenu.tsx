@@ -1,4 +1,6 @@
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import TranslateIcon from "@mui/icons-material/Translate";
@@ -57,6 +59,10 @@ interface StorytellerWysiwygContextMenuProps {
   onRequestSelectionAgentDialog?: (
     item: StorytellerSelectionAgentDialogItem,
   ) => void;
+  canWritingBookmark?: boolean;
+  isCurrentParagraphBookmarked?: boolean;
+  writingBookmarkDisabledReason?: string;
+  onToggleWritingBookmark?: () => void;
 }
 
 export interface StorytellerSelectionAgentDialogItem {
@@ -129,6 +135,10 @@ export function StorytellerWysiwygContextMenu({
   isCurrentParagraphEmpty,
   hasAssetImage,
   onRequestSelectionAgentDialog,
+  canWritingBookmark,
+  isCurrentParagraphBookmarked,
+  writingBookmarkDisabledReason,
+  onToggleWritingBookmark,
 }: StorytellerWysiwygContextMenuProps) {
   const runAndClose = (command: WysiwygCommand) => {
     command.run(editor, commandContext);
@@ -508,6 +518,31 @@ export function StorytellerWysiwygContextMenu({
         }
         return items;
       })}
+      {canWritingBookmark && onToggleWritingBookmark && !hasAssetImage && [
+        // Menu 不接受 Fragment 當直接子元素（MUI 會在 console 噴警告），
+        // 這裡跟上面 wysiwygCommandsByGroup 那段一樣改回陣列 + key。
+        <Divider key="writing-bookmark-divider" />,
+        <MenuItem
+          key="writing-bookmark-item"
+          disabled={Boolean(writingBookmarkDisabledReason)}
+          onClick={() => {
+            onClose();
+            onToggleWritingBookmark();
+          }}
+        >
+          <ListItemIcon>
+            {isCurrentParagraphBookmarked ? (
+              <BookmarkIcon fontSize="small" />
+            ) : (
+              <BookmarkBorderIcon fontSize="small" />
+            )}
+          </ListItemIcon>
+          <ListItemText>
+            {writingBookmarkDisabledReason ??
+              (isCurrentParagraphBookmarked ? "移除書籤" : "加入書籤")}
+          </ListItemText>
+        </MenuItem>,
+      ]}
     </Menu>
   );
 }

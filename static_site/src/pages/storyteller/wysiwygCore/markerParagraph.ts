@@ -95,7 +95,12 @@ export const MarkerParagraph = Paragraph.extend({
       markerId: {
         default: null as string | null,
         parseHTML: () => null,
-        renderHTML: () => ({}),
+        // 編輯區跳轉（大綱／書籤）靠 DOM 上的 data-marker-id 找段落。
+        // 這份 schema 不會拿去 generateHTML()／閱讀頁，所以不會外洩到已發布內容。
+        renderHTML: (attributes) =>
+          attributes.markerId
+            ? { "data-marker-id": attributes.markerId as string }
+            : {},
       },
       headingLevel: {
         default: 0 as HeadingLevel,
@@ -424,7 +429,11 @@ export const MarkerParagraph = Paragraph.extend({
         ) {
           const paragraphStart = $from.before($from.depth);
           return editor.commands.command(({ tr }) => {
-            tr.setNodeAttribute(paragraphStart, "blockKind", DEFAULT_BLOCK_KIND);
+            tr.setNodeAttribute(
+              paragraphStart,
+              "blockKind",
+              DEFAULT_BLOCK_KIND,
+            );
             tr.setNodeAttribute(
               paragraphStart,
               "headingLevel",

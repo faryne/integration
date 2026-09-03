@@ -56,6 +56,9 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
+import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
+import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
+import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableTitle,
@@ -244,6 +247,15 @@ export default function StorytellerLoreEditor({
     apiProject?.public_id,
     apiLore?.public_id,
   );
+  const showSnack = (message: string, severity: AlertColor = "success") => {
+    setSnack(message);
+    setSnackSeverity(severity);
+  };
+  const outline = useStorytellerEditorOutline({
+    projectPublicId: apiProject?.public_id,
+    lorePublicId: apiLore?.public_id,
+    onSnack: showSnack,
+  });
 
   const project = apiProject
     ? { id: apiProject.public_id, name: apiProject.name }
@@ -282,10 +294,6 @@ export default function StorytellerLoreEditor({
       ? String(version.conflicted_with_version_id)
       : null,
   }));
-  const showSnack = (message: string, severity: AlertColor = "success") => {
-    setSnack(message);
-    setSnackSeverity(severity);
-  };
   const selectedCollectionExists =
     selectedCollectionId === "" ||
     loreCollections.some(
@@ -1177,6 +1185,17 @@ export default function StorytellerLoreEditor({
             onRequestInsertAsset={
               project ? () => setAssetPickerOpen(true) : undefined
             }
+            toolbarStart={
+              <StorytellerEditorOutlineToggle
+                open={outline.outlineOpen}
+                onToggle={outline.setOutlineOpen}
+              />
+            }
+            bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
+            canBookmark={outline.canBookmark}
+            onAddBookmark={outline.addBookmark}
+            onRemoveBookmark={outline.removeBookmark}
+            onEditorReady={outline.onEditorReady}
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">
@@ -1200,6 +1219,17 @@ export default function StorytellerLoreEditor({
               </Stack>
             }
           />
+        }
+        leftDock={
+          outline.outlineOpen ? (
+            <StorytellerEditorOutlinePanel
+              editor={outline.editor}
+              bookmarks={outline.bookmarks}
+              loading={outline.bookmarksLoading}
+              onDeleteBookmark={outline.removeBookmark}
+              onUpdateBookmarkNote={outline.saveBookmarkNote}
+            />
+          ) : null
         }
         dock={
           sidePanel && (
