@@ -1038,12 +1038,6 @@ export const StorytellerWysiwygEditor = forwardRef<
       toolbarStart={toolbarStart}
       toolbarExtra={toolbarExtra}
       placement={toolbarPlacement}
-      writingBookmark={{
-        visible: Boolean(onAddBookmark && onRemoveBookmark),
-        bookmarked: isCurrentParagraphBookmarked,
-        disabled: !canBookmark || !editorState.currentMarkerId,
-        onClick: () => handleToggleWritingBookmark(),
-      }}
     />
   );
 

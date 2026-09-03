@@ -37,7 +37,7 @@ export function StorytellerEditorOutlineToggle({
   return (
     <>
       <Box ref={setAnchorEl} sx={{ display: "inline-flex" }}>
-        <Tooltip title={open ? "收合大綱" : "大綱與書籤"}>
+        <Tooltip title={open ? "收合大綱與書籤" : "大綱與書籤"}>
           <ToggleButton
             value="outline"
             selected={open}
