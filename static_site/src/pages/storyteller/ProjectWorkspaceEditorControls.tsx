@@ -66,9 +66,9 @@ export function WorkspaceEditableTitle({
         bgcolor: "transparent",
         color: "text.primary",
         font: "inherit",
-        fontSize: { xs: 36, md: 52 },
+        fontSize: { xs: 34, md: 44 },
         fontWeight: 800,
-        lineHeight: 1.12,
+        lineHeight: 1.16,
         letterSpacing: 0,
         "&::placeholder": { color: "text.disabled" },
         // a11y：拿掉瀏覽器預設 focus 外框後一定要補一個看得見的替代方案，不能
@@ -110,8 +110,8 @@ export function WorkspaceEditableSummary({
         bgcolor: "transparent",
         color: "text.secondary",
         font: "inherit",
-        fontSize: 16,
-        lineHeight: 1.7,
+        fontSize: 15,
+        lineHeight: 1.65,
         "&::placeholder": { color: "text.disabled" },
         "&:focus-visible": {
           outline: "2px solid var(--storyteller-focus-ring)",
@@ -155,6 +155,7 @@ export function WorkspaceEditorSelectButton({
           borderRadius: 1,
           px: 1,
           minHeight: 30,
+          bgcolor: "transparent",
           "&:hover": { bgcolor: "action.hover" },
         }}
       >
