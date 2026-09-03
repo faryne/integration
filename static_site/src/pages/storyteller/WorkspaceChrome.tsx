@@ -258,7 +258,9 @@ export function WorkspaceChrome({
 // 文章排版，只留最基本的內距讓內容不會貼齊邊框。
 export function WorkspaceBleedContainer({ children }: { children: ReactNode }) {
   return (
-    <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 } }}>{children}</Box>
+    <Box sx={{ px: { xs: 1.5, md: 2.5 }, py: { xs: 1, md: 1.5 } }}>
+      {children}
+    </Box>
   );
 }
 
@@ -273,22 +275,19 @@ export function EditorBleedContainer({
 }) {
   return (
     <WorkspaceBleedContainer>
-      <Stack spacing={2}>
+      <Stack spacing={1.5}>
         <Box>
           <Button
             size="small"
-            variant="outlined"
+            variant="text"
             startIcon={<ArrowBackIcon fontSize="small" />}
             onClick={onBack}
             sx={{
-              borderRadius: 999,
-              px: 1.5,
+              borderRadius: 1,
+              px: 1,
               color: "text.secondary",
-              borderColor: (theme) =>
-                theme.palette.mode === "dark" ? "#3a3a3a" : "#d8d5cd",
               "&:hover": {
                 color: "primary.main",
-                borderColor: "primary.main",
                 bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
               },
             }}

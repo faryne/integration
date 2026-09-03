@@ -1059,11 +1059,17 @@ export default function StorytellerStoryEditor({
       icon: <ScheduleIcon fontSize="small" />,
     },
   ];
-  // 字數／更新時間／自動存檔狀態的 chip 列，加上存檔按鈕——embedded 模式下要跟
-  // 標題排在同一列（見下面 WorkspaceEditorHeaderRow），非 embedded 模式則維持
-  // 原本透過 StorytellerShell 的 action 插槽顯示。
+  // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
+  // embedded 寫作頁則下放到 StoryWritingWorkspace 的底部狀態列，避免長標題被擠壓。
   const storyEditorActionContent = (
-    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
       <Chip label={`${wordCount.toLocaleString()} 字`} />
       {!embedded && (
         <Chip
@@ -1090,28 +1096,39 @@ export default function StorytellerStoryEditor({
       ) : (
         <Chip label="尚未存檔" color="warning" />
       )}
-      {embedded && (
-        // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-        // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
-        <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-          <span>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={saveStory.isPending}
-              onClick={handleSaveStory}
-            >
-              {saveStory.isPending ? "存檔中" : "存檔"}
-            </Button>
-          </span>
-        </Tooltip>
-      )}
     </Stack>
   );
-  const storyEditorHeaderContent = embedded ? (
+  const storyEditorBottomStatusContent = embedded ? (
     <Stack
-      spacing={2.25}
+      direction="row"
+      spacing={1}
+      alignItems="center"
+      justifyContent={{ xs: "flex-start", sm: "space-between" }}
+      flexWrap="wrap"
+      useFlexGap
+      sx={{ minHeight: 34 }}
+    >
+      {storyEditorActionContent}
+      {/* disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+          才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。 */}
+      <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+        <span>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            disabled={saveStory.isPending}
+            onClick={handleSaveStory}
+            sx={{ minWidth: 88 }}
+          >
+            {saveStory.isPending ? "存檔中" : "存檔"}
+          </Button>
+        </span>
+      </Tooltip>
+    </Stack>
+  ) : undefined;
+  const storyEditorHeaderContent = embedded ? (
+    <Box
       sx={{
         // Faryne 反映編輯器畫面捲下去後，標題／摘要／存檔按鈕全部一起被捲走，
         // 要往上滑才看得到——改成 sticky 釘在工作台右欄面板頂部（真正的捲動
@@ -1122,107 +1139,123 @@ export default function StorytellerStoryEditor({
         position: "sticky",
         top: 0,
         zIndex: 2,
-        pb: 1.5,
+        pb: 1,
         bgcolor: (theme) =>
           theme.palette.mode === "dark" ? "#191919" : "#ffffff",
       }}
     >
-      {versionConflict ? (
-        <Alert
-          severity="warning"
-          variant="outlined"
-          onClose={() => setVersionConflict(false)}
-          action={
-            <Button
-              size="small"
-              onClick={() => {
-                handleSidePanelChange("history");
-                setVersionConflict(false);
-              }}
-            >
-              查看編輯歷史
-            </Button>
-          }
+      <Box
+        sx={{
+          width: 1,
+        }}
+      >
+        <Stack
+          spacing={1.25}
+          sx={{
+            width: 1,
+            maxWidth: 920,
+            mx: "auto",
+          }}
         >
-          剛剛存檔完成後才發現這篇故事在中途被更新過，已經接在最新版本後面存成新版了。
-        </Alert>
-      ) : (
-        saveStory.isError && (
-          <Alert severity="error" variant="outlined">
-            存檔失敗，請確認登入狀態與欄位內容。
-          </Alert>
-        )
-      )}
-      <WorkspaceEditorHeaderRow
-        title={
-          <WorkspaceEditableTitle
-            value={storyTitle}
-            onChange={setStoryTitle}
-            placeholder="未命名故事"
-          />
-        }
-        actions={storyEditorActionContent}
-      />
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <WorkspaceEditorSelectButton
-          icon={
-            storyStatus === "completed" ? (
-              <VisibilityIcon fontSize="small" />
-            ) : (
-              <VisibilityOffIcon fontSize="small" />
+          {versionConflict ? (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              onClose={() => setVersionConflict(false)}
+              action={
+                <Button
+                  size="small"
+                  onClick={() => {
+                    handleSidePanelChange("history");
+                    setVersionConflict(false);
+                  }}
+                >
+                  查看編輯歷史
+                </Button>
+              }
+            >
+              剛剛存檔完成後才發現這篇故事在中途被更新過，已經接在最新版本後面存成新版了。
+            </Alert>
+          ) : (
+            saveStory.isError && (
+              <Alert severity="error" variant="outlined">
+                存檔失敗，請確認登入狀態與欄位內容。
+              </Alert>
             )
-          }
-          label="狀態"
-          value={storyStatus}
-          options={statusOptions}
-          onChange={(value) => setStoryStatus(value as "draft" | "completed")}
-        />
-        <WorkspaceEditorSelectButton
-          icon={<FolderIcon fontSize="small" />}
-          label="冊"
-          value={selectedVolumeId}
-          options={volumeOptions}
-          onChange={setSelectedVolumeId}
-        />
-        {apiProject && (
-          <WorkspaceEditorSelectButton
-            icon={<ScheduleIcon fontSize="small" />}
-            label="自動存檔"
-            value={autoSaveSelectValue}
-            options={autoSaveOptions}
-            onChange={(value) =>
-              handleAutoSaveSelectChange(value as AutoSaveSelectValue)
-            }
-          >
-            {autoSaveSelectValue === "custom" && (
-              <TextField
-                type="number"
-                size="small"
-                label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
-                value={autoSaveIntervalInput}
-                slotProps={{
-                  htmlInput: {
-                    min: autoSaveIntervalMinutesMin,
-                    max: autoSaveIntervalMinutesMax,
-                    step: 1,
-                  },
-                }}
-                onChange={(event) =>
-                  setAutoSaveIntervalInput(event.target.value)
-                }
-                onBlur={commitAutoSaveInterval}
-                sx={{ width: 140 }}
+          )}
+          <WorkspaceEditorHeaderRow
+            title={
+              <WorkspaceEditableTitle
+                value={storyTitle}
+                onChange={setStoryTitle}
+                placeholder="未命名故事"
               />
+            }
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <WorkspaceEditorSelectButton
+              icon={
+                storyStatus === "completed" ? (
+                  <VisibilityIcon fontSize="small" />
+                ) : (
+                  <VisibilityOffIcon fontSize="small" />
+                )
+              }
+              label="狀態"
+              value={storyStatus}
+              options={statusOptions}
+              onChange={(value) =>
+                setStoryStatus(value as "draft" | "completed")
+              }
+            />
+            <WorkspaceEditorSelectButton
+              icon={<FolderIcon fontSize="small" />}
+              label="冊"
+              value={selectedVolumeId}
+              options={volumeOptions}
+              onChange={setSelectedVolumeId}
+            />
+            {apiProject && (
+              <WorkspaceEditorSelectButton
+                icon={<ScheduleIcon fontSize="small" />}
+                label="自動存檔"
+                value={autoSaveSelectValue}
+                options={autoSaveOptions}
+                onChange={(value) =>
+                  handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+                }
+              >
+                {autoSaveSelectValue === "custom" && (
+                  <TextField
+                    type="number"
+                    size="small"
+                    label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                    value={autoSaveIntervalInput}
+                    slotProps={{
+                      htmlInput: {
+                        min: autoSaveIntervalMinutesMin,
+                        max: autoSaveIntervalMinutesMax,
+                        step: 1,
+                      },
+                    }}
+                    onChange={(event) =>
+                      setAutoSaveIntervalInput(event.target.value)
+                    }
+                    onBlur={commitAutoSaveInterval}
+                    sx={{ width: 140 }}
+                  />
+                )}
+              </WorkspaceEditorSelectButton>
             )}
-          </WorkspaceEditorSelectButton>
-        )}
-      </Stack>
-      <WorkspaceEditableSummary
-        value={storySummary}
-        onChange={setStorySummary}
-        placeholder="新增摘要..."
-      />
-    </Stack>
+          </Stack>
+          <WorkspaceEditableSummary
+            value={storySummary}
+            onChange={setStorySummary}
+            placeholder="新增摘要..."
+          />
+        </Stack>
+      </Box>
+    </Box>
   ) : (
     <Stack spacing={2}>
       {versionConflict ? (
@@ -1488,6 +1521,7 @@ export default function StorytellerStoryEditor({
               {sidePanel === "agentic" && (
                 <StorytellerAgenticPanel
                   targetKind="story"
+                  presentation="floatingDock"
                   projectPublicId={apiProject?.public_id}
                   targetPublicId={apiStory?.public_id}
                   agents={panelAgents}
@@ -1512,6 +1546,7 @@ export default function StorytellerStoryEditor({
             </>
           )
         }
+        statusBar={storyEditorBottomStatusContent}
       />
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}

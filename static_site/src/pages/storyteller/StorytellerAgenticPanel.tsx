@@ -796,6 +796,7 @@ export function StorytellerAgenticPanel({
   onStoryChanged,
   pendingSelectionAgentTrigger,
   onSelectionAgentTriggerApplied,
+  presentation = "inline",
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
   // 這個軸線——決定要打哪一組 API（.../stories/:id/... 還是 .../lores/:id/...）、
@@ -823,7 +824,10 @@ export function StorytellerAgenticPanel({
   onStoryChanged?: () => void;
   pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
   onSelectionAgentTriggerApplied?: () => void;
+  // 浮動 dock 由外層決定可用高度，面板本身要改成 flex 填滿，避免 composer 底部被裁掉。
+  presentation?: "inline" | "floatingDock";
 }) {
+  const floatingDock = presentation === "floatingDock";
   const { session } = useAuth();
   const queryClient = useQueryClient();
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
@@ -2052,12 +2056,26 @@ export function StorytellerAgenticPanel({
       sx={{
         borderRadius: 1,
         overflow: "hidden",
-        position: { lg: "sticky" },
-        top: { lg: 16 },
+        height: floatingDock ? { lg: 1 } : undefined,
+        position: floatingDock ? undefined : { lg: "sticky" },
+        top: floatingDock ? undefined : { lg: 16 },
       }}
     >
-      <Stack sx={{ maxHeight: { lg: "calc(100vh - 32px)" } }}>
-        <Stack spacing={1.5} sx={{ p: 2, bgcolor: "background.default" }}>
+      <Stack
+        sx={{
+          height: floatingDock ? { lg: 1 } : undefined,
+          maxHeight: floatingDock ? undefined : { lg: "calc(100vh - 32px)" },
+          minHeight: 0,
+        }}
+      >
+        <Stack
+          spacing={1.5}
+          sx={{
+            flexShrink: 0,
+            p: 2,
+            bgcolor: "background.default",
+          }}
+        >
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
@@ -2154,8 +2172,10 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: { xs: 360, lg: 320 },
-            maxHeight: { xs: 520, lg: 480 },
+            minHeight: floatingDock ? { xs: 360, lg: 0 } : { xs: 360, lg: 320 },
+            maxHeight: floatingDock
+              ? { xs: 520, lg: "none" }
+              : { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
             p: 2,
@@ -2244,7 +2264,15 @@ export function StorytellerAgenticPanel({
           )}
         </Stack>
 
-        <Stack spacing={1.5} sx={{ p: 2 }}>
+        <Stack
+          spacing={1.5}
+          sx={{
+            flexShrink: 0,
+            maxHeight: floatingDock ? { lg: "46%" } : undefined,
+            overflow: floatingDock ? { lg: "auto" } : undefined,
+            p: 2,
+          }}
+        >
           {replyTarget && (
             <Stack
               direction="row"

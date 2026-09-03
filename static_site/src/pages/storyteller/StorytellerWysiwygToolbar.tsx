@@ -29,7 +29,7 @@ export function StorytellerWysiwygToolbar({
   );
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+    <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0.5 }}>
       <Paper
         variant="outlined"
         sx={{
@@ -38,7 +38,13 @@ export function StorytellerWysiwygToolbar({
           gap: 0.5,
           px: 0.75,
           py: 0.5,
-          bgcolor: "background.paper",
+          borderColor: "transparent",
+          bgcolor: "transparent",
+          transition: "background-color 0.15s ease, border-color 0.15s ease",
+          "&:hover": {
+            borderColor: "divider",
+            bgcolor: "action.hover",
+          },
         }}
       >
         <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
