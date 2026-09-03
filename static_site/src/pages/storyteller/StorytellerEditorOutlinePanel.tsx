@@ -97,7 +97,8 @@ interface StorytellerEditorOutlinePanelProps {
   onUpdateBookmarkNote: (markerId: string, note: string) => void;
 }
 
-// 左側 dock 內容：標題 + 書籤依文件 pos 合併成同一份清單。
+// 大綱面板內容：標題 + 書籤依文件 pos 合併成同一份清單。外層容器（Popper）
+// 由 StorytellerEditorOutlineToggle 負責，這裡不管怎麼掛到畫面上。
 export function StorytellerEditorOutlinePanel({
   editor,
   bookmarks,

@@ -1189,7 +1189,15 @@ export default function StorytellerLoreEditor({
               <StorytellerEditorOutlineToggle
                 open={outline.outlineOpen}
                 onToggle={outline.setOutlineOpen}
-              />
+              >
+                <StorytellerEditorOutlinePanel
+                  editor={outline.editor}
+                  bookmarks={outline.bookmarks}
+                  loading={outline.bookmarksLoading}
+                  onDeleteBookmark={outline.removeBookmark}
+                  onUpdateBookmarkNote={outline.saveBookmarkNote}
+                />
+              </StorytellerEditorOutlineToggle>
             }
             bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
             canBookmark={outline.canBookmark}
@@ -1219,17 +1227,6 @@ export default function StorytellerLoreEditor({
               </Stack>
             }
           />
-        }
-        leftDock={
-          outline.outlineOpen ? (
-            <StorytellerEditorOutlinePanel
-              editor={outline.editor}
-              bookmarks={outline.bookmarks}
-              loading={outline.bookmarksLoading}
-              onDeleteBookmark={outline.removeBookmark}
-              onUpdateBookmarkNote={outline.saveBookmarkNote}
-            />
-          ) : null
         }
         dock={
           sidePanel && (
