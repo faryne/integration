@@ -12,7 +12,6 @@ import {
   Grid,
   IconButton,
   MenuItem,
-  Paper,
   Stack,
   TextField,
   Tooltip,
@@ -52,18 +51,17 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import {
-  StoryEditHistory,
-  type StoryEditHistoryItem,
-} from "@/pages/storyteller/StoryEditHistory.tsx";
+import type { StoryEditHistoryItem } from "@/pages/storyteller/StoryEditHistory.tsx";
 import { type StorytellerAgentPanelAgent } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import { StorytellerAgenticPanel } from "@/pages/storyteller/StorytellerAgenticPanel.tsx";
+import { StoryEditorHistoryPanel } from "@/pages/storyteller/StoryEditorHistoryPanel.tsx";
 import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableSummary,
@@ -719,9 +717,11 @@ export default function StorytellerStoryEditor({
   // `handleSaveStory` 是 function 宣告會整個 hoist，所以搬到所有 early return
   // 之前一樣讀得到，不需要跟著搬。
   const handleSaveStoryRef = useRef(handleSaveStory);
-  handleSaveStoryRef.current = handleSaveStory;
   const isSavingRef = useRef(saveStory.isPending);
-  isSavingRef.current = saveStory.isPending;
+  useEffect(() => {
+    handleSaveStoryRef.current = handleSaveStory;
+    isSavingRef.current = saveStory.isPending;
+  });
   useEffect(() => {
     function handleSaveHotkey(event: KeyboardEvent) {
       if (
@@ -1409,8 +1409,8 @@ export default function StorytellerStoryEditor({
         onClose={() => setSaveMessageVisible(false)}
       />
 
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
+      <StoryWritingWorkspace
+        editor={
           <StorytellerWysiwygEditor
             ref={editorRef}
             value={content}
@@ -1444,57 +1444,45 @@ export default function StorytellerStoryEditor({
               </Stack>
             }
           />
-        </Grid>
-
-        {sidePanel && (
-          <Grid size={{ xs: 12, lg: 5 }}>
-            <Stack spacing={2}>
+        }
+        dock={
+          sidePanel && (
+            <>
               {sidePanel === "history" && (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 1,
-                    p: 2,
-                    height: { lg: 720 },
-                    overflow: "auto",
+                <StoryEditorHistoryPanel
+                  items={visibleStoryDiffs}
+                  allItems={storyDiffs}
+                  loading={apiStoryVersionsLoading}
+                  leftVersionId={leftDiffId}
+                  rightVersionId={rightDiffId}
+                  onCompare={() => setCompareDialogOpen(true)}
+                  onLeftVersionChange={handleLeftDiffChange}
+                  onRightVersionChange={setRightDiffId}
+                  isRightVersionDisabled={isRightDiffDisabled}
+                  isNewStory={isNewStory}
+                  page={historyPage}
+                  pageCount={totalHistoryPages}
+                  onPageChange={setHistoryPage}
+                  currentVersionId={
+                    apiStoryVersions[0]?.id !== undefined
+                      ? String(apiStoryVersions[0].id)
+                      : undefined
+                  }
+                  revertingVersionId={
+                    revertStoryVersion.isPending
+                      ? String(revertStoryVersion.variables)
+                      : null
+                  }
+                  onRevert={(versionId) => {
+                    revertStoryVersion.mutate(Number(versionId), {
+                      onSuccess: () => {
+                        setVersionConflict(false);
+                        setSaveMessage("已回復到這個版本。");
+                        setSaveMessageVisible(true);
+                      },
+                    });
                   }}
-                >
-                  <StoryEditHistory
-                    items={visibleStoryDiffs}
-                    allItems={storyDiffs}
-                    loading={apiStoryVersionsLoading}
-                    leftVersionId={leftDiffId}
-                    rightVersionId={rightDiffId}
-                    onCompare={() => setCompareDialogOpen(true)}
-                    onLeftVersionChange={handleLeftDiffChange}
-                    onRightVersionChange={setRightDiffId}
-                    isRightVersionDisabled={isRightDiffDisabled}
-                    isNewItem={isNewStory}
-                    newItemMessage="新故事第一次存檔後才會產生編輯歷史。"
-                    page={historyPage}
-                    pageCount={totalHistoryPages}
-                    onPageChange={setHistoryPage}
-                    currentVersionId={
-                      apiStoryVersions[0]?.id !== undefined
-                        ? String(apiStoryVersions[0].id)
-                        : undefined
-                    }
-                    revertingVersionId={
-                      revertStoryVersion.isPending
-                        ? String(revertStoryVersion.variables)
-                        : null
-                    }
-                    onRevert={(versionId) => {
-                      revertStoryVersion.mutate(Number(versionId), {
-                        onSuccess: () => {
-                          setVersionConflict(false);
-                          setSaveMessage("已回復到這個版本。");
-                          setSaveMessageVisible(true);
-                        },
-                      });
-                    }}
-                  />
-                </Paper>
+                />
               )}
 
               {sidePanel === "agentic" && (
@@ -1521,10 +1509,10 @@ export default function StorytellerStoryEditor({
                   }
                 />
               )}
-            </Stack>
-          </Grid>
-        )}
-      </Grid>
+            </>
+          )
+        }
+      />
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}
         projectPublicId={apiProject?.public_id}

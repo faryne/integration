@@ -7,9 +7,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControlLabel,
-  IconButton,
   Paper,
   Stack,
   TextField,
@@ -32,7 +30,6 @@ import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
 import {
   hasAssetImageLayoutTarget,
-  wysiwygCommandsByGroup,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
 import {
@@ -58,8 +55,11 @@ import {
   type ContextMenuPosition,
   type StorytellerSelectionAgentDialogItem,
 } from "./StorytellerWysiwygContextMenu";
-import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 import { StorytellerWysiwygTableMenu } from "./StorytellerWysiwygTableMenu";
+import {
+  StorytellerWysiwygToolbar,
+  type StorytellerWysiwygFeature,
+} from "./StorytellerWysiwygToolbar";
 import {
   truncateStorytellerSelectionPreview,
   type StorytellerSelectionAgentTrigger,
@@ -361,7 +361,7 @@ export interface StorytellerWysiwygEditorProps {
    * （StoryEditor／LoreEditor）行為不變。目前支援腳注／註解／資產圖片開關，其餘編輯器
    * 功能不受影響。
    */
-  enabledFeatures?: Array<"footnote" | "comment" | "asset">;
+  enabledFeatures?: StorytellerWysiwygFeature[];
   /**
    * 觸發頁面層開啟資產選擇 Dialog（Phase 2：插入資產 command 化）。asset picker 本身
    * 是頁面層的 state（StoryEditor／LoreEditor 各自的 `assetPickerOpen`），這個元件
@@ -845,49 +845,14 @@ export const StorytellerWysiwygEditor = forwardRef<
   };
   slashCommandContextRef.current = commandContext;
 
-  const utilityCommands = wysiwygCommandsByGroup("utility").filter(
-    (command) => command.isVisible?.(commandContext) ?? true,
-  );
-
   return (
     <Box>
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-        <Paper
-          variant="outlined"
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 0.5,
-            px: 0.75,
-            py: 0.5,
-            bgcolor: "background.paper",
-          }}
-        >
-          <StorytellerWysiwygSyntaxDrawer enabledFeatures={enabledFeatures} />
-          {utilityCommands.map((command) => {
-            const Icon = command.icon!;
-            return (
-              <Tooltip key={command.id} title={command.label}>
-                <IconButton
-                  aria-label={command.label}
-                  size="small"
-                  onClick={() => command.run(editor, commandContext)}
-                >
-                  <Icon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            );
-          })}
-          {toolbarExtra && (
-            <>
-              <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                {toolbarExtra}
-              </Box>
-            </>
-          )}
-        </Paper>
-      </Box>
+      <StorytellerWysiwygToolbar
+        editor={editor}
+        commandContext={commandContext}
+        enabledFeatures={enabledFeatures}
+        toolbarExtra={toolbarExtra}
+      />
 
       <Paper
         variant="outlined"
