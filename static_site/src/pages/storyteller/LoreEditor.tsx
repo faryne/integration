@@ -4,12 +4,12 @@ import SaveIcon from "@mui/icons-material/Save";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Grid,
   IconButton,
   MenuItem,
-  Paper,
   Stack,
   TextField,
   Tooltip,
@@ -44,18 +44,17 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import {
-  StoryEditHistory,
-  type StoryEditHistoryItem,
-} from "@/pages/storyteller/StoryEditHistory.tsx";
+import type { StoryEditHistoryItem } from "@/pages/storyteller/StoryEditHistory.tsx";
 import { type StorytellerAgentPanelAgent } from "@/pages/storyteller/StorytellerAgentPanel.tsx";
 import { StorytellerAgenticPanel } from "@/pages/storyteller/StorytellerAgenticPanel.tsx";
+import { StoryEditorHistoryPanel } from "@/pages/storyteller/StoryEditorHistoryPanel.tsx";
 import {
   StorytellerEditorSideTabs,
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableTitle,
@@ -512,9 +511,11 @@ export default function StorytellerLoreEditor({
   // `handleSave` 是 function 宣告會整個 hoist，搬到 early return 之前一樣
   // 讀得到，不需要跟著搬。
   const handleSaveRef = useRef(handleSave);
-  handleSaveRef.current = handleSave;
   const isSavingLoreRef = useRef(saveLore.isPending);
-  isSavingLoreRef.current = saveLore.isPending;
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+    isSavingLoreRef.current = saveLore.isPending;
+  });
   useEffect(() => {
     function handleSaveHotkey(event: KeyboardEvent) {
       if (
@@ -826,11 +827,17 @@ export default function StorytellerLoreEditor({
       icon: <ScheduleIcon fontSize="small" />,
     },
   ];
-  // 字數／更新時間／自動存檔狀態的 chip 列，加上存檔按鈕——embedded 模式下要跟
-  // 標題排在同一列（見下面 WorkspaceEditorHeaderRow），非 embedded 模式則維持
-  // 原本透過 StorytellerShell 的 action 插槽顯示。
+  // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
+  // embedded 寫作頁則下放到底部狀態列，避免長標題被擠壓。
   const loreEditorActionContent = (
-    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
       <Chip label={`${wordCount.toLocaleString()} 字`} />
       {lore ? (
         <>
@@ -850,118 +857,139 @@ export default function StorytellerLoreEditor({
       ) : (
         <Chip label="尚未存檔" color="warning" />
       )}
-      {embedded && (
-        // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-        // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
-        <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-          <span>
-            <Button
-              size="small"
-              variant="contained"
-              startIcon={<SaveIcon />}
-              disabled={saveLore.isPending}
-              onClick={handleSave}
-            >
-              {saveLore.isPending ? "存檔中" : "存檔"}
-            </Button>
-          </span>
-        </Tooltip>
-      )}
     </Stack>
   );
-  const loreEditorHeaderContent = embedded ? (
+  const loreEditorBottomStatusContent = embedded ? (
     <Stack
-      spacing={2.25}
+      direction="row"
+      spacing={1}
+      alignItems="center"
+      justifyContent={{ xs: "flex-start", sm: "space-between" }}
+      flexWrap="wrap"
+      useFlexGap
+      sx={{ minHeight: 34 }}
+    >
+      {loreEditorActionContent}
+      {/* disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+          才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。 */}
+      <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+        <span>
+          <Button
+            size="small"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            disabled={saveLore.isPending}
+            onClick={handleSave}
+            sx={{ minWidth: 88 }}
+          >
+            {saveLore.isPending ? "存檔中" : "存檔"}
+          </Button>
+        </span>
+      </Tooltip>
+    </Stack>
+  ) : undefined;
+  const loreEditorHeaderContent = embedded ? (
+    <Box
       sx={{
         // 跟 StoryEditor.tsx 同一套理由／同一套做法：sticky 釘在工作台右欄
         // 面板頂部，捲動編輯器內文時標題／摘要／存檔按鈕維持在畫面上。
         position: "sticky",
         top: 0,
         zIndex: 2,
-        pb: 1.5,
+        pb: 1,
         bgcolor: (theme) =>
           theme.palette.mode === "dark" ? "#191919" : "#ffffff",
       }}
     >
-      {versionConflict ? (
-        <Alert
-          severity="warning"
-          variant="outlined"
-          onClose={() => setVersionConflict(false)}
-          action={
-            <Button
-              size="small"
-              onClick={() => {
-                setSidePanel("history");
-                setVersionConflict(false);
-              }}
-            >
-              查看編輯歷史
-            </Button>
-          }
+      <Box sx={{ width: 1 }}>
+        <Stack
+          spacing={1.25}
+          sx={{
+            width: 1,
+            maxWidth: 920,
+            mx: "auto",
+          }}
         >
-          剛剛存檔完成後才發現這篇設定集在中途被更新過，已經接在最新版本後面存成新版了。
-        </Alert>
-      ) : (
-        saveLore.isError && (
-          <Alert severity="error" variant="outlined">
-            {errorMessage(saveLore.error, "設定集存檔失敗。")}
-          </Alert>
-        )
-      )}
-      <WorkspaceEditorHeaderRow
-        title={
-          <WorkspaceEditableTitle
-            value={title}
-            onChange={setTitle}
-            placeholder="未命名設定集"
-          />
-        }
-        actions={loreEditorActionContent}
-      />
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <WorkspaceEditorSelectButton
-          icon={<FolderIcon fontSize="small" />}
-          label="分類"
-          value={selectedCollectionId}
-          options={collectionOptions}
-          disabled={loreCollectionsLoading}
-          onChange={setSelectedCollectionId}
-        />
-        {apiProject && (
-          <WorkspaceEditorSelectButton
-            icon={<ScheduleIcon fontSize="small" />}
-            label="自動存檔"
-            value={autoSaveSelectValue}
-            options={autoSaveOptions}
-            onChange={(value) =>
-              handleAutoSaveSelectChange(value as AutoSaveSelectValue)
-            }
-          >
-            {autoSaveSelectValue === "custom" && (
-              <TextField
-                type="number"
-                size="small"
-                label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
-                value={autoSaveIntervalInput}
-                slotProps={{
-                  htmlInput: {
-                    min: autoSaveIntervalMinutesMin,
-                    max: autoSaveIntervalMinutesMax,
-                    step: 1,
-                  },
-                }}
-                onChange={(event) =>
-                  setAutoSaveIntervalInput(event.target.value)
-                }
-                onBlur={commitAutoSaveInterval}
-                sx={{ width: 140 }}
+          {versionConflict ? (
+            <Alert
+              severity="warning"
+              variant="outlined"
+              onClose={() => setVersionConflict(false)}
+              action={
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setSidePanel("history");
+                    setVersionConflict(false);
+                  }}
+                >
+                  查看編輯歷史
+                </Button>
+              }
+            >
+              剛剛存檔完成後才發現這篇設定集在中途被更新過，已經接在最新版本後面存成新版了。
+            </Alert>
+          ) : (
+            saveLore.isError && (
+              <Alert severity="error" variant="outlined">
+                {errorMessage(saveLore.error, "設定集存檔失敗。")}
+              </Alert>
+            )
+          )}
+          <WorkspaceEditorHeaderRow
+            title={
+              <WorkspaceEditableTitle
+                value={title}
+                onChange={setTitle}
+                placeholder="未命名設定集"
               />
+            }
+          />
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            <WorkspaceEditorSelectButton
+              icon={<FolderIcon fontSize="small" />}
+              label="分類"
+              value={selectedCollectionId}
+              options={collectionOptions}
+              disabled={loreCollectionsLoading}
+              onChange={setSelectedCollectionId}
+            />
+            {apiProject && (
+              <WorkspaceEditorSelectButton
+                icon={<ScheduleIcon fontSize="small" />}
+                label="自動存檔"
+                value={autoSaveSelectValue}
+                options={autoSaveOptions}
+                onChange={(value) =>
+                  handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+                }
+              >
+                {autoSaveSelectValue === "custom" && (
+                  <TextField
+                    type="number"
+                    size="small"
+                    label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                    value={autoSaveIntervalInput}
+                    slotProps={{
+                      htmlInput: {
+                        min: autoSaveIntervalMinutesMin,
+                        max: autoSaveIntervalMinutesMax,
+                        step: 1,
+                      },
+                    }}
+                    onChange={(event) =>
+                      setAutoSaveIntervalInput(event.target.value)
+                    }
+                    onBlur={commitAutoSaveInterval}
+                    sx={{ width: 140 }}
+                  />
+                )}
+              </WorkspaceEditorSelectButton>
             )}
-          </WorkspaceEditorSelectButton>
-        )}
-      </Stack>
-    </Stack>
+          </Stack>
+        </Stack>
+      </Box>
+    </Box>
   ) : (
     <Stack spacing={2}>
       {versionConflict ? (
@@ -1116,8 +1144,8 @@ export default function StorytellerLoreEditor({
       plain={embedded}
       headerContent={loreEditorHeaderContent}
     >
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: sidePanel ? 7 : 12 }}>
+      <StoryWritingWorkspace
+        editor={
           <StorytellerWysiwygEditor
             ref={editorRef}
             value={content}
@@ -1152,58 +1180,48 @@ export default function StorytellerLoreEditor({
               </Stack>
             }
           />
-        </Grid>
-
-        {sidePanel && (
-          <Grid size={{ xs: 12, lg: 5 }}>
-            <Stack spacing={2}>
+        }
+        dock={
+          sidePanel && (
+            <>
               {sidePanel === "history" && (
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 1,
-                    p: 2,
-                    height: { lg: 720 },
-                    overflow: "auto",
+                <StoryEditorHistoryPanel
+                  items={loreHistoryItems}
+                  allItems={loreHistoryItems}
+                  loading={versionsLoading}
+                  leftVersionId={leftVersionId}
+                  rightVersionId={rightVersionId}
+                  onCompare={() => setCompareDialogOpen(true)}
+                  onLeftVersionChange={handleLeftVersionChange}
+                  onRightVersionChange={setRightVersionId}
+                  isRightVersionDisabled={isRightVersionDisabled}
+                  isNewStory={isNewLore}
+                  newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+                  currentVersionId={
+                    versions[0]?.id !== undefined
+                      ? String(versions[0].id)
+                      : undefined
+                  }
+                  revertingVersionId={
+                    revertLoreVersion.isPending
+                      ? String(revertLoreVersion.variables)
+                      : null
+                  }
+                  onRevert={(versionId) => {
+                    revertLoreVersion.mutate(Number(versionId), {
+                      onSuccess: () => {
+                        setVersionConflict(false);
+                        showSnack("已回復到這個版本。");
+                      },
+                    });
                   }}
-                >
-                  <StoryEditHistory
-                    items={loreHistoryItems}
-                    allItems={loreHistoryItems}
-                    loading={versionsLoading}
-                    leftVersionId={leftVersionId}
-                    rightVersionId={rightVersionId}
-                    onCompare={() => setCompareDialogOpen(true)}
-                    onLeftVersionChange={handleLeftVersionChange}
-                    onRightVersionChange={setRightVersionId}
-                    isRightVersionDisabled={isRightVersionDisabled}
-                    isNewItem={isNewLore}
-                    newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
-                    currentVersionId={
-                      versions[0]?.id !== undefined
-                        ? String(versions[0].id)
-                        : undefined
-                    }
-                    revertingVersionId={
-                      revertLoreVersion.isPending
-                        ? String(revertLoreVersion.variables)
-                        : null
-                    }
-                    onRevert={(versionId) => {
-                      revertLoreVersion.mutate(Number(versionId), {
-                        onSuccess: () => {
-                          setVersionConflict(false);
-                          showSnack("已回復到這個版本。");
-                        },
-                      });
-                    }}
-                  />
-                </Paper>
+                />
               )}
 
               {sidePanel === "agentic" && (
                 <StorytellerAgenticPanel
                   targetKind="lore"
+                  presentation="floatingDock"
                   projectPublicId={apiProject?.public_id}
                   targetPublicId={apiLore?.public_id}
                   agents={panelAgents}
@@ -1235,10 +1253,11 @@ export default function StorytellerLoreEditor({
                   }
                 />
               )}
-            </Stack>
-          </Grid>
-        )}
-      </Grid>
+            </>
+          )
+        }
+        statusBar={loreEditorBottomStatusContent}
+      />
       <CustomSnackbar
         open={Boolean(snack)}
         message={snack}

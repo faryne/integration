@@ -11,15 +11,16 @@ interface StoryEditorHistoryPanelProps {
   loading: boolean;
   leftVersionId: string;
   rightVersionId: string;
-  page: number;
-  pageCount: number;
+  page?: number;
+  pageCount?: number;
   currentVersionId?: string;
   revertingVersionId: string | null;
   isNewStory: boolean;
+  newItemMessage?: string;
   onCompare: () => void;
   onLeftVersionChange: (versionId: string) => void;
   onRightVersionChange: (versionId: string) => void;
-  onPageChange: (page: number) => void;
+  onPageChange?: (page: number) => void;
   onRevert: (versionId: string) => void;
   isRightVersionDisabled: (versionId: string) => boolean;
 }
@@ -37,6 +38,7 @@ export function StoryEditorHistoryPanel({
   currentVersionId,
   revertingVersionId,
   isNewStory,
+  newItemMessage = "新故事第一次存檔後才會產生編輯歷史。",
   onCompare,
   onLeftVersionChange,
   onRightVersionChange,
@@ -57,7 +59,7 @@ export function StoryEditorHistoryPanel({
         onRightVersionChange={onRightVersionChange}
         isRightVersionDisabled={isRightVersionDisabled}
         isNewItem={isNewStory}
-        newItemMessage="新故事第一次存檔後才會產生編輯歷史。"
+        newItemMessage={newItemMessage}
         page={page}
         pageCount={pageCount}
         onPageChange={onPageChange}
