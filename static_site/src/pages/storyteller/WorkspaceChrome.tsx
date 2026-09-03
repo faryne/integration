@@ -17,6 +17,7 @@ import {
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { WorkspaceEditorBackProvider } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 
 // Notion 風工作台的固定頂欄＋出血容器——專案工作台（ProjectWorkspacePreview）跟
 // 帳號工作台（Home，創作專案／AI Agent／金鑰管理等）共用同一套殼，差別只在
@@ -264,40 +265,59 @@ export function WorkspaceBleedContainer({ children }: { children: ReactNode }) {
   );
 }
 
-// 編輯器（既有資料或新建）額外在最上面放「回列表」，用帶圖示的膠囊按鈕取代純文字
-// 連結——編輯器內容本身很大一片，純文字連結太不顯眼，容易讓人找不到返回的路。
+// 編輯器（既有資料或新建）提供「回列表」行為。一般表單仍在上方顯示返回按鈕；
+// story/lore 這類 fitHeight 寫作頁則把它下放到底部 command bar，避免佔掉首屏高度。
 export function EditorBleedContainer({
   onBack,
+  fitHeight = false,
   children,
 }: {
   onBack: () => void;
+  fitHeight?: boolean;
   children: ReactNode;
 }) {
   return (
-    <WorkspaceBleedContainer>
-      <Stack spacing={1.5}>
-        <Box>
-          <Button
-            size="small"
-            variant="text"
-            startIcon={<ArrowBackIcon fontSize="small" />}
-            onClick={onBack}
-            sx={{
-              borderRadius: 1,
-              px: 1,
-              color: "text.secondary",
-              "&:hover": {
-                color: "primary.main",
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-              },
-            }}
-          >
-            回列表
-          </Button>
-        </Box>
-        {children}
-      </Stack>
-    </WorkspaceBleedContainer>
+    <Box
+      sx={{
+        px: { xs: 1.5, md: 2.5 },
+        py: { xs: 1, md: 1.5 },
+        height: fitHeight ? 1 : undefined,
+        minHeight: fitHeight ? 0 : undefined,
+        boxSizing: "border-box",
+      }}
+    >
+      <WorkspaceEditorBackProvider value={onBack}>
+        <Stack
+          spacing={fitHeight ? 0 : 1.5}
+          sx={{ height: fitHeight ? 1 : undefined }}
+        >
+          {!fitHeight && (
+            <Box sx={{ flexShrink: 0 }}>
+              <Button
+                size="small"
+                variant="text"
+                startIcon={<ArrowBackIcon fontSize="small" />}
+                onClick={onBack}
+                sx={{
+                  borderRadius: 1,
+                  px: 1,
+                  color: "text.secondary",
+                  "&:hover": {
+                    color: "primary.main",
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                  },
+                }}
+              >
+                回列表
+              </Button>
+            </Box>
+          )}
+          <Box sx={{ flex: fitHeight ? 1 : undefined, minHeight: 0 }}>
+            {children}
+          </Box>
+        </Stack>
+      </WorkspaceEditorBackProvider>
+    </Box>
   );
 }
 

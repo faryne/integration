@@ -31,6 +31,7 @@ export function StorytellerShell({
   headerContent,
   hideHeading = false,
   plain = false,
+  fitHeight = false,
   children,
 }: {
   title: string;
@@ -43,6 +44,7 @@ export function StorytellerShell({
   headerContent?: ReactNode;
   hideHeading?: boolean;
   plain?: boolean;
+  fitHeight?: boolean;
   children: ReactNode;
 }) {
   const header = (
@@ -110,9 +112,14 @@ export function StorytellerShell({
 
   if (plain) {
     return (
-      <Stack spacing={3}>
-        {header}
-        {children}
+      <Stack
+        spacing={fitHeight ? 1.5 : 3}
+        sx={{ height: fitHeight ? 1 : undefined, minHeight: 0 }}
+      >
+        <Box sx={{ flexShrink: 0 }}>{header}</Box>
+        <Box sx={{ flex: fitHeight ? 1 : undefined, minHeight: 0 }}>
+          {children}
+        </Box>
       </Stack>
     );
   }

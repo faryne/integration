@@ -1,3 +1,4 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ImageIcon from "@mui/icons-material/Image";
 import FolderIcon from "@mui/icons-material/Folder";
 import SaveIcon from "@mui/icons-material/Save";
@@ -69,6 +70,7 @@ import {
   WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   applyStorytellerAgentText,
@@ -204,6 +206,7 @@ export default function StorytellerStoryEditor({
   projectId,
   storyPublicId,
 }: StorytellerStoryEditorProps = {}) {
+  const workspaceEditorBack = useWorkspaceEditorBack();
   const params = useParams();
   const id = projectId ?? params.id;
   const storyId = storyPublicId ?? params.storyId;
@@ -1098,6 +1101,29 @@ export default function StorytellerStoryEditor({
       )}
     </Stack>
   );
+  const storyEditorBottomStatusContent = embedded ? (
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
+      {workspaceEditorBack && (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={workspaceEditorBack}
+          sx={{ flexShrink: 0, color: "text.secondary" }}
+        >
+          回列表
+        </Button>
+      )}
+      {storyEditorActionContent}
+    </Stack>
+  ) : undefined;
   const storyEditorBottomActionContent = embedded ? (
     // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
     // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
@@ -1422,6 +1448,7 @@ export default function StorytellerStoryEditor({
       action={embedded ? undefined : storyEditorActionContent}
       hideHeading
       plain={embedded}
+      fitHeight={embedded}
       headerContent={storyEditorHeaderContent}
     >
       <CustomSnackbar
@@ -1438,9 +1465,8 @@ export default function StorytellerStoryEditor({
             value={content}
             onChange={handleEditorContentChange}
             toolbarPlacement={embedded ? "bottom" : "top"}
-            bottomStatusContent={
-              embedded ? storyEditorActionContent : undefined
-            }
+            fitParentHeight={embedded}
+            bottomStatusContent={storyEditorBottomStatusContent}
             bottomActionContent={storyEditorBottomActionContent}
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
@@ -1540,6 +1566,7 @@ export default function StorytellerStoryEditor({
             </>
           )
         }
+        fillHeight={embedded}
       />
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}

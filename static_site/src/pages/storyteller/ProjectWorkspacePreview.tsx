@@ -569,7 +569,9 @@ export default function StorytellerProjectWorkspacePreview() {
           </Box>
         )}
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
-          {isMobile && (
+          {isMobile && !showBleedEditor && (
+            // 編輯頁自己有「回列表」；在低高度 viewport（例如 800x600）繼續把整個
+            // mobile 分組導覽塞在上方，會把標題、正文區和底部工具列全部推到首屏外。
             <WorkspaceMobileNav
               project={project}
               selected={selected}
@@ -585,7 +587,12 @@ export default function StorytellerProjectWorkspacePreview() {
             />
           )}
           {showBleedEditor ? (
-            <EditorBleedContainer onBack={closeWorkspaceEditor}>
+            <EditorBleedContainer
+              onBack={closeWorkspaceEditor}
+              fitHeight={
+                routeEditorType === "story" || routeEditorType === "lore"
+              }
+            >
               {isEditProjectRoute ? (
                 <StorytellerNewProject embedded />
               ) : isNewStoryRoute ? (

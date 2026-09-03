@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 interface StoryWritingWorkspaceProps {
   editor: ReactNode;
   dock?: ReactNode;
+  fillHeight?: boolean;
 }
 
 interface StoryWritingDockProps {
@@ -16,6 +17,7 @@ interface StoryWritingDockProps {
 export function StoryWritingWorkspace({
   editor,
   dock,
+  fillHeight = false,
 }: StoryWritingWorkspaceProps) {
   const dockOpen = Boolean(dock);
 
@@ -23,6 +25,8 @@ export function StoryWritingWorkspace({
     <Box
       sx={{
         position: "relative",
+        height: fillHeight ? 1 : undefined,
+        minHeight: fillHeight ? 0 : undefined,
       }}
     >
       <Box
@@ -31,6 +35,8 @@ export function StoryWritingWorkspace({
           width: "100%",
           maxWidth: 920,
           mx: "auto",
+          height: fillHeight ? 1 : undefined,
+          minHeight: fillHeight ? 0 : undefined,
         }}
       >
         {editor}

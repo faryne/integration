@@ -1,3 +1,4 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
 import SaveIcon from "@mui/icons-material/Save";
@@ -61,6 +62,7 @@ import {
   WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   applyStorytellerAgentText,
@@ -156,6 +158,7 @@ export default function StorytellerLoreEditor({
   projectId,
   lorePublicId,
 }: StorytellerLoreEditorProps = {}) {
+  const workspaceEditorBack = useWorkspaceEditorBack();
   const params = useParams();
   const id = projectId ?? params.id;
   const loreId = lorePublicId ?? params.loreId;
@@ -859,6 +862,29 @@ export default function StorytellerLoreEditor({
       )}
     </Stack>
   );
+  const loreEditorBottomStatusContent = embedded ? (
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
+      {workspaceEditorBack && (
+        <Button
+          size="small"
+          variant="text"
+          startIcon={<ArrowBackIcon fontSize="small" />}
+          onClick={workspaceEditorBack}
+          sx={{ flexShrink: 0, color: "text.secondary" }}
+        >
+          回列表
+        </Button>
+      )}
+      {loreEditorActionContent}
+    </Stack>
+  ) : undefined;
   const loreEditorBottomActionContent = embedded ? (
     // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
     // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
@@ -1131,6 +1157,7 @@ export default function StorytellerLoreEditor({
       action={embedded ? undefined : loreEditorActionContent}
       hideHeading
       plain={embedded}
+      fitHeight={embedded}
       headerContent={loreEditorHeaderContent}
     >
       <StoryWritingWorkspace
@@ -1140,7 +1167,8 @@ export default function StorytellerLoreEditor({
             value={content}
             onChange={handleEditorContentChange}
             toolbarPlacement={embedded ? "bottom" : "top"}
-            bottomStatusContent={embedded ? loreEditorActionContent : undefined}
+            fitParentHeight={embedded}
+            bottomStatusContent={loreEditorBottomStatusContent}
             bottomActionContent={loreEditorBottomActionContent}
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
@@ -1248,6 +1276,7 @@ export default function StorytellerLoreEditor({
             </>
           )
         }
+        fillHeight={embedded}
       />
       <CustomSnackbar
         open={Boolean(snack)}

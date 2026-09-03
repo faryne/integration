@@ -169,6 +169,16 @@ const PLACEHOLDER_SX = {
   },
 } as const;
 
+// embedded 寫作頁的底部 command bar 必須一進頁面就看得到，所以高度不能只用單一
+// calc(100vh - n)。這組 clamp 讓 1920x1200 不會過高、1920x1080 保留完整底列，
+// 800x600 也會縮成可操作的短稿面，由正文區自己捲動承接長內容。
+const BOTTOM_TOOLBAR_EDITOR_HEIGHT = {
+  xs: "clamp(260px, calc(100dvh - 300px), 420px)",
+  sm: "clamp(280px, calc(100dvh - 320px), 560px)",
+  md: "clamp(320px, calc(100dvh - 360px), 680px)",
+  lg: "clamp(360px, calc(100dvh - 340px), 760px)",
+} as const;
+
 function createSlashCommandContextStore() {
   let current: WysiwygCommandContext | null = null;
   return {
@@ -364,6 +374,8 @@ export interface StorytellerWysiwygEditorProps {
   bottomStatusContent?: ReactNode;
   /** 底部列最右側的主要操作，例如存檔按鈕。 */
   bottomActionContent?: ReactNode;
+  /** embedded 工作台已經提供可用高度時，編輯器就填滿父層，不再自己猜 viewport magic number。 */
+  fitParentHeight?: boolean;
   /** 資產 node 用來查詢同專案 preview URL；不提供時只會顯示 asset id 佔位。 */
   projectPublicId?: string;
   /**
@@ -424,6 +436,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     toolbarPlacement = "top",
     bottomStatusContent,
     bottomActionContent,
+    fitParentHeight = false,
     projectPublicId,
     exportBaseName,
     enabledFeatures,
@@ -888,13 +901,15 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   return (
     <Box
+      data-storyteller-wysiwyg-root={
+        bottomToolbar ? "bottom-toolbar" : "top-toolbar"
+      }
       sx={
         bottomToolbar
           ? {
               display: "flex",
               flexDirection: "column",
-              height: { xs: 420, md: "calc(100vh - 300px)" },
-              minHeight: { md: 480 },
+              height: fitParentHeight ? 1 : BOTTOM_TOOLBAR_EDITOR_HEIGHT,
               minWidth: 0,
               overflow: "hidden",
             }
@@ -907,8 +922,8 @@ export const StorytellerWysiwygEditor = forwardRef<
         sx={{
           px: { xs: 0, md: 1 },
           py: { xs: 1, md: 1.5 },
-          // 編輯器是文件稿面，不再畫成表單輸入框；高度仍跟著視窗走，
-          // 讓長篇寫作時中間區域自己捲動，不把整個工作台一起推走。
+          // 底部工具列模式下，整個 editor frame 才吃高度；這層只負責正文捲動，
+          // 避免 command bar 被長內容推到 viewport 外。
           height: bottomToolbar
             ? undefined
             : { xs: 420, md: "calc(100vh - 300px)" },
@@ -1302,6 +1317,7 @@ function StorytellerWysiwygBottomBar({
 }) {
   return (
     <Box
+      data-storyteller-wysiwyg-bottom-bar
       sx={{
         flexShrink: 0,
         zIndex: 3,
