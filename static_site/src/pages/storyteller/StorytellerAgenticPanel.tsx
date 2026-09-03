@@ -2056,14 +2056,14 @@ export function StorytellerAgenticPanel({
       sx={{
         borderRadius: 1,
         overflow: "hidden",
-        height: floatingDock ? { lg: 1 } : undefined,
+        height: floatingDock ? { xl: 1 } : undefined,
         position: floatingDock ? undefined : { lg: "sticky" },
         top: floatingDock ? undefined : { lg: 16 },
       }}
     >
       <Stack
         sx={{
-          height: floatingDock ? { lg: 1 } : undefined,
+          height: floatingDock ? { xl: 1 } : undefined,
           maxHeight: floatingDock ? undefined : { lg: "calc(100vh - 32px)" },
           minHeight: 0,
         }}
@@ -2172,9 +2172,9 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: floatingDock ? { xs: 360, lg: 0 } : { xs: 360, lg: 320 },
+            minHeight: floatingDock ? { xs: 360, xl: 0 } : { xs: 360, lg: 320 },
             maxHeight: floatingDock
-              ? { xs: 520, lg: "none" }
+              ? { xs: 520, xl: "none" }
               : { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
@@ -2268,8 +2268,8 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flexShrink: 0,
-            maxHeight: floatingDock ? { lg: "46%" } : undefined,
-            overflow: floatingDock ? { lg: "auto" } : undefined,
+            maxHeight: floatingDock ? { xl: "46%" } : undefined,
+            overflow: floatingDock ? { xl: "auto" } : undefined,
             p: 2,
           }}
         >

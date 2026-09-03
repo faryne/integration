@@ -15,6 +15,7 @@ interface StorytellerWysiwygToolbarProps {
   commandContext: WysiwygCommandContext;
   enabledFeatures?: StorytellerWysiwygFeature[];
   toolbarExtra?: ReactNode;
+  placement?: "top" | "bottom";
 }
 
 // 文件層級工具列只保留「整份文件」相關操作；行內格式主要交給 bubble menu / slash command。
@@ -23,21 +24,33 @@ export function StorytellerWysiwygToolbar({
   commandContext,
   enabledFeatures,
   toolbarExtra,
+  placement = "top",
 }: StorytellerWysiwygToolbarProps) {
   const utilityCommands = wysiwygCommandsByGroup("utility").filter(
     (command) => command.isVisible?.(commandContext) ?? true,
   );
 
   return (
-    <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 0.5 }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "flex-end",
+        mt: placement === "bottom" ? 0.5 : 0,
+        mb: placement === "top" ? 0.5 : 0,
+        minWidth: 0,
+        maxWidth: 1,
+      }}
+    >
       <Paper
         variant="outlined"
         sx={{
           display: "inline-flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 0.5,
           px: 0.75,
           py: 0.5,
+          maxWidth: 1,
           borderColor: "transparent",
           bgcolor: "transparent",
           transition: "background-color 0.15s ease, border-color 0.15s ease",

@@ -14,6 +14,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import {
@@ -22,6 +23,7 @@ import {
   forwardRef,
   useImperativeHandle,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -166,6 +168,16 @@ const PLACEHOLDER_SX = {
     userSelect: "none",
   },
 } as const;
+
+function createSlashCommandContextStore() {
+  let current: WysiwygCommandContext | null = null;
+  return {
+    get: () => current,
+    set: (next: WysiwygCommandContext) => {
+      current = next;
+    },
+  };
+}
 
 // 引用/清單（blockKind）2026-07-10 加入：編輯區的段落 schema 是扁平的（每個段落都是
 // 獨立的 <p> node，沒有真的 <blockquote>/<ul>/<ol> 巢狀，見 markerParagraph.ts 的說明），
@@ -346,6 +358,12 @@ export interface StorytellerWysiwygEditorProps {
   onChange: (markdown: string) => void;
   /** 塞在文件層級 action 區的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
+  /** embedded 寫作頁把文件工具列放進底部狀態列，避免右側浮動 dock 蓋住上方按鈕。 */
+  toolbarPlacement?: "top" | "bottom";
+  /** 底部列左側的狀態內容，例如字數、更新時間、自動存檔狀態。 */
+  bottomStatusContent?: ReactNode;
+  /** 底部列最右側的主要操作，例如存檔按鈕。 */
+  bottomActionContent?: ReactNode;
   /** 資產 node 用來查詢同專案 preview URL；不提供時只會顯示 asset id 佔位。 */
   projectPublicId?: string;
   /**
@@ -403,6 +421,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     value,
     onChange,
     toolbarExtra,
+    toolbarPlacement = "top",
+    bottomStatusContent,
+    bottomActionContent,
     projectPublicId,
     exportBaseName,
     enabledFeatures,
@@ -451,13 +472,21 @@ export const StorytellerWysiwygEditor = forwardRef<
   >(null);
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
-  const slashCommandContextRef = useRef<WysiwygCommandContext | null>(null);
-  latestValueRef.current = value;
+  // Slash command extension 在 editor 建立時只吃一次 options；這個穩定 store 讓 extension
+  // 之後仍能拿到最新 command context。
+  const slashCommandContextStore = useMemo(
+    () => createSlashCommandContextStore(),
+    [],
+  );
+
+  useEffect(() => {
+    latestValueRef.current = value;
+  }, [value]);
 
   const editor = useEditor({
     extensions: createWysiwygCoreExtensions({
       slashCommand: {
-        getCommandContext: () => slashCommandContextRef.current,
+        getCommandContext: slashCommandContextStore.get,
       },
     }),
     content: markdownToDoc(value, projectPublicId, assetEnabled),
@@ -843,16 +872,36 @@ export const StorytellerWysiwygEditor = forwardRef<
     openAssetPicker: () => onRequestInsertAsset?.(),
     exportMarkdown: handleExportMarkdown,
   };
-  slashCommandContextRef.current = commandContext;
+  slashCommandContextStore.set(commandContext);
+
+  const toolbar = (
+    <StorytellerWysiwygToolbar
+      editor={editor}
+      commandContext={commandContext}
+      enabledFeatures={enabledFeatures}
+      toolbarExtra={toolbarExtra}
+      placement={toolbarPlacement}
+    />
+  );
+
+  const bottomToolbar = toolbarPlacement === "bottom";
 
   return (
-    <Box>
-      <StorytellerWysiwygToolbar
-        editor={editor}
-        commandContext={commandContext}
-        enabledFeatures={enabledFeatures}
-        toolbarExtra={toolbarExtra}
-      />
+    <Box
+      sx={
+        bottomToolbar
+          ? {
+              display: "flex",
+              flexDirection: "column",
+              height: { xs: 420, md: "calc(100vh - 300px)" },
+              minHeight: { md: 480 },
+              minWidth: 0,
+              overflow: "hidden",
+            }
+          : undefined
+      }
+    >
+      {toolbarPlacement === "top" && toolbar}
 
       <Box
         sx={{
@@ -860,8 +909,11 @@ export const StorytellerWysiwygEditor = forwardRef<
           py: { xs: 1, md: 1.5 },
           // 編輯器是文件稿面，不再畫成表單輸入框；高度仍跟著視窗走，
           // 讓長篇寫作時中間區域自己捲動，不把整個工作台一起推走。
-          height: { xs: 420, md: "calc(100vh - 300px)" },
-          minHeight: { md: 480 },
+          height: bottomToolbar
+            ? undefined
+            : { xs: 420, md: "calc(100vh - 300px)" },
+          minHeight: bottomToolbar ? 0 : { md: 480 },
+          flex: bottomToolbar ? 1 : undefined,
           overflow: "auto",
           scrollbarWidth: "thin",
         }}
@@ -897,6 +949,14 @@ export const StorytellerWysiwygEditor = forwardRef<
           <StorytellerWysiwygTableMenu editor={editor} />
         </Box>
       </Box>
+
+      {toolbarPlacement === "bottom" && (
+        <StorytellerWysiwygBottomBar
+          status={bottomStatusContent}
+          toolbar={toolbar}
+          action={bottomActionContent}
+        />
+      )}
 
       <StorytellerWysiwygContextMenu
         editor={editor}
@@ -1230,3 +1290,59 @@ export const StorytellerWysiwygEditor = forwardRef<
     </Box>
   );
 });
+
+function StorytellerWysiwygBottomBar({
+  status,
+  toolbar,
+  action,
+}: {
+  status?: ReactNode;
+  toolbar: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <Box
+      sx={{
+        flexShrink: 0,
+        zIndex: 3,
+        mx: { xs: -1.5, md: -1 },
+        px: { xs: 1.5, md: 1 },
+        py: 0.75,
+        borderTop: 1,
+        borderColor: "divider",
+        bgcolor: (theme) =>
+          alpha(
+            theme.palette.mode === "dark"
+              ? theme.palette.background.default
+              : theme.palette.background.paper,
+            0.94,
+          ),
+        backdropFilter: "blur(10px)",
+      }}
+    >
+      <Stack
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        justifyContent={{ xs: "flex-start", sm: "space-between" }}
+        flexWrap="wrap"
+        useFlexGap
+        sx={{ minHeight: 34 }}
+      >
+        <Box sx={{ flex: "1 1 360px", minWidth: 0 }}>{status}</Box>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          alignItems="center"
+          justifyContent="flex-end"
+          flexWrap="wrap"
+          useFlexGap
+          sx={{ flex: "0 1 auto", minWidth: 0, maxWidth: 1, ml: "auto" }}
+        >
+          {toolbar}
+          {action}
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}

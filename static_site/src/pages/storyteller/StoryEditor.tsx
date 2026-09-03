@@ -1098,34 +1098,23 @@ export default function StorytellerStoryEditor({
       )}
     </Stack>
   );
-  const storyEditorBottomStatusContent = embedded ? (
-    <Stack
-      direction="row"
-      spacing={1}
-      alignItems="center"
-      justifyContent={{ xs: "flex-start", sm: "space-between" }}
-      flexWrap="wrap"
-      useFlexGap
-      sx={{ minHeight: 34 }}
-    >
-      {storyEditorActionContent}
-      {/* disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-          才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。 */}
-      <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-        <span>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={saveStory.isPending}
-            onClick={handleSaveStory}
-            sx={{ minWidth: 88 }}
-          >
-            {saveStory.isPending ? "存檔中" : "存檔"}
-          </Button>
-        </span>
-      </Tooltip>
-    </Stack>
+  const storyEditorBottomActionContent = embedded ? (
+    // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+    // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
+    <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+      <span>
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<SaveIcon />}
+          disabled={saveStory.isPending}
+          onClick={handleSaveStory}
+          sx={{ minWidth: 88 }}
+        >
+          {saveStory.isPending ? "存檔中" : "存檔"}
+        </Button>
+      </span>
+    </Tooltip>
   ) : undefined;
   const storyEditorHeaderContent = embedded ? (
     <Box
@@ -1448,6 +1437,11 @@ export default function StorytellerStoryEditor({
             ref={editorRef}
             value={content}
             onChange={handleEditorContentChange}
+            toolbarPlacement={embedded ? "bottom" : "top"}
+            bottomStatusContent={
+              embedded ? storyEditorActionContent : undefined
+            }
+            bottomActionContent={storyEditorBottomActionContent}
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiStory?.public_id)}
@@ -1546,7 +1540,6 @@ export default function StorytellerStoryEditor({
             </>
           )
         }
-        statusBar={storyEditorBottomStatusContent}
       />
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}

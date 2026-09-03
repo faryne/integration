@@ -859,34 +859,23 @@ export default function StorytellerLoreEditor({
       )}
     </Stack>
   );
-  const loreEditorBottomStatusContent = embedded ? (
-    <Stack
-      direction="row"
-      spacing={1}
-      alignItems="center"
-      justifyContent={{ xs: "flex-start", sm: "space-between" }}
-      flexWrap="wrap"
-      useFlexGap
-      sx={{ minHeight: 34 }}
-    >
-      {loreEditorActionContent}
-      {/* disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-          才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。 */}
-      <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-        <span>
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<SaveIcon />}
-            disabled={saveLore.isPending}
-            onClick={handleSave}
-            sx={{ minWidth: 88 }}
-          >
-            {saveLore.isPending ? "存檔中" : "存檔"}
-          </Button>
-        </span>
-      </Tooltip>
-    </Stack>
+  const loreEditorBottomActionContent = embedded ? (
+    // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
+    // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
+    <Tooltip title="快捷鍵：Ctrl+S／⌘S">
+      <span>
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<SaveIcon />}
+          disabled={saveLore.isPending}
+          onClick={handleSave}
+          sx={{ minWidth: 88 }}
+        >
+          {saveLore.isPending ? "存檔中" : "存檔"}
+        </Button>
+      </span>
+    </Tooltip>
   ) : undefined;
   const loreEditorHeaderContent = embedded ? (
     <Box
@@ -1150,6 +1139,9 @@ export default function StorytellerLoreEditor({
             ref={editorRef}
             value={content}
             onChange={handleEditorContentChange}
+            toolbarPlacement={embedded ? "bottom" : "top"}
+            bottomStatusContent={embedded ? loreEditorActionContent : undefined}
+            bottomActionContent={loreEditorBottomActionContent}
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiLore?.public_id)}
@@ -1256,7 +1248,6 @@ export default function StorytellerLoreEditor({
             </>
           )
         }
-        statusBar={loreEditorBottomStatusContent}
       />
       <CustomSnackbar
         open={Boolean(snack)}
