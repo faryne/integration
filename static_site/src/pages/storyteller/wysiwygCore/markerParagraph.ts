@@ -371,6 +371,45 @@ export const MarkerParagraph = Paragraph.extend({
         // 兩條路徑並存反而讓規則變得不一致，所以拿掉。
         if ($from.parent.type.name !== "paragraph") return false;
 
+        // GFM 慣例：打三個反引號（可選加語言）按 Enter 轉成程式碼區塊。這個檢查
+        // 必須放在 MarkerParagraph 自己的 Enter handler 裡，不能放在
+        // storytellerCodeBlock.ts 那邊獨立掛一個 Enter keyboard shortcut——
+        // MarkerParagraph 繼承自 Tiptap 內建 Paragraph 的 priority（1000），
+        // 對任何段落的 Enter 一律自己處理、不會 return false 讓其他 extension
+        // 接手，所以另一個 extension 的 Enter handler 不管設多高 priority
+        // 都排不到它前面。改成同一個 handler 裡先判斷，判斷不成立才落到
+        // 下面原本的段落分割邏輯。
+        if (selection.empty) {
+          const fenceMatch = $from.parent.textContent.match(
+            /^```([^\s`]*)$/,
+          );
+          if (fenceMatch && $from.parentOffset === $from.parent.content.size) {
+            const codeBlockType = editor.state.schema.nodes.storytellerCodeBlock;
+            if (codeBlockType) {
+              const paragraphStart = $from.before($from.depth);
+              const paragraphEnd = paragraphStart + $from.parent.nodeSize;
+              return editor.commands.command(({ tr, dispatch }) => {
+                if (dispatch) {
+                  const codeBlock = codeBlockType.create({
+                    markerId: null,
+                    language: fenceMatch[1] || null,
+                  });
+                  tr.replaceWith(paragraphStart, paragraphEnd, codeBlock);
+                  const clampedPos = Math.min(
+                    paragraphStart + 1,
+                    tr.doc.content.size,
+                  );
+                  tr.setSelection(
+                    TextSelection.near(tr.doc.resolve(clampedPos)),
+                  );
+                  dispatch(tr.scrollIntoView());
+                }
+                return true;
+              });
+            }
+          }
+        }
+
         const currentBlockKind = ($from.parent.attrs.blockKind ??
           DEFAULT_BLOCK_KIND) as BlockKindValue;
         const isCurrentParagraphEmpty = $from.parent.textContent.trim() === "";

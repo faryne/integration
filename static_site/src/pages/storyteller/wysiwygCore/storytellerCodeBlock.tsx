@@ -63,7 +63,6 @@ export const StorytellerCodeBlock = Node.create({
   marks: "",
   code: true,
   defining: true,
-  priority: 1000,
 
   addAttributes() {
     return {
@@ -122,7 +121,12 @@ export const StorytellerCodeBlock = Node.create({
               .replaceSelectionWith(codeBlock)
               .scrollIntoView();
             const pos = tr.mapping.map(from);
-            tr.setSelection(TextSelection.near(tr.doc.resolve(pos + 1)));
+            // 插入的 code block 沒有內容時（options.content 沒帶），節點本身只佔
+            // 2 個位置（open+close），如果它剛好落在文件最後面，pos+1 會等於
+            // 文件真正的結尾再往後多 1，resolve 直接丟 RangeError——這裡夾在
+            // 文件實際大小內，跟其他地方 clamp 位置的做法一致。
+            const clampedPos = Math.min(pos + 1, tr.doc.content.size);
+            tr.setSelection(TextSelection.near(tr.doc.resolve(clampedPos)));
             dispatch(tr);
           }
           return true;
@@ -130,42 +134,24 @@ export const StorytellerCodeBlock = Node.create({
     };
   },
 
+  // 「打三個反引號按 Enter 轉成程式碼區塊」的判斷不能放在這裡——這個
+  // extension 是獨立的 Node，跟 MarkerParagraph 各自的 Enter keyboard
+  // shortcut 是兩個獨立的 keymap plugin，MarkerParagraph 繼承自 Tiptap
+  // 內建 Paragraph 的 priority 是 1000，對任何段落的 Enter 一律自己處理、
+  // 不會 return false 讓其他 extension 接手，所以不管這裡設多高 priority
+  // 都排不到它前面（實測過：設到 1000 平手時反而讓 splitBlock() 內部的
+  // schema defaultType 解析變成這個 node，Enter 分割任何段落都會生出空的
+  // 程式碼區塊——比原本的問題更嚴重）。轉換邏輯已經搬到
+  // markerParagraph.ts 的 Enter handler 裡（同一個 handler，判斷不成立
+  // 才落到原本的段落分割邏輯），這裡只保留「游標已經在程式碼區塊內按
+  // Enter＝插入換行」這個案例——這個案例不需要跟 MarkerParagraph 搶
+  // priority，因為 MarkerParagraph 自己在 `$from.parent.type.name !==
+  // "paragraph"` 時就會 return false 讓出，正常 fallback 到這裡。
   addKeyboardShortcuts() {
     return {
       Enter: () => {
         const { state, view } = this.editor;
         const { selection } = state;
-        if (
-          selection.empty &&
-          selection.$from.parent.type.name === "paragraph"
-        ) {
-          const paragraph = selection.$from.parent;
-          const match = paragraph.textContent.match(/^```([^\s`]*)$/);
-          if (
-            match &&
-            selection.$from.parentOffset === paragraph.content.size
-          ) {
-            const paragraphStart = selection.$from.before(
-              selection.$from.depth,
-            );
-            const paragraphEnd = paragraphStart + paragraph.nodeSize;
-            const codeBlock = state.schema.nodes.storytellerCodeBlock.create({
-              markerId: null,
-              language: match[1] || null,
-            });
-            const tr = state.tr.replaceWith(
-              paragraphStart,
-              paragraphEnd,
-              codeBlock,
-            );
-            tr.setSelection(
-              TextSelection.near(tr.doc.resolve(paragraphStart + 1)),
-            );
-            tr.scrollIntoView();
-            view.dispatch(tr);
-            return true;
-          }
-        }
         if (
           !selection.empty ||
           selection.$from.parent.type.name !== this.name

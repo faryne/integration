@@ -166,8 +166,16 @@ export function StorytellerCodeBlockFrame({
                 size="small"
                 aria-label={action.label}
                 onClick={async () => {
-                  await action.onClick(content);
-                  setSucceededAction(index);
+                  // action.onClick 常見的實作是 navigator.clipboard.writeText，
+                  // 在某些瀏覽器/情境下（沒有 focus、權限被拒）會 reject——沒接住
+                  // 的話變成 unhandled rejection，使用者也看不到任何回饋，直接
+                  // 靜默失敗。失敗時就不顯示打勾，也不用另外跳錯誤訊息。
+                  try {
+                    await action.onClick(content);
+                    setSucceededAction(index);
+                  } catch {
+                    // 靜默失敗：不顯示打勾即可讓使用者知道沒成功。
+                  }
                 }}
               >
                 {succeededAction === index ? (
