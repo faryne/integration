@@ -677,3 +677,15 @@ export interface StorytellerProjectSearchResult {
   matched_story_count: number;
   matches: StorytellerWorkSearchResult[];
 }
+
+/** 作者在編輯頁加的筆記型書籤，跟讀者閱讀頁的 StorytellerStoryBookmark 無關。 */
+export interface StorytellerWritingBookmark {
+  id: number;
+  story_id?: number | null;
+  lore_id?: number | null;
+  user_id: number;
+  marker_id: string;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}

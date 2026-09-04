@@ -1,3 +1,5 @@
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import LinkOffIcon from "@mui/icons-material/LinkOff";
 import {
   Box,
@@ -8,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  IconButton,
   Paper,
   Stack,
   TextField,
@@ -15,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
 import {
@@ -62,10 +66,15 @@ import {
   StorytellerWysiwygToolbar,
   type StorytellerWysiwygFeature,
 } from "./StorytellerWysiwygToolbar";
+import { StorytellerWritingBookmarkDialog } from "./StorytellerWritingBookmarkDialog";
 import {
   truncateStorytellerSelectionPreview,
   type StorytellerSelectionAgentTrigger,
 } from "./storytellerSelectionAgentTrigger";
+import {
+  currentParagraphMarkerId,
+  currentParagraphText,
+} from "./wysiwygCore/currentParagraph";
 
 interface HoveredComment {
   text: string;
@@ -78,6 +87,17 @@ interface HoveredFootnote {
   text: string;
   rect: DOMRect;
 }
+
+interface HoveredParagraph {
+  markerId: string;
+  rect: DOMRect;
+}
+
+// 已加書籤的段落層級提示，比照註解高亮走 sx、不用行內 mark。
+const BOOKMARK_HIGHLIGHT_SX = {
+  boxShadow: "inset 3px 0 0 rgba(237, 108, 2, 0.9)",
+  backgroundColor: "rgba(237, 108, 2, 0.08)",
+} as const;
 
 /** 註解底色的實際色值跟顯示名稱，固定色盤（見 whitelist.ts 的 COMMENT_COLOR_VALUES）。 */
 const COMMENT_COLOR_STYLES: Record<
@@ -157,6 +177,8 @@ const FOOTNOTE_HIGHLIGHT_SX = {
     cursor: "help",
   },
 } as const;
+
+const EMPTY_BOOKMARK_IDS: ReadonlySet<string> = new Set();
 
 const PLACEHOLDER_SX = {
   "& .wysiwyg-empty-paragraph::before": {
@@ -405,6 +427,12 @@ export interface StorytellerWysiwygEditorProps {
   /** 已存檔的故事/設定集才有 targetPublicId 可以呼叫 AI skill；未存檔時右鍵選單不顯示 AI 項目。 */
   hasSavedTarget?: boolean;
   onSelectionAgentTrigger?: (trigger: StorytellerSelectionAgentTrigger) => void;
+  /** 目前這篇已加書籤的段落 markerId，用來畫段落層級提示。 */
+  bookmarkedMarkerIds?: ReadonlySet<string>;
+  canBookmark?: boolean;
+  onAddBookmark?: (markerId: string, note: string) => void;
+  onRemoveBookmark?: (markerId: string) => void;
+  onEditorReady?: (editor: Editor | null) => void;
 }
 
 export interface StorytellerWysiwygEditorHandle {
@@ -443,6 +471,11 @@ export const StorytellerWysiwygEditor = forwardRef<
     onRequestInsertAsset,
     hasSavedTarget = false,
     onSelectionAgentTrigger,
+    bookmarkedMarkerIds,
+    canBookmark = false,
+    onAddBookmark,
+    onRemoveBookmark,
+    onEditorReady,
   },
   ref,
 ) {
@@ -473,6 +506,31 @@ export const StorytellerWysiwygEditor = forwardRef<
     useState(false);
   const [hoveredFootnote, setHoveredFootnote] =
     useState<HoveredFootnote | null>(null);
+  const [hoveredParagraph, setHoveredParagraph] =
+    useState<HoveredParagraph | null>(null);
+  // 書籤 gutter icon 是 position:fixed，跟段落本身不是同一個 DOM 子樹，兩者之間
+  // 一定有一段滑鼠必須跨越的空隙（icon 畫在段落左邊 36px 外）。滑鼠離開段落、
+  // 還沒真的移到 icon 上之前那段空隙沒有任何元素接手 mouseover，會被
+  // handleEditorMouseOut 判定成「真的離開了」而立刻收掉 icon，使用者永遠點不到。
+  // 改成離開時先延遲收掉，滑鼠真的進到 icon（或段落）上就取消延遲；只有真的移到
+  // 兩者都沾不到的地方才會在期限到時收掉。
+  const hoveredParagraphHideTimeoutRef = useRef<number | null>(null);
+  const cancelHoveredParagraphHide = () => {
+    if (hoveredParagraphHideTimeoutRef.current !== null) {
+      window.clearTimeout(hoveredParagraphHideTimeoutRef.current);
+      hoveredParagraphHideTimeoutRef.current = null;
+    }
+  };
+  const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
+  const [bookmarkNoteDraft, setBookmarkNoteDraft] = useState("");
+  const [pendingBookmarkMarkerId, setPendingBookmarkMarkerId] = useState<
+    string | null
+  >(null);
+  const [pendingBookmarkSnippet, setPendingBookmarkSnippet] = useState("");
+  const [pendingRemoveMarkerId, setPendingRemoveMarkerId] = useState<
+    string | null
+  >(null);
+  const bookmarkedIds = bookmarkedMarkerIds ?? EMPTY_BOOKMARK_IDS;
   const [selectionAgentDialogTarget, setSelectionAgentDialogTarget] = useState<
     (StorytellerSelectionAgentDialogItem & { selectedText: string }) | null
   >(null);
@@ -577,6 +635,17 @@ export const StorytellerWysiwygEditor = forwardRef<
     );
   }, [value, projectPublicId, assetEnabled, editor]);
 
+  useEffect(() => cancelHoveredParagraphHide, []);
+
+  useEffect(() => {
+    if (!editor) {
+      onEditorReady?.(null);
+      return;
+    }
+    onEditorReady?.(editor);
+    return () => onEditorReady?.(null);
+  }, [editor, onEditorReady]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -620,11 +689,13 @@ export const StorytellerWysiwygEditor = forwardRef<
           hasLink: false,
           hasFootnote: false,
           hasAssetImage: false,
+          currentMarkerId: null as string | null,
         };
       }
       return {
         hasComment: ctx.editor.isActive("comment"),
         hasSelection: !ctx.editor.state.selection.empty,
+        currentMarkerId: currentParagraphMarkerId(ctx.editor),
         // 空白段落／非空段落是 Phase 2 右鍵選單分情境的判斷依據。故意不用
         // textContent.trim() === ""（那個算法只看文字，asset image 是沒有文字的
         // inline atom node，只用 textContent 判斷會把「只有一張圖片的段落」誤判成
@@ -639,6 +710,17 @@ export const StorytellerWysiwygEditor = forwardRef<
       };
     },
   });
+
+  const bookmarkHighlightSx = useMemo(
+    () =>
+      Object.fromEntries(
+        [...bookmarkedIds].map((id) => [
+          `& [data-marker-id="${id}"]`,
+          BOOKMARK_HIGHLIGHT_SX,
+        ]),
+      ),
+    [bookmarkedIds],
+  );
 
   if (!editor || !editorState) {
     return null;
@@ -681,6 +763,41 @@ export const StorytellerWysiwygEditor = forwardRef<
     setCommentDialogOpen(false);
   };
 
+  const isCurrentParagraphBookmarked = Boolean(
+    editorState.currentMarkerId &&
+    bookmarkedIds.has(editorState.currentMarkerId),
+  );
+
+  const openAddBookmarkDialog = (markerId: string, snippet: string) => {
+    setPendingBookmarkMarkerId(markerId);
+    setPendingBookmarkSnippet(snippet.slice(0, 24));
+    setBookmarkNoteDraft("");
+    setBookmarkDialogOpen(true);
+  };
+
+  const handleToggleWritingBookmark = (markerId?: string, snippet?: string) => {
+    const targetId = markerId ?? editorState.currentMarkerId;
+    if (!targetId) return;
+    if (bookmarkedIds.has(targetId)) {
+      setPendingRemoveMarkerId(targetId);
+      return;
+    }
+    openAddBookmarkDialog(targetId, snippet ?? currentParagraphText(editor));
+  };
+
+  const handleConfirmAddBookmark = () => {
+    if (!pendingBookmarkMarkerId) return;
+    onAddBookmark?.(pendingBookmarkMarkerId, bookmarkNoteDraft.trim());
+    setBookmarkDialogOpen(false);
+    setPendingBookmarkMarkerId(null);
+  };
+
+  const handleConfirmRemoveBookmark = () => {
+    if (!pendingRemoveMarkerId) return;
+    onRemoveBookmark?.(pendingRemoveMarkerId);
+    setPendingRemoveMarkerId(null);
+  };
+
   // hover 在編輯區內任何地方時，往上找最近的 .wysiwyg-has-comment（事件代理，不用替
   // 每個註解範圍個別掛 listener）。註解文字直接讀 InlineComment mark 的 renderHTML
   // 附加的 data-comment，定位資訊用 getBoundingClientRect()，所以 tooltip 用
@@ -709,6 +826,17 @@ export const StorytellerWysiwygEditor = forwardRef<
         rect: footnoteTarget.getBoundingClientRect(),
       });
     }
+
+    const paragraphTarget =
+      eventTarget.closest<HTMLElement>("[data-marker-id]");
+    const markerId = paragraphTarget?.dataset.markerId;
+    if (paragraphTarget && markerId) {
+      cancelHoveredParagraphHide();
+      setHoveredParagraph({
+        markerId,
+        rect: paragraphTarget.getBoundingClientRect(),
+      });
+    }
   };
 
   const handleEditorMouseOut = (event: MouseEvent<HTMLDivElement>) => {
@@ -718,6 +846,18 @@ export const StorytellerWysiwygEditor = forwardRef<
     }
     if (!relatedTarget?.closest(".wysiwyg-has-footnote")) {
       setHoveredFootnote(null);
+    }
+    if (
+      !relatedTarget?.closest("[data-marker-id]") &&
+      !relatedTarget?.closest("[data-writing-bookmark-gutter]")
+    ) {
+      // 不直接收掉，先給一小段緩衝時間讓滑鼠跨過段落跟 icon 之間的空隙——
+      // 真的移到 icon 上會由 icon 自己的 onMouseEnter 取消這個 timeout。
+      cancelHoveredParagraphHide();
+      hoveredParagraphHideTimeoutRef.current = window.setTimeout(() => {
+        setHoveredParagraph(null);
+        hoveredParagraphHideTimeoutRef.current = null;
+      }, 200);
     }
   };
 
@@ -942,6 +1082,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             PLACEHOLDER_SX,
             BLOCK_KIND_SX,
             CLEAR_FLOATING_ASSET_SX,
+            bookmarkHighlightSx,
             {
               "& .ProseMirror": {
                 minHeight: { xs: 360, md: 520 },
@@ -989,6 +1130,16 @@ export const StorytellerWysiwygEditor = forwardRef<
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
         onRequestSelectionAgentDialog={handleRequestSelectionAgentDialog}
+        canWritingBookmark={Boolean(onAddBookmark && onRemoveBookmark)}
+        isCurrentParagraphBookmarked={isCurrentParagraphBookmarked}
+        writingBookmarkDisabledReason={
+          !canBookmark
+            ? "先存檔後才能加入書籤"
+            : !editorState.currentMarkerId
+              ? "游標不在可加書籤的段落"
+              : undefined
+        }
+        onToggleWritingBookmark={() => handleToggleWritingBookmark()}
       />
 
       <Dialog
@@ -1277,6 +1428,86 @@ export const StorytellerWysiwygEditor = forwardRef<
           </Paper>
         </Box>
       )}
+
+      {hoveredParagraph && onAddBookmark && onRemoveBookmark && (
+        <Tooltip
+          title={
+            !canBookmark
+              ? "先存檔後才能加入書籤"
+              : bookmarkedIds.has(hoveredParagraph.markerId)
+                ? "移除書籤"
+                : "加入書籤"
+          }
+        >
+          <IconButton
+            data-writing-bookmark-gutter=""
+            size="small"
+            disabled={!canBookmark}
+            aria-label={
+              bookmarkedIds.has(hoveredParagraph.markerId)
+                ? "移除書籤"
+                : "加入書籤"
+            }
+            onMouseEnter={cancelHoveredParagraphHide}
+            onMouseLeave={() => setHoveredParagraph(null)}
+            onClick={() => {
+              const paragraph = editor.view.dom.querySelector(
+                `[data-marker-id="${hoveredParagraph.markerId}"]`,
+              );
+              handleToggleWritingBookmark(
+                hoveredParagraph.markerId,
+                paragraph?.textContent ?? "",
+              );
+            }}
+            sx={{
+              position: "fixed",
+              top: hoveredParagraph.rect.top + 2,
+              left: Math.max(8, hoveredParagraph.rect.left - 36),
+              zIndex: 6,
+              bgcolor: "background.paper",
+              boxShadow: 1,
+              "&:hover": { bgcolor: "background.paper" },
+            }}
+          >
+            {bookmarkedIds.has(hoveredParagraph.markerId) ? (
+              <BookmarkIcon fontSize="small" color="warning" />
+            ) : (
+              <BookmarkBorderIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
+      )}
+
+      <StorytellerWritingBookmarkDialog
+        open={bookmarkDialogOpen}
+        snippet={pendingBookmarkSnippet}
+        note={bookmarkNoteDraft}
+        onNoteChange={setBookmarkNoteDraft}
+        onClose={() => setBookmarkDialogOpen(false)}
+        onConfirm={handleConfirmAddBookmark}
+      />
+
+      <Dialog
+        open={pendingRemoveMarkerId !== null}
+        onClose={() => setPendingRemoveMarkerId(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>移除書籤</DialogTitle>
+        <DialogContent>
+          <Typography>確定要移除這筆書籤嗎？此操作無法復原。</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingRemoveMarkerId(null)}>取消</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmRemoveBookmark}
+          >
+            移除
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {hoveredFootnote && (
         <Box

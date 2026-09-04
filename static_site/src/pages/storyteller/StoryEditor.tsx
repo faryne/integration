@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   useLocation,
@@ -63,6 +64,9 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
+import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
+import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
+import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableSummary,
@@ -313,6 +317,21 @@ export default function StorytellerStoryEditor({
   const autoSaveDefaultsAppliedRef = useRef(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [saveMessageSeverity, setSaveMessageSeverity] =
+    useState<AlertColor>("success");
+  const showEditorSnack = (
+    message: string,
+    severity: AlertColor = "success",
+  ) => {
+    setSaveMessage(message);
+    setSaveMessageSeverity(severity);
+    setSaveMessageVisible(true);
+  };
+  const outline = useStorytellerEditorOutline({
+    projectPublicId: apiProject?.public_id,
+    storyPublicId: apiStory?.public_id,
+    onSnack: showEditorSnack,
+  });
   // 存檔成功後端才發現這次帶的 base_version_id 已經不是最新版本（例如中途被
   // MCP 工具或另一個分頁動過）；內容還是照常存成新版本了，這裡只是提醒使用者
   // 去編輯歷史看一下，不會擋下存檔或自動存檔。
@@ -334,6 +353,11 @@ export default function StorytellerStoryEditor({
   // 不該被當成未存檔變更。掛載後第一次收到編輯器回報的內容時，把它視為新的
   // 存檔基準，而不是拿 API 回來的原始字串當基準。
   const hasCapturedInitialEditorContentRef = useRef(false);
+  // 上面那份「當成已存檔」的基準只解決離開前的誤報警告，不代表 backfill 出來的
+  // markerId 真的送進後端過。加書籤依賴 markerId 已經落地，這裡另外獨立記一個
+  // 「這次 backfill 有沒有真的動到內容、但還沒存檔」的旗標，只給
+  // handleAddBookmarkWithSave 用，不影響 hasUnsavedStoryChanges／離開前警告。
+  const hasUnpersistedMarkerBackfillRef = useRef(false);
   const latestDraftRef = useRef<StoryDraft>({
     title: "",
     summary: "",
@@ -480,11 +504,21 @@ export default function StorytellerStoryEditor({
   ]);
 
   // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
-  // 把它同時當成新的存檔基準，避免這次自動補值被誤判成使用者變更。
+  // 把它當成新的存檔基準，避免這次自動補值被誤判成使用者變更、跳出不必要的
+  // 「離開前確認」——這對使用者來說是「我什麼都沒做」，不該被當成髒狀態。
+  //
+  // 但如果 backfill 真的改了內容（代表這篇故事是還沒被這次補值邏輯處理過的
+  // 舊資料），這個新內容其實還沒真的存進後端。書籤存的 markerId 依賴的正是
+  // 「已存檔」狀態，所以另外用 hasUnpersistedMarkerBackfillRef 單獨記著這件
+  // 事，只讓 handleAddBookmarkWithSave 拿來判斷要不要先強制存一次——不透過
+  // hasUnsavedStoryChanges()／lastSavedDraftRef，才不會連帶讓離開前警告
+  // 對「使用者根本沒碰過的文件」誤報。
   function handleEditorContentChange(nextContent: string) {
     setContent(nextContent);
     if (!hasCapturedInitialEditorContentRef.current) {
       hasCapturedInitialEditorContentRef.current = true;
+      hasUnpersistedMarkerBackfillRef.current =
+        nextContent !== (story?.content ?? "");
       lastSavedDraftRef.current = serializeStoryDraft(
         storyTitle,
         storySummary,
@@ -584,6 +618,7 @@ export default function StorytellerStoryEditor({
     if (next === "off") {
       setAutoSaveEnabled(false);
       setSaveMessage("已關閉自動存檔，記得手動存檔。");
+      setSaveMessageSeverity("success");
       setSaveMessageVisible(true);
       return;
     }
@@ -596,6 +631,7 @@ export default function StorytellerStoryEditor({
     setAutoSaveIntervalMinutes(minutes);
     setAutoSaveIntervalInput(String(minutes));
     setSaveMessage(`已設定每 ${minutes} 分鐘自動存檔。`);
+    setSaveMessageSeverity("success");
     setSaveMessageVisible(true);
   }
 
@@ -640,6 +676,7 @@ export default function StorytellerStoryEditor({
             onSuccess: (savedStory) => {
               lastSavedDraftRef.current = currentDraft;
               setSaveMessage("已自動存檔。");
+              setSaveMessageSeverity("success");
               setSaveMessageVisible(true);
               if (savedStory?.version_conflict) {
                 setVersionConflict(true);
@@ -864,13 +901,29 @@ export default function StorytellerStoryEditor({
     setSaveMessage(
       inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。",
     );
+    setSaveMessageSeverity(inserted ? "success" : "error");
     setSaveMessageVisible(true);
+  }
+
+  // 書籤存的是段落的 markerId，只有「已經真的存進後端的內容」才保證下次載入
+  // 還在——如果段落是剛打的字、還沒存檔就加書籤，或這篇故事是還沒被 marker id
+  // backfill 處理過的舊資料（見 hasUnpersistedMarkerBackfillRef），重新整理
+  // 頁面時編輯器會用後端目前存的舊內容重新解析，剛才那個 markerId 根本沒被
+  // 存過，書籤就會變成「找不到這個位置了」。加書籤前兩種情況都先存一次，
+  // 兩個網路請求誰先送達不重要，只要存檔最後有成功，markerId 就會落地。
+  function handleAddBookmarkWithSave(markerId: string, note: string) {
+    if (hasUnsavedStoryChanges() || hasUnpersistedMarkerBackfillRef.current) {
+      handleSaveStory();
+      hasUnpersistedMarkerBackfillRef.current = false;
+    }
+    outline.addBookmark(markerId, note);
   }
 
   function handleSaveStory() {
     if (!apiProject?.public_id) {
       lastSavedDraftRef.current = currentDraftRef.current;
       setSaveMessage("目前使用前端假資料，未送出到後端 API。");
+      setSaveMessageSeverity("info");
       setSaveMessageVisible(true);
       return;
     }
@@ -893,6 +946,7 @@ export default function StorytellerStoryEditor({
         onSuccess: (savedStory) => {
           lastSavedDraftRef.current = currentDraftRef.current;
           setSaveMessage("故事已存檔。");
+          setSaveMessageSeverity("success");
           setSaveMessageVisible(true);
           if (isNewStory && savedStory?.public_id) {
             // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
@@ -985,6 +1039,7 @@ export default function StorytellerStoryEditor({
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
             setSaveMessage("已套用 AI 提案並存檔。");
+            setSaveMessageSeverity("success");
             setSaveMessageVisible(true);
             if (savedStory?.version_conflict) {
               setVersionConflict(true);
@@ -1015,10 +1070,12 @@ export default function StorytellerStoryEditor({
       setContent,
       onCopy: () => {
         setSaveMessage("AI 回應已複製。");
+        setSaveMessageSeverity("success");
         setSaveMessageVisible(true);
       },
       onSelectionMismatch: () => {
         setSaveMessage("選取範圍已變更，請改用插入或複製。");
+        setSaveMessageSeverity("error");
         setSaveMessageVisible(true);
       },
       onAfterApply: () => {},
@@ -1454,7 +1511,7 @@ export default function StorytellerStoryEditor({
       <CustomSnackbar
         open={saveMessageVisible}
         message={saveMessage}
-        severity={apiProject ? "success" : "info"}
+        severity={saveMessageSeverity}
         onClose={() => setSaveMessageVisible(false)}
       />
 
@@ -1475,6 +1532,11 @@ export default function StorytellerStoryEditor({
             onRequestInsertAsset={
               apiProject ? () => setAssetPickerOpen(true) : undefined
             }
+            bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
+            canBookmark={outline.canBookmark}
+            onAddBookmark={handleAddBookmarkWithSave}
+            onRemoveBookmark={outline.removeBookmark}
+            onEditorReady={outline.onEditorReady}
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">
@@ -1489,6 +1551,18 @@ export default function StorytellerStoryEditor({
                     </IconButton>
                   </span>
                 </Tooltip>
+                <StorytellerEditorOutlineToggle
+                  open={outline.outlineOpen}
+                  onToggle={outline.setOutlineOpen}
+                >
+                  <StorytellerEditorOutlinePanel
+                    editor={outline.editor}
+                    bookmarks={outline.bookmarks}
+                    loading={outline.bookmarksLoading}
+                    onDeleteBookmark={outline.removeBookmark}
+                    onUpdateBookmarkNote={outline.saveBookmarkNote}
+                  />
+                </StorytellerEditorOutlineToggle>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
                   onChange={handleSidePanelChange}
@@ -1531,6 +1605,7 @@ export default function StorytellerStoryEditor({
                       onSuccess: () => {
                         setVersionConflict(false);
                         setSaveMessage("已回復到這個版本。");
+                        setSaveMessageSeverity("success");
                         setSaveMessageVisible(true);
                       },
                     });

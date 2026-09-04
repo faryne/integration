@@ -56,6 +56,9 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
+import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
+import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
+import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
   WorkspaceEditableTitle,
@@ -175,6 +178,10 @@ export default function StorytellerLoreEditor({
   // 自動補 marker id，這不是使用者變更，掛載後第一次收到編輯器回報的內容時
   // 要把它當成新的存檔基準。
   const hasCapturedInitialEditorContentRef = useRef(false);
+  // 同樣理由同 StoryEditor.tsx：上面那份基準只解決離開前的誤報警告，不代表
+  // backfill 出來的 markerId 真的送進後端過，這裡另外獨立記著，只給
+  // handleAddBookmarkWithSave 用。
+  const hasUnpersistedMarkerBackfillRef = useRef(false);
   const latestDraftRef = useRef<LoreDraft>({
     title: "",
     collectionId: "",
@@ -244,6 +251,15 @@ export default function StorytellerLoreEditor({
     apiProject?.public_id,
     apiLore?.public_id,
   );
+  const showSnack = (message: string, severity: AlertColor = "success") => {
+    setSnack(message);
+    setSnackSeverity(severity);
+  };
+  const outline = useStorytellerEditorOutline({
+    projectPublicId: apiProject?.public_id,
+    lorePublicId: apiLore?.public_id,
+    onSnack: showSnack,
+  });
 
   const project = apiProject
     ? { id: apiProject.public_id, name: apiProject.name }
@@ -282,10 +298,6 @@ export default function StorytellerLoreEditor({
       ? String(version.conflicted_with_version_id)
       : null,
   }));
-  const showSnack = (message: string, severity: AlertColor = "success") => {
-    setSnack(message);
-    setSnackSeverity(severity);
-  };
   const selectedCollectionExists =
     selectedCollectionId === "" ||
     loreCollections.some(
@@ -339,11 +351,21 @@ export default function StorytellerLoreEditor({
   }, [content, selectedCollectionId, title]);
 
   // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
-  // 把它同時當成新的存檔基準，避免這次自動補值被誤判成使用者變更。
+  // 把它當成新的存檔基準，避免這次自動補值被誤判成使用者變更、跳出不必要的
+  // 「離開前確認」——這對使用者來說是「我什麼都沒做」，不該被當成髒狀態。
+  //
+  // 但如果 backfill 真的改了內容（代表這篇設定集是還沒被這次補值邏輯處理過
+  // 的舊資料），這個新內容其實還沒真的存進後端。書籤存的 markerId 依賴的
+  // 正是「已存檔」狀態，所以另外用 hasUnpersistedMarkerBackfillRef 單獨記著
+  // 這件事，只讓 handleAddBookmarkWithSave 拿來判斷要不要先強制存一次——不
+  // 透過 hasUnsavedLoreChanges()／lastSavedDraftRef，才不會連帶讓離開前警告
+  // 對「使用者根本沒碰過的文件」誤報。
   function handleEditorContentChange(nextContent: string) {
     setContent(nextContent);
     if (!hasCapturedInitialEditorContentRef.current) {
       hasCapturedInitialEditorContentRef.current = true;
+      hasUnpersistedMarkerBackfillRef.current =
+        nextContent !== (lore?.content ?? "");
       lastSavedDraftRef.current = serializeLoreDraft(
         title,
         selectedCollectionId,
@@ -607,6 +629,20 @@ export default function StorytellerLoreEditor({
     });
     setAssetPickerOpen(false);
     showSnack(inserted ? "已插入資產。" : "無法插入資產，請重新整理後再試。");
+  }
+
+  // 書籤存的是段落的 markerId，只有「已經真的存進後端的內容」才保證下次載入
+  // 還在——如果段落是剛打的字、還沒存檔就加書籤，或這篇設定集是還沒被 marker
+  // id backfill 處理過的舊資料（見 hasUnpersistedMarkerBackfillRef），重新
+  // 整理頁面時編輯器會用後端目前存的舊內容重新解析，剛才那個 markerId 根本
+  // 沒被存過，書籤就會變成「找不到這個位置了」。加書籤前兩種情況都先存一次，
+  // 兩個網路請求誰先送達不重要，只要存檔最後有成功，markerId 就會落地。
+  function handleAddBookmarkWithSave(markerId: string, note: string) {
+    if (hasUnsavedLoreChanges() || hasUnpersistedMarkerBackfillRef.current) {
+      handleSave();
+      hasUnpersistedMarkerBackfillRef.current = false;
+    }
+    outline.addBookmark(markerId, note);
   }
 
   function handleSave() {
@@ -1177,6 +1213,11 @@ export default function StorytellerLoreEditor({
             onRequestInsertAsset={
               project ? () => setAssetPickerOpen(true) : undefined
             }
+            bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
+            canBookmark={outline.canBookmark}
+            onAddBookmark={handleAddBookmarkWithSave}
+            onRemoveBookmark={outline.removeBookmark}
+            onEditorReady={outline.onEditorReady}
             toolbarExtra={
               <Stack direction="row" spacing={1} alignItems="center">
                 <Tooltip title="插入資產">
@@ -1191,6 +1232,18 @@ export default function StorytellerLoreEditor({
                     </IconButton>
                   </span>
                 </Tooltip>
+                <StorytellerEditorOutlineToggle
+                  open={outline.outlineOpen}
+                  onToggle={outline.setOutlineOpen}
+                >
+                  <StorytellerEditorOutlinePanel
+                    editor={outline.editor}
+                    bookmarks={outline.bookmarks}
+                    loading={outline.bookmarksLoading}
+                    onDeleteBookmark={outline.removeBookmark}
+                    onUpdateBookmarkNote={outline.saveBookmarkNote}
+                  />
+                </StorytellerEditorOutlineToggle>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
                   onChange={setSidePanel}
