@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import CodeIcon from "@mui/icons-material/Code";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import FormatAlignCenterIcon from "@mui/icons-material/FormatAlignCenter";
@@ -23,7 +24,12 @@ import TitleIcon from "@mui/icons-material/Title";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
 
-import { BG_COLOR_CSS, BG_COLOR_LABELS, TEXT_COLOR_CSS, TEXT_COLOR_LABELS } from "./colorStyles";
+import {
+  BG_COLOR_CSS,
+  BG_COLOR_LABELS,
+  TEXT_COLOR_CSS,
+  TEXT_COLOR_LABELS,
+} from "./colorStyles";
 import { ASSET_IMAGE_LAYOUT_LABELS } from "./assetImageLayout";
 import {
   ASSET_IMAGE_LAYOUT_VALUES,
@@ -211,6 +217,15 @@ const HEADING_COMMANDS: WysiwygCommand[] = [
 
 const INSERT_COMMANDS: WysiwygCommand[] = [
   {
+    id: "insert-code-block",
+    label: "插入程式碼區塊",
+    group: "insert",
+    scope: "insert",
+    icon: CodeIcon,
+    aliases: ["程式碼", "程式碼區塊", "code", "/code"],
+    run: (editor) => editor.chain().focus().insertStorytellerCodeBlock().run(),
+  },
+  {
     id: "insert-table",
     label: "插入表格",
     group: "insert",
@@ -257,10 +272,7 @@ export function hasAssetImageLayoutTarget(editor: Editor) {
   return findAssetImageAtSelection(editor) !== null;
 }
 
-function setAssetImageLayout(
-  editor: Editor,
-  layout: AssetImageLayoutValue,
-) {
+function setAssetImageLayout(editor: Editor, layout: AssetImageLayoutValue) {
   editor
     .chain()
     .focus()
@@ -325,8 +337,7 @@ const ALIGN_COMMANDS: WysiwygCommand[] = (
   scope: "block",
   icon: ALIGN_ICONS[value],
   isActive: (editor: Editor) => editor.isActive({ textAlign: value }),
-  run: (editor: Editor) =>
-    editor.chain().focus().setTextAlign(value).run(),
+  run: (editor: Editor) => editor.chain().focus().setTextAlign(value).run(),
 }));
 
 /** 引用/清單是「切換目前段落種類」，再按一次會切回一般段落——跟原本
@@ -388,17 +399,15 @@ const BLOCK_KIND_COMMANDS: WysiwygCommand[] = [
 ];
 
 const COLOR_COMMANDS: WysiwygCommand[] = [
-  ...TEXT_COLOR_VALUES.map(
-    (color): WysiwygCommand => ({
-      id: `text-color-${color}`,
-      label: TEXT_COLOR_LABELS[color],
-      group: "color",
-      scope: "inline",
-      previewColor: TEXT_COLOR_CSS[color],
-      isActive: (editor) => editor.isActive("textColor", { value: color }),
-      run: (editor) => editor.chain().focus().setTextColor(color).run(),
-    }),
-  ),
+  ...TEXT_COLOR_VALUES.map((color): WysiwygCommand => ({
+    id: `text-color-${color}`,
+    label: TEXT_COLOR_LABELS[color],
+    group: "color",
+    scope: "inline",
+    previewColor: TEXT_COLOR_CSS[color],
+    isActive: (editor) => editor.isActive("textColor", { value: color }),
+    run: (editor) => editor.chain().focus().setTextColor(color).run(),
+  })),
   {
     id: "text-color-clear",
     label: "清除文字顏色",
@@ -407,17 +416,15 @@ const COLOR_COMMANDS: WysiwygCommand[] = [
     icon: DeleteIcon,
     run: (editor) => editor.chain().focus().unsetTextColor().run(),
   },
-  ...BG_COLOR_VALUES.map(
-    (color): WysiwygCommand => ({
-      id: `bg-color-${color}`,
-      label: BG_COLOR_LABELS[color],
-      group: "color",
-      scope: "inline",
-      previewColor: BG_COLOR_CSS[color],
-      isActive: (editor) => editor.isActive("bgColor", { value: color }),
-      run: (editor) => editor.chain().focus().setBgColor(color).run(),
-    }),
-  ),
+  ...BG_COLOR_VALUES.map((color): WysiwygCommand => ({
+    id: `bg-color-${color}`,
+    label: BG_COLOR_LABELS[color],
+    group: "color",
+    scope: "inline",
+    previewColor: BG_COLOR_CSS[color],
+    isActive: (editor) => editor.isActive("bgColor", { value: color }),
+    run: (editor) => editor.chain().focus().setBgColor(color).run(),
+  })),
   {
     id: "bg-color-clear",
     label: "清除背景色",

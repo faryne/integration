@@ -8,7 +8,7 @@ import (
 
 // storytellerContentSyntaxHint 描述編輯器實際支援的語法子集（不是完整 GFM，見
 // wysiwygCore/parser.ts／whitelist.ts），只列「能用什麼」，不列「不能用什麼」——
-// 沒提到的語法（code block、待辦清單、標準 [text](url) 連結等）目前解析器不認得，
+// 沒提到的語法（待辦清單、標準 [text](url) 連結等）目前解析器不認得，
 // 寫了會原樣顯示成文字，故意不在這裡列出來，agent 自然不會去用。新表格 2026-08-14
 // 改成逐列一行的 `⟦table ...⟧` marker，取代舊的 pipe-only table-row；舊格式仍可讀，
 // 但 AI agent 不應新增。
@@ -24,6 +24,10 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 	"escape a literal pipe as \\|, a literal backslash as \\\\, and a cell line break as \\n. Table cells may use " +
 	"the same inline styles and bracket markers as normal text. Legacy pipe-only rows like |cell1|cell2| may " +
 	"exist in old content; preserve them if editing nearby, but do not create new legacy table-row content. " +
+	"Code blocks use standard GFM triple-backtick fences with an optional language tag and optional id attribute " +
+	"on the opening fence, e.g. ```go id=\"...\"; the id is this block's bookmark anchor and must be preserved " +
+	"when editing an existing code block. Treat code block content as literal text; do not add inline styling or " +
+	"bracket markers inside it. " +
 	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. Anything " +
 	"else is a plain paragraph."
 

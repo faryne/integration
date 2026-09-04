@@ -18,12 +18,18 @@ import {
   type HeadingLevel,
 } from "./whitelist";
 
-/** 掃過整份文件，幫任何還沒有 markerId 的段落補一個新的。回傳是否真的有改動，方便呼叫端決定要不要 dispatch。 */
+const MARKER_ID_NODE_TYPES = new Set(["paragraph", "storytellerCodeBlock"]);
+
+function canBackfillMarkerId(node: ProseMirrorNode): boolean {
+  return MARKER_ID_NODE_TYPES.has(node.type.name) && "markerId" in node.attrs;
+}
+
+/** 掃過整份文件，幫任何還沒有 markerId 的可書籤區塊補一個新的。回傳是否真的有改動，方便呼叫端決定要不要 dispatch。 */
 function backfillMarkerIds(initialTr: Transaction, doc: ProseMirrorNode) {
   let tr = initialTr;
   let changed = false;
   doc.descendants((node, pos) => {
-    if (node.type.name === "paragraph" && !node.attrs.markerId) {
+    if (canBackfillMarkerId(node) && !node.attrs.markerId) {
       tr = tr.setNodeAttribute(pos, "markerId", generateMarkerId());
       changed = true;
     }

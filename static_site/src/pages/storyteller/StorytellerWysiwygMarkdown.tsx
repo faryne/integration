@@ -8,6 +8,10 @@ import {
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
 import {
+  STORYTELLER_CODE_BLOCK_SX,
+  StorytellerCodeBlockFrame,
+} from "./wysiwygCore/storytellerCodeBlockView";
+import {
   computeFootnoteNumbering,
   groupParagraphsByBlockKind,
   parseMarkdownToParagraphs,
@@ -60,6 +64,7 @@ interface StorytellerWysiwygMarkdownProps {
 // 沒有 ProseMirror schema 的限制，可以直接輸出真正的 <blockquote>/<ul>/<ol>）。
 // 有序清單用真正的 <ol>，編號交給瀏覽器原生處理，不用自己算。
 const BLOCK_GROUP_SX = {
+  ...STORYTELLER_CODE_BLOCK_SX,
   "& blockquote": {
     margin: "0 0 0.5em 0",
     paddingLeft: "12px",
@@ -367,6 +372,21 @@ export function StorytellerWysiwygMarkdown({
   return (
     <Box sx={[HEADING_TYPOGRAPHY_SX, BLOCK_GROUP_SX, CLEAR_FLOATING_ASSET_SX]}>
       {groupParagraphsByBlockKind(paragraphs).map((group, groupIndex) => {
+        if (group.blockKind === "code") {
+          const { paragraph, index } = group.items[0];
+          const content = paragraph.runs.map((run) => run.text).join("");
+          return (
+            <StorytellerCodeBlockFrame
+              key={paragraph.markerId ?? index}
+              markerId={paragraph.markerId}
+              language={paragraph.language}
+              content={content}
+            >
+              {content}
+            </StorytellerCodeBlockFrame>
+          );
+        }
+
         if (group.blockKind === "none") {
           const { paragraph, index } = group.items[0];
           const HeadingOrParagraphTag =

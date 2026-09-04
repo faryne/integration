@@ -195,18 +195,10 @@ export function StorytellerWysiwygContextMenu({
       (command.isVisible?.(commandContext) ?? true) &&
       (hasSelection || (command.isActive?.(editor) ?? false)),
   );
-  const insertImageCommand = wysiwygCommandsByGroup("insert").find(
-    (c) => c.id === "insert-image",
-  );
-  const showInsertImage =
-    isCurrentParagraphEmpty &&
-    (insertImageCommand?.isVisible?.(commandContext) ?? false);
-  // insert-table 原本漏掉了——這裡跟 insertImageCommand 一樣是從 "insert" 群組挑出
-  // 單一 command，但先前只挑了 insert-image，insert-table 完全沒被渲染過，右鍵選單
-  // 因此永遠不會出現「插入表格」（使用者實測發現，Phase 9.1 案例 3）。跟 slash 選單
-  // 的行為看齊：不限制只能在空段落插入（表格是獨立節點，插在非空段落也合理）。
-  const insertTableCommand = wysiwygCommandsByGroup("insert").find(
-    (c) => c.id === "insert-table",
+  const insertCommands = wysiwygCommandsByGroup("insert").filter(
+    (command) =>
+      (command.isVisible?.(commandContext) ?? true) &&
+      (command.id !== "insert-image" || isCurrentParagraphEmpty),
   );
   const imageLayoutCommands = wysiwygCommandsByGroup("image-layout");
 
@@ -437,45 +429,23 @@ export function StorytellerWysiwygContextMenu({
                   );
                 }),
               ]),
-              ...(insertTableCommand || (showInsertImage && insertImageCommand)
+              ...(insertCommands.length > 0
                 ? [
                     <Divider key="insert-divider" />,
-                    ...(insertTableCommand
-                      ? (() => {
-                          const InsertTableIcon = insertTableCommand.icon!;
-                          return [
-                            <MenuItem
-                              key={insertTableCommand.id}
-                              onClick={() => runAndClose(insertTableCommand)}
-                            >
-                              <ListItemIcon>
-                                <InsertTableIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText>
-                                {insertTableCommand.label}
-                              </ListItemText>
-                            </MenuItem>,
-                          ];
-                        })()
-                      : []),
-                    ...(showInsertImage && insertImageCommand
-                      ? (() => {
-                          const InsertImageIcon = insertImageCommand.icon!;
-                          return [
-                            <MenuItem
-                              key={insertImageCommand.id}
-                              onClick={() => runAndClose(insertImageCommand)}
-                            >
-                              <ListItemIcon>
-                                <InsertImageIcon fontSize="small" />
-                              </ListItemIcon>
-                              <ListItemText>
-                                {insertImageCommand.label}
-                              </ListItemText>
-                            </MenuItem>,
-                          ];
-                        })()
-                      : []),
+                    ...insertCommands.map((command) => {
+                      const Icon = command.icon!;
+                      return (
+                        <MenuItem
+                          key={command.id}
+                          onClick={() => runAndClose(command)}
+                        >
+                          <ListItemIcon>
+                            <Icon fontSize="small" />
+                          </ListItemIcon>
+                          <ListItemText>{command.label}</ListItemText>
+                        </MenuItem>
+                      );
+                    }),
                   ]
                 : []),
             ]}
@@ -518,31 +488,33 @@ export function StorytellerWysiwygContextMenu({
         }
         return items;
       })}
-      {canWritingBookmark && onToggleWritingBookmark && !hasAssetImage && [
-        // Menu 不接受 Fragment 當直接子元素（MUI 會在 console 噴警告），
-        // 這裡跟上面 wysiwygCommandsByGroup 那段一樣改回陣列 + key。
-        <Divider key="writing-bookmark-divider" />,
-        <MenuItem
-          key="writing-bookmark-item"
-          disabled={Boolean(writingBookmarkDisabledReason)}
-          onClick={() => {
-            onClose();
-            onToggleWritingBookmark();
-          }}
-        >
-          <ListItemIcon>
-            {isCurrentParagraphBookmarked ? (
-              <BookmarkIcon fontSize="small" />
-            ) : (
-              <BookmarkBorderIcon fontSize="small" />
-            )}
-          </ListItemIcon>
-          <ListItemText>
-            {writingBookmarkDisabledReason ??
-              (isCurrentParagraphBookmarked ? "移除書籤" : "加入書籤")}
-          </ListItemText>
-        </MenuItem>,
-      ]}
+      {canWritingBookmark &&
+        onToggleWritingBookmark &&
+        !hasAssetImage && [
+          // Menu 不接受 Fragment 當直接子元素（MUI 會在 console 噴警告），
+          // 這裡跟上面 wysiwygCommandsByGroup 那段一樣改回陣列 + key。
+          <Divider key="writing-bookmark-divider" />,
+          <MenuItem
+            key="writing-bookmark-item"
+            disabled={Boolean(writingBookmarkDisabledReason)}
+            onClick={() => {
+              onClose();
+              onToggleWritingBookmark();
+            }}
+          >
+            <ListItemIcon>
+              {isCurrentParagraphBookmarked ? (
+                <BookmarkIcon fontSize="small" />
+              ) : (
+                <BookmarkBorderIcon fontSize="small" />
+              )}
+            </ListItemIcon>
+            <ListItemText>
+              {writingBookmarkDisabledReason ??
+                (isCurrentParagraphBookmarked ? "移除書籤" : "加入書籤")}
+            </ListItemText>
+          </MenuItem>,
+        ]}
     </Menu>
   );
 }

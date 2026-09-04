@@ -1013,9 +1013,15 @@ function StoryContentLines({
         const showIcon =
           bookmarkMode === "full" ||
           (bookmarkMode === "removeOnly" && isBookmarked);
-        const groupContent = group.items
-          .map(({ index }) => lines[index])
-          .join("\n");
+        const groupContent =
+          group.blockKind === "code"
+            ? lines
+                .slice(
+                  groupIndex,
+                  groupIndex + (group.items[0].paragraph.sourceLineCount ?? 1),
+                )
+                .join("\n")
+            : group.items.map(({ index }) => lines[index]).join("\n");
         return (
           <Box
             key={groupIndex}
