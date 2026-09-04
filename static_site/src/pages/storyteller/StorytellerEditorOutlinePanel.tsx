@@ -1,7 +1,7 @@
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import TitleIcon from "@mui/icons-material/Title";
+import ViewHeadlineIcon from "@mui/icons-material/ViewHeadline";
 import {
   Button,
   Dialog,
@@ -174,7 +174,7 @@ export function StorytellerEditorOutlinePanel({
                 sx={{ pl: 1 + ((item.level ?? 1) - 1) * 1.5 }}
               >
                 <ListItemIcon sx={{ minWidth: 32 }}>
-                  <TitleIcon fontSize="small" color="action" />
+                  <ViewHeadlineIcon fontSize="small" color="action" />
                 </ListItemIcon>
                 <ListItemText
                   primary={item.text}
