@@ -36,6 +36,12 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 // 註解內容調整寫法），但註解文字本身絕對不能出現在改寫後的正文或任何要給讀者看的
 // 地方——這是跟 storytellerContentSyntaxHint 分開成獨立常數的原因，一個講格式語法，
 // 一個講「這個東西代表什麼、能不能給讀者看」，混在一起描述容易讓 agent 抓不到重點。
+//
+// 2026-09-04 補上每個段落自己那層無屬性的 ⟦markerId⟧...⟦/markerId⟧ 包裹——這是編輯頁
+// 「大綱與書籤」功能的定位錨點（見 backfillStoryMarkerIds），每一行段落都有，沒有
+// footnote/comment 那種額外屬性，純粹字面上更容易被誤判成雜訊而被 AI 整段清掉。沒提醒
+// 的話 AI 整篇重寫時很容易漏保留，段落文字沒變、id 卻換了一個，作者原本標的書籤就會
+// 對不到段落（見 memory：使用者發現這個落差後主動確認的問題）。
 const storytellerContentMarkerHint = "The content may also contain bracket markers written by the " +
 	"web editor, both wrapping a run of text: ⟦footnote-<id> note=\"...\"⟧anchored text⟦/footnote-<id>⟧ and " +
 	"⟦comment-<id> comment=\"...\" commentColor=\"...\"⟧highlighted text⟦/comment-<id>⟧ (id is an opaque generated " +
@@ -47,7 +53,15 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
 	"remove it later) unless you're explicitly asked to delete it. Table rows are block-level markers: " +
 	"⟦table tableId=\"...\" rowId=\"...\"⟧| cell | cell |⟦/table⟧. Keep rows from the same table adjacent and keep " +
-	"their tableId/rowId values stable when editing existing tables."
+	"their tableId/rowId values stable when editing existing tables. Every other paragraph line (including " +
+	"headings) is also wrapped in its own plain marker with no extra attributes: ⟦<id>⟧paragraph text⟦/<id>⟧ " +
+	"(or ⟦<id> align=\"center\"⟧...⟦/<id>⟧ when the paragraph has explicit alignment). This id is the anchor the " +
+	"web editor's outline panel and the author's writing bookmarks point to — it must stay attached to that " +
+	"exact paragraph and never change, even when you rewrite the paragraph's wording, unless the whole paragraph " +
+	"is being deleted outright. When you edit a paragraph, keep reusing its existing id in both the opening and " +
+	"closing marker; when you add a brand new paragraph, wrap it in a fresh unique id the same way. Do not strip " +
+	"these plain ⟦id⟧ wrappers thinking they're noise, and do not swap in a new id for a paragraph that still " +
+	"exists — either breaks the author's existing bookmarks and outline entries pointing at that paragraph."
 
 // storytellerProjectDetailListCap 是 storyteller_get_project 嵌進去的 story/lore
 // 清單上限，避免專案很大時單次回應塞爆 agent 的 context；超過的部分要另外呼叫
