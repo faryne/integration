@@ -1,13 +1,26 @@
 import CheckIcon from "@mui/icons-material/Check";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import UnfoldLessIcon from "@mui/icons-material/UnfoldLess";
+import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import {
   Autocomplete,
   Box,
+  Button,
   IconButton,
   TextField,
   Tooltip,
 } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+// 超過這個行數就預設收縮、底部出現「展開」按鈕；行數在這之內完全不做收縮、
+// 也不出現按鈕——短的程式碼片段沒有「先收起來」的必要，平白多一顆按鈕反而
+// 干擾閱讀。20 行大致是一般螢幕不用捲動就看得完的量，抓個常見的預設值。
+const STORYTELLER_CODE_BLOCK_COLLAPSE_LINE_THRESHOLD = 20;
+// 跟 STORYTELLER_CODE_BLOCK_SX 的 pre 樣式（fontSize 0.875rem／lineHeight 1.6）
+// 對應：一行的實際高度是 fontSize * lineHeight，收縮時 max-height 用同一組數字
+// 算，不要另外寫死一個跟樣式脫勾的高度。
+const STORYTELLER_CODE_BLOCK_LINE_HEIGHT_EM = 0.875 * 1.6;
 
 export const STORYTELLER_CODE_BLOCK_LANGUAGES = [
   "go",
@@ -74,10 +87,34 @@ export const STORYTELLER_CODE_BLOCK_SX = {
     fontSize: "0.875rem",
     lineHeight: 1.6,
     whiteSpace: "pre",
+    position: "relative",
   },
   "& code.storyteller-code-block-content": {
     fontFamily: "inherit",
     whiteSpace: "pre",
+  },
+  "& .storyteller-code-block-collapse-fade": {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 48,
+    pointerEvents: "none",
+    background: (theme: Theme) =>
+      `linear-gradient(to bottom, transparent, ${theme.palette.action.hover})`,
+  },
+  "& .storyteller-code-block-toggle": {
+    display: "flex",
+    justifyContent: "center",
+    borderTop: "1px solid",
+    borderColor: "divider",
+  },
+  "& .storyteller-code-block-toggle button": {
+    borderRadius: 0,
+    py: 0.5,
+    textTransform: "none",
+    fontSize: "0.75rem",
+    color: "text.secondary",
   },
 } as const;
 
@@ -118,6 +155,14 @@ export function StorytellerCodeBlockFrame({
     () => [...STORYTELLER_CODE_BLOCK_LANGUAGES],
     [],
   );
+
+  const lineCount = useMemo(() => content.split("\n").length, [content]);
+  const isCollapsible =
+    lineCount > STORYTELLER_CODE_BLOCK_COLLAPSE_LINE_THRESHOLD;
+  // 預設收縮（超過門檻才會是 true），使用者展開後就記住這個 session 的選擇；
+  // 行數在門檻內的話 isCollapsible 一路是 false，底下渲染完全不會出現按鈕，
+  // 這個 state 也不會被用到。
+  const [collapsed, setCollapsed] = useState(isCollapsible);
 
   useEffect(() => {
     if (succeededAction === null) return undefined;
@@ -188,7 +233,25 @@ export function StorytellerCodeBlockFrame({
           ))}
         </Box>
       </Box>
-      <Box component="pre" className="storyteller-code-block-pre">
+      <Box
+        component="pre"
+        className="storyteller-code-block-pre"
+        sx={
+          collapsed
+            ? {
+                // 高度＝N 行的實際高度（em，字級相對）＋上下 padding（px，跟
+                // 上面 STORYTELLER_CODE_BLOCK_SX 的 pre padding 用同一個
+                // theme.spacing(1.5)＝12px，兩種單位混用故意用 calc() 分開算，
+                // 不要為了湊同一個單位硬把其中一個換算成近似值。
+                maxHeight: `calc(${
+                  STORYTELLER_CODE_BLOCK_COLLAPSE_LINE_THRESHOLD *
+                  STORYTELLER_CODE_BLOCK_LINE_HEIGHT_EM
+                }em + 24px)`,
+                overflowY: "hidden",
+              }
+            : undefined
+        }
+      >
         <Box
           component="code"
           className={["storyteller-code-block-content", codeClassName]
@@ -197,7 +260,26 @@ export function StorytellerCodeBlockFrame({
         >
           {children}
         </Box>
+        {collapsed && <Box className="storyteller-code-block-collapse-fade" />}
       </Box>
+      {isCollapsible && (
+        <Box className="storyteller-code-block-toggle" contentEditable={false}>
+          <Button
+            size="small"
+            fullWidth
+            startIcon={
+              collapsed ? (
+                <UnfoldMoreIcon fontSize="inherit" />
+              ) : (
+                <UnfoldLessIcon fontSize="inherit" />
+              )
+            }
+            onClick={() => setCollapsed((prev) => !prev)}
+          >
+            {collapsed ? `展開全部（共 ${lineCount} 行）` : "收合"}
+          </Button>
+        </Box>
+      )}
     </Box>
   );
 }
