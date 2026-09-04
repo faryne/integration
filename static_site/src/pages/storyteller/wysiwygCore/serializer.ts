@@ -327,6 +327,20 @@ function serializeTable(table: JSONContent, tableIndex: number): string[] {
     });
 }
 
+function serializeCodeBlock(codeBlock: JSONContent): string[] {
+  const markerId = ((codeBlock.attrs?.markerId as string | null) ?? "").trim();
+  const language = ((codeBlock.attrs?.language as string | null) ?? "").trim();
+  const languagePart = language ? language : "";
+  const idPart = markerId
+    ? `${languagePart ? " " : " "}id="${escapeMarkerComment(markerId)}"`
+    : "";
+  const content = (codeBlock.content ?? [])
+    .filter((node) => node.type === "text")
+    .map((node) => node.text ?? "")
+    .join("");
+  return [`\`\`\`${languagePart}${idPart}`, content, "```"];
+}
+
 /**
  * 把 Tiptap 的 doc JSON 序列化成白名單規則下的自訂 markdown 字串。
  * 段落之間用單一 `\n` 接（不是空行），跟 parseMarkdownToParagraphs 的 split("\n") 對稱，
@@ -337,6 +351,8 @@ export function serializeDocToMarkdown(doc: JSONContent): string {
   (doc.content ?? []).forEach((node, nodeIndex) => {
     if (node.type === "paragraph") {
       lines.push(serializeParagraph(node));
+    } else if (node.type === "storytellerCodeBlock") {
+      lines.push(...serializeCodeBlock(node));
     } else if (node.type === "storytellerTable") {
       lines.push(...serializeTable(node, nodeIndex));
     }

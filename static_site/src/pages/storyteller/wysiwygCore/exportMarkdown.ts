@@ -140,7 +140,7 @@ function exportInline(
 }
 
 interface ExportGroup {
-  blockKind: ParsedParagraph["blockKind"];
+  blockKind: ParsedParagraph["blockKind"] | "code";
   tableId?: string;
   paragraphs: ParsedParagraph[];
 }
@@ -215,6 +215,14 @@ export function exportContentToMarkdown(content: string): string {
         footnoteNumbering.numbers,
       );
       if (table) blocks.push(table);
+      continue;
+    }
+
+    if (group.blockKind === "code") {
+      const paragraph = group.paragraphs[0];
+      const language = (paragraph.language ?? "").trim();
+      const content = paragraph.runs.map((run) => run.text).join("");
+      blocks.push(`\`\`\`${language}\n${content}\n\`\`\``);
       continue;
     }
 

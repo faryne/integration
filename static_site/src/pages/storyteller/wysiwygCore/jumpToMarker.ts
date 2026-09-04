@@ -1,7 +1,13 @@
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
-/** 依 markerId 找出段落節點起點；找不到就回 null。 */
+function isBookmarkableBlock(node: ProseMirrorNode): boolean {
+  return (
+    node.type.name === "paragraph" || node.type.name === "storytellerCodeBlock"
+  );
+}
+
+/** 依 markerId 找出可書籤區塊節點起點；找不到就回 null。 */
 export function findParagraphPosByMarkerId(
   doc: ProseMirrorNode,
   markerId: string,
@@ -9,7 +15,7 @@ export function findParagraphPosByMarkerId(
   let found: number | null = null;
   doc.descendants((node, pos) => {
     if (found !== null) return false;
-    if (node.type.name === "paragraph" && node.attrs.markerId === markerId) {
+    if (isBookmarkableBlock(node) && node.attrs.markerId === markerId) {
       found = pos;
       return false;
     }

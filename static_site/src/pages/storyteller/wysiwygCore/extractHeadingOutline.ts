@@ -11,7 +11,7 @@ export interface HeadingOutlineItem {
   pos: number;
 }
 
-/** 任一有 markerId 的段落目前在文件裡的位置，給書籤對照 pos 用。 */
+/** 任一有 markerId 的可書籤區塊目前在文件裡的位置，給書籤對照 pos 用。 */
 export interface ParagraphMarkerPosition {
   markerId: string;
   text: string;
@@ -28,6 +28,12 @@ function paragraphText(node: ProseMirrorNode): string {
   return node.textContent.replace(/\s+/g, " ").trim();
 }
 
+function isBookmarkableBlock(node: ProseMirrorNode): boolean {
+  return (
+    node.type.name === "paragraph" || node.type.name === "storytellerCodeBlock"
+  );
+}
+
 /**
  * 一次 descendants 掃完整份文件：標題清單 + 所有段落 marker 位置。
  * 書籤要知道目前 pos 才能跟標題依文件順序合併，不要分開掃兩次。
@@ -38,10 +44,13 @@ export function extractDocumentMarkers(
   const headings: HeadingOutlineItem[] = [];
   const paragraphs = new Map<string, ParagraphMarkerPosition>();
   doc.descendants((node, pos) => {
-    if (node.type.name !== "paragraph") return;
+    if (!isBookmarkableBlock(node)) return;
     const markerId = node.attrs.markerId as string | null;
     if (!markerId) return;
-    const headingLevel = (node.attrs.headingLevel ?? 0) as HeadingLevel;
+    const headingLevel =
+      node.type.name === "paragraph"
+        ? ((node.attrs.headingLevel ?? 0) as HeadingLevel)
+        : 0;
     const text = paragraphText(node);
     paragraphs.set(markerId, {
       markerId,

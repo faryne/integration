@@ -94,12 +94,18 @@ export interface ParsedRun {
 }
 
 export interface ParsedParagraph {
+  /** 原始內容的起始行號；code block 會橫跨多行，所以不能再假設陣列 index 等於行號。 */
+  sourceLineIndex?: number;
+  sourceLineCount?: number;
   markerId: string | null;
   align: AlignmentValue;
   headingLevel: HeadingLevel;
   /** 引用/清單種類，跟 headingLevel 互斥（一個段落只能是標題或引用/清單其中一種）。 */
   blockKind: BlockKindValue;
   runs: ParsedRun[];
+  /** GFM fenced code block：整個 fence 區塊是一個真正的 ProseMirror block node。 */
+  codeBlock?: boolean;
+  language?: string | null;
   /** 真表格逐列一行 marker：相鄰同 tableId 的 row 會在 paragraphsToDoc/group renderer 裡合併成一張表。 */
   tableId?: string;
   rowId?: string;
@@ -139,6 +145,10 @@ const TABLE_MARKER_PATTERN = new RegExp(
     `${MARKER_CLOSE}([\\s\\S]*)${MARKER_OPEN}${MARKER_CLOSE_SLASH}${TABLE_MARKER_NAME}${MARKER_CLOSE}$`,
 );
 
+const CODE_FENCE_OPEN_PATTERN = /^```([\s\S]*)$/;
+const CODE_FENCE_CLOSE_PATTERN = /^```\s*$/;
+const CODE_FENCE_ID_ATTR_PATTERN = /(?:^|\s)id="((?:[^"\\]|\\.)*)"/;
+
 // 行內 marker 目前支援的屬性總集合（span 的顏色、a 的連結、footnote 的內文）。同一個
 // marker 實例只會用到其中跟自己 type 相關的欄位，其餘保持 undefined——不用照 type
 // 分流解析，因為屬性名稱本身就不會撞名，直接掃出所有認得的屬性即可，parseInline
@@ -171,7 +181,8 @@ const INLINE_MARKER_OPEN = new RegExp(
 // isSafeHref 判斷）。刻意不要求整段內容從頭到尾只有這個語法——圖片本來就可能出現在
 // 段落裡任何位置、前後還有其他文字（例如編輯器裡先打字、中間插入圖片、後面接著打字），
 // 舊版用整行 anchor 的 pattern 只要圖片語法後面多一個字就整段失敗、原樣外洩成文字。
-const INLINE_IMAGE_OPEN = /!\[([^\]\n\r]*)\]\(([^)\s]+)(?:\s+"([^"\n\r]*)")?\)/y;
+const INLINE_IMAGE_OPEN =
+  /!\[([^\]\n\r]*)\]\(([^)\s]+)(?:\s+"([^"\n\r]*)")?\)/y;
 
 /** 從屬性字串（例如 ` textColor="red"` 或 ` href="https://..." target="_blank"`）抽出認得、且值合法的屬性。 */
 function parseInlineAttrs(attrBlob: string): InlineAttrs {
@@ -234,6 +245,49 @@ function parseTableMarkerAttrs(attrBlob: string): {
     }
   }
   return result;
+}
+
+function parseCodeFenceOpen(line: string): {
+  markerId: string | null;
+  language: string | null;
+} | null {
+  const match = line.match(CODE_FENCE_OPEN_PATTERN);
+  if (!match) return null;
+
+  const rawAttrs = match[1].trim();
+  const idMatch = rawAttrs.match(CODE_FENCE_ID_ATTR_PATTERN);
+  const markerId = idMatch ? unescapeMarkerComment(idMatch[1]).trim() : null;
+  const languageText = idMatch
+    ? rawAttrs.slice(0, idMatch.index).trim()
+    : rawAttrs;
+  return {
+    markerId: markerId || null,
+    language: languageText || null,
+  };
+}
+
+function codeBlockToParsedParagraph(
+  openingLine: string,
+  contentLines: string[],
+  sourceLineIndex: number,
+  sourceLineCount: number,
+): ParsedParagraph {
+  const attrs = parseCodeFenceOpen(openingLine) ?? {
+    markerId: null,
+    language: null,
+  };
+  const content = contentLines.join("\n");
+  return {
+    sourceLineIndex,
+    sourceLineCount,
+    markerId: attrs.markerId,
+    align: DEFAULT_ALIGNMENT,
+    headingLevel: DEFAULT_HEADING_LEVEL,
+    blockKind: DEFAULT_BLOCK_KIND,
+    runs: content === "" ? [] : [{ text: content, marks: [] }],
+    codeBlock: true,
+    language: attrs.language,
+  };
 }
 
 function splitTableRowText(rowText: string): string[] {
@@ -719,7 +773,15 @@ function parseLine(
   // 的說明——不再要求整段內容從頭到尾只有圖片語法，圖片前後接著其他文字也能正確解析。
   const runs = normalizeRuns(parseInline(content, options.enableAssets));
 
-  return { markerId, align, headingLevel, blockKind, runs };
+  return {
+    sourceLineIndex: options.lineIndex,
+    sourceLineCount: 1,
+    markerId,
+    align,
+    headingLevel,
+    blockKind,
+    runs,
+  };
 }
 
 // 行內 marker 的開頭／結束標記，供「diff 前清乾淨」用。這裡是不管配對、單純把記號本身
@@ -743,6 +805,12 @@ export function stripInlineMarkers(content: string): string {
  * `⟦uuid⟧...⟦/uuid⟧`、`⟦span-x⟧...⟦/span-x⟧` 這種不該曝光的內部語法。
  */
 export function stripMarkerForDiffLine(line: string): string {
+  const codeFence = parseCodeFenceOpen(line);
+  if (codeFence) {
+    const language = codeFence.language ? codeFence.language : "";
+    return language ? `\`\`\`${language}` : "```";
+  }
+
   const tableLine = parseTableLine(line, { enableAssets: true, lineIndex: 0 });
   if (tableLine?.tableCells) {
     return `| ${tableLine.tableCells
@@ -763,7 +831,24 @@ export function stripMarkerForDiffLine(line: string): string {
 
 /** stripMarkerForDiffLine 套用在整份內容上，逐行處理後用 \n 接回去，方便直接餵給 buildCustomLineDiff。 */
 export function stripMarkerForDiffContent(content: string): string {
-  return content.split("\n").map(stripMarkerForDiffLine).join("\n");
+  const lines = content.split("\n");
+  const output: string[] = [];
+  for (let index = 0; index < lines.length; index++) {
+    const codeFence = parseCodeFenceOpen(lines[index]);
+    if (!codeFence) {
+      output.push(stripMarkerForDiffLine(lines[index]));
+      continue;
+    }
+
+    const language = codeFence.language ? codeFence.language : "";
+    output.push(language ? `\`\`\`${language}` : "```");
+    index++;
+    for (; index < lines.length; index++) {
+      output.push(lines[index]);
+      if (CODE_FENCE_CLOSE_PATTERN.test(lines[index])) break;
+    }
+  }
+  return output.join("\n");
 }
 
 /**
@@ -775,12 +860,40 @@ export function parseMarkdownToParagraphs(
   markdown: string,
   options: ParseLineOptions = { enableAssets: true },
 ): ParsedParagraph[] {
-  return markdown
-    .split("\n")
-    .map((line, lineIndex) => parseLine(line, { ...options, lineIndex }));
+  const lines = markdown.split("\n");
+  const paragraphs: ParsedParagraph[] = [];
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const codeFence = parseCodeFenceOpen(lines[lineIndex]);
+    if (!codeFence) {
+      paragraphs.push(parseLine(lines[lineIndex], { ...options, lineIndex }));
+      continue;
+    }
+
+    const contentLines: string[] = [];
+    let endLineIndex = lineIndex;
+    for (
+      let nextLineIndex = lineIndex + 1;
+      nextLineIndex < lines.length;
+      nextLineIndex++
+    ) {
+      endLineIndex = nextLineIndex;
+      if (CODE_FENCE_CLOSE_PATTERN.test(lines[nextLineIndex])) break;
+      contentLines.push(lines[nextLineIndex]);
+    }
+    paragraphs.push(
+      codeBlockToParsedParagraph(
+        lines[lineIndex],
+        contentLines,
+        lineIndex,
+        endLineIndex - lineIndex + 1,
+      ),
+    );
+    lineIndex = endLineIndex;
+  }
+  return paragraphs;
 }
 
-export type ParagraphGroupKind = BlockKindValue | "table";
+export type ParagraphGroupKind = BlockKindValue | "table" | "code";
 
 export interface ParagraphGroup {
   blockKind: ParagraphGroupKind;
@@ -801,8 +914,16 @@ export function groupParagraphsByBlockKind(
   paragraphs: ParsedParagraph[],
 ): ParagraphGroup[] {
   const groups: ParagraphGroup[] = [];
-  paragraphs.forEach((paragraph, index) => {
+  paragraphs.forEach((paragraph, arrayIndex) => {
+    const index = paragraph.sourceLineIndex ?? arrayIndex;
     const last = groups[groups.length - 1];
+    if (paragraph.codeBlock) {
+      groups.push({
+        blockKind: "code",
+        items: [{ paragraph, index }],
+      });
+      return;
+    }
     if (paragraph.tableId) {
       if (last?.blockKind === "table" && last.tableId === paragraph.tableId) {
         last.items.push({ paragraph, index });
@@ -975,6 +1096,18 @@ function paragraphToDocNode(
   };
 }
 
+function codeBlockToDocNode(paragraph: ParsedParagraph): JSONContent {
+  const content = paragraph.runs.map((run) => run.text).join("");
+  return {
+    type: "storytellerCodeBlock",
+    attrs: {
+      markerId: paragraph.markerId,
+      language: paragraph.language ?? null,
+    },
+    content: content === "" ? [] : [{ type: "text", text: content }],
+  };
+}
+
 function tableRowsToDocNode(
   rows: ParsedParagraph[],
   projectPublicId = "",
@@ -1009,6 +1142,10 @@ export function paragraphsToDoc(
   const content: JSONContent[] = [];
   for (let index = 0; index < paragraphs.length; index++) {
     const paragraph = paragraphs[index];
+    if (paragraph.codeBlock) {
+      content.push(codeBlockToDocNode(paragraph));
+      continue;
+    }
     if (!paragraph.tableId) {
       content.push(paragraphToDocNode(paragraph, projectPublicId));
       continue;

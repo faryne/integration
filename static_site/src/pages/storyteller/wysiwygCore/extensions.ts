@@ -22,6 +22,7 @@ import { MarkerParagraph } from "./markerParagraph";
 import { EmptyParagraphPlaceholder } from "./placeholderExtension";
 import { SlashCommand } from "./slashCommandExtension";
 import type { WysiwygCommandContext } from "./commands";
+import { StorytellerCodeBlock } from "./storytellerCodeBlock";
 import {
   StorytellerTable,
   StorytellerTableCell,
@@ -36,9 +37,11 @@ import { ALIGNMENT_VALUES, DEFAULT_ALIGNMENT } from "./whitelist";
  * 只會原地留在段落文字裡（滿足「非白名單語法略過解析、以純文字顯示」）。
  */
 interface WysiwygCoreExtensionOptions {
-  slashCommand?: false | {
-    getCommandContext: () => WysiwygCommandContext | null;
-  };
+  slashCommand?:
+    | false
+    | {
+        getCommandContext: () => WysiwygCommandContext | null;
+      };
 }
 
 export function createWysiwygCoreExtensions(
@@ -46,6 +49,7 @@ export function createWysiwygCoreExtensions(
 ) {
   return [
     Document,
+    StorytellerCodeBlock,
     StorytellerTable,
     StorytellerTableRow,
     StorytellerTableCell,

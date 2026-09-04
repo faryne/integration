@@ -34,6 +34,7 @@ import {
 
 import { BG_COLOR_CSS, TEXT_COLOR_CSS } from "./wysiwygCore/colorStyles";
 import { CLEAR_FLOATING_ASSET_SX } from "./wysiwygCore/assetImageLayout";
+import { STORYTELLER_CODE_BLOCK_SX } from "./wysiwygCore/storytellerCodeBlockView";
 import {
   hasAssetImageLayoutTarget,
   type WysiwygCommandContext,
@@ -385,6 +386,13 @@ function isTouchPrimaryDevice(): boolean {
   );
 }
 
+function bookmarkPreviewFromMarkerElement(element: Element | null): string {
+  const code = element?.querySelector(".storyteller-code-block-content");
+  return (code?.textContent ?? element?.textContent ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
@@ -576,6 +584,12 @@ export const StorytellerWysiwygEditor = forwardRef<
         const text = event.clipboardData?.getData("text/plain") ?? "";
         if (text === "") return false;
         event.preventDefault();
+        if (
+          view.state.selection.$from.parent.type.name === "storytellerCodeBlock"
+        ) {
+          view.dispatch(view.state.tr.insertText(text));
+          return true;
+        }
         text.split(/\r\n|\r|\n/).forEach((line, index) => {
           if (index > 0) editor?.commands.splitParagraphFresh();
           if (line !== "") view.dispatch(view.state.tr.insertText(line));
@@ -1081,6 +1095,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             FOOTNOTE_HIGHLIGHT_SX,
             PLACEHOLDER_SX,
             BLOCK_KIND_SX,
+            STORYTELLER_CODE_BLOCK_SX,
             CLEAR_FLOATING_ASSET_SX,
             bookmarkHighlightSx,
             {
@@ -1456,7 +1471,7 @@ export const StorytellerWysiwygEditor = forwardRef<
               );
               handleToggleWritingBookmark(
                 hoveredParagraph.markerId,
-                paragraph?.textContent ?? "",
+                bookmarkPreviewFromMarkerElement(paragraph),
               );
             }}
             sx={{
