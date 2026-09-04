@@ -1,4 +1,6 @@
 import CodeIcon from "@mui/icons-material/Code";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { Node, mergeAttributes } from "@tiptap/core";
 import {
   ReactNodeViewRenderer,
@@ -8,7 +10,10 @@ import {
 } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
 
-import { StorytellerCodeBlockFrame } from "./storytellerCodeBlockView";
+import {
+  StorytellerCodeBlockFrame,
+  type StorytellerCodeBlockAction,
+} from "./storytellerCodeBlockView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -27,14 +32,32 @@ function normalizeLanguage(value: unknown): string | null {
   return normalized === "" ? null : normalized;
 }
 
+// 編輯區跟閱讀頁共用 StorytellerCodeBlockFrame，但右上角按鈕組態不同——
+// 「刪除」只有編輯區需要（讀者不能刪作者的內容），閱讀頁走預設的
+// DEFAULT_STORYTELLER_CODE_BLOCK_ACTIONS（只有複製），這裡另外接一份
+// 「複製 + 刪除」的組態，複製沿用跟預設一樣的行為，不用另外重複一份。
 function StorytellerCodeBlockNodeView({
   node,
   selected,
   updateAttributes,
+  deleteNode,
 }: NodeViewProps) {
   const markerId = (node.attrs.markerId as string | null) ?? null;
   const language = normalizeLanguage(node.attrs.language);
   const content = node.textContent;
+
+  const editorActions: StorytellerCodeBlockAction[] = [
+    {
+      icon: <ContentCopyIcon fontSize="inherit" />,
+      label: "複製",
+      onClick: (text) => navigator.clipboard.writeText(text),
+    },
+    {
+      icon: <DeleteOutlineIcon fontSize="inherit" />,
+      label: "刪除程式碼區塊",
+      onClick: () => deleteNode(),
+    },
+  ];
 
   return (
     <NodeViewWrapper
@@ -49,6 +72,7 @@ function StorytellerCodeBlockNodeView({
         onLanguageChange={(nextLanguage) =>
           updateAttributes({ language: normalizeLanguage(nextLanguage) })
         }
+        actions={editorActions}
       >
         <NodeViewContent />
       </StorytellerCodeBlockFrame>
