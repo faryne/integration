@@ -388,8 +388,6 @@ function isTouchPrimaryDevice(): boolean {
 export interface StorytellerWysiwygEditorProps {
   value: string;
   onChange: (markdown: string) => void;
-  /** 工具列左側（大綱收合按鈕），跟右側 toolbarExtra 分開，避免跟 AI／歷史 tab 混在一起。 */
-  toolbarStart?: ReactNode;
   /** 塞在文件層級 action 區的額外操作（例如 AI Agent／編輯歷史切換按鈕），不提供就不顯示。 */
   toolbarExtra?: ReactNode;
   /** embedded 寫作頁把文件工具列放進底部狀態列，避免右側浮動 dock 蓋住上方按鈕。 */
@@ -462,7 +460,6 @@ export const StorytellerWysiwygEditor = forwardRef<
   {
     value,
     onChange,
-    toolbarStart,
     toolbarExtra,
     toolbarPlacement = "top",
     bottomStatusContent,
@@ -1035,7 +1032,6 @@ export const StorytellerWysiwygEditor = forwardRef<
       editor={editor}
       commandContext={commandContext}
       enabledFeatures={enabledFeatures}
-      toolbarStart={toolbarStart}
       toolbarExtra={toolbarExtra}
       placement={toolbarPlacement}
     />

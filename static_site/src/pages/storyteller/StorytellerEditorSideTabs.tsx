@@ -44,6 +44,11 @@ export function StorytellerEditorSideTabs({
           </Tooltip>
         </ToggleButton>
       )}
+      <ToggleButton value="history" disabled={historyDisabled} aria-label="編輯歷史">
+        <Tooltip title="編輯歷史">
+          <HistoryIcon fontSize="small" />
+        </Tooltip>
+      </ToggleButton>
       <ToggleButton
         value="agentic"
         disabled={agenticDisabled}
@@ -51,11 +56,6 @@ export function StorytellerEditorSideTabs({
       >
         <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
           <AutoAwesomeIcon fontSize="small" />
-        </Tooltip>
-      </ToggleButton>
-      <ToggleButton value="history" disabled={historyDisabled} aria-label="編輯歷史">
-        <Tooltip title="編輯歷史">
-          <HistoryIcon fontSize="small" />
         </Tooltip>
       </ToggleButton>
     </ToggleButtonGroup>
