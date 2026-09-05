@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"errors"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
@@ -51,6 +52,22 @@ type storytellerLoreVersionArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
 	LorePublicID    string `json:"lore_public_id"`
 	TargetVersionID uint64 `json:"target_version_id"`
+}
+
+type storytellerGetLoreVersionArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	LorePublicID    string `json:"lore_public_id"`
+	VersionID       uint64 `json:"version_id"`
+}
+
+// storytellerLoreVersionSummary 是設定集版本列表專用輸出，刻意不含 Content，避免 MCP 列表回應過大。
+type storytellerLoreVersionSummary struct {
+	ID                      uint64    `json:"id"`
+	Title                   string    `json:"title"`
+	WordCount               uint      `json:"word_count"`
+	RevertedFromVersionID   *uint64   `json:"reverted_from_version_id"`
+	ConflictedWithVersionID *uint64   `json:"conflicted_with_version_id"`
+	CreatedAt               time.Time `json:"created_at"`
 }
 
 type storytellerMoveLoreArguments struct {
@@ -330,10 +347,70 @@ func storytellerLoreToolSpecs() []ToolSpec {
 		},
 
 		ToolSpec{
+			Name: "storyteller_list_lore_versions",
+			Description: "List a lore/worldbuilding entry's version history by project_public_id and lore_public_id. " +
+				"This returns summary metadata only and does not include full content; use storyteller_get_lore_version " +
+				"to read one version's full content, or storyteller_revert_lore to restore a version.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"lore_public_id":    stringSchema("Lore public_id."),
+			}, []string{"project_public_id", "lore_public_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerLoreArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				versions, err := NewService().LoreVersions(userID, args.ProjectPublicID, args.LorePublicID)
+				if err != nil {
+					return nil, err
+				}
+				summaries := make([]storytellerLoreVersionSummary, 0, len(versions))
+				for _, version := range versions {
+					summaries = append(summaries, storytellerLoreVersionSummary{
+						ID:                      version.ID,
+						Title:                   version.Title,
+						WordCount:               version.WordCount,
+						RevertedFromVersionID:   version.RevertedFromVersionID,
+						ConflictedWithVersionID: version.ConflictedWithVersionID,
+						CreatedAt:               version.CreatedAt,
+					})
+				}
+				return summaries, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_get_lore_version",
+			Description: "Get one lore/worldbuilding version's full content by project_public_id, lore_public_id, and version_id. " +
+				"Use storyteller_list_lore_versions to find candidate version ids first; use storyteller_revert_lore " +
+				"if you decide to restore one of them.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"lore_public_id":    stringSchema("Lore public_id."),
+				"version_id":        integerSchema("Version id to read."),
+			}, []string{"project_public_id", "lore_public_id", "version_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerGetLoreVersionArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				return NewService().LoreVersion(userID, args.ProjectPublicID, args.LorePublicID, args.VersionID)
+			},
+		},
+
+		ToolSpec{
 			Name: "storyteller_revert_lore",
 			Description: "Revert a lore/worldbuilding entry to a previous version by creating a new latest version from target_version_id. " +
-				"There is currently no MCP tool that lists a lore entry's version history; target_version_id can only come " +
-				"from storyteller_get_lore (for the current version id) or from the user checking \"編輯歷史\" in the web app.",
+				"target_version_id can come from storyteller_list_lore_versions, or from storyteller_get_lore when restoring " +
+				"the current latest version id after checking the latest content.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Lore public_id."),
