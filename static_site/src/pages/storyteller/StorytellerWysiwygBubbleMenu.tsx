@@ -103,6 +103,18 @@ export function StorytellerWysiwygBubbleMenu({
         // （例如選到 assetImage 這種 atom node）——這裡額外要求是真正的
         // TextSelection、且選取範圍內有非空白文字，符合「選取文字時顯示」的規格，
         // 不是「任何非空 selection 都顯示」。
+        //
+        // 另外要排除選取範圍落在 code block（storytellerCodeBlock 的 schema
+        // 設定 marks: ""，不允許任何行內格式）裡的情況——不然選取程式碼內容
+        // 一樣會跳出粗體/顏色/連結這些格式工具列，點了也不會有效果（schema
+        // 直接擋掉），純粹是誤導使用者。用 node.type.spec.code 判斷而不是寫死
+        // node 名稱，之後如果有其他 code-like node 也會自動排除。
+        if (
+          isTextSelection(selection) &&
+          selection.$from.parent.type.spec.code
+        ) {
+          return false;
+        }
         return (
           isTextSelection(selection) &&
           !selection.empty &&

@@ -8,12 +8,20 @@ import {
   NodeViewWrapper,
   type NodeViewProps,
 } from "@tiptap/react";
-import { TextSelection } from "@tiptap/pm/state";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type Transaction,
+} from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 import {
   StorytellerCodeBlockFrame,
   type StorytellerCodeBlockAction,
 } from "./storytellerCodeBlockView";
+import { getStorytellerCodeBlockHighlightTokens } from "./storytellerCodeBlockHighlight";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -30,6 +38,114 @@ declare module "@tiptap/core" {
 function normalizeLanguage(value: unknown): string | null {
   const normalized = String(value ?? "").trim();
   return normalized === "" ? null : normalized;
+}
+
+interface ChangedRange {
+  from: number;
+  to: number;
+}
+
+function rangesIntersect(a: ChangedRange, b: ChangedRange) {
+  return a.from <= b.to && b.from <= a.to;
+}
+
+function collectChangedRanges(transaction: Transaction) {
+  const ranges: ChangedRange[] = [];
+  transaction.mapping.maps.forEach((stepMap) => {
+    stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      // 前後各多抓 1 個位置，讓 setNodeAttribute 這類落在節點邊界的變更
+      // 也能命中整個 code block，避免語言切換後留下舊 token class。
+      ranges.push({
+        from: Math.max(0, newStart - 1),
+        to: Math.min(transaction.doc.content.size, newEnd + 1),
+      });
+    });
+  });
+  return ranges;
+}
+
+function buildStorytellerCodeBlockDecorations(
+  node: ProseMirrorNode,
+  pos: number,
+) {
+  return getStorytellerCodeBlockHighlightTokens(
+    node.attrs.language as string | null,
+    node.textContent,
+  ).map((token) =>
+    Decoration.inline(
+      pos + 1 + token.from,
+      pos + 1 + token.to,
+      { class: token.className },
+      { storytellerCodeBlockHighlight: true },
+    ),
+  );
+}
+
+function createStorytellerCodeBlockDecorationSet(
+  doc: ProseMirrorNode,
+  codeBlockName: string,
+) {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (node.type.name === codeBlockName) {
+      decorations.push(...buildStorytellerCodeBlockDecorations(node, pos));
+    }
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
+function updateStorytellerCodeBlockDecorationSet(
+  decorationSet: DecorationSet,
+  transaction: Transaction,
+  codeBlockName: string,
+) {
+  const mappedDecorationSet = decorationSet.map(
+    transaction.mapping,
+    transaction.doc,
+  );
+  if (!transaction.docChanged) return mappedDecorationSet;
+
+  const changedRanges = collectChangedRanges(transaction);
+  if (changedRanges.length === 0) {
+    return createStorytellerCodeBlockDecorationSet(
+      transaction.doc,
+      codeBlockName,
+    );
+  }
+
+  const recomputedRanges: ChangedRange[] = [];
+  const decorationsToAdd: Decoration[] = [];
+  transaction.doc.descendants((node, pos) => {
+    if (node.type.name !== codeBlockName) return;
+
+    const range = { from: pos, to: pos + node.nodeSize };
+    if (
+      !changedRanges.some((changedRange) =>
+        rangesIntersect(changedRange, range),
+      )
+    ) {
+      return;
+    }
+
+    recomputedRanges.push(range);
+    decorationsToAdd.push(...buildStorytellerCodeBlockDecorations(node, pos));
+  });
+
+  const removalRanges = [...changedRanges, ...recomputedRanges];
+  const decorationsToRemove = mappedDecorationSet
+    .find(undefined, undefined, (spec) => spec.storytellerCodeBlockHighlight)
+    .filter((decoration) =>
+      removalRanges.some((range) =>
+        rangesIntersect(range, {
+          from: decoration.from,
+          to: decoration.to,
+        }),
+      ),
+    );
+
+  return mappedDecorationSet
+    .remove(decorationsToRemove)
+    .add(transaction.doc, decorationsToAdd);
 }
 
 // 編輯區跟閱讀頁共用 StorytellerCodeBlockFrame，但右上角按鈕組態不同——
@@ -156,6 +272,36 @@ export const StorytellerCodeBlock = Node.create({
           return true;
         },
     };
+  },
+
+  addProseMirrorPlugins() {
+    const parentPlugins = this.parent?.() ?? [];
+    const codeBlockName = this.name;
+    const pluginKey = new PluginKey<DecorationSet>(
+      "storytellerCodeBlockHighlight",
+    );
+
+    return [
+      ...parentPlugins,
+      new Plugin<DecorationSet>({
+        key: pluginKey,
+        state: {
+          init: (_config, state) =>
+            createStorytellerCodeBlockDecorationSet(state.doc, codeBlockName),
+          apply: (transaction, decorationSet) =>
+            updateStorytellerCodeBlockDecorationSet(
+              decorationSet,
+              transaction,
+              codeBlockName,
+            ),
+        },
+        props: {
+          decorations(state) {
+            return pluginKey.getState(state) ?? DecorationSet.empty;
+          },
+        },
+      }),
+    ];
   },
 
   // 「打三個反引號按 Enter 轉成程式碼區塊」的判斷不能放在這裡——這個
