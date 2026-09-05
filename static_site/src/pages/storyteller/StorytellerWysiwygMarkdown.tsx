@@ -11,6 +11,7 @@ import {
   STORYTELLER_CODE_BLOCK_SX,
   StorytellerCodeBlockFrame,
 } from "./wysiwygCore/storytellerCodeBlockView";
+import { renderStorytellerCodeBlockHighlight } from "./wysiwygCore/storytellerCodeBlockHighlight";
 import {
   computeFootnoteNumbering,
   groupParagraphsByBlockKind,
@@ -375,6 +376,10 @@ export function StorytellerWysiwygMarkdown({
         if (group.blockKind === "code") {
           const { paragraph, index } = group.items[0];
           const content = paragraph.runs.map((run) => run.text).join("");
+          const highlightedContent = renderStorytellerCodeBlockHighlight(
+            paragraph.language,
+            content,
+          );
           return (
             <StorytellerCodeBlockFrame
               key={paragraph.markerId ?? index}
@@ -382,7 +387,7 @@ export function StorytellerWysiwygMarkdown({
               language={paragraph.language}
               content={content}
             >
-              {content}
+              {highlightedContent ?? content}
             </StorytellerCodeBlockFrame>
           );
         }
