@@ -52,7 +52,7 @@ func (r *ToolRegistry) All() []ToolSpec {
 
 // StorytellerToolRegistry 建立 MCP server 與 agent runner 共用的 storyteller 工具清單。
 func StorytellerToolRegistry() *ToolRegistry {
-	specsByName := make(map[string]ToolSpec, 39)
+	specsByName := make(map[string]ToolSpec, 41)
 	for _, specs := range [][]ToolSpec{
 		storytellerProjectToolSpecs(),
 		storytellerStoryToolSpecs(),
@@ -82,6 +82,8 @@ func StorytellerToolRegistry() *ToolRegistry {
 		"storyteller_get_asset",
 		"storyteller_presign_asset_upload",
 		"storyteller_confirm_asset_upload",
+		"storyteller_presign_asset_replace",
+		"storyteller_confirm_asset_replace",
 		"storyteller_update_asset",
 		"storyteller_move_asset",
 		"storyteller_list_asset_collections",
