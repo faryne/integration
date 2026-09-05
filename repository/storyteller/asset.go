@@ -72,6 +72,25 @@ func (r *Repository) UpdateAsset(row *storytellerModel.Asset) error {
 	}).Error
 }
 
+func (r *Repository) ReplaceAssetFile(row *storytellerModel.Asset) error {
+	result := r.db.Model(&storytellerModel.Asset{}).
+		Where("id = ? AND is_deleted = 0 AND deleted_at IS NULL", row.ID).
+		Updates(map[string]any{
+			"s3_key":    row.S3Key,
+			"mime_type": row.MimeType,
+			"file_ext":  row.FileExt,
+			"file_size": row.FileSize,
+			"metadata":  row.Metadata,
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func (r *Repository) MoveAsset(row *storytellerModel.Asset) error {
 	return r.db.Model(row).Update("collection_id", row.CollectionID).Error
 }

@@ -16,9 +16,11 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 
 	"faryne.dev/config"
+	"faryne.dev/service/log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.uber.org/zap"
 	_ "golang.org/x/image/webp"
 )
 
@@ -138,8 +140,8 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 	outputs := make([]storytellerModel.AssetUploadOutput, 0, len(input.Files))
 	for _, file := range input.Files {
 		contentType := strings.TrimSpace(file.ContentType)
-		if _, ok := allowedAssetImageContentTypes[contentType]; !ok {
-			return nil, fmt.Errorf("不支援的檔案類型: %s", contentType)
+		if _, err := validateAssetFileType(storytellerModel.AssetTypeImage, contentType); err != nil {
+			return nil, err
 		}
 		key := randomAssetKey()
 		request, err := presignClient.PresignPutObject(ctx, &s3.PutObjectInput{
@@ -158,6 +160,43 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 		})
 	}
 	return outputs, nil
+}
+
+func (s *Service) PresignAssetReplace(ctx context.Context, userID uint64, projectPublicID, assetPublicID string, input storytellerModel.AssetReplacePresignRequest) (*storytellerModel.AssetReplacePresignOutput, error) {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return nil, err
+	}
+	contentType := strings.TrimSpace(input.MimeType)
+	if _, err := validateAssetFileType(asset.AssetType, contentType); err != nil {
+		return nil, err
+	}
+	if input.Size > maxAssetImageSizeBytes {
+		return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
+	}
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	key := randomAssetKey()
+	request, err := s3.NewPresignClient(client).PresignPutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(config.EnvConfig().S3Bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(contentType),
+	}, s3.WithPresignExpires(imageUploadPresignTTL))
+	if err != nil {
+		return nil, fmt.Errorf("presign asset replace url: %w", err)
+	}
+	return &storytellerModel.AssetReplacePresignOutput{
+		PendingKey: key,
+		UploadURL:  request.URL,
+		MimeType:   contentType,
+		Filename:   strings.TrimSpace(input.Filename),
+	}, nil
 }
 
 func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, input storytellerModel.AssetConfirmRequest) (*storytellerModel.AssetOutput, error) {
@@ -245,6 +284,94 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 		return nil, err
 	}
 	output, err := s.assetOutput(*asset, collectionPublicIDs, 0)
+	return &output, err
+}
+
+func (s *Service) ConfirmAssetReplace(userID uint64, projectPublicID, assetPublicID string, input storytellerModel.AssetReplaceConfirmRequest) (*storytellerModel.AssetOutput, error) {
+	key := strings.TrimSpace(input.PendingKey)
+	if key == "" || !strings.HasPrefix(key, assetKeyPrefix) {
+		return nil, errors.New("invalid asset pending key")
+	}
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	asset, err := s.repo.Asset(project.ID, strings.TrimSpace(assetPublicID))
+	if err != nil {
+		return nil, err
+	}
+	if existing, err := s.repo.AssetByS3Key(project.ID, key); err == nil && existing.ID != asset.ID {
+		return nil, errors.New("asset pending key is already used")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	client, err := initS3Client(ctx)
+	if err != nil {
+		return nil, err
+	}
+	head, err := client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(config.EnvConfig().S3Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("讀取替換資產資訊失敗: %w", err)
+	}
+	contentType := ""
+	if head.ContentType != nil {
+		contentType = strings.TrimSpace(*head.ContentType)
+	}
+	fileExt, err := validateAssetFileType(asset.AssetType, contentType)
+	if err != nil {
+		return nil, err
+	}
+	fileSize := uint64(0)
+	if head.ContentLength != nil {
+		if *head.ContentLength > maxAssetImageSizeBytes {
+			return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
+		}
+		fileSize = uint64(*head.ContentLength)
+	}
+	metadata := storytellerModel.AssetMetadata{}
+	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
+		return nil, err
+	}
+	oldKey := asset.S3Key
+	asset.S3Key = key
+	asset.MimeType = contentType
+	asset.FileExt = fileExt
+	asset.FileSize = fileSize
+	asset.Metadata = metadata
+	if err := s.repo.ReplaceAssetFile(asset); err != nil {
+		return nil, err
+	}
+	if oldKey != "" && oldKey != key {
+		if _, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
+			Bucket: aws.String(config.EnvConfig().S3Bucket),
+			Key:    aws.String(oldKey),
+		}); err != nil {
+			log.Logger().Warn("Storyteller replace asset delete old object failed",
+				zap.Uint64("asset_id", asset.ID),
+				zap.String("asset_public_id", asset.PublicID),
+				zap.String("old_s3_key", oldKey),
+				zap.String("new_s3_key", key),
+				zap.Error(err),
+			)
+		}
+	}
+	updatedAsset, err := s.repo.Asset(project.ID, asset.PublicID)
+	if err != nil {
+		return nil, err
+	}
+	count, err := s.repo.AssetReferenceCount(updatedAsset.ID)
+	if err != nil {
+		return nil, err
+	}
+	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	output, err := s.assetOutput(*updatedAsset, collectionPublicIDs, count)
 	return &output, err
 }
 
@@ -340,6 +467,17 @@ func fillImageSizeMetadata(ctx context.Context, client *s3.Client, key string, m
 	metadata["width"] = cfg.Width
 	metadata["height"] = cfg.Height
 	return nil
+}
+
+func validateAssetFileType(assetType storytellerModel.AssetType, contentType string) (string, error) {
+	if assetType != storytellerModel.AssetTypeImage {
+		return "", errors.New("目前只支援替換圖片資產")
+	}
+	fileExt, ok := allowedAssetImageContentTypes[contentType]
+	if !ok {
+		return "", fmt.Errorf("不支援的檔案類型: %s", contentType)
+	}
+	return fileExt, nil
 }
 
 func assetFileExt(defaultExt, filename string) string {
