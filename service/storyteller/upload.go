@@ -15,6 +15,7 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"go.uber.org/zap"
 )
 
 const (
@@ -95,6 +96,7 @@ func (s *Service) PresignImageUpload(ctx context.Context, userID uint64, project
 			Bucket:      aws.String(config.EnvConfig().S3Bucket),
 			Key:         aws.String(key),
 			ContentType: aws.String(contentType),
+			Tagging:     aws.String(storytellerPendingObjectTagging),
 		}, s3.WithPresignExpires(imageUploadPresignTTL))
 		if err != nil {
 			return nil, fmt.Errorf("presign upload url: %w", err)
@@ -135,6 +137,10 @@ func validateImagePageSizes(keys []string) error {
 			return fmt.Errorf("讀取圖片資訊失敗: %w", err)
 		}
 		if head.ContentLength != nil && *head.ContentLength > maxImagePageSizeBytes {
+			deleteStorytellerPendingObject(ctx, client, key,
+				zap.String("reason", "image_page_size_exceeded"),
+				zap.Int64("content_length_bytes", *head.ContentLength),
+			)
 			return fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxImagePageSizeBytes/1024/1024)
 		}
 	}

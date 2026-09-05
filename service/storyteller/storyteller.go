@@ -20,6 +20,8 @@ import (
 	authRepo "faryne.dev/repository/auth"
 	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/log"
+
+	"go.uber.org/zap"
 )
 
 var whitespaceRegexp = regexp.MustCompile(`\s+`)
@@ -1044,6 +1046,11 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		return nil, err
 	}
 	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		clearImageStoryPendingObjectTags(story.LatestContent,
+			zap.String("reason", "image_story_created"),
+			zap.Uint64("story_id", story.ID),
+			zap.String("story_public_id", story.PublicID),
+		)
 		if err := s.syncImageStoryAssetReferences(project.ID, story); err != nil {
 			return nil, err
 		}
@@ -1107,6 +1114,11 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		return nil, false, err
 	}
 	if story.ContentType == storytellerModel.ProjectContentTypeImage {
+		clearImageStoryPendingObjectTags(story.LatestContent,
+			zap.String("reason", "image_story_updated"),
+			zap.Uint64("story_id", story.ID),
+			zap.String("story_public_id", story.PublicID),
+		)
 		if err := s.syncImageStoryAssetReferences(project.ID, story); err != nil {
 			return nil, false, err
 		}
