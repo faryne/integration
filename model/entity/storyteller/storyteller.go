@@ -896,6 +896,23 @@ type AssetUploadOutput struct {
 	OriginalFilename string `json:"original_filename"`
 }
 
+type AssetReplacePresignRequest struct {
+	MimeType string `json:"mime_type"`
+	Filename string `json:"filename"`
+	Size     uint64 `json:"size"`
+}
+
+type AssetReplacePresignOutput struct {
+	PendingKey string `json:"pending_key"`
+	UploadURL  string `json:"upload_url"`
+	MimeType   string `json:"mime_type"`
+	Filename   string `json:"filename"`
+}
+
+type AssetReplaceConfirmRequest struct {
+	PendingKey string `json:"pending_key"`
+}
+
 type AssetConfirmRequest struct {
 	Key              string        `json:"key"`
 	ContentType      string        `json:"content_type"`

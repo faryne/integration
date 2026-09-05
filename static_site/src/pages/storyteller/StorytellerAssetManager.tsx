@@ -17,6 +17,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   Grid,
   IconButton,
   LinearProgress,
@@ -36,14 +37,15 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import {
+  useConfirmStorytellerAssetReplace,
   useDeleteStorytellerAssetCollection,
   useDeleteStorytellerAsset,
   useMoveStorytellerAsset,
+  usePrepareStorytellerAssetReplace,
   useSaveStorytellerAssetCollection,
   useStorytellerAssetCollections,
   useStorytellerAssets,
   useUpdateStorytellerAsset,
-  useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -52,8 +54,8 @@ import {
   formatStorytellerDate,
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
   STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-  STORYTELLER_IMAGE_PAGE_MAX_COUNT,
 } from "@/data/storyteller.ts";
+import { StorytellerAssetUploadDrawer } from "@/pages/storyteller/StorytellerAssetUploadDrawer.tsx";
 import type {
   StorytellerAsset,
   StorytellerAssetCollection,
@@ -134,7 +136,7 @@ export function StorytellerAssetManager({
 }: {
   projectPublicId: string;
 }) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
   const [snack, setSnack] = useState<{
@@ -168,9 +170,18 @@ export function StorytellerAssetManager({
     anchorEl: HTMLElement;
     asset: StorytellerAsset;
   } | null>(null);
+  const [replacePickerTarget, setReplacePickerTarget] =
+    useState<StorytellerAsset | null>(null);
+  const [replaceConfirmTarget, setReplaceConfirmTarget] = useState<{
+    asset: StorytellerAsset;
+    filename: string;
+    pendingKey: string;
+    mimeType: string;
+  } | null>(null);
   const [uploadMenuAnchor, setUploadMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
+  const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
   const [uploadProgress, setUploadProgress] = useState<
     Record<number, UploadProgress>
@@ -183,7 +194,10 @@ export function StorytellerAssetManager({
     activeCollectionId,
   );
   const collectionsQuery = useStorytellerAssetCollections(projectPublicId);
-  const uploadAssets = useUploadStorytellerAssets(projectPublicId);
+  const prepareAssetReplace =
+    usePrepareStorytellerAssetReplace(projectPublicId);
+  const confirmAssetReplace =
+    useConfirmStorytellerAssetReplace(projectPublicId);
   const updateAsset = useUpdateStorytellerAsset(projectPublicId);
   const deleteAsset = useDeleteStorytellerAsset(projectPublicId);
   const saveCollection = useSaveStorytellerAssetCollection(projectPublicId);
@@ -350,78 +364,68 @@ export function StorytellerAssetManager({
     setDraggingAsset(null);
   }
 
-  async function handleFiles(files: FileList | null) {
-    const selected = Array.from(files ?? []);
-    const rejectedType = selected.some(
-      (file) => !STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type),
-    );
-    const rejectedSize = selected.some(
-      (file) => file.size > STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-    );
-    const accepted = selected.filter(
-      (file) =>
-        STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type) &&
-        file.size <= STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-    );
-    const images = accepted.slice(0, STORYTELLER_IMAGE_PAGE_MAX_COUNT);
-    const overCount = accepted.length > STORYTELLER_IMAGE_PAGE_MAX_COUNT;
-    if (images.length === 0) {
-      setSnack({ message: "請選擇圖片檔案。", severity: "error" });
+  function chooseAssetReplace(asset: StorytellerAsset) {
+    if (asset.asset_type !== "image") {
+      setSnack({ message: "目前只支援替換圖片資產。", severity: "error" });
       return;
     }
-    if (rejectedType || rejectedSize || overCount) {
-      const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
-      const reasons = [
-        rejectedType && "只接受 JPEG／PNG／WebP／GIF 圖片檔",
-        rejectedSize && `單張檔案不能超過 ${maxMB}MB`,
-        overCount && `單次最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 張`,
-      ].filter(Boolean);
+    setAssetMoveMenu(null);
+    setReplacePickerTarget(asset);
+    if (replaceFileInputRef.current) {
+      replaceFileInputRef.current.value = "";
+    }
+    window.setTimeout(() => replaceFileInputRef.current?.click(), 0);
+  }
+
+  async function handleReplaceFile(files: FileList | null) {
+    const target = replacePickerTarget;
+    const file = files?.[0];
+    if (!target || !file) {
+      return;
+    }
+    if (!STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type)) {
       setSnack({
-        message: `部分檔案未上傳：${reasons.join("、")}`,
+        message: "請選擇 JPEG／PNG／WebP／GIF 圖片檔。",
         severity: "error",
       });
+      setReplacePickerTarget(null);
+      return;
+    }
+    if (file.size > STORYTELLER_IMAGE_PAGE_MAX_BYTES) {
+      const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
+      setSnack({ message: `單張檔案不能超過 ${maxMB}MB。`, severity: "error" });
+      setReplacePickerTarget(null);
+      return;
     }
     setUploadPhase("uploading");
-    setUploadProgress(
-      Object.fromEntries(
-        images.map((file, index) => [
-          index,
-          { name: file.name, loaded: 0, total: file.size },
-        ]),
-      ),
-    );
+    setUploadProgress({ 0: { name: file.name, loaded: 0, total: file.size } });
     try {
-      const uploaded = await uploadAssets.mutateAsync({
-        files: images,
-        collectionId:
-          activeCollectionId === uncategorizedCollectionId
-            ? ""
-            : activeCollectionId,
-        onProgress: (index, loaded, total) => {
-          setUploadProgress((current) => ({
-            ...current,
-            [index]: {
-              name: current[index]?.name ?? images[index]?.name ?? "",
-              loaded,
-              total,
-            },
-          }));
-        },
+      const upload = await prepareAssetReplace.mutateAsync({
+        assetPublicId: target.public_id,
+        file,
+        onProgress: (loaded, total) =>
+          setUploadProgress({ 0: { name: file.name, loaded, total } }),
+      });
+      setReplaceConfirmTarget({
+        asset: target,
+        filename: file.name,
+        pendingKey: upload.pending_key,
+        mimeType: file.type,
       });
       setSnack({
-        message: `已上傳 ${uploaded.length} 個資產。`,
-        severity: "success",
+        message: "新檔案已上傳，確認後才會取代原資產。",
+        severity: "info",
       });
-      setPage(1);
     } catch (error) {
       setSnack({
-        message: errorMessage(error, "資產上傳失敗，請稍後再試。"),
+        message: errorMessage(error, "替換檔案上傳失敗，原資產未變更。"),
         severity: "error",
       });
     } finally {
       setUploadPhase("idle");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      setReplacePickerTarget(null);
+      if (replaceFileInputRef.current) {
+        replaceFileInputRef.current.value = "";
       }
     }
   }
@@ -461,6 +465,26 @@ export function StorytellerAssetManager({
     }
   }
 
+  async function confirmReplaceFile() {
+    if (!replaceConfirmTarget) {
+      return;
+    }
+    try {
+      await confirmAssetReplace.mutateAsync({
+        assetPublicId: replaceConfirmTarget.asset.public_id,
+        pendingKey: replaceConfirmTarget.pendingKey,
+      });
+      await assetsQuery.refetch();
+      setReplaceConfirmTarget(null);
+      setSnack({ message: "資產檔案已取代。", severity: "success" });
+    } catch (error) {
+      setSnack({
+        message: errorMessage(error, "資產檔案取代失敗，原資產未變更。"),
+        severity: "error",
+      });
+    }
+  }
+
   const progressRows = Object.values(uploadProgress);
   const progressLoaded = progressRows.reduce((sum, row) => sum + row.loaded, 0);
   const progressTotal = progressRows.reduce((sum, row) => sum + row.total, 0);
@@ -469,7 +493,7 @@ export function StorytellerAssetManager({
   const openUploadMenu = (target: HTMLElement) => setUploadMenuAnchor(target);
   const chooseImageUpload = () => {
     setUploadMenuAnchor(null);
-    fileInputRef.current?.click();
+    setUploadDrawerOpen(true);
   };
   const assetCollectionName = (asset: StorytellerAsset) =>
     asset.collection_id
@@ -548,12 +572,11 @@ export function StorytellerAssetManager({
           </Menu>
           <Box
             component="input"
-            ref={fileInputRef}
+            ref={replaceFileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
+            accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.join(",")}
             sx={{ display: "none" }}
-            onChange={(event) => void handleFiles(event.target.files)}
+            onChange={(event) => void handleReplaceFile(event.target.files)}
           />
         </Stack>
       </Stack>
@@ -563,6 +586,22 @@ export function StorytellerAssetManager({
         open={Boolean(assetMoveMenu)}
         onClose={() => setAssetMoveMenu(null)}
       >
+        <MenuItem
+          disabled={
+            uploadPhase === "uploading" ||
+            confirmAssetReplace.isPending ||
+            assetMoveMenu?.asset.asset_type !== "image"
+          }
+          onClick={() =>
+            assetMoveMenu && chooseAssetReplace(assetMoveMenu.asset)
+          }
+        >
+          <ListItemIcon>
+            <FileUploadIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>取代檔案</ListItemText>
+        </MenuItem>
+        <Divider />
         <MenuItem
           disabled={
             moveAsset.isPending ||
@@ -856,7 +895,7 @@ export function StorytellerAssetManager({
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="移動資產">
+                        <Tooltip title="資產操作">
                           <IconButton
                             size="small"
                             onClick={(event) =>
@@ -984,6 +1023,19 @@ export function StorytellerAssetManager({
         </DialogActions>
       </Dialog>
 
+      <StorytellerAssetUploadDrawer
+        open={uploadDrawerOpen}
+        projectPublicId={projectPublicId}
+        collectionId={
+          activeCollectionId === uncategorizedCollectionId
+            ? ""
+            : activeCollectionId
+        }
+        onClose={() => setUploadDrawerOpen(false)}
+        onUploaded={() => setPage(1)}
+        onNotify={(message, severity) => setSnack({ message, severity })}
+      />
+
       <Dialog
         open={collectionDialogOpen}
         onClose={() => {
@@ -1078,6 +1130,41 @@ export function StorytellerAssetManager({
         onClose={() => setCollectionDeleteTarget(null)}
         onConfirm={() => void confirmDeleteCollection()}
       />
+
+      <Dialog
+        open={Boolean(replaceConfirmTarget)}
+        onClose={() => setReplaceConfirmTarget(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>取代檔案</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ pt: 1 }}>
+            <Typography>
+              此操作無法復原；確認後舊檔案會被永久刪除，所有引用此資產的地方都會立即顯示新檔案。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {replaceConfirmTarget?.asset.title ||
+                replaceConfirmTarget?.asset.original_filename ||
+                replaceConfirmTarget?.asset.public_id}
+              {" -> "}
+              {replaceConfirmTarget?.filename}（{replaceConfirmTarget?.mimeType}
+              ）
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReplaceConfirmTarget(null)}>取消</Button>
+          <Button
+            color="warning"
+            variant="contained"
+            disabled={confirmAssetReplace.isPending}
+            onClick={() => void confirmReplaceFile()}
+          >
+            {confirmAssetReplace.isPending ? "取代中" : "確認取代"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <CustomSnackbar
         open={Boolean(snack)}

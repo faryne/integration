@@ -91,6 +91,26 @@ func TestStorytellerRegistryIncludesPatchAndSearchReplaceTools(t *testing.T) {
 	require.Contains(t, schemaDescription(byName["storyteller_search_replace_lore"].InputSchema, "is_regex"), "defaults to false")
 }
 
+func TestStorytellerRegistryIncludesAssetReplaceTools(t *testing.T) {
+	tools := StorytellerToolRegistry().All()
+	byName := make(map[string]ToolSpec, len(tools))
+	for _, spec := range tools {
+		byName[spec.Name] = spec
+	}
+
+	for _, name := range []string{
+		"storyteller_presign_asset_replace",
+		"storyteller_confirm_asset_replace",
+	} {
+		spec, ok := byName[name]
+		require.Truef(t, ok, "%s should be registered", name)
+		require.NotNil(t, spec.Handler)
+		require.NotEmpty(t, spec.InputSchema)
+		require.Contains(t, spec.Description, "IRREVERSIBLE")
+		require.Contains(t, spec.Description, "no version history")
+	}
+}
+
 func schemaDescription(schema map[string]interface{}, property string) string {
 	props, _ := schema["properties"].(map[string]interface{})
 	raw, _ := props[property].(map[string]interface{})

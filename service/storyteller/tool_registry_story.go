@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
@@ -65,6 +66,23 @@ type storytellerStoryVersionArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
 	StoryPublicID   string `json:"story_public_id"`
 	TargetVersionID uint64 `json:"target_version_id"`
+}
+
+type storytellerGetStoryVersionArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id"`
+	VersionID       uint64 `json:"version_id"`
+}
+
+// storytellerStoryVersionSummary 是版本列表專用輸出，刻意不含 Content，避免歷史一多就塞爆 MCP 回應。
+type storytellerStoryVersionSummary struct {
+	ID                      uint64    `json:"id"`
+	Title                   string    `json:"title"`
+	Summary                 string    `json:"summary"`
+	WordCount               uint      `json:"word_count"`
+	RevertedFromVersionID   *uint64   `json:"reverted_from_version_id"`
+	ConflictedWithVersionID *uint64   `json:"conflicted_with_version_id"`
+	CreatedAt               time.Time `json:"created_at"`
 }
 
 type storytellerMoveStoryArguments struct {
@@ -278,10 +296,71 @@ func storytellerStoryToolSpecs() []ToolSpec {
 		},
 
 		ToolSpec{
+			Name: "storyteller_list_story_versions",
+			Description: "List a story's version history by project_public_id and story_public_id. " +
+				"This returns summary metadata only and does not include full content; use storyteller_get_story_version " +
+				"to read one version's full content, or storyteller_revert_story to restore a version.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"story_public_id":   stringSchema("Story public_id."),
+			}, []string{"project_public_id", "story_public_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerStoryArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				versions, err := NewService().StoryVersions(userID, args.ProjectPublicID, args.StoryPublicID)
+				if err != nil {
+					return nil, err
+				}
+				summaries := make([]storytellerStoryVersionSummary, 0, len(versions))
+				for _, version := range versions {
+					summaries = append(summaries, storytellerStoryVersionSummary{
+						ID:                      version.ID,
+						Title:                   version.Title,
+						Summary:                 version.Summary,
+						WordCount:               version.WordCount,
+						RevertedFromVersionID:   version.RevertedFromVersionID,
+						ConflictedWithVersionID: version.ConflictedWithVersionID,
+						CreatedAt:               version.CreatedAt,
+					})
+				}
+				return summaries, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_get_story_version",
+			Description: "Get one story version's full content by project_public_id, story_public_id, and version_id. " +
+				"Use storyteller_list_story_versions to find candidate version ids first; use storyteller_revert_story " +
+				"if you decide to restore one of them.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"story_public_id":   stringSchema("Story public_id."),
+				"version_id":        integerSchema("Version id to read."),
+			}, []string{"project_public_id", "story_public_id", "version_id"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerGetStoryVersionArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				return NewService().StoryVersion(userID, args.ProjectPublicID, args.StoryPublicID, args.VersionID)
+			},
+		},
+
+		ToolSpec{
 			Name: "storyteller_revert_story",
 			Description: "Revert a story to a previous version by creating a new latest version from target_version_id. " +
-				"There is currently no MCP tool that lists a story's version history; target_version_id can only come " +
-				"from storyteller_get_story (for the current version id) or from the user checking \"編輯歷史\" in the web app.",
+				"target_version_id can come from storyteller_list_story_versions, or from storyteller_get_story when restoring " +
+				"the current latest version id after checking the latest content.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"story_public_id":   stringSchema("Story public_id."),

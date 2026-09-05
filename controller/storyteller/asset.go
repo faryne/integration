@@ -65,6 +65,36 @@ func ConfirmAssetUpload(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+func PresignAssetReplace(ctx fiber.Ctx) error {
+	var input storytellerModel.AssetReplacePresignRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().PresignAssetReplace(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("asset"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller asset not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
+func ConfirmAssetReplace(ctx fiber.Ctx) error {
+	var input storytellerModel.AssetReplaceConfirmRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().ConfirmAssetReplace(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("asset"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller asset not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func UpdateAsset(ctx fiber.Ctx) error {
 	var input storytellerModel.AssetUpdateRequest
 	if err := ctx.Bind().Body(&input); err != nil {

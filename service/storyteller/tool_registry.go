@@ -51,8 +51,19 @@ func (r *ToolRegistry) All() []ToolSpec {
 }
 
 // StorytellerToolRegistry 建立 MCP server 與 agent runner 共用的 storyteller 工具清單。
+//
+// 2026-09-05 之前這裡曾經多一份手寫的工具名稱清單，先把每個 provider function
+// 的 spec 收進一個 name→spec 的 map，再照著那份清單逐一撈出來註冊——原意是想
+// 固定住 MCP 工具列表的排列順序，但代價是兩份清單要手動保持同步：provider
+// function 裡新增一個 spec 卻忘記把名字加進清單，會悄悄漏註冊；清單裡打錯字
+// 或殘留已刪除的名字，Go map 對不存在的 key 回傳零值、不會 panic，會把一個
+// 空殼 ToolSpec{} 註冊進去，兩種情況都不會在編譯期或啟動期報錯。查過
+// `.All()` 的所有呼叫端（ReadOnlyStorytellerTools／MCP server 註冊／測試）
+// 都是用名稱查找或 prefix 過濾，沒有任何地方依賴排列順序，於是拿掉那份清單，
+// 直接照 provider function 本身的宣告順序註冊——順序改成「照 provider 分組」
+// 而不是原本手寫清單的順序，但沒有人依賴那個順序，這個改動是安全的。
 func StorytellerToolRegistry() *ToolRegistry {
-	specsByName := make(map[string]ToolSpec, 39)
+	registry := NewToolRegistry()
 	for _, specs := range [][]ToolSpec{
 		storytellerProjectToolSpecs(),
 		storytellerStoryToolSpecs(),
@@ -61,53 +72,8 @@ func StorytellerToolRegistry() *ToolRegistry {
 		storytellerVolumeToolSpecs(),
 	} {
 		for _, spec := range specs {
-			specsByName[spec.Name] = spec
+			registry.Register(spec)
 		}
-	}
-
-	registry := NewToolRegistry()
-	for _, name := range []string{
-		"storyteller_list_projects",
-		"storyteller_get_project",
-		"storyteller_list_stories",
-		"storyteller_list_lores",
-		"storyteller_get_story",
-		"storyteller_upsert_story",
-		"storyteller_patch_story",
-		"storyteller_search_replace_story",
-		"storyteller_revert_story",
-		"storyteller_move_story",
-		"storyteller_presign_image_upload",
-		"storyteller_list_assets",
-		"storyteller_get_asset",
-		"storyteller_presign_asset_upload",
-		"storyteller_confirm_asset_upload",
-		"storyteller_update_asset",
-		"storyteller_move_asset",
-		"storyteller_list_asset_collections",
-		"storyteller_create_asset_collection",
-		"storyteller_update_asset_collection",
-		"storyteller_delete_asset_collection",
-		"storyteller_delete_asset",
-		"storyteller_upsert_image_story",
-		"storyteller_delete_story",
-		"storyteller_list_lore_collections",
-		"storyteller_create_lore_collection",
-		"storyteller_update_lore_collection",
-		"storyteller_delete_lore_collection",
-		"storyteller_list_volumes",
-		"storyteller_create_volume",
-		"storyteller_update_volume",
-		"storyteller_delete_volume",
-		"storyteller_move_lore",
-		"storyteller_get_lore",
-		"storyteller_upsert_lore",
-		"storyteller_patch_lore",
-		"storyteller_search_replace_lore",
-		"storyteller_revert_lore",
-		"storyteller_delete_lore",
-	} {
-		registry.Register(specsByName[name])
 	}
 	return registry
 }

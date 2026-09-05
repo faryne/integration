@@ -37,6 +37,20 @@ type storytellerConfirmAssetUploadArguments struct {
 	Metadata         storytellerModel.AssetMetadata `json:"metadata"`
 }
 
+type storytellerPresignAssetReplaceArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	AssetPublicID   string `json:"asset_public_id"`
+	MimeType        string `json:"mime_type"`
+	Filename        string `json:"filename"`
+	Size            uint64 `json:"size"`
+}
+
+type storytellerConfirmAssetReplaceArguments struct {
+	ProjectPublicID string `json:"project_public_id"`
+	AssetPublicID   string `json:"asset_public_id"`
+	PendingKey      string `json:"pending_key"`
+}
+
 type storytellerUpdateAssetArguments struct {
 	ProjectPublicID string                         `json:"project_public_id"`
 	AssetPublicID   string                         `json:"asset_public_id"`
@@ -189,6 +203,64 @@ func storytellerAssetToolSpecs() []ToolSpec {
 					Description:      args.Description,
 					Metadata:         args.Metadata,
 				})
+				if err != nil {
+					return nil, err
+				}
+				return asset, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_presign_asset_replace",
+			Description: "Step 1 of replacing an existing image asset file in place. The asset_public_id stays the same after confirm. " +
+				"This is an IRREVERSIBLE replace flow: after storyteller_confirm_asset_replace succeeds, the old file will be permanently deleted and there is no version history or rollback.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"asset_public_id":   stringSchema("Existing asset public_id to replace in place."),
+				"mime_type":         stringSchema("New file MIME type. Must match the existing asset type; currently image/jpeg, image/png, image/webp, or image/gif."),
+				"filename":          stringSchema("Original filename of the new file."),
+				"size":              integerSchema("New file size in bytes. Images must stay within the asset upload size limit."),
+			}, []string{"project_public_id", "asset_public_id", "mime_type", "filename", "size"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerPresignAssetReplaceArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				upload, err := NewService().PresignAssetReplace(ctx, userID, args.ProjectPublicID, args.AssetPublicID, storytellerModel.AssetReplacePresignRequest{
+					MimeType: args.MimeType,
+					Filename: args.Filename,
+					Size:     args.Size,
+				})
+				if err != nil {
+					return nil, err
+				}
+				return upload, nil
+			},
+		},
+
+		ToolSpec{
+			Name: "storyteller_confirm_asset_replace",
+			Description: "Step 2 of replacing an existing asset file in place after uploading bytes to the presigned URL. " +
+				"IRREVERSIBLE: this overwrites the asset row's file pointer, immediately changes every existing reference to show the new file, permanently deletes the old S3 object, and has no version history or rollback.",
+			InputSchema: objectSchema(map[string]interface{}{
+				"project_public_id": stringSchema("Project public_id."),
+				"asset_public_id":   stringSchema("Existing asset public_id to replace in place."),
+				"pending_key":       stringSchema("Pending S3 key returned by storyteller_presign_asset_replace."),
+			}, []string{"project_public_id", "asset_public_id", "pending_key"}),
+			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+				userID, err := storytellerUserIDFromContext(ctx)
+				if err != nil {
+					return nil, err
+				}
+				var args storytellerConfirmAssetReplaceArguments
+				if err := decodeArguments(arguments, &args); err != nil {
+					return nil, err
+				}
+				asset, err := NewService().ConfirmAssetReplace(userID, args.ProjectPublicID, args.AssetPublicID, storytellerModel.AssetReplaceConfirmRequest{PendingKey: args.PendingKey})
 				if err != nil {
 					return nil, err
 				}

@@ -232,6 +232,13 @@ export interface StorytellerAssetUploadOutput {
   original_filename: string;
 }
 
+export interface StorytellerAssetReplaceOutput {
+  pending_key: string;
+  upload_url: string;
+  mime_type: string;
+  filename: string;
+}
+
 export interface StorytellerAssetUpdateRequest {
   title: string;
   alt_text: string;

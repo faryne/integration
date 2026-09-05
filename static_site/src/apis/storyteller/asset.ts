@@ -7,6 +7,7 @@ import type {
   StorytellerAssetCollection,
   StorytellerAssetCollectionRequest,
   StorytellerAssetPage,
+  StorytellerAssetReplaceOutput,
   StorytellerAssetUpdateRequest,
   StorytellerAssetUploadOutput,
   StorytellerImagePageUploadOutput,
@@ -169,6 +170,65 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
         }
       }
       return assets;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// 替換資產仍採兩段式：這個 mutation 只負責 presign + PUT，新檔上傳成功後
+// 交給畫面顯示不可逆確認，再呼叫 confirm 真的切換 asset row 的 S3 key。
+export function usePrepareStorytellerAssetReplace(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      assetPublicId,
+      file,
+      onProgress,
+    }: {
+      assetPublicId: string;
+      file: File;
+      onProgress?: (loaded: number, total: number) => void;
+    }) => {
+      const presign = await axios.post<
+        CommonResponse<StorytellerAssetReplaceOutput>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/assets/${assetPublicId}/replace/presign`,
+        { mime_type: file.type, filename: file.name, size: file.size },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      const upload = presign.data.data;
+      if (!upload?.pending_key || !upload.upload_url) {
+        throw new Error("替換上傳網址回應不完整");
+      }
+      await axios.put(upload.upload_url, file, {
+        headers: { "Content-Type": file.type },
+        onUploadProgress: (event) =>
+          onProgress?.(event.loaded, event.total ?? file.size),
+      });
+      return upload;
+    },
+  });
+}
+
+export function useConfirmStorytellerAssetReplace(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      assetPublicId,
+      pendingKey,
+    }: {
+      assetPublicId: string;
+      pendingKey: string;
+    }) => {
+      const response = await axios.post<CommonResponse<StorytellerAsset>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/assets/${assetPublicId}/replace/confirm`,
+        { pending_key: pendingKey },
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
