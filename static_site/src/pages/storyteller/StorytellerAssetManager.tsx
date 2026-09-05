@@ -46,7 +46,6 @@ import {
   useStorytellerAssetCollections,
   useStorytellerAssets,
   useUpdateStorytellerAsset,
-  useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -55,8 +54,8 @@ import {
   formatStorytellerDate,
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
   STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-  STORYTELLER_IMAGE_PAGE_MAX_COUNT,
 } from "@/data/storyteller.ts";
+import { StorytellerAssetUploadDrawer } from "@/pages/storyteller/StorytellerAssetUploadDrawer.tsx";
 import type {
   StorytellerAsset,
   StorytellerAssetCollection,
@@ -137,7 +136,6 @@ export function StorytellerAssetManager({
 }: {
   projectPublicId: string;
 }) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const replaceFileInputRef = useRef<HTMLInputElement | null>(null);
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState("");
@@ -183,6 +181,7 @@ export function StorytellerAssetManager({
   const [uploadMenuAnchor, setUploadMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
+  const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
   const [uploadProgress, setUploadProgress] = useState<
     Record<number, UploadProgress>
@@ -195,7 +194,6 @@ export function StorytellerAssetManager({
     activeCollectionId,
   );
   const collectionsQuery = useStorytellerAssetCollections(projectPublicId);
-  const uploadAssets = useUploadStorytellerAssets(projectPublicId);
   const prepareAssetReplace =
     usePrepareStorytellerAssetReplace(projectPublicId);
   const confirmAssetReplace =
@@ -366,82 +364,6 @@ export function StorytellerAssetManager({
     setDraggingAsset(null);
   }
 
-  async function handleFiles(files: FileList | null) {
-    const selected = Array.from(files ?? []);
-    const rejectedType = selected.some(
-      (file) => !STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type),
-    );
-    const rejectedSize = selected.some(
-      (file) => file.size > STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-    );
-    const accepted = selected.filter(
-      (file) =>
-        STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type) &&
-        file.size <= STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-    );
-    const images = accepted.slice(0, STORYTELLER_IMAGE_PAGE_MAX_COUNT);
-    const overCount = accepted.length > STORYTELLER_IMAGE_PAGE_MAX_COUNT;
-    if (images.length === 0) {
-      setSnack({ message: "請選擇圖片檔案。", severity: "error" });
-      return;
-    }
-    if (rejectedType || rejectedSize || overCount) {
-      const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
-      const reasons = [
-        rejectedType && "只接受 JPEG／PNG／WebP／GIF 圖片檔",
-        rejectedSize && `單張檔案不能超過 ${maxMB}MB`,
-        overCount && `單次最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 張`,
-      ].filter(Boolean);
-      setSnack({
-        message: `部分檔案未上傳：${reasons.join("、")}`,
-        severity: "error",
-      });
-    }
-    setUploadPhase("uploading");
-    setUploadProgress(
-      Object.fromEntries(
-        images.map((file, index) => [
-          index,
-          { name: file.name, loaded: 0, total: file.size },
-        ]),
-      ),
-    );
-    try {
-      const uploaded = await uploadAssets.mutateAsync({
-        files: images,
-        collectionId:
-          activeCollectionId === uncategorizedCollectionId
-            ? ""
-            : activeCollectionId,
-        onProgress: (index, loaded, total) => {
-          setUploadProgress((current) => ({
-            ...current,
-            [index]: {
-              name: current[index]?.name ?? images[index]?.name ?? "",
-              loaded,
-              total,
-            },
-          }));
-        },
-      });
-      setSnack({
-        message: `已上傳 ${uploaded.length} 個資產。`,
-        severity: "success",
-      });
-      setPage(1);
-    } catch (error) {
-      setSnack({
-        message: errorMessage(error, "資產上傳失敗，請稍後再試。"),
-        severity: "error",
-      });
-    } finally {
-      setUploadPhase("idle");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  }
-
   function chooseAssetReplace(asset: StorytellerAsset) {
     if (asset.asset_type !== "image") {
       setSnack({ message: "目前只支援替換圖片資產。", severity: "error" });
@@ -571,7 +493,7 @@ export function StorytellerAssetManager({
   const openUploadMenu = (target: HTMLElement) => setUploadMenuAnchor(target);
   const chooseImageUpload = () => {
     setUploadMenuAnchor(null);
-    fileInputRef.current?.click();
+    setUploadDrawerOpen(true);
   };
   const assetCollectionName = (asset: StorytellerAsset) =>
     asset.collection_id
@@ -650,18 +572,9 @@ export function StorytellerAssetManager({
           </Menu>
           <Box
             component="input"
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            multiple
-            sx={{ display: "none" }}
-            onChange={(event) => void handleFiles(event.target.files)}
-          />
-          <Box
-            component="input"
             ref={replaceFileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.join(",")}
             sx={{ display: "none" }}
             onChange={(event) => void handleReplaceFile(event.target.files)}
           />
@@ -1109,6 +1022,19 @@ export function StorytellerAssetManager({
           </Button>
         </DialogActions>
       </Dialog>
+
+      <StorytellerAssetUploadDrawer
+        open={uploadDrawerOpen}
+        projectPublicId={projectPublicId}
+        collectionId={
+          activeCollectionId === uncategorizedCollectionId
+            ? ""
+            : activeCollectionId
+        }
+        onClose={() => setUploadDrawerOpen(false)}
+        onUploaded={() => setPage(1)}
+        onNotify={(message, severity) => setSnack({ message, severity })}
+      />
 
       <Dialog
         open={collectionDialogOpen}

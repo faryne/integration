@@ -2,7 +2,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import FolderIcon from "@mui/icons-material/Folder";
-import UploadFileIcon from "@mui/icons-material/UploadFile";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
@@ -21,7 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useSaveStorytellerStory,
@@ -52,6 +51,7 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerAssetDropzone } from "@/pages/storyteller/StorytellerAssetDropzone.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
@@ -150,13 +150,11 @@ export default function StorytellerImageEpisodeEditor({
   const saveStory = useSaveStorytellerStory(project?.public_id);
   const uploadAssets = useUploadStorytellerAssets(project?.public_id);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [status, setStatus] = useState<"draft" | "completed">("completed");
   const [selectedVolumeId, setSelectedVolumeId] = useState("");
   const [pages, setPages] = useState<PendingPage[]>([]);
-  const [dragOver, setDragOver] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -398,7 +396,7 @@ export default function StorytellerImageEpisodeEditor({
     }
   }
 
-  function addFiles(fileList: FileList | null) {
+  function addFiles(fileList: FileList | File[] | null) {
     if (!fileList) {
       return;
     }
@@ -484,12 +482,6 @@ export default function StorytellerImageEpisodeEditor({
         page.id === pageId ? { ...page, description } : page,
       ),
     );
-  }
-
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setDragOver(false);
-    addFiles(event.dataTransfer.files);
   }
 
   async function handleSubmit() {
@@ -797,40 +789,11 @@ export default function StorytellerImageEpisodeEditor({
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 頁面（{pages.length} 頁）
               </Typography>
-              <Box
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                sx={{
-                  border: "2px dashed",
-                  borderColor: dragOver ? "primary.main" : "divider",
-                  borderRadius: 1,
-                  p: 4,
-                  textAlign: "center",
-                  cursor: "pointer",
-                  bgcolor: dragOver ? "action.hover" : "transparent",
-                }}
-              >
-                <UploadFileIcon
-                  color={dragOver ? "primary" : "disabled"}
-                  fontSize="large"
-                />
-                <Typography color="text.secondary" sx={{ mt: 1 }}>
-                  拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）
-                </Typography>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.join(",")}
-                  multiple
-                  hidden
-                  onChange={(event) => addFiles(event.target.files)}
-                />
-              </Box>
+              <StorytellerAssetDropzone
+                accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES}
+                hint="拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）"
+                onFilesSelected={addFiles}
+              />
               <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
                 <Button
                   variant="outlined"
