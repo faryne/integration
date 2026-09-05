@@ -148,6 +148,7 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 			Bucket:      aws.String(config.EnvConfig().S3Bucket),
 			Key:         aws.String(key),
 			ContentType: aws.String(contentType),
+			Tagging:     aws.String(storytellerPendingObjectTagging),
 		}, s3.WithPresignExpires(imageUploadPresignTTL))
 		if err != nil {
 			return nil, fmt.Errorf("presign asset upload url: %w", err)
@@ -187,6 +188,7 @@ func (s *Service) PresignAssetReplace(ctx context.Context, userID uint64, projec
 		Bucket:      aws.String(config.EnvConfig().S3Bucket),
 		Key:         aws.String(key),
 		ContentType: aws.String(contentType),
+		Tagging:     aws.String(storytellerPendingObjectTagging),
 	}, s3.WithPresignExpires(imageUploadPresignTTL))
 	if err != nil {
 		return nil, fmt.Errorf("presign asset replace url: %w", err)
@@ -244,17 +246,29 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 		return nil, fmt.Errorf("讀取資產資訊失敗: %w", err)
 	}
 	if head.ContentType != nil && *head.ContentType != "" && *head.ContentType != contentType {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_upload_content_type_mismatch"),
+			zap.String("expected_content_type", contentType),
+			zap.String("actual_content_type", *head.ContentType),
+		)
 		return nil, fmt.Errorf("上傳檔案類型不一致: %s", *head.ContentType)
 	}
 	fileSize := uint64(0)
 	if head.ContentLength != nil {
 		if *head.ContentLength > maxAssetImageSizeBytes {
+			deleteStorytellerPendingObject(ctx, client, key,
+				zap.String("reason", "asset_upload_size_exceeded"),
+				zap.Int64("content_length_bytes", *head.ContentLength),
+			)
 			return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
 		}
 		fileSize = uint64(*head.ContentLength)
 	}
 	metadata := normalizeAssetMetadata(input.Metadata)
 	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_upload_image_metadata_failed"),
+		)
 		return nil, err
 	}
 	asset := &storytellerModel.Asset{
@@ -279,6 +293,11 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 	if err := s.repo.CreateAsset(asset); err != nil {
 		return nil, err
 	}
+	clearStorytellerPendingObjectTag(ctx, client, key,
+		zap.String("reason", "asset_upload_confirmed"),
+		zap.Uint64("asset_id", asset.ID),
+		zap.String("asset_public_id", asset.PublicID),
+	)
 	collectionPublicIDs, err := s.assetCollectionPublicIDMap(project.ID)
 	if err != nil {
 		return nil, err
@@ -323,17 +342,34 @@ func (s *Service) ConfirmAssetReplace(userID uint64, projectPublicID, assetPubli
 	}
 	fileExt, err := validateAssetFileType(asset.AssetType, contentType)
 	if err != nil {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_replace_content_type_invalid"),
+			zap.Uint64("asset_id", asset.ID),
+			zap.String("asset_public_id", asset.PublicID),
+			zap.String("content_type", contentType),
+		)
 		return nil, err
 	}
 	fileSize := uint64(0)
 	if head.ContentLength != nil {
 		if *head.ContentLength > maxAssetImageSizeBytes {
+			deleteStorytellerPendingObject(ctx, client, key,
+				zap.String("reason", "asset_replace_size_exceeded"),
+				zap.Uint64("asset_id", asset.ID),
+				zap.String("asset_public_id", asset.PublicID),
+				zap.Int64("content_length_bytes", *head.ContentLength),
+			)
 			return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
 		}
 		fileSize = uint64(*head.ContentLength)
 	}
 	metadata := storytellerModel.AssetMetadata{}
 	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_replace_image_metadata_failed"),
+			zap.Uint64("asset_id", asset.ID),
+			zap.String("asset_public_id", asset.PublicID),
+		)
 		return nil, err
 	}
 	oldKey := asset.S3Key
@@ -345,6 +381,11 @@ func (s *Service) ConfirmAssetReplace(userID uint64, projectPublicID, assetPubli
 	if err := s.repo.ReplaceAssetFile(asset); err != nil {
 		return nil, err
 	}
+	clearStorytellerPendingObjectTag(ctx, client, key,
+		zap.String("reason", "asset_replace_confirmed"),
+		zap.Uint64("asset_id", asset.ID),
+		zap.String("asset_public_id", asset.PublicID),
+	)
 	if oldKey != "" && oldKey != key {
 		if _, err := client.DeleteObject(ctx, &s3.DeleteObjectInput{
 			Bucket: aws.String(config.EnvConfig().S3Bucket),
