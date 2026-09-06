@@ -178,6 +178,7 @@ export interface StorytellerStoryImagePage {
 export interface StorytellerImagePageUploadOutput {
   key: string;
   upload_url: string;
+  tagging: string;
 }
 
 export interface StorytellerAsset {
@@ -230,6 +231,7 @@ export interface StorytellerAssetUploadOutput {
   upload_url: string;
   content_type: string;
   original_filename: string;
+  tagging: string;
 }
 
 export interface StorytellerAssetReplaceOutput {
@@ -237,6 +239,7 @@ export interface StorytellerAssetReplaceOutput {
   upload_url: string;
   mime_type: string;
   filename: string;
+  tagging: string;
 }
 
 export interface StorytellerAssetUpdateRequest {

@@ -158,6 +158,7 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 			UploadURL:        request.URL,
 			ContentType:      contentType,
 			OriginalFilename: strings.TrimSpace(file.OriginalFilename),
+			Tagging:          storytellerPendingObjectTagging,
 		})
 	}
 	return outputs, nil
@@ -198,6 +199,7 @@ func (s *Service) PresignAssetReplace(ctx context.Context, userID uint64, projec
 		UploadURL:  request.URL,
 		MimeType:   contentType,
 		Filename:   strings.TrimSpace(input.Filename),
+		Tagging:    storytellerPendingObjectTagging,
 	}, nil
 }
 

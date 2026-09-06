@@ -104,6 +104,7 @@ func (s *Service) PresignImageUpload(ctx context.Context, userID uint64, project
 		outputs = append(outputs, storytellerModel.ImagePageUploadOutput{
 			Key:       key,
 			UploadURL: request.URL,
+			Tagging:   storytellerPendingObjectTagging,
 		})
 	}
 	return outputs, nil
