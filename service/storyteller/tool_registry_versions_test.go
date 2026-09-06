@@ -39,6 +39,46 @@ func TestStorytellerRegistryIncludesVersionTools(t *testing.T) {
 	require.Contains(t, byName["storyteller_revert_lore"].Description, "storyteller_list_lore_versions")
 }
 
+func TestStorytellerChapterRegistrySplit(t *testing.T) {
+	mainTools := StorytellerToolRegistry().All()
+	mainByName := make(map[string]ToolSpec, len(mainTools))
+	for _, spec := range mainTools {
+		mainByName[spec.Name] = spec
+	}
+	mcpOnlyTools := StorytellerMCPOnlyToolRegistry().All()
+	mcpOnlyByName := make(map[string]ToolSpec, len(mcpOnlyTools))
+	for _, spec := range mcpOnlyTools {
+		mcpOnlyByName[spec.Name] = spec
+	}
+
+	for _, name := range []string{
+		"storyteller_list_story_chapters",
+		"storyteller_get_story_chapter",
+		"storyteller_list_lore_chapters",
+		"storyteller_get_lore_chapter",
+	} {
+		spec, ok := mainByName[name]
+		require.Truef(t, ok, "%s should be registered in main registry", name)
+		require.NotNil(t, spec.Handler)
+		require.NotEmpty(t, spec.InputSchema)
+		require.NotContains(t, mcpOnlyByName, name)
+	}
+	for _, name := range []string{
+		"storyteller_replace_story_chapter",
+		"storyteller_insert_story_chapter",
+		"storyteller_delete_story_chapter",
+		"storyteller_replace_lore_chapter",
+		"storyteller_insert_lore_chapter",
+		"storyteller_delete_lore_chapter",
+	} {
+		spec, ok := mcpOnlyByName[name]
+		require.Truef(t, ok, "%s should be registered in MCP-only registry", name)
+		require.NotNil(t, spec.Handler)
+		require.NotEmpty(t, spec.InputSchema)
+		require.NotContains(t, mainByName, name)
+	}
+}
+
 func TestStorytellerVersionSummaryJSONOmitsContent(t *testing.T) {
 	createdAt := time.Date(2026, 9, 5, 12, 0, 0, 0, time.UTC)
 	revertedFrom := uint64(10)
