@@ -28,23 +28,30 @@ func NewStorytellerServer(name, version string) *Server {
 
 func (s *Server) registerStorytellerTools() {
 	for _, spec := range storytellerService.StorytellerToolRegistry().All() {
-		spec := spec
-		_ = s.RegisterTool(Tool{
-			Name:        spec.Name,
-			Description: spec.Description,
-			InputSchema: spec.InputSchema,
-			Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
-				result, err := spec.Handler(ctx, arguments)
-				if err != nil {
-					return nil, err
-				}
-				switch v := result.(type) {
-				case string:
-					return textResult(v), nil
-				default:
-					return jsonTextResult(result)
-				}
-			},
-		})
+		s.registerStorytellerToolSpec(spec)
 	}
+	for _, spec := range storytellerService.StorytellerMCPOnlyToolRegistry().All() {
+		s.registerStorytellerToolSpec(spec)
+	}
+}
+
+func (s *Server) registerStorytellerToolSpec(spec storytellerService.ToolSpec) {
+	spec = spec
+	_ = s.RegisterTool(Tool{
+		Name:        spec.Name,
+		Description: spec.Description,
+		InputSchema: spec.InputSchema,
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			result, err := spec.Handler(ctx, arguments)
+			if err != nil {
+				return nil, err
+			}
+			switch v := result.(type) {
+			case string:
+				return textResult(v), nil
+			default:
+				return jsonTextResult(result)
+			}
+		},
+	})
 }

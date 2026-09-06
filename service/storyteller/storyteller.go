@@ -1959,15 +1959,10 @@ func storyBookmarkLinePreview(groups []storyLineGroup, lineID string) string {
 // DB 裡的 content 存的是含 marker 語法的原始行（見 storyteller_story_versions 遷移後的
 // 格式），這兩個地方都需要在 Go 這邊做語法層面的清理。
 func splitHeadingAndMarkerContent(line string) (int, string, string) {
-	headingLevel := 0
-	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
-		headingLevel++
-	}
+	headingLevel, prefixEnd := storyHeadingPrefix(line)
 	content := line
-	if headingLevel > 0 && headingLevel < len(line) && line[headingLevel] == ' ' {
-		content = line[headingLevel+1:]
-	} else {
-		headingLevel = 0
+	if headingLevel > 0 {
+		content = line[prefixEnd:]
 	}
 
 	blockPrefix := ""
@@ -1983,6 +1978,82 @@ func splitHeadingAndMarkerContent(line string) (int, string, string) {
 	}
 
 	return headingLevel, blockPrefix, content
+}
+
+func storyHeadingPrefix(line string) (int, int) {
+	headingLevel := 0
+	for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
+		headingLevel++
+	}
+	if headingLevel > 0 && headingLevel < len(line) && line[headingLevel] == ' ' {
+		return headingLevel, headingLevel + 1
+	}
+	return 0, 0
+}
+
+// walkStoryContentLines 拜訪一般段落行與 code fence opening：code fence 內容維持
+// literal text、table row 有自己的 block-level marker，兩者都不能被當成一般段落或章節標題處理。
+func walkStoryContentLines(lines []string, visit func(i int, line string)) {
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if _, _, ok := parseStoryCodeFenceOpen(line); ok {
+			visit(i, line)
+			for i++; i < len(lines); i++ {
+				if storyCodeFenceClosePattern.MatchString(lines[i]) {
+					break
+				}
+			}
+			continue
+		}
+		if _, _, ok := parseStoryTableMarker(line); ok {
+			continue
+		}
+		visit(i, line)
+	}
+}
+
+type storyChapterSpan struct {
+	MarkerID     string
+	HeadingLevel int
+	Title        string
+	StartLine    int
+	EndLine      int
+}
+
+func storyChapterSpans(content string) []storyChapterSpan {
+	lines := strings.Split(content, "\n")
+	spans := make([]storyChapterSpan, 0)
+	walkStoryContentLines(lines, func(i int, line string) {
+		headingLevel, title, markerID, ok := parseStoryChapterHeading(line)
+		if !ok {
+			return
+		}
+		if len(spans) > 0 {
+			spans[len(spans)-1].EndLine = i
+		}
+		spans = append(spans, storyChapterSpan{
+			MarkerID:     markerID,
+			HeadingLevel: headingLevel,
+			Title:        title,
+			StartLine:    i,
+			EndLine:      len(lines),
+		})
+	})
+	return spans
+}
+
+func parseStoryChapterHeading(line string) (int, string, string, bool) {
+	headingLevel, prefixEnd := storyHeadingPrefix(line)
+	if headingLevel == 0 {
+		return 0, "", "", false
+	}
+	title := line[prefixEnd:]
+	markerID := ""
+	if match := storyMarkerPattern.FindStringSubmatch(title); match != nil && match[1] == match[3] {
+		markerID = match[1]
+		title = match[2]
+	}
+	return headingLevel, strings.TrimSpace(title), markerID, true
 }
 
 // backfillStoryMarkerIds 幫任何還沒有段落 markerId 的行補一個新的，行為對應前端
@@ -2001,31 +2072,15 @@ func splitHeadingAndMarkerContent(line string) (int, string, string) {
 func backfillStoryMarkerIds(content string) string {
 	lines := strings.Split(content, "\n")
 	changed := false
-	for i := 0; i < len(lines); i++ {
-		line := lines[i]
+	walkStoryContentLines(lines, func(i int, line string) {
 		if _, _, ok := parseStoryCodeFenceOpen(line); ok {
 			if nextLine, ok := backfillStoryCodeFenceMarkerID(line, randomID()); ok {
 				lines[i] = nextLine
 				changed = true
 			}
-			for i++; i < len(lines); i++ {
-				if storyCodeFenceClosePattern.MatchString(lines[i]) {
-					break
-				}
-			}
-			continue
+			return
 		}
-		if _, _, ok := parseStoryTableMarker(line); ok {
-			continue
-		}
-		headingLevel := 0
-		for headingLevel < 6 && headingLevel < len(line) && line[headingLevel] == '#' {
-			headingLevel++
-		}
-		prefixEnd := 0
-		if headingLevel > 0 && headingLevel < len(line) && line[headingLevel] == ' ' {
-			prefixEnd = headingLevel + 1
-		}
+		_, prefixEnd := storyHeadingPrefix(line)
 		rest := line[prefixEnd:]
 		blockPrefix := ""
 		if prefixEnd == 0 {
@@ -2035,12 +2090,12 @@ func backfillStoryMarkerIds(content string) string {
 			}
 		}
 		if match := storyMarkerPattern.FindStringSubmatch(rest); match != nil && match[1] == match[3] && match[1] != "" {
-			continue
+			return
 		}
 		newMarkerId := randomID()
 		lines[i] = line[:prefixEnd] + blockPrefix + "⟦" + newMarkerId + "⟧" + rest + "⟦/" + newMarkerId + "⟧"
 		changed = true
-	}
+	})
 	if !changed {
 		return content
 	}

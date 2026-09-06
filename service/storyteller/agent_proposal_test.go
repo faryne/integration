@@ -76,6 +76,20 @@ func TestWriteStorytellerToolNamesExcludesReadOnly(t *testing.T) {
 	require.False(t, writeNames["storyteller_get_story"])
 	require.False(t, writeNames["storyteller_list_stories"])
 	require.False(t, writeNames["storyteller_list_projects"])
+	for _, chapterTool := range []string{
+		"storyteller_list_story_chapters",
+		"storyteller_get_story_chapter",
+		"storyteller_replace_story_chapter",
+		"storyteller_insert_story_chapter",
+		"storyteller_delete_story_chapter",
+		"storyteller_list_lore_chapters",
+		"storyteller_get_lore_chapter",
+		"storyteller_replace_lore_chapter",
+		"storyteller_insert_lore_chapter",
+		"storyteller_delete_lore_chapter",
+	} {
+		require.Falsef(t, writeNames[chapterTool], "%s 不該進入 AAS proposal 寫入清單", chapterTool)
+	}
 
 	// list_projects 沒有 project_public_id，不能放進 skill read-only tools，也不是
 	// 需要提案確認的寫入工具，所以 read/write 兩份清單會比 registry 少這一個。

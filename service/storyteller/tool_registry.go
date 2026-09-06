@@ -70,10 +70,22 @@ func StorytellerToolRegistry() *ToolRegistry {
 		storytellerLoreToolSpecs(),
 		storytellerAssetToolSpecs(),
 		storytellerVolumeToolSpecs(),
+		storytellerChapterReadToolSpecs(),
 	} {
 		for _, spec := range specs {
 			registry.Register(spec)
 		}
+	}
+	return registry
+}
+
+// StorytellerMCPOnlyToolRegistry 回傳只給外部 MCP client 用、AI 助理面板看不到的工具。
+// 目前只有章節寫入工具放在這裡；章節讀取工具因為 get_/list_ 命名會自然被主 registry
+// 分類成唯讀工具，不需要另外維護允許清單。
+func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
+	registry := NewToolRegistry()
+	for _, spec := range storytellerChapterWriteToolSpecs() {
+		registry.Register(spec)
 	}
 	return registry
 }
