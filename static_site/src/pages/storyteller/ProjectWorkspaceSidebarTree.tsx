@@ -176,7 +176,9 @@ export function SidebarCollectionRow({
 }) {
   const [childrenExpanded, setChildrenExpanded] = useState(false);
   const [childrenLoaded, setChildrenLoaded] = useState(false);
-  const hasChildren = row.id !== "" && (row.count ?? 0) > 0;
+  const canExpandChildren = section !== "assets";
+  const hasChildren =
+    canExpandChildren && row.id !== "" && (row.count ?? 0) > 0;
   // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳排序，
   // 也不能當拖放目標；第三層展開則仍可支援未分冊/未分類。
   const reorderable =
@@ -230,26 +232,28 @@ export function SidebarCollectionRow({
             opacity: draggingId === row.id ? 0.55 : 1,
           }}
         >
-          <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
-            <Box
-              onClick={toggleChildren}
-              sx={{
-                width: 16,
-                lineHeight: 0,
-                flexShrink: 0,
-                visibility: hasChildren ? "visible" : "hidden",
-                cursor: hasChildren ? "pointer" : undefined,
-              }}
-            >
-              <KeyboardArrowRightIcon
-                fontSize="inherit"
+          {canExpandChildren && (
+            <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
+              <Box
+                onClick={toggleChildren}
                 sx={{
-                  transform: childrenExpanded ? "rotate(90deg)" : "none",
-                  transition: "transform 120ms ease",
+                  width: 16,
+                  lineHeight: 0,
+                  flexShrink: 0,
+                  visibility: hasChildren ? "visible" : "hidden",
+                  cursor: hasChildren ? "pointer" : undefined,
                 }}
-              />
-            </Box>
-          </Tooltip>
+              >
+                <KeyboardArrowRightIcon
+                  fontSize="inherit"
+                  sx={{
+                    transform: childrenExpanded ? "rotate(90deg)" : "none",
+                    transition: "transform 120ms ease",
+                  }}
+                />
+              </Box>
+            </Tooltip>
+          )}
           <ListItemIcon
             sx={{
               minWidth: 26,
@@ -278,17 +282,19 @@ export function SidebarCollectionRow({
           )}
         </ListItemButton>
       </Tooltip>
-      <Collapse in={childrenExpanded} timeout="auto">
-        {childrenLoaded && (
-          <SidebarCollectionChildren
-            row={row}
-            section={section}
-            projectPublicId={projectPublicId}
-            selectedItem={selectedItem}
-            onSelectItem={onSelectItem}
-          />
-        )}
-      </Collapse>
+      {canExpandChildren && (
+        <Collapse in={childrenExpanded} timeout="auto">
+          {childrenLoaded && (
+            <SidebarCollectionChildren
+              row={row}
+              section={section}
+              projectPublicId={projectPublicId}
+              selectedItem={selectedItem}
+              onSelectItem={onSelectItem}
+            />
+          )}
+        </Collapse>
+      )}
     </>
   );
 }
