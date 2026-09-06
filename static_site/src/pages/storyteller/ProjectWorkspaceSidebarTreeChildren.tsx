@@ -15,17 +15,12 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useStorytellerLores } from "@/apis/storyteller.ts";
 import {
-  useStorytellerAssets,
-  useStorytellerLores,
-} from "@/apis/storyteller.ts";
-import {
-  backendUncategorizedFilterId,
   ungroupedId,
   type SelectedItem,
   type WorkspaceSection,
 } from "./ProjectWorkspacePreviewTypes.ts";
-import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import type { StorytellerStory } from "@/types/storyteller.ts";
 
 type SidebarSelectedItem = { type: SelectedItem["type"]; publicId: string };
@@ -69,14 +64,7 @@ export function SidebarCollectionChildren({
       />
     );
   }
-  return (
-    <SidebarAssetChildren
-      projectPublicId={projectPublicId}
-      collectionId={row.id}
-      selectedItem={selectedItem}
-      onSelectItem={onSelectItem}
-    />
-  );
+  return null;
 }
 
 function SidebarStoryChildren({
@@ -145,44 +133,6 @@ function SidebarLoreChildren({
             selectedItem.publicId === lore.public_id
           }
           onClick={() => onSelectItem({ type: "lore", row: lore }, collectionId)}
-        />
-      ))}
-    </SidebarAsyncChildren>
-  );
-}
-
-function SidebarAssetChildren({
-  projectPublicId,
-  collectionId,
-  selectedItem,
-  onSelectItem,
-}: {
-  projectPublicId?: string;
-  collectionId: string;
-  selectedItem?: SidebarSelectedItem;
-  onSelectItem: SelectSidebarItem;
-}) {
-  const assetsQuery = useStorytellerAssets(
-    projectPublicId,
-    1,
-    500,
-    "",
-    collectionId === ungroupedId ? backendUncategorizedFilterId : collectionId,
-  );
-  return (
-    <SidebarAsyncChildren loading={assetsQuery.isLoading}>
-      {(assetsQuery.data?.assets ?? []).map((asset) => (
-        <SidebarTreeItem
-          key={asset.public_id}
-          title={storytellerAssetTitle(asset)}
-          icon={<ImageIcon fontSize="small" />}
-          selected={
-            selectedItem?.type === "asset" &&
-            selectedItem.publicId === asset.public_id
-          }
-          onClick={() =>
-            onSelectItem({ type: "asset", row: asset }, collectionId)
-          }
         />
       ))}
     </SidebarAsyncChildren>
