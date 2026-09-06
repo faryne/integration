@@ -7,7 +7,6 @@ import FileUploadIcon from "@mui/icons-material/FileUpload";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {
-  Box,
   Button,
   ButtonGroup,
   IconButton,
@@ -21,7 +20,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import axios from "axios";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   useDeleteStorytellerAsset,
@@ -35,23 +34,16 @@ import {
   useSaveStorytellerLoreCollection,
   useSaveStorytellerStory,
   useSaveStorytellerVolume,
-  useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import {
-  STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
-  STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-  STORYTELLER_IMAGE_PAGE_MAX_COUNT,
-} from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { StorytellerAssetUploadDrawer } from "./StorytellerAssetUploadDrawer.tsx";
 import { StorytellerVolumeDialog } from "./StorytellerVolumeDialog.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import {
   CollectionDialog,
   MoveMenu,
-  UploadProgressToast,
   WorkspaceConfirmNameDialog,
-  type WorkspaceUploadProgressRow,
 } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
   ungroupedId,
@@ -106,7 +98,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     null,
   );
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
   const [volumeDialogTarget, setVolumeDialogTarget] = useState<
     StorytellerStory | "new" | null
   >(null);
@@ -142,10 +134,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     useState<StorytellerAssetCollection | null>(null);
   const [collectionName, setCollectionName] = useState("");
   const [collectionDescription, setCollectionDescription] = useState("");
-  const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
-  const [uploadProgress, setUploadProgress] = useState<
-    Record<number, WorkspaceUploadProgressRow>
-  >({});
 
   const saveStory = useSaveStorytellerStory(projectId);
   const deleteStory = useDeleteStorytellerStory(projectId);
@@ -158,17 +146,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const deleteAssetCollection = useDeleteStorytellerAssetCollection(projectId);
   const moveAsset = useMoveStorytellerAsset(projectId);
   const deleteAsset = useDeleteStorytellerAsset(projectId);
-  const uploadAssets = useUploadStorytellerAssets(projectId);
-
-  useEffect(() => {
-    if (uploadPhase !== "uploading") return;
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [uploadPhase]);
 
   function storyParentPublicId(story: StorytellerStory) {
     return (
@@ -411,57 +388,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     }
   }
 
-  async function handleFiles(files: FileList | null) {
-    const selectedFiles = Array.from(files ?? []);
-    const accepted = selectedFiles.filter(
-      (file) =>
-        STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.includes(file.type) &&
-        file.size <= STORYTELLER_IMAGE_PAGE_MAX_BYTES,
-    );
-    const images = accepted.slice(0, STORYTELLER_IMAGE_PAGE_MAX_COUNT);
-    if (images.length === 0) {
-      setSnack("請選擇圖片檔案。");
-      return;
-    }
-    if (images.length !== selectedFiles.length) {
-      setSnack("部分檔案未上傳：僅接受符合大小限制的 JPEG／PNG／WebP／GIF。");
-    }
-    setUploadPhase("uploading");
-    setUploadProgress(
-      Object.fromEntries(
-        images.map((file, index) => [
-          index,
-          { name: file.name, loaded: 0, total: file.size },
-        ]),
-      ),
-    );
-    try {
-      const uploaded = await uploadAssets.mutateAsync({
-        files: images,
-        collectionId:
-          selected.section === "assets" &&
-          selected.collectionId &&
-          selected.collectionId !== ungroupedId
-            ? selected.collectionId
-            : "",
-        onProgress: (index, loaded, total) =>
-          setUploadProgress((current) => ({
-            ...current,
-            [index]: {
-              name: current[index]?.name ?? images[index]?.name ?? "",
-              loaded,
-              total,
-            },
-          })),
-      });
-      setSnack(`已上傳 ${uploaded.length} 個資產。`);
-    } catch (error) {
-      setSnack(errorMessage(error, "資產上傳失敗，請稍後再試。"));
-    } finally {
-      setUploadPhase("idle");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
+  const uploadDrawerCollectionId =
+    selected.section === "assets" &&
+    selected.collectionId &&
+    selected.collectionId !== ungroupedId
+      ? selected.collectionId
+      : "";
 
   // 帶去故事/圖像/設定集編輯器路由的查詢參數：一方面讓新建作品能預設放進目前
   // 瀏覽的冊/分類，一方面讓編輯器畫面底下的側邊欄高亮／麵包屑／「回列表」都能
@@ -479,7 +411,6 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     (collection) => collection.public_id === selected.collectionId,
   );
 
-  const progressRows = Object.values(uploadProgress);
   const titleActions =
     currentVolume && selected.section === "stories" ? (
       <Stack direction="row" spacing={0.5} alignItems="center">
@@ -623,20 +554,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         <Button
           variant="contained"
           startIcon={<FileUploadIcon />}
-          disabled={uploadPhase === "uploading"}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => setUploadDrawerOpen(true)}
         >
-          {uploadPhase === "uploading" ? "上傳中" : "上傳圖像"}
+          上傳圖像
         </Button>
-        <Box
-          component="input"
-          ref={fileInputRef}
-          type="file"
-          accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES.join(",")}
-          multiple
-          sx={{ display: "none" }}
-          onChange={(event) => void handleFiles(event.target.files)}
-        />
       </Stack>
     );
 
@@ -839,9 +760,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           assetMoveMenu && void moveAssetTo(assetMoveMenu.asset, collectionId)
         }
       />
-      {uploadPhase === "uploading" && (
-        <UploadProgressToast rows={progressRows} />
-      )}
+      <StorytellerAssetUploadDrawer
+        open={uploadDrawerOpen}
+        projectPublicId={projectId ?? ""}
+        collectionId={uploadDrawerCollectionId}
+        onClose={() => setUploadDrawerOpen(false)}
+        onUploaded={() => onRefreshAssets()}
+        onNotify={(message) => setSnack(message)}
+      />
       <StorytellerVolumeDialog
         open={volumeDialogTarget !== null}
         initialTitle={
