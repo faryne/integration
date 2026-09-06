@@ -60,6 +60,31 @@ func TestNewStorytellerServerRegistersPatchAndSearchReplaceTools(t *testing.T) {
 	require.Contains(t, body, "Go RE2 regexp syntax")
 }
 
+func TestNewStorytellerServerRegistersChapterTools(t *testing.T) {
+	server := NewStorytellerServer("storyteller-test", "test-version")
+
+	list, shouldReply, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	require.NoError(t, err)
+	require.True(t, shouldReply)
+	require.Nil(t, list.Error)
+
+	body := mustMarshal(t, list.Result)
+	for _, name := range []string{
+		"storyteller_list_story_chapters",
+		"storyteller_get_story_chapter",
+		"storyteller_replace_story_chapter",
+		"storyteller_insert_story_chapter",
+		"storyteller_delete_story_chapter",
+		"storyteller_list_lore_chapters",
+		"storyteller_get_lore_chapter",
+		"storyteller_replace_lore_chapter",
+		"storyteller_insert_lore_chapter",
+		"storyteller_delete_lore_chapter",
+	} {
+		require.Contains(t, body, `"name":"`+name+`"`)
+	}
+}
+
 func mustMarshal(t *testing.T, v interface{}) string {
 	t.Helper()
 	body, err := json.Marshal(v)

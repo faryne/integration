@@ -53,6 +53,14 @@ func TestReadOnlyStorytellerToolsExcludesWrites(t *testing.T) {
 	for _, spec := range tools {
 		names[spec.Name] = true
 	}
+	for _, readTool := range []string{
+		"storyteller_list_story_chapters",
+		"storyteller_get_story_chapter",
+		"storyteller_list_lore_chapters",
+		"storyteller_get_lore_chapter",
+	} {
+		require.Truef(t, names[readTool], "%s 應該開放給 AAS 當唯讀工具", readTool)
+	}
 	for _, writeTool := range []string{
 		"storyteller_list_projects",
 		"storyteller_upsert_story",
