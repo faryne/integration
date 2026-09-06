@@ -147,7 +147,10 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
           continue;
         }
         await axios.put(target.upload_url, file, {
-          headers: { "Content-Type": file.type },
+          headers: {
+            "Content-Type": file.type,
+            "x-amz-tagging": target.tagging,
+          },
           onUploadProgress: (event) =>
             onProgress?.(index, event.loaded, event.total ?? file.size),
         });
@@ -203,7 +206,10 @@ export function usePrepareStorytellerAssetReplace(projectPublicId?: string) {
         throw new Error("替換上傳網址回應不完整");
       }
       await axios.put(upload.upload_url, file, {
-        headers: { "Content-Type": file.type },
+        headers: {
+          "Content-Type": file.type,
+          "x-amz-tagging": upload.tagging,
+        },
         onUploadProgress: (event) =>
           onProgress?.(event.loaded, event.total ?? file.size),
       });

@@ -878,6 +878,13 @@ type ImagePageUploadRequest struct {
 type ImagePageUploadOutput struct {
 	Key       string `json:"key"`
 	UploadURL string `json:"upload_url"`
+	// Tagging 是這個 presigned PUT 簽章時綁定的 x-amz-tagging 值——presign 時把
+	// Tagging 放進 PutObjectInput 會讓它變成 SignedHeaders 的一部分，S3 端驗證
+	// 簽章時要求上傳請求也帶一模一樣的 x-amz-tagging header，不然會被判定成
+	// SignatureDoesNotMatch（403）。前端 PUT 檔案時必須把這個值原封不動當
+	// x-amz-tagging header 送出，這裡回傳出去就是讓前端不用自己另外硬編一份
+	// 常數字串去猜要傳什麼。
+	Tagging string `json:"tagging"`
 }
 
 type AssetUploadFileRequest struct {
@@ -894,6 +901,9 @@ type AssetUploadOutput struct {
 	UploadURL        string `json:"upload_url"`
 	ContentType      string `json:"content_type"`
 	OriginalFilename string `json:"original_filename"`
+	// Tagging：見 ImagePageUploadOutput.Tagging 的說明，前端 PUT 檔案時必須
+	// 原封不動帶成 x-amz-tagging header，否則簽章驗證會失敗（403）。
+	Tagging string `json:"tagging"`
 }
 
 type AssetReplacePresignRequest struct {
@@ -907,6 +917,9 @@ type AssetReplacePresignOutput struct {
 	UploadURL  string `json:"upload_url"`
 	MimeType   string `json:"mime_type"`
 	Filename   string `json:"filename"`
+	// Tagging：見 ImagePageUploadOutput.Tagging 的說明，前端 PUT 檔案時必須
+	// 原封不動帶成 x-amz-tagging header，否則簽章驗證會失敗（403）。
+	Tagging string `json:"tagging"`
 }
 
 type AssetReplaceConfirmRequest struct {
