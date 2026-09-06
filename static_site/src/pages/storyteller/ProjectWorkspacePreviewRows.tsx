@@ -66,7 +66,11 @@ function MetadataRow({ label, value }: { label: string; value: ReactNode }) {
 function storyPageCount(story: StorytellerStory) {
   if (story.content_type !== "image") return 0;
   try {
-    const rows = JSON.parse(story.latest_content || "[]");
+    // 圖像故事的 latest_content 存的是 {"pages": [...]} 這個物件（StoryImageContent），
+    // 不是裸陣列——之前這裡直接檢查 Array.isArray(parsed) 一定是 false，導致列表頁
+    // 永遠顯示 0 頁，即使實際頁面數量正確存在。
+    const parsed = JSON.parse(story.latest_content || "{}");
+    const rows = parsed?.pages;
     return Array.isArray(rows) ? rows.length : 0;
   } catch {
     return 0;
