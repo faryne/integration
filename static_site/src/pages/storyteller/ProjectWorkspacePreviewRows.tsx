@@ -129,7 +129,13 @@ export function StoryRow({
           },
         }}
       >
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <Box sx={{ color: "primary.main", lineHeight: 0 }}>
             {isImage ? (
               <ImageIcon fontSize="small" />
@@ -211,7 +217,13 @@ export function LoreRow({
         },
       }}
     >
-      <Stack direction="row" spacing={1.5} alignItems="center">
+      <Stack
+        direction="row"
+        spacing={1.5}
+        alignItems="center"
+        flexWrap="wrap"
+        useFlexGap
+      >
         <Box sx={{ color: "primary.main", lineHeight: 0 }}>
           <DescriptionIcon fontSize="small" />
         </Box>
