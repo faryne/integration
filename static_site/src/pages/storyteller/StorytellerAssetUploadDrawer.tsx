@@ -1,6 +1,7 @@
 import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
+  Button,
   Drawer,
   IconButton,
   LinearProgress,
@@ -89,6 +90,14 @@ function hasMetadataInput(metadata: UploadMetadata) {
   );
 }
 
+function hasUnsavedMetadata(item: UploadItem) {
+  return Boolean(
+    item.asset &&
+    hasMetadataInput(item.metadata) &&
+    item.savedMetadataSignature !== metadataSignature(item.metadata),
+  );
+}
+
 function metadataUpdateInput(
   asset: StorytellerAsset,
   metadata: UploadMetadata,
@@ -122,6 +131,7 @@ export function StorytellerAssetUploadDrawer({
   const [uploadProgress, setUploadProgress] = useState<
     Record<string, UploadProgress>
   >({});
+  const [closing, setClosing] = useState(false);
   const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
 
   function updateItems(updater: (current: UploadItem[]) => UploadItem[]) {
@@ -145,9 +155,12 @@ export function StorytellerAssetUploadDrawer({
     };
   }, []);
 
-  // Drawer 內的批次上傳也避免半途關頁，防止留下已 PUT 但尚未 confirm 的孤兒檔案。
+  // Drawer 內的批次上傳也避免半途關頁，防止留下已 PUT 但尚未 confirm 的孤兒檔案；
+  // 上傳完成後如果還有欄位改過但還沒觸發 onBlur 存檔（例如打完字直接按重新整理，
+  // 欄位根本沒失焦），一樣要擋，不然這次輸入會在網路請求送出前就被砍斷。
   useEffect(() => {
-    if (uploadPhase !== "uploading") {
+    const hasPendingMetadata = items.some(hasUnsavedMetadata);
+    if (uploadPhase !== "uploading" && !hasPendingMetadata) {
       return;
     }
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -156,7 +169,7 @@ export function StorytellerAssetUploadDrawer({
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [uploadPhase]);
+  }, [uploadPhase, items]);
 
   async function saveMetadata(
     itemId: string,
@@ -293,10 +306,21 @@ export function StorytellerAssetUploadDrawer({
     }
   }
 
-  function requestClose() {
-    if (uploadPhase === "uploading") {
+  // 統一的關閉入口（標題列 X、背景點擊、底部「完成」按鈕都走這裡）：先把還沒
+  // 觸發 onBlur 存檔的欄位補送一次，確認全部 flush 完才真的關閉，避免使用者
+  // 打完描述直接關掉/重新整理，內容就這樣不見。
+  async function requestClose() {
+    if (uploadPhase === "uploading" || closing) {
       onNotify("圖片上傳中，請等完成後再關閉。", "info");
       return;
+    }
+    const pending = itemsRef.current.filter(hasUnsavedMetadata);
+    if (pending.length > 0) {
+      setClosing(true);
+      await Promise.all(
+        pending.map((item) => saveMetadata(item.id, item.asset!, item.metadata)),
+      );
+      setClosing(false);
     }
     clearItems();
     onClose();
@@ -431,6 +455,13 @@ export function StorytellerAssetUploadDrawer({
             </Typography>
           </Stack>
           <LinearProgress variant="determinate" value={overallProgress} />
+          <Button
+            variant="contained"
+            disabled={uploadPhase === "uploading" || closing}
+            onClick={() => void requestClose()}
+          >
+            {closing ? "儲存中" : "完成"}
+          </Button>
         </Stack>
       </Box>
     </Drawer>
