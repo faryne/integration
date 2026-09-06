@@ -2,7 +2,6 @@ import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
-import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EditIcon from "@mui/icons-material/Edit";
@@ -33,7 +32,7 @@ import {
   type Theme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
 import {
@@ -56,6 +55,7 @@ import {
   LoreRow,
   StoryRow,
 } from "./ProjectWorkspacePreviewRows.tsx";
+import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
 import type {
   StorytellerAsset,
   StorytellerLore,
@@ -71,6 +71,8 @@ export function WorkspaceSidebar({
   loreCollections,
   assetCollections,
   onSelect,
+  onSelectItem,
+  selectedItem,
   onCreateVolume,
   onCreateLoreCollection,
   onCreateAssetCollection,
@@ -91,11 +93,34 @@ export function WorkspaceSidebar({
     asset_count: number;
   }>;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
+  onSelectItem: (item: SelectedItem, collectionId: string) => void;
+  selectedItem?: { type: SelectedItem["type"]; publicId: string };
   onCreateVolume?: () => void;
   onCreateLoreCollection?: () => void;
   onCreateAssetCollection?: () => void;
   onReorderVolume?: (draggedId: string, beforeId: string | null) => void;
 }) {
+  const storiesByCollection = useMemo(() => {
+    const grouped = new Map<string, StorytellerStory[]>();
+    const volumeIds = new Map(volumes.map((volume) => [volume.id, volume]));
+    grouped.set(ungroupedId, []);
+    volumes.forEach((volume) => grouped.set(volume.public_id, []));
+    stories
+      .filter((story) => !story.is_volume)
+      .forEach((story) => {
+        const key =
+          story.parent_id === null
+            ? ungroupedId
+            : volumeIds.get(story.parent_id)?.public_id;
+        if (key) {
+          grouped.set(key, [...(grouped.get(key) ?? []), story]);
+        }
+      });
+    grouped.forEach((rows) =>
+      rows.sort((left, right) => left.sort - right.sort),
+    );
+    return grouped;
+  }, [stories, volumes]);
   const storyCount = stories.filter((story) => !story.is_volume).length;
   const ungroupedStoryCount = stories.filter(
     (story) => !story.is_volume && story.parent_id === null,
@@ -111,15 +136,23 @@ export function WorkspaceSidebar({
           selected={selected}
           rows={[
             { id: "", label: "全部作品", count: storyCount },
-            { id: ungroupedId, label: "未分冊", count: ungroupedStoryCount },
+            {
+              id: ungroupedId,
+              label: "未分冊",
+              count: ungroupedStoryCount,
+              stories: storiesByCollection.get(ungroupedId) ?? [],
+            },
             ...volumes.map((volume) => ({
               id: volume.public_id,
               label: volume.title,
               count: stories.filter((story) => story.parent_id === volume.id)
                 .length,
+              stories: storiesByCollection.get(volume.public_id) ?? [],
             })),
           ]}
           onSelect={onSelect}
+          onSelectItem={onSelectItem}
+          selectedItem={selectedItem}
           onCreate={onCreateVolume}
           createLabel="新增冊"
           onReorder={onReorderVolume}
@@ -128,6 +161,7 @@ export function WorkspaceSidebar({
           title="設定集"
           section="lores"
           icon={<SettingsIcon fontSize="small" />}
+          projectPublicId={project?.public_id}
           selected={selected}
           rows={[
             { id: "", label: "全部設定", count: project?.lore_count },
@@ -143,12 +177,15 @@ export function WorkspaceSidebar({
             })),
           ]}
           onSelect={onSelect}
+          onSelectItem={onSelectItem}
+          selectedItem={selectedItem}
           onCreate={onCreateLoreCollection}
         />
         <SidebarGroup
           title="資產集"
           section="assets"
           icon={<CollectionsIcon fontSize="small" />}
+          projectPublicId={project?.public_id}
           selected={selected}
           rows={[
             { id: "", label: "全部資產", count: project?.asset_count },
@@ -164,203 +201,13 @@ export function WorkspaceSidebar({
             })),
           ]}
           onSelect={onSelect}
+          onSelectItem={onSelectItem}
+          selectedItem={selectedItem}
           onCreate={onCreateAssetCollection}
         />
       </Box>
       <WorkspaceSidebarFooter />
     </Stack>
-  );
-}
-
-function SidebarGroup({
-  title,
-  section,
-  icon,
-  selected,
-  rows,
-  onSelect,
-  onCreate,
-  createLabel,
-  onReorder,
-}: {
-  title: string;
-  section: WorkspaceSection;
-  icon: ReactNode;
-  selected: SelectedNode;
-  rows: Array<{ id: string; label: string; count?: number }>;
-  onSelect: (section: WorkspaceSection, collectionId: string) => void;
-  onCreate?: () => void;
-  // 新增按鈕的 tooltip 文字——預設沿用區塊標題「新增{title}」，但「作品與冊」
-  // 這個按鈕實際上只會新增「冊」，不會新增「作品」，沿用預設會變成語意不對的
-  // 「新增作品與冊」，所以呼叫端可以自己指定更精確的文字。
-  createLabel?: string;
-  onReorder?: (draggedId: string, beforeId: string | null) => void;
-}) {
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(true);
-  return (
-    <Box>
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={1}
-        sx={{ px: 1, py: 0.75 }}
-      >
-        <Tooltip title={expanded ? "收合" : "展開"}>
-          <IconButton
-            size="small"
-            onClick={() => setExpanded((value) => !value)}
-            sx={{ p: 0.375 }}
-          >
-            {expanded ? (
-              <RemoveIcon fontSize="inherit" />
-            ) : (
-              <AddIcon fontSize="inherit" />
-            )}
-          </IconButton>
-        </Tooltip>
-        <Box sx={{ lineHeight: 0, opacity: 0.82 }}>{icon}</Box>
-        <Typography
-          variant="caption"
-          fontWeight={700}
-          sx={{ letterSpacing: 0 }}
-        >
-          {title}
-        </Typography>
-        {onCreate && (
-          <Tooltip title={createLabel ?? `新增${title}`}>
-            <IconButton
-              size="small"
-              onClick={onCreate}
-              sx={{ ml: "auto", p: 0.375 }}
-            >
-              <CreateNewFolderIcon fontSize="inherit" />
-            </IconButton>
-          </Tooltip>
-        )}
-      </Stack>
-      <Collapse in={expanded} timeout="auto">
-        <List dense disablePadding sx={{ mt: 0.5 }}>
-          {rows.map((row) => {
-            const hasChildren = row.id !== "" && (row.count ?? 0) > 0;
-            // 「全部」「未分類/未分冊」是虛擬節點，不是實際的冊資料列，不能被拖曳
-            // 排序，也不能當拖放目標。
-            const reorderable =
-              Boolean(onReorder) && row.id !== "" && row.id !== ungroupedId;
-            return (
-              <Tooltip
-                key={`${section}-${row.id}`}
-                title={reorderable ? "可拖曳調整順序" : ""}
-                placement="right"
-              >
-                <ListItemButton
-                  selected={
-                    selected.section === section &&
-                    selected.collectionId === row.id
-                  }
-                  onClick={() => onSelect(section, row.id)}
-                  draggable={reorderable}
-                  onDragStart={
-                    reorderable ? () => setDraggingId(row.id) : undefined
-                  }
-                  onDragOver={
-                    reorderable ? (event) => event.preventDefault() : undefined
-                  }
-                  onDrop={
-                    reorderable
-                      ? (event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (draggingId) {
-                            onReorder?.(draggingId, row.id);
-                          }
-                          setDraggingId(null);
-                        }
-                      : undefined
-                  }
-                  sx={{
-                    borderRadius: 1,
-                    my: 0.125,
-                    minHeight: 30,
-                    px: 1,
-                    color: "text.secondary",
-                    cursor: reorderable ? "grab" : undefined,
-                    opacity: draggingId === row.id ? 0.55 : 1,
-                    "&:hover": {
-                      bgcolor: (theme) =>
-                        theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
-                    },
-                    "&.Mui-selected": {
-                      bgcolor: (theme) =>
-                        alpha(theme.palette.primary.main, 0.13),
-                      color: "text.primary",
-                      borderLeft: 3,
-                      borderLeftColor: "primary.main",
-                      pl: 0.625,
-                    },
-                    "&.Mui-selected:hover": {
-                      bgcolor: (theme) =>
-                        alpha(theme.palette.primary.main, 0.16),
-                    },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 16,
-                      lineHeight: 0,
-                      visibility: hasChildren ? "visible" : "hidden",
-                    }}
-                  >
-                    <KeyboardArrowRightIcon fontSize="inherit" />
-                  </Box>
-                  <ListItemIcon
-                    sx={{
-                      minWidth: 26,
-                      color:
-                        selected.section === section &&
-                        selected.collectionId === row.id
-                          ? "primary.main"
-                          : "inherit",
-                    }}
-                  >
-                    <FolderIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={row.label}
-                    primaryTypographyProps={{
-                      fontWeight: 700,
-                      noWrap: true,
-                      fontSize: 13,
-                    }}
-                  />
-                  {row.count !== undefined && (
-                    <Typography variant="caption" color="text.secondary">
-                      {row.count}
-                    </Typography>
-                  )}
-                </ListItemButton>
-              </Tooltip>
-            );
-          })}
-          {onReorder && (
-            // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
-            // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
-            <Box
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={(event) => {
-                event.preventDefault();
-                if (draggingId) {
-                  onReorder(draggingId, null);
-                }
-                setDraggingId(null);
-              }}
-              sx={{ minHeight: 10 }}
-            />
-          )}
-        </List>
-      </Collapse>
-      <Divider sx={{ my: 0.75, opacity: 0.35 }} />
-    </Box>
   );
 }
 

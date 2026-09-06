@@ -369,12 +369,15 @@ export default function StorytellerProjectWorkspacePreview() {
     });
   }
 
-  function openStoryInWorkspace(item: SelectedItem) {
+  function openStoryInWorkspace(
+    item: SelectedItem,
+    fromCollectionId = selected.collectionId,
+  ) {
     // 帶上 ?from= 記住目前是從哪個分組點進編輯器——故事/圖像/設定集/資產編輯器的
     // 路由本身不含分組資訊，沒有這個查詢參數的話，編輯畫面底下的側邊欄高亮／
     // 麵包屑／「回列表」都沒辦法對回原本瀏覽的分組。
-    const fromSuffix = selected.collectionId
-      ? `?from=${encodeURIComponent(selected.collectionId)}`
+    const fromSuffix = fromCollectionId
+      ? `?from=${encodeURIComponent(fromCollectionId)}`
       : "";
     const segment =
       item.type === "story"
@@ -384,9 +387,11 @@ export default function StorytellerProjectWorkspacePreview() {
         : item.type === "lore"
           ? "lore"
           : "asset";
-    navigate(
-      steamloomPath(
-        `my/workspace/${id}/${segment}/${item.row.public_id}${fromSuffix}`,
+    guardedNavigate(() =>
+      navigate(
+        steamloomPath(
+          `my/workspace/${id}/${segment}/${item.row.public_id}${fromSuffix}`,
+        ),
       ),
     );
   }
@@ -442,6 +447,14 @@ export default function StorytellerProjectWorkspacePreview() {
     onSelect: selectNode,
     onRefreshAssets: () => void assetsQuery.refetch(),
   });
+  const sidebarSelectedItem =
+    isExistingStoryRoute || isExistingImageRoute
+      ? { type: "story" as const, publicId: storyId ?? "" }
+      : isLoreRoute
+        ? { type: "lore" as const, publicId: loreId ?? "" }
+        : isAssetRoute
+          ? { type: "asset" as const, publicId: assetId ?? "" }
+          : undefined;
 
   if (authLoading) {
     return (
@@ -531,6 +544,8 @@ export default function StorytellerProjectWorkspacePreview() {
                   loreCollections={loreCollections}
                   assetCollections={assetCollections}
                   onSelect={selectNode}
+                  onSelectItem={openStoryInWorkspace}
+                  selectedItem={sidebarSelectedItem}
                   onCreateVolume={listActions.onCreateVolume}
                   onCreateLoreCollection={listActions.onCreateLoreCollection}
                   onCreateAssetCollection={listActions.onCreateAssetCollection}
@@ -580,6 +595,8 @@ export default function StorytellerProjectWorkspacePreview() {
               loreCollections={loreCollections}
               assetCollections={assetCollections}
               onSelect={selectNode}
+              onSelectItem={openStoryInWorkspace}
+              selectedItem={sidebarSelectedItem}
               onCreateVolume={listActions.onCreateVolume}
               onCreateLoreCollection={listActions.onCreateLoreCollection}
               onCreateAssetCollection={listActions.onCreateAssetCollection}
