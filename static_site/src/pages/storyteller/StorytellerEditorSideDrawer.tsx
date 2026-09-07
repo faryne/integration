@@ -1,6 +1,17 @@
 import CloseIcon from "@mui/icons-material/Close";
-import { Box, Drawer, IconButton, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Drawer,
+  IconButton,
+  Stack,
+  Typography,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import type { ReactNode } from "react";
+
+const mobileBottomToolbarOffset = 56;
+const mobileDrawerMaxHeight = "45vh";
 
 interface StorytellerEditorSideDrawerProps {
   open: boolean;
@@ -21,18 +32,43 @@ export function StorytellerEditorSideDrawer({
   children,
   onClose,
 }: StorytellerEditorSideDrawerProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const anchor = isMobile ? "bottom" : "right";
+
   return (
     <Drawer
-      anchor="right"
+      anchor={anchor}
       open={open}
       keepMounted={keepMounted}
+      hideBackdrop={isMobile}
       onClose={onClose}
+      slotProps={{
+        root: {
+          sx: isMobile ? { pointerEvents: "none" } : undefined,
+        },
+        paper: {
+          sx: isMobile
+            ? {
+                // 行動版貼在底部工具列上方，避免參照面板整頁蓋掉正在編輯的內容。
+                right: 0,
+                bottom: mobileBottomToolbarOffset,
+                left: 0,
+                width: "100vw",
+                maxWidth: "100vw",
+                maxHeight: mobileDrawerMaxHeight,
+                pointerEvents: "auto",
+              }
+            : undefined,
+        },
+      }}
     >
       <Box
         sx={{
-          width: { xs: "100vw", sm: width },
+          width: isMobile ? "100vw" : width,
           maxWidth: "100vw",
-          height: "100%",
+          maxHeight: isMobile ? mobileDrawerMaxHeight : undefined,
+          height: isMobile ? mobileDrawerMaxHeight : "100%",
           display: "flex",
           flexDirection: "column",
         }}
