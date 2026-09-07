@@ -20,9 +20,8 @@ interface StorytellerEditorSideTabsProps {
 }
 
 // AI 助理／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
-// 的文件層級 action 區呈現：預設收起，讓作者能專注在編輯區本身；點開哪個就在原本
-// 的側欄位置展開對應內容，再點一次收合（exclusive ToggleButtonGroup 本身就支援
-// 點選中項目變成 null）。
+// 的文件層級 action 區呈現：預設收起；點開哪個就開啟對應 Drawer，再點一次收合
+// （exclusive ToggleButtonGroup 本身就支援點選中項目變成 null）。
 export function StorytellerEditorSideTabs({
   value,
   onChange,
@@ -44,7 +43,11 @@ export function StorytellerEditorSideTabs({
           </Tooltip>
         </ToggleButton>
       )}
-      <ToggleButton value="history" disabled={historyDisabled} aria-label="編輯歷史">
+      <ToggleButton
+        value="history"
+        disabled={historyDisabled}
+        aria-label="編輯歷史"
+      >
         <Tooltip title="編輯歷史">
           <HistoryIcon fontSize="small" />
         </Tooltip>

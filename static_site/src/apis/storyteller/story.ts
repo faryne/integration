@@ -201,6 +201,7 @@ export function usePublicStorytellerStoryVersions(
 export function useStorytellerStoryVersions(
   projectPublicId?: string,
   storyPublicId?: string,
+  enabled = true,
 ) {
   const { session } = useAuth();
   return useQuery({
@@ -211,7 +212,9 @@ export function useStorytellerStoryVersions(
       storyPublicId,
       session?.user.id,
     ],
-    enabled: Boolean(session?.encrypt_key && projectPublicId && storyPublicId),
+    enabled: Boolean(
+      enabled && session?.encrypt_key && projectPublicId && storyPublicId,
+    ),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerStoryVersion[]>

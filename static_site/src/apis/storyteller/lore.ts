@@ -211,6 +211,7 @@ export function useDeleteStorytellerLore(projectPublicId?: string) {
 export function useStorytellerLoreVersions(
   projectPublicId?: string,
   lorePublicId?: string,
+  enabled = true,
 ) {
   const { session } = useAuth();
   return useQuery({
@@ -221,7 +222,9 @@ export function useStorytellerLoreVersions(
       lorePublicId,
       session?.user.id,
     ],
-    enabled: Boolean(session?.encrypt_key && projectPublicId && lorePublicId),
+    enabled: Boolean(
+      enabled && session?.encrypt_key && projectPublicId && lorePublicId,
+    ),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerLoreVersion[]>

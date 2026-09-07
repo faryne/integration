@@ -824,7 +824,7 @@ export function StorytellerAgenticPanel({
   onStoryChanged?: () => void;
   pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
   onSelectionAgentTriggerApplied?: () => void;
-  // 浮動 dock 由外層決定可用高度，面板本身要改成 flex 填滿，避免 composer 底部被裁掉。
+  // 右側 Drawer 由外層決定可用高度，面板本身要改成 flex 填滿，避免 composer 底部被裁掉。
   presentation?: "inline" | "floatingDock";
 }) {
   const floatingDock = presentation === "floatingDock";
@@ -2056,14 +2056,14 @@ export function StorytellerAgenticPanel({
       sx={{
         borderRadius: 1,
         overflow: "hidden",
-        height: floatingDock ? { xl: 1 } : undefined,
+        height: floatingDock ? 1 : undefined,
         position: floatingDock ? undefined : { lg: "sticky" },
         top: floatingDock ? undefined : { lg: 16 },
       }}
     >
       <Stack
         sx={{
-          height: floatingDock ? { xl: 1 } : undefined,
+          height: floatingDock ? 1 : undefined,
           maxHeight: floatingDock ? undefined : { lg: "calc(100vh - 32px)" },
           minHeight: 0,
         }}
@@ -2172,10 +2172,8 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: floatingDock ? { xs: 360, xl: 0 } : { xs: 360, lg: 320 },
-            maxHeight: floatingDock
-              ? { xs: 520, xl: "none" }
-              : { xs: 520, lg: 480 },
+            minHeight: floatingDock ? 0 : { xs: 360, lg: 320 },
+            maxHeight: floatingDock ? "none" : { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
             p: 2,
@@ -2268,8 +2266,8 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flexShrink: 0,
-            maxHeight: floatingDock ? { xl: "46%" } : undefined,
-            overflow: floatingDock ? { xl: "auto" } : undefined,
+            maxHeight: floatingDock ? "46%" : undefined,
+            overflow: floatingDock ? "auto" : undefined,
             p: 2,
           }}
         >
