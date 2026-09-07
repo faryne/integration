@@ -1,7 +1,13 @@
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import HistoryIcon from "@mui/icons-material/History";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import { ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import {
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 
 // "ai" 是既有單輪、無工具呼叫能力的改寫/擴寫/翻譯 skill 面板；"agentic" 是 AAS
 // 多輪、會自己呼叫工具查資料／提出修改提案的問答面板，兩者刻意分開，不是同一個
@@ -29,6 +35,11 @@ export function StorytellerEditorSideTabs({
   agenticDisabled,
   aiTabHidden,
 }: StorytellerEditorSideTabsProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactButtonSx = isMobile ? { p: 0.5 } : undefined;
+  const compactIconSx = isMobile ? { fontSize: "1rem" } : undefined;
+
   return (
     <ToggleButtonGroup
       value={value}
@@ -37,9 +48,9 @@ export function StorytellerEditorSideTabs({
       size="small"
     >
       {!aiTabHidden && (
-        <ToggleButton value="ai" aria-label="AI Agent">
+        <ToggleButton value="ai" aria-label="AI Agent" sx={compactButtonSx}>
           <Tooltip title="AI Agent">
-            <SmartToyIcon fontSize="small" />
+            <SmartToyIcon fontSize="small" sx={compactIconSx} />
           </Tooltip>
         </ToggleButton>
       )}
@@ -47,18 +58,20 @@ export function StorytellerEditorSideTabs({
         value="history"
         disabled={historyDisabled}
         aria-label="編輯歷史"
+        sx={compactButtonSx}
       >
         <Tooltip title="編輯歷史">
-          <HistoryIcon fontSize="small" />
+          <HistoryIcon fontSize="small" sx={compactIconSx} />
         </Tooltip>
       </ToggleButton>
       <ToggleButton
         value="agentic"
         disabled={agenticDisabled}
         aria-label="AI 助理"
+        sx={compactButtonSx}
       >
         <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
-          <AutoAwesomeIcon fontSize="small" />
+          <AutoAwesomeIcon fontSize="small" sx={compactIconSx} />
         </Tooltip>
       </ToggleButton>
     </ToggleButtonGroup>

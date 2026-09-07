@@ -15,6 +15,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -164,6 +166,10 @@ export default function StorytellerLoreEditor({
   projectId,
   lorePublicId,
 }: StorytellerLoreEditorProps = {}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactToolbarButtonSx = isMobile ? { p: 0.5 } : undefined;
+  const compactToolbarIconSx = isMobile ? { fontSize: "1rem" } : undefined;
   const workspaceEditorBack = useWorkspaceEditorBack();
   const params = useParams();
   const id = projectId ?? params.id;
@@ -1247,8 +1253,9 @@ export default function StorytellerLoreEditor({
                       disabled={!project}
                       onClick={() => setAssetPickerOpen(true)}
                       aria-label="插入資產"
+                      sx={compactToolbarButtonSx}
                     >
-                      <ImageIcon fontSize="small" />
+                      <ImageIcon fontSize="small" sx={compactToolbarIconSx} />
                     </IconButton>
                   </span>
                 </Tooltip>

@@ -20,6 +20,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -828,6 +830,9 @@ export function StorytellerAgenticPanel({
   presentation?: "inline" | "floatingDock";
 }) {
   const floatingDock = presentation === "floatingDock";
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactComposer = floatingDock && isMobile;
   const { session } = useAuth();
   const queryClient = useQueryClient();
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
@@ -840,6 +845,7 @@ export function StorytellerAgenticPanel({
     }
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
+  const [promptFocused, setPromptFocused] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
   // IME 組字階段的候選底線是瀏覽器畫在「這顆真正的 textarea」上的原生效果，
@@ -2081,17 +2087,19 @@ export function StorytellerAgenticPanel({
             spacing={1}
             alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ minWidth: 120 }}
-            >
-              <SmartToyIcon color="primary" />
-              <Typography variant="h6" fontWeight={800}>
-                AI 助理
-              </Typography>
-            </Stack>
+            {!floatingDock && (
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                sx={{ minWidth: 120 }}
+              >
+                <SmartToyIcon color="primary" />
+                <Typography variant="h6" fontWeight={800}>
+                  AI 助理
+                </Typography>
+              </Stack>
+            )}
             <Button
               size="small"
               variant="text"
@@ -2350,8 +2358,8 @@ export function StorytellerAgenticPanel({
           <Box sx={{ position: "relative" }}>
             <TextField
               multiline
-              minRows={3}
-              maxRows={8}
+              minRows={compactComposer ? (promptFocused || prompt ? 2 : 1) : 3}
+              maxRows={compactComposer ? 4 : 8}
               fullWidth
               inputRef={promptTextareaRef}
               label="輸入需求"
@@ -2374,7 +2382,13 @@ export function StorytellerAgenticPanel({
                 setIsComposingPrompt(false);
                 syncPromptSelection(event.target as HTMLTextAreaElement);
               }}
-              placeholder="例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
+              onFocus={() => setPromptFocused(true)}
+              onBlur={() => setPromptFocused(false)}
+              placeholder={
+                compactComposer
+                  ? "輸入需求..."
+                  : "例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
+              }
               error={Boolean(payloadError)}
               helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
               sx={{
