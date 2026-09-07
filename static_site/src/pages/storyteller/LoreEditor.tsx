@@ -15,6 +15,8 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -54,6 +56,7 @@ import {
   type StorytellerEditorSidePanel,
 } from "@/pages/storyteller/StorytellerEditorSideTabs.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
+import { StorytellerEditorSideDrawer } from "@/pages/storyteller/StorytellerEditorSideDrawer.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
 import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
@@ -82,6 +85,8 @@ import type {
   StorytellerAsset,
 } from "@/types/storyteller.ts";
 
+const aiAssistantDrawerWidth = 520;
+const editHistoryDrawerWidth = 460;
 const autoSaveIntervalMinutesMin = 2;
 const autoSaveIntervalMinutesMax = 60;
 const autoSaveIntervalMinutesDefault = 5;
@@ -161,6 +166,10 @@ export default function StorytellerLoreEditor({
   projectId,
   lorePublicId,
 }: StorytellerLoreEditorProps = {}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactToolbarButtonSx = isMobile ? { p: 0.5 } : undefined;
+  const compactToolbarIconSx = isMobile ? { fontSize: "1rem" } : undefined;
   const workspaceEditorBack = useWorkspaceEditorBack();
   const params = useParams();
   const id = projectId ?? params.id;
@@ -191,6 +200,8 @@ export default function StorytellerLoreEditor({
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     null,
   );
+  const historyDrawerOpen = sidePanel === "history";
+  const aiAssistantDrawerOpen = sidePanel === "agentic";
   const [pendingSelectionAgentTrigger, setPendingSelectionAgentTrigger] =
     useState<StorytellerSelectionAgentTrigger | null>(null);
   const [title, setTitle] = useState("");
@@ -243,7 +254,11 @@ export default function StorytellerLoreEditor({
     apiProject?.public_id,
   );
   const { data: versions = [], isLoading: versionsLoading } =
-    useStorytellerLoreVersions(apiProject?.public_id, apiLore?.public_id);
+    useStorytellerLoreVersions(
+      apiProject?.public_id,
+      apiLore?.public_id,
+      historyDrawerOpen,
+    );
   const { data: agents = [] } = useStorytellerAgents();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);
@@ -331,11 +346,12 @@ export default function StorytellerLoreEditor({
   ]);
 
   useEffect(() => {
-    latestVersionIdRef.current = versions[0]?.id;
+    latestVersionIdRef.current =
+      versions[0]?.id ?? apiLore?.latest_version_id ?? undefined;
     if (versions[0]?.conflicted_with_version_id != null) {
       setVersionConflict(true);
     }
-  }, [versions]);
+  }, [apiLore?.latest_version_id, versions]);
 
   useEffect(() => {
     currentDraftRef.current = serializeLoreDraft(
@@ -496,6 +512,8 @@ export default function StorytellerLoreEditor({
           {
             onSuccess: (savedLore) => {
               lastSavedDraftRef.current = currentDraft;
+              latestVersionIdRef.current =
+                savedLore?.latest_version_id ?? latestVersionIdRef.current;
               showSnack("已自動存檔。");
               if (savedLore?.version_conflict) {
                 setVersionConflict(true);
@@ -665,6 +683,8 @@ export default function StorytellerLoreEditor({
       {
         onSuccess: (savedLore) => {
           lastSavedDraftRef.current = currentDraftRef.current;
+          latestVersionIdRef.current =
+            savedLore?.latest_version_id ?? latestVersionIdRef.current;
           showSnack("設定集已存檔。");
           if (isNewLore && savedLore?.public_id) {
             // embedded（工作台）模式下要留在工作台右欄，把網址從 .../lore/new
@@ -745,6 +765,8 @@ export default function StorytellerLoreEditor({
             );
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
+            latestVersionIdRef.current =
+              savedLore?.latest_version_id ?? latestVersionIdRef.current;
             showSnack("已套用 AI 提案並存檔。");
             if (savedLore?.version_conflict) {
               setVersionConflict(true);
@@ -820,7 +842,11 @@ export default function StorytellerLoreEditor({
     trigger: StorytellerSelectionAgentTrigger,
   ) {
     setPendingSelectionAgentTrigger(trigger);
-    setSidePanel("agentic");
+    handleSidePanelChange("agentic");
+  }
+
+  function handleSidePanelChange(value: StorytellerEditorSidePanel | null) {
+    setSidePanel(value);
   }
 
   // 版本比對改用 modal 顯示，不用再走獨立頁面——versions 本來就已經載入每個版本的
@@ -970,7 +996,7 @@ export default function StorytellerLoreEditor({
                 <Button
                   size="small"
                   onClick={() => {
-                    setSidePanel("history");
+                    handleSidePanelChange("history");
                     setVersionConflict(false);
                   }}
                 >
@@ -1052,7 +1078,7 @@ export default function StorytellerLoreEditor({
             <Button
               size="small"
               onClick={() => {
-                setSidePanel("history");
+                handleSidePanelChange("history");
                 setVersionConflict(false);
               }}
             >
@@ -1227,8 +1253,9 @@ export default function StorytellerLoreEditor({
                       disabled={!project}
                       onClick={() => setAssetPickerOpen(true)}
                       aria-label="插入資產"
+                      sx={compactToolbarButtonSx}
                     >
-                      <ImageIcon fontSize="small" />
+                      <ImageIcon fontSize="small" sx={compactToolbarIconSx} />
                     </IconButton>
                   </span>
                 </Tooltip>
@@ -1246,7 +1273,7 @@ export default function StorytellerLoreEditor({
                 </StorytellerEditorOutlineToggle>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
-                  onChange={setSidePanel}
+                  onChange={handleSidePanelChange}
                   historyDisabled={isNewLore}
                   aiTabHidden
                 />
@@ -1254,83 +1281,87 @@ export default function StorytellerLoreEditor({
             }
           />
         }
-        dock={
-          sidePanel && (
-            <>
-              {sidePanel === "history" && (
-                <StoryEditorHistoryPanel
-                  items={loreHistoryItems}
-                  allItems={loreHistoryItems}
-                  loading={versionsLoading}
-                  leftVersionId={leftVersionId}
-                  rightVersionId={rightVersionId}
-                  onCompare={() => setCompareDialogOpen(true)}
-                  onLeftVersionChange={handleLeftVersionChange}
-                  onRightVersionChange={setRightVersionId}
-                  isRightVersionDisabled={isRightVersionDisabled}
-                  isNewStory={isNewLore}
-                  newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
-                  currentVersionId={
-                    versions[0]?.id !== undefined
-                      ? String(versions[0].id)
-                      : undefined
-                  }
-                  revertingVersionId={
-                    revertLoreVersion.isPending
-                      ? String(revertLoreVersion.variables)
-                      : null
-                  }
-                  onRevert={(versionId) => {
-                    revertLoreVersion.mutate(Number(versionId), {
-                      onSuccess: () => {
-                        setVersionConflict(false);
-                        showSnack("已回復到這個版本。");
-                      },
-                    });
-                  }}
-                />
-              )}
-
-              {sidePanel === "agentic" && (
-                <StorytellerAgenticPanel
-                  targetKind="lore"
-                  presentation="floatingDock"
-                  projectPublicId={apiProject?.public_id}
-                  targetPublicId={apiLore?.public_id}
-                  agents={panelAgents}
-                  currentStory={{
-                    title: title.trim() || apiLore?.title || "",
-                    summary: "",
-                    content,
-                    versionId: apiLore?.latest_version_id ?? null,
-                    updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
-                  }}
-                  otherStories={apiStories.map((item) => ({
-                    id: item.public_id,
-                    title: item.title,
-                    content: item.latest_content,
-                  }))}
-                  lores={apiLores
-                    .filter((item) => item.public_id !== apiLore?.public_id)
-                    .map((item) => ({
-                      id: item.public_id,
-                      title: item.title,
-                      content: item.latest_content,
-                    }))}
-                  penName={userProfile?.pen_name}
-                  onApplyText={applyAgentText}
-                  onApplyProposalToEditor={applyAgenticProposalToEditor}
-                  pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
-                  onSelectionAgentTriggerApplied={() =>
-                    setPendingSelectionAgentTrigger(null)
-                  }
-                />
-              )}
-            </>
-          )
-        }
         fillHeight={embedded}
       />
+      <StorytellerEditorSideDrawer
+        open={historyDrawerOpen}
+        title="編輯歷史"
+        width={editHistoryDrawerWidth}
+        onClose={() => handleSidePanelChange(null)}
+      >
+        <StoryEditorHistoryPanel
+          items={loreHistoryItems}
+          allItems={loreHistoryItems}
+          loading={versionsLoading}
+          leftVersionId={leftVersionId}
+          rightVersionId={rightVersionId}
+          onCompare={() => setCompareDialogOpen(true)}
+          onLeftVersionChange={handleLeftVersionChange}
+          onRightVersionChange={setRightVersionId}
+          isRightVersionDisabled={isRightVersionDisabled}
+          isNewStory={isNewLore}
+          newItemMessage="設定集第一次存檔後才會產生編輯歷史。"
+          currentVersionId={
+            versions[0]?.id !== undefined ? String(versions[0].id) : undefined
+          }
+          revertingVersionId={
+            revertLoreVersion.isPending
+              ? String(revertLoreVersion.variables)
+              : null
+          }
+          onRevert={(versionId) => {
+            revertLoreVersion.mutate(Number(versionId), {
+              onSuccess: (savedLore) => {
+                latestVersionIdRef.current =
+                  savedLore?.latest_version_id ?? latestVersionIdRef.current;
+                setVersionConflict(false);
+                showSnack("已回復到這個版本。");
+              },
+            });
+          }}
+        />
+      </StorytellerEditorSideDrawer>
+      <StorytellerEditorSideDrawer
+        open={aiAssistantDrawerOpen}
+        title="AI 助理"
+        width={aiAssistantDrawerWidth}
+        keepMounted
+        onClose={() => handleSidePanelChange(null)}
+      >
+        <StorytellerAgenticPanel
+          targetKind="lore"
+          presentation="floatingDock"
+          projectPublicId={apiProject?.public_id}
+          targetPublicId={apiLore?.public_id}
+          agents={panelAgents}
+          currentStory={{
+            title: title.trim() || apiLore?.title || "",
+            summary: "",
+            content,
+            versionId: apiLore?.latest_version_id ?? null,
+            updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
+          }}
+          otherStories={apiStories.map((item) => ({
+            id: item.public_id,
+            title: item.title,
+            content: item.latest_content,
+          }))}
+          lores={apiLores
+            .filter((item) => item.public_id !== apiLore?.public_id)
+            .map((item) => ({
+              id: item.public_id,
+              title: item.title,
+              content: item.latest_content,
+            }))}
+          penName={userProfile?.pen_name}
+          onApplyText={applyAgentText}
+          onApplyProposalToEditor={applyAgenticProposalToEditor}
+          pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+          onSelectionAgentTriggerApplied={() =>
+            setPendingSelectionAgentTrigger(null)
+          }
+        />
+      </StorytellerEditorSideDrawer>
       <CustomSnackbar
         open={Boolean(snack)}
         message={snack}
