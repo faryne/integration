@@ -1,7 +1,13 @@
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import HistoryIcon from "@mui/icons-material/History";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
-import { ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import {
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 
 // "ai" 是既有單輪、無工具呼叫能力的改寫/擴寫/翻譯 skill 面板；"agentic" 是 AAS
 // 多輪、會自己呼叫工具查資料／提出修改提案的問答面板，兩者刻意分開，不是同一個
@@ -20,9 +26,8 @@ interface StorytellerEditorSideTabsProps {
 }
 
 // AI 助理／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
-// 的文件層級 action 區呈現：預設收起，讓作者能專注在編輯區本身；點開哪個就在原本
-// 的側欄位置展開對應內容，再點一次收合（exclusive ToggleButtonGroup 本身就支援
-// 點選中項目變成 null）。
+// 的文件層級 action 區呈現：預設收起；點開哪個就開啟對應 Drawer，再點一次收合
+// （exclusive ToggleButtonGroup 本身就支援點選中項目變成 null）。
 export function StorytellerEditorSideTabs({
   value,
   onChange,
@@ -30,6 +35,11 @@ export function StorytellerEditorSideTabs({
   agenticDisabled,
   aiTabHidden,
 }: StorytellerEditorSideTabsProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactButtonSx = isMobile ? { p: 0.5 } : undefined;
+  const compactIconSx = isMobile ? { fontSize: "1rem" } : undefined;
+
   return (
     <ToggleButtonGroup
       value={value}
@@ -38,24 +48,30 @@ export function StorytellerEditorSideTabs({
       size="small"
     >
       {!aiTabHidden && (
-        <ToggleButton value="ai" aria-label="AI Agent">
+        <ToggleButton value="ai" aria-label="AI Agent" sx={compactButtonSx}>
           <Tooltip title="AI Agent">
-            <SmartToyIcon fontSize="small" />
+            <SmartToyIcon fontSize="small" sx={compactIconSx} />
           </Tooltip>
         </ToggleButton>
       )}
-      <ToggleButton value="history" disabled={historyDisabled} aria-label="編輯歷史">
+      <ToggleButton
+        value="history"
+        disabled={historyDisabled}
+        aria-label="編輯歷史"
+        sx={compactButtonSx}
+      >
         <Tooltip title="編輯歷史">
-          <HistoryIcon fontSize="small" />
+          <HistoryIcon fontSize="small" sx={compactIconSx} />
         </Tooltip>
       </ToggleButton>
       <ToggleButton
         value="agentic"
         disabled={agenticDisabled}
         aria-label="AI 助理"
+        sx={compactButtonSx}
       >
         <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
-          <AutoAwesomeIcon fontSize="small" />
+          <AutoAwesomeIcon fontSize="small" sx={compactIconSx} />
         </Tooltip>
       </ToggleButton>
     </ToggleButtonGroup>

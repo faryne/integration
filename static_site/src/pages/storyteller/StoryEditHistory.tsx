@@ -157,7 +157,6 @@ export function StoryEditHistory({
                 新
               </TableCell>
               <TableCell align="center">版本號</TableCell>
-              <TableCell>標題</TableCell>
               {showSourceColumn && <TableCell>來源</TableCell>}
               <TableCell>字數</TableCell>
               <TableCell>建立時間</TableCell>
@@ -197,18 +196,16 @@ export function StoryEditHistory({
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <Chip
-                    size="small"
-                    label={`#${versionNumberById.get(item.id) ?? item.id}`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Stack spacing={0.5}>
-                    <Typography fontWeight={800}>{item.title}</Typography>
+                  <Stack spacing={0.5} alignItems="center">
+                    <Chip
+                      size="small"
+                      label={`#${versionNumberById.get(item.id) ?? item.id}`}
+                    />
                     <Stack
                       direction="row"
                       spacing={0.5}
                       flexWrap="wrap"
+                      justifyContent="center"
                       useFlexGap
                     >
                       {item.revertedFromVersionId && (

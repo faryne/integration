@@ -1,5 +1,12 @@
 import TocIcon from "@mui/icons-material/Toc";
-import { Box, Popper, ToggleButton, Tooltip } from "@mui/material";
+import {
+  Box,
+  Popper,
+  ToggleButton,
+  Tooltip,
+  useMediaQuery,
+  useTheme,
+} from "@mui/material";
 import { useEffect, useId, useState, type ReactNode } from "react";
 
 interface StorytellerEditorOutlineToggleProps {
@@ -19,6 +26,10 @@ export function StorytellerEditorOutlineToggle({
 }: StorytellerEditorOutlineToggleProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const panelId = useId();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const compactButtonSx = isMobile ? { p: 0.5 } : undefined;
+  const compactIconSx = isMobile ? { fontSize: "1rem" } : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -47,8 +58,9 @@ export function StorytellerEditorOutlineToggle({
             aria-expanded={open}
             aria-controls={open ? panelId : undefined}
             onChange={() => onToggle(!open)}
+            sx={compactButtonSx}
           >
-            <TocIcon fontSize="small" />
+            <TocIcon fontSize="small" sx={compactIconSx} />
           </ToggleButton>
         </Tooltip>
       </Box>
