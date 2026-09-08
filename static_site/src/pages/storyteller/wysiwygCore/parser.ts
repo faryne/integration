@@ -474,6 +474,14 @@ function parseInline(text: string, enableAssets: boolean): ParsedRun[] {
     }
     const innerRaw = text.slice(searchFrom, closeIndex);
     const after = text.slice(closeIndex + delimiter.length);
+    if (token.delimiter.markName === "code") {
+      // 行內程式碼內容是字面文字：裡面的 *、~、marker、圖片語法都不能再被遞迴解析。
+      return [
+        ...beforeRuns,
+        { text: innerRaw, marks: ["code"] },
+        ...parseInline(after, enableAssets),
+      ];
+    }
     const innerRuns = parseInline(innerRaw, enableAssets).map((run) => ({
       ...run,
       marks: [...run.marks, token.delimiter.markName],

@@ -34,6 +34,7 @@ const MARK_LABEL: Record<MarkName, string> = {
   subscript: "下標",
   superscript: "上標",
   strike: "刪除線",
+  code: "行內程式碼",
 };
 
 interface SyntaxItem {

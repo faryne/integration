@@ -1,4 +1,5 @@
 import { markInputRule, markPasteRule } from "@tiptap/core";
+import Code from "@tiptap/extension-code";
 import Italic from "@tiptap/extension-italic";
 import Strike from "@tiptap/extension-strike";
 import Subscript from "@tiptap/extension-subscript";
@@ -82,5 +83,17 @@ export const CustomStrike = Strike.extend({
   },
   addPasteRules() {
     return [markPasteRule({ find: delimiterPasteRegex("--"), type: this.type })];
+  },
+});
+
+// 官方 Code 沒有符合本編輯器白名單的反引號 input/paste rule，這裡補成 `文字`。
+export const CustomCode = Code.extend({
+  // 官方預設 excludes: "_" 會排斥所有其他 mark；這裡要允許粗體等外層 mark 包住 code。
+  excludes: "",
+  addInputRules() {
+    return [markInputRule({ find: delimiterInputRegex("`"), type: this.type })];
+  },
+  addPasteRules() {
+    return [markPasteRule({ find: delimiterPasteRegex("`"), type: this.type })];
   },
 });
