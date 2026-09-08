@@ -186,6 +186,16 @@ const MARK_COMMANDS: WysiwygCommand[] = [
     isActive: (editor) => editor.isActive("strike"),
     run: (editor) => editor.chain().focus().toggleStrike().run(),
   },
+  {
+    id: "code",
+    label: "行內程式碼",
+    group: "mark",
+    scope: "inline",
+    icon: CodeIcon,
+    aliases: ["行內程式碼", "code"],
+    isActive: (editor) => editor.isActive("code"),
+    run: (editor) => editor.chain().focus().toggleCode().run(),
+  },
 ];
 
 /** 標題 0（內文）到 6，游標在空白段落／非空段落時的「區塊轉換」都是同一組 command

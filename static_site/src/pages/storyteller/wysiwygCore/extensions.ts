@@ -12,6 +12,7 @@ import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
 import { InlineLink } from "./inlineLinkMark";
 import {
+  CustomCode,
   CustomItalic,
   CustomStrike,
   CustomSubscript,
@@ -62,6 +63,7 @@ export function createWysiwygCoreExtensions(
     CustomSubscript,
     CustomSuperscript,
     CustomStrike,
+    CustomCode,
     TextColor,
     BgColor,
     InlineLink,

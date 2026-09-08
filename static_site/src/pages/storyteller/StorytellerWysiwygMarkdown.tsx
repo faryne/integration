@@ -90,6 +90,13 @@ const BLOCK_GROUP_SX = {
     borderTop: "1px solid",
     borderColor: "divider",
   },
+  "& code": {
+    bgcolor: "action.hover",
+    borderRadius: "4px",
+    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
+    fontSize: "0.92em",
+    px: 0.5,
+  },
   "& table": {
     margin: "0 0 0.5em 0",
     borderCollapse: "collapse",
@@ -120,6 +127,7 @@ const MARK_TAG: Record<MarkName, keyof React.JSX.IntrinsicElements> = {
   subscript: "sub",
   superscript: "sup",
   strike: "s",
+  code: "code",
 };
 
 function renderRun(run: ParsedRun, key: number): ReactNode {

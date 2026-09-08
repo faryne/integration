@@ -49,6 +49,7 @@ const MARK_NESTING_ORDER_OUTER_TO_INNER: MarkName[] = [
   "italic",
   "subscript",
   "superscript",
+  "code",
 ];
 
 // 一個「行內包裝」：可能是純開關樣式的 delimiter（粗體等，開/關字串一樣），
