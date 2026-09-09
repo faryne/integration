@@ -1,6 +1,7 @@
 import AddIcon from "@mui/icons-material/Add";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
 import KeyIcon from "@mui/icons-material/Key";
 import {
   Alert,
@@ -29,6 +30,13 @@ import {
 import { useState } from "react";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import {
+  STORYTELLER_MCP_SKILL_FRONTMATTER,
+  storytellerMcpClientConfigSnippet,
+  storytellerMcpSkillDoc,
+  storytellerMcpSkillDocBody,
+} from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
 import {
   useCreateStorytellerPersonalAccessToken,
   useDeleteStorytellerPersonalAccessToken,
@@ -44,6 +52,8 @@ import type {
 const mcpEndpoint = isSteamLoomSite()
   ? "https://steamloom.works/mcp"
   : "https://faryne.dev/api-integration/storyteller-mcp";
+const skillDocContent = storytellerMcpSkillDoc(mcpEndpoint);
+const skillDocBody = storytellerMcpSkillDocBody(mcpEndpoint);
 
 const expiresInDaysOptions = [
   { value: "30", label: "30 天" },
@@ -52,23 +62,6 @@ const expiresInDaysOptions = [
   { value: "365", label: "365 天" },
   { value: "forever", label: "永久（不過期）" },
 ] as const;
-
-function mcpClientConfigSnippet(token: string) {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        storyteller: {
-          url: mcpEndpoint,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      },
-    },
-    null,
-    2,
-  );
-}
 
 // MCP 連接分頁是「我的工作台」底下與金鑰管理並排的分頁內容，只輸出內容本體，
 // 外層標題／麵包屑交給 Home.tsx 的 StorytellerShell。
@@ -85,6 +78,22 @@ export function StorytellerMcpPanel() {
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
     setCopyMessageOpen(true);
+  }
+
+  // 純前端下載通用 SKILL.md；內容使用 PAT 佔位符，避免把使用者真實 token 寫進檔案。
+  function downloadSkillDoc() {
+    const blob = new Blob([skillDocContent], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "SKILL.md";
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -232,6 +241,78 @@ export function StorytellerMcpPanel() {
         </Stack>
       </Paper>
 
+      <Paper variant="outlined" sx={{ p: { xs: 2, md: 3 }, borderRadius: 1 }}>
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1.5}
+            alignItems={{ xs: "stretch", sm: "center" }}
+            justifyContent="space-between"
+          >
+            <Box>
+              <Typography variant="h6">給 AI Agent 的說明文件</Typography>
+              <Typography color="text.secondary">
+                以下是給 AI Agent
+                讀的完整設定與方法說明，可以直接下載後放進你的 Agent 的 skill 目錄。
+              </Typography>
+            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={downloadSkillDoc}
+              sx={{ flexShrink: 0 }}
+            >
+              下載 SKILL.md
+            </Button>
+          </Stack>
+          <Box
+            sx={{
+              maxHeight: { xs: 360, md: 520 },
+              overflowY: "auto",
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              bgcolor: "background.default",
+              p: { xs: 1.5, md: 2 },
+              "& pre": {
+                m: 0,
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: "action.hover",
+                fontSize: 12,
+                overflowX: "auto",
+              },
+              "& code": {
+                fontFamily: "monospace",
+              },
+            }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 0.5 }}
+            >
+              Frontmatter
+            </Typography>
+            <Box
+              component="pre"
+              sx={{
+                m: 0,
+                mb: 2,
+                p: 1.5,
+                borderRadius: 1,
+                bgcolor: "action.hover",
+                fontSize: 12,
+                overflowX: "auto",
+              }}
+            >
+              {STORYTELLER_MCP_SKILL_FRONTMATTER}
+            </Box>
+            <StorytellerMarkdown>{skillDocBody}</StorytellerMarkdown>
+          </Box>
+        </Stack>
+      </Paper>
+
       <Dialog
         open={createdToken !== null}
         onClose={() => setCreatedToken(null)}
@@ -279,14 +360,20 @@ export function StorytellerMcpPanel() {
                         overflowX: "auto",
                       }}
                     >
-                      {mcpClientConfigSnippet(createdToken.token)}
+                      {storytellerMcpClientConfigSnippet(
+                        mcpEndpoint,
+                        createdToken.token,
+                      )}
                     </Box>
                     <Tooltip title="複製設定範例">
                       <IconButton
                         size="small"
                         onClick={() =>
                           void copyText(
-                            mcpClientConfigSnippet(createdToken.token),
+                            storytellerMcpClientConfigSnippet(
+                              mcpEndpoint,
+                              createdToken.token,
+                            ),
                           )
                         }
                       >
