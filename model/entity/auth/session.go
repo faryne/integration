@@ -17,6 +17,7 @@ type UserResponse struct {
 
 type RedisSession struct {
 	UserId      uint64 `json:"user_id"`
+	Brand       string `json:"brand"`
 	FirebaseUID string `json:"firebase_uid"`
 	CreatedAt   string `json:"created_at"`
 	ExpiresAt   string `json:"expires_at"`

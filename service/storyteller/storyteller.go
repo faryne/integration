@@ -17,7 +17,6 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
-	authRepo "faryne.dev/repository/auth"
 	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/log"
 
@@ -2571,7 +2570,7 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	projects, total, err := s.repo.PublicProjectsByUserID(profile.UserID, (page-1)*pageSize, pageSize)
+	projects, total, err := s.repo.PublicProjectsByUserID(profile.ID, (page-1)*pageSize, pageSize)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -2583,7 +2582,7 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.UserID)
+	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.ID)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -2604,11 +2603,11 @@ func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]sto
 	if err != nil {
 		return nil, err
 	}
-	isOwner := viewerID != 0 && viewerID == profile.UserID
+	isOwner := viewerID != 0 && viewerID == profile.ID
 	if profile.HideFavoriteProjects && !isOwner {
 		return []storytellerModel.ProjectOutput{}, nil
 	}
-	projects, err := s.repo.PublicFavoriteProjects(profile.UserID, isOwner)
+	projects, err := s.repo.PublicFavoriteProjects(profile.ID, isOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -2625,7 +2624,7 @@ func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]sto
 		for _, output := range outputs {
 			ids = append(ids, output.ID)
 		}
-		hidden, err := s.repo.FavoriteProjectHiddenFlags(profile.UserID, ids)
+		hidden, err := s.repo.FavoriteProjectHiddenFlags(profile.ID, ids)
 		if err != nil {
 			return nil, err
 		}
@@ -2641,11 +2640,11 @@ func (s *Service) PublicFavoriteAuthors(penName string, viewerID uint64) ([]stor
 	if err != nil {
 		return nil, err
 	}
-	isOwner := viewerID != 0 && viewerID == profile.UserID
+	isOwner := viewerID != 0 && viewerID == profile.ID
 	if profile.HideFavoriteAuthors && !isOwner {
 		return []storytellerModel.FavoriteAuthorOutput{}, nil
 	}
-	favorites, err := s.repo.PublicFavoriteAuthors(profile.UserID, isOwner)
+	favorites, err := s.repo.PublicFavoriteAuthors(profile.ID, isOwner)
 	if err != nil {
 		return nil, err
 	}
@@ -2894,12 +2893,12 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 	if err := s.ensurePenNameAvailable(userID, input.PenName); err != nil {
 		return nil, err
 	}
-	avatarURL := input.AvatarURL
-	if input.UseDefaultAvatar {
-		avatarURL = loginAvatarURL(userID)
-	}
 	profile, err := s.repo.UserProfileWithDeleted(userID)
 	if err == nil {
+		avatarURL := input.AvatarURL
+		if input.UseDefaultAvatar {
+			avatarURL = loginAvatarURL(profile)
+		}
 		profile.PenName = input.PenName
 		profile.Bio = input.Bio
 		profile.UseDefaultAvatar = input.UseDefaultAvatar
@@ -2917,6 +2916,10 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 	}
 	if !repository.IsRecordNotFound(err) {
 		return nil, err
+	}
+	avatarURL := input.AvatarURL
+	if input.UseDefaultAvatar {
+		avatarURL = ""
 	}
 	profile = &storytellerModel.UserProfile{
 		UserID:                  userID,
@@ -3025,12 +3028,11 @@ func (s *Service) authorOutput(userID uint64) (*storytellerModel.UserProfileOutp
 		if output.PenName != "" {
 			return output, nil
 		}
-		output.PenName = fallbackAuthorName(userID)
+		output.PenName = fallbackAuthorName(profile)
 		return output, nil
 	}
 	return &storytellerModel.UserProfileOutput{
 		UserID:           userID,
-		PenName:          fallbackAuthorName(userID),
 		UseDefaultAvatar: true,
 	}, nil
 }
@@ -3101,11 +3103,11 @@ func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput
 
 func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.UserProfileOutput {
 	return &storytellerModel.UserProfileOutput{
-		UserID:                  profile.UserID,
+		UserID:                  profile.ID,
 		PenName:                 profile.PenName,
 		Bio:                     profile.Bio,
 		UseDefaultAvatar:        profile.UseDefaultAvatar,
-		AvatarURL:               resolvedAvatarURL(profile.UserID, profile.AvatarURL),
+		AvatarURL:               resolvedAvatarURL(profile),
 		SNSLinks:                profile.SNSLinks,
 		HideFavoriteProjects:    profile.HideFavoriteProjects,
 		HideFavoriteAuthors:     profile.HideFavoriteAuthors,
@@ -3118,19 +3120,18 @@ func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.
 // resolvedAvatarURL falls back to a Gravatar identicon when the profile has
 // no avatar set at all (no custom URL, and the login provider has no photo
 // either), so the public author page never has to show a bare placeholder icon.
-func resolvedAvatarURL(userID uint64, avatarURL string) string {
-	if avatarURL != "" {
-		return avatarURL
+func resolvedAvatarURL(profile *storytellerModel.UserProfile) string {
+	if profile.AvatarURL != "" {
+		return profile.AvatarURL
 	}
-	return gravatarURL(userID)
+	return gravatarURL(profile)
 }
 
-func gravatarURL(userID uint64) string {
-	user, err := authRepo.NewUserRepository().UserByID(userID)
-	if err != nil || user.Email == nil {
+func gravatarURL(profile *storytellerModel.UserProfile) string {
+	if profile.Email == nil {
 		return ""
 	}
-	email := strings.ToLower(strings.TrimSpace(*user.Email))
+	email := strings.ToLower(strings.TrimSpace(*profile.Email))
 	if email == "" {
 		return ""
 	}
@@ -3138,26 +3139,21 @@ func gravatarURL(userID uint64) string {
 	return fmt.Sprintf("https://www.gravatar.com/avatar/%x?d=identicon", hash)
 }
 
-func fallbackAuthorName(userID uint64) string {
-	user, err := authRepo.NewUserRepository().UserByID(userID)
-	if err != nil {
-		return ""
+func fallbackAuthorName(profile *storytellerModel.UserProfile) string {
+	if profile.DisplayName != nil && strings.TrimSpace(*profile.DisplayName) != "" {
+		return strings.TrimSpace(*profile.DisplayName)
 	}
-	if user.DisplayName != nil && strings.TrimSpace(*user.DisplayName) != "" {
-		return strings.TrimSpace(*user.DisplayName)
-	}
-	if user.Email != nil && strings.TrimSpace(*user.Email) != "" {
-		return strings.TrimSpace(*user.Email)
+	if profile.Email != nil && strings.TrimSpace(*profile.Email) != "" {
+		return strings.TrimSpace(*profile.Email)
 	}
 	return ""
 }
 
-func loginAvatarURL(userID uint64) string {
-	user, err := authRepo.NewUserRepository().UserByID(userID)
-	if err != nil || user.PhotoURL == nil {
+func loginAvatarURL(profile *storytellerModel.UserProfile) string {
+	if profile.PhotoURL == nil {
 		return ""
 	}
-	return strings.TrimSpace(*user.PhotoURL)
+	return strings.TrimSpace(*profile.PhotoURL)
 }
 
 // invalidPenNameCharsRegexp rejects characters that are structurally
@@ -3193,7 +3189,7 @@ func (s *Service) ensurePenNameAvailable(userID uint64, penName string) error {
 		}
 		return err
 	}
-	if existing.UserID != userID {
+	if existing.ID != userID {
 		return errors.New("這個筆名已經有人使用了，請換一個")
 	}
 	return nil

@@ -5,12 +5,13 @@ import (
 	"faryne.dev/controller/auth"
 	"faryne.dev/middleware/authsession"
 	"faryne.dev/middleware/encrypted"
+	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
 
 func Auth(app *fiber.App) {
 	g := app.Group("/auth")
-	g.Get("/session", authsession.New(), auth.GetSession)
+	g.Get("/session", authsession.New(authService.BrandMain), auth.GetSession)
 	g.Post("/session", auth.CreateSession)
 	g.Delete("/session", auth.DestroySession)
 

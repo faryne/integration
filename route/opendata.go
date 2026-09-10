@@ -3,6 +3,7 @@ package route
 import (
 	"faryne.dev/controller/opendata"
 	"faryne.dev/middleware/authsession"
+	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -42,23 +43,23 @@ func OpenData(app *fiber.App) {
 	g51.Get("/code_list", opendata.TwseEtfCodeList)
 	g51.Get("/upcoming/by_date", opendata.TwseUpcomingExETFByDate)
 
-	// authsession.New() 掛在每個路由自己身上，不透過 g51.Group("", authsession.New())
+	// 登入 middleware 掛在每個路由自己身上，不透過 g51.Group("", middleware)
 	// 建子群組：Fiber v3 的 Group("", middleware) 是用同一個 prefix 註冊一個
 	// methodUse 中介層，之後在這個 prefix 底下註冊的路由（例如下面的 :code/share_info、
 	// :code/ticker）都會先經過這個中介層，等於整個 /twse 都被要求要登入。
-	g51.Get("/favorites", authsession.New(), opendata.TwseEtfFavorites)
-	g51.Get("/favorites/batch", authsession.New(), opendata.TwseEtfFavoritesBatch)
-	g51.Get("/favorites/realtime_price", authsession.New(), opendata.TwseEtfFavoritesRealtimePrices)
-	g51.Post("/:code/favorite", authsession.New(), opendata.CreateTwseEtfFavorite)
-	g51.Delete("/:code/favorite", authsession.New(), opendata.DeleteTwseEtfFavorite)
+	g51.Get("/favorites", authsession.New(authService.BrandMain), opendata.TwseEtfFavorites)
+	g51.Get("/favorites/batch", authsession.New(authService.BrandMain), opendata.TwseEtfFavoritesBatch)
+	g51.Get("/favorites/realtime_price", authsession.New(authService.BrandMain), opendata.TwseEtfFavoritesRealtimePrices)
+	g51.Post("/:code/favorite", authsession.New(authService.BrandMain), opendata.CreateTwseEtfFavorite)
+	g51.Delete("/:code/favorite", authsession.New(authService.BrandMain), opendata.DeleteTwseEtfFavorite)
 	g51.Get(
 		"/:code/transactions",
-		authsession.New(),
+		authsession.New(authService.BrandMain),
 		opendata.TwseEtfSavedTransactions,
 	)
 	g51.Put(
 		"/:code/transactions",
-		authsession.New(),
+		authsession.New(authService.BrandMain),
 		opendata.SaveTwseEtfSavedTransactions,
 	)
 

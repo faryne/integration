@@ -8,6 +8,7 @@ import {
   NodeViewWrapper,
   type NodeViewProps,
 } from "@tiptap/react";
+import { exitCode } from "@tiptap/pm/commands";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
   Plugin,
@@ -319,6 +320,10 @@ export const StorytellerCodeBlock = Node.create({
   // "paragraph"` 時就會 return false 讓出，正常 fallback 到這裡。
   addKeyboardShortcuts() {
     return {
+      // 游標在區塊最後一行、且該行已經是空白（表示前一次 Enter 已經留了一個空行）時，
+      // 再按一次 Enter 視為「跳出」——比照 Notion 等筆記工具的慣例，不用另外記
+      // Mod-Enter 這個不直覺的快速鍵。exitCode 是 prosemirror-commands 內建命令：
+      // 在游標後面插入一個預設的一般段落並把游標移過去。
       Enter: () => {
         const { state, view } = this.editor;
         const { selection } = state;
@@ -328,8 +333,25 @@ export const StorytellerCodeBlock = Node.create({
         ) {
           return false;
         }
+        const { $from } = selection;
+        const atBlockEnd = $from.parentOffset === $from.parent.content.size;
+        const currentLineEmpty =
+          atBlockEnd &&
+          ($from.parent.textContent === "" ||
+            $from.parent.textContent.endsWith("\n"));
+        if (currentLineEmpty && exitCode(state, view.dispatch)) {
+          return true;
+        }
         view.dispatch(state.tr.insertText("\n").scrollIntoView());
         return true;
+      },
+      // 不想等空行也想直接跳出時的明確快速鍵，跟其他程式碼編輯器（VS Code 等）慣例一致。
+      "Mod-Enter": () => {
+        const { state, view } = this.editor;
+        if (state.selection.$from.parent.type.name !== this.name) {
+          return false;
+        }
+        return exitCode(state, view.dispatch);
       },
     };
   },

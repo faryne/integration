@@ -6,7 +6,13 @@
  */
 
 export type MarkName =
-  "bold" | "italic" | "underline" | "subscript" | "superscript" | "strike";
+  | "bold"
+  | "italic"
+  | "underline"
+  | "subscript"
+  | "superscript"
+  | "strike"
+  | "code";
 
 export interface MarkSyntaxRule {
   markName: MarkName;
@@ -23,6 +29,7 @@ export const MARK_SYNTAX_WHITELIST: MarkSyntaxRule[] = [
   { markName: "italic", delimiters: ["*"], canonicalDelimiter: "*" },
   { markName: "subscript", delimiters: ["~"], canonicalDelimiter: "~" },
   { markName: "superscript", delimiters: ["^"], canonicalDelimiter: "^" },
+  { markName: "code", delimiters: ["`"], canonicalDelimiter: "`" },
 ];
 
 export interface FlatDelimiter {
