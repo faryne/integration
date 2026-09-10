@@ -29,36 +29,43 @@ var devAuthDisplayName = ptr("本機開發測試帳號（Claude）")
 
 func ptr(s string) *string { return &s }
 
-func CreateSession(idToken string) (*modelAuth.SessionResponse, error) {
+type UpsertFirebaseUserFunc func(*FirebaseToken) (*modelAuth.User, error)
+
+func CreateSessionFor(idToken string, brand string, upsert UpsertFirebaseUserFunc) (*modelAuth.SessionResponse, error) {
 	verified, err := VerifyFirebaseIDToken(idToken)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := authRepo.NewUserRepository().UpsertFirebaseUser(modelAuth.User{
-		FirebaseUID: verified.UID,
-		Email:       verified.Email,
-		DisplayName: verified.DisplayName,
-		PhotoURL:    verified.PhotoURL,
-	})
+	user, err := upsert(verified)
 	if err != nil {
 		return nil, err
 	}
 
-	return issueSession(user)
+	return issueSessionWithBrand(user, brand)
 }
 
-// CreateDevSession 完全跳過 Firebase JWT 驗證，直接用固定的測試身分簽發合法 session——
-// 給本機開發自動化測試用（例如免走 Firebase 登入彈窗直接進工作台頁面）。呼叫端
-// （route/auth.go）只會在 `config.EnvConfig().EnableDevAuthBypass` 為 true 時才註冊
-// 這個端點的路由，這裡再檢查一次是防禦性寫法，避免有人不小心繞過路由層直接呼叫。
-func CreateDevSession() (*modelAuth.SessionResponse, error) {
+func CreateSession(idToken string) (*modelAuth.SessionResponse, error) {
+	return CreateSessionFor(idToken, BrandMain, func(verified *FirebaseToken) (*modelAuth.User, error) {
+		return authRepo.NewUserRepository().UpsertFirebaseUser(modelAuth.User{
+			FirebaseUID: verified.UID,
+			Email:       verified.Email,
+			DisplayName: verified.DisplayName,
+			PhotoURL:    verified.PhotoURL,
+		})
+	})
+}
+
+// CreateDevSessionFor 跟 CreateDevSession 一樣完全跳過 Firebase JWT 驗證，用固定的測試身分
+// 簽發合法 session，但 brand／upsert 對象可以換——每個品牌自己的 dev bypass route
+// （例如 storyteller）呼叫這個函式帶自己的 upsert 即可，不用各自重寫一份驗證+簽發邏輯。
+func CreateDevSessionFor(brand string, upsert UpsertFirebaseUserFunc) (*modelAuth.SessionResponse, error) {
 	if !config.EnvConfig().EnableDevAuthBypass {
 		return nil, errors.New("dev auth bypass is disabled")
 	}
 
-	user, err := authRepo.NewUserRepository().UpsertFirebaseUser(modelAuth.User{
-		FirebaseUID: devAuthFirebaseUID,
+	user, err := upsert(&FirebaseToken{
+		UID:         devAuthFirebaseUID,
 		Email:       devAuthEmail,
 		DisplayName: devAuthDisplayName,
 	})
@@ -66,10 +73,24 @@ func CreateDevSession() (*modelAuth.SessionResponse, error) {
 		return nil, err
 	}
 
-	return issueSession(user)
+	return issueSessionWithBrand(user, brand)
 }
 
-func issueSession(user *modelAuth.User) (*modelAuth.SessionResponse, error) {
+// CreateDevSession 完全跳過 Firebase JWT 驗證，直接用固定的測試身分簽發合法 session——
+// 給本機開發自動化測試用（例如免走 Firebase 登入彈窗直接進工作台頁面）。呼叫端
+// （route/auth.go）只會在 `config.EnvConfig().EnableDevAuthBypass` 為 true 時才註冊
+// 這個端點的路由，這裡再檢查一次是防禦性寫法，避免有人不小心繞過路由層直接呼叫。
+func CreateDevSession() (*modelAuth.SessionResponse, error) {
+	return CreateDevSessionFor(BrandMain, func(verified *FirebaseToken) (*modelAuth.User, error) {
+		return authRepo.NewUserRepository().UpsertFirebaseUser(modelAuth.User{
+			FirebaseUID: verified.UID,
+			Email:       verified.Email,
+			DisplayName: verified.DisplayName,
+		})
+	})
+}
+
+func issueSessionWithBrand(user *modelAuth.User, brand string) (*modelAuth.SessionResponse, error) {
 	encryptKey, encryptKeyHash, err := newEncryptKey()
 	if err != nil {
 		return nil, err
@@ -79,6 +100,7 @@ func issueSession(user *modelAuth.User) (*modelAuth.SessionResponse, error) {
 	expiresAt := now.Add(sessionTTL)
 	session := modelAuth.RedisSession{
 		UserId:      user.Id,
+		Brand:       brand,
 		FirebaseUID: user.FirebaseUID,
 		CreatedAt:   now.Format(time.RFC3339),
 		ExpiresAt:   expiresAt.Format(time.RFC3339),

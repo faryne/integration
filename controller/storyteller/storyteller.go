@@ -16,10 +16,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// optionalViewerID resolves the caller's user ID from the encrypt-key header
-// when present, without requiring authentication like authsession.New() does.
-// Used by public endpoints that show extra data (e.g. hidden favorites) to
-// the profile owner while keeping the route open to anonymous visitors.
+// optionalViewerID 從 encrypt-key header 取出 storyteller session；公開頁可藉此
+// 對本人顯示額外資料，同時維持匿名訪客可讀。
 func optionalViewerID(ctx fiber.Ctx) uint64 {
 	encryptKey := strings.TrimSpace(ctx.Get(authsession.HeaderEncryptKey))
 	if encryptKey == "" {
@@ -29,7 +27,47 @@ func optionalViewerID(ctx fiber.Ctx) uint64 {
 	if err != nil {
 		return 0
 	}
+	if session.Brand != authService.BrandStoryteller {
+		return 0
+	}
 	return session.UserId
+}
+
+func CreateSession(ctx fiber.Ctx) error {
+	idToken, err := bearerToken(ctx.Get("Authorization"))
+	if err != nil {
+		return output.BadRequest(err)
+	}
+
+	resp, err := authService.CreateSessionFor(idToken, authService.BrandStoryteller, storyteller.UpsertFirebaseUser)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(resp)
+}
+
+// CreateDevSession 只在 route/storyteller.go 確認 `ENABLE_DEV_AUTH_BYPASS=true` 才會被
+// 註冊到路由上，讓本機測試不用真的走 Firebase 登入彈窗就能拿到 storyteller brand 的合法 session
+// （跟主站的 /auth/dev-session 是同一套機制，只是 brand／upsert 對象換成 storyteller_users）。
+func CreateDevSession(ctx fiber.Ctx) error {
+	resp, err := authService.CreateDevSessionFor(authService.BrandStoryteller, storyteller.UpsertFirebaseUser)
+	if err != nil {
+		return output.BadRequest(err)
+	}
+	return output.Success(resp)
+}
+
+func bearerToken(header string) (string, error) {
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return "", errors.New("Authorization header is required")
+	}
+
+	parts := strings.SplitN(header, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
+		return "", errors.New("Authorization header must be Bearer token")
+	}
+	return strings.TrimSpace(parts[1]), nil
 }
 
 // SearchWorks 是全站作品搜尋（文字故事／圖像作品共用），公開端點、不需要登入。
