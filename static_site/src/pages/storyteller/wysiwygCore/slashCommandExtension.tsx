@@ -1,11 +1,10 @@
-import { Extension, type Editor, type Range } from "@tiptap/core";
+import { Extension, type Editor } from "@tiptap/core";
 import Suggestion, {
   exitSuggestion,
   type SuggestionKeyDownProps,
   type SuggestionProps,
 } from "@tiptap/suggestion";
-import { PluginKey, type EditorState } from "@tiptap/pm/state";
-import { Box, Divider, Paper } from "@mui/material";
+import { Box, Divider, Paper, Typography } from "@mui/material";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -14,8 +13,11 @@ import {
   type WysiwygCommand,
   type WysiwygCommandContext,
 } from "./commands";
-
-export const slashCommandPluginKey = new PluginKey("storytellerSlashCommand");
+import {
+  canShowSlashCommand,
+  runSlashCommand,
+  slashCommandPluginKey,
+} from "./slashCommandCore";
 
 interface SlashCommandExtensionOptions {
   getCommandContext?: () => WysiwygCommandContext | null;
@@ -29,57 +31,6 @@ const activeSlashCommandControllers = new WeakMap<
   Editor,
   { onKeyDown: (key: SlashCommandKey) => boolean }
 >();
-
-// ProseMirror `textBetween` 預設把非文字的 leaf node（例如 assetImage 這種
-// atom）當成長度 0 的空字串，不會出現在回傳的文字裡——這代表「游標緊接在一張
-// 圖片後面」在這裡看起來跟「段落真的是空的」一模一樣，會誤判成可以觸發 slash
-// 選單。傳入 leafText 讓每個 atom 都貢獻一個不可能出現在使用者輸入裡的佔位字元
-// （Unicode Object Replacement Character），這樣段落裡只要有圖片這類 atom，
-// textBefore/textAfter 就不會再等於純文字判斷式預期的樣子，slash 選單改成正確
-// 判斷「不是真的空段落」而不顯示。已知 Bug 記錄第 11 項：這個誤判是圖片後面
-// 緊接著用 slash 插入分隔線會把圖片吃掉的根本原因（`insertHorizontalRule` 在
-// 「以為段落只有 query 文字、其實還有圖片 atom」的情況下，把整個段落內容連同
-// 圖片一起清空）。
-const ATOM_PLACEHOLDER = "￼";
-
-function isTextOnlySlashQuery(state: EditorState, range: Range) {
-  const { selection } = state;
-  if (!selection.empty) return false;
-  const $from = selection.$from;
-  if ($from.parent.type.name !== "paragraph") return false;
-
-  const textBefore = $from.parent.textBetween(
-    0,
-    $from.parentOffset,
-    "",
-    ATOM_PLACEHOLDER,
-  );
-  const textAfter = $from.parent.textBetween(
-    $from.parentOffset,
-    $from.parent.content.size,
-    "",
-    ATOM_PLACEHOLDER,
-  );
-  return (
-    textBefore.startsWith("/") &&
-    textAfter === "" &&
-    range.from >= $from.start()
-  );
-}
-
-export function canShowSlashCommand(state: EditorState, range: Range) {
-  return isTextOnlySlashQuery(state, range);
-}
-
-export function runSlashCommand(
-  editor: Editor,
-  range: Range,
-  command: WysiwygCommand,
-  context: WysiwygCommandContext,
-) {
-  editor.chain().focus().deleteRange(range).run();
-  command.run(editor, context);
-}
 
 interface SlashCommandListProps {
   items: WysiwygCommand[];
@@ -137,6 +88,15 @@ function SlashCommandList({
           index > 0 && items[index - 1].group !== item.group;
         return (
           <Box key={item.id} component="span" sx={{ display: "block" }}>
+            {item.group === "ai" && (
+              <Typography
+                component="span"
+                variant="caption"
+                sx={{ display: "block", px: 1.25, pt: 0.5, pb: 0.25 }}
+              >
+                AI 協作
+              </Typography>
+            )}
             {showDividerBefore ? (
               // `<Divider>` 預設顏色吃 `theme.palette.divider`——右鍵選單在
               // `StorytellerLayout` 的 `ThemeProvider` 底下能吃到 storyteller
@@ -314,7 +274,10 @@ function createSlashCommandRenderer() {
   function update(props: SlashSuggestionProps) {
     if (!root) return;
     latestProps = props;
-    selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
+    selectedIndex = Math.min(
+      selectedIndex,
+      Math.max(0, props.items.length - 1),
+    );
     renderAndSyncAria();
   }
 
@@ -388,7 +351,9 @@ export const SlashCommand = Extension.create<SlashCommandExtensionOptions>({
     // 不要搶在 compositionend 之前動 slash 選單的狀態。
     const handleKey = (key: SlashCommandKey) => {
       if (this.editor.view.composing) return false;
-      return activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false;
+      return (
+        activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false
+      );
     };
     return {
       ArrowDown: () => handleKey("ArrowDown"),

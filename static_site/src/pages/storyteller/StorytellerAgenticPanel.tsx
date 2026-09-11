@@ -1,4 +1,5 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -12,6 +13,7 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  IconButton,
   ListSubheader,
   Menu,
   MenuItem,
@@ -44,6 +46,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
 import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
@@ -84,6 +87,7 @@ import {
   insertStoryMention,
 } from "@/pages/storyteller/storytellerAgentEditing.ts";
 import {
+  STORYTELLER_AI_SCOPE_LABELS,
   truncateStorytellerSelectionPreview,
   type StorytellerSelectionAgentTrigger,
 } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
@@ -799,6 +803,8 @@ export function StorytellerAgenticPanel({
   pendingSelectionAgentTrigger,
   onSelectionAgentTriggerApplied,
   presentation = "inline",
+  scopeLabel,
+  onClose,
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
   // 這個軸線——決定要打哪一組 API（.../stories/:id/... 還是 .../lores/:id/...）、
@@ -826,13 +832,17 @@ export function StorytellerAgenticPanel({
   onStoryChanged?: () => void;
   pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
   onSelectionAgentTriggerApplied?: () => void;
-  // 右側 Drawer 由外層決定可用高度，面板本身要改成 flex 填滿，避免 composer 底部被裁掉。
-  presentation?: "inline" | "floatingDock";
+  // Drawer 與主畫布工作區都由外層決定可用高度，面板本身填滿該空間。
+  presentation?: "inline" | "floatingDock" | "workspace";
+  scopeLabel?: string;
+  onClose?: () => void;
 }) {
   const floatingDock = presentation === "floatingDock";
+  const workspace = presentation === "workspace";
+  const fillAvailableHeight = floatingDock || workspace;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const compactComposer = floatingDock && isMobile;
+  const compactComposer = fillAvailableHeight && isMobile;
   const { session } = useAuth();
   const queryClient = useQueryClient();
   // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
@@ -900,6 +910,7 @@ export function StorytellerAgenticPanel({
     useState<StorytellerAgentPanelMessage | null>(null);
   const [selectionAgentTarget, setSelectionAgentTarget] = useState<{
     selectedText: string;
+    scope: "selection" | "block";
   } | null>(null);
   // 這次對話 session 內所有還沒被歷史清單取代的訊息（skill 的樂觀訊息/loading/
   // 結果、agentic 的使用者訊息/loading/回覆/錯誤），一律照送出或收到的順序直接
@@ -973,6 +984,14 @@ export function StorytellerAgenticPanel({
     if (!pendingSelectionAgentTrigger) {
       return;
     }
+    if (pendingSelectionAgentTrigger.scope === "document") {
+      setSelectionAgentTarget(null);
+      setPrompt("");
+      setPromptSelection({ start: 0, end: 0 });
+      onSelectionAgentTriggerApplied?.();
+      window.requestAnimationFrame(() => promptTextareaRef.current?.focus());
+      return;
+    }
     const word =
       SELECTION_AGENT_SLASH_WORDS[pendingSelectionAgentTrigger.mode] ??
       "custom";
@@ -980,6 +999,7 @@ export function StorytellerAgenticPanel({
     const nextPrompt = `/${word}${instruction ? ` ${instruction}` : ""}`;
     setSelectionAgentTarget({
       selectedText: pendingSelectionAgentTrigger.selectedText,
+      scope: pendingSelectionAgentTrigger.scope ?? "selection",
     });
     setPrompt(nextPrompt);
     setPromptSelection({
@@ -2062,15 +2082,17 @@ export function StorytellerAgenticPanel({
       sx={{
         borderRadius: 1,
         overflow: "hidden",
-        height: floatingDock ? 1 : undefined,
-        position: floatingDock ? undefined : { lg: "sticky" },
-        top: floatingDock ? undefined : { lg: 16 },
+        height: fillAvailableHeight ? 1 : undefined,
+        position: fillAvailableHeight ? undefined : { lg: "sticky" },
+        top: fillAvailableHeight ? undefined : { lg: 16 },
       }}
     >
       <Stack
         sx={{
-          height: floatingDock ? 1 : undefined,
-          maxHeight: floatingDock ? undefined : { lg: "calc(100vh - 32px)" },
+          height: fillAvailableHeight ? 1 : undefined,
+          maxHeight: fillAvailableHeight
+            ? undefined
+            : { lg: "calc(100vh - 32px)" },
           minHeight: 0,
         }}
       >
@@ -2096,8 +2118,9 @@ export function StorytellerAgenticPanel({
               >
                 <SmartToyIcon color="primary" />
                 <Typography variant="h6" fontWeight={800}>
-                  AI 助理
+                  AI 協作
                 </Typography>
+                {scopeLabel && <Chip size="small" label={scopeLabel} />}
               </Stack>
             )}
             <Button
@@ -2148,6 +2171,16 @@ export function StorytellerAgenticPanel({
                 </MenuItem>
               ))}
             </Menu>
+            {workspace && onClose && (
+              <IconButton
+                size="small"
+                aria-label="關閉 AI 協作"
+                onClick={onClose}
+                sx={{ ml: "auto" }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            )}
           </Stack>
           {!targetPublicId && (
             <Alert severity="info" variant="outlined">
@@ -2180,8 +2213,8 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flex: 1,
-            minHeight: floatingDock ? 0 : { xs: 360, lg: 320 },
-            maxHeight: floatingDock ? "none" : { xs: 520, lg: 480 },
+            minHeight: fillAvailableHeight ? 0 : { xs: 360, lg: 320 },
+            maxHeight: fillAvailableHeight ? "none" : { xs: 520, lg: 480 },
             overflow: "auto",
             bgcolor: "background.default",
             p: 2,
@@ -2274,8 +2307,8 @@ export function StorytellerAgenticPanel({
           spacing={1.5}
           sx={{
             flexShrink: 0,
-            maxHeight: floatingDock ? "46%" : undefined,
-            overflow: floatingDock ? "auto" : undefined,
+            maxHeight: fillAvailableHeight ? "46%" : undefined,
+            overflow: fillAvailableHeight ? "auto" : undefined,
             p: 2,
           }}
         >
@@ -2341,7 +2374,7 @@ export function StorytellerAgenticPanel({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  選取文字:{" "}
+                  {STORYTELLER_AI_SCOPE_LABELS[selectionAgentTarget.scope]}:{" "}
                   {truncateStorytellerSelectionPreview(
                     selectionAgentTarget.selectedText,
                   )}
@@ -2354,6 +2387,24 @@ export function StorytellerAgenticPanel({
                 取消
               </Button>
             </Stack>
+          )}
+          {workspace && (
+            <StorytellerAIQuickActions
+              onSelect={(value) => {
+                setPrompt(value);
+                setPromptSelection({
+                  start: value.length,
+                  end: value.length,
+                });
+                window.requestAnimationFrame(() => {
+                  promptTextareaRef.current?.focus();
+                  promptTextareaRef.current?.setSelectionRange(
+                    value.length,
+                    value.length,
+                  );
+                });
+              }}
+            />
           )}
           <Box sx={{ position: "relative" }}>
             <TextField

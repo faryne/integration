@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CodeIcon from "@mui/icons-material/Code";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -52,6 +53,7 @@ import {
  */
 
 export type WysiwygCommandGroup =
+  | "ai"
   | "heading"
   | "mark"
   | "align"
@@ -78,6 +80,7 @@ export const BLOCK_OPERATION_GROUPS: WysiwygCommandGroup[] = [
 ];
 
 const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
+  "ai",
   ...BLOCK_OPERATION_GROUPS,
   "insert",
 ];
@@ -97,10 +100,13 @@ export interface WysiwygCommandContext {
    * asset picker 是頁面層的 state（StoryEditor／LoreEditor 各自的 Dialog），
    * command 本身不持有這個 state，只透過這個 callback 觸發它開啟。 */
   canInsertAsset: boolean;
+  /** 已存檔且頁面層已接上 AI 工作區時才開放。 */
+  canAskAI: boolean;
   openLinkDialog: () => void;
   openFootnoteDialog: () => void;
   openCommentDialog: () => void;
   openAssetPicker: () => void;
+  openAI: () => void;
   exportMarkdown: () => void;
 }
 
@@ -487,6 +493,21 @@ const ANNOTATION_COMMANDS: WysiwygCommand[] = [
   },
 ];
 
+// `/` 選單只保留一個 AI 入口；改寫、擴寫、縮短與語氣調整改由 AI 工作區內的
+// 指令／自然語言決定，避免編輯器各個入口各自長出一組難以維護的功能清單。
+const AI_COMMANDS: WysiwygCommand[] = [
+  {
+    id: "ask-ai",
+    label: "問 AI",
+    group: "ai",
+    scope: "action",
+    icon: AutoAwesomeIcon,
+    aliases: ["AI 協作", "問 AI", "ask ai", "assistant"],
+    isVisible: (context) => context.canAskAI,
+    run: (_editor, context) => context.openAI(),
+  },
+];
+
 const UTILITY_COMMANDS: WysiwygCommand[] = [
   {
     id: "export-markdown",
@@ -500,6 +521,7 @@ const UTILITY_COMMANDS: WysiwygCommand[] = [
 ];
 
 export const WYSIWYG_COMMANDS: WysiwygCommand[] = [
+  ...AI_COMMANDS,
   ...HEADING_COMMANDS,
   ...MARK_COMMANDS,
   ...ALIGN_COMMANDS,
@@ -545,7 +567,7 @@ function slashCommandSearchValues(command: WysiwygCommand) {
   );
 }
 
-/** Slash menu 只提供空區塊可用的 block/insert 類動作；完整行內樣式仍交給 bubble/context menu。 */
+/** Slash menu 提供 AI 協作與空區塊可用的 block/insert 動作；行內樣式仍交給 bubble/context menu。 */
 export function slashWysiwygCommands(
   query: string,
   editor: Editor,
