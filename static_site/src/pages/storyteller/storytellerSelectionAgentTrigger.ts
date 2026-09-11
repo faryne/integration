@@ -4,7 +4,17 @@ export interface StorytellerSelectionAgentTrigger {
   mode: StorytellerAgentRunMode;
   selectedText: string;
   instruction: string;
+  /** 問 AI 的來源範圍；舊呼叫端沒帶時視為選取文字，維持相容。 */
+  scope?: "selection" | "block" | "document";
+  /** 段落 marker 只用來在 UI 標示錨點，不送進模型。 */
+  markerId?: string;
 }
+
+export const STORYTELLER_AI_SCOPE_LABELS = {
+  selection: "選取文字",
+  block: "目前段落",
+  document: "整篇內容",
+} as const;
 
 // 跟「指令 / 引用說明」抽屜（StorytellerAgentReferenceDrawer.tsx）共用同一份文案，
 // 避免兩個地方各自寫一份說明之後各自漂移走樣。
