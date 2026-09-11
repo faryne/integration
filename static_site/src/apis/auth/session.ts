@@ -1,13 +1,26 @@
 import { useMutation } from "@tanstack/react-query";
 import axios from "axios";
 import type { CommonResponse } from "@/apis/interfaces.ts";
-import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { isSteamLoomSite, STEAMLOOM_PATH_PREFIX } from "@/helpers/steamloom.ts";
 
 // storyteller 的使用者系統已經跟主站 users 表脫鉤（見 service/auth/session.go 的
 // RedisSession.Brand），登入/續期一定要打 storyteller 專屬的端點，不能再走共用的
 // /auth/session——後端會直接判 session brand mismatch 回 401。destroyAuthSession
 // 不用分流：DELETE /auth/session 純粹靠 encrypt_key 刪 Redis key，不檢查 brand。
-const sessionEndpoint = isSteamLoomSite() ? "/storyteller/auth/session" : "/auth/session";
+//
+// isLocalStorytellerDevTest 只給本機開發測試用：正式網域靠 isSteamLoomSite()
+// 判斷網域名稱就夠了，但 storyteller 本機開發網址是 localhost + /storyteller
+// 前綴（見 steamloomPath()），不是真的 steamloom.works，isSteamLoomSite() 永遠
+// 判 false。不能直接把這個路徑判斷塞進 isSteamLoomSite() 本身——steamloomPath()
+// 就是靠它才決定要不要加這個前綴，兩者會互相依賴造成本機路由整個壞掉，所以只在
+// 這個檔案（登入端點的選擇）額外疊加這個判斷，且限定只在 dev build 生效。
+const isLocalStorytellerDevTest =
+  import.meta.env.DEV &&
+  window.location.pathname.startsWith(STEAMLOOM_PATH_PREFIX);
+const sessionEndpoint =
+  isSteamLoomSite() || isLocalStorytellerDevTest
+    ? `${STEAMLOOM_PATH_PREFIX}/auth/session`
+    : "/auth/session";
 
 export interface AuthUser {
   id: number;
