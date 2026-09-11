@@ -1,7 +1,10 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import CloseIcon from "@mui/icons-material/Close";
+import CodeIcon from "@mui/icons-material/Code";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import ModelTrainingIcon from "@mui/icons-material/ModelTraining";
 import ReplayIcon from "@mui/icons-material/Replay";
 import ReplyIcon from "@mui/icons-material/Reply";
 import SendIcon from "@mui/icons-material/Send";
@@ -13,11 +16,14 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  Divider,
   IconButton,
   ListSubheader,
   Menu,
   MenuItem,
+  MenuList,
   Paper,
+  Popover,
   Stack,
   TextField,
   Tooltip,
@@ -47,7 +53,7 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
-import { StorytellerMarkdownSyntaxLink } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
+import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
@@ -137,16 +143,8 @@ const SELECTION_AGENT_SLASH_WORDS: Partial<
   translate_selection: "translate",
   custom_selection: "custom",
 };
-// 給上方指令／人設選單顯示用的中文說明，跟 SKILL_SLASH_COMMANDS 的 key 一一對應。
-const SKILL_SLASH_COMMAND_LABELS: Record<string, string> = {
-  rewrite: "改寫",
-  expand: "擴寫",
-  translate: "翻譯",
-  continue: "續寫",
-  custom: "自訂指令",
-};
 const SKILL_SLASH_COMMAND_HINT =
-  "打 / 可觸發單輪 skill 或切換人設，也可以用上方選單插入；完整說明見下方「指令 / 引用說明」。";
+  "打 / 可觸發單輪 skill 或切換人設；完整說明見「指令 / 引用說明」。";
 
 function parseSkillSlashCommand(
   value: string,
@@ -801,9 +799,7 @@ export function StorytellerAgenticPanel({
   onApplyProposalToEditor,
   onStoryChanged,
   pendingSelectionAgentTrigger,
-  onSelectionAgentTriggerApplied,
   presentation = "inline",
-  scopeLabel,
   onClose,
 }: {
   // Story／Lore 兩邊共用同一顆面板（同一套工具、同一套 Proposal 機制），差別只在
@@ -831,10 +827,8 @@ export function StorytellerAgenticPanel({
   ) => Promise<void>;
   onStoryChanged?: () => void;
   pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
-  onSelectionAgentTriggerApplied?: () => void;
   // Drawer 與主畫布工作區都由外層決定可用高度，面板本身填滿該空間。
   presentation?: "inline" | "floatingDock" | "workspace";
-  scopeLabel?: string;
   onClose?: () => void;
 }) {
   const floatingDock = presentation === "floatingDock";
@@ -845,9 +839,8 @@ export function StorytellerAgenticPanel({
   const compactComposer = fillAvailableHeight && isMobile;
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  // 沒有下拉選單了——人設一律靠輸入框打 /<Agent 名稱> 切換（見 matchAgentNameCommand），
-  // 這裡只保留「目前是哪一個」的內部狀態，agents 清單變動（新增/刪除/重新整理）時
-  // 若目前選的 id 已經不在清單裡，退回清單第一個。
+  // 人設只影響單次 prompt，以 /<Agent 名稱> 前綴表示；activeAgentId 只保留底層 API
+  // 需要的 fallback agent，沒有前綴時實際送出仍會明確忽略人設。
   const [activeAgentId, setActiveAgentId] = useState(agents[0]?.id ?? "");
   useEffect(() => {
     if (!agents.some((agent) => agent.id === activeAgentId)) {
@@ -855,7 +848,6 @@ export function StorytellerAgenticPanel({
     }
   }, [agents, activeAgentId]);
   const [prompt, setPrompt] = useState("");
-  const [promptFocused, setPromptFocused] = useState(false);
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
   // IME 組字階段的候選底線是瀏覽器畫在「這顆真正的 textarea」上的原生效果，
@@ -897,12 +889,8 @@ export function StorytellerAgenticPanel({
       window.localStorage.removeItem(storytellerAgentModelStorageKey);
     }
   }, [modelNameOverride]);
-  const [apiKeyMenuAnchor, setApiKeyMenuAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const [modelMenuAnchor, setModelMenuAnchor] = useState<HTMLElement | null>(
-    null,
-  );
+  const [aiConfigMenuAnchor, setAiConfigMenuAnchor] =
+    useState<HTMLElement | null>(null);
   const [agentMenuAnchor, setAgentMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -934,6 +922,10 @@ export function StorytellerAgenticPanel({
 
   const selectedAgent =
     agents.find((agent) => agent.id === activeAgentId) ?? agents[0];
+  const promptAgentSwitch = matchAgentNameCommand(prompt.trimStart(), agents);
+  const promptAgent = promptAgentSwitch
+    ? agents.find((agent) => agent.id === promptAgentSwitch.agentId)
+    : undefined;
   const agentIdNumeric = Number(selectedAgent?.id);
 
   const { data: providerApiKeys = [], isLoading: providerApiKeysLoading } =
@@ -968,6 +960,10 @@ export function StorytellerAgenticPanel({
   const effectiveProviderModelInfo = providerModelsList.find(
     (entry) => entry.provider === effectiveProvider,
   );
+  const effectiveProviderLabel =
+    effectiveProviderModelInfo?.label ?? effectiveProvider ?? "未選 Provider";
+  const effectiveModelLabel =
+    modelNameOverride || selectedAgent?.model || "未選 Model";
   const modelOptions = effectiveProviderModelInfo?.models ?? [];
   // self_hosted／openrouter 這類 provider 沒有固定模型清單（models 可能是空的），
   // 改成讓使用者直接輸入模型名稱，而不是完全選不了。
@@ -979,6 +975,22 @@ export function StorytellerAgenticPanel({
     providerAllowsCustomModel &&
     modelOptions.length === 0;
   const [customModelInput, setCustomModelInput] = useState("");
+  const [modelFilter, setModelFilter] = useState("");
+  const normalizedModelFilter = modelFilter.trim().toLowerCase();
+  const filteredModelOptions = normalizedModelFilter
+    ? modelOptions.filter((model) =>
+        `${model.label ?? ""} ${model.name}`
+          .toLowerCase()
+          .includes(normalizedModelFilter),
+      )
+    : modelOptions;
+
+  useEffect(() => setModelFilter(""), [effectiveProvider]);
+
+  function closeAiConfigMenu() {
+    setAiConfigMenuAnchor(null);
+    setModelFilter("");
+  }
 
   useEffect(() => {
     if (!pendingSelectionAgentTrigger) {
@@ -988,7 +1000,6 @@ export function StorytellerAgenticPanel({
       setSelectionAgentTarget(null);
       setPrompt("");
       setPromptSelection({ start: 0, end: 0 });
-      onSelectionAgentTriggerApplied?.();
       window.requestAnimationFrame(() => promptTextareaRef.current?.focus());
       return;
     }
@@ -997,16 +1008,20 @@ export function StorytellerAgenticPanel({
       "custom";
     const instruction = pendingSelectionAgentTrigger.instruction.trim();
     const nextPrompt = `/${word}${instruction ? ` ${instruction}` : ""}`;
-    setSelectionAgentTarget({
-      selectedText: pendingSelectionAgentTrigger.selectedText,
-      scope: pendingSelectionAgentTrigger.scope ?? "selection",
-    });
+    const selectedText = pendingSelectionAgentTrigger.selectedText.trim();
+    setSelectionAgentTarget(
+      selectedText
+        ? {
+            selectedText: pendingSelectionAgentTrigger.selectedText,
+            scope: pendingSelectionAgentTrigger.scope ?? "selection",
+          }
+        : null,
+    );
     setPrompt(nextPrompt);
     setPromptSelection({
       start: nextPrompt.length,
       end: nextPrompt.length,
     });
-    onSelectionAgentTriggerApplied?.();
     window.requestAnimationFrame(() => {
       promptTextareaRef.current?.focus();
       promptTextareaRef.current?.setSelectionRange(
@@ -1014,7 +1029,7 @@ export function StorytellerAgenticPanel({
         nextPrompt.length,
       );
     });
-  }, [pendingSelectionAgentTrigger, onSelectionAgentTriggerApplied]);
+  }, [pendingSelectionAgentTrigger]);
 
   // 跟金鑰同理，不存在「Agent 自己的預設模型」——固定清單的 provider 沒選過模型時
   // 自動挑清單第一個；換了不同 provider 的 key、先前選的模型不在新清單裡時，同樣
@@ -1970,11 +1985,10 @@ export function StorytellerAgenticPanel({
     });
   }
 
-  function insertSkillSlashPrefix(word: string) {
+  function clearAgentSlashPrefix() {
     setPrompt((current) => {
-      const existing = parseSkillSlashCommand(current);
-      const rest = existing ? existing.instruction : current;
-      return `/${word} ${rest}`;
+      const existing = matchAgentNameCommand(current.trimStart(), agents);
+      return existing ? existing.instruction : current;
     });
   }
 
@@ -2104,11 +2118,7 @@ export function StorytellerAgenticPanel({
             bgcolor: "background.default",
           }}
         >
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            alignItems={{ xs: "stretch", sm: "center" }}
-          >
+          <Stack direction="row" alignItems="center" sx={{ gap: 1 }}>
             {!floatingDock && (
               <Stack
                 direction="row"
@@ -2120,66 +2130,19 @@ export function StorytellerAgenticPanel({
                 <Typography variant="h6" fontWeight={800}>
                   AI 協作
                 </Typography>
-                {scopeLabel && <Chip size="small" label={scopeLabel} />}
               </Stack>
             )}
-            <Button
-              size="small"
-              variant="text"
-              color="inherit"
-              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
-              onClick={(event) => setAgentMenuAnchor(event.currentTarget)}
-              sx={{ color: "text.secondary", textTransform: "none" }}
-            >
-              {agents.length === 0 ? "尚未建立 Agent" : "未選擇人設"}
-            </Button>
-            <Menu
-              anchorEl={agentMenuAnchor}
-              open={Boolean(agentMenuAnchor)}
-              onClose={() => setAgentMenuAnchor(null)}
-            >
-              <ListSubheader>切換人設（/Agent 名稱）</ListSubheader>
-              {agents.length === 0 && (
-                <MenuItem disabled>尚未建立任何 Agent</MenuItem>
-              )}
-              {agents.length > 0 && (
-                <MenuItem selected onClick={() => setAgentMenuAnchor(null)}>
-                  未選擇
-                </MenuItem>
-              )}
-              {agents.map((agent) => (
-                <MenuItem
-                  key={agent.id}
-                  onClick={() => {
-                    insertAgentSlashPrefix(agent.name);
-                    setAgentMenuAnchor(null);
-                  }}
-                >
-                  {agent.name}
-                </MenuItem>
-              ))}
-              <ListSubheader>單輪指令</ListSubheader>
-              {Object.entries(SKILL_SLASH_COMMANDS).map(([word]) => (
-                <MenuItem
-                  key={word}
-                  onClick={() => {
-                    insertSkillSlashPrefix(word);
-                    setAgentMenuAnchor(null);
-                  }}
-                >
-                  /{word}（{SKILL_SLASH_COMMAND_LABELS[word]}）
-                </MenuItem>
-              ))}
-            </Menu>
             {workspace && onClose && (
-              <IconButton
-                size="small"
-                aria-label="關閉 AI 協作"
-                onClick={onClose}
-                sx={{ ml: "auto" }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
+              <Tooltip title="關閉 AI 協作">
+                <IconButton
+                  size="small"
+                  aria-label="關閉 AI 協作"
+                  onClick={onClose}
+                  sx={{ ml: "auto" }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             )}
           </Stack>
           {!targetPublicId && (
@@ -2388,287 +2351,516 @@ export function StorytellerAgenticPanel({
               </Button>
             </Stack>
           )}
-          {workspace && (
-            <StorytellerAIQuickActions
-              onSelect={(value) => {
-                setPrompt(value);
-                setPromptSelection({
-                  start: value.length,
-                  end: value.length,
-                });
-                window.requestAnimationFrame(() => {
-                  promptTextareaRef.current?.focus();
-                  promptTextareaRef.current?.setSelectionRange(
-                    value.length,
-                    value.length,
-                  );
-                });
-              }}
-            />
-          )}
-          <Box sx={{ position: "relative" }}>
-            <TextField
-              multiline
-              minRows={compactComposer ? (promptFocused || prompt ? 2 : 1) : 3}
-              maxRows={compactComposer ? 4 : 8}
-              fullWidth
-              inputRef={promptTextareaRef}
-              label="輸入需求"
-              value={prompt}
-              onChange={(event) => {
-                setPrompt(event.target.value);
-                syncPromptSelection(event.target);
-              }}
-              onSelect={(event) =>
-                syncPromptSelection(event.target as HTMLTextAreaElement)
-              }
-              onKeyUp={(event) =>
-                syncPromptSelection(event.target as HTMLTextAreaElement)
-              }
-              onMouseUp={(event) =>
-                syncPromptSelection(event.target as HTMLTextAreaElement)
-              }
-              onCompositionStart={() => setIsComposingPrompt(true)}
-              onCompositionEnd={(event) => {
-                setIsComposingPrompt(false);
-                syncPromptSelection(event.target as HTMLTextAreaElement);
-              }}
-              onFocus={() => setPromptFocused(true)}
-              onBlur={() => setPromptFocused(false)}
-              placeholder={
-                compactComposer
-                  ? "輸入需求..."
-                  : "例如：幫我把這段開頭改得更懸疑一點；或輸入 /rewrite 更懸疑一點 觸發單輪改寫。"
-              }
-              error={Boolean(payloadError)}
-              helperText={payloadError || SKILL_SLASH_COMMAND_HINT}
-              sx={{
-                "& .MuiInputBase-input": {
-                  // 跟訊息泡泡的 body2 對齊（見 AgenticAssistantMessage 的
-                  // typography: "body2"），輸入框預設用 TextField 的 1rem 明顯
-                  // 比對話內容大一號，改小一點也能塞進更多字。
-                  fontSize: "0.875rem",
-                  color: isComposingPrompt ? "text.primary" : "transparent",
-                  caretColor: (theme) => theme.palette.text.primary,
-                  "&::placeholder": {
-                    color: "text.secondary",
-                    opacity: 1,
-                  },
-                },
-              }}
-            />
-            {!isComposingPrompt && (
-              <StorytellerPromptHighlightOverlay
-                text={prompt}
-                textareaRef={promptTextareaRef}
-                slashCommandHighlightLength={recognizedSlashCommandPrefixLength(
-                  prompt,
-                  agents,
-                )}
-              />
-            )}
-          </Box>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button
-              size="small"
-              variant="text"
-              color="inherit"
-              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
-              onClick={(event) => setApiKeyMenuAnchor(event.currentTarget)}
-              disabled={!hasAnyApiKey}
-              sx={{ color: "text.secondary", textTransform: "none" }}
-            >
-              {overriddenApiKey
-                ? overriddenApiKey.label || `金鑰 #${overriddenApiKey.id}`
-                : "預設金鑰"}
-            </Button>
-            <Menu
-              anchorEl={apiKeyMenuAnchor}
-              open={Boolean(apiKeyMenuAnchor)}
-              onClose={() => setApiKeyMenuAnchor(null)}
-            >
-              {overrideApiKeyOptions.map((apiKey) => (
-                <MenuItem
-                  key={apiKey.id}
-                  selected={providerApiKeyId === String(apiKey.id)}
-                  onClick={() => {
-                    setProviderApiKeyId(String(apiKey.id));
-                    setApiKeyMenuAnchor(null);
-                  }}
-                >
-                  {apiKey.label || `金鑰 #${apiKey.id}`}（{apiKey.provider}）
-                </MenuItem>
-              ))}
-            </Menu>
-
-            <Button
-              size="small"
-              variant="text"
-              color="inherit"
-              endIcon={<KeyboardArrowDownIcon fontSize="small" />}
-              onClick={(event) => {
-                if (
-                  providerAllowsCustomModel &&
-                  modelOptions.length === 0 &&
-                  !usesSelfHostedModelPicker
-                ) {
-                  setCustomModelInput(modelNameOverride);
+          <Paper
+            variant="outlined"
+            sx={{
+              position: "relative",
+              borderRadius: 2.5,
+              borderColor: payloadError ? "error.main" : "divider",
+              bgcolor: "background.paper",
+              p: 1,
+              pb: 5.5,
+            }}
+          >
+            <Box sx={{ position: "relative" }}>
+              <TextField
+                variant="standard"
+                multiline
+                minRows={compactComposer ? 2 : 3}
+                maxRows={compactComposer ? 5 : 8}
+                fullWidth
+                inputRef={promptTextareaRef}
+                value={prompt}
+                onChange={(event) => {
+                  setPrompt(event.target.value);
+                  syncPromptSelection(event.target);
+                }}
+                onSelect={(event) =>
+                  syncPromptSelection(event.target as HTMLTextAreaElement)
                 }
-                setModelMenuAnchor(event.currentTarget);
-              }}
-              disabled={
-                !hasAnyApiKey ||
-                (modelOptions.length === 0 && !providerAllowsCustomModel)
-              }
-              sx={{ color: "text.secondary", textTransform: "none" }}
-            >
-              {modelNameOverride || selectedAgent?.model || "預設模型"}
-            </Button>
-            {usesSelfHostedModelPicker ? (
-              <Menu
-                anchorEl={modelMenuAnchor}
-                open={Boolean(modelMenuAnchor)}
-                onClose={() => setModelMenuAnchor(null)}
-              >
-                <SelfHostedModelPicker
-                  apiKeyId={providerApiKeyId ? Number(providerApiKeyId) : null}
-                  value={modelNameOverride}
-                  onChange={setModelNameOverride}
-                  onApplied={() => setModelMenuAnchor(null)}
-                  variant="menu"
-                  inputMode="always"
-                  label="自訂模型名稱"
-                  autoFocus
+                onKeyUp={(event) =>
+                  syncPromptSelection(event.target as HTMLTextAreaElement)
+                }
+                onMouseUp={(event) =>
+                  syncPromptSelection(event.target as HTMLTextAreaElement)
+                }
+                onCompositionStart={() => setIsComposingPrompt(true)}
+                onCompositionEnd={(event) => {
+                  setIsComposingPrompt(false);
+                  syncPromptSelection(event.target as HTMLTextAreaElement);
+                }}
+                placeholder="問 AI，或輸入 / 使用指令..."
+                error={Boolean(payloadError)}
+                helperText={payloadError || undefined}
+                slotProps={{ input: { disableUnderline: true } }}
+                sx={{
+                  "& .MuiInputBase-root": { p: 0.5 },
+                  "& .MuiFormHelperText-root": { mx: 0.5 },
+                  "& .MuiInputBase-input": {
+                    // 跟訊息泡泡的 body2 對齊（見 AgenticAssistantMessage 的
+                    // typography: "body2"），輸入框預設用 TextField 的 1rem 明顯
+                    // 比對話內容大一號，改小一點也能塞進更多字。
+                    fontSize: "0.875rem",
+                    color: isComposingPrompt ? "text.primary" : "transparent",
+                    caretColor: (theme) => theme.palette.text.primary,
+                    "&::placeholder": {
+                      color: "text.secondary",
+                      opacity: 1,
+                    },
+                  },
+                }}
+              />
+              {!isComposingPrompt && (
+                <StorytellerPromptHighlightOverlay
+                  text={prompt}
+                  textareaRef={promptTextareaRef}
+                  slashCommandHighlightLength={recognizedSlashCommandPrefixLength(
+                    prompt,
+                    agents,
+                  )}
                 />
-              </Menu>
-            ) : providerAllowsCustomModel && modelOptions.length === 0 ? (
-              <Menu
-                anchorEl={modelMenuAnchor}
-                open={Boolean(modelMenuAnchor)}
-                onClose={() => setModelMenuAnchor(null)}
-              >
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  sx={{ p: 1 }}
-                >
-                  <TextField
-                    autoFocus
-                    size="small"
-                    label="自訂模型名稱"
-                    placeholder="例如：llama-3.1-70b"
-                    value={customModelInput}
-                    onChange={(event) =>
-                      setCustomModelInput(event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        setModelNameOverride(customModelInput.trim());
-                        setModelMenuAnchor(null);
-                      }
-                    }}
-                  />
+              )}
+            </Box>
+            <Stack
+              direction="row"
+              spacing={0.25}
+              alignItems="center"
+              sx={{
+                position: "absolute",
+                left: 8,
+                right: 52,
+                bottom: 8,
+                overflowX: "auto",
+                scrollbarWidth: "none",
+              }}
+            >
+              {workspace && (
+                <StorytellerAIQuickActions
+                  onSelect={(value) => {
+                    setPrompt(value);
+                    setPromptSelection({
+                      start: value.length,
+                      end: value.length,
+                    });
+                    window.requestAnimationFrame(() => {
+                      promptTextareaRef.current?.focus();
+                      promptTextareaRef.current?.setSelectionRange(
+                        value.length,
+                        value.length,
+                      );
+                    });
+                  }}
+                />
+              )}
+              {workspace && (
+                <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+              )}
+              <Tooltip title={`本次人設：${promptAgent?.name ?? "無人設"}`}>
+                <span>
                   <Button
                     size="small"
-                    variant="contained"
-                    onClick={() => {
-                      setModelNameOverride(customModelInput.trim());
-                      setModelMenuAnchor(null);
+                    color="inherit"
+                    startIcon={<SmartToyIcon fontSize="small" />}
+                    endIcon={<KeyboardArrowDownIcon fontSize="small" />}
+                    aria-label={`本次人設：${promptAgent?.name ?? "無人設"}；點擊切換`}
+                    onClick={(event) => setAgentMenuAnchor(event.currentTarget)}
+                    disabled={agents.length === 0}
+                    sx={{
+                      minWidth: 0,
+                      maxWidth: 160,
+                      px: 0.75,
+                      textTransform: "none",
+                      color: "text.secondary",
+                      "& .MuiButton-startIcon": { mr: 0.5 },
+                      "& .MuiButton-endIcon": { ml: 0.25 },
                     }}
                   >
-                    套用
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      noWrap
+                      sx={{ fontWeight: 600 }}
+                    >
+                      {agents.length === 0
+                        ? "尚無 Agent"
+                        : (promptAgent?.name ?? "無人設")}
+                    </Typography>
                   </Button>
-                </Stack>
-              </Menu>
-            ) : (
+                </span>
+              </Tooltip>
               <Menu
-                anchorEl={modelMenuAnchor}
-                open={Boolean(modelMenuAnchor)}
-                onClose={() => setModelMenuAnchor(null)}
+                anchorEl={agentMenuAnchor}
+                open={Boolean(agentMenuAnchor)}
+                onClose={() => setAgentMenuAnchor(null)}
               >
-                {modelOptions.map((model) => (
+                <ListSubheader>本次訊息使用的人設</ListSubheader>
+                <MenuItem
+                  selected={!promptAgent}
+                  onClick={() => {
+                    clearAgentSlashPrefix();
+                    setAgentMenuAnchor(null);
+                  }}
+                >
+                  無人設
+                </MenuItem>
+                {agents.map((agent) => (
                   <MenuItem
-                    key={model.id}
-                    selected={modelNameOverride === model.name}
+                    key={agent.id}
+                    selected={promptAgent?.id === agent.id}
                     onClick={() => {
-                      setModelNameOverride(model.name);
-                      setModelMenuAnchor(null);
+                      insertAgentSlashPrefix(agent.name);
+                      setAgentMenuAnchor(null);
                     }}
                   >
-                    {model.label || model.name}
+                    {agent.name}
                   </MenuItem>
                 ))}
               </Menu>
-            )}
-          </Stack>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <StorytellerMarkdownSyntaxLink />
-            <Button
-              size="small"
-              variant="text"
-              onClick={() => setReferenceDrawerOpen(true)}
-            >
-              指令 / 引用說明
-            </Button>
-          </Stack>
-          {promptReferences.length > 0 && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {promptReferences.map((reference) => (
-                <Chip
-                  key={reference.token}
-                  size="small"
-                  color={
-                    reference.token === "@thisStory" ? "primary" : "default"
-                  }
-                  label={reference.title}
-                />
-              ))}
-            </Stack>
-          )}
-          {storyMentionOptions.length > 0 && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {storyMentionOptions.map((item) => (
-                <Button
-                  key={item.id}
-                  size="small"
-                  variant="outlined"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertPromptMention("story", item.title)}
-                >
-                  {item.title}
-                </Button>
-              ))}
-            </Stack>
-          )}
-          {loreMentionOptions.length > 0 && (
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {loreMentionOptions.map((item) => (
-                <Button
-                  key={item.id}
-                  size="small"
-                  variant="outlined"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertPromptMention("lore", item.title)}
-                >
-                  設定集：{item.title}
-                </Button>
-              ))}
-            </Stack>
-          )}
-          <Tooltip title={SKILL_SLASH_COMMAND_HINT}>
-            <span>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<SendIcon />}
-                disabled={!canRun}
-                onClick={handleSend}
+              <Tooltip
+                title={`目前使用 ${effectiveProviderLabel} · ${effectiveModelLabel}；API Key：${
+                  overriddenApiKey
+                    ? overriddenApiKey.label || `金鑰 #${overriddenApiKey.id}`
+                    : "未設定"
+                }`}
               >
-                {pending ? "處理中" : "送出"}
-              </Button>
-            </span>
-          </Tooltip>
+                <span>
+                  <Button
+                    size="small"
+                    color="inherit"
+                    startIcon={<ModelTrainingIcon fontSize="small" />}
+                    endIcon={<KeyboardArrowDownIcon fontSize="small" />}
+                    aria-label={`目前使用 ${effectiveProviderLabel}，模型 ${effectiveModelLabel}；點擊切換`}
+                    onClick={(event) => {
+                      if (
+                        providerAllowsCustomModel &&
+                        modelOptions.length === 0 &&
+                        !usesSelfHostedModelPicker
+                      ) {
+                        setCustomModelInput(modelNameOverride);
+                      }
+                      setAiConfigMenuAnchor(event.currentTarget);
+                    }}
+                    disabled={!hasAnyApiKey}
+                    sx={{
+                      minWidth: 0,
+                      maxWidth: { xs: 220, sm: 360 },
+                      px: 0.75,
+                      textTransform: "none",
+                      color: "text.secondary",
+                      "& .MuiButton-startIcon": { mr: 0.5 },
+                      "& .MuiButton-endIcon": { ml: 0.25 },
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      noWrap
+                      sx={{ fontWeight: 600 }}
+                    >
+                      {effectiveProviderLabel} · {effectiveModelLabel}
+                    </Typography>
+                  </Button>
+                </span>
+              </Tooltip>
+              <Popover
+                anchorEl={aiConfigMenuAnchor}
+                open={Boolean(aiConfigMenuAnchor)}
+                onClose={closeAiConfigMenu}
+                anchorOrigin={{ vertical: "top", horizontal: "left" }}
+                transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      width: { xs: "calc(100vw - 24px)", sm: 620 },
+                      maxWidth: "calc(100vw - 24px)",
+                      overflow: "hidden",
+                    },
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: { xs: "42% 58%", sm: "240px 1fr" },
+                    height: "min(360px, calc(100vh - 32px))",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 0,
+                      minHeight: 0,
+                    }}
+                  >
+                    <ListSubheader
+                      component="div"
+                      sx={{ borderBottom: 1, borderColor: "divider" }}
+                    >
+                      Provider / API Key
+                    </ListSubheader>
+                    <MenuList
+                      dense
+                      disablePadding
+                      sx={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: "auto",
+                        scrollbarWidth: "thin",
+                      }}
+                    >
+                      {overrideApiKeyOptions.map((apiKey) => {
+                        const providerLabel =
+                          providerModelsList.find(
+                            (entry) => entry.provider === apiKey.provider,
+                          )?.label ?? apiKey.provider;
+                        return (
+                          <MenuItem
+                            key={apiKey.id}
+                            selected={providerApiKeyId === String(apiKey.id)}
+                            onClick={() =>
+                              setProviderApiKeyId(String(apiKey.id))
+                            }
+                          >
+                            <Stack sx={{ minWidth: 0 }}>
+                              <Typography variant="body2" noWrap>
+                                {providerLabel}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                noWrap
+                              >
+                                {apiKey.label || `金鑰 #${apiKey.id}`}
+                              </Typography>
+                            </Stack>
+                          </MenuItem>
+                        );
+                      })}
+                    </MenuList>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      minWidth: 0,
+                      minHeight: 0,
+                      borderLeft: 1,
+                      borderColor: "divider",
+                    }}
+                  >
+                    <ListSubheader component="div">
+                      Model · {effectiveProviderLabel}
+                    </ListSubheader>
+                    {effectiveProvider !== "self_hosted" &&
+                      modelOptions.length > 0 && (
+                        <Box
+                          sx={{
+                            px: 1,
+                            pb: 1,
+                            borderBottom: 1,
+                            borderColor: "divider",
+                          }}
+                        >
+                          <TextField
+                            size="small"
+                            fullWidth
+                            placeholder="篩選 Model..."
+                            value={modelFilter}
+                            onChange={(event) =>
+                              setModelFilter(event.target.value)
+                            }
+                            slotProps={{ htmlInput: { autoComplete: "off" } }}
+                          />
+                        </Box>
+                      )}
+                    <MenuList
+                      dense
+                      disablePadding
+                      sx={{
+                        flex: 1,
+                        minHeight: 0,
+                        overflowY: "scroll",
+                        scrollbarGutter: "stable",
+                        scrollbarWidth: "thin",
+                        "&::-webkit-scrollbar": { width: 8 },
+                        "&::-webkit-scrollbar-track": {
+                          bgcolor: "action.hover",
+                        },
+                        "&::-webkit-scrollbar-thumb": {
+                          bgcolor: "text.disabled",
+                          borderRadius: 1,
+                        },
+                      }}
+                    >
+                      {usesSelfHostedModelPicker ? (
+                        <SelfHostedModelPicker
+                          apiKeyId={
+                            providerApiKeyId ? Number(providerApiKeyId) : null
+                          }
+                          value={modelNameOverride}
+                          onChange={setModelNameOverride}
+                          onApplied={closeAiConfigMenu}
+                          variant="menu"
+                          inputMode="always"
+                          label="自訂模型名稱"
+                        />
+                      ) : providerAllowsCustomModel &&
+                        modelOptions.length === 0 ? (
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          alignItems={{ sm: "center" }}
+                          sx={{ p: 1 }}
+                        >
+                          <TextField
+                            size="small"
+                            label="自訂模型名稱"
+                            placeholder="例如：llama-3.1-70b"
+                            value={customModelInput}
+                            onChange={(event) =>
+                              setCustomModelInput(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                setModelNameOverride(customModelInput.trim());
+                                closeAiConfigMenu();
+                              }
+                            }}
+                          />
+                          <Button
+                            size="small"
+                            variant="contained"
+                            onClick={() => {
+                              setModelNameOverride(customModelInput.trim());
+                              closeAiConfigMenu();
+                            }}
+                          >
+                            套用
+                          </Button>
+                        </Stack>
+                      ) : filteredModelOptions.length > 0 ? (
+                        filteredModelOptions.map((model) => (
+                          <MenuItem
+                            key={model.id}
+                            selected={modelNameOverride === model.name}
+                            onClick={() => {
+                              setModelNameOverride(model.name);
+                              closeAiConfigMenu();
+                            }}
+                          >
+                            <Typography variant="body2" noWrap>
+                              {model.label || model.name}
+                            </Typography>
+                          </MenuItem>
+                        ))
+                      ) : modelOptions.length > 0 ? (
+                        <MenuItem disabled>找不到符合的 Model</MenuItem>
+                      ) : (
+                        <MenuItem disabled>這個 Provider 沒有可用模型</MenuItem>
+                      )}
+                    </MenuList>
+                  </Box>
+                </Box>
+              </Popover>
+              <Divider orientation="vertical" flexItem sx={{ mx: 0.25 }} />
+              <Stack direction="row" spacing={0.25} alignItems="center">
+                <StorytellerMarkdownSyntaxDrawer
+                  trigger={(openDrawer) => (
+                    <Tooltip title="Markdown 語法">
+                      <IconButton
+                        size="small"
+                        aria-label="Markdown 語法"
+                        onClick={openDrawer}
+                      >
+                        <CodeIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                />
+                <Tooltip title="指令與引用說明">
+                  <IconButton
+                    size="small"
+                    aria-label="指令與引用說明"
+                    onClick={() => setReferenceDrawerOpen(true)}
+                  >
+                    <MenuBookOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Stack>
+            {promptReferences.length > 0 && (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {promptReferences.map((reference) => (
+                  <Chip
+                    key={reference.token}
+                    size="small"
+                    color={
+                      reference.token === "@thisStory" ? "primary" : "default"
+                    }
+                    label={reference.title}
+                  />
+                ))}
+              </Stack>
+            )}
+            {storyMentionOptions.length > 0 && (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {storyMentionOptions.map((item) => (
+                  <Button
+                    key={item.id}
+                    size="small"
+                    variant="outlined"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertPromptMention("story", item.title)}
+                  >
+                    {item.title}
+                  </Button>
+                ))}
+              </Stack>
+            )}
+            {loreMentionOptions.length > 0 && (
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                {loreMentionOptions.map((item) => (
+                  <Button
+                    key={item.id}
+                    size="small"
+                    variant="outlined"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => insertPromptMention("lore", item.title)}
+                  >
+                    設定集：{item.title}
+                  </Button>
+                ))}
+              </Stack>
+            )}
+            <Tooltip title={SKILL_SLASH_COMMAND_HINT}>
+              <Box
+                component="span"
+                sx={{ position: "absolute", right: 8, bottom: 8 }}
+              >
+                <IconButton
+                  color="primary"
+                  aria-label={pending ? "處理中" : "送出"}
+                  disabled={!canRun}
+                  onClick={handleSend}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    "&:hover": { bgcolor: "primary.dark" },
+                    "&.Mui-disabled": {
+                      bgcolor: "action.disabledBackground",
+                    },
+                  }}
+                >
+                  {pending ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <SendIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </Box>
+            </Tooltip>
+          </Paper>
         </Stack>
       </Stack>
       <StorytellerAgentReferenceDrawer
