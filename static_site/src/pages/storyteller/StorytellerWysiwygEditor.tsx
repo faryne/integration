@@ -21,12 +21,14 @@ import { alpha } from "@mui/material/styles";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
+import { createPortal } from "react-dom";
 import {
   type MouseEvent,
   type ReactNode,
   forwardRef,
   useImperativeHandle,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -44,6 +46,10 @@ import {
   exportContentToMarkdown,
 } from "./wysiwygCore/exportMarkdown";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
+import {
+  clearInlineAssistantAnchor,
+  setInlineAssistantAnchor,
+} from "./wysiwygCore/inlineAssistantAnchor";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
@@ -431,6 +437,10 @@ export interface StorytellerWysiwygEditorProps {
   /** 已存檔的故事/設定集才有 targetPublicId 可以呼叫 AI skill；未存檔時右鍵選單不顯示 AI 項目。 */
   hasSavedTarget?: boolean;
   onSelectionAgentTrigger?: (trigger: StorytellerSelectionAgentTrigger) => void;
+  /** AI 工作區以 decoration 掛在指定段落後方，不會寫進正文內容。 */
+  inlineAssistant?: ReactNode;
+  inlineAssistantOpen?: boolean;
+  inlineAssistantAnchorMarkerId?: string | null;
   /** 目前這篇已加書籤的段落 markerId，用來畫段落層級提示。 */
   bookmarkedMarkerIds?: ReadonlySet<string>;
   canBookmark?: boolean;
@@ -446,6 +456,7 @@ export interface StorytellerWysiwygEditorHandle {
     alt?: string;
     projectPublicId?: string;
   }) => boolean;
+  requestDocumentAI: () => boolean;
 }
 
 /**
@@ -475,6 +486,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     onRequestInsertAsset,
     hasSavedTarget = false,
     onSelectionAgentTrigger,
+    inlineAssistant,
+    inlineAssistantOpen = false,
+    inlineAssistantAnchorMarkerId,
     bookmarkedMarkerIds,
     canBookmark = false,
     onAddBookmark,
@@ -535,6 +549,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     string | null
   >(null);
   const bookmarkedIds = bookmarkedMarkerIds ?? EMPTY_BOOKMARK_IDS;
+  const hasInlineAssistant = Boolean(inlineAssistant);
+  const [inlineAssistantHost, setInlineAssistantHost] =
+    useState<HTMLElement | null>(null);
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
   // Slash command extension 在 editor 建立時只吃一次 options；這個穩定 store 讓 extension
@@ -646,6 +663,35 @@ export const StorytellerWysiwygEditor = forwardRef<
     return () => onEditorReady?.(null);
   }, [editor, onEditorReady]);
 
+  useLayoutEffect(() => {
+    if (!editor) return;
+    if (!inlineAssistantOpen || !hasInlineAssistant) {
+      clearInlineAssistantAnchor(editor);
+      setInlineAssistantHost(null);
+      return;
+    }
+
+    setInlineAssistantAnchor(editor, inlineAssistantAnchorMarkerId);
+    const resolveHost = () =>
+      editor.view.dom.querySelector<HTMLElement>(
+        '[data-storyteller-ai-inline-anchor="true"]',
+      );
+    setInlineAssistantHost(resolveHost());
+    const frame = window.requestAnimationFrame(() => {
+      const host = resolveHost();
+      setInlineAssistantHost(host);
+      window.requestAnimationFrame(() =>
+        host?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    editor,
+    inlineAssistantAnchorMarkerId,
+    inlineAssistantOpen,
+    hasInlineAssistant,
+  ]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -674,8 +720,27 @@ export const StorytellerWysiwygEditor = forwardRef<
           ])
           .run();
       },
+      requestDocumentAI: () => {
+        if (!editor || !hasSavedTarget || !onSelectionAgentTrigger) {
+          return false;
+        }
+        onSelectionAgentTrigger({
+          mode: "custom_selection",
+          selectedText: "",
+          instruction: "",
+          scope: "document",
+          markerId: currentParagraphMarkerId(editor) ?? undefined,
+        });
+        return true;
+      },
     }),
-    [assetEnabled, editor, projectPublicId],
+    [
+      assetEnabled,
+      editor,
+      hasSavedTarget,
+      onSelectionAgentTrigger,
+      projectPublicId,
+    ],
   );
 
   const editorState = useEditorState({
@@ -986,13 +1051,19 @@ export const StorytellerWysiwygEditor = forwardRef<
   const handleRequestAI = () => {
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, "\n");
+    const selectionEndMarkerId = editor.state.selection.$to.parent.attrs
+      .markerId as string | undefined;
     onSelectionAgentTrigger?.({
       mode: "custom_selection",
       selectedText: selectedText.trim() || currentParagraphText(editor),
       instruction: "",
       scope: selectedText.trim() ? "selection" : "block",
-      markerId: currentParagraphMarkerId(editor) ?? undefined,
+      markerId:
+        selectionEndMarkerId || currentParagraphMarkerId(editor) || undefined,
     });
+    // 文字與 marker 已在上面完成 snapshot；收合 selection 才能讓 BubbleMenu 立即消失，
+    // 避免 AI 工作區展開後格式列仍浮在原文上方。
+    editor.chain().setTextSelection(to).blur().run();
   };
 
   // Command Registry（wysiwygCore/commands.ts）共用的執行環境：右鍵選單、slash、
@@ -1070,6 +1141,13 @@ export const StorytellerWysiwygEditor = forwardRef<
             CLEAR_FLOATING_ASSET_SX,
             bookmarkHighlightSx,
             {
+              '& [data-storyteller-ai-inline-anchor="true"]': {
+                display: "block",
+                width: "100%",
+                height: { xs: 500, md: 600 },
+                minHeight: { xs: 420, md: 480 },
+                my: 2,
+              },
               "& .ProseMirror": {
                 minHeight: { xs: 360, md: 520 },
                 outline: "none",
@@ -1089,6 +1167,13 @@ export const StorytellerWysiwygEditor = forwardRef<
             onRequestAI={handleRequestAI}
           />
           <StorytellerWysiwygTableMenu editor={editor} />
+          {inlineAssistantHost && inlineAssistant
+            ? createPortal(
+                inlineAssistant,
+                inlineAssistantHost,
+                "storyteller-ai-inline-workspace",
+              )
+            : null}
         </Box>
       </Box>
 

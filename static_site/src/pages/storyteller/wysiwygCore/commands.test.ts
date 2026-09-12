@@ -176,6 +176,26 @@ describe("WYSIWYG_COMMANDS", () => {
       const ids = slashWysiwygCommands("", editor, createStubContext()).map(
         (command) => command.id,
       );
+      expect(ids).toEqual([
+        "heading-0",
+        "heading-1",
+        "heading-2",
+        "heading-3",
+        "heading-4",
+        "heading-5",
+        "heading-6",
+        "align-left",
+        "align-center",
+        "align-right",
+        "block-kind-quote",
+        "block-kind-bullet",
+        "block-kind-number",
+        "horizontal-rule",
+        "insert-code-block",
+        "insert-table",
+        "insert-image",
+        "ask-ai",
+      ]);
       expect(ids).toEqual(
         expect.arrayContaining([
           "ask-ai",

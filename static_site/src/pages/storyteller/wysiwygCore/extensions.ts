@@ -10,6 +10,7 @@ import { AssetImage } from "./assetImageNode";
 import { BgColor, TextColor } from "./inlineColorMarks";
 import { InlineComment } from "./inlineCommentMark";
 import { InlineFootnote } from "./inlineFootnoteMark";
+import { InlineAssistantAnchor } from "./inlineAssistantAnchor";
 import { InlineLink } from "./inlineLinkMark";
 import {
   CustomCode,
@@ -69,6 +70,7 @@ export function createWysiwygCoreExtensions(
     InlineLink,
     InlineFootnote,
     InlineComment,
+    InlineAssistantAnchor,
     TextAlign.configure({
       types: ["paragraph"],
       alignments: [...ALIGNMENT_VALUES],

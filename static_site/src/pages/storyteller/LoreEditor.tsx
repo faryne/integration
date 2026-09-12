@@ -78,10 +78,7 @@ import {
   StorytellerWysiwygEditor,
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
-import {
-  STORYTELLER_AI_SCOPE_LABELS,
-  type StorytellerSelectionAgentTrigger,
-} from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
+import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type {
   StorytellerAgenticProposal,
@@ -206,9 +203,7 @@ export default function StorytellerLoreEditor({
   const aiWorkspaceOpen = sidePanel === "agentic";
   const [pendingSelectionAgentTrigger, setPendingSelectionAgentTrigger] =
     useState<StorytellerSelectionAgentTrigger | null>(null);
-  const [aiScopeLabel, setAIScopeLabel] = useState<string>(
-    STORYTELLER_AI_SCOPE_LABELS.document,
-  );
+  const [aiAnchorMarkerId, setAIAnchorMarkerId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
   const [content, setContent] = useState("");
@@ -847,21 +842,28 @@ export default function StorytellerLoreEditor({
     trigger: StorytellerSelectionAgentTrigger,
   ) {
     handleSidePanelChange("agentic");
-    setAIScopeLabel(STORYTELLER_AI_SCOPE_LABELS[trigger.scope ?? "selection"]);
+    setAIAnchorMarkerId(trigger.markerId ?? null);
     setPendingSelectionAgentTrigger(trigger);
   }
 
   function handleSidePanelChange(value: StorytellerEditorSidePanel | null) {
     setSidePanel(value);
-    if (value === "agentic") {
-      setAIScopeLabel(STORYTELLER_AI_SCOPE_LABELS.document);
-      setPendingSelectionAgentTrigger({
-        mode: "custom_selection",
-        selectedText: "",
-        instruction: "",
-        scope: "document",
-      });
+    // selection trigger 保留到 AI 面板關閉，避免 Strict Mode mount 重跑時遺失選取內容。
+    if (value !== "agentic") setPendingSelectionAgentTrigger(null);
+  }
+
+  function handleToolbarPanelChange(value: StorytellerEditorSidePanel | null) {
+    if (value !== "agentic") {
+      handleSidePanelChange(value);
+      return;
     }
+    if (editorRef.current?.requestDocumentAI()) return;
+    handleSelectionAgentTrigger({
+      mode: "custom_selection",
+      selectedText: "",
+      instruction: "",
+      scope: "document",
+    });
   }
 
   // 版本比對改用 modal 顯示，不用再走獨立頁面——versions 本來就已經載入每個版本的
@@ -1251,6 +1253,41 @@ export default function StorytellerLoreEditor({
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiLore?.public_id)}
             onSelectionAgentTrigger={handleSelectionAgentTrigger}
+            inlineAssistantOpen={aiWorkspaceOpen}
+            inlineAssistantAnchorMarkerId={aiAnchorMarkerId}
+            inlineAssistant={
+              <StorytellerAgenticPanel
+                targetKind="lore"
+                presentation="workspace"
+                onClose={() => handleSidePanelChange(null)}
+                projectPublicId={apiProject?.public_id}
+                targetPublicId={apiLore?.public_id}
+                agents={panelAgents}
+                currentStory={{
+                  title: title.trim() || apiLore?.title || "",
+                  summary: "",
+                  content,
+                  versionId: apiLore?.latest_version_id ?? null,
+                  updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
+                }}
+                otherStories={apiStories.map((item) => ({
+                  id: item.public_id,
+                  title: item.title,
+                  content: item.latest_content,
+                }))}
+                lores={apiLores
+                  .filter((item) => item.public_id !== apiLore?.public_id)
+                  .map((item) => ({
+                    id: item.public_id,
+                    title: item.title,
+                    content: item.latest_content,
+                  }))}
+                penName={userProfile?.pen_name}
+                onApplyText={applyAgentText}
+                onApplyProposalToEditor={applyAgenticProposalToEditor}
+                pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+              />
+            }
             onRequestInsertAsset={
               project ? () => setAssetPickerOpen(true) : undefined
             }
@@ -1288,49 +1325,11 @@ export default function StorytellerLoreEditor({
                 </StorytellerEditorOutlineToggle>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
-                  onChange={handleSidePanelChange}
+                  onChange={handleToolbarPanelChange}
                   historyDisabled={isNewLore}
                   aiTabHidden
                 />
               </Stack>
-            }
-          />
-        }
-        assistantOpen={aiWorkspaceOpen}
-        assistant={
-          <StorytellerAgenticPanel
-            targetKind="lore"
-            presentation="workspace"
-            scopeLabel={aiScopeLabel}
-            onClose={() => handleSidePanelChange(null)}
-            projectPublicId={apiProject?.public_id}
-            targetPublicId={apiLore?.public_id}
-            agents={panelAgents}
-            currentStory={{
-              title: title.trim() || apiLore?.title || "",
-              summary: "",
-              content,
-              versionId: apiLore?.latest_version_id ?? null,
-              updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
-            }}
-            otherStories={apiStories.map((item) => ({
-              id: item.public_id,
-              title: item.title,
-              content: item.latest_content,
-            }))}
-            lores={apiLores
-              .filter((item) => item.public_id !== apiLore?.public_id)
-              .map((item) => ({
-                id: item.public_id,
-                title: item.title,
-                content: item.latest_content,
-              }))}
-            penName={userProfile?.pen_name}
-            onApplyText={applyAgentText}
-            onApplyProposalToEditor={applyAgenticProposalToEditor}
-            pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
-            onSelectionAgentTriggerApplied={() =>
-              setPendingSelectionAgentTrigger(null)
             }
           />
         }
