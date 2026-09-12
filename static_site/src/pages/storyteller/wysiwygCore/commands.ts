@@ -17,7 +17,14 @@ import FormatStrikethroughIcon from "@mui/icons-material/FormatStrikethrough";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import LinkIcon from "@mui/icons-material/Link";
+import Looks3Icon from "@mui/icons-material/Looks3";
+import Looks4Icon from "@mui/icons-material/Looks4";
+import Looks5Icon from "@mui/icons-material/Looks5";
+import Looks6Icon from "@mui/icons-material/Looks6";
+import LooksOneIcon from "@mui/icons-material/LooksOne";
+import LooksTwoIcon from "@mui/icons-material/LooksTwo";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
+import SubjectIcon from "@mui/icons-material/Subject";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import TableChartIcon from "@mui/icons-material/TableChart";
@@ -80,9 +87,10 @@ export const BLOCK_OPERATION_GROUPS: WysiwygCommandGroup[] = [
 ];
 
 const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
-  "ai",
   ...BLOCK_OPERATION_GROUPS,
   "insert",
+  // 比照無選取文字時的右鍵選單：文件操作在前，問 AI 固定收在最後。
+  "ai",
 ];
 
 /**
@@ -208,6 +216,16 @@ const MARK_COMMANDS: WysiwygCommand[] = [
  * （Phase 2 右鍵選單新增的情境，工具列本來就有對應的標題 Select，只是那邊不走
  * command registry——Select 需要單一 value/onChange，不適合拆成多個獨立 toggle
  * command）。 */
+const HEADING_ICONS: Record<number, ComponentType<{ fontSize?: "small" }>> = {
+  0: SubjectIcon,
+  1: LooksOneIcon,
+  2: LooksTwoIcon,
+  3: Looks3Icon,
+  4: Looks4Icon,
+  5: Looks5Icon,
+  6: Looks6Icon,
+};
+
 const HEADING_COMMANDS: WysiwygCommand[] = [
   DEFAULT_HEADING_LEVEL,
   ...HEADING_LEVELS,
@@ -216,7 +234,7 @@ const HEADING_COMMANDS: WysiwygCommand[] = [
   label: level === DEFAULT_HEADING_LEVEL ? "內文" : `標題 ${level}`,
   group: "heading",
   scope: "block",
-  icon: TitleIcon,
+  icon: HEADING_ICONS[level] ?? TitleIcon,
   aliases:
     level === DEFAULT_HEADING_LEVEL
       ? ["內文", "paragraph", "text"]

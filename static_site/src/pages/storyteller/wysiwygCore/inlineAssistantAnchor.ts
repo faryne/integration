@@ -78,6 +78,9 @@ export const InlineAssistantAnchor = Extension.create({
                   key: "storyteller-ai-inline-anchor",
                   side: 1,
                   ignoreSelection: true,
+                  // Portal 內是完整互動介面；若事件繼續交給 ProseMirror，Backspace、
+                  // Enter 或 IME 輸入可能誤觸編輯器指令，甚至刪掉承載面板的錨點。
+                  stopEvent: () => true,
                 },
               ),
             ]);

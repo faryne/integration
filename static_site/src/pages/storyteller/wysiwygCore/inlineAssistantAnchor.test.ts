@@ -1,5 +1,6 @@
-import { Editor } from "@tiptap/core";
-import { describe, expect, it } from "vitest";
+import { Editor, Extension } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
+import { describe, expect, it, vi } from "vitest";
 
 import { wysiwygCoreExtensions } from "./extensions";
 import {
@@ -33,6 +34,45 @@ function expectHostAfterMarker(editor: Editor, markerId: string) {
 }
 
 describe("InlineAssistantAnchor", () => {
+  it("AI 輸入框的 Backspace 不會冒泡成編輯器指令", () => {
+    const handleEditorKeyDown = vi.fn(() => false);
+    const editor = new Editor({
+      extensions: [
+        ...wysiwygCoreExtensions,
+        Extension.create({
+          name: "inlineAssistantEventProbe",
+          addProseMirrorPlugins: () => [
+            new Plugin({
+              props: { handleKeyDown: handleEditorKeyDown },
+            }),
+          ],
+        }),
+      ],
+      content: markdownToDoc("⟦p1⟧第一段⟦/p1⟧"),
+    });
+
+    try {
+      setInlineAssistantAnchor(editor, "p1");
+      const host = getHost(editor);
+      const prompt = document.createElement("textarea");
+      prompt.value = "/custom";
+      host?.append(prompt);
+
+      prompt.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Backspace",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+
+      expect(handleEditorKeyDown).not.toHaveBeenCalled();
+      expect(getHost(editor)).toBe(host);
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it("移動錨點時文件內始終只有一個 AI host，關閉後完整移除", () => {
     const editor = new Editor({
       extensions: wysiwygCoreExtensions,
