@@ -1,0 +1,117 @@
+.reader-stage {
+  min-height: calc(100vh - 120px);
+  padding: 72px 20px 150px;
+  background: radial-gradient(circle at 50% 0, var(--glow), transparent 33rem);
+}
+.reader-hero {
+  max-width: 860px;
+  margin: 0 auto 70px;
+  text-align: center;
+}
+.reader-hero h1 {
+  margin: 0 0 18px;
+  font-family: "Noto Serif TC", serif;
+  font-size: clamp(50px, 8vw, 92px);
+  line-height: 1.1;
+  letter-spacing: -0.06em;
+}
+.reader-hero > p:not(.eyebrow) {
+  margin: 0 auto 24px;
+  color: var(--muted);
+  font-family: "Noto Serif TC", serif;
+  font-size: 17px;
+}
+.reader-hero div {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.reader-paper {
+  position: relative;
+  max-width: 760px;
+  margin: auto;
+  padding: clamp(34px, 7vw, 80px);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.18);
+}
+.reader-paper::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid var(--line);
+  pointer-events: none;
+}
+.reader-paper p,
+.reader-paper blockquote {
+  position: relative;
+  font-family: "Noto Serif TC", serif;
+  font-size: 17px;
+  line-height: 2.1;
+}
+.reader-paper p {
+  margin: 0 0 2em;
+}
+.reader-paper blockquote {
+  margin: 3em 0;
+  padding: 22px 0 22px 28px;
+  border-left: 1px solid var(--thread);
+  color: var(--thread);
+  font-size: 21px;
+}
+.chapter-mark {
+  position: absolute;
+  right: 28px;
+  top: 18px;
+  color: color-mix(in srgb, var(--ink) 7%, transparent);
+  font-family: Georgia, serif;
+  font-size: 110px;
+}
+.reader-dock {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  width: min(850px, calc(100% - 28px));
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 16px 54px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+}
+.reader-dock button {
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--muted);
+}
+.reader-dock button:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.reader-dock button span {
+  margin: 0 5px;
+}
+.reading-progress {
+  flex: 1;
+  min-width: 90px;
+  height: 2px;
+  background: var(--line);
+}
+.reading-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--thread), var(--thread-2));
+  box-shadow: 0 0 12px var(--glow);
+}
+.reader-dock strong {
+  color: var(--thread);
+  font-size: 12px;
+}
