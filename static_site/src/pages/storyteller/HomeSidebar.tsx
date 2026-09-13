@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
-import { WorkspaceSidebarFooter } from "./ProjectWorkspacePreviewComponents.tsx";
 import {
   homeTabGroups,
   tabBreadcrumbLabel,
@@ -111,7 +110,6 @@ export function HomeSidebar({
           ))}
         </List>
       </Box>
-      <WorkspaceSidebarFooter />
     </Stack>
   );
 }

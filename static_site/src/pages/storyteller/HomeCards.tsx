@@ -2,22 +2,27 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PeopleIcon from "@mui/icons-material/People";
 import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
   Alert,
   Button,
+  Chip,
+  Divider,
   Grid,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import {
   useDeleteStorytellerAgent,
   useDeleteStorytellerProject,
@@ -55,10 +60,15 @@ function agentPromptPlainTextSummary(prompt: string) {
 }
 
 export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
+  const navigate = useNavigate();
   const deleteProject = useDeleteStorytellerProject();
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     name: string;
+  } | null>(null);
+  const [projectMenu, setProjectMenu] = useState<{
+    anchorEl: HTMLElement;
+    project: StorytellerProject;
   } | null>(null);
   const saveProject = useSaveStorytellerProject();
 
@@ -83,6 +93,12 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     });
   }
 
+  const visibilityLabel = {
+    private: "私密",
+    unlisted: "分享",
+    public: "公開",
+  } satisfies Record<StorytellerProject["visibility"], string>;
+
   return (
     <>
       {deleteProject.isError && (
@@ -103,74 +119,116 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
               <StorytellerProjectCard
                 project={project}
                 headerAction={
-                  <ToggleButtonGroup
-                    size="small"
-                    exclusive
-                    value={project.visibility}
-                    disabled={saveProject.isPending}
-                    onChange={(_, value) =>
-                      handleVisibilityChange(project, value)
-                    }
-                  >
-                    <ToggleButton value="private" aria-label="完全不公開">
-                      <Tooltip title="完全不公開">
-                        <LockIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="unlisted" aria-label="與親友分享">
-                      <Tooltip title="與親友分享">
-                        <PeopleIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                    <ToggleButton value="public" aria-label="已公開">
-                      <Tooltip title="已公開">
-                        <PublicIcon fontSize="small" />
-                      </Tooltip>
-                    </ToggleButton>
-                  </ToggleButtonGroup>
-                }
-                actions={
-                  <>
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(`my/workspace/${project.public_id}`)}
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Chip
                       size="small"
                       variant="outlined"
-                    >
-                      開啟專案
-                    </Button>
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(
-                        `my/workspace/${project.public_id}/edit`,
-                      )}
-                      size="small"
-                      variant="outlined"
-                      startIcon={<EditIcon />}
-                    >
-                      編輯
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="contained"
-                      startIcon={<DeleteIcon />}
-                      onClick={() =>
-                        setDeleteTarget({
-                          id: project.public_id,
-                          name: project.name,
+                      label={visibilityLabel[project.visibility]}
+                    />
+                    <IconButton
+                      aria-label={`${project.name}專案操作`}
+                      onClick={(event) =>
+                        setProjectMenu({
+                          anchorEl: event.currentTarget,
+                          project,
                         })
                       }
                     >
-                      刪除
-                    </Button>
-                  </>
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                }
+                onClick={() =>
+                  navigate(steamloomPath(`my/workspace/${project.public_id}`))
                 }
               />
             </Grid>
           ))}
         </Grid>
       )}
+      <Menu
+        anchorEl={projectMenu?.anchorEl ?? null}
+        open={Boolean(projectMenu)}
+        onClose={() => setProjectMenu(null)}
+        slotProps={{ paper: { sx: { minWidth: 210 } } }}
+      >
+        <MenuItem
+          selected={projectMenu?.project.visibility === "private"}
+          disabled={saveProject.isPending}
+          onClick={() => {
+            if (projectMenu)
+              handleVisibilityChange(projectMenu.project, "private");
+            setProjectMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <LockIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>設為私密</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={projectMenu?.project.visibility === "unlisted"}
+          disabled={saveProject.isPending}
+          onClick={() => {
+            if (projectMenu)
+              handleVisibilityChange(projectMenu.project, "unlisted");
+            setProjectMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <PeopleIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>設為分享</ListItemText>
+        </MenuItem>
+        <MenuItem
+          selected={projectMenu?.project.visibility === "public"}
+          disabled={saveProject.isPending}
+          onClick={() => {
+            if (projectMenu)
+              handleVisibilityChange(projectMenu.project, "public");
+            setProjectMenu(null);
+          }}
+        >
+          <ListItemIcon>
+            <PublicIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>設為公開</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem
+          component={RouterLink}
+          to={
+            projectMenu
+              ? steamloomPath(
+                  `my/workspace/${projectMenu.project.public_id}/edit`,
+                )
+              : "#"
+          }
+          onClick={() => setProjectMenu(null)}
+        >
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>編輯專案</ListItemText>
+        </MenuItem>
+        <MenuItem
+          sx={{ color: "error.main" }}
+          onClick={() => {
+            if (projectMenu) {
+              setDeleteTarget({
+                id: projectMenu.project.public_id,
+                name: projectMenu.project.name,
+              });
+            }
+            setProjectMenu(null);
+          }}
+        >
+          <ListItemIcon sx={{ color: "inherit" }}>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>刪除專案</ListItemText>
+        </MenuItem>
+      </Menu>
       {deleteTarget && (
         <ConfirmNameDialog
           open

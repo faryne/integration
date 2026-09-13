@@ -29,6 +29,7 @@ export function WorkspaceChrome({
   projectId,
   projects = [],
   trail = [],
+  navigationAction,
   action,
   children,
 }: {
@@ -50,6 +51,9 @@ export function WorkspaceChrome({
   // 麵包屑接在 title 後面的其餘段落，例如 ["作品", "桌布集"]或["創作專案"]——由
   // 呼叫端依目前選到的分組／收藏集／分頁組好，這裡只負責照順序插上分隔符號渲染。
   trail?: string[];
+  // Project workspace 在 mobile 以這個 slot 顯示「導覽」按鈕；放在麵包屑最前方，
+  // list 與 editor route 都會存在，不再把整棵 sidebar 插進內容上方。
+  navigationAction?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -111,6 +115,9 @@ export function WorkspaceChrome({
             "&::-webkit-scrollbar": { display: "none" },
           }}
         >
+          {navigationAction && (
+            <Box sx={{ flexShrink: 0 }}>{navigationAction}</Box>
+          )}
           {/* 窄螢幕優先讓「目前選到哪個分組/收藏集」有空間顯示，站名跟「我的工作台」
               這兩段先收起來——真的還是放不下時，整條麵包屑本身可以橫向捲動（見外層
               overflowX），文字內容永遠不會被硬擠到看不見。 */}

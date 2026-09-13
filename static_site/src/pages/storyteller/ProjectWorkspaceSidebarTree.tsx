@@ -1,8 +1,13 @@
 import AddIcon from "@mui/icons-material/Add";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
+import DoneIcon from "@mui/icons-material/Done";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import RemoveIcon from "@mui/icons-material/Remove";
+import SortIcon from "@mui/icons-material/Sort";
 import {
   Box,
   Collapse,
@@ -68,6 +73,10 @@ export function SidebarGroup({
 }) {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
+  const [sorting, setSorting] = useState(false);
+  const reorderableRows = rows.filter(
+    (row) => row.id !== "" && row.id !== ungroupedId,
+  );
   return (
     <Box>
       <Stack
@@ -97,37 +106,75 @@ export function SidebarGroup({
         >
           {title}
         </Typography>
-        {onCreate && (
-          <Tooltip title={createLabel ?? `新增${title}`}>
-            <IconButton
-              size="small"
-              onClick={onCreate}
-              sx={{ ml: "auto", p: 0.375 }}
-            >
-              <CreateNewFolderIcon fontSize="inherit" />
-            </IconButton>
-          </Tooltip>
-        )}
+        <Stack direction="row" sx={{ ml: "auto" }}>
+          {onReorder && (
+            <Tooltip title={sorting ? "完成排序" : `調整${title}順序`}>
+              <IconButton
+                size="small"
+                aria-pressed={sorting}
+                onClick={() => setSorting((value) => !value)}
+                sx={{ p: 0.375 }}
+              >
+                {sorting ? (
+                  <DoneIcon fontSize="inherit" />
+                ) : (
+                  <SortIcon fontSize="inherit" />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+          {onCreate && (
+            <Tooltip title={createLabel ?? `新增${title}`}>
+              <IconButton size="small" onClick={onCreate} sx={{ p: 0.375 }}>
+                <CreateNewFolderIcon fontSize="inherit" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
       </Stack>
       <Collapse in={expanded} timeout="auto">
         <List dense disablePadding sx={{ mt: 0.5 }}>
-          {rows.map((row) => (
-            <SidebarCollectionRow
-              key={`${section}-${row.id}`}
-              row={row}
-              section={section}
-              projectPublicId={projectPublicId}
-              selected={selected}
-              selectedItem={selectedItem}
-              draggingId={draggingId}
-              onSelect={onSelect}
-              onSelectItem={onSelectItem}
-              onReorder={onReorder}
-              onDragStart={setDraggingId}
-              onDragEnd={() => setDraggingId(null)}
-            />
-          ))}
-          {onReorder && (
+          {rows.map((row) => {
+            const reorderIndex = reorderableRows.findIndex(
+              (item) => item.id === row.id,
+            );
+            return (
+              <SidebarCollectionRow
+                key={`${section}-${row.id}`}
+                row={row}
+                section={section}
+                projectPublicId={projectPublicId}
+                selected={selected}
+                selectedItem={selectedItem}
+                draggingId={draggingId}
+                sorting={sorting}
+                onSelect={onSelect}
+                onSelectItem={onSelectItem}
+                onReorder={onReorder}
+                onMoveUp={
+                  reorderIndex > 0
+                    ? () =>
+                        onReorder?.(
+                          row.id,
+                          reorderableRows[reorderIndex - 1].id,
+                        )
+                    : undefined
+                }
+                onMoveDown={
+                  reorderIndex >= 0 && reorderIndex < reorderableRows.length - 1
+                    ? () =>
+                        onReorder?.(
+                          row.id,
+                          reorderableRows[reorderIndex + 2]?.id ?? null,
+                        )
+                    : undefined
+                }
+                onDragStart={setDraggingId}
+                onDragEnd={() => setDraggingId(null)}
+              />
+            );
+          })}
+          {sorting && onReorder && (
             // 補一塊有實際高度的拖放目標放在清單最後，讓使用者能把冊拖到最後一個
             // 位置（跟 WorkspacePane 作品清單拖曳排序同一個道理）。
             <Box
@@ -156,9 +203,12 @@ export function SidebarCollectionRow({
   selected,
   selectedItem,
   draggingId,
+  sorting,
   onSelect,
   onSelectItem,
   onReorder,
+  onMoveUp,
+  onMoveDown,
   onDragStart,
   onDragEnd,
 }: {
@@ -168,9 +218,12 @@ export function SidebarCollectionRow({
   selected: SelectedNode;
   selectedItem?: { type: SelectedItem["type"]; publicId: string };
   draggingId: string | null;
+  sorting: boolean;
   onSelect: (section: WorkspaceSection, collectionId: string) => void;
   onSelectItem: (item: SelectedItem, collectionId: string) => void;
   onReorder?: (draggedId: string, beforeId: string | null) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
 }) {
@@ -202,86 +255,135 @@ export function SidebarCollectionRow({
 
   return (
     <>
-      <Tooltip
-        title={reorderable ? "可拖曳調整順序" : ""}
-        placement="right"
-      >
-        <ListItemButton
-          selected={isSelected}
-          onClick={() => onSelect(section, row.id)}
-          draggable={reorderable}
-          onDragStart={reorderable ? () => onDragStart(row.id) : undefined}
-          onDragOver={
-            reorderable ? (event) => event.preventDefault() : undefined
-          }
-          onDrop={
-            reorderable
-              ? (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (draggingId) {
-                    onReorder?.(draggingId, row.id);
-                  }
-                  onDragEnd();
-                }
-              : undefined
-          }
-          sx={{
-            ...sidebarTreeRowSx,
-            cursor: reorderable ? "grab" : undefined,
-            opacity: draggingId === row.id ? 0.55 : 1,
-          }}
+      <Stack direction="row" alignItems="center" sx={{ minWidth: 0 }}>
+        <Tooltip
+          title={sorting && reorderable ? "拖曳調整順序" : ""}
+          placement="right"
         >
-          {canExpandChildren && (
-            <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
-              <Box
-                onClick={toggleChildren}
-                sx={{
-                  width: 16,
-                  lineHeight: 0,
-                  flexShrink: 0,
-                  visibility: hasChildren ? "visible" : "hidden",
-                  cursor: hasChildren ? "pointer" : undefined,
-                }}
-              >
-                <KeyboardArrowRightIcon
-                  fontSize="inherit"
-                  sx={{
-                    transform: childrenExpanded ? "rotate(90deg)" : "none",
-                    transition: "transform 120ms ease",
-                  }}
-                />
-              </Box>
-            </Tooltip>
-          )}
-          <ListItemIcon
+          <ListItemButton
+            selected={isSelected}
+            onClick={() => onSelect(section, row.id)}
+            draggable={sorting && reorderable}
+            onDragStart={
+              sorting && reorderable ? () => onDragStart(row.id) : undefined
+            }
+            onDragOver={
+              sorting && reorderable
+                ? (event) => event.preventDefault()
+                : undefined
+            }
+            onDrop={
+              sorting && reorderable
+                ? (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (draggingId) {
+                      onReorder?.(draggingId, row.id);
+                    }
+                    onDragEnd();
+                  }
+                : undefined
+            }
             sx={{
-              minWidth: 26,
-              color: isSelected ? "primary.main" : "inherit",
+              ...sidebarTreeRowSx,
+              flex: 1,
+              cursor: sorting && reorderable ? "grab" : undefined,
+              opacity: draggingId === row.id ? 0.55 : 1,
             }}
           >
-            <FolderIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText
-            primary={row.label}
-            primaryTypographyProps={{
-              fontWeight: 700,
-              noWrap: true,
-              fontSize: 13,
-            }}
-            sx={{ minWidth: 0 }}
-          />
-          {row.count !== undefined && (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ flexShrink: 0 }}
+            {sorting && reorderable && (
+              <DragIndicatorIcon
+                fontSize="small"
+                sx={{
+                  display: { xs: "none", md: "block" },
+                  mr: 0.5,
+                  opacity: 0.55,
+                }}
+              />
+            )}
+            {canExpandChildren && (
+              <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
+                <Box
+                  onClick={toggleChildren}
+                  sx={{
+                    width: 16,
+                    lineHeight: 0,
+                    flexShrink: 0,
+                    visibility: hasChildren ? "visible" : "hidden",
+                    cursor: hasChildren ? "pointer" : undefined,
+                  }}
+                >
+                  <KeyboardArrowRightIcon
+                    fontSize="inherit"
+                    sx={{
+                      transform: childrenExpanded ? "rotate(90deg)" : "none",
+                      transition: "transform 120ms ease",
+                    }}
+                  />
+                </Box>
+              </Tooltip>
+            )}
+            <ListItemIcon
+              sx={{
+                minWidth: 26,
+                color: isSelected ? "primary.main" : "inherit",
+              }}
             >
-              {row.count}
-            </Typography>
-          )}
-        </ListItemButton>
-      </Tooltip>
+              <FolderIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary={row.label}
+              primaryTypographyProps={{
+                fontWeight: 700,
+                noWrap: true,
+                fontSize: 13,
+              }}
+              sx={{ minWidth: 0 }}
+            />
+            {row.count !== undefined && (
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ flexShrink: 0 }}
+              >
+                {row.count}
+              </Typography>
+            )}
+          </ListItemButton>
+        </Tooltip>
+        {sorting && reorderable && (
+          // 行動版不依賴 HTML5 drag；排序模式明確顯示上下移動，桌面仍保留拖曳。
+          <Stack
+            direction="row"
+            sx={{ display: { xs: "flex", md: "none" }, flexShrink: 0 }}
+          >
+            <Tooltip title="往上移">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label={`${row.label}往上移`}
+                  disabled={!onMoveUp}
+                  onClick={onMoveUp}
+                >
+                  <ArrowUpwardIcon fontSize="inherit" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="往下移">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label={`${row.label}往下移`}
+                  disabled={!onMoveDown}
+                  onClick={onMoveDown}
+                >
+                  <ArrowDownwardIcon fontSize="inherit" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+        )}
+      </Stack>
       {canExpandChildren && (
         <Collapse in={childrenExpanded} timeout="auto">
           {childrenLoaded && (
