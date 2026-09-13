@@ -3,6 +3,7 @@ package route
 import (
 	"faryne.dev/controller/galgame"
 	"faryne.dev/middleware/authsession"
+	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -18,7 +19,7 @@ func Galgame(app *fiber.App) {
 	group.Post("/brands/submissions", galgame.SubmitBrands)
 	group.Post("/videos/submissions", galgame.SubmitVideos)
 
-	authenticated := group.Group("", authsession.New())
+	authenticated := group.Group("", authsession.New(authService.BrandMain))
 	authenticated.Post("/favorites/status", galgame.FavoriteStatus)
 	authenticated.Get("/favorites/brands", galgame.FavoriteBrands)
 	authenticated.Get("/favorites/videos", galgame.FavoriteVideos)
@@ -45,7 +46,7 @@ func Galgame(app *fiber.App) {
 	authenticated.Get("/:brand/video/:videoId/reaction", galgame.VideoReaction)
 	authenticated.Put("/:brand/video/:videoId/reaction", galgame.SetVideoReaction)
 
-	admin := app.Group("/admin/galgame", authsession.New())
+	admin := app.Group("/admin/galgame", authsession.New(authService.BrandMain))
 	admin.Get("/brands", galgame.AdminBrands)
 	admin.Put("/brands/:brandId/status", galgame.SetBrandStatus)
 	admin.Delete("/brands/:brandId", galgame.DeleteBrand)

@@ -21,12 +21,14 @@ import { alpha } from "@mui/material/styles";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
+import { createPortal } from "react-dom";
 import {
   type MouseEvent,
   type ReactNode,
   forwardRef,
   useImperativeHandle,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -44,6 +46,10 @@ import {
   exportContentToMarkdown,
 } from "./wysiwygCore/exportMarkdown";
 import { renderFootnoteNote } from "./wysiwygCore/footnoteRender";
+import {
+  clearInlineAssistantAnchor,
+  setInlineAssistantAnchor,
+} from "./wysiwygCore/inlineAssistantAnchor";
 import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
@@ -60,7 +66,6 @@ import { StorytellerWysiwygBubbleMenu } from "./StorytellerWysiwygBubbleMenu";
 import {
   StorytellerWysiwygContextMenu,
   type ContextMenuPosition,
-  type StorytellerSelectionAgentDialogItem,
 } from "./StorytellerWysiwygContextMenu";
 import { StorytellerWysiwygTableMenu } from "./StorytellerWysiwygTableMenu";
 import {
@@ -68,10 +73,7 @@ import {
   type StorytellerWysiwygFeature,
 } from "./StorytellerWysiwygToolbar";
 import { StorytellerWritingBookmarkDialog } from "./StorytellerWritingBookmarkDialog";
-import {
-  truncateStorytellerSelectionPreview,
-  type StorytellerSelectionAgentTrigger,
-} from "./storytellerSelectionAgentTrigger";
+import type { StorytellerSelectionAgentTrigger } from "./storytellerSelectionAgentTrigger";
 import {
   currentParagraphMarkerId,
   currentParagraphText,
@@ -435,6 +437,10 @@ export interface StorytellerWysiwygEditorProps {
   /** 已存檔的故事/設定集才有 targetPublicId 可以呼叫 AI skill；未存檔時右鍵選單不顯示 AI 項目。 */
   hasSavedTarget?: boolean;
   onSelectionAgentTrigger?: (trigger: StorytellerSelectionAgentTrigger) => void;
+  /** AI 工作區以 decoration 掛在指定段落後方，不會寫進正文內容。 */
+  inlineAssistant?: ReactNode;
+  inlineAssistantOpen?: boolean;
+  inlineAssistantAnchorMarkerId?: string | null;
   /** 目前這篇已加書籤的段落 markerId，用來畫段落層級提示。 */
   bookmarkedMarkerIds?: ReadonlySet<string>;
   canBookmark?: boolean;
@@ -450,6 +456,7 @@ export interface StorytellerWysiwygEditorHandle {
     alt?: string;
     projectPublicId?: string;
   }) => boolean;
+  requestDocumentAI: () => boolean;
 }
 
 /**
@@ -479,6 +486,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     onRequestInsertAsset,
     hasSavedTarget = false,
     onSelectionAgentTrigger,
+    inlineAssistant,
+    inlineAssistantOpen = false,
+    inlineAssistantAnchorMarkerId,
     bookmarkedMarkerIds,
     canBookmark = false,
     onAddBookmark,
@@ -539,16 +549,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     string | null
   >(null);
   const bookmarkedIds = bookmarkedMarkerIds ?? EMPTY_BOOKMARK_IDS;
-  const [selectionAgentDialogTarget, setSelectionAgentDialogTarget] = useState<
-    (StorytellerSelectionAgentDialogItem & { selectedText: string }) | null
-  >(null);
-  const [selectionAgentInstruction, setSelectionAgentInstruction] =
-    useState("");
-  // 額外需求 Dialog 的輸入框：不用 TextField autoFocus，改手動 focus({ preventScroll: true })，
-  // 避免 MUI FocusTrap 的 .focus() 把編輯區 overflow:auto 容器捲回 scrollTop=0。
-  const selectionAgentInputRef = useRef<
-    HTMLInputElement | HTMLTextAreaElement | null
-  >(null);
+  const hasInlineAssistant = Boolean(inlineAssistant);
+  const [inlineAssistantHost, setInlineAssistantHost] =
+    useState<HTMLElement | null>(null);
   const isComposingRef = useRef(false);
   const latestValueRef = useRef(value);
   // Slash command extension 在 editor 建立時只吃一次 options；這個穩定 store 讓 extension
@@ -660,6 +663,35 @@ export const StorytellerWysiwygEditor = forwardRef<
     return () => onEditorReady?.(null);
   }, [editor, onEditorReady]);
 
+  useLayoutEffect(() => {
+    if (!editor) return;
+    if (!inlineAssistantOpen || !hasInlineAssistant) {
+      clearInlineAssistantAnchor(editor);
+      setInlineAssistantHost(null);
+      return;
+    }
+
+    setInlineAssistantAnchor(editor, inlineAssistantAnchorMarkerId);
+    const resolveHost = () =>
+      editor.view.dom.querySelector<HTMLElement>(
+        '[data-storyteller-ai-inline-anchor="true"]',
+      );
+    setInlineAssistantHost(resolveHost());
+    const frame = window.requestAnimationFrame(() => {
+      const host = resolveHost();
+      setInlineAssistantHost(host);
+      window.requestAnimationFrame(() =>
+        host?.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+      );
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    editor,
+    inlineAssistantAnchorMarkerId,
+    inlineAssistantOpen,
+    hasInlineAssistant,
+  ]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -688,8 +720,27 @@ export const StorytellerWysiwygEditor = forwardRef<
           ])
           .run();
       },
+      requestDocumentAI: () => {
+        if (!editor || !hasSavedTarget || !onSelectionAgentTrigger) {
+          return false;
+        }
+        onSelectionAgentTrigger({
+          mode: "custom_selection",
+          selectedText: "",
+          instruction: "",
+          scope: "document",
+          markerId: currentParagraphMarkerId(editor) ?? undefined,
+        });
+        return true;
+      },
     }),
-    [assetEnabled, editor, projectPublicId],
+    [
+      assetEnabled,
+      editor,
+      hasSavedTarget,
+      onSelectionAgentTrigger,
+      projectPublicId,
+    ],
   );
 
   const editorState = useEditorState({
@@ -997,33 +1048,22 @@ export const StorytellerWysiwygEditor = forwardRef<
     URL.revokeObjectURL(url);
   };
 
-  const handleRequestSelectionAgentDialog = (
-    item: StorytellerSelectionAgentDialogItem,
-  ) => {
+  const handleRequestAI = () => {
     const { from, to } = editor.state.selection;
     const selectedText = editor.state.doc.textBetween(from, to, "\n");
-    if (selectedText.trim() === "") {
-      return;
-    }
-    setSelectionAgentInstruction("");
-    setSelectionAgentDialogTarget({ ...item, selectedText });
-  };
-
-  const closeSelectionAgentDialog = () => {
-    setSelectionAgentDialogTarget(null);
-    setSelectionAgentInstruction("");
-  };
-
-  const submitSelectionAgentDialog = () => {
-    if (!selectionAgentDialogTarget) {
-      return;
-    }
+    const selectionEndMarkerId = editor.state.selection.$to.parent.attrs
+      .markerId as string | undefined;
     onSelectionAgentTrigger?.({
-      mode: selectionAgentDialogTarget.mode,
-      selectedText: selectionAgentDialogTarget.selectedText,
-      instruction: selectionAgentInstruction.trim(),
+      mode: "custom_selection",
+      selectedText: selectedText.trim() || currentParagraphText(editor),
+      instruction: "",
+      scope: selectedText.trim() ? "selection" : "block",
+      markerId:
+        selectionEndMarkerId || currentParagraphMarkerId(editor) || undefined,
     });
-    closeSelectionAgentDialog();
+    // 文字與 marker 已在上面完成 snapshot；收合 selection 才能讓 BubbleMenu 立即消失，
+    // 避免 AI 工作區展開後格式列仍浮在原文上方。
+    editor.chain().setTextSelection(to).blur().run();
   };
 
   // Command Registry（wysiwygCore/commands.ts）共用的執行環境：右鍵選單、slash、
@@ -1033,10 +1073,12 @@ export const StorytellerWysiwygEditor = forwardRef<
     isFeatureEnabled,
     canExportMarkdown: exportBaseName !== undefined,
     canInsertAsset: assetEnabled && onRequestInsertAsset !== undefined,
+    canAskAI: hasSavedTarget && onSelectionAgentTrigger !== undefined,
     openLinkDialog: handleOpenLinkDialog,
     openFootnoteDialog: handleOpenFootnoteDialog,
     openCommentDialog: handleOpenCommentDialog,
     openAssetPicker: () => onRequestInsertAsset?.(),
+    openAI: handleRequestAI,
     exportMarkdown: handleExportMarkdown,
   };
   slashCommandContextStore.set(commandContext);
@@ -1099,6 +1141,13 @@ export const StorytellerWysiwygEditor = forwardRef<
             CLEAR_FLOATING_ASSET_SX,
             bookmarkHighlightSx,
             {
+              '& [data-storyteller-ai-inline-anchor="true"]': {
+                display: "block",
+                width: "100%",
+                height: { xs: 500, md: 600 },
+                minHeight: { xs: 420, md: 480 },
+                my: 2,
+              },
               "& .ProseMirror": {
                 minHeight: { xs: 360, md: 520 },
                 outline: "none",
@@ -1115,9 +1164,16 @@ export const StorytellerWysiwygEditor = forwardRef<
             editor={editor}
             commandContext={commandContext}
             hasSavedTarget={hasSavedTarget}
-            onRequestSelectionAgentDialog={handleRequestSelectionAgentDialog}
+            onRequestAI={handleRequestAI}
           />
           <StorytellerWysiwygTableMenu editor={editor} />
+          {inlineAssistantHost && inlineAssistant
+            ? createPortal(
+                inlineAssistant,
+                inlineAssistantHost,
+                "storyteller-ai-inline-workspace",
+              )
+            : null}
         </Box>
       </Box>
 
@@ -1144,7 +1200,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         hasSavedTarget={hasSavedTarget}
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
-        onRequestSelectionAgentDialog={handleRequestSelectionAgentDialog}
+        onRequestAI={handleRequestAI}
         canWritingBookmark={Boolean(onAddBookmark && onRemoveBookmark)}
         isCurrentParagraphBookmarked={isCurrentParagraphBookmarked}
         writingBookmarkDisabledReason={
@@ -1156,79 +1212,6 @@ export const StorytellerWysiwygEditor = forwardRef<
         }
         onToggleWritingBookmark={() => handleToggleWritingBookmark()}
       />
-
-      <Dialog
-        open={selectionAgentDialogTarget !== null}
-        onClose={closeSelectionAgentDialog}
-        fullWidth
-        maxWidth="sm"
-        disableScrollLock
-        disableAutoFocus
-        disableRestoreFocus
-        // disableAutoFocus 讓 FocusTrap 不要自己對第一個 tabbable 呼叫沒帶
-        // preventScroll 的 focus()（那就是編輯區被捲回頂端的根因）；改成等
-        // Dialog 的進場動畫真的跑完（onEntered，不是猜一個 requestAnimationFrame
-        // 的時機）才手動用 preventScroll 補回焦點，這樣文字框還是會自動取得
-        // 游標，只是不會動到編輯區的捲動位置。disableRestoreFocus 則是對稱的
-        // 另一半：Dialog 關閉時 FocusTrap 預設會把焦點還給「開啟前 focus 的
-        // 那個元素」，一樣是不帶 preventScroll 的 focus()，同一個根因在關閉
-        // 時又會發作一次（送出/取消都會關閉 Dialog），關掉這個還原行為即可。
-        TransitionProps={{
-          onEntered: () => {
-            selectionAgentInputRef.current?.focus({ preventScroll: true });
-          },
-        }}
-      >
-        <DialogTitle>
-          {selectionAgentDialogTarget?.label ?? "AI 指令"}
-        </DialogTitle>
-        <DialogContent>
-          {selectionAgentDialogTarget && (
-            <>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                {selectionAgentDialogTarget.usage}
-                您也可以在下方輸入額外需求，進一步指定想要的方向。
-              </Typography>
-              <Box
-                sx={{
-                  mb: 2,
-                  pl: 1.5,
-                  py: 0.75,
-                  borderLeft: "3px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ fontStyle: "italic" }}
-                >
-                  {truncateStorytellerSelectionPreview(
-                    selectionAgentDialogTarget.selectedText,
-                  )}
-                </Typography>
-              </Box>
-            </>
-          )}
-          <TextField
-            inputRef={selectionAgentInputRef}
-            fullWidth
-            multiline
-            minRows={3}
-            label="額外需求（可留空）"
-            value={selectionAgentInstruction}
-            onChange={(event) =>
-              setSelectionAgentInstruction(event.target.value)
-            }
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeSelectionAgentDialog}>取消</Button>
-          <Button variant="contained" onClick={submitSelectionAgentDialog}>
-            套用到 AI 助理
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog
         open={commentDialogOpen}

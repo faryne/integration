@@ -29,10 +29,12 @@ function createStubContext(): WysiwygCommandContext {
     isFeatureEnabled: () => true,
     canExportMarkdown: true,
     canInsertAsset: true,
+    canAskAI: true,
     openLinkDialog: () => {},
     openFootnoteDialog: () => {},
     openCommentDialog: () => {},
     openAssetPicker: () => {},
+    openAI: () => {},
     exportMarkdown: () => {},
   };
 }
@@ -167,15 +169,36 @@ describe("WYSIWYG_COMMANDS", () => {
     }
   });
 
-  it("slash command resolver 只列出 block/insert 類 command，不混入行內樣式", () => {
+  it("slash command resolver 列出 AI 與 block/insert command，不混入行內樣式", () => {
     const editor = createEmptyEditor();
 
     try {
       const ids = slashWysiwygCommands("", editor, createStubContext()).map(
         (command) => command.id,
       );
+      expect(ids).toEqual([
+        "heading-0",
+        "heading-1",
+        "heading-2",
+        "heading-3",
+        "heading-4",
+        "heading-5",
+        "heading-6",
+        "align-left",
+        "align-center",
+        "align-right",
+        "block-kind-quote",
+        "block-kind-bullet",
+        "block-kind-number",
+        "horizontal-rule",
+        "insert-code-block",
+        "insert-table",
+        "insert-image",
+        "ask-ai",
+      ]);
       expect(ids).toEqual(
         expect.arrayContaining([
+          "ask-ai",
           "heading-1",
           "block-kind-quote",
           "horizontal-rule",
@@ -225,6 +248,21 @@ describe("WYSIWYG_COMMANDS", () => {
         (command) => command.id,
       );
       expect(ids).not.toContain("insert-image");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("頁面未接上 AI 工作區時，slash command 不顯示問 AI", () => {
+    const editor = createEmptyEditor();
+    const context = { ...createStubContext(), canAskAI: false };
+
+    try {
+      expect(
+        slashWysiwygCommands("AI", editor, context).map(
+          (command) => command.id,
+        ),
+      ).not.toContain("ask-ai");
     } finally {
       editor.destroy();
     }

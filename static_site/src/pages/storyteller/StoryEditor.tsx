@@ -95,7 +95,6 @@ import type {
 } from "@/types/storyteller.ts";
 
 const historyPerPage = 5;
-const aiAssistantDrawerWidth = 520;
 const editHistoryDrawerWidth = 460;
 const autoSaveIntervalMinutesMin = 2;
 const autoSaveIntervalMinutesMax = 60;
@@ -303,7 +302,7 @@ export default function StorytellerStoryEditor({
     isHistoryRoute ? "history" : null,
   );
   const historyDrawerOpen = sidePanel === "history";
-  const aiAssistantDrawerOpen = sidePanel === "agentic";
+  const aiWorkspaceOpen = sidePanel === "agentic";
   const { data: apiStoryVersions = [], isLoading: apiStoryVersionsLoading } =
     useStorytellerStoryVersions(
       apiProject?.public_id,
@@ -312,6 +311,7 @@ export default function StorytellerStoryEditor({
     );
   const [pendingSelectionAgentTrigger, setPendingSelectionAgentTrigger] =
     useState<StorytellerSelectionAgentTrigger | null>(null);
+  const [aiAnchorMarkerId, setAIAnchorMarkerId] = useState<string | null>(null);
   const [content, setContent] = useState(story?.content ?? "");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
@@ -883,6 +883,9 @@ export default function StorytellerStoryEditor({
 
   function handleSidePanelChange(value: StorytellerEditorSidePanel | null) {
     setSidePanel(value);
+    // selection trigger 需保留到 AI 面板完成 mount，關閉工作區時才清除；若在
+    // child effect 立即消費，React Strict Mode 重跑 mount 會讓第二次拿不到原文。
+    if (value !== "agentic") setPendingSelectionAgentTrigger(null);
 
     if (embedded) {
       return;
@@ -904,8 +907,23 @@ export default function StorytellerStoryEditor({
   function handleSelectionAgentTrigger(
     trigger: StorytellerSelectionAgentTrigger,
   ) {
-    setPendingSelectionAgentTrigger(trigger);
     handleSidePanelChange("agentic");
+    setAIAnchorMarkerId(trigger.markerId ?? null);
+    setPendingSelectionAgentTrigger(trigger);
+  }
+
+  function handleToolbarPanelChange(value: StorytellerEditorSidePanel | null) {
+    if (value !== "agentic") {
+      handleSidePanelChange(value);
+      return;
+    }
+    if (editorRef.current?.requestDocumentAI()) return;
+    handleSelectionAgentTrigger({
+      mode: "custom_selection",
+      selectedText: "",
+      instruction: "",
+      scope: "document",
+    });
   }
 
   function insertAsset(asset: StorytellerAsset) {
@@ -1551,6 +1569,31 @@ export default function StorytellerStoryEditor({
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiStory?.public_id)}
             onSelectionAgentTrigger={handleSelectionAgentTrigger}
+            inlineAssistantOpen={aiWorkspaceOpen}
+            inlineAssistantAnchorMarkerId={aiAnchorMarkerId}
+            inlineAssistant={
+              <StorytellerAgenticPanel
+                targetKind="story"
+                presentation="workspace"
+                onClose={() => handleSidePanelChange(null)}
+                projectPublicId={apiProject?.public_id}
+                targetPublicId={apiStory?.public_id}
+                agents={panelAgents}
+                currentStory={{
+                  title: storyTitle,
+                  summary: storySummary,
+                  content,
+                  versionId: apiStory?.latest_version_id ?? null,
+                  updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
+                }}
+                otherStories={agenticOtherStories}
+                lores={agenticLores}
+                penName={userProfile?.pen_name}
+                onApplyText={applyAgentText}
+                onApplyProposalToEditor={applyAgenticProposalToEditor}
+                pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+              />
+            }
             onRequestInsertAsset={
               apiProject ? () => setAssetPickerOpen(true) : undefined
             }
@@ -1588,7 +1631,7 @@ export default function StorytellerStoryEditor({
                 </StorytellerEditorOutlineToggle>
                 <StorytellerEditorSideTabs
                   value={sidePanel}
-                  onChange={handleSidePanelChange}
+                  onChange={handleToolbarPanelChange}
                   aiTabHidden
                 />
               </Stack>
@@ -1639,37 +1682,6 @@ export default function StorytellerStoryEditor({
               },
             });
           }}
-        />
-      </StorytellerEditorSideDrawer>
-      <StorytellerEditorSideDrawer
-        open={aiAssistantDrawerOpen}
-        title="AI 助理"
-        width={aiAssistantDrawerWidth}
-        keepMounted
-        onClose={() => handleSidePanelChange(null)}
-      >
-        <StorytellerAgenticPanel
-          targetKind="story"
-          presentation="floatingDock"
-          projectPublicId={apiProject?.public_id}
-          targetPublicId={apiStory?.public_id}
-          agents={panelAgents}
-          currentStory={{
-            title: storyTitle,
-            summary: storySummary,
-            content,
-            versionId: apiStory?.latest_version_id ?? null,
-            updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
-          }}
-          otherStories={agenticOtherStories}
-          lores={agenticLores}
-          penName={userProfile?.pen_name}
-          onApplyText={applyAgentText}
-          onApplyProposalToEditor={applyAgenticProposalToEditor}
-          pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
-          onSelectionAgentTriggerApplied={() =>
-            setPendingSelectionAgentTrigger(null)
-          }
         />
       </StorytellerEditorSideDrawer>
       <StorytellerAssetPickerDialog

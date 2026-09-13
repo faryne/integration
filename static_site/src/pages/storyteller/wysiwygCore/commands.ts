@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import CodeIcon from "@mui/icons-material/Code";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -16,7 +17,14 @@ import FormatStrikethroughIcon from "@mui/icons-material/FormatStrikethrough";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import LinkIcon from "@mui/icons-material/Link";
+import Looks3Icon from "@mui/icons-material/Looks3";
+import Looks4Icon from "@mui/icons-material/Looks4";
+import Looks5Icon from "@mui/icons-material/Looks5";
+import Looks6Icon from "@mui/icons-material/Looks6";
+import LooksOneIcon from "@mui/icons-material/LooksOne";
+import LooksTwoIcon from "@mui/icons-material/LooksTwo";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
+import SubjectIcon from "@mui/icons-material/Subject";
 import SubscriptIcon from "@mui/icons-material/Subscript";
 import SuperscriptIcon from "@mui/icons-material/Superscript";
 import TableChartIcon from "@mui/icons-material/TableChart";
@@ -52,6 +60,7 @@ import {
  */
 
 export type WysiwygCommandGroup =
+  | "ai"
   | "heading"
   | "mark"
   | "align"
@@ -80,6 +89,8 @@ export const BLOCK_OPERATION_GROUPS: WysiwygCommandGroup[] = [
 const SLASH_COMMAND_GROUPS: WysiwygCommandGroup[] = [
   ...BLOCK_OPERATION_GROUPS,
   "insert",
+  // 比照無選取文字時的右鍵選單：文件操作在前，問 AI 固定收在最後。
+  "ai",
 ];
 
 /**
@@ -97,10 +108,13 @@ export interface WysiwygCommandContext {
    * asset picker 是頁面層的 state（StoryEditor／LoreEditor 各自的 Dialog），
    * command 本身不持有這個 state，只透過這個 callback 觸發它開啟。 */
   canInsertAsset: boolean;
+  /** 已存檔且頁面層已接上 AI 工作區時才開放。 */
+  canAskAI: boolean;
   openLinkDialog: () => void;
   openFootnoteDialog: () => void;
   openCommentDialog: () => void;
   openAssetPicker: () => void;
+  openAI: () => void;
   exportMarkdown: () => void;
 }
 
@@ -202,6 +216,16 @@ const MARK_COMMANDS: WysiwygCommand[] = [
  * （Phase 2 右鍵選單新增的情境，工具列本來就有對應的標題 Select，只是那邊不走
  * command registry——Select 需要單一 value/onChange，不適合拆成多個獨立 toggle
  * command）。 */
+const HEADING_ICONS: Record<number, ComponentType<{ fontSize?: "small" }>> = {
+  0: SubjectIcon,
+  1: LooksOneIcon,
+  2: LooksTwoIcon,
+  3: Looks3Icon,
+  4: Looks4Icon,
+  5: Looks5Icon,
+  6: Looks6Icon,
+};
+
 const HEADING_COMMANDS: WysiwygCommand[] = [
   DEFAULT_HEADING_LEVEL,
   ...HEADING_LEVELS,
@@ -210,7 +234,7 @@ const HEADING_COMMANDS: WysiwygCommand[] = [
   label: level === DEFAULT_HEADING_LEVEL ? "內文" : `標題 ${level}`,
   group: "heading",
   scope: "block",
-  icon: TitleIcon,
+  icon: HEADING_ICONS[level] ?? TitleIcon,
   aliases:
     level === DEFAULT_HEADING_LEVEL
       ? ["內文", "paragraph", "text"]
@@ -487,6 +511,21 @@ const ANNOTATION_COMMANDS: WysiwygCommand[] = [
   },
 ];
 
+// `/` 選單只保留一個 AI 入口；改寫、擴寫、縮短與語氣調整改由 AI 工作區內的
+// 指令／自然語言決定，避免編輯器各個入口各自長出一組難以維護的功能清單。
+const AI_COMMANDS: WysiwygCommand[] = [
+  {
+    id: "ask-ai",
+    label: "問 AI",
+    group: "ai",
+    scope: "action",
+    icon: AutoAwesomeIcon,
+    aliases: ["AI 協作", "問 AI", "ask ai", "assistant"],
+    isVisible: (context) => context.canAskAI,
+    run: (_editor, context) => context.openAI(),
+  },
+];
+
 const UTILITY_COMMANDS: WysiwygCommand[] = [
   {
     id: "export-markdown",
@@ -500,6 +539,7 @@ const UTILITY_COMMANDS: WysiwygCommand[] = [
 ];
 
 export const WYSIWYG_COMMANDS: WysiwygCommand[] = [
+  ...AI_COMMANDS,
   ...HEADING_COMMANDS,
   ...MARK_COMMANDS,
   ...ALIGN_COMMANDS,
@@ -545,7 +585,7 @@ function slashCommandSearchValues(command: WysiwygCommand) {
   );
 }
 
-/** Slash menu 只提供空區塊可用的 block/insert 類動作；完整行內樣式仍交給 bubble/context menu。 */
+/** Slash menu 提供 AI 協作與空區塊可用的 block/insert 動作；行內樣式仍交給 bubble/context menu。 */
 export function slashWysiwygCommands(
   query: string,
   editor: Editor,

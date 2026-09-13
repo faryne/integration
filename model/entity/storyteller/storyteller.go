@@ -659,6 +659,10 @@ func (AuthorFavorite) TableName() string {
 type UserProfile struct {
 	ID                      uint64     `gorm:"column:id;primaryKey" json:"id"`
 	UserID                  uint64     `gorm:"column:user_id" json:"user_id"`
+	FirebaseUID             string     `gorm:"column:firebase_uid" json:"firebase_uid"`
+	Email                   *string    `gorm:"column:email" json:"email"`
+	DisplayName             *string    `gorm:"column:display_name" json:"display_name"`
+	PhotoURL                *string    `gorm:"column:photo_url" json:"photo_url"`
 	PenName                 string     `gorm:"column:pen_name" json:"pen_name"`
 	Bio                     string     `gorm:"column:bio" json:"bio"`
 	UseDefaultAvatar        bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`

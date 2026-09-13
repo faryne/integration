@@ -1,4 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Box, Divider, Paper, Stack, Tooltip } from "@mui/material";
 import { isTextSelection, type Editor } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -9,18 +10,12 @@ import {
   wysiwygCommandsByGroup,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
-import {
-  SELECTION_AGENT_SKILL_ITEMS,
-  type StorytellerSelectionAgentDialogItem,
-} from "./StorytellerWysiwygContextMenu";
 
 interface StorytellerWysiwygBubbleMenuProps {
   editor: Editor;
   commandContext: WysiwygCommandContext;
   hasSavedTarget: boolean;
-  onRequestSelectionAgentDialog?: (
-    item: StorytellerSelectionAgentDialogItem,
-  ) => void;
+  onRequestAI?: () => void;
 }
 
 const BUBBLE_MARK_IDS = [
@@ -50,7 +45,7 @@ export function StorytellerWysiwygBubbleMenu({
   editor,
   commandContext,
   hasSavedTarget,
-  onRequestSelectionAgentDialog,
+  onRequestAI,
 }: StorytellerWysiwygBubbleMenuProps) {
   const [textColorMenuOpen, setTextColorMenuOpen] = useState(false);
   const [bgColorMenuOpen, setBgColorMenuOpen] = useState(false);
@@ -91,9 +86,7 @@ export function StorytellerWysiwygBubbleMenu({
   const run = (command: {
     run: (editor: Editor, context: WysiwygCommandContext) => void;
   }) => command.run(editor, commandContext);
-  const showSelectionAgentItems = Boolean(
-    hasSavedTarget && onRequestSelectionAgentDialog,
-  );
+  const showAskAI = Boolean(hasSavedTarget && onRequestAI);
 
   return (
     <BubbleMenu
@@ -501,39 +494,37 @@ export function StorytellerWysiwygBubbleMenu({
             </Tooltip>
           )}
 
-          {showSelectionAgentItems && (
+          {showAskAI && (
             <>
               <Divider
                 orientation="vertical"
                 flexItem
                 sx={{ mx: 0.25, my: 0.5 }}
               />
-              {SELECTION_AGENT_SKILL_ITEMS.map((item) => (
-                <Tooltip key={item.command} title={item.label}>
-                  <Box
-                    component="button"
-                    type="button"
-                    aria-label={item.label}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => onRequestSelectionAgentDialog?.(item)}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      width: 30,
-                      height: 30,
-                      border: "none",
-                      borderRadius: 1,
-                      cursor: "pointer",
-                      bgcolor: "transparent",
-                      color: "text.primary",
-                      "&:hover": { bgcolor: "action.hover" },
-                    }}
-                  >
-                    <item.icon fontSize="small" />
-                  </Box>
-                </Tooltip>
-              ))}
+              <Tooltip title="問 AI">
+                <Box
+                  component="button"
+                  type="button"
+                  aria-label="問 AI"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onRequestAI?.()}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 30,
+                    height: 30,
+                    border: "none",
+                    borderRadius: 1,
+                    cursor: "pointer",
+                    bgcolor: "transparent",
+                    color: "primary.main",
+                    "&:hover": { bgcolor: "action.hover" },
+                  }}
+                >
+                  <AutoAwesomeIcon fontSize="small" />
+                </Box>
+              </Tooltip>
             </>
           )}
         </Stack>

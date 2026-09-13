@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="SteamLoom storyteller AI 助理面板重新互動提案"
+    />
+    <title>AI 助理面板重新設計｜SteamLoom</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2316110d'/%3E%3Cpath d='M32 10 38 26 54 32 38 38 32 54 26 38 10 32 26 26Z' fill='%23c9974f'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <aside class="prototype-bar" aria-label="Mockup 控制列">
+      <div>
+        <strong>AI 助理面板提案</strong>
+        <span>互動 mockup</span>
+      </div>
+      <div class="prototype-actions">
+        <div class="segmented" aria-label="預覽尺寸">
+          <button class="segment active" data-view="desktop">桌面</button>
+          <button class="segment" data-view="mobile">手機</button>
+        </div>
+        <button class="quiet-button" id="theme-toggle" aria-label="切換深淺色">
+          ◐ 主題
+        </button>
+        <button class="quiet-button" id="reset-demo">重設</button>
+      </div>
+    </aside>
+
+    <main class="preview-stage">
+      <section class="app-shell" id="app-shell" aria-label="SteamLoom 編輯器">
+        <header class="app-header">
+          <div class="brand-mark" aria-hidden="true">✦</div>
+          <strong>SteamLoom</strong>
+          <span class="header-spacer"></span>
+          <button class="icon-button" aria-label="搜尋">⌕</button>
+          <button class="avatar" aria-label="使用者選單">F</button>
+        </header>
+
+        <div class="workspace-topbar">
+          <nav class="breadcrumb" aria-label="麵包屑">
+            <span>我的工作台</span><b>›</b><span>霧港殘響</span><b>›</b>
+            <strong>第三章：雨夜</strong>
+          </nav>
+          <div class="save-state"><i></i> 已儲存</div>
+        </div>
+
+        <div class="workspace">
+          <aside class="outline" aria-label="作品目錄">
+            <div class="outline-head">
+              <span>作品內容</span><button aria-label="新增">＋</button>
+            </div>
+            <button class="outline-row"><span>⌄</span> 第一冊　潮聲</button>
+            <button class="outline-row"><span>§</span> 第一章：歸港</button>
+            <button class="outline-row"><span>§</span> 第二章：空房</button>
+            <button class="outline-row active"><span>§</span> 第三章：雨夜</button>
+            <button class="outline-row"><span>§</span> 第四章：來客</button>
+            <p class="outline-label">設定集</p>
+            <button class="outline-row"><span>◇</span> 莉亞・人物設定</button>
+            <button class="outline-row"><span>◇</span> 舊碼頭</button>
+          </aside>
+
+          <article class="editor" aria-label="故事編輯區">
+            <div class="paper">
+              <div class="paper-meta">第三章 · 2,418 字</div>
+              <h1>雨夜</h1>
+              <p>
+                雨從傍晚就沒停過。莉亞推開倉庫側門時，濕冷的風跟著灌了進來，
+                吹得牆上那盞老燈晃了兩下。
+              </p>
+              <p class="selected-text">
+                她在門邊站了一會兒，直到看清地上的腳印。那串水痕一路穿過空蕩的倉庫，
+                最後停在父親那只上鎖的木箱前。
+              </p>
+              <p>
+                木箱沒有被撬開。鎖還在，卻不是她早上離開時的方向。莉亞蹲下來，
+                手指才剛碰到銅鎖，樓上便傳來一聲很輕的咳嗽。
+              </p>
+              <p>她沒有抬頭，只是慢慢把手收了回來。</p>
+              <p class="ghost-copy">
+                外頭的潮聲隔著牆壓過雨聲，一下，又一下。她忽然想起碼頭工人說過，
+                這間倉庫已經三年沒有人敢在天黑後進來。
+              </p>
+            </div>
+          </article>
+
+          <aside class="assistant-panel" id="assistant-panel" aria-label="AI 助理">
+            <button class="sheet-handle" id="sheet-handle" aria-label="切換面板高度">
+              <span></span>
+            </button>
+            <header class="assistant-header">
+              <div class="assistant-title">
+                <div class="assistant-symbol" aria-hidden="true">✦</div>
+                <div><strong>AI 助理</strong><span>第三章：雨夜</span></div>
+              </div>
+              <button class="review-counter" id="review-counter">1 項待審</button>
+              <details class="agent-menu">
+                <summary aria-label="助理與模型設定">⋯</summary>
+                <div class="popover">
+                  <b>本輪設定</b>
+                  <button>人設　懸疑編輯 Mira</button>
+                  <button>模型　Claude Sonnet 4.5</button>
+                  <button>金鑰　Anthropic ···7Q</button>
+                </div>
+              </details>
+              <button class="icon-button close-panel" aria-label="關閉 AI 助理">×</button>
+            </header>
+
+            <div class="conversation" id="conversation">
+              <div class="history-marker"><span>今天 23:41</span></div>
+
+              <section class="turn user-turn" aria-label="你的訊息">
+                <div class="turn-label"><strong>你</strong><span>選取 86 字</span></div>
+                <p>這段氣氛還不夠緊。參考莉亞的人設，把她發現腳印時的反應寫得更克制一點。</p>
+              </section>
+
+              <section class="turn assistant-turn" aria-label="AI 助理回覆">
+                <div class="turn-label">
+                  <strong>Mira</strong><span>懸疑編輯</span><time>23:42</time>
+                </div>
+                <p>
+                  莉亞不是會立刻慌張的人。我把反應收進她觀察鎖頭的動作裡，讓異常先由細節浮出來，
+                  最後再用樓上的聲音打斷她。
+                </p>
+
+                <details class="work-trace">
+                  <summary><span>✓</span> 參考 3 項內容 <b>·</b> 12.4k tokens</summary>
+                  <ol>
+                    <li><span>讀取目前選取段落</span><em>完成</em></li>
+                    <li><span>讀取「莉亞・人物設定」</span><em>完成</em></li>
+                    <li><span>比對前後各一段</span><em>完成</em></li>
+                  </ol>
+                </details>
+
+                <article class="proposal-card" id="proposal-card">
+                  <div class="proposal-accent"></div>
+                  <div class="proposal-head">
+                    <div><span class="eyebrow">修改提案</span><h2>收斂莉亞的情緒反應</h2></div>
+                    <span class="status pending" id="proposal-status">待確認</span>
+                  </div>
+                  <p>改寫目前選取的 86 字；不動前後段落。</p>
+                  <div class="diff-stat">
+                    <span><b>− 2</b> 句刪除</span><span><b>＋ 3</b> 句新增</span>
+                    <span>基準版本 #47</span>
+                  </div>
+                  <div class="proposal-actions">
+                    <button class="primary-button" id="review-proposal">檢視變更</button>
+                    <button class="text-button" id="reject-proposal">不採用</button>
+                  </div>
+                </article>
+
+                <div class="message-actions">
+                  <button>↩ 回覆</button><button>⧉ 複製</button><button>↻ 重試</button>
+                </div>
+              </section>
+            </div>
+
+            <footer class="composer">
+              <div class="context-strip">
+                <button class="context-main" id="context-main">
+                  <span>選取內容</span><q>她在門邊站了一會兒，直到看清……</q><b>×</b>
+                </button>
+                <button class="context-chip active">前後段落</button>
+                <button class="context-chip active">設定集 1</button>
+                <button class="context-chip">＋ 加入</button>
+              </div>
+              <div class="composer-box">
+                <textarea id="prompt" rows="2" placeholder="問問題，或交代要怎麼修改……"></textarea>
+                <div class="composer-tools">
+                  <div>
+                    <button class="tool-button" id="add-context" aria-label="加入上下文">＋</button>
+                    <button class="slash-button" data-prompt="/rewrite ">/ 改寫</button>
+                    <button class="slash-button" data-prompt="/expand ">/ 擴寫</button>
+                  </div>
+                  <button class="send-button" id="send-message" aria-label="送出訊息">↑</button>
+                </div>
+              </div>
+              <div class="composer-meta"><span>Mira · Claude Sonnet 4.5</span><span>⌘ Enter 送出</span></div>
+            </footer>
+          </aside>
+
+          <nav class="bottom-toolbar" aria-label="編輯工具列">
+            <span>2,418 字</span>
+            <div><button>↶</button><button>↷</button><button><b>B</b></button><button><i>I</i></button></div>
+            <div><button title="編輯歷史">◷</button><button class="active open-panel" title="AI 助理">✦</button></div>
+          </nav>
+
+          <button class="assistant-fab open-panel" aria-label="開啟 AI 助理">✦</button>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="diff-dialog" id="diff-dialog">
+      <form method="dialog">
+        <header>
+          <div><span class="eyebrow">修改提案</span><h2>收斂莉亞的情緒反應</h2></div>
+          <button class="icon-button" value="cancel" aria-label="關閉">×</button>
+        </header>
+        <div class="dialog-summary">
+          <span>目前選取內容</span><b>86 字 → 104 字</b><em>基準版本 #47</em>
+        </div>
+        <div class="diff-columns">
+          <section><h3>原文</h3><p class="removed">她在門邊站了一會兒，直到看清地上的腳印。那串水痕一路穿過空蕩的倉庫，最後停在父親那只上鎖的木箱前。</p></section>
+          <section><h3>提案</h3><p class="added">莉亞停在門內，先低頭看了眼鞋底。不是她帶進來的水。那串腳印越過空蕩的倉庫，停在父親的木箱前；鎖扣朝左，和她早上留下的方向相反。</p></section>
+        </div>
+        <footer><button class="text-button" value="cancel">繼續修改</button><button class="apply-button" id="apply-proposal" value="default">套用到編輯器</button></footer>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">已套用修改，編輯器仍保留復原紀錄。</div>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -16,7 +16,7 @@ const (
 	HeaderSessionExpiresAt = "X-Session-Expires-At"
 )
 
-func New() fiber.Handler {
+func New(expectedBrand string) fiber.Handler {
 	return func(ctx fiber.Ctx) error {
 		encryptKey := strings.TrimSpace(ctx.Get(HeaderEncryptKey))
 		if encryptKey == "" {
@@ -25,6 +25,9 @@ func New() fiber.Handler {
 		session, err := authService.GetSessionByEncryptKey(encryptKey)
 		if err != nil {
 			return output.Unauthorized(err)
+		}
+		if session.Brand != expectedBrand {
+			return output.Unauthorized(errors.New("session brand mismatch"))
 		}
 		ctx.Locals(LocalAuthSession, session)
 		ctx.Set(HeaderSessionExpiresAt, session.ExpiresAt)

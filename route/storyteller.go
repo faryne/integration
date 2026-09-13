@@ -1,8 +1,11 @@
 package route
 
 import (
+	"faryne.dev/config"
+	"faryne.dev/controller/auth"
 	"faryne.dev/controller/storyteller"
 	"faryne.dev/middleware/authsession"
+	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -20,8 +23,15 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
 	group.Get("/story/:project/stories/:story/image-pages", storyteller.PublicImageStoryPages)
 	group.Get("/story/share/:token/stories/:story/image-pages", storyteller.SharedImageStoryPages)
+	group.Post("/auth/session", storyteller.CreateSession)
+	if config.EnvConfig().EnableDevAuthBypass {
+		group.Post("/auth/dev-session", storyteller.CreateDevSession)
+	}
 
-	authenticated := group.Group("", authsession.New())
+	authenticated := group.Group("", authsession.New(authService.BrandStoryteller))
+	// sliding TTL 續期用（前端 touchAuthSession），純粹靠這個 group 的 brand 檢查生效，
+	// handler 本身跟主站共用（無狀態、只回 active:true，不用另外寫一份）。
+	authenticated.Get("/auth/session", auth.GetSession)
 	authenticated.Get("/user", storyteller.UserProfile)
 	authenticated.Post("/user", storyteller.SaveUserProfile)
 	authenticated.Put("/user", storyteller.SaveUserProfile)

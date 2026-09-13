@@ -6,8 +6,8 @@ interface StoryWritingWorkspaceProps {
   fillHeight?: boolean;
 }
 
-// 故事／設定集編輯頁的寫作骨架只負責稿紙置中；AI 助理與編輯歷史已改由
-// 各自的 Drawer 覆蓋呈現，不再在這裡依斷點切換 dock 版面。
+// 故事／設定集編輯頁的寫作骨架只負責稿紙置中；AI 工作區由 WYSIWYG editor
+// 透過 ProseMirror decoration 插在正文段落之間，不在這一層另外切割版面。
 export function StoryWritingWorkspace({
   editor,
   fillHeight = false,

@@ -36,7 +36,6 @@ func (s *Server) registerStorytellerTools() {
 }
 
 func (s *Server) registerStorytellerToolSpec(spec storytellerService.ToolSpec) {
-	spec = spec
 	_ = s.RegisterTool(Tool{
 		Name:        spec.Name,
 		Description: spec.Description,

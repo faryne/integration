@@ -1,11 +1,8 @@
-import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import TranslateIcon from "@mui/icons-material/Translate";
-import TuneIcon from "@mui/icons-material/Tune";
-import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import {
   Box,
   Divider,
@@ -18,7 +15,6 @@ import {
   Typography,
 } from "@mui/material";
 import type { Editor } from "@tiptap/core";
-import type { ComponentType } from "react";
 
 import {
   BLOCK_OPERATION_GROUPS,
@@ -31,8 +27,6 @@ import {
   OPEN_ASSET_IMAGE_SETTINGS_EVENT,
   type OpenAssetImageSettingsEventDetail,
 } from "./wysiwygCore/assetImageEvents";
-import type { StorytellerAgentRunMode } from "@/types/storyteller.ts";
-import { STORYTELLER_SKILL_USAGE_TEXT } from "./storytellerSelectionAgentTrigger";
 
 export interface ContextMenuPosition {
   x: number;
@@ -56,57 +50,12 @@ interface StorytellerWysiwygContextMenuProps {
   hasSavedTarget: boolean;
   isCurrentParagraphEmpty: boolean;
   hasAssetImage: boolean;
-  onRequestSelectionAgentDialog?: (
-    item: StorytellerSelectionAgentDialogItem,
-  ) => void;
+  onRequestAI?: () => void;
   canWritingBookmark?: boolean;
   isCurrentParagraphBookmarked?: boolean;
   writingBookmarkDisabledReason?: string;
   onToggleWritingBookmark?: () => void;
 }
-
-export interface StorytellerSelectionAgentDialogItem {
-  command: string;
-  mode: StorytellerAgentRunMode;
-  label: string;
-  icon: ComponentType<{ fontSize?: "small" }>;
-  usage: string;
-}
-
-// 四顆長得一模一樣的 SmartToyIcon 會讓使用者要滑鼠移過去看 tooltip 才知道是哪個
-// 指令（旁邊粗體/斜體那排一眼就能分辨），改成每個指令各自語意對應的圖示。
-// usage 沿用「指令 / 引用說明」抽屜同一份文案（STORYTELLER_SKILL_USAGE_TEXT）。
-export const SELECTION_AGENT_SKILL_ITEMS: StorytellerSelectionAgentDialogItem[] =
-  [
-    {
-      command: "rewrite",
-      mode: "rewrite_selection",
-      label: "/rewrite 改寫",
-      icon: AutoFixHighIcon,
-      usage: STORYTELLER_SKILL_USAGE_TEXT.rewrite,
-    },
-    {
-      command: "expand",
-      mode: "expand_selection",
-      label: "/expand 擴寫",
-      icon: UnfoldMoreIcon,
-      usage: STORYTELLER_SKILL_USAGE_TEXT.expand,
-    },
-    {
-      command: "translate",
-      mode: "translate_selection",
-      label: "/translate 翻譯",
-      icon: TranslateIcon,
-      usage: STORYTELLER_SKILL_USAGE_TEXT.translate,
-    },
-    {
-      command: "custom",
-      mode: "custom_selection",
-      label: "/custom 自訂指令",
-      icon: TuneIcon,
-      usage: STORYTELLER_SKILL_USAGE_TEXT.custom,
-    },
-  ];
 
 /**
  * 右鍵選單（Phase 2：context-aware 化）。依 selection 狀態分兩大類主內容：
@@ -134,7 +83,7 @@ export function StorytellerWysiwygContextMenu({
   hasSavedTarget,
   isCurrentParagraphEmpty,
   hasAssetImage,
-  onRequestSelectionAgentDialog,
+  onRequestAI,
   canWritingBookmark,
   isCurrentParagraphBookmarked,
   writingBookmarkDisabledReason,
@@ -144,10 +93,8 @@ export function StorytellerWysiwygContextMenu({
     command.run(editor, commandContext);
     onClose();
   };
-  const requestSelectionAgentDialog = (
-    item: StorytellerSelectionAgentDialogItem,
-  ) => {
-    onRequestSelectionAgentDialog?.(item);
+  const requestAI = () => {
+    onRequestAI?.();
     onClose();
   };
   const openAssetImageSettings = () => {
@@ -215,9 +162,7 @@ export function StorytellerWysiwygContextMenu({
       : undefined,
   };
 
-  const showSelectionAgentItems = Boolean(
-    hasSavedTarget && onRequestSelectionAgentDialog,
-  );
+  const showAskAI = Boolean(hasSavedTarget && onRequestAI && !hasAssetImage);
 
   return (
     <Menu
@@ -387,22 +332,6 @@ export function StorytellerWysiwygContextMenu({
                 </ListItemIcon>
                 <ListItemText>清除背景色</ListItemText>
               </MenuItem>,
-              ...(showSelectionAgentItems
-                ? [
-                    <Divider key="selection-agent-divider" />,
-                    ...SELECTION_AGENT_SKILL_ITEMS.map((item) => (
-                      <MenuItem
-                        key={`selection-agent-${item.command}`}
-                        onClick={() => requestSelectionAgentDialog(item)}
-                      >
-                        <ListItemIcon>
-                          <item.icon fontSize="small" />
-                        </ListItemIcon>
-                        <ListItemText>{item.label}</ListItemText>
-                      </MenuItem>
-                    )),
-                  ]
-                : []),
             ]
           : [
               // 標題／對齊／區塊種類三組共用 commands.ts 的 BLOCK_OPERATION_GROUPS
@@ -449,6 +378,16 @@ export function StorytellerWysiwygContextMenu({
                   ]
                 : []),
             ]}
+
+      {showAskAI && <Divider />}
+      {showAskAI && (
+        <MenuItem onClick={requestAI}>
+          <ListItemIcon>
+            <AutoAwesomeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>問 AI</ListItemText>
+        </MenuItem>
+      )}
 
       {annotationCommands.length > 0 && <Divider />}
       {annotationCommands.flatMap((command) => {

@@ -1,7 +1,7 @@
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
-import { SteamPaletteSwitcher } from "@/components/storyteller/SteamPaletteSwitcher.tsx";
+import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
@@ -36,9 +36,7 @@ import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import DarkModeIcon from "@mui/icons-material/DarkMode";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import LightModeIcon from "@mui/icons-material/LightMode";
 import LoginIcon from "@mui/icons-material/Login";
 import CloseIcon from "@mui/icons-material/Close";
 import LogoutIcon from "@mui/icons-material/Logout";
@@ -323,22 +321,7 @@ export function StorytellerLayout() {
                         </IconButton>
                       </Tooltip>
                     )}
-                    <Tooltip
-                      title={
-                        mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
-                      }
-                    >
-                      <IconButton
-                        aria-label={
-                          mode === "dark" ? "切換為日間模式" : "切換為夜間模式"
-                        }
-                        color="inherit"
-                        onClick={toggleMode}
-                        size="small"
-                      >
-                        {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
-                      </IconButton>
-                    </Tooltip>
+                    <StorytellerAppearanceMenu />
                   </Stack>
                   <Button
                     component={RouterLink}
@@ -444,7 +427,6 @@ export function StorytellerLayout() {
               <Container component="footer" maxWidth="xl">
                 <Divider />
                 <IndependentFooter service_name={STORYTELLER_APP_NAME} />
-                <SteamPaletteSwitcher />
               </Container>
             </Stack>
           </StorytellerSeasonalContext.Provider>

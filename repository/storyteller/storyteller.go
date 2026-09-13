@@ -1846,14 +1846,42 @@ func (r *Repository) PublicProjectsByUserID(userID uint64, offset, limit int) ([
 
 func (r *Repository) UserProfile(userID uint64) (*storytellerModel.UserProfile, error) {
 	var row storytellerModel.UserProfile
-	err := r.db.Where("user_id = ? AND deleted_at IS NULL", userID).First(&row).Error
+	err := r.db.Where("id = ? AND deleted_at IS NULL", userID).First(&row).Error
 	return &row, err
 }
 
 func (r *Repository) UserProfileWithDeleted(userID uint64) (*storytellerModel.UserProfile, error) {
 	var row storytellerModel.UserProfile
-	err := r.db.Unscoped().Where("user_id = ?", userID).First(&row).Error
+	err := r.db.Unscoped().Where("id = ?", userID).First(&row).Error
 	return &row, err
+}
+
+func (r *Repository) UpsertFirebaseUser(input storytellerModel.UserProfile) (*storytellerModel.UserProfile, error) {
+	if err := r.db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "firebase_uid"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"email",
+			"display_name",
+			"photo_url",
+			"updated_at",
+		}),
+	}).Create(&input).Error; err != nil {
+		return nil, err
+	}
+
+	var row storytellerModel.UserProfile
+	if err := r.db.Where("firebase_uid = ?", input.FirebaseUID).First(&row).Error; err != nil {
+		return nil, err
+	}
+	if row.UserID == 0 {
+		// user_id 是舊 users.id 對應欄位；新 storyteller-only 帳號沒有主站 users row，
+		// 仍填入本表 id，讓舊欄位維持非空且不再成為身份來源。
+		row.UserID = row.ID
+		if err := r.db.Model(&row).Update("user_id", row.ID).Error; err != nil {
+			return nil, err
+		}
+	}
+	return &row, nil
 }
 
 func (r *Repository) UserProfileByPenName(penName string) (*storytellerModel.UserProfile, error) {

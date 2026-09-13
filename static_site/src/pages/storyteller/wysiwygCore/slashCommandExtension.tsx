@@ -1,11 +1,10 @@
-import { Extension, type Editor, type Range } from "@tiptap/core";
+import { Extension, type Editor } from "@tiptap/core";
 import Suggestion, {
   exitSuggestion,
   type SuggestionKeyDownProps,
   type SuggestionProps,
 } from "@tiptap/suggestion";
-import { PluginKey, type EditorState } from "@tiptap/pm/state";
-import { Box, Divider, Paper } from "@mui/material";
+import { Box, Divider, Paper, Typography } from "@mui/material";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -14,8 +13,11 @@ import {
   type WysiwygCommand,
   type WysiwygCommandContext,
 } from "./commands";
-
-export const slashCommandPluginKey = new PluginKey("storytellerSlashCommand");
+import {
+  canShowSlashCommand,
+  runSlashCommand,
+  slashCommandPluginKey,
+} from "./slashCommandCore";
 
 interface SlashCommandExtensionOptions {
   getCommandContext?: () => WysiwygCommandContext | null;
@@ -30,57 +32,6 @@ const activeSlashCommandControllers = new WeakMap<
   { onKeyDown: (key: SlashCommandKey) => boolean }
 >();
 
-// ProseMirror `textBetween` 預設把非文字的 leaf node（例如 assetImage 這種
-// atom）當成長度 0 的空字串，不會出現在回傳的文字裡——這代表「游標緊接在一張
-// 圖片後面」在這裡看起來跟「段落真的是空的」一模一樣，會誤判成可以觸發 slash
-// 選單。傳入 leafText 讓每個 atom 都貢獻一個不可能出現在使用者輸入裡的佔位字元
-// （Unicode Object Replacement Character），這樣段落裡只要有圖片這類 atom，
-// textBefore/textAfter 就不會再等於純文字判斷式預期的樣子，slash 選單改成正確
-// 判斷「不是真的空段落」而不顯示。已知 Bug 記錄第 11 項：這個誤判是圖片後面
-// 緊接著用 slash 插入分隔線會把圖片吃掉的根本原因（`insertHorizontalRule` 在
-// 「以為段落只有 query 文字、其實還有圖片 atom」的情況下，把整個段落內容連同
-// 圖片一起清空）。
-const ATOM_PLACEHOLDER = "￼";
-
-function isTextOnlySlashQuery(state: EditorState, range: Range) {
-  const { selection } = state;
-  if (!selection.empty) return false;
-  const $from = selection.$from;
-  if ($from.parent.type.name !== "paragraph") return false;
-
-  const textBefore = $from.parent.textBetween(
-    0,
-    $from.parentOffset,
-    "",
-    ATOM_PLACEHOLDER,
-  );
-  const textAfter = $from.parent.textBetween(
-    $from.parentOffset,
-    $from.parent.content.size,
-    "",
-    ATOM_PLACEHOLDER,
-  );
-  return (
-    textBefore.startsWith("/") &&
-    textAfter === "" &&
-    range.from >= $from.start()
-  );
-}
-
-export function canShowSlashCommand(state: EditorState, range: Range) {
-  return isTextOnlySlashQuery(state, range);
-}
-
-export function runSlashCommand(
-  editor: Editor,
-  range: Range,
-  command: WysiwygCommand,
-  context: WysiwygCommandContext,
-) {
-  editor.chain().focus().deleteRange(range).run();
-  command.run(editor, context);
-}
-
 interface SlashCommandListProps {
   items: WysiwygCommand[];
   selectedIndex: number;
@@ -88,6 +39,14 @@ interface SlashCommandListProps {
   listboxId: string;
   getOptionId: (index: number) => string;
 }
+
+const SLASH_GROUP_LABELS: Partial<Record<WysiwygCommand["group"], string>> = {
+  heading: "段落樣式",
+  align: "對齊",
+  block: "區塊",
+  insert: "插入",
+  ai: "AI 協作",
+};
 
 /** 選單本體改用真正的 React／MUI 元件（跟右鍵選單同一套 command → icon+label 呈現
  * 方式），透過 `ReactRenderer` 掛進 editor 自己的 React tree（見下方
@@ -106,6 +65,21 @@ function SlashCommandList({
   listboxId,
   getOptionId,
 }: SlashCommandListProps) {
+  const groups = items.reduce<
+    Array<{
+      group: WysiwygCommand["group"];
+      items: Array<{ command: WysiwygCommand; index: number }>;
+    }>
+  >((result, command, index) => {
+    const current = result[result.length - 1];
+    if (current?.group === command.group) {
+      current.items.push({ command, index });
+    } else {
+      result.push({ group: command.group, items: [{ command, index }] });
+    }
+    return result;
+  }, []);
+
   return (
     <Paper
       elevation={4}
@@ -118,97 +92,122 @@ function SlashCommandList({
         // 決定「會不會被其他區塊蓋住」的是外層 wrapper `<div>`（`props.mount()`
         // 掛載、`position:absolute` 的那個），z-index 要設在那裡，見下面
         // `createSlashCommandRenderer()` 的 `element.style.zIndex`。
-        minWidth: 180,
-        maxWidth: 280,
-        maxHeight: 260,
+        boxSizing: "border-box",
+        width: "min(540px, calc(100vw - 24px))",
+        maxHeight: "min(440px, calc(100vh - 24px))",
         overflow: "auto",
         bgcolor: "var(--storyteller-editor-menu, #fff)",
         color: "var(--storyteller-text-primary, rgba(0, 0, 0, 0.87))",
         py: 0.5,
       }}
     >
-      {items.map((item, index) => {
-        const Icon = item.icon;
-        const selected = index === selectedIndex;
-        // 跟右鍵選單一樣在群組交界處畫分隔線（標題／區塊／插入三組），單純
-        // 比對相鄰項目的 `group` 是否變化——不用另外硬寫群組順序，query 篩選
-        // 後不管剩哪些群組、順序有沒有跳號都能算對交界。
-        const showDividerBefore =
-          index > 0 && items[index - 1].group !== item.group;
-        return (
-          <Box key={item.id} component="span" sx={{ display: "block" }}>
-            {showDividerBefore ? (
-              // `<Divider>` 預設顏色吃 `theme.palette.divider`——右鍵選單在
-              // `StorytellerLayout` 的 `ThemeProvider` 底下能吃到 storyteller
-              // 主題明講的偏灰色，但 slash 選單是獨立的 `createRoot`（見
-              // `createSlashCommandRenderer` 的說明），沒有包在任何
-              // `ThemeProvider` 裡，只能退回 MUI 內建預設值（深色系、低透明度
-              // 的黑），在深色模式的深色背景上幾乎看不見（Faryne 實測回報：
-              // 要仔細看才看得出來）。跟選單其他顏色一樣明講吃
-              // `var(--storyteller-border-subtle)`，不依賴 theme context。
-              <Divider
-                sx={{
-                  borderColor:
-                    "var(--storyteller-border-subtle, rgba(0, 0, 0, 0.12))",
-                }}
-              />
-            ) : null}
-            <Box
-              component="button"
-              type="button"
-              role="option"
-              id={getOptionId(index)}
-              aria-selected={selected}
-              data-command-id={item.id}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onSelect(item);
-              }}
-              // 鍵盤上下鍵切換 selectedIndex 只是重繪高亮、不會讓選單的捲軸跟著移動
-              // ——沒有這個 ref 的話，選到清單底部的項目（例如插入表格/圖片）時，
-              // 高亮的按鈕會被捲到看不見的地方，使用者只看得到上面沒被選到的項目。
-              ref={(node: HTMLButtonElement | null) => {
-                if (selected) node?.scrollIntoView({ block: "nearest" });
-              }}
+      {groups.map(({ group, items: groupItems }, groupIndex) => (
+        <Box
+          key={group}
+          component="div"
+          role="group"
+          aria-label={SLASH_GROUP_LABELS[group]}
+        >
+          {groupIndex > 0 && (
+            <Divider
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                width: "100%",
-                border: 0,
-                // Phase E 對比度檢查抓到：整塊實色 `selection` 背景疊上全對比度文字，
-                // 很多色系不夠 WCAG AA（見 storytellerComponentOverrides.ts 的
-                // `selectionStateLayer` 說明，跟右鍵選單/MuiAutocomplete 用同一招、
-                // 同一個 22% 數值——實測掃過的安全值）。這裡沒有 MUI theme 可以共用
-                // 那個 helper，直接用 `color-mix()` 內嵌同樣的邏輯。
-                bgcolor: selected
-                  ? "color-mix(in srgb, var(--storyteller-selection, #1976d2) 22%, transparent)"
-                  : "transparent",
-                color: "inherit",
-                font: "inherit",
-                textAlign: "left",
-                px: 1.25,
-                py: 0.75,
-                cursor: "pointer",
+                borderColor:
+                  "var(--storyteller-border-subtle, rgba(0, 0, 0, 0.12))",
               }}
-            >
-              {Icon ? (
+            />
+          )}
+          <Typography
+            component="div"
+            variant="caption"
+            sx={{ px: 1, pt: 0.5, pb: 0.25, fontWeight: 700 }}
+          >
+            {SLASH_GROUP_LABELS[group]}
+          </Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 0.25,
+              px: 0.5,
+              pb: 0.5,
+              "@media (max-width: 600px)": {
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              },
+            }}
+          >
+            {groupItems.map(({ command, index }) => {
+              const Icon = command.icon;
+              const selected = index === selectedIndex;
+              return (
                 <Box
-                  component="span"
+                  key={command.id}
+                  component="button"
+                  type="button"
+                  role="option"
+                  id={getOptionId(index)}
+                  aria-selected={selected}
+                  data-command-id={command.id}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    onSelect(command);
+                  }}
+                  // 鍵盤上下鍵仍依右鍵選單相同的 command 順序走；跨欄時也會把
+                  // 目前高亮項目捲進可視範圍。
+                  ref={(node: HTMLButtonElement | null) => {
+                    if (selected) node?.scrollIntoView({ block: "nearest" });
+                  }}
                   sx={{
-                    display: "inline-flex",
-                    flexShrink: 0,
-                    color: "var(--storyteller-text-muted, rgba(0, 0, 0, 0.6))",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    minWidth: 0,
+                    minHeight: 34,
+                    border: 0,
+                    borderRadius: 1,
+                    bgcolor: selected
+                      ? "color-mix(in srgb, var(--storyteller-selection, #1976d2) 22%, transparent)"
+                      : "transparent",
+                    color: "inherit",
+                    font: "inherit",
+                    textAlign: "left",
+                    px: 0.75,
+                    py: 0.5,
+                    cursor: "pointer",
+                    "&:hover": {
+                      bgcolor:
+                        "color-mix(in srgb, var(--storyteller-selection, #1976d2) 14%, transparent)",
+                    },
                   }}
                 >
-                  <Icon fontSize="small" />
+                  {Icon && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-flex",
+                        flexShrink: 0,
+                        color:
+                          "var(--storyteller-text-muted, rgba(0, 0, 0, 0.6))",
+                      }}
+                    >
+                      <Icon fontSize="small" />
+                    </Box>
+                  )}
+                  <Box
+                    component="span"
+                    sx={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {command.label}
+                  </Box>
                 </Box>
-              ) : null}
-              <Box component="span">{item.label}</Box>
-            </Box>
+              );
+            })}
           </Box>
-        );
-      })}
+        </Box>
+      ))}
     </Paper>
   );
 }
@@ -314,7 +313,10 @@ function createSlashCommandRenderer() {
   function update(props: SlashSuggestionProps) {
     if (!root) return;
     latestProps = props;
-    selectedIndex = Math.min(selectedIndex, Math.max(0, props.items.length - 1));
+    selectedIndex = Math.min(
+      selectedIndex,
+      Math.max(0, props.items.length - 1),
+    );
     renderAndSyncAria();
   }
 
@@ -388,7 +390,9 @@ export const SlashCommand = Extension.create<SlashCommandExtensionOptions>({
     // 不要搶在 compositionend 之前動 slash 選單的狀態。
     const handleKey = (key: SlashCommandKey) => {
       if (this.editor.view.composing) return false;
-      return activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false;
+      return (
+        activeSlashCommandControllers.get(this.editor)?.onKeyDown(key) ?? false
+      );
     };
     return {
       ArrowDown: () => handleKey("ArrowDown"),

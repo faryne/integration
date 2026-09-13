@@ -25,9 +25,8 @@ interface StorytellerEditorSideTabsProps {
   aiTabHidden?: boolean;
 }
 
-// AI 助理／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
-// 的文件層級 action 區呈現：預設收起；點開哪個就開啟對應 Drawer，再點一次收合
-// （exclusive ToggleButtonGroup 本身就支援點選中項目變成 null）。
+// AI 協作／編輯歷史收合成幾顆切換按鈕，交給 StorytellerWysiwygEditor
+// 的文件層級 action 區呈現：AI 在主畫布下方展開，歷史仍沿用 Drawer；再點一次收合。
 export function StorytellerEditorSideTabs({
   value,
   onChange,

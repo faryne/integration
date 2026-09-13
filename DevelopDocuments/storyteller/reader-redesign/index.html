@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SteamLoom 閱讀頁重構 Mockup</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="reader-progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="回到 SteamLoom 首頁">
+        <span class="brand-mark">▤</span>
+        <span>SteamLoom</span>
+      </a>
+      <nav class="site-actions" aria-label="網站功能">
+        <button class="icon-button" type="button" aria-label="搜尋作品">⌕</button>
+        <button class="icon-button" id="appearanceButton" type="button" aria-label="外觀設定" aria-expanded="false">◐</button>
+        <div class="appearance-popover" id="appearancePopover" hidden>
+          <strong>外觀設定</strong>
+          <span>明暗模式</span>
+          <button class="mode-toggle" id="themeButton" type="button">切換日間／夜間</button>
+          <span>網站色系</span>
+          <div class="footer-themes" aria-label="網站色系">
+            <button class="brass is-active" type="button" aria-label="黃銅色系"></button>
+            <button class="bronze" type="button" aria-label="青銅色系"></button>
+            <button class="malachite" type="button" aria-label="孔雀石色系"></button>
+            <button class="steel" type="button" aria-label="鋼鐵色系"></button>
+            <button class="cobalt" type="button" aria-label="鈷藍色系"></button>
+          </div>
+        </div>
+        <button class="create-button" type="button"><span aria-hidden="true">＋</span>建立創作專案</button>
+        <button class="avatar-button" type="button" aria-label="帳號選單">F</button>
+      </nav>
+    </header>
+
+    <div class="reading-bar">
+      <div class="reading-bar__left">
+        <button class="tool-button" id="indexButton" type="button" aria-expanded="false" aria-controls="indexPanel">
+          <span aria-hidden="true">☰</span><span>目錄</span>
+        </button>
+        <button class="work-link" id="workButton" type="button" aria-expanded="false" aria-controls="workPanel">
+          <span class="work-title">飛機杯少女</span>
+          <span class="chevron" aria-hidden="true">⌄</span>
+        </button>
+      </div>
+      <div class="chapter-position" aria-label="目前章節">
+        <div class="chapter-position__title">
+          <span class="chapter-kicker">第五話</span>
+          <strong>綠葉的慵懶一日</strong>
+        </div>
+        <button class="bookmark-edit-toggle bookmark-edit-toggle--mobile" type="button" data-bookmark-edit-toggle aria-pressed="false">
+          <span aria-hidden="true">◇</span><span>編輯書籤</span>
+        </button>
+      </div>
+      <div class="reading-bar__right">
+        <output class="progress-value" id="progressValue" aria-label="本篇閱讀進度">0%</output>
+        <button class="tool-button bookmark-edit-toggle bookmark-edit-toggle--desktop" type="button" data-bookmark-edit-toggle aria-pressed="false">
+          <span aria-hidden="true">◇</span><span>編輯書籤</span>
+        </button>
+        <button class="tool-button" id="settingsButton" type="button" aria-expanded="false" aria-controls="settingsPanel">
+          <span class="aa" aria-hidden="true">Aa</span><span class="desktop-label">閱讀設定</span>
+        </button>
+      </div>
+    </div>
+
+    <aside class="side-panel" id="indexPanel" aria-hidden="true">
+      <div class="panel-header">
+        <div>
+          <span class="eyebrow">飛機杯少女</span>
+          <h2>閱讀導覽</h2>
+        </div>
+        <button class="icon-button panel-close" type="button" aria-label="關閉閱讀導覽">×</button>
+      </div>
+      <div class="panel-tabs" role="tablist" aria-label="閱讀導覽分類">
+        <button class="panel-tab is-active" type="button" role="tab" data-panel-tab="catalog" aria-selected="true">目錄</button>
+        <button class="panel-tab" type="button" role="tab" data-panel-tab="outline" aria-selected="false">本篇大綱</button>
+        <button class="panel-tab" type="button" role="tab" data-panel-tab="bookmarks" aria-selected="false">書籤 <span>2</span></button>
+      </div>
+      <div class="panel-content is-active" data-panel-content="catalog">
+        <p class="volume-label">未分冊</p>
+        <ol class="chapter-list">
+          <li><button type="button"><span>01</span>紫乃與最初的夜晚</button></li>
+          <li><button type="button"><span>02</span>藍藍的晨間練習</button></li>
+          <li><button type="button"><span>03</span>三人的生活規則</button></li>
+          <li><button type="button"><span>04</span>紫乃的寧靜一日</button></li>
+          <li><button class="is-current" type="button"><span>05</span>綠葉的慵懶一日</button></li>
+          <li><button type="button"><span>06</span>藍藍的一天</button></li>
+          <li><button type="button"><span>07</span>第一次一起出門</button></li>
+          <li><button type="button"><span>08</span>雨夜裡的約定</button></li>
+        </ol>
+      </div>
+      <div class="panel-content" data-panel-content="outline" hidden>
+        <ol class="outline-list">
+          <li><button class="is-current" type="button" data-scroll-target="scene-1">第一幕</button></li>
+          <li><button type="button" data-scroll-target="scene-2">第二幕</button></li>
+          <li><button type="button" data-scroll-target="scene-3">第三幕</button></li>
+        </ol>
+      </div>
+      <div class="panel-content" data-panel-content="bookmarks" hidden>
+        <div class="saved-bookmark">
+          <span>第五話・第一幕</span>
+          <p>一個星期的加班讓他幾乎沒有好好釋放過……</p>
+        </div>
+        <div class="saved-bookmark">
+          <span>第十一話・紫色的嫉妒視角</span>
+          <p>小綠的身體猛地弓起……</p>
+        </div>
+      </div>
+    </aside>
+
+    <div class="popover work-popover" id="workPanel" hidden>
+      <div class="work-popover__head">
+        <div>
+          <span class="eyebrow">作品資訊</span>
+          <h2>飛機杯少女</h2>
+        </div>
+        <span class="rating-tag">限制級</span>
+      </div>
+      <p>故事以三個飛機杯少女爭奪男主的寵愛，以及她們彼此之間的互動關係。</p>
+      <div class="metadata-row">
+        <a href="#">作者 Faryne</a><span>11 篇故事</span><span>115,800 字</span>
+      </div>
+      <div class="tag-row"><span>戀愛喜劇</span><span>後宮</span><span>幻想</span></div>
+      <div class="work-actions">
+        <button type="button">☆ 追蹤作品 <span>0</span></button>
+        <button type="button">☆ 追蹤作者 <span>2</span></button>
+        <button type="button">評分 4.5 ★</button>
+      </div>
+    </div>
+
+    <div class="popover settings-popover" id="settingsPanel" hidden>
+      <div class="setting-row">
+        <span>字體大小</span>
+        <div class="segmented">
+          <button type="button" data-font-action="decrease" aria-label="縮小字體">A−</button>
+          <output id="fontValue">18</output>
+          <button type="button" data-font-action="increase" aria-label="放大字體">A＋</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>行距</span>
+        <div class="segmented" data-setting="line-height">
+          <button type="button" data-line-height="1.7">緊</button>
+          <button class="is-active" type="button" data-line-height="1.95">適中</button>
+          <button type="button" data-line-height="2.2">寬</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span>頁面寬度</span>
+        <div class="segmented" data-setting="measure">
+          <button type="button" data-measure="640">窄</button>
+          <button class="is-active" type="button" data-measure="720">適中</button>
+          <button type="button" data-measure="820">寬</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="scrim" id="scrim" hidden></div>
+
+    <main class="reader-main">
+      <article class="story-paper" id="storyPaper">
+        <header class="story-header">
+          <a class="story-project" href="#">飛機杯少女</a>
+          <h1><span>[N] 第五話</span>　綠葉的慵懶一日</h1>
+          <p class="story-summary">在久違的休息日裡，慵懶的小綠第一次以人的模樣，陪主人過了一個意外熱鬧的下午。</p>
+          <div class="story-meta"><span>作者 Faryne</span><span>2026 年 9 月 11 日更新</span><button type="button">歷史版本</button></div>
+        </header>
+
+        <section class="story-content">
+          <h2 id="scene-1">第一幕</h2>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>某天深夜，主角拖著疲憊的身體回到家。</p>
+          </div>
+          <div class="paragraph-row">
+            <button class="line-bookmark is-saved" type="button"><span aria-hidden="true">◆</span><span class="bookmark-label">移除書籤</span></button>
+            <p>一個星期的加班讓他幾乎沒有好好釋放過，現在終於有時間好好宣洩累積的慾望。他打開電腦，挑選了一部今晚的「配菜」，讓房間裡只留下螢幕映出的微光。</p>
+          </div>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>他從架上拿起小綠的飛機杯和專用潤滑液，回到座位。</p>
+          </div>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>將瓶身冰涼的潤滑液緩緩倒入入口時，那緊緻的褐色入口似乎微微抽動了一下，像在期待什麼。主角沒有多想，先把飛機杯放在一旁，然後按下播放鍵。</p>
+          </div>
+          <p class="scene-break" aria-hidden="true">＊　＊　＊</p>
+
+          <h2 id="scene-2">第二幕</h2>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>小綠此時背對著主角，懶洋洋地靠在他的肩上。筆電螢幕早已暗下，在沒有光影的平面中，隱約映出她帶著睡意的臉。</p>
+          </div>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>她伸出纖細的手指，戳了戳已經暗掉的螢幕，歪著頭問道：「……這玩意是什麼呀？看起來好複雜……」</p>
+          </div>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>主角愣了一下，隨即笑了笑，簡單向她解釋電腦可以看影片、玩遊戲，也能處理工作。小綠聽得似懂非懂，偶爾還會發出疑問的鼻音。</p>
+          </div>
+
+          <h2 id="scene-3">第三幕</h2>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>第一場對戰開始，才短短一分鐘，小綠就輕鬆擊敗主角。第二場、第三場，她幾乎是壓倒性的勝利。</p>
+          </div>
+          <blockquote>「……嗯～又贏了……主人好弱喔……」</blockquote>
+          <div class="paragraph-row">
+            <button class="line-bookmark" type="button"><span aria-hidden="true">◇</span><span class="bookmark-label">加入書籤</span></button>
+            <p>她玩得越來越起勁，甚至還把身體往前傾，原本慵懶的眼睛也亮了起來。主角看著她認真的樣子，忍不住笑出聲。</p>
+          </div>
+        </section>
+
+        <footer class="chapter-navigation">
+          <a href="#"><span>上一篇</span><strong>第四話　紫乃的寧靜一日</strong></a>
+          <button id="catalogFooterButton" type="button"><span>作品</span><strong>回到作品目錄</strong></button>
+          <a class="next" href="#"><span>下一篇</span><strong>第六話　藍藍的一天</strong></a>
+        </footer>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-brand"><strong>SteamLoom</strong><span>powered By Faryne</span><span aria-hidden="true">|</span><a href="#">faryne.dev</a></div>
+      <div class="footer-actions">
+        <a href="#" aria-label="Facebook">f</a>
+        <a href="#" aria-label="X">𝕏</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

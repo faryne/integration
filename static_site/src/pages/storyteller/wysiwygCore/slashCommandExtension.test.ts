@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { getWysiwygCommand, type WysiwygCommandContext } from "./commands";
 import { wysiwygCoreExtensions } from "./extensions";
 import { markdownToDoc } from "./parser";
-import { canShowSlashCommand, runSlashCommand } from "./slashCommandExtension";
+import { canShowSlashCommand, runSlashCommand } from "./slashCommandCore";
 
 function createEditorWithText(text = "") {
   const editor = new Editor({
@@ -20,10 +20,12 @@ function createStubContext(): WysiwygCommandContext {
     isFeatureEnabled: () => true,
     canExportMarkdown: true,
     canInsertAsset: true,
+    canAskAI: true,
     openLinkDialog: () => {},
     openFootnoteDialog: () => {},
     openCommentDialog: () => {},
     openAssetPicker: () => {},
+    openAI: () => {},
     exportMarkdown: () => {},
   };
 }

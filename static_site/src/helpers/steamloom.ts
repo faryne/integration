@@ -2,6 +2,8 @@
 // helpers/nekomaid.ts 是同一套 pattern：同一份建置檔案依網域名稱動態決定要不要
 // 顯示 /storyteller 前綴，不需要另外開一份 build。
 
+export const STEAMLOOM_PATH_PREFIX = "/storyteller";
+
 export function isSteamLoomSite() {
   if (typeof window === "undefined") {
     return false;
@@ -18,5 +20,7 @@ export function isSteamLoomSite() {
 
 export function steamloomPath(path = "") {
   const normalizedPath = path ? `/${path.replace(/^\/+/, "")}` : "";
-  return `${isSteamLoomSite() ? "" : "/storyteller"}${normalizedPath}` || "/";
+  return (
+    `${isSteamLoomSite() ? "" : STEAMLOOM_PATH_PREFIX}${normalizedPath}` || "/"
+  );
 }
