@@ -2026,6 +2026,7 @@ export default function StorytellerReader() {
       </Stack>
     </Stack>
   );
+  const hasCurrentContent = Boolean(currentStory || currentEpisode);
   const readerBody = (
     <Paper
       ref={readerBodyRef}
@@ -2033,8 +2034,8 @@ export default function StorytellerReader() {
       sx={{
         p: currentStory ? { xs: 1, sm: 2, md: 3 } : { xs: 2, md: 3 },
         borderRadius: 1,
-        border: currentStory ? "none" : undefined,
-        bgcolor: currentStory ? "transparent" : "background.paper",
+        border: hasCurrentContent ? "none" : undefined,
+        bgcolor: hasCurrentContent ? "transparent" : "background.paper",
         backgroundImage: "none",
         maxWidth: currentStory ? 960 : 1200,
         width: "100%",
@@ -2071,6 +2072,9 @@ export default function StorytellerReader() {
                 position: "relative",
                 bgcolor: "background.default",
                 borderRadius: 1,
+                // 外層不再使用卡片邊框，改由 viewer 自己標示淺色或透明圖片的顯示範圍。
+                boxShadow: (theme) =>
+                  `inset 0 0 0 1px ${theme.palette.divider}`,
                 overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
