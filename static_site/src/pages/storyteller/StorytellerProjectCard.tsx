@@ -1,8 +1,8 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
-import { Chip, Paper, Stack, Typography } from "@mui/material";
-import type { ReactNode } from "react";
+import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
+import type { KeyboardEvent, ReactNode } from "react";
 import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
   formatStorytellerDate,
@@ -20,11 +20,14 @@ export interface StorytellerProjectCardProps {
   // 「標準答案」；其餘資訊（內容類型、篇數/話數、字數、評分、標籤、作者、更新時間）
   // 一律由這個元件自己從 project 算，呼叫端不用也不該自己重算一次，避免各頁資訊分岔。
   headerAction?: ReactNode;
-  actions: ReactNode;
+  actions?: ReactNode;
   // 少數真的因為「頁面情境」而不是「專案本身」才有意義的徽章，例如追蹤頁的
   // 「對外隱藏中」、公開列表頁的「公開閱讀」——這些跟 project 資料無關，
   // 是「你透過什麼情境看到這張卡片」，所以留給呼叫端補在標準 chips 後面。
   extraChips?: ReactNode;
+  // 工作台可讓整張卡成為進入專案的主要入口；內部 action 會阻止事件冒泡，避免
+  // 點 visibility 或 menu 時同時跳頁。其他公開頁仍可只使用底部按鈕。
+  onClick?: () => void;
 }
 
 export function StorytellerProjectCard({
@@ -32,6 +35,7 @@ export function StorytellerProjectCard({
   headerAction,
   actions,
   extraChips,
+  onClick,
 }: StorytellerProjectCardProps) {
   const stories = project.stories ?? [];
   const storiesCount = stories.filter(
@@ -48,12 +52,33 @@ export function StorytellerProjectCard({
   return (
     <Paper
       variant="outlined"
+      role={onClick ? "link" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+        if (!onClick || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        onClick();
+      }}
       sx={{
         p: 2,
         borderRadius: 1,
         height: 1,
         boxSizing: "border-box",
         overflow: "hidden",
+        transition: "border-color 140ms ease, transform 140ms ease",
+        ...(onClick && {
+          cursor: "pointer",
+          "&:hover": {
+            borderColor: "primary.main",
+            transform: "translateY(-1px)",
+          },
+          "&:focus-visible": {
+            outline: 2,
+            outlineColor: "primary.main",
+            outlineOffset: 2,
+          },
+        }),
         ...steamPanelTopBarSx,
       }}
     >
@@ -81,82 +106,98 @@ export function StorytellerProjectCard({
               {project.name}
             </Typography>
           </Stack>
-          {headerAction}
+          {headerAction && (
+            <Box
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+              sx={{ flexShrink: 0 }}
+            >
+              {headerAction}
+            </Box>
+          )}
         </Stack>
         <Typography
           color="text.secondary"
-          sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}
-        >
-          {project.description}
-        </Typography>
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
-          flexWrap={{ sm: "wrap" }}
-          useFlexGap
           sx={{
-            "& .MuiChip-root": {
-              width: { xs: "100%", sm: "auto" },
-            },
+            minWidth: 0,
+            minHeight: "3em",
+            overflow: "hidden",
+            overflowWrap: "anywhere",
+            display: "-webkit-box",
+            WebkitBoxOrient: "vertical",
+            WebkitLineClamp: 2,
           }}
         >
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={
-              project.content_type === "image" ? (
-                <CollectionsIcon />
-              ) : (
-                <ArticleIcon />
-              )
-            }
-            label={project.content_type === "image" ? "圖片／漫畫" : "文字故事"}
-          />
+          {project.description || "尚未填寫專案描述。"}
+        </Typography>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          flexWrap="wrap"
+          useFlexGap
+          color="text.secondary"
+        >
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {project.content_type === "image" ? (
+              <CollectionsIcon fontSize="small" />
+            ) : (
+              <ArticleIcon fontSize="small" />
+            )}
+            <Typography variant="body2">
+              {project.content_type === "image" ? "圖片／漫畫" : "文字故事"}
+            </Typography>
+          </Stack>
+          <Typography variant="body2">{storiesCount} 篇故事</Typography>
+          {imageStoryCount > 0 && (
+            <Typography variant="body2">{imageStoryCount} 話</Typography>
+          )}
+          <Typography variant="body2">
+            {wordCount.toLocaleString()} 字
+          </Typography>
+        </Stack>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <Chip
             size="small"
             color={storytellerProjectRatingColor(project.rating)}
             label={storytellerProjectRatingLabel(project.rating)}
           />
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<ArticleIcon />}
-            label={`${storiesCount} 篇故事`}
-          />
-          {imageStoryCount > 0 && (
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={<CollectionsIcon />}
-              label={`${imageStoryCount} 話`}
-            />
-          )}
-          <Chip size="small" label={`${wordCount.toLocaleString()} 字`} />
-          <Chip size="small" label={`${project.rating_count} 人評分`} />
-          <Chip
-            size="small"
-            label={`平均 ${project.average_rating.toFixed(1)}`}
-          />
-          <Chip size="small" label={`${project.favorite_count} 人追蹤`} />
+          <Typography variant="caption" color="text.secondary">
+            {project.rating_count} 人評分 · 平均{" "}
+            {project.average_rating.toFixed(1)} · {project.favorite_count}{" "}
+            人追蹤
+          </Typography>
           {extraChips}
         </Stack>
-        <StorytellerTagChips tags={project.tags} />
-        <Typography variant="caption" color="text.secondary">
-          {project.author?.pen_name && `作者 ${project.author.pen_name} · `}
-          更新於 {formatStorytellerDate(project.updated_at)}
-        </Typography>
+        <StorytellerTagChips tags={project.tags} limit={3} />
+        <Box sx={{ flex: 1 }} />
         <Stack
           direction={{ xs: "column", sm: "row" }}
           spacing={1}
-          flexWrap={{ sm: "wrap" }}
-          useFlexGap
-          sx={{
-            "& .MuiButton-root": {
-              width: { xs: "100%", sm: "auto" },
-            },
-          }}
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          justifyContent="space-between"
         >
-          {actions}
+          <Typography variant="caption" color="text.secondary">
+            {project.author?.pen_name && `作者 ${project.author.pen_name} · `}
+            更新於 {formatStorytellerDate(project.updated_at)}
+          </Typography>
+          {actions && (
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              useFlexGap
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              {actions}
+            </Stack>
+          )}
         </Stack>
       </Stack>
     </Paper>
