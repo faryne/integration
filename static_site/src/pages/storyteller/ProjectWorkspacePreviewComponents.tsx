@@ -7,7 +7,6 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
-import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import RemoveIcon from "@mui/icons-material/Remove";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -35,13 +34,8 @@ import { alpha } from "@mui/material/styles";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
-import {
-  storytellerPaletteMeta,
-  type StorytellerPaletteName,
-} from "@/data/storytellerTheme.ts";
 import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
-import { useStorytellerPalette } from "@/layouts/storytellerPaletteMode.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
@@ -364,10 +358,6 @@ const sidebarActionRowSx: SxProps<Theme> = {
 };
 
 export function WorkspaceSidebarFooter() {
-  const { palette, setPalette } = useStorytellerPalette();
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const currentPalette = storytellerPaletteMeta[palette];
-
   return (
     <Box
       sx={{
@@ -384,75 +374,10 @@ export function WorkspaceSidebarFooter() {
         flexShrink: 0,
       }}
     >
-      <ListItemButton
-        onClick={() => setPaletteOpen((value) => !value)}
-        sx={{ minHeight: 30, px: 1, borderRadius: 1 }}
-      >
-        <Box
-          sx={{
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            bgcolor: currentPalette.swatch,
-            border: 1,
-            borderColor: "divider",
-            mr: 1,
-            flexShrink: 0,
-          }}
-        />
-        <ListItemText
-          primary={`色系：${currentPalette.label}`}
-          primaryTypographyProps={{ variant: "caption", noWrap: true }}
-        />
-        <KeyboardArrowRightIcon
-          fontSize="small"
-          sx={{
-            transform: paletteOpen ? "rotate(90deg)" : "rotate(0deg)",
-            transition: "transform 120ms ease",
-          }}
-        />
-      </ListItemButton>
-      <Collapse in={paletteOpen} timeout="auto" unmountOnExit>
-        <Stack
-          direction="row"
-          flexWrap="wrap"
-          useFlexGap
-          gap={0.75}
-          sx={{ p: 1 }}
-        >
-          {(
-            Object.keys(storytellerPaletteMeta) as StorytellerPaletteName[]
-          ).map((name) => {
-            const meta = storytellerPaletteMeta[name];
-            const isActive = palette === name;
-            return (
-              <Tooltip key={name} title={meta.label}>
-                <Box
-                  component="button"
-                  type="button"
-                  aria-label={`切換為${meta.label}色系`}
-                  aria-pressed={isActive}
-                  onClick={() => setPalette(name)}
-                  sx={{
-                    width: 20,
-                    height: 20,
-                    p: 0,
-                    border: "2px solid",
-                    borderColor: isActive ? "text.primary" : "divider",
-                    borderRadius: "50%",
-                    bgcolor: meta.swatch,
-                    cursor: "pointer",
-                  }}
-                />
-              </Tooltip>
-            );
-          })}
-        </Stack>
-      </Collapse>
       <Typography
         variant="caption"
         color="text.secondary"
-        sx={{ display: "block", px: 1, pt: 1.25, lineHeight: 1.35 }}
+        sx={{ display: "block", px: 1, lineHeight: 1.35 }}
       >
         SteamLoom powered By Faryne
         <br />

@@ -12,7 +12,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HistoryIcon from "@mui/icons-material/History";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import {
   Box,
   Button,
@@ -23,18 +22,13 @@ import {
   Dialog,
   Divider,
   Drawer,
-  Fab,
-  Grid,
+  GlobalStyles,
   IconButton,
   Paper,
-  Popover,
   Rating,
   Stack,
   Tooltip,
   Typography,
-  Zoom,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode, Ref } from "react";
@@ -86,10 +80,6 @@ import {
   storytellerProjectRatingColor,
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
-import {
-  steamLedgerEdgeSx,
-  steamPanelTopBarSx,
-} from "@/data/storytellerTheme.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -97,7 +87,12 @@ import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
+import {
+  READER_FONT_FAMILIES,
+  useStorytellerReaderPreferences,
+} from "@/pages/storyteller/useStorytellerReaderPreferences.ts";
 import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 
 // ReaderItem 是故事與話（圖像作品）合併後的統一序列元素——冊現在是通用容器，
@@ -562,7 +557,7 @@ function ReaderIndexPanel({
             </Typography>
           ) : bookmarks.length === 0 ? (
             <Typography variant="body2" color="text.secondary">
-              還沒有加入任何書籤，閱讀時點擊每行左側或圖像頁的書籤圖示即可加入。
+              還沒有加入任何書籤。文字作品請開啟「編輯書籤」，圖像作品可使用頁面上的書籤按鈕。
             </Typography>
           ) : (
             bookmarks.map((bookmark) => {
@@ -807,12 +802,14 @@ function ChapterNavCard({
   label,
   title,
   to,
+  onClick,
   disabled = false,
   align = "left",
 }: {
   label: string;
   title: string;
   to?: string;
+  onClick?: () => void;
   disabled?: boolean;
   align?: "left" | "center" | "right";
 }) {
@@ -824,25 +821,37 @@ function ChapterNavCard({
         : undefined;
 
   return (
-    <Paper
-      component={to ? RouterLink : "div"}
+    <Box
+      component={to ? RouterLink : onClick ? "button" : "div"}
       to={to}
-      variant="outlined"
+      type={onClick ? "button" : undefined}
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled}
       sx={{
+        width: "100%",
         display: "flex",
         flexDirection: "column",
+        alignItems:
+          align === "center"
+            ? "center"
+            : align === "right"
+              ? "flex-end"
+              : "flex-start",
         justifyContent: "flex-start",
         gap: 0.5,
-        px: 1.75,
-        py: 1.5,
+        px: 1,
+        py: 1.25,
         minHeight: 40,
-        borderRadius: 1,
+        border: 0,
+        bgcolor: "transparent",
+        font: "inherit",
         textDecoration: "none",
         color: "inherit",
         opacity: disabled ? 0.55 : 1,
         overflow: "hidden",
         textAlign: align,
-        ...steamPanelTopBarSx,
+        cursor: disabled ? "default" : "pointer",
+        "&:hover": disabled ? undefined : { color: "primary.main" },
       }}
     >
       <Stack
@@ -856,7 +865,7 @@ function ChapterNavCard({
               ? "flex-end"
               : "flex-start"
         }
-        sx={{ color: "text.secondary" }}
+        sx={{ width: "100%", color: "text.secondary" }}
       >
         {align === "left" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
         <Typography variant="caption" color="inherit">
@@ -867,6 +876,8 @@ function ChapterNavCard({
       <Typography
         fontWeight={800}
         sx={{
+          width: "100%",
+          textAlign: align,
           lineHeight: 1.35,
           overflowWrap: "anywhere",
           wordBreak: "break-word",
@@ -878,6 +889,87 @@ function ChapterNavCard({
       >
         {title}
       </Typography>
+    </Box>
+  );
+}
+
+function ReaderBottomNavigation({
+  previousItem,
+  nextItem,
+  basePath,
+  onOpenIndex,
+}: {
+  previousItem?: ReaderItem;
+  nextItem?: ReaderItem;
+  basePath: string;
+  onOpenIndex: () => void;
+}) {
+  return (
+    <Paper
+      component="nav"
+      aria-label="篇章導覽"
+      square
+      elevation={8}
+      sx={(theme) => ({
+        position: "fixed",
+        insetInline: 0,
+        bottom: 0,
+        zIndex: theme.zIndex.appBar - 1,
+        borderTop: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        backgroundImage: "none",
+        pb: "env(safe-area-inset-bottom)",
+      })}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 1200,
+          mx: "auto",
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+          },
+          px: { xs: 1, sm: 2 },
+          boxSizing: "border-box",
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <ChapterNavCard
+            label="上一篇"
+            title={previousItem?.title ?? "沒有上一篇"}
+            to={previousItem ? itemHref(basePath, previousItem) : undefined}
+            disabled={!previousItem}
+            align="left"
+          />
+        </Box>
+        <Box
+          sx={{
+            minWidth: 0,
+            display: { xs: "none", md: "block" },
+            borderInline: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <ChapterNavCard
+            label="作品"
+            title="回到作品目錄"
+            align="center"
+            onClick={onOpenIndex}
+          />
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <ChapterNavCard
+            label="下一篇"
+            title={nextItem?.title ?? "沒有下一篇"}
+            to={nextItem ? itemHref(basePath, nextItem) : undefined}
+            disabled={!nextItem}
+            align="right"
+          />
+        </Box>
+      </Box>
     </Paper>
   );
 }
@@ -974,6 +1066,7 @@ function StoryContentLines({
   bookmarkedLines,
   pendingLines,
   bookmarkMode,
+  bookmarkEditing,
   highlightedLine,
   onToggleBookmark,
   footnoteNumbering,
@@ -983,6 +1076,7 @@ function StoryContentLines({
   bookmarkedLines: Set<number>;
   pendingLines: Set<number>;
   bookmarkMode: BookmarkMode;
+  bookmarkEditing: boolean;
   highlightedLine?: number;
   onToggleBookmark: (groupIndex: number) => void;
   // 整篇故事共用的腳注編號＋DOM id 前綴（見 StorytellerWysiwygMarkdown 的
@@ -1010,9 +1104,10 @@ function StoryContentLines({
           }
         }
         const isBookmarked = bookmarkedLines.has(groupIndex);
-        const showIcon =
-          bookmarkMode === "full" ||
-          (bookmarkMode === "removeOnly" && isBookmarked);
+        const showEditAction =
+          bookmarkEditing &&
+          (bookmarkMode === "full" ||
+            (bookmarkMode === "removeOnly" && isBookmarked));
         const groupContent =
           group.blockKind === "code"
             ? lines
@@ -1027,46 +1122,66 @@ function StoryContentLines({
             key={groupIndex}
             id={`bookmark-line-${groupIndex}`}
             sx={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 0.5,
+              position: "relative",
               borderRadius: 1,
               transition: "background-color .6s",
               bgcolor:
                 highlightedLine === groupIndex ? "action.selected" : undefined,
-              "&:hover .bookmark-ghost": { opacity: 1 },
             }}
           >
-            <Box sx={{ width: 30, flexShrink: 0, pt: 0.25 }}>
-              {showIcon && (
-                <Tooltip
-                  title={isBookmarked ? "移除書籤" : "加入書籤"}
-                  enterTouchDelay={0}
-                >
-                  <span>
-                    <IconButton
-                      size="small"
-                      aria-label={isBookmarked ? "移除書籤" : "加入書籤"}
-                      disabled={pendingLines.has(groupIndex)}
-                      onClick={() => onToggleBookmark(groupIndex)}
-                      className={isBookmarked ? undefined : "bookmark-ghost"}
-                      sx={{
-                        opacity: isBookmarked ? 1 : 0,
-                        transition: "opacity .12s",
-                        color: isBookmarked ? "primary.main" : "text.secondary",
-                      }}
-                    >
-                      {isBookmarked ? (
+            {(isBookmarked || showEditAction) && (
+              <Box
+                sx={{
+                  position: {
+                    xs: showEditAction ? "static" : "absolute",
+                    sm: "absolute",
+                  },
+                  top: { xs: showEditAction ? undefined : 2, sm: 2 },
+                  right: {
+                    xs: showEditAction ? undefined : "calc(100% + 4px)",
+                    sm: "calc(100% + 10px)",
+                  },
+                  mb: { xs: showEditAction ? 1 : 0, sm: 0 },
+                  display: "flex",
+                  justifyContent: "flex-start",
+                }}
+              >
+                {showEditAction ? (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={
+                      isBookmarked ? (
                         <BookmarkIcon fontSize="small" />
                       ) : (
                         <BookmarkBorderIcon fontSize="small" />
-                      )}
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              )}
-            </Box>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+                      )
+                    }
+                    disabled={pendingLines.has(groupIndex)}
+                    onClick={() => onToggleBookmark(groupIndex)}
+                    sx={{ whiteSpace: "nowrap" }}
+                  >
+                    {isBookmarked ? "移除書籤" : "加入書籤"}
+                  </Button>
+                ) : (
+                  <Box
+                    component="span"
+                    role="img"
+                    aria-label="已加入書籤"
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      display: "grid",
+                      placeItems: "center",
+                      color: "primary.main",
+                    }}
+                  >
+                    <BookmarkIcon fontSize="small" />
+                  </Box>
+                )}
+              </Box>
+            )}
+            <Box sx={{ minWidth: 0 }}>
               <StorytellerWysiwygMarkdown
                 footnoteNumbering={footnoteNumbering}
                 footnoteIdPrefix={footnoteIdPrefix}
@@ -1082,9 +1197,9 @@ function StoryContentLines({
   );
 }
 
-// 跳到標題時要空出的高度，跟頂端 sticky AppBar 的高度（64px）加一點緩衝對齊，
-// 見 handleJumpToHeading 的說明。
-const HEADING_SCROLL_OFFSET = 80;
+// 全站 AppBar 加上 Reader sticky toolbar 後，目標標題至少要留出這段高度；mobile
+// toolbar 是兩列，因此以較高的 mobile 尺寸為共同安全值。
+const READER_STICKY_OFFSET = 144;
 
 export default function StorytellerReader() {
   const { session, loading: authLoading } = useAuth();
@@ -1095,16 +1210,16 @@ export default function StorytellerReader() {
   const routeStoryId = params.storyId;
   const routeProjectPath = params.projectPath;
   const consumedImageHashRef = useRef<string | null>(null);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [indexOpen, setIndexOpen] = useState(true);
+  const [indexOpen, setIndexOpen] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   // 目前這張圖是否已經載入完成——圖片頁切換時（換頁或換話）重置，載入完成前顯示
   // loading，避免容器高度因為圖片還沒下載完、瀏覽器抓不到尺寸而跳動。
   const [currentPageLoaded, setCurrentPageLoaded] = useState(false);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
-  const [mobileIndexOpen, setMobileIndexOpen] = useState(false);
-  const [mobileProjectInfoOpen, setMobileProjectInfoOpen] = useState(false);
+  const [bookmarkEditing, setBookmarkEditing] = useState(false);
+  const [readingProgress, setReadingProgress] = useState(0);
+  const readerBodyRef = useRef<HTMLDivElement | null>(null);
+  const { preferences, updatePreferences } = useStorytellerReaderPreferences();
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [pendingBookmarkLines, setPendingBookmarkLines] = useState<Set<number>>(
@@ -1136,12 +1251,6 @@ export default function StorytellerReader() {
     number | undefined
   >(undefined);
   const navigate = useNavigate();
-  // 頂端功能列（索引開關＋追蹤／評分）是否仍在可視範圍；捲出畫面後改顯示右下角快速按鈕
-  const [actionBarVisible, setActionBarVisible] = useState(true);
-  // 右下角快速按鈕展開的選單錨點
-  const [quickActionsAnchor, setQuickActionsAnchor] =
-    useState<HTMLElement | null>(null);
-  const actionBarRef = useRef<HTMLDivElement | null>(null);
   const storyStartRef = useRef<HTMLHeadingElement | null>(null);
   const previousItemIdRef = useRef<string | undefined>(undefined);
   const routeProjectPublicId = routeProjectPath?.split("-", 1)[0];
@@ -1474,7 +1583,7 @@ export default function StorytellerReader() {
     });
     return () => cancelAnimationFrame(frame);
   }, [currentStory?.id, pendingScroll]);
-  // 側欄「本篇大綱」捲動高亮：取「目前閱讀行」（畫面頂端往下 READING_LINE_OFFSET 處）
+  // 側欄「本篇大綱」捲動高亮：取「目前閱讀行」（畫面頂端往下 sticky offset 處）
   // 之上、最接近的那個標題當作目前段落。
   //
   // 這裡刻意不用 IntersectionObserver：標題之間常常隔著幾千字的正文，偵測區只佔畫面
@@ -1507,13 +1616,12 @@ export default function StorytellerReader() {
     if (elements.length === 0) {
       return;
     }
-    const READING_LINE_OFFSET = 96;
     let frame: number | null = null;
     function updateActiveHeading() {
       frame = null;
       let current = elements[0].lineIndex;
       for (const item of elements) {
-        if (item.el.getBoundingClientRect().top <= READING_LINE_OFFSET) {
+        if (item.el.getBoundingClientRect().top <= READER_STICKY_OFFSET) {
           current = item.lineIndex;
         } else {
           break;
@@ -1591,18 +1699,53 @@ export default function StorytellerReader() {
     });
   }, [currentItem?.id]);
 
-  // 監看頂端功能列是否捲出畫面，用來切換右下角快速按鈕的顯示
+  // 換篇或切換歷史版本時結束書籤編輯，避免使用者誤以為模式會跨篇保留。
   useEffect(() => {
-    const node = actionBarRef.current;
+    setBookmarkEditing(false);
+  }, [currentItem?.id, displayVersionId]);
+
+  // 進度只根據本文容器計算；Hero、全站 header/footer 不列入分母。
+  useEffect(() => {
+    const node = readerBodyRef.current;
     if (!node) {
       return;
     }
-    const observer = new IntersectionObserver(([entry]) => {
-      setActionBarVisible(entry.isIntersecting);
-    });
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [currentItem?.id, isOwner]);
+    let frame: number | null = null;
+    const updateProgress = () => {
+      const bodyTop = node.getBoundingClientRect().top + window.scrollY;
+      const bottomSpacerHeight =
+        node.querySelector<HTMLElement>("[data-reader-bottom-spacer]")
+          ?.offsetHeight ?? 0;
+      const scrollableHeight = Math.max(
+        node.offsetHeight - bottomSpacerHeight - window.innerHeight,
+        1,
+      );
+      const next = Math.min(
+        100,
+        Math.max(0, ((window.scrollY - bodyTop) / scrollableHeight) * 100),
+      );
+      setReadingProgress(Math.round(next));
+      frame = null;
+    };
+    const scheduleUpdate = () => {
+      if (frame === null) {
+        frame = window.requestAnimationFrame(updateProgress);
+      }
+    };
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    resizeObserver.observe(node);
+    updateProgress();
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+    return () => {
+      window.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      resizeObserver.disconnect();
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [currentItem?.id, displayVersionId, pageIndex, currentPageLoaded]);
 
   // 圖像頁的鍵盤左右鍵換頁，操作模式跟 components/common/ImageViewer.tsx 一致：
   // 只在確實看著圖像頁、且不只有一張圖時才綁定；輸入框／可編輯區聚焦時放行給
@@ -1726,14 +1869,10 @@ export default function StorytellerReader() {
     // 只要拿掉 sticky header 就會準。改成自己算目標 scrollY 再用
     // window.scrollTo 捲，就不會受這個互動影響。
     const targetTop =
-      el.getBoundingClientRect().top + window.scrollY - HEADING_SCROLL_OFFSET;
+      el.getBoundingClientRect().top + window.scrollY - READER_STICKY_OFFSET;
     window.scrollTo({ top: Math.max(targetTop, 0), behavior: "smooth" });
   };
-  const showInlineIndex = !isMobile && indexOpen;
-  // 追蹤專案／追蹤作者／評分控制項，放在 Hero Card 的互動列，右下角快速選單
-  // （頂端功能列捲出畫面後）也共用同一組。原作看自己的故事時這幾個按鈕改成
-  // 「顯示但 disabled」而不是整段隱藏，讓原作也能看到追蹤數／評分人數與平均分，
-  // 只是不能對自己按讚評分。
+  // 追蹤、作者與評分移到作品資訊浮層；閱讀頁 Hero 只保留作品名稱與 breadcrumb。
   const favoriteCount = apiProject?.favorite_count ?? 0;
   const authorFollowerCount = apiProject?.author?.follower_count ?? 0;
   const projectRatingCount = apiProject?.rating_count ?? 0;
@@ -1805,25 +1944,6 @@ export default function StorytellerReader() {
       </Paper>
     </>
   );
-  const projectDescription = project.description ? (
-    <Box
-      component="span"
-      sx={{
-        display: { xs: "-webkit-box", md: "block" },
-        overflow: {
-          xs: mobileProjectInfoOpen ? "visible" : "hidden",
-          md: "visible",
-        },
-        WebkitBoxOrient: "vertical",
-        WebkitLineClamp: {
-          xs: mobileProjectInfoOpen ? "unset" : 2,
-          md: "unset",
-        },
-      }}
-    >
-      {project.description}
-    </Box>
-  ) : undefined;
   const projectPrimaryMeta = (
     <>
       <Chip
@@ -1888,13 +2008,39 @@ export default function StorytellerReader() {
       </Box>
     </>
   );
+  const projectDetails = (
+    <Stack spacing={1.5}>
+      <Box>
+        <Typography variant="subtitle1" fontWeight={900}>
+          {project.name}
+        </Typography>
+        {project.description && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+            {project.description}
+          </Typography>
+        )}
+      </Box>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        {projectPrimaryMeta}
+        {projectSecondaryMeta}
+      </Stack>
+    </Stack>
+  );
+  const hasCurrentContent = Boolean(currentStory || currentEpisode);
   const readerBody = (
     <Paper
+      ref={readerBodyRef}
       variant="outlined"
       sx={{
-        p: { xs: 2, md: 3 },
+        p: currentStory ? { xs: 1, sm: 2, md: 3 } : { xs: 2, md: 3 },
         borderRadius: 1,
-        ...steamLedgerEdgeSx,
+        border: hasCurrentContent ? "none" : undefined,
+        bgcolor: hasCurrentContent ? "transparent" : "background.paper",
+        backgroundImage: "none",
+        maxWidth: currentStory ? 960 : 1200,
+        width: "100%",
+        boxSizing: "border-box",
+        alignSelf: "center",
       }}
     >
       {currentEpisode ? (
@@ -1926,6 +2072,9 @@ export default function StorytellerReader() {
                 position: "relative",
                 bgcolor: "background.default",
                 borderRadius: 1,
+                // 外層不再使用卡片邊框，改由 viewer 自己標示淺色或透明圖片的顯示範圍。
+                boxShadow: (theme) =>
+                  `inset 0 0 0 1px ${theme.palette.divider}`,
                 overflow: "hidden",
                 display: "flex",
                 alignItems: "center",
@@ -2141,48 +2290,16 @@ export default function StorytellerReader() {
               </Box>
             )}
           </Stack>
-          <Divider />
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-              gap: 1.5,
-              minWidth: 0,
-            }}
-          >
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="上一篇"
-                title={previousItem?.title ?? "沒有上一篇"}
-                to={previousItem ? itemHref(basePath, previousItem) : undefined}
-                disabled={!previousItem}
-                align="left"
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="本篇"
-                title={currentEpisode.title}
-                align="center"
-                disabled
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="下一篇"
-                title={nextItem?.title ?? "沒有下一篇"}
-                to={nextItem ? itemHref(basePath, nextItem) : undefined}
-                disabled={!nextItem}
-                align="right"
-              />
-            </Box>
-          </Box>
         </Stack>
       ) : currentStory ? (
-        <Stack spacing={2}>
+        <Stack
+          spacing={2}
+          sx={{
+            width: "100%",
+            maxWidth: preferences.measure,
+            alignSelf: "center",
+          }}
+        >
           <ContentMetaHeader
             title={currentStory.title}
             titleRef={storyStartRef}
@@ -2289,9 +2406,20 @@ export default function StorytellerReader() {
           <Box
             sx={{
               typography: "body1",
-              lineHeight: 1.9,
+              fontFamily: READER_FONT_FAMILIES[preferences.fontFamily],
+              fontSize: `${preferences.fontSize}px`,
+              lineHeight: preferences.lineHeight,
+              maxWidth: preferences.measure,
+              width: "100%",
+              alignSelf: "center",
+              boxSizing: "border-box",
+              px: { xs: 1.5, sm: 0 },
               "& h1": { typography: "h5", fontWeight: 800 },
               "& h2": { typography: "h6", fontWeight: 800, mt: 3 },
+              "& p, & li, & blockquote, & td, & th": {
+                fontSize: "inherit",
+                lineHeight: "inherit",
+              },
               "& p": { my: 0.5 },
             }}
           >
@@ -2300,6 +2428,7 @@ export default function StorytellerReader() {
               bookmarkedLines={bookmarkedLines}
               pendingLines={pendingBookmarkLines}
               bookmarkMode={bookmarkMode}
+              bookmarkEditing={bookmarkEditing}
               highlightedLine={highlightedLine}
               onToggleBookmark={handleToggleBookmark}
               footnoteNumbering={footnoteNumbering}
@@ -2312,48 +2441,24 @@ export default function StorytellerReader() {
               idPrefix={footnoteIdPrefix}
             />
           </Box>
-          <Divider />
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-              gap: 1.5,
-              minWidth: 0,
-            }}
-          >
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="上一篇"
-                title={previousItem?.title ?? "沒有上一篇"}
-                to={previousItem ? itemHref(basePath, previousItem) : undefined}
-                disabled={!previousItem}
-                align="left"
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="本篇"
-                title={currentStory.title}
-                align="center"
-                disabled
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="下一篇"
-                title={nextItem?.title ?? "沒有下一篇"}
-                to={nextItem ? itemHref(basePath, nextItem) : undefined}
-                disabled={!nextItem}
-                align="right"
-              />
-            </Box>
-          </Box>
         </Stack>
       ) : (
         <Typography color="text.secondary">目前還沒有任何作品。</Typography>
+      )}
+      {currentItem && (
+        <>
+          <Box
+            aria-hidden="true"
+            data-reader-bottom-spacer
+            sx={{ height: "calc(88px + env(safe-area-inset-bottom))" }}
+          />
+          <ReaderBottomNavigation
+            previousItem={previousItem}
+            nextItem={nextItem}
+            basePath={basePath}
+            onOpenIndex={() => setIndexOpen(true)}
+          />
+        </>
       )}
     </Paper>
   );
@@ -2361,110 +2466,72 @@ export default function StorytellerReader() {
   return (
     <StorytellerShell
       title={project.name}
-      description={projectDescription}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: project.name },
       ]}
-      meta={
-        <>
-          <Box
-            sx={{
-              display: { xs: "flex", md: "none" },
-              flexBasis: "100%",
-              justifyContent: "flex-end",
-            }}
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              endIcon={
-                mobileProjectInfoOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />
-              }
-              aria-expanded={mobileProjectInfoOpen}
-              onClick={() => setMobileProjectInfoOpen((open) => !open)}
-            >
-              {mobileProjectInfoOpen ? "收起資訊" : "展開資訊"}
-            </Button>
-          </Box>
-          <Box sx={{ display: { xs: "block", md: "none" }, flexBasis: "100%" }}>
-            <Collapse in={mobileProjectInfoOpen} timeout="auto">
-              <Stack
-                direction="row"
-                spacing={1}
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ pt: 1 }}
-              >
-                {projectPrimaryMeta}
-                {projectSecondaryMeta}
-              </Stack>
-            </Collapse>
-          </Box>
-          <Box sx={{ display: { xs: "none", md: "block" }, flexBasis: "100%" }}>
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {projectPrimaryMeta}
-              {projectSecondaryMeta}
-            </Stack>
-          </Box>
-        </>
-      }
     >
-      {isMobile && (
-        <Drawer
-          anchor="left"
-          open={mobileIndexOpen}
-          onClose={() => setMobileIndexOpen(false)}
-        >
-          <Box sx={{ width: 320, maxWidth: "86vw", p: 2 }}>
-            <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
-              <IconButton
-                aria-label="關閉索引"
-                onClick={() => setMobileIndexOpen(false)}
-              >
-                <CloseIcon />
-              </IconButton>
-            </Stack>
-            <ReaderIndexPanel
-              items={items}
-              volumes={volumes}
-              currentItemId={currentItem?.id}
-              basePath={basePath}
-              onNavigate={() => setMobileIndexOpen(false)}
-              bookmarks={projectBookmarks}
-              bookmarksEnabled={Boolean(session)}
-              bookmarksLoading={projectBookmarksQuery.isLoading}
-              onJumpToBookmark={handleJumpToBookmark}
-              onDeleteBookmark={handleDeleteBookmarkFromList}
-              pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
-              headings={storyHeadings}
-              activeHeadingLine={activeHeadingLine}
-              onJumpToHeading={handleJumpToHeading}
-              imagePages={currentEpisodePages}
-              activeImagePageIndex={pageIndex}
-              onJumpToImagePage={goToImagePage}
-            />
-          </Box>
-        </Drawer>
-      )}
+      <GlobalStyles
+        styles={{
+          "body footer": {
+            paddingBottom:
+              "calc(88px + env(safe-area-inset-bottom)) !important",
+          },
+        }}
+      />
+      <StorytellerReaderToolbar
+        projectName={project.name}
+        currentTitle={currentItem?.title}
+        progress={readingProgress}
+        navigationOpen={indexOpen}
+        onOpenNavigation={() => setIndexOpen(true)}
+        projectDetails={projectDetails}
+        bookmarkEditing={bookmarkEditing}
+        bookmarkEditingAvailable={Boolean(
+          currentStory && bookmarkMode !== "none",
+        )}
+        onToggleBookmarkEditing={() =>
+          setBookmarkEditing((editing) => !editing)
+        }
+        preferences={preferences}
+        onChangePreferences={updatePreferences}
+      />
 
-      <Stack
-        ref={actionBarRef}
-        direction="row"
-        spacing={1.5}
-        alignItems="center"
-        sx={{ mb: 2 }}
+      <Drawer
+        anchor="left"
+        open={indexOpen}
+        onClose={() => setIndexOpen(false)}
       >
-        <Button
-          variant="outlined"
-          startIcon={<MenuBookIcon />}
-          onClick={() =>
-            isMobile ? setMobileIndexOpen(true) : setIndexOpen((open) => !open)
-          }
-        >
-          {isMobile ? "開啟索引" : indexOpen ? "收起索引" : "展開索引"}
-        </Button>
-      </Stack>
+        <Box sx={{ width: { xs: 320, sm: 380 }, maxWidth: "92vw", p: 2 }}>
+          <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+            <IconButton
+              aria-label="關閉索引"
+              onClick={() => setIndexOpen(false)}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          <ReaderIndexPanel
+            items={items}
+            volumes={volumes}
+            currentItemId={currentItem?.id}
+            basePath={basePath}
+            onNavigate={() => setIndexOpen(false)}
+            bookmarks={projectBookmarks}
+            bookmarksEnabled={Boolean(session)}
+            bookmarksLoading={projectBookmarksQuery.isLoading}
+            onJumpToBookmark={handleJumpToBookmark}
+            onDeleteBookmark={handleDeleteBookmarkFromList}
+            pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
+            headings={storyHeadings}
+            activeHeadingLine={activeHeadingLine}
+            onJumpToHeading={handleJumpToHeading}
+            imagePages={currentEpisodePages}
+            activeImagePageIndex={pageIndex}
+            onJumpToImagePage={goToImagePage}
+          />
+        </Box>
+      </Drawer>
 
       <LoginPromptDialog
         open={loginPromptOpen}
@@ -2479,145 +2546,16 @@ export default function StorytellerReader() {
         }
       />
 
-      {/* 頂端功能列捲出畫面後，右下角出現快速按鈕：行動版可開索引，追蹤與評分快速選單原作也看得到（顯示但 disabled） */}
-      {(currentStory || currentEpisode) && (
-        <>
-          <Stack
-            spacing={1}
-            alignItems="center"
-            sx={{
-              position: "fixed",
-              right: { xs: 16, md: 32 },
-              bottom: { xs: 16, md: 32 },
-              zIndex: theme.zIndex.speedDial,
-            }}
-          >
-            {isMobile && (
-              <Zoom in={!actionBarVisible}>
-                <Fab
-                  size="medium"
-                  aria-label="開啟索引"
-                  onClick={() => setMobileIndexOpen(true)}
-                >
-                  <MenuBookIcon />
-                </Fab>
-              </Zoom>
-            )}
-            <Zoom in={!actionBarVisible}>
-              <Fab
-                color="primary"
-                size="medium"
-                aria-label="開啟追蹤與評分選單"
-                onClick={(event) => setQuickActionsAnchor(event.currentTarget)}
-              >
-                {isFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-              </Fab>
-            </Zoom>
-          </Stack>
-          <Popover
-            open={Boolean(quickActionsAnchor)}
-            anchorEl={quickActionsAnchor}
-            onClose={() => setQuickActionsAnchor(null)}
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
-            transformOrigin={{ vertical: "bottom", horizontal: "right" }}
-          >
-            <Stack spacing={1} sx={{ p: 1.5 }}>
-              {readerActions}
-            </Stack>
-          </Popover>
-        </>
-      )}
-
       {project.rating === "restricted" && !isOwner ? (
         <AgeConfirmationGate
           description="此創作專案標示為限制級，請確認你已年滿 18 歲後再繼續閱讀。"
           leaveTo={steamloomPath()}
           panelTitle="限制級創作專案"
         >
-          <Grid container spacing={2}>
-            {showInlineIndex && (
-              <Grid size={{ xs: 12, md: 4 }}>
-                {/* 索引跟著頁面捲動；章節過多時在欄內自行捲動 */}
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    p: 2,
-                    borderRadius: 1,
-                    position: "sticky",
-                    top: 80,
-                    maxHeight: "calc(100vh - 96px)",
-                    overflowY: "auto",
-                  }}
-                >
-                  <ReaderIndexPanel
-                    items={items}
-                    volumes={volumes}
-                    currentItemId={currentItem?.id}
-                    basePath={basePath}
-                    bookmarks={projectBookmarks}
-                    bookmarksEnabled={Boolean(session)}
-                    bookmarksLoading={projectBookmarksQuery.isLoading}
-                    onJumpToBookmark={handleJumpToBookmark}
-                    onDeleteBookmark={handleDeleteBookmarkFromList}
-                    pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
-                    headings={storyHeadings}
-                    activeHeadingLine={activeHeadingLine}
-                    onJumpToHeading={handleJumpToHeading}
-                    imagePages={currentEpisodePages}
-                    activeImagePageIndex={pageIndex}
-                    onJumpToImagePage={goToImagePage}
-                  />
-                </Paper>
-              </Grid>
-            )}
-
-            <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
-              {readerBody}
-            </Grid>
-          </Grid>
+          {readerBody}
         </AgeConfirmationGate>
       ) : (
-        <Grid container spacing={2}>
-          {showInlineIndex && (
-            <Grid size={{ xs: 12, md: 4 }}>
-              {/* 索引跟著頁面捲動；章節過多時在欄內自行捲動 */}
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  borderRadius: 1,
-                  position: "sticky",
-                  top: 80,
-                  maxHeight: "calc(100vh - 96px)",
-                  overflowY: "auto",
-                }}
-              >
-                <ReaderIndexPanel
-                  items={items}
-                  volumes={volumes}
-                  currentItemId={currentItem?.id}
-                  basePath={basePath}
-                  bookmarks={projectBookmarks}
-                  bookmarksEnabled={Boolean(session)}
-                  bookmarksLoading={projectBookmarksQuery.isLoading}
-                  onJumpToBookmark={handleJumpToBookmark}
-                  onDeleteBookmark={handleDeleteBookmarkFromList}
-                  pendingDeleteBookmarkIds={pendingDeleteBookmarkIds}
-                  headings={storyHeadings}
-                  activeHeadingLine={activeHeadingLine}
-                  onJumpToHeading={handleJumpToHeading}
-                  imagePages={currentEpisodePages}
-                  activeImagePageIndex={pageIndex}
-                  onJumpToImagePage={goToImagePage}
-                />
-              </Paper>
-            </Grid>
-          )}
-
-          <Grid size={{ xs: 12, md: showInlineIndex ? 8 : 12 }}>
-            {readerBody}
-          </Grid>
-        </Grid>
+        <>{readerBody}</>
       )}
     </StorytellerShell>
   );
