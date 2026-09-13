@@ -22,6 +22,7 @@ import {
   Dialog,
   Divider,
   Drawer,
+  GlobalStyles,
   IconButton,
   Paper,
   Rating,
@@ -827,16 +828,21 @@ function ChapterNavCard({
       onClick={disabled ? undefined : onClick}
       aria-disabled={disabled}
       sx={{
+        width: "100%",
         display: "flex",
         flexDirection: "column",
+        alignItems:
+          align === "center"
+            ? "center"
+            : align === "right"
+              ? "flex-end"
+              : "flex-start",
         justifyContent: "flex-start",
         gap: 0.5,
         px: 1,
         py: 1.25,
         minHeight: 40,
         border: 0,
-        borderTop: "1px solid",
-        borderColor: "divider",
         bgcolor: "transparent",
         font: "inherit",
         textDecoration: "none",
@@ -859,7 +865,7 @@ function ChapterNavCard({
               ? "flex-end"
               : "flex-start"
         }
-        sx={{ color: "text.secondary" }}
+        sx={{ width: "100%", color: "text.secondary" }}
       >
         {align === "left" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
         <Typography variant="caption" color="inherit">
@@ -870,6 +876,8 @@ function ChapterNavCard({
       <Typography
         fontWeight={800}
         sx={{
+          width: "100%",
+          textAlign: align,
           lineHeight: 1.35,
           overflowWrap: "anywhere",
           wordBreak: "break-word",
@@ -882,6 +890,87 @@ function ChapterNavCard({
         {title}
       </Typography>
     </Box>
+  );
+}
+
+function ReaderBottomNavigation({
+  previousItem,
+  nextItem,
+  basePath,
+  onOpenIndex,
+}: {
+  previousItem?: ReaderItem;
+  nextItem?: ReaderItem;
+  basePath: string;
+  onOpenIndex: () => void;
+}) {
+  return (
+    <Paper
+      component="nav"
+      aria-label="篇章導覽"
+      square
+      elevation={8}
+      sx={(theme) => ({
+        position: "fixed",
+        insetInline: 0,
+        bottom: 0,
+        zIndex: theme.zIndex.appBar - 1,
+        borderTop: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        backgroundImage: "none",
+        pb: "env(safe-area-inset-bottom)",
+      })}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 1200,
+          mx: "auto",
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+          },
+          px: { xs: 1, sm: 2 },
+          boxSizing: "border-box",
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <ChapterNavCard
+            label="上一篇"
+            title={previousItem?.title ?? "沒有上一篇"}
+            to={previousItem ? itemHref(basePath, previousItem) : undefined}
+            disabled={!previousItem}
+            align="left"
+          />
+        </Box>
+        <Box
+          sx={{
+            minWidth: 0,
+            display: { xs: "none", md: "block" },
+            borderInline: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <ChapterNavCard
+            label="作品"
+            title="回到作品目錄"
+            align="center"
+            onClick={onOpenIndex}
+          />
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <ChapterNavCard
+            label="下一篇"
+            title={nextItem?.title ?? "沒有下一篇"}
+            to={nextItem ? itemHref(basePath, nextItem) : undefined}
+            disabled={!nextItem}
+            align="right"
+          />
+        </Box>
+      </Box>
+    </Paper>
   );
 }
 
@@ -1624,8 +1713,11 @@ export default function StorytellerReader() {
     let frame: number | null = null;
     const updateProgress = () => {
       const bodyTop = node.getBoundingClientRect().top + window.scrollY;
+      const bottomSpacerHeight =
+        node.querySelector<HTMLElement>("[data-reader-bottom-spacer]")
+          ?.offsetHeight ?? 0;
       const scrollableHeight = Math.max(
-        node.offsetHeight - window.innerHeight,
+        node.offsetHeight - bottomSpacerHeight - window.innerHeight,
         1,
       );
       const next = Math.min(
@@ -2194,45 +2286,6 @@ export default function StorytellerReader() {
               </Box>
             )}
           </Stack>
-          <Divider />
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-              gap: 1.5,
-              minWidth: 0,
-            }}
-          >
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="上一篇"
-                title={previousItem?.title ?? "沒有上一篇"}
-                to={previousItem ? itemHref(basePath, previousItem) : undefined}
-                disabled={!previousItem}
-                align="left"
-              />
-            </Box>
-            <Box sx={{ minWidth: 0, display: { xs: "none", md: "block" } }}>
-              <ChapterNavCard
-                label="作品"
-                title="回到作品目錄"
-                align="center"
-                onClick={() => setIndexOpen(true)}
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="下一篇"
-                title={nextItem?.title ?? "沒有下一篇"}
-                to={nextItem ? itemHref(basePath, nextItem) : undefined}
-                disabled={!nextItem}
-                align="right"
-              />
-            </Box>
-          </Box>
         </Stack>
       ) : currentStory ? (
         <Stack
@@ -2384,48 +2437,24 @@ export default function StorytellerReader() {
               idPrefix={footnoteIdPrefix}
             />
           </Box>
-          <Divider />
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-              gap: 1.5,
-              minWidth: 0,
-            }}
-          >
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="上一篇"
-                title={previousItem?.title ?? "沒有上一篇"}
-                to={previousItem ? itemHref(basePath, previousItem) : undefined}
-                disabled={!previousItem}
-                align="left"
-              />
-            </Box>
-            <Box sx={{ minWidth: 0, display: { xs: "none", md: "block" } }}>
-              <ChapterNavCard
-                label="作品"
-                title="回到作品目錄"
-                align="center"
-                onClick={() => setIndexOpen(true)}
-              />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <ChapterNavCard
-                label="下一篇"
-                title={nextItem?.title ?? "沒有下一篇"}
-                to={nextItem ? itemHref(basePath, nextItem) : undefined}
-                disabled={!nextItem}
-                align="right"
-              />
-            </Box>
-          </Box>
         </Stack>
       ) : (
         <Typography color="text.secondary">目前還沒有任何作品。</Typography>
+      )}
+      {currentItem && (
+        <>
+          <Box
+            aria-hidden="true"
+            data-reader-bottom-spacer
+            sx={{ height: "calc(88px + env(safe-area-inset-bottom))" }}
+          />
+          <ReaderBottomNavigation
+            previousItem={previousItem}
+            nextItem={nextItem}
+            basePath={basePath}
+            onOpenIndex={() => setIndexOpen(true)}
+          />
+        </>
       )}
     </Paper>
   );
@@ -2438,6 +2467,14 @@ export default function StorytellerReader() {
         { label: project.name },
       ]}
     >
+      <GlobalStyles
+        styles={{
+          "body footer": {
+            paddingBottom:
+              "calc(88px + env(safe-area-inset-bottom)) !important",
+          },
+        }}
+      />
       <StorytellerReaderToolbar
         projectName={project.name}
         currentTitle={currentItem?.title}

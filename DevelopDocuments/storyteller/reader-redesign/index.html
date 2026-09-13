@@ -16,7 +16,20 @@
       </a>
       <nav class="site-actions" aria-label="網站功能">
         <button class="icon-button" type="button" aria-label="搜尋作品">⌕</button>
-        <button class="icon-button" id="themeButton" type="button" aria-label="切換為夜間模式">◐</button>
+        <button class="icon-button" id="appearanceButton" type="button" aria-label="外觀設定" aria-expanded="false">◐</button>
+        <div class="appearance-popover" id="appearancePopover" hidden>
+          <strong>外觀設定</strong>
+          <span>明暗模式</span>
+          <button class="mode-toggle" id="themeButton" type="button">切換日間／夜間</button>
+          <span>網站色系</span>
+          <div class="footer-themes" aria-label="網站色系">
+            <button class="brass is-active" type="button" aria-label="黃銅色系"></button>
+            <button class="bronze" type="button" aria-label="青銅色系"></button>
+            <button class="malachite" type="button" aria-label="孔雀石色系"></button>
+            <button class="steel" type="button" aria-label="鋼鐵色系"></button>
+            <button class="cobalt" type="button" aria-label="鈷藍色系"></button>
+          </div>
+        </div>
         <button class="create-button" type="button"><span aria-hidden="true">＋</span>建立創作專案</button>
         <button class="avatar-button" type="button" aria-label="帳號選單">F</button>
       </nav>
@@ -203,7 +216,7 @@
 
         <footer class="chapter-navigation">
           <a href="#"><span>上一篇</span><strong>第四話　紫乃的寧靜一日</strong></a>
-          <button id="catalogFooterButton" type="button"><span>回到</span><strong>作品目錄</strong></button>
+          <button id="catalogFooterButton" type="button"><span>作品</span><strong>回到作品目錄</strong></button>
           <a class="next" href="#"><span>下一篇</span><strong>第六話　藍藍的一天</strong></a>
         </footer>
       </article>
@@ -214,13 +227,6 @@
       <div class="footer-actions">
         <a href="#" aria-label="Facebook">f</a>
         <a href="#" aria-label="X">𝕏</a>
-        <div class="footer-themes" aria-label="網站色系">
-          <button class="brass is-active" type="button" aria-label="黃銅色系"></button>
-          <button class="bronze" type="button" aria-label="青銅色系"></button>
-          <button class="malachite" type="button" aria-label="孔雀石色系"></button>
-          <button class="steel" type="button" aria-label="鋼鐵色系"></button>
-          <button class="cobalt" type="button" aria-label="鈷藍色系"></button>
-        </div>
       </div>
     </footer>
 

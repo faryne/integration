@@ -8,6 +8,8 @@ const settingsPanel = document.getElementById("settingsPanel");
 const bookmarkEditToggles = document.querySelectorAll("[data-bookmark-edit-toggle]");
 const scrim = document.getElementById("scrim");
 const toast = document.getElementById("toast");
+const appearanceButton = document.getElementById("appearanceButton");
+const appearancePopover = document.getElementById("appearancePopover");
 let toastTimer;
 
 function closeOverlays() {
@@ -140,6 +142,11 @@ document.getElementById("themeButton").addEventListener("click", () => {
 });
 
 document.getElementById("catalogFooterButton").addEventListener("click", () => indexButton.click());
+
+appearanceButton.addEventListener("click", () => {
+  appearancePopover.hidden = !appearancePopover.hidden;
+  appearanceButton.setAttribute("aria-expanded", String(!appearancePopover.hidden));
+});
 
 function updateReadingProgress() {
   const storyPaper = document.getElementById("storyPaper");
