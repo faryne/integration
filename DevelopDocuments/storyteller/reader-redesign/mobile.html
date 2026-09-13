@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SteamLoom 閱讀頁重構・行動版 Mockup</title>
+    <link rel="stylesheet" href="./mobile-preview.css" />
+  </head>
+  <body>
+    <main class="preview-layout">
+      <header class="preview-header">
+        <div>
+          <span>行動版 Mockup</span>
+          <h1>Storyteller Reader</h1>
+        </div>
+        <div class="device-switch" aria-label="預覽寬度">
+          <button class="is-active" type="button" data-width="390">390px</button>
+          <button type="button" data-width="430">430px</button>
+        </div>
+      </header>
+
+      <section class="device" aria-label="行動版閱讀頁預覽">
+        <div class="device-speaker" aria-hidden="true"></div>
+        <iframe id="readerFrame" src="./index.html" title="SteamLoom 行動版閱讀頁"></iframe>
+      </section>
+
+      <p class="preview-hint">可直接操作目錄、作品資訊、閱讀設定、段落書籤與捲動進度。</p>
+    </main>
+    <script>
+      const device = document.querySelector(".device");
+      document.querySelectorAll("[data-width]").forEach((button) => {
+        button.addEventListener("click", () => {
+          device.style.width = `${button.dataset.width}px`;
+          document.querySelectorAll("[data-width]").forEach((item) => item.classList.toggle("is-active", item === button));
+        });
+      });
+    </script>
+  </body>
+</html>
