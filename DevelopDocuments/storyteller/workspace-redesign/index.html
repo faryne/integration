@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SteamLoom 工作台重構 Mockup</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-brand" href="#"
+        ><span class="site-mark">S</span><strong>SteamLoom</strong></a
+      >
+      <div class="site-actions">
+        <button
+          class="icon-button"
+          type="button"
+          aria-label="搜尋作品"
+          title="搜尋作品"
+        >
+          ⌕
+        </button>
+        <button
+          class="icon-button"
+          type="button"
+          aria-label="外觀設定"
+          title="外觀設定"
+        >
+          ◐
+        </button>
+        <button class="create-project" type="button">
+          <span>＋</span><span class="create-project-label">建立創作專案</span>
+        </button>
+        <button class="avatar" type="button" aria-label="帳號選單">F</button>
+      </div>
+    </header>
+
+    <section class="workspace" id="workspace">
+      <header class="workspace-context">
+        <button
+          class="navigator-trigger"
+          id="navigatorTrigger"
+          type="button"
+          aria-controls="workspaceNavigator"
+          aria-expanded="false"
+        >
+          <span aria-hidden="true">☰</span><span>導覽</span>
+        </button>
+        <nav class="workspace-trail" aria-label="工作台位置">
+          <button class="project-switcher" type="button">
+            飛機杯少女 <span>⌄</span>
+          </button>
+          <span class="trail-separator">/</span>
+          <span id="trailSection">作品與冊</span>
+          <span class="trail-separator trail-detail">/</span>
+          <strong class="trail-detail" id="trailDetail">全部作品</strong>
+        </nav>
+        <button class="primary-action" id="createItemButton" type="button">
+          <span>＋</span><span>新增作品</span>
+        </button>
+      </header>
+
+      <div class="workspace-layout">
+        <aside
+          class="workspace-navigator"
+          id="workspaceNavigator"
+          aria-label="專案導覽"
+        >
+          <div class="navigator-mobile-header">
+            <div>
+              <span class="navigator-kicker">目前專案</span
+              ><strong>飛機杯少女</strong>
+            </div>
+            <button
+              class="icon-button"
+              id="navigatorClose"
+              type="button"
+              aria-label="關閉導覽"
+            >
+              ×
+            </button>
+          </div>
+
+          <div class="project-summary">
+            <span class="project-monogram">飛</span>
+            <div><strong>飛機杯少女</strong><span>最後更新 5 分鐘前</span></div>
+          </div>
+
+          <nav class="navigator-scroll" aria-label="內容分類">
+            <section class="navigator-group is-open">
+              <div class="group-header">
+                <button
+                  class="group-heading"
+                  type="button"
+                  aria-expanded="true"
+                >
+                  <span class="group-icon">▤</span><span>作品與冊</span
+                  ><span class="group-count">11</span
+                  ><span class="chevron">⌄</span>
+                </button>
+                <button
+                  class="sort-group"
+                  type="button"
+                  data-sort-group
+                  aria-label="編輯冊排序"
+                  aria-pressed="false"
+                  title="編輯冊排序"
+                >
+                  ⇅
+                </button>
+              </div>
+              <div class="group-items">
+                <button
+                  class="navigator-item is-active"
+                  type="button"
+                  data-section="stories"
+                  data-title="全部作品"
+                >
+                  <span>全部作品</span><span>11</span>
+                </button>
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="stories"
+                  data-title="未分冊"
+                >
+                  <span>未分冊</span><span>2</span>
+                </button>
+                <div class="tree-collection">
+                  <div class="tree-collection-row">
+                    <button
+                      class="navigator-item has-children"
+                      type="button"
+                      data-section="stories"
+                      data-title="第一冊　日常篇"
+                      data-expandable
+                      aria-expanded="false"
+                    >
+                      <span class="branch-toggle">›</span
+                      ><span class="item-label">第一冊　日常篇</span
+                      ><span>6</span>
+                    </button>
+                    <div class="reorder-controls" aria-label="調整第一冊順序">
+                      <button type="button" data-move="up" aria-label="往上移">
+                        ↑</button
+                      ><button
+                        type="button"
+                        data-move="down"
+                        aria-label="往下移"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                  <div class="nested-items" hidden>
+                    <button
+                      type="button"
+                      data-open-editor
+                      data-item-title="第四話　紫乃的寧靜一日"
+                    >
+                      <span>N</span>第四話　紫乃的寧靜一日
+                    </button>
+                    <button
+                      type="button"
+                      data-open-editor
+                      data-item-title="第五話　綠葉的慵懶一日"
+                    >
+                      <span>N</span>第五話　綠葉的慵懶一日
+                    </button>
+                    <button
+                      type="button"
+                      data-open-editor
+                      data-item-title="第六話　藍藍的一天"
+                    >
+                      <span>N</span>第六話　藍藍的一天
+                    </button>
+                  </div>
+                </div>
+                <div class="tree-collection">
+                  <div class="tree-collection-row">
+                    <button
+                      class="navigator-item has-children"
+                      type="button"
+                      data-section="stories"
+                      data-title="第二冊　旅行篇"
+                      data-expandable
+                      aria-expanded="false"
+                    >
+                      <span class="branch-toggle">›</span
+                      ><span class="item-label">第二冊　旅行篇</span
+                      ><span>3</span>
+                    </button>
+                    <div class="reorder-controls" aria-label="調整第二冊順序">
+                      <button type="button" data-move="up" aria-label="往上移">
+                        ↑</button
+                      ><button
+                        type="button"
+                        data-move="down"
+                        aria-label="往下移"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                  <div class="nested-items" hidden>
+                    <button
+                      type="button"
+                      data-open-editor
+                      data-item-title="雨夜裡的約定"
+                    >
+                      <span>N</span>雨夜裡的約定
+                    </button>
+                    <button
+                      type="button"
+                      data-open-editor
+                      data-item-title="第一次一起出門"
+                    >
+                      <span>N</span>第一次一起出門
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="navigator-group is-open">
+              <div class="group-header">
+                <button
+                  class="group-heading"
+                  type="button"
+                  aria-expanded="true"
+                >
+                  <span class="group-icon">◇</span><span>設定集</span
+                  ><span class="group-count">18</span
+                  ><span class="chevron">⌄</span>
+                </button>
+                <button
+                  class="sort-group"
+                  type="button"
+                  data-sort-group
+                  aria-label="編輯設定集排序"
+                  aria-pressed="false"
+                  title="編輯設定集排序"
+                >
+                  ⇅
+                </button>
+              </div>
+              <div class="group-items">
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="lores"
+                  data-title="全部設定"
+                >
+                  <span>全部設定</span><span>18</span>
+                </button>
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="lores"
+                  data-title="角色設定"
+                >
+                  <span>角色設定</span><span>7</span>
+                </button>
+                <div class="tree-collection">
+                  <div class="tree-collection-row">
+                    <button
+                      class="navigator-item has-children"
+                      type="button"
+                      data-section="lores"
+                      data-title="世界觀"
+                      data-expandable
+                      aria-expanded="false"
+                    >
+                      <span class="branch-toggle">›</span
+                      ><span class="item-label">世界觀</span><span>11</span>
+                    </button>
+                    <div
+                      class="reorder-controls"
+                      aria-label="調整世界觀設定集順序"
+                    >
+                      <button type="button" data-move="up" aria-label="往上移">
+                        ↑</button
+                      ><button
+                        type="button"
+                        data-move="down"
+                        aria-label="往下移"
+                      >
+                        ↓
+                      </button>
+                    </div>
+                  </div>
+                  <div class="nested-items" hidden>
+                    <button type="button">
+                      <span>L</span>飛機杯少女共通設定
+                    </button>
+                    <button type="button"><span>L</span>男主角的住所</button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="navigator-group is-open">
+              <button class="group-heading" type="button" aria-expanded="true">
+                <span class="group-icon">▧</span><span>資產集</span
+                ><span class="group-count">24</span
+                ><span class="chevron">⌄</span>
+              </button>
+              <div class="group-items">
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="assets"
+                  data-title="全部資產"
+                >
+                  <span>全部資產</span><span>24</span>
+                </button>
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="assets"
+                  data-title="角色立繪"
+                >
+                  <span>角色立繪</span><span>8</span>
+                </button>
+                <button
+                  class="navigator-item"
+                  type="button"
+                  data-section="assets"
+                  data-title="場景參考"
+                >
+                  <span>場景參考</span><span>16</span>
+                </button>
+              </div>
+            </section>
+          </nav>
+
+          <div class="navigator-footer">
+            <button type="button"><span>⚙</span><span>編輯專案</span></button>
+            <button type="button"><span>↗</span><span>開啟閱讀頁</span></button>
+          </div>
+        </aside>
+
+        <button
+          class="navigator-collapse"
+          id="navigatorCollapse"
+          type="button"
+          aria-label="收合側邊欄"
+          title="收合側邊欄"
+        >
+          ‹
+        </button>
+        <button
+          class="navigator-scrim"
+          id="navigatorScrim"
+          type="button"
+          aria-label="關閉導覽"
+          hidden
+        ></button>
+
+        <main class="workspace-content">
+          <section class="list-view" id="listView">
+            <header class="content-heading">
+              <div>
+                <span class="content-eyebrow" id="contentEyebrow"
+                  >作品與冊 · 11 個項目</span
+                >
+                <h1 id="contentTitle">全部作品</h1>
+              </div>
+              <div class="content-actions">
+                <button class="secondary-action" type="button">
+                  排序：最近更新⌄
+                </button>
+                <button class="more-action" type="button" aria-label="更多操作">
+                  •••
+                </button>
+              </div>
+            </header>
+
+            <div class="content-panels">
+              <div class="content-panel is-active" data-panel="stories">
+                <div class="list-columns" aria-hidden="true">
+                  <span>作品</span><span>狀態</span><span>最後更新</span
+                  ><span></span>
+                </div>
+                <button
+                  class="content-row"
+                  type="button"
+                  data-open-editor
+                  data-item-title="第五話　綠葉的慵懶一日"
+                >
+                  <span class="row-icon">N</span
+                  ><span class="row-main"
+                    ><strong>第五話　綠葉的慵懶一日</strong
+                    ><small>第一冊　日常篇 · 11,937 字</small></span
+                  ><span class="status is-public">公開</span
+                  ><time>5 分鐘前</time><span class="row-more">•••</span>
+                </button>
+                <button
+                  class="content-row"
+                  type="button"
+                  data-open-editor
+                  data-item-title="第六話　藍藍的一天"
+                >
+                  <span class="row-icon">N</span
+                  ><span class="row-main"
+                    ><strong>第六話　藍藍的一天</strong
+                    ><small>第一冊　日常篇 · 9,284 字</small></span
+                  ><span class="status is-draft">草稿</span><time>昨天</time
+                  ><span class="row-more">•••</span>
+                </button>
+                <button
+                  class="content-row"
+                  type="button"
+                  data-open-editor
+                  data-item-title="紫乃的寧靜一日"
+                >
+                  <span class="row-icon">N</span
+                  ><span class="row-main"
+                    ><strong>第四話　紫乃的寧靜一日</strong
+                    ><small>第一冊　日常篇 · 10,421 字</small></span
+                  ><span class="status is-public">公開</span><time>9月10日</time
+                  ><span class="row-more">•••</span>
+                </button>
+                <button
+                  class="content-row"
+                  type="button"
+                  data-open-editor
+                  data-item-title="角色視覺設定"
+                >
+                  <span class="row-icon is-image">I</span
+                  ><span class="row-main"
+                    ><strong>角色視覺設定</strong
+                    ><small>未分冊 · 12 頁</small></span
+                  ><span class="status is-draft">草稿</span><time>9月8日</time
+                  ><span class="row-more">•••</span>
+                </button>
+              </div>
+
+              <div class="content-panel" data-panel="lores" hidden>
+                <div class="list-columns" aria-hidden="true">
+                  <span>設定</span><span>分類</span><span>最後更新</span
+                  ><span></span>
+                </div>
+                <button class="content-row" type="button">
+                  <span class="row-icon">L</span
+                  ><span class="row-main"
+                    ><strong>紫乃</strong
+                    ><small>3,128 字 · 主要角色</small></span
+                  ><span class="status is-neutral">角色設定</span
+                  ><time>今天</time><span class="row-more">•••</span>
+                </button>
+                <button class="content-row" type="button">
+                  <span class="row-icon">L</span
+                  ><span class="row-main"
+                    ><strong>飛機杯少女的共通設定</strong
+                    ><small>2,560 字 · 共通規則</small></span
+                  ><span class="status is-neutral">世界觀</span><time>昨天</time
+                  ><span class="row-more">•••</span>
+                </button>
+                <button class="content-row" type="button">
+                  <span class="row-icon">L</span
+                  ><span class="row-main"
+                    ><strong>男主角的住所</strong
+                    ><small>1,050 字 · 地點</small></span
+                  ><span class="status is-neutral">世界觀</span
+                  ><time>9月9日</time><span class="row-more">•••</span>
+                </button>
+              </div>
+
+              <div class="content-panel asset-grid" data-panel="assets" hidden>
+                <button class="asset-tile" type="button">
+                  <span class="asset-preview">紫</span
+                  ><strong>紫乃・立繪</strong><small>引用 8 次 · PNG</small>
+                </button>
+                <button class="asset-tile" type="button">
+                  <span class="asset-preview is-green">綠</span
+                  ><strong>綠葉・立繪</strong><small>引用 6 次 · PNG</small>
+                </button>
+                <button class="asset-tile" type="button">
+                  <span class="asset-preview is-blue">藍</span
+                  ><strong>藍藍・立繪</strong><small>引用 7 次 · PNG</small>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="editor-view" id="editorView" hidden>
+            <header class="editor-heading">
+              <button class="back-to-list" id="backToList" type="button">
+                ← 回列表
+              </button>
+              <div class="editor-heading-actions">
+                <span>已儲存</span
+                ><button class="secondary-action" type="button">預覽</button
+                ><button class="primary-action" type="button">存檔</button>
+              </div>
+            </header>
+            <article class="editor-paper">
+              <div class="editor-title" id="editorTitle" contenteditable="true">
+                第五話　綠葉的慵懶一日
+              </div>
+              <div class="editor-meta">
+                <span>公開</span><span>第一冊　日常篇</span
+                ><span>自動存檔已開啟</span>
+              </div>
+              <p>某天深夜，主角拖著疲憊的身體回到家。</p>
+              <p>
+                一個星期的加班讓他幾乎沒有好好釋放過，現在終於有時間好好享受積存的慾望。
+              </p>
+              <p>他從架上拿起小綠的飛機杯和專用潤滑液，回到座位。</p>
+              <p class="editor-placeholder">
+                輸入 / 插入區塊；選取文字可套用樣式
+              </p>
+            </article>
+            <footer class="editor-commandbar">
+              <button type="button">▣</button><span>11,937 字</span
+              ><span>最後更新 5 分鐘前</span><span class="command-spacer"></span
+              ><button type="button">歷史</button
+              ><button type="button">AI 協作</button>
+            </footer>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <div
+      class="mock-toast"
+      id="mockToast"
+      role="status"
+      aria-live="polite"
+    ></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

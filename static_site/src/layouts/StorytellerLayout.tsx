@@ -64,11 +64,17 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
-import { Link as RouterLink, Outlet, useNavigate } from "react-router-dom";
+import {
+  Link as RouterLink,
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 export function StorytellerLayout() {
   const { user, session, loading, submitting, login, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [accountMenuAnchor, setAccountMenuAnchor] =
     useState<HTMLElement | null>(null);
   // 搜尋圖示點開才展開的輸入框，不佔用常駐 header 空間；送出後導去搜尋頁並收合。
@@ -190,6 +196,12 @@ export function StorytellerLayout() {
   const displayName =
     session?.user.display_name ?? user?.displayName ?? user?.email ?? "使用者";
   const photoURL = session?.user.photo_url ?? user?.photoURL ?? undefined;
+  const workspaceRoot = steamloomPath("my");
+  // 工作台本身是固定高度的 app shell，專案操作也已收進 navigator；普通網站 footer
+  // 在這裡只會被壓在殼後或造成重複操作，僅保留給公開瀏覽與閱讀頁。
+  const showFooter =
+    location.pathname !== workspaceRoot &&
+    !location.pathname.startsWith(`${workspaceRoot}/`);
 
   const showPenNameDialog =
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
@@ -424,10 +436,12 @@ export function StorytellerLayout() {
               <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
                 <Outlet />
               </Container>
-              <Container component="footer" maxWidth="xl">
-                <Divider />
-                <IndependentFooter service_name={STORYTELLER_APP_NAME} />
-              </Container>
+              {showFooter && (
+                <Container component="footer" maxWidth="xl">
+                  <Divider />
+                  <IndependentFooter service_name={STORYTELLER_APP_NAME} />
+                </Container>
+              )}
             </Stack>
           </StorytellerSeasonalContext.Provider>
         </StorytellerPaletteContext.Provider>

@@ -118,8 +118,12 @@ export function StoryRow({
             : undefined
         }
         sx={{
-          p: 1,
-          borderRadius: 1,
+          px: { xs: 0.5, sm: 1 },
+          py: 1.25,
+          minHeight: 64,
+          borderRadius: 0,
+          borderBottom: 1,
+          borderColor: "divider",
           cursor: reorderable ? "grab" : "pointer",
           bgcolor: "transparent",
           opacity: dragging ? 0.55 : 1,
@@ -149,34 +153,50 @@ export function StoryRow({
                 {story.title}
               </Typography>
             </Tooltip>
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {isImage
-                ? `${storyPageCount(story)} 頁`
-                : `${story.word_count.toLocaleString()} 字`}{" "}
-              · 更新於 {formatStorytellerDate(story.updated_at)}
-            </Typography>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {isImage
+                  ? `${storyPageCount(story)} 頁`
+                  : `${story.word_count.toLocaleString()} 字`}
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  {" "}
+                  · 更新於 {formatStorytellerDate(story.updated_at)}
+                </Box>
+              </Typography>
+              {collectionChip}
+              <Chip
+                size="small"
+                label={isPublic ? "公開" : "草稿"}
+                variant="outlined"
+                sx={{
+                  height: 20,
+                  borderRadius: 1,
+                  fontWeight: 800,
+                  color: (theme) =>
+                    isPublic
+                      ? theme.palette.primary.main
+                      : theme.palette.text.secondary,
+                  borderColor: (theme) =>
+                    isPublic
+                      ? theme.palette.primary.main
+                      : theme.palette.divider,
+                  bgcolor: (theme) =>
+                    isPublic
+                      ? alpha(theme.palette.primary.main, 0.12)
+                      : alpha(theme.palette.text.secondary, 0.06),
+                }}
+              />
+            </Stack>
           </Box>
-          {collectionChip}
-          <Chip
-            size="small"
-            label={isPublic ? "公開" : "草稿"}
-            variant="outlined"
-            sx={{
-              height: 22,
-              borderRadius: 1,
-              fontWeight: 800,
-              color: (theme) =>
-                isPublic
-                  ? theme.palette.primary.main
-                  : theme.palette.text.secondary,
-              borderColor: (theme) =>
-                isPublic ? theme.palette.primary.main : theme.palette.divider,
-              bgcolor: (theme) =>
-                isPublic
-                  ? alpha(theme.palette.primary.main, 0.12)
-                  : alpha(theme.palette.text.secondary, 0.06),
-            }}
-          />
           {actions && (
             <Box
               onClick={(event) => event.stopPropagation()}
@@ -207,8 +227,12 @@ export function LoreRow({
       elevation={0}
       onClick={onClick}
       sx={{
-        p: 1,
-        borderRadius: 1,
+        px: { xs: 0.5, sm: 1 },
+        py: 1.25,
+        minHeight: 64,
+        borderRadius: 0,
+        borderBottom: 1,
+        borderColor: "divider",
         cursor: "pointer",
         bgcolor: "transparent",
         "&:hover": {
@@ -233,12 +257,26 @@ export function LoreRow({
               {lore.title}
             </Typography>
           </Tooltip>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {lore.word_count.toLocaleString()} 字 · 更新於{" "}
-            {formatStorytellerDate(lore.updated_at)}
-          </Typography>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {lore.word_count.toLocaleString()} 字
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
+                {" "}
+                · 更新於 {formatStorytellerDate(lore.updated_at)}
+              </Box>
+            </Typography>
+            {collectionChip}
+          </Stack>
         </Box>
-        {collectionChip}
         {actions && (
           <Box
             onClick={(event) => event.stopPropagation()}
