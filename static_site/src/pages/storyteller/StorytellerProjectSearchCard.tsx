@@ -8,7 +8,7 @@ import {
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import type { StorytellerProjectSearchResult } from "@/types/storyteller.ts";
 
 export interface StorytellerProjectSearchCardProps {
@@ -28,9 +28,15 @@ export function StorytellerProjectSearchCard({
   return (
     <Paper
       variant="outlined"
-      sx={{ p: 2, borderRadius: 1, height: 1, boxSizing: "border-box", ...steamPanelTopBarSx }}
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        height: 1,
+        boxSizing: "border-box",
+        ...steamPanelTopBarSx,
+      }}
     >
-      <SteamRivets inset={7} />
+      <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1 }}>
         <Stack
           direction="row"
@@ -93,11 +99,7 @@ export function StorytellerProjectSearchCard({
                 variant="outlined"
                 icon={<SellIcon fontSize="small" />}
                 label={tag}
-                onClick={
-                  onTagClick
-                    ? () => onTagClick(tag)
-                    : undefined
-                }
+                onClick={onTagClick ? () => onTagClick(tag) : undefined}
               />
             ))}
           </Stack>

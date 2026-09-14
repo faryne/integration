@@ -1,4 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
@@ -6,27 +5,24 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DescriptionIcon from "@mui/icons-material/Description";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
-import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import RemoveIcon from "@mui/icons-material/Remove";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ViewListIcon from "@mui/icons-material/ViewList";
+import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import {
   Box,
   Chip,
   CircularProgress,
-  Collapse,
-  Divider,
   Grid,
-  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
   Pagination,
-  Paper,
   Stack,
-  Tooltip,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
   type SxProps,
   type Theme,
 } from "@mui/material";
@@ -50,6 +46,7 @@ import {
   StoryRow,
 } from "./ProjectWorkspacePreviewRows.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
+import { useWorkspaceViewMode } from "./workspaceViewMode.ts";
 import type {
   StorytellerAsset,
   StorytellerLore,
@@ -57,21 +54,7 @@ import type {
   StorytellerStory,
 } from "@/types/storyteller.ts";
 
-export function WorkspaceSidebar({
-  project,
-  selected,
-  stories,
-  volumes,
-  loreCollections,
-  assetCollections,
-  onSelect,
-  onSelectItem,
-  selectedItem,
-  onCreateVolume,
-  onCreateLoreCollection,
-  onCreateAssetCollection,
-  onReorderVolume,
-}: {
+export interface WorkspaceSidebarProps {
   project?: StorytellerProject;
   selected: SelectedNode;
   stories: StorytellerStory[];
@@ -93,7 +76,30 @@ export function WorkspaceSidebar({
   onCreateLoreCollection?: () => void;
   onCreateAssetCollection?: () => void;
   onReorderVolume?: (draggedId: string, beforeId: string | null) => void;
-}) {
+  onReorderLoreCollection?: (
+    draggedId: string,
+    beforeId: string | null,
+  ) => void;
+  onNavigate?: () => void;
+}
+
+export function WorkspaceSidebar({
+  project,
+  selected,
+  stories,
+  volumes,
+  loreCollections,
+  assetCollections,
+  onSelect,
+  onSelectItem,
+  selectedItem,
+  onCreateVolume,
+  onCreateLoreCollection,
+  onCreateAssetCollection,
+  onReorderVolume,
+  onReorderLoreCollection,
+  onNavigate,
+}: WorkspaceSidebarProps) {
   const storiesByCollection = useMemo(() => {
     const grouped = new Map<string, StorytellerStory[]>();
     const volumeIds = new Map(volumes.map((volume) => [volume.id, volume]));
@@ -122,7 +128,6 @@ export function WorkspaceSidebar({
   return (
     <Stack sx={{ height: 1, color: "text.secondary" }}>
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 1, pb: 0 }}>
-        {project && <ProjectActionsGroup project={project} />}
         <SidebarGroup
           title="作品與冊"
           section="stories"
@@ -174,6 +179,7 @@ export function WorkspaceSidebar({
           onSelectItem={onSelectItem}
           selectedItem={selectedItem}
           onCreate={onCreateLoreCollection}
+          onReorder={onReorderLoreCollection}
         />
         <SidebarGroup
           title="資產集"
@@ -200,16 +206,22 @@ export function WorkspaceSidebar({
           onCreate={onCreateAssetCollection}
         />
       </Box>
-      <WorkspaceSidebarFooter />
+      {project && (
+        <ProjectActionsGroup project={project} onNavigate={onNavigate} />
+      )}
     </Stack>
   );
 }
 
-// 「編輯專案」「開啟閱讀頁」「刪除專案」這幾個原本只有 /project/:id 那個舊頁面才有的
-// 專案層級操作——Notion 風工作台預覽頁一直沒有對應入口，使用者進來後找不到，補一個
-// 側邊欄群組放這些功能，跟其他分組共用同一套「展開/收合＋列表」視覺語言。
-function ProjectActionsGroup({ project }: { project: StorytellerProject }) {
-  const [expanded, setExpanded] = useState(true);
+// 專案層級操作固定在 navigator 底部，不跟會捲動的冊／設定集混在一起；mobile
+// Drawer 與 desktop sidebar 共用這一區，也就不需要再放一個網站 footer。
+function ProjectActionsGroup({
+  project,
+  onNavigate,
+}: {
+  project: StorytellerProject;
+  onNavigate?: () => void;
+}) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -224,100 +236,85 @@ function ProjectActionsGroup({ project }: { project: StorytellerProject }) {
       : storytellerReaderPath(project);
 
   return (
-    <Box>
-      <Stack
-        direction="row"
-        alignItems="center"
-        spacing={1}
-        sx={{ px: 1, py: 0.75 }}
+    <Box
+      sx={{
+        flexShrink: 0,
+        p: 1,
+        borderTop: 1,
+        borderColor: "divider",
+        bgcolor: "transparent",
+      }}
+    >
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        fontWeight={700}
+        sx={{ display: "block", px: 1, pb: 0.5 }}
       >
-        <Tooltip title={expanded ? "收合" : "展開"}>
-          <IconButton
-            size="small"
-            onClick={() => setExpanded((value) => !value)}
-            sx={{ p: 0.375 }}
-          >
-            {expanded ? (
-              <RemoveIcon fontSize="inherit" />
-            ) : (
-              <AddIcon fontSize="inherit" />
-            )}
-          </IconButton>
-        </Tooltip>
-        <Box sx={{ lineHeight: 0, opacity: 0.82 }}>
-          <FolderSpecialIcon fontSize="small" />
-        </Box>
-        <Typography
-          variant="caption"
-          fontWeight={700}
-          sx={{ letterSpacing: 0 }}
+        專案操作
+      </Typography>
+      <List dense disablePadding>
+        <ListItemButton
+          component={RouterLink}
+          to={steamloomPath(`my/workspace/${project.public_id}/edit`)}
+          onClick={onNavigate}
+          selected={isEditActive}
+          sx={sidebarActionRowSx}
         >
-          專案
-        </Typography>
-      </Stack>
-      <Collapse in={expanded} timeout="auto">
-        <List dense disablePadding sx={{ mt: 0.5 }}>
-          <ListItemButton
-            component={RouterLink}
-            to={steamloomPath(`my/workspace/${project.public_id}/edit`)}
-            selected={isEditActive}
-            sx={sidebarActionRowSx}
+          <ListItemIcon
+            sx={{
+              minWidth: 26,
+              color: isEditActive ? "primary.main" : "inherit",
+            }}
           >
-            <ListItemIcon
-              sx={{
-                minWidth: 26,
-                color: isEditActive ? "primary.main" : "inherit",
-              }}
-            >
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary="編輯專案"
-              primaryTypographyProps={{
-                fontWeight: 700,
-                noWrap: true,
-                fontSize: 13,
-              }}
-            />
-          </ListItemButton>
-          <ListItemButton
-            component="a"
-            href={readerUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={sidebarActionRowSx}
-          >
-            <ListItemIcon sx={{ minWidth: 26 }}>
-              <OpenInNewIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary="開啟閱讀頁"
-              primaryTypographyProps={{
-                fontWeight: 700,
-                noWrap: true,
-                fontSize: 13,
-              }}
-            />
-          </ListItemButton>
-          <ListItemButton
-            onClick={() => setDeleteOpen(true)}
-            sx={{ ...sidebarActionRowSx, color: "error.main" }}
-          >
-            <ListItemIcon sx={{ minWidth: 26, color: "inherit" }}>
-              <DeleteIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary="刪除專案"
-              primaryTypographyProps={{
-                fontWeight: 700,
-                noWrap: true,
-                fontSize: 13,
-              }}
-            />
-          </ListItemButton>
-        </List>
-      </Collapse>
-      <Divider sx={{ my: 0.75, opacity: 0.35 }} />
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="編輯專案"
+            primaryTypographyProps={{
+              fontWeight: 700,
+              noWrap: true,
+              fontSize: 13,
+            }}
+          />
+        </ListItemButton>
+        <ListItemButton
+          component="a"
+          href={readerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onNavigate}
+          sx={sidebarActionRowSx}
+        >
+          <ListItemIcon sx={{ minWidth: 26 }}>
+            <OpenInNewIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="開啟閱讀頁"
+            primaryTypographyProps={{
+              fontWeight: 700,
+              noWrap: true,
+              fontSize: 13,
+            }}
+          />
+        </ListItemButton>
+        <ListItemButton
+          onClick={() => setDeleteOpen(true)}
+          sx={{ ...sidebarActionRowSx, color: "error.main" }}
+        >
+          <ListItemIcon sx={{ minWidth: 26, color: "inherit" }}>
+            <DeleteIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText
+            primary="刪除專案"
+            primaryTypographyProps={{
+              fontWeight: 700,
+              noWrap: true,
+              fontSize: 13,
+            }}
+          />
+        </ListItemButton>
+      </List>
       <WorkspaceConfirmNameDialog
         open={deleteOpen}
         title="刪除專案"
@@ -343,7 +340,7 @@ const sidebarActionRowSx: SxProps<Theme> = {
   px: 1,
   color: "text.secondary",
   "&:hover": {
-    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8"),
+    bgcolor: "action.hover",
   },
   "&.Mui-selected": {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
@@ -356,74 +353,6 @@ const sidebarActionRowSx: SxProps<Theme> = {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.16),
   },
 };
-
-export function WorkspaceSidebarFooter() {
-  return (
-    <Box
-      sx={{
-        position: "sticky",
-        bottom: 0,
-        px: 1,
-        pt: 1.25,
-        pb: 0.75,
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
-        borderTop: 1,
-        borderColor: (theme) =>
-          theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-        flexShrink: 0,
-      }}
-    >
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ display: "block", px: 1, lineHeight: 1.35 }}
-      >
-        SteamLoom powered By Faryne
-        <br />
-        <Typography
-          component="a"
-          variant="caption"
-          href="https://faryne.dev/"
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ color: "inherit", textDecoration: "underline" }}
-        >
-          faryne.dev
-        </Typography>
-      </Typography>
-    </Box>
-  );
-}
-
-export function WorkspaceMobileNav(
-  props: Parameters<typeof WorkspaceSidebar>[0],
-) {
-  return (
-    <Box
-      sx={{
-        p: 1,
-        borderBottom: 1,
-        borderColor: (theme) =>
-          theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
-      }}
-    >
-      <Paper
-        elevation={0}
-        sx={{
-          maxHeight: 280,
-          overflow: "auto",
-          borderRadius: 1,
-          bgcolor: "transparent",
-        }}
-      >
-        <WorkspaceSidebar {...props} />
-      </Paper>
-    </Box>
-  );
-}
 
 export function WorkspacePane({
   title,
@@ -485,6 +414,7 @@ export function WorkspacePane({
   ) => void;
 }) {
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
+  const { viewMode, setViewMode } = useWorkspaceViewMode(selected.section);
   function collectionChipFor(label: string | undefined, collectionId: string) {
     if (!label) {
       return undefined;
@@ -543,7 +473,23 @@ export function WorkspacePane({
             {titleActions && <Box sx={{ flexShrink: 0 }}>{titleActions}</Box>}
           </Stack>
         </Box>
-        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+        <Stack direction="row" spacing={1} alignItems="center">
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={viewMode}
+            onChange={(_, value) => value && setViewMode(value)}
+            aria-label="切換項目顯示方式"
+          >
+            <ToggleButton value="grid" aria-label="卡片檢視" title="卡片檢視">
+              <ViewModuleIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="list" aria-label="列表檢視" title="列表檢視">
+              <ViewListIcon fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
+          {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+        </Stack>
       </Stack>
       {loading ? (
         <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
@@ -554,7 +500,20 @@ export function WorkspacePane({
       ) : (
         <>
           {selected.section === "stories" && (
-            <Stack spacing={0.5}>
+            <Box
+              sx={
+                viewMode === "grid"
+                  ? {
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                      },
+                      gap: 1.5,
+                    }
+                  : undefined
+              }
+            >
               {stories.map((story) => {
                 const volume = volumes.find(
                   (item) => item.id === story.parent_id,
@@ -569,7 +528,7 @@ export function WorkspacePane({
                       volume?.public_id ?? "",
                     )}
                     onClick={() => onSelectItem({ type: "story", row: story })}
-                    reorderable={Boolean(onReorderStory)}
+                    reorderable={viewMode === "list" && Boolean(onReorderStory)}
                     dragging={draggingStoryId === story.public_id}
                     onDragStart={() => setDraggingStoryId(story.public_id)}
                     onDropRow={() => {
@@ -578,10 +537,11 @@ export function WorkspacePane({
                       }
                       setDraggingStoryId(null);
                     }}
+                    viewMode={viewMode}
                   />
                 );
               })}
-              {onReorderStory && stories.length > 0 && (
+              {viewMode === "list" && onReorderStory && stories.length > 0 && (
                 // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
                 // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
                 <Box
@@ -597,15 +557,22 @@ export function WorkspacePane({
                 />
               )}
               {stories.length === 0 && (
-                <WorkspaceEmptyState
-                  icon={<ArticleIcon />}
-                  title="沒有作品"
-                  description="這個分類目前沒有作品。"
-                />
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <WorkspaceEmptyState
+                    icon={<ArticleIcon />}
+                    title="沒有作品"
+                    description="這個分類目前沒有作品。"
+                  />
+                </Box>
               )}
               {pagination && pagination.count > 1 && (
                 <Box
-                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    pt: 1.5,
+                    gridColumn: "1 / -1",
+                  }}
                 >
                   <Pagination
                     count={pagination.count}
@@ -615,10 +582,24 @@ export function WorkspacePane({
                   />
                 </Box>
               )}
-            </Stack>
+            </Box>
           )}
           {selected.section === "lores" && (
-            <Stack spacing={0.5}>
+            <Box
+              sx={
+                viewMode === "grid"
+                  ? {
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                        xl: "repeat(3, minmax(0, 1fr))",
+                      },
+                      gap: 1.5,
+                    }
+                  : undefined
+              }
+            >
               {lores.map((lore) => {
                 const collection = loreCollections.find(
                   (item) => item.public_id === lore.collection_id,
@@ -633,19 +614,27 @@ export function WorkspacePane({
                       collection?.public_id ?? "",
                     )}
                     onClick={() => onSelectItem({ type: "lore", row: lore })}
+                    viewMode={viewMode}
                   />
                 );
               })}
               {lores.length === 0 && (
-                <WorkspaceEmptyState
-                  icon={<DescriptionIcon />}
-                  title="沒有設定"
-                  description="這個分類目前沒有設定。"
-                />
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <WorkspaceEmptyState
+                    icon={<DescriptionIcon />}
+                    title="沒有設定"
+                    description="這個分類目前沒有設定。"
+                  />
+                </Box>
               )}
               {pagination && pagination.count > 1 && (
                 <Box
-                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    pt: 1.5,
+                    gridColumn: "1 / -1",
+                  }}
                 >
                   <Pagination
                     count={pagination.count}
@@ -655,7 +644,7 @@ export function WorkspacePane({
                   />
                 </Box>
               )}
-            </Stack>
+            </Box>
           )}
           {selected.section === "assets" && (
             <Grid container spacing={1.5}>
@@ -664,7 +653,10 @@ export function WorkspacePane({
                   (item) => item.public_id === asset.collection_id,
                 );
                 return (
-                  <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <Grid
+                    key={asset.public_id}
+                    size={viewMode === "grid" ? { xs: 12, sm: 6, lg: 4 } : 12}
+                  >
                     <AssetCard
                       asset={asset}
                       actions={renderAssetActions?.(asset)}
@@ -675,6 +667,7 @@ export function WorkspacePane({
                       onClick={() =>
                         onSelectItem({ type: "asset", row: asset })
                       }
+                      viewMode={viewMode}
                     />
                   </Grid>
                 );
@@ -732,14 +725,10 @@ function WorkspaceEmptyState({
         py: 4,
         border: 1,
         borderStyle: "dashed",
-        borderColor: (theme) =>
-          theme.palette.mode === "dark" ? "#3a3a3a" : "#dedbd3",
+        borderColor: "divider",
         borderRadius: 1,
         color: "text.secondary",
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark"
-            ? alpha("#ffffff", 0.018)
-            : alpha("#37352f", 0.025),
+        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.025),
       }}
     >
       <Box sx={{ color: "primary.main", opacity: 0.64, lineHeight: 0 }}>

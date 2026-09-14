@@ -1,31 +1,39 @@
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import FlareIcon from "@mui/icons-material/Flare";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
 import {
   Box,
-  Divider,
   IconButton,
   Popover,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
-import { SteamPaletteSwitcher } from "@/components/storyteller/SteamPaletteSwitcher.tsx";
-import { useStorytellerThemeMode } from "@/layouts/storytellerThemeMode.tsx";
+import { useState, type ReactNode } from "react";
+import {
+  storytellerAppearanceMeta,
+  storytellerAppearanceOrder,
+  type StorytellerAppearance,
+} from "@/data/storytellerTheme.ts";
+import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 
-/** Header 共用的外觀入口，將明暗模式與網站色系集中在同一個低干擾選單。 */
+const appearanceIcons: Record<StorytellerAppearance, ReactNode> = {
+  nocturne: <DarkModeIcon fontSize="small" />,
+  ivory: <LightModeIcon fontSize="small" />,
+  prism: <FlareIcon fontSize="small" />,
+};
+
+/** Header 唯一的全站外觀入口；三種 appearance 已各自包含明暗與配色。 */
 export function StorytellerAppearanceMenu() {
-  const { mode, toggleMode } = useStorytellerThemeMode();
+  const { appearance, setAppearance } = useStorytellerAppearance();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <>
-      <Tooltip title="外觀設定">
+      <Tooltip title={`外觀：${storytellerAppearanceMeta[appearance].label}`}>
         <IconButton
-          aria-label="外觀設定"
+          aria-label={`外觀設定，目前為${storytellerAppearanceMeta[appearance].label}`}
           aria-expanded={Boolean(anchor)}
           color="inherit"
           size="small"
@@ -41,43 +49,71 @@ export function StorytellerAppearanceMenu() {
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Stack spacing={1.5} sx={{ width: 290, p: 2 }}>
-          <Typography fontWeight={700}>外觀設定</Typography>
+        <Stack spacing={1.25} sx={{ width: 300, p: 2 }}>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 0.75 }}
-            >
-              明暗模式
-            </Typography>
-            <ToggleButtonGroup
-              exclusive
-              fullWidth
-              size="small"
-              value={mode}
-              onChange={(_, nextMode) => {
-                if (nextMode && nextMode !== mode) toggleMode();
-              }}
-              aria-label="明暗模式"
-            >
-              <ToggleButton value="light" aria-label="日間模式">
-                <LightModeIcon fontSize="small" sx={{ mr: 0.75 }} />
-                日間
-              </ToggleButton>
-              <ToggleButton value="dark" aria-label="夜間模式">
-                <DarkModeIcon fontSize="small" sx={{ mr: 0.75 }} />
-                夜間
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-          <Divider />
-          <Box>
+            <Typography fontWeight={700}>外觀</Typography>
             <Typography variant="caption" color="text.secondary">
-              網站色系
+              三種模式已包含完整的明暗與配色
             </Typography>
-            <SteamPaletteSwitcher />
           </Box>
+          {storytellerAppearanceOrder.map((name) => {
+            const meta = storytellerAppearanceMeta[name];
+            const isActive = appearance === name;
+            return (
+              <Stack
+                key={name}
+                component="button"
+                type="button"
+                direction="row"
+                spacing={1.25}
+                alignItems="center"
+                aria-pressed={isActive}
+                onClick={() => {
+                  setAppearance(name);
+                  setAnchor(null);
+                }}
+                sx={{
+                  width: 1,
+                  p: 1.25,
+                  border: "1px solid",
+                  borderColor: isActive ? "primary.main" : "divider",
+                  color: "text.primary",
+                  bgcolor: isActive ? "action.selected" : "transparent",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  "&:hover": { bgcolor: "action.hover" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                    color: isActive ? "primary.main" : "text.secondary",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    bgcolor: meta.swatch,
+                  }}
+                >
+                  {appearanceIcons[name]}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" fontWeight={700}>
+                    {meta.label}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block" }}
+                  >
+                    {meta.description}
+                  </Typography>
+                </Box>
+              </Stack>
+            );
+          })}
         </Stack>
       </Popover>
     </>

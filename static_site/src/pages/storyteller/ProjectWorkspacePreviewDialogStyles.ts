@@ -1,12 +1,11 @@
 import type { SxProps, Theme } from "@mui/material";
 
 export const workspaceDialogPaperSx: SxProps<Theme> = {
-  borderRadius: 1,
+  borderRadius: 0,
   border: 1,
-  borderColor: (theme) =>
-    theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-  bgcolor: (theme) => (theme.palette.mode === "dark" ? "#202020" : "#ffffff"),
-  color: (theme) => (theme.palette.mode === "dark" ? "#f1f1f0" : "#37352f"),
+  borderColor: "divider",
+  bgcolor: "background.paper",
+  color: "text.primary",
   backgroundImage: "none",
   boxShadow: (theme) =>
     theme.palette.mode === "dark"
@@ -15,10 +14,8 @@ export const workspaceDialogPaperSx: SxProps<Theme> = {
 };
 
 export const workspaceDialogBackdropSx: SxProps<Theme> = {
-  bgcolor: (theme) =>
-    theme.palette.mode === "dark"
-      ? "rgba(0, 0, 0, 0.56)"
-      : "rgba(55, 53, 47, 0.22)",
+  bgcolor: "rgba(0, 0, 0, 0.5)",
+  backdropFilter: "blur(3px)",
 };
 
 export const workspaceDialogTitleSx: SxProps<Theme> = {
@@ -43,7 +40,7 @@ export const workspaceDialogActionsSx: SxProps<Theme> = {
 
 export const workspaceTextFieldSx: SxProps<Theme> = {
   "& .MuiOutlinedInput-root": {
-    borderRadius: 1,
-    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#191919" : "#f7f7f5"),
+    borderRadius: 0,
+    bgcolor: "background.default",
   },
 };

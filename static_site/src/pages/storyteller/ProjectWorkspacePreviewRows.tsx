@@ -34,6 +34,7 @@ import {
 } from "./ProjectWorkspaceEditorControls.tsx";
 import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
+import type { WorkspaceViewMode } from "./workspaceViewMode.ts";
 import type {
   StorytellerAsset,
   StorytellerAssetCollection,
@@ -86,6 +87,7 @@ export function StoryRow({
   dragging,
   onDragStart,
   onDropRow,
+  viewMode = "list",
 }: {
   story: StorytellerStory;
   onClick: () => void;
@@ -97,6 +99,7 @@ export function StoryRow({
   dragging?: boolean;
   onDragStart?: () => void;
   onDropRow?: () => void;
+  viewMode?: WorkspaceViewMode;
 }) {
   const isImage = story.content_type === "image";
   const isPublic = story.status === "completed";
@@ -118,14 +121,19 @@ export function StoryRow({
             : undefined
         }
         sx={{
-          p: 1,
-          borderRadius: 1,
+          px: viewMode === "grid" ? 1.5 : { xs: 0.5, sm: 1 },
+          py: viewMode === "grid" ? 1.75 : 1.25,
+          minHeight: viewMode === "grid" ? 138 : 64,
+          borderRadius: 0,
+          border: viewMode === "grid" ? 1 : 0,
+          borderBottom: 1,
+          borderColor: "divider",
           cursor: reorderable ? "grab" : "pointer",
-          bgcolor: "transparent",
+          bgcolor: viewMode === "grid" ? "background.paper" : "transparent",
           opacity: dragging ? 0.55 : 1,
           "&:hover": {
-            bgcolor: (theme) =>
-              theme.palette.mode === "dark" ? "#252525" : "#f1f1ef",
+            bgcolor: "action.hover",
+            borderColor: "primary.main",
           },
         }}
       >
@@ -149,34 +157,50 @@ export function StoryRow({
                 {story.title}
               </Typography>
             </Tooltip>
-            <Typography variant="body2" color="text.secondary" noWrap>
-              {isImage
-                ? `${storyPageCount(story)} 頁`
-                : `${story.word_count.toLocaleString()} 字`}{" "}
-              · 更新於 {formatStorytellerDate(story.updated_at)}
-            </Typography>
+            <Stack
+              direction="row"
+              spacing={0.75}
+              alignItems="center"
+              flexWrap="wrap"
+              useFlexGap
+            >
+              <Typography variant="body2" color="text.secondary" noWrap>
+                {isImage
+                  ? `${storyPageCount(story)} 頁`
+                  : `${story.word_count.toLocaleString()} 字`}
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  {" "}
+                  · 更新於 {formatStorytellerDate(story.updated_at)}
+                </Box>
+              </Typography>
+              {collectionChip}
+              <Chip
+                size="small"
+                label={isPublic ? "公開" : "草稿"}
+                variant="outlined"
+                sx={{
+                  height: 20,
+                  borderRadius: 1,
+                  fontWeight: 800,
+                  color: (theme) =>
+                    isPublic
+                      ? theme.palette.primary.main
+                      : theme.palette.text.secondary,
+                  borderColor: (theme) =>
+                    isPublic
+                      ? theme.palette.primary.main
+                      : theme.palette.divider,
+                  bgcolor: (theme) =>
+                    isPublic
+                      ? alpha(theme.palette.primary.main, 0.12)
+                      : alpha(theme.palette.text.secondary, 0.06),
+                }}
+              />
+            </Stack>
           </Box>
-          {collectionChip}
-          <Chip
-            size="small"
-            label={isPublic ? "公開" : "草稿"}
-            variant="outlined"
-            sx={{
-              height: 22,
-              borderRadius: 1,
-              fontWeight: 800,
-              color: (theme) =>
-                isPublic
-                  ? theme.palette.primary.main
-                  : theme.palette.text.secondary,
-              borderColor: (theme) =>
-                isPublic ? theme.palette.primary.main : theme.palette.divider,
-              bgcolor: (theme) =>
-                isPublic
-                  ? alpha(theme.palette.primary.main, 0.12)
-                  : alpha(theme.palette.text.secondary, 0.06),
-            }}
-          />
           {actions && (
             <Box
               onClick={(event) => event.stopPropagation()}
@@ -196,24 +220,31 @@ export function LoreRow({
   onClick,
   actions,
   collectionChip,
+  viewMode = "list",
 }: {
   lore: StorytellerLore;
   onClick: () => void;
   actions?: ReactNode;
   collectionChip?: ReactNode;
+  viewMode?: WorkspaceViewMode;
 }) {
   return (
     <Paper
       elevation={0}
       onClick={onClick}
       sx={{
-        p: 1,
-        borderRadius: 1,
+        px: viewMode === "grid" ? 1.5 : { xs: 0.5, sm: 1 },
+        py: viewMode === "grid" ? 1.75 : 1.25,
+        minHeight: viewMode === "grid" ? 138 : 64,
+        borderRadius: 0,
+        border: viewMode === "grid" ? 1 : 0,
+        borderBottom: 1,
+        borderColor: "divider",
         cursor: "pointer",
-        bgcolor: "transparent",
+        bgcolor: viewMode === "grid" ? "background.paper" : "transparent",
         "&:hover": {
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#252525" : "#f1f1ef",
+          bgcolor: "action.hover",
+          borderColor: "primary.main",
         },
       }}
     >
@@ -233,12 +264,26 @@ export function LoreRow({
               {lore.title}
             </Typography>
           </Tooltip>
-          <Typography variant="body2" color="text.secondary" noWrap>
-            {lore.word_count.toLocaleString()} 字 · 更新於{" "}
-            {formatStorytellerDate(lore.updated_at)}
-          </Typography>
+          <Stack
+            direction="row"
+            spacing={0.75}
+            alignItems="center"
+            flexWrap="wrap"
+            useFlexGap
+          >
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {lore.word_count.toLocaleString()} 字
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", sm: "inline" } }}
+              >
+                {" "}
+                · 更新於 {formatStorytellerDate(lore.updated_at)}
+              </Box>
+            </Typography>
+            {collectionChip}
+          </Stack>
         </Box>
-        {collectionChip}
         {actions && (
           <Box
             onClick={(event) => event.stopPropagation()}
@@ -257,24 +302,29 @@ export function AssetCard({
   onClick,
   actions,
   collectionChip,
+  viewMode = "grid",
 }: {
   asset: StorytellerAsset;
   onClick: () => void;
   actions?: ReactNode;
   collectionChip?: ReactNode;
+  viewMode?: WorkspaceViewMode;
 }) {
   return (
     <Paper
       elevation={0}
       onClick={onClick}
       sx={{
-        borderRadius: 1,
+        borderRadius: 0,
+        border: 1,
+        borderColor: "divider",
         overflow: "hidden",
         cursor: "pointer",
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.035),
+        display: viewMode === "list" ? "flex" : "block",
+        bgcolor: "background.paper",
         "&:hover": {
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#252525" : "#f1f1ef",
+          bgcolor: "action.hover",
+          borderColor: "primary.main",
         },
       }}
     >
@@ -283,11 +333,12 @@ export function AssetCard({
         src={asset.preview_url}
         alt={asset.alt_text || storytellerAssetTitle(asset)}
         sx={{
-          width: 1,
-          aspectRatio: "16 / 9",
+          width: viewMode === "list" ? { xs: 88, sm: 144 } : 1,
+          aspectRatio: viewMode === "list" ? "1 / 1" : "16 / 9",
           objectFit: "cover",
           display: "block",
-          borderRadius: 1,
+          borderRadius: 0,
+          flexShrink: 0,
         }}
       />
       <Box sx={{ p: 1.25 }}>
@@ -495,8 +546,7 @@ export function WorkspaceAssetPanel({
           maxHeight: 480,
           objectFit: "contain",
           borderRadius: 1,
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#151515" : "#f1f1ef",
+          bgcolor: "background.paper",
         }}
       />
       <Box>

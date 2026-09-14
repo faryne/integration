@@ -20,6 +20,7 @@ import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
+import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 
 function formatMaintenanceRetryMessage(retryAt: string | null) {
   if (!retryAt) {
@@ -103,7 +104,7 @@ const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
 const StorytellerProjectWorkspacePreview = lazy(
-  () => import("@/pages/storyteller/ProjectWorkspacePreview.tsx"),
+  loadStorytellerProjectWorkspace,
 );
 const StorytellerAgentDiffCompare = lazy(
   () => import("@/pages/storyteller/AgentDiffCompare.tsx"),

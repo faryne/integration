@@ -991,8 +991,7 @@ export default function StorytellerLoreEditor({
         top: 0,
         zIndex: 2,
         pb: 1,
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+        bgcolor: "background.default",
       }}
     >
       <Box sx={{ width: 1 }}>

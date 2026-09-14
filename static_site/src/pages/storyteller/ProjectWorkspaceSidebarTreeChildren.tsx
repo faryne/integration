@@ -132,7 +132,9 @@ function SidebarLoreChildren({
             selectedItem?.type === "lore" &&
             selectedItem.publicId === lore.public_id
           }
-          onClick={() => onSelectItem({ type: "lore", row: lore }, collectionId)}
+          onClick={() =>
+            onSelectItem({ type: "lore", row: lore }, collectionId)
+          }
         />
       ))}
     </SidebarAsyncChildren>
@@ -172,7 +174,11 @@ function SidebarTreeItem({
   onClick: () => void;
 }) {
   return (
-    <ListItemButton selected={selected} onClick={onClick} sx={sidebarChildRowSx}>
+    <ListItemButton
+      selected={selected}
+      onClick={onClick}
+      sx={sidebarChildRowSx}
+    >
       <ListItemIcon
         sx={{
           minWidth: 24,
@@ -207,9 +213,7 @@ const sidebarChildRowSx: SxProps<Theme> = {
   mr: 0.5,
   pr: 0.75,
   color: "text.secondary",
-  "&:hover": {
-    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8"),
-  },
+  "&:hover": { bgcolor: "action.hover" },
   "&.Mui-selected": {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12),
     color: "text.primary",

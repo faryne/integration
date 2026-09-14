@@ -1,11 +1,8 @@
 import type { StorytellerThemeTokens } from "./storytellerTheme";
 
 /**
- * Phase A（視覺主題規劃）：semantic token 層。`storytellerTheme.ts` 的 raw token
- * （`brass`／`copper`／`patina` 這種色系專屬名稱）只有 `StorytellerLayout.tsx` 的
- * `createTheme()` 在用，元件層（Phase B 的 component override、Phase C 的手刻
- * DOM）不該直接認得「現在是不是 brass 色系」——用這一層語意化名稱隔開，色系本身
- * 增減／換算法都不會影響到 component override 要吃哪個欄位。
+ * Semantic token 隔開 appearance 原始色值與元件層；元件只需要知道用途，
+ * 不需要判斷目前是夜織、紙本或稜光。
  *
  * 之後 Phase D 的節慶 overlay 也是疊在這層上面（只覆寫其中幾個 key），不是疊在
  * raw token 上，理由一樣：overlay 不需要知道底下是哪個色系。
@@ -54,11 +51,11 @@ export function toStorytellerSemanticTokens(
     borderStrong: raw.borderStrong,
     textPrimary: raw.text,
     textMuted: raw.textMuted,
-    accentMain: raw.brass,
-    accentHover: raw.brassBright,
-    focusRing: raw.brassBright,
-    danger: raw.ember,
-    selection: raw.brassBright,
+    accentMain: raw.accent,
+    accentHover: raw.accentBright,
+    focusRing: raw.accentBright,
+    danger: raw.danger,
+    selection: raw.accentBright,
     editorPaper: raw.surface,
     editorMenu: raw.surfaceRaised,
   };

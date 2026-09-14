@@ -1,6 +1,7 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import {
   Box,
   Button,
@@ -12,8 +13,6 @@ import {
   IconButton,
   Tooltip,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import axios from "axios";
 import { useMemo, useState } from "react";
@@ -40,10 +39,14 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
-  WorkspaceMobileNav,
   WorkspacePane,
   WorkspaceSidebar,
+  type WorkspaceSidebarProps,
 } from "./ProjectWorkspacePreviewComponents.tsx";
+import {
+  WorkspaceMobileNavigatorDrawer,
+  WorkspaceSidebarRail,
+} from "./ProjectWorkspaceNavigatorDrawer.tsx";
 import { useWorkspaceListActions } from "./ProjectWorkspacePreviewActions.tsx";
 import { WorkspaceAssetPanel } from "./ProjectWorkspacePreviewRows.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
@@ -77,14 +80,13 @@ export default function StorytellerProjectWorkspacePreview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { session, loading: authLoading, login, submitting } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [storyPage, setStoryPage] = useState(1);
   const [lorePage, setLorePage] = useState(1);
   const [assetPage, setAssetPage] = useState(1);
   const [assetKeyword, setAssetKeyword] = useState("");
   // 整個側邊欄（不是個別分組）的收合開關，給螢幕較窄或想專心看右欄內容時用。
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavigatorOpen, setMobileNavigatorOpen] = useState(false);
   // App 內離開編輯器前的確認——「回列表」按鈕跟側邊欄切換分組都會先呼叫
   // guardedNavigate，有未存檔變更時先把實際要執行的動作存起來、彈出確認對話框，
   // 使用者按「離開」才真的執行；沒有未存檔變更（或不在編輯器內）就直接放行，
@@ -455,6 +457,22 @@ export default function StorytellerProjectWorkspacePreview() {
         : isAssetRoute
           ? { type: "asset" as const, publicId: assetId ?? "" }
           : undefined;
+  const sidebarProps: WorkspaceSidebarProps = {
+    project,
+    selected,
+    stories,
+    volumes,
+    loreCollections,
+    assetCollections,
+    onSelect: selectNode,
+    onSelectItem: openStoryInWorkspace,
+    selectedItem: sidebarSelectedItem,
+    onCreateVolume: listActions.onCreateVolume,
+    onCreateLoreCollection: listActions.onCreateLoreCollection,
+    onCreateAssetCollection: listActions.onCreateAssetCollection,
+    onReorderVolume: listActions.reorderVolume,
+    onReorderLoreCollection: listActions.reorderLoreCollection,
+  };
 
   if (authLoading) {
     return (
@@ -501,108 +519,90 @@ export default function StorytellerProjectWorkspacePreview() {
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
       trail={[sectionBreadcrumbLabel, collectionBreadcrumbLabel]}
+      navigationAction={
+        <Button
+          size="small"
+          color="inherit"
+          startIcon={<MenuBookOutlinedIcon />}
+          onClick={() => setMobileNavigatorOpen(true)}
+          sx={{ display: { xs: "inline-flex", md: "none" }, minWidth: 0 }}
+        >
+          導覽
+        </Button>
+      }
     >
+      <WorkspaceMobileNavigatorDrawer
+        {...sidebarProps}
+        open={mobileNavigatorOpen}
+        onClose={() => setMobileNavigatorOpen(false)}
+      />
       <Box
         sx={{
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
             md: sidebarCollapsed
-              ? "36px minmax(0, 1fr)"
-              : "260px minmax(0, 1fr)",
+              ? "52px minmax(0, 1fr)"
+              : "268px minmax(0, 1fr)",
           },
           flex: 1,
           minHeight: 0,
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+          bgcolor: "background.default",
         }}
       >
-        {!isMobile && (
-          // 外層不能有 overflow:hidden——收合按鈕要浮貼在邊界上，剛好卡在側邊欄
-          // 跟右欄內容的交界，如果 overflow:hidden 套在同一層，按鈕負值定位的
-          // 部分會直接被裁掉（之前的版本就是這樣被切成一半的怪形狀）。真正需要
-          // 裁切捲軸的 overflow:hidden 只留給裡面包側邊欄內容的那一層。
-          <Box sx={{ position: "relative", minHeight: 0 }}>
-            <Box
+        <Box
+          sx={{
+            display: { xs: "none", md: "block" },
+            position: "relative",
+            minHeight: 0,
+          }}
+        >
+          {/* 外層不能有 overflow:hidden——收合按鈕要浮貼在側欄與內容的交界；
+              真正需要裁切捲軸的 overflow:hidden 只留在包側欄內容的這一層。 */}
+          <Box
+            sx={{
+              height: "100%",
+              borderRight: 1,
+              borderColor: "divider",
+              bgcolor: "background.paper",
+              minHeight: 0,
+              overflow: "hidden",
+            }}
+          >
+            {sidebarCollapsed ? (
+              <WorkspaceSidebarRail selected={selected} onSelect={selectNode} />
+            ) : (
+              <WorkspaceSidebar {...sidebarProps} />
+            )}
+          </Box>
+          <Tooltip title={sidebarCollapsed ? "展開側邊欄" : "收合側邊欄"}>
+            <IconButton
+              size="small"
+              onClick={() => setSidebarCollapsed((value) => !value)}
               sx={{
-                height: "100%",
-                borderRight: 1,
-                borderColor: (theme) =>
-                  theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-                bgcolor: (theme) =>
-                  theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
-                minHeight: 0,
-                overflow: "hidden",
+                position: "absolute",
+                top: 12,
+                right: -13,
+                zIndex: 2,
+                width: 26,
+                height: 26,
+                bgcolor: "background.paper",
+                border: 1,
+                borderColor: "divider",
+                "&:hover": {
+                  bgcolor: "action.hover",
+                },
               }}
             >
-              {!sidebarCollapsed && (
-                <WorkspaceSidebar
-                  project={project}
-                  selected={selected}
-                  stories={stories}
-                  volumes={volumes}
-                  loreCollections={loreCollections}
-                  assetCollections={assetCollections}
-                  onSelect={selectNode}
-                  onSelectItem={openStoryInWorkspace}
-                  selectedItem={sidebarSelectedItem}
-                  onCreateVolume={listActions.onCreateVolume}
-                  onCreateLoreCollection={listActions.onCreateLoreCollection}
-                  onCreateAssetCollection={listActions.onCreateAssetCollection}
-                  onReorderVolume={listActions.reorderVolume}
-                />
+              {sidebarCollapsed ? (
+                <ChevronRightIcon fontSize="small" />
+              ) : (
+                <ChevronLeftIcon fontSize="small" />
               )}
-            </Box>
-            <Tooltip title={sidebarCollapsed ? "展開側邊欄" : "收合側邊欄"}>
-              <IconButton
-                size="small"
-                onClick={() => setSidebarCollapsed((value) => !value)}
-                sx={{
-                  position: "absolute",
-                  top: 12,
-                  right: -13,
-                  zIndex: 2,
-                  width: 26,
-                  height: 26,
-                  bgcolor: "background.paper",
-                  border: 1,
-                  borderColor: (theme) =>
-                    theme.palette.mode === "dark" ? "#3a3a3a" : "#d8d5cd",
-                  "&:hover": {
-                    bgcolor: (theme) =>
-                      theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
-                  },
-                }}
-              >
-                {sidebarCollapsed ? (
-                  <ChevronRightIcon fontSize="small" />
-                ) : (
-                  <ChevronLeftIcon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-          </Box>
-        )}
+            </IconButton>
+          </Tooltip>
+        </Box>
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
-          {isMobile && !showBleedEditor && (
-            // 編輯頁自己有「回列表」；在低高度 viewport（例如 800x600）繼續把整個
-            // mobile 分組導覽塞在上方，會把標題、正文區和底部工具列全部推到首屏外。
-            <WorkspaceMobileNav
-              project={project}
-              selected={selected}
-              stories={stories}
-              volumes={volumes}
-              loreCollections={loreCollections}
-              assetCollections={assetCollections}
-              onSelect={selectNode}
-              onSelectItem={openStoryInWorkspace}
-              selectedItem={sidebarSelectedItem}
-              onCreateVolume={listActions.onCreateVolume}
-              onCreateLoreCollection={listActions.onCreateLoreCollection}
-              onCreateAssetCollection={listActions.onCreateAssetCollection}
-              onReorderVolume={listActions.reorderVolume}
-            />
-          )}
           {showBleedEditor ? (
             <EditorBleedContainer
               onBack={closeWorkspaceEditor}

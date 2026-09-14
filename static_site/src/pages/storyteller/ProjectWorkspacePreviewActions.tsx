@@ -15,7 +15,6 @@ import {
   Menu,
   MenuItem,
   Stack,
-  Switch,
   TextField,
   Tooltip,
 } from "@mui/material";
@@ -45,6 +44,10 @@ import {
   MoveMenu,
   WorkspaceConfirmNameDialog,
 } from "./ProjectWorkspacePreviewActionParts.tsx";
+import {
+  WorkspaceRowActionButton,
+  WorkspaceRowActionMenu,
+} from "./ProjectWorkspaceRowActions.tsx";
 import {
   ungroupedId,
   type SelectedNode,
@@ -102,6 +105,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const [volumeDialogTarget, setVolumeDialogTarget] = useState<
     StorytellerStory | "new" | null
   >(null);
+  const [storyActionMenu, setStoryActionMenu] = useState<{
+    anchorEl: HTMLElement;
+    story: StorytellerStory;
+  } | null>(null);
+  const [loreActionMenu, setLoreActionMenu] = useState<{
+    anchorEl: HTMLElement;
+    lore: StorytellerLore;
+  } | null>(null);
   const [storyMoveMenu, setStoryMoveMenu] = useState<{
     anchorEl: HTMLElement;
     story: StorytellerStory;
@@ -279,6 +290,52 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           summary: volume.summary,
         },
       });
+    });
+  }
+
+  // 設定集本身已有 sort 欄位與 update endpoint；跟冊維持相同的同層排序語意，
+  // 不讓 mobile Drawer 另外共用樹狀導覽後反而失去設定集排序能力。
+  function reorderLoreCollection(
+    draggedPublicId: string,
+    beforePublicId: string | null,
+  ) {
+    if (draggedPublicId === beforePublicId) return;
+    const ordered = [...loreCollections].sort(
+      (left, right) => left.sort - right.sort,
+    );
+    const dragged = ordered.find(
+      (collection) => collection.public_id === draggedPublicId,
+    );
+    if (!dragged) return;
+    const remaining = ordered.filter(
+      (collection) => collection.public_id !== draggedPublicId,
+    );
+    const insertIndex = beforePublicId
+      ? remaining.findIndex(
+          (collection) => collection.public_id === beforePublicId,
+        )
+      : remaining.length;
+    remaining.splice(
+      insertIndex < 0 ? remaining.length : insertIndex,
+      0,
+      dragged,
+    );
+    remaining.forEach((collection, index) => {
+      if (collection.sort === index) return;
+      saveLoreCollection.mutate(
+        {
+          collectionPublicId: collection.public_id,
+          input: {
+            name: collection.name,
+            description: collection.description,
+            sort: index,
+          },
+        },
+        {
+          onError: (error) =>
+            setSnack(errorMessage(error, "設定集排序更新失敗。")),
+        },
+      );
     });
   }
 
@@ -567,95 +624,21 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   const touchTargetSx = { p: { xs: 1.25, sm: 0.625 } };
 
   const renderStoryActions = (story: StorytellerStory) => (
-    <Stack
-      direction="row"
-      spacing={{ xs: 1, sm: 0.5 }}
-      alignItems="center"
-    >
-      <Tooltip title={story.status === "completed" ? "改為草稿" : "公開"}>
-        <span>
-          <Switch
-            size="small"
-            checked={story.status === "completed"}
-            disabled={saveStory.isPending}
-            onChange={(_, checked) =>
-              saveStoryPatch(story, { status: checked ? "completed" : "draft" })
-            }
-          />
-        </span>
-      </Tooltip>
-      <Tooltip title="編輯作品">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          component={RouterLink}
-          to={steamloomPath(
-            `my/workspace/${projectId}/${story.content_type === "image" ? "image" : "story"}/${story.public_id}${fromQuery}`,
-          )}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="移動到冊">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          onClick={(event) =>
-            setStoryMoveMenu({ anchorEl: event.currentTarget, story })
-          }
-        >
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="刪除作品">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          color="error"
-          onClick={() => setDeleteStoryTarget(story)}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Stack>
+    <WorkspaceRowActionButton
+      label="作品操作"
+      onOpen={(event) =>
+        setStoryActionMenu({ anchorEl: event.currentTarget, story })
+      }
+    />
   );
 
   const renderLoreActions = (lore: StorytellerLore) => (
-    <Stack direction="row" spacing={{ xs: 1, sm: 0.5 }}>
-      <Tooltip title="移動設定集">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          onClick={(event) =>
-            setLoreMoveMenu({ anchorEl: event.currentTarget, lore })
-          }
-        >
-          <MoreVertIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="編輯設定集">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          component={RouterLink}
-          to={steamloomPath(
-            `my/workspace/${projectId}/lore/${lore.public_id}${fromQuery}`,
-          )}
-        >
-          <EditIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="刪除設定集">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          color="error"
-          onClick={() => setDeleteLoreTarget(lore)}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-    </Stack>
+    <WorkspaceRowActionButton
+      label="設定操作"
+      onOpen={(event) =>
+        setLoreActionMenu({ anchorEl: event.currentTarget, lore })
+      }
+    />
   );
 
   const renderAssetActions = (asset: StorytellerAsset) => (
@@ -712,6 +695,63 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <ListItemText>圖像</ListItemText>
         </MenuItem>
       </Menu>
+      <WorkspaceRowActionMenu
+        anchorEl={storyActionMenu?.anchorEl ?? null}
+        editTo={
+          storyActionMenu
+            ? steamloomPath(
+                `my/workspace/${projectId}/${storyActionMenu.story.content_type === "image" ? "image" : "story"}/${storyActionMenu.story.public_id}${fromQuery}`,
+              )
+            : "#"
+        }
+        editLabel="編輯作品"
+        moveLabel="移動到冊…"
+        deleteLabel="刪除作品"
+        status={storyActionMenu?.story.status}
+        disabled={saveStory.isPending}
+        onClose={() => setStoryActionMenu(null)}
+        onToggleStatus={() => {
+          if (storyActionMenu) {
+            saveStoryPatch(storyActionMenu.story, {
+              status:
+                storyActionMenu.story.status === "completed"
+                  ? "draft"
+                  : "completed",
+            });
+          }
+          setStoryActionMenu(null);
+        }}
+        onMove={() => {
+          if (storyActionMenu) setStoryMoveMenu(storyActionMenu);
+          setStoryActionMenu(null);
+        }}
+        onDelete={() => {
+          setDeleteStoryTarget(storyActionMenu?.story ?? null);
+          setStoryActionMenu(null);
+        }}
+      />
+      <WorkspaceRowActionMenu
+        anchorEl={loreActionMenu?.anchorEl ?? null}
+        editTo={
+          loreActionMenu
+            ? steamloomPath(
+                `my/workspace/${projectId}/lore/${loreActionMenu.lore.public_id}${fromQuery}`,
+              )
+            : "#"
+        }
+        editLabel="編輯設定"
+        moveLabel="移動至分類…"
+        deleteLabel="刪除設定"
+        onClose={() => setLoreActionMenu(null)}
+        onMove={() => {
+          if (loreActionMenu) setLoreMoveMenu(loreActionMenu);
+          setLoreActionMenu(null);
+        }}
+        onDelete={() => {
+          setDeleteLoreTarget(loreActionMenu?.lore ?? null);
+          setLoreActionMenu(null);
+        }}
+      />
       <MoveMenu
         anchorEl={storyMoveMenu?.anchorEl ?? null}
         open={Boolean(storyMoveMenu)}
@@ -981,6 +1021,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     renderAssetActions,
     reorderStory,
     reorderVolume,
+    reorderLoreCollection,
     onCreateVolume: () => setVolumeDialogTarget("new"),
     onCreateLoreCollection: () => openCollectionDialog("lore", "new"),
     onCreateAssetCollection: () => openCollectionDialog("asset", "new"),

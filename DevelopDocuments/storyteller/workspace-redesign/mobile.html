@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SteamLoom 工作台重構・行動版 Mockup</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #171512;
+        color: #d9d3c8;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      main {
+        width: min(100%, 430px);
+        padding: 20px;
+      }
+      header {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+      }
+      header strong {
+        font-size: 14px;
+      }
+      iframe {
+        width: 390px;
+        max-width: 100%;
+        height: min(844px, calc(100vh - 72px));
+        display: block;
+        border: 1px solid #4c4439;
+        border-radius: 20px;
+        background: #f7f4ed;
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.42);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <strong>Mobile · 390px</strong><span>點「導覽」開啟專案樹</span>
+      </header>
+      <iframe src="./index.html" title="SteamLoom 工作台行動版"></iframe>
+    </main>
+  </body>
+</html>
