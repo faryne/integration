@@ -1,12 +1,13 @@
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
-import { SteamLoomMark } from "@/components/storyteller/SteamGearIcon.tsx";
+import { SteamLoomMark } from "@/components/storyteller/SteamLoomMark.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import {
+  storytellerAppearanceMeta,
   storytellerDisplayFontFamily,
   storytellerMonoFontFamily,
   storytellerThemeTokens,
@@ -15,23 +16,17 @@ import {
   storytellerSemanticTokensToCssVariables,
   toStorytellerSemanticTokens,
 } from "@/data/storytellerSemanticTheme.ts";
-import { mergeStorytellerSeasonalTokens } from "@/data/storytellerSeasonalTheme.ts";
 import { storytellerComponentOverrides } from "@/data/storytellerComponentOverrides.ts";
 import {
-  StorytellerPaletteContext,
-  getInitialStorytellerPalette,
-  storytellerPaletteStorageKey,
-} from "@/layouts/storytellerPaletteMode.tsx";
+  StorytellerAppearanceContext,
+  getInitialStorytellerAppearance,
+  removeLegacyStorytellerAppearancePreferences,
+  storytellerAppearanceStorageKey,
+} from "@/layouts/storytellerAppearanceMode.tsx";
 import {
-  StorytellerThemeModeContext,
-  getInitialStorytellerThemeMode,
-  storytellerThemeModeStorageKey,
-} from "@/layouts/storytellerThemeMode.tsx";
-import {
-  StorytellerSeasonalContext,
-  getInitialStorytellerSeason,
-  storytellerSeasonalStorageKey,
-} from "@/layouts/storytellerSeasonalMode.tsx";
+  StorytellerHeaderContext,
+  type StorytellerReaderHeaderContext,
+} from "@/layouts/StorytellerHeaderContext.tsx";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
@@ -80,6 +75,12 @@ export function StorytellerLayout() {
   // 搜尋圖示點開才展開的輸入框，不佔用常駐 header 空間；送出後導去搜尋頁並收合。
   const [quickSearchOpen, setQuickSearchOpen] = useState(false);
   const [quickSearchKeyword, setQuickSearchKeyword] = useState("");
+  const [readerHeader, setReaderHeader] =
+    useState<StorytellerReaderHeaderContext>();
+  const headerContextValue = useMemo(
+    () => ({ reader: readerHeader, setReader: setReaderHeader }),
+    [readerHeader],
+  );
 
   function submitQuickSearch() {
     const keyword = quickSearchKeyword.trim();
@@ -91,16 +92,11 @@ export function StorytellerLayout() {
     setQuickSearchOpen(false);
     setQuickSearchKeyword("");
   }
-  // 深色模式套用在整個 Storyteller 產品線（不影響其他子站），記在 localStorage 供下次造訪沿用
-  const [mode, setMode] = useState(getInitialStorytellerThemeMode);
-  // 色系（黃銅／鋼鐵／銅綠／紅銅）也是整個產品線共用一份，記在 localStorage 供下次造訪沿用；
-  // 齒輪、鉚釘這些機構本身不受色系影響，只有 storytellerThemeTokens 的色碼會變。
-  const [palette, setPalette] = useState(getInitialStorytellerPalette);
-  // Phase D：節慶主題（預設「無」，不影響任何人），疊在 palette/mode 決定的
-  // base semantic token 上面，只覆寫少數強調色 key，見 storytellerSeasonalTheme.ts。
-  const [season, setSeason] = useState(getInitialStorytellerSeason);
+  // 三種 appearance 已各自包含明暗與配色；舊版設定由 initializer 一次遷移。
+  const [appearance, setAppearance] = useState(getInitialStorytellerAppearance);
+  const mode = storytellerAppearanceMeta[appearance].mode;
   const theme = useMemo(() => {
-    const tokens = storytellerThemeTokens[palette][mode];
+    const tokens = storytellerThemeTokens[appearance];
     const headingStyle = {
       fontFamily: storytellerDisplayFontFamily,
       fontWeight: 700,
@@ -115,17 +111,18 @@ export function StorytellerLayout() {
       palette: {
         mode,
         primary: {
-          main: tokens.brass,
-          light: tokens.brassBright,
-          dark: tokens.copper,
+          main: tokens.accent,
+          light: tokens.accentBright,
+          dark: tokens.support,
         },
-        secondary: { main: tokens.copper },
+        secondary: { main: tokens.accentSecondary },
         background: { default: tokens.bg, paper: tokens.surface },
         text: { primary: tokens.text, secondary: tokens.textMuted },
         divider: tokens.border,
       },
-      shape: { borderRadius: 3 },
+      shape: { borderRadius: 2 },
       typography: {
+        fontFamily: storytellerMonoFontFamily,
         h1: headingStyle,
         h2: headingStyle,
         h3: headingStyle,
@@ -139,40 +136,22 @@ export function StorytellerLayout() {
           letterSpacing: "0.02em",
         },
       },
-      // Phase B 第一批：Dialog/Menu/Tooltip/Button/IconButton 換皮，見
-      // storytellerComponentOverrides.ts 說明。這組 override 不吃 tokens／
-      // mode／palette，全部透過 CSS variable 解析，不用放進 useMemo 的
-      // 依賴考量（跟 theme 一起在 [mode, palette] 變動時重建也沒差，純粹
-      // 只是同一個 createTheme() 呼叫裡的靜態設定）。
       components: storytellerComponentOverrides(),
     });
-  }, [mode, palette]);
-  // Phase A（視覺主題規劃）：semantic token 曝露成 CSS variable，掛在 :root 上。
-  // 跟 theme 用同一份 [mode, palette] 依賴、同一份 tokens 來源，確保兩邊永遠同步
-  // ——不會有「MUI palette 已經換色系了，但 --storyteller-* 還是舊值」這種不一致。
-  // Phase D：節慶 overlay 疊在 semantic token 這層（不是疊在 raw palette token
-  // 上），所以只影響吃 --storyteller-* 的手刻 DOM／Phase B component override，
-  // 不影響 MUI theme.palette.primary 本身（AppBar／contained Button 這類直接
-  // 讀 tokens.brass 的地方維持色系本色，節慶只換裝飾性強調色，不是整站變色）。
+  }, [appearance, mode]);
+  // Semantic variables 同步提供給 editor 內不在 MUI tree 裡的原生選單。
   const storytellerCssVariables = useMemo(() => {
-    const tokens = storytellerThemeTokens[palette][mode];
+    const tokens = storytellerThemeTokens[appearance];
     return storytellerSemanticTokensToCssVariables(
-      mergeStorytellerSeasonalTokens(
-        toStorytellerSemanticTokens(tokens),
-        season,
-        mode,
-      ),
+      toStorytellerSemanticTokens(tokens),
     );
-  }, [mode, palette, season]);
+  }, [appearance]);
   useEffect(() => {
-    window.localStorage.setItem(storytellerThemeModeStorageKey, mode);
-  }, [mode]);
-  useEffect(() => {
-    window.localStorage.setItem(storytellerPaletteStorageKey, palette);
-  }, [palette]);
-  useEffect(() => {
-    window.localStorage.setItem(storytellerSeasonalStorageKey, season);
-  }, [season]);
+    window.localStorage.setItem(storytellerAppearanceStorageKey, appearance);
+    removeLegacyStorytellerAppearancePreferences();
+    document.documentElement.dataset.storytellerAppearance = appearance;
+    document.documentElement.style.colorScheme = mode;
+  }, [appearance, mode]);
   // index.html 的 favicon 是所有 Firebase Hosting target 共用的同一份靜態檔案，
   // steamloom.works 要有自己的圖示只能在 runtime 改 <link rel="icon">，跟 helpers/title.tsx
   // 動態改 document.head 是同一招；巢狀模式（faryne.dev/storyteller）維持原本的 faryne icon。
@@ -189,8 +168,6 @@ export function StorytellerLayout() {
     icon.type = "image/svg+xml";
     icon.href = "/steamloom-icon.svg";
   }, []);
-  const toggleMode = () =>
-    setMode((value) => (value === "dark" ? "light" : "dark"));
   const { data: profile, isLoading: isProfileLoading } =
     useStorytellerUserProfile();
   const displayName =
@@ -212,6 +189,7 @@ export function StorytellerLayout() {
   // 說明），不是每次 showPenNameDialog 變化都跳——例如筆名已經設定過的老使用者，
   // showPenNameDialog 一開始就是 false，不會經過這個 callback。
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+  const readerHeaderVisible = Boolean(readerHeader?.visible);
 
   const accountMenuItems = [
     { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
@@ -229,48 +207,90 @@ export function StorytellerLayout() {
 
   return (
     <ThemeProvider theme={theme}>
-      <GlobalStyles styles={{ ":root": storytellerCssVariables }} />
-      <StorytellerThemeModeContext.Provider value={{ mode, toggleMode }}>
-        <StorytellerPaletteContext.Provider value={{ palette, setPalette }}>
-          <StorytellerSeasonalContext.Provider value={{ season, setSeason }}>
-            <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-              <PenNameDialog
-                open={Boolean(showPenNameDialog)}
-                onCompleted={() => setShowWelcomeGuide(true)}
-              />
-              <WelcomeGuideDialog
-                open={showWelcomeGuide}
-                onClose={() => setShowWelcomeGuide(false)}
-              />
-              <AppBar position="sticky" color="default" elevation={0}>
-                <Toolbar>
+      <GlobalStyles
+        styles={{
+          ":root": storytellerCssVariables,
+          body: {
+            backgroundColor: "var(--storyteller-surface-base)",
+            backgroundImage:
+              "radial-gradient(circle at 8% 18%, color-mix(in srgb, var(--storyteller-accent-main) 10%, transparent), transparent 30rem)",
+          },
+        }}
+      />
+      <StorytellerAppearanceContext.Provider
+        value={{ appearance, setAppearance }}
+      >
+        <StorytellerHeaderContext.Provider value={headerContextValue}>
+          <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+            <PenNameDialog
+              open={Boolean(showPenNameDialog)}
+              onCompleted={() => setShowWelcomeGuide(true)}
+            />
+            <WelcomeGuideDialog
+              open={showWelcomeGuide}
+              onClose={() => setShowWelcomeGuide(false)}
+            />
+            <AppBar
+              position="sticky"
+              color="default"
+              elevation={0}
+              sx={{
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                backgroundColor:
+                  "color-mix(in srgb, var(--storyteller-surface-base) 88%, transparent)",
+                backdropFilter: "blur(18px)",
+              }}
+            >
+              <Toolbar sx={{ minHeight: { xs: 60, sm: 68 } }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  sx={{ flex: "1 1 0", minWidth: 0 }}
+                >
+                  <Box
+                    sx={{
+                      color: "primary.main",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <SteamLoomMark size={24} />
+                  </Box>
+                  <Typography
+                    component={RouterLink}
+                    to={steamloomPath()}
+                    variant="h6"
+                    sx={{
+                      color: "inherit",
+                      textDecoration: "none",
+                      lineHeight: 1,
+                      display: readerHeaderVisible
+                        ? { xs: "none", md: "block" }
+                        : "block",
+                    }}
+                  >
+                    {STORYTELLER_APP_NAME}
+                  </Typography>
+                  {readerHeaderVisible && (
+                    <Typography
+                      noWrap
+                      fontWeight={800}
+                      sx={{ display: { xs: "block", md: "none" }, minWidth: 0 }}
+                    >
+                      {readerHeader?.title}
+                    </Typography>
+                  )}
                   <Stack
                     direction="row"
-                    spacing={1}
                     alignItems="center"
-                    sx={{ flex: 1 }}
+                    sx={{
+                      display: readerHeaderVisible
+                        ? { xs: "none", md: "flex" }
+                        : "flex",
+                    }}
                   >
-                    <Box
-                      sx={{
-                        color: "primary.main",
-                        display: "flex",
-                        alignItems: "center",
-                      }}
-                    >
-                      <SteamLoomMark size={24} />
-                    </Box>
-                    <Typography
-                      component={RouterLink}
-                      to={steamloomPath()}
-                      variant="h6"
-                      sx={{
-                        color: "inherit",
-                        textDecoration: "none",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {STORYTELLER_APP_NAME}
-                    </Typography>
                     {quickSearchOpen ? (
                       <Stack
                         component="form"
@@ -338,6 +358,61 @@ export function StorytellerLayout() {
                     )}
                     <StorytellerAppearanceMenu />
                   </Stack>
+                </Stack>
+                {readerHeaderVisible && (
+                  <Box
+                    component="section"
+                    aria-label="目前閱讀內容"
+                    sx={{
+                      display: { xs: "none", md: "grid" },
+                      gridTemplateColumns: {
+                        md: "minmax(0, 1fr)",
+                        lg: "minmax(110px, .36fr) minmax(180px, .64fr)",
+                        xl: "minmax(110px, .28fr) minmax(210px, .4fr) minmax(0, 1fr)",
+                      },
+                      alignItems: "center",
+                      gap: 2,
+                      flex: {
+                        md: "0 1 320px",
+                        lg: "0 1 500px",
+                        xl: "0 1 760px",
+                      },
+                      minWidth: 0,
+                      mx: 2,
+                    }}
+                  >
+                    <Typography
+                      variant="overline"
+                      color="primary.main"
+                      noWrap
+                      sx={{
+                        display: { md: "none", lg: "block" },
+                        letterSpacing: "0.1em",
+                      }}
+                    >
+                      {readerHeader?.projectName}
+                    </Typography>
+                    <Typography variant="body2" fontWeight={800} noWrap>
+                      {readerHeader?.title}
+                    </Typography>
+                    {readerHeader?.summary && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        noWrap
+                        sx={{ display: { md: "none", xl: "block" } }}
+                      >
+                        {readerHeader.summary}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="flex-end"
+                  sx={{ flex: "1 1 0", minWidth: 0 }}
+                >
                   <Button
                     component={RouterLink}
                     to={steamloomPath("my/projects/new")}
@@ -347,7 +422,9 @@ export function StorytellerLayout() {
                     sx={{
                       mr: 1,
                       whiteSpace: "nowrap",
-                      display: { xs: "none", sm: "inline-flex" },
+                      display: readerHeaderVisible
+                        ? { xs: "none", md: "inline-flex" }
+                        : { xs: "none", sm: "inline-flex" },
                     }}
                   >
                     建立創作專案
@@ -357,7 +434,12 @@ export function StorytellerLayout() {
                     to={steamloomPath("my/projects/new")}
                     color="primary"
                     aria-label="建立創作專案"
-                    sx={{ mr: 1, display: { xs: "inline-flex", sm: "none" } }}
+                    sx={{
+                      mr: 1,
+                      display: readerHeaderVisible
+                        ? "none"
+                        : { xs: "inline-flex", sm: "none" },
+                    }}
                   >
                     <AddIcon />
                   </IconButton>
@@ -434,21 +516,21 @@ export function StorytellerLayout() {
                       登入
                     </Button>
                   )}
-                </Toolbar>
-              </AppBar>
-              <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
-                <Outlet />
+                </Stack>
+              </Toolbar>
+            </AppBar>
+            <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
+              <Outlet />
+            </Container>
+            {showFooter && (
+              <Container component="footer" maxWidth="xl">
+                <Divider />
+                <IndependentFooter service_name={STORYTELLER_APP_NAME} />
               </Container>
-              {showFooter && (
-                <Container component="footer" maxWidth="xl">
-                  <Divider />
-                  <IndependentFooter service_name={STORYTELLER_APP_NAME} />
-                </Container>
-              )}
-            </Stack>
-          </StorytellerSeasonalContext.Provider>
-        </StorytellerPaletteContext.Provider>
-      </StorytellerThemeModeContext.Provider>
+            )}
+          </Stack>
+        </StorytellerHeaderContext.Provider>
+      </StorytellerAppearanceContext.Provider>
     </ThemeProvider>
   );
 }

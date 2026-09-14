@@ -45,7 +45,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
@@ -767,7 +767,7 @@ export default function StorytellerProjectDetail() {
           variant="outlined"
           sx={{ p: 2, borderRadius: 1, ...steamPanelTopBarSx }}
         >
-          <SteamRivets inset={7} />
+          <SteamRegistrationMarks inset={7} />
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={1.5}

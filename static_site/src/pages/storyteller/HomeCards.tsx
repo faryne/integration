@@ -33,6 +33,7 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
+import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 import type {
   StorytellerAgent,
   StorytellerProject,
@@ -118,6 +119,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
             <Grid key={project.public_id} size={{ xs: 12, md: 4 }}>
               <StorytellerProjectCard
                 project={project}
+                onPrefetch={() => void loadStorytellerProjectWorkspace()}
                 headerAction={
                   <Stack direction="row" spacing={0.5} alignItems="center">
                     <Chip

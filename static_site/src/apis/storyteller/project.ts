@@ -261,6 +261,7 @@ export function useStorytellerProjects() {
 
 export function useStorytellerProject(projectPublicId?: string) {
   const { session } = useAuth();
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: ["storyteller", "project", projectPublicId, session?.user.id],
     enabled: Boolean(session?.encrypt_key && projectPublicId),
@@ -271,6 +272,16 @@ export function useStorytellerProject(projectPublicId?: string) {
       );
       return response.data.data;
     },
+    // 從「我的專案」點進工作台時列表資料已經足以先畫出外殼；完整詳情照常在背景更新，
+    // 避免為同一個專案的第二支 request 顯示整頁 loading。
+    placeholderData: () =>
+      queryClient
+        .getQueryData<StorytellerProject[]>([
+          "storyteller",
+          "projects",
+          session?.user.id,
+        ])
+        ?.find((project) => project.public_id === projectPublicId),
   });
 }
 

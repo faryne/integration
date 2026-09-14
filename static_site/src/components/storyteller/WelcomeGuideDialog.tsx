@@ -16,7 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -86,7 +86,7 @@ export function WelcomeGuideDialog({ open, onClose }: WelcomeGuideDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <Box sx={{ ...steamPanelTopBarSx, p: { xs: 2.5, sm: 3 } }}>
-        <SteamRivets />
+        <SteamRegistrationMarks />
         <Typography variant="h6" fontWeight={800}>
           歡迎加入 {STORYTELLER_APP_NAME}
         </Typography>

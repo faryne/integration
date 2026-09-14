@@ -1246,14 +1246,12 @@ export default function StorytellerStoryEditor({
         // 要往上滑才看得到——改成 sticky 釘在工作台右欄面板頂部（真正的捲動
         // 容器是 ProjectWorkspacePreview.tsx 那層 overflow:auto 的 Box，不是
         // 這裡），這樣捲動編輯器內文時這幾個常用控制項會一直留在畫面上。
-        // 背景色跟工作台右欄面板背景（ProjectWorkspacePreview.tsx 的 grid
-        // bgcolor）用同一個條件式，不然捲動時底下內容會透出來蓋住文字。
+        // 背景色跟工作台右欄面板一致，不然捲動時底下內容會透出來蓋住文字。
         position: "sticky",
         top: 0,
         zIndex: 2,
         pb: 1,
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+        bgcolor: "background.default",
       }}
     >
       <Box

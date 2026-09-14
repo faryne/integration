@@ -10,7 +10,7 @@ import {
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import type { StorytellerWorkSearchResult } from "@/types/storyteller.ts";
 
 const clampSx = (lines: number) => ({
@@ -51,7 +51,7 @@ export function StorytellerWorkCard({
         ...steamPanelTopBarSx,
       }}
     >
-      <SteamRivets inset={7} />
+      <SteamRegistrationMarks inset={7} />
       {isImage && (
         <Box
           sx={{

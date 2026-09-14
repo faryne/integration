@@ -1,7 +1,10 @@
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import HistoryIcon from "@mui/icons-material/History";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import TextFieldsIcon from "@mui/icons-material/TextFields";
 import {
@@ -15,12 +18,14 @@ import {
   Paper,
   Popover,
   Stack,
+  Tooltip,
   Typography,
   alpha,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import type {
   ReaderFontFamily,
   ReaderFontSize,
@@ -45,6 +50,11 @@ const FONT_FAMILIES: Array<{ label: string; value: ReaderFontFamily }> = [
   { label: "黑體", value: "sans" },
   { label: "明體", value: "serif" },
 ];
+
+interface ReaderChapterLink {
+  title: string;
+  href: string;
+}
 
 function SettingButtons<T extends string | number>({
   value,
@@ -80,8 +90,11 @@ export function StorytellerReaderToolbar({
   bookmarkEditing,
   bookmarkEditingAvailable,
   onToggleBookmarkEditing,
+  renderHistory,
   preferences,
   onChangePreferences,
+  previousChapter,
+  nextChapter,
 }: {
   projectName: string;
   currentTitle?: string;
@@ -92,24 +105,36 @@ export function StorytellerReaderToolbar({
   bookmarkEditing: boolean;
   bookmarkEditingAvailable: boolean;
   onToggleBookmarkEditing: () => void;
+  renderHistory?: (onClose: () => void) => ReactNode;
   preferences: StorytellerReaderPreferences;
   onChangePreferences: (patch: Partial<StorytellerReaderPreferences>) => void;
+  previousChapter?: ReaderChapterLink;
+  nextChapter?: ReaderChapterLink;
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [projectAnchor, setProjectAnchor] = useState<HTMLElement | null>(null);
+  const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(
     null,
   );
 
   function openProject(event: MouseEvent<HTMLElement>) {
     setSettingsAnchor(null);
+    setHistoryAnchor(null);
     setProjectAnchor(event.currentTarget);
   }
 
   function openSettings(event: MouseEvent<HTMLElement>) {
     setProjectAnchor(null);
+    setHistoryAnchor(null);
     setSettingsAnchor(event.currentTarget);
+  }
+
+  function openHistory(event: MouseEvent<HTMLElement>) {
+    setProjectAnchor(null);
+    setSettingsAnchor(null);
+    setHistoryAnchor(event.currentTarget);
   }
 
   const bookmarkButton = (
@@ -120,9 +145,16 @@ export function StorytellerReaderToolbar({
       disabled={!bookmarkEditingAvailable}
       aria-pressed={bookmarkEditing}
       onClick={onToggleBookmarkEditing}
-      sx={{ whiteSpace: "nowrap" }}
+      sx={{
+        minWidth: { xs: 32, sm: "auto" },
+        px: { xs: 0.75, sm: 1 },
+        whiteSpace: "nowrap",
+        "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+      }}
     >
-      {bookmarkEditing ? "完成" : "編輯書籤"}
+      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+        {bookmarkEditing ? "完成" : "書籤"}
+      </Box>
     </Button>
   );
 
@@ -247,126 +279,157 @@ export function StorytellerReaderToolbar({
   return (
     <>
       <Paper
+        component="nav"
+        aria-label="閱讀工具列"
         variant="outlined"
-        square
         sx={(theme) => ({
-          position: "sticky",
-          top: { xs: 56, sm: 64 },
-          zIndex: theme.zIndex.appBar - 1,
-          mx: { xs: -2, sm: 0 },
-          overflow: "hidden",
-          bgcolor: alpha(theme.palette.background.paper, 0.94),
+          position: "fixed",
+          zIndex: theme.zIndex.appBar + 1,
+          left: "50%",
+          bottom: { xs: 8, sm: 18 },
+          transform: "translateX(-50%)",
+          width: {
+            xs: "calc(100% - 8px)",
+            sm: "min(920px, calc(100% - 28px))",
+          },
+          px: 0.75,
+          py: 0.75,
+          borderRadius: 0,
+          bgcolor: alpha(theme.palette.background.paper, 0.9),
           backgroundImage: "none",
-          backdropFilter: "blur(12px)",
+          boxShadow: "0 16px 54px rgba(0, 0, 0, 0.28)",
+          backdropFilter: "blur(20px)",
+          pb: "calc(6px + env(safe-area-inset-bottom))",
         })}
       >
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          aria-label={`本篇閱讀進度 ${progress}%`}
-          sx={{ height: 3 }}
-        />
-        <Box
-          sx={{
-            minHeight: 48,
-            px: { xs: 1, sm: 1.5 },
-            py: 0.5,
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "minmax(0, 1fr) auto",
-              md: "1fr auto 1fr",
-            },
-            gridTemplateAreas: {
-              xs: '"left right" "title mobileBookmark"',
-              md: '"left title right"',
-            },
-            alignItems: "center",
-            gap: 0.5,
-          }}
+        <Stack
+          direction="row"
+          spacing={{ xs: 0.125, sm: 0.25 }}
+          alignItems="center"
         >
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
-            sx={{ gridArea: "left", minWidth: 0 }}
-          >
-            <Button
-              size="small"
-              startIcon={<MenuBookIcon />}
-              aria-expanded={navigationOpen}
-              onClick={onOpenNavigation}
-            >
-              目錄
-            </Button>
+          <Tooltip title={previousChapter?.title ?? "沒有上一篇"}>
+            <span>
+              <Button
+                component={RouterLink}
+                to={previousChapter?.href ?? "#"}
+                size="small"
+                color="inherit"
+                disabled={!previousChapter}
+                startIcon={<ArrowBackIcon />}
+                sx={{
+                  minWidth: { xs: 32, sm: "auto" },
+                  px: { xs: 0.75, sm: 1 },
+                  "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  上一章
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="目錄與已加入的書籤">
             <Button
               size="small"
               color="inherit"
-              endIcon={<ExpandMoreIcon />}
-              aria-expanded={Boolean(projectAnchor)}
-              onClick={openProject}
-              sx={{ minWidth: 0, maxWidth: { xs: 150, sm: 260 } }}
+              startIcon={<MenuBookIcon />}
+              aria-expanded={navigationOpen}
+              onClick={onOpenNavigation}
+              sx={{
+                minWidth: { xs: 32, sm: "auto" },
+                px: { xs: 0.75, sm: 1 },
+                "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+              }}
             >
               <Box
                 component="span"
-                sx={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
+                sx={{ display: { xs: "none", sm: "inline" } }}
               >
-                {projectName}
+                章節
               </Box>
             </Button>
-          </Stack>
-
-          <Typography
-            variant="body2"
-            fontWeight={800}
-            sx={{
-              gridArea: "title",
-              minWidth: 0,
-              px: 1,
-              textAlign: { xs: "left", md: "center" },
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {currentTitle ?? "尚無內容"}
-          </Typography>
-
-          <Box
-            sx={{
-              gridArea: "mobileBookmark",
-              display: { xs: "block", md: "none" },
-            }}
-          >
-            {bookmarkButton}
-          </Box>
-
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
-            justifyContent="flex-end"
-            sx={{ gridArea: "right" }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              aria-label={`本篇閱讀進度 ${progress}%`}
+          </Tooltip>
+          <Tooltip title={currentTitle ?? "閱讀進度"}>
+            <Box
               sx={{
-                minWidth: 36,
-                textAlign: "right",
-                fontFamily: "monospace",
-                fontVariantNumeric: "tabular-nums",
+                flex: 1,
+                minWidth: { xs: 20, sm: 90 },
+                px: { xs: 0.25, sm: 1 },
               }}
             >
-              {progress}%
-            </Typography>
-            <Box sx={{ display: { xs: "none", md: "block" } }}>
-              {bookmarkButton}
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                aria-label={`本篇閱讀進度 ${progress}%`}
+                sx={{ height: "2px" }}
+              />
             </Box>
+          </Tooltip>
+          <Typography
+            variant="caption"
+            color="primary.main"
+            aria-label={`本篇閱讀進度 ${progress}%`}
+            sx={{
+              minWidth: { xs: 28, sm: 34 },
+              textAlign: "right",
+              fontFamily: "monospace",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {progress}%
+          </Typography>
+          <Tooltip title={`作品資訊：${projectName}`}>
+            <Button
+              size="small"
+              color="inherit"
+              startIcon={<InfoOutlinedIcon />}
+              aria-expanded={Boolean(projectAnchor)}
+              onClick={openProject}
+              sx={{
+                minWidth: { xs: 32, sm: "auto" },
+                px: { xs: 0.75, sm: 1 },
+                "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+              }}
+            >
+              <Box
+                component="span"
+                sx={{ display: { xs: "none", md: "inline" } }}
+              >
+                作品
+              </Box>
+            </Button>
+          </Tooltip>
+          {renderHistory && (
+            <Tooltip title="編輯歷史">
+              <Button
+                size="small"
+                color="inherit"
+                startIcon={<HistoryIcon />}
+                aria-label="編輯歷史"
+                aria-expanded={Boolean(historyAnchor)}
+                onClick={openHistory}
+                sx={{
+                  minWidth: { xs: 32, sm: "auto" },
+                  px: { xs: 0.5, sm: 1 },
+                  "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", md: "inline" } }}
+                >
+                  歷史
+                </Box>
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip title={bookmarkEditing ? "完成編輯書籤" : "編輯段落書籤"}>
+            <span>{bookmarkButton}</span>
+          </Tooltip>
+          <Tooltip title="閱讀設定">
             <Button
               size="small"
               color="inherit"
@@ -374,18 +437,85 @@ export function StorytellerReaderToolbar({
               aria-label="閱讀設定"
               aria-expanded={Boolean(settingsAnchor)}
               onClick={openSettings}
-              sx={{ minWidth: { xs: 36, sm: "auto" }, px: { xs: 0.75, sm: 1 } }}
+              sx={{
+                minWidth: { xs: 32, sm: "auto" },
+                px: { xs: 0.75, sm: 1 },
+                "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+              }}
             >
               <Box
                 component="span"
                 sx={{ display: { xs: "none", sm: "inline" } }}
               >
-                閱讀設定
+                閱讀
               </Box>
             </Button>
-          </Stack>
-        </Box>
+          </Tooltip>
+          <Tooltip title={nextChapter?.title ?? "沒有下一篇"}>
+            <span>
+              <Button
+                component={RouterLink}
+                to={nextChapter?.href ?? "#"}
+                size="small"
+                color="inherit"
+                disabled={!nextChapter}
+                endIcon={<ArrowForwardIcon />}
+                sx={{
+                  minWidth: { xs: 32, sm: "auto" },
+                  px: { xs: 0.75, sm: 1 },
+                  "& .MuiButton-endIcon": { ml: { xs: 0, sm: 0.5 } },
+                }}
+              >
+                <Box
+                  component="span"
+                  sx={{ display: { xs: "none", sm: "inline" } }}
+                >
+                  下一章
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
       </Paper>
+
+      {isMobile ? (
+        <Drawer
+          anchor="bottom"
+          open={Boolean(historyAnchor)}
+          onClose={() => setHistoryAnchor(null)}
+          slotProps={{
+            paper: { sx: { maxHeight: "78vh", borderRadius: "16px 16px 0 0" } },
+          }}
+        >
+          {mobileSheet(
+            "編輯歷史",
+            <Box sx={{ maxHeight: "60vh", overflowY: "auto" }}>
+              {renderHistory?.(() => setHistoryAnchor(null))}
+            </Box>,
+            () => setHistoryAnchor(null),
+          )}
+        </Drawer>
+      ) : (
+        <Popover
+          open={Boolean(historyAnchor)}
+          anchorEl={historyAnchor}
+          onClose={() => setHistoryAnchor(null)}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+          transformOrigin={{ vertical: "bottom", horizontal: "center" }}
+          slotProps={{
+            paper: {
+              sx: { width: 380, maxWidth: "calc(100vw - 24px)", p: 2 },
+            },
+          }}
+        >
+          <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
+            編輯歷史
+          </Typography>
+          <Box sx={{ maxHeight: "55vh", overflowY: "auto" }}>
+            {renderHistory?.(() => setHistoryAnchor(null))}
+          </Box>
+        </Popover>
+      )}
 
       {isMobile ? (
         <Drawer
@@ -405,8 +535,8 @@ export function StorytellerReaderToolbar({
           open={Boolean(projectAnchor)}
           anchorEl={projectAnchor}
           onClose={() => setProjectAnchor(null)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-          transformOrigin={{ vertical: "top", horizontal: "left" }}
+          anchorOrigin={{ vertical: "top", horizontal: "left" }}
+          transformOrigin={{ vertical: "bottom", horizontal: "left" }}
           slotProps={{
             paper: { sx: { width: 440, maxWidth: "calc(100vw - 24px)", p: 2 } },
           }}
@@ -431,8 +561,8 @@ export function StorytellerReaderToolbar({
           open={Boolean(settingsAnchor)}
           anchorEl={settingsAnchor}
           onClose={() => setSettingsAnchor(null)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          anchorOrigin={{ vertical: "top", horizontal: "right" }}
+          transformOrigin={{ vertical: "bottom", horizontal: "right" }}
           slotProps={{
             paper: { sx: { width: 360, maxWidth: "calc(100vw - 24px)", p: 2 } },
           }}

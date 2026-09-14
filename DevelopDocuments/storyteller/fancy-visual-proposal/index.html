@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SteamLoom Fancy Visual Direction</title>
+    <link rel="stylesheet" href="./base.css" />
+    <link rel="stylesheet" href="./discover.css" />
+    <link rel="stylesheet" href="./workspace.css" />
+    <link rel="stylesheet" href="./reader.css" />
+    <link rel="stylesheet" href="./responsive.css" />
+  </head>
+  <body data-tone="nocturne">
+    <div class="proposal-bar" aria-label="提案預覽控制">
+      <strong>SteamLoom / Visual direction 02</strong>
+      <div class="proposal-actions">
+        <div class="segmented" aria-label="預覽頁面">
+          <button
+            type="button"
+            class="is-active"
+            data-view-target="discover"
+            aria-pressed="true"
+          >
+            探索
+          </button>
+          <button
+            type="button"
+            data-view-target="workspace"
+            aria-pressed="false"
+          >
+            工作台
+          </button>
+          <button type="button" data-view-target="reader" aria-pressed="false">
+            閱讀
+          </button>
+        </div>
+        <div class="segmented tone-switch" aria-label="色調">
+          <button
+            type="button"
+            class="is-active"
+            data-tone-target="nocturne"
+            aria-pressed="true"
+          >
+            夜織
+          </button>
+          <button type="button" data-tone-target="ivory" aria-pressed="false">
+            紙本
+          </button>
+          <button type="button" data-tone-target="prism" aria-pressed="false">
+            稜光
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="site-frame">
+      <header class="site-header">
+        <a href="#" class="brand" aria-label="SteamLoom 首頁">
+          <span class="loom-mark" aria-hidden="true"><i></i></span>
+          <span>Steam<span>Loom</span></span>
+        </a>
+        <nav class="site-nav" aria-label="主要導覽">
+          <a href="#" class="is-current">探索</a>
+          <a href="#">書架</a>
+          <a href="#">工作台</a>
+        </nav>
+        <div class="reader-context-bar" aria-label="目前閱讀內容">
+          <span>飛機杯少女</span>
+          <strong>綠葉的慵懶一日</strong>
+          <p>有些午後不是拿來前進的，是拿來故意浪費的。</p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="icon-button" aria-label="搜尋">⌕</button>
+          <button type="button" class="primary-button">
+            開始創作 <span>↗</span>
+          </button>
+          <button type="button" class="avatar" aria-label="帳號選單">F</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="view is-active" data-view="discover">
+          <div class="discover-hero">
+            <div class="hero-copy">
+              <p class="eyebrow">STORIES / WORLDS / LIVING THREADS</p>
+              <h1>
+                <span data-hero-title>讓故事像織物一樣，</span
+                ><em data-hero-accent>留下手感。</em>
+              </h1>
+              <p class="hero-lead" data-hero-lead>
+                從第一句到完整世界觀，SteamLoom 將創作、閱讀與 AI
+                協作編進同一張布。
+              </p>
+              <div class="hero-actions">
+                <button type="button" class="primary-button">
+                  探索故事 <span>↗</span>
+                </button>
+                <button type="button" class="text-button">
+                  打開我的工作台 <span>→</span>
+                </button>
+              </div>
+            </div>
+            <article class="feature-story">
+              <div class="feature-visual" aria-hidden="true">
+                <span class="orbit orbit-a"></span>
+                <span class="orbit orbit-b"></span>
+                <span class="thread thread-a"></span>
+                <span class="thread thread-b"></span>
+                <span class="feature-index">07</span>
+              </div>
+              <div class="feature-caption">
+                <p>本週選讀 / SERIAL FICTION</p>
+                <h2>綠葉的慵懶一日</h2>
+                <span>飛機杯少女 · 第五話 · 11,937 字</span>
+              </div>
+            </article>
+          </div>
+
+          <section class="project-section">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">CURATED THIS WEEK</p>
+                <h2>正在發生的故事</h2>
+              </div>
+              <a href="#">瀏覽全部 <span>↗</span></a>
+            </div>
+            <div class="project-grid">
+              <article class="project-card project-card-featured">
+                <div class="card-number">01</div>
+                <div class="project-art project-art-weave" aria-hidden="true">
+                  <span>SL / 011</span>
+                </div>
+                <div class="card-title-row">
+                  <span class="content-symbol">文</span>
+                  <div>
+                    <p>連載中</p>
+                    <h3>飛機杯少女</h3>
+                  </div>
+                </div>
+                <p class="project-description">
+                  三個飛機杯少女爭奪男主角寵愛，以及她們彼此之間逐漸失控的關係。
+                </p>
+                <div class="project-meta">
+                  <span>11 篇</span><span>115,800 字</span><span>限制級</span>
+                </div>
+                <div class="tag-row">
+                  <span>戀愛喜劇</span><span>後宮</span><span>幻想</span>
+                </div>
+                <footer>
+                  <span>Faryne · 9 月 4 日</span
+                  ><button type="button">開始閱讀 →</button>
+                </footer>
+              </article>
+              <article class="project-card">
+                <div class="card-number">02</div>
+                <div class="project-art project-art-rain" aria-hidden="true">
+                  <span>SL / 002</span>
+                </div>
+                <div class="card-title-row">
+                  <span class="content-symbol">圖</span>
+                  <div>
+                    <p>短篇</p>
+                    <h3>藍藍的一天</h3>
+                  </div>
+                </div>
+                <p class="project-description">
+                  一段在城市雨夜裡展開，沒有被記進任何行事曆的短暫旅程。
+                </p>
+                <div class="project-meta">
+                  <span>2 話</span><span>8,872 字</span><span>普通級</span>
+                </div>
+                <div class="tag-row"><span>城市</span><span>奇想</span></div>
+                <footer>
+                  <span>Faryne · 8 月 24 日</span
+                  ><button type="button">開始閱讀 →</button>
+                </footer>
+              </article>
+              <article class="project-card">
+                <div class="card-number">03</div>
+                <div class="project-art project-art-house" aria-hidden="true">
+                  <span>SL / 008</span>
+                </div>
+                <div class="card-title-row">
+                  <span class="content-symbol">文</span>
+                  <div>
+                    <p>完結</p>
+                    <h3>禁斷姐弟／兄妹戀</h3>
+                  </div>
+                </div>
+                <p class="project-description">
+                  那些沒能被好好說出口的話，最後都留在同一個屋簷下。
+                </p>
+                <div class="project-meta">
+                  <span>8 篇</span><span>70,147 字</span><span>限制級</span>
+                </div>
+                <div class="tag-row">
+                  <span>禁忌</span><span>親密關係</span><span>+1</span>
+                </div>
+                <footer>
+                  <span>Faryne · 7 月 24 日</span
+                  ><button type="button">開始閱讀 →</button>
+                </footer>
+              </article>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" data-view="workspace">
+          <div class="workspace-context">
+            <button
+              type="button"
+              class="mobile-navigator-trigger"
+              aria-controls="mobile-navigator"
+              aria-expanded="false"
+            >
+              ☰ 導覽
+            </button>
+            <div class="breadcrumbs">
+              <span>我的工作台</span><b>/</b><strong>飛機杯少女</strong><b>/</b
+              ><span data-workspace-section>作品</span>
+            </div>
+            <button type="button" class="primary-button compact">
+              ＋ 建立
+            </button>
+          </div>
+          <div class="workspace-shell">
+            <aside class="workspace-navigator">
+              <div class="project-identity">
+                <span class="content-symbol">文</span>
+                <div><small>目前專案</small><strong>飛機杯少女</strong></div>
+              </div>
+              <nav>
+                <section>
+                  <header>
+                    <span>作品與冊</span><button type="button">＋</button>
+                  </header>
+                  <a href="#" class="is-selected" data-content-target="stories"
+                    >全部作品 <b>11</b></a
+                  ><a href="#">未分冊 <b>2</b></a
+                  ><a href="#">桌布集 <b>4</b></a
+                  ><a href="#">夢境篇 <b>5</b></a>
+                </section>
+                <section>
+                  <header>
+                    <span>設定集</span><button type="button">＋</button>
+                  </header>
+                  <a href="#" data-content-target="settings"
+                    >全部設定 <b>18</b></a
+                  ><a href="#">角色 <b>7</b></a
+                  ><a href="#">場景 <b>6</b></a>
+                </section>
+                <section>
+                  <header>
+                    <span>資產集</span><button type="button">＋</button>
+                  </header>
+                  <a href="#" data-content-target="assets">全部資產 <b>23</b></a
+                  ><a href="#">插圖 <b>9</b></a>
+                </section>
+              </nav>
+              <footer>
+                <button type="button">⚙ 編輯專案</button
+                ><button type="button">↗ 開啟閱讀頁</button>
+              </footer>
+            </aside>
+            <section class="workspace-content">
+              <header class="workspace-heading">
+                <div>
+                  <p class="eyebrow" data-workspace-kicker>
+                    STORIES / 11 ITEMS
+                  </p>
+                  <h1 data-workspace-title>全部作品</h1>
+                </div>
+                <div class="workspace-toolbar">
+                  <div class="view-options" aria-label="顯示方式">
+                    <button
+                      type="button"
+                      class="is-active"
+                      data-layout-target="list"
+                      aria-label="清單顯示"
+                      aria-pressed="true"
+                    >
+                      ☷
+                    </button>
+                    <button
+                      type="button"
+                      data-layout-target="grid"
+                      aria-label="格狀顯示"
+                      aria-pressed="false"
+                    >
+                      ▦
+                    </button>
+                  </div>
+                </div>
+              </header>
+              <div class="workspace-panels" aria-live="polite">
+                <section class="content-panel is-active" data-content="stories">
+                  <div class="workspace-collection is-list" data-collection>
+                    <article class="library-item">
+                      <div class="item-visual story-visual" aria-hidden="true">
+                        <span>01</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">CHAPTER 01</p>
+                        <h3>第一話　紫色的初遇</h3>
+                        <p class="item-summary">
+                          紫乃第一次被帶回家，也是所有麻煩真正開始的地方。
+                        </p>
+                        <div class="item-meta">8,070 字 · 9 月 13 日更新</div>
+                      </div>
+                      <span class="status">公開</span>
+                      <button
+                        type="button"
+                        class="item-menu"
+                        aria-label="第一話更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual story-visual alternate"
+                        aria-hidden="true"
+                      >
+                        <span>02</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">CHAPTER 02</p>
+                        <h3>第二話　綠色的慵懶誘惑</h3>
+                        <p class="item-summary">
+                          綠葉不急著爭搶，她只想讓時間慢慢站到自己這邊。
+                        </p>
+                        <div class="item-meta">6,628 字 · 8 月 24 日更新</div>
+                      </div>
+                      <span class="status">公開</span>
+                      <button
+                        type="button"
+                        class="item-menu"
+                        aria-label="第二話更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual story-visual draft"
+                        aria-hidden="true"
+                      >
+                        <span>03</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">CHAPTER 03</p>
+                        <h3>第三話　藍色的深喉告白</h3>
+                        <p class="item-summary">
+                          還在整理的草稿，最後一段停在沒有說完的告白。
+                        </p>
+                        <div class="item-meta">6,099 字 · 7 月 23 日更新</div>
+                      </div>
+                      <span class="status">草稿</span>
+                      <button
+                        type="button"
+                        class="item-menu"
+                        aria-label="第三話更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual story-visual final"
+                        aria-hidden="true"
+                      >
+                        <span>05</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">CHAPTER 05</p>
+                        <h3>第五話　綠葉的慵懶一日</h3>
+                        <p class="item-summary">
+                          一個什麼也不想完成的午後，反而讓關係跨過了界線。
+                        </p>
+                        <div class="item-meta">11,937 字 · 9 月 11 日更新</div>
+                      </div>
+                      <span class="status">公開</span>
+                      <button
+                        type="button"
+                        class="item-menu"
+                        aria-label="第五話更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                  </div>
+                </section>
+
+                <section class="content-panel" data-content="settings">
+                  <div class="workspace-collection is-grid" data-collection>
+                    <article class="library-item">
+                      <div
+                        class="item-visual setting-visual portrait"
+                        aria-hidden="true"
+                      >
+                        <span>CHARACTER</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">角色 / 主要人物</p>
+                        <h3>紫乃</h3>
+                        <p class="item-summary">
+                          高傲、好勝，總是在最不該認真的地方先認真起來。
+                        </p>
+                        <div class="item-meta">被 6 篇故事引用 · 12 條關係</div>
+                      </div>
+                      <span class="status">已完成</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="紫乃設定更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual setting-visual leaf"
+                        aria-hidden="true"
+                      >
+                        <span>CHARACTER</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">角色 / 主要人物</p>
+                        <h3>綠葉</h3>
+                        <p class="item-summary">
+                          看似慵懶，實際上最擅長等待對手自己露出破綻。
+                        </p>
+                        <div class="item-meta">被 8 篇故事引用 · 9 條關係</div>
+                      </div>
+                      <span class="status">已完成</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="綠葉設定更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual setting-visual room"
+                        aria-hidden="true"
+                      >
+                        <span>LOCATION</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">場景 / 室內</p>
+                        <h3>主角的房間</h3>
+                        <p class="item-summary">
+                          故事多數衝突的起點，也是角色最常留下物品的地方。
+                        </p>
+                        <div class="item-meta">被 10 篇故事引用 · 4 張資產</div>
+                      </div>
+                      <span class="status">補充中</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="房間設定更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                  </div>
+                </section>
+
+                <section class="content-panel" data-content="assets">
+                  <div class="workspace-collection is-grid" data-collection>
+                    <article class="library-item">
+                      <div
+                        class="item-visual asset-visual violet"
+                        aria-hidden="true"
+                      >
+                        <span>PNG</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">角色立繪</p>
+                        <h3>紫乃・正面</h3>
+                        <p class="item-summary">
+                          透明背景的主要立繪，已套用在角色設定與三篇章節。
+                        </p>
+                        <div class="item-meta">2048 × 3072 · 3.8 MB</div>
+                      </div>
+                      <span class="status">使用中</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="紫乃立繪更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual asset-visual green"
+                        aria-hidden="true"
+                      >
+                        <span>JPG</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">章節插圖</p>
+                        <h3>慵懶的午後</h3>
+                        <p class="item-summary">
+                          第五話的閱讀頁插圖，目前只在公開版本顯示。
+                        </p>
+                        <div class="item-meta">2560 × 1440 · 2.1 MB</div>
+                      </div>
+                      <span class="status">使用中</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="慵懶午後更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                    <article class="library-item">
+                      <div
+                        class="item-visual asset-visual blueprint"
+                        aria-hidden="true"
+                      >
+                        <span>SVG</span>
+                      </div>
+                      <div class="item-body">
+                        <p class="item-type">設定圖</p>
+                        <h3>房間配置圖</h3>
+                        <p class="item-summary">
+                          用於確認床、桌面與角色移動路徑的場景參考。
+                        </p>
+                        <div class="item-meta">Vector · 184 KB</div>
+                      </div>
+                      <span class="status">未引用</span
+                      ><button
+                        type="button"
+                        class="item-menu"
+                        aria-label="房間配置圖更多操作"
+                      >
+                        ⋮
+                      </button>
+                    </article>
+                  </div>
+                </section>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" data-view="reader">
+          <div class="reader-stage">
+            <header class="reader-hero">
+              <p class="eyebrow">飛機杯少女 / CHAPTER 05</p>
+              <h1>綠葉的慵懶一日</h1>
+              <p>「有些午後不是拿來前進的，是拿來故意浪費的。」</p>
+              <div>
+                <span>11,937 字</span><span>約 24 分鐘</span
+                ><span>更新於 9 月 11 日</span>
+              </div>
+            </header>
+            <article class="reader-paper">
+              <span class="chapter-mark">05</span>
+              <p>某天深夜，主角拖著疲憊的身體回到家。</p>
+              <p>
+                一個星期的加班讓他幾乎沒有好好釋放過，現在終於有時間好好宣洩累積的慾望。他打開電腦，挑選了一部今晚的「配菜」，主題正是開發可愛青梅竹馬的後庭。
+              </p>
+              <p>
+                他從架上拿起小綠的飛機杯和專用潤滑液，回到座位。將瓶身冰涼的潤滑液緩緩倒入小綠飛機杯的後穴入口時，那緊緻的褐色入口似乎微微抽動了一下，像在期待什麼。
+              </p>
+              <blockquote>
+                故事真正發生的地方，往往是讀者停下來的那一秒。
+              </blockquote>
+              <p>
+                主角沒有多想，先把飛機杯放在一旁，然後按下播放鍵。房間裡只剩螢幕的光，和逐漸變得清晰的呼吸聲。
+              </p>
+            </article>
+          </div>
+          <div class="reader-dock">
+            <button type="button">← <span>上一章</span></button>
+            <button type="button">☷ <span>章節</span></button>
+            <div class="reading-progress"><span style="width: 42%"></span></div>
+            <strong>42%</strong>
+            <button type="button">Aa <span>閱讀</span></button>
+            <button type="button">◷ <span>歷史</span></button>
+            <button type="button">☆ <span>書籤</span></button>
+            <button type="button"><span>下一章</span> →</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="mobile-drawer" id="mobile-navigator" aria-hidden="true">
+      <div class="drawer-scrim" data-close-drawer></div>
+      <aside>
+        <header>
+          <strong>飛機杯少女</strong
+          ><button type="button" data-close-drawer>×</button>
+        </header>
+        <nav>
+          <a
+            class="is-selected"
+            href="#"
+            data-content-target="stories"
+            data-close-drawer
+            >全部作品 <b>11</b></a
+          ><a href="#">未分冊 <b>2</b></a
+          ><a href="#">桌布集 <b>4</b></a
+          ><a href="#" data-content-target="settings" data-close-drawer
+            >設定集 <b>18</b></a
+          ><a href="#" data-content-target="assets" data-close-drawer
+            >資產集 <b>23</b></a
+          >
+        </nav>
+      </aside>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>
