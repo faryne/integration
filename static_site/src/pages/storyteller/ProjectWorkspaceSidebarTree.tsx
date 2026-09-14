@@ -407,9 +407,7 @@ const sidebarTreeRowSx: SxProps<Theme> = {
   minHeight: 30,
   px: 1,
   color: "text.secondary",
-  "&:hover": {
-    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8"),
-  },
+  "&:hover": { bgcolor: "action.hover" },
   "&.Mui-selected": {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
     color: "text.primary",

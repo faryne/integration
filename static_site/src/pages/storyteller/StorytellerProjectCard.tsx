@@ -1,9 +1,8 @@
 import ArticleIcon from "@mui/icons-material/Article";
-import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { KeyboardEvent, ReactNode } from "react";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import {
   formatStorytellerDate,
   storytellerProjectRatingColor,
@@ -28,6 +27,8 @@ export interface StorytellerProjectCardProps {
   // 工作台可讓整張卡成為進入專案的主要入口；內部 action 會阻止事件冒泡，避免
   // 點 visibility 或 menu 時同時跳頁。其他公開頁仍可只使用底部按鈕。
   onClick?: () => void;
+  // 工作台等 lazy 頁面可在 hover／鍵盤 focus 時提前載入；公開卡片不傳就沒有額外行為。
+  onPrefetch?: () => void;
 }
 
 export function StorytellerProjectCard({
@@ -36,6 +37,7 @@ export function StorytellerProjectCard({
   actions,
   extraChips,
   onClick,
+  onPrefetch,
 }: StorytellerProjectCardProps) {
   const stories = project.stories ?? [];
   const storiesCount = stories.filter(
@@ -48,6 +50,12 @@ export function StorytellerProjectCard({
     (total, story) => total + story.word_count,
     0,
   );
+  const projectIndex = String(
+    [...project.name].reduce(
+      (total, character) => total + character.charCodeAt(0),
+      0,
+    ) % 100,
+  ).padStart(2, "0");
 
   return (
     <Paper
@@ -55,6 +63,8 @@ export function StorytellerProjectCard({
       role={onClick ? "link" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onPointerEnter={onPrefetch}
+      onFocus={onPrefetch}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
         if (!onClick || (event.key !== "Enter" && event.key !== " ")) return;
         event.preventDefault();
@@ -62,16 +72,19 @@ export function StorytellerProjectCard({
       }}
       sx={{
         p: 2,
-        borderRadius: 1,
+        borderRadius: 0,
         height: 1,
         boxSizing: "border-box",
         overflow: "hidden",
-        transition: "border-color 140ms ease, transform 140ms ease",
+        backgroundColor: "background.paper",
+        transition:
+          "border-color 160ms ease, transform 160ms ease, background-color 160ms ease",
         ...(onClick && {
           cursor: "pointer",
           "&:hover": {
             borderColor: "primary.main",
-            transform: "translateY(-1px)",
+            bgcolor: "action.hover",
+            transform: "translateY(-3px)",
           },
           "&:focus-visible": {
             outline: 2,
@@ -82,8 +95,65 @@ export function StorytellerProjectCard({
         ...steamPanelTopBarSx,
       }}
     >
-      <SteamRivets inset={7} />
+      <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
+        <Box
+          aria-hidden
+          sx={{
+            position: "relative",
+            height: 116,
+            flexShrink: 0,
+            mx: -2,
+            mt: -2,
+            overflow: "hidden",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            background:
+              "radial-gradient(circle at 65% 40%, color-mix(in srgb, var(--storyteller-accent-main) 18%, transparent), transparent 36%), var(--storyteller-surface-overlay)",
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+              opacity: 0.45,
+              backgroundImage:
+                "linear-gradient(var(--storyteller-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--storyteller-border-subtle) 1px, transparent 1px)",
+              backgroundSize: "26px 26px",
+            },
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              width: 82,
+              height: 82,
+              left: "calc(50% - 41px)",
+              top: 17,
+              border: "1px solid",
+              borderColor:
+                project.content_type === "image"
+                  ? "secondary.main"
+                  : "primary.main",
+              transform:
+                project.content_type === "image"
+                  ? "rotate(0deg)"
+                  : "rotate(45deg)",
+              boxShadow:
+                "0 0 28px color-mix(in srgb, var(--storyteller-accent-main) 16%, transparent)",
+            },
+          }}
+        >
+          <Typography
+            sx={{
+              position: "absolute",
+              zIndex: 1,
+              left: 14,
+              bottom: 10,
+              color: "primary.main",
+              fontSize: 10,
+              letterSpacing: "0.16em",
+            }}
+          >
+            SL / {projectIndex}
+          </Typography>
+        </Box>
         <Stack
           direction="row"
           spacing={1}
@@ -97,7 +167,13 @@ export function StorytellerProjectCard({
             alignItems="center"
             sx={{ minWidth: 0 }}
           >
-            <AutoStoriesIcon color="primary" />
+            <Typography
+              aria-hidden
+              color="primary.main"
+              sx={{ fontFamily: "serif", fontSize: 13, fontStyle: "italic" }}
+            >
+              {projectIndex}
+            </Typography>
             <Typography
               variant="h6"
               fontWeight={800}

@@ -650,8 +650,7 @@ export default function StorytellerImageEpisodeEditor({
         top: 0,
         zIndex: 2,
         pb: 1.5,
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+        bgcolor: "background.default",
       }}
     >
       <WorkspaceEditorHeaderRow

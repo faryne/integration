@@ -36,8 +36,7 @@ export function WorkspaceMobileNavigatorDrawer({
         paper: {
           sx: {
             width: "min(88vw, 360px)",
-            bgcolor: (theme) =>
-              theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
+            bgcolor: "background.paper",
             backgroundImage: "none",
           },
         },

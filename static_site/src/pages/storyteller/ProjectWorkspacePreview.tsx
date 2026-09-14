@@ -547,8 +547,7 @@ export default function StorytellerProjectWorkspacePreview() {
           },
           flex: 1,
           minHeight: 0,
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+          bgcolor: "background.default",
         }}
       >
         <Box
@@ -564,10 +563,8 @@ export default function StorytellerProjectWorkspacePreview() {
             sx={{
               height: "100%",
               borderRight: 1,
-              borderColor: (theme) =>
-                theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
+              borderColor: "divider",
+              bgcolor: "background.paper",
               minHeight: 0,
               overflow: "hidden",
             }}
@@ -591,11 +588,9 @@ export default function StorytellerProjectWorkspacePreview() {
                 height: 26,
                 bgcolor: "background.paper",
                 border: 1,
-                borderColor: (theme) =>
-                  theme.palette.mode === "dark" ? "#3a3a3a" : "#d8d5cd",
+                borderColor: "divider",
                 "&:hover": {
-                  bgcolor: (theme) =>
-                    theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
+                  bgcolor: "action.hover",
                 },
               }}
             >

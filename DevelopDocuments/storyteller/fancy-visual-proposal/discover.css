@@ -186,6 +186,81 @@
     transform 180ms ease,
     background 180ms ease;
 }
+.project-art {
+  position: relative;
+  height: 132px;
+  flex: 0 0 auto;
+  margin: -26px -26px 24px;
+  border-bottom: 1px solid var(--line-strong);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.project-art::before,
+.project-art::after {
+  content: "";
+  position: absolute;
+}
+.project-art::before {
+  inset: 0;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.project-art::after {
+  width: 116px;
+  height: 116px;
+  left: calc(50% - 58px);
+  top: 8px;
+  border: 1px solid var(--thread);
+  box-shadow: 0 0 36px var(--glow);
+  transform: rotate(45deg);
+}
+.project-art span {
+  position: absolute;
+  z-index: 1;
+  left: 16px;
+  bottom: 12px;
+  color: var(--thread);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+}
+.project-art-rain {
+  background:
+    repeating-linear-gradient(
+      105deg,
+      transparent 0 14px,
+      var(--line) 15px 16px
+    ),
+    radial-gradient(circle at 68% 35%, var(--glow), transparent 32%),
+    var(--surface-2);
+}
+.project-art-rain::after {
+  width: 150px;
+  height: 72px;
+  top: 30px;
+  border-color: var(--thread-2);
+  border-radius: 50%;
+  transform: rotate(-12deg);
+}
+.project-art-house {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 49.7%,
+      var(--line-strong) 50%,
+      transparent 50.3%
+    ),
+    var(--surface-2);
+}
+.project-art-house::after {
+  width: 92px;
+  height: 92px;
+  left: calc(50% - 46px);
+  top: 22px;
+  border-color: var(--metal);
+  transform: rotate(0);
+}
 .project-card:hover {
   z-index: 2;
   transform: translateY(-4px);

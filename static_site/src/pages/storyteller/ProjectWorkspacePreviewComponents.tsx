@@ -7,6 +7,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ViewListIcon from "@mui/icons-material/ViewList";
+import ViewModuleIcon from "@mui/icons-material/ViewModule";
 import {
   Box,
   Chip,
@@ -19,6 +21,8 @@ import {
   Pagination,
   Stack,
   Typography,
+  ToggleButton,
+  ToggleButtonGroup,
   type SxProps,
   type Theme,
 } from "@mui/material";
@@ -42,6 +46,7 @@ import {
   StoryRow,
 } from "./ProjectWorkspacePreviewRows.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
+import { useWorkspaceViewMode } from "./workspaceViewMode.ts";
 import type {
   StorytellerAsset,
   StorytellerLore,
@@ -335,7 +340,7 @@ const sidebarActionRowSx: SxProps<Theme> = {
   px: 1,
   color: "text.secondary",
   "&:hover": {
-    bgcolor: (theme) => (theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8"),
+    bgcolor: "action.hover",
   },
   "&.Mui-selected": {
     bgcolor: (theme) => alpha(theme.palette.primary.main, 0.13),
@@ -409,6 +414,7 @@ export function WorkspacePane({
   ) => void;
 }) {
   const [draggingStoryId, setDraggingStoryId] = useState<string | null>(null);
+  const { viewMode, setViewMode } = useWorkspaceViewMode(selected.section);
   function collectionChipFor(label: string | undefined, collectionId: string) {
     if (!label) {
       return undefined;
@@ -467,7 +473,23 @@ export function WorkspacePane({
             {titleActions && <Box sx={{ flexShrink: 0 }}>{titleActions}</Box>}
           </Stack>
         </Box>
-        {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+        <Stack direction="row" spacing={1} alignItems="center">
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={viewMode}
+            onChange={(_, value) => value && setViewMode(value)}
+            aria-label="切換項目顯示方式"
+          >
+            <ToggleButton value="grid" aria-label="卡片檢視" title="卡片檢視">
+              <ViewModuleIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton value="list" aria-label="列表檢視" title="列表檢視">
+              <ViewListIcon fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
+          {actions && <Box sx={{ flexShrink: 0 }}>{actions}</Box>}
+        </Stack>
       </Stack>
       {loading ? (
         <Stack alignItems="center" justifyContent="center" sx={{ py: 8 }}>
@@ -478,7 +500,20 @@ export function WorkspacePane({
       ) : (
         <>
           {selected.section === "stories" && (
-            <Stack spacing={0}>
+            <Box
+              sx={
+                viewMode === "grid"
+                  ? {
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                      },
+                      gap: 1.5,
+                    }
+                  : undefined
+              }
+            >
               {stories.map((story) => {
                 const volume = volumes.find(
                   (item) => item.id === story.parent_id,
@@ -493,7 +528,7 @@ export function WorkspacePane({
                       volume?.public_id ?? "",
                     )}
                     onClick={() => onSelectItem({ type: "story", row: story })}
-                    reorderable={Boolean(onReorderStory)}
+                    reorderable={viewMode === "list" && Boolean(onReorderStory)}
                     dragging={draggingStoryId === story.public_id}
                     onDragStart={() => setDraggingStoryId(story.public_id)}
                     onDropRow={() => {
@@ -502,10 +537,11 @@ export function WorkspacePane({
                       }
                       setDraggingStoryId(null);
                     }}
+                    viewMode={viewMode}
                   />
                 );
               })}
-              {onReorderStory && stories.length > 0 && (
+              {viewMode === "list" && onReorderStory && stories.length > 0 && (
                 // 補一塊有實際高度的拖放目標，放在清單最後一項後面——沒有這塊的話
                 // 容器範圍會直接貼齊最後一項卡片下緣，使用者沒辦法把項目拖到最後。
                 <Box
@@ -521,15 +557,22 @@ export function WorkspacePane({
                 />
               )}
               {stories.length === 0 && (
-                <WorkspaceEmptyState
-                  icon={<ArticleIcon />}
-                  title="沒有作品"
-                  description="這個分類目前沒有作品。"
-                />
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <WorkspaceEmptyState
+                    icon={<ArticleIcon />}
+                    title="沒有作品"
+                    description="這個分類目前沒有作品。"
+                  />
+                </Box>
               )}
               {pagination && pagination.count > 1 && (
                 <Box
-                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    pt: 1.5,
+                    gridColumn: "1 / -1",
+                  }}
                 >
                   <Pagination
                     count={pagination.count}
@@ -539,10 +582,24 @@ export function WorkspacePane({
                   />
                 </Box>
               )}
-            </Stack>
+            </Box>
           )}
           {selected.section === "lores" && (
-            <Stack spacing={0}>
+            <Box
+              sx={
+                viewMode === "grid"
+                  ? {
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "repeat(2, minmax(0, 1fr))",
+                        xl: "repeat(3, minmax(0, 1fr))",
+                      },
+                      gap: 1.5,
+                    }
+                  : undefined
+              }
+            >
               {lores.map((lore) => {
                 const collection = loreCollections.find(
                   (item) => item.public_id === lore.collection_id,
@@ -557,19 +614,27 @@ export function WorkspacePane({
                       collection?.public_id ?? "",
                     )}
                     onClick={() => onSelectItem({ type: "lore", row: lore })}
+                    viewMode={viewMode}
                   />
                 );
               })}
               {lores.length === 0 && (
-                <WorkspaceEmptyState
-                  icon={<DescriptionIcon />}
-                  title="沒有設定"
-                  description="這個分類目前沒有設定。"
-                />
+                <Box sx={{ gridColumn: "1 / -1" }}>
+                  <WorkspaceEmptyState
+                    icon={<DescriptionIcon />}
+                    title="沒有設定"
+                    description="這個分類目前沒有設定。"
+                  />
+                </Box>
               )}
               {pagination && pagination.count > 1 && (
                 <Box
-                  sx={{ display: "flex", justifyContent: "center", pt: 1.5 }}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    pt: 1.5,
+                    gridColumn: "1 / -1",
+                  }}
                 >
                   <Pagination
                     count={pagination.count}
@@ -579,7 +644,7 @@ export function WorkspacePane({
                   />
                 </Box>
               )}
-            </Stack>
+            </Box>
           )}
           {selected.section === "assets" && (
             <Grid container spacing={1.5}>
@@ -588,7 +653,10 @@ export function WorkspacePane({
                   (item) => item.public_id === asset.collection_id,
                 );
                 return (
-                  <Grid key={asset.public_id} size={{ xs: 12, sm: 6, lg: 4 }}>
+                  <Grid
+                    key={asset.public_id}
+                    size={viewMode === "grid" ? { xs: 12, sm: 6, lg: 4 } : 12}
+                  >
                     <AssetCard
                       asset={asset}
                       actions={renderAssetActions?.(asset)}
@@ -599,6 +667,7 @@ export function WorkspacePane({
                       onClick={() =>
                         onSelectItem({ type: "asset", row: asset })
                       }
+                      viewMode={viewMode}
                     />
                   </Grid>
                 );
@@ -656,14 +725,10 @@ function WorkspaceEmptyState({
         py: 4,
         border: 1,
         borderStyle: "dashed",
-        borderColor: (theme) =>
-          theme.palette.mode === "dark" ? "#3a3a3a" : "#dedbd3",
+        borderColor: "divider",
         borderRadius: 1,
         color: "text.secondary",
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark"
-            ? alpha("#ffffff", 0.018)
-            : alpha("#37352f", 0.025),
+        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.025),
       }}
     >
       <Box sx={{ color: "primary.main", opacity: 0.64, lineHeight: 0 }}>

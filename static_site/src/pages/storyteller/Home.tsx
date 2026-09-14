@@ -15,6 +15,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import { useEffect } from "react";
 import {
   useStorytellerAgents,
   useStorytellerProjects,
@@ -41,6 +42,7 @@ import { StorytellerProfileContent } from "@/pages/storyteller/Profile.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import StorytellerNewAgent from "@/pages/storyteller/NewAgent.tsx";
 import StorytellerNewProject from "@/pages/storyteller/NewProject.tsx";
+import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 import {
   EditorBleedContainer,
   WorkspaceBleedContainer,
@@ -59,6 +61,16 @@ export default function StorytellerHome() {
     useStorytellerProjects();
   const { data: agents = [], isLoading: agentsLoading } =
     useStorytellerAgents();
+
+  useEffect(() => {
+    if (!session || projectsLoading || projects.length === 0) return;
+    // 首頁穩定後預載最常用的下一頁；使用者點卡片時不必才開始下載大型工作台 chunk。
+    const timer = window.setTimeout(
+      () => void loadStorytellerProjectWorkspace(),
+      250,
+    );
+    return () => window.clearTimeout(timer);
+  }, [projects.length, projectsLoading, session]);
 
   // 建立專案／Skill 的表單路由跟列表頁共用同一個帳號工作台外殼——判斷方式
   // 比照 ProjectWorkspacePreview 的 routeEditorType：路徑本身就決定了要不要在
@@ -166,18 +178,15 @@ export default function StorytellerHome() {
           gridTemplateColumns: { xs: "1fr", md: "260px minmax(0, 1fr)" },
           flex: 1,
           minHeight: 0,
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark" ? "#191919" : "#ffffff",
+          bgcolor: "background.default",
         }}
       >
         {!isMobile && (
           <Box
             sx={{
               borderRight: 1,
-              borderColor: (theme) =>
-                theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-              bgcolor: (theme) =>
-                theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
+              borderColor: "divider",
+              bgcolor: "background.paper",
               minHeight: 0,
               overflow: "hidden",
             }}

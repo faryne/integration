@@ -2,21 +2,26 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CableIcon from "@mui/icons-material/Cable";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import KeyIcon from "@mui/icons-material/Key";
+import MenuIcon from "@mui/icons-material/Menu";
 import PersonIcon from "@mui/icons-material/Person";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import CloseIcon from "@mui/icons-material/Close";
 import {
   Box,
+  Button,
+  Drawer,
+  IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
+import { useState } from "react";
 import {
   homeTabGroups,
   tabBreadcrumbLabel,
@@ -70,10 +75,7 @@ export function HomeSidebar({
                     minHeight: 34,
                     px: 1,
                     color: "text.secondary",
-                    "&:hover": {
-                      bgcolor: (theme) =>
-                        theme.palette.mode === "dark" ? "#2b2b2b" : "#ecebe8",
-                    },
+                    "&:hover": { bgcolor: "action.hover" },
                     "&.Mui-selected": {
                       bgcolor: (theme) =>
                         alpha(theme.palette.primary.main, 0.13),
@@ -114,29 +116,61 @@ export function HomeSidebar({
   );
 }
 
-export function HomeMobileNav(props: Parameters<typeof HomeSidebar>[0]) {
+export function HomeMobileNav({
+  activeTab,
+  onSelect,
+}: Parameters<typeof HomeSidebar>[0]) {
+  const [open, setOpen] = useState(false);
   return (
-    <Box
-      sx={{
-        p: 1,
-        borderBottom: 1,
-        borderColor: (theme) =>
-          theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#202020" : "#f7f7f5",
-      }}
-    >
-      <Paper
-        elevation={0}
+    <>
+      <Box
         sx={{
-          maxHeight: 280,
-          overflow: "auto",
-          borderRadius: 1,
-          bgcolor: "transparent",
+          p: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: "background.paper",
         }}
       >
-        <HomeSidebar {...props} />
-      </Paper>
-    </Box>
+        <Button
+          fullWidth
+          color="inherit"
+          startIcon={<MenuIcon />}
+          onClick={() => setOpen(true)}
+          sx={{ justifyContent: "flex-start" }}
+        >
+          工作台導覽 · {tabBreadcrumbLabel[activeTab]}
+        </Button>
+      </Box>
+      <Drawer
+        anchor="left"
+        open={open}
+        onClose={() => setOpen(false)}
+        slotProps={{ paper: { sx: { width: 300, maxWidth: "88vw" } } }}
+      >
+        <Stack sx={{ height: 1 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ px: 2, py: 1.5, borderBottom: 1, borderColor: "divider" }}
+          >
+            <Typography variant="h6">工作台導覽</Typography>
+            <IconButton
+              aria-label="關閉工作台導覽"
+              onClick={() => setOpen(false)}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Stack>
+          <HomeSidebar
+            activeTab={activeTab}
+            onSelect={(tab) => {
+              onSelect(tab);
+              setOpen(false);
+            }}
+          />
+        </Stack>
+      </Drawer>
+    </>
   );
 }

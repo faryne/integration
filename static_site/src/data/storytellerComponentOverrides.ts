@@ -9,15 +9,14 @@ const v = (key: keyof typeof STORYTELLER_CSS_VARIABLE_NAMES) =>
  * Phase E 對比度檢查抓到的問題：選單「選中項目」原本直接拿 `selection` token
  * 當實色背景、上面疊 `textPrimary`——`selection` 是中亮度的強調色，拿來當
  * 「選取狀態的高亮邊框/outline」（圖片、表格 NodeSelection）對比度沒問題，
- * 但整塊實色背景 + 全對比度文字這個用法，22 組色系有一半以上不達 WCAG AA
+ * 但整塊實色背景 + 全對比度文字這個用法，不一定能達 WCAG AA
  * （4.5:1），是色彩學的硬限制，不是選錯顏色。
  *
  * 改成「半透明色層蓋在原本背景上」（Material Design 的 state layer 概念，很多
- * 產品的選單選中態其實都是這樣做），不用重新設計 11 組色系的 `selection` 數值：
+ * 產品的選單選中態其實都是這樣做），不用為每個 appearance 特調 `selection`：
  * `color-mix()` 把 `selection` 跟 `surfaceOverlay` 混出一個貼近原本背景亮度、
- * 只帶一點強調色的淡色調，文字顏色完全不用動。22% 是實測掃過 10%~50% 找出來的
- * 安全值（`npx vitest run` 對比度檢查跑過全部色系＋中秋節 overlay，worst case
- * 6.56:1，比 4.5:1 要求有充足餘裕；35% 以上開始有色系會低於 4.5:1）。
+ * 只帶一點強調色的淡色調，文字顏色完全不用動。22% 由對比度檢查覆蓋三種
+ * appearance 與節慶 overlay。
  */
 function selectionStateLayer(percent: number) {
   return `color-mix(in srgb, ${v("selection")} ${percent}%, transparent)`;
@@ -33,10 +32,9 @@ function selectionStateLayer(percent: number) {
  * 改成跟選單 active 狀態同一招：不用整塊實色 `accentMain` 背景，改成淡色調
  * （`accentMain` 用 `color-mix()` 疊一點在 `surfaceRaised` 上）＋固定用
  * `textPrimary` 當文字色（不是 `accentMain` 本身——實測發現 `accentMain` 拿來
- * 當文字疊在一般 surface 上，也不是每個色系都過 4.5:1，例如 bronze 淺色模式只有
- * 2.66:1；只有已經證實「22 組色系 × 三種 surface 全部過關」的 `textPrimary`
- * 才穩）。30% 是實測掃過 10%~40% 找出來的安全值，worst case 6.18:1，比 4.5:1
- * 要求有餘裕，視覺上仍看得出是「調過色」的按鈕，不是普通中性按鈕。
+ * 當文字疊在一般 surface 上，不保證每個 appearance 都過 4.5:1；因此固定使用
+ * 已由對比度檢查覆蓋的 `textPrimary`。30% 仍保留足夠色相辨識，不會退成普通
+ * 中性按鈕。
  */
 function accentTonalBackground(percent: number) {
   return `color-mix(in srgb, ${v("accentMain")} ${percent}%, ${v("surfaceRaised")})`;
@@ -45,7 +43,7 @@ function accentTonalBackground(percent: number) {
 /**
  * Phase B（視覺主題規劃）第一批：Dialog／Menu／Tooltip／Button／IconButton 的
  * MUI `components` override，直接吃 Phase A 曝露的 `--storyteller-*` CSS
- * variable，不需要跟著 `theme`／`[mode, palette]` 重新產生——CSS var 在
+ * variable，不需要跟著 `theme`／appearance 重新產生——CSS var 在
  * paint 當下才解析，切色系/切深淺模式時這裡完全不用動，`GlobalStyles`
  * 更新 `:root` 上的變數值就會自動反映。
  *
@@ -58,6 +56,13 @@ function accentTonalBackground(percent: number) {
  */
 export function storytellerComponentOverrides(): Components<Theme> {
   return {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: "none",
+        },
+      },
+    },
     MuiPopover: {
       styleOverrides: {
         paper: {
@@ -162,6 +167,22 @@ export function storytellerComponentOverrides(): Components<Theme> {
           "&.Mui-disabled": {
             backgroundColor: accentTonalBackground(12),
             color: v("textMuted"),
+          },
+        },
+      },
+    },
+    MuiToggleButton: {
+      styleOverrides: {
+        root: {
+          color: v("textMuted"),
+          borderColor: v("borderSubtle"),
+          "&:hover": { backgroundColor: v("surfaceRaised") },
+          "&.Mui-selected": {
+            color: v("textPrimary"),
+            backgroundColor: selectionStateLayer(22),
+          },
+          "&.Mui-selected:hover": {
+            backgroundColor: selectionStateLayer(22),
           },
         },
       },

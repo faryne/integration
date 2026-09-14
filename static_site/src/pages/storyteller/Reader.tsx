@@ -11,7 +11,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import HistoryIcon from "@mui/icons-material/History";
 import {
   Box,
   Button,
@@ -31,7 +30,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useId, useRef, useState } from "react";
-import type { ReactNode, Ref } from "react";
+import type { Ref } from "react";
 import {
   StorytellerFootnoteSection,
   StorytellerWysiwygMarkdown,
@@ -88,6 +87,8 @@ import {
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
 import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
+import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderHistory.tsx";
+import { useStorytellerHeaderContext } from "@/layouts/StorytellerHeaderContext.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import {
   READER_FONT_FAMILIES,
@@ -798,182 +799,6 @@ function ImagePageScrubber({
   );
 }
 
-function ChapterNavCard({
-  label,
-  title,
-  to,
-  onClick,
-  disabled = false,
-  align = "left",
-}: {
-  label: string;
-  title: string;
-  to?: string;
-  onClick?: () => void;
-  disabled?: boolean;
-  align?: "left" | "center" | "right";
-}) {
-  const LabelIcon =
-    align === "left"
-      ? ArrowBackIcon
-      : align === "right"
-        ? ArrowForwardIcon
-        : undefined;
-
-  return (
-    <Box
-      component={to ? RouterLink : onClick ? "button" : "div"}
-      to={to}
-      type={onClick ? "button" : undefined}
-      onClick={disabled ? undefined : onClick}
-      aria-disabled={disabled}
-      sx={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems:
-          align === "center"
-            ? "center"
-            : align === "right"
-              ? "flex-end"
-              : "flex-start",
-        justifyContent: "flex-start",
-        gap: 0.5,
-        px: 1,
-        py: 1.25,
-        minHeight: 40,
-        border: 0,
-        bgcolor: "transparent",
-        font: "inherit",
-        textDecoration: "none",
-        color: "inherit",
-        opacity: disabled ? 0.55 : 1,
-        overflow: "hidden",
-        textAlign: align,
-        cursor: disabled ? "default" : "pointer",
-        "&:hover": disabled ? undefined : { color: "primary.main" },
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={0.5}
-        alignItems="center"
-        justifyContent={
-          align === "center"
-            ? "center"
-            : align === "right"
-              ? "flex-end"
-              : "flex-start"
-        }
-        sx={{ width: "100%", color: "text.secondary" }}
-      >
-        {align === "left" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
-        <Typography variant="caption" color="inherit">
-          {label}
-        </Typography>
-        {align === "right" && LabelIcon && <LabelIcon sx={{ fontSize: 14 }} />}
-      </Stack>
-      <Typography
-        fontWeight={800}
-        sx={{
-          width: "100%",
-          textAlign: align,
-          lineHeight: 1.35,
-          overflowWrap: "anywhere",
-          wordBreak: "break-word",
-          display: "-webkit-box",
-          WebkitBoxOrient: "vertical",
-          WebkitLineClamp: 2,
-          overflow: "hidden",
-        }}
-      >
-        {title}
-      </Typography>
-    </Box>
-  );
-}
-
-function ReaderBottomNavigation({
-  previousItem,
-  nextItem,
-  basePath,
-  onOpenIndex,
-}: {
-  previousItem?: ReaderItem;
-  nextItem?: ReaderItem;
-  basePath: string;
-  onOpenIndex: () => void;
-}) {
-  return (
-    <Paper
-      component="nav"
-      aria-label="篇章導覽"
-      square
-      elevation={8}
-      sx={(theme) => ({
-        position: "fixed",
-        insetInline: 0,
-        bottom: 0,
-        zIndex: theme.zIndex.appBar - 1,
-        borderTop: "1px solid",
-        borderColor: "divider",
-        bgcolor: "background.paper",
-        backgroundImage: "none",
-        pb: "env(safe-area-inset-bottom)",
-      })}
-    >
-      <Box
-        sx={{
-          width: "100%",
-          maxWidth: 1200,
-          mx: "auto",
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "repeat(2, minmax(0, 1fr))",
-            md: "repeat(3, minmax(0, 1fr))",
-          },
-          px: { xs: 1, sm: 2 },
-          boxSizing: "border-box",
-        }}
-      >
-        <Box sx={{ minWidth: 0 }}>
-          <ChapterNavCard
-            label="上一篇"
-            title={previousItem?.title ?? "沒有上一篇"}
-            to={previousItem ? itemHref(basePath, previousItem) : undefined}
-            disabled={!previousItem}
-            align="left"
-          />
-        </Box>
-        <Box
-          sx={{
-            minWidth: 0,
-            display: { xs: "none", md: "block" },
-            borderInline: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <ChapterNavCard
-            label="作品"
-            title="回到作品目錄"
-            align="center"
-            onClick={onOpenIndex}
-          />
-        </Box>
-        <Box sx={{ minWidth: 0 }}>
-          <ChapterNavCard
-            label="下一篇"
-            title={nextItem?.title ?? "沒有下一篇"}
-            to={nextItem ? itemHref(basePath, nextItem) : undefined}
-            disabled={!nextItem}
-            align="right"
-          />
-        </Box>
-      </Box>
-    </Paper>
-  );
-}
-
 // 跨內容類型（故事／圖像／未來新增的類型）共用的作品標頭：標題、簡介、作者、
 // 最後更新時間。新增內容類型時應該一律沿用這個元件，不要各自刻一份標頭版面。
 function ContentMetaHeader({
@@ -982,42 +807,29 @@ function ContentMetaHeader({
   summary,
   authorPenName,
   updatedAt,
-  rightAction,
-  children,
 }: {
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
   summary?: string;
   authorPenName?: string;
   updatedAt: string;
-  rightAction?: ReactNode;
-  children?: ReactNode;
 }) {
   return (
     <Box>
-      <Stack
-        direction="row"
-        alignItems="flex-start"
-        justifyContent="space-between"
-        spacing={1}
+      <Typography
+        ref={titleRef}
+        component="h1"
+        variant="h4"
+        fontWeight={800}
+        sx={{ scrollMarginTop: 80 }}
       >
-        <Typography
-          ref={titleRef}
-          component="h1"
-          variant="h4"
-          fontWeight={800}
-          sx={{ scrollMarginTop: 80 }}
-        >
-          {title}
-        </Typography>
-        {rightAction}
-      </Stack>
+        {title}
+      </Typography>
       {summary && (
         <Typography color="text.secondary" sx={{ mt: 1 }}>
           {summary}
         </Typography>
       )}
-      {children}
       <Stack
         direction="row"
         spacing={1}
@@ -1197,11 +1009,11 @@ function StoryContentLines({
   );
 }
 
-// 全站 AppBar 加上 Reader sticky toolbar 後，目標標題至少要留出這段高度；mobile
-// toolbar 是兩列，因此以較高的 mobile 尺寸為共同安全值。
-const READER_STICKY_OFFSET = 144;
+// 閱讀 context 已合併進全站 AppBar，不再另外疊第二列；跳轉時只需避開 Header。
+const READER_STICKY_OFFSET = 84;
 
 export default function StorytellerReader() {
+  const { setReader: setHeaderReader } = useStorytellerHeaderContext();
   const { session, loading: authLoading } = useAuth();
   const params = useParams();
   const location = useLocation();
@@ -1218,6 +1030,7 @@ export default function StorytellerReader() {
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
   const [bookmarkEditing, setBookmarkEditing] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
+  const [readerContextVisible, setReaderContextVisible] = useState(false);
   const readerBodyRef = useRef<HTMLDivElement | null>(null);
   const { preferences, updatePreferences } = useStorytellerReaderPreferences();
   const [favorite, setFavorite] = useState(false);
@@ -1246,12 +1059,11 @@ export default function StorytellerReader() {
   const [activeHeadingLine, setActiveHeadingLine] = useState<
     number | undefined
   >(undefined);
-  const [versionListOpen, setVersionListOpen] = useState(false);
   const [historicalVersionId, setHistoricalVersionId] = useState<
     number | undefined
   >(undefined);
   const navigate = useNavigate();
-  const storyStartRef = useRef<HTMLHeadingElement | null>(null);
+  const contentTitleRef = useRef<HTMLHeadingElement | null>(null);
   const previousItemIdRef = useRef<string | undefined>(undefined);
   const routeProjectPublicId = routeProjectPath?.split("-", 1)[0];
   const publicProjectQuery = usePublicStorytellerProject(routeProjectPath);
@@ -1355,6 +1167,26 @@ export default function StorytellerReader() {
     currentItem?.contentType === "text" ? currentItem : undefined;
   const currentEpisode =
     currentItem?.contentType === "image" ? currentItem : undefined;
+  useEffect(() => {
+    setHeaderReader(
+      project && currentItem
+        ? {
+            projectName: project.name,
+            title: currentItem.title,
+            summary: currentItem.summary || undefined,
+            visible: readerContextVisible,
+          }
+        : undefined,
+    );
+  }, [
+    currentItem?.id,
+    currentItem?.summary,
+    currentItem?.title,
+    project?.name,
+    readerContextVisible,
+    setHeaderReader,
+  ]);
+  useEffect(() => () => setHeaderReader(undefined), [setHeaderReader]);
   // 圖像頁只在真的打開某一話時才抓，不在專案列表層級一次抓所有話——跟專案本身的
   // owner／public／shared 三種讀取路徑對稱（見上面 apiProject 的組法）。
   const publicImagePagesQuery = usePublicStorytellerImageStoryPages(
@@ -1693,7 +1525,7 @@ export default function StorytellerReader() {
     }
 
     previousItemIdRef.current = currentItem.id;
-    storyStartRef.current?.scrollIntoView({
+    contentTitleRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "start",
     });
@@ -1725,6 +1557,14 @@ export default function StorytellerReader() {
         Math.max(0, ((window.scrollY - bodyTop) / scrollableHeight) * 100),
       );
       setReadingProgress(Math.round(next));
+      // 頁首本來就有完整標題與摘要；只有它捲到全站 AppBar 後方時才顯示 compact context，
+      // 避免剛開頁面就在同一個 viewport 重複三次專案／篇章資訊。
+      const titleBottom =
+        contentTitleRef.current?.getBoundingClientRect().bottom;
+      const appBarBottom = window.innerWidth < 600 ? 60 : 68;
+      setReaderContextVisible(
+        Boolean(titleBottom && titleBottom <= appBarBottom),
+      );
       frame = null;
     };
     const scheduleUpdate = () => {
@@ -2032,21 +1872,25 @@ export default function StorytellerReader() {
       ref={readerBodyRef}
       variant="outlined"
       sx={{
-        p: currentStory ? { xs: 1, sm: 2, md: 3 } : { xs: 2, md: 3 },
-        borderRadius: 1,
-        border: hasCurrentContent ? "none" : undefined,
-        bgcolor: hasCurrentContent ? "transparent" : "background.paper",
+        p: currentStory ? { xs: 2, sm: 4, md: 6 } : { xs: 2, sm: 3, md: 4 },
+        borderRadius: 0,
+        borderColor: "divider",
+        bgcolor: "background.paper",
         backgroundImage: "none",
         maxWidth: currentStory ? 960 : 1200,
         width: "100%",
         boxSizing: "border-box",
         alignSelf: "center",
+        boxShadow: hasCurrentContent
+          ? "18px 18px 0 color-mix(in srgb, var(--storyteller-accent-main) 5%, transparent)"
+          : "none",
       }}
     >
       {currentEpisode ? (
         <Stack spacing={2}>
           <ContentMetaHeader
             title={currentEpisode.title}
+            titleRef={contentTitleRef}
             summary={currentEpisode.summary}
             authorPenName={project.authorPenName}
             updatedAt={currentEpisode.updatedAt}
@@ -2302,77 +2146,11 @@ export default function StorytellerReader() {
         >
           <ContentMetaHeader
             title={currentStory.title}
-            titleRef={storyStartRef}
+            titleRef={contentTitleRef}
             summary={currentStory.summary}
             authorPenName={project.authorPenName}
             updatedAt={currentStory.updatedAt}
-            rightAction={
-              <Tooltip title="版本歷史">
-                <IconButton
-                  size="small"
-                  aria-label="版本歷史"
-                  onClick={() => setVersionListOpen((open) => !open)}
-                  sx={{
-                    flexShrink: 0,
-                    color: versionListOpen ? "primary.main" : "text.secondary",
-                  }}
-                >
-                  <HistoryIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            }
-          >
-            {versionListOpen && (
-              <Paper
-                variant="outlined"
-                sx={{ mt: 1, borderRadius: 1, overflow: "hidden" }}
-              >
-                {versionsQuery.isLoading ? (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ p: 1.5 }}
-                  >
-                    載入版本中...
-                  </Typography>
-                ) : (
-                  (versionsQuery.data ?? []).map((version, index, arr) => {
-                    const isLatest = index === 0;
-                    const label = isLatest
-                      ? `第 ${arr.length} 版（最新）`
-                      : `第 ${arr.length - index} 版`;
-                    return (
-                      <Box
-                        key={version.id}
-                        component={RouterLink}
-                        to={`${basePath}/story/${currentStory.id}/versions/${version.id}`}
-                        onClick={() => setVersionListOpen(false)}
-                        sx={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          px: 1.5,
-                          py: 1,
-                          borderBottom:
-                            index < arr.length - 1 ? "1px solid" : "none",
-                          borderColor: "divider",
-                          textDecoration: "none",
-                          color: "inherit",
-                          cursor: "pointer",
-                          "&:hover": { bgcolor: "action.hover" },
-                        }}
-                      >
-                        <Typography variant="body2">{label}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatStorytellerDate(version.created_at)}
-                        </Typography>
-                      </Box>
-                    );
-                  })
-                )}
-              </Paper>
-            )}
-          </ContentMetaHeader>
+          />
           {isHistoricalView && (
             <Box
               onClick={() => setHistoricalVersionId(undefined)}
@@ -2452,12 +2230,6 @@ export default function StorytellerReader() {
             data-reader-bottom-spacer
             sx={{ height: "calc(88px + env(safe-area-inset-bottom))" }}
           />
-          <ReaderBottomNavigation
-            previousItem={previousItem}
-            nextItem={nextItem}
-            basePath={basePath}
-            onOpenIndex={() => setIndexOpen(true)}
-          />
         </>
       )}
     </Paper>
@@ -2466,6 +2238,7 @@ export default function StorytellerReader() {
   return (
     <StorytellerShell
       title={project.name}
+      hideHeading={Boolean(currentItem)}
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: project.name },
@@ -2492,6 +2265,32 @@ export default function StorytellerReader() {
         )}
         onToggleBookmarkEditing={() =>
           setBookmarkEditing((editing) => !editing)
+        }
+        renderHistory={
+          currentStory
+            ? (onClose) => (
+                <StorytellerReaderHistory
+                  versions={versionsQuery.data ?? []}
+                  loading={versionsQuery.isLoading}
+                  basePath={basePath}
+                  storyId={currentStory.id}
+                  onSelect={onClose}
+                />
+              )
+            : undefined
+        }
+        previousChapter={
+          previousItem
+            ? {
+                title: previousItem.title,
+                href: itemHref(basePath, previousItem),
+              }
+            : undefined
+        }
+        nextChapter={
+          nextItem
+            ? { title: nextItem.title, href: itemHref(basePath, nextItem) }
+            : undefined
         }
         preferences={preferences}
         onChangePreferences={updatePreferences}

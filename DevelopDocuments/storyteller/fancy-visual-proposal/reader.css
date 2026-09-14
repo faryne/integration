@@ -1,3 +1,50 @@
+.reader-context-bar {
+  position: absolute;
+  left: 50%;
+  width: min(58vw, 820px);
+  display: grid;
+  grid-template-columns: minmax(100px, 0.35fr) minmax(180px, 0.65fr) minmax(
+      0,
+      1fr
+    );
+  align-items: center;
+  gap: 18px;
+  min-height: 0;
+  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -8px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  pointer-events: none;
+}
+.reader-context-bar.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+.reader-context-bar span {
+  overflow: hidden;
+  color: var(--thread);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.reader-context-bar strong,
+.reader-context-bar p {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reader-context-bar p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .reader-stage {
   min-height: calc(100vh - 120px);
   padding: 72px 20px 150px;

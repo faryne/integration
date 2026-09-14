@@ -120,6 +120,9 @@ a {
   min-height: calc(100vh - 52px);
 }
 .site-header {
+  position: sticky;
+  top: 52px;
+  z-index: 30;
   height: 68px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -129,6 +132,10 @@ a {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--base) 92%, transparent);
   backdrop-filter: blur(20px);
+}
+.site-header.has-reader-context .site-nav {
+  opacity: 0;
+  visibility: hidden;
 }
 .brand {
   display: inline-flex;

@@ -72,17 +72,15 @@ export function WorkspaceChrome({
     <Box
       sx={{
         position: "fixed",
-        top: { xs: 56, sm: 64 },
+        top: { xs: 60, sm: 68 },
         right: 0,
         bottom: 0,
         left: 0,
         zIndex: (theme) => theme.zIndex.drawer,
         display: "flex",
         flexDirection: "column",
-        bgcolor: (theme) =>
-          theme.palette.mode === "dark" ? "#191919" : "#ffffff",
-        color: (theme) =>
-          theme.palette.mode === "dark" ? "#f1f1f0" : "#37352f",
+        bgcolor: "background.default",
+        color: "text.primary",
         overflow: "hidden",
       }}
     >
@@ -96,12 +94,9 @@ export function WorkspaceChrome({
           py: 0.75,
           minHeight: 44,
           borderBottom: 1,
-          borderColor: (theme) =>
-            theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
-          bgcolor: (theme) =>
-            theme.palette.mode === "dark"
-              ? alpha("#191919", 0.96)
-              : alpha("#ffffff", 0.96),
+          borderColor: "divider",
+          bgcolor: (theme) => alpha(theme.palette.background.default, 0.94),
+          backdropFilter: "blur(16px)",
         }}
       >
         <Stack
@@ -242,8 +237,7 @@ export function WorkspaceChrome({
               onClick={closeProjectMenu}
               sx={{
                 borderBottom: 1,
-                borderColor: (theme) =>
-                  theme.palette.mode === "dark" ? "#2f2f2f" : "#e6e4df",
+                borderColor: "divider",
                 py: 1,
               }}
             >

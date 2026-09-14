@@ -1555,13 +1555,7 @@ function StorytellerWysiwygBottomBar({
         py: 0.75,
         borderTop: 1,
         borderColor: "divider",
-        bgcolor: (theme) =>
-          alpha(
-            theme.palette.mode === "dark"
-              ? theme.palette.background.default
-              : theme.palette.background.paper,
-            0.94,
-          ),
+        bgcolor: (theme) => alpha(theme.palette.background.default, 0.94),
         backdropFilter: "blur(10px)",
       }}
     >

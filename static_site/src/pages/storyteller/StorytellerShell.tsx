@@ -12,7 +12,6 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { SteamRivets } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -82,7 +81,12 @@ export function StorytellerShell({
             <Box sx={{ flex: 1 }} />
           ) : (
             <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography component="h1" variant="h4" fontWeight={800}>
+              <Typography
+                component="h1"
+                variant="h3"
+                fontWeight={800}
+                sx={{ letterSpacing: "-0.035em" }}
+              >
                 {title}
               </Typography>
               {description && (
@@ -125,19 +129,19 @@ export function StorytellerShell({
   }
 
   return (
-    <Stack spacing={3}>
-      <Paper
-        variant="outlined"
+    <Stack spacing={4}>
+      <Box
         sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: 1,
-          bgcolor: "background.paper",
+          px: { xs: 1, md: 2 },
+          pt: { xs: 1, md: 2 },
+          pb: { xs: 2.5, md: 3 },
+          borderBottom: "1px solid",
+          borderColor: "divider",
           ...steamPanelTopBarSx,
         }}
       >
-        <SteamRivets />
         {header}
-      </Paper>
+      </Box>
 
       {children}
     </Stack>
