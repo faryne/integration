@@ -24,7 +24,7 @@ import {
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { STORYTELLER_PUBLIC_HOME_COPIES } from "@/data/storytellerPublicHomeCopy.ts";
-import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
+import { storytellerHomeArtworkSrc } from "@/helpers/storytellerHomeArtwork.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
@@ -211,7 +211,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
         />
         <Box
           component="img"
-          src={storytellerMascotSrc("idle", appearance, "master")}
+          src={storytellerHomeArtworkSrc({ appearance })}
           alt=""
           aria-hidden
           sx={{
