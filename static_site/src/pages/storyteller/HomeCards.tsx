@@ -1,4 +1,3 @@
-import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import LockIcon from "@mui/icons-material/Lock";
@@ -8,6 +7,7 @@ import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
   Alert,
+  Box,
   Button,
   Chip,
   Divider,
@@ -31,7 +31,9 @@ import {
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
 import type {
@@ -61,6 +63,7 @@ function agentPromptPlainTextSummary(prompt: string) {
 }
 
 export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
+  const { appearance } = useStorytellerAppearance();
   const navigate = useNavigate();
   const deleteProject = useDeleteStorytellerProject();
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -109,7 +112,14 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
       )}
       {projects.length === 0 ? (
         <CustomEmptyState
-          icon={<AutoStoriesIcon fontSize="large" />}
+          icon={
+            <Box
+              component="img"
+              alt="梭梭"
+              src={storytellerMascotSrc("empty", appearance, "256")}
+              sx={{ width: 96, height: 96, objectFit: "contain" }}
+            />
+          }
           title="目前還沒有創作專案"
           description="可以使用上方的「建立專案」開始建立第一個創作專案。"
         />

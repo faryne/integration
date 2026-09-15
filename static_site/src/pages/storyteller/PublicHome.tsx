@@ -24,13 +24,16 @@ import {
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { STORYTELLER_PUBLIC_HOME_COPIES } from "@/data/storytellerPublicHomeCopy.ts";
+import { storytellerHomeArtworkSrc } from "@/helpers/storytellerHomeArtwork.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
+import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import { StorytellerProjectSearchCard } from "@/pages/storyteller/StorytellerProjectSearchCard.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 
 function PublicHomeHero({ projectCount }: { projectCount?: number }) {
+  const { appearance } = useStorytellerAppearance();
   const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const [copyIndex, setCopyIndex] = useState(0);
   const copy = STORYTELLER_PUBLIC_HOME_COPIES[copyIndex];
@@ -146,6 +149,15 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           >
             打開我的工作台
           </Button>
+          <Button
+            component={RouterLink}
+            to={steamloomPath(
+              "work/0869d8ef0f2e5306-織夢機房/story/947fa38eb34402fa",
+            )}
+            variant="text"
+          >
+            認識梭梭
+          </Button>
         </Stack>
       </Stack>
 
@@ -155,12 +167,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           position: "relative",
           zIndex: 1,
           minHeight: { xs: 280, sm: 360 },
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
           overflow: "hidden",
-          boxShadow:
-            "26px 26px 0 color-mix(in srgb, var(--storyteller-accent-main) 7%, transparent)",
           "&::before": {
             content: '""',
             position: "absolute",
@@ -202,19 +209,24 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             boxShadow: "0 0 18px var(--storyteller-accent-main)",
           }}
         />
-        <Typography
+        <Box
+          component="img"
+          src={storytellerHomeArtworkSrc({ appearance })}
+          alt=""
+          aria-hidden
           sx={{
             position: "absolute",
-            right: 20,
-            bottom: -32,
-            color:
-              "color-mix(in srgb, var(--storyteller-text-primary) 10%, transparent)",
-            fontFamily: "Georgia, serif",
-            fontSize: 132,
+            inset: 0,
+            margin: "auto",
+            height: "90%",
+            width: "auto",
+            maxWidth: "76%",
+            objectFit: "contain",
+            pointerEvents: "none",
+            filter:
+              "drop-shadow(0 0 22px color-mix(in srgb, var(--storyteller-accent-main) 22%, transparent))",
           }}
-        >
-          07
-        </Typography>
+        />
       </Box>
     </Box>
   );
