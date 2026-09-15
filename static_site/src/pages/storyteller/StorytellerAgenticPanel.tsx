@@ -50,7 +50,9 @@ import {
 } from "@/apis/storyteller/agent.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
 import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
@@ -831,6 +833,7 @@ export function StorytellerAgenticPanel({
   presentation?: "inline" | "floatingDock" | "workspace";
   onClose?: () => void;
 }) {
+  const { appearance } = useStorytellerAppearance();
   const floatingDock = presentation === "floatingDock";
   const workspace = presentation === "workspace";
   const fillAvailableHeight = floatingDock || workspace;
@@ -2254,7 +2257,14 @@ export function StorytellerAgenticPanel({
             </>
           ) : (
             <CustomEmptyState
-              icon={<SmartToyIcon fontSize="large" />}
+              icon={
+                <Box
+                  component="img"
+                  alt="梭梭"
+                  src={storytellerMascotSrc("thinking", appearance, "256")}
+                  sx={{ width: 96, height: 96, objectFit: "contain" }}
+                />
+              }
               title="還沒有對話"
               description="直接輸入問題會啟動可以自己讀資料、提出修改提案的多輪問答；打 /rewrite、/expand 等指令則是單輪的改寫/擴寫/翻譯 skill。"
             />

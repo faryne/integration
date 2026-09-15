@@ -14,7 +14,12 @@ import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
+import {
+  STORYTELLER_MASCOT_LOADING_SPRITE_FRAMES,
+  storytellerMascotLoadingSpriteSrc,
+} from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 
 export interface StorytellerBreadcrumbItem {
   label: string;
@@ -176,10 +181,43 @@ export function StorytellerLoading({
 }: {
   label?: string;
 }) {
+  const { appearance } = useStorytellerAppearance();
+  const frameSize = 40;
+
   return (
     <Paper variant="outlined" sx={{ p: 3, borderRadius: 1 }}>
       <Stack alignItems="center" spacing={1.5} sx={{ py: 4 }}>
-        <CircularProgress />
+        <Box
+          sx={{
+            position: "relative",
+            display: "grid",
+            width: 56,
+            height: 56,
+            placeItems: "center",
+          }}
+        >
+          <CircularProgress size={56} />
+          {/* 三幀捲線動作疊在轉圈中央，保留原本 loading 狀態的辨識度。 */}
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              width: frameSize,
+              height: frameSize,
+              backgroundImage: `url(${storytellerMascotLoadingSpriteSrc(appearance)})`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: `${frameSize * STORYTELLER_MASCOT_LOADING_SPRITE_FRAMES}px ${frameSize}px`,
+              animation: `storyteller-mascot-loading 0.9s steps(${STORYTELLER_MASCOT_LOADING_SPRITE_FRAMES}) infinite`,
+              pointerEvents: "none",
+              "@keyframes storyteller-mascot-loading": {
+                from: { backgroundPositionX: "0px" },
+                to: {
+                  backgroundPositionX: `-${frameSize * STORYTELLER_MASCOT_LOADING_SPRITE_FRAMES}px`,
+                },
+              },
+            }}
+          />
+        </Box>
         <Typography color="text.secondary">{label}</Typography>
       </Stack>
     </Paper>
