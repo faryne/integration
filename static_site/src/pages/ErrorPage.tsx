@@ -1,8 +1,10 @@
 import { Box, Button, Container, Stack, Typography } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import { StorytellerAppearanceContext } from "@/layouts/storytellerAppearanceMode.tsx";
 
 // 主站錯誤頁的貓娘插圖有好幾張，每次進到錯誤頁隨機挑一張，避免每次都看到同一張。
 const faryneMascotImages = [
@@ -69,9 +71,7 @@ const fallbackErrorContent = {
     "喵嗚，女僕這邊暫時處理不了主人想看的內容。請稍後再試一次，或先回首頁休息一下喵。",
 };
 
-// SteamLoom 是完全獨立的產品，錯誤頁不套用主站的貓娘女僕人設，改用蒸汽織機的故障意象；
-// 只在 steamloom.works 這個網域生效（isSteamLoomSite 只認網域，不認 /storyteller 巢狀路徑），
-// faryne.dev/storyteller 底下仍維持主站風格。
+// SteamLoom 是完全獨立的產品，錯誤頁不套用主站的貓娘女僕人設，改用蒸汽織機的故障意象。
 const steamloomErrorContent: Record<
   number,
   { title: string; message: string }
@@ -116,7 +116,8 @@ export function ErrorPage({
   internalCode,
   compact = false,
 }: ErrorPageProps) {
-  const steamloom = isSteamLoomSite();
+  const storytellerAppearance = useContext(StorytellerAppearanceContext);
+  const steamloom = isSteamLoomSite() || storytellerAppearance !== null;
   const errorContent = steamloom
     ? (steamloomErrorContent[code] ?? steamloomFallbackErrorContent)
     : (defaultErrorContent[code] ?? fallbackErrorContent);
@@ -157,8 +158,16 @@ export function ErrorPage({
       >
         <Box
           component="img"
-          src={steamloom ? "/steamloom-icon.svg" : faryneMascotImage}
-          alt={steamloom ? "SteamLoom mark" : "Faryne mascot"}
+          src={
+            steamloom
+              ? storytellerMascotSrc(
+                  "error",
+                  storytellerAppearance?.appearance ?? "nocturne",
+                  "512",
+                )
+              : faryneMascotImage
+          }
+          alt={steamloom ? "梭梭" : "Faryne mascot"}
           sx={{
             width: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },
             height: compact ? { xs: 120, md: 160 } : { xs: 180, md: 260 },

@@ -50,13 +50,6 @@ export function StorytellerProjectCard({
     (total, story) => total + story.word_count,
     0,
   );
-  const projectIndex = String(
-    [...project.name].reduce(
-      (total, character) => total + character.charCodeAt(0),
-      0,
-    ) % 100,
-  ).padStart(2, "0");
-
   return (
     <Paper
       variant="outlined"
@@ -139,21 +132,7 @@ export function StorytellerProjectCard({
                 "0 0 28px color-mix(in srgb, var(--storyteller-accent-main) 16%, transparent)",
             },
           }}
-        >
-          <Typography
-            sx={{
-              position: "absolute",
-              zIndex: 1,
-              left: 14,
-              bottom: 10,
-              color: "primary.main",
-              fontSize: 10,
-              letterSpacing: "0.16em",
-            }}
-          >
-            SL / {projectIndex}
-          </Typography>
-        </Box>
+        />
         <Stack
           direction="row"
           spacing={1}
@@ -161,27 +140,13 @@ export function StorytellerProjectCard({
           justifyContent="space-between"
           sx={{ minWidth: 0 }}
         >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ minWidth: 0 }}
+          <Typography
+            variant="h6"
+            fontWeight={800}
+            sx={{ minWidth: 0, overflowWrap: "anywhere" }}
           >
-            <Typography
-              aria-hidden
-              color="primary.main"
-              sx={{ fontFamily: "serif", fontSize: 13, fontStyle: "italic" }}
-            >
-              {projectIndex}
-            </Typography>
-            <Typography
-              variant="h6"
-              fontWeight={800}
-              sx={{ minWidth: 0, overflowWrap: "anywhere" }}
-            >
-              {project.name}
-            </Typography>
-          </Stack>
+            {project.name}
+          </Typography>
           {headerAction && (
             <Box
               onClick={(event) => event.stopPropagation()}
