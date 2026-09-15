@@ -167,12 +167,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           position: "relative",
           zIndex: 1,
           minHeight: { xs: 280, sm: 360 },
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
           overflow: "hidden",
-          boxShadow:
-            "26px 26px 0 color-mix(in srgb, var(--storyteller-accent-main) 7%, transparent)",
           "&::before": {
             content: '""',
             position: "absolute",
@@ -214,19 +209,6 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             boxShadow: "0 0 18px var(--storyteller-accent-main)",
           }}
         />
-        <Typography
-          sx={{
-            position: "absolute",
-            right: 20,
-            bottom: -32,
-            color:
-              "color-mix(in srgb, var(--storyteller-text-primary) 10%, transparent)",
-            fontFamily: "Georgia, serif",
-            fontSize: 132,
-          }}
-        >
-          07
-        </Typography>
         <Box
           component="img"
           src={storytellerMascotSrc("idle", appearance, "master")}
