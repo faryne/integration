@@ -39,6 +39,8 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import {
   useCreateStorytellerProviderAPIKey,
@@ -255,6 +257,12 @@ export function StorytellerApiKeyPanel() {
           )}
         </Stack>
       </Paper>
+      <CustomSnackbar
+        open={deleteApiKey.isError}
+        message="金鑰刪除失敗，請稍後再試。"
+        severity="error"
+        onClose={() => deleteApiKey.reset()}
+      />
     </Stack>
   );
 }
@@ -553,36 +561,30 @@ function ProviderApiKeyRow({
           slotProps={{ secondary: { component: "div" } }}
         />
       )}
-      <Dialog
+      <StorytellerMascotDialog
         open={confirmingDelete}
+        state="danger"
+        eyebrow="刪除金鑰"
+        title={`確定要刪除「${apiKey.label || "（未命名）"}」？`}
+        description="刪除後這把金鑰將無法再用於 Agent，且無法復原。"
         onClose={() => setConfirmingDelete(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>刪除金鑰</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
-            <Typography color="text.secondary">
-              確定要刪除「{apiKey.label || "（未命名）"}
-              」這把金鑰嗎？此操作無法復原。
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={deletePending}
-            onClick={() => {
-              onDelete();
-              setConfirmingDelete(false);
-            }}
-          >
-            刪除金鑰
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={deletePending}
+              onClick={() => {
+                onDelete();
+                setConfirmingDelete(false);
+              }}
+            >
+              刪除金鑰
+            </Button>
+          </>
+        }
+      />
       <Dialog
         open={testDialogOpen}
         onClose={() => setTestDialogOpen(false)}

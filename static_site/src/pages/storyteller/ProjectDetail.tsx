@@ -42,7 +42,6 @@ import {
   useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -1224,7 +1223,7 @@ export default function StorytellerProjectDetail() {
         </Grid>
       </Stack>
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title={deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"}
           description={`刪除後會移除這${deleteTarget.content_type === "image" ? "話" : "篇故事"}與其版本資料。請輸入${deleteTarget.content_type === "image" ? "話" : "故事"}名稱確認。`}
@@ -1286,7 +1285,7 @@ export default function StorytellerProjectDetail() {
         }
       />
       {deleteVolumeTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除冊"
           description="刪除後無法復原。請輸入冊名稱確認。"

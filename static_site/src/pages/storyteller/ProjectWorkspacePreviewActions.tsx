@@ -35,6 +35,7 @@ import {
   useSaveStorytellerVolume,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerAssetUploadDrawer } from "./StorytellerAssetUploadDrawer.tsx";
 import { StorytellerVolumeDialog } from "./StorytellerVolumeDialog.tsx";
@@ -42,7 +43,6 @@ import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import {
   CollectionDialog,
   MoveMenu,
-  WorkspaceConfirmNameDialog,
 } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
   WorkspaceRowActionButton,
@@ -869,7 +869,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         }
       />
       {deleteStoryTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title={
             deleteStoryTarget.content_type === "image" ? "刪除話" : "刪除故事"
@@ -889,7 +889,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         />
       )}
       {deleteVolumeTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除冊"
           description="刪除後無法復原。請輸入冊名稱確認。"
@@ -912,7 +912,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         />
       )}
       {deleteLoreTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除設定集"
           description="刪除後會移除這份設定集與版本資料。請輸入設定集名稱確認。"
@@ -930,7 +930,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         />
       )}
       {deleteAssetTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除資產"
           description="刪除後無法復原。請輸入資產名稱確認。"
@@ -948,7 +948,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         />
       )}
       {deleteLoreCollectionTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除分類"
           description="刪除後不會影響其他分類。請輸入分類名稱確認。"
@@ -974,7 +974,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         />
       )}
       {deleteAssetCollectionTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除資產集"
           description="刪除後不會影響其他資產集。請輸入資產集名稱確認。"

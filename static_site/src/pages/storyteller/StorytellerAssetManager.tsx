@@ -47,9 +47,10 @@ import {
   useStorytellerAssets,
   useUpdateStorytellerAsset,
 } from "@/apis/storyteller.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
@@ -1104,7 +1105,7 @@ export function StorytellerAssetManager({
         </DialogActions>
       </Dialog>
 
-      <ConfirmNameDialog
+      <StorytellerConfirmNameDialog
         open={Boolean(deleteTarget)}
         title="刪除資產"
         description="刪除後這個資產會從資產集移除；已被引用的資產不能刪除。"
@@ -1120,7 +1121,7 @@ export function StorytellerAssetManager({
         onConfirm={() => void confirmDelete()}
       />
 
-      <ConfirmNameDialog
+      <StorytellerConfirmNameDialog
         open={Boolean(collectionDeleteTarget)}
         title="刪除資產集"
         description="刪除前請先把資產集內的資產移到其他資產集或未分類。"
@@ -1131,40 +1132,36 @@ export function StorytellerAssetManager({
         onConfirm={() => void confirmDeleteCollection()}
       />
 
-      <Dialog
+      <StorytellerMascotDialog
         open={Boolean(replaceConfirmTarget)}
+        state="danger"
+        toneLabel="舊檔案會被刪除"
+        eyebrow="取代檔案"
+        title="確定要取代這個檔案？"
+        description="確認後舊檔案會被永久刪除，所有引用此資產的地方都會立即顯示新檔案。此操作無法復原。"
         onClose={() => setReplaceConfirmTarget(null)}
-        maxWidth="xs"
-        fullWidth
+        actions={
+          <>
+            <Button onClick={() => setReplaceConfirmTarget(null)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={confirmAssetReplace.isPending}
+              onClick={() => void confirmReplaceFile()}
+            >
+              {confirmAssetReplace.isPending ? "取代中" : "確認取代"}
+            </Button>
+          </>
+        }
       >
-        <DialogTitle>取代檔案</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
-            <Typography>
-              此操作無法復原；確認後舊檔案會被永久刪除，所有引用此資產的地方都會立即顯示新檔案。
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {replaceConfirmTarget?.asset.title ||
-                replaceConfirmTarget?.asset.original_filename ||
-                replaceConfirmTarget?.asset.public_id}
-              {" -> "}
-              {replaceConfirmTarget?.filename}（{replaceConfirmTarget?.mimeType}
-              ）
-            </Typography>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setReplaceConfirmTarget(null)}>取消</Button>
-          <Button
-            color="warning"
-            variant="contained"
-            disabled={confirmAssetReplace.isPending}
-            onClick={() => void confirmReplaceFile()}
-          >
-            {confirmAssetReplace.isPending ? "取代中" : "確認取代"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Typography variant="body2" color="text.secondary">
+          {replaceConfirmTarget?.asset.title ||
+            replaceConfirmTarget?.asset.original_filename ||
+            replaceConfirmTarget?.asset.public_id}
+          {" → "}
+          {replaceConfirmTarget?.filename}（{replaceConfirmTarget?.mimeType}）
+        </Typography>
+      </StorytellerMascotDialog>
 
       <CustomSnackbar
         open={Boolean(snack)}

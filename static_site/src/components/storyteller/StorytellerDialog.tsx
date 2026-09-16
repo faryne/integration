@@ -130,10 +130,10 @@ export function StorytellerDialog({
             <Stack
               direction={{ xs: "column-reverse", sm: "row" }}
               justifyContent="flex-end"
-              spacing={1}
               sx={{
                 mt: "auto",
                 pt: 3.5,
+                gap: 1,
                 "& > .MuiButton-root": { minWidth: 96 },
               }}
             >

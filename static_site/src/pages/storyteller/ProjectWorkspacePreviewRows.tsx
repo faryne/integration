@@ -25,6 +25,7 @@ import {
   useUpdateStorytellerAsset,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import {
   WorkspaceEditableSummary,
@@ -32,7 +33,6 @@ import {
   WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "./ProjectWorkspaceEditorControls.tsx";
-import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import type { WorkspaceViewMode } from "./workspaceViewMode.ts";
 import type {
@@ -574,7 +574,7 @@ export function WorkspaceAssetPanel({
         message={snack}
         onClose={() => setSnack("")}
       />
-      <WorkspaceConfirmNameDialog
+      <StorytellerConfirmNameDialog
         open={deleteOpen}
         title="刪除資產"
         description="刪除後無法復原。請輸入資產名稱確認。"

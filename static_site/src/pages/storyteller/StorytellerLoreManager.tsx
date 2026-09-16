@@ -34,9 +34,9 @@ import {
   useStorytellerLoreCollections,
   useStorytellerLoresPage,
 } from "@/apis/storyteller.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import type {
@@ -133,8 +133,8 @@ export function StorytellerLoreManager({
   function canDropDraggingLore(collectionId: string) {
     return Boolean(
       draggingLore &&
-        (draggingLore.collection_id ?? loreCollectionUncategorized) !==
-          (collectionId || loreCollectionUncategorized),
+      (draggingLore.collection_id ?? loreCollectionUncategorized) !==
+        (collectionId || loreCollectionUncategorized),
     );
   }
 
@@ -266,7 +266,9 @@ export function StorytellerLoreManager({
                   : "outlined"
               }
               startIcon={<DragIndicatorIcon />}
-              onClick={() => setSelectedCollectionId(loreCollectionUncategorized)}
+              onClick={() =>
+                setSelectedCollectionId(loreCollectionUncategorized)
+              }
               onDragOver={(event) => handleCollectionDragOver(event, "")}
               onDrop={(event) => handleCollectionDrop(event, "")}
               sx={dropTargetSx(canDropDraggingLore(""))}
@@ -282,7 +284,9 @@ export function StorytellerLoreManager({
               onDragOver={(event) =>
                 handleCollectionDragOver(event, collection.public_id)
               }
-              onDrop={(event) => handleCollectionDrop(event, collection.public_id)}
+              onDrop={(event) =>
+                handleCollectionDrop(event, collection.public_id)
+              }
               variant={
                 selectedCollectionId === collection.public_id
                   ? "contained"
@@ -364,14 +368,20 @@ export function StorytellerLoreManager({
                   p: 2,
                   borderRadius: 1,
                   cursor: "grab",
-                  opacity: draggingLore?.public_id === lore.public_id ? 0.55 : 1,
+                  opacity:
+                    draggingLore?.public_id === lore.public_id ? 0.55 : 1,
                 }}
               >
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <MenuBookIcon color="primary" />
                   <Stack sx={{ flex: 1, minWidth: 0 }}>
                     <Typography fontWeight={800}>{lore.title}</Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      flexWrap="wrap"
+                      useFlexGap
+                    >
                       <Typography variant="body2" color="text.secondary">
                         {lore.word_count.toLocaleString()} 字 ·{" "}
                         {formatStorytellerDate(lore.updated_at)}
@@ -501,7 +511,7 @@ export function StorytellerLoreManager({
       </Menu>
 
       {deleteCollectionTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除分類"
           description="刪除後不會影響其他分類。請輸入分類名稱確認。"
@@ -522,7 +532,7 @@ export function StorytellerLoreManager({
       )}
 
       {deleteLoreTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除設定集"
           description="刪除後會移除這份設定集與版本資料。請輸入設定集名稱確認。"

@@ -28,7 +28,6 @@ import {
   useDeleteStorytellerProject,
   useSaveStorytellerProject,
 } from "@/apis/storyteller.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
@@ -362,7 +361,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
         </Grid>
       )}
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除 Skill"
           description="刪除後此 Skill 將無法在故事編輯器中使用。請輸入 Skill 名稱確認。"

@@ -28,6 +28,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 import {
   useCreateStorytellerPersonalAccessToken,
@@ -111,7 +112,8 @@ export function StorytellerMcpPanel() {
             </Tooltip>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            建立下方 Personal Access Token 後會附上設定範例；不確定怎麼在工具裡設定 MCP client 可參考
+            建立下方 Personal Access Token
+            後會附上設定範例；不確定怎麼在工具裡設定 MCP client 可參考
             <Link
               href="https://modelcontextprotocol.io/docs/develop/connect-remote-servers"
               target="_blank"
@@ -242,7 +244,8 @@ export function StorytellerMcpPanel() {
         <DialogContent>
           <Stack spacing={1.5} sx={{ pt: 1 }}>
             <Alert severity="warning" variant="outlined">
-              這組 token 只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
+              這組 token
+              只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
             </Alert>
             {createdToken && (
               <>
@@ -311,6 +314,12 @@ export function StorytellerMcpPanel() {
         message="已複製到剪貼簿"
         onClose={() => setCopyMessageOpen(false)}
       />
+      <CustomSnackbar
+        open={deleteToken.isError}
+        message="Token 刪除失敗，請稍後再試。"
+        severity="error"
+        onClose={() => deleteToken.reset()}
+      />
     </Stack>
   );
 }
@@ -372,34 +381,30 @@ function PersonalAccessTokenRow({
         }
         slotProps={{ secondary: { component: "div" } }}
       />
-      <Dialog
+      <StorytellerMascotDialog
         open={confirmingDelete}
+        state="danger"
+        eyebrow="刪除 Token"
+        title={`確定要刪除「${token.label || "（未命名）"}」？`}
+        description="刪除後使用這組 Token 的工具會立刻失去連線權限，此操作無法復原。"
         onClose={() => setConfirmingDelete(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>刪除 Token</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">
-            確定要刪除「{token.label || "（未命名）"}
-            」這組 token 嗎？刪除後使用這組 token 的工具會立刻失去連線權限，此操作無法復原。
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={deletePending}
-            onClick={() => {
-              onDelete();
-              setConfirmingDelete(false);
-            }}
-          >
-            刪除 Token
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={deletePending}
+              onClick={() => {
+                onDelete();
+                setConfirmingDelete(false);
+              }}
+            >
+              刪除 Token
+            </Button>
+          </>
+        }
+      />
     </ListItem>
   );
 }

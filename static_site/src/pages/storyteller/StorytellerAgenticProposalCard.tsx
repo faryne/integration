@@ -20,6 +20,7 @@ import {
 } from "@/apis/storyteller/agent.ts";
 import { useRevertStorytellerStoryVersion } from "@/apis/storyteller/story.ts";
 import { useRevertStorytellerLoreVersion } from "@/apis/storyteller/lore.ts";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
 
@@ -319,7 +320,13 @@ export function StorytellerAgenticProposalCard({
       sx={{ p: 1.5, borderRadius: 1, bgcolor: "background.default" }}
     >
       <Stack spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <Typography variant="subtitle2" fontWeight={800}>
             修改提案 #{index + 1}
           </Typography>
@@ -375,14 +382,18 @@ export function StorytellerAgenticProposalCard({
               size="small"
               variant="contained"
               color={dangerous ? "error" : "primary"}
-              disabled={apply.isPending || markApplied.isPending || reject.isPending}
+              disabled={
+                apply.isPending || markApplied.isPending || reject.isPending
+              }
               onClick={() => (dangerous ? setConfirmOpen(true) : handleApply())}
             >
               套用提案
             </Button>
             <Button
               size="small"
-              disabled={apply.isPending || markApplied.isPending || reject.isPending}
+              disabled={
+                apply.isPending || markApplied.isPending || reject.isPending
+              }
               onClick={() => setRejectFeedbackOpen(true)}
             >
               否決
@@ -438,27 +449,27 @@ export function StorytellerAgenticProposalCard({
         />
       )}
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
-        <DialogTitle>
-          確認執行「{proposalActionLabel(proposal.tool_name)}」
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary">
-            這是無法先看 diff 確認內容的操作，套用後不一定能直接復原（部分操作可以透過編輯歷史退回）。確定要讓 AI Agent 執行嗎？
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleApply}
-            disabled={apply.isPending}
-          >
-            確認執行
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <StorytellerMascotDialog
+        open={confirmOpen}
+        state="danger"
+        eyebrow="AI Agent 危險操作"
+        title={`確認執行「${proposalActionLabel(proposal.tool_name)}」？`}
+        description="這項操作無法先用 diff 確認內容，套用後不一定能直接復原（部分操作可以透過編輯歷史退回）。"
+        onClose={() => setConfirmOpen(false)}
+        actions={
+          <>
+            <Button onClick={() => setConfirmOpen(false)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={handleApply}
+              disabled={apply.isPending}
+            >
+              確認執行
+            </Button>
+          </>
+        }
+      />
 
       <Dialog
         open={rejectFeedbackOpen}
