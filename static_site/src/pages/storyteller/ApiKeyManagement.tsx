@@ -71,6 +71,7 @@ export function StorytellerApiKeyPanel() {
     endpoint: "",
     api_key: "",
   });
+  const [createSuccess, setCreateSuccess] = useState(false);
 
   const providerOption = (provider: string) =>
     providerModels.find((item) => item.provider === provider);
@@ -92,6 +93,7 @@ export function StorytellerApiKeyPanel() {
                   endpoint: "",
                   api_key: "",
                 }));
+                setCreateSuccess(true);
               },
             });
           }}
@@ -258,6 +260,12 @@ export function StorytellerApiKeyPanel() {
         </Stack>
       </Paper>
       <CustomSnackbar
+        open={createSuccess}
+        message="金鑰已新增。"
+        severity="success"
+        onClose={() => setCreateSuccess(false)}
+      />
+      <CustomSnackbar
         open={deleteApiKey.isError}
         message="金鑰刪除失敗，請稍後再試。"
         severity="error"
@@ -305,6 +313,10 @@ function ProviderApiKeyRow({
   const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [actionSnack, setActionSnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  } | null>(null);
   // provider 有內建 model 目錄時，後端沒被告知要測哪個 model 就會自己挑清單
   // 第一個——目錄裡的名字是跟外部型錄（OpenRouter）同步來的，不保證每個都是
   // 這個 provider 自己 API 真的認得的名字，挑到失效的那個會讓「連線失敗」
@@ -351,13 +363,40 @@ function ProviderApiKeyRow({
           endpoint: isSelfHosted ? draftEndpoint : undefined,
         },
       },
-      { onSuccess: () => setIsEditingLabel(false) },
+      {
+        onSuccess: () => {
+          setIsEditingLabel(false);
+          setActionSnack({ message: "金鑰名稱已更新。", severity: "success" });
+        },
+        onError: () => {
+          setActionSnack({
+            message: "金鑰名稱更新失敗，請稍後再試。",
+            severity: "error",
+          });
+        },
+      },
     );
   }
 
   function runTest(modelName: string) {
     setCooldownEndsAt(Date.now() + testCooldownSeconds * 1000);
-    testApiKey.mutate({ id: apiKey.id, modelName });
+    testApiKey.mutate(
+      { id: apiKey.id, modelName },
+      {
+        onSuccess: (data) => {
+          setActionSnack({
+            message: data?.ok ? "連線測試成功" : "連線測試失敗",
+            severity: data?.ok ? "success" : "error",
+          });
+        },
+        onError: () => {
+          setActionSnack({
+            message: "連線測試失敗，請稍後再試。",
+            severity: "error",
+          });
+        },
+      },
+    );
   }
 
   function openTestDialog() {
@@ -626,6 +665,12 @@ function ProviderApiKeyRow({
           </Button>
         </DialogActions>
       </Dialog>
+      <CustomSnackbar
+        open={Boolean(actionSnack)}
+        message={actionSnack?.message ?? ""}
+        severity={actionSnack?.severity ?? "success"}
+        onClose={() => setActionSnack(null)}
+      />
     </ListItem>
   );
 }

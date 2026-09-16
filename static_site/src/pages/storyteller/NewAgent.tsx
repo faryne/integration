@@ -21,6 +21,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -77,6 +78,7 @@ export default function StorytellerNewAgent({
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   // provider／model_name／provider_apikey_id 已經跟 Agent 人設剝離（AI 助理面板
   // 改用 key／model chip 讓使用者每次呼叫時自行指定），這裡不再收集，固定送空值
   // ——欄位仍留在後端 schema 上（沒有 migration），純粹是這個表單不再填。
@@ -267,7 +269,7 @@ export default function StorytellerNewAgent({
                 { id: editAgentId, input },
                 {
                   onSuccess: () => {
-                    navigate(steamloomPath("my/agent"));
+                    setSaveSuccess(true);
                   },
                 },
               );
@@ -335,6 +337,16 @@ export default function StorytellerNewAgent({
           </Stack>
         )}
       </Paper>
+      <CustomSnackbar
+        open={saveSuccess}
+        message={isEdit ? "Skill 已更新。" : "Skill 已建立。"}
+        severity="success"
+        autoHideDuration={1200}
+        onClose={() => {
+          setSaveSuccess(false);
+          navigate(steamloomPath("my/agent"));
+        }}
+      />
     </StorytellerShell>
   );
 }

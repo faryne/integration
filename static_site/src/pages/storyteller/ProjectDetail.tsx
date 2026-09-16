@@ -280,6 +280,7 @@ export default function StorytellerProjectDetail() {
   } | null>(null);
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
+  const [reorderError, setReorderError] = useState("");
   const {
     data: apiProjects = [],
     isPending: apiProjectsPending,
@@ -405,15 +406,18 @@ export default function StorytellerProjectDetail() {
       if (item.sort === index) {
         return;
       }
-      saveVolume.mutate({
-        volumePublicId: item.public_id,
-        input: {
-          title: item.title,
-          sort: index,
-          status: item.status,
-          summary: item.summary,
+      saveVolume.mutate(
+        {
+          volumePublicId: item.public_id,
+          input: {
+            title: item.title,
+            sort: index,
+            status: item.status,
+            summary: item.summary,
+          },
         },
-      });
+        { onError: () => setReorderError("冊排序更新失敗，請重新整理後再試。") },
+      );
     });
   }
 
@@ -496,19 +500,22 @@ export default function StorytellerProjectDetail() {
         update.parentId !== undefined && update.parentId !== null
           ? apiVolumes.find((volume) => volume.id === update.parentId)
           : undefined;
-      saveStory.mutate({
-        storyPublicId,
-        input: {
-          title: item.title,
-          summary: item.summary,
-          status: item.status,
-          sort: update.sort,
-          content: item.latest_content,
-          ...(update.parentId !== undefined
-            ? { parent_id: targetVolume?.public_id ?? "" }
-            : {}),
+      saveStory.mutate(
+        {
+          storyPublicId,
+          input: {
+            title: item.title,
+            summary: item.summary,
+            status: item.status,
+            sort: update.sort,
+            content: item.latest_content,
+            ...(update.parentId !== undefined
+              ? { parent_id: targetVolume?.public_id ?? "" }
+              : {}),
+          },
         },
-      });
+        { onError: () => setReorderError("作品排序更新失敗，請重新整理後再試。") },
+      );
     });
   }
 
@@ -872,6 +879,12 @@ export default function StorytellerProjectDetail() {
           open={copyMessageOpen}
           message="已複製故事頁連結"
           onClose={() => setCopyMessageOpen(false)}
+        />
+        <CustomSnackbar
+          open={Boolean(reorderError)}
+          message={reorderError}
+          severity="error"
+          onClose={() => setReorderError("")}
         />
 
         {deleteStory.isError && (

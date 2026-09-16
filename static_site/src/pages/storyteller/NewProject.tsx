@@ -25,6 +25,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
   STORYTELLER_APP_NAME,
@@ -130,6 +131,9 @@ export default function StorytellerNewProject({
   const [tagInputValue, setTagInputValue] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [slugWarningOpen, setSlugWarningOpen] = useState(false);
+  const [editSuccessTarget, setEditSuccessTarget] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (editingProject) {
@@ -269,7 +273,7 @@ export default function StorytellerNewProject({
             return;
           }
           if (isEditing) {
-            navigate(
+            setEditSuccessTarget(
               steamloomPath(
                 embedded
                   ? `my/workspace/${project.public_id}`
@@ -658,6 +662,18 @@ export default function StorytellerNewProject({
           </Stack>
         </Stack>
       </Paper>
+      <CustomSnackbar
+        open={Boolean(editSuccessTarget)}
+        message="專案設定已更新。"
+        severity="success"
+        autoHideDuration={1200}
+        onClose={() => {
+          if (editSuccessTarget) {
+            navigate(editSuccessTarget);
+          }
+          setEditSuccessTarget(null);
+        }}
+      />
     </StorytellerShell>
   );
 }

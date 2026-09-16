@@ -173,22 +173,26 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   function saveStoryPatch(
     story: StorytellerStory,
     patch: Partial<StorytellerStory>,
+    onError?: (error: unknown) => void,
   ) {
-    saveStory.mutate({
-      storyPublicId: story.public_id,
-      input: {
-        title: patch.title ?? story.title,
-        summary: patch.summary ?? story.summary,
-        status: patch.status ?? story.status,
-        sort: patch.sort ?? story.sort,
-        content: patch.latest_content ?? story.latest_content,
-        parent_id:
-          patch.parent_id !== undefined
-            ? (volumes.find((volume) => volume.id === patch.parent_id)
-                ?.public_id ?? "")
-            : storyParentPublicId(story),
+    saveStory.mutate(
+      {
+        storyPublicId: story.public_id,
+        input: {
+          title: patch.title ?? story.title,
+          summary: patch.summary ?? story.summary,
+          status: patch.status ?? story.status,
+          sort: patch.sort ?? story.sort,
+          content: patch.latest_content ?? story.latest_content,
+          parent_id:
+            patch.parent_id !== undefined
+              ? (volumes.find((volume) => volume.id === patch.parent_id)
+                  ?.public_id ?? "")
+              : storyParentPublicId(story),
+        },
       },
-    });
+      onError ? { onError } : undefined,
+    );
   }
 
   function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
@@ -244,7 +248,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     );
     remaining.forEach((story, index) => {
       if (story.sort !== index) {
-        saveStoryPatch(story, { sort: index });
+        saveStoryPatch(story, { sort: index }, (error) =>
+          setSnack(errorMessage(error, "作品排序更新失敗。")),
+        );
       }
     });
   }
@@ -281,15 +287,21 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (volume.sort === index) {
         return;
       }
-      saveVolume.mutate({
-        volumePublicId: volume.public_id,
-        input: {
-          title: volume.title,
-          sort: index,
-          status: volume.status,
-          summary: volume.summary,
+      saveVolume.mutate(
+        {
+          volumePublicId: volume.public_id,
+          input: {
+            title: volume.title,
+            sort: index,
+            status: volume.status,
+            summary: volume.summary,
+          },
         },
-      });
+        {
+          onError: (error) =>
+            setSnack(errorMessage(error, "冊排序更新失敗。")),
+        },
+      );
     });
   }
 

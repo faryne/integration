@@ -27,6 +27,7 @@ import {
   useSaveFavoriteProjectVisibility,
 } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
@@ -41,6 +42,7 @@ import type {
 // Home.tsx 統一擋過，這裡不用再自己判斷 session。
 export function StorytellerFavoritesContent() {
   const [tab, setTab] = useState<"stories" | "authors">("stories");
+  const [visibilitySnack, setVisibilitySnack] = useState("");
   const {
     data: projects = [],
     isLoading: projectsLoading,
@@ -86,7 +88,10 @@ export function StorytellerFavoritesContent() {
           <Grid container spacing={2}>
             {projects.map((project) => (
               <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
-                <FavoriteProjectCard project={project} />
+                <FavoriteProjectCard
+                  project={project}
+                  onVisibilityChanged={setVisibilitySnack}
+                />
               </Grid>
             ))}
           </Grid>
@@ -101,16 +106,30 @@ export function StorytellerFavoritesContent() {
         <Grid container spacing={2}>
           {authors.map((author) => (
             <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
-              <FavoriteAuthorCard author={author} />
+              <FavoriteAuthorCard
+                author={author}
+                onVisibilityChanged={setVisibilitySnack}
+              />
             </Grid>
           ))}
         </Grid>
       )}
+      <CustomSnackbar
+        open={Boolean(visibilitySnack)}
+        message={visibilitySnack}
+        onClose={() => setVisibilitySnack("")}
+      />
     </Stack>
   );
 }
 
-function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
+function FavoriteProjectCard({
+  project,
+  onVisibilityChanged,
+}: {
+  project: StorytellerProject;
+  onVisibilityChanged: (message: string) => void;
+}) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
 
@@ -124,7 +143,12 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
               size="small"
               aria-label={hidden ? "設為公開" : "設為隱藏"}
               disabled={saveVisibility.isPending}
-              onClick={() => saveVisibility.mutate(!hidden)}
+              onClick={() =>
+                saveVisibility.mutate(!hidden, {
+                  onSuccess: () =>
+                    onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                })
+              }
             >
               {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
             </IconButton>
@@ -147,7 +171,13 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   );
 }
 
-function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
+function FavoriteAuthorCard({
+  author,
+  onVisibilityChanged,
+}: {
+  author: StorytellerFavoriteAuthor;
+  onVisibilityChanged: (message: string) => void;
+}) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
 
@@ -190,7 +220,12 @@ function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
                 size="small"
                 aria-label={hidden ? "設為公開" : "設為隱藏"}
                 disabled={saveVisibility.isPending}
-                onClick={() => saveVisibility.mutate(!hidden)}
+                onClick={() =>
+                  saveVisibility.mutate(!hidden, {
+                    onSuccess: () =>
+                      onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                  })
+                }
               >
                 {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
               </IconButton>

@@ -48,6 +48,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
@@ -109,6 +110,7 @@ export default function StorytellerUserProjects() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [followSnack, setFollowSnack] = useState("");
   const tab: ProfileTab = location.pathname.endsWith("/favorite-projects")
     ? "favorite-projects"
     : location.pathname.endsWith("/favorite-authors")
@@ -205,7 +207,14 @@ export default function StorytellerUserProjects() {
                   setLoginPromptOpen(true);
                   return;
                 }
-                saveAuthorFavorite.mutate(!isAuthorFavorited);
+                const nextAuthorFavorited = !isAuthorFavorited;
+                saveAuthorFavorite.mutate(nextAuthorFavorited, {
+                  onSuccess: () => {
+                    setFollowSnack(
+                      nextAuthorFavorited ? "已追蹤此作者" : "已取消追蹤此作者",
+                    );
+                  },
+                });
               }}
             >
               {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}
@@ -225,6 +234,11 @@ export default function StorytellerUserProjects() {
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
         description="追蹤作者需要登入。是否要現在登入？"
+      />
+      <CustomSnackbar
+        open={Boolean(followSnack)}
+        message={followSnack}
+        onClose={() => setFollowSnack("")}
       />
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>

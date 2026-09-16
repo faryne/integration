@@ -1735,7 +1735,15 @@ export default function StorytellerReader() {
             return;
           }
           if (apiProject?.public_id) {
-            saveFavorite.mutate(!isFavorited);
+            const nextFavorited = !isFavorited;
+            saveFavorite.mutate(nextFavorited, {
+              onSuccess: () => {
+                setBookmarkSnackbar({
+                  open: true,
+                  message: nextFavorited ? "已追蹤此作品" : "已取消追蹤此作品",
+                });
+              },
+            });
             return;
           }
           setFavorite((value) => !value);
@@ -1755,7 +1763,17 @@ export default function StorytellerReader() {
               setLoginPromptOpen(true);
               return;
             }
-            saveAuthorFavorite.mutate(!isAuthorFavorited);
+            const nextAuthorFavorited = !isAuthorFavorited;
+            saveAuthorFavorite.mutate(nextAuthorFavorited, {
+              onSuccess: () => {
+                setBookmarkSnackbar({
+                  open: true,
+                  message: nextAuthorFavorited
+                    ? "已追蹤此作者"
+                    : "已取消追蹤此作者",
+                });
+              },
+            });
           }}
         >
           {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}（{authorFollowerCount}

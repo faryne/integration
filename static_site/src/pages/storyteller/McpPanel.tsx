@@ -7,10 +7,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -234,80 +230,77 @@ export function StorytellerMcpPanel() {
         </Stack>
       </Paper>
 
-      <Dialog
+      <StorytellerMascotDialog
         open={createdToken !== null}
-        onClose={() => setCreatedToken(null)}
+        state="success"
+        eyebrow="MCP 連接"
+        title="Token 已建立"
         maxWidth="sm"
-        fullWidth
+        onClose={() => setCreatedToken(null)}
+        actions={
+          <Button variant="contained" onClick={() => setCreatedToken(null)}>
+            我已複製，關閉
+          </Button>
+        }
       >
-        <DialogTitle>Token 已建立</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
-            <Alert severity="warning" variant="outlined">
-              這組 token
-              只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
-            </Alert>
-            {createdToken && (
-              <>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Token"
-                    value={createdToken.token}
-                    slotProps={{ input: { readOnly: true } }}
-                  />
-                  <Tooltip title="複製 token">
+        <Stack spacing={1.5}>
+          <Alert severity="warning" variant="outlined">
+            這組 token
+            只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
+          </Alert>
+          {createdToken && (
+            <>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Token"
+                  value={createdToken.token}
+                  slotProps={{ input: { readOnly: true } }}
+                />
+                <Tooltip title="複製 token">
+                  <IconButton onClick={() => void copyText(createdToken.token)}>
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  MCP client 設定範例：
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                  <Box
+                    component="pre"
+                    sx={{
+                      flex: 1,
+                      m: 0,
+                      p: 1.5,
+                      borderRadius: 1,
+                      bgcolor: "action.hover",
+                      fontSize: 12,
+                      overflowX: "auto",
+                    }}
+                  >
+                    {mcpClientConfigSnippet(createdToken.token)}
+                  </Box>
+                  <Tooltip title="複製設定範例">
                     <IconButton
-                      onClick={() => void copyText(createdToken.token)}
+                      size="small"
+                      onClick={() =>
+                        void copyText(
+                          mcpClientConfigSnippet(createdToken.token),
+                        )
+                      }
                     >
                       <ContentCopyIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </Stack>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    MCP client 設定範例：
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="flex-start">
-                    <Box
-                      component="pre"
-                      sx={{
-                        flex: 1,
-                        m: 0,
-                        p: 1.5,
-                        borderRadius: 1,
-                        bgcolor: "action.hover",
-                        fontSize: 12,
-                        overflowX: "auto",
-                      }}
-                    >
-                      {mcpClientConfigSnippet(createdToken.token)}
-                    </Box>
-                    <Tooltip title="複製設定範例">
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          void copyText(
-                            mcpClientConfigSnippet(createdToken.token),
-                          )
-                        }
-                      >
-                        <ContentCopyIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                </Box>
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={() => setCreatedToken(null)}>
-            我已複製，關閉
-          </Button>
-        </DialogActions>
-      </Dialog>
+              </Box>
+            </>
+          )}
+        </Stack>
+      </StorytellerMascotDialog>
 
       <CustomSnackbar
         open={copyMessageOpen}
