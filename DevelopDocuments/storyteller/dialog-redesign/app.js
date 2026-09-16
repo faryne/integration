@@ -4,7 +4,11 @@ const toast = document.querySelector(".toast");
 
 function updateMascots() {
   document.querySelectorAll("[data-mascot]").forEach((image) => {
-    image.src = `https://cdn.faryne.dev/steamloom_assets/suosuo-${image.dataset.mascot}-${body.dataset.appearance}-512.png`;
+    image.src = `https://cdn.faryne.dev/steamloom_assets/suosuo-dialog-${image.dataset.mascot}-${body.dataset.appearance}-512.png`;
+    image.onerror = () => {
+      image.onerror = null;
+      image.src = `generated-assets/suosuo-dialog-${image.dataset.mascot}-${body.dataset.appearance}-512.png`;
+    };
   });
 }
 
