@@ -900,7 +900,13 @@ function StoryContentLines({
   const lines = content.split("\n");
   const groups = groupParagraphsByBlockKind(parseMarkdownToParagraphs(content));
   return (
-    <Stack spacing={0.25}>
+    <Box
+      sx={{
+        // 這層不能用 Stack：每個故事段落會變成獨立 flex item，使前一段的浮動圖片
+        // 無法影響後續段落。改回同一個 block formatting context，並保留原本 2px 間距。
+        "& > :not(style) ~ :not(style)": { mt: 0.25 },
+      }}
+    >
       {groups.map((group) => {
         const groupIndex = group.items[0].index;
         // 空行判斷沿用原本邏輯（新版內容每行都被 marker 包住，就算段落本身是空的，原始
@@ -1005,7 +1011,7 @@ function StoryContentLines({
           </Box>
         );
       })}
-    </Stack>
+    </Box>
   );
 }
 
