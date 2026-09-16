@@ -30,6 +30,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -242,7 +243,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         </MenuItem>
       </Menu>
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除專案"
           description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"

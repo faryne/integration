@@ -6,10 +6,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   Tooltip,
   Typography,
@@ -34,6 +30,7 @@ import {
   useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
@@ -719,32 +716,30 @@ export default function StorytellerProjectWorkspacePreview() {
         </Box>
       </Box>
       {listActions.dialogs}
-      <Dialog
+      <StorytellerMascotDialog
         open={pendingNavigation !== null}
+        state="danger"
+        toneLabel="變更尚未儲存"
+        eyebrow="離開編輯器"
+        title="你有尚未儲存的變更"
+        description="離開這個編輯畫面後，還沒存檔的變更會遺失。確定要放棄變更並離開嗎？"
         onClose={() => setPendingNavigation(null)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>你有尚未儲存的變更</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">
-            離開這個編輯畫面後，還沒存檔的變更會遺失，確定要離開嗎？
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPendingNavigation(null)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              pendingNavigation?.();
-              setPendingNavigation(null);
-            }}
-          >
-            離開
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setPendingNavigation(null)}>繼續編輯</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => {
+                pendingNavigation?.();
+                setPendingNavigation(null);
+              }}
+            >
+              放棄變更並離開
+            </Button>
+          </>
+        }
+      />
     </WorkspaceChrome>
   );
 }

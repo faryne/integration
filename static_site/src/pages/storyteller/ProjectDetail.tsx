@@ -42,10 +42,12 @@ import {
   useStorytellerVolumes,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
@@ -57,7 +59,6 @@ import {
   steamPanelTopBarSx,
   steamTabIndicatorSx,
 } from "@/data/storytellerTheme.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -1306,7 +1307,7 @@ export default function StorytellerProjectDetail() {
         />
       )}
       {projectDeleteOpen && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除專案"
           description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
