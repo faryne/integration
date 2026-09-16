@@ -490,7 +490,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Existing lore public_id to edit."),
-				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i)."),
+				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i). Must not be able to match an empty string (e.g. \"\" or a regexp like \"x*\")."),
 				"replace":           stringSchema("Required replacement text. When is_regex=true, Go regexp replacement references such as $1 and ${name} are supported."),
 				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
 			}, []string{"project_public_id", "lore_public_id", "search", "replace"}),

@@ -441,7 +441,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"story_public_id":   stringSchema("Existing story public_id to edit."),
-				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i)."),
+				"search":            stringSchema("Required search text or RE2 regexp pattern. Case-sensitive unless is_regex=true and you include an inline flag such as (?i). Must not be able to match an empty string (e.g. \"\" or a regexp like \"x*\")."),
 				"replace":           stringSchema("Required replacement text. When is_regex=true, Go regexp replacement references such as $1 and ${name} are supported."),
 				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
 			}, []string{"project_public_id", "story_public_id", "search", "replace"}),
@@ -726,6 +726,13 @@ func compileStorytellerSearchPattern(search string, isRegex bool) (*regexp.Regex
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("invalid search pattern: %w", err)
+	}
+	// 空字串或能配到零寬度的 regex（例如 "x*"、"a?"、"^"）會讓 FindAllStringIndex/
+	// ReplaceAllString 在原內容「每個字元之間」都算命中一次：換行結果是 replace 被插進
+	// 每個字元的縫隙，整篇內容膨脹成 replace 複製貼上 N 次、中間夾雜原內容零星單字元碎片
+	// （N ≈ 原內容 rune 數）。這裡在編譯階段就擋掉，避免存到毀損內容。
+	if re.MatchString("") {
+		return nil, errors.New("search pattern must not match an empty string (it would insert replace between every character)")
 	}
 	return re, nil
 }
