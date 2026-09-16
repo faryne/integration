@@ -281,6 +281,16 @@ export default function StorytellerProjectDetail() {
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
   const [reorderError, setReorderError] = useState("");
+  const [actionSnack, setActionSnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
+  function notifyAction(
+    message: string,
+    severity: "success" | "error" = "success",
+  ) {
+    setActionSnack({ message, severity });
+  }
   const {
     data: apiProjects = [],
     isPending: apiProjectsPending,
@@ -416,7 +426,9 @@ export default function StorytellerProjectDetail() {
             summary: item.summary,
           },
         },
-        { onError: () => setReorderError("冊排序更新失敗，請重新整理後再試。") },
+        {
+          onError: () => setReorderError("冊排序更新失敗，請重新整理後再試。"),
+        },
       );
     });
   }
@@ -514,7 +526,10 @@ export default function StorytellerProjectDetail() {
               : {}),
           },
         },
-        { onError: () => setReorderError("作品排序更新失敗，請重新整理後再試。") },
+        {
+          onError: () =>
+            setReorderError("作品排序更新失敗，請重新整理後再試。"),
+        },
       );
     });
   }
@@ -573,15 +588,23 @@ export default function StorytellerProjectDetail() {
   }
 
   function toggleVolumeStatus(volume: StorytellerStory) {
-    saveVolume.mutate({
-      volumePublicId: volume.public_id,
-      input: {
-        title: volume.title,
-        sort: volume.sort,
-        status: volume.status === "completed" ? "draft" : "completed",
-        summary: volume.summary,
+    const completed = volume.status !== "completed";
+    saveVolume.mutate(
+      {
+        volumePublicId: volume.public_id,
+        input: {
+          title: volume.title,
+          sort: volume.sort,
+          status: completed ? "completed" : "draft",
+          summary: volume.summary,
+        },
       },
-    });
+      {
+        onSuccess: () =>
+          notifyAction(completed ? "冊已公開。" : "冊已設為未公開。"),
+        onError: () => notifyAction("冊狀態更新失敗，請重試。", "error"),
+      },
+    );
   }
 
   function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
@@ -707,16 +730,24 @@ export default function StorytellerProjectDetail() {
         }}
         onDrop={() => handleDropStory(story.parent_id, story.public_id)}
         onTogglePublish={(checked) =>
-          saveStory.mutate({
-            storyPublicId: story.public_id,
-            input: {
-              title: story.title,
-              summary: story.summary,
-              status: checked ? "completed" : "draft",
-              sort: story.sort,
-              content: story.latest_content,
+          saveStory.mutate(
+            {
+              storyPublicId: story.public_id,
+              input: {
+                title: story.title,
+                summary: story.summary,
+                status: checked ? "completed" : "draft",
+                sort: story.sort,
+                content: story.latest_content,
+              },
             },
-          })
+            {
+              onSuccess: () =>
+                notifyAction(checked ? "作品已公開。" : "作品已設為未公開。"),
+              onError: () =>
+                notifyAction("作品狀態更新失敗，請重試。", "error"),
+            },
+          )
         }
         onOpenMoveMenu={(anchorEl) => setStoryMoveMenu({ anchorEl, story })}
         onDelete={() => setDeleteTarget(story)}
@@ -885,6 +916,12 @@ export default function StorytellerProjectDetail() {
           message={reorderError}
           severity="error"
           onClose={() => setReorderError("")}
+        />
+        <CustomSnackbar
+          open={Boolean(actionSnack.message)}
+          message={actionSnack.message}
+          severity={actionSnack.severity}
+          onClose={() => setActionSnack((prev) => ({ ...prev, message: "" }))}
         />
 
         {deleteStory.isError && (
@@ -1292,7 +1329,11 @@ export default function StorytellerProjectDetail() {
                   setStoriesPage(1);
                 }
                 setVolumeDialogTarget(null);
+                notifyAction(
+                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                );
               },
+              onError: () => notifyAction("冊儲存失敗，請重試。", "error"),
             },
           )
         }
@@ -1314,6 +1355,7 @@ export default function StorytellerProjectDetail() {
                 }
                 setDeleteVolumeTarget(null);
               },
+              onError: () => notifyAction("冊刪除失敗，請重試。", "error"),
             })
           }
         />
@@ -1330,6 +1372,7 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteProject.mutate(project.id, {
               onSuccess: () => navigate(steamloomPath("my/projects")),
+              onError: () => notifyAction("專案刪除失敗，請重試。", "error"),
             })
           }
         />

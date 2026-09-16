@@ -96,7 +96,16 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     onSelect,
     onRefreshAssets,
   } = options;
-  const [snack, setSnack] = useState("");
+  const [snack, setSnackState] = useState<{
+    message: string;
+    severity: "success" | "error" | "info";
+  }>({ message: "", severity: "info" });
+  function setSnack(
+    message: string,
+    severity: "success" | "error" | "info" = "success",
+  ) {
+    setSnackState({ message, severity });
+  }
   const [createMenuAnchor, setCreateMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -174,6 +183,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     story: StorytellerStory,
     patch: Partial<StorytellerStory>,
     onError?: (error: unknown) => void,
+    onSuccess?: () => void,
   ) {
     saveStory.mutate(
       {
@@ -191,7 +201,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
               : storyParentPublicId(story),
         },
       },
-      onError ? { onError } : undefined,
+      onError || onSuccess ? { onError, onSuccess } : undefined,
     );
   }
 
@@ -204,10 +214,15 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setStoryMoveMenu(null);
       return;
     }
-    saveStoryPatch(story, {
-      parent_id: nextParentId,
-      sort: storyCountForVolume(nextParentId),
-    });
+    saveStoryPatch(
+      story,
+      {
+        parent_id: nextParentId,
+        sort: storyCountForVolume(nextParentId),
+      },
+      (error) => setSnack(errorMessage(error, "作品移動失敗。"), "error"),
+      () => setSnack("作品已移動。"),
+    );
     setStoryMoveMenu(null);
   }
 
@@ -249,7 +264,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     remaining.forEach((story, index) => {
       if (story.sort !== index) {
         saveStoryPatch(story, { sort: index }, (error) =>
-          setSnack(errorMessage(error, "作品排序更新失敗。")),
+          setSnack(errorMessage(error, "作品排序更新失敗。"), "error"),
         );
       }
     });
@@ -299,7 +314,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         },
         {
           onError: (error) =>
-            setSnack(errorMessage(error, "冊排序更新失敗。")),
+            setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
         },
       );
     });
@@ -345,7 +360,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         },
         {
           onError: (error) =>
-            setSnack(errorMessage(error, "設定集排序更新失敗。")),
+            setSnack(errorMessage(error, "設定集排序更新失敗。"), "error"),
         },
       );
     });
@@ -363,7 +378,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         },
       },
       {
-        onError: (error) => setSnack(errorMessage(error, "冊狀態更新失敗。")),
+        onSuccess: () =>
+          setSnack(
+            volume.status === "completed" ? "冊已設為未公開。" : "冊已公開。",
+          ),
+        onError: (error) =>
+          setSnack(errorMessage(error, "冊狀態更新失敗。"), "error"),
       },
     );
   }
@@ -398,7 +418,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setLoreCollectionTarget(null);
       setSnack(target === "new" ? "分類已建立。" : "分類已更新。");
     } catch (error) {
-      setSnack(errorMessage(error, "分類儲存失敗。"));
+      setSnack(errorMessage(error, "分類儲存失敗。"), "error");
     }
   }
 
@@ -423,7 +443,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setAssetCollectionTarget(null);
       setSnack(target === "new" ? "資產集已建立。" : "資產集已更新。");
     } catch (error) {
-      setSnack(errorMessage(error, "資產集儲存失敗。"));
+      setSnack(errorMessage(error, "資產集儲存失敗。"), "error");
     }
   }
 
@@ -438,7 +458,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setLoreMoveMenu(null);
       setSnack("設定集已移動。");
     } catch (error) {
-      setSnack(errorMessage(error, "設定集移動失敗。"));
+      setSnack(errorMessage(error, "設定集移動失敗。"), "error");
     }
   }
 
@@ -453,7 +473,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setAssetMoveMenu(null);
       setSnack("資產已移動。");
     } catch (error) {
-      setSnack(errorMessage(error, "資產移動失敗。"));
+      setSnack(errorMessage(error, "資產移動失敗。"), "error");
     }
   }
 
@@ -724,12 +744,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         onClose={() => setStoryActionMenu(null)}
         onToggleStatus={() => {
           if (storyActionMenu) {
-            saveStoryPatch(storyActionMenu.story, {
-              status:
-                storyActionMenu.story.status === "completed"
-                  ? "draft"
-                  : "completed",
-            });
+            const completed = storyActionMenu.story.status !== "completed";
+            saveStoryPatch(
+              storyActionMenu.story,
+              { status: completed ? "completed" : "draft" },
+              (error) =>
+                setSnack(errorMessage(error, "作品狀態更新失敗。"), "error"),
+              () => setSnack(completed ? "作品已公開。" : "作品已設為未公開。"),
+            );
           }
           setStoryActionMenu(null);
         }}
@@ -818,7 +840,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         collectionId={uploadDrawerCollectionId}
         onClose={() => setUploadDrawerOpen(false)}
         onUploaded={() => onRefreshAssets()}
-        onNotify={(message) => setSnack(message)}
+        onNotify={(message, severity) => setSnack(message, severity)}
       />
       <StorytellerVolumeDialog
         open={volumeDialogTarget !== null}
@@ -857,7 +879,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 if (volumeDialogTarget === "new" && saved?.public_id)
                   onSelect("stories", saved.public_id);
                 setVolumeDialogTarget(null);
+                setSnack(
+                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                );
               },
+              onError: (error) =>
+                setSnack(errorMessage(error, "冊儲存失敗。"), "error"),
             },
           )
         }
@@ -893,9 +920,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClose={() => setDeleteStoryTarget(null)}
           onConfirm={() =>
             deleteStory.mutate(deleteStoryTarget.public_id, {
-              onSuccess: () => setDeleteStoryTarget(null),
+              onSuccess: () => {
+                setDeleteStoryTarget(null);
+                setSnack("作品已刪除。");
+              },
               onError: (error) =>
-                setSnack(errorMessage(error, "作品刪除失敗。")),
+                setSnack(errorMessage(error, "作品刪除失敗。"), "error"),
             })
           }
         />
@@ -918,7 +948,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 setDeleteVolumeTarget(null);
                 setSnack("冊已刪除。");
               },
-              onError: (error) => setSnack(errorMessage(error, "冊刪除失敗。")),
+              onError: (error) =>
+                setSnack(errorMessage(error, "冊刪除失敗。"), "error"),
             })
           }
         />
@@ -934,9 +965,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
-              onSuccess: () => setDeleteLoreTarget(null),
+              onSuccess: () => {
+                setDeleteLoreTarget(null);
+                setSnack("設定集已刪除。");
+              },
               onError: (error) =>
-                setSnack(errorMessage(error, "設定集刪除失敗。")),
+                setSnack(errorMessage(error, "設定集刪除失敗。"), "error"),
             })
           }
         />
@@ -952,9 +986,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClose={() => setDeleteAssetTarget(null)}
           onConfirm={() =>
             deleteAsset.mutate(deleteAssetTarget.public_id, {
-              onSuccess: () => setDeleteAssetTarget(null),
+              onSuccess: () => {
+                setDeleteAssetTarget(null);
+                setSnack("資產已刪除。");
+              },
               onError: (error) =>
-                setSnack(errorMessage(error, "資產刪除失敗。")),
+                setSnack(errorMessage(error, "資產刪除失敗。"), "error"),
             })
           }
         />
@@ -980,7 +1017,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 setSnack("分類已刪除。");
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "分類刪除失敗。")),
+                setSnack(errorMessage(error, "分類刪除失敗。"), "error"),
             })
           }
         />
@@ -1009,16 +1046,16 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   setSnack("資產集已刪除。");
                 },
                 onError: (error) =>
-                  setSnack(errorMessage(error, "資產集刪除失敗。")),
+                  setSnack(errorMessage(error, "資產集刪除失敗。"), "error"),
               },
             )
           }
         />
       )}
       <CustomSnackbar
-        open={Boolean(snack)}
-        message={snack}
-        severity="info"
+        open={Boolean(snack.message)}
+        message={snack.message}
+        severity={snack.severity}
         onClose={() => setSnack("")}
       />
     </>

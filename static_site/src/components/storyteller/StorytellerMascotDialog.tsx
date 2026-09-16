@@ -1,13 +1,13 @@
 import { Box, Chip } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import type { SyntheticEvent } from "react";
+import { useContext, type SyntheticEvent } from "react";
 import {
   storytellerDialogMascotSrc,
   storytellerMascotSrc,
   type StorytellerDialogMascotState,
   type StorytellerMascotPose,
 } from "@/helpers/storytellerMascot.ts";
-import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
+import { StorytellerAppearanceContext } from "@/layouts/storytellerAppearanceMode.tsx";
 import {
   StorytellerDialog,
   type StorytellerDialogProps,
@@ -53,7 +53,9 @@ export function StorytellerMascotDialog({
   toneLabel,
   ...props
 }: StorytellerMascotDialogProps) {
-  const { appearance } = useStorytellerAppearance();
+  // 編輯器 demo 路由沒有 StorytellerLayout；正式頁面仍由 context 即時跟隨外觀。
+  const appearance =
+    useContext(StorytellerAppearanceContext)?.appearance ?? "nocturne";
   const meta = stateMeta[state];
   const toneColor =
     state === "danger"

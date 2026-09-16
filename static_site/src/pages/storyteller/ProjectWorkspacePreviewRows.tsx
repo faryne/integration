@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import type { AlertColor } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import {
@@ -385,7 +386,12 @@ export function WorkspaceAssetPanel({
   const [altText, setAltText] = useState(asset.alt_text);
   const [description, setDescription] = useState(asset.description);
   const [collectionId, setCollectionId] = useState(asset.collection_id ?? "");
-  const [snack, setSnack] = useState("");
+  const [snack, setSnack] = useState<{ message: string; severity: AlertColor }>(
+    {
+      message: "",
+      severity: "success",
+    },
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [metadataOpen, setMetadataOpen] = useState(false);
   const updateAsset = useUpdateStorytellerAsset(projectId);
@@ -415,9 +421,9 @@ export function WorkspaceAssetPanel({
     ([key]) => key !== "width" && key !== "height",
   );
 
-  function handleSave() {
-    updateAsset.mutate(
-      {
+  async function handleSave() {
+    try {
+      await updateAsset.mutateAsync({
         assetPublicId: asset.public_id,
         input: {
           title,
@@ -425,14 +431,17 @@ export function WorkspaceAssetPanel({
           description,
           metadata: asset.metadata ?? {},
         },
-      },
-      {
-        onSuccess: () => setSnack("資產已更新。"),
-        onError: () => setSnack("資產更新失敗，請重試。"),
-      },
-    );
-    if (collectionId !== (asset.collection_id ?? "")) {
-      moveAsset.mutate({ assetPublicId: asset.public_id, collectionId });
+      });
+      // 資訊與分類都完成後才回報成功，避免分類移動失敗卻顯示已更新。
+      if (collectionId !== (asset.collection_id ?? "")) {
+        await moveAsset.mutateAsync({
+          assetPublicId: asset.public_id,
+          collectionId,
+        });
+      }
+      setSnack({ message: "資產已更新。", severity: "success" });
+    } catch {
+      setSnack({ message: "資產更新失敗，請重試。", severity: "error" });
     }
   }
 
@@ -570,9 +579,10 @@ export function WorkspaceAssetPanel({
         />
       </Box>
       <CustomSnackbar
-        open={Boolean(snack)}
-        message={snack}
-        onClose={() => setSnack("")}
+        open={Boolean(snack.message)}
+        message={snack.message}
+        severity={snack.severity}
+        onClose={() => setSnack((current) => ({ ...current, message: "" }))}
       />
       <StorytellerConfirmNameDialog
         open={deleteOpen}
@@ -588,7 +598,11 @@ export function WorkspaceAssetPanel({
               setDeleteOpen(false);
               onDeleted();
             },
-            onError: () => setSnack("資產刪除失敗，請重試。"),
+            onError: () =>
+              setSnack({
+                message: "資產刪除失敗，請重試。",
+                severity: "error",
+              }),
           })
         }
       />

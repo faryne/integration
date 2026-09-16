@@ -30,6 +30,7 @@ import { alpha } from "@mui/material/styles";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -223,6 +224,7 @@ function ProjectActionsGroup({
   onNavigate?: () => void;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const deleteProject = useDeleteStorytellerProject();
@@ -326,8 +328,15 @@ function ProjectActionsGroup({
         onConfirm={() =>
           deleteProject.mutate(project.public_id, {
             onSuccess: () => navigate(steamloomPath("my/projects")),
+            onError: () => setDeleteError("刪除專案失敗，請重試。"),
           })
         }
+      />
+      <CustomSnackbar
+        open={Boolean(deleteError)}
+        message={deleteError}
+        severity="error"
+        onClose={() => setDeleteError("")}
       />
     </Box>
   );

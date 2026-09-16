@@ -29,6 +29,7 @@ import {
   useSaveStorytellerProject,
 } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
@@ -75,6 +76,10 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     project: StorytellerProject;
   } | null>(null);
   const saveProject = useSaveStorytellerProject();
+  const [visibilitySnack, setVisibilitySnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
 
   function handleVisibilityChange(
     project: StorytellerProject,
@@ -83,18 +88,32 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     if (!visibility || visibility === project.visibility) {
       return;
     }
-    saveProject.mutate({
-      publicId: project.public_id,
-      input: {
-        name: project.name,
-        slug: project.slug,
-        description: project.description,
-        visibility,
-        rating: project.rating,
-        content_type: project.content_type,
-        tags: project.tags ?? [],
+    saveProject.mutate(
+      {
+        publicId: project.public_id,
+        input: {
+          name: project.name,
+          slug: project.slug,
+          description: project.description,
+          visibility,
+          rating: project.rating,
+          content_type: project.content_type,
+          tags: project.tags ?? [],
+        },
       },
-    });
+      {
+        onSuccess: () =>
+          setVisibilitySnack({
+            message: `專案已設為${visibilityLabel[visibility]}。`,
+            severity: "success",
+          }),
+        onError: () =>
+          setVisibilitySnack({
+            message: "專案公開狀態更新失敗，請重試。",
+            severity: "error",
+          }),
+      },
+    );
   }
 
   const visibilityLabel = {
@@ -257,12 +276,19 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           }}
         />
       )}
+      <CustomSnackbar
+        open={Boolean(visibilitySnack.message)}
+        message={visibilitySnack.message}
+        severity={visibilitySnack.severity}
+        onClose={() => setVisibilitySnack((prev) => ({ ...prev, message: "" }))}
+      />
     </>
   );
 }
 
 export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const deleteAgent = useDeleteStorytellerAgent();
+  const [deleteError, setDeleteError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -376,10 +402,17 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
             }
             deleteAgent.mutate(deleteTarget.id, {
               onSuccess: () => setDeleteTarget(null),
+              onError: () => setDeleteError("刪除 Skill 失敗，請重試。"),
             });
           }}
         />
       )}
+      <CustomSnackbar
+        open={Boolean(deleteError)}
+        message={deleteError}
+        severity="error"
+        onClose={() => setDeleteError("")}
+      />
     </>
   );
 }

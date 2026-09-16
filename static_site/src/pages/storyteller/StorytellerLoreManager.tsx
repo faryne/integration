@@ -25,6 +25,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
+import type { AlertColor } from "@mui/material";
 import { useEffect, useState, type DragEvent } from "react";
 import {
   useDeleteStorytellerLore,
@@ -92,7 +93,14 @@ export function StorytellerLoreManager({
     anchorEl: HTMLElement;
     lore: StorytellerLore;
   } | null>(null);
-  const [snack, setSnack] = useState("");
+  const [snack, setSnack] = useState<{ message: string; severity: AlertColor }>(
+    {
+      message: "",
+      severity: "success",
+    },
+  );
+  const notify = (message: string, severity: AlertColor = "success") =>
+    setSnack({ message, severity });
   const loresPageSize = 20;
 
   const collectionsQuery = useStorytellerLoreCollections(projectPublicId);
@@ -156,18 +164,25 @@ export function StorytellerLoreManager({
     event.dataTransfer.dropEffect = "move";
   }
 
-  function moveLoreTo(lore: StorytellerLore, collectionId: string) {
+  function moveLoreTo(
+    lore: StorytellerLore,
+    collectionId: string,
+    quietSuccess = false,
+  ) {
     const targetCollectionId =
       collectionId === loreCollectionUncategorized ? "" : collectionId;
     moveLore.mutate(
       { lorePublicId: lore.public_id, collectionId: targetCollectionId },
       {
         onSuccess: () => {
-          setSnack(
-            targetCollectionId ? "設定集已移入分類。" : "設定集已移到未分類。",
-          );
+          if (!quietSuccess)
+            notify(
+              targetCollectionId
+                ? "設定集已移入分類。"
+                : "設定集已移到未分類。",
+            );
         },
-        onError: (error) => setSnack(error.message),
+        onError: (error) => notify(error.message, "error"),
       },
     );
   }
@@ -177,14 +192,14 @@ export function StorytellerLoreManager({
     collectionId: string,
   ) {
     event.preventDefault();
-    if (draggingLore) moveLoreTo(draggingLore, collectionId);
+    if (draggingLore) moveLoreTo(draggingLore, collectionId, true);
     setDraggingLore(null);
   }
 
   function submitCollection() {
     const name = collectionName.trim();
     if (!name) {
-      setSnack("分類名稱不可空白。");
+      notify("分類名稱不可空白。", "error");
       return;
     }
     const input = {
@@ -206,11 +221,11 @@ export function StorytellerLoreManager({
       {
         onSuccess: () => {
           setCollectionDialogTarget(null);
-          setSnack(
+          notify(
             collectionDialogTarget === "new" ? "分類已建立。" : "分類已更新。",
           );
         },
-        onError: (error) => setSnack(error.message),
+        onError: (error) => notify(error.message, "error"),
       },
     );
   }
@@ -523,9 +538,9 @@ export function StorytellerLoreManager({
             deleteCollection.mutate(deleteCollectionTarget.public_id, {
               onSuccess: () => {
                 setDeleteCollectionTarget(null);
-                setSnack("分類已刪除。");
+                notify("分類已刪除。");
               },
-              onError: (error) => setSnack(error.message),
+              onError: (error) => notify(error.message, "error"),
             })
           }
         />
@@ -544,19 +559,19 @@ export function StorytellerLoreManager({
             deleteLore.mutate(deleteLoreTarget.public_id, {
               onSuccess: () => {
                 setDeleteLoreTarget(null);
-                setSnack("設定集已刪除。");
+                notify("設定集已刪除。");
               },
-              onError: (error) => setSnack(error.message),
+              onError: (error) => notify(error.message, "error"),
             })
           }
         />
       )}
 
       <CustomSnackbar
-        open={Boolean(snack)}
-        message={snack}
-        severity="info"
-        onClose={() => setSnack("")}
+        open={Boolean(snack.message)}
+        message={snack.message}
+        severity={snack.severity}
+        onClose={() => setSnack((current) => ({ ...current, message: "" }))}
       />
     </Stack>
   );

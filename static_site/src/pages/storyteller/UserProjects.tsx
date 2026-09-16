@@ -111,6 +111,13 @@ export default function StorytellerUserProjects() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [followSnack, setFollowSnack] = useState("");
+  const [followSnackSeverity, setFollowSnackSeverity] = useState<
+    "success" | "error"
+  >("success");
+  function notify(message: string, severity: "success" | "error" = "success") {
+    setFollowSnackSeverity(severity);
+    setFollowSnack(message);
+  }
   const tab: ProfileTab = location.pathname.endsWith("/favorite-projects")
     ? "favorite-projects"
     : location.pathname.endsWith("/favorite-authors")
@@ -210,10 +217,12 @@ export default function StorytellerUserProjects() {
                 const nextAuthorFavorited = !isAuthorFavorited;
                 saveAuthorFavorite.mutate(nextAuthorFavorited, {
                   onSuccess: () => {
-                    setFollowSnack(
+                    notify(
                       nextAuthorFavorited ? "已追蹤此作者" : "已取消追蹤此作者",
                     );
                   },
+                  onError: () =>
+                    notify("作者追蹤狀態更新失敗，請重試。", "error"),
                 });
               }}
             >
@@ -238,6 +247,7 @@ export default function StorytellerUserProjects() {
       <CustomSnackbar
         open={Boolean(followSnack)}
         message={followSnack}
+        severity={followSnackSeverity}
         onClose={() => setFollowSnack("")}
       />
       <Grid container spacing={3}>
@@ -402,6 +412,7 @@ export default function StorytellerUserProjects() {
                       <FavoriteProjectCard
                         project={project}
                         isOwner={isOwner}
+                        onVisibilityChanged={notify}
                       />
                     </Grid>
                   ))}
@@ -424,6 +435,7 @@ export default function StorytellerUserProjects() {
                       <FavoriteAuthorCard
                         author={favoriteAuthor}
                         isOwner={isOwner}
+                        onVisibilityChanged={notify}
                       />
                     </Grid>
                   ))}
@@ -465,9 +477,14 @@ export function AuthorBio({ bio }: { bio: string }) {
 function FavoriteProjectCard({
   project,
   isOwner,
+  onVisibilityChanged,
 }: {
   project: StorytellerProject;
   isOwner: boolean;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
@@ -483,7 +500,21 @@ function FavoriteProjectCard({
                 size="small"
                 aria-label={hidden ? "設為公開" : "設為隱藏"}
                 disabled={saveVisibility.isPending}
-                onClick={() => saveVisibility.mutate(!hidden)}
+                onClick={() =>
+                  saveVisibility.mutate(!hidden, {
+                    onSuccess: () =>
+                      onVisibilityChanged(
+                        hidden
+                          ? "追蹤作品已設為公開。"
+                          : "追蹤作品已設為隱藏。",
+                      ),
+                    onError: () =>
+                      onVisibilityChanged(
+                        "追蹤作品公開狀態更新失敗。",
+                        "error",
+                      ),
+                  })
+                }
               >
                 {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
               </IconButton>
@@ -510,9 +541,14 @@ function FavoriteProjectCard({
 function FavoriteAuthorCard({
   author,
   isOwner,
+  onVisibilityChanged,
 }: {
   author: StorytellerFavoriteAuthor;
   isOwner: boolean;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
@@ -557,7 +593,21 @@ function FavoriteAuthorCard({
                   size="small"
                   aria-label={hidden ? "設為公開" : "設為隱藏"}
                   disabled={saveVisibility.isPending}
-                  onClick={() => saveVisibility.mutate(!hidden)}
+                  onClick={() =>
+                    saveVisibility.mutate(!hidden, {
+                      onSuccess: () =>
+                        onVisibilityChanged(
+                          hidden
+                            ? "追蹤作者已設為公開。"
+                            : "追蹤作者已設為隱藏。",
+                        ),
+                      onError: () =>
+                        onVisibilityChanged(
+                          "追蹤作者公開狀態更新失敗。",
+                          "error",
+                        ),
+                    })
+                  }
                 >
                   {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
                 </IconButton>

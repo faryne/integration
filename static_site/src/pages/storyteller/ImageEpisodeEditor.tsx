@@ -32,6 +32,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   STORYTELLER_APP_NAME,
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
@@ -162,6 +163,7 @@ export default function StorytellerImageEpisodeEditor({
     Record<string, { loaded: number; total: number }>
   >({});
   const [phase, setPhase] = useState<"idle" | "uploading" | "error">("idle");
+  const [saveSnackOpen, setSaveSnackOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileWarning, setFileWarning] = useState<string | null>(null);
   // 編輯既有話時，existingStory／existingPages 都載入完成才把資料灌進表單一次；
@@ -554,6 +556,7 @@ export default function StorytellerImageEpisodeEditor({
       });
 
       setPhase("idle");
+      if (embedded && !isNewEpisode) setSaveSnackOpen(true);
       // 存檔成功後要把「離開頁面示警」的基準往前推，不然嵌入模式下沒有整頁跳轉的
       // 既有話存完檔，畫面還在同一頁，卻繼續被判定成「有未存檔變更」。跟上面組
       // content 用的邏輯一樣，直接用 resolvedAssetIds/resolvedKeys 這兩個本地變數，
@@ -706,6 +709,11 @@ export default function StorytellerImageEpisodeEditor({
       headerContent={embeddedHeaderContent}
     >
       <Stack spacing={2}>
+        <CustomSnackbar
+          open={saveSnackOpen}
+          message="圖片話已儲存。"
+          onClose={() => setSaveSnackOpen(false)}
+        />
         {phase === "error" && uploadError && (
           <Alert severity="error" variant="outlined">
             {uploadError}
