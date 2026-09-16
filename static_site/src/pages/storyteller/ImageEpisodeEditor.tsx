@@ -164,6 +164,10 @@ export default function StorytellerImageEpisodeEditor({
   >({});
   const [phase, setPhase] = useState<"idle" | "uploading" | "error">("idle");
   const [saveSnackOpen, setSaveSnackOpen] = useState(false);
+  const [saveErrorSnackOpen, setSaveErrorSnackOpen] = useState(false);
+  const [saveSuccessTarget, setSaveSuccessTarget] = useState<string | null>(
+    null,
+  );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fileWarning, setFileWarning] = useState<string | null>(null);
   // 編輯既有話時，existingStory／existingPages 都載入完成才把資料灌進表單一次；
@@ -487,11 +491,18 @@ export default function StorytellerImageEpisodeEditor({
   }
 
   async function handleSubmit() {
-    if (!project || !title.trim() || pages.length === 0) {
+    if (
+      !project ||
+      !title.trim() ||
+      pages.length === 0 ||
+      phase === "uploading" ||
+      saveSuccessTarget
+    ) {
       return;
     }
     setPhase("uploading");
     setUploadError(null);
+    setSaveErrorSnackOpen(false);
     try {
       // 只上傳還沒建立資產的本機頁面——重試時已經拿到 asset_public_id/key 的頁面不用重來。
       const pendingIndexes = pages
@@ -556,7 +567,16 @@ export default function StorytellerImageEpisodeEditor({
       });
 
       setPhase("idle");
-      if (embedded && !isNewEpisode) setSaveSnackOpen(true);
+      setSaveSuccessTarget(
+        !embedded
+          ? steamloomPath(`my/project/${project.public_id}/images`)
+          : isNewEpisode && savedStory?.public_id
+            ? steamloomPath(
+                `my/workspace/${project.public_id}/image/${savedStory.public_id}`,
+              )
+            : null,
+      );
+      setSaveSnackOpen(true);
       // 存檔成功後要把「離開頁面示警」的基準往前推，不然嵌入模式下沒有整頁跳轉的
       // 既有話存完檔，畫面還在同一頁，卻繼續被判定成「有未存檔變更」。跟上面組
       // content 用的邏輯一樣，直接用 resolvedAssetIds/resolvedKeys 這兩個本地變數，
@@ -572,23 +592,13 @@ export default function StorytellerImageEpisodeEditor({
           uploadedKey: resolvedKeys[index] || page.uploadedKey,
         })),
       );
-      if (!embedded) {
-        navigate(steamloomPath(`my/project/${project.public_id}/images`));
-      } else if (isNewEpisode && savedStory?.public_id) {
-        // embedded（工作台）模式下，新建話存檔成功後要把網址從 .../image/new
-        // 換成真正的 public_id，不然 isNewEpisode 永遠是 true，下一次存檔又會
-        // 走建立流程、變成建出重複的話。
-        navigate(
-          steamloomPath(
-            `my/workspace/${project.public_id}/image/${savedStory.public_id}`,
-          ),
-        );
-      }
+      // 要先讓成功訊息真的顯示，再跳轉；新建話仍會換成正式 public_id，避免重複建立。
     } catch (error) {
       setPhase("error");
       setUploadError(
         error instanceof Error ? error.message : "上傳失敗，請重試。",
       );
+      setSaveErrorSnackOpen(true);
     }
   }
 
@@ -609,7 +619,7 @@ export default function StorytellerImageEpisodeEditor({
   }, 0);
   const overallPercent =
     totalBytes > 0 ? Math.round((uploadedBytes / totalBytes) * 100) : 0;
-  const isSubmitting = phase === "uploading";
+  const isSubmitting = phase === "uploading" || saveSuccessTarget !== null;
   const statusOptions = [
     {
       value: "draft",
@@ -712,7 +722,18 @@ export default function StorytellerImageEpisodeEditor({
         <CustomSnackbar
           open={saveSnackOpen}
           message="圖片話已儲存。"
-          onClose={() => setSaveSnackOpen(false)}
+          autoHideDuration={saveSuccessTarget ? 1200 : 2500}
+          onClose={() => {
+            setSaveSnackOpen(false);
+            if (saveSuccessTarget) navigate(saveSuccessTarget);
+            setSaveSuccessTarget(null);
+          }}
+        />
+        <CustomSnackbar
+          open={saveErrorSnackOpen}
+          message={uploadError ?? "圖像作品儲存失敗，請重試。"}
+          severity="error"
+          onClose={() => setSaveErrorSnackOpen(false)}
         />
         {phase === "error" && uploadError && (
           <Alert severity="error" variant="outlined">

@@ -347,6 +347,12 @@ export default function StorytellerNewAgent({
           navigate(steamloomPath("my/agent"));
         }}
       />
+      <CustomSnackbar
+        open={saveAgent.isError}
+        message={`${isEdit ? "更新" : "建立"} Skill 失敗，請確認欄位內容後重試。`}
+        severity="error"
+        onClose={() => saveAgent.reset()}
+      />
     </StorytellerShell>
   );
 }

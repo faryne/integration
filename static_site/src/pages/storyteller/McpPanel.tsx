@@ -76,12 +76,17 @@ export function StorytellerMcpPanel() {
   const [label, setLabel] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<string>("30");
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
+  const [copyErrorOpen, setCopyErrorOpen] = useState(false);
   const [createdToken, setCreatedToken] =
     useState<StorytellerPersonalAccessTokenCreated | null>(null);
 
   async function copyText(text: string) {
-    await navigator.clipboard.writeText(text);
-    setCopyMessageOpen(true);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessageOpen(true);
+    } catch {
+      setCopyErrorOpen(true);
+    }
   }
 
   return (
@@ -306,6 +311,18 @@ export function StorytellerMcpPanel() {
         open={copyMessageOpen}
         message="已複製到剪貼簿"
         onClose={() => setCopyMessageOpen(false)}
+      />
+      <CustomSnackbar
+        open={copyErrorOpen}
+        message="複製失敗，請手動選取內容。"
+        severity="error"
+        onClose={() => setCopyErrorOpen(false)}
+      />
+      <CustomSnackbar
+        open={createToken.isError}
+        message="建立 Token 失敗，請確認欄位內容後重試。"
+        severity="error"
+        onClose={() => createToken.reset()}
       />
       <CustomSnackbar
         open={deleteToken.isError}

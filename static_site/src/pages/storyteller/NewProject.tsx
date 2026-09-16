@@ -674,6 +674,12 @@ export default function StorytellerNewProject({
           setEditSuccessTarget(null);
         }}
       />
+      <CustomSnackbar
+        open={saveProject.isError}
+        message={`${isEditing ? "更新" : "建立"}專案失敗，請確認欄位內容後重試。`}
+        severity="error"
+        onClose={() => saveProject.reset()}
+      />
     </StorytellerShell>
   );
 }

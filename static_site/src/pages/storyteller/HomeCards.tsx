@@ -6,7 +6,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -124,11 +123,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 
   return (
     <>
-      {deleteProject.isError && (
-        <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
-          刪除專案失敗，請確認登入狀態後再試一次。
-        </Alert>
-      )}
       {projects.length === 0 ? (
         <CustomEmptyState
           icon={
@@ -281,6 +275,12 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         message={visibilitySnack.message}
         severity={visibilitySnack.severity}
         onClose={() => setVisibilitySnack((prev) => ({ ...prev, message: "" }))}
+      />
+      <CustomSnackbar
+        open={deleteProject.isError}
+        message="刪除專案失敗，請確認登入狀態後再試一次。"
+        severity="error"
+        onClose={() => deleteProject.reset()}
       />
     </>
   );

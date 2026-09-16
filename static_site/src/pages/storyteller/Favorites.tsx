@@ -42,7 +42,14 @@ import type {
 // Home.tsx 統一擋過，這裡不用再自己判斷 session。
 export function StorytellerFavoritesContent() {
   const [tab, setTab] = useState<"stories" | "authors">("stories");
-  const [visibilitySnack, setVisibilitySnack] = useState("");
+  const [visibilitySnack, setVisibilitySnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
+  const notifyVisibility = (
+    message: string,
+    severity: "success" | "error" = "success",
+  ) => setVisibilitySnack({ message, severity });
   const {
     data: projects = [],
     isLoading: projectsLoading,
@@ -90,7 +97,7 @@ export function StorytellerFavoritesContent() {
               <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
                 <FavoriteProjectCard
                   project={project}
-                  onVisibilityChanged={setVisibilitySnack}
+                  onVisibilityChanged={notifyVisibility}
                 />
               </Grid>
             ))}
@@ -108,16 +115,19 @@ export function StorytellerFavoritesContent() {
             <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
               <FavoriteAuthorCard
                 author={author}
-                onVisibilityChanged={setVisibilitySnack}
+                onVisibilityChanged={notifyVisibility}
               />
             </Grid>
           ))}
         </Grid>
       )}
       <CustomSnackbar
-        open={Boolean(visibilitySnack)}
-        message={visibilitySnack}
-        onClose={() => setVisibilitySnack("")}
+        open={Boolean(visibilitySnack.message)}
+        message={visibilitySnack.message}
+        severity={visibilitySnack.severity}
+        onClose={() =>
+          setVisibilitySnack((current) => ({ ...current, message: "" }))
+        }
       />
     </Stack>
   );
@@ -128,7 +138,10 @@ function FavoriteProjectCard({
   onVisibilityChanged,
 }: {
   project: StorytellerProject;
-  onVisibilityChanged: (message: string) => void;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
@@ -147,6 +160,8 @@ function FavoriteProjectCard({
                 saveVisibility.mutate(!hidden, {
                   onSuccess: () =>
                     onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                  onError: () =>
+                    onVisibilityChanged("追蹤作品公開狀態更新失敗。", "error"),
                 })
               }
             >
@@ -176,7 +191,10 @@ function FavoriteAuthorCard({
   onVisibilityChanged,
 }: {
   author: StorytellerFavoriteAuthor;
-  onVisibilityChanged: (message: string) => void;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
@@ -224,6 +242,11 @@ function FavoriteAuthorCard({
                   saveVisibility.mutate(!hidden, {
                     onSuccess: () =>
                       onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                    onError: () =>
+                      onVisibilityChanged(
+                        "追蹤作者公開狀態更新失敗。",
+                        "error",
+                      ),
                   })
                 }
               >

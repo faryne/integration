@@ -280,6 +280,7 @@ export default function StorytellerProjectDetail() {
   } | null>(null);
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
+  const [copyErrorOpen, setCopyErrorOpen] = useState(false);
   const [reorderError, setReorderError] = useState("");
   const [actionSnack, setActionSnack] = useState<{
     message: string;
@@ -416,8 +417,9 @@ export default function StorytellerProjectDetail() {
       if (item.sort === index) {
         return;
       }
-      saveVolume.mutate(
-        {
+      // 同一次拖曳會送多筆更新；每筆 Promise 都要接錯誤，不能只靠最後一次 mutate 回呼。
+      void saveVolume
+        .mutateAsync({
           volumePublicId: item.public_id,
           input: {
             title: item.title,
@@ -425,11 +427,8 @@ export default function StorytellerProjectDetail() {
             status: item.status,
             summary: item.summary,
           },
-        },
-        {
-          onError: () => setReorderError("冊排序更新失敗，請重新整理後再試。"),
-        },
-      );
+        })
+        .catch(() => setReorderError("冊排序更新失敗，請重新整理後再試。"));
     });
   }
 
@@ -512,8 +511,8 @@ export default function StorytellerProjectDetail() {
         update.parentId !== undefined && update.parentId !== null
           ? apiVolumes.find((volume) => volume.id === update.parentId)
           : undefined;
-      saveStory.mutate(
-        {
+      void saveStory
+        .mutateAsync({
           storyPublicId,
           input: {
             title: item.title,
@@ -525,12 +524,8 @@ export default function StorytellerProjectDetail() {
               ? { parent_id: targetVolume?.public_id ?? "" }
               : {}),
           },
-        },
-        {
-          onError: () =>
-            setReorderError("作品排序更新失敗，請重新整理後再試。"),
-        },
-      );
+        })
+        .catch(() => setReorderError("作品排序更新失敗，請重新整理後再試。"));
     });
   }
 
@@ -629,17 +624,31 @@ export default function StorytellerProjectDetail() {
       ),
     );
     setStoryMoveMenu(null);
-    saveStory.mutate({
-      storyPublicId: story.public_id,
-      input: {
-        title: story.title,
-        summary: story.summary,
-        status: story.status,
-        sort: nextSort,
-        content: story.latest_content,
-        parent_id: volumePublicId,
+    saveStory.mutate(
+      {
+        storyPublicId: story.public_id,
+        input: {
+          title: story.title,
+          summary: story.summary,
+          status: story.status,
+          sort: nextSort,
+          content: story.latest_content,
+          parent_id: volumePublicId,
+        },
       },
-    });
+      {
+        onSuccess: () => notifyAction("作品已移動。"),
+        onError: () => {
+          // 移動是樂觀更新，存檔失敗時要還原清單，避免畫面假裝移動成功。
+          setOrderedStories((current) =>
+            current.map((item) =>
+              item.public_id === story.public_id ? story : item,
+            ),
+          );
+          notifyAction("作品移動失敗，請重試。", "error");
+        },
+      },
+    );
   }
 
   useTitle(
@@ -773,6 +782,8 @@ export default function StorytellerProjectDetail() {
     try {
       await navigator.clipboard.writeText(absoluteReaderUrl);
       setCopyMessageOpen(true);
+    } catch {
+      setCopyErrorOpen(true);
     } finally {
       setLinkMenuAnchor(null);
     }
@@ -912,6 +923,12 @@ export default function StorytellerProjectDetail() {
           onClose={() => setCopyMessageOpen(false)}
         />
         <CustomSnackbar
+          open={copyErrorOpen}
+          message="複製連結失敗，請重試。"
+          severity="error"
+          onClose={() => setCopyErrorOpen(false)}
+        />
+        <CustomSnackbar
           open={Boolean(reorderError)}
           message={reorderError}
           severity="error"
@@ -924,11 +941,6 @@ export default function StorytellerProjectDetail() {
           onClose={() => setActionSnack((prev) => ({ ...prev, message: "" }))}
         />
 
-        {deleteStory.isError && (
-          <Typography color="error">
-            刪除故事失敗，請確認登入狀態後再試一次。
-          </Typography>
-        )}
         <Grid container spacing={2}>
           <Grid size={12}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -1286,6 +1298,7 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
+              onError: () => notifyAction("作品刪除失敗，請重試。", "error"),
             })
           }
         />

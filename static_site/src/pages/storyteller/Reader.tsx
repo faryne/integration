@@ -1769,6 +1769,12 @@ export default function StorytellerReader() {
                   message: nextFavorited ? "已追蹤此作品" : "已取消追蹤此作品",
                 });
               },
+              onError: () =>
+                setBookmarkSnackbar({
+                  open: true,
+                  message: "作品追蹤狀態更新失敗，請重試。",
+                  severity: "error",
+                }),
             });
             return;
           }
@@ -1799,6 +1805,12 @@ export default function StorytellerReader() {
                     : "已取消追蹤此作者",
                 });
               },
+              onError: () =>
+                setBookmarkSnackbar({
+                  open: true,
+                  message: "作者追蹤狀態更新失敗，請重試。",
+                  severity: "error",
+                }),
             });
           }}
         >

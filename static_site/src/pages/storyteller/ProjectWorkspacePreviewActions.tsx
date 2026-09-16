@@ -182,11 +182,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   function saveStoryPatch(
     story: StorytellerStory,
     patch: Partial<StorytellerStory>,
-    onError?: (error: unknown) => void,
+    onError: (error: unknown) => void,
     onSuccess?: () => void,
   ) {
-    saveStory.mutate(
-      {
+    // 排序會在同一輪連續更新多筆；mutateAsync 讓每筆失敗都能進入各自的回呼。
+    void saveStory
+      .mutateAsync({
         storyPublicId: story.public_id,
         input: {
           title: patch.title ?? story.title,
@@ -200,9 +201,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   ?.public_id ?? "")
               : storyParentPublicId(story),
         },
-      },
-      onError || onSuccess ? { onError, onSuccess } : undefined,
-    );
+      })
+      .then(() => onSuccess?.())
+      .catch((error: unknown) => onError(error));
   }
 
   function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
@@ -302,8 +303,8 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (volume.sort === index) {
         return;
       }
-      saveVolume.mutate(
-        {
+      void saveVolume
+        .mutateAsync({
           volumePublicId: volume.public_id,
           input: {
             title: volume.title,
@@ -311,12 +312,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             status: volume.status,
             summary: volume.summary,
           },
-        },
-        {
-          onError: (error) =>
-            setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
-        },
-      );
+        })
+        .catch((error: unknown) =>
+          setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
+        );
     });
   }
 
@@ -349,20 +348,18 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     );
     remaining.forEach((collection, index) => {
       if (collection.sort === index) return;
-      saveLoreCollection.mutate(
-        {
+      void saveLoreCollection
+        .mutateAsync({
           collectionPublicId: collection.public_id,
           input: {
             name: collection.name,
             description: collection.description,
             sort: index,
           },
-        },
-        {
-          onError: (error) =>
-            setSnack(errorMessage(error, "設定集排序更新失敗。"), "error"),
-        },
-      );
+        })
+        .catch((error: unknown) =>
+          setSnack(errorMessage(error, "設定集排序更新失敗。"), "error"),
+        );
     });
   }
 

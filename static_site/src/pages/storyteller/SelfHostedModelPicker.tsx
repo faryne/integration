@@ -58,6 +58,7 @@ export function useSelfHostedModelOptions(apiKeyId: number | null | undefined) {
     isCreating: createModel.isPending,
     isDeleting: deleteModel.isPending,
     createError: createModel.isError,
+    resetCreateError: createModel.reset,
     deleteError: deleteModel.isError,
     resetDeleteError: deleteModel.reset,
   };
@@ -68,6 +69,7 @@ export function SelfHostedModelPicker({
   value,
   onChange,
   onApplied,
+  onSuccessNotify,
   variant = "form",
   inputMode = "empty",
   label = "Model Name",
@@ -79,6 +81,7 @@ export function SelfHostedModelPicker({
   value: string;
   onChange: (name: string) => void;
   onApplied?: (name: string) => void;
+  onSuccessNotify?: (message: string) => void;
   variant?: "menu" | "form";
   inputMode?: "always" | "empty";
   label?: string;
@@ -95,10 +98,12 @@ export function SelfHostedModelPicker({
     isCreating,
     isDeleting,
     createError,
+    resetCreateError,
     deleteError,
     resetDeleteError,
   } = useSelfHostedModelOptions(apiKeyId);
   const [draftName, setDraftName] = useState(value);
+  const [applySuccess, setApplySuccess] = useState(false);
   const [confirmingDelete, setConfirmingDelete] =
     useState<StorytellerProviderAPIKeyModel | null>(null);
 
@@ -125,11 +130,17 @@ export function SelfHostedModelPicker({
       onApplied?.(trimmed);
       return;
     }
-    const row = await addModel(trimmed);
-    if (row) {
-      onChange(row.name);
-      onApplied?.(row.name);
-      setDraftName("");
+    try {
+      const row = await addModel(trimmed);
+      if (row) {
+        onChange(row.name);
+        onApplied?.(row.name);
+        setDraftName("");
+        if (onSuccessNotify) onSuccessNotify("模型名稱已套用。");
+        else setApplySuccess(true);
+      }
+    } catch {
+      // mutation 的錯誤由下方 snackbar 顯示，避免 click handler 留下未處理的拒絕。
     }
   }
 
@@ -260,11 +271,17 @@ export function SelfHostedModelPicker({
           </Button>
         </Stack>
       )}
-      {createError && (
-        <Alert severity="error" variant="outlined">
-          模型名稱儲存失敗，請稍後再試。
-        </Alert>
-      )}
+      <CustomSnackbar
+        open={applySuccess}
+        message="模型名稱已套用。"
+        onClose={() => setApplySuccess(false)}
+      />
+      <CustomSnackbar
+        open={createError}
+        message="模型名稱儲存失敗，請稍後再試。"
+        severity="error"
+        onClose={resetCreateError}
+      />
       <StorytellerMascotDialog
         open={Boolean(confirmingDelete)}
         state="danger"

@@ -432,17 +432,26 @@ export function WorkspaceAssetPanel({
           metadata: asset.metadata ?? {},
         },
       });
-      // 資訊與分類都完成後才回報成功，避免分類移動失敗卻顯示已更新。
-      if (collectionId !== (asset.collection_id ?? "")) {
+    } catch {
+      setSnack({ message: "資產資訊更新失敗，請重試。", severity: "error" });
+      return;
+    }
+    // 資訊與分類是兩次獨立儲存；第二步失敗要說明第一步已成功，避免誤導使用者。
+    if (collectionId !== (asset.collection_id ?? "")) {
+      try {
         await moveAsset.mutateAsync({
           assetPublicId: asset.public_id,
           collectionId,
         });
+      } catch {
+        setSnack({
+          message: "資產資訊已儲存，但移動到資產集失敗，請重試。",
+          severity: "error",
+        });
+        return;
       }
-      setSnack({ message: "資產已更新。", severity: "success" });
-    } catch {
-      setSnack({ message: "資產更新失敗，請重試。", severity: "error" });
     }
+    setSnack({ message: "資產已更新。", severity: "success" });
   }
 
   const assetActionContent = (

@@ -308,7 +308,11 @@ export function StorytellerAssetManager({
     }
   }
 
-  async function moveAssetTo(asset: StorytellerAsset, collectionId: string) {
+  async function moveAssetTo(
+    asset: StorytellerAsset,
+    collectionId: string,
+    quietSuccess = false,
+  ) {
     if ((asset.collection_id ?? "") === collectionId) {
       setAssetMoveMenu(null);
       return;
@@ -319,7 +323,8 @@ export function StorytellerAssetManager({
         collectionId,
       });
       setAssetMoveMenu(null);
-      setSnack({ message: "資產已移動。", severity: "success" });
+      if (!quietSuccess)
+        setSnack({ message: "資產已移動。", severity: "success" });
     } catch (error) {
       setSnack({
         message: errorMessage(error, "資產移動失敗。"),
@@ -360,7 +365,8 @@ export function StorytellerAssetManager({
   ) {
     event.preventDefault();
     if (draggingAsset) {
-      void moveAssetTo(draggingAsset, collectionId);
+      // 拖曳已有即時列表變化，僅在持久化失敗時提示。
+      void moveAssetTo(draggingAsset, collectionId, true);
     }
     setDraggingAsset(null);
   }

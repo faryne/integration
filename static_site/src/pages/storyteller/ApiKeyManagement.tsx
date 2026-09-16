@@ -266,6 +266,12 @@ export function StorytellerApiKeyPanel() {
         onClose={() => setCreateSuccess(false)}
       />
       <CustomSnackbar
+        open={createApiKey.isError}
+        message="新增金鑰失敗，請確認欄位內容後重試。"
+        severity="error"
+        onClose={() => createApiKey.reset()}
+      />
+      <CustomSnackbar
         open={deleteApiKey.isError}
         message="金鑰刪除失敗，請稍後再試。"
         severity="error"
