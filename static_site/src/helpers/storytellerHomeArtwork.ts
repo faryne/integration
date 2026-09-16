@@ -1,32 +1,34 @@
 import type { StorytellerAppearance } from "@/data/storytellerTheme.ts";
-import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
+import {
+  STORYTELLER_MASCOT_CDN_BASE,
+  storytellerMascotSrc,
+} from "@/helpers/storytellerMascot.ts";
 
 export const STORYTELLER_SPECIAL_ARTWORK = {
-  bikini: "/storyteller/special/suosuo-special-bikini.png",
-  birthday: "/storyteller/special/suosuo-special-birthday.png",
-  bridal: "/storyteller/special/suosuo-special-bridal.png",
-  "casual-dress": "/storyteller/special/suosuo-special-casual-dress.png",
-  christmas: "/storyteller/special/suosuo-special-christmas.png",
-  "dragon-boat": "/storyteller/special/suosuo-special-dragon-boat.png",
-  loungewear: "/storyteller/special/suosuo-special-loungewear.png",
-  maid: "/storyteller/special/suosuo-special-maid.png",
-  "mid-autumn": "/storyteller/special/suosuo-special-mid-autumn.png",
-  "new-year": "/storyteller/special/suosuo-special-new-year.png",
-  nightdress: "/storyteller/special/suosuo-special-nightdress.png",
-  "western-academy": "/storyteller/special/suosuo-special-western-academy.png",
+  bikini: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-bikini.png`,
+  birthday: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-birthday.png`,
+  bridal: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-bridal.png`,
+  "casual-dress": `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-casual-dress.png`,
+  christmas: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-christmas.png`,
+  "dragon-boat": `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-dragon-boat.png`,
+  loungewear: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-loungewear.png`,
+  maid: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-maid.png`,
+  "mid-autumn": `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-mid-autumn.png`,
+  "new-year": `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-new-year.png`,
+  nightdress: `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-nightdress.png`,
+  "western-academy": `${STORYTELLER_MASCOT_CDN_BASE}/special/suosuo-special-western-academy.png`,
 } as const;
 
 export type StorytellerSpecialArtwork =
   keyof typeof STORYTELLER_SPECIAL_ARTWORK;
 
 export const STORYTELLER_POSE_ARTWORK = {
-  crouch: "/storyteller/poses/suosuo-pose-crouch-nocturne-master.png",
-  "lie-back": "/storyteller/poses/suosuo-pose-lie-back-nocturne-master.png",
-  "lie-side": "/storyteller/poses/suosuo-pose-lie-side-nocturne-master.png",
-  prone: "/storyteller/poses/suosuo-pose-prone-nocturne-master.png",
-  "sit-crossleg":
-    "/storyteller/poses/suosuo-pose-sit-crossleg-nocturne-master.png",
-  sit: "/storyteller/poses/suosuo-pose-sit-nocturne-master.png",
+  crouch: `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-crouch-nocturne-master.png`,
+  "lie-back": `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-lie-back-nocturne-master.png`,
+  "lie-side": `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-lie-side-nocturne-master.png`,
+  prone: `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-prone-nocturne-master.png`,
+  "sit-crossleg": `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-sit-crossleg-nocturne-master.png`,
+  sit: `${STORYTELLER_MASCOT_CDN_BASE}/poses/suosuo-pose-sit-nocturne-master.png`,
 } as const;
 
 export type StorytellerPoseArtwork = keyof typeof STORYTELLER_POSE_ARTWORK;
