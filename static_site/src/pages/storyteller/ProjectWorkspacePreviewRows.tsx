@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import type { AlertColor } from "@mui/material";
+import axios from "axios";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import {
@@ -393,6 +394,7 @@ export function WorkspaceAssetPanel({
     },
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [metadataOpen, setMetadataOpen] = useState(false);
   const updateAsset = useUpdateStorytellerAsset(projectId);
   const moveAsset = useMoveStorytellerAsset(projectId);
@@ -465,15 +467,27 @@ export function WorkspaceAssetPanel({
       >
         詳細資訊
       </Button>
-      <Button
-        size="small"
-        color="error"
-        variant="outlined"
-        startIcon={<DeleteIcon fontSize="small" />}
-        onClick={() => setDeleteOpen(true)}
+      <Tooltip
+        title={
+          asset.reference_count > 0 ? "資產仍被作品引用，請先移除引用" : ""
+        }
       >
-        刪除
-      </Button>
+        <span>
+          <Button
+            size="small"
+            color="error"
+            variant="outlined"
+            startIcon={<DeleteIcon fontSize="small" />}
+            disabled={asset.reference_count > 0}
+            onClick={() => {
+              setDeleteError("");
+              setDeleteOpen(true);
+            }}
+          >
+            刪除
+          </Button>
+        </span>
+      </Tooltip>
       <Button
         size="small"
         variant="contained"
@@ -600,18 +614,25 @@ export function WorkspaceAssetPanel({
         confirmName={storytellerAssetTitle(asset)}
         confirmLabel="刪除資產"
         loading={deleteAsset.isPending}
-        onClose={() => setDeleteOpen(false)}
+        error={deleteError}
+        onClose={() => {
+          setDeleteOpen(false);
+          setDeleteError("");
+        }}
         onConfirm={() =>
           deleteAsset.mutate(asset.public_id, {
             onSuccess: () => {
               setDeleteOpen(false);
               onDeleted();
             },
-            onError: () =>
-              setSnack({
-                message: "資產刪除失敗，請重試。",
-                severity: "error",
-              }),
+            onError: (error) => {
+              const message = axios.isAxiosError(error)
+                ? (error.response?.data as { message?: string } | undefined)
+                    ?.message || "資產刪除失敗，請重試。"
+                : "資產刪除失敗，請重試。";
+              setDeleteError(message);
+              setSnack({ message, severity: "error" });
+            },
           })
         }
       />

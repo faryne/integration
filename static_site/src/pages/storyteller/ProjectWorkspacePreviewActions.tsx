@@ -142,6 +142,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     useState<StorytellerLore | null>(null);
   const [deleteAssetTarget, setDeleteAssetTarget] =
     useState<StorytellerAsset | null>(null);
+  const [deleteAssetError, setDeleteAssetError] = useState("");
   const [loreCollectionTarget, setLoreCollectionTarget] = useState<
     StorytellerLoreCollection | "new" | null
   >(null);
@@ -683,15 +684,27 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <MoreVertIcon fontSize="small" />
         </IconButton>
       </Tooltip>
-      <Tooltip title="刪除資產">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          color="error"
-          onClick={() => setDeleteAssetTarget(asset)}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+      <Tooltip
+        title={
+          asset.reference_count > 0
+            ? "資產仍被作品引用，請先移除引用"
+            : "刪除資產"
+        }
+      >
+        <span>
+          <IconButton
+            size="small"
+            sx={touchTargetSx}
+            color="error"
+            disabled={asset.reference_count > 0}
+            onClick={() => {
+              setDeleteAssetError("");
+              setDeleteAssetTarget(asset);
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
     </Stack>
   );
@@ -980,15 +993,22 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           confirmName={storytellerAssetTitle(deleteAssetTarget)}
           confirmLabel="刪除資產"
           loading={deleteAsset.isPending}
-          onClose={() => setDeleteAssetTarget(null)}
+          error={deleteAssetError}
+          onClose={() => {
+            setDeleteAssetTarget(null);
+            setDeleteAssetError("");
+          }}
           onConfirm={() =>
             deleteAsset.mutate(deleteAssetTarget.public_id, {
               onSuccess: () => {
                 setDeleteAssetTarget(null);
                 setSnack("資產已刪除。");
               },
-              onError: (error) =>
-                setSnack(errorMessage(error, "資產刪除失敗。"), "error"),
+              onError: (error) => {
+                const message = errorMessage(error, "資產刪除失敗。");
+                setDeleteAssetError(message);
+                setSnack(message, "error");
+              },
             })
           }
         />

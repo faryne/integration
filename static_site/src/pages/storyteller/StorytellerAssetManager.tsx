@@ -164,6 +164,7 @@ export function StorytellerAssetManager({
   const [deleteTarget, setDeleteTarget] = useState<StorytellerAsset | null>(
     null,
   );
+  const [deleteError, setDeleteError] = useState("");
   const [draggingAsset, setDraggingAsset] = useState<StorytellerAsset | null>(
     null,
   );
@@ -465,8 +466,10 @@ export function StorytellerAssetManager({
       setSnack({ message: "資產已刪除。", severity: "success" });
       setDeleteTarget(null);
     } catch (error) {
+      const message = errorMessage(error, "資產刪除失敗。");
+      setDeleteError(message);
       setSnack({
-        message: errorMessage(error, "資產刪除失敗。"),
+        message,
         severity: "error",
       });
     }
@@ -896,7 +899,10 @@ export function StorytellerAssetManager({
                               size="small"
                               color="error"
                               disabled={asset.reference_count > 0}
-                              onClick={() => setDeleteTarget(asset)}
+                              onClick={() => {
+                                setDeleteError("");
+                                setDeleteTarget(asset);
+                              }}
                             >
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -1123,7 +1129,11 @@ export function StorytellerAssetManager({
         }
         confirmLabel="刪除"
         loading={deleteAsset.isPending}
-        onClose={() => setDeleteTarget(null)}
+        error={deleteError}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteError("");
+        }}
         onConfirm={() => void confirmDelete()}
       />
 

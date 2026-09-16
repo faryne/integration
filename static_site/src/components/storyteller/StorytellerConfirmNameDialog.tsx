@@ -1,4 +1,4 @@
-import { Button, TextField } from "@mui/material";
+import { Alert, Button, Stack, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import { StorytellerMascotDialog } from "./StorytellerMascotDialog.tsx";
 
@@ -9,6 +9,7 @@ export interface StorytellerConfirmNameDialogProps {
   confirmName: string;
   confirmLabel: string;
   loading?: boolean;
+  error?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -21,6 +22,7 @@ export function StorytellerConfirmNameDialog({
   confirmName,
   confirmLabel,
   loading,
+  error,
   onClose,
   onConfirm,
 }: StorytellerConfirmNameDialogProps) {
@@ -53,14 +55,17 @@ export function StorytellerConfirmNameDialog({
         </>
       }
     >
-      <TextField
-        autoFocus
-        fullWidth
-        label="輸入名稱以繼續"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        helperText={`請輸入「${confirmName}」以啟用確認按鈕。`}
-      />
+      <Stack spacing={2}>
+        <TextField
+          autoFocus
+          fullWidth
+          label="輸入名稱以繼續"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          helperText={`請輸入「${confirmName}」以啟用確認按鈕。`}
+        />
+        {error && <Alert severity="error">{error}</Alert>}
+      </Stack>
     </StorytellerMascotDialog>
   );
 }
