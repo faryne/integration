@@ -188,12 +188,11 @@ function ContentIndex({
   basePath: string;
   onNavigate?: () => void;
 }) {
-  // items 本身已經是「依冊順序、未分冊排最後」排好的線性順序（見
-  // flattenGroupedStories），編號直接用這個順序的 index，分組只是視覺上加標題/分隔線，
-  // 不影響編號，讀者看到的序號跟上一篇/下一篇導覽會是同一套。
-  function itemIndexLabel(item: ReaderItem) {
-    return items.findIndex((candidate) => candidate.id === item.id) + 1;
-  }
+  // 序號改成「每一冊自己重新從 1 算」，不再沿用 flattenGroupedStories 給的
+  // 全域線性順序——主線、支線這類語意不同的冊如果編號直接接下去（主線
+  // 1 話接著支線變成 2 話），讀者會誤以為是同一條時間線，所以顯示用的序號
+  // 交給下面 children.map／ungrouped.map 各自從 1 開始算。items 本身的全域
+  // 順序還是原封不動保留，上一篇／下一篇導覽（見 currentItemIndex）不受影響。
   const currentVolumeId =
     items.find((item) => item.id === currentItemId)?.parentId ?? null;
   // 預設展開「目前所在的那一冊」，其餘冊收合；使用者手動展開/收合過的冊維持原狀，
@@ -225,7 +224,7 @@ function ContentIndex({
     });
   }
 
-  function ItemButton({ item }: { item: ReaderItem }) {
+  function ItemButton({ item, index }: { item: ReaderItem; index: number }) {
     return (
       <Button
         key={item.id}
@@ -242,7 +241,7 @@ function ContentIndex({
         sx={{ justifyContent: "flex-start", textAlign: "left" }}
         onClick={onNavigate}
       >
-        {itemIndexLabel(item)}. {item.title}
+        {index}. {item.title}
       </Button>
     );
   }
@@ -289,8 +288,8 @@ function ContentIndex({
             </Stack>
             <Collapse in={expanded}>
               <Stack spacing={0.5}>
-                {children.map((item) => (
-                  <ItemButton key={item.id} item={item} />
+                {children.map((item, index) => (
+                  <ItemButton key={item.id} item={item} index={index + 1} />
                 ))}
               </Stack>
             </Collapse>
@@ -311,8 +310,8 @@ function ContentIndex({
               </Typography>
             </>
           )}
-          {ungrouped.map((item) => (
-            <ItemButton key={item.id} item={item} />
+          {ungrouped.map((item, index) => (
+            <ItemButton key={item.id} item={item} index={index + 1} />
           ))}
         </Stack>
       )}
