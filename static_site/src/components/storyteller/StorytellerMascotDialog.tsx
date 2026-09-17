@@ -41,13 +41,13 @@ const stateMeta: Record<
 
 export interface StorytellerMascotDialogProps extends Omit<
   StorytellerDialogProps,
-  "visual"
+  "visual" | "maxWidth"
 > {
   state: StorytellerDialogMascotState;
   toneLabel?: string;
 }
 
-/** 重大決策與完成狀態才使用的看板娘 Dialog，圖片會隨 appearance 即時切換。 */
+/** 重大決策與完成狀態使用的看板娘 Dialog；桌面寬度統一由共用骨架控制。 */
 export function StorytellerMascotDialog({
   state,
   toneLabel,
@@ -69,6 +69,7 @@ export function StorytellerMascotDialog({
   return (
     <StorytellerDialog
       {...props}
+      maxWidth="md"
       visual={
         <Box
           sx={{

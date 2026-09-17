@@ -240,7 +240,6 @@ export function StorytellerMcpPanel() {
         state="success"
         eyebrow="MCP 連接"
         title="Token 已建立"
-        maxWidth="sm"
         onClose={() => setCreatedToken(null)}
         actions={
           <Button variant="contained" onClick={() => setCreatedToken(null)}>
