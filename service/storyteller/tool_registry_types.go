@@ -79,6 +79,7 @@ type storytellerProjectSummary struct {
 	Description string    `json:"description"`
 	Visibility  string    `json:"visibility"`
 	Rating      string    `json:"rating"`
+	ContentType string    `json:"content_type"`
 	Tags        []string  `json:"tags"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -164,6 +165,7 @@ func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storyte
 		Description: project.Description,
 		Visibility:  string(project.Visibility),
 		Rating:      string(project.Rating),
+		ContentType: string(project.ContentType),
 		Tags:        project.TagList,
 		UpdatedAt:   project.UpdatedAt,
 	}

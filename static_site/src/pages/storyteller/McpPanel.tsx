@@ -7,10 +7,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Divider,
   Grid,
   IconButton,
@@ -28,6 +24,7 @@ import {
 } from "@mui/material";
 import { useState } from "react";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
 import {
   useCreateStorytellerPersonalAccessToken,
@@ -79,12 +76,17 @@ export function StorytellerMcpPanel() {
   const [label, setLabel] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<string>("30");
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
+  const [copyErrorOpen, setCopyErrorOpen] = useState(false);
   const [createdToken, setCreatedToken] =
     useState<StorytellerPersonalAccessTokenCreated | null>(null);
 
   async function copyText(text: string) {
-    await navigator.clipboard.writeText(text);
-    setCopyMessageOpen(true);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyMessageOpen(true);
+    } catch {
+      setCopyErrorOpen(true);
+    }
   }
 
   return (
@@ -111,7 +113,8 @@ export function StorytellerMcpPanel() {
             </Tooltip>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            建立下方 Personal Access Token 後會附上設定範例；不確定怎麼在工具裡設定 MCP client 可參考
+            建立下方 Personal Access Token
+            後會附上設定範例；不確定怎麼在工具裡設定 MCP client 可參考
             <Link
               href="https://modelcontextprotocol.io/docs/develop/connect-remote-servers"
               target="_blank"
@@ -232,84 +235,99 @@ export function StorytellerMcpPanel() {
         </Stack>
       </Paper>
 
-      <Dialog
+      <StorytellerMascotDialog
         open={createdToken !== null}
+        state="success"
+        eyebrow="MCP 連接"
+        title="Token 已建立"
         onClose={() => setCreatedToken(null)}
-        maxWidth="sm"
-        fullWidth
+        actions={
+          <Button variant="contained" onClick={() => setCreatedToken(null)}>
+            我已複製，關閉
+          </Button>
+        }
       >
-        <DialogTitle>Token 已建立</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1.5} sx={{ pt: 1 }}>
-            <Alert severity="warning" variant="outlined">
-              這組 token 只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
-            </Alert>
-            {createdToken && (
-              <>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Token"
-                    value={createdToken.token}
-                    slotProps={{ input: { readOnly: true } }}
-                  />
-                  <Tooltip title="複製 token">
+        <Stack spacing={1.5}>
+          <Alert severity="warning" variant="outlined">
+            這組 token
+            只會顯示這一次，請妥善保存，離開這個視窗後就無法再次查看完整內容。
+          </Alert>
+          {createdToken && (
+            <>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="Token"
+                  value={createdToken.token}
+                  slotProps={{ input: { readOnly: true } }}
+                />
+                <Tooltip title="複製 token">
+                  <IconButton onClick={() => void copyText(createdToken.token)}>
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  MCP client 設定範例：
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="flex-start">
+                  <Box
+                    component="pre"
+                    sx={{
+                      flex: 1,
+                      m: 0,
+                      p: 1.5,
+                      borderRadius: 1,
+                      bgcolor: "action.hover",
+                      fontSize: 12,
+                      overflowX: "auto",
+                    }}
+                  >
+                    {mcpClientConfigSnippet(createdToken.token)}
+                  </Box>
+                  <Tooltip title="複製設定範例">
                     <IconButton
-                      onClick={() => void copyText(createdToken.token)}
+                      size="small"
+                      onClick={() =>
+                        void copyText(
+                          mcpClientConfigSnippet(createdToken.token),
+                        )
+                      }
                     >
                       <ContentCopyIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
                 </Stack>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    MCP client 設定範例：
-                  </Typography>
-                  <Stack direction="row" spacing={1} alignItems="flex-start">
-                    <Box
-                      component="pre"
-                      sx={{
-                        flex: 1,
-                        m: 0,
-                        p: 1.5,
-                        borderRadius: 1,
-                        bgcolor: "action.hover",
-                        fontSize: 12,
-                        overflowX: "auto",
-                      }}
-                    >
-                      {mcpClientConfigSnippet(createdToken.token)}
-                    </Box>
-                    <Tooltip title="複製設定範例">
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          void copyText(
-                            mcpClientConfigSnippet(createdToken.token),
-                          )
-                        }
-                      >
-                        <ContentCopyIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
-                </Box>
-              </>
-            )}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="contained" onClick={() => setCreatedToken(null)}>
-            我已複製，關閉
-          </Button>
-        </DialogActions>
-      </Dialog>
+              </Box>
+            </>
+          )}
+        </Stack>
+      </StorytellerMascotDialog>
 
       <CustomSnackbar
         open={copyMessageOpen}
         message="已複製到剪貼簿"
         onClose={() => setCopyMessageOpen(false)}
+      />
+      <CustomSnackbar
+        open={copyErrorOpen}
+        message="複製失敗，請手動選取內容。"
+        severity="error"
+        onClose={() => setCopyErrorOpen(false)}
+      />
+      <CustomSnackbar
+        open={createToken.isError}
+        message="建立 Token 失敗，請確認欄位內容後重試。"
+        severity="error"
+        onClose={() => createToken.reset()}
+      />
+      <CustomSnackbar
+        open={deleteToken.isError}
+        message="Token 刪除失敗，請稍後再試。"
+        severity="error"
+        onClose={() => deleteToken.reset()}
       />
     </Stack>
   );
@@ -372,34 +390,30 @@ function PersonalAccessTokenRow({
         }
         slotProps={{ secondary: { component: "div" } }}
       />
-      <Dialog
+      <StorytellerMascotDialog
         open={confirmingDelete}
+        state="danger"
+        eyebrow="刪除 Token"
+        title={`確定要刪除「${token.label || "（未命名）"}」？`}
+        description="刪除後使用這組 Token 的工具會立刻失去連線權限，此操作無法復原。"
         onClose={() => setConfirmingDelete(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>刪除 Token</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">
-            確定要刪除「{token.label || "（未命名）"}
-            」這組 token 嗎？刪除後使用這組 token 的工具會立刻失去連線權限，此操作無法復原。
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={deletePending}
-            onClick={() => {
-              onDelete();
-              setConfirmingDelete(false);
-            }}
-          >
-            刪除 Token
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setConfirmingDelete(false)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={deletePending}
+              onClick={() => {
+                onDelete();
+                setConfirmingDelete(false);
+              }}
+            >
+              刪除 Token
+            </Button>
+          </>
+        }
+      />
     </ListItem>
   );
 }

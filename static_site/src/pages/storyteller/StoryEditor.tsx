@@ -331,6 +331,9 @@ export default function StorytellerStoryEditor({
     );
   const autoSaveDefaultsAppliedRef = useRef(false);
   const [saveMessageVisible, setSaveMessageVisible] = useState(false);
+  const [saveSuccessTarget, setSaveSuccessTarget] = useState<string | null>(
+    null,
+  );
   const [saveMessage, setSaveMessage] = useState("");
   const [saveMessageSeverity, setSaveMessageSeverity] =
     useState<AlertColor>("success");
@@ -700,6 +703,8 @@ export default function StorytellerStoryEditor({
                 setVersionConflict(true);
               }
             },
+            onError: () =>
+              showEditorSnack("故事自動存檔失敗，請手動重試。", "error"),
             onSettled: () => {
               autoSaveRunningRef.current = false;
             },
@@ -956,6 +961,7 @@ export default function StorytellerStoryEditor({
   }
 
   function handleSaveStory() {
+    if (saveSuccessTarget) return;
     if (!apiProject?.public_id) {
       lastSavedDraftRef.current = currentDraftRef.current;
       setSaveMessage("目前使用前端假資料，未送出到後端 API。");
@@ -990,7 +996,7 @@ export default function StorytellerStoryEditor({
             // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
             // 換成存好之後的真正 public_id，不能整個跳回舊版獨立編輯頁——不然
             // 剛剛才做的「新建也在右欄出血顯示」等於白做。
-            navigate(
+            setSaveSuccessTarget(
               steamloomPath(
                 embedded
                   ? `my/workspace/${id}/story/${savedStory.public_id}`
@@ -1002,6 +1008,7 @@ export default function StorytellerStoryEditor({
             setVersionConflict(true);
           }
         },
+        onError: () => showEditorSnack("故事存檔失敗，請重試。", "error"),
       },
     );
   }
@@ -1230,7 +1237,7 @@ export default function StorytellerStoryEditor({
           size="small"
           variant="contained"
           startIcon={<SaveIcon />}
-          disabled={saveStory.isPending}
+          disabled={saveStory.isPending || saveSuccessTarget !== null}
           onClick={handleSaveStory}
           sx={{ minWidth: 88 }}
         >
@@ -1463,7 +1470,7 @@ export default function StorytellerStoryEditor({
                 variant="contained"
                 startIcon={<SaveIcon />}
                 sx={{ py: 1.7 }}
-                disabled={saveStory.isPending}
+                disabled={saveStory.isPending || saveSuccessTarget !== null}
                 onClick={handleSaveStory}
               >
                 {saveStory.isPending ? "存檔中" : "存檔"}
@@ -1550,7 +1557,12 @@ export default function StorytellerStoryEditor({
         open={saveMessageVisible}
         message={saveMessage}
         severity={saveMessageSeverity}
-        onClose={() => setSaveMessageVisible(false)}
+        autoHideDuration={saveSuccessTarget ? 1200 : 2500}
+        onClose={() => {
+          setSaveMessageVisible(false);
+          if (saveSuccessTarget) navigate(saveSuccessTarget);
+          setSaveSuccessTarget(null);
+        }}
       />
 
       <StoryWritingWorkspace
@@ -1678,6 +1690,8 @@ export default function StorytellerStoryEditor({
                 setSaveMessageSeverity("success");
                 setSaveMessageVisible(true);
               },
+              onError: () =>
+                showEditorSnack("回復故事版本失敗，請重試。", "error"),
             });
           }}
         />

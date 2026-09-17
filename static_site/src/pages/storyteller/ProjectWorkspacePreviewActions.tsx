@@ -35,6 +35,7 @@ import {
   useSaveStorytellerVolume,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerAssetUploadDrawer } from "./StorytellerAssetUploadDrawer.tsx";
 import { StorytellerVolumeDialog } from "./StorytellerVolumeDialog.tsx";
@@ -42,7 +43,6 @@ import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import {
   CollectionDialog,
   MoveMenu,
-  WorkspaceConfirmNameDialog,
 } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
   WorkspaceRowActionButton,
@@ -96,7 +96,16 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     onSelect,
     onRefreshAssets,
   } = options;
-  const [snack, setSnack] = useState("");
+  const [snack, setSnackState] = useState<{
+    message: string;
+    severity: "success" | "error" | "info";
+  }>({ message: "", severity: "info" });
+  function setSnack(
+    message: string,
+    severity: "success" | "error" | "info" = "success",
+  ) {
+    setSnackState({ message, severity });
+  }
   const [createMenuAnchor, setCreateMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -133,6 +142,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     useState<StorytellerLore | null>(null);
   const [deleteAssetTarget, setDeleteAssetTarget] =
     useState<StorytellerAsset | null>(null);
+  const [deleteAssetError, setDeleteAssetError] = useState("");
   const [loreCollectionTarget, setLoreCollectionTarget] = useState<
     StorytellerLoreCollection | "new" | null
   >(null);
@@ -173,22 +183,28 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
   function saveStoryPatch(
     story: StorytellerStory,
     patch: Partial<StorytellerStory>,
+    onError: (error: unknown) => void,
+    onSuccess?: () => void,
   ) {
-    saveStory.mutate({
-      storyPublicId: story.public_id,
-      input: {
-        title: patch.title ?? story.title,
-        summary: patch.summary ?? story.summary,
-        status: patch.status ?? story.status,
-        sort: patch.sort ?? story.sort,
-        content: patch.latest_content ?? story.latest_content,
-        parent_id:
-          patch.parent_id !== undefined
-            ? (volumes.find((volume) => volume.id === patch.parent_id)
-                ?.public_id ?? "")
-            : storyParentPublicId(story),
-      },
-    });
+    // 排序會在同一輪連續更新多筆；mutateAsync 讓每筆失敗都能進入各自的回呼。
+    void saveStory
+      .mutateAsync({
+        storyPublicId: story.public_id,
+        input: {
+          title: patch.title ?? story.title,
+          summary: patch.summary ?? story.summary,
+          status: patch.status ?? story.status,
+          sort: patch.sort ?? story.sort,
+          content: patch.latest_content ?? story.latest_content,
+          parent_id:
+            patch.parent_id !== undefined
+              ? (volumes.find((volume) => volume.id === patch.parent_id)
+                  ?.public_id ?? "")
+              : storyParentPublicId(story),
+        },
+      })
+      .then(() => onSuccess?.())
+      .catch((error: unknown) => onError(error));
   }
 
   function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
@@ -200,10 +216,15 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setStoryMoveMenu(null);
       return;
     }
-    saveStoryPatch(story, {
-      parent_id: nextParentId,
-      sort: storyCountForVolume(nextParentId),
-    });
+    saveStoryPatch(
+      story,
+      {
+        parent_id: nextParentId,
+        sort: storyCountForVolume(nextParentId),
+      },
+      (error) => setSnack(errorMessage(error, "作品移動失敗。"), "error"),
+      () => setSnack("作品已移動。"),
+    );
     setStoryMoveMenu(null);
   }
 
@@ -244,7 +265,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     );
     remaining.forEach((story, index) => {
       if (story.sort !== index) {
-        saveStoryPatch(story, { sort: index });
+        saveStoryPatch(story, { sort: index }, (error) =>
+          setSnack(errorMessage(error, "作品排序更新失敗。"), "error"),
+        );
       }
     });
   }
@@ -281,15 +304,19 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (volume.sort === index) {
         return;
       }
-      saveVolume.mutate({
-        volumePublicId: volume.public_id,
-        input: {
-          title: volume.title,
-          sort: index,
-          status: volume.status,
-          summary: volume.summary,
-        },
-      });
+      void saveVolume
+        .mutateAsync({
+          volumePublicId: volume.public_id,
+          input: {
+            title: volume.title,
+            sort: index,
+            status: volume.status,
+            summary: volume.summary,
+          },
+        })
+        .catch((error: unknown) =>
+          setSnack(errorMessage(error, "冊排序更新失敗。"), "error"),
+        );
     });
   }
 
@@ -322,20 +349,18 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
     );
     remaining.forEach((collection, index) => {
       if (collection.sort === index) return;
-      saveLoreCollection.mutate(
-        {
+      void saveLoreCollection
+        .mutateAsync({
           collectionPublicId: collection.public_id,
           input: {
             name: collection.name,
             description: collection.description,
             sort: index,
           },
-        },
-        {
-          onError: (error) =>
-            setSnack(errorMessage(error, "設定集排序更新失敗。")),
-        },
-      );
+        })
+        .catch((error: unknown) =>
+          setSnack(errorMessage(error, "設定集排序更新失敗。"), "error"),
+        );
     });
   }
 
@@ -351,7 +376,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         },
       },
       {
-        onError: (error) => setSnack(errorMessage(error, "冊狀態更新失敗。")),
+        onSuccess: () =>
+          setSnack(
+            volume.status === "completed" ? "冊已設為未公開。" : "冊已公開。",
+          ),
+        onError: (error) =>
+          setSnack(errorMessage(error, "冊狀態更新失敗。"), "error"),
       },
     );
   }
@@ -386,7 +416,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setLoreCollectionTarget(null);
       setSnack(target === "new" ? "分類已建立。" : "分類已更新。");
     } catch (error) {
-      setSnack(errorMessage(error, "分類儲存失敗。"));
+      setSnack(errorMessage(error, "分類儲存失敗。"), "error");
     }
   }
 
@@ -411,7 +441,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setAssetCollectionTarget(null);
       setSnack(target === "new" ? "資產集已建立。" : "資產集已更新。");
     } catch (error) {
-      setSnack(errorMessage(error, "資產集儲存失敗。"));
+      setSnack(errorMessage(error, "資產集儲存失敗。"), "error");
     }
   }
 
@@ -426,7 +456,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setLoreMoveMenu(null);
       setSnack("設定集已移動。");
     } catch (error) {
-      setSnack(errorMessage(error, "設定集移動失敗。"));
+      setSnack(errorMessage(error, "設定集移動失敗。"), "error");
     }
   }
 
@@ -441,7 +471,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       setAssetMoveMenu(null);
       setSnack("資產已移動。");
     } catch (error) {
-      setSnack(errorMessage(error, "資產移動失敗。"));
+      setSnack(errorMessage(error, "資產移動失敗。"), "error");
     }
   }
 
@@ -654,15 +684,27 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           <MoreVertIcon fontSize="small" />
         </IconButton>
       </Tooltip>
-      <Tooltip title="刪除資產">
-        <IconButton
-          size="small"
-          sx={touchTargetSx}
-          color="error"
-          onClick={() => setDeleteAssetTarget(asset)}
-        >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+      <Tooltip
+        title={
+          asset.reference_count > 0
+            ? "資產仍被作品引用，請先移除引用"
+            : "刪除資產"
+        }
+      >
+        <span>
+          <IconButton
+            size="small"
+            sx={touchTargetSx}
+            color="error"
+            disabled={asset.reference_count > 0}
+            onClick={() => {
+              setDeleteAssetError("");
+              setDeleteAssetTarget(asset);
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </span>
       </Tooltip>
     </Stack>
   );
@@ -712,12 +754,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         onClose={() => setStoryActionMenu(null)}
         onToggleStatus={() => {
           if (storyActionMenu) {
-            saveStoryPatch(storyActionMenu.story, {
-              status:
-                storyActionMenu.story.status === "completed"
-                  ? "draft"
-                  : "completed",
-            });
+            const completed = storyActionMenu.story.status !== "completed";
+            saveStoryPatch(
+              storyActionMenu.story,
+              { status: completed ? "completed" : "draft" },
+              (error) =>
+                setSnack(errorMessage(error, "作品狀態更新失敗。"), "error"),
+              () => setSnack(completed ? "作品已公開。" : "作品已設為未公開。"),
+            );
           }
           setStoryActionMenu(null);
         }}
@@ -806,7 +850,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         collectionId={uploadDrawerCollectionId}
         onClose={() => setUploadDrawerOpen(false)}
         onUploaded={() => onRefreshAssets()}
-        onNotify={(message) => setSnack(message)}
+        onNotify={(message, severity) => setSnack(message, severity)}
       />
       <StorytellerVolumeDialog
         open={volumeDialogTarget !== null}
@@ -845,7 +889,12 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 if (volumeDialogTarget === "new" && saved?.public_id)
                   onSelect("stories", saved.public_id);
                 setVolumeDialogTarget(null);
+                setSnack(
+                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                );
               },
+              onError: (error) =>
+                setSnack(errorMessage(error, "冊儲存失敗。"), "error"),
             },
           )
         }
@@ -869,7 +918,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         }
       />
       {deleteStoryTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title={
             deleteStoryTarget.content_type === "image" ? "刪除話" : "刪除故事"
@@ -881,15 +930,18 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClose={() => setDeleteStoryTarget(null)}
           onConfirm={() =>
             deleteStory.mutate(deleteStoryTarget.public_id, {
-              onSuccess: () => setDeleteStoryTarget(null),
+              onSuccess: () => {
+                setDeleteStoryTarget(null);
+                setSnack("作品已刪除。");
+              },
               onError: (error) =>
-                setSnack(errorMessage(error, "作品刪除失敗。")),
+                setSnack(errorMessage(error, "作品刪除失敗。"), "error"),
             })
           }
         />
       )}
       {deleteVolumeTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除冊"
           description="刪除後無法復原。請輸入冊名稱確認。"
@@ -906,13 +958,14 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 setDeleteVolumeTarget(null);
                 setSnack("冊已刪除。");
               },
-              onError: (error) => setSnack(errorMessage(error, "冊刪除失敗。")),
+              onError: (error) =>
+                setSnack(errorMessage(error, "冊刪除失敗。"), "error"),
             })
           }
         />
       )}
       {deleteLoreTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除設定集"
           description="刪除後會移除這份設定集與版本資料。請輸入設定集名稱確認。"
@@ -922,33 +975,46 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
-              onSuccess: () => setDeleteLoreTarget(null),
+              onSuccess: () => {
+                setDeleteLoreTarget(null);
+                setSnack("設定集已刪除。");
+              },
               onError: (error) =>
-                setSnack(errorMessage(error, "設定集刪除失敗。")),
+                setSnack(errorMessage(error, "設定集刪除失敗。"), "error"),
             })
           }
         />
       )}
       {deleteAssetTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除資產"
           description="刪除後無法復原。請輸入資產名稱確認。"
           confirmName={storytellerAssetTitle(deleteAssetTarget)}
           confirmLabel="刪除資產"
           loading={deleteAsset.isPending}
-          onClose={() => setDeleteAssetTarget(null)}
+          error={deleteAssetError}
+          onClose={() => {
+            setDeleteAssetTarget(null);
+            setDeleteAssetError("");
+          }}
           onConfirm={() =>
             deleteAsset.mutate(deleteAssetTarget.public_id, {
-              onSuccess: () => setDeleteAssetTarget(null),
-              onError: (error) =>
-                setSnack(errorMessage(error, "資產刪除失敗。")),
+              onSuccess: () => {
+                setDeleteAssetTarget(null);
+                setSnack("資產已刪除。");
+              },
+              onError: (error) => {
+                const message = errorMessage(error, "資產刪除失敗。");
+                setDeleteAssetError(message);
+                setSnack(message, "error");
+              },
             })
           }
         />
       )}
       {deleteLoreCollectionTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除分類"
           description="刪除後不會影響其他分類。請輸入分類名稱確認。"
@@ -968,13 +1034,13 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                 setSnack("分類已刪除。");
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "分類刪除失敗。")),
+                setSnack(errorMessage(error, "分類刪除失敗。"), "error"),
             })
           }
         />
       )}
       {deleteAssetCollectionTarget && (
-        <WorkspaceConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除資產集"
           description="刪除後不會影響其他資產集。請輸入資產集名稱確認。"
@@ -997,16 +1063,16 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   setSnack("資產集已刪除。");
                 },
                 onError: (error) =>
-                  setSnack(errorMessage(error, "資產集刪除失敗。")),
+                  setSnack(errorMessage(error, "資產集刪除失敗。"), "error"),
               },
             )
           }
         />
       )}
       <CustomSnackbar
-        open={Boolean(snack)}
-        message={snack}
-        severity="info"
+        open={Boolean(snack.message)}
+        message={snack.message}
+        severity={snack.severity}
         onClose={() => setSnack("")}
       />
     </>

@@ -84,8 +84,13 @@ func StorytellerToolRegistry() *ToolRegistry {
 // 分類成唯讀工具，不需要另外維護允許清單。
 func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
 	registry := NewToolRegistry()
-	for _, spec := range storytellerChapterWriteToolSpecs() {
-		registry.Register(spec)
+	for _, specs := range [][]ToolSpec{
+		storytellerProjectMCPOnlyToolSpecs(),
+		storytellerChapterWriteToolSpecs(),
+	} {
+		for _, spec := range specs {
+			registry.Register(spec)
+		}
 	}
 	return registry
 }
@@ -123,6 +128,22 @@ func stringSchema(description string) map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "string",
 		"description": description,
+	}
+}
+
+func enumStringSchema(description string, values ...string) map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "string",
+		"description": description,
+		"enum":        values,
+	}
+}
+
+func stringArraySchema(description string) map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "array",
+		"description": description,
+		"items":       map[string]interface{}{"type": "string"},
 	}
 }
 

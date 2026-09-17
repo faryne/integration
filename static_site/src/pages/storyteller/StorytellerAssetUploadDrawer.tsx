@@ -67,6 +67,7 @@ function errorMessage(error: unknown, fallback: string) {
       ?.message;
     return message || fallback;
   }
+  if (error instanceof Error && error.message) return error.message;
   return fallback;
 }
 
@@ -175,10 +176,11 @@ export function StorytellerAssetUploadDrawer({
     itemId: string,
     asset: StorytellerAsset,
     metadata: UploadMetadata,
-  ) {
+    notifyOnError = true,
+  ): Promise<boolean> {
     const signature = metadataSignature(metadata);
     if (!hasMetadataInput(metadata)) {
-      return;
+      return true;
     }
     updateItems((current) =>
       current.map((item) =>
@@ -207,13 +209,16 @@ export function StorytellerAssetUploadDrawer({
             : item,
         ),
       );
+      return true;
     } catch (error) {
       updateItems((current) =>
         current.map((item) =>
           item.id === itemId ? { ...item, metadataStatus: "error" } : item,
         ),
       );
-      onNotify(errorMessage(error, "資產資訊更新失敗。"), "error");
+      if (notifyOnError)
+        onNotify(errorMessage(error, "資產資訊更新失敗。"), "error");
+      return false;
     }
   }
 
@@ -289,15 +294,22 @@ export function StorytellerAssetUploadDrawer({
             : item;
         }),
       );
+      let metadataSaved = true;
       for (const [index, asset] of uploaded.entries()) {
         const item = itemsRef.current.find(
           (current) => current.id === newItems[index]?.id,
         );
         if (item) {
-          await saveMetadata(item.id, asset, item.metadata);
+          if (!(await saveMetadata(item.id, asset, item.metadata, false)))
+            metadataSaved = false;
         }
       }
-      onNotify(`已上傳 ${uploaded.length} 個資產。`, "success");
+      onNotify(
+        metadataSaved
+          ? `已上傳 ${uploaded.length} 個資產。`
+          : `已上傳 ${uploaded.length} 個資產，但部分資訊未儲存，請在抽屜內重試。`,
+        metadataSaved ? "success" : "error",
+      );
       onUploaded(uploaded);
     } catch (error) {
       onNotify(errorMessage(error, "資產上傳失敗，請稍後再試。"), "error");
@@ -317,10 +329,13 @@ export function StorytellerAssetUploadDrawer({
     const pending = itemsRef.current.filter(hasUnsavedMetadata);
     if (pending.length > 0) {
       setClosing(true);
-      await Promise.all(
-        pending.map((item) => saveMetadata(item.id, item.asset!, item.metadata)),
+      const results = await Promise.all(
+        pending.map((item) =>
+          saveMetadata(item.id, item.asset!, item.metadata),
+        ),
       );
       setClosing(false);
+      if (results.some((saved) => !saved)) return;
     }
     clearItems();
     onClose();

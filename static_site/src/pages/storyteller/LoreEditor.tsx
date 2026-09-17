@@ -211,6 +211,9 @@ export default function StorytellerLoreEditor({
   const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [snack, setSnack] = useState("");
+  const [saveSuccessTarget, setSaveSuccessTarget] = useState<string | null>(
+    null,
+  );
   const [snackSeverity, setSnackSeverity] = useState<AlertColor>("success");
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const editorRef = useRef<StorytellerWysiwygEditorHandle>(null);
@@ -664,6 +667,7 @@ export default function StorytellerLoreEditor({
   }
 
   function handleSave() {
+    if (saveSuccessTarget) return;
     const projectID = project?.id;
     if (!projectID) {
       showSnack("找不到專案資料，無法儲存設定集。", "error");
@@ -689,7 +693,7 @@ export default function StorytellerLoreEditor({
           if (isNewLore && savedLore?.public_id) {
             // embedded（工作台）模式下要留在工作台右欄，把網址從 .../lore/new
             // 換成存好之後的真正 public_id，不能跳回舊版獨立編輯頁。
-            navigate(
+            setSaveSuccessTarget(
               steamloomPath(
                 embedded
                   ? `my/workspace/${projectID}/lore/${savedLore.public_id}`
@@ -973,7 +977,7 @@ export default function StorytellerLoreEditor({
           size="small"
           variant="contained"
           startIcon={<SaveIcon />}
-          disabled={saveLore.isPending}
+          disabled={saveLore.isPending || saveSuccessTarget !== null}
           onClick={handleSave}
           sx={{ minWidth: 88 }}
         >
@@ -1199,7 +1203,7 @@ export default function StorytellerLoreEditor({
                 startIcon={<SaveIcon />}
                 variant="contained"
                 onClick={handleSave}
-                disabled={saveLore.isPending}
+                disabled={saveLore.isPending || saveSuccessTarget !== null}
                 sx={{ py: 1.7 }}
               >
                 {saveLore.isPending ? "存檔中" : "存檔"}
@@ -1368,6 +1372,7 @@ export default function StorytellerLoreEditor({
                 setVersionConflict(false);
                 showSnack("已回復到這個版本。");
               },
+              onError: () => showSnack("回復設定集版本失敗，請重試。", "error"),
             });
           }}
         />
@@ -1376,7 +1381,12 @@ export default function StorytellerLoreEditor({
         open={Boolean(snack)}
         message={snack}
         severity={snackSeverity}
-        onClose={() => setSnack("")}
+        autoHideDuration={saveSuccessTarget ? 1200 : 2500}
+        onClose={() => {
+          setSnack("");
+          if (saveSuccessTarget) navigate(saveSuccessTarget);
+          setSaveSuccessTarget(null);
+        }}
       />
       <StorytellerAssetPickerDialog
         open={assetPickerOpen}

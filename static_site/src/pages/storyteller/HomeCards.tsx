@@ -6,7 +6,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import PublicIcon from "@mui/icons-material/Public";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -28,8 +27,9 @@ import {
   useDeleteStorytellerProject,
   useSaveStorytellerProject,
 } from "@/apis/storyteller.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -75,6 +75,10 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     project: StorytellerProject;
   } | null>(null);
   const saveProject = useSaveStorytellerProject();
+  const [visibilitySnack, setVisibilitySnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
 
   function handleVisibilityChange(
     project: StorytellerProject,
@@ -83,18 +87,32 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     if (!visibility || visibility === project.visibility) {
       return;
     }
-    saveProject.mutate({
-      publicId: project.public_id,
-      input: {
-        name: project.name,
-        slug: project.slug,
-        description: project.description,
-        visibility,
-        rating: project.rating,
-        content_type: project.content_type,
-        tags: project.tags ?? [],
+    saveProject.mutate(
+      {
+        publicId: project.public_id,
+        input: {
+          name: project.name,
+          slug: project.slug,
+          description: project.description,
+          visibility,
+          rating: project.rating,
+          content_type: project.content_type,
+          tags: project.tags ?? [],
+        },
       },
-    });
+      {
+        onSuccess: () =>
+          setVisibilitySnack({
+            message: `專案已設為${visibilityLabel[visibility]}。`,
+            severity: "success",
+          }),
+        onError: () =>
+          setVisibilitySnack({
+            message: "專案公開狀態更新失敗，請重試。",
+            severity: "error",
+          }),
+      },
+    );
   }
 
   const visibilityLabel = {
@@ -105,11 +123,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
 
   return (
     <>
-      {deleteProject.isError && (
-        <Alert severity="error" variant="outlined" sx={{ mb: 2 }}>
-          刪除專案失敗，請確認登入狀態後再試一次。
-        </Alert>
-      )}
       {projects.length === 0 ? (
         <CustomEmptyState
           icon={
@@ -242,7 +255,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
         </MenuItem>
       </Menu>
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除專案"
           description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
@@ -257,12 +270,25 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           }}
         />
       )}
+      <CustomSnackbar
+        open={Boolean(visibilitySnack.message)}
+        message={visibilitySnack.message}
+        severity={visibilitySnack.severity}
+        onClose={() => setVisibilitySnack((prev) => ({ ...prev, message: "" }))}
+      />
+      <CustomSnackbar
+        open={deleteProject.isError}
+        message="刪除專案失敗，請確認登入狀態後再試一次。"
+        severity="error"
+        onClose={() => deleteProject.reset()}
+      />
     </>
   );
 }
 
 export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
   const deleteAgent = useDeleteStorytellerAgent();
+  const [deleteError, setDeleteError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -361,7 +387,7 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
         </Grid>
       )}
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除 Skill"
           description="刪除後此 Skill 將無法在故事編輯器中使用。請輸入 Skill 名稱確認。"
@@ -376,10 +402,17 @@ export function AgentCards({ agents }: { agents: StorytellerAgent[] }) {
             }
             deleteAgent.mutate(deleteTarget.id, {
               onSuccess: () => setDeleteTarget(null),
+              onError: () => setDeleteError("刪除 Skill 失敗，請重試。"),
             });
           }}
         />
       )}
+      <CustomSnackbar
+        open={Boolean(deleteError)}
+        message={deleteError}
+        severity="error"
+        onClose={() => setDeleteError("")}
+      />
     </>
   );
 }

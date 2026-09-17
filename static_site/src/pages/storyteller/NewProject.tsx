@@ -25,8 +25,11 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
   STORYTELLER_APP_NAME,
+  storytellerProjectRatingLabel,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -128,6 +131,9 @@ export default function StorytellerNewProject({
   const [tagInputValue, setTagInputValue] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [slugWarningOpen, setSlugWarningOpen] = useState(false);
+  const [editSuccessTarget, setEditSuccessTarget] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (editingProject) {
@@ -267,7 +273,7 @@ export default function StorytellerNewProject({
             return;
           }
           if (isEditing) {
-            navigate(
+            setEditSuccessTarget(
               steamloomPath(
                 embedded
                   ? `my/workspace/${project.public_id}`
@@ -346,28 +352,53 @@ export default function StorytellerNewProject({
       plain={embedded}
       hideHeading={embedded}
     >
-      <Dialog open={Boolean(createdProjectId)} maxWidth="xs" fullWidth>
-        <DialogTitle>專案建立成功</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">
-            《{input.name}》已建立完成。要現在建立第一篇故事，還是先回專案首頁？
-          </Typography>
-        </DialogContent>
-        <DialogActions
+      <StorytellerMascotDialog
+        open={Boolean(createdProjectId)}
+        state="success"
+        eyebrow="專案已建立"
+        title={`「${input.name}」已經準備好了`}
+        description="基本設定都已經建好。你可以直接建立第一篇故事，也可以先回專案首頁整理設定。"
+        onClose={handleGoToProjectHome}
+        actions={
+          <>
+            <Button onClick={handleGoToProjectHome}>回專案首頁</Button>
+            <Button
+              autoFocus
+              variant="contained"
+              onClick={handleStartFirstStory}
+            >
+              建立第一篇故事
+            </Button>
+          </>
+        }
+      >
+        <Paper
           sx={{
-            flexDirection: "column",
-            alignItems: "stretch",
-            gap: 1,
-            px: 3,
-            pb: 2,
+            display: "grid",
+            gap: 0.5,
+            p: 2,
+            bgcolor: "action.hover",
+            borderLeft: 3,
+            borderColor: "success.main",
           }}
         >
-          <Button variant="contained" onClick={handleStartFirstStory}>
-            建立第一篇故事
-          </Button>
-          <Button onClick={handleGoToProjectHome}>回專案首頁</Button>
-        </DialogActions>
-      </Dialog>
+          <Typography variant="caption" color="text.secondary">
+            新專案
+          </Typography>
+          <Typography fontWeight={800}>{input.name}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {input.visibility === "public"
+              ? "公開"
+              : input.visibility === "unlisted"
+                ? "不公開列出"
+                : "私人"}
+            {" · "}
+            {storytellerProjectRatingLabel(input.rating)}
+            {" · "}
+            {input.content_type === "image" ? "圖片／漫畫" : "文字故事"}
+          </Typography>
+        </Paper>
+      </StorytellerMascotDialog>
       <Dialog
         open={slugWarningOpen}
         onClose={() => setSlugWarningOpen(false)}
@@ -631,6 +662,24 @@ export default function StorytellerNewProject({
           </Stack>
         </Stack>
       </Paper>
+      <CustomSnackbar
+        open={Boolean(editSuccessTarget)}
+        message="專案設定已更新。"
+        severity="success"
+        autoHideDuration={1200}
+        onClose={() => {
+          if (editSuccessTarget) {
+            navigate(editSuccessTarget);
+          }
+          setEditSuccessTarget(null);
+        }}
+      />
+      <CustomSnackbar
+        open={saveProject.isError}
+        message={`${isEditing ? "更新" : "建立"}專案失敗，請確認欄位內容後重試。`}
+        severity="error"
+        onClose={() => saveProject.reset()}
+      />
     </StorytellerShell>
   );
 }

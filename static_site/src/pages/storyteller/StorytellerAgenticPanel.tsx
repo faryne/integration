@@ -50,6 +50,7 @@ import {
 } from "@/apis/storyteller/agent.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
@@ -1086,6 +1087,8 @@ export function StorytellerAgenticPanel({
   // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
   // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
   const [resendingChatId, setResendingChatId] = useState<number | null>(null);
+  const [resendError, setResendError] = useState("");
+  const [modelAppliedSnack, setModelAppliedSnack] = useState("");
   function handleResend(chatId: number) {
     if (resendingChatId !== null || !Number.isFinite(agentIdNumeric)) {
       return;
@@ -1104,6 +1107,7 @@ export function StorytellerAgenticPanel({
         },
       },
       {
+        onError: (error) => setResendError(agenticErrorMessage(error)),
         onSettled: () => setResendingChatId(null),
       },
     );
@@ -2711,6 +2715,7 @@ export function StorytellerAgenticPanel({
                           value={modelNameOverride}
                           onChange={setModelNameOverride}
                           onApplied={closeAiConfigMenu}
+                          onSuccessNotify={setModelAppliedSnack}
                           variant="menu"
                           inputMode="always"
                           label="自訂模型名稱"
@@ -2877,6 +2882,17 @@ export function StorytellerAgenticPanel({
         open={referenceDrawerOpen}
         onClose={() => setReferenceDrawerOpen(false)}
         agents={agents}
+      />
+      <CustomSnackbar
+        open={Boolean(resendError)}
+        message={resendError}
+        severity="error"
+        onClose={() => setResendError("")}
+      />
+      <CustomSnackbar
+        open={Boolean(modelAppliedSnack)}
+        message={modelAppliedSnack}
+        onClose={() => setModelAppliedSnack("")}
       />
     </Paper>
   );

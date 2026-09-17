@@ -14,7 +14,6 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { useEffect, useState } from "react";
 import {
   workspaceDialogActionsSx,
   workspaceDialogBackdropSx,
@@ -28,73 +27,6 @@ export interface WorkspaceUploadProgressRow {
   name: string;
   loaded: number;
   total: number;
-}
-
-export function WorkspaceConfirmNameDialog({
-  open,
-  title,
-  description,
-  confirmName,
-  confirmLabel,
-  loading,
-  onClose,
-  onConfirm,
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmName: string;
-  confirmLabel: string;
-  loading?: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const [value, setValue] = useState("");
-  const matched = value === confirmName;
-
-  useEffect(() => {
-    if (!open) setValue("");
-  }, [open]);
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      fullWidth
-      maxWidth="xs"
-      slotProps={{
-        paper: { sx: workspaceDialogPaperSx },
-        backdrop: { sx: workspaceDialogBackdropSx },
-      }}
-    >
-      <DialogTitle sx={workspaceDialogTitleSx}>{title}</DialogTitle>
-      <DialogContent sx={workspaceDialogContentSx}>
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <Typography color="text.secondary">{description}</Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            label="確認名稱"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            helperText={`請輸入「${confirmName}」以啟用確認按鈕。`}
-            sx={workspaceTextFieldSx}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={workspaceDialogActionsSx}>
-        <Button onClick={onClose}>取消</Button>
-        <Button
-          color="error"
-          variant="contained"
-          disabled={!matched || loading}
-          onClick={onConfirm}
-        >
-          {loading ? "處理中" : confirmLabel}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
 }
 
 export function MoveMenu({

@@ -17,6 +17,8 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import type { AlertColor } from "@mui/material";
+import axios from "axios";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import {
@@ -25,6 +27,7 @@ import {
   useUpdateStorytellerAsset,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import {
   WorkspaceEditableSummary,
@@ -32,7 +35,6 @@ import {
   WorkspaceEditorHeaderRow,
   WorkspaceEditorSelectButton,
 } from "./ProjectWorkspaceEditorControls.tsx";
-import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import type { WorkspaceViewMode } from "./workspaceViewMode.ts";
 import type {
@@ -385,8 +387,14 @@ export function WorkspaceAssetPanel({
   const [altText, setAltText] = useState(asset.alt_text);
   const [description, setDescription] = useState(asset.description);
   const [collectionId, setCollectionId] = useState(asset.collection_id ?? "");
-  const [snack, setSnack] = useState("");
+  const [snack, setSnack] = useState<{ message: string; severity: AlertColor }>(
+    {
+      message: "",
+      severity: "success",
+    },
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [metadataOpen, setMetadataOpen] = useState(false);
   const updateAsset = useUpdateStorytellerAsset(projectId);
   const moveAsset = useMoveStorytellerAsset(projectId);
@@ -415,9 +423,9 @@ export function WorkspaceAssetPanel({
     ([key]) => key !== "width" && key !== "height",
   );
 
-  function handleSave() {
-    updateAsset.mutate(
-      {
+  async function handleSave() {
+    try {
+      await updateAsset.mutateAsync({
         assetPublicId: asset.public_id,
         input: {
           title,
@@ -425,15 +433,27 @@ export function WorkspaceAssetPanel({
           description,
           metadata: asset.metadata ?? {},
         },
-      },
-      {
-        onSuccess: () => setSnack("資產已更新。"),
-        onError: () => setSnack("資產更新失敗，請重試。"),
-      },
-    );
-    if (collectionId !== (asset.collection_id ?? "")) {
-      moveAsset.mutate({ assetPublicId: asset.public_id, collectionId });
+      });
+    } catch {
+      setSnack({ message: "資產資訊更新失敗，請重試。", severity: "error" });
+      return;
     }
+    // 資訊與分類是兩次獨立儲存；第二步失敗要說明第一步已成功，避免誤導使用者。
+    if (collectionId !== (asset.collection_id ?? "")) {
+      try {
+        await moveAsset.mutateAsync({
+          assetPublicId: asset.public_id,
+          collectionId,
+        });
+      } catch {
+        setSnack({
+          message: "資產資訊已儲存，但移動到資產集失敗，請重試。",
+          severity: "error",
+        });
+        return;
+      }
+    }
+    setSnack({ message: "資產已更新。", severity: "success" });
   }
 
   const assetActionContent = (
@@ -447,15 +467,27 @@ export function WorkspaceAssetPanel({
       >
         詳細資訊
       </Button>
-      <Button
-        size="small"
-        color="error"
-        variant="outlined"
-        startIcon={<DeleteIcon fontSize="small" />}
-        onClick={() => setDeleteOpen(true)}
+      <Tooltip
+        title={
+          asset.reference_count > 0 ? "資產仍被作品引用，請先移除引用" : ""
+        }
       >
-        刪除
-      </Button>
+        <span>
+          <Button
+            size="small"
+            color="error"
+            variant="outlined"
+            startIcon={<DeleteIcon fontSize="small" />}
+            disabled={asset.reference_count > 0}
+            onClick={() => {
+              setDeleteError("");
+              setDeleteOpen(true);
+            }}
+          >
+            刪除
+          </Button>
+        </span>
+      </Tooltip>
       <Button
         size="small"
         variant="contained"
@@ -570,25 +602,37 @@ export function WorkspaceAssetPanel({
         />
       </Box>
       <CustomSnackbar
-        open={Boolean(snack)}
-        message={snack}
-        onClose={() => setSnack("")}
+        open={Boolean(snack.message)}
+        message={snack.message}
+        severity={snack.severity}
+        onClose={() => setSnack((current) => ({ ...current, message: "" }))}
       />
-      <WorkspaceConfirmNameDialog
+      <StorytellerConfirmNameDialog
         open={deleteOpen}
         title="刪除資產"
         description="刪除後無法復原。請輸入資產名稱確認。"
         confirmName={storytellerAssetTitle(asset)}
         confirmLabel="刪除資產"
         loading={deleteAsset.isPending}
-        onClose={() => setDeleteOpen(false)}
+        error={deleteError}
+        onClose={() => {
+          setDeleteOpen(false);
+          setDeleteError("");
+        }}
         onConfirm={() =>
           deleteAsset.mutate(asset.public_id, {
             onSuccess: () => {
               setDeleteOpen(false);
               onDeleted();
             },
-            onError: () => setSnack("資產刪除失敗，請重試。"),
+            onError: (error) => {
+              const message = axios.isAxiosError(error)
+                ? (error.response?.data as { message?: string } | undefined)
+                    ?.message || "資產刪除失敗，請重試。"
+                : "資產刪除失敗，請重試。";
+              setDeleteError(message);
+              setSnack({ message, severity: "error" });
+            },
           })
         }
       />

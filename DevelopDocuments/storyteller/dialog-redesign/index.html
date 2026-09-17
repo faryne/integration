@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SteamLoom Storyteller Dialog 系統互動提案" />
+    <title>Dialog 系統提案｜SteamLoom</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-appearance="nocturne" data-view="desktop">
+    <header class="prototype-bar">
+      <div class="prototype-title"><strong>Dialog 系統提案</strong><span>以留白建立層級，只在重要時刻讓梭梭出場</span></div>
+      <div class="prototype-actions">
+        <div class="segmented" aria-label="預覽尺寸">
+          <button class="active" data-set-view="desktop">桌面</button>
+          <button data-set-view="mobile">手機</button>
+        </div>
+        <label>外觀<select id="appearance"><option value="nocturne">Nocturne</option><option value="ivory">Ivory</option><option value="prism">Prism</option></select></label>
+      </div>
+    </header>
+
+    <main class="stage">
+      <section class="app-shell" aria-label="SteamLoom 作品管理頁預覽">
+        <header class="app-header"><span class="brand">✦</span><strong>SteamLoom</strong><span class="spacer"></span><button class="icon-button" aria-label="搜尋">⌕</button><button class="avatar">F</button></header>
+        <nav class="breadcrumb" aria-label="麵包屑"><span>我的工作台</span><b>›</b><strong>作品管理</strong></nav>
+        <div class="workspace">
+          <aside>
+            <p>工作台</p><button class="active">作品</button><button>草稿</button><button>資產庫</button><p>設定</p><button>AI 助理</button><button>偏好設定</button>
+          </aside>
+          <section class="content">
+            <div class="page-heading"><div><span>4 部作品</span><h1>我的作品</h1><p>管理故事內容、發布狀態與協作設定。</p></div><button class="primary">＋ 建立作品</button></div>
+            <div class="cards"><article><span>連載中</span><h2>霧港殘響</h2><p>奇幻 · 12 章 · 私人</p></article><article><span>草稿</span><h2>星塵航線</h2><p>科幻 · 4 章 · 私人</p></article><article><span>已發布</span><h2>最後一班慢車</h2><p>短篇 · 1 章 · 公開</p></article></div>
+          </section>
+        </div>
+      </section>
+
+      <div class="scrim"></div>
+      <section class="dialog mascot-dialog" id="delete-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+        <div class="mascot-zone"><img data-mascot="danger" alt="梭梭提醒這是不可復原的操作" /><span class="tone danger">不可復原</span></div>
+        <div class="dialog-body">
+          <button class="close" aria-label="關閉">×</button>
+          <p class="eyebrow">刪除作品</p>
+          <h2 id="delete-title">確定要刪除「霧港殘響」？</h2>
+          <p class="lead">作品內的章節、設定與版本紀錄都會一起刪除。這一步沒辦法復原，梭梭會再幫你確認一次。</p>
+          <label class="field"><span>輸入作品名稱以繼續</span><input id="confirm-name" autocomplete="off" placeholder="霧港殘響" /></label>
+          <div class="dialog-actions"><button data-close>先不要</button><button class="danger-button" id="delete-action" disabled>永久刪除</button></div>
+        </div>
+      </section>
+
+      <section class="dialog mascot-dialog" id="success-dialog" role="dialog" aria-modal="true" aria-labelledby="success-title" hidden>
+        <div class="mascot-zone"><img data-mascot="success" alt="梭梭為新作品建立完成感到開心" /><span class="tone success">準備好了</span></div>
+        <div class="dialog-body">
+          <button class="close" aria-label="關閉">×</button>
+          <p class="eyebrow">作品已建立</p>
+          <h2 id="success-title">「無光之海」已經準備好了</h2>
+          <p class="lead">基本設定都已經建好。你可以直接開始第一章，也可以先把世界觀和角色資料整理好。</p>
+          <div class="project-summary"><span>新作品</span><strong>無光之海</strong><small>私人 · 一般分級 · 純文字</small></div>
+          <div class="dialog-actions"><button data-close>回作品列表</button><button class="primary">開始寫第一章</button></div>
+        </div>
+      </section>
+
+      <section class="dialog utility-dialog" id="rename-dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title" hidden>
+        <div class="dialog-body">
+          <button class="close" aria-label="關閉">×</button>
+          <p class="eyebrow">作品設定</p>
+          <h2 id="rename-title">重新命名作品</h2>
+          <p class="lead">新名稱會同步顯示在工作台、閱讀頁與分享連結預覽。</p>
+          <label class="field"><span>作品名稱</span><input value="霧港殘響" /></label>
+          <div class="dialog-actions"><button data-close>取消</button><button class="primary">儲存名稱</button></div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="scenario-dock" aria-label="Dialog 情境">
+      <span>預覽情境</span>
+      <button class="active" data-dialog="delete-dialog"><b>01</b>刪除作品</button>
+      <button data-dialog="success-dialog"><b>02</b>建立完成</button>
+      <button data-dialog="rename-dialog"><b>03</b>重新命名</button>
+    </nav>
+    <div class="toast" role="status">Demo：刪除操作不會真的執行。</div>
+    <script src="app.js"></script>
+  </body>
+</html>

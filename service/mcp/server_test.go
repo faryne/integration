@@ -85,6 +85,19 @@ func TestNewStorytellerServerRegistersChapterTools(t *testing.T) {
 	}
 }
 
+func TestNewStorytellerServerRegistersProjectWriteTools(t *testing.T) {
+	server := NewStorytellerServer("storyteller-test", "test-version")
+
+	list, shouldReply, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	require.NoError(t, err)
+	require.True(t, shouldReply)
+	require.Nil(t, list.Error)
+
+	body := mustMarshal(t, list.Result)
+	require.Contains(t, body, `"name":"storyteller_create_project"`)
+	require.Contains(t, body, `"name":"storyteller_patch_project"`)
+}
+
 func mustMarshal(t *testing.T, v interface{}) string {
 	t.Helper()
 	body, err := json.Marshal(v)

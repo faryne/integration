@@ -18,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { NodeSelection } from "@tiptap/pm/state";
@@ -1485,27 +1486,26 @@ export const StorytellerWysiwygEditor = forwardRef<
         onConfirm={handleConfirmAddBookmark}
       />
 
-      <Dialog
+      <StorytellerMascotDialog
         open={pendingRemoveMarkerId !== null}
+        state="danger"
+        eyebrow="移除書籤"
+        title="確定要移除這筆書籤？"
+        description="這筆書籤移除後無法復原。"
         onClose={() => setPendingRemoveMarkerId(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>移除書籤</DialogTitle>
-        <DialogContent>
-          <Typography>確定要移除這筆書籤嗎？此操作無法復原。</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setPendingRemoveMarkerId(null)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleConfirmRemoveBookmark}
-          >
-            移除
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setPendingRemoveMarkerId(null)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={handleConfirmRemoveBookmark}
+            >
+              移除
+            </Button>
+          </>
+        }
+      />
 
       {hoveredFootnote && (
         <Box

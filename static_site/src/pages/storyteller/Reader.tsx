@@ -54,6 +54,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
   useStorytellerProject,
   useCreateStorytellerStoryBookmark,
@@ -1050,6 +1051,7 @@ export default function StorytellerReader() {
   const [bookmarkSnackbar, setBookmarkSnackbar] = useState<{
     open: boolean;
     message: string;
+    severity?: "success" | "error";
   }>({ open: false, message: "" });
   // block 依呼叫端而不同：書籤沿用原本的 "center"（把整行捲到畫面中央方便看上下文）；
   // 標題跳轉用 "start"，讓標題落在畫面頂端的「目前閱讀行」附近，跟下面 scroll-spy
@@ -1242,6 +1244,8 @@ export default function StorytellerReader() {
   const [pendingDeleteBookmarkIds, setPendingDeleteBookmarkIds] = useState<
     Set<number>
   >(new Set());
+  const [deleteBookmarkTarget, setDeleteBookmarkTarget] =
+    useState<StorytellerStoryBookmarkWithStory | null>(null);
   const latestVersionId = latestVersionQuery.data?.id;
   const versions = versionsQuery.data ?? [];
   const historicalVersionIndex = historicalVersionId
@@ -1306,6 +1310,12 @@ export default function StorytellerReader() {
           message: isBookmarked ? "書籤已刪除" : "書籤已加入",
         });
       },
+      onError: () =>
+        setBookmarkSnackbar({
+          open: true,
+          message: "書籤更新失敗，請重試。",
+          severity: "error",
+        }),
       onSettled: () => {
         setPendingBookmarkLines((prev) => {
           const next = new Set(prev);
@@ -1354,6 +1364,12 @@ export default function StorytellerReader() {
           message: isBookmarked ? "書籤已刪除" : "書籤已加入",
         });
       },
+      onError: () =>
+        setBookmarkSnackbar({
+          open: true,
+          message: "書籤更新失敗，請重試。",
+          severity: "error",
+        }),
       onSettled: () => {
         setPendingImageBookmarkPages((prev) => {
           const next = new Set(prev);
@@ -1377,9 +1393,12 @@ export default function StorytellerReader() {
   const handleDeleteBookmarkFromList = (
     bookmark: StorytellerStoryBookmarkWithStory,
   ) => {
-    if (pendingDeleteBookmarkIds.has(bookmark.id)) {
-      return;
-    }
+    if (!pendingDeleteBookmarkIds.has(bookmark.id))
+      setDeleteBookmarkTarget(bookmark);
+  };
+  const confirmDeleteBookmarkFromList = () => {
+    const bookmark = deleteBookmarkTarget;
+    if (!bookmark || pendingDeleteBookmarkIds.has(bookmark.id)) return;
     setPendingDeleteBookmarkIds((prev) => new Set(prev).add(bookmark.id));
     deleteBookmark.mutate(
       {
@@ -1390,7 +1409,14 @@ export default function StorytellerReader() {
       {
         onSuccess: () => {
           setBookmarkSnackbar({ open: true, message: "書籤已刪除" });
+          setDeleteBookmarkTarget(null);
         },
+        onError: () =>
+          setBookmarkSnackbar({
+            open: true,
+            message: "書籤刪除失敗，請重試。",
+            severity: "error",
+          }),
         onSettled: () => {
           setPendingDeleteBookmarkIds((prev) => {
             const next = new Set(prev);
@@ -1735,7 +1761,21 @@ export default function StorytellerReader() {
             return;
           }
           if (apiProject?.public_id) {
-            saveFavorite.mutate(!isFavorited);
+            const nextFavorited = !isFavorited;
+            saveFavorite.mutate(nextFavorited, {
+              onSuccess: () => {
+                setBookmarkSnackbar({
+                  open: true,
+                  message: nextFavorited ? "已追蹤此作品" : "已取消追蹤此作品",
+                });
+              },
+              onError: () =>
+                setBookmarkSnackbar({
+                  open: true,
+                  message: "作品追蹤狀態更新失敗，請重試。",
+                  severity: "error",
+                }),
+            });
             return;
           }
           setFavorite((value) => !value);
@@ -1755,7 +1795,23 @@ export default function StorytellerReader() {
               setLoginPromptOpen(true);
               return;
             }
-            saveAuthorFavorite.mutate(!isAuthorFavorited);
+            const nextAuthorFavorited = !isAuthorFavorited;
+            saveAuthorFavorite.mutate(nextAuthorFavorited, {
+              onSuccess: () => {
+                setBookmarkSnackbar({
+                  open: true,
+                  message: nextAuthorFavorited
+                    ? "已追蹤此作者"
+                    : "已取消追蹤此作者",
+                });
+              },
+              onError: () =>
+                setBookmarkSnackbar({
+                  open: true,
+                  message: "作者追蹤狀態更新失敗，請重試。",
+                  severity: "error",
+                }),
+            });
           }}
         >
           {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}（{authorFollowerCount}
@@ -1777,7 +1833,19 @@ export default function StorytellerReader() {
                 return;
               }
               if (apiProject?.public_id && value !== null) {
-                saveRanking.mutate(value);
+                saveRanking.mutate(value, {
+                  onSuccess: () =>
+                    setBookmarkSnackbar({
+                      open: true,
+                      message: "評分已儲存。",
+                    }),
+                  onError: () =>
+                    setBookmarkSnackbar({
+                      open: true,
+                      message: "評分儲存失敗，請重試。",
+                      severity: "error",
+                    }),
+                });
               }
             }}
           />
@@ -2346,8 +2414,30 @@ export default function StorytellerReader() {
       <CustomSnackbar
         open={bookmarkSnackbar.open}
         message={bookmarkSnackbar.message}
+        severity={bookmarkSnackbar.severity ?? "success"}
         onClose={() =>
           setBookmarkSnackbar((prev) => ({ ...prev, open: false }))
+        }
+      />
+      <StorytellerMascotDialog
+        open={deleteBookmarkTarget !== null}
+        state="danger"
+        eyebrow="刪除書籤"
+        title="確定要刪除這筆書籤？"
+        description="這筆書籤會從閱讀清單移除；若是舊版本或已失效的位置，之後可能無法重新加入。"
+        onClose={() => setDeleteBookmarkTarget(null)}
+        actions={
+          <>
+            <Button onClick={() => setDeleteBookmarkTarget(null)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={deleteBookmark.isPending}
+              onClick={confirmDeleteBookmarkFromList}
+            >
+              {deleteBookmark.isPending ? "刪除中" : "刪除書籤"}
+            </Button>
+          </>
         }
       />
 

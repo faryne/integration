@@ -27,6 +27,7 @@ import {
   useSaveFavoriteProjectVisibility,
 } from "@/apis/storyteller.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
@@ -41,6 +42,14 @@ import type {
 // Home.tsx 統一擋過，這裡不用再自己判斷 session。
 export function StorytellerFavoritesContent() {
   const [tab, setTab] = useState<"stories" | "authors">("stories");
+  const [visibilitySnack, setVisibilitySnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
+  const notifyVisibility = (
+    message: string,
+    severity: "success" | "error" = "success",
+  ) => setVisibilitySnack({ message, severity });
   const {
     data: projects = [],
     isLoading: projectsLoading,
@@ -86,7 +95,10 @@ export function StorytellerFavoritesContent() {
           <Grid container spacing={2}>
             {projects.map((project) => (
               <Grid key={project.public_id} size={{ xs: 12, md: 6, lg: 4 }}>
-                <FavoriteProjectCard project={project} />
+                <FavoriteProjectCard
+                  project={project}
+                  onVisibilityChanged={notifyVisibility}
+                />
               </Grid>
             ))}
           </Grid>
@@ -101,16 +113,36 @@ export function StorytellerFavoritesContent() {
         <Grid container spacing={2}>
           {authors.map((author) => (
             <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
-              <FavoriteAuthorCard author={author} />
+              <FavoriteAuthorCard
+                author={author}
+                onVisibilityChanged={notifyVisibility}
+              />
             </Grid>
           ))}
         </Grid>
       )}
+      <CustomSnackbar
+        open={Boolean(visibilitySnack.message)}
+        message={visibilitySnack.message}
+        severity={visibilitySnack.severity}
+        onClose={() =>
+          setVisibilitySnack((current) => ({ ...current, message: "" }))
+        }
+      />
     </Stack>
   );
 }
 
-function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
+function FavoriteProjectCard({
+  project,
+  onVisibilityChanged,
+}: {
+  project: StorytellerProject;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
+}) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
 
@@ -124,7 +156,14 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
               size="small"
               aria-label={hidden ? "設為公開" : "設為隱藏"}
               disabled={saveVisibility.isPending}
-              onClick={() => saveVisibility.mutate(!hidden)}
+              onClick={() =>
+                saveVisibility.mutate(!hidden, {
+                  onSuccess: () =>
+                    onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                  onError: () =>
+                    onVisibilityChanged("追蹤作品公開狀態更新失敗。", "error"),
+                })
+              }
             >
               {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
             </IconButton>
@@ -147,7 +186,16 @@ function FavoriteProjectCard({ project }: { project: StorytellerProject }) {
   );
 }
 
-function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
+function FavoriteAuthorCard({
+  author,
+  onVisibilityChanged,
+}: {
+  author: StorytellerFavoriteAuthor;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
+}) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
 
@@ -190,7 +238,17 @@ function FavoriteAuthorCard({ author }: { author: StorytellerFavoriteAuthor }) {
                 size="small"
                 aria-label={hidden ? "設為公開" : "設為隱藏"}
                 disabled={saveVisibility.isPending}
-                onClick={() => saveVisibility.mutate(!hidden)}
+                onClick={() =>
+                  saveVisibility.mutate(!hidden, {
+                    onSuccess: () =>
+                      onVisibilityChanged(hidden ? "已設為公開" : "已設為隱藏"),
+                    onError: () =>
+                      onVisibilityChanged(
+                        "追蹤作者公開狀態更新失敗。",
+                        "error",
+                      ),
+                  })
+                }
               >
                 {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
               </IconButton>

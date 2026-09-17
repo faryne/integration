@@ -23,6 +23,7 @@ import { alpha } from "@mui/material/styles";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { useMemo, useState } from "react";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 
 import type { StorytellerWritingBookmark } from "@/types/storyteller.ts";
 import { extractDocumentMarkers } from "@/pages/storyteller/wysiwygCore/extractHeadingOutline.ts";
@@ -280,31 +281,30 @@ export function StorytellerEditorOutlinePanel({
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <StorytellerMascotDialog
         open={deleting !== null}
+        state="danger"
+        eyebrow="刪除書籤"
+        title="確定要刪除這筆書籤？"
+        description="書籤與筆記會一併移除，此操作無法復原。"
         onClose={() => setDeleting(null)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>刪除書籤</DialogTitle>
-        <DialogContent>
-          <Typography>確定要刪除這筆書籤嗎？此操作無法復原。</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleting(null)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={() => {
-              if (!deleting) return;
-              onDeleteBookmark(deleting.markerId);
-              setDeleting(null);
-            }}
-          >
-            刪除
-          </Button>
-        </DialogActions>
-      </Dialog>
+        actions={
+          <>
+            <Button onClick={() => setDeleting(null)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              onClick={() => {
+                if (!deleting) return;
+                onDeleteBookmark(deleting.markerId);
+                setDeleting(null);
+              }}
+            >
+              刪除
+            </Button>
+          </>
+        }
+      />
     </Paper>
   );
 }

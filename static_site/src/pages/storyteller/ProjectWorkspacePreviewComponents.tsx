@@ -30,10 +30,11 @@ import { alpha } from "@mui/material/styles";
 import { useMemo, useState, type ReactNode } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import { useDeleteStorytellerProject } from "@/apis/storyteller.ts";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import { storytellerReaderPath } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { WorkspaceConfirmNameDialog } from "./ProjectWorkspacePreviewActionParts.tsx";
 import {
   ungroupedId,
   type SelectedItem,
@@ -223,6 +224,7 @@ function ProjectActionsGroup({
   onNavigate?: () => void;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
   const deleteProject = useDeleteStorytellerProject();
@@ -315,7 +317,7 @@ function ProjectActionsGroup({
           />
         </ListItemButton>
       </List>
-      <WorkspaceConfirmNameDialog
+      <StorytellerConfirmNameDialog
         open={deleteOpen}
         title="刪除專案"
         description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
@@ -326,8 +328,15 @@ function ProjectActionsGroup({
         onConfirm={() =>
           deleteProject.mutate(project.public_id, {
             onSuccess: () => navigate(steamloomPath("my/projects")),
+            onError: () => setDeleteError("刪除專案失敗，請重試。"),
           })
         }
+      />
+      <CustomSnackbar
+        open={Boolean(deleteError)}
+        message={deleteError}
+        severity="error"
+        onClose={() => setDeleteError("")}
       />
     </Box>
   );

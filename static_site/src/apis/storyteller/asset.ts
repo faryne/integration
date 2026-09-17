@@ -140,11 +140,14 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       const uploads = presign.data.data ?? [];
+      if (uploads.length !== files.length) {
+        throw new Error("部分資產沒有取得上傳網址，請檢查資產清單後重試。");
+      }
       const assets: StorytellerAsset[] = [];
       for (const [index, file] of files.entries()) {
         const target = uploads[index];
         if (!target) {
-          continue;
+          throw new Error("部分資產沒有取得上傳網址，請檢查資產清單後重試。");
         }
         await axios.put(target.upload_url, file, {
           headers: {
@@ -168,13 +171,14 @@ export function useUploadStorytellerAssets(projectPublicId?: string) {
           },
           { headers: sessionHeaders(session!.encrypt_key) },
         );
-        if (confirm.data.data) {
-          assets.push(confirm.data.data);
-        }
+        if (!confirm.data.data)
+          throw new Error("部分資產未完成建立，請檢查資產清單後重試。");
+        assets.push(confirm.data.data);
       }
       return assets;
     },
-    onSuccess: () => {
+    // 批次可能在前幾筆 confirm 後才失敗；失敗時也刷新，讓已建立的資產可見。
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });

@@ -48,6 +48,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
@@ -109,6 +110,14 @@ export default function StorytellerUserProjects() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [followSnack, setFollowSnack] = useState("");
+  const [followSnackSeverity, setFollowSnackSeverity] = useState<
+    "success" | "error"
+  >("success");
+  function notify(message: string, severity: "success" | "error" = "success") {
+    setFollowSnackSeverity(severity);
+    setFollowSnack(message);
+  }
   const tab: ProfileTab = location.pathname.endsWith("/favorite-projects")
     ? "favorite-projects"
     : location.pathname.endsWith("/favorite-authors")
@@ -205,7 +214,16 @@ export default function StorytellerUserProjects() {
                   setLoginPromptOpen(true);
                   return;
                 }
-                saveAuthorFavorite.mutate(!isAuthorFavorited);
+                const nextAuthorFavorited = !isAuthorFavorited;
+                saveAuthorFavorite.mutate(nextAuthorFavorited, {
+                  onSuccess: () => {
+                    notify(
+                      nextAuthorFavorited ? "已追蹤此作者" : "已取消追蹤此作者",
+                    );
+                  },
+                  onError: () =>
+                    notify("作者追蹤狀態更新失敗，請重試。", "error"),
+                });
               }}
             >
               {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}
@@ -225,6 +243,12 @@ export default function StorytellerUserProjects() {
         open={loginPromptOpen}
         onClose={() => setLoginPromptOpen(false)}
         description="追蹤作者需要登入。是否要現在登入？"
+      />
+      <CustomSnackbar
+        open={Boolean(followSnack)}
+        message={followSnack}
+        severity={followSnackSeverity}
+        onClose={() => setFollowSnack("")}
       />
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 4 }}>
@@ -388,6 +412,7 @@ export default function StorytellerUserProjects() {
                       <FavoriteProjectCard
                         project={project}
                         isOwner={isOwner}
+                        onVisibilityChanged={notify}
                       />
                     </Grid>
                   ))}
@@ -410,6 +435,7 @@ export default function StorytellerUserProjects() {
                       <FavoriteAuthorCard
                         author={favoriteAuthor}
                         isOwner={isOwner}
+                        onVisibilityChanged={notify}
                       />
                     </Grid>
                   ))}
@@ -451,9 +477,14 @@ export function AuthorBio({ bio }: { bio: string }) {
 function FavoriteProjectCard({
   project,
   isOwner,
+  onVisibilityChanged,
 }: {
   project: StorytellerProject;
   isOwner: boolean;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteProjectVisibility(project.public_id);
   const hidden = project.favorite_hidden ?? false;
@@ -469,7 +500,21 @@ function FavoriteProjectCard({
                 size="small"
                 aria-label={hidden ? "設為公開" : "設為隱藏"}
                 disabled={saveVisibility.isPending}
-                onClick={() => saveVisibility.mutate(!hidden)}
+                onClick={() =>
+                  saveVisibility.mutate(!hidden, {
+                    onSuccess: () =>
+                      onVisibilityChanged(
+                        hidden
+                          ? "追蹤作品已設為公開。"
+                          : "追蹤作品已設為隱藏。",
+                      ),
+                    onError: () =>
+                      onVisibilityChanged(
+                        "追蹤作品公開狀態更新失敗。",
+                        "error",
+                      ),
+                  })
+                }
               >
                 {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
               </IconButton>
@@ -496,9 +541,14 @@ function FavoriteProjectCard({
 function FavoriteAuthorCard({
   author,
   isOwner,
+  onVisibilityChanged,
 }: {
   author: StorytellerFavoriteAuthor;
   isOwner: boolean;
+  onVisibilityChanged: (
+    message: string,
+    severity?: "success" | "error",
+  ) => void;
 }) {
   const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
   const hidden = author.hidden ?? false;
@@ -543,7 +593,21 @@ function FavoriteAuthorCard({
                   size="small"
                   aria-label={hidden ? "設為公開" : "設為隱藏"}
                   disabled={saveVisibility.isPending}
-                  onClick={() => saveVisibility.mutate(!hidden)}
+                  onClick={() =>
+                    saveVisibility.mutate(!hidden, {
+                      onSuccess: () =>
+                        onVisibilityChanged(
+                          hidden
+                            ? "追蹤作者已設為公開。"
+                            : "追蹤作者已設為隱藏。",
+                        ),
+                      onError: () =>
+                        onVisibilityChanged(
+                          "追蹤作者公開狀態更新失敗。",
+                          "error",
+                        ),
+                    })
+                  }
                 >
                   {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
                 </IconButton>

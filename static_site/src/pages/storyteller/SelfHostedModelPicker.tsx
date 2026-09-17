@@ -1,13 +1,8 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import {
   Alert,
-  Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -25,6 +20,8 @@ import {
   useDeleteStorytellerProviderAPIKeyModel,
   useStorytellerProviderAPIKeyModels,
 } from "@/apis/storyteller.ts";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import type { StorytellerProviderAPIKeyModel } from "@/types/storyteller.ts";
 
 export function useSelfHostedModelOptions(apiKeyId: number | null | undefined) {
@@ -61,7 +58,9 @@ export function useSelfHostedModelOptions(apiKeyId: number | null | undefined) {
     isCreating: createModel.isPending,
     isDeleting: deleteModel.isPending,
     createError: createModel.isError,
+    resetCreateError: createModel.reset,
     deleteError: deleteModel.isError,
+    resetDeleteError: deleteModel.reset,
   };
 }
 
@@ -70,6 +69,7 @@ export function SelfHostedModelPicker({
   value,
   onChange,
   onApplied,
+  onSuccessNotify,
   variant = "form",
   inputMode = "empty",
   label = "Model Name",
@@ -81,6 +81,7 @@ export function SelfHostedModelPicker({
   value: string;
   onChange: (name: string) => void;
   onApplied?: (name: string) => void;
+  onSuccessNotify?: (message: string) => void;
   variant?: "menu" | "form";
   inputMode?: "always" | "empty";
   label?: string;
@@ -97,9 +98,12 @@ export function SelfHostedModelPicker({
     isCreating,
     isDeleting,
     createError,
+    resetCreateError,
     deleteError,
+    resetDeleteError,
   } = useSelfHostedModelOptions(apiKeyId);
   const [draftName, setDraftName] = useState(value);
+  const [applySuccess, setApplySuccess] = useState(false);
   const [confirmingDelete, setConfirmingDelete] =
     useState<StorytellerProviderAPIKeyModel | null>(null);
 
@@ -126,11 +130,17 @@ export function SelfHostedModelPicker({
       onApplied?.(trimmed);
       return;
     }
-    const row = await addModel(trimmed);
-    if (row) {
-      onChange(row.name);
-      onApplied?.(row.name);
-      setDraftName("");
+    try {
+      const row = await addModel(trimmed);
+      if (row) {
+        onChange(row.name);
+        onApplied?.(row.name);
+        setDraftName("");
+        if (onSuccessNotify) onSuccessNotify("模型名稱已套用。");
+        else setApplySuccess(true);
+      }
+    } catch {
+      // mutation 的錯誤由下方 snackbar 顯示，避免 click handler 留下未處理的拒絕。
     }
   }
 
@@ -156,11 +166,6 @@ export function SelfHostedModelPicker({
       {isListUnavailable && (
         <Alert severity="warning" variant="outlined">
           常用模型清單讀取失敗，先改用手動輸入。
-        </Alert>
-      )}
-      {deleteError && (
-        <Alert severity="error" variant="outlined">
-          模型名稱刪除失敗，請稍後再試。
         </Alert>
       )}
       {hasModels &&
@@ -266,48 +271,57 @@ export function SelfHostedModelPicker({
           </Button>
         </Stack>
       )}
-      {createError && (
-        <Alert severity="error" variant="outlined">
-          模型名稱儲存失敗，請稍後再試。
-        </Alert>
-      )}
-      <Dialog
+      <CustomSnackbar
+        open={applySuccess}
+        message="模型名稱已套用。"
+        onClose={() => setApplySuccess(false)}
+      />
+      <CustomSnackbar
+        open={createError}
+        message="模型名稱儲存失敗，請稍後再試。"
+        severity="error"
+        onClose={resetCreateError}
+      />
+      <StorytellerMascotDialog
         open={Boolean(confirmingDelete)}
+        state="danger"
+        eyebrow="刪除模型名稱"
+        title={`確定要刪除「${confirmingDelete?.name ?? ""}」？`}
+        description="這個模型名稱會從自架金鑰清單移除，此操作無法復原。"
         onClose={() => setConfirmingDelete(null)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>刪除模型名稱</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 1 }}>
-            <Typography color="text.secondary">
-              確定要刪除「{confirmingDelete?.name}」嗎？此操作無法復原。
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmingDelete(null)}>取消</Button>
-          <Button
-            color="error"
-            variant="contained"
-            disabled={isDeleting || !confirmingDelete}
-            onClick={() => {
-              if (!confirmingDelete) {
-                return;
-              }
-              const deletedName = confirmingDelete.name;
-              void removeModel(confirmingDelete.id).then(() => {
-                if (value === deletedName) {
-                  onChange("");
+        actions={
+          <>
+            <Button onClick={() => setConfirmingDelete(null)}>取消</Button>
+            <Button
+              color="error"
+              variant="contained"
+              disabled={isDeleting || !confirmingDelete}
+              onClick={() => {
+                if (!confirmingDelete) {
+                  return;
                 }
-                setConfirmingDelete(null);
-              });
-            }}
-          >
-            刪除模型
-          </Button>
-        </DialogActions>
-      </Dialog>
+                const deletedName = confirmingDelete.name;
+                void removeModel(confirmingDelete.id)
+                  .then(() => {
+                    if (value === deletedName) onChange("");
+                    setConfirmingDelete(null);
+                  })
+                  .catch(() => {
+                    // mutation 的失敗狀態交給下方 SNACK，保留 Dialog 供重試。
+                  });
+              }}
+            >
+              刪除模型
+            </Button>
+          </>
+        }
+      />
+      <CustomSnackbar
+        open={deleteError}
+        message="模型名稱刪除失敗，請稍後再試。"
+        severity="error"
+        onClose={resetDeleteError}
+      />
     </Stack>
   );
 }

@@ -46,6 +46,7 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
@@ -57,7 +58,6 @@ import {
   steamPanelTopBarSx,
   steamTabIndicatorSx,
 } from "@/data/storytellerTheme.ts";
-import { ConfirmNameDialog } from "@/components/common/ConfirmNameDialog.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -280,6 +280,18 @@ export default function StorytellerProjectDetail() {
   } | null>(null);
   const createButtonGroupRef = useRef<HTMLDivElement | null>(null);
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
+  const [copyErrorOpen, setCopyErrorOpen] = useState(false);
+  const [reorderError, setReorderError] = useState("");
+  const [actionSnack, setActionSnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
+  function notifyAction(
+    message: string,
+    severity: "success" | "error" = "success",
+  ) {
+    setActionSnack({ message, severity });
+  }
   const {
     data: apiProjects = [],
     isPending: apiProjectsPending,
@@ -405,15 +417,18 @@ export default function StorytellerProjectDetail() {
       if (item.sort === index) {
         return;
       }
-      saveVolume.mutate({
-        volumePublicId: item.public_id,
-        input: {
-          title: item.title,
-          sort: index,
-          status: item.status,
-          summary: item.summary,
-        },
-      });
+      // 同一次拖曳會送多筆更新；每筆 Promise 都要接錯誤，不能只靠最後一次 mutate 回呼。
+      void saveVolume
+        .mutateAsync({
+          volumePublicId: item.public_id,
+          input: {
+            title: item.title,
+            sort: index,
+            status: item.status,
+            summary: item.summary,
+          },
+        })
+        .catch(() => setReorderError("冊排序更新失敗，請重新整理後再試。"));
     });
   }
 
@@ -496,19 +511,21 @@ export default function StorytellerProjectDetail() {
         update.parentId !== undefined && update.parentId !== null
           ? apiVolumes.find((volume) => volume.id === update.parentId)
           : undefined;
-      saveStory.mutate({
-        storyPublicId,
-        input: {
-          title: item.title,
-          summary: item.summary,
-          status: item.status,
-          sort: update.sort,
-          content: item.latest_content,
-          ...(update.parentId !== undefined
-            ? { parent_id: targetVolume?.public_id ?? "" }
-            : {}),
-        },
-      });
+      void saveStory
+        .mutateAsync({
+          storyPublicId,
+          input: {
+            title: item.title,
+            summary: item.summary,
+            status: item.status,
+            sort: update.sort,
+            content: item.latest_content,
+            ...(update.parentId !== undefined
+              ? { parent_id: targetVolume?.public_id ?? "" }
+              : {}),
+          },
+        })
+        .catch(() => setReorderError("作品排序更新失敗，請重新整理後再試。"));
     });
   }
 
@@ -566,15 +583,23 @@ export default function StorytellerProjectDetail() {
   }
 
   function toggleVolumeStatus(volume: StorytellerStory) {
-    saveVolume.mutate({
-      volumePublicId: volume.public_id,
-      input: {
-        title: volume.title,
-        sort: volume.sort,
-        status: volume.status === "completed" ? "draft" : "completed",
-        summary: volume.summary,
+    const completed = volume.status !== "completed";
+    saveVolume.mutate(
+      {
+        volumePublicId: volume.public_id,
+        input: {
+          title: volume.title,
+          sort: volume.sort,
+          status: completed ? "completed" : "draft",
+          summary: volume.summary,
+        },
       },
-    });
+      {
+        onSuccess: () =>
+          notifyAction(completed ? "冊已公開。" : "冊已設為未公開。"),
+        onError: () => notifyAction("冊狀態更新失敗，請重試。", "error"),
+      },
+    );
   }
 
   function moveStoryToVolume(story: StorytellerStory, volumePublicId: string) {
@@ -599,17 +624,31 @@ export default function StorytellerProjectDetail() {
       ),
     );
     setStoryMoveMenu(null);
-    saveStory.mutate({
-      storyPublicId: story.public_id,
-      input: {
-        title: story.title,
-        summary: story.summary,
-        status: story.status,
-        sort: nextSort,
-        content: story.latest_content,
-        parent_id: volumePublicId,
+    saveStory.mutate(
+      {
+        storyPublicId: story.public_id,
+        input: {
+          title: story.title,
+          summary: story.summary,
+          status: story.status,
+          sort: nextSort,
+          content: story.latest_content,
+          parent_id: volumePublicId,
+        },
       },
-    });
+      {
+        onSuccess: () => notifyAction("作品已移動。"),
+        onError: () => {
+          // 移動是樂觀更新，存檔失敗時要還原清單，避免畫面假裝移動成功。
+          setOrderedStories((current) =>
+            current.map((item) =>
+              item.public_id === story.public_id ? story : item,
+            ),
+          );
+          notifyAction("作品移動失敗，請重試。", "error");
+        },
+      },
+    );
   }
 
   useTitle(
@@ -700,16 +739,24 @@ export default function StorytellerProjectDetail() {
         }}
         onDrop={() => handleDropStory(story.parent_id, story.public_id)}
         onTogglePublish={(checked) =>
-          saveStory.mutate({
-            storyPublicId: story.public_id,
-            input: {
-              title: story.title,
-              summary: story.summary,
-              status: checked ? "completed" : "draft",
-              sort: story.sort,
-              content: story.latest_content,
+          saveStory.mutate(
+            {
+              storyPublicId: story.public_id,
+              input: {
+                title: story.title,
+                summary: story.summary,
+                status: checked ? "completed" : "draft",
+                sort: story.sort,
+                content: story.latest_content,
+              },
             },
-          })
+            {
+              onSuccess: () =>
+                notifyAction(checked ? "作品已公開。" : "作品已設為未公開。"),
+              onError: () =>
+                notifyAction("作品狀態更新失敗，請重試。", "error"),
+            },
+          )
         }
         onOpenMoveMenu={(anchorEl) => setStoryMoveMenu({ anchorEl, story })}
         onDelete={() => setDeleteTarget(story)}
@@ -735,6 +782,8 @@ export default function StorytellerProjectDetail() {
     try {
       await navigator.clipboard.writeText(absoluteReaderUrl);
       setCopyMessageOpen(true);
+    } catch {
+      setCopyErrorOpen(true);
     } finally {
       setLinkMenuAnchor(null);
     }
@@ -873,12 +922,25 @@ export default function StorytellerProjectDetail() {
           message="已複製故事頁連結"
           onClose={() => setCopyMessageOpen(false)}
         />
+        <CustomSnackbar
+          open={copyErrorOpen}
+          message="複製連結失敗，請重試。"
+          severity="error"
+          onClose={() => setCopyErrorOpen(false)}
+        />
+        <CustomSnackbar
+          open={Boolean(reorderError)}
+          message={reorderError}
+          severity="error"
+          onClose={() => setReorderError("")}
+        />
+        <CustomSnackbar
+          open={Boolean(actionSnack.message)}
+          message={actionSnack.message}
+          severity={actionSnack.severity}
+          onClose={() => setActionSnack((prev) => ({ ...prev, message: "" }))}
+        />
 
-        {deleteStory.isError && (
-          <Typography color="error">
-            刪除故事失敗，請確認登入狀態後再試一次。
-          </Typography>
-        )}
         <Grid container spacing={2}>
           <Grid size={12}>
             <Paper variant="outlined" sx={{ p: 2, borderRadius: 1 }}>
@@ -1223,7 +1285,7 @@ export default function StorytellerProjectDetail() {
         </Grid>
       </Stack>
       {deleteTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title={deleteTarget.content_type === "image" ? "刪除話" : "刪除故事"}
           description={`刪除後會移除這${deleteTarget.content_type === "image" ? "話" : "篇故事"}與其版本資料。請輸入${deleteTarget.content_type === "image" ? "話" : "故事"}名稱確認。`}
@@ -1236,6 +1298,7 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteStory.mutate(deleteTarget.public_id, {
               onSuccess: () => setDeleteTarget(null),
+              onError: () => notifyAction("作品刪除失敗，請重試。", "error"),
             })
           }
         />
@@ -1279,13 +1342,17 @@ export default function StorytellerProjectDetail() {
                   setStoriesPage(1);
                 }
                 setVolumeDialogTarget(null);
+                notifyAction(
+                  volumeDialogTarget === "new" ? "冊已建立。" : "冊已更新。",
+                );
               },
+              onError: () => notifyAction("冊儲存失敗，請重試。", "error"),
             },
           )
         }
       />
       {deleteVolumeTarget && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除冊"
           description="刪除後無法復原。請輸入冊名稱確認。"
@@ -1301,12 +1368,13 @@ export default function StorytellerProjectDetail() {
                 }
                 setDeleteVolumeTarget(null);
               },
+              onError: () => notifyAction("冊刪除失敗，請重試。", "error"),
             })
           }
         />
       )}
       {projectDeleteOpen && (
-        <ConfirmNameDialog
+        <StorytellerConfirmNameDialog
           open
           title="刪除專案"
           description="刪除後會移除專案與底下故事資料。請輸入專案名稱確認。"
@@ -1317,6 +1385,7 @@ export default function StorytellerProjectDetail() {
           onConfirm={() =>
             deleteProject.mutate(project.id, {
               onSuccess: () => navigate(steamloomPath("my/projects")),
+              onError: () => notifyAction("專案刪除失敗，請重試。", "error"),
             })
           }
         />
