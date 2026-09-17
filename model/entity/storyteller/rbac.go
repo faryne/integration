@@ -160,7 +160,7 @@ type ProjectAudit struct {
 	Action      string              `gorm:"column:action" json:"action"`
 	TargetType  string              `gorm:"column:target_type" json:"target_type"`
 	TargetID    string              `gorm:"column:target_id" json:"target_id"`
-	Summary     ProjectAuditSummary `gorm:"column:summary" json:"summary"`
+	Summary     ProjectAuditSummary `gorm:"column:summary;type:json" json:"summary"`
 	RequestID   string              `gorm:"column:request_id" json:"request_id"`
 	OccurredAt  time.Time           `gorm:"column:occurred_at" json:"occurred_at"`
 }

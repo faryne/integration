@@ -10,6 +10,7 @@ CREATE TABLE `storyteller_roles` (
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY `idx_storyteller_roles_project` (`project_id`),
     KEY `idx_storyteller_roles_scope` (`scope_type`),
+    KEY `idx_storyteller_roles_project_scope` (`project_id`, `scope_type`, `disabled_at`, `id`),
     CONSTRAINT `fk_storyteller_roles_project`
         FOREIGN KEY (`project_id`) REFERENCES `storyteller_projects` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -40,8 +41,8 @@ CREATE TABLE `storyteller_user_roles` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `role_id` BIGINT UNSIGNED NOT NULL,
     `user_id` BIGINT UNSIGNED NOT NULL COMMENT 'storyteller_users.id, no FK per user-decoupling convention',
-    `starts_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `expires_at` TIMESTAMP NULL DEFAULT NULL,
+    `starts_at` TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'microsecond precision required: a 0-digit TIMESTAMP rounds (not truncates) sub-second inserts, which can round a just-created grant into the future and make starts_at <= now fail for up to ~1s right after granting',
+    `expires_at` TIMESTAMP(6) NULL DEFAULT NULL,
     `granted_by_user_id` BIGINT UNSIGNED NOT NULL COMMENT 'always the project owner in the first batch; role/member management is owner-only, this column is audit metadata, not a delegation mechanism',
     `revoked_at` TIMESTAMP NULL DEFAULT NULL,
     `revoked_by_user_id` BIGINT UNSIGNED NULL COMMENT 'same owner-only caveat as granted_by_user_id',
@@ -49,6 +50,7 @@ CREATE TABLE `storyteller_user_roles` (
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY `idx_storyteller_user_roles_role` (`role_id`),
     KEY `idx_storyteller_user_roles_effective` (`user_id`, `revoked_at`, `starts_at`, `expires_at`),
+    KEY `idx_storyteller_user_roles_role_effective` (`role_id`, `user_id`, `revoked_at`, `starts_at`, `expires_at`),
     CONSTRAINT `fk_storyteller_user_roles_role`
         FOREIGN KEY (`role_id`) REFERENCES `storyteller_roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -63,8 +65,8 @@ CREATE TABLE `storyteller_project_audits` (
     `target_id` VARCHAR(64) NULL COMMENT 'target public_id, or numeric id as string when the target has no public_id',
     `summary` JSON NULL COMMENT 'safe before/after field diff; never store tokens, API keys or full content',
     `request_id` VARCHAR(64) NULL,
-    `occurred_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    KEY `idx_storyteller_project_audits_project_time` (`project_id`, `occurred_at`),
+    `occurred_at` TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT 'microsecond precision for stable ordering; see starts_at comment on storyteller_user_roles for why 0-digit TIMESTAMP is unsafe here too',
+    KEY `idx_storyteller_project_audits_project_time` (`project_id`, `occurred_at`, `id`),
     KEY `idx_storyteller_project_audits_actor` (`actor_user_id`),
     CONSTRAINT `fk_storyteller_project_audits_project`
         FOREIGN KEY (`project_id`) REFERENCES `storyteller_projects` (`id`) ON DELETE CASCADE
