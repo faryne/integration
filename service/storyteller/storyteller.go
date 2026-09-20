@@ -3343,16 +3343,10 @@ func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {
 	if err := validateAgentRunPayloadSize(input); err != nil {
 		return err
 	}
-	switch input.Mode {
-	case storytellerModel.AgentRunModeRewriteSelection,
-		storytellerModel.AgentRunModeExpandSelection,
-		storytellerModel.AgentRunModeTranslateSelection,
-		storytellerModel.AgentRunModeCustomSelection,
-		storytellerModel.AgentRunModeContinueChapter:
-		return nil
-	default:
+	if _, ok := agentSkills[input.Mode]; !ok {
 		return errors.New("invalid mode")
 	}
+	return nil
 }
 
 const (
@@ -3382,49 +3376,11 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 }
 
 func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, projectPublicID string, target agentRunTarget, useTools bool) (string, string) {
-	systemPrompt := strings.TrimSpace(`You are Storyteller's writing assistant. Help the user process story text.
-
-Rules:`)
-	if !input.IgnoreAgentPersona {
-		systemPrompt += "\n- Follow the purpose, tone, and constraints configured for this Agent."
-	}
-	systemPrompt += `
-- Unless the user asks for analysis, output content that can be placed directly back into the story.
-- Do not include unrelated prefaces, conclusions, or explanations.
-- Do not store, disclose, or request sensitive information.`
+	tools := agentToolsNone
 	if useTools {
-		systemPrompt += `
-- You may call the provided read-only tools to resolve extra @ references, but you cannot write, delete,
-  move, revert, or otherwise persist changes.
-- Every tool call must use the project_public_id given below — you have no access to any other project.
-- Only resolve a reference if the task actually needs its content; don't fetch every reference reflexively.`
+		tools = agentToolsReadOnly
 	}
-	if !input.IgnoreAgentPersona {
-		systemPrompt += "\n\nAgent default configuration:\n" + strings.TrimSpace(agent.DefaultPrompt)
-	}
-	systemPrompt += "\n\nAuthorized project_public_id for this skill run: " + projectPublicID
-	if strings.TrimSpace(target.PublicID) != "" {
-		if target.Kind == agenticQueryCurrentTargetLore {
-			systemPrompt += "\nCurrent lore (what \"@thisLore\" refers to): lore_public_id=" + target.PublicID
-		} else {
-			systemPrompt += "\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + target.PublicID
-		}
-		if strings.TrimSpace(target.Title) != "" {
-			systemPrompt += ", title=" + target.Title
-		}
-	}
-	if useTools {
-		systemPrompt += `
-
-Reference syntax — the user's instruction or reference summary may contain @ references that you should
-resolve with read-only tools when needed:
-- "@thisStory" means the story currently open in the editor.
-- "@thisLore" means the lore/worldbuilding entry currently open in the editor.
-- "@story:<title>" or "@story:[title]" refers to a story by title; call storyteller_list_stories first, then
-  storyteller_get_story.
-- "@lore:<title>" or "@lore:[title]" refers to a lore/worldbuilding entry by title; call storyteller_list_lores
-  first, then storyteller_get_lore.`
-	}
+	systemPrompt := agentSystemPrompt(agentSystemPromptInput{Agent: agent, IgnorePersona: input.IgnoreAgentPersona, Tools: tools, IsSkill: true, ProjectPublicID: projectPublicID, Target: target})
 
 	sections := []string{
 		"Task mode:\n" + string(input.Mode),
@@ -3580,32 +3536,14 @@ func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
 }
 
 func agentRunModeRequiresSelection(mode storytellerModel.AgentRunMode) bool {
-	switch mode {
-	case storytellerModel.AgentRunModeRewriteSelection,
-		storytellerModel.AgentRunModeExpandSelection,
-		storytellerModel.AgentRunModeTranslateSelection,
-		storytellerModel.AgentRunModeCustomSelection:
-		return true
-	default:
-		return false
-	}
+	return agentSkills[mode].NeedSelection
 }
 
 func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
-	switch mode {
-	case storytellerModel.AgentRunModeRewriteSelection:
-		return "Only output the rewritten text. Do not list versions or explain changes. Preserve the original tone and Markdown structure."
-	case storytellerModel.AgentRunModeExpandSelection:
-		return "Only output the expanded text. Do not explain changes. Continue the original tone and point of view."
-	case storytellerModel.AgentRunModeTranslateSelection:
-		return "Only output the translated text without notes. Infer the target language from the user instruction; if unspecified, translate to Traditional Chinese."
-	case storytellerModel.AgentRunModeContinueChapter:
-		return "Only output new content that can continue after the current chapter ending. Do not repeat the full chapter."
-	case storytellerModel.AgentRunModeCustomSelection:
-		return "Follow the user instruction. If analysis is not requested, output text that can be directly applied to the story."
-	default:
-		return "Follow the user instruction."
+	if spec, ok := agentSkills[mode]; ok {
+		return spec.OutputRule
 	}
+	return "Follow the user instruction."
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {

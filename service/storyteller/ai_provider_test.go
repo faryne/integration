@@ -191,7 +191,7 @@ func TestBuildAgentRunPrompts(t *testing.T) {
 	}, "project-public-id", agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id", Title: "測試故事"}, false)
 
 	require.Contains(t, systemPrompt, "Use a quiet horror tone.")
-	require.Contains(t, systemPrompt, "Authorized project_public_id for this skill run: project-public-id")
+	require.Contains(t, systemPrompt, "Authorized project_public_id for this run: project-public-id")
 	require.Contains(t, userPrompt, "Task mode:\nrewrite_selection")
 	require.Contains(t, userPrompt, "User instruction:\nMake it sharper.")
 	require.NotContains(t, userPrompt, "User's current unsaved editor content:")

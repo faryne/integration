@@ -163,7 +163,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
 	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
-	require.Contains(t, provider.request.SystemPrompt, "Authorized project_public_id for this skill run: project-public-id")
+	require.Contains(t, provider.request.SystemPrompt, "Authorized project_public_id for this run: project-public-id")
 	require.Contains(t, provider.request.UserPrompt, "User's current selected text from the editor")
 	require.Contains(t, provider.request.UserPrompt, "Output requirements:")
 	require.NotNil(t, repo.chat)

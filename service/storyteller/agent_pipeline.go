@@ -320,7 +320,7 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 		Provider:     plan.Provider,
 		APIKey:       plan.APIKey,
 		ModelName:    plan.ModelName,
-		SystemPrompt: agenticQuerySystemPrompt(agent, plan.ProjectPublicID, plan.Target.Kind, plan.Target.PublicID, plan.Target.Title, ignoreAgentPersona),
+		SystemPrompt: agentSystemPrompt(agentSystemPromptInput{Agent: agent, IgnorePersona: ignoreAgentPersona, Tools: agentToolsProposeWrites, ProjectPublicID: plan.ProjectPublicID, Target: plan.Target}),
 		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
 		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, replyContent),
 		Tools:        tools,
