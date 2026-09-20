@@ -450,7 +450,7 @@ export function StorytellerWysiwygContextMenu({
             </ListItemIcon>
             <ListItemText>
               {writingBookmarkDisabledReason ??
-                (isCurrentParagraphBookmarked ? "移除書籤" : "加入書籤")}
+                (isCurrentParagraphBookmarked ? "編輯書籤筆記" : "加入書籤")}
             </ListItemText>
           </MenuItem>,
         ]}

@@ -70,6 +70,12 @@ export function useStorytellerEditorOutline({
     () => new Set(bookmarks.map((row) => row.marker_id)),
     [bookmarks],
   );
+  // 給編輯器「點擊既有書籤直接編輯筆記」用：開編輯 dialog 當下要能預先帶入
+  // 目前的筆記內容，不用另外重新打一次 API。
+  const bookmarkNotesByMarkerId = useMemo(
+    () => new Map(bookmarks.map((row) => [row.marker_id, row.note ?? ""])),
+    [bookmarks],
+  );
 
   const handleEditorReady = useCallback((next: Editor | null) => {
     setEditor(next);
@@ -122,6 +128,7 @@ export function useStorytellerEditorOutline({
     bookmarks,
     bookmarksLoading: bookmarksQuery.isLoading,
     bookmarkedMarkerIds,
+    bookmarkNotesByMarkerId,
     canBookmark: Boolean(projectPublicId && target),
     addBookmark,
     saveBookmarkNote,

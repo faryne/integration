@@ -444,8 +444,11 @@ export interface StorytellerWysiwygEditorProps {
   inlineAssistantAnchorMarkerId?: string | null;
   /** 目前這篇已加書籤的段落 markerId，用來畫段落層級提示。 */
   bookmarkedMarkerIds?: ReadonlySet<string>;
+  /** 已加書籤段落目前的筆記內容，點擊既有書籤要用來預先帶入編輯框。 */
+  bookmarkNotesByMarkerId?: ReadonlyMap<string, string>;
   canBookmark?: boolean;
   onAddBookmark?: (markerId: string, note: string) => void;
+  onSaveBookmarkNote?: (markerId: string, note: string) => void;
   onRemoveBookmark?: (markerId: string) => void;
   onEditorReady?: (editor: Editor | null) => void;
 }
@@ -491,8 +494,10 @@ export const StorytellerWysiwygEditor = forwardRef<
     inlineAssistantOpen = false,
     inlineAssistantAnchorMarkerId,
     bookmarkedMarkerIds,
+    bookmarkNotesByMarkerId,
     canBookmark = false,
     onAddBookmark,
+    onSaveBookmarkNote,
     onRemoveBookmark,
     onEditorReady,
   },
@@ -541,6 +546,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     }
   };
   const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
+  const [bookmarkDialogMode, setBookmarkDialogMode] = useState<
+    "create" | "edit"
+  >("create");
   const [bookmarkNoteDraft, setBookmarkNoteDraft] = useState("");
   const [pendingBookmarkMarkerId, setPendingBookmarkMarkerId] = useState<
     string | null
@@ -838,22 +846,48 @@ export const StorytellerWysiwygEditor = forwardRef<
     setPendingBookmarkMarkerId(markerId);
     setPendingBookmarkSnippet(snippet.slice(0, 24));
     setBookmarkNoteDraft("");
+    setBookmarkDialogMode("create");
+    setBookmarkDialogOpen(true);
+  };
+
+  // 點擊已經加過書籤的段落時，過去是直接跳「移除書籤」確認——找不到地方可以
+  // 調整筆記，只能到大綱面板才找得到編輯入口。改成打開同一個 dialog 的編輯模式，
+  // 預先帶入既有筆記；真的要移除書籤則是 dialog 內的次要動作，沿用既有的
+  // 移除確認流程，不繞過那道保護。
+  const openEditBookmarkDialog = (markerId: string, snippet: string) => {
+    setPendingBookmarkMarkerId(markerId);
+    setPendingBookmarkSnippet(snippet.slice(0, 24));
+    setBookmarkNoteDraft(bookmarkNotesByMarkerId?.get(markerId) ?? "");
+    setBookmarkDialogMode("edit");
     setBookmarkDialogOpen(true);
   };
 
   const handleToggleWritingBookmark = (markerId?: string, snippet?: string) => {
     const targetId = markerId ?? editorState.currentMarkerId;
     if (!targetId) return;
+    const resolvedSnippet = snippet ?? currentParagraphText(editor);
     if (bookmarkedIds.has(targetId)) {
-      setPendingRemoveMarkerId(targetId);
+      openEditBookmarkDialog(targetId, resolvedSnippet);
       return;
     }
-    openAddBookmarkDialog(targetId, snippet ?? currentParagraphText(editor));
+    openAddBookmarkDialog(targetId, resolvedSnippet);
   };
 
-  const handleConfirmAddBookmark = () => {
+  const handleConfirmBookmarkDialog = () => {
     if (!pendingBookmarkMarkerId) return;
-    onAddBookmark?.(pendingBookmarkMarkerId, bookmarkNoteDraft.trim());
+    if (bookmarkDialogMode === "edit") {
+      onSaveBookmarkNote?.(pendingBookmarkMarkerId, bookmarkNoteDraft.trim());
+    } else {
+      onAddBookmark?.(pendingBookmarkMarkerId, bookmarkNoteDraft.trim());
+    }
+    setBookmarkDialogOpen(false);
+    setPendingBookmarkMarkerId(null);
+  };
+
+  // Dialog 裡的「移除書籤」只是把既有的移除確認流程接手過來，不是另外刻一套。
+  const handleRequestRemoveBookmarkFromDialog = () => {
+    if (!pendingBookmarkMarkerId) return;
+    setPendingRemoveMarkerId(pendingBookmarkMarkerId);
     setBookmarkDialogOpen(false);
     setPendingBookmarkMarkerId(null);
   };
@@ -1202,7 +1236,9 @@ export const StorytellerWysiwygEditor = forwardRef<
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
         onRequestAI={handleRequestAI}
-        canWritingBookmark={Boolean(onAddBookmark && onRemoveBookmark)}
+        canWritingBookmark={Boolean(
+          onAddBookmark && onSaveBookmarkNote && onRemoveBookmark,
+        )}
         isCurrentParagraphBookmarked={isCurrentParagraphBookmarked}
         writingBookmarkDisabledReason={
           !canBookmark
@@ -1434,7 +1470,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             !canBookmark
               ? "先存檔後才能加入書籤"
               : bookmarkedIds.has(hoveredParagraph.markerId)
-                ? "移除書籤"
+                ? "編輯書籤筆記"
                 : "加入書籤"
           }
         >
@@ -1444,7 +1480,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             disabled={!canBookmark}
             aria-label={
               bookmarkedIds.has(hoveredParagraph.markerId)
-                ? "移除書籤"
+                ? "編輯書籤筆記"
                 : "加入書籤"
             }
             onMouseEnter={cancelHoveredParagraphHide}
@@ -1479,11 +1515,17 @@ export const StorytellerWysiwygEditor = forwardRef<
 
       <StorytellerWritingBookmarkDialog
         open={bookmarkDialogOpen}
+        mode={bookmarkDialogMode}
         snippet={pendingBookmarkSnippet}
         note={bookmarkNoteDraft}
         onNoteChange={setBookmarkNoteDraft}
         onClose={() => setBookmarkDialogOpen(false)}
-        onConfirm={handleConfirmAddBookmark}
+        onConfirm={handleConfirmBookmarkDialog}
+        onRemove={
+          bookmarkDialogMode === "edit"
+            ? handleRequestRemoveBookmarkFromDialog
+            : undefined
+        }
       />
 
       <StorytellerMascotDialog

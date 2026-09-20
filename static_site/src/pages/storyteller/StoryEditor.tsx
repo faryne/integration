@@ -1600,8 +1600,10 @@ export default function StorytellerStoryEditor({
               apiProject ? () => setAssetPickerOpen(true) : undefined
             }
             bookmarkedMarkerIds={outline.bookmarkedMarkerIds}
+            bookmarkNotesByMarkerId={outline.bookmarkNotesByMarkerId}
             canBookmark={outline.canBookmark}
             onAddBookmark={handleAddBookmarkWithSave}
+            onSaveBookmarkNote={outline.saveBookmarkNote}
             onRemoveBookmark={outline.removeBookmark}
             onEditorReady={outline.onEditorReady}
             toolbarExtra={
