@@ -648,14 +648,6 @@ func (s *Service) AgentPromptVersion(userID, agentID, versionID uint64) (*storyt
 	return s.repo.AgentPromptVersion(agentID, versionID)
 }
 
-func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return runAgent(ctx, s.repo, NewAgenticAIProvider, agenticQueryBackgroundWork, userID, projectPublicID, storyPublicID, agentID, input)
-}
-
-func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return runLoreAgent(ctx, s.repo, NewAgenticAIProvider, nil, agenticQueryBackgroundWork, userID, projectPublicID, lorePublicID, agentID, input)
-}
-
 type agentRunTarget struct {
 	Kind     agenticQueryCurrentTargetKind
 	ID       uint64
@@ -663,146 +655,10 @@ type agentRunTarget struct {
 	Title    string
 }
 
-type agentRunTargetLookup func(projectID uint64, publicID string) (agentRunTarget, error)
-
 const (
 	agentRunLoopMaxSteps    = 3
 	agentRunLoopMaxDuration = 2 * time.Minute
 )
-
-func runLoreAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return runAgentForTarget(ctx, repo, providerFactory, readOnlyTools, work, userID, projectPublicID, lorePublicID, agentID, input, func(projectID uint64, publicID string) (agentRunTarget, error) {
-		lore, err := repo.Lore(projectID, publicID)
-		if err != nil {
-			return agentRunTarget{}, err
-		}
-		return agentRunTarget{Kind: agenticQueryCurrentTargetLore, ID: lore.ID, PublicID: lore.PublicID, Title: lore.Title}, nil
-	})
-}
-
-func runAgent(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return runAgentWithTools(ctx, repo, providerFactory, nil, work, userID, projectPublicID, storyPublicID, agentID, input)
-}
-
-func runAgentWithTools(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return runAgentForTarget(ctx, repo, providerFactory, readOnlyTools, work, userID, projectPublicID, storyPublicID, agentID, input, func(projectID uint64, publicID string) (agentRunTarget, error) {
-		story, err := repo.Story(projectID, publicID)
-		if err != nil {
-			return agentRunTarget{}, err
-		}
-		return agentRunTarget{Kind: agenticQueryCurrentTargetStory, ID: story.ID, PublicID: story.PublicID, Title: story.Title}, nil
-	})
-}
-
-// runAgentForTarget 送出當下只做「這次呼叫合不合法、要用哪把 key/model/target」
-// 這些必須同步驗證的事，落地使用者這則指令後就馬上回應 in_progress，真正呼叫
-// provider 的部分交給 completeAgentRun 在背景 goroutine 跑——理由跟
-// enqueueStoryAgenticQuery 完全一樣：不讓使用者的請求被 provider 呼叫的等待
-// 時間、或 HTTP client 的固定逾時卡住。
-func runAgentForTarget(ctx context.Context, repo agentRunRepository, providerFactory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, targetPublicID string, agentID uint64, input storytellerModel.AgentRunRequest, lookupTarget agentRunTargetLookup) (*storytellerModel.AgentRunResponse, error) {
-	if err := validateAgentRunRequest(input); err != nil {
-		return nil, err
-	}
-	project, err := repo.ProjectByPublicIDForUser(userID, projectPublicID)
-	if err != nil {
-		return nil, err
-	}
-	target, err := lookupTarget(project.ID, targetPublicID)
-	if err != nil {
-		return nil, err
-	}
-	agent, err := repo.Agent(userID, agentID)
-	if err != nil {
-		return nil, err
-	}
-	providerAPIKeyRow, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, userID, agent, input.ProviderAPIKeyID)
-	if err != nil {
-		return nil, err
-	}
-	// provider／modelName 用「這次實際解析出來的」，不是 Agent 記錄的靜態預設——
-	// key 覆寫時 providerAPIKeyRow.Provider 可能跟 agent.Provider 不同。
-	modelName := resolveAgentModelName(agent, input.ModelName)
-	if strings.TrimSpace(modelName) == "" {
-		return nil, errAgentModelNameNotConfigured
-	}
-	provider, err := providerFactory(providerAPIKeyRow.Provider, providerAPIKeyRow.Endpoint)
-	if err != nil {
-		return nil, err
-	}
-	apiKey, err := decryptProviderAPIKey(providerAPIKeyRow)
-	if err != nil {
-		return nil, err
-	}
-	useLoop := agentRunShouldUseLoop(providerAPIKeyRow.Provider, input)
-
-	done, err := work.Track("storyteller.agent_run")
-	if err != nil {
-		return nil, ErrAgenticQueryServerDraining
-	}
-	var chat *storytellerModel.StoryChat
-	var userMessage *storytellerModel.StoryChatMessage
-	if target.Kind == agenticQueryCurrentTargetLore {
-		chat, userMessage = buildPendingLoreAgentRunChat(userID, target.ID, *agent, input)
-	} else {
-		chat, userMessage = buildPendingAgentRunChat(userID, target.ID, *agent, input)
-	}
-	if err := repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
-		done()
-		return nil, err
-	}
-	go func() {
-		defer done()
-		_, err := completeAgentRun(work.Context(), repo, provider, providerAPIKeyRow.Provider, apiKey, modelName, providerAPIKeyRow.ID, projectPublicID, readOnlyTools, useLoop, userID, *agent, input, target, chat.ID, userMessage.ID)
-		logAgenticQueryBackgroundError("storyteller agent run background run failed", chat.ID, err)
-	}()
-	return &storytellerModel.AgentRunResponse{
-		AgentID:       agent.ID,
-		UserMessageID: userMessage.ID,
-		ChatID:        chat.ID,
-		ChatStatus:    storytellerModel.StoryChatStatusInProgress,
-		Provider:      providerAPIKeyRow.Provider,
-		ModelName:     modelName,
-		Mode:          input.Mode,
-	}, nil
-}
-
-// completeAgentRun 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分，
-// 對稱於 completeAgenticQuery。呼叫失敗時把 chat 退回 pending 讓使用者知道
-// 「沒拿到回覆」，不會讓 chat 卡在 in_progress 永遠顯示還在處理中。
-func completeAgentRun(ctx context.Context, repo agentRunRepository, provider AIProvider, agentProvider storytellerModel.AgentProvider, apiKey, modelName string, providerAPIKeyID uint64, projectPublicID string, readOnlyTools []ToolSpec, useLoop bool, userID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, target agentRunTarget, chatID, userMessageID uint64) (*storytellerModel.AgentRunResponse, error) {
-	systemPrompt, userPrompt := buildAgentRunPrompts(agent, input, projectPublicID, target, useLoop)
-	result, err := executeAgentRun(ctx, provider, apiKey, modelName, systemPrompt, userPrompt, projectPublicID, readOnlyTools, useLoop, userID)
-	if err != nil {
-		_ = repo.ReleaseChatToPending(chatID)
-		return nil, err
-	}
-	output := &storytellerModel.AgentRunResponse{
-		AgentID:       agent.ID,
-		UserMessageID: userMessageID,
-		ChatID:        chatID,
-		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
-		Provider:      agentProvider,
-		ModelName:     modelName,
-		Mode:          input.Mode,
-		Result:        result.Text,
-		FinishReason:  result.FinishReason,
-	}
-	if result.Usage != nil {
-		output.Usage = &storytellerModel.AgentRunUsage{
-			InputTokens:  result.Usage.InputTokens,
-			OutputTokens: result.Usage.OutputTokens,
-			TotalTokens:  result.Usage.TotalTokens,
-		}
-	}
-	assistantMessage := agentRunAssistantMessage(agent, output, result.RawResponses)
-	usage := buildAgentUsageLog(repo, userID, providerAPIKeyID, output)
-	if err := repo.CompleteChatMessage(chatID, assistantMessage, nil, usage); err != nil {
-		_ = repo.ReleaseChatToPending(chatID)
-		return nil, err
-	}
-	output.AssistantMessageID = assistantMessage.ID
-	return output, nil
-}
 
 type agentRunExecutionResult struct {
 	Text         string
@@ -914,7 +770,7 @@ var (
 // overrideID 時，代表「這次就是要用另一把 key 執行」，可能連 provider 都不同
 // （例如這個 Agent 原本設定成 Claude，這次想試試看用 OpenAI 的 key 跑同一份
 // prompt），這種情況故意不擋，呼叫端要自己決定要用哪把 key 的 Provider／
-// ModelName（見 runAgent／runStoryAgenticQuery 改用 key 本身的 Provider，不是
+// ModelName（見 resolveAgentRunPlan 改用 key 本身的 Provider，不是
 // Agent 記錄的 Provider）。
 func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerModel.ProviderAPIKey, error), userID uint64, agent *storytellerModel.Agent, overrideID *uint64) (*storytellerModel.ProviderAPIKey, error) {
 	keyID := agent.ProviderAPIKeyID
@@ -3645,24 +3501,6 @@ func agentRunPromptInstruction(instruction string) string {
 // 被 HTTP client 那組固定逾時卡住使用者的請求（見「已知 Bug 記錄」：60 秒逾時
 // 曾經讓合法但較慢的生成被砍掉）。真正呼叫 provider 在背景 goroutine 裡跑完才
 // 補進 assistant 訊息，見 completeAgentRun。
-func buildPendingAgentRunChat(userID, storyID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
-	chat := &storytellerModel.StoryChat{
-		StoryID: &storyID,
-		AgentID: agent.ID,
-		UserID:  userID,
-	}
-	return chat, agentRunUserMessage(agent, input)
-}
-
-func buildPendingLoreAgentRunChat(userID, loreID uint64, agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) (*storytellerModel.StoryChat, *storytellerModel.StoryChatMessage) {
-	chat := &storytellerModel.StoryChat{
-		LoreID:  &loreID,
-		AgentID: agent.ID,
-		UserID:  userID,
-	}
-	return chat, agentRunUserMessage(agent, input)
-}
-
 func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) *storytellerModel.StoryChatMessage {
 	agentID := agent.ID
 	return &storytellerModel.StoryChatMessage{

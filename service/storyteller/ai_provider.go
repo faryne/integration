@@ -116,7 +116,7 @@ const (
 	// 使用者的連線真的在等」這種同步情境用（目前只剩測試金鑰是否可用這一處）。
 	aiProviderDefaultTimeout = 60 * time.Second
 	// aiProviderAgenticTimeout 給所有走背景執行的呼叫用——AAS 多輪 tool-calling
-	// 迴圈，以及 skill（改寫/擴寫/翻譯）現在也是背景執行（見 runAgentForTarget／
+	// 迴圈，以及 skill（改寫/擴寫/翻譯）現在也是背景執行（見 submitAgentSkill／
 	// completeAgentRun）。背景執行本來就不會卡住使用者的請求，60 秒是為「同步、
 	// 使用者在等」設計的值，用在這裡只會讓合法但比較慢的生成被錯殺；兩條路徑
 	// 現在都共用同一個比較寬鬆的逾時。

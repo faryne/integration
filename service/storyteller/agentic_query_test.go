@@ -371,8 +371,9 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 		return provider, nil
 	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題", AgenticQueryOptions{})
 
-	require.ErrorIs(t, err, ErrAgentLoopMaxStepsExceeded)
+	// 全部動作都是非同步：撞到步數上限的錯誤只會在背景 log，不會回給呼叫端；
 	// 就算失控被中止，也要把已經燒掉的 usage 記下來，不能整批丟掉。
+	require.NoError(t, err)
 	require.NotNil(t, output)
 	require.NotNil(t, repo.usage)
 	require.Greater(t, repo.usage.TotalTokens, 0)
