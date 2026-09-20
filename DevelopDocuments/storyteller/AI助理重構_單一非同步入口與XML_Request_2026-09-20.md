@@ -1,6 +1,6 @@
 # AI 助理重構：單一非同步入口與 XML Request
 
-- 狀態：**已實作於 `refactor/storyteller-agent-prompts`（8 個重構 commit，基底 `main` @ `82f4ad4`）**，Go 測試、`tsc`、vitest 皆通過（eslint 有 9 個既有錯誤，與本次無關）；**尚未合併、尚未在 staging／prod 實際跑過，DB migration 也尚未套用到任何環境**
+- 狀態：**已實作於 `refactor/storyteller-agent-prompts`（9 個重構 commit，基底 `main` @ `82f4ad4`）**，Go 測試、`tsc`、vitest 皆通過（eslint 有 9 個既有錯誤，與本次無關）；**尚未合併、尚未在 staging／prod 實際跑過，DB migration 也尚未套用到任何環境**
 - 前置討論：本文彙整重構過程中的判斷與取捨，未另存逐字記錄
 
 ## 背景與目的
@@ -49,10 +49,11 @@ submitAgentRun（唯一的骨架）
 
 | 舊 | 新 |
 |---|---|
-| `POST .../stories/:story/agents/:agent/run`<br>`POST .../lores/:lore/agents/:agent/run` | `POST .../stories/:story/agents/:agent/submit`<br>`POST .../lores/:lore/agents/:agent/submit` |
-| `POST .../agents/:agent/agentic-query`（story／lore） | 同上（併入 `submit`，由 `skill` 欄位決定） |
-| `POST .../agents/:agent/agentic-query/:chat/resend` | `POST .../agents/:agent/chats/:chat/resend` |
-| `GET .../agentic-query/:chat` | `GET .../agent-chats/:chat` |
+| `POST .../stories/:story/agents/:agent/run`（skill）<br>`POST .../stories/:story/agents/:agent/agentic-query`（一般對話） | `POST .../stories/:story/agent-chats`（送出，一般對話與 skill 共用） |
+| `POST .../agents/:agent/agentic-query/:chat/resend` | `POST .../stories/:story/agent-chats/:chat/resend` |
+| `GET .../stories/:story/agentic-query/:chat` | `GET .../stories/:story/agent-chats/:chat` |
+
+以上 lore 版本把 `stories/:story` 換成 `lores/:lore`。**路由裡不再有 `:agent`**：沒有「目前選中的 Agent」這個概念（見下方「沒有『目前選中的 Agent』」）。`/agents/:agent` 只剩管理使用者自建 skill 的 CRUD。
 
 - controller 三個 handler（`SubmitAgent`／`ResubmitAgent`／`AgentChat`）取代原本 8 個；story／lore 兩組路由共用，`agentTargetFromParams` 依 `ctx.Params("lore")` 是否存在判斷。
 - **請求／回應各只剩一種**：`AgentSubmitRequest`（`skill` 空＝一般對話，否則是 `AgentRunMode`）、`AgenticQueryResponse`（皆為「已落地、處理中」確認，帶 `chat_id`）。
@@ -76,7 +77,7 @@ submitAgentRun（唯一的骨架）
 ```xml
 <Request>
 <Context project_public_id="…" target_kind="story" target_public_id="…" target_title="…"/>
-<Persona name="…">使用者建立的人設（Agent.DefaultPrompt）</Persona>      <!-- 有才出現 -->
+<Persona name="…">使用者自建 skill 的人設（Agent.DefaultPrompt）</Persona>   <!-- 請求明確指定（/<名稱>）才有 -->
 <Skill name="rewrite_selection">內建 skill 指令 + 輸出要求</Skill>        <!-- skill 才有 -->
 <Histories>                                                                 <!-- 一般對話才有 -->
 <History role="user">…</History>
@@ -96,7 +97,7 @@ submitAgentRun（唯一的骨架）
 2. **歷史用單純的 `<History role>`，取代舊的 fence hack**：原本 `STORYTELLER_HISTORY_ASSISTANT_MESSAGE_%d` 圍欄加「do not imitate this persona」的補丁不再需要；也不再受 provider 的 user／assistant 嚴格交替限制。曾中途中止（assistant 內容為空）的 chat 仍整組跳過。**歷史不再標註當時用哪個人設**（`agent_id` 已移除，沒有來源），system prompt 改為「不要模仿先前 assistant 回答的語氣，風格只跟隨當前 `<Persona>`」。
 3. **跳脫策略：只中和我們自己的標籤名**（`neutralizeAgentTags`，`<` 換成 `&lt;`），其餘內文保持原樣。不用 `encoding/xml`、不做整套 XML 跳脫，避免傷到故事文字（故事本文可能含 `<`、`&`）。屬性值才用 `html.EscapeString`。
 4. **模型可能模仿輸出 XML**：system prompt 明寫「回覆只輸出內容本身，不要輸出這些標籤」。
-5. **`<Persona>` 一律取自 URL `:agent` 那個 Agent 的 `DefaultPrompt`，該 Agent 沒設定人設就不輸出**。原本的 `ignore_agent_persona` 旗標已整個移除（見下方「`:agent` 的角色」）。
+5. **`<Persona>` 只有請求明確帶 `persona_agent_id` 才會出現**（使用者打 `/<名稱>` 時）；沒帶就沒有人設。原本的 `ignore_agent_persona` 旗標已整個移除——是否有人設由請求結構本身決定，不需要旗標。
 
 ### 內建 skill 資料化（`agentSkills`）
 
@@ -120,14 +121,11 @@ user message 的 `metadata`（JSON 欄位，**不需 schema migration**）統一
 
 ### 重送（resend）
 
-一般對話與 skill 走同一條路（`resubmitAgenticQuery`），由 user message `metadata.mode` 判斷：
+一般對話與 skill 走同一條路（`resubmitAgenticQuery`）：**重放當初存的 `metadata.request_xml`**，由 `metadata.mode` 判斷工具政策（skill → 唯讀 loop；一般對話 → 可提案寫入）。
 
-| 種類 | 做法 | 理由 |
-|---|---|---|
-| 一般對話 | 從原始欄位（`content`、reply 參照）**重新渲染**，並用 `UpdateChatMessageMetadata` **覆寫** `request_xml` | 歷史可能已經變了；快照要永遠是「最後一次真正送出的內容」 |
-| skill | **重放**當初存的 `request_xml` | skill 不帶歷史，沒有 staleness 問題；且編輯器全文沒有另外存，只有這份快照有 |
-
-舊版 skill 訊息（沒有 `request_xml`）無法重放，回 `errAgentSkillResendUnavailable`，請使用者重新執行。`metadataWithRequestXML` 只換 `request_xml` 這一個 key，其餘欄位（含舊資料的未知欄位）原樣保留。
+- **不重新渲染**：沒有「目前選中的 Agent」可以拿來重建人設，而且使用者當初送出的就是這份內容，重放才能前後一致。也因此不再需要 `UpdateChatMessageMetadata`、`metadataWithRequestXML`、從 metadata 反查回覆內容等一整串補丁（已刪除）。
+- 請求體只讀 `provider_apikey_id`／`model_name`（重送時可以換 key／model），其餘忽略。
+- 沒有 `request_xml` 的舊訊息無法重送，回 `errAgentResendUnavailable`，請使用者重新送出。
 
 ### skill 請求改傳結構化欄位
 
@@ -154,21 +152,26 @@ user message 的 `metadata`（JSON 欄位，**不需 schema migration**）統一
 | DB 存什麼 | 原始欄位仍在；**另外**存 `request_xml` 快照 | 一開始我的判斷是「XML 只是送出時渲染，不用存」，你更正為必須存進 metadata 供分析。歷史仍從原始欄位渲染，避免巢狀 |
 | 快照要不要瘦身 | 照實存完整字串 | 你要的是分析用途。若日後嫌肥，可改成 `<History id="…"/>` 只存參照（**尚未做**） |
 | skill 帶不帶歷史 | 不帶 | `repository` 早就刻意排除 skill 訊息（兩種口吻混在一起會互相污染）；單輪改寫不該被之前的對話口吻影響 |
-| `ignore_agent_persona` 要不要留 | **移除** | request 已經結構化，是否帶 `<Persona>` 就由 Agent 本身有沒有 `DefaultPrompt` 決定，不需要另一個旗標；旗標還連帶催生了 `messageAgentID`（依旗標決定 `agent_id` 記不記）、從 metadata 反推旗標等補丁 |
-| `story_chats`／`story_chat_messages` 的 `agent_id` 要不要留 | **移除** | 人設與預設 key／model 由每次呼叫的 `:agent` 決定，實際送出的內容（含 `<Persona>`）已完整存在 `request_xml`，兩張表不需要再留 Agent 關聯。代價：訊息泡泡不再顯示 Agent 名稱、歷史無法標註人設、刪除 Agent 不再連帶刪對話（見下） |
+| `ignore_agent_persona` 要不要留 | **移除** | request 已經結構化，人設有沒有由請求是否明確帶 `persona_agent_id` 決定，不需要另一個旗標；旗標還連帶催生了 `messageAgentID`、從 metadata 反推旗標等補丁 |
+| `story_chats`／`story_chat_messages` 的 `agent_id` 要不要留 | **移除** | 實際送出的內容（含 `<Persona>`）已完整存在 `request_xml`，兩張表不需要再留 Agent 關聯。代價：訊息泡泡不再顯示 Agent 名稱、歷史無法標註人設、刪除 Agent 不再連帶刪對話（見下） |
+| 「目前選中的 Agent」要不要留 | **不留** | 我先前一直把 `:agent` 當成「選了這個 Agent，這段對話就得用它」，因而先做出「人設一律套用 `:agent`」的錯誤版本（一般打字與 skill 會被悄悄套上人設）。實際上 chip 只是在輸入框插入 `/<名稱>` 的捷徑，人設、key、model 都是每次請求明確帶入 |
 | 對外 endpoint 併不併 | **併** | 我第一版規劃寫「後端先統一、對外 endpoint 暫時不動」，你指出這與「只留 Submit 作為統一入口」的目標矛盾。這是我把範圍切小的取捨，不是技術限制，後來補做 |
 | 舊路由要不要保留相容 | 不保留 | 雛形階段、前後端同 repo，直接換掉 |
 | 測試怎麼處理 | 測試沿用舊呼叫形狀的 helper，底下走同一條非同步 pipeline | 同步版刪除後，測試不能再呼叫它；helper 送出後等 tracker 跑完，再從 repo 落地結果還原輸出。刻意不為此新增測試框架 |
 
-## `:agent` 的角色與 `agent_id` 移除
+## 沒有「目前選中的 Agent」，以及 `agent_id` 移除
 
-URL 上的 `:agent` 是使用者建立的 **Agent 記錄 id**（`storyteller_agents.id`），現在它只決定三件事：
+輸入框上的 chip 只是**插入 `/<名稱>` 指令的捷徑**。請求明確帶了什麼，後端就用什麼：
 
-1. **人設**：`DefaultPrompt` → `<Persona name>`（沒設定就不輸出）
-2. **預設 provider／key／model**：可被請求體的 `provider_apikey_id`／`model_name` 覆寫（`resolveAgentProviderAPIKey`）
-3. **前端 `/Agent名稱` 指令要用哪個 Agent**
+| 請求欄位 | 意義 | 沒帶時 |
+|---|---|---|
+| `skill` | 內建 skill（`/rewrite` 等）→ `<Skill>` | 一般對話 |
+| `persona_agent_id` | 使用者自建的 skill（`storyteller_agents` 的一筆，人設在 `DefaultPrompt`）→ `<Persona>` | 沒有人設 |
+| `provider_apikey_id`、`model_name` | 這次用哪把 key、哪個 model | **必填**，缺了回 `provider_apikey_id is required`／`model_name is required` |
 
-它**不再被記錄在對話資料裡**：
+兩個 skill 概念各自獨立，對應 `<Skill>` 與 `<Persona>` 兩個標籤。`Agent` 記錄上舊有的 `provider`／`model_name`／`provider_apikey_id` 預設值在執行期不再被讀取（前端本來就一律明確帶 key／model；新建的 skill 也沒有綁定）。
+
+`agent_id` 從對話資料中移除：
 
 | 項目 | 變更 |
 |---|---|
@@ -190,7 +193,8 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 3. **背景錯誤不再回傳給呼叫端**，只寫 log。舊測試裡「撞到 max steps 拿到 error」改成斷言落地結果（usage 仍會記）。
 4. **歷史不再是原生多輪 messages**，整組放進單一 `<Request>`。
 5. **system prompt 用語統一**，`Authorized project_public_id` 等動態資訊移進 `<Context>`。
-6. **人設一律套用**：過去一般打字與 skill 固定不套人設（前端帶 `ignore_agent_persona: true`），現在會套用 `:agent` 的 `DefaultPrompt`。使用者若不想要人設，需選用沒設定 `DefaultPrompt` 的 Agent。
+6. **人設語意不變但改用明確欄位表達**：一般打字與 skill 沒有人設，`/<名稱>` 才有，跟過去行為一致；只是不再靠 `ignore_agent_persona` 旗標，而是請求有沒有 `persona_agent_id`。
+7. **key／model 必填**：不再退回 Agent 記錄上的預設值。
 7. **API 路徑與請求／回應形狀改變**（見上表），前端已同步。
 
 ## 檔案地圖
@@ -203,7 +207,7 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 | `controller/storyteller/storyteller.go` | 三個 handler |
 | `route/storyteller.go` | 路由（story／lore 各三條） |
 | `migration/20260920100000-…sql` | 移除兩張對話表的 `agent_id` |
-| `repository/storyteller/storyteller.go` | `UpdateChatMessageMetadata`、`stripRequestXML` |
+| `repository/storyteller/storyteller.go` | `stripRequestXML` |
 | `static_site/src/apis/storyteller/agent.ts` | `useSubmitStorytellerAgent`／`useResendStorytellerAgent` |
 | `static_site/src/pages/storyteller/StorytellerAgenticPanel.tsx` | Panel 改用統一 hook 與結構化欄位 |
 
@@ -219,21 +223,23 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 | `c0f152c` | skill 請求改傳結構化 `references`／`reply_content` |
 | `bf23f29` | 送出／重送／輪詢統一為單一入口（路由、handler、前端 hook） |
 | `6dcf26c` | 清除統一入口後遺留的死碼（`complete*` 只回傳 error、`AgentRunResponse`→`AgentRunResult`、前端無用型別） |
-| `48dddad` | 移除 `ignore_agent_persona`，人設一律取自 `:agent` |
+| `48dddad` | 移除 `ignore_agent_persona`（此 commit 讓人設一律取自 `:agent`，是錯誤的中間版本，已由 `fb40ba2` 修正） |
 | `e13622e` | 移除兩張對話表的 `agent_id`（含 migration、列表查詢、前端 badge） |
+| `fb40ba2` | 移除 `:agent` 路由參數：人設／key／model 由請求明確帶入，重送一律重放 `request_xml`，前端刪除 `activeAgentId`／`selectedAgent` |
 
 ## 已知限制與待辦
 
 - **儲存膨脹**：每則 user message 都存最近 5 輪歷史加回覆全文，儲存量隨輪次線性成長。若嫌肥，改存參照（見上）。
 - **尚未實際驗證**：只有單元測試與型別檢查；沒有在 staging／prod 跑過整條路徑，也沒有實測 prompt cache 命中率、以及換成 XML 後各 provider（Claude／Grok／Gemini／OpenRouter／self-hosted）的輸出品質是否有差異。
 - **前端 `full_content` 目前送空字串**：Panel 原本就沒送編輯器全文（過去 `full_content` 只裝參照與回覆文字），`/continue` 的「目前章節」上下文是否應改送編輯器全文，是既有行為，這次沒動。
-- **舊 skill 訊息不能重送**（沒有 `request_xml`）。
-- **人設不再有「明確不套用」的選項**：想要無人設的一般打字／skill，得選用沒設定 `DefaultPrompt` 的 Agent。若日後需要，可在請求體加一個明確的 persona 欄位，而不是復活旗標。
+- **沒有 `request_xml` 的舊訊息不能重送**（一般對話與 skill 皆然；重構前建立、目前卡在 pending 的一般對話 chat 也會遇到，需使用者重新送出）。
 - **歷史無法標註人設**：`<Histories>` 只有 role，模型分不出先前回答是哪個人設寫的，只能靠 system prompt 要求它不模仿。
 - **DB migration 未套用**，且不可逆（見上）。
 - **`agentRunShouldUseLoop` 對 Gemini 一律不開 loop**，沿用舊行為。
 - **lore 版本沒有獨立測試**：測試 helper 都以 story 為目標，lore 走同一條程式碼路徑（只差 `Kind` 分派），但沒有專屬案例。
 - **`storyteller.go` 仍是 3503 行大檔**，依「單檔超過 500 行就要審視」慣例值得日後拆分。
+
+- **`Agent` 記錄上的 `provider`／`model_name`／`provider_apikey_id` 成了執行期無用欄位**，但 Agent 編輯頁與 DB 仍保留它們，尚未清理。
 
 ## 已過時的既有文件
 
