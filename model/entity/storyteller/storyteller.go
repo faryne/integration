@@ -737,11 +737,24 @@ type AgentRequest struct {
 	DefaultPrompt    string        `json:"default_prompt"`
 }
 
+// AgentRunReference 是使用者在需求裡用 @ 引用、由前端解析好的一筆故事／設定集。
+type AgentRunReference struct {
+	Kind    string `json:"kind"` // story 或 lore
+	Title   string `json:"title"`
+	Token   string `json:"token"` // 例如 @thisStory、@story:[標題]
+	Content string `json:"content"`
+}
+
 type AgentRunRequest struct {
-	Mode            AgentRunMode `json:"mode"`
-	Instruction     string       `json:"instruction"`
-	FullContent     string       `json:"full_content"`
-	SelectedContent string       `json:"selected_content"`
+	Mode        AgentRunMode `json:"mode"`
+	Instruction string       `json:"instruction"`
+	// FullContent 是編輯器目前未儲存的全文（沒有選取文字時才會送進 request）。
+	FullContent     string `json:"full_content"`
+	SelectedContent string `json:"selected_content"`
+	// References／ReplyContent 是結構化欄位，取代過去前端把 @ 參照與回覆對象用文字 fence
+	// 塞進 full_content 的做法（有選取文字時那些內容還會整段被丟掉）。
+	References   []AgentRunReference `json:"references,omitempty"`
+	ReplyContent string              `json:"reply_content,omitempty"`
 	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
 	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`

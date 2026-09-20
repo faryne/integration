@@ -267,7 +267,7 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 	}, tools, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事] 改寫語氣",
-		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n這段引用全文不應該送進 provider\nSTORY_REFERENCE_CONTENT",
+		References:  []storytellerModel.AgentRunReference{{Kind: "story", Title: "其他故事", Token: "@story:[其他故事]", Content: "這段引用全文不應該送進 provider"}},
 	})
 
 	require.NoError(t, err)
@@ -308,7 +308,7 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事]",
-		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n引用全文\nSTORY_REFERENCE_CONTENT",
+		References:  []storytellerModel.AgentRunReference{{Kind: "story", Title: "其他故事", Token: "@story:[其他故事]", Content: "引用全文"}},
 	})
 
 	require.NoError(t, err)
@@ -319,7 +319,8 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 	require.Equal(t, "gemini result", repo.messages[1].Content)
 	require.Empty(t, provider.request.Tools)
 	require.Empty(t, provider.request.Messages)
-	require.Contains(t, provider.request.UserPrompt, "引用全文")
+	// 沒帶工具（Gemini 單輪 Generate）時，參照內容直接內嵌在 <References>。
+	require.Contains(t, provider.request.UserPrompt, "<Reference kind=\"story\" title=\"其他故事\" token=\"@story:[其他故事]\">\n引用全文\n</Reference>")
 }
 
 // TestRunAgentProviderAPIKeyOverrideCanCrossProvider 驗證「Agent 只是人設/prompt，

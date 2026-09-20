@@ -28,11 +28,18 @@ type agentRequest struct {
 	Skill           string // 內建 skill 名稱（AgentRunMode）；一般對話留空
 	SkillPrompt     string
 	Histories       []agentHistory
-	References      string // 額外 @ 參照的摘要（工具可查）
-	Reply           string // 使用者按「回覆」時，被回覆那則訊息的完整內容
-	Editor          string // 編輯器未儲存的全文
-	Selection       string // 編輯器選取的文字
-	Task            string // 使用者這次輸入的需求
+	References      []agentReference
+	// ReferencesByTool 為 true 時 <References> 只列標題與 token，讓模型按需用唯讀工具查；
+	// false（沒帶工具）時把內容直接內嵌。
+	ReferencesByTool bool
+	Reply            string // 使用者按「回覆」時，被回覆那則訊息的完整內容
+	Editor           string // 編輯器未儲存的全文
+	Selection        string // 編輯器選取的文字
+	Task             string // 使用者這次輸入的需求
+}
+
+type agentReference struct {
+	Kind, Title, Token, Content string
 }
 
 type agentHistory struct {
@@ -44,7 +51,7 @@ type agentHistory struct {
 // agentRequestTagPattern 抓出我們自己的標籤名。使用者內文（故事、回覆、歷史）可能剛好
 // 含 </Task> 之類的字串而破壞結構，所以只中和這幾個標籤名（< 換成 &lt;），其餘內文
 // 保持原樣，不做整套 XML 跳脫，避免傷到故事文字。
-var agentRequestTagPattern = regexp.MustCompile(`(?i)</?(Request|Context|Persona|Skill|Histories|History|References|Reply|Editor|Selection|Task)\b`)
+var agentRequestTagPattern = regexp.MustCompile(`(?i)</?(Request|Context|Persona|Skill|Histories|History|References|Reference|Reply|Editor|Selection|Task)\b`)
 
 func neutralizeAgentTags(s string) string {
 	return agentRequestTagPattern.ReplaceAllStringFunc(s, func(m string) string { return "&lt;" + m[1:] })
@@ -86,7 +93,17 @@ func (r agentRequest) XML() string {
 		}
 		b.WriteString("</Histories>\n")
 	}
-	block("References", "", r.References)
+	if len(r.References) > 0 {
+		b.WriteString("<References>\n")
+		for _, ref := range r.References {
+			if r.ReferencesByTool {
+				b.WriteString("- Reference " + neutralizeAgentTags(ref.Kind+": "+ref.Title+" / Token: "+ref.Token) + "\n")
+			} else {
+				b.WriteString("<Reference" + xmlAttr("kind", ref.Kind) + xmlAttr("title", ref.Title) + xmlAttr("token", ref.Token) + ">\n" + neutralizeAgentTags(ref.Content) + "\n</Reference>\n")
+			}
+		}
+		b.WriteString("</References>\n")
+	}
 	block("Reply", "", r.Reply)
 	block("Editor", "", r.Editor)
 	block("Selection", "", r.Selection)
@@ -123,12 +140,15 @@ func buildSkillRequest(plan *agentRunPlan, input storytellerModel.AgentRunReques
 		Task: strings.TrimSpace(input.Instruction),
 	}
 	req.applyPersona(plan.Agent, input.IgnoreAgentPersona)
-	fullContent, references := agentRunPromptFullContent(input.FullContent, useTools)
-	req.References = references
+	for _, ref := range input.References {
+		req.References = append(req.References, agentReference{Kind: ref.Kind, Title: ref.Title, Token: ref.Token, Content: ref.Content})
+	}
+	req.ReferencesByTool = useTools
+	req.Reply = strings.TrimSpace(input.ReplyContent)
 	if spec.NeedSelection && strings.TrimSpace(input.SelectedContent) != "" {
 		req.Selection = input.SelectedContent
 	} else {
-		req.Editor = fullContent
+		req.Editor = strings.TrimSpace(input.FullContent)
 	}
 	return req
 }

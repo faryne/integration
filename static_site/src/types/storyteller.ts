@@ -413,11 +413,23 @@ export type StorytellerAgentRunMode =
   | "continue_chapter"
   | "custom_selection";
 
+// 使用者在需求裡用 @ 引用、由前端解析好的一筆故事／設定集。
+export interface StorytellerAgentRunReference {
+  kind: "story" | "lore";
+  title: string;
+  token: string;
+  content: string;
+}
+
 export interface StorytellerAgentRunRequest {
   mode: StorytellerAgentRunMode;
   instruction: string;
+  // 編輯器目前未儲存的全文；@ 參照與回覆對象不再塞進這裡，改用下面的結構化欄位。
   full_content: string;
   selected_content: string;
+  references?: StorytellerAgentRunReference[];
+  // 使用者按「回覆」時，被回覆那則訊息的完整內容。
+  reply_content?: string;
   provider_apikey_id?: number;
   model_name?: string;
   // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand

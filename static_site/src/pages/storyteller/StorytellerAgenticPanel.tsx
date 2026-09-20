@@ -80,12 +80,11 @@ import {
   buildStorytellerAgentMessageLinks,
   buildStorytellerAgentProposalRejectionQuote,
   buildStorytellerAgentProposalReferenceContent,
-  buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
-  buildStorytellerAgentReplyReferenceContent,
   composeStorytellerAgentInstructionWithProposalRejection,
   composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
+  toStorytellerAgentRunReferences,
   summarizeStorytellerAgentProposalArguments,
   type StorytellerAgentReplyTarget,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
@@ -1632,17 +1631,19 @@ export function StorytellerAgenticPanel({
         content: replyTarget.content,
       }
     : null;
-  const referenceContent = [
-    buildStorytellerAgentReferenceContent(promptReferences),
-    buildStorytellerAgentReplyReferenceContent(replyReferenceTarget),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  // @ 參照與回覆對象改成結構化欄位送出（不再組成 fence 文字塞進 full_content），
+  // 字數上限仍然合計計算，跟後端 validateAgentRunPayloadSize 對齊。
+  const runReferences = toStorytellerAgentRunReferences(promptReferences);
+  const replyContent = replyReferenceTarget?.content.trim() ?? "";
   const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const promptLength = Array.from(prompt).length;
   const instructionPayloadLength =
     promptLength + (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
-  const referenceContentLength = Array.from(referenceContent).length;
+  const referenceContentLength =
+    runReferences.reduce(
+      (sum, reference) => sum + Array.from(reference.content).length,
+      0,
+    ) + Array.from(replyContent).length;
   const totalPayloadLength = instructionPayloadLength + referenceContentLength;
   const payloadError =
     instructionPayloadLength > skillInstructionMaxCharacters
@@ -1730,7 +1731,9 @@ export function StorytellerAgenticPanel({
         input: {
           mode,
           instruction,
-          full_content: referenceContent,
+          full_content: "",
+          references: runReferences,
+          reply_content: replyContent || undefined,
           selected_content: selectedContent,
           ignore_agent_persona: true,
           provider_apikey_id: providerApiKeyId

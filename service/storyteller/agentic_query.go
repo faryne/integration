@@ -435,7 +435,7 @@ func agenticQueryProposalReferenceContent(proposal *storytellerModel.AgentPropos
 	if err != nil {
 		body = []byte(`{"tool_name":"","arguments":{}}`)
 	}
-	return "Reference rejected proposal: " + toolName + "\n<<<REJECTED_PROPOSAL_REFERENCE_CONTENT\n" + string(body) + "\nREJECTED_PROPOSAL_REFERENCE_CONTENT"
+	return "Rejected proposal: " + toolName + "\n" + string(body)
 }
 
 func agenticQueryIgnoreAgentPersonaFromMetadata(metadata string, agentID *uint64) bool {

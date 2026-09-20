@@ -40,7 +40,8 @@ not a confirmation that the change happened.`
 - <Histories>: earlier turns of this conversation. Use them for facts, story continuity, and user intent, but
   do not imitate the voice of a previous persona (each assistant entry names the persona it was written
   with); style and tone follow only the current <Persona>.
-- <References>: extra @ references you can fetch with tools when the task needs them.
+- <References>: the @ references the user attached — either listed for you to fetch with tools when the task
+  needs them, or included inline.
 - <Reply>: the full content of the message the user is replying to.
 - <Editor> / <Selection>: the user's current unsaved editor content / selected text. Use them as given; do
   not refetch them with tools.

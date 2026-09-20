@@ -751,7 +751,7 @@ func agentRunShouldUseLoop(provider storytellerModel.AgentProvider, input storyt
 	if provider == storytellerModel.AgentProviderGemini {
 		return false
 	}
-	return storytellerReferenceRegexp.MatchString(input.Instruction) || storytellerReferenceRegexp.MatchString(input.FullContent)
+	return len(input.References) > 0 || storytellerReferenceRegexp.MatchString(input.Instruction)
 }
 
 var (
@@ -3359,7 +3359,11 @@ const (
 
 func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 	instructionLength := len([]rune(input.Instruction))
-	fullContentLength := len([]rune(input.FullContent))
+	// @ 參照與回覆對象過去都塞在 full_content 裡，上限維持算在一起。
+	fullContentLength := len([]rune(input.FullContent)) + len([]rune(input.ReplyContent))
+	for _, ref := range input.References {
+		fullContentLength += len([]rune(ref.Content))
+	}
 	selectedContentLength := len([]rune(input.SelectedContent))
 	if instructionLength > agentRunInstructionMaxRunes {
 		return fmt.Errorf("instruction must be %d characters or less", agentRunInstructionMaxRunes)
@@ -3374,49 +3378,6 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 		return fmt.Errorf("agent run payload must be %d characters or less", agentRunTotalPayloadMaxRunes)
 	}
 	return nil
-}
-
-func agentRunPromptFullContent(content string, useTools bool) (string, string) {
-	content = strings.TrimSpace(content)
-	if content == "" || !useTools {
-		return content, ""
-	}
-	lines := strings.Split(content, "\n")
-	kept := make([]string, 0, len(lines))
-	references := make([]string, 0)
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if !(strings.HasPrefix(line, "Reference story:") || strings.HasPrefix(line, "Reference lore:")) {
-			kept = append(kept, lines[i])
-			continue
-		}
-		referenceLine := line
-		tokenLine := ""
-		if i+1 < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "Token: @") {
-			tokenLine = strings.TrimSpace(lines[i+1])
-			i++
-		}
-		if i+1 < len(lines) && agentRunReferenceFenceStart(strings.TrimSpace(lines[i+1])) {
-			i += 2
-			for i < len(lines) && !agentRunReferenceFenceEnd(strings.TrimSpace(lines[i])) {
-				i++
-			}
-		}
-		if tokenLine == "" {
-			kept = append(kept, referenceLine)
-			continue
-		}
-		references = append(references, "- "+referenceLine+" / "+tokenLine)
-	}
-	return strings.TrimSpace(strings.Join(kept, "\n")), strings.Join(references, "\n")
-}
-
-func agentRunReferenceFenceStart(line string) bool {
-	return line == "<<<STORY_REFERENCE_CONTENT" || line == "<<<LORE_REFERENCE_CONTENT"
-}
-
-func agentRunReferenceFenceEnd(line string) bool {
-	return line == "STORY_REFERENCE_CONTENT" || line == "LORE_REFERENCE_CONTENT"
 }
 
 // skill 呼叫（/rewrite 等）現在也跟 agentic query 一樣走背景執行：送出當下先把
