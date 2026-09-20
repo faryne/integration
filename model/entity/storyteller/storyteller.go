@@ -753,6 +753,8 @@ type AgentRunRequest struct {
 	// 塞進 full_content 的做法（有選取文字時那些內容還會整段被丟掉）。
 	References   []AgentRunReference `json:"references,omitempty"`
 	ReplyContent string              `json:"reply_content,omitempty"`
+	// PersonaAgentID 是使用者用 /<名稱> 明確指定的自建 skill（storyteller_agents.id）；空代表不套人設。
+	PersonaAgentID *uint64 `json:"persona_agent_id,omitempty"`
 	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
 	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
@@ -1080,13 +1082,21 @@ type AgenticReplyReferenceRequest struct {
 	Summary          string `json:"summary,omitempty"`
 }
 
-// AgentSubmitRequest 是 AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，
-// 差別只在 Skill 有沒有值。ProviderAPIKeyID／ModelName 都留空時沿用 Agent 的預設值；帶其中
-// 一個或兩個時，這次呼叫改用指定的 key／model（可以跟 Agent 記錄的 provider 不同）。
-// 重送（resend）也用同一個請求體，但只讀金鑰／模型，其餘一律讀當初存的那份。
+// AgentSubmitRequest 是 AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用。
+//
+// 沒有「目前選中的 Agent」這個概念——輸入框上的 chip 只是在輸入框插入 /<名稱> 指令的捷徑，
+// 請求明確帶了什麼，後端就用什麼：
+//   - Skill：內建 skill（/rewrite 等），空＝一般對話；
+//   - PersonaAgentID：使用者自建的 skill（storyteller_agents 的一筆，人設放在 DefaultPrompt），
+//     空＝沒有人設；兩者可各自出現（<Skill>／<Persona>）；
+//   - ProviderAPIKeyID／ModelName：這次用哪把 key、哪個 model，送出時必填（純 session 選擇，
+//     不再有 Agent 記錄上的預設值）。
+//
+// 重送（resend）用同一個請求體，但只讀 ProviderAPIKeyID／ModelName，其餘一律重放當初存的
+// request_xml。
 type AgentSubmitRequest struct {
-	// Skill 為空代表一般對話；否則是 AgentRunMode（rewrite_selection、expand_selection…）。
-	Skill AgentRunMode `json:"skill,omitempty"`
+	Skill          AgentRunMode `json:"skill,omitempty"`
+	PersonaAgentID *uint64      `json:"persona_agent_id,omitempty"`
 	// Task 是使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
 	Task string `json:"task"`
 	// FullContent／SelectedContent／References 只給 skill 用：編輯器未儲存的全文、選取的文字、

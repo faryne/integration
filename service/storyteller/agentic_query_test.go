@@ -578,3 +578,43 @@ type contextCheckingAIProvider struct {
 func (p *contextCheckingAIProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
 	return p.onGenerate(ctx, req)
 }
+
+// 沒有「目前選中的 Agent」：請求沒帶 persona_agent_id 就不能有 <Persona>，就算使用者有建立
+// 帶 DefaultPrompt 的 Agent；明確帶了才套用。
+func TestSubmitAppliesPersonaOnlyWhenRequestNamesIt(t *testing.T) {
+	providerAPIKeyID := uint64(50)
+	newRepo := func() *fakeAgentRunRepository {
+		return &fakeAgentRunRepository{
+			project:        &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+			story:          &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+			agent:          &storytellerModel.Agent{ID: 40, UserID: 20, Name: "色文作家", DefaultPrompt: "Be lewd.", ModelName: "claude-test", ProviderAPIKeyID: &providerAPIKeyID},
+			providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+		}
+	}
+	var sent string
+	factory := func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return &fakeSequentialAIProvider{onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			sent = req.Messages[0].Content
+			return &AIProviderResponse{Result: "ok"}, nil
+		}}, nil
+	}
+
+	_, err := runStoryAgenticQuery(context.Background(), newRepo(), factory, nil, nil, 20, "project-public-id", "story-public-id", 0, "普通問題", AgenticQueryOptions{})
+	require.NoError(t, err)
+	require.NotContains(t, sent, "<Persona")
+
+	_, err = runStoryAgenticQuery(context.Background(), newRepo(), factory, nil, nil, 20, "project-public-id", "story-public-id", 40, "普通問題", AgenticQueryOptions{})
+	require.NoError(t, err)
+	require.Contains(t, sent, "<Persona name=\"色文作家\">\nBe lewd.\n</Persona>")
+}
+
+// key／model 是這次呼叫的明確選擇，沒有 Agent 記錄上的預設值可以退回。
+func TestSubmitRequiresProviderAPIKeyAndModel(t *testing.T) {
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+	}
+	_, err := submitAgenticQuery(testSubmitDeps(repo, background.NewTracker(), nil, nil, nil), 20, "project-public-id", agenticQueryCurrentTargetStory, "story-public-id", "問題", AgenticQueryOptions{})
+	require.ErrorIs(t, err, errProviderAPIKeyRequired)
+	require.Nil(t, repo.chat)
+}

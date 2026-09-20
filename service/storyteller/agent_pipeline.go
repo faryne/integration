@@ -2,7 +2,6 @@ package storyteller
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -32,15 +31,14 @@ func (s *Service) submitDeps() agentSubmitDeps {
 	return agentSubmitDeps{Repo: s.repo, Work: agenticQueryBackgroundWork, ProviderFactory: NewAgenticAIProvider, AgenticTools: agenticQueryTools}
 }
 
-// agentRunPlan 是解析完的「這次呼叫要用什麼」：Provider／Model 用這次實際解析出來的，
-// 不是 Agent 記錄的靜態預設——Agent 只保留人設/prompt，key／model 各自獨立覆寫，
-// 可能連 provider 都跟 Agent 原本設定的不一樣（見 resolveAgentProviderAPIKey）。
+// agentRunPlan 是解析完的「這次呼叫要用什麼」：key／model 是請求明確帶的（沒有 Agent 記錄上的
+// 預設值），Persona 只有請求明確指定自建 skill（/<名稱>）時才有，nil 代表沒有人設。
 type agentRunPlan struct {
 	UserID          uint64
 	ProjectPublicID string
 	Project         *storytellerModel.Project
 	Target          agentRunTarget
-	Agent           *storytellerModel.Agent
+	Persona         *storytellerModel.Agent
 	Key             *storytellerModel.ProviderAPIKey
 	ModelName       string
 	Provider        AIProvider
@@ -59,7 +57,7 @@ type agentSubmitParams struct {
 	ProjectPublicID  string
 	TargetKind       agenticQueryCurrentTargetKind
 	TargetPublicID   string
-	AgentID          uint64
+	PersonaAgentID   *uint64
 	ProviderAPIKeyID *uint64
 	ModelName        string
 	TrackName        string
@@ -106,17 +104,19 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
-	agent, err := repo.Agent(p.UserID, p.AgentID)
+	var persona *storytellerModel.Agent
+	if p.PersonaAgentID != nil {
+		if persona, err = repo.Agent(p.UserID, *p.PersonaAgentID); err != nil {
+			return nil, err
+		}
+	}
+	key, err := resolveProviderAPIKey(repo.ProviderAPIKey, p.UserID, p.ProviderAPIKeyID)
 	if err != nil {
 		return nil, err
 	}
-	key, err := resolveAgentProviderAPIKey(repo.ProviderAPIKey, p.UserID, agent, p.ProviderAPIKeyID)
-	if err != nil {
-		return nil, err
-	}
-	modelName := resolveAgentModelName(agent, p.ModelName)
-	if strings.TrimSpace(modelName) == "" {
-		return nil, errAgentModelNameNotConfigured
+	modelName := strings.TrimSpace(p.ModelName)
+	if modelName == "" {
+		return nil, errModelNameRequired
 	}
 	provider, err := deps.ProviderFactory(key.Provider, key.Endpoint)
 	if err != nil {
@@ -126,7 +126,7 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
-	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Agent: agent, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
+	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Persona: persona, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
 }
 
 func lookupAgentRunTarget(repo agentRunRepository, projectID uint64, kind agenticQueryCurrentTargetKind, publicID string) (agentRunTarget, error) {
@@ -204,29 +204,31 @@ const (
 // SubmitAgent 是 AI 助理唯一的送出入口：一般對話與內建 skill 都走這裡，全部非同步——送出當下只
 // 驗證並落地使用者這則訊息（chat 進 in_progress），結果由背景補進 chat，前端輪詢 chat 取得。
 // 差別只有 Skill 有沒有值（見 AgentSubmitRequest），對應不同的 <Skill> 與工具政策。
-func (s *Service) SubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
-	return submitAgent(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, agentID, in)
+func (s *Service) SubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	return submitAgent(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, in)
 }
 
 // ResubmitAgent 重送一筆卡在 pending 的 chat，一般對話與 skill 共用（見 resubmitAgenticQuery）。
-func (s *Service) ResubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
-	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, agentID, chatID, AgenticQueryOptions{
+func (s *Service) ResubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, chatID, AgenticQueryOptions{
 		ProviderAPIKeyID: in.ProviderAPIKeyID,
 		ModelName:        in.ModelName,
 	})
 }
 
-func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
 	if in.Skill == "" {
-		return submitAgenticQuery(deps, userID, projectPublicID, kind, targetPublicID, agentID, in.Task, AgenticQueryOptions{
+		return submitAgenticQuery(deps, userID, projectPublicID, kind, targetPublicID, in.Task, AgenticQueryOptions{
+			PersonaAgentID:   in.PersonaAgentID,
 			ProviderAPIKeyID: in.ProviderAPIKeyID,
 			ModelName:        in.ModelName,
 			ReplyContent:     in.ReplyContent,
 			ReplyReference:   in.ReplyReference,
 		})
 	}
-	return submitAgentSkill(deps, nil, userID, projectPublicID, kind, targetPublicID, agentID, storytellerModel.AgentRunRequest{
+	return submitAgentSkill(deps, nil, userID, projectPublicID, kind, targetPublicID, storytellerModel.AgentRunRequest{
 		Mode:             in.Skill,
+		PersonaAgentID:   in.PersonaAgentID,
 		Instruction:      in.Task,
 		FullContent:      in.FullContent,
 		SelectedContent:  in.SelectedContent,
@@ -239,7 +241,7 @@ func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, ki
 
 // ---- 一般對話（agentic query）----
 
-func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
+func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	if strings.TrimSpace(userPrompt) == "" {
 		return nil, errAgenticQueryEmptyPrompt
 	}
@@ -248,7 +250,7 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 	}
 	tools, writeToolNames := deps.AgenticTools(projectPublicID)
 	ack, err := submitAgentRun(deps, agentSubmitParams{
-		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, AgentID: agentID,
+		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, PersonaAgentID: opts.PersonaAgentID,
 		ProviderAPIKeyID: opts.ProviderAPIKeyID, ModelName: opts.ModelName,
 		TrackName: "storyteller.agentic_query." + string(kind),
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
@@ -284,16 +286,13 @@ func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPr
 	return buildAgenticRequest(plan, userPrompt, replyContent, agenticQueryHistories(historyRows)).XML(), nil
 }
 
-// resubmitAgenticQuery 重送一筆卡在 pending 的 chat，一般對話與 skill 共用同一條路：
-// 由當初存的 user message metadata.mode 判斷是哪一種。
-//   - 一般對話：歷史可能已經變了，所以從原始欄位（content／reply 參照）重新渲染 request，
-//     並覆寫 metadata.request_xml，讓快照永遠是「最後一次真正送出的內容」；
-//   - skill：不帶歷史，直接重放當初存的 request_xml（編輯器全文沒有另外存，只有這份快照有）。
-func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
+// resubmitAgenticQuery 重送一筆卡在 pending 的 chat，一般對話與 skill 共用同一條路：重放當初存的
+// metadata.request_xml，由 metadata.mode 判斷工具政策。舊訊息沒有快照時無法重送。
+func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	tools, writeToolNames := deps.AgenticTools(projectPublicID)
 	repo := deps.Repo
 	ack, err := submitAgentRun(deps, agentSubmitParams{
-		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, AgentID: agentID,
+		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, PersonaAgentID: opts.PersonaAgentID,
 		ProviderAPIKeyID: opts.ProviderAPIKeyID, ModelName: opts.ModelName,
 		TrackName: "storyteller.agentic_query." + string(kind) + "_resend",
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
@@ -314,28 +313,19 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 				return fail(err)
 			}
 			meta := parseAgentUserMessageMetadata(userMessage.Metadata)
+			if meta.RequestXML == "" {
+				return fail(errAgentResendUnavailable)
+			}
+			// 重送 = 把當初那份 request 原封不動再送一次，不重新渲染：沒有「目前選中的 Agent」可以拿來
+			// 重建人設，而且使用者當初看到、送出的就是這份內容。一般對話與 skill 只差工具政策。
 			if _, isSkill := agentSkills[storytellerModel.AgentRunMode(meta.Mode)]; isSkill {
-				if meta.RequestXML == "" {
-					return fail(errAgentSkillResendUnavailable)
-				}
 				useLoop := meta.UseTools && plan.Key.Provider != storytellerModel.AgentProviderGemini
 				return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
 					return completeAgentRun(ctx, repo, plan, nil, useLoop, meta.RequestXML, chatID)
 				}}, nil
 			}
-			replyContent, err := agenticQueryReplyContentFromMetadata(repo, userID, plan.Project.ID, plan.Target.Kind, plan.Target.ID, userMessage.Metadata)
-			if err != nil {
-				return fail(err)
-			}
-			requestXML, err := renderAgenticRequestXML(repo, plan, userMessage.Content, replyContent)
-			if err != nil {
-				return fail(err)
-			}
-			if err := repo.UpdateChatMessageMetadata(userMessage.ID, metadataWithRequestXML(userMessage.Metadata, requestXML)); err != nil {
-				return fail(err)
-			}
 			return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				return completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, requestXML)
+				return completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, meta.RequestXML)
 			}}, nil
 		},
 	})
@@ -343,20 +333,6 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 		return nil, err
 	}
 	return ack.toAgenticQueryOutput(), nil
-}
-
-// metadataWithRequestXML 只換掉 metadata JSON 裡的 request_xml，其餘欄位（包含舊資料可能
-// 有的未知欄位）原樣保留。
-func metadataWithRequestXML(metadata, requestXML string) string {
-	fields := map[string]json.RawMessage{}
-	_ = json.Unmarshal([]byte(metadata), &fields)
-	body, _ := json.Marshal(requestXML)
-	fields["request_xml"] = body
-	out, err := json.Marshal(fields)
-	if err != nil {
-		return metadata
-	}
-	return string(out)
 }
 
 // completeAgenticQuery 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分。
@@ -406,12 +382,12 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 
 // ---- skill（/rewrite、/expand、/translate、/continue、/custom）----
 
-func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
+func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
 	if err := validateAgentRunRequest(input); err != nil {
 		return nil, err
 	}
 	ack, err := submitAgentRun(deps, agentSubmitParams{
-		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, AgentID: agentID,
+		UserID: userID, ProjectPublicID: projectPublicID, TargetKind: kind, TargetPublicID: targetPublicID, PersonaAgentID: input.PersonaAgentID,
 		ProviderAPIKeyID: input.ProviderAPIKeyID, ModelName: input.ModelName,
 		TrackName: "storyteller.agent_run",
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {

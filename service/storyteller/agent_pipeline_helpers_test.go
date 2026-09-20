@@ -17,8 +17,25 @@ func testSubmitDeps(repo agentRunRepository, work agenticBackgroundWork, factory
 	}
 }
 
+// 送出時 key／model 是必填的請求欄位；既有測試把它們寫在 fake repo 的 agent 上，這裡在請求沒帶時
+// 代填，並把測試裡的 agentID 當作「明確指定的自建 skill（persona）」。
+func withTestKeyDefaults(repo agentRunRepository, keyID **uint64, modelName *string) {
+	if fake, ok := repo.(*fakeAgentRunRepository); ok && fake.agent != nil {
+		if *keyID == nil {
+			*keyID = fake.agent.ProviderAPIKeyID
+		}
+		if *modelName == "" {
+			*modelName = fake.agent.ModelName
+		}
+	}
+}
+
 func enqueueStoryAgenticQuery(_ context.Context, repo agentRunRepository, work agenticBackgroundWork, factory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
-	return submitAgenticQuery(testSubmitDeps(repo, work, factory, tools, writeToolNames), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, userPrompt, opts)
+	withTestKeyDefaults(repo, &opts.ProviderAPIKeyID, &opts.ModelName)
+	if agentID != 0 {
+		opts.PersonaAgentID = &agentID
+	}
+	return submitAgenticQuery(testSubmitDeps(repo, work, factory, tools, writeToolNames), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, userPrompt, opts)
 }
 
 // runStoryAgenticQuery 送出後等背景跑完，再從 repo 落地的訊息／usage 還原結果。
@@ -34,8 +51,9 @@ func runStoryAgenticQuery(ctx context.Context, repo *fakeAgentRunRepository, fac
 }
 
 func resendStoryAgenticQuery(_ context.Context, repo *fakeAgentRunRepository, factory aiProviderFactory, tools []ToolSpec, writeToolNames map[string]bool, userID uint64, projectPublicID, storyPublicID string, agentID, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
+	withTestKeyDefaults(repo, &opts.ProviderAPIKeyID, &opts.ModelName)
 	tracker := background.NewTracker()
-	output, err := resubmitAgenticQuery(testSubmitDeps(repo, tracker, factory, tools, writeToolNames), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, chatID, opts)
+	output, err := resubmitAgenticQuery(testSubmitDeps(repo, tracker, factory, tools, writeToolNames), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, chatID, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -62,5 +80,9 @@ func runAgent(_ context.Context, repo agentRunRepository, factory aiProviderFact
 }
 
 func runAgentWithTools(_ context.Context, repo agentRunRepository, factory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
-	return submitAgentSkill(testSubmitDeps(repo, work, factory, nil, nil), readOnlyTools, userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, input)
+	withTestKeyDefaults(repo, &input.ProviderAPIKeyID, &input.ModelName)
+	if agentID != 0 {
+		input.PersonaAgentID = &agentID
+	}
+	return submitAgentSkill(testSubmitDeps(repo, work, factory, nil, nil), readOnlyTools, userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, input)
 }

@@ -118,6 +118,8 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 // 切換功能時，把使用者選的 key id（可能連 provider 都跟 Agent 預設的不一樣）帶
 // 進 ProviderAPIKeyID 即可，不需要因此複製一份 Agent。
 type AgenticQueryOptions struct {
+	// PersonaAgentID 是使用者明確指定的自建 skill（/<名稱>）；nil＝沒有人設。
+	PersonaAgentID   *uint64
 	ProviderAPIKeyID *uint64
 	ModelName        string
 	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容（不是摘要）——
@@ -215,8 +217,8 @@ var ErrAgenticQueryServerDraining = agenticQueryError("server is restarting, ple
 // errAgenticQueryChatNotResendable 代表要重送的 chat 不存在、不屬於這個使用者／
 // 這篇故事或設定集，或者已經不是 pending 狀態（已經拿到回覆，或另一個重送請求
 // 剛好搶先一步）。
-// errAgentSkillResendUnavailable：舊版 skill 訊息沒有存 request_xml，沒有原始內容可以重放。
-var errAgentSkillResendUnavailable = agenticQueryError("this skill message has no stored request and cannot be resent; please run it again")
+// errAgentResendUnavailable：舊訊息沒有存 request_xml，沒有原始內容可以重放。
+var errAgentResendUnavailable = agenticQueryError("this message has no stored request and cannot be resent; please send it again")
 
 var errAgenticQueryChatNotResendable = agenticQueryError("chat is not resendable: not found, not owned by this user, or already answered")
 
@@ -321,51 +323,6 @@ func normalizeAgenticReplyReference(ref *storytellerModel.AgenticReplyReferenceR
 	default:
 		return nil
 	}
-}
-
-// agenticQueryReplyContentFromMetadata 是 agenticQueryUserMessageMetadata 的反向
-// 操作，重送時用 metadata 裡的參照查回完整內容。舊資料可能仍有 reply_content
-// 快照，先當 fallback 讀掉，避免既有 pending 訊息重送時降級。
-func agenticQueryReplyContentFromMetadata(repo agentRunRepository, userID, projectID uint64, currentKind agenticQueryCurrentTargetKind, currentID uint64, metadata string) (string, error) {
-	var meta struct {
-		ReplyContent   string                              `json:"reply_content"`
-		ReplyReference *agenticQueryReplyReferenceMetadata `json:"reply_reference"`
-	}
-	if err := json.Unmarshal([]byte(metadata), &meta); err != nil {
-		return "", nil
-	}
-	if strings.TrimSpace(meta.ReplyContent) != "" {
-		return meta.ReplyContent, nil
-	}
-	if meta.ReplyReference == nil {
-		return "", nil
-	}
-	switch meta.ReplyReference.Kind {
-	case agenticQueryReplyReferenceKindMessage:
-		message, err := agenticQueryReferencedMessage(repo, userID, currentKind, currentID, meta.ReplyReference.MessageID)
-		if err != nil || message == nil {
-			return "", err
-		}
-		return message.Content, nil
-	case agenticQueryReplyReferenceKindProposal:
-		proposal, err := repo.AgentProposalByPublicIDForUserProject(userID, projectID, meta.ReplyReference.ProposalPublicID)
-		if err != nil {
-			return "", err
-		}
-		return agenticQueryProposalReferenceContent(proposal), nil
-	default:
-		return "", nil
-	}
-}
-
-func agenticQueryReferencedMessage(repo agentRunRepository, userID uint64, currentKind agenticQueryCurrentTargetKind, currentID, messageID uint64) (*storytellerModel.StoryChatMessage, error) {
-	if messageID == 0 {
-		return nil, nil
-	}
-	if currentKind == agenticQueryCurrentTargetLore {
-		return repo.LoreChatMessageByIDForUserLore(userID, currentID, messageID)
-	}
-	return repo.StoryChatMessageByIDForUserStory(userID, currentID, messageID)
 }
 
 func agenticQueryProposalReferenceContent(proposal *storytellerModel.AgentProposal) string {

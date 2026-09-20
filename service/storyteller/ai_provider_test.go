@@ -184,7 +184,7 @@ func testSkillPlan(persona string) *agentRunPlan {
 	return &agentRunPlan{
 		ProjectPublicID: "project-public-id",
 		Target:          agentRunTarget{Kind: agenticQueryCurrentTargetStory, PublicID: "story-public-id", Title: "測試故事"},
-		Agent:           &storytellerModel.Agent{Name: "冷調恐怖", DefaultPrompt: persona},
+		Persona:         &storytellerModel.Agent{Name: "冷調恐怖", DefaultPrompt: persona},
 	}
 }
 

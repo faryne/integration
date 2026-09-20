@@ -540,16 +540,12 @@ func agentSubmitError(err error) error {
 // 由請求體的 skill 欄位決定。全部非同步——回應只是「已落地、處理中」的確認（帶 chat_id），
 // 結果由前端輪詢 chat 取得（見 AgentChat）。
 func SubmitAgent(ctx fiber.Ctx) error {
-	agentID, err := parseUint(ctx.Params("agent"))
-	if err != nil {
-		return output.BadRequest(err)
-	}
 	var input storytellerModel.AgentSubmitRequest
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
 	kind, targetPublicID := agentTargetFromParams(ctx)
-	result, err := storyteller.NewService().SubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, agentID, input)
+	result, err := storyteller.NewService().SubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, input)
 	if err != nil {
 		return agentSubmitError(err)
 	}
@@ -558,12 +554,8 @@ func SubmitAgent(ctx fiber.Ctx) error {
 
 // ResubmitAgent 重新對一則卡在 pending（沒拿到回覆，例如 provider timeout 或 process 被重啟
 // 中斷）的訊息呼叫 provider——不是開新的一輪對話，答案會補進同一筆 chat，不會多出一組重複的
-// 問答。請求體只讀金鑰／模型，其餘一律讀當初存的那份。
+// 問答。請求體只讀金鑰／模型，其餘一律重放當初存的那份 request。
 func ResubmitAgent(ctx fiber.Ctx) error {
-	agentID, err := parseUint(ctx.Params("agent"))
-	if err != nil {
-		return output.BadRequest(err)
-	}
 	chatID, err := parseUint(ctx.Params("chat"))
 	if err != nil {
 		return output.BadRequest(err)
@@ -573,7 +565,7 @@ func ResubmitAgent(ctx fiber.Ctx) error {
 		return output.BadRequest(err)
 	}
 	kind, targetPublicID := agentTargetFromParams(ctx)
-	result, err := storyteller.NewService().ResubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, agentID, chatID, input)
+	result, err := storyteller.NewService().ResubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, chatID, input)
 	if err != nil {
 		return agentSubmitError(err)
 	}

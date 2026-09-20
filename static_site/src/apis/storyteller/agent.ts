@@ -540,17 +540,11 @@ export function useSubmitStorytellerAgent(
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      agentId,
-      input,
-    }: {
-      agentId: number;
-      input: StorytellerAgentSubmitRequest;
-    }) => {
+    mutationFn: async ({ input }: { input: StorytellerAgentSubmitRequest }) => {
       const response = await axios.post<
         CommonResponse<StorytellerAgenticQueryResponse>
       >(
-        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agents/${agentId}/submit`,
+        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agent-chats`,
         input,
         {
           headers: sessionHeaders(session!.encrypt_key),
@@ -571,7 +565,7 @@ export function useSubmitStorytellerAgent(
 
 // 重新對一則卡在 pending（沒拿到回覆、已可重送）狀態的訊息呼叫 provider——不是開新的一輪
 // 對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。一般對話與 skill 共用。
-// input 只帶金鑰／模型這次的選擇，其餘後端一律讀當初存的那份。
+// input 只帶金鑰／模型這次的選擇，其餘後端一律重放當初存的那份 request。
 export function useResendStorytellerAgent(
   projectPublicId: string | undefined,
   targetKind: StorytellerAgentTargetKind,
@@ -581,18 +575,16 @@ export function useResendStorytellerAgent(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      agentId,
       chatId,
       input,
     }: {
-      agentId: number;
       chatId: number;
       input: StorytellerAgentSubmitRequest;
     }) => {
       const response = await axios.post<
         CommonResponse<StorytellerAgenticQueryResponse>
       >(
-        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agents/${agentId}/chats/${chatId}/resend`,
+        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agent-chats/${chatId}/resend`,
         input,
         {
           headers: sessionHeaders(session!.encrypt_key),

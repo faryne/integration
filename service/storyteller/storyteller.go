@@ -49,7 +49,6 @@ type agentRunRepository interface {
 	ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error)
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
 	ReleaseChatToPending(chatID uint64) error
-	UpdateChatMessageMetadata(messageID uint64, metadata string) error
 	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
 	StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
 	LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
@@ -754,41 +753,17 @@ func agentRunShouldUseLoop(provider storytellerModel.AgentProvider, input storyt
 }
 
 var (
-	errAgentProviderAPIKeyNotConfigured = errors.New("agent has no provider api key configured")
-	errAgentProviderAPIKeyMismatch      = errors.New("provider api key does not match agent provider")
-	// errAgentModelNameNotConfigured：Agent 跟 provider/model 剝離之後，人設本身
-	// 可能完全沒有記錄預設 model；呼叫端（單輪 skill／AI 助理的 model chip）沒有
-	// 額外指定 model 時，與其把空字串送進 AI provider 換一個難懂的原始錯誤，不如
-	// 在這裡就擋下來給明確訊息。
-	errAgentModelNameNotConfigured = errors.New("agent has no default model configured; please select a model")
+	// 送出時 key／model 都是這次呼叫的明確選擇（沒有 Agent 記錄上的預設值可以退回）。
+	errProviderAPIKeyRequired = errors.New("provider_apikey_id is required")
+	errModelNameRequired      = errors.New("model_name is required")
 )
 
-// resolveAgentProviderAPIKey 解析這次呼叫實際要用哪把 key。Agent 本身的
-// prompt／人設跟「預設用哪把 key」是分開的兩件事——沒有 overrideID 時沿用
-// Agent 綁定的預設 key（這條路徑維持舊行為，要求 key 的 provider 跟 Agent 記錄的
-// provider 一致，理論上這兩者本來就該一致，這裡只是防呆）；呼叫端明確帶了
-// overrideID 時，代表「這次就是要用另一把 key 執行」，可能連 provider 都不同
-// （例如這個 Agent 原本設定成 Claude，這次想試試看用 OpenAI 的 key 跑同一份
-// prompt），這種情況故意不擋，呼叫端要自己決定要用哪把 key 的 Provider／
-// ModelName（見 resolveAgentRunPlan 改用 key 本身的 Provider，不是
-// Agent 記錄的 Provider）。
-func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerModel.ProviderAPIKey, error), userID uint64, agent *storytellerModel.Agent, overrideID *uint64) (*storytellerModel.ProviderAPIKey, error) {
-	keyID := agent.ProviderAPIKeyID
-	overridden := overrideID != nil
-	if overridden {
-		keyID = overrideID
-	}
+// resolveProviderAPIKey 找出這次呼叫要用的 key（屬於這個使用者，否則 lookup 回 not found）。
+func resolveProviderAPIKey(lookup func(userID, id uint64) (*storytellerModel.ProviderAPIKey, error), userID uint64, keyID *uint64) (*storytellerModel.ProviderAPIKey, error) {
 	if keyID == nil {
-		return nil, errAgentProviderAPIKeyNotConfigured
+		return nil, errProviderAPIKeyRequired
 	}
-	key, err := lookup(userID, *keyID)
-	if err != nil {
-		return nil, err
-	}
-	if !overridden && key.Provider != agent.Provider {
-		return nil, errAgentProviderAPIKeyMismatch
-	}
-	return key, nil
+	return lookup(userID, *keyID)
 }
 
 // buildAgentUsageLog 記錄這次執行「實際解析後」使用的 apikey_id，
@@ -814,15 +789,6 @@ func buildAgentUsageLog(repo agentRunRepository, userID, providerAPIKeyID uint64
 		OutputTokens: output.Usage.OutputTokens,
 		TotalTokens:  output.Usage.TotalTokens,
 	}
-}
-
-// resolveAgentModelName 留空 override 時沿用 Agent 記錄的預設 model，帶值時這次
-// 呼叫改用這個 model 名稱——跟 resolveAgentProviderAPIKey 是各自獨立的覆寫。
-func resolveAgentModelName(agent *storytellerModel.Agent, override string) string {
-	if strings.TrimSpace(override) != "" {
-		return strings.TrimSpace(override)
-	}
-	return agent.ModelName
 }
 
 func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerModel.Story, error) {

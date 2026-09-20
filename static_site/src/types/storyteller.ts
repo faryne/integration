@@ -424,8 +424,11 @@ export interface StorytellerAgentRunReference {
 // AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，差別只在 skill 有沒有值。
 // 全部非同步——回應只是「已落地、處理中」的確認（帶 chat_id），結果要輪詢 chat 取得。
 export interface StorytellerAgentSubmitRequest {
-  // 空／未帶＝一般對話；否則是內建 skill。
+  // 內建 skill（/rewrite 等）；空／未帶＝一般對話。
   skill?: StorytellerAgentRunMode;
+  // 使用者自建的 skill（storyteller_agents 的一筆，人設放在 DefaultPrompt）——只有使用者用
+  // /<名稱> 明確指定時才帶；沒有「目前選中的 Agent」，chip 只是插入 /<名稱> 的捷徑。
+  persona_agent_id?: number;
   // 使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
   task: string;
   // 以下三個只給 skill 用：編輯器未儲存的全文、選取的文字、需求裡 @ 引用的故事／設定集。
@@ -436,10 +439,9 @@ export interface StorytellerAgentSubmitRequest {
   reply_content?: string;
   // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
   reply_reference?: StorytellerAgenticReplyReferenceRequest;
-  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的 key／model
-  // （可以跟 Agent 記錄的 provider 不同）。
-  provider_apikey_id?: number;
-  model_name?: string;
+  // 這次呼叫用哪把 key、哪個 model：純 session 選擇，送出時必填。
+  provider_apikey_id: number;
+  model_name: string;
 }
 
 export interface StorytellerAgentRunUsage {

@@ -950,11 +950,6 @@ func (r *Repository) ReleaseChatToPending(chatID uint64) error {
 		Update("status", storytellerModel.StoryChatStatusPending).Error
 }
 
-// UpdateChatMessageMetadata 覆寫一則訊息的 metadata JSON（重送時更新 request_xml 快照用）。
-func (r *Repository) UpdateChatMessageMetadata(messageID uint64, metadata string) error {
-	return r.db.Model(&storytellerModel.StoryChatMessage{}).Where("id = ?", messageID).Update("metadata", metadata).Error
-}
-
 // stripRequestXML 把 metadata 裡的 request_xml 濾掉再輸出給前端：那是送 provider 的完整
 // request 快照（含歷史與編輯器全文），只供後端分析／除錯，整包丟進列表 API 會讓載入變慢。
 func stripRequestXML(rows []storytellerModel.StoryChatMessageOutput) {

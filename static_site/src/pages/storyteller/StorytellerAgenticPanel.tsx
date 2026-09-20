@@ -833,14 +833,8 @@ export function StorytellerAgenticPanel({
   const compactComposer = fillAvailableHeight && isMobile;
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  // 人設只影響單次 prompt，以 /<Agent 名稱> 前綴表示；activeAgentId 只保留底層 API
-  // 需要的 fallback agent，沒有前綴時實際送出仍會明確忽略人設。
-  const [activeAgentId, setActiveAgentId] = useState(agents[0]?.id ?? "");
-  useEffect(() => {
-    if (!agents.some((agent) => agent.id === activeAgentId)) {
-      setActiveAgentId(agents[0]?.id ?? "");
-    }
-  }, [agents, activeAgentId]);
+  // 沒有「目前選中的 Agent」：人設只影響單次 prompt，以 /<名稱> 前綴表示（chip 只是在輸入框
+  // 插入這段前綴的捷徑），送出時明確帶 persona_agent_id；沒有前綴就沒有人設。
   const [prompt, setPrompt] = useState("");
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
@@ -914,19 +908,16 @@ export function StorytellerAgenticPanel({
   const pendingAgenticIdRef = useRef(0);
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
 
-  const selectedAgent =
-    agents.find((agent) => agent.id === activeAgentId) ?? agents[0];
   const promptAgentSwitch = matchAgentNameCommand(prompt.trimStart(), agents);
   const promptAgent = promptAgentSwitch
     ? agents.find((agent) => agent.id === promptAgentSwitch.agentId)
     : undefined;
-  const agentIdNumeric = Number(selectedAgent?.id);
 
   const { data: providerApiKeys = [], isLoading: providerApiKeysLoading } =
     useStorytellerProviderAPIKeys();
   const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
   // 换 key 可以跨 provider（見 Agent／provider/key/model 解耦），所以這裡不再
-  // 依 selectedAgent.provider 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
+  // 依 provider 篩選——任何一把已設定的 key 都能拿來跑。
   const overrideApiKeyOptions = providerApiKeys;
   // Skill 已經跟 provider/key/model 完全剝離，不存在「Agent 自己的預設 key」這回事
   // 了（新建的 Skill 一律沒有綁定，見 Phase 8.7）；金鑰/模型變成純粹的 session 選擇，
@@ -947,17 +938,14 @@ export function StorytellerAgenticPanel({
   const overriddenApiKey = providerApiKeyId
     ? providerApiKeys.find((apiKey) => String(apiKey.id) === providerApiKeyId)
     : undefined;
-  // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定
-  // 選了一把），沒有 key 時才退回 Agent 記錄的（多半也是空字串）。
-  const effectiveProvider =
-    overriddenApiKey?.provider ?? selectedAgent?.provider;
+  // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定選了一把）。
+  const effectiveProvider = overriddenApiKey?.provider;
   const effectiveProviderModelInfo = providerModelsList.find(
     (entry) => entry.provider === effectiveProvider,
   );
   const effectiveProviderLabel =
     effectiveProviderModelInfo?.label ?? effectiveProvider ?? "未選 Provider";
-  const effectiveModelLabel =
-    modelNameOverride || selectedAgent?.model || "未選 Model";
+  const effectiveModelLabel = modelNameOverride || "未選 Model";
   const modelOptions = effectiveProviderModelInfo?.models ?? [];
   // self_hosted／openrouter 這類 provider 沒有固定模型清單（models 可能是空的），
   // 改成讓使用者直接輸入模型名稱，而不是完全選不了。
@@ -1063,20 +1051,17 @@ export function StorytellerAgenticPanel({
   const [resendError, setResendError] = useState("");
   const [modelAppliedSnack, setModelAppliedSnack] = useState("");
   function handleResend(chatId: number) {
-    if (resendingChatId !== null || !Number.isFinite(agentIdNumeric)) {
+    if (resendingChatId !== null || !providerApiKeyId || !modelNameOverride) {
       return;
     }
     setResendingChatId(chatId);
     resendAgenticQuery.mutate(
       {
-        agentId: agentIdNumeric,
         chatId,
         input: {
           task: "",
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1657,8 +1642,8 @@ export function StorytellerAgenticPanel({
     Boolean(prompt.trim()) &&
     Boolean(projectPublicId) &&
     Boolean(targetPublicId) &&
-    Number.isFinite(agentIdNumeric) &&
-    Boolean(selectedAgent?.enabled) &&
+    Boolean(providerApiKeyId) &&
+    Boolean(modelNameOverride) &&
     payloadError === "" &&
     !pending;
 
@@ -1694,7 +1679,6 @@ export function StorytellerAgenticPanel({
 
     runSkillMutation.mutate(
       {
-        agentId: agentIdNumeric,
         input: {
           skill: mode,
           task: instruction,
@@ -1702,10 +1686,8 @@ export function StorytellerAgenticPanel({
           references: runReferences,
           reply_content: replyContent || undefined,
           selected_content: selectedContent,
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1764,13 +1746,17 @@ export function StorytellerAgenticPanel({
   function runAgentic(
     instruction: string,
     options?: {
-      agentId?: number;
+      // 使用者用 /<名稱> 明確指定的自建 skill；沒帶就沒有人設。
+      personaAgentId?: number;
       replyContent?: string;
       replyReference?: StorytellerAgenticReplyReferenceRequest;
       preserveComposer?: boolean;
     },
   ) {
-    const targetAgentId = options?.agentId ?? agentIdNumeric;
+    // key／model 是送出時的必填請求欄位（沒有 Agent 上的預設值可退回）。
+    if (!providerApiKeyId || !modelNameOverride) {
+      return;
+    }
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
@@ -1814,15 +1800,13 @@ export function StorytellerAgenticPanel({
 
     runAgenticQuery.mutate(
       {
-        agentId: targetAgentId,
         input: {
           task: instruction,
+          persona_agent_id: options?.personaAgentId,
           reply_content: replyContent,
           reply_reference: replyReference,
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1906,6 +1890,8 @@ export function StorytellerAgenticPanel({
       const targetAgentId = Number(agentSwitch.agentId);
       if (
         !hasAnyApiKey ||
+        !providerApiKeyId ||
+        !modelNameOverride ||
         !projectPublicId ||
         !targetPublicId ||
         !Number.isFinite(targetAgentId) ||
@@ -1920,11 +1906,11 @@ export function StorytellerAgenticPanel({
           instruction,
           replyReferenceTarget,
         ),
-        { agentId: targetAgentId },
+        { personaAgentId: targetAgentId },
       );
       return;
     }
-    if (!canRun || !Number.isFinite(agentIdNumeric)) {
+    if (!canRun) {
       return;
     }
     const slash = parseSkillSlashCommand(trimmed);
