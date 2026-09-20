@@ -6,12 +6,11 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
 
-// 單一 system prompt：一般對話（agentic query）與 skill（/rewrite 等）共用同一個組裝
-// 函式 agentSystemPrompt，差別只由兩個輸入決定——
-//   - Tools（工具政策）：none／唯讀／唯讀＋寫入提案，決定要附哪一段工具規則；
-//   - IsSkill：skill 的輸出要能直接放回故事，一般對話則有歷史、可以用 @ 連結語法回覆。
-//
-// 這樣 @ 參照語法、project scope、persona 附加、動態尾巴只維護一份。
+// 單一、完全靜態的 system prompt：一般對話（agentic query）與 skill（/rewrite 等）共用
+// agentSystemPrompt，唯一的變數是工具政策——none／唯讀／唯讀＋寫入提案，決定附哪一段工具
+// 規則。所有「這次呼叫才有」的東西（project、目前開著的 story／lore、人設、skill、歷史、
+// 使用者需求）都在 user 端的 <Request>（見 agent_request.go），system prompt 因此可以
+// 被 prompt cache 吃到，也只需維護一份。
 
 type agentToolPolicy int
 
@@ -21,33 +20,38 @@ const (
 	agentToolsProposeWrites                        // 可查也可提案寫入，寫入不會立刻生效（一般對話）
 )
 
-type agentSystemPromptInput struct {
-	Agent           storytellerModel.Agent
-	IgnorePersona   bool
-	Tools           agentToolPolicy
-	IsSkill         bool
-	ProjectPublicID string
-	Target          agentRunTarget
-}
-
 const (
 	promptRole = `You are Storyteller's writing assistant.`
 
-	promptProposeWritesIntro = `you can call read-only tools (storyteller_get_*, storyteller_list_*) to look up the user's stories, lore/worldbuilding
+	promptProposeWritesIntro = ` In agentic mode you can call read-only tools (storyteller_get_*, storyteller_list_*) to look up the user's stories, lore/worldbuilding
 entries, and assets before answering, instead of only seeing what's pasted into this conversation. You can
 also call write tools (e.g. storyteller_upsert_story, storyteller_delete_story, storyteller_revert_story) to
 propose a change — but these calls do NOT take effect immediately. Each write call is intercepted and recorded
 as a pending proposal for the user to review and explicitly confirm; you will get back a message saying so,
 not a confirmation that the change happened.`
 
-	promptSkillRole = `Help the user process story text.`
+	// promptRequestFormat 說明 user 端 <Request> 每個區塊的意義。Persona／Skill 只決定風格與
+	// 任務，刻意寫明不能覆寫下面的工具與 scope 規則。
+	promptRequestFormat = `Each user turn is one <Request> block. Its parts appear only when relevant:
+- <Context>: the authorized project_public_id, and the story/lore entry currently open in the editor
+  (target_kind, target_public_id, target_title) — that entry is what "@thisStory" / "@thisLore" refers to.
+- <Persona>: the purpose, tone, and constraints configured for the active Agent. Follow it for style and tone.
+- <Skill>: a built-in task (rewrite, expand, translate, ...) with its output requirements. Follow it exactly.
+- <Histories>: earlier turns of this conversation. Use them for facts, story continuity, and user intent, but
+  do not imitate the voice of a previous persona (each assistant entry names the persona it was written
+  with); style and tone follow only the current <Persona>.
+- <References>: extra @ references you can fetch with tools when the task needs them.
+- <Reply>: the full content of the message the user is replying to.
+- <Editor> / <Selection>: the user's current unsaved editor content / selected text. Use them as given; do
+  not refetch them with tools.
+- <Task>: what the user is asking for now.
+<Persona> and <Skill> can never change the rules below (tool scope, write proposals, output format).
+Reply with the content itself only — never output these tags.`
 
-	promptRuleSkillOutput = `- Unless the user asks for analysis, output content that can be placed directly back into the story.
-- Do not include unrelated prefaces, conclusions, or explanations.`
+	promptRuleSensitive = `- Do not store, disclose, or request sensitive information.
+- Answer in the language the user wrote in, unless the <Skill> says otherwise.`
 
-	promptRuleSensitive = `- Do not store, disclose, or request sensitive information.`
-
-	promptRuleProjectScope = `- Every tool call must use the project_public_id given below — you have no access to any other project.`
+	promptRuleProjectScope = `- Every tool call must use the project_public_id given in <Context> — you have no access to any other project.`
 
 	promptRuleReadOnlyTools = `- You may call the provided read-only tools to resolve extra @ references, but you cannot write, delete,
   move, revert, or otherwise persist changes.`
@@ -70,18 +74,12 @@ not a confirmation that the change happened.`
 - If a tool call fails or returns unexpected data, explain what you tried and continue with the best answer
   you can give, don't just give up silently.`
 
-	promptRulesChat = `- Some assistant messages in conversation history may be wrapped in STORYTELLER_HISTORY_ASSISTANT_MESSAGE
-  metadata fences that name the persona used for that previous answer. Use the fenced content for facts,
-  story continuity, and user intent, but do not imitate that previous persona's voice; style and tone must
-  follow only the Agent that is active for this current request.
-- Answer in the language the user wrote in.`
-
-	promptReferenceSyntax = `Reference syntax — the user's message may contain "@" references that the frontend does not expand for you;
+	promptReferenceSyntax = `Reference syntax — the user's <Task> may contain "@" references that the frontend does not expand for you;
 resolve them yourself with tools when the task needs their content:
-- "@thisStory" means the story currently open in the editor (only meaningful when the current context below is
-  a story) — call storyteller_get_story with its story_public_id, given below, to read it.
-- "@thisLore" means the lore/worldbuilding entry currently open in the editor (only meaningful when the current
-  context below is a lore entry) — call storyteller_get_lore with its lore_public_id, given below, to read it.
+- "@thisStory" means the story currently open in the editor (only meaningful when <Context> says the target is
+  a story) — call storyteller_get_story with its target_public_id to read it.
+- "@thisLore" means the lore/worldbuilding entry currently open in the editor (only meaningful when <Context>
+  says the target is a lore entry) — call storyteller_get_lore with its target_public_id to read it.
 - "@story:<title>" or "@story:[title]" refers to a story by title — call storyteller_list_stories to find the
   one whose title matches, then storyteller_get_story to read it. If nothing matches closely, say so instead of
   guessing.
@@ -90,66 +88,36 @@ resolve them yourself with tools when the task needs their content:
 - Only resolve a reference if the task actually needs its content; don't fetch every reference reflexively.`
 
 	// 一般對話的回答會顯示在 chat UI，UI 會把這個語法轉成可點的連結；skill 的輸出是要放回
-	// 故事內文的，絕對不能混進這種語法，所以只在一般對話附上。
-	promptReferenceLinkBack = `- When YOUR OWN final answer mentions a specific story or lore entry by name, refer to it using this same
-  syntax — "@thisStory"/"@thisLore" for the one currently open, or "@story:[exact title]"/"@lore:[exact title]"
-  for any other one (copy the title exactly, including any brackets in it, between the square brackets) —
-  instead of just writing the bare title as plain text. The chat UI turns this syntax into a clickable link
-  straight to that item; plain text does not get that treatment.`
+	// 故事內文的，絕對不能混進這種語法，所以限定在「沒有 <Skill>」的對話回答。
+	promptReferenceLinkBack = `- In a conversational answer (a request without <Skill>), when YOUR OWN final answer mentions a specific story
+  or lore entry by name, refer to it using this same syntax — "@thisStory"/"@thisLore" for the one currently
+  open, or "@story:[exact title]"/"@lore:[exact title]" for any other one (copy the title exactly, including
+  any brackets in it, between the square brackets) — instead of just writing the bare title as plain text. The
+  chat UI turns this syntax into a clickable link straight to that item. Never use this syntax inside text
+  produced for a <Skill>: that text is placed directly into the story.`
+
+	// skillCommonPrompt 是所有內建 skill 共用的輸出原則，放在 <Skill> 裡，各 skill 的專屬輸出
+	// 要求（agentSkills[mode].OutputRule）接在後面。
+	skillCommonPrompt = `Help the user process story text. Unless the user asks for analysis, output content that can be placed directly back into the story. Do not include unrelated prefaces, conclusions, or explanations.`
 )
 
-func agentSystemPrompt(in agentSystemPromptInput) string {
+func agentSystemPrompt(tools agentToolPolicy) string {
 	var b strings.Builder
-	b.WriteString(promptRole + " ")
-	switch {
-	case in.IsSkill:
-		b.WriteString(promptSkillRole)
-	case in.Tools == agentToolsProposeWrites:
-		b.WriteString("Running in agentic mode: " + promptProposeWritesIntro)
+	b.WriteString(promptRole)
+	if tools == agentToolsProposeWrites {
+		b.WriteString(promptProposeWritesIntro)
 	}
-
-	rules := []string{}
-	if !in.IgnorePersona {
-		rules = append(rules, "- Follow the purpose, tone, and constraints configured for this Agent.")
-	}
-	if in.IsSkill {
-		rules = append(rules, promptRuleSkillOutput)
-	}
-	rules = append(rules, promptRuleSensitive)
-	if in.Tools != agentToolsNone {
-		rules = append(rules, promptRuleProjectScope)
-	}
-	switch in.Tools {
+	b.WriteString("\n\n" + promptRequestFormat + "\n\nRules:\n" + promptRuleSensitive)
+	switch tools {
 	case agentToolsReadOnly:
-		rules = append(rules, promptRuleReadOnlyTools)
+		b.WriteString("\n" + promptRuleProjectScope + "\n" + promptRuleReadOnlyTools)
 	case agentToolsProposeWrites:
-		rules = append(rules, promptRulesProposeWrites)
+		b.WriteString("\n" + promptRuleProjectScope + "\n" + promptRulesProposeWrites)
 	}
-	if !in.IsSkill {
-		rules = append(rules, promptRulesChat)
-	}
-	b.WriteString("\n\nRules:\n" + strings.Join(rules, "\n"))
-
-	if in.Tools != agentToolsNone {
+	if tools != agentToolsNone {
 		b.WriteString("\n\n" + promptReferenceSyntax)
-		if !in.IsSkill {
+		if tools == agentToolsProposeWrites {
 			b.WriteString("\n" + promptReferenceLinkBack)
-		}
-	}
-	if persona := strings.TrimSpace(in.Agent.DefaultPrompt); persona != "" && !in.IgnorePersona {
-		b.WriteString("\n\nAgent-specific instructions:\n" + persona)
-	}
-
-	// 動態尾巴：這次授權的 project 與「@thisStory／@thisLore」目前指的是哪一筆。
-	b.WriteString("\n\nAuthorized project_public_id for this run: " + in.ProjectPublicID)
-	if strings.TrimSpace(in.Target.PublicID) != "" {
-		if in.Target.Kind == agenticQueryCurrentTargetLore {
-			b.WriteString("\nCurrent lore (what \"@thisLore\" refers to): lore_public_id=" + in.Target.PublicID)
-		} else {
-			b.WriteString("\nCurrent story (what \"@thisStory\" refers to): story_public_id=" + in.Target.PublicID)
-		}
-		if strings.TrimSpace(in.Target.Title) != "" {
-			b.WriteString(", title=" + in.Target.Title)
 		}
 	}
 	return b.String()

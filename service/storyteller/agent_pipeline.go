@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -231,7 +232,7 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 		ProviderAPIKeyID: opts.ProviderAPIKeyID, ModelName: opts.ModelName,
 		TrackName: "storyteller.agentic_query." + string(kind),
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
-			historyRows, err := recentAgenticHistory(deps.Repo, plan.Target)
+			requestXML, err := renderAgenticRequestXML(deps.Repo, plan, userPrompt, opts.ReplyContent, opts.IgnoreAgentPersona)
 			if err != nil {
 				return nil, err
 			}
@@ -239,12 +240,12 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 			// process 被重啟而拿不到答案，使用者也不會連自己問了什麼都找不到；之後可以用
 			// 「重送」補完這輪，不用整句重打。
 			chat := newAgentChat(plan.Target, userID, plan.Agent.ID)
-			userMessage := pendingAgenticQueryUserMessage(*plan.Agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona)
+			userMessage := pendingAgenticQueryUserMessage(*plan.Agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona, requestXML)
 			if err := deps.Repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 				return nil, err
 			}
 			return &agentRunJob{ChatID: chat.ID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, userMessage.ID, userPrompt, opts.ReplyContent, opts.IgnoreAgentPersona, historyRows)
+				_, err := completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, userMessage.ID, requestXML, opts.IgnoreAgentPersona)
 				return err
 			}}, nil
 		},
@@ -255,6 +256,24 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 	return ack.toAgenticQueryOutput(), nil
 }
 
+// renderAgenticRequestXML 撈最近幾輪歷史、解析歷史裡的人設名稱，渲染成這次一般對話的 <Request>。
+func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPrompt, replyContent string, ignoreAgentPersona bool) (string, error) {
+	historyRows, err := recentAgenticHistory(repo, plan.Target)
+	if err != nil {
+		return "", err
+	}
+	agentNames, err := agenticQueryHistoryAgentNames(repo, plan.UserID, historyRows)
+	if err != nil {
+		return "", err
+	}
+	return buildAgenticRequest(plan, userPrompt, replyContent, ignoreAgentPersona, agenticQueryHistories(historyRows, agentNames)).XML(), nil
+}
+
+// resubmitAgenticQuery 重送一筆卡在 pending 的 chat，一般對話與 skill 共用同一條路：
+// 由當初存的 user message metadata.mode 判斷是哪一種。
+//   - 一般對話：歷史可能已經變了，所以從原始欄位（content／reply 參照）重新渲染 request，
+//     並覆寫 metadata.request_xml，讓快照永遠是「最後一次真正送出的內容」；
+//   - skill：不帶歷史，直接重放當初存的 request_xml（編輯器全文沒有另外存，只有這份快照有）。
 func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	tools, writeToolNames := deps.AgenticTools(projectPublicID)
 	repo := deps.Repo
@@ -279,17 +298,31 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 			if err != nil {
 				return fail(err)
 			}
+			meta := parseAgentUserMessageMetadata(userMessage.Metadata)
+			if _, isSkill := agentSkills[storytellerModel.AgentRunMode(meta.Mode)]; isSkill {
+				if meta.RequestXML == "" {
+					return fail(errAgentSkillResendUnavailable)
+				}
+				useLoop := meta.UseTools && plan.Key.Provider != storytellerModel.AgentProviderGemini
+				return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
+					_, err := completeAgentRun(ctx, repo, plan, nil, useLoop, storytellerModel.AgentRunMode(meta.Mode), meta.RequestXML, chatID, userMessage.ID)
+					return err
+				}}, nil
+			}
 			replyContent, err := agenticQueryReplyContentFromMetadata(repo, userID, plan.Project.ID, plan.Target.Kind, plan.Target.ID, userMessage.Metadata)
 			if err != nil {
 				return fail(err)
 			}
 			ignoreAgentPersona := agenticQueryIgnoreAgentPersonaFromMetadata(userMessage.Metadata, userMessage.AgentID)
-			historyRows, err := recentAgenticHistory(repo, plan.Target)
+			requestXML, err := renderAgenticRequestXML(repo, plan, userMessage.Content, replyContent, ignoreAgentPersona)
 			if err != nil {
 				return fail(err)
 			}
+			if err := repo.UpdateChatMessageMetadata(userMessage.ID, metadataWithRequestXML(userMessage.Metadata, requestXML)); err != nil {
+				return fail(err)
+			}
 			return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, userMessage.ID, userMessage.Content, replyContent, ignoreAgentPersona, historyRows)
+				_, err := completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, userMessage.ID, requestXML, ignoreAgentPersona)
 				return err
 			}}, nil
 		},
@@ -300,9 +333,23 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 	return ack.toAgenticQueryOutput(), nil
 }
 
+// metadataWithRequestXML 只換掉 metadata JSON 裡的 request_xml，其餘欄位（包含舊資料可能
+// 有的未知欄位）原樣保留。
+func metadataWithRequestXML(metadata, requestXML string) string {
+	fields := map[string]json.RawMessage{}
+	_ = json.Unmarshal([]byte(metadata), &fields)
+	body, _ := json.Marshal(requestXML)
+	fields["request_xml"] = body
+	out, err := json.Marshal(fields)
+	if err != nil {
+		return metadata
+	}
+	return string(out)
+}
+
 // completeAgenticQuery 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分。
 // 呼叫失敗時把 chat 退回 pending 讓使用者知道「沒拿到回覆」，不會讓 chat 卡在 in_progress。
-func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID, userMessageID uint64, userPrompt, replyContent string, ignoreAgentPersona bool, historyRows []storytellerModel.StoryChatMessage) (*AgenticQueryOutput, error) {
+func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID, userMessageID uint64, requestXML string, ignoreAgentPersona bool) (*AgenticQueryOutput, error) {
 	agent, userID := *plan.Agent, plan.UserID
 	// 這組工具的 Handler 內部都是靠 storytellerUserIDFromContext／storytellerSourceFromContext
 	// 從 ctx 拿身分，不是走參數傳遞（MCP 那層也是同樣的機制，見 tool_registry_context.go），
@@ -310,19 +357,13 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 	ctx = WithStorytellerUserID(ctx, userID)
 	ctx = WithStorytellerSource(ctx, "agentic_query")
 	pending := &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, UserMessageID: userMessageID, ChatStatus: storytellerModel.StoryChatStatusPending}
-	historyAgentNames, err := agenticQueryHistoryAgentNames(repo, userID, historyRows)
-	if err != nil {
-		_ = repo.ReleaseChatToPending(chatID)
-		return pending, err
-	}
 
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     plan.Provider,
 		APIKey:       plan.APIKey,
 		ModelName:    plan.ModelName,
-		SystemPrompt: agentSystemPrompt(agentSystemPromptInput{Agent: agent, IgnorePersona: ignoreAgentPersona, Tools: agentToolsProposeWrites, ProjectPublicID: plan.ProjectPublicID, Target: plan.Target}),
-		History:      agenticQueryHistoryMessages(historyRows, historyAgentNames),
-		UserPrompt:   agenticQueryUserPromptWithReply(userPrompt, replyContent),
+		SystemPrompt: agentSystemPrompt(agentToolsProposeWrites),
+		UserPrompt:   requestXML,
 		Tools:        tools,
 	})
 	// loopResult 就算在 loopErr 非 nil 時（例如撞到步數上限）也可能有值——RunAgentLoop
@@ -377,13 +418,14 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 		TrackName: "storyteller.agent_run",
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
 			useLoop := agentRunShouldUseLoop(plan.Key.Provider, input)
+			requestXML := buildSkillRequest(plan, input, useLoop).XML()
 			chat := newAgentChat(plan.Target, userID, plan.Agent.ID)
-			userMessage := agentRunUserMessage(*plan.Agent, input)
+			userMessage := agentRunUserMessage(*plan.Agent, input, useLoop, requestXML)
 			if err := deps.Repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 				return nil, err
 			}
 			return &agentRunJob{ChatID: chat.ID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgentRun(ctx, deps.Repo, plan, readOnlyTools, useLoop, input, chat.ID, userMessage.ID)
+				_, err := completeAgentRun(ctx, deps.Repo, plan, readOnlyTools, useLoop, input.Mode, requestXML, chat.ID, userMessage.ID)
 				return err
 			}}, nil
 		},
@@ -403,10 +445,13 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 }
 
 // completeAgentRun 對稱於 completeAgenticQuery：呼叫失敗時把 chat 退回 pending。
-func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, readOnlyTools []ToolSpec, useLoop bool, input storytellerModel.AgentRunRequest, chatID, userMessageID uint64) (*storytellerModel.AgentRunResponse, error) {
+func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, readOnlyTools []ToolSpec, useLoop bool, mode storytellerModel.AgentRunMode, requestXML string, chatID, userMessageID uint64) (*storytellerModel.AgentRunResponse, error) {
 	agent, userID := *plan.Agent, plan.UserID
-	systemPrompt, userPrompt := buildAgentRunPrompts(agent, input, plan.ProjectPublicID, plan.Target, useLoop)
-	result, err := executeAgentRun(ctx, plan.Provider, plan.APIKey, plan.ModelName, systemPrompt, userPrompt, plan.ProjectPublicID, readOnlyTools, useLoop, userID)
+	tools := agentToolsNone
+	if useLoop {
+		tools = agentToolsReadOnly
+	}
+	result, err := executeAgentRun(ctx, plan.Provider, plan.APIKey, plan.ModelName, agentSystemPrompt(tools), requestXML, plan.ProjectPublicID, readOnlyTools, useLoop, userID)
 	if err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
 		return nil, err
@@ -418,7 +463,7 @@ func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentR
 		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
 		Provider:      plan.Key.Provider,
 		ModelName:     plan.ModelName,
-		Mode:          input.Mode,
+		Mode:          mode,
 		Result:        result.Text,
 		FinishReason:  result.FinishReason,
 	}

@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -162,10 +163,10 @@ func TestRunAgent(t *testing.T) {
 
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
-	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
-	require.Contains(t, provider.request.SystemPrompt, "Authorized project_public_id for this run: project-public-id")
-	require.Contains(t, provider.request.UserPrompt, "User's current selected text from the editor")
-	require.Contains(t, provider.request.UserPrompt, "Output requirements:")
+	require.Contains(t, provider.request.UserPrompt, "<Persona>\nUse concise prose.\n</Persona>")
+	require.Contains(t, provider.request.UserPrompt, `project_public_id="project-public-id"`)
+	require.Contains(t, provider.request.UserPrompt, "<Selection>\nscene\n</Selection>")
+	require.Contains(t, provider.request.UserPrompt, "<Skill name=\"rewrite_selection\">")
 	require.NotNil(t, repo.chat)
 	require.NotNil(t, repo.chat.StoryID)
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
@@ -175,7 +176,14 @@ func TestRunAgent(t *testing.T) {
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)
-	require.JSONEq(t, `{"mode":"rewrite_selection","selected_content":"scene","selected_content_length":5,"full_content_length":12}`, repo.messages[0].Metadata)
+	// metadata 與 request_xml 快照一起存：request_xml 就是實際送給 provider 的那份 user prompt。
+	var meta agentUserMessageMetadata
+	require.NoError(t, json.Unmarshal([]byte(repo.messages[0].Metadata), &meta))
+	require.Equal(t, "rewrite_selection", meta.Mode)
+	require.Equal(t, "scene", meta.SelectedContent)
+	require.Equal(t, 5, meta.SelectedContentLength)
+	require.Equal(t, 12, meta.FullContentLength)
+	require.Equal(t, provider.request.UserPrompt, meta.RequestXML)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
 	require.NotNil(t, repo.usage)
@@ -210,8 +218,8 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 				require.Empty(t, req.Messages[0].ToolCalls)
 				require.Len(t, req.Tools, 1)
 				require.Equal(t, "storyteller_get_story", req.Tools[0].Name)
-				require.Contains(t, req.SystemPrompt, "Current story (what \"@thisStory\" refers to): story_public_id=story-public-id")
-				require.Contains(t, req.Messages[0].Content, "Extra @ references available through read-only tools")
+				require.Contains(t, req.Messages[0].Content, `target_public_id="story-public-id"`)
+				require.Contains(t, req.Messages[0].Content, "<References>")
 				require.Contains(t, req.Messages[0].Content, "Token: @story:[其他故事]")
 				require.NotContains(t, req.Messages[0].Content, "這段引用全文不應該送進 provider")
 				return &AIProviderResponse{
@@ -588,6 +596,15 @@ func (r *fakeAgentRunRepository) ClaimStoryChatForResend(userID, storyID, chatID
 
 func (r *fakeAgentRunRepository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
 	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) UpdateChatMessageMetadata(messageID uint64, metadata string) error {
+	for i := range r.messages {
+		if r.messages[i].ID == messageID {
+			r.messages[i].Metadata = metadata
+		}
+	}
+	return nil
 }
 
 func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {

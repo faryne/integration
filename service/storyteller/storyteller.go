@@ -50,6 +50,7 @@ type agentRunRepository interface {
 	ClaimStoryChatForResend(userID, storyID, chatID uint64) (int64, error)
 	ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error)
 	ReleaseChatToPending(chatID uint64) error
+	UpdateChatMessageMetadata(messageID uint64, metadata string) error
 	ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error)
 	StoryChatMessageByIDForUserStory(userID, storyID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
 	LoreChatMessageByIDForUserLore(userID, loreID, messageID uint64) (*storytellerModel.StoryChatMessage, error)
@@ -3375,32 +3376,6 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 	return nil
 }
 
-func buildAgentRunPrompts(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, projectPublicID string, target agentRunTarget, useTools bool) (string, string) {
-	tools := agentToolsNone
-	if useTools {
-		tools = agentToolsReadOnly
-	}
-	systemPrompt := agentSystemPrompt(agentSystemPromptInput{Agent: agent, IgnorePersona: input.IgnoreAgentPersona, Tools: tools, IsSkill: true, ProjectPublicID: projectPublicID, Target: target})
-
-	sections := []string{
-		"Task mode:\n" + string(input.Mode),
-		"User instruction:\n" + agentRunPromptInstruction(input.Instruction),
-	}
-	hasSelection := agentRunModeRequiresSelection(input.Mode) && strings.TrimSpace(input.SelectedContent) != ""
-	fullContent, referenceSummary := agentRunPromptFullContent(input.FullContent, useTools)
-	if !hasSelection && fullContent != "" {
-		sections = append(sections, "User's current unsaved editor content:\n<<<STORY_EDITOR_CONTENT\n"+fullContent+"\nSTORY_EDITOR_CONTENT")
-	}
-	if hasSelection {
-		sections = append(sections, "User's current selected text from the editor (unsaved; use this exact text, do not refetch it):\n<<<STORY_SELECTED_CONTENT\n"+input.SelectedContent+"\nSTORY_SELECTED_CONTENT")
-	}
-	if referenceSummary != "" {
-		sections = append(sections, "Extra @ references available through read-only tools (fetch only when needed):\n"+referenceSummary)
-	}
-	sections = append(sections, "Output requirements:\n"+agentRunOutputInstruction(input.Mode))
-	return systemPrompt, strings.Join(sections, "\n\n")
-}
-
 func agentRunPromptFullContent(content string, useTools bool) (string, string) {
 	content = strings.TrimSpace(content)
 	if content == "" || !useTools {
@@ -3444,26 +3419,33 @@ func agentRunReferenceFenceEnd(line string) bool {
 	return line == "STORY_REFERENCE_CONTENT" || line == "LORE_REFERENCE_CONTENT"
 }
 
-func agentRunPromptInstruction(instruction string) string {
-	value := strings.TrimSpace(instruction)
-	if value == "" {
-		return "(No additional instruction was provided.)"
-	}
-	return value
-}
-
 // skill 呼叫（/rewrite 等）現在也跟 agentic query 一樣走背景執行：送出當下先把
 // 使用者這則指令落地（chat 進 in_progress），不等 provider 回應——這樣就不會再
 // 被 HTTP client 那組固定逾時卡住使用者的請求（見「已知 Bug 記錄」：60 秒逾時
 // 曾經讓合法但較慢的生成被砍掉）。真正呼叫 provider 在背景 goroutine 裡跑完才
 // 補進 assistant 訊息，見 completeAgentRun。
-func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest) *storytellerModel.StoryChatMessage {
+func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, useTools bool, requestXML string) *storytellerModel.StoryChatMessage {
 	agentID := agent.ID
+	ignore := input.IgnoreAgentPersona
+	meta := agentUserMessageMetadata{
+		Mode:               string(input.Mode),
+		IgnoreAgentPersona: &ignore,
+		FullContentLength:  len([]rune(input.FullContent)),
+		UseTools:           useTools,
+		RequestXML:         requestXML,
+	}
+	// 這裡存的 selected_content 要跟 agentRunUserMessageContent 嵌進訊息內容的那份完全一致
+	// （都用 TrimSpace 過的版本）——前端會拿這個值去反推、從 content 裡剝掉重複的 blockquote
+	// 前綴，兩邊沒對齊會導致剝不乾淨。
+	if selected := strings.TrimSpace(input.SelectedContent); selected != "" {
+		meta.SelectedContent = selected
+		meta.SelectedContentLength = len([]rune(selected))
+	}
 	return &storytellerModel.StoryChatMessage{
 		AgentID:  &agentID,
 		Role:     storytellerModel.ChatMessageRoleUser,
 		Content:  agentRunUserMessageContent(input),
-		Metadata: agentRunInputMetadata(input),
+		Metadata: meta.JSON(),
 	}
 }
 
@@ -3494,31 +3476,6 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 	return "> " + quoted + "\n\n" + instruction
 }
 
-func agentRunInputMetadata(input storytellerModel.AgentRunRequest) string {
-	type inputMetadata struct {
-		Mode                  storytellerModel.AgentRunMode `json:"mode"`
-		SelectedContent       string                        `json:"selected_content,omitempty"`
-		SelectedContentLength int                           `json:"selected_content_length,omitempty"`
-		FullContentLength     int                           `json:"full_content_length"`
-	}
-	meta := inputMetadata{
-		Mode:              input.Mode,
-		FullContentLength: len([]rune(input.FullContent)),
-	}
-	// 這裡存的 selected_content 要跟 agentRunUserMessageContent 嵌進訊息內容
-	// 的那份完全一致（都用 TrimSpace 過的版本）——前端會拿這個值去反推、
-	// 從 content 裡剝掉重複的 blockquote 前綴，兩邊沒對齊會導致剝不乾淨。
-	if selected := strings.TrimSpace(input.SelectedContent); selected != "" {
-		meta.SelectedContent = selected
-		meta.SelectedContentLength = len([]rune(selected))
-	}
-	body, err := json.Marshal(meta)
-	if err != nil {
-		return "{}"
-	}
-	return string(body)
-}
-
 func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
 	if output == nil || output.Usage == nil {
 		if output != nil && output.FinishReason != "" {
@@ -3533,17 +3490,6 @@ func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
 		output.Usage.OutputTokens,
 		output.Usage.TotalTokens,
 	)
-}
-
-func agentRunModeRequiresSelection(mode storytellerModel.AgentRunMode) bool {
-	return agentSkills[mode].NeedSelection
-}
-
-func agentRunOutputInstruction(mode storytellerModel.AgentRunMode) string {
-	if spec, ok := agentSkills[mode]; ok {
-		return spec.OutputRule
-	}
-	return "Follow the user instruction."
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {

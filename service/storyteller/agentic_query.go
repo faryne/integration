@@ -156,19 +156,6 @@ const (
 
 var errAgenticQueryReplyContentTooLong = agenticQueryError(fmt.Sprintf("reply_content must be %d characters or less", agenticQueryReplyContentMaxRunes))
 
-// agenticQueryUserPromptWithReply 把回覆對象的完整內容接在 userPrompt 後面，格式
-// 比照前端 buildStorytellerAgentReplyReferenceContent 已經在用的 fence 寫法，讓
-// skill／agentic 兩條路徑餵給模型的格式一致。userPrompt 本身（見前端
-// composeStorytellerAgentInstructionWithReply）已經帶了一行「> 回覆 XXX：摘要」
-// 方便定位是在回覆誰，這裡不重複標 speaker，只補上摘要沒放完的完整內容。
-func agenticQueryUserPromptWithReply(userPrompt, replyContent string) string {
-	replyContent = strings.TrimSpace(replyContent)
-	if replyContent == "" {
-		return userPrompt
-	}
-	return userPrompt + "\n\nReference reply (full content of the message quoted above):\n<<<REPLY_REFERENCE_CONTENT\n" + replyContent + "\nREPLY_REFERENCE_CONTENT"
-}
-
 func agenticQueryHistoryAgentNames(repo agentRunRepository, userID uint64, rows []storytellerModel.StoryChatMessage) (map[uint64]string, error) {
 	seen := make(map[uint64]bool)
 	ids := make([]uint64, 0)
@@ -191,63 +178,6 @@ func agenticQueryHistoryAgentNames(repo agentRunRepository, userID uint64, rows 
 		names[agent.ID] = agent.Name
 	}
 	return names, nil
-}
-
-// agenticQueryHistoryMessages 把撈出來的歷史訊息列（見 RecentStoryAgenticMessages／
-// RecentLoreAgenticMessages）轉成 provider 要的 Message 陣列——agentic_query 模式
-// 每輪只會存 user／assistant 各一則（agenticQueryChatMessages），不會有 tool 角色
-// 的列，不用另外處理工具呼叫中間態。Agent 名稱由呼叫端 batch 查好傳進來，這裡維持
-// 純轉換，不碰 DB。
-func agenticQueryHistoryMessages(rows []storytellerModel.StoryChatMessage, agentNames map[uint64]string) []Message {
-	// 依 chat 分組：曾經跑到步數上限（ErrAgentLoopMaxStepsExceeded）或其他中途
-	// 中止的舊紀錄，assistant 那則訊息的 content 可能是空字串——這種內容直接
-	// 送給 provider 會被拒絕（Claude 的 content block 缺了必填的 text 欄位），
-	// 而且 Claude API 要求 user/assistant 嚴格交替，不能只砍掉單則訊息、留下
-	// 落單的另一則。乾脆整個 chat（一問一答）一起跳過，不把不完整的紀錄餵給
-	// 模型，比只補一個空字串佔位更乾淨。
-	byChat := make(map[uint64][]storytellerModel.StoryChatMessage, len(rows))
-	order := make([]uint64, 0, len(rows))
-	for _, row := range rows {
-		if _, ok := byChat[row.ChatID]; !ok {
-			order = append(order, row.ChatID)
-		}
-		byChat[row.ChatID] = append(byChat[row.ChatID], row)
-	}
-	messages := make([]Message, 0, len(rows))
-	for _, chatID := range order {
-		chatRows := byChat[chatID]
-		complete := len(chatRows) == 2 &&
-			chatRows[0].Role == storytellerModel.ChatMessageRoleUser &&
-			chatRows[1].Role == storytellerModel.ChatMessageRoleAssistant
-		for _, row := range chatRows {
-			if strings.TrimSpace(row.Content) == "" {
-				complete = false
-				break
-			}
-		}
-		if !complete {
-			continue
-		}
-		for _, row := range chatRows {
-			messages = append(messages, Message{Role: string(row.Role), Content: agenticQueryHistoryContent(row, agentNames)})
-		}
-	}
-	return messages
-}
-
-func agenticQueryHistoryContent(row storytellerModel.StoryChatMessage, agentNames map[uint64]string) string {
-	if row.Role != storytellerModel.ChatMessageRoleAssistant || row.AgentID == nil {
-		return row.Content
-	}
-	personaName := strings.TrimSpace(agentNames[*row.AgentID])
-	if personaName == "" {
-		personaName = fmt.Sprintf("agent_id_%d_name_unavailable", *row.AgentID)
-	}
-	fence := fmt.Sprintf("STORYTELLER_HISTORY_ASSISTANT_MESSAGE_%d_CONTENT", row.ID)
-	return fmt.Sprintf(`[Storyteller history metadata: previous assistant message, persona_name=%q, do not imitate this persona]
-<<<%s
-%s
-%s>>>`, personaName, fence, row.Content, fence)
 }
 
 func (s *Service) StoryChatMessageReferenceContent(userID uint64, projectPublicID, storyPublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
@@ -315,6 +245,9 @@ var ErrAgenticQueryServerDraining = agenticQueryError("server is restarting, ple
 // errAgenticQueryChatNotResendable 代表要重送的 chat 不存在、不屬於這個使用者／
 // 這篇故事或設定集，或者已經不是 pending 狀態（已經拿到回覆，或另一個重送請求
 // 剛好搶先一步）。
+// errAgentSkillResendUnavailable：舊版 skill 訊息沒有存 request_xml，沒有原始內容可以重放。
+var errAgentSkillResendUnavailable = agenticQueryError("this skill message has no stored request and cannot be resent; please run it again")
+
 var errAgenticQueryChatNotResendable = agenticQueryError("chat is not resendable: not found, not owned by this user, or already answered")
 
 type agenticQueryError string
@@ -354,12 +287,17 @@ func messageAgentID(agentID uint64, ignoreAgentPersona bool) *uint64 {
 	return &id
 }
 
-func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) *storytellerModel.StoryChatMessage {
+func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool, requestXML string) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
-		AgentID:  messageAgentID(agent.ID, ignoreAgentPersona),
-		Role:     storytellerModel.ChatMessageRoleUser,
-		Content:  userPrompt,
-		Metadata: agenticQueryUserMessageMetadata(replyReference, ignoreAgentPersona),
+		AgentID: messageAgentID(agent.ID, ignoreAgentPersona),
+		Role:    storytellerModel.ChatMessageRoleUser,
+		Content: userPrompt,
+		Metadata: agentUserMessageMetadata{
+			Mode:               "agentic_query",
+			IgnoreAgentPersona: &ignoreAgentPersona,
+			ReplyReference:     normalizeAgenticReplyReference(replyReference),
+			RequestXML:         requestXML,
+		}.JSON(),
 	}
 }
 
@@ -431,33 +369,6 @@ func normalizeAgenticReplyReference(ref *storytellerModel.AgenticReplyReferenceR
 	default:
 		return nil
 	}
-}
-
-// agenticQueryUserMessageMetadata 只把「回覆／否決提案」的短參照寫進使用者訊息
-// Metadata。完整內容仍透過 request.reply_content 餵給這一輪 provider，但不再
-// 持久化一份重複快照；重送時用 reply_reference 回頭查原始 message/proposal。
-// user 這則訊息一律標 mode:"agentic_query"（跟 skill 模式的 user 訊息一直都會
-// 標自己的 mode 對齊）——之前只有 assistant 那則訊息會標，前端用「metadata 有
-// steps」判斷是不是 agentic 對話，純問答沒呼叫工具時 steps 是空陣列，重新整理
-// 頁面後這種訊息、以及只存了問題還沒拿到回覆的孤兒訊息，都會被前端誤判成
-// skill 模式（見 StorytellerAgenticPanel.tsx 的 parseAgenticMetadata／
-// skillHistoryMessages）。兩則訊息都標 mode，前端才能不管有沒有工具呼叫、有
-// 沒有拿到回覆，都能正確辨識出「這是 agentic 對話」。
-func agenticQueryUserMessageMetadata(replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool) string {
-	type userMessageMetadata struct {
-		Mode               string                              `json:"mode"`
-		ReplyReference     *agenticQueryReplyReferenceMetadata `json:"reply_reference,omitempty"`
-		IgnoreAgentPersona bool                                `json:"ignore_agent_persona"`
-	}
-	body, err := json.Marshal(userMessageMetadata{
-		Mode:               "agentic_query",
-		ReplyReference:     normalizeAgenticReplyReference(replyReference),
-		IgnoreAgentPersona: ignoreAgentPersona,
-	})
-	if err != nil {
-		return `{"mode":"agentic_query"}`
-	}
-	return string(body)
 }
 
 // agenticQueryReplyContentFromMetadata 是 agenticQueryUserMessageMetadata 的反向

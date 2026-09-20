@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -959,6 +960,29 @@ func (r *Repository) ReleaseChatToPending(chatID uint64) error {
 		Update("status", storytellerModel.StoryChatStatusPending).Error
 }
 
+// UpdateChatMessageMetadata 覆寫一則訊息的 metadata JSON（重送時更新 request_xml 快照用）。
+func (r *Repository) UpdateChatMessageMetadata(messageID uint64, metadata string) error {
+	return r.db.Model(&storytellerModel.StoryChatMessage{}).Where("id = ?", messageID).Update("metadata", metadata).Error
+}
+
+// stripRequestXML 把 metadata 裡的 request_xml 濾掉再輸出給前端：那是送 provider 的完整
+// request 快照（含歷史與編輯器全文），只供後端分析／除錯，整包丟進列表 API 會讓載入變慢。
+func stripRequestXML(rows []storytellerModel.StoryChatMessageOutput) {
+	for i := range rows {
+		if !strings.Contains(rows[i].Metadata, `"request_xml"`) {
+			continue
+		}
+		fields := map[string]json.RawMessage{}
+		if json.Unmarshal([]byte(rows[i].Metadata), &fields) != nil {
+			continue
+		}
+		delete(fields, "request_xml")
+		if body, err := json.Marshal(fields); err == nil {
+			rows[i].Metadata = string(body)
+		}
+	}
+}
+
 // ChatUserMessage 撈出一個 chat 底下那則使用者訊息——重送要用它當年存的內容當
 // prompt，不相信前端這次重送傳來的文字，避免跟原始問題兜不起來或被竄改。
 func (r *Repository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
@@ -1244,6 +1268,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	if err != nil {
 		return rows, total, err
 	}
+	stripRequestXML(rows)
 	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
@@ -1283,6 +1308,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	if err != nil {
 		return rows, total, err
 	}
+	stripRequestXML(rows)
 	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
@@ -1324,6 +1350,7 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 	if len(rows) == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
+	stripRequestXML(rows)
 	if err := r.attachAgentProposals(rows); err != nil {
 		return nil, err
 	}

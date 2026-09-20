@@ -96,25 +96,26 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 }
 
-func TestAgenticQueryHistoryMessagesMarksAssistantPersonaOnly(t *testing.T) {
+func TestAgenticQueryHistoriesMarksAssistantPersonaOnly(t *testing.T) {
 	agentID := uint64(41)
 	rows := []storytellerModel.StoryChatMessage{
 		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求", AgentID: &agentID},
 		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答", AgentID: &agentID},
 		{ID: 3, ChatID: 11, Role: storytellerModel.ChatMessageRoleUser, Content: "一般問答"},
 		{ID: 4, ChatID: 11, Role: storytellerModel.ChatMessageRoleAssistant, Content: "無人設回答"},
+		// 沒拿到回覆的 chat（assistant 內容為空）整組略過。
+		{ID: 5, ChatID: 12, Role: storytellerModel.ChatMessageRoleUser, Content: "孤兒問題"},
+		{ID: 6, ChatID: 12, Role: storytellerModel.ChatMessageRoleAssistant, Content: ""},
 	}
 
-	messages := agenticQueryHistoryMessages(rows, map[uint64]string{agentID: "色文作家"})
+	histories := agenticQueryHistories(rows, map[uint64]string{agentID: "色文作家"})
 
-	require.Len(t, messages, 4)
-	require.Equal(t, "上一輪需求", messages[0].Content)
-	require.Contains(t, messages[1].Content, `persona_name="色文作家"`)
-	require.Contains(t, messages[1].Content, "do not imitate this persona")
-	require.Contains(t, messages[1].Content, "<<<STORYTELLER_HISTORY_ASSISTANT_MESSAGE_2_CONTENT")
-	require.Contains(t, messages[1].Content, "上一輪回答")
-	require.Equal(t, "一般問答", messages[2].Content)
-	require.Equal(t, "無人設回答", messages[3].Content)
+	require.Equal(t, []agentHistory{
+		{Role: "user", Content: "上一輪需求"},
+		{Role: "assistant", Persona: "色文作家", Content: "上一輪回答"},
+		{Role: "user", Content: "一般問答"},
+		{Role: "assistant", Content: "無人設回答"},
+	}, histories)
 }
 
 func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
@@ -141,11 +142,11 @@ func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
 			require.Equal(t, []uint64{oldAgentID}, repo.agentsByIDLookup.ids)
 			require.Equal(t, uint64(20), repo.agentsByIDLookup.userID)
-			require.Len(t, req.Messages, 3)
-			require.Equal(t, "把前段改寫", req.Messages[0].Content)
-			require.Contains(t, req.Messages[1].Content, `persona_name="文言文"`)
-			require.Contains(t, req.Messages[1].Content, "臣聞前段")
-			require.Contains(t, req.SystemPrompt, "metadata fences that name the persona")
+			// 歷史整組渲染進單一 <Request>，不再是原生多輪 messages。
+			require.Len(t, req.Messages, 1)
+			require.Contains(t, req.Messages[0].Content, "<History role=\"user\">把前段改寫</History>")
+			require.Contains(t, req.Messages[0].Content, "<History role=\"assistant\" persona=\"文言文\">臣聞前段</History>")
+			require.Contains(t, req.SystemPrompt, "do not imitate the voice of a previous persona")
 			return &AIProviderResponse{Result: "這輪回答"}, nil
 		},
 	}
@@ -397,7 +398,7 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		storyMessage:   &storytellerModel.StoryChatMessage{ID: replyMessageID, Content: replyContent},
 	}
-	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	expectedReply := "<Reply>\n" + replyContent + "\n</Reply>"
 	var initialPrompt string
 	initialProvider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
@@ -418,11 +419,14 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, expectedPrompt, initialPrompt)
+	require.Contains(t, initialPrompt, expectedReply)
+	require.Contains(t, initialPrompt, "<Task>\n"+userPrompt+"\n</Task>")
+	require.Contains(t, repo.messages[0].Metadata, `"request_xml"`)
 	require.Equal(t, uint64(1001), output.UserMessageID)
 	require.Equal(t, uint64(1002), output.AssistantMessageID)
+	// 回覆內容只存參照（不再有舊的 reply_content 快照欄位）；完整內容只會出現在 request_xml
+	// 的 <Reply> 裡（那份是「實際送出的 request」快照，見 agentUserMessageMetadata）。
 	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
-	require.NotContains(t, repo.messages[0].Metadata, replyContent)
 	var metadata struct {
 		ReplyReference struct {
 			Kind      string `json:"kind"`
@@ -450,7 +454,8 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 
 	require.NoError(t, err)
 	require.Equal(t, "重送回答", resendOutput.Result)
-	require.Equal(t, expectedPrompt, resendPrompt)
+	// 重送從原始欄位（content／reply 參照）重新渲染，沒有歷史時內容必須跟第一次一致。
+	require.Equal(t, initialPrompt, resendPrompt)
 }
 
 func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePrompt(t *testing.T) {
@@ -475,7 +480,7 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 		providerAPIKey:  encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		projectProposal: proposal,
 	}
-	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	expectedReply := "<Reply>\n" + replyContent + "\n</Reply>"
 	var initialPrompt string
 	initialProvider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
@@ -496,9 +501,10 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, expectedPrompt, initialPrompt)
+	require.Contains(t, initialPrompt, expectedReply)
+	require.Contains(t, initialPrompt, "<Task>\n"+userPrompt+"\n</Task>")
+	require.Contains(t, repo.messages[0].Metadata, `"request_xml"`)
 	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
-	require.NotContains(t, repo.messages[0].Metadata, "提案完整內容")
 	var metadata struct {
 		ReplyReference struct {
 			Kind             string `json:"kind"`
@@ -526,7 +532,8 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 
 	require.NoError(t, err)
 	require.Equal(t, "重送回答", resendOutput.Result)
-	require.Equal(t, expectedPrompt, resendPrompt)
+	// 重送從原始欄位（content／reply 參照）重新渲染，沒有歷史時內容必須跟第一次一致。
+	require.Equal(t, initialPrompt, resendPrompt)
 }
 
 func TestStoryChatMessageReferenceContentUsesUserStoryScopedLookup(t *testing.T) {
