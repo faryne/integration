@@ -156,16 +156,6 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	return &row, err
 }
 
-func (r *Repository) AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error) {
-	rows := make([]storytellerModel.Agent, 0, len(ids))
-	if len(ids) == 0 {
-		return rows, nil
-	}
-	err := r.db.Where("user_id = ? AND id IN ? AND is_deleted = 0 AND deleted_at IS NULL", userID, ids).
-		Find(&rows).Error
-	return rows, err
-}
-
 func (r *Repository) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKey, error) {
 	rows := make([]storytellerModel.ProviderAPIKey, 0)
 	err := r.db.Where("user_id = ? AND is_deleted = 0 AND deleted_at IS NULL", userID).
@@ -1239,12 +1229,6 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	query := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		// LEFT JOIN（不是 INNER）＋直接吃 messages.agent_id（不 fallback 回
-		// chats.agent_id）：agent_id 是 NULL 代表這則訊息當時沒有明確指定人設
-		// （見 messageAgentID 的說明），這種訊息本來就該顯示成「沒有 Agent」，
-		// 不能因為 INNER JOIN 找不到 agents.id=NULL 就把整列訊息從結果裡憑空
-		// 濾掉。
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where("chats.story_id = ? AND messages.deleted_at IS NULL", storyID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -1258,9 +1242,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1281,10 +1263,6 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	query := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		// 見 StoryChatMessages 的同一段說明：LEFT JOIN＋不 fallback 回
-		// chats.agent_id，讓「沒有明確指定人設」的訊息正確顯示成沒有 Agent，
-		// 而不是被 INNER JOIN 憑空濾掉或借用 chat 的 agent 掩蓋掉。
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where("chats.lore_id = ? AND messages.deleted_at IS NULL", loreID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -1298,9 +1276,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1329,7 +1305,6 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where(where, args...).
 		Where("messages.deleted_at IS NULL").
 		Select(`messages.id,
@@ -1339,9 +1314,7 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at ASC, messages.id ASC").
 		Find(&rows).Error
 	if err != nil {

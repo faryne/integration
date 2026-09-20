@@ -156,7 +156,6 @@ func TestRunAgent(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, uint64(40), output.AgentID)
 	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
 	tracker.BeginDrain()
 	tracker.Wait()
@@ -170,7 +169,6 @@ func TestRunAgent(t *testing.T) {
 	require.NotNil(t, repo.chat)
 	require.NotNil(t, repo.chat.StoryID)
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
-	require.Equal(t, uint64(40), repo.chat.AgentID)
 	require.Equal(t, uint64(20), repo.chat.UserID)
 	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
 	require.Len(t, repo.messages, 2)
@@ -450,20 +448,14 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project          *storytellerModel.Project
-	projectErr       error
-	story            *storytellerModel.Story
-	storyErr         error
-	lore             *storytellerModel.Lore
-	loreErr          error
-	agent            *storytellerModel.Agent
-	agentErr         error
-	agentsByID       []storytellerModel.Agent
-	agentsByIDErr    error
-	agentsByIDLookup struct {
-		userID uint64
-		ids    []uint64
-	}
+	project               *storytellerModel.Project
+	projectErr            error
+	story                 *storytellerModel.Story
+	storyErr              error
+	lore                  *storytellerModel.Lore
+	loreErr               error
+	agent                 *storytellerModel.Agent
+	agentErr              error
 	providerAPIKey        *storytellerModel.ProviderAPIKey
 	providerAPIKeyErr     error
 	chat                  *storytellerModel.StoryChat
@@ -509,12 +501,6 @@ func (r *fakeAgentRunRepository) Lore(uint64, string) (*storytellerModel.Lore, e
 
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {
 	return r.agent, r.agentErr
-}
-
-func (r *fakeAgentRunRepository) AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error) {
-	r.agentsByIDLookup.userID = userID
-	r.agentsByIDLookup.ids = append([]uint64(nil), ids...)
-	return r.agentsByID, r.agentsByIDErr
 }
 
 func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerModel.ProviderAPIKey, error) {

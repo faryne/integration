@@ -45,10 +45,6 @@ export interface StorytellerAgentPanelMessage {
   resultSelection?: StorytellerAgentPanelSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
-  // 這則訊息實際是哪個 Agent 人設處理的——不一定等於 speaker（skill 訊息的
-  // speaker 對 user 那則是「你」，不是人設名稱）。用來在泡泡上標「這則走了
-  // 哪個 Agent／哪個指令」，事後回頭看對話紀錄才知道當時發生什麼事。
-  agentName?: string;
   // skill 現在也走背景執行＋輪詢：chatId／chatStatus 讓 loading 中的 skill
   // 訊息能被跟 agentic 對話同一套 polling 邏輯認出來、換成正式結果；
   // chatStatus="pending" 代表背景呼叫失敗，沒有拿到回覆。
@@ -206,45 +202,27 @@ export function StorytellerChatBubble({
   );
 }
 
-// 給 StorytellerChatBubble 的 badge prop 用——mode（走了哪個 skill 指令）跟
-// agentName（實際處理這則的 Agent 人設）各自獨立顯示，兩個都沒有就不渲染
-// 任何東西（一般聊天訊息不用特別標）。
+// 給 StorytellerChatBubble 的 badge prop 用——標出這則走了哪個 skill 指令（mode），
+// 沒有 mode 就不渲染任何東西（一般聊天訊息不用特別標）。
 export function StorytellerChatBadges({
   mode,
-  agentName,
 }: {
   mode?: StorytellerAgentRunMode | string;
-  agentName?: string;
 }) {
   const modeLabel = agentRunModeLabel(mode);
-  if (!modeLabel && !agentName) {
+  if (!modeLabel) {
     return null;
   }
   return (
-    <>
-      {modeLabel && (
-        <Chip
-          size="small"
-          variant="outlined"
-          label={modeLabel}
-          sx={{
-            height: 18,
-            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
-          }}
-        />
-      )}
-      {agentName && (
-        <Chip
-          size="small"
-          variant="outlined"
-          label={agentName}
-          sx={{
-            height: 18,
-            "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
-          }}
-        />
-      )}
-    </>
+    <Chip
+      size="small"
+      variant="outlined"
+      label={modeLabel}
+      sx={{
+        height: 18,
+        "& .MuiChip-label": { px: 0.75, fontSize: "0.68rem" },
+      }}
+    />
   );
 }
 
@@ -290,12 +268,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       isUser={isUser}
       isReplyTarget={props.isReplyTarget}
       speaker={message.speaker}
-      badge={
-        <StorytellerChatBadges
-          mode={message.mode}
-          agentName={message.agentName}
-        />
-      }
+      badge={<StorytellerChatBadges mode={message.mode} />}
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>

@@ -484,7 +484,6 @@ export interface StorytellerAgenticProposal {
 }
 
 export interface StorytellerAgenticQueryResponse {
-  agent_id: number;
   // 這輪對話落地的 chat id，不管有沒有拿到回覆都會帶——用來讓即時樂觀更新的
   // 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪對話
   // 因為 pending 訊息被重新抓到而重複顯示。
@@ -528,8 +527,6 @@ export interface StorytellerStoryChatMessage {
   // 這則訊息（如果是 assistant 那輪 agentic 問答的一部分）當初提出過的寫入提案，
   // 直接帶最新狀態，不用再從 metadata 解析一份可能過期的快照。
   proposals?: StorytellerAgenticProposal[];
-  agent_id: number;
-  agent_name: string;
   created_at: string;
   updated_at: string;
 }

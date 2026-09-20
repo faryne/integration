@@ -79,7 +79,6 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, toolCalled)
 	require.Equal(t, "這篇故事叫《測試故事》。", output.Result)
-	require.Equal(t, uint64(40), output.AgentID)
 	require.NotNil(t, output.Usage)
 	require.Equal(t, 8, output.Usage.TotalTokens)
 
@@ -96,31 +95,23 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 }
 
-func TestAgenticQueryHistoriesMarksAssistantPersonaOnly(t *testing.T) {
-	agentID := uint64(41)
+func TestAgenticQueryHistoriesSkipsIncompleteChats(t *testing.T) {
 	rows := []storytellerModel.StoryChatMessage{
-		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求", AgentID: &agentID},
-		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答", AgentID: &agentID},
-		{ID: 3, ChatID: 11, Role: storytellerModel.ChatMessageRoleUser, Content: "一般問答"},
-		{ID: 4, ChatID: 11, Role: storytellerModel.ChatMessageRoleAssistant, Content: "無人設回答"},
+		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求"},
+		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答"},
 		// 沒拿到回覆的 chat（assistant 內容為空）整組略過。
 		{ID: 5, ChatID: 12, Role: storytellerModel.ChatMessageRoleUser, Content: "孤兒問題"},
 		{ID: 6, ChatID: 12, Role: storytellerModel.ChatMessageRoleAssistant, Content: ""},
 	}
 
-	histories := agenticQueryHistories(rows, map[uint64]string{agentID: "色文作家"})
-
 	require.Equal(t, []agentHistory{
 		{Role: "user", Content: "上一輪需求"},
-		{Role: "assistant", Persona: "色文作家", Content: "上一輪回答"},
-		{Role: "user", Content: "一般問答"},
-		{Role: "assistant", Content: "無人設回答"},
-	}, histories)
+		{Role: "assistant", Content: "上一輪回答"},
+	}, agenticQueryHistories(rows))
 }
 
-func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
+func TestRunStoryAgenticQueryRendersHistoryIntoRequest(t *testing.T) {
 	providerAPIKeyID := uint64(50)
-	oldAgentID := uint64(41)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
@@ -131,22 +122,19 @@ func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
 			ModelName:        "claude-test",
 			ProviderAPIKeyID: &providerAPIKeyID,
 		},
-		agentsByID:     []storytellerModel.Agent{{ID: oldAgentID, UserID: 20, Name: "文言文"}},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		historyMessages: []storytellerModel.StoryChatMessage{
-			{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "把前段改寫", AgentID: &oldAgentID},
-			{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "臣聞前段", AgentID: &oldAgentID},
+			{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "把前段改寫"},
+			{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "臣聞前段"},
 		},
 	}
 	provider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
-			require.Equal(t, []uint64{oldAgentID}, repo.agentsByIDLookup.ids)
-			require.Equal(t, uint64(20), repo.agentsByIDLookup.userID)
 			// 歷史整組渲染進單一 <Request>，不再是原生多輪 messages。
 			require.Len(t, req.Messages, 1)
 			require.Contains(t, req.Messages[0].Content, "<History role=\"user\">把前段改寫</History>")
-			require.Contains(t, req.Messages[0].Content, "<History role=\"assistant\" persona=\"文言文\">臣聞前段</History>")
-			require.Contains(t, req.SystemPrompt, "do not imitate the voice of a previous persona")
+			require.Contains(t, req.Messages[0].Content, "<History role=\"assistant\">臣聞前段</History>")
+			require.Contains(t, req.SystemPrompt, "do not imitate the voice of earlier assistant answers")
 			return &AIProviderResponse{Result: "這輪回答"}, nil
 		},
 	}

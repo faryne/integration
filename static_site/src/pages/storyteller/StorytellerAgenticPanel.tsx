@@ -59,7 +59,6 @@ import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
-  StorytellerChatBadges,
   StorytellerChatBubble,
   storytellerChatActionButtonProps,
   type StorytellerAgentPanelAgent,
@@ -286,9 +285,6 @@ type PanelMessage =
       usage?: { total_tokens?: number };
       warning?: string;
       isLoading?: boolean;
-      // 這則實際是哪個 Agent 人設處理的——事後回頭看對話紀錄才追得回「這則
-      // 當時發生了什麼事」，見 StorytellerAgentPanel.tsx 的 StorytellerChatBadges。
-      agentName?: string;
       // chatStatus="in_progress" 代表 provider 仍在處理；"pending" 才代表這則
       // user 訊息沒有拿到 AI 回覆、可以重送。
       chatId?: number;
@@ -656,7 +652,6 @@ function AgenticAssistantMessage({
       isUser={isUser}
       isReplyTarget={isReplyTarget}
       speaker={isUser ? "你" : "AI 助理"}
-      badge={<StorytellerChatBadges agentName={message.agentName} />}
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
@@ -1322,7 +1317,6 @@ export function StorytellerAgenticPanel({
       replyReference: reply.replyReference,
       replyContent: reply.replyContent,
       usage: parseMessageUsage(message.metadata),
-      agentName: message.agent_name || undefined,
       chatId: message.chat_id,
       chatStatus: message.chat_status,
     };
@@ -1355,9 +1349,6 @@ export function StorytellerAgenticPanel({
       usage: parseMessageUsage(message.metadata),
       chatId: message.chat_id,
       chatStatus: message.chat_status,
-      // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
-      // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
-      // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
     };
   }
 
@@ -1780,9 +1771,6 @@ export function StorytellerAgenticPanel({
     },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
-    const targetAgentName = agents.find(
-      (agent) => Number(agent.id) === targetAgentId,
-    )?.name;
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
@@ -1803,7 +1791,6 @@ export function StorytellerAgenticPanel({
       content: instruction,
       replyReference,
       replyContent: replyReference ? undefined : replyContent,
-      agentName: targetAgentName,
     };
     pushLiveMessage(userMessage);
     pushLiveMessage({
@@ -1879,7 +1866,6 @@ export function StorytellerAgenticPanel({
             proposals: response.proposals,
             usage: response.usage,
             warning: response.warning,
-            agentName: targetAgentName,
             chatId: response.chat_id,
             chatStatus: response.chat_status,
           });

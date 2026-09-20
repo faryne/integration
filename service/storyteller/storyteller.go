@@ -37,7 +37,6 @@ type agentRunRepository interface {
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
 	Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
-	AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error
 	AgentProposalByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AgentProposal, error)
@@ -3385,8 +3384,7 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 // 被 HTTP client 那組固定逾時卡住使用者的請求（見「已知 Bug 記錄」：60 秒逾時
 // 曾經讓合法但較慢的生成被砍掉）。真正呼叫 provider 在背景 goroutine 裡跑完才
 // 補進 assistant 訊息，見 completeAgentRun。
-func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, useTools bool, requestXML string) *storytellerModel.StoryChatMessage {
-	agentID := agent.ID
+func agentRunUserMessage(input storytellerModel.AgentRunRequest, useTools bool, requestXML string) *storytellerModel.StoryChatMessage {
 	meta := agentUserMessageMetadata{
 		Mode:              string(input.Mode),
 		FullContentLength: len([]rune(input.FullContent)),
@@ -3401,7 +3399,6 @@ func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.Ag
 		meta.SelectedContentLength = len([]rune(selected))
 	}
 	return &storytellerModel.StoryChatMessage{
-		AgentID:  &agentID,
 		Role:     storytellerModel.ChatMessageRoleUser,
 		Content:  agentRunUserMessageContent(input),
 		Metadata: meta.JSON(),
@@ -3411,10 +3408,8 @@ func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.Ag
 // agentRunAssistantMessage 的 rawResponses 可能是單次 Generate 的原始 response，
 // 也可能是 tool loop 每一輪 provider response；一律用 rawProviderResponseJSON
 // 存成陣列，跟 agentic query 的除錯欄位保持同一種封裝格式。
-func agentRunAssistantMessage(agent storytellerModel.Agent, output *storytellerModel.AgentRunResult, rawResponses []string) *storytellerModel.StoryChatMessage {
-	agentID := agent.ID
+func agentRunAssistantMessage(output *storytellerModel.AgentRunResult, rawResponses []string) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
-		AgentID:             &agentID,
 		Role:                storytellerModel.ChatMessageRoleAssistant,
 		Content:             output.Result,
 		Metadata:            agentRunOutputMetadata(output),

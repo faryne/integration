@@ -566,7 +566,6 @@ type StoryChat struct {
 	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
 	StoryID   *uint64         `gorm:"column:story_id" json:"story_id"`
 	LoreID    *uint64         `gorm:"column:lore_id" json:"lore_id"`
-	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
 	UserID    uint64          `gorm:"column:user_id" json:"user_id"`
 	Status    StoryChatStatus `gorm:"column:status" json:"status"`
 	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
@@ -606,7 +605,6 @@ func (AgentProposal) TableName() string { return "storyteller_agent_proposals" }
 type StoryChatMessage struct {
 	ID       uint64          `gorm:"column:id;primaryKey" json:"id"`
 	ChatID   uint64          `gorm:"column:chat_id" json:"chat_id"`
-	AgentID  *uint64         `gorm:"column:agent_id" json:"agent_id"`
 	Role     ChatMessageRole `gorm:"column:role" json:"role"`
 	Content  string          `gorm:"column:content" json:"content"`
 	Metadata string          `gorm:"column:metadata" json:"metadata"`
@@ -1141,7 +1139,6 @@ type AgenticProposalOutput struct {
 
 // AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
 type AgenticQueryResponse struct {
-	AgentID uint64 `json:"agent_id"`
 	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆，不管有沒有拿到回覆
 	// 都會帶（見 AgenticQueryOutput.ChatID 的說明）——前端用來讓即時樂觀更新的
 	// 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪
@@ -1188,8 +1185,6 @@ type StoryChatMessageOutput struct {
 	Content    string                  `json:"content"`
 	Metadata   string                  `json:"metadata,omitempty"`
 	Proposals  []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
-	AgentID    uint64                  `gorm:"column:agent_id" json:"agent_id"`
-	AgentName  string                  `json:"agent_name"`
 	CreatedAt  time.Time               `json:"created_at"`
 	UpdatedAt  time.Time               `json:"updated_at"`
 }

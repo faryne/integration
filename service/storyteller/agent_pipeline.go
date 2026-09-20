@@ -69,7 +69,6 @@ type agentSubmitParams struct {
 
 // agentRunAck 是送出當下的回應（chat 已進 in_progress，結果還沒出來）。
 type agentRunAck struct {
-	AgentID       uint64
 	ChatID        uint64
 	UserMessageID uint64
 	Provider      storytellerModel.AgentProvider
@@ -94,7 +93,7 @@ func submitAgentRun(deps agentSubmitDeps, p agentSubmitParams) (*agentRunAck, er
 		defer done()
 		logAgenticQueryBackgroundError(p.TrackName+" background run failed", job.ChatID, job.Run(deps.Work.Context()))
 	}()
-	return &agentRunAck{AgentID: plan.Agent.ID, ChatID: job.ChatID, UserMessageID: job.UserMessageID, Provider: plan.Key.Provider, ModelName: plan.ModelName}, nil
+	return &agentRunAck{ChatID: job.ChatID, UserMessageID: job.UserMessageID, Provider: plan.Key.Provider, ModelName: plan.ModelName}, nil
 }
 
 func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPlan, error) {
@@ -146,9 +145,9 @@ func lookupAgentRunTarget(repo agentRunRepository, projectID uint64, kind agenti
 }
 
 // newAgentChat 依 target 種類決定 chat 掛在 story 還是 lore 底下。
-func newAgentChat(target agentRunTarget, userID, agentID uint64) *storytellerModel.StoryChat {
+func newAgentChat(target agentRunTarget, userID uint64) *storytellerModel.StoryChat {
 	id := target.ID
-	chat := &storytellerModel.StoryChat{AgentID: agentID, UserID: userID}
+	chat := &storytellerModel.StoryChat{UserID: userID}
 	if target.Kind == agenticQueryCurrentTargetLore {
 		chat.LoreID = &id
 	} else {
@@ -184,7 +183,6 @@ func agenticQueryTools(projectPublicID string) ([]ToolSpec, map[string]bool) {
 
 func (a *agentRunAck) toAgenticQueryOutput() *AgenticQueryOutput {
 	return &AgenticQueryOutput{
-		AgentID:       a.AgentID,
 		ChatID:        a.ChatID,
 		UserMessageID: a.UserMessageID,
 		ChatStatus:    storytellerModel.StoryChatStatusInProgress,
@@ -261,8 +259,8 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 			// 先把使用者的問題落地（chat 進 in_progress）：就算等下 provider 呼叫逾時／
 			// process 被重啟而拿不到答案，使用者也不會連自己問了什麼都找不到；之後可以用
 			// 「重送」補完這輪，不用整句重打。
-			chat := newAgentChat(plan.Target, userID, plan.Agent.ID)
-			userMessage := pendingAgenticQueryUserMessage(*plan.Agent, userPrompt, opts.ReplyReference, requestXML)
+			chat := newAgentChat(plan.Target, userID)
+			userMessage := pendingAgenticQueryUserMessage(userPrompt, opts.ReplyReference, requestXML)
 			if err := deps.Repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 				return nil, err
 			}
@@ -283,11 +281,7 @@ func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPr
 	if err != nil {
 		return "", err
 	}
-	agentNames, err := agenticQueryHistoryAgentNames(repo, plan.UserID, historyRows)
-	if err != nil {
-		return "", err
-	}
-	return buildAgenticRequest(plan, userPrompt, replyContent, agenticQueryHistories(historyRows, agentNames)).XML(), nil
+	return buildAgenticRequest(plan, userPrompt, replyContent, agenticQueryHistories(historyRows)).XML(), nil
 }
 
 // resubmitAgenticQuery 重送一筆卡在 pending 的 chat，一般對話與 skill 共用同一條路：
@@ -368,7 +362,7 @@ func metadataWithRequestXML(metadata, requestXML string) string {
 // completeAgenticQuery 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分。
 // 呼叫失敗時把 chat 退回 pending 讓使用者知道「沒拿到回覆」，不會讓 chat 卡在 in_progress。
 func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID uint64, requestXML string) error {
-	agent, userID := *plan.Agent, plan.UserID
+	userID := plan.UserID
 	// 這組工具的 Handler 內部都是靠 storytellerUserIDFromContext／storytellerSourceFromContext
 	// 從 ctx 拿身分，不是走參數傳遞（MCP 那層也是同樣的機制，見 tool_registry_context.go），
 	// 一定要先把身分塞進 ctx，不然每個工具呼叫都會失敗。
@@ -393,7 +387,6 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:      agent.ID,
 		RawResponses: loopResult.RawResponses,
 		Provider:     plan.Key.Provider,
 		ModelName:    plan.ModelName,
@@ -402,7 +395,7 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:        loopResult.Usage,
 	}
-	assistantMessage := agenticQueryAssistantMessage(agent, output)
+	assistantMessage := agenticQueryAssistantMessage(output)
 	usage := buildAgenticQueryUsageLog(repo, userID, plan.Key.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
@@ -424,8 +417,8 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
 			useLoop := agentRunShouldUseLoop(plan.Key.Provider, input)
 			requestXML := buildSkillRequest(plan, input, useLoop).XML()
-			chat := newAgentChat(plan.Target, userID, plan.Agent.ID)
-			userMessage := agentRunUserMessage(*plan.Agent, input, useLoop, requestXML)
+			chat := newAgentChat(plan.Target, userID)
+			userMessage := agentRunUserMessage(input, useLoop, requestXML)
 			if err := deps.Repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 				return nil, err
 			}
@@ -442,7 +435,7 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 
 // completeAgentRun 對稱於 completeAgenticQuery：呼叫失敗時把 chat 退回 pending。
 func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, readOnlyTools []ToolSpec, useLoop bool, requestXML string, chatID uint64) error {
-	agent, userID := *plan.Agent, plan.UserID
+	userID := plan.UserID
 	tools := agentToolsNone
 	if useLoop {
 		tools = agentToolsReadOnly
@@ -465,7 +458,7 @@ func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentR
 			TotalTokens:  result.Usage.TotalTokens,
 		}
 	}
-	assistantMessage := agentRunAssistantMessage(agent, output, result.RawResponses)
+	assistantMessage := agentRunAssistantMessage(output, result.RawResponses)
 	usage := buildAgentUsageLog(repo, userID, plan.Key.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, nil, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)

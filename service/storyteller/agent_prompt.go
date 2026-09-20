@@ -38,8 +38,8 @@ not a confirmation that the change happened.`
 - <Persona>: the purpose, tone, and constraints configured for the active Agent. Follow it for style and tone.
 - <Skill>: a built-in task (rewrite, expand, translate, ...) with its output requirements. Follow it exactly.
 - <Histories>: earlier turns of this conversation. Use them for facts, story continuity, and user intent, but
-  do not imitate the voice of a previous persona (each assistant entry names the persona it was written
-  with); style and tone follow only the current <Persona>.
+  do not imitate the voice of earlier assistant answers (they may have been written under a different
+  persona); style and tone follow only the current <Persona>.
 - <References>: the @ references the user attached — either listed for you to fetch with tools when the task
   needs them, or included inline.
 - <Reply>: the full content of the message the user is replying to.

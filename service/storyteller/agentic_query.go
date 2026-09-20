@@ -14,7 +14,6 @@ import (
 
 // AgenticQueryOutput 是 RunStoryAgenticQuery 的回傳結果。
 type AgenticQueryOutput struct {
-	AgentID uint64
 	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆——不管最後有沒有拿到
 	// 回覆都會帶回前端（見 submitAgenticQuery／resubmitAgenticQuery 在
 	// RunAgentLoop 失敗時也組一份只帶 ChatID 的 output），讓前端知道「這輪已經
@@ -100,7 +99,6 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 	}
 
 	return storytellerModel.AgenticQueryResponse{
-		AgentID:            o.AgentID,
 		ChatID:             o.ChatID,
 		UserMessageID:      o.UserMessageID,
 		AssistantMessageID: o.AssistantMessageID,
@@ -151,30 +149,6 @@ const (
 )
 
 var errAgenticQueryReplyContentTooLong = agenticQueryError(fmt.Sprintf("reply_content must be %d characters or less", agenticQueryReplyContentMaxRunes))
-
-func agenticQueryHistoryAgentNames(repo agentRunRepository, userID uint64, rows []storytellerModel.StoryChatMessage) (map[uint64]string, error) {
-	seen := make(map[uint64]bool)
-	ids := make([]uint64, 0)
-	for _, row := range rows {
-		if row.AgentID == nil || seen[*row.AgentID] {
-			continue
-		}
-		seen[*row.AgentID] = true
-		ids = append(ids, *row.AgentID)
-	}
-	if len(ids) == 0 {
-		return nil, nil
-	}
-	agents, err := repo.AgentsByIDs(userID, ids)
-	if err != nil {
-		return nil, err
-	}
-	names := make(map[uint64]string, len(agents))
-	for _, agent := range agents {
-		names[agent.ID] = agent.Name
-	}
-	return names, nil
-}
 
 func (s *Service) StoryChatMessageReferenceContent(userID uint64, projectPublicID, storyPublicID string, messageID uint64) (*storytellerModel.AgenticReferenceContentResponse, error) {
 	return storyChatMessageReferenceContent(s.repo, userID, projectPublicID, storyPublicID, messageID)
@@ -268,10 +242,8 @@ const (
 	agenticQueryCurrentTargetLore  agenticQueryCurrentTargetKind = "lore"
 )
 
-func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, requestXML string) *storytellerModel.StoryChatMessage {
-	agentID := agent.ID
+func pendingAgenticQueryUserMessage(userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, requestXML string) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
-		AgentID: &agentID,
 		Role:    storytellerModel.ChatMessageRoleUser,
 		Content: userPrompt,
 		Metadata: agentUserMessageMetadata{
@@ -284,10 +256,8 @@ func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt str
 
 // agenticQueryAssistantMessage 組出 provider 呼叫跑完後要補進 chat 的 AI 回覆
 // 那一則訊息，搭配 repo.CompleteChatMessage 使用。
-func agenticQueryAssistantMessage(agent storytellerModel.Agent, output *AgenticQueryOutput) *storytellerModel.StoryChatMessage {
-	agentID := agent.ID
+func agenticQueryAssistantMessage(output *AgenticQueryOutput) *storytellerModel.StoryChatMessage {
 	return &storytellerModel.StoryChatMessage{
-		AgentID:             &agentID,
 		Role:                storytellerModel.ChatMessageRoleAssistant,
 		Content:             output.Result,
 		Metadata:            agenticQueryOutputMetadata(output),

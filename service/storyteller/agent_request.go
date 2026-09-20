@@ -44,7 +44,6 @@ type agentReference struct {
 
 type agentHistory struct {
 	Role    string
-	Persona string // assistant 那則當時用的人設名稱，讓模型知道「不要模仿」的是誰
 	Content string
 }
 
@@ -85,11 +84,7 @@ func (r agentRequest) XML() string {
 	if len(r.Histories) > 0 {
 		b.WriteString("<Histories>\n")
 		for _, h := range r.Histories {
-			attrs := xmlAttr("role", h.Role)
-			if h.Persona != "" {
-				attrs += xmlAttr("persona", h.Persona)
-			}
-			b.WriteString("<History" + attrs + ">" + neutralizeAgentTags(h.Content) + "</History>\n")
+			b.WriteString("<History" + xmlAttr("role", h.Role) + ">" + neutralizeAgentTags(h.Content) + "</History>\n")
 		}
 		b.WriteString("</Histories>\n")
 	}
@@ -190,8 +185,8 @@ func parseAgentUserMessageMetadata(metadata string) agentUserMessageMetadata {
 // agenticQueryHistories 把撈出來的歷史訊息列（見 RecentStoryAgenticMessages／
 // RecentLoreAgenticMessages）轉成 <History> 項目。曾經跑到步數上限或中途中止的舊紀錄，
 // assistant 那則的 content 可能是空字串，這種整個 chat（一問一答）一起跳過，不把不完整的
-// 紀錄餵給模型。Agent 名稱由呼叫端 batch 查好傳進來，這裡維持純轉換，不碰 DB。
-func agenticQueryHistories(rows []storytellerModel.StoryChatMessage, agentNames map[uint64]string) []agentHistory {
+// 紀錄餵給模型。純轉換，不碰 DB。
+func agenticQueryHistories(rows []storytellerModel.StoryChatMessage) []agentHistory {
 	byChat := make(map[uint64][]storytellerModel.StoryChatMessage, len(rows))
 	order := make([]uint64, 0, len(rows))
 	for _, row := range rows {
@@ -211,13 +206,7 @@ func agenticQueryHistories(rows []storytellerModel.StoryChatMessage, agentNames 
 			continue
 		}
 		for _, row := range chatRows {
-			h := agentHistory{Role: string(row.Role), Content: row.Content}
-			if row.Role == storytellerModel.ChatMessageRoleAssistant && row.AgentID != nil {
-				if h.Persona = strings.TrimSpace(agentNames[*row.AgentID]); h.Persona == "" {
-					h.Persona = fmt.Sprintf("agent_id_%d_name_unavailable", *row.AgentID)
-				}
-			}
-			histories = append(histories, h)
+			histories = append(histories, agentHistory{Role: string(row.Role), Content: row.Content})
 		}
 	}
 	return histories
