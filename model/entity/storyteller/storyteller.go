@@ -272,18 +272,14 @@ type AssetReference struct {
 func (AssetReference) TableName() string { return "storyteller_asset_references" }
 
 type Agent struct {
-	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
-	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
-	Name             string        `gorm:"column:name" json:"name"`
-	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
-	ModelName        string        `gorm:"column:model_name" json:"model_name"`
-	AgentModelID     *uint64       `gorm:"column:agent_model_id" json:"agent_model_id"`
-	ProviderAPIKeyID *uint64       `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
-	DefaultPrompt    string        `gorm:"column:default_prompt" json:"default_prompt"`
-	IsDeleted        bool          `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt        *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt        time.Time     `gorm:"column:updated_at" json:"updated_at"`
+	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID        uint64     `gorm:"column:user_id" json:"user_id"`
+	Name          string     `gorm:"column:name" json:"name"`
+	DefaultPrompt string     `gorm:"column:default_prompt" json:"default_prompt"`
+	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Agent) TableName() string { return "storyteller_agents" }
@@ -383,15 +379,13 @@ func (AgentModel) TableName() string {
 }
 
 type AgentPromptVersion struct {
-	ID            uint64        `gorm:"column:id;primaryKey" json:"id"`
-	AgentID       uint64        `gorm:"column:agent_id" json:"agent_id"`
-	Name          string        `gorm:"column:name" json:"name"`
-	Provider      AgentProvider `gorm:"column:provider" json:"provider"`
-	ModelName     string        `gorm:"column:model_name" json:"model_name"`
-	DefaultPrompt string        `gorm:"column:default_prompt" json:"default_prompt"`
-	DeletedAt     *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt     time.Time     `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time     `gorm:"column:updated_at" json:"updated_at"`
+	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
+	AgentID       uint64     `gorm:"column:agent_id" json:"agent_id"`
+	Name          string     `gorm:"column:name" json:"name"`
+	DefaultPrompt string     `gorm:"column:default_prompt" json:"default_prompt"`
+	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AgentPromptVersion) TableName() string {
@@ -566,7 +560,6 @@ type StoryChat struct {
 	ID        uint64          `gorm:"column:id;primaryKey" json:"id"`
 	StoryID   *uint64         `gorm:"column:story_id" json:"story_id"`
 	LoreID    *uint64         `gorm:"column:lore_id" json:"lore_id"`
-	AgentID   uint64          `gorm:"column:agent_id" json:"agent_id"`
 	UserID    uint64          `gorm:"column:user_id" json:"user_id"`
 	Status    StoryChatStatus `gorm:"column:status" json:"status"`
 	CreatedAt time.Time       `gorm:"column:created_at" json:"created_at"`
@@ -574,6 +567,13 @@ type StoryChat struct {
 }
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }
+
+// AgentChatTarget 是一筆 chat 掛在哪個專案／故事／設定集底下（由 chat id 反查，見 repository.AgentChatTarget）。
+type AgentChatTarget struct {
+	ProjectPublicID string `gorm:"column:project_public_id"`
+	Kind            string `gorm:"column:kind"` // story 或 lore
+	TargetPublicID  string `gorm:"column:target_public_id"`
+}
 
 type AgentProposalStatus string
 
@@ -606,7 +606,6 @@ func (AgentProposal) TableName() string { return "storyteller_agent_proposals" }
 type StoryChatMessage struct {
 	ID       uint64          `gorm:"column:id;primaryKey" json:"id"`
 	ChatID   uint64          `gorm:"column:chat_id" json:"chat_id"`
-	AgentID  *uint64         `gorm:"column:agent_id" json:"agent_id"`
 	Role     ChatMessageRole `gorm:"column:role" json:"role"`
 	Content  string          `gorm:"column:content" json:"content"`
 	Metadata string          `gorm:"column:metadata" json:"metadata"`
@@ -730,18 +729,30 @@ type ProjectRequest struct {
 }
 
 type AgentRequest struct {
-	Name             string        `json:"name"`
-	Provider         AgentProvider `json:"provider"`
-	ModelName        string        `json:"model_name"`
-	ProviderAPIKeyID *uint64       `json:"provider_apikey_id"`
-	DefaultPrompt    string        `json:"default_prompt"`
+	Name          string `json:"name"`
+	DefaultPrompt string `json:"default_prompt"`
+}
+
+// AgentRunReference 是使用者在需求裡用 @ 引用、由前端解析好的一筆故事／設定集。
+type AgentRunReference struct {
+	Kind    string `json:"kind"` // story 或 lore
+	Title   string `json:"title"`
+	Token   string `json:"token"` // 例如 @thisStory、@story:[標題]
+	Content string `json:"content"`
 }
 
 type AgentRunRequest struct {
-	Mode            AgentRunMode `json:"mode"`
-	Instruction     string       `json:"instruction"`
-	FullContent     string       `json:"full_content"`
-	SelectedContent string       `json:"selected_content"`
+	Mode        AgentRunMode `json:"mode"`
+	Instruction string       `json:"instruction"`
+	// FullContent 是編輯器目前未儲存的全文（沒有選取文字時才會送進 request）。
+	FullContent     string `json:"full_content"`
+	SelectedContent string `json:"selected_content"`
+	// References／ReplyContent 是結構化欄位，取代過去前端把 @ 參照與回覆對象用文字 fence
+	// 塞進 full_content 的做法（有選取文字時那些內容還會整段被丟掉）。
+	References   []AgentRunReference `json:"references,omitempty"`
+	ReplyContent string              `json:"reply_content,omitempty"`
+	// PersonaAgentID 是使用者用 /<名稱> 明確指定的自建 skill（storyteller_agents.id）；空代表不套人設。
+	PersonaAgentID *uint64 `json:"persona_agent_id,omitempty"`
 	// ProviderAPIKeyID 留空時沿用 Agent 綁定的預設 key；帶值時這次呼叫改用這把 key
 	// 執行（可以跟 Agent 記錄的 provider 不同——見 resolveAgentProviderAPIKey）。
 	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
@@ -749,12 +760,6 @@ type AgentRunRequest struct {
 	// 名稱——跟 ProviderAPIKeyID 是各自獨立的覆寫，可以只換 key、只換 model，
 	// 或兩個一起換。
 	ModelName string `json:"model_name,omitempty"`
-	// IgnoreAgentPersona 為 true 時，這次呼叫的 system prompt 不附加這個 Agent 的
-	// DefaultPrompt（人設）——URL 上的 :agent 仍然決定用哪把 key／哪個 model。前端
-	// 對 /rewrite /expand /translate /continue /custom 這幾個「單輪 skill」指令，
-	// 沒有額外指定 Agent 人設時帶這個 true，跟 agentic 問答那邊的同名欄位是同一個
-	// 設計：沒有明確指定人設的呼叫，就不該套用任何人設。
-	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
 }
 
 type ProviderAPIKeyRequest struct {
@@ -1057,25 +1062,15 @@ type AgentRunUsage struct {
 	TotalTokens  int `json:"total_tokens,omitempty"`
 }
 
-type AgentRunResponse struct {
-	AgentID            uint64         `json:"agent_id"`
-	UserMessageID      uint64         `json:"user_message_id,omitempty"`
-	AssistantMessageID uint64         `json:"assistant_message_id,omitempty"`
-	Provider           AgentProvider  `json:"provider"`
-	ModelName          string         `json:"model_name"`
-	Mode               AgentRunMode   `json:"mode"`
-	Result             string         `json:"result"`
-	Usage              *AgentRunUsage `json:"usage,omitempty"`
-	FinishReason       string         `json:"finish_reason,omitempty"`
-	// ChatID／ChatStatus 讓 skill 也走跟 agentic 對話一樣的背景執行＋輪詢模式——
-	// request 一落地使用者這則指令就馬上回應，不再讓使用者被 provider 呼叫的
-	// 同步等待時間卡住（也不會再撞到 HTTP client 的固定逾時）。ChatStatus
-	// 是 "in_progress" 時，Result／Usage／FinishReason 都還沒有值，前端要靠
-	// GET .../agentic-query/:chat 輪詢拿到最終結果（見 StoryAgenticChat／
-	// LoreAgenticChat，這兩個 handler 本來就沒有限定只能給 agentic 模式的
-	// chat 用）。
-	ChatID     uint64          `json:"chat_id,omitempty"`
-	ChatStatus StoryChatStatus `json:"chat_status,omitempty"`
+// AgentRunResult 是一次 skill 執行完成後，用來組 assistant 訊息與 usage log 的內部結果。
+// skill 與一般對話走同一條非同步 pipeline，送出的 HTTP 回應是 AgenticQueryResponse（處理中確認），
+// 結果靠輪詢 GET .../agent-chats/:chat 取得，所以這個型別不對外輸出。
+type AgentRunResult struct {
+	Provider     AgentProvider
+	ModelName    string
+	Result       string
+	Usage        *AgentRunUsage
+	FinishReason string
 }
 
 type AgenticReplyReferenceRequest struct {
@@ -1085,28 +1080,42 @@ type AgenticReplyReferenceRequest struct {
 	Summary          string `json:"summary,omitempty"`
 }
 
-// AgenticQueryRequest 是 AAS 聊天視窗送出一則需求的請求體。ProviderAPIKeyID／
-// ModelName 都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定
-// 的 key／model（可以跟 Agent 記錄的 provider 不同）——這是聊天視窗「切換 API
-// Key」功能的請求介面。
-type AgenticQueryRequest struct {
-	UserPrompt       string  `json:"user_prompt"`
-	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
-	ModelName        string  `json:"model_name,omitempty"`
-	// IgnoreAgentPersona 為 true 時，這輪呼叫的 system prompt 不附加這個 Agent 的
-	// DefaultPrompt（人設/skill 指令）——URL 上的 :agent 仍然決定用哪把 key／哪個
-	// model，只是「這輪不套用它的人設」。前端在使用者沒有明確打 /<Agent 名稱> 前綴
-	// 的訊息帶這個 true，避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
-	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
-	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容——UserPrompt
-	// 裡通常已經帶了一行摘要引言（見前端 composeStorytellerAgentInstructionWithReply），
-	// 這裡才是讓後端把完整內容併入這輪呼叫 prompt 的管道，留空代表不是在回覆
-	// 任何訊息。
-	ReplyContent string `json:"reply_content,omitempty"`
-	// ReplyReference 是送出後持久化用的短參照。ReplyContent 仍負責這一輪 provider
-	// prompt；Metadata 只保存這裡的 message_id / proposal_public_id 與短摘要，避免
-	// 每次回覆都把完整內容再複製一份。
-	ReplyReference *AgenticReplyReferenceRequest `json:"reply_reference,omitempty"`
+// AgentSubmitRequest 是 AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用。
+// 對應唯一的路由 POST /storyteller/agent-chats，目標（專案／故事／設定集）由請求體指定。
+//
+// 沒有「目前選中的 Agent」這個概念——輸入框上的 chip 只是在輸入框插入 /<名稱> 指令的捷徑，
+// 請求明確帶了什麼，後端就用什麼：
+//   - Skill：內建 skill（/rewrite 等），空＝一般對話；
+//   - PersonaAgentID：使用者自建的 skill（storyteller_agents 的一筆，人設放在 DefaultPrompt），
+//     空＝沒有人設；兩者可各自出現（<Skill>／<Persona>）；
+//   - ProviderAPIKeyID／ModelName：這次用哪把 key、哪個 model，送出時必填（純 session 選擇，
+//     不再有 Agent 記錄上的預設值）。
+//
+// 重送（resend）用同一個請求體，但只讀 ProviderAPIKeyID／ModelName，其餘一律重放當初存的
+// request_xml。
+type AgentSubmitRequest struct {
+	// 這次對話掛在哪裡：ProjectPublicID 必填，StoryPublicID／LorePublicID 二選一。之後要支援專案層
+	// 甚至全站層的 AI 助理，只需放寬這裡的組合（不帶 story／lore＝專案層…），不用再開新路由。
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id,omitempty"`
+	LorePublicID    string `json:"lore_public_id,omitempty"`
+
+	Skill          AgentRunMode `json:"skill,omitempty"`
+	PersonaAgentID *uint64      `json:"persona_agent_id,omitempty"`
+	// Task 是使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
+	Task string `json:"task"`
+	// FullContent／SelectedContent／References 只給 skill 用：編輯器未儲存的全文、選取的文字、
+	// 需求裡用 @ 引用而由前端解析好的故事／設定集。
+	FullContent     string              `json:"full_content,omitempty"`
+	SelectedContent string              `json:"selected_content,omitempty"`
+	References      []AgentRunReference `json:"references,omitempty"`
+	// ReplyContent 是使用者按「回覆」時被回覆那則訊息（或被否決提案）的完整內容，留空代表不是
+	// 在回覆任何訊息。ReplyReference 是送出後持久化用的短參照，Metadata 只保存它，避免每次回覆
+	// 都把完整內容再複製一份。
+	ReplyContent     string                        `json:"reply_content,omitempty"`
+	ReplyReference   *AgenticReplyReferenceRequest `json:"reply_reference,omitempty"`
+	ProviderAPIKeyID *uint64                       `json:"provider_apikey_id,omitempty"`
+	ModelName        string                        `json:"model_name,omitempty"`
 }
 
 // AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，
@@ -1145,7 +1154,6 @@ type AgenticProposalOutput struct {
 
 // AgenticQueryResponse 是 AAS 聊天視窗一輪對話的回應。
 type AgenticQueryResponse struct {
-	AgentID uint64 `json:"agent_id"`
 	// ChatID 是這輪對話存進 storyteller_story_chats 的那筆，不管有沒有拿到回覆
 	// 都會帶（見 AgenticQueryOutput.ChatID 的說明）——前端用來讓即時樂觀更新的
 	// 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪
@@ -1192,8 +1200,6 @@ type StoryChatMessageOutput struct {
 	Content    string                  `json:"content"`
 	Metadata   string                  `json:"metadata,omitempty"`
 	Proposals  []AgenticProposalOutput `gorm:"-" json:"proposals,omitempty"`
-	AgentID    uint64                  `gorm:"column:agent_id" json:"agent_id"`
-	AgentName  string                  `json:"agent_name"`
 	CreatedAt  time.Time               `json:"created_at"`
 	UpdatedAt  time.Time               `json:"updated_at"`
 }

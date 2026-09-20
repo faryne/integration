@@ -33,10 +33,6 @@ export interface StorytellerAgent {
   id: number;
   user_id: number;
   name: string;
-  provider: string;
-  model_name: string;
-  agent_model_id: number | null;
-  provider_apikey_id: number | null;
   default_prompt: string;
   is_deleted: boolean;
   created_at: string;
@@ -118,8 +114,6 @@ export interface StorytellerAgentPromptVersion {
   id: number;
   agent_id: number;
   name: string;
-  provider: string;
-  model_name: string;
   default_prompt: string;
   created_at: string;
   updated_at: string;
@@ -398,11 +392,9 @@ export interface StorytellerProjectRequest {
   tags: string[];
 }
 
+// Agent 是使用者自建的 skill：名稱（/<名稱> 指令）加人設。provider／model／key 是每次送出時的請求欄位。
 export interface StorytellerAgentRequest {
   name: string;
-  provider: string;
-  model_name: string;
-  provider_apikey_id?: number | null;
   default_prompt: string;
 }
 
@@ -413,17 +405,39 @@ export type StorytellerAgentRunMode =
   | "continue_chapter"
   | "custom_selection";
 
-export interface StorytellerAgentRunRequest {
-  mode: StorytellerAgentRunMode;
-  instruction: string;
-  full_content: string;
-  selected_content: string;
-  provider_apikey_id?: number;
-  model_name?: string;
-  // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand
-  // /translate /continue /custom 這幾個單輪 skill 指令沒有額外指定人設，一律帶
-  // 這個 true。
-  ignore_agent_persona?: boolean;
+// 使用者在需求裡用 @ 引用、由前端解析好的一筆故事／設定集。
+export interface StorytellerAgentRunReference {
+  kind: "story" | "lore";
+  title: string;
+  token: string;
+  content: string;
+}
+
+// AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，差別只在 skill 有沒有值。
+// 全部非同步——回應只是「已落地、處理中」的確認（帶 chat_id），結果要輪詢 chat 取得。
+export interface StorytellerAgentSubmitRequest {
+  // 這次對話掛在哪裡：project 必填，story／lore 二選一（由 useSubmitStorytellerAgent 依 targetKind 帶入）。
+  project_public_id: string;
+  story_public_id?: string;
+  lore_public_id?: string;
+  // 內建 skill（/rewrite 等）；空／未帶＝一般對話。
+  skill?: StorytellerAgentRunMode;
+  // 使用者自建的 skill（storyteller_agents 的一筆，人設放在 DefaultPrompt）——只有使用者用
+  // /<名稱> 明確指定時才帶；沒有「目前選中的 Agent」，chip 只是插入 /<名稱> 的捷徑。
+  persona_agent_id?: number;
+  // 使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
+  task: string;
+  // 以下三個只給 skill 用：編輯器未儲存的全文、選取的文字、需求裡 @ 引用的故事／設定集。
+  full_content?: string;
+  selected_content?: string;
+  references?: StorytellerAgentRunReference[];
+  // 使用者按「回覆」時，被回覆那則訊息（或被否決提案）的完整內容；不帶代表不是在回覆任何訊息。
+  reply_content?: string;
+  // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
+  reply_reference?: StorytellerAgenticReplyReferenceRequest;
+  // 這次呼叫用哪把 key、哪個 model：純 session 選擇，送出時必填。
+  provider_apikey_id: number;
+  model_name: string;
 }
 
 export interface StorytellerAgentRunUsage {
@@ -432,50 +446,17 @@ export interface StorytellerAgentRunUsage {
   total_tokens?: number;
 }
 
-export interface StorytellerAgentRunResponse {
-  agent_id: number;
-  user_message_id?: number;
-  assistant_message_id?: number;
-  provider: string;
-  model_name: string;
-  mode: StorytellerAgentRunMode;
-  result: string;
-  usage?: StorytellerAgentRunUsage;
-  finish_reason?: string;
-  // skill 現在也走背景執行＋輪詢（跟 agentic 對話一樣）：chat_status 是
-  // "in_progress" 時 result/usage/finish_reason 都還沒有值，要用 chat_id
-  // 打 GET .../agentic-query/:chat 輪詢拿最終結果。
-  chat_id?: number;
-  chat_status?: "pending" | "in_progress" | "completed";
-}
+// 呼叫端組出的送出內容：目標（project／story／lore）由 hook 依所在頁面補上。
+export type StorytellerAgentSubmitInput = Omit<
+  StorytellerAgentSubmitRequest,
+  "project_public_id" | "story_public_id" | "lore_public_id"
+>;
 
 export interface StorytellerAgenticReplyReferenceRequest {
   kind: "message" | "proposal";
   message_id?: number;
   proposal_public_id?: string;
   summary?: string;
-}
-
-// AAS（agentic AI storyteller）：多輪、會自己呼叫工具查資料的問答功能，跟上面
-// 單輪無工具呼叫能力的 StorytellerAgentRunRequest／Response（改寫/擴寫/翻譯）
-// 是刻意分開的兩組型別，對應後端兩條不同的路由。
-export interface StorytellerAgenticQueryRequest {
-  user_prompt: string;
-  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的
-  // key／model（可以跟 Agent 記錄的 provider 不同）——這是切換 API Key 功能的
-  // 請求介面。
-  provider_apikey_id?: number;
-  model_name?: string;
-  // true 時這輪呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model
-  // 還是照這個 Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免
-  // 前一輪切換過的人設無聲沿用到不相關的後續訊息。
-  ignore_agent_persona?: boolean;
-  // 使用者按「回覆」時，被回覆那則訊息的完整內容——user_prompt 裡通常已經帶了
-  // 一行摘要引言（見 composeStorytellerAgentInstructionWithReply），這裡才是讓
-  // 後端把完整內容併入這輪呼叫 prompt 的管道，不帶代表不是在回覆任何訊息。
-  reply_content?: string;
-  // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
-  reply_reference?: StorytellerAgenticReplyReferenceRequest;
 }
 
 export interface StorytellerAgenticToolCall {
@@ -507,7 +488,6 @@ export interface StorytellerAgenticProposal {
 }
 
 export interface StorytellerAgenticQueryResponse {
-  agent_id: number;
   // 這輪對話落地的 chat id，不管有沒有拿到回覆都會帶——用來讓即時樂觀更新的
   // 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪對話
   // 因為 pending 訊息被重新抓到而重複顯示。
@@ -551,8 +531,6 @@ export interface StorytellerStoryChatMessage {
   // 這則訊息（如果是 assistant 那輪 agentic 問答的一部分）當初提出過的寫入提案，
   // 直接帶最新狀態，不用再從 metadata 解析一份可能過期的快照。
   proposals?: StorytellerAgenticProposal[];
-  agent_id: number;
-  agent_name: string;
   created_at: string;
   updated_at: string;
 }

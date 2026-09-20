@@ -130,8 +130,6 @@ interface EditorStory {
 interface EditorAgent {
   id: string;
   name: string;
-  provider: string;
-  model: string;
   purpose: string;
   enabled: boolean;
 }
@@ -274,16 +272,12 @@ export default function StorytellerStoryEditor({
       ? apiAgents.map((agent) => ({
           id: String(agent.id),
           name: agent.name,
-          provider: agent.provider,
-          model: agent.model_name,
           purpose: agent.default_prompt,
           enabled: !agent.is_deleted,
         }))
       : storytellerAgents.map((agent) => ({
           id: agent.id,
           name: agent.name,
-          provider: agent.provider,
-          model: agent.model,
           purpose: agent.purpose,
           enabled: agent.enabled,
         }));
@@ -425,8 +419,6 @@ export default function StorytellerStoryEditor({
   const panelAgents: StorytellerAgentPanelAgent[] = agentRows.map((agent) => ({
     id: agent.id,
     name: agent.name,
-    provider: agent.provider,
-    model: agent.model,
     prompt: agent.purpose,
     enabled: agent.enabled,
   }));

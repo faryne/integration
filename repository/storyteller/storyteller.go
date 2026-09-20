@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -153,16 +154,6 @@ func (r *Repository) Agent(userID, id uint64) (*storytellerModel.Agent, error) {
 	err := r.db.Where("user_id = ? AND id = ? AND is_deleted = 0 AND deleted_at IS NULL", userID, id).
 		First(&row).Error
 	return &row, err
-}
-
-func (r *Repository) AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error) {
-	rows := make([]storytellerModel.Agent, 0, len(ids))
-	if len(ids) == 0 {
-		return rows, nil
-	}
-	err := r.db.Where("user_id = ? AND id IN ? AND is_deleted = 0 AND deleted_at IS NULL", userID, ids).
-		Find(&rows).Error
-	return rows, err
 }
 
 func (r *Repository) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKey, error) {
@@ -321,35 +312,6 @@ func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderMode
 	return output, nil
 }
 
-func (r *Repository) AgentProviderModel(provider storytellerModel.AgentProvider, modelName string) (*storytellerModel.AgentProviderModels, error) {
-	var providerRow storytellerModel.AgentProviderSetting
-	if err := r.db.Where("provider = ? AND is_deleted = 0 AND deleted_at IS NULL", provider).
-		First(&providerRow).Error; err != nil {
-		return nil, err
-	}
-	output := &storytellerModel.AgentProviderModels{
-		Provider:         providerRow.Provider,
-		Label:            providerRow.Label,
-		AllowCustomModel: providerRow.AllowCustomModel,
-	}
-	var model storytellerModel.AgentModel
-	if err := r.db.Where("provider_id = ? AND name = ? AND is_deleted = 0 AND deleted_at IS NULL", providerRow.ID, modelName).
-		First(&model).Error; err != nil {
-		if providerRow.AllowCustomModel {
-			return output, nil
-		}
-		return nil, err
-	}
-	output.Models = []storytellerModel.AgentModelOption{{
-		ID:          model.ID,
-		Name:        model.Name,
-		Label:       model.Label,
-		Description: model.Description,
-		Price:       model.Price,
-	}}
-	return output, nil
-}
-
 // AgentModelPrice 查某個固定模型清單供應商（allow_custom_model=0）底下指定
 // model 目前的單價快照（每 token 美金，JSON 字串）。查不到（self_hosted／
 // openrouter 自訂名稱、model 已下架、或該 model 從來沒有價格資料）回傳
@@ -468,8 +430,6 @@ func agentPromptVersionFromAgent(agent *storytellerModel.Agent) *storytellerMode
 	return &storytellerModel.AgentPromptVersion{
 		AgentID:       agent.ID,
 		Name:          agent.Name,
-		Provider:      agent.Provider,
-		ModelName:     agent.ModelName,
 		DefaultPrompt: agent.DefaultPrompt,
 	}
 }
@@ -959,6 +919,24 @@ func (r *Repository) ReleaseChatToPending(chatID uint64) error {
 		Update("status", storytellerModel.StoryChatStatusPending).Error
 }
 
+// stripRequestXML 把 metadata 裡的 request_xml 濾掉再輸出給前端：那是送 provider 的完整
+// request 快照（含歷史與編輯器全文），只供後端分析／除錯，整包丟進列表 API 會讓載入變慢。
+func stripRequestXML(rows []storytellerModel.StoryChatMessageOutput) {
+	for i := range rows {
+		if !strings.Contains(rows[i].Metadata, `"request_xml"`) {
+			continue
+		}
+		fields := map[string]json.RawMessage{}
+		if json.Unmarshal([]byte(rows[i].Metadata), &fields) != nil {
+			continue
+		}
+		delete(fields, "request_xml")
+		if body, err := json.Marshal(fields); err == nil {
+			rows[i].Metadata = string(body)
+		}
+	}
+}
+
 // ChatUserMessage 撈出一個 chat 底下那則使用者訊息——重送要用它當年存的內容當
 // prompt，不相信前端這次重送傳來的文字，避免跟原始問題兜不起來或被竄改。
 func (r *Repository) ChatUserMessage(chatID uint64) (*storytellerModel.StoryChatMessage, error) {
@@ -1215,12 +1193,6 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	query := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		// LEFT JOIN（不是 INNER）＋直接吃 messages.agent_id（不 fallback 回
-		// chats.agent_id）：agent_id 是 NULL 代表這則訊息當時沒有明確指定人設
-		// （見 messageAgentID 的說明），這種訊息本來就該顯示成「沒有 Agent」，
-		// 不能因為 INNER JOIN 找不到 agents.id=NULL 就把整列訊息從結果裡憑空
-		// 濾掉。
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where("chats.story_id = ? AND messages.deleted_at IS NULL", storyID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -1234,9 +1206,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1244,6 +1214,7 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	if err != nil {
 		return rows, total, err
 	}
+	stripRequestXML(rows)
 	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
@@ -1256,10 +1227,6 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	query := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		// 見 StoryChatMessages 的同一段說明：LEFT JOIN＋不 fallback 回
-		// chats.agent_id，讓「沒有明確指定人設」的訊息正確顯示成沒有 Agent，
-		// 而不是被 INNER JOIN 憑空濾掉或借用 chat 的 agent 掩蓋掉。
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where("chats.lore_id = ? AND messages.deleted_at IS NULL", loreID)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
@@ -1273,9 +1240,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1283,6 +1248,7 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	if err != nil {
 		return rows, total, err
 	}
+	stripRequestXML(rows)
 	err = r.attachAgentProposals(rows)
 	for i, j := 0, len(rows)-1; i < j; i, j = i+1, j-1 {
 		rows[i], rows[j] = rows[j], rows[i]
@@ -1290,12 +1256,26 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	return rows, total, err
 }
 
-func (r *Repository) StoryAgenticChat(storyID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
-	return r.agenticChatMessages("chats.story_id = ? AND chats.id = ?", storyID, chatID)
+// AgentChat 依 chat id 撈一筆對話（只有建立者本人看得到）；輪詢用，不需要事先知道它掛在哪個
+// 故事／設定集底下。
+func (r *Repository) AgentChat(userID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	return r.agenticChatMessages("chats.id = ? AND chats.user_id = ?", chatID, userID)
 }
 
-func (r *Repository) LoreAgenticChat(loreID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
-	return r.agenticChatMessages("chats.lore_id = ? AND chats.id = ?", loreID, chatID)
+// AgentChatTarget 由 chat id 反查它掛在哪個專案／故事／設定集（重送要用）；只有建立者本人查得到。
+func (r *Repository) AgentChatTarget(userID, chatID uint64) (*storytellerModel.AgentChatTarget, error) {
+	var row storytellerModel.AgentChatTarget
+	err := r.db.
+		Table("storyteller_story_chats AS chats").
+		Select(`projects.public_id AS project_public_id,
+			CASE WHEN chats.story_id IS NOT NULL THEN 'story' ELSE 'lore' END AS kind,
+			COALESCE(stories.public_id, lores.public_id) AS target_public_id`).
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Joins("INNER JOIN storyteller_projects AS projects ON projects.id = COALESCE(stories.project_id, lores.project_id)").
+		Where("chats.id = ? AND chats.user_id = ? AND chats.deleted_at IS NULL", chatID, userID).
+		Take(&row).Error
+	return &row, err
 }
 
 func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*storytellerModel.AgenticChatResponse, error) {
@@ -1303,7 +1283,6 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 	err := r.db.
 		Table("storyteller_story_chat_messages AS messages").
 		Joins("INNER JOIN storyteller_story_chats AS chats ON chats.id = messages.chat_id").
-		Joins("LEFT JOIN storyteller_agents AS agents ON agents.id = messages.agent_id").
 		Where(where, args...).
 		Where("messages.deleted_at IS NULL").
 		Select(`messages.id,
@@ -1313,9 +1292,7 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at,
-			COALESCE(messages.agent_id, 0) AS agent_id,
-			COALESCE(agents.name, '') AS agent_name`).
+			messages.updated_at`).
 		Order("messages.created_at ASC, messages.id ASC").
 		Find(&rows).Error
 	if err != nil {
@@ -1324,6 +1301,7 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 	if len(rows) == 0 {
 		return nil, gorm.ErrRecordNotFound
 	}
+	stripRequestXML(rows)
 	if err := r.attachAgentProposals(rows); err != nil {
 		return nil, err
 	}

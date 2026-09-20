@@ -12,12 +12,11 @@ import type {
   StorytellerAgenticChatResponse,
   StorytellerAgenticReferenceContentResponse,
   StorytellerAgenticReplyReferenceRequest,
-  StorytellerAgenticQueryRequest,
   StorytellerAgenticQueryResponse,
   StorytellerAgentPromptVersion,
   StorytellerAgentProviderModels,
-  StorytellerAgentRunRequest,
-  StorytellerAgentRunResponse,
+  StorytellerAgentSubmitInput,
+  StorytellerAgentSubmitRequest,
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
@@ -35,26 +34,19 @@ import { apiBase, sessionHeaders } from "./shared.ts";
 
 const agenticQueryTimeoutMs = 490000;
 
+// 依 chat id 撈一筆對話目前的狀態與訊息（輪詢用）；不需要知道它掛在哪個故事／設定集底下。
 export async function fetchStorytellerAgenticChat({
-  targetKind,
-  projectPublicId,
-  targetPublicId,
   chatId,
   encryptKey,
 }: {
-  targetKind: "story" | "lore";
-  projectPublicId: string;
-  targetPublicId: string;
   chatId: number;
   encryptKey: string;
 }) {
-  const section = targetKind === "lore" ? "lores" : "stories";
   const response = await axios.get<
     CommonResponse<StorytellerAgenticChatResponse>
-  >(
-    `${apiBase}/storyteller/projects/${projectPublicId}/${section}/${targetPublicId}/agentic-query/${chatId}`,
-    { headers: sessionHeaders(encryptKey) },
-  );
+  >(`${apiBase}/storyteller/agent-chats/${chatId}`, {
+    headers: sessionHeaders(encryptKey),
+  });
   return response.data.data;
 }
 
@@ -520,190 +512,78 @@ export function useDeleteStorytellerAgent() {
   });
 }
 
-export function useRunStorytellerAgent(
-  projectPublicId?: string,
-  storyPublicId?: string,
+type StorytellerAgentTargetKind = "story" | "lore";
+
+// AI 助理唯一的送出 hook：一般對話與內建 skill（/rewrite 等）都走這裡，由 input.skill 決定。
+// 全部非同步，回應只是「已落地、處理中」的確認（帶 chat_id），結果靠輪詢 chat 取得。
+// 目標（專案／故事／設定集）放在請求體，不分 story／lore 兩套路由；故事／設定集只差 targetKind。
+export function useSubmitStorytellerAgent(
+  projectPublicId: string | undefined,
+  targetKind: StorytellerAgentTargetKind,
+  targetPublicId: string | undefined,
 ) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      agentId,
-      input,
-    }: {
-      agentId: number;
-      input: StorytellerAgentRunRequest;
-    }) => {
+    mutationFn: async ({ input }: { input: StorytellerAgentSubmitInput }) => {
+      const body: StorytellerAgentSubmitRequest = {
+        ...input,
+        project_public_id: projectPublicId ?? "",
+        ...(targetKind === "lore"
+          ? { lore_public_id: targetPublicId }
+          : { story_public_id: targetPublicId }),
+      };
       const response = await axios.post<
-        CommonResponse<StorytellerAgentRunResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/run`,
-        input,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
+        CommonResponse<StorytellerAgenticQueryResponse>
+      >(`${apiBase}/storyteller/agent-chats`, body, {
+        headers: sessionHeaders(session!.encrypt_key),
+        timeout: agenticQueryTimeoutMs,
+      });
       return response.data.data;
     },
     // 等訊息列表重新抓取完成後 mutation 才算結束，
     // 讓編輯器清除樂觀訊息時正式紀錄已經就位，避免訊息短暫消失
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "story-chat-messages"],
+        queryKey: ["storyteller", `${targetKind}-chat-messages`],
       });
     },
   });
 }
 
-// AAS（agentic AI storyteller）：多輪、會自己呼叫唯讀工具查資料的問答功能，跟
-// 上面 useRunStorytellerAgent（單輪、無工具呼叫能力的改寫/擴寫/翻譯）是刻意分開
-// 的兩個 hook，對應後端不同的路由，UI 上也是不同的互動模式，不要合併。
-export function useRunStorytellerAgenticQuery(
-  projectPublicId?: string,
-  storyPublicId?: string,
+// 重新對一則卡在 pending（沒拿到回覆、已可重送）狀態的訊息呼叫 provider——不是開新的一輪
+// 對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。一般對話與 skill 共用。
+// input 只帶金鑰／模型這次的選擇，其餘後端一律重放當初存的那份 request。
+export function useResendStorytellerAgent(
+  targetKind: StorytellerAgentTargetKind,
 ) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      agentId,
-      input,
-    }: {
-      agentId: number;
-      input: StorytellerAgenticQueryRequest;
-    }) => {
-      const response = await axios.post<
-        CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
-      return response.data.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "story-chat-messages"],
-      });
-    },
-  });
-}
-
-// useRunStorytellerAgenticQuery 的設定集版本——同一顆 StorytellerAgenticPanel
-// 面板兩邊共用，差別只在故事/設定集這條軸線，見後端 RunLoreAgenticQuery 的說明。
-export function useRunStorytellerLoreAgenticQuery(
-  projectPublicId?: string,
-  lorePublicId?: string,
-) {
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      agentId,
-      input,
-    }: {
-      agentId: number;
-      input: StorytellerAgenticQueryRequest;
-    }) => {
-      const response = await axios.post<
-        CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
-      return response.data.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "lore-chat-messages"],
-      });
-    },
-  });
-}
-
-// 重新對一則卡在 pending（沒拿到回覆、已可重送）狀態的訊息呼叫 provider——
-// 不是開新的一輪對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。
-// input 只帶金鑰／模型／ignore_agent_persona 這次的選擇，user_prompt／
-// reply_content 不用帶，後端一律讀當初存的那份。
-export function useResendStorytellerAgenticQuery(
-  projectPublicId?: string,
-  storyPublicId?: string,
-) {
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      agentId,
       chatId,
       input,
     }: {
-      agentId: number;
       chatId: number;
-      input: StorytellerAgenticQueryRequest;
+      input: StorytellerAgentSubmitInput;
     }) => {
       const response = await axios.post<
         CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
+      >(`${apiBase}/storyteller/agent-chats/${chatId}/resend`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+        timeout: agenticQueryTimeoutMs,
+      });
       return response.data.data;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "story-chat-messages"],
+        queryKey: ["storyteller", `${targetKind}-chat-messages`],
       });
     },
   });
 }
 
-// useResendStorytellerAgenticQuery 的設定集版本。
-export function useResendStorytellerLoreAgenticQuery(
-  projectPublicId?: string,
-  lorePublicId?: string,
-) {
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      agentId,
-      chatId,
-      input,
-    }: {
-      agentId: number;
-      chatId: number;
-      input: StorytellerAgenticQueryRequest;
-    }) => {
-      const response = await axios.post<
-        CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/agentic-query/${chatId}/resend`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
-      return response.data.data;
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "lore-chat-messages"],
-      });
-    },
-  });
-}
-
-// 套用先前 useRunStorytellerAgenticQuery 回傳、被攔下來還沒真的執行的寫入類
+// 套用先前 useSubmitStorytellerAgent 回傳、被攔下來還沒真的執行的寫入類
 // 工具呼叫。呼叫端要把當初收到的 StorytellerAgenticProposal 的 tool_name／
 // arguments 原樣送回來。
 // 提案的 tool_name／arguments 由後端自己保管（見後端 AgentProposal 的說明），
@@ -790,39 +670,6 @@ export function useRejectStorytellerAgentProposal(projectPublicId?: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
-    },
-  });
-}
-
-export function useRunStorytellerLoreAgent(
-  projectPublicId?: string,
-  lorePublicId?: string,
-) {
-  const { session } = useAuth();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      agentId,
-      input,
-    }: {
-      agentId: number;
-      input: StorytellerAgentRunRequest;
-    }) => {
-      const response = await axios.post<
-        CommonResponse<StorytellerAgentRunResponse>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/lores/${lorePublicId}/agents/${agentId}/run`,
-        input,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
-      return response.data.data;
-    },
-    // 等訊息列表重新抓取完成後 mutation 才算結束，
-    // 讓編輯器清除樂觀訊息時正式紀錄已經就位，避免訊息短暫消失
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: ["storyteller", "lore-chat-messages"],
-      });
     },
   });
 }

@@ -36,7 +36,7 @@ type AgentLoopRequest struct {
 	SystemPrompt string
 	// History 是接在這輪 UserPrompt 之前的先前對話紀錄（依時間由舊到新），讓
 	// provider 看得到之前使用者問過什麼、AI 回答過什麼——agentic query 每輪呼叫
-	// 原本都是從零開始（見呼叫端 runStoryAgenticQuery/runLoreAgenticQuery 組
+	// 原本都是從零開始（見呼叫端 completeAgenticQuery 組
 	// History 的說明），這裡只負責照順序接在最前面，不做任何過濾/截斷，長度上限
 	// 由呼叫端在組 History 時就決定好。
 	History    []Message

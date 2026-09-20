@@ -27,17 +27,13 @@ func TestAgenticQueryOutputMetadataUsage(t *testing.T) {
 }
 
 func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
-			DefaultPrompt:    "Be concise.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Be concise.",
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -79,7 +75,6 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, toolCalled)
 	require.Equal(t, "這篇故事叫《測試故事》。", output.Result)
-	require.Equal(t, uint64(40), output.AgentID)
 	require.NotNil(t, output.Usage)
 	require.Equal(t, 8, output.Usage.TotalTokens)
 
@@ -96,56 +91,42 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 }
 
-func TestAgenticQueryHistoryMessagesMarksAssistantPersonaOnly(t *testing.T) {
-	agentID := uint64(41)
+func TestAgenticQueryHistoriesSkipsIncompleteChats(t *testing.T) {
 	rows := []storytellerModel.StoryChatMessage{
-		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求", AgentID: &agentID},
-		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答", AgentID: &agentID},
-		{ID: 3, ChatID: 11, Role: storytellerModel.ChatMessageRoleUser, Content: "一般問答"},
-		{ID: 4, ChatID: 11, Role: storytellerModel.ChatMessageRoleAssistant, Content: "無人設回答"},
+		{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "上一輪需求"},
+		{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "上一輪回答"},
+		// 沒拿到回覆的 chat（assistant 內容為空）整組略過。
+		{ID: 5, ChatID: 12, Role: storytellerModel.ChatMessageRoleUser, Content: "孤兒問題"},
+		{ID: 6, ChatID: 12, Role: storytellerModel.ChatMessageRoleAssistant, Content: ""},
 	}
 
-	messages := agenticQueryHistoryMessages(rows, map[uint64]string{agentID: "色文作家"})
-
-	require.Len(t, messages, 4)
-	require.Equal(t, "上一輪需求", messages[0].Content)
-	require.Contains(t, messages[1].Content, `persona_name="色文作家"`)
-	require.Contains(t, messages[1].Content, "do not imitate this persona")
-	require.Contains(t, messages[1].Content, "<<<STORYTELLER_HISTORY_ASSISTANT_MESSAGE_2_CONTENT")
-	require.Contains(t, messages[1].Content, "上一輪回答")
-	require.Equal(t, "一般問答", messages[2].Content)
-	require.Equal(t, "無人設回答", messages[3].Content)
+	require.Equal(t, []agentHistory{
+		{Role: "user", Content: "上一輪需求"},
+		{Role: "assistant", Content: "上一輪回答"},
+	}, agenticQueryHistories(rows))
 }
 
-func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
-	providerAPIKeyID := uint64(50)
-	oldAgentID := uint64(41)
+func TestRunStoryAgenticQueryRendersHistoryIntoRequest(t *testing.T) {
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
-		agentsByID:     []storytellerModel.Agent{{ID: oldAgentID, UserID: 20, Name: "文言文"}},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		historyMessages: []storytellerModel.StoryChatMessage{
-			{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "把前段改寫", AgentID: &oldAgentID},
-			{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "臣聞前段", AgentID: &oldAgentID},
+			{ID: 1, ChatID: 10, Role: storytellerModel.ChatMessageRoleUser, Content: "把前段改寫"},
+			{ID: 2, ChatID: 10, Role: storytellerModel.ChatMessageRoleAssistant, Content: "臣聞前段"},
 		},
 	}
 	provider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
-			require.Equal(t, []uint64{oldAgentID}, repo.agentsByIDLookup.ids)
-			require.Equal(t, uint64(20), repo.agentsByIDLookup.userID)
-			require.Len(t, req.Messages, 3)
-			require.Equal(t, "把前段改寫", req.Messages[0].Content)
-			require.Contains(t, req.Messages[1].Content, `persona_name="文言文"`)
-			require.Contains(t, req.Messages[1].Content, "臣聞前段")
-			require.Contains(t, req.SystemPrompt, "metadata fences that name the persona")
+			// 歷史整組渲染進單一 <Request>，不再是原生多輪 messages。
+			require.Len(t, req.Messages, 1)
+			require.Contains(t, req.Messages[0].Content, "<History role=\"user\">把前段改寫</History>")
+			require.Contains(t, req.Messages[0].Content, "<History role=\"assistant\">臣聞前段</History>")
+			require.Contains(t, req.SystemPrompt, "do not imitate the voice of earlier assistant answers")
 			return &AIProviderResponse{Result: "這輪回答"}, nil
 		},
 	}
@@ -166,16 +147,12 @@ func TestRunStoryAgenticQueryAnnotatesHistoryWithBatchAgentNames(t *testing.T) {
 // 檢查 ctx 的假 Handler，沒測出這個洞。這裡故意寫一個會檢查 ctx 的假 Handler，
 // 確保這個洞不會再回來。
 func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -220,17 +197,13 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 // 可以不一樣——呼應「Agent 只是人設/prompt，用哪把 key／哪個 model 是每次呼叫
 // 當下的選擇」這個方向。
 func TestRunStoryAgenticQueryAppliesProviderAndModelOverride(t *testing.T) {
-	agentDefaultKeyID := uint64(50)
 	overrideKeyID := uint64(51)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &agentDefaultKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, overrideKeyID, 20, storytellerModel.AgentProviderClaude, "override-secret-key"),
 	}
@@ -263,16 +236,12 @@ func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
 }
 
 func TestEnqueueStoryAgenticQueryReturnsInProgressAndBackgroundPersistsResult(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id", Title: "測試故事"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -314,16 +283,12 @@ func TestEnqueueStoryAgenticQueryReturnsInProgressAndBackgroundPersistsResult(t 
 }
 
 func TestEnqueueStoryAgenticQueryRejectsWhenBackgroundWorkIsDraining(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -339,16 +304,12 @@ func TestEnqueueStoryAgenticQueryRejectsWhenBackgroundWorkIsDraining(t *testing.
 }
 
 func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -371,15 +332,15 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 		return provider, nil
 	}, tools, nil, 20, "project-public-id", "story-public-id", 40, "一直呼叫工具的問題", AgenticQueryOptions{})
 
-	require.ErrorIs(t, err, ErrAgentLoopMaxStepsExceeded)
+	// 全部動作都是非同步：撞到步數上限的錯誤只會在背景 log，不會回給呼叫端；
 	// 就算失控被中止，也要把已經燒掉的 usage 記下來，不能整批丟掉。
+	require.NoError(t, err)
 	require.NotNil(t, output)
 	require.NotNil(t, repo.usage)
 	require.Greater(t, repo.usage.TotalTokens, 0)
 }
 
 func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	replyMessageID := uint64(77)
 	userPrompt := "> 回覆 AI 助理：這是摘要\n\n請接著回答"
 	replyContent := "這是被回覆訊息的完整原文\n第二行也要保留"
@@ -387,16 +348,13 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		storyMessage:   &storytellerModel.StoryChatMessage{ID: replyMessageID, Content: replyContent},
 	}
-	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	expectedReply := "<Reply>\n" + replyContent + "\n</Reply>"
 	var initialPrompt string
 	initialProvider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
@@ -417,11 +375,14 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, expectedPrompt, initialPrompt)
+	require.Contains(t, initialPrompt, expectedReply)
+	require.Contains(t, initialPrompt, "<Task>\n"+userPrompt+"\n</Task>")
+	require.Contains(t, repo.messages[0].Metadata, `"request_xml"`)
 	require.Equal(t, uint64(1001), output.UserMessageID)
 	require.Equal(t, uint64(1002), output.AssistantMessageID)
+	// 回覆內容只存參照（不再有舊的 reply_content 快照欄位）；完整內容只會出現在 request_xml
+	// 的 <Reply> 裡（那份是「實際送出的 request」快照，見 agentUserMessageMetadata）。
 	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
-	require.NotContains(t, repo.messages[0].Metadata, replyContent)
 	var metadata struct {
 		ReplyReference struct {
 			Kind      string `json:"kind"`
@@ -449,11 +410,11 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 
 	require.NoError(t, err)
 	require.Equal(t, "重送回答", resendOutput.Result)
-	require.Equal(t, expectedPrompt, resendPrompt)
+	// 重送從原始欄位（content／reply 參照）重新渲染，沒有歷史時內容必須跟第一次一致。
+	require.Equal(t, initialPrompt, resendPrompt)
 }
 
 func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePrompt(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	proposal := &storytellerModel.AgentProposal{
 		PublicID:  "proposal-public-id",
 		ToolName:  "storyteller_upsert_story",
@@ -465,16 +426,13 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey:  encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		projectProposal: proposal,
 	}
-	expectedPrompt := agenticQueryUserPromptWithReply(userPrompt, replyContent)
+	expectedReply := "<Reply>\n" + replyContent + "\n</Reply>"
 	var initialPrompt string
 	initialProvider := &fakeSequentialAIProvider{
 		onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
@@ -495,9 +453,10 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, expectedPrompt, initialPrompt)
+	require.Contains(t, initialPrompt, expectedReply)
+	require.Contains(t, initialPrompt, "<Task>\n"+userPrompt+"\n</Task>")
+	require.Contains(t, repo.messages[0].Metadata, `"request_xml"`)
 	require.NotContains(t, repo.messages[0].Metadata, "reply_content")
-	require.NotContains(t, repo.messages[0].Metadata, "提案完整內容")
 	var metadata struct {
 		ReplyReference struct {
 			Kind             string `json:"kind"`
@@ -525,7 +484,8 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 
 	require.NoError(t, err)
 	require.Equal(t, "重送回答", resendOutput.Result)
-	require.Equal(t, expectedPrompt, resendPrompt)
+	// 重送從原始欄位（content／reply 參照）重新渲染，沒有歷史時內容必須跟第一次一致。
+	require.Equal(t, initialPrompt, resendPrompt)
 }
 
 func TestStoryChatMessageReferenceContentUsesUserStoryScopedLookup(t *testing.T) {
@@ -581,4 +541,63 @@ type contextCheckingAIProvider struct {
 
 func (p *contextCheckingAIProvider) Generate(ctx context.Context, req AIProviderRequest) (*AIProviderResponse, error) {
 	return p.onGenerate(ctx, req)
+}
+
+// 沒有「目前選中的 Agent」：請求沒帶 persona_agent_id 就不能有 <Persona>，就算使用者有建立
+// 帶 DefaultPrompt 的 Agent；明確帶了才套用。
+func TestSubmitAppliesPersonaOnlyWhenRequestNamesIt(t *testing.T) {
+	newRepo := func() *fakeAgentRunRepository {
+		return &fakeAgentRunRepository{
+			project:        &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+			story:          &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+			agent:          &storytellerModel.Agent{ID: 40, UserID: 20, Name: "色文作家", DefaultPrompt: "Be lewd."},
+			providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
+		}
+	}
+	var sent string
+	factory := func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return &fakeSequentialAIProvider{onGenerate: func(req AIProviderRequest) (*AIProviderResponse, error) {
+			sent = req.Messages[0].Content
+			return &AIProviderResponse{Result: "ok"}, nil
+		}}, nil
+	}
+
+	_, err := runStoryAgenticQuery(context.Background(), newRepo(), factory, nil, nil, 20, "project-public-id", "story-public-id", 0, "普通問題", AgenticQueryOptions{})
+	require.NoError(t, err)
+	require.NotContains(t, sent, "<Persona")
+
+	_, err = runStoryAgenticQuery(context.Background(), newRepo(), factory, nil, nil, 20, "project-public-id", "story-public-id", 40, "普通問題", AgenticQueryOptions{})
+	require.NoError(t, err)
+	require.Contains(t, sent, "<Persona name=\"色文作家\">\nBe lewd.\n</Persona>")
+}
+
+// key／model 是這次呼叫的明確選擇，沒有 Agent 記錄上的預設值可以退回。
+func TestSubmitRequiresProviderAPIKeyAndModel(t *testing.T) {
+	repo := &fakeAgentRunRepository{
+		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+	}
+	_, err := submitAgenticQuery(testSubmitDeps(repo, background.NewTracker(), nil, nil, nil), 20, "project-public-id", agenticQueryCurrentTargetStory, "story-public-id", "問題", AgenticQueryOptions{})
+	require.ErrorIs(t, err, errProviderAPIKeyRequired)
+	require.Nil(t, repo.chat)
+}
+
+// 目標由請求體指定：project 必填，story／lore 恰好一個。
+func TestAgentTargetFromRequest(t *testing.T) {
+	kind, id, err := agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", StoryPublicID: "s"})
+	require.NoError(t, err)
+	require.Equal(t, agenticQueryCurrentTargetStory, kind)
+	require.Equal(t, "s", id)
+
+	kind, id, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", LorePublicID: "l"})
+	require.NoError(t, err)
+	require.Equal(t, agenticQueryCurrentTargetLore, kind)
+	require.Equal(t, "l", id)
+
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{StoryPublicID: "s"})
+	require.ErrorIs(t, err, errAgentProjectRequired)
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p"})
+	require.ErrorIs(t, err, errAgentTargetRequired)
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", StoryPublicID: "s", LorePublicID: "l"})
+	require.ErrorIs(t, err, errAgentTargetRequired)
 }

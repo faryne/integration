@@ -1,5 +1,8 @@
 import { steamloomPath } from "@/helpers/steamloom.ts";
-import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
+import type {
+  StorytellerAgenticProposal,
+  StorytellerAgentRunReference,
+} from "@/types/storyteller.ts";
 
 export type StorytellerAgentReferenceKind = "story" | "lore";
 
@@ -108,7 +111,12 @@ function matchHighlightTokenAt(
   storyTitles: string[],
   loreTitles: string[],
 ): { text: string; kind: "current" | "named" } | null {
-  const match = matchHighlightTokenCandidate(prompt, start, storyTitles, loreTitles);
+  const match = matchHighlightTokenCandidate(
+    prompt,
+    start,
+    storyTitles,
+    loreTitles,
+  );
   if (!match) {
     return null;
   }
@@ -141,11 +149,21 @@ function matchHighlightTokenCandidate(
   if (prompt.startsWith("@thisLore", start)) {
     return { text: "@thisLore", kind: "current" };
   }
-  const storyByTitle = matchKnownReferenceTitleAt(prompt, start, "story", storyTitles);
+  const storyByTitle = matchKnownReferenceTitleAt(
+    prompt,
+    start,
+    "story",
+    storyTitles,
+  );
   if (storyByTitle) {
     return { text: storyByTitle, kind: "named" };
   }
-  const loreByTitle = matchKnownReferenceTitleAt(prompt, start, "lore", loreTitles);
+  const loreByTitle = matchKnownReferenceTitleAt(
+    prompt,
+    start,
+    "lore",
+    loreTitles,
+  );
   if (loreByTitle) {
     return { text: loreByTitle, kind: "named" };
   }
@@ -177,8 +195,7 @@ function matchKnownReferenceTitleAt(
     return null;
   }
   const titleStart = start + prefix.length;
-  const bracketTitleStart =
-    prompt[titleStart] === "[" ? titleStart + 1 : null;
+  const bracketTitleStart = prompt[titleStart] === "[" ? titleStart + 1 : null;
   for (const title of titles) {
     if (bracketTitleStart !== null) {
       const end = bracketTitleStart + title.length;
@@ -195,7 +212,10 @@ function matchKnownReferenceTitleAt(
       // 的「[」誤當成語法括號在用留下的痕跡）——有的話一併吃掉，畫面上才不會
       // 在連結後面多一個孤零零的「]」。
       const hasStrayClosingBracket = prompt[bareEnd] === "]";
-      return prompt.slice(start, hasStrayClosingBracket ? bareEnd + 1 : bareEnd);
+      return prompt.slice(
+        start,
+        hasStrayClosingBracket ? bareEnd + 1 : bareEnd,
+      );
     }
   }
   return null;
@@ -284,7 +304,9 @@ export function buildStorytellerAgentMessageLinks(
   const storyHrefByTitle = new Map(
     options.otherStories.map((story) => [
       story.title,
-      steamloomPath(`my/workspace/${options.projectPublicId}/story/${story.id}`),
+      steamloomPath(
+        `my/workspace/${options.projectPublicId}/story/${story.id}`,
+      ),
     ]),
   );
   const loreHrefByTitle = new Map(
@@ -363,19 +385,17 @@ export function resolveStorytellerAgentReferences(
   return Array.from(references.values());
 }
 
-export function buildStorytellerAgentReferenceContent(
+// 轉成後端 skill 請求的結構化 references——過去這裡是把每筆參照組成 fence 文字塞進
+// full_content，後端再用行前綴解析回來，現在直接送結構化欄位。
+export function toStorytellerAgentRunReferences(
   references: StorytellerAgentReference[],
-) {
-  return references
-    .map((reference) => {
-      const label = reference.kind === "lore" ? "lore" : "story";
-      const fence =
-        reference.kind === "lore"
-          ? "LORE_REFERENCE_CONTENT"
-          : "STORY_REFERENCE_CONTENT";
-      return `Reference ${label}: ${reference.title}\nToken: ${reference.token}\n<<<${fence}\n${reference.content}\n${fence}`;
-    })
-    .join("\n\n");
+): StorytellerAgentRunReference[] {
+  return references.map(({ kind, title, token, content }) => ({
+    kind,
+    title,
+    token,
+    content,
+  }));
 }
 
 export interface StorytellerAgentReplyTarget {
@@ -384,28 +404,20 @@ export interface StorytellerAgentReplyTarget {
   content: string;
 }
 
-export function buildStorytellerAgentReplyReferenceContent(
-  reply: StorytellerAgentReplyTarget | null | undefined,
-) {
-  if (!reply || reply.content.trim() === "") {
-    return "";
-  }
-  return `Reference reply: ${reply.speaker}\n<<<REPLY_REFERENCE_CONTENT\n${reply.content}\nREPLY_REFERENCE_CONTENT`;
-}
-
 export function buildStorytellerAgentProposalReferenceContent(
   proposal: StorytellerAgenticProposal,
 ) {
   // 否決提案時把 AI 當初想執行的工具與參數原封不動交回下一輪，讓模型自己判斷
   // 使用者意見是在要求小修、重寫，還是改走另一種操作。
-  return `Reference rejected proposal: ${proposal.tool_name}\n<<<REJECTED_PROPOSAL_REFERENCE_CONTENT\n${JSON.stringify(
+  // 格式要跟後端 agenticQueryProposalReferenceContent 一致（重送時後端會自己重建）。
+  return `Rejected proposal: ${proposal.tool_name}\n${JSON.stringify(
     {
       tool_name: proposal.tool_name,
       arguments: proposal.arguments,
     },
     null,
     2,
-  )}\nREJECTED_PROPOSAL_REFERENCE_CONTENT`;
+  )}`;
 }
 
 // 跟 buildStorytellerAgentReplyQuote 同一個目的：讓對話列表（樂觀訊息或重新

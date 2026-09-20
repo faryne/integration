@@ -79,14 +79,10 @@ export default function StorytellerNewAgent({
   const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  // provider／model_name／provider_apikey_id 已經跟 Agent 人設剝離（AI 助理面板
-  // 改用 key／model chip 讓使用者每次呼叫時自行指定），這裡不再收集，固定送空值
-  // ——欄位仍留在後端 schema 上（沒有 migration），純粹是這個表單不再填。
+  // Agent 只是使用者自建的 skill：名稱（/<名稱> 指令）加人設；provider／model／key 是 AI 助理
+  // 面板每次送出時的請求欄位，不屬於 Agent。
   const [input, setInput] = useState<StorytellerAgentRequest>({
     name: "",
-    provider: "",
-    model_name: "",
-    provider_apikey_id: null,
     default_prompt: "",
   });
 
@@ -96,9 +92,6 @@ export default function StorytellerNewAgent({
     }
     setInput({
       name: agent.name,
-      provider: agent.provider,
-      model_name: agent.model_name,
-      provider_apikey_id: agent.provider_apikey_id,
       default_prompt: agent.default_prompt,
     });
   }, [agent]);

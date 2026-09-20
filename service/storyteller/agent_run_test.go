@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -121,17 +122,13 @@ func TestValidateAgentRunRequest(t *testing.T) {
 }
 
 func TestRunAgent(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
-			DefaultPrompt:    "Use concise prose.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Use concise prose.",
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
@@ -152,30 +149,36 @@ func TestRunAgent(t *testing.T) {
 		Instruction:     "rewrite",
 		FullContent:     "full chapter",
 		SelectedContent: "scene",
+		ModelName:       "grok-test",
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, uint64(40), output.AgentID)
 	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
 	tracker.BeginDrain()
 	tracker.Wait()
 
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
-	require.Contains(t, provider.request.SystemPrompt, "Use concise prose.")
-	require.Contains(t, provider.request.SystemPrompt, "Authorized project_public_id for this skill run: project-public-id")
-	require.Contains(t, provider.request.UserPrompt, "User's current selected text from the editor")
-	require.Contains(t, provider.request.UserPrompt, "Output requirements:")
+	require.Contains(t, provider.request.UserPrompt, "<Persona>\nUse concise prose.\n</Persona>")
+	require.Contains(t, provider.request.UserPrompt, `project_public_id="project-public-id"`)
+	require.Contains(t, provider.request.UserPrompt, "<Selection>\nscene\n</Selection>")
+	require.Contains(t, provider.request.UserPrompt, "<Skill name=\"rewrite_selection\">")
 	require.NotNil(t, repo.chat)
 	require.NotNil(t, repo.chat.StoryID)
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
-	require.Equal(t, uint64(40), repo.chat.AgentID)
 	require.Equal(t, uint64(20), repo.chat.UserID)
 	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "> scene\n\nrewrite", repo.messages[0].Content)
-	require.JSONEq(t, `{"mode":"rewrite_selection","selected_content":"scene","selected_content_length":5,"full_content_length":12}`, repo.messages[0].Metadata)
+	// metadata 與 request_xml 快照一起存：request_xml 就是實際送給 provider 的那份 user prompt。
+	var meta agentUserMessageMetadata
+	require.NoError(t, json.Unmarshal([]byte(repo.messages[0].Metadata), &meta))
+	require.Equal(t, "rewrite_selection", meta.Mode)
+	require.Equal(t, "scene", meta.SelectedContent)
+	require.Equal(t, 5, meta.SelectedContentLength)
+	require.Equal(t, 12, meta.FullContentLength)
+	require.Equal(t, provider.request.UserPrompt, meta.RequestXML)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
 	require.NotNil(t, repo.usage)
@@ -187,16 +190,12 @@ func TestRunAgent(t *testing.T) {
 }
 
 func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id", Title: "目前故事"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -210,8 +209,8 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 				require.Empty(t, req.Messages[0].ToolCalls)
 				require.Len(t, req.Tools, 1)
 				require.Equal(t, "storyteller_get_story", req.Tools[0].Name)
-				require.Contains(t, req.SystemPrompt, "Current story (what \"@thisStory\" refers to): story_public_id=story-public-id")
-				require.Contains(t, req.Messages[0].Content, "Extra @ references available through read-only tools")
+				require.Contains(t, req.Messages[0].Content, `target_public_id="story-public-id"`)
+				require.Contains(t, req.Messages[0].Content, "<References>")
 				require.Contains(t, req.Messages[0].Content, "Token: @story:[其他故事]")
 				require.NotContains(t, req.Messages[0].Content, "這段引用全文不應該送進 provider")
 				return &AIProviderResponse{
@@ -259,7 +258,7 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 	}, tools, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事] 改寫語氣",
-		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n這段引用全文不應該送進 provider\nSTORY_REFERENCE_CONTENT",
+		References:  []storytellerModel.AgentRunReference{{Kind: "story", Title: "其他故事", Token: "@story:[其他故事]", Content: "這段引用全文不應該送進 provider"}},
 	})
 
 	require.NoError(t, err)
@@ -278,16 +277,12 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 }
 
 func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGemini,
-			ModelName:        "gemini-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGemini, "secret-key"),
 	}
@@ -300,7 +295,7 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
 		Mode:        storytellerModel.AgentRunModeCustomSelection,
 		Instruction: "請參考 @story:[其他故事]",
-		FullContent: "Reference story: 其他故事\nToken: @story:[其他故事]\n<<<STORY_REFERENCE_CONTENT\n引用全文\nSTORY_REFERENCE_CONTENT",
+		References:  []storytellerModel.AgentRunReference{{Kind: "story", Title: "其他故事", Token: "@story:[其他故事]", Content: "引用全文"}},
 	})
 
 	require.NoError(t, err)
@@ -311,7 +306,8 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 	require.Equal(t, "gemini result", repo.messages[1].Content)
 	require.Empty(t, provider.request.Tools)
 	require.Empty(t, provider.request.Messages)
-	require.Contains(t, provider.request.UserPrompt, "引用全文")
+	// 沒帶工具（Gemini 單輪 Generate）時，參照內容直接內嵌在 <References>。
+	require.Contains(t, provider.request.UserPrompt, "<Reference kind=\"story\" title=\"其他故事\" token=\"@story:[其他故事]\">\n引用全文\n</Reference>")
 }
 
 // TestRunAgentProviderAPIKeyOverrideCanCrossProvider 驗證「Agent 只是人設/prompt，
@@ -321,18 +317,14 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 // 記錄下來的 output.Provider／ModelName 都要反映「這次真的用了什麼」，不是 Agent
 // 的靜態預設值。
 func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
-	agentDefaultKeyID := uint64(50)
 	overrideKeyID := uint64(51)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &agentDefaultKeyID,
-			DefaultPrompt:    "Use concise prose.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Use concise prose.",
 		},
 		// mock 的 ProviderAPIKey() 不看傳入的 id，直接回傳這把——用來模擬「覆寫的
 		// key id 解析出一把 provider 完全不同的 key」這個情境。
@@ -408,16 +400,12 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 // 的背景執行模型一致。
 func TestRunAgentProviderError(t *testing.T) {
 	providerErr := errors.New("provider failed")
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
@@ -441,20 +429,14 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project          *storytellerModel.Project
-	projectErr       error
-	story            *storytellerModel.Story
-	storyErr         error
-	lore             *storytellerModel.Lore
-	loreErr          error
-	agent            *storytellerModel.Agent
-	agentErr         error
-	agentsByID       []storytellerModel.Agent
-	agentsByIDErr    error
-	agentsByIDLookup struct {
-		userID uint64
-		ids    []uint64
-	}
+	project               *storytellerModel.Project
+	projectErr            error
+	story                 *storytellerModel.Story
+	storyErr              error
+	lore                  *storytellerModel.Lore
+	loreErr               error
+	agent                 *storytellerModel.Agent
+	agentErr              error
 	providerAPIKey        *storytellerModel.ProviderAPIKey
 	providerAPIKeyErr     error
 	chat                  *storytellerModel.StoryChat
@@ -500,12 +482,6 @@ func (r *fakeAgentRunRepository) Lore(uint64, string) (*storytellerModel.Lore, e
 
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {
 	return r.agent, r.agentErr
-}
-
-func (r *fakeAgentRunRepository) AgentsByIDs(userID uint64, ids []uint64) ([]storytellerModel.Agent, error) {
-	r.agentsByIDLookup.userID = userID
-	r.agentsByIDLookup.ids = append([]uint64(nil), ids...)
-	return r.agentsByID, r.agentsByIDErr
 }
 
 func (r *fakeAgentRunRepository) ProviderAPIKey(uint64, uint64) (*storytellerModel.ProviderAPIKey, error) {
@@ -588,6 +564,10 @@ func (r *fakeAgentRunRepository) ClaimStoryChatForResend(userID, storyID, chatID
 
 func (r *fakeAgentRunRepository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int64, error) {
 	return r.claimResult, r.claimErr
+}
+
+func (r *fakeAgentRunRepository) AgentChatTarget(userID, chatID uint64) (*storytellerModel.AgentChatTarget, error) {
+	return &storytellerModel.AgentChatTarget{ProjectPublicID: "project-public-id", Kind: "story", TargetPublicID: "story-public-id"}, nil
 }
 
 func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {

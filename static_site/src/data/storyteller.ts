@@ -31,8 +31,6 @@ export interface StorytellerProject {
 export interface StorytellerAgent {
   id: string;
   name: string;
-  provider: string;
-  model: string;
   purpose: string;
   projectCount: number;
   updatedAt: string;
@@ -102,8 +100,6 @@ export const storytellerAgents: StorytellerAgent[] = [
   {
     id: "ag-plot-doctor",
     name: "Plot Doctor",
-    provider: "Grok",
-    model: "grok-4",
     purpose: "檢查章節節奏、伏筆回收與角色動機一致性。",
     projectCount: 2,
     updatedAt: "2026-06-21T13:20:00+08:00",
@@ -112,8 +108,6 @@ export const storytellerAgents: StorytellerAgent[] = [
   {
     id: "ag-scene-continuator",
     name: "Scene Continuator",
-    provider: "Grok",
-    model: "grok-4-fast",
     purpose: "依選取段落延伸下一段，保持既有敘事口吻。",
     projectCount: 3,
     updatedAt: "2026-06-19T16:05:00+08:00",
@@ -122,8 +116,6 @@ export const storytellerAgents: StorytellerAgent[] = [
   {
     id: "ag-lore-keeper",
     name: "Lore Keeper",
-    provider: "OpenAI compatible",
-    model: "未設定",
     purpose: "整理設定集、名詞表與跨章節時間線。",
     projectCount: 1,
     updatedAt: "2026-06-10T11:00:00+08:00",
@@ -282,7 +274,9 @@ export function storytellerSearchResultPath(result: {
 }) {
   const projectPath = `${result.project_public_id}-${result.project_slug}`;
   const family = result.cover_image_url ? "image" : "story";
-  return steamloomPath(`work/${projectPath}/${family}/${result.story_public_id}`);
+  return steamloomPath(
+    `work/${projectPath}/${family}/${result.story_public_id}`,
+  );
 }
 
 export function getPublicProjects() {

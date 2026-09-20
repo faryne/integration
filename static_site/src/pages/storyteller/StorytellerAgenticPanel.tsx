@@ -36,17 +36,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   fetchStorytellerAgenticChat,
-  useResendStorytellerAgenticQuery,
-  useResendStorytellerLoreAgenticQuery,
-  useRunStorytellerAgent,
-  useRunStorytellerAgenticQuery,
-  useRunStorytellerLoreAgent,
-  useRunStorytellerLoreAgenticQuery,
   useStorytellerAgenticReferenceContent,
   useStorytellerAgentProviderModels,
   useStorytellerLoreChatMessages,
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
+  useResendStorytellerAgent,
+  useSubmitStorytellerAgent,
 } from "@/apis/storyteller/agent.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -63,7 +59,6 @@ import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker
 import {
   StorytellerAgentLoadingHint,
   StorytellerAgentMessage,
-  StorytellerChatBadges,
   StorytellerChatBubble,
   storytellerChatActionButtonProps,
   type StorytellerAgentPanelAgent,
@@ -80,12 +75,11 @@ import {
   buildStorytellerAgentMessageLinks,
   buildStorytellerAgentProposalRejectionQuote,
   buildStorytellerAgentProposalReferenceContent,
-  buildStorytellerAgentReferenceContent,
   buildStorytellerAgentReplyQuote,
-  buildStorytellerAgentReplyReferenceContent,
   composeStorytellerAgentInstructionWithProposalRejection,
   composeStorytellerAgentInstructionWithReply,
   resolveStorytellerAgentReferences,
+  toStorytellerAgentRunReferences,
   summarizeStorytellerAgentProposalArguments,
   type StorytellerAgentReplyTarget,
 } from "@/pages/storyteller/storytellerAgentReferences.ts";
@@ -102,7 +96,7 @@ import {
 } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import type {
   StorytellerAgentRunMode,
-  StorytellerAgentRunResponse,
+  StorytellerAgentRunUsage,
   StorytellerAgenticProposal,
   StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
@@ -291,9 +285,6 @@ type PanelMessage =
       usage?: { total_tokens?: number };
       warning?: string;
       isLoading?: boolean;
-      // 這則實際是哪個 Agent 人設處理的——事後回頭看對話紀錄才追得回「這則
-      // 當時發生了什麼事」，見 StorytellerAgentPanel.tsx 的 StorytellerChatBadges。
-      agentName?: string;
       // chatStatus="in_progress" 代表 provider 仍在處理；"pending" 才代表這則
       // user 訊息沒有拿到 AI 回覆、可以重送。
       chatId?: number;
@@ -661,7 +652,6 @@ function AgenticAssistantMessage({
       isUser={isUser}
       isReplyTarget={isReplyTarget}
       speaker={isUser ? "你" : "AI 助理"}
-      badge={<StorytellerChatBadges agentName={message.agentName} />}
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
@@ -843,14 +833,8 @@ export function StorytellerAgenticPanel({
   const compactComposer = fillAvailableHeight && isMobile;
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  // 人設只影響單次 prompt，以 /<Agent 名稱> 前綴表示；activeAgentId 只保留底層 API
-  // 需要的 fallback agent，沒有前綴時實際送出仍會明確忽略人設。
-  const [activeAgentId, setActiveAgentId] = useState(agents[0]?.id ?? "");
-  useEffect(() => {
-    if (!agents.some((agent) => agent.id === activeAgentId)) {
-      setActiveAgentId(agents[0]?.id ?? "");
-    }
-  }, [agents, activeAgentId]);
+  // 沒有「目前選中的 Agent」：人設只影響單次 prompt，以 /<名稱> 前綴表示（chip 只是在輸入框
+  // 插入這段前綴的捷徑），送出時明確帶 persona_agent_id；沒有前綴就沒有人設。
   const [prompt, setPrompt] = useState("");
   const promptTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   // 輸入框文字預設是透明的（真正可見的是下面的 highlight overlay），但注音等
@@ -924,19 +908,16 @@ export function StorytellerAgenticPanel({
   const pendingAgenticIdRef = useRef(0);
   const [referenceDrawerOpen, setReferenceDrawerOpen] = useState(false);
 
-  const selectedAgent =
-    agents.find((agent) => agent.id === activeAgentId) ?? agents[0];
   const promptAgentSwitch = matchAgentNameCommand(prompt.trimStart(), agents);
   const promptAgent = promptAgentSwitch
     ? agents.find((agent) => agent.id === promptAgentSwitch.agentId)
     : undefined;
-  const agentIdNumeric = Number(selectedAgent?.id);
 
   const { data: providerApiKeys = [], isLoading: providerApiKeysLoading } =
     useStorytellerProviderAPIKeys();
   const { data: providerModelsList = [] } = useStorytellerAgentProviderModels();
   // 换 key 可以跨 provider（見 Agent／provider/key/model 解耦），所以這裡不再
-  // 依 selectedAgent.provider 篩選——任何一把已設定的 key 都能拿來跑這個 Agent。
+  // 依 provider 篩選——任何一把已設定的 key 都能拿來跑。
   const overrideApiKeyOptions = providerApiKeys;
   // Skill 已經跟 provider/key/model 完全剝離，不存在「Agent 自己的預設 key」這回事
   // 了（新建的 Skill 一律沒有綁定，見 Phase 8.7）；金鑰/模型變成純粹的 session 選擇，
@@ -957,17 +938,14 @@ export function StorytellerAgenticPanel({
   const overriddenApiKey = providerApiKeyId
     ? providerApiKeys.find((apiKey) => String(apiKey.id) === providerApiKeyId)
     : undefined;
-  // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定
-  // 選了一把），沒有 key 時才退回 Agent 記錄的（多半也是空字串）。
-  const effectiveProvider =
-    overriddenApiKey?.provider ?? selectedAgent?.provider;
+  // 實際生效的 provider：一定看目前選的 key（上面那個 effect 保證只要有 key 就一定選了一把）。
+  const effectiveProvider = overriddenApiKey?.provider;
   const effectiveProviderModelInfo = providerModelsList.find(
     (entry) => entry.provider === effectiveProvider,
   );
   const effectiveProviderLabel =
     effectiveProviderModelInfo?.label ?? effectiveProvider ?? "未選 Provider";
-  const effectiveModelLabel =
-    modelNameOverride || selectedAgent?.model || "未選 Model";
+  const effectiveModelLabel = modelNameOverride || "未選 Model";
   const modelOptions = effectiveProviderModelInfo?.models ?? [];
   // self_hosted／openrouter 這類 provider 沒有固定模型清單（models 可能是空的），
   // 改成讓使用者直接輸入模型名稱，而不是完全選不了。
@@ -1050,60 +1028,36 @@ export function StorytellerAgenticPanel({
     setModelNameOverride(modelOptions[0].name);
   }, [modelOptions, modelNameOverride, providerAllowsCustomModel]);
 
-  // Rules of Hooks 不能依 targetKind 條件呼叫其中一組——story／lore 兩組 hook 都
-  // 固定呼叫，只把當下不是目標種類那組的 publicId 傳 undefined（hook 內部本來就
-  // 靠 publicId 是否存在決定要不要真的送 request），下面再依 targetKind 挑其中
-  // 一組的結果來用。
-  const runSkillMutationStory = useRunStorytellerAgent(
+  // 一般對話與 skill 共用同一個送出 hook（差別只在請求體的 skill 欄位），各自一個 instance
+  // 是為了讓兩邊的 isPending／error 狀態互不干擾；故事／設定集只差 targetKind。
+  const runSkillMutation = useSubmitStorytellerAgent(
     projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
+    targetKind,
+    targetPublicId,
   );
-  const runSkillMutationLore = useRunStorytellerLoreAgent(
+  const runAgenticQuery = useSubmitStorytellerAgent(
     projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
+    targetKind,
+    targetPublicId,
   );
-  const runSkillMutation =
-    targetKind === "lore" ? runSkillMutationLore : runSkillMutationStory;
-  const runAgenticQueryStory = useRunStorytellerAgenticQuery(
-    projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
-  );
-  const runAgenticQueryLore = useRunStorytellerLoreAgenticQuery(
-    projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
-  );
-  const runAgenticQuery =
-    targetKind === "lore" ? runAgenticQueryLore : runAgenticQueryStory;
-  const resendAgenticQueryStory = useResendStorytellerAgenticQuery(
-    projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
-  );
-  const resendAgenticQueryLore = useResendStorytellerLoreAgenticQuery(
-    projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
-  );
-  const resendAgenticQuery =
-    targetKind === "lore" ? resendAgenticQueryLore : resendAgenticQueryStory;
+  const resendAgenticQuery = useResendStorytellerAgent(targetKind);
   // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
   // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
   const [resendingChatId, setResendingChatId] = useState<number | null>(null);
   const [resendError, setResendError] = useState("");
   const [modelAppliedSnack, setModelAppliedSnack] = useState("");
   function handleResend(chatId: number) {
-    if (resendingChatId !== null || !Number.isFinite(agentIdNumeric)) {
+    if (resendingChatId !== null || !providerApiKeyId || !modelNameOverride) {
       return;
     }
     setResendingChatId(chatId);
     resendAgenticQuery.mutate(
       {
-        agentId: agentIdNumeric,
         chatId,
         input: {
-          user_prompt: "",
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          task: "",
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1159,10 +1113,7 @@ export function StorytellerAgenticPanel({
   );
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
-    // skill 指令從不套用 Agent 的人設 prompt（ignore_agent_persona 固定
-    // true），agent_id 純粹是技術上用哪個 provider/model 打的細節，不代表
-    // 「這句是哪個人設說的」——說話者固定顯示「AI 助理」，跟 agentic 模式
-    // 一致，不要秀出可能誤導的 Agent 名稱（見 mode Chip 才是真正該標的資訊）。
+    // 說話者固定顯示「AI 助理」，跟 agentic 模式一致（見 mode Chip 才是真正該標的資訊）。
     if (message.role === "assistant") {
       return "AI 助理";
     }
@@ -1267,13 +1218,13 @@ export function StorytellerAgenticPanel({
 
   function parseMessageUsage(
     metadata?: string,
-  ): StorytellerAgentRunResponse["usage"] | undefined {
+  ): StorytellerAgentRunUsage | undefined {
     if (!metadata) {
       return undefined;
     }
     try {
       const parsed = JSON.parse(metadata) as {
-        usage?: StorytellerAgentRunResponse["usage"];
+        usage?: StorytellerAgentRunUsage;
       };
       return parsed.usage?.total_tokens ? parsed.usage : undefined;
     } catch {
@@ -1347,7 +1298,6 @@ export function StorytellerAgenticPanel({
       replyReference: reply.replyReference,
       replyContent: reply.replyContent,
       usage: parseMessageUsage(message.metadata),
-      agentName: message.agent_name || undefined,
       chatId: message.chat_id,
       chatStatus: message.chat_status,
     };
@@ -1380,9 +1330,6 @@ export function StorytellerAgenticPanel({
       usage: parseMessageUsage(message.metadata),
       chatId: message.chat_id,
       chatStatus: message.chat_status,
-      // skill 指令從不支援「/rewrite /色文作家」這種串接寫法，一律吃當下
-      // chip 選的那個 Agent，等於每一則的 agent_name 都一樣、沒有分辨度，
-      // 標了也只是雜訊——只標 mode（走了哪個指令）就夠，不重複標 Agent。
     };
   }
 
@@ -1520,9 +1467,6 @@ export function StorytellerAgenticPanel({
       const results = await Promise.allSettled(
         inProgressAgenticChatIds.map((chatId) =>
           fetchStorytellerAgenticChat({
-            targetKind,
-            projectPublicId,
-            targetPublicId,
             chatId,
             encryptKey: session.encrypt_key,
           }),
@@ -1632,17 +1576,19 @@ export function StorytellerAgenticPanel({
         content: replyTarget.content,
       }
     : null;
-  const referenceContent = [
-    buildStorytellerAgentReferenceContent(promptReferences),
-    buildStorytellerAgentReplyReferenceContent(replyReferenceTarget),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  // @ 參照與回覆對象改成結構化欄位送出（不再組成 fence 文字塞進 full_content），
+  // 字數上限仍然合計計算，跟後端 validateAgentRunPayloadSize 對齊。
+  const runReferences = toStorytellerAgentRunReferences(promptReferences);
+  const replyContent = replyReferenceTarget?.content.trim() ?? "";
   const replyQuote = buildStorytellerAgentReplyQuote(replyReferenceTarget);
   const promptLength = Array.from(prompt).length;
   const instructionPayloadLength =
     promptLength + (replyQuote ? Array.from(`${replyQuote}\n\n`).length : 0);
-  const referenceContentLength = Array.from(referenceContent).length;
+  const referenceContentLength =
+    runReferences.reduce(
+      (sum, reference) => sum + Array.from(reference.content).length,
+      0,
+    ) + Array.from(replyContent).length;
   const totalPayloadLength = instructionPayloadLength + referenceContentLength;
   const payloadError =
     instructionPayloadLength > skillInstructionMaxCharacters
@@ -1689,8 +1635,8 @@ export function StorytellerAgenticPanel({
     Boolean(prompt.trim()) &&
     Boolean(projectPublicId) &&
     Boolean(targetPublicId) &&
-    Number.isFinite(agentIdNumeric) &&
-    Boolean(selectedAgent?.enabled) &&
+    Boolean(providerApiKeyId) &&
+    Boolean(modelNameOverride) &&
     payloadError === "" &&
     !pending;
 
@@ -1726,17 +1672,15 @@ export function StorytellerAgenticPanel({
 
     runSkillMutation.mutate(
       {
-        agentId: agentIdNumeric,
         input: {
-          mode,
-          instruction,
-          full_content: referenceContent,
+          skill: mode,
+          task: instruction,
+          full_content: "",
+          references: runReferences,
+          reply_content: replyContent || undefined,
           selected_content: selectedContent,
-          ignore_agent_persona: true,
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1777,7 +1721,7 @@ export function StorytellerAgenticPanel({
             role: "assistant",
             content: result.result,
             speaker: "AI 助理",
-            mode: result.mode,
+            mode,
             usage: result.usage,
             resultSelection: null,
             isCurrentResult: true,
@@ -1795,22 +1739,17 @@ export function StorytellerAgenticPanel({
   function runAgentic(
     instruction: string,
     options?: {
-      agentId?: number;
-      ignoreAgentPersona?: boolean;
+      // 使用者用 /<名稱> 明確指定的自建 skill；沒帶就沒有人設。
+      personaAgentId?: number;
       replyContent?: string;
       replyReference?: StorytellerAgenticReplyReferenceRequest;
       preserveComposer?: boolean;
     },
   ) {
-    const targetAgentId = options?.agentId ?? agentIdNumeric;
-    // 跟後端 messageAgentID 的邏輯對齊：沒有明確切換人設（ignoreAgentPersona
-    // 為 true，一般打字送出的預設路徑）時不要標 Agent 名稱，不然這輪對話還
-    // 沒重新整理、還在畫面上即時顯示的這幾秒，會先秀出當下 chip 選的預設
-    // Agent——跟之後從資料庫重新載入、agent_id 是 NULL 算出來的空白狀態對
-    // 不上，變成畫面閃一下又消失的假訊號。
-    const targetAgentName = options?.ignoreAgentPersona
-      ? undefined
-      : agents.find((agent) => Number(agent.id) === targetAgentId)?.name;
+    // key／model 是送出時的必填請求欄位（沒有 Agent 上的預設值可退回）。
+    if (!providerApiKeyId || !modelNameOverride) {
+      return;
+    }
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
@@ -1831,7 +1770,6 @@ export function StorytellerAgenticPanel({
       content: instruction,
       replyReference,
       replyContent: replyReference ? undefined : replyContent,
-      agentName: targetAgentName,
     };
     pushLiveMessage(userMessage);
     pushLiveMessage({
@@ -1855,16 +1793,13 @@ export function StorytellerAgenticPanel({
 
     runAgenticQuery.mutate(
       {
-        agentId: targetAgentId,
         input: {
-          user_prompt: instruction,
-          ignore_agent_persona: options?.ignoreAgentPersona ?? false,
+          task: instruction,
+          persona_agent_id: options?.personaAgentId,
           reply_content: replyContent,
           reply_reference: replyReference,
-          provider_apikey_id: providerApiKeyId
-            ? Number(providerApiKeyId)
-            : undefined,
-          model_name: modelNameOverride || undefined,
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
         },
       },
       {
@@ -1908,7 +1843,6 @@ export function StorytellerAgenticPanel({
             proposals: response.proposals,
             usage: response.usage,
             warning: response.warning,
-            agentName: targetAgentName,
             chatId: response.chat_id,
             chatStatus: response.chat_status,
           });
@@ -1949,6 +1883,8 @@ export function StorytellerAgenticPanel({
       const targetAgentId = Number(agentSwitch.agentId);
       if (
         !hasAnyApiKey ||
+        !providerApiKeyId ||
+        !modelNameOverride ||
         !projectPublicId ||
         !targetPublicId ||
         !Number.isFinite(targetAgentId) ||
@@ -1963,11 +1899,11 @@ export function StorytellerAgenticPanel({
           instruction,
           replyReferenceTarget,
         ),
-        { agentId: targetAgentId, ignoreAgentPersona: false },
+        { personaAgentId: targetAgentId },
       );
       return;
     }
-    if (!canRun || !Number.isFinite(agentIdNumeric)) {
+    if (!canRun) {
       return;
     }
     const slash = parseSkillSlashCommand(trimmed);
@@ -1980,7 +1916,6 @@ export function StorytellerAgenticPanel({
         trimmed,
         replyReferenceTarget,
       ),
-      { ignoreAgentPersona: true },
     );
   }
 
@@ -2071,7 +2006,6 @@ export function StorytellerAgenticPanel({
         contentSnippet,
       ),
       {
-        ignoreAgentPersona: true,
         replyContent: buildStorytellerAgentProposalReferenceContent(proposal),
         replyReference: {
           kind: "proposal",
