@@ -585,6 +585,10 @@ func (r *fakeAgentRunRepository) ClaimLoreChatForResend(userID, loreID, chatID u
 	return r.claimResult, r.claimErr
 }
 
+func (r *fakeAgentRunRepository) AgentChatTarget(userID, chatID uint64) (*storytellerModel.AgentChatTarget, error) {
+	return &storytellerModel.AgentChatTarget{ProjectPublicID: "project-public-id", Kind: "story", TargetPublicID: "story-public-id"}, nil
+}
+
 func (r *fakeAgentRunRepository) ReleaseChatToPending(chatID uint64) error {
 	r.released = true
 	return nil

@@ -574,6 +574,13 @@ type StoryChat struct {
 
 func (StoryChat) TableName() string { return "storyteller_story_chats" }
 
+// AgentChatTarget 是一筆 chat 掛在哪個專案／故事／設定集底下（由 chat id 反查，見 repository.AgentChatTarget）。
+type AgentChatTarget struct {
+	ProjectPublicID string `gorm:"column:project_public_id"`
+	Kind            string `gorm:"column:kind"` // story 或 lore
+	TargetPublicID  string `gorm:"column:target_public_id"`
+}
+
 type AgentProposalStatus string
 
 const (
@@ -1083,6 +1090,7 @@ type AgenticReplyReferenceRequest struct {
 }
 
 // AgentSubmitRequest 是 AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用。
+// 對應唯一的路由 POST /storyteller/agent-chats，目標（專案／故事／設定集）由請求體指定。
 //
 // 沒有「目前選中的 Agent」這個概念——輸入框上的 chip 只是在輸入框插入 /<名稱> 指令的捷徑，
 // 請求明確帶了什麼，後端就用什麼：
@@ -1095,6 +1103,12 @@ type AgenticReplyReferenceRequest struct {
 // 重送（resend）用同一個請求體，但只讀 ProviderAPIKeyID／ModelName，其餘一律重放當初存的
 // request_xml。
 type AgentSubmitRequest struct {
+	// 這次對話掛在哪裡：ProjectPublicID 必填，StoryPublicID／LorePublicID 二選一。之後要支援專案層
+	// 甚至全站層的 AI 助理，只需放寬這裡的組合（不帶 story／lore＝專案層…），不用再開新路由。
+	ProjectPublicID string `json:"project_public_id"`
+	StoryPublicID   string `json:"story_public_id,omitempty"`
+	LorePublicID    string `json:"lore_public_id,omitempty"`
+
 	Skill          AgentRunMode `json:"skill,omitempty"`
 	PersonaAgentID *uint64      `json:"persona_agent_id,omitempty"`
 	// Task 是使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。

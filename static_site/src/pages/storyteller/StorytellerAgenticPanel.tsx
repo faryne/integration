@@ -1040,11 +1040,7 @@ export function StorytellerAgenticPanel({
     targetKind,
     targetPublicId,
   );
-  const resendAgenticQuery = useResendStorytellerAgent(
-    projectPublicId,
-    targetKind,
-    targetPublicId,
-  );
+  const resendAgenticQuery = useResendStorytellerAgent(targetKind);
   // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
   // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
   const [resendingChatId, setResendingChatId] = useState<number | null>(null);
@@ -1471,9 +1467,6 @@ export function StorytellerAgenticPanel({
       const results = await Promise.allSettled(
         inProgressAgenticChatIds.map((chatId) =>
           fetchStorytellerAgenticChat({
-            targetKind,
-            projectPublicId,
-            targetPublicId,
             chatId,
             encryptKey: session.encrypt_key,
           }),

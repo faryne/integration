@@ -618,3 +618,23 @@ func TestSubmitRequiresProviderAPIKeyAndModel(t *testing.T) {
 	require.ErrorIs(t, err, errProviderAPIKeyRequired)
 	require.Nil(t, repo.chat)
 }
+
+// 目標由請求體指定：project 必填，story／lore 恰好一個。
+func TestAgentTargetFromRequest(t *testing.T) {
+	kind, id, err := agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", StoryPublicID: "s"})
+	require.NoError(t, err)
+	require.Equal(t, agenticQueryCurrentTargetStory, kind)
+	require.Equal(t, "s", id)
+
+	kind, id, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", LorePublicID: "l"})
+	require.NoError(t, err)
+	require.Equal(t, agenticQueryCurrentTargetLore, kind)
+	require.Equal(t, "l", id)
+
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{StoryPublicID: "s"})
+	require.ErrorIs(t, err, errAgentProjectRequired)
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p"})
+	require.ErrorIs(t, err, errAgentTargetRequired)
+	_, _, err = agentTargetFromRequest(storytellerModel.AgentSubmitRequest{ProjectPublicID: "p", StoryPublicID: "s", LorePublicID: "l"})
+	require.ErrorIs(t, err, errAgentTargetRequired)
+}

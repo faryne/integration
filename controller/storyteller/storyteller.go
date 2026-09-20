@@ -515,15 +515,6 @@ func DeleteAgent(ctx fiber.Ctx) error {
 	return output.Success(map[string]bool{"deleted": true})
 }
 
-// agentTargetFromParams 依路由判斷這次操作的是故事還是設定集：兩組路由（.../stories/:story/...、
-// .../lores/:lore/...）共用同一批 handler，不再各複製一份。
-func agentTargetFromParams(ctx fiber.Ctx) (storyteller.AgentTargetKind, string) {
-	if lore := ctx.Params("lore"); lore != "" {
-		return storyteller.AgentTargetLore, lore
-	}
-	return storyteller.AgentTargetStory, ctx.Params("story")
-}
-
 func agentSubmitError(err error) error {
 	switch {
 	case errors.Is(err, storyteller.ErrAgenticQueryServerDraining):
@@ -544,8 +535,7 @@ func SubmitAgent(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	kind, targetPublicID := agentTargetFromParams(ctx)
-	result, err := storyteller.NewService().SubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, input)
+	result, err := storyteller.NewService().SubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, input)
 	if err != nil {
 		return agentSubmitError(err)
 	}
@@ -564,8 +554,7 @@ func ResubmitAgent(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	kind, targetPublicID := agentTargetFromParams(ctx)
-	result, err := storyteller.NewService().ResubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), kind, targetPublicID, chatID, input)
+	result, err := storyteller.NewService().ResubmitAgent(ctx.Context(), authsession.Session(ctx).UserId, chatID, input)
 	if err != nil {
 		return agentSubmitError(err)
 	}
@@ -578,14 +567,7 @@ func AgentChat(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	svc, userID := storyteller.NewService(), authsession.Session(ctx).UserId
-	kind, targetPublicID := agentTargetFromParams(ctx)
-	var result *storytellerModel.AgenticChatResponse
-	if kind == storyteller.AgentTargetLore {
-		result, err = svc.LoreAgenticChat(userID, ctx.Params("project"), targetPublicID, chatID)
-	} else {
-		result, err = svc.StoryAgenticChat(userID, ctx.Params("project"), targetPublicID, chatID)
-	}
+	result, err := storyteller.NewService().AgentChat(authsession.Session(ctx).UserId, chatID)
 	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller agent chat not found"))

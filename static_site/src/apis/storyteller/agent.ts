@@ -15,6 +15,7 @@ import type {
   StorytellerAgenticQueryResponse,
   StorytellerAgentPromptVersion,
   StorytellerAgentProviderModels,
+  StorytellerAgentSubmitInput,
   StorytellerAgentSubmitRequest,
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
@@ -33,26 +34,19 @@ import { apiBase, sessionHeaders } from "./shared.ts";
 
 const agenticQueryTimeoutMs = 490000;
 
+// 依 chat id 撈一筆對話目前的狀態與訊息（輪詢用）；不需要知道它掛在哪個故事／設定集底下。
 export async function fetchStorytellerAgenticChat({
-  targetKind,
-  projectPublicId,
-  targetPublicId,
   chatId,
   encryptKey,
 }: {
-  targetKind: "story" | "lore";
-  projectPublicId: string;
-  targetPublicId: string;
   chatId: number;
   encryptKey: string;
 }) {
-  const section = targetKind === "lore" ? "lores" : "stories";
   const response = await axios.get<
     CommonResponse<StorytellerAgenticChatResponse>
-  >(
-    `${apiBase}/storyteller/projects/${projectPublicId}/${section}/${targetPublicId}/agent-chats/${chatId}`,
-    { headers: sessionHeaders(encryptKey) },
-  );
+  >(`${apiBase}/storyteller/agent-chats/${chatId}`, {
+    headers: sessionHeaders(encryptKey),
+  });
   return response.data.data;
 }
 
@@ -520,18 +514,9 @@ export function useDeleteStorytellerAgent() {
 
 type StorytellerAgentTargetKind = "story" | "lore";
 
-function agentTargetBase(
-  projectPublicId: string | undefined,
-  targetKind: StorytellerAgentTargetKind,
-  targetPublicId: string | undefined,
-) {
-  const section = targetKind === "lore" ? "lores" : "stories";
-  return `${apiBase}/storyteller/projects/${projectPublicId}/${section}/${targetPublicId}`;
-}
-
 // AI 助理唯一的送出 hook：一般對話與內建 skill（/rewrite 等）都走這裡，由 input.skill 決定。
 // 全部非同步，回應只是「已落地、處理中」的確認（帶 chat_id），結果靠輪詢 chat 取得。
-// 故事／設定集只差 targetKind 這一個參數。
+// 目標（專案／故事／設定集）放在請求體，不分 story／lore 兩套路由；故事／設定集只差 targetKind。
 export function useSubmitStorytellerAgent(
   projectPublicId: string | undefined,
   targetKind: StorytellerAgentTargetKind,
@@ -540,17 +525,20 @@ export function useSubmitStorytellerAgent(
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ input }: { input: StorytellerAgentSubmitRequest }) => {
+    mutationFn: async ({ input }: { input: StorytellerAgentSubmitInput }) => {
+      const body: StorytellerAgentSubmitRequest = {
+        ...input,
+        project_public_id: projectPublicId ?? "",
+        ...(targetKind === "lore"
+          ? { lore_public_id: targetPublicId }
+          : { story_public_id: targetPublicId }),
+      };
       const response = await axios.post<
         CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agent-chats`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
+      >(`${apiBase}/storyteller/agent-chats`, body, {
+        headers: sessionHeaders(session!.encrypt_key),
+        timeout: agenticQueryTimeoutMs,
+      });
       return response.data.data;
     },
     // 等訊息列表重新抓取完成後 mutation 才算結束，
@@ -567,9 +555,7 @@ export function useSubmitStorytellerAgent(
 // 對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。一般對話與 skill 共用。
 // input 只帶金鑰／模型這次的選擇，其餘後端一律重放當初存的那份 request。
 export function useResendStorytellerAgent(
-  projectPublicId: string | undefined,
   targetKind: StorytellerAgentTargetKind,
-  targetPublicId: string | undefined,
 ) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
@@ -579,18 +565,14 @@ export function useResendStorytellerAgent(
       input,
     }: {
       chatId: number;
-      input: StorytellerAgentSubmitRequest;
+      input: StorytellerAgentSubmitInput;
     }) => {
       const response = await axios.post<
         CommonResponse<StorytellerAgenticQueryResponse>
-      >(
-        `${agentTargetBase(projectPublicId, targetKind, targetPublicId)}/agent-chats/${chatId}/resend`,
-        input,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-          timeout: agenticQueryTimeoutMs,
-        },
-      );
+      >(`${apiBase}/storyteller/agent-chats/${chatId}/resend`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+        timeout: agenticQueryTimeoutMs,
+      });
       return response.data.data;
     },
     onSuccess: async () => {

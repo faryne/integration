@@ -1287,12 +1287,26 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	return rows, total, err
 }
 
-func (r *Repository) StoryAgenticChat(storyID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
-	return r.agenticChatMessages("chats.story_id = ? AND chats.id = ?", storyID, chatID)
+// AgentChat 依 chat id 撈一筆對話（只有建立者本人看得到）；輪詢用，不需要事先知道它掛在哪個
+// 故事／設定集底下。
+func (r *Repository) AgentChat(userID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	return r.agenticChatMessages("chats.id = ? AND chats.user_id = ?", chatID, userID)
 }
 
-func (r *Repository) LoreAgenticChat(loreID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
-	return r.agenticChatMessages("chats.lore_id = ? AND chats.id = ?", loreID, chatID)
+// AgentChatTarget 由 chat id 反查它掛在哪個專案／故事／設定集（重送要用）；只有建立者本人查得到。
+func (r *Repository) AgentChatTarget(userID, chatID uint64) (*storytellerModel.AgentChatTarget, error) {
+	var row storytellerModel.AgentChatTarget
+	err := r.db.
+		Table("storyteller_story_chats AS chats").
+		Select(`projects.public_id AS project_public_id,
+			CASE WHEN chats.story_id IS NOT NULL THEN 'story' ELSE 'lore' END AS kind,
+			COALESCE(stories.public_id, lores.public_id) AS target_public_id`).
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
+		Joins("INNER JOIN storyteller_projects AS projects ON projects.id = COALESCE(stories.project_id, lores.project_id)").
+		Where("chats.id = ? AND chats.user_id = ? AND chats.deleted_at IS NULL", chatID, userID).
+		Take(&row).Error
+	return &row, err
 }
 
 func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*storytellerModel.AgenticChatResponse, error) {

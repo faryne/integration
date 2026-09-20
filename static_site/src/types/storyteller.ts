@@ -424,6 +424,10 @@ export interface StorytellerAgentRunReference {
 // AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，差別只在 skill 有沒有值。
 // 全部非同步——回應只是「已落地、處理中」的確認（帶 chat_id），結果要輪詢 chat 取得。
 export interface StorytellerAgentSubmitRequest {
+  // 這次對話掛在哪裡：project 必填，story／lore 二選一（由 useSubmitStorytellerAgent 依 targetKind 帶入）。
+  project_public_id: string;
+  story_public_id?: string;
+  lore_public_id?: string;
   // 內建 skill（/rewrite 等）；空／未帶＝一般對話。
   skill?: StorytellerAgentRunMode;
   // 使用者自建的 skill（storyteller_agents 的一筆，人設放在 DefaultPrompt）——只有使用者用
@@ -449,6 +453,12 @@ export interface StorytellerAgentRunUsage {
   output_tokens?: number;
   total_tokens?: number;
 }
+
+// 呼叫端組出的送出內容：目標（project／story／lore）由 hook 依所在頁面補上。
+export type StorytellerAgentSubmitInput = Omit<
+  StorytellerAgentSubmitRequest,
+  "project_public_id" | "story_public_id" | "lore_public_id"
+>;
 
 export interface StorytellerAgenticReplyReferenceRequest {
   kind: "message" | "proposal";

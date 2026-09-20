@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -201,19 +202,58 @@ const (
 	AgentTargetLore  = agenticQueryCurrentTargetLore
 )
 
+var (
+	errAgentProjectRequired = errors.New("project_public_id is required")
+	errAgentTargetRequired  = errors.New("exactly one of story_public_id or lore_public_id is required")
+)
+
+// agentTargetFromRequest 由請求體決定這次對話掛在故事還是設定集底下。目前只支援這兩種；之後要支援
+// 專案層或全站層，放寬這裡即可。
+func agentTargetFromRequest(in storytellerModel.AgentSubmitRequest) (agenticQueryCurrentTargetKind, string, error) {
+	if strings.TrimSpace(in.ProjectPublicID) == "" {
+		return "", "", errAgentProjectRequired
+	}
+	hasStory, hasLore := strings.TrimSpace(in.StoryPublicID) != "", strings.TrimSpace(in.LorePublicID) != ""
+	switch {
+	case hasStory && !hasLore:
+		return agenticQueryCurrentTargetStory, in.StoryPublicID, nil
+	case hasLore && !hasStory:
+		return agenticQueryCurrentTargetLore, in.LorePublicID, nil
+	}
+	return "", "", errAgentTargetRequired
+}
+
 // SubmitAgent 是 AI 助理唯一的送出入口：一般對話與內建 skill 都走這裡，全部非同步——送出當下只
 // 驗證並落地使用者這則訊息（chat 進 in_progress），結果由背景補進 chat，前端輪詢 chat 取得。
 // 差別只有 Skill 有沒有值（見 AgentSubmitRequest），對應不同的 <Skill> 與工具政策。
-func (s *Service) SubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
-	return submitAgent(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, in)
+func (s *Service) SubmitAgent(ctx context.Context, userID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	kind, targetPublicID, err := agentTargetFromRequest(in)
+	if err != nil {
+		return nil, err
+	}
+	return submitAgent(s.submitDeps(), userID, in.ProjectPublicID, kind, targetPublicID, in)
 }
 
 // ResubmitAgent 重送一筆卡在 pending 的 chat，一般對話與 skill 共用（見 resubmitAgenticQuery）。
-func (s *Service) ResubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
-	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, chatID, AgenticQueryOptions{
+// chat 掛在哪個專案／故事／設定集由 chat 本身反查，請求體只需要帶 key／model。
+func (s *Service) ResubmitAgent(ctx context.Context, userID, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	target, err := s.repo.AgentChatTarget(userID, chatID)
+	if err != nil {
+		return nil, err
+	}
+	kind := agenticQueryCurrentTargetStory
+	if target.Kind == string(agenticQueryCurrentTargetLore) {
+		kind = agenticQueryCurrentTargetLore
+	}
+	return resubmitAgenticQuery(s.submitDeps(), userID, target.ProjectPublicID, kind, target.TargetPublicID, chatID, AgenticQueryOptions{
 		ProviderAPIKeyID: in.ProviderAPIKeyID,
 		ModelName:        in.ModelName,
 	})
+}
+
+// AgentChat 回傳一筆對話目前的狀態與訊息，前端送出後輪詢它直到 chat_status 變成 completed。
+func (s *Service) AgentChat(userID, chatID uint64) (*storytellerModel.AgenticChatResponse, error) {
+	return s.repo.AgentChat(userID, chatID)
 }
 
 func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
