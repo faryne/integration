@@ -1,6 +1,6 @@
 -- +migrate Up
--- AI 助理不再記錄「這個 chat／這則訊息是哪個 Agent 產生的」：人設與預設 key／model 由每次呼叫
--- URL 上的 :agent 決定，實際送出的內容（含 <Persona>）已完整存在 user message 的
+-- AI 助理不再記錄「這個 chat／這則訊息是哪個 Agent 產生的」：人設與 key／model 都是每次呼叫的請求欄位，
+-- 實際送出的內容（含 <Persona>）已完整存在 user message 的
 -- metadata.request_xml，不需要在這兩張表另外留一份 Agent 關聯。
 -- 注意：欄位內既有的 agent_id 值會隨欄位一起刪除，無法還原（Down 只還原欄位結構，值為 NULL）。
 -- 部署順序：storyteller_story_chats.agent_id 是 NOT NULL 且沒有預設值，新版程式碼建立 chat 時不再寫入它，

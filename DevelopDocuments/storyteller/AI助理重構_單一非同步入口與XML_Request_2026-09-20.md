@@ -1,6 +1,6 @@
 # AI 助理重構：單一非同步入口與 XML Request
 
-- 狀態：**已實作於 `refactor/storyteller-agent-prompts`（9 個重構 commit，基底 `main` @ `82f4ad4`）**，Go 測試、`tsc`、vitest 皆通過（eslint 有 9 個既有錯誤，與本次無關）；**尚未合併、尚未在 staging／prod 實際跑過，DB migration 也尚未套用到任何環境**
+- 狀態：**已實作於 `refactor/storyteller-agent-prompts`（11 個重構 commit，基底 `main` @ `82f4ad4`）**，Go 測試、`tsc`、vitest 皆通過（eslint 有 9 個既有錯誤，與本次無關）；**尚未合併、尚未在 staging／prod 實際跑過，DB migration 也尚未套用到任何環境**
 - 前置討論：本文彙整重構過程中的判斷與取捨，未另存逐字記錄
 
 ## 背景與目的
@@ -49,11 +49,15 @@ submitAgentRun（唯一的骨架）
 
 | 舊 | 新 |
 |---|---|
-| `POST .../stories/:story/agents/:agent/run`（skill）<br>`POST .../stories/:story/agents/:agent/agentic-query`（一般對話） | `POST .../stories/:story/agent-chats`（送出，一般對話與 skill 共用） |
-| `POST .../agents/:agent/agentic-query/:chat/resend` | `POST .../stories/:story/agent-chats/:chat/resend` |
-| `GET .../stories/:story/agentic-query/:chat` | `GET .../stories/:story/agent-chats/:chat` |
+| `POST .../stories/:story/agents/:agent/run`（skill）<br>`POST .../stories/:story/agents/:agent/agentic-query`（一般對話）<br>（lore 各一份） | `POST /storyteller/agent-chats`（送出，一般對話與 skill 共用） |
+| `POST .../agents/:agent/agentic-query/:chat/resend`（story／lore 各一份） | `POST /storyteller/agent-chats/:chat/resend` |
+| `GET .../stories/:story/agentic-query/:chat`（story／lore 各一份） | `GET /storyteller/agent-chats/:chat` |
 
-以上 lore 版本把 `stories/:story` 換成 `lores/:lore`。**路由裡不再有 `:agent`**：沒有「目前選中的 Agent」這個概念（見下方「沒有『目前選中的 Agent』」）。`/agents/:agent` 只剩管理使用者自建 skill 的 CRUD。
+**只有一組路由，目標由請求體指定**：送出時帶 `project_public_id`，以及 `story_public_id`／`lore_public_id` 二選一（`agentTargetFromRequest` 驗證，缺 project 或 story／lore 不是恰好一個都回 400）。之後要支援專案層或全站層的 AI 助理，只需放寬這個函式（例如不帶 story／lore＝專案層），不用再新增路由。
+
+- **重送與輪詢只靠 chat id**：chat 掛在哪個專案／故事／設定集由 chat 反查（`repo.AgentChatTarget`），且只有建立者本人（`chats.user_id`）查得到。
+- **路由裡不再有 `:agent`**：沒有「目前選中的 Agent」這個概念（見下方）。`/agents/:agent` 只剩管理使用者自建 skill 的 CRUD。
+- 專案層／全站層目前**資料模型還撐不住**：`storyteller_story_chats` 只有 `story_id`／`lore_id`，專案層需要另外加 `project_id`（全站層則兩者皆無）。這次只把 API 形狀準備好。
 
 - controller 三個 handler（`SubmitAgent`／`ResubmitAgent`／`AgentChat`）取代原本 8 個；story／lore 兩組路由共用，`agentTargetFromParams` 依 `ctx.Params("lore")` 是否存在判斷。
 - **請求／回應各只剩一種**：`AgentSubmitRequest`（`skill` 空＝一般對話，否則是 `AgentRunMode`）、`AgenticQueryResponse`（皆為「已落地、處理中」確認，帶 `chat_id`）。
@@ -169,7 +173,9 @@ user message 的 `metadata`（JSON 欄位，**不需 schema migration**）統一
 | `persona_agent_id` | 使用者自建的 skill（`storyteller_agents` 的一筆，人設在 `DefaultPrompt`）→ `<Persona>` | 沒有人設 |
 | `provider_apikey_id`、`model_name` | 這次用哪把 key、哪個 model | **必填**，缺了回 `provider_apikey_id is required`／`model_name is required` |
 
-兩個 skill 概念各自獨立，對應 `<Skill>` 與 `<Persona>` 兩個標籤。`Agent` 記錄上舊有的 `provider`／`model_name`／`provider_apikey_id` 預設值在執行期不再被讀取（前端本來就一律明確帶 key／model；新建的 skill 也沒有綁定）。
+兩個 skill 概念各自獨立，對應 `<Skill>` 與 `<Persona>` 兩個標籤。
+
+**`Agent` 現在只是使用者自建的 skill：名稱（`/<名稱>` 指令）加人設（`default_prompt`）。** 舊有的 `provider`／`model_name`／`provider_apikey_id`／`agent_model_id` 四個欄位在執行期已不再被讀取，已刪除（migration `20260920110000-drop_provider_model_key_from_storyteller_agents.sql`；版本快照表 `storyteller_agent_prompt_versions` 的 `provider`／`model_name` 一併移除）。`AgentRequest` 只剩 `name`／`default_prompt`，`validateAgent` 只驗名稱；`validateAgentProviderAPIKey`、`agentModelID`、`repo.AgentProviderModel` 隨之刪除。`storyteller_agent_models`（各 provider 的固定模型清單與價格）與 `agents/provider-models` 端點仍保留，面板的 model 選單與計價還在用。
 
 `agent_id` 從對話資料中移除：
 
@@ -207,6 +213,7 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 | `controller/storyteller/storyteller.go` | 三個 handler |
 | `route/storyteller.go` | 路由（story／lore 各三條） |
 | `migration/20260920100000-…sql` | 移除兩張對話表的 `agent_id` |
+| `migration/20260920110000-…sql` | 移除 `storyteller_agents`（與版本快照表）的 provider／model／key 欄位 |
 | `repository/storyteller/storyteller.go` | `stripRequestXML` |
 | `static_site/src/apis/storyteller/agent.ts` | `useSubmitStorytellerAgent`／`useResendStorytellerAgent` |
 | `static_site/src/pages/storyteller/StorytellerAgenticPanel.tsx` | Panel 改用統一 hook 與結構化欄位 |
@@ -226,6 +233,8 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 | `48dddad` | 移除 `ignore_agent_persona`（此 commit 讓人設一律取自 `:agent`，是錯誤的中間版本，已由 `fb40ba2` 修正） |
 | `e13622e` | 移除兩張對話表的 `agent_id`（含 migration、列表查詢、前端 badge） |
 | `fb40ba2` | 移除 `:agent` 路由參數：人設／key／model 由請求明確帶入，重送一律重放 `request_xml`，前端刪除 `activeAgentId`／`selectedAgent` |
+| `a46e479` | `agent-chats` 統一為單一路由，目標（project／story／lore）由請求體指定 |
+| `48ce9b6` | 移除 Agent 上的 provider／model_name／provider_apikey_id／agent_model_id（含 migration） |
 
 ## 已知限制與待辦
 
@@ -239,7 +248,8 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 - **lore 版本沒有獨立測試**：測試 helper 都以 story 為目標，lore 走同一條程式碼路徑（只差 `Kind` 分派），但沒有專屬案例。
 - **`storyteller.go` 仍是 3503 行大檔**，依「單檔超過 500 行就要審視」慣例值得日後拆分。
 
-- **`Agent` 記錄上的 `provider`／`model_name`／`provider_apikey_id` 成了執行期無用欄位**，但 Agent 編輯頁與 DB 仍保留它們，尚未清理。
+- **兩支 migration 都不能單獨先跑或後跑**：`storyteller_story_chats.agent_id`、`storyteller_agents.model_name`、版本快照表的 `provider`／`model_name` 都是 NOT NULL 且沒有預設值，新程式碼不再寫入它們，所以「新程式碼先上」會讓送出 AI 助理訊息與建立／更新 Agent 失敗；「migration 先跑」則舊程式碼會因欄位不存在而失敗。需要同一個維護窗口一起切換，或拆成兩階段（先改成可為 NULL／有預設值，等新程式碼上線後再刪）。
+- **`repo.AgentChatTarget` 的 SQL（JOIN＋`COALESCE`）只有語法檢查、沒有對真實資料庫跑過。**
 
 ## 已過時的既有文件
 
