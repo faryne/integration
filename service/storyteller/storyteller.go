@@ -202,6 +202,13 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 	if err := validateProject(input); err != nil {
 		return nil, err
 	}
+	projectCount, err := s.repo.ProjectCount(userID)
+	if err != nil {
+		return nil, err
+	}
+	if projectCount >= FreeMaxProjects {
+		return nil, fmt.Errorf("已達專案數量上限（%d 個），請刪除舊專案後再建立新的", FreeMaxProjects)
+	}
 	slug, err := s.uniqueProjectSlug(userID, safeProjectSlug(input.Name), 0)
 	if err != nil {
 		return nil, err

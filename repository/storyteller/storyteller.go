@@ -47,6 +47,16 @@ func (r *Repository) Projects(userID uint64) ([]storytellerModel.Project, error)
 	return rows, err
 }
 
+// ProjectCount 只給 CreateProject 檢查帳號配額用，不用像 Projects() 那樣把整批
+// 資料撈出來。
+func (r *Repository) ProjectCount(userID uint64) (int64, error) {
+	var count int64
+	err := r.db.Model(&storytellerModel.Project{}).
+		Where("user_id = ? AND deleted_at IS NULL", userID).
+		Count(&count).Error
+	return count, err
+}
+
 func (r *Repository) ProjectByPublicID(publicID string) (*storytellerModel.Project, error) {
 	var row storytellerModel.Project
 	err := r.db.Where("public_id = ? AND visibility = ? AND deleted_at IS NULL", publicID, storytellerModel.ProjectVisibilityPublic).

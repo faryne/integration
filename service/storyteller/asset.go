@@ -129,8 +129,20 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 	if len(input.Files) > maxAssetUploadFilesPerPresign {
 		return nil, fmt.Errorf("最多一次只能上傳 %d 個資產", maxAssetUploadFilesPerPresign)
 	}
-	if _, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID); err != nil {
+	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
 		return nil, err
+	}
+	// 這裡只先擋「檔案數量」：presign 當下還不知道使用者實際會上傳多大的檔案
+	// （前端只帶了 content_type，沒有帶 size），真正的容量檢查留到
+	// ConfirmAssetUpload 用 S3 HeadObject 量到的實際大小去查。這裡先擋數量，
+	// 至少不用等使用者把檔案都傳完才發現整批都因為超過配額而失敗。
+	existingCount, _, err := s.repo.ProjectAssetUsage(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	if existingCount+int64(len(input.Files)) > FreeMaxProjectAssetCount {
+		return nil, fmt.Errorf("這個專案的資產數量已達上限（%d 個），請刪除不需要的資產後再上傳", FreeMaxProjectAssetCount)
 	}
 	client, err := initS3Client(ctx)
 	if err != nil {
@@ -266,6 +278,25 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 		}
 		fileSize = uint64(*head.ContentLength)
 	}
+	// 這裡才是權威的容量檢查：PresignAssetUpload 只能先擋數量，這一刻才知道
+	// 使用者實際上傳了多大的檔案。用同一個 HeadObject 量到的 fileSize，加上
+	// 這個專案目前已經在用的數量／容量，一起判斷這次確認會不會超過配額。
+	existingCount, existingBytes, err := s.repo.ProjectAssetUsage(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	if existingCount+1 > FreeMaxProjectAssetCount {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_upload_quota_count_exceeded"),
+		)
+		return nil, fmt.Errorf("這個專案的資產數量已達上限（%d 個），請刪除不需要的資產後再上傳", FreeMaxProjectAssetCount)
+	}
+	if existingBytes+fileSize > FreeMaxProjectStorageBytes {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_upload_quota_storage_exceeded"),
+		)
+		return nil, fmt.Errorf("這個專案的資產容量已達上限（%d MB），請刪除不需要的資產後再上傳", FreeMaxProjectStorageBytes/1024/1024)
+	}
 	metadata := normalizeAssetMetadata(input.Metadata)
 	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
 		deleteStorytellerPendingObject(ctx, client, key,
@@ -364,6 +395,29 @@ func (s *Service) ConfirmAssetReplace(userID uint64, projectPublicID, assetPubli
 			return nil, fmt.Errorf("圖片檔案大小超過上限（%d MB）", maxAssetImageSizeBytes/1024/1024)
 		}
 		fileSize = uint64(*head.ContentLength)
+	}
+	// 替換不會增加資產數量，但可能用一個更大的檔案換掉原本的，一樣要檢查容量
+	// 上限——把目前專案的用量扣掉這個資產原本的大小，再加上新檔案的大小。
+	// existingBytes 理論上一定 >= asset.FileSize（這個資產自己的大小本來就
+	// 算在專案總量裡），但用 uint64 相減前還是先夾一下下限，避免任何資料不
+	// 一致的邊界情況造成無號整數往下溢位、算出一個異常大的數字。
+	_, existingBytes, err := s.repo.ProjectAssetUsage(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	usageExcludingCurrentFile := existingBytes
+	if asset.FileSize < usageExcludingCurrentFile {
+		usageExcludingCurrentFile -= asset.FileSize
+	} else {
+		usageExcludingCurrentFile = 0
+	}
+	if usageExcludingCurrentFile+fileSize > FreeMaxProjectStorageBytes {
+		deleteStorytellerPendingObject(ctx, client, key,
+			zap.String("reason", "asset_replace_quota_storage_exceeded"),
+			zap.Uint64("asset_id", asset.ID),
+			zap.String("asset_public_id", asset.PublicID),
+		)
+		return nil, fmt.Errorf("這個專案的資產容量已達上限（%d MB），請刪除不需要的資產後再替換", FreeMaxProjectStorageBytes/1024/1024)
 	}
 	metadata := storytellerModel.AssetMetadata{}
 	if err := fillImageSizeMetadata(ctx, client, key, metadata); err != nil {
