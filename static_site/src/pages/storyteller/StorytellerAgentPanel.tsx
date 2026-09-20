@@ -15,7 +15,7 @@ import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx
 import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
   StorytellerAgentRunMode,
-  StorytellerAgentRunResponse,
+  StorytellerAgentRunUsage,
 } from "@/types/storyteller.ts";
 
 export interface StorytellerAgentPanelAgent {
@@ -41,7 +41,7 @@ export interface StorytellerAgentPanelMessage {
   mode?: StorytellerAgentRunMode;
   // 選字觸發 skill 時保留原始選取段落，讓送出當下與重整後都看得出指令作用範圍。
   selectedContent?: string;
-  usage?: StorytellerAgentRunResponse["usage"];
+  usage?: StorytellerAgentRunUsage;
   resultSelection?: StorytellerAgentPanelSelection | null;
   isLoading?: boolean;
   isCurrentResult?: boolean;
@@ -332,7 +332,8 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       )}
       {isUser && message.chatStatus === "pending" && (
         <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
-          沒有拿到 AI 回覆（可能是連線問題或伺服器中斷），可以重新打一次指令試試。
+          沒有拿到 AI
+          回覆（可能是連線問題或伺服器中斷），可以重新打一次指令試試。
         </Alert>
       )}
       {!isUser && message.usage?.total_tokens ? (

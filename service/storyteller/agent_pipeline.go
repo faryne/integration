@@ -270,8 +270,7 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 				return nil, err
 			}
 			return &agentRunJob{ChatID: chat.ID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, userMessage.ID, requestXML, opts.IgnoreAgentPersona)
-				return err
+				return completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, requestXML, opts.IgnoreAgentPersona)
 			}}, nil
 		},
 	})
@@ -330,8 +329,7 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 				}
 				useLoop := meta.UseTools && plan.Key.Provider != storytellerModel.AgentProviderGemini
 				return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-					_, err := completeAgentRun(ctx, repo, plan, nil, useLoop, storytellerModel.AgentRunMode(meta.Mode), meta.RequestXML, chatID, userMessage.ID)
-					return err
+					return completeAgentRun(ctx, repo, plan, nil, useLoop, meta.RequestXML, chatID)
 				}}, nil
 			}
 			replyContent, err := agenticQueryReplyContentFromMetadata(repo, userID, plan.Project.ID, plan.Target.Kind, plan.Target.ID, userMessage.Metadata)
@@ -347,8 +345,7 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 				return fail(err)
 			}
 			return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, userMessage.ID, requestXML, ignoreAgentPersona)
-				return err
+				return completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, requestXML, ignoreAgentPersona)
 			}}, nil
 		},
 	})
@@ -374,14 +371,13 @@ func metadataWithRequestXML(metadata, requestXML string) string {
 
 // completeAgenticQuery 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分。
 // 呼叫失敗時把 chat 退回 pending 讓使用者知道「沒拿到回覆」，不會讓 chat 卡在 in_progress。
-func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID, userMessageID uint64, requestXML string, ignoreAgentPersona bool) (*AgenticQueryOutput, error) {
+func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID uint64, requestXML string, ignoreAgentPersona bool) error {
 	agent, userID := *plan.Agent, plan.UserID
 	// 這組工具的 Handler 內部都是靠 storytellerUserIDFromContext／storytellerSourceFromContext
 	// 從 ctx 拿身分，不是走參數傳遞（MCP 那層也是同樣的機制，見 tool_registry_context.go），
 	// 一定要先把身分塞進 ctx，不然每個工具呼叫都會失敗。
 	ctx = WithStorytellerUserID(ctx, userID)
 	ctx = WithStorytellerSource(ctx, "agentic_query")
-	pending := &AgenticQueryOutput{AgentID: agent.ID, ChatID: chatID, UserMessageID: userMessageID, ChatStatus: storytellerModel.StoryChatStatusPending}
 
 	loopResult, loopErr := RunAgentLoop(ctx, AgentLoopRequest{
 		Provider:     plan.Provider,
@@ -397,30 +393,26 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 	// nil（一開始就失敗，例如 API key 無效）才整個放棄，chat 退回 pending 之後可以重送。
 	if loopResult == nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return pending, loopErr
+		return loopErr
 	}
 
 	output := &AgenticQueryOutput{
-		AgentID:       agent.ID,
-		ChatID:        chatID,
-		UserMessageID: userMessageID,
-		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
-		RawResponses:  loopResult.RawResponses,
-		Provider:      plan.Key.Provider,
-		ModelName:     plan.ModelName,
-		Result:        loopResult.FinalText,
-		Steps:         loopResult.Steps,
-		Proposals:     buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
-		Usage:         loopResult.Usage,
+		AgentID:      agent.ID,
+		RawResponses: loopResult.RawResponses,
+		Provider:     plan.Key.Provider,
+		ModelName:    plan.ModelName,
+		Result:       loopResult.FinalText,
+		Steps:        loopResult.Steps,
+		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
+		Usage:        loopResult.Usage,
 	}
 	assistantMessage := agenticQueryAssistantMessage(agent, output, ignoreAgentPersona)
 	usage := buildAgenticQueryUsageLog(repo, userID, plan.Key.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return nil, err
+		return err
 	}
-	output.AssistantMessageID = assistantMessage.ID
-	return output, loopErr
+	return loopErr
 }
 
 // ---- skill（/rewrite、/expand、/translate、/continue、/custom）----
@@ -442,8 +434,7 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 				return nil, err
 			}
 			return &agentRunJob{ChatID: chat.ID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				_, err := completeAgentRun(ctx, deps.Repo, plan, readOnlyTools, useLoop, input.Mode, requestXML, chat.ID, userMessage.ID)
-				return err
+				return completeAgentRun(ctx, deps.Repo, plan, readOnlyTools, useLoop, requestXML, chat.ID)
 			}}, nil
 		},
 	})
@@ -454,7 +445,7 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 }
 
 // completeAgentRun 對稱於 completeAgenticQuery：呼叫失敗時把 chat 退回 pending。
-func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, readOnlyTools []ToolSpec, useLoop bool, mode storytellerModel.AgentRunMode, requestXML string, chatID, userMessageID uint64) (*storytellerModel.AgentRunResponse, error) {
+func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, readOnlyTools []ToolSpec, useLoop bool, requestXML string, chatID uint64) error {
 	agent, userID := *plan.Agent, plan.UserID
 	tools := agentToolsNone
 	if useLoop {
@@ -463,18 +454,13 @@ func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentR
 	result, err := executeAgentRun(ctx, plan.Provider, plan.APIKey, plan.ModelName, agentSystemPrompt(tools), requestXML, plan.ProjectPublicID, readOnlyTools, useLoop, userID)
 	if err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return nil, err
+		return err
 	}
-	output := &storytellerModel.AgentRunResponse{
-		AgentID:       agent.ID,
-		UserMessageID: userMessageID,
-		ChatID:        chatID,
-		ChatStatus:    storytellerModel.StoryChatStatusCompleted,
-		Provider:      plan.Key.Provider,
-		ModelName:     plan.ModelName,
-		Mode:          mode,
-		Result:        result.Text,
-		FinishReason:  result.FinishReason,
+	output := &storytellerModel.AgentRunResult{
+		Provider:     plan.Key.Provider,
+		ModelName:    plan.ModelName,
+		Result:       result.Text,
+		FinishReason: result.FinishReason,
 	}
 	if result.Usage != nil {
 		output.Usage = &storytellerModel.AgentRunUsage{
@@ -487,8 +473,7 @@ func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentR
 	usage := buildAgentUsageLog(repo, userID, plan.Key.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, nil, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)
-		return nil, err
+		return err
 	}
-	output.AssistantMessageID = assistantMessage.ID
-	return output, nil
+	return nil
 }

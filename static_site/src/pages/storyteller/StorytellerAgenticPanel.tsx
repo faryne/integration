@@ -97,7 +97,7 @@ import {
 } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import type {
   StorytellerAgentRunMode,
-  StorytellerAgentRunResponse,
+  StorytellerAgentRunUsage,
   StorytellerAgenticProposal,
   StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
@@ -1245,13 +1245,13 @@ export function StorytellerAgenticPanel({
 
   function parseMessageUsage(
     metadata?: string,
-  ): StorytellerAgentRunResponse["usage"] | undefined {
+  ): StorytellerAgentRunUsage | undefined {
     if (!metadata) {
       return undefined;
     }
     try {
       const parsed = JSON.parse(metadata) as {
-        usage?: StorytellerAgentRunResponse["usage"];
+        usage?: StorytellerAgentRunUsage;
       };
       return parsed.usage?.total_tokens ? parsed.usage : undefined;
     } catch {

@@ -797,7 +797,7 @@ func resolveAgentProviderAPIKey(lookup func(userID, id uint64) (*storytellerMode
 // Price 是寫入當下查一次 AgentModelPrice 存的快照，之後價目表怎麼變動都不會
 // 回頭影響這筆歷史紀錄（見 AgentUsageLog.Price 的說明）；查價格失敗（找不到、
 // self_hosted／openrouter 自訂名稱）不擋主流程，Price 留 nil 就好。
-func buildAgentUsageLog(repo agentRunRepository, userID, providerAPIKeyID uint64, output *storytellerModel.AgentRunResponse) *storytellerModel.AgentUsageLog {
+func buildAgentUsageLog(repo agentRunRepository, userID, providerAPIKeyID uint64, output *storytellerModel.AgentRunResult) *storytellerModel.AgentUsageLog {
 	if output == nil || output.Usage == nil {
 		return nil
 	}
@@ -3413,7 +3413,7 @@ func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.Ag
 // agentRunAssistantMessage 的 rawResponses 可能是單次 Generate 的原始 response，
 // 也可能是 tool loop 每一輪 provider response；一律用 rawProviderResponseJSON
 // 存成陣列，跟 agentic query 的除錯欄位保持同一種封裝格式。
-func agentRunAssistantMessage(agent storytellerModel.Agent, output *storytellerModel.AgentRunResponse, rawResponses []string) *storytellerModel.StoryChatMessage {
+func agentRunAssistantMessage(agent storytellerModel.Agent, output *storytellerModel.AgentRunResult, rawResponses []string) *storytellerModel.StoryChatMessage {
 	agentID := agent.ID
 	return &storytellerModel.StoryChatMessage{
 		AgentID:             &agentID,
@@ -3437,7 +3437,7 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 	return "> " + quoted + "\n\n" + instruction
 }
 
-func agentRunOutputMetadata(output *storytellerModel.AgentRunResponse) string {
+func agentRunOutputMetadata(output *storytellerModel.AgentRunResult) string {
 	if output == nil || output.Usage == nil {
 		if output != nil && output.FinishReason != "" {
 			return fmt.Sprintf(`{"finish_reason":%q}`, output.FinishReason)
