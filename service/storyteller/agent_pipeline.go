@@ -193,31 +193,56 @@ func (a *agentRunAck) toAgenticQueryOutput() *AgenticQueryOutput {
 	}
 }
 
+// ---- 統一入口 ----
+
+// AgentTargetKind 是 controller 用來指定「這次對話掛在故事還是設定集底下」的型別。
+type AgentTargetKind = agenticQueryCurrentTargetKind
+
+const (
+	AgentTargetStory = agenticQueryCurrentTargetStory
+	AgentTargetLore  = agenticQueryCurrentTargetLore
+)
+
+// SubmitAgent 是 AI 助理唯一的送出入口：一般對話與內建 skill 都走這裡，全部非同步——送出當下只
+// 驗證並落地使用者這則訊息（chat 進 in_progress），結果由背景補進 chat，前端輪詢 chat 取得。
+// 差別只有 Skill 有沒有值（見 AgentSubmitRequest），對應不同的 <Skill> 與工具政策。
+func (s *Service) SubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	return submitAgent(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, agentID, in)
+}
+
+// ResubmitAgent 重送一筆卡在 pending 的 chat，一般對話與 skill 共用（見 resubmitAgenticQuery）。
+func (s *Service) ResubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, agentID, chatID, AgenticQueryOptions{
+		ProviderAPIKeyID:   in.ProviderAPIKeyID,
+		ModelName:          in.ModelName,
+		IgnoreAgentPersona: in.IgnoreAgentPersona,
+	})
+}
+
+func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
+	if in.Skill == "" {
+		return submitAgenticQuery(deps, userID, projectPublicID, kind, targetPublicID, agentID, in.Task, AgenticQueryOptions{
+			ProviderAPIKeyID:   in.ProviderAPIKeyID,
+			ModelName:          in.ModelName,
+			IgnoreAgentPersona: in.IgnoreAgentPersona,
+			ReplyContent:       in.ReplyContent,
+			ReplyReference:     in.ReplyReference,
+		})
+	}
+	return submitAgentSkill(deps, nil, userID, projectPublicID, kind, targetPublicID, agentID, storytellerModel.AgentRunRequest{
+		Mode:               in.Skill,
+		Instruction:        in.Task,
+		FullContent:        in.FullContent,
+		SelectedContent:    in.SelectedContent,
+		References:         in.References,
+		ReplyContent:       in.ReplyContent,
+		ProviderAPIKeyID:   in.ProviderAPIKeyID,
+		ModelName:          in.ModelName,
+		IgnoreAgentPersona: in.IgnoreAgentPersona,
+	})
+}
+
 // ---- 一般對話（agentic query）----
-
-// RunStoryAgenticQuery：在故事編輯頁的 AI 助理對話裡，讓 agent 自己讀這個 project 底下
-// 的故事／設定集／資產再回答。寫入類工具只會被記成 Proposals，實際落地一定要等使用者
-// 呼叫 ApplyAgentProposal 明確確認。
-func (s *Service) RunStoryAgenticQuery(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
-	return submitAgenticQuery(s.submitDeps(), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, userPrompt, opts)
-}
-
-// RunLoreAgenticQuery 是 RunStoryAgenticQuery 的設定集版本，「目前在編輯哪一筆」換成 Lore。
-func (s *Service) RunLoreAgenticQuery(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
-	return submitAgenticQuery(s.submitDeps(), userID, projectPublicID, agenticQueryCurrentTargetLore, lorePublicID, agentID, userPrompt, opts)
-}
-
-// RunResendStoryAgenticQuery 針對一筆卡在 pending（沒拿到回覆）狀態的 chat 重新呼叫
-// provider——不是開新的一輪對話，是把答案補進同一筆 chat，不會多出一組重複的問答。
-// 金鑰／模型以外的內容（user_prompt／reply／ignore_agent_persona）一律讀當初存的那份，
-// 不相信這次呼叫傳來的文字或人設狀態。
-func (s *Service) RunResendStoryAgenticQuery(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
-	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, chatID, opts)
-}
-
-func (s *Service) RunResendLoreAgenticQuery(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID, chatID uint64, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
-	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, agenticQueryCurrentTargetLore, lorePublicID, agentID, chatID, opts)
-}
 
 func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, userPrompt string, opts AgenticQueryOptions) (*AgenticQueryOutput, error) {
 	if strings.TrimSpace(userPrompt) == "" {
@@ -400,15 +425,7 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 
 // ---- skill（/rewrite、/expand、/translate、/continue、/custom）----
 
-func (s *Service) RunAgent(ctx context.Context, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return submitAgentSkill(s.submitDeps(), nil, userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, input)
-}
-
-func (s *Service) RunLoreAgent(ctx context.Context, userID uint64, projectPublicID, lorePublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
-	return submitAgentSkill(s.submitDeps(), nil, userID, projectPublicID, agenticQueryCurrentTargetLore, lorePublicID, agentID, input)
-}
-
-func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
 	if err := validateAgentRunRequest(input); err != nil {
 		return nil, err
 	}
@@ -433,15 +450,7 @@ func submitAgentSkill(deps agentSubmitDeps, readOnlyTools []ToolSpec, userID uin
 	if err != nil {
 		return nil, err
 	}
-	return &storytellerModel.AgentRunResponse{
-		AgentID:       ack.AgentID,
-		UserMessageID: ack.UserMessageID,
-		ChatID:        ack.ChatID,
-		ChatStatus:    storytellerModel.StoryChatStatusInProgress,
-		Provider:      ack.Provider,
-		ModelName:     ack.ModelName,
-		Mode:          input.Mode,
-	}, nil
+	return ack.toAgenticQueryOutput(), nil
 }
 
 // completeAgentRun 對稱於 completeAgenticQuery：呼叫失敗時把 chat 退回 pending。

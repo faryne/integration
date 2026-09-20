@@ -57,10 +57,10 @@ func completedOutputFromRepo(repo *fakeAgentRunRepository, ack *AgenticQueryOutp
 	return &out
 }
 
-func runAgent(_ context.Context, repo agentRunRepository, factory aiProviderFactory, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+func runAgent(_ context.Context, repo agentRunRepository, factory aiProviderFactory, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
 	return runAgentWithTools(context.Background(), repo, factory, nil, work, userID, projectPublicID, storyPublicID, agentID, input)
 }
 
-func runAgentWithTools(_ context.Context, repo agentRunRepository, factory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*storytellerModel.AgentRunResponse, error) {
+func runAgentWithTools(_ context.Context, repo agentRunRepository, factory aiProviderFactory, readOnlyTools []ToolSpec, work agenticBackgroundWork, userID uint64, projectPublicID, storyPublicID string, agentID uint64, input storytellerModel.AgentRunRequest) (*AgenticQueryOutput, error) {
 	return submitAgentSkill(testSubmitDeps(repo, work, factory, nil, nil), readOnlyTools, userID, projectPublicID, agenticQueryCurrentTargetStory, storyPublicID, agentID, input)
 }

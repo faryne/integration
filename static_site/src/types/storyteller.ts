@@ -421,21 +421,29 @@ export interface StorytellerAgentRunReference {
   content: string;
 }
 
-export interface StorytellerAgentRunRequest {
-  mode: StorytellerAgentRunMode;
-  instruction: string;
-  // 編輯器目前未儲存的全文；@ 參照與回覆對象不再塞進這裡，改用下面的結構化欄位。
-  full_content: string;
-  selected_content: string;
+// AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，差別只在 skill 有沒有值。
+// 全部非同步——回應只是「已落地、處理中」的確認（帶 chat_id），結果要輪詢 chat 取得。
+export interface StorytellerAgentSubmitRequest {
+  // 空／未帶＝一般對話；否則是內建 skill。
+  skill?: StorytellerAgentRunMode;
+  // 使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
+  task: string;
+  // 以下三個只給 skill 用：編輯器未儲存的全文、選取的文字、需求裡 @ 引用的故事／設定集。
+  full_content?: string;
+  selected_content?: string;
   references?: StorytellerAgentRunReference[];
-  // 使用者按「回覆」時，被回覆那則訊息的完整內容。
+  // 使用者按「回覆」時，被回覆那則訊息（或被否決提案）的完整內容；不帶代表不是在回覆任何訊息。
   reply_content?: string;
+  // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
+  reply_reference?: StorytellerAgenticReplyReferenceRequest;
+  // true 時這次呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model 還是照這個
+  // Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免前一輪切換過的人設無聲
+  // 沿用到不相關的後續訊息。
+  ignore_agent_persona?: boolean;
+  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的 key／model
+  // （可以跟 Agent 記錄的 provider 不同）。
   provider_apikey_id?: number;
   model_name?: string;
-  // true 時這次呼叫不套用目前 Agent 的人設（DefaultPrompt）——/rewrite /expand
-  // /translate /continue /custom 這幾個單輪 skill 指令沒有額外指定人設，一律帶
-  // 這個 true。
-  ignore_agent_persona?: boolean;
 }
 
 export interface StorytellerAgentRunUsage {
@@ -456,7 +464,7 @@ export interface StorytellerAgentRunResponse {
   finish_reason?: string;
   // skill 現在也走背景執行＋輪詢（跟 agentic 對話一樣）：chat_status 是
   // "in_progress" 時 result/usage/finish_reason 都還沒有值，要用 chat_id
-  // 打 GET .../agentic-query/:chat 輪詢拿最終結果。
+  // 打 GET .../agent-chats/:chat 輪詢拿最終結果。
   chat_id?: number;
   chat_status?: "pending" | "in_progress" | "completed";
 }
@@ -466,28 +474,6 @@ export interface StorytellerAgenticReplyReferenceRequest {
   message_id?: number;
   proposal_public_id?: string;
   summary?: string;
-}
-
-// AAS（agentic AI storyteller）：多輪、會自己呼叫工具查資料的問答功能，跟上面
-// 單輪無工具呼叫能力的 StorytellerAgentRunRequest／Response（改寫/擴寫/翻譯）
-// 是刻意分開的兩組型別，對應後端兩條不同的路由。
-export interface StorytellerAgenticQueryRequest {
-  user_prompt: string;
-  // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的
-  // key／model（可以跟 Agent 記錄的 provider 不同）——這是切換 API Key 功能的
-  // 請求介面。
-  provider_apikey_id?: number;
-  model_name?: string;
-  // true 時這輪呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model
-  // 還是照這個 Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免
-  // 前一輪切換過的人設無聲沿用到不相關的後續訊息。
-  ignore_agent_persona?: boolean;
-  // 使用者按「回覆」時，被回覆那則訊息的完整內容——user_prompt 裡通常已經帶了
-  // 一行摘要引言（見 composeStorytellerAgentInstructionWithReply），這裡才是讓
-  // 後端把完整內容併入這輪呼叫 prompt 的管道，不帶代表不是在回覆任何訊息。
-  reply_content?: string;
-  // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
-  reply_reference?: StorytellerAgenticReplyReferenceRequest;
 }
 
 export interface StorytellerAgenticToolCall {

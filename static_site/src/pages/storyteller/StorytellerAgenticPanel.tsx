@@ -36,17 +36,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   fetchStorytellerAgenticChat,
-  useResendStorytellerAgenticQuery,
-  useResendStorytellerLoreAgenticQuery,
-  useRunStorytellerAgent,
-  useRunStorytellerAgenticQuery,
-  useRunStorytellerLoreAgent,
-  useRunStorytellerLoreAgenticQuery,
   useStorytellerAgenticReferenceContent,
   useStorytellerAgentProviderModels,
   useStorytellerLoreChatMessages,
   useStorytellerProviderAPIKeys,
   useStorytellerStoryChatMessages,
+  useResendStorytellerAgent,
+  useSubmitStorytellerAgent,
 } from "@/apis/storyteller/agent.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
@@ -1049,40 +1045,23 @@ export function StorytellerAgenticPanel({
     setModelNameOverride(modelOptions[0].name);
   }, [modelOptions, modelNameOverride, providerAllowsCustomModel]);
 
-  // Rules of Hooks 不能依 targetKind 條件呼叫其中一組——story／lore 兩組 hook 都
-  // 固定呼叫，只把當下不是目標種類那組的 publicId 傳 undefined（hook 內部本來就
-  // 靠 publicId 是否存在決定要不要真的送 request），下面再依 targetKind 挑其中
-  // 一組的結果來用。
-  const runSkillMutationStory = useRunStorytellerAgent(
+  // 一般對話與 skill 共用同一個送出 hook（差別只在請求體的 skill 欄位），各自一個 instance
+  // 是為了讓兩邊的 isPending／error 狀態互不干擾；故事／設定集只差 targetKind。
+  const runSkillMutation = useSubmitStorytellerAgent(
     projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
+    targetKind,
+    targetPublicId,
   );
-  const runSkillMutationLore = useRunStorytellerLoreAgent(
+  const runAgenticQuery = useSubmitStorytellerAgent(
     projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
+    targetKind,
+    targetPublicId,
   );
-  const runSkillMutation =
-    targetKind === "lore" ? runSkillMutationLore : runSkillMutationStory;
-  const runAgenticQueryStory = useRunStorytellerAgenticQuery(
+  const resendAgenticQuery = useResendStorytellerAgent(
     projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
+    targetKind,
+    targetPublicId,
   );
-  const runAgenticQueryLore = useRunStorytellerLoreAgenticQuery(
-    projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
-  );
-  const runAgenticQuery =
-    targetKind === "lore" ? runAgenticQueryLore : runAgenticQueryStory;
-  const resendAgenticQueryStory = useResendStorytellerAgenticQuery(
-    projectPublicId,
-    targetKind === "story" ? targetPublicId : undefined,
-  );
-  const resendAgenticQueryLore = useResendStorytellerLoreAgenticQuery(
-    projectPublicId,
-    targetKind === "lore" ? targetPublicId : undefined,
-  );
-  const resendAgenticQuery =
-    targetKind === "lore" ? resendAgenticQueryLore : resendAgenticQueryStory;
   // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
   // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
   const [resendingChatId, setResendingChatId] = useState<number | null>(null);
@@ -1098,7 +1077,7 @@ export function StorytellerAgenticPanel({
         agentId: agentIdNumeric,
         chatId,
         input: {
-          user_prompt: "",
+          task: "",
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -1729,8 +1708,8 @@ export function StorytellerAgenticPanel({
       {
         agentId: agentIdNumeric,
         input: {
-          mode,
-          instruction,
+          skill: mode,
+          task: instruction,
           full_content: "",
           references: runReferences,
           reply_content: replyContent || undefined,
@@ -1780,7 +1759,7 @@ export function StorytellerAgenticPanel({
             role: "assistant",
             content: result.result,
             speaker: "AI 助理",
-            mode: result.mode,
+            mode,
             usage: result.usage,
             resultSelection: null,
             isCurrentResult: true,
@@ -1860,7 +1839,7 @@ export function StorytellerAgenticPanel({
       {
         agentId: targetAgentId,
         input: {
-          user_prompt: instruction,
+          task: instruction,
           ignore_agent_persona: options?.ignoreAgentPersona ?? false,
           reply_content: replyContent,
           reply_reference: replyReference,

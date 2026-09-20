@@ -1098,28 +1098,31 @@ type AgenticReplyReferenceRequest struct {
 	Summary          string `json:"summary,omitempty"`
 }
 
-// AgenticQueryRequest 是 AAS 聊天視窗送出一則需求的請求體。ProviderAPIKeyID／
-// ModelName 都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定
-// 的 key／model（可以跟 Agent 記錄的 provider 不同）——這是聊天視窗「切換 API
-// Key」功能的請求介面。
-type AgenticQueryRequest struct {
-	UserPrompt       string  `json:"user_prompt"`
-	ProviderAPIKeyID *uint64 `json:"provider_apikey_id,omitempty"`
-	ModelName        string  `json:"model_name,omitempty"`
-	// IgnoreAgentPersona 為 true 時，這輪呼叫的 system prompt 不附加這個 Agent 的
-	// DefaultPrompt（人設/skill 指令）——URL 上的 :agent 仍然決定用哪把 key／哪個
-	// model，只是「這輪不套用它的人設」。前端在使用者沒有明確打 /<Agent 名稱> 前綴
-	// 的訊息帶這個 true，避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
-	IgnoreAgentPersona bool `json:"ignore_agent_persona,omitempty"`
-	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容——UserPrompt
-	// 裡通常已經帶了一行摘要引言（見前端 composeStorytellerAgentInstructionWithReply），
-	// 這裡才是讓後端把完整內容併入這輪呼叫 prompt 的管道，留空代表不是在回覆
-	// 任何訊息。
-	ReplyContent string `json:"reply_content,omitempty"`
-	// ReplyReference 是送出後持久化用的短參照。ReplyContent 仍負責這一輪 provider
-	// prompt；Metadata 只保存這裡的 message_id / proposal_public_id 與短摘要，避免
-	// 每次回覆都把完整內容再複製一份。
+// AgentSubmitRequest 是 AI 助理唯一的送出請求體：一般對話與內建 skill（/rewrite 等）共用，
+// 差別只在 Skill 有沒有值。ProviderAPIKeyID／ModelName 都留空時沿用 Agent 的預設值；帶其中
+// 一個或兩個時，這次呼叫改用指定的 key／model（可以跟 Agent 記錄的 provider 不同）。
+// 重送（resend）也用同一個請求體，但只讀金鑰／模型／IgnoreAgentPersona，其餘一律讀當初存的那份。
+type AgentSubmitRequest struct {
+	// Skill 為空代表一般對話；否則是 AgentRunMode（rewrite_selection、expand_selection…）。
+	Skill AgentRunMode `json:"skill,omitempty"`
+	// Task 是使用者這次輸入的需求（前端通常已在開頭帶一行「> 回覆 XXX：摘要」的引言）。
+	Task string `json:"task"`
+	// FullContent／SelectedContent／References 只給 skill 用：編輯器未儲存的全文、選取的文字、
+	// 需求裡用 @ 引用而由前端解析好的故事／設定集。
+	FullContent     string              `json:"full_content,omitempty"`
+	SelectedContent string              `json:"selected_content,omitempty"`
+	References      []AgentRunReference `json:"references,omitempty"`
+	// ReplyContent 是使用者按「回覆」時被回覆那則訊息（或被否決提案）的完整內容，留空代表不是
+	// 在回覆任何訊息。ReplyReference 是送出後持久化用的短參照，Metadata 只保存它，避免每次回覆
+	// 都把完整內容再複製一份。
+	ReplyContent   string                        `json:"reply_content,omitempty"`
 	ReplyReference *AgenticReplyReferenceRequest `json:"reply_reference,omitempty"`
+	// IgnoreAgentPersona 為 true 時這次呼叫不附帶這個 Agent 的人設（DefaultPrompt）——URL 上的
+	// :agent 仍然決定用哪把 key／哪個 model。前端在使用者沒有明確打 /<Agent 名稱> 前綴時帶 true，
+	// 避免前一輪切換過的人設無聲沿用到不相關的後續訊息。
+	IgnoreAgentPersona bool    `json:"ignore_agent_persona,omitempty"`
+	ProviderAPIKeyID   *uint64 `json:"provider_apikey_id,omitempty"`
+	ModelName          string  `json:"model_name,omitempty"`
 }
 
 // AgenticToolCallOutput 是 agent 這一輪要求呼叫的其中一個工具（可能是唯讀查詢，
