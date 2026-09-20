@@ -33,10 +33,6 @@ export interface StorytellerAgent {
   id: number;
   user_id: number;
   name: string;
-  provider: string;
-  model_name: string;
-  agent_model_id: number | null;
-  provider_apikey_id: number | null;
   default_prompt: string;
   is_deleted: boolean;
   created_at: string;
@@ -118,8 +114,6 @@ export interface StorytellerAgentPromptVersion {
   id: number;
   agent_id: number;
   name: string;
-  provider: string;
-  model_name: string;
   default_prompt: string;
   created_at: string;
   updated_at: string;
@@ -398,11 +392,9 @@ export interface StorytellerProjectRequest {
   tags: string[];
 }
 
+// Agent 是使用者自建的 skill：名稱（/<名稱> 指令）加人設。provider／model／key 是每次送出時的請求欄位。
 export interface StorytellerAgentRequest {
   name: string;
-  provider: string;
-  model_name: string;
-  provider_apikey_id?: number | null;
   default_prompt: string;
 }
 

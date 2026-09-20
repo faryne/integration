@@ -312,35 +312,6 @@ func (r *Repository) AgentProviderModels() ([]storytellerModel.AgentProviderMode
 	return output, nil
 }
 
-func (r *Repository) AgentProviderModel(provider storytellerModel.AgentProvider, modelName string) (*storytellerModel.AgentProviderModels, error) {
-	var providerRow storytellerModel.AgentProviderSetting
-	if err := r.db.Where("provider = ? AND is_deleted = 0 AND deleted_at IS NULL", provider).
-		First(&providerRow).Error; err != nil {
-		return nil, err
-	}
-	output := &storytellerModel.AgentProviderModels{
-		Provider:         providerRow.Provider,
-		Label:            providerRow.Label,
-		AllowCustomModel: providerRow.AllowCustomModel,
-	}
-	var model storytellerModel.AgentModel
-	if err := r.db.Where("provider_id = ? AND name = ? AND is_deleted = 0 AND deleted_at IS NULL", providerRow.ID, modelName).
-		First(&model).Error; err != nil {
-		if providerRow.AllowCustomModel {
-			return output, nil
-		}
-		return nil, err
-	}
-	output.Models = []storytellerModel.AgentModelOption{{
-		ID:          model.ID,
-		Name:        model.Name,
-		Label:       model.Label,
-		Description: model.Description,
-		Price:       model.Price,
-	}}
-	return output, nil
-}
-
 // AgentModelPrice 查某個固定模型清單供應商（allow_custom_model=0）底下指定
 // model 目前的單價快照（每 token 美金，JSON 字串）。查不到（self_hosted／
 // openrouter 自訂名稱、model 已下架、或該 model 從來沒有價格資料）回傳
@@ -459,8 +430,6 @@ func agentPromptVersionFromAgent(agent *storytellerModel.Agent) *storytellerMode
 	return &storytellerModel.AgentPromptVersion{
 		AgentID:       agent.ID,
 		Name:          agent.Name,
-		Provider:      agent.Provider,
-		ModelName:     agent.ModelName,
 		DefaultPrompt: agent.DefaultPrompt,
 	}
 }

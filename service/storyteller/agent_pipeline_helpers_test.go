@@ -17,16 +17,15 @@ func testSubmitDeps(repo agentRunRepository, work agenticBackgroundWork, factory
 	}
 }
 
-// 送出時 key／model 是必填的請求欄位；既有測試把它們寫在 fake repo 的 agent 上，這裡在請求沒帶時
-// 代填，並把測試裡的 agentID 當作「明確指定的自建 skill（persona）」。
-func withTestKeyDefaults(repo agentRunRepository, keyID **uint64, modelName *string) {
-	if fake, ok := repo.(*fakeAgentRunRepository); ok && fake.agent != nil {
-		if *keyID == nil {
-			*keyID = fake.agent.ProviderAPIKeyID
-		}
-		if *modelName == "" {
-			*modelName = fake.agent.ModelName
-		}
+// 送出時 key／model 是必填的請求欄位；既有測試沒特別指定時在這裡代填預設值，
+// 並把測試裡的 agentID 當作「明確指定的自建 skill（persona）」。
+func withTestKeyDefaults(_ agentRunRepository, keyID **uint64, modelName *string) {
+	if *keyID == nil {
+		id := uint64(50)
+		*keyID = &id
+	}
+	if *modelName == "" {
+		*modelName = "test-model"
 	}
 }
 

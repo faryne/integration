@@ -292,21 +292,13 @@ func (s *Service) AgentProviderModels() ([]storytellerModel.AgentProviderModels,
 }
 
 func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
-	providerModel, err := s.validateAgent(input, true)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.validateAgentProviderAPIKey(userID, input); err != nil {
+	if err := validateAgent(input); err != nil {
 		return nil, err
 	}
 	agent := &storytellerModel.Agent{
-		UserID:           userID,
-		Name:             normalizeAgentName(input.Name),
-		Provider:         input.Provider,
-		ModelName:        strings.TrimSpace(input.ModelName),
-		AgentModelID:     agentModelID(providerModel),
-		ProviderAPIKeyID: input.ProviderAPIKeyID,
-		DefaultPrompt:    strings.TrimSpace(input.DefaultPrompt),
+		UserID:        userID,
+		Name:          normalizeAgentName(input.Name),
+		DefaultPrompt: strings.TrimSpace(input.DefaultPrompt),
 	}
 	if err := s.repo.CreateAgent(agent); err != nil {
 		return nil, err
@@ -315,11 +307,7 @@ func (s *Service) CreateAgent(userID uint64, input storytellerModel.AgentRequest
 }
 
 func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentRequest) (*storytellerModel.Agent, error) {
-	providerModel, err := s.validateAgent(input, false)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.validateAgentProviderAPIKey(userID, input); err != nil {
+	if err := validateAgent(input); err != nil {
 		return nil, err
 	}
 	agent, err := s.repo.Agent(userID, id)
@@ -327,31 +315,11 @@ func (s *Service) UpdateAgent(userID, id uint64, input storytellerModel.AgentReq
 		return nil, err
 	}
 	agent.Name = normalizeAgentName(input.Name)
-	agent.Provider = input.Provider
-	agent.ModelName = strings.TrimSpace(input.ModelName)
-	agent.AgentModelID = agentModelID(providerModel)
-	if input.ProviderAPIKeyID != nil {
-		agent.ProviderAPIKeyID = input.ProviderAPIKeyID
-	}
 	agent.DefaultPrompt = strings.TrimSpace(input.DefaultPrompt)
 	if err := s.repo.UpdateAgent(agent); err != nil {
 		return nil, err
 	}
 	return agent, nil
-}
-
-func (s *Service) validateAgentProviderAPIKey(userID uint64, input storytellerModel.AgentRequest) error {
-	if input.ProviderAPIKeyID == nil {
-		return nil
-	}
-	key, err := s.repo.ProviderAPIKey(userID, *input.ProviderAPIKeyID)
-	if err != nil {
-		return err
-	}
-	if key.Provider != input.Provider {
-		return errors.New("provider_apikey_id does not match provider")
-	}
-	return nil
 }
 
 func (s *Service) ProviderAPIKeys(userID uint64) ([]storytellerModel.ProviderAPIKeyOutput, error) {
@@ -3251,27 +3219,13 @@ func normalizeUserProfileRequest(input storytellerModel.UserProfileRequest) stor
 // 自行指定，Agent 管理頁不再收集這三個欄位（見 Phase1至7工作項規劃.md Phase 8
 // 後續）。欄位本身仍保留在資料表跟這個 struct 上（沒有 migration，向下相容舊
 // 資料），所以這裡只在 input.Provider 有值時才驗證成組——留空整組略過即可。
-func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIKey bool) (*storytellerModel.AgentProviderModels, error) {
+// validateAgent：Agent 現在只是「使用者自建 skill」——名稱（/<名稱> 指令）加人設；provider／model／
+// key 是每次呼叫的請求欄位，不再屬於 Agent。
+func validateAgent(input storytellerModel.AgentRequest) error {
 	if strings.TrimSpace(input.Name) == "" {
-		return nil, errors.New("name is required")
+		return errors.New("name is required")
 	}
-	if strings.TrimSpace(string(input.Provider)) == "" {
-		return nil, nil
-	}
-	provider, err := s.repo.AgentProviderModel(input.Provider, strings.TrimSpace(input.ModelName))
-	if err != nil {
-		return nil, errors.New("invalid provider")
-	}
-	if !provider.AllowCustomModel && len(provider.Models) == 0 {
-		return nil, errors.New("invalid model_name")
-	}
-	if strings.TrimSpace(input.ModelName) == "" {
-		return nil, errors.New("model_name is required")
-	}
-	if requireAPIKey && input.ProviderAPIKeyID == nil {
-		return nil, errors.New("provider_apikey_id is required")
-	}
-	return provider, nil
+	return nil
 }
 
 // normalizeAgentName 除了裁頭尾空白，還把內部連續空白（例如不小心打了兩個空格）
@@ -3280,14 +3234,6 @@ func (s *Service) validateAgent(input storytellerModel.AgentRequest, requireAPIK
 // 不一致會讓「看起來一樣」的名稱打指令卻打不中，很難肉眼發現。
 func normalizeAgentName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
-}
-
-func agentModelID(providerModel *storytellerModel.AgentProviderModels) *uint64 {
-	if providerModel == nil || len(providerModel.Models) == 0 || providerModel.Models[0].ID == 0 {
-		return nil
-	}
-	id := providerModel.Models[0].ID
-	return &id
 }
 
 func validateAgentRunRequest(input storytellerModel.AgentRunRequest) error {

@@ -27,17 +27,13 @@ func TestAgenticQueryOutputMetadataUsage(t *testing.T) {
 }
 
 func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
-			DefaultPrompt:    "Be concise.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Be concise.",
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -111,16 +107,12 @@ func TestAgenticQueryHistoriesSkipsIncompleteChats(t *testing.T) {
 }
 
 func TestRunStoryAgenticQueryRendersHistoryIntoRequest(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		historyMessages: []storytellerModel.StoryChatMessage{
@@ -155,16 +147,12 @@ func TestRunStoryAgenticQueryRendersHistoryIntoRequest(t *testing.T) {
 // 檢查 ctx 的假 Handler，沒測出這個洞。這裡故意寫一個會檢查 ctx 的假 Handler，
 // 確保這個洞不會再回來。
 func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -209,17 +197,13 @@ func TestRunStoryAgenticQueryPropagatesStorytellerContextToTools(t *testing.T) {
 // 可以不一樣——呼應「Agent 只是人設/prompt，用哪把 key／哪個 model 是每次呼叫
 // 當下的選擇」這個方向。
 func TestRunStoryAgenticQueryAppliesProviderAndModelOverride(t *testing.T) {
-	agentDefaultKeyID := uint64(50)
 	overrideKeyID := uint64(51)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &agentDefaultKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, overrideKeyID, 20, storytellerModel.AgentProviderClaude, "override-secret-key"),
 	}
@@ -252,16 +236,12 @@ func TestRunStoryAgenticQueryRejectsEmptyPrompt(t *testing.T) {
 }
 
 func TestEnqueueStoryAgenticQueryReturnsInProgressAndBackgroundPersistsResult(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id", Title: "測試故事"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -303,16 +283,12 @@ func TestEnqueueStoryAgenticQueryReturnsInProgressAndBackgroundPersistsResult(t 
 }
 
 func TestEnqueueStoryAgenticQueryRejectsWhenBackgroundWorkIsDraining(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -328,16 +304,12 @@ func TestEnqueueStoryAgenticQueryRejectsWhenBackgroundWorkIsDraining(t *testing.
 }
 
 func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -369,7 +341,6 @@ func TestRunStoryAgenticQueryPersistsUsageEvenWhenMaxStepsExceeded(t *testing.T)
 }
 
 func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	replyMessageID := uint64(77)
 	userPrompt := "> 回覆 AI 助理：這是摘要\n\n請接著回答"
 	replyContent := "這是被回覆訊息的完整原文\n第二行也要保留"
@@ -377,11 +348,8 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		storyMessage:   &storytellerModel.StoryChatMessage{ID: replyMessageID, Content: replyContent},
@@ -447,7 +415,6 @@ func TestRunStoryAgenticQueryPersistsMessageReferenceAndResendRebuildsSamePrompt
 }
 
 func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePrompt(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	proposal := &storytellerModel.AgentProposal{
 		PublicID:  "proposal-public-id",
 		ToolName:  "storyteller_upsert_story",
@@ -459,11 +426,8 @@ func TestRunStoryAgenticQueryPersistsProposalReferenceAndResendRebuildsSamePromp
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey:  encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		projectProposal: proposal,
@@ -582,12 +546,11 @@ func (p *contextCheckingAIProvider) Generate(ctx context.Context, req AIProvider
 // 沒有「目前選中的 Agent」：請求沒帶 persona_agent_id 就不能有 <Persona>，就算使用者有建立
 // 帶 DefaultPrompt 的 Agent；明確帶了才套用。
 func TestSubmitAppliesPersonaOnlyWhenRequestNamesIt(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	newRepo := func() *fakeAgentRunRepository {
 		return &fakeAgentRunRepository{
 			project:        &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 			story:          &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
-			agent:          &storytellerModel.Agent{ID: 40, UserID: 20, Name: "色文作家", DefaultPrompt: "Be lewd.", ModelName: "claude-test", ProviderAPIKeyID: &providerAPIKeyID},
+			agent:          &storytellerModel.Agent{ID: 40, UserID: 20, Name: "色文作家", DefaultPrompt: "Be lewd."},
 			providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 		}
 	}

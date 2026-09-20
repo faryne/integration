@@ -21,8 +21,6 @@ import type {
 export interface StorytellerAgentPanelAgent {
   id: string;
   name: string;
-  provider: string;
-  model: string;
   prompt: string;
   enabled: boolean;
 }

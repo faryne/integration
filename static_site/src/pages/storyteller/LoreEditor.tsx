@@ -298,8 +298,6 @@ export default function StorytellerLoreEditor({
   const panelAgents: StorytellerAgentPanelAgent[] = agents.map((agent) => ({
     id: String(agent.id),
     name: agent.name,
-    provider: agent.provider,
-    model: agent.model_name,
     prompt: agent.default_prompt,
     enabled: !agent.is_deleted,
   }));

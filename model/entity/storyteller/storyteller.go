@@ -272,18 +272,14 @@ type AssetReference struct {
 func (AssetReference) TableName() string { return "storyteller_asset_references" }
 
 type Agent struct {
-	ID               uint64        `gorm:"column:id;primaryKey" json:"id"`
-	UserID           uint64        `gorm:"column:user_id" json:"user_id"`
-	Name             string        `gorm:"column:name" json:"name"`
-	Provider         AgentProvider `gorm:"column:provider" json:"provider"`
-	ModelName        string        `gorm:"column:model_name" json:"model_name"`
-	AgentModelID     *uint64       `gorm:"column:agent_model_id" json:"agent_model_id"`
-	ProviderAPIKeyID *uint64       `gorm:"column:provider_apikey_id" json:"provider_apikey_id"`
-	DefaultPrompt    string        `gorm:"column:default_prompt" json:"default_prompt"`
-	IsDeleted        bool          `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt        *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt        time.Time     `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt        time.Time     `gorm:"column:updated_at" json:"updated_at"`
+	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID        uint64     `gorm:"column:user_id" json:"user_id"`
+	Name          string     `gorm:"column:name" json:"name"`
+	DefaultPrompt string     `gorm:"column:default_prompt" json:"default_prompt"`
+	IsDeleted     bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Agent) TableName() string { return "storyteller_agents" }
@@ -383,15 +379,13 @@ func (AgentModel) TableName() string {
 }
 
 type AgentPromptVersion struct {
-	ID            uint64        `gorm:"column:id;primaryKey" json:"id"`
-	AgentID       uint64        `gorm:"column:agent_id" json:"agent_id"`
-	Name          string        `gorm:"column:name" json:"name"`
-	Provider      AgentProvider `gorm:"column:provider" json:"provider"`
-	ModelName     string        `gorm:"column:model_name" json:"model_name"`
-	DefaultPrompt string        `gorm:"column:default_prompt" json:"default_prompt"`
-	DeletedAt     *time.Time    `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt     time.Time     `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt     time.Time     `gorm:"column:updated_at" json:"updated_at"`
+	ID            uint64     `gorm:"column:id;primaryKey" json:"id"`
+	AgentID       uint64     `gorm:"column:agent_id" json:"agent_id"`
+	Name          string     `gorm:"column:name" json:"name"`
+	DefaultPrompt string     `gorm:"column:default_prompt" json:"default_prompt"`
+	DeletedAt     *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt     time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AgentPromptVersion) TableName() string {
@@ -735,11 +729,8 @@ type ProjectRequest struct {
 }
 
 type AgentRequest struct {
-	Name             string        `json:"name"`
-	Provider         AgentProvider `json:"provider"`
-	ModelName        string        `json:"model_name"`
-	ProviderAPIKeyID *uint64       `json:"provider_apikey_id"`
-	DefaultPrompt    string        `json:"default_prompt"`
+	Name          string `json:"name"`
+	DefaultPrompt string `json:"default_prompt"`
 }
 
 // AgentRunReference 是使用者在需求裡用 @ 引用、由前端解析好的一筆故事／設定集。

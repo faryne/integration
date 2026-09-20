@@ -122,17 +122,13 @@ func TestValidateAgentRunRequest(t *testing.T) {
 }
 
 func TestRunAgent(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
-			DefaultPrompt:    "Use concise prose.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Use concise prose.",
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
@@ -153,6 +149,7 @@ func TestRunAgent(t *testing.T) {
 		Instruction:     "rewrite",
 		FullContent:     "full chapter",
 		SelectedContent: "scene",
+		ModelName:       "grok-test",
 	})
 
 	require.NoError(t, err)
@@ -193,16 +190,12 @@ func TestRunAgent(t *testing.T) {
 }
 
 func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id", Title: "目前故事"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderClaude,
-			ModelName:        "claude-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderClaude, "secret-key"),
 	}
@@ -284,16 +277,12 @@ func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 }
 
 func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGemini,
-			ModelName:        "gemini-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGemini, "secret-key"),
 	}
@@ -328,18 +317,14 @@ func TestRunAgentGeminiKeepsSingleGenerateEvenWithReference(t *testing.T) {
 // 記錄下來的 output.Provider／ModelName 都要反映「這次真的用了什麼」，不是 Agent
 // 的靜態預設值。
 func TestRunAgentProviderAPIKeyOverrideCanCrossProvider(t *testing.T) {
-	agentDefaultKeyID := uint64(50)
 	overrideKeyID := uint64(51)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &agentDefaultKeyID,
-			DefaultPrompt:    "Use concise prose.",
+			ID:            40,
+			UserID:        20,
+			DefaultPrompt: "Use concise prose.",
 		},
 		// mock 的 ProviderAPIKey() 不看傳入的 id，直接回傳這把——用來模擬「覆寫的
 		// key id 解析出一把 provider 完全不同的 key」這個情境。
@@ -415,16 +400,12 @@ func TestRunAgentAgentNotFound(t *testing.T) {
 // 的背景執行模型一致。
 func TestRunAgentProviderError(t *testing.T) {
 	providerErr := errors.New("provider failed")
-	providerAPIKeyID := uint64(50)
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
 		agent: &storytellerModel.Agent{
-			ID:               40,
-			UserID:           20,
-			Provider:         storytellerModel.AgentProviderGrok,
-			ModelName:        "grok-test",
-			ProviderAPIKeyID: &providerAPIKeyID,
+			ID:     40,
+			UserID: 20,
 		},
 		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
 	}
