@@ -248,7 +248,7 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 - **lore 版本沒有獨立測試**：測試 helper 都以 story 為目標，lore 走同一條程式碼路徑（只差 `Kind` 分派），但沒有專屬案例。
 - **`storyteller.go` 仍是 3503 行大檔**，依「單檔超過 500 行就要審視」慣例值得日後拆分。
 
-- **兩支 migration 都不能單獨先跑或後跑**：`storyteller_story_chats.agent_id`、`storyteller_agents.model_name`、版本快照表的 `provider`／`model_name` 都是 NOT NULL 且沒有預設值，新程式碼不再寫入它們，所以「新程式碼先上」會讓送出 AI 助理訊息與建立／更新 Agent 失敗；「migration 先跑」則舊程式碼會因欄位不存在而失敗。需要同一個維護窗口一起切換，或拆成兩階段（先改成可為 NULL／有預設值，等新程式碼上線後再刪）。
+- **部署順序：先跑兩支 migration、再部署新程式碼**。migration 跑完到新版上線之間，舊版程式碼會因欄位不存在而失敗（已接受，不做兩階段）。
 - **`repo.AgentChatTarget` 的 SQL（JOIN＋`COALESCE`）只有語法檢查、沒有對真實資料庫跑過。**
 
 ## 已過時的既有文件

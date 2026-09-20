@@ -6,10 +6,7 @@
 --
 -- 注意：
 --   1. 不可逆的資料刪除：欄位內既有的值不會保留（Down 只還原欄位結構，值為預設／NULL）。
---   2. 部署順序：storyteller_agents.model_name 與 storyteller_agent_prompt_versions.provider／model_name
---      是 NOT NULL 且沒有預設值，新版程式碼不再寫入它們，所以「新程式碼先上、migration 後跑」期間
---      建立／更新 Agent 會失敗；反過來「migration 先跑」則舊程式碼會因欄位不存在而失敗。
---      需要在同一個維護窗口一起切換，或先拆成兩階段（先把這幾欄改成可為 NULL／有預設值，等新程式碼上線後再刪）。
+--   2. 部署順序：先跑 migration、再部署新程式碼（migration 跑完到新版上線之間，舊版程式碼會因欄位不存在而失敗）。
 ALTER TABLE `storyteller_agents`
     DROP FOREIGN KEY `fk_storyteller_agents_agent_model`,
     DROP FOREIGN KEY `fk_storyteller_agents_provider_apikey`,
