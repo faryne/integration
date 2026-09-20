@@ -122,10 +122,6 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 type AgenticQueryOptions struct {
 	ProviderAPIKeyID *uint64
 	ModelName        string
-	// IgnoreAgentPersona 見 storytellerModel.AgenticQueryRequest 的說明：true 時
-	// system prompt 略過這個 Agent 的 DefaultPrompt，但 key／model／usage log／
-	// chat 記錄仍然照常用這個 Agent。
-	IgnoreAgentPersona bool
 	// ReplyContent 是使用者按「回覆」時，被回覆那則訊息的完整內容（不是摘要）——
 	// UserPrompt 裡已經帶了一行摘要引言方便人類跟模型定位「在回覆誰」，這裡才是
 	// 真正讓模型讀到完整內容的管道。留空代表這次送出不是在回覆任何訊息。
@@ -272,40 +268,26 @@ const (
 	agenticQueryCurrentTargetLore  agenticQueryCurrentTargetKind = "lore"
 )
 
-// messageAgentID 決定訊息列的 agent_id 要不要記——ignoreAgentPersona 為 true
-// 代表這輪沒有明確指定人設（純打字送出的一般問答，見 StorytellerAgenticPanel.tsx
-// 的 runAgentic 預設路徑），這種情況下 agent_id 只是「這次呼叫剛好用哪個 agent
-// 記錄解析 provider/model」的技術細節，不是使用者的刻意選擇，留 NULL 讓前端
-// 的訊息泡泡不要標一個誤導性的 Agent 名稱（見 DevelopDocuments/storyteller/
-// agentic_ai_storyteller/Phase1至7工作項規劃.md 的「未來待辦」第二項）。明確
-// 用 /Agent名稱 切換過的（ignoreAgentPersona=false）才記真正的 agent_id。
-func messageAgentID(agentID uint64, ignoreAgentPersona bool) *uint64 {
-	if ignoreAgentPersona {
-		return nil
-	}
-	id := agentID
-	return &id
-}
-
-func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, ignoreAgentPersona bool, requestXML string) *storytellerModel.StoryChatMessage {
+func pendingAgenticQueryUserMessage(agent storytellerModel.Agent, userPrompt string, replyReference *storytellerModel.AgenticReplyReferenceRequest, requestXML string) *storytellerModel.StoryChatMessage {
+	agentID := agent.ID
 	return &storytellerModel.StoryChatMessage{
-		AgentID: messageAgentID(agent.ID, ignoreAgentPersona),
+		AgentID: &agentID,
 		Role:    storytellerModel.ChatMessageRoleUser,
 		Content: userPrompt,
 		Metadata: agentUserMessageMetadata{
-			Mode:               "agentic_query",
-			IgnoreAgentPersona: &ignoreAgentPersona,
-			ReplyReference:     normalizeAgenticReplyReference(replyReference),
-			RequestXML:         requestXML,
+			Mode:           "agentic_query",
+			ReplyReference: normalizeAgenticReplyReference(replyReference),
+			RequestXML:     requestXML,
 		}.JSON(),
 	}
 }
 
 // agenticQueryAssistantMessage 組出 provider 呼叫跑完後要補進 chat 的 AI 回覆
 // 那一則訊息，搭配 repo.CompleteChatMessage 使用。
-func agenticQueryAssistantMessage(agent storytellerModel.Agent, output *AgenticQueryOutput, ignoreAgentPersona bool) *storytellerModel.StoryChatMessage {
+func agenticQueryAssistantMessage(agent storytellerModel.Agent, output *AgenticQueryOutput) *storytellerModel.StoryChatMessage {
+	agentID := agent.ID
 	return &storytellerModel.StoryChatMessage{
-		AgentID:             messageAgentID(agent.ID, ignoreAgentPersona),
+		AgentID:             &agentID,
 		Role:                storytellerModel.ChatMessageRoleAssistant,
 		Content:             output.Result,
 		Metadata:            agenticQueryOutputMetadata(output),
@@ -436,18 +418,6 @@ func agenticQueryProposalReferenceContent(proposal *storytellerModel.AgentPropos
 		body = []byte(`{"tool_name":"","arguments":{}}`)
 	}
 	return "Rejected proposal: " + toolName + "\n" + string(body)
-}
-
-func agenticQueryIgnoreAgentPersonaFromMetadata(metadata string, agentID *uint64) bool {
-	var meta struct {
-		IgnoreAgentPersona *bool `json:"ignore_agent_persona"`
-	}
-	if err := json.Unmarshal([]byte(metadata), &meta); err == nil && meta.IgnoreAgentPersona != nil {
-		return *meta.IgnoreAgentPersona
-	}
-	// 舊資料沒有 ignore_agent_persona 欄位；messageAgentID 會在 ignore=true 時存 NULL，
-	// 用這個既有落地結果反推，讓舊 pending row 重送時盡量貼近原本那輪。
-	return agentID == nil
 }
 
 // agenticQueryOutputMetadata 把這輪呼叫過的工具過程記成 JSON，存進既有

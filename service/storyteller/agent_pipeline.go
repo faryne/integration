@@ -213,32 +213,29 @@ func (s *Service) SubmitAgent(ctx context.Context, userID uint64, projectPublicI
 // ResubmitAgent 重送一筆卡在 pending 的 chat，一般對話與 skill 共用（見 resubmitAgenticQuery）。
 func (s *Service) ResubmitAgent(ctx context.Context, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID, chatID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
 	return resubmitAgenticQuery(s.submitDeps(), userID, projectPublicID, kind, targetPublicID, agentID, chatID, AgenticQueryOptions{
-		ProviderAPIKeyID:   in.ProviderAPIKeyID,
-		ModelName:          in.ModelName,
-		IgnoreAgentPersona: in.IgnoreAgentPersona,
+		ProviderAPIKeyID: in.ProviderAPIKeyID,
+		ModelName:        in.ModelName,
 	})
 }
 
 func submitAgent(deps agentSubmitDeps, userID uint64, projectPublicID string, kind agenticQueryCurrentTargetKind, targetPublicID string, agentID uint64, in storytellerModel.AgentSubmitRequest) (*AgenticQueryOutput, error) {
 	if in.Skill == "" {
 		return submitAgenticQuery(deps, userID, projectPublicID, kind, targetPublicID, agentID, in.Task, AgenticQueryOptions{
-			ProviderAPIKeyID:   in.ProviderAPIKeyID,
-			ModelName:          in.ModelName,
-			IgnoreAgentPersona: in.IgnoreAgentPersona,
-			ReplyContent:       in.ReplyContent,
-			ReplyReference:     in.ReplyReference,
+			ProviderAPIKeyID: in.ProviderAPIKeyID,
+			ModelName:        in.ModelName,
+			ReplyContent:     in.ReplyContent,
+			ReplyReference:   in.ReplyReference,
 		})
 	}
 	return submitAgentSkill(deps, nil, userID, projectPublicID, kind, targetPublicID, agentID, storytellerModel.AgentRunRequest{
-		Mode:               in.Skill,
-		Instruction:        in.Task,
-		FullContent:        in.FullContent,
-		SelectedContent:    in.SelectedContent,
-		References:         in.References,
-		ReplyContent:       in.ReplyContent,
-		ProviderAPIKeyID:   in.ProviderAPIKeyID,
-		ModelName:          in.ModelName,
-		IgnoreAgentPersona: in.IgnoreAgentPersona,
+		Mode:             in.Skill,
+		Instruction:      in.Task,
+		FullContent:      in.FullContent,
+		SelectedContent:  in.SelectedContent,
+		References:       in.References,
+		ReplyContent:     in.ReplyContent,
+		ProviderAPIKeyID: in.ProviderAPIKeyID,
+		ModelName:        in.ModelName,
 	})
 }
 
@@ -257,7 +254,7 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 		ProviderAPIKeyID: opts.ProviderAPIKeyID, ModelName: opts.ModelName,
 		TrackName: "storyteller.agentic_query." + string(kind),
 		Begin: func(plan *agentRunPlan) (*agentRunJob, error) {
-			requestXML, err := renderAgenticRequestXML(deps.Repo, plan, userPrompt, opts.ReplyContent, opts.IgnoreAgentPersona)
+			requestXML, err := renderAgenticRequestXML(deps.Repo, plan, userPrompt, opts.ReplyContent)
 			if err != nil {
 				return nil, err
 			}
@@ -265,12 +262,12 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 			// process 被重啟而拿不到答案，使用者也不會連自己問了什麼都找不到；之後可以用
 			// 「重送」補完這輪，不用整句重打。
 			chat := newAgentChat(plan.Target, userID, plan.Agent.ID)
-			userMessage := pendingAgenticQueryUserMessage(*plan.Agent, userPrompt, opts.ReplyReference, opts.IgnoreAgentPersona, requestXML)
+			userMessage := pendingAgenticQueryUserMessage(*plan.Agent, userPrompt, opts.ReplyReference, requestXML)
 			if err := deps.Repo.CreateInProgressChatWithUserMessage(chat, userMessage); err != nil {
 				return nil, err
 			}
 			return &agentRunJob{ChatID: chat.ID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				return completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, requestXML, opts.IgnoreAgentPersona)
+				return completeAgenticQuery(ctx, deps.Repo, plan, tools, writeToolNames, chat.ID, requestXML)
 			}}, nil
 		},
 	})
@@ -281,7 +278,7 @@ func submitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID str
 }
 
 // renderAgenticRequestXML 撈最近幾輪歷史、解析歷史裡的人設名稱，渲染成這次一般對話的 <Request>。
-func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPrompt, replyContent string, ignoreAgentPersona bool) (string, error) {
+func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPrompt, replyContent string) (string, error) {
 	historyRows, err := recentAgenticHistory(repo, plan.Target)
 	if err != nil {
 		return "", err
@@ -290,7 +287,7 @@ func renderAgenticRequestXML(repo agentRunRepository, plan *agentRunPlan, userPr
 	if err != nil {
 		return "", err
 	}
-	return buildAgenticRequest(plan, userPrompt, replyContent, ignoreAgentPersona, agenticQueryHistories(historyRows, agentNames)).XML(), nil
+	return buildAgenticRequest(plan, userPrompt, replyContent, agenticQueryHistories(historyRows, agentNames)).XML(), nil
 }
 
 // resubmitAgenticQuery 重送一筆卡在 pending 的 chat，一般對話與 skill 共用同一條路：
@@ -336,8 +333,7 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 			if err != nil {
 				return fail(err)
 			}
-			ignoreAgentPersona := agenticQueryIgnoreAgentPersonaFromMetadata(userMessage.Metadata, userMessage.AgentID)
-			requestXML, err := renderAgenticRequestXML(repo, plan, userMessage.Content, replyContent, ignoreAgentPersona)
+			requestXML, err := renderAgenticRequestXML(repo, plan, userMessage.Content, replyContent)
 			if err != nil {
 				return fail(err)
 			}
@@ -345,7 +341,7 @@ func resubmitAgenticQuery(deps agentSubmitDeps, userID uint64, projectPublicID s
 				return fail(err)
 			}
 			return &agentRunJob{ChatID: chatID, UserMessageID: userMessage.ID, Run: func(ctx context.Context) error {
-				return completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, requestXML, ignoreAgentPersona)
+				return completeAgenticQuery(ctx, repo, plan, tools, writeToolNames, chatID, requestXML)
 			}}, nil
 		},
 	})
@@ -371,7 +367,7 @@ func metadataWithRequestXML(metadata, requestXML string) string {
 
 // completeAgenticQuery 是背景 goroutine 實際呼叫 provider、把結果補進 chat 的部分。
 // 呼叫失敗時把 chat 退回 pending 讓使用者知道「沒拿到回覆」，不會讓 chat 卡在 in_progress。
-func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID uint64, requestXML string, ignoreAgentPersona bool) error {
+func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *agentRunPlan, tools []ToolSpec, writeToolNames map[string]bool, chatID uint64, requestXML string) error {
 	agent, userID := *plan.Agent, plan.UserID
 	// 這組工具的 Handler 內部都是靠 storytellerUserIDFromContext／storytellerSourceFromContext
 	// 從 ctx 拿身分，不是走參數傳遞（MCP 那層也是同樣的機制，見 tool_registry_context.go），
@@ -406,7 +402,7 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:        loopResult.Usage,
 	}
-	assistantMessage := agenticQueryAssistantMessage(agent, output, ignoreAgentPersona)
+	assistantMessage := agenticQueryAssistantMessage(agent, output)
 	usage := buildAgenticQueryUsageLog(repo, userID, plan.Key.ID, output)
 	if err := repo.CompleteChatMessage(chatID, assistantMessage, output.Proposals, usage); err != nil {
 		_ = repo.ReleaseChatToPending(chatID)

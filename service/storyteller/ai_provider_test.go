@@ -240,16 +240,14 @@ func TestBuildSkillRequestAllowsEmptyInstruction(t *testing.T) {
 	require.Contains(t, xml, "<Editor>")
 }
 
-func TestBuildSkillRequestOmitsEmptyFullContentAndIgnoresPersona(t *testing.T) {
-	xml := buildSkillRequest(testSkillPlan("persona text"), storytellerModel.AgentRunRequest{
-		Mode:               storytellerModel.AgentRunModeContinueChapter,
-		Instruction:        "Only use this request.",
-		IgnoreAgentPersona: true,
+func TestBuildSkillRequestOmitsEmptyFullContent(t *testing.T) {
+	xml := buildSkillRequest(testSkillPlan(""), storytellerModel.AgentRunRequest{
+		Mode:        storytellerModel.AgentRunModeContinueChapter,
+		Instruction: "Only use this request.",
 	}, false).XML()
 
 	require.Contains(t, xml, "<Task>\nOnly use this request.\n</Task>")
 	require.NotContains(t, xml, "<Editor>")
-	require.NotContains(t, xml, "persona text")
 }
 
 // 使用者內文（故事、回覆、歷史）含我們自己的標籤名時要被中和，不能破壞 <Request> 結構。

@@ -24,7 +24,7 @@ type agentRequest struct {
 	ProjectPublicID string
 	Target          agentRunTarget
 	PersonaName     string // 使用者建立的 Agent 名稱；沒有人設時留空
-	Persona         string // Agent.DefaultPrompt；IgnoreAgentPersona 或沒設定時留空
+	Persona         string // Agent.DefaultPrompt；Agent 沒設定人設時留空
 	Skill           string // 內建 skill 名稱（AgentRunMode）；一般對話留空
 	SkillPrompt     string
 	Histories       []agentHistory
@@ -124,9 +124,9 @@ func personaAttr(name string) string {
 }
 
 // buildAgenticRequest 組一般對話的 request：有歷史、可帶回覆內容，沒有 Skill。
-func buildAgenticRequest(plan *agentRunPlan, userPrompt, replyContent string, ignoreAgentPersona bool, histories []agentHistory) agentRequest {
+func buildAgenticRequest(plan *agentRunPlan, userPrompt, replyContent string, histories []agentHistory) agentRequest {
 	req := agentRequest{ProjectPublicID: plan.ProjectPublicID, Target: plan.Target, Histories: histories, Reply: strings.TrimSpace(replyContent), Task: userPrompt}
-	req.applyPersona(plan.Agent, ignoreAgentPersona)
+	req.applyPersona(plan.Agent)
 	return req
 }
 
@@ -139,7 +139,7 @@ func buildSkillRequest(plan *agentRunPlan, input storytellerModel.AgentRunReques
 		Skill: string(input.Mode), SkillPrompt: skillCommonPrompt + "\n" + spec.OutputRule,
 		Task: strings.TrimSpace(input.Instruction),
 	}
-	req.applyPersona(plan.Agent, input.IgnoreAgentPersona)
+	req.applyPersona(plan.Agent)
 	for _, ref := range input.References {
 		req.References = append(req.References, agentReference{Kind: ref.Kind, Title: ref.Title, Token: ref.Token, Content: ref.Content})
 	}
@@ -153,10 +153,8 @@ func buildSkillRequest(plan *agentRunPlan, input storytellerModel.AgentRunReques
 	return req
 }
 
-func (r *agentRequest) applyPersona(agent *storytellerModel.Agent, ignore bool) {
-	if ignore {
-		return
-	}
+// applyPersona 一律帶上 URL :agent 這個 Agent 的人設（沒設定 DefaultPrompt 就不輸出 <Persona>）。
+func (r *agentRequest) applyPersona(agent *storytellerModel.Agent) {
 	r.PersonaName, r.Persona = agent.Name, strings.TrimSpace(agent.DefaultPrompt)
 }
 
@@ -166,7 +164,6 @@ func (r *agentRequest) applyPersona(agent *storytellerModel.Agent, ignore bool) 
 // 除錯，list API 輸出時會被濾掉（見 repository 的 stripRequestXML）。
 type agentUserMessageMetadata struct {
 	Mode                  string                              `json:"mode"`
-	IgnoreAgentPersona    *bool                               `json:"ignore_agent_persona,omitempty"`
 	ReplyReference        *agenticQueryReplyReferenceMetadata `json:"reply_reference,omitempty"`
 	SelectedContent       string                              `json:"selected_content,omitempty"`
 	SelectedContentLength int                                 `json:"selected_content_length,omitempty"`

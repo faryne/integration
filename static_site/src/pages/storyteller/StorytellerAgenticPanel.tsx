@@ -1137,10 +1137,7 @@ export function StorytellerAgenticPanel({
   );
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
-    // skill 指令從不套用 Agent 的人設 prompt（ignore_agent_persona 固定
-    // true），agent_id 純粹是技術上用哪個 provider/model 打的細節，不代表
-    // 「這句是哪個人設說的」——說話者固定顯示「AI 助理」，跟 agentic 模式
-    // 一致，不要秀出可能誤導的 Agent 名稱（見 mode Chip 才是真正該標的資訊）。
+    // 說話者固定顯示「AI 助理」，跟 agentic 模式一致（見 mode Chip 才是真正該標的資訊）。
     if (message.role === "assistant") {
       return "AI 助理";
     }
@@ -1714,7 +1711,6 @@ export function StorytellerAgenticPanel({
           references: runReferences,
           reply_content: replyContent || undefined,
           selected_content: selectedContent,
-          ignore_agent_persona: true,
           provider_apikey_id: providerApiKeyId
             ? Number(providerApiKeyId)
             : undefined,
@@ -1778,21 +1774,15 @@ export function StorytellerAgenticPanel({
     instruction: string,
     options?: {
       agentId?: number;
-      ignoreAgentPersona?: boolean;
       replyContent?: string;
       replyReference?: StorytellerAgenticReplyReferenceRequest;
       preserveComposer?: boolean;
     },
   ) {
     const targetAgentId = options?.agentId ?? agentIdNumeric;
-    // 跟後端 messageAgentID 的邏輯對齊：沒有明確切換人設（ignoreAgentPersona
-    // 為 true，一般打字送出的預設路徑）時不要標 Agent 名稱，不然這輪對話還
-    // 沒重新整理、還在畫面上即時顯示的這幾秒，會先秀出當下 chip 選的預設
-    // Agent——跟之後從資料庫重新載入、agent_id 是 NULL 算出來的空白狀態對
-    // 不上，變成畫面閃一下又消失的假訊號。
-    const targetAgentName = options?.ignoreAgentPersona
-      ? undefined
-      : agents.find((agent) => Number(agent.id) === targetAgentId)?.name;
+    const targetAgentName = agents.find(
+      (agent) => Number(agent.id) === targetAgentId,
+    )?.name;
     // instruction 裡只有 composeStorytellerAgentInstructionWithReply 組的一行
     // 60 字摘要引言，方便人類跟模型定位「在回覆誰」；完整內容另外用 reply_content
     // 帶給後端，讓 agentic 模式真的讀得到被回覆訊息的全文，不是只看得到摘要。
@@ -1840,7 +1830,6 @@ export function StorytellerAgenticPanel({
         agentId: targetAgentId,
         input: {
           task: instruction,
-          ignore_agent_persona: options?.ignoreAgentPersona ?? false,
           reply_content: replyContent,
           reply_reference: replyReference,
           provider_apikey_id: providerApiKeyId
@@ -1945,7 +1934,7 @@ export function StorytellerAgenticPanel({
           instruction,
           replyReferenceTarget,
         ),
-        { agentId: targetAgentId, ignoreAgentPersona: false },
+        { agentId: targetAgentId },
       );
       return;
     }
@@ -1962,7 +1951,6 @@ export function StorytellerAgenticPanel({
         trimmed,
         replyReferenceTarget,
       ),
-      { ignoreAgentPersona: true },
     );
   }
 
@@ -2053,7 +2041,6 @@ export function StorytellerAgenticPanel({
         contentSnippet,
       ),
       {
-        ignoreAgentPersona: true,
         replyContent: buildStorytellerAgentProposalReferenceContent(proposal),
         replyReference: {
           kind: "proposal",

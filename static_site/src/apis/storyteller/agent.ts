@@ -571,7 +571,7 @@ export function useSubmitStorytellerAgent(
 
 // 重新對一則卡在 pending（沒拿到回覆、已可重送）狀態的訊息呼叫 provider——不是開新的一輪
 // 對話，答案會補進同一個 chat_id，讓歷史上的孤兒問題被補齊。一般對話與 skill 共用。
-// input 只帶金鑰／模型／ignore_agent_persona 這次的選擇，其餘後端一律讀當初存的那份。
+// input 只帶金鑰／模型這次的選擇，其餘後端一律讀當初存的那份。
 export function useResendStorytellerAgent(
   projectPublicId: string | undefined,
   targetKind: StorytellerAgentTargetKind,

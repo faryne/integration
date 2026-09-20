@@ -436,10 +436,6 @@ export interface StorytellerAgentSubmitRequest {
   reply_content?: string;
   // 持久化用短參照；這輪 provider prompt 仍看 reply_content。
   reply_reference?: StorytellerAgenticReplyReferenceRequest;
-  // true 時這次呼叫不套用 URL 上這個 Agent 的人設（DefaultPrompt）——key／model 還是照這個
-  // Agent 解析。訊息沒有明確打 /<Agent 名稱> 前綴時帶這個 true，避免前一輪切換過的人設無聲
-  // 沿用到不相關的後續訊息。
-  ignore_agent_persona?: boolean;
   // 兩者都留空時沿用 Agent 的預設值；帶其中一個或兩個時，這次呼叫改用指定的 key／model
   // （可以跟 Agent 記錄的 provider 不同）。
   provider_apikey_id?: number;

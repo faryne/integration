@@ -3387,13 +3387,11 @@ func validateAgentRunPayloadSize(input storytellerModel.AgentRunRequest) error {
 // 補進 assistant 訊息，見 completeAgentRun。
 func agentRunUserMessage(agent storytellerModel.Agent, input storytellerModel.AgentRunRequest, useTools bool, requestXML string) *storytellerModel.StoryChatMessage {
 	agentID := agent.ID
-	ignore := input.IgnoreAgentPersona
 	meta := agentUserMessageMetadata{
-		Mode:               string(input.Mode),
-		IgnoreAgentPersona: &ignore,
-		FullContentLength:  len([]rune(input.FullContent)),
-		UseTools:           useTools,
-		RequestXML:         requestXML,
+		Mode:              string(input.Mode),
+		FullContentLength: len([]rune(input.FullContent)),
+		UseTools:          useTools,
+		RequestXML:        requestXML,
 	}
 	// 這裡存的 selected_content 要跟 agentRunUserMessageContent 嵌進訊息內容的那份完全一致
 	// （都用 TrimSpace 過的版本）——前端會拿這個值去反推、從 content 裡剝掉重複的 blockquote
