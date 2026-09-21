@@ -52,6 +52,17 @@ func (r *Repository) AssetsByPublicIDs(projectID uint64, publicIDs []string) ([]
 	return rows, err
 }
 
+// AssetsByIDs 依內部 id 批次取未刪除資產；封面輸出用，呼叫端自行過濾專案歸屬。
+func (r *Repository) AssetsByIDs(ids []uint64) ([]storytellerModel.Asset, error) {
+	rows := make([]storytellerModel.Asset, 0)
+	if len(ids) == 0 {
+		return rows, nil
+	}
+	err := r.db.Where("id IN ? AND is_deleted = 0 AND deleted_at IS NULL", ids).
+		Find(&rows).Error
+	return rows, err
+}
+
 func (r *Repository) AssetByS3Key(projectID uint64, key string) (*storytellerModel.Asset, error) {
 	var row storytellerModel.Asset
 	err := r.db.Where("project_id = ? AND s3_key = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID, key).

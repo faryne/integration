@@ -160,9 +160,11 @@ type Project struct {
 	Rating      ProjectRating     `gorm:"column:rating" json:"rating"`
 	Tags        string            `gorm:"column:tags" json:"-"`
 	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
-	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt   time.Time         `gorm:"column:updated_at" json:"updated_at"`
+	// CoverAssetID 是內部流水號，公開 JSON 不可帶出。
+	CoverAssetID *uint64    `gorm:"column:cover_asset_id" json:"-"`
+	DeletedAt    *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt    time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
@@ -728,6 +730,8 @@ type ProjectRequest struct {
 	Visibility  ProjectVisibility `json:"visibility"`
 	Rating      ProjectRating     `json:"rating"`
 	Tags        []string          `json:"tags"`
+	// CoverAssetPublicID 用指標區分「省略＝不變更」與「空字串＝清除封面」。
+	CoverAssetPublicID *string `json:"cover_asset_public_id,omitempty"`
 }
 
 type AgentRequest struct {
@@ -1317,6 +1321,10 @@ type ProjectOutput struct {
 	// 跟 /storyteller/limits 回傳的 max_project_storage_bytes 比對，決定上傳
 	// 資產的按鈕要不要 disabled。
 	AssetStorageBytesUsed uint64 `gorm:"-" json:"asset_storage_bytes_used"`
+	// CoverAssetPublicID／CoverURL 由 finalizeProjectOutputs 批次補上；CoverURL
+	// 是當下才簽的 CloudFront 網址，有時效，前端不落地存。
+	CoverAssetPublicID string `gorm:"-" json:"cover_asset_public_id,omitempty"`
+	CoverURL           string `gorm:"-" json:"cover_url,omitempty"`
 }
 
 // AccountLimitsOutput 是 GET /storyteller/limits 回傳的帳號配額快照，讓前端

@@ -10,6 +10,7 @@ import {
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
+import { StorytellerProjectCoverBanner } from "@/pages/storyteller/StorytellerProjectCoverBanner.tsx";
 import type { StorytellerProjectSearchResult } from "@/types/storyteller.ts";
 
 export interface StorytellerProjectSearchCardProps {
@@ -34,11 +35,15 @@ export function StorytellerProjectSearchCard({
         borderRadius: 1,
         height: 1,
         boxSizing: "border-box",
+        overflow: "hidden",
         ...steamPanelTopBarSx,
       }}
     >
       <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1 }}>
+        {result.cover_url ? (
+          <StorytellerProjectCoverBanner coverUrl={result.cover_url} />
+        ) : null}
         <Stack
           direction="row"
           spacing={1}

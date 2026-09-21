@@ -30,6 +30,9 @@ export interface StorytellerProject {
   // 詳情才會帶的欄位，用來跟 StorytellerAccountLimits.max_project_storage_bytes
   // 比對。
   asset_storage_bytes_used?: number;
+  // 封面資產 public_id；cover_url 是當下簽名、有時效，不要落地存。
+  cover_asset_public_id?: string;
+  cover_url?: string;
 }
 
 // GET /storyteller/limits 的回應：跟目前使用者有關的帳號配額快照，給「建立
@@ -422,6 +425,8 @@ export interface StorytellerProjectRequest {
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
   tags: string[];
+  // 省略＝不變更現有封面；空字串＝清除；非空＝設為該資產。
+  cover_asset_public_id?: string;
 }
 
 // Agent 是使用者自建的 skill：名稱（/<名稱> 指令）加人設。provider／model／key 是每次送出時的請求欄位。
@@ -695,6 +700,7 @@ export interface StorytellerProjectSearchResult {
   rating: "general" | "guidance" | "restricted";
   tags: string[];
   author_pen_name: string[];
+  cover_url?: string;
   matched_story_count: number;
   matches: StorytellerWorkSearchResult[];
 }

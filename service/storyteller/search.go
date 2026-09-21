@@ -141,6 +141,7 @@ type ProjectSearchResult struct {
 	Rating            string             `json:"rating"`
 	Tags              []string           `json:"tags"`
 	AuthorPenName     []string           `json:"author_pen_name"`
+	CoverURL          string             `json:"cover_url,omitempty"`
 	MatchedStoryCount int64              `json:"matched_story_count"`
 	Matches           []WorkSearchResult `json:"matches"`
 }
@@ -235,6 +236,7 @@ func (s *Service) SearchProjectsGrouped(req WorkSearchRequest) (results []Projec
 	}
 
 	results = make([]ProjectSearchResult, 0, len(raw.Hits.Hits))
+	projectPublicIDs := make([]string, 0, len(raw.Hits.Hits))
 	for _, hit := range raw.Hits.Hits {
 		matches := make([]WorkSearchResult, 0, len(hit.InnerHits.Matches.Hits.Hits))
 		for _, innerHit := range hit.InnerHits.Matches.Hits.Hits {
@@ -250,6 +252,13 @@ func (s *Service) SearchProjectsGrouped(req WorkSearchRequest) (results []Projec
 			MatchedStoryCount: hit.InnerHits.Matches.Hits.Total.Value,
 			Matches:           matches,
 		})
+		projectPublicIDs = append(projectPublicIDs, hit.Source.ProjectPublicID)
+	}
+	covers := s.signedCoversByProjectPublicID(projectPublicIDs)
+	for i := range results {
+		if cover, ok := covers[results[i].ProjectPublicID]; ok {
+			results[i].CoverURL = cover.URL
+		}
 	}
 	total = int64(raw.Aggregations.ProjectCount.Value)
 	if len(raw.Hits.Hits) > 0 {

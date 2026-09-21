@@ -73,14 +73,15 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 const storytellerProjectDetailListCap = 50
 
 type storytellerProjectSummary struct {
-	PublicID    string    `json:"public_id"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	Description string    `json:"description"`
-	Visibility  string    `json:"visibility"`
-	Rating      string    `json:"rating"`
-	Tags        []string  `json:"tags"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	PublicID           string    `json:"public_id"`
+	Name               string    `json:"name"`
+	Slug               string    `json:"slug"`
+	Description        string    `json:"description"`
+	Visibility         string    `json:"visibility"`
+	Rating             string    `json:"rating"`
+	Tags               []string  `json:"tags"`
+	CoverAssetPublicID string    `json:"cover_asset_public_id,omitempty"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
 type storytellerStorySummary struct {
@@ -159,14 +160,15 @@ type storytellerLoreDetail struct {
 
 func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storytellerProjectSummary {
 	return storytellerProjectSummary{
-		PublicID:    project.PublicID,
-		Name:        project.Name,
-		Slug:        project.Slug,
-		Description: project.Description,
-		Visibility:  string(project.Visibility),
-		Rating:      string(project.Rating),
-		Tags:        project.TagList,
-		UpdatedAt:   project.UpdatedAt,
+		PublicID:           project.PublicID,
+		Name:               project.Name,
+		Slug:               project.Slug,
+		Description:        project.Description,
+		Visibility:         string(project.Visibility),
+		Rating:             string(project.Rating),
+		Tags:               project.TagList,
+		CoverAssetPublicID: project.CoverAssetPublicID,
+		UpdatedAt:          project.UpdatedAt,
 	}
 }
 
