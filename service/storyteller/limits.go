@@ -48,6 +48,9 @@ const (
 	// controller/storytellermcp 或更底層的 middleware 加一層計數器（例如
 	// Redis token bucket），這裡只先訂數字卡位。
 	FreeMCPRateLimitPerMinute = 5
+
+	// FreeMaxProfiles 是免費帳號能建立的「額外筆名」數量上限，不含帳號本人身份。
+	FreeMaxProfiles = 3
 )
 
 // AccountLimits 給 GET /storyteller/limits 用：把目前使用者用得到的配額數字跟
@@ -59,10 +62,16 @@ func (s *Service) AccountLimits(userID uint64) (*storytellerModel.AccountLimitsO
 	if err != nil {
 		return nil, err
 	}
+	profileCount, err := s.repo.AuthorProfileCount(userID)
+	if err != nil {
+		return nil, err
+	}
 	return &storytellerModel.AccountLimitsOutput{
 		MaxProjects:            FreeMaxProjects,
 		CurrentProjects:        projectCount,
 		MaxProjectAssetCount:   FreeMaxProjectAssetCount,
 		MaxProjectStorageBytes: FreeMaxProjectStorageBytes,
+		MaxProfiles:            FreeMaxProfiles,
+		CurrentProfiles:        profileCount,
 	}, nil
 }

@@ -2,6 +2,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import FolderIcon from "@mui/icons-material/Folder";
+import PersonIcon from "@mui/icons-material/Person";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import {
@@ -27,6 +28,7 @@ import {
   useStorytellerImageStoryPages,
   useStorytellerProjects,
   useStorytellerStories,
+  useStorytellerUserProfile,
   useStorytellerVolumes,
   useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
@@ -46,6 +48,7 @@ import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import {
@@ -56,6 +59,7 @@ import { StorytellerAssetDropzone } from "@/pages/storyteller/StorytellerAssetDr
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
+import { ACCOUNT_PROFILE_ID } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 
 interface PendingPage {
@@ -89,6 +93,7 @@ function serializeEpisodeDraft(
   status: "draft" | "completed",
   selectedVolumeId: string,
   pages: PendingPage[],
+  profileIds: number[],
 ) {
   return JSON.stringify({
     title,
@@ -96,6 +101,7 @@ function serializeEpisodeDraft(
     status,
     selectedVolumeId,
     pages: pages.map(pendingPageSignature),
+    profileIds,
   });
 }
 
@@ -150,11 +156,15 @@ export default function StorytellerImageEpisodeEditor({
 
   const saveStory = useSaveStorytellerStory(project?.public_id);
   const uploadAssets = useUploadStorytellerAssets(project?.public_id);
+  const { data: userProfile } = useStorytellerUserProfile();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [status, setStatus] = useState<"draft" | "completed">("completed");
   const [selectedVolumeId, setSelectedVolumeId] = useState("");
+  const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([
+    ACCOUNT_PROFILE_ID,
+  ]);
   const [pages, setPages] = useState<PendingPage[]>([]);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
@@ -177,7 +187,7 @@ export default function StorytellerImageEpisodeEditor({
   // 時等下面的 hydration effect 把資料灌進表單後，一併把這個 ref 設成同一份資料，
   // 不能靠讀 title／pages 這些 state，同一個 effect 內看不到自己剛 setState 的結果。
   const lastSavedDraftRef = useRef(
-    serializeEpisodeDraft("", "", "completed", "", []),
+    serializeEpisodeDraft("", "", "completed", "", [], [ACCOUNT_PROFILE_ID]),
   );
 
   useEffect(() => {
@@ -201,6 +211,7 @@ export default function StorytellerImageEpisodeEditor({
     setSummary(existingStory.summary);
     setStatus(existingStory.status);
     setSelectedVolumeId(parentVolume?.public_id ?? "");
+    setSelectedProfileIds(existingStory.profile_ids ?? [ACCOUNT_PROFILE_ID]);
     setPages(hydratedPages);
     lastSavedDraftRef.current = serializeEpisodeDraft(
       existingStory.title,
@@ -208,6 +219,7 @@ export default function StorytellerImageEpisodeEditor({
       existingStory.status,
       parentVolume?.public_id ?? "",
       hydratedPages,
+      existingStory.profile_ids ?? [ACCOUNT_PROFILE_ID],
     );
     setInitialized(true);
   }, [
@@ -255,6 +267,7 @@ export default function StorytellerImageEpisodeEditor({
       status,
       selectedVolumeId,
       pages,
+      selectedProfileIds,
     );
     const isDirty = currentDraft !== lastSavedDraftRef.current;
     const isEmpty = isEpisodeDraftEmpty(title, pages);
@@ -273,7 +286,7 @@ export default function StorytellerImageEpisodeEditor({
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [phase, title, summary, status, selectedVolumeId, pages]);
+  }, [phase, title, summary, status, selectedVolumeId, selectedProfileIds, pages]);
 
   // embedded 模式下才需要讓工作台知道「離開前要不要確認」——非 embedded 的獨立頁面
   // 沒有工作台側邊欄／回列表按鈕可以攔。這裡不能像 Story/LoreEditor 一樣只註冊
@@ -284,7 +297,7 @@ export default function StorytellerImageEpisodeEditor({
       return;
     }
     return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges);
-  }, [embedded, phase, title, summary, status, selectedVolumeId, pages]);
+  }, [embedded, phase, title, summary, status, selectedVolumeId, selectedProfileIds, pages]);
 
   const pageTitle = isNewEpisode ? "上傳圖像作品" : "編輯圖像作品";
 
@@ -563,6 +576,7 @@ export default function StorytellerImageEpisodeEditor({
           content,
           content_type: "image",
           parent_id: selectedVolumeId,
+          profile_ids: selectedProfileIds,
         },
       });
 
@@ -591,6 +605,7 @@ export default function StorytellerImageEpisodeEditor({
           assetPublicId: resolvedAssetIds[index] || page.assetPublicId,
           uploadedKey: resolvedKeys[index] || page.uploadedKey,
         })),
+        selectedProfileIds,
       );
       // 要先讓成功訊息真的顯示，再跳轉；新建話仍會換成正式 public_id，避免重複建立。
     } catch (error) {
@@ -631,6 +646,20 @@ export default function StorytellerImageEpisodeEditor({
       label: "公開中",
       icon: <VisibilityIcon fontSize="small" />,
     },
+  ];
+  const profileOptions = [
+    {
+      value: String(ACCOUNT_PROFILE_ID),
+      label: userProfile?.pen_name
+        ? `本人（${userProfile.pen_name}）`
+        : "本人",
+      icon: <PersonIcon fontSize="small" />,
+    },
+    ...(userProfile?.profiles ?? []).map((profile) => ({
+      value: String(profile.id),
+      label: profile.pen_name,
+      icon: <PersonIcon fontSize="small" />,
+    })),
   ];
   const volumeOptions = [
     { value: "", label: "不分冊", icon: <FolderIcon fontSize="small" /> },
@@ -699,6 +728,16 @@ export default function StorytellerImageEpisodeEditor({
           options={volumeOptions}
           disabled={isSubmitting}
           onChange={setSelectedVolumeId}
+        />
+        <WorkspaceEditorMultiSelectButton
+          icon={<PersonIcon fontSize="small" />}
+          label="署名"
+          values={selectedProfileIds.map(String)}
+          options={profileOptions}
+          disabled={isSubmitting}
+          onChange={(values) =>
+            setSelectedProfileIds(values.map((value) => Number(value)))
+          }
         />
       </Stack>
       <WorkspaceEditableSummary
@@ -808,6 +847,31 @@ export default function StorytellerImageEpisodeEditor({
                   {apiVolumes.map((volume) => (
                     <MenuItem key={volume.public_id} value={volume.public_id}>
                       {volume.title}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  fullWidth
+                  select
+                  label="署名"
+                  value={selectedProfileIds.map(String)}
+                  disabled={isSubmitting}
+                  slotProps={{
+                    select: { multiple: true },
+                  }}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    const next =
+                      typeof value === "string" ? value.split(",") : value;
+                    setSelectedProfileIds(
+                      next.map((item) => Number(item)).filter((id) => !Number.isNaN(id)),
+                    );
+                  }}
+                  helperText="可多選；預設為本人。"
+                >
+                  {profileOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      {option.label}
                     </MenuItem>
                   ))}
                 </TextField>

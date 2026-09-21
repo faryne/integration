@@ -96,6 +96,7 @@ type storytellerStorySummary struct {
 	ContentType string    `json:"content_type"`
 	WordCount   uint      `json:"word_count"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	Authors     []string  `json:"authors,omitempty"`
 }
 
 type storytellerLoreSummary struct {
@@ -172,6 +173,12 @@ func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storyte
 }
 
 func toStorytellerStorySummary(story storytellerModel.Story) storytellerStorySummary {
+	authors := make([]string, 0, len(story.Authors))
+	for _, author := range story.Authors {
+		if author.PenName != "" {
+			authors = append(authors, author.PenName)
+		}
+	}
 	return storytellerStorySummary{
 		PublicID:    story.PublicID,
 		Title:       story.Title,
@@ -181,6 +188,7 @@ func toStorytellerStorySummary(story storytellerModel.Story) storytellerStorySum
 		ContentType: string(story.ContentType),
 		WordCount:   story.WordCount,
 		UpdatedAt:   story.UpdatedAt,
+		Authors:     authors,
 	}
 }
 

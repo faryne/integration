@@ -10,6 +10,7 @@ import {
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
+import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerProject } from "@/types/storyteller.ts";
 
 export interface StorytellerProjectCardProps {
@@ -224,7 +225,8 @@ export function StorytellerProjectCard({
           justifyContent="space-between"
         >
           <Typography variant="caption" color="text.secondary">
-            {project.author?.pen_name && `作者 ${project.author.pen_name} · `}
+            {formatAuthorNames(project.authors) &&
+              `作者 ${formatAuthorNames(project.authors)} · `}
             更新於 {formatStorytellerDate(project.updated_at)}
           </Typography>
           {actions && (

@@ -2,6 +2,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Box,
   Button,
+  Checkbox,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -189,6 +190,84 @@ export function WorkspaceEditorSelectButton({
         ))}
       </Menu>
       {children}
+    </Stack>
+  );
+}
+
+export function WorkspaceEditorMultiSelectButton({
+  icon,
+  label,
+  values,
+  options,
+  disabled,
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  values: string[];
+  options: WorkspaceEditorSelectOption[];
+  disabled?: boolean;
+  onChange: (values: string[]) => void;
+}) {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const selectedLabels = options
+    .filter((option) => values.includes(option.value))
+    .map((option) => option.label);
+  return (
+    <Stack spacing={0.75} alignItems="flex-start">
+      <Button
+        size="small"
+        disabled={disabled}
+        startIcon={icon}
+        endIcon={<ExpandMoreIcon fontSize="small" />}
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        sx={{
+          justifyContent: "flex-start",
+          color: "text.secondary",
+          borderRadius: 1,
+          px: 1,
+          minHeight: 30,
+          bgcolor: "transparent",
+          "&:hover": { bgcolor: "action.hover" },
+        }}
+      >
+        <Stack direction="row" spacing={0.75} alignItems="center">
+          <Typography variant="caption" color="text.secondary">
+            {label}
+          </Typography>
+          <Typography variant="body2" color="text.primary" fontWeight={700}>
+            {selectedLabels.join("、") || "未設定"}
+          </Typography>
+        </Stack>
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        MenuListProps={{ dense: true }}
+      >
+        {options.map((option) => {
+          const checked = values.includes(option.value);
+          return (
+            <MenuItem
+              key={option.value}
+              selected={checked}
+              onClick={() => {
+                if (checked) {
+                  const next = values.filter((value) => value !== option.value);
+                  onChange(next.length === 0 ? [option.value] : next);
+                  return;
+                }
+                onChange([...values, option.value]);
+              }}
+            >
+              <Checkbox size="small" checked={checked} sx={{ p: 0, mr: 1 }} />
+              {option.icon && <ListItemIcon>{option.icon}</ListItemIcon>}
+              <ListItemText>{option.label}</ListItemText>
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </Stack>
   );
 }

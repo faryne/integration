@@ -1,6 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ImageIcon from "@mui/icons-material/Image";
 import FolderIcon from "@mui/icons-material/Folder";
+import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -71,10 +72,12 @@ import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEd
 import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
 import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
+import { ACCOUNT_PROFILE_ID } from "@/helpers/storytellerAuthors.ts";
 import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
@@ -125,6 +128,7 @@ interface EditorStory {
   updatedAt: string;
   sort: number;
   parentId: number | null;
+  profileIds: number[];
 }
 
 interface EditorAgent {
@@ -141,6 +145,7 @@ interface StoryDraft {
   content: string;
   sort: number;
   parentPublicId: string;
+  profileIds: number[];
 }
 
 // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
@@ -191,6 +196,7 @@ function serializeStoryDraft(
   status: "draft" | "completed",
   parentPublicId: string,
   content: string,
+  profileIds: number[],
 ) {
   return JSON.stringify({
     title,
@@ -198,6 +204,7 @@ function serializeStoryDraft(
     status,
     parentPublicId,
     content,
+    profileIds,
   });
 }
 
@@ -263,6 +270,7 @@ export default function StorytellerStoryEditor({
         updatedAt: apiStory.updated_at,
         sort: apiStory.sort,
         parentId: apiStory.parent_id,
+        profileIds: apiStory.profile_ids ?? [ACCOUNT_PROFILE_ID],
       }
     : undefined;
   const { data: apiAgents = [] } = useStorytellerAgents();
@@ -292,6 +300,9 @@ export default function StorytellerStoryEditor({
     story?.status ?? "draft",
   );
   const [selectedVolumeId, setSelectedVolumeId] = useState("");
+  const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>(
+    story?.profileIds ?? [ACCOUNT_PROFILE_ID],
+  );
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     isHistoryRoute ? "history" : null,
   );
@@ -354,10 +365,10 @@ export default function StorytellerStoryEditor({
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const currentDraftRef = useRef(
-    serializeStoryDraft("", "", "completed", "", ""),
+    serializeStoryDraft("", "", "completed", "", "", [ACCOUNT_PROFILE_ID]),
   );
   const lastSavedDraftRef = useRef(
-    serializeStoryDraft("", "", "completed", "", ""),
+    serializeStoryDraft("", "", "completed", "", "", [ACCOUNT_PROFILE_ID]),
   );
   // WYSIWYG 編輯器掛載時可能會對還沒 migrate 過的舊資料自動補 marker id
   // （見 markerParagraph.ts 的 backfillMarkerIds），這個補值動作會經由
@@ -377,6 +388,7 @@ export default function StorytellerStoryEditor({
     content: "",
     sort: 0,
     parentPublicId: "",
+    profileIds: [ACCOUNT_PROFILE_ID],
   });
   const saveStoryRef = useRef(saveStory);
   const autoSaveRunningRef = useRef(false);
@@ -468,12 +480,14 @@ export default function StorytellerStoryEditor({
     } else if (story?.parentId === null || parentVolume) {
       setSelectedVolumeId(parentVolume?.public_id ?? "");
     }
+    setSelectedProfileIds(story?.profileIds ?? [ACCOUNT_PROFILE_ID]);
     const savedDraft = serializeStoryDraft(
       story?.title ?? "",
       story?.summary ?? "",
       story?.status ?? "draft",
       parentVolume?.public_id ?? "",
       story?.content ?? "",
+      story?.profileIds ?? [ACCOUNT_PROFILE_ID],
     );
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
@@ -487,6 +501,7 @@ export default function StorytellerStoryEditor({
     story?.status,
     story?.summary,
     story?.title,
+    story?.profileIds,
   ]);
 
   useEffect(() => {
@@ -496,6 +511,7 @@ export default function StorytellerStoryEditor({
       storyStatus,
       selectedVolumeId,
       content,
+      selectedProfileIds,
     );
     latestDraftRef.current = {
       title: storyTitle,
@@ -504,9 +520,11 @@ export default function StorytellerStoryEditor({
       content,
       sort: story?.sort ?? 0,
       parentPublicId: selectedVolumeId,
+      profileIds: selectedProfileIds,
     };
   }, [
     content,
+    selectedProfileIds,
     selectedVolumeId,
     story?.sort,
     storyStatus,
@@ -536,6 +554,7 @@ export default function StorytellerStoryEditor({
         storyStatus,
         selectedVolumeId,
         nextContent,
+        selectedProfileIds,
       );
     }
   }
@@ -679,6 +698,7 @@ export default function StorytellerStoryEditor({
               sort: latestDraft.sort,
               content: latestDraft.content,
               parent_id: latestDraft.parentPublicId,
+              profile_ids: latestDraft.profileIds,
               save_trigger: "auto",
               base_version_id: latestVersionIdRef.current,
             },
@@ -972,6 +992,7 @@ export default function StorytellerStoryEditor({
           sort: story?.sort ?? 0,
           content,
           parent_id: selectedVolumeId,
+          profile_ids: selectedProfileIds,
           save_trigger: "manual",
           base_version_id: isNewStory ? undefined : latestVersionIdRef.current,
         },
@@ -1054,6 +1075,7 @@ export default function StorytellerStoryEditor({
             sort: story?.sort ?? 0,
             content: nextContent,
             parent_id: nextVolumeId,
+            profile_ids: selectedProfileIds,
             save_trigger: "agent_apply",
             base_version_id: latestVersionIdRef.current,
           },
@@ -1072,6 +1094,7 @@ export default function StorytellerStoryEditor({
               nextStatus,
               nextVolumeId,
               savedContent,
+              selectedProfileIds,
             );
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
@@ -1132,6 +1155,20 @@ export default function StorytellerStoryEditor({
       label: "公開中",
       icon: <VisibilityIcon fontSize="small" />,
     },
+  ];
+  const profileOptions = [
+    {
+      value: String(ACCOUNT_PROFILE_ID),
+      label: userProfile?.pen_name
+        ? `本人（${userProfile.pen_name}）`
+        : "本人",
+      icon: <PersonIcon fontSize="small" />,
+    },
+    ...(userProfile?.profiles ?? []).map((profile) => ({
+      value: String(profile.id),
+      label: profile.pen_name,
+      icon: <PersonIcon fontSize="small" />,
+    })),
   ];
   const volumeOptions = [
     { value: "", label: "不分冊", icon: <FolderIcon fontSize="small" /> },
@@ -1324,6 +1361,15 @@ export default function StorytellerStoryEditor({
               options={volumeOptions}
               onChange={setSelectedVolumeId}
             />
+            <WorkspaceEditorMultiSelectButton
+              icon={<PersonIcon fontSize="small" />}
+              label="署名"
+              values={selectedProfileIds.map(String)}
+              options={profileOptions}
+              onChange={(values) =>
+                setSelectedProfileIds(values.map((value) => Number(value)))
+              }
+            />
             {apiProject && (
               <WorkspaceEditorSelectButton
                 icon={<ScheduleIcon fontSize="small" />}
@@ -1498,6 +1544,32 @@ export default function StorytellerStoryEditor({
             {apiVolumes.map((volume) => (
               <MenuItem key={volume.public_id} value={volume.public_id}>
                 {volume.title}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            fullWidth
+            select
+            label="署名"
+            value={selectedProfileIds.map(String)}
+            slotProps={{
+              select: { multiple: true },
+            }}
+            onChange={(event) => {
+              const value = event.target.value;
+              const next =
+                typeof value === "string" ? value.split(",") : value;
+              setSelectedProfileIds(
+                next.map((item) => Number(item)).filter((id) => !Number.isNaN(id)),
+              );
+            }}
+            helperText="可多選；預設為本人。"
+          >
+            {profileOptions.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
               </MenuItem>
             ))}
           </TextField>

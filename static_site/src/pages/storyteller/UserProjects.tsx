@@ -140,21 +140,22 @@ export default function StorytellerUserProjects() {
     pageSize,
   );
   const author = data?.author;
-  const authorUserId = author?.user_id;
-  const isOwner = Boolean(authorUserId && session?.user.id === authorUserId);
+  const isOwner = Boolean(author?.is_owner);
+  const showFavoriteTabs = Boolean(author?.show_favorites);
+  const activeTab: ProfileTab = showFavoriteTabs ? tab : "projects";
   const authorFavoriteQuery = useStorytellerAuthorFavorite(
-    isOwner ? undefined : authorUserId,
+    isOwner ? undefined : author?.pen_name,
   );
   const saveAuthorFavorite = useSaveStorytellerAuthorFavorite(
-    isOwner ? undefined : authorUserId,
+    isOwner ? undefined : author?.pen_name,
   );
   const isAuthorFavorited = authorFavoriteQuery.data?.favorited ?? false;
 
   const favoriteProjectsQuery = usePublicFavoriteStorytellerProjects(
-    tab === "favorite-projects" ? username : undefined,
+    activeTab === "favorite-projects" ? username : undefined,
   );
   const favoriteAuthorsQuery = usePublicFavoriteStorytellerAuthors(
-    tab === "favorite-authors" ? username : undefined,
+    activeTab === "favorite-authors" ? username : undefined,
   );
 
   useTitle(`${username} 的作品 - ${STORYTELLER_APP_NAME}`, {
@@ -198,11 +199,11 @@ export default function StorytellerUserProjects() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: displayName, to: steamloomPath(`user/${username}`) },
-        { label: tabBreadcrumbLabel[tab] },
+        { label: tabBreadcrumbLabel[activeTab] },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {authorUserId && (
+          {author?.pen_name && (
             <Button
               variant={isAuthorFavorited ? "contained" : "outlined"}
               startIcon={
@@ -336,18 +337,22 @@ export default function StorytellerUserProjects() {
         <Grid size={{ xs: 12, md: 8 }}>
           <Stack spacing={2}>
             <Tabs
-              value={tab}
+              value={activeTab}
               onChange={(_, value: ProfileTab) => handleTabChange(value)}
               aria-label="作者內容分類"
               variant="scrollable"
               allowScrollButtonsMobile
             >
               <Tab value="projects" label="作品" />
-              <Tab value="favorite-projects" label="追蹤的作品" />
-              <Tab value="favorite-authors" label="追蹤的作家" />
+              {showFavoriteTabs && (
+                <Tab value="favorite-projects" label="追蹤的作品" />
+              )}
+              {showFavoriteTabs && (
+                <Tab value="favorite-authors" label="追蹤的作家" />
+              )}
             </Tabs>
 
-            {tab === "projects" &&
+            {activeTab === "projects" &&
               (items.length > 0 ? (
                 <Stack spacing={3}>
                   <Grid container spacing={2}>
@@ -396,7 +401,7 @@ export default function StorytellerUserProjects() {
                 />
               ))}
 
-            {tab === "favorite-projects" &&
+            {activeTab === "favorite-projects" &&
               (favoriteProjectsQuery.isLoading ? (
                 <StorytellerLoading label="正在載入追蹤的作品..." />
               ) : (favoriteProjectsQuery.data ?? []).length === 0 ? (
@@ -419,7 +424,7 @@ export default function StorytellerUserProjects() {
                 </Grid>
               ))}
 
-            {tab === "favorite-authors" &&
+            {activeTab === "favorite-authors" &&
               (favoriteAuthorsQuery.isLoading ? (
                 <StorytellerLoading label="正在載入追蹤的作家..." />
               ) : (favoriteAuthorsQuery.data ?? []).length === 0 ? (
@@ -431,7 +436,7 @@ export default function StorytellerUserProjects() {
               ) : (
                 <Grid container spacing={2}>
                   {(favoriteAuthorsQuery.data ?? []).map((favoriteAuthor) => (
-                    <Grid key={favoriteAuthor.user_id} size={{ xs: 12, sm: 6 }}>
+                    <Grid key={favoriteAuthor.pen_name} size={{ xs: 12, sm: 6 }}>
                       <FavoriteAuthorCard
                         author={favoriteAuthor}
                         isOwner={isOwner}
@@ -550,7 +555,7 @@ function FavoriteAuthorCard({
     severity?: "success" | "error",
   ) => void;
 }) {
-  const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
+  const saveVisibility = useSaveFavoriteAuthorVisibility(author.pen_name);
   const hidden = author.hidden ?? false;
 
   return (

@@ -152,7 +152,7 @@ const (
 type Project struct {
 	ID          uint64             `gorm:"column:id;primaryKey" json:"id"`
 	PublicID    string             `gorm:"column:public_id" json:"public_id"`
-	UserID      uint64             `gorm:"column:user_id" json:"user_id"`
+	UserID      uint64             `gorm:"column:user_id" json:"user_id,omitempty"`
 	Name        string             `gorm:"column:name" json:"name"`
 	Slug        string             `gorm:"column:slug" json:"slug"`
 	Description string             `gorm:"column:description" json:"description"`
@@ -415,6 +415,9 @@ type Story struct {
 	DeletedAt       *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
 	CreatedAt       time.Time          `gorm:"column:created_at" json:"created_at"`
 	UpdatedAt       time.Time          `gorm:"column:updated_at" json:"updated_at"`
+	// Authors 是這一話的公開署名，身份只用 pen_name；ProfileIDs 只有擁有者管理端會帶。
+	Authors    []AuthorIdentityOutput `gorm:"-" json:"authors,omitempty"`
+	ProfileIDs []uint64               `gorm:"-" json:"profile_ids,omitempty"`
 }
 
 func (Story) TableName() string { return "storyteller_stories" }
@@ -642,13 +645,14 @@ func (ProjectRanking) TableName() string {
 }
 
 type AuthorFavorite struct {
-	ID           uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID       uint64     `gorm:"column:user_id" json:"user_id"`
-	AuthorUserID uint64     `gorm:"column:author_user_id" json:"author_user_id"`
-	Hidden       bool       `gorm:"column:hidden" json:"hidden"`
-	DeletedAt    *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt    time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt    time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID              uint64     `gorm:"column:id;primaryKey" json:"id"`
+	UserID          uint64     `gorm:"column:user_id" json:"user_id"`
+	AuthorUserID    uint64     `gorm:"column:author_user_id" json:"author_user_id"`
+	AuthorProfileID uint64     `gorm:"column:author_profile_id" json:"author_profile_id"`
+	Hidden          bool       `gorm:"column:hidden" json:"hidden"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AuthorFavorite) TableName() string {
@@ -821,6 +825,8 @@ type StoryRequest struct {
 	ParentID *string `json:"parent_id,omitempty"`
 	// ContentType 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時忽略此欄位。
 	ContentType ProjectContentType `json:"content_type,omitempty"`
+	// ProfileIDs 是擁有者管理端的署名（0=本人）。nil=建立時預設本人／更新時不動；空陣列視為 [0]。
+	ProfileIDs *[]uint64 `json:"profile_ids,omitempty"`
 }
 
 // StoryMoveRequest 是「只搬移冊歸屬、不動內容」的專用請求，跟 LoreMoveRequest 對稱。
@@ -1259,21 +1265,22 @@ type AgentUsageLogRow struct {
 }
 
 type UserProfileOutput struct {
-	UserID                  uint64    `json:"user_id"`
-	PenName                 string    `json:"pen_name"`
-	Bio                     string    `json:"bio,omitempty"`
-	UseDefaultAvatar        bool      `json:"use_default_avatar"`
-	AvatarURL               string    `json:"avatar_url,omitempty"`
-	SNSLinks                SNSLinks  `json:"sns_links,omitempty"`
-	HideFavoriteProjects    bool      `json:"hide_favorite_projects"`
-	HideFavoriteAuthors     bool      `json:"hide_favorite_authors"`
-	AutoSaveEnabled         bool      `json:"auto_save_enabled"`
-	AutoSaveIntervalMinutes int       `json:"auto_save_interval_minutes"`
-	CreatedAt               time.Time `json:"created_at"`
+	UserID                  uint64                `json:"user_id"`
+	PenName                 string                `json:"pen_name"`
+	Bio                     string                `json:"bio,omitempty"`
+	UseDefaultAvatar        bool                  `json:"use_default_avatar"`
+	AvatarURL               string                `json:"avatar_url,omitempty"`
+	SNSLinks                SNSLinks              `json:"sns_links,omitempty"`
+	HideFavoriteProjects    bool                  `json:"hide_favorite_projects"`
+	HideFavoriteAuthors     bool                  `json:"hide_favorite_authors"`
+	AutoSaveEnabled         bool                  `json:"auto_save_enabled"`
+	AutoSaveIntervalMinutes int                   `json:"auto_save_interval_minutes"`
+	CreatedAt               time.Time             `json:"created_at"`
+	Profiles                []AuthorProfileOutput `json:"profiles"`
 }
 
 type FavoriteAuthorOutput struct {
-	UserProfileOutput
+	AuthorIdentityOutput
 	ProjectCount    uint64  `json:"project_count"`
 	StoryCount      uint64  `json:"story_count"`
 	ImageStoryCount uint64  `json:"image_story_count"`
@@ -1281,6 +1288,9 @@ type FavoriteAuthorOutput struct {
 	AverageRating   float64 `json:"average_rating"`
 	FollowerCount   uint64  `json:"follower_count"`
 	Hidden          bool    `json:"hidden,omitempty"`
+	// ShowFavorites 只有本人身份的作者頁為 true；額外筆名的作者頁不公開收藏分頁。
+	ShowFavorites bool `json:"show_favorites,omitempty"`
+	IsOwner       bool `json:"is_owner,omitempty"`
 }
 
 type ProjectOutput struct {
@@ -1294,8 +1304,10 @@ type ProjectOutput struct {
 	Stories        []Story  `gorm:"-" json:"stories,omitempty"`
 	// Volumes 讓閱讀頁／工作台故事列表可以把 Stories 依冊分組顯示，不需要另外呼叫
 	// 只給登入使用者用的 /projects/:project/volumes。
-	Volumes []Story              `gorm:"-" json:"volumes,omitempty"`
-	Author  *ProjectAuthorOutput `gorm:"-" json:"author,omitempty"`
+	Volumes []Story               `gorm:"-" json:"volumes,omitempty"`
+	Authors []ProjectAuthorOutput `gorm:"-" json:"authors,omitempty"`
+	// IsOwner 只在公開閱讀頁告訴登入者「這是不是自己的專案」，不含帳號 id。
+	IsOwner bool `gorm:"-" json:"is_owner,omitempty"`
 	// 底下四個只有 Service.Project（單一專案詳情，工作台側邊欄用）才會填，專案
 	// 列表／閱讀頁共用的 projectOutput 不會算這幾個查詢，避免列表頁一次組多筆
 	// 專案時被拖慢。
@@ -1326,12 +1338,15 @@ type AccountLimitsOutput struct {
 	// asset_storage_bytes_used。
 	MaxProjectAssetCount   int   `json:"max_project_asset_count"`
 	MaxProjectStorageBytes int64 `json:"max_project_storage_bytes"`
+	// MaxProfiles／CurrentProfiles 是額外筆名數量上限與目前用量（不含本人身份）。
+	MaxProfiles     int   `json:"max_profiles"`
+	CurrentProfiles int64 `json:"current_profiles"`
 }
 
 // ProjectAuthorOutput 只在故事閱讀頁（PublicProject／SharedProject）才會帶
 // FollowerCount——那兩個入口單獨補查一次作者收藏數；其餘會共用 projectOutput 的
 // 專案列表／編輯頁不會多跑這個查詢，FollowerCount 留 nil，前端就不會顯示這個數字。
 type ProjectAuthorOutput struct {
-	UserProfileOutput
+	AuthorIdentityOutput
 	FollowerCount *uint64 `json:"follower_count,omitempty"`
 }

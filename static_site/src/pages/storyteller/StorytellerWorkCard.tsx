@@ -11,6 +11,7 @@ import {
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerWorkSearchResult } from "@/types/storyteller.ts";
 
 const clampSx = (lines: number) => ({
@@ -120,7 +121,8 @@ export function StorytellerWorkCard({
           ))}
         </Stack>
         <Typography variant="caption" color="text.secondary">
-          {result.author_pen_name && `作者 ${result.author_pen_name} · `}
+          {formatAuthorNames(result.author_pen_name) &&
+            `作者 ${formatAuthorNames(result.author_pen_name)} · `}
           更新於 {formatStorytellerDate(result.updated_at)}
         </Typography>
       </Stack>

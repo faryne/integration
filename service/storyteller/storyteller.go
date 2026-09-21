@@ -125,6 +125,7 @@ func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytel
 	if err != nil {
 		return nil, err
 	}
+	output.IsOwner = isOwner
 	return output, s.signProjectOutputAssetURIs(project.ID, output)
 }
 
@@ -170,6 +171,7 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	output.AssetCount = uint64(assetTotal)
 	output.AssetUncategorizedCount = uint64(assetUncategorized)
 	output.AssetStorageBytesUsed = assetStorageBytes
+	output.IsOwner = true
 	return output, nil
 }
 
@@ -773,7 +775,11 @@ func (s *Service) Stories(userID uint64, projectPublicID string) ([]storytellerM
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Stories(project.ID)
+	stories, err := s.repo.Stories(project.ID)
+	if err != nil {
+		return nil, err
+	}
+	return s.withStoryAttributions(project.UserID, stories, true)
 }
 
 // StoriesPage 給 MCP 這種需要控制單次回應大小的呼叫端用，語意跟 StoryChatMessages
@@ -792,7 +798,12 @@ func (s *Service) StoriesPage(userID uint64, projectPublicID string, page, pageS
 	if err != nil {
 		return nil, 0, err
 	}
-	return s.repo.StoriesPage(project.ID, (page-1)*pageSize, pageSize)
+	stories, total, err := s.repo.StoriesPage(project.ID, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	stories, err = s.withStoryAttributions(project.UserID, stories, true)
+	return stories, total, err
 }
 
 func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
@@ -800,7 +811,29 @@ func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Story(project.ID, storyPublicID)
+	story, err := s.repo.Story(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.withStoryAttributions(project.UserID, []storytellerModel.Story{*story}, true)
+	if err != nil {
+		return nil, err
+	}
+	return &rows[0], nil
+}
+
+func (s *Service) withStoryAttributions(userID uint64, stories []storytellerModel.Story, includeProfileIDs bool) ([]storytellerModel.Story, error) {
+	if len(stories) == 0 {
+		return stories, nil
+	}
+	output := &storytellerModel.ProjectOutput{
+		Project: storytellerModel.Project{UserID: userID},
+		Stories: stories,
+	}
+	if err := s.attachProjectAuthors([]*storytellerModel.ProjectOutput{output}, includeProfileIDs, false); err != nil {
+		return nil, err
+	}
+	return output.Stories, nil
 }
 
 func (s *Service) CreateStory(userID uint64, projectPublicID string, input storytellerModel.StoryRequest, source string) (*storytellerModel.Story, error) {
@@ -809,6 +842,11 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		return nil, err
 	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	// 署名要在任何寫入前驗證，否則非法署名會留下一筆已建立的孤兒 story
+	profileIDs, err := s.resolveStoryProfileIDs(userID, input.ProfileIDs, true)
 	if err != nil {
 		return nil, err
 	}
@@ -855,6 +893,9 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	} else if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetStory, story.ID, story.LatestVersionID, story.LatestContent); err != nil {
 		return nil, err
 	}
+	if err := s.repo.ReplaceStoryProfiles(story.ID, profileIDs); err != nil {
+		return nil, err
+	}
 	s.syncStorySearchIndex(project, story)
 	return story, nil
 }
@@ -868,6 +909,11 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		return nil, false, err
 	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
+	if err != nil {
+		return nil, false, err
+	}
+	// 署名先驗證再寫入，避免內容已存成新版本才因署名不合法而回錯
+	profileIDs, err := s.resolveStoryProfileIDs(userID, input.ProfileIDs, false)
 	if err != nil {
 		return nil, false, err
 	}
@@ -922,6 +968,11 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		}
 	} else if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetStory, story.ID, story.LatestVersionID, story.LatestContent); err != nil {
 		return nil, false, err
+	}
+	if profileIDs != nil {
+		if err := s.repo.ReplaceStoryProfiles(story.ID, profileIDs); err != nil {
+			return nil, false, err
+		}
 	}
 	s.syncStorySearchIndex(project, story)
 	return story, conflicted, nil
@@ -2342,18 +2393,18 @@ func (s *Service) LoreChatMessages(userID uint64, projectPublicID, lorePublicID 
 	return s.repo.LoreChatMessages(lore.ID, (page-1)*pageSize, pageSize)
 }
 
-func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.FavoriteAuthorOutput, error) {
+func (s *Service) PublicUserProjects(penName string, page, pageSize int, viewerID uint64) ([]storytellerModel.ProjectOutput, int64, *storytellerModel.FavoriteAuthorOutput, error) {
 	if page < 1 {
 		page = 1
 	}
 	if pageSize < 1 {
 		pageSize = 20
 	}
-	profile, err := s.repo.UserProfileByPenName(penName)
+	identity, err := s.resolveAuthorIdentityByPenName(penName)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	projects, total, err := s.repo.PublicProjectsByUserID(profile.ID, (page-1)*pageSize, pageSize)
+	projects, total, err := s.repo.PublicProjectsByUserID(identity.UserID, identity.ProfileID, (page-1)*pageSize, pageSize)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -2365,26 +2416,25 @@ func (s *Service) PublicUserProjects(penName string, page, pageSize int) ([]stor
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(profile.ID)
+	author, err := s.favoriteAuthorOutputForIdentity(identity)
 	if err != nil {
 		return nil, 0, nil, err
 	}
-	author := &storytellerModel.FavoriteAuthorOutput{
-		UserProfileOutput: *userProfileOutput(profile),
-		ProjectCount:      projectCount,
-		StoryCount:        storyCount,
-		ImageStoryCount:   imageStoryCount,
-		RatingCount:       ratingCount,
-		AverageRating:     averageRating,
-		FollowerCount:     followerCount,
-	}
+	author.IsOwner = viewerID != 0 && viewerID == identity.UserID
 	return outputs, total, author, nil
 }
 
 func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]storytellerModel.ProjectOutput, error) {
-	profile, err := s.repo.UserProfileByPenName(penName)
+	identity, err := s.resolveAuthorIdentityByPenName(penName)
 	if err != nil {
 		return nil, err
+	}
+	if identity.ProfileID != 0 {
+		return []storytellerModel.ProjectOutput{}, nil
+	}
+	profile := identity.Self
+	if profile == nil {
+		return []storytellerModel.ProjectOutput{}, nil
 	}
 	isOwner := viewerID != 0 && viewerID == profile.ID
 	if profile.HideFavoriteProjects && !isOwner {
@@ -2419,9 +2469,16 @@ func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]sto
 }
 
 func (s *Service) PublicFavoriteAuthors(penName string, viewerID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
-	profile, err := s.repo.UserProfileByPenName(penName)
+	identity, err := s.resolveAuthorIdentityByPenName(penName)
 	if err != nil {
 		return nil, err
+	}
+	if identity.ProfileID != 0 {
+		return []storytellerModel.FavoriteAuthorOutput{}, nil
+	}
+	profile := identity.Self
+	if profile == nil {
+		return []storytellerModel.FavoriteAuthorOutput{}, nil
 	}
 	isOwner := viewerID != 0 && viewerID == profile.ID
 	if profile.HideFavoriteAuthors && !isOwner {
@@ -2433,7 +2490,7 @@ func (s *Service) PublicFavoriteAuthors(penName string, viewerID uint64) ([]stor
 	}
 	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
 	for _, favorite := range favorites {
-		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID)
+		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID, favorite.AuthorProfileID)
 		if err != nil {
 			return nil, err
 		}
@@ -2451,8 +2508,12 @@ func (s *Service) SetFavoriteProjectVisibility(userID uint64, projectPublicID st
 	return s.repo.SetFavoriteProjectHidden(userID, project.ID, hidden)
 }
 
-func (s *Service) SetFavoriteAuthorVisibility(userID, authorUserID uint64, hidden bool) error {
-	return s.repo.SetFavoriteAuthorHidden(userID, authorUserID, hidden)
+func (s *Service) SetFavoriteAuthorVisibility(userID uint64, authorPenName string, hidden bool) error {
+	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
+	if err != nil {
+		return err
+	}
+	return s.repo.SetFavoriteAuthorHidden(userID, identity.UserID, identity.ProfileID, hidden)
 }
 
 func (s *Service) fillFavoriteCounts(outputs []storytellerModel.ProjectOutput) ([]storytellerModel.ProjectOutput, error) {
@@ -2500,7 +2561,7 @@ func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAut
 	}
 	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
 	for _, favorite := range favorites {
-		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID)
+		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID, favorite.AuthorProfileID)
 		if err != nil {
 			return nil, err
 		}
@@ -2559,37 +2620,56 @@ func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
 	return s.repo.SaveRanking(ranking)
 }
 
-func (s *Service) AuthorFavoriteStatus(userID, authorUserID uint64) (map[string]bool, error) {
-	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+func (s *Service) AuthorFavoriteStatus(userID uint64, authorPenName string) (map[string]bool, error) {
+	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return map[string]bool{"favorited": false}, nil
+		}
+		return nil, err
+	}
+	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
 	if err != nil {
 		return map[string]bool{"favorited": false}, nil
 	}
 	return map[string]bool{"favorited": favorite.DeletedAt == nil}, nil
 }
 
-func (s *Service) CreateAuthorFavorite(userID, authorUserID uint64) (*storytellerModel.FavoriteAuthorOutput, error) {
-	if userID == authorUserID {
+func (s *Service) CreateAuthorFavorite(userID uint64, authorPenName string) (*storytellerModel.FavoriteAuthorOutput, error) {
+	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
+	if err != nil {
+		return nil, err
+	}
+	if userID == identity.UserID {
 		return nil, errors.New("cannot favorite yourself")
 	}
-	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
 	if err == nil {
 		favorite.DeletedAt = nil
 		if err := s.repo.SaveAuthorFavorite(favorite); err != nil {
 			return nil, err
 		}
-		return s.favoriteAuthorOutput(authorUserID)
+		return s.favoriteAuthorOutput(identity.UserID, identity.ProfileID)
 	}
 	if err := s.repo.CreateAuthorFavorite(&storytellerModel.AuthorFavorite{
-		UserID:       userID,
-		AuthorUserID: authorUserID,
+		UserID:          userID,
+		AuthorUserID:    identity.UserID,
+		AuthorProfileID: identity.ProfileID,
 	}); err != nil {
 		return nil, err
 	}
-	return s.favoriteAuthorOutput(authorUserID)
+	return s.favoriteAuthorOutput(identity.UserID, identity.ProfileID)
 }
 
-func (s *Service) DeleteAuthorFavorite(userID, authorUserID uint64) error {
-	favorite, err := s.repo.AuthorFavorite(userID, authorUserID)
+func (s *Service) DeleteAuthorFavorite(userID uint64, authorPenName string) error {
+	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
 	if err != nil {
 		return nil
 	}
@@ -2659,7 +2739,13 @@ func (s *Service) UserProfile(userID uint64) (*storytellerModel.UserProfileOutpu
 		}
 		return nil, err
 	}
-	return userProfileOutput(profile), nil
+	output := userProfileOutput(profile)
+	extras, err := s.AuthorProfiles(userID)
+	if err != nil {
+		return nil, err
+	}
+	output.Profiles = extras
+	return output, nil
 }
 
 func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProfileRequest) (*storytellerModel.UserProfileOutput, error) {
@@ -2673,11 +2759,12 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 	if err := validateAutoSaveIntervalMinutes(input.AutoSaveIntervalMinutes); err != nil {
 		return nil, err
 	}
-	if err := s.ensurePenNameAvailable(userID, input.PenName); err != nil {
+	if err := s.ensurePenNameAvailable(userID, input.PenName, 0); err != nil {
 		return nil, err
 	}
 	profile, err := s.repo.UserProfileWithDeleted(userID)
 	if err == nil {
+		renamed := profile.PenName != input.PenName
 		avatarURL := input.AvatarURL
 		if input.UseDefaultAvatar {
 			avatarURL = loginAvatarURL(profile)
@@ -2695,7 +2782,10 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		if err := s.repo.SaveUserProfile(profile); err != nil {
 			return nil, err
 		}
-		return userProfileOutput(profile), nil
+		if renamed {
+			s.resyncIdentitySearchIndex(userID, 0)
+		}
+		return s.UserProfile(userID)
 	}
 	if !repository.IsRecordNotFound(err) {
 		return nil, err
@@ -2719,7 +2809,7 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 	if err := s.repo.CreateUserProfile(profile); err != nil {
 		return nil, err
 	}
-	return userProfileOutput(profile), nil
+	return s.UserProfile(userID)
 }
 
 func (s *Service) DeleteUserProfile(userID uint64) error {
@@ -2734,6 +2824,17 @@ func (s *Service) DeleteUserProfile(userID uint64) error {
 }
 
 func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftStories bool) (*storytellerModel.ProjectOutput, error) {
+	output, err := s.buildProjectOutput(project, includeDraftStories)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.finalizeProjectOutputs([]*storytellerModel.ProjectOutput{output}, includeDraftStories); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+func (s *Service) buildProjectOutput(project *storytellerModel.Project, includeDraftStories bool) (*storytellerModel.ProjectOutput, error) {
 	output := outputProject(*project)
 	ratingCount, averageRating, err := s.repo.RankingSummary(project.ID)
 	if err != nil {
@@ -2761,28 +2862,33 @@ func (s *Service) projectOutput(project *storytellerModel.Project, includeDraftS
 		return nil, err
 	}
 	output.Volumes = volumes
-	author, err := s.authorOutput(project.UserID)
-	if err != nil {
-		return nil, err
-	}
-	output.Author = &storytellerModel.ProjectAuthorOutput{UserProfileOutput: *author}
 	return output, nil
+}
+
+func (s *Service) finalizeProjectOutputs(outputs []*storytellerModel.ProjectOutput, includeProfileIDs bool) error {
+	return s.finalizeProjectOutputsWithFollowers(outputs, includeProfileIDs, false)
+}
+
+func (s *Service) finalizeProjectOutputsWithFollowers(outputs []*storytellerModel.ProjectOutput, includeProfileIDs, withFollowers bool) error {
+	if err := s.attachProjectAuthors(outputs, includeProfileIDs, withFollowers); err != nil {
+		return err
+	}
+	for _, output := range outputs {
+		output.UserID = 0
+	}
+	return nil
 }
 
 // projectOutputWithFollowerCount 只給故事閱讀頁用：在共用的 projectOutput 之外，
 // 多補一次作者收藏數。放在這裡而不是塞進 projectOutput 本身，是因為 projectOutput
 // 也被專案列表／編輯頁共用，那些地方一次要組多筆，不需要也不該為每筆都多跑一次查詢。
 func (s *Service) projectOutputWithFollowerCount(project *storytellerModel.Project, includeDraftStories bool) (*storytellerModel.ProjectOutput, error) {
-	output, err := s.projectOutput(project, includeDraftStories)
+	output, err := s.buildProjectOutput(project, includeDraftStories)
 	if err != nil {
 		return nil, err
 	}
-	if output.Author != nil {
-		followerCount, err := s.repo.AuthorFollowerCount(project.UserID)
-		if err != nil {
-			return nil, err
-		}
-		output.Author.FollowerCount = &followerCount
+	if err := s.finalizeProjectOutputsWithFollowers([]*storytellerModel.ProjectOutput{output}, includeDraftStories, true); err != nil {
+		return nil, err
 	}
 	return output, nil
 }
@@ -2801,43 +2907,27 @@ func (s *Service) signProjectOutputAssetURIs(projectID uint64, output *storytell
 	return nil
 }
 
-func (s *Service) authorOutput(userID uint64) (*storytellerModel.UserProfileOutput, error) {
-	profile, err := s.repo.UserProfile(userID)
-	if err != nil && !repository.IsRecordNotFound(err) {
-		return nil, err
-	}
-	if err == nil {
-		output := userProfileOutput(profile)
-		if output.PenName != "" {
-			return output, nil
+func (s *Service) favoriteAuthorOutput(userID, profileID uint64) (*storytellerModel.FavoriteAuthorOutput, error) {
+	identity := &resolvedAuthorIdentity{UserID: userID, ProfileID: profileID}
+	if profileID == 0 {
+		profile, err := s.repo.UserProfile(userID)
+		if err != nil && !repository.IsRecordNotFound(err) {
+			return nil, err
 		}
-		output.PenName = fallbackAuthorName(profile)
-		return output, nil
+		if err == nil {
+			identity.Self = profile
+		}
+	} else {
+		extras, err := s.repo.AuthorProfilesByIDs([]uint64{profileID})
+		if err != nil {
+			return nil, err
+		}
+		if extra, ok := extras[profileID]; ok {
+			copied := extra
+			identity.Extra = &copied
+		}
 	}
-	return &storytellerModel.UserProfileOutput{
-		UserID:           userID,
-		UseDefaultAvatar: true,
-	}, nil
-}
-
-func (s *Service) favoriteAuthorOutput(userID uint64) (*storytellerModel.FavoriteAuthorOutput, error) {
-	author, err := s.authorOutput(userID)
-	if err != nil {
-		return nil, err
-	}
-	projectCount, storyCount, imageStoryCount, ratingCount, followerCount, averageRating, err := s.repo.PublicAuthorSummary(userID)
-	if err != nil {
-		return nil, err
-	}
-	return &storytellerModel.FavoriteAuthorOutput{
-		UserProfileOutput: *author,
-		ProjectCount:      projectCount,
-		StoryCount:        storyCount,
-		ImageStoryCount:   imageStoryCount,
-		RatingCount:       ratingCount,
-		AverageRating:     averageRating,
-		FollowerCount:     followerCount,
-	}, nil
+	return s.favoriteAuthorOutputForIdentity(identity)
 }
 
 func (s *Service) storyForUserProject(userID uint64, projectPublicID, storyPublicID string) (*storytellerModel.Story, error) {
@@ -2857,13 +2947,18 @@ func (s *Service) loreForUserProject(userID uint64, projectPublicID, lorePublicI
 }
 
 func (s *Service) projectOutputs(projects []storytellerModel.Project, includeDraftStories bool) ([]storytellerModel.ProjectOutput, error) {
-	output := make([]storytellerModel.ProjectOutput, 0, len(projects))
-	for _, project := range projects {
-		row, err := s.projectOutput(&project, includeDraftStories)
+	output := make([]storytellerModel.ProjectOutput, len(projects))
+	ptrs := make([]*storytellerModel.ProjectOutput, len(projects))
+	for i := range projects {
+		row, err := s.buildProjectOutput(&projects[i], includeDraftStories)
 		if err != nil {
 			return nil, err
 		}
-		output = append(output, *row)
+		output[i] = *row
+		ptrs[i] = &output[i]
+	}
+	if err := s.finalizeProjectOutputs(ptrs, includeDraftStories); err != nil {
+		return nil, err
 	}
 	return output, nil
 }
@@ -2881,6 +2976,7 @@ func defaultUserProfileOutput(userID uint64) *storytellerModel.UserProfileOutput
 		UseDefaultAvatar:        true,
 		AutoSaveEnabled:         true,
 		AutoSaveIntervalMinutes: autoSaveIntervalMinutesDefault,
+		Profiles:                []storytellerModel.AuthorProfileOutput{},
 	}
 }
 
@@ -2897,6 +2993,7 @@ func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.
 		AutoSaveEnabled:         profile.AutoSaveEnabled,
 		AutoSaveIntervalMinutes: profile.AutoSaveIntervalMinutes,
 		CreatedAt:               profile.CreatedAt,
+		Profiles:                []storytellerModel.AuthorProfileOutput{},
 	}
 }
 
@@ -2964,16 +3061,20 @@ func validateAutoSaveIntervalMinutes(minutes int) error {
 // ensurePenNameAvailable rejects a pen name already claimed by a different
 // user, since it doubles as the public profile URL segment and two users
 // sharing one would silently shadow each other's page.
-func (s *Service) ensurePenNameAvailable(userID uint64, penName string) error {
+func (s *Service) ensurePenNameAvailable(userID uint64, penName string, excludeProfileID uint64) error {
 	existing, err := s.repo.UserProfileByPenName(penName)
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return nil
-		}
+	if err != nil && !repository.IsRecordNotFound(err) {
 		return err
 	}
-	if existing.ID != userID {
-		return errors.New("這個筆名已經有人使用了，請換一個")
+	if err == nil && (excludeProfileID != 0 || existing.ID != userID) {
+		return errPenNameTaken
+	}
+	extra, err := s.repo.AuthorProfileByPenNameWithDeleted(penName)
+	if err != nil && !repository.IsRecordNotFound(err) {
+		return err
+	}
+	if err == nil && extra.ID != excludeProfileID {
+		return errPenNameTaken
 	}
 	return nil
 }

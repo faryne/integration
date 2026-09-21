@@ -1619,10 +1619,10 @@ func (r *Repository) FavoriteAuthors(userID uint64) ([]storytellerModel.AuthorFa
 	return rows, err
 }
 
-func (r *Repository) AuthorFavorite(userID, authorUserID uint64) (*storytellerModel.AuthorFavorite, error) {
+func (r *Repository) AuthorFavorite(userID, authorUserID, authorProfileID uint64) (*storytellerModel.AuthorFavorite, error) {
 	var row storytellerModel.AuthorFavorite
 	err := r.db.Unscoped().
-		Where("user_id = ? AND author_user_id = ?", userID, authorUserID).
+		Where("user_id = ? AND author_user_id = ? AND author_profile_id = ?", userID, authorUserID, authorProfileID).
 		First(&row).Error
 	return &row, err
 }
@@ -1639,61 +1639,16 @@ func (r *Repository) SaveAuthorFavorite(row *storytellerModel.AuthorFavorite) er
 // imageStoryCount（話）, ratingCount, followerCount, averageRating。故事數目跟話數目
 // 分開算，跟專案卡片「N 篇故事／N 話」的語意一致；字數不在這裡統計——圖片描述算不算
 // 字數很曖昧，乾脆不在作者頁呈現這個指標，只留故事/話的數目。
-func (r *Repository) PublicAuthorSummary(userID uint64) (uint64, uint64, uint64, uint64, uint64, float64, error) {
-	var projectCount int64
-	if err := r.db.
-		Table("storyteller_projects").
-		Where("user_id = ? AND visibility = ? AND deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
-		Count(&projectCount).Error; err != nil {
-		return 0, 0, 0, 0, 0, 0, err
-	}
-	type storyResult struct {
-		StoryCount      uint64
-		ImageStoryCount uint64
-	}
-	var stories storyResult
-	if err := r.db.
-		Table("storyteller_projects AS projects").
-		Select(
-			"COUNT(CASE WHEN stories.content_type != ? THEN stories.id END) AS story_count, COUNT(CASE WHEN stories.content_type = ? THEN stories.id END) AS image_story_count",
-			storytellerModel.ProjectContentTypeImage,
-			storytellerModel.ProjectContentTypeImage,
-		).
-		Joins("INNER JOIN storyteller_stories AS stories ON stories.project_id = projects.id AND stories.status = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", storytellerModel.StoryStatusCompleted).
-		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
-		Scan(&stories).Error; err != nil {
-		return 0, 0, 0, 0, 0, 0, err
-	}
-	type rankingResult struct {
-		RatingCount   uint64
-		AverageRating float64
-	}
-	var rankings rankingResult
-	if err := r.db.
-		Table("storyteller_projects AS projects").
-		Select("COUNT(rankings.ranking) AS rating_count, COALESCE(AVG(rankings.ranking), 0) AS average_rating").
-		Joins("INNER JOIN storyteller_project_rankings AS rankings ON rankings.project_id = projects.id AND rankings.ranking IS NOT NULL AND rankings.deleted_at IS NULL").
-		Where("projects.user_id = ? AND projects.visibility = ? AND projects.deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic).
-		Scan(&rankings).Error; err != nil {
-		return 0, 0, 0, 0, 0, 0, err
-	}
-	var followerCount int64
-	if err := r.db.
-		Table("storyteller_author_favorites").
-		Where("author_user_id = ? AND deleted_at IS NULL", userID).
-		Count(&followerCount).Error; err != nil {
-		return 0, 0, 0, 0, 0, 0, err
-	}
-	return uint64(projectCount), stories.StoryCount, stories.ImageStoryCount, rankings.RatingCount, uint64(followerCount), rankings.AverageRating, nil
+func (r *Repository) PublicAuthorSummary(userID, profileID uint64) (uint64, uint64, uint64, uint64, uint64, float64, error) {
+	return r.PublicAuthorSummaryByIdentity(userID, profileID)
 }
 
-// AuthorFollowerCount 只查作者收藏數這一個數字，不像 PublicAuthorSummary 還要一併算
-// 作品數／字數／評分等統計——故事閱讀頁只需要這一個數字，不用為此多跑一次昂貴的組合查詢。
-func (r *Repository) AuthorFollowerCount(userID uint64) (uint64, error) {
+// AuthorFollowerCount 只查指定身份的收藏數；profileID=0 是本人身份。
+func (r *Repository) AuthorFollowerCount(userID, profileID uint64) (uint64, error) {
 	var followerCount int64
 	if err := r.db.
 		Table("storyteller_author_favorites").
-		Where("author_user_id = ? AND deleted_at IS NULL", userID).
+		Where("author_user_id = ? AND author_profile_id = ? AND deleted_at IS NULL", userID, profileID).
 		Count(&followerCount).Error; err != nil {
 		return 0, err
 	}
@@ -1782,10 +1737,10 @@ func (r *Repository) SetFavoriteProjectHidden(userID, projectID uint64, hidden b
 		Update("favorite_hidden", hidden).Error
 }
 
-func (r *Repository) SetFavoriteAuthorHidden(userID, authorUserID uint64, hidden bool) error {
+func (r *Repository) SetFavoriteAuthorHidden(userID, authorUserID, authorProfileID uint64, hidden bool) error {
 	return r.db.
 		Table("storyteller_author_favorites").
-		Where("user_id = ? AND author_user_id = ? AND deleted_at IS NULL", userID, authorUserID).
+		Where("user_id = ? AND author_user_id = ? AND author_profile_id = ? AND deleted_at IS NULL", userID, authorUserID, authorProfileID).
 		Update("hidden", hidden).Error
 }
 
@@ -1819,17 +1774,8 @@ func (r *Repository) RankingSummary(projectID uint64) (uint64, float64, error) {
 	return row.Count, row.Average, err
 }
 
-func (r *Repository) PublicProjectsByUserID(userID uint64, offset, limit int) ([]storytellerModel.Project, int64, error) {
-	rows := make([]storytellerModel.Project, 0)
-	var total int64
-	query := r.db.Model(&storytellerModel.Project{}).Where("user_id = ? AND visibility = ? AND deleted_at IS NULL", userID, storytellerModel.ProjectVisibilityPublic)
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
-	}
-	err := query.Order("updated_at DESC, id DESC").
-		Offset(offset).Limit(limit).
-		Find(&rows).Error
-	return rows, total, err
+func (r *Repository) PublicProjectsByUserID(userID, profileID uint64, offset, limit int) ([]storytellerModel.Project, int64, error) {
+	return r.PublicProjectsByIdentity(userID, profileID, offset, limit)
 }
 
 func (r *Repository) UserProfile(userID uint64) (*storytellerModel.UserProfile, error) {

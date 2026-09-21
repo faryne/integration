@@ -29,6 +29,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { AuthorProfilesPanel } from "@/pages/storyteller/AuthorProfilesPanel.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import type { StorytellerUserProfileRequest } from "@/types/storyteller.ts";
@@ -436,6 +437,8 @@ export function StorytellerProfileContent() {
                 </Button>
               </Stack>
             </Box>
+            <Divider />
+            <AuthorProfilesPanel profiles={profileQuery.data?.profiles ?? []} />
             <Divider />
             <Box>
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>

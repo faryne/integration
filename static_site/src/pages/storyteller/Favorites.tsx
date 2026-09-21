@@ -112,7 +112,7 @@ export function StorytellerFavoritesContent() {
       ) : (
         <Grid container spacing={2}>
           {authors.map((author) => (
-            <Grid key={author.user_id} size={{ xs: 12, md: 6, lg: 4 }}>
+            <Grid key={author.pen_name} size={{ xs: 12, md: 6, lg: 4 }}>
               <FavoriteAuthorCard
                 author={author}
                 onVisibilityChanged={notifyVisibility}
@@ -196,7 +196,7 @@ function FavoriteAuthorCard({
     severity?: "success" | "error",
   ) => void;
 }) {
-  const saveVisibility = useSaveFavoriteAuthorVisibility(author.user_id);
+  const saveVisibility = useSaveFavoriteAuthorVisibility(author.pen_name);
   const hidden = author.hidden ?? false;
 
   return (
