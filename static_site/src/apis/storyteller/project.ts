@@ -8,6 +8,7 @@ import {
 import type { CommonResponse, EsPagination } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
+  StorytellerAccountLimits,
   StorytellerFavoriteAuthor,
   StorytellerProject,
   StorytellerProjectRanking,
@@ -255,6 +256,25 @@ export function useStorytellerProjects() {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? [];
+    },
+  });
+}
+
+// 帳號配額快照（目前可建立的專案數、每個專案的資產數量／容量上限）。額度變更
+// 不頻繁，staleTime 拉長一點，不用每次切頁都重打；建立專案／上傳資產成功後
+// 各自的 mutation 會手動 invalidate 這個 query key，確保用量即時更新。
+export function useStorytellerAccountLimits() {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: ["storyteller", "account-limits", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const response = await axios.get<CommonResponse<StorytellerAccountLimits>>(
+        `${apiBase}/storyteller/limits`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }

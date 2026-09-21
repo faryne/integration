@@ -21,6 +21,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   useSaveStorytellerProject,
+  useStorytellerAccountLimits,
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -115,10 +116,17 @@ export default function StorytellerNewProject({
     isLoading,
     isFetching,
   } = useStorytellerProjects();
+  const { data: accountLimits } = useStorytellerAccountLimits();
   const editingProject = id
     ? projects.find((project) => project.public_id === id)
     : undefined;
   const isEditing = Boolean(id);
+  // 只有「建立」會被專案數量上限擋，編輯既有專案不受影響。
+  const atProjectLimit = Boolean(
+    !isEditing &&
+    accountLimits &&
+    accountLimits.current_projects >= accountLimits.max_projects,
+  );
   const [input, setInput] = useState<StorytellerProjectRequest>({
     name: "",
     slug: "",
@@ -290,6 +298,9 @@ export default function StorytellerNewProject({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (atProjectLimit) {
+      return;
+    }
     const slugChanged =
       isEditing &&
       Boolean(editingProject) &&
@@ -431,6 +442,12 @@ export default function StorytellerNewProject({
         onSubmit={handleSubmit}
       >
         <Stack spacing={3}>
+          {atProjectLimit && accountLimits && (
+            <Alert severity="warning">
+              已達可建立的專案數量上限（{accountLimits.max_projects}{" "}
+              個），請刪除舊專案後再建立新的。
+            </Alert>
+          )}
           {saveProject.isError && (
             <Alert severity="error" variant="outlined">
               {errorMessage(
@@ -649,7 +666,7 @@ export default function StorytellerNewProject({
               type="submit"
               variant="contained"
               startIcon={<SaveIcon />}
-              disabled={saveProject.isPending}
+              disabled={saveProject.isPending || atProjectLimit}
             >
               {saveProject.isPending
                 ? isEditing

@@ -27,6 +27,20 @@ export interface StorytellerProject {
   lore_uncategorized_count?: number;
   asset_count?: number;
   asset_uncategorized_count?: number;
+  // 這個專案目前所有 Asset 檔案大小加總，跟 asset_count 同一批只有單一專案
+  // 詳情才會帶的欄位，用來跟 StorytellerAccountLimits.max_project_storage_bytes
+  // 比對。
+  asset_storage_bytes_used?: number;
+}
+
+// GET /storyteller/limits 的回應：跟目前使用者有關的帳號配額快照，給「建立
+// 專案」「上傳資產」之類的按鈕在送出前先判斷要不要 disabled 用，不用等後端
+// 拒絕才知道超過上限。
+export interface StorytellerAccountLimits {
+  max_projects: number;
+  current_projects: number;
+  max_project_asset_count: number;
+  max_project_storage_bytes: number;
 }
 
 export interface StorytellerAgent {

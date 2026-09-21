@@ -1,5 +1,6 @@
 import CloseIcon from "@mui/icons-material/Close";
 import {
+  Alert,
   Box,
   Button,
   Drawer,
@@ -11,6 +12,8 @@ import {
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import {
+  useStorytellerAccountLimits,
+  useStorytellerProject,
   useUpdateStorytellerAsset,
   useUploadStorytellerAssets,
 } from "@/apis/storyteller.ts";
@@ -126,6 +129,8 @@ export function StorytellerAssetUploadDrawer({
 }: StorytellerAssetUploadDrawerProps) {
   const uploadAssets = useUploadStorytellerAssets(projectPublicId);
   const updateAsset = useUpdateStorytellerAsset(projectPublicId);
+  const { data: project } = useStorytellerProject(projectPublicId);
+  const { data: accountLimits } = useStorytellerAccountLimits();
   const [items, setItems] = useState<UploadItem[]>([]);
   const itemsRef = useRef<UploadItem[]>([]);
   const [uploadPhase, setUploadPhase] = useState<"idle" | "uploading">("idle");
@@ -134,6 +139,28 @@ export function StorytellerAssetUploadDrawer({
   >({});
   const [closing, setClosing] = useState(false);
   const maxMB = Math.floor(STORYTELLER_IMAGE_PAGE_MAX_BYTES / 1024 / 1024);
+
+  // 專案的資產數量／容量上限——items 裡還沒 confirm 的檔案也要算進「已經打算用掉
+  // 的額度」，不然使用者可以在同一次抽屜工作階段裡分批選檔案繞過限制，選到後面
+  // 才在 confirm 那一步被後端擋下來，體驗比在選擇當下就先擋掉還差。
+  const stagedBytes = items.reduce((sum, item) => sum + item.file.size, 0);
+  const usedAssetCount = (project?.asset_count ?? 0) + items.length;
+  const usedStorageBytes = (project?.asset_storage_bytes_used ?? 0) + stagedBytes;
+  const maxAssetCount = accountLimits?.max_project_asset_count;
+  const maxStorageBytes = accountLimits?.max_project_storage_bytes;
+  const remainingAssetSlots =
+    maxAssetCount === undefined
+      ? Infinity
+      : Math.max(0, maxAssetCount - usedAssetCount);
+  const remainingStorageBytes =
+    maxStorageBytes === undefined
+      ? Infinity
+      : Math.max(0, maxStorageBytes - usedStorageBytes);
+  const quotaExceeded = remainingAssetSlots <= 0 || remainingStorageBytes <= 0;
+  const maxStorageMB =
+    maxStorageBytes !== undefined
+      ? Math.floor(maxStorageBytes / 1024 / 1024)
+      : undefined;
 
   function updateItems(updater: (current: UploadItem[]) => UploadItem[]) {
     setItems((current) => {
@@ -236,20 +263,47 @@ export function StorytellerAssetUploadDrawer({
     );
     const images = accepted.slice(0, STORYTELLER_IMAGE_PAGE_MAX_COUNT);
     const overCount = accepted.length > STORYTELLER_IMAGE_PAGE_MAX_COUNT;
-    if (images.length === 0) {
-      onNotify("請選擇圖片檔案。", "error");
+
+    // 專案的資產數量／容量上限也在選擇檔案這一刻先擋一次，不要等使用者選好、
+    // 填完 metadata 才在 confirm 那一步被後端拒絕——這裡只是先擋，後端才是
+    // 真正權威的檢查（實際檔案大小要 S3 HeadObject 完才準）。
+    const withinAssetCount = images.slice(0, remainingAssetSlots);
+    const overAssetCount = images.length > withinAssetCount.length;
+    let stagedForThisSelection = 0;
+    const withinStorage = withinAssetCount.filter((file) => {
+      if (stagedForThisSelection + file.size > remainingStorageBytes) {
+        return false;
+      }
+      stagedForThisSelection += file.size;
+      return true;
+    });
+    const overStorage = withinAssetCount.length > withinStorage.length;
+    const finalImages = withinStorage;
+
+    if (finalImages.length === 0) {
+      onNotify(
+        overAssetCount || overStorage
+          ? "這個專案已達資產數量或容量上限，請刪除不需要的資產後再上傳。"
+          : "請選擇圖片檔案。",
+        "error",
+      );
       return;
     }
-    if (rejectedType || rejectedSize || overCount) {
+    if (rejectedType || rejectedSize || overCount || overAssetCount || overStorage) {
       const reasons = [
         rejectedType && "只接受 JPEG／PNG／WebP／GIF 圖片檔",
         rejectedSize && `單張檔案不能超過 ${maxMB}MB`,
         overCount && `單次最多 ${STORYTELLER_IMAGE_PAGE_MAX_COUNT} 張`,
+        overAssetCount && "已達本專案資產數量上限",
+        overStorage &&
+          (maxStorageMB !== undefined
+            ? `已達本專案容量上限（${maxStorageMB}MB）`
+            : "已達本專案容量上限"),
       ].filter(Boolean);
       onNotify(`部分檔案未上傳：${reasons.join("、")}`, "error");
     }
 
-    const newItems = images.map((file) => ({
+    const newItems = finalImages.map((file) => ({
       id: uploadItemId(file),
       file,
       previewUrl: URL.createObjectURL(file),
@@ -271,7 +325,7 @@ export function StorytellerAssetUploadDrawer({
     setUploadPhase("uploading");
     try {
       const uploaded = await uploadAssets.mutateAsync({
-        files: images,
+        files: finalImages,
         collectionId,
         onProgress: (index, loaded, total) => {
           const item = newItems[index];
@@ -412,9 +466,20 @@ export function StorytellerAssetUploadDrawer({
         </Stack>
 
         <Stack spacing={2} sx={{ p: 2, flex: 1, overflow: "auto" }}>
+          {quotaExceeded && (
+            <Alert severity="warning">
+              這個專案已達
+              {remainingAssetSlots <= 0 && "資產數量"}
+              {remainingAssetSlots <= 0 && remainingStorageBytes <= 0 && "與"}
+              {remainingStorageBytes <= 0 && "容量"}
+              上限
+              {maxStorageMB !== undefined && `（${maxStorageMB}MB）`}
+              ，請刪除不需要的資產後再上傳。
+            </Alert>
+          )}
           <StorytellerAssetDropzone
             accept={STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES}
-            disabled={uploadPhase === "uploading"}
+            disabled={uploadPhase === "uploading" || quotaExceeded}
             hint={
               <>
                 拖曳圖片到這裡，或點擊選擇檔案（可一次選多張，支援批次上傳）
