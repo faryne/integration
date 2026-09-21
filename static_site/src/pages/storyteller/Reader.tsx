@@ -12,6 +12,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
+  alpha,
   Box,
   Button,
   ButtonBase,
@@ -54,7 +55,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import { StorytellerProjectCoverHero } from "@/pages/storyteller/StorytellerProjectCoverHero.tsx";
+import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
@@ -855,14 +856,17 @@ function ContentMetaHeader({
   summary,
   authorPenNames,
   updatedAt,
+  coverUrl,
 }: {
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
   summary?: string;
   authorPenNames?: string[];
   updatedAt: string;
+  // 專案封面：第一篇才傳。鋪在標題區塊底下當背景，上面蓋一層同主題色的遮罩保持文字可讀。
+  coverUrl?: string;
 }) {
-  return (
+  const header = (
     <Box>
       <Typography
         ref={titleRef}
@@ -908,6 +912,27 @@ function ContentMetaHeader({
           更新於 {formatStorytellerDate(updatedAt)}
         </Typography>
       </Stack>
+    </Box>
+  );
+  if (!coverUrl) {
+    return header;
+  }
+  return (
+    <Box
+      sx={(theme) => ({
+        display: "flex",
+        alignItems: "flex-end",
+        minHeight: { xs: 170, sm: 230 },
+        px: { xs: 2, sm: 3 },
+        py: { xs: 2, sm: 3 },
+        border: "1px solid",
+        borderColor: "divider",
+        backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.6)} 100%), url("${coverUrl}")`,
+        backgroundSize: "cover",
+        backgroundPosition: "center 32%",
+      })}
+    >
+      <Box sx={{ width: 1 }}>{header}</Box>
     </Box>
   );
 }
@@ -1148,6 +1173,11 @@ export default function StorytellerReader() {
       ? sharedProjectQuery.data
       : undefined;
   const isOwner = Boolean(apiProject?.is_owner);
+  // 限制級專案要有年齡確認 cookie 才顯示封面（放在提早 return 之前，符合 hooks 規則）
+  const gatedCoverUrl = useGatedCoverUrl(
+    apiProject?.cover_url,
+    apiProject?.rating,
+  );
   const favoriteQuery = useStorytellerProjectFavorite(
     isOwner ? undefined : apiProject?.public_id,
   );
@@ -1179,7 +1209,7 @@ export default function StorytellerReader() {
           : [],
         rating: apiProject.rating,
         tags: apiProject.tags ?? [],
-        coverUrl: apiProject.cover_url,
+        coverUrl: gatedCoverUrl,
         wordCount: (apiProject.stories ?? []).reduce(
           (total, story) => total + story.word_count,
           0,
@@ -1235,6 +1265,7 @@ export default function StorytellerReader() {
             projectName: project.name,
             title: currentItem.title,
             summary: currentItem.summary || undefined,
+            coverUrl: gatedCoverUrl,
             visible: readerContextVisible,
           }
         : undefined,
@@ -1244,6 +1275,7 @@ export default function StorytellerReader() {
     currentItem?.summary,
     currentItem?.title,
     project?.name,
+    gatedCoverUrl,
     readerContextVisible,
     setHeaderReader,
   ]);
@@ -1954,8 +1986,7 @@ export default function StorytellerReader() {
       </Box>
     </>
   );
-  const showDetailsCover =
-    Boolean(project.coverUrl) && !(project.rating === "restricted" && !isOwner);
+  const showDetailsCover = Boolean(project.coverUrl);
   const projectDetails = (
     <Stack spacing={1.5}>
       {showDetailsCover && (
@@ -2022,6 +2053,7 @@ export default function StorytellerReader() {
                 : project.authorPenNames
             }
             updatedAt={currentEpisode.updatedAt}
+            coverUrl={currentItemIndex <= 0 ? project.coverUrl : undefined}
           />
           <Divider />
           <Stack spacing={1.5}>
@@ -2282,6 +2314,7 @@ export default function StorytellerReader() {
                 : project.authorPenNames
             }
             updatedAt={currentStory.updatedAt}
+            coverUrl={currentItemIndex <= 0 ? project.coverUrl : undefined}
           />
           {isHistoricalView && (
             <Box
@@ -2365,17 +2398,6 @@ export default function StorytellerReader() {
         </>
       )}
     </Paper>
-  );
-
-  // 閱讀頁沒有獨立的作品首頁（網址沒帶章節就直接進第一篇），所以封面放在第一篇上方，
-  // 像書的封面頁；往後翻章節就不顯示，不干擾閱讀。其他章節看得到封面的地方是作品資訊浮層。
-  const readerContent = (
-    <>
-      {currentItemIndex <= 0 && project.coverUrl && (
-        <StorytellerProjectCoverHero coverUrl={project.coverUrl} />
-      )}
-      {readerBody}
-    </>
   );
 
   return (
@@ -2516,10 +2538,10 @@ export default function StorytellerReader() {
           leaveTo={steamloomPath()}
           panelTitle="限制級創作專案"
         >
-          {readerContent}
+          {readerBody}
         </AgeConfirmationGate>
       ) : (
-        readerContent
+        <>{readerBody}</>
       )}
     </StorytellerShell>
   );

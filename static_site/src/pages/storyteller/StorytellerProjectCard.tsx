@@ -7,6 +7,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
+import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
 import { StorytellerProjectCoverBanner } from "@/pages/storyteller/StorytellerProjectCoverBanner.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
@@ -39,6 +40,7 @@ export function StorytellerProjectCard({
   onClick,
   onPrefetch,
 }: StorytellerProjectCardProps) {
+  const coverUrl = useGatedCoverUrl(project.cover_url, project.rating);
   const stories = project.stories ?? [];
   const storiesCount = stories.filter(
     (story) => story.content_type !== "image",
@@ -93,7 +95,7 @@ export function StorytellerProjectCard({
       <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
         <StorytellerProjectCoverBanner
-          coverUrl={project.cover_url}
+          coverUrl={coverUrl}
           imageOnly={imageOnly}
         />
         <Stack

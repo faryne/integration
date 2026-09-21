@@ -38,6 +38,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import PersonIcon from "@mui/icons-material/Person";
 import SearchIcon from "@mui/icons-material/Search";
 import {
+  alpha,
   AppBar,
   Avatar,
   Box,
@@ -363,23 +364,36 @@ export function StorytellerLayout() {
                   <Box
                     component="section"
                     aria-label="目前閱讀內容"
-                    sx={{
-                      display: { xs: "none", md: "grid" },
-                      gridTemplateColumns: {
-                        md: "minmax(0, 1fr)",
-                        lg: "minmax(110px, .36fr) minmax(180px, .64fr)",
-                        xl: "minmax(110px, .28fr) minmax(210px, .4fr) minmax(0, 1fr)",
+                    sx={[
+                      readerHeader?.coverUrl
+                        ? (theme) => ({
+                            px: 1.5,
+                            py: 0.75,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.62)} 100%), url("${readerHeader.coverUrl}")`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center 35%",
+                          })
+                        : {},
+                      {
+                        display: { xs: "none", md: "grid" },
+                        gridTemplateColumns: {
+                          md: "minmax(0, 1fr)",
+                          lg: "minmax(110px, .36fr) minmax(180px, .64fr)",
+                          xl: "minmax(110px, .28fr) minmax(210px, .4fr) minmax(0, 1fr)",
+                        },
+                        alignItems: "center",
+                        gap: 2,
+                        flex: {
+                          md: "0 1 320px",
+                          lg: "0 1 500px",
+                          xl: "0 1 760px",
+                        },
+                        minWidth: 0,
+                        mx: 2,
                       },
-                      alignItems: "center",
-                      gap: 2,
-                      flex: {
-                        md: "0 1 320px",
-                        lg: "0 1 500px",
-                        xl: "0 1 760px",
-                      },
-                      minWidth: 0,
-                      mx: 2,
-                    }}
+                    ]}
                   >
                     <Typography
                       variant="overline"
