@@ -17,7 +17,6 @@ type ProjectPatch struct {
 	Description *string
 	Visibility  *storytellerModel.ProjectVisibility
 	Rating      *storytellerModel.ProjectRating
-	ContentType *storytellerModel.ProjectContentType
 	Tags        *[]string
 }
 
@@ -38,7 +37,7 @@ func (s *Service) PatchProject(userID uint64, publicID string, patch ProjectPatc
 func projectRequestWithPatch(project storytellerModel.Project, patch ProjectPatch) (storytellerModel.ProjectRequest, error) {
 	input := storytellerModel.ProjectRequest{
 		Name: project.Name, Slug: project.Slug, Description: project.Description, Visibility: project.Visibility,
-		Rating: project.Rating, ContentType: project.ContentType, Tags: decodeProjectTags(project.Tags),
+		Rating: project.Rating, Tags: decodeProjectTags(project.Tags),
 	}
 	if patch.Name != nil {
 		input.Name = *patch.Name
@@ -57,9 +56,6 @@ func projectRequestWithPatch(project storytellerModel.Project, patch ProjectPatc
 	}
 	if patch.Rating != nil {
 		input.Rating = *patch.Rating
-	}
-	if patch.ContentType != nil {
-		input.ContentType = *patch.ContentType
 	}
 	if patch.Tags != nil {
 		input.Tags = *patch.Tags

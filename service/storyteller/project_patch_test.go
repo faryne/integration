@@ -10,7 +10,7 @@ import (
 func TestProjectRequestWithPatchPreservesOmittedFields(t *testing.T) {
 	project := storytellerModel.Project{
 		Name: "原名稱", Slug: "original", Description: "原簡介", Visibility: storytellerModel.ProjectVisibilityPublic,
-		Rating: storytellerModel.ProjectRatingGuidance, ContentType: storytellerModel.ProjectContentTypeImage, Tags: `["奇幻","機甲"]`,
+		Rating: storytellerModel.ProjectRatingGuidance, Tags: `["奇幻","機甲"]`,
 	}
 	description := "新簡介"
 
@@ -22,7 +22,6 @@ func TestProjectRequestWithPatchPreservesOmittedFields(t *testing.T) {
 	require.Equal(t, "新簡介", input.Description)
 	require.Equal(t, storytellerModel.ProjectVisibilityPublic, input.Visibility)
 	require.Equal(t, storytellerModel.ProjectRatingGuidance, input.Rating)
-	require.Equal(t, storytellerModel.ProjectContentTypeImage, input.ContentType)
 	require.Equal(t, []string{"奇幻", "機甲"}, input.Tags)
 }
 

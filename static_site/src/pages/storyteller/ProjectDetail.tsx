@@ -318,7 +318,6 @@ export default function StorytellerProjectDetail() {
           (story) => story.content_type !== "image",
         ).length,
         updatedAt: apiProject.updated_at,
-        contentType: apiProject.content_type,
       }
     : undefined;
   const { data: apiStories = emptyStories, isLoading: apiStoriesLoading } =
@@ -848,19 +847,6 @@ export default function StorytellerProjectDetail() {
                   前往
                 </MenuItem>
               </Menu>
-              <Chip
-                variant="outlined"
-                icon={
-                  project.contentType === "image" ? (
-                    <CollectionsIcon />
-                  ) : (
-                    <ArticleIcon />
-                  )
-                }
-                label={
-                  project.contentType === "image" ? "圖片／漫畫" : "文字故事"
-                }
-              />
               <Chip label={project.statusLabel} color="primary" />
               <Chip
                 icon={<ArticleIcon />}
