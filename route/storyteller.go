@@ -36,6 +36,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/user", storyteller.SaveUserProfile)
 	authenticated.Put("/user", storyteller.SaveUserProfile)
 	authenticated.Delete("/user", storyteller.DeleteUserProfile)
+	authenticated.Get("/limits", storyteller.AccountLimits)
 	authenticated.Get("/projects", storyteller.Projects)
 	authenticated.Post("/projects", storyteller.CreateProject)
 	authenticated.Get("/favorites", storyteller.FavoriteProjects)

@@ -1,5 +1,7 @@
 package storyteller
 
+import storytellerModel "faryne.dev/model/entity/storyteller"
+
 // ============================================================================
 // 帳號配額常數——所有跟「省資源、之後做付費方案分層」有關的帳號層級用量上限
 // 都集中放在這個檔案。要調整免費額度，或之後加付費方案的額度，都從這裡改，
@@ -47,3 +49,20 @@ const (
 	// Redis token bucket），這裡只先訂數字卡位。
 	FreeMCPRateLimitPerMinute = 5
 )
+
+// AccountLimits 給 GET /storyteller/limits 用：把目前使用者用得到的配額數字跟
+// 目前用量（僅專案數，帳號層級的部分）一次組好回傳。每個專案各自的
+// asset_count／asset_storage_bytes_used 已經在 Project() 的回傳裡，這裡不重複
+// 查，避免使用者專案一多，這支要一次查完所有專案用量而變慢。
+func (s *Service) AccountLimits(userID uint64) (*storytellerModel.AccountLimitsOutput, error) {
+	projectCount, err := s.repo.ProjectCount(userID)
+	if err != nil {
+		return nil, err
+	}
+	return &storytellerModel.AccountLimitsOutput{
+		MaxProjects:            FreeMaxProjects,
+		CurrentProjects:        projectCount,
+		MaxProjectAssetCount:   FreeMaxProjectAssetCount,
+		MaxProjectStorageBytes: FreeMaxProjectStorageBytes,
+	}, nil
+}

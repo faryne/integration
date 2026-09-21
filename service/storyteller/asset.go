@@ -137,7 +137,7 @@ func (s *Service) PresignAssetUpload(ctx context.Context, userID uint64, project
 	// （前端只帶了 content_type，沒有帶 size），真正的容量檢查留到
 	// ConfirmAssetUpload 用 S3 HeadObject 量到的實際大小去查。這裡先擋數量，
 	// 至少不用等使用者把檔案都傳完才發現整批都因為超過配額而失敗。
-	existingCount, _, err := s.repo.ProjectAssetUsage(project.ID)
+	existingCount, _, _, err := s.repo.AssetProjectCounts(project.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +281,7 @@ func (s *Service) ConfirmAssetUpload(userID uint64, projectPublicID string, inpu
 	// 這裡才是權威的容量檢查：PresignAssetUpload 只能先擋數量，這一刻才知道
 	// 使用者實際上傳了多大的檔案。用同一個 HeadObject 量到的 fileSize，加上
 	// 這個專案目前已經在用的數量／容量，一起判斷這次確認會不會超過配額。
-	existingCount, existingBytes, err := s.repo.ProjectAssetUsage(project.ID)
+	existingCount, _, existingBytes, err := s.repo.AssetProjectCounts(project.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +401,7 @@ func (s *Service) ConfirmAssetReplace(userID uint64, projectPublicID, assetPubli
 	// existingBytes 理論上一定 >= asset.FileSize（這個資產自己的大小本來就
 	// 算在專案總量裡），但用 uint64 相減前還是先夾一下下限，避免任何資料不
 	// 一致的邊界情況造成無號整數往下溢位、算出一個異常大的數字。
-	_, existingBytes, err := s.repo.ProjectAssetUsage(project.ID)
+	_, _, existingBytes, err := s.repo.AssetProjectCounts(project.ID)
 	if err != nil {
 		return nil, err
 	}

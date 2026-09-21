@@ -1303,6 +1303,29 @@ type ProjectOutput struct {
 	LoreUncategorizedCount  uint64 `gorm:"-" json:"lore_uncategorized_count"`
 	AssetCount              uint64 `gorm:"-" json:"asset_count"`
 	AssetUncategorizedCount uint64 `gorm:"-" json:"asset_uncategorized_count"`
+	// AssetStorageBytesUsed 是這個專案目前所有 Asset 檔案大小的加總，前端拿來
+	// 跟 /storyteller/limits 回傳的 max_project_storage_bytes 比對，決定上傳
+	// 資產的按鈕要不要 disabled。
+	AssetStorageBytesUsed uint64 `gorm:"-" json:"asset_storage_bytes_used"`
+}
+
+// AccountLimitsOutput 是 GET /storyteller/limits 回傳的帳號配額快照，讓前端
+// 一次拿到所有跟目前使用者有關的配額數字，決定「建立專案」之類的按鈕要不要
+// disabled，不用等後端拒絕才知道。
+//
+// 欄位命名不帶 Free／Pro 前綴——那是 service/storyteller/limits.go 裡內部
+// 常數的命名慣例（區分帳號方案用），這裡是對外的 API 形狀，不管以後方案怎麼
+// 分，這個 struct 都不需要跟著改，service 層只是換一組數字填進來而已。
+type AccountLimitsOutput struct {
+	// MaxProjects／CurrentProjects 是帳號層級：跟哪個專案無關。
+	MaxProjects     int   `json:"max_projects"`
+	CurrentProjects int64 `json:"current_projects"`
+	// MaxProjectAssetCount／MaxProjectStorageBytes 是「每個專案」各自的上限，
+	// 對這個帳號底下每一個專案都適用同一組數字，不用依專案分別查。個別專案
+	// 目前已經用了多少，讀 ProjectOutput 的 asset_count／
+	// asset_storage_bytes_used。
+	MaxProjectAssetCount   int   `json:"max_project_asset_count"`
+	MaxProjectStorageBytes int64 `json:"max_project_storage_bytes"`
 }
 
 // ProjectAuthorOutput 只在故事閱讀頁（PublicProject／SharedProject）才會帶

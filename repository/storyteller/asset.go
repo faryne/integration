@@ -100,21 +100,6 @@ func (r *Repository) DeleteAsset(row *storytellerModel.Asset) error {
 	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
 
-// ProjectAssetUsage 回傳一個專案目前使用中（未刪除）的 Asset 數量與檔案大小
-// 加總，給 service.limits.go 的帳號配額檢查用。用一次查詢把兩個數字一起撈出來，
-// 不用分別查兩次。
-func (r *Repository) ProjectAssetUsage(projectID uint64) (count int64, totalBytes uint64, err error) {
-	var row struct {
-		Count      int64
-		TotalBytes uint64
-	}
-	err = r.db.Model(&storytellerModel.Asset{}).
-		Select("COUNT(*) AS count, COALESCE(SUM(file_size), 0) AS total_bytes").
-		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
-		Scan(&row).Error
-	return row.Count, row.TotalBytes, err
-}
-
 func (r *Repository) AssetReferenceCount(assetID uint64) (int64, error) {
 	var count int64
 	err := r.db.Model(&storytellerModel.AssetReference{}).
@@ -241,14 +226,18 @@ func (r *Repository) AssetCollectionAssetCounts(collectionIDs []uint64) (map[uin
 
 // AssetProjectCounts 給工作台側邊欄「全部資產」「未分類」用，理由同
 // LoreProjectCounts——這兩個虛擬節點不對應任何一筆 AssetCollection 資料列。
-func (r *Repository) AssetProjectCounts(projectID uint64) (total int64, uncategorized int64, err error) {
+// totalBytes 是同一批 row 的 file_size 加總，順便給帳號配額檢查
+// （service/storyteller/limits.go）跟 Service.Project() 的用量顯示共用，
+// 不用另外為了配額檢查再開一支幾乎一樣的查詢。
+func (r *Repository) AssetProjectCounts(projectID uint64) (total int64, uncategorized int64, totalBytes uint64, err error) {
 	var row struct {
 		Total         int64
 		Uncategorized int64
+		TotalBytes    uint64
 	}
 	err = r.db.Model(&storytellerModel.Asset{}).
-		Select("COUNT(*) AS total, SUM(CASE WHEN collection_id IS NULL THEN 1 ELSE 0 END) AS uncategorized").
+		Select("COUNT(*) AS total, SUM(CASE WHEN collection_id IS NULL THEN 1 ELSE 0 END) AS uncategorized, COALESCE(SUM(file_size), 0) AS total_bytes").
 		Where("project_id = ? AND is_deleted = 0 AND deleted_at IS NULL", projectID).
 		Scan(&row).Error
-	return row.Total, row.Uncategorized, err
+	return row.Total, row.Uncategorized, row.TotalBytes, err
 }

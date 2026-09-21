@@ -161,7 +161,7 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	if err != nil {
 		return nil, err
 	}
-	assetTotal, assetUncategorized, err := s.repo.AssetProjectCounts(project.ID)
+	assetTotal, assetUncategorized, assetStorageBytes, err := s.repo.AssetProjectCounts(project.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +169,7 @@ func (s *Service) Project(userID uint64, publicID string) (*storytellerModel.Pro
 	output.LoreUncategorizedCount = uint64(loreUncategorized)
 	output.AssetCount = uint64(assetTotal)
 	output.AssetUncategorizedCount = uint64(assetUncategorized)
+	output.AssetStorageBytesUsed = assetStorageBytes
 	return output, nil
 }
 
