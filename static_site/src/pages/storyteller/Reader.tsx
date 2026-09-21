@@ -44,6 +44,7 @@ import {
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
 import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
+import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import {
   Link as RouterLink,
   useLocation,
@@ -111,6 +112,7 @@ interface ReaderItem {
   // 所屬冊的 id，null 代表未分冊；只用來在索引分組顯示，不影響上一篇/下一篇導覽
   // （導覽沿用 items 陣列本身已經是「依冊順序、未分冊排最後」排好的線性順序）。
   parentId: number | null;
+  authorPenNames: string[];
 }
 
 interface ReaderVolume {
@@ -129,8 +131,11 @@ interface ReaderProject {
   name: string;
   description: string;
   path: string;
-  authorUserId?: number;
-  authorPenName?: string;
+  authors: Array<{
+    pen_name: string;
+    follower_count?: number;
+  }>;
+  authorPenNames: string[];
   rating: "general" | "guidance" | "restricted";
   tags: string[];
   wordCount: number;
@@ -799,19 +804,59 @@ function ImagePageScrubber({
   );
 }
 
+function FollowAuthorButton({
+  penName,
+  followerCount,
+  disabled,
+  onLoginRequired,
+  onNotify,
+}: {
+  penName: string;
+  followerCount: number;
+  disabled: boolean;
+  onLoginRequired: () => void;
+  onNotify: (message: string, severity?: "success" | "error") => void;
+}) {
+  const { session } = useAuth();
+  const query = useStorytellerAuthorFavorite(disabled ? undefined : penName);
+  const save = useSaveStorytellerAuthorFavorite(disabled ? undefined : penName);
+  const favorited = query.data?.favorited ?? false;
+  return (
+    <Button
+      variant={favorited ? "contained" : "outlined"}
+      startIcon={favorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
+      disabled={disabled || save.isPending}
+      onClick={() => {
+        if (!session) {
+          onLoginRequired();
+          return;
+        }
+        const next = !favorited;
+        save.mutate(next, {
+          onSuccess: () =>
+            onNotify(next ? `已追蹤 ${penName}` : `已取消追蹤 ${penName}`),
+          onError: () => onNotify("作者追蹤狀態更新失敗，請重試。", "error"),
+        });
+      }}
+    >
+      {favorited ? `已追蹤 ${penName}` : `追蹤 ${penName}`}（{followerCount}）
+    </Button>
+  );
+}
+
 // 跨內容類型（故事／圖像／未來新增的類型）共用的作品標頭：標題、簡介、作者、
 // 最後更新時間。新增內容類型時應該一律沿用這個元件，不要各自刻一份標頭版面。
 function ContentMetaHeader({
   title,
   titleRef,
   summary,
-  authorPenName,
+  authorPenNames,
   updatedAt,
 }: {
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
   summary?: string;
-  authorPenName?: string;
+  authorPenNames?: string[];
   updatedAt: string;
 }) {
   return (
@@ -837,19 +882,24 @@ function ContentMetaHeader({
         useFlexGap
         sx={{ mt: 1 }}
       >
-        {authorPenName && (
-          <Typography
-            variant="caption"
-            color="primary"
-            component={RouterLink}
-            to={steamloomPath(`user/${encodeURIComponent(authorPenName)}`)}
-            sx={{
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-            }}
-          >
-            作者 {authorPenName}
-          </Typography>
+        {authorPenNames && authorPenNames.length > 0 && (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {authorPenNames.map((penName) => (
+              <Typography
+                key={penName}
+                variant="caption"
+                color="primary"
+                component={RouterLink}
+                to={steamloomPath(`user/${encodeURIComponent(penName)}`)}
+                sx={{
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              >
+                作者 {penName}
+              </Typography>
+            ))}
+          </Stack>
         )}
         <Typography variant="caption" color="text.secondary">
           更新於 {formatStorytellerDate(updatedAt)}
@@ -1094,20 +1144,12 @@ export default function StorytellerReader() {
     : shareToken
       ? sharedProjectQuery.data
       : undefined;
-  const isOwner = Boolean(
-    apiProject && session?.user.id && apiProject.user_id === session.user.id,
-  );
+  const isOwner = Boolean(apiProject?.is_owner);
   const favoriteQuery = useStorytellerProjectFavorite(
     isOwner ? undefined : apiProject?.public_id,
   );
   const saveFavorite = useSaveStorytellerProjectFavorite(
     isOwner ? undefined : apiProject?.public_id,
-  );
-  const authorFavoriteQuery = useStorytellerAuthorFavorite(
-    isOwner ? undefined : apiProject?.user_id,
-  );
-  const saveAuthorFavorite = useSaveStorytellerAuthorFavorite(
-    isOwner ? undefined : apiProject?.user_id,
   );
   const rankingQuery = useStorytellerProjectRanking(
     isOwner ? undefined : apiProject?.public_id,
@@ -1118,7 +1160,6 @@ export default function StorytellerReader() {
   const isFavorited = apiProject
     ? (favoriteQuery.data?.favorited ?? false)
     : favorite;
-  const isAuthorFavorited = authorFavoriteQuery.data?.favorited ?? false;
   const rating = rankingQuery.data?.ranking ?? null;
   const project: ReaderProject | undefined = apiProject
     ? {
@@ -1126,8 +1167,13 @@ export default function StorytellerReader() {
         name: apiProject.name,
         description: apiProject.description,
         path: steamloomPath(`work/${apiProject.public_id}-${apiProject.slug}`),
-        authorUserId: apiProject.user_id,
-        authorPenName: apiProject.author?.pen_name,
+        authors: (apiProject.authors ?? []).map((author) => ({
+          pen_name: author.pen_name,
+          follower_count: author.follower_count,
+        })),
+        authorPenNames: formatAuthorNames(apiProject.authors)
+          ? formatAuthorNames(apiProject.authors).split("、")
+          : [],
         rating: apiProject.rating,
         tags: apiProject.tags ?? [],
         wordCount: (apiProject.stories ?? []).reduce(
@@ -1146,6 +1192,10 @@ export default function StorytellerReader() {
           sort: story.sort,
           updatedAt: story.updated_at,
           parentId: story.parent_id,
+          authorPenNames:
+            (story.authors ?? [])
+              .map((author) => author.pen_name)
+              .filter(Boolean) || [],
         })),
         volumes: [...(apiProject.volumes ?? [])]
           .sort((left, right) => left.sort - right.sort)
@@ -1745,7 +1795,6 @@ export default function StorytellerReader() {
   };
   // 追蹤、作者與評分移到作品資訊浮層；閱讀頁 Hero 只保留作品名稱與 breadcrumb。
   const favoriteCount = apiProject?.favorite_count ?? 0;
-  const authorFollowerCount = apiProject?.author?.follower_count ?? 0;
   const projectRatingCount = apiProject?.rating_count ?? 0;
   const projectAverageRating = apiProject?.average_rating ?? 0;
   const readerActions = (
@@ -1782,41 +1831,22 @@ export default function StorytellerReader() {
       >
         {isFavorited ? "已追蹤專案" : "追蹤專案"}（{favoriteCount}）
       </Button>
-      {project.authorUserId && (
-        <Button
-          variant={isAuthorFavorited ? "contained" : "outlined"}
-          startIcon={
-            isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
+      {project.authors.map((author) => (
+        <FollowAuthorButton
+          key={author.pen_name}
+          penName={author.pen_name}
+          followerCount={author.follower_count ?? 0}
+          disabled={isOwner}
+          onLoginRequired={() => setLoginPromptOpen(true)}
+          onNotify={(message, severity = "success") =>
+            setBookmarkSnackbar({
+              open: true,
+              message,
+              severity,
+            })
           }
-          disabled={isOwner || saveAuthorFavorite.isPending}
-          onClick={() => {
-            if (!session) {
-              setLoginPromptOpen(true);
-              return;
-            }
-            const nextAuthorFavorited = !isAuthorFavorited;
-            saveAuthorFavorite.mutate(nextAuthorFavorited, {
-              onSuccess: () => {
-                setBookmarkSnackbar({
-                  open: true,
-                  message: nextAuthorFavorited
-                    ? "已追蹤此作者"
-                    : "已取消追蹤此作者",
-                });
-              },
-              onError: () =>
-                setBookmarkSnackbar({
-                  open: true,
-                  message: "作者追蹤狀態更新失敗，請重試。",
-                  severity: "error",
-                }),
-            });
-          }}
-        >
-          {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}（{authorFollowerCount}
-          ）
-        </Button>
-      )}
+        />
+      ))}
       <Paper variant="outlined" sx={{ px: 1.5, py: 0.75, borderRadius: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <Typography variant="body2" color="text.secondary">
@@ -1871,17 +1901,16 @@ export default function StorytellerReader() {
           isPrivateOwnerRoute ? "default" : isShareRoute ? "warning" : "success"
         }
       />
-      {project.authorPenName && (
+      {project.authors.map((author) => (
         <Chip
-          label={`作者 ${project.authorPenName}`}
+          key={author.pen_name}
+          label={`作者 ${author.pen_name}`}
           variant="outlined"
           component={RouterLink}
-          to={steamloomPath(
-            `user/${encodeURIComponent(project.authorPenName)}`,
-          )}
+          to={steamloomPath(`user/${encodeURIComponent(author.pen_name)}`)}
           clickable
         />
-      )}
+      ))}
       <Chip
         label={`${items.filter((item) => item.contentType !== "image").length} 篇故事`}
         variant="outlined"
@@ -1965,7 +1994,11 @@ export default function StorytellerReader() {
             title={currentEpisode.title}
             titleRef={contentTitleRef}
             summary={currentEpisode.summary}
-            authorPenName={project.authorPenName}
+            authorPenNames={
+              currentEpisode.authorPenNames.length > 0
+                ? currentEpisode.authorPenNames
+                : project.authorPenNames
+            }
             updatedAt={currentEpisode.updatedAt}
           />
           <Divider />
@@ -2221,7 +2254,11 @@ export default function StorytellerReader() {
             title={currentStory.title}
             titleRef={contentTitleRef}
             summary={currentStory.summary}
-            authorPenName={project.authorPenName}
+            authorPenNames={
+              currentStory.authorPenNames.length > 0
+                ? currentStory.authorPenNames
+                : project.authorPenNames
+            }
             updatedAt={currentStory.updatedAt}
           />
           {isHistoricalView && (

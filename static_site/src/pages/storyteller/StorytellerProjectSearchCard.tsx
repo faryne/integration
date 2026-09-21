@@ -9,6 +9,7 @@ import {
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
+import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerProjectSearchResult } from "@/types/storyteller.ts";
 
 export interface StorytellerProjectSearchCardProps {
@@ -69,7 +70,8 @@ export function StorytellerProjectSearchCard({
         </Stack>
         <Typography variant="body2" color="text.secondary">
           {result.matched_story_count} 篇故事符合
-          {result.author_pen_name && ` · 作者 ${result.author_pen_name}`}
+          {formatAuthorNames(result.author_pen_name) &&
+            ` · 作者 ${formatAuthorNames(result.author_pen_name)}`}
         </Typography>
         <Stack spacing={0.5} sx={{ flex: 1 }}>
           {result.matches.map((match) => (

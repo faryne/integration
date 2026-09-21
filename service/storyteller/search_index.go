@@ -109,7 +109,7 @@ type workSearchDocument struct {
 	Content         string   `json:"content"`
 	Tags            []string `json:"tags"`
 	Rating          string   `json:"rating"`
-	AuthorPenName   string   `json:"author_pen_name"`
+	AuthorPenName   []string `json:"author_pen_name"`
 	CoverImageKey   string   `json:"cover_image_key,omitempty"`
 	// 存 RFC3339 字串而不是 unix timestamp：dynamic mapping 會自動把它偵測成 date 型別
 	// （排序照樣可以用），API 輸出也可以直接原樣回傳給前端，不用另外轉換格式。
@@ -176,7 +176,7 @@ func plainTextFromStoryContent(raw string) string {
 	return strings.Join(cleaned, "\n")
 }
 
-func buildWorkDocument(project *storytellerModel.Project, story *storytellerModel.Story, authorPenName string) (*workSearchDocument, error) {
+func buildWorkDocument(project *storytellerModel.Project, story *storytellerModel.Story, authorPenName []string) (*workSearchDocument, error) {
 	content, coverImageKey, err := storyIndexContent(story)
 	if err != nil {
 		return nil, err
@@ -198,12 +198,48 @@ func buildWorkDocument(project *storytellerModel.Project, story *storytellerMode
 	}, nil
 }
 
-func (s *Service) authorPenNameForIndex(userID uint64) string {
-	profile, err := s.repo.UserProfile(userID)
-	if err != nil || profile == nil {
-		return ""
+func (s *Service) authorPenNamesForIndex(project *storytellerModel.Project, story *storytellerModel.Story) []string {
+	profileMap, err := s.repo.StoryProfilesByStoryIDs([]uint64{story.ID})
+	if err != nil {
+		return s.fallbackAuthorPenNames(project.UserID)
 	}
-	return profile.PenName
+	ids, ok := profileMap[story.ID]
+	if !ok || len(ids) == 0 {
+		ids = []uint64{0}
+	}
+	users, err := s.repo.UserProfilesByIDs([]uint64{project.UserID})
+	if err != nil {
+		return s.fallbackAuthorPenNames(project.UserID)
+	}
+	extraIDs := make([]uint64, 0)
+	for _, id := range ids {
+		if id != 0 {
+			extraIDs = append(extraIDs, id)
+		}
+	}
+	extras, err := s.repo.AuthorProfilesByIDs(extraIDs)
+	if err != nil {
+		return s.fallbackAuthorPenNames(project.UserID)
+	}
+	names := make([]string, 0, len(ids))
+	for _, id := range ids {
+		name := identityOutputFromMaps(project.UserID, id, users, extras).PenName
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return s.fallbackAuthorPenNames(project.UserID)
+	}
+	return names
+}
+
+func (s *Service) fallbackAuthorPenNames(userID uint64) []string {
+	profile, err := s.repo.UserProfile(userID)
+	if err != nil || profile == nil || profile.PenName == "" {
+		return []string{}
+	}
+	return []string{profile.PenName}
 }
 
 // syncStorySearchIndex 依故事目前的公開狀態決定要寫入索引還是從索引移除，一般故事存檔的
@@ -227,7 +263,7 @@ func (s *Service) syncStorySearchIndex(project *storytellerModel.Project, story 
 		}
 		return
 	}
-	doc, err := buildWorkDocument(project, story, s.authorPenNameForIndex(project.UserID))
+	doc, err := buildWorkDocument(project, story, s.authorPenNamesForIndex(project, story))
 	if err != nil {
 		log.Logger().Error("storyteller search index: build document failed: " + err.Error())
 		return
@@ -262,9 +298,8 @@ func (s *Service) resyncProjectSearchIndex(project *storytellerModel.Project) {
 		log.Logger().Error("storyteller search index: load published stories failed: " + err.Error())
 		return
 	}
-	authorPenName := s.authorPenNameForIndex(project.UserID)
 	for i := range stories {
-		doc, err := buildWorkDocument(project, &stories[i], authorPenName)
+		doc, err := buildWorkDocument(project, &stories[i], s.authorPenNamesForIndex(project, &stories[i]))
 		if err != nil {
 			log.Logger().Error("storyteller search index: build document failed: " + err.Error())
 			continue

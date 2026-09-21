@@ -27,27 +27,29 @@ type storytellerListPageArguments struct {
 }
 
 type storytellerUpsertStoryArguments struct {
-	ProjectPublicID string  `json:"project_public_id"`
-	StoryPublicID   string  `json:"story_public_id"`
-	Title           string  `json:"title"`
-	Summary         string  `json:"summary"`
-	Status          string  `json:"status"`
-	Sort            int     `json:"sort"`
-	Content         string  `json:"content"`
-	VolumePublicID  *string `json:"volume_public_id"`
-	BaseVersionID   *uint64 `json:"base_version_id"`
+	ProjectPublicID string    `json:"project_public_id"`
+	StoryPublicID   string    `json:"story_public_id"`
+	Title           string    `json:"title"`
+	Summary         string    `json:"summary"`
+	Status          string    `json:"status"`
+	Sort            int       `json:"sort"`
+	Content         string    `json:"content"`
+	VolumePublicID  *string   `json:"volume_public_id"`
+	BaseVersionID   *uint64   `json:"base_version_id"`
+	Profiles        *[]string `json:"profiles"`
 }
 
 type storytellerPatchStoryArguments struct {
-	ProjectPublicID string  `json:"project_public_id"`
-	StoryPublicID   string  `json:"story_public_id"`
-	Title           *string `json:"title"`
-	Summary         *string `json:"summary"`
-	Status          *string `json:"status"`
-	Sort            *int    `json:"sort"`
-	Content         *string `json:"content"`
-	ParentID        *string `json:"parent_id"`
-	BaseVersionID   *uint64 `json:"base_version_id"`
+	ProjectPublicID string    `json:"project_public_id"`
+	StoryPublicID   string    `json:"story_public_id"`
+	Title           *string   `json:"title"`
+	Summary         *string   `json:"summary"`
+	Status          *string   `json:"status"`
+	Sort            *int      `json:"sort"`
+	Content         *string   `json:"content"`
+	ParentID        *string   `json:"parent_id"`
+	BaseVersionID   *uint64   `json:"base_version_id"`
+	Profiles        *[]string `json:"profiles"`
 }
 
 func (a storytellerPatchStoryArguments) hasContentField() bool {
@@ -118,6 +120,7 @@ type storytellerUpsertImageStoryArguments struct {
 	Sort            int                             `json:"sort"`
 	Pages           []storytellerImagePageArguments `json:"pages"`
 	BaseVersionID   *uint64                         `json:"base_version_id"`
+	Profiles        *[]string                       `json:"profiles"`
 }
 
 type storytellerSearchReplaceOutput struct {
@@ -255,6 +258,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				),
 				"volume_public_id": stringSchema("Optional, but semantically important. Omit to preserve the story's current volume membership on update; pass an empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
 				"base_version_id":  integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+				"profiles":         stringArraySchema("Optional pen names to attribute this story to. Use the account's own pen name for the account identity. Omit to keep current attribution on update, or default to the account identity on create."),
 			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -276,6 +280,9 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()
+				if err := applyMCPStoryProfiles(service, userID, args.Profiles, &input); err != nil {
+					return nil, err
+				}
 				var story *storytellerModel.Story
 				var conflicted bool
 				if args.StoryPublicID == "" {
@@ -286,12 +293,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				return storytellerStoryDetail{
-					storytellerStorySummary: toStorytellerStorySummary(*story),
-					Content:                 story.LatestContent,
-					VersionID:               derefUint64(story.LatestVersionID),
-					VersionConflict:         conflicted,
-				}, nil
+				return storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, conflicted)
 			},
 		},
 
@@ -404,6 +406,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				"content":           stringSchema("Optional. New full content. Omit to keep the current content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint),
 				"parent_id":         stringSchema("Optional. Omit to keep current volume membership; pass empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
 				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; version_conflict flags if the story has moved on since, but the write still happens."),
+				"profiles":          stringArraySchema("Optional pen names to attribute this story to. Omit to keep current attribution."),
 			}, []string{"project_public_id", "story_public_id"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -414,15 +417,29 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				if !args.hasContentField() {
+				if !args.hasContentField() && args.Profiles == nil {
 					return nil, errors.New("at least one field to update must be specified")
 				}
 				service := NewService()
+				if !args.hasContentField() {
+					ids, err := service.profileIDsFromPenNames(userID, derefStringSlice(args.Profiles))
+					if err != nil {
+						return nil, err
+					}
+					story, err := service.SetStoryProfiles(userID, args.ProjectPublicID, args.StoryPublicID, ids)
+					if err != nil {
+						return nil, err
+					}
+					return storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, false)
+				}
 				current, err := service.Story(userID, args.ProjectPublicID, args.StoryPublicID)
 				if err != nil {
 					return nil, err
 				}
 				input := mergeStoryPatch(current, args)
+				if err := applyMCPStoryProfiles(service, userID, args.Profiles, &input); err != nil {
+					return nil, err
+				}
 				story, conflicted, err := service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, storytellerSourceFromContext(ctx))
 				if err != nil {
 					return nil, err
@@ -586,6 +603,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 					},
 				},
 				"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+				"profiles":        stringArraySchema("Optional pen names to attribute this story to. Use the account's own pen name for the account identity. Omit to keep current attribution on update, or default to the account identity on create."),
 			}, []string{"project_public_id", "title", "pages"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -633,6 +651,9 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()
+				if err := applyMCPStoryProfiles(service, userID, args.Profiles, &input); err != nil {
+					return nil, err
+				}
 				var story *storytellerModel.Story
 				var conflicted bool
 				if args.StoryPublicID == "" {
@@ -643,16 +664,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				pagesOutput, err := service.ImageStoryPages(userID, args.ProjectPublicID, story.PublicID)
-				if err != nil {
-					return nil, err
-				}
-				return storytellerStoryDetail{
-					storytellerStorySummary: toStorytellerStorySummary(*story),
-					Pages:                   pagesOutput,
-					VersionID:               derefUint64(story.LatestVersionID),
-					VersionConflict:         conflicted,
-				}, nil
+				return storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, conflicted)
 			},
 		},
 
@@ -679,6 +691,25 @@ func storytellerStoryToolSpecs() []ToolSpec {
 			},
 		},
 	}
+}
+
+func applyMCPStoryProfiles(service *Service, userID uint64, profiles *[]string, input *storytellerModel.StoryRequest) error {
+	if profiles == nil {
+		return nil
+	}
+	ids, err := service.profileIDsFromPenNames(userID, *profiles)
+	if err != nil {
+		return err
+	}
+	input.ProfileIDs = &ids
+	return nil
+}
+
+func derefStringSlice(values *[]string) []string {
+	if values == nil {
+		return nil
+	}
+	return *values
 }
 
 func storytellerRandomPageID() string {
@@ -795,6 +826,10 @@ func (r storytellerReplaceResult) output() storytellerSearchReplaceOutput {
 }
 
 func storytellerStoryDetailForOutput(service *Service, userID uint64, projectPublicID string, story *storytellerModel.Story, conflicted bool) (storytellerStoryDetail, error) {
+	// Create/UpdateStory 回傳的 story 不帶署名，輸出前重讀一次，讓 agent 能從回傳確認署名有寫進去
+	if fresh, err := service.Story(userID, projectPublicID, story.PublicID); err == nil {
+		story.Authors = fresh.Authors
+	}
 	detail := storytellerStoryDetail{
 		storytellerStorySummary: toStorytellerStorySummary(*story),
 		VersionID:               derefUint64(story.LatestVersionID),

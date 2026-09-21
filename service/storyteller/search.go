@@ -38,7 +38,7 @@ type WorkSearchResult struct {
 	Summary         string   `json:"summary"`
 	Tags            []string `json:"tags"`
 	Rating          string   `json:"rating"`
-	AuthorPenName   string   `json:"author_pen_name"`
+	AuthorPenName   []string `json:"author_pen_name"`
 	CoverImageURL   string   `json:"cover_image_url,omitempty"`
 	UpdatedAt       string   `json:"updated_at"`
 }
@@ -140,7 +140,7 @@ type ProjectSearchResult struct {
 	ProjectName       string             `json:"project_name"`
 	Rating            string             `json:"rating"`
 	Tags              []string           `json:"tags"`
-	AuthorPenName     string             `json:"author_pen_name"`
+	AuthorPenName     []string           `json:"author_pen_name"`
 	MatchedStoryCount int64              `json:"matched_story_count"`
 	Matches           []WorkSearchResult `json:"matches"`
 }

@@ -1,7 +1,7 @@
 export interface StorytellerProject {
   id: number;
   public_id: string;
-  user_id: number;
+  user_id?: number;
   name: string;
   slug: string;
   description: string;
@@ -20,7 +20,8 @@ export interface StorytellerProject {
   stories?: StorytellerStory[];
   // 讓閱讀頁／工作台故事列表可以把 stories 依冊分組顯示，不用另外呼叫只給登入者用的 API。
   volumes?: StorytellerStory[];
-  author?: StorytellerUserProfile;
+  authors?: StorytellerAuthorIdentity[];
+  is_owner?: boolean;
   // 底下四個只有單一專案詳情（工作台側邊欄「全部設定」「全部資產」「未分類」
   // 用）才會有值，專案列表／閱讀頁不會帶。
   lore_count?: number;
@@ -41,6 +42,8 @@ export interface StorytellerAccountLimits {
   current_projects: number;
   max_project_asset_count: number;
   max_project_storage_bytes: number;
+  max_profiles: number;
+  current_profiles: number;
 }
 
 export interface StorytellerAgent {
@@ -156,6 +159,8 @@ export interface StorytellerStory {
   // 只有存檔（PUT）的回應才有意義：這次存檔帶的 base_version_id 已經不是最新版本，
   // 但內容照樣存成新版本，沒有被拒絕；GET 回來的資料不會有這個欄位。
   version_conflict?: boolean;
+  authors?: StorytellerAuthorIdentity[];
+  profile_ids?: number[];
 }
 
 export interface StorytellerStoryVolumeRequest {
@@ -369,23 +374,30 @@ export type StorytellerSNSType =
   | "discord"
   | "youtube";
 
-export interface StorytellerUserProfile {
-  user_id: number;
+export interface StorytellerAuthorIdentity {
   pen_name: string;
   bio?: string;
   use_default_avatar: boolean;
   avatar_url?: string;
   sns_links?: Record<string, string>;
+  created_at: string;
+  follower_count?: number;
+}
+
+export interface StorytellerAuthorProfile extends StorytellerAuthorIdentity {
+  id: number;
+}
+
+export interface StorytellerUserProfile extends StorytellerAuthorIdentity {
+  user_id: number;
   hide_favorite_projects: boolean;
   hide_favorite_authors: boolean;
   auto_save_enabled: boolean;
   auto_save_interval_minutes: number;
-  created_at: string;
-  // 只有故事閱讀頁的 project.author 會帶這個欄位（後端只在那個入口多查一次）
-  follower_count?: number;
+  profiles: StorytellerAuthorProfile[];
 }
 
-export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
+export interface StorytellerFavoriteAuthor extends StorytellerAuthorIdentity {
   project_count: number;
   story_count: number;
   image_story_count: number;
@@ -393,6 +405,16 @@ export interface StorytellerFavoriteAuthor extends StorytellerUserProfile {
   average_rating: number;
   follower_count: number;
   hidden?: boolean;
+  show_favorites?: boolean;
+  is_owner?: boolean;
+}
+
+export interface StorytellerAuthorProfileRequest {
+  pen_name: string;
+  bio: string;
+  use_default_avatar: boolean;
+  avatar_url: string;
+  sns_links: Record<string, string>;
 }
 
 export interface StorytellerProjectRequest {
@@ -622,6 +644,7 @@ export interface StorytellerStoryRequest {
   parent_id?: string;
   // 只有建立時會用到（text=一般文字故事，image=圖像作品），更新時後端會忽略此欄位。
   content_type?: "text" | "image";
+  profile_ids?: number[];
 }
 
 export interface StorytellerLoreRequest {
@@ -661,7 +684,7 @@ export interface StorytellerWorkSearchResult {
   summary: string;
   tags: string[];
   rating: "general" | "guidance" | "restricted";
-  author_pen_name: string;
+  author_pen_name: string[];
   cover_image_url?: string;
   updated_at: string;
 }
@@ -675,7 +698,7 @@ export interface StorytellerProjectSearchResult {
   project_name: string;
   rating: "general" | "guidance" | "restricted";
   tags: string[];
-  author_pen_name: string;
+  author_pen_name: string[];
   matched_story_count: number;
   matches: StorytellerWorkSearchResult[];
 }

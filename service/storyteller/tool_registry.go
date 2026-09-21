@@ -86,6 +86,7 @@ func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
 	registry := NewToolRegistry()
 	for _, specs := range [][]ToolSpec{
 		storytellerProjectMCPOnlyToolSpecs(),
+		storytellerProfileMCPOnlyToolSpecs(),
 		storytellerChapterWriteToolSpecs(),
 	} {
 		for _, spec := range specs {
