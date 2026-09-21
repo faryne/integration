@@ -54,6 +54,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
+import { StorytellerProjectCoverHero } from "@/pages/storyteller/StorytellerProjectCoverHero.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
@@ -139,6 +140,8 @@ interface ReaderProject {
   rating: "general" | "guidance" | "restricted";
   tags: string[];
   wordCount: number;
+  // 封面簽名 URL（有時效，只放在記憶體，不落地）。
+  coverUrl?: string;
   items: ReaderItem[];
   volumes: ReaderVolume[];
 }
@@ -1176,6 +1179,7 @@ export default function StorytellerReader() {
           : [],
         rating: apiProject.rating,
         tags: apiProject.tags ?? [],
+        coverUrl: apiProject.cover_url,
         wordCount: (apiProject.stories ?? []).reduce(
           (total, story) => total + story.word_count,
           0,
@@ -1950,8 +1954,26 @@ export default function StorytellerReader() {
       </Box>
     </>
   );
+  const showDetailsCover =
+    Boolean(project.coverUrl) && !(project.rating === "restricted" && !isOwner);
   const projectDetails = (
     <Stack spacing={1.5}>
+      {showDetailsCover && (
+        <Box
+          component="img"
+          src={project.coverUrl}
+          alt=""
+          sx={{
+            width: 1,
+            aspectRatio: "2 / 1",
+            objectFit: "cover",
+            objectPosition: "center",
+            display: "block",
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        />
+      )}
       <Box>
         <Typography variant="subtitle1" fontWeight={900}>
           {project.name}
@@ -2345,6 +2367,17 @@ export default function StorytellerReader() {
     </Paper>
   );
 
+  // 閱讀頁沒有獨立的作品首頁（網址沒帶章節就直接進第一篇），所以封面放在第一篇上方，
+  // 像書的封面頁；往後翻章節就不顯示，不干擾閱讀。其他章節看得到封面的地方是作品資訊浮層。
+  const readerContent = (
+    <>
+      {currentItemIndex <= 0 && project.coverUrl && (
+        <StorytellerProjectCoverHero coverUrl={project.coverUrl} />
+      )}
+      {readerBody}
+    </>
+  );
+
   return (
     <StorytellerShell
       title={project.name}
@@ -2483,10 +2516,10 @@ export default function StorytellerReader() {
           leaveTo={steamloomPath()}
           panelTitle="限制級創作專案"
         >
-          {readerBody}
+          {readerContent}
         </AgeConfirmationGate>
       ) : (
-        <>{readerBody}</>
+        readerContent
       )}
     </StorytellerShell>
   );
