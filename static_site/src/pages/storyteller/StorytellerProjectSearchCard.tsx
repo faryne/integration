@@ -10,6 +10,7 @@ import {
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
+import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
 import { StorytellerProjectCoverBanner } from "@/pages/storyteller/StorytellerProjectCoverBanner.tsx";
 import type { StorytellerProjectSearchResult } from "@/types/storyteller.ts";
 
@@ -25,6 +26,7 @@ export function StorytellerProjectSearchCard({
   result,
   onTagClick,
 }: StorytellerProjectSearchCardProps) {
+  const coverUrl = useGatedCoverUrl(result.cover_url, result.rating);
   const remaining = result.matched_story_count - result.matches.length;
 
   return (
@@ -41,8 +43,8 @@ export function StorytellerProjectSearchCard({
     >
       <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1 }}>
-        {result.cover_url ? (
-          <StorytellerProjectCoverBanner coverUrl={result.cover_url} />
+        {coverUrl ? (
+          <StorytellerProjectCoverBanner coverUrl={coverUrl} />
         ) : null}
         <Stack
           direction="row"

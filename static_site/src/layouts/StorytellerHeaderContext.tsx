@@ -4,6 +4,8 @@ export interface StorytellerReaderHeaderContext {
   projectName: string;
   title: string;
   summary?: string;
+  // 專案封面（已依年齡確認 cookie 過濾），有的話鋪成固定 header 那一條的背景
+  coverUrl?: string;
   visible: boolean;
 }
 
