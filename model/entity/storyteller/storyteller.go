@@ -23,8 +23,8 @@ const (
 	ProjectRatingRestricted ProjectRating = "restricted"
 )
 
-// ProjectContentType 只是專案預設顯示 layout 的偏好，可隨時修改；不限制專案底下
-// 的故事／冊只能是單一類型，同一個專案未來可以同時有文字故事與圖像作品（詳見
+// ProjectContentType 是故事（話）／冊的內容類型，建立時決定、不可變更。專案層級已沒有這個欄位
+// （2026-09-21 移除）：同一個專案可以同時有文字故事與圖像作品（詳見
 // DevelopDocuments/storyteller/漫畫插圖閱讀器.md）。
 type ProjectContentType string
 
@@ -150,20 +150,19 @@ const (
 )
 
 type Project struct {
-	ID          uint64             `gorm:"column:id;primaryKey" json:"id"`
-	PublicID    string             `gorm:"column:public_id" json:"public_id"`
-	UserID      uint64             `gorm:"column:user_id" json:"user_id,omitempty"`
-	Name        string             `gorm:"column:name" json:"name"`
-	Slug        string             `gorm:"column:slug" json:"slug"`
-	Description string             `gorm:"column:description" json:"description"`
-	Visibility  ProjectVisibility  `gorm:"column:visibility" json:"visibility"`
-	Rating      ProjectRating      `gorm:"column:rating" json:"rating"`
-	ContentType ProjectContentType `gorm:"column:content_type" json:"content_type"`
-	Tags        string             `gorm:"column:tags" json:"-"`
-	ShareToken  string             `gorm:"column:share_token" json:"share_token"`
-	DeletedAt   *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt   time.Time          `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt   time.Time          `gorm:"column:updated_at" json:"updated_at"`
+	ID          uint64            `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string            `gorm:"column:public_id" json:"public_id"`
+	UserID      uint64            `gorm:"column:user_id" json:"user_id,omitempty"`
+	Name        string            `gorm:"column:name" json:"name"`
+	Slug        string            `gorm:"column:slug" json:"slug"`
+	Description string            `gorm:"column:description" json:"description"`
+	Visibility  ProjectVisibility `gorm:"column:visibility" json:"visibility"`
+	Rating      ProjectRating     `gorm:"column:rating" json:"rating"`
+	Tags        string            `gorm:"column:tags" json:"-"`
+	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
+	DeletedAt   *time.Time        `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt   time.Time         `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt   time.Time         `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
@@ -402,7 +401,7 @@ type Story struct {
 	IsVolume bool `gorm:"column:is_volume" json:"is_volume"`
 	// ContentType：text=一般文字故事，LatestContent 是 markdown；image=圖像作品（「話」），
 	// LatestContent 是 JSON（見 StoryImageContent），不能用 wordCount 之類的文字邏輯處理。
-	// 建立時決定，UpdateStory／UpdateVolume 都不可變更——跟 Project.ContentType 是不同層級的欄位，不要混用。
+	// 建立時決定，UpdateStory／UpdateVolume 都不可變更。專案層級已沒有 content_type（2026-09-21 移除）。
 	ContentType     ProjectContentType `gorm:"column:content_type" json:"content_type"`
 	Title           string             `gorm:"column:title" json:"title"`
 	Summary         string             `gorm:"column:summary" json:"summary"`
@@ -723,13 +722,12 @@ type PersonalAccessTokenCreateOutput struct {
 }
 
 type ProjectRequest struct {
-	Name        string             `json:"name"`
-	Slug        string             `json:"slug"`
-	Description string             `json:"description"`
-	Visibility  ProjectVisibility  `json:"visibility"`
-	Rating      ProjectRating      `json:"rating"`
-	ContentType ProjectContentType `json:"content_type"`
-	Tags        []string           `json:"tags"`
+	Name        string            `json:"name"`
+	Slug        string            `json:"slug"`
+	Description string            `json:"description"`
+	Visibility  ProjectVisibility `json:"visibility"`
+	Rating      ProjectRating     `json:"rating"`
+	Tags        []string          `json:"tags"`
 }
 
 type AgentRequest struct {

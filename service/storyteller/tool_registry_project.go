@@ -13,23 +13,21 @@ type storytellerProjectArguments struct {
 }
 
 type storytellerCreateProjectArguments struct {
-	Name        string                              `json:"name"`
-	Description string                              `json:"description"`
-	Visibility  storytellerModel.ProjectVisibility  `json:"visibility"`
-	Rating      storytellerModel.ProjectRating      `json:"rating"`
-	ContentType storytellerModel.ProjectContentType `json:"content_type"`
-	Tags        []string                            `json:"tags"`
+	Name        string                             `json:"name"`
+	Description string                             `json:"description"`
+	Visibility  storytellerModel.ProjectVisibility `json:"visibility"`
+	Rating      storytellerModel.ProjectRating     `json:"rating"`
+	Tags        []string                           `json:"tags"`
 }
 
 type storytellerPatchProjectArguments struct {
-	ProjectPublicID string                               `json:"project_public_id"`
-	Name            *string                              `json:"name"`
-	Slug            *string                              `json:"slug"`
-	Description     *string                              `json:"description"`
-	Visibility      *storytellerModel.ProjectVisibility  `json:"visibility"`
-	Rating          *storytellerModel.ProjectRating      `json:"rating"`
-	ContentType     *storytellerModel.ProjectContentType `json:"content_type"`
-	Tags            *[]string                            `json:"tags"`
+	ProjectPublicID string                              `json:"project_public_id"`
+	Name            *string                             `json:"name"`
+	Slug            *string                             `json:"slug"`
+	Description     *string                             `json:"description"`
+	Visibility      *storytellerModel.ProjectVisibility `json:"visibility"`
+	Rating          *storytellerModel.ProjectRating     `json:"rating"`
+	Tags            *[]string                           `json:"tags"`
 }
 
 var errStorytellerProjectPatchEmpty = errors.New("at least one project field must be provided")
@@ -119,7 +117,6 @@ func storytellerProjectToolSpecs() []ToolSpec {
 				"description":       stringSchema("New project description. Pass an empty string to clear it."),
 				"visibility":        enumStringSchema("New visibility. Omit to preserve it.", "public", "unlisted", "private"),
 				"rating":            enumStringSchema("New content rating. Omit to preserve it.", "general", "guidance", "restricted"),
-				"content_type":      enumStringSchema("New default content type. Omit to preserve it.", "text", "image"),
 				"tags":              stringArraySchema("New tag list. Pass an empty array to clear all tags; omit to preserve them."),
 			}, []string{"project_public_id"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
@@ -131,12 +128,12 @@ func storytellerProjectToolSpecs() []ToolSpec {
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				if args.Name == nil && args.Slug == nil && args.Description == nil && args.Visibility == nil && args.Rating == nil && args.ContentType == nil && args.Tags == nil {
+				if args.Name == nil && args.Slug == nil && args.Description == nil && args.Visibility == nil && args.Rating == nil && args.Tags == nil {
 					return nil, errStorytellerProjectPatchEmpty
 				}
 				project, err := NewService().PatchProject(userID, args.ProjectPublicID, ProjectPatch{
 					Name: args.Name, Slug: args.Slug, Description: args.Description, Visibility: args.Visibility,
-					Rating: args.Rating, ContentType: args.ContentType, Tags: args.Tags,
+					Rating: args.Rating, Tags: args.Tags,
 				})
 				if err != nil {
 					return nil, err
@@ -154,14 +151,13 @@ func storytellerProjectMCPOnlyToolSpecs() []ToolSpec {
 		{
 			Name: "storyteller_create_project",
 			Description: "Create a new storyteller writing project. Only name is required. Visibility defaults to private, " +
-				"rating to general, and content_type to text. The URL slug is generated from the name and returned in the result.",
+				"and rating to general. The URL slug is generated from the name and returned in the result.",
 			InputSchema: objectSchema(map[string]interface{}{
-				"name":         stringSchema("Project name, required."),
-				"description":  stringSchema("Optional project description."),
-				"visibility":   enumStringSchema("public, unlisted, or private. Defaults to private.", "public", "unlisted", "private"),
-				"rating":       enumStringSchema("general, guidance, or restricted. Defaults to general.", "general", "guidance", "restricted"),
-				"content_type": enumStringSchema("text or image. Defaults to text.", "text", "image"),
-				"tags":         stringArraySchema("Optional tags, at most 12 items and 24 characters per tag."),
+				"name":        stringSchema("Project name, required."),
+				"description": stringSchema("Optional project description."),
+				"visibility":  enumStringSchema("public, unlisted, or private. Defaults to private.", "public", "unlisted", "private"),
+				"rating":      enumStringSchema("general, guidance, or restricted. Defaults to general.", "general", "guidance", "restricted"),
+				"tags":        stringArraySchema("Optional tags, at most 12 items and 24 characters per tag."),
 			}, []string{"name"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -174,7 +170,7 @@ func storytellerProjectMCPOnlyToolSpecs() []ToolSpec {
 				}
 				project, err := NewService().CreateProject(userID, storytellerModel.ProjectRequest{
 					Name: args.Name, Description: args.Description, Visibility: args.Visibility,
-					Rating: args.Rating, ContentType: args.ContentType, Tags: args.Tags,
+					Rating: args.Rating, Tags: args.Tags,
 				})
 				if err != nil {
 					return nil, err

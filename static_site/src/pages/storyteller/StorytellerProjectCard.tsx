@@ -1,5 +1,3 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import CollectionsIcon from "@mui/icons-material/Collections";
 import { Box, Chip, Paper, Stack, Typography } from "@mui/material";
 import type { KeyboardEvent, ReactNode } from "react";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
@@ -47,6 +45,8 @@ export function StorytellerProjectCard({
   const imageStoryCount = stories.filter(
     (story) => story.content_type === "image",
   ).length;
+  // 裝飾用：只有話、沒有文字故事的專案改用另一種造型
+  const imageOnly = imageStoryCount > 0 && storiesCount === 0;
   const wordCount = stories.reduce(
     (total, story) => total + story.word_count,
     0,
@@ -121,14 +121,8 @@ export function StorytellerProjectCard({
               left: "calc(50% - 41px)",
               top: 17,
               border: "1px solid",
-              borderColor:
-                project.content_type === "image"
-                  ? "secondary.main"
-                  : "primary.main",
-              transform:
-                project.content_type === "image"
-                  ? "rotate(0deg)"
-                  : "rotate(45deg)",
+              borderColor: imageOnly ? "secondary.main" : "primary.main",
+              transform: imageOnly ? "rotate(0deg)" : "rotate(45deg)",
               boxShadow:
                 "0 0 28px color-mix(in srgb, var(--storyteller-accent-main) 16%, transparent)",
             },
@@ -179,16 +173,6 @@ export function StorytellerProjectCard({
           useFlexGap
           color="text.secondary"
         >
-          <Stack direction="row" spacing={0.5} alignItems="center">
-            {project.content_type === "image" ? (
-              <CollectionsIcon fontSize="small" />
-            ) : (
-              <ArticleIcon fontSize="small" />
-            )}
-            <Typography variant="body2">
-              {project.content_type === "image" ? "圖片／漫畫" : "文字故事"}
-            </Typography>
-          </Stack>
           <Typography variant="body2">{storiesCount} 篇故事</Typography>
           {imageStoryCount > 0 && (
             <Typography variant="body2">{imageStoryCount} 話</Typography>

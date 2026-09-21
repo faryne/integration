@@ -96,7 +96,6 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
           description: project.description,
           visibility,
           rating: project.rating,
-          content_type: project.content_type,
           tags: project.tags ?? [],
         },
       },

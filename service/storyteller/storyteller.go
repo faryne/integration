@@ -224,7 +224,6 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 		Description: strings.TrimSpace(input.Description),
 		Visibility:  input.Visibility,
 		Rating:      input.Rating,
-		ContentType: input.ContentType,
 		Tags:        encodeProjectTags(input.Tags),
 	}
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
@@ -261,7 +260,6 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	project.Description = strings.TrimSpace(input.Description)
 	project.Visibility = input.Visibility
 	project.Rating = input.Rating
-	project.ContentType = input.ContentType
 	project.Tags = encodeProjectTags(input.Tags)
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
 		if previousVisibility != storytellerModel.ProjectVisibilityUnlisted {
@@ -3186,9 +3184,6 @@ func normalizeProjectRequest(input storytellerModel.ProjectRequest) storytellerM
 	if input.Rating == "" {
 		input.Rating = storytellerModel.ProjectRatingGeneral
 	}
-	if input.ContentType == "" {
-		input.ContentType = storytellerModel.ProjectContentTypeText
-	}
 	input.Tags = normalizeProjectTags(input.Tags)
 	return input
 }
@@ -3206,11 +3201,6 @@ func validateProject(input storytellerModel.ProjectRequest) error {
 	case storytellerModel.ProjectRatingGeneral, storytellerModel.ProjectRatingGuidance, storytellerModel.ProjectRatingRestricted:
 	default:
 		return fmt.Errorf("invalid rating")
-	}
-	switch input.ContentType {
-	case storytellerModel.ProjectContentTypeText, storytellerModel.ProjectContentTypeImage:
-	default:
-		return fmt.Errorf("invalid content_type")
 	}
 	if len(input.Tags) > 12 {
 		return fmt.Errorf("tags must contain 12 items or less")
