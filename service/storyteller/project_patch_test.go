@@ -23,6 +23,7 @@ func TestProjectRequestWithPatchPreservesOmittedFields(t *testing.T) {
 	require.Equal(t, storytellerModel.ProjectVisibilityPublic, input.Visibility)
 	require.Equal(t, storytellerModel.ProjectRatingGuidance, input.Rating)
 	require.Equal(t, []string{"奇幻", "機甲"}, input.Tags)
+	require.Nil(t, input.CoverAssetPublicID)
 }
 
 func TestProjectRequestWithPatchCanClearTags(t *testing.T) {

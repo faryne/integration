@@ -7,6 +7,7 @@ import {
   storytellerProjectRatingLabel,
 } from "@/data/storyteller.ts";
 import { steamPanelTopBarSx } from "@/data/storytellerTheme.ts";
+import { StorytellerProjectCoverBanner } from "@/pages/storyteller/StorytellerProjectCoverBanner.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerProject } from "@/types/storyteller.ts";
@@ -91,42 +92,9 @@ export function StorytellerProjectCard({
     >
       <SteamRegistrationMarks inset={7} />
       <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-        <Box
-          aria-hidden
-          sx={{
-            position: "relative",
-            height: 116,
-            flexShrink: 0,
-            mx: -2,
-            mt: -2,
-            overflow: "hidden",
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            background:
-              "radial-gradient(circle at 65% 40%, color-mix(in srgb, var(--storyteller-accent-main) 18%, transparent), transparent 36%), var(--storyteller-surface-overlay)",
-            "&::before": {
-              content: '""',
-              position: "absolute",
-              inset: 0,
-              opacity: 0.45,
-              backgroundImage:
-                "linear-gradient(var(--storyteller-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--storyteller-border-subtle) 1px, transparent 1px)",
-              backgroundSize: "26px 26px",
-            },
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              width: 82,
-              height: 82,
-              left: "calc(50% - 41px)",
-              top: 17,
-              border: "1px solid",
-              borderColor: imageOnly ? "secondary.main" : "primary.main",
-              transform: imageOnly ? "rotate(0deg)" : "rotate(45deg)",
-              boxShadow:
-                "0 0 28px color-mix(in srgb, var(--storyteller-accent-main) 16%, transparent)",
-            },
-          }}
+        <StorytellerProjectCoverBanner
+          coverUrl={project.cover_url}
+          imageOnly={imageOnly}
         />
         <Stack
           direction="row"

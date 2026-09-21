@@ -12,12 +12,13 @@ var errProjectPatchEmptySlug = errors.New("slug must not be empty")
 // ProjectPatch 以 pointer 區分「未提供」與「明確清空」；尤其 Tags 的空 slice 代表
 // 使用者要清空標籤，nil 才是保留原值。
 type ProjectPatch struct {
-	Name        *string
-	Slug        *string
-	Description *string
-	Visibility  *storytellerModel.ProjectVisibility
-	Rating      *storytellerModel.ProjectRating
-	Tags        *[]string
+	Name               *string
+	Slug               *string
+	Description        *string
+	Visibility         *storytellerModel.ProjectVisibility
+	Rating             *storytellerModel.ProjectRating
+	Tags               *[]string
+	CoverAssetPublicID *string
 }
 
 // PatchProject 將 partial input 合併到既有 ProjectRequest，再走 UpdateProject 的同一套
@@ -31,13 +32,21 @@ func (s *Service) PatchProject(userID uint64, publicID string, patch ProjectPatc
 	if err != nil {
 		return nil, err
 	}
+	// 沒帶封面欄位時把現有封面 public_id 帶回去，避免 patch 其他欄位把封面清掉。
+	if patch.CoverAssetPublicID == nil {
+		coverPublicID, err := s.existingCoverAssetPublicID(*project)
+		if err != nil {
+			return nil, err
+		}
+		input.CoverAssetPublicID = coverPublicID
+	}
 	return s.UpdateProject(userID, publicID, input)
 }
 
 func projectRequestWithPatch(project storytellerModel.Project, patch ProjectPatch) (storytellerModel.ProjectRequest, error) {
 	input := storytellerModel.ProjectRequest{
 		Name: project.Name, Slug: project.Slug, Description: project.Description, Visibility: project.Visibility,
-		Rating: project.Rating, Tags: decodeProjectTags(project.Tags),
+		Rating: project.Rating, Tags: decodeProjectTags(project.Tags), CoverAssetPublicID: patch.CoverAssetPublicID,
 	}
 	if patch.Name != nil {
 		input.Name = *patch.Name

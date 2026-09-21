@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	assetReferenceTargetStory      = "story"
-	assetReferenceTargetLore       = "lore"
-	assetReferenceTargetImageStory = "image_story"
+	assetReferenceTargetStory        = "story"
+	assetReferenceTargetLore         = "lore"
+	assetReferenceTargetImageStory   = "image_story"
+	assetReferenceTargetProjectCover = "project_cover"
 )
 
 var assetURIRegexp = regexp.MustCompile(`steamloom-asset://([A-Za-z0-9._~-]+)`)

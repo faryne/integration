@@ -34,6 +34,7 @@ import {
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { StorytellerProjectCoverEditor } from "@/pages/storyteller/StorytellerProjectCoverEditor.tsx";
 import {
   StorytellerLoading,
   StorytellerShell,
@@ -118,6 +119,12 @@ export default function StorytellerNewProject({
   const [editSuccessTarget, setEditSuccessTarget] = useState<string | null>(
     null,
   );
+  const [coverAssetPublicId, setCoverAssetPublicId] = useState("");
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
+  const [coverSnack, setCoverSnack] = useState<{
+    message: string;
+    severity: "success" | "error";
+  }>({ message: "", severity: "success" });
 
   useEffect(() => {
     if (editingProject) {
@@ -129,6 +136,8 @@ export default function StorytellerNewProject({
         rating: editingProject.rating,
         tags: editingProject.tags ?? [],
       });
+      setCoverAssetPublicId(editingProject.cover_asset_public_id ?? "");
+      setCoverPreviewUrl(editingProject.cover_url ?? "");
     }
   }, [editingProject]);
 
@@ -241,13 +250,16 @@ export default function StorytellerNewProject({
 
   function performSave() {
     const pendingTag = tagInputValue.trim();
-    const payload = {
+    const payload: StorytellerProjectRequest = {
       ...input,
       tags: normalizeTags(
         pendingTag ? [...input.tags, pendingTag] : input.tags,
       ),
       slug: isEditing ? input.slug : projectNameToSlug(input.name),
     };
+    if (isEditing) {
+      payload.cover_asset_public_id = coverAssetPublicId;
+    }
     saveProject.mutate(
       { publicId: editingProject?.public_id, input: payload },
       {
@@ -531,6 +543,28 @@ export default function StorytellerNewProject({
                 <MenuItem value="restricted">限制級</MenuItem>
               </TextField>
             </Grid>
+            {isEditing && editingProject ? (
+              <Grid size={12}>
+                <StorytellerProjectCoverEditor
+                  projectPublicId={editingProject.public_id}
+                  coverAssetPublicId={coverAssetPublicId}
+                  coverUrl={coverPreviewUrl}
+                  onChange={(publicId, previewUrl) => {
+                    setCoverAssetPublicId(publicId);
+                    setCoverPreviewUrl(previewUrl);
+                  }}
+                  onNotify={(message, severity) =>
+                    setCoverSnack({ message, severity })
+                  }
+                />
+              </Grid>
+            ) : (
+              <Grid size={12}>
+                <Typography variant="body2" color="text.secondary">
+                  建立後可在編輯專案設定封面。
+                </Typography>
+              </Grid>
+            )}
             <Grid size={12}>
               <Autocomplete
                 multiple
@@ -603,6 +637,12 @@ export default function StorytellerNewProject({
           </Stack>
         </Stack>
       </Paper>
+      <CustomSnackbar
+        open={Boolean(coverSnack.message)}
+        message={coverSnack.message}
+        severity={coverSnack.severity}
+        onClose={() => setCoverSnack((prev) => ({ ...prev, message: "" }))}
+      />
       <CustomSnackbar
         open={Boolean(editSuccessTarget)}
         message="專案設定已更新。"

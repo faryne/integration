@@ -232,6 +232,7 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 	if err := s.repo.CreateProject(project); err != nil {
 		return nil, err
 	}
+	// 新專案尚無資產，忽略 CoverAssetPublicID。
 	return outputProject(*project), nil
 }
 
@@ -268,8 +269,16 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	} else {
 		project.ShareToken = ""
 	}
+	if err := s.resolveProjectCover(project, input.CoverAssetPublicID); err != nil {
+		return nil, err
+	}
 	if err := s.repo.UpdateProject(project); err != nil {
 		return nil, err
+	}
+	if input.CoverAssetPublicID != nil {
+		if err := s.syncProjectCoverReferences(project); err != nil {
+			return nil, err
+		}
 	}
 	s.resyncProjectSearchIndex(project)
 	return s.projectOutput(project, true)
@@ -281,6 +290,9 @@ func (s *Service) DeleteProject(userID uint64, publicID string) error {
 		return err
 	}
 	if err := s.repo.DeleteProject(project); err != nil {
+		return err
+	}
+	if err := s.repo.ReplaceAssetReferences(assetReferenceTargetProjectCover, project.ID, nil); err != nil {
 		return err
 	}
 	s.removeProjectSearchIndex(project.PublicID)
@@ -2869,6 +2881,9 @@ func (s *Service) finalizeProjectOutputs(outputs []*storytellerModel.ProjectOutp
 
 func (s *Service) finalizeProjectOutputsWithFollowers(outputs []*storytellerModel.ProjectOutput, includeProfileIDs, withFollowers bool) error {
 	if err := s.attachProjectAuthors(outputs, includeProfileIDs, withFollowers); err != nil {
+		return err
+	}
+	if err := s.attachProjectCovers(outputs); err != nil {
 		return err
 	}
 	for _, output := range outputs {
