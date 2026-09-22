@@ -154,7 +154,7 @@ func TestBuildMetaStorytellerPublicProjectRoute(t *testing.T) {
 		fetchStorytellerPublicProjectMeta = originalFetch
 	}()
 
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/story/abc123-my-story/chapter-1"})
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/work/abc123-my-story/chapter-1"})
 
 	if meta.Title != "河燈之城 | ha2.tw / faryne.dev" {
 		t.Fatalf("unexpected title: %s", meta.Title)
@@ -185,7 +185,7 @@ func TestBuildMetaStorytellerSharedProjectRoute(t *testing.T) {
 		fetchStorytellerSharedProjectMeta = originalFetch
 	}()
 
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/story/share/share-token/chapter-1"})
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/work/share/share-token/chapter-1"})
 
 	if meta.Title != "親友限定故事 | ha2.tw / faryne.dev" {
 		t.Fatalf("unexpected title: %s", meta.Title)
@@ -217,17 +217,17 @@ func TestBuildMetaSteamLoomPublicStoryRouteIsSelfCanonical(t *testing.T) {
 	}()
 
 	meta := BuildMeta(modelSNS.RenderRequest{
-		Path: "storyteller/story/abc123-my-story/chapter-1",
+		Path: "storyteller/work/abc123-my-story/chapter-1",
 		Host: "steamloom.works",
 	})
 
 	if meta.Title != "河燈之城 | SteamLoom" {
 		t.Fatalf("unexpected title: %s", meta.Title)
 	}
-	if meta.Canonical != "https://steamloom.works/story/abc123-my-story/chapter-1" {
+	if meta.Canonical != "https://steamloom.works/work/abc123-my-story/chapter-1" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
-	if meta.OpenGraphURL != "https://steamloom.works/sns/story/abc123-my-story/chapter-1" {
+	if meta.OpenGraphURL != "https://steamloom.works/sns/work/abc123-my-story/chapter-1" {
 		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
 	}
 	if meta.Robots != "index, follow" {
@@ -251,14 +251,14 @@ func TestBuildMetaSteamLoomSharedStoryRouteIsSelfCanonical(t *testing.T) {
 	}()
 
 	meta := BuildMeta(modelSNS.RenderRequest{
-		Path: "storyteller/story/share/share-token/chapter-1",
+		Path: "storyteller/work/share/share-token/chapter-1",
 		Host: "www.steamloom.works",
 	})
 
 	if meta.Title != "親友限定故事 | SteamLoom" {
 		t.Fatalf("unexpected title: %s", meta.Title)
 	}
-	if meta.Canonical != "https://steamloom.works/story/share/share-token/chapter-1" {
+	if meta.Canonical != "https://steamloom.works/work/share/share-token/chapter-1" {
 		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 	if meta.Robots != "noindex, nofollow" {

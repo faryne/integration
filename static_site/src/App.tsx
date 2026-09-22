@@ -264,13 +264,13 @@ function LegacyStorytellerRedirect({
 }
 
 // 舊的 story/* 萬用路由涵蓋兩種形狀：story/{projectPath}（裸 path）跟
-// story/{projectPath}/{storyId}，只能靠實際路徑片段數量分辨，沒辦法用具名參數表示。
+// story/{projectPath}/{itemId}，只能靠實際路徑片段數量分辨，沒辦法用具名參數表示。
 function LegacyStorytellerCatchAllRedirect() {
   const params = useParams();
   const parts = (params["*"] ?? "").split("/").filter(Boolean);
-  const [projectPath, storyId] = parts;
-  const target = storyId
-    ? `work/${projectPath}/story/${storyId}`
+  const [projectPath, itemId] = parts;
+  const target = itemId
+    ? `work/${projectPath}/${itemId}`
     : `work/${projectPath}/stories`;
   return <Navigate to={steamloomPath(target)} replace />;
 }
@@ -414,16 +414,43 @@ const storytellerRoutes = (
       element={<Navigate to={steamloomPath("my/profile")} replace />}
     />
     <Route path={"work/:projectPath/stories"} element={<StorytellerReader />} />
+    <Route path={"work/:projectPath/:itemId"} element={<StorytellerReader />} />
     <Route
-      path={"work/:projectPath/story/:storyId"}
-      element={<StorytellerReader />}
-    />
-    <Route
-      path={"work/:projectPath/story/:storyId/versions/:versionId"}
+      path={"work/:projectPath/:itemId/versions/:versionId"}
       element={<StorytellerStoryVersionDiff />}
     />
-    {/* 故事與話已經合併成同一份序列，不再有獨立的 /images 家族入口，
-        舊連結導回 /stories（統一序列的第一篇會是原本 images 排最前面的話）。 */}
+    <Route path={"work/share/:shareToken"} element={<StorytellerReader />} />
+    <Route
+      path={"work/share/:shareToken/:itemId"}
+      element={<StorytellerReader />}
+    />
+    {/* 閱讀網址不再區分 story/image；舊網址保留 replace redirect，避免書籤與外部連結失效。 */}
+    <Route
+      path={"work/:projectPath/story/:storyId/versions/:versionId"}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) =>
+            `work/${p.projectPath}/${p.storyId}/versions/${p.versionId}`
+          }
+        />
+      }
+    />
+    <Route
+      path={"work/:projectPath/story/:storyId"}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) => `work/${p.projectPath}/${p.storyId}`}
+        />
+      }
+    />
+    <Route
+      path={"work/:projectPath/image/:episodeId"}
+      element={
+        <LegacyStorytellerRedirect
+          to={(p) => `work/${p.projectPath}/${p.episodeId}`}
+        />
+      }
+    />
     <Route
       path={"work/:projectPath/images"}
       element={
@@ -431,15 +458,6 @@ const storytellerRoutes = (
           to={(p) => `work/${p.projectPath}/stories`}
         />
       }
-    />
-    <Route
-      path={"work/:projectPath/image/:episodeId"}
-      element={<StorytellerReader />}
-    />
-    <Route path={"work/share/:shareToken"} element={<StorytellerReader />} />
-    <Route
-      path={"work/share/:shareToken/:storyId"}
-      element={<StorytellerReader />}
     />
     {/* 下面全部是舊 story/ 前綴網址的導向，不留 404，怕有人存了舊連結或分享連結還在流通。 */}
     <Route
@@ -461,7 +479,7 @@ const storytellerRoutes = (
       element={
         <LegacyStorytellerRedirect
           to={(p) =>
-            `work/${p.projectPath}/story/${p.storyId}/versions/${p.versionId}`
+            `work/${p.projectPath}/${p.storyId}/versions/${p.versionId}`
           }
         />
       }
@@ -470,7 +488,7 @@ const storytellerRoutes = (
       path={"story/:projectPath/image/:episodeId"}
       element={
         <LegacyStorytellerRedirect
-          to={(p) => `work/${p.projectPath}/image/${p.episodeId}`}
+          to={(p) => `work/${p.projectPath}/${p.episodeId}`}
         />
       }
     />

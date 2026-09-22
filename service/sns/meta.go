@@ -32,7 +32,7 @@ const (
 	defaultImagePath     = "/faryne-icon-1024.jpg"
 	nekomaidAPIBase      = "https://faryne.dev/api/nekomaid"
 	// storytellerPathPrefix 是 faryne.dev 上巢狀模式的路徑前綴；steamloom.works 是獨立站，
-	// 同樣的 story 頁面在該網域是直接掛在根路徑，所以組 canonical/OG url 時要把這段去掉。
+	// 同樣的 work 頁面在該網域是直接掛在根路徑，所以組 canonical/OG url 時要把這段去掉。
 	storytellerPathPrefix = "/storyteller"
 )
 
@@ -79,13 +79,14 @@ var fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromSer
 
 var pathCollection = []pathMeta{
 	{
-		Pattern:     regexp.MustCompile(`^/storyteller/story/share/([^/]+)(?:/[^/]+)?$`),
+		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/share/([^/]+)(?:/[^/]+)?$`),
 		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerSharedProjectMeta,
 	},
 	{
-		Pattern:     regexp.MustCompile(`^/storyteller/story/([^/]+)(?:/[^/]+)?$`),
+		// work 是現行網址；story 與帶 story/image family 的形狀只保留舊外部連結的 meta 相容性。
+		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:story|image)/[^/]+(?:/versions/[^/]+)?|/[^/]+(?:/versions/[^/]+)?)?$`),
 		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerPublicProjectMeta,

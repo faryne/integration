@@ -19,6 +19,8 @@ type ProjectPatch struct {
 	Rating             *storytellerModel.ProjectRating
 	Tags               *[]string
 	CoverAssetPublicID *string
+	CoverLayout        *storytellerModel.ProjectCoverLayout
+	CoverFocalPoint    *storytellerModel.ProjectCoverFocalPoint
 }
 
 // PatchProject 將 partial input 合併到既有 ProjectRequest，再走 UpdateProject 的同一套
@@ -47,6 +49,10 @@ func projectRequestWithPatch(project storytellerModel.Project, patch ProjectPatc
 	input := storytellerModel.ProjectRequest{
 		Name: project.Name, Slug: project.Slug, Description: project.Description, Visibility: project.Visibility,
 		Rating: project.Rating, Tags: decodeProjectTags(project.Tags), CoverAssetPublicID: patch.CoverAssetPublicID,
+		// CoverLayout／CoverFocalPoint 沿用 patch 帶來的指標值：nil 就是「不變更」，
+		// UpdateProject 本身會處理，不用像 CoverAssetPublicID 那樣另外回填現值。
+		CoverLayout:     patch.CoverLayout,
+		CoverFocalPoint: patch.CoverFocalPoint,
 	}
 	if patch.Name != nil {
 		input.Name = *patch.Name

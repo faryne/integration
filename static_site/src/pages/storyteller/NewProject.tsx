@@ -12,6 +12,8 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -112,6 +114,8 @@ export default function StorytellerNewProject({
     visibility: "private",
     rating: "general",
     tags: [],
+    // 建立當下還沒有封面可預覽，不帶 cover_layout／cover_focal_point；編輯既有專案時
+    // 由下面的 useEffect 帶入目前設定。
   });
   const [tagInputValue, setTagInputValue] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
@@ -125,6 +129,7 @@ export default function StorytellerNewProject({
     message: string;
     severity: "success" | "error";
   }>({ message: "", severity: "success" });
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     if (editingProject) {
@@ -135,6 +140,8 @@ export default function StorytellerNewProject({
         visibility: editingProject.visibility,
         rating: editingProject.rating,
         tags: editingProject.tags ?? [],
+        cover_layout: editingProject.cover_layout,
+        cover_focal_point: editingProject.cover_focal_point,
       });
       setCoverAssetPublicId(editingProject.cover_asset_public_id ?? "");
       setCoverPreviewUrl(editingProject.cover_url ?? "");
@@ -441,7 +448,18 @@ export default function StorytellerNewProject({
               )}
             </Alert>
           )}
-          <Grid container spacing={2}>
+          <Tabs
+            value={activeTab}
+            onChange={(_, value: number) => setActiveTab(value)}
+          >
+            <Tab label="主要設定" />
+            <Tab label="封面圖設定" />
+          </Tabs>
+          <Grid
+            container
+            spacing={2}
+            sx={{ display: activeTab === 0 ? "flex" : "none" }}
+          >
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 required
@@ -543,28 +561,6 @@ export default function StorytellerNewProject({
                 <MenuItem value="restricted">限制級</MenuItem>
               </TextField>
             </Grid>
-            {isEditing && editingProject ? (
-              <Grid size={12}>
-                <StorytellerProjectCoverEditor
-                  projectPublicId={editingProject.public_id}
-                  coverAssetPublicId={coverAssetPublicId}
-                  coverUrl={coverPreviewUrl}
-                  onChange={(publicId, previewUrl) => {
-                    setCoverAssetPublicId(publicId);
-                    setCoverPreviewUrl(previewUrl);
-                  }}
-                  onNotify={(message, severity) =>
-                    setCoverSnack({ message, severity })
-                  }
-                />
-              </Grid>
-            ) : (
-              <Grid size={12}>
-                <Typography variant="body2" color="text.secondary">
-                  建立後可在編輯專案設定封面。
-                </Typography>
-              </Grid>
-            )}
             <Grid size={12}>
               <Autocomplete
                 multiple
@@ -615,6 +611,50 @@ export default function StorytellerNewProject({
                 )}
               />
             </Grid>
+          </Grid>
+          <Grid
+            container
+            spacing={2}
+            sx={{ display: activeTab === 1 ? "flex" : "none" }}
+          >
+            {isEditing && editingProject ? (
+              <Grid size={12}>
+                <StorytellerProjectCoverEditor
+                  projectPublicId={editingProject.public_id}
+                  coverAssetPublicId={coverAssetPublicId}
+                  coverUrl={coverPreviewUrl}
+                  coverLayout={input.cover_layout ?? "split"}
+                  coverFocalPoint={
+                    input.cover_focal_point ?? { x: 0.5, y: 0.32 }
+                  }
+                  onChange={(publicId, previewUrl) => {
+                    setCoverAssetPublicId(publicId);
+                    setCoverPreviewUrl(previewUrl);
+                  }}
+                  onLayoutChange={(coverLayout) =>
+                    setInput((value) => ({
+                      ...value,
+                      cover_layout: coverLayout,
+                    }))
+                  }
+                  onFocalPointChange={(coverFocalPoint) =>
+                    setInput((value) => ({
+                      ...value,
+                      cover_focal_point: coverFocalPoint,
+                    }))
+                  }
+                  onNotify={(message, severity) =>
+                    setCoverSnack({ message, severity })
+                  }
+                />
+              </Grid>
+            ) : (
+              <Grid size={12}>
+                <Typography variant="body2" color="text.secondary">
+                  建立後可在編輯專案設定封面。
+                </Typography>
+              </Grid>
+            )}
           </Grid>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
             <Button href={steamloomPath("my/projects")} variant="text">

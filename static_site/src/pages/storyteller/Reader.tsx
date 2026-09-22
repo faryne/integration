@@ -12,7 +12,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
-  alpha,
   Box,
   Button,
   ButtonBase,
@@ -55,7 +54,11 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
+import {
+  storytellerCoverObjectPosition,
+  useGatedCoverUrl,
+} from "@/helpers/storytellerCover.ts";
+import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
@@ -143,6 +146,8 @@ interface ReaderProject {
   wordCount: number;
   // 封面簽名 URL（有時效，只放在記憶體，不落地）。
   coverUrl?: string;
+  coverLayout: "split" | "immersive";
+  coverFocalPoint: { x: number; y: number };
   items: ReaderItem[];
   volumes: ReaderVolume[];
 }
@@ -178,10 +183,9 @@ function extractStoryHeadings(content: string): StoryHeading[] {
     .filter((heading) => heading.text.length > 0);
 }
 
-// itemHref 依內容類型組出對應的路由片段——文字故事跟話的 URL 區段不同
-// （/story/:id vs /image/:id），但在同一份索引／導覽序列裡混著出現。
+// 閱讀網址不再暴露內容類型；文字故事與圖像話都直接使用 public id。
 function itemHref(basePath: string, item: ReaderItem) {
-  return `${basePath}/${item.contentType === "image" ? "image" : "story"}/${item.id}`;
+  return `${basePath}/${item.id}`;
 }
 
 function ContentIndex({
@@ -856,17 +860,14 @@ function ContentMetaHeader({
   summary,
   authorPenNames,
   updatedAt,
-  coverUrl,
 }: {
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
   summary?: string;
   authorPenNames?: string[];
   updatedAt: string;
-  // 專案封面：第一篇才傳。鋪在標題區塊底下當背景，上面蓋一層同主題色的遮罩保持文字可讀。
-  coverUrl?: string;
 }) {
-  const header = (
+  return (
     <Box>
       <Typography
         ref={titleRef}
@@ -912,27 +913,6 @@ function ContentMetaHeader({
           更新於 {formatStorytellerDate(updatedAt)}
         </Typography>
       </Stack>
-    </Box>
-  );
-  if (!coverUrl) {
-    return header;
-  }
-  return (
-    <Box
-      sx={(theme) => ({
-        display: "flex",
-        alignItems: "flex-end",
-        minHeight: { xs: 170, sm: 230 },
-        px: { xs: 2, sm: 3 },
-        py: { xs: 2, sm: 3 },
-        border: "1px solid",
-        borderColor: "divider",
-        backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.6)} 100%), url("${coverUrl}")`,
-        backgroundSize: "cover",
-        backgroundPosition: "center 32%",
-      })}
-    >
-      <Box sx={{ width: 1 }}>{header}</Box>
     </Box>
   );
 }
@@ -1102,8 +1082,7 @@ export default function StorytellerReader() {
   const params = useParams();
   const location = useLocation();
   const { shareToken } = params;
-  const routeEpisodeId = params.episodeId;
-  const routeStoryId = params.storyId;
+  const routeItemId = params.itemId;
   const routeProjectPath = params.projectPath;
   const consumedImageHashRef = useRef<string | null>(null);
   const [indexOpen, setIndexOpen] = useState(false);
@@ -1210,6 +1189,8 @@ export default function StorytellerReader() {
         rating: apiProject.rating,
         tags: apiProject.tags ?? [],
         coverUrl: gatedCoverUrl,
+        coverLayout: apiProject.cover_layout ?? "split",
+        coverFocalPoint: apiProject.cover_focal_point ?? { x: 0.5, y: 0.32 },
         wordCount: (apiProject.stories ?? []).reduce(
           (total, story) => total + story.word_count,
           0,
@@ -1238,13 +1219,12 @@ export default function StorytellerReader() {
     : undefined;
   const items = project?.items ?? [];
   const volumes = project?.volumes ?? [];
-  // 故事與話已經合併成同一份依序排列的序列，不再分兩個家族——目前在看哪一篇，
-  // 直接看網址帶的 storyId 或 episodeId（兩種 URL 區段都還在，只是不影響排序跟
-  // 上一篇/下一篇導覽了），都沒有就預設第一篇。
-  const currentItemId = routeStoryId ?? routeEpisodeId;
+  // 故事與話已經合併成同一份依序排列的序列，網址也統一只帶 itemId；沒有 itemId
+  // 就是「作品首頁」，顯示封面、簡介與章節目錄，點目錄或「開始閱讀」才進入 Reader。
+  const currentItemId = routeItemId;
   const currentItem = currentItemId
     ? items.find((item) => item.id === currentItemId)
-    : items[0];
+    : undefined;
   const currentItemIndex = currentItem
     ? items.findIndex((item) => item.id === currentItem.id)
     : -1;
@@ -1266,6 +1246,8 @@ export default function StorytellerReader() {
             title: currentItem.title,
             summary: currentItem.summary || undefined,
             coverUrl: gatedCoverUrl,
+            coverLayout: project.coverLayout,
+            coverFocalPoint: project.coverFocalPoint,
             visible: readerContextVisible,
           }
         : undefined,
@@ -1275,6 +1257,11 @@ export default function StorytellerReader() {
     currentItem?.summary,
     currentItem?.title,
     project?.name,
+    project?.coverLayout,
+    // 依賴拆成 x/y 兩個原始值，而不是 project.coverFocalPoint 這個物件——project 每次
+    // render 都是重新組出來的新物件參考，直接放物件當依賴會讓這個 effect 每次都重跑。
+    project?.coverFocalPoint.x,
+    project?.coverFocalPoint.y,
     gatedCoverUrl,
     readerContextVisible,
     setHeaderReader,
@@ -1598,18 +1585,13 @@ export default function StorytellerReader() {
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
   const shouldUseStorySeo = Boolean(project && !isPrivateOwnerRoute);
 
-  // 分享連結沒有明確的 /stories 區段（維持原本簡單的 work/share/:token[/:storyId]
-  // 形狀），只有一般閱讀連結才會用到 stories/story/image 這幾個明確區段。故事跟話
-  // 已經合併成同一份序列，不再有 /images 這個獨立家族入口。
-  const canonicalPathSuffix = routeEpisodeId
-    ? `/image/${routeEpisodeId}`
-    : routeStoryId
-      ? isShareRoute
-        ? `/${routeStoryId}`
-        : `/story/${routeStoryId}`
-      : isShareRoute
-        ? ""
-        : "/stories";
+  // 分享首頁維持 work/share/:token；一般作品首頁使用 /stories。進入作品後兩邊都只接
+  // /:itemId，不再從網址區分文字或圖像內容。
+  const canonicalPathSuffix = routeItemId
+    ? `/${routeItemId}`
+    : isShareRoute
+      ? ""
+      : "/stories";
   useTitle(
     project
       ? `${project.name} - ${STORYTELLER_APP_NAME}`
@@ -1734,7 +1716,7 @@ export default function StorytellerReader() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentEpisode, totalEpisodePages]);
 
-  // /image/:episodeId#[頁面 id] 深連結：頁面清單載入完成後，找到 hash 對應的頁面
+  // /:itemId#[頁面 id] 圖像深連結：頁面清單載入完成後，找到 hash 對應的頁面
   // 就跳過去；用 consumedImageHashRef 記住「這個 episode + hash 的組合已經處理過」，
   // 避免使用者自己用左右鍵換頁後，同一個 hash 又把畫面搶回去。
   useEffect(() => {
@@ -1776,9 +1758,15 @@ export default function StorytellerReader() {
     return <ErrorPage code={404} />;
   }
 
+  // 有帶 itemId 卻找不到內容時不能退回作品首頁，否則失效連結會被偽裝成正常頁面。
+  if (currentItemId && !currentItem) {
+    return <ErrorPage code={404} />;
+  }
+
   const basePath = isShareRoute
     ? steamloomPath(`work/share/${shareToken}`)
     : project.path;
+  const projectLandingPath = isShareRoute ? basePath : `${basePath}/stories`;
   function goToImagePage(index: number) {
     setPageIndex(Math.min(Math.max(index, 0), totalEpisodePages - 1));
   }
@@ -1794,7 +1782,7 @@ export default function StorytellerReader() {
         return;
       }
       navigate(
-        `${basePath}/image/${bookmark.story_public_id}#${encodeURIComponent(bookmark.line_id)}`,
+        `${basePath}/${bookmark.story_public_id}#${encodeURIComponent(bookmark.line_id)}`,
       );
       return;
     }
@@ -1808,7 +1796,7 @@ export default function StorytellerReader() {
       block: "center",
     });
     if (bookmark.story_public_id !== currentStory?.id) {
-      navigate(`${basePath}/story/${bookmark.story_public_id}`);
+      navigate(`${basePath}/${bookmark.story_public_id}`);
     }
   };
   // 標題有自己的錨點 id（見 storyHeadingAnchorId），跟書籤不同，不用透過 pendingScroll
@@ -1998,7 +1986,10 @@ export default function StorytellerReader() {
             width: 1,
             aspectRatio: "2 / 1",
             objectFit: "cover",
-            objectPosition: "center",
+            objectPosition: storytellerCoverObjectPosition(
+              project.coverLayout,
+              project.coverFocalPoint,
+            ),
             display: "block",
             border: "1px solid",
             borderColor: "divider",
@@ -2053,7 +2044,6 @@ export default function StorytellerReader() {
                 : project.authorPenNames
             }
             updatedAt={currentEpisode.updatedAt}
-            coverUrl={currentItemIndex <= 0 ? project.coverUrl : undefined}
           />
           <Divider />
           <Stack spacing={1.5}>
@@ -2314,7 +2304,6 @@ export default function StorytellerReader() {
                 : project.authorPenNames
             }
             updatedAt={currentStory.updatedAt}
-            coverUrl={currentItemIndex <= 0 ? project.coverUrl : undefined}
           />
           {isHistoricalView && (
             <Box
@@ -2400,66 +2389,103 @@ export default function StorytellerReader() {
     </Paper>
   );
 
+  // 作品首頁：標題區塊自己帶標題，所以 Shell 的標題一律隱藏。
+  const workLanding = (
+    <ReaderWorkLanding
+      name={project.name}
+      description={project.description}
+      coverUrl={project.coverUrl}
+      coverLayout={project.coverLayout}
+      coverFocalPoint={project.coverFocalPoint}
+      meta={
+        <>
+          {projectPrimaryMeta}
+          {projectSecondaryMeta}
+        </>
+      }
+      items={items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        summary: item.summary,
+        contentType: item.contentType,
+        parentId: item.parentId,
+        updatedAt: item.updatedAt,
+        href: itemHref(basePath, item),
+      }))}
+      volumes={volumes}
+    />
+  );
+  const pageBody = currentItem ? readerBody : workLanding;
+
   return (
     <StorytellerShell
       title={project.name}
-      hideHeading={Boolean(currentItem)}
+      hideHeading
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
-        { label: project.name },
+        ...(currentItem
+          ? [
+              { label: project.name, to: projectLandingPath },
+              { label: currentItem.title },
+            ]
+          : [{ label: project.name }]),
       ]}
     >
-      <GlobalStyles
-        styles={{
-          "body footer": {
-            paddingBottom:
-              "calc(88px + env(safe-area-inset-bottom)) !important",
-          },
-        }}
-      />
-      <StorytellerReaderToolbar
-        projectName={project.name}
-        currentTitle={currentItem?.title}
-        progress={readingProgress}
-        navigationOpen={indexOpen}
-        onOpenNavigation={() => setIndexOpen(true)}
-        projectDetails={projectDetails}
-        bookmarkEditing={bookmarkEditing}
-        bookmarkEditingAvailable={Boolean(
-          currentStory && bookmarkMode !== "none",
-        )}
-        onToggleBookmarkEditing={() =>
-          setBookmarkEditing((editing) => !editing)
-        }
-        renderHistory={
-          currentStory
-            ? (onClose) => (
-                <StorytellerReaderHistory
-                  versions={versionsQuery.data ?? []}
-                  loading={versionsQuery.isLoading}
-                  basePath={basePath}
-                  storyId={currentStory.id}
-                  onSelect={onClose}
-                />
-              )
-            : undefined
-        }
-        previousChapter={
-          previousItem
-            ? {
-                title: previousItem.title,
-                href: itemHref(basePath, previousItem),
-              }
-            : undefined
-        }
-        nextChapter={
-          nextItem
-            ? { title: nextItem.title, href: itemHref(basePath, nextItem) }
-            : undefined
-        }
-        preferences={preferences}
-        onChangePreferences={updatePreferences}
-      />
+      {currentItem && (
+        <GlobalStyles
+          styles={{
+            "body footer": {
+              paddingBottom:
+                "calc(88px + env(safe-area-inset-bottom)) !important",
+            },
+          }}
+        />
+      )}
+      {currentItem && (
+        <StorytellerReaderToolbar
+          projectName={project.name}
+          currentTitle={currentItem?.title}
+          progress={readingProgress}
+          navigationOpen={indexOpen}
+          onOpenNavigation={() => setIndexOpen(true)}
+          projectDetails={projectDetails}
+          bookmarkEditing={bookmarkEditing}
+          bookmarkEditingAvailable={Boolean(
+            currentStory && bookmarkMode !== "none",
+          )}
+          onToggleBookmarkEditing={() =>
+            setBookmarkEditing((editing) => !editing)
+          }
+          renderHistory={
+            currentStory && !isShareRoute
+              ? (onClose) => (
+                  <StorytellerReaderHistory
+                    versions={versionsQuery.data ?? []}
+                    loading={versionsQuery.isLoading}
+                    basePath={basePath}
+                    storyId={currentStory.id}
+                    onSelect={onClose}
+                  />
+                )
+              : undefined
+          }
+          previousChapter={
+            previousItem
+              ? {
+                  title: previousItem.title,
+                  href: itemHref(basePath, previousItem),
+                }
+              : undefined
+          }
+          nextChapter={
+            nextItem
+              ? { title: nextItem.title, href: itemHref(basePath, nextItem) }
+              : undefined
+          }
+          preferences={preferences}
+          onChangePreferences={updatePreferences}
+        />
+      )}
 
       <Drawer
         anchor="left"
@@ -2538,10 +2564,10 @@ export default function StorytellerReader() {
           leaveTo={steamloomPath()}
           panelTitle="限制級創作專案"
         >
-          {readerBody}
+          {pageBody}
         </AgeConfirmationGate>
       ) : (
-        <>{readerBody}</>
+        <>{pageBody}</>
       )}
     </StorytellerShell>
   );
