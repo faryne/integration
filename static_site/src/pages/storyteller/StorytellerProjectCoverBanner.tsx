@@ -7,6 +7,8 @@ export interface StorytellerProjectCoverBannerProps {
 }
 
 // 專案卡片頂部橫幅：有封面就 object-fit: cover 置中裁切，沒有則維持原本裝飾。
+// 刻意不套用沉浸式封面的焦點設定——卡片欄寬隨版面變動，裁切比例不像目次頁 Hero
+// 那麼穩定，硬套 Hero 校準過的焦點在窄幅縮圖反而更容易切歪，見 storytellerCover.ts。
 export function StorytellerProjectCoverBanner({
   coverUrl,
   imageOnly = false,

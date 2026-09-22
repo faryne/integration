@@ -13,9 +13,9 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  alpha,
 } from "@mui/material";
 import {
+  useEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -25,6 +25,7 @@ import {
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
   STORYTELLER_IMAGE_PAGE_MAX_BYTES,
 } from "@/data/storyteller.ts";
+import { WorkLandingHero } from "@/pages/storyteller/ReaderWorkLanding.tsx";
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
 
@@ -80,34 +81,78 @@ function FocalPointMarker({ focalPoint }: { focalPoint: CoverFocalPoint }) {
   );
 }
 
-// 在「完整原圖」上拖曳準星：容器用 object-fit: contain 完整顯示原圖（不裁切、不縮放
-// 出界），容器內的正規化座標就直接等於圖片本身的正規化座標，拖到哪裡就是哪裡。
-// 刻意不做成「在已裁切的預覽圖上拖」——封面被裁切後，容器座標跟原圖座標會因為目前
-// 焦點而整組偏移，越拖離目前焦點越遠、換算誤差越大，游標會跟畫面內容對不上。
-function CoverFocalPointPicker({
+// 依目前版型呈現封面：直接重用目次頁 Hero 的 WorkLandingHero（同一份 markup），排版、
+// 比例都跟真正的閱讀頁一致，不用自己另外刻一份、以後 Hero 改版也不會忘記同步兩邊。
+// 焦點只有沉浸式版型才生效（見 storytellerCoverObjectPosition），所以拖曳準星也只
+// 疊在沉浸式版型上；圖文分區交給 WorkLandingHero 原樣顯示，不用拖曳。
+// 沉浸式在桌機是用 background-image 鋪成 Hero 底圖（不是 <img> 標籤），拖曳換算的
+// 「容器」因此是 Hero 外層那個盒子本身，公式跟 background-size: cover 的裁切規則一致；
+// 原圖的原始尺寸另外用 Image() 預先載入取得，不依賴某個 DOM 節點的 onLoad（沉浸式
+// 桌機版本本來就沒有真正的 <img> 節點可以掛）。手機寬度下沉浸式改用獨立的 16:9 <img>，
+// 跟這裡的換算公式對不上，所以拖曳疊層只在桌機寬度顯示，手機仍會正確顯示
+// WorkLandingHero 原本的樣子，只是不能在這裡拖。
+function CoverPreview({
   coverUrl,
-  focalPoint,
-  onChange,
+  coverLayout,
+  coverFocalPoint,
+  onFocalPointChange,
 }: {
   coverUrl: string;
-  focalPoint: CoverFocalPoint;
-  onChange: (point: CoverFocalPoint) => void;
+  coverLayout: CoverLayout;
+  coverFocalPoint: CoverFocalPoint;
+  onFocalPointChange: (point: CoverFocalPoint) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const [naturalSize, setNaturalSize] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled) {
+        setNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+      }
+    };
+    img.src = coverUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [coverUrl]);
 
   function pointFromEvent(event: { clientX: number; clientY: number }) {
     const el = containerRef.current;
-    if (!el) {
+    if (!el || !naturalSize || naturalSize.w <= 0 || naturalSize.h <= 0) {
       return null;
     }
     const rect = el.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
       return null;
     }
+    // background-size: cover 的縮放比例：取「剛好蓋滿容器」的那個較大值。
+    const scale = Math.max(
+      rect.width / naturalSize.w,
+      rect.height / naturalSize.h,
+    );
+    const scaledW = naturalSize.w * scale;
+    const scaledH = naturalSize.h * scale;
+    // 縮放後超出容器的量，就是目前焦點能造成的最大位移範圍。
+    const overflowX = Math.max(scaledW - rect.width, 0);
+    const overflowY = Math.max(scaledH - rect.height, 0);
+    const cx = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+    const cy = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
     return {
-      x: Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1),
-      y: Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1),
+      x: Math.min(
+        Math.max((cx + coverFocalPoint.x * overflowX) / scaledW, 0),
+        1,
+      ),
+      y: Math.min(
+        Math.max((cy + coverFocalPoint.y * overflowY) / scaledH, 0),
+        1,
+      ),
     };
   }
 
@@ -116,7 +161,7 @@ function CoverFocalPointPicker({
     event.currentTarget.setPointerCapture(event.pointerId);
     const point = pointFromEvent(event);
     if (point) {
-      onChange(point);
+      onFocalPointChange(point);
     }
   }
   function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
@@ -125,7 +170,7 @@ function CoverFocalPointPicker({
     }
     const point = pointFromEvent(event);
     if (point) {
-      onChange(point);
+      onFocalPointChange(point);
     }
   }
   function handlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
@@ -134,120 +179,37 @@ function CoverFocalPointPicker({
   }
 
   return (
-    <Box
-      ref={containerRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      sx={{
-        position: "relative",
-        height: 220,
-        bgcolor: "common.black",
-        cursor: "crosshair",
-        touchAction: "none",
-        overflow: "hidden",
-      }}
-    >
-      <Box
-        component="img"
-        src={coverUrl}
-        alt="完整封面圖，點擊或拖曳標記焦點"
-        draggable={false}
-        sx={{
-          position: "absolute",
-          inset: 0,
-          width: 1,
-          height: 1,
-          // contain：完整原圖等比縮放置中顯示，不裁切——容器座標才能直接對應圖片座標。
-          objectFit: "contain",
-          pointerEvents: "none",
-        }}
-      />
-      <FocalPointMarker focalPoint={focalPoint} />
-    </Box>
-  );
-}
-
-// 依目前版型模擬桌機作品首頁實際會裁成什麼樣子；純顯示，不可拖曳（拖曳在上面的
-// CoverFocalPointPicker 進行，這裡的裁切結果會跟著即時更新）。
-function CoverLayoutPreview({
-  coverUrl,
-  coverLayout,
-  coverFocalPoint,
-}: {
-  coverUrl: string;
-  coverLayout: CoverLayout;
-  coverFocalPoint: CoverFocalPoint;
-}) {
-  const objectPosition = `${coverFocalPoint.x * 100}% ${coverFocalPoint.y * 100}%`;
-
-  if (coverLayout === "split") {
-    return (
-      <Box
-        sx={{ display: "grid", gridTemplateColumns: "56% 44%", height: 220 }}
-      >
-        <Stack justifyContent="flex-end" spacing={1} sx={{ p: 2.5 }}>
-          <Typography variant="caption" color="primary">
-            作品類型 · 連載狀態
-          </Typography>
-          <Typography variant="h5" fontWeight={800}>
-            作品標題
-          </Typography>
+    <Box sx={{ position: "relative" }}>
+      <WorkLandingHero
+        name="作品標題"
+        description="作品簡介與作者資訊固定顯示在這裡。"
+        coverUrl={coverUrl}
+        coverLayout={coverLayout}
+        coverFocalPoint={coverFocalPoint}
+        meta={
           <Typography variant="body2" color="text.secondary">
-            作品簡介與作者資訊固定留在獨立區塊，不會蓋住封面。
+            作品類型・連載狀態
           </Typography>
-        </Stack>
-        <Box
-          component="img"
-          src={coverUrl}
-          alt="圖文分區封面預覽"
-          sx={{
-            width: 1,
-            height: 1,
-            objectFit: "cover",
-            objectPosition,
-            display: "block",
-          }}
-        />
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ position: "relative", height: 220, overflow: "hidden" }}>
-      <Box
-        component="img"
-        src={coverUrl}
-        alt="沉浸式封面預覽"
-        sx={{
-          width: 1,
-          height: 1,
-          objectFit: "cover",
-          objectPosition,
-          display: "block",
-        }}
+        }
       />
-      <Stack
-        justifyContent="flex-end"
-        spacing={1}
-        sx={(theme) => ({
-          position: "absolute",
-          inset: 0,
-          width: "68%",
-          p: 2.5,
-          background: `linear-gradient(90deg, ${theme.palette.background.paper} 48%, ${alpha(theme.palette.background.paper, 0.82)} 75%, transparent 100%)`,
-        })}
-      >
-        <Typography variant="caption" color="primary">
-          左側文字安全區
-        </Typography>
-        <Typography variant="h5" fontWeight={800}>
-          作品標題
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          重要人物與視覺焦點建議放在右半側。
-        </Typography>
-      </Stack>
+      {coverLayout === "immersive" && (
+        <Box
+          ref={containerRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          sx={{
+            position: "absolute",
+            inset: 0,
+            // 手機寬度沉浸式改用獨立 16:9 <img>，跟這裡的裁切公式對不上，先不開放拖曳。
+            display: { xs: "none", md: "block" },
+            cursor: "crosshair",
+            touchAction: "none",
+          }}
+        >
+          <FocalPointMarker focalPoint={coverFocalPoint} />
+        </Box>
+      )}
     </Box>
   );
 }
@@ -311,55 +273,39 @@ export function StorytellerProjectCoverEditor({
       <Typography variant="subtitle2" fontWeight={700}>
         封面
       </Typography>
-      <Box
-        sx={{
-          border: "1px solid",
-          borderColor: "divider",
-          borderRadius: 1,
-          overflow: "hidden",
-        }}
-      >
-        {coverUrl ? (
-          <CoverFocalPointPicker
-            coverUrl={coverUrl}
-            focalPoint={coverFocalPoint}
-            onChange={onFocalPointChange}
-          />
-        ) : (
-          <Stack
-            alignItems="center"
-            justifyContent="center"
-            spacing={0.5}
-            sx={{ height: 220, bgcolor: "action.hover" }}
-          >
-            <ImageIcon color="disabled" />
-            <Typography variant="body2" color="text.secondary">
-              尚未設定封面
-            </Typography>
-          </Stack>
-        )}
-      </Box>
-      {coverUrl && (
-        <>
-          <Typography variant="caption" color="text.secondary">
-            點擊或拖曳上方原圖裡的準星，標記要保留可見的焦點；下面是套用目前版型後
-            實際會裁成的樣子。
+      {coverUrl ? (
+        // 不另外包一層 border——WorkLandingHero 自己就有跟閱讀頁一致的邊框，
+        // 疊上去只會變成雙重框線。
+        <CoverPreview
+          coverUrl={coverUrl}
+          coverLayout={coverLayout}
+          coverFocalPoint={coverFocalPoint}
+          onFocalPointChange={onFocalPointChange}
+        />
+      ) : (
+        <Stack
+          alignItems="center"
+          justifyContent="center"
+          spacing={0.5}
+          sx={{
+            height: 220,
+            bgcolor: "action.hover",
+            border: "1px solid",
+            borderColor: "divider",
+            borderRadius: 1,
+          }}
+        >
+          <ImageIcon color="disabled" />
+          <Typography variant="body2" color="text.secondary">
+            尚未設定封面
           </Typography>
-          <Box
-            sx={{
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              overflow: "hidden",
-            }}
-          >
-            <CoverLayoutPreview
-              coverUrl={coverUrl}
-              coverLayout={coverLayout}
-              coverFocalPoint={coverFocalPoint}
-            />
-          </Box>
-        </>
+        </Stack>
+      )}
+      {coverUrl && coverLayout === "immersive" && (
+        <Typography variant="caption" color="text.secondary">
+          在上方封面圖點擊或拖曳準星，標記要保留可見的焦點；這裡看到的就是套用目前
+          版型後實際會裁成的樣子。
+        </Typography>
       )}
       <ToggleButtonGroup
         exclusive
@@ -373,11 +319,6 @@ export function StorytellerProjectCoverEditor({
         <ToggleButton value="split">圖文分區</ToggleButton>
         <ToggleButton value="immersive">沉浸式封面</ToggleButton>
       </ToggleButtonGroup>
-      <Typography variant="body2" color="text.secondary">
-        {coverLayout === "immersive"
-          ? "適合 2:1 key art；桌機會在左側疊上標題與漸層，請把人物或視覺焦點留在右側。手機仍使用獨立橫幅。"
-          : "通用預設；桌機將作品資訊與封面分開呈現，手機則把封面放在資訊上方。"}
-      </Typography>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
           size="small"

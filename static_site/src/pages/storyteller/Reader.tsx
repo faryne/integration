@@ -54,7 +54,10 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import { useGatedCoverUrl } from "@/helpers/storytellerCover.ts";
+import {
+  storytellerCoverObjectPosition,
+  useGatedCoverUrl,
+} from "@/helpers/storytellerCover.ts";
 import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
@@ -1243,6 +1246,7 @@ export default function StorytellerReader() {
             title: currentItem.title,
             summary: currentItem.summary || undefined,
             coverUrl: gatedCoverUrl,
+            coverLayout: project.coverLayout,
             coverFocalPoint: project.coverFocalPoint,
             visible: readerContextVisible,
           }
@@ -1253,6 +1257,7 @@ export default function StorytellerReader() {
     currentItem?.summary,
     currentItem?.title,
     project?.name,
+    project?.coverLayout,
     // 依賴拆成 x/y 兩個原始值，而不是 project.coverFocalPoint 這個物件——project 每次
     // render 都是重新組出來的新物件參考，直接放物件當依賴會讓這個 effect 每次都重跑。
     project?.coverFocalPoint.x,
@@ -1981,7 +1986,10 @@ export default function StorytellerReader() {
             width: 1,
             aspectRatio: "2 / 1",
             objectFit: "cover",
-            objectPosition: `${project.coverFocalPoint.x * 100}% ${project.coverFocalPoint.y * 100}%`,
+            objectPosition: storytellerCoverObjectPosition(
+              project.coverLayout,
+              project.coverFocalPoint,
+            ),
             display: "block",
             border: "1px solid",
             borderColor: "divider",

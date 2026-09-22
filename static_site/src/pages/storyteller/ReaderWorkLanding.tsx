@@ -14,6 +14,7 @@ import {
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
 
 export interface WorkLandingItem {
   id: string;
@@ -117,15 +118,9 @@ export function ReaderWorkLanding({
 }
 
 // 桌機依創作者選擇呈現圖文分區或沉浸式 Hero；手機一律讓圖片獨立置頂，避免文字遮住封面。
-function WorkLandingHero({
-  name,
-  description,
-  coverUrl,
-  coverLayout,
-  coverFocalPoint,
-  meta,
-  startHref,
-}: {
+// 匯出給 StorytellerProjectCoverEditor 的設定頁預覽直接重用——同一份 markup，設定頁
+// 看到的排版才會跟真正的目次頁完全一致，不用另外手刻一份、之後改版還要記得同步兩邊。
+export interface WorkLandingHeroProps {
   name: string;
   description?: string;
   coverUrl?: string;
@@ -133,10 +128,24 @@ function WorkLandingHero({
   coverFocalPoint: { x: number; y: number };
   meta: ReactNode;
   startHref?: string;
-}) {
+}
+
+export function WorkLandingHero({
+  name,
+  description,
+  coverUrl,
+  coverLayout,
+  coverFocalPoint,
+  meta,
+  startHref,
+}: WorkLandingHeroProps) {
   const immersive = Boolean(coverUrl && coverLayout === "immersive");
   const split = Boolean(coverUrl && coverLayout === "split");
-  const focalPosition = `${coverFocalPoint.x * 100}% ${coverFocalPoint.y * 100}%`;
+  // 焦點只有沉浸式版型才生效，圖文分區統一置中——見 storytellerCoverObjectPosition。
+  const focalPosition = storytellerCoverObjectPosition(
+    coverLayout,
+    coverFocalPoint,
+  );
 
   return (
     <Box
