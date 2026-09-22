@@ -14,6 +14,7 @@ func Storyteller(app *fiber.App) {
 	group.Get("/search", storyteller.SearchWorks)
 	group.Get("/search/projects", storyteller.SearchProjectsGrouped)
 	group.Get("/projects/public", storyteller.PublicProjects)
+	group.Get("/mcp/tools", storyteller.McpToolCatalog)
 	group.Get("/user/:username", storyteller.PublicUserProjects)
 	group.Get("/user/:username/favorites/projects", storyteller.PublicFavoriteProjects)
 	group.Get("/user/:username/favorites/authors", storyteller.PublicFavoriteAuthors)

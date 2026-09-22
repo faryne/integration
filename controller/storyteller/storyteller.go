@@ -133,6 +133,13 @@ func PublicProjects(ctx fiber.Ctx) error {
 	return output.Success(rows)
 }
 
+// McpToolCatalog 給「MCP 連接」設定頁組 SKILL.md 說明文件用：純靜態的工具名稱／
+// 說明清單，不含任何使用者資料，不需要登入就能查——分類與內容見
+// storyteller.StorytellerToolDocCategories 的說明。
+func McpToolCatalog(ctx fiber.Ctx) error {
+	return output.Success(storyteller.StorytellerToolDocCategories())
+}
+
 func PublicUserProjects(ctx fiber.Ctx) error {
 	page, _ := strconv.Atoi(ctx.Query("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.Query("pageSize", "20"))

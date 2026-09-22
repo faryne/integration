@@ -23,7 +23,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { isSteamLoomSite } from "@/helpers/steamloom.ts";
@@ -37,6 +37,7 @@ import {
 import {
   useCreateStorytellerPersonalAccessToken,
   useDeleteStorytellerPersonalAccessToken,
+  useStorytellerMcpToolCategories,
   useStorytellerPersonalAccessTokens,
 } from "@/apis/storyteller.ts";
 import type {
@@ -49,8 +50,6 @@ import type {
 const mcpEndpoint = isSteamLoomSite()
   ? "https://steamloom.works/mcp"
   : "https://faryne.dev/api-integration/storyteller-mcp";
-const skillDocContent = storytellerMcpSkillDoc(mcpEndpoint);
-const skillDocBody = storytellerMcpSkillDocBody(mcpEndpoint);
 
 const expiresInDaysOptions = [
   { value: "30", label: "30 天" },
@@ -66,6 +65,19 @@ export function StorytellerMcpPanel() {
   const { data: tokens = [], isLoading } = useStorytellerPersonalAccessTokens();
   const createToken = useCreateStorytellerPersonalAccessToken();
   const deleteToken = useDeleteStorytellerPersonalAccessToken();
+  // 工具清單即時查後端（見 useStorytellerMcpToolCategories 的說明），新增/刪除
+  // MCP 工具不用回頭改這個頁面；載入完成前 SKILL.md 預覽/下載都先不可用，
+  // 避免下載到一份缺方法列表的檔案。
+  const { data: toolCategories = [], isLoading: toolCategoriesLoading } =
+    useStorytellerMcpToolCategories();
+  const skillDocBody = useMemo(
+    () => storytellerMcpSkillDocBody(mcpEndpoint, toolCategories),
+    [toolCategories],
+  );
+  const skillDocContent = useMemo(
+    () => storytellerMcpSkillDoc(mcpEndpoint, toolCategories),
+    [toolCategories],
+  );
   const [label, setLabel] = useState("");
   const [expiresInDays, setExpiresInDays] = useState<string>("30");
   const [copyMessageOpen, setCopyMessageOpen] = useState(false);
@@ -263,56 +275,63 @@ export function StorytellerMcpPanel() {
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={downloadSkillDoc}
+              disabled={toolCategoriesLoading}
               sx={{ flexShrink: 0 }}
             >
               下載 SKILL.md
             </Button>
           </Stack>
-          <Box
-            sx={{
-              maxHeight: { xs: 360, md: 520 },
-              overflowY: "auto",
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              bgcolor: "background.default",
-              p: { xs: 1.5, md: 2 },
-              "& pre": {
-                m: 0,
-                p: 1.5,
-                borderRadius: 1,
-                bgcolor: "action.hover",
-                fontSize: 12,
-                overflowX: "auto",
-              },
-              "& code": {
-                fontFamily: "monospace",
-              },
-            }}
-          >
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 0.5 }}
-            >
-              Frontmatter
-            </Typography>
+          {toolCategoriesLoading ? (
+            <Stack alignItems="center" sx={{ py: 4 }}>
+              <CircularProgress size={28} />
+            </Stack>
+          ) : (
             <Box
-              component="pre"
               sx={{
-                m: 0,
-                mb: 2,
-                p: 1.5,
+                maxHeight: { xs: 360, md: 520 },
+                overflowY: "auto",
+                border: "1px solid",
+                borderColor: "divider",
                 borderRadius: 1,
-                bgcolor: "action.hover",
-                fontSize: 12,
-                overflowX: "auto",
+                bgcolor: "background.default",
+                p: { xs: 1.5, md: 2 },
+                "& pre": {
+                  m: 0,
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: "action.hover",
+                  fontSize: 12,
+                  overflowX: "auto",
+                },
+                "& code": {
+                  fontFamily: "monospace",
+                },
               }}
             >
-              {STORYTELLER_MCP_SKILL_FRONTMATTER}
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", mb: 0.5 }}
+              >
+                Frontmatter
+              </Typography>
+              <Box
+                component="pre"
+                sx={{
+                  m: 0,
+                  mb: 2,
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: "action.hover",
+                  fontSize: 12,
+                  overflowX: "auto",
+                }}
+              >
+                {STORYTELLER_MCP_SKILL_FRONTMATTER}
+              </Box>
+              <StorytellerMarkdown>{skillDocBody}</StorytellerMarkdown>
             </Box>
-            <StorytellerMarkdown>{skillDocBody}</StorytellerMarkdown>
-          </Box>
+          )}
         </Stack>
       </Paper>
 

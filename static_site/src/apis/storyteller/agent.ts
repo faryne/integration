@@ -20,6 +20,7 @@ import type {
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
+  StorytellerMcpToolDocCategory,
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
   StorytellerPersonalAccessTokenRequest,
@@ -269,6 +270,19 @@ export function useDeleteStorytellerProviderAPIKeyModel() {
           variables.apiKeyId,
         ),
       });
+    },
+  });
+}
+
+// 公開端點，不含任何使用者資料，不用登入也能查——見 controller.McpToolCatalog。
+export function useStorytellerMcpToolCategories() {
+  return useQuery({
+    queryKey: ["storyteller", "mcp-tool-categories"],
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerMcpToolDocCategory[]>
+      >(`${apiBase}/storyteller/mcp/tools`);
+      return response.data.data ?? [];
     },
   });
 }

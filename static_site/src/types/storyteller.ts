@@ -118,6 +118,18 @@ export interface StorytellerPersonalAccessTokenCreated extends StorytellerPerson
   token: string;
 }
 
+// MCP 連接分頁的 SKILL.md 說明文件用：直接對齊後端實際掛在 MCP server 上的
+// ToolSpec 名稱／說明，新增工具時這裡不用跟著改。
+export interface StorytellerMcpToolDoc {
+  name: string;
+  description: string;
+}
+
+export interface StorytellerMcpToolDocCategory {
+  title: string;
+  tools: StorytellerMcpToolDoc[];
+}
+
 export interface StorytellerAgentModelOption {
   id: number;
   name: string;
