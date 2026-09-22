@@ -34,23 +34,23 @@ import {
 } from "@/pages/storyteller/wysiwygCore/parser.ts";
 
 export default function StorytellerStoryVersionDiff() {
-  const { projectPath, storyId, versionId } = useParams();
+  const { projectPath, itemId, versionId } = useParams();
   const projectPublicId = projectPath?.split("-", 1)[0];
   const projectQuery = usePublicStorytellerProject(projectPath);
   const versionsQuery = usePublicStorytellerStoryVersions(
     projectPublicId,
-    storyId,
+    itemId,
   );
 
   const project = projectQuery.data;
-  const story = project?.stories?.find((item) => item.public_id === storyId);
+  const story = project?.stories?.find((item) => item.public_id === itemId);
   const versions = versionsQuery.data ?? [];
   const targetIndex = versions.findIndex(
     (version) => String(version.id) === versionId,
   );
   const target = targetIndex >= 0 ? versions[targetIndex] : undefined;
   const previous = targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
-  const basePath = steamloomPath(`work/${projectPath}/story`);
+  const basePath = steamloomPath(`work/${projectPath}`);
 
   useTitle(
     story ? `${story.title} 版本比較 - ${STORYTELLER_APP_NAME}` : "版本比較",

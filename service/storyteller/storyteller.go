@@ -225,6 +225,8 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 		Visibility:  input.Visibility,
 		Rating:      input.Rating,
 		Tags:        encodeProjectTags(input.Tags),
+		// 新專案尚無封面可預覽，DisplaySettings 留零值（輸出時會套用預設 layout／焦點）；
+		// 跟下面忽略 CoverAssetPublicID 是同一個理由。
 	}
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
 		project.ShareToken = randomID() + randomID()
@@ -262,6 +264,12 @@ func (s *Service) UpdateProject(userID uint64, publicID string, input storytelle
 	project.Visibility = input.Visibility
 	project.Rating = input.Rating
 	project.Tags = encodeProjectTags(input.Tags)
+	if input.CoverLayout != nil {
+		project.DisplaySettings.Cover.Layout = *input.CoverLayout
+	}
+	if input.CoverFocalPoint != nil {
+		project.DisplaySettings.Cover.FocalPoint = input.CoverFocalPoint
+	}
 	if project.Visibility == storytellerModel.ProjectVisibilityUnlisted {
 		if previousVisibility != storytellerModel.ProjectVisibilityUnlisted {
 			project.ShareToken = randomID() + randomID()
@@ -2978,8 +2986,10 @@ func (s *Service) projectOutputs(projects []storytellerModel.Project, includeDra
 
 func outputProject(project storytellerModel.Project) *storytellerModel.ProjectOutput {
 	return &storytellerModel.ProjectOutput{
-		Project: project,
-		TagList: decodeProjectTags(project.Tags),
+		Project:         project,
+		TagList:         decodeProjectTags(project.Tags),
+		CoverLayout:     project.DisplaySettings.CoverLayoutOrDefault(),
+		CoverFocalPoint: project.DisplaySettings.CoverFocalPointOrDefault(),
 	}
 }
 
@@ -3199,6 +3209,9 @@ func normalizeProjectRequest(input storytellerModel.ProjectRequest) storytellerM
 	if input.Rating == "" {
 		input.Rating = storytellerModel.ProjectRatingGeneral
 	}
+	// CoverLayout／CoverFocalPoint 不在這裡補預設值：nil 代表「不變更」，補了就等於
+	// 每次省略都被硬改成 split，跟 CoverAssetPublicID 的省略語意矛盾。沒設定過的專案，
+	// 預設值留給輸出端的 CoverLayoutOrDefault／CoverFocalPointOrDefault 處理。
 	input.Tags = normalizeProjectTags(input.Tags)
 	return input
 }
@@ -3216,6 +3229,18 @@ func validateProject(input storytellerModel.ProjectRequest) error {
 	case storytellerModel.ProjectRatingGeneral, storytellerModel.ProjectRatingGuidance, storytellerModel.ProjectRatingRestricted:
 	default:
 		return fmt.Errorf("invalid rating")
+	}
+	if input.CoverLayout != nil {
+		switch *input.CoverLayout {
+		case storytellerModel.ProjectCoverLayoutSplit, storytellerModel.ProjectCoverLayoutImmersive:
+		default:
+			return fmt.Errorf("invalid cover_layout")
+		}
+	}
+	if fp := input.CoverFocalPoint; fp != nil {
+		if fp.X < 0 || fp.X > 1 || fp.Y < 0 || fp.Y > 1 {
+			return fmt.Errorf("cover_focal_point must be within 0 and 1")
+		}
 	}
 	if len(input.Tags) > 12 {
 		return fmt.Errorf("tags must contain 12 items or less")

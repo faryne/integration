@@ -33,6 +33,11 @@ export interface StorytellerProject {
   // 封面資產 public_id；cover_url 是當下簽名、有時效，不要落地存。
   cover_asset_public_id?: string;
   cover_url?: string;
+  // 作品首頁封面版型：split 是通用圖文分區，immersive 是創作者主動選用的全幅 Hero。
+  // 後端已補完預設值（沒設定過也一定有值），不用再自己 fallback。
+  cover_layout: "split" | "immersive";
+  // 封面裁切時要保留的焦點，正規化座標（0～1，左上為原點）；後端已補完預設值。
+  cover_focal_point: { x: number; y: number };
 }
 
 // GET /storyteller/limits 的回應：跟目前使用者有關的帳號配額快照，給「建立
@@ -425,6 +430,10 @@ export interface StorytellerProjectRequest {
   visibility: "public" | "unlisted" | "private";
   rating: "general" | "guidance" | "restricted";
   tags: string[];
+  // cover_layout／cover_focal_point 省略＝不變更目前設定（PUT 是整包覆蓋，像首頁切
+  // 公開狀態這類只想改別的欄位的呼叫端不會帶這兩個欄位，不能因為沒帶就被清空）。
+  cover_layout?: "split" | "immersive";
+  cover_focal_point?: { x: number; y: number };
   // 省略＝不變更現有封面；空字串＝清除；非空＝設為該資產。
   cover_asset_public_id?: string;
 }

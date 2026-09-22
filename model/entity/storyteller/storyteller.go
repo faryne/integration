@@ -23,6 +23,65 @@ const (
 	ProjectRatingRestricted ProjectRating = "restricted"
 )
 
+type ProjectCoverLayout string
+
+const (
+	ProjectCoverLayoutSplit     ProjectCoverLayout = "split"
+	ProjectCoverLayoutImmersive ProjectCoverLayout = "immersive"
+)
+
+// ProjectCoverFocalPoint 是封面圖裁切時要保留的焦點，正規化座標（0～1，左上為原點），
+// 不存像素——封面圖換解析度或裁切尺寸改變時都還能沿用同一個值。nil 代表使用者沒調過，
+// 套用預設值（見 defaultProjectCoverFocalPoint，跟這次改版前寫死的 "center 32%" 一致）。
+type ProjectCoverFocalPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+// ProjectCoverSettings 是作品首頁／閱讀頁封面的顯示設定。
+type ProjectCoverSettings struct {
+	Layout     ProjectCoverLayout      `json:"layout,omitempty"`
+	FocalPoint *ProjectCoverFocalPoint `json:"focal_point,omitempty"`
+}
+
+// ProjectDisplaySettings 是專案在作品首頁／閱讀頁的顯示設定，用一個 JSON 欄位承載，
+// 之後要加其他跟「這個專案怎麼被 render」有關的選項，直接在這個結構體多加欄位即可，
+// 不用再為了單一設定多開一支 migration。目前只有 Cover 這一組。
+type ProjectDisplaySettings struct {
+	Cover ProjectCoverSettings `json:"cover,omitempty"`
+}
+
+func (s ProjectDisplaySettings) Value() (driver.Value, error) {
+	if s.Cover.Layout == "" && s.Cover.FocalPoint == nil {
+		return nil, nil
+	}
+	data, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (s *ProjectDisplaySettings) Scan(value any) error {
+	*s = ProjectDisplaySettings{}
+	if value == nil {
+		return nil
+	}
+	var data []byte
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into ProjectDisplaySettings", value)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	return json.Unmarshal(data, s)
+}
+
 // ProjectContentType 是故事（話）／冊的內容類型，建立時決定、不可變更。專案層級已沒有這個欄位
 // （2026-09-21 移除）：同一個專案可以同時有文字故事與圖像作品（詳見
 // DevelopDocuments/storyteller/漫畫插圖閱讀器.md）。
@@ -161,10 +220,33 @@ type Project struct {
 	Tags        string            `gorm:"column:tags" json:"-"`
 	ShareToken  string            `gorm:"column:share_token" json:"share_token"`
 	// CoverAssetID 是內部流水號，公開 JSON 不可帶出。
-	CoverAssetID *uint64    `gorm:"column:cover_asset_id" json:"-"`
-	DeletedAt    *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt    time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt    time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	CoverAssetID *uint64 `gorm:"column:cover_asset_id" json:"-"`
+	// DisplaySettings 存作品首頁／閱讀頁的顯示設定（見 ProjectDisplaySettings）；不直接對外輸出，
+	// 公開 JSON 一律走 ProjectOutput 攤平出來的 CoverLayout／CoverFocalPoint。
+	DisplaySettings ProjectDisplaySettings `gorm:"column:display_settings" json:"-"`
+	DeletedAt       *time.Time             `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time              `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time              `gorm:"column:updated_at" json:"updated_at"`
+}
+
+// defaultProjectCoverFocalPoint 是沒設定過焦點時套用的位置，跟這次改版前寫死的
+// "center 32%" 一致，確保沒調整過封面的舊資料／新專案顯示結果不變。
+var defaultProjectCoverFocalPoint = ProjectCoverFocalPoint{X: 0.5, Y: 0.32}
+
+// CoverLayoutOrDefault／CoverFocalPointOrDefault 統一補上預設值，呼叫端（輸出組裝、
+// 前端渲染）不用各自重複「沒設定時要 fallback 成什麼」的邏輯。
+func (s ProjectDisplaySettings) CoverLayoutOrDefault() ProjectCoverLayout {
+	if s.Cover.Layout == "" {
+		return ProjectCoverLayoutSplit
+	}
+	return s.Cover.Layout
+}
+
+func (s ProjectDisplaySettings) CoverFocalPointOrDefault() ProjectCoverFocalPoint {
+	if s.Cover.FocalPoint == nil {
+		return defaultProjectCoverFocalPoint
+	}
+	return *s.Cover.FocalPoint
 }
 
 func (Project) TableName() string { return "storyteller_projects" }
@@ -732,6 +814,11 @@ type ProjectRequest struct {
 	Tags        []string          `json:"tags"`
 	// CoverAssetPublicID 用指標區分「省略＝不變更」與「空字串＝清除封面」。
 	CoverAssetPublicID *string `json:"cover_asset_public_id,omitempty"`
+	// CoverLayout／CoverFocalPoint 都是「省略＝不變更目前設定」，理由跟 CoverAssetPublicID
+	// 一樣：PUT 是整包覆蓋，像首頁切公開狀態這類只想改別的欄位的呼叫端不會帶這兩個欄位，
+	// 不能因為沒帶就被清空。
+	CoverLayout     *ProjectCoverLayout     `json:"cover_layout,omitempty"`
+	CoverFocalPoint *ProjectCoverFocalPoint `json:"cover_focal_point,omitempty"`
 }
 
 type AgentRequest struct {
@@ -1325,6 +1412,10 @@ type ProjectOutput struct {
 	// 是當下才簽的 CloudFront 網址，有時效，前端不落地存。
 	CoverAssetPublicID string `gorm:"-" json:"cover_asset_public_id,omitempty"`
 	CoverURL           string `gorm:"-" json:"cover_url,omitempty"`
+	// CoverLayout／CoverFocalPoint 是從 Project.DisplaySettings 攤平出來、補完預設值的結果
+	// （見 outputProject），前端不用自己處理「沒設定時要 fallback 成什麼」。
+	CoverLayout     ProjectCoverLayout     `gorm:"-" json:"cover_layout"`
+	CoverFocalPoint ProjectCoverFocalPoint `gorm:"-" json:"cover_focal_point"`
 }
 
 // AccountLimitsOutput 是 GET /storyteller/limits 回傳的帳號配額快照，讓前端

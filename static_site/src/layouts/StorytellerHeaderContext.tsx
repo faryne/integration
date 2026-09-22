@@ -6,6 +6,8 @@ export interface StorytellerReaderHeaderContext {
   summary?: string;
   // 專案封面（已依年齡確認 cookie 過濾），有的話鋪成固定 header 那一條的背景
   coverUrl?: string;
+  // 封面裁切時要保留的焦點，正規化座標（0～1）；跟作品首頁 Hero 用同一個值。
+  coverFocalPoint?: { x: number; y: number };
   visible: boolean;
 }
 

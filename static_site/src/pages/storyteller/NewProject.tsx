@@ -112,6 +112,8 @@ export default function StorytellerNewProject({
     visibility: "private",
     rating: "general",
     tags: [],
+    // 建立當下還沒有封面可預覽，不帶 cover_layout／cover_focal_point；編輯既有專案時
+    // 由下面的 useEffect 帶入目前設定。
   });
   const [tagInputValue, setTagInputValue] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
@@ -135,6 +137,8 @@ export default function StorytellerNewProject({
         visibility: editingProject.visibility,
         rating: editingProject.rating,
         tags: editingProject.tags ?? [],
+        cover_layout: editingProject.cover_layout,
+        cover_focal_point: editingProject.cover_focal_point,
       });
       setCoverAssetPublicId(editingProject.cover_asset_public_id ?? "");
       setCoverPreviewUrl(editingProject.cover_url ?? "");
@@ -549,10 +553,26 @@ export default function StorytellerNewProject({
                   projectPublicId={editingProject.public_id}
                   coverAssetPublicId={coverAssetPublicId}
                   coverUrl={coverPreviewUrl}
+                  coverLayout={input.cover_layout ?? "split"}
+                  coverFocalPoint={
+                    input.cover_focal_point ?? { x: 0.5, y: 0.32 }
+                  }
                   onChange={(publicId, previewUrl) => {
                     setCoverAssetPublicId(publicId);
                     setCoverPreviewUrl(previewUrl);
                   }}
+                  onLayoutChange={(coverLayout) =>
+                    setInput((value) => ({
+                      ...value,
+                      cover_layout: coverLayout,
+                    }))
+                  }
+                  onFocalPointChange={(coverFocalPoint) =>
+                    setInput((value) => ({
+                      ...value,
+                      cover_focal_point: coverFocalPoint,
+                    }))
+                  }
                   onNotify={(message, severity) =>
                     setCoverSnack({ message, severity })
                   }

@@ -152,7 +152,7 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
           <Button
             component={RouterLink}
             to={steamloomPath(
-              "work/0869d8ef0f2e5306-織夢機房/story/947fa38eb34402fa",
+              "work/0869d8ef0f2e5306-織夢機房/947fa38eb34402fa",
             )}
             variant="text"
           >

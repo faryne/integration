@@ -373,7 +373,9 @@ export function StorytellerLayout() {
                             borderColor: "divider",
                             backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.62)} 100%), url("${readerHeader.coverUrl}")`,
                             backgroundSize: "cover",
-                            backgroundPosition: "center 35%",
+                            backgroundPosition: readerHeader.coverFocalPoint
+                              ? `${readerHeader.coverFocalPoint.x * 100}% ${readerHeader.coverFocalPoint.y * 100}%`
+                              : "50% 32%",
                           })
                         : {},
                       {

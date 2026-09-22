@@ -23,6 +23,9 @@ func TestStorytellerProjectToolRegistrySplit(t *testing.T) {
 	properties := create.InputSchema["properties"].(map[string]interface{})
 	visibility := properties["visibility"].(map[string]interface{})
 	require.ElementsMatch(t, []string{"public", "unlisted", "private"}, visibility["enum"])
+	patchProperties := patch.InputSchema["properties"].(map[string]interface{})
+	coverLayout := patchProperties["cover_layout"].(map[string]interface{})
+	require.ElementsMatch(t, []string{"split", "immersive"}, coverLayout["enum"])
 }
 
 func TestStorytellerPatchProjectRejectsNoChanges(t *testing.T) {

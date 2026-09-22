@@ -21,14 +21,16 @@ type storytellerCreateProjectArguments struct {
 }
 
 type storytellerPatchProjectArguments struct {
-	ProjectPublicID    string                              `json:"project_public_id"`
-	Name               *string                             `json:"name"`
-	Slug               *string                             `json:"slug"`
-	Description        *string                             `json:"description"`
-	Visibility         *storytellerModel.ProjectVisibility `json:"visibility"`
-	Rating             *storytellerModel.ProjectRating     `json:"rating"`
-	Tags               *[]string                           `json:"tags"`
-	CoverAssetPublicID *string                             `json:"cover_asset_public_id"`
+	ProjectPublicID    string                                   `json:"project_public_id"`
+	Name               *string                                  `json:"name"`
+	Slug               *string                                  `json:"slug"`
+	Description        *string                                  `json:"description"`
+	Visibility         *storytellerModel.ProjectVisibility      `json:"visibility"`
+	Rating             *storytellerModel.ProjectRating          `json:"rating"`
+	Tags               *[]string                                `json:"tags"`
+	CoverAssetPublicID *string                                  `json:"cover_asset_public_id"`
+	CoverLayout        *storytellerModel.ProjectCoverLayout     `json:"cover_layout"`
+	CoverFocalPoint    *storytellerModel.ProjectCoverFocalPoint `json:"cover_focal_point"`
 }
 
 var errStorytellerProjectPatchEmpty = errors.New("at least one project field must be provided")
@@ -111,7 +113,9 @@ func storytellerProjectToolSpecs() []ToolSpec {
 			Name: "storyteller_patch_project",
 			Description: "Partially update a project's metadata. Only provided fields are changed; omitted fields keep their current values. " +
 				"Passing tags as an empty array explicitly clears all tags. Changing slug or visibility can affect public URLs and sharing. " +
-				"cover_asset_public_id sets the project cover to an existing image asset in the same project; pass an empty string to clear it.",
+				"cover_asset_public_id sets the project cover to an existing image asset in the same project; pass an empty string to clear it. " +
+				"cover_layout controls whether the reader landing page uses the safe split layout or an immersive full-width hero. " +
+				"cover_focal_point is the normalized (0-1) point of the cover image to keep visible when it gets cropped; only matters for immersive layout.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id":     stringSchema("Project public_id."),
 				"name":                  stringSchema("New project name. Omit to preserve the current name."),
@@ -121,6 +125,11 @@ func storytellerProjectToolSpecs() []ToolSpec {
 				"rating":                enumStringSchema("New content rating. Omit to preserve it.", "general", "guidance", "restricted"),
 				"tags":                  stringArraySchema("New tag list. Pass an empty array to clear all tags; omit to preserve them."),
 				"cover_asset_public_id": stringSchema("Image asset public_id in this project to use as the cover. Pass an empty string to clear it; omit to leave the current cover unchanged."),
+				"cover_layout":          enumStringSchema("Cover presentation on the reader landing page. Omit to preserve it.", "split", "immersive"),
+				"cover_focal_point": objectSchema(map[string]interface{}{
+					"x": map[string]interface{}{"type": "number", "description": "Horizontal focal point, 0 (left) to 1 (right)."},
+					"y": map[string]interface{}{"type": "number", "description": "Vertical focal point, 0 (top) to 1 (bottom)."},
+				}, []string{"x", "y"}),
 			}, []string{"project_public_id"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -131,12 +140,13 @@ func storytellerProjectToolSpecs() []ToolSpec {
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				if args.Name == nil && args.Slug == nil && args.Description == nil && args.Visibility == nil && args.Rating == nil && args.Tags == nil && args.CoverAssetPublicID == nil {
+				if args.Name == nil && args.Slug == nil && args.Description == nil && args.Visibility == nil && args.Rating == nil && args.Tags == nil && args.CoverAssetPublicID == nil && args.CoverLayout == nil && args.CoverFocalPoint == nil {
 					return nil, errStorytellerProjectPatchEmpty
 				}
 				project, err := NewService().PatchProject(userID, args.ProjectPublicID, ProjectPatch{
 					Name: args.Name, Slug: args.Slug, Description: args.Description, Visibility: args.Visibility,
 					Rating: args.Rating, Tags: args.Tags, CoverAssetPublicID: args.CoverAssetPublicID,
+					CoverLayout: args.CoverLayout, CoverFocalPoint: args.CoverFocalPoint,
 				})
 				if err != nil {
 					return nil, err

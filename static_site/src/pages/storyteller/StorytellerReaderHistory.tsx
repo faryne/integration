@@ -42,7 +42,7 @@ export function StorytellerReaderHistory({
           <Box
             key={version.id}
             component={RouterLink}
-            to={`${basePath}/story/${storyId}/versions/${version.id}`}
+            to={`${basePath}/${storyId}/versions/${version.id}`}
             onClick={onSelect}
             sx={{
               display: "flex",
