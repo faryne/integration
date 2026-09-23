@@ -1277,6 +1277,22 @@ type AgenticReferenceContentResponse struct {
 	Content string `json:"content"`
 }
 
+// AgentProposalPreviewRequest 是提案預覽的計算起點：前端帶編輯區目前的標題/摘要/內容
+// （可能含未存檔變更），讓 diff 跟「先存檔再套用」後的實際結果一致；沒帶的欄位改用
+// DB 最新版本。
+type AgentProposalPreviewRequest struct {
+	Title   *string `json:"title"`
+	Summary *string `json:"summary"`
+	Content *string `json:"content"`
+}
+
+// AgentProposalPreviewResponse 是提案「套用之後」的完整標題/摘要/內容，只計算不寫入。
+type AgentProposalPreviewResponse struct {
+	Title   string `json:"title"`
+	Summary string `json:"summary"`
+	Content string `json:"content"`
+}
+
 type AgenticChatResponse struct {
 	ChatID     uint64                   `json:"chat_id"`
 	ChatStatus StoryChatStatus          `json:"chat_status"`
