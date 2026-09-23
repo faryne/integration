@@ -972,57 +972,68 @@ export default function StorytellerStoryEditor({
     outline.addBookmark(markerId, note);
   }
 
-  function handleSaveStory() {
-    if (saveSuccessTarget) return;
+  // 回傳存檔後的最新版本 id（失敗或沒真的送出時是 null），讓 AI 提案卡片「先存檔
+  // 再套用」可以等存檔完成、拿這個版本當「回復到套用前版本」的目標；按鈕跟快捷鍵
+  // 直接呼叫時不用理會回傳值。
+  function handleSaveStory(): Promise<number | null> {
+    if (saveSuccessTarget) return Promise.resolve(null);
     if (!apiProject?.public_id) {
       lastSavedDraftRef.current = currentDraftRef.current;
       setSaveMessage("目前使用前端假資料，未送出到後端 API。");
       setSaveMessageSeverity("info");
       setSaveMessageVisible(true);
-      return;
+      return Promise.resolve(null);
     }
 
-    saveStory.mutate(
-      {
-        storyPublicId: isNewStory ? undefined : story?.id,
-        input: {
-          title: storyTitle,
-          summary: storySummary,
-          status: storyStatus,
-          sort: story?.sort ?? 0,
-          content,
-          parent_id: selectedVolumeId,
-          profile_ids: selectedProfileIds,
-          save_trigger: "manual",
-          base_version_id: isNewStory ? undefined : latestVersionIdRef.current,
+    return new Promise((resolve) =>
+      saveStory.mutate(
+        {
+          storyPublicId: isNewStory ? undefined : story?.id,
+          input: {
+            title: storyTitle,
+            summary: storySummary,
+            status: storyStatus,
+            sort: story?.sort ?? 0,
+            content,
+            parent_id: selectedVolumeId,
+            profile_ids: selectedProfileIds,
+            save_trigger: "manual",
+            base_version_id: isNewStory
+              ? undefined
+              : latestVersionIdRef.current,
+          },
         },
-      },
-      {
-        onSuccess: (savedStory) => {
-          lastSavedDraftRef.current = currentDraftRef.current;
-          latestVersionIdRef.current =
-            savedStory?.latest_version_id ?? latestVersionIdRef.current;
-          setSaveMessage("故事已存檔。");
-          setSaveMessageSeverity("success");
-          setSaveMessageVisible(true);
-          if (isNewStory && savedStory?.public_id) {
-            // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
-            // 換成存好之後的真正 public_id，不能整個跳回舊版獨立編輯頁——不然
-            // 剛剛才做的「新建也在右欄出血顯示」等於白做。
-            setSaveSuccessTarget(
-              steamloomPath(
-                embedded
-                  ? `my/workspace/${id}/story/${savedStory.public_id}`
-                  : `my/project/${id}/story/${savedStory.public_id}`,
-              ),
-            );
-          }
-          if (savedStory?.version_conflict) {
-            setVersionConflict(true);
-          }
+        {
+          onSuccess: (savedStory) => {
+            lastSavedDraftRef.current = currentDraftRef.current;
+            latestVersionIdRef.current =
+              savedStory?.latest_version_id ?? latestVersionIdRef.current;
+            setSaveMessage("故事已存檔。");
+            setSaveMessageSeverity("success");
+            setSaveMessageVisible(true);
+            if (isNewStory && savedStory?.public_id) {
+              // embedded（工作台）模式下要留在工作台右欄，把網址從 .../story/new
+              // 換成存好之後的真正 public_id，不能整個跳回舊版獨立編輯頁——不然
+              // 剛剛才做的「新建也在右欄出血顯示」等於白做。
+              setSaveSuccessTarget(
+                steamloomPath(
+                  embedded
+                    ? `my/workspace/${id}/story/${savedStory.public_id}`
+                    : `my/project/${id}/story/${savedStory.public_id}`,
+                ),
+              );
+            }
+            if (savedStory?.version_conflict) {
+              setVersionConflict(true);
+            }
+            resolve(latestVersionIdRef.current ?? null);
+          },
+          onError: () => {
+            showEditorSnack("故事存檔失敗，請重試。", "error");
+            resolve(null);
+          },
         },
-        onError: () => showEditorSnack("故事存檔失敗，請重試。", "error"),
-      },
+      ),
     );
   }
 
@@ -1159,9 +1170,7 @@ export default function StorytellerStoryEditor({
   const profileOptions = [
     {
       value: String(ACCOUNT_PROFILE_ID),
-      label: userProfile?.pen_name
-        ? `本人（${userProfile.pen_name}）`
-        : "本人",
+      label: userProfile?.pen_name ? `本人（${userProfile.pen_name}）` : "本人",
       icon: <PersonIcon fontSize="small" />,
     },
     ...(userProfile?.profiles ?? []).map((profile) => ({
@@ -1559,10 +1568,11 @@ export default function StorytellerStoryEditor({
             }}
             onChange={(event) => {
               const value = event.target.value;
-              const next =
-                typeof value === "string" ? value.split(",") : value;
+              const next = typeof value === "string" ? value.split(",") : value;
               setSelectedProfileIds(
-                next.map((item) => Number(item)).filter((id) => !Number.isNaN(id)),
+                next
+                  .map((item) => Number(item))
+                  .filter((id) => !Number.isNaN(id)),
               );
             }}
             helperText="可多選；預設為本人。"
@@ -1665,6 +1675,8 @@ export default function StorytellerStoryEditor({
                 penName={userProfile?.pen_name}
                 onApplyText={applyAgentText}
                 onApplyProposalToEditor={applyAgenticProposalToEditor}
+                hasUnsavedChanges={hasUnsavedStoryChanges}
+                onSaveBeforeApply={handleSaveStory}
                 pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
               />
             }

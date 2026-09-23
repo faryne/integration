@@ -664,49 +664,56 @@ export default function StorytellerLoreEditor({
     outline.addBookmark(markerId, note);
   }
 
-  function handleSave() {
-    if (saveSuccessTarget) return;
+  // 回傳存檔後的最新版本 id（失敗或沒真的送出時是 null），讓 AI 提案卡片「先存檔
+  // 再套用」可以等存檔完成、拿這個版本當「回復到套用前版本」的目標；按鈕跟快捷鍵
+  // 直接呼叫時不用理會回傳值。
+  function handleSave(): Promise<number | null> {
+    if (saveSuccessTarget) return Promise.resolve(null);
     const projectID = project?.id;
     if (!projectID) {
       showSnack("找不到專案資料，無法儲存設定集。", "error");
-      return;
+      return Promise.resolve(null);
     }
-    saveLore.mutate(
-      {
-        lorePublicId: isNewLore ? undefined : lore?.id,
-        input: {
-          title,
-          collection_id: selectedCollectionId,
-          content,
-          save_trigger: "manual",
-          base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
+    return new Promise((resolve) =>
+      saveLore.mutate(
+        {
+          lorePublicId: isNewLore ? undefined : lore?.id,
+          input: {
+            title,
+            collection_id: selectedCollectionId,
+            content,
+            save_trigger: "manual",
+            base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
+          },
         },
-      },
-      {
-        onSuccess: (savedLore) => {
-          lastSavedDraftRef.current = currentDraftRef.current;
-          latestVersionIdRef.current =
-            savedLore?.latest_version_id ?? latestVersionIdRef.current;
-          showSnack("設定集已存檔。");
-          if (isNewLore && savedLore?.public_id) {
-            // embedded（工作台）模式下要留在工作台右欄，把網址從 .../lore/new
-            // 換成存好之後的真正 public_id，不能跳回舊版獨立編輯頁。
-            setSaveSuccessTarget(
-              steamloomPath(
-                embedded
-                  ? `my/workspace/${projectID}/lore/${savedLore.public_id}`
-                  : `my/project/${projectID}/lore/${savedLore.public_id}`,
-              ),
-            );
-          }
-          if (savedLore?.version_conflict) {
-            setVersionConflict(true);
-          }
+        {
+          onSuccess: (savedLore) => {
+            lastSavedDraftRef.current = currentDraftRef.current;
+            latestVersionIdRef.current =
+              savedLore?.latest_version_id ?? latestVersionIdRef.current;
+            showSnack("設定集已存檔。");
+            if (isNewLore && savedLore?.public_id) {
+              // embedded（工作台）模式下要留在工作台右欄，把網址從 .../lore/new
+              // 換成存好之後的真正 public_id，不能跳回舊版獨立編輯頁。
+              setSaveSuccessTarget(
+                steamloomPath(
+                  embedded
+                    ? `my/workspace/${projectID}/lore/${savedLore.public_id}`
+                    : `my/project/${projectID}/lore/${savedLore.public_id}`,
+                ),
+              );
+            }
+            if (savedLore?.version_conflict) {
+              setVersionConflict(true);
+            }
+            resolve(latestVersionIdRef.current ?? null);
+          },
+          onError: (error) => {
+            showSnack(errorMessage(error, "設定集存檔失敗。"), "error");
+            resolve(null);
+          },
         },
-        onError: (error) => {
-          showSnack(errorMessage(error, "設定集存檔失敗。"), "error");
-        },
-      },
+      ),
     );
   }
 
@@ -1286,6 +1293,8 @@ export default function StorytellerLoreEditor({
                 penName={userProfile?.pen_name}
                 onApplyText={applyAgentText}
                 onApplyProposalToEditor={applyAgenticProposalToEditor}
+                hasUnsavedChanges={hasUnsavedLoreChanges}
+                onSaveBeforeApply={handleSave}
                 pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
               />
             }

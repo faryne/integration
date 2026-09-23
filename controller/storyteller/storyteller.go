@@ -639,6 +639,29 @@ func AgentProposalReferenceContent(ctx fiber.Ctx) error {
 	return output.Success(result)
 }
 
+// PreviewAgentProposal 算出局部改內容類提案（patch／search_replace／章節工具）套用
+// 之後的完整標題/摘要/內容，只計算不寫入，給提案卡片畫 diff 用。body 帶編輯區目前的
+// 值（可能含未存檔變更），讓預覽跟「先存檔再套用」的實際結果一致。
+func PreviewAgentProposal(ctx fiber.Ctx) error {
+	var input storytellerModel.AgentProposalPreviewRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	result, err := storyteller.NewService().PreviewAgentProposal(
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Params("proposal"),
+		input,
+	)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller project, proposal or target not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(result)
+}
+
 // ApplyAgentProposal 套用先前 RunStoryAgenticQuery 回傳、存進
 // storyteller_agent_proposals 的寫入類提案。前端只需要帶 public_id——提案的
 // tool_name／arguments 由後端自己查，不再信任前端原樣送回來的值，順便讓套用
@@ -654,9 +677,8 @@ func ApplyAgentProposal(ctx fiber.Ctx) error {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("storyteller project or proposal not found"))
 		}
-		if errors.Is(err, storyteller.ErrAgentProposalToolNotAllowed) || errors.Is(err, storyteller.ErrAgentToolScopeViolation) {
-			return output.Unauthorized(err)
-		}
+		// 工具不在允許清單、或提案目標跨出這個專案，都是「這筆提案不能套用」，不是
+		// 登入失效——不能回 401，前端攔截器會把 401 當 session 過期直接登出使用者。
 		return output.BadRequest(err)
 	}
 	return output.Success(result)

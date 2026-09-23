@@ -101,6 +101,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/projects/:project/stories/:story", storyteller.DeleteStory)
 	authenticated.Get("/projects/:project/stories/:story/chat-messages/:message/reference-content", storyteller.StoryChatMessageReferenceContent)
 	authenticated.Get("/projects/:project/agentic-proposals/:proposal/reference-content", storyteller.AgentProposalReferenceContent)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/preview", storyteller.PreviewAgentProposal)
 	authenticated.Post("/projects/:project/agentic-proposals/:proposal/apply", storyteller.ApplyAgentProposal)
 	authenticated.Post("/projects/:project/agentic-proposals/:proposal/mark-applied", storyteller.MarkAgentProposalApplied)
 	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reset", storyteller.ResetAgentProposal)

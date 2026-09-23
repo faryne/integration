@@ -578,6 +578,8 @@ function AgenticAssistantMessage({
   onStoryChanged,
   onApplyText,
   onApplyProposalToEditor,
+  hasUnsavedChanges,
+  onSaveBeforeApply,
   onRejectProposalWithFeedback,
   onReply,
   isReplyTarget,
@@ -600,6 +602,8 @@ function AgenticAssistantMessage({
   onApplyProposalToEditor?: (
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
+  hasUnsavedChanges?: () => boolean;
+  onSaveBeforeApply?: () => Promise<number | null>;
   onRejectProposalWithFeedback?: (
     proposal: StorytellerAgenticProposal,
     feedback: string,
@@ -724,6 +728,8 @@ function AgenticAssistantMessage({
               currentStory={currentStory}
               onApplied={onStoryChanged}
               onApplyToEditor={onApplyProposalToEditor}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onSaveBeforeApply={onSaveBeforeApply}
               onRejectedWithFeedback={onRejectProposalWithFeedback}
             />
           ))}
@@ -790,6 +796,8 @@ export function StorytellerAgenticPanel({
   penName,
   onApplyText,
   onApplyProposalToEditor,
+  hasUnsavedChanges,
+  onSaveBeforeApply,
   onStoryChanged,
   pendingSelectionAgentTrigger,
   presentation = "inline",
@@ -818,6 +826,11 @@ export function StorytellerAgenticPanel({
   onApplyProposalToEditor?: (
     proposal: StorytellerAgenticProposal,
   ) => Promise<void>;
+  // 提案目標是目前這篇、而編輯區有未存檔變更時，卡片要先存檔再套用（見
+  // StorytellerAgenticProposalCard）。onSaveBeforeApply 回傳存檔後的版本 id，
+  // 失敗時是 null。
+  hasUnsavedChanges?: () => boolean;
+  onSaveBeforeApply?: () => Promise<number | null>;
   onStoryChanged?: () => void;
   pendingSelectionAgentTrigger?: StorytellerSelectionAgentTrigger | null;
   // Drawer 與主畫布工作區都由外層決定可用高度，面板本身填滿該空間。
@@ -2182,6 +2195,8 @@ export function StorytellerAgenticPanel({
                     onStoryChanged={onStoryChanged}
                     onApplyText={onApplyText}
                     onApplyProposalToEditor={onApplyProposalToEditor}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    onSaveBeforeApply={onSaveBeforeApply}
                     onRejectProposalWithFeedback={
                       handleRejectProposalWithFeedback
                     }

@@ -15,17 +15,31 @@ import {
 import {
   useApplyStorytellerAgentProposal,
   useMarkStorytellerAgentProposalApplied,
+  usePreviewStorytellerAgentProposal,
   useRejectStorytellerAgentProposal,
   useResetStorytellerAgentProposal,
 } from "@/apis/storyteller/agent.ts";
 import { useRevertStorytellerStoryVersion } from "@/apis/storyteller/story.ts";
 import { useRevertStorytellerLoreVersion } from "@/apis/storyteller/lore.ts";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
-import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import {
+  StorytellerVersionCompareDialog,
+  type StorytellerVersionCompareEntry,
+} from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
 import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
 
 const UPSERT_STORY_TOOL = "storyteller_upsert_story";
 const UPSERT_LORE_TOOL = "storyteller_upsert_lore";
+
+// 局部改內容的工具參數只有片段（search/replace、只帶部分欄位的 patch），前端拿不到
+// 改完的全文，要打後端 preview API 算出來才能畫 diff。清單要跟後端
+// proposalPreviewers（agent_proposal_preview.go）一致。
+const PREVIEW_TOOLS = new Set([
+  "storyteller_patch_story",
+  "storyteller_patch_lore",
+  "storyteller_search_replace_story",
+  "storyteller_search_replace_lore",
+]);
 
 function resolveErrorMessage(error: unknown, fallback: string) {
   if (
@@ -54,6 +68,10 @@ const PROPOSAL_ACTION_LABELS: Record<string, string> = {
   storyteller_move_story: "搬移故事",
   storyteller_revert_story: "回退故事版本",
   storyteller_upsert_lore: "更新設定集內容",
+  storyteller_patch_story: "修改故事欄位",
+  storyteller_patch_lore: "修改設定集欄位",
+  storyteller_search_replace_story: "取代故事文字",
+  storyteller_search_replace_lore: "取代設定集文字",
   storyteller_delete_lore: "刪除設定集",
   storyteller_move_lore: "搬移設定集",
   storyteller_revert_lore: "回退設定集版本",
@@ -113,6 +131,8 @@ export function StorytellerAgenticProposalCard({
   currentStory,
   onApplied,
   onApplyToEditor,
+  hasUnsavedChanges,
+  onSaveBeforeApply,
   onRejectedWithFeedback,
 }: {
   index: number;
@@ -126,6 +146,11 @@ export function StorytellerAgenticProposalCard({
   // 目標是別篇或新建（見下面 sameTargetUpsert 判斷）就沒有編輯區可以填，
   // 維持呼叫後端直接套用的舊行為。
   onApplyToEditor?: (proposal: StorytellerAgenticProposal) => Promise<void>;
+  // 提案目標是目前這篇、編輯區又有未存檔變更時，先用這兩個確認＋存檔再套用，
+  // 不然不管哪條套用路徑都會把還沒存的修改蓋掉、而且版本歷史裡找不回來。
+  // onSaveBeforeApply 回傳存檔後的版本 id，失敗時是 null。
+  hasUnsavedChanges?: () => boolean;
+  onSaveBeforeApply?: () => Promise<number | null>;
   onRejectedWithFeedback?: (
     proposal: StorytellerAgenticProposal,
     feedback: string,
@@ -135,6 +160,16 @@ export function StorytellerAgenticProposalCard({
   const [localStatus, setLocalStatus] = useState<LocalProposalStatus>(null);
   const [diffOpen, setDiffOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [unsavedOpen, setUnsavedOpen] = useState(false);
+  const [savingBeforeApply, setSavingBeforeApply] = useState(false);
+  // 局部改內容類提案的 diff 快照：左邊是按下「檢視 diff」當下的編輯區內容，右邊是
+  // 後端算出的套用結果。套用後留著給「查看變更」用——那時候編輯區已經是套用後的
+  // 內容，再重打 preview 會變成拿「改完的」再改一次（search_replace 多半變成沒差異），
+  // 看不到真正的變更。
+  const [previewDiff, setPreviewDiff] = useState<{
+    left: StorytellerVersionCompareEntry;
+    right: StorytellerVersionCompareEntry;
+  } | null>(null);
   const [rejectFeedbackOpen, setRejectFeedbackOpen] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState("");
   // 套用當下的版本 id，讓「回復到套用前版本」按鈕知道要退回哪一版——不能等要
@@ -158,6 +193,7 @@ export function StorytellerAgenticProposalCard({
   const markApplied = useMarkStorytellerAgentProposalApplied(projectPublicId);
   const resetProposal = useResetStorytellerAgentProposal(projectPublicId);
   const reject = useRejectStorytellerAgentProposal(projectPublicId);
+  const preview = usePreviewStorytellerAgentProposal(projectPublicId);
   // Rules of Hooks 不能依 targetKind 條件呼叫其中一個——兩個 revert hook 都固定
   // 呼叫，未命中的那個因為沒真的被觸發 mutate 不會有副作用，下面依 targetKind
   // 只挑其中一個的 mutate/isPending 來用。
@@ -186,26 +222,94 @@ export function StorytellerAgenticProposalCard({
     typeof proposal.arguments.content === "string"
       ? proposal.arguments.content
       : "";
+  const hasPreview = PREVIEW_TOOLS.has(proposal.tool_name);
   // 提案的目標 id 依工具不同放在不同參數名（story_public_id／lore_public_id）；
-  // 沒帶值代表 AI 要「建立一篇新的」，跟目前開著哪篇無關，一律當作不是同一個
-  // 目標。只有目標剛好等於目前打開的這篇、而且呼叫端真的有接 onApplyToEditor
-  // （目前只有 StoryEditor／LoreEditor 會接），才走「填進編輯區＋存檔」這條路；
-  // 其餘情況（改別篇、新建、非 upsert 類工具）維持呼叫後端直接套用。
+  // 工具種類要跟目前面板的 targetKind 對得上（故事面板裡的 lore 工具一定不是這篇），
+  // 沒帶值代表 AI 要「建立一篇新的」，一律當作不是目前這篇。
   const proposalTargetPublicId =
-    proposal.tool_name === UPSERT_STORY_TOOL
-      ? proposal.arguments.story_public_id
-      : proposal.tool_name === UPSERT_LORE_TOOL
-        ? proposal.arguments.lore_public_id
-        : undefined;
-  const sameTargetUpsert =
-    isUpsertStory &&
-    Boolean(onApplyToEditor) &&
+    targetKind === "lore"
+      ? proposal.arguments.lore_public_id
+      : proposal.arguments.story_public_id;
+  const targetsCurrentDoc =
+    proposal.tool_name.includes(targetKind === "lore" ? "_lore" : "_story") &&
     typeof proposalTargetPublicId === "string" &&
     proposalTargetPublicId !== "" &&
     proposalTargetPublicId === targetPublicId;
+  // 只有目標是目前這篇的 upsert、而且呼叫端真的有接 onApplyToEditor（目前只有
+  // StoryEditor／LoreEditor 會接），才走「填進編輯區＋存檔」這條路；其餘情況（改
+  // 別篇、新建、非 upsert 類工具）維持呼叫後端直接套用。
+  const sameTargetUpsert =
+    isUpsertStory && Boolean(onApplyToEditor) && targetsCurrentDoc;
 
-  function handleApply() {
-    setPreApplyVersionId(currentStory.versionId);
+  // 「檢視 diff」：upsert 參數本身就是全文，直接開；局部改內容類要先打 preview
+  // 拿到套用後全文。每次都重算，因為編輯區內容可能在兩次檢視之間變了。
+  function openDiff() {
+    if (!hasPreview) {
+      setDiffOpen(true);
+      return;
+    }
+    setErrorMessage("");
+    preview.mutate(
+      {
+        proposalPublicId: proposal.public_id,
+        current: {
+          title: currentStory.title,
+          summary: currentStory.summary,
+          content: currentStory.content,
+        },
+      },
+      {
+        onSuccess: (result) => {
+          setPreviewDiff({
+            left: {
+              title: currentStory.title,
+              summary: currentStory.summary,
+              content: currentStory.content,
+              source: "目前版本",
+              createdAt: currentStory.updatedAt,
+            },
+            right: {
+              ...result,
+              source: "AI Agent 提案",
+              createdAt: new Date().toISOString(),
+            },
+          });
+          setDiffOpen(true);
+        },
+        onError: (err) =>
+          setErrorMessage(resolveErrorMessage(err, "無法產生提案預覽")),
+      },
+    );
+  }
+
+  // 危險操作確認（或非危險操作直接按下套用）之後的下一關：目標是目前這篇、編輯區
+  // 又有未存檔變更時，先跳「先存檔再套用」對話框，不然直接套用。
+  function requestApply() {
+    setConfirmOpen(false);
+    if (targetsCurrentDoc && onSaveBeforeApply && hasUnsavedChanges?.()) {
+      setUnsavedOpen(true);
+      return;
+    }
+    handleApply(currentStory.versionId);
+  }
+
+  // 先把編輯區目前內容存成一個版本，再套用提案；存檔拿到的版本 id 就是「回復到
+  // 套用前版本」要退回的目標，使用者沒存的修改因此也救得回來。
+  async function handleSaveThenApply() {
+    setSavingBeforeApply(true);
+    const savedVersionId = await onSaveBeforeApply!();
+    setSavingBeforeApply(false);
+    setUnsavedOpen(false);
+    if (savedVersionId == null) {
+      setLocalStatus("error");
+      setErrorMessage("存檔失敗，提案沒有套用。");
+      return;
+    }
+    handleApply(savedVersionId);
+  }
+
+  function handleApply(preVersionId: number | null) {
+    setPreApplyVersionId(preVersionId);
     setLocalStatus("applying");
     setErrorMessage("");
     if (sameTargetUpsert) {
@@ -369,13 +473,14 @@ export function StorytellerAgenticProposalCard({
 
         {(status === "pending" || status === "error") && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {isUpsertStory && (
+            {(isUpsertStory || hasPreview) && (
               <Button
                 size="small"
                 variant="outlined"
-                onClick={() => setDiffOpen(true)}
+                disabled={preview.isPending}
+                onClick={openDiff}
               >
-                檢視 diff
+                {preview.isPending ? "計算中" : "檢視 diff"}
               </Button>
             )}
             <Button
@@ -385,7 +490,9 @@ export function StorytellerAgenticProposalCard({
               disabled={
                 apply.isPending || markApplied.isPending || reject.isPending
               }
-              onClick={() => (dangerous ? setConfirmOpen(true) : handleApply())}
+              onClick={() =>
+                dangerous ? setConfirmOpen(true) : requestApply()
+              }
             >
               套用提案
             </Button>
@@ -403,7 +510,7 @@ export function StorytellerAgenticProposalCard({
 
         {status === "applied" && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {isUpsertStory && (
+            {(isUpsertStory || previewDiff) && (
               <Button
                 size="small"
                 variant="outlined"
@@ -448,6 +555,15 @@ export function StorytellerAgenticProposalCard({
           }}
         />
       )}
+      {previewDiff && (
+        <StorytellerVersionCompareDialog
+          open={diffOpen}
+          onClose={() => setDiffOpen(false)}
+          itemTitle={previewDiff.left.title}
+          leftVersion={previewDiff.left}
+          rightVersion={previewDiff.right}
+        />
+      )}
 
       <StorytellerMascotDialog
         open={confirmOpen}
@@ -462,10 +578,36 @@ export function StorytellerAgenticProposalCard({
             <Button
               color="error"
               variant="contained"
-              onClick={handleApply}
+              onClick={requestApply}
               disabled={apply.isPending}
             >
               確認執行
+            </Button>
+          </>
+        }
+      />
+
+      <StorytellerMascotDialog
+        open={unsavedOpen}
+        state="neutral"
+        eyebrow="AI Agent 套用提案"
+        title="編輯區還有未存檔的變更"
+        description="會先把目前內容存成一個版本，再套用提案。AI 的提案是根據先前存檔的內容寫的，套用後你剛才的修改可能被蓋過；需要的話可以用「回復到套用前版本」或編輯歷史找回。"
+        onClose={() => !savingBeforeApply && setUnsavedOpen(false)}
+        actions={
+          <>
+            <Button
+              onClick={() => setUnsavedOpen(false)}
+              disabled={savingBeforeApply}
+            >
+              取消
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => void handleSaveThenApply()}
+              disabled={savingBeforeApply}
+            >
+              {savingBeforeApply ? "存檔中" : "先存檔再套用"}
             </Button>
           </>
         }

@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAgent,
   StorytellerAgenticChatResponse,
+  StorytellerAgenticProposalPreview,
   StorytellerAgenticReferenceContentResponse,
   StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticQueryResponse,
@@ -664,6 +665,30 @@ export function useResetStorytellerAgentProposal(projectPublicId?: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
+    },
+  });
+}
+
+// 算出局部改內容類提案套用後的完整標題/摘要/內容（只計算不寫入）。body 帶編輯區
+// 目前的值（可能含未存檔變更），跟「先存檔再套用」後的實際結果一致。
+export function usePreviewStorytellerAgentProposal(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      proposalPublicId,
+      current,
+    }: {
+      proposalPublicId: string;
+      current: { title: string; summary: string; content: string };
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAgenticProposalPreview>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/agentic-proposals/${proposalPublicId}/preview`,
+        current,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
     },
   });
 }

@@ -545,6 +545,14 @@ export interface StorytellerAgenticProposal {
   status: "pending" | "applied" | "rejected";
 }
 
+// 局部改內容類提案（patch／search_replace／章節工具）套用後的完整結果，由後端
+// 用跟真正套用相同的函式算出來、不寫入；前端拿來跟編輯區目前內容畫 diff。
+export interface StorytellerAgenticProposalPreview {
+  title: string;
+  summary: string;
+  content: string;
+}
+
 export interface StorytellerAgenticQueryResponse {
   // 這輪對話落地的 chat id，不管有沒有拿到回覆都會帶——用來讓即時樂觀更新的
   // 泡泡也能顯示「重送」，並在背景重新整理歷史時用這個值去重，避免同一輪對話
