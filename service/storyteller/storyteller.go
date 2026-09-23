@@ -21,6 +21,7 @@ import (
 	"faryne.dev/service/log"
 
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 var whitespaceRegexp = regexp.MustCompile(`\s+`)
@@ -1001,7 +1002,23 @@ func (s *Service) Story(userID uint64, projectPublicID, storyPublicID string) (*
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Story(project.ID, storyPublicID)
+	story, err := s.repo.Story(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return rejectVolume(story)
+}
+
+// rejectVolume 讓所有「只給一般故事看」的讀取入口統一拒絕冊（is_volume=true）；
+// 冊有自己獨立的 volume.read 權限與端點，不能因為底層共用同一張 storyteller_stories
+// 資料表，就讓故事專用的讀取端點意外把冊的版本歷史／內容當成一般故事回傳出去。找不到
+// 跟「其實是冊」用同一種 gorm.ErrRecordNotFound，不額外洩漏這個 public_id 對應的到底
+// 是不是冊。
+func rejectVolume(story *storytellerModel.Story) (*storytellerModel.Story, error) {
+	if story.IsVolume {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return story, nil
 }
 
 func (s *Service) CreateStory(userID uint64, projectPublicID string, input storytellerModel.StoryRequest, source string) (*storytellerModel.Story, error) {
@@ -1544,10 +1561,16 @@ func (s *Service) publicPublishedStory(userID uint64, projectPublicID, storyPubl
 	if err != nil {
 		return nil, err
 	}
+	var story *storytellerModel.Story
 	if userID != 0 && project.UserID == userID {
-		return s.repo.Story(project.ID, storyPublicID)
+		story, err = s.repo.Story(project.ID, storyPublicID)
+	} else {
+		story, err = s.repo.PublishedStory(project.ID, storyPublicID)
 	}
-	return s.repo.PublishedStory(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return rejectVolume(story)
 }
 
 // viewerID 同 PublicProject，是可選的（見 controller 的 optionalViewerID）——讓故事本人
@@ -3062,7 +3085,11 @@ func (s *Service) storyForUserProject(userID uint64, projectPublicID, storyPubli
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Story(project.ID, storyPublicID)
+	story, err := s.repo.Story(project.ID, storyPublicID)
+	if err != nil {
+		return nil, err
+	}
+	return rejectVolume(story)
 }
 
 func (s *Service) loreForUserProject(userID uint64, projectPublicID, lorePublicID string) (*storytellerModel.Lore, error) {
