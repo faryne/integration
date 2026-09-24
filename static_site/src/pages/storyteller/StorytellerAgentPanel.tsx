@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import type { ButtonProps } from "@mui/material";
 import { useEffect, useState, type ReactNode } from "react";
+import { STORYTELLER_ASSISTANT_AVATAR_SRC } from "@/helpers/storytellerMascot.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunUsage,
+  StorytellerAssistantExpression,
 } from "@/types/storyteller.ts";
 
 export interface StorytellerAgentPanelAgent {
@@ -37,6 +39,7 @@ export interface StorytellerAgentPanelMessage {
   role: "user" | "assistant" | "system";
   content: string;
   speaker: string;
+  expression?: StorytellerAssistantExpression;
   mode?: StorytellerAgentRunMode;
   // 選字觸發 skill 時保留原始選取段落，讓送出當下與重整後都看得出指令作用範圍。
   selectedContent?: string;
@@ -131,6 +134,7 @@ export function StorytellerChatBubble({
   isReplyTarget,
   speaker,
   avatarSrc,
+  avatarFallbackSrc,
   avatarAlt,
   avatarFallback,
   badge,
@@ -141,6 +145,7 @@ export function StorytellerChatBubble({
   isReplyTarget?: boolean;
   speaker: ReactNode;
   avatarSrc?: string;
+  avatarFallbackSrc?: string;
   avatarAlt: string;
   avatarFallback: string;
   // 這則訊息實際用了哪個 Agent 人設／哪個 skill 指令——小小一個 Chip 貼在
@@ -148,6 +153,9 @@ export function StorytellerChatBubble({
   badge?: ReactNode;
   children: ReactNode;
 }) {
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+  useEffect(() => setAvatarLoadFailed(false), [avatarSrc]);
+
   return (
     <Box
       data-agent-message-id={messageId}
@@ -159,8 +167,9 @@ export function StorytellerChatBubble({
       }}
     >
       <Avatar
-        src={avatarSrc || undefined}
+        src={(avatarLoadFailed ? avatarFallbackSrc : avatarSrc) || undefined}
         alt={avatarAlt}
+        slotProps={{ img: { onError: () => setAvatarLoadFailed(true) } }}
         sx={{
           width: 36,
           height: 36,
@@ -301,6 +310,11 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
           : message.role === "assistant"
             ? props.assistantAvatarSrc
             : undefined
+      }
+      avatarFallbackSrc={
+        message.role === "assistant"
+          ? STORYTELLER_ASSISTANT_AVATAR_SRC
+          : undefined
       }
       avatarAlt={
         isUser

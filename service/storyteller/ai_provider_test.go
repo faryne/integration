@@ -264,6 +264,15 @@ func TestAgentRequestNeutralizesOwnTagsInContent(t *testing.T) {
 
 func TestAgentSystemPromptIsStaticPerToolPolicy(t *testing.T) {
 	require.Equal(t, agentSystemPrompt(agentToolsProposeWrites), agentSystemPrompt(agentToolsProposeWrites))
+	for _, tools := range []agentToolPolicy{agentToolsNone, agentToolsReadOnly, agentToolsProposeWrites} {
+		prompt := agentSystemPrompt(tools)
+		require.Contains(t, prompt, "You are Suosuo (梭梭)")
+		require.Contains(t, prompt, "including built-in Skills and user-created Skills")
+		require.Contains(t, prompt, "Put the author's intent above your own cleverness")
+		require.Contains(t, prompt, "Apply it on top of Suosuo's stable identity")
+		require.Contains(t, prompt, "<Answer><![CDATA[the complete user-facing answer]]></Answer>")
+		require.Contains(t, prompt, "neutral: ordinary answers")
+	}
 	require.NotContains(t, agentSystemPrompt(agentToolsNone), "Every tool call")
 	require.Contains(t, agentSystemPrompt(agentToolsReadOnly), "cannot write")
 	require.NotContains(t, agentSystemPrompt(agentToolsReadOnly), "storyteller_upsert_story")

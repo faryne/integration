@@ -402,11 +402,13 @@ func completeAgenticQuery(ctx context.Context, repo agentRunRepository, plan *ag
 		return loopErr
 	}
 
+	response := parseSuosuoResponse(loopResult.FinalText)
 	output := &AgenticQueryOutput{
 		RawResponses: loopResult.RawResponses,
 		Provider:     plan.Key.Provider,
 		ModelName:    plan.ModelName,
-		Result:       loopResult.FinalText,
+		Result:       response.Answer,
+		Expression:   response.Expression,
 		Steps:        loopResult.Steps,
 		Proposals:    buildAgentProposalRows(ExtractProposals(loopResult, writeToolNames)),
 		Usage:        loopResult.Usage,
@@ -465,6 +467,7 @@ func completeAgentRun(ctx context.Context, repo agentRunRepository, plan *agentR
 		Provider:     plan.Key.Provider,
 		ModelName:    plan.ModelName,
 		Result:       result.Text,
+		Expression:   string(result.Expression),
 		FinishReason: result.FinishReason,
 	}
 	if result.Usage != nil {

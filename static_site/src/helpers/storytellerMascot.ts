@@ -1,10 +1,35 @@
 import type { StorytellerAppearance } from "@/data/storytellerTheme.ts";
+import type { StorytellerAssistantExpression } from "@/types/storyteller.ts";
 
 export const STORYTELLER_MASCOT_CDN_BASE =
   "https://cdn.faryne.dev/steamloom_assets";
 
+const STORYTELLER_ASSISTANT_EXPRESSIONS = new Set<string>([
+  "neutral",
+  "attentive",
+  "thinking",
+  "pleased",
+  "concerned",
+  "tangled",
+]);
+
+export function normalizeStorytellerAssistantExpression(
+  value: unknown,
+): StorytellerAssistantExpression {
+  return typeof value === "string" &&
+    STORYTELLER_ASSISTANT_EXPRESSIONS.has(value)
+    ? (value as StorytellerAssistantExpression)
+    : "neutral";
+}
+
 // 對話頭像統一用 suosuo-avatar-{expression}-256.png，之後新增表情不用再猜命名。
-export const STORYTELLER_ASSISTANT_AVATAR_SRC = `${STORYTELLER_MASCOT_CDN_BASE}/suosuo-avatar-neutral-256.png`;
+export function storytellerAssistantAvatarSrc(
+  expression: StorytellerAssistantExpression = "neutral",
+) {
+  return `${STORYTELLER_MASCOT_CDN_BASE}/suosuo-avatar-${expression}-256.png`;
+}
+
+export const STORYTELLER_ASSISTANT_AVATAR_SRC = storytellerAssistantAvatarSrc();
 
 export type StorytellerMascotPose =
   "idle" | "loading" | "success" | "error" | "thinking" | "empty";

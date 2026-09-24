@@ -18,7 +18,7 @@ func TestAgenticQueryOutputMetadataUsage(t *testing.T) {
 		}},
 		Usage: &AIProviderUsage{InputTokens: 5, OutputTokens: 3, TotalTokens: 8},
 	})
-	require.JSONEq(t, `{"mode":"agentic_query","step_count":1,"steps":[{"tool_calls":[{"id":"toolu_1","name":"storyteller_get_story","arguments":null}],"results":[]}],"usage":{"input_tokens":5,"output_tokens":3,"total_tokens":8}}`, withUsage)
+	require.JSONEq(t, `{"mode":"agentic_query","expression":"neutral","step_count":1,"steps":[{"tool_calls":[{"id":"toolu_1","name":"storyteller_get_story","arguments":null}],"results":[]}],"usage":{"input_tokens":5,"output_tokens":3,"total_tokens":8}}`, withUsage)
 
 	withoutUsage := agenticQueryOutputMetadata(&AgenticQueryOutput{})
 	var metadata map[string]interface{}
@@ -44,7 +44,7 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 			ToolCalls: []ToolCall{{ID: "toolu_1", Name: "storyteller_get_story", Arguments: map[string]interface{}{"story_public_id": "abc"}}},
 		},
 		{
-			Result:       "這篇故事叫《測試故事》。",
+			Result:       "<Response><Answer><![CDATA[這篇故事叫《測試故事》。]]></Answer><Expression>attentive</Expression></Response>",
 			FinishReason: "end_turn",
 			Usage:        &AIProviderUsage{InputTokens: 5, OutputTokens: 3, TotalTokens: 8},
 		},
@@ -75,6 +75,7 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, toolCalled)
 	require.Equal(t, "這篇故事叫《測試故事》。", output.Result)
+	require.Equal(t, SuosuoExpressionAttentive, output.Expression)
 	require.NotNil(t, output.Usage)
 	require.Equal(t, 8, output.Usage.TotalTokens)
 
@@ -85,7 +86,9 @@ func TestRunStoryAgenticQueryCallsToolThenPersistsChatAndUsage(t *testing.T) {
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
 	require.Equal(t, "這篇故事叫什麼名字？", repo.messages[0].Content)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
+	require.Equal(t, "這篇故事叫《測試故事》。", repo.messages[1].Content)
 	require.Contains(t, repo.messages[1].Metadata, "storyteller_get_story")
+	require.Contains(t, repo.messages[1].Metadata, `"expression":"attentive"`)
 	require.NotNil(t, repo.usage)
 	require.Equal(t, 8, repo.usage.TotalTokens)
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
@@ -126,7 +129,7 @@ func TestRunStoryAgenticQueryRendersHistoryIntoRequest(t *testing.T) {
 			require.Len(t, req.Messages, 1)
 			require.Contains(t, req.Messages[0].Content, "<History role=\"user\">把前段改寫</History>")
 			require.Contains(t, req.Messages[0].Content, "<History role=\"assistant\">臣聞前段</History>")
-			require.Contains(t, req.SystemPrompt, "do not imitate the voice of earlier assistant answers")
+			require.Contains(t, req.SystemPrompt, "do not imitate a user-created Skill used by an earlier assistant answer")
 			return &AIProviderResponse{Result: "這輪回答"}, nil
 		},
 	}

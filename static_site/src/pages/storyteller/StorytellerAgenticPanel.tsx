@@ -50,6 +50,8 @@ import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import {
   STORYTELLER_ASSISTANT_AVATAR_SRC,
+  normalizeStorytellerAssistantExpression,
+  storytellerAssistantAvatarSrc,
   storytellerMascotSrc,
 } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
@@ -101,6 +103,7 @@ import {
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunUsage,
+  StorytellerAssistantExpression,
   StorytellerAgenticProposal,
   StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
@@ -281,6 +284,7 @@ type PanelMessage =
       id: string;
       role: "user" | "assistant";
       content: string;
+      expression?: StorytellerAssistantExpression;
       steps?: StorytellerAgenticStep[];
       proposals?: StorytellerAgenticProposal[];
       // 新資料只存參照；replyContent 只給舊 metadata.reply_content 或極短暫拿不到
@@ -665,7 +669,12 @@ function AgenticAssistantMessage({
       isUser={isUser}
       isReplyTarget={isReplyTarget}
       speaker={isUser ? "你" : STORYTELLER_ASSISTANT_NAME}
-      avatarSrc={isUser ? userAvatarSrc : STORYTELLER_ASSISTANT_AVATAR_SRC}
+      avatarSrc={
+        isUser
+          ? userAvatarSrc
+          : storytellerAssistantAvatarSrc(message.expression)
+      }
+      avatarFallbackSrc={isUser ? undefined : STORYTELLER_ASSISTANT_AVATAR_SRC}
       avatarAlt={isUser ? "使用者頭像" : "梭梭頭像"}
       avatarFallback={isUser ? userAvatarFallback : "梭"}
     >
@@ -1266,6 +1275,20 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  function parseMessageExpression(
+    metadata?: string,
+  ): StorytellerAssistantExpression {
+    if (!metadata) {
+      return "neutral";
+    }
+    try {
+      const parsed = JSON.parse(metadata) as { expression?: unknown };
+      return normalizeStorytellerAssistantExpression(parsed.expression);
+    } catch {
+      return "neutral";
+    }
+  }
+
   function parseMessageSelectedContent(metadata?: string): string | undefined {
     if (!metadata) {
       return undefined;
@@ -1327,6 +1350,7 @@ export function StorytellerAgenticPanel({
       id: String(message.id),
       role: message.role === "assistant" ? "assistant" : "user",
       content: message.content,
+      expression: parseMessageExpression(message.metadata),
       steps: agentic?.steps,
       proposals: message.proposals,
       replyReference: reply.replyReference,
@@ -1359,6 +1383,7 @@ export function StorytellerAgenticPanel({
       role: message.role,
       content: stripSkillSelectedContentQuote(message.content, selectedContent),
       speaker: skillMessageSpeaker(message),
+      expression: parseMessageExpression(message.metadata),
       mode: parseMessageMode(message.metadata),
       selectedContent,
       usage: parseMessageUsage(message.metadata),
@@ -1456,6 +1481,7 @@ export function StorytellerAgenticPanel({
         role: "assistant",
         content: "",
         speaker: STORYTELLER_ASSISTANT_NAME,
+        expression: "thinking",
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1465,6 +1491,7 @@ export function StorytellerAgenticPanel({
         id: loadingId,
         role: "assistant",
         content: "",
+        expression: "thinking",
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1698,6 +1725,7 @@ export function StorytellerAgenticPanel({
       role: "assistant",
       content: "",
       speaker: STORYTELLER_ASSISTANT_NAME,
+      expression: "thinking",
       isLoading: true,
     });
     setPrompt("");
@@ -1755,6 +1783,9 @@ export function StorytellerAgenticPanel({
             role: "assistant",
             content: result.result,
             speaker: STORYTELLER_ASSISTANT_NAME,
+            expression: normalizeStorytellerAssistantExpression(
+              result.expression,
+            ),
             mode,
             usage: result.usage,
             resultSelection: null,
@@ -1811,6 +1842,7 @@ export function StorytellerAgenticPanel({
       id: loadingId,
       role: "assistant",
       content: "",
+      expression: "thinking",
       isLoading: true,
     });
     if (!options?.preserveComposer) {
@@ -1873,6 +1905,9 @@ export function StorytellerAgenticPanel({
               : loadingId,
             role: "assistant",
             content: response.result,
+            expression: normalizeStorytellerAssistantExpression(
+              response.expression,
+            ),
             steps: response.steps,
             proposals: response.proposals,
             usage: response.usage,
@@ -1887,6 +1922,7 @@ export function StorytellerAgenticPanel({
             id: loadingId,
             role: "assistant",
             content: "",
+            expression: "tangled",
             warning: agenticErrorMessage(err),
           });
         },
@@ -2194,7 +2230,9 @@ export function StorytellerAgenticPanel({
                     message={message}
                     userAvatarSrc={userAvatarSrc}
                     userAvatarFallback={userAvatarFallback}
-                    assistantAvatarSrc={STORYTELLER_ASSISTANT_AVATAR_SRC}
+                    assistantAvatarSrc={storytellerAssistantAvatarSrc(
+                      message.expression,
+                    )}
                     enableReplace={false}
                     enableInsert={false}
                     onApplyText={onApplyText}

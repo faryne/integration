@@ -33,6 +33,7 @@ type AgenticQueryOutput struct {
 	Provider   storytellerModel.AgentProvider
 	ModelName  string
 	Result     string
+	Expression SuosuoExpression
 	// Steps 是 agent 這輪對話呼叫過哪些工具、各自結果——之後 Phase 6 前端要顯示
 	// 「正在呼叫哪個工具」的過程提示，直接讀這份資料即可。
 	Steps []AgentLoopStep
@@ -106,6 +107,7 @@ func (o *AgenticQueryOutput) ToResponse() storytellerModel.AgenticQueryResponse 
 		Provider:           o.Provider,
 		ModelName:          o.ModelName,
 		Result:             o.Result,
+		Expression:         string(o.Expression),
 		Steps:              steps,
 		Proposals:          proposals,
 		Usage:              usage,
@@ -368,16 +370,18 @@ func agenticQueryOutputMetadata(output *AgenticQueryOutput) string {
 		TotalTokens  int `json:"total_tokens"`
 	}
 	type queryMetadata struct {
-		Mode      string                               `json:"mode"`
-		StepCount int                                  `json:"step_count"`
-		Steps     []storytellerModel.AgenticStepOutput `json:"steps,omitempty"`
-		Usage     *usageMetadata                       `json:"usage,omitempty"`
+		Mode       string                               `json:"mode"`
+		Expression SuosuoExpression                     `json:"expression"`
+		StepCount  int                                  `json:"step_count"`
+		Steps      []storytellerModel.AgenticStepOutput `json:"steps,omitempty"`
+		Usage      *usageMetadata                       `json:"usage,omitempty"`
 	}
 	response := output.ToResponse()
 	meta := queryMetadata{
-		Mode:      "agentic_query",
-		StepCount: len(output.Steps),
-		Steps:     response.Steps,
+		Mode:       "agentic_query",
+		Expression: normalizeSuosuoExpression(string(output.Expression)),
+		StepCount:  len(output.Steps),
+		Steps:      response.Steps,
 	}
 	if output.Usage != nil {
 		meta.Usage = &usageMetadata{
