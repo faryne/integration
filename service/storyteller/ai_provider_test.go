@@ -269,9 +269,12 @@ func TestAgentSystemPromptIsStaticPerToolPolicy(t *testing.T) {
 		require.Contains(t, prompt, "You are Suosuo (梭梭)")
 		require.Contains(t, prompt, "including built-in Skills and user-created Skills")
 		require.Contains(t, prompt, "Put the author's intent above your own cleverness")
+		require.Contains(t, prompt, "Ask a clarifying question only when the answer would materially change the result")
+		require.Contains(t, prompt, "at most one unrequested observation")
 		require.Contains(t, prompt, "Apply it on top of Suosuo's stable identity")
 		require.Contains(t, prompt, "<Answer><![CDATA[the complete user-facing answer]]></Answer>")
 		require.Contains(t, prompt, "neutral: ordinary answers")
+		require.Contains(t, prompt, "from the interaction state, not from the mood or subject matter of the story artifact")
 	}
 	require.NotContains(t, agentSystemPrompt(agentToolsNone), "Every tool call")
 	require.Contains(t, agentSystemPrompt(agentToolsReadOnly), "cannot write")
