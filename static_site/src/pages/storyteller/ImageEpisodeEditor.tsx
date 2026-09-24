@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
   STORYTELLER_APP_NAME,
   STORYTELLER_IMAGE_PAGE_ALLOWED_MIME_TYPES,
@@ -42,6 +43,7 @@ import {
   STORYTELLER_IMAGE_PAGE_MAX_COUNT,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -298,6 +300,10 @@ export default function StorytellerImageEpisodeEditor({
     }
     return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges);
   }, [embedded, phase, title, summary, status, selectedVolumeId, selectedProfileIds, pages]);
+
+  // ⌘S／Ctrl+S 存檔，跟 Story/LoreEditor 一致；handleSubmit 本身已擋掉上傳中／
+  // 缺標題或頁面等不能送出的狀態。必須在下面的 early return 之前呼叫（Rules of Hooks）。
+  usePrimaryShortcut("s", () => void handleSubmit());
 
   const pageTitle = isNewEpisode ? "上傳圖像作品" : "編輯圖像作品";
 
@@ -680,6 +686,7 @@ export default function StorytellerImageEpisodeEditor({
       onClick={() => void handleSubmit()}
     >
       {isSubmitting ? "處理中..." : phase === "error" ? "重試" : "儲存"}
+      <ShortcutHint shortcutKey="S" />
     </Button>
   ) : undefined;
   const embeddedHeaderContent = embedded ? (

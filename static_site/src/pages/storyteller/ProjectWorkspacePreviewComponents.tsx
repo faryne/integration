@@ -48,6 +48,7 @@ import {
 } from "./ProjectWorkspacePreviewRows.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
 import { useWorkspaceViewMode } from "./workspaceViewMode.ts";
+import { WorkspaceSearchField } from "./WorkspaceSearchField.tsx";
 import type {
   StorytellerAsset,
   StorytellerLore,
@@ -82,6 +83,8 @@ export interface WorkspaceSidebarProps {
     beforeId: string | null,
   ) => void;
   onNavigate?: () => void;
+  // 側欄頂端搜尋框送出時呼叫；手機 drawer 會先經過 onNavigate 收起再開搜尋對話框。
+  onSearch?: (keyword: string) => void;
 }
 
 export function WorkspaceSidebar({
@@ -100,6 +103,7 @@ export function WorkspaceSidebar({
   onReorderVolume,
   onReorderLoreCollection,
   onNavigate,
+  onSearch,
 }: WorkspaceSidebarProps) {
   const storiesByCollection = useMemo(() => {
     const grouped = new Map<string, StorytellerStory[]>();
@@ -128,6 +132,14 @@ export function WorkspaceSidebar({
   ).length;
   return (
     <Stack sx={{ height: 1, color: "text.secondary" }}>
+      {onSearch && (
+        <WorkspaceSearchField
+          onSubmit={(keyword) => {
+            onNavigate?.();
+            onSearch(keyword);
+          }}
+        />
+      )}
       <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", p: 1, pb: 0 }}>
         <SidebarGroup
           title="作品與冊"

@@ -34,6 +34,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
@@ -41,6 +42,7 @@ import {
 } from "@/data/storyteller.ts";
 import type { AlertColor } from "@mui/material";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -546,35 +548,17 @@ export default function StorytellerLoreEditor({
     { label: "創作專案", to: steamloomPath("my/projects") },
   ];
 
-  // Ctrl/Cmd+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
+  // ⌘S／Ctrl+S 手動存檔快捷鍵，跟 StoryEditor.tsx 同一套邏輯／同樣的理由
   // （Phase 9.5 人工測試反映的問題）。
   //
   // 已知 Bug 記錄：原本寫在 `if (authLoading)` 等 early return 之後，導致
-  // 未登入／載入中的 render 不會呼叫這三個 hook，登入後才會呼叫，違反
+  // 未登入／載入中的 render 不會呼叫這個 hook，登入後才會呼叫，違反
   // Rules of Hooks（StoryEditor.tsx 也有同樣的問題，一起搬到這裡修）。
   // `handleSave` 是 function 宣告會整個 hoist，搬到 early return 之前一樣
   // 讀得到，不需要跟著搬。
-  const handleSaveRef = useRef(handleSave);
-  const isSavingLoreRef = useRef(saveLore.isPending);
-  useEffect(() => {
-    handleSaveRef.current = handleSave;
-    isSavingLoreRef.current = saveLore.isPending;
+  usePrimaryShortcut("s", () => {
+    if (!saveLore.isPending) handleSave();
   });
-  useEffect(() => {
-    function handleSaveHotkey(event: KeyboardEvent) {
-      if (
-        !(event.metaKey || event.ctrlKey) ||
-        event.key.toLowerCase() !== "s"
-      ) {
-        return;
-      }
-      event.preventDefault();
-      if (isSavingLoreRef.current) return;
-      handleSaveRef.current();
-    }
-    window.addEventListener("keydown", handleSaveHotkey);
-    return () => window.removeEventListener("keydown", handleSaveHotkey);
-  }, []);
 
   if (authLoading) {
     return (
@@ -974,22 +958,18 @@ export default function StorytellerLoreEditor({
     </Stack>
   ) : undefined;
   const loreEditorBottomActionContent = embedded ? (
-    // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-    // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
-    <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-      <span>
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<SaveIcon />}
-          disabled={saveLore.isPending || saveSuccessTarget !== null}
-          onClick={handleSave}
-          sx={{ minWidth: 88 }}
-        >
-          {saveLore.isPending ? "存檔中" : "存檔"}
-        </Button>
-      </span>
-    </Tooltip>
+    // 按鈕內直接標出快捷鍵（Mac ⌘S／Windows Ctrl+S），不必 hover 才看得到。
+    <Button
+      size="small"
+      variant="contained"
+      startIcon={<SaveIcon />}
+      disabled={saveLore.isPending || saveSuccessTarget !== null}
+      onClick={handleSave}
+      sx={{ minWidth: 88 }}
+    >
+      {saveLore.isPending ? "存檔中" : "存檔"}
+      <ShortcutHint shortcutKey="S" />
+    </Button>
   ) : undefined;
   const loreEditorHeaderContent = embedded ? (
     <Box
@@ -1199,22 +1179,17 @@ export default function StorytellerLoreEditor({
           </Grid>
         )}
         <Grid size={{ xs: 12, md: 2 }}>
-          {/* Button 有 fullWidth，包裹用的 span 要是 block 才不會把寬度收縮
-              回內容寬度。 */}
-          <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-            <span style={{ display: "block" }}>
-              <Button
-                fullWidth
-                startIcon={<SaveIcon />}
-                variant="contained"
-                onClick={handleSave}
-                disabled={saveLore.isPending || saveSuccessTarget !== null}
-                sx={{ py: 1.7 }}
-              >
-                {saveLore.isPending ? "存檔中" : "存檔"}
-              </Button>
-            </span>
-          </Tooltip>
+          <Button
+            fullWidth
+            startIcon={<SaveIcon />}
+            variant="contained"
+            onClick={handleSave}
+            disabled={saveLore.isPending || saveSuccessTarget !== null}
+            sx={{ py: 1.7 }}
+          >
+            {saveLore.isPending ? "存檔中" : "存檔"}
+            <ShortcutHint shortcutKey="S" />
+          </Button>
         </Grid>
       </Grid>
     </Stack>

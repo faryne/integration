@@ -347,9 +347,9 @@ export function StorytellerLayout() {
                         </IconButton>
                       </Stack>
                     ) : (
-                      <Tooltip title="搜尋作品">
+                      <Tooltip title="全站搜尋">
                         <IconButton
-                          aria-label="搜尋作品"
+                          aria-label="全站搜尋"
                           color="inherit"
                           size="small"
                           onClick={() => setQuickSearchOpen(true)}

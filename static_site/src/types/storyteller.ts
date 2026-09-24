@@ -734,6 +734,21 @@ export interface StorytellerProjectSearchResult {
   matches: StorytellerWorkSearchResult[];
 }
 
+export type StorytellerWorkspaceSearchKind = "story" | "lore" | "asset";
+
+// 登入後的工作台搜尋結果；與公開作品搜尋分開，允許命中私人草稿、設定與資產。
+export interface StorytellerWorkspaceSearchResult {
+  kind: StorytellerWorkspaceSearchKind;
+  public_id: string;
+  content_type?: "text" | "image";
+  title: string;
+  context: string;
+  preview: string;
+  location: string;
+  collection_id?: string;
+  updated_at: string;
+}
+
 /** 作者在編輯頁加的筆記型書籤，跟讀者閱讀頁的 StorytellerStoryBookmark 無關。 */
 export interface StorytellerWritingBookmark {
   id: number;

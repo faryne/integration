@@ -7,3 +7,4 @@ export * from "./storyteller/story.ts";
 export * from "./storyteller/asset.ts";
 export * from "./storyteller/lore.ts";
 export * from "./storyteller/writingBookmark.ts";
+export * from "./storyteller/workspaceSearch.ts";
