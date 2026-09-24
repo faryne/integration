@@ -146,6 +146,7 @@ const SELECTION_AGENT_SLASH_WORDS: Partial<
 };
 const SKILL_SLASH_COMMAND_HINT =
   "打 / 可觸發單輪 skill 或切換人設；完整說明見「指令 / 引用說明」。";
+const STORYTELLER_ASSISTANT_NAME = "梭梭";
 
 function parseSkillSlashCommand(
   value: string,
@@ -663,9 +664,9 @@ function AgenticAssistantMessage({
       messageId={message.id}
       isUser={isUser}
       isReplyTarget={isReplyTarget}
-      speaker={isUser ? "你" : "AI 助理"}
+      speaker={isUser ? "你" : STORYTELLER_ASSISTANT_NAME}
       avatarSrc={isUser ? userAvatarSrc : STORYTELLER_ASSISTANT_AVATAR_SRC}
-      avatarAlt={isUser ? "使用者頭像" : "梭梭 AI 助理頭像"}
+      avatarAlt={isUser ? "使用者頭像" : "梭梭頭像"}
       avatarFallback={isUser ? userAvatarFallback : "梭"}
     >
       {message.isLoading ? (
@@ -783,7 +784,7 @@ function AgenticAssistantMessage({
                   id: message.id,
                   role: message.role,
                   content: message.content,
-                  speaker: "AI 助理",
+                  speaker: STORYTELLER_ASSISTANT_NAME,
                 })
               }
             >
@@ -1146,9 +1147,9 @@ export function StorytellerAgenticPanel({
   );
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
-    // 說話者固定顯示「AI 助理」，跟 agentic 模式一致（見 mode Chip 才是真正該標的資訊）。
+    // 回覆者固定顯示梭梭；實際使用的 skill／人設由 mode Chip 標示。
     if (message.role === "assistant") {
-      return "AI 助理";
+      return STORYTELLER_ASSISTANT_NAME;
     }
     if (message.role === "user") {
       return penName || "使用者";
@@ -1454,7 +1455,7 @@ export function StorytellerAgenticPanel({
         id: loadingId,
         role: "assistant",
         content: "",
-        speaker: "AI 助理",
+        speaker: STORYTELLER_ASSISTANT_NAME,
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1696,7 +1697,7 @@ export function StorytellerAgenticPanel({
       id: loadingId,
       role: "assistant",
       content: "",
-      speaker: "AI 助理",
+      speaker: STORYTELLER_ASSISTANT_NAME,
       isLoading: true,
     });
     setPrompt("");
@@ -1753,7 +1754,7 @@ export function StorytellerAgenticPanel({
               : loadingId,
             role: "assistant",
             content: result.result,
-            speaker: "AI 助理",
+            speaker: STORYTELLER_ASSISTANT_NAME,
             mode,
             usage: result.usage,
             resultSelection: null,

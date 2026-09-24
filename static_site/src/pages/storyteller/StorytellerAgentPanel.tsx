@@ -306,7 +306,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
         isUser
           ? "使用者頭像"
           : message.role === "assistant"
-            ? "梭梭 AI 助理頭像"
+            ? "梭梭頭像"
             : "系統訊息"
       }
       avatarFallback={
