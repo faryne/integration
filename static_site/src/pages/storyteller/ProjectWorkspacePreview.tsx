@@ -35,6 +35,7 @@ import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import type { StorytellerWorkspaceSearchResult } from "@/types/storyteller.ts";
 import {
   WorkspacePane,
   WorkspaceSidebar,
@@ -66,6 +67,7 @@ import {
   WorkspaceChrome,
 } from "./WorkspaceChrome.tsx";
 import { hasUnsavedWorkspaceChanges } from "./WorkspaceLeaveGuard.ts";
+import { WorkspaceSearch } from "./WorkspaceSearch.tsx";
 
 const storyPageSize = 20;
 const lorePageSize = 20;
@@ -395,6 +397,29 @@ export default function StorytellerProjectWorkspacePreview() {
     );
   }
 
+  function openWorkspaceSearchResult(
+    result: StorytellerWorkspaceSearchResult,
+    beforeNavigate: () => void,
+  ) {
+    const segment =
+      result.kind === "story"
+        ? result.content_type === "image"
+          ? "image"
+          : "story"
+        : result.kind;
+    const fromSuffix = result.collection_id
+      ? `?from=${encodeURIComponent(result.collection_id)}`
+      : "";
+    guardedNavigate(() => {
+      beforeNavigate();
+      navigate(
+        steamloomPath(
+          `my/workspace/${id}/${segment}/${result.public_id}${fromSuffix}`,
+        ),
+      );
+    });
+  }
+
   function closeWorkspaceEditor() {
     guardedNavigate(() => {
       // 「編輯專案」的 selected 是特地塞進去、不對應任何真實分組的哨兵值
@@ -516,6 +541,13 @@ export default function StorytellerProjectWorkspacePreview() {
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
       trail={[sectionBreadcrumbLabel, collectionBreadcrumbLabel]}
+      action={
+        <WorkspaceSearch
+          projectName={project?.name ?? "目前專案"}
+          projectPublicId={project?.public_id ?? id ?? ""}
+          onOpenResult={openWorkspaceSearchResult}
+        />
+      }
       navigationAction={
         <Button
           size="small"
