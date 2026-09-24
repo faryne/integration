@@ -68,6 +68,7 @@ import {
 } from "./WorkspaceChrome.tsx";
 import { hasUnsavedWorkspaceChanges } from "./WorkspaceLeaveGuard.ts";
 import { WorkspaceSearch } from "./WorkspaceSearch.tsx";
+import { useWorkspaceSearchLauncher } from "./useWorkspaceSearchLauncher.ts";
 
 const storyPageSize = 20;
 const lorePageSize = 20;
@@ -86,6 +87,7 @@ export default function StorytellerProjectWorkspacePreview() {
   // 整個側邊欄（不是個別分組）的收合開關，給螢幕較窄或想專心看右欄內容時用。
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavigatorOpen, setMobileNavigatorOpen] = useState(false);
+  const workspaceSearch = useWorkspaceSearchLauncher();
   // App 內離開編輯器前的確認——「回列表」按鈕跟側邊欄切換分組都會先呼叫
   // guardedNavigate，有未存檔變更時先把實際要執行的動作存起來、彈出確認對話框，
   // 使用者按「離開」才真的執行；沒有未存檔變更（或不在編輯器內）就直接放行，
@@ -494,6 +496,7 @@ export default function StorytellerProjectWorkspacePreview() {
     onCreateAssetCollection: listActions.onCreateAssetCollection,
     onReorderVolume: listActions.reorderVolume,
     onReorderLoreCollection: listActions.reorderLoreCollection,
+    onSearch: workspaceSearch.openSearch,
   };
 
   if (authLoading) {
@@ -541,13 +544,6 @@ export default function StorytellerProjectWorkspacePreview() {
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
       trail={[sectionBreadcrumbLabel, collectionBreadcrumbLabel]}
-      action={
-        <WorkspaceSearch
-          projectName={project?.name ?? "目前專案"}
-          projectPublicId={project?.public_id ?? id ?? ""}
-          onOpenResult={openWorkspaceSearchResult}
-        />
-      }
       navigationAction={
         <Button
           size="small"
@@ -560,6 +556,15 @@ export default function StorytellerProjectWorkspacePreview() {
         </Button>
       }
     >
+      <WorkspaceSearch
+        key={workspaceSearch.seq}
+        open={workspaceSearch.open}
+        initialKeyword={workspaceSearch.keyword}
+        onClose={workspaceSearch.closeSearch}
+        projectName={project?.name ?? "目前專案"}
+        projectPublicId={project?.public_id ?? id ?? ""}
+        onOpenResult={openWorkspaceSearchResult}
+      />
       <WorkspaceMobileNavigatorDrawer
         {...sidebarProps}
         open={mobileNavigatorOpen}
@@ -599,7 +604,11 @@ export default function StorytellerProjectWorkspacePreview() {
             }}
           >
             {sidebarCollapsed ? (
-              <WorkspaceSidebarRail selected={selected} onSelect={selectNode} />
+              <WorkspaceSidebarRail
+                selected={selected}
+                onSelect={selectNode}
+                onSearch={() => workspaceSearch.openSearch()}
+              />
             ) : (
               <WorkspaceSidebar {...sidebarProps} />
             )}

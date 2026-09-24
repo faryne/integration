@@ -43,6 +43,7 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequiredState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
@@ -50,6 +51,7 @@ import {
   storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { usePrimaryShortcut } from "@/helpers/shortcut.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -780,38 +782,19 @@ export default function StorytellerStoryEditor({
     );
   }
 
-  // Ctrl/Cmd+S 手動存檔快捷鍵——工具列拔除後，存檔按鈕只在文件層級 action 區，
+  // ⌘S／Ctrl+S 手動存檔快捷鍵——工具列拔除後，存檔按鈕只在文件層級 action 區，
   // 長篇寫作時要存檔得把頁面捲回最上面，Phase 9.5 人工測試反映這個麻煩，尤其
-  // 行動版更明顯。用 ref 存最新的 handleSaveStory／pending 狀態，避免每次
-  // render 都要重新掛一次 listener。
+  // 行動版更明顯。平台差異（Mac 只認 ⌘、Windows 只認 Ctrl）交給 usePrimaryShortcut。
   //
   // 已知 Bug 記錄：這段 hook 原本寫在 `if (authLoading)`／`if (!session)` 等
   // early return 之後（`handleSaveStory` 定義的旁邊），導致未登入／載入中的
-  // render 完全不會呼叫這三個 hook，登入後的 render 才會呼叫，違反 Rules of
+  // render 完全不會呼叫這個 hook，登入後的 render 才會呼叫，違反 Rules of
   // Hooks（"Rendered more hooks than during the previous render"）。
   // `handleSaveStory` 是 function 宣告會整個 hoist，所以搬到所有 early return
   // 之前一樣讀得到，不需要跟著搬。
-  const handleSaveStoryRef = useRef(handleSaveStory);
-  const isSavingRef = useRef(saveStory.isPending);
-  useEffect(() => {
-    handleSaveStoryRef.current = handleSaveStory;
-    isSavingRef.current = saveStory.isPending;
+  usePrimaryShortcut("s", () => {
+    if (!saveStory.isPending) handleSaveStory();
   });
-  useEffect(() => {
-    function handleSaveHotkey(event: KeyboardEvent) {
-      if (
-        !(event.metaKey || event.ctrlKey) ||
-        event.key.toLowerCase() !== "s"
-      ) {
-        return;
-      }
-      event.preventDefault();
-      if (isSavingRef.current) return;
-      handleSaveStoryRef.current();
-    }
-    window.addEventListener("keydown", handleSaveHotkey);
-    return () => window.removeEventListener("keydown", handleSaveHotkey);
-  }, []);
 
   if (authLoading) {
     return renderEditorFrame({
@@ -1267,22 +1250,18 @@ export default function StorytellerStoryEditor({
     </Stack>
   ) : undefined;
   const storyEditorBottomActionContent = embedded ? (
-    // disabled 的原生 button 不會觸發滑鼠事件，Tooltip 需要包一層 span
-    // 才能在按鈕 disabled 時（存檔中）依然收得到 hover 事件顯示提示。
-    <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-      <span>
-        <Button
-          size="small"
-          variant="contained"
-          startIcon={<SaveIcon />}
-          disabled={saveStory.isPending || saveSuccessTarget !== null}
-          onClick={handleSaveStory}
-          sx={{ minWidth: 88 }}
-        >
-          {saveStory.isPending ? "存檔中" : "存檔"}
-        </Button>
-      </span>
-    </Tooltip>
+    // 按鈕內直接標出快捷鍵（Mac ⌘S／Windows Ctrl+S），不必 hover 才看得到。
+    <Button
+      size="small"
+      variant="contained"
+      startIcon={<SaveIcon />}
+      disabled={saveStory.isPending || saveSuccessTarget !== null}
+      onClick={handleSaveStory}
+      sx={{ minWidth: 88 }}
+    >
+      {saveStory.isPending ? "存檔中" : "存檔"}
+      <ShortcutHint shortcutKey="S" />
+    </Button>
   ) : undefined;
   const storyEditorHeaderContent = embedded ? (
     <Box
@@ -1508,22 +1487,17 @@ export default function StorytellerStoryEditor({
           </Grid>
         )}
         <Grid size={{ xs: 12, md: 3 }}>
-          {/* Button 有 fullWidth，包裹用的 span 要是 block 才不會把寬度收縮
-              回內容寬度（inline span 預設不會撐滿）。 */}
-          <Tooltip title="快捷鍵：Ctrl+S／⌘S">
-            <span style={{ display: "block" }}>
-              <Button
-                fullWidth
-                variant="contained"
-                startIcon={<SaveIcon />}
-                sx={{ py: 1.7 }}
-                disabled={saveStory.isPending || saveSuccessTarget !== null}
-                onClick={handleSaveStory}
-              >
-                {saveStory.isPending ? "存檔中" : "存檔"}
-              </Button>
-            </span>
-          </Tooltip>
+          <Button
+            fullWidth
+            variant="contained"
+            startIcon={<SaveIcon />}
+            sx={{ py: 1.7 }}
+            disabled={saveStory.isPending || saveSuccessTarget !== null}
+            onClick={handleSaveStory}
+          >
+            {saveStory.isPending ? "存檔中" : "存檔"}
+            <ShortcutHint shortcutKey="S" />
+          </Button>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField

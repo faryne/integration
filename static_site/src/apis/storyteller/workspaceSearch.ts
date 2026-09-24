@@ -8,6 +8,9 @@ import type {
 } from "@/types/storyteller.ts";
 import { apiBase, sessionHeaders } from "./shared.ts";
 
+// 對應後端 workspaceSearchKeywordLimit；側欄與對話框輸入框共用同一個上限。
+export const STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT = 100;
+
 export function useStorytellerWorkspaceSearch(
   projectPublicId?: string,
   keyword = "",

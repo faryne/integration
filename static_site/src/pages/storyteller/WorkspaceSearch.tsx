@@ -21,13 +21,15 @@ import {
   ListItemText,
   Stack,
   TextField,
-  Tooltip,
   Typography,
   useMediaQuery,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
-import { useEffect, useState, type KeyboardEvent } from "react";
-import { useStorytellerWorkspaceSearch } from "@/apis/storyteller.ts";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import {
+  STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT,
+  useStorytellerWorkspaceSearch,
+} from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import type {
@@ -43,6 +45,10 @@ import { HighlightedSearchText } from "./WorkspaceSearchHighlight.tsx";
 type WorkspaceSearchFilter = "all" | StorytellerWorkspaceSearchKind;
 
 interface WorkspaceSearchProps {
+  open: boolean;
+  // 從側欄輸入框帶進來的關鍵字；父層每次開啟都換 key 重新掛載，所以只在初始化時讀取。
+  initialKeyword: string;
+  onClose: () => void;
   projectName: string;
   projectPublicId: string;
   onOpenResult: (
@@ -50,8 +56,6 @@ interface WorkspaceSearchProps {
     beforeNavigate: () => void,
   ) => void;
 }
-
-const workspaceSearchKeywordLimit = 100;
 
 const searchFilters: Array<{ value: WorkspaceSearchFilter; label: string }> = [
   { value: "all", label: "全部" },
@@ -69,22 +73,34 @@ const resultIcons = {
 const resultLabels = { story: "作品", lore: "設定", asset: "資產" };
 
 export function WorkspaceSearch({
+  open,
+  initialKeyword,
+  onClose,
   projectName,
   projectPublicId,
   onOpenResult,
 }: WorkspaceSearchProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const [open, setOpen] = useState(false);
-  const [keyword, setKeyword] = useState("");
-  const [debouncedKeyword, setDebouncedKeyword] = useState("");
+  const [keyword, setKeyword] = useState(initialKeyword);
+  // 帶入的關鍵字不必再等 250ms debounce，開啟當下就直接查。
+  const [debouncedKeyword, setDebouncedKeyword] = useState(
+    initialKeyword.trim(),
+  );
   const [filter, setFilter] = useState<WorkspaceSearchFilter>("all");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [selectedResultId, setSelectedResultId] = useState("");
-  const [recentKeywords, setRecentKeywords] = useState<string[]>([]);
+  // 側欄送出等同在對話框按 Enter，也要記進最近搜尋。
+  const [recentKeywords, setRecentKeywords] = useState(() =>
+    initialKeyword.trim()
+      ? saveWorkspaceSearchHistory(projectPublicId, initialKeyword)
+      : readWorkspaceSearchHistory(projectPublicId),
+  );
   const [errorSnackOpen, setErrorSnackOpen] = useState(false);
+  // 關閉後 state 會留到下次開啟才重置，關閉期間不能讓 query 因視窗 focus 等事件再打 API。
   const search = useStorytellerWorkspaceSearch(
     projectPublicId,
-    debouncedKeyword,
+    open ? debouncedKeyword : "",
     filter === "all" ? undefined : filter,
   );
   const keywordIsDebounced = keyword.trim() === debouncedKeyword;
@@ -109,18 +125,8 @@ export function WorkspaceSearch({
     }
   }, [search.isError]);
 
-  function showSearch() {
-    setRecentKeywords(readWorkspaceSearchHistory(projectPublicId));
-    setOpen(true);
-  }
-
-  function closeSearch() {
-    setOpen(false);
-    setKeyword("");
-    setDebouncedKeyword("");
-    setFilter("all");
-    setSelectedResultId("");
-  }
+  // 下次開啟會重新掛載元件，關閉時不必逐一重置 state。
+  const closeSearch = onClose;
 
   function rememberKeyword(value = keyword) {
     setRecentKeywords(saveWorkspaceSearchHistory(projectPublicId, value));
@@ -169,30 +175,6 @@ export function WorkspaceSearch({
 
   return (
     <>
-      <Tooltip title="搜尋目前專案">
-        <IconButton
-          aria-label="搜尋目前專案"
-          color="inherit"
-          size="small"
-          onClick={showSearch}
-          sx={{ display: { xs: "inline-flex", sm: "none" } }}
-        >
-          <SearchIcon fontSize="small" />
-        </IconButton>
-      </Tooltip>
-      <Button
-        color="inherit"
-        size="small"
-        startIcon={<SearchIcon fontSize="small" />}
-        onClick={showSearch}
-        sx={{
-          display: { xs: "none", sm: "inline-flex" },
-          whiteSpace: "nowrap",
-        }}
-      >
-        搜尋目前專案
-      </Button>
-
       <Dialog
         open={open}
         onClose={closeSearch}
@@ -200,6 +182,9 @@ export function WorkspaceSearch({
         maxWidth="md"
         aria-labelledby="workspace-search-title"
         slotProps={{
+          // 從側欄輸入框按 Enter 開啟時，autoFocus 會被 Modal 的 focus trap 搶回 Paper；
+          // 等開啟動畫結束再明確把焦點放回搜尋框，⌘K 與側欄兩條路徑行為才一致。
+          transition: { onEntered: () => searchInputRef.current?.focus() },
           container: {
             sx: { alignItems: "flex-start", pt: { xs: 1.5, sm: "8vh" } },
           },
@@ -238,7 +223,7 @@ export function WorkspaceSearch({
         <DialogContent sx={{ px: { xs: 2, sm: 2.5 }, pt: 0, pb: 2.5 }}>
           <Autocomplete
             freeSolo
-            openOnFocus
+            openOnFocus={!initialKeyword.trim()}
             options={keyword ? [] : recentKeywords}
             inputValue={keyword}
             onInputChange={(_, value) => {
@@ -256,13 +241,14 @@ export function WorkspaceSearch({
               <TextField
                 {...params}
                 autoFocus
+                inputRef={searchInputRef}
                 fullWidth
                 placeholder="搜尋作品、設定、資產……"
                 onKeyDown={handleSearchKeyDown}
                 slotProps={{
                   htmlInput: {
                     ...params.inputProps,
-                    maxLength: workspaceSearchKeywordLimit,
+                    maxLength: STORYTELLER_WORKSPACE_SEARCH_KEYWORD_LIMIT,
                   },
                   input: {
                     ...params.InputProps,

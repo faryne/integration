@@ -2,6 +2,7 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
@@ -15,6 +16,7 @@ import {
   WorkspaceSidebar,
   type WorkspaceSidebarProps,
 } from "./ProjectWorkspacePreviewComponents.tsx";
+import { shortcutLabel } from "@/helpers/shortcut.ts";
 
 interface WorkspaceMobileNavigatorDrawerProps extends WorkspaceSidebarProps {
   open: boolean;
@@ -102,7 +104,10 @@ export function WorkspaceMobileNavigatorDrawer({
 export function WorkspaceSidebarRail({
   selected,
   onSelect,
-}: Pick<WorkspaceSidebarProps, "selected" | "onSelect">) {
+  onSearch,
+}: Pick<WorkspaceSidebarProps, "selected" | "onSelect"> & {
+  onSearch: () => void;
+}) {
   const items = [
     {
       section: "stories" as const,
@@ -115,6 +120,17 @@ export function WorkspaceSidebarRail({
 
   return (
     <Stack alignItems="center" spacing={0.5} sx={{ py: 5.5 }}>
+      {/* 收合時沒有空間放輸入框，改成直接開搜尋對話框的圖示。 */}
+      <Tooltip title={`搜尋此專案（${shortcutLabel("K")}）`} placement="right">
+        <IconButton
+          size="small"
+          aria-label="搜尋此專案"
+          onClick={onSearch}
+          sx={{ borderRadius: 1, mb: 1 }}
+        >
+          <SearchIcon />
+        </IconButton>
+      </Tooltip>
       {items.map((item) => (
         <Tooltip key={item.section} title={item.label} placement="right">
           <IconButton
