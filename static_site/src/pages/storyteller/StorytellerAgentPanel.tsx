@@ -2,6 +2,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ReplyIcon from "@mui/icons-material/Reply";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Chip,
@@ -129,6 +130,9 @@ export function StorytellerChatBubble({
   isUser,
   isReplyTarget,
   speaker,
+  avatarSrc,
+  avatarAlt,
+  avatarFallback,
   badge,
   children,
 }: {
@@ -136,6 +140,9 @@ export function StorytellerChatBubble({
   isUser: boolean;
   isReplyTarget?: boolean;
   speaker: ReactNode;
+  avatarSrc?: string;
+  avatarAlt: string;
+  avatarFallback: string;
   // 這則訊息實際用了哪個 Agent 人設／哪個 skill 指令——小小一個 Chip 貼在
   // 說話者名稱旁邊，事後回頭看對話紀錄才追得回「這則當時發生了什麼事」。
   badge?: ReactNode;
@@ -146,12 +153,31 @@ export function StorytellerChatBubble({
       data-agent-message-id={messageId}
       sx={{
         display: "flex",
-        justifyContent: isUser ? "flex-end" : "flex-start",
+        flexDirection: isUser ? "row-reverse" : "row",
+        alignItems: "flex-end",
+        gap: 1,
       }}
     >
+      <Avatar
+        src={avatarSrc || undefined}
+        alt={avatarAlt}
+        sx={{
+          width: 36,
+          height: 36,
+          flexShrink: 0,
+          border: "1px solid",
+          borderColor: isUser ? "primary.light" : "divider",
+          bgcolor: isUser ? "primary.dark" : "background.paper",
+          color: isUser ? "primary.contrastText" : "text.secondary",
+          fontSize: "0.8rem",
+          fontWeight: 700,
+        }}
+      >
+        {avatarFallback}
+      </Avatar>
       <Box
         sx={{
-          maxWidth: "92%",
+          maxWidth: "calc(100% - 44px)",
           p: 1.5,
           borderRadius: "16px",
           borderBottomRightRadius: isUser ? "4px" : "16px",
@@ -226,6 +252,9 @@ export function StorytellerChatBadges({
 
 export interface StorytellerAgentMessageProps {
   message: StorytellerAgentPanelMessage;
+  userAvatarSrc?: string;
+  userAvatarFallback: string;
+  assistantAvatarSrc: string;
   enableReplace: boolean;
   enableInsert: boolean;
   onApplyText: (
@@ -266,6 +295,27 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       isUser={isUser}
       isReplyTarget={props.isReplyTarget}
       speaker={message.speaker}
+      avatarSrc={
+        isUser
+          ? props.userAvatarSrc
+          : message.role === "assistant"
+            ? props.assistantAvatarSrc
+            : undefined
+      }
+      avatarAlt={
+        isUser
+          ? "使用者頭像"
+          : message.role === "assistant"
+            ? "梭梭 AI 助理頭像"
+            : "系統訊息"
+      }
+      avatarFallback={
+        isUser
+          ? props.userAvatarFallback
+          : message.role === "assistant"
+            ? "梭"
+            : "系"
+      }
       badge={<StorytellerChatBadges mode={message.mode} />}
     >
       {message.isLoading ? (

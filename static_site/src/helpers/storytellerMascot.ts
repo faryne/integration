@@ -3,6 +3,9 @@ import type { StorytellerAppearance } from "@/data/storytellerTheme.ts";
 export const STORYTELLER_MASCOT_CDN_BASE =
   "https://cdn.faryne.dev/steamloom_assets";
 
+// 對話頭像統一用 suosuo-avatar-{expression}-256.png，之後新增表情不用再猜命名。
+export const STORYTELLER_ASSISTANT_AVATAR_SRC = `${STORYTELLER_MASCOT_CDN_BASE}/suosuo-avatar-neutral-256.png`;
+
 export type StorytellerMascotPose =
   "idle" | "loading" | "success" | "error" | "thinking" | "empty";
 export type StorytellerMascotSize = "256" | "512" | "master";

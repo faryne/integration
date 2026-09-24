@@ -34,6 +34,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import {
   fetchStorytellerAgenticChat,
   useStorytellerAgenticReferenceContent,
@@ -47,7 +48,10 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
+import {
+  STORYTELLER_ASSISTANT_AVATAR_SRC,
+  storytellerMascotSrc,
+} from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -569,6 +573,8 @@ function AgenticExpandableQuote({
 
 function AgenticAssistantMessage({
   message,
+  userAvatarSrc,
+  userAvatarFallback,
   targetKind,
   projectPublicId,
   targetPublicId,
@@ -587,6 +593,8 @@ function AgenticAssistantMessage({
   resendingChatId,
 }: {
   message: Extract<PanelMessage, { kind: "agentic" }>;
+  userAvatarSrc?: string;
+  userAvatarFallback: string;
   targetKind: "story" | "lore";
   projectPublicId?: string;
   targetPublicId?: string;
@@ -656,6 +664,9 @@ function AgenticAssistantMessage({
       isUser={isUser}
       isReplyTarget={isReplyTarget}
       speaker={isUser ? "你" : "AI 助理"}
+      avatarSrc={isUser ? userAvatarSrc : STORYTELLER_ASSISTANT_AVATAR_SRC}
+      avatarAlt={isUser ? "使用者頭像" : "梭梭 AI 助理頭像"}
+      avatarFallback={isUser ? userAvatarFallback : "梭"}
     >
       {message.isLoading ? (
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
@@ -844,7 +855,16 @@ export function StorytellerAgenticPanel({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const compactComposer = fillAvailableHeight && isMobile;
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const { data: userProfile } = useStorytellerUserProfile();
+  const defaultUserAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
+  const userAvatarSrc = userProfile?.use_default_avatar
+    ? defaultUserAvatar
+    : userProfile?.avatar_url || defaultUserAvatar;
+  const userAvatarFallback =
+    (penName || session?.user.display_name || user?.displayName || "你")
+      .trim()
+      .charAt(0) || "你";
   const queryClient = useQueryClient();
   // 沒有「目前選中的 Agent」：人設只影響單次 prompt，以 /<名稱> 前綴表示（chip 只是在輸入框
   // 插入這段前綴的捷徑），送出時明確帶 persona_agent_id；沒有前綴就沒有人設。
@@ -2171,6 +2191,9 @@ export function StorytellerAgenticPanel({
                   <StorytellerAgentMessage
                     key={message.id}
                     message={message}
+                    userAvatarSrc={userAvatarSrc}
+                    userAvatarFallback={userAvatarFallback}
+                    assistantAvatarSrc={STORYTELLER_ASSISTANT_AVATAR_SRC}
                     enableReplace={false}
                     enableInsert={false}
                     onApplyText={onApplyText}
@@ -2186,6 +2209,8 @@ export function StorytellerAgenticPanel({
                   <AgenticAssistantMessage
                     key={message.id}
                     message={message}
+                    userAvatarSrc={userAvatarSrc}
+                    userAvatarFallback={userAvatarFallback}
                     targetKind={targetKind}
                     projectPublicId={projectPublicId}
                     targetPublicId={targetPublicId}
