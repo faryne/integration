@@ -30,6 +30,7 @@ export function storytellerAssistantAvatarSrc(
 }
 
 export const STORYTELLER_ASSISTANT_AVATAR_SRC = storytellerAssistantAvatarSrc();
+export const STORYTELLER_ASSISTANT_THINKING_GIF_SRC = `${STORYTELLER_MASCOT_CDN_BASE}/suosuo-loading-thinking-v1-256.gif`;
 
 export type StorytellerMascotPose =
   "idle" | "loading" | "success" | "error" | "thinking" | "empty";

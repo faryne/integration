@@ -63,7 +63,7 @@ import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/Storyteller
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
 import {
-  StorytellerAgentLoadingHint,
+  StorytellerAgentLoadingState,
   StorytellerAgentMessage,
   StorytellerChatBubble,
   storytellerChatActionButtonProps,
@@ -679,12 +679,7 @@ function AgenticAssistantMessage({
       avatarFallback={isUser ? userAvatarFallback : "梭"}
     >
       {message.isLoading ? (
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" color="text.secondary">
-            <StorytellerAgentLoadingHint />
-          </Typography>
-        </Stack>
+        <StorytellerAgentLoadingState />
       ) : (
         message.content && (
           <Box sx={{ typography: "body2", mt: 0.5 }}>

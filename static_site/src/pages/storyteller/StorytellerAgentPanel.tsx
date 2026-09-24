@@ -6,13 +6,15 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Stack,
   Typography,
 } from "@mui/material";
 import type { ButtonProps } from "@mui/material";
 import { useEffect, useState, type ReactNode } from "react";
-import { STORYTELLER_ASSISTANT_AVATAR_SRC } from "@/helpers/storytellerMascot.ts";
+import {
+  STORYTELLER_ASSISTANT_AVATAR_SRC,
+  STORYTELLER_ASSISTANT_THINKING_GIF_SRC,
+} from "@/helpers/storytellerMascot.ts";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { buildStorytellerAgentMessageLinks } from "@/pages/storyteller/storytellerAgentReferences.ts";
 import type {
@@ -76,21 +78,9 @@ export function agentRunModeLabel(mode?: StorytellerAgentRunMode | string) {
 export type StorytellerAgentApplyAction =
   "replace" | "insert" | "append" | "copy";
 
-// AI 助理一輪呼叫可能要跑好幾秒到好幾十秒（多輪工具呼叫時尤其明顯），純轉圈圈
-// 容易讓使用者懷疑「是不是壞了、關掉分頁會不會就消失了」。這裡先用便宜的做法
-// 讓文字不定時輪替，至少感覺得到「還在動」——之後如果要做 SSE 步驟即時推播
-// 再取代掉這個。
-const AGENT_LOADING_HINTS = [
-  "處理中…",
-  "AI 正在讀取資料…",
-  "還在努力生成內容…",
-  "整理輸出格式中…",
-  "快好了，請再等一下…",
-];
-
-const agentLoadingHintRotateSeconds = 3;
-
-export function StorytellerAgentLoadingHint() {
+// Provider 與多輪工具呼叫可能需要一段時間；動畫表達梭梭仍在思考，秒數則明確告訴
+// 使用者已經等了多久，不再用隨機文案猜測目前進度。
+export function StorytellerAgentLoadingState() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   useEffect(() => {
     setElapsedSeconds(0);
@@ -99,13 +89,18 @@ export function StorytellerAgentLoadingHint() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-  const hintIndex =
-    Math.floor(elapsedSeconds / agentLoadingHintRotateSeconds) %
-    AGENT_LOADING_HINTS.length;
   return (
-    <>
-      {AGENT_LOADING_HINTS[hintIndex]}（已等待 {elapsedSeconds} 秒）
-    </>
+    <Stack spacing={0.5} alignItems="center" sx={{ minWidth: 128, py: 0.5 }}>
+      <Box
+        component="img"
+        src={STORYTELLER_ASSISTANT_THINKING_GIF_SRC}
+        alt="梭梭正在思考"
+        sx={{ width: 112, height: 112, objectFit: "contain" }}
+      />
+      <Typography variant="body2" color="text.secondary">
+        梭梭正在想……已等待 {elapsedSeconds} 秒
+      </Typography>
+    </Stack>
   );
 }
 
@@ -333,12 +328,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
       badge={<StorytellerChatBadges mode={message.mode} />}
     >
       {message.isLoading ? (
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" color="text.secondary">
-            <StorytellerAgentLoadingHint />
-          </Typography>
-        </Stack>
+        <StorytellerAgentLoadingState />
       ) : (
         <Box sx={{ typography: "body2", mt: 0.5 }}>
           {message.selectedContent && (
