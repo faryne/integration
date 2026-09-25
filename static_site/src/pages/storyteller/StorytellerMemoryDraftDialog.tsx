@@ -2,11 +2,13 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   CircularProgress,
   FormControlLabel,
   FormControl,
   InputLabel,
   MenuItem,
+  Paper,
   Select,
   Stack,
   Switch,
@@ -22,32 +24,15 @@ import {
 } from "@/apis/storyteller/agent.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
+import {
+  storytellerMemoryErrorMessage,
+  storytellerMemoryKindLabels,
+  storytellerMemoryScopeLabels,
+} from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemoryKind,
   StorytellerAssistantMemoryScope,
 } from "@/types/storyteller.ts";
-
-const kindLabels: Record<StorytellerAssistantMemoryKind, string> = {
-  preference: "偏好",
-  instruction: "持續指示",
-  decision: "已確認決策",
-  context: "背景資訊",
-};
-
-function memoryErrorMessage(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof error.response === "object" &&
-    error.response !== null &&
-    "data" in error.response
-  ) {
-    const data = error.response.data as { message?: string };
-    if (data.message) return data.message;
-  }
-  return "記憶操作失敗，請稍後再試。";
-}
 
 export function StorytellerMemoryDraftDialog({
   publicId,
@@ -77,6 +62,7 @@ export function StorytellerMemoryDraftDialog({
   const [kind, setKind] = useState<StorytellerAssistantMemoryKind>("context");
   const [priority, setPriority] = useState(50);
   const [isPinned, setIsPinned] = useState(false);
+  const [skipSupersede, setSkipSupersede] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const draft = draftQuery.data;
 
@@ -88,13 +74,17 @@ export function StorytellerMemoryDraftDialog({
     setKind(draft.kind ?? "context");
     setPriority(draft.priority ?? 50);
     setIsPinned(false);
+    setSkipSupersede(
+      Boolean(draft.supersedes_public_id && !draft.superseded_memory),
+    );
   }, [draft, targetKind]);
 
   function closeAndDiscard() {
     if (retryDraft.isPending || confirmMemory.isPending) return;
     if (publicId && draft?.status !== "confirmed") {
       deleteDraft.mutate(publicId, {
-        onError: (error) => setErrorMessage(memoryErrorMessage(error)),
+        onError: (error) =>
+          setErrorMessage(storytellerMemoryErrorMessage(error)),
       });
     }
     onClose();
@@ -112,11 +102,13 @@ export function StorytellerMemoryDraftDialog({
           kind,
           priority,
           is_pinned: isPinned,
+          skip_supersede: skipSupersede,
         },
       },
       {
         onSuccess: onSaved,
-        onError: (error) => setErrorMessage(memoryErrorMessage(error)),
+        onError: (error) =>
+          setErrorMessage(storytellerMemoryErrorMessage(error)),
       },
     );
   }
@@ -132,7 +124,8 @@ export function StorytellerMemoryDraftDialog({
         onSuccess: (next) => {
           if (next?.public_id) onRetried(next.public_id);
         },
-        onError: (error) => setErrorMessage(memoryErrorMessage(error)),
+        onError: (error) =>
+          setErrorMessage(storytellerMemoryErrorMessage(error)),
       },
     );
   }
@@ -232,9 +225,60 @@ export function StorytellerMemoryDraftDialog({
         ) : (
           <Stack spacing={2}>
             {draft?.supersedes_public_id && (
-              <Alert severity="warning">
-                這筆記憶會取代較舊的相關記憶；若不確定，請先取消並到記憶管理確認。
-              </Alert>
+              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                <Alert severity="warning" sx={{ mb: 1.25 }}>
+                  這筆候選原本會取代下面的舊記憶。如果你改了適用範圍，或想保留兩筆，請選擇「不取代，另存一筆」。
+                </Alert>
+                {draft.superseded_memory ? (
+                  <Stack spacing={0.75}>
+                    <Typography fontWeight={800} variant="body2">
+                      {draft.superseded_memory.memory_name || "舊記憶"}
+                    </Typography>
+                    <Stack direction="row" spacing={0.75}>
+                      <Chip
+                        size="small"
+                        label={
+                          storytellerMemoryScopeLabels[
+                            draft.superseded_memory.scope_type
+                          ]
+                        }
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={
+                          storytellerMemoryKindLabels[
+                            draft.superseded_memory.kind
+                          ]
+                        }
+                      />
+                    </Stack>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ whiteSpace: "pre-wrap" }}
+                    >
+                      {draft.superseded_memory.content}
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    舊記憶已不在目前可讀範圍，建議另存一筆。
+                  </Typography>
+                )}
+                <FormControlLabel
+                  sx={{ mt: 1 }}
+                  control={
+                    <Switch
+                      checked={skipSupersede}
+                      onChange={(event) =>
+                        setSkipSupersede(event.target.checked)
+                      }
+                    />
+                  }
+                  label="不取代，另存一筆"
+                />
+              </Paper>
             )}
             <TextField
               label="記憶名稱"
@@ -268,16 +312,22 @@ export function StorytellerMemoryDraftDialog({
                   labelId="memory-scope-label"
                   label="適用範圍"
                   value={scope}
-                  onChange={(event) =>
-                    setScope(
-                      event.target.value as StorytellerAssistantMemoryScope,
-                    )
-                  }
+                  onChange={(event) => {
+                    const nextScope = event.target
+                      .value as StorytellerAssistantMemoryScope;
+                    setScope(nextScope);
+                    if (
+                      draft?.supersedes_public_id &&
+                      nextScope !== draft.scope_type
+                    ) {
+                      setSkipSupersede(true);
+                    }
+                  }}
                 >
                   <MenuItem value="account">所有專案</MenuItem>
                   <MenuItem value="project">目前專案</MenuItem>
                   <MenuItem value={targetKind}>
-                    {targetKind === "story" ? "這篇故事" : "這則設定"}
+                    {storytellerMemoryScopeLabels[targetKind]}
                   </MenuItem>
                 </Select>
               </FormControl>
@@ -293,14 +343,28 @@ export function StorytellerMemoryDraftDialog({
                     )
                   }
                 >
-                  {Object.entries(kindLabels).map(([value, label]) => (
-                    <MenuItem key={value} value={value}>
-                      {label}
-                    </MenuItem>
-                  ))}
+                  {Object.entries(storytellerMemoryKindLabels).map(
+                    ([value, label]) => (
+                      <MenuItem key={value} value={value}>
+                        {label}
+                      </MenuItem>
+                    ),
+                  )}
                 </Select>
               </FormControl>
             </Box>
+            <TextField
+              type="number"
+              label="優先度"
+              value={priority}
+              onChange={(event) =>
+                setPriority(
+                  Math.max(0, Math.min(100, Number(event.target.value))),
+                )
+              }
+              slotProps={{ htmlInput: { min: 0, max: 100 } }}
+              helperText="0–100，數字越高越優先提供給梭梭"
+            />
             <FormControlLabel
               control={
                 <Switch

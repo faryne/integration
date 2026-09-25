@@ -610,6 +610,7 @@ export interface StorytellerAssistantMemoryDraft {
   priority?: number;
   error_message?: string;
   supersedes_public_id?: string;
+  superseded_memory?: StorytellerAssistantMemory;
 }
 
 export interface StorytellerAssistantMemoryGenerateRequest {
@@ -624,6 +625,7 @@ export interface StorytellerAssistantMemoryConfirmRequest {
   content: string;
   priority: number;
   is_pinned: boolean;
+  skip_supersede?: boolean;
 }
 
 export interface StorytellerAssistantMemory {

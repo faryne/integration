@@ -12,6 +12,8 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	storytellerRepo "faryne.dev/repository/storyteller"
+	"faryne.dev/service/log"
+	"go.uber.org/zap"
 )
 
 const (
@@ -19,6 +21,8 @@ const (
 	assistantMemoryContentMaxRunes = 2000
 	assistantMemoryFailureMessage  = "梭梭暫時沒能整理好這段對話，請稍後再試。"
 	assistantMemoryStaleAfter      = 6 * time.Minute
+	assistantMemoryDraftRetention  = 7 * 24 * time.Hour
+	assistantMemoryTrashRetention  = 30 * 24 * time.Hour
 )
 
 var (
@@ -214,12 +218,10 @@ func completeAssistantMemoryGeneration(ctx context.Context, repo assistantMemory
 		_ = repo.FailAssistantMemoryGeneration(memoryID, assistantMemoryFailureMessage)
 		return err
 	}
-	if err := validateAssistantMemorySupersedes(candidate, memories); err != nil {
-		if usageLog != nil {
-			_ = repo.CreateAgentUsageLog(usageLog)
-		}
-		_ = repo.FailAssistantMemoryGeneration(memoryID, assistantMemoryFailureMessage)
-		return err
+	if sanitized, err := sanitizeAssistantMemorySupersedes(candidate, memories); err != nil {
+		log.Logger().Warn("Storyteller assistant memory ignored invalid supersede suggestion",
+			zap.Uint64("chat_id", chatID), zap.String("supersedes_public_id", candidate.SupersedesPublicID), zap.Error(err))
+		candidate = sanitized
 	}
 	return repo.CompleteAssistantMemoryGeneration(memoryID, candidate.Name, candidate.Content, candidate.SupersedesPublicID, candidate.Scope, candidate.Kind, candidate.Priority, candidate.ShouldRemember, usage, usageLog)
 }
@@ -314,6 +316,14 @@ func validateAssistantMemorySupersedes(candidate assistantMemoryCandidate, memor
 	return ErrAssistantMemorySupersedeConflict
 }
 
+func sanitizeAssistantMemorySupersedes(candidate assistantMemoryCandidate, memories []storytellerModel.AssistantMemory) (assistantMemoryCandidate, error) {
+	err := validateAssistantMemorySupersedes(candidate, memories)
+	if err != nil {
+		candidate.SupersedesPublicID = ""
+	}
+	return candidate, err
+}
+
 func assistantMemoryScopeAllowed(scope, current storytellerModel.AssistantMemoryScope) bool {
 	return scope == storytellerModel.AssistantMemoryScopeAccount || scope == storytellerModel.AssistantMemoryScopeProject || scope == current
 }
@@ -343,7 +353,17 @@ func (s *Service) AssistantMemoryDraft(userID uint64, publicID string) (*storyte
 			row.Status, row.ErrorMessage = storytellerModel.AssistantMemoryStatusFailed, assistantMemoryStringPointer(assistantMemoryFailureMessage)
 		}
 	}
-	return assistantMemoryDraftOutput(row), nil
+	output := assistantMemoryDraftOutput(row)
+	if row.SupersedesPublicID != nil {
+		if old, lookupErr := s.repo.AssistantMemoryByPublicIDForUser(userID, *row.SupersedesPublicID); lookupErr == nil {
+			output.SupersededMemory = &storytellerModel.AssistantMemoryOutput{
+				PublicID: old.PublicID, MemoryName: assistantMemoryName(old.MemoryName), ScopeType: old.ScopeType,
+				Kind: old.Kind, Content: old.Content, Priority: old.Priority, IsPinned: old.IsPinned,
+				CreatedAt: old.CreatedAt, UpdatedAt: old.UpdatedAt,
+			}
+		}
+	}
+	return output, nil
 }
 
 func assistantMemoryStringPointer(value string) *string { return &value }
@@ -411,6 +431,9 @@ func (s *Service) ConfirmAssistantMemory(userID uint64, publicID string, in stor
 	case storytellerModel.AssistantMemoryScopeLore:
 		row.LoreID = &lore.ID
 	}
+	if in.SkipSupersede {
+		row.SupersedesPublicID = nil
+	}
 	if row.SupersedesPublicID == nil {
 		if err := s.rejectDuplicateAssistantMemory(userID, project, story, lore, row); err != nil {
 			return nil, err
@@ -465,4 +488,29 @@ func (s *Service) DeleteAssistantMemoryDraft(userID uint64, publicID string) err
 		return ErrAssistantMemoryDraftResolved
 	}
 	return nil
+}
+
+type assistantMemoryDraftCleanupRepository interface {
+	ExpireAssistantMemoryDrafts(updatedBefore, deletedAt time.Time) (int64, error)
+	PurgeDeletedAssistantMemoryDrafts(deletedBefore time.Time) (int64, error)
+}
+
+func cleanupExpiredAssistantMemoryDrafts(repo assistantMemoryDraftCleanupRepository, now time.Time) (expired, purged int64, err error) {
+	expired, err = repo.ExpireAssistantMemoryDrafts(now.Add(-assistantMemoryDraftRetention), now)
+	if err != nil {
+		return 0, 0, err
+	}
+	purged, err = repo.PurgeDeletedAssistantMemoryDrafts(now.Add(-assistantMemoryTrashRetention))
+	return expired, purged, err
+}
+
+// RunCleanupAssistantMemoryDrafts 每日先 soft delete 逾期未確認草稿，再實體清除
+// 已進垃圾區超過保留期的草稿；confirmed 記憶不會進入任一清理條件。
+func RunCleanupAssistantMemoryDrafts() {
+	expired, purged, err := cleanupExpiredAssistantMemoryDrafts(NewService().repo, time.Now())
+	if err != nil {
+		log.Logger().Error("Storyteller assistant memory draft cleanup failed", zap.Error(err))
+		return
+	}
+	log.Logger().Info("Storyteller assistant memory draft cleanup completed", zap.Int64("expired", expired), zap.Int64("purged", purged))
 }

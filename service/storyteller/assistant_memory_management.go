@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	entityModel "faryne.dev/model/entity"
 	storytellerModel "faryne.dev/model/entity/storyteller"
-	"gorm.io/gorm"
 )
 
 const assistantMemorySearchMaxRunes = 100
@@ -17,6 +17,7 @@ var (
 	ErrAssistantMemoryNotEditable     = errors.New("assistant memory is not editable")
 	ErrAssistantMemoryPublicIDInvalid = errors.New("memory_public_id is invalid")
 	ErrAssistantMemorySearchInvalid   = errors.New("memory search keyword must be between 1 and 100 characters")
+	ErrAssistantMemoryUpdateEmpty     = errors.New("at least one memory field must be provided when updating")
 )
 
 var assistantMemoryPublicIDRegexp = regexp.MustCompile(`^[A-Za-z0-9._~-]{1,32}$`)
@@ -73,7 +74,7 @@ func (s *Service) UpdateAssistantMemory(userID uint64, projectPublicID, storyPub
 	if err != nil {
 		return nil, err
 	}
-	if row.Status != storytellerModel.AssistantMemoryStatusConfirmed {
+	if row.Status != storytellerModel.AssistantMemoryStatusConfirmed || !assistantMemoryBelongsToContext(row, project, story, lore) {
 		return nil, ErrAssistantMemoryNotEditable
 	}
 	if err := applyAssistantMemoryInput(row, project, story, lore, in); err != nil {
@@ -131,6 +132,26 @@ func applyAssistantMemoryInput(row *storytellerModel.AssistantMemory, project *s
 	return nil
 }
 
+// assistantMemoryBelongsToContext 先驗證原記憶確實是這個 context 目前可見的有效資料，
+// 再允許修改 scope；否則只知道 public_id 的呼叫端就能把別處的記憶搬進目前專案。
+func assistantMemoryBelongsToContext(row *storytellerModel.AssistantMemory, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore) bool {
+	if row.SupersededByID != nil {
+		return false
+	}
+	switch row.ScopeType {
+	case storytellerModel.AssistantMemoryScopeAccount:
+		return row.ProjectID == nil && row.StoryID == nil && row.LoreID == nil
+	case storytellerModel.AssistantMemoryScopeProject:
+		return project != nil && entityModel.NullableEqual(row.ProjectID, &project.ID) && row.StoryID == nil && row.LoreID == nil
+	case storytellerModel.AssistantMemoryScopeStory:
+		return story != nil && row.ProjectID == nil && entityModel.NullableEqual(row.StoryID, &story.ID) && row.LoreID == nil
+	case storytellerModel.AssistantMemoryScopeLore:
+		return lore != nil && row.ProjectID == nil && row.StoryID == nil && entityModel.NullableEqual(row.LoreID, &lore.ID)
+	default:
+		return false
+	}
+}
+
 func (s *Service) rejectDuplicateAssistantMemory(userID uint64, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore, candidate *storytellerModel.AssistantMemory) error {
 	storyID, loreID := assistantMemoryTargetIDs(story, lore)
 	rows, err := s.repo.ActiveAssistantMemories(userID, project.ID, storyID, loreID, assistantMemoryMaxLimit)
@@ -170,27 +191,23 @@ func (s *Service) UpsertAssistantMemory(userID uint64, in storytellerModel.Assis
 	if err != nil {
 		return nil, err
 	}
-	row := &storytellerModel.AssistantMemory{UserID: userID, PublicID: strings.TrimSpace(in.MemoryPublicID), Status: storytellerModel.AssistantMemoryStatusConfirmed}
-	creating := row.PublicID == ""
+	publicID := strings.TrimSpace(in.MemoryPublicID)
+	creating := publicID == ""
+	row := &storytellerModel.AssistantMemory{UserID: userID, PublicID: publicID, Status: storytellerModel.AssistantMemoryStatusConfirmed, Priority: 50}
 	if creating {
 		row.PublicID = randomID()
-	} else if !assistantMemoryPublicIDRegexp.MatchString(row.PublicID) {
+	} else if !assistantMemoryPublicIDRegexp.MatchString(publicID) {
 		return nil, ErrAssistantMemoryPublicIDInvalid
 	} else {
-		existing, lookupErr := s.repo.AssistantMemoryByPublicIDForUser(userID, row.PublicID)
-		if lookupErr == nil {
-			row, creating = existing, false
-		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
-			return nil, lookupErr
-		} else {
-			creating = true
+		row, err = s.repo.AssistantMemoryByPublicIDForUser(userID, publicID)
+		if err != nil {
+			return nil, err
 		}
 	}
-	if row.Status != storytellerModel.AssistantMemoryStatusConfirmed {
+	if !creating && (row.Status != storytellerModel.AssistantMemoryStatusConfirmed || !assistantMemoryBelongsToContext(row, project, story, lore)) {
 		return nil, ErrAssistantMemoryNotEditable
 	}
-	update := storytellerModel.AssistantMemoryUpdateRequest{MemoryName: in.MemoryName, ScopeType: in.ScopeType, Kind: in.Kind, Content: in.Content, Priority: in.Priority, IsPinned: in.IsPinned}
-	if err := applyAssistantMemoryInput(row, project, story, lore, update); err != nil {
+	if err := applyAssistantMemoryPatch(row, project, story, lore, in, creating); err != nil {
 		return nil, err
 	}
 	if err := s.rejectDuplicateAssistantMemory(userID, project, story, lore, row); err != nil {
@@ -208,6 +225,76 @@ func (s *Service) UpsertAssistantMemory(userID uint64, in storytellerModel.Assis
 		return nil, ErrAssistantMemoryNotEditable
 	}
 	return assistantMemoryOutput(*row, project, story, lore), nil
+}
+
+func applyAssistantMemoryPatch(row *storytellerModel.AssistantMemory, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore, in storytellerModel.AssistantMemoryUpsertRequest, creating bool) error {
+	if creating && in.ScopeType == nil {
+		return ErrAssistantMemoryScopeInvalid
+	}
+	if creating && in.Kind == nil {
+		return ErrAssistantMemoryKindInvalid
+	}
+	if creating && in.Content == nil {
+		return ErrAssistantMemoryContentInvalid
+	}
+	if !creating && in.MemoryName == nil && in.ScopeType == nil && in.Kind == nil && in.Content == nil && in.Priority == nil && in.IsPinned == nil {
+		return ErrAssistantMemoryUpdateEmpty
+	}
+	if in.MemoryName != nil {
+		name := strings.TrimSpace(*in.MemoryName)
+		if len([]rune(name)) > assistantMemoryNameMaxRunes {
+			return ErrAssistantMemoryNameTooLong
+		}
+		row.MemoryName = nil
+		if name != "" {
+			row.MemoryName = &name
+		}
+	}
+	if in.Content != nil {
+		content := strings.TrimSpace(*in.Content)
+		if len([]rune(content)) == 0 || len([]rune(content)) > assistantMemoryContentMaxRunes {
+			return ErrAssistantMemoryContentInvalid
+		}
+		row.Content = content
+	}
+	if in.Kind != nil {
+		if !assistantMemoryKindAllowed(*in.Kind) {
+			return ErrAssistantMemoryKindInvalid
+		}
+		row.Kind = *in.Kind
+	}
+	if in.Priority != nil {
+		if *in.Priority > 100 {
+			return ErrAssistantMemoryPriorityInvalid
+		}
+		row.Priority = *in.Priority
+	}
+	if in.IsPinned != nil {
+		row.IsPinned = *in.IsPinned
+	}
+	if in.ScopeType == nil {
+		return nil
+	}
+	row.ScopeType = *in.ScopeType
+	row.ProjectID, row.StoryID, row.LoreID = nil, nil, nil
+	switch *in.ScopeType {
+	case storytellerModel.AssistantMemoryScopeAccount:
+	case storytellerModel.AssistantMemoryScopeProject:
+		row.ProjectID = &project.ID
+	case storytellerModel.AssistantMemoryScopeStory:
+		if story == nil {
+			return ErrAssistantMemoryScopeInvalid
+		}
+		row.StoryID = &story.ID
+	case storytellerModel.AssistantMemoryScopeLore:
+		if lore == nil {
+			return ErrAssistantMemoryScopeInvalid
+		}
+		row.LoreID = &lore.ID
+	default:
+		return ErrAssistantMemoryScopeInvalid
+	}
+	return nil
 }
 
 func assistantMemoryOutputs(rows []storytellerModel.AssistantMemory, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore) []storytellerModel.AssistantMemoryOutput {

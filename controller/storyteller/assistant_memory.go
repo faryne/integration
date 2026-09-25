@@ -57,7 +57,8 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 		errors.Is(err, storytellerService.ErrAssistantMemoryDuplicate),
 		errors.Is(err, storytellerService.ErrAssistantMemoryNotEditable),
 		errors.Is(err, storytellerService.ErrAssistantMemoryPublicIDInvalid),
-		errors.Is(err, storytellerService.ErrAssistantMemorySearchInvalid):
+		errors.Is(err, storytellerService.ErrAssistantMemorySearchInvalid),
+		errors.Is(err, storytellerService.ErrAssistantMemoryUpdateEmpty):
 		return output.BadRequest(err)
 	case errors.Is(err, storytellerService.ErrAIProviderUnsupported),
 		errors.Is(err, storytellerService.ErrAIProviderMissingEndpoint):

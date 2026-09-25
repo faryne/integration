@@ -1,4 +1,3 @@
-import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -64,6 +63,7 @@ import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx
 import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
 import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerMemoryDraftDialog } from "@/pages/storyteller/StorytellerMemoryDraftDialog.tsx";
+import { StorytellerMemoryActionButton } from "@/pages/storyteller/StorytellerMemoryActionButton.tsx";
 import { StorytellerMemoryManagerDialog } from "@/pages/storyteller/StorytellerMemoryManagerDialog.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
@@ -653,7 +653,6 @@ function AgenticAssistantMessage({
     message.content.trim() !== "" &&
     message.chatId !== undefined &&
     message.chatStatus === "completed";
-  const remembering = canRemember && rememberingChatId === message.chatId;
   const referenceContent = useStorytellerAgenticReferenceContent(
     targetKind,
     projectPublicId,
@@ -816,20 +815,12 @@ function AgenticAssistantMessage({
             </Button>
           )}
           {canRemember && onRemember && (
-            <Button
-              {...storytellerChatActionButtonProps}
-              startIcon={
-                remembering ? (
-                  <CircularProgress size={14} />
-                ) : (
-                  <BookmarkAddOutlinedIcon />
-                )
-              }
-              disabled={!memoryEnabled || remembering}
-              onClick={() => onRemember(message.chatId!)}
-            >
-              {remembering ? "整理中" : "整理成記憶"}
-            </Button>
+            <StorytellerMemoryActionButton
+              chatId={message.chatId!}
+              rememberingChatId={rememberingChatId ?? null}
+              disabled={!memoryEnabled}
+              onRemember={onRemember}
+            />
           )}
         </Stack>
       )}
@@ -2338,27 +2329,16 @@ export function StorytellerAgenticPanel({
                       message.content.trim() &&
                       message.chatId !== undefined &&
                       message.chatStatus === "completed" ? (
-                        <Button
-                          {...storytellerChatActionButtonProps}
-                          startIcon={
-                            rememberingChatId === message.chatId ? (
-                              <CircularProgress size={14} />
-                            ) : (
-                              <BookmarkAddOutlinedIcon />
-                            )
-                          }
+                        <StorytellerMemoryActionButton
+                          chatId={message.chatId}
+                          rememberingChatId={rememberingChatId}
                           disabled={
                             !providerApiKeyId ||
                             !modelNameOverride ||
-                            memoryDraftPublicId !== null ||
-                            rememberingChatId === message.chatId
+                            memoryDraftPublicId !== null
                           }
-                          onClick={() => handleRemember(message.chatId!)}
-                        >
-                          {rememberingChatId === message.chatId
-                            ? "整理中"
-                            : "整理成記憶"}
-                        </Button>
+                          onRemember={handleRemember}
+                        />
                       ) : undefined
                     }
                   />

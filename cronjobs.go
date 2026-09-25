@@ -214,6 +214,12 @@ var cronJobs = map[string]cronGroup{
 		Enabled: true,
 		Jobs: []cronJobConfig{
 			{
+				Name:     "storyteller-cleanup-assistant-memory-drafts",
+				Schedule: "35 4 * * *",
+				Enabled:  true,
+				Handler:  storytellerService.RunCleanupAssistantMemoryDrafts,
+			},
+			{
 				Name:     "storyteller-sync-agent-models-weekly",
 				Schedule: "20 4 * * 1",
 				Enabled:  true,

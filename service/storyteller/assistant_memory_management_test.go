@@ -40,4 +40,41 @@ func TestNormalizeAssistantMemoryContentIgnoresWhitespaceAndCase(t *testing.T) {
 	require.Equal(t, normalizeAssistantMemoryContent("  Use   C++  "), normalizeAssistantMemoryContent("use c++"))
 }
 
+func TestApplyAssistantMemoryPatchPreservesOmittedFields(t *testing.T) {
+	name := "原名稱"
+	content := "只更新這個內容"
+	row := &storytellerModel.AssistantMemory{
+		MemoryName: &name, ScopeType: storytellerModel.AssistantMemoryScopeProject,
+		ProjectID: uint64Pointer(10), Kind: storytellerModel.AssistantMemoryKindDecision,
+		Content: "原內容", Priority: 80, IsPinned: true,
+	}
+
+	err := applyAssistantMemoryPatch(row, &storytellerModel.Project{ID: 10}, nil, nil, storytellerModel.AssistantMemoryUpsertRequest{Content: &content}, false)
+
+	require.NoError(t, err)
+	require.Equal(t, "原名稱", *row.MemoryName)
+	require.Equal(t, "只更新這個內容", row.Content)
+	require.Equal(t, uint8(80), row.Priority)
+	require.True(t, row.IsPinned)
+	require.Equal(t, storytellerModel.AssistantMemoryScopeProject, row.ScopeType)
+}
+
+func TestApplyAssistantMemoryPatchRequiresCreateFields(t *testing.T) {
+	err := applyAssistantMemoryPatch(&storytellerModel.AssistantMemory{Priority: 50}, &storytellerModel.Project{ID: 10}, nil, nil, storytellerModel.AssistantMemoryUpsertRequest{}, true)
+	require.ErrorIs(t, err, ErrAssistantMemoryScopeInvalid)
+}
+
+func TestAssistantMemoryBelongsToContextRejectsAnotherProjectAndSuperseded(t *testing.T) {
+	project := &storytellerModel.Project{ID: 10}
+	require.False(t, assistantMemoryBelongsToContext(&storytellerModel.AssistantMemory{
+		ScopeType: storytellerModel.AssistantMemoryScopeProject, ProjectID: uint64Pointer(11),
+	}, project, nil, nil))
+	require.False(t, assistantMemoryBelongsToContext(&storytellerModel.AssistantMemory{
+		ScopeType: storytellerModel.AssistantMemoryScopeProject, ProjectID: &project.ID, SupersededByID: uint64Pointer(12),
+	}, project, nil, nil))
+	require.True(t, assistantMemoryBelongsToContext(&storytellerModel.AssistantMemory{
+		ScopeType: storytellerModel.AssistantMemoryScopeProject, ProjectID: &project.ID,
+	}, project, nil, nil))
+}
+
 func uint64Pointer(value uint64) *uint64 { return &value }

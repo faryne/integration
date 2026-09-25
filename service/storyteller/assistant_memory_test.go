@@ -98,7 +98,7 @@ func TestAssistantMemoryUpsertToolIsMCPOnly(t *testing.T) {
 
 	spec, ok := mcpOnly["storyteller_upsert_memory"]
 	require.True(t, ok)
-	require.ElementsMatch(t, []string{"project_public_id", "scope_type", "kind", "content"}, spec.InputSchema["required"])
+	require.ElementsMatch(t, []string{"project_public_id"}, spec.InputSchema["required"])
 }
 
 func TestAgentRequestIncludesMemoriesBeforeTask(t *testing.T) {

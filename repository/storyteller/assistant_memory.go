@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	entityModel "faryne.dev/model/entity"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -56,10 +57,10 @@ func (r *Repository) AssistantMemoryByPublicIDForUser(userID uint64, publicID st
 }
 
 func (r *Repository) SearchAssistantMemories(userID, projectID uint64, storyID, loreID *uint64, keyword string, limit int) ([]storytellerModel.AssistantMemory, error) {
-	pattern := "%" + strings.ToLower(strings.TrimSpace(keyword)) + "%"
+	pattern := "%" + escapeAssistantMemoryLike(strings.ToLower(strings.TrimSpace(keyword))) + "%"
 	rows := make([]storytellerModel.AssistantMemory, 0)
 	err := r.activeAssistantMemoriesQuery(userID, projectID, storyID, loreID).
-		Where("(LOWER(COALESCE(memory_name, '')) LIKE ? OR LOWER(content) LIKE ?)", pattern, pattern).
+		Where("(LOWER(COALESCE(memory_name, '')) LIKE ? ESCAPE '!' OR LOWER(content) LIKE ? ESCAPE '!')", pattern, pattern).
 		Order("is_pinned DESC, priority DESC, updated_at DESC, id DESC").
 		Limit(limit).
 		Find(&rows).Error
@@ -68,7 +69,7 @@ func (r *Repository) SearchAssistantMemories(userID, projectID uint64, storyID, 
 
 func (r *Repository) UpdateAssistantMemory(row *storytellerModel.AssistantMemory) (int64, error) {
 	result := r.db.Model(&storytellerModel.AssistantMemory{}).
-		Where("id = ? AND user_id = ? AND status = ? AND is_deleted = 0", row.ID, row.UserID, storytellerModel.AssistantMemoryStatusConfirmed).
+		Where("id = ? AND user_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL AND superseded_by_id IS NULL", row.ID, row.UserID, storytellerModel.AssistantMemoryStatusConfirmed).
 		Updates(map[string]interface{}{
 			"memory_name": row.MemoryName, "scope_type": row.ScopeType, "project_id": row.ProjectID,
 			"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind,
@@ -140,20 +141,7 @@ func (r *Repository) ConfirmAssistantMemory(row *storytellerModel.AssistantMemor
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&storytellerModel.AssistantMemory{}).
 			Where("id = ? AND user_id = ? AND status = ? AND is_deleted = 0", row.ID, row.UserID, storytellerModel.AssistantMemoryStatusCompleted).
-			Updates(map[string]interface{}{
-				"memory_name":   row.MemoryName,
-				"scope_type":    row.ScopeType,
-				"project_id":    row.ProjectID,
-				"story_id":      row.StoryID,
-				"lore_id":       row.LoreID,
-				"kind":          row.Kind,
-				"content":       row.Content,
-				"priority":      row.Priority,
-				"is_pinned":     row.IsPinned,
-				"status":        storytellerModel.AssistantMemoryStatusConfirmed,
-				"confirmed_at":  &now,
-				"error_message": nil,
-			})
+			Updates(assistantMemoryConfirmUpdates(row, now))
 		if result.Error != nil || result.RowsAffected == 0 {
 			affected = result.RowsAffected
 			return result.Error
@@ -168,7 +156,7 @@ func (r *Repository) ConfirmAssistantMemory(row *storytellerModel.AssistantMemor
 				}
 				return err
 			}
-			if old.IsPinned || old.ScopeType != row.ScopeType || !nullableUint64Equal(old.ProjectID, row.ProjectID) || !nullableUint64Equal(old.StoryID, row.StoryID) || !nullableUint64Equal(old.LoreID, row.LoreID) {
+			if old.IsPinned || old.ScopeType != row.ScopeType || !entityModel.NullableEqual(old.ProjectID, row.ProjectID) || !entityModel.NullableEqual(old.StoryID, row.StoryID) || !entityModel.NullableEqual(old.LoreID, row.LoreID) {
 				return ErrAssistantMemorySupersedeConflict
 			}
 			if result := tx.Model(&storytellerModel.AssistantMemory{}).
@@ -198,6 +186,15 @@ func (r *Repository) ConfirmAssistantMemory(row *storytellerModel.AssistantMemor
 	return affected, err
 }
 
+func assistantMemoryConfirmUpdates(row *storytellerModel.AssistantMemory, confirmedAt time.Time) map[string]interface{} {
+	return map[string]interface{}{
+		"memory_name": row.MemoryName, "scope_type": row.ScopeType, "project_id": row.ProjectID,
+		"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind, "content": row.Content,
+		"priority": row.Priority, "is_pinned": row.IsPinned, "supersedes_public_id": row.SupersedesPublicID,
+		"status": storytellerModel.AssistantMemoryStatusConfirmed, "confirmed_at": &confirmedAt, "error_message": nil,
+	}
+}
+
 func (r *Repository) CreateConfirmedAssistantMemory(row *storytellerModel.AssistantMemory) error {
 	return r.db.Create(row).Error
 }
@@ -210,6 +207,24 @@ func (r *Repository) DeleteAssistantMemoryDraft(userID, id uint64) (int64, error
 	return result.RowsAffected, result.Error
 }
 
+// ExpireAssistantMemoryDrafts 先依專案慣例 soft delete 逾期草稿，讓所有刪除
+// 路徑都有可追查的 deleted_at，不會因排程直接略過生命週期。
+func (r *Repository) ExpireAssistantMemoryDrafts(updatedBefore, deletedAt time.Time) (int64, error) {
+	result := r.db.Model(&storytellerModel.AssistantMemory{}).
+		Where("status != ? AND is_deleted = 0 AND updated_at < ?", storytellerModel.AssistantMemoryStatusConfirmed, updatedBefore).
+		Updates(map[string]interface{}{"is_deleted": true, "deleted_at": &deletedAt})
+	return result.RowsAffected, result.Error
+}
+
+// PurgeDeletedAssistantMemoryDrafts 只實體清除已經過 soft delete 保留期、且從未
+// confirmed 的暫存草稿。一般記憶及剛刪除的草稿不會進入這個維護路徑。
+func (r *Repository) PurgeDeletedAssistantMemoryDrafts(deletedBefore time.Time) (int64, error) {
+	result := r.db.Unscoped().
+		Where("status != ? AND is_deleted = 1 AND deleted_at IS NOT NULL AND deleted_at < ?", storytellerModel.AssistantMemoryStatusConfirmed, deletedBefore).
+		Delete(&storytellerModel.AssistantMemory{})
+	return result.RowsAffected, result.Error
+}
+
 func nullableString(value string) interface{} {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -218,6 +233,6 @@ func nullableString(value string) interface{} {
 	return value
 }
 
-func nullableUint64Equal(left, right *uint64) bool {
-	return left == nil && right == nil || left != nil && right != nil && *left == *right
+func escapeAssistantMemoryLike(value string) string {
+	return strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(value)
 }

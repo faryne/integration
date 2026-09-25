@@ -201,6 +201,33 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, 18, repo.usage.TotalTokens)
 }
 
+func TestRunAgentContinuesWithoutMemoriesWhenLookupFails(t *testing.T) {
+	repo := &fakeAgentRunRepository{
+		project:        &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
+		story:          &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		memoryErr:      errors.New("memory table unavailable"),
+		agent:          &storytellerModel.Agent{ID: 40, UserID: 20},
+		providerAPIKey: encryptedTestProviderAPIKey(t, 50, 20, storytellerModel.AgentProviderGrok, "secret-key"),
+	}
+	provider := &fakeAIProvider{response: &AIProviderResponse{
+		Result: `<Response><Answer><![CDATA[still works]]></Answer><Expression>neutral</Expression></Response>`,
+	}}
+	tracker := background.NewTracker()
+
+	output, err := runAgent(context.Background(), repo, func(storytellerModel.AgentProvider, string) (AIProvider, error) {
+		return provider, nil
+	}, tracker, 20, "project-public-id", "story-public-id", 40, storytellerModel.AgentRunRequest{
+		Mode: storytellerModel.AgentRunModeContinueChapter, FullContent: "chapter", ModelName: "grok-test",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, storytellerModel.StoryChatStatusInProgress, output.ChatStatus)
+	tracker.BeginDrain()
+	tracker.Wait()
+	require.NotContains(t, provider.request.UserPrompt, "<Memories>")
+	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
+}
+
 func TestRunAgentWithReferenceCallsReadOnlyTool(t *testing.T) {
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},

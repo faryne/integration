@@ -74,20 +74,21 @@ func storytellerMemoryToolSpecs() []ToolSpec {
 func storytellerMemoryMCPOnlyToolSpecs() []ToolSpec {
 	return []ToolSpec{{
 		Name: "storyteller_upsert_memory",
-		Description: "Create or update one of Suosuo's confirmed memories. Scope must be explicit. " +
-			"Pass memory_public_id to update a stable memory; omit it to create one. project_public_id is always required for authorization.",
+		Description: "Create or partially update one of Suosuo's confirmed memories. " +
+			"Pass memory_public_id to update only the supplied fields; the ID must already exist in the requested context. " +
+			"Omit memory_public_id to create a memory, which requires scope_type, kind, and content. project_public_id is always required for authorization.",
 		InputSchema: objectSchema(map[string]interface{}{
 			"memory_public_id":  stringSchema("Optional stable memory public_id. Omit to create a new memory."),
 			"project_public_id": stringSchema("Project public_id used to authorize and resolve project/story/lore scope."),
 			"story_public_id":   stringSchema("Required only for story scope."),
 			"lore_public_id":    stringSchema("Required only for lore scope."),
-			"memory_name":       stringSchema("Optional display name, at most 255 characters."),
-			"scope_type":        enumStringSchema("Explicit memory scope.", "account", "project", "story", "lore"),
-			"kind":              enumStringSchema("Memory classification.", "preference", "instruction", "decision", "context"),
-			"content":           stringSchema("Atomic, self-contained memory content, at most 2000 characters."),
-			"priority":          integerSchema("Retrieval priority from 0 to 100."),
-			"is_pinned":         booleanSchema("Pinned memories cannot be superseded automatically."),
-		}, []string{"project_public_id", "scope_type", "kind", "content"}),
+			"memory_name":       stringSchema("Optional display name, at most 255 characters. On update, omit to preserve or pass an empty string to clear."),
+			"scope_type":        enumStringSchema("Required on create; optional on update.", "account", "project", "story", "lore"),
+			"kind":              enumStringSchema("Required on create; optional on update.", "preference", "instruction", "decision", "context"),
+			"content":           stringSchema("Required on create; optional on update. Atomic, self-contained content, at most 2000 characters."),
+			"priority":          integerSchema("Optional retrieval priority from 0 to 100; defaults to 50 on create and is preserved when omitted on update."),
+			"is_pinned":         booleanSchema("Optional. Pinned memories cannot be superseded automatically; preserved when omitted on update."),
+		}, []string{"project_public_id"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 			userID, err := storytellerUserIDFromContext(ctx)
 			if err != nil {

@@ -30,39 +30,16 @@ import {
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
+import {
+  storytellerMemoryErrorMessage,
+  storytellerMemoryKindLabels,
+  storytellerMemoryScopeLabels,
+} from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemory,
   StorytellerAssistantMemoryKind,
   StorytellerAssistantMemoryScope,
 } from "@/types/storyteller.ts";
-
-const scopeLabels: Record<StorytellerAssistantMemoryScope, string> = {
-  account: "所有專案",
-  project: "目前專案",
-  story: "這篇故事",
-  lore: "這則設定",
-};
-const kindLabels: Record<StorytellerAssistantMemoryKind, string> = {
-  preference: "偏好",
-  instruction: "持續指示",
-  decision: "已確認決策",
-  context: "背景資訊",
-};
-
-function memoryAPIError(error: unknown) {
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "response" in error &&
-    typeof error.response === "object" &&
-    error.response !== null &&
-    "data" in error.response
-  ) {
-    const data = error.response.data as { message?: string };
-    if (data.message) return data.message;
-  }
-  return "記憶操作失敗，請稍後再試。";
-}
 
 export function StorytellerMemoryManagerDialog({
   open,
@@ -102,7 +79,8 @@ export function StorytellerMemoryManagerDialog({
   const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    if (memories.isError) setErrorMessage(memoryAPIError(memories.error));
+    if (memories.isError)
+      setErrorMessage(storytellerMemoryErrorMessage(memories.error));
   }, [memories.error, memories.isError]);
 
   function togglePinned(memory: StorytellerAssistantMemory) {
@@ -118,7 +96,10 @@ export function StorytellerMemoryManagerDialog({
           is_pinned: !memory.is_pinned,
         },
       },
-      { onError: (error) => setErrorMessage(memoryAPIError(error)) },
+      {
+        onError: (error) =>
+          setErrorMessage(storytellerMemoryErrorMessage(error)),
+      },
     );
   }
 
@@ -126,7 +107,7 @@ export function StorytellerMemoryManagerDialog({
     if (!deleting) return;
     deleteMemory.mutate(deleting.public_id, {
       onSuccess: () => setDeleting(null),
-      onError: (error) => setErrorMessage(memoryAPIError(error)),
+      onError: (error) => setErrorMessage(storytellerMemoryErrorMessage(error)),
     });
   }
 
@@ -161,12 +142,12 @@ export function StorytellerMemoryManagerDialog({
                     <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }}>
                       <Chip
                         size="small"
-                        label={scopeLabels[memory.scope_type]}
+                        label={storytellerMemoryScopeLabels[memory.scope_type]}
                       />
                       <Chip
                         size="small"
                         variant="outlined"
-                        label={kindLabels[memory.kind]}
+                        label={storytellerMemoryKindLabels[memory.kind]}
                       />
                     </Stack>
                   </Box>
@@ -221,7 +202,8 @@ export function StorytellerMemoryManagerDialog({
             { publicId: editing.public_id, input },
             {
               onSuccess: () => setEditing(null),
-              onError: (error) => setErrorMessage(memoryAPIError(error)),
+              onError: (error) =>
+                setErrorMessage(storytellerMemoryErrorMessage(error)),
             },
           );
         }}
@@ -356,7 +338,9 @@ function MemoryEditorDialog({
             >
               <MenuItem value="account">所有專案</MenuItem>
               <MenuItem value="project">目前專案</MenuItem>
-              <MenuItem value={targetKind}>{scopeLabels[targetKind]}</MenuItem>
+              <MenuItem value={targetKind}>
+                {storytellerMemoryScopeLabels[targetKind]}
+              </MenuItem>
             </Select>
           </FormControl>
           <FormControl fullWidth>
@@ -368,11 +352,13 @@ function MemoryEditorDialog({
                 setKind(event.target.value as StorytellerAssistantMemoryKind)
               }
             >
-              {Object.entries(kindLabels).map(([value, label]) => (
-                <MenuItem key={value} value={value}>
-                  {label}
-                </MenuItem>
-              ))}
+              {Object.entries(storytellerMemoryKindLabels).map(
+                ([value, label]) => (
+                  <MenuItem key={value} value={value}>
+                    {label}
+                  </MenuItem>
+                ),
+              )}
             </Select>
           </FormControl>
         </Stack>

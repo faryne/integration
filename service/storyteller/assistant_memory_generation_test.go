@@ -3,6 +3,7 @@ package storyteller
 import (
 	"strings"
 	"testing"
+	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"github.com/stretchr/testify/require"
@@ -69,4 +70,49 @@ func TestValidateAssistantMemorySupersedes(t *testing.T) {
 	require.ErrorIs(t, validateAssistantMemorySupersedes(candidate, []storytellerModel.AssistantMemory{{
 		PublicID: "old-memory", ScopeType: storytellerModel.AssistantMemoryScopeProject,
 	}}), ErrAssistantMemorySupersedeConflict)
+}
+
+func TestSanitizeAssistantMemorySupersedesKeepsCandidateWhenSuggestionIsInvalid(t *testing.T) {
+	candidate := assistantMemoryCandidate{
+		ShouldRemember: true, Scope: storytellerModel.AssistantMemoryScopeStory,
+		Content: "新記憶仍應保留", SupersedesPublicID: "pinned-memory",
+	}
+
+	sanitized, err := sanitizeAssistantMemorySupersedes(candidate, []storytellerModel.AssistantMemory{{
+		PublicID: "pinned-memory", ScopeType: storytellerModel.AssistantMemoryScopeStory, IsPinned: true,
+	}})
+
+	require.ErrorIs(t, err, ErrAssistantMemorySupersedeConflict)
+	require.Equal(t, "新記憶仍應保留", sanitized.Content)
+	require.Empty(t, sanitized.SupersedesPublicID)
+}
+
+type fakeAssistantMemoryDraftCleanupRepository struct {
+	expireBefore time.Time
+	deletedAt    time.Time
+	purgeBefore  time.Time
+}
+
+func (r *fakeAssistantMemoryDraftCleanupRepository) ExpireAssistantMemoryDrafts(before, deletedAt time.Time) (int64, error) {
+	r.expireBefore, r.deletedAt = before, deletedAt
+	return 3, nil
+}
+
+func (r *fakeAssistantMemoryDraftCleanupRepository) PurgeDeletedAssistantMemoryDrafts(before time.Time) (int64, error) {
+	r.purgeBefore = before
+	return 2, nil
+}
+
+func TestCleanupExpiredAssistantMemoryDraftsUsesRetention(t *testing.T) {
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC)
+	repo := &fakeAssistantMemoryDraftCleanupRepository{}
+
+	expired, purged, err := cleanupExpiredAssistantMemoryDrafts(repo, now)
+
+	require.NoError(t, err)
+	require.Equal(t, int64(3), expired)
+	require.Equal(t, int64(2), purged)
+	require.Equal(t, now.Add(-assistantMemoryDraftRetention), repo.expireBefore)
+	require.Equal(t, now, repo.deletedAt)
+	require.Equal(t, now.Add(-assistantMemoryTrashRetention), repo.purgeBefore)
 }

@@ -95,6 +95,18 @@ type AssistantMemoryGenerateRequest struct {
 }
 
 type AssistantMemoryConfirmRequest struct {
+	MemoryName    string               `json:"memory_name"`
+	ScopeType     AssistantMemoryScope `json:"scope_type"`
+	Kind          AssistantMemoryKind  `json:"kind"`
+	Content       string               `json:"content"`
+	Priority      uint8                `json:"priority"`
+	IsPinned      bool                 `json:"is_pinned"`
+	SkipSupersede bool                 `json:"skip_supersede"`
+}
+
+// AssistantMemoryUpdateRequest 是一般記憶編輯 API 的完整更新內容；
+// skip_supersede 只屬於草稿確認流程，不應出現在這個 DTO。
+type AssistantMemoryUpdateRequest struct {
 	MemoryName string               `json:"memory_name"`
 	ScopeType  AssistantMemoryScope `json:"scope_type"`
 	Kind       AssistantMemoryKind  `json:"kind"`
@@ -103,33 +115,32 @@ type AssistantMemoryConfirmRequest struct {
 	IsPinned   bool                 `json:"is_pinned"`
 }
 
-type AssistantMemoryUpdateRequest = AssistantMemoryConfirmRequest
-
 // AssistantMemoryUpsertRequest 給 MCP 使用；scope 必須明確指定，不能從缺少的欄位猜測。
 type AssistantMemoryUpsertRequest struct {
-	MemoryPublicID  string               `json:"memory_public_id"`
-	ProjectPublicID string               `json:"project_public_id"`
-	StoryPublicID   string               `json:"story_public_id"`
-	LorePublicID    string               `json:"lore_public_id"`
-	MemoryName      string               `json:"memory_name"`
-	ScopeType       AssistantMemoryScope `json:"scope_type"`
-	Kind            AssistantMemoryKind  `json:"kind"`
-	Content         string               `json:"content"`
-	Priority        uint8                `json:"priority"`
-	IsPinned        bool                 `json:"is_pinned"`
+	MemoryPublicID  string                `json:"memory_public_id"`
+	ProjectPublicID string                `json:"project_public_id"`
+	StoryPublicID   string                `json:"story_public_id"`
+	LorePublicID    string                `json:"lore_public_id"`
+	MemoryName      *string               `json:"memory_name"`
+	ScopeType       *AssistantMemoryScope `json:"scope_type"`
+	Kind            *AssistantMemoryKind  `json:"kind"`
+	Content         *string               `json:"content"`
+	Priority        *uint8                `json:"priority"`
+	IsPinned        *bool                 `json:"is_pinned"`
 }
 
 // AssistantMemoryDraftOutput 是非同步整理流程的輪詢結果；provider/key 與 token
 // 用量只留在後端稽核，不回傳給前端。
 type AssistantMemoryDraftOutput struct {
-	PublicID           string                `json:"public_id"`
-	Status             AssistantMemoryStatus `json:"status"`
-	ShouldRemember     *bool                 `json:"should_remember,omitempty"`
-	MemoryName         string                `json:"memory_name,omitempty"`
-	ScopeType          AssistantMemoryScope  `json:"scope_type,omitempty"`
-	Kind               AssistantMemoryKind   `json:"kind,omitempty"`
-	Content            string                `json:"content,omitempty"`
-	Priority           uint8                 `json:"priority"`
-	SupersedesPublicID string                `json:"supersedes_public_id,omitempty"`
-	ErrorMessage       string                `json:"error_message,omitempty"`
+	PublicID           string                 `json:"public_id"`
+	Status             AssistantMemoryStatus  `json:"status"`
+	ShouldRemember     *bool                  `json:"should_remember,omitempty"`
+	MemoryName         string                 `json:"memory_name,omitempty"`
+	ScopeType          AssistantMemoryScope   `json:"scope_type,omitempty"`
+	Kind               AssistantMemoryKind    `json:"kind,omitempty"`
+	Content            string                 `json:"content,omitempty"`
+	Priority           uint8                  `json:"priority"`
+	SupersedesPublicID string                 `json:"supersedes_public_id,omitempty"`
+	SupersededMemory   *AssistantMemoryOutput `json:"superseded_memory,omitempty"`
+	ErrorMessage       string                 `json:"error_message,omitempty"`
 }
