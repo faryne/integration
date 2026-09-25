@@ -1479,7 +1479,6 @@ export function StorytellerAgenticPanel({
         role: "assistant",
         content: "",
         speaker: STORYTELLER_ASSISTANT_NAME,
-        expression: "thinking",
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1489,7 +1488,6 @@ export function StorytellerAgenticPanel({
         id: loadingId,
         role: "assistant",
         content: "",
-        expression: "thinking",
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1723,7 +1721,6 @@ export function StorytellerAgenticPanel({
       role: "assistant",
       content: "",
       speaker: STORYTELLER_ASSISTANT_NAME,
-      expression: "thinking",
       isLoading: true,
     });
     setPrompt("");
@@ -1840,7 +1837,6 @@ export function StorytellerAgenticPanel({
       id: loadingId,
       role: "assistant",
       content: "",
-      expression: "thinking",
       isLoading: true,
     });
     if (!options?.preserveComposer) {

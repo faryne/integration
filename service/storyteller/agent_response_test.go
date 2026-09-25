@@ -32,6 +32,18 @@ func TestParseSuosuoResponse(t *testing.T) {
 			expression: SuosuoExpressionNeutral,
 		},
 		{
+			name:       "empty answer stays empty without exposing xml",
+			input:      "<Response><Answer><![CDATA[]]></Answer><Expression>pleased</Expression></Response>",
+			answer:     "",
+			expression: SuosuoExpressionPleased,
+		},
+		{
+			name:       "missing answer element keeps provider text",
+			input:      "<Response><Expression>pleased</Expression></Response>",
+			answer:     "<Response><Expression>pleased</Expression></Response>",
+			expression: SuosuoExpressionNeutral,
+		},
+		{
 			name:       "malformed response keeps provider text",
 			input:      "原本的純文字回答",
 			answer:     "原本的純文字回答",

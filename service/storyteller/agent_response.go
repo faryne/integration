@@ -25,7 +25,7 @@ type suosuoResponse struct {
 
 type suosuoResponseXML struct {
 	XMLName xml.Name `xml:"Response"`
-	Answer  struct {
+	Answer  *struct {
 		InnerXML string `xml:",innerxml"`
 	} `xml:"Answer"`
 	Expression string `xml:"Expression"`
@@ -37,23 +37,20 @@ func parseSuosuoResponse(raw string) suosuoResponse {
 	trimmed := strings.TrimSpace(raw)
 	candidate := trimXMLCodeFence(trimmed)
 	var envelope suosuoResponseXML
-	if err := xml.Unmarshal([]byte(candidate), &envelope); err == nil && envelope.XMLName.Local == "Response" {
-		if answer := cleanSuosuoAnswer(envelope.Answer.InnerXML); answer != "" {
-			return suosuoResponse{
-				Answer:     answer,
-				Expression: normalizeSuosuoExpression(envelope.Expression),
-			}
+	if err := xml.Unmarshal([]byte(candidate), &envelope); err == nil && envelope.XMLName.Local == "Response" && envelope.Answer != nil {
+		return suosuoResponse{
+			Answer:     cleanSuosuoAnswer(envelope.Answer.InnerXML),
+			Expression: normalizeSuosuoExpression(envelope.Expression),
 		}
 	}
 
 	answer, ok := extractSuosuoElement(candidate, "Answer")
-	answer = cleanSuosuoAnswer(answer)
-	if !ok || answer == "" {
+	if !ok {
 		return suosuoResponse{Answer: trimmed, Expression: SuosuoExpressionNeutral}
 	}
 	expression, _ := extractSuosuoElement(candidate, "Expression")
 	return suosuoResponse{
-		Answer:     answer,
+		Answer:     cleanSuosuoAnswer(answer),
 		Expression: normalizeSuosuoExpression(expression),
 	}
 }
