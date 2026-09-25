@@ -659,6 +659,7 @@ const (
 
 type agentRunExecutionResult struct {
 	Text         string
+	Expression   SuosuoExpression
 	FinishReason string
 	Usage        *AIProviderUsage
 	RawResponses []string
@@ -675,8 +676,10 @@ func executeAgentRun(ctx context.Context, provider AIProvider, apiKey, modelName
 		if err != nil {
 			return nil, err
 		}
+		parsed := parseSuosuoResponse(response.Result)
 		return &agentRunExecutionResult{
-			Text:         response.Result,
+			Text:         parsed.Answer,
+			Expression:   parsed.Expression,
 			FinishReason: response.FinishReason,
 			Usage:        response.Usage,
 			RawResponses: nonEmptyRawResponses(response.RawBody),
@@ -702,8 +705,10 @@ func executeAgentRun(ctx context.Context, provider AIProvider, apiKey, modelName
 	if loopResult == nil {
 		return nil, errors.New("AI 沒有產生可用結果，請稍後重試")
 	}
+	parsed := parseSuosuoResponse(loopResult.FinalText)
 	return &agentRunExecutionResult{
-		Text:         loopResult.FinalText,
+		Text:         parsed.Answer,
+		Expression:   parsed.Expression,
 		FinishReason: loopResult.FinishReason,
 		Usage:        loopResult.Usage,
 		RawResponses: loopResult.RawResponses,
@@ -3493,19 +3498,23 @@ func agentRunUserMessageContent(input storytellerModel.AgentRunRequest) string {
 }
 
 func agentRunOutputMetadata(output *storytellerModel.AgentRunResult) string {
-	if output == nil || output.Usage == nil {
-		if output != nil && output.FinishReason != "" {
-			return fmt.Sprintf(`{"finish_reason":%q}`, output.FinishReason)
-		}
+	if output == nil {
 		return "{}"
 	}
-	return fmt.Sprintf(
-		`{"finish_reason":%q,"usage":{"input_tokens":%d,"output_tokens":%d,"total_tokens":%d}}`,
-		output.FinishReason,
-		output.Usage.InputTokens,
-		output.Usage.OutputTokens,
-		output.Usage.TotalTokens,
-	)
+	type outputMetadata struct {
+		FinishReason string                          `json:"finish_reason,omitempty"`
+		Expression   SuosuoExpression                `json:"expression"`
+		Usage        *storytellerModel.AgentRunUsage `json:"usage,omitempty"`
+	}
+	body, err := json.Marshal(outputMetadata{
+		FinishReason: output.FinishReason,
+		Expression:   normalizeSuosuoExpression(output.Expression),
+		Usage:        output.Usage,
+	})
+	if err != nil {
+		return "{}"
+	}
+	return string(body)
 }
 
 func validateStory(input storytellerModel.StoryRequest) error {

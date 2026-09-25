@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"encoding/json"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/background"
@@ -65,6 +66,11 @@ func completedOutputFromRepo(repo *fakeAgentRunRepository, ack *AgenticQueryOutp
 	out := *ack
 	if n := len(repo.messages); n > 0 && repo.messages[n-1].Role == storytellerModel.ChatMessageRoleAssistant {
 		out.Result = repo.messages[n-1].Content
+		var metadata struct {
+			Expression SuosuoExpression `json:"expression"`
+		}
+		_ = json.Unmarshal([]byte(repo.messages[n-1].Metadata), &metadata)
+		out.Expression = metadata.Expression
 		out.AssistantMessageID = repo.messages[n-1].ID
 		out.ChatStatus = storytellerModel.StoryChatStatusCompleted
 	}

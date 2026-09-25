@@ -1164,6 +1164,7 @@ type AgentRunResult struct {
 	Provider     AgentProvider
 	ModelName    string
 	Result       string
+	Expression   string
 	Usage        *AgentRunUsage
 	FinishReason string
 }
@@ -1264,6 +1265,7 @@ type AgenticQueryResponse struct {
 	Provider   AgentProvider           `json:"provider"`
 	ModelName  string                  `json:"model_name"`
 	Result     string                  `json:"result"`
+	Expression string                  `json:"expression,omitempty"`
 	Steps      []AgenticStepOutput     `json:"steps"`
 	Proposals  []AgenticProposalOutput `json:"proposals"`
 	Usage      *AgentRunUsage          `json:"usage,omitempty"`

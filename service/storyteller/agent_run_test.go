@@ -134,7 +134,7 @@ func TestRunAgent(t *testing.T) {
 	}
 	provider := &fakeAIProvider{
 		response: &AIProviderResponse{
-			Result:       "rewritten text",
+			Result:       "<Response><Answer><![CDATA[rewritten text]]></Answer><Expression>pleased</Expression></Response>",
 			FinishReason: "stop",
 			Usage:        &AIProviderUsage{InputTokens: 11, OutputTokens: 7, TotalTokens: 18},
 		},
@@ -181,6 +181,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, provider.request.UserPrompt, meta.RequestXML)
 	require.Equal(t, storytellerModel.ChatMessageRoleAssistant, repo.messages[1].Role)
 	require.Equal(t, "rewritten text", repo.messages[1].Content)
+	require.Contains(t, repo.messages[1].Metadata, `"expression":"pleased"`)
 	require.NotNil(t, repo.usage)
 	require.Equal(t, uint64(50), repo.usage.ProviderAPIKeyID)
 	require.Equal(t, uint64(20), repo.usage.UserID)

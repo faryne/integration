@@ -34,6 +34,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import {
   fetchStorytellerAgenticChat,
   useStorytellerAgenticReferenceContent,
@@ -47,7 +48,13 @@ import {
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
+import {
+  STORYTELLER_ASSISTANT_AVATAR_SRC,
+  normalizeStorytellerAssistantExpression,
+  storytellerAssistantAvatarSrc,
+  storytellerMascotSrc,
+} from "@/helpers/storytellerMascot.ts";
+import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -57,7 +64,7 @@ import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/Storyteller
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
 import {
-  StorytellerAgentLoadingHint,
+  StorytellerAgentLoadingState,
   StorytellerAgentMessage,
   StorytellerChatBubble,
   storytellerChatActionButtonProps,
@@ -97,6 +104,7 @@ import {
 import type {
   StorytellerAgentRunMode,
   StorytellerAgentRunUsage,
+  StorytellerAssistantExpression,
   StorytellerAgenticProposal,
   StorytellerAgenticReplyReferenceRequest,
   StorytellerAgenticStep,
@@ -142,6 +150,7 @@ const SELECTION_AGENT_SLASH_WORDS: Partial<
 };
 const SKILL_SLASH_COMMAND_HINT =
   "打 / 可觸發單輪 skill 或切換人設；完整說明見「指令 / 引用說明」。";
+const STORYTELLER_ASSISTANT_NAME = "梭梭";
 
 function parseSkillSlashCommand(
   value: string,
@@ -276,6 +285,7 @@ type PanelMessage =
       id: string;
       role: "user" | "assistant";
       content: string;
+      expression?: StorytellerAssistantExpression;
       steps?: StorytellerAgenticStep[];
       proposals?: StorytellerAgenticProposal[];
       // 新資料只存參照；replyContent 只給舊 metadata.reply_content 或極短暫拿不到
@@ -569,6 +579,8 @@ function AgenticExpandableQuote({
 
 function AgenticAssistantMessage({
   message,
+  userAvatarSrc,
+  userAvatarFallback,
   targetKind,
   projectPublicId,
   targetPublicId,
@@ -587,6 +599,8 @@ function AgenticAssistantMessage({
   resendingChatId,
 }: {
   message: Extract<PanelMessage, { kind: "agentic" }>;
+  userAvatarSrc?: string;
+  userAvatarFallback: string;
   targetKind: "story" | "lore";
   projectPublicId?: string;
   targetPublicId?: string;
@@ -655,15 +669,19 @@ function AgenticAssistantMessage({
       messageId={message.id}
       isUser={isUser}
       isReplyTarget={isReplyTarget}
-      speaker={isUser ? "你" : "AI 助理"}
+      speaker={isUser ? "你" : STORYTELLER_ASSISTANT_NAME}
+      avatarSrc={
+        isUser
+          ? userAvatarSrc
+          : storytellerAssistantAvatarSrc(message.expression)
+      }
+      avatarFallbackSrc={isUser ? undefined : STORYTELLER_ASSISTANT_AVATAR_SRC}
+      avatarAlt={isUser ? "使用者頭像" : "梭梭頭像"}
+      avatarFallback={isUser ? userAvatarFallback : "梭"}
+      hideAvatar={message.isLoading}
     >
       {message.isLoading ? (
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" color="text.secondary">
-            <StorytellerAgentLoadingHint />
-          </Typography>
-        </Stack>
+        <StorytellerAgentLoadingState />
       ) : (
         message.content && (
           <Box sx={{ typography: "body2", mt: 0.5 }}>
@@ -772,7 +790,7 @@ function AgenticAssistantMessage({
                   id: message.id,
                   role: message.role,
                   content: message.content,
-                  speaker: "AI 助理",
+                  speaker: STORYTELLER_ASSISTANT_NAME,
                 })
               }
             >
@@ -844,7 +862,17 @@ export function StorytellerAgenticPanel({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const compactComposer = fillAvailableHeight && isMobile;
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+  const { data: userProfile } = useStorytellerUserProfile();
+  const defaultUserAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
+  const userAvatarSrc = storytellerUserAvatarSrc(
+    userProfile,
+    defaultUserAvatar,
+  );
+  const userAvatarFallback =
+    (penName || session?.user.display_name || user?.displayName || "你")
+      .trim()
+      .charAt(0) || "你";
   const queryClient = useQueryClient();
   // 沒有「目前選中的 Agent」：人設只影響單次 prompt，以 /<名稱> 前綴表示（chip 只是在輸入框
   // 插入這段前綴的捷徑），送出時明確帶 persona_agent_id；沒有前綴就沒有人設。
@@ -1126,9 +1154,9 @@ export function StorytellerAgenticPanel({
   );
 
   function skillMessageSpeaker(message: StorytellerStoryChatMessage) {
-    // 說話者固定顯示「AI 助理」，跟 agentic 模式一致（見 mode Chip 才是真正該標的資訊）。
+    // 回覆者固定顯示梭梭；實際使用的 skill／人設由 mode Chip 標示。
     if (message.role === "assistant") {
-      return "AI 助理";
+      return STORYTELLER_ASSISTANT_NAME;
     }
     if (message.role === "user") {
       return penName || "使用者";
@@ -1245,6 +1273,20 @@ export function StorytellerAgenticPanel({
     }
   }
 
+  function parseMessageExpression(
+    metadata?: string,
+  ): StorytellerAssistantExpression {
+    if (!metadata) {
+      return "neutral";
+    }
+    try {
+      const parsed = JSON.parse(metadata) as { expression?: unknown };
+      return normalizeStorytellerAssistantExpression(parsed.expression);
+    } catch {
+      return "neutral";
+    }
+  }
+
   function parseMessageSelectedContent(metadata?: string): string | undefined {
     if (!metadata) {
       return undefined;
@@ -1306,6 +1348,7 @@ export function StorytellerAgenticPanel({
       id: String(message.id),
       role: message.role === "assistant" ? "assistant" : "user",
       content: message.content,
+      expression: parseMessageExpression(message.metadata),
       steps: agentic?.steps,
       proposals: message.proposals,
       replyReference: reply.replyReference,
@@ -1338,6 +1381,7 @@ export function StorytellerAgenticPanel({
       role: message.role,
       content: stripSkillSelectedContentQuote(message.content, selectedContent),
       speaker: skillMessageSpeaker(message),
+      expression: parseMessageExpression(message.metadata),
       mode: parseMessageMode(message.metadata),
       selectedContent,
       usage: parseMessageUsage(message.metadata),
@@ -1434,7 +1478,7 @@ export function StorytellerAgenticPanel({
         id: loadingId,
         role: "assistant",
         content: "",
-        speaker: "AI 助理",
+        speaker: STORYTELLER_ASSISTANT_NAME,
         isLoading: true,
         chatId: message.chatId,
       });
@@ -1676,7 +1720,7 @@ export function StorytellerAgenticPanel({
       id: loadingId,
       role: "assistant",
       content: "",
-      speaker: "AI 助理",
+      speaker: STORYTELLER_ASSISTANT_NAME,
       isLoading: true,
     });
     setPrompt("");
@@ -1733,7 +1777,10 @@ export function StorytellerAgenticPanel({
               : loadingId,
             role: "assistant",
             content: result.result,
-            speaker: "AI 助理",
+            speaker: STORYTELLER_ASSISTANT_NAME,
+            expression: normalizeStorytellerAssistantExpression(
+              result.expression,
+            ),
             mode,
             usage: result.usage,
             resultSelection: null,
@@ -1852,6 +1899,9 @@ export function StorytellerAgenticPanel({
               : loadingId,
             role: "assistant",
             content: response.result,
+            expression: normalizeStorytellerAssistantExpression(
+              response.expression,
+            ),
             steps: response.steps,
             proposals: response.proposals,
             usage: response.usage,
@@ -1866,6 +1916,7 @@ export function StorytellerAgenticPanel({
             id: loadingId,
             role: "assistant",
             content: "",
+            expression: "tangled",
             warning: agenticErrorMessage(err),
           });
         },
@@ -2171,6 +2222,11 @@ export function StorytellerAgenticPanel({
                   <StorytellerAgentMessage
                     key={message.id}
                     message={message}
+                    userAvatarSrc={userAvatarSrc}
+                    userAvatarFallback={userAvatarFallback}
+                    assistantAvatarSrc={storytellerAssistantAvatarSrc(
+                      message.expression,
+                    )}
                     enableReplace={false}
                     enableInsert={false}
                     onApplyText={onApplyText}
@@ -2186,6 +2242,8 @@ export function StorytellerAgenticPanel({
                   <AgenticAssistantMessage
                     key={message.id}
                     message={message}
+                    userAvatarSrc={userAvatarSrc}
+                    userAvatarFallback={userAvatarFallback}
                     targetKind={targetKind}
                     projectPublicId={projectPublicId}
                     targetPublicId={targetPublicId}
