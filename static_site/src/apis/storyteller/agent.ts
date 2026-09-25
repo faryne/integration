@@ -60,6 +60,120 @@ export function useGenerateStorytellerAssistantMemory() {
   });
 }
 
+function assistantMemoriesQueryKey(
+  userId: number | undefined,
+  projectPublicId?: string,
+  targetKind?: "story" | "lore",
+  targetPublicId?: string,
+) {
+  return [
+    "storyteller",
+    "assistant-memories",
+    userId,
+    projectPublicId,
+    targetKind,
+    targetPublicId,
+  ];
+}
+
+export function useStorytellerAssistantMemories(
+  projectPublicId?: string,
+  targetKind?: "story" | "lore",
+  targetPublicId?: string,
+  enabled = true,
+) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: assistantMemoriesQueryKey(
+      session?.user.id,
+      projectPublicId,
+      targetKind,
+      targetPublicId,
+    ),
+    enabled: Boolean(
+      enabled && session?.encrypt_key && projectPublicId && targetPublicId,
+    ),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAssistantMemory[]>
+      >(`${apiBase}/storyteller/projects/${projectPublicId}/memories`, {
+        params: {
+          [`${targetKind}_public_id`]: targetPublicId,
+          limit: 100,
+        },
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data ?? [];
+    },
+  });
+}
+
+export function useUpdateStorytellerAssistantMemory(
+  projectPublicId?: string,
+  targetKind?: "story" | "lore",
+  targetPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      publicId,
+      input,
+    }: {
+      publicId: string;
+      input: StorytellerAssistantMemoryConfirmRequest;
+    }) => {
+      const response = await axios.put<
+        CommonResponse<StorytellerAssistantMemory>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/memories/${publicId}`,
+        input,
+        {
+          params: { [`${targetKind}_public_id`]: targetPublicId },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: assistantMemoriesQueryKey(
+          session?.user.id,
+          projectPublicId,
+          targetKind,
+          targetPublicId,
+        ),
+      }),
+  });
+}
+
+export function useDeleteStorytellerAssistantMemory(
+  projectPublicId?: string,
+  targetKind?: "story" | "lore",
+  targetPublicId?: string,
+) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (publicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/memories/${publicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: assistantMemoriesQueryKey(
+          session?.user.id,
+          projectPublicId,
+          targetKind,
+          targetPublicId,
+        ),
+      }),
+  });
+}
+
 export function useStorytellerAssistantMemoryDraft(publicId: string | null) {
   const { session } = useAuth();
   return useQuery({
@@ -117,6 +231,26 @@ export function useDeleteStorytellerAssistantMemoryDraft() {
         `${apiBase}/storyteller/memory-drafts/${publicId}`,
         { headers: sessionHeaders(session!.encrypt_key) },
       );
+      return response.data.data;
+    },
+  });
+}
+
+export function useRetryStorytellerAssistantMemoryDraft() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      publicId,
+      input,
+    }: {
+      publicId: string;
+      input: StorytellerAssistantMemoryGenerateRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAssistantMemoryDraft>
+      >(`${apiBase}/storyteller/memory-drafts/${publicId}/retry`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data;
     },
   });

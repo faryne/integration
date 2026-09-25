@@ -5,6 +5,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import ModelTrainingIcon from "@mui/icons-material/ModelTraining";
 import ReplayIcon from "@mui/icons-material/Replay";
 import ReplyIcon from "@mui/icons-material/Reply";
@@ -63,6 +64,7 @@ import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx
 import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
 import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
 import { StorytellerMemoryDraftDialog } from "@/pages/storyteller/StorytellerMemoryDraftDialog.tsx";
+import { StorytellerMemoryManagerDialog } from "@/pages/storyteller/StorytellerMemoryManagerDialog.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
@@ -1122,6 +1124,7 @@ export function StorytellerAgenticPanel({
   const [modelAppliedSnack, setModelAppliedSnack] = useState("");
   const [memoryError, setMemoryError] = useState("");
   const [memorySavedSnack, setMemorySavedSnack] = useState("");
+  const [memoryManagerOpen, setMemoryManagerOpen] = useState(false);
   const [memoryDraftPublicId, setMemoryDraftPublicId] = useState<string | null>(
     null,
   );
@@ -2218,13 +2221,24 @@ export function StorytellerAgenticPanel({
                 </Typography>
               </Stack>
             )}
+            {targetPublicId && (
+              <Tooltip title="管理梭梭的記憶">
+                <IconButton
+                  size="small"
+                  aria-label="管理梭梭的記憶"
+                  onClick={() => setMemoryManagerOpen(true)}
+                  sx={{ ml: "auto" }}
+                >
+                  <PsychologyAltOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             {workspace && onClose && (
               <Tooltip title="關閉 AI 協作">
                 <IconButton
                   size="small"
                   aria-label="關閉 AI 協作"
                   onClick={onClose}
-                  sx={{ ml: "auto" }}
                 >
                   <CloseIcon fontSize="small" />
                 </IconButton>
@@ -3009,11 +3023,21 @@ export function StorytellerAgenticPanel({
       <StorytellerMemoryDraftDialog
         publicId={memoryDraftPublicId}
         targetKind={targetKind}
+        providerApiKeyId={providerApiKeyId ? Number(providerApiKeyId) : null}
+        modelName={modelNameOverride}
         onClose={closeMemoryDraft}
+        onRetried={setMemoryDraftPublicId}
         onSaved={() => {
           closeMemoryDraft();
           setMemorySavedSnack("梭梭已經記住這件事了。");
         }}
+      />
+      <StorytellerMemoryManagerDialog
+        open={memoryManagerOpen}
+        projectPublicId={projectPublicId}
+        targetKind={targetKind}
+        targetPublicId={targetPublicId}
+        onClose={() => setMemoryManagerOpen(false)}
       />
       <CustomSnackbar
         open={Boolean(resendError)}

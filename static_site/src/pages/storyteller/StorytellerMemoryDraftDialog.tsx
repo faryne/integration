@@ -3,11 +3,13 @@ import {
   Box,
   Button,
   CircularProgress,
+  FormControlLabel,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -15,6 +17,7 @@ import { useEffect, useState } from "react";
 import {
   useConfirmStorytellerAssistantMemory,
   useDeleteStorytellerAssistantMemoryDraft,
+  useRetryStorytellerAssistantMemoryDraft,
   useStorytellerAssistantMemoryDraft,
 } from "@/apis/storyteller/agent.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -49,23 +52,31 @@ function memoryErrorMessage(error: unknown) {
 export function StorytellerMemoryDraftDialog({
   publicId,
   targetKind,
+  providerApiKeyId,
+  modelName,
   onClose,
   onSaved,
+  onRetried,
 }: {
   publicId: string | null;
   targetKind: "story" | "lore";
+  providerApiKeyId: number | null;
+  modelName: string;
   onClose: () => void;
   onSaved: () => void;
+  onRetried: (publicId: string) => void;
 }) {
   const draftQuery = useStorytellerAssistantMemoryDraft(publicId);
   const confirmMemory = useConfirmStorytellerAssistantMemory();
   const deleteDraft = useDeleteStorytellerAssistantMemoryDraft();
+  const retryDraft = useRetryStorytellerAssistantMemoryDraft();
   const [memoryName, setMemoryName] = useState("");
   const [content, setContent] = useState("");
   const [scope, setScope] =
     useState<StorytellerAssistantMemoryScope>(targetKind);
   const [kind, setKind] = useState<StorytellerAssistantMemoryKind>("context");
   const [priority, setPriority] = useState(50);
+  const [isPinned, setIsPinned] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const draft = draftQuery.data;
 
@@ -76,9 +87,11 @@ export function StorytellerMemoryDraftDialog({
     setScope(draft.scope_type ?? targetKind);
     setKind(draft.kind ?? "context");
     setPriority(draft.priority ?? 50);
+    setIsPinned(false);
   }, [draft, targetKind]);
 
   function closeAndDiscard() {
+    if (retryDraft.isPending || confirmMemory.isPending) return;
     if (publicId && draft?.status !== "confirmed") {
       deleteDraft.mutate(publicId, {
         onError: (error) => setErrorMessage(memoryErrorMessage(error)),
@@ -98,10 +111,27 @@ export function StorytellerMemoryDraftDialog({
           scope_type: scope,
           kind,
           priority,
+          is_pinned: isPinned,
         },
       },
       {
         onSuccess: onSaved,
+        onError: (error) => setErrorMessage(memoryErrorMessage(error)),
+      },
+    );
+  }
+
+  function retry() {
+    if (!publicId || !providerApiKeyId || !modelName) return;
+    retryDraft.mutate(
+      {
+        publicId,
+        input: { provider_apikey_id: providerApiKeyId, model_name: modelName },
+      },
+      {
+        onSuccess: (next) => {
+          if (next?.public_id) onRetried(next.public_id);
+        },
         onError: (error) => setErrorMessage(memoryErrorMessage(error)),
       },
     );
@@ -140,8 +170,26 @@ export function StorytellerMemoryDraftDialog({
         }
         onClose={closeAndDiscard}
         actions={
-          loading || failed || noCandidate ? (
+          loading || noCandidate ? (
             <Button onClick={closeAndDiscard}>關閉</Button>
+          ) : failed ? (
+            <>
+              <Button onClick={closeAndDiscard}>關閉</Button>
+              <Button
+                variant="contained"
+                onClick={retry}
+                disabled={
+                  retryDraft.isPending || !providerApiKeyId || !modelName
+                }
+                startIcon={
+                  retryDraft.isPending ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : undefined
+                }
+              >
+                重新整理
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -183,6 +231,11 @@ export function StorytellerMemoryDraftDialog({
           </Alert>
         ) : (
           <Stack spacing={2}>
+            {draft?.supersedes_public_id && (
+              <Alert severity="warning">
+                這筆記憶會取代較舊的相關記憶；若不確定，請先取消並到記憶管理確認。
+              </Alert>
+            )}
             <TextField
               label="記憶名稱"
               value={memoryName}
@@ -248,6 +301,15 @@ export function StorytellerMemoryDraftDialog({
                 </Select>
               </FormControl>
             </Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isPinned}
+                  onChange={(event) => setIsPinned(event.target.checked)}
+                />
+              }
+              label="釘選這筆記憶，避免日後被自動取代"
+            />
           </Stack>
         )}
       </StorytellerMascotDialog>

@@ -98,7 +98,7 @@ func TestNewStorytellerServerRegistersProjectWriteTools(t *testing.T) {
 	require.Contains(t, body, `"name":"storyteller_patch_project"`)
 }
 
-func TestNewStorytellerServerRegistersMemoryReadTool(t *testing.T) {
+func TestNewStorytellerServerRegistersMemoryTools(t *testing.T) {
 	server := NewStorytellerServer("storyteller-test", "test-version")
 
 	list, shouldReply, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
@@ -108,6 +108,8 @@ func TestNewStorytellerServerRegistersMemoryReadTool(t *testing.T) {
 
 	body := mustMarshal(t, list.Result)
 	require.Contains(t, body, `"name":"storyteller_list_memories"`)
+	require.Contains(t, body, `"name":"storyteller_search_memories"`)
+	require.Contains(t, body, `"name":"storyteller_upsert_memory"`)
 	require.Contains(t, body, "story_public_id")
 	require.Contains(t, body, "lore_public_id")
 }

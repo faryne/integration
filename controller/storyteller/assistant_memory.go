@@ -12,8 +12,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-// AssistantMemories 只提供目前作用域的有效記憶；記憶管理 UI 與寫入 API 等確認
-// 寫入策略後再另外開，不讓這個唯讀入口意外承擔修改語意。
+// AssistantMemories 只提供目前作用域的有效記憶；修改與刪除各自走獨立端點，
+// 避免這個讀取入口承擔不明確的寫入語意。
 func AssistantMemories(ctx fiber.Ctx) error {
 	limit, _ := strconv.Atoi(ctx.Query("limit"))
 	rows, err := storytellerService.NewService().AssistantMemories(
@@ -42,6 +42,7 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 	case repository.IsRecordNotFound(err):
 		return output.NotFound(errors.New(notFoundMessage))
 	case errors.Is(err, storytellerService.ErrAssistantMemoryChatNotCompleted),
+		errors.Is(err, storytellerService.ErrAssistantMemoryTargetInvalid),
 		errors.Is(err, storytellerService.ErrAssistantMemoryDraftNotReady),
 		errors.Is(err, storytellerService.ErrAssistantMemoryDraftEmpty),
 		errors.Is(err, storytellerService.ErrAssistantMemoryScopeInvalid),
@@ -51,7 +52,12 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 		errors.Is(err, storytellerService.ErrAssistantMemoryPriorityInvalid),
 		errors.Is(err, storytellerService.ErrAssistantMemoryDraftResolved),
 		errors.Is(err, storytellerService.ErrAssistantMemoryProviderRequired),
-		errors.Is(err, storytellerService.ErrAssistantMemoryModelRequired):
+		errors.Is(err, storytellerService.ErrAssistantMemoryModelRequired),
+		errors.Is(err, storytellerService.ErrAssistantMemorySupersedeConflict),
+		errors.Is(err, storytellerService.ErrAssistantMemoryDuplicate),
+		errors.Is(err, storytellerService.ErrAssistantMemoryNotEditable),
+		errors.Is(err, storytellerService.ErrAssistantMemoryPublicIDInvalid),
+		errors.Is(err, storytellerService.ErrAssistantMemorySearchInvalid):
 		return output.BadRequest(err)
 	case errors.Is(err, storytellerService.ErrAIProviderUnsupported),
 		errors.Is(err, storytellerService.ErrAIProviderMissingEndpoint):
@@ -59,6 +65,34 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 	default:
 		return output.DBError(err)
 	}
+}
+
+func SearchAssistantMemories(ctx fiber.Ctx) error {
+	limit, _ := strconv.Atoi(ctx.Query("limit"))
+	rows, err := storytellerService.NewService().SearchAssistantMemories(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Query("story_public_id"), ctx.Query("lore_public_id"), ctx.Query("q"), limit)
+	if err != nil {
+		return assistantMemoryMutationError(err, "storyteller memory scope not found")
+	}
+	return output.Success(rows)
+}
+
+func UpdateAssistantMemory(ctx fiber.Ctx) error {
+	var input storytellerModel.AssistantMemoryUpdateRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storytellerService.NewService().UpdateAssistantMemory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Query("story_public_id"), ctx.Query("lore_public_id"), ctx.Params("memory"), input)
+	if err != nil {
+		return assistantMemoryMutationError(err, "storyteller memory or scope not found")
+	}
+	return output.Success(row)
+}
+
+func DeleteAssistantMemory(ctx fiber.Ctx) error {
+	if err := storytellerService.NewService().DeleteAssistantMemory(authsession.Session(ctx).UserId, ctx.Params("memory")); err != nil {
+		return assistantMemoryMutationError(err, "storyteller memory not found")
+	}
+	return output.Success(map[string]bool{"deleted": true})
 }
 
 // GenerateAssistantMemoryDraft 只建立候選並啟動背景整理，不會直接寫成有效記憶。
@@ -83,6 +117,18 @@ func AssistantMemoryDraft(ctx fiber.Ctx) error {
 	row, err := storytellerService.NewService().AssistantMemoryDraft(authsession.Session(ctx).UserId, ctx.Params("memory"))
 	if err != nil {
 		return assistantMemoryMutationError(err, "storyteller memory draft not found")
+	}
+	return output.Success(row)
+}
+
+func RetryAssistantMemoryDraft(ctx fiber.Ctx) error {
+	var input storytellerModel.AssistantMemoryGenerateRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storytellerService.NewService().RetryAssistantMemory(authsession.Session(ctx).UserId, ctx.Params("memory"), input)
+	if err != nil {
+		return assistantMemoryMutationError(err, "storyteller memory draft, chat, target, or provider key not found")
 	}
 	return output.Success(row)
 }

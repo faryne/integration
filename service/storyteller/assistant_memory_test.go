@@ -85,6 +85,20 @@ func TestAssistantMemoryToolIsReadOnlyAndScoped(t *testing.T) {
 	properties := spec.InputSchema["properties"].(map[string]interface{})
 	require.Contains(t, properties, "story_public_id")
 	require.Contains(t, properties, "lore_public_id")
+
+	search, ok := tools["storyteller_search_memories"]
+	require.True(t, ok)
+	require.ElementsMatch(t, []string{"project_public_id", "keyword"}, search.InputSchema["required"])
+}
+
+func TestAssistantMemoryUpsertToolIsMCPOnly(t *testing.T) {
+	main := toolSpecsByName(StorytellerToolRegistry().All())
+	mcpOnly := toolSpecsByName(StorytellerMCPOnlyToolRegistry().All())
+	require.NotContains(t, main, "storyteller_upsert_memory")
+
+	spec, ok := mcpOnly["storyteller_upsert_memory"]
+	require.True(t, ok)
+	require.ElementsMatch(t, []string{"project_public_id", "scope_type", "kind", "content"}, spec.InputSchema["required"])
 }
 
 func TestAgentRequestIncludesMemoriesBeforeTask(t *testing.T) {

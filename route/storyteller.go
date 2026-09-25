@@ -52,6 +52,9 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project", storyteller.Project)
 	authenticated.Get("/projects/:project/search", storyteller.WorkspaceSearch)
 	authenticated.Get("/projects/:project/memories", storyteller.AssistantMemories)
+	authenticated.Get("/projects/:project/memories/search", storyteller.SearchAssistantMemories)
+	authenticated.Put("/projects/:project/memories/:memory", storyteller.UpdateAssistantMemory)
+	authenticated.Delete("/memories/:memory", storyteller.DeleteAssistantMemory)
 	authenticated.Put("/projects/:project", storyteller.UpdateProject)
 	authenticated.Delete("/projects/:project", storyteller.DeleteProject)
 	authenticated.Get("/projects/:project/favorite", storyteller.FavoriteStatus)
@@ -97,6 +100,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/agent-chats/:chat", storyteller.AgentChat)
 	authenticated.Post("/agent-chats/:chat/memory-drafts", storyteller.GenerateAssistantMemoryDraft)
 	authenticated.Get("/memory-drafts/:memory", storyteller.AssistantMemoryDraft)
+	authenticated.Post("/memory-drafts/:memory/retry", storyteller.RetryAssistantMemoryDraft)
 	authenticated.Post("/memory-drafts/:memory/confirm", storyteller.ConfirmAssistantMemoryDraft)
 	authenticated.Delete("/memory-drafts/:memory", storyteller.DeleteAssistantMemoryDraft)
 

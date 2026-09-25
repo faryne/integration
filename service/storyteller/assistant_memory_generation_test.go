@@ -14,6 +14,7 @@ func TestParseAssistantMemoryCandidate(t *testing.T) {
 <Name><![CDATA[對話口吻]]></Name>
 <Content><![CDATA[使用者希望梭梭使用自然的台灣口語，並保留完整句子的呼吸感。]]></Content>
 <Scope>account</Scope><Kind>preference</Kind><Priority>80</Priority>
+<SupersedesPublicID><![CDATA[memory-old]]></SupersedesPublicID>
 </MemoryDraft>後置雜訊`
 
 	candidate, err := parseAssistantMemoryCandidate(raw, storytellerModel.AssistantMemoryScopeStory)
@@ -23,14 +24,16 @@ func TestParseAssistantMemoryCandidate(t *testing.T) {
 	require.Equal(t, storytellerModel.AssistantMemoryScopeAccount, candidate.Scope)
 	require.Equal(t, storytellerModel.AssistantMemoryKindPreference, candidate.Kind)
 	require.Equal(t, uint8(80), candidate.Priority)
+	require.Equal(t, "memory-old", candidate.SupersedesPublicID)
 }
 
 func TestParseAssistantMemoryCandidateAllowsEmptyNoMemoryResponse(t *testing.T) {
-	candidate, err := parseAssistantMemoryCandidate(`<MemoryDraft><ShouldRemember>false</ShouldRemember></MemoryDraft>`, storytellerModel.AssistantMemoryScopeLore)
+	candidate, err := parseAssistantMemoryCandidate(`<MemoryDraft><ShouldRemember>false</ShouldRemember><SupersedesPublicID>memory-old</SupersedesPublicID></MemoryDraft>`, storytellerModel.AssistantMemoryScopeLore)
 	require.NoError(t, err)
 	require.False(t, candidate.ShouldRemember)
 	require.Equal(t, storytellerModel.AssistantMemoryScopeLore, candidate.Scope)
 	require.Equal(t, storytellerModel.AssistantMemoryKindContext, candidate.Kind)
+	require.Empty(t, candidate.SupersedesPublicID)
 }
 
 func TestParseAssistantMemoryCandidateRejectsUnavailableScope(t *testing.T) {
@@ -44,11 +47,26 @@ func TestBuildAssistantMemoryGenerationPromptEscapesConversation(t *testing.T) {
 		&storytellerModel.AgentChatTarget{Kind: "story", TargetPublicID: "story-1"},
 		storytellerModel.AssistantMemoryScopeStory,
 		[]storytellerModel.StoryChatMessageOutput{{Role: storytellerModel.ChatMessageRoleUser, Content: `<script> & request`}},
-		[]storytellerModel.AssistantMemory{{ScopeType: storytellerModel.AssistantMemoryScopeAccount, Kind: storytellerModel.AssistantMemoryKindPreference, Content: `偏好 A&B`}},
+		[]storytellerModel.AssistantMemory{{PublicID: "memory-1", ScopeType: storytellerModel.AssistantMemoryScopeAccount, Kind: storytellerModel.AssistantMemoryKindPreference, Content: `偏好 A&B`, IsPinned: true}},
 	)
 
 	require.Contains(t, prompt, "<AllowedScopes>account,project,story</AllowedScopes>")
 	require.Contains(t, prompt, "A &amp; B")
 	require.Contains(t, prompt, "&lt;script&gt; &amp; request")
+	require.Contains(t, prompt, `public_id="memory-1" scope="account" kind="preference" pinned="true"`)
 	require.False(t, strings.Contains(prompt, "<script>"))
+}
+
+func TestValidateAssistantMemorySupersedes(t *testing.T) {
+	candidate := assistantMemoryCandidate{ShouldRemember: true, Scope: storytellerModel.AssistantMemoryScopeStory, SupersedesPublicID: "old-memory"}
+
+	require.NoError(t, validateAssistantMemorySupersedes(candidate, []storytellerModel.AssistantMemory{{
+		PublicID: "old-memory", ScopeType: storytellerModel.AssistantMemoryScopeStory,
+	}}))
+	require.ErrorIs(t, validateAssistantMemorySupersedes(candidate, []storytellerModel.AssistantMemory{{
+		PublicID: "old-memory", ScopeType: storytellerModel.AssistantMemoryScopeStory, IsPinned: true,
+	}}), ErrAssistantMemorySupersedeConflict)
+	require.ErrorIs(t, validateAssistantMemorySupersedes(candidate, []storytellerModel.AssistantMemory{{
+		PublicID: "old-memory", ScopeType: storytellerModel.AssistantMemoryScopeProject,
+	}}), ErrAssistantMemorySupersedeConflict)
 }
