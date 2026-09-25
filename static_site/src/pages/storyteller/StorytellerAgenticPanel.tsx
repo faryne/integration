@@ -1,6 +1,7 @@
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import CodeIcon from "@mui/icons-material/Code";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
@@ -37,6 +38,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import {
   fetchStorytellerAgenticChat,
+  useGenerateStorytellerAssistantMemory,
   useStorytellerAgenticReferenceContent,
   useStorytellerAgentProviderModels,
   useStorytellerLoreChatMessages,
@@ -60,6 +62,7 @@ import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.ts
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
 import { StorytellerAIQuickActions } from "@/pages/storyteller/StorytellerAIQuickActions.tsx";
 import { StorytellerMarkdownSyntaxDrawer } from "@/pages/storyteller/StorytellerMarkdownSyntaxDrawer.tsx";
+import { StorytellerMemoryDraftDialog } from "@/pages/storyteller/StorytellerMemoryDraftDialog.tsx";
 import { StorytellerAgentReferenceDrawer } from "@/pages/storyteller/StorytellerAgentReferenceDrawer.tsx";
 import { StorytellerPromptHighlightOverlay } from "@/pages/storyteller/StorytellerPromptHighlightOverlay.tsx";
 import { SelfHostedModelPicker } from "@/pages/storyteller/SelfHostedModelPicker.tsx";
@@ -597,6 +600,9 @@ function AgenticAssistantMessage({
   isReplyTarget,
   onResend,
   resendingChatId,
+  onRemember,
+  rememberingChatId,
+  memoryEnabled,
 }: {
   message: Extract<PanelMessage, { kind: "agentic" }>;
   userAvatarSrc?: string;
@@ -627,6 +633,9 @@ function AgenticAssistantMessage({
   isReplyTarget?: boolean;
   onResend?: (chatId: number) => void;
   resendingChatId?: number | null;
+  onRemember?: (chatId: number) => void;
+  rememberingChatId?: number | null;
+  memoryEnabled?: boolean;
 }) {
   const isUser = message.role === "user";
   const canApply =
@@ -636,6 +645,13 @@ function AgenticAssistantMessage({
   const resendable =
     isUser && message.chatId !== undefined && message.chatStatus === "pending";
   const resending = resendable && resendingChatId === message.chatId;
+  const canRemember =
+    !isUser &&
+    !message.isLoading &&
+    message.content.trim() !== "" &&
+    message.chatId !== undefined &&
+    message.chatStatus === "completed";
+  const remembering = canRemember && rememberingChatId === message.chatId;
   const referenceContent = useStorytellerAgenticReferenceContent(
     targetKind,
     projectPublicId,
@@ -795,6 +811,22 @@ function AgenticAssistantMessage({
               }
             >
               回覆
+            </Button>
+          )}
+          {canRemember && onRemember && (
+            <Button
+              {...storytellerChatActionButtonProps}
+              startIcon={
+                remembering ? (
+                  <CircularProgress size={14} />
+                ) : (
+                  <BookmarkAddOutlinedIcon />
+                )
+              }
+              disabled={!memoryEnabled || remembering}
+              onClick={() => onRemember(message.chatId!)}
+            >
+              {remembering ? "整理中" : "整理成記憶"}
             </Button>
           )}
         </Stack>
@@ -1082,11 +1114,20 @@ export function StorytellerAgenticPanel({
     targetPublicId,
   );
   const resendAgenticQuery = useResendStorytellerAgent(targetKind);
+  const generateMemory = useGenerateStorytellerAssistantMemory();
   // 重送同時只讓一則生效，用 chatId 記正在跑哪一則——按鈕的 loading/disabled
   // 狀態靠這個判斷，不用另外幫每則訊息包一份 mutation 狀態。
   const [resendingChatId, setResendingChatId] = useState<number | null>(null);
   const [resendError, setResendError] = useState("");
   const [modelAppliedSnack, setModelAppliedSnack] = useState("");
+  const [memoryError, setMemoryError] = useState("");
+  const [memorySavedSnack, setMemorySavedSnack] = useState("");
+  const [memoryDraftPublicId, setMemoryDraftPublicId] = useState<string | null>(
+    null,
+  );
+  const [rememberingChatId, setRememberingChatId] = useState<number | null>(
+    null,
+  );
   function handleResend(chatId: number) {
     if (resendingChatId !== null || !providerApiKeyId || !modelNameOverride) {
       return;
@@ -1106,6 +1147,46 @@ export function StorytellerAgenticPanel({
         onSettled: () => setResendingChatId(null),
       },
     );
+  }
+
+  function handleRemember(chatId: number) {
+    if (
+      rememberingChatId !== null ||
+      memoryDraftPublicId ||
+      !providerApiKeyId ||
+      !modelNameOverride
+    ) {
+      return;
+    }
+    setRememberingChatId(chatId);
+    generateMemory.mutate(
+      {
+        chatId,
+        input: {
+          provider_apikey_id: Number(providerApiKeyId),
+          model_name: modelNameOverride,
+        },
+      },
+      {
+        onSuccess: (draft) => {
+          if (!draft?.public_id) {
+            setMemoryError("記憶草稿沒有建立成功，請稍後再試。");
+            setRememberingChatId(null);
+            return;
+          }
+          setMemoryDraftPublicId(draft.public_id);
+        },
+        onError: (error) => {
+          setMemoryError(agenticErrorMessage(error));
+          setRememberingChatId(null);
+        },
+      },
+    );
+  }
+
+  function closeMemoryDraft() {
+    setMemoryDraftPublicId(null);
+    setRememberingChatId(null);
   }
   const storyMessagesQuery = useStorytellerStoryChatMessages(
     projectPublicId,
@@ -2237,6 +2318,35 @@ export function StorytellerAgenticPanel({
                     targetPublicId={targetPublicId}
                     otherStories={otherStories}
                     lores={lores}
+                    additionalActions={
+                      message.role === "assistant" &&
+                      !message.isLoading &&
+                      message.content.trim() &&
+                      message.chatId !== undefined &&
+                      message.chatStatus === "completed" ? (
+                        <Button
+                          {...storytellerChatActionButtonProps}
+                          startIcon={
+                            rememberingChatId === message.chatId ? (
+                              <CircularProgress size={14} />
+                            ) : (
+                              <BookmarkAddOutlinedIcon />
+                            )
+                          }
+                          disabled={
+                            !providerApiKeyId ||
+                            !modelNameOverride ||
+                            memoryDraftPublicId !== null ||
+                            rememberingChatId === message.chatId
+                          }
+                          onClick={() => handleRemember(message.chatId!)}
+                        >
+                          {rememberingChatId === message.chatId
+                            ? "整理中"
+                            : "整理成記憶"}
+                        </Button>
+                      ) : undefined
+                    }
                   />
                 ) : (
                   <AgenticAssistantMessage
@@ -2262,6 +2372,12 @@ export function StorytellerAgenticPanel({
                     isReplyTarget={replyTarget?.id === message.id}
                     onResend={handleResend}
                     resendingChatId={resendingChatId}
+                    onRemember={handleRemember}
+                    rememberingChatId={rememberingChatId}
+                    memoryEnabled={
+                      Boolean(providerApiKeyId && modelNameOverride) &&
+                      memoryDraftPublicId === null
+                    }
                   />
                 ),
               )}
@@ -2890,6 +3006,15 @@ export function StorytellerAgenticPanel({
         onClose={() => setReferenceDrawerOpen(false)}
         agents={agents}
       />
+      <StorytellerMemoryDraftDialog
+        publicId={memoryDraftPublicId}
+        targetKind={targetKind}
+        onClose={closeMemoryDraft}
+        onSaved={() => {
+          closeMemoryDraft();
+          setMemorySavedSnack("梭梭已經記住這件事了。");
+        }}
+      />
       <CustomSnackbar
         open={Boolean(resendError)}
         message={resendError}
@@ -2900,6 +3025,17 @@ export function StorytellerAgenticPanel({
         open={Boolean(modelAppliedSnack)}
         message={modelAppliedSnack}
         onClose={() => setModelAppliedSnack("")}
+      />
+      <CustomSnackbar
+        open={Boolean(memoryError)}
+        message={memoryError}
+        severity="error"
+        onClose={() => setMemoryError("")}
+      />
+      <CustomSnackbar
+        open={Boolean(memorySavedSnack)}
+        message={memorySavedSnack}
+        onClose={() => setMemorySavedSnack("")}
       />
     </Paper>
   );

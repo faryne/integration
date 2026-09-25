@@ -593,6 +593,50 @@ export interface StorytellerAgenticChatResponse {
   messages: StorytellerStoryChatMessage[];
 }
 
+export type StorytellerAssistantMemoryScope =
+  "account" | "project" | "story" | "lore";
+
+export type StorytellerAssistantMemoryKind =
+  "preference" | "instruction" | "decision" | "context";
+
+export interface StorytellerAssistantMemoryDraft {
+  public_id: string;
+  status: "in_progress" | "completed" | "failed" | "confirmed";
+  should_remember?: boolean;
+  memory_name?: string;
+  scope_type?: StorytellerAssistantMemoryScope;
+  kind?: StorytellerAssistantMemoryKind;
+  content?: string;
+  priority?: number;
+  error_message?: string;
+}
+
+export interface StorytellerAssistantMemoryGenerateRequest {
+  provider_apikey_id: number;
+  model_name: string;
+}
+
+export interface StorytellerAssistantMemoryConfirmRequest {
+  memory_name: string;
+  scope_type: StorytellerAssistantMemoryScope;
+  kind: StorytellerAssistantMemoryKind;
+  content: string;
+  priority: number;
+}
+
+export interface StorytellerAssistantMemory {
+  public_id: string;
+  memory_name?: string;
+  scope_type: StorytellerAssistantMemoryScope;
+  target_public_id?: string;
+  kind: StorytellerAssistantMemoryKind;
+  content: string;
+  priority: number;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface StorytellerAgenticReferenceContentResponse {
   content: string;
 }

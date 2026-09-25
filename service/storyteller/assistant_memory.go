@@ -72,12 +72,19 @@ func readAssistantMemories(repo assistantMemoryRepository, userID uint64, projec
 			}
 		}
 		out = append(out, storytellerModel.AssistantMemoryOutput{
-			PublicID: row.PublicID, ScopeType: row.ScopeType, TargetPublicID: targetPublicID,
+			PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID,
 			Kind: row.Kind, Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		})
 	}
 	return out, nil
+}
+
+func assistantMemoryName(name *string) string {
+	if name == nil {
+		return ""
+	}
+	return *name
 }
 
 func assistantMemoryTargetIDs(story *storytellerModel.Story, lore *storytellerModel.Lore) (storyID, loreID *uint64) {

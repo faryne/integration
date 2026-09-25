@@ -21,6 +21,10 @@ import type {
   StorytellerAgentRequest,
   StorytellerAgentUsageLogPage,
   StorytellerAgentUsageSummaryRow,
+  StorytellerAssistantMemory,
+  StorytellerAssistantMemoryConfirmRequest,
+  StorytellerAssistantMemoryDraft,
+  StorytellerAssistantMemoryGenerateRequest,
   StorytellerMcpToolDocCategory,
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
@@ -35,6 +39,88 @@ import type {
 import { apiBase, sessionHeaders } from "./shared.ts";
 
 const agenticQueryTimeoutMs = 490000;
+
+export function useGenerateStorytellerAssistantMemory() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async ({
+      chatId,
+      input,
+    }: {
+      chatId: number;
+      input: StorytellerAssistantMemoryGenerateRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAssistantMemoryDraft>
+      >(`${apiBase}/storyteller/agent-chats/${chatId}/memory-drafts`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+  });
+}
+
+export function useStorytellerAssistantMemoryDraft(publicId: string | null) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "assistant-memory-draft",
+      session?.user.id,
+      publicId,
+    ],
+    enabled: Boolean(session?.encrypt_key && publicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAssistantMemoryDraft>
+      >(`${apiBase}/storyteller/memory-drafts/${publicId}`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    refetchInterval: (query) =>
+      query.state.data?.status === "in_progress" ? 1000 : false,
+  });
+}
+
+export function useConfirmStorytellerAssistantMemory() {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      publicId,
+      input,
+    }: {
+      publicId: string;
+      input: StorytellerAssistantMemoryConfirmRequest;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAssistantMemory>
+      >(`${apiBase}/storyteller/memory-drafts/${publicId}/confirm`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "assistant-memories"],
+      });
+    },
+  });
+}
+
+export function useDeleteStorytellerAssistantMemoryDraft() {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (publicId: string) => {
+      const response = await axios.delete<CommonResponse<{ deleted: boolean }>>(
+        `${apiBase}/storyteller/memory-drafts/${publicId}`,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+  });
+}
 
 // 依 chat id 撈一筆對話目前的狀態與訊息（輪詢用）；不需要知道它掛在哪個故事／設定集底下。
 export async function fetchStorytellerAgenticChat({

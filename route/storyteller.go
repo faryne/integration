@@ -95,6 +95,10 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/agent-chats", storyteller.SubmitAgent)
 	authenticated.Post("/agent-chats/:chat/resend", storyteller.ResubmitAgent)
 	authenticated.Get("/agent-chats/:chat", storyteller.AgentChat)
+	authenticated.Post("/agent-chats/:chat/memory-drafts", storyteller.GenerateAssistantMemoryDraft)
+	authenticated.Get("/memory-drafts/:memory", storyteller.AssistantMemoryDraft)
+	authenticated.Post("/memory-drafts/:memory/confirm", storyteller.ConfirmAssistantMemoryDraft)
+	authenticated.Delete("/memory-drafts/:memory", storyteller.DeleteAssistantMemoryDraft)
 
 	authenticated.Get("/projects/:project/stories", storyteller.Stories)
 	authenticated.Post("/projects/:project/stories", storyteller.CreateStory)
