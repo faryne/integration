@@ -54,6 +54,7 @@ import {
   storytellerAssistantAvatarSrc,
   storytellerMascotSrc,
 } from "@/helpers/storytellerMascot.ts";
+import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
@@ -677,6 +678,7 @@ function AgenticAssistantMessage({
       avatarFallbackSrc={isUser ? undefined : STORYTELLER_ASSISTANT_AVATAR_SRC}
       avatarAlt={isUser ? "使用者頭像" : "梭梭頭像"}
       avatarFallback={isUser ? userAvatarFallback : "梭"}
+      hideAvatar={message.isLoading}
     >
       {message.isLoading ? (
         <StorytellerAgentLoadingState />
@@ -863,9 +865,10 @@ export function StorytellerAgenticPanel({
   const { session, user } = useAuth();
   const { data: userProfile } = useStorytellerUserProfile();
   const defaultUserAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
-  const userAvatarSrc = userProfile?.use_default_avatar
-    ? defaultUserAvatar
-    : userProfile?.avatar_url || defaultUserAvatar;
+  const userAvatarSrc = storytellerUserAvatarSrc(
+    userProfile,
+    defaultUserAvatar,
+  );
   const userAvatarFallback =
     (penName || session?.user.display_name || user?.displayName || "你")
       .trim()

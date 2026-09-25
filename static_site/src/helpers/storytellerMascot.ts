@@ -1,23 +1,21 @@
 import type { StorytellerAppearance } from "@/data/storytellerTheme.ts";
-import type { StorytellerAssistantExpression } from "@/types/storyteller.ts";
+import {
+  STORYTELLER_ASSISTANT_EXPRESSIONS,
+  type StorytellerAssistantExpression,
+} from "@/types/storyteller.ts";
 
 export const STORYTELLER_MASCOT_CDN_BASE =
   "https://cdn.faryne.dev/steamloom_assets";
 
-const STORYTELLER_ASSISTANT_EXPRESSIONS = new Set<string>([
-  "neutral",
-  "attentive",
-  "thinking",
-  "pleased",
-  "concerned",
-  "tangled",
-]);
+const storytellerAssistantExpressionSet = new Set<string>(
+  STORYTELLER_ASSISTANT_EXPRESSIONS,
+);
 
 export function normalizeStorytellerAssistantExpression(
   value: unknown,
 ): StorytellerAssistantExpression {
   return typeof value === "string" &&
-    STORYTELLER_ASSISTANT_EXPRESSIONS.has(value)
+    storytellerAssistantExpressionSet.has(value)
     ? (value as StorytellerAssistantExpression)
     : "neutral";
 }

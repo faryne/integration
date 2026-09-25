@@ -29,6 +29,7 @@ import {
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import { AuthorProfilesPanel } from "@/pages/storyteller/AuthorProfilesPanel.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -170,12 +171,13 @@ export function StorytellerProfileContent() {
   const [gravatarUrl, setGravatarUrl] = useState("");
   const defaultAvatar = session?.user.photo_url ?? user?.photoURL ?? "";
   const email = session?.user.email ?? "";
-  const previewAvatar =
-    avatarOption === "default"
-      ? defaultAvatar
-      : avatarOption === "gravatar"
-        ? gravatarUrl
-        : form.avatar_url;
+  const previewAvatar = storytellerUserAvatarSrc(
+    {
+      use_default_avatar: avatarOption === "default",
+      avatar_url: avatarOption === "gravatar" ? gravatarUrl : form.avatar_url,
+    },
+    defaultAvatar,
+  );
   const displayName =
     form.pen_name || session?.user.display_name || STORYTELLER_APP_NAME;
 

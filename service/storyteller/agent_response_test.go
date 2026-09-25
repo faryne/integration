@@ -37,6 +37,36 @@ func TestParseSuosuoResponse(t *testing.T) {
 			answer:     "原本的純文字回答",
 			expression: SuosuoExpressionNeutral,
 		},
+		{
+			name:       "recovers answer truncated by token limit",
+			input:      "<Response><Answer><![CDATA[很長的改稿被截",
+			answer:     "很長的改稿被截",
+			expression: SuosuoExpressionNeutral,
+		},
+		{
+			name:       "recovers malformed ampersand without exposing xml",
+			input:      "<Response><Answer>A & B</Answer><Expression>thinking</Expression></Response>",
+			answer:     "A & B",
+			expression: SuosuoExpressionThinking,
+		},
+		{
+			name:       "missing answer close does not expose following elements",
+			input:      "<Response><Answer>還在回答<Expression>thinking</Expression></Response>",
+			answer:     "還在回答",
+			expression: SuosuoExpressionThinking,
+		},
+		{
+			name:       "preserves unclosed html in malformed xml",
+			input:      "<Response><Answer>第一行<br>第二行</Answer><Expression>neutral</Expression></Response>",
+			answer:     "第一行<br>第二行",
+			expression: SuosuoExpressionNeutral,
+		},
+		{
+			name:       "preserves nested html in valid xml",
+			input:      "<Response><Answer>有 <b>粗體</b> 的字</Answer><Expression>pleased</Expression></Response>",
+			answer:     "有 <b>粗體</b> 的字",
+			expression: SuosuoExpressionPleased,
+		},
 	}
 
 	for _, tt := range tests {

@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"encoding/xml"
+	"html"
 	"strings"
 )
 
@@ -23,24 +24,73 @@ type suosuoResponse struct {
 }
 
 type suosuoResponseXML struct {
-	XMLName    xml.Name `xml:"Response"`
-	Answer     string   `xml:"Answer"`
-	Expression string   `xml:"Expression"`
+	XMLName xml.Name `xml:"Response"`
+	Answer  struct {
+		InnerXML string `xml:",innerxml"`
+	} `xml:"Answer"`
+	Expression string `xml:"Expression"`
 }
 
-// parseSuosuoResponse 只在 provider 給出最終文字後解析 envelope。格式不合法時保留
-// provider 原文並回退 neutral，避免模型偶爾漏標籤就讓使用者整則回答消失。
+// parseSuosuoResponse 先解析完整 envelope；若 provider 因 token 上限截斷 XML，
+// 則僅回收 Answer 內已生成的文字，不把結構標籤暴露給使用者。
 func parseSuosuoResponse(raw string) suosuoResponse {
 	trimmed := strings.TrimSpace(raw)
 	candidate := trimXMLCodeFence(trimmed)
 	var envelope suosuoResponseXML
-	if err := xml.Unmarshal([]byte(candidate), &envelope); err != nil || envelope.XMLName.Local != "Response" || strings.TrimSpace(envelope.Answer) == "" {
+	if err := xml.Unmarshal([]byte(candidate), &envelope); err == nil && envelope.XMLName.Local == "Response" {
+		if answer := cleanSuosuoAnswer(envelope.Answer.InnerXML); answer != "" {
+			return suosuoResponse{
+				Answer:     answer,
+				Expression: normalizeSuosuoExpression(envelope.Expression),
+			}
+		}
+	}
+
+	answer, ok := extractSuosuoElement(candidate, "Answer")
+	answer = cleanSuosuoAnswer(answer)
+	if !ok || answer == "" {
 		return suosuoResponse{Answer: trimmed, Expression: SuosuoExpressionNeutral}
 	}
+	expression, _ := extractSuosuoElement(candidate, "Expression")
 	return suosuoResponse{
-		Answer:     strings.TrimSpace(envelope.Answer),
-		Expression: normalizeSuosuoExpression(envelope.Expression),
+		Answer:     answer,
+		Expression: normalizeSuosuoExpression(expression),
 	}
+}
+
+func cleanSuosuoAnswer(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if strings.HasPrefix(trimmed, "<![CDATA[") {
+		trimmed = strings.TrimPrefix(trimmed, "<![CDATA[")
+		trimmed = strings.TrimSuffix(trimmed, "]]>")
+		return strings.TrimSpace(trimmed)
+	}
+	return strings.TrimSpace(html.UnescapeString(trimmed))
+}
+
+// extractSuosuoElement 用實際元素邊界回收內容；缺少結尾標籤時取到文本尾端，
+// 讓 max_tokens 截斷的 Answer 仍能顯示。
+func extractSuosuoElement(value, name string) (string, bool) {
+	openTag := "<" + name + ">"
+	start := strings.Index(value, openTag)
+	if start < 0 {
+		return "", false
+	}
+	start += len(openTag)
+	closeTag := "</" + name + ">"
+	if end := strings.LastIndex(value[start:], closeTag); end >= 0 {
+		return value[start : start+end], true
+	}
+	tail := value[start:]
+	// Answer 少了結尾標籤、但 provider 仍輸出後續元素時，不把後續 XML 當成回答。
+	if name == "Answer" {
+		for _, boundary := range []string{"<Expression>", "</Response>"} {
+			if end := strings.Index(tail, boundary); end >= 0 {
+				tail = tail[:end]
+			}
+		}
+	}
+	return tail, true
 }
 
 func normalizeSuosuoExpression(value string) SuosuoExpression {

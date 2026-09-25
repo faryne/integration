@@ -29,6 +29,7 @@ import {
 } from "@/layouts/StorytellerHeaderContext.tsx";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
+import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -174,7 +175,10 @@ export function StorytellerLayout() {
     useStorytellerUserProfile();
   const displayName =
     session?.user.display_name ?? user?.displayName ?? user?.email ?? "使用者";
-  const photoURL = session?.user.photo_url ?? user?.photoURL ?? undefined;
+  const photoURL = storytellerUserAvatarSrc(
+    profile,
+    session?.user.photo_url ?? user?.photoURL ?? undefined,
+  );
   const workspaceRoot = steamloomPath("my/workspace");
   // 工作台本身是固定高度的 app shell，專案操作也已收進 navigator；普通網站 footer
   // 在這裡只會被壓在殼後或造成重複操作，僅保留給公開瀏覽與閱讀頁。這裡只能比對

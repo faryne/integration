@@ -90,7 +90,7 @@ export function StorytellerAgentLoadingState() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <Stack spacing={0.5} alignItems="center" sx={{ minWidth: 128, py: 0.5 }}>
+    <Stack spacing={0.5} alignItems="center" sx={{ py: 0.5 }}>
       <Box
         component="img"
         src={STORYTELLER_ASSISTANT_THINKING_GIF_SRC}
@@ -132,6 +132,7 @@ export function StorytellerChatBubble({
   avatarFallbackSrc,
   avatarAlt,
   avatarFallback,
+  hideAvatar = false,
   badge,
   children,
 }: {
@@ -143,6 +144,7 @@ export function StorytellerChatBubble({
   avatarFallbackSrc?: string;
   avatarAlt: string;
   avatarFallback: string;
+  hideAvatar?: boolean;
   // 這則訊息實際用了哪個 Agent 人設／哪個 skill 指令——小小一個 Chip 貼在
   // 說話者名稱旁邊，事後回頭看對話紀錄才追得回「這則當時發生了什麼事」。
   badge?: ReactNode;
@@ -161,27 +163,29 @@ export function StorytellerChatBubble({
         gap: 1,
       }}
     >
-      <Avatar
-        src={(avatarLoadFailed ? avatarFallbackSrc : avatarSrc) || undefined}
-        alt={avatarAlt}
-        slotProps={{ img: { onError: () => setAvatarLoadFailed(true) } }}
-        sx={{
-          width: 36,
-          height: 36,
-          flexShrink: 0,
-          border: "1px solid",
-          borderColor: isUser ? "primary.light" : "divider",
-          bgcolor: isUser ? "primary.dark" : "background.paper",
-          color: isUser ? "primary.contrastText" : "text.secondary",
-          fontSize: "0.8rem",
-          fontWeight: 700,
-        }}
-      >
-        {avatarFallback}
-      </Avatar>
+      {!hideAvatar && (
+        <Avatar
+          src={(avatarLoadFailed ? avatarFallbackSrc : avatarSrc) || undefined}
+          alt={avatarAlt}
+          slotProps={{ img: { onError: () => setAvatarLoadFailed(true) } }}
+          sx={{
+            width: 36,
+            height: 36,
+            flexShrink: 0,
+            border: "1px solid",
+            borderColor: isUser ? "primary.light" : "divider",
+            bgcolor: isUser ? "primary.dark" : "background.paper",
+            color: isUser ? "primary.contrastText" : "text.secondary",
+            fontSize: "0.8rem",
+            fontWeight: 700,
+          }}
+        >
+          {avatarFallback}
+        </Avatar>
+      )}
       <Box
         sx={{
-          maxWidth: "calc(100% - 44px)",
+          maxWidth: hideAvatar ? "100%" : "calc(100% - 44px)",
           p: 1.5,
           borderRadius: "16px",
           borderBottomRightRadius: isUser ? "4px" : "16px",
@@ -325,6 +329,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
             ? "梭"
             : "系"
       }
+      hideAvatar={message.isLoading}
       badge={<StorytellerChatBadges mode={message.mode} />}
     >
       {message.isLoading ? (

@@ -504,8 +504,17 @@ export interface StorytellerAgentRunUsage {
   total_tokens?: number;
 }
 
+export const STORYTELLER_ASSISTANT_EXPRESSIONS = [
+  "neutral",
+  "attentive",
+  "thinking",
+  "pleased",
+  "concerned",
+  "tangled",
+] as const;
+
 export type StorytellerAssistantExpression =
-  "neutral" | "attentive" | "thinking" | "pleased" | "concerned" | "tangled";
+  (typeof STORYTELLER_ASSISTANT_EXPRESSIONS)[number];
 
 // 呼叫端組出的送出內容：目標（project／story／lore）由 hook 依所在頁面補上。
 export type StorytellerAgentSubmitInput = Omit<
