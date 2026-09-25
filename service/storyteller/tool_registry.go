@@ -66,6 +66,7 @@ func StorytellerToolRegistry() *ToolRegistry {
 	registry := NewToolRegistry()
 	for _, specs := range [][]ToolSpec{
 		storytellerProjectToolSpecs(),
+		storytellerMemoryToolSpecs(),
 		storytellerStoryToolSpecs(),
 		storytellerLoreToolSpecs(),
 		storytellerAssetToolSpecs(),

@@ -51,6 +51,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/authors/:author/favorite", storyteller.DeleteAuthorFavorite)
 	authenticated.Get("/projects/:project", storyteller.Project)
 	authenticated.Get("/projects/:project/search", storyteller.WorkspaceSearch)
+	authenticated.Get("/projects/:project/memories", storyteller.AssistantMemories)
 	authenticated.Put("/projects/:project", storyteller.UpdateProject)
 	authenticated.Delete("/projects/:project", storyteller.DeleteProject)
 	authenticated.Get("/projects/:project/favorite", storyteller.FavoriteStatus)

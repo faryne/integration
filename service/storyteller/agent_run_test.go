@@ -125,6 +125,10 @@ func TestRunAgent(t *testing.T) {
 	repo := &fakeAgentRunRepository{
 		project: &storytellerModel.Project{ID: 10, UserID: 20, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 30, ProjectID: 10, PublicID: "story-public-id"},
+		memories: []storytellerModel.AssistantMemory{{
+			PublicID: "memory-public-id", ScopeType: storytellerModel.AssistantMemoryScopeStory,
+			Kind: storytellerModel.AssistantMemoryKindInstruction, Content: "保留角色的台灣口語",
+		}},
 		agent: &storytellerModel.Agent{
 			ID:            40,
 			UserID:        20,
@@ -160,6 +164,7 @@ func TestRunAgent(t *testing.T) {
 	require.Equal(t, "secret-key", provider.request.APIKey)
 	require.Equal(t, "grok-test", provider.request.ModelName)
 	require.Contains(t, provider.request.UserPrompt, "<Persona>\nUse concise prose.\n</Persona>")
+	require.Contains(t, provider.request.UserPrompt, `<Memory public_id="memory-public-id" scope="story" kind="instruction">保留角色的台灣口語</Memory>`)
 	require.Contains(t, provider.request.UserPrompt, `project_public_id="project-public-id"`)
 	require.Contains(t, provider.request.UserPrompt, "<Selection>\nscene\n</Selection>")
 	require.Contains(t, provider.request.UserPrompt, "<Skill name=\"rewrite_selection\">")
@@ -167,6 +172,12 @@ func TestRunAgent(t *testing.T) {
 	require.NotNil(t, repo.chat.StoryID)
 	require.Equal(t, uint64(30), *repo.chat.StoryID)
 	require.Equal(t, uint64(20), repo.chat.UserID)
+	require.Equal(t, uint64(20), repo.memoryLookup.userID)
+	require.Equal(t, uint64(10), repo.memoryLookup.projectID)
+	require.NotNil(t, repo.memoryLookup.storyID)
+	require.Equal(t, uint64(30), *repo.memoryLookup.storyID)
+	require.Nil(t, repo.memoryLookup.loreID)
+	require.Equal(t, assistantMemoryPromptLimit, repo.memoryLookup.limit)
 	require.Equal(t, storytellerModel.StoryChatStatusCompleted, repo.chat.Status)
 	require.Len(t, repo.messages, 2)
 	require.Equal(t, storytellerModel.ChatMessageRoleUser, repo.messages[0].Role)
@@ -430,12 +441,19 @@ func TestRunAgentProviderError(t *testing.T) {
 }
 
 type fakeAgentRunRepository struct {
-	project               *storytellerModel.Project
-	projectErr            error
-	story                 *storytellerModel.Story
-	storyErr              error
-	lore                  *storytellerModel.Lore
-	loreErr               error
+	project      *storytellerModel.Project
+	projectErr   error
+	story        *storytellerModel.Story
+	storyErr     error
+	lore         *storytellerModel.Lore
+	loreErr      error
+	memories     []storytellerModel.AssistantMemory
+	memoryErr    error
+	memoryLookup struct {
+		userID, projectID uint64
+		storyID, loreID   *uint64
+		limit             int
+	}
 	agent                 *storytellerModel.Agent
 	agentErr              error
 	providerAPIKey        *storytellerModel.ProviderAPIKey
@@ -479,6 +497,15 @@ func (r *fakeAgentRunRepository) Story(uint64, string) (*storytellerModel.Story,
 
 func (r *fakeAgentRunRepository) Lore(uint64, string) (*storytellerModel.Lore, error) {
 	return r.lore, r.loreErr
+}
+
+func (r *fakeAgentRunRepository) ActiveAssistantMemories(userID, projectID uint64, storyID, loreID *uint64, limit int) ([]storytellerModel.AssistantMemory, error) {
+	r.memoryLookup = struct {
+		userID, projectID uint64
+		storyID, loreID   *uint64
+		limit             int
+	}{userID: userID, projectID: projectID, storyID: storyID, loreID: loreID, limit: limit}
+	return r.memories, r.memoryErr
 }
 
 func (r *fakeAgentRunRepository) Agent(uint64, uint64) (*storytellerModel.Agent, error) {

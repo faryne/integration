@@ -39,6 +39,7 @@ type agentRunPlan struct {
 	ProjectPublicID string
 	Project         *storytellerModel.Project
 	Target          agentRunTarget
+	Memories        []storytellerModel.AssistantMemory
 	Persona         *storytellerModel.Agent
 	Key             *storytellerModel.ProviderAPIKey
 	ModelName       string
@@ -105,6 +106,11 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
+	storyID, loreID := agentMemoryTargetIDs(target)
+	memories, err := repo.ActiveAssistantMemories(p.UserID, project.ID, storyID, loreID, assistantMemoryPromptLimit)
+	if err != nil {
+		return nil, err
+	}
 	var persona *storytellerModel.Agent
 	if p.PersonaAgentID != nil {
 		if persona, err = repo.Agent(p.UserID, *p.PersonaAgentID); err != nil {
@@ -127,7 +133,14 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
-	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Persona: persona, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
+	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Memories: memories, Persona: persona, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
+}
+
+func agentMemoryTargetIDs(target agentRunTarget) (storyID, loreID *uint64) {
+	if target.Kind == agenticQueryCurrentTargetLore {
+		return nil, &target.ID
+	}
+	return &target.ID, nil
 }
 
 func lookupAgentRunTarget(repo agentRunRepository, projectID uint64, kind agenticQueryCurrentTargetKind, publicID string) (agentRunTarget, error) {

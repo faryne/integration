@@ -13,7 +13,7 @@ import (
 // agentRequest 是一次 provider 呼叫的結構化內容，XML() 渲染成 user prompt：
 //
 //	<Request>
-//	  <Context/> <Persona/> <Skill/> <Histories/> <References/> <Reply/> <Editor/> <Selection/> <Task/>
+//	  <Context/> <Memories/> <Persona/> <Skill/> <Histories/> <References/> <Reply/> <Editor/> <Selection/> <Task/>
 //	</Request>
 //
 // 穩定的（Context／Persona／Skill／歷史）放前面、每次都會變的（Task）放最後。
@@ -23,6 +23,7 @@ import (
 type agentRequest struct {
 	ProjectPublicID string
 	Target          agentRunTarget
+	Memories        []storytellerModel.AssistantMemory
 	PersonaName     string // 使用者建立的 Agent 名稱；沒有人設時留空
 	Persona         string // Agent.DefaultPrompt；Agent 沒設定人設時留空
 	Skill           string // 內建 skill 名稱（AgentRunMode）；一般對話留空
@@ -50,7 +51,7 @@ type agentHistory struct {
 // agentRequestTagPattern 抓出我們自己的標籤名。使用者內文（故事、回覆、歷史）可能剛好
 // 含 </Task> 之類的字串而破壞結構，所以只中和這幾個標籤名（< 換成 &lt;），其餘內文
 // 保持原樣，不做整套 XML 跳脫，避免傷到故事文字。
-var agentRequestTagPattern = regexp.MustCompile(`(?i)</?(Request|Context|Persona|Skill|Histories|History|References|Reference|Reply|Editor|Selection|Task)\b`)
+var agentRequestTagPattern = regexp.MustCompile(`(?i)</?(Request|Context|Memories|Memory|Persona|Skill|Histories|History|References|Reference|Reply|Editor|Selection|Task)\b`)
 
 func neutralizeAgentTags(s string) string {
 	return agentRequestTagPattern.ReplaceAllStringFunc(s, func(m string) string { return "&lt;" + m[1:] })
@@ -79,6 +80,14 @@ func (r agentRequest) XML() string {
 		}
 	}
 	b.WriteString("/>\n")
+	if len(r.Memories) > 0 {
+		b.WriteString("<Memories>\n")
+		for _, memory := range r.Memories {
+			attrs := xmlAttr("public_id", memory.PublicID) + xmlAttr("scope", string(memory.ScopeType)) + xmlAttr("kind", string(memory.Kind))
+			b.WriteString("<Memory" + attrs + ">" + neutralizeAgentTags(memory.Content) + "</Memory>\n")
+		}
+		b.WriteString("</Memories>\n")
+	}
 	block("Persona", personaAttr(r.PersonaName), r.Persona)
 	block("Skill", xmlAttr("name", r.Skill), r.SkillPrompt)
 	if len(r.Histories) > 0 {
@@ -120,7 +129,7 @@ func personaAttr(name string) string {
 
 // buildAgenticRequest 組一般對話的 request：有歷史、可帶回覆內容，沒有 Skill。
 func buildAgenticRequest(plan *agentRunPlan, userPrompt, replyContent string, histories []agentHistory) agentRequest {
-	req := agentRequest{ProjectPublicID: plan.ProjectPublicID, Target: plan.Target, Histories: histories, Reply: strings.TrimSpace(replyContent), Task: userPrompt}
+	req := agentRequest{ProjectPublicID: plan.ProjectPublicID, Target: plan.Target, Memories: plan.Memories, Histories: histories, Reply: strings.TrimSpace(replyContent), Task: userPrompt}
 	req.applyPersona(plan.Persona)
 	return req
 }
@@ -130,7 +139,7 @@ func buildAgenticRequest(plan *agentRunPlan, userPrompt, replyContent string, hi
 func buildSkillRequest(plan *agentRunPlan, input storytellerModel.AgentRunRequest, useTools bool) agentRequest {
 	spec := agentSkills[input.Mode]
 	req := agentRequest{
-		ProjectPublicID: plan.ProjectPublicID, Target: plan.Target,
+		ProjectPublicID: plan.ProjectPublicID, Target: plan.Target, Memories: plan.Memories,
 		Skill: string(input.Mode), SkillPrompt: skillCommonPrompt + "\n" + spec.OutputRule,
 		Task: strings.TrimSpace(input.Instruction),
 	}

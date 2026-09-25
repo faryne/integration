@@ -37,6 +37,7 @@ type agentRunRepository interface {
 	ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error)
 	Story(projectID uint64, publicID string) (*storytellerModel.Story, error)
 	Lore(projectID uint64, publicID string) (*storytellerModel.Lore, error)
+	ActiveAssistantMemories(userID, projectID uint64, storyID, loreID *uint64, limit int) ([]storytellerModel.AssistantMemory, error)
 	Agent(userID, id uint64) (*storytellerModel.Agent, error)
 	ProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKey, error)
 	CreateStoryChatWithMessages(chat *storytellerModel.StoryChat, messages []storytellerModel.StoryChatMessage, proposals []storytellerModel.AgentProposal, usage *storytellerModel.AgentUsageLog) error

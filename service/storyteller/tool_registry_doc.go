@@ -30,6 +30,7 @@ func StorytellerToolDocCategories() []ToolDocCategory {
 				storytellerProjectMCPOnlyToolSpecs()...,
 			),
 		},
+		{title: "梭梭記憶", specs: storytellerMemoryToolSpecs()},
 		{title: "冊", specs: storytellerVolumeToolSpecs()},
 		{title: "設定集 / 世界觀設定", specs: storytellerLoreToolSpecs()},
 		{title: "故事 / 話", specs: storytellerStoryToolSpecs()},
