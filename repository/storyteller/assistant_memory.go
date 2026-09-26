@@ -14,7 +14,7 @@ import (
 var ErrAssistantMemorySupersedeConflict = errors.New("assistant memory selected for replacement is unavailable, pinned, or outside this scope")
 
 // ActiveAssistantMemories 只讀取尚未刪除、也未被新版取代的記憶。帳號與專案記憶
-// 永遠一起載入；storyID／loreID 有值時再疊加目前編輯目標的記憶。
+// 專案記憶永遠載入；storyID／loreID 有值時再疊加目前編輯目標的記憶。
 func (r *Repository) ActiveAssistantMemories(userID, projectID uint64, storyID, loreID *uint64, limit int) ([]storytellerModel.AssistantMemory, error) {
 	rows := make([]storytellerModel.AssistantMemory, 0)
 	err := r.activeAssistantMemoriesQuery(userID, projectID, storyID, loreID).
@@ -28,10 +28,9 @@ func (r *Repository) ActiveAssistantMemories(userID, projectID uint64, storyID, 
 
 func (r *Repository) activeAssistantMemoriesQuery(userID, projectID uint64, storyID, loreID *uint64) *gorm.DB {
 	scopeSQL := []string{
-		"(scope_type = ? AND project_id IS NULL AND story_id IS NULL AND lore_id IS NULL)",
 		"(scope_type = ? AND project_id = ? AND story_id IS NULL AND lore_id IS NULL)",
 	}
-	args := []interface{}{storytellerModel.AssistantMemoryScopeAccount, storytellerModel.AssistantMemoryScopeProject, projectID}
+	args := []interface{}{storytellerModel.AssistantMemoryScopeProject, projectID}
 	if storyID != nil {
 		scopeSQL = append(scopeSQL, "(scope_type = ? AND project_id IS NULL AND story_id = ? AND lore_id IS NULL)")
 		args = append(args, storytellerModel.AssistantMemoryScopeStory, *storyID)
@@ -60,11 +59,63 @@ func (r *Repository) SearchAssistantMemories(userID, projectID uint64, storyID, 
 	pattern := "%" + escapeAssistantMemoryLike(strings.ToLower(strings.TrimSpace(keyword))) + "%"
 	rows := make([]storytellerModel.AssistantMemory, 0)
 	err := r.activeAssistantMemoriesQuery(userID, projectID, storyID, loreID).
-		Where("(LOWER(COALESCE(memory_name, '')) LIKE ? ESCAPE '!' OR LOWER(content) LIKE ? ESCAPE '!')", pattern, pattern).
+		Where("(LOWER(COALESCE(memory_name, '')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(tags, '')) LIKE ? ESCAPE '!' OR LOWER(content) LIKE ? ESCAPE '!')", pattern, pattern, pattern).
 		Order("is_pinned DESC, priority DESC, updated_at DESC, id DESC").
 		Limit(limit).
 		Find(&rows).Error
 	return rows, err
+}
+
+// ManageAssistantMemories 提供工作台完整管理頁使用；未指定 story/lore 時會列出
+// 目前專案記憶，以及專案底下所有故事／設定的記憶。
+func (r *Repository) ManageAssistantMemories(userID, projectID uint64, filter storytellerModel.AssistantMemoryManagementFilter) ([]storytellerModel.AssistantMemoryManagementRow, int64, error) {
+	query := r.db.Table("storyteller_assistant_memories AS memories").
+		Joins("LEFT JOIN storyteller_projects AS memory_projects ON memory_projects.id = memories.project_id").
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = memories.story_id AND stories.is_deleted = 0 AND stories.deleted_at IS NULL").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = memories.lore_id AND lores.is_deleted = 0 AND lores.deleted_at IS NULL").
+		Where("memories.user_id = ? AND memories.status = ? AND memories.is_deleted = 0 AND memories.deleted_at IS NULL AND memories.superseded_by_id IS NULL", userID, storytellerModel.AssistantMemoryStatusConfirmed)
+	if filter.StoryID != nil {
+		query = query.Where("((memories.scope_type = ? AND memories.project_id = ?) OR (memories.scope_type = ? AND memories.story_id = ?))",
+			storytellerModel.AssistantMemoryScopeProject, projectID, storytellerModel.AssistantMemoryScopeStory, *filter.StoryID)
+	} else if filter.LoreID != nil {
+		query = query.Where("((memories.scope_type = ? AND memories.project_id = ?) OR (memories.scope_type = ? AND memories.lore_id = ?))",
+			storytellerModel.AssistantMemoryScopeProject, projectID, storytellerModel.AssistantMemoryScopeLore, *filter.LoreID)
+	} else {
+		query = query.Where("((memories.scope_type = ? AND memories.project_id = ?) OR (memories.scope_type = ? AND stories.project_id = ?) OR (memories.scope_type = ? AND lores.project_id = ?))",
+			storytellerModel.AssistantMemoryScopeProject, projectID,
+			storytellerModel.AssistantMemoryScopeStory, projectID,
+			storytellerModel.AssistantMemoryScopeLore, projectID)
+	}
+	if filter.Keyword != "" {
+		pattern := "%" + escapeAssistantMemoryLike(strings.ToLower(filter.Keyword)) + "%"
+		query = query.Where("(LOWER(COALESCE(memories.memory_name, '')) LIKE ? ESCAPE '!' OR LOWER(COALESCE(memories.tags, '')) LIKE ? ESCAPE '!' OR LOWER(memories.content) LIKE ? ESCAPE '!')", pattern, pattern, pattern)
+	}
+	if filter.MemoryPublicID != "" {
+		query = query.Where("memories.public_id = ?", filter.MemoryPublicID)
+	}
+	if filter.ScopeType != "" {
+		query = query.Where("memories.scope_type = ?", filter.ScopeType)
+	}
+	if filter.Kind != "" {
+		query = query.Where("memories.kind = ?", filter.Kind)
+	}
+	if filter.Tag != "" {
+		query = query.Where("JSON_CONTAINS(COALESCE(memories.tags, '[]'), JSON_QUOTE(?))", filter.Tag)
+	}
+	if filter.IsPinned != nil {
+		query = query.Where("memories.is_pinned = ?", *filter.IsPinned)
+	}
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	rows := make([]storytellerModel.AssistantMemoryManagementRow, 0, filter.Limit)
+	err := query.Select(`memories.*,
+		CASE memories.scope_type WHEN 'project' THEN memory_projects.public_id WHEN 'story' THEN stories.public_id WHEN 'lore' THEN lores.public_id ELSE '' END AS target_public_id,
+		CASE memories.scope_type WHEN 'project' THEN memory_projects.name WHEN 'story' THEN stories.title WHEN 'lore' THEN lores.title ELSE '' END AS target_name`).
+		Order("memories.is_pinned DESC, memories.priority DESC, memories.updated_at DESC, memories.id DESC").
+		Offset(filter.Offset).Limit(filter.Limit).Find(&rows).Error
+	return rows, total, err
 }
 
 func (r *Repository) UpdateAssistantMemory(row *storytellerModel.AssistantMemory) (int64, error) {
@@ -72,7 +123,7 @@ func (r *Repository) UpdateAssistantMemory(row *storytellerModel.AssistantMemory
 		Where("id = ? AND user_id = ? AND status = ? AND is_deleted = 0 AND deleted_at IS NULL AND superseded_by_id IS NULL", row.ID, row.UserID, storytellerModel.AssistantMemoryStatusConfirmed).
 		Updates(map[string]interface{}{
 			"memory_name": row.MemoryName, "scope_type": row.ScopeType, "project_id": row.ProjectID,
-			"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind,
+			"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind, "tags": row.Tags,
 			"content": row.Content, "priority": row.Priority, "is_pinned": row.IsPinned,
 		})
 	return result.RowsAffected, result.Error
@@ -86,12 +137,13 @@ func (r *Repository) DeleteAssistantMemory(userID, id uint64) (int64, error) {
 	return result.RowsAffected, result.Error
 }
 
-func (r *Repository) CompleteAssistantMemoryGeneration(id uint64, name, content, supersedesPublicID string, scope storytellerModel.AssistantMemoryScope, kind storytellerModel.AssistantMemoryKind, priority uint8, shouldRemember bool, usage *storytellerModel.AgentRunUsage, usageLog *storytellerModel.AgentUsageLog) error {
+func (r *Repository) CompleteAssistantMemoryGeneration(id uint64, name, content, tags, supersedesPublicID string, scope storytellerModel.AssistantMemoryScope, kind storytellerModel.AssistantMemoryKind, priority uint8, shouldRemember bool, usage *storytellerModel.AgentRunUsage, usageLog *storytellerModel.AgentUsageLog) error {
 	updates := map[string]interface{}{
 		"memory_name":          nullableString(name),
 		"content":              content,
 		"scope_type":           scope,
 		"kind":                 kind,
+		"tags":                 tags,
 		"priority":             priority,
 		"should_remember":      shouldRemember,
 		"supersedes_public_id": nullableString(supersedesPublicID),
@@ -189,7 +241,7 @@ func (r *Repository) ConfirmAssistantMemory(row *storytellerModel.AssistantMemor
 func assistantMemoryConfirmUpdates(row *storytellerModel.AssistantMemory, confirmedAt time.Time) map[string]interface{} {
 	return map[string]interface{}{
 		"memory_name": row.MemoryName, "scope_type": row.ScopeType, "project_id": row.ProjectID,
-		"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind, "content": row.Content,
+		"story_id": row.StoryID, "lore_id": row.LoreID, "kind": row.Kind, "tags": row.Tags, "content": row.Content,
 		"priority": row.Priority, "is_pinned": row.IsPinned, "supersedes_public_id": row.SupersedesPublicID,
 		"status": storytellerModel.AssistantMemoryStatusConfirmed, "confirmed_at": &confirmedAt, "error_message": nil,
 	}

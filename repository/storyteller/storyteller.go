@@ -1283,7 +1283,7 @@ func (r *Repository) AgentChatTarget(userID, chatID uint64) (*storytellerModel.A
 		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = chats.story_id").
 		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = chats.lore_id").
 		Joins("INNER JOIN storyteller_projects AS projects ON projects.id = COALESCE(stories.project_id, lores.project_id)").
-		Where("chats.id = ? AND chats.user_id = ? AND chats.deleted_at IS NULL", chatID, userID).
+		Where("chats.id = ? AND chats.user_id = ?", chatID, userID).
 		Take(&row).Error
 	return &row, err
 }

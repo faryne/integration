@@ -76,6 +76,33 @@ func (r *Repository) WorkspaceSearchAssets(projectID uint64, keyword string, lim
 	return rows, err
 }
 
+// WorkspaceSearchMemories 讓工作台共用搜尋成為唯一文字搜尋入口；只回傳目前專案
+// 及其故事／設定的有效記憶，不會讀取任何專案外資料。
+func (r *Repository) WorkspaceSearchMemories(userID, projectID uint64, keyword string, limit int) ([]storytellerModel.WorkspaceSearchSource, error) {
+	exact, prefix, contains := workspaceSearchPatterns(keyword)
+	rows := make([]storytellerModel.WorkspaceSearchSource, 0)
+	title := "COALESCE(NULLIF(memories.memory_name, ''), LEFT(memories.content, 80))"
+	err := r.db.Table("storyteller_assistant_memories AS memories").
+		Select(`'memory' AS kind, memories.public_id, '' AS content_type,
+			COALESCE(NULLIF(memories.memory_name, ''), LEFT(memories.content, 80)) AS title,
+			COALESCE(memories.tags, '') AS summary, memories.content,
+			'' AS collection_public_id,
+			CASE memories.scope_type WHEN 'story' THEN stories.title WHEN 'lore' THEN lores.title ELSE '' END AS collection_name,
+			memories.updated_at, `+fmtWorkspaceSearchRelevance(title), exact, prefix, contains).
+		Joins("LEFT JOIN storyteller_stories AS stories ON stories.id = memories.story_id AND stories.is_deleted = 0 AND stories.deleted_at IS NULL").
+		Joins("LEFT JOIN storyteller_lores AS lores ON lores.id = memories.lore_id AND lores.is_deleted = 0 AND lores.deleted_at IS NULL").
+		Where("memories.user_id = ? AND memories.status = ? AND memories.is_deleted = 0 AND memories.deleted_at IS NULL AND memories.superseded_by_id IS NULL", userID, storytellerModel.AssistantMemoryStatusConfirmed).
+		Where("((memories.scope_type = ? AND memories.project_id = ?) OR (memories.scope_type = ? AND stories.project_id = ?) OR (memories.scope_type = ? AND lores.project_id = ?))",
+			storytellerModel.AssistantMemoryScopeProject, projectID,
+			storytellerModel.AssistantMemoryScopeStory, projectID,
+			storytellerModel.AssistantMemoryScopeLore, projectID).
+		Where("(memories.memory_name LIKE ? ESCAPE '=' OR memories.tags LIKE ? ESCAPE '=' OR memories.content LIKE ? ESCAPE '=')", contains, contains, contains).
+		Order("relevance ASC, memories.updated_at DESC, memories.id DESC").
+		Limit(limit).
+		Scan(&rows).Error
+	return rows, err
+}
+
 func fmtWorkspaceSearchRelevance(title string) string {
 	return strings.NewReplacer("%s", title).Replace(workspaceSearchRelevanceSQL)
 }

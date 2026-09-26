@@ -3,6 +3,7 @@ package storyteller
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"faryne.dev/middleware/authsession"
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -11,6 +12,37 @@ import (
 	storytellerService "faryne.dev/service/storyteller"
 	"github.com/gofiber/fiber/v3"
 )
+
+func ManageAssistantMemories(ctx fiber.Ctx) error {
+	page, _ := strconv.Atoi(ctx.Query("page"))
+	pageSize, _ := strconv.Atoi(ctx.Query("page_size"))
+	var isPinned *bool
+	if value := strings.TrimSpace(ctx.Query("is_pinned")); value != "" {
+		parsed, err := strconv.ParseBool(value)
+		if err != nil {
+			return output.BadRequest(errors.New("is_pinned must be true or false"))
+		}
+		isPinned = &parsed
+	}
+	result, err := storytellerService.NewService().ManageAssistantMemories(
+		authsession.Session(ctx).UserId,
+		ctx.Params("project"),
+		ctx.Query("story_public_id"),
+		ctx.Query("lore_public_id"),
+		ctx.Query("q"),
+		ctx.Query("memory_public_id"),
+		ctx.Query("tag"),
+		storytellerModel.AssistantMemoryScope(ctx.Query("scope_type")),
+		storytellerModel.AssistantMemoryKind(ctx.Query("kind")),
+		isPinned,
+		page,
+		pageSize,
+	)
+	if err != nil {
+		return assistantMemoryMutationError(err, "storyteller memory scope not found")
+	}
+	return output.Success(result)
+}
 
 // AssistantMemories 只提供目前作用域的有效記憶；修改與刪除各自走獨立端點，
 // 避免這個讀取入口承擔不明確的寫入語意。
@@ -58,7 +90,8 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 		errors.Is(err, storytellerService.ErrAssistantMemoryNotEditable),
 		errors.Is(err, storytellerService.ErrAssistantMemoryPublicIDInvalid),
 		errors.Is(err, storytellerService.ErrAssistantMemorySearchInvalid),
-		errors.Is(err, storytellerService.ErrAssistantMemoryUpdateEmpty):
+		errors.Is(err, storytellerService.ErrAssistantMemoryUpdateEmpty),
+		errors.Is(err, storytellerService.ErrAssistantMemoryTagsInvalid):
 		return output.BadRequest(err)
 	case errors.Is(err, storytellerService.ErrAIProviderUnsupported),
 		errors.Is(err, storytellerService.ErrAIProviderMissingEndpoint):

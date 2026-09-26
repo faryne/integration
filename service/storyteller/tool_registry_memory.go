@@ -26,7 +26,7 @@ func storytellerMemoryToolSpecs() []ToolSpec {
 		{
 			Name: "storyteller_list_memories",
 			Description: "List Suosuo's active memories relevant to the authenticated user and current writing scope. " +
-				"The result always includes account-wide and project memories; provide either story_public_id or lore_public_id " +
+				"The result always includes project memories; provide either story_public_id or lore_public_id " +
 				"to also include memories specific to that story or lore entry. Never provide both target ids.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id that defines the authorized workspace scope."),
@@ -48,7 +48,7 @@ func storytellerMemoryToolSpecs() []ToolSpec {
 		},
 		{
 			Name:        "storyteller_search_memories",
-			Description: "Search Suosuo's active memories by keyword in the authenticated user's account, project, and optional current story/lore scope.",
+			Description: "Search Suosuo's active memories by keyword or tag in the authenticated user's project and optional current story/lore scope.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id that defines the authorized workspace scope."),
 				"story_public_id":   stringSchema("Optional story public_id in this project. Mutually exclusive with lore_public_id."),
@@ -83,8 +83,9 @@ func storytellerMemoryMCPOnlyToolSpecs() []ToolSpec {
 			"story_public_id":   stringSchema("Required only for story scope."),
 			"lore_public_id":    stringSchema("Required only for lore scope."),
 			"memory_name":       stringSchema("Optional display name, at most 255 characters. On update, omit to preserve or pass an empty string to clear."),
-			"scope_type":        enumStringSchema("Required on create; optional on update.", "account", "project", "story", "lore"),
+			"scope_type":        enumStringSchema("Required on create; optional on update.", "project", "story", "lore"),
 			"kind":              enumStringSchema("Required on create; optional on update.", "preference", "instruction", "decision", "context"),
+			"tags":              stringArraySchema("Optional editable retrieval tags; at most 8 items and 24 characters per item."),
 			"content":           stringSchema("Required on create; optional on update. Atomic, self-contained content, at most 2000 characters."),
 			"priority":          integerSchema("Optional retrieval priority from 0 to 100; defaults to 50 on create and is preserved when omitted on update."),
 			"is_pinned":         booleanSchema("Optional. Pinned memories cannot be superseded automatically; preserved when omitted on update."),

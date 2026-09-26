@@ -10,7 +10,11 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
 
-const assistantMemorySearchMaxRunes = 100
+const (
+	assistantMemorySearchMaxRunes       = 100
+	assistantMemoryManagementPageSize   = 20
+	assistantMemoryManagementMaxPerPage = 50
+)
 
 var (
 	ErrAssistantMemoryDuplicate       = errors.New("an identical active memory already exists in this scope")
@@ -21,6 +25,67 @@ var (
 )
 
 var assistantMemoryPublicIDRegexp = regexp.MustCompile(`^[A-Za-z0-9._~-]{1,32}$`)
+
+// ManageAssistantMemories 是完整管理頁的分頁查詢；沒有指定 story/lore 時會涵蓋
+// 整個專案，指定目標時則只顯示該畫面真正會讀到的 project/target 記憶。
+func (s *Service) ManageAssistantMemories(userID uint64, projectPublicID, storyPublicID, lorePublicID, keyword, memoryPublicID, tag string, scope storytellerModel.AssistantMemoryScope, kind storytellerModel.AssistantMemoryKind, isPinned *bool, page, pageSize int) (*storytellerModel.AssistantMemoryPageOutput, error) {
+	keyword = strings.TrimSpace(keyword)
+	memoryPublicID, tag = strings.TrimSpace(memoryPublicID), strings.TrimSpace(tag)
+	if len([]rune(keyword)) > assistantMemorySearchMaxRunes {
+		return nil, ErrAssistantMemorySearchInvalid
+	}
+	if tag != "" {
+		tags, err := normalizeAssistantMemoryTags([]string{tag})
+		if err != nil {
+			return nil, err
+		}
+		tag = tags[0]
+	}
+	if scope != "" && !assistantMemoryScopeKnown(scope) {
+		return nil, ErrAssistantMemoryScopeInvalid
+	}
+	if kind != "" && !assistantMemoryKindAllowed(kind) {
+		return nil, ErrAssistantMemoryKindInvalid
+	}
+	project, story, lore, err := resolveAssistantMemoryContext(s.repo, userID, projectPublicID, storyPublicID, lorePublicID)
+	if err != nil {
+		return nil, err
+	}
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = assistantMemoryManagementPageSize
+	} else if pageSize > assistantMemoryManagementMaxPerPage {
+		pageSize = assistantMemoryManagementMaxPerPage
+	}
+	storyID, loreID := assistantMemoryTargetIDs(story, lore)
+	rows, total, err := s.repo.ManageAssistantMemories(userID, project.ID, storytellerModel.AssistantMemoryManagementFilter{
+		Keyword: keyword, MemoryPublicID: memoryPublicID, ScopeType: scope, Kind: kind, Tag: tag, IsPinned: isPinned,
+		StoryID: storyID, LoreID: loreID, Offset: (page - 1) * pageSize, Limit: pageSize,
+	})
+	if err != nil {
+		return nil, err
+	}
+	memories := make([]storytellerModel.AssistantMemoryOutput, 0, len(rows))
+	for _, row := range rows {
+		memories = append(memories, storytellerModel.AssistantMemoryOutput{
+			PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType,
+			TargetPublicID: row.TargetPublicID, TargetName: row.TargetName, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content,
+			Priority: row.Priority, IsPinned: row.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+		})
+	}
+	return &storytellerModel.AssistantMemoryPageOutput{Memories: memories, TotalCount: total, Page: page, PageSize: pageSize}, nil
+}
+
+func assistantMemoryScopeKnown(scope storytellerModel.AssistantMemoryScope) bool {
+	switch scope {
+	case storytellerModel.AssistantMemoryScopeProject, storytellerModel.AssistantMemoryScopeStory, storytellerModel.AssistantMemoryScopeLore:
+		return true
+	default:
+		return false
+	}
+}
 
 func (s *Service) SearchAssistantMemories(userID uint64, projectPublicID, storyPublicID, lorePublicID, keyword string, limit int) ([]storytellerModel.AssistantMemoryOutput, error) {
 	keyword = strings.TrimSpace(keyword)
@@ -63,11 +128,7 @@ func (s *Service) UpdateAssistantMemory(userID uint64, projectPublicID, storyPub
 	if err != nil {
 		return nil, err
 	}
-	currentScope := storytellerModel.AssistantMemoryScopeStory
-	if lore != nil {
-		currentScope = storytellerModel.AssistantMemoryScopeLore
-	}
-	if story == nil && lore == nil || !assistantMemoryScopeAllowed(in.ScopeType, currentScope) {
+	if !assistantMemoryScopeAllowedForContext(in.ScopeType, story, lore) {
 		return nil, ErrAssistantMemoryScopeInvalid
 	}
 	row, err := s.repo.AssistantMemoryByPublicIDForUser(userID, strings.TrimSpace(memoryPublicID))
@@ -93,6 +154,12 @@ func (s *Service) UpdateAssistantMemory(userID uint64, projectPublicID, storyPub
 	return assistantMemoryOutput(*row, project, story, lore), nil
 }
 
+func assistantMemoryScopeAllowedForContext(scope storytellerModel.AssistantMemoryScope, story *storytellerModel.Story, lore *storytellerModel.Lore) bool {
+	return scope == storytellerModel.AssistantMemoryScopeProject ||
+		(scope == storytellerModel.AssistantMemoryScopeStory && story != nil) ||
+		(scope == storytellerModel.AssistantMemoryScopeLore && lore != nil)
+}
+
 func applyAssistantMemoryInput(row *storytellerModel.AssistantMemory, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore, in storytellerModel.AssistantMemoryUpdateRequest) error {
 	name, content := strings.TrimSpace(in.MemoryName), strings.TrimSpace(in.Content)
 	if len([]rune(name)) > assistantMemoryNameMaxRunes {
@@ -104,16 +171,19 @@ func applyAssistantMemoryInput(row *storytellerModel.AssistantMemory, project *s
 	if !assistantMemoryKindAllowed(in.Kind) {
 		return ErrAssistantMemoryKindInvalid
 	}
+	tags, err := normalizeAssistantMemoryTags(in.Tags)
+	if err != nil {
+		return err
+	}
 	if in.Priority > 100 {
 		return ErrAssistantMemoryPriorityInvalid
 	}
-	row.MemoryName, row.Content, row.ScopeType, row.Kind, row.Priority, row.IsPinned = nil, content, in.ScopeType, in.Kind, in.Priority, in.IsPinned
+	row.MemoryName, row.Content, row.ScopeType, row.Kind, row.Tags, row.Priority, row.IsPinned = nil, content, in.ScopeType, in.Kind, encodeAssistantMemoryTags(tags), in.Priority, in.IsPinned
 	if name != "" {
 		row.MemoryName = &name
 	}
 	row.ProjectID, row.StoryID, row.LoreID = nil, nil, nil
 	switch in.ScopeType {
-	case storytellerModel.AssistantMemoryScopeAccount:
 	case storytellerModel.AssistantMemoryScopeProject:
 		row.ProjectID = &project.ID
 	case storytellerModel.AssistantMemoryScopeStory:
@@ -139,8 +209,6 @@ func assistantMemoryBelongsToContext(row *storytellerModel.AssistantMemory, proj
 		return false
 	}
 	switch row.ScopeType {
-	case storytellerModel.AssistantMemoryScopeAccount:
-		return row.ProjectID == nil && row.StoryID == nil && row.LoreID == nil
 	case storytellerModel.AssistantMemoryScopeProject:
 		return project != nil && entityModel.NullableEqual(row.ProjectID, &project.ID) && row.StoryID == nil && row.LoreID == nil
 	case storytellerModel.AssistantMemoryScopeStory:
@@ -237,7 +305,7 @@ func applyAssistantMemoryPatch(row *storytellerModel.AssistantMemory, project *s
 	if creating && in.Content == nil {
 		return ErrAssistantMemoryContentInvalid
 	}
-	if !creating && in.MemoryName == nil && in.ScopeType == nil && in.Kind == nil && in.Content == nil && in.Priority == nil && in.IsPinned == nil {
+	if !creating && in.MemoryName == nil && in.ScopeType == nil && in.Kind == nil && in.Tags == nil && in.Content == nil && in.Priority == nil && in.IsPinned == nil {
 		return ErrAssistantMemoryUpdateEmpty
 	}
 	if in.MemoryName != nil {
@@ -263,6 +331,13 @@ func applyAssistantMemoryPatch(row *storytellerModel.AssistantMemory, project *s
 		}
 		row.Kind = *in.Kind
 	}
+	if in.Tags != nil {
+		tags, err := normalizeAssistantMemoryTags(*in.Tags)
+		if err != nil {
+			return err
+		}
+		row.Tags = encodeAssistantMemoryTags(tags)
+	}
 	if in.Priority != nil {
 		if *in.Priority > 100 {
 			return ErrAssistantMemoryPriorityInvalid
@@ -278,7 +353,6 @@ func applyAssistantMemoryPatch(row *storytellerModel.AssistantMemory, project *s
 	row.ScopeType = *in.ScopeType
 	row.ProjectID, row.StoryID, row.LoreID = nil, nil, nil
 	switch *in.ScopeType {
-	case storytellerModel.AssistantMemoryScopeAccount:
 	case storytellerModel.AssistantMemoryScopeProject:
 		row.ProjectID = &project.ID
 	case storytellerModel.AssistantMemoryScopeStory:
@@ -319,5 +393,5 @@ func assistantMemoryOutput(row storytellerModel.AssistantMemory, project *storyt
 			targetPublicID = lore.PublicID
 		}
 	}
-	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID, Kind: row.Kind, Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }

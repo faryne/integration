@@ -84,6 +84,9 @@ func (r agentRequest) XML() string {
 		b.WriteString("<Memories>\n")
 		for _, memory := range r.Memories {
 			attrs := xmlAttr("public_id", memory.PublicID) + xmlAttr("scope", string(memory.ScopeType)) + xmlAttr("kind", string(memory.Kind))
+			if tags := decodeAssistantMemoryTags(memory.Tags); len(tags) > 0 {
+				attrs += xmlAttr("tags", strings.Join(tags, ","))
+			}
 			b.WriteString("<Memory" + attrs + ">" + neutralizeAgentTags(memory.Content) + "</Memory>\n")
 		}
 		b.WriteString("</Memories>\n")

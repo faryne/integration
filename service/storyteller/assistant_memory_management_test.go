@@ -77,4 +77,11 @@ func TestAssistantMemoryBelongsToContextRejectsAnotherProjectAndSuperseded(t *te
 	}, project, nil, nil))
 }
 
+func TestAssistantMemoryScopeAllowedForProjectOnlyManagement(t *testing.T) {
+	require.False(t, assistantMemoryScopeAllowedForContext(storytellerModel.AssistantMemoryScope("account"), nil, nil))
+	require.True(t, assistantMemoryScopeAllowedForContext(storytellerModel.AssistantMemoryScopeProject, nil, nil))
+	require.False(t, assistantMemoryScopeAllowedForContext(storytellerModel.AssistantMemoryScopeStory, nil, nil))
+	require.True(t, assistantMemoryScopeAllowedForContext(storytellerModel.AssistantMemoryScopeStory, &storytellerModel.Story{}, nil))
+}
+
 func uint64Pointer(value uint64) *uint64 { return &value }

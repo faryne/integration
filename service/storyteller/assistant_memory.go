@@ -22,8 +22,8 @@ type assistantMemoryRepository interface {
 	ActiveAssistantMemories(userID, projectID uint64, storyID, loreID *uint64, limit int) ([]storytellerModel.AssistantMemory, error)
 }
 
-// AssistantMemories 回傳目前畫面真正適用的記憶：帳號層、專案層，再加上指定的
-// story 或 lore。目標 public_id 一律先在專案內解析，避免跨專案讀到記憶。
+// AssistantMemories 回傳目前畫面真正適用的記憶：專案層，再加上指定的 story
+// 或 lore。目標 public_id 一律先在專案內解析，避免跨專案讀到記憶。
 func (s *Service) AssistantMemories(userID uint64, projectPublicID, storyPublicID, lorePublicID string, limit int) ([]storytellerModel.AssistantMemoryOutput, error) {
 	return readAssistantMemories(s.repo, userID, projectPublicID, storyPublicID, lorePublicID, limit)
 }
@@ -73,7 +73,7 @@ func readAssistantMemories(repo assistantMemoryRepository, userID uint64, projec
 		}
 		out = append(out, storytellerModel.AssistantMemoryOutput{
 			PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID,
-			Kind: row.Kind, Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned,
+			Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned,
 			CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 		})
 	}

@@ -71,4 +71,6 @@ func TestWorkspaceSearchLocation(t *testing.T) {
 	require.Equal(t, "作品與冊／未分冊", workspaceSearchLocation(storytellerModel.WorkspaceSearchSource{Kind: storytellerModel.WorkspaceSearchKindStory}))
 	require.Equal(t, "設定集／角色", workspaceSearchLocation(storytellerModel.WorkspaceSearchSource{Kind: storytellerModel.WorkspaceSearchKindLore, CollectionName: "角色"}))
 	require.Equal(t, "資產庫／未分類", workspaceSearchLocation(storytellerModel.WorkspaceSearchSource{Kind: storytellerModel.WorkspaceSearchKindAsset}))
+	require.Equal(t, "梭梭的記憶／專案", workspaceSearchLocation(storytellerModel.WorkspaceSearchSource{Kind: storytellerModel.WorkspaceSearchKindMemory}))
+	require.Equal(t, "梭梭的記憶／第一章", workspaceSearchLocation(storytellerModel.WorkspaceSearchSource{Kind: storytellerModel.WorkspaceSearchKindMemory, CollectionName: "第一章"}))
 }

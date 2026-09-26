@@ -13,6 +13,7 @@ import {
   Stack,
   Switch,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useEffect, useState } from "react";
@@ -24,10 +25,13 @@ import {
 } from "@/apis/storyteller/agent.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
+import { StorytellerMemoryTagField } from "@/pages/storyteller/StorytellerMemoryTagField.tsx";
 import {
+  storytellerMemoryContextScopeLabels,
   storytellerMemoryErrorMessage,
+  storytellerMemoryKindDescriptions,
   storytellerMemoryKindLabels,
-  storytellerMemoryScopeLabels,
+  storytellerMemoryTargetLabel,
 } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type {
   StorytellerAssistantMemoryKind,
@@ -60,6 +64,7 @@ export function StorytellerMemoryDraftDialog({
   const [scope, setScope] =
     useState<StorytellerAssistantMemoryScope>(targetKind);
   const [kind, setKind] = useState<StorytellerAssistantMemoryKind>("context");
+  const [tags, setTags] = useState<string[]>([]);
   const [priority, setPriority] = useState(50);
   const [isPinned, setIsPinned] = useState(false);
   const [skipSupersede, setSkipSupersede] = useState(false);
@@ -72,6 +77,7 @@ export function StorytellerMemoryDraftDialog({
     setContent(draft.content ?? "");
     setScope(draft.scope_type ?? targetKind);
     setKind(draft.kind ?? "context");
+    setTags(draft.tags ?? []);
     setPriority(draft.priority ?? 50);
     setIsPinned(false);
     setSkipSupersede(
@@ -100,6 +106,7 @@ export function StorytellerMemoryDraftDialog({
           content: content.trim(),
           scope_type: scope,
           kind,
+          tags,
           priority,
           is_pinned: isPinned,
           skip_supersede: skipSupersede,
@@ -237,11 +244,10 @@ export function StorytellerMemoryDraftDialog({
                     <Stack direction="row" spacing={0.75}>
                       <Chip
                         size="small"
-                        label={
-                          storytellerMemoryScopeLabels[
-                            draft.superseded_memory.scope_type
-                          ]
-                        }
+                        label={storytellerMemoryTargetLabel(
+                          draft.superseded_memory.scope_type,
+                          draft.superseded_memory.target_name,
+                        )}
                       />
                       <Chip
                         size="small"
@@ -324,35 +330,51 @@ export function StorytellerMemoryDraftDialog({
                     }
                   }}
                 >
-                  <MenuItem value="account">所有專案</MenuItem>
-                  <MenuItem value="project">目前專案</MenuItem>
+                  <MenuItem value="project">
+                    {storytellerMemoryContextScopeLabels.project}
+                  </MenuItem>
                   <MenuItem value={targetKind}>
-                    {storytellerMemoryScopeLabels[targetKind]}
+                    {storytellerMemoryContextScopeLabels[targetKind]}
                   </MenuItem>
                 </Select>
               </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="memory-kind-label">記憶類型</InputLabel>
-                <Select
-                  labelId="memory-kind-label"
-                  label="記憶類型"
-                  value={kind}
-                  onChange={(event) =>
-                    setKind(
-                      event.target.value as StorytellerAssistantMemoryKind,
-                    )
-                  }
-                >
-                  {Object.entries(storytellerMemoryKindLabels).map(
-                    ([value, label]) => (
-                      <MenuItem key={value} value={value}>
-                        {label}
-                      </MenuItem>
-                    ),
-                  )}
-                </Select>
-              </FormControl>
+              <Tooltip title={storytellerMemoryKindDescriptions[kind]} arrow>
+                <FormControl fullWidth>
+                  <InputLabel id="memory-kind-label">記憶類型</InputLabel>
+                  <Select
+                    labelId="memory-kind-label"
+                    label="記憶類型"
+                    value={kind}
+                    onChange={(event) =>
+                      setKind(
+                        event.target.value as StorytellerAssistantMemoryKind,
+                      )
+                    }
+                  >
+                    {Object.entries(storytellerMemoryKindLabels).map(
+                      ([value, label]) => (
+                        <MenuItem key={value} value={value}>
+                          <Tooltip
+                            title={
+                              storytellerMemoryKindDescriptions[
+                                value as StorytellerAssistantMemoryKind
+                              ]
+                            }
+                            placement="right"
+                            arrow
+                          >
+                            <Box component="span" sx={{ width: 1 }}>
+                              {label}
+                            </Box>
+                          </Tooltip>
+                        </MenuItem>
+                      ),
+                    )}
+                  </Select>
+                </FormControl>
+              </Tooltip>
             </Box>
+            <StorytellerMemoryTagField value={tags} onChange={setTags} />
             <TextField
               type="number"
               label="優先度"

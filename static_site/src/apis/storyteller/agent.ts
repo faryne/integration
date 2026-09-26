@@ -25,6 +25,10 @@ import type {
   StorytellerAssistantMemoryConfirmRequest,
   StorytellerAssistantMemoryDraft,
   StorytellerAssistantMemoryGenerateRequest,
+  StorytellerAssistantMemoryKind,
+  StorytellerAssistantMemoryPage,
+  StorytellerAssistantMemoryScope,
+  StorytellerAssistantMemoryUpdateRequest,
   StorytellerMcpToolDocCategory,
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
@@ -60,68 +64,79 @@ export function useGenerateStorytellerAssistantMemory() {
   });
 }
 
-function assistantMemoriesQueryKey(
-  userId: number | undefined,
-  projectPublicId?: string,
-  targetKind?: "story" | "lore",
-  targetPublicId?: string,
-) {
-  return [
-    "storyteller",
-    "assistant-memories",
-    userId,
-    projectPublicId,
-    targetKind,
-    targetPublicId,
-  ];
+export interface StorytellerAssistantMemoryFilters {
+  scopeType: StorytellerAssistantMemoryScope | "";
+  kind: StorytellerAssistantMemoryKind | "";
+  pinned: "" | "true" | "false";
+  tag?: string;
+  memoryPublicId?: string;
+  targetKind?: "story" | "lore";
+  targetPublicId?: string;
+  page: number;
+  pageSize: number;
 }
 
-export function useStorytellerAssistantMemories(
-  projectPublicId?: string,
-  targetKind?: "story" | "lore",
-  targetPublicId?: string,
-  enabled = true,
+export function useStorytellerAssistantMemoryManagement(
+  projectPublicId: string | undefined,
+  filters: StorytellerAssistantMemoryFilters,
 ) {
   const { session } = useAuth();
   return useQuery({
-    queryKey: assistantMemoriesQueryKey(
+    queryKey: [
+      "storyteller",
+      "assistant-memory-management",
       session?.user.id,
       projectPublicId,
-      targetKind,
-      targetPublicId,
-    ),
-    enabled: Boolean(
-      enabled && session?.encrypt_key && projectPublicId && targetPublicId,
-    ),
+      filters.scopeType,
+      filters.kind,
+      filters.pinned,
+      filters.tag,
+      filters.memoryPublicId,
+      filters.targetKind,
+      filters.targetPublicId,
+      filters.page,
+      filters.pageSize,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
     queryFn: async () => {
       const response = await axios.get<
-        CommonResponse<StorytellerAssistantMemory[]>
-      >(`${apiBase}/storyteller/projects/${projectPublicId}/memories`, {
+        CommonResponse<StorytellerAssistantMemoryPage>
+      >(`${apiBase}/storyteller/projects/${projectPublicId}/memories/manage`, {
         params: {
-          [`${targetKind}_public_id`]: targetPublicId,
-          limit: 100,
+          scope_type: filters.scopeType || undefined,
+          kind: filters.kind || undefined,
+          is_pinned: filters.pinned || undefined,
+          tag: filters.tag || undefined,
+          memory_public_id: filters.memoryPublicId || undefined,
+          ...(filters.targetKind && filters.targetPublicId
+            ? {
+                [`${filters.targetKind}_public_id`]: filters.targetPublicId,
+              }
+            : {}),
+          page: filters.page,
+          page_size: filters.pageSize,
         },
         headers: sessionHeaders(session!.encrypt_key),
       });
-      return response.data.data ?? [];
+      return response.data.data;
     },
   });
 }
 
-export function useUpdateStorytellerAssistantMemory(
-  projectPublicId?: string,
-  targetKind?: "story" | "lore",
-  targetPublicId?: string,
-) {
+export function useManageStorytellerAssistantMemory(projectPublicId?: string) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       publicId,
       input,
+      targetKind,
+      targetPublicId,
     }: {
       publicId: string;
-      input: StorytellerAssistantMemoryConfirmRequest;
+      input: StorytellerAssistantMemoryUpdateRequest;
+      targetKind?: "story" | "lore";
+      targetPublicId?: string;
     }) => {
       const response = await axios.put<
         CommonResponse<StorytellerAssistantMemory>
@@ -129,29 +144,27 @@ export function useUpdateStorytellerAssistantMemory(
         `${apiBase}/storyteller/projects/${projectPublicId}/memories/${publicId}`,
         input,
         {
-          params: { [`${targetKind}_public_id`]: targetPublicId },
+          params:
+            targetKind && targetPublicId
+              ? { [`${targetKind}_public_id`]: targetPublicId }
+              : undefined,
           headers: sessionHeaders(session!.encrypt_key),
         },
       );
       return response.data.data;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: assistantMemoriesQueryKey(
-          session?.user.id,
-          projectPublicId,
-          targetKind,
-          targetPublicId,
-        ),
-      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "assistant-memories"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "assistant-memory-management"],
+      });
+    },
   });
 }
 
-export function useDeleteStorytellerAssistantMemory(
-  projectPublicId?: string,
-  targetKind?: "story" | "lore",
-  targetPublicId?: string,
-) {
+export function useDeleteStorytellerAssistantMemory() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
@@ -162,15 +175,14 @@ export function useDeleteStorytellerAssistantMemory(
       );
       return response.data.data;
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: assistantMemoriesQueryKey(
-          session?.user.id,
-          projectPublicId,
-          targetKind,
-          targetPublicId,
-        ),
-      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "assistant-memories"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["storyteller", "assistant-memory-management"],
+      });
+    },
   });
 }
 

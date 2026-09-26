@@ -52,6 +52,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project", storyteller.Project)
 	authenticated.Get("/projects/:project/search", storyteller.WorkspaceSearch)
 	authenticated.Get("/projects/:project/memories", storyteller.AssistantMemories)
+	authenticated.Get("/projects/:project/memories/manage", storyteller.ManageAssistantMemories)
 	authenticated.Get("/projects/:project/memories/search", storyteller.SearchAssistantMemories)
 	authenticated.Put("/projects/:project/memories/:memory", storyteller.UpdateAssistantMemory)
 	authenticated.Delete("/memories/:memory", storyteller.DeleteAssistantMemory)

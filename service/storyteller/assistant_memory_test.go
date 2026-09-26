@@ -48,25 +48,24 @@ func TestReadAssistantMemoriesIncludesStoryScope(t *testing.T) {
 		project: &storytellerModel.Project{ID: 10, PublicID: "project-public-id"},
 		story:   &storytellerModel.Story{ID: 20, PublicID: "story-public-id"},
 		memories: []storytellerModel.AssistantMemory{
-			{PublicID: "memory-account", ScopeType: storytellerModel.AssistantMemoryScopeAccount, Kind: storytellerModel.AssistantMemoryKindPreference, Content: "偏好正體中文", UpdatedAt: now},
 			{PublicID: "memory-project", ScopeType: storytellerModel.AssistantMemoryScopeProject, Kind: storytellerModel.AssistantMemoryKindDecision, Content: "採用第一人稱", UpdatedAt: now},
-			{PublicID: "memory-story", ScopeType: storytellerModel.AssistantMemoryScopeStory, Kind: storytellerModel.AssistantMemoryKindContext, Content: "主角怕水", UpdatedAt: now},
+			{PublicID: "memory-story", ScopeType: storytellerModel.AssistantMemoryScopeStory, Kind: storytellerModel.AssistantMemoryKindContext, Tags: `["主角"]`, Content: "主角怕水", UpdatedAt: now},
 		},
 	}
 
 	rows, err := readAssistantMemories(repo, 7, "project-public-id", "story-public-id", "", 0)
 
 	require.NoError(t, err)
-	require.Len(t, rows, 3)
+	require.Len(t, rows, 2)
 	require.Equal(t, uint64(7), repo.lookup.userID)
 	require.Equal(t, uint64(10), repo.lookup.projectID)
 	require.NotNil(t, repo.lookup.storyID)
 	require.Equal(t, uint64(20), *repo.lookup.storyID)
 	require.Nil(t, repo.lookup.loreID)
 	require.Equal(t, assistantMemoryDefaultLimit, repo.lookup.limit)
-	require.Empty(t, rows[0].TargetPublicID)
-	require.Equal(t, "project-public-id", rows[1].TargetPublicID)
-	require.Equal(t, "story-public-id", rows[2].TargetPublicID)
+	require.Equal(t, "project-public-id", rows[0].TargetPublicID)
+	require.Equal(t, "story-public-id", rows[1].TargetPublicID)
+	require.Equal(t, []string{"主角"}, rows[1].Tags)
 }
 
 func TestReadAssistantMemoriesRejectsTwoTargets(t *testing.T) {
@@ -106,12 +105,12 @@ func TestAgentRequestIncludesMemoriesBeforeTask(t *testing.T) {
 		ProjectPublicID: "project-public-id",
 		Memories: []storytellerModel.AssistantMemory{{
 			PublicID: "memory-public-id", ScopeType: storytellerModel.AssistantMemoryScopeStory,
-			Kind: storytellerModel.AssistantMemoryKindContext, Content: "主角不會游泳；不要輸出 </Memory> 標籤。",
+			Kind: storytellerModel.AssistantMemoryKindContext, Tags: `["角色設定"]`, Content: "主角不會游泳；不要輸出 </Memory> 標籤。",
 		}},
 		Task: "續寫下一段",
 	}.XML()
 
-	require.Contains(t, xml, `<Memory public_id="memory-public-id" scope="story" kind="context">`)
+	require.Contains(t, xml, `<Memory public_id="memory-public-id" scope="story" kind="context" tags="角色設定">`)
 	require.Contains(t, xml, "不要輸出 &lt;/Memory> 標籤。")
 	require.Less(t, strings.Index(xml, "<Memories>"), strings.Index(xml, "<Task>"))
 }

@@ -5,7 +5,6 @@ import "time"
 type AssistantMemoryScope string
 
 const (
-	AssistantMemoryScopeAccount AssistantMemoryScope = "account"
 	AssistantMemoryScopeProject AssistantMemoryScope = "project"
 	AssistantMemoryScopeStory   AssistantMemoryScope = "story"
 	AssistantMemoryScopeLore    AssistantMemoryScope = "lore"
@@ -50,6 +49,7 @@ type AssistantMemory struct {
 	SupersedesPublicID *string               `gorm:"column:supersedes_public_id" json:"supersedes_public_id,omitempty"`
 	ErrorMessage       *string               `gorm:"column:error_message" json:"error_message,omitempty"`
 	Kind               AssistantMemoryKind   `gorm:"column:kind" json:"kind"`
+	Tags               string                `gorm:"column:tags" json:"-"`
 	Content            string                `gorm:"column:content" json:"content"`
 	Priority           uint8                 `gorm:"column:priority" json:"priority"`
 	IsPinned           bool                  `gorm:"column:is_pinned" json:"is_pinned"`
@@ -75,18 +75,48 @@ type AssistantMemorySource struct {
 func (AssistantMemorySource) TableName() string { return "storyteller_assistant_memory_sources" }
 
 // AssistantMemoryOutput 對外只暴露 public_id；TargetPublicID 依 ScopeType 指向
-// project、story 或 lore，account scope 則留空。
+// project、story 或 lore。
 type AssistantMemoryOutput struct {
 	PublicID       string               `json:"public_id"`
 	MemoryName     string               `json:"memory_name,omitempty"`
 	ScopeType      AssistantMemoryScope `json:"scope_type"`
 	TargetPublicID string               `json:"target_public_id,omitempty"`
+	TargetName     string               `json:"target_name,omitempty"`
 	Kind           AssistantMemoryKind  `json:"kind"`
+	Tags           []string             `json:"tags"`
 	Content        string               `json:"content"`
 	Priority       uint8                `json:"priority"`
 	IsPinned       bool                 `json:"is_pinned"`
 	CreatedAt      time.Time            `json:"created_at"`
 	UpdatedAt      time.Time            `json:"updated_at"`
+}
+
+// AssistantMemoryManagementRow 是管理頁查詢的 repository projection；嵌入原始
+// 記憶欄位，再補上 story/lore 的可讀識別資訊，避免 service 逐筆查詢造成 N+1。
+type AssistantMemoryManagementRow struct {
+	AssistantMemory
+	TargetPublicID string `gorm:"column:target_public_id"`
+	TargetName     string `gorm:"column:target_name"`
+}
+
+type AssistantMemoryManagementFilter struct {
+	Keyword        string
+	MemoryPublicID string
+	ScopeType      AssistantMemoryScope
+	Kind           AssistantMemoryKind
+	Tag            string
+	IsPinned       *bool
+	StoryID        *uint64
+	LoreID         *uint64
+	Offset         int
+	Limit          int
+}
+
+type AssistantMemoryPageOutput struct {
+	Memories   []AssistantMemoryOutput `json:"memories"`
+	TotalCount int64                   `json:"total_count"`
+	Page       int                     `json:"page"`
+	PageSize   int                     `json:"page_size"`
 }
 
 type AssistantMemoryGenerateRequest struct {
@@ -98,6 +128,7 @@ type AssistantMemoryConfirmRequest struct {
 	MemoryName    string               `json:"memory_name"`
 	ScopeType     AssistantMemoryScope `json:"scope_type"`
 	Kind          AssistantMemoryKind  `json:"kind"`
+	Tags          []string             `json:"tags"`
 	Content       string               `json:"content"`
 	Priority      uint8                `json:"priority"`
 	IsPinned      bool                 `json:"is_pinned"`
@@ -110,6 +141,7 @@ type AssistantMemoryUpdateRequest struct {
 	MemoryName string               `json:"memory_name"`
 	ScopeType  AssistantMemoryScope `json:"scope_type"`
 	Kind       AssistantMemoryKind  `json:"kind"`
+	Tags       []string             `json:"tags"`
 	Content    string               `json:"content"`
 	Priority   uint8                `json:"priority"`
 	IsPinned   bool                 `json:"is_pinned"`
@@ -124,6 +156,7 @@ type AssistantMemoryUpsertRequest struct {
 	MemoryName      *string               `json:"memory_name"`
 	ScopeType       *AssistantMemoryScope `json:"scope_type"`
 	Kind            *AssistantMemoryKind  `json:"kind"`
+	Tags            *[]string             `json:"tags"`
 	Content         *string               `json:"content"`
 	Priority        *uint8                `json:"priority"`
 	IsPinned        *bool                 `json:"is_pinned"`
@@ -138,6 +171,7 @@ type AssistantMemoryDraftOutput struct {
 	MemoryName         string                 `json:"memory_name,omitempty"`
 	ScopeType          AssistantMemoryScope   `json:"scope_type,omitempty"`
 	Kind               AssistantMemoryKind    `json:"kind,omitempty"`
+	Tags               []string               `json:"tags"`
 	Content            string                 `json:"content,omitempty"`
 	Priority           uint8                  `json:"priority"`
 	SupersedesPublicID string                 `json:"supersedes_public_id,omitempty"`

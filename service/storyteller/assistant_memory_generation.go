@@ -50,13 +50,12 @@ const assistantMemoryGenerationSystemPrompt = `你是梭梭的記憶整理器。
 若新資訊明確修正或取代一筆同 scope、且未 pinned 的既有記憶，SupersedesPublicID 填該筆 public_id；否則留空。不可取代 pinned 記憶。
 
 Scope 的判斷：
-- account：跨所有專案都適用的使用者偏好或合作方式。
 - project：只適用目前專案，但不侷限單篇故事或設定。
 - story：只適用目前故事。
 - lore：只適用目前設定。
 只能回傳 AllowedScopes 內的值。
 
-Kind 只能是 preference、instruction、decision、context。
+Kind 只能是 preference、instruction、decision、context。Tags 是 0 到 8 個可自由整理的短標籤，每個最多 24 個字；請優先沿用 ExistingMemories 已有的標籤詞彙。
 Content 必須獨立可讀，不引用「上面」「這次」「剛才」等易失去上下文的說法；最多 2000 個字。
 Name 是供使用者辨識的短標題，最多 255 個字。Priority 為 0 到 100，50 代表一般重要度。
 
@@ -65,8 +64,9 @@ Name 是供使用者辨識的短標題，最多 255 個字。Priority 為 0 到 
   <ShouldRemember>true|false</ShouldRemember>
   <Name><![CDATA[短標題]]></Name>
   <Content><![CDATA[原子記憶內容]]></Content>
-  <Scope>account|project|story|lore</Scope>
+  <Scope>project|story|lore</Scope>
   <Kind>preference|instruction|decision|context</Kind>
+  <Tags><Tag><![CDATA[標籤一]]></Tag><Tag><![CDATA[標籤二]]></Tag></Tags>
   <Priority>0-100</Priority>
   <SupersedesPublicID><![CDATA[要取代的 ExistingMemories public_id，否則留空]]></SupersedesPublicID>
 </MemoryDraft>`
@@ -80,7 +80,7 @@ type assistantMemoryGenerationRepository interface {
 	AssistantMemoryByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.AssistantMemory, error)
 	AgentModelPrice(provider storytellerModel.AgentProvider, modelName string) (*string, error)
 	CreateAgentUsageLog(row *storytellerModel.AgentUsageLog) error
-	CompleteAssistantMemoryGeneration(id uint64, name, content, supersedesPublicID string, scope storytellerModel.AssistantMemoryScope, kind storytellerModel.AssistantMemoryKind, priority uint8, shouldRemember bool, usage *storytellerModel.AgentRunUsage, usageLog *storytellerModel.AgentUsageLog) error
+	CompleteAssistantMemoryGeneration(id uint64, name, content, tags, supersedesPublicID string, scope storytellerModel.AssistantMemoryScope, kind storytellerModel.AssistantMemoryKind, priority uint8, shouldRemember bool, usage *storytellerModel.AgentRunUsage, usageLog *storytellerModel.AgentUsageLog) error
 	FailAssistantMemoryGeneration(id uint64, message string) error
 	FailStaleAssistantMemoryGeneration(id uint64, updatedBefore time.Time, message string) (int64, error)
 	ConfirmAssistantMemory(row *storytellerModel.AssistantMemory) (int64, error)
@@ -94,13 +94,14 @@ type assistantMemoryGenerationDeps struct {
 }
 
 type assistantMemoryDraftXML struct {
-	ShouldRemember     string `xml:"ShouldRemember"`
-	Name               string `xml:"Name"`
-	Content            string `xml:"Content"`
-	Scope              string `xml:"Scope"`
-	Kind               string `xml:"Kind"`
-	Priority           string `xml:"Priority"`
-	SupersedesPublicID string `xml:"SupersedesPublicID"`
+	ShouldRemember     string   `xml:"ShouldRemember"`
+	Name               string   `xml:"Name"`
+	Content            string   `xml:"Content"`
+	Scope              string   `xml:"Scope"`
+	Kind               string   `xml:"Kind"`
+	Tags               []string `xml:"Tags>Tag"`
+	Priority           string   `xml:"Priority"`
+	SupersedesPublicID string   `xml:"SupersedesPublicID"`
 }
 
 type assistantMemoryCandidate struct {
@@ -109,6 +110,7 @@ type assistantMemoryCandidate struct {
 	Content            string
 	Scope              storytellerModel.AssistantMemoryScope
 	Kind               storytellerModel.AssistantMemoryKind
+	Tags               []string
 	Priority           uint8
 	SupersedesPublicID string
 }
@@ -223,7 +225,7 @@ func completeAssistantMemoryGeneration(ctx context.Context, repo assistantMemory
 			zap.Uint64("chat_id", chatID), zap.String("supersedes_public_id", candidate.SupersedesPublicID), zap.Error(err))
 		candidate = sanitized
 	}
-	return repo.CompleteAssistantMemoryGeneration(memoryID, candidate.Name, candidate.Content, candidate.SupersedesPublicID, candidate.Scope, candidate.Kind, candidate.Priority, candidate.ShouldRemember, usage, usageLog)
+	return repo.CompleteAssistantMemoryGeneration(memoryID, candidate.Name, candidate.Content, encodeAssistantMemoryTags(candidate.Tags), candidate.SupersedesPublicID, candidate.Scope, candidate.Kind, candidate.Priority, candidate.ShouldRemember, usage, usageLog)
 }
 
 func assistantMemoryGenerationUsage(repo assistantMemoryGenerationRepository, response *AIProviderResponse, userID, chatID, providerAPIKeyID uint64, provider storytellerModel.AgentProvider, modelName string) (*storytellerModel.AgentRunUsage, *storytellerModel.AgentUsageLog) {
@@ -236,12 +238,12 @@ func assistantMemoryGenerationUsage(repo assistantMemoryGenerationRepository, re
 }
 
 func buildAssistantMemoryGenerationPrompt(project *storytellerModel.Project, target *storytellerModel.AgentChatTarget, currentScope storytellerModel.AssistantMemoryScope, messages []storytellerModel.StoryChatMessageOutput, memories []storytellerModel.AssistantMemory) string {
-	allowedScopes := "account,project," + string(currentScope)
+	allowedScopes := "project," + string(currentScope)
 	var b strings.Builder
 	fmt.Fprintf(&b, "<MemoryGenerationRequest><Project name=\"%s\" public_id=\"%s\"/><CurrentTarget kind=\"%s\" public_id=\"%s\"/><AllowedScopes>%s</AllowedScopes><ExistingMemories>",
 		html.EscapeString(project.Name), html.EscapeString(project.PublicID), html.EscapeString(target.Kind), html.EscapeString(target.TargetPublicID), allowedScopes)
 	for _, memory := range memories {
-		fmt.Fprintf(&b, "<Memory public_id=\"%s\" scope=\"%s\" kind=\"%s\" pinned=\"%t\">%s</Memory>", html.EscapeString(memory.PublicID), memory.ScopeType, memory.Kind, memory.IsPinned, html.EscapeString(memory.Content))
+		fmt.Fprintf(&b, "<Memory public_id=\"%s\" scope=\"%s\" kind=\"%s\" tags=\"%s\" pinned=\"%t\">%s</Memory>", html.EscapeString(memory.PublicID), memory.ScopeType, memory.Kind, html.EscapeString(strings.Join(decodeAssistantMemoryTags(memory.Tags), ",")), memory.IsPinned, html.EscapeString(memory.Content))
 	}
 	b.WriteString("</ExistingMemories><Conversation>")
 	for _, message := range messages {
@@ -285,6 +287,10 @@ func parseAssistantMemoryCandidate(raw string, currentScope storytellerModel.Ass
 	if !assistantMemoryKindAllowed(candidate.Kind) {
 		return assistantMemoryCandidate{}, ErrAssistantMemoryKindInvalid
 	}
+	candidate.Tags, err = normalizeAssistantMemoryTags(parsed.Tags)
+	if err != nil {
+		return assistantMemoryCandidate{}, err
+	}
 	if strings.TrimSpace(parsed.Priority) != "" {
 		priority, err := strconv.Atoi(strings.TrimSpace(parsed.Priority))
 		if err != nil || priority < 0 || priority > 100 {
@@ -325,7 +331,7 @@ func sanitizeAssistantMemorySupersedes(candidate assistantMemoryCandidate, memor
 }
 
 func assistantMemoryScopeAllowed(scope, current storytellerModel.AssistantMemoryScope) bool {
-	return scope == storytellerModel.AssistantMemoryScopeAccount || scope == storytellerModel.AssistantMemoryScopeProject || scope == current
+	return scope == storytellerModel.AssistantMemoryScopeProject || scope == current
 }
 
 func assistantMemoryKindAllowed(kind storytellerModel.AssistantMemoryKind) bool {
@@ -358,7 +364,7 @@ func (s *Service) AssistantMemoryDraft(userID uint64, publicID string) (*storyte
 		if old, lookupErr := s.repo.AssistantMemoryByPublicIDForUser(userID, *row.SupersedesPublicID); lookupErr == nil {
 			output.SupersededMemory = &storytellerModel.AssistantMemoryOutput{
 				PublicID: old.PublicID, MemoryName: assistantMemoryName(old.MemoryName), ScopeType: old.ScopeType,
-				Kind: old.Kind, Content: old.Content, Priority: old.Priority, IsPinned: old.IsPinned,
+				Kind: old.Kind, Tags: decodeAssistantMemoryTags(old.Tags), Content: old.Content, Priority: old.Priority, IsPinned: old.IsPinned,
 				CreatedAt: old.CreatedAt, UpdatedAt: old.UpdatedAt,
 			}
 		}
@@ -371,7 +377,7 @@ func assistantMemoryStringPointer(value string) *string { return &value }
 func assistantMemoryDraftOutput(row *storytellerModel.AssistantMemory) *storytellerModel.AssistantMemoryDraftOutput {
 	return &storytellerModel.AssistantMemoryDraftOutput{
 		PublicID: row.PublicID, Status: row.Status, ShouldRemember: row.ShouldRemember, MemoryName: assistantMemoryName(row.MemoryName),
-		ScopeType: row.ScopeType, Kind: row.Kind, Content: row.Content, Priority: row.Priority, ErrorMessage: assistantMemoryName(row.ErrorMessage),
+		ScopeType: row.ScopeType, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, ErrorMessage: assistantMemoryName(row.ErrorMessage),
 		SupersedesPublicID: assistantMemoryName(row.SupersedesPublicID),
 	}
 }
@@ -408,6 +414,10 @@ func (s *Service) ConfirmAssistantMemory(userID uint64, publicID string, in stor
 	if !assistantMemoryKindAllowed(in.Kind) {
 		return nil, ErrAssistantMemoryKindInvalid
 	}
+	tags, err := normalizeAssistantMemoryTags(in.Tags)
+	if err != nil {
+		return nil, err
+	}
 	name, content := strings.TrimSpace(in.MemoryName), strings.TrimSpace(in.Content)
 	if len([]rune(name)) > assistantMemoryNameMaxRunes {
 		return nil, ErrAssistantMemoryNameTooLong
@@ -418,7 +428,7 @@ func (s *Service) ConfirmAssistantMemory(userID uint64, publicID string, in stor
 	if in.Priority > 100 {
 		return nil, ErrAssistantMemoryPriorityInvalid
 	}
-	row.MemoryName, row.Content, row.ScopeType, row.Kind, row.Priority, row.IsPinned = nil, content, in.ScopeType, in.Kind, in.Priority, in.IsPinned
+	row.MemoryName, row.Content, row.ScopeType, row.Kind, row.Tags, row.Priority, row.IsPinned = nil, content, in.ScopeType, in.Kind, encodeAssistantMemoryTags(tags), in.Priority, in.IsPinned
 	if name != "" {
 		row.MemoryName = &name
 	}
@@ -454,7 +464,7 @@ func (s *Service) ConfirmAssistantMemory(userID uint64, publicID string, in stor
 	} else if in.ScopeType == storytellerModel.AssistantMemoryScopeLore {
 		targetPublicID = lore.PublicID
 	}
-	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: name, ScopeType: in.ScopeType, TargetPublicID: targetPublicID, Kind: in.Kind, Content: content, Priority: in.Priority, IsPinned: in.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: name, ScopeType: in.ScopeType, TargetPublicID: targetPublicID, Kind: in.Kind, Tags: tags, Content: content, Priority: in.Priority, IsPinned: in.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 // RetryAssistantMemory 重新整理失敗草稿；新草稿建立成功後才丟棄舊資料，避免同步
