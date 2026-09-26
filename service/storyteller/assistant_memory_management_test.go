@@ -84,4 +84,14 @@ func TestAssistantMemoryScopeAllowedForProjectOnlyManagement(t *testing.T) {
 	require.True(t, assistantMemoryScopeAllowedForContext(storytellerModel.AssistantMemoryScopeStory, &storytellerModel.Story{}, nil))
 }
 
+func TestAssistantMemoryOutputIncludesTargetName(t *testing.T) {
+	story := &storytellerModel.Story{PublicID: "story-1", Title: "雨夜的第三章"}
+	output := assistantMemoryOutput(storytellerModel.AssistantMemory{
+		PublicID: "memory-1", ScopeType: storytellerModel.AssistantMemoryScopeStory,
+	}, &storytellerModel.Project{PublicID: "project-1", Name: "測試專案"}, story, nil)
+
+	require.Equal(t, "story-1", output.TargetPublicID)
+	require.Equal(t, "雨夜的第三章", output.TargetName)
+}
+
 func uint64Pointer(value uint64) *uint64 { return &value }

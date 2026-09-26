@@ -380,18 +380,20 @@ func assistantMemoryOutputs(rows []storytellerModel.AssistantMemory, project *st
 }
 
 func assistantMemoryOutput(row storytellerModel.AssistantMemory, project *storytellerModel.Project, story *storytellerModel.Story, lore *storytellerModel.Lore) *storytellerModel.AssistantMemoryOutput {
-	targetPublicID := ""
+	targetPublicID, targetName := "", ""
 	switch row.ScopeType {
 	case storytellerModel.AssistantMemoryScopeProject:
-		targetPublicID = project.PublicID
+		if project != nil {
+			targetPublicID, targetName = project.PublicID, project.Name
+		}
 	case storytellerModel.AssistantMemoryScopeStory:
 		if story != nil {
-			targetPublicID = story.PublicID
+			targetPublicID, targetName = story.PublicID, story.Title
 		}
 	case storytellerModel.AssistantMemoryScopeLore:
 		if lore != nil {
-			targetPublicID = lore.PublicID
+			targetPublicID, targetName = lore.PublicID, lore.Title
 		}
 	}
-	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
+	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: assistantMemoryName(row.MemoryName), ScopeType: row.ScopeType, TargetPublicID: targetPublicID, TargetName: targetName, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, IsPinned: row.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}
 }

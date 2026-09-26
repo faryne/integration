@@ -362,11 +362,22 @@ func (s *Service) AssistantMemoryDraft(userID uint64, publicID string) (*storyte
 	output := assistantMemoryDraftOutput(row)
 	if row.SupersedesPublicID != nil {
 		if old, lookupErr := s.repo.AssistantMemoryByPublicIDForUser(userID, *row.SupersedesPublicID); lookupErr == nil {
-			output.SupersededMemory = &storytellerModel.AssistantMemoryOutput{
-				PublicID: old.PublicID, MemoryName: assistantMemoryName(old.MemoryName), ScopeType: old.ScopeType,
-				Kind: old.Kind, Tags: decodeAssistantMemoryTags(old.Tags), Content: old.Content, Priority: old.Priority, IsPinned: old.IsPinned,
-				CreatedAt: old.CreatedAt, UpdatedAt: old.UpdatedAt,
+			if row.SourceChatID == nil {
+				return nil, ErrAssistantMemoryScopeInvalid
 			}
+			target, err := s.repo.AgentChatTarget(userID, *row.SourceChatID)
+			if err != nil {
+				return nil, err
+			}
+			project, err := s.repo.ProjectByPublicIDForUser(userID, target.ProjectPublicID)
+			if err != nil {
+				return nil, err
+			}
+			_, story, lore, err := assistantMemoryGenerationTarget(s.repo, project.ID, target)
+			if err != nil {
+				return nil, err
+			}
+			output.SupersededMemory = assistantMemoryOutput(*old, project, story, lore)
 		}
 	}
 	return output, nil

@@ -44,29 +44,6 @@ func ManageAssistantMemories(ctx fiber.Ctx) error {
 	return output.Success(result)
 }
 
-// AssistantMemories 只提供目前作用域的有效記憶；修改與刪除各自走獨立端點，
-// 避免這個讀取入口承擔不明確的寫入語意。
-func AssistantMemories(ctx fiber.Ctx) error {
-	limit, _ := strconv.Atoi(ctx.Query("limit"))
-	rows, err := storytellerService.NewService().AssistantMemories(
-		authsession.Session(ctx).UserId,
-		ctx.Params("project"),
-		ctx.Query("story_public_id"),
-		ctx.Query("lore_public_id"),
-		limit,
-	)
-	if err != nil {
-		if errors.Is(err, storytellerService.ErrAssistantMemoryTargetInvalid) {
-			return output.BadRequest(err)
-		}
-		if repository.IsRecordNotFound(err) {
-			return output.NotFound(errors.New("storyteller memory scope not found"))
-		}
-		return output.DBError(err)
-	}
-	return output.Success(rows)
-}
-
 func assistantMemoryMutationError(err error, notFoundMessage string) error {
 	switch {
 	case errors.Is(err, storytellerService.ErrAgenticQueryServerDraining):
@@ -99,15 +76,6 @@ func assistantMemoryMutationError(err error, notFoundMessage string) error {
 	default:
 		return output.DBError(err)
 	}
-}
-
-func SearchAssistantMemories(ctx fiber.Ctx) error {
-	limit, _ := strconv.Atoi(ctx.Query("limit"))
-	rows, err := storytellerService.NewService().SearchAssistantMemories(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Query("story_public_id"), ctx.Query("lore_public_id"), ctx.Query("q"), limit)
-	if err != nil {
-		return assistantMemoryMutationError(err, "storyteller memory scope not found")
-	}
-	return output.Success(rows)
 }
 
 func UpdateAssistantMemory(ctx fiber.Ctx) error {

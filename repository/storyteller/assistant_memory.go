@@ -100,7 +100,8 @@ func (r *Repository) ManageAssistantMemories(userID, projectID uint64, filter st
 		query = query.Where("memories.kind = ?", filter.Kind)
 	}
 	if filter.Tag != "" {
-		query = query.Where("JSON_CONTAINS(COALESCE(memories.tags, '[]'), JSON_QUOTE(?))", filter.Tag)
+		// 寫入時以不分大小寫方式去重，篩選也必須採相同規則；LOWER 後仍是合法 JSON 字串。
+		query = query.Where("JSON_CONTAINS(LOWER(COALESCE(memories.tags, '[]')), JSON_QUOTE(LOWER(?)))", filter.Tag)
 	}
 	if filter.IsPinned != nil {
 		query = query.Where("memories.is_pinned = ?", *filter.IsPinned)
