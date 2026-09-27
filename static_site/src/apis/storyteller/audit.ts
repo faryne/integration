@@ -1,6 +1,7 @@
 import axios from "axios";
 import dayjs from "dayjs";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
@@ -23,7 +24,8 @@ const rangeHours: Record<"24h" | "7d" | "30d", number> = {
   "30d": 24 * 30,
 };
 
-// auditQueryTimeRange 在送出請求時才把時間範圍換成實際時間（避免 query key 每秒變動）；
+// auditQueryTimeRange 把時間範圍換成實際時間；相對範圍（24h 等）的 to 固定為換算當下，
+// 讓同一次查詢的每一頁都用同一組 from／to，游標分頁才不會因為「現在」往後移而漏掉資料。
 // 自訂範圍以瀏覽器時區的整天計算，結束日當天也包含在內（to 是隔天 00:00，後端為不含）。
 export function auditQueryTimeRange(query: StorytellerAuditEventQuery) {
   if (query.range === "custom") {
@@ -32,9 +34,10 @@ export function auditQueryTimeRange(query: StorytellerAuditEventQuery) {
       to: dayjs(query.customTo).add(1, "day").startOf("day").toISOString(),
     };
   }
+  const now = dayjs();
   return {
-    from: dayjs().subtract(rangeHours[query.range], "hour").toISOString(),
-    to: undefined,
+    from: now.subtract(rangeHours[query.range], "hour").toISOString(),
+    to: now.toISOString(),
   };
 }
 
@@ -44,12 +47,20 @@ export function useStorytellerAuditEvents(
   enabled = true,
 ) {
   const { session } = useAuth();
+  // 只在條件改變（或重新進入頁面）時換算一次時間，所有分頁共用；放進 query key 讓換算結果跟快取綁在一起。
+  const { from, to } = useMemo(() => auditQueryTimeRange(query), [query]);
   return useInfiniteQuery({
-    queryKey: ["storyteller", "audit-events", query, session?.user.id],
+    queryKey: [
+      "storyteller",
+      "audit-events",
+      query,
+      from,
+      to,
+      session?.user.id,
+    ],
     enabled: Boolean(session?.encrypt_key && enabled),
     initialPageParam: "",
     queryFn: async ({ pageParam }) => {
-      const { from, to } = auditQueryTimeRange(query);
       const response = await axios.get<
         CommonResponse<StorytellerAuditEventPage>
       >(`${accountEndpoint}/audit-events`, {

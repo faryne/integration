@@ -49,6 +49,7 @@ type fakeArchiveRepo struct {
 	exports        []storytellerModel.AuditExport
 	saved          []storytellerModel.AuditExport
 	deletedRanges  [][2]time.Time
+	deletedMaxIDs  []uint64
 	createdQueries []*storytellerModel.AuditArchiveQuery
 }
 
@@ -60,10 +61,10 @@ func (f *fakeArchiveRepo) AuditEarliestEventTime() (*time.Time, error) {
 	return &earliest, nil
 }
 
-func (f *fakeArchiveRepo) AuditEventsForExport(from, to time.Time, afterAt *time.Time, afterID uint64, limit int) ([]storytellerModel.AuditEvent, error) {
+func (f *fakeArchiveRepo) AuditEventsForExport(from, to time.Time, watermark uint64, afterAt *time.Time, afterID uint64, limit int) ([]storytellerModel.AuditEvent, error) {
 	rows := make([]storytellerModel.AuditEvent, 0)
 	for _, event := range f.events {
-		if event.OccurredAt.Before(from) || !event.OccurredAt.Before(to) {
+		if event.OccurredAt.Before(from) || !event.OccurredAt.Before(to) || event.ID <= watermark {
 			continue
 		}
 		if afterAt != nil && (event.OccurredAt.Before(*afterAt) || event.OccurredAt.Equal(*afterAt) && event.ID <= afterID) {
@@ -77,13 +78,13 @@ func (f *fakeArchiveRepo) AuditEventsForExport(from, to time.Time, afterAt *time
 	return rows, nil
 }
 
-func (f *fakeArchiveRepo) AuditEventCountBetween(from, to time.Time) (int64, error) {
+func (f *fakeArchiveRepo) AuditEventCountBetween(from, to time.Time, watermark uint64) (int64, error) {
 	if f.countOverride != nil {
 		return *f.countOverride, nil
 	}
 	var count int64
 	for _, event := range f.events {
-		if !event.OccurredAt.Before(from) && event.OccurredAt.Before(to) {
+		if !event.OccurredAt.Before(from) && event.OccurredAt.Before(to) && event.ID > watermark {
 			count++
 		}
 	}
@@ -99,8 +100,8 @@ func (f *fakeArchiveRepo) SaveAuditExport(row *storytellerModel.AuditExport) err
 	return nil
 }
 
-func (f *fakeArchiveRepo) DeleteAuditEventsBetween(from, to time.Time, _ int) (int64, error) {
-	f.deletedRanges = append(f.deletedRanges, [2]time.Time{from, to})
+func (f *fakeArchiveRepo) DeleteAuditEventsBetween(from, to time.Time, maxID uint64, _ int) (int64, error) {
+	f.deletedRanges, f.deletedMaxIDs = append(f.deletedRanges, [2]time.Time{from, to}), append(f.deletedMaxIDs, maxID)
 	return 0, nil
 }
 
@@ -179,7 +180,47 @@ func TestExportPendingAuditMonthsWritesLockedPartsAndSkipsCurrentMonth(t *testin
 	require.Len(t, repo.saved, 1)
 	require.Equal(t, storytellerModel.AuditExportStatusExported, repo.saved[0].Status)
 	require.Equal(t, uint64(2), repo.saved[0].RowCount)
+	require.Equal(t, uint64(2), repo.saved[0].MaxEventID, "watermark 是這次匯出涵蓋到的最大 id")
 	require.NotNil(t, repo.saved[0].Checksum)
+}
+
+func TestExportPendingAuditMonthsSupplementsLateEvents(t *testing.T) {
+	now := time.Date(2026, 9, 27, 3, 0, 0, 0, time.UTC)
+	checksum, purgedAt := "base", now
+	retainUntil := time.Date(2033, 8, 1, 0, 0, 0, 0, time.UTC)
+	repo := &fakeArchiveRepo{events: []storytellerModel.AuditEvent{
+		archiveTestEvent(1, time.Date(2026, 7, 3, 1, 0, 0, 0, time.UTC)), // 已匯出（id <= watermark）
+		archiveTestEvent(9, time.Date(2026, 7, 2, 1, 0, 0, 0, time.UTC)), // Stream 重試晚到，id 較大
+		archiveTestEvent(10, time.Date(2026, 8, 5, 1, 0, 0, 0, time.UTC)),
+	}, exports: []storytellerModel.AuditExport{
+		{Month: "2026-07", Status: storytellerModel.AuditExportStatusExported, RowCount: 5, MaxEventID: 8, Checksum: &checksum,
+			RetainUntil: &retainUntil, MySQLPurgedAt: &purgedAt, ObjectKeys: storytellerModel.StringList{"audit/year=2026/month=07/part-00000.jsonl.gz"}},
+		{Month: "2026-08", Status: storytellerModel.AuditExportStatusExported, RowCount: 1, MaxEventID: 10},
+	}}
+	store := &fakeArchiveStore{}
+	months, err := exportPendingAuditMonths(context.Background(), repo, store, "audit", 7, now)
+	require.NoError(t, err)
+	require.Equal(t, []string{"2026-07"}, months, "八月沒有晚到事件，不重寫紀錄")
+	require.Len(t, store.objects, 1)
+	require.Contains(t, store.objects, "audit/year=2026/month=07/part-00001.jsonl.gz", "補匯接在既有檔案後面，不覆蓋")
+	saved := repo.saved[0]
+	require.Equal(t, uint64(6), saved.RowCount)
+	require.Equal(t, uint64(9), saved.MaxEventID)
+	require.Len(t, saved.ObjectKeys, 2)
+	require.Nil(t, saved.MySQLPurgedAt, "清掉 mysql_purged_at，讓清除排程再刪補匯的列")
+	require.NotEqual(t, "base", *saved.Checksum)
+}
+
+func TestExportPendingAuditMonthsKeepsExportedRowWhenSupplementFails(t *testing.T) {
+	mismatch := int64(5)
+	repo := &fakeArchiveRepo{
+		events:        []storytellerModel.AuditEvent{archiveTestEvent(9, time.Date(2026, 7, 2, 1, 0, 0, 0, time.UTC))},
+		exports:       []storytellerModel.AuditExport{{Month: "2026-07", Status: storytellerModel.AuditExportStatusExported, MaxEventID: 8}},
+		countOverride: &mismatch,
+	}
+	_, err := exportPendingAuditMonths(context.Background(), repo, &fakeArchiveStore{}, "audit", 7, time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC))
+	require.Error(t, err)
+	require.Empty(t, repo.saved, "補匯失敗不能把已匯出的紀錄蓋成 failed")
 }
 
 func TestExportAuditMonthFailsWhenRowCountMismatch(t *testing.T) {
@@ -194,7 +235,7 @@ func TestExportAuditMonthFailsWhenRowCountMismatch(t *testing.T) {
 func TestPurgeArchivedMySQLAuditMonthsOnlyDeletesExportedMonthsBeyondHotWindow(t *testing.T) {
 	now := time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
 	repo := &fakeArchiveRepo{exports: []storytellerModel.AuditExport{
-		{Month: "2026-05", Status: storytellerModel.AuditExportStatusExported},
+		{Month: "2026-05", Status: storytellerModel.AuditExportStatusExported, MaxEventID: 42},
 		{Month: "2026-06", Status: storytellerModel.AuditExportStatusExported}, // 月底 7/1 晚於 6/27，還在近期範圍
 		{Month: "2026-04", Status: storytellerModel.AuditExportStatusFailed},
 	}}
@@ -202,6 +243,7 @@ func TestPurgeArchivedMySQLAuditMonthsOnlyDeletesExportedMonthsBeyondHotWindow(t
 	require.NoError(t, err)
 	require.Equal(t, []string{"2026-05"}, purged)
 	require.Equal(t, [][2]time.Time{{time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)}}, repo.deletedRanges)
+	require.Equal(t, []uint64{42}, repo.deletedMaxIDs, "只刪匯出涵蓋到的 id")
 	require.NotNil(t, repo.saved[0].MySQLPurgedAt)
 }
 
@@ -248,18 +290,33 @@ func TestValidateAuditArchiveMonths(t *testing.T) {
 	require.ErrorIs(t, err, ErrAuditFilterInvalid)
 }
 
-func TestBuildAuditArchiveSQLParameterizesEverything(t *testing.T) {
+func TestBuildAuditArchiveSQLParameterizesUserValues(t *testing.T) {
 	months := []time.Time{time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)}
 	projectID := uint64(9)
 	sql, params := buildAuditArchiveSQL("audit_db", "events", 4, &projectID, months, nil, []string{"story.read"},
 		storytellerModel.AuditArchiveFilters{Source: "mcp", CredentialRef: "pat_x'y"})
 	require.Contains(t, sql, `FROM "audit_db"."events"`)
-	require.Contains(t, sql, "((year = ? AND month = ?) OR (year = ? AND month = ?))")
-	require.Contains(t, sql, "action NOT IN (?)")
+	require.Contains(t, sql, "((year = '2026' AND month = '05') OR (year = '2026' AND month = '06'))")
+	require.Contains(t, sql, "action NOT IN ('story.read')")
 	require.NotContains(t, sql, "pat_x", "使用者給的值不能出現在 SQL 字串裡")
 	require.True(t, strings.HasPrefix(strings.Split(sql, "WHERE ")[1], "actor_user_id = ? AND project_id = ?"), "一定帶本人的 actor_user_id")
-	require.Equal(t, []string{"4", "9", "'2026'", "'05'", "'2026'", "'06'", "'story.read'", "'mcp'", "'pat_x''y'"}, params)
+	require.Equal(t, []string{"4", "9", "'mcp'", "'pat_x''y'"}, params)
 	require.Equal(t, strings.Count(sql, "?"), len(params))
+}
+
+func TestBuildAuditArchiveSQLStaysWithinAthenaParameterLimit(t *testing.T) {
+	months := make([]time.Time, 0, 12)
+	for index := range 12 {
+		months = append(months, time.Date(2025, time.Month(index+1), 1, 0, 0, 0, 0, time.UTC))
+	}
+	_, exclude, err := auditFilterActions("", false)
+	require.NoError(t, err)
+	require.NotEmpty(t, exclude, "預設會排除全部低重要度 action")
+	projectID := uint64(9)
+	sql, params := buildAuditArchiveSQL("audit_db", "events", 4, &projectID, months, nil, exclude,
+		storytellerModel.AuditArchiveFilters{Source: "mcp", Outcome: "success", CredentialRef: "pat_a"})
+	require.Equal(t, strings.Count(sql, "?"), len(params))
+	require.LessOrEqual(t, len(params), 25, "最多 12 個月加上所有篩選，也不能超過 Athena 的參數上限")
 }
 
 func TestCreateAuditArchiveQueryRecordsStartFailureWithoutLeakingError(t *testing.T) {
@@ -303,6 +360,10 @@ func TestRefreshAndReadAuditArchiveResults(t *testing.T) {
 
 	row.CreatedAt = now.Add(-8 * 24 * time.Hour)
 	require.NoError(t, applyAuditArchiveExpiry(repo, row, now))
+	require.Equal(t, storytellerModel.AuditArchiveQuerySucceeded, row.Status, "保留期從完成時間算，不是建立時間")
+	completedAt := now.Add(-8 * 24 * time.Hour)
+	row.CompletedAt = &completedAt
+	require.NoError(t, applyAuditArchiveExpiry(repo, row, now))
 	_, err = auditArchiveQueryResults(context.Background(), repo, engine, row, "")
 	require.ErrorIs(t, err, ErrAuditArchiveQueryExpired)
 }
@@ -319,7 +380,7 @@ func TestAuditArchiveMonthsListsQueryableAndPurgedMonths(t *testing.T) {
 	require.Equal(t, "2026-06", output.LatestMonth)
 	require.Equal(t, []storytellerModel.AuditArchiveMonthOutput{
 		{Month: "2026-06", Status: "available"},
-		{Month: "2026-05", Status: "available", RowCount: 12},
+		{Month: "2026-05", Status: "available"},
 		{Month: "2019-03", Status: "purged"},
 	}, output.Months)
 }

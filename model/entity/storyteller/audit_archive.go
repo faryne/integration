@@ -48,6 +48,7 @@ type AuditExport struct {
 	Month           string            `gorm:"column:month"`
 	Status          AuditExportStatus `gorm:"column:status"`
 	RowCount        uint64            `gorm:"column:row_count"`
+	MaxEventID      uint64            `gorm:"column:max_event_id"` // 已匯出的最大 event id；purge 只刪 id <= 這個值，晚到的事件會補匯
 	ObjectKeys      StringList        `gorm:"column:object_keys;type:json"`
 	Checksum        *string           `gorm:"column:checksum"`
 	RetainUntil     *time.Time        `gorm:"column:retain_until"`
@@ -124,10 +125,10 @@ type AuditArchiveQueryRequest struct {
 	Filters   AuditArchiveFilters `json:"filters"`
 }
 
+// AuditArchiveMonthOutput 不帶筆數：匯出是整站按月份做的，筆數是全站總量，不能給一般使用者看。
 type AuditArchiveMonthOutput struct {
-	Month    string `json:"month"`
-	Status   string `json:"status"` // available／purged
-	RowCount uint64 `json:"row_count"`
+	Month  string `json:"month"`
+	Status string `json:"status"` // available／purged
 }
 
 type AuditArchiveMonthsOutput struct {

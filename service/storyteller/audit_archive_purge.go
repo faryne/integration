@@ -15,7 +15,7 @@ const auditArchiveDeleteBatch = 5000
 type auditArchivePurgeRepository interface {
 	AuditExports() ([]storytellerModel.AuditExport, error)
 	SaveAuditExport(row *storytellerModel.AuditExport) error
-	DeleteAuditEventsBetween(from, to time.Time, limit int) (int64, error)
+	DeleteAuditEventsBetween(from, to time.Time, maxID uint64, limit int) (int64, error)
 }
 
 // RunAuditArchiveMaintenance 每天檢查一次保存期限：MySQL 只刪「已確認匯出」且超過近期月數的月份；
@@ -52,7 +52,8 @@ func RunAuditArchiveMaintenance() {
 }
 
 // purgeArchivedMySQLAuditMonths 刪除「月底已早於近期保存起點」且「匯出成功」的月份；
-// 沒匯出成功的月份永遠不刪，確保 MySQL 與 S3 之間不會出現空窗。
+// 沒匯出成功的月份永遠不刪，而且只刪 id <= max_event_id（匯出實際涵蓋的列），
+// 匯出後才晚到的事件留在 MySQL 等下次補匯，確保 MySQL 與 S3 之間不會出現空窗。
 func purgeArchivedMySQLAuditMonths(repo auditArchivePurgeRepository, now time.Time, hotMonths int) ([]string, error) {
 	exports, err := repo.AuditExports()
 	if err != nil {
@@ -73,7 +74,7 @@ func purgeArchivedMySQLAuditMonths(repo auditArchivePurgeRepository, now time.Ti
 			continue
 		}
 		for {
-			deleted, err := repo.DeleteAuditEventsBetween(month, monthEnd, auditArchiveDeleteBatch)
+			deleted, err := repo.DeleteAuditEventsBetween(month, monthEnd, row.MaxEventID, auditArchiveDeleteBatch)
 			if err != nil {
 				return purged, err
 			}

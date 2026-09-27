@@ -81,7 +81,7 @@ func auditArchiveMonths(exports []storytellerModel.AuditExport, now time.Time, h
 		case row.ArchivePurgedAt != nil:
 			output.Months = append(output.Months, storytellerModel.AuditArchiveMonthOutput{Month: row.Month, Status: "purged"})
 		case !month.After(hotFrom):
-			output.Months = append(output.Months, storytellerModel.AuditArchiveMonthOutput{Month: row.Month, Status: "available", RowCount: row.RowCount})
+			output.Months = append(output.Months, storytellerModel.AuditArchiveMonthOutput{Month: row.Month, Status: "available"})
 			if output.LatestMonth == "" {
 				output.LatestMonth = row.Month
 			}
@@ -182,18 +182,21 @@ func auditAthenaLiteral(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
-func auditAthenaPlaceholders(values []string, params *[]string) string {
-	placeholders := make([]string, len(values))
+// auditAthenaLiteralList 把後端自己產生的值（registry 裡的 action 名稱）組成 IN 清單。
+// 這些值不是使用者輸入，直接寫成已跳脫的字面值，不佔 ExecutionParameters 的名額。
+func auditAthenaLiteralList(values []string) string {
+	literals := make([]string, len(values))
 	for index, value := range values {
-		placeholders[index] = "?"
-		*params = append(*params, auditAthenaLiteral(value))
+		literals[index] = auditAthenaLiteral(value)
 	}
-	return strings.Join(placeholders, ", ")
+	return strings.Join(literals, ", ")
 }
 
-// buildAuditArchiveSQL 組封存查詢 SQL；資料庫與資料表名稱來自設定並已驗證只含英數底線，
-// 其餘所有值都走參數。一定帶本人的 actor_user_id；月份條件逐月列出 (year, month)，
-// 讓 partition projection 只掃選到的月份。
+// buildAuditArchiveSQL 組封存查詢 SQL。Athena 的 execution parameters 數量有限（console 上限 25 個），
+// 所以只有使用者可控的值（source、outcome、credential_ref）與 user／project ID 走參數；
+// 資料庫與資料表名稱來自設定並已驗證只含英數底線，action 清單來自 registry，
+// 月份由 time.Format 產生、只會是數字，這三類直接寫進 SQL。
+// 一定帶本人的 actor_user_id；月份條件逐月列出 (year, month)，讓 partition projection 只掃選到的月份。
 func buildAuditArchiveSQL(database, table string, userID uint64, projectID *uint64, months []time.Time, actions, exclude []string, filters storytellerModel.AuditArchiveFilters) (string, []string) {
 	params := []string{strconv.FormatUint(userID, 10)}
 	where := []string{"actor_user_id = ?"}
@@ -203,15 +206,14 @@ func buildAuditArchiveSQL(database, table string, userID uint64, projectID *uint
 	}
 	monthConditions := make([]string, 0, len(months))
 	for _, month := range months {
-		monthConditions = append(monthConditions, "(year = ? AND month = ?)")
-		params = append(params, auditAthenaLiteral(fmt.Sprintf("%04d", month.Year())), auditAthenaLiteral(fmt.Sprintf("%02d", int(month.Month()))))
+		monthConditions = append(monthConditions, fmt.Sprintf("(year = '%04d' AND month = '%02d')", month.Year(), int(month.Month())))
 	}
 	where = append(where, "("+strings.Join(monthConditions, " OR ")+")")
 	if len(actions) > 0 {
-		where = append(where, "action IN ("+auditAthenaPlaceholders(actions, &params)+")")
+		where = append(where, "action IN ("+auditAthenaLiteralList(actions)+")")
 	}
 	if len(exclude) > 0 {
-		where = append(where, "action NOT IN ("+auditAthenaPlaceholders(exclude, &params)+")")
+		where = append(where, "action NOT IN ("+auditAthenaLiteralList(exclude)+")")
 	}
 	for _, condition := range [][2]string{{"source", filters.Source}, {"outcome", filters.Outcome}, {"credential_ref", filters.CredentialRef}} {
 		if condition[1] != "" {
@@ -279,8 +281,10 @@ func refreshAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryReposit
 	return repo.SaveAuditArchiveQuery(row)
 }
 
+// applyAuditArchiveExpiry 以查詢完成時間起算保留期（結果檔是完成時才寫進結果 bucket），
+// 不是 job 建立時間；Athena 排隊或執行很久時才不會一完成就過期。
 func applyAuditArchiveExpiry(repo auditArchiveQueryRepository, row *storytellerModel.AuditArchiveQuery, now time.Time) error {
-	if row.Status != storytellerModel.AuditArchiveQuerySucceeded || now.Sub(row.CreatedAt) < auditArchiveResultTTL {
+	if row.Status != storytellerModel.AuditArchiveQuerySucceeded || row.CompletedAt == nil || now.Sub(*row.CompletedAt) < auditArchiveResultTTL {
 		return nil
 	}
 	row.Status = storytellerModel.AuditArchiveQueryExpired

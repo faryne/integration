@@ -26,8 +26,8 @@ const (
 
 type auditArchiveExportRepository interface {
 	AuditEarliestEventTime() (*time.Time, error)
-	AuditEventsForExport(from, to time.Time, afterAt *time.Time, afterID uint64, limit int) ([]storytellerModel.AuditEvent, error)
-	AuditEventCountBetween(from, to time.Time) (int64, error)
+	AuditEventsForExport(from, to time.Time, watermark uint64, afterAt *time.Time, afterID uint64, limit int) ([]storytellerModel.AuditEvent, error)
+	AuditEventCountBetween(from, to time.Time, watermark uint64) (int64, error)
 	AuditExports() ([]storytellerModel.AuditExport, error)
 	SaveAuditExport(row *storytellerModel.AuditExport) error
 }
@@ -83,8 +83,9 @@ func auditArchiveMonthPrefix(prefix string, month time.Time) string {
 	return fmt.Sprintf("%s/year=%04d/month=%02d/", strings.TrimSuffix(prefix, "/"), month.Year(), int(month.Month()))
 }
 
-// RunAuditArchiveExport 每月月初把「已結束、還沒匯出」的月份匯出到 S3；
-// 會從 MySQL 最早的月份開始補，所以某個月失敗了，下次排程會自動重試。
+// RunAuditArchiveExport 每月月初把「已結束」月份裡還沒匯出的事件匯出到 S3：沒匯出過的月份整月匯出，
+// 已匯出的月份只補匯 watermark 之後晚到的事件（例如 Stream 重試晚寫進 MySQL 的）。
+// 會從 MySQL 最早的月份開始檢查，所以某個月失敗了，下次排程會自動重試。
 func RunAuditArchiveExport() {
 	if !auditArchiveEnabled() {
 		log.Logger().Info("Storyteller audit archive export skipped: archive bucket is not configured")
@@ -113,24 +114,34 @@ func exportPendingAuditMonths(ctx context.Context, repo auditArchiveExportReposi
 	if err != nil {
 		return nil, err
 	}
-	done := make(map[string]bool, len(exports))
-	for _, row := range exports {
-		done[row.Month] = row.Status == storytellerModel.AuditExportStatusExported
+	previous := make(map[string]*storytellerModel.AuditExport, len(exports))
+	for index := range exports {
+		if exports[index].Status == storytellerModel.AuditExportStatusExported {
+			previous[exports[index].Month] = &exports[index]
+		}
 	}
 	exported := make([]string, 0)
 	current := auditMonthStart(now)
 	for month := auditMonthStart(*earliest); month.Before(current); month = month.AddDate(0, 1, 0) {
 		key := month.Format(auditArchiveMonthKey)
-		if done[key] {
+		base := previous[key]
+		if base != nil && base.ArchivePurgedAt != nil {
 			continue
 		}
-		row, exportErr := exportAuditMonth(ctx, repo, store, prefix, month, retentionYears, now)
+		row, exportErr := exportAuditMonth(ctx, repo, store, prefix, month, base, retentionYears, now)
 		if exportErr != nil {
+			if base != nil {
+				// 補匯失敗不能蓋掉既有的成功紀錄（purge 依它判斷能刪哪些列），只回報錯誤等下次重試。
+				return exported, exportErr
+			}
 			// error_message 欄位是 VARCHAR(255)，以字元截斷避免切壞中文。
 			message := []rune(exportErr.Error())
 			message = message[:min(len(message), 250)]
 			errorMessage := string(message)
 			row = &storytellerModel.AuditExport{Month: key, Status: storytellerModel.AuditExportStatusFailed, ErrorMessage: &errorMessage}
+		}
+		if row == nil {
+			continue // 已匯出而且沒有晚到的事件
 		}
 		if err := repo.SaveAuditExport(row); err != nil {
 			return exported, err
@@ -143,13 +154,25 @@ func exportPendingAuditMonths(ctx context.Context, repo auditArchiveExportReposi
 	return exported, nil
 }
 
-// exportAuditMonth 把一個月份的事件依時間順序寫成多個 JSONL.gz 檔（每檔最多 auditArchivePartRows 筆），
-// 檔名固定，重跑會覆蓋同名檔（Object Lock 會保留舊版本）；最後比對筆數，對不上就算失敗、不標成已匯出。
-func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, store auditArchiveObjectStore, prefix string, month time.Time, retentionYears int, now time.Time) (*storytellerModel.AuditExport, error) {
+// exportAuditMonth 把一個月份裡 id 大於 base watermark 的事件依時間順序寫成 JSONL.gz 檔（每檔最多 auditArchivePartRows 筆）。
+// part 編號接在既有檔案後面，補匯不會覆蓋已匯出的檔；同一次匯出失敗重跑時才會覆蓋同名檔（Object Lock 會保留舊版本）。
+// 最後比對筆數，對不上就算失敗、不更新紀錄。base 已匯出且沒有新事件時回傳 nil。
+func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, store auditArchiveObjectStore, prefix string, month time.Time, base *storytellerModel.AuditExport, retentionYears int, now time.Time) (*storytellerModel.AuditExport, error) {
 	from, to := month, month.AddDate(0, 1, 0)
 	retainUntil := to.AddDate(retentionYears, 0, 0)
+	// result 不帶 mysql_purged_at：補匯後 upsert 會把它清成 NULL，讓每日清除排程再刪掉新補匯的列。
+	result := &storytellerModel.AuditExport{Month: month.Format(auditArchiveMonthKey), Status: storytellerModel.AuditExportStatusExported}
+	if base != nil {
+		result.RowCount, result.MaxEventID = base.RowCount, base.MaxEventID
+		result.ObjectKeys = append(storytellerModel.StringList{}, base.ObjectKeys...)
+		// 保存年數設定改短時，已鎖的舊檔仍以原本的 retain_until 為準，紀錄取較晚者。
+		if base.RetainUntil != nil && base.RetainUntil.After(retainUntil) {
+			retainUntil = *base.RetainUntil
+		}
+	}
+	watermark := result.MaxEventID
 	monthPrefix := auditArchiveMonthPrefix(prefix, month)
-	keys, partSums := make([]string, 0), make([]string, 0)
+	partSums := make([]string, 0)
 	var total uint64
 	var part bytes.Buffer
 	var gz *gzip.Writer
@@ -161,12 +184,12 @@ func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, st
 		if err := gz.Close(); err != nil {
 			return err
 		}
-		key := fmt.Sprintf("%spart-%05d.jsonl.gz", monthPrefix, len(keys))
+		key := fmt.Sprintf("%spart-%05d.jsonl.gz", monthPrefix, len(result.ObjectKeys))
 		if err := store.PutArchiveObject(ctx, key, part.Bytes(), retainUntil); err != nil {
 			return err
 		}
 		sum := sha256.Sum256(part.Bytes())
-		keys, partSums = append(keys, key), append(partSums, hex.EncodeToString(sum[:]))
+		result.ObjectKeys, partSums = append(result.ObjectKeys, key), append(partSums, hex.EncodeToString(sum[:]))
 		part.Reset()
 		gz, partRows = nil, 0
 		return nil
@@ -174,7 +197,7 @@ func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, st
 	var afterAt *time.Time
 	var afterID uint64
 	for {
-		rows, err := repo.AuditEventsForExport(from, to, afterAt, afterID, auditArchiveExportBatch)
+		rows, err := repo.AuditEventsForExport(from, to, watermark, afterAt, afterID, auditArchiveExportBatch)
 		if err != nil {
 			return nil, err
 		}
@@ -190,6 +213,7 @@ func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, st
 				return nil, err
 			}
 			total++
+			result.MaxEventID = max(result.MaxEventID, event.ID)
 			if partRows++; partRows >= auditArchivePartRows {
 				if err := flush(); err != nil {
 					return nil, err
@@ -205,18 +229,24 @@ func exportAuditMonth(ctx context.Context, repo auditArchiveExportRepository, st
 	if err := flush(); err != nil {
 		return nil, err
 	}
-	count, err := repo.AuditEventCountBetween(from, to)
+	if base != nil && total == 0 {
+		return nil, nil
+	}
+	count, err := repo.AuditEventCountBetween(from, to, watermark)
 	if err != nil {
 		return nil, err
 	}
 	if uint64(count) != total {
-		return nil, fmt.Errorf("audit export row count mismatch for %s: exported %d, mysql %d", month.Format(auditArchiveMonthKey), total, count)
+		return nil, fmt.Errorf("audit export row count mismatch for %s: exported %d, mysql %d", result.Month, total, count)
+	}
+	// checksum 是串鏈：補匯時把上一次的 checksum 放在最前面，再接這次新增檔案的 checksum。
+	if base != nil && base.Checksum != nil {
+		partSums = append([]string{*base.Checksum}, partSums...)
 	}
 	checksum := sha256.Sum256([]byte(strings.Join(partSums, "\n")))
 	checksumHex := hex.EncodeToString(checksum[:])
 	exportedAt := now
-	return &storytellerModel.AuditExport{
-		Month: month.Format(auditArchiveMonthKey), Status: storytellerModel.AuditExportStatusExported, RowCount: total,
-		ObjectKeys: keys, Checksum: &checksumHex, RetainUntil: &retainUntil, ExportedAt: &exportedAt,
-	}, nil
+	result.RowCount += total
+	result.Checksum, result.RetainUntil, result.ExportedAt = &checksumHex, &retainUntil, &exportedAt
+	return result, nil
 }

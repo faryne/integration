@@ -96,6 +96,9 @@ export function StorytellerAuditArchivePanel({
   const running = status === "queued" || status === "running";
 
   useEffect(() => {
+    if (filterOptions.isError) setSnack(auditErrorMessage(filterOptions.error));
+  }, [filterOptions.isError, filterOptions.error]);
+  useEffect(() => {
     if (job.isError) setSnack(auditErrorMessage(job.error));
   }, [job.isError, job.error]);
   useEffect(() => {

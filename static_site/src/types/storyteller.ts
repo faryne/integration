@@ -901,7 +901,6 @@ export interface StorytellerAuditArchiveMonths {
   months: Array<{
     month: string;
     status: "available" | "purged";
-    row_count: number;
   }>;
   retention_years: number;
   latest_archive_month?: string;

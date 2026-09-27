@@ -33,6 +33,13 @@ import type {
 } from "@/types/storyteller.ts";
 
 const today = () => dayjs().format("YYYY-MM-DD");
+// 近期範圍的起點是「現在 − N 個月」的精確時刻，自訂日期從當天 00:00 起算會落在起點之前，
+// 所以最早只能選到隔天。
+const earliestHotDate = () =>
+  dayjs()
+    .subtract(AUDIT_HOT_RETENTION_MONTHS, "month")
+    .add(1, "day")
+    .format("YYYY-MM-DD");
 
 const defaultQuery: StorytellerAuditEventQuery = {
   ...emptyAuditAdvancedFilters,
@@ -47,10 +54,7 @@ function customRangeError(query: StorytellerAuditEventQuery) {
   if (!query.customFrom || !query.customTo) return "請選擇開始與結束日期";
   if (query.customTo < query.customFrom) return "結束日期不能早於開始日期";
   if (query.customTo > today()) return "結束日期不能晚於今天";
-  const earliest = dayjs()
-    .subtract(AUDIT_HOT_RETENTION_MONTHS, "month")
-    .format("YYYY-MM-DD");
-  if (query.customFrom < earliest) return "archive";
+  if (query.customFrom < earliestHotDate()) return "archive";
   return "";
 }
 
@@ -88,9 +92,7 @@ export function StorytellerAuditEventList({
   );
   const update = (patch: Partial<StorytellerAuditEventQuery>) =>
     setQuery((value) => ({ ...value, ...patch }));
-  const earliestDate = dayjs()
-    .subtract(AUDIT_HOT_RETENTION_MONTHS, "month")
-    .format("YYYY-MM-DD");
+  const earliestDate = earliestHotDate();
 
   return (
     <Stack spacing={2}>
