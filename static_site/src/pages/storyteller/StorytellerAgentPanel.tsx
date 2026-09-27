@@ -271,6 +271,8 @@ export interface StorytellerAgentMessageProps {
     selection: StorytellerAgentPanelSelection | null,
   ) => void;
   onReply?: (message: StorytellerAgentPanelMessage) => void;
+  // 呼叫端可在共用的訊息動作列加入功能，例如把這輪對話整理成記憶。
+  additionalActions?: ReactNode;
   isReplyTarget?: boolean;
   // 給 @thisStory／@story:[...] 這類引用 token 解析成真連結用——留空時
   // （例如載入中的暫時訊息，content 本來就是空字串）直接照原樣顯示，不會出錯。
@@ -431,6 +433,7 @@ export function StorytellerAgentMessage(props: StorytellerAgentMessageProps) {
               回覆
             </Button>
           )}
+          {props.additionalActions}
         </Stack>
       )}
     </StorytellerChatBubble>

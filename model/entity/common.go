@@ -39,6 +39,12 @@ type CommonPaginationQueryRequest struct {
 	PerPage int64 `query:"per_page" validate:"omitempty,gte=1,lte=100"`
 }
 
+// NullableEqual 比較兩個 nullable scalar；放在共用 entity package，讓 service
+// 與 repository 不必各自維護相同的 nil/value 判斷。
+func NullableEqual[T comparable](left, right *T) bool {
+	return left == nil && right == nil || left != nil && right != nil && *left == *right
+}
+
 func (r CommonPaginationQueryRequest) PageValue() int64 {
 	if r.Page <= 0 {
 		return 1

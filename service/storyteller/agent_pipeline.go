@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/service/log"
+	"go.uber.org/zap"
 )
 
 // 單一非同步 pipeline：一般對話（agentic query）、重送（resend）、skill（/rewrite
@@ -39,6 +41,7 @@ type agentRunPlan struct {
 	ProjectPublicID string
 	Project         *storytellerModel.Project
 	Target          agentRunTarget
+	Memories        []storytellerModel.AssistantMemory
 	Persona         *storytellerModel.Agent
 	Key             *storytellerModel.ProviderAPIKey
 	ModelName       string
@@ -105,6 +108,15 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
+	storyID, loreID := agentMemoryTargetIDs(target)
+	memories, err := repo.ActiveAssistantMemories(p.UserID, project.ID, storyID, loreID, assistantMemoryPromptLimit)
+	if err != nil {
+		// 記憶是輔助 context，讀取失敗不應讓整個 AI 助理不可用。
+		// 這也讓 backend 比 memory migration 先啟動時仍可提供基本對話能力。
+		log.Logger().Warn("Storyteller assistant memory lookup failed; continuing without memories",
+			zap.Uint64("user_id", p.UserID), zap.Uint64("project_id", project.ID), zap.Error(err))
+		memories = nil
+	}
 	var persona *storytellerModel.Agent
 	if p.PersonaAgentID != nil {
 		if persona, err = repo.Agent(p.UserID, *p.PersonaAgentID); err != nil {
@@ -127,7 +139,14 @@ func resolveAgentRunPlan(deps agentSubmitDeps, p agentSubmitParams) (*agentRunPl
 	if err != nil {
 		return nil, err
 	}
-	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Persona: persona, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
+	return &agentRunPlan{UserID: p.UserID, ProjectPublicID: p.ProjectPublicID, Project: project, Target: target, Memories: memories, Persona: persona, Key: key, ModelName: modelName, Provider: provider, APIKey: apiKey}, nil
+}
+
+func agentMemoryTargetIDs(target agentRunTarget) (storyID, loreID *uint64) {
+	if target.Kind == agenticQueryCurrentTargetLore {
+		return nil, &target.ID
+	}
+	return &target.ID, nil
 }
 
 func lookupAgentRunTarget(repo agentRunRepository, projectID uint64, kind agenticQueryCurrentTargetKind, publicID string) (agentRunTarget, error) {

@@ -3,6 +3,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsBookmarkOutlinedIcon from "@mui/icons-material/CollectionsBookmarkOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   Autocomplete,
@@ -62,15 +63,22 @@ const searchFilters: Array<{ value: WorkspaceSearchFilter; label: string }> = [
   { value: "story", label: "作品" },
   { value: "lore", label: "設定" },
   { value: "asset", label: "資產" },
+  { value: "memory", label: "記憶" },
 ];
 
 const resultIcons = {
   story: <ArticleOutlinedIcon fontSize="small" />,
   lore: <CollectionsBookmarkOutlinedIcon fontSize="small" />,
   asset: <ImageOutlinedIcon fontSize="small" />,
+  memory: <PsychologyAltOutlinedIcon fontSize="small" />,
 };
 
-const resultLabels = { story: "作品", lore: "設定", asset: "資產" };
+const resultLabels = {
+  story: "作品",
+  lore: "設定",
+  asset: "資產",
+  memory: "記憶",
+};
 
 export function WorkspaceSearch({
   open,
@@ -243,7 +251,7 @@ export function WorkspaceSearch({
                 autoFocus
                 inputRef={searchInputRef}
                 fullWidth
-                placeholder="搜尋作品、設定、資產……"
+                placeholder="搜尋作品、設定、資產、記憶……"
                 onKeyDown={handleSearchKeyDown}
                 slotProps={{
                   htmlInput: {

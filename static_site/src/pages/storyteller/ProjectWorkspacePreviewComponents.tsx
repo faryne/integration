@@ -6,6 +6,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
@@ -83,6 +84,8 @@ export interface WorkspaceSidebarProps {
     beforeId: string | null,
   ) => void;
   onNavigate?: () => void;
+  memoriesSelected?: boolean;
+  onOpenMemories?: () => void;
   // 側欄頂端搜尋框送出時呼叫；手機 drawer 會先經過 onNavigate 收起再開搜尋對話框。
   onSearch?: (keyword: string) => void;
 }
@@ -103,6 +106,8 @@ export function WorkspaceSidebar({
   onReorderVolume,
   onReorderLoreCollection,
   onNavigate,
+  memoriesSelected,
+  onOpenMemories,
   onSearch,
 }: WorkspaceSidebarProps) {
   const storiesByCollection = useMemo(() => {
@@ -218,6 +223,29 @@ export function WorkspaceSidebar({
           selectedItem={selectedItem}
           onCreate={onCreateAssetCollection}
         />
+        {onOpenMemories && (
+          <ListItemButton
+            selected={memoriesSelected}
+            onClick={() => {
+              onOpenMemories();
+              onNavigate?.();
+            }}
+            sx={{ borderRadius: 1, mx: 0.5, mb: 1 }}
+          >
+            <ListItemIcon
+              sx={{
+                minWidth: 32,
+                color: memoriesSelected ? "primary.main" : "inherit",
+              }}
+            >
+              <PsychologyAltOutlinedIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary="梭梭的記憶"
+              primaryTypographyProps={{ fontWeight: 800, fontSize: 13 }}
+            />
+          </ListItemButton>
+        )}
       </Box>
       {project && (
         <ProjectActionsGroup project={project} onNavigate={onNavigate} />

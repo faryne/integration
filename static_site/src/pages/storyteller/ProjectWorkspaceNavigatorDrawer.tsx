@@ -2,6 +2,7 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
@@ -93,6 +94,10 @@ export function WorkspaceMobileNavigatorDrawer({
               onClose();
               sidebarProps.onCreateAssetCollection?.();
             }}
+            onOpenMemories={() => {
+              onClose();
+              sidebarProps.onOpenMemories?.();
+            }}
           />
         </Box>
       </Stack>
@@ -100,13 +105,17 @@ export function WorkspaceMobileNavigatorDrawer({
   );
 }
 
-/** Desktop 收合後仍保留三個主要區域入口，不讓 52px 欄位只是空白佔位。 */
+/** Desktop 收合後仍保留四個主要區域入口，不讓 52px 欄位只是空白佔位。 */
 export function WorkspaceSidebarRail({
   selected,
   onSelect,
   onSearch,
+  memoriesSelected,
+  onOpenMemories,
 }: Pick<WorkspaceSidebarProps, "selected" | "onSelect"> & {
   onSearch: () => void;
+  memoriesSelected?: boolean;
+  onOpenMemories?: () => void;
 }) {
   const items = [
     {
@@ -136,12 +145,16 @@ export function WorkspaceSidebarRail({
           <IconButton
             size="small"
             aria-label={item.label}
-            color={selected.section === item.section ? "primary" : "default"}
+            color={
+              !memoriesSelected && selected.section === item.section
+                ? "primary"
+                : "default"
+            }
             onClick={() => onSelect(item.section, "")}
             sx={{
               borderRadius: 1,
               bgcolor:
-                selected.section === item.section
+                !memoriesSelected && selected.section === item.section
                   ? "action.selected"
                   : undefined,
             }}
@@ -150,6 +163,22 @@ export function WorkspaceSidebarRail({
           </IconButton>
         </Tooltip>
       ))}
+      {onOpenMemories && (
+        <Tooltip title="梭梭的記憶" placement="right">
+          <IconButton
+            size="small"
+            aria-label="梭梭的記憶"
+            color={memoriesSelected ? "primary" : "default"}
+            onClick={onOpenMemories}
+            sx={{
+              borderRadius: 1,
+              bgcolor: memoriesSelected ? "action.selected" : undefined,
+            }}
+          >
+            <PsychologyAltOutlinedIcon />
+          </IconButton>
+        </Tooltip>
+      )}
     </Stack>
   );
 }

@@ -38,7 +38,7 @@ func ScopeToolsToProject(tools []ToolSpec, authorizedProjectPublicID string) []T
 	return scoped
 }
 
-// ReadOnlyStorytellerTools 過濾出唯讀工具（storyteller_get_*／storyteller_list_*），
+// ReadOnlyStorytellerTools 過濾出唯讀工具（storyteller_get_*／storyteller_list_* 與明確列出的搜尋工具），
 // 排除任何會寫入／刪除／搬移資料的工具；storyteller_list_projects 也刻意排除，
 // 因為它沒有 project_public_id，包上 ScopeToolsToProject 後一定會被擋，放進去只會
 // 浪費 loop step。
@@ -49,7 +49,7 @@ func ReadOnlyStorytellerTools() []ToolSpec {
 		if spec.Name == "storyteller_list_projects" {
 			continue
 		}
-		if strings.HasPrefix(spec.Name, "storyteller_get_") || strings.HasPrefix(spec.Name, "storyteller_list_") {
+		if strings.HasPrefix(spec.Name, "storyteller_get_") || strings.HasPrefix(spec.Name, "storyteller_list_") || spec.Name == "storyteller_search_memories" {
 			out = append(out, spec)
 		}
 	}

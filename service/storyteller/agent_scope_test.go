@@ -45,8 +45,8 @@ func TestReadOnlyStorytellerToolsExcludesWrites(t *testing.T) {
 	require.NotEmpty(t, tools)
 	for _, spec := range tools {
 		require.Truef(t,
-			hasPrefixAny(spec.Name, "storyteller_get_", "storyteller_list_"),
-			"%s 不是 get_/list_ 開頭的唯讀工具，不該出現在 ReadOnlyStorytellerTools 裡", spec.Name)
+			hasPrefixAny(spec.Name, "storyteller_get_", "storyteller_list_") || spec.Name == "storyteller_search_memories",
+			"%s 不是允許的唯讀工具，不該出現在 ReadOnlyStorytellerTools 裡", spec.Name)
 	}
 	// 交叉確認寫入/刪除工具，以及沒有 project_public_id 的 list_projects 真的被排除。
 	names := make(map[string]bool, len(tools))
@@ -58,6 +58,7 @@ func TestReadOnlyStorytellerToolsExcludesWrites(t *testing.T) {
 		"storyteller_get_story_chapter",
 		"storyteller_list_lore_chapters",
 		"storyteller_get_lore_chapter",
+		"storyteller_search_memories",
 	} {
 		require.Truef(t, names[readTool], "%s 應該開放給 AAS 當唯讀工具", readTool)
 	}
@@ -68,6 +69,8 @@ func TestReadOnlyStorytellerToolsExcludesWrites(t *testing.T) {
 		"storyteller_move_story",
 		"storyteller_revert_story",
 		"storyteller_delete_lore",
+		"storyteller_search_replace_story",
+		"storyteller_search_replace_lore",
 	} {
 		require.Falsef(t, names[writeTool], "%s 不該出現在 ReadOnlyStorytellerTools 裡", writeTool)
 	}

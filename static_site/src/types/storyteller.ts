@@ -593,6 +593,69 @@ export interface StorytellerAgenticChatResponse {
   messages: StorytellerStoryChatMessage[];
 }
 
+export type StorytellerAssistantMemoryScope = "project" | "story" | "lore";
+
+export type StorytellerAssistantMemoryKind =
+  "preference" | "instruction" | "decision" | "context";
+
+export interface StorytellerAssistantMemoryDraft {
+  public_id: string;
+  status: "in_progress" | "completed" | "failed" | "confirmed";
+  should_remember?: boolean;
+  memory_name?: string;
+  scope_type?: StorytellerAssistantMemoryScope;
+  kind?: StorytellerAssistantMemoryKind;
+  tags: string[];
+  content?: string;
+  priority?: number;
+  error_message?: string;
+  supersedes_public_id?: string;
+  superseded_memory?: StorytellerAssistantMemory;
+}
+
+export interface StorytellerAssistantMemoryGenerateRequest {
+  provider_apikey_id: number;
+  model_name: string;
+}
+
+export interface StorytellerAssistantMemoryConfirmRequest {
+  memory_name: string;
+  scope_type: StorytellerAssistantMemoryScope;
+  kind: StorytellerAssistantMemoryKind;
+  tags: string[];
+  content: string;
+  priority: number;
+  is_pinned: boolean;
+  skip_supersede?: boolean;
+}
+
+export type StorytellerAssistantMemoryUpdateRequest = Omit<
+  StorytellerAssistantMemoryConfirmRequest,
+  "skip_supersede"
+>;
+
+export interface StorytellerAssistantMemory {
+  public_id: string;
+  memory_name?: string;
+  scope_type: StorytellerAssistantMemoryScope;
+  target_public_id?: string;
+  target_name?: string;
+  kind: StorytellerAssistantMemoryKind;
+  tags: string[];
+  content: string;
+  priority: number;
+  is_pinned: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StorytellerAssistantMemoryPage {
+  memories: StorytellerAssistantMemory[];
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
 export interface StorytellerAgenticReferenceContentResponse {
   content: string;
 }
@@ -747,9 +810,10 @@ export interface StorytellerProjectSearchResult {
   matches: StorytellerWorkSearchResult[];
 }
 
-export type StorytellerWorkspaceSearchKind = "story" | "lore" | "asset";
+export type StorytellerWorkspaceSearchKind =
+  "story" | "lore" | "asset" | "memory";
 
-// 登入後的工作台搜尋結果；與公開作品搜尋分開，允許命中私人草稿、設定與資產。
+// 登入後的工作台搜尋結果；與公開作品搜尋分開，允許命中私人草稿、設定、資產與記憶。
 export interface StorytellerWorkspaceSearchResult {
   kind: StorytellerWorkspaceSearchKind;
   public_id: string;

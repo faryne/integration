@@ -37,7 +37,7 @@ func (s *Service) SearchWorkspace(userID uint64, projectPublicID, keyword string
 	if utf8.RuneCountInString(keyword) > workspaceSearchKeywordLimit {
 		return nil, fmt.Errorf("%w: must not exceed %d characters", ErrWorkspaceSearchKeywordTooLong, workspaceSearchKeywordLimit)
 	}
-	if kind != "" && kind != storytellerModel.WorkspaceSearchKindStory && kind != storytellerModel.WorkspaceSearchKindLore && kind != storytellerModel.WorkspaceSearchKindAsset {
+	if kind != "" && kind != storytellerModel.WorkspaceSearchKindStory && kind != storytellerModel.WorkspaceSearchKindLore && kind != storytellerModel.WorkspaceSearchKindAsset && kind != storytellerModel.WorkspaceSearchKindMemory {
 		return nil, ErrWorkspaceSearchKindInvalid
 	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
@@ -45,7 +45,7 @@ func (s *Service) SearchWorkspace(userID uint64, projectPublicID, keyword string
 		return nil, err
 	}
 
-	sources := make([]storytellerModel.WorkspaceSearchSource, 0, workspaceSearchPerKindLimit*3)
+	sources := make([]storytellerModel.WorkspaceSearchSource, 0, workspaceSearchPerKindLimit*4)
 	appendRows := func(rows []storytellerModel.WorkspaceSearchSource, searchErr error) error {
 		if searchErr != nil {
 			return searchErr
@@ -77,6 +77,11 @@ func (s *Service) SearchWorkspace(userID uint64, projectPublicID, keyword string
 	}
 	if kind == "" || kind == storytellerModel.WorkspaceSearchKindAsset {
 		if err := appendRows(s.repo.WorkspaceSearchAssets(project.ID, keyword, workspaceSearchCandidateLimit)); err != nil {
+			return nil, err
+		}
+	}
+	if kind == "" || kind == storytellerModel.WorkspaceSearchKindMemory {
+		if err := appendRows(s.repo.WorkspaceSearchMemories(userID, project.ID, keyword, workspaceSearchCandidateLimit)); err != nil {
 			return nil, err
 		}
 	}
@@ -122,6 +127,9 @@ func workspaceSearchPlainText(source storytellerModel.WorkspaceSearchSource) str
 		}
 	case storytellerModel.WorkspaceSearchKindLore:
 		content = plainTextFromStoryContent(source.Content)
+	case storytellerModel.WorkspaceSearchKindMemory:
+		content = strings.Join([]string{strings.Join(decodeAssistantMemoryTags(source.Summary), " "), source.Content}, "\n")
+		return workspaceSearchStripMarkdown(content)
 	default:
 		content = source.Content
 	}
@@ -214,6 +222,11 @@ func workspaceSearchLocation(source storytellerModel.WorkspaceSearchSource) stri
 		return "作品與冊／" + collection
 	case storytellerModel.WorkspaceSearchKindLore:
 		return "設定集／" + collection
+	case storytellerModel.WorkspaceSearchKindMemory:
+		if source.CollectionName == "" {
+			return "梭梭的記憶／專案"
+		}
+		return "梭梭的記憶／" + source.CollectionName
 	default:
 		return "資產庫／" + collection
 	}

@@ -5,9 +5,10 @@ import "time"
 type WorkspaceSearchKind string
 
 const (
-	WorkspaceSearchKindStory WorkspaceSearchKind = "story"
-	WorkspaceSearchKindLore  WorkspaceSearchKind = "lore"
-	WorkspaceSearchKindAsset WorkspaceSearchKind = "asset"
+	WorkspaceSearchKindStory  WorkspaceSearchKind = "story"
+	WorkspaceSearchKindLore   WorkspaceSearchKind = "lore"
+	WorkspaceSearchKindAsset  WorkspaceSearchKind = "asset"
+	WorkspaceSearchKindMemory WorkspaceSearchKind = "memory"
 )
 
 // WorkspaceSearchSource 是 repository 到 service 的內部查詢形狀；保留完整內容只為了
@@ -25,7 +26,7 @@ type WorkspaceSearchSource struct {
 	Relevance          int                 `gorm:"column:relevance" json:"-"`
 }
 
-// WorkspaceSearchResult 是工作台跨作品／設定／資產搜尋的共用輸出。
+// WorkspaceSearchResult 是工作台跨作品／設定／資產／梭梭記憶搜尋的共用輸出。
 type WorkspaceSearchResult struct {
 	Kind               WorkspaceSearchKind `json:"kind"`
 	PublicID           string              `json:"public_id"`
