@@ -16,6 +16,19 @@ type envConfig struct {
 	// AuditHotRetentionMonths 是稽核事件留在 MySQL 的月數；近期查詢只允許這個範圍內，
 	// 更早的資料要走封存查詢（P4）。
 	AuditHotRetentionMonths int `env:"AUDIT_HOT_RETENTION_MONTHS,default=3"`
+	// 以下是稽核封存（P4）：S3 保存年數、bucket 與 Athena 設定。bucket 留空代表封存功能關閉，
+	// 月匯出與清除排程會直接略過，封存查詢頁也不開放。
+	// AWS 憑證優先用 AUDIT_AWS_ACCESS_KEY／SECRET；沒設就走 AWS 預設憑證鏈（例如 EC2 instance role）。
+	AuditArchiveRetentionYears int    `env:"AUDIT_ARCHIVE_RETENTION_YEARS,default=7"`
+	AuditArchiveBucket         string `env:"AUDIT_ARCHIVE_BUCKET"`
+	AuditArchivePrefix         string `env:"AUDIT_ARCHIVE_PREFIX,default=audit"`
+	AuditArchiveRegion         string `env:"AUDIT_ARCHIVE_REGION"`
+	AuditArchiveMaxMonths      int    `env:"AUDIT_ARCHIVE_MAX_MONTHS,default=12"`
+	AuditAthenaWorkgroup       string `env:"AUDIT_ATHENA_WORKGROUP"`
+	AuditAthenaDatabase        string `env:"AUDIT_ATHENA_DATABASE"`
+	AuditAthenaTable           string `env:"AUDIT_ATHENA_TABLE,default=storyteller_audit_events"`
+	AuditAWSAccessKey          string `env:"AUDIT_AWS_ACCESS_KEY"`
+	AuditAWSSecretKey          string `env:"AUDIT_AWS_SECRET_KEY"`
 
 	// MaintenanceMode 手動維護開關；有設 MaintenanceStart／MaintenanceEnd 任一個時，
 	// 改用時間區間判斷是否進維護模式，MaintenanceMode 這個值會被忽略。

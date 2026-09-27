@@ -1,3 +1,4 @@
+import axios from "axios";
 import dayjs from "dayjs";
 import type {
   StorytellerAuditEvent,
@@ -105,6 +106,10 @@ export const auditActionLabels: Record<string, string> = {
   "memory.list": "讀取梭梭記憶",
   "memory.search": "搜尋梭梭記憶",
   "author_profile.list": "讀取作者頁列表",
+  "audit.archive_query.create": "查詢封存稽核紀錄",
+  "system.audit.export": "匯出稽核封存",
+  "system.audit.mysql_purge": "清除已封存的近期稽核資料",
+  "system.audit.archive_purge": "刪除超過保存期限的封存",
 };
 
 export const auditCategoryLabels: Record<string, string> = {
@@ -119,6 +124,7 @@ export const auditCategoryLabels: Record<string, string> = {
   profile: "個人資料",
   social: "收藏與追蹤",
   read: "讀取",
+  audit: "稽核查詢",
   system: "系統",
 };
 
@@ -224,4 +230,14 @@ export function groupAuditEvents(events: StorytellerAuditEvent[]) {
   }
   flush();
   return items;
+}
+
+// API 錯誤訊息優先用後端給的中文 message（例如「請改用封存查詢」），沒有才用通用文案。
+export function auditErrorMessage(error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const message = (error.response?.data as { message?: string } | undefined)
+      ?.message;
+    if (message) return message;
+  }
+  return "稽核紀錄載入失敗，請稍後再試。";
 }

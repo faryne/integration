@@ -1,8 +1,12 @@
 import axios from "axios";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
+  StorytellerAuditArchiveFilters,
+  StorytellerAuditArchiveMonths,
+  StorytellerAuditArchiveQuery,
+  StorytellerAuditArchiveResults,
   StorytellerAuditEventFilters,
   StorytellerAuditEventPage,
   StorytellerAuditEventQuery,
@@ -93,5 +97,111 @@ export function useStorytellerAuditEventFilters(
       });
       return response.data.data;
     },
+  });
+}
+
+export function useStorytellerAuditArchiveMonths(projectPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "audit-archive-months",
+      projectPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAuditArchiveMonths>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/audit-archive-months`,
+        {
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data;
+    },
+  });
+}
+
+export function useCreateStorytellerAuditArchiveQuery(
+  projectPublicId?: string,
+) {
+  const { session } = useAuth();
+  return useMutation({
+    mutationFn: async (input: {
+      month_from: string;
+      month_to: string;
+      filters: StorytellerAuditArchiveFilters;
+    }) => {
+      const response = await axios.post<
+        CommonResponse<StorytellerAuditArchiveQuery>
+      >(
+        `${apiBase}/storyteller/projects/${projectPublicId}/audit-archive-queries`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+  });
+}
+
+// 封存查詢在 Athena 背景執行；排隊中或執行中時依後端建議的間隔輪詢，完成或失敗就停止。
+export function useStorytellerAuditArchiveQuery(queryPublicId?: string) {
+  const { session } = useAuth();
+  return useQuery({
+    queryKey: [
+      "storyteller",
+      "audit-archive-query",
+      queryPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && queryPublicId),
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAuditArchiveQuery>
+      >(`${apiBase}/storyteller/audit-archive-queries/${queryPublicId}`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
+      return response.data.data;
+    },
+    refetchInterval: (query) => {
+      const job = query.state.data;
+      return job && (job.status === "queued" || job.status === "running")
+        ? job.poll_after_ms
+        : false;
+    },
+  });
+}
+
+export function useStorytellerAuditArchiveResults(
+  queryPublicId: string | undefined,
+  enabled: boolean,
+) {
+  const { session } = useAuth();
+  return useInfiniteQuery({
+    queryKey: [
+      "storyteller",
+      "audit-archive-results",
+      queryPublicId,
+      session?.user.id,
+    ],
+    enabled: Boolean(session?.encrypt_key && queryPublicId && enabled),
+    initialPageParam: "",
+    queryFn: async ({ pageParam }) => {
+      const response = await axios.get<
+        CommonResponse<StorytellerAuditArchiveResults>
+      >(
+        `${apiBase}/storyteller/audit-archive-queries/${queryPublicId}/results`,
+        {
+          params: { cursor: pageParam || undefined },
+          headers: sessionHeaders(session!.encrypt_key),
+        },
+      );
+      return response.data.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.has_more ? lastPage.next_cursor : undefined,
   });
 }

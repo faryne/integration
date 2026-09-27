@@ -119,6 +119,12 @@ var StorytellerAuditActions = []AuditActionDefinition{
 
 	{Name: "system.memory_draft.cleanup", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.agent_model.sync", Category: "system", Importance: AuditImportanceNormal},
+	{Name: "system.audit.export", Category: "system", Importance: AuditImportanceNormal},
+	{Name: "system.audit.mysql_purge", Category: "system", Importance: AuditImportanceNormal},
+	{Name: "system.audit.archive_purge", Category: "system", Importance: AuditImportanceHigh},
+
+	// 封存查詢會實際花 Athena 掃描費用，屬於「花了使用者的錢或額度」，要記。
+	{Name: "audit.archive_query.create", Category: "audit", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/projects/:project/audit-archive-queries")}},
 
 	{Name: "project.list", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_list_projects"}},
 	{Name: "project.read", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_get_project"}},

@@ -888,3 +888,43 @@ export interface StorytellerAuditEventQuery {
   range: "24h" | "7d" | "30d";
   includeLowImportance: boolean;
 }
+
+// 稽核封存查詢（P4）：3 個月以前的資料由 Athena 查 S3 封存檔，採非同步 job。
+export interface StorytellerAuditArchiveMonths {
+  archive_available: boolean;
+  months: Array<{
+    month: string;
+    status: "available" | "purged";
+    row_count: number;
+  }>;
+  retention_years: number;
+  latest_archive_month?: string;
+  max_span_months: number;
+}
+
+export interface StorytellerAuditArchiveFilters {
+  category?: string;
+  source?: string;
+  outcome?: string;
+  credential_ref?: string;
+  include_low_importance?: boolean;
+}
+
+export interface StorytellerAuditArchiveQuery {
+  query_public_id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "expired";
+  month_from: string;
+  month_to: string;
+  filters: StorytellerAuditArchiveFilters;
+  error_category?: string;
+  scanned_bytes?: number;
+  poll_after_ms: number;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface StorytellerAuditArchiveResults {
+  events: StorytellerAuditEvent[];
+  next_cursor?: string;
+  has_more: boolean;
+}

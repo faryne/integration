@@ -139,22 +139,11 @@ func buildAuditEventQuery(base storytellerModel.AuditEventQuery, p storytellerMo
 	default:
 		return query, hotFrom, ErrAuditFilterInvalid
 	}
-	if p.Category != "" {
-		if query.Actions = storytellerModel.AuditActionNames(p.Category, ""); len(query.Actions) == 0 {
-			return query, hotFrom, ErrAuditFilterInvalid
-		}
-	} else if !p.IncludeLowImportance {
-		// 使用者明確選了類別時就照類別查；只有「全部」時才預設收起低重要度事件。
-		query.ExcludeActions = storytellerModel.AuditActionNames("", storytellerModel.AuditImportanceLow)
+	if query.Actions, query.ExcludeActions, err = auditFilterActions(p.Category, p.IncludeLowImportance); err != nil {
+		return query, hotFrom, err
 	}
-	if p.Source != "" && !slices.Contains(auditSources(), storytellerModel.AuditSource(p.Source)) {
-		return query, hotFrom, ErrAuditFilterInvalid
-	}
-	if p.Outcome != "" && !slices.Contains(auditOutcomes(), storytellerModel.AuditOutcome(p.Outcome)) {
-		return query, hotFrom, ErrAuditFilterInvalid
-	}
-	if p.CredentialRef != "" && !auditCredentialRefPattern.MatchString(p.CredentialRef) {
-		return query, hotFrom, ErrAuditFilterInvalid
+	if err := validateAuditFilterValues(p.Source, p.Outcome, p.CredentialRef); err != nil {
+		return query, hotFrom, err
 	}
 	query.Source, query.Outcome, query.CredentialRef = p.Source, p.Outcome, p.CredentialRef
 	if p.Cursor != "" {
@@ -165,6 +154,35 @@ func buildAuditEventQuery(base storytellerModel.AuditEventQuery, p storytellerMo
 		query.CursorAt, query.CursorID = &cursorAt, cursorID
 	}
 	return query, hotFrom, nil
+}
+
+// auditFilterActions 把類別篩選轉成 action 清單；近期查詢與封存查詢共用。使用者明確選了類別時
+// 就照類別查，只有「全部」時才預設收起低重要度事件。
+func auditFilterActions(category string, includeLowImportance bool) (actions, exclude []string, err error) {
+	if category != "" {
+		if actions = storytellerModel.AuditActionNames(category, ""); len(actions) == 0 {
+			return nil, nil, ErrAuditFilterInvalid
+		}
+		return actions, nil, nil
+	}
+	if !includeLowImportance {
+		exclude = storytellerModel.AuditActionNames("", storytellerModel.AuditImportanceLow)
+	}
+	return nil, exclude, nil
+}
+
+// validateAuditFilterValues 驗證入口、結果與 PAT 篩選值；近期查詢與封存查詢共用。
+func validateAuditFilterValues(source, outcome, credentialRef string) error {
+	if source != "" && !slices.Contains(auditSources(), storytellerModel.AuditSource(source)) {
+		return ErrAuditFilterInvalid
+	}
+	if outcome != "" && !slices.Contains(auditOutcomes(), storytellerModel.AuditOutcome(outcome)) {
+		return ErrAuditFilterInvalid
+	}
+	if credentialRef != "" && !auditCredentialRefPattern.MatchString(credentialRef) {
+		return ErrAuditFilterInvalid
+	}
+	return nil
 }
 
 func auditSources() []storytellerModel.AuditSource {
