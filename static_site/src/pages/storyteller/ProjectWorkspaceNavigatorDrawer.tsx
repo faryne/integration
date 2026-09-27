@@ -2,7 +2,6 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CloseIcon from "@mui/icons-material/Close";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
@@ -18,6 +17,7 @@ import {
   type WorkspaceSidebarProps,
 } from "./ProjectWorkspacePreviewComponents.tsx";
 import { shortcutLabel } from "@/helpers/shortcut.ts";
+import { workspaceToolPages } from "@/pages/storyteller/workspaceToolPages.tsx";
 
 interface WorkspaceMobileNavigatorDrawerProps extends WorkspaceSidebarProps {
   open: boolean;
@@ -94,9 +94,9 @@ export function WorkspaceMobileNavigatorDrawer({
               onClose();
               sidebarProps.onCreateAssetCollection?.();
             }}
-            onOpenMemories={() => {
+            onOpenToolPage={(page) => {
               onClose();
-              sidebarProps.onOpenMemories?.();
+              sidebarProps.onOpenToolPage?.(page);
             }}
           />
         </Box>
@@ -105,17 +105,18 @@ export function WorkspaceMobileNavigatorDrawer({
   );
 }
 
-/** Desktop 收合後仍保留四個主要區域入口，不讓 52px 欄位只是空白佔位。 */
+/** Desktop 收合後仍保留三個分組與各個工具頁的入口，不讓 52px 欄位只是空白佔位。 */
 export function WorkspaceSidebarRail({
   selected,
   onSelect,
   onSearch,
-  memoriesSelected,
-  onOpenMemories,
-}: Pick<WorkspaceSidebarProps, "selected" | "onSelect"> & {
+  activeToolPage,
+  onOpenToolPage,
+}: Pick<
+  WorkspaceSidebarProps,
+  "selected" | "onSelect" | "activeToolPage" | "onOpenToolPage"
+> & {
   onSearch: () => void;
-  memoriesSelected?: boolean;
-  onOpenMemories?: () => void;
 }) {
   const items = [
     {
@@ -146,7 +147,7 @@ export function WorkspaceSidebarRail({
             size="small"
             aria-label={item.label}
             color={
-              !memoriesSelected && selected.section === item.section
+              !activeToolPage && selected.section === item.section
                 ? "primary"
                 : "default"
             }
@@ -154,7 +155,7 @@ export function WorkspaceSidebarRail({
             sx={{
               borderRadius: 1,
               bgcolor:
-                !memoriesSelected && selected.section === item.section
+                !activeToolPage && selected.section === item.section
                   ? "action.selected"
                   : undefined,
             }}
@@ -163,22 +164,24 @@ export function WorkspaceSidebarRail({
           </IconButton>
         </Tooltip>
       ))}
-      {onOpenMemories && (
-        <Tooltip title="梭梭的記憶" placement="right">
-          <IconButton
-            size="small"
-            aria-label="梭梭的記憶"
-            color={memoriesSelected ? "primary" : "default"}
-            onClick={onOpenMemories}
-            sx={{
-              borderRadius: 1,
-              bgcolor: memoriesSelected ? "action.selected" : undefined,
-            }}
-          >
-            <PsychologyAltOutlinedIcon />
-          </IconButton>
-        </Tooltip>
-      )}
+      {onOpenToolPage &&
+        workspaceToolPages.map((page) => (
+          <Tooltip key={page.key} title={page.label} placement="right">
+            <IconButton
+              size="small"
+              aria-label={page.label}
+              color={activeToolPage === page.key ? "primary" : "default"}
+              onClick={() => onOpenToolPage(page.key)}
+              sx={{
+                borderRadius: 1,
+                bgcolor:
+                  activeToolPage === page.key ? "action.selected" : undefined,
+              }}
+            >
+              {page.icon()}
+            </IconButton>
+          </Tooltip>
+        ))}
     </Stack>
   );
 }

@@ -54,6 +54,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/projects/:project", storyteller.Project)
 	authenticated.Get("/projects/:project/search", storyteller.WorkspaceSearch)
 	authenticated.Get("/projects/:project/memories/manage", storyteller.ManageAssistantMemories)
+	authenticated.Get("/projects/:project/audit-events", storyteller.ProjectAuditEvents)
+	authenticated.Get("/projects/:project/audit-event-filters", storyteller.ProjectAuditEventFilters)
 	authenticated.Put("/projects/:project/memories/:memory", storyteller.UpdateAssistantMemory)
 	authenticated.Delete("/memories/:memory", storyteller.DeleteAssistantMemory)
 	authenticated.Put("/projects/:project", storyteller.UpdateProject)
@@ -80,6 +82,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/provider-apikeys/:apikey/models/:model", storyteller.DeleteProviderAPIKeyModel)
 	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
 
+	authenticated.Get("/account/audit-events", storyteller.AccountAuditEvents)
+	authenticated.Get("/account/audit-event-filters", storyteller.AccountAuditEventFilters)
 	authenticated.Get("/personal-access-tokens", storyteller.PersonalAccessTokens)
 	authenticated.Post("/personal-access-tokens", storyteller.CreatePersonalAccessToken)
 	authenticated.Delete("/personal-access-tokens/:token", storyteller.DeletePersonalAccessToken)

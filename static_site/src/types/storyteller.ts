@@ -837,3 +837,54 @@ export interface StorytellerWritingBookmark {
   created_at: string;
   updated_at: string;
 }
+
+// 稽核紀錄（P3 近期查詢）；欄位與後端 AuditEventOutput 對應，只有 public ID 不含內部數字 ID。
+export type StorytellerAuditScope = "project" | "account";
+export type StorytellerAuditSource = "web" | "api" | "mcp" | "cron";
+export type StorytellerAuditOutcome = "success" | "denied" | "failed";
+export type StorytellerAuditImportance = "low" | "normal" | "high";
+
+export interface StorytellerAuditEvent {
+  event_id: string;
+  occurred_at: string;
+  actor: { type: "user" | "system"; display_name?: string };
+  source: StorytellerAuditSource;
+  auth_method: "session" | "pat" | "none";
+  credential: { public_id: string; label: string; revoked: boolean } | null;
+  action: string;
+  category: string;
+  importance: StorytellerAuditImportance;
+  target: { type: string; public_id: string; name?: string } | null;
+  outcome: StorytellerAuditOutcome;
+  summary: Record<string, unknown> | null;
+  ip?: string;
+  user_agent?: string;
+  request_id?: string;
+}
+
+export interface StorytellerAuditEventPage {
+  events: StorytellerAuditEvent[];
+  next_cursor?: string;
+  has_more: boolean;
+  hot_from: string;
+  write_delay_seconds: number;
+}
+
+export interface StorytellerAuditEventFilters {
+  actors: Array<{ value: string; label?: string }>;
+  categories: string[];
+  credentials: Array<{ value: string; label?: string }>;
+  sources: StorytellerAuditSource[];
+  outcomes: StorytellerAuditOutcome[];
+}
+
+export interface StorytellerAuditEventQuery {
+  actor: string;
+  category: string;
+  source: string;
+  outcome: string;
+  credentialRef: string;
+  // 時間範圍用 preset 表示，實際的 from 在送出請求時才換算，避免 query key 每秒變動。
+  range: "24h" | "7d" | "30d";
+  includeLowImportance: boolean;
+}

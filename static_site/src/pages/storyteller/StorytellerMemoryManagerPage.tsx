@@ -22,12 +22,10 @@ import {
   useStorytellerStories,
 } from "@/apis/storyteller.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerFilterChips } from "@/components/storyteller/StorytellerFilterChips.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { StorytellerMemoryEditorDialog } from "@/pages/storyteller/StorytellerMemoryEditorDialog.tsx";
-import {
-  MemoryCard,
-  MemoryFilterChips,
-} from "@/pages/storyteller/StorytellerMemoryManagerComponents.tsx";
+import { MemoryCard } from "@/pages/storyteller/StorytellerMemoryManagerComponents.tsx";
 import {
   storytellerMemoryErrorMessage,
   storytellerMemoryKindDescriptions,
@@ -224,7 +222,7 @@ export function StorytellerMemoryManagerPage({
 
       <Paper variant="outlined" sx={{ p: 2 }}>
         <Stack spacing={1.5}>
-          <MemoryFilterChips
+          <StorytellerFilterChips
             label="適用範圍"
             value={scopeType}
             onChange={(value) => {
@@ -233,7 +231,7 @@ export function StorytellerMemoryManagerPage({
             }}
             options={scopeOptions}
           />
-          <MemoryFilterChips
+          <StorytellerFilterChips
             label="類型"
             value={kind}
             onChange={(value) => {
@@ -243,7 +241,7 @@ export function StorytellerMemoryManagerPage({
             options={Object.entries(storytellerMemoryKindLabels)}
             optionDescriptions={storytellerMemoryKindDescriptions}
           />
-          <MemoryFilterChips
+          <StorytellerFilterChips
             label="釘選狀態"
             value={pinned}
             onChange={(value) => {

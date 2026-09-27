@@ -1,5 +1,12 @@
 export type StorytellerHomeTab =
-  "project" | "agent" | "apikey" | "usage" | "mcp" | "favorites" | "profile";
+  | "project"
+  | "agent"
+  | "apikey"
+  | "usage"
+  | "mcp"
+  | "activity"
+  | "favorites"
+  | "profile";
 
 export const tabPath: Record<StorytellerHomeTab, string> = {
   project: "projects",
@@ -7,6 +14,7 @@ export const tabPath: Record<StorytellerHomeTab, string> = {
   apikey: "api-keys",
   usage: "usage",
   mcp: "mcp",
+  activity: "account-activity",
   favorites: "favorites",
   profile: "profile",
 };
@@ -17,6 +25,7 @@ export const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
   apikey: "金鑰管理",
   usage: "用量報表",
   mcp: "MCP 連接",
+  activity: "帳號活動",
   favorites: "我的追蹤",
   profile: "我的檔案",
 };
@@ -27,9 +36,11 @@ export interface StorytellerHomeTabGroup {
 }
 
 // 側邊欄的分組——「我的工作台」放創作相關功能、「我的追蹤」放追蹤的作品/作者、
-// 「我的檔案」放帳號設定，三個群組共用同一份 activeTab／tabPath 機制。
+// 「帳號與安全」放登入與憑證的稽核紀錄，「我的檔案」放帳號設定，
+// 所有群組共用同一份 activeTab／tabPath 機制。
 export const homeTabGroups: StorytellerHomeTabGroup[] = [
   { label: "我的工作台", tabs: ["project", "agent", "apikey", "usage", "mcp"] },
+  { label: "帳號與安全", tabs: ["activity"] },
   { label: "我的追蹤", tabs: ["favorites"] },
   { label: "我的檔案", tabs: ["profile"] },
 ];

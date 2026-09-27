@@ -375,6 +375,10 @@ const storytellerRoutes = (
         element={<StorytellerProjectWorkspacePreview />}
       />
       <Route
+        path={"workspace/:id/audit"}
+        element={<StorytellerProjectWorkspacePreview />}
+      />
+      <Route
         path={"workspace/:id/story/:storyId"}
         element={<StorytellerProjectWorkspacePreview />}
       />
@@ -395,6 +399,7 @@ const storytellerRoutes = (
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />
+      <Route path={"account-activity"} element={<StorytellerHome />} />
       <Route path={"favorites"} element={<StorytellerHome />} />
       <Route path={"profile"} element={<StorytellerHome />} />
     </Route>

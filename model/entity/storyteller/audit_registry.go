@@ -177,6 +177,41 @@ func AuditActionForTool(name string) (AuditActionDefinition, bool) {
 	return AuditActionDefinition{}, false
 }
 
+// AuditActionByName 供查詢端把事件上的 action 對回 registry，取得類別與重要度；
+// registry 沒有的舊 action（例如之後改名）回傳 false，由呼叫端當成一般重要度處理。
+func AuditActionByName(name string) (AuditActionDefinition, bool) {
+	for _, action := range StorytellerAuditActions {
+		if action.Name == name {
+			return action, true
+		}
+	}
+	return AuditActionDefinition{}, false
+}
+
+// AuditActionNames 依類別或重要度篩出 action 名稱，給查詢端轉成 SQL 的 IN／NOT IN 條件；
+// category／importance 留空代表不限制該條件。
+func AuditActionNames(category string, importance AuditImportance) []string {
+	names := make([]string, 0)
+	for _, action := range StorytellerAuditActions {
+		if (category == "" || action.Category == category) && (importance == "" || action.Importance == importance) {
+			names = append(names, action.Name)
+		}
+	}
+	return names
+}
+
+// AuditCategories 依 registry 出現順序回傳不重複的類別，供篩選選項使用。
+func AuditCategories() []string {
+	seen, categories := map[string]bool{}, make([]string, 0)
+	for _, action := range StorytellerAuditActions {
+		if !seen[action.Category] {
+			seen[action.Category] = true
+			categories = append(categories, action.Category)
+		}
+	}
+	return categories
+}
+
 func IsAuditExempt(kind, identifier string) bool {
 	for _, exemption := range StorytellerAuditExemptions {
 		if exemption.Kind == kind && exemption.Identifier == identifier {

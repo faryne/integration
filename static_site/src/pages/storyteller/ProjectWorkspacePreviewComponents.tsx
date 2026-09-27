@@ -6,7 +6,6 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import EditIcon from "@mui/icons-material/Edit";
 import FolderIcon from "@mui/icons-material/Folder";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import ViewModuleIcon from "@mui/icons-material/ViewModule";
@@ -48,6 +47,10 @@ import {
   StoryRow,
 } from "./ProjectWorkspacePreviewRows.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
+import {
+  workspaceToolPages,
+  type WorkspaceToolPage,
+} from "./workspaceToolPages.tsx";
 import { useWorkspaceViewMode } from "./workspaceViewMode.ts";
 import { WorkspaceSearchField } from "./WorkspaceSearchField.tsx";
 import type {
@@ -84,8 +87,9 @@ export interface WorkspaceSidebarProps {
     beforeId: string | null,
   ) => void;
   onNavigate?: () => void;
-  memoriesSelected?: boolean;
-  onOpenMemories?: () => void;
+  // 目前開啟的專案層工具頁（梭梭的記憶、稽核紀錄）；見 workspaceToolPages。
+  activeToolPage?: WorkspaceToolPage;
+  onOpenToolPage?: (page: WorkspaceToolPage) => void;
   // 側欄頂端搜尋框送出時呼叫；手機 drawer 會先經過 onNavigate 收起再開搜尋對話框。
   onSearch?: (keyword: string) => void;
 }
@@ -106,8 +110,8 @@ export function WorkspaceSidebar({
   onReorderVolume,
   onReorderLoreCollection,
   onNavigate,
-  memoriesSelected,
-  onOpenMemories,
+  activeToolPage,
+  onOpenToolPage,
   onSearch,
 }: WorkspaceSidebarProps) {
   const storiesByCollection = useMemo(() => {
@@ -223,29 +227,32 @@ export function WorkspaceSidebar({
           selectedItem={selectedItem}
           onCreate={onCreateAssetCollection}
         />
-        {onOpenMemories && (
-          <ListItemButton
-            selected={memoriesSelected}
-            onClick={() => {
-              onOpenMemories();
-              onNavigate?.();
-            }}
-            sx={{ borderRadius: 1, mx: 0.5, mb: 1 }}
-          >
-            <ListItemIcon
-              sx={{
-                minWidth: 32,
-                color: memoriesSelected ? "primary.main" : "inherit",
+        {onOpenToolPage &&
+          workspaceToolPages.map((page) => (
+            <ListItemButton
+              key={page.key}
+              selected={activeToolPage === page.key}
+              onClick={() => {
+                onOpenToolPage(page.key);
+                onNavigate?.();
               }}
+              sx={{ borderRadius: 1, mx: 0.5, mb: 1 }}
             >
-              <PsychologyAltOutlinedIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary="梭梭的記憶"
-              primaryTypographyProps={{ fontWeight: 800, fontSize: 13 }}
-            />
-          </ListItemButton>
-        )}
+              <ListItemIcon
+                sx={{
+                  minWidth: 32,
+                  color:
+                    activeToolPage === page.key ? "primary.main" : "inherit",
+                }}
+              >
+                {page.icon("small")}
+              </ListItemIcon>
+              <ListItemText
+                primary={page.label}
+                primaryTypographyProps={{ fontWeight: 800, fontSize: 13 }}
+              />
+            </ListItemButton>
+          ))}
       </Box>
       {project && (
         <ProjectActionsGroup project={project} onNavigate={onNavigate} />

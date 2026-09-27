@@ -13,6 +13,10 @@ type envConfig struct {
 	ChromePath       string `env:"CHROME_PATH"`
 	FrontendPath     string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
 
+	// AuditHotRetentionMonths 是稽核事件留在 MySQL 的月數；近期查詢只允許這個範圍內，
+	// 更早的資料要走封存查詢（P4）。
+	AuditHotRetentionMonths int `env:"AUDIT_HOT_RETENTION_MONTHS,default=3"`
+
 	// MaintenanceMode 手動維護開關；有設 MaintenanceStart／MaintenanceEnd 任一個時，
 	// 改用時間區間判斷是否進維護模式，MaintenanceMode 這個值會被忽略。
 	MaintenanceMode  bool   `env:"MAINTENANCE_MODE,default=false"`
