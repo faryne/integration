@@ -65,6 +65,11 @@ func newApp() *fiber.App {
 		BodyLimit:       1024 * 1024 * 1024,
 		StructValidator: validation.NewStructValidator(),
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
+			// Fiber 內建錯誤（例如沒有對應路由時的 fiber.ErrNotFound）先轉成標準格式，
+			// 否則會落到最下面的 ctx.JSON，以 HTTP 200 回傳 "Not Found" 字串，前端會誤判成成功。
+			if fiberErr, ok := errors.AsType[*fiber.Error](err); ok {
+				err = output.FromFiberError(fiberErr)
+			}
 			if reflect.ValueOf(err).MethodByName("HttpCode").IsValid() {
 				var v output.CommonOutputInterface
 				errors.As(err, &v)
