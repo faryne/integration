@@ -6,10 +6,12 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 type fakeAuditQueryRepository struct {
 	query       storytellerModel.AuditEventQuery
+	projects    []storytellerModel.Project
 	events      []storytellerModel.AuditEvent
 	credentials []storytellerModel.PersonalAccessToken
 	targetNames map[storytellerModel.AuditTargetRef]string
@@ -36,16 +38,25 @@ func (f *fakeAuditQueryRepository) AuditTargetNames(uint64, []storytellerModel.A
 	return f.targetNames, nil
 }
 
+func (f *fakeAuditQueryRepository) AuditProjectByPublicID(_ uint64, publicID string) (*storytellerModel.Project, error) {
+	for _, project := range f.projects {
+		if project.PublicID == publicID {
+			return &project, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (f *fakeAuditQueryRepository) AuditProjectOptions(uint64) ([]storytellerModel.Project, error) {
+	return f.projects, nil
+}
+
 func auditStringPointer(value string) *string { return &value }
 
 var auditTestNow = time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
 
-func auditProjectBase() storytellerModel.AuditEventQuery {
-	return storytellerModel.AuditEventQuery{Scope: storytellerModel.AuditEventScopeProject, ProjectID: 9, UserID: 4}
-}
-
 func TestBuildAuditEventQueryDefaultsToLast24HoursAndHidesLowImportance(t *testing.T) {
-	query, hotFrom, err := buildAuditEventQuery(auditProjectBase(), storytellerModel.AuditEventListParams{}, auditTestNow, 3)
+	query, hotFrom, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{}, auditTestNow, 3)
 	require.NoError(t, err)
 	require.Equal(t, auditTestNow.Add(-24*time.Hour), query.From)
 	require.Equal(t, auditTestNow, query.To)
@@ -57,33 +68,40 @@ func TestBuildAuditEventQueryDefaultsToLast24HoursAndHidesLowImportance(t *testi
 }
 
 func TestBuildAuditEventQueryExplicitCategoryKeepsLowImportance(t *testing.T) {
-	query, _, err := buildAuditEventQuery(auditProjectBase(), storytellerModel.AuditEventListParams{Category: "read"}, auditTestNow, 3)
+	query, _, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{Category: "read"}, auditTestNow, 3)
 	require.NoError(t, err)
 	require.Empty(t, query.ExcludeActions)
 	require.Contains(t, query.Actions, "story.read")
 }
 
+func TestBuildAuditEventQueryCredentialFilterIncludesReads(t *testing.T) {
+	query, _, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{CredentialRef: "pat_a"}, auditTestNow, 3)
+	require.NoError(t, err)
+	require.Empty(t, query.ExcludeActions, "追查某支 PAT 時要看得到它的讀取紀錄")
+	require.Equal(t, "pat_a", query.CredentialRef)
+}
+
 func TestBuildAuditEventQueryRejectsRangeOlderThanHotWindow(t *testing.T) {
 	from := auditTestNow.AddDate(0, -4, 0).Format(time.RFC3339)
-	_, _, err := buildAuditEventQuery(auditProjectBase(), storytellerModel.AuditEventListParams{From: from}, auditTestNow, 3)
+	_, _, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{From: from}, auditTestNow, 3)
 	require.ErrorIs(t, err, ErrAuditArchiveRequired)
 }
 
 func TestBuildAuditEventQueryRejectsInvalidFilters(t *testing.T) {
 	for _, params := range []storytellerModel.AuditEventListParams{
-		{Category: "unknown"}, {Source: "ftp"}, {Outcome: "maybe"}, {Actor: "someone"},
+		{Category: "unknown"}, {Source: "ftp"}, {Source: "cron"}, {Source: "api"}, {Outcome: "maybe"},
 		{CredentialRef: "pat'; DROP"}, {From: "yesterday"},
 		{From: auditTestNow.Format(time.RFC3339), To: auditTestNow.Add(-time.Hour).Format(time.RFC3339)},
 	} {
-		_, _, err := buildAuditEventQuery(auditProjectBase(), params, auditTestNow, 3)
+		_, _, err := buildAuditEventQuery(4, params, auditTestNow, 3)
 		require.ErrorIs(t, err, ErrAuditFilterInvalid, "params %+v", params)
 	}
-	_, _, err := buildAuditEventQuery(auditProjectBase(), storytellerModel.AuditEventListParams{Cursor: "@@@"}, auditTestNow, 3)
+	_, _, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{Cursor: "@@@"}, auditTestNow, 3)
 	require.ErrorIs(t, err, ErrAuditCursorInvalid)
 }
 
 func TestBuildAuditEventQueryClampsLimit(t *testing.T) {
-	query, _, err := buildAuditEventQuery(auditProjectBase(), storytellerModel.AuditEventListParams{Limit: 1000}, auditTestNow, 3)
+	query, _, err := buildAuditEventQuery(4, storytellerModel.AuditEventListParams{Limit: 1000}, auditTestNow, 3)
 	require.NoError(t, err)
 	require.Equal(t, auditEventMaxLimit, query.Limit)
 }
@@ -117,7 +135,7 @@ func TestListAuditEventsPaginatesAndMapsOutput(t *testing.T) {
 			{Type: "story", PublicID: "vol-1"}:   "卷一",
 		},
 	}
-	page, err := listAuditEvents(repo, auditProjectBase(), storytellerModel.AuditEventListParams{Limit: 2}, auditTestNow, 3)
+	page, err := listAuditEvents(repo, 4, storytellerModel.AuditEventListParams{Limit: 2}, auditTestNow, 3)
 	require.NoError(t, err)
 	require.Len(t, page.Events, 2)
 	require.True(t, page.HasMore)
@@ -140,19 +158,32 @@ func TestListAuditEventsPaginatesAndMapsOutput(t *testing.T) {
 	require.Equal(t, "卷一", second.Target.Name, "volume 與 story 共用名稱查詢")
 }
 
-func TestAuditEventFiltersHideAccountCategoriesOnProjectPage(t *testing.T) {
-	repo := &fakeAuditQueryRepository{credentials: []storytellerModel.PersonalAccessToken{
-		{PublicID: "pat_a", Label: "桌機"}, {PublicID: "pat_b", Label: "舊筆電", IsDeleted: true},
-	}}
-	projectFilters, err := auditEventFilters(repo, 4, storytellerModel.AuditEventScopeProject)
+func TestAuditEventFiltersListProjectsSourcesAndCredentials(t *testing.T) {
+	deletedAt := auditTestNow
+	repo := &fakeAuditQueryRepository{
+		credentials: []storytellerModel.PersonalAccessToken{
+			{PublicID: "pat_a", Label: "桌機"}, {PublicID: "pat_b", Label: "舊筆電", IsDeleted: true},
+		},
+		projects: []storytellerModel.Project{
+			{PublicID: "p1", Name: "霧港殘響"}, {PublicID: "p2", Name: "舊企劃", DeletedAt: &deletedAt},
+		},
+	}
+	filters, err := auditEventFilters(repo, 4)
 	require.NoError(t, err)
-	require.NotContains(t, projectFilters.Categories, "auth")
-	require.NotContains(t, projectFilters.Categories, "system")
-	require.Contains(t, projectFilters.Categories, "story")
-	require.Equal(t, "舊筆電（已撤銷）", projectFilters.Credentials[1].Label)
+	require.Contains(t, filters.Categories, "auth")
+	require.NotContains(t, filters.Categories, "system", "系統事件沒有操作者，不會出現在本人活動")
+	require.Equal(t, []storytellerModel.AuditSource{storytellerModel.AuditSourceWeb, storytellerModel.AuditSourceMCP}, filters.Sources)
+	require.Equal(t, "舊筆電（已撤銷）", filters.Credentials[1].Label)
+	require.Equal(t, "舊企劃（已刪除）", filters.Projects[1].Label)
+}
 
-	accountFilters, err := auditEventFilters(repo, 4, storytellerModel.AuditEventScopeAccount)
+func TestListAuditEventsResolvesProjectFilterWithinOwnProjects(t *testing.T) {
+	repo := &fakeAuditQueryRepository{projects: []storytellerModel.Project{{ID: 9, PublicID: "p1"}}}
+	_, err := listAuditEvents(repo, 4, storytellerModel.AuditEventListParams{ProjectPublicID: "p1"}, auditTestNow, 3)
 	require.NoError(t, err)
-	require.Contains(t, accountFilters.Categories, "auth")
-	require.NotContains(t, accountFilters.Categories, "system")
+	require.Equal(t, uint64(4), repo.query.UserID)
+	require.Equal(t, uint64(9), *repo.query.ProjectID)
+
+	_, err = listAuditEvents(repo, 4, storytellerModel.AuditEventListParams{ProjectPublicID: "someone-elses"}, auditTestNow, 3)
+	require.ErrorIs(t, err, ErrAuditFilterInvalid, "不是本人的專案一律當成篩選錯誤，不透露是否存在")
 }

@@ -14,7 +14,7 @@ export const tabPath: Record<StorytellerHomeTab, string> = {
   apikey: "api-keys",
   usage: "usage",
   mcp: "mcp",
-  activity: "account-activity",
+  activity: "activity",
   favorites: "favorites",
   profile: "profile",
 };
@@ -25,7 +25,7 @@ export const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
   apikey: "金鑰管理",
   usage: "用量報表",
   mcp: "MCP 連接",
-  activity: "帳號活動",
+  activity: "活動紀錄",
   favorites: "我的追蹤",
   profile: "我的檔案",
 };

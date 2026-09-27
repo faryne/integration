@@ -838,8 +838,7 @@ export interface StorytellerWritingBookmark {
   updated_at: string;
 }
 
-// 稽核紀錄（P3 近期查詢）；欄位與後端 AuditEventOutput 對應，只有 public ID 不含內部數字 ID。
-export type StorytellerAuditScope = "project" | "account";
+// 活動紀錄（稽核事件）；欄位與後端 AuditEventOutput 對應，只有 public ID 不含內部數字 ID。
 export type StorytellerAuditSource = "web" | "api" | "mcp" | "cron";
 export type StorytellerAuditOutcome = "success" | "denied" | "failed";
 export type StorytellerAuditImportance = "low" | "normal" | "high";
@@ -871,22 +870,29 @@ export interface StorytellerAuditEventPage {
 }
 
 export interface StorytellerAuditEventFilters {
-  actors: Array<{ value: string; label?: string }>;
+  projects: Array<{ value: string; label?: string }>;
   categories: string[];
   credentials: Array<{ value: string; label?: string }>;
   sources: StorytellerAuditSource[];
   outcomes: StorytellerAuditOutcome[];
 }
 
-export interface StorytellerAuditEventQuery {
-  actor: string;
+// 進階篩選條件；近期查詢與封存查詢共用同一組欄位，空字串代表不限制。
+export interface StorytellerAuditAdvancedFilterValues {
+  projectPublicId: string;
   category: string;
   source: string;
   outcome: string;
   credentialRef: string;
-  // 時間範圍用 preset 表示，實際的 from 在送出請求時才換算，避免 query key 每秒變動。
-  range: "24h" | "7d" | "30d";
   includeLowImportance: boolean;
+}
+
+export interface StorytellerAuditEventQuery extends StorytellerAuditAdvancedFilterValues {
+  // 時間範圍用 preset 表示，實際的 from 在送出請求時才換算，避免 query key 每秒變動；
+  // custom 時用 customFrom／customTo（YYYY-MM-DD，依瀏覽器時區算整天）。
+  range: "24h" | "7d" | "30d" | "custom";
+  customFrom: string;
+  customTo: string;
 }
 
 // 稽核封存查詢（P4）：3 個月以前的資料由 Athena 查 S3 封存檔，採非同步 job。
@@ -903,6 +909,7 @@ export interface StorytellerAuditArchiveMonths {
 }
 
 export interface StorytellerAuditArchiveFilters {
+  project_public_id?: string;
   category?: string;
   source?: string;
   outcome?: string;

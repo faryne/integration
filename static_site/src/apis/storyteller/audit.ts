@@ -1,4 +1,5 @@
 import axios from "axios";
+import dayjs from "dayjs";
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
@@ -10,53 +11,53 @@ import type {
   StorytellerAuditEventFilters,
   StorytellerAuditEventPage,
   StorytellerAuditEventQuery,
-  StorytellerAuditScope,
 } from "@/types/storyteller.ts";
 import { apiBase, sessionHeaders } from "./shared.ts";
 
-const rangeHours: Record<StorytellerAuditEventQuery["range"], number> = {
+// 活動紀錄只查登入者本人；後端固定以 session 的使用者查詢，不接受指定其他使用者。
+const accountEndpoint = `${apiBase}/storyteller/account`;
+
+const rangeHours: Record<"24h" | "7d" | "30d", number> = {
   "24h": 24,
   "7d": 24 * 7,
   "30d": 24 * 30,
 };
 
-// project scope 查單一專案；account scope 固定查登入者本人，後端不接受指定其他使用者。
-function auditEndpoint(scope: StorytellerAuditScope, projectPublicId?: string) {
-  return scope === "project"
-    ? `${apiBase}/storyteller/projects/${projectPublicId}`
-    : `${apiBase}/storyteller/account`;
+// auditQueryTimeRange 在送出請求時才把時間範圍換成實際時間（避免 query key 每秒變動）；
+// 自訂範圍以瀏覽器時區的整天計算，結束日當天也包含在內（to 是隔天 00:00，後端為不含）。
+export function auditQueryTimeRange(query: StorytellerAuditEventQuery) {
+  if (query.range === "custom") {
+    return {
+      from: dayjs(query.customFrom).startOf("day").toISOString(),
+      to: dayjs(query.customTo).add(1, "day").startOf("day").toISOString(),
+    };
+  }
+  return {
+    from: dayjs().subtract(rangeHours[query.range], "hour").toISOString(),
+    to: undefined,
+  };
 }
 
+// enabled=false 用在自訂日期還不合法（例如早於近期範圍）時，先不送出請求。
 export function useStorytellerAuditEvents(
-  scope: StorytellerAuditScope,
-  projectPublicId: string | undefined,
   query: StorytellerAuditEventQuery,
+  enabled = true,
 ) {
   const { session } = useAuth();
   return useInfiniteQuery({
-    queryKey: [
-      "storyteller",
-      "audit-events",
-      scope,
-      projectPublicId,
-      query,
-      session?.user.id,
-    ],
-    enabled: Boolean(
-      session?.encrypt_key && (scope === "account" || projectPublicId),
-    ),
+    queryKey: ["storyteller", "audit-events", query, session?.user.id],
+    enabled: Boolean(session?.encrypt_key && enabled),
     initialPageParam: "",
     queryFn: async ({ pageParam }) => {
-      const from = new Date(
-        Date.now() - rangeHours[query.range] * 3600 * 1000,
-      ).toISOString();
+      const { from, to } = auditQueryTimeRange(query);
       const response = await axios.get<
         CommonResponse<StorytellerAuditEventPage>
-      >(`${auditEndpoint(scope, projectPublicId)}/audit-events`, {
+      >(`${accountEndpoint}/audit-events`, {
         params: {
           cursor: pageParam || undefined,
           from,
-          actor: query.actor || undefined,
+          to,
+          project_public_id: query.projectPublicId || undefined,
           category: query.category || undefined,
           source: query.source || undefined,
           outcome: query.outcome || undefined,
@@ -72,27 +73,16 @@ export function useStorytellerAuditEvents(
   });
 }
 
-export function useStorytellerAuditEventFilters(
-  scope: StorytellerAuditScope,
-  projectPublicId?: string,
-) {
+export function useStorytellerAuditEventFilters() {
   const { session } = useAuth();
   return useQuery({
-    queryKey: [
-      "storyteller",
-      "audit-event-filters",
-      scope,
-      projectPublicId,
-      session?.user.id,
-    ],
-    enabled: Boolean(
-      session?.encrypt_key && (scope === "account" || projectPublicId),
-    ),
+    queryKey: ["storyteller", "audit-event-filters", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
     staleTime: 60_000,
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAuditEventFilters>
-      >(`${auditEndpoint(scope, projectPublicId)}/audit-event-filters`, {
+      >(`${accountEndpoint}/audit-event-filters`, {
         headers: sessionHeaders(session!.encrypt_key),
       });
       return response.data.data;
@@ -100,34 +90,24 @@ export function useStorytellerAuditEventFilters(
   });
 }
 
-export function useStorytellerAuditArchiveMonths(projectPublicId?: string) {
+export function useStorytellerAuditArchiveMonths() {
   const { session } = useAuth();
   return useQuery({
-    queryKey: [
-      "storyteller",
-      "audit-archive-months",
-      projectPublicId,
-      session?.user.id,
-    ],
-    enabled: Boolean(session?.encrypt_key && projectPublicId),
+    queryKey: ["storyteller", "audit-archive-months", session?.user.id],
+    enabled: Boolean(session?.encrypt_key),
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAuditArchiveMonths>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/audit-archive-months`,
-        {
-          headers: sessionHeaders(session!.encrypt_key),
-        },
-      );
+      >(`${accountEndpoint}/audit-archive-months`, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data;
     },
   });
 }
 
-export function useCreateStorytellerAuditArchiveQuery(
-  projectPublicId?: string,
-) {
+export function useCreateStorytellerAuditArchiveQuery() {
   const { session } = useAuth();
   return useMutation({
     mutationFn: async (input: {
@@ -137,11 +117,9 @@ export function useCreateStorytellerAuditArchiveQuery(
     }) => {
       const response = await axios.post<
         CommonResponse<StorytellerAuditArchiveQuery>
-      >(
-        `${apiBase}/storyteller/projects/${projectPublicId}/audit-archive-queries`,
-        input,
-        { headers: sessionHeaders(session!.encrypt_key) },
-      );
+      >(`${accountEndpoint}/audit-archive-queries`, input, {
+        headers: sessionHeaders(session!.encrypt_key),
+      });
       return response.data.data;
     },
   });

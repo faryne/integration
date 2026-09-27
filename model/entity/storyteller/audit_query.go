@@ -2,20 +2,17 @@ package storyteller
 
 import "time"
 
-// AuditEventScope 決定查詢的權限邊界：project 只看單一專案的事件，account 只看登入者
-// 本人的帳號層事件與透過 PAT 發生的事件；兩者都由後端依登入者強制套用，不接受前端指定 user。
+// AuditEventScope 是查詢的權限邊界。目前只有 account：活動紀錄只看登入者本人的事件，
+// 由後端依登入者強制套用，不接受前端指定 user。協作上線後若要加回專案層查詢再新增 scope。
 type AuditEventScope string
 
-const (
-	AuditEventScopeProject AuditEventScope = "project"
-	AuditEventScopeAccount AuditEventScope = "account"
-)
+const AuditEventScopeAccount AuditEventScope = "account"
 
 // AuditEventListParams 是查詢 API 的原始參數（controller 解析 query string 後直接交給 service 驗證）。
 type AuditEventListParams struct {
 	Cursor               string
 	Limit                int
-	Actor                string // self／system；留空不限制
+	ProjectPublicID      string // 只看某個本人擁有的專案（含已刪除）；留空不限制
 	Category             string
 	Source               string
 	Outcome              string
@@ -27,11 +24,8 @@ type AuditEventListParams struct {
 
 // AuditEventQuery 是 service 驗證完、交給 repository 的查詢條件，時間與游標都已轉成實際值。
 type AuditEventQuery struct {
-	Scope          AuditEventScope
-	ProjectID      uint64
 	UserID         uint64
-	ActorSelf      bool
-	ActorSystem    bool
+	ProjectID      *uint64  // 專案篩選；nil 代表不限制
 	Actions        []string // 非空時只查這些 action（類別篩選）
 	ExcludeActions []string // 預設排除的低重要度 action
 	Source         string
@@ -94,7 +88,7 @@ type AuditFilterOption struct {
 }
 
 type AuditEventFiltersOutput struct {
-	Actors      []AuditFilterOption `json:"actors"`
+	Projects    []AuditFilterOption `json:"projects"`
 	Categories  []string            `json:"categories"`
 	Credentials []AuditFilterOption `json:"credentials"`
 	Sources     []AuditSource       `json:"sources"`

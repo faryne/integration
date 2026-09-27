@@ -3,11 +3,9 @@ import {
   Box,
   Button,
   CircularProgress,
-  FormControlLabel,
   MenuItem,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -19,20 +17,18 @@ import {
   useStorytellerAuditEventFilters,
 } from "@/apis/storyteller/audit.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { StorytellerFilterChips } from "@/components/storyteller/StorytellerFilterChips.tsx";
+import { StorytellerAuditAdvancedFilters } from "@/pages/storyteller/StorytellerAuditAdvancedFilters.tsx";
 import {
   AuditEventDetailDrawer,
   AuditEventItems,
 } from "@/pages/storyteller/StorytellerAuditEventRows.tsx";
 import {
-  auditCategoryLabels,
   auditErrorMessage,
-  auditOutcomeLabels,
-  auditSourceLabels,
+  emptyAuditAdvancedFilters,
   groupAuditEvents,
 } from "@/pages/storyteller/storytellerAuditUI.ts";
 import type {
-  StorytellerAuditArchiveFilters,
+  StorytellerAuditAdvancedFilterValues,
   StorytellerAuditArchiveMonths,
   StorytellerAuditEvent,
 } from "@/types/storyteller.ts";
@@ -55,13 +51,11 @@ function formatBytes(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-// StorytellerAuditArchivePanel 是專案稽核頁的封存模式：選月份與篩選條件送出 Athena 查詢，
+// StorytellerAuditArchivePanel 是活動紀錄的封存模式：選月份與篩選條件送出 Athena 查詢，
 // 輪詢到完成後用與近期列表相同的列與詳情抽屜顯示結果；不與近期資料混在同一個列表。
 export function StorytellerAuditArchivePanel({
-  projectPublicId,
   months,
 }: {
-  projectPublicId?: string;
   months: StorytellerAuditArchiveMonths;
 }) {
   const availableMonths = useMemo(
@@ -76,15 +70,12 @@ export function StorytellerAuditArchivePanel({
     .map((month) => month.month);
   const [monthFrom, setMonthFrom] = useState("");
   const [monthTo, setMonthTo] = useState("");
-  const [filters, setFilters] = useState<StorytellerAuditArchiveFilters>({});
+  const [filters, setFilters] = useState(emptyAuditAdvancedFilters);
   const [queryPublicId, setQueryPublicId] = useState<string>();
   const [selected, setSelected] = useState<StorytellerAuditEvent | null>(null);
   const [snack, setSnack] = useState("");
-  const filterOptions = useStorytellerAuditEventFilters(
-    "project",
-    projectPublicId,
-  );
-  const createQuery = useCreateStorytellerAuditArchiveQuery(projectPublicId);
+  const filterOptions = useStorytellerAuditEventFilters();
+  const createQuery = useCreateStorytellerAuditArchiveQuery();
   const job = useStorytellerAuditArchiveQuery(queryPublicId);
   const status = job.data?.status;
   const results = useStorytellerAuditArchiveResults(
@@ -118,12 +109,23 @@ export function StorytellerAuditArchivePanel({
       ),
     [results.data],
   );
-  const update = (patch: Partial<StorytellerAuditArchiveFilters>) =>
+  const update = (patch: Partial<StorytellerAuditAdvancedFilterValues>) =>
     setFilters((value) => ({ ...value, ...patch }));
 
   function submit() {
     createQuery.mutate(
-      { month_from: from, month_to: to, filters },
+      {
+        month_from: from,
+        month_to: to,
+        filters: {
+          project_public_id: filters.projectPublicId || undefined,
+          category: filters.category || undefined,
+          source: filters.source || undefined,
+          outcome: filters.outcome || undefined,
+          credential_ref: filters.credentialRef || undefined,
+          include_low_importance: filters.includeLowImportance || undefined,
+        },
+      },
       {
         onSuccess: (created) => setQueryPublicId(created.query_public_id),
         onError: (error) => setSnack(auditErrorMessage(error)),
@@ -200,64 +202,10 @@ export function StorytellerAuditArchivePanel({
               </Button>
             </Stack>
           )}
-          <StorytellerFilterChips
-            label="類別"
-            value={filters.category ?? ""}
-            onChange={(category) => update({ category })}
-            options={(filterOptions.data?.categories ?? []).map((category) => [
-              category,
-              auditCategoryLabels[category] ?? category,
-            ])}
-          />
-          <StorytellerFilterChips
-            label="入口"
-            value={filters.source ?? ""}
-            onChange={(source) => update({ source })}
-            options={(filterOptions.data?.sources ?? []).map((source) => [
-              source,
-              auditSourceLabels[source],
-            ])}
-          />
-          <StorytellerFilterChips
-            label="結果"
-            value={filters.outcome ?? ""}
-            onChange={(outcome) => update({ outcome })}
-            options={(filterOptions.data?.outcomes ?? []).map((outcome) => [
-              outcome,
-              auditOutcomeLabels[outcome],
-            ])}
-          />
-          {(filterOptions.data?.credentials.length ?? 0) > 0 && (
-            <StorytellerFilterChips
-              label="PAT"
-              value={filters.credential_ref ?? ""}
-              onChange={(credential_ref) => update({ credential_ref })}
-              options={(filterOptions.data?.credentials ?? []).map(
-                (credential) => [
-                  credential.value,
-                  credential.label || credential.value,
-                ],
-              )}
-            />
-          )}
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={Boolean(
-                  filters.include_low_importance || filters.category,
-                )}
-                disabled={Boolean(filters.category)}
-                onChange={(event) =>
-                  update({ include_low_importance: event.target.checked })
-                }
-              />
-            }
-            label={
-              <Typography variant="body2">
-                包含讀取與收藏等低重要度事件
-              </Typography>
-            }
+          <StorytellerAuditAdvancedFilters
+            value={filters}
+            options={filterOptions.data}
+            onChange={update}
           />
           {purgedMonths.length > 0 && (
             <Typography variant="caption" color="text.secondary">

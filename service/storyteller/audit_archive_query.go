@@ -42,7 +42,6 @@ var auditArchiveColumns = []string{
 
 type auditArchiveQueryRepository interface {
 	auditQueryRepository
-	ProjectByPublicIDForUser(userID uint64, publicID string) (*storytellerModel.Project, error)
 	AuditExports() ([]storytellerModel.AuditExport, error)
 	CreateAuditArchiveQuery(row *storytellerModel.AuditArchiveQuery) error
 	AuditArchiveQueryByPublicID(userID uint64, publicID string) (*storytellerModel.AuditArchiveQuery, error)
@@ -56,11 +55,9 @@ func auditArchiveMaxSpan() int {
 	return auditArchiveDefaultMaxSpan
 }
 
-// ProjectAuditArchiveMonths 列出可以封存查詢的月份（早於近期範圍且已匯出）與已依保存政策刪除的月份。
-func (s *Service) ProjectAuditArchiveMonths(userID uint64, projectPublicID string) (*storytellerModel.AuditArchiveMonthsOutput, error) {
-	if _, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID); err != nil {
-		return nil, err
-	}
+// AuditArchiveMonths 列出可以封存查詢的月份（早於近期範圍且已匯出）與已依保存政策刪除的月份；
+// 匯出是整站按月份做的，所以月份清單不分使用者，實際查詢時才限定本人的事件。
+func (s *Service) AuditArchiveMonths() (*storytellerModel.AuditArchiveMonthsOutput, error) {
 	exports, err := s.repo.AuditExports()
 	if err != nil {
 		return nil, err
@@ -93,15 +90,11 @@ func auditArchiveMonths(exports []storytellerModel.AuditExport, now time.Time, h
 	return output
 }
 
-// CreateProjectAuditArchiveQuery 驗證月份與篩選後建立 job 並送出 Athena 查詢；
-// project_id 條件由後端依登入者強制加入，前端不能指定其他專案或自訂 SQL。
-func (s *Service) CreateProjectAuditArchiveQuery(ctx context.Context, userID uint64, projectPublicID string, in storytellerModel.AuditArchiveQueryRequest) (*storytellerModel.AuditArchiveQueryOutput, error) {
+// CreateAuditArchiveQuery 驗證月份與篩選後建立 job 並送出 Athena 查詢；
+// actor_user_id 條件由後端依登入者強制加入，前端不能查別人的事件或自訂 SQL。
+func (s *Service) CreateAuditArchiveQuery(ctx context.Context, userID uint64, in storytellerModel.AuditArchiveQueryRequest) (*storytellerModel.AuditArchiveQueryOutput, error) {
 	if !auditArchiveQueryEnabled() {
 		return nil, ErrAuditArchiveUnavailable
-	}
-	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
-	if err != nil {
-		return nil, err
 	}
 	exports, err := s.repo.AuditExports()
 	if err != nil {
@@ -112,24 +105,28 @@ func (s *Service) CreateProjectAuditArchiveQuery(ctx context.Context, userID uin
 		return nil, err
 	}
 	env := config.EnvConfig()
-	return createAuditArchiveQuery(ctx, s.repo, engine, exports, userID, project.ID, in, env.AuditAthenaDatabase, env.AuditAthenaTable, time.Now())
+	return createAuditArchiveQuery(ctx, s.repo, engine, exports, userID, in, env.AuditAthenaDatabase, env.AuditAthenaTable, time.Now())
 }
 
-func createAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryRepository, engine auditArchiveQueryEngine, exports []storytellerModel.AuditExport, userID, projectID uint64, in storytellerModel.AuditArchiveQueryRequest, database, table string, now time.Time) (*storytellerModel.AuditArchiveQueryOutput, error) {
+func createAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryRepository, engine auditArchiveQueryEngine, exports []storytellerModel.AuditExport, userID uint64, in storytellerModel.AuditArchiveQueryRequest, database, table string, now time.Time) (*storytellerModel.AuditArchiveQueryOutput, error) {
 	months, err := validateAuditArchiveMonths(in.MonthFrom, in.MonthTo, exports, now, auditHotMonths(), auditArchiveMaxSpan())
 	if err != nil {
 		return nil, err
 	}
-	actions, exclude, err := auditFilterActions(in.Filters.Category, in.Filters.IncludeLowImportance)
+	projectID, err := resolveAuditProjectFilter(repo, userID, in.Filters.ProjectPublicID)
+	if err != nil {
+		return nil, err
+	}
+	actions, exclude, err := auditFilterActions(in.Filters.Category, auditIncludeLowImportance(in.Filters.IncludeLowImportance, in.Filters.CredentialRef))
 	if err != nil {
 		return nil, err
 	}
 	if err := validateAuditFilterValues(in.Filters.Source, in.Filters.Outcome, in.Filters.CredentialRef); err != nil {
 		return nil, err
 	}
-	sql, params := buildAuditArchiveSQL(database, table, projectID, months, actions, exclude, in.Filters)
+	sql, params := buildAuditArchiveSQL(database, table, userID, projectID, months, actions, exclude, in.Filters)
 	row := &storytellerModel.AuditArchiveQuery{
-		PublicID: randomID(), UserID: userID, Scope: storytellerModel.AuditEventScopeProject, ProjectID: &projectID,
+		PublicID: randomID(), UserID: userID, Scope: storytellerModel.AuditEventScopeAccount, ProjectID: projectID,
 		MonthFrom: in.MonthFrom, MonthTo: in.MonthTo, Filters: in.Filters, Status: storytellerModel.AuditArchiveQueryQueued,
 	}
 	if err := repo.CreateAuditArchiveQuery(row); err != nil {
@@ -195,10 +192,15 @@ func auditAthenaPlaceholders(values []string, params *[]string) string {
 }
 
 // buildAuditArchiveSQL 組封存查詢 SQL；資料庫與資料表名稱來自設定並已驗證只含英數底線，
-// 其餘所有值都走參數。月份條件逐月列出 (year, month)，讓 partition projection 只掃選到的月份。
-func buildAuditArchiveSQL(database, table string, projectID uint64, months []time.Time, actions, exclude []string, filters storytellerModel.AuditArchiveFilters) (string, []string) {
-	params := []string{strconv.FormatUint(projectID, 10)}
-	where := []string{"project_id = ?"}
+// 其餘所有值都走參數。一定帶本人的 actor_user_id；月份條件逐月列出 (year, month)，
+// 讓 partition projection 只掃選到的月份。
+func buildAuditArchiveSQL(database, table string, userID uint64, projectID *uint64, months []time.Time, actions, exclude []string, filters storytellerModel.AuditArchiveFilters) (string, []string) {
+	params := []string{strconv.FormatUint(userID, 10)}
+	where := []string{"actor_user_id = ?"}
+	if projectID != nil {
+		where = append(where, "project_id = ?")
+		params = append(params, strconv.FormatUint(*projectID, 10))
+	}
 	monthConditions := make([]string, 0, len(months))
 	for _, month := range months {
 		monthConditions = append(monthConditions, "(year = ? AND month = ?)")

@@ -104,10 +104,6 @@ func (f *fakeArchiveRepo) DeleteAuditEventsBetween(from, to time.Time, _ int) (i
 	return 0, nil
 }
 
-func (f *fakeArchiveRepo) ProjectByPublicIDForUser(uint64, string) (*storytellerModel.Project, error) {
-	return &storytellerModel.Project{ID: 9}, nil
-}
-
 func (f *fakeArchiveRepo) CreateAuditArchiveQuery(row *storytellerModel.AuditArchiveQuery) error {
 	row.CreatedAt = time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
 	f.createdQueries = append(f.createdQueries, row)
@@ -254,13 +250,15 @@ func TestValidateAuditArchiveMonths(t *testing.T) {
 
 func TestBuildAuditArchiveSQLParameterizesEverything(t *testing.T) {
 	months := []time.Time{time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC), time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)}
-	sql, params := buildAuditArchiveSQL("audit_db", "events", 9, months, nil, []string{"story.read"},
+	projectID := uint64(9)
+	sql, params := buildAuditArchiveSQL("audit_db", "events", 4, &projectID, months, nil, []string{"story.read"},
 		storytellerModel.AuditArchiveFilters{Source: "mcp", CredentialRef: "pat_x'y"})
 	require.Contains(t, sql, `FROM "audit_db"."events"`)
 	require.Contains(t, sql, "((year = ? AND month = ?) OR (year = ? AND month = ?))")
 	require.Contains(t, sql, "action NOT IN (?)")
 	require.NotContains(t, sql, "pat_x", "使用者給的值不能出現在 SQL 字串裡")
-	require.Equal(t, []string{"9", "'2026'", "'05'", "'2026'", "'06'", "'story.read'", "'mcp'", "'pat_x''y'"}, params)
+	require.True(t, strings.HasPrefix(strings.Split(sql, "WHERE ")[1], "actor_user_id = ? AND project_id = ?"), "一定帶本人的 actor_user_id")
+	require.Equal(t, []string{"4", "9", "'2026'", "'05'", "'2026'", "'06'", "'story.read'", "'mcp'", "'pat_x''y'"}, params)
 	require.Equal(t, strings.Count(sql, "?"), len(params))
 }
 
@@ -269,7 +267,7 @@ func TestCreateAuditArchiveQueryRecordsStartFailureWithoutLeakingError(t *testin
 	repo := &fakeArchiveRepo{}
 	exports := []storytellerModel.AuditExport{{Month: "2026-05", Status: storytellerModel.AuditExportStatusExported}}
 	engine := &fakeQueryEngine{startErr: errors.New("AccessDenied: arn:aws:iam::123456789012")}
-	output, err := createAuditArchiveQuery(context.Background(), repo, engine, exports, 4, 9,
+	output, err := createAuditArchiveQuery(context.Background(), repo, engine, exports, 4,
 		storytellerModel.AuditArchiveQueryRequest{MonthFrom: "2026-05", MonthTo: "2026-05"}, "audit_db", "events", now)
 	require.NoError(t, err)
 	require.Equal(t, storytellerModel.AuditArchiveQueryFailed, output.Status)

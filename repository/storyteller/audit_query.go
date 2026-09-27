@@ -4,24 +4,14 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
 
-// AuditEvents 依 keyset（occurred_at DESC, id DESC）分頁查稽核事件，多取一筆讓 service
-// 判斷是否還有下一頁。project scope 走 (project_id, occurred_at, id) 索引，account
-// scope 走 (actor_user_id, occurred_at, id) 索引，兩者都一定帶時間範圍，避免全表掃描。
+// AuditEvents 依 keyset（occurred_at DESC, id DESC）分頁查登入者本人的稽核事件，多取一筆讓
+// service 判斷是否還有下一頁。走 (actor_user_id, occurred_at, id) 索引並一定帶時間範圍，
+// 專案篩選只是在同一個索引範圍內再過濾 project_id，以個人使用量不需要另建索引。
 func (r *Repository) AuditEvents(q storytellerModel.AuditEventQuery) ([]storytellerModel.AuditEvent, error) {
 	query := r.db.Model(&storytellerModel.AuditEvent{}).
-		Where("occurred_at >= ? AND occurred_at < ?", q.From, q.To)
-	switch q.Scope {
-	case storytellerModel.AuditEventScopeProject:
-		query = query.Where("project_id = ?", q.ProjectID)
-	default:
-		// 帳號活動只看本人：帳號層事件（沒有 project）加上所有透過 PAT 的操作，
-		// 不把本人在網頁上的日常編輯混進來。
-		query = query.Where("actor_user_id = ? AND (project_id IS NULL OR auth_method = ?)", q.UserID, storytellerModel.AuditAuthMethodPAT)
-	}
-	if q.ActorSelf {
-		query = query.Where("actor_user_id = ?", q.UserID)
-	} else if q.ActorSystem {
-		query = query.Where("actor_type = ?", storytellerModel.AuditActorTypeSystem)
+		Where("actor_user_id = ? AND occurred_at >= ? AND occurred_at < ?", q.UserID, q.From, q.To)
+	if q.ProjectID != nil {
+		query = query.Where("project_id = ?", *q.ProjectID)
 	}
 	if len(q.Actions) > 0 {
 		query = query.Where("action IN ?", q.Actions)
@@ -99,6 +89,17 @@ var auditTargetNameQueries = map[string]string{
 		JOIN storyteller_projects p ON p.id = c.project_id WHERE p.user_id = ? AND c.public_id IN ?`,
 	"memory": `SELECT public_id, COALESCE(memory_name, '') AS name FROM storyteller_assistant_memories
 		WHERE user_id = ? AND public_id IN ?`,
+}
+
+// AuditProjectOptions 列出本人擁有的專案（含已刪除），給活動紀錄的專案篩選；
+// 已刪除的專案也要能選，才查得到「刪除前後」的紀錄。
+func (r *Repository) AuditProjectOptions(userID uint64) ([]storytellerModel.Project, error) {
+	rows := make([]storytellerModel.Project, 0)
+	err := r.db.Select("id, public_id, name, deleted_at").
+		Where("user_id = ?", userID).
+		Order("deleted_at IS NOT NULL, updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
 }
 
 // AuditTargetNames 依類型批次查目標名稱，一種類型一個查詢，避免逐筆 N+1。

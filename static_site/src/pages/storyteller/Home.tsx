@@ -92,7 +92,7 @@ export default function StorytellerHome() {
         ? "usage"
         : location.pathname.includes("/mcp")
           ? "mcp"
-          : location.pathname.includes("/account-activity")
+          : location.pathname.endsWith("/my/activity")
             ? "activity"
             : location.pathname.includes("/favorites")
               ? "favorites"

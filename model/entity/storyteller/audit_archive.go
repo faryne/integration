@@ -73,6 +73,7 @@ const (
 
 // AuditArchiveFilters 是封存查詢的篩選條件；與近期查詢相同的欄位語意，但一定限定月份範圍。
 type AuditArchiveFilters struct {
+	ProjectPublicID      string `json:"project_public_id,omitempty"`
 	Category             string `json:"category,omitempty"`
 	Source               string `json:"source,omitempty"`
 	Outcome              string `json:"outcome,omitempty"`

@@ -51,7 +51,6 @@ import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
 import { StorytellerMemoryManagerPage } from "./StorytellerMemoryManagerPage.tsx";
-import { StorytellerProjectAuditPage } from "./StorytellerProjectAuditPage.tsx";
 import {
   workspaceToolPageFromPath,
   workspaceToolPages,
@@ -689,8 +688,6 @@ export default function StorytellerProjectWorkspacePreview() {
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
           {toolPage?.key === "memories" ? (
             <StorytellerMemoryManagerPage projectPublicId={id} />
-          ) : toolPage?.key === "audit" ? (
-            <StorytellerProjectAuditPage projectPublicId={id} />
           ) : showBleedEditor ? (
             <EditorBleedContainer
               onBack={closeWorkspaceEditor}

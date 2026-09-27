@@ -13,19 +13,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// ProjectAuditArchiveMonths 列出專案可查詢與已刪除的封存月份，並告訴前端封存查詢是否開放。
-func ProjectAuditArchiveMonths(ctx fiber.Ctx) error {
-	months, err := storytellerService.NewService().ProjectAuditArchiveMonths(authsession.Session(ctx).UserId, ctx.Params("project"))
+// AuditArchiveMonths 列出可查詢與已刪除的封存月份，並告訴前端封存查詢是否開放。
+func AuditArchiveMonths(ctx fiber.Ctx) error {
+	months, err := storytellerService.NewService().AuditArchiveMonths()
 	return auditArchiveResponse(months, err)
 }
 
-// CreateProjectAuditArchiveQuery 建立封存查詢 job；實際查詢在 Athena 背景執行，前端再輪詢狀態。
-func CreateProjectAuditArchiveQuery(ctx fiber.Ctx) error {
+// CreateAuditArchiveQuery 建立本人活動紀錄的封存查詢 job；實際查詢在 Athena 背景執行，前端再輪詢狀態。
+func CreateAuditArchiveQuery(ctx fiber.Ctx) error {
 	var input storytellerModel.AuditArchiveQueryRequest
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	job, err := storytellerService.NewService().CreateProjectAuditArchiveQuery(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("project"), input)
+	job, err := storytellerService.NewService().CreateAuditArchiveQuery(ctx.Context(), authsession.Session(ctx).UserId, input)
 	return auditArchiveResponse(job, err)
 }
 
@@ -44,7 +44,7 @@ func auditArchiveResponse(data any, err error) error {
 	case err == nil:
 		return output.Success(data)
 	case repository.IsRecordNotFound(err):
-		return output.NotFound(errors.New("找不到這個專案或封存查詢，或你沒有查看的權限"))
+		return output.NotFound(errors.New("找不到這個封存查詢，或你沒有查看的權限"))
 	case errors.Is(err, storytellerService.ErrAuditArchiveUnavailable),
 		errors.Is(err, storytellerService.ErrAuditArchiveMonthUnavailable),
 		errors.Is(err, storytellerService.ErrAuditArchiveSpanTooLong),

@@ -1,6 +1,7 @@
 import axios from "axios";
 import dayjs from "dayjs";
 import type {
+  StorytellerAuditAdvancedFilterValues,
   StorytellerAuditEvent,
   StorytellerAuditOutcome,
   StorytellerAuditSource,
@@ -150,6 +151,7 @@ export const auditRangeOptions: Array<[string, string]> = [
   ["24h", "最近 24 小時"],
   ["7d", "最近 7 天"],
   ["30d", "最近 30 天"],
+  ["custom", "自訂"],
 ];
 
 export function auditActionLabel(action: string) {
@@ -240,4 +242,31 @@ export function auditErrorMessage(error: unknown) {
     if (message) return message;
   }
   return "稽核紀錄載入失敗，請稍後再試。";
+}
+
+// 近期查詢的保存月數，對應後端 AUDIT_HOT_RETENTION_MONTHS 的預設值；前端只用來提早提示，
+// 實際限制以後端為準（超過會回「請改用封存查詢」）。
+export const AUDIT_HOT_RETENTION_MONTHS = 3;
+
+export const emptyAuditAdvancedFilters: StorytellerAuditAdvancedFilterValues = {
+  projectPublicId: "",
+  category: "",
+  source: "",
+  outcome: "",
+  credentialRef: "",
+  includeLowImportance: false,
+};
+
+// 進階篩選收合時要顯示「目前套用了幾個條件」，避免使用者忘了還有條件在作用。
+export function countActiveAuditFilters(
+  values: StorytellerAuditAdvancedFilterValues,
+) {
+  return [
+    values.projectPublicId,
+    values.category,
+    values.source,
+    values.outcome,
+    values.credentialRef,
+    values.includeLowImportance,
+  ].filter(Boolean).length;
 }

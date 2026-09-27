@@ -25,7 +25,7 @@ CREATE TABLE `storyteller_audit_archive_queries` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `public_id` VARCHAR(32) NOT NULL,
     `user_id` BIGINT UNSIGNED NOT NULL,
-    `scope` VARCHAR(16) NOT NULL COMMENT 'project',
+    `scope` VARCHAR(16) NOT NULL COMMENT 'account',
     `project_id` BIGINT UNSIGNED NULL,
     `month_from` CHAR(7) NOT NULL,
     `month_to` CHAR(7) NOT NULL,
