@@ -48,7 +48,6 @@ type AuditExport struct {
 	Month           string            `gorm:"column:month"`
 	Status          AuditExportStatus `gorm:"column:status"`
 	RowCount        uint64            `gorm:"column:row_count"`
-	MaxEventID      uint64            `gorm:"column:max_event_id"` // 已匯出的最大 event id；purge 只刪 id <= 這個值，晚到的事件會補匯
 	ObjectKeys      StringList        `gorm:"column:object_keys;type:json"`
 	Checksum        *string           `gorm:"column:checksum"`
 	RetainUntil     *time.Time        `gorm:"column:retain_until"`

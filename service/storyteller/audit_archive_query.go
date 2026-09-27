@@ -253,12 +253,12 @@ func refreshAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryReposit
 	if row.ExecutionID == nil || (row.Status != storytellerModel.AuditArchiveQueryQueued && row.Status != storytellerModel.AuditArchiveQueryRunning) {
 		return applyAuditArchiveExpiry(repo, row, now)
 	}
-	state, scanned, err := engine.QueryStatus(ctx, *row.ExecutionID)
+	status, err := engine.QueryStatus(ctx, *row.ExecutionID)
 	if err != nil {
 		return err
 	}
 	previous := row.Status
-	switch state {
+	switch status.State {
 	case "QUEUED":
 		row.Status = storytellerModel.AuditArchiveQueryQueued
 	case "RUNNING":
@@ -270,9 +270,13 @@ func refreshAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryReposit
 		category := "query_failed"
 		row.Status, row.ErrorCategory = storytellerModel.AuditArchiveQueryFailed, &category
 	}
-	row.ScannedBytes = scanned
+	row.ScannedBytes = status.ScannedBytes
 	if row.Status == storytellerModel.AuditArchiveQuerySucceeded || row.Status == storytellerModel.AuditArchiveQueryFailed {
+		// 優先用 Athena 的實際完成時間；使用者可能隔好幾天才輪詢，用 now 會讓保留期算得比結果檔晚。
 		completedAt := now
+		if status.CompletedAt != nil {
+			completedAt = *status.CompletedAt
+		}
 		row.CompletedAt = &completedAt
 	}
 	if row.Status == previous && row.CompletedAt == nil {
@@ -281,8 +285,8 @@ func refreshAuditArchiveQuery(ctx context.Context, repo auditArchiveQueryReposit
 	return repo.SaveAuditArchiveQuery(row)
 }
 
-// applyAuditArchiveExpiry 以查詢完成時間起算保留期（結果檔是完成時才寫進結果 bucket），
-// 不是 job 建立時間；Athena 排隊或執行很久時才不會一完成就過期。
+// applyAuditArchiveExpiry 以 Athena 的查詢完成時間起算保留期（結果檔是完成時才寫進結果 bucket），
+// 不是 job 建立時間，也不是第一次輪詢到完成的時間。
 func applyAuditArchiveExpiry(repo auditArchiveQueryRepository, row *storytellerModel.AuditArchiveQuery, now time.Time) error {
 	if row.Status != storytellerModel.AuditArchiveQuerySucceeded || row.CompletedAt == nil || now.Sub(*row.CompletedAt) < auditArchiveResultTTL {
 		return nil

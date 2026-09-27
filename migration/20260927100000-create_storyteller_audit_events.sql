@@ -13,7 +13,9 @@ ALTER TABLE `storyteller_personal_access_tokens`
 CREATE TABLE `storyteller_audit_events` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `event_id` CHAR(26) NOT NULL,
-    `occurred_at` TIMESTAMP(6) NOT NULL,
+    -- 一定要明寫 DEFAULT：MySQL 5.7 在 explicit_defaults_for_timestamp=OFF 時，會替第一個 TIMESTAMP NOT NULL 欄位
+    -- 自動加上 ON UPDATE CURRENT_TIMESTAMP，標記 archived_at 的 UPDATE 就會把事件發生時間改成「現在」。
+    `occurred_at` TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     `actor_type` VARCHAR(16) NOT NULL,
     `actor_user_id` BIGINT UNSIGNED NULL,
     `source` VARCHAR(16) NOT NULL,
@@ -28,6 +30,7 @@ CREATE TABLE `storyteller_audit_events` (
     `target_public_id` VARCHAR(64) NULL,
     `outcome` VARCHAR(16) NOT NULL,
     `summary` JSON NULL,
+    `archived_at` TIMESTAMP(6) NULL DEFAULT NULL COMMENT 'set when the row is in a committed S3 archive part; MySQL purge only deletes archived rows',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uq_storyteller_audit_events_event_id` (`event_id`),
     KEY `idx_storyteller_audit_events_project_occurred` (`project_id`, `occurred_at`, `id`),

@@ -6,7 +6,6 @@ CREATE TABLE `storyteller_audit_exports` (
     `month` CHAR(7) NOT NULL COMMENT 'YYYY-MM (UTC)',
     `status` VARCHAR(16) NOT NULL COMMENT 'exported, failed',
     `row_count` BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    `max_event_id` BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT 'watermark: largest event id covered by the parts; MySQL purge only deletes ids <= this',
     `object_keys` JSON NULL COMMENT 'S3 object keys of this month',
     `checksum` CHAR(64) NULL COMMENT 'sha256 chain over the part checksums, in key order',
     `retain_until` DATETIME NULL DEFAULT NULL COMMENT 'Object Lock retain-until of the parts (UTC); DATETIME because month end + N years can pass 2038',

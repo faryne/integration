@@ -30,10 +30,18 @@ type auditArchiveObjectStore interface {
 	DeleteArchivePrefix(ctx context.Context, prefix string) (int, error)
 }
 
+// auditArchiveQueryStatus 是一次輪詢拿到的 Athena 查詢狀態；CompletedAt 是 Athena 端的實際完成時間，
+// 結果 bucket 的保留期從這個時間起算。
+type auditArchiveQueryStatus struct {
+	State        string
+	ScannedBytes *uint64
+	CompletedAt  *time.Time
+}
+
 // auditArchiveQueryEngine 是封存查詢引擎；正式環境是 Athena。
 type auditArchiveQueryEngine interface {
 	StartQuery(ctx context.Context, sql string, params []string) (string, error)
-	QueryStatus(ctx context.Context, executionID string) (string, *uint64, error)
+	QueryStatus(ctx context.Context, executionID string) (auditArchiveQueryStatus, error)
 	QueryResults(ctx context.Context, executionID, nextToken string, maxResults int32) ([][]string, string, error)
 }
 
@@ -175,21 +183,20 @@ func (e *athenaAuditQueryEngine) StartQuery(ctx context.Context, sql string, par
 	return aws.ToString(output.QueryExecutionId), nil
 }
 
-func (e *athenaAuditQueryEngine) QueryStatus(ctx context.Context, executionID string) (string, *uint64, error) {
+func (e *athenaAuditQueryEngine) QueryStatus(ctx context.Context, executionID string) (auditArchiveQueryStatus, error) {
 	output, err := e.client.GetQueryExecution(ctx, &athena.GetQueryExecutionInput{QueryExecutionId: aws.String(executionID)})
 	if err != nil {
-		return "", nil, err
+		return auditArchiveQueryStatus{}, err
 	}
-	var scanned *uint64
+	var result auditArchiveQueryStatus
 	if stats := output.QueryExecution.Statistics; stats != nil && stats.DataScannedInBytes != nil && *stats.DataScannedInBytes >= 0 {
 		value := uint64(*stats.DataScannedInBytes)
-		scanned = &value
+		result.ScannedBytes = &value
 	}
-	state := ""
 	if status := output.QueryExecution.Status; status != nil {
-		state = string(status.State)
+		result.State, result.CompletedAt = string(status.State), status.CompletionDateTime
 	}
-	return state, scanned, nil
+	return result, nil
 }
 
 func (e *athenaAuditQueryEngine) QueryResults(ctx context.Context, executionID, nextToken string, maxResults int32) ([][]string, string, error) {

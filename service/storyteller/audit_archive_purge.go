@@ -6,6 +6,7 @@ import (
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/log"
 	"go.uber.org/zap"
 )
@@ -14,8 +15,8 @@ const auditArchiveDeleteBatch = 5000
 
 type auditArchivePurgeRepository interface {
 	AuditExports() ([]storytellerModel.AuditExport, error)
-	SaveAuditExport(row *storytellerModel.AuditExport) error
-	DeleteAuditEventsBetween(from, to time.Time, maxID uint64, limit int) (int64, error)
+	SetAuditExportPurgedAt(month string, column storytellerRepo.AuditExportPurgedColumn, at time.Time) error
+	DeleteAuditEventsBetween(from, to time.Time, limit int) (int64, error)
 }
 
 // RunAuditArchiveMaintenance 每天檢查一次保存期限：MySQL 只刪「已確認匯出」且超過近期月數的月份；
@@ -51,9 +52,10 @@ func RunAuditArchiveMaintenance() {
 	}
 }
 
-// purgeArchivedMySQLAuditMonths 刪除「月底已早於近期保存起點」且「匯出成功」的月份；
-// 沒匯出成功的月份永遠不刪，而且只刪 id <= max_event_id（匯出實際涵蓋的列），
-// 匯出後才晚到的事件留在 MySQL 等下次補匯，確保 MySQL 與 S3 之間不會出現空窗。
+// purgeArchivedMySQLAuditMonths 清除「月底已早於近期保存起點」且「匯出成功」月份裡已封存的列；
+// 沒封存的列（匯出後才晚到的事件）留在 MySQL 等下次補匯，確保 MySQL 與 S3 之間不會出現空窗。
+// 每天都會對這些月份重跑一次（沒有可刪的列時只是一次空的範圍查詢），補匯進來的列隔天就會清掉；
+// mysql_purged_at 記錄最後一次實際刪除的時間，只單獨更新這個欄位，不會蓋掉匯出排程寫的其他欄位。
 func purgeArchivedMySQLAuditMonths(repo auditArchivePurgeRepository, now time.Time, hotMonths int) ([]string, error) {
 	exports, err := repo.AuditExports()
 	if err != nil {
@@ -62,7 +64,7 @@ func purgeArchivedMySQLAuditMonths(repo auditArchivePurgeRepository, now time.Ti
 	hotFrom := now.AddDate(0, -hotMonths, 0)
 	purged := make([]string, 0)
 	for _, row := range exports {
-		if row.Status != storytellerModel.AuditExportStatusExported || row.MySQLPurgedAt != nil {
+		if row.Status != storytellerModel.AuditExportStatusExported || row.ArchivePurgedAt != nil {
 			continue
 		}
 		month, err := parseAuditMonth(row.Month)
@@ -73,18 +75,20 @@ func purgeArchivedMySQLAuditMonths(repo auditArchivePurgeRepository, now time.Ti
 		if monthEnd.After(hotFrom) {
 			continue
 		}
+		var total int64
 		for {
-			deleted, err := repo.DeleteAuditEventsBetween(month, monthEnd, row.MaxEventID, auditArchiveDeleteBatch)
+			deleted, err := repo.DeleteAuditEventsBetween(month, monthEnd, auditArchiveDeleteBatch)
 			if err != nil {
 				return purged, err
 			}
-			if deleted < auditArchiveDeleteBatch {
+			if total += deleted; deleted < auditArchiveDeleteBatch {
 				break
 			}
 		}
-		purgedAt := now
-		row.MySQLPurgedAt = &purgedAt
-		if err := repo.SaveAuditExport(&row); err != nil {
+		if total == 0 && row.MySQLPurgedAt != nil {
+			continue
+		}
+		if err := repo.SetAuditExportPurgedAt(row.Month, storytellerRepo.AuditExportMySQLPurged, now); err != nil {
 			return purged, err
 		}
 		purged = append(purged, row.Month)
@@ -122,9 +126,7 @@ func purgeExpiredArchiveMonths(ctx context.Context, repo auditArchivePurgeReposi
 			purgeErr = errors.Join(purgeErr, err)
 			continue
 		}
-		purgedAt := now
-		row.ArchivePurgedAt = &purgedAt
-		if err := repo.SaveAuditExport(&row); err != nil {
+		if err := repo.SetAuditExportPurgedAt(row.Month, storytellerRepo.AuditExportArchivePurged, now); err != nil {
 			return purged, err
 		}
 		purged = append(purged, row.Month)
