@@ -62,3 +62,26 @@ func TestStoryCreateToolOnlyResolvesProjectID(t *testing.T) {
 	require.Zero(t, lookup.projectBefore)
 	require.Zero(t, lookup.storyBefore)
 }
+
+func TestMemoryUpsertActionIsResolvedFromPublicID(t *testing.T) {
+	require.Equal(t, "memory.create", resolvedToolAction("storyteller_upsert_memory", "memory.create", map[string]interface{}{}, nil, nil))
+	require.Equal(t, "memory.update", resolvedToolAction("storyteller_upsert_memory", "memory.create", map[string]interface{}{
+		"memory_public_id": "memory-1",
+	}, nil, nil))
+}
+
+func TestToolErrorOutcome(t *testing.T) {
+	require.Equal(t, storytellerModel.AuditOutcomeDenied, auditToolErrorOutcome(errStorytellerMCPUnauthenticated))
+	require.Equal(t, storytellerModel.AuditOutcomeDenied, auditToolErrorOutcome(ErrAgentToolScopeViolation))
+	require.Equal(t, storytellerModel.AuditOutcomeFailed, auditToolErrorOutcome(errors.New("provider failed")))
+}
+
+func TestFailedProjectPatchActionUsesRequestedFields(t *testing.T) {
+	before := map[string]any{"visibility": "private", "name": "before"}
+	require.Equal(t, "project.update", resolvedToolAction("storyteller_patch_project", "project.update", map[string]interface{}{
+		"name": "after",
+	}, before, nil))
+	require.Equal(t, "project.visibility.change", resolvedToolAction("storyteller_patch_project", "project.update", map[string]interface{}{
+		"visibility": "public",
+	}, before, nil))
+}

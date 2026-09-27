@@ -49,6 +49,10 @@ func TestRouteTemplateMatches(t *testing.T) {
 	require.False(t, routeTemplateMatches("/storyteller/projects/:project/stories/:story", "/storyteller/projects/p1/stories"))
 }
 
+func TestProjectPublicIDFromReadingBookmarkPath(t *testing.T) {
+	require.Equal(t, "project-1", projectPublicIDFromPath("/storyteller/story/project-1/stories/story-1/bookmarks"))
+}
+
 func TestStoryCreateOnlyResolvesProjectID(t *testing.T) {
 	lookup := &fakeWebAuditLookup{}
 	path := "/storyteller/projects/project-1/stories"

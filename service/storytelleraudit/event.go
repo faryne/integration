@@ -13,6 +13,7 @@ const crockfordBase32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
 type EventInput struct {
 	Action         string
+	Outcome        storytellerModel.AuditOutcome
 	ProjectID      *uint64
 	TargetType     string
 	TargetPublicID string
@@ -27,10 +28,17 @@ func BuildEvent(ctx RequestContext, input EventInput, now time.Time) (*storytell
 	if err != nil {
 		return nil, err
 	}
-	actorType := storytellerModel.AuditActorTypeSystem
+	actorType := storytellerModel.AuditActorTypeUser
+	if ctx.Source == storytellerModel.AuditSourceCron {
+		actorType = storytellerModel.AuditActorTypeSystem
+	}
+	outcome := input.Outcome
+	if outcome == "" {
+		outcome = storytellerModel.AuditOutcomeSuccess
+	}
 	var actorUserID *uint64
 	if ctx.ActorUserID != 0 {
-		actorType, actorUserID = storytellerModel.AuditActorTypeUser, &ctx.ActorUserID
+		actorUserID = &ctx.ActorUserID
 	}
 	return &storytellerModel.AuditEvent{
 		EventID:        eventID,
@@ -47,7 +55,7 @@ func BuildEvent(ctx RequestContext, input EventInput, now time.Time) (*storytell
 		Action:         input.Action,
 		TargetType:     stringPointer(input.TargetType),
 		TargetPublicID: stringPointer(input.TargetPublicID),
-		Outcome:        storytellerModel.AuditOutcomeSuccess,
+		Outcome:        outcome,
 		Summary:        input.Summary,
 	}, nil
 }

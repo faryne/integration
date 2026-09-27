@@ -42,6 +42,33 @@ func New(expectedBrand string) fiber.Handler {
 	}
 }
 
+// Optional 只在 session 存在且品牌相符時補上身分，過期或無效 session 仍繼續。
+// 用於 logout 這類必須冪等、不能被驗證失敗擋住的端點。
+func Optional(expectedBrand string) fiber.Handler {
+	return optional(expectedBrand, authService.GetSessionByEncryptKey)
+}
+
+type sessionLookup func(string) (*modelAuth.RedisSession, error)
+
+func optional(expectedBrand string, lookup sessionLookup) fiber.Handler {
+	return func(ctx fiber.Ctx) error {
+		encryptKey := strings.TrimSpace(ctx.Get(HeaderEncryptKey))
+		if encryptKey == "" {
+			return ctx.Next()
+		}
+		session, err := lookup(encryptKey)
+		if err != nil || session == nil || session.Brand != expectedBrand {
+			return ctx.Next()
+		}
+		ctx.Locals(LocalAuthSession, session)
+		storytellerAudit.Set(ctx, func(audit *auditService.RequestContext) {
+			audit.ActorUserID = session.UserId
+			audit.AuthMethod = storytellerModel.AuditAuthMethodSession
+		})
+		return ctx.Next()
+	}
+}
+
 func Session(ctx fiber.Ctx) *modelAuth.RedisSession {
 	session, _ := ctx.Locals(LocalAuthSession).(*modelAuth.RedisSession)
 	return session

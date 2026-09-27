@@ -25,7 +25,8 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
 	group.Get("/story/:project/stories/:story/image-pages", storyteller.PublicImageStoryPages)
 	group.Get("/story/share/:token/stories/:story/image-pages", storyteller.SharedImageStoryPages)
-	group.Post("/auth/session", storyteller.CreateSession)
+	group.Post("/auth/session", storytellerAudit.WebSuccess(), storyteller.CreateSession)
+	group.Delete("/auth/session", authsession.Optional(authService.BrandStoryteller), storytellerAudit.WebSuccess(), auth.DestroySessionBestEffort)
 	if config.EnvConfig().EnableDevAuthBypass {
 		group.Post("/auth/dev-session", storyteller.CreateDevSession)
 	}

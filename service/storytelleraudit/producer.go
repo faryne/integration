@@ -125,3 +125,6 @@ func Emit(ctx context.Context, input EventInput) error {
 	}
 	return producer.Emit(event)
 }
+
+// EmitSystem 供 cron job 送出沒有 HTTP request 與 user actor 的 system event。
+func EmitSystem(input EventInput) error { return Emit(SystemContext(), input) }

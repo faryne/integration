@@ -3,6 +3,7 @@ package storytelleraudit
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
@@ -16,6 +17,40 @@ func ProjectDiff(before, after any) storytellerModel.AuditSummary {
 		return nil
 	}
 	return storytellerModel.AuditSummary{"changes": changed}
+}
+
+// CredentialSummary 僅保留可公開識別資料；API key 只留下末四碼。
+func CredentialSummary(arguments map[string]any, result any) storytellerModel.AuditSummary {
+	summary := storytellerModel.AuditSummary{}
+	for _, object := range []map[string]any{arguments, jsonObject(result)} {
+		for _, key := range []string{"id", "public_id", "provider_key_id", "model_id", "label", "provider", "model_name", "name"} {
+			if value, ok := object[key]; ok && value != nil && value != "" {
+				summary[key] = value
+			}
+		}
+	}
+	secret, _ := arguments["api_key"].(string)
+	if secret == "" {
+		secret, _ = jsonObject(result)["token"].(string)
+	}
+	if last4 := secretLastFour(secret); last4 != "" {
+		summary["secret_last4"] = last4
+	}
+	if len(summary) == 0 {
+		return nil
+	}
+	return summary
+}
+
+func secretLastFour(secret string) string {
+	runes := []rune(strings.TrimSpace(secret))
+	if len(runes) == 0 {
+		return ""
+	}
+	if len(runes) > 4 {
+		runes = runes[len(runes)-4:]
+	}
+	return string(runes)
 }
 
 func ChangedFields(before, after any, fields ...string) map[string]any {
@@ -35,14 +70,15 @@ func SafeSummary(arguments map[string]any, result any) storytellerModel.AuditSum
 	for _, key := range []string{
 		"project_public_id", "story_public_id", "lore_public_id", "asset_public_id",
 		"collection_public_id", "collection_id", "volume_public_id", "parent_id", "marker_id", "after_marker_id",
-		"target_version_id", "version_id", "base_version_id", "sort", "page", "page_size",
+		"target_version_id", "version_id", "base_version_id", "memory_public_id", "pen_name", "new_pen_name", "name",
+		"scope_type", "kind", "is_pinned", "hidden", "ranking", "sort", "page", "page_size",
 	} {
 		if value, ok := arguments[key]; ok && value != nil && value != "" {
 			summary[key] = value
 		}
 	}
 	resultMap := jsonObject(result)
-	for _, key := range []string{"public_id", "latest_version_id", "version_id", "collection_id", "total_count", "story_count", "lore_count", "page", "page_size"} {
+	for _, key := range []string{"id", "public_id", "name", "pen_name", "latest_version_id", "version_id", "collection_id", "total_count", "story_count", "lore_count", "page", "page_size"} {
 		if value, ok := resultMap[key]; ok && value != nil {
 			summary[key] = value
 		}

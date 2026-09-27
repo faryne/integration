@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -29,15 +30,26 @@ func NewRequestContext() fiber.Handler {
 		case strings.HasPrefix(ctx.Path(), "/storyteller"):
 			source = storytellerModel.AuditSourceWeb
 		}
+		ip := requestIP(ctx.IP(), ctx.RequestCtx().RemoteIP())
 		value := auditService.RequestContext{
 			RequestID: requestID, Source: source, AuthMethod: storytellerModel.AuditAuthMethodNone,
-			IP: ctx.IP(), UserAgent: ctx.Get(fiber.HeaderUserAgent),
+			IP: ip, UserAgent: ctx.Get(fiber.HeaderUserAgent),
 		}
 		ctx.Locals(LocalRequestContext, value)
 		ctx.SetContext(auditService.WithRequestContext(ctx.Context(), value))
 		ctx.Set("X-Request-ID", requestID)
 		return ctx.Next()
 	}
+}
+
+func requestIP(proxyIP string, remoteIP net.IP) string {
+	if proxyIP = strings.TrimSpace(proxyIP); proxyIP != "" {
+		return proxyIP
+	}
+	if remoteIP == nil {
+		return ""
+	}
+	return remoteIP.String()
 }
 
 func Set(ctx fiber.Ctx, update func(*auditService.RequestContext)) {

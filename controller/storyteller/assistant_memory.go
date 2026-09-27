@@ -107,7 +107,7 @@ func GenerateAssistantMemoryDraft(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storytellerService.NewService().GenerateAssistantMemory(authsession.Session(ctx).UserId, chatID, input)
+	row, err := storytellerService.NewService().GenerateAssistantMemory(ctx.Context(), authsession.Session(ctx).UserId, chatID, input)
 	if err != nil {
 		return assistantMemoryMutationError(err, "storyteller chat, target, or provider key not found")
 	}
@@ -128,7 +128,7 @@ func RetryAssistantMemoryDraft(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storytellerService.NewService().RetryAssistantMemory(authsession.Session(ctx).UserId, ctx.Params("memory"), input)
+	row, err := storytellerService.NewService().RetryAssistantMemory(ctx.Context(), authsession.Session(ctx).UserId, ctx.Params("memory"), input)
 	if err != nil {
 		return assistantMemoryMutationError(err, "storyteller memory draft, chat, target, or provider key not found")
 	}

@@ -40,6 +40,13 @@ func IsPAT(ctx context.Context) bool {
 	return ok && value.AuthMethod == storytellerModel.AuditAuthMethodPAT
 }
 
+// SystemContext 建立沒有 request／user 的排程稽核 context。
+func SystemContext() context.Context {
+	return WithRequestContext(context.Background(), RequestContext{
+		Source: storytellerModel.AuditSourceCron, AuthMethod: storytellerModel.AuditAuthMethodNone,
+	})
+}
+
 func truncateRunes(value string, max int) string {
 	value = strings.TrimSpace(value)
 	if max <= 0 {

@@ -19,6 +19,19 @@ const (
 
 var errPersonalAccessTokenInvalid = errors.New("personal access token is invalid or expired")
 
+// PersonalAccessTokenAuthentication 只帶 middleware 需要的公開識別資料，不含 token 或 hash。
+type PersonalAccessTokenAuthentication struct {
+	UserID        uint64
+	Label         string
+	CredentialRef string
+	DeniedReason  string
+}
+
+type personalAccessTokenAuthRepository interface {
+	PersonalAccessTokenByHash(string) (*storytellerModel.PersonalAccessToken, error)
+	TouchPersonalAccessTokenLastUsed(uint64) error
+}
+
 func generatePersonalAccessTokenSecret() (string, error) {
 	buf := make([]byte, personalAccessTokenSecretLen)
 	if _, err := rand.Read(buf); err != nil {
@@ -85,33 +98,43 @@ func (s *Service) CreatePersonalAccessToken(userID uint64, input storytellerMode
 	}, nil
 }
 
-func (s *Service) DeletePersonalAccessToken(userID, id uint64) error {
+func (s *Service) DeletePersonalAccessToken(userID, id uint64) (*storytellerModel.PersonalAccessTokenOutput, error) {
 	row, err := s.repo.PersonalAccessTokenByID(userID, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.repo.DeletePersonalAccessToken(row)
+	if err := s.repo.DeletePersonalAccessToken(row); err != nil {
+		return nil, err
+	}
+	output := personalAccessTokenOutput(*row)
+	return &output, nil
 }
 
 // AuthenticatePersonalAccessToken 驗證明碼 token 並回傳所屬 userID、label 與可公開的
 // credential ref；label 用來在編輯歷史標記「透過哪把 token 寫入」。
 // 驗證通過會非同步更新 last_used_at，不影響回應時間。
-func (s *Service) AuthenticatePersonalAccessToken(token string) (userID uint64, label, credentialRef string, err error) {
+func (s *Service) AuthenticatePersonalAccessToken(token string) (*PersonalAccessTokenAuthentication, error) {
+	return authenticatePersonalAccessToken(s.repo, token, time.Now())
+}
+
+func authenticatePersonalAccessToken(repo personalAccessTokenAuthRepository, token string, now time.Time) (*PersonalAccessTokenAuthentication, error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return 0, "", "", errPersonalAccessTokenInvalid
+		return nil, errPersonalAccessTokenInvalid
 	}
-	row, err := s.repo.PersonalAccessTokenByHash(helper.SHA256Hex(token))
+	row, err := repo.PersonalAccessTokenByHash(helper.SHA256Hex(token))
 	if err != nil {
-		return 0, "", "", errPersonalAccessTokenInvalid
+		return nil, errPersonalAccessTokenInvalid
 	}
-	if row.ExpiresAt != nil && row.ExpiresAt.Before(time.Now()) {
-		return 0, "", "", errPersonalAccessTokenInvalid
+	result := &PersonalAccessTokenAuthentication{UserID: row.UserID, Label: row.Label, CredentialRef: row.PublicID}
+	if row.ExpiresAt != nil && row.ExpiresAt.Before(now) {
+		result.DeniedReason = "expired"
+		return result, errPersonalAccessTokenInvalid
 	}
 	go func(id uint64) {
-		_ = s.repo.TouchPersonalAccessTokenLastUsed(id)
+		_ = repo.TouchPersonalAccessTokenLastUsed(id)
 	}(row.ID)
-	return row.UserID, row.Label, row.PublicID, nil
+	return result, nil
 }
 
 func personalAccessTokenOutput(row storytellerModel.PersonalAccessToken) storytellerModel.PersonalAccessTokenOutput {

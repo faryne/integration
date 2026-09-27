@@ -13,10 +13,12 @@ type fakeStreamAdder struct {
 	calls int
 	err   error
 	order *[]string
+	added []string
 }
 
-func (f *fakeStreamAdder) Add(string) error {
+func (f *fakeStreamAdder) Add(payload string) error {
 	f.calls++
+	f.added = append(f.added, payload)
 	if f.order != nil {
 		*f.order = append(*f.order, "redis")
 	}

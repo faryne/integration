@@ -2,6 +2,8 @@ package storytelleraudit
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -14,7 +16,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// WebSuccess 在 handler 完成且回傳 2xx 後才送 audit event；P2 才處理 denied／failed。
+// WebSuccess 統一處理 mapped route 的 success／denied／failed；async action 的成功事件
+// 由背景工作完成時送出，這裡只處理同步 submit failure。
 func WebSuccess() fiber.Handler {
 	return webSuccess(defaultWebAuditLookup{repository: storytellerRepo.NewRepository()})
 }
@@ -57,6 +60,10 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 		err := ctx.Next()
 		response, ok := err.(output.CommonOutputInterface)
 		if !ok || response.HttpCode() < 200 || response.HttpCode() >= 300 {
+			emitWebFailure(ctx, err, action.Name, before.projectID)
+			return err
+		}
+		if isAsyncAuditAction(action.Name) {
 			return err
 		}
 		data := response.Output(0, "").Data
@@ -74,6 +81,9 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 			before.projectID = numericFieldPointer(data, "id")
 		}
 		summary := auditService.SafeSummary(arguments, data)
+		if strings.HasPrefix(actionName, "pat.") || strings.HasPrefix(actionName, "provider_key.") {
+			summary = auditService.CredentialSummary(arguments, data)
+		}
 		if (actionName == "project.update" || actionName == "project.visibility.change") && before.projectBefore != nil {
 			summary = auditService.ProjectDiff(before.projectBefore, data)
 		}
@@ -85,6 +95,38 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 		}
 		return err
 	}
+}
+
+func emitWebFailure(ctx fiber.Ctx, err error, actionName string, projectID *uint64) {
+	status, customCode := fiber.StatusInternalServerError, ""
+	if response, ok := err.(output.CommonOutputInterface); ok {
+		status = response.HttpCode()
+		customCode = string(response.Output(0, "").CustomCode)
+	} else {
+		var fiberErr *fiber.Error
+		if errors.As(err, &fiberErr) {
+			status = fiberErr.Code
+		}
+	}
+	outcome := auditService.OutcomeForHTTPStatus(status)
+	if actionName == "auth.login" {
+		actionName, outcome = "auth.login.failed", storytellerModel.AuditOutcomeDenied
+	}
+	summary := auditService.FailureSummary(status, customCode)
+	if actionName == "auth.login.failed" {
+		summary["provider"] = "firebase"
+	}
+	arguments := webAuditPathArguments(ctx)
+	targetType, targetPublicID := webAuditTarget(actionName, arguments, nil)
+	if emitErr := auditService.Emit(ctx.Context(), auditService.EventInput{
+		Action: actionName, Outcome: outcome, ProjectID: projectID, TargetType: targetType, TargetPublicID: targetPublicID, Summary: summary,
+	}); emitErr != nil {
+		log.Logger().Error("Emit failed storyteller Web audit event failed", zap.String("route", ctx.Method()+" "+ctx.Path()), zap.Error(emitErr))
+	}
+}
+
+func isAsyncAuditAction(actionName string) bool {
+	return actionName == "agent.run" || actionName == "agent.resend" || actionName == "memory.draft.generate" || actionName == "memory.draft.retry"
 }
 
 func loadWebAuditBefore(lookup webAuditLookup, userID uint64, projectPublicID, actionName, storyPublicID string) webAuditBeforeState {
@@ -178,7 +220,7 @@ func resolvedWebStoryAction(action string, before *storytellerModel.Story, after
 
 func projectPublicIDFromPath(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) >= 3 && parts[0] == "storyteller" && parts[1] == "projects" {
+	if len(parts) >= 3 && parts[0] == "storyteller" && (parts[1] == "projects" || parts[1] == "story") {
 		return parts[2]
 	}
 	return ""
@@ -187,9 +229,19 @@ func projectPublicIDFromPath(path string) string {
 func webAuditArguments(ctx fiber.Ctx) map[string]any {
 	arguments := map[string]any{}
 	_ = json.Unmarshal(ctx.Body(), &arguments)
+	for key, value := range webAuditPathArguments(ctx) {
+		arguments[key] = value
+	}
+	return arguments
+}
+
+func webAuditPathArguments(ctx fiber.Ctx) map[string]any {
+	arguments := map[string]any{}
 	for param, key := range map[string]string{
 		"project": "project_public_id", "story": "story_public_id", "volume": "volume_public_id",
 		"lore": "lore_public_id", "asset": "asset_public_id", "collection": "collection_public_id", "version": "version_id",
+		"profile": "profile_id", "apikey": "provider_key_id", "token": "token_id", "agent": "agent_id",
+		"chat": "chat_id", "memory": "memory_public_id", "proposal": "proposal_public_id", "author": "author_public_id", "model": "model_id",
 	} {
 		if value := ctx.Params(param); value != "" {
 			arguments[key] = value
@@ -215,10 +267,45 @@ func webAuditTarget(action string, arguments map[string]any, result any) (string
 		targetType, key = "asset_collection", "collection_public_id"
 	case strings.HasPrefix(action, "asset."):
 		targetType, key = "asset", "asset_public_id"
+	case strings.HasPrefix(action, "pat."):
+		targetType, key = "personal_access_token", "token_id"
+	case strings.HasPrefix(action, "provider_key."):
+		targetType, key = "provider_key", "provider_key_id"
+	case strings.HasPrefix(action, "author_profile."):
+		targetType, key = "author_profile", "profile_id"
+	case strings.HasPrefix(action, "profile."):
+		targetType = "profile"
+	case strings.HasPrefix(action, "agent_skill."):
+		targetType, key = "agent_skill", "agent_id"
+	case strings.HasPrefix(action, "agent.proposal."):
+		targetType, key = "agent_proposal", "proposal_public_id"
+	case strings.HasPrefix(action, "agent."):
+		targetType, key = "agent_chat", "chat_id"
+	case strings.HasPrefix(action, "memory."):
+		targetType, key = "memory", "memory_public_id"
+	case strings.HasPrefix(action, "favorite."):
+		if _, ok := arguments["author_public_id"]; ok {
+			targetType, key = "favorite_author", "author_public_id"
+		} else {
+			targetType, key = "favorite_project", "project_public_id"
+		}
+	case strings.HasPrefix(action, "bookmark."):
+		if _, ok := arguments["story_public_id"]; ok {
+			targetType, key = "story_bookmark", "story_public_id"
+		} else {
+			targetType, key = "lore_bookmark", "lore_public_id"
+		}
+	case strings.HasPrefix(action, "ranking."):
+		targetType, key = "project_ranking", "project_public_id"
 	}
 	publicID, _ := arguments[key].(string)
 	if publicID == "" {
-		publicID = stringField(result, "public_id")
+		for _, resultKey := range []string{"public_id", "id", "chat_id"} {
+			publicID = stringField(result, resultKey)
+			if publicID != "" {
+				break
+			}
+		}
 	}
 	return targetType, publicID
 }
@@ -229,8 +316,14 @@ func stringField(value any, key string) string {
 	if json.Unmarshal(data, &object) != nil {
 		return ""
 	}
-	result, _ := object[key].(string)
-	return result
+	result := object[key]
+	if result == nil {
+		return ""
+	}
+	if value, ok := result.(string); ok {
+		return value
+	}
+	return fmt.Sprint(result)
 }
 
 func numericFieldPointer(value any, key string) *uint64 {

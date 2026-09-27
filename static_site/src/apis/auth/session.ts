@@ -5,8 +5,8 @@ import { isSteamLoomSite, STEAMLOOM_PATH_PREFIX } from "@/helpers/steamloom.ts";
 
 // storyteller 的使用者系統已經跟主站 users 表脫鉤（見 service/auth/session.go 的
 // RedisSession.Brand），登入/續期一定要打 storyteller 專屬的端點，不能再走共用的
-// /auth/session——後端會直接判 session brand mismatch 回 401。destroyAuthSession
-// 不用分流：DELETE /auth/session 純粹靠 encrypt_key 刪 Redis key，不檢查 brand。
+// /auth/session——後端會直接判 session brand mismatch 回 401。登出也走品牌專屬
+// endpoint，讓後端在刪除前保留品牌與 user context 供稽核使用。
 //
 // isLocalStorytellerDevTest 只給本機開發測試用：正式網域靠 isSteamLoomSite()
 // 判斷網域名稱就夠了，但 storyteller 本機開發網址是 localhost + /storyteller
@@ -62,7 +62,7 @@ export async function touchAuthSession(encryptKey: string) {
 
 export async function destroyAuthSession(encryptKey: string) {
   const response = await axios.delete<CommonResponse<{ destroyed: boolean }>>(
-    `${import.meta.env.VITE_API_BASE}/auth/session`,
+    `${import.meta.env.VITE_API_BASE}${sessionEndpoint}`,
     {
       headers: {
         "X-Encrypt-Key": encryptKey,

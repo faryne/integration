@@ -2,6 +2,7 @@ package storyteller
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -60,6 +61,13 @@ func auditToolCallWithLookup(ctx context.Context, toolName string, arguments map
 	before := loadToolAuditBefore(lookup, userID, projectPublicID, toolName, action.Name, arguments)
 	result, err := handler(ctx, arguments)
 	if err != nil {
+		actionName := resolvedToolAction(toolName, action.Name, arguments, before.projectBefore, nil)
+		outcome := auditToolErrorOutcome(err)
+		targetType, targetPublicID := auditToolTarget(actionName, arguments, nil)
+		emitToolAudit(ctx, toolName, auditService.EventInput{
+			Action: actionName, Outcome: outcome, ProjectID: before.projectID, TargetType: targetType,
+			TargetPublicID: targetPublicID, Summary: auditService.ToolFailureSummary(outcome),
+		})
 		return result, err
 	}
 	actionName := resolvedToolAction(toolName, action.Name, arguments, before.projectBefore, result)
@@ -78,12 +86,23 @@ func auditToolCallWithLookup(ctx context.Context, toolName string, arguments map
 		}
 	}
 	targetType, targetPublicID := auditToolTarget(actionName, arguments, result)
-	if emitErr := auditService.Emit(ctx, auditService.EventInput{
+	emitToolAudit(ctx, toolName, auditService.EventInput{
 		Action: actionName, ProjectID: before.projectID, TargetType: targetType, TargetPublicID: targetPublicID, Summary: summary,
-	}); emitErr != nil {
+	})
+	return result, nil
+}
+
+func emitToolAudit(ctx context.Context, toolName string, input auditService.EventInput) {
+	if emitErr := auditService.Emit(ctx, input); emitErr != nil {
 		log.Logger().Error("Emit storyteller MCP audit event failed", zap.String("tool", toolName), zap.Error(emitErr))
 	}
-	return result, nil
+}
+
+func auditToolErrorOutcome(err error) storytellerModel.AuditOutcome {
+	if errors.Is(err, errStorytellerMCPUnauthenticated) || errors.Is(err, ErrAgentToolScopeViolation) {
+		return storytellerModel.AuditOutcomeDenied
+	}
+	return storytellerModel.AuditOutcomeFailed
 }
 
 func loadToolAuditBefore(lookup toolAuditLookup, userID uint64, projectPublicID, toolName, defaultAction string, arguments map[string]interface{}) toolAuditBeforeState {
@@ -163,8 +182,19 @@ func resolvedToolAction(toolName, defaultAction string, arguments map[string]int
 			return "lore.create"
 		}
 		return "lore.update"
+	case "storyteller_upsert_memory":
+		if value, _ := arguments["memory_public_id"].(string); strings.TrimSpace(value) == "" {
+			return "memory.create"
+		}
+		return "memory.update"
 	case "storyteller_patch_project":
 		if before == nil {
+			return defaultAction
+		}
+		if after == nil {
+			if _, changesVisibility := arguments["visibility"]; changesVisibility {
+				return "project.visibility.change"
+			}
 			return defaultAction
 		}
 		diff := auditService.ProjectDiff(before, after)
@@ -199,9 +229,9 @@ func auditToolTarget(action string, arguments map[string]interface{}, result any
 	case strings.HasPrefix(action, "asset."):
 		targetType, key = "asset", "asset_public_id"
 	case strings.HasPrefix(action, "memory."):
-		targetType = "memory"
+		targetType, key = "memory", "memory_public_id"
 	case strings.HasPrefix(action, "author_profile."):
-		targetType = "author_profile"
+		targetType, key = "author_profile", "pen_name"
 	}
 	publicID, _ := arguments[key].(string)
 	if publicID == "" {

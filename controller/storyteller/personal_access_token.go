@@ -36,11 +36,12 @@ func DeletePersonalAccessToken(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	if err := storyteller.NewService().DeletePersonalAccessToken(authsession.Session(ctx).UserId, id); err != nil {
+	row, err := storyteller.NewService().DeletePersonalAccessToken(authsession.Session(ctx).UserId, id)
+	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("personal access token not found"))
 		}
 		return output.BadRequest(err)
 	}
-	return output.Success(map[string]bool{"deleted": true})
+	return output.Success(map[string]any{"deleted": true, "public_id": row.PublicID, "label": row.Label})
 }
