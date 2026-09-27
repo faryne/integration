@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Storyteller 稽核紀錄 Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="prototype-bar">
+      <div>
+        <strong>稽核紀錄 Mockup</strong>
+        <span>純靜態資料 · P3 / P4 提案</span>
+      </div>
+      <div class="prototype-controls" aria-label="Mockup 顯示控制">
+        <button class="prototype-chip active" data-screen="project">專案稽核</button>
+        <button class="prototype-chip" data-screen="archive">封存查詢</button>
+        <button class="prototype-chip" data-screen="account">帳號活動</button>
+        <button class="prototype-chip" data-screen="states">狀態展示</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-view="desktop">Desktop</button>
+        <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+        <select id="themeSelect" aria-label="色彩模式">
+          <option value="dark">深色</option>
+          <option value="light">淺色</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div class="app-shell" id="appShell">
+        <header class="site-header">
+          <a class="brand" href="#">Steamloom <small>beta</small></a>
+          <nav><span>探索</span><span>搜尋</span><span class="avatar">F</span></nav>
+        </header>
+
+        <div class="workspace-chrome">
+          <div class="breadcrumb" id="breadcrumb">
+            <button class="mobile-nav" aria-label="開啟導覽">☰</button>
+            <span class="muted hide-mobile">Steamloom</span><b class="hide-mobile">›</b>
+            <span class="muted hide-mobile">我的工作台</span><b class="hide-mobile">›</b>
+            <strong>霧港殘響</strong><b>›</b><span>稽核紀錄</span>
+          </div>
+          <span class="top-status">Owner</span>
+        </div>
+
+        <div class="workspace-body project-layout" data-shell="project">
+          <aside class="sidebar project-sidebar">
+            <div class="side-scroll">
+              <p class="side-label">作品與冊</p>
+              <button><span>▤</span>全部作品 <small>18</small></button>
+              <button><span>▤</span>未分類 <small>3</small></button>
+              <button class="nested">卷一・霧醒 <small>8</small></button>
+              <button class="nested">卷二・潮痕 <small>7</small></button>
+              <p class="side-label">設定集</p>
+              <button><span>⚙</span>全部設定 <small>42</small></button>
+              <button class="nested">人物 <small>16</small></button>
+              <button class="nested">地景 <small>12</small></button>
+              <p class="side-label">資產集</p>
+              <button><span>▧</span>全部資產 <small>27</small></button>
+              <button><span>◉</span>梭梭的記憶</button>
+              <button class="active"><span>◷</span>稽核紀錄</button>
+            </div>
+            <div class="side-footer"><p class="side-label">專案操作</p><button><span>✎</span>編輯專案</button></div>
+          </aside>
+
+          <section class="content" id="projectScreen">
+            <div class="page-head">
+              <div><p class="eyebrow">PROJECT SECURITY</p><h1>稽核紀錄</h1><p>檢視這個專案的操作、入口與執行結果。</p></div>
+              <div class="mode-switch" aria-label="查詢模式">
+                <button class="active" data-mode="recent">近期</button>
+                <button data-mode="archive">封存</button>
+              </div>
+            </div>
+
+            <div class="notice"><span>ⓘ</span><p><strong>最近幾秒的事件可能尚未出現</strong><br />稽核事件採非同步寫入；通常會在數秒內更新。</p><button>重新整理</button></div>
+
+            <div class="recent-view">
+              <section class="filter-card">
+                <div class="filter-row"><span>操作者</span><div><button class="filter active">全部</button><button class="filter">Faryne</button><button class="filter">系統</button></div></div>
+                <div class="filter-row"><span>類別</span><div><button class="filter active">全部</button><button class="filter">專案</button><button class="filter">作品</button><button class="filter">設定</button><button class="filter">AI 助理</button></div></div>
+                <div class="filter-row"><span>入口</span><div><button class="filter active">全部</button><button class="filter">Web</button><button class="filter">MCP</button><button class="filter">API</button><button class="filter">排程</button></div></div>
+                <div class="filter-row"><span>結果</span><div><button class="filter active">全部</button><button class="filter">成功</button><button class="filter">拒絕</button><button class="filter">失敗</button></div></div>
+                <div class="filter-row"><span>時間</span><div><button class="filter active">最近 24 小時</button><button class="filter">最近 7 天</button><button class="filter">自訂</button></div></div>
+              </section>
+
+              <div class="list-toolbar"><span>共 27 筆（已合併顯示 21 列）</span><label class="toggle"><input id="lowImportanceToggle" type="checkbox" /><i></i>顯示低重要度（6）</label></div>
+
+              <section class="timeline" aria-label="近期稽核事件">
+                <article class="event-row grouped selected" data-detail="autosave">
+                  <div class="timeline-mark success">✓</div>
+                  <div class="event-time"><strong>14:32</strong><span>今天</span></div>
+                  <div class="event-main">
+                    <div class="event-title"><strong>Faryne</strong><span>更新作品</span><b>〈霧醒・第三章〉</b><span class="count-chip">4 次自動儲存</span></div>
+                    <div class="event-meta"><span class="source web">Web</span><span>Session</span><span class="outcome success">成功</span><span>2 分鐘內</span></div>
+                    <div class="group-children" hidden>
+                      <p><time>14:32:48</time>版本 <code>ver_01K6…D8A</code></p>
+                      <p><time>14:32:19</time>版本 <code>ver_01K6…B2Q</code></p>
+                      <p><time>14:31:37</time>版本 <code>ver_01K6…8NT</code></p>
+                      <p><time>14:30:56</time>版本 <code>ver_01K6…4CE</code></p>
+                    </div>
+                  </div>
+                  <button class="expand-group" aria-label="展開 4 次自動儲存">⌄</button>
+                </article>
+
+                <article class="event-row" data-detail="project">
+                  <div class="timeline-mark success">✓</div><div class="event-time"><strong>13:18</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>更新專案</span><b>霧港殘響</b></div><div class="event-meta"><span class="source web">Web</span><span>Session</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row" data-detail="mcp">
+                  <div class="timeline-mark success">✓</div><div class="event-time"><strong>12:04</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>更新設定</span><b>潮汐曆法</b></div><div class="event-meta"><span class="source mcp">MCP</span><span class="credential">Codex 桌機 · pat_7K2F</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row" data-detail="agent">
+                  <div class="timeline-mark success">✓</div><div class="event-time"><strong>10:41</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>執行 AI 助理</span><b>對話「修整第三章節奏」</b></div><div class="event-meta"><span class="source web">Web</span><span>Claude Sonnet 4.5</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row danger" data-detail="denied">
+                  <div class="timeline-mark denied">!</div><div class="event-time"><strong>09:17</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>嘗試刪除資產</span><b>港區地圖.png</b></div><div class="event-meta"><span class="source api">API</span><span class="credential">Raycast · pat_C91A</span><span class="outcome denied">拒絕</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row danger" data-detail="failed">
+                  <div class="timeline-mark denied">×</div><div class="event-time"><strong>09:02</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>執行 AI 助理</span><b>對話「補齊港區設定」</b></div><div class="event-meta"><span class="source web">Web</span><span>Claude Sonnet 4.5</span><span class="outcome failed">失敗</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row" data-detail="cron">
+                  <div class="timeline-mark success">✓</div><div class="event-time"><strong>03:00</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>系統</strong><span>清理逾期記憶草稿</span><b>霧港殘響</b></div><div class="event-meta"><span class="source cron">排程</span><span>System</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row low-importance" data-detail="read" hidden>
+                  <div class="timeline-mark low">·</div><div class="event-time"><strong>08:55</strong><span>今天</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>讀取作品列表</span><b>霧港殘響</b></div><div class="event-meta"><span class="source mcp">MCP</span><span class="credential">Codex 桌機 · pat_7K2F</span><span class="importance">低重要度</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+
+                <article class="event-row low-importance" data-detail="social" hidden>
+                  <div class="timeline-mark low">·</div><div class="event-time"><strong>昨天</strong><span>23:20</span></div>
+                  <div class="event-main"><div class="event-title"><strong>Faryne</strong><span>新增寫作書籤</span><b>〈霧醒・第二章〉</b></div><div class="event-meta"><span class="source web">Web</span><span class="importance">低重要度</span><span class="outcome success">成功</span></div></div><span class="chevron">›</span>
+                </article>
+              </section>
+              <nav class="pagination"><button disabled>‹</button><button class="active">1</button><button>2</button><button>3</button><button>›</button></nav>
+            </div>
+
+            <div class="archive-view" hidden>
+              <div class="archive-demo-controls" aria-label="封存狀態展示">
+                <span>Mockup 狀態</span>
+                <button data-archive-state="queued">等待中</button>
+                <button data-archive-state="running">執行中</button>
+                <button data-archive-state="results">查詢結果</button>
+                <button data-archive-state="failed">失敗</button>
+              </div>
+              <section class="archive-query card">
+                <div><h2>查詢封存紀錄</h2><p>封存資料來自 3 個月以前，必須指定完整月份範圍。</p></div>
+                <div class="month-fields"><label>開始月份<input type="month" value="2026-03" max="2026-06" /></label><span>至</span><label>結束月份<input type="month" value="2026-05" max="2026-06" /></label><button class="primary" id="archiveSubmit">送出查詢</button></div>
+                <p class="helper">可查詢最晚月份：2026 年 6 月。跨越近期資料時，請分別查詢。</p>
+              </section>
+              <section class="retention card"><span>封存保存範圍</span><div><button class="month available">2026 / 05<small>可查詢</small></button><button class="month available">2024 / 11<small>可查詢</small></button><button class="month purged">2018 / 03<small>已超過保存期限並已刪除</small></button></div></section>
+              <div class="archive-status" id="archiveStatus"></div>
+            </div>
+          </section>
+
+          <aside class="detail-drawer open" id="detailDrawer" aria-label="事件詳情">
+            <div class="drawer-head"><div><p class="eyebrow">EVENT DETAIL</p><h2>事件詳情</h2></div><button id="closeDrawer" aria-label="關閉詳情">×</button></div>
+            <div id="detailContent"></div>
+          </aside>
+        </div>
+
+        <div class="workspace-body account-layout" data-shell="account" hidden>
+          <aside class="sidebar account-sidebar">
+            <p class="side-label">我的工作台</p><button><span>▤</span>創作專案</button><button><span>◆</span>Skill</button><button><span>⌁</span>金鑰管理</button><button><span>↯</span>用量報表</button><button><span>⌘</span>MCP 連接</button>
+            <p class="side-label">帳號與安全</p><button class="active"><span>◷</span>帳號活動</button>
+            <p class="side-label">我的追蹤</p><button><span>♥</span>我的追蹤</button><p class="side-label">我的檔案</p><button><span>●</span>我的檔案</button>
+          </aside>
+          <section class="content account-content">
+            <div class="page-head"><div><p class="eyebrow">ACCOUNT SECURITY</p><h1>帳號活動</h1><p>查看登入、PAT 與 provider key 的安全事件。</p></div><button class="outline">前往 MCP 與 PAT 管理</button></div>
+            <div class="notice compact"><span>ⓘ</span><p>想確認某支 PAT 讀取或修改過什麼？從下方選擇憑證即可篩出所有來源與結果。</p></div>
+            <section class="filter-card account-filters">
+              <div class="filter-row"><span>憑證</span><div><button class="filter active">全部</button><button class="filter">Codex 桌機 · pat_7K2F</button><button class="filter">Raycast · pat_C91A</button></div></div>
+              <div class="filter-row"><span>事件</span><div><button class="filter active">全部</button><button class="filter">登入</button><button class="filter">PAT</button><button class="filter">Provider key</button><button class="filter">讀取／修改</button></div></div>
+            </section>
+            <section class="account-events">
+              <article data-account-detail="patDenied"><div class="account-icon denied">!</div><div><h3>已拒絕過期 PAT</h3><p><span class="credential">Codex 桌機 · pat_7K2F</span> 嘗試從 MCP 讀取專案</p><small>今天 15:02 · 203.0.113.24 · Claude Desktop/1.4</small></div><span class="outcome denied">拒絕</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>透過 PAT 讀取作品列表</h3><p><span class="credential">Codex 桌機 · pat_7K2F</span> · 霧港殘響 · 18 筆</p><small>今天 14:54 · 198.51.100.42 · Codex CLI/0.48.0</small></div><span class="outcome success">成功</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>透過 PAT 更新設定</h3><p><span class="credential">Codex 桌機 · pat_7K2F</span> · 潮汐曆法</p><small>今天 12:04 · 198.51.100.42 · Codex CLI/0.48.0</small></div><span class="outcome success">成功</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>建立 PAT</h3><p>Codex 桌機 · <code>pat_7K2F</code></p><small>今天 08:30 · 203.0.113.18 · Chrome 129 / macOS</small></div><span class="outcome success">成功</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>登入 storyteller</h3><p>Google OAuth</p><small>昨天 21:14 · 203.0.113.18 · Chrome 129 / macOS</small></div><span class="outcome success">成功</span></article>
+              <article><div class="account-icon failed">×</div><div><h3>登入失敗</h3><p>Google OAuth · callback_invalid</p><small>昨天 21:12 · 203.0.113.18 · Chrome 129 / macOS</small></div><span class="outcome failed">失敗</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>更新 Provider key</h3><p>Anthropic · 標籤「個人額度」· 末四碼 8QKF</p><small>9 月 26 日 16:48 · 203.0.113.18 · Safari 18 / macOS</small></div><span class="outcome success">成功</span></article>
+              <article><div class="account-icon success">✓</div><div><h3>登出</h3><p>storyteller Web session</p><small>9 月 25 日 00:10 · 203.0.113.18 · Safari 18 / macOS</small></div><span class="outcome success">成功</span></article>
+            </section>
+          </section>
+        </div>
+
+        <div class="workspace-body states-layout" data-shell="states" hidden>
+          <section class="content states-content">
+            <div class="page-head"><div><p class="eyebrow">UI STATES</p><h1>載入、空白與錯誤</h1><p>由下方按鈕切換同一個清單區域的回饋狀態。</p></div></div>
+            <div class="state-tabs"><button class="active" data-state="loading">載入中</button><button data-state="empty">空白</button><button data-state="error">API 錯誤</button></div>
+            <section class="state-card" id="stateCard"></section>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <div class="snack" id="snack" role="status"><span>!</span><div><strong>無法載入稽核紀錄</strong><p>請稍後再試，或重新整理頁面。</p></div><button aria-label="關閉通知">×</button></div>
+    <script src="app.js"></script>
+  </body>
+</html>
