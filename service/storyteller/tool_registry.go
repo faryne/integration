@@ -39,6 +39,10 @@ func NewToolRegistry() *ToolRegistry {
 // Register 把一個工具加進清單，依照呼叫順序保留原本順序（MCP 工具列表原本
 // 是什麼排列順序，轉過來之後維持一樣，不做任何排序）。
 func (r *ToolRegistry) Register(spec ToolSpec) {
+	original := spec.Handler
+	spec.Handler = func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
+		return auditToolCall(ctx, spec.Name, arguments, original)
+	}
 	r.specs = append(r.specs, spec)
 }
 

@@ -3,6 +3,7 @@ package config
 import "github.com/Netflix/go-env"
 
 type envConfig struct {
+	AppEnvironment   string `env:"APP_ENV,default=development"`
 	AppPort          string `env:"APP_PORT,default=8080"`
 	WalolitaDSN      string `env:"WALOLITA_DSN"`
 	WalolitaSlaveDSN string `env:"WALOLITA_SLAVE_DSN"`

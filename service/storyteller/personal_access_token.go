@@ -27,6 +27,14 @@ func generatePersonalAccessTokenSecret() (string, error) {
 	return personalAccessTokenPrefix + hex.EncodeToString(buf), nil
 }
 
+func generatePersonalAccessTokenPublicID() (string, error) {
+	publicID := randomID()
+	if publicID == "" {
+		return "", errors.New("failed to generate personal access token public id")
+	}
+	return "pat_" + publicID, nil
+}
+
 func (s *Service) PersonalAccessTokens(userID uint64) ([]storytellerModel.PersonalAccessTokenOutput, error) {
 	rows, err := s.repo.PersonalAccessTokens(userID)
 	if err != nil {
@@ -48,10 +56,16 @@ func (s *Service) CreatePersonalAccessToken(userID uint64, input storytellerMode
 	if err != nil {
 		return nil, err
 	}
+	publicID, err := generatePersonalAccessTokenPublicID()
+	if err != nil {
+		return nil, err
+	}
+	tokenHash := helper.SHA256Hex(token)
 	row := &storytellerModel.PersonalAccessToken{
+		PublicID:    publicID,
 		UserID:      userID,
 		Label:       label,
-		TokenHash:   helper.SHA256Hex(token),
+		TokenHash:   tokenHash,
 		TokenPrefix: token[:len(personalAccessTokenPrefix)+6],
 	}
 	if input.ExpiresInDays != nil {
@@ -79,30 +93,31 @@ func (s *Service) DeletePersonalAccessToken(userID, id uint64) error {
 	return s.repo.DeletePersonalAccessToken(row)
 }
 
-// AuthenticatePersonalAccessToken 驗證明碼 token 並回傳所屬 userID 與這把 token 的
-// label，供 MCP 等外部呼叫端使用；label 用來在編輯歷史標記「透過哪把 token 寫入」。
+// AuthenticatePersonalAccessToken 驗證明碼 token 並回傳所屬 userID、label 與可公開的
+// credential ref；label 用來在編輯歷史標記「透過哪把 token 寫入」。
 // 驗證通過會非同步更新 last_used_at，不影響回應時間。
-func (s *Service) AuthenticatePersonalAccessToken(token string) (userID uint64, label string, err error) {
+func (s *Service) AuthenticatePersonalAccessToken(token string) (userID uint64, label, credentialRef string, err error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
-		return 0, "", errPersonalAccessTokenInvalid
+		return 0, "", "", errPersonalAccessTokenInvalid
 	}
 	row, err := s.repo.PersonalAccessTokenByHash(helper.SHA256Hex(token))
 	if err != nil {
-		return 0, "", errPersonalAccessTokenInvalid
+		return 0, "", "", errPersonalAccessTokenInvalid
 	}
 	if row.ExpiresAt != nil && row.ExpiresAt.Before(time.Now()) {
-		return 0, "", errPersonalAccessTokenInvalid
+		return 0, "", "", errPersonalAccessTokenInvalid
 	}
 	go func(id uint64) {
 		_ = s.repo.TouchPersonalAccessTokenLastUsed(id)
 	}(row.ID)
-	return row.UserID, row.Label, nil
+	return row.UserID, row.Label, row.PublicID, nil
 }
 
 func personalAccessTokenOutput(row storytellerModel.PersonalAccessToken) storytellerModel.PersonalAccessTokenOutput {
 	return storytellerModel.PersonalAccessTokenOutput{
 		ID:          row.ID,
+		PublicID:    row.PublicID,
 		Label:       row.Label,
 		TokenPrefix: row.TokenPrefix,
 		LastUsedAt:  row.LastUsedAt,

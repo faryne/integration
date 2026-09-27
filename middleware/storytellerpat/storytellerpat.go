@@ -4,14 +4,18 @@ import (
 	"errors"
 	"strings"
 
+	storytellerAudit "faryne.dev/middleware/storytelleraudit"
+	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/output"
 	storytellerService "faryne.dev/service/storyteller"
+	auditService "faryne.dev/service/storytelleraudit"
 	"github.com/gofiber/fiber/v3"
 )
 
 const (
 	LocalUserID     = "storyteller_pat_user_id"
 	LocalTokenLabel = "storyteller_pat_token_label"
+	LocalPublicID   = "storyteller_pat_public_id"
 )
 
 // New 驗證 `Authorization: Bearer <token>`，供外部工具（如 MCP client）以
@@ -22,12 +26,18 @@ func New() fiber.Handler {
 		if token == "" {
 			return output.Unauthorized(errors.New("Authorization bearer token is required"))
 		}
-		userID, label, err := storytellerService.NewService().AuthenticatePersonalAccessToken(token)
+		userID, label, publicID, err := storytellerService.NewService().AuthenticatePersonalAccessToken(token)
 		if err != nil {
 			return output.Unauthorized(err)
 		}
 		ctx.Locals(LocalUserID, userID)
 		ctx.Locals(LocalTokenLabel, label)
+		ctx.Locals(LocalPublicID, publicID)
+		storytellerAudit.Set(ctx, func(audit *auditService.RequestContext) {
+			audit.ActorUserID = userID
+			audit.AuthMethod = storytellerModel.AuditAuthMethodPAT
+			audit.CredentialRef = publicID
+		})
 		return ctx.Next()
 	}
 }

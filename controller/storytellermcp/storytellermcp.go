@@ -21,7 +21,7 @@ func Handle(ctx fiber.Ctx) error {
 	userID := storytellerpat.UserID(ctx)
 	source := "mcp:" + storytellerpat.TokenLabel(ctx)
 	baseCtx := serviceMCP.WithStorytellerSource(
-		serviceMCP.WithStorytellerUserID(context.Background(), userID),
+		serviceMCP.WithStorytellerUserID(ctx.Context(), userID),
 		source,
 	)
 	requestCtx, cancel := context.WithTimeout(baseCtx, requestTimeout)
