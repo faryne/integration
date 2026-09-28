@@ -185,16 +185,11 @@ func (r *Repository) CreateProviderAPIKey(row *storytellerModel.ProviderAPIKey) 
 	return r.db.Create(row).Error
 }
 
+// DeleteProviderAPIKey 軟刪除金鑰。Agent 已不再綁定金鑰（migration 20260920110000 移除了
+// storyteller_agents.provider_apikey_id），金鑰改由呼叫端每次帶入，所以不用再清 Agent 上的欄位。
 func (r *Repository) DeleteProviderAPIKey(row *storytellerModel.ProviderAPIKey) error {
 	now := time.Now()
-	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error; err != nil {
-			return err
-		}
-		return tx.Model(&storytellerModel.Agent{}).
-			Where("provider_apikey_id = ?", row.ID).
-			Update("provider_apikey_id", nil).Error
-	})
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
 
 func (r *Repository) ActiveProviderAPIKeysForRotation() ([]storytellerModel.ProviderAPIKey, error) {
