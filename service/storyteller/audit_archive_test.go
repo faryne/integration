@@ -401,12 +401,12 @@ func TestAuditArchiveMonthsListsQueryableAndPurgedMonths(t *testing.T) {
 
 func TestRefreshAuditArchiveQueryUsesAthenaCompletionTime(t *testing.T) {
 	now := time.Date(2026, 9, 27, 0, 0, 0, 0, time.UTC)
-	athenaDone := now.Add(-6 * 24 * time.Hour)
+	athenaDone := now.Add(-20 * time.Hour)
 	executionID := "exec-1"
 	row := &storytellerModel.AuditArchiveQuery{PublicID: "q1", UserID: 4, ExecutionID: &executionID, Status: storytellerModel.AuditArchiveQueryRunning, CreatedAt: athenaDone}
 	engine := &fakeQueryEngine{state: "SUCCEEDED", completedAt: &athenaDone}
 	require.NoError(t, refreshAuditArchiveQuery(context.Background(), &fakeArchiveRepo{}, engine, row, now))
-	require.Equal(t, athenaDone, *row.CompletedAt, "六天後才輪詢，保留期仍從 Athena 完成時算起")
-	require.NoError(t, applyAuditArchiveExpiry(&fakeArchiveRepo{}, row, now.Add(2*24*time.Hour)))
+	require.Equal(t, athenaDone, *row.CompletedAt, "20 小時後才輪詢，保留期仍從 Athena 完成時算起")
+	require.NoError(t, applyAuditArchiveExpiry(&fakeArchiveRepo{}, row, now.Add(5*time.Hour)))
 	require.Equal(t, storytellerModel.AuditArchiveQueryExpired, row.Status)
 }

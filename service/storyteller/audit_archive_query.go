@@ -20,8 +20,9 @@ import (
 const (
 	auditArchivePollAfterMs    = 3000
 	auditArchiveResultPageSize = 50
-	// Athena 查詢結果 bucket 設定 7 天過期；過期後結果檔已不存在，job 標示 expired。
-	auditArchiveResultTTL = 7 * 24 * time.Hour
+	// workgroup 使用 Athena managed query results，結果只保留 24 小時（AWS 自動刪除）；
+	// 過期後 GetQueryResults 已讀不到，job 標示 expired，請使用者重新查詢。
+	auditArchiveResultTTL = 24 * time.Hour
 	// 單次封存查詢最多回傳的筆數，避免一次查詢拖出無上限的結果頁。
 	auditArchiveResultLimit    = 10000
 	auditArchiveDefaultMaxSpan = 12
