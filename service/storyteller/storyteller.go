@@ -411,12 +411,16 @@ func (s *Service) UpdateProviderAPIKey(userID, id uint64, input storytellerModel
 	return &output, nil
 }
 
-func (s *Service) DeleteProviderAPIKey(userID, id uint64) error {
+func (s *Service) DeleteProviderAPIKey(userID, id uint64) (*storytellerModel.ProviderAPIKeyOutput, error) {
 	row, err := s.repo.ProviderAPIKey(userID, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return s.repo.DeleteProviderAPIKey(row)
+	if err := s.repo.DeleteProviderAPIKey(row); err != nil {
+		return nil, err
+	}
+	output := providerAPIKeyOutput(*row)
+	return &output, nil
 }
 
 func (s *Service) ProviderAPIKeyModels(userID, providerAPIKeyID uint64) ([]storytellerModel.ProviderAPIKeyModelOutput, error) {

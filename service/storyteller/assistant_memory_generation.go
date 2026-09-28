@@ -13,6 +13,7 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/log"
+	auditService "faryne.dev/service/storytelleraudit"
 	"go.uber.org/zap"
 )
 
@@ -21,8 +22,6 @@ const (
 	assistantMemoryContentMaxRunes = 2000
 	assistantMemoryFailureMessage  = "梭梭暫時沒能整理好這段對話，請稍後再試。"
 	assistantMemoryStaleAfter      = 6 * time.Minute
-	assistantMemoryDraftRetention  = 7 * 24 * time.Hour
-	assistantMemoryTrashRetention  = 30 * 24 * time.Hour
 )
 
 var (
@@ -91,6 +90,9 @@ type assistantMemoryGenerationDeps struct {
 	Repo            assistantMemoryGenerationRepository
 	Work            agenticBackgroundWork
 	ProviderFactory aiProviderFactory
+	AuditAction     string
+	AuditContext    auditService.RequestContext
+	AuditEmitter    func(context.Context, auditService.EventInput) error
 }
 
 type assistantMemoryDraftXML struct {
@@ -116,13 +118,18 @@ type assistantMemoryCandidate struct {
 }
 
 func (s *Service) assistantMemoryGenerationDeps() assistantMemoryGenerationDeps {
-	return assistantMemoryGenerationDeps{Repo: s.repo, Work: agenticQueryBackgroundWork, ProviderFactory: NewAgenticAIProvider}
+	return assistantMemoryGenerationDeps{
+		Repo: s.repo, Work: agenticQueryBackgroundWork, ProviderFactory: NewAgenticAIProvider, AuditEmitter: auditService.Emit,
+	}
 }
 
 // GenerateAssistantMemory 建立一筆 in_progress 草稿後立即回應；provider 呼叫在受
 // graceful shutdown 追蹤的背景工作內完成，前端再以 public_id 輪詢結果。
-func (s *Service) GenerateAssistantMemory(userID, chatID uint64, in storytellerModel.AssistantMemoryGenerateRequest) (*storytellerModel.AssistantMemoryDraftOutput, error) {
-	return generateAssistantMemory(s.assistantMemoryGenerationDeps(), userID, chatID, in)
+func (s *Service) GenerateAssistantMemory(ctx context.Context, userID, chatID uint64, in storytellerModel.AssistantMemoryGenerateRequest) (*storytellerModel.AssistantMemoryDraftOutput, error) {
+	deps := s.assistantMemoryGenerationDeps()
+	deps.AuditAction = "memory.draft.generate"
+	deps.AuditContext, _ = auditService.RequestContextFrom(ctx)
+	return generateAssistantMemory(deps, userID, chatID, in)
 }
 
 func generateAssistantMemory(deps assistantMemoryGenerationDeps, userID, chatID uint64, in storytellerModel.AssistantMemoryGenerateRequest) (*storytellerModel.AssistantMemoryDraftOutput, error) {
@@ -182,7 +189,9 @@ func generateAssistantMemory(deps assistantMemoryGenerationDeps, userID, chatID 
 	}
 	go func() {
 		defer done()
-		err := completeAssistantMemoryGeneration(deps.Work.Context(), deps.Repo, provider, apiKey, modelName, row.ID, userID, chatID, key.ID, key.Provider, currentScope, prompt, memories)
+		runContext := auditService.WithRequestContext(deps.Work.Context(), deps.AuditContext)
+		usage, err := completeAssistantMemoryGeneration(runContext, deps.Repo, provider, apiKey, modelName, row.ID, userID, chatID, key.ID, key.Provider, currentScope, prompt, memories)
+		emitMemoryDraftAudit(deps, project.ID, row.PublicID, chatID, key.Provider, modelName, usage, err)
 		logAgenticQueryBackgroundError("storyteller assistant memory generation failed", chatID, err)
 	}()
 	return assistantMemoryDraftOutput(row), nil
@@ -205,11 +214,11 @@ func newAssistantMemoryDraft(userID, chatID uint64, storyID, loreID *uint64, key
 	}
 }
 
-func completeAssistantMemoryGeneration(ctx context.Context, repo assistantMemoryGenerationRepository, provider AIProvider, apiKey, modelName string, memoryID, userID, chatID, providerAPIKeyID uint64, providerName storytellerModel.AgentProvider, currentScope storytellerModel.AssistantMemoryScope, prompt string, memories []storytellerModel.AssistantMemory) error {
+func completeAssistantMemoryGeneration(ctx context.Context, repo assistantMemoryGenerationRepository, provider AIProvider, apiKey, modelName string, memoryID, userID, chatID, providerAPIKeyID uint64, providerName storytellerModel.AgentProvider, currentScope storytellerModel.AssistantMemoryScope, prompt string, memories []storytellerModel.AssistantMemory) (*storytellerModel.AgentRunUsage, error) {
 	response, err := provider.Generate(ctx, AIProviderRequest{APIKey: apiKey, ModelName: modelName, SystemPrompt: assistantMemoryGenerationSystemPrompt, UserPrompt: prompt})
 	if err != nil {
 		_ = repo.FailAssistantMemoryGeneration(memoryID, assistantMemoryFailureMessage)
-		return err
+		return nil, err
 	}
 	usage, usageLog := assistantMemoryGenerationUsage(repo, response, userID, chatID, providerAPIKeyID, providerName, modelName)
 	candidate, err := parseAssistantMemoryCandidate(response.Result, currentScope)
@@ -218,14 +227,14 @@ func completeAssistantMemoryGeneration(ctx context.Context, repo assistantMemory
 			_ = repo.CreateAgentUsageLog(usageLog)
 		}
 		_ = repo.FailAssistantMemoryGeneration(memoryID, assistantMemoryFailureMessage)
-		return err
+		return usage, err
 	}
 	if sanitized, err := sanitizeAssistantMemorySupersedes(candidate, memories); err != nil {
 		log.Logger().Warn("Storyteller assistant memory ignored invalid supersede suggestion",
 			zap.Uint64("chat_id", chatID), zap.String("supersedes_public_id", candidate.SupersedesPublicID), zap.Error(err))
 		candidate = sanitized
 	}
-	return repo.CompleteAssistantMemoryGeneration(memoryID, candidate.Name, candidate.Content, encodeAssistantMemoryTags(candidate.Tags), candidate.SupersedesPublicID, candidate.Scope, candidate.Kind, candidate.Priority, candidate.ShouldRemember, usage, usageLog)
+	return usage, repo.CompleteAssistantMemoryGeneration(memoryID, candidate.Name, candidate.Content, encodeAssistantMemoryTags(candidate.Tags), candidate.SupersedesPublicID, candidate.Scope, candidate.Kind, candidate.Priority, candidate.ShouldRemember, usage, usageLog)
 }
 
 func assistantMemoryGenerationUsage(repo assistantMemoryGenerationRepository, response *AIProviderResponse, userID, chatID, providerAPIKeyID uint64, provider storytellerModel.AgentProvider, modelName string) (*storytellerModel.AgentRunUsage, *storytellerModel.AgentUsageLog) {
@@ -391,147 +400,4 @@ func assistantMemoryDraftOutput(row *storytellerModel.AssistantMemory) *storytel
 		ScopeType: row.ScopeType, Kind: row.Kind, Tags: decodeAssistantMemoryTags(row.Tags), Content: row.Content, Priority: row.Priority, ErrorMessage: assistantMemoryName(row.ErrorMessage),
 		SupersedesPublicID: assistantMemoryName(row.SupersedesPublicID),
 	}
-}
-
-func (s *Service) ConfirmAssistantMemory(userID uint64, publicID string, in storytellerModel.AssistantMemoryConfirmRequest) (*storytellerModel.AssistantMemoryOutput, error) {
-	row, err := s.repo.AssistantMemoryByPublicIDForUser(userID, strings.TrimSpace(publicID))
-	if err != nil {
-		return nil, err
-	}
-	if row.Status != storytellerModel.AssistantMemoryStatusCompleted {
-		return nil, ErrAssistantMemoryDraftNotReady
-	}
-	if row.ShouldRemember == nil || !*row.ShouldRemember {
-		return nil, ErrAssistantMemoryDraftEmpty
-	}
-	if row.SourceChatID == nil {
-		return nil, ErrAssistantMemoryScopeInvalid
-	}
-	target, err := s.repo.AgentChatTarget(userID, *row.SourceChatID)
-	if err != nil {
-		return nil, err
-	}
-	project, err := s.repo.ProjectByPublicIDForUser(userID, target.ProjectPublicID)
-	if err != nil {
-		return nil, err
-	}
-	currentScope, story, lore, err := assistantMemoryGenerationTarget(s.repo, project.ID, target)
-	if err != nil {
-		return nil, err
-	}
-	if !assistantMemoryScopeAllowed(in.ScopeType, currentScope) {
-		return nil, ErrAssistantMemoryScopeInvalid
-	}
-	if !assistantMemoryKindAllowed(in.Kind) {
-		return nil, ErrAssistantMemoryKindInvalid
-	}
-	tags, err := normalizeAssistantMemoryTags(in.Tags)
-	if err != nil {
-		return nil, err
-	}
-	name, content := strings.TrimSpace(in.MemoryName), strings.TrimSpace(in.Content)
-	if len([]rune(name)) > assistantMemoryNameMaxRunes {
-		return nil, ErrAssistantMemoryNameTooLong
-	}
-	if len([]rune(content)) == 0 || len([]rune(content)) > assistantMemoryContentMaxRunes {
-		return nil, ErrAssistantMemoryContentInvalid
-	}
-	if in.Priority > 100 {
-		return nil, ErrAssistantMemoryPriorityInvalid
-	}
-	row.MemoryName, row.Content, row.ScopeType, row.Kind, row.Tags, row.Priority, row.IsPinned = nil, content, in.ScopeType, in.Kind, encodeAssistantMemoryTags(tags), in.Priority, in.IsPinned
-	if name != "" {
-		row.MemoryName = &name
-	}
-	row.ProjectID, row.StoryID, row.LoreID = nil, nil, nil
-	switch in.ScopeType {
-	case storytellerModel.AssistantMemoryScopeProject:
-		row.ProjectID = &project.ID
-	case storytellerModel.AssistantMemoryScopeStory:
-		row.StoryID = &story.ID
-	case storytellerModel.AssistantMemoryScopeLore:
-		row.LoreID = &lore.ID
-	}
-	if in.SkipSupersede {
-		row.SupersedesPublicID = nil
-	}
-	if row.SupersedesPublicID == nil {
-		if err := s.rejectDuplicateAssistantMemory(userID, project, story, lore, row); err != nil {
-			return nil, err
-		}
-	}
-	affected, err := s.repo.ConfirmAssistantMemory(row)
-	if err != nil {
-		return nil, err
-	}
-	if affected == 0 {
-		return nil, ErrAssistantMemoryDraftResolved
-	}
-	targetPublicID := ""
-	if in.ScopeType == storytellerModel.AssistantMemoryScopeProject {
-		targetPublicID = project.PublicID
-	} else if in.ScopeType == storytellerModel.AssistantMemoryScopeStory {
-		targetPublicID = story.PublicID
-	} else if in.ScopeType == storytellerModel.AssistantMemoryScopeLore {
-		targetPublicID = lore.PublicID
-	}
-	return &storytellerModel.AssistantMemoryOutput{PublicID: row.PublicID, MemoryName: name, ScopeType: in.ScopeType, TargetPublicID: targetPublicID, Kind: in.Kind, Tags: tags, Content: content, Priority: in.Priority, IsPinned: in.IsPinned, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
-}
-
-// RetryAssistantMemory 重新整理失敗草稿；新草稿建立成功後才丟棄舊資料，避免同步
-// 驗證失敗時連原本的錯誤狀態都失去。
-func (s *Service) RetryAssistantMemory(userID uint64, publicID string, in storytellerModel.AssistantMemoryGenerateRequest) (*storytellerModel.AssistantMemoryDraftOutput, error) {
-	row, err := s.repo.AssistantMemoryByPublicIDForUser(userID, strings.TrimSpace(publicID))
-	if err != nil {
-		return nil, err
-	}
-	if row.Status != storytellerModel.AssistantMemoryStatusFailed || row.SourceChatID == nil {
-		return nil, ErrAssistantMemoryDraftNotReady
-	}
-	next, err := generateAssistantMemory(s.assistantMemoryGenerationDeps(), userID, *row.SourceChatID, in)
-	if err != nil {
-		return nil, err
-	}
-	_, _ = s.repo.DeleteAssistantMemoryDraft(userID, row.ID)
-	return next, nil
-}
-
-func (s *Service) DeleteAssistantMemoryDraft(userID uint64, publicID string) error {
-	row, err := s.repo.AssistantMemoryByPublicIDForUser(userID, strings.TrimSpace(publicID))
-	if err != nil {
-		return err
-	}
-	affected, err := s.repo.DeleteAssistantMemoryDraft(userID, row.ID)
-	if err != nil {
-		return err
-	}
-	if affected == 0 {
-		return ErrAssistantMemoryDraftResolved
-	}
-	return nil
-}
-
-type assistantMemoryDraftCleanupRepository interface {
-	ExpireAssistantMemoryDrafts(updatedBefore, deletedAt time.Time) (int64, error)
-	PurgeDeletedAssistantMemoryDrafts(deletedBefore time.Time) (int64, error)
-}
-
-func cleanupExpiredAssistantMemoryDrafts(repo assistantMemoryDraftCleanupRepository, now time.Time) (expired, purged int64, err error) {
-	expired, err = repo.ExpireAssistantMemoryDrafts(now.Add(-assistantMemoryDraftRetention), now)
-	if err != nil {
-		return 0, 0, err
-	}
-	purged, err = repo.PurgeDeletedAssistantMemoryDrafts(now.Add(-assistantMemoryTrashRetention))
-	return expired, purged, err
-}
-
-// RunCleanupAssistantMemoryDrafts 每日先 soft delete 逾期未確認草稿，再實體清除
-// 已進垃圾區超過保留期的草稿；confirmed 記憶不會進入任一清理條件。
-func RunCleanupAssistantMemoryDrafts() {
-	expired, purged, err := cleanupExpiredAssistantMemoryDrafts(NewService().repo, time.Now())
-	if err != nil {
-		log.Logger().Error("Storyteller assistant memory draft cleanup failed", zap.Error(err))
-		return
-	}
-	log.Logger().Info("Storyteller assistant memory draft cleanup completed", zap.Int64("expired", expired), zap.Int64("purged", purged))
 }

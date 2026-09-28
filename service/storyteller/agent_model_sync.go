@@ -30,28 +30,38 @@ type openRouterModel struct {
 }
 
 func RunSyncStorytellerAgentModels() {
+	startedAt := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	if err := NewService().SyncAgentModelsFromOpenRouter(ctx); err != nil {
+	count, err := NewService().syncAgentModelsFromOpenRouter(ctx)
+	emitStorytellerCronAudit("system.agent_model.sync", startedAt, storytellerModel.AuditSummary{"model_count": count}, err)
+	if err != nil {
 		log.Logger().Error("Storyteller agent model sync failed: " + err.Error())
 	}
 }
 
 func (s *Service) SyncAgentModelsFromOpenRouter(ctx context.Context) error {
+	_, err := s.syncAgentModelsFromOpenRouter(ctx)
+	return err
+}
+
+func (s *Service) syncAgentModelsFromOpenRouter(ctx context.Context) (int, error) {
 	models, err := fetchOpenRouterModels(ctx, openRouterModelsURL, &http.Client{Timeout: 60 * time.Second})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	grouped := groupOpenRouterModels(models)
+	count := 0
 	for provider, providerModels := range grouped {
 		if len(providerModels) == 0 {
 			continue
 		}
 		if err := s.repo.SyncAgentModels(provider, providerModels); err != nil {
-			return fmt.Errorf("sync %s models failed: %w", provider, err)
+			return count, fmt.Errorf("sync %s models failed: %w", provider, err)
 		}
+		count += len(providerModels)
 	}
-	return nil
+	return count, nil
 }
 
 func fetchOpenRouterModels(ctx context.Context, endpoint string, client *http.Client) ([]openRouterModel, error) {

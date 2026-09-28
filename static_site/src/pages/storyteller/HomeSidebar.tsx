@@ -1,6 +1,7 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CableIcon from "@mui/icons-material/Cable";
 import FavoriteIcon from "@mui/icons-material/Favorite";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import MenuIcon from "@mui/icons-material/Menu";
 import PersonIcon from "@mui/icons-material/Person";
@@ -34,6 +35,7 @@ const tabIcons: Record<StorytellerHomeTab, ReactNode> = {
   apikey: <KeyIcon fontSize="small" />,
   usage: <QueryStatsIcon fontSize="small" />,
   mcp: <CableIcon fontSize="small" />,
+  activity: <HistoryOutlinedIcon fontSize="small" />,
   favorites: <FavoriteIcon fontSize="small" />,
   profile: <PersonIcon fontSize="small" />,
 };

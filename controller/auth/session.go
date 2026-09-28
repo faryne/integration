@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	authService "faryne.dev/service/auth"
+	"faryne.dev/service/log"
 	"faryne.dev/service/output"
 	"github.com/gofiber/fiber/v3"
+	"go.uber.org/zap"
 )
 
 // GetSession 是給前端做 proactive renewal 用的輕量 touch 端點：
@@ -47,6 +49,18 @@ func DestroySession(ctx fiber.Ctx) error {
 
 	if err := authService.DestroySession(encryptKey); err != nil {
 		return output.BadRequest(err)
+	}
+	return output.Success(map[string]bool{"destroyed": true})
+}
+
+// DestroySessionBestEffort 供品牌專用 logout 使用；session 已過期或 Redis 暫時失敗時
+// 仍回傳成功，避免遠端狀態阻擋 Firebase 與前端本機登出。
+func DestroySessionBestEffort(ctx fiber.Ctx) error {
+	encryptKey := strings.TrimSpace(ctx.Get("X-Encrypt-Key"))
+	if encryptKey != "" {
+		if err := authService.DestroySession(encryptKey); err != nil {
+			log.Logger().Warn("Best-effort session destroy failed", zap.Error(err))
+		}
 	}
 	return output.Success(map[string]bool{"destroyed": true})
 }

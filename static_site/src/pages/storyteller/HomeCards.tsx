@@ -30,7 +30,10 @@ import {
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+import {
+  formatStorytellerDate,
+  STORYTELLER_VISIBILITY_LABELS,
+} from "@/data/storyteller.ts";
 import { storytellerMascotSrc } from "@/helpers/storytellerMascot.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useStorytellerAppearance } from "@/layouts/storytellerAppearanceMode.tsx";
@@ -114,11 +117,7 @@ export function ProjectCards({ projects }: { projects: StorytellerProject[] }) {
     );
   }
 
-  const visibilityLabel = {
-    private: "私密",
-    unlisted: "分享",
-    public: "公開",
-  } satisfies Record<StorytellerProject["visibility"], string>;
+  const visibilityLabel = STORYTELLER_VISIBILITY_LABELS;
 
   return (
     <>

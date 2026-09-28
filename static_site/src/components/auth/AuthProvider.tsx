@@ -157,11 +157,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSubmitting(true);
     try {
       if (session?.encrypt_key) {
-        await destroyAuthSession(session.encrypt_key);
+        try {
+          await destroyAuthSession(session.encrypt_key);
+        } catch {
+          // 遠端 session 可能已過期，不能因此阻擋 Firebase 與本機登出。
+        }
       }
       await signOut(firebaseAuth.auth);
-      clearStoredSession();
     } finally {
+      clearStoredSession();
       setSubmitting(false);
     }
   };

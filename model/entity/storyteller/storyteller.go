@@ -771,6 +771,7 @@ func (UserProfile) TableName() string {
 // 只存 SHA-256 雜湊，明碼只在建立當下回傳一次。
 type PersonalAccessToken struct {
 	ID          uint64     `gorm:"column:id;primaryKey" json:"id"`
+	PublicID    string     `gorm:"column:public_id" json:"public_id"`
 	UserID      uint64     `gorm:"column:user_id" json:"user_id"`
 	Label       string     `gorm:"column:label" json:"label"`
 	TokenHash   string     `gorm:"column:token_hash" json:"-"`
@@ -792,6 +793,7 @@ type PersonalAccessTokenRequest struct {
 
 type PersonalAccessTokenOutput struct {
 	ID          uint64     `json:"id"`
+	PublicID    string     `json:"public_id"`
 	Label       string     `json:"label"`
 	TokenPrefix string     `json:"token_prefix"`
 	LastUsedAt  *time.Time `json:"last_used_at"`

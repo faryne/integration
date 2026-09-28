@@ -13,12 +13,17 @@ import (
 	commandParameter "faryne.dev/cmd/parameter"
 	"faryne.dev/config"
 	"faryne.dev/controller/opendata"
+	storytellerAuditMiddleware "faryne.dev/middleware/storytelleraudit"
+	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/model/enum"
+	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/route"
 	"faryne.dev/service/background"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
 	"faryne.dev/service/output"
+	storytellerService "faryne.dev/service/storyteller"
+	storytellerAudit "faryne.dev/service/storytelleraudit"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -26,6 +31,7 @@ import (
 	recover2 "github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/joho/godotenv"
 	"github.com/robfig/cron/v3"
+	"go.uber.org/zap"
 )
 
 var envFile = "./.env"
@@ -50,9 +56,10 @@ var commandParams = commandParameter.Registry{
 }
 
 type appRuntime struct {
-	app       *fiber.App
-	cron      *cron.Cron
-	listenErr chan error
+	app           *fiber.App
+	cron          *cron.Cron
+	auditConsumer *storytellerAudit.Consumer
+	listenErr     chan error
 }
 
 func newApp() *fiber.App {
@@ -64,6 +71,11 @@ func newApp() *fiber.App {
 		UnescapePath:    true,
 		BodyLimit:       1024 * 1024 * 1024,
 		StructValidator: validation.NewStructValidator(),
+		ProxyHeader:     "X-Real-IP",
+		TrustProxy:      true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: []string{"127.0.0.1", "::1"},
+		},
 		ErrorHandler: func(ctx fiber.Ctx, err error) error {
 			if reflect.ValueOf(err).MethodByName("HttpCode").IsValid() {
 				var v output.CommonOutputInterface
@@ -172,6 +184,9 @@ func shutdownAllSettings(runtime *appRuntime) error {
 	if runtime.app != nil {
 		shutdownErr = errors.Join(shutdownErr, runtime.app.ShutdownWithTimeout(30*time.Second))
 	}
+	if runtime.auditConsumer != nil {
+		runtime.auditConsumer.Stop()
+	}
 	if runtime.cron != nil {
 		ctx := runtime.cron.Stop()
 		select {
@@ -232,6 +247,15 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	}
 
 	app := newApp()
+	auditRepository := storytellerRepo.NewRepository()
+	redisClient := client.GetRedis(enum.RedisDefault)
+	storytellerAudit.SetDefaultProducer(storytellerAudit.NewProducer(redisClient, auditRepository))
+	auditConsumer := storytellerAudit.NewConsumer(redisClient, auditRepository, appBackgroundWork)
+	if auditConsumer != nil {
+		if err := auditConsumer.Start(); err != nil {
+			return nil, err
+		}
+	}
 
 	// 記錄開始時間
 	app.Use(func(c fiber.Ctx) error {
@@ -243,6 +267,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	app.Use(cors.New(cors.Config{
 		ExposeHeaders: []string{"X-Session-Expires-At"},
 	}))
+	app.Use(storytellerAuditMiddleware.NewRequestContext())
 	app.Use(maintenanceMiddleware())
 	// <editor-fold desc="">
 	route.Nekomaid(app) // nekomaid
@@ -256,6 +281,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.StorytellerMCP(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	route.Swagger(app)
+	logStorytellerAuditCoverage(app)
 	// </editor-fold>
 
 	// <editor-fold desc="cronjob">
@@ -287,10 +313,30 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	}()
 
 	return &appRuntime{
-		app:       app,
-		cron:      c,
-		listenErr: listenErr,
+		app:           app,
+		cron:          c,
+		auditConsumer: auditConsumer,
+		listenErr:     listenErr,
 	}, nil
+}
+
+func logStorytellerAuditCoverage(app *fiber.App) {
+	if config.EnvConfig().IsProduction() {
+		return
+	}
+	routes := make([]storytellerModel.AuditRouteRef, 0)
+	for _, registered := range app.GetRoutes() {
+		routes = append(routes, storytellerModel.AuditRouteRef{Method: registered.Method, Path: registered.Path})
+	}
+	tools := make([]string, 0)
+	for _, registry := range []*storytellerService.ToolRegistry{storytellerService.StorytellerToolRegistry(), storytellerService.StorytellerMCPOnlyToolRegistry()} {
+		for _, tool := range registry.All() {
+			tools = append(tools, tool.Name)
+		}
+	}
+	if unmapped := storytellerAudit.CheckCoverage(routes, tools); len(unmapped) > 0 {
+		log.Logger().Warn("Storyteller audit registry has unmapped routes or tools", zap.Strings("unmapped", unmapped))
+	}
 }
 
 func loadCommandSettings(inputEnvFile string) error {

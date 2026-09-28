@@ -18,62 +18,6 @@ import {
 } from "@/pages/storyteller/storytellerMemoryUI.ts";
 import type { StorytellerAssistantMemory } from "@/types/storyteller.ts";
 
-export function MemoryFilterChips({
-  label,
-  value,
-  options,
-  optionDescriptions,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: Array<[string, string]>;
-  optionDescriptions?: Record<string, string>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <Stack
-      direction="row"
-      alignItems="center"
-      spacing={1}
-      useFlexGap
-      flexWrap="wrap"
-    >
-      <Typography variant="caption" color="text.secondary" sx={{ width: 64 }}>
-        {label}
-      </Typography>
-      <Chip
-        size="small"
-        label="全部"
-        color={value === "" ? "primary" : "default"}
-        variant={value === "" ? "filled" : "outlined"}
-        onClick={() => onChange("")}
-      />
-      {options.map(([optionValue, optionLabel]) => {
-        const chip = (
-          <Chip
-            size="small"
-            label={optionLabel}
-            color={value === optionValue ? "primary" : "default"}
-            variant={value === optionValue ? "filled" : "outlined"}
-            onClick={() => onChange(optionValue)}
-          />
-        );
-        const description = optionDescriptions?.[optionValue];
-        return description ? (
-          <Tooltip key={optionValue} title={description} arrow>
-            {chip}
-          </Tooltip>
-        ) : (
-          <Box key={optionValue} component="span" sx={{ display: "contents" }}>
-            {chip}
-          </Box>
-        );
-      })}
-    </Stack>
-  );
-}
-
 export function MemoryCard({
   memory,
   mutating,

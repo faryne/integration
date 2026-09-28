@@ -107,6 +107,8 @@ type UserRole struct {
 func (UserRole) TableName() string { return "storyteller_user_roles" }
 
 // ProjectAuditSummary 存一次異動裡各欄位的安全前／後值，不放 token、API key 或全文。
+//
+// Deprecated: 改用 storyteller_audit_events 與 AuditSummary；舊表待 RBAC 收尾 migration 移除。
 type ProjectAuditSummary map[string]any
 
 func (s ProjectAuditSummary) Value() (driver.Value, error) {
@@ -142,6 +144,8 @@ func (s *ProjectAuditSummary) Scan(value any) error {
 }
 
 // ProjectAuditSource 記錄異動實際從哪個介面觸發，供追查用，不影響授權判斷本身。
+//
+// Deprecated: 改用 storyteller_audit_events 與 AuditSource。
 type ProjectAuditSource string
 
 const (
@@ -152,6 +156,8 @@ const (
 
 // ProjectAudit 是 append-only 的 Project 異動事件紀錄；不是版本快照，不能靠它還原
 // 舊版內容，只能協助追查「誰在何時對什麼東西做了什麼」。
+//
+// Deprecated: 改用 storyteller_audit_events 與 AuditEvent。
 type ProjectAudit struct {
 	ID          uint64              `gorm:"column:id;primaryKey" json:"id"`
 	ProjectID   uint64              `gorm:"column:project_id" json:"project_id"`

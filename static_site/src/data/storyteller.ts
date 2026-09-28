@@ -3,6 +3,13 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 // 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
 export const STORYTELLER_APP_NAME = "SteamLoom";
 
+// 專案公開範圍的中文名稱；專案卡片選單與稽核紀錄的欄位差異共用同一份，避免兩邊講法不同。
+export const STORYTELLER_VISIBILITY_LABELS = {
+  private: "私密",
+  unlisted: "分享",
+  public: "公開",
+} satisfies Record<"private" | "unlisted" | "public", string>;
+
 // 圖像作品上傳限制：跟後端 service/storyteller/upload.go 的
 // maxImagePagesPerUpload／maxImagePageSizeBytes／allowedImagePageContentTypes 對應，
 // 前端這邊只是先擋一次給使用者即時回饋，實際防濫用還是靠後端驗證。

@@ -7,12 +7,14 @@ import (
 
 	"faryne.dev/controller/helper"
 	"faryne.dev/middleware/authsession"
+	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
 	authService "faryne.dev/service/auth"
 	serviceHelper "faryne.dev/service/helper"
 	"faryne.dev/service/output"
 	"faryne.dev/service/storyteller"
+	auditService "faryne.dev/service/storytelleraudit"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -43,6 +45,10 @@ func CreateSession(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
+	storytellerAudit.Set(ctx, func(audit *auditService.RequestContext) {
+		audit.ActorUserID = resp.User.Id
+		audit.AuthMethod = storytellerModel.AuditAuthMethodSession
+	})
 	return output.Success(resp)
 }
 
@@ -311,13 +317,14 @@ func DeleteProviderAPIKey(ctx fiber.Ctx) error {
 	if err != nil {
 		return output.BadRequest(err)
 	}
-	if err := storyteller.NewService().DeleteProviderAPIKey(authsession.Session(ctx).UserId, id); err != nil {
+	row, err := storyteller.NewService().DeleteProviderAPIKey(authsession.Session(ctx).UserId, id)
+	if err != nil {
 		if repository.IsRecordNotFound(err) {
 			return output.NotFound(errors.New("provider api key not found"))
 		}
 		return output.BadRequest(err)
 	}
-	return output.Success(map[string]bool{"deleted": true})
+	return output.Success(map[string]any{"deleted": true, "id": row.ID, "provider": row.Provider, "label": row.Label})
 }
 
 func ProviderAPIKeyModels(ctx fiber.Ctx) error {

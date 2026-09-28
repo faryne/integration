@@ -395,6 +395,7 @@ const storytellerRoutes = (
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />
+      <Route path={"activity"} element={<StorytellerHome />} />
       <Route path={"favorites"} element={<StorytellerHome />} />
       <Route path={"profile"} element={<StorytellerHome />} />
     </Route>

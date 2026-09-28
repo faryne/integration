@@ -214,6 +214,20 @@ var cronJobs = map[string]cronGroup{
 		Enabled: true,
 		Jobs: []cronJobConfig{
 			{
+				// 每月 1 日把上個月（以及之前失敗的月份）的稽核事件匯出到 S3。
+				Name:     "storyteller-audit-archive-export-monthly",
+				Schedule: "10 3 1 * *",
+				Enabled:  true,
+				Handler:  storytellerService.RunAuditArchiveExport,
+			},
+			{
+				// 每天檢查保存期限：MySQL 只刪已匯出且超過近期月數的月份，S3 只刪鎖定期已過的月份。
+				Name:     "storyteller-audit-archive-maintenance-daily",
+				Schedule: "40 3 * * *",
+				Enabled:  true,
+				Handler:  storytellerService.RunAuditArchiveMaintenance,
+			},
+			{
 				Name:     "storyteller-cleanup-assistant-memory-drafts",
 				Schedule: "35 4 * * *",
 				Enabled:  true,

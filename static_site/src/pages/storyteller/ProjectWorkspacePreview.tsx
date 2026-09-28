@@ -51,6 +51,10 @@ import { storytellerAssetTitle } from "./storytellerAssetMarkdown.ts";
 import StorytellerImageEpisodeEditor from "./ImageEpisodeEditor.tsx";
 import StorytellerLoreEditor from "./LoreEditor.tsx";
 import { StorytellerMemoryManagerPage } from "./StorytellerMemoryManagerPage.tsx";
+import {
+  workspaceToolPageFromPath,
+  workspaceToolPages,
+} from "./workspaceToolPages.tsx";
 import StorytellerNewProject from "./NewProject.tsx";
 import StorytellerStoryEditor from "./StoryEditor.tsx";
 import {
@@ -113,15 +117,14 @@ export default function StorytellerProjectWorkspacePreview() {
         ? "lore"
         : location.pathname.includes("/asset/")
           ? "asset"
-          : location.pathname.endsWith("/memories")
-            ? "memories"
-            : // 「編輯專案」表單（my/workspace/:id/edit）沒有分組概念，跟其他編輯器
-              // 路由不同不是靠 /xxx/:id 這種形狀分辨，直接看網址結尾是不是 /edit。
-              location.pathname.endsWith("/edit")
-              ? "edit"
-              : "";
+          : // 「編輯專案」表單（my/workspace/:id/edit）沒有分組概念，跟其他編輯器
+            // 路由不同不是靠 /xxx/:id 這種形狀分辨，直接看網址結尾是不是 /edit。
+            location.pathname.endsWith("/edit")
+            ? "edit"
+            : "";
   const isEditProjectRoute = routeEditorType === "edit";
-  const isMemoryRoute = routeEditorType === "memories";
+  // 梭梭的記憶、稽核紀錄這類專案層工具頁；不屬於任何分組，由 workspaceToolPages 統一描述。
+  const toolPage = workspaceToolPageFromPath(location.pathname);
   const isNewStoryRoute = storyId === "new" && routeEditorType === "story";
   const isNewImageRoute = storyId === "new" && routeEditorType === "image";
   // 故事／圖像／設定集都不用先從列表裡找到對應資料列才能決定要渲染哪個編輯器——
@@ -155,10 +158,10 @@ export default function StorytellerProjectWorkspacePreview() {
   // 連帶把不相干的那一列也一起反白。塞一個不會撞到任何真實 id 的哨兵值，確保
   // 編輯專案時三個分組都不會被誤選。
   const selected: SelectedNode =
-    isEditProjectRoute || isMemoryRoute
+    isEditProjectRoute || toolPage
       ? {
           section: "stories",
-          collectionId: isMemoryRoute ? "__memories__" : "__project_edit__",
+          collectionId: toolPage ? `__${toolPage.key}__` : "__project_edit__",
         }
       : routeEditorType
         ? {
@@ -322,8 +325,8 @@ export default function StorytellerProjectWorkspacePreview() {
         : 500
       : undefined;
 
-  const activeTitle = isMemoryRoute
-    ? "梭梭的記憶"
+  const activeTitle = toolPage
+    ? toolPage.label
     : nodeTitle(selected.section, selected.collectionId) ||
       volumes.find((volume) => volume.public_id === selected.collectionId)
         ?.title ||
@@ -337,14 +340,14 @@ export default function StorytellerProjectWorkspacePreview() {
   // 麵包屑最後兩段要跟著目前選到的分組／收藏集走：「作品/設定集/資產集」＋
   // 「冊標題｜未分冊｜未分類｜全部」，跟左側側邊欄、右欄標題呈現的是同一組資訊，
   // 只是縮寫成更適合塞進麵包屑的短字串（不重複「全部作品」這種完整敘述）。
-  const sectionBreadcrumbLabel = isMemoryRoute
-    ? "梭梭的記憶"
+  const sectionBreadcrumbLabel = toolPage
+    ? toolPage.label
     : selected.section === "stories"
       ? "作品"
       : selected.section === "lores"
         ? "設定集"
         : "資產集";
-  const collectionBreadcrumbLabel = isMemoryRoute
+  const collectionBreadcrumbLabel = toolPage
     ? ""
     : selected.collectionId === ""
       ? "全部"
@@ -451,7 +454,7 @@ export default function StorytellerProjectWorkspacePreview() {
       // 「有指定 collectionId」，兜出一個根本不存在的分組網址。直接回專案首頁。
       navigate(
         steamloomPath(
-          isEditProjectRoute || isMemoryRoute
+          isEditProjectRoute || toolPage
             ? `my/workspace/${id}`
             : browsingPath(selected.section, selected.collectionId),
         ),
@@ -464,8 +467,8 @@ export default function StorytellerProjectWorkspacePreview() {
   // 不會自己設標題）用；編輯器路由掛載時兩邊都會各自呼叫一次 useTitle，但子元件
   // 的 effect 先跑，之後只要子元件的標題相關資料一變動就會重新蓋回正確標題，
   // 不會卡住停在這裡設的通用標題。
-  const workspaceTitleContext = isMemoryRoute
-    ? "梭梭的記憶"
+  const workspaceTitleContext = toolPage
+    ? toolPage.label
     : isAssetRoute && routeAssetQuery.data
       ? storytellerAssetTitle(routeAssetQuery.data)
       : collectionBreadcrumbLabel === "全部"
@@ -477,8 +480,8 @@ export default function StorytellerProjectWorkspacePreview() {
   useTitle(`${workspaceTitle} - ${STORYTELLER_APP_NAME}`, {
     path: id
       ? steamloomPath(
-          isMemoryRoute
-            ? `my/workspace/${id}/memories`
+          toolPage
+            ? `my/workspace/${id}/${toolPage.path}`
             : browsingPath(selected.section, selected.collectionId),
         )
       : undefined,
@@ -524,10 +527,14 @@ export default function StorytellerProjectWorkspacePreview() {
     onReorderVolume: listActions.reorderVolume,
     onReorderLoreCollection: listActions.reorderLoreCollection,
     onSearch: workspaceSearch.openSearch,
-    memoriesSelected: isMemoryRoute,
-    onOpenMemories: () =>
+    activeToolPage: toolPage?.key,
+    onOpenToolPage: (page) =>
       guardedNavigate(() =>
-        navigate(steamloomPath(`my/workspace/${id}/memories`)),
+        navigate(
+          steamloomPath(
+            `my/workspace/${id}/${workspaceToolPages.find((item) => item.key === page)?.path ?? page}`,
+          ),
+        ),
       ),
   };
 
@@ -576,7 +583,7 @@ export default function StorytellerProjectWorkspacePreview() {
       projectId={project?.public_id ?? id}
       projects={projectsQuery.data ?? []}
       trail={
-        isMemoryRoute
+        toolPage
           ? [sectionBreadcrumbLabel]
           : [sectionBreadcrumbLabel, collectionBreadcrumbLabel]
       }
@@ -644,8 +651,8 @@ export default function StorytellerProjectWorkspacePreview() {
                 selected={selected}
                 onSelect={selectNode}
                 onSearch={() => workspaceSearch.openSearch()}
-                memoriesSelected={isMemoryRoute}
-                onOpenMemories={sidebarProps.onOpenMemories}
+                activeToolPage={sidebarProps.activeToolPage}
+                onOpenToolPage={sidebarProps.onOpenToolPage}
               />
             ) : (
               <WorkspaceSidebar {...sidebarProps} />
@@ -679,7 +686,7 @@ export default function StorytellerProjectWorkspacePreview() {
           </Tooltip>
         </Box>
         <Box sx={{ minWidth: 0, overflow: "auto" }}>
-          {isMemoryRoute ? (
+          {toolPage?.key === "memories" ? (
             <StorytellerMemoryManagerPage projectPublicId={id} />
           ) : showBleedEditor ? (
             <EditorBleedContainer

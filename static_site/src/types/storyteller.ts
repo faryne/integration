@@ -837,3 +837,100 @@ export interface StorytellerWritingBookmark {
   created_at: string;
   updated_at: string;
 }
+
+// 活動紀錄（稽核事件）；欄位與後端 AuditEventOutput 對應，只有 public ID 不含內部數字 ID。
+export type StorytellerAuditSource = "web" | "api" | "mcp" | "cron";
+export type StorytellerAuditOutcome = "success" | "denied" | "failed";
+export type StorytellerAuditImportance = "low" | "normal" | "high";
+
+export interface StorytellerAuditEvent {
+  event_id: string;
+  occurred_at: string;
+  actor: { type: "user" | "system"; display_name?: string };
+  source: StorytellerAuditSource;
+  auth_method: "session" | "pat" | "none";
+  credential: { public_id: string; label: string; revoked: boolean } | null;
+  action: string;
+  category: string;
+  importance: StorytellerAuditImportance;
+  target: { type: string; public_id: string; name?: string } | null;
+  outcome: StorytellerAuditOutcome;
+  summary: Record<string, unknown> | null;
+  ip?: string;
+  user_agent?: string;
+  request_id?: string;
+}
+
+export interface StorytellerAuditEventPage {
+  events: StorytellerAuditEvent[];
+  next_cursor?: string;
+  has_more: boolean;
+  hot_from: string;
+  write_delay_seconds: number;
+}
+
+export interface StorytellerAuditEventFilters {
+  projects: Array<{ value: string; label?: string }>;
+  categories: string[];
+  credentials: Array<{ value: string; label?: string }>;
+  sources: StorytellerAuditSource[];
+  outcomes: StorytellerAuditOutcome[];
+}
+
+// 進階篩選條件；近期查詢與封存查詢共用同一組欄位，空字串代表不限制。
+export interface StorytellerAuditAdvancedFilterValues {
+  projectPublicId: string;
+  category: string;
+  source: string;
+  outcome: string;
+  credentialRef: string;
+  includeLowImportance: boolean;
+}
+
+export interface StorytellerAuditEventQuery extends StorytellerAuditAdvancedFilterValues {
+  // 時間範圍用 preset 表示，實際的 from 在送出請求時才換算，避免 query key 每秒變動；
+  // custom 時用 customFrom／customTo（YYYY-MM-DD，依瀏覽器時區算整天）。
+  range: "24h" | "7d" | "30d" | "custom";
+  customFrom: string;
+  customTo: string;
+}
+
+// 稽核封存查詢（P4）：3 個月以前的資料由 Athena 查 S3 封存檔，採非同步 job。
+export interface StorytellerAuditArchiveMonths {
+  archive_available: boolean;
+  months: Array<{
+    month: string;
+    status: "available" | "purged";
+  }>;
+  retention_years: number;
+  latest_archive_month?: string;
+  max_span_months: number;
+}
+
+export interface StorytellerAuditArchiveFilters {
+  project_public_id?: string;
+  category?: string;
+  source?: string;
+  outcome?: string;
+  credential_ref?: string;
+  include_low_importance?: boolean;
+}
+
+export interface StorytellerAuditArchiveQuery {
+  query_public_id: string;
+  status: "queued" | "running" | "succeeded" | "failed" | "expired";
+  month_from: string;
+  month_to: string;
+  filters: StorytellerAuditArchiveFilters;
+  error_category?: string;
+  scanned_bytes?: number;
+  poll_after_ms: number;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface StorytellerAuditArchiveResults {
+  events: StorytellerAuditEvent[];
+  next_cursor?: string;
+  has_more: boolean;
+}

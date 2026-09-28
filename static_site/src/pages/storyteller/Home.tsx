@@ -38,6 +38,7 @@ import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerFavoritesContent } from "@/pages/storyteller/Favorites.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
+import { StorytellerAccountActivityPanel } from "@/pages/storyteller/StorytellerAccountActivityPanel.tsx";
 import { StorytellerProfileContent } from "@/pages/storyteller/Profile.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
 import StorytellerNewAgent from "@/pages/storyteller/NewAgent.tsx";
@@ -91,17 +92,21 @@ export default function StorytellerHome() {
         ? "usage"
         : location.pathname.includes("/mcp")
           ? "mcp"
-          : location.pathname.includes("/favorites")
-            ? "favorites"
-            : location.pathname.includes("/profile")
-              ? "profile"
-              : "project";
+          : location.pathname.endsWith("/my/activity")
+            ? "activity"
+            : location.pathname.includes("/favorites")
+              ? "favorites"
+              : location.pathname.includes("/profile")
+                ? "profile"
+                : "project";
 
   const homeTitle = isProjectFormRoute
     ? `建立 ${STORYTELLER_APP_NAME} 專案`
     : isAgentFormRoute
       ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} Skill`
-      : activeTab === "favorites" || activeTab === "profile"
+      : activeTab === "favorites" ||
+          activeTab === "profile" ||
+          activeTab === "activity"
         ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
         : `${STORYTELLER_APP_NAME} 我的工作台`;
   useTitle(homeTitle, {
@@ -163,6 +168,7 @@ export default function StorytellerHome() {
       action={
         activeTab !== "favorites" &&
         activeTab !== "profile" &&
+        activeTab !== "activity" &&
         !projectsLoading &&
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -246,6 +252,8 @@ export default function StorytellerHome() {
                   <StorytellerApiKeyPanel />
                 ) : activeTab === "usage" ? (
                   <StorytellerAgentUsagePanel />
+                ) : activeTab === "activity" ? (
+                  <StorytellerAccountActivityPanel />
                 ) : activeTab === "favorites" ? (
                   <StorytellerFavoritesContent />
                 ) : activeTab === "profile" ? (

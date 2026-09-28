@@ -5,6 +5,7 @@ import (
 	"faryne.dev/controller/auth"
 	"faryne.dev/controller/storyteller"
 	"faryne.dev/middleware/authsession"
+	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
@@ -24,12 +25,13 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
 	group.Get("/story/:project/stories/:story/image-pages", storyteller.PublicImageStoryPages)
 	group.Get("/story/share/:token/stories/:story/image-pages", storyteller.SharedImageStoryPages)
-	group.Post("/auth/session", storyteller.CreateSession)
+	group.Post("/auth/session", storytellerAudit.WebSuccess(), storyteller.CreateSession)
+	group.Delete("/auth/session", authsession.Optional(authService.BrandStoryteller), storytellerAudit.WebSuccess(), auth.DestroySessionBestEffort)
 	if config.EnvConfig().EnableDevAuthBypass {
 		group.Post("/auth/dev-session", storyteller.CreateDevSession)
 	}
 
-	authenticated := group.Group("", authsession.New(authService.BrandStoryteller))
+	authenticated := group.Group("", authsession.New(authService.BrandStoryteller), storytellerAudit.WebSuccess())
 	// sliding TTL 續期用（前端 touchAuthSession），純粹靠這個 group 的 brand 檢查生效，
 	// handler 本身跟主站共用（無狀態、只回 active:true，不用另外寫一份）。
 	authenticated.Get("/auth/session", auth.GetSession)
@@ -78,6 +80,12 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/provider-apikeys/:apikey/models/:model", storyteller.DeleteProviderAPIKeyModel)
 	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
 
+	authenticated.Get("/account/audit-events", storyteller.AccountAuditEvents)
+	authenticated.Get("/account/audit-event-filters", storyteller.AccountAuditEventFilters)
+	authenticated.Get("/account/audit-archive-months", storyteller.AuditArchiveMonths)
+	authenticated.Post("/account/audit-archive-queries", storyteller.CreateAuditArchiveQuery)
+	authenticated.Get("/audit-archive-queries/:query", storyteller.AuditArchiveQueryStatus)
+	authenticated.Get("/audit-archive-queries/:query/results", storyteller.AuditArchiveQueryResults)
 	authenticated.Get("/personal-access-tokens", storyteller.PersonalAccessTokens)
 	authenticated.Post("/personal-access-tokens", storyteller.CreatePersonalAccessToken)
 	authenticated.Delete("/personal-access-tokens/:token", storyteller.DeletePersonalAccessToken)
