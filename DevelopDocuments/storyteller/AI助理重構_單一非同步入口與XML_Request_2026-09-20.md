@@ -258,3 +258,12 @@ migration：`migration/20260920100000-drop_agent_id_from_storyteller_story_chats
 - `AIAgent_Task.md`（`/agents/:id/run`）
 - `AIAgent/02-api-and-data-model.md`（`/agents/:agent/run`）
 - `agentic_ai_storyteller/Phase1至7工作項規劃.md`（`agentic-query` 端點、舊的 `agenticQuerySystemPrompt`）
+
+## 已知 Bug 記錄
+
+### 刪除 provider API key 一律失敗（2026-09-28，已修）
+
+- **現象**：在「金鑰管理」刪除 API key 一律回 400，後端 log 為 `Error 1054 (42S22): Unknown column 'provider_apikey_id' in 'where clause'`。
+- **Root cause**：`48ce9b6` 以 migration `20260920110000` 刪除了 `storyteller_agents.provider_apikey_id`，但 `repo.DeleteProviderAPIKey` 的交易裡還留著「把使用這把 key 的 Agent 清空」那段 UPDATE。欄位不存在，整個交易 rollback；controller 又把錯誤一律包成 400，前端只看到刪除失敗。凡是套用過 `20260920110000` 的環境都會發生。
+- **解法**：Agent 已不綁定金鑰（每次請求明確帶入 `provider_apikey_id`），刪除時不用再清 Agent，改成只軟刪除金鑰本身（`is_deleted`／`deleted_at`）。其他地方的 `provider_apikey_id` 屬於 `storyteller_provider_apikey_models` 與用量記錄表，欄位仍在，不受影響。
+- **狀態**：已修（branch `fix/provider-apikey-delete`）；已用本機 DB 驗證刪除後 `is_deleted`／`deleted_at` 正確寫入。
