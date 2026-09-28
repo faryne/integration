@@ -268,7 +268,8 @@ func webAuditTarget(action string, arguments map[string]any, result any) (string
 	case strings.HasPrefix(action, "asset."):
 		targetType, key = "asset", "asset_public_id"
 	case strings.HasPrefix(action, "pat."):
-		targetType, key = "personal_access_token", "token_id"
+		// 撤銷路由的 :token 是內部數字 id，改用回應裡的 public_id，建立與撤銷才會記成同一個 target。
+		targetType = "personal_access_token"
 	case strings.HasPrefix(action, "provider_key."):
 		targetType, key = "provider_key", "provider_key_id"
 	case strings.HasPrefix(action, "author_profile."):

@@ -89,6 +89,12 @@ var auditTargetNameQueries = map[string]string{
 		JOIN storyteller_projects p ON p.id = c.project_id WHERE p.user_id = ? AND c.public_id IN ?`,
 	"memory": `SELECT public_id, COALESCE(memory_name, '') AS name FROM storyteller_assistant_memories
 		WHERE user_id = ? AND public_id IN ?`,
+	// 憑證以使用者自訂的 label 顯示；已撤銷／刪除的也要查得到，才看得出「撤銷的是哪一支」。
+	"personal_access_token": `SELECT public_id, label AS name FROM storyteller_personal_access_tokens
+		WHERE user_id = ? AND public_id IN ?`,
+	// provider key 沒有 public_id，稽核事件的 target 記的是內部 id。
+	"provider_key": `SELECT CAST(id AS CHAR) AS public_id, COALESCE(NULLIF(label, ''), provider) AS name FROM storyteller_provider_apikeys
+		WHERE user_id = ? AND id IN ?`,
 }
 
 // AuditProjectOptions 列出本人擁有的專案（含已刪除），給活動紀錄的專案篩選；
