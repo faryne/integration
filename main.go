@@ -321,7 +321,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 }
 
 func logStorytellerAuditCoverage(app *fiber.App) {
-	if strings.EqualFold(config.EnvConfig().AppEnvironment, "production") || strings.EqualFold(config.EnvConfig().AppEnvironment, "prod") {
+	if config.EnvConfig().IsProduction() {
 		return
 	}
 	routes := make([]storytellerModel.AuditRouteRef, 0)

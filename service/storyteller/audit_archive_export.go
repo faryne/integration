@@ -88,8 +88,8 @@ func auditArchiveMonthPrefix(prefix string, month time.Time) string {
 // 已匯出的月份只補匯還沒封存的晚到事件（例如 Stream 重試晚寫進 MySQL 的）。
 // 會從 MySQL 最早的月份開始檢查，所以某個月失敗了，下次排程會自動重試。
 func RunAuditArchiveExport() {
-	if !auditArchiveEnabled() {
-		log.Logger().Info("Storyteller audit archive export skipped: archive bucket is not configured")
+	if !auditArchiveJobsEnabled() {
+		log.Logger().Info("Storyteller audit archive export skipped: archive bucket is not configured or not production")
 		return
 	}
 	startedAt := time.Now()

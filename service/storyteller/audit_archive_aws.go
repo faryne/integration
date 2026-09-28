@@ -47,6 +47,13 @@ type auditArchiveQueryEngine interface {
 
 func auditArchiveEnabled() bool { return config.EnvConfig().AuditArchiveBucket != "" }
 
+// auditArchiveJobsEnabled 決定匯出與清除排程要不要動手：除了設了 bucket，還必須是正式環境。
+// 本機常會指向同一個正式 bucket 來測封存查詢，若排程也跑，會把本機測試事件傳上去並鎖 N 年，
+// 還可能跟正式環境的 user id 撞號；封存查詢是唯讀的，不受這個限制。
+func auditArchiveJobsEnabled() bool {
+	return auditArchiveEnabled() && config.EnvConfig().IsProduction()
+}
+
 func auditArchiveQueryEnabled() bool {
 	cfg := config.EnvConfig()
 	return auditArchiveEnabled() && cfg.AuditAthenaWorkgroup != "" &&

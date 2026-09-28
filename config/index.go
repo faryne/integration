@@ -1,6 +1,10 @@
 package config
 
-import "github.com/Netflix/go-env"
+import (
+	"strings"
+
+	"github.com/Netflix/go-env"
+)
 
 type envConfig struct {
 	AppEnvironment   string `env:"APP_ENV,default=development"`
@@ -95,4 +99,10 @@ func InitEnvConfig() *env.EnvSet {
 
 func EnvConfig() *envConfig {
 	return &loadEnvConfig
+}
+
+// IsProduction 判斷是否為正式環境（APP_ENV=production 或 prod）；
+// 會寫入正式外部資源的排程（例如稽核封存匯出）只在正式環境執行。
+func (c *envConfig) IsProduction() bool {
+	return strings.EqualFold(c.AppEnvironment, "production") || strings.EqualFold(c.AppEnvironment, "prod")
 }

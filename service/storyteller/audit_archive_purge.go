@@ -22,7 +22,8 @@ type auditArchivePurgeRepository interface {
 // RunAuditArchiveMaintenance 每天檢查一次保存期限：MySQL 只刪「已確認匯出」且超過近期月數的月份；
 // S3 只刪「鎖定期已過」而且「月底 + 目前設定年數」也已過的月份，兩段刪除各記一筆系統稽核事件。
 func RunAuditArchiveMaintenance() {
-	if !auditArchiveEnabled() {
+	if !auditArchiveJobsEnabled() {
+		log.Logger().Info("Storyteller audit archive maintenance skipped: archive bucket is not configured or not production")
 		return
 	}
 	now := time.Now()
