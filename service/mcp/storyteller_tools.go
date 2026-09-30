@@ -21,6 +21,7 @@ func WithStorytellerSource(ctx context.Context, source string) context.Context {
 // （呼叫端本身就是 AI，不需要巢狀呼叫站內的 provider key）。
 func NewStorytellerServer(name, version string) *Server {
 	s := newBareServer(name, version)
+	s.instructions = storytellerService.MCPServerInstructions
 	s.registerBuiltInTools()
 	s.registerStorytellerTools()
 	return s

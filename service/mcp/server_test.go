@@ -114,6 +114,23 @@ func TestNewStorytellerServerRegistersMemoryTools(t *testing.T) {
 	require.Contains(t, body, "lore_public_id")
 }
 
+// storyteller server 要在 initialize 帶出使用引導；預設 /mcp server 不帶（見 TestServerHandleJSONRPCHandlesBasicMCPMethods）。
+func TestNewStorytellerServerReturnsInstructions(t *testing.T) {
+	server := NewStorytellerServer("storyteller-test", "test-version")
+
+	initialize, shouldReply, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}`))
+	require.NoError(t, err)
+	require.True(t, shouldReply)
+	require.Nil(t, initialize.Error)
+
+	var result struct {
+		Instructions string `json:"instructions"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(mustMarshal(t, initialize.Result)), &result))
+	require.Contains(t, result.Instructions, "storyteller_list_memories")
+	require.Contains(t, result.Instructions, "storyteller_upsert_memory")
+}
+
 func mustMarshal(t *testing.T, v interface{}) string {
 	t.Helper()
 	body, err := json.Marshal(v)
