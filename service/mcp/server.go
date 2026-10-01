@@ -16,7 +16,10 @@ type Server struct {
 	version string
 	// instructions 在 initialize 時回給 client，當作跨工具的使用引導；空字串不輸出。
 	instructions string
-	tools        map[string]Tool
+	// identity 是 serverInfo 裡 name／version 以外的欄位（MCP 2025-11-25 的 title、websiteUrl、icons），
+	// 給 connector 列表顯示用；沒設就不輸出。
+	identity map[string]any
+	tools    map[string]Tool
 }
 
 type Tool struct {
@@ -70,6 +73,14 @@ func NewServer(name, version string) *Server {
 	return s
 }
 
+func (s *Server) serverInfo() map[string]any {
+	info := map[string]any{"name": s.name, "version": s.version}
+	for key, value := range s.identity {
+		info[key] = value
+	}
+	return info
+}
+
 func newBareServer(name, version string) *Server {
 	return &Server{
 		name:    name,
@@ -115,10 +126,7 @@ func (s *Server) handle(ctx context.Context, req request) (response, bool) {
 			"capabilities": map[string]interface{}{
 				"tools": map[string]interface{}{},
 			},
-			"serverInfo": map[string]string{
-				"name":    s.name,
-				"version": s.version,
-			},
+			"serverInfo": s.serverInfo(),
 		}
 		if s.instructions != "" {
 			result["instructions"] = s.instructions
