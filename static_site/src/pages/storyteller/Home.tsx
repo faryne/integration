@@ -38,6 +38,8 @@ import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerFavoritesContent } from "@/pages/storyteller/Favorites.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
+import { StorytellerOAuthGrantPanel } from "@/pages/storyteller/OAuthGrantPanel.tsx";
+import { StorytellerPersonalAccessTokenPanel } from "@/pages/storyteller/PersonalAccessTokenPanel.tsx";
 import { StorytellerAccountActivityPanel } from "@/pages/storyteller/StorytellerAccountActivityPanel.tsx";
 import { StorytellerProfileContent } from "@/pages/storyteller/Profile.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -90,15 +92,19 @@ export default function StorytellerHome() {
       ? "apikey"
       : location.pathname.includes("/usage")
         ? "usage"
-        : location.pathname.includes("/mcp")
-          ? "mcp"
-          : location.pathname.endsWith("/my/activity")
-            ? "activity"
-            : location.pathname.includes("/favorites")
-              ? "favorites"
-              : location.pathname.includes("/profile")
-                ? "profile"
-                : "project";
+        : location.pathname.endsWith("/my/pat")
+          ? "pat"
+          : location.pathname.endsWith("/my/oauth")
+            ? "oauth"
+            : location.pathname.includes("/mcp")
+              ? "mcp"
+              : location.pathname.endsWith("/my/activity")
+                ? "activity"
+                : location.pathname.includes("/favorites")
+                  ? "favorites"
+                  : location.pathname.includes("/profile")
+                    ? "profile"
+                    : "project";
 
   const homeTitle = isProjectFormRoute
     ? `建立 ${STORYTELLER_APP_NAME} 專案`
@@ -258,6 +264,10 @@ export default function StorytellerHome() {
                   <StorytellerFavoritesContent />
                 ) : activeTab === "profile" ? (
                   <StorytellerProfileContent />
+                ) : activeTab === "pat" ? (
+                  <StorytellerPersonalAccessTokenPanel />
+                ) : activeTab === "oauth" ? (
+                  <StorytellerOAuthGrantPanel />
                 ) : (
                   <StorytellerMcpPanel />
                 )}

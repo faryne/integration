@@ -5,6 +5,8 @@ import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import MenuIcon from "@mui/icons-material/Menu";
 import PersonIcon from "@mui/icons-material/Person";
+import PasswordIcon from "@mui/icons-material/Password";
+import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import CloseIcon from "@mui/icons-material/Close";
@@ -34,6 +36,8 @@ const tabIcons: Record<StorytellerHomeTab, ReactNode> = {
   agent: <SmartToyIcon fontSize="small" />,
   apikey: <KeyIcon fontSize="small" />,
   usage: <QueryStatsIcon fontSize="small" />,
+  pat: <PasswordIcon fontSize="small" />,
+  oauth: <VerifiedUserOutlinedIcon fontSize="small" />,
   mcp: <CableIcon fontSize="small" />,
   activity: <HistoryOutlinedIcon fontSize="small" />,
   favorites: <FavoriteIcon fontSize="small" />,

@@ -118,6 +118,42 @@ export interface StorytellerPersonalAccessTokenCreated extends StorytellerPerson
   token: string;
 }
 
+// 「開發者 › OAuth Token」頁的一列：使用者 × 應用程式的一次授權。
+export interface StorytellerOAuthGrant {
+  public_id: string;
+  client_name: string;
+  redirect_host: string;
+  last_used_at: string | null;
+  refresh_expires_at: string;
+  created_at: string;
+}
+
+// 授權頁網址上的 OAuth 參數；approve 只在使用者按下允許／拒絕時送出。
+export interface StorytellerOAuthAuthorizeParams {
+  response_type: string;
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  state: string;
+  resource: string;
+}
+
+export interface StorytellerOAuthAuthorizePreview {
+  client_id: string;
+  client_name: string;
+  redirect_host: string;
+  // 不為空代表 client 正確但其他參數有誤，依 OAuth 規範直接把錯誤帶回應用程式
+  error_redirect_to?: string;
+}
+
+export interface StorytellerOAuthAuthorizeResult {
+  client_id: string;
+  client_name: string;
+  approved: boolean;
+  redirect_to: string;
+}
+
 // MCP 連接分頁的 SKILL.md 說明文件用：直接對齊後端實際掛在 MCP server 上的
 // ToolSpec 名稱／說明，新增工具時這裡不用跟著改。
 export interface StorytellerMcpToolDoc {
@@ -848,7 +884,7 @@ export interface StorytellerAuditEvent {
   occurred_at: string;
   actor: { type: "user" | "system"; display_name?: string };
   source: StorytellerAuditSource;
-  auth_method: "session" | "pat" | "none";
+  auth_method: "session" | "pat" | "oauth" | "none";
   credential: { public_id: string; label: string; revoked: boolean } | null;
   action: string;
   category: string;
