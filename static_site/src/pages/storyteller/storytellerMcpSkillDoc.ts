@@ -1,32 +1,9 @@
 import type { StorytellerMcpToolDocCategory } from "@/types/storyteller.ts";
 
-const STORYTELLER_MCP_SKILL_TOKEN_PLACEHOLDER =
-  "<YOUR_PERSONAL_ACCESS_TOKEN>";
-
-export function storytellerMcpClientConfigSnippet(
-  mcpEndpoint: string,
-  token = STORYTELLER_MCP_SKILL_TOKEN_PLACEHOLDER,
-) {
-  return JSON.stringify(
-    {
-      mcpServers: {
-        storyteller: {
-          url: mcpEndpoint,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      },
-    },
-    null,
-    2,
-  );
-}
-
 // Frontmatter 跟 body 分開 export：react-markdown 不認得 YAML frontmatter，`---`
 // 會被當成 <hr/>，兩行 key/value 又沒有空行分隔會被合併成一行——直接把整份內容丟給
 // markdown renderer 預覽會呈現得很怪。frontmatter 只在下載的 SKILL.md 裡需要保留
-// 原始格式，網頁預覽那邊改成用 code block 包起來單獨呈現（見 McpPanel.tsx）。
+// 原始格式，網頁預覽那邊改成用 code block 包起來單獨呈現（見 McpSkillPreviewDialog.tsx）。
 export const STORYTELLER_MCP_SKILL_FRONTMATTER = `name: storyteller-mcp
 description: 透過 MCP 存取 SteamLoom（Storyteller）的創作專案、故事、世界觀設定與資產，可讀取、建立、修改、上傳圖片、管理版本歷史。`;
 
@@ -53,25 +30,15 @@ MCP（Model Context Protocol）讓 AI Agent 可以透過標準介面連到外部
 
 請只在使用者明確要求讀取、建立、修改、刪除或上傳 Storyteller 內容時使用這些工具。寫入前要確認目標專案、故事或設定集，避免把內容存到錯誤位置。
 
-## 設定方式
+## 連線
 
-1. 在 SteamLoom 的「MCP 連接」頁面查看 MCP 連線位址。
-2. 到「金鑰管理」分頁建立一個 Personal Access Token。
-3. 在你的 MCP client 設定中加入下列內容，並把 \`${STORYTELLER_MCP_SKILL_TOKEN_PLACEHOLDER}\` 換成剛建立的 token。
+連線由使用者在自己的 MCP client 設定完成（OAuth 授權或 Personal Access Token），這份文件不包含任何憑證。若工具呼叫失敗、回傳未授權，或找不到這些工具，請提醒使用者到 SteamLoom 的「開發者 › MCP 連接」頁完成設定，不要要求使用者把 token 貼進對話。
 
-連線位址：
+MCP 連線位址：
 
 \`\`\`text
 ${mcpEndpoint}
 \`\`\`
-
-MCP client 設定範例：
-
-\`\`\`json
-${storytellerMcpClientConfigSnippet(mcpEndpoint)}
-\`\`\`
-
-這份文件是通用說明文件，不應包含真實 token。若要分享或提交到 repo，請確認設定範例仍使用佔位符。
 
 ## 可用方法列表
 

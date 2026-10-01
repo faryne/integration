@@ -1,5 +1,4 @@
 import AddIcon from "@mui/icons-material/Add";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import KeyIcon from "@mui/icons-material/Key";
 import {
@@ -31,23 +30,18 @@ import {
   useDeleteStorytellerPersonalAccessToken,
   useStorytellerPersonalAccessTokens,
 } from "@/apis/storyteller.ts";
+import { CopyableCode } from "@/pages/storyteller/developerShared.tsx";
+import { useClipboardCopy } from "@/pages/storyteller/useClipboardCopy.tsx";
 import {
+  mcpJsonConfigSnippet,
   mcpEndpoint,
-  useClipboardCopy,
-} from "@/pages/storyteller/developerShared.tsx";
-import { storytellerMcpClientConfigSnippet } from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
+  personalAccessTokenExpiryDays,
+  personalAccessTokenExpiryOptions,
+} from "@/pages/storyteller/mcpClientSetup.ts";
 import type {
   StorytellerPersonalAccessToken,
   StorytellerPersonalAccessTokenCreated,
 } from "@/types/storyteller.ts";
-
-const expiresInDaysOptions = [
-  { value: "30", label: "30 天" },
-  { value: "90", label: "90 天" },
-  { value: "180", label: "180 天" },
-  { value: "365", label: "365 天" },
-  { value: "forever", label: "永久（不過期）" },
-] as const;
 
 // 「開發者 › Personal Access Token」分頁：給 Codex CLI 這類要在設定檔寫 token 的本機工具。
 // 只輸出內容本體，外層標題／麵包屑交給 Home.tsx 的 WorkspaceChrome。
@@ -61,7 +55,7 @@ export function StorytellerPersonalAccessTokenPanel() {
   const [createdToken, setCreatedToken] =
     useState<StorytellerPersonalAccessTokenCreated | null>(null);
   const configSnippet = createdToken
-    ? storytellerMcpClientConfigSnippet(mcpEndpoint, createdToken.token)
+    ? mcpJsonConfigSnippet(mcpEndpoint, createdToken.token)
     : "";
 
   return (
@@ -93,10 +87,7 @@ export function StorytellerPersonalAccessTokenPanel() {
             createToken.mutate(
               {
                 label,
-                expires_in_days:
-                  expiresInDays === "forever"
-                    ? undefined
-                    : Number(expiresInDays),
+                expires_in_days: personalAccessTokenExpiryDays(expiresInDays),
               },
               {
                 onSuccess: (created) => {
@@ -135,7 +126,7 @@ export function StorytellerPersonalAccessTokenPanel() {
                 value={expiresInDays}
                 onChange={(event) => setExpiresInDays(event.target.value)}
               >
-                {expiresInDaysOptions.map((option) => (
+                {personalAccessTokenExpiryOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
                     {option.label}
                   </MenuItem>
@@ -207,49 +198,16 @@ export function StorytellerPersonalAccessTokenPanel() {
           </Alert>
           {createdToken && (
             <>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Token"
-                  value={createdToken.token}
-                  slotProps={{ input: { readOnly: true } }}
-                />
-                <Tooltip title="複製 token">
-                  <IconButton onClick={() => void copy(createdToken.token)}>
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  MCP client 設定範例：
-                </Typography>
-                <Stack direction="row" spacing={1} alignItems="flex-start">
-                  <Box
-                    component="pre"
-                    sx={{
-                      flex: 1,
-                      m: 0,
-                      p: 1.5,
-                      borderRadius: 1,
-                      bgcolor: "action.hover",
-                      fontSize: 12,
-                      overflowX: "auto",
-                    }}
-                  >
-                    {configSnippet}
-                  </Box>
-                  <Tooltip title="複製設定範例">
-                    <IconButton
-                      size="small"
-                      onClick={() => void copy(configSnippet)}
-                    >
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </Box>
+              <CopyableCode
+                label="Token"
+                value={createdToken.token}
+                onCopy={(value) => void copy(value)}
+              />
+              <CopyableCode
+                label="MCP client 設定範例："
+                value={configSnippet}
+                onCopy={(value) => void copy(value)}
+              />
             </>
           )}
         </Stack>

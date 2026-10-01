@@ -1,42 +1,77 @@
-import { useState } from "react";
-import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { isSteamLoomSite } from "@/helpers/steamloom.ts";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import {
+  Box,
+  Chip,
+  IconButton,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 
-// MCP endpoint 是給外部工具（Codex、Claude 等）直接連線用，不透過前端自己的
-// /api-integration 呼叫路徑；兩個網域各自有 nginx 對應規則，這裡照網域顯示對的網址。
-export const mcpEndpoint = isSteamLoomSite()
-  ? "https://steamloom.works/mcp"
-  : "https://faryne.dev/api-integration/storyteller-mcp";
-
-// OAuth 只在 steamloom.works 開放（faryne.dev 的 MCP 路徑只收 Personal Access Token）。
-export const oauthMcpEndpoint = "https://steamloom.works/mcp";
-
-// 「開發者」各頁共用的複製到剪貼簿行為；snackbars 要放進頁面裡才會顯示成功／失敗提示。
-export function useClipboardCopy() {
-  const [copied, setCopied] = useState(false);
-  const [failed, setFailed] = useState(false);
-  async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-    } catch {
-      setFailed(true);
-    }
-  }
-  const snackbars = (
-    <>
-      <CustomSnackbar
-        open={copied}
-        message="已複製到剪貼簿"
-        onClose={() => setCopied(false)}
-      />
-      <CustomSnackbar
-        open={failed}
-        message="複製失敗，請手動選取內容。"
-        severity="error"
-        onClose={() => setFailed(false)}
-      />
-    </>
+// 程式碼／設定區塊加複製按鈕；label 是區塊上方的說明（例如「加到 config.toml」）。
+export function CopyableCode({
+  value,
+  label,
+  onCopy,
+}: {
+  value: string;
+  label?: string;
+  onCopy: (value: string) => void;
+}) {
+  return (
+    <Box>
+      {label && (
+        <Typography variant="caption" color="text.secondary">
+          {label}
+        </Typography>
+      )}
+      <Stack direction="row" spacing={1} alignItems="flex-start">
+        <Box
+          component="pre"
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            m: 0,
+            p: 1.5,
+            borderRadius: 1,
+            bgcolor: "action.hover",
+            fontSize: 12,
+            overflowX: "auto",
+          }}
+        >
+          {value}
+        </Box>
+        <Tooltip title="複製">
+          <IconButton size="small" onClick={() => onCopy(value)}>
+            <ContentCopyIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+    </Box>
   );
-  return { copy, snackbars };
+}
+
+// 「要連哪個工具？」的分段選擇，OAuth 與 Personal Access Token 兩個設定視窗共用。
+export function ToolPicker({
+  tools,
+  value,
+  onChange,
+}: {
+  tools: Array<{ key: string; label: string }>;
+  value: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+      {tools.map((tool) => (
+        <Chip
+          key={tool.key}
+          label={tool.label}
+          color={tool.key === value ? "primary" : "default"}
+          variant={tool.key === value ? "filled" : "outlined"}
+          onClick={() => onChange(tool.key)}
+        />
+      ))}
+    </Stack>
+  );
 }
