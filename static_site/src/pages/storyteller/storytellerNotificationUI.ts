@@ -8,7 +8,7 @@ import type { StorytellerNotification } from "@/types/storytellerNotification.ts
 
 // 通知列表／popover／內容頁共用的文案與格式化；DB 只存快照，文字一律在這裡組。
 
-export type NotificationTone = "story" | "project" | "security";
+export type NotificationTone = "story" | "project" | "security" | "general";
 
 export interface NotificationHeadline {
   tone: NotificationTone;
@@ -63,8 +63,19 @@ export function notificationHeadline(
           .filter(Boolean)
           .join(" · "),
       };
+    default:
+      // 沒有專屬文案的類型（含前端還不認識的新類型）一律用通用欄位
+      return {
+        tone: n.kind.startsWith("security.") ? "security" : "general",
+        text: p.title || "新通知",
+        sub: p.body,
+      };
   }
 }
+
+// 通用 link 只放行站內路徑，避免通知被拿來導到外部網站
+export const notificationSafeLink = (link?: string) =>
+  link?.startsWith("/") && !link.startsWith("//") ? link : null;
 
 const sourceLabels: Record<string, string> = {
   web: "網頁",

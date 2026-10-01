@@ -1,11 +1,13 @@
 // 站內通知的型別：對應後端 model/entity/storyteller/notification.go。
 // payload 是寫入當下的快照，各 kind 只會帶自己用得到的欄位。
 
+// 後端可能先上線前端還不認識的類型，所以保留任意字串；不認識的一律用 payload 的通用欄位顯示
 export type StorytellerNotificationKind =
   | "story.published"
   | "project.published"
   | "security.oauth.authorized"
-  | "security.pat.created";
+  | "security.pat.created"
+  | (string & {});
 
 export type StorytellerNotificationFilter = "all" | "unread" | "locked";
 
@@ -17,6 +19,10 @@ export interface StorytellerNotificationStory {
 }
 
 export interface StorytellerNotificationPayload {
+  // 通用欄位：沒有專屬畫面的類型用；link 只接受站內路徑
+  title?: string;
+  body?: string;
+  link?: string;
   // 內容更新
   project_public_id?: string;
   project_slug?: string;

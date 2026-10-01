@@ -4,6 +4,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import {
   Avatar,
   Box,
@@ -27,6 +28,7 @@ const toneIcons: Record<NotificationTone, ReactNode> = {
   story: <AutoStoriesOutlinedIcon fontSize="small" />,
   project: <AutoAwesomeOutlinedIcon fontSize="small" />,
   security: <GppMaybeOutlinedIcon fontSize="small" />,
+  general: <NotificationsNoneOutlinedIcon fontSize="small" />,
 };
 
 const toneColor = (theme: Theme, tone: NotificationTone) =>
@@ -34,7 +36,9 @@ const toneColor = (theme: Theme, tone: NotificationTone) =>
     ? theme.palette.primary.main
     : tone === "project"
       ? theme.palette.success.main
-      : theme.palette.warning.main;
+      : tone === "security"
+        ? theme.palette.warning.main
+        : theme.palette.info.main;
 
 export function NotificationToneAvatar({
   tone,

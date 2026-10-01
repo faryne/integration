@@ -27,6 +27,7 @@ import {
   notificationFullTime,
   notificationHeadline,
   notificationProjectPath,
+  notificationSafeLink,
   notificationSourceLabel,
   notificationStoryPath,
   summarizeUserAgent,
@@ -111,7 +112,30 @@ function NotificationBody({ n }: { n: StorytellerNotification }) {
     case "security.oauth.authorized":
     case "security.pat.created":
       return <SecurityBody n={n} />;
+    default:
+      return <GenericBody n={n} />;
   }
+}
+
+// 沒有專屬畫面的類型：顯示通用內文與「前往查看」
+function GenericBody({ n }: { n: StorytellerNotification }) {
+  const link = notificationSafeLink(n.payload.link);
+  return (
+    <>
+      {n.payload.body && (
+        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+          {n.payload.body}
+        </Typography>
+      )}
+      {link && (
+        <Box>
+          <Button variant="contained" component={RouterLink} to={link}>
+            前往查看
+          </Button>
+        </Box>
+      )}
+    </>
+  );
 }
 
 // 「從第 N 話開始讀」＋「前往作品首頁」，新話與新作品共用
