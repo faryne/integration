@@ -22,6 +22,15 @@ func WithStorytellerSource(ctx context.Context, source string) context.Context {
 func NewStorytellerServer(name, version string) *Server {
 	s := newBareServer(name, version)
 	s.instructions = storytellerService.MCPServerInstructions
+	// Claude.ai 目前還是用網域 favicon 當 connector 圖示，這裡先照 MCP 規格宣告，client 開始讀就直接生效
+	s.identity = map[string]any{
+		"title":      "Steamloom",
+		"websiteUrl": "https://steamloom.works",
+		"icons": []map[string]any{
+			{"src": "https://steamloom.works/steamloom-icon-256.png", "mimeType": "image/png", "sizes": []string{"256x256"}},
+			{"src": "https://steamloom.works/steamloom-icon.svg", "mimeType": "image/svg+xml", "sizes": []string{"any"}},
+		},
+	}
 	s.registerBuiltInTools()
 	s.registerStorytellerTools()
 	return s

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import fs from "fs";
 import path from "path";
 
 function getPackageName(id: string) {
@@ -151,6 +152,43 @@ function contactEncoderPlugin(secretKey: string): Plugin {
   };
 }
 
+// steamloom.works 是獨立的 Firebase target，但跟其他站共用同一份 index.html，favicon 寫死成
+// Faryne 的頭像；Google favicon 服務（Claude.ai 的 connector icon 就是靠它）不會執行 JS，
+// 看不到 StorytellerLayout 在 runtime 換上的圖示。所以 steamloom 的 build（VITE_SITE=steamloom）
+// 直接把 HTML 裡的 favicon 換掉，並補一個真的 /favicon.ico（其他站沒有這個檔，維持原狀）。
+function steamloomFaviconPlugin(enabled: boolean): Plugin {
+  return {
+    name: "steamloom-favicon",
+    apply: "build",
+    transformIndexHtml(html) {
+      if (!enabled) {
+        return html;
+      }
+      return html
+        .replace(
+          /<link rel="icon"[^>]*>/,
+          '<link rel="icon" type="image/png" href="/steamloom-icon-256.png" />\n    <link rel="icon" type="image/svg+xml" href="/steamloom-icon.svg" />',
+        )
+        .replace(
+          /<link rel="apple-touch-icon"[^>]*>/,
+          '<link rel="apple-touch-icon" href="/steamloom-icon-180.png" />',
+        );
+    },
+    generateBundle() {
+      if (!enabled) {
+        return;
+      }
+      this.emitFile({
+        type: "asset",
+        fileName: "favicon.ico",
+        source: fs.readFileSync(
+          path.resolve(__dirname, "public/steamloom-favicon.ico"),
+        ),
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -177,6 +215,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       contactEncoderPlugin(env.VITE_SECRET_KEY),
+      steamloomFaviconPlugin(env.VITE_SITE === "steamloom"),
       react({
         babel: {
           plugins: [["babel-plugin-react-compiler"]],

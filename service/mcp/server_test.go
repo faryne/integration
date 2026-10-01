@@ -137,3 +137,26 @@ func mustMarshal(t *testing.T, v interface{}) string {
 	require.NoError(t, err)
 	return string(body)
 }
+
+// Storyteller MCP 的 serverInfo 要帶 title／websiteUrl／icons，給 connector 列表顯示 Steamloom 圖示。
+func TestStorytellerServerAdvertisesIdentity(t *testing.T) {
+	server := NewStorytellerServer("steamloom.works", "http")
+	initialize, _, err := server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":1,"method":"initialize"}`))
+	require.NoError(t, err)
+	var result struct {
+		ServerInfo struct {
+			Name       string `json:"name"`
+			Title      string `json:"title"`
+			WebsiteURL string `json:"websiteUrl"`
+			Icons      []struct {
+				Src      string `json:"src"`
+				MimeType string `json:"mimeType"`
+			} `json:"icons"`
+		} `json:"serverInfo"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(mustMarshal(t, initialize.Result)), &result))
+	require.Equal(t, "steamloom.works", result.ServerInfo.Name)
+	require.Equal(t, "Steamloom", result.ServerInfo.Title)
+	require.Equal(t, "https://steamloom.works", result.ServerInfo.WebsiteURL)
+	require.Equal(t, "image/png", result.ServerInfo.Icons[0].MimeType)
+}
