@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"faryne.dev/config"
@@ -16,6 +17,7 @@ import (
 var (
 	ErrLockLimitReached = errors.New("notification lock limit reached")
 	errEmptyGroupKey    = errors.New("notification group_key is required")
+	errEmptyText        = errors.New("notification title and body are required")
 )
 
 // Input 是一則要送出的通知；GroupKey 是冪等鍵，同一收件人同一 key 只會有一筆。
@@ -57,6 +59,9 @@ func NewRows(inputs []Input) ([]*storytellerModel.Notification, error) {
 	for _, input := range inputs {
 		if input.GroupKey == "" {
 			return nil, errEmptyGroupKey
+		}
+		if strings.TrimSpace(input.Payload.Title) == "" || strings.TrimSpace(input.Payload.Body) == "" {
+			return nil, errEmptyText
 		}
 		publicID, err := newPublicID()
 		if err != nil {

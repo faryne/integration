@@ -37,6 +37,8 @@ func (s *Service) notifySecurity(userID uint64, kind storytellerModel.Notificati
 
 func (s *Service) NotifyPATCreated(userID uint64, publicID, label, tokenPrefix string, expiresAt *time.Time, origin Origin) {
 	s.notifySecurity(userID, storytellerModel.NotificationKindPATCreated, publicID, storytellerModel.NotificationPayload{
+		Title: "建立了新的 Personal Access Token「" + label + "」",
+		Body:  "如果不是你本人操作，請立刻刪除這組 Token，並檢查最近的活動紀錄。",
 		Label: label, TokenPrefix: tokenPrefix, ExpiresAt: expiresAt,
 	}, origin)
 }
@@ -45,6 +47,8 @@ func (s *Service) NotifyPATCreated(userID uint64, publicID, label, tokenPrefix s
 // 按「允許」當下的瀏覽器來源，不是應用程式呼叫 token 端點的伺服器。
 func (s *Service) NotifyOAuthAuthorized(userID uint64, grantPublicID, clientName string, origin Origin) {
 	s.notifySecurity(userID, storytellerModel.NotificationKindOAuthAuthorized, grantPublicID, storytellerModel.NotificationPayload{
+		Title:      clientName + " 已取得你的帳號授權",
+		Body:       "如果不是你本人操作，請立刻撤銷這個授權。",
 		ClientName: clientName,
 	}, origin)
 }

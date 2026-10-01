@@ -32,10 +32,11 @@ type NotificationStory struct {
 // NotificationPayload 是寫入當下的顯示快照：作品改名、下架或刪除後，舊通知照樣能顯示，
 // 點下去能不能看由 Reader 判斷。各 kind 只填自己用得到的欄位。
 type NotificationPayload struct {
-	// 通用欄位：沒有專屬畫面的類型只要填這三個，前端遇到不認識的 kind 也會用它們顯示，
-	// 新增簡單的通知類型不用改前端。Link 只能是站內路徑（以 / 開頭），前端會擋掉其他值。
-	Title string `json:"title,omitempty"`
-	Body  string `json:"body,omitempty"`
+	// 通用欄位：所有類型都必填 Title／Body（純文字、保留換行，不解析 markdown），
+	// 有專屬畫面的類型也要填一份文字摘要，前端遇到不認識的 kind 或之後的推播都靠它。
+	// Link 選填，只能是站內路徑（以 / 開頭），前端會擋掉其他值。
+	Title string `json:"title"`
+	Body  string `json:"body"`
 	Link  string `json:"link,omitempty"`
 
 	// 內容更新（story.published／project.published）

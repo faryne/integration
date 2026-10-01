@@ -1,8 +1,11 @@
 package storyteller
 
 import (
+	"cmp"
 	"errors"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -112,9 +115,11 @@ func publishProjectBatch(repo publishScanRepository, batch []storytellerModel.No
 		payload.WordTotal += c.WordCount
 	}
 	kind, groupKey := storytellerModel.NotificationKindStoryPublished, "story.published:"+project.PublicID+":"+first.PublicID
+	payload.Title, payload.Body = publishStoryText(payload)
 	if !published {
 		kind, groupKey = storytellerModel.NotificationKindProjectPublished, "project.published:"+project.PublicID
 		payload.Description, payload.Tags = project.Description, decodeProjectTags(project.Tags)
+		payload.Title, payload.Body = publishProjectText(payload)
 	}
 
 	inputs := make([]notifyService.Input, 0, len(recipients))
@@ -132,6 +137,40 @@ func publishProjectBatch(repo publishScanRepository, batch []storytellerModel.No
 	}
 	claimed, err := repo.ClaimPublishedStories(storyIDs, rows)
 	return len(rows), claimed, err
+}
+
+// publishAuthorText 是通知文字摘要裡的署名；筆名都解析不到時（不該發生）退回「作者」。
+func publishAuthorText(payload storytellerModel.NotificationPayload) string {
+	if len(payload.Authors) == 0 {
+		return "作者"
+	}
+	return strings.Join(payload.Authors, "、")
+}
+
+// publishStoryText 產生新話通知的純文字摘要：列前 3 話標題，其餘只寫總數。
+func publishStoryText(payload storytellerModel.NotificationPayload) (string, string) {
+	title := fmt.Sprintf("%s 的《%s》更新了", publishAuthorText(payload), payload.ProjectName)
+	if payload.StoryTotal > 1 {
+		title += fmt.Sprintf(" %d 話", payload.StoryTotal)
+	}
+	names := make([]string, 0, 3)
+	for _, story := range payload.Stories[:min(3, len(payload.Stories))] {
+		if story.VolumeTitle != "" {
+			story.Title = story.VolumeTitle + "・" + story.Title
+		}
+		names = append(names, story.Title)
+	}
+	body := strings.Join(names, "、")
+	if payload.StoryTotal > len(names) {
+		body += fmt.Sprintf(" 等 %d 話", payload.StoryTotal)
+	}
+	return title, body
+}
+
+// publishProjectText 產生新作品通知的純文字摘要：有簡介用簡介，沒有就寫話數與字數。
+func publishProjectText(payload storytellerModel.NotificationPayload) (string, string) {
+	title := fmt.Sprintf("%s 發表了新作品《%s》", publishAuthorText(payload), payload.ProjectName)
+	return title, cmp.Or(strings.TrimSpace(payload.Description), fmt.Sprintf("目前 %d 話，約 %d 字", payload.StoryTotal, payload.WordTotal))
 }
 
 // batchIdentities 回傳這批話的署名身份（沒有 pivot 列＝帳號本人 profile 0）與對應筆名，依出現順序。

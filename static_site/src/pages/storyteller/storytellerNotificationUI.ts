@@ -67,7 +67,7 @@ export function notificationHeadline(
       // 沒有專屬文案的類型（含前端還不認識的新類型）一律用通用欄位
       return {
         tone: n.kind.startsWith("security.") ? "security" : "general",
-        text: p.title || "新通知",
+        text: p.title,
         sub: p.body,
       };
   }

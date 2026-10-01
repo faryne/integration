@@ -104,10 +104,13 @@ func row(id uint64, publicID string, locked bool) *storytellerModel.Notification
 	return r
 }
 
-func TestNotifyRequiresGroupKeyAndAssignsPublicID(t *testing.T) {
+func TestNotifyRequiresGroupKeyTextAndAssignsPublicID(t *testing.T) {
 	s, repo := newTestService()
-	require.Error(t, s.Notify([]Input{{UserID: 1, Kind: storytellerModel.NotificationKindPATCreated}}))
-	require.NoError(t, s.Notify([]Input{{UserID: 1, Kind: storytellerModel.NotificationKindPATCreated, GroupKey: "k"}}))
+	text := storytellerModel.NotificationPayload{Title: "標題", Body: "內文"}
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", Payload: text}}), errEmptyGroupKey)
+	// title／body 必填，空白也不算；link 選填
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "  "}}}), errEmptyText)
+	require.NoError(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", GroupKey: "k", Payload: text}}))
 	require.Len(t, repo.inserted, 1)
 	require.Regexp(t, `^ntf_[0-9a-f]{20}$`, repo.inserted[0].PublicID)
 }

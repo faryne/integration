@@ -1,6 +1,7 @@
 package storyteller
 
 import (
+	"fmt"
 	"testing"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -86,6 +87,8 @@ func TestPublishScanAggregatesPerProject(t *testing.T) {
 	require.Equal(t, "story.published:p10:s1", update.GroupKey)
 	require.Equal(t, 2, update.Payload.StoryTotal)
 	require.Equal(t, []string{"本名", "鴉羽"}, update.Payload.Authors)
+	require.Equal(t, "本名、鴉羽 的《霧都旅館》更新了 2 話", update.Payload.Title)
+	require.Equal(t, "s1、s2", update.Payload.Body)
 	require.ElementsMatch(t, []uint64{5, 6}, []uint64{repo.notified[0].UserID, repo.notified[1].UserID})
 
 	// 專案 20 第一次有話公開 → 新作品通知，帶簡介與 tags
@@ -93,6 +96,9 @@ func TestPublishScanAggregatesPerProject(t *testing.T) {
 	require.Equal(t, storytellerModel.NotificationKindProjectPublished, debut.Kind)
 	require.Equal(t, "project.published:p20", debut.GroupKey)
 	require.Equal(t, []string{"奇幻"}, debut.Payload.Tags)
+	require.Equal(t, "本名 發表了新作品《夜蛾的信箋》", debut.Payload.Title)
+	// 沒有簡介時改寫話數與字數
+	require.Equal(t, "目前 1 話，約 100 字", debut.Payload.Body)
 	require.Equal(t, []uint64{0}, repo.gotProfiles)
 }
 
@@ -106,6 +112,7 @@ func TestPublishScanCapsPayloadStories(t *testing.T) {
 	require.Len(t, repo.notified[0].Payload.Stories, publishPayloadStoryLimit)
 	require.Equal(t, publishPayloadStoryLimit+5, repo.notified[0].Payload.StoryTotal)
 	require.Equal(t, uint((publishPayloadStoryLimit+5)*100), repo.notified[0].Payload.WordTotal)
+	require.Equal(t, fmt.Sprintf("s、s、s 等 %d 話", publishPayloadStoryLimit+5), repo.notified[0].Payload.Body)
 }
 
 func TestPublishScanSkipsBatchClaimedElsewhere(t *testing.T) {
@@ -115,4 +122,11 @@ func TestPublishScanSkipsBatchClaimedElsewhere(t *testing.T) {
 	stats, err := scanPublishedStories(repo)
 	require.NoError(t, err)
 	require.Equal(t, publishScanStats{}, stats)
+}
+
+func TestPublishStoryTextPrefixesVolumeOnlyWhenPresent(t *testing.T) {
+	_, body := publishStoryText(storytellerModel.NotificationPayload{StoryTotal: 2, Stories: []storytellerModel.NotificationStory{
+		{Title: "第 8 話", VolumeTitle: "第二冊"}, {Title: "番外"},
+	}})
+	require.Equal(t, "第二冊・第 8 話、番外", body)
 }

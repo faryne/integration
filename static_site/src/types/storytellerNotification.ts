@@ -19,9 +19,9 @@ export interface StorytellerNotificationStory {
 }
 
 export interface StorytellerNotificationPayload {
-  // 通用欄位：沒有專屬畫面的類型用；link 只接受站內路徑
-  title?: string;
-  body?: string;
+  // 通用欄位：title／body 所有類型都必填（純文字、保留換行）；link 選填，只接受站內路徑
+  title: string;
+  body: string;
   link?: string;
   // 內容更新
   project_public_id?: string;
