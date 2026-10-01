@@ -120,6 +120,10 @@ func main() {
 		if err := loadCommandSettings(inputEnvFile); err != nil {
 			log.Logger().Panic("Initialize command failed: " + err.Error())
 		}
+		// 手動 -cmd 執行的排程也要留下系統稽核事件（例如 system.audit.export）。
+		// 不給 Redis client，讓 producer 直接寫 DB：-cmd 不一定跟常駐後端共用同一個 Redis，
+		// 寫進 Stream 可能永遠沒有 consumer 撈；一次只有一兩筆，同步寫入沒有效能問題。
+		storytellerAudit.SetDefaultProducer(storytellerAudit.NewProducer(nil, storytellerRepo.NewRepository()))
 		executeCommand(cmdName)
 		if err := shutdownClients(); err != nil {
 			log.Logger().Panic("Command shutdown failed: " + err.Error())
