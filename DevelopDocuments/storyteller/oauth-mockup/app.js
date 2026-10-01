@@ -17,13 +17,13 @@ function showScreen(screen) {
   $('#crumbCurrent').textContent = isAuthorize ? '授權連線' : pageLabels[screen];
 }
 
-// 梭梭在各狀態的姿勢與台詞（口吻規則：稱呼「那頭」、話少、不用織布意象）
+// 梭梭在各狀態的姿勢與台詞（授權頁對使用者稱「您」、話少、不用織布意象）
 const mascotByState = {
-  login: ['idle', 'Claude 想來讀那頭的文字。那頭先登入，我才知道要替誰開門。'],
-  penname: ['idle', 'Claude 想來讀那頭的文字。那頭先登入，我才知道要替誰開門。'],
-  consent: ['thinking', '答應之後，它能讀、能改，也能刪。那頭看清楚了再按。'],
-  invalid: ['error', '這個請求對不上，我先不放行。那頭回原本的工具重新連一次吧。'],
-  redirect: ['success', '好了，我送那頭回 Claude 那邊。'],
+  login: ['idle', 'Claude 想來讀您的文字。請您先登入，我才知道要替誰開門。'],
+  penname: ['idle', 'Claude 想來讀您的文字。請您先登入，我才知道要替誰開門。'],
+  consent: ['thinking', '答應之後，它能讀、能改，也能刪。請您看清楚了再按。'],
+  invalid: ['error', '這個請求對不上，我先不放行。請您回原本的工具重新連一次。'],
+  redirect: ['success', '好了，我送您回 Claude 那邊。'],
 };
 const mascotSrc = (pose) => `https://cdn.faryne.dev/steamloom_assets/suosuo-${pose}-${document.documentElement.dataset.theme === 'light' ? 'ivory' : 'nocturne'}-512.png`;
 let authState = 'login';

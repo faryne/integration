@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"faryne.dev/middleware/storytellerpat"
+	"faryne.dev/middleware/storytellerbearer"
 	serviceMCP "faryne.dev/service/mcp"
 	"github.com/gofiber/fiber/v3"
 )
@@ -14,12 +14,12 @@ const requestTimeout = 30 * time.Second
 
 var server = serviceMCP.NewStorytellerServer("steamloom.works", "http")
 
-// Handle 只服務通過 storytellerpat middleware 驗證的請求，跟公開的 /mcp 用不同的
+// Handle 只服務通過 storytellerbearer middleware 驗證的請求，跟公開的 /mcp 用不同的
 // server 實例與 tool set，避免把寫作用的 CRUD 工具和 av/nekomaid 混在一起回給
 // tools/list。
 func Handle(ctx fiber.Ctx) error {
-	userID := storytellerpat.UserID(ctx)
-	source := "mcp:" + storytellerpat.TokenLabel(ctx)
+	userID := storytellerbearer.UserID(ctx)
+	source := "mcp:" + storytellerbearer.TokenLabel(ctx)
 	baseCtx := serviceMCP.WithStorytellerSource(
 		serviceMCP.WithStorytellerUserID(ctx.Context(), userID),
 		source,

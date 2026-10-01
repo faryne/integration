@@ -1,4 +1,4 @@
-package storytellerpat
+package storytellerbearer
 
 import (
 	"context"
@@ -10,24 +10,27 @@ import (
 	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/output"
-	storytellerService "faryne.dev/service/storyteller"
 	auditService "faryne.dev/service/storytelleraudit"
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeniedPATAttribution(t *testing.T) {
+func TestDeniedBearerAttribution(t *testing.T) {
 	tests := []struct {
 		name           string
-		authentication *storytellerService.PersonalAccessTokenAuthentication
+		authentication *Credential
+		wantAction     string
 		wantActor      uint64
 		wantCredential string
 		wantReason     any
 	}{
-		{name: "expired", authentication: &storytellerService.PersonalAccessTokenAuthentication{
-			UserID: 42, CredentialRef: "pat_public", DeniedReason: "expired",
-		}, wantActor: 42, wantCredential: "pat_public", wantReason: "expired"},
-		{name: "unknown"},
+		{name: "expired pat", authentication: &Credential{
+			UserID: 42, CredentialRef: "pat_public", DeniedReason: "expired", Method: storytellerModel.AuditAuthMethodPAT,
+		}, wantAction: "auth.pat.denied", wantActor: 42, wantCredential: "pat_public", wantReason: "expired"},
+		{name: "expired oauth", authentication: &Credential{
+			UserID: 7, CredentialRef: "oag_public", DeniedReason: "expired", Method: storytellerModel.AuditAuthMethodOAuth,
+		}, wantAction: "auth.oauth.denied", wantActor: 7, wantCredential: "oag_public", wantReason: "expired"},
+		{name: "unknown", wantAction: "auth.pat.denied"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -41,7 +44,7 @@ func TestDeniedPATAttribution(t *testing.T) {
 			}})
 			app.Use(storytellerAudit.NewRequestContext())
 			app.Use(newMiddleware(
-				func(string) (*storytellerService.PersonalAccessTokenAuthentication, error) {
+				func(string) (*Credential, error) {
 					return test.authentication, errors.New("invalid token")
 				},
 				func(ctx context.Context, input auditService.EventInput) error {
@@ -49,6 +52,7 @@ func TestDeniedPATAttribution(t *testing.T) {
 					requestContext, _ = auditService.RequestContextFrom(ctx)
 					return nil
 				},
+				"https://steamloom.test/.well-known/oauth-protected-resource",
 			))
 			app.Post("/storyteller-mcp", func(ctx fiber.Ctx) error { return ctx.SendStatus(http.StatusNoContent) })
 
@@ -57,7 +61,8 @@ func TestDeniedPATAttribution(t *testing.T) {
 			response, err := app.Test(request)
 			require.NoError(t, err)
 			require.Equal(t, http.StatusUnauthorized, response.StatusCode)
-			require.Equal(t, "auth.pat.denied", emitted.Action)
+			require.Equal(t, test.wantAction, emitted.Action)
+			require.Contains(t, response.Header.Get(fiber.HeaderWWWAuthenticate), `resource_metadata="https://steamloom.test/.well-known/oauth-protected-resource"`)
 			require.Equal(t, storytellerModel.AuditOutcomeDenied, emitted.Outcome)
 			require.Equal(t, test.wantActor, requestContext.ActorUserID)
 			require.Equal(t, test.wantCredential, requestContext.CredentialRef)

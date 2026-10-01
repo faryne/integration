@@ -267,7 +267,7 @@ func auditEventOutput(row storytellerModel.AuditEvent, actorNames map[uint64]str
 		output.Actor.DisplayName = actorNames[*row.ActorUserID]
 	}
 	if row.CredentialRef != nil {
-		credential := storytellerModel.AuditCredentialOutput{PublicID: *row.CredentialRef, Label: "已撤銷的 PAT", Revoked: true}
+		credential := storytellerModel.AuditCredentialOutput{PublicID: *row.CredentialRef, Label: "已撤銷的憑證", Revoked: true}
 		if token, ok := credentials[*row.CredentialRef]; ok {
 			credential.Label, credential.Revoked = token.Label, token.IsDeleted
 		}

@@ -42,8 +42,8 @@ type toolAuditBeforeState struct {
 }
 
 func auditToolCallWithLookup(ctx context.Context, toolName string, arguments map[string]interface{}, handler ToolHandlerFunc, lookup toolAuditLookup) (interface{}, error) {
-	// AI 助理也共用同一份 registry；只有外部 PAT 呼叫才在這層記 read/write event。
-	if !auditService.IsPAT(ctx) {
+	// AI 助理也共用同一份 registry；只有外部憑證（PAT／OAuth）呼叫才在這層記 read/write event。
+	if !auditService.IsExternalCredential(ctx) {
 		return handler(ctx, arguments)
 	}
 	action, mapped := storytellerModel.AuditActionForTool(toolName)

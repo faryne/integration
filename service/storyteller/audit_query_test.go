@@ -153,7 +153,7 @@ func TestListAuditEventsPaginatesAndMapsOutput(t *testing.T) {
 	require.Equal(t, storytellerModel.AuditSummary{"version_id": 7}, first.Summary, "內部數字 id 不可外露")
 
 	second := page.Events[1]
-	require.Equal(t, "已撤銷的 PAT", second.Credential.Label)
+	require.Equal(t, "已撤銷的憑證", second.Credential.Label)
 	require.True(t, second.Credential.Revoked)
 	require.Equal(t, "卷一", second.Target.Name, "volume 與 story 共用名稱查詢")
 }

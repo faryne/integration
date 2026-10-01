@@ -4,6 +4,7 @@ import (
 	"faryne.dev/config"
 	"faryne.dev/controller/auth"
 	"faryne.dev/controller/storyteller"
+	"faryne.dev/controller/storytelleroauth"
 	"faryne.dev/middleware/authsession"
 	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	authService "faryne.dev/service/auth"
@@ -25,6 +26,8 @@ func Storyteller(app *fiber.App) {
 	group.Get("/story/:project/stories/:story/versions", storyteller.PublicStoryVersions)
 	group.Get("/story/:project/stories/:story/image-pages", storyteller.PublicImageStoryPages)
 	group.Get("/story/share/:token/stories/:story/image-pages", storyteller.SharedImageStoryPages)
+	// OAuth 授權頁在登入前就要顯示 client 資訊，所以 preview 不需要 session
+	group.Get("/oauth/authorize/preview", storytelleroauth.AuthorizePreview)
 	group.Post("/auth/session", storytellerAudit.WebSuccess(), storyteller.CreateSession)
 	group.Delete("/auth/session", authsession.Optional(authService.BrandStoryteller), storytellerAudit.WebSuccess(), auth.DestroySessionBestEffort)
 	if config.EnvConfig().EnableDevAuthBypass {
@@ -70,6 +73,10 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/story/:project/stories/:story/bookmarks", storyteller.StoryBookmarks)
 	authenticated.Post("/story/:project/stories/:story/bookmarks", storyteller.CreateStoryBookmark)
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)
+
+	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
+	authenticated.Get("/oauth/grants", storytelleroauth.Grants)
+	authenticated.Delete("/oauth/grants/:grant", storytelleroauth.RevokeGrant)
 
 	authenticated.Get("/provider-apikeys", storyteller.ProviderAPIKeys)
 	authenticated.Post("/provider-apikeys", storyteller.CreateProviderAPIKey)

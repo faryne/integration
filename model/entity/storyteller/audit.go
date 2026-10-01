@@ -21,6 +21,7 @@ const (
 
 	AuditAuthMethodSession AuditAuthMethod = "session"
 	AuditAuthMethodPAT     AuditAuthMethod = "pat"
+	AuditAuthMethodOAuth   AuditAuthMethod = "oauth"
 	AuditAuthMethodNone    AuditAuthMethod = "none"
 
 	AuditActorTypeUser   AuditActorType = "user"

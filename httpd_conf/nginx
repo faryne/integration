@@ -194,6 +194,17 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+    # OAuth authorization server 的公開端點（metadata、DCR、token、revoke），路徑原樣轉給後端
+    # route.StorytellerOAuth；/oauth/authorize 是前端 SPA 授權頁，刻意不列在這裡，維持落到 location /。
+    location ~ ^/(\.well-known/oauth-(protected-resource|authorization-server)|oauth/(register|token|revoke)) {
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
     # MCP endpoint for external tools (Codex / Grok Builds 等) 存取 storyteller CRUD。
     # 轉給後端 route.StorytellerMCP 註冊的 /storyteller-mcp（故意不是 /storyteller/mcp，
     # 見 route/storyteller_mcp.go 的註解：那個路徑會被 authsession 的 Use 路由攔截）。

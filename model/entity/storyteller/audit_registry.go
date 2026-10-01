@@ -74,8 +74,12 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "auth.login.failed", Category: "auth", Importance: AuditImportanceHigh},
 	{Name: "auth.logout", Category: "auth", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/auth/session")}},
 	{Name: "auth.pat.denied", Category: "auth", Importance: AuditImportanceHigh},
+	{Name: "auth.oauth.denied", Category: "auth", Importance: AuditImportanceHigh},
 	{Name: "pat.create", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/personal-access-tokens")}},
 	{Name: "pat.revoke", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/personal-access-tokens/:token")}},
+	// 授權頁按下允許／拒絕都記（summary 的 approved 區分）；授權碼兌換與 refresh 屬於 token 端點，不另記避免噪音。
+	{Name: "oauth.authorize", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/oauth/authorize")}},
+	{Name: "oauth.revoke", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/oauth/grants/:grant")}},
 	{Name: "provider_key.create", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/provider-apikeys")}},
 	{Name: "provider_key.update", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{
 		route("PUT", "/storyteller/provider-apikeys/:apikey"), route("POST", "/storyteller/provider-apikeys/:apikey/models"), route("DELETE", "/storyteller/provider-apikeys/:apikey/models/:model"),
