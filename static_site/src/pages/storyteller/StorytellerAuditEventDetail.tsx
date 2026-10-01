@@ -52,6 +52,13 @@ const summaryFieldLabels: Record<string, string> = {
 // 摘要裡值本身是代碼的欄位，換成中文顯示。
 const summaryValueLabels: Record<string, Record<string, string>> = {
   revoked_by: { user: "使用者（OAuth Token 頁）", client: "應用程式自行撤銷" },
+  reason: {
+    expired: "憑證已過期",
+    revoked: "授權已撤銷",
+    reused: "使用已輪替掉的 refresh token",
+    client_mismatch: "應用程式與授權時不符",
+    concurrent: "同時有兩個換發請求",
+  },
 };
 
 const errorCategoryLabels: Record<string, string> = {

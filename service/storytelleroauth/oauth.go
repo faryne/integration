@@ -16,6 +16,7 @@ import (
 	"faryne.dev/model/enum"
 	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/client"
+	"faryne.dev/service/crypto"
 )
 
 const (
@@ -25,7 +26,8 @@ const (
 	clientIDPrefix    = "stcl_"
 	grantIDPrefix     = "oag_"
 
-	accessTokenTTL  = time.Hour
+	// access token 24 小時；效期內提早 refresh 會拿回原本那支（見 token.go 的 refresh）
+	accessTokenTTL  = 24 * time.Hour
 	refreshTokenTTL = 30 * 24 * time.Hour
 	codeTTL         = 10 * time.Minute
 	// 沒產生過 grant 的 DCR client 保留多久才清掉
@@ -70,6 +72,7 @@ type oauthRepository interface {
 	RotateOAuthGrantTokens(uint64, string, storytellerModel.OAuthGrant) (bool, error)
 	DeleteOAuthGrant(uint64) error
 	TouchOAuthGrantLastUsed(uint64) error
+	OAuthGrantForRefreshAudit(string) (*storytellerModel.OAuthGrantWithClient, error)
 	UserProfile(uint64) (*storytellerModel.UserProfile, error)
 }
 
@@ -79,6 +82,9 @@ type Service struct {
 	limiter rateLimiter
 	issuer  string
 	now     func() time.Time
+	// access token 加密副本的加解密；正式環境走 master key envelope，測試可以換掉
+	seal func(string) (*crypto.Envelope, error)
+	open func(crypto.Envelope) (string, error)
 }
 
 func NewService() *Service {
@@ -89,6 +95,8 @@ func NewService() *Service {
 		limiter: redisRateLimiter{redis: redisClient},
 		issuer:  strings.TrimRight(config.EnvConfig().StorytellerOAuthIssuer, "/"),
 		now:     time.Now,
+		seal:    crypto.SealWithMasterKey,
+		open:    crypto.OpenWithMasterKey,
 	}
 }
 

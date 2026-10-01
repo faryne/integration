@@ -9,6 +9,7 @@ import (
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/service/crypto"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -80,9 +81,20 @@ func (r *fakeRepo) RotateOAuthGrantTokens(id uint64, oldHash string, next storyt
 	if row.IsDeleted || row.RefreshTokenHash != oldHash {
 		return false, nil
 	}
-	row.AccessTokenHash, row.AccessExpiresAt = next.AccessTokenHash, next.AccessExpiresAt
-	row.RefreshTokenHash, row.RefreshExpiresAt = next.RefreshTokenHash, next.RefreshExpiresAt
+	row.AccessTokenHash, row.AccessExpiresAt, row.AccessTokenEncrypted = next.AccessTokenHash, next.AccessExpiresAt, next.AccessTokenEncrypted
+	row.RefreshTokenHash, row.RefreshExpiresAt, row.PreviousRefreshTokenHash = next.RefreshTokenHash, next.RefreshExpiresAt, oldHash
 	return true, nil
+}
+
+// OAuthGrantForRefreshAudit 跟正式 repository 一樣，連已撤銷、已輪替的 grant 都找得到。
+func (r *fakeRepo) OAuthGrantForRefreshAudit(hash string) (*storytellerModel.OAuthGrantWithClient, error) {
+	for _, row := range r.grants {
+		if row.RefreshTokenHash == hash || row.PreviousRefreshTokenHash == hash {
+			client := r.clients[row.OAuthClientID-1]
+			return &storytellerModel.OAuthGrantWithClient{OAuthGrant: row, ClientID: client.ClientID, ClientName: client.ClientName, RedirectURIs: client.RedirectURIs}, nil
+		}
+	}
+	return nil, gorm.ErrRecordNotFound
 }
 
 func (r *fakeRepo) DeleteOAuthGrant(id uint64) error {
@@ -125,7 +137,17 @@ const (
 func newTestService(t *testing.T) (*Service, *fakeRepo) {
 	t.Helper()
 	repo := &fakeRepo{penNames: map[uint64]string{1: "霧港說書人"}}
-	return &Service{repo: repo, codes: fakeCodes{}, limiter: fakeLimiter{allow: true}, issuer: testIssuer, now: time.Now}, repo
+	// 加密副本用明碼直接當 ciphertext，只驗證流程，不驗證加密本身（那在 service/crypto）
+	return &Service{
+		repo: repo, codes: fakeCodes{}, limiter: fakeLimiter{allow: true}, issuer: testIssuer, now: time.Now,
+		seal: func(plaintext string) (*crypto.Envelope, error) { return &crypto.Envelope{Ciphertext: plaintext}, nil },
+		open: func(envelope crypto.Envelope) (string, error) {
+			if envelope.Ciphertext == "" {
+				return "", crypto.ErrCiphertextInvalid
+			}
+			return envelope.Ciphertext, nil
+		},
+	}, repo
 }
 
 func challengeOf(verifier string) string {
@@ -226,10 +248,13 @@ func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 	require.NoError(t, err)
 	tokens := result.Output
 	require.True(t, strings.HasPrefix(tokens.AccessToken, AccessTokenPrefix))
-	// 授權碼兌換會帶出新 grant 給稽核用，refresh 不會
-	require.Equal(t, uint64(1), result.Grant.UserID)
-	require.Equal(t, "Claude", result.Grant.ClientName)
-	require.True(t, strings.HasPrefix(result.Grant.PublicID, grantIDPrefix))
+	require.Equal(t, int(accessTokenTTL.Seconds()), tokens.ExpiresIn)
+	// 授權碼兌換記 oauth.grant.create，帶出新 grant
+	require.Equal(t, auditGrantCreate, result.Audit.Action)
+	require.Equal(t, uint64(1), result.Audit.Grant.UserID)
+	require.Equal(t, "Claude", result.Audit.Grant.ClientName)
+	grantID := result.Audit.Grant.PublicID
+	require.True(t, strings.HasPrefix(grantID, grantIDPrefix))
 
 	// 授權碼只能用一次
 	_, err = s.Token(exchange)
@@ -240,25 +265,52 @@ func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 	require.Equal(t, uint64(1), auth.UserID)
 	require.Equal(t, "Claude", auth.Label)
 
-	refreshedResult, err := s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID})
+	// access token 還在效期內就 refresh：拿回原本那組、expires_in 是剩餘時間、不記稽核
+	refreshRequest := TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID}
+	s.now = func() time.Time { return time.Now().Add(time.Hour) }
+	early, err := s.Token(refreshRequest)
 	require.NoError(t, err)
-	require.Nil(t, refreshedResult.Grant)
-	refreshed := refreshedResult.Output
-	// rotation 後舊的 access／refresh 都失效
+	require.Nil(t, early.Audit)
+	require.Equal(t, tokens.AccessToken, early.Output.AccessToken)
+	require.Equal(t, tokens.RefreshToken, early.Output.RefreshToken)
+	require.Less(t, early.Output.ExpiresIn, tokens.ExpiresIn)
+
+	// access token 過期後 refresh：換發新的一組並記 oauth.token.refresh，舊的 access／refresh 都失效
+	s.now = func() time.Time { return time.Now().Add(accessTokenTTL + time.Minute) }
+	rotated, err := s.Token(refreshRequest)
+	require.NoError(t, err)
+	require.Equal(t, auditTokenRefresh, rotated.Audit.Action)
+	require.Equal(t, grantID, rotated.Audit.Grant.PublicID)
+	refreshed := rotated.Output
+	require.NotEqual(t, tokens.AccessToken, refreshed.AccessToken)
+	s.now = time.Now
 	_, err = s.Authenticate(tokens.AccessToken)
 	require.Error(t, err)
-	_, err = s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID})
+
+	// 拿已輪替掉的 refresh token 再換：拒絕，並記在同一個 grant 名下（reason=reused）
+	reused, err := s.Token(refreshRequest)
 	require.ErrorContains(t, err, "invalid_grant")
+	require.Equal(t, auditRefreshDenied, reused.Audit.Action)
+	require.Equal(t, "reused", reused.Audit.Reason)
+	require.Equal(t, grantID, reused.Audit.Grant.PublicID)
 
 	revoked, err := s.Revoke(refreshed.RefreshToken)
 	require.NoError(t, err)
-	require.Equal(t, result.Grant.PublicID, revoked.PublicID)
+	require.Equal(t, grantID, revoked.PublicID)
 	_, err = s.Authenticate(refreshed.AccessToken)
 	require.Error(t, err)
+	// 已撤銷的 refresh token 再拿來換：拒絕並記 reason=revoked
+	afterRevoke, err := s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: refreshed.RefreshToken, ClientID: clientID})
+	require.ErrorContains(t, err, "invalid_grant")
+	require.Equal(t, "revoked", afterRevoke.Audit.Reason)
 	// 已撤銷或不存在的 token 撤銷時不回錯，也不帶 grant
 	revoked, err = s.Revoke(refreshed.RefreshToken)
 	require.NoError(t, err)
 	require.Nil(t, revoked)
+	// 完全陌生的 refresh token：拒絕但不記稽核（對不到任何使用者）
+	unknown, err := s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: "str_unknown", ClientID: clientID})
+	require.ErrorContains(t, err, "invalid_grant")
+	require.Nil(t, unknown)
 }
 
 func TestExchangeRejectsWrongVerifierAndBurnsCode(t *testing.T) {

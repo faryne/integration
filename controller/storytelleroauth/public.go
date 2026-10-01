@@ -49,11 +49,17 @@ func Token(ctx fiber.Ctx) error {
 		RefreshToken: ctx.FormValue("refresh_token"),
 		Resource:     ctx.FormValue("resource"),
 	})
+	// refresh 被拒時 err 不為 nil 但仍有稽核要記，所以先記稽核再處理錯誤
+	if result != nil && result.Audit != nil {
+		audit := result.Audit
+		outcome, summary := storytellerModel.AuditOutcomeSuccess, storytellerModel.AuditSummary(nil)
+		if audit.Denied {
+			outcome, summary = storytellerModel.AuditOutcomeDenied, storytellerModel.AuditSummary{"reason": audit.Reason}
+		}
+		emitGrantEvent(ctx, audit.Action, outcome, &audit.Grant, summary)
+	}
 	if err != nil {
 		return writeError(ctx, err)
-	}
-	if result.Grant != nil {
-		emitGrantEvent(ctx, "oauth.grant.create", result.Grant, nil)
 	}
 	return ctx.JSON(result.Output)
 }
@@ -66,14 +72,14 @@ func Revoke(ctx fiber.Ctx) error {
 	}
 	if grant != nil {
 		// 跟「開發者 › OAuth Token」頁的撤銷同一個 action，用 revoked_by 區分是誰撤銷的
-		emitGrantEvent(ctx, "oauth.revoke", grant, storytellerModel.AuditSummary{"revoked_by": "client"})
+		emitGrantEvent(ctx, "oauth.revoke", storytellerModel.AuditOutcomeSuccess, grant, storytellerModel.AuditSummary{"revoked_by": "client"})
 	}
 	return ctx.SendStatus(fiber.StatusOK)
 }
 
 // emitGrantEvent 補記 token 端點的稽核：這裡沒有 session，actor 與憑證取自 grant 本身，
 // credential_ref 用 grant public_id，之後這個授權的 MCP 呼叫就能跟這筆事件對起來。
-func emitGrantEvent(ctx fiber.Ctx, action string, grant *oauthService.GrantEvent, extra storytellerModel.AuditSummary) {
+func emitGrantEvent(ctx fiber.Ctx, action string, outcome storytellerModel.AuditOutcome, grant *oauthService.GrantEvent, extra storytellerModel.AuditSummary) {
 	storytellerAudit.Set(ctx, func(audit *auditService.RequestContext) {
 		audit.ActorUserID = grant.UserID
 		audit.AuthMethod = storytellerModel.AuditAuthMethodOAuth
@@ -84,7 +90,7 @@ func emitGrantEvent(ctx fiber.Ctx, action string, grant *oauthService.GrantEvent
 		summary[key] = value
 	}
 	if err := auditService.Emit(ctx.Context(), auditService.EventInput{
-		Action: action, TargetType: "oauth_grant", TargetPublicID: grant.PublicID, Summary: summary,
+		Action: action, Outcome: outcome, TargetType: "oauth_grant", TargetPublicID: grant.PublicID, Summary: summary,
 	}); err != nil {
 		log.Logger().Error("Emit storyteller OAuth audit event failed", zap.String("action", action), zap.Error(err))
 	}

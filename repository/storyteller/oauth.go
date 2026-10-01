@@ -67,16 +67,33 @@ func (r *Repository) OAuthGrantByRefreshHash(tokenHash string) (*storytellerMode
 	return &row, err
 }
 
+// OAuthGrantForRefreshAudit 給「refresh 失敗」記稽核用：連已撤銷的 grant、或這支 refresh token
+// 已經被輪替掉（符合 previous hash）的情況都找得到，才知道該記在哪個使用者名下。
+func (r *Repository) OAuthGrantForRefreshAudit(tokenHash string) (*storytellerModel.OAuthGrantWithClient, error) {
+	var row storytellerModel.OAuthGrantWithClient
+	err := r.db.Table("storyteller_oauth_grants AS g").
+		Select(oauthGrantSelect).
+		Joins("JOIN storyteller_oauth_clients AS c ON c.id = g.oauth_client_id").
+		Where("g.refresh_token_hash = ? OR g.previous_refresh_token_hash = ?", tokenHash, tokenHash).
+		Order("g.id DESC").
+		Take(&row).Error
+	return &row, err
+}
+
 // RotateOAuthGrantTokens 以舊 refresh hash 當條件更新，同一個 refresh token 併發換兩次時
 // 只有一次會成功（rows affected = 1），另一次回 false 交給 service 當 invalid_grant。
 func (r *Repository) RotateOAuthGrantTokens(id uint64, oldRefreshHash string, next storytellerModel.OAuthGrant) (bool, error) {
 	result := r.db.Model(&storytellerModel.OAuthGrant{}).
 		Where("id = ? AND refresh_token_hash = ? AND is_deleted = 0", id, oldRefreshHash).
 		Updates(map[string]any{
-			"access_token_hash":  next.AccessTokenHash,
-			"access_expires_at":  next.AccessExpiresAt,
-			"refresh_token_hash": next.RefreshTokenHash,
-			"refresh_expires_at": next.RefreshExpiresAt,
+			"access_token_hash":           next.AccessTokenHash,
+			"access_expires_at":           next.AccessExpiresAt,
+			"access_token_encrypted":      next.AccessTokenEncrypted,
+			"access_token_data_key":       next.AccessTokenDataKey,
+			"access_token_key_id":         next.AccessTokenKeyID,
+			"refresh_token_hash":          next.RefreshTokenHash,
+			"refresh_expires_at":          next.RefreshExpiresAt,
+			"previous_refresh_token_hash": oldRefreshHash,
 		})
 	return result.RowsAffected == 1, result.Error
 }
