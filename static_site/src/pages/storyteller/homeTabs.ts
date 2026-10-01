@@ -1,5 +1,6 @@
 export type StorytellerHomeTab =
   | "project"
+  | "notifications"
   | "agent"
   | "apikey"
   | "usage"
@@ -12,6 +13,7 @@ export type StorytellerHomeTab =
 
 export const tabPath: Record<StorytellerHomeTab, string> = {
   project: "projects",
+  notifications: "notifications",
   agent: "agent",
   apikey: "api-keys",
   usage: "usage",
@@ -25,6 +27,7 @@ export const tabPath: Record<StorytellerHomeTab, string> = {
 
 export const tabBreadcrumbLabel: Record<StorytellerHomeTab, string> = {
   project: "創作專案",
+  notifications: "通知",
   agent: "Skill",
   apikey: "金鑰管理",
   usage: "用量報表",
@@ -46,7 +49,10 @@ export interface StorytellerHomeTabGroup {
 // 「開發者」放外部工具連線用的憑證與 MCP 說明（多數寫作者用不到，所以放最下面），
 // 所有群組共用同一份 activeTab／tabPath 機制。
 export const homeTabGroups: StorytellerHomeTabGroup[] = [
-  { label: "我的工作台", tabs: ["project", "agent", "apikey", "usage"] },
+  {
+    label: "我的工作台",
+    tabs: ["project", "notifications", "agent", "apikey", "usage"],
+  },
   { label: "帳號與安全", tabs: ["activity"] },
   { label: "我的追蹤", tabs: ["favorites"] },
   { label: "我的檔案", tabs: ["profile"] },

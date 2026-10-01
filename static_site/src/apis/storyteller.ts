@@ -9,3 +9,4 @@ export * from "./storyteller/lore.ts";
 export * from "./storyteller/writingBookmark.ts";
 export * from "./storyteller/workspaceSearch.ts";
 export * from "./storyteller/oauth.ts";
+export * from "./storyteller/notification.ts";

@@ -97,6 +97,16 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/personal-access-tokens", storyteller.CreatePersonalAccessToken)
 	authenticated.Delete("/personal-access-tokens/:token", storyteller.DeletePersonalAccessToken)
 
+	// 站內通知：unread-count 要排在 :notification 之前，避免被當成 public_id
+	authenticated.Get("/notifications", storyteller.Notifications)
+	authenticated.Get("/notifications/unread-count", storyteller.NotificationUnreadCount)
+	authenticated.Post("/notifications/read-all", storyteller.ReadAllNotifications)
+	authenticated.Get("/notifications/:notification", storyteller.Notification)
+	authenticated.Post("/notifications/:notification/read", storyteller.ReadNotification)
+	authenticated.Post("/notifications/:notification/lock", storyteller.LockNotification)
+	authenticated.Delete("/notifications/:notification/lock", storyteller.UnlockNotification)
+	authenticated.Delete("/notifications/:notification", storyteller.DeleteNotification)
+
 	authenticated.Get("/usage/summary", storyteller.AgentUsageSummary)
 	authenticated.Get("/usage/logs", storyteller.AgentUsageLogs)
 

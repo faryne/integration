@@ -246,7 +246,7 @@ func webAuditPathArguments(ctx fiber.Ctx) map[string]any {
 		"lore": "lore_public_id", "asset": "asset_public_id", "collection": "collection_public_id", "version": "version_id",
 		"profile": "profile_id", "apikey": "provider_key_id", "token": "token_id", "agent": "agent_id",
 		"chat": "chat_id", "memory": "memory_public_id", "proposal": "proposal_public_id", "author": "author_public_id", "model": "model_id",
-		"grant": "grant_public_id",
+		"grant": "grant_public_id", "notification": "notification_public_id",
 	} {
 		if value := ctx.Params(param); value != "" {
 			arguments[key] = value
@@ -307,6 +307,8 @@ func webAuditTarget(action string, arguments map[string]any, result any) (string
 		}
 	case strings.HasPrefix(action, "ranking."):
 		targetType, key = "project_ranking", "project_public_id"
+	case strings.HasPrefix(action, "notification."):
+		targetType, key = "notification", "notification_public_id"
 	}
 	publicID, _ := arguments[key].(string)
 	if publicID == "" {

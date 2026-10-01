@@ -147,6 +147,9 @@ func (s *Service) exchangeCode(input TokenRequest) (*TokenResult, error) {
 	if err := s.repo.CreateOAuthGrant(&grant); err != nil {
 		return nil, err
 	}
+	if s.notifyAuthorized != nil {
+		s.notifyAuthorized(code.UserID, publicID, code.ClientName, code.Origin)
+	}
 	return &TokenResult{Output: pair.output(), Audit: &TokenAudit{Action: auditGrantCreate, Grant: GrantEvent{
 		UserID: code.UserID, PublicID: publicID, ClientID: code.ClientID, ClientName: code.ClientName,
 	}}}, nil

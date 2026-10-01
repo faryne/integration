@@ -9,6 +9,7 @@ import (
 	"faryne.dev/service/log"
 	"faryne.dev/service/nccc"
 	storytellerService "faryne.dev/service/storyteller"
+	storytellerNotifyService "faryne.dev/service/storytellernotify"
 	storytellerOAuthService "faryne.dev/service/storytelleroauth"
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
@@ -227,6 +228,20 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "40 3 * * *",
 				Enabled:  true,
 				Handler:  storytellerService.RunAuditArchiveMaintenance,
+			},
+			{
+				// 找出新公開的話，依專案聚合後通知追蹤者與收藏者（最多晚 5 分鐘）
+				Name:     "storyteller-notification-publish-scan",
+				Schedule: "*/5 * * * *",
+				Enabled:  true,
+				Handler:  storytellerService.RunNotificationPublishScan,
+			},
+			{
+				// 站內通知保留 180 天，鎖定的不清
+				Name:     "storyteller-notification-purge-daily",
+				Schedule: "25 4 * * *",
+				Enabled:  true,
+				Handler:  storytellerNotifyService.RunPurgeExpiredNotifications,
 			},
 			{
 				Name:     "storyteller-cleanup-assistant-memory-drafts",

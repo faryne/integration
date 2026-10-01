@@ -129,7 +129,14 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "bookmark.update", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("PUT", "/storyteller/projects/:project/stories/:story/bookmarks"), route("PUT", "/storyteller/projects/:project/lores/:lore/bookmarks")}},
 	{Name: "bookmark.delete", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/projects/:project/stories/:story/bookmarks"), route("DELETE", "/storyteller/projects/:project/lores/:lore/bookmarks")}},
 
+	// 站內通知：鎖定／解除鎖定會改變保留期行為、刪除會移除資料，屬低重要度（同收藏）；標已讀是介面狀態，見豁免清單。
+	{Name: "notification.lock", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/notifications/:notification/lock")}},
+	{Name: "notification.unlock", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/notifications/:notification/lock")}},
+	{Name: "notification.delete", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/notifications/:notification")}},
+
 	{Name: "system.memory_draft.cleanup", Category: "system", Importance: AuditImportanceNormal},
+	{Name: "system.notification.fanout", Category: "system", Importance: AuditImportanceNormal},
+	{Name: "system.notification.purge", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.agent_model.sync", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.audit.export", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.audit.mysql_purge", Category: "system", Importance: AuditImportanceNormal},
@@ -171,6 +178,8 @@ var StorytellerAuditExemptions = []AuditExemption{
 	{Kind: "route", Identifier: "POST /storyteller/projects/:project/assets/:asset/replace/presign", Reason: "presign 是準備動作"},
 	{Kind: "route", Identifier: "POST /storyteller-mcp", Reason: "MCP transport 由 tool mapping 個別覆蓋"},
 	{Kind: "route", Identifier: "POST /storyteller/projects/:project/agentic-proposals/:proposal/preview", Reason: "只計算預覽內容，不寫入資料"},
+	{Kind: "route", Identifier: "POST /storyteller/notifications/read-all", Reason: "標已讀是介面狀態"},
+	{Kind: "route", Identifier: "POST /storyteller/notifications/:notification/read", Reason: "標已讀是介面狀態"},
 }
 
 func AuditActionForRoute(method, path string) (AuditActionDefinition, bool) {

@@ -12,6 +12,7 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
+	notifyService "faryne.dev/service/storytellernotify"
 )
 
 // PKCE code_verifier／code_challenge 都是 RFC 7636 的 unreserved 字元、43~128 字。
@@ -77,7 +78,8 @@ func (s *Service) Preview(input storytellerModel.OAuthAuthorizeRequest) (*storyt
 }
 
 // Authorize 處理使用者在授權頁按下「允許／拒絕」；允許時發授權碼並回傳帶 code 的跳轉網址。
-func (s *Service) Authorize(userID uint64, input storytellerModel.OAuthAuthorizeRequest) (*storytellerModel.OAuthAuthorizeOutput, error) {
+// origin 會跟著授權碼存起來，grant 正式建立時拿來發安全通知。
+func (s *Service) Authorize(userID uint64, input storytellerModel.OAuthAuthorizeRequest, origin notifyService.Origin) (*storytellerModel.OAuthAuthorizeOutput, error) {
 	client, err := s.resolveClient(input)
 	if err != nil {
 		return nil, err
@@ -113,7 +115,7 @@ func (s *Service) Authorize(userID uint64, input storytellerModel.OAuthAuthorize
 	resource, _ := s.resolveResource(input.Resource)
 	if saveErr := s.codes.Save(code, authorizationCode{
 		ClientID: client.ClientID, ClientDBID: client.ID, ClientName: output.ClientName, UserID: userID,
-		RedirectURI: input.RedirectURI, CodeChallenge: input.CodeChallenge, Resource: resource,
+		RedirectURI: input.RedirectURI, CodeChallenge: input.CodeChallenge, Resource: resource, Origin: origin,
 	}, codeTTL); saveErr != nil {
 		return nil, saveErr
 	}

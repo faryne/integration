@@ -94,6 +94,9 @@ export const auditActionLabels: Record<string, string> = {
   "bookmark.create": "建立寫作書籤",
   "bookmark.update": "更新寫作書籤",
   "bookmark.delete": "刪除寫作書籤",
+  "notification.lock": "鎖定通知",
+  "notification.unlock": "解除通知鎖定",
+  "notification.delete": "刪除通知",
   "project.list": "讀取專案列表",
   "project.read": "讀取專案",
   "story.list": "讀取作品列表",
@@ -118,6 +121,8 @@ export const auditActionLabels: Record<string, string> = {
   "system.audit.export": "匯出稽核封存",
   "system.audit.mysql_purge": "清除已封存的近期稽核資料",
   "system.audit.archive_purge": "刪除超過保存期限的封存",
+  "system.notification.fanout": "派送作品更新通知",
+  "system.notification.purge": "清除超過保留期的通知",
 };
 
 export const auditCategoryLabels: Record<string, string> = {
