@@ -31,6 +31,7 @@ import { useWelcomeGuide } from "@/layouts/useWelcomeGuide.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
 import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
+import { StorytellerNotificationBell } from "@/pages/storyteller/StorytellerNotificationBell.tsx";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -468,6 +469,7 @@ export function StorytellerLayout() {
                   </IconButton>
                   {session ? (
                     <Stack direction="row" spacing={1} alignItems="center">
+                      <StorytellerNotificationBell />
                       <Tooltip title="帳號選單">
                         <IconButton
                           onClick={(event) =>

@@ -10,6 +10,7 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/crypto"
+	notifyService "faryne.dev/service/storytellernotify"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -225,21 +226,48 @@ func TestAuthorizeRequiresPenNameAndHandlesDeny(t *testing.T) {
 
 	denied := authorizeRequest(clientID)
 	denied.Approve = false
-	out, err := s.Authorize(1, denied)
+	out, err := s.Authorize(1, denied, notifyService.Origin{})
 	require.NoError(t, err)
 	require.False(t, out.Approved)
 	require.Contains(t, out.RedirectTo, "error=access_denied")
 
 	repo.penNames[2] = ""
-	_, err = s.Authorize(2, authorizeRequest(clientID))
+	_, err = s.Authorize(2, authorizeRequest(clientID), notifyService.Origin{})
 	require.ErrorIs(t, err, ErrPenNameRequired)
+}
+
+// grant 建立時要發安全通知，來源是按「允許」當下的瀏覽器，不是呼叫 token 端點的伺服器。
+func TestGrantCreationNotifiesWithConsentOrigin(t *testing.T) {
+	s, _ := newTestService(t)
+	type sent struct {
+		userID        uint64
+		grant, client string
+		origin        notifyService.Origin
+	}
+	var got []sent
+	s.notifyAuthorized = func(userID uint64, grantPublicID, clientName string, origin notifyService.Origin) {
+		got = append(got, sent{userID, grantPublicID, clientName, origin})
+	}
+	clientID := registerClient(t, s)
+	consent := notifyService.Origin{Source: "web", IP: "1.163.0.1", UserAgent: "Mozilla/5.0 (Macintosh)"}
+	out, err := s.Authorize(1, authorizeRequest(clientID), consent)
+	require.NoError(t, err)
+	result, err := s.Token(TokenRequest{GrantType: "authorization_code", Code: codeFrom(t, out.RedirectTo), ClientID: clientID, RedirectURI: testRedirect, CodeVerifier: testVerifier})
+	require.NoError(t, err)
+	require.Equal(t, []sent{{1, result.Audit.Grant.PublicID, "Claude", consent}}, got)
+
+	// refresh 不是新的授權，不再通知
+	s.now = func() time.Time { return time.Now().Add(accessTokenTTL + time.Hour) }
+	_, err = s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: result.Output.RefreshToken, ClientID: clientID})
+	require.NoError(t, err)
+	require.Len(t, got, 1)
 }
 
 func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 	s, _ := newTestService(t)
 	clientID := registerClient(t, s)
 
-	out, err := s.Authorize(1, authorizeRequest(clientID))
+	out, err := s.Authorize(1, authorizeRequest(clientID), notifyService.Origin{})
 	require.NoError(t, err)
 	code := codeFrom(t, out.RedirectTo)
 
@@ -316,7 +344,7 @@ func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 func TestExchangeRejectsWrongVerifierAndBurnsCode(t *testing.T) {
 	s, _ := newTestService(t)
 	clientID := registerClient(t, s)
-	out, err := s.Authorize(1, authorizeRequest(clientID))
+	out, err := s.Authorize(1, authorizeRequest(clientID), notifyService.Origin{})
 	require.NoError(t, err)
 	code := codeFrom(t, out.RedirectTo)
 
@@ -333,7 +361,7 @@ func TestExchangeRejectsWrongVerifierAndBurnsCode(t *testing.T) {
 func TestExpiredAccessTokenReportsReason(t *testing.T) {
 	s, _ := newTestService(t)
 	clientID := registerClient(t, s)
-	out, err := s.Authorize(1, authorizeRequest(clientID))
+	out, err := s.Authorize(1, authorizeRequest(clientID), notifyService.Origin{})
 	require.NoError(t, err)
 	result, err := s.Token(TokenRequest{GrantType: "authorization_code", Code: codeFrom(t, out.RedirectTo), ClientID: clientID, RedirectURI: testRedirect, CodeVerifier: testVerifier})
 	require.NoError(t, err)
@@ -350,7 +378,7 @@ func TestResourceMustMatchMCPEndpoint(t *testing.T) {
 	clientID := registerClient(t, s)
 	request := authorizeRequest(clientID)
 	request.Resource = "https://other.example.com/mcp"
-	out, err := s.Authorize(1, request)
+	out, err := s.Authorize(1, request, notifyService.Origin{})
 	require.NoError(t, err)
 	require.False(t, out.Approved)
 	require.Contains(t, out.RedirectTo, "error=invalid_target")

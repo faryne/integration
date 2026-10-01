@@ -17,6 +17,7 @@ import (
 	storytellerRepo "faryne.dev/repository/storyteller"
 	"faryne.dev/service/client"
 	"faryne.dev/service/crypto"
+	notifyService "faryne.dev/service/storytellernotify"
 )
 
 const (
@@ -85,6 +86,8 @@ type Service struct {
 	// access token 加密副本的加解密；正式環境走 master key envelope，測試可以換掉
 	seal func(string) (*crypto.Envelope, error)
 	open func(crypto.Envelope) (string, error)
+	// notifyAuthorized 在 grant 建立後發安全通知；測試不設就不發
+	notifyAuthorized func(userID uint64, grantPublicID, clientName string, origin notifyService.Origin)
 }
 
 func NewService() *Service {
@@ -97,6 +100,8 @@ func NewService() *Service {
 		now:     time.Now,
 		seal:    crypto.SealWithMasterKey,
 		open:    crypto.OpenWithMasterKey,
+
+		notifyAuthorized: notifyService.NewService().NotifyOAuthAuthorized,
 	}
 }
 

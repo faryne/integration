@@ -4,6 +4,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import KeyIcon from "@mui/icons-material/Key";
 import MenuIcon from "@mui/icons-material/Menu";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import PersonIcon from "@mui/icons-material/Person";
 import PasswordIcon from "@mui/icons-material/Password";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
@@ -33,6 +34,7 @@ import {
 
 const tabIcons: Record<StorytellerHomeTab, ReactNode> = {
   project: <AutoStoriesIcon fontSize="small" />,
+  notifications: <NotificationsNoneOutlinedIcon fontSize="small" />,
   agent: <SmartToyIcon fontSize="small" />,
   apikey: <KeyIcon fontSize="small" />,
   usage: <QueryStatsIcon fontSize="small" />,

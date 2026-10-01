@@ -8,6 +8,7 @@ import (
 	"faryne.dev/repository"
 	"faryne.dev/service/output"
 	"faryne.dev/service/storyteller"
+	notifyService "faryne.dev/service/storytellernotify"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -24,7 +25,7 @@ func CreatePersonalAccessToken(ctx fiber.Ctx) error {
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	row, err := storyteller.NewService().CreatePersonalAccessToken(authsession.Session(ctx).UserId, input)
+	row, err := storyteller.NewService().CreatePersonalAccessToken(authsession.Session(ctx).UserId, input, notifyService.OriginFrom(ctx.Context()))
 	if err != nil {
 		return output.BadRequest(err)
 	}

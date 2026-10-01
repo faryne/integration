@@ -401,6 +401,11 @@ const storytellerRoutes = (
       <Route path={"oauth"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />
       <Route path={"activity"} element={<StorytellerHome />} />
+      <Route path={"notifications"} element={<StorytellerHome />} />
+      <Route
+        path={"notifications/:notificationId"}
+        element={<StorytellerHome />}
+      />
       <Route path={"favorites"} element={<StorytellerHome />} />
       <Route path={"profile"} element={<StorytellerHome />} />
     </Route>

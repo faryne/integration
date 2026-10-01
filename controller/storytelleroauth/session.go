@@ -6,6 +6,7 @@ import (
 	"faryne.dev/middleware/authsession"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/output"
+	notifyService "faryne.dev/service/storytellernotify"
 	oauthService "faryne.dev/service/storytelleroauth"
 	"github.com/gofiber/fiber/v3"
 )
@@ -31,7 +32,7 @@ func Authorize(ctx fiber.Ctx) error {
 	if err := ctx.Bind().JSON(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	result, err := oauthService.NewService().Authorize(authsession.Session(ctx).UserId, input)
+	result, err := oauthService.NewService().Authorize(authsession.Session(ctx).UserId, input, notifyService.OriginFrom(ctx.Context()))
 	if err != nil {
 		return sessionError(err)
 	}

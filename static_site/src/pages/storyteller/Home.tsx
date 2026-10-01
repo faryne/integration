@@ -38,6 +38,7 @@ import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerFavoritesContent } from "@/pages/storyteller/Favorites.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
+import { StorytellerNotificationsPanel } from "@/pages/storyteller/Notifications.tsx";
 import { StorytellerOAuthGrantPanel } from "@/pages/storyteller/OAuthGrantPanel.tsx";
 import { StorytellerPersonalAccessTokenPanel } from "@/pages/storyteller/PersonalAccessTokenPanel.tsx";
 import { StorytellerAccountActivityPanel } from "@/pages/storyteller/StorytellerAccountActivityPanel.tsx";
@@ -86,25 +87,29 @@ export default function StorytellerHome() {
       location.pathname.endsWith("/edit"));
   const showBleedEditor = isProjectFormRoute || isAgentFormRoute;
 
-  const activeTab: StorytellerHomeTab = location.pathname.includes("/agent")
-    ? "agent"
-    : location.pathname.includes("/api-keys")
-      ? "apikey"
-      : location.pathname.includes("/usage")
-        ? "usage"
-        : location.pathname.endsWith("/my/pat")
-          ? "pat"
-          : location.pathname.endsWith("/my/oauth")
-            ? "oauth"
-            : location.pathname.includes("/mcp")
-              ? "mcp"
-              : location.pathname.endsWith("/my/activity")
-                ? "activity"
-                : location.pathname.includes("/favorites")
-                  ? "favorites"
-                  : location.pathname.includes("/profile")
-                    ? "profile"
-                    : "project";
+  const activeTab: StorytellerHomeTab = location.pathname.includes(
+    "/my/notifications",
+  )
+    ? "notifications"
+    : location.pathname.includes("/agent")
+      ? "agent"
+      : location.pathname.includes("/api-keys")
+        ? "apikey"
+        : location.pathname.includes("/usage")
+          ? "usage"
+          : location.pathname.endsWith("/my/pat")
+            ? "pat"
+            : location.pathname.endsWith("/my/oauth")
+              ? "oauth"
+              : location.pathname.includes("/mcp")
+                ? "mcp"
+                : location.pathname.endsWith("/my/activity")
+                  ? "activity"
+                  : location.pathname.includes("/favorites")
+                    ? "favorites"
+                    : location.pathname.includes("/profile")
+                      ? "profile"
+                      : "project";
 
   const homeTitle = isProjectFormRoute
     ? `建立 ${STORYTELLER_APP_NAME} 專案`
@@ -112,7 +117,8 @@ export default function StorytellerHome() {
       ? `${params.agentId ? "編輯" : "建立"} ${STORYTELLER_APP_NAME} Skill`
       : activeTab === "favorites" ||
           activeTab === "profile" ||
-          activeTab === "activity"
+          activeTab === "activity" ||
+          activeTab === "notifications"
         ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
         : `${STORYTELLER_APP_NAME} 我的工作台`;
   useTitle(homeTitle, {
@@ -175,6 +181,7 @@ export default function StorytellerHome() {
         activeTab !== "favorites" &&
         activeTab !== "profile" &&
         activeTab !== "activity" &&
+        activeTab !== "notifications" &&
         !projectsLoading &&
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -260,6 +267,8 @@ export default function StorytellerHome() {
                   <StorytellerAgentUsagePanel />
                 ) : activeTab === "activity" ? (
                   <StorytellerAccountActivityPanel />
+                ) : activeTab === "notifications" ? (
+                  <StorytellerNotificationsPanel />
                 ) : activeTab === "favorites" ? (
                   <StorytellerFavoritesContent />
                 ) : activeTab === "profile" ? (

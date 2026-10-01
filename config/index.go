@@ -83,6 +83,10 @@ type envConfig struct {
 	// MCP resource（issuer + "/mcp"）的網址基底；只在 steamloom.works 開 OAuth，本機測試才覆寫。
 	StorytellerOAuthIssuer string `env:"STORYTELLER_OAUTH_ISSUER,default=https://steamloom.works"`
 
+	// StorytellerNotificationLockLimit 是每個使用者最多能鎖定幾則站內通知（鎖定的不會被
+	// 180 天保留期清除）；調低只擋新的鎖定，既有鎖定不會被解除。
+	StorytellerNotificationLockLimit int `env:"STORYTELLER_NOTIFICATION_LOCK_LIMIT,default=50"`
+
 	// EnableDevAuthBypass 只給本機開發自動化測試用（例如 Claude Code 的瀏覽器工具
 	// 需要免走 Firebase 登入彈窗、直接進工作台頁面）——開了才會註冊
 	// `POST /auth/dev-session`，簽發固定測試帳號的合法 session，完全複用既有

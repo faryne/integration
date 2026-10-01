@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"faryne.dev/service/helper"
+	notifyService "faryne.dev/service/storytellernotify"
 	"github.com/go-redis/redis/v7"
 )
 
@@ -18,6 +19,8 @@ type authorizationCode struct {
 	RedirectURI   string `json:"redirect_uri"`
 	CodeChallenge string `json:"code_challenge"`
 	Resource      string `json:"resource"`
+	// Origin 是使用者按「允許」當下的瀏覽器來源；換 token 時用來發安全通知（token 端點是應用程式的伺服器在呼叫）
+	Origin notifyService.Origin `json:"origin"`
 }
 
 type codeStore interface {

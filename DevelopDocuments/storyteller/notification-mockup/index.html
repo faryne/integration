@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Storyteller 站內通知 Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Mockup 控制列：切換畫面／資料狀態／裝置寬度／色彩模式，不屬於產品 UI -->
+    <header class="prototype-bar">
+      <div>
+        <strong>站內通知 Mockup</strong>
+        <span>純靜態資料 · 鈴鐺 popover＋通知頁</span>
+      </div>
+      <div class="prototype-controls">
+        <button class="prototype-chip active" data-screen="popover">鈴鐺 popover</button>
+        <button class="prototype-chip" data-screen="page">通知頁</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-data="normal">一般</button>
+        <button class="prototype-chip" data-data="full">鎖定已滿</button>
+        <button class="prototype-chip" data-data="empty">空狀態</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-view="desktop">Desktop</button>
+        <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+        <select id="themeSelect" aria-label="色彩模式">
+          <option value="dark">深色</option>
+          <option value="light">淺色</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div class="app-shell">
+        <header class="site-header">
+          <a class="brand" href="#">Steamloom <small>beta</small></a>
+          <nav>
+            <span>探索</span><span>搜尋</span>
+            <!-- 鈴鐺：桌機開 popover，手機直接進通知頁 -->
+            <button class="bell" id="bell" aria-label="通知">🔔<span class="count" id="bellCount"></span></button>
+            <span class="avatar">F</span>
+          </nav>
+        </header>
+
+        <!-- 鈴鐺 popover：最近 10 則，精簡版通知列 -->
+        <section class="popover" id="popover">
+          <div class="popover-head">
+            <h2>通知</h2>
+            <button class="link" data-action="read-all">全部標為已讀</button>
+          </div>
+          <div class="popover-list compact" id="popoverList"></div>
+          <div class="popover-foot"><button class="link" data-action="open-page">查看全部通知</button></div>
+        </section>
+
+        <div class="workspace-chrome">
+          <div class="breadcrumb">
+            <button class="mobile-nav" aria-label="開啟導覽">☰</button>
+            <span class="muted">Steamloom</span><b>›</b>
+            <span class="muted">我的工作台</span><b>›</b>
+            <strong id="crumbCurrent">創作專案</strong>
+          </div>
+        </div>
+
+        <div class="workspace-body">
+          <aside class="sidebar">
+            <p class="side-label">我的工作台</p>
+            <button data-goto="projects"><span>▤</span>創作專案</button>
+            <button data-goto="page"><span>🔔</span>通知</button>
+            <p class="side-label">帳號與安全</p>
+            <button><span>◷</span>活動紀錄</button>
+            <button><span>⌁</span>OAuth 授權</button>
+            <p class="side-label">我的追蹤</p>
+            <button><span>♥</span>我的追蹤</button>
+          </aside>
+
+          <!-- 背景頁：只是讓 popover 有東西可以蓋 -->
+          <section class="content" data-page="projects">
+            <div class="page-head"><div><p class="eyebrow">WORKSPACE</p><h1>創作專案</h1><p>（背景頁，僅示意 popover 疊在一般頁面上的樣子）</p></div></div>
+            <div class="card"><h3>霧都旅館</h3><p class="muted small">最後編輯 2 小時前</p></div>
+            <div class="card"><h3>星屑列車</h3><p class="muted small">最後編輯 3 天前</p></div>
+          </section>
+
+          <!-- 通知頁：桌機左右分欄（列表＋內容），手機列表與內容各自一頁 -->
+          <section class="content wide" data-page="page" hidden>
+            <div class="page-head" data-mobile-list>
+              <div>
+                <p class="eyebrow">NOTIFICATIONS</p>
+                <h1>通知</h1>
+                <p>追蹤的作者、收藏的作品更新，以及帳號安全提醒。</p>
+              </div>
+              <button class="outline" data-action="read-all">全部標為已讀</button>
+            </div>
+
+            <!-- 保留期說明：常駐，不可關閉 -->
+            <div class="notice" id="retentionNotice" data-mobile-list>
+              <span>ⓘ</span>
+              <p>通知會在<strong>建立 180 天後自動清除</strong>。想留下來的通知可以按鎖頭鎖定，鎖定的通知會永久保留。</p>
+              <span class="lock-meter" id="lockMeter"></span>
+            </div>
+
+            <div class="split">
+              <div class="split-list" data-mobile-list>
+                <div class="filters" id="filters">
+                  <button class="active" data-filter="all">全部</button>
+                  <button data-filter="unread">未讀<em id="unreadCount"></em></button>
+                  <button data-filter="locked">已鎖定<em id="lockedCount"></em></button>
+                </div>
+                <div class="card n-card" id="pageList"></div>
+              </div>
+              <article class="card detail" id="detail"></article>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- 刪除確認對話框；鎖定中的通知會多一行提醒 -->
+    <div class="modal" id="confirmModal" hidden>
+      <div class="dialog" role="dialog" aria-modal="true">
+        <h2>刪除通知</h2>
+        <p class="muted" id="confirmText">確定要刪除這則通知？</p>
+        <div class="notice warn" id="confirmLocked" hidden><span>🔒</span><p>這則通知<strong>已鎖定</strong>，刪除後就不會再保留。</p></div>
+        <div class="dialog-actions">
+          <button class="outline" data-action="cancel">取消</button>
+          <button class="danger-btn" data-action="confirm-delete">刪除</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="snack" id="snack"><span id="snackIcon">✓</span><strong id="snackTitle"></strong><button aria-label="關閉" data-action="close-snack">×</button></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

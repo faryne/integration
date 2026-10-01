@@ -9,6 +9,7 @@ import (
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/helper"
+	notifyService "faryne.dev/service/storytellernotify"
 )
 
 const (
@@ -60,7 +61,8 @@ func (s *Service) PersonalAccessTokens(userID uint64) ([]storytellerModel.Person
 	return output, nil
 }
 
-func (s *Service) CreatePersonalAccessToken(userID uint64, input storytellerModel.PersonalAccessTokenRequest) (*storytellerModel.PersonalAccessTokenCreateOutput, error) {
+// CreatePersonalAccessToken 建立後會發一則安全通知給帳號本人；origin 是建立當下的請求來源。
+func (s *Service) CreatePersonalAccessToken(userID uint64, input storytellerModel.PersonalAccessTokenRequest, origin notifyService.Origin) (*storytellerModel.PersonalAccessTokenCreateOutput, error) {
 	label := strings.TrimSpace(input.Label)
 	if label == "" {
 		return nil, errors.New("token 名稱不可空白")
@@ -92,6 +94,7 @@ func (s *Service) CreatePersonalAccessToken(userID uint64, input storytellerMode
 	if err := s.repo.CreatePersonalAccessToken(row); err != nil {
 		return nil, err
 	}
+	notifyService.NewService().NotifyPATCreated(userID, row.PublicID, row.Label, row.TokenPrefix, row.ExpiresAt, origin)
 	return &storytellerModel.PersonalAccessTokenCreateOutput{
 		PersonalAccessTokenOutput: personalAccessTokenOutput(*row),
 		Token:                     token,
