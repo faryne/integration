@@ -44,6 +44,14 @@ const summaryFieldLabels: Record<string, string> = {
   memory_public_id: "記憶",
   reason: "原因",
   duration_ms: "耗時（毫秒）",
+  client_name: "應用程式",
+  client_id: "應用程式 ID",
+  revoked_by: "撤銷者",
+};
+
+// 摘要裡值本身是代碼的欄位，換成中文顯示。
+const summaryValueLabels: Record<string, Record<string, string>> = {
+  revoked_by: { user: "使用者（OAuth Token 頁）", client: "應用程式自行撤銷" },
 };
 
 const errorCategoryLabels: Record<string, string> = {
@@ -65,7 +73,7 @@ function formatValue(value: unknown) {
   if (value === null || value === undefined || value === "") return "（空白）";
   if (Array.isArray(value)) return value.join("、") || "（空白）";
   if (typeof value === "object") return JSON.stringify(value);
-  if (value === "expired") return "PAT 已過期";
+  if (value === "expired") return "憑證已過期";
   return String(value);
 }
 
@@ -165,7 +173,7 @@ export function StorytellerAuditEventDetail({
         )}
         {event.credential && (
           <DetailRow
-            label="使用的 PAT"
+            label="使用的憑證"
             value={`${event.credential.label}（${event.credential.public_id}）`}
           />
         )}
@@ -216,7 +224,9 @@ export function StorytellerAuditEventDetail({
               <DetailRow
                 key={key}
                 label={summaryFieldLabels[key]}
-                value={formatValue(value)}
+                value={
+                  summaryValueLabels[key]?.[String(value)] ?? formatValue(value)
+                }
               />
             ))}
           </Stack>

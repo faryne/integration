@@ -77,8 +77,12 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "auth.oauth.denied", Category: "auth", Importance: AuditImportanceHigh},
 	{Name: "pat.create", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/personal-access-tokens")}},
 	{Name: "pat.revoke", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/personal-access-tokens/:token")}},
-	// 授權頁按下允許／拒絕都記（summary 的 approved 區分）；授權碼兌換與 refresh 屬於 token 端點，不另記避免噪音。
+	// 授權頁按「允許」記 oauth.authorize，按「拒絕」由 Web middleware 解析成 oauth.deny（同一條路由）。
 	{Name: "oauth.authorize", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/oauth/authorize")}},
+	{Name: "oauth.deny", Category: "credential", Importance: AuditImportanceNormal},
+	// 應用程式用授權碼換到 token、正式建立授權時記；refresh 每小時一次，刻意不記避免噪音。
+	{Name: "oauth.grant.create", Category: "credential", Importance: AuditImportanceHigh},
+	// 「開發者 › OAuth Token」頁撤銷與應用程式自己呼叫 /oauth/revoke 都記，summary 的 revoked_by 區分。
 	{Name: "oauth.revoke", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("DELETE", "/storyteller/oauth/grants/:grant")}},
 	{Name: "provider_key.create", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/provider-apikeys")}},
 	{Name: "provider_key.update", Category: "credential", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{

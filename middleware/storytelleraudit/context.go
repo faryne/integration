@@ -29,6 +29,9 @@ func NewRequestContext() fiber.Handler {
 			source = storytellerModel.AuditSourceMCP
 		case strings.HasPrefix(ctx.Path(), "/storyteller"):
 			source = storytellerModel.AuditSourceWeb
+		case strings.HasPrefix(ctx.Path(), "/oauth/"):
+			// OAuth token／revoke 端點由應用程式直接呼叫，歸在 API 入口
+			source = storytellerModel.AuditSourceAPI
 		}
 		ip := requestIP(ctx.IP(), ctx.RequestCtx().RemoteIP())
 		value := auditService.RequestContext{

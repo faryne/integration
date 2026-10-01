@@ -13,6 +13,7 @@ import (
 type authorizationCode struct {
 	ClientID      string `json:"client_id"`
 	ClientDBID    uint64 `json:"client_db_id"`
+	ClientName    string `json:"client_name"`
 	UserID        uint64 `json:"user_id"`
 	RedirectURI   string `json:"redirect_uri"`
 	CodeChallenge string `json:"code_challenge"`

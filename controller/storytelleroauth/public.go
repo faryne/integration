@@ -6,8 +6,10 @@ package storytelleroauth
 import (
 	"errors"
 
+	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/log"
+	auditService "faryne.dev/service/storytelleraudit"
 	oauthService "faryne.dev/service/storytelleroauth"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
@@ -38,7 +40,7 @@ func Register(ctx fiber.Ctx) error {
 func Token(ctx fiber.Ctx) error {
 	ctx.Set(fiber.HeaderCacheControl, "no-store")
 	ctx.Set(fiber.HeaderPragma, "no-cache")
-	output, err := oauthService.NewService().Token(oauthService.TokenRequest{
+	result, err := oauthService.NewService().Token(oauthService.TokenRequest{
 		GrantType:    ctx.FormValue("grant_type"),
 		Code:         ctx.FormValue("code"),
 		RedirectURI:  ctx.FormValue("redirect_uri"),
@@ -50,15 +52,42 @@ func Token(ctx fiber.Ctx) error {
 	if err != nil {
 		return writeError(ctx, err)
 	}
-	return ctx.JSON(output)
+	if result.Grant != nil {
+		emitGrantEvent(ctx, "oauth.grant.create", result.Grant, nil)
+	}
+	return ctx.JSON(result.Output)
 }
 
 // Revoke 是 RFC 7009：不論 token 存不存在都回 200。
 func Revoke(ctx fiber.Ctx) error {
-	if err := oauthService.NewService().Revoke(ctx.FormValue("token")); err != nil {
+	grant, err := oauthService.NewService().Revoke(ctx.FormValue("token"))
+	if err != nil {
 		return writeError(ctx, err)
 	}
+	if grant != nil {
+		// 跟「開發者 › OAuth Token」頁的撤銷同一個 action，用 revoked_by 區分是誰撤銷的
+		emitGrantEvent(ctx, "oauth.revoke", grant, storytellerModel.AuditSummary{"revoked_by": "client"})
+	}
 	return ctx.SendStatus(fiber.StatusOK)
+}
+
+// emitGrantEvent 補記 token 端點的稽核：這裡沒有 session，actor 與憑證取自 grant 本身，
+// credential_ref 用 grant public_id，之後這個授權的 MCP 呼叫就能跟這筆事件對起來。
+func emitGrantEvent(ctx fiber.Ctx, action string, grant *oauthService.GrantEvent, extra storytellerModel.AuditSummary) {
+	storytellerAudit.Set(ctx, func(audit *auditService.RequestContext) {
+		audit.ActorUserID = grant.UserID
+		audit.AuthMethod = storytellerModel.AuditAuthMethodOAuth
+		audit.CredentialRef = grant.PublicID
+	})
+	summary := storytellerModel.AuditSummary{"client_id": grant.ClientID, "client_name": grant.ClientName}
+	for key, value := range extra {
+		summary[key] = value
+	}
+	if err := auditService.Emit(ctx.Context(), auditService.EventInput{
+		Action: action, TargetType: "oauth_grant", TargetPublicID: grant.PublicID, Summary: summary,
+	}); err != nil {
+		log.Logger().Error("Emit storyteller OAuth audit event failed", zap.String("action", action), zap.Error(err))
+	}
 }
 
 // writeError 輸出 RFC 格式的 {error, error_description}；非預期錯誤只回 server_error，細節寫 log。

@@ -23,8 +23,8 @@ func ProjectDiff(before, after any) storytellerModel.AuditSummary {
 func CredentialSummary(arguments map[string]any, result any) storytellerModel.AuditSummary {
 	summary := storytellerModel.AuditSummary{}
 	for _, object := range []map[string]any{arguments, jsonObject(result)} {
-		// client_id／client_name／approved 給 OAuth 授權事件用；跳轉網址含授權碼，刻意不收
-		for _, key := range []string{"id", "public_id", "provider_key_id", "model_id", "label", "provider", "model_name", "name", "client_id", "client_name", "approved"} {
+		// client_id／client_name／revoked_by 給 OAuth 授權事件用；跳轉網址含授權碼，刻意不收
+		for _, key := range []string{"id", "public_id", "provider_key_id", "model_id", "label", "provider", "model_name", "name", "client_id", "client_name", "revoked_by"} {
 			if value, ok := object[key]; ok && value != nil && value != "" {
 				summary[key] = value
 			}

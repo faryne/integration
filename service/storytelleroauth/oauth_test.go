@@ -222,9 +222,14 @@ func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 	code := codeFrom(t, out.RedirectTo)
 
 	exchange := TokenRequest{GrantType: "authorization_code", Code: code, ClientID: clientID, RedirectURI: testRedirect, CodeVerifier: testVerifier}
-	tokens, err := s.Token(exchange)
+	result, err := s.Token(exchange)
 	require.NoError(t, err)
+	tokens := result.Output
 	require.True(t, strings.HasPrefix(tokens.AccessToken, AccessTokenPrefix))
+	// 授權碼兌換會帶出新 grant 給稽核用，refresh 不會
+	require.Equal(t, uint64(1), result.Grant.UserID)
+	require.Equal(t, "Claude", result.Grant.ClientName)
+	require.True(t, strings.HasPrefix(result.Grant.PublicID, grantIDPrefix))
 
 	// 授權碼只能用一次
 	_, err = s.Token(exchange)
@@ -235,17 +240,25 @@ func TestFullFlowWithRefreshRotationAndRevoke(t *testing.T) {
 	require.Equal(t, uint64(1), auth.UserID)
 	require.Equal(t, "Claude", auth.Label)
 
-	refreshed, err := s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID})
+	refreshedResult, err := s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID})
 	require.NoError(t, err)
+	require.Nil(t, refreshedResult.Grant)
+	refreshed := refreshedResult.Output
 	// rotation 後舊的 access／refresh 都失效
 	_, err = s.Authenticate(tokens.AccessToken)
 	require.Error(t, err)
 	_, err = s.Token(TokenRequest{GrantType: "refresh_token", RefreshToken: tokens.RefreshToken, ClientID: clientID})
 	require.ErrorContains(t, err, "invalid_grant")
 
-	require.NoError(t, s.Revoke(refreshed.RefreshToken))
+	revoked, err := s.Revoke(refreshed.RefreshToken)
+	require.NoError(t, err)
+	require.Equal(t, result.Grant.PublicID, revoked.PublicID)
 	_, err = s.Authenticate(refreshed.AccessToken)
 	require.Error(t, err)
+	// 已撤銷或不存在的 token 撤銷時不回錯，也不帶 grant
+	revoked, err = s.Revoke(refreshed.RefreshToken)
+	require.NoError(t, err)
+	require.Nil(t, revoked)
 }
 
 func TestExchangeRejectsWrongVerifierAndBurnsCode(t *testing.T) {
@@ -270,8 +283,9 @@ func TestExpiredAccessTokenReportsReason(t *testing.T) {
 	clientID := registerClient(t, s)
 	out, err := s.Authorize(1, authorizeRequest(clientID))
 	require.NoError(t, err)
-	tokens, err := s.Token(TokenRequest{GrantType: "authorization_code", Code: codeFrom(t, out.RedirectTo), ClientID: clientID, RedirectURI: testRedirect, CodeVerifier: testVerifier})
+	result, err := s.Token(TokenRequest{GrantType: "authorization_code", Code: codeFrom(t, out.RedirectTo), ClientID: clientID, RedirectURI: testRedirect, CodeVerifier: testVerifier})
 	require.NoError(t, err)
+	tokens := result.Output
 
 	s.now = func() time.Time { return time.Now().Add(2 * accessTokenTTL) }
 	auth, err := s.Authenticate(tokens.AccessToken)

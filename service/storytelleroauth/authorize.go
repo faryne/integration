@@ -112,7 +112,7 @@ func (s *Service) Authorize(userID uint64, input storytellerModel.OAuthAuthorize
 	}
 	resource, _ := s.resolveResource(input.Resource)
 	if saveErr := s.codes.Save(code, authorizationCode{
-		ClientID: client.ClientID, ClientDBID: client.ID, UserID: userID,
+		ClientID: client.ClientID, ClientDBID: client.ID, ClientName: output.ClientName, UserID: userID,
 		RedirectURI: input.RedirectURI, CodeChallenge: input.CodeChallenge, Resource: resource,
 	}, codeTTL); saveErr != nil {
 		return nil, saveErr

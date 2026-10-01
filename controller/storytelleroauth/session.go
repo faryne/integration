@@ -54,7 +54,7 @@ func RevokeGrant(ctx fiber.Ctx) error {
 		}
 		return output.DBError(err)
 	}
-	return output.Success(map[string]any{"deleted": true, "public_id": row.PublicID, "client_name": row.ClientName})
+	return output.Success(map[string]any{"deleted": true, "public_id": row.PublicID, "client_name": row.ClientName, "revoked_by": "user"})
 }
 
 // sessionError：沒筆名回 409 讓前端提示，其餘 OAuth 參數錯誤回 400，非預期錯誤回 500。

@@ -26,7 +26,7 @@ import type {
 
 type Option = { value: string; label?: string };
 
-// 選項可能很多（專案、PAT），用可輸入搜尋的下拉，而不是整排 chips。
+// 選項可能很多（專案、Personal Access Token／OAuth 授權），用可輸入搜尋的下拉，而不是整排 chips。
 function SearchableSelect({
   label,
   value,
@@ -165,7 +165,7 @@ export function StorytellerAuditAdvancedFilters({
             onChange={(outcome) => onChange({ outcome })}
           />
           <SearchableSelect
-            label="PAT"
+            label="憑證"
             value={value.credentialRef}
             options={options?.credentials ?? []}
             onChange={(credentialRef) => onChange({ credentialRef })}
@@ -174,7 +174,7 @@ export function StorytellerAuditAdvancedFilters({
             control={
               <Switch
                 size="small"
-                // 選了類別或 PAT 時一律包含（後端同樣規則），開關只顯示狀態。
+                // 選了類別或憑證時一律包含（後端同樣規則），開關只顯示狀態。
                 checked={
                   value.includeLowImportance ||
                   value.category !== "" ||
