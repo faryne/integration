@@ -1,4 +1,5 @@
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import {
   Alert,
   Box,
@@ -27,7 +28,7 @@ import {
   notificationFullTime,
   notificationHeadline,
   notificationProjectPath,
-  notificationSafeLink,
+  notificationLink,
   notificationSourceLabel,
   notificationStoryPath,
   summarizeUserAgent,
@@ -119,7 +120,7 @@ function NotificationBody({ n }: { n: StorytellerNotification }) {
 
 // 沒有專屬畫面的類型：顯示通用內文與「前往查看」
 function GenericBody({ n }: { n: StorytellerNotification }) {
-  const link = notificationSafeLink(n.payload.link);
+  const link = notificationLink(n.payload.link);
   return (
     <>
       {n.payload.body && (
@@ -129,9 +130,22 @@ function GenericBody({ n }: { n: StorytellerNotification }) {
       )}
       {link && (
         <Box>
-          <Button variant="contained" component={RouterLink} to={link}>
-            前往查看
-          </Button>
+          {link.external ? (
+            <Button
+              variant="contained"
+              component="a"
+              href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              endIcon={<OpenInNewIcon />}
+            >
+              前往查看
+            </Button>
+          ) : (
+            <Button variant="contained" component={RouterLink} to={link.href}>
+              前往查看
+            </Button>
+          )}
         </Box>
       )}
     </>

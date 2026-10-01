@@ -73,9 +73,15 @@ export function notificationHeadline(
   }
 }
 
-// 通用 link 只放行站內路徑，避免通知被拿來導到外部網站
-export const notificationSafeLink = (link?: string) =>
-  link?.startsWith("/") && !link.startsWith("//") ? link : null;
+// 通用 link：站內路徑走 router，http(s) 外部網址另開分頁；
+// 其他協定（javascript: 等）不顯示按鈕，避免點了直接執行程式碼
+export function notificationLink(link?: string) {
+  if (!link) return null;
+  if (link.startsWith("/") && !link.startsWith("//")) {
+    return { href: link, external: false };
+  }
+  return /^https?:\/\//i.test(link) ? { href: link, external: true } : null;
+}
 
 const sourceLabels: Record<string, string> = {
   web: "網頁",

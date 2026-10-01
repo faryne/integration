@@ -34,7 +34,8 @@ type NotificationStory struct {
 type NotificationPayload struct {
 	// 通用欄位：所有類型都必填 Title／Body（純文字、保留換行，不解析 markdown），
 	// 有專屬畫面的類型也要填一份文字摘要，前端遇到不認識的 kind 或之後的推播都靠它。
-	// Link 選填，只能是站內路徑（以 / 開頭），前端會擋掉其他值。
+	// Link 選填，站內路徑（以 / 開頭）或 http(s) 外部網址皆可，外部網址前端會另開分頁；
+	// 其他協定（javascript: 等）前端不顯示按鈕。
 	Title string `json:"title"`
 	Body  string `json:"body"`
 	Link  string `json:"link,omitempty"`

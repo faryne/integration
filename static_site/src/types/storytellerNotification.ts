@@ -19,7 +19,7 @@ export interface StorytellerNotificationStory {
 }
 
 export interface StorytellerNotificationPayload {
-  // 通用欄位：title／body 所有類型都必填（純文字、保留換行）；link 選填，只接受站內路徑
+  // 通用欄位：title／body 所有類型都必填（純文字、保留換行）；link 選填，站內路徑或 http(s) 網址
   title: string;
   body: string;
   link?: string;
