@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Storyteller OAuth Mockup</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Mockup 控制列：切換畫面／裝置寬度／色彩模式，不屬於產品 UI -->
+    <header class="prototype-bar">
+      <div>
+        <strong>OAuth 授權 Mockup</strong>
+        <span>純靜態資料 · 開發者三頁＋授權同意頁</span>
+      </div>
+      <div class="prototype-controls">
+        <button class="prototype-chip active" data-screen="pat">PAT</button>
+        <button class="prototype-chip" data-screen="oauth">OAuth Token</button>
+        <button class="prototype-chip" data-screen="mcp">MCP 連接</button>
+        <button class="prototype-chip" data-screen="authorize">授權同意頁</button>
+        <span class="prototype-separator"></span>
+        <button class="prototype-chip active" data-view="desktop">Desktop</button>
+        <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+        <select id="themeSelect" aria-label="色彩模式">
+          <option value="dark">深色</option>
+          <option value="light">淺色</option>
+        </select>
+      </div>
+    </header>
+
+    <main class="stage">
+      <div class="app-shell">
+        <header class="site-header">
+          <a class="brand" href="#">Steamloom <small>beta</small></a>
+          <nav><span>探索</span><span>搜尋</span><span class="avatar">F</span></nav>
+        </header>
+
+        <div class="workspace-chrome">
+          <div class="breadcrumb">
+            <button class="mobile-nav" aria-label="開啟導覽">☰</button>
+            <span class="muted">Steamloom</span><b>›</b>
+            <span id="crumbParent" class="muted">我的工作台</span><b id="crumbSep">›</b>
+            <strong id="crumbCurrent">Personal Access Token</strong>
+          </div>
+        </div>
+
+        <!-- 工作台：側欄＋三個開發者頁面 -->
+        <div class="workspace-body" data-shell="workspace">
+          <aside class="sidebar">
+            <p class="side-label">我的工作台</p>
+            <button><span>▤</span>創作專案</button>
+            <button><span>◆</span>Skill</button>
+            <button><span>⌁</span>金鑰管理</button>
+            <button><span>↯</span>用量報表</button>
+            <p class="side-label">帳號與安全</p>
+            <button><span>◷</span>活動紀錄</button>
+            <p class="side-label">我的追蹤</p>
+            <button><span>♥</span>我的追蹤</button>
+            <p class="side-label">我的檔案</p>
+            <button><span>●</span>我的檔案</button>
+            <p class="side-label">開發者</p>
+            <button data-goto="pat"><span>⚿</span>Personal Access Token</button>
+            <button data-goto="oauth"><span>⛨</span>OAuth Token</button>
+            <button data-goto="mcp"><span>⌘</span>MCP 連接</button>
+          </aside>
+
+          <!-- PAT 頁 -->
+          <section class="content" data-page="pat">
+            <div class="page-head"><div><p class="eyebrow">DEVELOPER</p><h1>Personal Access Token</h1><p>給 Codex CLI 這類本機工具使用的長效金鑰，貼進工具的設定檔即可連線。</p></div></div>
+            <div class="notice"><span>ⓘ</span><p><strong>要連 Claude.ai、ChatGPT 這類網頁版服務？</strong><br />不用建立 Personal Access Token，直接貼 MCP 網址走 OAuth 授權就好。</p><button data-goto="mcp">看連線方式</button></div>
+            <section class="card">
+              <h2>建立 Token</h2>
+              <div class="form-row">
+                <label>名稱<input placeholder="例如：Codex、我的筆電" value="Codex 桌機" /></label>
+                <label>效期<select><option>30 天</option><option>90 天</option><option>180 天</option><option>365 天</option><option>永久（不過期）</option></select></label>
+                <button class="primary" id="createPat">＋ 建立</button>
+              </div>
+            </section>
+            <section class="card list-card">
+              <h2>已建立的 Token</h2>
+              <article class="row"><div class="row-icon">⚿</div><div><h3>Codex 桌機</h3><p><code>sst_7k2f9a…</code>・建立於 2026/9/12 08:30</p><small>上次使用於 今天 14:54・將於 2026/12/11 到期</small></div><button class="danger-icon" data-confirm="pat" aria-label="刪除 token">🗑</button></article>
+              <article class="row"><div class="row-icon off">⚿</div><div><h3>Raycast</h3><p><code>sst_c91a04…</code>・建立於 2026/6/2 21:10</p><small>上次使用於 2026/8/30 10:02・<span class="danger-text">已於 2026/9/1 過期</span></small></div><button class="danger-icon" data-confirm="pat" aria-label="刪除 token">🗑</button></article>
+            </section>
+          </section>
+
+          <!-- OAuth Token 頁 -->
+          <section class="content" data-page="oauth" hidden>
+            <div class="page-head">
+              <div><p class="eyebrow">DEVELOPER</p><h1>OAuth Token</h1><p>透過 OAuth 授權連線的應用程式。撤銷後該應用程式會立刻失去存取權限。</p></div>
+              <div class="mode-switch"><button class="active" data-oauth-state="list">有資料</button><button data-oauth-state="empty">空白</button></div>
+            </div>
+            <div class="notice warn"><span>!</span><p><strong>目前授權不分範圍</strong><br />已授權的應用程式可以讀取與修改你帳號下<b>所有專案</b>（作品、設定集、資產、作者檔案、梭梭的記憶），包含刪除。</p></div>
+            <section class="card list-card" id="grantList">
+              <article class="row"><div class="row-icon app">C</div><div><h3>Claude <span class="tag">名稱由應用程式提供</span></h3><p>跳轉網域 <code>claude.ai</code>・授權於 今天 09:12</p><small>上次使用於 今天 14:58・30 天未使用將自動失效（目前至 2026/10/31）</small></div><button class="outline danger-outline" data-confirm="grant">撤銷</button></article>
+              <article class="row"><div class="row-icon app">G</div><div><h3>ChatGPT <span class="tag">名稱由應用程式提供</span></h3><p>跳轉網域 <code>chatgpt.com</code>・授權於 2026/9/28 22:40</p><small>上次使用於 2026/9/29 01:15・30 天未使用將自動失效（目前至 2026/10/29）</small></div><button class="outline danger-outline" data-confirm="grant">撤銷</button></article>
+            </section>
+            <section class="card empty-card" id="grantEmpty" hidden>
+              <div class="state-message"><div class="symbol">⛨</div><h3>還沒有授權任何應用程式</h3><p>在 Claude.ai 或 ChatGPT 新增自訂 connector，貼上 MCP 網址後就會出現在這裡。</p><button class="outline" data-goto="mcp">看連線方式</button></div>
+            </section>
+          </section>
+
+          <!-- MCP 連接頁 -->
+          <section class="content" data-page="mcp" hidden>
+            <div class="page-head"><div><p class="eyebrow">DEVELOPER</p><h1>MCP 連接</h1><p>讓外部 AI 工具直接讀寫你的創作專案、故事內容與世界觀設定。</p></div></div>
+            <section class="card">
+              <h2>MCP 連線位址</h2>
+              <div class="copy-field"><code>https://steamloom.works/mcp</code><button class="outline" data-snack="copy">複製</button></div>
+              <p class="helper">目前不支援 SSE，若工具連線卡住可能是這個原因。</p>
+            </section>
+            <div class="method-grid">
+              <section class="card method recommended">
+                <span class="badge">推薦</span>
+                <h2>OAuth 授權</h2>
+                <p class="muted">適用 Claude.ai、ChatGPT 等網頁版服務，以及支援 OAuth 的 MCP client。</p>
+                <ol><li>在工具裡新增自訂 connector，貼上上方網址</li><li>跳出 Steamloom 授權頁，確認後按「允許」</li><li>完成，之後可在「OAuth Token」頁管理或撤銷</li></ol>
+                <p class="helper">不需要填 Client ID／Client Secret，工具會自動向 Steamloom 註冊。若工具要求手動填寫，代表它不支援自動註冊，請改用 Personal Access Token。</p>
+                <button class="outline" data-goto="oauth">管理已授權的應用程式</button>
+              </section>
+              <section class="card method">
+                <h2>Personal Access Token</h2>
+                <p class="muted">適用 Codex CLI 等需要在設定檔寫入 token 的本機工具。</p>
+<pre>{
+  "mcpServers": {
+    "steamloom": {
+      "url": "https://steamloom.works/mcp",
+      "headers": {
+        "Authorization": "Bearer &lt;YOUR_PAT&gt;"
+      }
+    }
+  }
+}</pre>
+                <button class="outline" data-goto="pat">建立 Personal Access Token</button>
+              </section>
+            </div>
+            <section class="card">
+              <div class="card-head"><div><h2>給 AI Agent 的說明文件</h2><p class="muted">完整設定與方法說明，可以下載後放進 Agent 的 skill 目錄。</p></div><button class="outline">⤓ 下載 SKILL.md</button></div>
+              <div class="doc-preview"><p class="muted small">Frontmatter</p><pre>name: storyteller-mcp
+description: 讀寫 Steamloom 創作專案…</pre><p class="muted small">（SKILL.md 內容預覽，同現行頁面）</p></div>
+            </section>
+          </section>
+        </div>
+
+        <!-- 授權同意頁：/oauth/authorize，掛在 StorytellerLayout 下但不顯示工作台側欄 -->
+        <div class="workspace-body authorize-body" data-shell="authorize" hidden>
+          <div class="authorize-demo">
+            <span>Mockup 狀態</span>
+            <button class="active" data-auth-state="login">未登入</button>
+            <button data-auth-state="penname">新使用者：設定筆名</button>
+            <button data-auth-state="consent">同意授權</button>
+            <button data-auth-state="invalid">參數錯誤</button>
+            <button data-auth-state="redirect">跳轉中</button>
+          </div>
+
+          <!-- 授權卡片：左側梭梭（姿勢與台詞隨狀態切換），右側為實際授權內容 -->
+          <div class="auth-card">
+            <aside class="mascot-pane">
+              <img id="mascotImg" src="https://cdn.faryne.dev/steamloom_assets/suosuo-idle-nocturne-512.png" alt="梭梭" />
+              <p class="bubble" id="mascotLine">Claude 想來讀那頭的文字。那頭先登入，我才知道要替誰開門。</p>
+            </aside>
+
+            <section class="auth-main" data-auth="login">
+              <div class="client-chip"><span class="row-icon app">C</span><b>Claude</b><span class="muted">想要連線到你的 Steamloom 帳號</span></div>
+              <h1>先登入，確認要授權的帳號</h1>
+              <p class="muted">登入會以彈出視窗開啟，這個頁面不會離開。</p>
+              <button class="primary wide" data-auth-goto="penname">使用 Google 帳號登入</button>
+            </section>
+
+            <section class="auth-main" data-auth="consent" hidden>
+              <div class="client-chip"><span class="row-icon app">C</span><b>Claude</b><span class="tag">名稱由應用程式自行提供</span></div>
+              <h1>Claude 想要連線到你的 Steamloom 帳號</h1>
+              <div class="account-line"><span class="avatar small">F</span><div><b>霧港說書人</b><small>faryne@example.com</small></div><button class="link">切換帳號</button></div>
+              <div class="scope-box">
+                <h3>授權後，這個應用程式可以：</h3>
+                <ul><li>讀取與修改你帳號下<b>所有專案</b>的作品、設定集、資產</li><li>管理你的作者檔案、讀寫梭梭的記憶</li><li>建立、搬移與<b>刪除</b>上述內容</li></ul>
+                <h3>不能：</h3>
+                <ul class="no"><li>變更帳號設定、刪除帳號</li><li>查看或使用你的 Provider 金鑰、Personal Access Token 與其他授權</li></ul>
+              </div>
+              <div class="redirect-line">授權後將跳轉到 <code>claude.ai</code></div>
+              <div class="consent-actions"><button class="outline" data-auth-goto="redirect">拒絕</button><button class="primary" data-auth-goto="redirect">允許</button></div>
+              <p class="helper">之後可以在「開發者 › OAuth Token」隨時撤銷。</p>
+            </section>
+
+            <section class="auth-main" data-auth="invalid" hidden>
+              <h1>這個授權請求無效</h1>
+              <p class="muted">應用程式提供的 <code>client_id</code> 或跳轉網址不正確。為了你的帳號安全，我們不會把你導回該應用程式，請回到原本的工具重新連線。</p>
+              <button class="outline">回到 Steamloom 首頁</button>
+            </section>
+
+            <section class="auth-main" data-auth="redirect" hidden>
+              <h1>正在帶你回到 Claude…</h1>
+              <p class="muted">如果沒有自動跳轉，請回到原本的分頁確認連線狀態。</p>
+            </section>
+          </div>
+
+          <!-- 新使用者：沿用 StorytellerLayout 的 PenNameDialog，不可關閉 -->
+          <div class="modal" data-auth="penname" hidden>
+            <div class="dialog">
+              <p class="eyebrow">歡迎來到 STEAMLOOM</p>
+              <h2>先幫自己取個筆名</h2>
+              <p class="muted">筆名會顯示在你的作品上，之後可以在「我的檔案」修改。設定完就會回到授權畫面。</p>
+              <label class="block">筆名<input value="霧港說書人" /></label>
+              <div class="dialog-actions"><button class="primary" data-auth-goto="consent">完成</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- 共用確認對話框（刪 PAT／撤銷授權）與建立成功對話框 -->
+    <div class="modal" id="confirmModal" hidden>
+      <div class="dialog danger-dialog">
+        <p class="eyebrow danger-text" id="confirmEyebrow">撤銷授權</p>
+        <h2 id="confirmTitle">確定要撤銷「Claude」？</h2>
+        <p class="muted" id="confirmDesc">撤銷後 Claude 會立刻失去存取權限，需要重新授權才能再次連線。</p>
+        <div class="dialog-actions"><button class="outline" data-close>取消</button><button class="danger-btn" data-close data-snack="done" id="confirmBtn">撤銷</button></div>
+      </div>
+    </div>
+    <div class="modal" id="createdModal" hidden>
+      <div class="dialog">
+        <p class="eyebrow">PERSONAL ACCESS TOKEN</p>
+        <h2>Token 已建立</h2>
+        <div class="notice warn"><span>!</span><p>這組 token 只會顯示這一次，請妥善保存，關閉後就無法再次查看完整內容。</p></div>
+        <div class="copy-field"><code>sst_7k2f9a3c41d8e0b6…</code><button class="outline" data-snack="copy">複製</button></div>
+        <p class="muted small">MCP client 設定範例：</p>
+<pre>"headers": { "Authorization": "Bearer sst_7k2f9a3c41d8e0b6…" }</pre>
+        <div class="dialog-actions"><button class="primary" data-close>我已複製，關閉</button></div>
+      </div>
+    </div>
+
+    <div class="snack" id="snack" role="status"><span>✓</span><div><strong id="snackTitle">已複製到剪貼簿</strong></div><button aria-label="關閉通知">×</button></div>
+    <script src="app.js"></script>
+  </body>
+</html>
