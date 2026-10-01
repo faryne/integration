@@ -35,9 +35,11 @@ func UpdateRequestContext(ctx context.Context, update func(*RequestContext)) con
 	return WithRequestContext(ctx, value)
 }
 
-func IsPAT(ctx context.Context) bool {
+// IsExternalCredential 判斷這次呼叫是不是外部憑證（PAT 或 OAuth access token）發起的；
+// 外部呼叫的 MCP tool 讀寫都要記稽核，站內 AI 助理共用同一份 registry 則不在這層記。
+func IsExternalCredential(ctx context.Context) bool {
 	value, ok := RequestContextFrom(ctx)
-	return ok && value.AuthMethod == storytellerModel.AuditAuthMethodPAT
+	return ok && (value.AuthMethod == storytellerModel.AuditAuthMethodPAT || value.AuthMethod == storytellerModel.AuditAuthMethodOAuth)
 }
 
 // SystemContext 建立沒有 request／user 的排程稽核 context。

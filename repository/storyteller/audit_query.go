@@ -58,19 +58,29 @@ func (r *Repository) AuditUserDisplayNames(userIDs []uint64) (map[uint64]string,
 	return names, err
 }
 
-// AuditCredentials 取出本人的 PAT（含已撤銷），讓事件列表能顯示憑證名稱；
-// 已撤銷的 PAT 仍要能對回名稱，才看得出「是哪支被撤銷的 token 做的」。
+// AuditCredentials 取出本人的 PAT 與 OAuth 授權（含已撤銷），讓事件列表能顯示憑證名稱；
+// 已撤銷的仍要能對回名稱，才看得出「是哪支被撤銷的 token 做的」。OAuth 授權借用同一個
+// 結構回傳（Label 標上「（OAuth）」），篩選選單與事件列表就不用分兩套處理。
 func (r *Repository) AuditCredentials(userID uint64, publicIDs []string) ([]storytellerModel.PersonalAccessToken, error) {
 	rows := make([]storytellerModel.PersonalAccessToken, 0)
-	query := r.db.Where("user_id = ?", userID)
-	if publicIDs != nil {
-		if len(publicIDs) == 0 {
-			return rows, nil
-		}
-		query = query.Where("public_id IN ?", publicIDs)
+	if publicIDs != nil && len(publicIDs) == 0 {
+		return rows, nil
 	}
-	err := query.Order("created_at DESC, id DESC").Find(&rows).Error
-	return rows, err
+	query := r.db.Where("user_id = ?", userID)
+	grantQuery := r.db.Table("storyteller_oauth_grants AS g").
+		Select("g.public_id, CONCAT(COALESCE(NULLIF(c.client_name, ''), 'OAuth 應用程式'), '（OAuth）') AS label, g.is_deleted, g.created_at").
+		Joins("JOIN storyteller_oauth_clients AS c ON c.id = g.oauth_client_id").
+		Where("g.user_id = ?", userID)
+	if publicIDs != nil {
+		query = query.Where("public_id IN ?", publicIDs)
+		grantQuery = grantQuery.Where("g.public_id IN ?", publicIDs)
+	}
+	if err := query.Order("created_at DESC, id DESC").Find(&rows).Error; err != nil {
+		return rows, err
+	}
+	grants := make([]storytellerModel.PersonalAccessToken, 0)
+	err := grantQuery.Order("g.created_at DESC, g.id DESC").Scan(&grants).Error
+	return append(rows, grants...), err
 }
 
 // auditTargetNameQueries 列出各目標類型的名稱來源；全部限定在登入者擁有的專案內，

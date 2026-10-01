@@ -77,11 +77,15 @@ func webSuccess(lookup webAuditLookup) fiber.Handler {
 			}
 		}
 		actionName = resolvedWebStoryAction(actionName, before.storyBefore, data)
+		// 授權頁按「拒絕」也走同一條路由，記成 oauth.deny 才不會在活動紀錄裡看起來像同意
+		if result, ok := data.(*storytellerModel.OAuthAuthorizeOutput); ok && actionName == "oauth.authorize" && !result.Approved {
+			actionName = "oauth.deny"
+		}
 		if before.projectID == nil {
 			before.projectID = numericFieldPointer(data, "id")
 		}
 		summary := auditService.SafeSummary(arguments, data)
-		if strings.HasPrefix(actionName, "pat.") || strings.HasPrefix(actionName, "provider_key.") {
+		if strings.HasPrefix(actionName, "pat.") || strings.HasPrefix(actionName, "provider_key.") || strings.HasPrefix(actionName, "oauth.") {
 			summary = auditService.CredentialSummary(arguments, data)
 		}
 		if (actionName == "project.update" || actionName == "project.visibility.change") && before.projectBefore != nil {
@@ -242,6 +246,7 @@ func webAuditPathArguments(ctx fiber.Ctx) map[string]any {
 		"lore": "lore_public_id", "asset": "asset_public_id", "collection": "collection_public_id", "version": "version_id",
 		"profile": "profile_id", "apikey": "provider_key_id", "token": "token_id", "agent": "agent_id",
 		"chat": "chat_id", "memory": "memory_public_id", "proposal": "proposal_public_id", "author": "author_public_id", "model": "model_id",
+		"grant": "grant_public_id",
 	} {
 		if value := ctx.Params(param); value != "" {
 			arguments[key] = value
@@ -270,6 +275,10 @@ func webAuditTarget(action string, arguments map[string]any, result any) (string
 	case strings.HasPrefix(action, "pat."):
 		// 撤銷路由的 :token 是內部數字 id，改用回應裡的 public_id，建立與撤銷才會記成同一個 target。
 		targetType = "personal_access_token"
+	case action == "oauth.authorize" || action == "oauth.deny":
+		targetType, key = "oauth_client", "client_id"
+	case action == "oauth.revoke":
+		targetType, key = "oauth_grant", "grant_public_id"
 	case strings.HasPrefix(action, "provider_key."):
 		targetType, key = "provider_key", "provider_key_id"
 	case strings.HasPrefix(action, "author_profile."):

@@ -9,6 +9,7 @@ import (
 	"faryne.dev/service/log"
 	"faryne.dev/service/nccc"
 	storytellerService "faryne.dev/service/storyteller"
+	storytellerOAuthService "faryne.dev/service/storytelleroauth"
 	"faryne.dev/service/taipower"
 	"faryne.dev/service/twse"
 	vtuberService "faryne.dev/service/vtuber"
@@ -232,6 +233,13 @@ var cronJobs = map[string]cronGroup{
 				Schedule: "35 4 * * *",
 				Enabled:  true,
 				Handler:  storytellerService.RunCleanupAssistantMemoryDrafts,
+			},
+			{
+				// OAuth DCR 是公開端點，每天清掉註冊超過 7 天仍沒完成授權的 client
+				Name:     "storyteller-cleanup-oauth-clients",
+				Schedule: "50 4 * * *",
+				Enabled:  true,
+				Handler:  storytellerOAuthService.RunCleanupUnusedClients,
 			},
 			{
 				Name:     "storyteller-sync-agent-models-weekly",

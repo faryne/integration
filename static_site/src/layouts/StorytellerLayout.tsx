@@ -27,6 +27,7 @@ import {
   StorytellerHeaderContext,
   type StorytellerReaderHeaderContext,
 } from "@/layouts/StorytellerHeaderContext.tsx";
+import { useWelcomeGuide } from "@/layouts/useWelcomeGuide.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
 import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
@@ -191,10 +192,10 @@ export function StorytellerLayout() {
 
   const showPenNameDialog =
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
-  // 只有「這次真的完成第一次筆名設定」才彈功能導覽（見 PenNameDialog 的 onCompleted
-  // 說明），不是每次 showPenNameDialog 變化都跳——例如筆名已經設定過的老使用者，
-  // showPenNameDialog 一開始就是 false，不會經過這個 callback。
-  const [showWelcomeGuide, setShowWelcomeGuide] = useState(false);
+  // OAuth 授權頁上完成筆名設定時，功能導覽延後到下次進其他頁面（見 useWelcomeGuide）
+  const welcomeGuide = useWelcomeGuide(
+    location.pathname === steamloomPath("oauth/authorize"),
+  );
   const readerHeaderVisible = Boolean(readerHeader?.visible);
 
   const accountMenuItems = [
@@ -230,11 +231,11 @@ export function StorytellerLayout() {
           <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
             <PenNameDialog
               open={Boolean(showPenNameDialog)}
-              onCompleted={() => setShowWelcomeGuide(true)}
+              onCompleted={welcomeGuide.onPenNameCompleted}
             />
             <WelcomeGuideDialog
-              open={showWelcomeGuide}
-              onClose={() => setShowWelcomeGuide(false)}
+              open={welcomeGuide.open}
+              onClose={welcomeGuide.close}
             />
             <AppBar
               position="sticky"

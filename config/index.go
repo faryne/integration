@@ -79,6 +79,10 @@ type envConfig struct {
 	StorytellerCloudFrontKeyPairID      string `env:"STORYTELLER_CLOUDFRONT_KEY_PAIR_ID"`
 	StorytellerCloudFrontPrivateKeyFile string `env:"STORYTELLER_CLOUDFRONT_PRIVATE_KEY_FILE"`
 
+	// StorytellerOAuthIssuer 是 OAuth authorization server 的 issuer，也是 metadata、授權頁與
+	// MCP resource（issuer + "/mcp"）的網址基底；只在 steamloom.works 開 OAuth，本機測試才覆寫。
+	StorytellerOAuthIssuer string `env:"STORYTELLER_OAUTH_ISSUER,default=https://steamloom.works"`
+
 	// EnableDevAuthBypass 只給本機開發自動化測試用（例如 Claude Code 的瀏覽器工具
 	// 需要免走 Firebase 登入彈窗、直接進工作台頁面）——開了才會註冊
 	// `POST /auth/dev-session`，簽發固定測試帳號的合法 session，完全複用既有

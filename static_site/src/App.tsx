@@ -100,6 +100,9 @@ const StorytellerPublicHome = lazy(
 );
 const StorytellerSearch = lazy(() => import("@/pages/storyteller/Search.tsx"));
 const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
+const StorytellerOAuthAuthorize = lazy(
+  () => import("@/pages/storyteller/OAuthAuthorize.tsx"),
+);
 const StorytellerProjectDetail = lazy(
   () => import("@/pages/storyteller/ProjectDetail.tsx"),
 );
@@ -394,11 +397,15 @@ const storytellerRoutes = (
       <Route path={"agent/:agentId/edit"} element={<StorytellerHome />} />
       <Route path={"api-keys"} element={<StorytellerHome />} />
       <Route path={"usage"} element={<StorytellerHome />} />
+      <Route path={"pat"} element={<StorytellerHome />} />
+      <Route path={"oauth"} element={<StorytellerHome />} />
       <Route path={"mcp"} element={<StorytellerHome />} />
       <Route path={"activity"} element={<StorytellerHome />} />
       <Route path={"favorites"} element={<StorytellerHome />} />
       <Route path={"profile"} element={<StorytellerHome />} />
     </Route>
+    {/* OAuth 授權同意頁：steamloom.works/oauth/authorize 是 authorization_endpoint */}
+    <Route path={"oauth/authorize"} element={<StorytellerOAuthAuthorize />} />
     <Route path={"user/:username"} element={<StorytellerUserProjects />} />
     <Route
       path={"user/:username/favorite-projects"}

@@ -284,6 +284,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	route.Galgame(app)
 	route.Storyteller(app)
 	route.StorytellerMCP(app)
+	route.StorytellerOAuth(app)
 	app.Get("/dmm/avsearch", opendata.DMMDailyVideo)
 	route.Swagger(app)
 	logStorytellerAuditCoverage(app)

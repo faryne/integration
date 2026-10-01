@@ -15,7 +15,7 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 import { StorytellerAuditArchivePanel } from "@/pages/storyteller/StorytellerAuditArchivePanel.tsx";
 import { StorytellerAuditEventList } from "@/pages/storyteller/StorytellerAuditEventList.tsx";
 
-// 活動紀錄：本人的所有操作（網頁編輯、PAT／MCP 讀寫、登入與憑證、AI 助理），
+// 活動紀錄：本人的所有操作（網頁編輯、MCP 讀寫（Personal Access Token／OAuth）、登入與憑證、AI 助理），
 // 分成「近期（MySQL）」與「封存（Athena）」兩種模式，不混在同一個列表裡分頁。
 // 協作還沒上線，專案裡的操作只可能是本人，所以不另做專案層的稽核頁。
 export function StorytellerAccountActivityPanel() {
@@ -34,7 +34,8 @@ export function StorytellerAccountActivityPanel() {
             活動紀錄
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            你在網頁與 MCP 上的所有操作，以及登入、PAT 與 API key 的安全事件。
+            你在網頁與 MCP 上的所有操作，以及登入、Personal Access Token、OAuth
+            授權與 API key 的安全事件。
           </Typography>
         </Box>
         <Stack direction="row" spacing={1} alignItems="center">
@@ -44,7 +45,7 @@ export function StorytellerAccountActivityPanel() {
             size="small"
             variant="outlined"
           >
-            MCP 與 PAT 管理
+            開發者設定
           </Button>
           <ToggleButtonGroup
             size="small"
