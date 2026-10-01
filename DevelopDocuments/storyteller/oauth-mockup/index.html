@@ -100,43 +100,42 @@
           </section>
 
           <!-- MCP 連接頁 -->
+          <!-- MCP 連接：改成三步驟；步驟 2 的實際設定在依連線方式跳出的 dialog 裡完成 -->
           <section class="content" data-page="mcp" hidden>
             <div class="page-head"><div><p class="eyebrow">DEVELOPER</p><h1>MCP 連接</h1><p>讓外部 AI 工具直接讀寫你的創作專案、故事內容與世界觀設定。</p></div></div>
-            <section class="card">
-              <h2>MCP 連線位址</h2>
-              <div class="copy-field"><code>https://steamloom.works/mcp</code><button class="outline" data-snack="copy">複製</button></div>
-              <p class="helper">目前不支援 SSE，若工具連線卡住可能是這個原因。</p>
-            </section>
-            <div class="method-grid">
-              <section class="card method recommended">
-                <span class="badge">推薦</span>
-                <h2>OAuth 授權</h2>
-                <p class="muted">適用 Claude.ai、ChatGPT 等網頁版服務，以及支援 OAuth 的 MCP client。</p>
-                <ol><li>在工具裡新增自訂 connector，貼上上方網址</li><li>跳出 Steamloom 授權頁，確認後按「允許」</li><li>完成，之後可在「OAuth Token」頁管理或撤銷</li></ol>
-                <p class="helper">不需要填 Client ID／Client Secret，工具會自動向 Steamloom 註冊。若工具要求手動填寫，代表它不支援自動註冊，請改用 Personal Access Token。</p>
-                <button class="outline" data-goto="oauth">管理已授權的應用程式</button>
-              </section>
-              <section class="card method">
-                <h2>Personal Access Token</h2>
-                <p class="muted">適用 Codex CLI 等需要在設定檔寫入 token 的本機工具。</p>
-<pre>{
-  "mcpServers": {
-    "steamloom": {
-      "url": "https://steamloom.works/mcp",
-      "headers": {
-        "Authorization": "Bearer &lt;YOUR_PAT&gt;"
-      }
-    }
-  }
-}</pre>
-                <button class="outline" data-goto="pat">建立 Personal Access Token</button>
-              </section>
-            </div>
-            <section class="card">
-              <div class="card-head"><div><h2>給 AI Agent 的說明文件</h2><p class="muted">完整設定與方法說明，可以下載後放進 Agent 的 skill 目錄。</p></div><button class="outline">⤓ 下載 SKILL.md</button></div>
-              <div class="doc-preview"><p class="muted small">Frontmatter</p><pre>name: storyteller-mcp
-description: 讀寫 Steamloom 創作專案…</pre><p class="muted small">（SKILL.md 內容預覽，同現行頁面）</p></div>
-            </section>
+            <ol class="stepper">
+              <li class="step active" id="step1">
+                <div class="step-mark">1</div>
+                <div class="step-body">
+                  <h2>選擇連線方式</h2>
+                  <p class="muted">依你要連的工具選一種，接著會跳出對應的設定視窗。</p>
+                  <div class="choice-grid">
+                    <button class="choice recommended" data-open="oauthDialog"><span class="badge">推薦</span><b>OAuth 授權</b><span>Claude.ai、ChatGPT、Claude Code 等支援 OAuth 的工具。不用複製 token，登入確認就好。</span></button>
+                    <button class="choice" data-open="patDialog"><b>Personal Access Token</b><span>Codex CLI 等要在設定檔寫入 token 的工具，或不支援 OAuth 的 MCP client。</span></button>
+                  </div>
+                </div>
+              </li>
+              <li class="step" id="step2">
+                <div class="step-mark">2</div>
+                <div class="step-body">
+                  <h2>設定你的工具</h2>
+                  <p class="muted" id="step2Pending">選好連線方式後，在跳出的視窗裡完成設定。</p>
+                  <div class="done-box" id="step2Done" hidden>
+                    <p><b id="step2Summary">已設定：OAuth · Claude.ai</b><br /><span class="muted" id="step2Hint">在 Claude.ai 按下「允許」後就完成了，可以到 OAuth Token 頁確認。</span></p>
+                    <div class="row-actions"><button class="outline" id="step2Manage" data-goto="oauth">管理授權</button><button class="link" id="step2Redo">換個方式重新設定</button></div>
+                  </div>
+                </div>
+              </li>
+              <li class="step" id="step3">
+                <div class="step-mark">3</div>
+                <div class="step-body">
+                  <h2>安裝 Skill <span class="tag">選用</span></h2>
+                  <p class="muted">SKILL.md 告訴 AI 有哪些工具、什麼時候該用、寫入前要注意什麼；內容跟連線方式無關。放進 Claude Code、Codex 等工具的 skill 目錄，或上傳到 Claude.ai 的 Skills 即可。</p>
+                  <div class="row-actions"><button class="primary">⤓ 下載 SKILL.md</button><button class="outline" data-open="skillDialog">預覽內容</button></div>
+                </div>
+              </li>
+            </ol>
+            <p class="helper">MCP 連線位址：<code>https://steamloom.works/mcp</code>・目前不支援 SSE，若工具連線卡住可能是這個原因。</p>
           </section>
         </div>
 
@@ -206,6 +205,60 @@ description: 讀寫 Steamloom 創作專案…</pre><p class="muted small">（SKI
       </div>
     </main>
 
+    <!-- MCP 連接：OAuth 設定 dialog，選工具後顯示對應步驟 -->
+    <div class="modal" id="oauthDialog" hidden>
+      <div class="dialog wide">
+        <p class="eyebrow">步驟 2 · OAuth 授權</p>
+        <h2>要連哪個工具？</h2>
+        <div class="seg" data-seg="oauthTool"><button class="active" data-tool="claudeai">Claude.ai</button><button data-tool="chatgpt">ChatGPT</button><button data-tool="claudecode">Claude Code</button><button data-tool="other">其他</button></div>
+        <div class="copy-field"><code>https://steamloom.works/mcp</code><button class="outline" data-snack="copy">複製網址</button></div>
+        <ol class="guide" data-tool-guide="claudeai"><li>到 Claude.ai 的設定，新增自訂 connector</li><li>名稱填 <b>Steamloom</b>，網址貼上上面的 MCP 位址</li><li>按連線後會跳到 Steamloom 授權頁，確認帳號後按「允許」</li></ol>
+        <ol class="guide" data-tool-guide="chatgpt" hidden><li>到 ChatGPT 的設定，新增自訂 connector（需要開啟開發者模式）</li><li>網址貼上上面的 MCP 位址，驗證方式選 OAuth</li><li>跳到 Steamloom 授權頁後按「允許」</li></ol>
+        <div data-tool-guide="claudecode" hidden><p class="muted small">在終端機執行：</p><div class="copy-field"><code>claude mcp add --transport http steamloom https://steamloom.works/mcp</code><button class="outline" data-snack="copy">複製</button></div><ol class="guide"><li>在 Claude Code 裡輸入 <code>/mcp</code>，選 steamloom 進行驗證</li><li>瀏覽器會跳到 Steamloom 授權頁，按「允許」</li></ol></div>
+        <ol class="guide" data-tool-guide="other" hidden><li>在工具裡新增遠端 MCP server，貼上上面的 MCP 位址</li><li>工具會自動註冊並開啟 Steamloom 授權頁，按「允許」</li><li>如果工具要求手動填 Client ID／Client Secret，代表它不支援自動註冊，請改用 Personal Access Token</li></ol>
+        <div class="dialog-actions"><button class="outline" data-close>取消</button><button class="primary" data-complete="oauth">完成設定</button></div>
+      </div>
+    </div>
+
+    <!-- MCP 連接：Personal Access Token 設定 dialog，先填名稱／效期／工具，建立後顯示 token 與對應設定 -->
+    <div class="modal" id="patDialog" hidden>
+      <div class="dialog wide">
+        <p class="eyebrow">步驟 2 · Personal Access Token</p>
+        <div id="patForm">
+          <h2>建立連線用的 Token</h2>
+          <label class="block">名稱<input value="Codex 桌機" /></label>
+          <label class="block">效期<select><option>30 天</option><option>90 天</option><option>180 天</option><option>365 天</option><option>永久（不過期）</option></select></label>
+          <p class="muted small" style="margin:14px 0 6px">要用在哪個工具？（決定下一步顯示的設定格式）</p>
+          <div class="seg" data-seg="patTool"><button class="active" data-tool="codex">Codex CLI</button><button data-tool="claudecode">Claude Code</button><button data-tool="json">其他（JSON）</button></div>
+          <div class="dialog-actions"><button class="outline" data-close>取消</button><button class="primary" id="patCreate">建立</button></div>
+        </div>
+        <div id="patResult" hidden>
+          <h2>Token 已建立</h2>
+          <div class="notice warn"><span>!</span><p>這組 token 只會顯示這一次，請妥善保存，關閉後就無法再次查看完整內容。</p></div>
+          <div class="copy-field"><code>sst_7k2f9a3c41d8e0b6…</code><button class="outline" data-snack="copy">複製</button></div>
+          <p class="muted small" style="margin:14px 0 0" id="patSnippetLabel">加到 <code>~/.codex/config.toml</code>：</p>
+<pre id="patSnippet"></pre>
+          <div class="dialog-actions"><button class="primary" data-complete="pat">我已複製，完成</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MCP 連接：SKILL.md 預覽，原本頁面上的長篇內容收進這裡 -->
+    <div class="modal" id="skillDialog" hidden>
+      <div class="dialog wide">
+        <p class="eyebrow">步驟 3 · SKILL.md 預覽</p>
+        <h2>給 AI Agent 的說明文件</h2>
+        <div class="doc-preview tall"><p class="muted small">Frontmatter</p><pre>name: storyteller-mcp
+description: 透過 MCP 存取 SteamLoom（Storyteller）的創作專案…</pre>
+          <h3>這是什麼</h3><p class="muted small">MCP 讓 AI Agent 透過標準介面讀寫你的創作專案……只在使用者明確要求時使用、寫入前先確認目標位置。</p>
+          <h3>連線</h3><p class="muted small">連線由使用者在 MCP client 設定（OAuth 或 Personal Access Token）；工具沒連上時，請使用者到 Steamloom「開發者 › MCP 連接」完成設定。</p>
+          <h3>可用方法列表</h3><p class="muted small">（即時查詢自 MCP server，同現行內容）</p>
+          <h3>使用範例</h3><p class="muted small">（同現行內容）</p>
+        </div>
+        <div class="dialog-actions"><button class="outline" data-close>關閉</button><button class="primary">⤓ 下載 SKILL.md</button></div>
+      </div>
+    </div>
+
     <!-- 共用確認對話框（刪 PAT／撤銷授權）與建立成功對話框 -->
     <div class="modal" id="confirmModal" hidden>
       <div class="dialog danger-dialog">
@@ -229,5 +282,6 @@ description: 讀寫 Steamloom 創作專案…</pre><p class="muted small">（SKI
 
     <div class="snack" id="snack" role="status"><span>✓</span><div><strong id="snackTitle">已複製到剪貼簿</strong></div><button aria-label="關閉通知">×</button></div>
     <script src="app.js"></script>
+    <script src="mcp-stepper.js"></script>
   </body>
 </html>
