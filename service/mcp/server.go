@@ -14,7 +14,9 @@ const protocolVersion = "2024-11-05"
 type Server struct {
 	name    string
 	version string
-	tools   map[string]Tool
+	// instructions 在 initialize 時回給 client，當作跨工具的使用引導；空字串不輸出。
+	instructions string
+	tools        map[string]Tool
 }
 
 type Tool struct {
@@ -108,7 +110,7 @@ func (s *Server) handle(ctx context.Context, req request) (response, bool) {
 
 	switch req.Method {
 	case "initialize":
-		return successResponse(req.ID, map[string]interface{}{
+		result := map[string]interface{}{
 			"protocolVersion": protocolVersion,
 			"capabilities": map[string]interface{}{
 				"tools": map[string]interface{}{},
@@ -117,7 +119,11 @@ func (s *Server) handle(ctx context.Context, req request) (response, bool) {
 				"name":    s.name,
 				"version": s.version,
 			},
-		}), true
+		}
+		if s.instructions != "" {
+			result["instructions"] = s.instructions
+		}
+		return successResponse(req.ID, result), true
 	case "tools/list":
 		tools := make([]Tool, 0, len(s.tools))
 		names := make([]string, 0, len(s.tools))

@@ -261,7 +261,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 			Description: "Get a lore/worldbuilding entry's full content by project_public_id and lore_public_id. " +
 				"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_lore " +
 				"to detect if someone else (e.g. the web editor) changed it in the meantime. " +
-				storytellerContentMarkerHint,
+				storytellerContentMarkerHint + storytellerMemoryReadHint("lore_public_id"),
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Lore public_id, as returned by storyteller_get_project."),

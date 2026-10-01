@@ -194,7 +194,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				"and storyteller_upsert_image_story instead of storyteller_upsert_story. " +
 				"The returned version_id should be kept and passed back as base_version_id on storyteller_upsert_story " +
 				"(or storyteller_upsert_image_story) to detect if someone else (e.g. the web editor) changed the story " +
-				"in the meantime. " + storytellerContentMarkerHint,
+				"in the meantime. " + storytellerContentMarkerHint + storytellerMemoryReadHint("story_public_id"),
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"story_public_id":   stringSchema("Story public_id, as returned by storyteller_get_project."),
