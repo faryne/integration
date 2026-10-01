@@ -38,6 +38,10 @@ func Notifications(ctx fiber.Ctx) error {
 	return output.Success(out)
 }
 
+func NotificationKinds(ctx fiber.Ctx) error {
+	return output.Success(notifyService.NewService().Kinds())
+}
+
 func Notification(ctx fiber.Ctx) error {
 	out, err := notifyService.NewService().Get(authsession.Session(ctx).UserId, ctx.Params("notification"))
 	if err != nil {

@@ -18,6 +18,7 @@ var (
 	ErrLockLimitReached = errors.New("notification lock limit reached")
 	errEmptyGroupKey    = errors.New("notification group_key is required")
 	errEmptyText        = errors.New("notification title and body are required")
+	errUnknownKind      = errors.New("notification kind is not registered in storytellerModel.NotificationKinds")
 )
 
 // Input 是一則要送出的通知；GroupKey 是冪等鍵，同一收件人同一 key 只會有一筆。
@@ -57,6 +58,9 @@ func NewService() *Service {
 func NewRows(inputs []Input) ([]*storytellerModel.Notification, error) {
 	rows := make([]*storytellerModel.Notification, 0, len(inputs))
 	for _, input := range inputs {
+		if !storytellerModel.IsNotificationKindRegistered(input.Kind) {
+			return nil, errUnknownKind
+		}
 		if input.GroupKey == "" {
 			return nil, errEmptyGroupKey
 		}

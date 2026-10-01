@@ -7,17 +7,6 @@ import (
 	"time"
 )
 
-// NotificationKind 決定前端怎麼組文案與內容頁；DB 只存快照 payload，不存整句文字。
-// 新增類型只要呼叫 storytellernotify.Notify；需要專屬畫面才在前端加分支，否則用 payload 的通用欄位。
-type NotificationKind string
-
-const (
-	NotificationKindStoryPublished   NotificationKind = "story.published"
-	NotificationKindProjectPublished NotificationKind = "project.published"
-	NotificationKindOAuthAuthorized  NotificationKind = "security.oauth.authorized"
-	NotificationKindPATCreated       NotificationKind = "security.pat.created"
-)
-
 // NotificationRetentionDays 是未鎖定通知的保留天數，超過就由每日排程 hard delete。
 const NotificationRetentionDays = 180
 

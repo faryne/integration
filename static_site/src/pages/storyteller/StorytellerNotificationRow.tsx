@@ -16,35 +16,39 @@ import {
 } from "@mui/material";
 import { alpha, type Theme } from "@mui/material/styles";
 import type { ReactNode } from "react";
-import type { StorytellerNotification } from "@/types/storytellerNotification.ts";
+import type {
+  StorytellerNotification,
+  StorytellerNotificationView,
+} from "@/types/storytellerNotification.ts";
 import {
   NOTIFICATION_EXPIRING_WITHIN_DAYS,
   notificationDaysLeft,
   notificationHeadline,
-  type NotificationTone,
+  useNotificationKindDefinition,
+  useNotificationView,
 } from "./storytellerNotificationUI.ts";
 
-const toneIcons: Record<NotificationTone, ReactNode> = {
-  story: <AutoStoriesOutlinedIcon fontSize="small" />,
+const viewIcons: Record<StorytellerNotificationView, ReactNode> = {
+  stories: <AutoStoriesOutlinedIcon fontSize="small" />,
   project: <AutoAwesomeOutlinedIcon fontSize="small" />,
   security: <GppMaybeOutlinedIcon fontSize="small" />,
-  general: <NotificationsNoneOutlinedIcon fontSize="small" />,
+  generic: <NotificationsNoneOutlinedIcon fontSize="small" />,
 };
 
-const toneColor = (theme: Theme, tone: NotificationTone) =>
-  tone === "story"
+const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
+  view === "stories"
     ? theme.palette.primary.main
-    : tone === "project"
+    : view === "project"
       ? theme.palette.success.main
-      : tone === "security"
+      : view === "security"
         ? theme.palette.warning.main
         : theme.palette.info.main;
 
-export function NotificationToneAvatar({
-  tone,
+export function NotificationViewAvatar({
+  view,
   size = 36,
 }: {
-  tone: NotificationTone;
+  view: StorytellerNotificationView;
   size?: number;
 }) {
   return (
@@ -52,18 +56,18 @@ export function NotificationToneAvatar({
       sx={(theme) => ({
         width: size,
         height: size,
-        color: toneColor(theme, tone),
-        bgcolor: alpha(toneColor(theme, tone), 0.14),
+        color: viewColor(theme, view),
+        bgcolor: alpha(viewColor(theme, view), 0.14),
       })}
     >
-      {toneIcons[tone]}
+      {viewIcons[view]}
     </Avatar>
   );
 }
 
-// 標題：主詞（筆名／應用程式）粗體，其餘一般字重
+// 標題：主詞（筆名）粗體，其餘一般字重
 export function NotificationTitle({ n }: { n: StorytellerNotification }) {
-  const headline = notificationHeadline(n);
+  const headline = notificationHeadline(n, useNotificationView(n));
   return (
     <>
       {headline.actor && <b>{headline.actor}</b>}
@@ -72,15 +76,25 @@ export function NotificationTitle({ n }: { n: StorytellerNotification }) {
   );
 }
 
-// 分級、安全、鎖定、即將清除等標記；列表與內容頁共用
-export function NotificationTags({ n }: { n: StorytellerNotification }) {
+// 分級、安全、鎖定、即將清除等標記；列表與內容頁共用，內容頁另外顯示類型文字
+export function NotificationTags({
+  n,
+  showKindLabel = false,
+}: {
+  n: StorytellerNotification;
+  showKindLabel?: boolean;
+}) {
+  const definition = useNotificationKindDefinition(n.kind);
   const daysLeft = notificationDaysLeft(n);
   return (
     <>
+      {showKindLabel && definition && (
+        <Chip size="small" variant="outlined" label={definition.label} />
+      )}
       {n.payload.rating === "restricted" && (
         <Chip size="small" color="error" variant="outlined" label="R18" />
       )}
-      {n.kind.startsWith("security.") && (
+      {definition?.category === "security" && (
         <Chip size="small" variant="outlined" label="帳號安全" />
       )}
       {n.locked && (
@@ -168,7 +182,8 @@ export function StorytellerNotificationRow({
   actions?: ReactNode;
   onOpen: () => void;
 }) {
-  const headline = notificationHeadline(n);
+  const view = useNotificationView(n);
+  const headline = notificationHeadline(n, view);
   return (
     <Box
       role="button"
@@ -218,7 +233,7 @@ export function StorytellerNotificationRow({
             },
       })}
     >
-      <NotificationToneAvatar tone={headline.tone} />
+      <NotificationViewAvatar view={view} />
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="body2"

@@ -17,21 +17,24 @@ import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { steamloomPath } from "@/helpers/steamloom.ts";
-import type { StorytellerNotification } from "@/types/storytellerNotification.ts";
+import type {
+  StorytellerNotification,
+  StorytellerNotificationView,
+} from "@/types/storytellerNotification.ts";
 import {
   NotificationTags,
   NotificationTitle,
-  NotificationToneAvatar,
+  NotificationViewAvatar,
 } from "./StorytellerNotificationRow.tsx";
 import {
   notificationDaysLeft,
   notificationFullTime,
-  notificationHeadline,
   notificationProjectPath,
   notificationLink,
   notificationSourceLabel,
   notificationStoryPath,
   summarizeUserAgent,
+  useNotificationView,
 } from "./storytellerNotificationUI.ts";
 
 // 通知內容頁：依 kind 顯示這次更新的每一話、新作品簡介或安全事件的完整資訊。
@@ -45,6 +48,7 @@ export function StorytellerNotificationDetail({
   actions: ReactNode;
   onBack: () => void;
 }) {
+  const view = useNotificationView(n);
   const daysLeft = notificationDaysLeft(n);
   return (
     <Box>
@@ -64,7 +68,7 @@ export function StorytellerNotificationDetail({
         alignItems="flex-start"
         sx={{ px: { xs: 2, sm: 2.5 }, pt: 2.25, pb: 1.75 }}
       >
-        <NotificationToneAvatar tone={notificationHeadline(n).tone} size={40} />
+        <NotificationViewAvatar view={view} size={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h6" sx={{ fontSize: 17, lineHeight: 1.45 }}>
             <NotificationTitle n={n} />
@@ -80,14 +84,14 @@ export function StorytellerNotificationDetail({
             <Typography variant="caption" color="text.disabled">
               {notificationFullTime(n.created_at)}
             </Typography>
-            <NotificationTags n={n} />
+            <NotificationTags n={n} showKindLabel />
           </Stack>
         </Box>
         {actions}
       </Stack>
       <Divider />
       <Stack spacing={2} sx={{ px: { xs: 2, sm: 2.5 }, py: 2.25 }}>
-        <NotificationBody n={n} />
+        <NotificationBody n={n} view={view} />
       </Stack>
       <Divider />
       <Typography
@@ -104,14 +108,20 @@ export function StorytellerNotificationDetail({
   );
 }
 
-function NotificationBody({ n }: { n: StorytellerNotification }) {
-  switch (n.kind) {
-    case "story.published":
+// 依註冊表給的呈現方式分派，不寫死 kind
+function NotificationBody({
+  n,
+  view,
+}: {
+  n: StorytellerNotification;
+  view: StorytellerNotificationView;
+}) {
+  switch (view) {
+    case "stories":
       return <StoryPublishedBody n={n} />;
-    case "project.published":
+    case "project":
       return <ProjectPublishedBody n={n} />;
-    case "security.oauth.authorized":
-    case "security.pat.created":
+    case "security":
       return <SecurityBody n={n} />;
     default:
       return <GenericBody n={n} />;
@@ -267,7 +277,8 @@ function ProjectPublishedBody({ n }: { n: StorytellerNotification }) {
 
 function SecurityBody({ n }: { n: StorytellerNotification }) {
   const p = n.payload;
-  const isOAuth = n.kind === "security.oauth.authorized";
+  // 安全類共用同一個畫面：有 client_name 的是 OAuth 授權，否則是 Personal Access Token
+  const isOAuth = Boolean(p.client_name);
   const rows: [string, ReactNode][] = isOAuth
     ? [
         ["應用程式", p.client_name],

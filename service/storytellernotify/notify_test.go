@@ -104,13 +104,16 @@ func row(id uint64, publicID string, locked bool) *storytellerModel.Notification
 	return r
 }
 
-func TestNotifyRequiresGroupKeyTextAndAssignsPublicID(t *testing.T) {
+func TestNotifyValidatesKindGroupKeyTextAndAssignsPublicID(t *testing.T) {
 	s, repo := newTestService()
+	kind := storytellerModel.NotificationKindPATCreated
 	text := storytellerModel.NotificationPayload{Title: "標題", Body: "內文"}
-	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", Payload: text}}), errEmptyGroupKey)
+	// 沒登記在註冊表的 kind 一律拒絕，確保每個 kind 都有對應文字
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: "system.unknown", GroupKey: "k", Payload: text}}), errUnknownKind)
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: kind, Payload: text}}), errEmptyGroupKey)
 	// title／body 必填，空白也不算；link 選填
-	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "  "}}}), errEmptyText)
-	require.NoError(t, s.Notify([]Input{{UserID: 1, Kind: "system.announcement", GroupKey: "k", Payload: text}}))
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 1, Kind: kind, GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "  "}}}), errEmptyText)
+	require.NoError(t, s.Notify([]Input{{UserID: 1, Kind: kind, GroupKey: "k", Payload: text}}))
 	require.Len(t, repo.inserted, 1)
 	require.Regexp(t, `^ntf_[0-9a-f]{20}$`, repo.inserted[0].PublicID)
 }

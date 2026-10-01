@@ -1,13 +1,18 @@
 // 站內通知的型別：對應後端 model/entity/storyteller/notification.go。
 // payload 是寫入當下的快照，各 kind 只會帶自己用得到的欄位。
 
-// 後端可能先上線前端還不認識的類型，所以保留任意字串；不認識的一律用 payload 的通用欄位顯示
-export type StorytellerNotificationKind =
-  | "story.published"
-  | "project.published"
-  | "security.oauth.authorized"
-  | "security.pat.created"
-  | (string & {});
+// kind 不在前端寫死：文字、分類、呈現方式都由 GET /storyteller/notification-kinds 提供
+// （後端註冊表 model/entity/storyteller/notification_kind.go）。前端只認識下面幾種畫面。
+export type StorytellerNotificationView =
+  "stories" | "project" | "security" | "generic";
+
+export interface StorytellerNotificationKindDefinition {
+  kind: string;
+  label: string;
+  category: "content" | "security" | "general";
+  // 後端之後若出現前端不認識的 view，前端一律退回 generic
+  view: StorytellerNotificationView | (string & {});
+}
 
 export type StorytellerNotificationFilter = "all" | "unread" | "locked";
 
@@ -47,7 +52,7 @@ export interface StorytellerNotificationPayload {
 
 export interface StorytellerNotification {
   public_id: string;
-  kind: StorytellerNotificationKind;
+  kind: string;
   payload: StorytellerNotificationPayload;
   read: boolean;
   locked: boolean;

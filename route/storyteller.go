@@ -99,6 +99,7 @@ func Storyteller(app *fiber.App) {
 
 	// 站內通知：unread-count 要排在 :notification 之前，避免被當成 public_id
 	authenticated.Get("/notifications", storyteller.Notifications)
+	authenticated.Get("/notification-kinds", storyteller.NotificationKinds)
 	authenticated.Get("/notifications/unread-count", storyteller.NotificationUnreadCount)
 	authenticated.Post("/notifications/read-all", storyteller.ReadAllNotifications)
 	authenticated.Get("/notifications/:notification", storyteller.Notification)

@@ -3,16 +3,43 @@ import {
   storytellerReaderPath,
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
+import { useStorytellerNotificationKinds } from "@/apis/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
-import type { StorytellerNotification } from "@/types/storytellerNotification.ts";
+import type {
+  StorytellerNotification,
+  StorytellerNotificationKindDefinition,
+  StorytellerNotificationView,
+} from "@/types/storytellerNotification.ts";
 
 // 通知列表／popover／內容頁共用的文案與格式化；DB 只存快照，文字一律在這裡組。
 
-export type NotificationTone = "story" | "project" | "security" | "general";
+const knownViews: StorytellerNotificationView[] = [
+  "stories",
+  "project",
+  "security",
+  "generic",
+];
+
+// 前端只依「呈現方式」分支，不寫死 kind；註冊表查不到或 view 不認識的一律當 generic
+export function notificationView(
+  definition?: StorytellerNotificationKindDefinition,
+): StorytellerNotificationView {
+  const view = definition?.view as StorytellerNotificationView;
+  return knownViews.includes(view) ? view : "generic";
+}
+
+// 依 kind 查註冊表；整個 session 共用同一份快取
+export function useNotificationKindDefinition(kind: string) {
+  const { data } = useStorytellerNotificationKinds();
+  return data?.find((definition) => definition.kind === kind);
+}
+
+// 這則通知的呈現方式；註冊表還沒載入時先當 generic
+export const useNotificationView = (n: StorytellerNotification) =>
+  notificationView(useNotificationKindDefinition(n.kind));
 
 export interface NotificationHeadline {
-  tone: NotificationTone;
-  // 粗體顯示的主詞（筆名或應用程式名稱），可能沒有
+  // 粗體顯示的主詞（筆名），可能沒有
   actor?: string;
   text: string;
   sub?: string;
@@ -28,48 +55,34 @@ const firstStoryLabel = (n: StorytellerNotification) => {
 
 export function notificationHeadline(
   n: StorytellerNotification,
+  view: StorytellerNotificationView,
 ): NotificationHeadline {
   const p = n.payload;
   const authors = (p.authors ?? []).join("、");
-  switch (n.kind) {
-    case "story.published": {
+  switch (view) {
+    case "stories": {
       const total = p.story_total ?? p.stories?.length ?? 0;
       return {
-        tone: "story",
         actor: authors,
         text: ` 的《${p.project_name}》更新了${total > 1 ? ` ${total} 話` : ""}`,
         sub: total > 1 ? `從 ${firstStoryLabel(n)} 開始` : firstStoryLabel(n),
       };
     }
-    case "project.published":
+    case "project":
       return {
-        tone: "project",
         actor: authors,
         text: ` 發表了新作品《${p.project_name}》`,
         sub: p.description,
       };
-    case "security.oauth.authorized":
+    case "security":
       return {
-        tone: "security",
-        actor: p.client_name,
-        text: " 已取得你的帳號授權",
-        sub: deviceLabel(n),
-      };
-    case "security.pat.created":
-      return {
-        tone: "security",
-        text: `建立了新的 Personal Access Token「${p.label}」`,
+        text: p.title,
         sub: [p.token_prefix && `${p.token_prefix}…`, deviceLabel(n)]
           .filter(Boolean)
           .join(" · "),
       };
     default:
-      // 沒有專屬文案的類型（含前端還不認識的新類型）一律用通用欄位
-      return {
-        tone: n.kind.startsWith("security.") ? "security" : "general",
-        text: p.title,
-        sub: p.body,
-      };
+      return { text: p.title, sub: p.body };
   }
 }
 

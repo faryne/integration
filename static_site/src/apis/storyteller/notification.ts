@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerNotification,
   StorytellerNotificationFilter,
+  StorytellerNotificationKindDefinition,
   StorytellerNotificationPage,
 } from "@/types/storytellerNotification.ts";
 import { apiBase, sessionHeaders } from "./shared.ts";
@@ -39,6 +40,23 @@ export function useStorytellerNotificationUnreadCount() {
         CommonResponse<{ unread_count: number }>
       >(`${apiBase}/storyteller/notifications/unread-count`, { headers });
       return response.data.data.unread_count;
+    },
+  });
+}
+
+// 通知類型註冊表（文字／分類／呈現方式）；整個 session 只抓一次，重新整理頁面才會更新
+export function useStorytellerNotificationKinds() {
+  const { userId, enabled, headers } = useNotificationRequest();
+  return useQuery({
+    // 不放在 notificationsQueryKey 底下：標已讀／鎖定後的 invalidate 不需要重抓註冊表
+    queryKey: ["storyteller", "notification-kinds", userId],
+    enabled,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const response = await axios.get<
+        CommonResponse<StorytellerNotificationKindDefinition[]>
+      >(`${apiBase}/storyteller/notification-kinds`, { headers });
+      return response.data.data ?? [];
     },
   });
 }

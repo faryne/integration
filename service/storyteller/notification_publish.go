@@ -114,10 +114,12 @@ func publishProjectBatch(repo publishScanRepository, batch []storytellerModel.No
 		}
 		payload.WordTotal += c.WordCount
 	}
-	kind, groupKey := storytellerModel.NotificationKindStoryPublished, "story.published:"+project.PublicID+":"+first.PublicID
+	kind := storytellerModel.NotificationKindStoryPublished
+	groupKey := string(kind) + ":" + project.PublicID + ":" + first.PublicID
 	payload.Title, payload.Body = publishStoryText(payload)
 	if !published {
-		kind, groupKey = storytellerModel.NotificationKindProjectPublished, "project.published:"+project.PublicID
+		kind = storytellerModel.NotificationKindProjectPublished
+		groupKey = string(kind) + ":" + project.PublicID
 		payload.Description, payload.Tags = project.Description, decodeProjectTags(project.Tags)
 		payload.Title, payload.Body = publishProjectText(payload)
 	}

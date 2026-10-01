@@ -48,6 +48,11 @@ func (s *Service) List(userID uint64, filter storytellerModel.NotificationFilter
 	return out, nil
 }
 
+// Kinds 回傳通知類型註冊表（文字、分類、呈現方式），前端據此顯示，不寫死 kind。
+func (s *Service) Kinds() []storytellerModel.NotificationKindDefinition {
+	return storytellerModel.NotificationKinds
+}
+
 func (s *Service) Get(userID uint64, publicID string) (*storytellerModel.NotificationOutput, error) {
 	row, err := s.repo.Notification(userID, publicID)
 	if err != nil {
