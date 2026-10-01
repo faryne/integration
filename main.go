@@ -120,10 +120,6 @@ func main() {
 		if err := loadCommandSettings(inputEnvFile); err != nil {
 			log.Logger().Panic("Initialize command failed: " + err.Error())
 		}
-		// 手動 -cmd 執行的排程也要留下系統稽核事件（例如 system.audit.export）。
-		// 不給 Redis client，讓 producer 直接寫 DB：-cmd 不一定跟常駐後端共用同一個 Redis，
-		// 寫進 Stream 可能永遠沒有 consumer 撈；一次只有一兩筆，同步寫入沒有效能問題。
-		storytellerAudit.SetDefaultProducer(storytellerAudit.NewProducer(nil, storytellerRepo.NewRepository()))
 		executeCommand(cmdName)
 		if err := shutdownClients(); err != nil {
 			log.Logger().Panic("Command shutdown failed: " + err.Error())
@@ -258,7 +254,6 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	app := newApp()
 	auditRepository := storytellerRepo.NewRepository()
 	redisClient := client.GetRedis(enum.RedisDefault)
-	storytellerAudit.SetDefaultProducer(storytellerAudit.NewProducer(redisClient, auditRepository))
 	auditConsumer := storytellerAudit.NewConsumer(redisClient, auditRepository, appBackgroundWork)
 	if auditConsumer != nil {
 		if err := auditConsumer.Start(); err != nil {
@@ -386,6 +381,11 @@ func loadCommandSettings(inputEnvFile string) error {
 		_ = client.CloseMySqlConnections()
 		return esConnError
 	}
+
+	// 稽核事件的 producer 在這裡設定，常駐後端與手動 -cmd 共用：事件寫進 Redis Stream，
+	// 由常駐後端的 consumer 寫進 MySQL（正式環境兩者共用同一組 Redis）；Redis 沒設定或寫不進去時，
+	// producer 會改成直接寫 MySQL。少了這段，-cmd 執行的排程會留不下 system.* 稽核事件。
+	storytellerAudit.SetDefaultProducer(storytellerAudit.NewProducer(client.GetRedis(enum.RedisDefault), storytellerRepo.NewRepository()))
 
 	return nil
 }
