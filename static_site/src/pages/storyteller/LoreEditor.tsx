@@ -69,7 +69,7 @@ import {
   WorkspaceEditorHeaderRow,
   WorkspaceEditorMetaPanel,
   WorkspaceEditorSelectButton,
-  WorkspaceEditorStatusChips,
+  WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { selectedOptionLabel } from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
@@ -907,7 +907,7 @@ export default function StorytellerLoreEditor({
   // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
   // embedded 寫作頁則下放到底部狀態列，避免長標題被擠壓。
   const loreEditorActionContent = (
-    <WorkspaceEditorStatusChips
+    <WorkspaceEditorStatusInfo
       items={[
         { label: `${wordCount.toLocaleString()} 字` },
         ...(lore
@@ -919,15 +919,11 @@ export default function StorytellerLoreEditor({
                       label: autoSaveEnabled
                         ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
                         : "自動存檔已關閉",
-                      color: autoSaveEnabled
-                        ? ("success" as const)
-                        : ("default" as const),
-                      variant: "outlined" as const,
                     },
                   ]
                 : []),
             ]
-          : [{ label: "尚未存檔", color: "warning" as const }]),
+          : [{ label: "尚未存檔", warning: true }]),
       ]}
     />
   );

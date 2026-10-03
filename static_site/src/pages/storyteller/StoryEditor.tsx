@@ -81,7 +81,7 @@ import {
   WorkspaceEditorMetaPanel,
   WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
-  WorkspaceEditorStatusChips,
+  WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import {
   selectedOptionLabel,
@@ -1195,18 +1195,13 @@ export default function StorytellerStoryEditor({
   // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
   // embedded 寫作頁則下放到 StoryWritingWorkspace 的底部狀態列，避免長標題被擠壓。
   const storyEditorActionContent = (
-    <WorkspaceEditorStatusChips
+    <WorkspaceEditorStatusInfo
       items={[
         { label: `${wordCount.toLocaleString()} 字` },
         ...(!embedded
           ? [
               {
                 label: storyStatus === "completed" ? "公開中" : "未公開",
-                color:
-                  storyStatus === "completed"
-                    ? ("success" as const)
-                    : ("warning" as const),
-                variant: "outlined" as const,
               },
             ]
           : []),
@@ -1219,15 +1214,11 @@ export default function StorytellerStoryEditor({
                       label: autoSaveEnabled
                         ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
                         : "自動存檔已關閉",
-                      color: autoSaveEnabled
-                        ? ("success" as const)
-                        : ("default" as const),
-                      variant: "outlined" as const,
                     },
                   ]
                 : []),
             ]
-          : [{ label: "尚未存檔", color: "warning" as const }]),
+          : [{ label: "尚未存檔", warning: true }]),
       ]}
     />
   );

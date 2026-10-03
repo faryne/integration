@@ -1,17 +1,19 @@
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Button,
   ButtonBase,
   Checkbox,
-  Chip,
-  type ChipProps,
+  ClickAwayListener,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
   Stack,
+  Tooltip,
   Typography,
   useMediaQuery,
   useTheme,
@@ -117,46 +119,47 @@ export function WorkspaceEditorMetaPanel({
 
 export interface WorkspaceEditorStatusItem {
   label: string;
-  color?: ChipProps["color"];
-  variant?: ChipProps["variant"];
+  // 需要注意的狀態（例如尚未存檔）：icon 會變成警告色，不點開也看得到
+  warning?: boolean;
 }
 
-// 字數／更新時間／自動存檔等狀態：桌機是一排 chip，手機版縮成一行小字，省下底部高度。
-export function WorkspaceEditorStatusChips({
+// 字數／更新時間／自動存檔等狀態收成一個 icon：滑鼠 hover 顯示；觸控點一下顯示、點旁邊關閉
+// （MUI Tooltip 在觸控裝置預設要長按，所以關掉它的 touch listener 改用 onClick 開啟）。
+export function WorkspaceEditorStatusInfo({
   items,
 }: {
   items: WorkspaceEditorStatusItem[];
 }) {
-  const compact = useWorkspaceEditorCompact();
-  if (compact) {
-    return (
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ display: "block", minWidth: 0 }}
-      >
-        {items.map((item) => item.label).join(" · ")}
-      </Typography>
-    );
-  }
+  const [open, setOpen] = useState(false);
+  const warning = items.some((item) => item.warning);
   return (
-    <Stack
-      direction="row"
-      spacing={1}
-      flexWrap="wrap"
-      useFlexGap
-      alignItems="center"
-      sx={{ minWidth: 0 }}
-    >
-      {items.map((item) => (
-        <Chip
-          key={item.label}
-          label={item.label}
-          color={item.color}
-          variant={item.variant}
-        />
-      ))}
-    </Stack>
+    <ClickAwayListener onClickAway={() => setOpen(false)}>
+      <span>
+        <Tooltip
+          arrow
+          open={open}
+          onOpen={() => setOpen(true)}
+          onClose={() => setOpen(false)}
+          disableTouchListener
+          title={
+            <Stack spacing={0.25} sx={{ py: 0.25 }}>
+              {items.map((item) => (
+                <span key={item.label}>{item.label}</span>
+              ))}
+            </Stack>
+          }
+        >
+          <IconButton
+            size="small"
+            color={warning ? "warning" : "default"}
+            aria-label={items.map((item) => item.label).join("，")}
+            onClick={() => setOpen(true)}
+          >
+            <InfoOutlinedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </span>
+    </ClickAwayListener>
   );
 }
 
