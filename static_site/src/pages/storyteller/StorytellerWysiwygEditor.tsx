@@ -55,6 +55,10 @@ import { markdownToDoc } from "./wysiwygCore/parser";
 import { serializeDocToMarkdown } from "./wysiwygCore/serializer";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
 import {
+  TYPOGRAPHY_FONT_FAMILIES,
+  useStorytellerEditorPreferences,
+} from "./useStorytellerTypographyPreferences";
+import {
   BG_COLOR_VALUES,
   COMMENT_COLOR_VALUES,
   DEFAULT_COMMENT_COLOR,
@@ -507,6 +511,8 @@ export const StorytellerWysiwygEditor = forwardRef<
     enabledFeatures === undefined || enabledFeatures.includes(feature);
   const assetEnabled = isFeatureEnabled("asset");
   const lastEmittedRef = useRef(value);
+  // 工具列「文字設定」的偏好（本機 localStorage），只套在下方正文容器
+  const { preferences: typography } = useStorytellerEditorPreferences();
 
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
@@ -1176,17 +1182,29 @@ export const StorytellerWysiwygEditor = forwardRef<
             CLEAR_FLOATING_ASSET_SX,
             bookmarkHighlightSx,
             {
+              // 文字設定只套正文（.ProseMirror），同層的 bubble menu／表格選單不受影響。
+              // 標題是 em，會跟著字級等比縮放；行距要蓋掉 HEADING_TYPOGRAPHY_SX 裡段落寫死的
+              // 1.5（標題維持 1.5）。code block 用自己的 rem 字級與等寬字體，不受影響。
+              // 要排在 AI 錨點規則前面：兩邊 specificity 相同，後面的才會蓋過前面
+              "& .ProseMirror": {
+                minHeight: { xs: 360, md: 520 },
+                outline: "none",
+                pb: 10,
+                fontFamily: TYPOGRAPHY_FONT_FAMILIES[typography.fontFamily],
+                fontSize: `${typography.fontSize}px`,
+                "& p, & li, & blockquote, & td, & th": {
+                  lineHeight: typography.lineHeight,
+                },
+              },
               '& [data-storyteller-ai-inline-anchor="true"]': {
+                // AI 面板 portal 進正文裡，還原成整站字體與原本的段落行距，不吃文字設定
+                typography: "body1",
+                "& p, & li, & blockquote, & td, & th": { lineHeight: 1.5 },
                 display: "block",
                 width: "100%",
                 height: { xs: 500, md: 600 },
                 minHeight: { xs: 420, md: 480 },
                 my: 2,
-              },
-              "& .ProseMirror": {
-                minHeight: { xs: 360, md: 520 },
-                outline: "none",
-                pb: 10,
               },
             },
           ]}

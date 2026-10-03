@@ -98,9 +98,9 @@ import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderH
 import { useStorytellerHeaderContext } from "@/layouts/StorytellerHeaderContext.tsx";
 import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
 import {
-  READER_FONT_FAMILIES,
+  TYPOGRAPHY_FONT_FAMILIES,
   useStorytellerReaderPreferences,
-} from "@/pages/storyteller/useStorytellerReaderPreferences.ts";
+} from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
 import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 
 // ReaderItem 是故事與話（圖像作品）合併後的統一序列元素——冊現在是通用容器，
@@ -2338,7 +2338,7 @@ export default function StorytellerReader() {
           <Box
             sx={{
               typography: "body1",
-              fontFamily: READER_FONT_FAMILIES[preferences.fontFamily],
+              fontFamily: TYPOGRAPHY_FONT_FAMILIES[preferences.fontFamily],
               fontSize: `${preferences.fontSize}px`,
               lineHeight: preferences.lineHeight,
               maxWidth: preferences.measure,
