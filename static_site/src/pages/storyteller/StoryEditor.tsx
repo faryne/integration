@@ -10,7 +10,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Grid,
   IconButton,
   MenuItem,
@@ -79,9 +78,15 @@ import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMetaPanel,
   WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
+  WorkspaceEditorStatusChips,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import {
+  selectedOptionLabel,
+  selectedOptionsLabel,
+} from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
@@ -1190,41 +1195,41 @@ export default function StorytellerStoryEditor({
   // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
   // embedded 寫作頁則下放到 StoryWritingWorkspace 的底部狀態列，避免長標題被擠壓。
   const storyEditorActionContent = (
-    <Stack
-      direction="row"
-      spacing={1}
-      flexWrap="wrap"
-      useFlexGap
-      alignItems="center"
-      sx={{ minWidth: 0 }}
-    >
-      <Chip label={`${wordCount.toLocaleString()} 字`} />
-      {!embedded && (
-        <Chip
-          label={storyStatus === "completed" ? "公開中" : "未公開"}
-          color={storyStatus === "completed" ? "success" : "warning"}
-          variant="outlined"
-        />
-      )}
-      {story ? (
-        <>
-          <Chip label={`更新於 ${formatStorytellerDate(story.updatedAt)}`} />
-          {apiProject && (
-            <Chip
-              color={autoSaveEnabled ? "success" : "default"}
-              variant="outlined"
-              label={
-                autoSaveEnabled
-                  ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                  : "自動存檔已關閉"
-              }
-            />
-          )}
-        </>
-      ) : (
-        <Chip label="尚未存檔" color="warning" />
-      )}
-    </Stack>
+    <WorkspaceEditorStatusChips
+      items={[
+        { label: `${wordCount.toLocaleString()} 字` },
+        ...(!embedded
+          ? [
+              {
+                label: storyStatus === "completed" ? "公開中" : "未公開",
+                color:
+                  storyStatus === "completed"
+                    ? ("success" as const)
+                    : ("warning" as const),
+                variant: "outlined" as const,
+              },
+            ]
+          : []),
+        ...(story
+          ? [
+              { label: `更新於 ${formatStorytellerDate(story.updatedAt)}` },
+              ...(apiProject
+                ? [
+                    {
+                      label: autoSaveEnabled
+                        ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
+                        : "自動存檔已關閉",
+                      color: autoSaveEnabled
+                        ? ("success" as const)
+                        : ("default" as const),
+                      variant: "outlined" as const,
+                    },
+                  ]
+                : []),
+            ]
+          : [{ label: "尚未存檔", color: "warning" as const }]),
+      ]}
+    />
   );
   const storyEditorBottomStatusContent = embedded ? (
     <Stack
@@ -1241,7 +1246,12 @@ export default function StorytellerStoryEditor({
           variant="text"
           startIcon={<ArrowBackIcon fontSize="small" />}
           onClick={workspaceEditorBack}
-          sx={{ flexShrink: 0, color: "text.secondary" }}
+          // 手機版拿掉：麵包屑與導覽已經能回列表，把底部高度讓給編輯區
+          sx={{
+            flexShrink: 0,
+            color: "text.secondary",
+            display: { xs: "none", sm: "inline-flex" },
+          }}
         >
           回列表
         </Button>
@@ -1326,76 +1336,101 @@ export default function StorytellerStoryEditor({
               />
             }
           />
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <WorkspaceEditorSelectButton
-              icon={
-                storyStatus === "completed" ? (
-                  <VisibilityIcon fontSize="small" />
-                ) : (
-                  <VisibilityOffIcon fontSize="small" />
-                )
-              }
-              label="狀態"
-              value={storyStatus}
-              options={statusOptions}
-              onChange={(value) =>
-                setStoryStatus(value as "draft" | "completed")
-              }
-            />
-            <WorkspaceEditorSelectButton
-              icon={<FolderIcon fontSize="small" />}
-              label="冊"
-              value={selectedVolumeId}
-              options={volumeOptions}
-              onChange={setSelectedVolumeId}
-            />
-            <WorkspaceEditorMultiSelectButton
-              icon={<PersonIcon fontSize="small" />}
-              label="署名"
-              values={selectedProfileIds.map(String)}
-              options={profileOptions}
-              onChange={(values) =>
-                setSelectedProfileIds(values.map((value) => Number(value)))
-              }
-            />
-            {apiProject && (
+          <WorkspaceEditorMetaPanel
+            items={[
+              {
+                icon:
+                  storyStatus === "completed" ? (
+                    <VisibilityIcon />
+                  ) : (
+                    <VisibilityOffIcon />
+                  ),
+                text: selectedOptionLabel(statusOptions, storyStatus),
+              },
+              {
+                icon: <FolderIcon />,
+                text: selectedOptionLabel(volumeOptions, selectedVolumeId),
+              },
+              {
+                icon: <PersonIcon />,
+                text: selectedOptionsLabel(
+                  profileOptions,
+                  selectedProfileIds.map(String),
+                ),
+              },
+            ]}
+          >
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <WorkspaceEditorSelectButton
-                icon={<ScheduleIcon fontSize="small" />}
-                label="自動存檔"
-                value={autoSaveSelectValue}
-                options={autoSaveOptions}
-                onChange={(value) =>
-                  handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+                icon={
+                  storyStatus === "completed" ? (
+                    <VisibilityIcon fontSize="small" />
+                  ) : (
+                    <VisibilityOffIcon fontSize="small" />
+                  )
                 }
-              >
-                {autoSaveSelectValue === "custom" && (
-                  <TextField
-                    type="number"
-                    size="small"
-                    label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
-                    value={autoSaveIntervalInput}
-                    slotProps={{
-                      htmlInput: {
-                        min: autoSaveIntervalMinutesMin,
-                        max: autoSaveIntervalMinutesMax,
-                        step: 1,
-                      },
-                    }}
-                    onChange={(event) =>
-                      setAutoSaveIntervalInput(event.target.value)
-                    }
-                    onBlur={commitAutoSaveInterval}
-                    sx={{ width: 140 }}
-                  />
-                )}
-              </WorkspaceEditorSelectButton>
-            )}
-          </Stack>
-          <WorkspaceEditableSummary
-            value={storySummary}
-            onChange={setStorySummary}
-            placeholder="新增摘要..."
-          />
+                label="狀態"
+                value={storyStatus}
+                options={statusOptions}
+                onChange={(value) =>
+                  setStoryStatus(value as "draft" | "completed")
+                }
+              />
+              <WorkspaceEditorSelectButton
+                icon={<FolderIcon fontSize="small" />}
+                label="冊"
+                value={selectedVolumeId}
+                options={volumeOptions}
+                onChange={setSelectedVolumeId}
+              />
+              <WorkspaceEditorMultiSelectButton
+                icon={<PersonIcon fontSize="small" />}
+                label="署名"
+                values={selectedProfileIds.map(String)}
+                options={profileOptions}
+                onChange={(values) =>
+                  setSelectedProfileIds(values.map((value) => Number(value)))
+                }
+              />
+              {apiProject && (
+                <WorkspaceEditorSelectButton
+                  icon={<ScheduleIcon fontSize="small" />}
+                  label="自動存檔"
+                  value={autoSaveSelectValue}
+                  options={autoSaveOptions}
+                  onChange={(value) =>
+                    handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+                  }
+                >
+                  {autoSaveSelectValue === "custom" && (
+                    <TextField
+                      type="number"
+                      size="small"
+                      label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                      value={autoSaveIntervalInput}
+                      slotProps={{
+                        htmlInput: {
+                          min: autoSaveIntervalMinutesMin,
+                          max: autoSaveIntervalMinutesMax,
+                          step: 1,
+                        },
+                      }}
+                      onChange={(event) =>
+                        setAutoSaveIntervalInput(event.target.value)
+                      }
+                      onBlur={commitAutoSaveInterval}
+                      sx={{ width: 140 }}
+                    />
+                  )}
+                </WorkspaceEditorSelectButton>
+              )}
+            </Stack>
+            <WorkspaceEditableSummary
+              value={storySummary}
+              onChange={setStorySummary}
+              placeholder="新增摘要..."
+            />
+          </WorkspaceEditorMetaPanel>
         </Stack>
       </Box>
     </Box>

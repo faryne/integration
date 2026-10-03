@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>行動版編輯頁 Mockup</title>
+<style>
+/* 色調仿 steamloom 淺色主題（米色紙張）；只示意版面比例，不是像素級還原 */
+:root { --paper:#e9e1d3; --paper-2:#e2d9c8; --line:#cfc4b1; --text:#2b2722; --muted:#6f665a; --disabled:#9c9283; --primary:#3f5fa8; --save:#b9c3d8; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:"Noto Sans TC", -apple-system, sans-serif; background:#2b2b2b; color:#eee; }
+.bar { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:space-between; padding:10px 16px; background:#1b1b1b; border-bottom:1px solid #444; }
+.bar span { color:#aaa; font-size:12px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { border:1px solid #555; border-radius:8px; padding:6px 9px; background:#262626; color:#ddd; font-size:12px; cursor:pointer; }
+.chip.active { color:#d9d0ff; border-color:#7561c6; background:rgba(170,145,255,.16); }
+.stage { display:flex; flex-wrap:wrap; justify-content:center; gap:28px; padding:24px 12px 40px; }
+.col { display:grid; gap:8px; justify-items:center; }
+.col h3 { margin:0; font-size:14px; color:#ccc; }
+.col > p { margin:0; font-size:12px; color:#999; max-width:390px; text-align:center; }
+[hidden] { display:none !important; }
+
+/* 手機外框 390×720 */
+.phone { width:390px; height:720px; background:var(--paper); color:var(--text); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; position:relative; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+.site { flex:0 0 52px; display:flex; align-items:center; gap:10px; padding:0 14px; border-bottom:1px solid var(--line); font:700 19px Georgia,serif; }
+.site .sp { flex:1; }
+.site .ava { width:30px; height:30px; border-radius:50%; background:#8c7bc4; }
+.crumb { flex:0 0 40px; display:flex; align-items:center; gap:6px; padding:0 14px; font-size:13px; color:var(--muted); border-bottom:1px solid var(--line); }
+.crumb b { color:var(--primary); }
+.head { flex:0 0 auto; padding:10px 14px 8px; display:grid; gap:8px; border-bottom:1px solid var(--line); background:var(--paper); }
+.title { margin:0; font-weight:900; letter-spacing:-.02em; }
+.props { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:13px; color:var(--muted); }
+.props b { color:var(--text); }
+.summary { font-size:14px; color:var(--muted); line-height:1.5; }
+.editor { flex:1 1 auto; min-height:0; overflow:hidden; padding:12px 14px; font-size:15.5px; line-height:2; position:relative; }
+.editor p { margin:0 0 14px; }
+.editor .caret { display:inline-block; width:2px; height:18px; background:var(--primary); vertical-align:-3px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+.foot { flex:0 0 auto; border-top:1px solid var(--line); padding:6px 14px 10px; display:grid; gap:8px; background:var(--paper); }
+.pill { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:5px 11px; font-size:12px; margin:2px 4px 2px 0; }
+.tools { display:flex; align-items:center; justify-content:flex-end; gap:14px; color:var(--muted); font-size:17px; }
+.save { background:var(--save); color:var(--text); border-radius:6px; padding:6px 14px; font-size:13px; font-weight:800; }
+.kbd { flex:0 0 260px; background:#c8c1b4; display:grid; place-items:center; color:#777; font-size:13px; }
+.meas { position:absolute; right:6px; top:50%; transform:translateY(-50%); background:rgba(63,95,168,.9); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; }
+
+/* ===== 現況 ===== */
+.now .title { font-size:34px; line-height:1.25; }
+
+/* ===== 提案 ===== */
+.new .title { font-size:22px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.info { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); cursor:pointer; user-select:none; }
+.info .sum { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.info .sum b { color:var(--text); font-weight:700; }
+.info .tog { flex-shrink:0; color:var(--primary); font-weight:700; }
+.expand { display:none; gap:8px; padding-top:2px; }
+.head.open .expand { display:grid; }
+.status { font-size:11.5px; color:var(--muted); display:flex; gap:6px; flex-wrap:wrap; }
+.status .dot::before { content:"·"; margin-right:6px; }
+/* 寫作中：標題列縮成一行，屬性列與狀態列收起 */
+.new.focus .crumb { display:none; }
+.new.focus .head { padding:6px 14px; }
+.new.focus .title { font-size:15px; -webkit-line-clamp:1; }
+.new.focus .info, .new.focus .expand, .new.focus .status { display:none; }
+.new.focus .head .mini { display:inline; }
+.head .mini { display:none; font-size:12px; color:var(--primary); margin-left:6px; font-weight:700; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>行動版編輯頁 Mockup</strong> <span>左：現況　右：提案（可切換狀態）</span></div>
+  <div class="chips">
+    <button class="chip active" data-mode="idle">提案：一般</button>
+    <button class="chip" data-mode="open">提案：展開屬性與摘要</button>
+    <button class="chip" data-mode="focus">提案：寫作中（鍵盤彈出）</button>
+  </div>
+</header>
+
+<main class="stage">
+  <!-- 現況 -->
+  <div class="col">
+    <h3>現況</h3>
+    <div class="phone now">
+      <div class="site">◈ SteamLoom<span class="sp"></span>＋<span class="ava"></span></div>
+      <div class="crumb">📖 導覽　<b>製作我 ▾</b> ＞ 作品 ＞ 起源故事</div>
+      <div class="head">
+        <h1 class="title">起源・三人（二）・還在嗎</h1>
+        <div class="props">
+          <span>👁 狀態 <b>未公開</b> ▾</span><span>📁 冊 <b>起源故事</b> ▾</span>
+          <span>👤 署名 <b>本人（Faryne）</b> ▾</span><span>🕒 自動存檔 <b>不自動存檔</b> ▾</span>
+        </div>
+        <div class="summary">哈朗加入 BEST 幾個月後，斯凱逐漸發現她與代表的關係並沒有停在第一次付費預約。她沒有名分，也沒有立場干涉，卻第一次察覺…</div>
+      </div>
+      <div class="editor" data-measure>
+        <p><i>隔年三月，凌晨十二點十五分</i></p>
+        <p>斯凱已經走到捷運站，才發現行動硬碟還在公司。</p>
+        <p>明早八點要交的提案全在裡面。</p>
+      </div>
+      <div class="foot">
+        <div>← 回列表</div>
+        <div><span class="pill">2,187 字</span><span class="pill">更新於 2026年10月3日 凌晨12:50</span><span class="pill">自動存檔已關閉</span></div>
+        <div class="tools">🖼 ≣ ⟲ ✦ ｜ ⤓ ⓘ <span class="save">💾 存檔</span></div>
+      </div>
+    </div>
+    <p>標題 34px 佔兩行、屬性鈕兩行、摘要兩行；底部「回列表」＋三個 chip＋工具列共三行。</p>
+  </div>
+
+  <!-- 提案 -->
+  <div class="col">
+    <h3>提案</h3>
+    <div class="phone new" id="proposal">
+      <div class="site">◈ SteamLoom<span class="sp"></span>＋<span class="ava"></span></div>
+      <div class="crumb">📖 導覽　<b>製作我 ▾</b> ＞ 作品 ＞ 起源故事</div>
+      <div class="head" id="proposalHead">
+        <h1 class="title">起源・三人（二）・還在嗎<span class="mini">▾</span></h1>
+        <div class="info" id="infoToggle">
+          <span class="sum">👁 <b>未公開</b> · 📁 <b>起源故事</b> · 👤 <b>本人</b> · 🕒 不自動存檔</span>
+          <span class="tog" id="togLabel">屬性與摘要 ▾</span>
+        </div>
+        <div class="expand">
+          <div class="props">
+            <span>👁 狀態 <b>未公開</b> ▾</span><span>📁 冊 <b>起源故事</b> ▾</span>
+            <span>👤 署名 <b>本人（Faryne）</b> ▾</span><span>🕒 自動存檔 <b>不自動存檔</b> ▾</span>
+          </div>
+          <div class="summary">哈朗加入 BEST 幾個月後，斯凱逐漸發現她與代表的關係並沒有停在第一次付費預約。她沒有名分，也沒有立場干涉，卻第一次察覺…</div>
+        </div>
+      </div>
+      <div class="editor" data-measure>
+        <p><i>隔年三月，凌晨十二點十五分</i></p>
+        <p>斯凱已經走到捷運站，才發現行動硬碟還在公司。</p>
+        <p>明早八點要交的提案全在裡面。</p>
+        <p>他站在閘門前猶豫了三秒，轉身往回走。<span class="caret"></span></p>
+        <p>公司大樓只剩警衛室亮著燈。</p>
+      </div>
+      <div class="foot">
+        <div class="status"><span>2,187 字</span><span class="dot">10/3 00:50 更新</span><span class="dot">自動存檔關閉</span></div>
+        <div class="tools">🖼 ≣ ⟲ ✦ ｜ ⤓ ⓘ <span class="save">💾 存檔</span></div>
+      </div>
+      <div class="kbd" id="kbd" hidden>（虛擬鍵盤）</div>
+    </div>
+    <p id="caption">標題 22px 最多兩行；屬性與摘要收成一行，點了才展開；底部資訊縮成一行小字，「回列表」拿掉（麵包屑已經能回去）。</p>
+  </div>
+</main>
+
+<script>
+// 量編輯區實際高度，直接標在畫面上方便比較
+function measure() {
+  document.querySelectorAll("[data-measure]").forEach((el) => {
+    el.querySelector(".meas")?.remove();
+    const tag = document.createElement("span");
+    tag.className = "meas";
+    tag.textContent = `編輯區 ${Math.round(el.getBoundingClientRect().height)}px`;
+    el.appendChild(tag);
+  });
+}
+const captions = {
+  idle: "標題 22px 最多兩行；屬性與摘要收成一行，點了才展開；底部資訊縮成一行小字，「回列表」拿掉（麵包屑已經能回去）。",
+  open: "點「屬性與摘要」展開，跟現況一樣的四顆屬性鈕＋摘要；再點一次收起。每次進編輯頁預設收起。",
+  focus: "編輯區取得焦點（鍵盤彈出）時：麵包屑、屬性列、底部資訊列都收起，標題縮成一行；點標題或收起鍵盤就恢復。工具列＋存檔一直留在鍵盤上方。",
+};
+function setMode(mode) {
+  const phone = document.getElementById("proposal");
+  phone.classList.toggle("focus", mode === "focus");
+  document.getElementById("proposalHead").classList.toggle("open", mode === "open");
+  document.getElementById("kbd").hidden = mode !== "focus";
+  document.getElementById("togLabel").textContent = mode === "open" ? "收起 ▴" : "屬性與摘要 ▾";
+  document.getElementById("caption").textContent = captions[mode];
+  document.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+  measure();
+}
+document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+document.getElementById("infoToggle").addEventListener("click", () =>
+  setMode(document.getElementById("proposalHead").classList.contains("open") ? "idle" : "open"));
+measure();
+</script>
+</body>
+</html>

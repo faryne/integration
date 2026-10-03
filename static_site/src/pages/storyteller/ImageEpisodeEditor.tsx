@@ -50,9 +50,14 @@ import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMetaPanel,
   WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import {
+  selectedOptionLabel,
+  selectedOptionsLabel,
+} from "@/pages/storyteller/workspaceEditorOptions.ts";
 import {
   StorytellerLoading,
   StorytellerShell,
@@ -288,7 +293,15 @@ export default function StorytellerImageEpisodeEditor({
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [phase, title, summary, status, selectedVolumeId, selectedProfileIds, pages]);
+  }, [
+    phase,
+    title,
+    summary,
+    status,
+    selectedVolumeId,
+    selectedProfileIds,
+    pages,
+  ]);
 
   // embedded 模式下才需要讓工作台知道「離開前要不要確認」——非 embedded 的獨立頁面
   // 沒有工作台側邊欄／回列表按鈕可以攔。這裡不能像 Story/LoreEditor 一樣只註冊
@@ -299,7 +312,16 @@ export default function StorytellerImageEpisodeEditor({
       return;
     }
     return registerWorkspaceLeaveGuard(hasUnsavedEpisodeChanges);
-  }, [embedded, phase, title, summary, status, selectedVolumeId, selectedProfileIds, pages]);
+  }, [
+    embedded,
+    phase,
+    title,
+    summary,
+    status,
+    selectedVolumeId,
+    selectedProfileIds,
+    pages,
+  ]);
 
   // ⌘S／Ctrl+S 存檔，跟 Story/LoreEditor 一致；handleSubmit 本身已擋掉上傳中／
   // 缺標題或頁面等不能送出的狀態。必須在下面的 early return 之前呼叫（Rules of Hooks）。
@@ -656,9 +678,7 @@ export default function StorytellerImageEpisodeEditor({
   const profileOptions = [
     {
       value: String(ACCOUNT_PROFILE_ID),
-      label: userProfile?.pen_name
-        ? `本人（${userProfile.pen_name}）`
-        : "本人",
+      label: userProfile?.pen_name ? `本人（${userProfile.pen_name}）` : "本人",
       icon: <PersonIcon fontSize="small" />,
     },
     ...(userProfile?.profiles ?? []).map((profile) => ({
@@ -713,46 +733,71 @@ export default function StorytellerImageEpisodeEditor({
         }
         actions={imageEditorActionContent}
       />
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-        <WorkspaceEditorSelectButton
-          icon={
-            status === "completed" ? (
-              <VisibilityIcon fontSize="small" />
-            ) : (
-              <VisibilityOffIcon fontSize="small" />
-            )
-          }
-          label="狀態"
-          value={status}
-          options={statusOptions}
+      <WorkspaceEditorMetaPanel
+        items={[
+          {
+            icon:
+              status === "completed" ? (
+                <VisibilityIcon />
+              ) : (
+                <VisibilityOffIcon />
+              ),
+            text: selectedOptionLabel(statusOptions, status),
+          },
+          {
+            icon: <FolderIcon />,
+            text: selectedOptionLabel(volumeOptions, selectedVolumeId),
+          },
+          {
+            icon: <PersonIcon />,
+            text: selectedOptionsLabel(
+              profileOptions,
+              selectedProfileIds.map(String),
+            ),
+          },
+        ]}
+      >
+        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+          <WorkspaceEditorSelectButton
+            icon={
+              status === "completed" ? (
+                <VisibilityIcon fontSize="small" />
+              ) : (
+                <VisibilityOffIcon fontSize="small" />
+              )
+            }
+            label="狀態"
+            value={status}
+            options={statusOptions}
+            disabled={isSubmitting}
+            onChange={(value) => setStatus(value as "draft" | "completed")}
+          />
+          <WorkspaceEditorSelectButton
+            icon={<FolderIcon fontSize="small" />}
+            label="冊"
+            value={selectedVolumeId}
+            options={volumeOptions}
+            disabled={isSubmitting}
+            onChange={setSelectedVolumeId}
+          />
+          <WorkspaceEditorMultiSelectButton
+            icon={<PersonIcon fontSize="small" />}
+            label="署名"
+            values={selectedProfileIds.map(String)}
+            options={profileOptions}
+            disabled={isSubmitting}
+            onChange={(values) =>
+              setSelectedProfileIds(values.map((value) => Number(value)))
+            }
+          />
+        </Stack>
+        <WorkspaceEditableSummary
+          value={summary}
           disabled={isSubmitting}
-          onChange={(value) => setStatus(value as "draft" | "completed")}
+          placeholder="新增描述..."
+          onChange={setSummary}
         />
-        <WorkspaceEditorSelectButton
-          icon={<FolderIcon fontSize="small" />}
-          label="冊"
-          value={selectedVolumeId}
-          options={volumeOptions}
-          disabled={isSubmitting}
-          onChange={setSelectedVolumeId}
-        />
-        <WorkspaceEditorMultiSelectButton
-          icon={<PersonIcon fontSize="small" />}
-          label="署名"
-          values={selectedProfileIds.map(String)}
-          options={profileOptions}
-          disabled={isSubmitting}
-          onChange={(values) =>
-            setSelectedProfileIds(values.map((value) => Number(value)))
-          }
-        />
-      </Stack>
-      <WorkspaceEditableSummary
-        value={summary}
-        disabled={isSubmitting}
-        placeholder="新增描述..."
-        onChange={setSummary}
-      />
+      </WorkspaceEditorMetaPanel>
     </Stack>
   ) : undefined;
 
@@ -871,7 +916,9 @@ export default function StorytellerImageEpisodeEditor({
                     const next =
                       typeof value === "string" ? value.split(",") : value;
                     setSelectedProfileIds(
-                      next.map((item) => Number(item)).filter((id) => !Number.isNaN(id)),
+                      next
+                        .map((item) => Number(item))
+                        .filter((id) => !Number.isNaN(id)),
                     );
                   }}
                   helperText="可多選；預設為本人。"

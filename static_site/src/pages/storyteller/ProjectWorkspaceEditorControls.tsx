@@ -1,22 +1,163 @@
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import {
   Box,
   Button,
+  ButtonBase,
   Checkbox,
+  Chip,
+  type ChipProps,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
   Stack,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import {
+  selectedOptionLabel,
+  selectedOptionsLabel,
+  type WorkspaceEditorSelectOption,
+} from "./workspaceEditorOptions.ts";
 
-export interface WorkspaceEditorSelectOption {
-  value: string;
+// 編輯頁的手機版斷點：跟 StoryEditor 工具列的 compact 判斷一致（< sm）
+function useWorkspaceEditorCompact() {
+  const theme = useTheme();
+  return useMediaQuery(theme.breakpoints.down("sm"));
+}
+
+export interface WorkspaceEditorMetaItem {
+  icon: ReactNode;
+  text: string;
+}
+
+// 標題下方的屬性按鈕列＋摘要。手機版收成一行摘要（例如「未公開 · 起源故事 · 本人」），
+// 點了才展開成完整的按鈕與摘要，把高度讓給編輯區；桌機直接顯示 children。每次進頁預設收起。
+export function WorkspaceEditorMetaPanel({
+  items,
+  children,
+}: {
+  items: WorkspaceEditorMetaItem[];
+  children: ReactNode;
+}) {
+  const compact = useWorkspaceEditorCompact();
+  const [expanded, setExpanded] = useState(false);
+  if (!compact) return <>{children}</>;
+  return (
+    <Stack spacing={1}>
+      <ButtonBase
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        sx={{
+          justifyContent: "flex-start",
+          gap: 1,
+          px: 0.5,
+          py: 0.5,
+          borderRadius: 1,
+          color: "text.secondary",
+          textAlign: "left",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.5}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            "& svg": { fontSize: 15 },
+          }}
+        >
+          {items.map((item, index) => (
+            <Stack
+              key={index}
+              direction="row"
+              alignItems="center"
+              spacing={0.4}
+              // 只有長的項目（筆名、冊名）可以被截斷，「公開中」這類短字維持完整
+              sx={{ flexShrink: item.text.length > 6 ? 1 : 0, minWidth: 0 }}
+            >
+              {index > 0 && <Typography variant="caption">·</Typography>}
+              {item.icon}
+              <Typography
+                variant="caption"
+                color="text.primary"
+                fontWeight={700}
+                noWrap
+              >
+                {item.text}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+        <Typography
+          variant="caption"
+          color="primary"
+          fontWeight={700}
+          sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}
+        >
+          {expanded ? "收起" : "屬性與摘要"}
+          {expanded ? (
+            <ExpandLessIcon fontSize="small" />
+          ) : (
+            <ExpandMoreIcon fontSize="small" />
+          )}
+        </Typography>
+      </ButtonBase>
+      {expanded && children}
+    </Stack>
+  );
+}
+
+export interface WorkspaceEditorStatusItem {
   label: string;
-  icon?: ReactNode;
+  color?: ChipProps["color"];
+  variant?: ChipProps["variant"];
+}
+
+// 字數／更新時間／自動存檔等狀態：桌機是一排 chip，手機版縮成一行小字，省下底部高度。
+export function WorkspaceEditorStatusChips({
+  items,
+}: {
+  items: WorkspaceEditorStatusItem[];
+}) {
+  const compact = useWorkspaceEditorCompact();
+  if (compact) {
+    return (
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: "block", minWidth: 0 }}
+      >
+        {items.map((item) => item.label).join(" · ")}
+      </Typography>
+    );
+  }
+  return (
+    <Stack
+      direction="row"
+      spacing={1}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
+      {items.map((item) => (
+        <Chip
+          key={item.label}
+          label={item.label}
+          color={item.color}
+          variant={item.variant}
+        />
+      ))}
+    </Stack>
+  );
 }
 
 // 嵌入編輯器（故事/圖像/設定集/資產）標題列共用排版——標題（WorkspaceEditableTitle）
@@ -67,7 +208,8 @@ export function WorkspaceEditableTitle({
         bgcolor: "transparent",
         color: "text.primary",
         font: "inherit",
-        fontSize: { xs: 34, md: 44 },
+        // 手機版縮小，避免標題吃掉編輯區的高度
+        fontSize: { xs: 22, sm: 34, md: 44 },
         fontWeight: 800,
         lineHeight: 1.16,
         letterSpacing: 0,
@@ -141,7 +283,6 @@ export function WorkspaceEditorSelectButton({
   children?: ReactNode;
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const selected = options.find((option) => option.value === value);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
       <Button
@@ -165,7 +306,7 @@ export function WorkspaceEditorSelectButton({
             {label}
           </Typography>
           <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selected?.label ?? "未設定"}
+            {selectedOptionLabel(options, value)}
           </Typography>
         </Stack>
       </Button>
@@ -210,9 +351,6 @@ export function WorkspaceEditorMultiSelectButton({
   onChange: (values: string[]) => void;
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const selectedLabels = options
-    .filter((option) => values.includes(option.value))
-    .map((option) => option.label);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
       <Button
@@ -236,7 +374,7 @@ export function WorkspaceEditorMultiSelectButton({
             {label}
           </Typography>
           <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selectedLabels.join("、") || "未設定"}
+            {selectedOptionsLabel(options, values)}
           </Typography>
         </Stack>
       </Button>
