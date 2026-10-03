@@ -46,6 +46,10 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 // footnote/comment 那種額外屬性，純粹字面上更容易被誤判成雜訊而被 AI 整段清掉。沒提醒
 // 的話 AI 整篇重寫時很容易漏保留，段落文字沒變、id 卻換了一個，作者原本標的書籤就會
 // 對不到段落（見 memory：使用者發現這個落差後主動確認的問題）。
+//
+// 2026-10-03 補上「行首前綴放在 marker 外」：只寫「標題也要包 marker」時，AI 會把 `# `
+// 一起包進 marker 內，閱讀頁就把 `# 第一幕` 當字面文字顯示（存檔時另有
+// hoistStoryMarkerBlockPrefixes 兜底修正）。
 const storytellerContentMarkerHint = "The content may also contain bracket markers written by the " +
 	"web editor, both wrapping a run of text: ⟦footnote-<id> note=\"...\"⟧anchored text⟦/footnote-<id>⟧ and " +
 	"⟦comment-<id> comment=\"...\" commentColor=\"...\"⟧highlighted text⟦/comment-<id>⟧ (id is an opaque generated " +
@@ -59,7 +63,10 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 	"⟦table tableId=\"...\" rowId=\"...\"⟧| cell | cell |⟦/table⟧. Keep rows from the same table adjacent and keep " +
 	"their tableId/rowId values stable when editing existing tables. Every other paragraph line (including " +
 	"headings) is also wrapped in its own plain marker with no extra attributes: ⟦<id>⟧paragraph text⟦/<id>⟧ " +
-	"(or ⟦<id> align=\"center\"⟧...⟦/<id>⟧ when the paragraph has explicit alignment). This id is the anchor the " +
+	"(or ⟦<id> align=\"center\"⟧...⟦/<id>⟧ when the paragraph has explicit alignment). Line-start block prefixes " +
+	"(heading `# `..`###### `, quote `> `, list `- ` / `1. `) go OUTSIDE the marker, before it: write " +
+	"`# ⟦<id>⟧Chapter title⟦/<id>⟧`, never `⟦<id>⟧# Chapter title⟦/<id>⟧` (a prefix inside the marker renders as " +
+	"literal text). This id is the anchor the " +
 	"web editor's outline panel and the author's writing bookmarks point to — it must stay attached to that " +
 	"exact paragraph and never change, even when you rewrite the paragraph's wording, unless the whole paragraph " +
 	"is being deleted outright. When you edit a paragraph, keep reusing its existing id in both the opening and " +
