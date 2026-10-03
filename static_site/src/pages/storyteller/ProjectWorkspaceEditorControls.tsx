@@ -1,5 +1,6 @@
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SaveIcon from "@mui/icons-material/Save";
 import {
   Box,
   Button,
@@ -18,6 +19,7 @@ import {
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
   selectedOptionLabel,
   selectedOptionsLabel,
@@ -117,29 +119,21 @@ export function WorkspaceEditorMetaPanel({
 
 export interface WorkspaceEditorStatusItem {
   icon: ReactNode;
-  // 常駐顯示的精簡值，例如「2,187」「2026/10/03 00:50:12」「開啟」
-  value: string;
   // hover／點擊時顯示的完整說明，例如「2,187 字」「每 5 分鐘自動存檔」
   detail: string;
   // success：自動存檔開啟；warning：尚未存檔等需要注意的狀態
   tone?: "success" | "warning";
 }
 
-// 字數／更新時間／自動存檔：常駐一排「icon＋精簡值」，hover／點擊才顯示完整說明。
+// 字數／更新時間／自動存檔：只放 icon（跟工具列擠同一行），hover／點擊才顯示完整說明；
+// 狀態靠 icon 顏色表達（自動存檔開啟綠色、尚未存檔警告色）。
 export function WorkspaceEditorStatusInfo({
   items,
 }: {
   items: WorkspaceEditorStatusItem[];
 }) {
   return (
-    <Stack
-      direction="row"
-      spacing={1.25}
-      flexWrap="wrap"
-      useFlexGap
-      alignItems="center"
-      sx={{ minWidth: 0 }}
-    >
+    <Stack direction="row" alignItems="center" sx={{ minWidth: 0 }}>
       {items.map((item) => (
         <WorkspaceEditorStatusEntry key={item.detail} item={item} />
       ))}
@@ -176,26 +170,52 @@ function WorkspaceEditorStatusEntry({
             aria-label={item.detail}
             onClick={() => setOpen(true)}
             sx={{
-              gap: 0.5,
-              px: 0.5,
-              py: 0.25,
+              p: 0.5,
               borderRadius: 1,
               color,
-              "& svg": { fontSize: 16 },
+              "& svg": { fontSize: 18 },
               "&:hover": { bgcolor: "action.hover" },
             }}
           >
             {item.icon}
-            <Typography
-              variant="caption"
-              sx={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              {item.value}
-            </Typography>
           </ButtonBase>
         </Tooltip>
       </span>
     </ClickAwayListener>
+  );
+}
+
+// 編輯頁底部的存檔按鈕（故事／設定共用）。桌機在按鈕內直接標出快捷鍵（⌘S／Ctrl+S）；
+// 手機只留 icon，讓狀態 icon、工具列、存檔擠得進同一行。
+export function WorkspaceEditorSaveButton({
+  pending,
+  disabled,
+  onClick,
+}: {
+  pending: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const label = pending ? "存檔中" : "存檔";
+  return (
+    <Button
+      size="small"
+      variant="contained"
+      aria-label={label}
+      startIcon={<SaveIcon />}
+      disabled={disabled}
+      onClick={onClick}
+      sx={{
+        minWidth: { xs: 36, sm: 88 },
+        px: { xs: 1, sm: 1.25 },
+        "& .MuiButton-startIcon": { mx: { xs: 0, sm: undefined } },
+      }}
+    >
+      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+        {label}
+        <ShortcutHint shortcutKey="S" />
+      </Box>
+    </Button>
   );
 }
 

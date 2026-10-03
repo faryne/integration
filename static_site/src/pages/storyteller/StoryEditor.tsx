@@ -78,6 +78,7 @@ import {
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
   WorkspaceEditorMetaPanel,
+  WorkspaceEditorSaveButton,
   WorkspaceEditorMultiSelectButton,
   WorkspaceEditorSelectButton,
   WorkspaceEditorStatusInfo,
@@ -1237,18 +1238,11 @@ export default function StorytellerStoryEditor({
     </Stack>
   ) : undefined;
   const storyEditorBottomActionContent = embedded ? (
-    // 按鈕內直接標出快捷鍵（Mac ⌘S／Windows Ctrl+S），不必 hover 才看得到。
-    <Button
-      size="small"
-      variant="contained"
-      startIcon={<SaveIcon />}
+    <WorkspaceEditorSaveButton
+      pending={saveStory.isPending}
       disabled={saveStory.isPending || saveSuccessTarget !== null}
       onClick={handleSaveStory}
-      sx={{ minWidth: 88 }}
-    >
-      {saveStory.isPending ? "存檔中" : "存檔"}
-      <ShortcutHint shortcutKey="S" />
-    </Button>
+    />
   ) : undefined;
   const storyEditorHeaderContent = embedded ? (
     <Box

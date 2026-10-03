@@ -67,6 +67,7 @@ import {
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
   WorkspaceEditorMetaPanel,
+  WorkspaceEditorSaveButton,
   WorkspaceEditorSelectButton,
   WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
@@ -948,18 +949,11 @@ export default function StorytellerLoreEditor({
     </Stack>
   ) : undefined;
   const loreEditorBottomActionContent = embedded ? (
-    // 按鈕內直接標出快捷鍵（Mac ⌘S／Windows Ctrl+S），不必 hover 才看得到。
-    <Button
-      size="small"
-      variant="contained"
-      startIcon={<SaveIcon />}
+    <WorkspaceEditorSaveButton
+      pending={saveLore.isPending}
       disabled={saveLore.isPending || saveSuccessTarget !== null}
       onClick={handleSave}
-      sx={{ minWidth: 88 }}
-    >
-      {saveLore.isPending ? "存檔中" : "存檔"}
-      <ShortcutHint shortcutKey="S" />
-    </Button>
+    />
   ) : undefined;
   const loreEditorHeaderContent = embedded ? (
     <Box
