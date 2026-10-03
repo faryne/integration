@@ -15,6 +15,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 import { Link as RouterLink } from "react-router-dom";
 import { SteamRegistrationMarks } from "@/components/storyteller/SteamPanelAccent.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
@@ -32,7 +33,7 @@ interface FeatureHighlight {
   description: string;
 }
 
-const featureHighlights: FeatureHighlight[] = [
+const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
   {
     icon: <AddIcon fontSize="small" />,
     title: "建立創作專案",
@@ -53,6 +54,7 @@ const featureHighlights: FeatureHighlight[] = [
   {
     icon: <AutoAwesomeIcon fontSize="small" />,
     title: "AI Agent（選用）",
+    ai: true,
     description:
       "帶上你自己的模型 API Key，設定 Agent 幫忙改寫或延伸故事內容。",
   },
@@ -60,7 +62,7 @@ const featureHighlights: FeatureHighlight[] = [
     icon: <CableIcon fontSize="small" />,
     title: "MCP 連接（選用）",
     description:
-      "讓 Claude Code、Codex 等外部工具透過 MCP 直接讀寫你的故事與設定集，不用手動複製貼上。",
+      "讓 Claude、ChatGPT、Claude Code、Codex 等 AI 工具透過 MCP 直接讀寫你的故事與設定集，不用手動複製貼上。",
   },
   {
     icon: <BookmarkIcon fontSize="small" />,
@@ -74,6 +76,11 @@ const featureHighlights: FeatureHighlight[] = [
     description: "專案可以設成公開、不公開連結或私人，由你決定誰看得到作品。",
   },
 ];
+
+// 站內 AI 助理停用時不介紹（見 STORYTELLER_AI_ASSISTANT_ENABLED）
+const featureHighlights = allFeatureHighlights.filter(
+  (item) => STORYTELLER_AI_ASSISTANT_ENABLED || !item.ai,
+);
 
 /**
  * 新手完成筆名設定（PenNameDialog）後緊接著彈出的功能導覽，只在「這次真的是第一次

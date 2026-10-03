@@ -87,6 +87,12 @@ type envConfig struct {
 	// 180 天保留期清除）；調低只擋新的鎖定，既有鎖定不會被解除。
 	StorytellerNotificationLockLimit int `env:"STORYTELLER_NOTIFICATION_LOCK_LIMIT,default=50"`
 
+	// StorytellerAIAssistantEnabled 控制站內 AI 助理（agent chat、API key、Skill、用量報表、
+	// 記憶草稿、AI 提案）是否開放。2026-10-03 起刻意停用：使用者多半已有 AI 訂閱，
+	// 改以 MCP 為主要 AI 路徑；程式碼暫時保留，關閉時相關 API 一律回 403。
+	// 前端對應常數為 STORYTELLER_AI_ASSISTANT_ENABLED（VITE_STORYTELLER_AI_ASSISTANT_ENABLED）。
+	StorytellerAIAssistantEnabled bool `env:"STORYTELLER_AI_ASSISTANT_ENABLED,default=false"`
+
 	// EnableDevAuthBypass 只給本機開發自動化測試用（例如 Claude Code 的瀏覽器工具
 	// 需要免走 Firebase 登入彈窗、直接進工作台頁面）——開了才會註冊
 	// `POST /auth/dev-session`，簽發固定測試帳號的合法 session，完全複用既有

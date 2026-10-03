@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"faryne.dev/config"
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/log"
 )
@@ -30,6 +31,11 @@ type openRouterModel struct {
 }
 
 func RunSyncStorytellerAgentModels() {
+	// AI 助理停用期間不必每週向 OpenRouter 同步模型目錄（見 STORYTELLER_AI_ASSISTANT_ENABLED）
+	if !config.EnvConfig().StorytellerAIAssistantEnabled {
+		log.Logger().Info("Storyteller AI assistant disabled, skip agent model sync")
+		return
+	}
 	startedAt := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
