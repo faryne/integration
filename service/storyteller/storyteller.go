@@ -902,7 +902,7 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	} else {
-		input.Content = backfillStoryMarkerIds(input.Content)
+		input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
 	}
 	parent, err := s.resolveVolumeParent(project.ID, input.ParentID)
 	if err != nil {
@@ -976,7 +976,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
 	} else {
-		input.Content = backfillStoryMarkerIds(input.Content)
+		input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
 	}
 	// ParentID == nil 代表這次存檔沒有要動冊隸屬（例如狀態切換、拖曳排序、一般編輯頁存檔），
 	// 維持故事目前的 parent_id 不動；只有明確帶了 parent_id（含空字串代表移出冊）才處理。
@@ -2276,7 +2276,7 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	}
-	input.Content = backfillStoryMarkerIds(input.Content)
+	input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
 	var collectionID *uint64
 	if input.CollectionID != nil {
 		collectionID, err = s.resolveLoreCollectionID(project.ID, *input.CollectionID)
@@ -2317,7 +2317,7 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
 	}
-	input.Content = backfillStoryMarkerIds(input.Content)
+	input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
 	lore, err = s.repo.Lore(project.ID, lorePublicID)
 	if err != nil {
 		return nil, false, err
