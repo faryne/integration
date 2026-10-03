@@ -7,7 +7,6 @@ import {
   Alert,
   Box,
   Button,
-  Chip,
   Grid,
   IconButton,
   MenuItem,
@@ -36,7 +35,6 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
-  formatStorytellerDate,
   STORYTELLER_APP_NAME,
   storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
@@ -68,9 +66,14 @@ import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveG
 import {
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMetaPanel,
+  WorkspaceEditorSaveButton,
   WorkspaceEditorSelectButton,
+  WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
+import { selectedOptionLabel } from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
+import { editorStatusItems } from "@/pages/storyteller/workspaceEditorStatusItems.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   applyStorytellerAgentText,
@@ -905,34 +908,17 @@ export default function StorytellerLoreEditor({
   // 字數／更新時間／自動存檔狀態集中成同一組內容：獨立頁仍顯示在頁首 action，
   // embedded 寫作頁則下放到底部狀態列，避免長標題被擠壓。
   const loreEditorActionContent = (
-    <Stack
-      direction="row"
-      spacing={1}
-      flexWrap="wrap"
-      useFlexGap
-      alignItems="center"
-      sx={{ minWidth: 0 }}
-    >
-      <Chip label={`${wordCount.toLocaleString()} 字`} />
-      {lore ? (
-        <>
-          <Chip label={`更新於 ${formatStorytellerDate(lore.updatedAt)}`} />
-          {apiProject && (
-            <Chip
-              color={autoSaveEnabled ? "success" : "default"}
-              variant="outlined"
-              label={
-                autoSaveEnabled
-                  ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                  : "自動存檔已關閉"
-              }
-            />
-          )}
-        </>
-      ) : (
-        <Chip label="尚未存檔" color="warning" />
-      )}
-    </Stack>
+    <WorkspaceEditorStatusInfo
+      items={editorStatusItems({
+        wordCount,
+        updatedAt: lore?.updatedAt,
+        autoSaveMinutes: apiProject
+          ? autoSaveEnabled
+            ? autoSaveIntervalMinutes
+            : null
+          : undefined,
+      })}
+    />
   );
   const loreEditorBottomStatusContent = embedded ? (
     <Stack
@@ -949,7 +935,12 @@ export default function StorytellerLoreEditor({
           variant="text"
           startIcon={<ArrowBackIcon fontSize="small" />}
           onClick={workspaceEditorBack}
-          sx={{ flexShrink: 0, color: "text.secondary" }}
+          // 手機版拿掉：麵包屑與導覽已經能回列表，把底部高度讓給編輯區
+          sx={{
+            flexShrink: 0,
+            color: "text.secondary",
+            display: { xs: "none", sm: "inline-flex" },
+          }}
         >
           回列表
         </Button>
@@ -958,18 +949,11 @@ export default function StorytellerLoreEditor({
     </Stack>
   ) : undefined;
   const loreEditorBottomActionContent = embedded ? (
-    // 按鈕內直接標出快捷鍵（Mac ⌘S／Windows Ctrl+S），不必 hover 才看得到。
-    <Button
-      size="small"
-      variant="contained"
-      startIcon={<SaveIcon />}
+    <WorkspaceEditorSaveButton
+      pending={saveLore.isPending}
       disabled={saveLore.isPending || saveSuccessTarget !== null}
       onClick={handleSave}
-      sx={{ minWidth: 88 }}
-    >
-      {saveLore.isPending ? "存檔中" : "存檔"}
-      <ShortcutHint shortcutKey="S" />
-    </Button>
+    />
   ) : undefined;
   const loreEditorHeaderContent = embedded ? (
     <Box
@@ -1027,48 +1011,60 @@ export default function StorytellerLoreEditor({
               />
             }
           />
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            <WorkspaceEditorSelectButton
-              icon={<FolderIcon fontSize="small" />}
-              label="分類"
-              value={selectedCollectionId}
-              options={collectionOptions}
-              disabled={loreCollectionsLoading}
-              onChange={setSelectedCollectionId}
-            />
-            {apiProject && (
+          <WorkspaceEditorMetaPanel
+            items={[
+              {
+                icon: <FolderIcon />,
+                text: selectedOptionLabel(
+                  collectionOptions,
+                  selectedCollectionId,
+                ),
+              },
+            ]}
+          >
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <WorkspaceEditorSelectButton
-                icon={<ScheduleIcon fontSize="small" />}
-                label="自動存檔"
-                value={autoSaveSelectValue}
-                options={autoSaveOptions}
-                onChange={(value) =>
-                  handleAutoSaveSelectChange(value as AutoSaveSelectValue)
-                }
-              >
-                {autoSaveSelectValue === "custom" && (
-                  <TextField
-                    type="number"
-                    size="small"
-                    label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
-                    value={autoSaveIntervalInput}
-                    slotProps={{
-                      htmlInput: {
-                        min: autoSaveIntervalMinutesMin,
-                        max: autoSaveIntervalMinutesMax,
-                        step: 1,
-                      },
-                    }}
-                    onChange={(event) =>
-                      setAutoSaveIntervalInput(event.target.value)
-                    }
-                    onBlur={commitAutoSaveInterval}
-                    sx={{ width: 140 }}
-                  />
-                )}
-              </WorkspaceEditorSelectButton>
-            )}
-          </Stack>
+                icon={<FolderIcon fontSize="small" />}
+                label="分類"
+                value={selectedCollectionId}
+                options={collectionOptions}
+                disabled={loreCollectionsLoading}
+                onChange={setSelectedCollectionId}
+              />
+              {apiProject && (
+                <WorkspaceEditorSelectButton
+                  icon={<ScheduleIcon fontSize="small" />}
+                  label="自動存檔"
+                  value={autoSaveSelectValue}
+                  options={autoSaveOptions}
+                  onChange={(value) =>
+                    handleAutoSaveSelectChange(value as AutoSaveSelectValue)
+                  }
+                >
+                  {autoSaveSelectValue === "custom" && (
+                    <TextField
+                      type="number"
+                      size="small"
+                      label={`${autoSaveIntervalMinutesMin}-${autoSaveIntervalMinutesMax} 分鐘`}
+                      value={autoSaveIntervalInput}
+                      slotProps={{
+                        htmlInput: {
+                          min: autoSaveIntervalMinutesMin,
+                          max: autoSaveIntervalMinutesMax,
+                          step: 1,
+                        },
+                      }}
+                      onChange={(event) =>
+                        setAutoSaveIntervalInput(event.target.value)
+                      }
+                      onBlur={commitAutoSaveInterval}
+                      sx={{ width: 140 }}
+                    />
+                  )}
+                </WorkspaceEditorSelectButton>
+              )}
+            </Stack>
+          </WorkspaceEditorMetaPanel>
         </Stack>
       </Box>
     </Box>

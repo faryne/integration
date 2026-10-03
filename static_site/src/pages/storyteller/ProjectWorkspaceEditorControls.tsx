@@ -1,22 +1,222 @@
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import SaveIcon from "@mui/icons-material/Save";
 import {
   Box,
   Button,
+  ButtonBase,
   Checkbox,
+  ClickAwayListener,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
   Stack,
+  Tooltip,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
+import {
+  selectedOptionLabel,
+  selectedOptionsLabel,
+  type WorkspaceEditorSelectOption,
+} from "./workspaceEditorOptions.ts";
 
-export interface WorkspaceEditorSelectOption {
-  value: string;
-  label: string;
-  icon?: ReactNode;
+// 編輯頁的手機版斷點：跟 StoryEditor 工具列的 compact 判斷一致（< sm）
+function useWorkspaceEditorCompact() {
+  const theme = useTheme();
+  return useMediaQuery(theme.breakpoints.down("sm"));
+}
+
+export interface WorkspaceEditorMetaItem {
+  icon: ReactNode;
+  text: string;
+}
+
+// 標題下方的屬性按鈕列＋摘要。手機版收成一行摘要（例如「未公開 · 起源故事 · 本人」），
+// 點了才展開成完整的按鈕與摘要，把高度讓給編輯區；桌機直接顯示 children。每次進頁預設收起。
+export function WorkspaceEditorMetaPanel({
+  items,
+  children,
+}: {
+  items: WorkspaceEditorMetaItem[];
+  children: ReactNode;
+}) {
+  const compact = useWorkspaceEditorCompact();
+  const [expanded, setExpanded] = useState(false);
+  if (!compact) return <>{children}</>;
+  return (
+    <Stack spacing={1}>
+      <ButtonBase
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+        sx={{
+          justifyContent: "flex-start",
+          gap: 1,
+          px: 0.5,
+          py: 0.5,
+          borderRadius: 1,
+          color: "text.secondary",
+          textAlign: "left",
+        }}
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.5}
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            overflow: "hidden",
+            whiteSpace: "nowrap",
+            "& svg": { fontSize: 15 },
+          }}
+        >
+          {items.map((item, index) => (
+            <Stack
+              key={index}
+              direction="row"
+              alignItems="center"
+              spacing={0.4}
+              // 只有長的項目（筆名、冊名）可以被截斷，「公開中」這類短字維持完整
+              sx={{ flexShrink: item.text.length > 6 ? 1 : 0, minWidth: 0 }}
+            >
+              {index > 0 && <Typography variant="caption">·</Typography>}
+              {item.icon}
+              <Typography
+                variant="caption"
+                color="text.primary"
+                fontWeight={700}
+                noWrap
+              >
+                {item.text}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+        <Typography
+          variant="caption"
+          color="primary"
+          fontWeight={700}
+          sx={{ flexShrink: 0, display: "flex", alignItems: "center" }}
+        >
+          {expanded ? "收起" : "屬性與摘要"}
+          {expanded ? (
+            <ExpandLessIcon fontSize="small" />
+          ) : (
+            <ExpandMoreIcon fontSize="small" />
+          )}
+        </Typography>
+      </ButtonBase>
+      {expanded && children}
+    </Stack>
+  );
+}
+
+export interface WorkspaceEditorStatusItem {
+  icon: ReactNode;
+  // hover／點擊時顯示的完整說明，例如「2,187 字」「每 5 分鐘自動存檔」
+  detail: string;
+  // success：自動存檔開啟；warning：尚未存檔等需要注意的狀態
+  tone?: "success" | "warning";
+}
+
+// 字數／更新時間／自動存檔：只放 icon（跟工具列擠同一行），hover／點擊才顯示完整說明；
+// 狀態靠 icon 顏色表達（自動存檔開啟綠色、尚未存檔警告色）。
+export function WorkspaceEditorStatusInfo({
+  items,
+}: {
+  items: WorkspaceEditorStatusItem[];
+}) {
+  return (
+    <Stack direction="row" alignItems="center" sx={{ minWidth: 0 }}>
+      {items.map((item) => (
+        <WorkspaceEditorStatusEntry key={item.detail} item={item} />
+      ))}
+    </Stack>
+  );
+}
+
+// 單一狀態項目：滑鼠 hover 顯示；觸控點一下顯示、點旁邊關閉
+// （MUI Tooltip 在觸控裝置預設要長按，所以關掉它的 touch listener 改用 onClick 開啟）。
+function WorkspaceEditorStatusEntry({
+  item,
+}: {
+  item: WorkspaceEditorStatusItem;
+}) {
+  const [open, setOpen] = useState(false);
+  const color =
+    item.tone === "warning"
+      ? "warning.main"
+      : item.tone === "success"
+        ? "success.main"
+        : "text.secondary";
+  return (
+    <ClickAwayListener onClickAway={() => setOpen(false)}>
+      <span>
+        <Tooltip
+          arrow
+          open={open}
+          onOpen={() => setOpen(true)}
+          onClose={() => setOpen(false)}
+          disableTouchListener
+          title={item.detail}
+        >
+          <ButtonBase
+            aria-label={item.detail}
+            onClick={() => setOpen(true)}
+            sx={{
+              p: 0.5,
+              borderRadius: 1,
+              color,
+              "& svg": { fontSize: 18 },
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            {item.icon}
+          </ButtonBase>
+        </Tooltip>
+      </span>
+    </ClickAwayListener>
+  );
+}
+
+// 編輯頁底部的存檔按鈕（故事／設定共用）。桌機在按鈕內直接標出快捷鍵（⌘S／Ctrl+S）；
+// 手機只留 icon，讓狀態 icon、工具列、存檔擠得進同一行。
+export function WorkspaceEditorSaveButton({
+  pending,
+  disabled,
+  onClick,
+}: {
+  pending: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  const label = pending ? "存檔中" : "存檔";
+  return (
+    <Button
+      size="small"
+      variant="contained"
+      aria-label={label}
+      startIcon={<SaveIcon />}
+      disabled={disabled}
+      onClick={onClick}
+      sx={{
+        minWidth: { xs: 36, sm: 88 },
+        px: { xs: 1, sm: 1.25 },
+        "& .MuiButton-startIcon": { mx: { xs: 0, sm: undefined } },
+      }}
+    >
+      <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+        {label}
+        <ShortcutHint shortcutKey="S" />
+      </Box>
+    </Button>
+  );
 }
 
 // 嵌入編輯器（故事/圖像/設定集/資產）標題列共用排版——標題（WorkspaceEditableTitle）
@@ -67,7 +267,8 @@ export function WorkspaceEditableTitle({
         bgcolor: "transparent",
         color: "text.primary",
         font: "inherit",
-        fontSize: { xs: 34, md: 44 },
+        // 手機版縮小，避免標題吃掉編輯區的高度
+        fontSize: { xs: 22, sm: 34, md: 44 },
         fontWeight: 800,
         lineHeight: 1.16,
         letterSpacing: 0,
@@ -141,7 +342,6 @@ export function WorkspaceEditorSelectButton({
   children?: ReactNode;
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const selected = options.find((option) => option.value === value);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
       <Button
@@ -165,7 +365,7 @@ export function WorkspaceEditorSelectButton({
             {label}
           </Typography>
           <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selected?.label ?? "未設定"}
+            {selectedOptionLabel(options, value)}
           </Typography>
         </Stack>
       </Button>
@@ -210,9 +410,6 @@ export function WorkspaceEditorMultiSelectButton({
   onChange: (values: string[]) => void;
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const selectedLabels = options
-    .filter((option) => values.includes(option.value))
-    .map((option) => option.label);
   return (
     <Stack spacing={0.75} alignItems="flex-start">
       <Button
@@ -236,7 +433,7 @@ export function WorkspaceEditorMultiSelectButton({
             {label}
           </Typography>
           <Typography variant="body2" color="text.primary" fontWeight={700}>
-            {selectedLabels.join("、") || "未設定"}
+            {selectedOptionsLabel(options, values)}
           </Typography>
         </Stack>
       </Button>

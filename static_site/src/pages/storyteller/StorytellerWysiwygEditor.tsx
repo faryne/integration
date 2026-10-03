@@ -1610,7 +1610,8 @@ function StorytellerWysiwygBottomBar({
         useFlexGap
         sx={{ minHeight: 34 }}
       >
-        <Box sx={{ flex: "1 1 360px", minWidth: 0 }}>{status}</Box>
+        {/* 狀態已收成 icon（WorkspaceEditorStatusInfo），不再預留 360px，手機上才能跟工具列擠同一行 */}
+        <Box sx={{ flex: "1 1 auto", minWidth: 0 }}>{status}</Box>
         <Stack
           direction="row"
           spacing={0.5}
