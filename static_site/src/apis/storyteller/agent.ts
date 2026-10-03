@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-query";
 import type { CommonResponse } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 import type {
   StorytellerAgent,
   StorytellerAgenticChatResponse,
@@ -195,7 +196,9 @@ export function useStorytellerAssistantMemoryDraft(publicId: string | null) {
       session?.user.id,
       publicId,
     ],
-    enabled: Boolean(session?.encrypt_key && publicId),
+    enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
+      Boolean(session?.encrypt_key && publicId),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAssistantMemoryDraft>
@@ -317,7 +320,7 @@ export function useStorytellerAgents() {
   const { session } = useAuth();
   return useQuery({
     queryKey: ["storyteller", "agents", session?.user.id],
-    enabled: Boolean(session?.encrypt_key),
+    enabled: STORYTELLER_AI_ASSISTANT_ENABLED && Boolean(session?.encrypt_key),
     queryFn: async () => {
       const response = await axios.get<CommonResponse<StorytellerAgent[]>>(
         `${apiBase}/storyteller/agents`,
@@ -332,7 +335,7 @@ export function useStorytellerAgentProviderModels() {
   const { session } = useAuth();
   return useQuery({
     queryKey: ["storyteller", "agent-provider-models", session?.user.id],
-    enabled: Boolean(session?.encrypt_key),
+    enabled: STORYTELLER_AI_ASSISTANT_ENABLED && Boolean(session?.encrypt_key),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAgentProviderModels[]>
@@ -348,7 +351,7 @@ export function useStorytellerProviderAPIKeys() {
   const { session } = useAuth();
   return useQuery({
     queryKey: ["storyteller", "provider-apikeys", session?.user.id],
-    enabled: Boolean(session?.encrypt_key),
+    enabled: STORYTELLER_AI_ASSISTANT_ENABLED && Boolean(session?.encrypt_key),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerProviderAPIKey[]>
@@ -438,7 +441,9 @@ export function useStorytellerProviderAPIKeyModels(
   const { session } = useAuth();
   return useQuery({
     queryKey: providerAPIKeyModelsQueryKey(session?.user.id, apiKeyId),
-    enabled: Boolean(session?.encrypt_key && apiKeyId),
+    enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
+      Boolean(session?.encrypt_key && apiKeyId),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerProviderAPIKeyModel[]>
@@ -606,7 +611,10 @@ export function useStorytellerAgentUsageSummary(month: string) {
   const { session } = useAuth();
   return useQuery({
     queryKey: ["storyteller", "usage-summary", session?.user.id, month],
-    enabled: Boolean(session?.encrypt_key) && Boolean(month),
+    enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
+      Boolean(session?.encrypt_key) &&
+      Boolean(month),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAgentUsageSummaryRow[]>
@@ -643,6 +651,7 @@ export function useStorytellerAgentUsageLogs(
       perPage,
     ],
     enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
       Boolean(session?.encrypt_key) &&
       Boolean(month) &&
       (storyId !== null || loreId !== null),
@@ -705,7 +714,9 @@ export function useStorytellerAgentPromptVersions(agentId?: number) {
       agentId,
       session?.user.id,
     ],
-    enabled: Boolean(session?.encrypt_key && agentId),
+    enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
+      Boolean(session?.encrypt_key && agentId),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAgentPromptVersion[]>
@@ -730,7 +741,9 @@ export function useStorytellerAgentPromptVersion(
       versionId,
       session?.user.id,
     ],
-    enabled: Boolean(session?.encrypt_key && agentId && versionId),
+    enabled:
+      STORYTELLER_AI_ASSISTANT_ENABLED &&
+      Boolean(session?.encrypt_key && agentId && versionId),
     queryFn: async () => {
       const response = await axios.get<
         CommonResponse<StorytellerAgentPromptVersion>

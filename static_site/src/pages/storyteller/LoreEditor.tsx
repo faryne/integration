@@ -35,6 +35,7 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
+  STORYTELLER_AI_ASSISTANT_ENABLED,
   STORYTELLER_APP_NAME,
   storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
@@ -1231,43 +1232,50 @@ export default function StorytellerLoreEditor({
             exportBaseName={title}
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiLore?.public_id)}
-            onSelectionAgentTrigger={handleSelectionAgentTrigger}
+            // AI 助理停用時不傳 trigger：編輯器的「問 AI」入口（/、右鍵、浮動選單）會一併消失
+            onSelectionAgentTrigger={
+              STORYTELLER_AI_ASSISTANT_ENABLED
+                ? handleSelectionAgentTrigger
+                : undefined
+            }
             inlineAssistantOpen={aiWorkspaceOpen}
             inlineAssistantAnchorMarkerId={aiAnchorMarkerId}
             inlineAssistant={
-              <StorytellerAgenticPanel
-                targetKind="lore"
-                presentation="workspace"
-                onClose={() => handleSidePanelChange(null)}
-                projectPublicId={apiProject?.public_id}
-                targetPublicId={apiLore?.public_id}
-                agents={panelAgents}
-                currentStory={{
-                  title: title.trim() || apiLore?.title || "",
-                  summary: "",
-                  content,
-                  versionId: apiLore?.latest_version_id ?? null,
-                  updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
-                }}
-                otherStories={apiStories.map((item) => ({
-                  id: item.public_id,
-                  title: item.title,
-                  content: item.latest_content,
-                }))}
-                lores={apiLores
-                  .filter((item) => item.public_id !== apiLore?.public_id)
-                  .map((item) => ({
+              STORYTELLER_AI_ASSISTANT_ENABLED ? (
+                <StorytellerAgenticPanel
+                  targetKind="lore"
+                  presentation="workspace"
+                  onClose={() => handleSidePanelChange(null)}
+                  projectPublicId={apiProject?.public_id}
+                  targetPublicId={apiLore?.public_id}
+                  agents={panelAgents}
+                  currentStory={{
+                    title: title.trim() || apiLore?.title || "",
+                    summary: "",
+                    content,
+                    versionId: apiLore?.latest_version_id ?? null,
+                    updatedAt: apiLore?.updated_at ?? new Date().toISOString(),
+                  }}
+                  otherStories={apiStories.map((item) => ({
                     id: item.public_id,
                     title: item.title,
                     content: item.latest_content,
                   }))}
-                penName={userProfile?.pen_name}
-                onApplyText={applyAgentText}
-                onApplyProposalToEditor={applyAgenticProposalToEditor}
-                hasUnsavedChanges={hasUnsavedLoreChanges}
-                onSaveBeforeApply={handleSave}
-                pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
-              />
+                  lores={apiLores
+                    .filter((item) => item.public_id !== apiLore?.public_id)
+                    .map((item) => ({
+                      id: item.public_id,
+                      title: item.title,
+                      content: item.latest_content,
+                    }))}
+                  penName={userProfile?.pen_name}
+                  onApplyText={applyAgentText}
+                  onApplyProposalToEditor={applyAgenticProposalToEditor}
+                  hasUnsavedChanges={hasUnsavedLoreChanges}
+                  onSaveBeforeApply={handleSave}
+                  pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+                />
+              ) : undefined
             }
             onRequestInsertAsset={
               project ? () => setAssetPickerOpen(true) : undefined

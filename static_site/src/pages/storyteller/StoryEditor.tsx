@@ -44,6 +44,7 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
+  STORYTELLER_AI_ASSISTANT_ENABLED,
   STORYTELLER_APP_NAME,
   storytellerAgents,
   storytellerVersionSourceLabel,
@@ -1632,33 +1633,40 @@ export default function StorytellerStoryEditor({
             exportBaseName={storyTitle}
             projectPublicId={apiProject?.public_id}
             hasSavedTarget={Boolean(apiStory?.public_id)}
-            onSelectionAgentTrigger={handleSelectionAgentTrigger}
+            // AI 助理停用時不傳 trigger：編輯器的「問 AI」入口（/、右鍵、浮動選單）會一併消失
+            onSelectionAgentTrigger={
+              STORYTELLER_AI_ASSISTANT_ENABLED
+                ? handleSelectionAgentTrigger
+                : undefined
+            }
             inlineAssistantOpen={aiWorkspaceOpen}
             inlineAssistantAnchorMarkerId={aiAnchorMarkerId}
             inlineAssistant={
-              <StorytellerAgenticPanel
-                targetKind="story"
-                presentation="workspace"
-                onClose={() => handleSidePanelChange(null)}
-                projectPublicId={apiProject?.public_id}
-                targetPublicId={apiStory?.public_id}
-                agents={panelAgents}
-                currentStory={{
-                  title: storyTitle,
-                  summary: storySummary,
-                  content,
-                  versionId: apiStory?.latest_version_id ?? null,
-                  updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
-                }}
-                otherStories={agenticOtherStories}
-                lores={agenticLores}
-                penName={userProfile?.pen_name}
-                onApplyText={applyAgentText}
-                onApplyProposalToEditor={applyAgenticProposalToEditor}
-                hasUnsavedChanges={hasUnsavedStoryChanges}
-                onSaveBeforeApply={handleSaveStory}
-                pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
-              />
+              STORYTELLER_AI_ASSISTANT_ENABLED ? (
+                <StorytellerAgenticPanel
+                  targetKind="story"
+                  presentation="workspace"
+                  onClose={() => handleSidePanelChange(null)}
+                  projectPublicId={apiProject?.public_id}
+                  targetPublicId={apiStory?.public_id}
+                  agents={panelAgents}
+                  currentStory={{
+                    title: storyTitle,
+                    summary: storySummary,
+                    content,
+                    versionId: apiStory?.latest_version_id ?? null,
+                    updatedAt: apiStory?.updated_at ?? new Date().toISOString(),
+                  }}
+                  otherStories={agenticOtherStories}
+                  lores={agenticLores}
+                  penName={userProfile?.pen_name}
+                  onApplyText={applyAgentText}
+                  onApplyProposalToEditor={applyAgenticProposalToEditor}
+                  hasUnsavedChanges={hasUnsavedStoryChanges}
+                  onSaveBeforeApply={handleSaveStory}
+                  pendingSelectionAgentTrigger={pendingSelectionAgentTrigger}
+                />
+              ) : undefined
             }
             onRequestInsertAsset={
               apiProject ? () => setAssetPickerOpen(true) : undefined

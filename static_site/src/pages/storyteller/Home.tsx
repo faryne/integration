@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import {
   Link as RouterLink,
+  Navigate,
   useLocation,
   useNavigate,
   useParams,
@@ -21,7 +22,10 @@ import {
   useStorytellerProjects,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
-import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import {
+  STORYTELLER_AI_ASSISTANT_ENABLED,
+  STORYTELLER_APP_NAME,
+} from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { AgentCards, ProjectCards } from "@/pages/storyteller/HomeCards.tsx";
@@ -30,6 +34,7 @@ import {
   HomeSidebar,
 } from "@/pages/storyteller/HomeSidebar.tsx";
 import {
+  isStorytellerHomeTabEnabled,
   tabBreadcrumbLabel,
   tabPath,
   type StorytellerHomeTab,
@@ -134,6 +139,14 @@ export default function StorytellerHome() {
     navigate(steamloomPath(isProjectFormRoute ? "my/projects" : "my/agent"));
   }
 
+  // AI 助理停用時，Skill／金鑰管理／用量報表的舊網址與書籤一律轉回創作專案
+  if (
+    !isStorytellerHomeTabEnabled(activeTab) ||
+    (isAgentFormRoute && !STORYTELLER_AI_ASSISTANT_ENABLED)
+  ) {
+    return <Navigate to={steamloomPath("my/projects")} replace />;
+  }
+
   if (loading) {
     return (
       <WorkspaceChrome
@@ -186,7 +199,9 @@ export default function StorytellerHome() {
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={`${projects.length} 個創作專案`} />
-            <Chip size="small" label={`${agents.length} 個 Skill`} />
+            {STORYTELLER_AI_ASSISTANT_ENABLED && (
+              <Chip size="small" label={`${agents.length} 個 Skill`} />
+            )}
           </Stack>
         )
       }

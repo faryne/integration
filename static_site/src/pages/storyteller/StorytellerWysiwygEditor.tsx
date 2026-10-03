@@ -1199,7 +1199,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             editor={editor}
             commandContext={commandContext}
             hasSavedTarget={hasSavedTarget}
-            onRequestAI={handleRequestAI}
+            onRequestAI={onSelectionAgentTrigger ? handleRequestAI : undefined}
           />
           <StorytellerWysiwygTableMenu editor={editor} />
           {inlineAssistantHost && inlineAssistant
@@ -1235,7 +1235,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         hasSavedTarget={hasSavedTarget}
         isCurrentParagraphEmpty={editorState.isCurrentParagraphEmpty}
         hasAssetImage={editorState.hasAssetImage}
-        onRequestAI={handleRequestAI}
+        onRequestAI={onSelectionAgentTrigger ? handleRequestAI : undefined}
         canWritingBookmark={Boolean(
           onAddBookmark && onSaveBookmarkNote && onRemoveBookmark,
         )}

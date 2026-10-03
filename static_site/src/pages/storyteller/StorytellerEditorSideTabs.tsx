@@ -8,6 +8,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 
 // "ai" 是既有單輪、無工具呼叫能力的改寫/擴寫/翻譯 skill 面板；"agentic" 是 AAS
 // 多輪、會自己呼叫工具查資料／提出修改提案的問答面板，兩者刻意分開，不是同一個
@@ -63,16 +64,19 @@ export function StorytellerEditorSideTabs({
           <HistoryIcon fontSize="small" sx={compactIconSx} />
         </Tooltip>
       </ToggleButton>
-      <ToggleButton
-        value="agentic"
-        disabled={agenticDisabled}
-        aria-label="AI 助理"
-        sx={compactButtonSx}
-      >
-        <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
-          <AutoAwesomeIcon fontSize="small" sx={compactIconSx} />
-        </Tooltip>
-      </ToggleButton>
+      {/* AI 助理停用時連 ✦ 按鈕都不顯示（見 STORYTELLER_AI_ASSISTANT_ENABLED） */}
+      {STORYTELLER_AI_ASSISTANT_ENABLED && (
+        <ToggleButton
+          value="agentic"
+          disabled={agenticDisabled}
+          aria-label="AI 助理"
+          sx={compactButtonSx}
+        >
+          <Tooltip title="AI 助理（會自己讀資料、可提出修改提案，也可以打 / 觸發改寫/擴寫/翻譯）">
+            <AutoAwesomeIcon fontSize="small" sx={compactIconSx} />
+          </Tooltip>
+        </ToggleButton>
+      )}
     </ToggleButtonGroup>
   );
 }

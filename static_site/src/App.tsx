@@ -18,6 +18,7 @@ import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { trackPageView } from "@/lib/analytics.ts";
 import { isGalgameSite } from "@/helpers/galgame.ts";
 import { isNekomaidSite } from "@/helpers/nekomaid.ts";
+import { STORYTELLER_AI_ASSISTANT_ENABLED } from "@/data/storyteller.ts";
 import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { useMaintenanceState } from "@/apis/maintenanceStore.ts";
 import { loadStorytellerProjectWorkspace } from "@/pages/storyteller/storytellerRoutePreload.ts";
@@ -310,7 +311,14 @@ const storytellerRoutes = (
       />
       <Route
         path={"agent/:agentId/diff/:diffId1/:diffId2"}
-        element={<StorytellerAgentDiffCompare />}
+        element={
+          // AI 助理停用時 Skill 相關頁面一律轉回創作專案
+          STORYTELLER_AI_ASSISTANT_ENABLED ? (
+            <StorytellerAgentDiffCompare />
+          ) : (
+            <Navigate to={steamloomPath("my/projects")} replace />
+          )
+        }
       />
       <Route
         path={"project/:id/story/:storyId/diff"}

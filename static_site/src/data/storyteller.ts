@@ -3,6 +3,12 @@ import { steamloomPath } from "@/helpers/steamloom.ts";
 // 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
 export const STORYTELLER_APP_NAME = "SteamLoom";
 
+// 站內 AI 助理開關（對應後端 STORYTELLER_AI_ASSISTANT_ENABLED）：2026-10-03 起刻意停用，
+// 改以 MCP 為主要 AI 路徑；關閉時藏起編輯器「問 AI」、Skill／金鑰管理／用量報表入口，
+// AI 相關 query 也不發請求。程式碼暫時保留，本機要測試時設 VITE_STORYTELLER_AI_ASSISTANT_ENABLED=true。
+export const STORYTELLER_AI_ASSISTANT_ENABLED =
+  import.meta.env.VITE_STORYTELLER_AI_ASSISTANT_ENABLED === "true";
+
 // 專案公開範圍的中文名稱；專案卡片選單與稽核紀錄的欄位差異共用同一份，避免兩邊講法不同。
 export const STORYTELLER_VISIBILITY_LABELS = {
   private: "私密",

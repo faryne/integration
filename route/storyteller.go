@@ -6,6 +6,7 @@ import (
 	"faryne.dev/controller/storyteller"
 	"faryne.dev/controller/storytelleroauth"
 	"faryne.dev/middleware/authsession"
+	storytellerAI "faryne.dev/middleware/storytellerai"
 	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
@@ -35,6 +36,9 @@ func Storyteller(app *fiber.App) {
 	}
 
 	authenticated := group.Group("", authsession.New(authService.BrandStoryteller), storytellerAudit.WebSuccess())
+	// 站內 AI 助理（agent chat、API key、Skill、用量、記憶草稿、AI 提案）的路由逐條掛 aiGate；
+	// 不能用空前綴 group 包住——Fiber 的 group middleware 會套到之後註冊的所有路由。
+	aiGate := storytellerAI.Gate()
 	// sliding TTL 續期用（前端 touchAuthSession），純粹靠這個 group 的 brand 檢查生效，
 	// handler 本身跟主站共用（無狀態、只回 active:true，不用另外寫一份）。
 	authenticated.Get("/auth/session", auth.GetSession)
@@ -78,14 +82,14 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)
 	authenticated.Delete("/oauth/grants/:grant", storytelleroauth.RevokeGrant)
 
-	authenticated.Get("/provider-apikeys", storyteller.ProviderAPIKeys)
-	authenticated.Post("/provider-apikeys", storyteller.CreateProviderAPIKey)
-	authenticated.Put("/provider-apikeys/:apikey", storyteller.UpdateProviderAPIKey)
-	authenticated.Delete("/provider-apikeys/:apikey", storyteller.DeleteProviderAPIKey)
-	authenticated.Get("/provider-apikeys/:apikey/models", storyteller.ProviderAPIKeyModels)
-	authenticated.Post("/provider-apikeys/:apikey/models", storyteller.CreateProviderAPIKeyModel)
-	authenticated.Delete("/provider-apikeys/:apikey/models/:model", storyteller.DeleteProviderAPIKeyModel)
-	authenticated.Post("/provider-apikeys/:apikey/test-connection", storyteller.TestProviderAPIKey)
+	authenticated.Get("/provider-apikeys", aiGate, storyteller.ProviderAPIKeys)
+	authenticated.Post("/provider-apikeys", aiGate, storyteller.CreateProviderAPIKey)
+	authenticated.Put("/provider-apikeys/:apikey", aiGate, storyteller.UpdateProviderAPIKey)
+	authenticated.Delete("/provider-apikeys/:apikey", aiGate, storyteller.DeleteProviderAPIKey)
+	authenticated.Get("/provider-apikeys/:apikey/models", aiGate, storyteller.ProviderAPIKeyModels)
+	authenticated.Post("/provider-apikeys/:apikey/models", aiGate, storyteller.CreateProviderAPIKeyModel)
+	authenticated.Delete("/provider-apikeys/:apikey/models/:model", aiGate, storyteller.DeleteProviderAPIKeyModel)
+	authenticated.Post("/provider-apikeys/:apikey/test-connection", aiGate, storyteller.TestProviderAPIKey)
 
 	authenticated.Get("/account/audit-events", storyteller.AccountAuditEvents)
 	authenticated.Get("/account/audit-event-filters", storyteller.AccountAuditEventFilters)
@@ -108,40 +112,40 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/notifications/:notification/lock", storyteller.UnlockNotification)
 	authenticated.Delete("/notifications/:notification", storyteller.DeleteNotification)
 
-	authenticated.Get("/usage/summary", storyteller.AgentUsageSummary)
-	authenticated.Get("/usage/logs", storyteller.AgentUsageLogs)
+	authenticated.Get("/usage/summary", aiGate, storyteller.AgentUsageSummary)
+	authenticated.Get("/usage/logs", aiGate, storyteller.AgentUsageLogs)
 
-	authenticated.Get("/agents", storyteller.Agents)
-	authenticated.Get("/agents/provider-models", storyteller.AgentProviderModels)
-	authenticated.Post("/agents", storyteller.CreateAgent)
-	authenticated.Get("/agents/:agent", storyteller.Agent)
-	authenticated.Get("/agents/:agent/versions", storyteller.AgentPromptVersions)
-	authenticated.Get("/agents/:agent/versions/:version", storyteller.AgentPromptVersion)
-	authenticated.Put("/agents/:agent", storyteller.UpdateAgent)
-	authenticated.Delete("/agents/:agent", storyteller.DeleteAgent)
+	authenticated.Get("/agents", aiGate, storyteller.Agents)
+	authenticated.Get("/agents/provider-models", aiGate, storyteller.AgentProviderModels)
+	authenticated.Post("/agents", aiGate, storyteller.CreateAgent)
+	authenticated.Get("/agents/:agent", aiGate, storyteller.Agent)
+	authenticated.Get("/agents/:agent/versions", aiGate, storyteller.AgentPromptVersions)
+	authenticated.Get("/agents/:agent/versions/:version", aiGate, storyteller.AgentPromptVersion)
+	authenticated.Put("/agents/:agent", aiGate, storyteller.UpdateAgent)
+	authenticated.Delete("/agents/:agent", aiGate, storyteller.DeleteAgent)
 	// AI 助理對話：唯一的一組路由，目標（專案／故事／設定集）由請求體指定，不分 story／lore 兩套。
-	authenticated.Post("/agent-chats", storyteller.SubmitAgent)
-	authenticated.Post("/agent-chats/:chat/resend", storyteller.ResubmitAgent)
-	authenticated.Get("/agent-chats/:chat", storyteller.AgentChat)
-	authenticated.Post("/agent-chats/:chat/memory-drafts", storyteller.GenerateAssistantMemoryDraft)
-	authenticated.Get("/memory-drafts/:memory", storyteller.AssistantMemoryDraft)
-	authenticated.Post("/memory-drafts/:memory/retry", storyteller.RetryAssistantMemoryDraft)
-	authenticated.Post("/memory-drafts/:memory/confirm", storyteller.ConfirmAssistantMemoryDraft)
-	authenticated.Delete("/memory-drafts/:memory", storyteller.DeleteAssistantMemoryDraft)
+	authenticated.Post("/agent-chats", aiGate, storyteller.SubmitAgent)
+	authenticated.Post("/agent-chats/:chat/resend", aiGate, storyteller.ResubmitAgent)
+	authenticated.Get("/agent-chats/:chat", aiGate, storyteller.AgentChat)
+	authenticated.Post("/agent-chats/:chat/memory-drafts", aiGate, storyteller.GenerateAssistantMemoryDraft)
+	authenticated.Get("/memory-drafts/:memory", aiGate, storyteller.AssistantMemoryDraft)
+	authenticated.Post("/memory-drafts/:memory/retry", aiGate, storyteller.RetryAssistantMemoryDraft)
+	authenticated.Post("/memory-drafts/:memory/confirm", aiGate, storyteller.ConfirmAssistantMemoryDraft)
+	authenticated.Delete("/memory-drafts/:memory", aiGate, storyteller.DeleteAssistantMemoryDraft)
 
 	authenticated.Get("/projects/:project/stories", storyteller.Stories)
 	authenticated.Post("/projects/:project/stories", storyteller.CreateStory)
 	authenticated.Get("/projects/:project/stories/:story", storyteller.Story)
 	authenticated.Put("/projects/:project/stories/:story", storyteller.UpdateStory)
 	authenticated.Delete("/projects/:project/stories/:story", storyteller.DeleteStory)
-	authenticated.Get("/projects/:project/stories/:story/chat-messages/:message/reference-content", storyteller.StoryChatMessageReferenceContent)
-	authenticated.Get("/projects/:project/agentic-proposals/:proposal/reference-content", storyteller.AgentProposalReferenceContent)
-	authenticated.Post("/projects/:project/agentic-proposals/:proposal/preview", storyteller.PreviewAgentProposal)
-	authenticated.Post("/projects/:project/agentic-proposals/:proposal/apply", storyteller.ApplyAgentProposal)
-	authenticated.Post("/projects/:project/agentic-proposals/:proposal/mark-applied", storyteller.MarkAgentProposalApplied)
-	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reset", storyteller.ResetAgentProposal)
-	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reject", storyteller.RejectAgentProposal)
-	authenticated.Get("/projects/:project/stories/:story/chat-messages", storyteller.StoryChatMessages)
+	authenticated.Get("/projects/:project/stories/:story/chat-messages/:message/reference-content", aiGate, storyteller.StoryChatMessageReferenceContent)
+	authenticated.Get("/projects/:project/agentic-proposals/:proposal/reference-content", aiGate, storyteller.AgentProposalReferenceContent)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/preview", aiGate, storyteller.PreviewAgentProposal)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/apply", aiGate, storyteller.ApplyAgentProposal)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/mark-applied", aiGate, storyteller.MarkAgentProposalApplied)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reset", aiGate, storyteller.ResetAgentProposal)
+	authenticated.Post("/projects/:project/agentic-proposals/:proposal/reject", aiGate, storyteller.RejectAgentProposal)
+	authenticated.Get("/projects/:project/stories/:story/chat-messages", aiGate, storyteller.StoryChatMessages)
 	authenticated.Get("/projects/:project/stories/:story/versions", storyteller.StoryVersions)
 	authenticated.Get("/projects/:project/stories/:story/versions/:version", storyteller.StoryVersion)
 	authenticated.Post("/projects/:project/stories/:story/versions/:version/revert", storyteller.RevertStoryVersion)
@@ -185,8 +189,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Put("/projects/:project/lores/:lore", storyteller.UpdateLore)
 	authenticated.Put("/projects/:project/lores/:lore/move", storyteller.MoveLore)
 	authenticated.Delete("/projects/:project/lores/:lore", storyteller.DeleteLore)
-	authenticated.Get("/projects/:project/lores/:lore/chat-messages/:message/reference-content", storyteller.LoreChatMessageReferenceContent)
-	authenticated.Get("/projects/:project/lores/:lore/chat-messages", storyteller.LoreChatMessages)
+	authenticated.Get("/projects/:project/lores/:lore/chat-messages/:message/reference-content", aiGate, storyteller.LoreChatMessageReferenceContent)
+	authenticated.Get("/projects/:project/lores/:lore/chat-messages", aiGate, storyteller.LoreChatMessages)
 	authenticated.Get("/projects/:project/lores/:lore/versions", storyteller.LoreVersions)
 	authenticated.Get("/projects/:project/lores/:lore/versions/:version", storyteller.LoreVersion)
 	authenticated.Post("/projects/:project/lores/:lore/versions/:version/revert", storyteller.RevertLoreVersion)
