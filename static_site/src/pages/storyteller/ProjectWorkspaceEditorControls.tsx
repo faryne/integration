@@ -1,13 +1,11 @@
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import {
   Box,
   Button,
   ButtonBase,
   Checkbox,
   ClickAwayListener,
-  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
@@ -118,20 +116,51 @@ export function WorkspaceEditorMetaPanel({
 }
 
 export interface WorkspaceEditorStatusItem {
-  label: string;
-  // 需要注意的狀態（例如尚未存檔）：icon 會變成警告色，不點開也看得到
-  warning?: boolean;
+  icon: ReactNode;
+  // 常駐顯示的精簡值，例如「2,187」「2026/10/03 00:50:12」「開啟」
+  value: string;
+  // hover／點擊時顯示的完整說明，例如「2,187 字」「每 5 分鐘自動存檔」
+  detail: string;
+  // success：自動存檔開啟；warning：尚未存檔等需要注意的狀態
+  tone?: "success" | "warning";
 }
 
-// 字數／更新時間／自動存檔等狀態收成一個 icon：滑鼠 hover 顯示；觸控點一下顯示、點旁邊關閉
-// （MUI Tooltip 在觸控裝置預設要長按，所以關掉它的 touch listener 改用 onClick 開啟）。
+// 字數／更新時間／自動存檔：常駐一排「icon＋精簡值」，hover／點擊才顯示完整說明。
 export function WorkspaceEditorStatusInfo({
   items,
 }: {
   items: WorkspaceEditorStatusItem[];
 }) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1.25}
+      flexWrap="wrap"
+      useFlexGap
+      alignItems="center"
+      sx={{ minWidth: 0 }}
+    >
+      {items.map((item) => (
+        <WorkspaceEditorStatusEntry key={item.detail} item={item} />
+      ))}
+    </Stack>
+  );
+}
+
+// 單一狀態項目：滑鼠 hover 顯示；觸控點一下顯示、點旁邊關閉
+// （MUI Tooltip 在觸控裝置預設要長按，所以關掉它的 touch listener 改用 onClick 開啟）。
+function WorkspaceEditorStatusEntry({
+  item,
+}: {
+  item: WorkspaceEditorStatusItem;
+}) {
   const [open, setOpen] = useState(false);
-  const warning = items.some((item) => item.warning);
+  const color =
+    item.tone === "warning"
+      ? "warning.main"
+      : item.tone === "success"
+        ? "success.main"
+        : "text.secondary";
   return (
     <ClickAwayListener onClickAway={() => setOpen(false)}>
       <span>
@@ -141,22 +170,29 @@ export function WorkspaceEditorStatusInfo({
           onOpen={() => setOpen(true)}
           onClose={() => setOpen(false)}
           disableTouchListener
-          title={
-            <Stack spacing={0.25} sx={{ py: 0.25 }}>
-              {items.map((item) => (
-                <span key={item.label}>{item.label}</span>
-              ))}
-            </Stack>
-          }
+          title={item.detail}
         >
-          <IconButton
-            size="small"
-            color={warning ? "warning" : "default"}
-            aria-label={items.map((item) => item.label).join("，")}
+          <ButtonBase
+            aria-label={item.detail}
             onClick={() => setOpen(true)}
+            sx={{
+              gap: 0.5,
+              px: 0.5,
+              py: 0.25,
+              borderRadius: 1,
+              color,
+              "& svg": { fontSize: 16 },
+              "&:hover": { bgcolor: "action.hover" },
+            }}
           >
-            <InfoOutlinedIcon fontSize="small" />
-          </IconButton>
+            {item.icon}
+            <Typography
+              variant="caption"
+              sx={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {item.value}
+            </Typography>
+          </ButtonBase>
         </Tooltip>
       </span>
     </ClickAwayListener>

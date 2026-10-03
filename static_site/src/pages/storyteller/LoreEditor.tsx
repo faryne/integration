@@ -35,7 +35,6 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
-  formatStorytellerDate,
   STORYTELLER_APP_NAME,
   storytellerVersionSourceLabel,
 } from "@/data/storyteller.ts";
@@ -73,6 +72,7 @@ import {
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import { selectedOptionLabel } from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
+import { editorStatusItems } from "@/pages/storyteller/workspaceEditorStatusItems.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   applyStorytellerAgentText,
@@ -908,23 +908,15 @@ export default function StorytellerLoreEditor({
   // embedded 寫作頁則下放到底部狀態列，避免長標題被擠壓。
   const loreEditorActionContent = (
     <WorkspaceEditorStatusInfo
-      items={[
-        { label: `${wordCount.toLocaleString()} 字` },
-        ...(lore
-          ? [
-              { label: `更新於 ${formatStorytellerDate(lore.updatedAt)}` },
-              ...(apiProject
-                ? [
-                    {
-                      label: autoSaveEnabled
-                        ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                        : "自動存檔已關閉",
-                    },
-                  ]
-                : []),
-            ]
-          : [{ label: "尚未存檔", warning: true }]),
-      ]}
+      items={editorStatusItems({
+        wordCount,
+        updatedAt: lore?.updatedAt,
+        autoSaveMinutes: apiProject
+          ? autoSaveEnabled
+            ? autoSaveIntervalMinutes
+            : null
+          : undefined,
+      })}
     />
   );
   const loreEditorBottomStatusContent = embedded ? (

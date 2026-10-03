@@ -44,7 +44,6 @@ import { CustomLoginRequiredState } from "@/components/common/CustomLoginRequire
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { ShortcutHint } from "@/components/common/ShortcutHint.tsx";
 import {
-  formatStorytellerDate,
   STORYTELLER_APP_NAME,
   storytellerAgents,
   storytellerVersionSourceLabel,
@@ -88,6 +87,7 @@ import {
   selectedOptionsLabel,
 } from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
+import { editorStatusItems } from "@/pages/storyteller/workspaceEditorStatusItems.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
 import {
   applyStorytellerAgentText,
@@ -1196,30 +1196,16 @@ export default function StorytellerStoryEditor({
   // embedded 寫作頁則下放到 StoryWritingWorkspace 的底部狀態列，避免長標題被擠壓。
   const storyEditorActionContent = (
     <WorkspaceEditorStatusInfo
-      items={[
-        { label: `${wordCount.toLocaleString()} 字` },
-        ...(!embedded
-          ? [
-              {
-                label: storyStatus === "completed" ? "公開中" : "未公開",
-              },
-            ]
-          : []),
-        ...(story
-          ? [
-              { label: `更新於 ${formatStorytellerDate(story.updatedAt)}` },
-              ...(apiProject
-                ? [
-                    {
-                      label: autoSaveEnabled
-                        ? `每 ${autoSaveIntervalMinutes} 分鐘自動存檔`
-                        : "自動存檔已關閉",
-                    },
-                  ]
-                : []),
-            ]
-          : [{ label: "尚未存檔", warning: true }]),
-      ]}
+      items={editorStatusItems({
+        wordCount,
+        published: !embedded ? storyStatus === "completed" : undefined,
+        updatedAt: story?.updatedAt,
+        autoSaveMinutes: apiProject
+          ? autoSaveEnabled
+            ? autoSaveIntervalMinutes
+            : null
+          : undefined,
+      })}
     />
   );
   const storyEditorBottomStatusContent = embedded ? (
