@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>編輯區文字設定 Mockup</title>
+<style>
+/* 色調仿 steamloom 淺色主題（米色紙張）；只示意版面與互動，不是像素級還原 */
+:root { --paper:#e9e1d3; --paper-2:#e2d9c8; --surface:#f3ede2; --line:#cfc4b1; --text:#2b2722; --muted:#6f665a; --primary:#3f5fa8; --save:#b9c3d8;
+  --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; --serif:"Noto Serif TC","Songti TC",PMingLiU,serif; --system:system-ui,-apple-system,BlinkMacSystemFont,sans-serif; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:var(--sans); background:#2b2b2b; color:#eee; }
+.bar { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:6px 16px; align-items:center; padding:10px 16px; background:#1b1b1b; border-bottom:1px solid #444; }
+.bar span { color:#aaa; font-size:12px; }
+.stage { display:flex; flex-wrap:wrap; justify-content:center; gap:28px; padding:24px 12px 40px; }
+.col { display:grid; gap:8px; justify-items:center; align-content:start; }
+.col h3 { margin:0; font-size:14px; color:#ccc; }
+.col > p { margin:0; font-size:12px; color:#999; max-width:520px; text-align:center; }
+
+/* 共用：工具列 icon 與設定面板 */
+.ico { width:30px; height:30px; display:inline-grid; place-items:center; border-radius:6px; color:var(--muted); font-size:15px; cursor:pointer; user-select:none; }
+.ico:hover { background:rgba(0,0,0,.06); }
+.ico.new { color:var(--primary); outline:2px dashed rgba(63,95,168,.55); outline-offset:1px; }
+.ico.on { background:rgba(63,95,168,.14); }
+.sep { width:1px; height:20px; background:var(--line); margin:0 4px; }
+.panel { background:var(--surface); color:var(--text); border:1px solid var(--line); border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.25); padding:14px; display:grid; gap:12px; width:300px; font-size:13px; }
+.panel .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.panel .lbl { color:var(--muted); }
+.panel hr { border:0; border-top:1px solid var(--line); margin:0; }
+.panel .cap { font-size:11.5px; color:var(--muted); }
+.bg { display:inline-flex; border:1px solid var(--primary); border-radius:4px; overflow:hidden; }
+.bg button { border:0; border-left:1px solid var(--primary); background:transparent; color:var(--primary); padding:4px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+.bg button:first-child { border-left:0; }
+.bg button.sel { background:var(--primary); color:#fff; }
+.bg button:disabled { color:#9c9283; cursor:default; }
+.bg .num { min-width:42px; color:var(--text) !important; }
+
+/* 正文：三個預覽共用同一份偏好（CSS 變數） */
+.doc { font-family:var(--doc-font); font-size:var(--doc-size); line-height:var(--doc-lh); color:var(--text); }
+.doc p, .doc h1 { margin:0 0 .5em; }
+.doc h1 { font-size:1.8em; line-height:1.5; font-weight:700; }
+.doc em { color:var(--muted); }
+.caret { display:inline-block; width:2px; height:1.1em; background:var(--primary); vertical-align:-.15em; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+
+/* 桌機故事編輯頁 */
+.desk { width:860px; max-width:100%; height:560px; background:var(--paper); color:var(--text); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; position:relative; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+.desk .crumb { padding:10px 20px; font-size:12.5px; color:var(--muted); border-bottom:1px solid var(--line); }
+.desk .crumb b { color:var(--primary); }
+.desk .title { padding:14px 20px 6px; font:700 28px var(--serif); }
+.desk .tb { display:flex; justify-content:flex-end; align-items:center; gap:2px; padding:4px 16px; }
+.desk .body { flex:1; overflow:auto; padding:8px 28px 40px; }
+.desk .pop { position:absolute; right:16px; top:136px; z-index:5; }
+.desk .pop::before { content:""; position:absolute; right:52px; top:-7px; width:12px; height:12px; background:var(--surface); border-left:1px solid var(--line); border-top:1px solid var(--line); transform:rotate(45deg); }
+
+/* 手機 */
+.phone { width:375px; height:720px; background:var(--paper); color:var(--text); border-radius:18px; overflow:hidden; display:flex; flex-direction:column; position:relative; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+.phone .site { flex:0 0 48px; display:flex; align-items:center; padding:0 14px; border-bottom:1px solid var(--line); font:700 18px Georgia,serif; }
+.phone .head { padding:10px 14px 8px; border-bottom:1px solid var(--line); }
+.phone .head .t { font:900 22px var(--sans); }
+.phone .head .info { font-size:12.5px; color:var(--muted); margin-top:4px; }
+.phone .body { flex:1; min-height:0; overflow:hidden; padding:12px 14px; }
+.phone .foot { border-top:1px solid var(--line); padding:6px 10px; display:flex; align-items:center; gap:2px; }
+.phone .foot .st { display:flex; gap:2px; color:#4f8a4f; }
+.phone .foot .sp { flex:1; }
+.phone .save { background:var(--save); border-radius:6px; width:34px; height:30px; display:grid; place-items:center; font-size:14px; margin-left:4px; }
+.phone .meas { position:absolute; right:8px; bottom:46px; background:rgba(63,95,168,.9); color:#fff; font-size:11px; padding:2px 6px; border-radius:4px; }
+.sheet-mask { position:absolute; inset:0; background:rgba(0,0,0,.35); display:flex; align-items:flex-end; }
+.sheet { width:100%; background:var(--surface); color:var(--text); border-radius:14px 14px 0 0; padding:10px 16px 22px; font-size:13px; display:grid; gap:12px; }
+.sheet .grab { width:36px; height:4px; border-radius:2px; background:var(--line); justify-self:center; }
+.sheet .hd { display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:15px; }
+.sheet .row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.sheet .lbl { color:var(--muted); }
+
+/* 圖像描述對話框 */
+.dlg-wrap { width:560px; max-width:100%; height:440px; background:#555; border-radius:10px; display:grid; place-items:center; position:relative; box-shadow:0 10px 40px rgba(0,0,0,.5); overflow:hidden; }
+.dlg { width:92%; background:var(--surface); color:var(--text); border-radius:8px; display:flex; flex-direction:column; max-height:400px; }
+.dlg .dt { padding:14px 18px 6px; font-weight:700; font-size:17px; }
+.dlg .tb { display:flex; justify-content:flex-end; gap:2px; padding:0 14px; }
+.dlg .body { padding:6px 18px; min-height:150px; max-height:220px; overflow:auto; }
+.dlg .act { display:flex; justify-content:flex-end; padding:8px 14px 12px; }
+.dlg .act span { color:var(--primary); font-weight:700; font-size:14px; padding:6px 10px; }
+.dlg-wrap .pop { position:absolute; right:30px; top:96px; }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div><strong>編輯區文字設定 Mockup</strong> <span>虛線框＝新增的「文字設定」按鈕；三個畫面共用同一份偏好，改任一處其他兩處同步</span></div>
+</header>
+
+<main class="stage">
+  <div class="col">
+    <h3>① 桌機：故事／設定集編輯頁</h3>
+    <p>工具列「語法說明、匯出」旁多一顆 <b>Aa</b>，點了開 Popover（點按鈕可開關）。設定只套正文，工具列與標題列不變。</p>
+    <div class="desk">
+      <div class="crumb">首頁 / 我的專案 / <b>製作我</b> / 第八章・團結</div>
+      <div class="title">第八章・團結</div>
+      <div class="tb">
+        <span class="ico" title="插入資產">🖼</span><span class="ico" title="大綱與書籤">☰</span><span class="ico" title="編輯歷史">⟲</span>
+        <span class="sep"></span>
+        <span class="ico new on" data-toggle="deskPop" title="文字設定">Aa</span><span class="ico" title="匯出 markdown">⤓</span><span class="ico" title="語法說明">?</span>
+      </div>
+      <div class="body doc" data-doc></div>
+      <div class="pop" id="deskPop"><div class="panel" data-panel></div></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>② 手機：底部列＋bottom sheet</h3>
+    <p>底部同一行：狀態 icon｜工具列｜存檔。AI 分頁已隱藏，空出的位置給 Aa。點 Aa 開下方面板，點遮罩關閉。</p>
+    <div class="phone">
+      <div class="site">SteamLoom</div>
+      <div class="head"><div class="t">第八章・團結</div><div class="info">👁 草稿 · 📁 不分冊 · 👤 Faryne　<b style="color:var(--primary)">屬性與摘要 ▾</b></div></div>
+      <div class="body doc" data-doc></div>
+      <div class="foot">
+        <span class="st"><span class="ico" style="color:inherit">🕒</span><span class="ico" style="color:inherit">✓</span></span>
+        <span class="sp"></span>
+        <span class="ico">🖼</span><span class="ico">☰</span><span class="ico">⟲</span><span class="ico new" data-toggle="sheet">Aa</span><span class="ico">⤓</span><span class="ico">?</span>
+        <span class="save">💾</span>
+      </div>
+      <div class="sheet-mask" id="sheet" hidden data-close>
+        <div class="sheet" onclick="event.stopPropagation()">
+          <div class="grab"></div>
+          <div class="hd">文字設定 <span class="ico" data-toggle="sheet">✕</span></div>
+          <div data-panel data-bare></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <h3>③ 圖像作品：頁面描述對話框</h3>
+    <p>對話框內是同一個編輯器（沒有插入資產等額外按鈕），工具列直接出現 Aa，偏好跟故事頁共用。</p>
+    <div class="dlg-wrap">
+      <div class="dlg">
+        <div class="dt">第 3 頁描述</div>
+        <div class="tb"><span class="ico new" data-toggle="dlgPop">Aa</span><span class="ico">⤓</span><span class="ico">?</span></div>
+        <div class="body doc" data-doc-short></div>
+        <div class="act"><span>完成</span></div>
+      </div>
+      <div class="pop" id="dlgPop" hidden><div class="panel" data-panel></div></div>
+    </div>
+  </div>
+</main>
+
+<script>
+// 選項與閱讀頁共用；頁面寬度不在編輯區設定裡
+const SIZES = [15,16,17,18,19,20,21,22,23,24];
+const FONTS = [["系統","system"],["黑體","sans"],["明體","serif"]];
+const LHS = [["緊",1.7],["適中",1.95],["寬",2.2]];
+const prefs = { size:16, font:"sans", lh:1.7 };
+
+const STORY = `<h1>第一幕</h1><p><em>2026-06-01 09:10　BEST娛樂　頂樓大會議室</em></p>
+<p>直播結束第三天，我第一次以 ECHO:V 隊長的身分坐在會議桌最前面。</p>
+<p>位置其實沒有變。以前開會，我也常坐這裡。只是今天桌上多了一張黑色資料夾，封面印著 ECHO:V，右下角貼了一張白色標籤。</p>
+<p>斯凱把最後一份資料放到卡琳面前。</p><p>「出道曲的正式音源已經進入最後混音。」她說，「公司決定同步製作 MV。兩週後交片。」</p>
+<p>卡琳才剛把資料夾翻開，手就停住了。</p><p>「兩週？」<span class="caret"></span></p><p>「六月十四日以前完成。」</p>
+<p>我翻到行程頁。排舞、鏡頭測試、服裝測試、棚拍、外景、補拍、剪接。十三天，每一天都有字。</p>`;
+const SHORT = `<p>五個人站在同一片白光前，最下面寫著一句英文：WE FOUND EACH OTHER.<span class="caret"></span></p><p>這頁是 MV 概念圖的最後一張，用來收第一幕的會議。</p>`;
+document.querySelectorAll("[data-doc]").forEach((el) => (el.innerHTML = STORY));
+document.querySelectorAll("[data-doc-short]").forEach((el) => (el.innerHTML = SHORT));
+
+function group(options, value, key) {
+  return `<span class="bg">${options.map(([l, v]) => `<button class="${v === value ? "sel" : ""}" data-set="${key}" data-v="${v}">${l}</button>`).join("")}</span>`;
+}
+function panelHtml() {
+  const i = SIZES.indexOf(prefs.size);
+  return `<div class="row"><span class="lbl">字體大小</span><span class="bg">
+      <button data-step="-1" ${i === 0 ? "disabled" : ""}>A−</button><button class="num" disabled>${prefs.size}</button>
+      <button data-step="1" ${i === SIZES.length - 1 ? "disabled" : ""}>A＋</button></span></div><hr>
+    <div class="row"><span class="lbl">字體</span>${group(FONTS, prefs.font, "font")}</div>
+    <div class="row"><span class="lbl">行距</span>${group(LHS, prefs.lh, "lh")}</div>
+    <div class="cap">只影響編輯區，不會改到作品內容；閱讀頁另有自己的設定。</div>`;
+}
+function render() {
+  const root = document.documentElement.style;
+  root.setProperty("--doc-font", `var(--${prefs.font})`);
+  root.setProperty("--doc-size", prefs.size + "px");
+  root.setProperty("--doc-lh", prefs.lh);
+  document.querySelectorAll("[data-panel]").forEach((el) => {
+    el.innerHTML = panelHtml();
+    if (el.hasAttribute("data-bare")) el.style.cssText = "display:grid;gap:12px";
+  });
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-step],[data-set],[data-toggle],[data-close]");
+  if (!t) return;
+  if (t.dataset.step) prefs.size = SIZES[SIZES.indexOf(prefs.size) + Number(t.dataset.step)];
+  else if (t.dataset.set) prefs[t.dataset.set] = t.dataset.set === "lh" ? Number(t.dataset.v) : t.dataset.v;
+  else if (t.dataset.toggle) {
+    const el = document.getElementById(t.dataset.toggle);
+    el.hidden = !el.hidden;
+    document.querySelectorAll(`[data-toggle="${t.dataset.toggle}"].new`).forEach((b) => b.classList.toggle("on", !el.hidden));
+    return;
+  } else if (t.dataset.close) { t.hidden = true; return; }
+  render();
+});
+render();
+</script>
+</body>
+</html>
