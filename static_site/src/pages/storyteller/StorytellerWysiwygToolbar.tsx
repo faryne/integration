@@ -2,6 +2,7 @@ import { Box, Divider, IconButton, Paper, Tooltip } from "@mui/material";
 import type { Editor } from "@tiptap/core";
 import type { ReactNode } from "react";
 
+import { StorytellerEditorTypographyButton } from "./StorytellerEditorTypographyButton";
 import { StorytellerWysiwygSyntaxDrawer } from "./StorytellerWysiwygSyntaxDrawer";
 import {
   wysiwygCommandsByGroup,
@@ -20,7 +21,7 @@ interface StorytellerWysiwygToolbarProps {
 
 // 文件層級工具列只保留「整份文件」相關操作；行內格式主要交給 bubble menu / slash command。
 // 順序（2026-09-04 使用者定案）：呼叫端組好的 toolbarExtra（插入資產／大綱與書籤／
-// 編輯歷史／AI 助理，寫作時常用）排最前面；語法說明／匯出 markdown 這類查閱/偶爾用的
+// 編輯歷史／AI 助理，寫作時常用）排最前面；文字設定／匯出 markdown／語法說明這類偶爾用的
 // 動作排在後面、靠近存檔按鈕。
 export function StorytellerWysiwygToolbar({
   editor,
@@ -73,6 +74,7 @@ export function StorytellerWysiwygToolbar({
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
           </>
         )}
+        <StorytellerEditorTypographyButton placement={placement} />
         {utilityCommands.map((command) => {
           const Icon = command.icon!;
           return (
