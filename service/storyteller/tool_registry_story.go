@@ -381,11 +381,15 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				return storytellerStoryDetail{
+				detail := storytellerStoryDetail{
 					storytellerStorySummary: toStorytellerStorySummary(*story),
 					Content:                 story.LatestContent,
 					VersionID:               derefUint64(story.LatestVersionID),
-				}, nil
+				}
+				if story.ContentType != storytellerModel.ProjectContentTypeImage {
+					detail.FormatWarnings = storyFormatWarningsAfterSave(story.LatestContent)
+				}
+				return detail, nil
 			},
 		},
 
@@ -471,7 +475,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				pattern, err := compileStorytellerSearchPattern(args.Search, args.IsRegex)
+				pattern, replace, err := compileStorytellerSearchReplace(args.Search, args.Replace, args.IsRegex)
 				if err != nil {
 					return nil, err
 				}
@@ -480,7 +484,7 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				replaceResult, err := replaceStoryContent(current.ContentType, current.LatestContent, pattern, args.Replace)
+				replaceResult, err := replaceStoryContent(current.ContentType, current.LatestContent, pattern, replace)
 				if err != nil {
 					return nil, err
 				}
@@ -749,23 +753,29 @@ func mergeStoryPatch(story *storytellerModel.Story, args storytellerPatchStoryAr
 	return input
 }
 
-func compileStorytellerSearchPattern(search string, isRegex bool) (*regexp.Regexp, error) {
+// compileStorytellerSearchReplace 編譯 search pattern，並回傳實際要交給 ReplaceAllString 的 replace 模板。
+//
+// literal 模式（isRegex=false）下 search 用 QuoteMeta 當純文字，replace 也必須是純文字：
+// ReplaceAllString 會把 replace 裡的 `$1`、`$name` 展開成群組參照，literal 模式沒有群組，
+// 「售價 $100 元」會被默默吃成「售價  元」。這裡把 `$` 跳脫成 `$$`，讓兩邊都名副其實是 literal。
+func compileStorytellerSearchReplace(search, replace string, isRegex bool) (*regexp.Regexp, string, error) {
 	pattern := search
 	if !isRegex {
 		pattern = regexp.QuoteMeta(search)
+		replace = strings.ReplaceAll(replace, "$", "$$")
 	}
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("invalid search pattern: %w", err)
+		return nil, "", fmt.Errorf("invalid search pattern: %w", err)
 	}
 	// 空字串或能配到零寬度的 regex（例如 "x*"、"a?"、"^"）會讓 FindAllStringIndex/
 	// ReplaceAllString 在原內容「每個字元之間」都算命中一次：換行結果是 replace 被插進
 	// 每個字元的縫隙，整篇內容膨脹成 replace 複製貼上 N 次、中間夾雜原內容零星單字元碎片
 	// （N ≈ 原內容 rune 數）。這裡在編譯階段就擋掉，避免存到毀損內容。
 	if re.MatchString("") {
-		return nil, errors.New("search pattern must not match an empty string (it would insert replace between every character)")
+		return nil, "", errors.New("search pattern must not match an empty string (it would insert replace between every character)")
 	}
-	return re, nil
+	return re, replace, nil
 }
 
 func replaceStoryContent(contentType storytellerModel.ProjectContentType, rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
@@ -843,6 +853,8 @@ func storytellerStoryDetailForOutput(service *Service, userID uint64, projectPub
 		detail.Pages = pages
 	} else {
 		detail.Content = story.LatestContent
+		// 這個函式只被寫入工具呼叫（含搜尋取代沒命中、只改署名），回傳時順便附上格式檢查
+		detail.FormatWarnings = storyFormatWarningsAfterSave(story.LatestContent)
 	}
 	return detail, nil
 }

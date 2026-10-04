@@ -288,6 +288,7 @@ func deleteStoryChapter(ctx context.Context, arguments map[string]interface{}) (
 		VersionID:             derefUint64(story.LatestVersionID),
 		VersionConflict:       conflicted,
 		RemainingChapterCount: len(storyChapterSpans(story.LatestContent)),
+		FormatWarnings:        storyFormatWarningsAfterSave(story.LatestContent),
 	}, nil
 }
 
@@ -387,5 +388,6 @@ func deleteLoreChapter(ctx context.Context, arguments map[string]interface{}) (i
 		VersionID:             derefUint64(lore.LatestVersionID),
 		VersionConflict:       conflicted,
 		RemainingChapterCount: len(storyChapterSpans(lore.LatestContent)),
+		FormatWarnings:        storyFormatWarningsAfterSave(lore.LatestContent),
 	}, nil
 }

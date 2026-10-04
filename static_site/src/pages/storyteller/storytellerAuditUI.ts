@@ -116,6 +116,7 @@ export const auditActionLabels: Record<string, string> = {
   "asset_collection.list": "讀取資產集列表",
   "memory.list": "讀取梭梭記憶",
   "memory.search": "搜尋梭梭記憶",
+  "content.validate": "檢查內容格式",
   "author_profile.list": "讀取作者頁列表",
   "audit.archive_query.create": "查詢封存稽核紀錄",
   "system.audit.export": "匯出稽核封存",

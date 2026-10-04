@@ -43,6 +43,7 @@ func StorytellerToolDocCategories() []ToolDocCategory {
 		},
 		{title: "資產 / 圖片上傳", specs: storytellerAssetToolSpecs()},
 		{title: "筆名", specs: storytellerProfileMCPOnlyToolSpecs()},
+		{title: "格式檢查", specs: storytellerValidateToolSpecs()},
 	}
 
 	categories := make([]ToolDocCategory, 0, len(groups))

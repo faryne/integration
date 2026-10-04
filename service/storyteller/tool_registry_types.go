@@ -158,6 +158,9 @@ type storytellerStoryDetail struct {
 	// 不是最新版本，但內容依然照常寫入、接在最新版本後面，沒有被拒絕或蓋掉；
 	// 建議重新呼叫 storyteller_get_story 確認有沒有需要一併處理的內容。
 	VersionConflict bool `json:"version_conflict,omitempty"`
+	// FormatWarnings 只有寫入工具會填（存檔後內容的格式檢查，見 checkStoryContentFormat）：
+	// 空陣列代表檢查過沒問題；讀取工具不填，JSON 裡不會出現這個欄位。
+	FormatWarnings *[]storyFormatWarning `json:"format_warnings,omitempty"`
 }
 
 type storytellerLoreDetail struct {
@@ -165,6 +168,9 @@ type storytellerLoreDetail struct {
 	Content         string `json:"content"`
 	VersionID       uint64 `json:"version_id"`
 	VersionConflict bool   `json:"version_conflict,omitempty"`
+	// FormatWarnings 只有寫入工具會填（存檔後內容的格式檢查，見 checkStoryContentFormat）：
+	// 空陣列代表檢查過沒問題；讀取工具不填，JSON 裡不會出現這個欄位。
+	FormatWarnings *[]storyFormatWarning `json:"format_warnings,omitempty"`
 }
 
 func toStorytellerProjectSummary(project storytellerModel.ProjectOutput) storytellerProjectSummary {

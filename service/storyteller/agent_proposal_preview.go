@@ -105,11 +105,11 @@ func previewSearchReplace(doc *proposalPreviewDoc, arguments map[string]interfac
 	if err := decodeArguments(arguments, &args); err != nil {
 		return err
 	}
-	pattern, err := compileStorytellerSearchPattern(args.Search, args.IsRegex)
+	pattern, replace, err := compileStorytellerSearchReplace(args.Search, args.Replace, args.IsRegex)
 	if err != nil {
 		return err
 	}
-	result, err := replaceStoryContent(doc.ContentType, doc.Content, pattern, args.Replace)
+	result, err := replaceStoryContent(doc.ContentType, doc.Content, pattern, replace)
 	if err != nil {
 		return err
 	}
