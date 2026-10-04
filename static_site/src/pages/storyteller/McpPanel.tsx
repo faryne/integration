@@ -1,12 +1,5 @@
-import DownloadIcon from "@mui/icons-material/Download";
 import {
-  Alert,
   Box,
-  Button,
-  Card,
-  CardActionArea,
-  Chip,
-  Grid,
   Link,
   Stack,
   Step,
@@ -15,204 +8,99 @@ import {
   Stepper,
   Typography,
 } from "@mui/material";
-import { useMemo, useState } from "react";
-import { Link as RouterLink } from "react-router-dom";
-import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
-import { useStorytellerMcpToolCategories } from "@/apis/storyteller.ts";
-import { McpOAuthSetupDialog } from "@/pages/storyteller/McpOAuthSetupDialog.tsx";
-import { McpPatSetupDialog } from "@/pages/storyteller/McpPatSetupDialog.tsx";
+import { useState } from "react";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { useStorytellerMcpSkill } from "@/apis/storyteller.ts";
+import {
+  McpAuthPicker,
+  McpServicePicker,
+} from "@/pages/storyteller/McpConnectPickers.tsx";
+import { McpConnectSetup } from "@/pages/storyteller/McpConnectSetup.tsx";
+import { McpSkillInstall } from "@/pages/storyteller/McpSkillInstall.tsx";
 import { McpSkillPreviewDialog } from "@/pages/storyteller/McpSkillPreviewDialog.tsx";
 import { useClipboardCopy } from "@/pages/storyteller/useClipboardCopy.tsx";
-import { mcpEndpoint } from "@/pages/storyteller/mcpClientSetup.ts";
 import {
-  STORYTELLER_MCP_SKILL_UPDATED_AT,
-  STORYTELLER_MCP_SKILL_VERSION,
-  storytellerMcpSkillDoc,
-  storytellerMcpSkillDocBody,
-} from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
+  availableAuthMethods,
+  mcpEndpoint,
+  type McpAuthMethod,
+  type McpService,
+} from "@/pages/storyteller/mcpClientSetup.ts";
 
-type ConnectMethod = "oauth" | "pat";
-
-const methodMeta: Record<
-  ConnectMethod,
-  {
-    label: string;
-    description: string;
-    manageLabel: string;
-    managePath: string;
-    hint: string;
-  }
-> = {
-  oauth: {
-    label: "OAuth 授權",
-    description:
-      "Claude.ai、ChatGPT、Claude Code、Codex 等支援 OAuth 的工具。不用複製 token，登入確認就好。",
-    manageLabel: "管理授權",
-    managePath: "my/oauth",
-    hint: "在工具裡按下「允許」後就完成了，可以到 OAuth Token 頁確認。",
-  },
-  pat: {
-    label: "Personal Access Token",
-    description: "要在設定檔寫入 token 的工具，或不支援 OAuth 的 MCP client。",
-    manageLabel: "管理 Token",
-    managePath: "my/pat",
-    hint: "設定好後重新啟動工具即可連線；token 可以在 Personal Access Token 頁管理。",
-  },
-};
-
-// 「開發者 › MCP 連接」分頁：三步驟——選連線方式 → 在對應的設定視窗完成設定 → 選用的 Skill。
+// 「開發者 › MCP 連接」分頁：四步驟——選 AI 服務 → 選它支援的授權方式 → 照著設定 → 選用的 Skill。
+// 作者先講自己用的是什麼服務，後面才問 OAuth／PAT，不用一開始就懂這兩個詞。
 // 憑證本身的管理分別在 Personal Access Token 與 OAuth Token 頁，這裡只負責把工具接起來。
 export function StorytellerMcpPanel() {
   const { copy, snackbars } = useClipboardCopy();
-  const [dialog, setDialog] = useState<ConnectMethod | "skill" | null>(null);
-  // 步驟 2 完成後的摘要（用哪種方式接了哪個工具），重新整理頁面就重來，不需要保存
-  const [configured, setConfigured] = useState<{
-    method: ConnectMethod;
-    toolLabel: string;
-  } | null>(null);
-  // 工具清單即時查後端（見 useStorytellerMcpToolCategories 的說明），新增/刪除
-  // MCP 工具不用回頭改這個頁面；載入完成前 SKILL.md 預覽/下載都先不可用。
-  const { data: toolCategories = [], isLoading: toolCategoriesLoading } =
-    useStorytellerMcpToolCategories();
-  const skillDocBody = useMemo(
-    () => storytellerMcpSkillDocBody(mcpEndpoint, toolCategories),
-    [toolCategories],
-  );
+  const [service, setService] = useState<McpService | null>(null);
+  const [method, setMethod] = useState<McpAuthMethod | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const skill = useStorytellerMcpSkill();
 
-  const activeStep = configured
-    ? 2
-    : dialog === "oauth" || dialog === "pat"
-      ? 1
-      : 0;
-
-  function complete(method: ConnectMethod, toolLabel: string) {
-    setConfigured({ method, toolLabel });
-    setDialog(null);
+  // 換服務時重算授權方式：只支援一種就直接帶入，否則讓作者自己選
+  function selectService(next: McpService) {
+    if (next.key === service?.key) return;
+    const methods = availableAuthMethods(next);
+    setService(next);
+    setMethod(methods.length === 1 ? methods[0] : null);
   }
 
-  // 純前端下載 SKILL.md；內容不含任何憑證，跟連線方式無關。
-  function downloadSkillDoc() {
-    const blob = new Blob(
-      [storytellerMcpSkillDoc(mcpEndpoint, toolCategories)],
-      {
-        type: "text/markdown;charset=utf-8",
-      },
-    );
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "SKILL.md";
-    anchor.click();
-    URL.revokeObjectURL(url);
-  }
+  const activeStep = !service ? 0 : !method ? 1 : 2;
+  const onCopy = (value: string) => void copy(value);
 
   return (
     <Stack spacing={2}>
       <Typography color="text.secondary">
-        透過 MCP（Model Context Protocol），你可以讓 Claude、ChatGPT、Codex
-        等外部工具直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。
+        透過 MCP（Model Context Protocol），你可以讓 Claude、ChatGPT、Codex 等
+        AI 服務直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。
       </Typography>
 
       <Stepper orientation="vertical" activeStep={activeStep}>
-        <Step completed={activeStep > 0} expanded>
+        <Step completed={Boolean(service)} expanded>
           <StepLabel>
-            <Typography fontWeight={800}>選擇連線方式</Typography>
+            <Typography fontWeight={800}>選擇你使用的 AI 服務</Typography>
           </StepLabel>
           <StepContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-              依你要連的工具選一種，接著會跳出對應的設定視窗。
-            </Typography>
-            <Grid container spacing={1.5}>
-              {(Object.keys(methodMeta) as ConnectMethod[]).map((method) => (
-                <Grid key={method} size={{ xs: 12, md: 6 }}>
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      height: "100%",
-                      borderColor:
-                        method === "oauth" ? "primary.main" : undefined,
-                    }}
-                  >
-                    <CardActionArea
-                      onClick={() => setDialog(method)}
-                      sx={{ height: "100%", p: 2, alignItems: "flex-start" }}
-                    >
-                      <Stack spacing={0.75}>
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography fontWeight={800}>
-                            {methodMeta[method].label}
-                          </Typography>
-                          {method === "oauth" && (
-                            <Chip size="small" color="primary" label="推薦" />
-                          )}
-                        </Stack>
-                        <Typography variant="body2" color="text.secondary">
-                          {methodMeta[method].description}
-                        </Typography>
-                      </Stack>
-                    </CardActionArea>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-            {!isSteamLoomSite() && (
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ display: "block", mt: 1 }}
-              >
-                OAuth 只支援 steamloom.works 的網址；faryne.dev 的 MCP
-                位址只能搭配 Personal Access Token。
+            <McpServicePicker
+              value={service?.key ?? null}
+              onChange={selectService}
+            />
+          </StepContent>
+        </Step>
+
+        <Step completed={Boolean(method)} expanded>
+          <StepLabel>
+            <Typography fontWeight={800}>選擇授權方式</Typography>
+          </StepLabel>
+          <StepContent>
+            {service ? (
+              <McpAuthPicker
+                service={service}
+                value={method}
+                onChange={setMethod}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                先選 AI 服務，這裡會列出它支援的授權方式。
               </Typography>
             )}
           </StepContent>
         </Step>
 
-        <Step completed={Boolean(configured)} expanded>
+        <Step expanded>
           <StepLabel>
-            <Typography fontWeight={800}>設定你的工具</Typography>
+            <Typography fontWeight={800}>連線設定</Typography>
           </StepLabel>
           <StepContent>
-            {configured ? (
-              <Alert
-                severity="success"
-                variant="outlined"
-                action={
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ "& .MuiButton-root": { whiteSpace: "nowrap" } }}
-                  >
-                    <Button
-                      component={RouterLink}
-                      to={steamloomPath(
-                        methodMeta[configured.method].managePath,
-                      )}
-                      color="inherit"
-                      size="small"
-                    >
-                      {methodMeta[configured.method].manageLabel}
-                    </Button>
-                    <Button
-                      color="inherit"
-                      size="small"
-                      onClick={() => setConfigured(null)}
-                    >
-                      重新設定
-                    </Button>
-                  </Stack>
-                }
-              >
-                <strong>
-                  已設定：{methodMeta[configured.method].label} ·{" "}
-                  {configured.toolLabel}
-                </strong>
-                <br />
-                {methodMeta[configured.method].hint}
-              </Alert>
+            {service && method ? (
+              <McpConnectSetup
+                key={`${service.key}-${method}`}
+                service={service}
+                method={method}
+                onCopy={onCopy}
+              />
             ) : (
               <Typography variant="body2" color="text.secondary">
-                選好連線方式後，在跳出的視窗裡完成設定。
+                選好授權方式後，這裡會列出設定步驟。
               </Typography>
             )}
           </StepContent>
@@ -223,39 +111,21 @@ export function StorytellerMcpPanel() {
             <Typography fontWeight={800}>安裝 Skill</Typography>
           </StepLabel>
           <StepContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-              SKILL.md 告訴 AI
-              有哪些工具、怎麼寫作與改稿、寫入前後要檢查什麼；內容跟連線方式無關。放進
-              Claude Code、Codex 等工具的 skill 目錄，或上傳到 Claude.ai 的
-              Skills 即可。
-            </Typography>
-            {/* 讓作者對照手上那份是不是舊版：版本變了就重新下載一次 */}
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: "block", mb: 1.5 }}
-            >
-              目前版本 v{STORYTELLER_MCP_SKILL_VERSION}・最後更新{" "}
-              {STORYTELLER_MCP_SKILL_UPDATED_AT}
-              ；之前下載過的話，版本不同時請重新下載。
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Button
-                variant="contained"
-                startIcon={<DownloadIcon />}
-                disabled={toolCategoriesLoading}
-                onClick={downloadSkillDoc}
-              >
-                下載 SKILL.md
-              </Button>
-              <Button
-                variant="outlined"
-                disabled={toolCategoriesLoading}
-                onClick={() => setDialog("skill")}
-              >
-                預覽內容
-              </Button>
-            </Stack>
+            {service ? (
+              <McpSkillInstall
+                service={service}
+                version={skill.data?.version ?? ""}
+                updatedAt={skill.data?.updatedAt ?? ""}
+                onCopy={onCopy}
+                onPreview={() => setPreviewOpen(true)}
+              />
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Skill 告訴 AI 怎麼在 SteamLoom
+                上寫作、改稿，以及寫入前後要檢查什麼。選好 AI
+                服務後會顯示安裝方式。
+              </Typography>
+            )}
           </StepContent>
         </Step>
       </Stepper>
@@ -276,23 +146,19 @@ export function StorytellerMcpPanel() {
         </Typography>
       </Box>
 
-      <McpOAuthSetupDialog
-        open={dialog === "oauth"}
-        onClose={() => setDialog(null)}
-        onComplete={(toolLabel) => complete("oauth", toolLabel)}
-        onCopy={(value) => void copy(value)}
-      />
-      <McpPatSetupDialog
-        open={dialog === "pat"}
-        onClose={() => setDialog(null)}
-        onComplete={(toolLabel) => complete("pat", toolLabel)}
-        onCopy={(value) => void copy(value)}
-      />
       <McpSkillPreviewDialog
-        open={dialog === "skill"}
-        body={skillDocBody}
-        onClose={() => setDialog(null)}
-        onDownload={downloadSkillDoc}
+        open={previewOpen && Boolean(skill.data)}
+        frontmatter={skill.data?.frontmatter ?? ""}
+        body={skill.data?.body ?? ""}
+        version={skill.data?.version ?? ""}
+        onClose={() => setPreviewOpen(false)}
+      />
+      {/* 預覽要讀後端的 SKILL.md；讀不到時告訴作者，連線設定的步驟不受影響 */}
+      <CustomSnackbar
+        open={previewOpen && skill.isError}
+        message="讀取 Skill 內容失敗，請稍後再試。"
+        severity="error"
+        onClose={() => setPreviewOpen(false)}
       />
       {snackbars}
     </Stack>

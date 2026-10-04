@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MCP 連接頁改版 Mockup</title>
+<style>
+/* 色調仿 steamloom nocturne（夜織）；只示意流程與版面，不是像素級還原 */
+:root { --bg:#151220; --surface:#1d1830; --surface-2:#251f3b; --line:#3a3254; --text:#ece8f4; --muted:#a59cbb; --primary:#7fd4c6; --primary-ink:#0f2a26; --warn:#e8c26b; --ok:#8fd19e; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:"Noto Sans TC", system-ui, sans-serif; background:#0d0b14; color:var(--text); }
+.bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:10px 16px; background:#09080e; border-bottom:1px solid #2a2440; font-size:13px; }
+.bar span { color:#8f87a6; font-size:12px; }
+.bar label { display:inline-flex; gap:4px; align-items:center; color:#cfc8e0; cursor:pointer; }
+.page { max-width:860px; margin:0 auto; padding:24px 16px 60px; background:var(--bg); min-height:100vh; }
+.crumb { font-size:13px; color:var(--muted); margin-bottom:14px; } .crumb b { color:var(--primary); }
+.intro { color:var(--muted); font-size:14px; line-height:1.7; margin:0 0 18px; }
+.step { display:grid; grid-template-columns:28px 1fr; gap:0 12px; }
+.dot { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:800; background:var(--surface-2); color:var(--muted); border:1px solid var(--line); }
+.step.active .dot { background:var(--primary); color:var(--primary-ink); border-color:var(--primary); }
+.step.done .dot { background:transparent; color:var(--primary); border-color:var(--primary); }
+.rail { grid-column:1; justify-self:center; width:1px; background:var(--line); }
+.body { padding-bottom:22px; min-width:0; }
+.step h3 { margin:2px 0 8px; font-size:15px; }
+.step h3 small { font-weight:400; color:var(--muted); font-size:12px; margin-left:6px; }
+.step.locked .body { opacity:.45; }
+.hint { color:var(--muted); font-size:13px; margin:0 0 10px; line-height:1.6; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:12px; cursor:pointer; text-align:left; color:inherit; font:inherit; }
+.card:hover { border-color:#5d5180; }
+.card.sel { border-color:var(--primary); box-shadow:0 0 0 1px var(--primary) inset; }
+.card.off { opacity:.5; cursor:not-allowed; }
+.card b { display:block; font-size:14px; margin-bottom:4px; }
+.card small { color:var(--muted); font-size:12px; line-height:1.5; display:block; }
+.tag { display:inline-block; font-size:11px; padding:1px 6px; border-radius:999px; background:rgba(127,212,198,.16); color:var(--primary); margin-left:6px; vertical-align:1px; }
+.tag.warn { background:rgba(232,194,107,.16); color:var(--warn); }
+.auth { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:10px; }
+.note { font-size:12.5px; color:var(--muted); background:var(--surface); border:1px dashed var(--line); border-radius:6px; padding:8px 10px; margin-top:10px; line-height:1.6; }
+ol.steps { margin:0 0 10px; padding-left:20px; font-size:14px; line-height:1.8; }
+.code { position:relative; background:#0f0c18; border:1px solid var(--line); border-radius:6px; padding:10px 64px 10px 12px; font:12.5px/1.6 ui-monospace, Menlo, monospace; white-space:pre-wrap; word-break:break-all; color:#d9f3ee; margin:6px 0 10px; }
+.code .copy { position:absolute; right:6px; top:6px; font:12px "Noto Sans TC"; background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 8px; cursor:pointer; }
+.label { font-size:12px; color:var(--muted); margin-top:4px; }
+.form { display:grid; grid-template-columns:1fr 140px auto; gap:8px; align-items:end; margin-bottom:8px; }
+.form input, .form select { width:100%; background:#0f0c18; border:1px solid var(--line); color:var(--text); border-radius:4px; padding:7px 8px; font:inherit; font-size:13px; }
+.btn { background:var(--primary); color:var(--primary-ink); border:0; border-radius:4px; padding:7px 14px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap; }
+.btn.ghost { background:transparent; color:var(--primary); border:1px solid var(--primary); }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ok { color:var(--ok); font-size:13px; }
+.ver { font-size:12px; color:var(--muted); margin:6px 0 0; }
+.foot { font-size:12px; color:var(--muted); margin-top:8px; border-top:1px solid var(--line); padding-top:12px; }
+code { font-family:ui-monospace, Menlo, monospace; font-size:.92em; background:rgba(255,255,255,.06); padding:0 4px; border-radius:3px; }
+[hidden] { display:none !important; }
+@media (max-width:600px) { .form { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header class="bar">
+  <strong>MCP 連接頁改版 Mockup</strong>
+  <span>點卡片走一遍流程；切換網域可看 faryne.dev 只能用 PAT 的情況</span>
+  <label><input type="radio" name="domain" value="steamloom" checked> steamloom.works</label>
+  <label><input type="radio" name="domain" value="faryne"> faryne.dev</label>
+</header>
+
+<main class="page">
+  <div class="crumb">SteamLoom / 我的工作台 / 開發者 / <b>MCP 連接</b></div>
+  <p class="intro">透過 MCP（Model Context Protocol），你可以讓 Claude、ChatGPT、Codex 等 AI 服務直接讀寫你的創作專案、故事內容與世界觀設定，不需要手動複製貼上。</p>
+
+  <section class="step" id="s1"><div class="dot">1</div><div class="body">
+    <h3>選擇你使用的 AI 服務</h3>
+    <div class="grid" id="services"></div>
+  </div><div class="rail"></div></section>
+
+  <section class="step locked" id="s2"><div class="dot">2</div><div class="body">
+    <h3>選擇授權方式</h3>
+    <div id="auth"><p class="hint">先選 AI 服務，這裡會列出它支援的授權方式。</p></div>
+  </div><div class="rail"></div></section>
+
+  <section class="step locked" id="s3"><div class="dot">3</div><div class="body">
+    <h3>連線設定</h3>
+    <div id="setup"><p class="hint">選好授權方式後，這裡會列出設定步驟。</p></div>
+  </div><div class="rail"></div></section>
+
+  <section class="step locked" id="s4"><div class="dot">4</div><div class="body">
+    <h3>安裝 Skill <small>選用</small></h3>
+    <div id="skill"><p class="hint">Skill 告訴 AI 怎麼在 SteamLoom 上寫作、改稿，以及寫入前後要檢查什麼。選好 AI 服務後會顯示安裝方式。</p></div>
+  </div></section>
+
+  <div class="foot">MCP 連線位址：<code id="endpoint"></code>・目前不支援 SSE，若工具連線卡住可能是這個原因。</div>
+</main>
+
+<script>
+const SERVER = "steamloom";
+const VERSION = "v2.0.0・最後更新 2026-10-04";
+const state = { domain: "steamloom", service: null, auth: null, token: null };
+const endpoint = () => state.domain === "steamloom" ? "https://steamloom.works/mcp" : "https://faryne.dev/api-integration/storyteller-mcp";
+const skillUrl = () => state.domain === "steamloom" ? "https://steamloom.works/api-integration/storyteller/mcp/skill.md" : "https://faryne.dev/api-integration/storyteller/mcp/skill.md";
+
+// 服務為主的資料結構：每個服務列出支援的授權方式、連線步驟與 Skill 安裝方式（實作時對應 mcpClientSetup.ts）
+const SERVICES = [
+  { key: "claudeai", label: "Claude.ai", desc: "網頁版、桌面版與手機 App", auth: ["oauth"], why: "Claude.ai 的自訂 connector 只能用 OAuth，不能自己填 token。" },
+  { key: "chatgpt", label: "ChatGPT", desc: "需要開啟開發者模式", auth: ["oauth"], why: "ChatGPT 的自訂 connector 只能用 OAuth，不能自己填 token。" },
+  { key: "claudecode", label: "Claude Code", desc: "終端機與 IDE", auth: ["oauth", "pat"] },
+  { key: "codex", label: "Codex", desc: "Codex CLI 與 IDE 擴充", auth: ["oauth", "pat"] },
+  { key: "other", label: "其他", desc: "其他支援遠端 MCP 的工具", auth: ["oauth", "pat"] },
+];
+const AUTH = {
+  oauth: { label: "OAuth 授權", desc: "在瀏覽器按一次「允許」就連上了，不用複製 token。隨時可以到 OAuth Token 頁撤銷。" },
+  pat: { label: "Personal Access Token", desc: "建立一組 token 貼進工具的設定。適合不能開瀏覽器的環境（例如遠端伺服器）。" },
+};
+const oauthOnly = (s) => s.auth.length === 1 && s.auth[0] === "oauth";
+const available = (s) => state.domain === "steamloom" ? s.auth : s.auth.filter((a) => a !== "oauth");
+
+const code = (text) => `<div class="code">${text.replace(/</g, "&lt;")}<button class="copy">複製</button></div>`;
+
+function setupHtml() {
+  const s = SERVICES.find((x) => x.key === state.service), ep = endpoint();
+  if (state.auth === "oauth") {
+    if (s.key === "claudeai") return `<ol class="steps"><li>到 Claude.ai 的「設定 › Connectors」，新增自訂 connector</li><li>名稱填 SteamLoom，網址貼上：</li></ol>${code(ep)}<ol class="steps" start="3"><li>按「連線」後會跳到 SteamLoom 授權頁，確認帳號後按「允許」</li></ol><p class="ok">按下允許後就完成了，可以到 OAuth Token 頁確認。</p>`;
+    if (s.key === "chatgpt") return `<ol class="steps"><li>到 ChatGPT 的「設定 › 應用程式與連接器」，開啟開發者模式後新增 connector</li><li>網址貼上下面的位址，驗證方式選 OAuth：</li></ol>${code(ep)}<ol class="steps" start="3"><li>跳到 SteamLoom 授權頁後按「允許」</li></ol>`;
+    if (s.key === "claudecode") return `<div class="label">在終端機執行：</div>${code(`claude mcp add --transport http ${SERVER} ${ep}`)}<ol class="steps"><li>在 Claude Code 裡輸入 <code>/mcp</code>，選 ${SERVER} 進行驗證</li><li>瀏覽器會跳到 SteamLoom 授權頁，按「允許」</li></ol>`;
+    if (s.key === "codex") return `<div class="label">在終端機執行：</div>${code(`codex mcp add ${SERVER} --url ${ep}\ncodex mcp login ${SERVER}`)}<ol class="steps"><li>執行 login 後瀏覽器會跳到 SteamLoom 授權頁，按「允許」</li></ol>`;
+    return `<ol class="steps"><li>在工具裡新增遠端 MCP server，貼上：</li></ol>${code(ep)}<ol class="steps" start="2"><li>工具會自動註冊並開啟 SteamLoom 授權頁，按「允許」</li><li>如果工具要求手動填 Client ID／Client Secret，代表它不支援自動註冊，請回上一步改選 Personal Access Token</li></ol>`;
+  }
+  // PAT：當場建立 token，再顯示這個服務的設定方式
+  const form = `<div class="form"><div><div class="label">名稱</div><input value="${s.label}" /></div><div><div class="label">效期</div><select><option>30 天</option><option>90 天</option><option>180 天</option><option>365 天</option><option>永久（不過期）</option></select></div><button class="btn" id="mkToken">建立 Token</button></div><p class="hint">Token 只會顯示這一次，建立後請馬上貼進設定。</p>`;
+  if (!state.token) return form;
+  const tk = state.token;
+  const snippet = s.key === "claudecode"
+    ? `<div class="label">在終端機執行：</div>${code(`claude mcp add --transport http ${SERVER} ${ep} \\\n  --header "Authorization: Bearer ${tk}"`)}`
+    : s.key === "codex"
+      ? `<div class="label">加到 ~/.codex/config.toml，並在環境變數 STEAMLOOM_TOKEN 放入 token：</div>${code(`[mcp_servers.${SERVER}]\nurl = "${ep}"\nbearer_token_env_var = "STEAMLOOM_TOKEN"\n\n# 例如加到 ~/.zshrc\nexport STEAMLOOM_TOKEN="${tk}"`)}`
+      : `<div class="label">MCP client 設定範例（JSON）：</div>${code(JSON.stringify({ mcpServers: { [SERVER]: { url: ep, headers: { Authorization: `Bearer ${tk}` } } } }, null, 2))}`;
+  return `<p class="ok">✓ 已建立 Token「${s.label}」（30 天後到期）</p><div class="label">Token（只會顯示這一次）</div>${code(tk)}${snippet}<p class="hint">設定好後重新啟動工具即可連線；token 可以在 Personal Access Token 頁管理。</p>`;
+}
+
+function skillHtml() {
+  const s = SERVICES.find((x) => x.key === state.service), url = skillUrl();
+  const preview = `<button class="btn ghost">預覽內容</button>`;
+  const ver = `<p class="ver">目前版本 ${VERSION}</p>`;
+  // Skill 改名（storyteller-mcp → steamloom）後，舊資料夾要請作者自己刪，不然新舊兩份會同時載入
+  const legacyDir = { claudecode: "~/.claude/skills/storyteller-mcp", codex: "~/.agents/skills/storyteller-mcp" }[s.key];
+  const legacy = legacyDir
+    ? `<div class="note">之前裝過舊版（資料夾叫 <code>storyteller-mcp</code>）的話，請刪掉舊的：<code>rm -rf ${legacyDir}</code></div>`
+    : `<div class="note">之前裝過舊版（名稱叫 <code>storyteller-mcp</code>）的話，請在技能列表把舊的移除。</div>`;
+  if (s.key === "claudecode") return `<p class="hint">在終端機執行，Claude Code 會自動載入，不用重啟：</p>${code(`mkdir -p ~/.claude/skills/steamloom && curl -fsSL ${url} -o ~/.claude/skills/steamloom/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。Windows 可以手動下載 SKILL.md，放到 <code>%USERPROFILE%\\.claude\\skills\\steamloom\\</code>。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}${legacy}`;
+  if (s.key === "codex") return `<p class="hint">在終端機執行，Codex 會自動載入：</p>${code(`mkdir -p ~/.agents/skills/steamloom && curl -fsSL ${url} -o ~/.agents/skills/steamloom/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}${legacy}`;
+  if (s.key === "claudeai") return `<ol class="steps"><li>到「設定 › 功能」，開啟「程式碼執行與檔案建立」（Team／Enterprise 方案要由管理員開啟）</li><li>下載 Skill 的 ZIP 檔</li><li>到「自訂 › 技能」，按「＋」→「上傳技能」，選剛才下載的 ZIP</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}${legacy}`;
+  if (s.key === "chatgpt") return `<ol class="steps"><li>下載 Skill 的 ZIP 檔</li><li>到 ChatGPT 的 Skills 頁面，按「Create」→「Upload from your computer」，選剛才下載的 ZIP <span class="tag warn">選單位置實作時再確認</span></li><li>ChatGPT 會先掃描 Skill，掃描完就能用</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}${legacy}`;
+  return `<p class="hint">下載後放進你的工具的 skill 目錄（資料夾名稱用 <code>steamloom</code>）。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button><button class="btn ghost">下載 ZIP</button>${preview}</div>${ver}${legacy}`;
+}
+
+function render() {
+  document.getElementById("endpoint").textContent = endpoint();
+  // 步驟 1
+  document.getElementById("services").innerHTML = SERVICES.map((s) => {
+    const blocked = available(s).length === 0;
+    return `<button class="card ${state.service === s.key ? "sel" : ""} ${blocked ? "off" : ""}" data-service="${s.key}" ${blocked ? "disabled" : ""}>
+      <b>${s.label}</b><small>${blocked ? "需要 OAuth，請到 steamloom.works 設定" : s.desc}</small></button>`;
+  }).join("");
+  const s = SERVICES.find((x) => x.key === state.service);
+  mark("s1", s ? "done" : "active");
+  // 步驟 2
+  if (!s) { mark("s2", "locked"); mark("s3", "locked"); mark("s4", "locked"); return; }
+  const opts = available(s);
+  if (!opts.includes(state.auth)) state.auth = opts.length === 1 ? opts[0] : null;
+  let authHtml;
+  if (opts.length === 1) {
+    const reason = oauthOnly(s) ? s.why : "OAuth 只在 steamloom.works 開放，faryne.dev 的 MCP 位址只能用 Personal Access Token。";
+    authHtml = `<div class="card sel" style="cursor:default"><b>${AUTH[opts[0]].label}</b><small>${AUTH[opts[0]].desc}</small></div><div class="note">${reason}</div>`;
+  } else {
+    authHtml = `<div class="auth">${opts.map((a) => `<button class="card ${state.auth === a ? "sel" : ""}" data-auth="${a}"><b>${AUTH[a].label}${a === "oauth" ? '<span class="tag">推薦</span>' : ""}</b><small>${AUTH[a].desc}</small></button>`).join("")}</div>`;
+  }
+  document.getElementById("auth").innerHTML = authHtml;
+  mark("s2", state.auth ? "done" : "active");
+  // 步驟 3、4
+  if (!state.auth) { document.getElementById("setup").innerHTML = '<p class="hint">選好授權方式後，這裡會列出設定步驟。</p>'; mark("s3", "locked"); }
+  else { document.getElementById("setup").innerHTML = setupHtml(); mark("s3", "active"); }
+  document.getElementById("skill").innerHTML = skillHtml();
+  mark("s4", state.auth ? "active" : "locked");
+}
+function mark(id, cls) { const el = document.getElementById(id); el.classList.remove("active", "done", "locked"); el.classList.add(cls); }
+
+document.addEventListener("click", (e) => {
+  const sv = e.target.closest("[data-service]"), au = e.target.closest("[data-auth]");
+  if (sv && !sv.disabled) { if (state.service !== sv.dataset.service) { state.service = sv.dataset.service; state.auth = null; state.token = null; } }
+  else if (au) { state.auth = au.dataset.auth; state.token = null; }
+  else if (e.target.id === "mkToken") { state.token = "sst_3f9a" + Math.random().toString(16).slice(2, 14); }
+  else if (e.target.classList.contains("copy")) { e.target.textContent = "已複製"; setTimeout(() => (e.target.textContent = "複製"), 1200); return; }
+  else return;
+  render();
+});
+document.querySelectorAll('input[name="domain"]').forEach((r) => r.addEventListener("change", () => { state.domain = r.value; state.token = null; render(); }));
+render();
+</script>
+</body>
+</html>

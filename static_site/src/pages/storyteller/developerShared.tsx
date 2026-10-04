@@ -1,12 +1,5 @@
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import {
-  Box,
-  Chip,
-  IconButton,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 
 // 程式碼／設定區塊加複製按鈕；label 是區塊上方的說明（例如「加到 config.toml」）。
 export function CopyableCode({
@@ -48,30 +41,5 @@ export function CopyableCode({
         </Tooltip>
       </Stack>
     </Box>
-  );
-}
-
-// 「要連哪個工具？」的分段選擇，OAuth 與 Personal Access Token 兩個設定視窗共用。
-export function ToolPicker({
-  tools,
-  value,
-  onChange,
-}: {
-  tools: Array<{ key: string; label: string }>;
-  value: string;
-  onChange: (key: string) => void;
-}) {
-  return (
-    <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
-      {tools.map((tool) => (
-        <Chip
-          key={tool.key}
-          label={tool.label}
-          color={tool.key === value ? "primary" : "default"}
-          variant={tool.key === value ? "filled" : "outlined"}
-          onClick={() => onChange(tool.key)}
-        />
-      ))}
-    </Stack>
   );
 }
