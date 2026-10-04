@@ -19,13 +19,14 @@ export const mcpEndpoint = isSteamLoomSite()
 // OAuth 只在 steamloom.works 開放（faryne.dev 的 MCP 路徑只收 Personal Access Token）。
 export const oauthMcpEndpoint = "https://steamloom.works/mcp";
 
-// Skill 的公開網址（後端 GET /storyteller/mcp/skill.md／skill.zip）。在 steamloom.works 上顯示品牌網域，
-// 指令貼給別人也看得懂；兩個網域的 /api-integration 都會轉到同一個後端。
+// Skill 的公開網址（後端 GET /storyteller-mcp/skill.md／skill.zip）。steamloom.works 的 nginx 會把整個
+// /mcp 前綴改寫成 /storyteller-mcp，所以品牌網址是 steamloom.works/mcp/skill.md；steamloom.works 沒有
+// /api-integration（會落到前端首頁）。faryne.dev 與本機開發則走 API base 底下的 /storyteller-mcp。
 const skillBase = isSteamLoomSite()
-  ? "https://steamloom.works/api-integration"
-  : apiBase;
-export const mcpSkillMarkdownUrl = `${skillBase}/storyteller/mcp/skill.md`;
-export const mcpSkillZipUrl = `${skillBase}/storyteller/mcp/skill.zip`;
+  ? "https://steamloom.works/mcp"
+  : `${apiBase}/storyteller-mcp`;
+export const mcpSkillMarkdownUrl = `${skillBase}/skill.md`;
+export const mcpSkillZipUrl = `${skillBase}/skill.zip`;
 // 跟後端 MCPSkillName 一致：skill 名稱＝安裝資料夾名稱＝ZIP 內的資料夾名稱
 export const MCP_SKILL_NAME = "steamloom";
 // v2.1.0 以前的 skill 名稱；改名後舊資料夾要請作者自己刪，不然新舊兩份會同時載入

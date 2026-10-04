@@ -511,14 +511,14 @@ export function useDeleteStorytellerProviderAPIKeyModel() {
   });
 }
 
-// SteamLoom Skill 的 SKILL.md（公開端點，不含任何使用者資料，不用登入）——見 controller.McpSkillMarkdown。
+// SteamLoom Skill 的 SKILL.md（公開端點，不含任何使用者資料，不用登入）——見 controller/storytellermcp 的 SkillMarkdown。
 // 預覽要把 frontmatter 跟內文分開顯示（react-markdown 不認得 YAML frontmatter），版本號也從 frontmatter 讀。
 export function useStorytellerMcpSkill() {
   return useQuery({
     queryKey: ["storyteller", "mcp-skill"],
     queryFn: async () => {
       const response = await axios.get<string>(
-        `${apiBase}/storyteller/mcp/skill.md`,
+        `${apiBase}/storyteller-mcp/skill.md`,
         { responseType: "text" },
       );
       return parseStorytellerMcpSkill(response.data);
