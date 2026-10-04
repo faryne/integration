@@ -25,6 +25,8 @@ import { McpSkillPreviewDialog } from "@/pages/storyteller/McpSkillPreviewDialog
 import { useClipboardCopy } from "@/pages/storyteller/useClipboardCopy.tsx";
 import { mcpEndpoint } from "@/pages/storyteller/mcpClientSetup.ts";
 import {
+  STORYTELLER_MCP_SKILL_UPDATED_AT,
+  STORYTELLER_MCP_SKILL_VERSION,
   storytellerMcpSkillDoc,
   storytellerMcpSkillDocBody,
 } from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
@@ -221,11 +223,21 @@ export function StorytellerMcpPanel() {
             <Typography fontWeight={800}>安裝 Skill</Typography>
           </StepLabel>
           <StepContent>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
               SKILL.md 告訴 AI
-              有哪些工具、什麼時候該用、寫入前要注意什麼；內容跟連線方式無關。放進
+              有哪些工具、怎麼寫作與改稿、寫入前後要檢查什麼；內容跟連線方式無關。放進
               Claude Code、Codex 等工具的 skill 目錄，或上傳到 Claude.ai 的
               Skills 即可。
+            </Typography>
+            {/* 讓作者對照手上那份是不是舊版：版本變了就重新下載一次 */}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: "block", mb: 1.5 }}
+            >
+              目前版本 v{STORYTELLER_MCP_SKILL_VERSION}・最後更新{" "}
+              {STORYTELLER_MCP_SKILL_UPDATED_AT}
+              ；之前下載過的話，版本不同時請重新下載。
             </Typography>
             <Stack direction="row" spacing={1}>
               <Button

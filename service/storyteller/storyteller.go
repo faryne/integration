@@ -1198,10 +1198,11 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 		return nil, err
 	}
 	volume := &storytellerModel.Story{
-		PublicID:    randomID(),
-		ProjectID:   project.ID,
-		IsVolume:    true,
-		ContentType: input.ContentType,
+		PublicID:  randomID(),
+		ProjectID: project.ID,
+		IsVolume:  true,
+		// 冊不分文字或圖像，類型由每一篇作品自己決定；欄位是共用的 stories 表，固定寫 text 維持格式
+		ContentType: storytellerModel.ProjectContentTypeText,
 		Title:       strings.TrimSpace(input.Title),
 		Summary:     input.Summary,
 		Sort:        input.Sort,
@@ -1215,7 +1216,6 @@ func (s *Service) CreateVolume(userID uint64, projectPublicID string, input stor
 }
 
 // UpdateVolume 重新命名／改摘要／切換公開狀態，跟一般故事的 UpdateStory 分開，不能改內容。
-// ContentType 建立後不可變更，這裡刻意忽略請求裡帶的值，永遠維持建立時的設定。
 // Status 關閉（draft）時，底下所有故事一律不對外顯示，不管故事自己的 status 是什麼，
 // 見 Repository.PublishedStories／PublishedVolumes 的過濾邏輯。
 func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID string, input storytellerModel.StoryVolumeRequest, source string) (*storytellerModel.Story, error) {
@@ -3351,9 +3351,6 @@ func normalizeVolumeRequest(input storytellerModel.StoryVolumeRequest) storytell
 	if input.Status == "" {
 		input.Status = storytellerModel.StoryStatusCompleted
 	}
-	if input.ContentType == "" {
-		input.ContentType = storytellerModel.ProjectContentTypeText
-	}
 	input.Summary = strings.TrimSpace(input.Summary)
 	return input
 }
@@ -3547,11 +3544,6 @@ func validateVolume(input storytellerModel.StoryVolumeRequest) error {
 	case storytellerModel.StoryStatusDraft, storytellerModel.StoryStatusCompleted:
 	default:
 		return fmt.Errorf("invalid status")
-	}
-	switch input.ContentType {
-	case storytellerModel.ProjectContentTypeText, storytellerModel.ProjectContentTypeImage:
-	default:
-		return fmt.Errorf("invalid content_type")
 	}
 	return nil
 }

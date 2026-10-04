@@ -225,8 +225,6 @@ export interface StorytellerStoryVolumeRequest {
   status: "draft" | "completed";
   // 給讀者看的說明文字。
   summary: string;
-  // 只有建立時會用到（決定底下要掛文字故事還是圖像頁），更新時後端會忽略此欄位。
-  content_type?: "text" | "image";
 }
 
 // StorytellerStoryImagePage 是「話」（content_type=image 的故事）JSON 內容裡的單一頁面，

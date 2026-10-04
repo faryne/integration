@@ -2,7 +2,10 @@ import DownloadIcon from "@mui/icons-material/Download";
 import { Box, Button, Typography } from "@mui/material";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
-import { STORYTELLER_MCP_SKILL_FRONTMATTER } from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
+import {
+  STORYTELLER_MCP_SKILL_FRONTMATTER,
+  STORYTELLER_MCP_SKILL_VERSION,
+} from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
 
 const codeBlockSx = {
   m: 0,
@@ -30,7 +33,7 @@ export function McpSkillPreviewDialog({
     <StorytellerDialog
       open={open}
       maxWidth="md"
-      eyebrow="步驟 3 · SKILL.md 預覽"
+      eyebrow={`步驟 3 · SKILL.md 預覽 · v${STORYTELLER_MCP_SKILL_VERSION}`}
       title="給 AI Agent 的說明文件"
       onClose={onClose}
       actions={
