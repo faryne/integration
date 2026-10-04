@@ -137,11 +137,16 @@ function skillHtml() {
   const s = SERVICES.find((x) => x.key === state.service), url = skillUrl();
   const preview = `<button class="btn ghost">預覽內容</button>`;
   const ver = `<p class="ver">目前版本 ${VERSION}</p>`;
-  if (s.key === "claudecode") return `<p class="hint">在終端機執行，Claude Code 會自動載入，不用重啟：</p>${code(`mkdir -p ~/.claude/skills/storyteller-mcp && curl -fsSL ${url} -o ~/.claude/skills/storyteller-mcp/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。Windows 可以手動下載 SKILL.md，放到 <code>%USERPROFILE%\\.claude\\skills\\storyteller-mcp\\</code>。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}`;
-  if (s.key === "codex") return `<p class="hint">在終端機執行，Codex 會自動載入：</p>${code(`mkdir -p ~/.agents/skills/storyteller-mcp && curl -fsSL ${url} -o ~/.agents/skills/storyteller-mcp/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}`;
-  if (s.key === "claudeai") return `<ol class="steps"><li>到「設定 › 功能」，開啟「程式碼執行與檔案建立」（Team／Enterprise 方案要由管理員開啟）</li><li>下載 Skill 的 ZIP 檔</li><li>到「自訂 › 技能」，按「＋」→「上傳技能」，選剛才下載的 ZIP</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}`;
-  if (s.key === "chatgpt") return `<ol class="steps"><li>下載 Skill 的 ZIP 檔</li><li>到 ChatGPT 的 Skills 頁面，按「Create」→「Upload from your computer」，選剛才下載的 ZIP <span class="tag warn">選單位置實作時再確認</span></li><li>ChatGPT 會先掃描 Skill，掃描完就能用</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}`;
-  return `<p class="hint">下載後放進你的工具的 skill 目錄（資料夾名稱用 <code>storyteller-mcp</code>）。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button><button class="btn ghost">下載 ZIP</button>${preview}</div>${ver}`;
+  // Skill 改名（storyteller-mcp → steamloom）後，舊資料夾要請作者自己刪，不然新舊兩份會同時載入
+  const legacyDir = { claudecode: "~/.claude/skills/storyteller-mcp", codex: "~/.agents/skills/storyteller-mcp" }[s.key];
+  const legacy = legacyDir
+    ? `<div class="note">之前裝過舊版（資料夾叫 <code>storyteller-mcp</code>）的話，請刪掉舊的：<code>rm -rf ${legacyDir}</code></div>`
+    : `<div class="note">之前裝過舊版（名稱叫 <code>storyteller-mcp</code>）的話，請在技能列表把舊的移除。</div>`;
+  if (s.key === "claudecode") return `<p class="hint">在終端機執行，Claude Code 會自動載入，不用重啟：</p>${code(`mkdir -p ~/.claude/skills/steamloom && curl -fsSL ${url} -o ~/.claude/skills/steamloom/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。Windows 可以手動下載 SKILL.md，放到 <code>%USERPROFILE%\\.claude\\skills\\steamloom\\</code>。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}${legacy}`;
+  if (s.key === "codex") return `<p class="hint">在終端機執行，Codex 會自動載入：</p>${code(`mkdir -p ~/.agents/skills/steamloom && curl -fsSL ${url} -o ~/.agents/skills/steamloom/SKILL.md`)}<p class="hint">Skill 更新時，再執行一次同一行指令即可。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button>${preview}</div>${ver}${legacy}`;
+  if (s.key === "claudeai") return `<ol class="steps"><li>到「設定 › 功能」，開啟「程式碼執行與檔案建立」（Team／Enterprise 方案要由管理員開啟）</li><li>下載 Skill 的 ZIP 檔</li><li>到「自訂 › 技能」，按「＋」→「上傳技能」，選剛才下載的 ZIP</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}${legacy}`;
+  if (s.key === "chatgpt") return `<ol class="steps"><li>下載 Skill 的 ZIP 檔</li><li>到 ChatGPT 的 Skills 頁面，按「Create」→「Upload from your computer」，選剛才下載的 ZIP <span class="tag warn">選單位置實作時再確認</span></li><li>ChatGPT 會先掃描 Skill，掃描完就能用</li></ol><div class="row"><button class="btn">下載 ZIP</button>${preview}</div><p class="hint">Skill 更新時，重新下載 ZIP 再上傳一次。</p>${ver}${legacy}`;
+  return `<p class="hint">下載後放進你的工具的 skill 目錄（資料夾名稱用 <code>steamloom</code>）。</p><div class="row"><button class="btn ghost">下載 SKILL.md</button><button class="btn ghost">下載 ZIP</button>${preview}</div>${ver}${legacy}`;
 }
 
 function render() {
