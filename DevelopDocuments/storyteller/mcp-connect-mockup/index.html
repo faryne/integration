@@ -93,7 +93,7 @@ const SERVER = "steamloom";
 const VERSION = "v2.0.0・最後更新 2026-10-04";
 const state = { domain: "steamloom", service: null, auth: null, token: null };
 const endpoint = () => state.domain === "steamloom" ? "https://steamloom.works/mcp" : "https://faryne.dev/api-integration/storyteller-mcp";
-const skillUrl = () => state.domain === "steamloom" ? "https://steamloom.works/api-integration/storyteller/mcp/skill.md" : "https://faryne.dev/api-integration/storyteller/mcp/skill.md";
+const skillUrl = () => state.domain === "steamloom" ? "https://steamloom.works/mcp/skill.md" : "https://faryne.dev/api-integration/storyteller-mcp/skill.md";
 
 // 服務為主的資料結構：每個服務列出支援的授權方式、連線步驟與 Skill 安裝方式（實作時對應 mcpClientSetup.ts）
 const SERVICES = [

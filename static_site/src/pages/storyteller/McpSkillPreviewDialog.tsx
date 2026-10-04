@@ -13,7 +13,7 @@ const codeBlockSx = {
   overflowX: "auto",
 } as const;
 
-// MCP 連接步驟 4 的「預覽內容」：內容來自後端 GET /storyteller/mcp/skill.md。
+// MCP 連接步驟 4 的「預覽內容」：內容來自後端 GET /storyteller-mcp/skill.md。
 // react-markdown 不認得 YAML frontmatter，所以 frontmatter 另外用 code block 呈現。
 export function McpSkillPreviewDialog({
   open,
