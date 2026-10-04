@@ -1,39 +1,14 @@
-import type { StorytellerMcpToolDocCategory } from "@/types/storyteller.ts";
-
-// Skill 內容的版本：改寫作原則、工作流程、驗證清單等內文時，要同步更新這兩個常數。
-// 規劃與修改紀錄見 DevelopDocuments/storyteller/Skill規劃_2026-10-04.md。
-export const STORYTELLER_MCP_SKILL_VERSION = "2.0.0";
-export const STORYTELLER_MCP_SKILL_UPDATED_AT = "2026-10-04";
-
-// Frontmatter 跟 body 分開 export：react-markdown 不認得 YAML frontmatter，`---`
-// 會被當成 <hr/>，兩行 key/value 又沒有空行分隔會被合併成一行——直接把整份內容丟給
-// markdown renderer 預覽會呈現得很怪。frontmatter 只在下載的 SKILL.md 裡需要保留
-// 原始格式，網頁預覽那邊改成用 code block 包起來單獨呈現（見 McpSkillPreviewDialog.tsx）。
-// 版本放在 metadata（Agent Skills 規格允許的字串對照表），name／description 維持不變。
-export const STORYTELLER_MCP_SKILL_FRONTMATTER = `name: storyteller-mcp
-description: 在 SteamLoom（Storyteller）上寫作與管理作品：讀寫創作專案、故事、世界觀設定集、圖像作品與資產，續寫或改寫章節、潤稿、檢查設定一致性、管理版本歷史。使用者提到 SteamLoom、Storyteller、steamloom.works，或要求讀取／續寫／修改／檢查他放在 SteamLoom 上的作品時使用。
+---
+name: {{SKILL_NAME}}
+description: 在 SteamLoom 上寫作與管理作品：讀寫創作專案、故事、世界觀設定集、圖像作品與資產，續寫或改寫章節、潤稿、檢查設定一致性、管理版本歷史。使用者提到 SteamLoom、steamloom.works，或要求讀取／續寫／修改／檢查他放在 SteamLoom 上的作品時使用。
 metadata:
-  version: "${STORYTELLER_MCP_SKILL_VERSION}"
-  updated_at: "${STORYTELLER_MCP_SKILL_UPDATED_AT}"`;
+  version: "{{VERSION}}"
+  updated_at: "{{UPDATED_AT}}"
+---
 
-// categories 來自 GET /storyteller/mcp/tools（useStorytellerMcpToolCategories），
-// 直接反映後端目前實際掛在 MCP server 上的工具——新增/刪除工具不用回頭改這個檔案。
-export function storytellerMcpSkillDocBody(
-  mcpEndpoint: string,
-  categories: StorytellerMcpToolDocCategory[],
-) {
-  const toolList = categories
-    .map(
-      (category) =>
-        `### ${category.title}\n\n${category.tools
-          .map((tool) => `- \`${tool.name}\` - ${tool.description}`)
-          .join("\n")}`,
-    )
-    .join("\n\n");
+# SteamLoom 寫作與 MCP 使用指南
 
-  return `# SteamLoom 寫作與 MCP 使用指南
-
-> 版本 ${STORYTELLER_MCP_SKILL_VERSION}・最後更新 ${STORYTELLER_MCP_SKILL_UPDATED_AT}
+> 版本 {{VERSION}}・最後更新 {{UPDATED_AT}}
 
 ## 這份 Skill 在做什麼
 
@@ -52,13 +27,13 @@ SteamLoom 是作者的寫作工作台。你透過 MCP 讀寫的，是**作者自
 
 ## 1. 開工前
 
-1. **確認目標**。不知道是哪個專案就先 \`storyteller_list_projects\`；同名或相近的作品要跟作者確認，不要猜。寫錯位置比寫不出來更麻煩。
-2. **讀記憶**。照 server 指示，對這次要動的故事或設定集呼叫 \`storyteller_list_memories\`。作者的文風偏好、禁忌、已經定案的設定都在這裡。
+1. **確認目標**。不知道是哪個專案就先 `storyteller_list_projects`；同名或相近的作品要跟作者確認，不要猜。寫錯位置比寫不出來更麻煩。
+2. **讀記憶**。照 server 指示，對這次要動的故事或設定集呼叫 `storyteller_list_memories`。作者的文風偏好、禁忌、已經定案的設定都在這裡。
 3. **讀脈絡**，至少包括：
-   - 要接續的前一章（長篇用 \`storyteller_list_story_chapters\` 找位置，\`storyteller_get_story_chapter\` 讀內容，不要整篇拉下來）
-   - 這次會出現的角色、地點、名詞的設定集（\`storyteller_list_lores\` → \`storyteller_get_lore\`）
+   - 要接續的前一章（長篇用 `storyteller_list_story_chapters` 找位置，`storyteller_get_story_chapter` 讀內容，不要整篇拉下來）
+   - 這次會出現的角色、地點、名詞的設定集（`storyteller_list_lores` → `storyteller_get_lore`）
    - 作品的分級（專案資訊裡的 rating）
-4. **記下 \`version_id\`**，寫入時當 \`base_version_id\` 帶回去。
+4. **記下 `version_id`**，寫入時當 `base_version_id` 帶回去。
 5. 需求不清楚就問。尤其是篇幅、視角、這章要推進到哪裡。問一次問清楚，不要邊寫邊猜。
 6. 確定故事的 5W（what / when / why / who / where）1H（How）。
 
@@ -139,41 +114,41 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 ### 段落 marker（最容易出錯）
 
-讀回來的內容，每一段都包在 \`⟦id⟧……⟦/id⟧\` 裡：
+讀回來的內容，每一段都包在 `⟦id⟧……⟦/id⟧` 裡：
 
-\`\`\`text
+```text
 ⟦a1b2c3d4e5f60718⟧直播結束第三天，我第一次坐在會議桌最前面。⟦/a1b2c3d4e5f60718⟧
-\`\`\`
+```
 
 - 這個 id 是作者書籤和大綱的定位點。**修改既有段落時沿用原本的 id**；新增段落用新的唯一 id；刪掉整段時才拿掉。
 - 不要把 marker 當雜訊清掉，也不要替還存在的段落換 id。
 
 ### 標題、引用、清單：前綴放在 marker 外面
 
-\`\`\`text
+```text
 正確：# ⟦a1b2c3d4e5f60718⟧第一幕⟦/a1b2c3d4e5f60718⟧
 錯誤：⟦a1b2c3d4e5f60718⟧# 第一幕⟦/a1b2c3d4e5f60718⟧
-\`\`\`
+```
 
-引用 \`> \`、清單 \`- \`、\`1. \` 也一樣放在 marker 前面。前綴包在 marker 裡面時，\`#\` 會被當成文字直接印出來，章節工具也找不到這個標題。
+引用 `> `、清單 `- `、`1. ` 也一樣放在 marker 前面。前綴包在 marker 裡面時，`#` 會被當成文字直接印出來，章節工具也找不到這個標題。
 
 ### 行內樣式
 
 | 效果 | 語法 | 注意 |
 |------|------|------|
-| 粗體 | \`**文字**\` | |
-| 斜體 | \`*文字*\` | |
-| 底線 | \`++文字++\` | |
-| 刪除線 | \`--文字--\` | 不是 \`~~\` |
-| 上標／下標 | \`^文字^\`／\`~文字~\` | |
-| 分隔線 | 一行只有 \`---\` | |
+| 粗體 | `**文字**` | |
+| 斜體 | `*文字*` | |
+| 底線 | `++文字++` | |
+| 刪除線 | `--文字--` | 不是 `~~` |
+| 上標／下標 | `^文字^`／`~文字~` | |
+| 分隔線 | 一行只有 `---` | |
 
 表格、程式碼區塊的寫法見工具說明；一般小說用不到就不要用。
 
 ### 腳注與註解
 
-- \`⟦footnote-…⟧\` 是給讀者看的腳注：改寫附近文字時保留腳注和它包住的文字。
-- \`⟦comment-…⟧\` 是**作者留給自己的私人註解，讀者看不到**：把註解內容當成作者對那段文字的修改指示來讀，但**絕對不要把註解文字寫進正文**，也不要轉述給作者以外的人。處理完可以保留 marker，讓作者自己刪。
+- `⟦footnote-…⟧` 是給讀者看的腳注：改寫附近文字時保留腳注和它包住的文字。
+- `⟦comment-…⟧` 是**作者留給自己的私人註解，讀者看不到**：把註解內容當成作者對那段文字的修改指示來讀，但**絕對不要把註解文字寫進正文**，也不要轉述給作者以外的人。處理完可以保留 marker，讓作者自己刪。
 
 ## 4. 常見任務的工作流程
 
@@ -184,18 +159,18 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 ### 續寫新的一章
 
-1. \`storyteller_list_story_chapters\` 找到最後一章的位置，\`storyteller_get_story_chapter\` 讀最後一到兩章。
+1. `storyteller_list_story_chapters` 找到最後一章的位置，`storyteller_get_story_chapter` 讀最後一到兩章。
 2. 讀相關設定集與記憶。
 3. 先給作者草稿（或大綱，篇幅長時先確認大綱）。只交一版完整的內容，不要附「更短版」「更溫和版」或好幾個備選結尾，除非作者要求給選項。
-4. 作者同意後，用 \`storyteller_insert_story_chapter\` 插在最後；新章要有標題行。
+4. 作者同意後，用 `storyteller_insert_story_chapter` 插在最後；新章要有標題行。
 5. 跑「寫入後驗證」。
 
 ### 改寫某一段或某一章
 
-1. 用 \`storyteller_get_story_chapter\` 只拿那一章。
+1. 用 `storyteller_get_story_chapter` 只拿那一章。
 2. 改寫時**保留每段原本的 marker id**；只改需要改的段落，其他段落一字不動。
 3. 給作者看「改了哪幾段、怎麼改」（可以列改前改後）。
-4. 同意後用 \`storyteller_replace_story_chapter\` 寫回。
+4. 同意後用 `storyteller_replace_story_chapter` 寫回。
 
 ### 整篇潤稿、挑錯字
 
@@ -210,17 +185,17 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 ### 只改標題、摘要、狀態
 
-- 用 \`storyteller_patch_story\`，只帶要改的欄位。**不要用 \`storyteller_upsert_story\`**：upsert 是整份覆寫，漏帶的欄位會被清空。
+- 用 `storyteller_patch_story`，只帶要改的欄位。**不要用 `storyteller_upsert_story`**：upsert 是整份覆寫，漏帶的欄位會被清空。
 
 ### 建立冊、把故事放進冊
 
 「冊」是故事的分組，例如第一部、第二部。冊本身沒有內文，也不能冊中有冊。
 
-1. 先用 \`storyteller_list_volumes\` 看有沒有同名或相近的冊，避免重複建立。
-2. 用 \`storyteller_create_volume\` 建立。冊不分文字或圖像，作品的類型由每一篇自己決定。要注意：冊設成 \`draft\` 時，裡面每一篇故事讀者都看不到，不管故事自己是什麼狀態。這等於改動公開狀態，作者沒明確要求就不要設成 \`draft\`，也不要改既有冊的狀態。
-3. 用 \`storyteller_move_story\` 把故事搬進冊；\`volume_public_id\` 傳空字串就是移出冊、回到不分冊。沒有回傳錯誤就是搬好了；一次搬多篇時，逐篇確認每次呼叫都成功，失敗的要告訴作者是哪幾篇。
-4. 冊的改名、摘要、排序用 \`storyteller_update_volume\`。
-5. 刪冊用 \`storyteller_delete_volume\`，只能刪空的冊。冊裡還有故事時，先問作者那些故事要搬去哪裡；**不要為了刪冊而刪掉裡面的故事**。
+1. 先用 `storyteller_list_volumes` 看有沒有同名或相近的冊，避免重複建立。
+2. 用 `storyteller_create_volume` 建立。冊不分文字或圖像，作品的類型由每一篇自己決定。要注意：冊設成 `draft` 時，裡面每一篇故事讀者都看不到，不管故事自己是什麼狀態。這等於改動公開狀態，作者沒明確要求就不要設成 `draft`，也不要改既有冊的狀態。
+3. 用 `storyteller_move_story` 把故事搬進冊；`volume_public_id` 傳空字串就是移出冊、回到不分冊。沒有回傳錯誤就是搬好了；一次搬多篇時，逐篇確認每次呼叫都成功，失敗的要告訴作者是哪幾篇。
+4. 冊的改名、摘要、排序用 `storyteller_update_volume`。
+5. 刪冊用 `storyteller_delete_volume`，只能刪空的冊。冊裡還有故事時，先問作者那些故事要搬去哪裡；**不要為了刪冊而刪掉裡面的故事**。
 
 ### 讀取與存取記憶
 
@@ -228,8 +203,8 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 **讀取**
 
-- 開工前，對這次要動的故事或設定集呼叫一次 \`storyteller_list_memories\`（帶 \`project_public_id\`，再加 \`story_public_id\` 或 \`lore_public_id\`）。換了目標作品就再讀一次。
-- 寫到特定角色、名詞、場景時，用 \`storyteller_search_memories\` 查關鍵字，確認有沒有相關規則。
+- 開工前，對這次要動的故事或設定集呼叫一次 `storyteller_list_memories`（帶 `project_public_id`，再加 `story_public_id` 或 `lore_public_id`）。換了目標作品就再讀一次。
+- 寫到特定角色、名詞、場景時，用 `storyteller_search_memories` 查關鍵字，確認有沒有相關規則。
 - 套用記憶時不用跟作者報告「我讀到了哪條記憶」，照做就好。
 - 記憶跟作者當下的要求衝突時，照當下的要求做，再順口問作者要不要更新那條記憶。
 
@@ -238,10 +213,10 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 - 作者說了想長期沿用的事（「以後都……」「不要再……」、附改前改後的修正、拍板的劇情決定），**先提議**，作者同意才寫。MCP 寫入會立刻生效，沒有審核步驟。
 - 提議時把要存的內容完整列出來：
   - **內容**：一條記憶只寫一件事，寫成沒看過這段對話的 AI 也能照做的句子；文風修正附一組改前改後的例子。
-  - **範圍**：整個專案（\`project\`）、這篇故事（\`story\`），或這份設定集（\`lore\`）。
-  - **種類**：文風偏好（\`preference\`）、長期規則（\`instruction\`）、已定案的劇情或設定（\`decision\`）、背景資料（\`context\`）。
+  - **範圍**：整個專案（`project`）、這篇故事（`story`），或這份設定集（`lore`）。
+  - **種類**：文風偏好（`preference`）、長期規則（`instruction`）、已定案的劇情或設定（`decision`）、背景資料（`context`）。
   - **標籤**：方便之後搜尋的關鍵字，例如角色名，最多 8 個。
-- 寫之前先用 \`storyteller_search_memories\` 找有沒有類似的記憶；有的話帶 \`memory_public_id\` 用 \`storyteller_upsert_memory\` 更新那一條，不要另外新增一條幾乎一樣的。
+- 寫之前先用 `storyteller_search_memories` 找有沒有類似的記憶；有的話帶 `memory_public_id` 用 `storyteller_upsert_memory` 更新那一條，不要另外新增一條幾乎一樣的。
 - 不存：密碼、金鑰、個人資料、只跟這次任務有關的暫時狀態，以及你自己猜的事。
 
 **刪除**
@@ -250,18 +225,18 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 ### 建立或更新設定集
 
-1. 先 \`storyteller_list_lores\`、讀相關條目，確認沒有重複或矛盾。
+1. 先 `storyteller_list_lores`、讀相關條目，確認沒有重複或矛盾。
 2. 發現跟既有設定衝突時，列出衝突點請作者決定，不要自己選一邊。
 
 ### 圖像作品（一話）
 
-\`storyteller_presign_asset_upload\` → 上傳 → \`storyteller_confirm_asset_upload\` → \`storyteller_upsert_image_story\`。每頁的描述用的也是上面的內容格式。
+`storyteller_presign_asset_upload` → 上傳 → `storyteller_confirm_asset_upload` → `storyteller_upsert_image_story`。每頁的描述用的也是上面的內容格式。
 
-更新既有的圖像作品時，先用 \`storyteller_get_story\` 讀回目前的頁面，把要保留的頁面照順序一起帶回去；**沒帶回去的頁面會被刪掉**。
+更新既有的圖像作品時，先用 `storyteller_get_story` 讀回目前的頁面，把要保留的頁面照順序一起帶回去；**沒帶回去的頁面會被刪掉**。
 
 ### 復原到舊版本
 
-\`storyteller_list_story_versions\` 找版本 → 必要時 \`storyteller_get_story_version\` 給作者確認內容 → \`storyteller_revert_story\`。
+`storyteller_list_story_versions` 找版本 → 必要時 `storyteller_get_story_version` 給作者確認內容 → `storyteller_revert_story`。
 
 ## 5. 驗證清單
 
@@ -273,14 +248,14 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 - [ ] **情節**：每個情緒變化和動作都找得到前因嗎？有沒有前一秒還好好的、下一秒突然翻臉的地方？
 - [ ] **對話**：隨便抽三句對話，那個角色在那個情境下真的會這樣講嗎？有沒有金句、說明書腔，或修到只剩資訊？
 - [ ] **用詞**：有沒有截成單字、讀起來像半截話的詞（例如「語氣很平」）？
-- [ ] **格式**：用 \`storyteller_validate_content\` 檢查要寫入的內容（只檢查、不會寫入）。\`ok\` 是 \`false\` 就先修好；帶了故事或設定集的 id 時，\`removed_marker_ids\` 列出的段落要確認是不是真的要刪，作者的書籤可能指著它們。另外確認沒有把註解文字寫進正文。
+- [ ] **格式**：用 `storyteller_validate_content` 檢查要寫入的內容（只檢查、不會寫入）。`ok` 是 `false` 就先修好；帶了故事或設定集的 id 時，`removed_marker_ids` 列出的段落要確認是不是真的要刪，作者的書籤可能指著它們。另外確認沒有把註解文字寫進正文。
 
 ### 寫入後
 
-- [ ] 寫入回應的 \`format_warnings\` 不是空陣列時，照提示修好再存一次。
-- [ ] 寫入回應有 \`version_conflict\` 時：代表作者在你讀取之後改過網頁版，告訴作者，請他確認有沒有蓋掉他的修改（必要時用版本歷史比對）。
-- [ ] 字數變化合理：比對寫入前後 \`storyteller_list_story_chapters\`（每章）或 \`storyteller_get_story\`（整篇）的 \`word_count\`。只改錯字卻少了一千字，就是出事了。
-- [ ] 有疑慮時用 \`storyteller_get_story_chapter\` 讀回那一章，確認內容和 marker 都正確。
+- [ ] 寫入回應的 `format_warnings` 不是空陣列時，照提示修好再存一次。
+- [ ] 寫入回應有 `version_conflict` 時：代表作者在你讀取之後改過網頁版，告訴作者，請他確認有沒有蓋掉他的修改（必要時用版本歷史比對）。
+- [ ] 字數變化合理：比對寫入前後 `storyteller_list_story_chapters`（每章）或 `storyteller_get_story`（整篇）的 `word_count`。只改錯字卻少了一千字，就是出事了。
+- [ ] 有疑慮時用 `storyteller_get_story_chapter` 讀回那一章，確認內容和 marker 都正確。
 
 ### 回報給作者
 
@@ -302,26 +277,12 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 
 MCP 連線位址：
 
-\`\`\`text
-${mcpEndpoint}
-\`\`\`
+```text
+{{MCP_ENDPOINT}}
+```
 
 ## 附錄：可用工具
 
 以下清單即時查詢自 MCP server 目前掛載的工具；如果跟 client 實際查到的不同，以 client 為準。
 
-${toolList}
-`;
-}
-
-// 下載用的完整 SKILL.md：frontmatter + body 原樣拼起來，保留標準 frontmatter 格式。
-export function storytellerMcpSkillDoc(
-  mcpEndpoint: string,
-  categories: StorytellerMcpToolDocCategory[],
-) {
-  return `---
-${STORYTELLER_MCP_SKILL_FRONTMATTER}
----
-
-${storytellerMcpSkillDocBody(mcpEndpoint, categories)}`;
-}
+{{TOOL_LIST}}

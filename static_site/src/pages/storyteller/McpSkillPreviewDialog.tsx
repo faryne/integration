@@ -2,10 +2,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import { Box, Button, Typography } from "@mui/material";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
-import {
-  STORYTELLER_MCP_SKILL_FRONTMATTER,
-  STORYTELLER_MCP_SKILL_VERSION,
-} from "@/pages/storyteller/storytellerMcpSkillDoc.ts";
+import { mcpSkillMarkdownUrl } from "@/pages/storyteller/mcpClientSetup.ts";
 
 const codeBlockSx = {
   m: 0,
@@ -16,33 +13,36 @@ const codeBlockSx = {
   overflowX: "auto",
 } as const;
 
-// MCP 連接步驟 3 的「預覽內容」：原本直接攤在頁面上的 SKILL.md 收進這裡。
+// MCP 連接步驟 4 的「預覽內容」：內容來自後端 GET /storyteller/mcp/skill.md。
 // react-markdown 不認得 YAML frontmatter，所以 frontmatter 另外用 code block 呈現。
 export function McpSkillPreviewDialog({
   open,
+  frontmatter,
   body,
+  version,
   onClose,
-  onDownload,
 }: {
   open: boolean;
+  frontmatter: string;
   body: string;
+  version: string;
   onClose: () => void;
-  onDownload: () => void;
 }) {
   return (
     <StorytellerDialog
       open={open}
       maxWidth="md"
-      eyebrow={`步驟 3 · SKILL.md 預覽 · v${STORYTELLER_MCP_SKILL_VERSION}`}
-      title="給 AI Agent 的說明文件"
+      eyebrow={`SKILL.md 預覽${version ? ` · v${version}` : ""}`}
+      title="給 AI 的寫作與操作指南"
       onClose={onClose}
       actions={
         <>
           <Button onClick={onClose}>關閉</Button>
           <Button
+            component="a"
+            href={mcpSkillMarkdownUrl}
             variant="contained"
             startIcon={<DownloadIcon />}
-            onClick={onDownload}
           >
             下載 SKILL.md
           </Button>
@@ -70,7 +70,7 @@ export function McpSkillPreviewDialog({
           Frontmatter
         </Typography>
         <Box component="pre" sx={{ ...codeBlockSx, mb: 2 }}>
-          {STORYTELLER_MCP_SKILL_FRONTMATTER}
+          {frontmatter}
         </Box>
         <StorytellerMarkdown>{body}</StorytellerMarkdown>
       </Box>
