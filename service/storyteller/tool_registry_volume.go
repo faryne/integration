@@ -18,7 +18,6 @@ type storytellerUpsertVolumeArguments struct {
 	Summary         string `json:"summary"`
 	Status          string `json:"status"`
 	Sort            int    `json:"sort"`
-	ContentType     string `json:"content_type"`
 }
 
 func storytellerVolumeToolSpecs() []ToolSpec {
@@ -49,16 +48,15 @@ func storytellerVolumeToolSpecs() []ToolSpec {
 		ToolSpec{
 			Name: "storyteller_create_volume",
 			Description: "Create a volume (\"冊\", a top-level grouping of stories) inside a storyteller project. " +
-				"A volume only has a title/summary/status — no content of its own, and volumes cannot be nested inside " +
-				"other volumes. Move stories into it afterwards via storyteller_upsert_story's parent handling in the web " +
-				"editor, or by re-saving the story with its parent set through the same collection mechanics as lore/assets.",
+				"A volume only has a title/summary/status — no content of its own, volumes cannot be nested inside " +
+				"other volumes, and a volume is not text- or image-typed (each story keeps its own content_type). " +
+				"Check storyteller_list_volumes first to avoid duplicates, then move stories into it with storyteller_move_story.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"title":             stringSchema("Volume title, required."),
 				"summary":           stringSchema("Short summary shown in listings."),
 				"status":            stringSchema("draft or completed, defaults to completed. When draft, every story inside is hidden from readers regardless of its own status."),
 				"sort":              integerSchema("Display order among the project's volumes."),
-				"content_type":      stringSchema("text or image, defaults to text. Only used on create — determines whether stories placed in this volume are prose or image pages. Cannot be changed afterwards."),
 			}, []string{"project_public_id", "title"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -70,11 +68,10 @@ func storytellerVolumeToolSpecs() []ToolSpec {
 					return nil, err
 				}
 				input := storytellerModel.StoryVolumeRequest{
-					Title:       args.Title,
-					Summary:     args.Summary,
-					Status:      storytellerModel.StoryStatus(args.Status),
-					Sort:        args.Sort,
-					ContentType: storytellerModel.ProjectContentType(args.ContentType),
+					Title:   args.Title,
+					Summary: args.Summary,
+					Status:  storytellerModel.StoryStatus(args.Status),
+					Sort:    args.Sort,
 				}
 				source := storytellerSourceFromContext(ctx)
 				volume, err := NewService().CreateVolume(userID, args.ProjectPublicID, input, source)
@@ -86,9 +83,8 @@ func storytellerVolumeToolSpecs() []ToolSpec {
 		},
 
 		ToolSpec{
-			Name: "storyteller_update_volume",
-			Description: "Rename a volume (\"冊\"), update its summary, display order, or draft/completed status. " +
-				"content_type cannot be changed after creation and is ignored here.",
+			Name:        "storyteller_update_volume",
+			Description: "Rename a volume (\"冊\"), update its summary, display order, or draft/completed status.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"volume_public_id":  stringSchema("Volume public_id."),

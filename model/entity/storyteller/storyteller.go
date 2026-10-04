@@ -939,8 +939,6 @@ type StoryVolumeRequest struct {
 	Status StoryStatus `json:"status"`
 	// Summary 是這一冊／話給讀者看的說明文字。
 	Summary string `json:"summary"`
-	// ContentType 只有建立時會用到（決定底下要掛文字故事還是圖像頁），更新時忽略此欄位。
-	ContentType ProjectContentType `json:"content_type,omitempty"`
 }
 
 // StoryImagePage 是「話」（Story.ContentType=image）JSON 內容裡的單一頁面。
