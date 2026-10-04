@@ -76,11 +76,14 @@ type storytellerChapterWriteOutput struct {
 	storytellerChapterSummary
 	VersionID       uint64 `json:"version_id"`
 	VersionConflict bool   `json:"version_conflict,omitempty"`
+	// FormatWarnings 檢查的是存檔後的整篇內容，不只這一章
+	FormatWarnings *[]storyFormatWarning `json:"format_warnings"`
 }
 
 type storytellerChapterDeleteOutput struct {
-	DeletedMarkerID       string `json:"deleted_marker_id"`
-	VersionID             uint64 `json:"version_id"`
-	VersionConflict       bool   `json:"version_conflict,omitempty"`
-	RemainingChapterCount int    `json:"remaining_chapter_count"`
+	DeletedMarkerID       string                `json:"deleted_marker_id"`
+	VersionID             uint64                `json:"version_id"`
+	VersionConflict       bool                  `json:"version_conflict,omitempty"`
+	RemainingChapterCount int                   `json:"remaining_chapter_count"`
+	FormatWarnings        *[]storyFormatWarning `json:"format_warnings"`
 }

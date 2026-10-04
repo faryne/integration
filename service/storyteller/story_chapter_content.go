@@ -124,6 +124,7 @@ func storytellerChapterWriteOutputAfterSave(content string, startLine int, versi
 				storytellerChapterSummary: storytellerChapterSummaryForSpan(lines, span, order),
 				VersionID:                 versionID,
 				VersionConflict:           conflicted,
+				FormatWarnings:            storyFormatWarningsAfterSave(content),
 			}, nil
 		}
 	}

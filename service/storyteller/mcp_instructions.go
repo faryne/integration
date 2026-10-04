@@ -20,4 +20,5 @@ PROPOSE MEMORIES, NEVER WRITE SILENTLY
 
 EDITING
 - Keep version_id from storyteller_get_story / storyteller_get_lore and pass it back as base_version_id when saving, so edits made in the web editor meanwhile are detected instead of overwritten.
-- For long stories, prefer chapter tools (storyteller_list_story_chapters, storyteller_get_story_chapter, storyteller_replace_story_chapter) over rewriting the whole story.`
+- For long stories, prefer chapter tools (storyteller_list_story_chapters, storyteller_get_story_chapter, storyteller_replace_story_chapter) over rewriting the whole story.
+- Check formatting with storyteller_validate_content before saving; after saving, fix anything listed in the write result's format_warnings.`

@@ -94,6 +94,7 @@ func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
 		storytellerProfileMCPOnlyToolSpecs(),
 		storytellerMemoryMCPOnlyToolSpecs(),
 		storytellerChapterWriteToolSpecs(),
+		storytellerValidateToolSpecs(),
 	} {
 		for _, spec := range specs {
 			registry.Register(spec)

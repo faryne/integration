@@ -165,6 +165,8 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "memory.list", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_list_memories"}},
 	{Name: "memory.search", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_search_memories"}},
 	{Name: "author_profile.list", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_list_profiles"}},
+	// 格式檢查不寫入，但帶 story／lore id 時會讀目前版本來比對段落 id，所以記成讀取
+	{Name: "content.validate", Category: "read", Importance: AuditImportanceLow, Tools: []string{"storyteller_validate_content"}},
 }
 
 // StorytellerAuditExemptions 只保留沒有實際寫入的準備、transport 與唯讀動作。

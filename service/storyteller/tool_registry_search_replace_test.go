@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCompileStorytellerSearchPatternEscapesLiteralSearch(t *testing.T) {
-	pattern, err := compileStorytellerSearchPattern("Lux.Oris?", false)
+func TestCompileStorytellerSearchReplaceEscapesLiteralSearch(t *testing.T) {
+	pattern, _, err := compileStorytellerSearchReplace("Lux.Oris?", "", false)
 	require.NoError(t, err)
 
 	replaced, count := replaceAllCounting(pattern, "Lux.Oris? LuxxOris?", "LUXORIS")
@@ -20,15 +20,26 @@ func TestCompileStorytellerSearchPatternEscapesLiteralSearch(t *testing.T) {
 	require.Equal(t, "LUXORIS LuxxOris?", replaced)
 }
 
-func TestCompileStorytellerSearchPatternReturnsRegexError(t *testing.T) {
-	_, err := compileStorytellerSearchPattern("(", true)
+// literal 模式下 replace 也是純文字：`$100` 不能被 ReplaceAllString 當成群組參照吃掉（2026-10-04 修正）。
+func TestCompileStorytellerSearchReplaceKeepsDollarInLiteralReplace(t *testing.T) {
+	pattern, replace, err := compileStorytellerSearchReplace("價格", "售價 $100 元（${name}）", false)
+	require.NoError(t, err)
+
+	result, err := replaceStoryContent(storytellerModel.ProjectContentTypeText, "價格未定", pattern, replace)
+
+	require.NoError(t, err)
+	require.Equal(t, "售價 $100 元（${name}）未定", result.Content)
+}
+
+func TestCompileStorytellerSearchReplaceReturnsRegexError(t *testing.T) {
+	_, _, err := compileStorytellerSearchReplace("(", "", true)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid search pattern")
 	require.Contains(t, err.Error(), "missing closing")
 }
 
 func TestReplaceStoryContentTextSupportsRegexCaptureReferences(t *testing.T) {
-	pattern, err := compileStorytellerSearchPattern(`Lux(Oris)`, true)
+	pattern, _, err := compileStorytellerSearchReplace(`Lux(Oris)`, "", true)
 	require.NoError(t, err)
 
 	result, err := replaceStoryContent(storytellerModel.ProjectContentTypeText, "LuxOris / LuxOris", pattern, "LUX$1")
@@ -43,7 +54,7 @@ func TestReplaceStoryContentTextSupportsRegexCaptureReferences(t *testing.T) {
 
 func TestReplaceStoryContentImageOnlyChangesPageDescriptions(t *testing.T) {
 	rawContent := `{"pages":[{"id":"LuxOris","key":"LuxOris/key.png","asset_public_id":"asset-1","description":"LuxOris 第一頁 LuxOris","sort":0},{"id":"page-2","key":"keep/key.png","description":"沒有命中","sort":1}]}`
-	pattern, err := compileStorytellerSearchPattern("LuxOris", false)
+	pattern, _, err := compileStorytellerSearchReplace("LuxOris", "", false)
 	require.NoError(t, err)
 
 	result, err := replaceStoryContent(storytellerModel.ProjectContentTypeImage, rawContent, pattern, "LUXORIS")
@@ -63,7 +74,7 @@ func TestReplaceStoryContentImageOnlyChangesPageDescriptions(t *testing.T) {
 
 func TestReplaceStoryContentImageNoMatchKeepsRawContent(t *testing.T) {
 	rawContent := `{"pages":[{"id":"page-1","key":"k.png","description":"沒有命中","sort":0}]}`
-	pattern, err := compileStorytellerSearchPattern("LuxOris", false)
+	pattern, _, err := compileStorytellerSearchReplace("LuxOris", "", false)
 	require.NoError(t, err)
 
 	result, err := replaceStoryContent(storytellerModel.ProjectContentTypeImage, rawContent, pattern, "LUXORIS")
@@ -74,27 +85,27 @@ func TestReplaceStoryContentImageNoMatchKeepsRawContent(t *testing.T) {
 	require.Equal(t, 0, result.AffectedPages)
 }
 
-// TestCompileStorytellerSearchPatternRejectsEmptyLiteralSearch 涵蓋真正造成故事內容炸開的
+// TestCompileStorytellerSearchReplaceRejectsEmptyLiteralSearch 涵蓋真正造成故事內容炸開的
 // 那個 bug：search 是空字串時，regexp.QuoteMeta("") 還是空字串，編譯出來的 pattern 會在
 // 「每個字元之間」都算命中一次。ReplaceAllString 對 N 個 rune 的內容會插入 N+1 次 replace，
 // 產生 replace 複製貼上 N+1 次、中間夾雜原內容零星單字元碎片的結果——跟現場回報的壞掉內容
 // 一模一樣。必須在編譯階段就擋掉，不能讓它走到實際 replace。
-func TestCompileStorytellerSearchPatternRejectsEmptyLiteralSearch(t *testing.T) {
-	_, err := compileStorytellerSearchPattern("", false)
+func TestCompileStorytellerSearchReplaceRejectsEmptyLiteralSearch(t *testing.T) {
+	_, _, err := compileStorytellerSearchReplace("", "", false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must not match an empty string")
 }
 
-// TestCompileStorytellerSearchPatternRejectsZeroWidthRegex 涵蓋 is_regex=true 時，regexp
+// TestCompileStorytellerSearchReplaceRejectsZeroWidthRegex 涵蓋 is_regex=true 時，regexp
 // pattern 本身可以配到零寬度字串的情況（例如 "x*"、"a?"），效果跟空字串 search 完全一樣。
-func TestCompileStorytellerSearchPatternRejectsZeroWidthRegex(t *testing.T) {
-	_, err := compileStorytellerSearchPattern("x*", true)
+func TestCompileStorytellerSearchReplaceRejectsZeroWidthRegex(t *testing.T) {
+	_, _, err := compileStorytellerSearchReplace("x*", "", true)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must not match an empty string")
 }
 
 // TestReplaceAllCountingWithoutGuardCorruptsContent 直接示範被擋下來的那個 bug 長什麼樣子：
-// 繞過 compileStorytellerSearchPattern 的防呆，手動組一個空字串 pattern 餵給
+// 繞過 compileStorytellerSearchReplace 的防呆，手動組一個空字串 pattern 餵給
 // replaceAllCounting，確認結果正是「replace 複製貼上 N 次、中間夾雜單字元碎片」，
 // 印證這就是現場看到的壞掉內容從何而來。
 func TestReplaceAllCountingWithoutGuardCorruptsContent(t *testing.T) {
@@ -115,7 +126,7 @@ func TestReplaceAllCountingWithoutGuardCorruptsContent(t *testing.T) {
 func TestReplaceStoryContentPrefixReplaceAppliesExactlyOncePerOccurrence(t *testing.T) {
 	find := `![alt](steamloom-asset://xxx`
 	replace := `![alt](steamloom-asset://xxx "layout=float-left size=medium")`
-	pattern, err := compileStorytellerSearchPattern(find, false)
+	pattern, _, err := compileStorytellerSearchReplace(find, "", false)
 	require.NoError(t, err)
 
 	content := "前段。" + find + ")。中段。" + find + ")。後段。" + find + ")。結尾。"

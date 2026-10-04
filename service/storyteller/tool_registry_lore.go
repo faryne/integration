@@ -341,6 +341,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					storytellerLoreSummary: toStorytellerLoreSummary(*lore),
 					Content:                lore.LatestContent,
 					VersionID:              derefUint64(lore.LatestVersionID),
+					FormatWarnings:         storyFormatWarningsAfterSave(lore.LatestContent),
 					VersionConflict:        conflicted,
 				}, nil
 			},
@@ -433,6 +434,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					storytellerLoreSummary: toStorytellerLoreSummary(*lore),
 					Content:                lore.LatestContent,
 					VersionID:              derefUint64(lore.LatestVersionID),
+					FormatWarnings:         storyFormatWarningsAfterSave(lore.LatestContent),
 				}, nil
 			},
 		},
@@ -477,6 +479,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					storytellerLoreSummary: toStorytellerLoreSummary(*lore),
 					Content:                lore.LatestContent,
 					VersionID:              derefUint64(lore.LatestVersionID),
+					FormatWarnings:         storyFormatWarningsAfterSave(lore.LatestContent),
 					VersionConflict:        conflicted,
 				}, nil
 			},
@@ -503,7 +506,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				pattern, err := compileStorytellerSearchPattern(args.Search, args.IsRegex)
+				pattern, replace, err := compileStorytellerSearchReplace(args.Search, args.Replace, args.IsRegex)
 				if err != nil {
 					return nil, err
 				}
@@ -512,7 +515,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				content, matchCount := replaceAllCounting(pattern, current.LatestContent, args.Replace)
+				content, matchCount := replaceAllCounting(pattern, current.LatestContent, replace)
 				stats := storytellerSearchReplaceOutput{MatchCount: matchCount, TextMatchCount: matchCount}
 				if matchCount == 0 {
 					return storytellerLoreSearchReplaceOutput{
@@ -520,6 +523,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 							storytellerLoreSummary: toStorytellerLoreSummary(*current),
 							Content:                current.LatestContent,
 							VersionID:              derefUint64(current.LatestVersionID),
+							FormatWarnings:         storyFormatWarningsAfterSave(current.LatestContent),
 						},
 						storytellerSearchReplaceOutput: stats,
 					}, nil
@@ -538,6 +542,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 						storytellerLoreSummary: toStorytellerLoreSummary(*lore),
 						Content:                lore.LatestContent,
 						VersionID:              derefUint64(lore.LatestVersionID),
+						FormatWarnings:         storyFormatWarningsAfterSave(lore.LatestContent),
 						VersionConflict:        conflicted,
 					},
 					storytellerSearchReplaceOutput: stats,
