@@ -53,6 +53,8 @@ func TestNewStorytellerServerRegistersPatchAndSearchReplaceTools(t *testing.T) {
 		"storyteller_search_replace_story",
 		"storyteller_patch_lore",
 		"storyteller_search_replace_lore",
+		"storyteller_search_replace_story_batch",
+		"storyteller_search_replace_lore_batch",
 	} {
 		require.Contains(t, body, `"name":"`+name+`"`)
 	}

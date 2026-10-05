@@ -38,14 +38,7 @@ func (a storytellerPatchLoreArguments) hasContentField() bool {
 type storytellerSearchReplaceLoreArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
 	LorePublicID    string `json:"lore_public_id"`
-	Search          string `json:"search"`
-	Replace         string `json:"replace"`
-	IsRegex         bool   `json:"is_regex"`
-}
-
-type storytellerLoreSearchReplaceOutput struct {
-	storytellerLoreDetail
-	storytellerSearchReplaceOutput
+	storytellerReplacementArguments
 }
 
 type storytellerLoreVersionArguments struct {
@@ -498,55 +491,19 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
 			}, []string{"project_public_id", "lore_public_id", "search", "replace"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
-				userID, err := storytellerUserIDFromContext(ctx)
-				if err != nil {
-					return nil, err
-				}
 				var args storytellerSearchReplaceLoreArguments
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				pattern, replace, err := compileStorytellerSearchReplace(args.Search, args.Replace, args.IsRegex)
+				rule, err := args.compile()
 				if err != nil {
 					return nil, err
 				}
-				service := NewService()
-				current, err := service.Lore(userID, args.ProjectPublicID, args.LorePublicID)
+				detail, result, err := runLoreSearchReplace(ctx, args.ProjectPublicID, args.LorePublicID, []storytellerReplacementRule{rule})
 				if err != nil {
 					return nil, err
 				}
-				content, matchCount := replaceAllCounting(pattern, current.LatestContent, replace)
-				stats := storytellerSearchReplaceOutput{MatchCount: matchCount, TextMatchCount: matchCount}
-				if matchCount == 0 {
-					return storytellerLoreSearchReplaceOutput{
-						storytellerLoreDetail: storytellerLoreDetail{
-							storytellerLoreSummary: toStorytellerLoreSummary(*current),
-							Content:                current.LatestContent,
-							VersionID:              derefUint64(current.LatestVersionID),
-							FormatWarnings:         storyFormatWarningsAfterSave(current.LatestContent),
-						},
-						storytellerSearchReplaceOutput: stats,
-					}, nil
-				}
-				input := storytellerModel.LoreRequest{
-					Title:         current.Title,
-					Content:       content,
-					BaseVersionID: current.LatestVersionID,
-				}
-				lore, conflicted, err := service.UpdateLore(userID, args.ProjectPublicID, args.LorePublicID, input, storytellerSourceFromContext(ctx))
-				if err != nil {
-					return nil, err
-				}
-				return storytellerLoreSearchReplaceOutput{
-					storytellerLoreDetail: storytellerLoreDetail{
-						storytellerLoreSummary: toStorytellerLoreSummary(*lore),
-						Content:                lore.LatestContent,
-						VersionID:              derefUint64(lore.LatestVersionID),
-						FormatWarnings:         storyFormatWarningsAfterSave(lore.LatestContent),
-						VersionConflict:        conflicted,
-					},
-					storytellerSearchReplaceOutput: stats,
-				}, nil
+				return storytellerLoreSearchReplaceOutput{storytellerLoreDetail: detail, storytellerSearchReplaceOutput: result.output()}, nil
 			},
 		},
 
