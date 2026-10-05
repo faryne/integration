@@ -14,8 +14,8 @@ import (
 const (
 	// MCPSkillName 是 skill 名稱，也是安裝資料夾與 ZIP 內的資料夾名稱（Claude.ai 要求三者一致）。
 	MCPSkillName      = "steamloom"
-	MCPSkillVersion   = "2.1.0"
-	MCPSkillUpdatedAt = "2026-10-04"
+	MCPSkillVersion   = "2.2.0"
+	MCPSkillUpdatedAt = "2026-10-05"
 	// Skill 裡寫的連線位址一律用 steamloom.works：OAuth 只在這個網域開放，也是對外的品牌網址。
 	mcpSkillEndpoint = "https://steamloom.works/mcp"
 )

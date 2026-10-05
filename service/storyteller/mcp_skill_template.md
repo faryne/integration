@@ -175,6 +175,7 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 ### 整篇潤稿、挑錯字
 
 - 錯字、標點這類點狀修正：逐一列給作者確認，再寫入。
+- 作者確認後有好幾處要改，用 `storyteller_search_replace_story_batch`（設定集用 `storyteller_search_replace_lore_batch`）一次送出：整批只存成一個版本，作者要退回也只要退一次。送出前確認每組 `search` 夠長、只會命中想改的那一處；回應的 `replacement_match_counts` 有 0 或比預期多的，要告訴作者。
 - 不要趁潤稿改文風、改劇情、增刪情節；作者要的是潤稿，不是重寫。
 
 ### 重寫（包括其他 AI 寫的草稿）

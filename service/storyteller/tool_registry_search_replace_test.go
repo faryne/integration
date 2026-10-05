@@ -139,3 +139,59 @@ func TestReplaceStoryContentPrefixReplaceAppliesExactlyOncePerOccurrence(t *test
 	expected := "前段。" + replace + ")。中段。" + replace + ")。後段。" + replace + ")。結尾。"
 	require.Equal(t, expected, result.Content)
 }
+
+// batch 取代依序套用：後面的規則看得到前面的取代結果，且每組命中數分開回報。
+func TestReplaceStoryContentRulesAppliesInOrder(t *testing.T) {
+	rules, err := compileStorytellerReplacements([]storytellerReplacementArguments{
+		{Search: "貓", Replace: "狗"},
+		{Search: "狗狗", Replace: "柴犬"},
+		{Search: "不存在", Replace: "x"},
+	})
+	require.NoError(t, err)
+
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, "貓狗、貓", rules)
+
+	require.NoError(t, err)
+	require.Equal(t, "柴犬、狗", result.Content)
+	require.Equal(t, []int{2, 1, 0}, result.RuleMatchCounts)
+	require.Equal(t, 3, result.MatchCount)
+	require.Equal(t, 3, result.TextMatchCount)
+}
+
+// 任何一組 pattern 不合法就整批拒絕，錯誤訊息要帶 index 讓 client 知道是哪一組。
+func TestCompileStorytellerReplacementsRejectsWholeBatchWithIndex(t *testing.T) {
+	_, err := compileStorytellerReplacements([]storytellerReplacementArguments{
+		{Search: "ok", Replace: "x"},
+		{Search: "(", Replace: "x", IsRegex: true},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "replacements[1]")
+	require.Contains(t, err.Error(), "invalid search pattern")
+
+	_, err = compileStorytellerReplacements(nil)
+	require.ErrorContains(t, err, "at least one")
+
+	_, err = compileStorytellerReplacements(make([]storytellerReplacementArguments, storytellerSearchReplaceBatchLimit+1))
+	require.ErrorContains(t, err, "must not exceed")
+}
+
+// 圖像故事多組規則命中同一頁時，affected_pages 只算一次。
+func TestReplaceStoryContentRulesImageCountsAffectedPagesOnce(t *testing.T) {
+	rawContent := `{"pages":[{"id":"p1","key":"a.png","description":"甲乙","sort":0},{"id":"p2","key":"b.png","description":"丙","sort":1}]}`
+	rules, err := compileStorytellerReplacements([]storytellerReplacementArguments{
+		{Search: "甲", Replace: "A"},
+		{Search: "乙", Replace: "B"},
+	})
+	require.NoError(t, err)
+
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeImage, rawContent, rules)
+
+	require.NoError(t, err)
+	var content storytellerModel.StoryImageContent
+	require.NoError(t, json.Unmarshal([]byte(result.Content), &content))
+	require.Equal(t, "AB", content.Pages[0].Description)
+	require.Equal(t, "丙", content.Pages[1].Description)
+	require.Equal(t, []int{1, 1}, result.RuleMatchCounts)
+	require.Equal(t, 2, result.ImageDescriptionMatchCount)
+	require.Equal(t, 1, result.AffectedPages)
+}

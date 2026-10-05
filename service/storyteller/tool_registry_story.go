@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -59,9 +58,7 @@ func (a storytellerPatchStoryArguments) hasContentField() bool {
 type storytellerSearchReplaceStoryArguments struct {
 	ProjectPublicID string `json:"project_public_id"`
 	StoryPublicID   string `json:"story_public_id"`
-	Search          string `json:"search"`
-	Replace         string `json:"replace"`
-	IsRegex         bool   `json:"is_regex"`
+	storytellerReplacementArguments
 }
 
 type storytellerStoryVersionArguments struct {
@@ -121,26 +118,6 @@ type storytellerUpsertImageStoryArguments struct {
 	Pages           []storytellerImagePageArguments `json:"pages"`
 	BaseVersionID   *uint64                         `json:"base_version_id"`
 	Profiles        *[]string                       `json:"profiles"`
-}
-
-type storytellerSearchReplaceOutput struct {
-	MatchCount                 int `json:"match_count"`
-	TextMatchCount             int `json:"text_match_count"`
-	ImageDescriptionMatchCount int `json:"image_description_match_count"`
-	AffectedPages              int `json:"affected_pages"`
-}
-
-type storytellerStorySearchReplaceOutput struct {
-	storytellerStoryDetail
-	storytellerSearchReplaceOutput
-}
-
-type storytellerReplaceResult struct {
-	Content                    string
-	MatchCount                 int
-	TextMatchCount             int
-	ImageDescriptionMatchCount int
-	AffectedPages              int
 }
 
 func storytellerStoryToolSpecs() []ToolSpec {
@@ -467,52 +444,19 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				"is_regex":          booleanSchema("Optional, defaults to false. false means literal search; true means compile search as a Go RE2 regexp."),
 			}, []string{"project_public_id", "story_public_id", "search", "replace"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
-				userID, err := storytellerUserIDFromContext(ctx)
-				if err != nil {
-					return nil, err
-				}
 				var args storytellerSearchReplaceStoryArguments
 				if err := decodeArguments(arguments, &args); err != nil {
 					return nil, err
 				}
-				pattern, replace, err := compileStorytellerSearchReplace(args.Search, args.Replace, args.IsRegex)
+				rule, err := args.compile()
 				if err != nil {
 					return nil, err
 				}
-				service := NewService()
-				current, err := service.Story(userID, args.ProjectPublicID, args.StoryPublicID)
+				detail, result, err := runStorySearchReplace(ctx, args.ProjectPublicID, args.StoryPublicID, []storytellerReplacementRule{rule})
 				if err != nil {
 					return nil, err
 				}
-				replaceResult, err := replaceStoryContent(current.ContentType, current.LatestContent, pattern, replace)
-				if err != nil {
-					return nil, err
-				}
-				if replaceResult.MatchCount == 0 {
-					detail, err := storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, current, false)
-					if err != nil {
-						return nil, err
-					}
-					return storytellerStorySearchReplaceOutput{storytellerStoryDetail: detail, storytellerSearchReplaceOutput: replaceResult.output()}, nil
-				}
-				input := storytellerModel.StoryRequest{
-					Title:         current.Title,
-					Summary:       current.Summary,
-					Status:        current.Status,
-					Sort:          current.Sort,
-					Content:       replaceResult.Content,
-					ContentType:   current.ContentType,
-					BaseVersionID: current.LatestVersionID,
-				}
-				story, conflicted, err := service.UpdateStory(userID, args.ProjectPublicID, args.StoryPublicID, input, storytellerSourceFromContext(ctx))
-				if err != nil {
-					return nil, err
-				}
-				detail, err := storytellerStoryDetailForOutput(service, userID, args.ProjectPublicID, story, conflicted)
-				if err != nil {
-					return nil, err
-				}
-				return storytellerStorySearchReplaceOutput{storytellerStoryDetail: detail, storytellerSearchReplaceOutput: replaceResult.output()}, nil
+				return storytellerStorySearchReplaceOutput{storytellerStoryDetail: detail, storytellerSearchReplaceOutput: result.output()}, nil
 			},
 		},
 
@@ -751,88 +695,6 @@ func mergeStoryPatch(story *storytellerModel.Story, args storytellerPatchStoryAr
 		input.Content = *args.Content
 	}
 	return input
-}
-
-// compileStorytellerSearchReplace 編譯 search pattern，並回傳實際要交給 ReplaceAllString 的 replace 模板。
-//
-// literal 模式（isRegex=false）下 search 用 QuoteMeta 當純文字，replace 也必須是純文字：
-// ReplaceAllString 會把 replace 裡的 `$1`、`$name` 展開成群組參照，literal 模式沒有群組，
-// 「售價 $100 元」會被默默吃成「售價  元」。這裡把 `$` 跳脫成 `$$`，讓兩邊都名副其實是 literal。
-func compileStorytellerSearchReplace(search, replace string, isRegex bool) (*regexp.Regexp, string, error) {
-	pattern := search
-	if !isRegex {
-		pattern = regexp.QuoteMeta(search)
-		replace = strings.ReplaceAll(replace, "$", "$$")
-	}
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		return nil, "", fmt.Errorf("invalid search pattern: %w", err)
-	}
-	// 空字串或能配到零寬度的 regex（例如 "x*"、"a?"、"^"）會讓 FindAllStringIndex/
-	// ReplaceAllString 在原內容「每個字元之間」都算命中一次：換行結果是 replace 被插進
-	// 每個字元的縫隙，整篇內容膨脹成 replace 複製貼上 N 次、中間夾雜原內容零星單字元碎片
-	// （N ≈ 原內容 rune 數）。這裡在編譯階段就擋掉，避免存到毀損內容。
-	if re.MatchString("") {
-		return nil, "", errors.New("search pattern must not match an empty string (it would insert replace between every character)")
-	}
-	return re, replace, nil
-}
-
-func replaceStoryContent(contentType storytellerModel.ProjectContentType, rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
-	if contentType == storytellerModel.ProjectContentTypeImage {
-		return replaceImageStoryDescriptions(rawContent, pattern, replace)
-	}
-	content, count := replaceAllCounting(pattern, rawContent, replace)
-	return storytellerReplaceResult{
-		Content:        content,
-		MatchCount:     count,
-		TextMatchCount: count,
-	}, nil
-}
-
-func replaceImageStoryDescriptions(rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
-	var content storytellerModel.StoryImageContent
-	if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
-		return storytellerReplaceResult{}, fmt.Errorf("invalid image story content: %w", err)
-	}
-	result := storytellerReplaceResult{}
-	for i := range content.Pages {
-		description, count := replaceAllCounting(pattern, content.Pages[i].Description, replace)
-		if count == 0 {
-			continue
-		}
-		content.Pages[i].Description = description
-		result.MatchCount += count
-		result.ImageDescriptionMatchCount += count
-		result.AffectedPages++
-	}
-	if result.MatchCount == 0 {
-		result.Content = rawContent
-		return result, nil
-	}
-	body, err := json.Marshal(content)
-	if err != nil {
-		return storytellerReplaceResult{}, err
-	}
-	result.Content = string(body)
-	return result, nil
-}
-
-func replaceAllCounting(pattern *regexp.Regexp, input, replace string) (string, int) {
-	matches := pattern.FindAllStringIndex(input, -1)
-	if len(matches) == 0 {
-		return input, 0
-	}
-	return pattern.ReplaceAllString(input, replace), len(matches)
-}
-
-func (r storytellerReplaceResult) output() storytellerSearchReplaceOutput {
-	return storytellerSearchReplaceOutput{
-		MatchCount:                 r.MatchCount,
-		TextMatchCount:             r.TextMatchCount,
-		ImageDescriptionMatchCount: r.ImageDescriptionMatchCount,
-		AffectedPages:              r.AffectedPages,
-	}
 }
 
 func storytellerStoryDetailForOutput(service *Service, userID uint64, projectPublicID string, story *storytellerModel.Story, conflicted bool) (storytellerStoryDetail, error) {
