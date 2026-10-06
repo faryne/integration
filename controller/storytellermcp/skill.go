@@ -26,3 +26,19 @@ func SkillZip(ctx fiber.Ctx) error {
 	ctx.Set(fiber.HeaderCacheControl, "public, max-age=300")
 	return ctx.Send(data)
 }
+
+// SkillInstallerSh／SkillInstallerPs1 提供 Skill 安裝程式（curl … | sh、irm … | iex）。
+// 預設 inline 回傳讓 curl／irm 直接執行；帶 ?download=1 時改成附件，給連接頁的「下載安裝程式」按鈕用。
+func SkillInstallerSh(ctx fiber.Ctx) error { return sendSkillInstaller(ctx, "sh") }
+
+func SkillInstallerPs1(ctx fiber.Ctx) error { return sendSkillInstaller(ctx, "ps1") }
+
+func sendSkillInstaller(ctx fiber.Ctx, ext string) error {
+	// charset 一定要帶：irm 依 charset 解碼，沒帶的話 Windows PowerShell 會把中文當成 ISO-8859-1
+	ctx.Set(fiber.HeaderContentType, "text/plain; charset=utf-8")
+	ctx.Set(fiber.HeaderCacheControl, "public, max-age=300")
+	if ctx.Query("download") != "" {
+		ctx.Set(fiber.HeaderContentDisposition, `attachment; filename="skill-installer.`+ext+`"`)
+	}
+	return ctx.SendString(storyteller.MCPSkillInstaller(ext))
+}

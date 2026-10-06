@@ -42,3 +42,18 @@ func TestMCPSkillZipContainsNamedFolder(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, MCPSkillMarkdown(), string(content))
 }
+
+// 安裝程式的版本號是從 SKILL.md frontmatter 讀的，兩支 script 的 regex 都依賴 `  version: "x.y.z"` 這個格式。
+func TestMCPSkillInstallerFillsTemplate(t *testing.T) {
+	require.Contains(t, MCPSkillMarkdown(), "\n  version: \""+MCPSkillVersion+"\"\n")
+	for _, ext := range []string{"sh", "ps1"} {
+		script := MCPSkillInstaller(ext)
+		require.NotContains(t, script, "{{", ext)
+		require.Contains(t, script, "https://steamloom.works/mcp/skill.md", ext)
+		require.Contains(t, script, "https://steamloom.works/mcp/skill-installer."+ext, ext)
+		require.Contains(t, script, "name: storyteller-mcp", ext)
+	}
+	require.True(t, strings.HasPrefix(MCPSkillInstaller("sh"), "#!/bin/sh\n"))
+	// iex 執行時 exit 會關掉使用者的 PowerShell 視窗，ps1 一律用 return 結束
+	require.NotRegexp(t, `(?m)^\s*exit\b`, MCPSkillInstaller("ps1"))
+}

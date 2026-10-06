@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Skill 安裝程式 Mockup</title>
+<style>
+/* 沿用 mcp-connect-mockup 的 nocturne 色調；只改步驟 4 的 Claude Code／Codex 區塊 */
+:root { --bg:#151220; --surface:#1d1830; --surface-2:#251f3b; --line:#3a3254; --text:#ece8f4; --muted:#a59cbb; --primary:#7fd4c6; --primary-ink:#0f2a26; --warn:#e8c26b; --ok:#8fd19e; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:"Noto Sans TC", system-ui, sans-serif; background:#0d0b14; color:var(--text); }
+.bar { position:sticky; top:0; z-index:10; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:10px 16px; background:#09080e; border-bottom:1px solid #2a2440; font-size:13px; }
+.bar span { color:#8f87a6; font-size:12px; }
+.bar fieldset { border:0; margin:0; padding:0; display:inline-flex; gap:8px; align-items:center; }
+.bar legend { float:left; color:#8f87a6; font-size:12px; margin-right:4px; }
+.bar label { display:inline-flex; gap:4px; align-items:center; color:#cfc8e0; cursor:pointer; }
+.page { max-width:860px; margin:0 auto; padding:24px 16px 60px; background:var(--bg); min-height:100vh; }
+.crumb { font-size:13px; color:var(--muted); margin-bottom:14px; } .crumb b { color:var(--primary); }
+.step { display:grid; grid-template-columns:28px 1fr; gap:0 12px; }
+.dot { width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-size:13px; font-weight:800; }
+.step.done .dot { background:transparent; color:var(--primary); border:1px solid var(--primary); }
+.step.active .dot { background:var(--primary); color:var(--primary-ink); }
+.rail { grid-column:1; justify-self:center; width:1px; background:var(--line); }
+.body { padding-bottom:22px; min-width:0; }
+.step h3 { margin:2px 0 8px; font-size:15px; }
+.step h3 small { font-weight:400; color:var(--muted); font-size:12px; margin-left:6px; }
+.collapsed { color:var(--muted); font-size:13px; }
+.hint { color:var(--muted); font-size:13px; margin:0 0 10px; line-height:1.6; }
+.code { position:relative; background:#0f0c18; border:1px solid var(--line); border-radius:6px; padding:10px 64px 10px 12px; font:12.5px/1.6 ui-monospace, Menlo, monospace; white-space:pre-wrap; word-break:break-all; color:#d9f3ee; margin:6px 0 10px; }
+.code .copy { position:absolute; right:6px; top:6px; font:12px "Noto Sans TC"; background:var(--surface-2); color:var(--text); border:1px solid var(--line); border-radius:4px; padding:3px 8px; cursor:pointer; }
+.btn { display:inline-flex; gap:6px; align-items:center; background:var(--primary); color:var(--primary-ink); border:0; border-radius:4px; padding:7px 14px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; white-space:nowrap; text-decoration:none; }
+.btn.ghost { background:transparent; color:var(--primary); border:1px solid var(--primary); }
+.btn svg { width:16px; height:16px; fill:currentColor; }
+.row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ver { font-size:12px; color:var(--muted); margin:10px 0 0; }
+/* OS 切換：MUI ToggleButtonGroup 的示意 */
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.seg button { background:transparent; color:var(--muted); border:0; padding:6px 12px; font:inherit; font-size:13px; cursor:pointer; }
+.seg button + button { border-left:1px solid var(--line); }
+.seg button.sel { background:rgba(127,212,198,.16); color:var(--primary); font-weight:700; }
+.detected { font-size:12px; color:var(--muted); margin-left:8px; }
+ul.does { margin:0 0 12px; padding-left:20px; font-size:13px; line-height:1.8; color:var(--text); }
+details { background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:8px 12px; margin:12px 0 0; }
+details summary { cursor:pointer; font-size:13px; color:var(--text); }
+details[open] summary { margin-bottom:8px; }
+.label { font-size:12px; color:var(--muted); margin-top:4px; }
+/* 終端機輸出示意 */
+.term { background:#08070c; border:1px solid #2a2440; border-radius:8px; margin-top:28px; overflow:hidden; }
+.term .head { display:flex; justify-content:space-between; align-items:center; padding:6px 12px; background:#14111f; font-size:12px; color:var(--muted); }
+.term pre { margin:0; padding:12px 14px; font:12.5px/1.7 ui-monospace, Menlo, monospace; color:#d6d1e4; white-space:pre-wrap; }
+.term .g { color:var(--ok); } .term .y { color:var(--warn); } .term .m { color:#7d7593; } .term .c { color:var(--primary); }
+.annot { font-size:12px; color:var(--muted); border-left:2px solid var(--warn); padding:2px 10px; margin:16px 0 0; line-height:1.7; }
+code { font-family:ui-monospace, Menlo, monospace; font-size:.92em; background:rgba(255,255,255,.06); padding:0 4px; border-radius:3px; }
+</style>
+</head>
+<body>
+<header class="bar">
+  <strong>Skill 安裝程式 Mockup</strong>
+  <fieldset><legend>服務</legend>
+    <label><input type="radio" name="svc" value="Claude Code" checked> Claude Code</label>
+    <label><input type="radio" name="svc" value="Codex"> Codex</label>
+  </fieldset>
+  <fieldset><legend>瀏覽器 OS</legend>
+    <label><input type="radio" name="os" value="mac" checked> macOS</label>
+    <label><input type="radio" name="os" value="linux"> Linux</label>
+    <label><input type="radio" name="os" value="win"> Windows</label>
+  </fieldset>
+  <fieldset><legend>終端機情境</legend>
+    <label><input type="radio" name="scene" value="fresh"> 首次安裝</label>
+    <label><input type="radio" name="scene" value="upgrade" checked> 從舊版更新</label>
+    <label><input type="radio" name="scene" value="latest"> 已是最新</label>
+    <label><input type="radio" name="scene" value="none"> 都沒偵測到</label>
+  </fieldset>
+</header>
+
+<main class="page">
+  <div class="crumb">SteamLoom / 我的工作台 / 開發者 / <b>MCP 連接</b></div>
+
+  <section class="step done"><div class="dot">1</div><div class="body"><h3>選擇你使用的 AI 服務</h3><div class="collapsed" id="svcName"></div></div><div class="rail"></div></section>
+  <section class="step done"><div class="dot">2</div><div class="body"><h3>選擇授權方式</h3><div class="collapsed">OAuth 授權</div></div><div class="rail"></div></section>
+  <section class="step done"><div class="dot">3</div><div class="body"><h3>連線設定</h3><div class="collapsed">（略，與現行相同）</div></div><div class="rail"></div></section>
+
+  <section class="step active"><div class="dot">4</div><div class="body">
+    <h3>安裝 Skill <small>選用</small></h3>
+    <p class="hint">Skill 告訴 AI 怎麼在 SteamLoom 上寫作、改稿，以及寫入前後要檢查什麼。</p>
+
+    <div class="row" style="margin-bottom:8px">
+      <div class="seg" id="osSeg">
+        <button data-os="unix">macOS／Linux</button>
+        <button data-os="win">Windows（PowerShell）</button>
+      </div>
+      <span class="detected" id="detected"></span>
+    </div>
+
+    <div class="label" id="runLabel"></div>
+    <div id="cmd"></div>
+
+    <p class="hint" style="margin-bottom:4px">這行指令會：</p>
+    <ul class="does">
+      <li>偵測這台電腦有沒有裝 Claude Code、Codex，有哪個就裝到哪個</li>
+      <li>已經裝過的話，比對版本，有新版才更新</li>
+    </ul>
+    <p class="hint">Skill 更新時，再執行一次同一行指令即可。<span id="reload"></span></p>
+
+    <div class="row">
+      <a class="btn ghost" id="dlScript" href="#"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg><span></span></a>
+      <a class="btn ghost" href="#"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>下載 SKILL.md</a>
+      <button class="btn ghost">預覽內容</button>
+    </div>
+
+    <details>
+      <summary>想先看過安裝程式再執行？</summary>
+      <p class="hint">下載後用文字編輯器打開確認內容，再執行：</p>
+      <div id="manual"></div>
+    </details>
+
+    <p class="ver">目前版本 v2.3.0・最後更新 2026-10-06</p>
+  </div></section>
+
+  <div class="term">
+    <div class="head"><span id="termTitle"></span><span>執行結果示意（實際輸出以實作為準）</span></div>
+    <pre id="termOut"></pre>
+  </div>
+
+  <p class="annot">
+    ・OS 由瀏覽器的 <code>navigator.userAgentData.platform</code>（退回 <code>userAgent</code>）判斷，只決定預設顯示哪個分頁；作者可以自己切換。<br>
+    ・Claude Code 與 Codex 的步驟 4 內容相同（安裝程式兩邊都會處理），差別只在步驟 1 選的服務名稱。<br>
+    ・Claude.ai／ChatGPT／其他維持現行的 ZIP／SKILL.md 下載，不受影響。<br>
+    ・後端兩支 script 各有固定網址，server 不看 User-Agent。
+  </p>
+</main>
+
+<script>
+const BASE = "https://steamloom.works/mcp";
+const state = { svc: "Claude Code", browserOs: "mac", os: "unix", scene: "upgrade" };
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const code = (text) => `<div class="code">${esc(text)}<button class="copy">複製</button></div>`;
+const osName = { mac: "macOS", linux: "Linux", win: "Windows" };
+
+function terminal() {
+  const win = state.os === "win";
+  const home = win ? "C:\\Users\\you" : "~";
+  const sep = win ? "\\" : "/";
+  const dir = (tool, name) => `${home}${sep}${tool}${sep}skills${sep}${name}`;
+  const prompt = win ? "PS C:\\Users\\you> " : "$ ";
+  const cmdLine = win ? `irm ${BASE}/skill-installer.ps1 | iex` : `curl -fsSL ${BASE}/skill-installer.sh | sh`;
+  const head = `<span class="m">${esc(prompt)}</span>${esc(cmdLine)}\n<span class="c">SteamLoom Skill 安裝程式</span>　最新版本 v2.3.0\n\n`;
+  const claude = `Claude Code  ${esc(dir(".claude", "steamloom"))}\n`;
+  const codex = `Codex        ${esc(dir(".agents", "steamloom"))}\n`;
+  let body;
+  if (state.scene === "fresh") {
+    body = claude + `  <span class="g">✓ 已安裝 v2.3.0</span>\n` + codex + `  <span class="g">✓ 已安裝 v2.3.0</span>\n\n完成。Claude Code 與 Codex 會自動載入，不用重啟。`;
+  } else if (state.scene === "upgrade") {
+    body = claude + `  <span class="g">✓ 已從 v2.1.0 更新到 v2.3.0</span>\n  <span class="g">✓ 已移除舊版 ${esc(dir(".claude", "storyteller-mcp"))}</span>\n`
+      + codex + `  <span class="m">- 沒有偵測到 Codex，略過</span>\n\n完成。Claude Code 會自動載入新版本，不用重啟。`;
+  } else if (state.scene === "latest") {
+    body = claude + `  <span class="m">- 已是最新版 v2.3.0，不用更新</span>\n` + codex + `  <span class="m">- 已是最新版 v2.3.0，不用更新</span>\n\n沒有需要更新的項目。`;
+  } else {
+    body = `<span class="y">! 沒有偵測到 Claude Code 或 Codex</span>\n  找不到 ${esc(home + sep + ".claude")}，也找不到 ${esc(home + sep + ".codex")}。\n  先安裝 Claude Code 或 Codex 並啟動過一次，再重新執行這行指令。`;
+  }
+  return head + body;
+}
+
+function render() {
+  document.getElementById("svcName").textContent = state.svc;
+  document.querySelectorAll("#osSeg button").forEach((b) => b.classList.toggle("sel", b.dataset.os === state.os));
+  document.getElementById("detected").textContent = `已依你的瀏覽器（${osName[state.browserOs]}）預先選好`;
+  const win = state.os === "win";
+  document.getElementById("runLabel").textContent = win ? "在 PowerShell 執行：" : "在終端機執行：";
+  document.getElementById("cmd").innerHTML = code(win ? `irm ${BASE}/skill-installer.ps1 | iex` : `curl -fsSL ${BASE}/skill-installer.sh | sh`);
+  document.getElementById("reload").textContent = state.svc === "Codex" ? "" : "Claude Code 會自動載入，不用重啟。";
+  document.querySelector("#dlScript span").textContent = win ? "下載安裝程式（.ps1）" : "下載安裝程式（.sh）";
+  document.getElementById("manual").innerHTML = win
+    ? code(`irm ${BASE}/skill-installer.ps1 -OutFile skill-installer.ps1\nnotepad skill-installer.ps1\npowershell -ExecutionPolicy Bypass -File .\\skill-installer.ps1`)
+    : code(`curl -fsSL ${BASE}/skill-installer.sh -o skill-installer.sh\nless skill-installer.sh\nsh skill-installer.sh`);
+  document.getElementById("termTitle").textContent = win ? "Windows PowerShell" : "Terminal";
+  document.getElementById("termOut").innerHTML = terminal();
+}
+
+document.addEventListener("click", (e) => {
+  const seg = e.target.closest("#osSeg button");
+  if (seg) { state.os = seg.dataset.os; render(); return; }
+  if (e.target.classList.contains("copy")) { e.target.textContent = "已複製"; setTimeout(() => (e.target.textContent = "複製"), 1200); }
+});
+document.querySelectorAll('input[name="svc"]').forEach((r) => r.addEventListener("change", () => { state.svc = r.value; render(); }));
+// 模擬瀏覽器 OS：切換時預設分頁跟著變（實作時只在頁面載入時判斷一次）
+document.querySelectorAll('input[name="os"]').forEach((r) => r.addEventListener("change", () => { state.browserOs = r.value; state.os = r.value === "win" ? "win" : "unix"; render(); }));
+document.querySelectorAll('input[name="scene"]').forEach((r) => r.addEventListener("change", () => { state.scene = r.value; render(); }));
+render();
+</script>
+</body>
+</html>
