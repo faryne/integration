@@ -171,11 +171,19 @@ SteamLoom 用自己的精簡 markdown 語法，**不是完整的 GFM**。格式�
 2. 改寫時**保留每段原本的 marker id**；只改需要改的段落，其他段落一字不動。
 3. 給作者看「改了哪幾段、怎麼改」（可以列改前改後）。
 4. 同意後用 `storyteller_replace_story_chapter` 寫回。
+- 一次要改好幾章時，用 `storyteller_get_story_chapters` 一次讀回來，改完用 `storyteller_replace_story_chapters` 一次寫回（整批只存一個版本）。第一個標題之前的前言不算章節，要改就用搜尋取代。
 
 ### 整篇潤稿、挑錯字
 
 - 錯字、標點這類點狀修正：逐一列給作者確認，再寫入。
 - 作者確認後有好幾處要改，用 `storyteller_search_replace_story_batch`（設定集用 `storyteller_search_replace_lore_batch`）一次送出：整批只存成一個版本，作者要退回也只要退一次。送出前確認每組 `search` 夠長、只會命中想改的那一處；回應的 `replacement_match_counts` 有 0 或比預期多的，要告訴作者。
+- 沒把握命中範圍時先帶 `dry_run: true` 試算，把 `samples` 的改前改後給作者看；正式送出後若命中數跟試算不同，代表作者中間在網頁上改過，要提出來。
+
+### 統一名詞、檢查設定一致性
+
+1. 用 `storyteller_search_project` 找出整個專案裡出現的地方（規則跟搜尋取代一樣，可用 regex）；`truncated` 為 true 代表還有沒列出的命中，縮小 `search` 或分 `scope` 再找。
+2. 把命中處整理給作者（哪一篇、哪一章、前後文），哪些要改由作者決定；同一個詞在對話、引文裡可能是刻意的寫法。
+3. 對每篇要改的跑 `storyteller_search_replace_story_batch` / `_lore_batch`，先 `dry_run` 再正式寫入。
 - 不要趁潤稿改文風、改劇情、增刪情節；作者要的是潤稿，不是重寫。
 
 ### 重寫（包括其他 AI 寫的草稿）

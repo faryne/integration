@@ -85,7 +85,7 @@ func StorytellerToolRegistry() *ToolRegistry {
 }
 
 // StorytellerMCPOnlyToolRegistry 回傳只給外部 MCP client 用、AI 助理面板看不到的工具。
-// 例如章節寫入、batch 搜尋取代這類沒有提案預覽的寫入工具；章節讀取工具因為 get_/list_ 命名會自然被主 registry
+// 例如章節寫入、batch 搜尋取代／多章讀寫、跨篇搜尋這類沒有提案預覽或 AI 助理用不到的工具；章節讀取工具因為 get_/list_ 命名會自然被主 registry
 // 分類成唯讀工具，不需要另外維護允許清單。
 func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
 	registry := NewToolRegistry()
@@ -95,6 +95,9 @@ func StorytellerMCPOnlyToolRegistry() *ToolRegistry {
 		storytellerMemoryMCPOnlyToolSpecs(),
 		storytellerChapterWriteToolSpecs(),
 		storytellerSearchReplaceBatchToolSpecs(),
+		storytellerSearchProjectToolSpecs(),
+		storytellerChapterBatchReadToolSpecs(),
+		storytellerChapterBatchWriteToolSpecs(),
 		storytellerValidateToolSpecs(),
 	} {
 		for _, spec := range specs {

@@ -149,7 +149,7 @@ func TestReplaceStoryContentRulesAppliesInOrder(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, "貓狗、貓", rules)
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, "貓狗、貓", rules, nil)
 
 	require.NoError(t, err)
 	require.Equal(t, "柴犬、狗", result.Content)
@@ -184,7 +184,7 @@ func TestReplaceStoryContentRulesImageCountsAffectedPagesOnce(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeImage, rawContent, rules)
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeImage, rawContent, rules, nil)
 
 	require.NoError(t, err)
 	var content storytellerModel.StoryImageContent
@@ -194,4 +194,24 @@ func TestReplaceStoryContentRulesImageCountsAffectedPagesOnce(t *testing.T) {
 	require.Equal(t, []int{1, 1}, result.RuleMatchCounts)
 	require.Equal(t, 2, result.ImageDescriptionMatchCount)
 	require.Equal(t, 1, result.AffectedPages)
+}
+
+// dry_run 對照取的是「套到這一組時」的內容，regex 的 $1 要展開，每組最多 storytellerDryRunSamplesPerRule 筆。
+func TestReplaceSamplerCollectsSamplesPerRuleState(t *testing.T) {
+	rules, err := compileStorytellerReplacements([]storytellerReplacementArguments{
+		{Search: "貓", Replace: "狗"},
+		{Search: `狗(.)`, Replace: "柴犬$1", IsRegex: true},
+	})
+	require.NoError(t, err)
+	sampler := newStorytellerReplaceSampler(true, len(rules))
+
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, "貓A貓B貓C貓D", rules, sampler)
+
+	require.NoError(t, err)
+	require.Equal(t, "柴犬A柴犬B柴犬C柴犬D", result.Content)
+	require.Equal(t, []int{4, 4}, result.RuleMatchCounts)
+	require.Len(t, sampler.samples, 2*storytellerDryRunSamplesPerRule)
+	require.Equal(t, storytellerReplacementSample{ReplacementIndex: 0, Before: "貓A貓B貓C貓D", After: "狗A貓B貓C貓D"}, sampler.samples[0])
+	require.Equal(t, storytellerReplacementSample{ReplacementIndex: 1, Before: "狗A狗B狗C狗D", After: "柴犬A狗B狗C狗D"}, sampler.samples[3])
+	require.Nil(t, newStorytellerReplaceSampler(false, 2))
 }
