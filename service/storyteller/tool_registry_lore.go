@@ -499,7 +499,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				if err != nil {
 					return nil, err
 				}
-				detail, result, err := runLoreSearchReplace(ctx, args.ProjectPublicID, args.LorePublicID, []storytellerReplacementRule{rule})
+				detail, result, err := runLoreSearchReplace(ctx, args.ProjectPublicID, args.LorePublicID, []storytellerReplacementRule{rule}, nil)
 				if err != nil {
 					return nil, err
 				}

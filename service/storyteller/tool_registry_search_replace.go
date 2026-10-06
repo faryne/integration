@@ -11,9 +11,14 @@ import (
 	storytellerModel "faryne.dev/model/entity/storyteller"
 )
 
-// storytellerSearchReplaceBatchLimit 是 batch 版一次最多可帶的取代組數，避免單次呼叫
-// 塞太多 regex 拖垮請求；真的要更多就分批呼叫。
-const storytellerSearchReplaceBatchLimit = 50
+const (
+	// storytellerSearchReplaceBatchLimit 是 batch 版一次最多可帶的取代組數，避免單次呼叫
+	// 塞太多 regex 拖垮請求；真的要更多就分批呼叫。
+	storytellerSearchReplaceBatchLimit = 50
+	// dry_run 時每組規則最多附幾個前後對照，以及對照前後各帶幾個字
+	storytellerDryRunSamplesPerRule = 3
+	storytellerDryRunSampleContext  = 20
+)
 
 // storytellerReplacementArguments 是單一組「搜尋 → 取代」參數；單筆工具直接嵌入，
 // batch 工具則是陣列。
@@ -33,12 +38,14 @@ type storytellerSearchReplaceStoryBatchArguments struct {
 	ProjectPublicID string                            `json:"project_public_id"`
 	StoryPublicID   string                            `json:"story_public_id"`
 	Replacements    []storytellerReplacementArguments `json:"replacements"`
+	DryRun          bool                              `json:"dry_run"`
 }
 
 type storytellerSearchReplaceLoreBatchArguments struct {
 	ProjectPublicID string                            `json:"project_public_id"`
 	LorePublicID    string                            `json:"lore_public_id"`
 	Replacements    []storytellerReplacementArguments `json:"replacements"`
+	DryRun          bool                              `json:"dry_run"`
 }
 
 type storytellerSearchReplaceOutput struct {
@@ -75,6 +82,58 @@ type storytellerLoreSearchReplaceBatchOutput struct {
 	storytellerSearchReplaceBatchOutput
 }
 
+// storytellerSearchReplaceDryRunOutput 是 dry_run 的回傳：只有命中數與前後對照，不含全文。
+type storytellerSearchReplaceDryRunOutput struct {
+	DryRun bool `json:"dry_run"`
+	storytellerSearchReplaceBatchOutput
+	Samples []storytellerReplacementSample `json:"samples"`
+	// VersionID 是試算時用的版本；實際寫入時會拿當下最新版重算
+	VersionID uint64 `json:"version_id"`
+}
+
+// storytellerReplacementSample 是某組規則的一個命中，在「套到這一組時」的內容狀態下的前後對照。
+type storytellerReplacementSample struct {
+	ReplacementIndex int    `json:"replacement_index"`
+	PageIndex        *int   `json:"page_index,omitempty"`
+	Before           string `json:"before"`
+	After            string `json:"after"`
+}
+
+// storytellerReplaceSampler 在 dry_run 時跟著規則套用流程收集前後對照；nil 代表不是 dry_run。
+type storytellerReplaceSampler struct {
+	perRule []int
+	samples []storytellerReplacementSample
+}
+
+func newStorytellerReplaceSampler(dryRun bool, ruleCount int) *storytellerReplaceSampler {
+	if !dryRun {
+		return nil
+	}
+	return &storytellerReplaceSampler{perRule: make([]int, ruleCount), samples: []storytellerReplacementSample{}}
+}
+
+// collect 在第 ruleIndex 組規則套用前被呼叫，input 是當下的內容；replace 模板用 Expand 展開，
+// 跟 ReplaceAllString 的結果一致（含 $1 與 literal 模式跳脫過的 $$）。
+func (s *storytellerReplaceSampler) collect(ruleIndex int, rule storytellerReplacementRule, input string, pageIndex *int) {
+	remaining := storytellerDryRunSamplesPerRule - s.perRule[ruleIndex]
+	if remaining <= 0 {
+		return
+	}
+	for _, m := range rule.Pattern.FindAllStringSubmatchIndex(input, remaining) {
+		// 前後文去掉 marker 記號方便閱讀；中間的命中與取代結果維持原文
+		before := storytellerReadableBefore(input[:m[0]], storytellerDryRunSampleContext)
+		after := storytellerReadableAfter(input[m[1]:], storytellerDryRunSampleContext)
+		replaced := string(rule.Pattern.ExpandString(nil, rule.Replace, input, m))
+		s.samples = append(s.samples, storytellerReplacementSample{
+			ReplacementIndex: ruleIndex,
+			PageIndex:        pageIndex,
+			Before:           before + input[m[0]:m[1]] + after,
+			After:            before + replaced + after,
+		})
+		s.perRule[ruleIndex]++
+	}
+}
+
 type storytellerReplaceResult struct {
 	Content                    string
 	MatchCount                 int
@@ -94,7 +153,7 @@ func storytellerSearchReplaceBatchToolSpecs() []ToolSpec {
 func storytellerSearchReplaceStoryBatchToolSpec() ToolSpec {
 	return ToolSpec{
 		Name: "storyteller_search_replace_story_batch",
-		Description: "Batch version of storyteller_search_replace_story: apply several search/replace pairs to one existing story in a single call, writing directly with no dry run. " +
+		Description: "Batch version of storyteller_search_replace_story: apply several search/replace pairs to one existing story in a single call. Writes directly unless dry_run=true. " +
 			"Replacements are applied in array order, and each one sees the content produced by the previous ones (so a later search can match text an earlier replace inserted). " +
 			"All patterns are validated before anything is applied; if any is invalid, the call fails and nothing is written. " +
 			"Every pair follows the same rules as storyteller_search_replace_story (case-sensitive, literal unless is_regex, image stories only touch page descriptions). " +
@@ -104,6 +163,7 @@ func storytellerSearchReplaceStoryBatchToolSpec() ToolSpec {
 			"project_public_id": stringSchema("Project public_id."),
 			"story_public_id":   stringSchema("Existing story public_id to edit."),
 			"replacements":      storytellerReplacementsSchema(),
+			"dry_run":           storytellerDryRunSchema(),
 		}, []string{"project_public_id", "story_public_id", "replacements"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 			var args storytellerSearchReplaceStoryBatchArguments
@@ -114,9 +174,13 @@ func storytellerSearchReplaceStoryBatchToolSpec() ToolSpec {
 			if err != nil {
 				return nil, err
 			}
-			detail, result, err := runStorySearchReplace(ctx, args.ProjectPublicID, args.StoryPublicID, rules)
+			sampler := newStorytellerReplaceSampler(args.DryRun, len(rules))
+			detail, result, err := runStorySearchReplace(ctx, args.ProjectPublicID, args.StoryPublicID, rules, sampler)
 			if err != nil {
 				return nil, err
+			}
+			if sampler != nil {
+				return result.dryRunOutput(sampler, detail.VersionID), nil
 			}
 			return storytellerStorySearchReplaceBatchOutput{storytellerStoryDetail: detail, storytellerSearchReplaceBatchOutput: result.batchOutput()}, nil
 		},
@@ -126,7 +190,7 @@ func storytellerSearchReplaceStoryBatchToolSpec() ToolSpec {
 func storytellerSearchReplaceLoreBatchToolSpec() ToolSpec {
 	return ToolSpec{
 		Name: "storyteller_search_replace_lore_batch",
-		Description: "Batch version of storyteller_search_replace_lore: apply several search/replace pairs to one existing lore/worldbuilding entry in a single call, writing directly with no dry run. " +
+		Description: "Batch version of storyteller_search_replace_lore: apply several search/replace pairs to one existing lore/worldbuilding entry in a single call. Writes directly unless dry_run=true. " +
 			"Replacements are applied in array order, and each one sees the content produced by the previous ones. " +
 			"All patterns are validated before anything is applied; if any is invalid, the call fails and nothing is written. " +
 			"Every pair follows the same rules as storyteller_search_replace_lore (case-sensitive, literal unless is_regex). " +
@@ -136,6 +200,7 @@ func storytellerSearchReplaceLoreBatchToolSpec() ToolSpec {
 			"project_public_id": stringSchema("Project public_id."),
 			"lore_public_id":    stringSchema("Existing lore public_id to edit."),
 			"replacements":      storytellerReplacementsSchema(),
+			"dry_run":           storytellerDryRunSchema(),
 		}, []string{"project_public_id", "lore_public_id", "replacements"}),
 		Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 			var args storytellerSearchReplaceLoreBatchArguments
@@ -146,13 +211,22 @@ func storytellerSearchReplaceLoreBatchToolSpec() ToolSpec {
 			if err != nil {
 				return nil, err
 			}
-			detail, result, err := runLoreSearchReplace(ctx, args.ProjectPublicID, args.LorePublicID, rules)
+			sampler := newStorytellerReplaceSampler(args.DryRun, len(rules))
+			detail, result, err := runLoreSearchReplace(ctx, args.ProjectPublicID, args.LorePublicID, rules, sampler)
 			if err != nil {
 				return nil, err
+			}
+			if sampler != nil {
+				return result.dryRunOutput(sampler, detail.VersionID), nil
 			}
 			return storytellerLoreSearchReplaceBatchOutput{storytellerLoreDetail: detail, storytellerSearchReplaceBatchOutput: result.batchOutput()}, nil
 		},
 	}
+}
+
+func storytellerDryRunSchema() map[string]interface{} {
+	return booleanSchema(fmt.Sprintf("Optional, defaults to false. true computes the result without writing and returns match counts plus up to %d before/after samples per replacement (each taken from the content as it stands when that replacement is applied) and the version_id used. "+
+		"A later real call recomputes against the latest version, so compare its match counts with the dry run.", storytellerDryRunSamplesPerRule))
 }
 
 func storytellerReplacementsSchema() map[string]interface{} {
@@ -171,7 +245,7 @@ func storytellerReplacementsSchema() map[string]interface{} {
 
 // runStorySearchReplace 是單筆／batch 共用的寫入流程：讀最新版 → 依序套用 rules →
 // 有命中才走 UpdateStory 存成「一個」新版本；沒命中就原樣回傳，不產生版本。
-func runStorySearchReplace(ctx context.Context, projectPublicID, storyPublicID string, rules []storytellerReplacementRule) (storytellerStoryDetail, storytellerReplaceResult, error) {
+func runStorySearchReplace(ctx context.Context, projectPublicID, storyPublicID string, rules []storytellerReplacementRule, sampler *storytellerReplaceSampler) (storytellerStoryDetail, storytellerReplaceResult, error) {
 	userID, err := storytellerUserIDFromContext(ctx)
 	if err != nil {
 		return storytellerStoryDetail{}, storytellerReplaceResult{}, err
@@ -181,9 +255,13 @@ func runStorySearchReplace(ctx context.Context, projectPublicID, storyPublicID s
 	if err != nil {
 		return storytellerStoryDetail{}, storytellerReplaceResult{}, err
 	}
-	result, err := replaceStoryContentRules(story.ContentType, story.LatestContent, rules)
+	result, err := replaceStoryContentRules(story.ContentType, story.LatestContent, rules, sampler)
 	if err != nil {
 		return storytellerStoryDetail{}, storytellerReplaceResult{}, err
+	}
+	// dry_run 只試算不寫入，也不用組完整輸出
+	if sampler != nil {
+		return storytellerStoryDetail{VersionID: derefUint64(story.LatestVersionID)}, result, nil
 	}
 	conflicted := false
 	if result.MatchCount > 0 {
@@ -205,7 +283,7 @@ func runStorySearchReplace(ctx context.Context, projectPublicID, storyPublicID s
 }
 
 // runLoreSearchReplace 同 runStorySearchReplace，設定集只有純文字內容。
-func runLoreSearchReplace(ctx context.Context, projectPublicID, lorePublicID string, rules []storytellerReplacementRule) (storytellerLoreDetail, storytellerReplaceResult, error) {
+func runLoreSearchReplace(ctx context.Context, projectPublicID, lorePublicID string, rules []storytellerReplacementRule, sampler *storytellerReplaceSampler) (storytellerLoreDetail, storytellerReplaceResult, error) {
 	userID, err := storytellerUserIDFromContext(ctx)
 	if err != nil {
 		return storytellerLoreDetail{}, storytellerReplaceResult{}, err
@@ -215,9 +293,12 @@ func runLoreSearchReplace(ctx context.Context, projectPublicID, lorePublicID str
 	if err != nil {
 		return storytellerLoreDetail{}, storytellerReplaceResult{}, err
 	}
-	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, lore.LatestContent, rules)
+	result, err := replaceStoryContentRules(storytellerModel.ProjectContentTypeText, lore.LatestContent, rules, sampler)
 	if err != nil {
 		return storytellerLoreDetail{}, storytellerReplaceResult{}, err
+	}
+	if sampler != nil {
+		return storytellerLoreDetail{VersionID: derefUint64(lore.LatestVersionID)}, result, nil
 	}
 	conflicted := false
 	if result.MatchCount > 0 {
@@ -288,30 +369,31 @@ func compileStorytellerSearchReplace(search, replace string, isRegex bool) (*reg
 
 // replaceStoryContent 是單組規則的便捷版本（提案預覽與測試在用）。
 func replaceStoryContent(contentType storytellerModel.ProjectContentType, rawContent string, pattern *regexp.Regexp, replace string) (storytellerReplaceResult, error) {
-	return replaceStoryContentRules(contentType, rawContent, []storytellerReplacementRule{{Pattern: pattern, Replace: replace}})
+	return replaceStoryContentRules(contentType, rawContent, []storytellerReplacementRule{{Pattern: pattern, Replace: replace}}, nil)
 }
 
 // replaceStoryContentRules 依序套用 rules。圖像故事只動每頁 description，不把 pages JSON 當純文字搜尋。
-func replaceStoryContentRules(contentType storytellerModel.ProjectContentType, rawContent string, rules []storytellerReplacementRule) (storytellerReplaceResult, error) {
+// sampler 非 nil（dry_run）時順便收集前後對照。
+func replaceStoryContentRules(contentType storytellerModel.ProjectContentType, rawContent string, rules []storytellerReplacementRule, sampler *storytellerReplaceSampler) (storytellerReplaceResult, error) {
 	if contentType == storytellerModel.ProjectContentTypeImage {
-		return replaceImageStoryDescriptions(rawContent, rules)
+		return replaceImageStoryDescriptions(rawContent, rules, sampler)
 	}
 	result := storytellerReplaceResult{RuleMatchCounts: make([]int, len(rules))}
-	result.Content, result.MatchCount = applyReplacementRules(rawContent, rules, result.RuleMatchCounts)
+	result.Content, result.MatchCount = applyReplacementRules(rawContent, rules, result.RuleMatchCounts, sampler, nil)
 	result.TextMatchCount = result.MatchCount
 	return result, nil
 }
 
 // replaceImageStoryDescriptions 對每頁 description 依序套用 rules；affected_pages 算的是
 // 「至少被一組規則命中的頁數」，batch 多組命中同一頁也只算一次。
-func replaceImageStoryDescriptions(rawContent string, rules []storytellerReplacementRule) (storytellerReplaceResult, error) {
+func replaceImageStoryDescriptions(rawContent string, rules []storytellerReplacementRule, sampler *storytellerReplaceSampler) (storytellerReplaceResult, error) {
 	var content storytellerModel.StoryImageContent
 	if err := json.Unmarshal([]byte(rawContent), &content); err != nil {
 		return storytellerReplaceResult{}, fmt.Errorf("invalid image story content: %w", err)
 	}
 	result := storytellerReplaceResult{RuleMatchCounts: make([]int, len(rules))}
 	for i := range content.Pages {
-		description, count := applyReplacementRules(content.Pages[i].Description, rules, result.RuleMatchCounts)
+		description, count := applyReplacementRules(content.Pages[i].Description, rules, result.RuleMatchCounts, sampler, &i)
 		if count == 0 {
 			continue
 		}
@@ -334,9 +416,13 @@ func replaceImageStoryDescriptions(rawContent string, rules []storytellerReplace
 
 // applyReplacementRules 把 rules 依序套在 input 上（後面的規則看得到前面的取代結果），
 // 每組命中數累加進 counts（圖像故事會跨頁累加），回傳結果與這次的總命中數。
-func applyReplacementRules(input string, rules []storytellerReplacementRule, counts []int) (string, int) {
+// pageIndex 只有圖像故事會帶，給 dry_run 對照標示是哪一頁。
+func applyReplacementRules(input string, rules []storytellerReplacementRule, counts []int, sampler *storytellerReplaceSampler, pageIndex *int) (string, int) {
 	total := 0
 	for i, rule := range rules {
+		if sampler != nil {
+			sampler.collect(i, rule, input, pageIndex)
+		}
 		var count int
 		input, count = replaceAllCounting(rule.Pattern, input, rule.Replace)
 		counts[i] += count
@@ -360,6 +446,10 @@ func (r storytellerReplaceResult) output() storytellerSearchReplaceOutput {
 		ImageDescriptionMatchCount: r.ImageDescriptionMatchCount,
 		AffectedPages:              r.AffectedPages,
 	}
+}
+
+func (r storytellerReplaceResult) dryRunOutput(sampler *storytellerReplaceSampler, versionID uint64) storytellerSearchReplaceDryRunOutput {
+	return storytellerSearchReplaceDryRunOutput{DryRun: true, storytellerSearchReplaceBatchOutput: r.batchOutput(), Samples: sampler.samples, VersionID: versionID}
 }
 
 func (r storytellerReplaceResult) batchOutput() storytellerSearchReplaceBatchOutput {

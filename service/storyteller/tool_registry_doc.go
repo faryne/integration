@@ -26,8 +26,8 @@ func StorytellerToolDocCategories() []ToolDocCategory {
 		{
 			title: "專案",
 			specs: append(
-				append([]ToolSpec{}, storytellerProjectToolSpecs()...),
-				storytellerProjectMCPOnlyToolSpecs()...,
+				append(append([]ToolSpec{}, storytellerProjectToolSpecs()...), storytellerProjectMCPOnlyToolSpecs()...),
+				storytellerSearchProjectToolSpecs()...,
 			),
 		},
 		{title: "梭梭記憶", specs: append(append([]ToolSpec{}, storytellerMemoryToolSpecs()...), storytellerMemoryMCPOnlyToolSpecs()...)},
@@ -37,8 +37,8 @@ func StorytellerToolDocCategories() []ToolDocCategory {
 		{
 			title: "章節",
 			specs: append(
-				append([]ToolSpec{}, storytellerChapterReadToolSpecs()...),
-				storytellerChapterWriteToolSpecs()...,
+				append(append([]ToolSpec{}, storytellerChapterReadToolSpecs()...), storytellerChapterBatchReadToolSpecs()...),
+				append(storytellerChapterWriteToolSpecs(), storytellerChapterBatchWriteToolSpecs()...)...,
 			),
 		},
 		{title: "資產 / 圖片上傳", specs: storytellerAssetToolSpecs()},
