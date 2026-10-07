@@ -15,6 +15,8 @@ import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
+import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
+import type { ReaderProgress } from "./readingRecordStore.ts";
 
 export interface WorkLandingItem {
   id: string;
@@ -25,6 +27,8 @@ export interface WorkLandingItem {
   parentId: number | null;
   updatedAt: string;
   href: string;
+  // 讀者在這一篇的閱讀進度；沒讀過就是 undefined
+  progress?: ReaderProgress;
 }
 
 export interface WorkLandingVolume {
@@ -57,7 +61,11 @@ export function ReaderWorkLanding({
   items: WorkLandingItem[];
   volumes: WorkLandingVolume[];
 }) {
-  const startHref = items[0]?.href;
+  const { startHref, startLabel } = continueReadingTarget(items);
+  const completedCount = items.filter(
+    (item) => item.progress?.completed,
+  ).length;
+  const hasProgress = items.some((item) => item.progress);
   const ungrouped = items.filter((item) => item.parentId === null);
   const groups = volumes
     .map((volume) => ({
@@ -76,6 +84,12 @@ export function ReaderWorkLanding({
         coverFocalPoint={coverFocalPoint}
         meta={meta}
         startHref={startHref}
+        startLabel={startLabel}
+        readingSummary={
+          hasProgress
+            ? `已讀完 ${completedCount} / ${items.length} 篇`
+            : undefined
+        }
       />
 
       <Paper
@@ -128,6 +142,10 @@ export interface WorkLandingHeroProps {
   coverFocalPoint: { x: number; y: number };
   meta: ReactNode;
   startHref?: string;
+  // 開始閱讀按鈕的文字，依閱讀進度可能是「繼續閱讀：〈篇名〉」；預設「開始閱讀」
+  startLabel?: string;
+  // 整部作品的閱讀進度摘要，例如「已讀完 3 / 24 篇」；沒讀過就不顯示
+  readingSummary?: string;
 }
 
 export function WorkLandingHero({
@@ -138,6 +156,8 @@ export function WorkLandingHero({
   coverFocalPoint,
   meta,
   startHref,
+  startLabel = "開始閱讀",
+  readingSummary,
 }: WorkLandingHeroProps) {
   const immersive = Boolean(coverUrl && coverLayout === "immersive");
   const split = Boolean(coverUrl && coverLayout === "split");
@@ -213,6 +233,11 @@ export function WorkLandingHero({
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {meta}
         </Stack>
+        {readingSummary && (
+          <Typography variant="body2" color="text.secondary">
+            {readingSummary}
+          </Typography>
+        )}
         {startHref && (
           <Box>
             <Button
@@ -222,7 +247,7 @@ export function WorkLandingHero({
               size="large"
               startIcon={<PlayArrowIcon />}
             >
-              開始閱讀
+              {startLabel}
             </Button>
           </Box>
         )}
@@ -303,19 +328,57 @@ function TocSection({
               </Typography>
             )}
           </Box>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{
-              display: { xs: "none", sm: "block" },
-              pt: 0.5,
-              flexShrink: 0,
-            }}
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ pt: 0.25, flexShrink: 0 }}
           >
-            {formatStorytellerDate(item.updatedAt)}
-          </Typography>
+            <ReaderProgressBadge progress={item.progress} />
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: { xs: "none", sm: "block" } }}
+            >
+              {formatStorytellerDate(item.updatedAt)}
+            </Typography>
+          </Stack>
         </ButtonBase>
       ))}
     </Stack>
   );
+}
+
+// 「開始閱讀」按鈕要去哪：找最近讀過的那篇（以進度最後推進的時間為準），還沒讀完就回到那篇；
+// 已經讀完就往下一篇；後面沒有了（例如跳著讀、最後一篇先讀完）就找第一篇還沒讀完的；
+// 全部讀完才從頭開始。完全沒讀過時維持從第一篇開始。
+function continueReadingTarget(items: WorkLandingItem[]) {
+  const first = items[0];
+  const latest = items.reduce<WorkLandingItem | undefined>(
+    (found, item) =>
+      item.progress &&
+      (!found?.progress ||
+        Date.parse(item.progress.updatedAt) >
+          Date.parse(found.progress.updatedAt))
+        ? item
+        : found,
+    undefined,
+  );
+  if (!latest?.progress) {
+    return { startHref: first?.href, startLabel: "開始閱讀" };
+  }
+  const target = !latest.progress.completed
+    ? latest
+    : (items[items.indexOf(latest) + 1] ??
+      items.find((item) => !item.progress?.completed));
+  if (!target) {
+    return { startHref: first?.href, startLabel: "從頭開始閱讀" };
+  }
+  const percent = target.progress?.progress
+    ? `（${target.progress.progress}%）`
+    : "";
+  return {
+    startHref: target.href,
+    startLabel: `繼續閱讀：${target.title}${percent}`,
+  };
 }

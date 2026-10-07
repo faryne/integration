@@ -76,6 +76,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Get("/story/:project/stories/:story/bookmarks", storyteller.StoryBookmarks)
 	authenticated.Post("/story/:project/stories/:story/bookmarks", storyteller.CreateStoryBookmark)
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)
+	authenticated.Get("/story/:project/reading-records", storyteller.ReadingRecords)
+	authenticated.Put("/story/:project/reading-records", storyteller.SaveReadingRecords)
 
 	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)
