@@ -1,4 +1,7 @@
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import {
+  readerProjectBasePath,
+  readerStoryPath,
+} from "@/helpers/storytellerReaderPaths.ts";
 
 // 品牌名稱還沒定案，先集中在這裡管理——之後改名只要改這個常數，不用整個專案找字串取代。
 export const STORYTELLER_APP_NAME = "SteamLoom";
@@ -253,10 +256,6 @@ export function getProjectStories(projectId: string) {
   return storytellerStories.filter((story) => story.projectId === projectId);
 }
 
-export function publicProjectPath(project: StorytellerProject) {
-  return steamloomPath(`story/${project.publicId}-${project.slug}`);
-}
-
 // storytellerImageEpisodeCount 算一個專案有幾話（content_type=image 的故事）。
 // project.stories 在專案列表／詳情 API 裡已經內含，不用另外打 API 拿。
 export function storytellerImageEpisodeCount(
@@ -266,26 +265,25 @@ export function storytellerImageEpisodeCount(
     .length;
 }
 
-// 故事與話已經合併成同一份依序排列的序列，閱讀頁不再分故事/圖像兩個家族，
-// 一律連到 stories 這個統一入口（序列裡第一篇是誰由後端排序決定，不用在這裡猜）。
+// 作品首頁（故事 Tab）：work/:projectPath，網址規則見 helpers/storytellerReaderPaths.ts
 export function storytellerReaderPath(project: {
   public_id: string;
   slug: string;
 }) {
-  const family = "stories";
-  return steamloomPath(`work/${project.public_id}-${project.slug}/${family}`);
+  return readerProjectBasePath(`${project.public_id}-${project.slug}`);
 }
 
-// storytellerSearchResultPath 組出搜尋結果單篇作品的閱讀連結；閱讀網址已不分文字／圖像，
-// 兩種類型都直接使用作品 public id。
+// storytellerSearchResultPath 組出搜尋結果單篇作品的閱讀連結；文字故事與圖像作品共用 story/:id。
 export function storytellerSearchResultPath(result: {
   project_public_id: string;
   project_slug: string;
   story_public_id: string;
   cover_image_url?: string;
 }) {
-  const projectPath = `${result.project_public_id}-${result.project_slug}`;
-  return steamloomPath(`work/${projectPath}/${result.story_public_id}`);
+  return readerStoryPath(
+    readerProjectBasePath(`${result.project_public_id}-${result.project_slug}`),
+    result.story_public_id,
+  );
 }
 
 export function getPublicProjects() {

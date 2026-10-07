@@ -80,6 +80,30 @@ function storyPageCount(story: StorytellerStory) {
   }
 }
 
+// 故事與設定共用的公開狀態標籤：公開＝讀者看得到，草稿＝只有作者看得到
+function PublicationStatusChip({ isPublic }: { isPublic: boolean }) {
+  return (
+    <Chip
+      size="small"
+      label={isPublic ? "公開" : "草稿"}
+      variant="outlined"
+      sx={{
+        height: 20,
+        borderRadius: 1,
+        fontWeight: 800,
+        color: (theme) =>
+          isPublic ? theme.palette.primary.main : theme.palette.text.secondary,
+        borderColor: (theme) =>
+          isPublic ? theme.palette.primary.main : theme.palette.divider,
+        bgcolor: (theme) =>
+          isPublic
+            ? alpha(theme.palette.primary.main, 0.12)
+            : alpha(theme.palette.text.secondary, 0.06),
+      }}
+    />
+  );
+}
+
 export function StoryRow({
   story,
   onClick,
@@ -179,28 +203,7 @@ export function StoryRow({
                 </Box>
               </Typography>
               {collectionChip}
-              <Chip
-                size="small"
-                label={isPublic ? "公開" : "草稿"}
-                variant="outlined"
-                sx={{
-                  height: 20,
-                  borderRadius: 1,
-                  fontWeight: 800,
-                  color: (theme) =>
-                    isPublic
-                      ? theme.palette.primary.main
-                      : theme.palette.text.secondary,
-                  borderColor: (theme) =>
-                    isPublic
-                      ? theme.palette.primary.main
-                      : theme.palette.divider,
-                  bgcolor: (theme) =>
-                    isPublic
-                      ? alpha(theme.palette.primary.main, 0.12)
-                      : alpha(theme.palette.text.secondary, 0.06),
-                }}
-              />
+              <PublicationStatusChip isPublic={isPublic} />
             </Stack>
           </Box>
           {actions && (
@@ -284,6 +287,7 @@ export function LoreRow({
               </Box>
             </Typography>
             {collectionChip}
+            <PublicationStatusChip isPublic={lore.status === "completed"} />
           </Stack>
         </Box>
         {actions && (

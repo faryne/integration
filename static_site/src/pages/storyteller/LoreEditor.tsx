@@ -65,6 +65,7 @@ import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerE
 import { useStorytellerEditorOutline } from "@/pages/storyteller/useStorytellerEditorOutline.ts";
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import {
+  WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
   WorkspaceEditorMetaPanel,
@@ -72,7 +73,11 @@ import {
   WorkspaceEditorSelectButton,
   WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
-import { selectedOptionLabel } from "@/pages/storyteller/workspaceEditorOptions.ts";
+import {
+  publicationStatusOptions,
+  selectedOptionLabel,
+  type PublicationStatus,
+} from "@/pages/storyteller/workspaceEditorOptions.ts";
 import { useWorkspaceEditorBack } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 import { editorStatusItems } from "@/pages/storyteller/workspaceEditorStatusItems.tsx";
 import { storytellerAssetTitle } from "@/pages/storyteller/storytellerAssetMarkdown.ts";
@@ -106,18 +111,25 @@ function clampAutoSaveIntervalMinutes(value: number) {
   );
 }
 
+// 公開狀態與摘要跟標題、內容一樣算進草稿：改了就算未存檔，自動存檔也會一起送出（比照故事編輯頁）
 interface LoreDraft {
   title: string;
   collectionId: string;
   content: string;
+  status: PublicationStatus;
+  summary: string;
 }
 
-function serializeLoreDraft(
-  title: string,
-  collectionId: string,
-  content: string,
-) {
-  return JSON.stringify({ title, collectionId, content });
+const EMPTY_LORE_DRAFT: LoreDraft = {
+  title: "",
+  collectionId: "",
+  content: "",
+  status: "draft",
+  summary: "",
+};
+
+function serializeLoreDraft(draft: LoreDraft) {
+  return JSON.stringify(draft);
 }
 
 // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
@@ -186,8 +198,8 @@ export default function StorytellerLoreEditor({
   const defaultCollectionIdFromQuery = searchParams.get("from") ?? "";
   const { session, loading: authLoading, login, submitting } = useAuth();
   const isNewLore = loreId === "new";
-  const currentDraftRef = useRef(serializeLoreDraft("", "", ""));
-  const lastSavedDraftRef = useRef(serializeLoreDraft("", "", ""));
+  const currentDraftRef = useRef(serializeLoreDraft(EMPTY_LORE_DRAFT));
+  const lastSavedDraftRef = useRef(serializeLoreDraft(EMPTY_LORE_DRAFT));
   // 理由同 StoryEditor.tsx：WYSIWYG 編輯器掛載時可能對還沒 migrate 過的舊資料
   // 自動補 marker id，這不是使用者變更，掛載後第一次收到編輯器回報的內容時
   // 要把它當成新的存檔基準。
@@ -196,11 +208,7 @@ export default function StorytellerLoreEditor({
   // backfill 出來的 markerId 真的送進後端過，這裡另外獨立記著，只給
   // handleAddBookmarkWithSave 用。
   const hasUnpersistedMarkerBackfillRef = useRef(false);
-  const latestDraftRef = useRef<LoreDraft>({
-    title: "",
-    collectionId: "",
-    content: "",
-  });
+  const latestDraftRef = useRef<LoreDraft>(EMPTY_LORE_DRAFT);
   const autoSaveRunningRef = useRef(false);
   const [sidePanel, setSidePanel] = useState<StorytellerEditorSidePanel | null>(
     null,
@@ -213,6 +221,8 @@ export default function StorytellerLoreEditor({
   const [title, setTitle] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
   const [content, setContent] = useState("");
+  const [loreStatus, setLoreStatus] = useState<PublicationStatus>("draft");
+  const [loreSummary, setLoreSummary] = useState("");
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
@@ -294,6 +304,8 @@ export default function StorytellerLoreEditor({
         title: apiLore.title,
         collectionId: apiLore.collection_id ?? "",
         content: apiLore.latest_content,
+        status: apiLore.status ?? "draft",
+        summary: apiLore.summary ?? "",
         updatedAt: apiLore.updated_at,
       }
     : undefined;
@@ -335,11 +347,15 @@ export default function StorytellerLoreEditor({
     setTitle(lore?.title ?? "");
     setSelectedCollectionId(defaultCollectionId);
     setContent(lore?.content ?? "");
-    const savedDraft = serializeLoreDraft(
-      lore?.title ?? "",
-      defaultCollectionId,
-      lore?.content ?? "",
-    );
+    setLoreStatus(lore?.status ?? "draft");
+    setLoreSummary(lore?.summary ?? "");
+    const savedDraft = serializeLoreDraft({
+      title: lore?.title ?? "",
+      collectionId: defaultCollectionId,
+      content: lore?.content ?? "",
+      status: lore?.status ?? "draft",
+      summary: lore?.summary ?? "",
+    });
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
     hasCapturedInitialEditorContentRef.current = false;
@@ -347,6 +363,8 @@ export default function StorytellerLoreEditor({
     lore?.collectionId,
     lore?.content,
     lore?.title,
+    lore?.status,
+    lore?.summary,
     isNewLore,
     defaultCollectionIdFromQuery,
     loreCollections,
@@ -361,17 +379,15 @@ export default function StorytellerLoreEditor({
   }, [apiLore?.latest_version_id, versions]);
 
   useEffect(() => {
-    currentDraftRef.current = serializeLoreDraft(
-      title,
-      selectedCollectionId,
-      content,
-    );
     latestDraftRef.current = {
       title,
       collectionId: selectedCollectionId,
       content,
+      status: loreStatus,
+      summary: loreSummary,
     };
-  }, [content, selectedCollectionId, title]);
+    currentDraftRef.current = serializeLoreDraft(latestDraftRef.current);
+  }, [content, selectedCollectionId, title, loreStatus, loreSummary]);
 
   // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
   // 把它當成新的存檔基準，避免這次自動補值被誤判成使用者變更、跳出不必要的
@@ -389,11 +405,13 @@ export default function StorytellerLoreEditor({
       hasCapturedInitialEditorContentRef.current = true;
       hasUnpersistedMarkerBackfillRef.current =
         nextContent !== (lore?.content ?? "");
-      lastSavedDraftRef.current = serializeLoreDraft(
+      lastSavedDraftRef.current = serializeLoreDraft({
         title,
-        selectedCollectionId,
-        nextContent,
-      );
+        collectionId: selectedCollectionId,
+        content: nextContent,
+        status: loreStatus,
+        summary: loreSummary,
+      });
     }
   }
 
@@ -512,6 +530,8 @@ export default function StorytellerLoreEditor({
               title: latestDraft.title,
               collection_id: latestDraft.collectionId,
               content: latestDraft.content,
+              status: latestDraft.status,
+              summary: latestDraft.summary,
               save_trigger: "auto",
               base_version_id: latestVersionIdRef.current,
             },
@@ -670,6 +690,8 @@ export default function StorytellerLoreEditor({
             title,
             collection_id: selectedCollectionId,
             content,
+            status: loreStatus,
+            summary: loreSummary,
             save_trigger: "manual",
             base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
           },
@@ -743,6 +765,8 @@ export default function StorytellerLoreEditor({
             title: nextTitle,
             collection_id: nextCollectionId,
             content: nextContent,
+            status: loreStatus,
+            summary: loreSummary,
             save_trigger: "agent_apply",
             base_version_id: latestVersionIdRef.current,
           },
@@ -755,11 +779,13 @@ export default function StorytellerLoreEditor({
             // 對不上（各自隨機產生），書籤等功能定位會失準。
             const savedContent = savedLore?.latest_content ?? nextContent;
             setContent(savedContent);
-            const savedDraft = serializeLoreDraft(
-              nextTitle,
-              nextCollectionId,
-              savedContent,
-            );
+            const savedDraft = serializeLoreDraft({
+              title: nextTitle,
+              collectionId: nextCollectionId,
+              content: savedContent,
+              status: loreStatus,
+              summary: loreSummary,
+            });
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
             latestVersionIdRef.current =
@@ -1015,6 +1041,13 @@ export default function StorytellerLoreEditor({
           <WorkspaceEditorMetaPanel
             items={[
               {
+                icon:
+                  publicationStatusOptions.find(
+                    (option) => option.value === loreStatus,
+                  )?.icon ?? null,
+                text: selectedOptionLabel(publicationStatusOptions, loreStatus),
+              },
+              {
                 icon: <FolderIcon />,
                 text: selectedOptionLabel(
                   collectionOptions,
@@ -1024,6 +1057,18 @@ export default function StorytellerLoreEditor({
             ]}
           >
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {/* 設定預設不公開：裡面常有作者的私人筆記與未揭露伏筆，要作者自己決定才對讀者公開 */}
+              <WorkspaceEditorSelectButton
+                icon={
+                  publicationStatusOptions.find(
+                    (option) => option.value === loreStatus,
+                  )?.icon
+                }
+                label="狀態"
+                value={loreStatus}
+                options={publicationStatusOptions}
+                onChange={(value) => setLoreStatus(value as PublicationStatus)}
+              />
               <WorkspaceEditorSelectButton
                 icon={<FolderIcon fontSize="small" />}
                 label="分類"
@@ -1065,6 +1110,11 @@ export default function StorytellerLoreEditor({
                 </WorkspaceEditorSelectButton>
               )}
             </Stack>
+            <WorkspaceEditableSummary
+              value={loreSummary}
+              onChange={setLoreSummary}
+              placeholder="新增給讀者看的摘要..."
+            />
           </WorkspaceEditorMetaPanel>
         </Stack>
       </Box>

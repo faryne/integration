@@ -325,7 +325,7 @@ export default function StorytellerNewProject({
     }
   } else if (!isEditing) {
     if (input.visibility === "public") {
-      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}/stories`)}`;
+      urlPreview = `建立後網址大致會是：${origin}${steamloomPath(`work/（系統代碼）-${projectNameToSlug(input.name)}`)}`;
     } else if (input.visibility === "unlisted") {
       urlPreview = "建立後系統會自動產生一組專屬的分享網址。";
     }

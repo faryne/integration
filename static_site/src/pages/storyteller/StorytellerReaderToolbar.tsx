@@ -22,6 +22,20 @@ import { StorytellerResponsivePopover } from "@/pages/storyteller/StorytellerRes
 import { StorytellerTypographySettings } from "@/pages/storyteller/StorytellerTypographySettings.tsx";
 import type { StorytellerTypographyPreferences } from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
 
+interface ReaderToolbarLabels {
+  previous: string;
+  next: string;
+  navigation: string;
+  navigationTooltip: string;
+}
+
+const STORY_TOOLBAR_LABELS: ReaderToolbarLabels = {
+  previous: "上一章",
+  next: "下一章",
+  navigation: "章節",
+  navigationTooltip: "目錄與已加入的書籤",
+};
+
 interface ReaderChapterLink {
   title: string;
   href: string;
@@ -42,6 +56,8 @@ export function StorytellerReaderToolbar({
   onChangePreferences,
   previousChapter,
   nextChapter,
+  labels = STORY_TOOLBAR_LABELS,
+  navigationHref,
 }: {
   projectName: string;
   currentTitle?: string;
@@ -54,9 +70,15 @@ export function StorytellerReaderToolbar({
   onToggleBookmarkEditing: () => void;
   renderHistory?: (onClose: () => void) => ReactNode;
   preferences: StorytellerTypographyPreferences;
-  onChangePreferences: (patch: Partial<StorytellerTypographyPreferences>) => void;
+  onChangePreferences: (
+    patch: Partial<StorytellerTypographyPreferences>,
+  ) => void;
   previousChapter?: ReaderChapterLink;
   nextChapter?: ReaderChapterLink;
+  // 底部導覽列的用詞，設定頁改成「上一則／下一則／設定列表」；省略就是故事的章節用詞
+  labels?: ReaderToolbarLabels;
+  // 有給時「目錄」按鈕改成連結（設定頁直接回設定列表），不開側邊目錄抽屜
+  navigationHref?: string;
 }) {
   const [projectAnchor, setProjectAnchor] = useState<HTMLElement | null>(null);
   const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
@@ -103,7 +125,6 @@ export function StorytellerReaderToolbar({
     </Button>
   );
 
-
   return (
     <>
       <Paper
@@ -135,7 +156,7 @@ export function StorytellerReaderToolbar({
           spacing={{ xs: 0.125, sm: 0.25 }}
           alignItems="center"
         >
-          <Tooltip title={previousChapter?.title ?? "沒有上一篇"}>
+          <Tooltip title={previousChapter?.title ?? `沒有${labels.previous}`}>
             <span>
               <Button
                 component={RouterLink}
@@ -154,18 +175,22 @@ export function StorytellerReaderToolbar({
                   component="span"
                   sx={{ display: { xs: "none", sm: "inline" } }}
                 >
-                  上一章
+                  {labels.previous}
                 </Box>
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title="目錄與已加入的書籤">
+          <Tooltip title={labels.navigationTooltip}>
             <Button
               size="small"
               color="inherit"
               startIcon={<MenuBookIcon />}
-              aria-expanded={navigationOpen}
-              onClick={onOpenNavigation}
+              {...(navigationHref
+                ? { component: RouterLink, to: navigationHref }
+                : {
+                    "aria-expanded": navigationOpen,
+                    onClick: onOpenNavigation,
+                  })}
               sx={{
                 minWidth: { xs: 32, sm: "auto" },
                 px: { xs: 0.75, sm: 1 },
@@ -176,7 +201,7 @@ export function StorytellerReaderToolbar({
                 component="span"
                 sx={{ display: { xs: "none", sm: "inline" } }}
               >
-                章節
+                {labels.navigation}
               </Box>
             </Button>
           </Tooltip>
@@ -279,7 +304,7 @@ export function StorytellerReaderToolbar({
               </Box>
             </Button>
           </Tooltip>
-          <Tooltip title={nextChapter?.title ?? "沒有下一篇"}>
+          <Tooltip title={nextChapter?.title ?? `沒有${labels.next}`}>
             <span>
               <Button
                 component={RouterLink}
@@ -298,7 +323,7 @@ export function StorytellerReaderToolbar({
                   component="span"
                   sx={{ display: { xs: "none", sm: "inline" } }}
                 >
-                  下一章
+                  {labels.next}
                 </Box>
               </Button>
             </span>

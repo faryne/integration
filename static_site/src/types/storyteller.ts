@@ -18,6 +18,12 @@ export interface StorytellerProject {
   stories?: StorytellerStory[];
   // 讓閱讀頁／工作台故事列表可以把 stories 依冊分組顯示，不用另外呼叫只給登入者用的 API。
   volumes?: StorytellerStory[];
+  // 只有公開閱讀頁（public／shared project）會帶：已公開的設定與它們所屬的設定集
+  lores?: StorytellerLore[];
+  lore_collections?: Pick<
+    StorytellerLoreCollection,
+    "public_id" | "name" | "description" | "sort"
+  >[];
   authors?: StorytellerAuthorIdentity[];
   is_owner?: boolean;
   // 底下四個只有單一專案詳情（工作台側邊欄「全部設定」「全部資產」「未分類」
@@ -366,6 +372,10 @@ export interface StorytellerLore {
   project_id: number;
   collection_id?: string;
   title: string;
+  // draft＝只有作者看得到，completed＝對讀者公開
+  status: "draft" | "completed";
+  // 給讀者看的設定摘要
+  summary: string;
   latest_content: string;
   latest_version_id: number | null;
   word_count: number;
@@ -781,6 +791,9 @@ export interface StorytellerLoreRequest {
   save_trigger?: "auto" | "manual" | "agent_apply";
   base_version_id?: number;
   collection_id?: string;
+  // 省略＝不變更（自動存檔不帶，避免把已公開的設定改回草稿）
+  status?: "draft" | "completed";
+  summary?: string;
 }
 
 export interface StorytellerLoreCollectionRequest {

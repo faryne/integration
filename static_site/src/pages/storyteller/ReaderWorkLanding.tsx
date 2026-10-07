@@ -1,45 +1,33 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import CollectionsIcon from "@mui/icons-material/Collections";
+import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import {
   alpha,
   Box,
   Button,
-  ButtonBase,
-  Divider,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
-import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
-import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
-import type { ReaderProgress } from "./readingRecordStore.ts";
+import type { ReaderLandingTab } from "./readerModel.ts";
+import {
+  LoreToc,
+  StoryToc,
+  type WorkLandingItem,
+  type WorkLandingLoreGroup,
+  type WorkLandingVolume,
+} from "./ReaderWorkToc.tsx";
 
-export interface WorkLandingItem {
-  id: string;
-  title: string;
-  summary: string;
-  contentType: "text" | "image";
-  // 所屬冊的 id，null 代表未分冊
-  parentId: number | null;
-  updatedAt: string;
-  href: string;
-  // 讀者在這一篇的閱讀進度；沒讀過就是 undefined
-  progress?: ReaderProgress;
-}
-
-export interface WorkLandingVolume {
-  id: number;
-  title: string;
-}
+export type { WorkLandingItem, WorkLandingVolume } from "./ReaderWorkToc.tsx";
 
 const contentWidth = 1200;
 
 // 閱讀頁「作品首頁」：網址沒帶章節時（從卡片、分享連結進來）看到的畫面。
-// 標題區塊有封面就把封面鋪成背景（同閱讀頁標題背景的做法），下面是依冊分組的章節目錄。
+// 標題區塊有封面就把封面鋪成背景（同閱讀頁標題背景的做法），下面是「故事／設定」兩個 Tab：
+// 故事是依冊分組的章節目錄，設定是依設定集分組的設定列表；作品沒有公開設定時不顯示 Tab。
 // 純呈現元件：作品資訊 chips／追蹤與評分按鈕由呼叫端組好用 meta 傳入，章節連結用 item.href，
 // 這樣不必回頭 import Reader.tsx（避免循環引用）。
 export function ReaderWorkLanding({
@@ -51,6 +39,10 @@ export function ReaderWorkLanding({
   meta,
   items,
   volumes,
+  tab,
+  storiesHref,
+  loresHref,
+  loreGroups,
 }: {
   name: string;
   description?: string;
@@ -60,19 +52,22 @@ export function ReaderWorkLanding({
   meta: ReactNode;
   items: WorkLandingItem[];
   volumes: WorkLandingVolume[];
+  tab: ReaderLandingTab;
+  storiesHref: string;
+  loresHref: string;
+  loreGroups: WorkLandingLoreGroup[];
 }) {
+  const loreCount = loreGroups.reduce(
+    (total, group) => total + group.lores.length,
+    0,
+  );
+  // 沒有公開設定時整個 Tab 列不顯示，就算網址是 /lores 也只顯示故事目錄
+  const activeTab: ReaderLandingTab = loreCount > 0 ? tab : "stories";
   const { startHref, startLabel } = continueReadingTarget(items);
   const completedCount = items.filter(
     (item) => item.progress?.completed,
   ).length;
   const hasProgress = items.some((item) => item.progress);
-  const ungrouped = items.filter((item) => item.parentId === null);
-  const groups = volumes
-    .map((volume) => ({
-      volume,
-      children: items.filter((item) => item.parentId === volume.id),
-    }))
-    .filter((group) => group.children.length > 0);
 
   return (
     <Stack spacing={{ xs: 2, md: 3 }} sx={{ width: 1, alignItems: "center" }}>
@@ -105,26 +100,29 @@ export function ReaderWorkLanding({
           p: { xs: 1, sm: 2 },
         }}
       >
-        {items.length === 0 ? (
-          <Typography color="text.secondary" sx={{ p: 2 }}>
-            這個作品還沒有公開的內容。
-          </Typography>
+        {loreCount > 0 && (
+          <Tabs
+            value={activeTab}
+            sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
+          >
+            <Tab
+              value="stories"
+              label={`故事 ${items.length}`}
+              component={RouterLink}
+              to={storiesHref}
+            />
+            <Tab
+              value="lores"
+              label={`設定 ${loreCount}`}
+              component={RouterLink}
+              to={loresHref}
+            />
+          </Tabs>
+        )}
+        {activeTab === "lores" ? (
+          <LoreToc groups={loreGroups} />
         ) : (
-          <Stack spacing={2}>
-            {groups.map(({ volume, children }) => (
-              <TocSection
-                key={volume.id}
-                title={volume.title}
-                items={children}
-              />
-            ))}
-            {ungrouped.length > 0 && (
-              <TocSection
-                title={groups.length > 0 ? "其他" : undefined}
-                items={ungrouped}
-              />
-            )}
-          </Stack>
+          <StoryToc items={items} volumes={volumes} />
         )}
       </Paper>
     </Stack>
@@ -253,99 +251,6 @@ export function WorkLandingHero({
         )}
       </Stack>
     </Box>
-  );
-}
-
-// 一冊（或未分冊）的章節清單；序號每一冊各自從 1 開始，與閱讀頁抽屜的作品索引一致。
-function TocSection({
-  title,
-  items,
-}: {
-  title?: string;
-  items: WorkLandingItem[];
-}) {
-  return (
-    <Stack spacing={0.5}>
-      {title && (
-        <>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="baseline"
-            sx={{ px: 1 }}
-          >
-            <Typography variant="subtitle1" fontWeight={800}>
-              {title}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {items.length} 篇
-            </Typography>
-          </Stack>
-          <Divider />
-        </>
-      )}
-      {items.map((item, index) => (
-        <ButtonBase
-          key={item.id}
-          component={RouterLink}
-          to={item.href}
-          sx={{
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "flex-start",
-            gap: 1.5,
-            textAlign: "left",
-            width: 1,
-            px: 1,
-            py: 1,
-            borderRadius: 1,
-            "&:hover": { bgcolor: "action.hover" },
-          }}
-        >
-          <Box sx={{ color: "primary.main", pt: 0.25, display: "flex" }}>
-            {item.contentType === "image" ? (
-              <CollectionsIcon fontSize="small" />
-            ) : (
-              <ArticleIcon fontSize="small" />
-            )}
-          </Box>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography fontWeight={700}>
-              {index + 1}. {item.title}
-            </Typography>
-            {item.summary && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{
-                  display: "-webkit-box",
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: "vertical",
-                  overflow: "hidden",
-                }}
-              >
-                {item.summary}
-              </Typography>
-            )}
-          </Box>
-          <Stack
-            direction="row"
-            spacing={1.5}
-            alignItems="center"
-            sx={{ pt: 0.25, flexShrink: 0 }}
-          >
-            <ReaderProgressBadge progress={item.progress} />
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ display: { xs: "none", sm: "block" } }}
-            >
-              {formatStorytellerDate(item.updatedAt)}
-            </Typography>
-          </Stack>
-        </ButtonBase>
-      ))}
-    </Stack>
   );
 }
 
