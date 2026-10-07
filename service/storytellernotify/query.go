@@ -7,7 +7,9 @@ import (
 // pageSize 是通知頁每次載入的筆數（popover 也用同一支 API，只取前 10 則顯示）。
 const pageSize = 20
 
+// output 轉成對外格式；payload.Internal 是後端身份鍵，一律清空不輸出。
 func (s *Service) output(row storytellerModel.Notification) storytellerModel.NotificationOutput {
+	row.Payload.Internal = nil
 	out := storytellerModel.NotificationOutput{
 		PublicID: row.PublicID, Kind: row.Kind, Payload: row.Payload,
 		Read: row.ReadAt != nil, Locked: row.LockedAt != nil, CreatedAt: row.CreatedAt,
@@ -18,6 +20,29 @@ func (s *Service) output(row storytellerModel.Notification) storytellerModel.Not
 		out.ExpiresAt = &expires
 	}
 	return out
+}
+
+// outputs 轉換整批並交給 decorator 補即時資料；decorator 失敗就整批失敗，避免顯示半套資料。
+func (s *Service) outputs(userID uint64, rows []storytellerModel.Notification) ([]storytellerModel.NotificationOutput, error) {
+	outs := make([]storytellerModel.NotificationOutput, 0, len(rows))
+	for _, row := range rows {
+		outs = append(outs, s.output(row))
+	}
+	if s.decorate != nil && len(rows) > 0 {
+		if err := s.decorate(userID, rows, outs); err != nil {
+			return nil, err
+		}
+	}
+	return outs, nil
+}
+
+// single 是單則版的 outputs。
+func (s *Service) single(userID uint64, row storytellerModel.Notification) (*storytellerModel.NotificationOutput, error) {
+	outs, err := s.outputs(userID, []storytellerModel.Notification{row})
+	if err != nil {
+		return nil, err
+	}
+	return &outs[0], nil
 }
 
 func (s *Service) List(userID uint64, filter storytellerModel.NotificationFilter, cursor string) (*storytellerModel.NotificationListOutput, error) {
@@ -35,15 +60,13 @@ func (s *Service) List(userID uint64, filter storytellerModel.NotificationFilter
 	if err != nil {
 		return nil, err
 	}
-	out := &storytellerModel.NotificationListOutput{
-		Items: make([]storytellerModel.NotificationOutput, 0, len(rows)), UnreadCount: unread, LockedCount: locked, LockLimit: s.lockLimit,
-	}
+	out := &storytellerModel.NotificationListOutput{UnreadCount: unread, LockedCount: locked, LockLimit: s.lockLimit}
 	if len(rows) > pageSize {
 		rows = rows[:pageSize]
 		out.NextCursor = rows[pageSize-1].PublicID
 	}
-	for _, row := range rows {
-		out.Items = append(out.Items, s.output(row))
+	if out.Items, err = s.outputs(userID, rows); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -58,8 +81,7 @@ func (s *Service) Get(userID uint64, publicID string) (*storytellerModel.Notific
 	if err != nil {
 		return nil, err
 	}
-	out := s.output(*row)
-	return &out, nil
+	return s.single(userID, *row)
 }
 
 func (s *Service) UnreadCount(userID uint64) (int64, error) {
@@ -95,8 +117,7 @@ func (s *Service) Lock(userID uint64, publicID string) (*storytellerModel.Notifi
 		now := s.now()
 		row.LockedAt = &now
 	}
-	out := s.output(*row)
-	return &out, nil
+	return s.single(userID, *row)
 }
 
 func (s *Service) Unlock(userID uint64, publicID string) (*storytellerModel.NotificationOutput, error) {
@@ -110,8 +131,7 @@ func (s *Service) Unlock(userID uint64, publicID string) (*storytellerModel.Noti
 		}
 		row.LockedAt = nil
 	}
-	out := s.output(*row)
-	return &out, nil
+	return s.single(userID, *row)
 }
 
 func (s *Service) Delete(userID uint64, publicID string) error {

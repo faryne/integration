@@ -47,10 +47,8 @@ import {
 import { useTitle } from "@/helpers/title.tsx";
 import { useStorytellerHeaderContext } from "@/layouts/StorytellerHeaderContext.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import {
-  ContentMetaHeader,
-  FollowAuthorButton,
-} from "@/pages/storyteller/ReaderContentHeader.tsx";
+import { FollowAuthorButton } from "@/pages/storyteller/FollowAuthorButton.tsx";
+import { ContentMetaHeader } from "@/pages/storyteller/ReaderContentHeader.tsx";
 import { ImagePageScrubber } from "@/pages/storyteller/ReaderImagePageScrubber.tsx";
 import { ReaderIndexPanel } from "@/pages/storyteller/ReaderIndexPanel.tsx";
 import { ReaderLorePage } from "@/pages/storyteller/ReaderLorePage.tsx";
@@ -1025,6 +1023,7 @@ export default function StorytellerReader({
           key={author.pen_name}
           penName={author.pen_name}
           followerCount={author.follower_count ?? 0}
+          showName
           disabled={isOwner}
           onLoginRequired={() => setLoginPromptOpen(true)}
           onNotify={(message, severity = "success") =>

@@ -2557,38 +2557,6 @@ func (s *Service) PublicFavoriteProjects(penName string, viewerID uint64) ([]sto
 	return outputs, nil
 }
 
-func (s *Service) PublicFavoriteAuthors(penName string, viewerID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
-	identity, err := s.resolveAuthorIdentityByPenName(penName)
-	if err != nil {
-		return nil, err
-	}
-	if identity.ProfileID != 0 {
-		return []storytellerModel.FavoriteAuthorOutput{}, nil
-	}
-	profile := identity.Self
-	if profile == nil {
-		return []storytellerModel.FavoriteAuthorOutput{}, nil
-	}
-	isOwner := viewerID != 0 && viewerID == profile.ID
-	if profile.HideFavoriteAuthors && !isOwner {
-		return []storytellerModel.FavoriteAuthorOutput{}, nil
-	}
-	favorites, err := s.repo.PublicFavoriteAuthors(profile.ID, isOwner)
-	if err != nil {
-		return nil, err
-	}
-	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
-	for _, favorite := range favorites {
-		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID, favorite.AuthorProfileID)
-		if err != nil {
-			return nil, err
-		}
-		output.Hidden = favorite.Hidden
-		outputs = append(outputs, *output)
-	}
-	return outputs, nil
-}
-
 func (s *Service) SetFavoriteProjectVisibility(userID uint64, projectPublicID string, hidden bool) error {
 	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
 	if err != nil {
@@ -2643,23 +2611,6 @@ func (s *Service) FavoriteProjects(userID uint64) ([]storytellerModel.ProjectOut
 	return outputs, nil
 }
 
-func (s *Service) FavoriteAuthors(userID uint64) ([]storytellerModel.FavoriteAuthorOutput, error) {
-	favorites, err := s.repo.FavoriteAuthors(userID)
-	if err != nil {
-		return nil, err
-	}
-	outputs := make([]storytellerModel.FavoriteAuthorOutput, 0, len(favorites))
-	for _, favorite := range favorites {
-		output, err := s.favoriteAuthorOutput(favorite.AuthorUserID, favorite.AuthorProfileID)
-		if err != nil {
-			return nil, err
-		}
-		output.Hidden = favorite.Hidden
-		outputs = append(outputs, *output)
-	}
-	return outputs, nil
-}
-
 func (s *Service) FavoriteStatus(userID uint64, projectPublicID string) (map[string]bool, error) {
 	project, err := s.repo.ProjectByPublicIDForFavorite(projectPublicID)
 	if err != nil {
@@ -2684,6 +2635,7 @@ func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storyt
 		if err := s.repo.SaveRanking(ranking); err != nil {
 			return nil, err
 		}
+		s.notifyProjectFavorited(userID, project)
 		return s.projectOutput(project, false)
 	}
 	if err := s.repo.CreateRanking(&storytellerModel.ProjectRanking{
@@ -2693,6 +2645,7 @@ func (s *Service) CreateFavorite(userID uint64, projectPublicID string) (*storyt
 	}); err != nil {
 		return nil, err
 	}
+	s.notifyProjectFavorited(userID, project)
 	return s.projectOutput(project, false)
 }
 
@@ -2707,64 +2660,6 @@ func (s *Service) DeleteFavorite(userID uint64, projectPublicID string) error {
 	}
 	ranking.IsFavorite = false
 	return s.repo.SaveRanking(ranking)
-}
-
-func (s *Service) AuthorFavoriteStatus(userID uint64, authorPenName string) (map[string]bool, error) {
-	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return map[string]bool{"favorited": false}, nil
-		}
-		return nil, err
-	}
-	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
-	if err != nil {
-		return map[string]bool{"favorited": false}, nil
-	}
-	return map[string]bool{"favorited": favorite.DeletedAt == nil}, nil
-}
-
-func (s *Service) CreateAuthorFavorite(userID uint64, authorPenName string) (*storytellerModel.FavoriteAuthorOutput, error) {
-	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
-	if err != nil {
-		return nil, err
-	}
-	if userID == identity.UserID {
-		return nil, errors.New("cannot favorite yourself")
-	}
-	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
-	if err == nil {
-		favorite.DeletedAt = nil
-		if err := s.repo.SaveAuthorFavorite(favorite); err != nil {
-			return nil, err
-		}
-		return s.favoriteAuthorOutput(identity.UserID, identity.ProfileID)
-	}
-	if err := s.repo.CreateAuthorFavorite(&storytellerModel.AuthorFavorite{
-		UserID:          userID,
-		AuthorUserID:    identity.UserID,
-		AuthorProfileID: identity.ProfileID,
-	}); err != nil {
-		return nil, err
-	}
-	return s.favoriteAuthorOutput(identity.UserID, identity.ProfileID)
-}
-
-func (s *Service) DeleteAuthorFavorite(userID uint64, authorPenName string) error {
-	identity, err := s.resolveAuthorIdentityByPenName(authorPenName)
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	favorite, err := s.repo.AuthorFavorite(userID, identity.UserID, identity.ProfileID)
-	if err != nil {
-		return nil
-	}
-	now := time.Now()
-	favorite.DeletedAt = &now
-	return s.repo.SaveAuthorFavorite(favorite)
 }
 
 func (s *Service) RankingStatus(userID uint64, projectPublicID string) (*storytellerModel.ProjectRankingOutput, error) {

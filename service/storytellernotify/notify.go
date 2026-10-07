@@ -44,14 +44,25 @@ type repository interface {
 	PurgeExpiredNotifications(before time.Time, batch int) (int64, error)
 }
 
+// Decorator 讓上層（storyteller service）在輸出前補上需要即時查詢的欄位，例如追蹤者目前的筆名、
+// 回追狀態；rows 與 outs 一一對應，rows 帶有 payload.Internal，outs 裡已清空。
+type Decorator func(userID uint64, rows []storytellerModel.Notification, outs []storytellerModel.NotificationOutput) error
+
 type Service struct {
 	repo      repository
 	lockLimit int
 	now       func() time.Time
+	decorate  Decorator
 }
 
 func NewService() *Service {
 	return &Service{repo: storytellerRepo.NewRepository(), lockLimit: config.EnvConfig().StorytellerNotificationLockLimit, now: time.Now}
+}
+
+// WithDecorator 掛上輸出前的補資料函式；只有讀取類 API（列表、單則、鎖定）會用到。
+func (s *Service) WithDecorator(decorate Decorator) *Service {
+	s.decorate = decorate
+	return s
 }
 
 // NewRows 把 Input 轉成待寫入的資料列；給需要跟業務寫入放在同一個交易的呼叫端（例如發佈掃描）用。

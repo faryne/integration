@@ -18,6 +18,8 @@ const knownViews: StorytellerNotificationView[] = [
   "project",
   "security",
   "generic",
+  "follower",
+  "favorite",
 ];
 
 // 前端只依「呈現方式」分支，不寫死 kind；註冊表查不到或 view 不認識的一律當 generic
@@ -74,6 +76,20 @@ export function notificationHeadline(
         text: ` 發表了新作品《${p.project_name}》`,
         sub: p.description,
       };
+    case "follower":
+      return {
+        actor: notificationActorName(n),
+        text: p.target_pen_name
+          ? ` 追蹤了你的筆名 ${p.target_pen_name}`
+          : " 追蹤了你",
+      };
+    case "favorite":
+      return {
+        actor: notificationActorName(n),
+        text: ` 收藏了你的作品《${p.project_name}》`,
+        sub:
+          (p.authors ?? []).length > 0 ? `署名：${p.authors!.join("、")}` : "",
+      };
     case "security":
       return {
         text: p.title,
@@ -85,6 +101,10 @@ export function notificationHeadline(
       return { text: p.title, sub: p.body };
   }
 }
+
+// 追蹤／收藏通知的追蹤者名稱；身份已刪除時後端不帶 actor
+export const notificationActorName = (n: StorytellerNotification) =>
+  n.payload.actor?.pen_name ?? "已不存在的使用者";
 
 // 通用 link：站內路徑走 router，http(s) 外部網址另開分頁；
 // 其他協定（javascript: 等）不顯示按鈕，避免點了直接執行程式碼

@@ -463,8 +463,16 @@ export interface StorytellerFavoriteAuthor extends StorytellerAuthorIdentity {
   average_rating: number;
   follower_count: number;
   hidden?: boolean;
+  // 本人以哪個筆名追蹤這位作家（只在自己的追蹤列表出現）；本人身份追蹤沒有這個欄位
+  as?: string;
   show_favorites?: boolean;
   is_owner?: boolean;
+}
+
+// 作者頁追蹤按鈕的狀態：favorited 只看本人身份；following_as 是本人以哪些筆名追蹤這位作者
+export interface StorytellerAuthorFavoriteStatus {
+  favorited: boolean;
+  following_as: string[];
 }
 
 export interface StorytellerAuthorProfileRequest {

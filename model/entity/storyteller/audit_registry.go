@@ -133,6 +133,7 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "notification.lock", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/notifications/:notification/lock")}},
 	{Name: "notification.unlock", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/notifications/:notification/lock")}},
 	{Name: "notification.delete", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/notifications/:notification")}},
+	{Name: "notification.follow_back", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/notifications/:notification/follow-back")}},
 
 	{Name: "system.memory_draft.cleanup", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.notification.fanout", Category: "system", Importance: AuditImportanceNormal},

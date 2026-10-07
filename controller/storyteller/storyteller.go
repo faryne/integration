@@ -1284,7 +1284,11 @@ func CreateAuthorFavorite(ctx fiber.Ctx) error {
 }
 
 func DeleteAuthorFavorite(ctx fiber.Ctx) error {
-	if err := storyteller.NewService().DeleteAuthorFavorite(authsession.Session(ctx).UserId, ctx.Params("author")); err != nil {
+	// ?as=筆名：取消以該筆名做的追蹤；不帶就是本人身份
+	if err := storyteller.NewService().DeleteAuthorFavorite(authsession.Session(ctx).UserId, ctx.Params("author"), ctx.Query("as")); err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("identity not found"))
+		}
 		return output.BadRequest(err)
 	}
 	return output.Success(map[string]bool{"deleted": true})

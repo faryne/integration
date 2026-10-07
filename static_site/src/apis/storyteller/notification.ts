@@ -106,7 +106,9 @@ type NotificationAction =
   | { type: "read-all" }
   | { type: "lock"; publicId: string }
   | { type: "unlock"; publicId: string }
-  | { type: "delete"; publicId: string };
+  | { type: "delete"; publicId: string }
+  // as 只在作品有多個署名身份時需要
+  | { type: "follow-back"; publicId: string; as?: string };
 
 // 所有會改變通知狀態的操作共用一支 mutation，成功後一律重抓列表、未讀數與內容。
 export function useStorytellerNotificationAction() {
@@ -130,10 +132,25 @@ export function useStorytellerNotificationAction() {
           return axios.delete(`${base}/${action.publicId}/lock`, { headers });
         case "delete":
           return axios.delete(`${base}/${action.publicId}`, { headers });
+        case "follow-back":
+          return axios.post(
+            `${base}/${action.publicId}/follow-back`,
+            { as: action.as ?? "" },
+            { headers },
+          );
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, action) => {
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+      // 回追會改變作者頁按鈕與「我的追蹤」
+      if (action.type === "follow-back") {
+        void queryClient.invalidateQueries({
+          queryKey: ["storyteller", "author-favorite"],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["storyteller", "favorite-authors"],
+        });
+      }
     },
   });
 }

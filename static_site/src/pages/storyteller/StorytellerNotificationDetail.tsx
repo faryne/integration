@@ -22,9 +22,13 @@ import type {
   StorytellerNotificationView,
 } from "@/types/storytellerNotification.ts";
 import {
+  FavoriteBody,
+  FollowerBody,
+} from "./StorytellerNotificationFollow.tsx";
+import {
+  NotificationLeading,
   NotificationTags,
   NotificationTitle,
-  NotificationViewAvatar,
 } from "./StorytellerNotificationRow.tsx";
 import {
   notificationDaysLeft,
@@ -68,7 +72,7 @@ export function StorytellerNotificationDetail({
         alignItems="flex-start"
         sx={{ px: { xs: 2, sm: 2.5 }, pt: 2.25, pb: 1.75 }}
       >
-        <NotificationViewAvatar view={view} size={40} />
+        <NotificationLeading n={n} view={view} size={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h6" sx={{ fontSize: 17, lineHeight: 1.45 }}>
             <NotificationTitle n={n} />
@@ -123,6 +127,10 @@ function NotificationBody({
       return <ProjectPublishedBody n={n} />;
     case "security":
       return <SecurityBody n={n} />;
+    case "follower":
+      return <FollowerBody n={n} />;
+    case "favorite":
+      return <FavoriteBody n={n} />;
     default:
       return <GenericBody n={n} />;
   }

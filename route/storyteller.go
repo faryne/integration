@@ -112,6 +112,7 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/notifications/:notification/lock", storyteller.LockNotification)
 	authenticated.Delete("/notifications/:notification/lock", storyteller.UnlockNotification)
 	authenticated.Delete("/notifications/:notification", storyteller.DeleteNotification)
+	authenticated.Post("/notifications/:notification/follow-back", storyteller.FollowBackNotification)
 
 	authenticated.Get("/usage/summary", aiGate, storyteller.AgentUsageSummary)
 	authenticated.Get("/usage/logs", aiGate, storyteller.AgentUsageLogs)

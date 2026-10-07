@@ -763,14 +763,16 @@ func (ProjectRanking) TableName() string {
 }
 
 type AuthorFavorite struct {
-	ID              uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID          uint64     `gorm:"column:user_id" json:"user_id"`
-	AuthorUserID    uint64     `gorm:"column:author_user_id" json:"author_user_id"`
-	AuthorProfileID uint64     `gorm:"column:author_profile_id" json:"author_profile_id"`
-	Hidden          bool       `gorm:"column:hidden" json:"hidden"`
-	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID     uint64 `gorm:"column:id;primaryKey" json:"id"`
+	UserID uint64 `gorm:"column:user_id" json:"user_id"`
+	// FollowerProfileID 是追蹤者用哪個身份追蹤（0＝帳號本人）；以筆名追蹤的不會出現在本人的公開輸出
+	FollowerProfileID uint64     `gorm:"column:follower_profile_id" json:"-"`
+	AuthorUserID      uint64     `gorm:"column:author_user_id" json:"author_user_id"`
+	AuthorProfileID   uint64     `gorm:"column:author_profile_id" json:"author_profile_id"`
+	Hidden            bool       `gorm:"column:hidden" json:"hidden"`
+	DeletedAt         *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt         time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt         time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AuthorFavorite) TableName() string {
@@ -1442,6 +1444,8 @@ type FavoriteAuthorOutput struct {
 	AverageRating   float64 `json:"average_rating"`
 	FollowerCount   uint64  `json:"follower_count"`
 	Hidden          bool    `json:"hidden,omitempty"`
+	// As 是本人以哪個筆名追蹤這位作家（只在本人自己的追蹤列表輸出）；本人身份追蹤留空
+	As string `json:"as,omitempty"`
 	// ShowFavorites 只有本人身份的作者頁為 true；額外筆名的作者頁不公開收藏分頁。
 	ShowFavorites bool `json:"show_favorites,omitempty"`
 	IsOwner       bool `json:"is_owner,omitempty"`
