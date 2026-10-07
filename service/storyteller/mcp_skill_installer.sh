@@ -11,6 +11,8 @@
 # 本機測試可用 STEAMLOOM_SKILL_URL 換掉下載來源。
 
 set -eu
+# 注意：變數後面緊接中文／全形標點時一律寫成 ${var}；macOS 的 /bin/sh（bash 3.2）在 UTF-8 locale
+# 會把多位元組字元的第一個 byte 當成變數名稱，搭配 set -u 直接報 unbound variable
 
 # 整支包在 main 裡、最後一行才呼叫：curl 中途斷線時不會執行到一半的 script
 main() {
@@ -71,7 +73,7 @@ install_to() {
 		current="$(skill_version "$dir/SKILL.md")"
 	fi
 	if [ "$current" = "$latest" ]; then
-		echo "  - 已是最新版 v$latest，不用更新"
+		echo "  - 已是最新版 v${latest}，不用更新"
 	else
 		mkdir -p "$dir"
 		cp "$tmp" "$dir/SKILL.md"
