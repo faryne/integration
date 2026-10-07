@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>閱讀頁 × 設定集 Mockup</title>
+<style>
+/* 沿用 reader-redesign mockup 的紙張色系，方便和既有閱讀頁對照 */
+:root {
+  --page: #f4edd8; --paper: #fbf7ea; --paper-elevated: #fffaf0;
+  --ink: #2c241b; --muted: #746856; --line: #cdbd96;
+  --accent: #8a5b18; --accent-soft: #ead9ad;
+  /* 設定集專用色：刻意跟本篇的琥珀色區隔，讓讀者一眼知道「我現在在查設定」 */
+  --lore: #3f6b6a; --lore-soft: #d6e4dc;
+  --header: rgba(251, 247, 234, .94);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.serif { font-family: Georgia, "Noto Serif TC", serif; }
+
+/* mockup 切換列（不屬於產品 UI） */
+.mock-switch { position: sticky; top: 0; z-index: 200; display: flex; gap: 6px; padding: 8px 16px; background: #2c241b; color: #fbf7ea; align-items: center; flex-wrap: wrap; }
+.mock-switch b { margin-right: 8px; font-size: 13px; }
+.mock-switch button { border: 1px solid #746856; background: transparent; border-radius: 4px; padding: 4px 10px; font-size: 13px; }
+.mock-switch button.on { background: #ead9ad; color: #2c241b; }
+
+.site-header { height: 56px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; background: var(--header); border-bottom: 1px solid var(--line); }
+.brand { font-family: Georgia, "Noto Serif TC", serif; font-size: 20px; font-weight: 800; }
+.view { display: none; } .view.on { display: block; }
+.crumb { font-size: 13px; color: var(--muted); padding: 14px 24px 0; max-width: 1200px; margin: 0 auto; }
+.crumb a { color: inherit; } .crumb .lore-tag { color: var(--lore); font-weight: 700; }
+
+/* ── 作品首頁 ── */
+.hero { max-width: 1200px; margin: 12px auto 0; padding: 40px 32px; border-radius: 10px; background: linear-gradient(120deg, #3a2f22, #6a5233); color: #fbf7ea; }
+.hero h1 { margin: 0 0 8px; font-size: 34px; } .hero p { margin: 0; opacity: .85; max-width: 640px; }
+.hero .chips { margin-top: 14px; display: flex; gap: 8px; font-size: 12px; }
+.hero .chips span { border: 1px solid rgba(255,255,255,.35); border-radius: 99px; padding: 2px 10px; }
+.hero .start { margin-top: 18px; border: 0; background: var(--accent-soft); color: var(--ink); font-weight: 700; padding: 9px 18px; border-radius: 5px; }
+.section-tabs { max-width: 1200px; margin: 24px auto 0; padding: 0 8px; display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.section-tabs button { border: 0; background: transparent; padding: 10px 18px; font-size: 16px; font-weight: 650; border-bottom: 3px solid transparent; margin-bottom: -1px; color: var(--muted); }
+.section-tabs button.on { color: var(--ink); border-color: var(--accent); }
+.section-tabs button.on.lore { border-color: var(--lore); color: var(--lore); }
+.section-tabs small { font-weight: 400; margin-left: 6px; }
+.panel { max-width: 1200px; margin: 0 auto; padding: 20px 8px 60px; display: none; } .panel.on { display: block; }
+.vol { margin: 8px 0 18px; } .vol h3 { margin: 0 0 6px; font-size: 14px; color: var(--accent); letter-spacing: .06em; }
+.row { display: grid; grid-template-columns: 40px 26px 1fr 110px auto; align-items: center; gap: 8px; padding: 11px 10px; border-bottom: 1px dashed var(--line); }
+.row .no { color: var(--muted); font-variant-numeric: tabular-nums; } .row .t { font-weight: 600; } .row .s { color: var(--muted); font-size: 13px; }
+.row .d { color: var(--muted); font-size: 12px; }
+.pg { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
+.pg i { width: 48px; height: 4px; border-radius: 2px; background: linear-gradient(90deg, currentColor var(--v), color-mix(in srgb, currentColor 20%, transparent) var(--v)); }
+.pg.done { color: #3f7a3a; font-weight: 700; }
+.lorevol .pg { color: var(--lore); } .lorevol .pg.done { color: #3f7a3a; }
+.lore-group h3 { margin: 18px 0 10px; font-size: 14px; color: var(--lore); letter-spacing: .06em; }
+.lore-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.lore-card { display: flex; gap: 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--lore) 35%, var(--line)); border-radius: 8px; background: var(--paper); text-align: left; }
+.lore-card:hover { background: var(--lore-soft); }
+.portrait { flex: none; width: 52px; height: 52px; border-radius: 6px; background: linear-gradient(135deg, #9fb8b0, #5d7f7c); display: grid; place-items: center; color: #fff; font-weight: 700; }
+.portrait.none { background: var(--lore-soft); color: var(--lore); }
+.lore-card b { display: block; } .lore-card span { font-size: 12px; color: var(--muted); }
+.lore-search { width: 100%; max-width: 360px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-elevated); }
+
+a.row { color: inherit; text-decoration: none; } a.row:hover { background: var(--accent-soft); }
+.no.read, .s.read { color: #3f7a3a; font-weight: 700; }
+.lorevol h3 { color: var(--lore); } .lorevol a.row:hover { background: var(--lore-soft); }
+.row.spoiler .t { color: var(--muted); font-style: italic; }
+code.url { margin-left: 8px; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #e9dfc2; color: #5a4a30; }
+.gate { margin-top: 24px; padding: 20px 22px; border: 2px solid #c98a2b; border-radius: 10px; background: #fff6e0; }
+.gate-title { font-weight: 800; font-size: 18px; } .gate ul { padding-left: 18px; line-height: 2; } .gate a { color: var(--accent); font-weight: 600; }
+.gate-actions { display: flex; gap: 10px; flex-wrap: wrap; } .gate-actions button { padding: 8px 14px; border-radius: 6px; font-weight: 700; }
+.gate-actions .ghost { border: 1px solid var(--line); background: transparent; } .gate-actions .go { border: 0; background: #c98a2b; color: #fff; }
+
+/* ── 閱讀中 ── */
+.reading-bar { position: sticky; top: 37px; z-index: 50; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 6px 20px; background: var(--header); border-bottom: 1px solid var(--line); }
+.reading-bar .r { display: flex; justify-content: flex-end; gap: 6px; }
+.tool { border: 0; background: transparent; padding: 7px 11px; border-radius: 6px; }
+.tool:hover { background: var(--accent-soft); }
+.tool.lore-btn { color: var(--lore); font-weight: 700; } .tool.lore-btn:hover, .tool.lore-btn.on { background: var(--lore-soft); }
+.article { max-width: 720px; margin: 0 auto; padding: 36px 20px 120px; }
+.article h1 { font-size: 30px; margin: 0 0 6px; } .article .meta { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+.article p { font-size: 18px; line-height: 1.95; margin: 0 0 14px; }
+.term { border: 0; background: none; padding: 0; font: inherit; border-bottom: 1.5px dotted var(--lore); color: inherit; }
+.term:hover { background: var(--lore-soft); }
+.popover { position: absolute; z-index: 80; width: 300px; padding: 14px; border: 1px solid var(--lore); border-radius: 8px; background: var(--paper-elevated); box-shadow: 0 12px 30px rgba(44,36,27,.18); display: none; }
+.popover.on { display: block; }
+.popover .head { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.popover .kind { font-size: 11px; color: var(--lore); font-weight: 700; letter-spacing: .08em; }
+.popover p { font-size: 14px; line-height: 1.6; margin: 0 0 10px; color: var(--ink); }
+.popover .more { border: 0; background: var(--lore-soft); color: var(--lore); font-weight: 700; padding: 6px 10px; border-radius: 5px; font-size: 13px; }
+.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 12px; padding: 10px; background: var(--header); border-top: 1px solid var(--line); }
+.bottom-bar button { border: 1px solid var(--line); background: var(--paper); padding: 7px 16px; border-radius: 5px; }
+/* 右側設定面板：overlay，不擠壓正文欄寬，關掉就回到原本閱讀位置 */
+.peek { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; max-width: 92vw; z-index: 250; background: var(--paper-elevated); border-left: 3px solid var(--lore); box-shadow: -14px 0 34px rgba(44,36,27,.16); transform: translateX(105%); transition: transform .22s ease; display: flex; flex-direction: column; }
+.peek.on { transform: none; }
+.peek header { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; background: var(--lore-soft); }
+.peek header b { color: var(--lore); }
+.peek .body { padding: 16px; overflow: auto; }
+.peek .body h2 { margin: 6px 0 4px; } .peek .body p { line-height: 1.75; font-size: 15px; }
+.peek .nav { display: flex; gap: 6px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.peek .open-full { display: inline-block; margin-top: 8px; color: var(--lore); font-weight: 700; font-size: 14px; }
+.note { max-width: 720px; margin: 0 auto 20px; padding: 10px 14px; font-size: 13px; background: #fff3c4; border: 1px dashed #c9a640; border-radius: 6px; color: #5a4512; }
+
+/* ── 設定獨立頁 ── */
+.lore-page { max-width: 820px; margin: 0 auto; padding: 24px 20px 80px; }
+.lore-page .top { display: flex; gap: 20px; align-items: flex-end; padding-bottom: 18px; border-bottom: 2px solid var(--lore); }
+.lore-page .top .portrait { width: 120px; height: 150px; font-size: 32px; }
+.lore-page .kind { color: var(--lore); font-weight: 700; font-size: 12px; letter-spacing: .1em; }
+.lore-page h1 { margin: 4px 0; font-size: 32px; }
+.lore-page .alias { color: var(--muted); font-size: 13px; }
+.lore-page .content p { font-size: 17px; line-height: 1.9; }
+.resume { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; margin: 18px 0; border-radius: 8px; background: var(--accent-soft); }
+.resume button { border: 0; background: var(--accent); color: #fff9e9; padding: 7px 14px; border-radius: 5px; font-weight: 700; }
+.lore-nav { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 36px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.lore-nav button { border: 1px solid color-mix(in srgb, var(--lore) 40%, var(--line)); background: var(--paper); color: var(--lore); padding: 7px 14px; border-radius: 5px; }
+.siblings h3 { color: var(--lore); font-size: 14px; margin-top: 32px; }
+
+@media (max-width: 720px) {
+  .hero { margin: 8px 12px 0; padding: 28px 20px; } .hero h1 { font-size: 26px; }
+  .row { grid-template-columns: 30px 22px 1fr auto; } .row .d { display: none; }
+  .reading-bar { grid-template-columns: auto 1fr auto; padding: 6px 10px; } .reading-bar .c { font-size: 13px; text-align: center; }
+  .peek { width: 100vw; max-width: 100vw; top: auto; height: 75vh; border-left: 0; border-top: 3px solid var(--lore); border-radius: 14px 14px 0 0; transform: translateY(105%); }
+  .lore-page .top { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<div class="mock-switch">
+  <b>Mockup 畫面：</b>
+  <button data-view="landing" class="on">① 作品首頁</button>
+  <button data-view="reading">② 閱讀中（設定小卡／側面板）</button>
+  <button data-view="lorepage">③ 設定頁</button>
+  <button data-view="spoilerpage">④ 劇透確認</button>
+</div>
+
+<div class="site-header"><span class="brand">SteamLoom</span><span style="font-size:13px;color:var(--muted)">外觀 ・ 登入</span></div>
+
+<!-- ① 作品首頁：本篇／設定集用頂層分頁切開，不混在同一條目錄 -->
+<section class="view on" id="view-landing">
+  <div class="crumb">首頁 › 作品 › 鋼翼學院 <code class="url">work/8f90…-鋼翼學院</code></div>
+  <div class="hero">
+    <h1 class="serif">鋼翼學院</h1>
+    <p>被選為第六席的白瀨澪，必須在三個月內學會駕駛與自己頻率不合的機體。</p>
+    <div class="chips"><span>連載中</span><span>24 篇</span><span>已讀完 2 / 24 篇</span><span>普遍級</span><span>機甲</span></div>
+    <button class="start">繼續閱讀：第一冊 03〈頻率不合〉 42%</button>
+  </div>
+  <div class="section-tabs">
+    <button class="on" data-tab="main">故事<small>24</small></button>
+    <button class="lore" data-tab="lore" title="work/8f90…/lores">設定<small>12</small></button>
+  </div>
+  <div class="panel on" id="tab-main">
+    <!-- 文字與圖像作品維持現狀：同一條時間線、依冊分組 -->
+    <div class="vol"><h3>第一冊　入學</h3>
+      <div class="row"><span class="no">01</span><span>📄</span><span><span class="t">第六席</span><br><span class="s">入學典禮當天，澪被叫進中控室。</span></span><span class="pg done">✓ 讀完</span><span class="d">2026-09-01</span></div>
+      <div class="row"><span class="no">02</span><span>🖼️</span><span><span class="t">插畫：初次搭乘</span><br><span class="s">圖像作品 · 8 頁</span></span><span class="pg done">✓ 讀完</span><span class="d">2026-09-03</span></div>
+      <div class="row"><span class="no">03</span><span>📄</span><span><span class="t">頻率不合</span><br><span class="s">葛城教官第一次正眼看她。</span></span><span class="pg"><i style="--v:42%"></i>42%</span><span class="d">2026-09-08</span></div>
+    </div>
+    <div class="vol"><h3>第二冊　同調</h3>
+      <div class="row"><span class="no">01</span><span>📄</span><span><span class="t">臨界值</span><br><span class="s">模擬訓練出了意外。</span></span><span class="pg"></span><span class="d">2026-09-20</span></div>
+    </div>
+  </div>
+  <div class="panel" id="tab-lore">
+    <!-- 設定列表比照故事列表：依 lore collection 分組（對應冊），差別只在色系與劇透遮罩 -->
+    <div class="vol lorevol"><h3>角色</h3>
+      <a class="row" href="#" data-goto="lorepage"><span class="no"></span><span>👤</span><span><span class="t">白瀨 澪</span><br><span class="s">第六席，頻率異常的新生。</span></span><span class="pg done">✓ 讀完</span><span class="d">2026-09-02</span></a>
+      <a class="row" href="#"><span class="no"></span><span>👤</span><span><span class="t">葛城 透</span><br><span class="s">實技教官，前王牌駕駛員。</span></span><span class="pg"></span><span class="d">2026-09-02</span></a>
+      <!-- 劇透未解鎖：連標題都遮，只露出需要先讀的篇章 -->
+      <a class="row spoiler" href="#" data-goto="spoilerpage"><span class="no"></span><span>🔒</span><span><span class="t">含劇透的設定</span><br><span class="s">需先讀過：第二冊 01〈臨界值〉</span></span><span class="pg"></span><span class="d">2026-09-21</span></a>
+    </div>
+    <div class="vol lorevol"><h3>機體</h3>
+      <a class="row" href="#"><span class="no"></span><span>⚙️</span><span><span class="t">Resonance-06</span><br><span class="s">第六席專用機，同調門檻極高。</span></span><span class="pg"></span><span class="d">2026-09-05</span></a>
+    </div>
+    <div class="vol lorevol"><h3>名詞</h3>
+      <a class="row" href="#"><span class="no"></span><span>📘</span><span><span class="t">中控室</span><br><span class="s">學院地下的指揮中樞。</span></span><span class="pg"><i style="--v:60%"></i>60%</span><span class="d">2026-09-01</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ② 閱讀中：左邊是「我在故事哪裡」，右邊是「查設定」，空間上就切開 -->
+<section class="view" id="view-reading">
+  <div class="reading-bar">
+    <div><button class="tool">☰ 目錄</button></div>
+    <div class="c serif"><b>第六席</b></div>
+    <div class="r"><button class="tool lore-btn" id="peek-toggle">📖 設定集</button><button class="tool">Aa</button></div>
+  </div>
+  <div class="article">
+    <h1 class="serif">第六席</h1>
+    <div class="meta">鋼翼學院 › 第一冊 › 01 ・ 2026-09-01 更新</div>
+    <div class="note">Mockup 說明：虛線底線＝作者用 <code>[文字](steamloom-lore://id)</code> 插入的設定連結；未公開的設定只顯示純文字。點下去是小卡，不離開本頁；「看完整設定」開右側面板，正文欄寬不變、關掉就回到原位。</div>
+    <p>入學典禮才進行到一半，廣播就把<button class="term" data-pop="mio">白瀨澪</button>的名字念了兩次。她站起來的時候，整排新生都轉過頭看她，好像在確認這個人到底是誰。</p>
+    <p>帶她下去的是<button class="term" data-pop="katsuragi">葛城教官</button>。電梯一路往下，數字跳過了學生手冊上寫的最底層，門打開的時候，冷氣直接灌進來——這裡就是傳說中的<button class="term" data-pop="ccr">中控室</button>。</p>
+    <p>「妳的同調數值超過臨界值了。」葛城把平板轉過來給她看，「不是一點點，是整條線直接衝出去。第六席空了三年，上面決定給妳試試看。」</p>
+    <p>澪盯著螢幕，上面的曲線她完全看不懂，只知道那條紅色的線一直往上爬，爬到最上面還停不下來。葛城教官後面又講了一次她的名字，這次語氣明顯沒那麼客氣了。她後來才知道，那天中控室裡還有另一個人在看——<button class="term" data-pop="spoiler">那個人</button>。</p>
+  </div>
+  <div class="popover" id="popover">
+    <div class="head"><span class="portrait" id="pop-portrait">澪</span><span><span class="kind" id="pop-kind">角色</span><br><b id="pop-title">白瀨 澪</b></span></div>
+    <p id="pop-body">第六席，頻率異常的新生。同調數值遠超一般駕駛員，但無法穩定維持。</p>
+    <button class="more" id="pop-more">看完整設定 →</button>
+  </div>
+  <!-- 上一篇／下一篇只在本篇之間跳，絕對不會跳進設定集 -->
+  <div class="bottom-bar"><button>← 上一篇</button><button>作品目錄</button><button>下一篇：插畫：初次搭乘 →</button></div>
+  <aside class="peek" id="peek">
+    <header><b>📖 設定集</b><button class="tool" id="peek-close">✕</button></header>
+    <div class="body">
+      <div class="nav"><span>設定集</span>›<span>角色</span></div>
+      <span class="portrait" style="width:80px;height:96px;font-size:26px">澪</span>
+      <h2 class="serif">白瀨 澪</h2>
+      <div style="font-size:13px;color:var(--muted)">別名：澪、第六席</div>
+      <p>學院第六席。入學測驗時同調數值直接衝破臨界值，但每次都撐不到三十秒。個性慢熱，被盯著看的時候會下意識拉袖子。</p>
+      <p>和室友七海結衣是在入學第一天認識的，兩人的頻率剛好互補……</p>
+      <a class="open-full" href="#" data-goto="lorepage">在新頁面打開完整設定 ↗</a>
+    </div>
+  </aside>
+</section>
+
+<!-- ③ 設定獨立頁：可分享的網址，但版面走「百科」而非「書頁」 -->
+<section class="view" id="view-lorepage">
+  <div class="crumb">首頁 › 作品 › 鋼翼學院 › <a href="#" class="lore-tag">設定</a> › <a href="#" class="lore-tag" title="work/8f90…/lores#角色">角色</a> › 白瀨 澪 <code class="url">work/8f90…/lore/a1b2c3</code></div>
+  <div class="lore-page">
+    <div class="top">
+      <span class="portrait">澪</span>
+      <div><div class="kind">設定 · 角色</div><h1 class="serif">白瀨 澪</h1><div class="alias">別名：澪、第六席</div></div>
+    </div>
+    <!-- 讀者有閱讀進度才顯示：從設定頁一鍵回到故事，避免讀者在設定集裡迷路 -->
+    <div class="resume"><span>你讀到 <b>第一冊 · 03 頻率不合</b>（42%）</span><button>回到故事</button></div>
+    <div class="content">
+      <p>學院第六席。入學測驗時同調數值直接衝破臨界值，但每次都撐不到三十秒。個性慢熱，被盯著看的時候會下意識拉袖子。</p>
+      <p>和室友七海結衣是在入學第一天認識的，兩人的頻率剛好互補，後來成為訓練時的固定搭檔。</p>
+    </div>
+    <!-- 不做「同分類的其他設定」：底部導覽（只在設定之間切換）＋麵包屑的分類連結已涵蓋 -->
+    <div class="lore-nav"><button>← 上一則：（無）</button><button>設定列表</button><button>下一則：葛城 透 →</button></div>
+    </div>
+</section>
+
+<!-- ④ 劇透設定：正文換成確認卡，列出未讀的 dependsOn；確認後顯示並記為已讀 -->
+<section class="view" id="view-spoilerpage">
+  <div class="crumb">首頁 › 作品 › 鋼翼學院 › <span class="lore-tag">設定</span> › 角色 › 🔒 含劇透的設定 <code class="url">work/8f90…/lore/d4e5f6</code></div>
+  <div class="lore-page">
+    <div class="gate">
+      <div class="gate-title">⚠️ 這個設定含有你還沒讀到的劇情</div>
+      <p>作者建議先讀完以下內容：</p>
+      <ul><li><a href="#">第二冊 01〈臨界值〉</a> <span class="s">尚未閱讀</span></li><li><a href="#">第一冊 03〈頻率不合〉</a> <span class="s">讀到 42%</span></li></ul>
+      <div class="gate-actions"><button class="ghost">先去讀〈臨界值〉</button><button class="go" id="gate-go">我了解，繼續閱讀</button></div>
+    </div>
+    <div class="content" id="gate-content" hidden>
+      <div class="top"><span class="portrait">？</span><div><div class="kind">設定 · 角色 · 含劇透</div><h1 class="serif">真名・第零席</h1></div></div>
+      <p>（解鎖後顯示正文，同時記為已讀）</p>
+    </div>
+  </div>
+</section>
+
+<script>
+// mockup 互動：切換畫面、作品首頁分頁、名詞小卡與右側面板
+const $ = (s) => document.querySelector(s), $$ = (s) => document.querySelectorAll(s);
+const show = (v) => { $$('.view').forEach(e => e.classList.toggle('on', e.id === 'view-' + v)); $$('.mock-switch button').forEach(b => b.classList.toggle('on', b.dataset.view === v)); $('#peek').classList.remove('on'); $('#popover').classList.remove('on'); $('.gate').hidden = false; $('#gate-content').hidden = true; scrollTo(0, 0); };
+$$('.mock-switch button').forEach(b => b.onclick = () => show(b.dataset.view));
+$$('[data-goto]').forEach(b => b.onclick = (e) => { e.preventDefault(); show(b.dataset.goto); });
+$$('.section-tabs button').forEach(b => b.onclick = () => { $$('.section-tabs button').forEach(x => x.classList.toggle('on', x === b)); $$('.panel').forEach(p => p.classList.toggle('on', p.id === 'tab-' + b.dataset.tab)); $('.crumb code.url').textContent = b.dataset.tab === 'lore' ? 'work/8f90…-鋼翼學院/lores' : 'work/8f90…-鋼翼學院'; });
+const pops = {
+  mio: ['澪', '角色', '白瀨 澪', '第六席，頻率異常的新生。同調數值遠超一般駕駛員，但無法穩定維持。', ''],
+  katsuragi: ['葛', '角色', '葛城 透', '實技教官，前王牌駕駛員。對新生講話很少超過三句。', ''],
+  ccr: ['詞', '名詞', '中控室', '學院地下的指揮中樞，學生手冊上沒有記載它的樓層。', 'none'],
+  spoiler: ['🔒', '含劇透', '含劇透的設定', '這個設定包含尚未讀到的劇情。需先讀過：第二冊 01〈臨界值〉。', 'none', true],
+};
+$$('.term').forEach(t => t.onclick = (e) => {
+  e.stopPropagation();
+  const [p, k, title, body, cls, sp] = pops[t.dataset.pop], r = t.getBoundingClientRect(), pop = $('#popover');
+  $('#pop-portrait').textContent = p; $('#pop-portrait').className = 'portrait ' + cls;
+  $('#pop-kind').textContent = k; $('#pop-title').textContent = title; $('#pop-body').textContent = body;
+  pop.style.left = Math.min(r.left + scrollX, innerWidth - 316) + 'px'; pop.style.top = (r.bottom + scrollY + 8) + 'px';
+  $('#pop-more').textContent = sp ? '我了解，繼續閱讀 →' : '看完整設定 →'; $('#pop-more').dataset.spoiler = sp ? '1' : '';
+  pop.classList.add('on');
+});
+document.addEventListener('click', (e) => { if (!e.target.closest('#popover')) $('#popover').classList.remove('on'); });
+$('#pop-more').onclick = () => { $('#popover').classList.remove('on'); if ($('#pop-more').dataset.spoiler) return show('spoilerpage'); $('#peek').classList.add('on'); };
+$('#peek-toggle').onclick = () => $('#peek').classList.toggle('on');
+$('#gate-go').onclick = () => { $('.gate').hidden = true; $('#gate-content').hidden = false; };
+$('#peek-close').onclick = () => $('#peek').classList.remove('on');
+</script>
+</body>
+</html>
