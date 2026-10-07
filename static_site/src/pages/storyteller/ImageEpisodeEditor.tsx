@@ -26,6 +26,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useSaveStorytellerStory,
   useStorytellerImageStoryPages,
+  useStorytellerLores,
   useStorytellerProjects,
   useStorytellerStories,
   useStorytellerUserProfile,
@@ -68,6 +69,7 @@ import { StorytellerWysiwygEditor } from "@/pages/storyteller/StorytellerWysiwyg
 import { registerWorkspaceLeaveGuard } from "@/pages/storyteller/WorkspaceLeaveGuard.ts";
 import { ACCOUNT_PROFILE_ID } from "@/helpers/storytellerAuthors.ts";
 import type { StorytellerAsset } from "@/types/storyteller.ts";
+import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 interface PendingPage {
   id: string;
@@ -149,6 +151,7 @@ export default function StorytellerImageEpisodeEditor({
     useStorytellerStories(!isNewEpisode ? project?.public_id : undefined);
   const { data: apiVolumes = [], isLoading: isVolumesLoading } =
     useStorytellerVolumes(project?.public_id);
+  const { data: apiLores = [] } = useStorytellerLores(project?.public_id);
   const existingStory = !isNewEpisode
     ? apiStories.find((story) => story.public_id === episodeId)
     : undefined;
@@ -182,6 +185,8 @@ export default function StorytellerImageEpisodeEditor({
   const [phase, setPhase] = useState<"idle" | "uploading" | "error">("idle");
   const [saveSnackOpen, setSaveSnackOpen] = useState(false);
   const [saveErrorSnackOpen, setSaveErrorSnackOpen] = useState(false);
+  // 公開時的提醒：頁面說明連到還沒公開或已刪除的設定（不擋存檔）
+  const [publishWarning, setPublishWarning] = useState<string | null>(null);
   const [saveSuccessTarget, setSaveSuccessTarget] = useState<string | null>(
     null,
   );
@@ -523,6 +528,19 @@ export default function StorytellerImageEpisodeEditor({
     });
   }
 
+  // 切換公開狀態；改成公開時檢查頁面說明裡的設定連結，連到未公開或已刪除的設定就提醒
+  function changeStatus(next: "draft" | "completed") {
+    setStatus(next);
+    if (next === "completed") {
+      setPublishWarning(
+        publishLoreLinkWarning(
+          pages.map((page) => page.description).join("\n"),
+          apiLores,
+        ) ?? null,
+      );
+    }
+  }
+
   function updatePageDescription(pageId: string, description: string) {
     setPages((current) =>
       current.map((page) =>
@@ -770,7 +788,7 @@ export default function StorytellerImageEpisodeEditor({
             value={status}
             options={statusOptions}
             disabled={isSubmitting}
-            onChange={(value) => setStatus(value as "draft" | "completed")}
+            onChange={(value) => changeStatus(value as "draft" | "completed")}
           />
           <WorkspaceEditorSelectButton
             icon={<FolderIcon fontSize="small" />}
@@ -819,6 +837,13 @@ export default function StorytellerImageEpisodeEditor({
             if (saveSuccessTarget) navigate(saveSuccessTarget);
             setSaveSuccessTarget(null);
           }}
+        />
+        <CustomSnackbar
+          open={Boolean(publishWarning)}
+          message={publishWarning ?? ""}
+          severity="warning"
+          autoHideDuration={8000}
+          onClose={() => setPublishWarning(null)}
         />
         <CustomSnackbar
           open={saveErrorSnackOpen}
@@ -879,7 +904,7 @@ export default function StorytellerImageEpisodeEditor({
                   value={status}
                   disabled={isSubmitting}
                   onChange={(event) =>
-                    setStatus(event.target.value as "draft" | "completed")
+                    changeStatus(event.target.value as "draft" | "completed")
                   }
                   helperText="未公開的話不會出現在公開閱讀頁與作品索引。"
                 >
