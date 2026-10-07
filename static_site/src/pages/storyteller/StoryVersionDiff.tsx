@@ -19,6 +19,10 @@ import {
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import {
+  readerProjectBasePath,
+  readerStoryPath,
+} from "@/helpers/storytellerReaderPaths.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { StorytellerWysiwygMarkdown } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
@@ -50,7 +54,7 @@ export default function StorytellerStoryVersionDiff() {
   );
   const target = targetIndex >= 0 ? versions[targetIndex] : undefined;
   const previous = targetIndex >= 0 ? versions[targetIndex + 1] : undefined;
-  const basePath = steamloomPath(`work/${projectPath}`);
+  const basePath = readerProjectBasePath(projectPath ?? "");
 
   useTitle(
     story ? `${story.title} 版本比較 - ${STORYTELLER_APP_NAME}` : "版本比較",
@@ -147,15 +151,15 @@ export default function StorytellerStoryVersionDiff() {
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         {
           label: project.name,
-          to: steamloomPath(`work/${projectPath}/stories`),
+          to: basePath,
         },
-        { label: story.title, to: `${basePath}/${story.public_id}` },
+        { label: story.title, to: readerStoryPath(basePath, story.public_id) },
         { label: "版本比較" },
       ]}
       action={
         <Button
           component={RouterLink}
-          to={`${basePath}/${story.public_id}`}
+          to={readerStoryPath(basePath, story.public_id)}
           variant="outlined"
           startIcon={<ArrowBackIcon />}
         >

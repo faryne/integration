@@ -414,9 +414,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       if (target === "new" && saved?.public_id)
         onSelect("lores", saved.public_id);
       setLoreCollectionTarget(null);
-      setSnack(target === "new" ? "分類已建立。" : "分類已更新。");
+      setSnack(target === "new" ? "設定集已建立。" : "設定集已更新。");
     } catch (error) {
-      setSnack(errorMessage(error, "分類儲存失敗。"), "error");
+      setSnack(errorMessage(error, "設定集儲存失敗。"), "error");
     }
   }
 
@@ -454,9 +454,9 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
         collectionId,
       });
       setLoreMoveMenu(null);
-      setSnack("設定集已移動。");
+      setSnack("設定已移動。");
     } catch (error) {
-      setSnack(errorMessage(error, "設定集移動失敗。"), "error");
+      setSnack(errorMessage(error, "設定移動失敗。"), "error");
     }
   }
 
@@ -551,7 +551,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       </Stack>
     ) : currentLoreCollection && selected.section === "lores" ? (
       <Stack direction="row" spacing={0.5}>
-        <Tooltip title="編輯分類">
+        <Tooltip title="編輯設定集">
           <IconButton
             size="small"
             onClick={() => openCollectionDialog("lore", currentLoreCollection)}
@@ -559,7 +559,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             <EditIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="刪除分類">
+        <Tooltip title="刪除設定集">
           <IconButton
             size="small"
             color="error"
@@ -784,7 +784,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
             : "#"
         }
         editLabel="編輯設定"
-        moveLabel="移動至分類…"
+        moveLabel="移動至設定集…"
         deleteLabel="刪除設定"
         onClose={() => setLoreActionMenu(null)}
         onMove={() => {
@@ -822,7 +822,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
           publicId: collection.public_id,
           name: collection.name,
         }))}
-        ungroupedLabel="移到未分類"
+        ungroupedLabel="移到未歸類"
         onClose={() => setLoreMoveMenu(null)}
         onMove={(collectionId) =>
           loreMoveMenu && void moveLoreTo(loreMoveMenu.lore, collectionId)
@@ -901,7 +901,7 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       />
       <CollectionDialog
         open={Boolean(loreCollectionTarget || assetCollectionTarget)}
-        title={loreCollectionTarget ? "設定集分類" : "資產集"}
+        title={loreCollectionTarget ? "設定集" : "資產集"}
         name={collectionName}
         description={collectionDescription}
         loading={saveLoreCollection.isPending || saveAssetCollection.isPending}
@@ -967,20 +967,20 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteLoreTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定集"
-          description="刪除後會移除這份設定集與版本資料。請輸入設定集名稱確認。"
+          title="刪除設定"
+          description="刪除後會移除這則設定與版本資料。請輸入設定名稱確認。"
           confirmName={deleteLoreTarget.title}
-          confirmLabel="刪除設定集"
+          confirmLabel="刪除設定"
           loading={deleteLore.isPending}
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
               onSuccess: () => {
                 setDeleteLoreTarget(null);
-                setSnack("設定集已刪除。");
+                setSnack("設定已刪除。");
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "設定集刪除失敗。"), "error"),
+                setSnack(errorMessage(error, "設定刪除失敗。"), "error"),
             })
           }
         />
@@ -1016,10 +1016,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
       {deleteLoreCollectionTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除分類"
-          description="刪除後不會影響其他分類。請輸入分類名稱確認。"
+          title="刪除設定集"
+          description="刪除後不會影響其他設定集。請輸入設定集名稱確認。"
           confirmName={deleteLoreCollectionTarget.name}
-          confirmLabel="刪除分類"
+          confirmLabel="刪除設定集"
           loading={deleteLoreCollection.isPending}
           onClose={() => setDeleteLoreCollectionTarget(null)}
           onConfirm={() =>
@@ -1031,10 +1031,10 @@ export function useWorkspaceListActions(options: WorkspaceListActionOptions) {
                   onSelect("lores", "");
                 }
                 setDeleteLoreCollectionTarget(null);
-                setSnack("分類已刪除。");
+                setSnack("設定集已刪除。");
               },
               onError: (error) =>
-                setSnack(errorMessage(error, "分類刪除失敗。"), "error"),
+                setSnack(errorMessage(error, "設定集刪除失敗。"), "error"),
             })
           }
         />

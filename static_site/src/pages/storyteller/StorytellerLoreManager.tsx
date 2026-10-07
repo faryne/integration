@@ -66,8 +66,8 @@ function dropTargetSx(active: boolean): SxProps<Theme> {
 
 function collectionDescription(collection: StorytellerLoreCollection) {
   return collection.description.trim()
-    ? `可將設定集拖曳到「${collection.name}」。用途：${collection.description}`
-    : `可將設定集拖曳到「${collection.name}」`;
+    ? `可將設定拖曳到「${collection.name}」。用途：${collection.description}`
+    : `可將設定拖曳到「${collection.name}」`;
 }
 
 export function StorytellerLoreManager({
@@ -177,9 +177,7 @@ export function StorytellerLoreManager({
         onSuccess: () => {
           if (!quietSuccess)
             notify(
-              targetCollectionId
-                ? "設定集已移入分類。"
-                : "設定集已移到未分類。",
+              targetCollectionId ? "設定已移入設定集。" : "設定已移到未歸類。",
             );
         },
         onError: (error) => notify(error.message, "error"),
@@ -199,7 +197,7 @@ export function StorytellerLoreManager({
   function submitCollection() {
     const name = collectionName.trim();
     if (!name) {
-      notify("分類名稱不可空白。", "error");
+      notify("設定集名稱不可空白。", "error");
       return;
     }
     const input = {
@@ -222,7 +220,9 @@ export function StorytellerLoreManager({
         onSuccess: () => {
           setCollectionDialogTarget(null);
           notify(
-            collectionDialogTarget === "new" ? "分類已建立。" : "分類已更新。",
+            collectionDialogTarget === "new"
+              ? "設定集已建立。"
+              : "設定集已更新。",
           );
         },
         onError: (error) => notify(error.message, "error"),
@@ -241,7 +241,7 @@ export function StorytellerLoreManager({
         alignItems={{ xs: "stretch", sm: "center" }}
       >
         <Typography variant="h6" fontWeight={800}>
-          設定集列表
+          設定列表
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           <Button
@@ -249,20 +249,20 @@ export function StorytellerLoreManager({
             variant="outlined"
             onClick={() => openCollectionDialog("new")}
           >
-            建立分類
+            建立設定集
           </Button>
           <Button
             href={steamloomPath(`my/project/${projectPublicId}/lore/new`)}
             variant="contained"
           >
-            建立設定集
+            建立設定
           </Button>
         </Stack>
       </Stack>
 
       <Stack spacing={1.25}>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Tooltip title="顯示全部設定集">
+          <Tooltip title="顯示全部設定">
             <Button
               size="small"
               variant={selectedCollectionId === "" ? "contained" : "outlined"}
@@ -272,7 +272,7 @@ export function StorytellerLoreManager({
               全部
             </Button>
           </Tooltip>
-          <Tooltip title="可將設定集拖曳到這裡，移到未分類">
+          <Tooltip title="可將設定拖曳到這裡，移到未歸類">
             <Button
               size="small"
               variant={
@@ -288,7 +288,7 @@ export function StorytellerLoreManager({
               onDrop={(event) => handleCollectionDrop(event, "")}
               sx={dropTargetSx(canDropDraggingLore(""))}
             >
-              未分類
+              未歸類
             </Button>
           </Tooltip>
 
@@ -330,7 +330,7 @@ export function StorytellerLoreManager({
                   </Box>
                 </Button>
               </Tooltip>
-              <Tooltip title="編輯分類">
+              <Tooltip title="編輯設定集">
                 <Button onClick={() => openCollectionDialog(collection)}>
                   <EditIcon fontSize="small" />
                 </Button>
@@ -338,8 +338,8 @@ export function StorytellerLoreManager({
               <Tooltip
                 title={
                   collection.lore_count > 0
-                    ? "分類內仍有設定集，不能刪除"
-                    : "刪除分類"
+                    ? "設定集內仍有設定，不能刪除"
+                    : "刪除設定集"
                 }
               >
                 <Button
@@ -357,20 +357,20 @@ export function StorytellerLoreManager({
 
       {loading ? (
         <Paper variant="outlined" sx={{ p: 4, borderRadius: 1 }}>
-          <Typography color="text.secondary">正在載入設定集...</Typography>
+          <Typography color="text.secondary">正在載入設定...</Typography>
         </Paper>
       ) : lores.length === 0 ? (
         <CustomEmptyState
           icon={<MenuBookIcon fontSize="large" />}
-          title="尚未建立設定集"
-          description="使用上方的「建立設定集」記錄世界觀、角色規則與劇本設定。"
+          title="尚未建立設定"
+          description="使用上方的「建立設定」記錄世界觀、角色規則與劇本設定。"
         />
       ) : (
         <Stack spacing={1.5}>
           {lores.map((lore) => (
             <Tooltip
               key={lore.public_id}
-              title="可拖曳到上方分類移動"
+              title="可拖曳到上方設定集移動"
               enterDelay={450}
               disableInteractive
             >
@@ -408,12 +408,12 @@ export function StorytellerLoreManager({
                           collections.find(
                             (collection) =>
                               collection.public_id === lore.collection_id,
-                          )?.name ?? "未分類"
+                          )?.name ?? "未歸類"
                         }
                       />
                     </Stack>
                   </Stack>
-                  <Tooltip title="移動設定集">
+                  <Tooltip title="移動設定">
                     <IconButton
                       size="small"
                       onClick={(event) =>
@@ -465,12 +465,12 @@ export function StorytellerLoreManager({
         maxWidth="sm"
       >
         <DialogTitle>
-          {collectionDialogTarget === "new" ? "建立分類" : "編輯分類"}
+          {collectionDialogTarget === "new" ? "建立設定集" : "編輯設定集"}
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              label="分類名稱"
+              label="設定集名稱"
               value={collectionName}
               onChange={(event) => setCollectionName(event.target.value)}
               fullWidth
@@ -510,7 +510,7 @@ export function StorytellerLoreManager({
             setMoveMenu(null);
           }}
         >
-          移到未分類
+          移到未歸類
         </MenuItem>
         {collections.map((collection) => (
           <MenuItem
@@ -528,17 +528,17 @@ export function StorytellerLoreManager({
       {deleteCollectionTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除分類"
-          description="刪除後不會影響其他分類。請輸入分類名稱確認。"
+          title="刪除設定集"
+          description="刪除後不會影響其他設定集。請輸入設定集名稱確認。"
           confirmName={deleteCollectionTarget.name}
-          confirmLabel="刪除分類"
+          confirmLabel="刪除設定集"
           loading={deleteCollection.isPending}
           onClose={() => setDeleteCollectionTarget(null)}
           onConfirm={() =>
             deleteCollection.mutate(deleteCollectionTarget.public_id, {
               onSuccess: () => {
                 setDeleteCollectionTarget(null);
-                notify("分類已刪除。");
+                notify("設定集已刪除。");
               },
               onError: (error) => notify(error.message, "error"),
             })
@@ -549,17 +549,17 @@ export function StorytellerLoreManager({
       {deleteLoreTarget && (
         <StorytellerConfirmNameDialog
           open
-          title="刪除設定集"
-          description="刪除後會移除這份設定集與版本資料。請輸入設定集名稱確認。"
+          title="刪除設定"
+          description="刪除後會移除這則設定與版本資料。請輸入設定名稱確認。"
           confirmName={deleteLoreTarget.title}
-          confirmLabel="刪除設定集"
+          confirmLabel="刪除設定"
           loading={deleteLore.isPending}
           onClose={() => setDeleteLoreTarget(null)}
           onConfirm={() =>
             deleteLore.mutate(deleteLoreTarget.public_id, {
               onSuccess: () => {
                 setDeleteLoreTarget(null);
-                notify("設定集已刪除。");
+                notify("設定已刪除。");
               },
               onError: (error) => notify(error.message, "error"),
             })

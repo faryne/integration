@@ -12,6 +12,7 @@ type fakeReadingRepo struct {
 	project   storytellerModel.Project
 	drafts    []storytellerModel.Story
 	published []storytellerModel.Story
+	lores     []storytellerModel.Lore
 	records   map[uint64]storytellerModel.ReadingRecord
 	upserted  [][]storytellerModel.ReadingRecord
 }
@@ -24,6 +25,15 @@ func (f *fakeReadingRepo) Stories(uint64) ([]storytellerModel.Story, error) {
 }
 func (f *fakeReadingRepo) PublishedStories(uint64) ([]storytellerModel.Story, error) {
 	return f.published, nil
+}
+func (f *fakeReadingRepo) ReaderLores(_ uint64, includeDrafts bool) ([]storytellerModel.Lore, error) {
+	out := make([]storytellerModel.Lore, 0, len(f.lores))
+	for _, lore := range f.lores {
+		if includeDrafts || lore.Status == storytellerModel.StoryStatusCompleted {
+			out = append(out, lore)
+		}
+	}
+	return out, nil
 }
 func (f *fakeReadingRepo) ReadingRecords(uint64, uint64) ([]storytellerModel.ReadingRecord, error) {
 	out := make([]storytellerModel.ReadingRecord, 0, len(f.records))
@@ -48,7 +58,11 @@ func newFakeReadingRepo(ownerID uint64) *fakeReadingRepo {
 		project:   storytellerModel.Project{ID: 1, UserID: ownerID},
 		published: []storytellerModel.Story{{ID: 10, PublicID: "pub-a"}, {ID: 11, PublicID: "pub-b"}},
 		drafts:    []storytellerModel.Story{{ID: 12, PublicID: "draft-c"}},
-		records:   map[uint64]storytellerModel.ReadingRecord{},
+		lores: []storytellerModel.Lore{
+			{ID: 20, PublicID: "lore-pub", Status: storytellerModel.StoryStatusCompleted},
+			{ID: 21, PublicID: "lore-draft", Status: storytellerModel.StoryStatusDraft},
+		},
+		records: map[uint64]storytellerModel.ReadingRecord{},
 	}
 }
 
@@ -73,9 +87,10 @@ func TestSaveReadingRecordsSkipsUnreadableTargets(t *testing.T) {
 	_, err := saveReadingRecords(repo, 1, "p", []storytellerModel.ReadingRecordInput{
 		storyInput("draft-c", 40), storyInput("missing", 40), storyInput("pub-a", 20),
 		{TargetType: storytellerModel.ReadingTargetLore, TargetPublicID: "pub-a", Progress: 20},
+		{TargetType: storytellerModel.ReadingTargetLore, TargetPublicID: "lore-draft", Progress: 20},
 	})
 	require.NoError(t, err)
-	require.Len(t, repo.upserted[0], 1, "別人的草稿、不存在的篇章、還沒開放的 lore 都要略過")
+	require.Len(t, repo.upserted[0], 1, "別人的草稿、不存在的篇章、種類對不上的 id、未公開的設定都要略過")
 	require.EqualValues(t, 10, repo.upserted[0][0].TargetID)
 }
 
@@ -102,4 +117,15 @@ func TestReadingRecordsHidesUnpublishedStories(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, out, 1)
 	require.Equal(t, "pub-a", out[0].TargetPublicID)
+}
+
+func TestSaveReadingRecordsTracksPublishedLore(t *testing.T) {
+	repo := newFakeReadingRepo(99)
+	out, err := saveReadingRecords(repo, 1, "p", []storytellerModel.ReadingRecordInput{
+		{TargetType: storytellerModel.ReadingTargetLore, TargetPublicID: "lore-pub", Progress: 100},
+	})
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Equal(t, storytellerModel.ReadingTargetLore, out[0].TargetType)
+	require.Equal(t, "lore-pub", out[0].TargetPublicID)
 }

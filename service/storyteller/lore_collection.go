@@ -158,7 +158,7 @@ func (s *Service) DeleteLoreCollection(userID uint64, projectPublicID, collectio
 		return err
 	}
 	if count > 0 {
-		return errors.New("collection 內仍有設定集，不能刪除")
+		return errors.New("設定集內仍有設定，不能刪除")
 	}
 	return s.repo.DeleteLoreCollection(row)
 }

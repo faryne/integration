@@ -37,7 +37,7 @@ export function StorytellerOAuthGrantPanel() {
     <Stack spacing={3}>
       <Alert severity="warning" variant="outlined">
         <strong>目前授權不分範圍。</strong>
-        已授權的應用程式可以讀取與修改你帳號下所有專案（作品、設定集、資產、作者檔案、梭梭的記憶），包含刪除。
+        已授權的應用程式可以讀取與修改你帳號下所有專案（作品、設定、資產、作者檔案、梭梭的記憶），包含刪除。
       </Alert>
 
       <Paper variant="outlined" sx={{ borderRadius: 1 }}>

@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { formatStorytellerDate } from "@/data/storyteller.ts";
+import { readerStoryVersionPath } from "@/helpers/storytellerReaderPaths.ts";
 import type { StorytellerStoryVersion } from "@/types/storyteller.ts";
 
 export function StorytellerReaderHistory({
@@ -42,7 +43,7 @@ export function StorytellerReaderHistory({
           <Box
             key={version.id}
             component={RouterLink}
-            to={`${basePath}/${storyId}/versions/${version.id}`}
+            to={readerStoryVersionPath(basePath, storyId, version.id)}
             onClick={onSelect}
             sx={{
               display: "flex",

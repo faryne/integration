@@ -56,13 +56,13 @@ const referenceExamples = [
   },
   {
     token: "@thisLore",
-    title: "目前設定集",
-    description: "在設定集編輯頁引用目前正在編輯的設定集內容。",
+    title: "目前設定",
+    description: "在設定編輯頁引用目前正在編輯的設定內容。",
   },
   {
-    token: "@lore:[設定集標題]",
-    title: "指定設定集",
-    description: "引用同一個專案內指定標題的設定集。",
+    token: "@lore:[設定標題]",
+    title: "指定設定",
+    description: "引用同一個專案內指定標題的設定。",
   },
 ];
 
@@ -175,7 +175,7 @@ export function StorytellerAgentReferenceDrawer(
             引用標籤（打 @ 開頭）
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            送出時會把引用標籤展開成對應故事或設定集內容，讓模型可以根據上下文回覆。
+            送出時會把引用標籤展開成對應故事或設定內容，讓模型可以根據上下文回覆。
           </Typography>
 
           <Stack spacing={1.5}>

@@ -38,7 +38,7 @@ const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
     icon: <AddIcon fontSize="small" />,
     title: "建立創作專案",
     description:
-      "專案是所有創作的起點，故事、設定集、角色資料都收在同一個專案底下。",
+      "專案是所有創作的起點，故事、設定、角色資料都收在同一個專案底下。",
   },
   {
     icon: <EditNoteIcon fontSize="small" />,
@@ -49,7 +49,7 @@ const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
   {
     icon: <CollectionsIcon fontSize="small" />,
     title: "資產庫",
-    description: "上傳圖片建立資產庫，隨時插入故事或設定集裡使用。",
+    description: "上傳圖片建立資產庫，隨時插入故事或設定裡使用。",
   },
   {
     icon: <AutoAwesomeIcon fontSize="small" />,
@@ -62,7 +62,7 @@ const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
     icon: <CableIcon fontSize="small" />,
     title: "MCP 連接（選用）",
     description:
-      "讓 Claude、ChatGPT、Claude Code、Codex 等 AI 工具透過 MCP 直接讀寫你的故事與設定集，不用手動複製貼上。",
+      "讓 Claude、ChatGPT、Claude Code、Codex 等 AI 工具透過 MCP 直接讀寫你的故事與設定，不用手動複製貼上。",
   },
   {
     icon: <BookmarkIcon fontSize="small" />,

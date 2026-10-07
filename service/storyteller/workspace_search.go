@@ -210,10 +210,14 @@ func workspaceSearchFoldedRuneIndex(text, keyword string) int {
 
 func workspaceSearchLocation(source storytellerModel.WorkspaceSearchSource) string {
 	collection := source.CollectionName
+	// 沒有分組時的名稱：故事是「未分冊」、設定是「未歸類」、資產是「未分類」，跟工作台側欄一致
 	if collection == "" {
-		if source.Kind == storytellerModel.WorkspaceSearchKindStory {
+		switch source.Kind {
+		case storytellerModel.WorkspaceSearchKindStory:
 			collection = "未分冊"
-		} else {
+		case storytellerModel.WorkspaceSearchKindLore:
+			collection = "未歸類"
+		default:
 			collection = "未分類"
 		}
 	}

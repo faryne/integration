@@ -1,23 +1,109 @@
-import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import BookmarkIcon from "@mui/icons-material/Bookmark";
-import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
-import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
-import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
-import CloseIcon from "@mui/icons-material/Close";
-import CollectionsIcon from "@mui/icons-material/Collections";
-import ArticleIcon from "@mui/icons-material/Article";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import type { StorytellerReadingTargetType } from "@/apis/storyteller.ts";
+import {
+  useCreateStorytellerStoryBookmark,
+  useDeleteStorytellerStoryBookmark,
+  usePublicStorytellerImageStoryPages,
+  usePublicStorytellerProject,
+  usePublicStorytellerStoryLatestVersion,
+  usePublicStorytellerStoryVersions,
+  useSaveStorytellerProjectFavorite,
+  useSaveStorytellerProjectRanking,
+  useSharedStorytellerImageStoryPages,
+  useSharedStorytellerProject,
+  useStorytellerProject,
+  useStorytellerProjectBookmarks,
+  useStorytellerProjectFavorite,
+  useStorytellerProjectRanking,
+  useStorytellerStoryBookmarks,
+} from "@/apis/storyteller.ts";
+import { useAuth } from "@/components/auth/AuthContext.ts";
+import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
+import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
+import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
+import {
+  STORYTELLER_APP_NAME,
+  storytellerProjectRatingColor,
+  storytellerProjectRatingLabel,
+} from "@/data/storyteller.ts";
+import { steamloomPath } from "@/helpers/steamloom.ts";
+import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
+import {
+  storytellerCoverObjectPosition,
+  useGatedCoverUrl,
+} from "@/helpers/storytellerCover.ts";
+import {
+  readerLorePath,
+  readerLoresPath,
+  readerProjectBasePath,
+  readerShareBasePath,
+  readerStoryPath,
+} from "@/helpers/storytellerReaderPaths.ts";
+import { useTitle } from "@/helpers/title.tsx";
+import { useStorytellerHeaderContext } from "@/layouts/StorytellerHeaderContext.tsx";
+import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import {
+  ContentMetaHeader,
+  FollowAuthorButton,
+} from "@/pages/storyteller/ReaderContentHeader.tsx";
+import { ImagePageScrubber } from "@/pages/storyteller/ReaderImagePageScrubber.tsx";
+import { ReaderIndexPanel } from "@/pages/storyteller/ReaderIndexPanel.tsx";
+import { ReaderLorePage } from "@/pages/storyteller/ReaderLorePage.tsx";
+import type {
+  BookmarkMode,
+  ReaderImagePage,
+  ReaderProject,
+  StoryHeading,
+} from "@/pages/storyteller/readerModel.ts";
+import {
+  extractStoryHeadings,
+  readerLoreGroupAnchorId,
+  readerLoresFromProject,
+  type ReaderLandingTab,
+} from "@/pages/storyteller/readerModel.ts";
+import {
+  ReaderTextFrame,
+  StoryContentLines,
+} from "@/pages/storyteller/ReaderStoryContent.tsx";
+import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
+import { readingTargetKey } from "@/pages/storyteller/readingRecordStore.ts";
+import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderHistory.tsx";
+import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
+import {
+  StorytellerLoading,
+  StorytellerShell,
+} from "@/pages/storyteller/StorytellerShell.tsx";
+import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
+import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
+import {
+  StorytellerFootnoteSection,
+  StorytellerWysiwygMarkdown,
+} from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
+import {
+  useReadingRecords,
+  useSettledReadingProgress,
+} from "@/pages/storyteller/useReadingRecords.ts";
+import {
+  readerScrollableRange,
+  useReadingResume,
+} from "@/pages/storyteller/useReadingResume.ts";
+import { useStorytellerReaderPreferences } from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
+import { computeFootnoteNumbering } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ArticleIcon from "@mui/icons-material/Article";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
+import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import CloseIcon from "@mui/icons-material/Close";
+import CollectionsIcon from "@mui/icons-material/Collections";
 import {
   Box,
   Button,
-  ButtonBase,
   Chip,
   CircularProgress,
-  Collapse,
   Dialog,
   Divider,
   Drawer,
@@ -30,1067 +116,37 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useId, useRef, useState } from "react";
-import type { Ref } from "react";
-import {
-  StorytellerFootnoteSection,
-  StorytellerWysiwygMarkdown,
-} from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
-import {
-  computeFootnoteNumbering,
-  groupParagraphsByBlockKind,
-  parseMarkdownToParagraphs,
-  storyHeadingAnchorId,
-  type FootnoteNumbering,
-} from "@/pages/storyteller/wysiwygCore/parser.ts";
-import type { HeadingLevel } from "@/pages/storyteller/wysiwygCore/whitelist.ts";
-import { flattenGroupedStories } from "@/pages/storyteller/storytellerVolumes.ts";
-import { formatAuthorNames } from "@/helpers/storytellerAuthors.ts";
 import {
   Link as RouterLink,
   useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { useAuth } from "@/components/auth/AuthContext.ts";
-import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
-import { AgeConfirmationGate } from "@/components/common/AgeConfirmation.tsx";
-import {
-  storytellerCoverObjectPosition,
-  useGatedCoverUrl,
-} from "@/helpers/storytellerCover.ts";
-import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
-import {
-  useReadingRecords,
-  useSettledReadingProgress,
-} from "@/pages/storyteller/useReadingRecords.ts";
-import {
-  readerScrollableRange,
-  useReadingResume,
-} from "@/pages/storyteller/useReadingResume.ts";
-import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
-import {
-  useStorytellerProject,
-  useCreateStorytellerStoryBookmark,
-  useDeleteStorytellerStoryBookmark,
-  usePublicStorytellerImageStoryPages,
-  usePublicStorytellerStoryLatestVersion,
-  usePublicStorytellerStoryVersions,
-  useSaveStorytellerAuthorFavorite,
-  useSaveStorytellerProjectFavorite,
-  useSaveStorytellerProjectRanking,
-  usePublicStorytellerProject,
-  useSharedStorytellerImageStoryPages,
-  useSharedStorytellerProject,
-  useStorytellerAuthorFavorite,
-  useStorytellerProjectFavorite,
-  useStorytellerProjectRanking,
-  useStorytellerProjectBookmarks,
-  useStorytellerStoryBookmarks,
-} from "@/apis/storyteller.ts";
-import {
-  formatStorytellerDate,
-  STORYTELLER_APP_NAME,
-  storytellerProjectRatingColor,
-  storytellerProjectRatingLabel,
-} from "@/data/storyteller.ts";
-import { steamloomPath } from "@/helpers/steamloom.ts";
-import { useTitle } from "@/helpers/title.tsx";
-import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import {
-  StorytellerLoading,
-  StorytellerShell,
-} from "@/pages/storyteller/StorytellerShell.tsx";
-import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
-import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderHistory.tsx";
-import { useStorytellerHeaderContext } from "@/layouts/StorytellerHeaderContext.tsx";
-import { StorytellerTagChips } from "@/pages/storyteller/StorytellerTagChips.tsx";
-import {
-  TYPOGRAPHY_FONT_FAMILIES,
-  useStorytellerReaderPreferences,
-} from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
-import type { StorytellerStoryBookmarkWithStory } from "@/types/storyteller.ts";
-
-// ReaderItem 是故事與話（圖像作品）合併後的統一序列元素——冊現在是通用容器，
-// 兩種類型可以混著放在同一冊裡，閱讀頁不再分開兩個家族，只依 sort／冊順序
-// 排成一條連續的序列，用 contentType 決定要用哪種方式渲染本文。
-interface ReaderItem {
-  id: string;
-  contentType: "text" | "image";
-  title: string;
-  summary: string;
-  content: string;
-  sort: number;
-  updatedAt: string;
-  // 所屬冊的 id，null 代表未分冊；只用來在索引分組顯示，不影響上一篇/下一篇導覽
-  // （導覽沿用 items 陣列本身已經是「依冊順序、未分冊排最後」排好的線性順序）。
-  parentId: number | null;
-  authorPenNames: string[];
-}
-
-interface ReaderVolume {
-  id: number;
-  title: string;
-}
-
-interface ReaderImagePage {
-  id: string;
-  imageUrl: string;
-  description: string;
-}
-
-interface ReaderProject {
-  id: string;
-  name: string;
-  description: string;
-  path: string;
-  authors: Array<{
-    pen_name: string;
-    follower_count?: number;
-  }>;
-  authorPenNames: string[];
-  rating: "general" | "guidance" | "restricted";
-  tags: string[];
-  wordCount: number;
-  // 封面簽名 URL（有時效，只放在記憶體，不落地）。
-  coverUrl?: string;
-  coverLayout: "split" | "immersive";
-  coverFocalPoint: { x: number; y: number };
-  items: ReaderItem[];
-  volumes: ReaderVolume[];
-}
-
-interface StoryHeading {
-  // lineIndex 只用來當 React key／跟 activeHeadingLine 比對「目前是哪一個」，不是拿來
-  // 定位錨點——行號會因為前面內容增刪而改變，不是穩定的識別碼。
-  lineIndex: number;
-  level: HeadingLevel;
-  text: string;
-  // 實際跳轉／捲動高亮用的 DOM id：段落有 markerId（新版內容都會有）就用
-  // storyHeadingAnchorId 直接定位到標題本身；沒有的話（舊資料尚未遷移）退回沿用
-  // StoryContentLines 既有的 `bookmark-line-{lineIndex}` id。
-  anchorId: string;
-}
-
-/** 從故事全文抽出標題清單，供側欄「本篇大綱」使用；沒有標題就回傳空陣列（呼叫端應該直接不顯示這個分頁）。 */
-function extractStoryHeadings(content: string): StoryHeading[] {
-  return parseMarkdownToParagraphs(content)
-    .map((paragraph, lineIndex) => ({ paragraph, lineIndex }))
-    .filter(({ paragraph }) => paragraph.headingLevel > 0)
-    .map(({ paragraph, lineIndex }) => ({
-      lineIndex,
-      level: paragraph.headingLevel,
-      text: paragraph.runs
-        .map((run) => run.text)
-        .join("")
-        .trim(),
-      anchorId: paragraph.markerId
-        ? storyHeadingAnchorId(paragraph.markerId)
-        : `bookmark-line-${lineIndex}`,
-    }))
-    .filter((heading) => heading.text.length > 0);
-}
-
-// 閱讀網址不再暴露內容類型；文字故事與圖像話都直接使用 public id。
-function itemHref(basePath: string, item: ReaderItem) {
-  return `${basePath}/${item.id}`;
-}
-
-function ContentIndex({
-  items,
-  volumes,
-  currentItemId,
-  basePath,
-  onNavigate,
-}: {
-  items: ReaderItem[];
-  volumes: ReaderVolume[];
-  currentItemId?: string;
-  basePath: string;
-  onNavigate?: () => void;
-}) {
-  // 序號改成「每一冊自己重新從 1 算」，不再沿用 flattenGroupedStories 給的
-  // 全域線性順序——主線、支線這類語意不同的冊如果編號直接接下去（主線
-  // 1 話接著支線變成 2 話），讀者會誤以為是同一條時間線，所以顯示用的序號
-  // 交給下面 children.map／ungrouped.map 各自從 1 開始算。items 本身的全域
-  // 順序還是原封不動保留，上一篇／下一篇導覽（見 currentItemIndex）不受影響。
-  const currentVolumeId =
-    items.find((item) => item.id === currentItemId)?.parentId ?? null;
-  // 預設展開「目前所在的那一冊」，其餘冊收合；使用者手動展開/收合過的冊維持原狀，
-  // 只有換到別的冊時才會額外把那一冊加進展開清單，不會反過來收掉使用者已經打開的冊。
-  const [expandedVolumeIds, setExpandedVolumeIds] = useState<Set<number>>(
-    () => new Set(currentVolumeId !== null ? [currentVolumeId] : []),
-  );
-  useEffect(() => {
-    if (currentVolumeId === null) {
-      return;
-    }
-    setExpandedVolumeIds((previous) => {
-      if (previous.has(currentVolumeId)) {
-        return previous;
-      }
-      return new Set(previous).add(currentVolumeId);
-    });
-  }, [currentVolumeId]);
-
-  function toggleVolume(volumeId: number) {
-    setExpandedVolumeIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(volumeId)) {
-        next.delete(volumeId);
-      } else {
-        next.add(volumeId);
-      }
-      return next;
-    });
-  }
-
-  function ItemButton({ item, index }: { item: ReaderItem; index: number }) {
-    return (
-      <Button
-        key={item.id}
-        component={RouterLink}
-        to={itemHref(basePath, item)}
-        variant={currentItemId === item.id ? "contained" : "text"}
-        startIcon={
-          item.contentType === "image" ? (
-            <CollectionsIcon fontSize="small" />
-          ) : (
-            <ArticleIcon fontSize="small" />
-          )
-        }
-        sx={{ justifyContent: "flex-start", textAlign: "left" }}
-        onClick={onNavigate}
-      >
-        {index}. {item.title}
-      </Button>
-    );
-  }
-
-  const ungrouped = items.filter((item) => item.parentId === null);
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" spacing={1} alignItems="center">
-        <AutoStoriesIcon color="primary" />
-        <Typography variant="h6" fontWeight={800}>
-          作品索引
-        </Typography>
-      </Stack>
-      <Divider />
-      {volumes.map((volume) => {
-        const children = items.filter((item) => item.parentId === volume.id);
-        if (children.length === 0) {
-          return null;
-        }
-        const expanded = expandedVolumeIds.has(volume.id);
-        return (
-          <Stack key={volume.id} spacing={0.5}>
-            <Divider />
-            <Stack
-              component={ButtonBase}
-              onClick={() => toggleVolume(volume.id)}
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ borderRadius: 1, px: 1, py: 0.5, width: 1 }}
-            >
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                sx={{ textAlign: "left" }}
-              >
-                {volume.title}
-              </Typography>
-              {expanded ? (
-                <ExpandLessIcon fontSize="small" color="action" />
-              ) : (
-                <ExpandMoreIcon fontSize="small" color="action" />
-              )}
-            </Stack>
-            <Collapse in={expanded}>
-              <Stack spacing={0.5}>
-                {children.map((item, index) => (
-                  <ItemButton key={item.id} item={item} index={index + 1} />
-                ))}
-              </Stack>
-            </Collapse>
-          </Stack>
-        );
-      })}
-      {ungrouped.length > 0 && (
-        <Stack spacing={0.5}>
-          {volumes.length > 0 && (
-            <>
-              <Divider />
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                sx={{ pl: 1 }}
-              >
-                未分冊作品
-              </Typography>
-            </>
-          )}
-          {ungrouped.map((item, index) => (
-            <ItemButton key={item.id} item={item} index={index + 1} />
-          ))}
-        </Stack>
-      )}
-    </Stack>
-  );
-}
-
-function StoryOutline({
-  headings,
-  activeLineIndex,
-  onJumpToHeading,
-}: {
-  headings: StoryHeading[];
-  activeLineIndex?: number;
-  onJumpToHeading: (heading: StoryHeading) => void;
-}) {
-  return (
-    <Stack spacing={0.5}>
-      {headings.map((heading) => {
-        const isActive = activeLineIndex === heading.lineIndex;
-        return (
-          <Button
-            key={heading.lineIndex}
-            size="small"
-            variant="text"
-            onClick={() => onJumpToHeading(heading)}
-            sx={{
-              justifyContent: "flex-start",
-              textAlign: "left",
-              pl: 1.5 + (heading.level - 1) * 1.5,
-              color: isActive ? "primary.main" : "text.secondary",
-              fontWeight: isActive ? 700 : 400,
-              bgcolor: isActive ? "action.selected" : undefined,
-              fontSize: heading.level >= 3 ? 13 : 14,
-            }}
-          >
-            {heading.text}
-          </Button>
-        );
-      })}
-    </Stack>
-  );
-}
-
-// 頁面描述本身是 whitelist markdown（含 marker 屬性、粗體斜體等語法），列表預覽只需要
-// 純文字片段，不能直接把原始字串塞進 Typography——會連 [markerId] 這種內部標記語法都
-// 原樣顯示出來。用跟 extractStoryHeadings 抽標題文字一樣的做法：解析成段落後只取每個
-// run 的 text，marks／marker 屬性都會在解析階段被拆掉，不會出現在結果字串裡。
-function plainTextFromMarkdown(content: string): string {
-  return parseMarkdownToParagraphs(content)
-    .map((paragraph) => paragraph.runs.map((run) => run.text).join(""))
-    .join(" ")
-    .trim();
-}
-
-// 圖像作品版的「本篇大綱」——沒有標題可抽，改成列出每一頁的縮圖（沿用已經載入、
-// 簽過名的 imageUrl，不用另外拉縮圖資源）跟描述前幾個字，點擊直接跳頁。
-function ImagePageOutline({
-  pages,
-  activeIndex,
-  onJumpToPage,
-}: {
-  pages: ReaderImagePage[];
-  activeIndex: number;
-  onJumpToPage: (index: number) => void;
-}) {
-  return (
-    <Stack spacing={0.5}>
-      {pages.map((page, index) => {
-        const isActive = index === activeIndex;
-        const description = plainTextFromMarkdown(page.description);
-        return (
-          <Paper
-            key={page.id}
-            variant="outlined"
-            sx={{
-              p: 1,
-              borderRadius: 1,
-              cursor: "pointer",
-              bgcolor: isActive ? "action.selected" : undefined,
-              borderColor: isActive ? "primary.main" : undefined,
-            }}
-            onClick={() => onJumpToPage(index)}
-          >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Box
-                component="img"
-                src={page.imageUrl}
-                alt={`第 ${index + 1} 頁`}
-                sx={{
-                  width: 40,
-                  height: 54,
-                  objectFit: "cover",
-                  borderRadius: 0.5,
-                  flexShrink: 0,
-                }}
-              />
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography
-                  variant="caption"
-                  color={isActive ? "primary.main" : "text.secondary"}
-                  fontWeight={isActive ? 700 : 400}
-                  sx={{ display: "block" }}
-                >
-                  第 {index + 1} 頁
-                </Typography>
-                {description && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {description}
-                  </Typography>
-                )}
-              </Box>
-            </Stack>
-          </Paper>
-        );
-      })}
-    </Stack>
-  );
-}
-
-function ReaderIndexPanel({
-  items,
-  volumes,
-  currentItemId,
-  basePath,
-  onNavigate,
-  bookmarks,
-  bookmarksEnabled,
-  bookmarksLoading,
-  onJumpToBookmark,
-  onDeleteBookmark,
-  pendingDeleteBookmarkIds,
-  headings,
-  activeHeadingLine,
-  onJumpToHeading,
-  imagePages,
-  activeImagePageIndex,
-  onJumpToImagePage,
-}: {
-  items: ReaderItem[];
-  volumes: ReaderVolume[];
-  currentItemId?: string;
-  basePath: string;
-  onNavigate?: () => void;
-  bookmarks: StorytellerStoryBookmarkWithStory[];
-  bookmarksEnabled: boolean;
-  bookmarksLoading: boolean;
-  onJumpToBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
-  onDeleteBookmark: (bookmark: StorytellerStoryBookmarkWithStory) => void;
-  pendingDeleteBookmarkIds: Set<number>;
-  headings: StoryHeading[];
-  activeHeadingLine?: number;
-  onJumpToHeading: (heading: StoryHeading) => void;
-  imagePages: ReaderImagePage[];
-  activeImagePageIndex: number;
-  onJumpToImagePage: (index: number) => void;
-}) {
-  const [tab, setTab] = useState<"toc" | "bookmarks" | "outline">("toc");
-  // 文字故事用標題抽「本篇大綱」，圖像作品沒有標題，改用頁面清單當「頁面一覽」——
-  // 兩者互斥（一個 item 只會是其中一種內容類型），共用同一個分頁槽位，只是內容跟
-  // 標籤依目前是哪種類型決定。
-  const hasOutline = headings.length > 0 || imagePages.length > 0;
-  const outlineLabel = imagePages.length > 0 ? "頁面一覽" : "本篇大綱";
-  useEffect(() => {
-    // 切到沒有標題／頁面可列的內容時，大綱分頁會消失，這時候如果還停在該分頁要退回
-    // 目錄，不然畫面會變成沒有任何分頁按鈕顯示為選取中。
-    if (tab === "outline" && !hasOutline) {
-      setTab("toc");
-    }
-  }, [tab, hasOutline]);
-  return (
-    <Stack spacing={2}>
-      <Stack direction="row" spacing={1}>
-        <Button
-          size="small"
-          variant={tab === "toc" ? "contained" : "outlined"}
-          onClick={() => setTab("toc")}
-          sx={{ flex: 1 }}
-        >
-          目錄
-        </Button>
-        <Button
-          size="small"
-          variant={tab === "bookmarks" ? "contained" : "outlined"}
-          onClick={() => setTab("bookmarks")}
-          sx={{ flex: 1 }}
-        >
-          書籤{bookmarks.length > 0 ? ` ${bookmarks.length}` : ""}
-        </Button>
-        {hasOutline && (
-          <Button
-            size="small"
-            variant={tab === "outline" ? "contained" : "outlined"}
-            onClick={() => setTab("outline")}
-            sx={{ flex: 1 }}
-          >
-            {outlineLabel}
-          </Button>
-        )}
-      </Stack>
-      {tab === "toc" ? (
-        <ContentIndex
-          items={items}
-          volumes={volumes}
-          currentItemId={currentItemId}
-          basePath={basePath}
-          onNavigate={onNavigate}
-        />
-      ) : tab === "outline" && imagePages.length > 0 ? (
-        <ImagePageOutline
-          pages={imagePages}
-          activeIndex={activeImagePageIndex}
-          onJumpToPage={(index) => {
-            onJumpToImagePage(index);
-            onNavigate?.();
-          }}
-        />
-      ) : tab === "outline" && hasOutline ? (
-        <StoryOutline
-          headings={headings}
-          activeLineIndex={activeHeadingLine}
-          onJumpToHeading={(heading) => {
-            onJumpToHeading(heading);
-            onNavigate?.();
-          }}
-        />
-      ) : (
-        <Stack spacing={1}>
-          {!bookmarksEnabled ? (
-            <Typography variant="body2" color="text.secondary">
-              登入後即可查看你的書籤。
-            </Typography>
-          ) : bookmarksLoading ? (
-            <Typography variant="body2" color="text.secondary">
-              載入書籤中...
-            </Typography>
-          ) : bookmarks.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              還沒有加入任何書籤。文字作品請開啟「編輯書籤」，圖像作品可使用頁面上的書籤按鈕。
-            </Typography>
-          ) : (
-            bookmarks.map((bookmark) => {
-              const item = items.find(
-                (candidate) => candidate.id === bookmark.story_public_id,
-              );
-              const isImage = bookmark.content_type === "image";
-              const isStale = isImage
-                ? (bookmark.page_sort ?? -1) < 0
-                : bookmark.story_version_id !==
-                  bookmark.latest_story_version_id;
-              const lineText = (bookmark.line_preview ?? "").trim();
-              const snippet =
-                lineText.length > 10 ? `${lineText.slice(0, 10)}…` : lineText;
-              return (
-                <Paper
-                  key={bookmark.id}
-                  variant="outlined"
-                  sx={{ p: 1, borderRadius: 1, cursor: "pointer" }}
-                  onClick={() => {
-                    onJumpToBookmark(bookmark);
-                    onNavigate?.();
-                  }}
-                >
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    {isImage && bookmark.thumbnail_url && (
-                      <Box
-                        component="img"
-                        src={bookmark.thumbnail_url}
-                        alt={item?.title ?? bookmark.story_title}
-                        sx={{
-                          width: 40,
-                          height: 54,
-                          objectFit: "cover",
-                          borderRadius: 0.5,
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                      >
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{ display: "block" }}
-                        >
-                          {item?.title ?? bookmark.story_title}
-                        </Typography>
-                        {isStale && (
-                          <Chip
-                            size="small"
-                            label={isImage ? "頁面已移除" : "非最新版本"}
-                            color="warning"
-                            variant="outlined"
-                            sx={{ height: 18, fontSize: 11 }}
-                          />
-                        )}
-                      </Stack>
-                      <Typography variant="body2" color="text.secondary">
-                        {isImage
-                          ? isStale
-                            ? "（書籤指向的頁面已被刪除）"
-                            : `第 ${(bookmark.page_sort ?? 0) + 1} 頁`
-                          : snippet || "（空白段落）"}
-                      </Typography>
-                    </Box>
-                    <Tooltip title="刪除書籤">
-                      <span>
-                        <IconButton
-                          size="small"
-                          disabled={pendingDeleteBookmarkIds.has(bookmark.id)}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            onDeleteBookmark(bookmark);
-                          }}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                </Paper>
-              );
-            })
-          )}
-        </Stack>
-      )}
-    </Stack>
-  );
-}
-
-// 比照 YouTube 播放器的進度列：滑鼠移到軌道上的某個位置會浮出該頁的縮圖預覽，點擊
-// 直接跳到那一頁。頁面是離散的（不是連續時間），滑鼠位置會吸附到最近的一頁，不會有
-// 「中間值」。頁數只有 1 頁時沒有可跳的地方，直接不渲染。
-function ImagePageScrubber({
-  pages,
-  currentIndex,
-  onJump,
-}: {
-  pages: ReaderImagePage[];
-  currentIndex: number;
-  onJump: (index: number) => void;
-}) {
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const total = pages.length;
-
-  function indexFromPointer(clientX: number): number {
-    const track = trackRef.current;
-    if (!track || total <= 1) {
-      return 0;
-    }
-    const rect = track.getBoundingClientRect();
-    const ratio = (clientX - rect.left) / rect.width;
-    return Math.min(Math.max(Math.round(ratio * (total - 1)), 0), total - 1);
-  }
-
-  if (total <= 1) {
-    return null;
-  }
-
-  const hoverPage = hoverIndex !== null ? pages[hoverIndex] : null;
-  const percentOf = (index: number) => (index / (total - 1)) * 100;
-
-  return (
-    <Box sx={{ position: "relative" }}>
-      {hoverPage && hoverIndex !== null && (
-        <Box
-          sx={{
-            position: "absolute",
-            bottom: "calc(100% + 8px)",
-            left: `${percentOf(hoverIndex)}%`,
-            transform: "translateX(-50%)",
-            pointerEvents: "none",
-            zIndex: 3,
-          }}
-        >
-          <Paper
-            variant="outlined"
-            sx={{
-              width: 84,
-              overflow: "hidden",
-              borderRadius: 1,
-              borderWidth: 2,
-              borderColor: "primary.main",
-              boxShadow: 3,
-            }}
-          >
-            <Box
-              component="img"
-              src={hoverPage.imageUrl}
-              alt={`第 ${hoverIndex + 1} 頁預覽`}
-              sx={{
-                width: "100%",
-                height: 112,
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                display: "block",
-                textAlign: "center",
-                py: 0.25,
-                bgcolor: "background.paper",
-              }}
-            >
-              第 {hoverIndex + 1} 頁
-            </Typography>
-          </Paper>
-        </Box>
-      )}
-      <Box
-        ref={trackRef}
-        onMouseMove={(event) => setHoverIndex(indexFromPointer(event.clientX))}
-        onMouseLeave={() => setHoverIndex(null)}
-        onClick={(event) => onJump(indexFromPointer(event.clientX))}
-        sx={{
-          position: "relative",
-          height: 20,
-          display: "flex",
-          alignItems: "center",
-          cursor: "pointer",
-        }}
-      >
-        <Box
-          sx={{
-            position: "relative",
-            width: "100%",
-            height: 6,
-            borderRadius: 3,
-            bgcolor: "action.disabledBackground",
-            overflow: "hidden",
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: `${percentOf(currentIndex)}%`,
-              bgcolor: "primary.main",
-              transition: "width .12s",
-            }}
-          />
-        </Box>
-        {pages.map((page, index) => (
-          <Box
-            key={page.id}
-            sx={{
-              position: "absolute",
-              left: `${percentOf(index)}%`,
-              top: "50%",
-              transform: "translate(-50%, -50%)",
-              width: index === currentIndex ? 12 : 8,
-              height: index === currentIndex ? 12 : 8,
-              borderRadius: "50%",
-              bgcolor:
-                index === currentIndex
-                  ? "primary.main"
-                  : index < currentIndex
-                    ? "primary.light"
-                    : "background.paper",
-              border: "2px solid",
-              borderColor: index === currentIndex ? "primary.main" : "divider",
-              pointerEvents: "none",
-            }}
-          />
-        ))}
-      </Box>
-    </Box>
-  );
-}
-
-function FollowAuthorButton({
-  penName,
-  followerCount,
-  disabled,
-  onLoginRequired,
-  onNotify,
-}: {
-  penName: string;
-  followerCount: number;
-  disabled: boolean;
-  onLoginRequired: () => void;
-  onNotify: (message: string, severity?: "success" | "error") => void;
-}) {
-  const { session } = useAuth();
-  const query = useStorytellerAuthorFavorite(disabled ? undefined : penName);
-  const save = useSaveStorytellerAuthorFavorite(disabled ? undefined : penName);
-  const favorited = query.data?.favorited ?? false;
-  return (
-    <Button
-      variant={favorited ? "contained" : "outlined"}
-      startIcon={favorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />}
-      disabled={disabled || save.isPending}
-      onClick={() => {
-        if (!session) {
-          onLoginRequired();
-          return;
-        }
-        const next = !favorited;
-        save.mutate(next, {
-          onSuccess: () =>
-            onNotify(next ? `已追蹤 ${penName}` : `已取消追蹤 ${penName}`),
-          onError: () => onNotify("作者追蹤狀態更新失敗，請重試。", "error"),
-        });
-      }}
-    >
-      {favorited ? `已追蹤 ${penName}` : `追蹤 ${penName}`}（{followerCount}）
-    </Button>
-  );
-}
-
-// 跨內容類型（故事／圖像／未來新增的類型）共用的作品標頭：標題、簡介、作者、
-// 最後更新時間。新增內容類型時應該一律沿用這個元件，不要各自刻一份標頭版面。
-function ContentMetaHeader({
-  title,
-  titleRef,
-  summary,
-  authorPenNames,
-  updatedAt,
-}: {
-  title: string;
-  titleRef?: Ref<HTMLHeadingElement>;
-  summary?: string;
-  authorPenNames?: string[];
-  updatedAt: string;
-}) {
-  return (
-    <Box>
-      <Typography
-        ref={titleRef}
-        component="h1"
-        variant="h4"
-        fontWeight={800}
-        sx={{ scrollMarginTop: 80 }}
-      >
-        {title}
-      </Typography>
-      {summary && (
-        <Typography color="text.secondary" sx={{ mt: 1 }}>
-          {summary}
-        </Typography>
-      )}
-      <Stack
-        direction="row"
-        spacing={1}
-        flexWrap="wrap"
-        useFlexGap
-        sx={{ mt: 1 }}
-      >
-        {authorPenNames && authorPenNames.length > 0 && (
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {authorPenNames.map((penName) => (
-              <Typography
-                key={penName}
-                variant="caption"
-                color="primary"
-                component={RouterLink}
-                to={steamloomPath(`user/${encodeURIComponent(penName)}`)}
-                sx={{
-                  textDecoration: "none",
-                  "&:hover": { textDecoration: "underline" },
-                }}
-              >
-                作者 {penName}
-              </Typography>
-            ))}
-          </Stack>
-        )}
-        <Typography variant="caption" color="text.secondary">
-          更新於 {formatStorytellerDate(updatedAt)}
-        </Typography>
-      </Stack>
-    </Box>
-  );
-}
-
-type BookmarkMode = "full" | "removeOnly" | "none";
-
-/**
- * 書籤／捲動高亮／DOM 錨點的定位單位是「渲染分組」（見 groupParagraphsByBlockKind），
- * 不是原始行號：一般段落/標題（blockKind "none"）永遠各自獨立成一組，locator 就是它
- * 自己那一行；引用/清單/表格/分隔線這類會合併成一組的，locator 是這一組第一行的原始
- * 行號——跟 StorytellerWysiwygMarkdown 在閱讀頁把這些行合併渲染成一個
- * <blockquote>/<ul>/<table> 的分組結果完全一致，書籤／書籤預覽（Go 後端的
- * groupStoryLinesByBlockKind）、捲動跳轉三邊都要用同一套規則，不然書籤會停在跟畫面上
- * 看到的分組對不起來的位置。2026-08-09 起從「逐行」改成「逐組」，理由：以前每行各自
- * 一個書籤按鈕，對著表格裡的某一列下書籤會很怪（見設計討論）；有序清單也因此不再需要
- * orderedListStart 接續 hack——整組清單現在一次交給一個 StorytellerWysiwygMarkdown
- * 實例渲染，原生 <ol> 自己就能連續編號。
- */
-function StoryContentLines({
-  content,
-  bookmarkedLines,
-  pendingLines,
-  bookmarkMode,
-  bookmarkEditing,
-  highlightedLine,
-  onToggleBookmark,
-  footnoteNumbering,
-  footnoteIdPrefix,
-}: {
-  content: string;
-  bookmarkedLines: Set<number>;
-  pendingLines: Set<number>;
-  bookmarkMode: BookmarkMode;
-  bookmarkEditing: boolean;
-  highlightedLine?: number;
-  onToggleBookmark: (groupIndex: number) => void;
-  // 整篇故事共用的腳注編號＋DOM id 前綴（見 StorytellerWysiwygMarkdown 的
-  // footnoteNumbering／footnoteIdPrefix 說明）——這裡逐組渲染，每一組都要用同一份，
-  // 不能讓每組各自算，不然編號會從 1 重來、腳注清單也會每組各渲染一次。
-  footnoteNumbering: FootnoteNumbering;
-  footnoteIdPrefix: string;
-}) {
-  const lines = content.split("\n");
-  const groups = groupParagraphsByBlockKind(parseMarkdownToParagraphs(content));
-  return (
-    <Box
-      sx={{
-        // 這層不能用 Stack：每個故事段落會變成獨立 flex item，使前一段的浮動圖片
-        // 無法影響後續段落。改回同一個 block formatting context，並保留原本 2px 間距。
-        "& > :not(style) ~ :not(style)": { mt: 0.25 },
-      }}
-    >
-      {groups.map((group) => {
-        const groupIndex = group.items[0].index;
-        // 空行判斷沿用原本邏輯（新版內容每行都被 marker 包住，就算段落本身是空的，原始
-        // 字串也不會是空字串，要用解析結果的實際文字判斷）——只有 "none" 分組（單行）
-        // 才可能是純粹的空行間距，引用/清單/表格這類多行分組不會是空行，不需要判斷。
-        if (group.blockKind === "none") {
-          const isBlank = group.items[0].paragraph.runs.every(
-            (run) =>
-              !run.assetSrc && !run.assetPublicId && run.text.trim() === "",
-          );
-          if (isBlank) {
-            return <Box key={groupIndex} sx={{ height: 12 }} />;
-          }
-        }
-        const isBookmarked = bookmarkedLines.has(groupIndex);
-        const showEditAction =
-          bookmarkEditing &&
-          (bookmarkMode === "full" ||
-            (bookmarkMode === "removeOnly" && isBookmarked));
-        const groupContent =
-          group.blockKind === "code"
-            ? lines
-                .slice(
-                  groupIndex,
-                  groupIndex + (group.items[0].paragraph.sourceLineCount ?? 1),
-                )
-                .join("\n")
-            : group.items.map(({ index }) => lines[index]).join("\n");
-        return (
-          <Box
-            key={groupIndex}
-            id={`bookmark-line-${groupIndex}`}
-            sx={{
-              position: "relative",
-              borderRadius: 1,
-              transition: "background-color .6s",
-              bgcolor:
-                highlightedLine === groupIndex ? "action.selected" : undefined,
-            }}
-          >
-            {(isBookmarked || showEditAction) && (
-              <Box
-                sx={{
-                  position: {
-                    xs: showEditAction ? "static" : "absolute",
-                    sm: "absolute",
-                  },
-                  top: { xs: showEditAction ? undefined : 2, sm: 2 },
-                  right: {
-                    xs: showEditAction ? undefined : "calc(100% + 4px)",
-                    sm: "calc(100% + 10px)",
-                  },
-                  mb: { xs: showEditAction ? 1 : 0, sm: 0 },
-                  display: "flex",
-                  justifyContent: "flex-start",
-                }}
-              >
-                {showEditAction ? (
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={
-                      isBookmarked ? (
-                        <BookmarkIcon fontSize="small" />
-                      ) : (
-                        <BookmarkBorderIcon fontSize="small" />
-                      )
-                    }
-                    disabled={pendingLines.has(groupIndex)}
-                    onClick={() => onToggleBookmark(groupIndex)}
-                    sx={{ whiteSpace: "nowrap" }}
-                  >
-                    {isBookmarked ? "移除書籤" : "加入書籤"}
-                  </Button>
-                ) : (
-                  <Box
-                    component="span"
-                    role="img"
-                    aria-label="已加入書籤"
-                    sx={{
-                      width: 30,
-                      height: 30,
-                      display: "grid",
-                      placeItems: "center",
-                      color: "primary.main",
-                    }}
-                  >
-                    <BookmarkIcon fontSize="small" />
-                  </Box>
-                )}
-              </Box>
-            )}
-            <Box sx={{ minWidth: 0 }}>
-              <StorytellerWysiwygMarkdown
-                footnoteNumbering={footnoteNumbering}
-                footnoteIdPrefix={footnoteIdPrefix}
-                showFootnoteSection={false}
-              >
-                {groupContent}
-              </StorytellerWysiwygMarkdown>
-            </Box>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
 
 // 閱讀 context 已合併進全站 AppBar，不再另外疊第二列；跳轉時只需避開 Header。
 const READER_STICKY_OFFSET = 84;
 
-export default function StorytellerReader() {
+// 設定頁的閱讀列用詞：設定不是章節，上一則／下一則只在設定之間切換
+const LORE_TOOLBAR_LABELS = {
+  previous: "上一則",
+  next: "下一則",
+  navigation: "設定列表",
+  navigationTooltip: "回到設定列表",
+};
+
+// landingTab 由路由決定：work/:projectPath 是故事 Tab，work/:projectPath/lores 是設定 Tab
+export default function StorytellerReader({
+  landingTab = "stories",
+}: {
+  landingTab?: ReaderLandingTab;
+}) {
   const { setReader: setHeaderReader } = useStorytellerHeaderContext();
   const { session, loading: authLoading } = useAuth();
   const params = useParams();
   const location = useLocation();
   const { shareToken } = params;
   const routeItemId = params.itemId;
+  const routeLoreId = params.loreId;
   const routeProjectPath = params.projectPath;
   const consumedImageHashRef = useRef<string | null>(null);
   const [indexOpen, setIndexOpen] = useState(false);
@@ -1190,7 +246,9 @@ export default function StorytellerReader() {
         id: apiProject.public_id,
         name: apiProject.name,
         description: apiProject.description,
-        path: steamloomPath(`work/${apiProject.public_id}-${apiProject.slug}`),
+        path: readerProjectBasePath(
+          `${apiProject.public_id}-${apiProject.slug}`,
+        ),
         authors: (apiProject.authors ?? []).map((author) => ({
           pen_name: author.pen_name,
           follower_count: author.follower_count,
@@ -1227,10 +285,18 @@ export default function StorytellerReader() {
         volumes: [...(apiProject.volumes ?? [])]
           .sort((left, right) => left.sort - right.sort)
           .map((volume) => ({ id: volume.id, title: volume.title })),
+        ...readerLoresFromProject(apiProject),
       }
     : undefined;
   const items = project?.items ?? [];
   const volumes = project?.volumes ?? [];
+  const loreOrder = project?.loreOrder ?? [];
+  // 設定頁：網址帶 loreId 時顯示單則設定；上一則／下一則依設定 Tab 的列表順序
+  const currentLoreIndex = routeLoreId
+    ? loreOrder.findIndex((lore) => lore.id === routeLoreId)
+    : -1;
+  const currentLore =
+    currentLoreIndex >= 0 ? loreOrder[currentLoreIndex] : undefined;
   // 故事與話已經合併成同一份依序排列的序列，網址也統一只帶 itemId；沒有 itemId
   // 就是「作品首頁」，顯示封面、簡介與章節目錄，點目錄或「開始閱讀」才進入 Reader。
   const currentItemId = routeItemId;
@@ -1354,10 +420,21 @@ export default function StorytellerReader() {
       : currentEpisode && totalEpisodePages > 0
         ? Math.round(((pageIndex + 1) / totalEpisodePages) * 100)
         : null;
+  // 設定頁也記錄閱讀進度（同一套捲動公式），key 帶種類前綴才分得出是故事還是設定
   useSettledReadingProgress(
-    currentItem?.id,
-    currentReadingProgress,
-    (itemId, progress) => readingRecords.report("story", itemId, progress),
+    currentItem
+      ? readingTargetKey("story", currentItem.id)
+      : currentLore
+        ? readingTargetKey("lore", currentLore.id)
+        : undefined,
+    currentItem ? currentReadingProgress : currentLore ? readingProgress : null,
+    (key, progress) => {
+      const [type, publicId] = key.split(":") as [
+        StorytellerReadingTargetType,
+        string,
+      ];
+      readingRecords.report(type, publicId, progress);
+    },
   );
   const readingResume = useReadingResume({
     itemId: currentItem?.id,
@@ -1624,24 +701,34 @@ export default function StorytellerReader() {
     isOwner && apiProject?.visibility === "private" && !isShareRoute;
   const shouldUseStorySeo = Boolean(project && !isPrivateOwnerRoute);
 
-  // 分享首頁維持 work/share/:token；一般作品首頁使用 /stories。進入作品後兩邊都只接
-  // /:itemId，不再從網址區分文字或圖像內容。
-  const canonicalPathSuffix = routeItemId
-    ? `/${routeItemId}`
-    : isShareRoute
-      ? ""
-      : "/stories";
+  // 網址規則見 helpers/storytellerReaderPaths.ts；canonical 依目前看的是故事、設定或首頁 Tab 決定
+  const routeBasePath = routeProjectPath
+    ? readerProjectBasePath(routeProjectPath)
+    : shareToken
+      ? readerShareBasePath(shareToken)
+      : "";
+  const canonicalPath = !routeBasePath
+    ? ""
+    : routeItemId
+      ? readerStoryPath(routeBasePath, routeItemId)
+      : routeLoreId
+        ? readerLorePath(routeBasePath, routeLoreId)
+        : landingTab === "lores"
+          ? readerLoresPath(routeBasePath)
+          : routeBasePath;
+  const pageTitle = currentItem?.title ?? currentLore?.title;
   useTitle(
     project
-      ? `${project.name} - ${STORYTELLER_APP_NAME}`
+      ? `${pageTitle ? `${pageTitle} - ` : ""}${project.name} - ${STORYTELLER_APP_NAME}`
       : STORYTELLER_APP_NAME,
     {
-      description: shouldUseStorySeo ? project?.description : undefined,
-      path: routeProjectPath
-        ? steamloomPath(`work/${routeProjectPath}${canonicalPathSuffix}`)
-        : shareToken
-          ? steamloomPath(`work/share/${shareToken}${canonicalPathSuffix}`)
-          : "",
+      description: shouldUseStorySeo
+        ? ((currentItem?.summary ||
+            currentLore?.summary ||
+            project?.description) ??
+          undefined)
+        : undefined,
+      path: canonicalPath,
       robots:
         isShareRoute || isPrivateOwnerRoute
           ? "noindex, nofollow"
@@ -1723,6 +810,7 @@ export default function StorytellerReader() {
   }, [
     readerBodyNode,
     currentItem?.id,
+    currentLore?.id,
     displayVersionId,
     pageIndex,
     currentPageLoaded,
@@ -1801,14 +889,24 @@ export default function StorytellerReader() {
   }
 
   // 有帶 itemId 卻找不到內容時不能退回作品首頁，否則失效連結會被偽裝成正常頁面。
-  if (currentItemId && !currentItem) {
+  if ((currentItemId && !currentItem) || (routeLoreId && !currentLore)) {
     return <ErrorPage code={404} />;
   }
 
-  const basePath = isShareRoute
-    ? steamloomPath(`work/share/${shareToken}`)
-    : project.path;
-  const projectLandingPath = isShareRoute ? basePath : `${basePath}/stories`;
+  const basePath =
+    isShareRoute && shareToken ? readerShareBasePath(shareToken) : project.path;
+  const projectLandingPath = basePath;
+  const loresPath = readerLoresPath(basePath);
+  // 設定頁用：所屬設定集與上一則／下一則（只在設定之間切換，不會跳進故事）
+  const currentLoreCollection = currentLore
+    ? project.loreGroups.find(
+        (group) => group.collection?.id === currentLore.collectionId,
+      )?.collection
+    : undefined;
+  const previousLore =
+    currentLoreIndex > 0 ? loreOrder[currentLoreIndex - 1] : undefined;
+  const nextLore =
+    currentLoreIndex >= 0 ? loreOrder[currentLoreIndex + 1] : undefined;
   function goToImagePage(index: number) {
     setPageIndex(Math.min(Math.max(index, 0), totalEpisodePages - 1));
   }
@@ -1824,7 +922,7 @@ export default function StorytellerReader() {
         return;
       }
       navigate(
-        `${basePath}/${bookmark.story_public_id}#${encodeURIComponent(bookmark.line_id)}`,
+        `${readerStoryPath(basePath, bookmark.story_public_id)}#${encodeURIComponent(bookmark.line_id)}`,
       );
       return;
     }
@@ -1838,7 +936,7 @@ export default function StorytellerReader() {
       block: "center",
     });
     if (bookmark.story_public_id !== currentStory?.id) {
-      navigate(`${basePath}/${bookmark.story_public_id}`);
+      navigate(readerStoryPath(basePath, bookmark.story_public_id));
     }
   };
   // 標題有自己的錨點 id（見 storyHeadingAnchorId），跟書籤不同，不用透過 pendingScroll
@@ -2377,26 +1475,7 @@ export default function StorytellerReader() {
             </Box>
           )}
           <Divider />
-          <Box
-            sx={{
-              typography: "body1",
-              fontFamily: TYPOGRAPHY_FONT_FAMILIES[preferences.fontFamily],
-              fontSize: `${preferences.fontSize}px`,
-              lineHeight: preferences.lineHeight,
-              maxWidth: preferences.measure,
-              width: "100%",
-              alignSelf: "center",
-              boxSizing: "border-box",
-              px: { xs: 1.5, sm: 0 },
-              "& h1": { typography: "h5", fontWeight: 800 },
-              "& h2": { typography: "h6", fontWeight: 800, mt: 3 },
-              "& p, & li, & blockquote, & td, & th": {
-                fontSize: "inherit",
-                lineHeight: "inherit",
-              },
-              "& p": { my: 0.5 },
-            }}
-          >
+          <ReaderTextFrame preferences={preferences}>
             <StoryContentLines
               content={displayContent ?? currentStory.content}
               bookmarkedLines={bookmarkedLines}
@@ -2414,7 +1493,7 @@ export default function StorytellerReader() {
               list={footnoteNumbering.list}
               idPrefix={footnoteIdPrefix}
             />
-          </Box>
+          </ReaderTextFrame>
         </Stack>
       ) : (
         <Typography color="text.secondary">目前還沒有任何作品。</Typography>
@@ -2452,13 +1531,42 @@ export default function StorytellerReader() {
         contentType: item.contentType,
         parentId: item.parentId,
         updatedAt: item.updatedAt,
-        href: itemHref(basePath, item),
+        href: readerStoryPath(basePath, item.id),
         progress: readingRecords.storyProgress(item.id),
       }))}
       volumes={volumes}
+      tab={landingTab}
+      storiesHref={basePath}
+      loresHref={loresPath}
+      loreGroups={project.loreGroups.map((group) => ({
+        id: group.collection?.id ?? null,
+        name: group.collection?.name ?? "未歸類",
+        lores: group.lores.map((lore) => ({
+          id: lore.id,
+          title: lore.title,
+          summary: lore.summary,
+          updatedAt: lore.updatedAt,
+          href: readerLorePath(basePath, lore.id),
+          progress:
+            readingRecords.progressMap[readingTargetKey("lore", lore.id)],
+        })),
+      }))}
     />
   );
-  const pageBody = currentItem ? readerBody : workLanding;
+  const pageBody = currentItem ? (
+    readerBody
+  ) : currentLore ? (
+    <ReaderLorePage
+      lore={currentLore}
+      collectionName={currentLoreCollection?.name}
+      bodyRef={setReaderBodyNode}
+      titleRef={contentTitleRef}
+      preferences={preferences}
+    />
+  ) : (
+    workLanding
+  );
+  const isContentPage = Boolean(currentItem || currentLore);
 
   return (
     <StorytellerShell
@@ -2471,10 +1579,29 @@ export default function StorytellerReader() {
               { label: project.name, to: projectLandingPath },
               { label: currentItem.title },
             ]
-          : [{ label: project.name }]),
+          : currentLore
+            ? [
+                { label: project.name, to: projectLandingPath },
+                { label: "設定", to: loresPath },
+                ...(currentLoreCollection
+                  ? [
+                      {
+                        label: currentLoreCollection.name,
+                        to: `${loresPath}#${readerLoreGroupAnchorId(currentLoreCollection.id)}`,
+                      },
+                    ]
+                  : []),
+                { label: currentLore.title },
+              ]
+            : landingTab === "lores"
+              ? [
+                  { label: project.name, to: projectLandingPath },
+                  { label: "設定" },
+                ]
+              : [{ label: project.name }]),
       ]}
     >
-      {currentItem && (
+      {isContentPage && (
         <GlobalStyles
           styles={{
             "body footer": {
@@ -2484,13 +1611,16 @@ export default function StorytellerReader() {
           }}
         />
       )}
-      {currentItem && (
+      {isContentPage && (
         <StorytellerReaderToolbar
           projectName={project.name}
-          currentTitle={currentItem?.title}
+          currentTitle={currentItem?.title ?? currentLore?.title}
           progress={readingProgress}
           navigationOpen={indexOpen}
           onOpenNavigation={() => setIndexOpen(true)}
+          // 設定頁的「目錄」直接回設定列表，上一則／下一則只在設定之間切換
+          navigationHref={currentLore ? loresPath : undefined}
+          labels={currentLore ? LORE_TOOLBAR_LABELS : undefined}
           projectDetails={projectDetails}
           bookmarkEditing={bookmarkEditing}
           bookmarkEditingAvailable={Boolean(
@@ -2513,17 +1643,26 @@ export default function StorytellerReader() {
               : undefined
           }
           previousChapter={
-            previousItem
-              ? {
-                  title: previousItem.title,
-                  href: itemHref(basePath, previousItem),
+            currentLore
+              ? previousLore && {
+                  title: previousLore.title,
+                  href: readerLorePath(basePath, previousLore.id),
                 }
-              : undefined
+              : previousItem && {
+                  title: previousItem.title,
+                  href: readerStoryPath(basePath, previousItem.id),
+                }
           }
           nextChapter={
-            nextItem
-              ? { title: nextItem.title, href: itemHref(basePath, nextItem) }
-              : undefined
+            currentLore
+              ? nextLore && {
+                  title: nextLore.title,
+                  href: readerLorePath(basePath, nextLore.id),
+                }
+              : nextItem && {
+                  title: nextItem.title,
+                  href: readerStoryPath(basePath, nextItem.id),
+                }
           }
           preferences={preferences}
           onChangePreferences={updatePreferences}

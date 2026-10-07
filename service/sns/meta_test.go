@@ -450,3 +450,38 @@ func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
 		t.Fatalf("redirect script must not encode quotes into the URL")
 	}
 }
+
+func TestBuildMetaStorytellerItemRoutes(t *testing.T) {
+	originalPublic, originalShared := fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta
+	project := storytellerProjectMeta{
+		Title:       "河燈之城",
+		Description: "作品簡介",
+		Items: map[string]storytellerItemMeta{
+			"story:s1": {Title: "第一話", Summary: "第一話摘要"},
+			"lore:l1":  {Title: "白瀨澪", Summary: "第六席"},
+		},
+	}
+	fetchStorytellerPublicProjectMeta = func(string) (storytellerProjectMeta, bool) { return project, true }
+	fetchStorytellerSharedProjectMeta = func(string) (storytellerProjectMeta, bool) { return project, true }
+	defer func() {
+		fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta = originalPublic, originalShared
+	}()
+
+	cases := map[string][2]string{
+		"storyteller/work/abc-x/story/s1":                {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"},
+		"storyteller/work/abc-x/story/s1/versions/9":     {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"},
+		"storyteller/work/abc-x/lore/l1":                 {"白瀨澪 | 河燈之城 | ha2.tw / faryne.dev", "第六席"},
+		"storyteller/work/share/token/lore/l1":           {"白瀨澪 | 河燈之城 | ha2.tw / faryne.dev", "第六席"},
+		"storyteller/work/abc-x/s1":                      {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"}, // 舊網址：沒有種類前綴
+		"storyteller/work/abc-x/image/s1":                {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"}, // 舊網址：image/
+		"storyteller/work/abc-x/lores":                   {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
+		"storyteller/work/abc-x":                         {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
+		"storyteller/work/abc-x/lore/not-published-lore": {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
+	}
+	for path, want := range cases {
+		meta := BuildMeta(modelSNS.RenderRequest{Path: path})
+		if meta.Title != want[0] || meta.Description != want[1] {
+			t.Errorf("%s: got (%s, %s), want (%s, %s)", path, meta.Title, meta.Description, want[0], want[1])
+		}
+	}
+}

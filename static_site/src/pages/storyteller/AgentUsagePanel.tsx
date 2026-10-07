@@ -455,7 +455,7 @@ function StoryLoreUsageRows({
 }) {
   const [open, setOpen] = useState(false);
   const title =
-    item.story_title || item.lore_title || "（無法歸屬到故事／設定集）";
+    item.story_title || item.lore_title || "（無法歸屬到故事／設定）";
 
   return (
     <>

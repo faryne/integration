@@ -99,7 +99,7 @@ export default function StorytellerLoreDiffCompare() {
   useTitle(
     apiLore
       ? `${apiLore.title} 版本比對 - ${STORYTELLER_APP_NAME}`
-      : "設定集版本比對",
+      : "設定版本比對",
     {
       path:
         id && loreId && diffId1 && diffId2
@@ -114,8 +114,8 @@ export default function StorytellerLoreDiffCompare() {
   if (loading) {
     return (
       <StorytellerShell
-        title="設定集版本差異比對"
-        description="左右對照設定集標題與 Markdown 內容。"
+        title="設定版本差異比對"
+        description="左右對照設定標題與 Markdown 內容。"
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
@@ -133,8 +133,8 @@ export default function StorytellerLoreDiffCompare() {
   if (!session) {
     return (
       <StorytellerShell
-        title="設定集版本差異比對"
-        description="左右對照設定集標題與 Markdown 內容。"
+        title="設定版本差異比對"
+        description="左右對照設定標題與 Markdown 內容。"
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
@@ -143,7 +143,7 @@ export default function StorytellerLoreDiffCompare() {
         ]}
       >
         <CustomLoginRequiredState
-          description="登入後即可查看設定集編輯歷史比對。"
+          description="登入後即可查看設定編輯歷史比對。"
           onLogin={() => void login()}
           submitting={submitting}
         />
@@ -159,7 +159,7 @@ export default function StorytellerLoreDiffCompare() {
   ) {
     return (
       <StorytellerShell
-        title="設定集版本差異比對"
+        title="設定版本差異比對"
         breadcrumbs={[
           { label: STORYTELLER_APP_NAME, to: steamloomPath() },
           { label: "我的工作台", to: steamloomPath("my") },
@@ -167,7 +167,7 @@ export default function StorytellerLoreDiffCompare() {
           { label: "版本比對" },
         ]}
       >
-        <StorytellerLoading label="正在載入設定集版本比對資料..." />
+        <StorytellerLoading label="正在載入設定版本比對資料..." />
       </StorytellerShell>
     );
   }
@@ -178,8 +178,8 @@ export default function StorytellerLoreDiffCompare() {
 
   return (
     <StorytellerShell
-      title="設定集版本差異比對"
-      description="左右對照設定集標題與 Markdown 內容。"
+      title="設定版本差異比對"
+      description="左右對照設定標題與 Markdown 內容。"
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: "我的工作台", to: steamloomPath("my") },
@@ -210,7 +210,7 @@ export default function StorytellerLoreDiffCompare() {
             startIcon={<ArrowBackIcon />}
             variant="outlined"
           >
-            回設定集
+            回設定
           </Button>
         </Stack>
       }

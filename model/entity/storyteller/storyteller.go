@@ -597,19 +597,23 @@ type StoryBookmarkOutput struct {
 }
 
 type Lore struct {
-	ID                 uint64     `gorm:"column:id;primaryKey" json:"id"`
-	PublicID           string     `gorm:"column:public_id" json:"public_id"`
-	ProjectID          uint64     `gorm:"column:project_id" json:"project_id"`
-	CollectionID       *uint64    `gorm:"column:collection_id" json:"-"`
-	CollectionPublicID string     `gorm:"-" json:"collection_id,omitempty"`
-	Title              string     `gorm:"column:title" json:"title"`
-	LatestContent      string     `gorm:"column:latest_content" json:"latest_content"`
-	LatestVersionID    *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
-	WordCount          uint       `gorm:"column:word_count" json:"word_count"`
-	IsDeleted          bool       `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt          *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt          time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt          time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID                 uint64  `gorm:"column:id;primaryKey" json:"id"`
+	PublicID           string  `gorm:"column:public_id" json:"public_id"`
+	ProjectID          uint64  `gorm:"column:project_id" json:"project_id"`
+	CollectionID       *uint64 `gorm:"column:collection_id" json:"-"`
+	CollectionPublicID string  `gorm:"-" json:"collection_id,omitempty"`
+	Title              string  `gorm:"column:title" json:"title"`
+	// Status：draft＝只有作者看得到，completed＝對讀者公開；沿用故事的狀態值，預設不公開
+	Status StoryStatus `gorm:"column:status" json:"status"`
+	// Summary：給讀者看的設定摘要，顯示在設定列表與設定頁頂端
+	Summary         string     `gorm:"column:summary" json:"summary"`
+	LatestContent   string     `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount       uint       `gorm:"column:word_count" json:"word_count"`
+	IsDeleted       bool       `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Lore) TableName() string { return "storyteller_lores" }
@@ -1098,11 +1102,15 @@ type AssetCollectionOutput struct {
 }
 
 type LoreRequest struct {
-	Title         string  `json:"title"`
-	Content       string  `json:"content"`
-	SaveTrigger   string  `json:"save_trigger,omitempty"`
-	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
-	CollectionID  *string `json:"collection_id,omitempty"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	// Status／Summary 用指標區分「省略＝不變更」：編輯頁自動存檔與舊版 MCP client 都不會帶，
+	// 不能因為沒帶就把已公開的設定改回草稿或清空摘要。建立時省略則是草稿、無摘要。
+	Status        *StoryStatus `json:"status,omitempty"`
+	Summary       *string      `json:"summary,omitempty"`
+	SaveTrigger   string       `json:"save_trigger,omitempty"`
+	BaseVersionID *uint64      `json:"base_version_id,omitempty"`
+	CollectionID  *string      `json:"collection_id,omitempty"`
 }
 
 type LoreMoveRequest struct {
@@ -1409,6 +1417,10 @@ type ProjectOutput struct {
 	IsFavorite     bool     `gorm:"-" json:"is_favorite"`
 	TagList        []string `gorm:"-" json:"tags"`
 	Stories        []Story  `gorm:"-" json:"stories,omitempty"`
+	// Lores／LoreCollections 只有公開閱讀頁（PublicProject／SharedProject）會填：
+	// 已公開的設定與它們所屬的設定集，讓作品首頁「設定」Tab 與設定頁不用再另外呼叫 API。
+	Lores           []Lore           `gorm:"-" json:"lores,omitempty"`
+	LoreCollections []LoreCollection `gorm:"-" json:"lore_collections,omitempty"`
 	// Volumes 讓閱讀頁／工作台故事列表可以把 Stories 依冊分組顯示，不需要另外呼叫
 	// 只給登入使用者用的 /projects/:project/volumes。
 	Volumes []Story               `gorm:"-" json:"volumes,omitempty"`

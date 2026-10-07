@@ -112,6 +112,8 @@ type storytellerLoreSummary struct {
 	PublicID     string    `json:"public_id"`
 	Title        string    `json:"title"`
 	CollectionID string    `json:"collection_id,omitempty"`
+	Status       string    `json:"status"`
+	Summary      string    `json:"summary,omitempty"`
 	WordCount    uint      `json:"word_count"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -214,6 +216,8 @@ func toStorytellerLoreSummary(lore storytellerModel.Lore) storytellerLoreSummary
 		PublicID:     lore.PublicID,
 		Title:        lore.Title,
 		CollectionID: lore.CollectionPublicID,
+		Status:       string(lore.Status),
+		Summary:      lore.Summary,
 		WordCount:    lore.WordCount,
 		UpdatedAt:    lore.UpdatedAt,
 	}

@@ -85,6 +85,7 @@ import {
   WorkspaceEditorStatusInfo,
 } from "@/pages/storyteller/ProjectWorkspaceEditorControls.tsx";
 import {
+  publicationStatusOptions,
   selectedOptionLabel,
   selectedOptionsLabel,
 } from "@/pages/storyteller/workspaceEditorOptions.ts";
@@ -1145,18 +1146,6 @@ export default function StorytellerStoryEditor({
     });
   }
 
-  const statusOptions = [
-    {
-      value: "draft",
-      label: "未公開",
-      icon: <VisibilityOffIcon fontSize="small" />,
-    },
-    {
-      value: "completed",
-      label: "公開中",
-      icon: <VisibilityIcon fontSize="small" />,
-    },
-  ];
   const profileOptions = [
     {
       value: String(ACCOUNT_PROFILE_ID),
@@ -1317,7 +1306,10 @@ export default function StorytellerStoryEditor({
                   ) : (
                     <VisibilityOffIcon />
                   ),
-                text: selectedOptionLabel(statusOptions, storyStatus),
+                text: selectedOptionLabel(
+                  publicationStatusOptions,
+                  storyStatus,
+                ),
               },
               {
                 icon: <FolderIcon />,
@@ -1343,7 +1335,7 @@ export default function StorytellerStoryEditor({
                 }
                 label="狀態"
                 value={storyStatus}
-                options={statusOptions}
+                options={publicationStatusOptions}
                 onChange={(value) =>
                   setStoryStatus(value as "draft" | "completed")
                 }
