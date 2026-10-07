@@ -28,8 +28,10 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 	"on the opening fence, e.g. ```go id=\"...\"; the id is this block's bookmark anchor and must be preserved " +
 	"when editing an existing code block. Treat code block content as literal text; do not add inline styling or " +
 	"bracket markers inside it. " +
-	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. Anything " +
-	"else is a plain paragraph."
+	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. " +
+	"Links use [text](https://...); a lore link [text](steamloom-lore://<lore_public_id>) points readers to a lore " +
+	"entry of the same project (readers see a summary card when they click it; links to unpublished lores show as " +
+	"plain text). Anything else is a plain paragraph."
 
 // storytellerContentMarkerHint 說明內容裡可能出現的 bracket marker：footnote（讀者
 // 看得到）、comment（只有作者看得到的私人註解），以及 block-level table row。行內
@@ -109,13 +111,16 @@ type storytellerStorySummary struct {
 }
 
 type storytellerLoreSummary struct {
-	PublicID     string    `json:"public_id"`
-	Title        string    `json:"title"`
-	CollectionID string    `json:"collection_id,omitempty"`
-	Status       string    `json:"status"`
-	Summary      string    `json:"summary,omitempty"`
-	WordCount    uint      `json:"word_count"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	PublicID     string `json:"public_id"`
+	Title        string `json:"title"`
+	CollectionID string `json:"collection_id,omitempty"`
+	Status       string `json:"status"`
+	Summary      string `json:"summary,omitempty"`
+	IsSpoiler    bool   `json:"is_spoiler"`
+	// DependsOn 只有讀單則設定（get／寫入回應）會帶，列表不查
+	DependsOn []storytellerModel.LoreDependencyRef `json:"depends_on,omitempty"`
+	WordCount uint                                 `json:"word_count"`
+	UpdatedAt time.Time                            `json:"updated_at"`
 }
 
 type storytellerProjectDetail struct {
@@ -218,6 +223,8 @@ func toStorytellerLoreSummary(lore storytellerModel.Lore) storytellerLoreSummary
 		CollectionID: lore.CollectionPublicID,
 		Status:       string(lore.Status),
 		Summary:      lore.Summary,
+		IsSpoiler:    lore.IsSpoiler,
+		DependsOn:    lore.DependsOn,
 		WordCount:    lore.WordCount,
 		UpdatedAt:    lore.UpdatedAt,
 	}

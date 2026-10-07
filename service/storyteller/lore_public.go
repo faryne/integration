@@ -26,6 +26,9 @@ func applyLorePublishing(lore *storytellerModel.Lore, input storytellerModel.Lor
 	if lore.Status == "" {
 		lore.Status = storytellerModel.StoryStatusDraft
 	}
+	if input.IsSpoiler != nil {
+		lore.IsSpoiler = *input.IsSpoiler
+	}
 	if input.Summary != nil {
 		summary := strings.TrimSpace(*input.Summary)
 		if utf8.RuneCountInString(summary) > loreSummaryMaxRunes {
@@ -65,6 +68,16 @@ func (s *Service) attachReaderLores(projectID uint64, output *storytellerModel.P
 			output.LoreCollections = append(output.LoreCollections, collection)
 		}
 	}
+	// 依賴只保留讀者讀得到的對象（output.Stories 已依同一套規則篩過），讀不到的視為已滿足
+	ids := make([]uint64, 0, len(lores))
+	for _, lore := range lores {
+		ids = append(ids, lore.ID)
+	}
+	dependencies, err := s.repo.LoreDependencies(ids)
+	if err != nil {
+		return err
+	}
+	fillLoreDependencies(lores, dependencies, newLoreTargetDirectory(output.Stories, lores))
 	output.Lores = lores
 	return nil
 }

@@ -23,6 +23,9 @@ type storytellerUpsertLoreArguments struct {
 	BaseVersionID   *uint64 `json:"base_version_id"`
 	Status          *string `json:"status"`
 	Summary         *string `json:"summary"`
+	IsSpoiler       *bool   `json:"is_spoiler"`
+	// DependsOn 省略＝不變更、空陣列＝清空
+	DependsOn *[]storytellerModel.LoreDependencyRef `json:"depends_on"`
 }
 
 type storytellerPatchLoreArguments struct {
@@ -34,10 +37,13 @@ type storytellerPatchLoreArguments struct {
 	BaseVersionID   *uint64 `json:"base_version_id"`
 	Status          *string `json:"status"`
 	Summary         *string `json:"summary"`
+	IsSpoiler       *bool   `json:"is_spoiler"`
+	// DependsOn 省略＝不變更、空陣列＝清空
+	DependsOn *[]storytellerModel.LoreDependencyRef `json:"depends_on"`
 }
 
 func (a storytellerPatchLoreArguments) hasContentField() bool {
-	return a.Title != nil || a.Content != nil || a.Status != nil || a.Summary != nil
+	return a.Title != nil || a.Content != nil || a.Status != nil || a.Summary != nil || a.IsSpoiler != nil || a.DependsOn != nil
 }
 
 type storytellerSearchReplaceLoreArguments struct {
@@ -308,6 +314,15 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
 				"status":          stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
 				"summary":         stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
+				"is_spoiler":      booleanSchema("Optional. Mark this lore as containing spoilers. Readers who have not finished every depends_on target must confirm before reading it; with no depends_on, readers always confirm. Omit to keep the current value."),
+				"depends_on": map[string]interface{}{
+					"type":        "array",
+					"description": "Optional. Stories (text or image episodes) or other lores of the same project that readers should finish before this spoiler lore. Replaces the whole list; pass [] to clear; omit to keep. Only meaningful when is_spoiler is true.",
+					"items": objectSchema(map[string]interface{}{
+						"target_type":      enumStringSchema("story or lore.", "story", "lore"),
+						"target_public_id": stringSchema("public_id of the story or lore."),
+					}, []string{"target_type", "target_public_id"}),
+				},
 			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -325,6 +340,8 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					BaseVersionID: args.BaseVersionID,
 					Status:        loreStatusArgument(args.Status),
 					Summary:       args.Summary,
+					IsSpoiler:     args.IsSpoiler,
+					DependsOn:     args.DependsOn,
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()
@@ -446,7 +463,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 			Description: "Patch selected fields on an existing lore/worldbuilding entry. Omit a field to leave it unchanged. " +
 				"This is deliberately different from storyteller_upsert_lore: upsert has full-overwrite semantics, " +
 				"so omitting title/content there overwrites them with empty values. Use this tool when you only want to change specific fields. " +
-				"At least one of title, content, status or summary must be provided. collection_id is optional and only changes collection membership when present; empty string or __uncategorized__ clears it.",
+				"At least one of title, content, status, summary, is_spoiler or depends_on must be provided. collection_id is optional and only changes collection membership when present; empty string or __uncategorized__ clears it.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Existing lore public_id to patch."),
@@ -456,6 +473,15 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; version_conflict flags if the lore has moved on since, but the write still happens."),
 				"status":            stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
 				"summary":           stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
+				"is_spoiler":        booleanSchema("Optional. Mark this lore as containing spoilers. Readers who have not finished every depends_on target must confirm before reading it; with no depends_on, readers always confirm. Omit to keep the current value."),
+				"depends_on": map[string]interface{}{
+					"type":        "array",
+					"description": "Optional. Stories (text or image episodes) or other lores of the same project that readers should finish before this spoiler lore. Replaces the whole list; pass [] to clear; omit to keep. Only meaningful when is_spoiler is true.",
+					"items": objectSchema(map[string]interface{}{
+						"target_type":      enumStringSchema("story or lore.", "story", "lore"),
+						"target_public_id": stringSchema("public_id of the story or lore."),
+					}, []string{"target_type", "target_public_id"}),
+				},
 			}, []string{"project_public_id", "lore_public_id"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -551,6 +577,8 @@ func mergeLorePatch(lore *storytellerModel.Lore, args storytellerPatchLoreArgume
 		BaseVersionID: args.BaseVersionID,
 		Status:        loreStatusArgument(args.Status),
 		Summary:       args.Summary,
+		IsSpoiler:     args.IsSpoiler,
+		DependsOn:     args.DependsOn,
 	}
 	if args.Title != nil {
 		input.Title = *args.Title

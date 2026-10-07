@@ -57,7 +57,7 @@ func validateStorytellerContent(ctx context.Context, arguments map[string]interf
 	}
 
 	report := checkStoryContentFormat(args.Content)
-	if err := service.validateMarkdownAssetReferences(project.ID, args.Content); err != nil {
+	if err := service.validateContentReferences(project.ID, args.Content); err != nil {
 		report.Warnings = append(report.Warnings, storyFormatWarning{Code: "invalid_asset_reference", Severity: storyFormatSeverityError,
 			Message: "圖片引用有問題，存檔會失敗：" + err.Error()})
 		report.OK = false
