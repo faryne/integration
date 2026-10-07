@@ -22,6 +22,8 @@ function createStubContext(): WysiwygCommandContext {
     canInsertAsset: true,
     canAskAI: true,
     openLinkDialog: () => {},
+    canLinkLore: true,
+    openLoreLinkDialog: () => {},
     openFootnoteDialog: () => {},
     openCommentDialog: () => {},
     openAssetPicker: () => {},

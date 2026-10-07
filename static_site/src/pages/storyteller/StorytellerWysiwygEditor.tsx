@@ -537,6 +537,7 @@ export const StorytellerWysiwygEditor = forwardRef<
     key: number;
     href?: string;
     target?: string;
+    mode?: "url" | "lore";
   }>({ key: 0 });
   const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
   const [footnoteDraft, setFootnoteDraft] = useState("");
@@ -1025,7 +1026,7 @@ export const StorytellerWysiwygEditor = forwardRef<
 
   // 開連結 Dialog：如果游標目前就在一個既有連結裡，把 href/target 帶出來預填，
   // 這樣「編輯連結」跟「新增連結」共用同一個 Dialog，使用者不用先移除再重加。
-  const handleOpenLinkDialog = () => {
+  const handleOpenLinkDialog = (mode?: "url" | "lore") => {
     const existingHref = editor.getAttributes("link").href as
       string | undefined;
     const existingTarget = editor.getAttributes("link").target as
@@ -1034,6 +1035,7 @@ export const StorytellerWysiwygEditor = forwardRef<
       key: prev.key + 1,
       href: existingHref,
       target: existingTarget,
+      mode,
     }));
     setLinkDialogOpen(true);
   };
@@ -1123,7 +1125,9 @@ export const StorytellerWysiwygEditor = forwardRef<
     canExportMarkdown: exportBaseName !== undefined,
     canInsertAsset: assetEnabled && onRequestInsertAsset !== undefined,
     canAskAI: hasSavedTarget && onSelectionAgentTrigger !== undefined,
-    openLinkDialog: handleOpenLinkDialog,
+    openLinkDialog: () => handleOpenLinkDialog(),
+    canLinkLore: Boolean(projectPublicId),
+    openLoreLinkDialog: () => handleOpenLinkDialog("lore"),
     openFootnoteDialog: handleOpenFootnoteDialog,
     openCommentDialog: handleOpenCommentDialog,
     openAssetPicker: () => onRequestInsertAsset?.(),
@@ -1361,6 +1365,7 @@ export const StorytellerWysiwygEditor = forwardRef<
         open={linkDialogOpen}
         initialHref={linkDialogInitial.href}
         initialTarget={linkDialogInitial.target}
+        initialMode={linkDialogInitial.mode}
         projectPublicId={projectPublicId}
         onClose={() => setLinkDialogOpen(false)}
         onConfirm={handleConfirmLink}

@@ -32,6 +32,7 @@ export function StorytellerWysiwygLinkDialog({
   open,
   initialHref,
   initialTarget,
+  initialMode,
   projectPublicId,
   onClose,
   onConfirm,
@@ -40,6 +41,8 @@ export function StorytellerWysiwygLinkDialog({
   open: boolean;
   initialHref?: string;
   initialTarget?: string;
+  // 從「連到設定」入口打開時直接進設定模式；沒指定就依既有連結判斷
+  initialMode?: LinkMode;
   // 沒有專案（例如 WYSIWYG 示範頁）時不提供「設定」模式
   projectPublicId?: string;
   onClose: () => void;
@@ -47,7 +50,9 @@ export function StorytellerWysiwygLinkDialog({
   onRemove: () => void;
 }) {
   const initialLoreId = initialHref ? loreIdFromHref(initialHref) : undefined;
-  const [mode, setMode] = useState<LinkMode>(initialLoreId ? "lore" : "url");
+  const [mode, setMode] = useState<LinkMode>(
+    initialMode ?? (initialLoreId ? "lore" : "url"),
+  );
   const [hrefDraft, setHrefDraft] = useState(
     initialLoreId ? "" : (initialHref ?? ""),
   );
@@ -73,7 +78,9 @@ export function StorytellerWysiwygLinkDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{hadExistingLink ? "編輯連結" : "加連結"}</DialogTitle>
+      <DialogTitle>
+        {hadExistingLink ? "編輯連結" : mode === "lore" ? "連到設定" : "加連結"}
+      </DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 0.5 }}>
           {projectPublicId && (
