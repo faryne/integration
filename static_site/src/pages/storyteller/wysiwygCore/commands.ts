@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/core";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CodeIcon from "@mui/icons-material/Code";
 import DeleteIcon from "@mui/icons-material/Delete";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
@@ -45,6 +46,7 @@ import {
   DEFAULT_BLOCK_KIND,
   DEFAULT_HEADING_LEVEL,
   HEADING_LEVELS,
+  loreIdFromHref,
   normalizeAssetImageLayout,
   TEXT_COLOR_VALUES,
   type AssetImageLayoutValue,
@@ -111,6 +113,10 @@ export interface WysiwygCommandContext {
   /** 已存檔且頁面層已接上 AI 工作區時才開放。 */
   canAskAI: boolean;
   openLinkDialog: () => void;
+  /** 有專案（能列出設定）時才開放「連到設定」，示範頁之類沒有專案的地方不顯示 */
+  canLinkLore: boolean;
+  /** 直接以「設定」模式打開連結對話框 */
+  openLoreLinkDialog: () => void;
   openFootnoteDialog: () => void;
   openCommentDialog: () => void;
   openAssetPicker: () => void;
@@ -469,6 +475,12 @@ const COLOR_COMMANDS: WysiwygCommand[] = [
   },
 ];
 
+// 游標所在的連結是不是設定連結（href="steamloom-lore://..."）
+function isLoreLinkActive(editor: Editor) {
+  const href = editor.getAttributes("link").href as string | undefined;
+  return Boolean(editor.isActive("link") && href && loreIdFromHref(href));
+}
+
 const ANNOTATION_COMMANDS: WysiwygCommand[] = [
   {
     id: "link",
@@ -478,8 +490,21 @@ const ANNOTATION_COMMANDS: WysiwygCommand[] = [
     scope: "inline",
     icon: LinkIcon,
     aliases: ["連結", "link"],
-    isActive: (editor) => editor.isActive("link"),
+    // 設定連結由下面的 lore-link 負責，這裡只認一般網址，游標落在設定連結上時才不會兩個一起亮
+    isActive: (editor) => editor.isActive("link") && !isLoreLinkActive(editor),
     run: (_editor, context) => context.openLinkDialog(),
+  },
+  {
+    id: "lore-link",
+    label: "連到設定",
+    activeLabel: "編輯設定連結",
+    group: "annotation",
+    scope: "inline",
+    icon: AutoStoriesIcon,
+    aliases: ["設定連結", "設定", "lore"],
+    isActive: isLoreLinkActive,
+    isVisible: (context) => context.canLinkLore,
+    run: (_editor, context) => context.openLoreLinkDialog(),
   },
   {
     id: "footnote",

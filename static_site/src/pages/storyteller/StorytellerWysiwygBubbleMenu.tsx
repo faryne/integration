@@ -2,12 +2,14 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { Box, Divider, Paper, Stack, Tooltip } from "@mui/material";
 import { isTextSelection, type Editor } from "@tiptap/core";
+import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useRef, useState } from "react";
 
 import {
   getWysiwygCommand,
   wysiwygCommandsByGroup,
+  type WysiwygCommand,
   type WysiwygCommandContext,
 } from "./wysiwygCore/commands";
 
@@ -76,12 +78,29 @@ export function StorytellerWysiwygBubbleMenu({
     (command) =>
       command.id.startsWith("bg-color-") && command.id !== "bg-color-clear",
   );
-  const linkCommand = getWysiwygCommand("link")!;
-  const footnoteCommand = getWysiwygCommand("footnote")!;
-  const commentCommand = getWysiwygCommand("comment")!;
-  const LinkIcon = linkCommand.icon!;
-  const FootnoteIcon = footnoteCommand.icon!;
-  const CommentIcon = commentCommand.icon!;
+  // 連結、連到設定、腳注、註解：依序顯示，各自依 isVisible 決定這個頁面有沒有開放
+  const annotationCommands = ["link", "lore-link", "footnote", "comment"]
+    .map((id) => getWysiwygCommand(id)!)
+    .filter((command) => command.isVisible?.(commandContext) ?? true);
+  // 所有按鈕的按下狀態直接訂閱編輯器：單純移動選取時，父層傳進來的 props 不一定會變
+  // （React Compiler 會把沒變的 props 記憶起來），靠父層重新渲染的話按鈕會停在舊選取的狀態
+  const activeCommandIds = useEditorState({
+    editor,
+    selector: ({ editor: current }) =>
+      current
+        ? [
+            ...markCommands,
+            ...textColorCommands,
+            ...bgColorCommands,
+            ...annotationCommands,
+          ]
+            .filter((command) => command.isActive?.(current))
+            .map((command) => command.id)
+            .join(",")
+        : "",
+  });
+  const isOn = (command: { id: string }) =>
+    activeCommandIds.split(",").includes(command.id);
 
   const run = (command: {
     run: (editor: Editor, context: WysiwygCommandContext) => void;
@@ -141,7 +160,7 @@ export function StorytellerWysiwygBubbleMenu({
                   component="button"
                   type="button"
                   aria-label={command.label}
-                  aria-pressed={command.isActive?.(editor) ?? false}
+                  aria-pressed={isOn(command)}
                   onClick={() => run(command)}
                   sx={{
                     display: "flex",
@@ -152,9 +171,7 @@ export function StorytellerWysiwygBubbleMenu({
                     border: "none",
                     borderRadius: 1,
                     cursor: "pointer",
-                    bgcolor: command.isActive?.(editor)
-                      ? "action.selected"
-                      : "transparent",
+                    bgcolor: isOn(command) ? "action.selected" : "transparent",
                     color: "text.primary",
                     "&:hover": { bgcolor: "action.hover" },
                   }}
@@ -201,8 +218,8 @@ export function StorytellerWysiwygBubbleMenu({
                     border: "2px solid",
                     borderColor: "divider",
                     bgcolor:
-                      textColorCommands.find((c) => c.isActive?.(editor))
-                        ?.previewColor ?? "text.primary",
+                      textColorCommands.find(isOn)?.previewColor ??
+                      "text.primary",
                   }}
                 />
               </Box>
@@ -237,7 +254,7 @@ export function StorytellerWysiwygBubbleMenu({
                         component="button"
                         type="button"
                         aria-label={command.label}
-                        aria-pressed={command.isActive?.(editor) ?? false}
+                        aria-pressed={isOn(command)}
                         onClick={() => {
                           run(command);
                           closeTextColorMenu();
@@ -247,7 +264,7 @@ export function StorytellerWysiwygBubbleMenu({
                           height: 20,
                           borderRadius: "50%",
                           border: "2px solid",
-                          borderColor: command.isActive?.(editor)
+                          borderColor: isOn(command)
                             ? "text.primary"
                             : "divider",
                           bgcolor: command.previewColor,
@@ -317,8 +334,7 @@ export function StorytellerWysiwygBubbleMenu({
                     border: "2px solid",
                     borderColor: "divider",
                     bgcolor:
-                      bgColorCommands.find((c) => c.isActive?.(editor))
-                        ?.previewColor ?? "transparent",
+                      bgColorCommands.find(isOn)?.previewColor ?? "transparent",
                   }}
                 />
               </Box>
@@ -353,7 +369,7 @@ export function StorytellerWysiwygBubbleMenu({
                         component="button"
                         type="button"
                         aria-label={command.label}
-                        aria-pressed={command.isActive?.(editor) ?? false}
+                        aria-pressed={isOn(command)}
                         onClick={() => {
                           run(command);
                           closeBgColorMenu();
@@ -363,7 +379,7 @@ export function StorytellerWysiwygBubbleMenu({
                           height: 20,
                           borderRadius: "50%",
                           border: "2px solid",
-                          borderColor: command.isActive?.(editor)
+                          borderColor: isOn(command)
                             ? "text.primary"
                             : "divider",
                           bgcolor: command.previewColor,
@@ -403,96 +419,14 @@ export function StorytellerWysiwygBubbleMenu({
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.25, my: 0.5 }} />
 
-          <Tooltip
-            title={linkCommand.isActive?.(editor) ? "編輯連結" : "加連結"}
-          >
-            <Box
-              component="button"
-              type="button"
-              aria-label="連結"
-              aria-pressed={linkCommand.isActive?.(editor) ?? false}
-              onClick={() => run(linkCommand)}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 30,
-                height: 30,
-                border: "none",
-                borderRadius: 1,
-                cursor: "pointer",
-                bgcolor: linkCommand.isActive?.(editor)
-                  ? "action.selected"
-                  : "transparent",
-                color: "text.primary",
-                "&:hover": { bgcolor: "action.hover" },
-              }}
-            >
-              <LinkIcon fontSize="small" />
-            </Box>
-          </Tooltip>
-
-          {(footnoteCommand.isVisible?.(commandContext) ?? true) && (
-            <Tooltip
-              title={footnoteCommand.isActive?.(editor) ? "編輯腳注" : "加腳注"}
-            >
-              <Box
-                component="button"
-                type="button"
-                aria-label="腳注"
-                aria-pressed={footnoteCommand.isActive?.(editor) ?? false}
-                onClick={() => run(footnoteCommand)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 30,
-                  height: 30,
-                  border: "none",
-                  borderRadius: 1,
-                  cursor: "pointer",
-                  bgcolor: footnoteCommand.isActive?.(editor)
-                    ? "action.selected"
-                    : "transparent",
-                  color: "text.primary",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <FootnoteIcon fontSize="small" />
-              </Box>
-            </Tooltip>
-          )}
-
-          {(commentCommand.isVisible?.(commandContext) ?? true) && (
-            <Tooltip
-              title={commentCommand.isActive?.(editor) ? "編輯註解" : "加註解"}
-            >
-              <Box
-                component="button"
-                type="button"
-                aria-label="註解"
-                aria-pressed={commentCommand.isActive?.(editor) ?? false}
-                onClick={() => run(commentCommand)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 30,
-                  height: 30,
-                  border: "none",
-                  borderRadius: 1,
-                  cursor: "pointer",
-                  bgcolor: commentCommand.isActive?.(editor)
-                    ? "action.selected"
-                    : "transparent",
-                  color: "text.primary",
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <CommentIcon fontSize="small" />
-              </Box>
-            </Tooltip>
-          )}
+          {annotationCommands.map((command) => (
+            <AnnotationButton
+              key={command.id}
+              command={command}
+              active={isOn(command)}
+              onClick={() => run(command)}
+            />
+          ))}
 
           {showAskAI && (
             <>
@@ -530,5 +464,48 @@ export function StorytellerWysiwygBubbleMenu({
         </Stack>
       </Paper>
     </BubbleMenu>
+  );
+}
+
+// 浮動工具列上的標註類按鈕（連結／設定連結／腳注／註解）：圖示＋提示文字，
+// 目前游標落在對應 mark 裡時呈現按下狀態，提示文字也換成「編輯…」
+function AnnotationButton({
+  command,
+  active,
+  onClick,
+}: {
+  command: WysiwygCommand;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const Icon = command.icon!;
+  return (
+    <Tooltip
+      title={active ? (command.activeLabel ?? command.label) : command.label}
+    >
+      <Box
+        component="button"
+        type="button"
+        // 沿用第一個別名當無障礙名稱（連結／設定連結／腳注／註解），不帶「加」「編輯」這類動詞
+        aria-label={command.aliases?.[0] ?? command.label}
+        aria-pressed={active}
+        onClick={onClick}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 30,
+          height: 30,
+          border: "none",
+          borderRadius: 1,
+          cursor: "pointer",
+          bgcolor: active ? "action.selected" : "transparent",
+          color: "text.primary",
+          "&:hover": { bgcolor: "action.hover" },
+        }}
+      >
+        <Icon fontSize="small" />
+      </Box>
+    </Tooltip>
   );
 }
