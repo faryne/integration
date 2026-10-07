@@ -1,5 +1,3 @@
-import AddIcon from "@mui/icons-material/Add";
-import CloseIcon from "@mui/icons-material/Close";
 import PersonIcon from "@mui/icons-material/Person";
 import SaveIcon from "@mui/icons-material/Save";
 import {
@@ -10,13 +8,9 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  IconButton,
-  InputLabel,
-  MenuItem,
   Paper,
   Radio,
   RadioGroup,
-  Select,
   Stack,
   Switch,
   TextField,
@@ -28,7 +22,14 @@ import {
   useStorytellerUserProfile,
 } from "@/apis/storyteller.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
+import { StorytellerSnsLinksEditor } from "@/components/storyteller/StorytellerSnsLinksEditor.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import {
+  hasSnsRowError,
+  snsPayloadFromRows,
+  snsRowsFromLinks,
+  type SNSLinkRow,
+} from "@/helpers/storytellerSnsLinks.ts";
 import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import { AuthorProfilesPanel } from "@/pages/storyteller/AuthorProfilesPanel.tsx";
 import { StorytellerLoading } from "@/pages/storyteller/StorytellerShell.tsx";
@@ -50,41 +51,6 @@ const emptyForm: StorytellerUserProfileRequest = {
   auto_save_enabled: true,
   auto_save_interval_minutes: autoSaveIntervalMinutesDefault,
 };
-
-const SNS_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: "x", label: "X（Twitter）" },
-  { value: "facebook", label: "Facebook" },
-  { value: "instagram", label: "Instagram" },
-  { value: "threads", label: "Threads" },
-  { value: "website", label: "個人網站" },
-  { value: "plurk", label: "Plurk" },
-  { value: "bahamut", label: "巴哈姆特" },
-  { value: "discord", label: "Discord" },
-  { value: "youtube", label: "YouTube" },
-];
-
-const CUSTOM_SNS_TYPE = "__custom__";
-const KNOWN_SNS_TYPES = new Set(SNS_TYPE_OPTIONS.map((option) => option.value));
-
-const SNS_DOMAIN_HINTS: Record<string, string[]> = {
-  x: ["x.com", "twitter.com"],
-  facebook: ["facebook.com", "fb.com"],
-  instagram: ["instagram.com"],
-  threads: ["threads.net", "threads.com"],
-  plurk: ["plurk.com"],
-  bahamut: ["gamer.com.tw"],
-  discord: ["discord.com", "discord.gg"],
-  youtube: ["youtube.com", "youtu.be"],
-};
-
-function snsUrlError(type: string, url: string): string | undefined {
-  if (!url.trim()) return undefined;
-  const domains = SNS_DOMAIN_HINTS[type];
-  if (!domains) return undefined;
-  const lower = url.toLowerCase();
-  if (domains.some((domain) => lower.includes(domain))) return undefined;
-  return `網址需包含 ${domains.join(" 或 ")}`;
-}
 
 // eslint-disable-next-line no-control-regex -- intentionally blocking raw control characters
 const INVALID_PEN_NAME_CHARS = /[/\\?#%\x00-\x1F]/;
@@ -125,36 +91,6 @@ function errorMessage(error: unknown, fallback: string) {
     return data.message || fallback;
   }
   return fallback;
-}
-
-interface SNSLinkRow {
-  id: string;
-  type: string;
-  customLabel: string;
-  url: string;
-}
-
-function rowsFromSNSLinks(
-  links: Record<string, string> | undefined,
-): SNSLinkRow[] {
-  return Object.entries(links ?? {}).map(([key, url], index) => ({
-    id: `${index}-${key}`,
-    type: KNOWN_SNS_TYPES.has(key) ? key : CUSTOM_SNS_TYPE,
-    customLabel: KNOWN_SNS_TYPES.has(key) ? "" : key,
-    url,
-  }));
-}
-
-function snsLinksFromRows(rows: SNSLinkRow[]): Record<string, string> {
-  const links: Record<string, string> = {};
-  for (const row of rows) {
-    const key =
-      row.type === CUSTOM_SNS_TYPE ? row.customLabel.trim() : row.type;
-    const url = row.url.trim();
-    if (!key || !url) continue;
-    links[key] = url;
-  }
-  return links;
 }
 
 // 「我的檔案」的內容——掛在 /my 工作台殼底下（見 Home.tsx），登入狀態已經由
@@ -219,29 +155,15 @@ export function StorytellerProfileContent() {
     } else {
       setAvatarOption("custom");
     }
-    setSnsRows(rowsFromSNSLinks(profileQuery.data.sns_links));
+    setSnsRows(
+      snsRowsFromLinks(
+        profileQuery.data.sns_links,
+        profileQuery.data.sns_private_keys,
+      ),
+    );
   }, [profileQuery.data, gravatarUrl]);
 
-  const addSnsRow = () => {
-    setSnsRows((rows) => [
-      ...rows,
-      { id: `new-${Date.now()}`, type: "x", customLabel: "", url: "" },
-    ]);
-  };
-
-  const updateSnsRow = (id: string, changes: Partial<SNSLinkRow>) => {
-    setSnsRows((rows) =>
-      rows.map((row) => (row.id === id ? { ...row, ...changes } : row)),
-    );
-  };
-
-  const removeSnsRow = (id: string) => {
-    setSnsRows((rows) => rows.filter((row) => row.id !== id));
-  };
-
-  const hasSnsError = snsRows.some((row) =>
-    Boolean(snsUrlError(row.type, row.url)),
-  );
+  const hasSnsError = hasSnsRowError(snsRows);
   const hasPenNameError = Boolean(penNameError(form.pen_name));
   const hasAutoSaveIntervalError =
     !Number.isInteger(form.auto_save_interval_minutes) ||
@@ -250,7 +172,7 @@ export function StorytellerProfileContent() {
 
   const save = () => {
     saveProfile.mutate(
-      { ...form, sns_links: snsLinksFromRows(snsRows) },
+      { ...form, ...snsPayloadFromRows(snsRows) },
       {
         onSuccess: () => {
           setSeverity("success");
@@ -374,70 +296,7 @@ export function StorytellerProfileContent() {
               <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1 }}>
                 SNS 連結
               </Typography>
-              <Stack spacing={1.5}>
-                {snsRows.map((row) => (
-                  <Stack
-                    key={row.id}
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    alignItems={{ xs: "stretch", sm: "center" }}
-                  >
-                    <FormControl sx={{ minWidth: { sm: 160 } }}>
-                      <InputLabel>類型</InputLabel>
-                      <Select
-                        label="類型"
-                        value={row.type}
-                        onChange={(event) =>
-                          updateSnsRow(row.id, { type: event.target.value })
-                        }
-                      >
-                        {SNS_TYPE_OPTIONS.map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {option.label}
-                          </MenuItem>
-                        ))}
-                        <MenuItem value={CUSTOM_SNS_TYPE}>自訂類型</MenuItem>
-                      </Select>
-                    </FormControl>
-                    {row.type === CUSTOM_SNS_TYPE && (
-                      <TextField
-                        label="自訂類型名稱"
-                        value={row.customLabel}
-                        onChange={(event) =>
-                          updateSnsRow(row.id, {
-                            customLabel: event.target.value,
-                          })
-                        }
-                        sx={{ minWidth: { sm: 160 } }}
-                      />
-                    )}
-                    <TextField
-                      label="網址"
-                      value={row.url}
-                      onChange={(event) =>
-                        updateSnsRow(row.id, { url: event.target.value })
-                      }
-                      error={Boolean(snsUrlError(row.type, row.url))}
-                      helperText={snsUrlError(row.type, row.url)}
-                      fullWidth
-                    />
-                    <IconButton
-                      aria-label="刪除這個 SNS 連結"
-                      onClick={() => removeSnsRow(row.id)}
-                    >
-                      <CloseIcon />
-                    </IconButton>
-                  </Stack>
-                ))}
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={addSnsRow}
-                  sx={{ alignSelf: "flex-start" }}
-                >
-                  新增一列
-                </Button>
-              </Stack>
+              <StorytellerSnsLinksEditor rows={snsRows} onChange={setSnsRows} />
             </Box>
             <Divider />
             <AuthorProfilesPanel profiles={profileQuery.data?.profiles ?? []} />

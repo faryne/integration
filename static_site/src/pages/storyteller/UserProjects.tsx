@@ -158,9 +158,19 @@ export default function StorytellerUserProjects() {
     activeTab === "favorite-authors" ? username : undefined,
   );
 
+  // 描述用自介（壓成一行、截 150 字，跟後端社群預覽卡同一套規則）；筆名不存在時 noindex，避免 soft 404
+  const bioDescription = data?.author?.bio?.split(/\s+/).join(" ").trim();
   useTitle(`${username} 的作品 - ${STORYTELLER_APP_NAME}`, {
     path: steamloomPath(`user/${username}`),
-    robots: "index, follow",
+    description:
+      bioDescription && bioDescription.length > 150
+        ? `${bioDescription.slice(0, 150)}…`
+        : bioDescription || undefined,
+    image: data?.author?.avatar_url || undefined,
+    robots:
+      isError || (!isLoading && !data?.author)
+        ? "noindex, nofollow"
+        : "index, follow",
   });
 
   if (isLoading) {
@@ -436,7 +446,10 @@ export default function StorytellerUserProjects() {
               ) : (
                 <Grid container spacing={2}>
                   {(favoriteAuthorsQuery.data ?? []).map((favoriteAuthor) => (
-                    <Grid key={favoriteAuthor.pen_name} size={{ xs: 12, sm: 6 }}>
+                    <Grid
+                      key={favoriteAuthor.pen_name}
+                      size={{ xs: 12, sm: 6 }}
+                    >
                       <FavoriteAuthorCard
                         author={favoriteAuthor}
                         isOwner={isOwner}

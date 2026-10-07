@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	modelSNS "faryne.dev/model/entity/sns"
-	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/nccc"
 )
 
@@ -137,144 +136,6 @@ func TestBuildMetaDynamicNCCCRoute(t *testing.T) {
 	}
 	if meta.OpenGraphURL != expectedOpenGraphURL {
 		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
-	}
-}
-
-func TestBuildMetaStorytellerPublicProjectRoute(t *testing.T) {
-	originalFetch := fetchStorytellerPublicProjectMeta
-	fetchStorytellerPublicProjectMeta = func(projectPath string) (storytellerProjectMeta, bool) {
-		if projectPath != "abc123-my-story" {
-			t.Fatalf("unexpected project path: %s", projectPath)
-		}
-		return storytellerProjectMeta{
-			Title:       "河燈之城",
-			Description: "一段關於河港、燈影與記憶的故事。",
-		}, true
-	}
-	defer func() {
-		fetchStorytellerPublicProjectMeta = originalFetch
-	}()
-
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/work/abc123-my-story/chapter-1"})
-
-	if meta.Title != "河燈之城 | ha2.tw / faryne.dev" {
-		t.Fatalf("unexpected title: %s", meta.Title)
-	}
-	if meta.Description != "一段關於河港、燈影與記憶的故事。" {
-		t.Fatalf("unexpected description: %s", meta.Description)
-	}
-	if meta.Type != "article" {
-		t.Fatalf("unexpected type: %s", meta.Type)
-	}
-	if meta.Robots != "index, follow" {
-		t.Fatalf("unexpected robots: %s", meta.Robots)
-	}
-}
-
-func TestBuildMetaStorytellerSharedProjectRoute(t *testing.T) {
-	originalFetch := fetchStorytellerSharedProjectMeta
-	fetchStorytellerSharedProjectMeta = func(shareToken string) (storytellerProjectMeta, bool) {
-		if shareToken != "share-token" {
-			t.Fatalf("unexpected share token: %s", shareToken)
-		}
-		return storytellerProjectMeta{
-			Title:       "親友限定故事",
-			Description: "只分享給親友看的故事摘要。",
-		}, true
-	}
-	defer func() {
-		fetchStorytellerSharedProjectMeta = originalFetch
-	}()
-
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/work/share/share-token/chapter-1"})
-
-	if meta.Title != "親友限定故事 | ha2.tw / faryne.dev" {
-		t.Fatalf("unexpected title: %s", meta.Title)
-	}
-	if meta.Description != "只分享給親友看的故事摘要。" {
-		t.Fatalf("unexpected description: %s", meta.Description)
-	}
-	if meta.Type != "article" {
-		t.Fatalf("unexpected type: %s", meta.Type)
-	}
-	if meta.Robots != "noindex, nofollow" {
-		t.Fatalf("unexpected robots: %s", meta.Robots)
-	}
-}
-
-func TestBuildMetaSteamLoomPublicStoryRouteIsSelfCanonical(t *testing.T) {
-	originalFetch := fetchStorytellerPublicProjectMeta
-	fetchStorytellerPublicProjectMeta = func(projectPath string) (storytellerProjectMeta, bool) {
-		if projectPath != "abc123-my-story" {
-			t.Fatalf("unexpected project path: %s", projectPath)
-		}
-		return storytellerProjectMeta{
-			Title:       "河燈之城",
-			Description: "一段關於河港、燈影與記憶的故事。",
-		}, true
-	}
-	defer func() {
-		fetchStorytellerPublicProjectMeta = originalFetch
-	}()
-
-	meta := BuildMeta(modelSNS.RenderRequest{
-		Path: "storyteller/work/abc123-my-story/chapter-1",
-		Host: "steamloom.works",
-	})
-
-	if meta.Title != "河燈之城 | SteamLoom" {
-		t.Fatalf("unexpected title: %s", meta.Title)
-	}
-	if meta.Canonical != "https://steamloom.works/work/abc123-my-story/chapter-1" {
-		t.Fatalf("unexpected canonical: %s", meta.Canonical)
-	}
-	if meta.OpenGraphURL != "https://steamloom.works/sns/work/abc123-my-story/chapter-1" {
-		t.Fatalf("unexpected og:url: %s", meta.OpenGraphURL)
-	}
-	if meta.Robots != "index, follow" {
-		t.Fatalf("unexpected robots: %s", meta.Robots)
-	}
-}
-
-func TestBuildMetaSteamLoomSharedStoryRouteIsSelfCanonical(t *testing.T) {
-	originalFetch := fetchStorytellerSharedProjectMeta
-	fetchStorytellerSharedProjectMeta = func(shareToken string) (storytellerProjectMeta, bool) {
-		if shareToken != "share-token" {
-			t.Fatalf("unexpected share token: %s", shareToken)
-		}
-		return storytellerProjectMeta{
-			Title:       "親友限定故事",
-			Description: "只分享給親友看的故事摘要。",
-		}, true
-	}
-	defer func() {
-		fetchStorytellerSharedProjectMeta = originalFetch
-	}()
-
-	meta := BuildMeta(modelSNS.RenderRequest{
-		Path: "storyteller/work/share/share-token/chapter-1",
-		Host: "www.steamloom.works",
-	})
-
-	if meta.Title != "親友限定故事 | SteamLoom" {
-		t.Fatalf("unexpected title: %s", meta.Title)
-	}
-	if meta.Canonical != "https://steamloom.works/work/share/share-token/chapter-1" {
-		t.Fatalf("unexpected canonical: %s", meta.Canonical)
-	}
-	if meta.Robots != "noindex, nofollow" {
-		t.Fatalf("unexpected robots: %s", meta.Robots)
-	}
-}
-
-func TestBuildMetaSteamLoomHomeFallsBackToBrandDefaults(t *testing.T) {
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller", Host: "steamloom.works"})
-
-	if meta.SiteName != "SteamLoom" {
-		t.Fatalf("unexpected site name: %s", meta.SiteName)
-	}
-	if meta.Canonical != "https://steamloom.works/" {
-		t.Fatalf("unexpected canonical: %s", meta.Canonical)
 	}
 }
 
@@ -417,7 +278,7 @@ func TestBuildMetaNekomaidR18ArtworkKeepsDefaultImage(t *testing.T) {
 }
 
 func TestRenderHTMLNekomaidSiteName(t *testing.T) {
-	html, err := RenderHTML(modelSNS.RenderRequest{Path: "nekomaid"})
+	html, _, err := RenderHTML(modelSNS.RenderRequest{Path: "nekomaid"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +288,7 @@ func TestRenderHTMLNekomaidSiteName(t *testing.T) {
 }
 
 func TestRenderHTMLEscapesContent(t *testing.T) {
-	html, err := RenderHTML(modelSNS.RenderRequest{Path: "data/tw-stats/<script>"})
+	html, _, err := RenderHTML(modelSNS.RenderRequest{Path: "data/tw-stats/<script>"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -440,7 +301,7 @@ func TestRenderHTMLEscapesContent(t *testing.T) {
 }
 
 func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
-	html, err := RenderHTML(modelSNS.RenderRequest{Path: "data/etf/twse/00961"})
+	html, _, err := RenderHTML(modelSNS.RenderRequest{Path: "data/etf/twse/00961"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,59 +310,5 @@ func TestRenderHTMLRedirectScriptUsesAbsoluteURL(t *testing.T) {
 	}
 	if strings.Contains(html, "%22https://") || strings.Contains(html, "&#34;https://") {
 		t.Fatalf("redirect script must not encode quotes into the URL")
-	}
-}
-
-func TestBuildMetaStorytellerItemRoutes(t *testing.T) {
-	originalPublic, originalShared := fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta
-	project := storytellerProjectMeta{
-		Title:       "河燈之城",
-		Description: "作品簡介",
-		Items: map[string]storytellerItemMeta{
-			"story:s1": {Title: "第一話", Summary: "第一話摘要"},
-			"lore:l1":  {Title: "白瀨澪", Summary: "第六席"},
-		},
-	}
-	fetchStorytellerPublicProjectMeta = func(string) (storytellerProjectMeta, bool) { return project, true }
-	fetchStorytellerSharedProjectMeta = func(string) (storytellerProjectMeta, bool) { return project, true }
-	defer func() {
-		fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta = originalPublic, originalShared
-	}()
-
-	cases := map[string][2]string{
-		"storyteller/work/abc-x/story/s1":                {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"},
-		"storyteller/work/abc-x/story/s1/versions/9":     {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"},
-		"storyteller/work/abc-x/lore/l1":                 {"白瀨澪 | 河燈之城 | ha2.tw / faryne.dev", "第六席"},
-		"storyteller/work/share/token/lore/l1":           {"白瀨澪 | 河燈之城 | ha2.tw / faryne.dev", "第六席"},
-		"storyteller/work/abc-x/s1":                      {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"}, // 舊網址：沒有種類前綴
-		"storyteller/work/abc-x/image/s1":                {"第一話 | 河燈之城 | ha2.tw / faryne.dev", "第一話摘要"}, // 舊網址：image/
-		"storyteller/work/abc-x/lores":                   {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
-		"storyteller/work/abc-x":                         {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
-		"storyteller/work/abc-x/lore/not-published-lore": {"河燈之城 | ha2.tw / faryne.dev", "作品簡介"},
-	}
-	for path, want := range cases {
-		meta := BuildMeta(modelSNS.RenderRequest{Path: path})
-		if meta.Title != want[0] || meta.Description != want[1] {
-			t.Errorf("%s: got (%s, %s), want (%s, %s)", path, meta.Title, meta.Description, want[0], want[1])
-		}
-	}
-}
-
-func TestStorytellerProjectMetaMasksSpoilerLore(t *testing.T) {
-	meta, ok := storytellerProjectMetaFromOutput(&storytellerModel.ProjectOutput{
-		Project: storytellerModel.Project{Name: "河燈之城"},
-		Lores: []storytellerModel.Lore{
-			{PublicID: "l1", Title: "白瀨澪", Summary: "第六席"},
-			{PublicID: "l2", Title: "第零席的真名", Summary: "其實是……", IsSpoiler: true},
-		},
-	}, nil)
-	if !ok {
-		t.Fatal("expected ok")
-	}
-	if got := meta.Items["lore:l1"]; got.Title != "白瀨澪" || got.Summary != "第六席" {
-		t.Fatalf("unexpected normal lore meta: %+v", got)
-	}
-	if got := meta.Items["lore:l2"]; got.Title != storytellerSpoilerLoreTitle || got.Summary != "" {
-		t.Fatalf("spoiler lore leaked: %+v", got)
 	}
 }

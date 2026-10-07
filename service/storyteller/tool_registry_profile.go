@@ -16,6 +16,8 @@ type storytellerProfileArguments struct {
 	Bio        *string            `json:"bio"`
 	AvatarURL  *string            `json:"avatar_url"`
 	SNSLinks   *map[string]string `json:"sns_links"`
+	// SNSPrivateKeys 省略＝不變更；只在 sns_links 裡存在的 key 才會生效
+	SNSPrivateKeys *storytellerModel.StringList `json:"sns_private_keys"`
 }
 
 // storytellerProfileMCPOnlyToolSpecs 額外筆名的維護工具。筆名是帳號層級資源（沒有 project_public_id），
@@ -26,6 +28,8 @@ func storytellerProfileMCPOnlyToolSpecs() []ToolSpec {
 		"description":          "Optional SNS links as {type: url}, e.g. {\"x\": \"https://x.com/name\"}. Replaces the whole set when provided.",
 		"additionalProperties": map[string]interface{}{"type": "string"},
 	}
+	snsPrivateSchema := stringArraySchema("Optional sns_links keys visible only to the author (hidden on the public author page). " +
+		"Omit to keep the current setting; pass [] to make every link public.")
 	return []ToolSpec{
 		{
 			Name: "storyteller_list_profiles",
@@ -59,10 +63,11 @@ func storytellerProfileMCPOnlyToolSpecs() []ToolSpec {
 			Description: "Create an extra pen name. The pen_name must be globally unique (also across other authors' own pen names) and cannot contain " +
 				"/ \\ ? # % or control characters. Free accounts can have a limited number of extra pen names (see storyteller_list_profiles).",
 			InputSchema: objectSchema(map[string]interface{}{
-				"pen_name":   stringSchema("The new pen name, required."),
-				"bio":        stringSchema("Optional bio (Markdown) shown on the pen name's author page."),
-				"avatar_url": stringSchema("Optional avatar URL. Omit to use the default identicon."),
-				"sns_links":  snsSchema,
+				"pen_name":         stringSchema("The new pen name, required."),
+				"bio":              stringSchema("Optional bio (Markdown) shown on the pen name's author page."),
+				"avatar_url":       stringSchema("Optional avatar URL. Omit to use the default identicon."),
+				"sns_links":        snsSchema,
+				"sns_private_keys": snsPrivateSchema,
 			}, []string{"pen_name"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -83,6 +88,7 @@ func storytellerProfileMCPOnlyToolSpecs() []ToolSpec {
 				if args.SNSLinks != nil {
 					input.SNSLinks = *args.SNSLinks
 				}
+				input.SNSPrivateKeys = args.SNSPrivateKeys
 				profile, err := NewService().CreateAuthorProfile(userID, input)
 				if err != nil {
 					return nil, err
@@ -95,11 +101,12 @@ func storytellerProfileMCPOnlyToolSpecs() []ToolSpec {
 			Description: "Update an extra pen name, identified by its current pen_name. Only provided fields change; renaming (new_pen_name) " +
 				"refreshes the search index of every story attributed to it. The account's own identity cannot be edited here — use the web profile page.",
 			InputSchema: objectSchema(map[string]interface{}{
-				"pen_name":     stringSchema("Current pen name of the extra pen name to update, required."),
-				"new_pen_name": stringSchema("Optional new pen name."),
-				"bio":          stringSchema("Optional new bio; pass an empty string to clear it."),
-				"avatar_url":   stringSchema("Optional new avatar URL; pass an empty string to go back to the default identicon."),
-				"sns_links":    snsSchema,
+				"pen_name":         stringSchema("Current pen name of the extra pen name to update, required."),
+				"new_pen_name":     stringSchema("Optional new pen name."),
+				"bio":              stringSchema("Optional new bio; pass an empty string to clear it."),
+				"avatar_url":       stringSchema("Optional new avatar URL; pass an empty string to go back to the default identicon."),
+				"sns_links":        snsSchema,
+				"sns_private_keys": snsPrivateSchema,
 			}, []string{"pen_name"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -133,6 +140,7 @@ func storytellerProfileMCPOnlyToolSpecs() []ToolSpec {
 				if args.SNSLinks != nil {
 					input.SNSLinks = *args.SNSLinks
 				}
+				input.SNSPrivateKeys = args.SNSPrivateKeys
 				profile, err := service.UpdateAuthorProfile(userID, current.ID, input)
 				if err != nil {
 					return nil, err
@@ -192,6 +200,7 @@ func (s *Service) ownAuthorProfileByPenName(userID uint64, penName string) (*sto
 func profileForMCP(p storytellerModel.AuthorProfileOutput) map[string]interface{} {
 	return map[string]interface{}{
 		"pen_name": p.PenName, "bio": p.Bio, "avatar_url": p.AvatarURL, "sns_links": p.SNSLinks,
+		"sns_private_keys": p.SNSPrivateKeys,
 	}
 }
 

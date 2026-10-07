@@ -13,11 +13,9 @@ import (
 
 	"faryne.dev/config"
 	modelSNS "faryne.dev/model/entity/sns"
-	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"faryne.dev/service/nccc"
-	"faryne.dev/service/storyteller"
 	"faryne.dev/service/twse"
 )
 
@@ -75,26 +73,12 @@ type nekomaidArtworkMeta struct {
 }
 
 var fetchNekomaidArtworkMeta = fetchNekomaidArtworkMetaFromAPI
-var fetchStorytellerPublicProjectMeta = fetchStorytellerPublicProjectMetaFromService
-var fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromService
 
 var pathCollection = []pathMeta{
-	{
-		// 分組：1＝share token、2＝內容種類（story/lore；image 是舊網址）、3＝內容 public_id；
-		// 舊網址沒有種類前綴（work/share/:token/:id）時 2 為空，視為故事。
-		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/share/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`),
-		Title:       steamloomSiteName,
-		Description: defaultDescription,
-		Apply:       applyStorytellerSharedProjectMeta,
-	},
-	{
-		// work/:project/(story|lore)/:id 是現行網址；分組同上（1＝專案路徑）。
-		// 開頭的 story/、內容的 image/、沒有種類前綴的 /:id 都只保留舊外部連結的 meta 相容性。
-		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`),
-		Title:       steamloomSiteName,
-		Description: defaultDescription,
-		Apply:       applyStorytellerPublicProjectMeta,
-	},
+	// SteamLoom：分享連結要排在 work/:project 前面，不然 share 會被當成專案路徑
+	{Pattern: storytellerSharePattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerWorkMeta},
+	{Pattern: storytellerWorkPattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerWorkMeta},
+	{Pattern: storytellerUserPattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerAuthorMeta},
 	{
 		Pattern:     regexp.MustCompile(`^/(pixiv|nico|tinami)(?:/([^/]+))?(?:/([^/]+))?$`),
 		Title:       nekomaidSiteName,
@@ -138,33 +122,38 @@ var pathCollection = []pathMeta{
 	{Path: "/nekomaid", Title: nekomaidSiteName, SiteName: nekomaidSiteName, Description: nekomaidDescription, Prefix: true},
 }
 
-func RenderHTML(req modelSNS.RenderRequest) (string, error) {
+// RenderHTML 回傳 HTML 與 HTTP 狀態碼（看不到的內容是 404）
+func RenderHTML(req modelSNS.RenderRequest) (string, int, error) {
 	meta := BuildMeta(req)
 	var out strings.Builder
 	if err := htmlTemplate.Execute(&out, meta); err != nil {
-		return "", err
+		return "", 0, err
 	}
-	return out.String(), nil
+	if meta.Status == 0 {
+		meta.Status = http.StatusOK
+	}
+	return out.String(), meta.Status, nil
 }
 
 func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
-	steamloom := isSteamLoomHost(req.Host)
-
-	frontendOrigin := frontendOrigin()
-	currentSiteName := siteName
-	currentDescription := defaultDescription
-	if steamloom {
-		frontendOrigin = steamloomOrigin
-		currentSiteName = steamloomSiteName
-		currentDescription = steamloomDescription
-	}
-
 	// frontendPath 保留 /storyteller 前綴用來比對 pathCollection（nginx 轉給後端時會補上這段），
 	// publicPath 才是要顯示在 canonical/OG url 上的真實網址：steamloom.works 是獨立站，
 	// 同樣的故事頁面在該網域是掛在根路徑，沒有這段前綴。
 	frontendPath := normalizeFrontendPath(req.Path)
+	// faryne.dev/storyteller/* 跟 steamloom.works 是同一份內容，一律以 SteamLoom 為準，
+	// canonical 指回 steamloom.works，避免兩個網域重複收錄
+	steamloom := isSteamLoomHost(req.Host) || isStorytellerPath(frontendPath)
+
+	frontendOrigin := frontendOrigin()
+	currentSiteName := siteName
+	currentDescription := defaultDescription
+	imagePath, imageWidth, imageHeight := defaultImagePath, 0, 0
 	publicPath := frontendPath
 	if steamloom {
+		frontendOrigin = steamloomOrigin
+		currentSiteName = steamloomSiteName
+		currentDescription = steamloomDescription
+		imagePath, imageWidth, imageHeight = steamloomDefaultImagePath, storytellerOGImageWidth, storytellerOGImageHeight
 		publicPath = strings.TrimPrefix(frontendPath, storytellerPathPrefix)
 		if publicPath == "" {
 			publicPath = "/"
@@ -174,6 +163,11 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	cleanQuery := stripTrackingQuery(req.Query)
 	canonical := withQuery(absoluteURL(frontendOrigin, publicPath), cleanQuery)
 	openGraphURL := withQuery(absoluteURL(frontendOrigin, "/sns"+publicPath), cleanQuery)
+	if steamloom {
+		// steamloom.works 沒有 /sns 路徑（爬蟲直接打原網址就會被 nginx 轉來這裡），
+		// og:url 指到 /sns/... 反而會讓平台照 og:url 重抓時拿到 SPA 或通用卡
+		openGraphURL = canonical
+	}
 
 	meta := modelSNS.Meta{
 		Title:        currentSiteName,
@@ -181,10 +175,14 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 		Description:  currentDescription,
 		Canonical:    canonical,
 		OpenGraphURL: openGraphURL,
-		Image:        absoluteURL(frontendOrigin, defaultImagePath),
+		Image:        absoluteURL(frontendOrigin, imagePath),
+		ImageWidth:   imageWidth,
+		ImageHeight:  imageHeight,
 		Robots:       "index, follow",
 		Type:         "website",
 		RedirectURL:  canonical,
+		SiteURL:      frontendOrigin,
+		SchemaType:   "WebPage",
 	}
 
 	if matched, matches, ok := matchPathMeta(frontendPath); ok {
@@ -202,96 +200,6 @@ func BuildMeta(req modelSNS.RenderRequest) modelSNS.Meta {
 	}
 
 	return meta
-}
-
-func applyStorytellerPublicProjectMeta(meta *modelSNS.Meta, matches []string) {
-	project, ok := fetchStorytellerPublicProjectMeta(matches[1])
-	if !ok {
-		return
-	}
-	applyStorytellerProjectMeta(meta, project, matches[2], matches[3])
-}
-
-func applyStorytellerSharedProjectMeta(meta *modelSNS.Meta, matches []string) {
-	project, ok := fetchStorytellerSharedProjectMeta(matches[1])
-	if !ok {
-		return
-	}
-	applyStorytellerProjectMeta(meta, project, matches[2], matches[3])
-	meta.Robots = "noindex, nofollow"
-}
-
-// applyStorytellerProjectMeta 分享單篇故事或單則設定時，預覽卡顯示「篇名 | 作品名」與該篇摘要；
-// 找不到對應內容（作品首頁、/lores 分頁、失效連結）就退回作品層級的資訊。
-func applyStorytellerProjectMeta(meta *modelSNS.Meta, project storytellerProjectMeta, kind, itemID string) {
-	title := strings.TrimSpace(project.Title)
-	if title == "" {
-		return
-	}
-	description := strings.TrimSpace(project.Description)
-	if item, ok := project.Items[storytellerItemKey(kind, itemID)]; ok && strings.TrimSpace(item.Title) != "" {
-		title = strings.TrimSpace(item.Title) + " | " + title
-		if summary := strings.TrimSpace(item.Summary); summary != "" {
-			description = summary
-		}
-	}
-	meta.Title = fullTitleForSite(title, meta.SiteName)
-	if description != "" {
-		meta.Description = description
-	}
-	meta.Type = "article"
-}
-
-// storytellerItemKey 把網址上的內容種類正規化：舊網址的 image/ 與沒有種類前綴的都是故事。
-func storytellerItemKey(kind, itemID string) string {
-	if kind != "lore" {
-		kind = "story"
-	}
-	return kind + ":" + itemID
-}
-
-// storytellerSpoilerLoreTitle 是含劇透設定在社群預覽與讀者列表上的替代標題
-const storytellerSpoilerLoreTitle = "含劇透的設定"
-
-type storytellerItemMeta struct {
-	Title   string
-	Summary string
-}
-
-type storytellerProjectMeta struct {
-	Title       string
-	Description string
-	// Items 以 storytellerItemKey 為 key，包含讀者看得到的故事與設定
-	Items map[string]storytellerItemMeta
-}
-
-func fetchStorytellerPublicProjectMetaFromService(projectPath string) (storytellerProjectMeta, bool) {
-	project, err := storyteller.NewService().PublicProject(projectPath, 0)
-	return storytellerProjectMetaFromOutput(project, err)
-}
-
-func fetchStorytellerSharedProjectMetaFromService(shareToken string) (storytellerProjectMeta, bool) {
-	project, err := storyteller.NewService().SharedProject(shareToken)
-	return storytellerProjectMetaFromOutput(project, err)
-}
-
-func storytellerProjectMetaFromOutput(project *storytellerModel.ProjectOutput, err error) (storytellerProjectMeta, bool) {
-	if err != nil || project == nil {
-		return storytellerProjectMeta{}, false
-	}
-	items := make(map[string]storytellerItemMeta, len(project.Stories)+len(project.Lores))
-	for _, story := range project.Stories {
-		items[storytellerItemKey("story", story.PublicID)] = storytellerItemMeta{Title: story.Title, Summary: story.Summary}
-	}
-	for _, lore := range project.Lores {
-		item := storytellerItemMeta{Title: lore.Title, Summary: lore.Summary}
-		// 含劇透的設定：標題與摘要本身就可能是劇透，社群預覽一律不帶出來
-		if lore.IsSpoiler {
-			item = storytellerItemMeta{Title: storytellerSpoilerLoreTitle}
-		}
-		items[storytellerItemKey("lore", lore.PublicID)] = item
-	}
-	return storytellerProjectMeta{Title: project.Name, Description: project.Description, Items: items}, true
 }
 
 func applyLegacyNekomaidMeta(meta *modelSNS.Meta, matches []string) {
@@ -544,6 +452,11 @@ func frontendOrigin() string {
 	return origin
 }
 
+// isStorytellerPath 判斷是不是 faryne.dev 巢狀模式下的 storyteller 頁面（nginx 轉 steamloom.works 時也會補上這段前綴）
+func isStorytellerPath(frontendPath string) bool {
+	return frontendPath == storytellerPathPrefix || strings.HasPrefix(frontendPath, storytellerPathPrefix+"/")
+}
+
 func isSteamLoomHost(host string) bool {
 	host = strings.ToLower(strings.TrimSpace(host))
 	return host == "steamloom.works" || host == "www.steamloom.works"
@@ -682,19 +595,26 @@ var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>
   <meta property="og:description" content="{{ .Description }}">
   <meta property="og:url" content="{{ .OpenGraphURL }}">
   <meta property="og:image" content="{{ .Image }}">
-  <meta property="og:image:alt" content="{{ .SiteName }}">
+  {{- if .ImageWidth }}
+  <meta property="og:image:width" content="{{ .ImageWidth }}">
+  <meta property="og:image:height" content="{{ .ImageHeight }}">
+  {{- end }}
+  <meta property="og:image:alt" content="{{ .Title }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ .Title }}">
   <meta name="twitter:description" content="{{ .Description }}">
   <meta name="twitter:image" content="{{ .Image }}">
   <script type="application/ld+json">{
     "@context":"https://schema.org",
-    "@type":"WebPage",
-    "name":{{ .Title | printf "%q" }},
-    "url":{{ .Canonical | printf "%q" }},
-    "description":{{ .Description | printf "%q" }},
+    "@type":{{ .SchemaType }},
+    "name":{{ .Title }},
+    "url":{{ .Canonical }},
+    "description":{{ .Description }},
     "inLanguage":"zh-Hant-TW",
-    "isPartOf":{"@type":"WebSite","name":{{ .SiteName | printf "%q" }},"url":"` + defaultFrontendURL + `"}
+    {{- if .AuthorName }}
+    "author":{"@type":"Person","name":{{ .AuthorName }}},
+    {{- end }}
+    "isPartOf":{"@type":"WebSite","name":{{ .SiteName }},"url":{{ .SiteURL }}}
   }</script>
 </head>
 <body>

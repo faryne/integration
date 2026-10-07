@@ -19,9 +19,20 @@ upstream faryne_api {
 # 藏掉 Server response header 裡的版本號（例如 nginx/1.24.0 -> nginx），減少對外洩漏版本資訊。
 server_tokens off;
 
+# LINE 的連結預覽爬蟲 UA 是 "facebookexternalhit/1.1;line-poker/1.0"，前面的 facebookexternalhit 就會命中。
+# 不能寫成不分大小寫的 LINE：LINE App 內建瀏覽器的真人 UA 帶 "Line/13.x"，會被當成爬蟲拿到 meta HTML，
+# 頁面裡的 location.replace 導回同一個網址又被當成爬蟲，變成無限迴圈。
 map $http_user_agent $is_social_bot {
     default 0;
-    ~*(facebookexternalhit|Facebot|Twitterbot|Slackbot|Discordbot|LINE|TelegramBot|LinkedInBot) 1;
+    ~*(facebookexternalhit|Facebot|Twitterbot|Slackbot|Discordbot|line-poker|TelegramBot|LinkedInBot) 1;
+}
+
+# 爬蟲抓 og:image 等靜態檔時不能也被轉去 meta HTML（不然預設圖拿到的是 HTML，預覽卡破圖），
+# 只有「爬蟲而且不是靜態檔」才交給後端 /sns 渲染。map 的 regex 依出現順序比對、先中先贏。
+map "$is_social_bot:$uri" $sns_render {
+    default 0;
+    "~^1:.*\.(?:jpe?g|png|gif|webp|svg|ico|css|js|txt|xml|json|webmanifest)$" 0;
+    "~^1:" 1;
 }
 
 server {
@@ -112,7 +123,7 @@ server {
     location / {
         error_page 418 = @faryne_sns;
 
-        if ($is_social_bot) {
+        if ($sns_render) {
             return 418;
         }
 
@@ -157,7 +168,7 @@ server {
     location / {
         error_page 418 = @nekomaid_sns;
 
-        if ($is_social_bot) {
+        if ($sns_render) {
             return 418;
         }
 
@@ -205,6 +216,37 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 
+    # SNS 預覽圖卡（1200×630 JPEG）：路徑跟閱讀頁一一對應，例如 /og-image/work/{專案}/story/{id}.jpg，
+    # 轉給後端 /sns-image/storyteller/...（補前綴的理由同 @steamloom_sns）。^~ 讓它優先於下面的 regex location，
+    # 也不會經過 location / 的爬蟲判斷——平台抓圖用的 UA 跟抓頁面是同一個。
+    location ^~ /og-image/ {
+        rewrite ^/og-image/(.*)$ /sns-image/storyteller/$1 break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # steamloom.works 跟主站共用同一份前端 build，public/ 底下的 robots.txt、sitemap.xml 是 faryne.dev 的，
+    # 這兩個改由後端動態產生（sitemap 列出公開作品、故事、設定與作者頁）。
+    location = /robots.txt {
+        rewrite ^ /sns-seo/steamloom/robots.txt break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /sitemap.xml {
+        rewrite ^ /sns-seo/steamloom/sitemap.xml break;
+        proxy_pass http://faryne_api;
+        proxy_set_header Host faryne.dev;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     # MCP endpoint for external tools (Codex / Grok Builds 等) 存取 storyteller CRUD。
     # 轉給後端 route.StorytellerMCP 註冊的 /storyteller-mcp（故意不是 /storyteller/mcp，
     # 見 route/storyteller_mcp.go 的註解：那個路徑會被 authsession 的 Use 路由攔截）。
@@ -221,7 +263,7 @@ server {
     location / {
         error_page 418 = @steamloom_sns;
 
-        if ($is_social_bot) {
+        if ($sns_render) {
             return 418;
         }
 

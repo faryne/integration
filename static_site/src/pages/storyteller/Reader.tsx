@@ -748,8 +748,14 @@ export default function StorytellerReader({
           undefined)
         : undefined,
       path: canonicalPath,
+      // 找不到（私人、草稿、失效連結）也要 noindex：Googlebot 走 SPA，不然會被當成 200 的正常頁收錄（soft 404）。
+      // 載入中同樣先 noindex，載完會依結果重設。
       robots:
-        isShareRoute || isPrivateOwnerRoute
+        isShareRoute ||
+        isPrivateOwnerRoute ||
+        !project ||
+        (currentItemId && !currentItem) ||
+        (routeLoreId && !currentLore)
           ? "noindex, nofollow"
           : "index, follow",
       type: shouldUseStorySeo ? "article" : "website",

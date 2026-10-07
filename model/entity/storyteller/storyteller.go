@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"time"
 )
 
@@ -116,6 +117,32 @@ const (
 
 // SNSLinks maps an SNSType (or a user-supplied custom label) to its URI.
 type SNSLinks map[string]string
+
+// PublicSNSLinks 濾掉設成「僅自己」的連結，給公開身份輸出（作者頁、作品作者欄、追蹤清單）用
+func (l SNSLinks) PublicSNSLinks(privateKeys []string) SNSLinks {
+	if len(privateKeys) == 0 || len(l) == 0 {
+		return l
+	}
+	out := make(SNSLinks, len(l))
+	for key, value := range l {
+		if !slices.Contains(privateKeys, key) {
+			out[key] = value
+		}
+	}
+	return out
+}
+
+// NormalizeSNSPrivateKeys 只留下 links 裡真的存在的 key（去重、保持穩定順序），
+// 刪掉或改名的連結不會在 private keys 留下孤兒
+func NormalizeSNSPrivateKeys(links SNSLinks, keys []string) StringList {
+	out := StringList{}
+	for _, key := range keys {
+		if _, ok := links[key]; ok && !slices.Contains(out, key) {
+			out = append(out, key)
+		}
+	}
+	return out
+}
 
 func (l SNSLinks) Value() (driver.Value, error) {
 	if l == nil {
@@ -751,17 +778,19 @@ func (AuthorFavorite) TableName() string {
 }
 
 type UserProfile struct {
-	ID                      uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID                  uint64     `gorm:"column:user_id" json:"user_id"`
-	FirebaseUID             string     `gorm:"column:firebase_uid" json:"firebase_uid"`
-	Email                   *string    `gorm:"column:email" json:"email"`
-	DisplayName             *string    `gorm:"column:display_name" json:"display_name"`
-	PhotoURL                *string    `gorm:"column:photo_url" json:"photo_url"`
-	PenName                 string     `gorm:"column:pen_name" json:"pen_name"`
-	Bio                     string     `gorm:"column:bio" json:"bio"`
-	UseDefaultAvatar        bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
-	AvatarURL               string     `gorm:"column:avatar_url" json:"avatar_url"`
-	SNSLinks                SNSLinks   `gorm:"column:sns_links;type:json" json:"sns_links"`
+	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64   `gorm:"column:user_id" json:"user_id"`
+	FirebaseUID      string   `gorm:"column:firebase_uid" json:"firebase_uid"`
+	Email            *string  `gorm:"column:email" json:"email"`
+	DisplayName      *string  `gorm:"column:display_name" json:"display_name"`
+	PhotoURL         *string  `gorm:"column:photo_url" json:"photo_url"`
+	PenName          string   `gorm:"column:pen_name" json:"pen_name"`
+	Bio              string   `gorm:"column:bio" json:"bio"`
+	UseDefaultAvatar bool     `gorm:"column:use_default_avatar" json:"use_default_avatar"`
+	AvatarURL        string   `gorm:"column:avatar_url" json:"avatar_url"`
+	SNSLinks         SNSLinks `gorm:"column:sns_links;type:json" json:"sns_links"`
+	// SNSPrivateKeys 是 SNSLinks 裡設成「僅自己」的 key，公開輸出時濾掉（見 PublicSNSLinks）
+	SNSPrivateKeys          StringList `gorm:"column:sns_private_keys;type:json" json:"sns_private_keys"`
 	HideFavoriteProjects    bool       `gorm:"column:hide_favorite_projects" json:"hide_favorite_projects"`
 	HideFavoriteAuthors     bool       `gorm:"column:hide_favorite_authors" json:"hide_favorite_authors"`
 	AutoSaveEnabled         bool       `gorm:"column:auto_save_enabled" json:"auto_save_enabled"`
@@ -1151,15 +1180,17 @@ type FavoriteVisibilityRequest struct {
 }
 
 type UserProfileRequest struct {
-	PenName                 string   `json:"pen_name"`
-	Bio                     string   `json:"bio"`
-	UseDefaultAvatar        bool     `json:"use_default_avatar"`
-	AvatarURL               string   `json:"avatar_url"`
-	SNSLinks                SNSLinks `json:"sns_links"`
-	HideFavoriteProjects    bool     `json:"hide_favorite_projects"`
-	HideFavoriteAuthors     bool     `json:"hide_favorite_authors"`
-	AutoSaveEnabled         bool     `json:"auto_save_enabled"`
-	AutoSaveIntervalMinutes int      `json:"auto_save_interval_minutes"`
+	PenName          string   `json:"pen_name"`
+	Bio              string   `json:"bio"`
+	UseDefaultAvatar bool     `json:"use_default_avatar"`
+	AvatarURL        string   `json:"avatar_url"`
+	SNSLinks         SNSLinks `json:"sns_links"`
+	// SNSPrivateKeys 省略＝不變更（理由同 AuthorProfileRequest.SNSPrivateKeys）
+	SNSPrivateKeys          *StringList `json:"sns_private_keys,omitempty"`
+	HideFavoriteProjects    bool        `json:"hide_favorite_projects"`
+	HideFavoriteAuthors     bool        `json:"hide_favorite_authors"`
+	AutoSaveEnabled         bool        `json:"auto_save_enabled"`
+	AutoSaveIntervalMinutes int         `json:"auto_save_interval_minutes"`
 }
 
 type ProjectRankingOutput struct {
@@ -1393,6 +1424,7 @@ type UserProfileOutput struct {
 	UseDefaultAvatar        bool                  `json:"use_default_avatar"`
 	AvatarURL               string                `json:"avatar_url,omitempty"`
 	SNSLinks                SNSLinks              `json:"sns_links,omitempty"`
+	SNSPrivateKeys          []string              `json:"sns_private_keys"`
 	HideFavoriteProjects    bool                  `json:"hide_favorite_projects"`
 	HideFavoriteAuthors     bool                  `json:"hide_favorite_authors"`
 	AutoSaveEnabled         bool                  `json:"auto_save_enabled"`
