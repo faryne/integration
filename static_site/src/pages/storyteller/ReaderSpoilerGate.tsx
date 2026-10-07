@@ -1,11 +1,13 @@
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
-import { Box, Button, Link, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Link, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
+import { LORE_DEPENDENCY_TYPE_LABEL } from "./readerModel.ts";
 import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
 import type { ReaderProgress } from "./readingRecordStore.ts";
 
 export interface ReaderSpoilerDependency {
   key: string;
+  type: "story" | "lore";
   title: string;
   href: string;
   progress?: ReaderProgress;
@@ -57,15 +59,28 @@ export function ReaderSpoilerGate({
                   alignItems="center"
                   justifyContent="space-between"
                 >
-                  <Link
-                    component={RouterLink}
-                    to={dependency.href}
-                    onClick={onNavigate}
-                    fontWeight={700}
-                    underline="hover"
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    alignItems="center"
+                    sx={{ minWidth: 0 }}
                   >
-                    {dependency.title}
-                  </Link>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={LORE_DEPENDENCY_TYPE_LABEL[dependency.type]}
+                      sx={{ height: 20, borderRadius: 1, flexShrink: 0 }}
+                    />
+                    <Link
+                      component={RouterLink}
+                      to={dependency.href}
+                      onClick={onNavigate}
+                      fontWeight={700}
+                      underline="hover"
+                    >
+                      {dependency.title}
+                    </Link>
+                  </Stack>
                   {dependency.progress ? (
                     <ReaderProgressBadge progress={dependency.progress} />
                   ) : (

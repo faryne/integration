@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ReaderLore } from "./readerModel.ts";
+import { LORE_DEPENDENCY_TYPE_LABEL, type ReaderLore } from "./readerModel.ts";
 import {
   readingTargetKey,
   type ReaderProgressMap,
@@ -72,4 +72,18 @@ export function useLoreSpoilerGate(
     displayTitle: (lore: ReaderLore) =>
       isLocked(lore) ? SPOILER_LORE_TITLE : lore.title,
   };
+}
+
+// 鎖住的劇透設定在列表上的提示：列出還沒讀完的內容，沒有依賴就只提示含劇透
+export function spoilerLockHint(
+  unmet: { type: "story" | "lore"; title: string }[],
+) {
+  return unmet.length > 0
+    ? `需先讀過：${unmet
+        .map(
+          (dependency) =>
+            `${LORE_DEPENDENCY_TYPE_LABEL[dependency.type]}〈${dependency.title}〉`,
+        )
+        .join("、")}`
+    : "內容含劇透，點開前會先確認";
 }

@@ -1,6 +1,9 @@
 import type { StorytellerReadingTargetType } from "@/apis/storyteller.ts";
 import { ReaderLoreLinkProvider } from "@/pages/storyteller/ReaderLoreLinks.tsx";
-import { useLoreSpoilerGate } from "@/pages/storyteller/useLoreSpoilerGate.ts";
+import {
+  spoilerLockHint,
+  useLoreSpoilerGate,
+} from "@/pages/storyteller/useLoreSpoilerGate.ts";
 import {
   useCreateStorytellerStoryBookmark,
   useDeleteStorytellerStoryBookmark,
@@ -127,13 +130,6 @@ import {
 
 // 閱讀 context 已合併進全站 AppBar，不再另外疊第二列；跳轉時只需避開 Header。
 const READER_STICKY_OFFSET = 84;
-
-// 鎖住的劇透設定在列表上的提示：列出還沒讀完的內容，沒有依賴就只提示含劇透
-function spoilerLockHint(unmet: { title: string }[]) {
-  return unmet.length > 0
-    ? `需先讀過：${unmet.map((dependency) => dependency.title).join("、")}`
-    : "內容含劇透，點開前會先確認";
-}
 
 // 設定頁的閱讀列用詞：設定不是章節，上一則／下一則只在設定之間切換
 const LORE_TOOLBAR_LABELS = {
@@ -1595,6 +1591,7 @@ export default function StorytellerReader({
                 .unmetDependencies(currentLore)
                 .map((dependency) => ({
                   key: readingTargetKey(dependency.type, dependency.id),
+                  type: dependency.type,
                   title: dependency.title,
                   href:
                     dependency.type === "story"

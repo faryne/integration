@@ -140,6 +140,12 @@ export function groupReaderLores(
   return groups.filter((group) => group.lores.length > 0);
 }
 
+// 劇透依賴的種類標示：圖像作品在產品裡也算「故事」，所以只分故事與設定兩種
+export const LORE_DEPENDENCY_TYPE_LABEL = {
+  story: "故事",
+  lore: "設定",
+} as const;
+
 // 作品首頁的兩個 Tab：故事（work/:projectPath）、設定（work/:projectPath/lores）
 export type ReaderLandingTab = "stories" | "lores";
 

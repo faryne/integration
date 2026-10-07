@@ -101,6 +101,7 @@ export function ReaderLoreLinkProvider({
       const key = readingTargetKey(dependency.type, dependency.id);
       return {
         key,
+        type: dependency.type,
         title: dependency.title,
         href:
           dependency.type === "story"

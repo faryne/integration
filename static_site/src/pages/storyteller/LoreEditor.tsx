@@ -104,6 +104,7 @@ import type {
   StorytellerLoreDependency,
 } from "@/types/storyteller.ts";
 import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
+import { LORE_DEPENDENCY_TYPE_LABEL } from "@/pages/storyteller/readerModel.ts";
 
 const editHistoryDrawerWidth = 460;
 const autoSaveIntervalMinutesMin = 2;
@@ -976,7 +977,7 @@ export default function StorytellerLoreEditor({
       .filter((story) => !story.is_volume)
       .map((story) => ({
         value: `story:${story.public_id}`,
-        label: story.title,
+        label: `${LORE_DEPENDENCY_TYPE_LABEL.story}・${story.title}`,
         icon:
           story.content_type === "image" ? (
             <CollectionsIcon fontSize="small" />
@@ -988,7 +989,7 @@ export default function StorytellerLoreEditor({
       .filter((item) => item.public_id !== apiLore?.public_id)
       .map((item) => ({
         value: `lore:${item.public_id}`,
-        label: item.title,
+        label: `${LORE_DEPENDENCY_TYPE_LABEL.lore}・${item.title}`,
         icon: <AutoStoriesIcon fontSize="small" />,
       })),
   ];
