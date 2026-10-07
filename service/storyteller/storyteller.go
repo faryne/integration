@@ -905,7 +905,10 @@ func (s *Service) CreateStory(userID uint64, projectPublicID string, input story
 		if err != nil {
 			return nil, err
 		}
-	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+		if err := s.validateLoreReferences(project.ID, input.Content); err != nil {
+			return nil, err
+		}
+	} else if err := s.validateContentReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	} else {
 		input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
@@ -979,7 +982,10 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 		if err != nil {
 			return nil, false, err
 		}
-	} else if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+		if err := s.validateLoreReferences(project.ID, input.Content); err != nil {
+			return nil, false, err
+		}
+	} else if err := s.validateContentReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
 	} else {
 		input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
@@ -2230,6 +2236,10 @@ func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerMod
 	if err != nil {
 		return nil, err
 	}
+	// 設定編輯頁是從這份完整清單取資料，依賴也要一起帶（批次查，不是每則各查一次）
+	if err := s.fillAuthorLoreDependencies(project.ID, rows); err != nil {
+		return nil, err
+	}
 	return rows, s.fillLoreCollectionPublicIDs(project.ID, rows)
 }
 
@@ -2268,6 +2278,9 @@ func (s *Service) Lore(userID uint64, projectPublicID, lorePublicID string) (*st
 	if err != nil {
 		return nil, err
 	}
+	if err := s.saveAndFillLoreDependencies(project.ID, row, nil); err != nil {
+		return nil, err
+	}
 	return row, s.fillLoreCollectionPublicID(project.ID, row)
 }
 
@@ -2279,7 +2292,7 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+	if err := s.validateContentReferences(project.ID, input.Content); err != nil {
 		return nil, err
 	}
 	input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
@@ -2301,8 +2314,15 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 	if err := applyLorePublishing(lore, input); err != nil {
 		return nil, err
 	}
+	dependencies, err := s.prepareLoreDependencies(project.ID, 0, input)
+	if err != nil {
+		return nil, err
+	}
 	version := buildLoreVersion(*lore, source)
 	if err := s.repo.CreateLoreWithVersion(lore, version); err != nil {
+		return nil, err
+	}
+	if err := s.saveAndFillLoreDependencies(project.ID, lore, dependencies); err != nil {
 		return nil, err
 	}
 	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {
@@ -2323,7 +2343,7 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return nil, false, err
 	}
-	if err := s.validateMarkdownAssetReferences(project.ID, input.Content); err != nil {
+	if err := s.validateContentReferences(project.ID, input.Content); err != nil {
 		return nil, false, err
 	}
 	input.Content = backfillStoryMarkerIds(hoistStoryMarkerBlockPrefixes(input.Content, source))
@@ -2341,12 +2361,19 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err := applyLorePublishing(lore, input); err != nil {
 		return nil, false, err
 	}
+	dependencies, err := s.prepareLoreDependencies(project.ID, lore.ID, input)
+	if err != nil {
+		return nil, false, err
+	}
 	lore.Title = strings.TrimSpace(input.Title)
 	lore.LatestContent = input.Content
 	lore.WordCount = wordCount(input.Content)
 	version := buildLoreVersion(*lore, source)
 	conflicted, err = s.repo.UpdateLoreWithVersion(lore, version, input.BaseVersionID)
 	if err != nil {
+		return nil, false, err
+	}
+	if err := s.saveAndFillLoreDependencies(project.ID, lore, dependencies); err != nil {
 		return nil, false, err
 	}
 	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {

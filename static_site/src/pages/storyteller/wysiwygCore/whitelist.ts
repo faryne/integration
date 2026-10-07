@@ -449,6 +449,25 @@ export function isSafeHref(href: string): boolean {
   }
 }
 
+/** 設定連結的 URI 前綴：連結 marker 的 href 寫成 steamloom-lore://<設定 public_id> */
+export const LORE_URI_PREFIX = "steamloom-lore://";
+const LORE_HREF_PATTERN = new RegExp(
+  `^${LORE_URI_PREFIX}(${ASSET_PUBLIC_ID_PATTERN_SOURCE})$`,
+);
+
+/** 從連結 href 取出設定的 public_id；不是設定連結就回 undefined */
+export function loreIdFromHref(href: string): string | undefined {
+  return LORE_HREF_PATTERN.exec(href.trim())?.[1];
+}
+
+/**
+ * 「連結」可以用的 href：外部網址（http/https）或同專案的設定連結。
+ * 只給連結用——圖片來源仍然只能用 isSafeHref，設定連結不能拿來當圖片。
+ */
+export function isAllowedLinkHref(href: string): boolean {
+  return isSafeHref(href) || Boolean(loreIdFromHref(href));
+}
+
 /* --- footnote（腳注）行內 marker 的屬性 --- */
 
 /** 腳注沒有 id 屬性——跟 span/a 一樣，marker 本身的 id（`footnote-<nonce>`）只在序列化時

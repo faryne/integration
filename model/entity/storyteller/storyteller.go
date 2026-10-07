@@ -606,14 +606,18 @@ type Lore struct {
 	// Status：draft＝只有作者看得到，completed＝對讀者公開；沿用故事的狀態值，預設不公開
 	Status StoryStatus `gorm:"column:status" json:"status"`
 	// Summary：給讀者看的設定摘要，顯示在設定列表與設定頁頂端
-	Summary         string     `gorm:"column:summary" json:"summary"`
-	LatestContent   string     `gorm:"column:latest_content" json:"latest_content"`
-	LatestVersionID *uint64    `gorm:"column:latest_version_id" json:"latest_version_id"`
-	WordCount       uint       `gorm:"column:word_count" json:"word_count"`
-	IsDeleted       bool       `gorm:"column:is_deleted" json:"is_deleted"`
-	DeletedAt       *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	Summary string `gorm:"column:summary" json:"summary"`
+	// IsSpoiler：含劇透的設定，讀者要先讀完 DependsOn 裡的內容，否則得先確認才能看（軟性閘門）
+	IsSpoiler bool `gorm:"column:is_spoiler" json:"is_spoiler"`
+	// DependsOn 由 service 另外查 storyteller_lore_dependencies 補上；公開閱讀頁只放讀者讀得到的對象
+	DependsOn       []LoreDependencyRef `gorm:"-" json:"depends_on,omitempty"`
+	LatestContent   string              `gorm:"column:latest_content" json:"latest_content"`
+	LatestVersionID *uint64             `gorm:"column:latest_version_id" json:"latest_version_id"`
+	WordCount       uint                `gorm:"column:word_count" json:"word_count"`
+	IsDeleted       bool                `gorm:"column:is_deleted" json:"is_deleted"`
+	DeletedAt       *time.Time          `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt       time.Time           `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt       time.Time           `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Lore) TableName() string { return "storyteller_lores" }
@@ -1106,11 +1110,14 @@ type LoreRequest struct {
 	Content string `json:"content"`
 	// Status／Summary 用指標區分「省略＝不變更」：編輯頁自動存檔與舊版 MCP client 都不會帶，
 	// 不能因為沒帶就把已公開的設定改回草稿或清空摘要。建立時省略則是草稿、無摘要。
-	Status        *StoryStatus `json:"status,omitempty"`
-	Summary       *string      `json:"summary,omitempty"`
-	SaveTrigger   string       `json:"save_trigger,omitempty"`
-	BaseVersionID *uint64      `json:"base_version_id,omitempty"`
-	CollectionID  *string      `json:"collection_id,omitempty"`
+	Status  *StoryStatus `json:"status,omitempty"`
+	Summary *string      `json:"summary,omitempty"`
+	// IsSpoiler／DependsOn 同樣是「省略＝不變更」；DependsOn 傳空陣列代表清空依賴
+	IsSpoiler     *bool                `json:"is_spoiler,omitempty"`
+	DependsOn     *[]LoreDependencyRef `json:"depends_on,omitempty"`
+	SaveTrigger   string               `json:"save_trigger,omitempty"`
+	BaseVersionID *uint64              `json:"base_version_id,omitempty"`
+	CollectionID  *string              `json:"collection_id,omitempty"`
 }
 
 type LoreMoveRequest struct {

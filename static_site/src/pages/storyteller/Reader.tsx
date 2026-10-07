@@ -1,4 +1,5 @@
 import type { StorytellerReadingTargetType } from "@/apis/storyteller.ts";
+import { useLoreSpoilerGate } from "@/pages/storyteller/useLoreSpoilerGate.ts";
 import {
   useCreateStorytellerStoryBookmark,
   useDeleteStorytellerStoryBookmark,
@@ -125,6 +126,13 @@ import {
 
 // 閱讀 context 已合併進全站 AppBar，不再另外疊第二列；跳轉時只需避開 Header。
 const READER_STICKY_OFFSET = 84;
+
+// 鎖住的劇透設定在列表上的提示：列出還沒讀完的內容，沒有依賴就只提示含劇透
+function spoilerLockHint(unmet: { title: string }[]) {
+  return unmet.length > 0
+    ? `需先讀過：${unmet.map((dependency) => dependency.title).join("、")}`
+    : "內容含劇透，點開前會先確認";
+}
 
 // 設定頁的閱讀列用詞：設定不是章節，上一則／下一則只在設定之間切換
 const LORE_TOOLBAR_LABELS = {
@@ -413,6 +421,14 @@ export default function StorytellerReader({
   // 閱讀進度：文字看捲動位置、圖像看翻到第幾頁；看歷史版本時不記錄（那不是正式內容），
   // 數值要穩定一段時間才寫入，換篇瞬間的暫態值不會被誤記（見 useSettledReadingProgress）
   const readingRecords = useReadingRecords(apiProject?.public_id);
+  // 防劇透：鎖住的設定不顯示內容、標題換成替代標題，也不記錄閱讀進度（確認卡片不算讀過）
+  const spoilerGate = useLoreSpoilerGate(
+    apiProject?.public_id,
+    readingRecords.progressMap,
+  );
+  const currentLoreLocked = currentLore
+    ? spoilerGate.isLocked(currentLore)
+    : false;
   const currentReadingProgress = isHistoricalView
     ? null
     : currentStory
@@ -427,7 +443,11 @@ export default function StorytellerReader({
       : currentLore
         ? readingTargetKey("lore", currentLore.id)
         : undefined,
-    currentItem ? currentReadingProgress : currentLore ? readingProgress : null,
+    currentItem
+      ? currentReadingProgress
+      : currentLore && !currentLoreLocked
+        ? readingProgress
+        : null,
     (key, progress) => {
       const [type, publicId] = key.split(":") as [
         StorytellerReadingTargetType,
@@ -716,7 +736,9 @@ export default function StorytellerReader({
         : landingTab === "lores"
           ? readerLoresPath(routeBasePath)
           : routeBasePath;
-  const pageTitle = currentItem?.title ?? currentLore?.title;
+  const pageTitle =
+    currentItem?.title ??
+    (currentLore ? spoilerGate.displayTitle(currentLore) : undefined);
   useTitle(
     project
       ? `${pageTitle ? `${pageTitle} - ` : ""}${project.name} - ${STORYTELLER_APP_NAME}`
@@ -724,7 +746,7 @@ export default function StorytellerReader({
     {
       description: shouldUseStorySeo
         ? ((currentItem?.summary ||
-            currentLore?.summary ||
+            (currentLoreLocked ? "" : currentLore?.summary) ||
             project?.description) ??
           undefined)
         : undefined,
@@ -1547,6 +1569,9 @@ export default function StorytellerReader({
           summary: lore.summary,
           updatedAt: lore.updatedAt,
           href: readerLorePath(basePath, lore.id),
+          lockHint: spoilerGate.isLocked(lore)
+            ? spoilerLockHint(spoilerGate.unmetDependencies(lore))
+            : undefined,
           progress:
             readingRecords.progressMap[readingTargetKey("lore", lore.id)],
         })),
@@ -1562,6 +1587,27 @@ export default function StorytellerReader({
       bodyRef={setReaderBodyNode}
       titleRef={contentTitleRef}
       preferences={preferences}
+      gate={
+        currentLoreLocked
+          ? {
+              dependencies: spoilerGate
+                .unmetDependencies(currentLore)
+                .map((dependency) => ({
+                  key: readingTargetKey(dependency.type, dependency.id),
+                  title: dependency.title,
+                  href:
+                    dependency.type === "story"
+                      ? readerStoryPath(basePath, dependency.id)
+                      : readerLorePath(basePath, dependency.id),
+                  progress:
+                    readingRecords.progressMap[
+                      readingTargetKey(dependency.type, dependency.id)
+                    ],
+                })),
+              onConfirm: () => spoilerGate.confirm(currentLore.id),
+            }
+          : undefined
+      }
     />
   ) : (
     workLanding
@@ -1591,7 +1637,7 @@ export default function StorytellerReader({
                       },
                     ]
                   : []),
-                { label: currentLore.title },
+                { label: spoilerGate.displayTitle(currentLore) },
               ]
             : landingTab === "lores"
               ? [
@@ -1614,7 +1660,10 @@ export default function StorytellerReader({
       {isContentPage && (
         <StorytellerReaderToolbar
           projectName={project.name}
-          currentTitle={currentItem?.title ?? currentLore?.title}
+          currentTitle={
+            currentItem?.title ??
+            (currentLore ? spoilerGate.displayTitle(currentLore) : undefined)
+          }
           progress={readingProgress}
           navigationOpen={indexOpen}
           onOpenNavigation={() => setIndexOpen(true)}
@@ -1645,7 +1694,7 @@ export default function StorytellerReader({
           previousChapter={
             currentLore
               ? previousLore && {
-                  title: previousLore.title,
+                  title: spoilerGate.displayTitle(previousLore),
                   href: readerLorePath(basePath, previousLore.id),
                 }
               : previousItem && {
@@ -1656,7 +1705,7 @@ export default function StorytellerReader({
           nextChapter={
             currentLore
               ? nextLore && {
-                  title: nextLore.title,
+                  title: spoilerGate.displayTitle(nextLore),
                   href: readerLorePath(basePath, nextLore.id),
                 }
               : nextItem && {

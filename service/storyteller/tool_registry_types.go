@@ -59,7 +59,12 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 	"comment's text as an instruction from the author about how they want the highlighted span rewritten, but " +
 	"never copy the comment's own text into the visible story content or surface it to anyone who isn't the " +
 	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
-	"remove it later) unless you're explicitly asked to delete it. Table rows are block-level markers: " +
+	"remove it later) unless you're explicitly asked to delete it. Links are inline markers too: " +
+	"⟦a-<id> href=\"https://...\"⟧linked text⟦/a-<id>⟧ (add target=\"_blank\" to open in a new tab; markdown " +
+	"[text](url) is NOT link syntax here and shows as literal text). A lore link uses " +
+	"href=\"steamloom-lore://<lore_public_id>\" and points readers to a lore entry of the same project: readers see " +
+	"that lore's summary card when they click it, and links to unpublished lores show as plain text. " +
+	"Table rows are block-level markers: " +
 	"⟦table tableId=\"...\" rowId=\"...\"⟧| cell | cell |⟦/table⟧. Keep rows from the same table adjacent and keep " +
 	"their tableId/rowId values stable when editing existing tables. Every other paragraph line (including " +
 	"headings) is also wrapped in its own plain marker with no extra attributes: ⟦<id>⟧paragraph text⟦/<id>⟧ " +
@@ -109,13 +114,16 @@ type storytellerStorySummary struct {
 }
 
 type storytellerLoreSummary struct {
-	PublicID     string    `json:"public_id"`
-	Title        string    `json:"title"`
-	CollectionID string    `json:"collection_id,omitempty"`
-	Status       string    `json:"status"`
-	Summary      string    `json:"summary,omitempty"`
-	WordCount    uint      `json:"word_count"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	PublicID     string `json:"public_id"`
+	Title        string `json:"title"`
+	CollectionID string `json:"collection_id,omitempty"`
+	Status       string `json:"status"`
+	Summary      string `json:"summary,omitempty"`
+	IsSpoiler    bool   `json:"is_spoiler"`
+	// DependsOn 只有讀單則設定（get／寫入回應）會帶，列表不查
+	DependsOn []storytellerModel.LoreDependencyRef `json:"depends_on,omitempty"`
+	WordCount uint                                 `json:"word_count"`
+	UpdatedAt time.Time                            `json:"updated_at"`
 }
 
 type storytellerProjectDetail struct {
@@ -218,6 +226,8 @@ func toStorytellerLoreSummary(lore storytellerModel.Lore) storytellerLoreSummary
 		CollectionID: lore.CollectionPublicID,
 		Status:       string(lore.Status),
 		Summary:      lore.Summary,
+		IsSpoiler:    lore.IsSpoiler,
+		DependsOn:    lore.DependsOn,
 		WordCount:    lore.WordCount,
 		UpdatedAt:    lore.UpdatedAt,
 	}

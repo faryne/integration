@@ -250,6 +250,9 @@ func storytellerItemKey(kind, itemID string) string {
 	return kind + ":" + itemID
 }
 
+// storytellerSpoilerLoreTitle 是含劇透設定在社群預覽與讀者列表上的替代標題
+const storytellerSpoilerLoreTitle = "含劇透的設定"
+
 type storytellerItemMeta struct {
 	Title   string
 	Summary string
@@ -281,7 +284,12 @@ func storytellerProjectMetaFromOutput(project *storytellerModel.ProjectOutput, e
 		items[storytellerItemKey("story", story.PublicID)] = storytellerItemMeta{Title: story.Title, Summary: story.Summary}
 	}
 	for _, lore := range project.Lores {
-		items[storytellerItemKey("lore", lore.PublicID)] = storytellerItemMeta{Title: lore.Title, Summary: lore.Summary}
+		item := storytellerItemMeta{Title: lore.Title, Summary: lore.Summary}
+		// 含劇透的設定：標題與摘要本身就可能是劇透，社群預覽一律不帶出來
+		if lore.IsSpoiler {
+			item = storytellerItemMeta{Title: storytellerSpoilerLoreTitle}
+		}
+		items[storytellerItemKey("lore", lore.PublicID)] = item
 	}
 	return storytellerProjectMeta{Title: project.Name, Description: project.Description, Items: items}, true
 }

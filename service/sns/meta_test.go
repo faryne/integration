@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	modelSNS "faryne.dev/model/entity/sns"
+	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/service/nccc"
 )
 
@@ -483,5 +484,24 @@ func TestBuildMetaStorytellerItemRoutes(t *testing.T) {
 		if meta.Title != want[0] || meta.Description != want[1] {
 			t.Errorf("%s: got (%s, %s), want (%s, %s)", path, meta.Title, meta.Description, want[0], want[1])
 		}
+	}
+}
+
+func TestStorytellerProjectMetaMasksSpoilerLore(t *testing.T) {
+	meta, ok := storytellerProjectMetaFromOutput(&storytellerModel.ProjectOutput{
+		Project: storytellerModel.Project{Name: "河燈之城"},
+		Lores: []storytellerModel.Lore{
+			{PublicID: "l1", Title: "白瀨澪", Summary: "第六席"},
+			{PublicID: "l2", Title: "第零席的真名", Summary: "其實是……", IsSpoiler: true},
+		},
+	}, nil)
+	if !ok {
+		t.Fatal("expected ok")
+	}
+	if got := meta.Items["lore:l1"]; got.Title != "白瀨澪" || got.Summary != "第六席" {
+		t.Fatalf("unexpected normal lore meta: %+v", got)
+	}
+	if got := meta.Items["lore:l2"]; got.Title != storytellerSpoilerLoreTitle || got.Summary != "" {
+		t.Fatalf("spoiler lore leaked: %+v", got)
 	}
 }
