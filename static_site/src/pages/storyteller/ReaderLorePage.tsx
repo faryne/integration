@@ -7,6 +7,11 @@ import {
   ReaderTextFrame,
   StoryContentLines,
 } from "@/pages/storyteller/ReaderStoryContent.tsx";
+import {
+  ReaderSpoilerGate,
+  type ReaderSpoilerDependency,
+} from "@/pages/storyteller/ReaderSpoilerGate.tsx";
+import { SPOILER_LORE_TITLE } from "@/pages/storyteller/useLoreSpoilerGate.ts";
 import { StorytellerFootnoteSection } from "@/pages/storyteller/StorytellerWysiwygMarkdown.tsx";
 import type { StorytellerTypographyPreferences } from "@/pages/storyteller/useStorytellerTypographyPreferences.ts";
 import { computeFootnoteNumbering } from "@/pages/storyteller/wysiwygCore/parser.ts";
@@ -23,8 +28,14 @@ export function ReaderLorePage({
   bodyRef,
   titleRef,
   preferences,
+  gate,
 }: {
   lore: ReaderLore;
+  // 劇透設定還沒解鎖時才會給：正文換成確認卡片，標題與摘要也先不顯示
+  gate?: {
+    dependencies: ReaderSpoilerDependency[];
+    onConfirm: () => void;
+  };
   collectionName?: string;
   bodyRef: Ref<HTMLDivElement>;
   titleRef?: Ref<HTMLHeadingElement>;
@@ -72,28 +83,35 @@ export function ReaderLorePage({
           </Typography>
         </Stack>
         <ContentMetaHeader
-          title={lore.title}
+          title={gate ? SPOILER_LORE_TITLE : lore.title}
           titleRef={titleRef}
-          summary={lore.summary}
+          summary={gate ? undefined : lore.summary}
           updatedAt={lore.updatedAt}
         />
         <Divider />
-        <ReaderTextFrame preferences={preferences}>
-          <StoryContentLines
-            content={lore.content}
-            bookmarkedLines={NO_LINES}
-            pendingLines={NO_LINES}
-            bookmarkMode="none"
-            bookmarkEditing={false}
-            onToggleBookmark={noop}
-            footnoteNumbering={footnoteNumbering}
-            footnoteIdPrefix={footnoteIdPrefix}
+        {gate ? (
+          <ReaderSpoilerGate
+            dependencies={gate.dependencies}
+            onConfirm={gate.onConfirm}
           />
-          <StorytellerFootnoteSection
-            list={footnoteNumbering.list}
-            idPrefix={footnoteIdPrefix}
-          />
-        </ReaderTextFrame>
+        ) : (
+          <ReaderTextFrame preferences={preferences}>
+            <StoryContentLines
+              content={lore.content}
+              bookmarkedLines={NO_LINES}
+              pendingLines={NO_LINES}
+              bookmarkMode="none"
+              bookmarkEditing={false}
+              onToggleBookmark={noop}
+              footnoteNumbering={footnoteNumbering}
+              footnoteIdPrefix={footnoteIdPrefix}
+            />
+            <StorytellerFootnoteSection
+              list={footnoteNumbering.list}
+              idPrefix={footnoteIdPrefix}
+            />
+          </ReaderTextFrame>
+        )}
       </Stack>
       <Box
         aria-hidden="true"

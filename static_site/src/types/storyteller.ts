@@ -376,6 +376,10 @@ export interface StorytellerLore {
   status: "draft" | "completed";
   // 給讀者看的設定摘要
   summary: string;
+  // 含劇透：讀者沒讀完 depends_on 就要先確認才能看（沒有依賴時一律要確認）
+  is_spoiler: boolean;
+  // 公開閱讀頁只帶讀者讀得到的依賴對象；作者端帶完整清單
+  depends_on?: StorytellerLoreDependency[];
   latest_content: string;
   latest_version_id: number | null;
   word_count: number;
@@ -794,6 +798,16 @@ export interface StorytellerLoreRequest {
   // 省略＝不變更（自動存檔不帶，避免把已公開的設定改回草稿）
   status?: "draft" | "completed";
   summary?: string;
+  // 同樣省略＝不變更；depends_on 傳空陣列代表清空
+  is_spoiler?: boolean;
+  depends_on?: StorytellerLoreDependency[];
+}
+
+// 劇透設定的依賴對象：故事（含圖像作品）或其他設定；title 只有讀取時會帶
+export interface StorytellerLoreDependency {
+  target_type: "story" | "lore";
+  target_public_id: string;
+  title?: string;
 }
 
 export interface StorytellerLoreCollectionRequest {

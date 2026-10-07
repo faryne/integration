@@ -1,4 +1,10 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArticleIcon from "@mui/icons-material/Article";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import ChecklistIcon from "@mui/icons-material/Checklist";
+import CollectionsIcon from "@mui/icons-material/Collections";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import FolderIcon from "@mui/icons-material/Folder";
 import ImageIcon from "@mui/icons-material/Image";
 import SaveIcon from "@mui/icons-material/Save";
@@ -68,6 +74,7 @@ import {
   WorkspaceEditableSummary,
   WorkspaceEditableTitle,
   WorkspaceEditorHeaderRow,
+  WorkspaceEditorMultiSelectButton,
   WorkspaceEditorMetaPanel,
   WorkspaceEditorSaveButton,
   WorkspaceEditorSelectButton,
@@ -94,6 +101,7 @@ import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parse
 import type {
   StorytellerAgenticProposal,
   StorytellerAsset,
+  StorytellerLoreDependency,
 } from "@/types/storyteller.ts";
 
 const editHistoryDrawerWidth = 460;
@@ -118,6 +126,9 @@ interface LoreDraft {
   content: string;
   status: PublicationStatus;
   summary: string;
+  isSpoiler: boolean;
+  // 依賴以 "story:<id>"／"lore:<id>" 字串記錄，順序就是作者勾選的順序
+  dependsOn: string[];
 }
 
 const EMPTY_LORE_DRAFT: LoreDraft = {
@@ -126,10 +137,23 @@ const EMPTY_LORE_DRAFT: LoreDraft = {
   content: "",
   status: "draft",
   summary: "",
+  isSpoiler: false,
+  dependsOn: [],
 };
 
 function serializeLoreDraft(draft: LoreDraft) {
   return JSON.stringify(draft);
+}
+
+// 草稿裡的 "story:<id>"／"lore:<id>" 轉成 API 的依賴格式
+function loreDependencyRefs(keys: string[]): StorytellerLoreDependency[] {
+  return keys.map((key) => {
+    const [type, publicId] = key.split(":");
+    return {
+      target_type: type as StorytellerLoreDependency["target_type"],
+      target_public_id: publicId,
+    };
+  });
 }
 
 // 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
@@ -223,6 +247,8 @@ export default function StorytellerLoreEditor({
   const [content, setContent] = useState("");
   const [loreStatus, setLoreStatus] = useState<PublicationStatus>("draft");
   const [loreSummary, setLoreSummary] = useState("");
+  const [loreIsSpoiler, setLoreIsSpoiler] = useState(false);
+  const [loreDependsOn, setLoreDependsOn] = useState<string[]>([]);
   const [leftVersionId, setLeftVersionId] = useState("");
   const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
@@ -306,6 +332,11 @@ export default function StorytellerLoreEditor({
         content: apiLore.latest_content,
         status: apiLore.status ?? "draft",
         summary: apiLore.summary ?? "",
+        isSpoiler: Boolean(apiLore.is_spoiler),
+        dependsOn: (apiLore.depends_on ?? []).map(
+          (dependency) =>
+            `${dependency.target_type}:${dependency.target_public_id}`,
+        ),
         updatedAt: apiLore.updated_at,
       }
     : undefined;
@@ -349,12 +380,16 @@ export default function StorytellerLoreEditor({
     setContent(lore?.content ?? "");
     setLoreStatus(lore?.status ?? "draft");
     setLoreSummary(lore?.summary ?? "");
+    setLoreIsSpoiler(lore?.isSpoiler ?? false);
+    setLoreDependsOn(lore?.dependsOn ?? []);
     const savedDraft = serializeLoreDraft({
       title: lore?.title ?? "",
       collectionId: defaultCollectionId,
       content: lore?.content ?? "",
       status: lore?.status ?? "draft",
       summary: lore?.summary ?? "",
+      isSpoiler: lore?.isSpoiler ?? false,
+      dependsOn: lore?.dependsOn ?? [],
     });
     currentDraftRef.current = savedDraft;
     lastSavedDraftRef.current = savedDraft;
@@ -365,6 +400,9 @@ export default function StorytellerLoreEditor({
     lore?.title,
     lore?.status,
     lore?.summary,
+    lore?.isSpoiler,
+    // 陣列每次 render 都是新參考，轉成字串比較內容
+    lore?.dependsOn.join(","),
     isNewLore,
     defaultCollectionIdFromQuery,
     loreCollections,
@@ -385,9 +423,19 @@ export default function StorytellerLoreEditor({
       content,
       status: loreStatus,
       summary: loreSummary,
+      isSpoiler: loreIsSpoiler,
+      dependsOn: loreDependsOn,
     };
     currentDraftRef.current = serializeLoreDraft(latestDraftRef.current);
-  }, [content, selectedCollectionId, title, loreStatus, loreSummary]);
+  }, [
+    content,
+    selectedCollectionId,
+    title,
+    loreStatus,
+    loreSummary,
+    loreIsSpoiler,
+    loreDependsOn,
+  ]);
 
   // 掛載後第一次收到編輯器回報的內容（可能已經過 marker id backfill）時，
   // 把它當成新的存檔基準，避免這次自動補值被誤判成使用者變更、跳出不必要的
@@ -411,6 +459,8 @@ export default function StorytellerLoreEditor({
         content: nextContent,
         status: loreStatus,
         summary: loreSummary,
+        isSpoiler: loreIsSpoiler,
+        dependsOn: loreDependsOn,
       });
     }
   }
@@ -532,6 +582,8 @@ export default function StorytellerLoreEditor({
               content: latestDraft.content,
               status: latestDraft.status,
               summary: latestDraft.summary,
+              is_spoiler: latestDraft.isSpoiler,
+              depends_on: loreDependencyRefs(latestDraft.dependsOn),
               save_trigger: "auto",
               base_version_id: latestVersionIdRef.current,
             },
@@ -692,6 +744,8 @@ export default function StorytellerLoreEditor({
             content,
             status: loreStatus,
             summary: loreSummary,
+            is_spoiler: loreIsSpoiler,
+            depends_on: loreDependencyRefs(loreDependsOn),
             save_trigger: "manual",
             base_version_id: isNewLore ? undefined : latestVersionIdRef.current,
           },
@@ -767,6 +821,8 @@ export default function StorytellerLoreEditor({
             content: nextContent,
             status: loreStatus,
             summary: loreSummary,
+            is_spoiler: loreIsSpoiler,
+            depends_on: loreDependencyRefs(loreDependsOn),
             save_trigger: "agent_apply",
             base_version_id: latestVersionIdRef.current,
           },
@@ -785,6 +841,8 @@ export default function StorytellerLoreEditor({
               content: savedContent,
               status: loreStatus,
               summary: loreSummary,
+              isSpoiler: loreIsSpoiler,
+              dependsOn: loreDependsOn,
             });
             currentDraftRef.current = savedDraft;
             lastSavedDraftRef.current = savedDraft;
@@ -898,6 +956,41 @@ export default function StorytellerLoreEditor({
     (version) => String(version.id) === rightVersionId,
   );
 
+  // 劇透：預設不含劇透；含劇透時才需要選「需先讀過」哪些故事或設定
+  const spoilerOptions = [
+    {
+      value: "no",
+      label: "無劇透",
+      icon: <VisibilityIcon fontSize="small" />,
+    },
+    {
+      value: "yes",
+      label: "含劇透",
+      icon: <ReportProblemOutlinedIcon fontSize="small" />,
+    },
+  ];
+  // 依賴可以是同專案的故事（不含冊）或其他設定；草稿與未公開的也列出來，作者可以先設好再公開
+  const dependencyOptions = [
+    ...apiStories
+      .filter((story) => !story.is_volume)
+      .map((story) => ({
+        value: `story:${story.public_id}`,
+        label: story.title,
+        icon:
+          story.content_type === "image" ? (
+            <CollectionsIcon fontSize="small" />
+          ) : (
+            <ArticleIcon fontSize="small" />
+          ),
+      })),
+    ...apiLores
+      .filter((item) => item.public_id !== apiLore?.public_id)
+      .map((item) => ({
+        value: `lore:${item.public_id}`,
+        label: item.title,
+        icon: <AutoStoriesIcon fontSize="small" />,
+      })),
+  ];
   const collectionOptions = [
     { value: "", label: "未歸類", icon: <FolderIcon fontSize="small" /> },
     ...(!selectedCollectionExists
@@ -1057,6 +1150,28 @@ export default function StorytellerLoreEditor({
             ]}
           >
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <WorkspaceEditorSelectButton
+                icon={
+                  loreIsSpoiler ? (
+                    <ReportProblemOutlinedIcon fontSize="small" />
+                  ) : (
+                    <VisibilityIcon fontSize="small" />
+                  )
+                }
+                label="劇透"
+                value={loreIsSpoiler ? "yes" : "no"}
+                options={spoilerOptions}
+                onChange={(value) => setLoreIsSpoiler(value === "yes")}
+              />
+              {loreIsSpoiler && (
+                <WorkspaceEditorMultiSelectButton
+                  icon={<ChecklistIcon fontSize="small" />}
+                  label="需先讀過"
+                  values={loreDependsOn}
+                  options={dependencyOptions}
+                  onChange={setLoreDependsOn}
+                />
+              )}
               {/* 設定預設不公開：裡面常有作者的私人筆記與未揭露伏筆，要作者自己決定才對讀者公開 */}
               <WorkspaceEditorSelectButton
                 icon={

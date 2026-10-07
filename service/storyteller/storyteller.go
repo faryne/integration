@@ -2236,6 +2236,10 @@ func (s *Service) Lores(userID uint64, projectPublicID string) ([]storytellerMod
 	if err != nil {
 		return nil, err
 	}
+	// 設定編輯頁是從這份完整清單取資料，依賴也要一起帶（批次查，不是每則各查一次）
+	if err := s.fillAuthorLoreDependencies(project.ID, rows); err != nil {
+		return nil, err
+	}
 	return rows, s.fillLoreCollectionPublicIDs(project.ID, rows)
 }
 

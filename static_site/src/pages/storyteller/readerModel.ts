@@ -98,6 +98,15 @@ export interface ReaderLore {
   content: string;
   collectionId: string | null;
   updatedAt: string;
+  isSpoiler: boolean;
+  // 讀者要先讀完的內容（只含讀者讀得到的；讀不到的後端已經濾掉，視為已滿足）
+  dependsOn: ReaderLoreDependency[];
+}
+
+export interface ReaderLoreDependency {
+  type: "story" | "lore";
+  id: string;
+  title: string;
 }
 
 export interface ReaderLoreCollection {
@@ -146,6 +155,12 @@ export function readerLoresFromProject(
       content: lore.latest_content,
       collectionId: lore.collection_id ?? null,
       updatedAt: lore.updated_at,
+      isSpoiler: Boolean(lore.is_spoiler),
+      dependsOn: (lore.depends_on ?? []).map((dependency) => ({
+        type: dependency.target_type,
+        id: dependency.target_public_id,
+        title: dependency.title ?? "",
+      })),
     })),
     (project.lore_collections ?? []).map((collection) => ({
       id: collection.public_id,

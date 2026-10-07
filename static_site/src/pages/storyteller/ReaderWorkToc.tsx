@@ -1,6 +1,7 @@
 import ArticleIcon from "@mui/icons-material/Article";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { Box, ButtonBase, Divider, Stack, Typography } from "@mui/material";
 import { useEffect, type ReactNode } from "react";
 import { Link as RouterLink, useLocation } from "react-router-dom";
@@ -8,6 +9,7 @@ import { formatStorytellerDate } from "@/data/storyteller.ts";
 import { ReaderProgressBadge } from "./ReaderProgressBadge.tsx";
 import { readerLoreGroupAnchorId } from "./readerModel.ts";
 import type { ReaderProgress } from "./readingRecordStore.ts";
+import { SPOILER_LORE_TITLE } from "./useLoreSpoilerGate.ts";
 
 export interface WorkLandingItem {
   id: string;
@@ -34,6 +36,8 @@ export interface WorkLandingLore {
   updatedAt: string;
   href: string;
   progress?: ReaderProgress;
+  // 劇透設定還沒解鎖時的提示（例如「需先讀過：第三話」）；有值時這一列連標題都遮住
+  lockHint?: string;
 }
 
 // 設定 Tab 的一個設定集區塊；id 為 null 代表未歸類
@@ -113,17 +117,29 @@ export function LoreToc({ groups }: { groups: WorkLandingLoreGroup[] }) {
           count={group.lores.length}
           unit="則"
         >
-          {group.lores.map((lore) => (
-            <TocRow
-              key={lore.id}
-              href={lore.href}
-              icon={<AutoStoriesIcon fontSize="small" />}
-              title={lore.title}
-              summary={lore.summary}
-              updatedAt={lore.updatedAt}
-              progress={lore.progress}
-            />
-          ))}
+          {group.lores.map((lore) =>
+            lore.lockHint ? (
+              <TocRow
+                key={lore.id}
+                href={lore.href}
+                icon={<LockOutlinedIcon fontSize="small" />}
+                title={SPOILER_LORE_TITLE}
+                summary={lore.lockHint}
+                updatedAt={lore.updatedAt}
+                progress={lore.progress}
+              />
+            ) : (
+              <TocRow
+                key={lore.id}
+                href={lore.href}
+                icon={<AutoStoriesIcon fontSize="small" />}
+                title={lore.title}
+                summary={lore.summary}
+                updatedAt={lore.updatedAt}
+                progress={lore.progress}
+              />
+            ),
+          )}
         </TocSection>
       ))}
     </Stack>
