@@ -3,6 +3,7 @@ package storyteller
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -20,6 +21,8 @@ type storytellerUpsertLoreArguments struct {
 	CollectionID    *string `json:"collection_id"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+	Status          *string `json:"status"`
+	Summary         *string `json:"summary"`
 }
 
 type storytellerPatchLoreArguments struct {
@@ -29,10 +32,12 @@ type storytellerPatchLoreArguments struct {
 	Content         *string `json:"content"`
 	CollectionID    *string `json:"collection_id"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+	Status          *string `json:"status"`
+	Summary         *string `json:"summary"`
 }
 
 func (a storytellerPatchLoreArguments) hasContentField() bool {
-	return a.Title != nil || a.Content != nil
+	return a.Title != nil || a.Content != nil || a.Status != nil || a.Summary != nil
 }
 
 type storytellerSearchReplaceLoreArguments struct {
@@ -301,6 +306,8 @@ func storytellerLoreToolSpecs() []ToolSpec {
 						"it out the user sees an empty diff and an empty overwrite. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 				),
 				"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
+				"status":          stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
+				"summary":         stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
 			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -316,6 +323,8 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					CollectionID:  args.CollectionID,
 					Content:       args.Content,
 					BaseVersionID: args.BaseVersionID,
+					Status:        loreStatusArgument(args.Status),
+					Summary:       args.Summary,
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()
@@ -437,7 +446,7 @@ func storytellerLoreToolSpecs() []ToolSpec {
 			Description: "Patch selected fields on an existing lore/worldbuilding entry. Omit a field to leave it unchanged. " +
 				"This is deliberately different from storyteller_upsert_lore: upsert has full-overwrite semantics, " +
 				"so omitting title/content there overwrites them with empty values. Use this tool when you only want to change specific fields. " +
-				"At least one of title or content must be provided. collection_id is optional and only changes collection membership when present; empty string or __uncategorized__ clears it.",
+				"At least one of title, content, status or summary must be provided. collection_id is optional and only changes collection membership when present; empty string or __uncategorized__ clears it.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Existing lore public_id to patch."),
@@ -445,6 +454,8 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"content":           stringSchema("Optional. New full content. Omit to keep the current content. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint),
 				"collection_id":     stringSchema("Optional. Omit to keep current collection membership; pass empty string or __uncategorized__ to clear it; pass a lore collection public_id to move it there."),
 				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; version_conflict flags if the lore has moved on since, but the write still happens."),
+				"status":            stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
+				"summary":           stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
 			}, []string{"project_public_id", "lore_public_id"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -538,6 +549,8 @@ func mergeLorePatch(lore *storytellerModel.Lore, args storytellerPatchLoreArgume
 		Content:       lore.LatestContent,
 		CollectionID:  args.CollectionID,
 		BaseVersionID: args.BaseVersionID,
+		Status:        loreStatusArgument(args.Status),
+		Summary:       args.Summary,
 	}
 	if args.Title != nil {
 		input.Title = *args.Title
@@ -546,4 +559,14 @@ func mergeLorePatch(lore *storytellerModel.Lore, args storytellerPatchLoreArgume
 		input.Content = *args.Content
 	}
 	return input
+}
+
+// loreStatusArgument 把 MCP 的字串參數轉成 LoreRequest 的狀態指標；省略時維持 nil（不變更），
+// 值是否合法交給 applyLorePublishing 統一檢查。
+func loreStatusArgument(status *string) *storytellerModel.StoryStatus {
+	if status == nil {
+		return nil
+	}
+	value := storytellerModel.StoryStatus(strings.TrimSpace(*status))
+	return &value
 }

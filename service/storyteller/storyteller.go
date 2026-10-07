@@ -128,6 +128,9 @@ func (s *Service) PublicProject(projectValue string, viewerID uint64) (*storytel
 		return nil, err
 	}
 	output.IsOwner = isOwner
+	if err := s.attachReaderLores(project.ID, output, includeDraftStories); err != nil {
+		return nil, err
+	}
 	return output, s.signProjectOutputAssetURIs(project.ID, output)
 }
 
@@ -138,6 +141,9 @@ func (s *Service) SharedProject(token string) (*storytellerModel.ProjectOutput, 
 	}
 	output, err := s.projectOutputWithFollowerCount(project, false)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.attachReaderLores(project.ID, output, false); err != nil {
 		return nil, err
 	}
 	return output, s.signProjectOutputAssetURIs(project.ID, output)
@@ -2292,6 +2298,9 @@ func (s *Service) CreateLore(userID uint64, projectPublicID string, input storyt
 		LatestContent: input.Content,
 		WordCount:     wordCount(input.Content),
 	}
+	if err := applyLorePublishing(lore, input); err != nil {
+		return nil, err
+	}
 	version := buildLoreVersion(*lore, source)
 	if err := s.repo.CreateLoreWithVersion(lore, version); err != nil {
 		return nil, err
@@ -2328,6 +2337,9 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 			return nil, false, err
 		}
 		lore.CollectionID = collectionID
+	}
+	if err := applyLorePublishing(lore, input); err != nil {
+		return nil, false, err
 	}
 	lore.Title = strings.TrimSpace(input.Title)
 	lore.LatestContent = input.Content

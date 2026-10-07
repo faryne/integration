@@ -13,6 +13,7 @@ import (
 
 	"faryne.dev/config"
 	modelSNS "faryne.dev/model/entity/sns"
+	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"faryne.dev/service/nccc"
@@ -79,14 +80,17 @@ var fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromSer
 
 var pathCollection = []pathMeta{
 	{
-		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/share/([^/]+)(?:/[^/]+)?$`),
+		// 分組：1＝share token、2＝內容種類（story/lore；image 是舊網址）、3＝內容 public_id；
+		// 舊網址沒有種類前綴（work/share/:token/:id）時 2 為空，視為故事。
+		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/share/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`),
 		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerSharedProjectMeta,
 	},
 	{
-		// work 是現行網址；story 與帶 story/image family 的形狀只保留舊外部連結的 meta 相容性。
-		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:story|image)/[^/]+(?:/versions/[^/]+)?|/[^/]+(?:/versions/[^/]+)?)?$`),
+		// work/:project/(story|lore)/:id 是現行網址；分組同上（1＝專案路徑）。
+		// 開頭的 story/、內容的 image/、沒有種類前綴的 /:id 都只保留舊外部連結的 meta 相容性。
+		Pattern:     regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`),
 		Title:       steamloomSiteName,
 		Description: defaultDescription,
 		Apply:       applyStorytellerPublicProjectMeta,
@@ -205,7 +209,7 @@ func applyStorytellerPublicProjectMeta(meta *modelSNS.Meta, matches []string) {
 	if !ok {
 		return
 	}
-	applyStorytellerProjectMeta(meta, project)
+	applyStorytellerProjectMeta(meta, project, matches[2], matches[3])
 }
 
 func applyStorytellerSharedProjectMeta(meta *modelSNS.Meta, matches []string) {
@@ -213,47 +217,73 @@ func applyStorytellerSharedProjectMeta(meta *modelSNS.Meta, matches []string) {
 	if !ok {
 		return
 	}
-	applyStorytellerProjectMeta(meta, project)
+	applyStorytellerProjectMeta(meta, project, matches[2], matches[3])
 	meta.Robots = "noindex, nofollow"
 }
 
-func applyStorytellerProjectMeta(meta *modelSNS.Meta, project storytellerProjectMeta) {
+// applyStorytellerProjectMeta 分享單篇故事或單則設定時，預覽卡顯示「篇名 | 作品名」與該篇摘要；
+// 找不到對應內容（作品首頁、/lores 分頁、失效連結）就退回作品層級的資訊。
+func applyStorytellerProjectMeta(meta *modelSNS.Meta, project storytellerProjectMeta, kind, itemID string) {
 	title := strings.TrimSpace(project.Title)
 	if title == "" {
 		return
 	}
+	description := strings.TrimSpace(project.Description)
+	if item, ok := project.Items[storytellerItemKey(kind, itemID)]; ok && strings.TrimSpace(item.Title) != "" {
+		title = strings.TrimSpace(item.Title) + " | " + title
+		if summary := strings.TrimSpace(item.Summary); summary != "" {
+			description = summary
+		}
+	}
 	meta.Title = fullTitleForSite(title, meta.SiteName)
-	if description := strings.TrimSpace(project.Description); description != "" {
+	if description != "" {
 		meta.Description = description
 	}
 	meta.Type = "article"
 }
 
+// storytellerItemKey 把網址上的內容種類正規化：舊網址的 image/ 與沒有種類前綴的都是故事。
+func storytellerItemKey(kind, itemID string) string {
+	if kind != "lore" {
+		kind = "story"
+	}
+	return kind + ":" + itemID
+}
+
+type storytellerItemMeta struct {
+	Title   string
+	Summary string
+}
+
 type storytellerProjectMeta struct {
 	Title       string
 	Description string
+	// Items 以 storytellerItemKey 為 key，包含讀者看得到的故事與設定
+	Items map[string]storytellerItemMeta
 }
 
 func fetchStorytellerPublicProjectMetaFromService(projectPath string) (storytellerProjectMeta, bool) {
 	project, err := storyteller.NewService().PublicProject(projectPath, 0)
-	if err != nil || project == nil {
-		return storytellerProjectMeta{}, false
-	}
-	return storytellerProjectMeta{
-		Title:       project.Name,
-		Description: project.Description,
-	}, true
+	return storytellerProjectMetaFromOutput(project, err)
 }
 
 func fetchStorytellerSharedProjectMetaFromService(shareToken string) (storytellerProjectMeta, bool) {
 	project, err := storyteller.NewService().SharedProject(shareToken)
+	return storytellerProjectMetaFromOutput(project, err)
+}
+
+func storytellerProjectMetaFromOutput(project *storytellerModel.ProjectOutput, err error) (storytellerProjectMeta, bool) {
 	if err != nil || project == nil {
 		return storytellerProjectMeta{}, false
 	}
-	return storytellerProjectMeta{
-		Title:       project.Name,
-		Description: project.Description,
-	}, true
+	items := make(map[string]storytellerItemMeta, len(project.Stories)+len(project.Lores))
+	for _, story := range project.Stories {
+		items[storytellerItemKey("story", story.PublicID)] = storytellerItemMeta{Title: story.Title, Summary: story.Summary}
+	}
+	for _, lore := range project.Lores {
+		items[storytellerItemKey("lore", lore.PublicID)] = storytellerItemMeta{Title: lore.Title, Summary: lore.Summary}
+	}
+	return storytellerProjectMeta{Title: project.Name, Description: project.Description, Items: items}, true
 }
 
 func applyLegacyNekomaidMeta(meta *modelSNS.Meta, matches []string) {
