@@ -1,8 +1,16 @@
 import { useEffect } from "react";
 
+import { isSteamLoomSite, STEAMLOOM_PATH_PREFIX } from "@/helpers/steamloom.ts";
+
 const siteName = "Faryne 的實驗室 by faryne.dev";
 const nekomaidSiteName = "難以名狀的抓圖器";
 const galgameSiteName = "galgame.tv";
+const steamloomSiteName = "SteamLoom";
+const steamloomOrigin = "https://steamloom.works";
+const steamloomDescription =
+  "SteamLoom 是故事創作與 AI Agent 協作平台，可瀏覽公開故事與親友分享的故事內容。";
+// 跟後端 service/sns 的品牌預設圖卡同一張（1200×630）
+const steamloomDefaultImage = "/steamloom-og-default.jpg";
 const defaultCanonicalOrigin = "https://faryne.dev";
 // Firebase 預覽網域跟正式自訂網域會顯示同一份內容，canonical 一律指回自訂網域，
 // 避免 Google 把兩者當成重複內容各自收錄一半。
@@ -63,7 +71,23 @@ export interface SeoOptions {
   type?: "website" | "article";
 }
 
+// isSteamLoomPage：steamloom.works 獨立站，或 faryne.dev/storyteller 巢狀模式
+function isSteamLoomPage() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const { pathname } = window.location;
+  return (
+    isSteamLoomSite() ||
+    pathname === STEAMLOOM_PATH_PREFIX ||
+    pathname.startsWith(`${STEAMLOOM_PATH_PREFIX}/`)
+  );
+}
+
 function getRouteSiteName() {
+  if (isSteamLoomPage()) {
+    return steamloomSiteName;
+  }
   if (
     typeof window !== "undefined" &&
     (window.location.pathname.startsWith("/nekomaid") ||
@@ -85,8 +109,9 @@ function getFullTitleForSite(page: string, currentSiteName: string) {
   if (!page.trim()) {
     return currentSiteName;
   }
-  if (page.trim() === currentSiteName) {
-    return currentSiteName;
+  // SteamLoom 頁面的標題本身就帶品牌名（「X - SteamLoom」），不用再補一次
+  if (page.trim() === currentSiteName || page.includes(currentSiteName)) {
+    return page.trim();
   }
   return `${page} | ${currentSiteName}`;
 }
@@ -105,6 +130,24 @@ function getDescription(page: string, description?: string) {
 
 function toAbsoluteUrl(value: string, origin = getCanonicalOrigin()) {
   return new URL(value, origin).toString();
+}
+
+// faryne.dev/storyteller/* 跟 steamloom.works 是同一份內容，canonical 一律指回 steamloom.works
+// 並拿掉 /storyteller 前綴，避免兩個網域重複收錄（後端 service/sns 的社群預覽也是同一套規則）
+function toCanonicalUrl(value: string) {
+  const url = new URL(value, getCanonicalOrigin());
+  const { pathname } = url;
+  if (
+    pathname !== STEAMLOOM_PATH_PREFIX &&
+    !pathname.startsWith(`${STEAMLOOM_PATH_PREFIX}/`)
+  ) {
+    return url.toString();
+  }
+  const steamloomPathname = pathname.slice(STEAMLOOM_PATH_PREFIX.length) || "/";
+  return new URL(
+    `${steamloomPathname}${url.search}`,
+    steamloomOrigin,
+  ).toString();
 }
 
 function setMetaByName(name: string, content: string) {
@@ -165,12 +208,17 @@ function setJsonLd(id: string, data: Record<string, unknown>) {
 export function useSeo(page: string, options: SeoOptions = {}) {
   useEffect(() => {
     const currentSiteName = getRouteSiteName();
+    const steamloom = currentSiteName === steamloomSiteName;
     const title = getFullTitleForSite(page, currentSiteName);
-    const description = getDescription(page, options.description);
-    const canonicalUrl = toAbsoluteUrl(
+    const description = steamloom
+      ? (options.description ?? steamloomDescription)
+      : getDescription(page, options.description);
+    const canonicalUrl = toCanonicalUrl(
       options.path ?? `${window.location.pathname}${window.location.search}`,
     );
-    const imageUrl = toAbsoluteUrl(options.image ?? defaultImage);
+    const imageUrl = steamloom
+      ? toAbsoluteUrl(options.image ?? steamloomDefaultImage, steamloomOrigin)
+      : toAbsoluteUrl(options.image ?? defaultImage);
     const robots = options.robots ?? "index, follow";
     const type = options.type ?? "website";
 
@@ -197,8 +245,8 @@ export function useSeo(page: string, options: SeoOptions = {}) {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: currentSiteName,
-      url: getCanonicalOrigin(),
-      description: defaultDescription,
+      url: steamloom ? steamloomOrigin : getCanonicalOrigin(),
+      description: steamloom ? steamloomDescription : defaultDescription,
       inLanguage: "zh-Hant-TW",
     });
   }, [

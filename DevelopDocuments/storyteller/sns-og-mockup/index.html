@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SNS 可見性與 OG 圖卡 mockup</title>
+<style>
+  :root { --bg:#f6f4ef; --paper:#fff; --ink:#2b2622; --sub:#7a7068; --line:#e3ddd3; --brand:#8a5a2b; --ok:#2e7d32; --mute:#9e9e9e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Noto Sans TC",system-ui,sans-serif; }
+  main { max-width:1080px; margin:0 auto; padding:24px 16px 64px; }
+  .crumb { font-size:13px; color:var(--sub); margin-bottom:8px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:32px 0 8px; }
+  p.note { color:var(--sub); font-size:14px; margin:4px 0 16px; line-height:1.7; }
+  .paper { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:20px; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+  .field { border:1px solid #c9c2b8; border-radius:6px; padding:10px 12px; font-size:14px; background:#fff; }
+  .field.type { width:150px; } .field.url { flex:1; min-width:220px; }
+  .vis { display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; font-size:13px; }
+  .vis button { border:0; background:#fff; padding:7px 12px; cursor:pointer; color:var(--sub); display:flex; gap:4px; align-items:center; }
+  .vis button.on.pub { background:#e8f5e9; color:var(--ok); font-weight:700; }
+  .vis button.on.pri { background:#eeeeee; color:#424242; font-weight:700; }
+  .x { border:0; background:none; font-size:18px; color:var(--sub); cursor:pointer; padding:6px; }
+  .add { border:1px solid var(--brand); color:var(--brand); background:#fff; border-radius:6px; padding:7px 14px; cursor:pointer; }
+  .hint { font-size:12px; color:var(--sub); margin-top:4px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+  .public { display:flex; gap:10px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:13px; background:#fff; }
+  .label { font-size:12px; font-weight:700; color:var(--brand); letter-spacing:.05em; margin-bottom:8px; }
+  /* 社群卡模擬 */
+  .card { background:#fff; border:1px solid #dadde1; border-radius:8px; overflow:hidden; max-width:500px; }
+  .og { width:100%; aspect-ratio:1200/630; position:relative; overflow:hidden; background:#222; }
+  .og .bg { position:absolute; inset:-20px; background-size:cover; background-position:center; filter:blur(18px) brightness(.55); }
+  .og .fg { position:absolute; top:6%; bottom:6%; left:50%; transform:translateX(-50%); aspect-ratio:2/3; background-size:cover; background-position:center; box-shadow:0 8px 24px rgba(0,0,0,.5); border-radius:4px; }
+  .og .crop { position:absolute; inset:0; background-size:cover; }
+  .meta { padding:10px 12px; background:#f0f2f5; }
+  .meta .host { font-size:12px; color:#65676b; text-transform:uppercase; }
+  .meta .t { font-weight:700; font-size:15px; margin:2px 0; }
+  .meta .d { font-size:13px; color:#65676b; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; }
+  .default { display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#3b2a1c,#8a5a2b); }
+  .default .logo { width:22%; aspect-ratio:1; border-radius:22%; background:#f6e7cf; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:clamp(18px,4vw,34px); color:#8a5a2b; }
+  .notfound { display:flex; align-items:center; justify-content:center; height:120px; color:#65676b; font-size:13px; background:#f0f2f5; border-radius:8px; border:1px dashed #c9ccd1; text-align:center; padding:12px; }
+  /* 用 CSS 漸層當假封面，不依賴外部圖片 */
+  .cover-portrait { background-image:linear-gradient(160deg,#1d3557 0%,#457b9d 40%,#e9c46a 75%,#e76f51 100%); }
+  .cover-land { background-image:linear-gradient(100deg,#264653 0%,#2a9d8f 45%,#e9c46a 70%,#f4a261 100%); }
+</style>
+</head>
+<body>
+<main>
+  <div class="crumb">SteamLoom / 我的工作台 / 我的檔案</div>
+  <h1>SNS 可見性與 OG 圖卡 mockup</h1>
+  <p class="note">只用來確認 UI 方向，按鈕可以點。實作時沿用現有 MUI 元件（ToggleButtonGroup），配色跟著 palette 走。</p>
+
+  <h2>① 我的檔案 → SNS 連結（筆名編輯對話框共用同一個元件）</h2>
+  <div class="grid">
+    <div class="paper">
+      <div class="label">作者端：編輯</div>
+      <div id="rows"></div>
+      <button class="add" onclick="addRow()">＋ 新增一列</button>
+      <div class="hint">設成「僅自己」的連結不會出現在公開作者頁、作品作者欄、追蹤清單裡。</div>
+    </div>
+    <div class="paper">
+      <div class="label">讀者端：公開作者頁看到的</div>
+      <div class="public" id="public"></div>
+      <div class="hint" style="margin-top:12px">本人逛自己的公開作者頁時看到的也是這個版本（跟訪客一致）。</div>
+    </div>
+  </div>
+
+  <h2>② OG 圖卡（以 Facebook／LINE 的卡片樣式模擬）</h2>
+  <p class="note">圖上不壓字：平台本來就會在卡片下方顯示標題和描述。圖一律合成成 1200×630。</p>
+  <div class="grid">
+    <div>
+      <div class="label">直式書封 → 模糊背景＋完整封面</div>
+      <div class="card">
+        <div class="og"><div class="bg cover-portrait"></div><div class="fg cover-portrait"></div></div>
+        <div class="meta"><div class="host">steamloom.works</div><div class="t">第三話　雨停的地方 | 織夢機房 | SteamLoom</div><div class="d">梭梭第一次在機房外頭聽見那頭的聲音……</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">橫幅封面（比例 ≥ 1.6）→ 依焦點裁切</div>
+      <div class="card">
+        <div class="og"><div class="crop cover-land" style="background-position:50% 32%"></div></div>
+        <div class="meta"><div class="host">steamloom.works</div><div class="t">織夢機房 | SteamLoom</div><div class="d">一台會做夢的織布機，和替它收線的看板娘。</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">沒封面／限制級 → 品牌預設圖</div>
+      <div class="card">
+        <div class="og default"><div class="logo">SL</div></div>
+        <div class="meta"><div class="host">steamloom.works</div><div class="t">某限制級作品 | SteamLoom</div><div class="d">此作品為限制級內容，需年滿 18 歲才能閱讀。</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="label">私人／草稿／不存在 → 404</div>
+      <div class="notfound">（爬蟲拿到 404，平台不產生預覽卡，只剩一行純連結）<br>steamloom.works/work/xxxx</div>
+    </div>
+  </div>
+</main>
+<script>
+  // mockup 用的假資料；visibility 跟著「列」走，改類型也不會掉
+  let rows = [
+    { type: "X", url: "https://x.com/faryne", pub: true },
+    { type: "Plurk", url: "https://www.plurk.com/faryne", pub: true },
+    { type: "Discord", url: "https://discord.gg/abcdef", pub: false },
+  ];
+  const types = ["X", "Facebook", "Instagram", "Threads", "Plurk", "巴哈姆特", "Discord", "YouTube", "個人網站"];
+  function render() {
+    document.getElementById("rows").innerHTML = rows.map((r, i) => `
+      <div class="row">
+        <select class="field type" onchange="rows[${i}].type=this.value;render()">${types.map(t => `<option ${t === r.type ? "selected" : ""}>${t}</option>`).join("")}</select>
+        <input class="field url" value="${r.url}" oninput="rows[${i}].url=this.value;renderPublic()">
+        <span class="vis">
+          <button class="pub ${r.pub ? "on" : ""}" onclick="rows[${i}].pub=true;render()">🌐 公開</button>
+          <button class="pri ${!r.pub ? "on" : ""}" onclick="rows[${i}].pub=false;render()">🔒 僅自己</button>
+        </span>
+        <button class="x" aria-label="刪除" onclick="rows.splice(${i},1);render()">✕</button>
+      </div>`).join("");
+    renderPublic();
+  }
+  function renderPublic() {
+    const visible = rows.filter(r => r.pub && r.url);
+    document.getElementById("public").innerHTML = visible.length
+      ? visible.map(r => `<span class="chip">${r.type}</span>`).join("")
+      : `<span class="hint">（沒有公開的連結）</span>`;
+  }
+  function addRow() { rows.push({ type: "X", url: "", pub: true }); render(); }
+  render();
+</script>
+</body>
+</html>

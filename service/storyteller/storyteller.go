@@ -2862,6 +2862,7 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		profile.Bio = input.Bio
 		profile.UseDefaultAvatar = input.UseDefaultAvatar
 		profile.AvatarURL = avatarURL
+		profile.SNSPrivateKeys = resolveSNSPrivateKeys(input.SNSLinks, profile.SNSPrivateKeys, input.SNSPrivateKeys)
 		profile.SNSLinks = input.SNSLinks
 		profile.HideFavoriteProjects = input.HideFavoriteProjects
 		profile.HideFavoriteAuthors = input.HideFavoriteAuthors
@@ -2890,6 +2891,7 @@ func (s *Service) SaveUserProfile(userID uint64, input storytellerModel.UserProf
 		UseDefaultAvatar:        input.UseDefaultAvatar,
 		AvatarURL:               avatarURL,
 		SNSLinks:                input.SNSLinks,
+		SNSPrivateKeys:          resolveSNSPrivateKeys(input.SNSLinks, nil, input.SNSPrivateKeys),
 		HideFavoriteProjects:    input.HideFavoriteProjects,
 		HideFavoriteAuthors:     input.HideFavoriteAuthors,
 		AutoSaveEnabled:         input.AutoSaveEnabled,
@@ -3086,6 +3088,7 @@ func userProfileOutput(profile *storytellerModel.UserProfile) *storytellerModel.
 		UseDefaultAvatar:        profile.UseDefaultAvatar,
 		AvatarURL:               resolvedAvatarURL(profile),
 		SNSLinks:                profile.SNSLinks,
+		SNSPrivateKeys:          storytellerModel.NormalizeSNSPrivateKeys(profile.SNSLinks, profile.SNSPrivateKeys),
 		HideFavoriteProjects:    profile.HideFavoriteProjects,
 		HideFavoriteAuthors:     profile.HideFavoriteAuthors,
 		AutoSaveEnabled:         profile.AutoSaveEnabled,
@@ -3186,6 +3189,15 @@ var snsDomainAllowlist = map[storytellerModel.SNSType][]string{
 	storytellerModel.SNSTypeBahamut:   {"gamer.com.tw"},
 	storytellerModel.SNSTypeDiscord:   {"discord.com", "discord.gg"},
 	storytellerModel.SNSTypeYouTube:   {"youtube.com", "youtu.be"},
+}
+
+// resolveSNSPrivateKeys 決定存檔後的私密 key：請求沒帶（nil）就沿用目前的設定，
+// 不管哪種來源都再對一次新的 links，刪掉或改名的連結不留孤兒 key
+func resolveSNSPrivateKeys(links storytellerModel.SNSLinks, current storytellerModel.StringList, input *storytellerModel.StringList) storytellerModel.StringList {
+	if input != nil {
+		current = *input
+	}
+	return storytellerModel.NormalizeSNSPrivateKeys(links, current)
 }
 
 // validateSNSLinks only checks the well-known SNSType keys against their

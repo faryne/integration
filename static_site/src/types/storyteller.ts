@@ -440,10 +440,14 @@ export interface StorytellerAuthorIdentity {
 
 export interface StorytellerAuthorProfile extends StorytellerAuthorIdentity {
   id: number;
+  // sns_links 裡設成「僅自己」的 key；只有本人看的輸出才有
+  sns_private_keys?: string[];
 }
 
 export interface StorytellerUserProfile extends StorytellerAuthorIdentity {
   user_id: number;
+  // sns_links 裡設成「僅自己」的 key；只有本人看的輸出才有
+  sns_private_keys?: string[];
   hide_favorite_projects: boolean;
   hide_favorite_authors: boolean;
   auto_save_enabled: boolean;
@@ -469,6 +473,8 @@ export interface StorytellerAuthorProfileRequest {
   use_default_avatar: boolean;
   avatar_url: string;
   sns_links: Record<string, string>;
+  // 省略＝不變更目前的可見性設定
+  sns_private_keys?: string[];
 }
 
 export interface StorytellerProjectRequest {
@@ -822,6 +828,8 @@ export interface StorytellerUserProfileRequest {
   use_default_avatar: boolean;
   avatar_url: string;
   sns_links: Record<string, string>;
+  // 省略＝不變更目前的可見性設定
+  sns_private_keys?: string[];
   hide_favorite_projects: boolean;
   hide_favorite_authors: boolean;
   auto_save_enabled: boolean;

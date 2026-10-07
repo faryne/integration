@@ -24,7 +24,14 @@ import {
   useUpdateStorytellerAuthorProfile,
 } from "@/apis/storyteller.ts";
 import { StorytellerConfirmNameDialog } from "@/components/storyteller/StorytellerConfirmNameDialog.tsx";
+import { StorytellerSnsLinksEditor } from "@/components/storyteller/StorytellerSnsLinksEditor.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import {
+  hasSnsRowError,
+  snsPayloadFromRows,
+  snsRowsFromLinks,
+  type SNSLinkRow,
+} from "@/helpers/storytellerSnsLinks.ts";
 import type {
   StorytellerAuthorProfile,
   StorytellerAuthorProfileRequest,
@@ -76,14 +83,12 @@ export function AuthorProfilesPanel({
   const deleteProfile = useDeleteStorytellerAuthorProfile();
   const atLimit = Boolean(
     accountLimits &&
-      accountLimits.current_profiles >= accountLimits.max_profiles,
+    accountLimits.current_profiles >= accountLimits.max_profiles,
   );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<StorytellerAuthorProfile | null>(null);
   const [form, setForm] = useState<StorytellerAuthorProfileRequest>(emptyForm);
-  const [snsRows, setSnsRows] = useState<Array<{ id: string; key: string; url: string }>>(
-    [],
-  );
+  const [snsRows, setSnsRows] = useState<SNSLinkRow[]>([]);
   const [deleteTarget, setDeleteTarget] =
     useState<StorytellerAuthorProfile | null>(null);
   const [message, setMessage] = useState("");
@@ -105,24 +110,12 @@ export function AuthorProfilesPanel({
       avatar_url: profile.avatar_url ?? "",
       sns_links: profile.sns_links ?? {},
     });
-    setSnsRows(
-      Object.entries(profile.sns_links ?? {}).map(([key, url], index) => ({
-        id: `${index}-${key}`,
-        key,
-        url,
-      })),
-    );
+    setSnsRows(snsRowsFromLinks(profile.sns_links, profile.sns_private_keys));
     setDialogOpen(true);
   }
 
   function save() {
-    const snsLinks: Record<string, string> = {};
-    for (const row of snsRows) {
-      const key = row.key.trim();
-      const url = row.url.trim();
-      if (key && url) snsLinks[key] = url;
-    }
-    const payload = { ...form, sns_links: snsLinks };
+    const payload = { ...form, ...snsPayloadFromRows(snsRows) };
     const onError = (error: unknown) => {
       setSeverity("error");
       setMessage(errorMessage(error, "筆名儲存失敗，請確認欄位內容。"));
@@ -234,7 +227,8 @@ export function AuthorProfilesPanel({
               }
               error={Boolean(nameError)}
               helperText={
-                nameError ?? "會顯示在公開作者頁網址上，全站不可與其他筆名重複。"
+                nameError ??
+                "會顯示在公開作者頁網址上，全站不可與其他筆名重複。"
               }
               fullWidth
             />
@@ -265,53 +259,11 @@ export function AuthorProfilesPanel({
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 SNS 連結
               </Typography>
-              <Stack spacing={1}>
-                {snsRows.map((row) => (
-                  <Stack key={row.id} direction="row" spacing={1}>
-                    <TextField
-                      label="類型"
-                      value={row.key}
-                      onChange={(event) =>
-                        setSnsRows((rows) =>
-                          rows.map((item) =>
-                            item.id === row.id
-                              ? { ...item, key: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      sx={{ width: 140 }}
-                    />
-                    <TextField
-                      label="網址"
-                      value={row.url}
-                      onChange={(event) =>
-                        setSnsRows((rows) =>
-                          rows.map((item) =>
-                            item.id === row.id
-                              ? { ...item, url: event.target.value }
-                              : item,
-                          ),
-                        )
-                      }
-                      fullWidth
-                    />
-                  </Stack>
-                ))}
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() =>
-                    setSnsRows((rows) => [
-                      ...rows,
-                      { id: `new-${Date.now()}`, key: "x", url: "" },
-                    ])
-                  }
-                  sx={{ alignSelf: "flex-start" }}
-                >
-                  新增一列
-                </Button>
-              </Stack>
+              <StorytellerSnsLinksEditor
+                rows={snsRows}
+                onChange={setSnsRows}
+                compact
+              />
             </Box>
           </Stack>
         </DialogContent>
@@ -319,7 +271,7 @@ export function AuthorProfilesPanel({
           <Button onClick={() => setDialogOpen(false)}>取消</Button>
           <Button
             variant="contained"
-            disabled={saving || Boolean(nameError)}
+            disabled={saving || Boolean(nameError) || hasSnsRowError(snsRows)}
             onClick={save}
           >
             {saving ? "儲存中" : "儲存"}

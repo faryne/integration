@@ -52,6 +52,7 @@ func (s *Service) CreateAuthorProfile(userID uint64, input storytellerModel.Auth
 		UseDefaultAvatar: input.UseDefaultAvatar,
 		AvatarURL:        input.AvatarURL,
 		SNSLinks:         input.SNSLinks,
+		SNSPrivateKeys:   resolveSNSPrivateKeys(input.SNSLinks, nil, input.SNSPrivateKeys),
 	}
 	if err := s.repo.CreateAuthorProfile(row); err != nil {
 		return nil, err
@@ -80,6 +81,7 @@ func (s *Service) UpdateAuthorProfile(userID, profileID uint64, input storytelle
 	row.Bio = input.Bio
 	row.UseDefaultAvatar = input.UseDefaultAvatar
 	row.AvatarURL = input.AvatarURL
+	row.SNSPrivateKeys = resolveSNSPrivateKeys(input.SNSLinks, row.SNSPrivateKeys, input.SNSPrivateKeys)
 	row.SNSLinks = input.SNSLinks
 	if err := s.repo.SaveAuthorProfile(row); err != nil {
 		return nil, err
@@ -387,7 +389,7 @@ func selfIdentityOutput(profile *storytellerModel.UserProfile) storytellerModel.
 		Bio:              profile.Bio,
 		UseDefaultAvatar: profile.UseDefaultAvatar,
 		AvatarURL:        resolvedAvatarURL(profile),
-		SNSLinks:         profile.SNSLinks,
+		SNSLinks:         profile.SNSLinks.PublicSNSLinks(profile.SNSPrivateKeys),
 		CreatedAt:        profile.CreatedAt,
 	}
 	if output.PenName == "" {
@@ -402,7 +404,7 @@ func extraIdentityOutput(profile *storytellerModel.AuthorProfile) storytellerMod
 		Bio:              profile.Bio,
 		UseDefaultAvatar: profile.UseDefaultAvatar,
 		AvatarURL:        resolvedExtraAvatarURL(profile),
-		SNSLinks:         profile.SNSLinks,
+		SNSLinks:         profile.SNSLinks.PublicSNSLinks(profile.SNSPrivateKeys),
 		CreatedAt:        profile.CreatedAt,
 	}
 }
@@ -415,6 +417,7 @@ func authorProfileOutput(profile *storytellerModel.AuthorProfile) storytellerMod
 		UseDefaultAvatar: profile.UseDefaultAvatar,
 		AvatarURL:        resolvedExtraAvatarURL(profile),
 		SNSLinks:         profile.SNSLinks,
+		SNSPrivateKeys:   storytellerModel.NormalizeSNSPrivateKeys(profile.SNSLinks, profile.SNSPrivateKeys),
 		CreatedAt:        profile.CreatedAt,
 	}
 }

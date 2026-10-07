@@ -5,16 +5,18 @@ import "time"
 // AuthorProfile 是帳號底下的「額外筆名」。本人身份仍在 storyteller_users（UserProfile），
 // 不搬遷；這張表只放另外建立的筆名。user_id 是擁有者帳號，僅後端使用、不對外輸出。
 type AuthorProfile struct {
-	ID               uint64     `gorm:"column:id;primaryKey" json:"id"`
-	UserID           uint64     `gorm:"column:user_id" json:"-"`
-	PenName          string     `gorm:"column:pen_name" json:"pen_name"`
-	Bio              string     `gorm:"column:bio" json:"bio"`
-	UseDefaultAvatar bool       `gorm:"column:use_default_avatar" json:"use_default_avatar"`
-	AvatarURL        string     `gorm:"column:avatar_url" json:"avatar_url"`
-	SNSLinks         SNSLinks   `gorm:"column:sns_links;type:json" json:"sns_links"`
-	DeletedAt        *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt        time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt        time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	UserID           uint64   `gorm:"column:user_id" json:"-"`
+	PenName          string   `gorm:"column:pen_name" json:"pen_name"`
+	Bio              string   `gorm:"column:bio" json:"bio"`
+	UseDefaultAvatar bool     `gorm:"column:use_default_avatar" json:"use_default_avatar"`
+	AvatarURL        string   `gorm:"column:avatar_url" json:"avatar_url"`
+	SNSLinks         SNSLinks `gorm:"column:sns_links;type:json" json:"sns_links"`
+	// SNSPrivateKeys 是 SNSLinks 裡設成「僅自己」的 key，公開輸出時濾掉（見 PublicSNSLinks）
+	SNSPrivateKeys StringList `gorm:"column:sns_private_keys;type:json" json:"sns_private_keys"`
+	DeletedAt      *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
+	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt      time.Time  `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AuthorProfile) TableName() string {
@@ -41,6 +43,8 @@ type AuthorProfileRequest struct {
 	UseDefaultAvatar bool     `json:"use_default_avatar"`
 	AvatarURL        string   `json:"avatar_url"`
 	SNSLinks         SNSLinks `json:"sns_links"`
+	// SNSPrivateKeys 用指標區分「省略＝不變更」與「空陣列＝全部公開」，舊版 client 不會洗掉設定
+	SNSPrivateKeys *StringList `json:"sns_private_keys,omitempty"`
 }
 
 // AuthorIdentityOutput 是公開身份輸出：不含帳號 id 或 profile id，身份只用 pen_name。
@@ -61,6 +65,7 @@ type AuthorProfileOutput struct {
 	UseDefaultAvatar bool      `json:"use_default_avatar"`
 	AvatarURL        string    `json:"avatar_url,omitempty"`
 	SNSLinks         SNSLinks  `json:"sns_links,omitempty"`
+	SNSPrivateKeys   []string  `json:"sns_private_keys"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
