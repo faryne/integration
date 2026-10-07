@@ -57,11 +57,11 @@ func TestFillLoreDependenciesDropsUnreadableTargets(t *testing.T) {
 }
 
 func TestLorePublicIDsFromContentCoversAllForms(t *testing.T) {
-	content := "見[白瀨澪](steamloom-lore://abc123)與⟦a-x1 href=\"steamloom-lore://def456\"⟧中控室⟦/a-x1⟧，" +
-		`{"pages":[{"description":"[澪](steamloom-lore://abc123)"}]}`
+	content := "見⟦a-x1 href=\"steamloom-lore://def456\"⟧中控室⟦/a-x1⟧，" +
+		`{"pages":[{"description":"⟦a-x2 href=\"steamloom-lore://abc123\"⟧澪⟦/a-x2⟧"}]}`
 	require.ElementsMatch(t, []string{"abc123", "def456"}, lorePublicIDsFromContent(content))
 }
 
 func TestWordCountIgnoresLoreLinkURI(t *testing.T) {
-	require.Equal(t, wordCount("白瀨澪"), wordCount("[白瀨澪](steamloom-lore://abc123)"))
+	require.Equal(t, wordCount("白瀨澪"), wordCount("⟦a-x1 href=\"steamloom-lore://abc123\"⟧白瀨澪⟦/a-x1⟧"))
 }

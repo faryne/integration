@@ -1,15 +1,12 @@
 import BookmarkIcon from "@mui/icons-material/Bookmark";
 import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
-import LinkOffIcon from "@mui/icons-material/LinkOff";
 import {
   Box,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   IconButton,
   Paper,
   Stack,
@@ -62,7 +59,6 @@ import {
   BG_COLOR_VALUES,
   COMMENT_COLOR_VALUES,
   DEFAULT_COMMENT_COLOR,
-  isSafeHref,
   TEXT_COLOR_VALUES,
   type CommentColorValue,
 } from "./wysiwygCore/whitelist";
@@ -83,6 +79,7 @@ import {
   currentParagraphMarkerId,
   currentParagraphText,
 } from "./wysiwygCore/currentParagraph";
+import { StorytellerWysiwygLinkDialog } from "@/pages/storyteller/StorytellerWysiwygLinkDialog.tsx";
 
 interface HoveredComment {
   text: string;
@@ -172,6 +169,11 @@ const INLINE_COLOR_SX = {
     color: "primary.main",
     textDecoration: "underline",
     cursor: "pointer",
+  },
+  // 設定連結：點狀底線＋次要色，跟一般外部連結區分開來
+  '& .wysiwyg-link[href^="steamloom-lore://"]': {
+    color: "secondary.main",
+    textDecorationStyle: "dotted",
   },
 } as const;
 
@@ -527,9 +529,12 @@ export const StorytellerWysiwygEditor = forwardRef<
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [hrefDraft, setHrefDraft] = useState("");
-  const [openInNewTab, setOpenInNewTab] = useState(false);
-  const [pendingHadExistingLink, setPendingHadExistingLink] = useState(false);
+  // 開啟對話框當下游標所在連結的 href／target（預填用）；key 每次開啟都遞增，讓對話框重新初始化
+  const [linkDialogInitial, setLinkDialogInitial] = useState<{
+    key: number;
+    href?: string;
+    target?: string;
+  }>({ key: 0 });
   const [footnoteDialogOpen, setFootnoteDialogOpen] = useState(false);
   const [footnoteDraft, setFootnoteDraft] = useState("");
   const [pendingHadExistingFootnote, setPendingHadExistingFootnote] =
@@ -1022,22 +1027,22 @@ export const StorytellerWysiwygEditor = forwardRef<
       string | undefined;
     const existingTarget = editor.getAttributes("link").target as
       string | undefined;
-    setPendingHadExistingLink(Boolean(existingHref));
-    setHrefDraft(existingHref ?? "");
-    setOpenInNewTab(existingTarget === "_blank");
+    setLinkDialogInitial((prev) => ({
+      key: prev.key + 1,
+      href: existingHref,
+      target: existingTarget,
+    }));
     setLinkDialogOpen(true);
   };
 
   // extendMarkRange 先把選取範圍延伸到涵蓋整個既有連結——不然編輯連結時，如果游標只是
   // 落在連結中間（沒有主動選取整段文字），setLink 只會套用到目前的空選取範圍，等於沒改到。
-  const handleConfirmLink = () => {
-    const href = hrefDraft.trim();
-    if (!isSafeHref(href)) return;
+  const handleConfirmLink = (href: string, target?: "_blank") => {
     editor
       .chain()
       .focus()
       .extendMarkRange("link")
-      .setLink({ href, target: openInNewTab ? "_blank" : undefined })
+      .setLink({ href, target })
       .run();
     setLinkDialogOpen(false);
   };
@@ -1347,62 +1352,16 @@ export const StorytellerWysiwygEditor = forwardRef<
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <StorytellerWysiwygLinkDialog
+        key={linkDialogInitial.key}
         open={linkDialogOpen}
+        initialHref={linkDialogInitial.href}
+        initialTarget={linkDialogInitial.target}
+        projectPublicId={projectPublicId}
         onClose={() => setLinkDialogOpen(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>
-          {pendingHadExistingLink ? "編輯連結" : "加連結"}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            fullWidth
-            label="網址"
-            placeholder="https://..."
-            value={hrefDraft}
-            onChange={(event) => setHrefDraft(event.target.value)}
-            error={hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())}
-            helperText={
-              hrefDraft.trim() !== "" && !isSafeHref(hrefDraft.trim())
-                ? "只接受 http:// 或 https:// 開頭的網址（暫不支援站內連結）"
-                : undefined
-            }
-          />
-          <FormControlLabel
-            sx={{ mt: 1 }}
-            control={
-              <Checkbox
-                checked={openInNewTab}
-                onChange={(event) => setOpenInNewTab(event.target.checked)}
-              />
-            }
-            label="在新分頁開啟"
-          />
-        </DialogContent>
-        <DialogActions>
-          {pendingHadExistingLink && (
-            <Button
-              color="error"
-              onClick={handleRemoveLink}
-              startIcon={<LinkOffIcon fontSize="small" />}
-              sx={{ mr: "auto" }}
-            >
-              移除連結
-            </Button>
-          )}
-          <Button onClick={() => setLinkDialogOpen(false)}>取消</Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmLink}
-            disabled={!isSafeHref(hrefDraft.trim())}
-          >
-            {pendingHadExistingLink ? "更新連結" : "新增連結"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={handleConfirmLink}
+        onRemove={handleRemoveLink}
+      />
 
       <Dialog
         open={footnoteDialogOpen}

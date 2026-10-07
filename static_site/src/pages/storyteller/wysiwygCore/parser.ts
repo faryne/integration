@@ -20,6 +20,7 @@ import {
   DEFAULT_HEADING_LEVEL,
   FOOTNOTE_PARSE_DELIMITERS,
   INLINE_MARKER_TYPES,
+  isAllowedLinkHref,
   isSafeHref,
   LINK_TARGET_VALUES,
   MARKER_ALIGN_ATTR,
@@ -202,7 +203,7 @@ function parseInlineAttrs(attrBlob: string): InlineAttrs {
       (BG_COLOR_VALUES as readonly string[]).includes(value)
     ) {
       result.bgColor = value as BgColorValue;
-    } else if (name === MARKER_HREF_ATTR && isSafeHref(value)) {
+    } else if (name === MARKER_HREF_ATTR && isAllowedLinkHref(value)) {
       // 防禦性檢查：就算 DB 裡不知怎麼混進了危險 scheme（例如手動改資料、之後的匯入功能），
       // 解析階段也不會把它當成有效連結，不能只靠編輯器輸入時的驗證。
       result.href = value;

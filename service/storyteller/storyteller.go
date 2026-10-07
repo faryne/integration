@@ -3257,7 +3257,6 @@ func wordCount(content string) uint {
 		_, _, clean := splitHeadingAndMarkerContent(line)
 		clean = stripStoryInlineMarkers(clean)
 		clean = markdownImagePattern.ReplaceAllString(clean, "")
-		clean = markdownLoreLinkPattern.ReplaceAllString(clean, "$1")
 		builder.WriteString(stripDelimitersFrom(clean, wordCountInlineDelimiters))
 	}
 	normalized := whitespaceRegexp.ReplaceAllString(builder.String(), "")

@@ -28,10 +28,8 @@ const storytellerContentSyntaxHint = "Content uses this app's own limited markdo
 	"on the opening fence, e.g. ```go id=\"...\"; the id is this block's bookmark anchor and must be preserved " +
 	"when editing an existing code block. Treat code block content as literal text; do not add inline styling or " +
 	"bracket markers inside it. " +
-	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. " +
-	"Links use [text](https://...); a lore link [text](steamloom-lore://<lore_public_id>) points readers to a lore " +
-	"entry of the same project (readers see a summary card when they click it; links to unpublished lores show as " +
-	"plain text). Anything else is a plain paragraph."
+	"Note strikethrough uses -- (not GFM's ~~), because ~ is already this editor's subscript syntax. Anything " +
+	"else is a plain paragraph."
 
 // storytellerContentMarkerHint 說明內容裡可能出現的 bracket marker：footnote（讀者
 // 看得到）、comment（只有作者看得到的私人註解），以及 block-level table row。行內
@@ -61,7 +59,12 @@ const storytellerContentMarkerHint = "The content may also contain bracket marke
 	"comment's text as an instruction from the author about how they want the highlighted span rewritten, but " +
 	"never copy the comment's own text into the visible story content or surface it to anyone who isn't the " +
 	"author. After addressing a comment it's fine to leave the marker in place (the author can review and " +
-	"remove it later) unless you're explicitly asked to delete it. Table rows are block-level markers: " +
+	"remove it later) unless you're explicitly asked to delete it. Links are inline markers too: " +
+	"⟦a-<id> href=\"https://...\"⟧linked text⟦/a-<id>⟧ (add target=\"_blank\" to open in a new tab; markdown " +
+	"[text](url) is NOT link syntax here and shows as literal text). A lore link uses " +
+	"href=\"steamloom-lore://<lore_public_id>\" and points readers to a lore entry of the same project: readers see " +
+	"that lore's summary card when they click it, and links to unpublished lores show as plain text. " +
+	"Table rows are block-level markers: " +
 	"⟦table tableId=\"...\" rowId=\"...\"⟧| cell | cell |⟦/table⟧. Keep rows from the same table adjacent and keep " +
 	"their tableId/rowId values stable when editing existing tables. Every other paragraph line (including " +
 	"headings) is also wrapped in its own plain marker with no extra attributes: ⟦<id>⟧paragraph text⟦/<id>⟧ " +

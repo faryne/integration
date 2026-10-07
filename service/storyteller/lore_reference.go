@@ -6,12 +6,9 @@ import (
 )
 
 // loreURIRegexp 比對內文裡的設定連結 steamloom-lore://<lorePublicID>。
-// 故事、設定內文用 [顯示文字](steamloom-lore://id) 或編輯器存成的連結 marker（href="steamloom-lore://id"），
-// 圖像作品的頁面說明存在 JSON 裡，三種形式都直接掃原始字串就好（public_id 不會含引號）。
+// 設定連結就是一般的連結 marker：⟦a-<id> href="steamloom-lore://<lorePublicID>"⟧文字⟦/a-<id>⟧；
+// 圖像作品的頁面說明存在 JSON 裡，一樣直接掃原始字串就好（public_id 不會含引號）。
 var loreURIRegexp = regexp.MustCompile(`steamloom-lore://([A-Za-z0-9._~-]+)`)
-
-// markdownLoreLinkPattern 給字數計算用：設定連結只算顯示文字，不把 URI 算進字數
-var markdownLoreLinkPattern = regexp.MustCompile(`\[([^\]\r\n]*)\]\(steamloom-lore://[A-Za-z0-9._~-]+\)`)
 
 func lorePublicIDsFromContent(content string) []string {
 	matches := loreURIRegexp.FindAllStringSubmatch(content, -1)

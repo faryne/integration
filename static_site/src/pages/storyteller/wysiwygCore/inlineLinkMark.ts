@@ -1,6 +1,6 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
 
-import { isSafeHref, type LinkTargetValue } from "./whitelist";
+import { isAllowedLinkHref, type LinkTargetValue } from "./whitelist";
 
 /**
  * 連結的行內 mark（對應序列化格式裡 a 行內 marker 的 href／target 屬性）。
@@ -64,7 +64,7 @@ export const InlineLink = Mark.create({
       setLink:
         ({ href, target }: SetLinkOptions) =>
         ({ commands }) => {
-          if (!isSafeHref(href)) return false;
+          if (!isAllowedLinkHref(href)) return false;
           return commands.setMark(this.name, { href, target: target ?? null });
         },
       unsetLink:

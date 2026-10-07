@@ -1,4 +1,10 @@
-import { Fragment, useId, type CSSProperties, type ReactNode } from "react";
+import {
+  Fragment,
+  useContext,
+  useId,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Box, Typography } from "@mui/material";
 
 import {
@@ -24,7 +30,12 @@ import {
   type ParsedRun,
 } from "./wysiwygCore/parser";
 import { HEADING_TYPOGRAPHY_SX } from "./wysiwygCore/typographySx";
-import { isSafeHref, type MarkName } from "./wysiwygCore/whitelist";
+import { StorytellerLoreLinkContext } from "./storytellerLoreLinkContext.ts";
+import {
+  isSafeHref,
+  loreIdFromHref,
+  type MarkName,
+} from "./wysiwygCore/whitelist";
 
 interface StorytellerWysiwygMarkdownProps {
   children: string;
@@ -201,6 +212,14 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
   // 連結：parser 已經檢查過 scheme，這裡渲染前再檢查一次（防禦性、不假設上一層
   // 一定擋過）——每一層都要各自驗證，不能只靠其中一關。target=_blank 一定要配
   // rel="noopener noreferrer"，防止新分頁透過 window.opener 回頭操作原本頁面。
+  const loreId = run.href ? loreIdFromHref(run.href) : undefined;
+  if (loreId) {
+    return (
+      <LoreLinkRun key={key} loreId={loreId}>
+        {node}
+      </LoreLinkRun>
+    );
+  }
   if (run.href && isSafeHref(run.href)) {
     return (
       <a
@@ -214,6 +233,18 @@ function renderRun(run: ParsedRun, key: number): ReactNode {
     );
   }
   return <span key={key}>{node}</span>;
+}
+
+// 設定連結交給外層頁面決定怎麼渲染（見 storytellerLoreLinkContext.ts）；沒有提供就是純文字
+function LoreLinkRun({
+  loreId,
+  children,
+}: {
+  loreId: string;
+  children: ReactNode;
+}) {
+  const renderLoreLink = useContext(StorytellerLoreLinkContext);
+  return renderLoreLink?.(loreId, children) ?? <span>{children}</span>;
 }
 
 /** 上標編號連結的錨點 id，跟尾端清單項目的 id 成對出現，見下面兩個函式共用同一個前綴規則。 */
