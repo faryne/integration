@@ -69,7 +69,9 @@ func NewServer(name, version string) *Server {
 	s := newBareServer(name, version)
 	s.registerBuiltInTools()
 	s.registerAVTools()
+	s.registerGalgameTools()
 	s.registerNekomaidTools()
+	s.registerTWStatsTools()
 	return s
 }
 

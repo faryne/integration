@@ -3,7 +3,9 @@ package mcp
 import (
 	"context"
 
+	nekomaidModel "faryne.dev/model/entity/nekomaid"
 	nekomaidService "faryne.dev/service/nekomaid"
+	nekomaidRetrieve "faryne.dev/service/nekomaid/retrieve"
 )
 
 type nekomaidSearchArguments struct {
@@ -19,7 +21,25 @@ type nekomaidSearchArguments struct {
 	Page      int    `json:"page"`
 }
 
+type nekomaidRetrieveArguments struct {
+	Site      string `json:"site"`
+	ArtworkID string `json:"artwork_id"`
+}
+
+type nekomaidToolDependencies struct {
+	search   func(nekomaidService.SearchRequest) (*nekomaidModel.ArtworkSearchResponse, error)
+	retrieve func(context.Context, string, string) (*nekomaidRetrieve.Result, error)
+}
+
 func (s *Server) registerNekomaidTools() {
+	s.registerNekomaidToolsWithDependencies(nekomaidToolDependencies{
+		search:   nekomaidService.SearchByRequest,
+		retrieve: nekomaidRetrieve.Artwork,
+	})
+}
+
+// registerNekomaidToolsWithDependencies 讓 MCP 參數轉換可獨立測試，不必真的連 Elasticsearch 或來源站。
+func (s *Server) registerNekomaidToolsWithDependencies(deps nekomaidToolDependencies) {
 	_ = s.RegisterTool(Tool{
 		Name:        "nekomaid_search",
 		Description: "Search indexed Nekomaid artworks by site, author, artwork, tag, rating, type, wallpaper ratio, or page.",
@@ -40,7 +60,7 @@ func (s *Server) registerNekomaidTools() {
 			if err := decodeArguments(arguments, &args); err != nil {
 				return nil, err
 			}
-			response, err := nekomaidService.SearchByRequest(nekomaidService.SearchRequest{
+			response, err := deps.search(nekomaidService.SearchRequest{
 				Site:      args.Site,
 				Sites:     args.Sites,
 				Page:      normalizedPage(args.Page),
@@ -56,6 +76,26 @@ func (s *Server) registerNekomaidTools() {
 				return nil, err
 			}
 			return jsonTextResult(response)
+		},
+	})
+
+	_ = s.RegisterTool(Tool{
+		Name:        "nekomaid_retrieve",
+		Description: "Retrieve an artwork from Pixiv, Nico Seiga, or Tinami, then store and index it in Nekomaid. Large Pixiv artworks may be queued for background processing.",
+		InputSchema: objectSchema(map[string]interface{}{
+			"site":       stringEnumSchema("Source site.", "pixiv", "nico", "tinami"),
+			"artwork_id": stringSchema("Artwork ID on the source site. Tinami expects the numeric content ID."),
+		}, []string{"site", "artwork_id"}),
+		Handler: func(ctx context.Context, arguments map[string]interface{}) (*CallToolResult, error) {
+			var args nekomaidRetrieveArguments
+			if err := decodeArguments(arguments, &args); err != nil {
+				return nil, err
+			}
+			result, err := deps.retrieve(ctx, args.Site, args.ArtworkID)
+			if err != nil {
+				return nil, err
+			}
+			return jsonTextResult(result)
 		},
 	})
 }

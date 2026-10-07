@@ -30,6 +30,7 @@ func TestServerHandleJSONRPCHandlesBasicMCPMethods(t *testing.T) {
 	require.Contains(t, mustMarshal(t, list.Result), `"name":"ping"`)
 	require.NotContains(t, mustMarshal(t, list.Result), `"name":"server_info"`)
 	require.Contains(t, mustMarshal(t, list.Result), `"name":"nekomaid_search"`)
+	require.Contains(t, mustMarshal(t, list.Result), `"name":"nekomaid_retrieve"`)
 
 	var call response
 	call, shouldReply, err = server.HandleJSONRPC(context.Background(), []byte(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ping","arguments":{}}}`))

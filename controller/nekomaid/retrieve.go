@@ -1,21 +1,11 @@
 package nekomaid
 
 import (
-	"context"
+	"errors"
 
-	"faryne.dev/model/enum"
-	"faryne.dev/service/log"
-	"faryne.dev/service/nekomaid"
-	"faryne.dev/service/nekomaid/nico"
-	"faryne.dev/service/nekomaid/pixiv"
-	"faryne.dev/service/nekomaid/tinami"
+	nekomaidRetrieve "faryne.dev/service/nekomaid/retrieve"
 	"github.com/gofiber/fiber/v3"
-	"go.uber.org/zap"
 )
-
-type asyncPreviewRetriever interface {
-	GetPreview(id string) (previewURL string, async bool, err error)
-}
 
 // Retrieve retrieves and stores an artwork.
 // @Summary Retrieve nekomaid artwork
@@ -40,49 +30,18 @@ func Retrieve(ctx fiber.Ctx) error {
 		artworkId = ctx.Query("artwork_id")
 	}
 
-	site := enum.NekomaidSite(siteStr)
-
-	if site == "" || artworkId == "" {
+	if siteStr == "" || artworkId == "" {
 		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "site and artwork_id are required",
 		})
 	}
 
-	var retriever nekomaid.RetrieverInterface
-	switch site {
-	case enum.NekomaidSitePixiv:
-		retriever = pixiv.New()
-	case enum.NekomaidSiteNico:
-		retriever = nico.New()
-	case enum.NekomaidSiteTinami:
-		retriever = tinami.New()
-	default:
-		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "unsupported site",
-		})
-	}
-
-	r := nekomaid.NewRetriever()
-	if previewer, ok := retriever.(asyncPreviewRetriever); ok {
-		previewURL, runAsync, err := previewer.GetPreview(artworkId)
-		if err != nil {
-			return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		}
-		if runAsync {
-			retrieveInBackground(r, site, artworkId, retriever)
-			return ctx.Status(fiber.StatusAccepted).JSON(fiber.Map{
-				"url": previewURL,
-			})
-		}
-	}
-
-	previewUrl, err := r.RetrieveAndSave(ctx.Context(), site, artworkId, retriever)
+	result, err := nekomaidRetrieve.Artwork(ctx.Context(), siteStr, artworkId)
 	if err != nil {
-		// 根據錯誤訊息判斷狀態碼 (這部分可以再細分自定義錯誤類型)
 		status := fiber.StatusInternalServerError
-		if err.Error() == "此作品已被抓取過" {
+		if errors.Is(err, nekomaidRetrieve.ErrArguments) || errors.Is(err, nekomaidRetrieve.ErrUnsupportedSite) {
+			status = fiber.StatusBadRequest
+		} else if err.Error() == "此作品已被抓取過" {
 			status = fiber.StatusAlreadyReported
 		} else if err.Error() == "此畫師的作品不允許被抓取" {
 			status = fiber.StatusForbidden
@@ -93,26 +52,9 @@ func Retrieve(ctx fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"url": previewUrl,
-	})
-}
-
-func retrieveInBackground(r *nekomaid.Retriever, site enum.NekomaidSite, artworkId string, retriever nekomaid.RetrieverInterface) {
-	go func(site enum.NekomaidSite, artworkId string, retriever nekomaid.RetrieverInterface) {
-		previewUrl, err := r.RetrieveAndSave(context.Background(), site, artworkId, retriever)
-		if err != nil {
-			log.Logger().Warn("Nekomaid async retrieve failed",
-				zap.String("site", string(site)),
-				zap.String("artwork_id", artworkId),
-				zap.Error(err),
-			)
-			return
-		}
-		log.Logger().Info("Nekomaid async retrieve completed",
-			zap.String("site", string(site)),
-			zap.String("artwork_id", artworkId),
-			zap.String("preview_url", previewUrl),
-		)
-	}(site, artworkId, retriever)
+	status := fiber.StatusCreated
+	if result.Status == "queued" {
+		status = fiber.StatusAccepted
+	}
+	return ctx.Status(status).JSON(fiber.Map{"url": result.URL})
 }
