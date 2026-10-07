@@ -183,6 +183,7 @@ var StorytellerAuditExemptions = []AuditExemption{
 	{Kind: "route", Identifier: "POST /storyteller/projects/:project/agentic-proposals/:proposal/preview", Reason: "只計算預覽內容，不寫入資料"},
 	{Kind: "route", Identifier: "POST /storyteller/notifications/read-all", Reason: "標已讀是介面狀態"},
 	{Kind: "route", Identifier: "POST /storyteller/notifications/:notification/read", Reason: "標已讀是介面狀態"},
+	{Kind: "route", Identifier: "PUT /storyteller/story/:project/reading-records", Reason: "閱讀進度隨捲動頻繁回報，是介面狀態"},
 }
 
 func AuditActionForRoute(method, path string) (AuditActionDefinition, bool) {

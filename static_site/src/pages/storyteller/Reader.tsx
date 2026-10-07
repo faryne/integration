@@ -59,6 +59,14 @@ import {
   useGatedCoverUrl,
 } from "@/helpers/storytellerCover.ts";
 import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
+import {
+  useReadingRecords,
+  useSettledReadingProgress,
+} from "@/pages/storyteller/useReadingRecords.ts";
+import {
+  readerScrollableRange,
+  useReadingResume,
+} from "@/pages/storyteller/useReadingResume.ts";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import {
@@ -1094,7 +1102,11 @@ export default function StorytellerReader() {
   const [bookmarkEditing, setBookmarkEditing] = useState(false);
   const [readingProgress, setReadingProgress] = useState(0);
   const [readerContextVisible, setReaderContextVisible] = useState(false);
-  const readerBodyRef = useRef<HTMLDivElement | null>(null);
+  // 本文容器用 state 當 callback ref：直接開網址時容器會比進度 effect 晚掛上（例如還在等登入
+  // 狀態），用 useRef 的話 effect 拿到 null 就不會再重跑，閱讀進度永遠停在 0%
+  const [readerBodyNode, setReaderBodyNode] = useState<HTMLDivElement | null>(
+    null,
+  );
   const { preferences, updatePreferences } = useStorytellerReaderPreferences();
   const [favorite, setFavorite] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
@@ -1332,6 +1344,33 @@ export default function StorytellerReader() {
   const displayContent = historicalVersion
     ? historicalVersion.content
     : currentStory?.content;
+  // 閱讀進度：文字看捲動位置、圖像看翻到第幾頁；看歷史版本時不記錄（那不是正式內容），
+  // 數值要穩定一段時間才寫入，換篇瞬間的暫態值不會被誤記（見 useSettledReadingProgress）
+  const readingRecords = useReadingRecords(apiProject?.public_id);
+  const currentReadingProgress = isHistoricalView
+    ? null
+    : currentStory
+      ? readingProgress
+      : currentEpisode && totalEpisodePages > 0
+        ? Math.round(((pageIndex + 1) / totalEpisodePages) * 100)
+        : null;
+  useSettledReadingProgress(
+    currentItem?.id,
+    currentReadingProgress,
+    (itemId, progress) => readingRecords.report("story", itemId, progress),
+  );
+  const readingResume = useReadingResume({
+    itemId: currentItem?.id,
+    isImage: Boolean(currentEpisode),
+    ready: readingRecords.ready,
+    progress: currentItem
+      ? readingRecords.storyProgress(currentItem.id)
+      : undefined,
+    skip: Boolean(location.hash) || isHistoricalView,
+    bodyNode: readerBodyNode,
+    totalPages: totalEpisodePages,
+    setPageIndex,
+  });
   // 腳注編號／尾端清單一定要用「整篇故事的完整內容」算一次，不能讓下面逐行渲染的
   // StoryContentLines 每行各自算——不然每行都會從編號 1 重來，且腳注只要出現在某行，
   // 那行就會各自渲染一次尾端清單（腳注應該只在整篇故事最尾端出現一次，跟內容裡有沒有
@@ -1637,24 +1676,21 @@ export default function StorytellerReader() {
 
   // 進度只根據本文容器計算；Hero、全站 header/footer 不列入分母。
   useEffect(() => {
-    const node = readerBodyRef.current;
+    const node = readerBodyNode;
     if (!node) {
       return;
     }
     let frame: number | null = null;
     const updateProgress = () => {
-      const bodyTop = node.getBoundingClientRect().top + window.scrollY;
-      const bottomSpacerHeight =
-        node.querySelector<HTMLElement>("[data-reader-bottom-spacer]")
-          ?.offsetHeight ?? 0;
-      const scrollableHeight = Math.max(
-        node.offsetHeight - bottomSpacerHeight - window.innerHeight,
-        1,
-      );
-      const next = Math.min(
-        100,
-        Math.max(0, ((window.scrollY - bodyTop) / scrollableHeight) * 100),
-      );
+      const { bodyTop, scrollable } = readerScrollableRange(node);
+      // 內容短到一個畫面就放得下（不需要捲動）時，打開就等於讀完
+      const next =
+        scrollable <= 0
+          ? 100
+          : Math.min(
+              100,
+              Math.max(0, ((window.scrollY - bodyTop) / scrollable) * 100),
+            );
       setReadingProgress(Math.round(next));
       // 頁首本來就有完整標題與摘要；只有它捲到全站 AppBar 後方時才顯示 compact context，
       // 避免剛開頁面就在同一個 viewport 重複三次專案／篇章資訊。
@@ -1684,7 +1720,13 @@ export default function StorytellerReader() {
         window.cancelAnimationFrame(frame);
       }
     };
-  }, [currentItem?.id, displayVersionId, pageIndex, currentPageLoaded]);
+  }, [
+    readerBodyNode,
+    currentItem?.id,
+    displayVersionId,
+    pageIndex,
+    currentPageLoaded,
+  ]);
 
   // 圖像頁的鍵盤左右鍵換頁，操作模式跟 components/common/ImageViewer.tsx 一致：
   // 只在確實看著圖像頁、且不只有一張圖時才綁定；輸入框／可編輯區聚焦時放行給
@@ -2015,7 +2057,7 @@ export default function StorytellerReader() {
   const hasCurrentContent = Boolean(currentStory || currentEpisode);
   const readerBody = (
     <Paper
-      ref={readerBodyRef}
+      ref={setReaderBodyNode}
       variant="outlined"
       sx={{
         p: currentStory ? { xs: 2, sm: 4, md: 6 } : { xs: 2, sm: 3, md: 4 },
@@ -2411,6 +2453,7 @@ export default function StorytellerReader() {
         parentId: item.parentId,
         updatedAt: item.updatedAt,
         href: itemHref(basePath, item),
+        progress: readingRecords.storyProgress(item.id),
       }))}
       volumes={volumes}
     />
@@ -2534,6 +2577,29 @@ export default function StorytellerReader() {
         severity={bookmarkSnackbar.severity ?? "success"}
         onClose={() =>
           setBookmarkSnackbar((prev) => ({ ...prev, open: false }))
+        }
+      />
+      <CustomSnackbar
+        open={readingResume.resumedProgress !== null}
+        severity="info"
+        autoHideDuration={6000}
+        message={`已回到上次閱讀的位置（${readingResume.resumedProgress ?? 0}%）`}
+        onClose={readingResume.dismiss}
+        action={
+          <Button
+            color="inherit"
+            size="small"
+            onClick={() => {
+              readingResume.dismiss();
+              if (currentEpisode) {
+                setPageIndex(0);
+              } else {
+                contentTitleRef.current?.scrollIntoView({ block: "start" });
+              }
+            }}
+          >
+            從頭開始
+          </Button>
         }
       />
       <StorytellerMascotDialog

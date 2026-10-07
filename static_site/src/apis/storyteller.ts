@@ -10,3 +10,4 @@ export * from "./storyteller/writingBookmark.ts";
 export * from "./storyteller/workspaceSearch.ts";
 export * from "./storyteller/oauth.ts";
 export * from "./storyteller/notification.ts";
+export * from "./storyteller/readingRecord.ts";
