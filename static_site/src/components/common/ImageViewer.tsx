@@ -610,6 +610,10 @@ export function ImageViewer({
                         component="img"
                         src={currentPhoto.url}
                         alt={`${title} ${currentIndex + 1}`}
+                        // 預載完成後已取得原始尺寸，交給瀏覽器在首次 layout
+                        // 就算出 fit 後大小，避免先顯示原圖再縮小。
+                        width={currentNaturalWidth || undefined}
+                        height={currentNaturalHeight || undefined}
                         onError={handleRenderedImageError}
                         sx={{
                           borderRadius: expanded ? 0 : 1,
