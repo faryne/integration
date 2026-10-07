@@ -1,4 +1,5 @@
 import type { StorytellerReadingTargetType } from "@/apis/storyteller.ts";
+import { ReaderLoreLinkProvider } from "@/pages/storyteller/ReaderLoreLinks.tsx";
 import { useLoreSpoilerGate } from "@/pages/storyteller/useLoreSpoilerGate.ts";
 import {
   useCreateStorytellerStoryBookmark,
@@ -1613,6 +1614,28 @@ export default function StorytellerReader({
     workLanding
   );
   const isContentPage = Boolean(currentItem || currentLore);
+  // 故事、圖像說明、設定內文裡的設定連結（steamloom-lore://）都由這裡決定怎麼呈現
+  const linkedPageBody = (
+    <ReaderLoreLinkProvider
+      lores={loreOrder}
+      collectionNames={
+        new Map(
+          project.loreGroups.flatMap((group) =>
+            group.collection
+              ? [[group.collection.id, group.collection.name] as const]
+              : [],
+          ),
+        )
+      }
+      basePath={basePath}
+      gate={spoilerGate}
+      progressMap={readingRecords.progressMap}
+      preferences={preferences}
+      onLoreRead={(loreId) => readingRecords.report("lore", loreId, 100)}
+    >
+      {pageBody}
+    </ReaderLoreLinkProvider>
+  );
 
   return (
     <StorytellerShell
@@ -1664,7 +1687,8 @@ export default function StorytellerReader({
             currentItem?.title ??
             (currentLore ? spoilerGate.displayTitle(currentLore) : undefined)
           }
-          progress={readingProgress}
+          // 劇透設定鎖住時顯示的是確認卡片，不是正文，進度條不該看起來像讀完了
+          progress={currentLoreLocked ? 0 : readingProgress}
           navigationOpen={indexOpen}
           onOpenNavigation={() => setIndexOpen(true)}
           // 設定頁的「目錄」直接回設定列表，上一則／下一則只在設定之間切換
@@ -1818,10 +1842,10 @@ export default function StorytellerReader({
           leaveTo={steamloomPath()}
           panelTitle="限制級創作專案"
         >
-          {pageBody}
+          {linkedPageBody}
         </AgeConfirmationGate>
       ) : (
-        <>{pageBody}</>
+        linkedPageBody
       )}
     </StorytellerShell>
   );

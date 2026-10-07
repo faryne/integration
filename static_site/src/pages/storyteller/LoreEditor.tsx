@@ -1150,6 +1150,26 @@ export default function StorytellerLoreEditor({
             ]}
           >
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {/* 設定預設不公開：裡面常有作者的私人筆記與未揭露伏筆，要作者自己決定才對讀者公開 */}
+              <WorkspaceEditorSelectButton
+                icon={
+                  publicationStatusOptions.find(
+                    (option) => option.value === loreStatus,
+                  )?.icon
+                }
+                label="狀態"
+                value={loreStatus}
+                options={publicationStatusOptions}
+                onChange={(value) => setLoreStatus(value as PublicationStatus)}
+              />
+              <WorkspaceEditorSelectButton
+                icon={<FolderIcon fontSize="small" />}
+                label="設定集"
+                value={selectedCollectionId}
+                options={collectionOptions}
+                disabled={loreCollectionsLoading}
+                onChange={setSelectedCollectionId}
+              />
               <WorkspaceEditorSelectButton
                 icon={
                   loreIsSpoiler ? (
@@ -1172,26 +1192,6 @@ export default function StorytellerLoreEditor({
                   onChange={setLoreDependsOn}
                 />
               )}
-              {/* 設定預設不公開：裡面常有作者的私人筆記與未揭露伏筆，要作者自己決定才對讀者公開 */}
-              <WorkspaceEditorSelectButton
-                icon={
-                  publicationStatusOptions.find(
-                    (option) => option.value === loreStatus,
-                  )?.icon
-                }
-                label="狀態"
-                value={loreStatus}
-                options={publicationStatusOptions}
-                onChange={(value) => setLoreStatus(value as PublicationStatus)}
-              />
-              <WorkspaceEditorSelectButton
-                icon={<FolderIcon fontSize="small" />}
-                label="設定集"
-                value={selectedCollectionId}
-                options={collectionOptions}
-                disabled={loreCollectionsLoading}
-                onChange={setSelectedCollectionId}
-              />
               {apiProject && (
                 <WorkspaceEditorSelectButton
                   icon={<ScheduleIcon fontSize="small" />}
