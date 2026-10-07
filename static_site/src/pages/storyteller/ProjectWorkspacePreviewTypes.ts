@@ -29,7 +29,11 @@ export function nodeTitle(section: WorkspaceSection, collectionId: string) {
         : "全部資產";
   }
   if (collectionId === ungroupedId) {
-    return section === "stories" ? "未分冊" : "未分類";
+    return section === "stories"
+      ? "未分冊"
+      : section === "lores"
+        ? "未歸類"
+        : "未分類";
   }
   return "";
 }

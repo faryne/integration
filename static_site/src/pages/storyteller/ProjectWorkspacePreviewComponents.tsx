@@ -188,7 +188,7 @@ export function WorkspaceSidebar({
             { id: "", label: "全部設定", count: project?.lore_count },
             {
               id: ungroupedId,
-              label: "未分類",
+              label: "未歸類",
               count: project?.lore_uncategorized_count,
             },
             ...loreCollections.map((collection) => ({
@@ -679,7 +679,7 @@ export function WorkspacePane({
                   <WorkspaceEmptyState
                     icon={<DescriptionIcon />}
                     title="沒有設定"
-                    description="這個分類目前沒有設定。"
+                    description="這個設定集目前沒有設定。"
                   />
                 </Box>
               )}

@@ -354,7 +354,9 @@ export default function StorytellerProjectWorkspacePreview() {
       : selected.collectionId === ungroupedId
         ? selected.section === "stories"
           ? "未分冊"
-          : "未分類"
+          : selected.section === "lores"
+            ? "未歸類"
+            : "未分類"
         : (volumes.find((volume) => volume.public_id === selected.collectionId)
             ?.title ??
           loreCollections.find(

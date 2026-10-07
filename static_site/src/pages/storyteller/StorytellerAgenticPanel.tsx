@@ -122,12 +122,12 @@ const TOOL_ACTION_LABELS: Record<string, string> = {
   storyteller_get_project: "讀取專案",
   storyteller_list_stories: "列出故事",
   storyteller_get_story: "讀取故事",
-  storyteller_list_lores: "列出設定集",
-  storyteller_get_lore: "讀取設定集",
+  storyteller_list_lores: "列出設定",
+  storyteller_get_lore: "讀取設定",
   storyteller_list_assets: "列出資產",
   storyteller_get_asset: "讀取資產",
   storyteller_list_asset_collections: "列出資產集",
-  storyteller_list_lore_collections: "列出設定集分類",
+  storyteller_list_lore_collections: "列出設定集",
   storyteller_list_volumes: "列出冊",
 };
 
@@ -2234,7 +2234,7 @@ export function StorytellerAgenticPanel({
           {!targetPublicId && (
             <Alert severity="info" variant="outlined">
               {targetKind === "lore"
-                ? "新設定集第一次存檔後才能使用 AI 助理。"
+                ? "新設定第一次存檔後才能使用 AI 助理。"
                 : "新故事第一次存檔後才能使用 AI 助理。"}
             </Alert>
           )}
@@ -2955,7 +2955,7 @@ export function StorytellerAgenticPanel({
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => insertPromptMention("lore", item.title)}
                   >
-                    設定集：{item.title}
+                    設定：{item.title}
                   </Button>
                 ))}
               </Stack>

@@ -483,7 +483,7 @@ export function StorytellerProfileContent() {
                 編輯器設定
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                這裡是故事與設定集編輯頁的預設值，開啟編輯頁時仍可依當次需要另外調整。
+                這裡是故事與設定編輯頁的預設值，開啟編輯頁時仍可依當次需要另外調整。
               </Typography>
               <Stack spacing={1.5}>
                 <FormControlLabel
