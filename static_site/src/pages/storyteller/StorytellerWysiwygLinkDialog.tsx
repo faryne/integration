@@ -53,6 +53,8 @@ export function StorytellerWysiwygLinkDialog({
   );
   const [openInNewTab, setOpenInNewTab] = useState(initialTarget === "_blank");
   const [loreId, setLoreId] = useState(initialLoreId ?? "");
+  // 輸入框文字自己管理：手動打字時要清掉選取，但不能讓 Autocomplete 跟著把打到一半的字清空
+  const [loreInput, setLoreInput] = useState("");
   const loresQuery = useStorytellerLores(projectPublicId);
   const lores = loresQuery.data ?? [];
   const selectedLore = lores.find((lore) => lore.public_id === loreId) ?? null;
@@ -92,6 +94,14 @@ export function StorytellerWysiwygLinkDialog({
                 value={selectedLore}
                 loading={loresQuery.isLoading}
                 onChange={(_, value) => setLoreId(value?.public_id ?? "")}
+                inputValue={loreInput}
+                // 選好之後又手動改字，就不再算選到那一則：必須重新從清單挑，送出鈕才會開啟
+                onInputChange={(_, value, reason) => {
+                  // 清掉選取時 MUI 會用空字串觸發 reset，忽略它，讀者打到一半的字才不會消失
+                  if (reason === "reset" && value === "") return;
+                  setLoreInput(value);
+                  if (reason === "input") setLoreId("");
+                }}
                 getOptionLabel={(lore) =>
                   lore.status === "completed"
                     ? lore.title
@@ -100,7 +110,9 @@ export function StorytellerWysiwygLinkDialog({
                 isOptionEqualToValue={(option, value) =>
                   option.public_id === value.public_id
                 }
-                noOptionsText="這個專案還沒有設定"
+                noOptionsText={
+                  lores.length === 0 ? "這個專案還沒有設定" : "找不到符合的設定"
+                }
                 renderInput={(params) => (
                   <TextField {...params} autoFocus label="連到哪一則設定" />
                 )}
