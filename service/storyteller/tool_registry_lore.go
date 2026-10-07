@@ -545,8 +545,10 @@ func storytellerLoreToolSpecs() []ToolSpec {
 		},
 
 		ToolSpec{
-			Name:        "storyteller_delete_lore",
-			Description: "Delete a lore/worldbuilding entry by project_public_id and lore_public_id.",
+			Name: "storyteller_delete_lore",
+			Description: "Delete a lore/worldbuilding entry by project_public_id and lore_public_id. " +
+				"Lore links (href=\"steamloom-lore://<this id>\") in stories or other lores will then show readers plain text, " +
+				"and spoiler lores that depended on it will no longer require it; mention this to the author before deleting a lore others link to.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id":    stringSchema("Lore public_id."),
