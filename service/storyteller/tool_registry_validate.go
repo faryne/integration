@@ -57,9 +57,15 @@ func validateStorytellerContent(ctx context.Context, arguments map[string]interf
 	}
 
 	report := checkStoryContentFormat(args.Content)
-	if err := service.validateContentReferences(project.ID, args.Content); err != nil {
+	// 圖片與設定連結分開回報，讓 AI 知道要修的是哪一種引用
+	if err := service.validateMarkdownAssetReferences(project.ID, args.Content); err != nil {
 		report.Warnings = append(report.Warnings, storyFormatWarning{Code: "invalid_asset_reference", Severity: storyFormatSeverityError,
 			Message: "圖片引用有問題，存檔會失敗：" + err.Error()})
+		report.OK = false
+	}
+	if err := service.validateLoreReferences(project.ID, args.Content); err != nil {
+		report.Warnings = append(report.Warnings, storyFormatWarning{Code: "invalid_lore_reference", Severity: storyFormatSeverityError,
+			Message: "設定連結指向這個專案裡不存在的設定，存檔會失敗：" + err.Error()})
 		report.OK = false
 	}
 
