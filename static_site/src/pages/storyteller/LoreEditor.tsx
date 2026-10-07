@@ -103,6 +103,7 @@ import type {
   StorytellerAsset,
   StorytellerLoreDependency,
 } from "@/types/storyteller.ts";
+import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 const editHistoryDrawerWidth = 460;
 const autoSaveIntervalMinutesMin = 2;
@@ -1160,7 +1161,15 @@ export default function StorytellerLoreEditor({
                 label="狀態"
                 value={loreStatus}
                 options={publicationStatusOptions}
-                onChange={(value) => setLoreStatus(value as PublicationStatus)}
+                onChange={(value) => {
+                  setLoreStatus(value as PublicationStatus);
+                  // 公開時提醒：內文連到還沒公開或已刪除的設定（不擋存檔）
+                  const warning =
+                    value === "completed"
+                      ? publishLoreLinkWarning(content, apiLores)
+                      : undefined;
+                  if (warning) showSnack(warning, "warning");
+                }}
               />
               <WorkspaceEditorSelectButton
                 icon={<FolderIcon fontSize="small" />}

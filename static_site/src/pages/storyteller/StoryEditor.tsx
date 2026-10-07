@@ -106,6 +106,7 @@ import type {
   StorytellerAgenticProposal,
   StorytellerAsset,
 } from "@/types/storyteller.ts";
+import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 const historyPerPage = 5;
 const editHistoryDrawerWidth = 460;
@@ -1336,9 +1337,15 @@ export default function StorytellerStoryEditor({
                 label="狀態"
                 value={storyStatus}
                 options={publicationStatusOptions}
-                onChange={(value) =>
-                  setStoryStatus(value as "draft" | "completed")
-                }
+                onChange={(value) => {
+                  setStoryStatus(value as "draft" | "completed");
+                  // 公開時提醒：內文連到還沒公開或已刪除的設定（不擋存檔）
+                  const warning =
+                    value === "completed"
+                      ? publishLoreLinkWarning(content, apiLores)
+                      : undefined;
+                  if (warning) showEditorSnack(warning, "warning");
+                }}
               />
               <WorkspaceEditorSelectButton
                 icon={<FolderIcon fontSize="small" />}

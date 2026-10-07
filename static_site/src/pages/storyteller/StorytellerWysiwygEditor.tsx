@@ -80,6 +80,7 @@ import {
   currentParagraphText,
 } from "./wysiwygCore/currentParagraph";
 import { StorytellerWysiwygLinkDialog } from "@/pages/storyteller/StorytellerWysiwygLinkDialog.tsx";
+import { useLoreLinkStatusSx } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 interface HoveredComment {
   text: string;
@@ -529,6 +530,8 @@ export const StorytellerWysiwygEditor = forwardRef<
   const [contextMenuPosition, setContextMenuPosition] =
     useState<ContextMenuPosition | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  // 設定連結依目標狀態上色：已刪除標紅、未公開淡化，讓作者知道讀者在那裡只會看到純文字
+  const loreLinkStatusSx = useLoreLinkStatusSx(projectPublicId);
   // 開啟對話框當下游標所在連結的 href／target（預填用）；key 每次開啟都遞增，讓對話框重新初始化
   const [linkDialogInitial, setLinkDialogInitial] = useState<{
     key: number;
@@ -1180,6 +1183,7 @@ export const StorytellerWysiwygEditor = forwardRef<
             HEADING_TYPOGRAPHY_SX,
             COMMENT_HIGHLIGHT_SX,
             INLINE_COLOR_SX,
+            loreLinkStatusSx,
             FOOTNOTE_HIGHLIGHT_SX,
             PLACEHOLDER_SX,
             BLOCK_KIND_SX,
