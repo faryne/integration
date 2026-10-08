@@ -32,16 +32,19 @@ func stubStorytellerFetch(t *testing.T, projects map[string]storytellerProjectMe
 	}
 	fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta = fetch, fetch
 	fetchStorytellerAuthorMeta = func(penName string) (storytellerAuthorMeta, error) {
-		if penName != "織夢者" {
-			return storytellerAuthorMeta{}, gorm.ErrRecordNotFound
+		switch penName {
+		case "織夢者":
+			return storytellerAuthorMeta{PenName: "織夢者", Bio: "寫蒸汽龐克的人。\n\n偶爾畫圖。", ShowFavorites: true}, nil
+		case "副筆名":
+			return storytellerAuthorMeta{PenName: "副筆名"}, nil
 		}
-		return storytellerAuthorMeta{PenName: "織夢者", Bio: "寫蒸汽龐克的人。\n\n偶爾畫圖。", AvatarURL: "https://example.com/a.png"}, nil
+		return storytellerAuthorMeta{}, gorm.ErrRecordNotFound
 	}
 	storytellerFirstPageImage = func(_ uint64, story storytellerModel.Story) (string, string, bool) {
 		return "page-" + story.PublicID, "https://cdn.example.com/page.jpg", true
 	}
 	originalPost := fetchStorytellerPostMeta
-	author := storytellerAuthorMeta{PenName: "織夢者", AvatarURL: "https://lh3.googleusercontent.com/a/xyz=s96-c"}
+	author := storytellerAuthorMeta{PenName: "織夢者"}
 	fetchStorytellerPostMeta = func(postID string) (storytellerPostMeta, error) {
 		posts := map[string]storytellerPostMeta{
 			"p1": {Author: author, Excerpt: "新章上線［劇透］"},
@@ -164,17 +167,24 @@ func TestStorytellerMetaCanonicalUsesSteamLoomEvenOnFaryneDev(t *testing.T) {
 
 func TestStorytellerAuthorMeta(t *testing.T) {
 	stubStorytellerFetch(t, nil)
+	const user = "storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85"
+	bio, brand := "寫蒸汽龐克的人。 偶爾畫圖。", "https://steamloom.works/steamloom-og-default.jpg"
 
-	cases := []struct{ path, title string }{
-		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85", "織夢者 的作品 | SteamLoom"},
-		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85/favorite-projects", "織夢者 的作品 | SteamLoom"},
-		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts", "織夢者 的動態 | SteamLoom"},
+	cases := []struct{ path, title, description, canonical string }{
+		{user, "織夢者 的作品 | SteamLoom", bio, ""},
+		{user + "/posts", "織夢者 的動態 | SteamLoom", bio, ""},
+		{user + "/favorite-projects", "織夢者 追蹤的作品 | SteamLoom", "織夢者 在 SteamLoom 追蹤的作品。", ""},
+		{user + "/favorite-authors", "織夢者 追蹤的作家 | SteamLoom", "織夢者 在 SteamLoom 追蹤的作家。", ""},
+		// 額外筆名沒有公開收藏：前端落回作品分頁，canonical 指回作者首頁
+		{"storyteller/user/%E5%89%AF%E7%AD%86%E5%90%8D/favorite-projects", "副筆名 的作品 | SteamLoom", "副筆名 在 SteamLoom 的作品。", "https://steamloom.works/user/%E5%89%AF%E7%AD%86%E5%90%8D"},
 	}
 	for _, tc := range cases {
 		meta := BuildMeta(modelSNS.RenderRequest{Path: tc.path, Host: "steamloom.works"})
-		if meta.Title != tc.title || meta.Description != "寫蒸汽龐克的人。 偶爾畫圖。" || meta.Image != "https://example.com/a.png" ||
-			meta.TwitterCard != "summary" || meta.ImageWidth != 0 || meta.SchemaType != "ProfilePage" {
+		if meta.Title != tc.title || meta.Description != tc.description || meta.Image != brand || meta.ImageWidth != 1200 || meta.SchemaType != "ProfilePage" {
 			t.Fatalf("%s: unexpected author meta: %+v", tc.path, meta)
+		}
+		if tc.canonical != "" && meta.Canonical != tc.canonical {
+			t.Fatalf("%s: unexpected canonical %s", tc.path, meta.Canonical)
 		}
 	}
 	for _, path := range []string{"storyteller/user/nobody", "storyteller/user/nobody/posts", "storyteller/user/x/posts/missing"} {
@@ -188,40 +198,26 @@ func TestStorytellerAuthorPostMeta(t *testing.T) {
 	restricted := sampleStorytellerProject()
 	restricted.Restricted = true
 	stubStorytellerFetch(t, map[string]storytellerProjectMeta{"abc-x": sampleStorytellerProject(), "r18-x": restricted})
-	avatar := "https://lh3.googleusercontent.com/a/xyz=s400-c"
+	brand := "https://steamloom.works/steamloom-og-default.jpg"
 
 	// 網址上是舊筆名：canonical 換成目前的筆名
 	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/old-name/posts/p1", Host: "steamloom.works"})
-	if meta.Title != "織夢者 的動態 | SteamLoom" || meta.Description != "新章上線［劇透］" || meta.Image != avatar || meta.TwitterCard != "summary" ||
+	if meta.Title != "織夢者 的動態 | SteamLoom" || meta.Description != "新章上線［劇透］" || meta.Image != brand ||
 		meta.Canonical != "https://steamloom.works/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts/p1" || meta.OpenGraphURL != meta.Canonical ||
 		meta.SchemaType != "SocialMediaPosting" || meta.AuthorName != "織夢者" {
 		t.Fatalf("unexpected post meta: %+v", meta)
 	}
 	// 附作品：用作品的 1200×630 圖卡
 	withWork := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p2", Host: "steamloom.works"})
-	if !strings.HasPrefix(withWork.Image, "https://steamloom.works/og-image/work/abc-x/story/s1.jpg?v=") || withWork.TwitterCard != "" || withWork.ImageWidth != 1200 {
+	if !strings.HasPrefix(withWork.Image, "https://steamloom.works/og-image/work/abc-x/story/s1.jpg?v=") || withWork.ImageWidth != 1200 {
 		t.Fatalf("post with work should use work card: %+v", withWork)
 	}
 	// 限制級作品不出封面；沒有內文就用預設描述
-	if r18 := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p3", Host: "steamloom.works"}); r18.Image != avatar {
-		t.Fatalf("restricted work should fall back to avatar: %+v", r18)
+	if r18 := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p3", Host: "steamloom.works"}); r18.Image != brand {
+		t.Fatalf("restricted work should fall back to brand image: %+v", r18)
 	}
 	if empty := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p4", Host: "steamloom.works"}); empty.Description != "織夢者 在 SteamLoom 的動態。" {
 		t.Fatalf("unexpected fallback description: %q", empty.Description)
-	}
-}
-
-func TestStorytellerShareAvatarURL(t *testing.T) {
-	cases := map[string]string{
-		"https://lh3.googleusercontent.com/a/ACg8oc=s96-c": "https://lh3.googleusercontent.com/a/ACg8oc=s400-c",
-		"https://lh3.googleusercontent.com/a/ACg8oc":       "https://lh3.googleusercontent.com/a/ACg8oc=s400-c",
-		"https://www.gravatar.com/avatar/abc?d=identicon":  "https://www.gravatar.com/avatar/abc?d=identicon&s=400",
-		"https://cdn.example.com/me.png":                   "https://cdn.example.com/me.png",
-	}
-	for input, want := range cases {
-		if got := storytellerShareAvatarURL(input); got != want {
-			t.Errorf("%s: got %s, want %s", input, got, want)
-		}
 	}
 }
 

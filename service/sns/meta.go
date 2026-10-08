@@ -600,7 +600,7 @@ var htmlTemplate = template.Must(template.New("sns").Parse(`<!doctype html>
   <meta property="og:image:height" content="{{ .ImageHeight }}">
   {{- end }}
   <meta property="og:image:alt" content="{{ .Title }}">
-  <meta name="twitter:card" content="{{ or .TwitterCard "summary_large_image" }}">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ .Title }}">
   <meta name="twitter:description" content="{{ .Description }}">
   <meta name="twitter:image" content="{{ .Image }}">
