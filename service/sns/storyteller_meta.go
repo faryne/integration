@@ -38,6 +38,8 @@ var (
 	// work/:project/(story|lore)/:id 是現行網址；分組同上（1＝專案路徑）。
 	// 開頭的 story/、內容的 image/、沒有種類前綴的 /:id 都只保留舊外部連結的 meta 相容性。
 	storytellerWorkPattern = regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`)
+	// storytellerPrivatePattern 是需要登入、或不該被收錄的頁面
+	storytellerPrivatePattern = regexp.MustCompile(`^/storyteller/(?:my|oauth|mcp|search)(?:/.*)?$`)
 	// 舊網址沒有種類前綴時，這些是作品首頁的分頁，不是內容 public_id
 	storytellerTabSegments = map[string]bool{"lores": true, "stories": true, "images": true}
 )
@@ -163,6 +165,11 @@ func applyStorytellerWorkMeta(meta *modelSNS.Meta, matches []string) {
 		meta.Image = storytellerOGImageURL(meta.Canonical, source.version())
 		meta.ImageWidth, meta.ImageHeight = storytellerOGImageWidth, storytellerOGImageHeight
 	}
+}
+
+// applyStorytellerPrivateMeta 需要登入的頁面：通用卡＋noindex
+func applyStorytellerPrivateMeta(meta *modelSNS.Meta, _ []string) {
+	meta.Robots = "noindex, nofollow"
 }
 
 // applyStorytellerNotFoundMeta 讀者看不到的頁面：回 404，不帶任何作品資訊

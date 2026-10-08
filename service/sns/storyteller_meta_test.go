@@ -327,3 +327,16 @@ func TestBuildSteamLoomSitemap(t *testing.T) {
 		t.Fatalf("robots.txt should point to SteamLoom sitemap")
 	}
 }
+
+func TestStorytellerPrivatePathsNoindex(t *testing.T) {
+	for _, path := range []string{"storyteller/my/workspace/55d49fdc20ec01ce/story/26be3ccaa28180a5", "storyteller/my", "storyteller/oauth/authorize", "storyteller/mcp", "storyteller/search"} {
+		meta := BuildMeta(modelSNS.RenderRequest{Path: path, Host: "steamloom.works"})
+		if meta.Robots != "noindex, nofollow" || meta.Title != "SteamLoom" || meta.Status != 0 || meta.Image != "https://steamloom.works/steamloom-og-default.jpg" {
+			t.Fatalf("%s: unexpected meta: %+v", path, meta)
+		}
+	}
+	// 作者頁、作品頁不受影響
+	if meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/mystery", Host: "steamloom.works"}); meta.Robots != "index, follow" {
+		t.Fatalf("prefix should not over-match: %+v", meta)
+	}
+}
