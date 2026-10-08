@@ -104,6 +104,8 @@ function PublicHomeHero({ projectCount }: { projectCount?: number }) {
             fontWeight: 700,
             lineHeight: 1.05,
             letterSpacing: "-0.055em",
+            // 中文標題換行時平均分配每行字數，避免「代。」「大，」單獨落到最後一行
+            textWrap: "balance",
           }}
         >
           {copy.title}

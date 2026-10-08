@@ -5,6 +5,7 @@ import BookmarkIcon from "@mui/icons-material/Bookmark";
 import CableIcon from "@mui/icons-material/Cable";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import EditNoteIcon from "@mui/icons-material/EditNote";
+import PsychologyAltOutlinedIcon from "@mui/icons-material/PsychologyAltOutlined";
 import PublicIcon from "@mui/icons-material/Public";
 import {
   Box,
@@ -63,6 +64,13 @@ const allFeatureHighlights: (FeatureHighlight & { ai?: boolean })[] = [
     title: "MCP 連接（選用）",
     description:
       "讓 Claude、ChatGPT、Claude Code、Codex 等 AI 工具透過 MCP 直接讀寫你的故事與設定，不用手動複製貼上。",
+  },
+  {
+    // 跟工作台工具頁「梭梭的記憶」同一個圖示
+    icon: <PsychologyAltOutlinedIcon fontSize="small" />,
+    title: "梭梭的記憶",
+    description:
+      "把文風偏好、寫作規矩、定案的劇情存成記憶，透過 MCP 連進來的 AI 動筆前都會先讀過，換工具也不用從頭交代。",
   },
   {
     icon: <BookmarkIcon fontSize="small" />,

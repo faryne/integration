@@ -7,8 +7,9 @@ const nekomaidSiteName = "難以名狀的抓圖器";
 const galgameSiteName = "galgame.tv";
 const steamloomSiteName = "SteamLoom";
 const steamloomOrigin = "https://steamloom.works";
+// 跟後端 service/sns/meta.go 的 steamloomDescription 同一句，改的時候兩邊一起改
 const steamloomDescription =
-  "SteamLoom 是故事創作與 AI Agent 協作平台，可瀏覽公開故事與親友分享的故事內容。";
+  "SteamLoom 是故事創作與發表平台：閱讀公開連載與親友分享的作品，也能用你習慣的 AI 透過 MCP 一起寫故事。";
 // 跟後端 service/sns 的品牌預設圖卡同一張（1200×630）
 const steamloomDefaultImage = "/steamloom-og-default.jpg";
 const defaultCanonicalOrigin = "https://faryne.dev";
