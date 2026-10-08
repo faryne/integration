@@ -82,7 +82,7 @@ func (r *Repository) SaveAuthorProfile(row *storytellerModel.AuthorProfile) erro
 }
 
 // DeleteAuthorProfile 刪筆名時一併取消以這個筆名做的追蹤，免得留下對方看得到、卻已不存在的追蹤者；
-// 這個筆名的動態、以它身份發的留言、它的封鎖名單也一起 soft delete。
+// 這個筆名的動態、以它身份發的留言與討論串、它的封鎖名單也一起 soft delete。
 func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) error {
 	now := time.Now()
 	return r.db.Transaction(func(tx *gorm.DB) error {
@@ -95,7 +95,7 @@ func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) er
 			return err
 		}
 		softDelete := map[string]any{"is_deleted": true, "deleted_at": &now}
-		for _, model := range []any{&storytellerModel.AuthorPost{}, &storytellerModel.Comment{}, &storytellerModel.AuthorBlock{}} {
+		for _, model := range []any{&storytellerModel.AuthorPost{}, &storytellerModel.Comment{}, &storytellerModel.AuthorBlock{}, &storytellerModel.DiscussionThread{}} {
 			if err := tx.Model(model).Where("user_id = ? AND profile_id = ? AND is_deleted = 0", row.UserID, row.ID).Updates(softDelete).Error; err != nil {
 				return err
 			}

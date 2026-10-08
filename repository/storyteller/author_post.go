@@ -111,10 +111,10 @@ func (r *Repository) AuthorPostLikeCounts(postIDs []uint64) (map[uint64]int64, e
 	return countByPost(r.db.Model(&storytellerModel.AuthorPostLike{}), "post_id", postIDs)
 }
 
-// AuthorPostCommentCounts 是留言數＝頂層＋回覆，排除已刪除。
-func (r *Repository) AuthorPostCommentCounts(postIDs []uint64) (map[uint64]int64, error) {
+// CommentCounts 是留言數＝頂層＋回覆，排除已刪除；動態與討論串共用。
+func (r *Repository) CommentCounts(targetType storytellerModel.CommentTargetType, targetIDs []uint64) (map[uint64]int64, error) {
 	return countByPost(r.db.Model(&storytellerModel.Comment{}).
-		Where("target_type = ? AND is_deleted = 0", storytellerModel.CommentTargetAuthorPost), "target_id", postIDs)
+		Where("target_type = ? AND is_deleted = 0", targetType), "target_id", targetIDs)
 }
 
 func (r *Repository) LikedAuthorPostIDs(userID uint64, postIDs []uint64) (map[uint64]bool, error) {

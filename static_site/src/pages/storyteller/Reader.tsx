@@ -38,6 +38,7 @@ import {
   useGatedCoverUrl,
 } from "@/helpers/storytellerCover.ts";
 import {
+  readerDiscussionsPath,
   readerLorePath,
   readerLoresPath,
   readerProjectBasePath,
@@ -69,6 +70,9 @@ import {
   StoryContentLines,
 } from "@/pages/storyteller/ReaderStoryContent.tsx";
 import { ReaderWorkLanding } from "@/pages/storyteller/ReaderWorkLanding.tsx";
+import { buildReaderDiscussion } from "@/pages/storyteller/readerDiscussion.ts";
+import { ReaderDiscussionBoard } from "@/components/storyteller/discussion/ReaderDiscussionBoard.tsx";
+import { ReaderDiscussionButton } from "@/components/storyteller/discussion/ReaderDiscussionButton.tsx";
 import { readingTargetKey } from "@/pages/storyteller/readingRecordStore.ts";
 import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderHistory.tsx";
 import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
@@ -137,7 +141,7 @@ const LORE_TOOLBAR_LABELS = {
   navigationTooltip: "回到設定列表",
 };
 
-// landingTab 由路由決定：work/:projectPath 是故事 Tab，work/:projectPath/lores 是設定 Tab
+// landingTab 由路由決定：work/:projectPath 是故事 Tab，/lores 是設定 Tab，/discussions 是討論 Tab
 export default function StorytellerReader({
   landingTab = "stories",
 }: {
@@ -730,7 +734,9 @@ export default function StorytellerReader({
         ? readerLorePath(routeBasePath, routeLoreId)
         : landingTab === "lores"
           ? readerLoresPath(routeBasePath)
-          : routeBasePath;
+          : landingTab === "discussions"
+            ? readerDiscussionsPath(routeBasePath)
+            : routeBasePath;
   const pageTitle =
     currentItem?.title ??
     (currentLore ? spoilerGate.displayTitle(currentLore) : undefined);
@@ -920,6 +926,22 @@ export default function StorytellerReader({
     isShareRoute && shareToken ? readerShareBasePath(shareToken) : project.path;
   const projectLandingPath = basePath;
   const loresPath = readerLoresPath(basePath);
+  // 討論版：公開與不公開作品才有，私人作品沒有（見 readerDiscussion.ts）
+  const discussion =
+    apiProject && apiProject.visibility !== "private"
+      ? buildReaderDiscussion({
+          projectPublicId: apiProject.public_id,
+          share: shareToken,
+          basePath,
+          isOwner,
+          items,
+          volumes,
+          lores: loreOrder,
+          storyProgress: readingRecords.storyProgress,
+          loreLocked: spoilerGate.isLocked,
+          loreTitle: spoilerGate.displayTitle,
+        })
+      : undefined;
   // 設定頁用：所屬設定集與上一則／下一則（只在設定之間切換，不會跳進故事）
   const currentLoreCollection = currentLore
     ? project.loreGroups.find(
@@ -1562,6 +1584,10 @@ export default function StorytellerReader({
       tab={landingTab}
       storiesHref={basePath}
       loresHref={loresPath}
+      discussionsHref={readerDiscussionsPath(basePath)}
+      discussionBoard={
+        discussion && <ReaderDiscussionBoard context={discussion} />
+      }
       loreGroups={project.loreGroups.map((group) => ({
         id: group.collection?.id ?? null,
         name: group.collection?.name ?? "未歸類",
@@ -1669,7 +1695,12 @@ export default function StorytellerReader({
                   { label: project.name, to: projectLandingPath },
                   { label: "設定" },
                 ]
-              : [{ label: project.name }]),
+              : landingTab === "discussions"
+                ? [
+                    { label: project.name, to: projectLandingPath },
+                    { label: "討論" },
+                  ]
+                : [{ label: project.name }]),
       ]}
     >
       {isContentPage && (
@@ -1695,6 +1726,26 @@ export default function StorytellerReader({
           onOpenNavigation={() => setIndexOpen(true)}
           // 設定頁的「目錄」直接回設定列表，上一則／下一則只在設定之間切換
           navigationHref={currentLore ? loresPath : undefined}
+          discussionButton={
+            discussion && (
+              <ReaderDiscussionButton
+                context={discussion}
+                anchor={
+                  currentLore
+                    ? {
+                        type: "lore",
+                        id: currentLore.id,
+                        label: spoilerGate.displayTitle(currentLore),
+                      }
+                    : {
+                        type: "story",
+                        id: currentItem?.id ?? "",
+                        label: currentItem?.title ?? "",
+                      }
+                }
+              />
+            )
+          }
           labels={currentLore ? LORE_TOOLBAR_LABELS : undefined}
           projectDetails={projectDetails}
           bookmarkEditing={bookmarkEditing}

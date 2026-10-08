@@ -450,12 +450,16 @@ const storytellerRoutes = (
       path={"profile"}
       element={<Navigate to={steamloomPath("my/profile")} replace />}
     />
-    {/* 閱讀頁：作品首頁（故事 Tab）、設定 Tab、單篇故事（文字／圖像）、單則設定；
+    {/* 閱讀頁：作品首頁（故事 Tab）、設定 Tab、討論 Tab、單篇故事（文字／圖像）、單則設定；
         分享連結把 work/:projectPath 換成 work/share/:shareToken，結構相同。 */}
     <Route path={"work/:projectPath"} element={<StorytellerReader />} />
     <Route
       path={"work/:projectPath/lores"}
       element={<StorytellerReader landingTab="lores" />}
+    />
+    <Route
+      path={"work/:projectPath/discussions"}
+      element={<StorytellerReader landingTab="discussions" />}
     />
     <Route
       path={"work/:projectPath/story/:itemId"}
@@ -473,6 +477,10 @@ const storytellerRoutes = (
     <Route
       path={"work/share/:shareToken/lores"}
       element={<StorytellerReader landingTab="lores" />}
+    />
+    <Route
+      path={"work/share/:shareToken/discussions"}
+      element={<StorytellerReader landingTab="discussions" />}
     />
     <Route
       path={"work/share/:shareToken/story/:itemId"}

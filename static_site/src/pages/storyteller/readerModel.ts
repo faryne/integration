@@ -147,7 +147,7 @@ export const LORE_DEPENDENCY_TYPE_LABEL = {
 } as const;
 
 // 作品首頁的兩個 Tab：故事（work/:projectPath）、設定（work/:projectPath/lores）
-export type ReaderLandingTab = "stories" | "lores";
+export type ReaderLandingTab = "stories" | "lores" | "discussions";
 
 // 把公開專案 API 的設定與設定集轉成閱讀頁用的分組與攤平順序
 export function readerLoresFromProject(

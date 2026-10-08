@@ -58,6 +58,7 @@ export function StorytellerReaderToolbar({
   nextChapter,
   labels = STORY_TOOLBAR_LABELS,
   navigationHref,
+  discussionButton,
 }: {
   projectName: string;
   currentTitle?: string;
@@ -79,6 +80,8 @@ export function StorytellerReaderToolbar({
   labels?: ReaderToolbarLabels;
   // 有給時「目錄」按鈕改成連結（設定頁直接回設定列表），不開側邊目錄抽屜
   navigationHref?: string;
+  // 討論按鈕（私人作品沒有討論版時不給）
+  discussionButton?: ReactNode;
 }) {
   const [projectAnchor, setProjectAnchor] = useState<HTMLElement | null>(null);
   const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
@@ -282,6 +285,7 @@ export function StorytellerReaderToolbar({
           <Tooltip title={bookmarkEditing ? "完成編輯書籤" : "編輯段落書籤"}>
             <span>{bookmarkButton}</span>
           </Tooltip>
+          {discussionButton}
           <Tooltip title="閱讀設定">
             <Button
               size="small"

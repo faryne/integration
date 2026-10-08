@@ -17,6 +17,7 @@ const (
 	customCodeAuthorPostForbidden    output.CustomCode = "403001"
 	customCodeCommentBlocked         output.CustomCode = "403002"
 	customCodeCommentPenNameRequired output.CustomCode = "409004"
+	customCodeDiscussionLocked       output.CustomCode = "409005"
 	customCodeSocialWriteRateLimited output.CustomCode = "429001"
 )
 
@@ -34,6 +35,8 @@ func authorPostError(err error) error {
 		return output.New(fiber.StatusForbidden, customCodeCommentBlocked, nil, "作者已限制你在這裡留言")
 	case errors.Is(err, storyteller.ErrCommentPenNameRequired):
 		return output.New(fiber.StatusConflict, customCodeCommentPenNameRequired, nil, "留言前請先設定筆名")
+	case errors.Is(err, storyteller.ErrDiscussionLocked):
+		return output.New(fiber.StatusConflict, customCodeDiscussionLocked, nil, "此討論串已鎖定，無法回覆或編輯")
 	case errors.Is(err, storyteller.ErrSocialRateLimited):
 		return output.New(fiber.StatusTooManyRequests, customCodeSocialWriteRateLimited, nil, "動作太頻繁了，請稍後再試")
 	default:

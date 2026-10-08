@@ -243,7 +243,7 @@ func (s *Service) authorPostOutputs(key storytellerModel.AuthorIdentityKey, auth
 	if err != nil {
 		return nil, err
 	}
-	comments, err := s.repo.AuthorPostCommentCounts(ids)
+	comments, err := s.repo.CommentCounts(storytellerModel.CommentTargetAuthorPost, ids)
 	if err != nil {
 		return nil, err
 	}

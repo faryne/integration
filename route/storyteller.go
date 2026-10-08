@@ -23,6 +23,9 @@ func Storyteller(app *fiber.App) {
 	// 作者動態：公開讀取（帶登入 header 時多回按讚、能否留言等狀態）；要註冊在 authenticated 群組之前
 	group.Get("/user/:username/posts", storyteller.PublicAuthorPosts)
 	group.Get("/posts/:post", storyteller.PublicAuthorPost)
+	// 專案討論版：公開讀取（不公開作品帶 ?share=）
+	group.Get("/story/:project/discussions", storyteller.PublicDiscussionThreads)
+	group.Get("/discussions/:thread", storyteller.PublicDiscussionThread)
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
@@ -93,8 +96,18 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/posts/:post/comments", storyteller.CreateComment)
 	authenticated.Delete("/comments/:comment", storyteller.DeleteComment)
 	authenticated.Post("/comments/:comment/block", storyteller.BlockCommenter)
+	authenticated.Put("/comments/:comment", storyteller.EditComment)
 	authenticated.Get("/blocks", storyteller.AuthorBlocks)
 	authenticated.Delete("/blocks/:block", storyteller.DeleteAuthorBlock)
+
+	// 專案討論版：發言身份由後端判定（作者可帶 as 選作品署名身份），不公開作品帶 ?share=
+	authenticated.Post("/story/:project/discussions", storyteller.CreateDiscussionThread)
+	authenticated.Put("/discussions/:thread", storyteller.EditDiscussionThread)
+	authenticated.Delete("/discussions/:thread", storyteller.DeleteDiscussionThread)
+	authenticated.Put("/discussions/:thread/lock", storyteller.LockDiscussionThread)
+	authenticated.Delete("/discussions/:thread/lock", storyteller.UnlockDiscussionThread)
+	authenticated.Post("/discussions/:thread/block", storyteller.BlockDiscussionStarter)
+	authenticated.Post("/discussions/:thread/comments", storyteller.CreateDiscussionComment)
 
 	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)

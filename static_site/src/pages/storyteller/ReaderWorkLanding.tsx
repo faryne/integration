@@ -43,6 +43,8 @@ export function ReaderWorkLanding({
   storiesHref,
   loresHref,
   loreGroups,
+  discussionsHref,
+  discussionBoard,
 }: {
   name: string;
   description?: string;
@@ -56,13 +58,20 @@ export function ReaderWorkLanding({
   storiesHref: string;
   loresHref: string;
   loreGroups: WorkLandingLoreGroup[];
+  discussionsHref: string;
+  // 公開與不公開作品才有討論分頁（私人作品沒有），內容由閱讀頁組好傳進來
+  discussionBoard?: ReactNode;
 }) {
   const loreCount = loreGroups.reduce(
     (total, group) => total + group.lores.length,
     0,
   );
-  // 沒有公開設定時整個 Tab 列不顯示，就算網址是 /lores 也只顯示故事目錄
-  const activeTab: ReaderLandingTab = loreCount > 0 ? tab : "stories";
+  // 沒有公開設定也沒有討論版時整個 Tab 列不顯示；網址指到不存在的 Tab 就退回故事目錄
+  const activeTab: ReaderLandingTab =
+    (tab === "lores" && loreCount > 0) ||
+    (tab === "discussions" && discussionBoard)
+      ? tab
+      : "stories";
   const { startHref, startLabel } = continueReadingTarget(items);
   const completedCount = items.filter(
     (item) => item.progress?.completed,
@@ -100,7 +109,7 @@ export function ReaderWorkLanding({
           p: { xs: 1, sm: 2 },
         }}
       >
-        {loreCount > 0 && (
+        {(loreCount > 0 || discussionBoard) && (
           <Tabs
             value={activeTab}
             sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}
@@ -111,15 +120,27 @@ export function ReaderWorkLanding({
               component={RouterLink}
               to={storiesHref}
             />
-            <Tab
-              value="lores"
-              label={`設定 ${loreCount}`}
-              component={RouterLink}
-              to={loresHref}
-            />
+            {loreCount > 0 && (
+              <Tab
+                value="lores"
+                label={`設定 ${loreCount}`}
+                component={RouterLink}
+                to={loresHref}
+              />
+            )}
+            {discussionBoard && (
+              <Tab
+                value="discussions"
+                label="討論"
+                component={RouterLink}
+                to={discussionsHref}
+              />
+            )}
           </Tabs>
         )}
-        {activeTab === "lores" ? (
+        {activeTab === "discussions" ? (
+          discussionBoard
+        ) : activeTab === "lores" ? (
           <LoreToc groups={loreGroups} />
         ) : (
           <StoryToc items={items} volumes={volumes} />

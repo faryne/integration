@@ -6,7 +6,8 @@ import {
 } from "@/helpers/postMarkers.ts";
 
 // 發文框與留言框共用的輸入區：多行文字、劇透／R18 標記按鈕、字數計數。
-// 標記本身也算字數（跟後端一致）。extraTools 放在標記按鈕後面（附上作品、預覽）。
+// 標記本身也算字數（跟後端一致）；不給 maxLength 就不顯示計數（討論版不統計字數）。
+// extraTools 放在標記按鈕後面（附上作品、預覽）。
 export function PostTextInput({
   value,
   onChange,
@@ -18,7 +19,7 @@ export function PostTextInput({
 }: {
   value: string;
   onChange: (value: string) => void;
-  maxLength: number;
+  maxLength?: number;
   placeholder: string;
   minRows?: number;
   extraTools?: ReactNode;
@@ -81,13 +82,15 @@ export function PostTextInput({
           {extraTools}
         </Stack>
         <Stack direction="row" spacing={1.5} alignItems="center">
-          <Typography
-            variant="caption"
-            color={length > maxLength ? "error" : "text.disabled"}
-            fontWeight={length > maxLength ? 800 : 400}
-          >
-            {length} / {maxLength}
-          </Typography>
+          {maxLength !== undefined && (
+            <Typography
+              variant="caption"
+              color={length > maxLength ? "error" : "text.disabled"}
+              fontWeight={length > maxLength ? 800 : 400}
+            >
+              {length} / {maxLength}
+            </Typography>
+          )}
           {footer}
         </Stack>
       </Stack>

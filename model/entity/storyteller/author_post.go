@@ -39,7 +39,10 @@ func (p *AuthorPost) Identity() AuthorIdentityKey {
 // CommentTargetType 是留言掛在哪一種東西底下；之後的討論區沿用同一張表。
 type CommentTargetType string
 
-const CommentTargetAuthorPost CommentTargetType = "author_post"
+const (
+	CommentTargetAuthorPost       CommentTargetType = "author_post"
+	CommentTargetDiscussionThread CommentTargetType = "discussion_thread"
+)
 
 type Comment struct {
 	ID         uint64            `gorm:"column:id;primaryKey"`
@@ -49,10 +52,12 @@ type Comment struct {
 	// ParentID：0 = 頂層留言；回覆只掛在頂層底下（兩層）
 	ParentID uint64 `gorm:"column:parent_id"`
 	// ReplyToID：在同一串裡直接回覆的那則回覆；回覆頂層留言本身時為 0
-	ReplyToID uint64     `gorm:"column:reply_to_id"`
-	UserID    uint64     `gorm:"column:user_id"`
-	ProfileID uint64     `gorm:"column:profile_id"`
-	Body      string     `gorm:"column:body"`
+	ReplyToID uint64 `gorm:"column:reply_to_id"`
+	UserID    uint64 `gorm:"column:user_id"`
+	ProfileID uint64 `gorm:"column:profile_id"`
+	Body      string `gorm:"column:body"`
+	// EditedAt 只有討論版的留言會有（動態留言不開放編輯）；舊版本另存在 edit_history 欄位
+	EditedAt  *time.Time `gorm:"column:edited_at"`
 	IsDeleted bool       `gorm:"column:is_deleted"`
 	DeletedAt *time.Time `gorm:"column:deleted_at"`
 	CreatedAt time.Time  `gorm:"column:created_at"`
@@ -101,6 +106,13 @@ type CommentRequest struct {
 	// Parent 是要回覆的頂層留言；ReplyTo 是同一串裡要回覆的那則回覆（選填）
 	Parent  string `json:"parent"`
 	ReplyTo string `json:"reply_to"`
+	// As 只在討論版有用：作品作者要用哪個署名身份發言（筆名；空白＝預設身份）
+	As string `json:"as"`
+}
+
+// CommentEditRequest 是討論版留言的編輯（動態留言不開放編輯）。
+type CommentEditRequest struct {
+	Body string `json:"body"`
 }
 
 // ---- 輸出 ----
@@ -149,8 +161,10 @@ type CommentOutput struct {
 	PublicID string                `json:"public_id"`
 	Deleted  bool                  `json:"deleted,omitempty"`
 	Author   *AuthorIdentityOutput `json:"author,omitempty"`
-	// IsPostAuthor：留言者就是貼文的身份，前端顯示「作者」標籤
+	// IsPostAuthor：留言者是作者（動態＝貼文的身份；討論版＝作品擁有者的任一署名身份），前端顯示「作者」標籤
 	IsPostAuthor bool                  `json:"is_post_author,omitempty"`
+	Edited       bool                  `json:"edited,omitempty"`
+	CanEdit      bool                  `json:"can_edit,omitempty"`
 	Body         string                `json:"body,omitempty"`
 	ReplyTo      *CommentReplyToOutput `json:"reply_to,omitempty"`
 	CanDelete    bool                  `json:"can_delete,omitempty"`

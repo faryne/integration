@@ -66,6 +66,6 @@ export const maskPostMarkers = (body: string) =>
     (_, kind: PostMarkerKind) => `［${POST_MARKER_LABEL[kind]}］`,
   );
 
-// 送出按鈕可不可以按：有內容、沒超過字數
-export const postTextValid = (value: string, maxLength: number) =>
+// 送出按鈕可不可以按：有內容、沒超過字數（沒給上限就只檢查有內容）
+export const postTextValid = (value: string, maxLength = Infinity) =>
   value.trim().length > 0 && [...value].length <= maxLength;
