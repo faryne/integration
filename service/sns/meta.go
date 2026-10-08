@@ -20,14 +20,15 @@ import (
 )
 
 const (
-	siteName             = "ha2.tw / faryne.dev"
-	nekomaidSiteName     = "難以名狀的抓圖器"
-	steamloomSiteName    = "SteamLoom"
-	defaultFrontendURL   = "https://faryne.dev"
-	steamloomOrigin      = "https://steamloom.works"
-	defaultDescription   = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
-	nekomaidDescription  = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
-	steamloomDescription = "SteamLoom 是故事創作與 AI Agent 協作平台，可瀏覽公開故事與親友分享的故事內容。"
+	siteName            = "ha2.tw / faryne.dev"
+	nekomaidSiteName    = "難以名狀的抓圖器"
+	steamloomSiteName   = "SteamLoom"
+	defaultFrontendURL  = "https://faryne.dev"
+	steamloomOrigin     = "https://steamloom.works"
+	defaultDescription  = "Faryne 的個人實驗室，整理開放資料、ETF 與匯率工具、爬蟲工具、Threads 截圖工具，以及一些 side project。"
+	nekomaidDescription = "搜尋與瀏覽難以名狀的抓圖器收錄的 Pixiv、Niconico 靜畫與 TINAMI 作品索引。"
+	// steamloomDescription 跟前端 helpers/title.tsx 同一句，改的時候兩邊一起改
+	steamloomDescription = "SteamLoom 是故事創作與發表平台：閱讀公開連載與親友分享的作品，也能用你習慣的 AI 透過 MCP 一起寫故事。"
 	defaultImagePath     = "/faryne-icon-1024.jpg"
 	nekomaidAPIBase      = "https://faryne.dev/api/nekomaid"
 	// storytellerPathPrefix 是 faryne.dev 上巢狀模式的路徑前綴；steamloom.works 是獨立站，
