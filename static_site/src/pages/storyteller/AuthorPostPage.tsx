@@ -19,6 +19,7 @@ import {
   steamloomPostPath,
   steamloomPostsPath,
 } from "@/helpers/steamloom.ts";
+import { steamloomCreatorSeo } from "@/helpers/steamloomCreatorSeo.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import {
@@ -51,13 +52,17 @@ export default function StorytellerAuthorPostPage() {
     }
   }, [data, postId, username, location.hash, navigate]);
 
-  const excerpt = data
-    ? maskPostMarkers(data.post.body).split(/\s+/).join(" ").trim()
-    : "";
-  useTitle(`${penName} 的動態 - ${STORYTELLER_APP_NAME}`, {
+  // 標題、描述跟後端社群預覽卡同一套格式（摘要先遮劇透／R18 標記）
+  const seo = steamloomCreatorSeo(
+    penName,
+    "動態",
+    data ? maskPostMarkers(data.post.body) : undefined,
+  );
+  useTitle(seo.title, {
     path: postId ? steamloomPostPath(penName, postId) : undefined,
-    description:
-      excerpt.length > 150 ? `${excerpt.slice(0, 150)}…` : excerpt || undefined,
+    description: seo.description,
+    image: data?.post.author.avatar_url || undefined,
+    type: "article",
     robots: isError ? "noindex, nofollow" : "index, follow",
   });
 

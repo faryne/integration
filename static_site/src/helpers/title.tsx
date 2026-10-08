@@ -68,7 +68,7 @@ export interface SeoOptions {
   image?: string;
   path?: string;
   robots?: string;
-  type?: "website" | "article";
+  type?: "website" | "article" | "profile";
 }
 
 // isSteamLoomPage：steamloom.works 獨立站，或 faryne.dev/storyteller 巢狀模式

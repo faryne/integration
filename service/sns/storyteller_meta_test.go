@@ -40,8 +40,24 @@ func stubStorytellerFetch(t *testing.T, projects map[string]storytellerProjectMe
 	storytellerFirstPageImage = func(_ uint64, story storytellerModel.Story) (string, string, bool) {
 		return "page-" + story.PublicID, "https://cdn.example.com/page.jpg", true
 	}
+	originalPost := fetchStorytellerPostMeta
+	author := storytellerAuthorMeta{PenName: "織夢者", AvatarURL: "https://lh3.googleusercontent.com/a/xyz=s96-c"}
+	fetchStorytellerPostMeta = func(postID string) (storytellerPostMeta, error) {
+		posts := map[string]storytellerPostMeta{
+			"p1": {Author: author, Excerpt: "新章上線［劇透］"},
+			"p2": {Author: author, Excerpt: "第一話更新", WorkPath: "/storyteller/work/abc-x/story/s1"},
+			"p3": {Author: author, Excerpt: "限制級更新", WorkPath: "/storyteller/work/r18-x"},
+			"p4": {Author: author},
+		}
+		post, ok := posts[postID]
+		if !ok {
+			return storytellerPostMeta{}, gorm.ErrRecordNotFound
+		}
+		return post, nil
+	}
 	t.Cleanup(func() {
 		fetchStorytellerPublicProjectMeta, fetchStorytellerSharedProjectMeta, fetchStorytellerAuthorMeta, storytellerFirstPageImage = originalPublic, originalShared, originalAuthor, originalPage
+		fetchStorytellerPostMeta = originalPost
 	})
 }
 
@@ -149,13 +165,63 @@ func TestStorytellerMetaCanonicalUsesSteamLoomEvenOnFaryneDev(t *testing.T) {
 func TestStorytellerAuthorMeta(t *testing.T) {
 	stubStorytellerFetch(t, nil)
 
-	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85/favorite-projects", Host: "steamloom.works"})
-	if meta.Title != "織夢者 的作品 | SteamLoom" || meta.Description != "寫蒸汽龐克的人。 偶爾畫圖。" || meta.Image != "https://example.com/a.png" {
-		t.Fatalf("unexpected author meta: %+v", meta)
+	cases := []struct{ path, title string }{
+		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85", "織夢者 的作品 | SteamLoom"},
+		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85/favorite-projects", "織夢者 的作品 | SteamLoom"},
+		{"storyteller/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts", "織夢者 的動態 | SteamLoom"},
 	}
-	missing := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/nobody", Host: "steamloom.works"})
-	if missing.Status != 404 {
-		t.Fatalf("unknown pen name should be 404, got %d", missing.Status)
+	for _, tc := range cases {
+		meta := BuildMeta(modelSNS.RenderRequest{Path: tc.path, Host: "steamloom.works"})
+		if meta.Title != tc.title || meta.Description != "寫蒸汽龐克的人。 偶爾畫圖。" || meta.Image != "https://example.com/a.png" ||
+			meta.TwitterCard != "summary" || meta.ImageWidth != 0 || meta.SchemaType != "ProfilePage" {
+			t.Fatalf("%s: unexpected author meta: %+v", tc.path, meta)
+		}
+	}
+	for _, path := range []string{"storyteller/user/nobody", "storyteller/user/nobody/posts", "storyteller/user/x/posts/missing"} {
+		if missing := BuildMeta(modelSNS.RenderRequest{Path: path, Host: "steamloom.works"}); missing.Status != 404 {
+			t.Fatalf("%s should be 404, got %d", path, missing.Status)
+		}
+	}
+}
+
+func TestStorytellerAuthorPostMeta(t *testing.T) {
+	restricted := sampleStorytellerProject()
+	restricted.Restricted = true
+	stubStorytellerFetch(t, map[string]storytellerProjectMeta{"abc-x": sampleStorytellerProject(), "r18-x": restricted})
+	avatar := "https://lh3.googleusercontent.com/a/xyz=s400-c"
+
+	// 網址上是舊筆名：canonical 換成目前的筆名
+	meta := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/old-name/posts/p1", Host: "steamloom.works"})
+	if meta.Title != "織夢者 的動態 | SteamLoom" || meta.Description != "新章上線［劇透］" || meta.Image != avatar || meta.TwitterCard != "summary" ||
+		meta.Canonical != "https://steamloom.works/user/%E7%B9%94%E5%A4%A2%E8%80%85/posts/p1" || meta.OpenGraphURL != meta.Canonical ||
+		meta.SchemaType != "SocialMediaPosting" || meta.AuthorName != "織夢者" {
+		t.Fatalf("unexpected post meta: %+v", meta)
+	}
+	// 附作品：用作品的 1200×630 圖卡
+	withWork := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p2", Host: "steamloom.works"})
+	if !strings.HasPrefix(withWork.Image, "https://steamloom.works/og-image/work/abc-x/story/s1.jpg?v=") || withWork.TwitterCard != "" || withWork.ImageWidth != 1200 {
+		t.Fatalf("post with work should use work card: %+v", withWork)
+	}
+	// 限制級作品不出封面；沒有內文就用預設描述
+	if r18 := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p3", Host: "steamloom.works"}); r18.Image != avatar {
+		t.Fatalf("restricted work should fall back to avatar: %+v", r18)
+	}
+	if empty := BuildMeta(modelSNS.RenderRequest{Path: "storyteller/user/x/posts/p4", Host: "steamloom.works"}); empty.Description != "織夢者 在 SteamLoom 的動態。" {
+		t.Fatalf("unexpected fallback description: %q", empty.Description)
+	}
+}
+
+func TestStorytellerShareAvatarURL(t *testing.T) {
+	cases := map[string]string{
+		"https://lh3.googleusercontent.com/a/ACg8oc=s96-c": "https://lh3.googleusercontent.com/a/ACg8oc=s400-c",
+		"https://lh3.googleusercontent.com/a/ACg8oc":       "https://lh3.googleusercontent.com/a/ACg8oc=s400-c",
+		"https://www.gravatar.com/avatar/abc?d=identicon":  "https://www.gravatar.com/avatar/abc?d=identicon&s=400",
+		"https://cdn.example.com/me.png":                   "https://cdn.example.com/me.png",
+	}
+	for input, want := range cases {
+		if got := storytellerShareAvatarURL(input); got != want {
+			t.Errorf("%s: got %s, want %s", input, got, want)
+		}
 	}
 }
 

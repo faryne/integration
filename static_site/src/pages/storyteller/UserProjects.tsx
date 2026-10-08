@@ -45,7 +45,12 @@ import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import {
+  steamloomCreatorPath,
+  steamloomPath,
+  steamloomPostsPath,
+} from "@/helpers/steamloom.ts";
+import { steamloomCreatorSeo } from "@/helpers/steamloomCreatorSeo.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
 import { FollowAuthorButton } from "@/pages/storyteller/FollowAuthorButton.tsx";
@@ -154,24 +159,26 @@ export default function StorytellerUserProjects() {
     activeTab === "favorite-authors" ? username : undefined,
   );
 
-  // 描述用自介（壓成一行、截 150 字，跟後端社群預覽卡同一套規則）；筆名不存在時 noindex，避免 soft 404
-  const bioDescription = data?.author?.bio?.split(/\s+/).join(" ").trim();
+  // 標題、描述跟後端社群預覽卡同一套格式；筆名不存在時 noindex，避免 soft 404
   const isPostsTab = activeTab === "posts";
-  useTitle(
-    `${username} 的${isPostsTab ? "動態" : "作品"} - ${STORYTELLER_APP_NAME}`,
-    {
-      path: steamloomPath(`user/${username}${isPostsTab ? "/posts" : ""}`),
-      description:
-        bioDescription && bioDescription.length > 150
-          ? `${bioDescription.slice(0, 150)}…`
-          : bioDescription || undefined,
-      image: data?.author?.avatar_url || undefined,
-      robots:
-        isError || (!isLoading && !data?.author)
-          ? "noindex, nofollow"
-          : "index, follow",
-    },
+  const authorPenName = data?.author?.pen_name ?? username ?? "";
+  const seo = steamloomCreatorSeo(
+    authorPenName,
+    isPostsTab ? "動態" : "作品",
+    data?.author?.bio,
   );
+  useTitle(seo.title, {
+    path: isPostsTab
+      ? steamloomPostsPath(authorPenName)
+      : steamloomCreatorPath(authorPenName),
+    description: seo.description,
+    image: data?.author?.avatar_url || undefined,
+    type: "profile",
+    robots:
+      isError || (!isLoading && !data?.author)
+        ? "noindex, nofollow"
+        : "index, follow",
+  });
 
   if (isLoading) {
     return (
