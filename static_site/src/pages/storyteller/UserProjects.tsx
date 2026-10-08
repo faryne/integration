@@ -45,11 +45,7 @@ import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
 } from "@/data/storyteller.ts";
-import {
-  steamloomCreatorPath,
-  steamloomPath,
-  steamloomPostsPath,
-} from "@/helpers/steamloom.ts";
+import { steamloomCreatorPath, steamloomPath } from "@/helpers/steamloom.ts";
 import { steamloomCreatorSeo } from "@/helpers/steamloomCreatorSeo.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
@@ -160,19 +156,14 @@ export default function StorytellerUserProjects() {
   );
 
   // 標題、描述跟後端社群預覽卡同一套格式；筆名不存在時 noindex，避免 soft 404
-  const isPostsTab = activeTab === "posts";
   const authorPenName = data?.author?.pen_name ?? username ?? "";
-  const seo = steamloomCreatorSeo(
-    authorPenName,
-    isPostsTab ? "動態" : "作品",
-    data?.author?.bio,
-  );
+  const seo = steamloomCreatorSeo(authorPenName, activeTab, data?.author?.bio);
   useTitle(seo.title, {
-    path: isPostsTab
-      ? steamloomPostsPath(authorPenName)
-      : steamloomCreatorPath(authorPenName),
+    path:
+      activeTab === "projects"
+        ? steamloomCreatorPath(authorPenName)
+        : `${steamloomCreatorPath(authorPenName)}/${activeTab}`,
     description: seo.description,
-    image: data?.author?.avatar_url || undefined,
     type: "profile",
     robots:
       isError || (!isLoading && !data?.author)

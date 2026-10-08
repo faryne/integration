@@ -29,6 +29,4 @@ type Meta struct {
 	SchemaType string
 	// AuthorName 有值時輸出成 JSON-LD 的 author（單篇故事、單則動態）
 	AuthorName string
-	// TwitterCard 預設 summary_large_image；頭像這類方圖用 summary 小卡
-	TwitterCard string
 }

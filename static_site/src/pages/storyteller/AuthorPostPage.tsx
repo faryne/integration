@@ -55,13 +55,12 @@ export default function StorytellerAuthorPostPage() {
   // 標題、描述跟後端社群預覽卡同一套格式（摘要先遮劇透／R18 標記）
   const seo = steamloomCreatorSeo(
     penName,
-    "動態",
+    "posts",
     data ? maskPostMarkers(data.post.body) : undefined,
   );
   useTitle(seo.title, {
     path: postId ? steamloomPostPath(penName, postId) : undefined,
     description: seo.description,
-    image: data?.post.author.avatar_url || undefined,
     type: "article",
     robots: isError ? "noindex, nofollow" : "index, follow",
   });
