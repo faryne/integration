@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"faryne.dev/service/client"
 	"faryne.dev/service/helper"
 	notifyService "faryne.dev/service/storytellernotify"
 	"github.com/go-redis/redis/v7"
@@ -76,17 +77,7 @@ func (s redisCodeStore) Consume(code string) (*authorizationCode, error) {
 
 type redisRateLimiter struct{ redis *redis.Client }
 
-// Allow 是固定視窗計數：第一次 INCR 時設 TTL，超過 limit 就拒絕。
+// Allow 是固定視窗計數，實作共用 client.AllowFixedWindow。
 func (l redisRateLimiter) Allow(key string, limit int64, window time.Duration) (bool, error) {
-	if l.redis == nil {
-		return false, errors.New("Redis is not configured")
-	}
-	count, err := l.redis.Incr(key).Result()
-	if err != nil {
-		return false, err
-	}
-	if count == 1 {
-		l.redis.Expire(key, window)
-	}
-	return count <= limit, nil
+	return client.AllowFixedWindow(l.redis, key, limit, window)
 }

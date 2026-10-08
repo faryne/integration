@@ -40,6 +40,7 @@ import {
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
+import { AuthorTimeline } from "@/components/storyteller/timeline/AuthorTimeline.tsx";
 import {
   STORYTELLER_APP_NAME,
   storytellerReaderPath,
@@ -85,10 +86,12 @@ function formatJoinedMonth(input: string) {
   }).format(new Date(input));
 }
 
-type ProfileTab = "projects" | "favorite-projects" | "favorite-authors";
+type ProfileTab =
+  "projects" | "posts" | "favorite-projects" | "favorite-authors";
 
 const tabBreadcrumbLabel: Record<ProfileTab, string> = {
   projects: "作品",
+  posts: "動態",
   "favorite-projects": "追蹤的作品",
   "favorite-authors": "追蹤的作家",
 };
@@ -98,7 +101,8 @@ export default function StorytellerUserProjects() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  // 登入提示的文案依觸發點不同（追蹤／按讚）；空字串＝關閉
+  const [loginPrompt, setLoginPrompt] = useState("");
   const [followSnack, setFollowSnack] = useState("");
   const [followSnackSeverity, setFollowSnackSeverity] = useState<
     "success" | "error"
@@ -111,7 +115,9 @@ export default function StorytellerUserProjects() {
     ? "favorite-projects"
     : location.pathname.endsWith("/favorite-authors")
       ? "favorite-authors"
-      : "projects";
+      : location.pathname.endsWith("/posts")
+        ? "posts"
+        : "projects";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const pageSize = 12;
 
@@ -133,8 +139,11 @@ export default function StorytellerUserProjects() {
   const showFavoriteTabs = Boolean(author?.show_favorites);
   // 筆名作者頁不公開收藏；擁有者自己看時多一個「此筆名追蹤的作家」分頁，管理以筆名做的追蹤
   const isPenNameOwner = isOwner && !showFavoriteTabs;
+  // 動態分頁所有人都看得到；收藏分頁只有本人身份的作者頁公開
   const activeTab: ProfileTab =
-    showFavoriteTabs || (isPenNameOwner && tab === "favorite-authors")
+    tab === "posts" ||
+    showFavoriteTabs ||
+    (isPenNameOwner && tab === "favorite-authors")
       ? tab
       : "projects";
 
@@ -147,18 +156,22 @@ export default function StorytellerUserProjects() {
 
   // 描述用自介（壓成一行、截 150 字，跟後端社群預覽卡同一套規則）；筆名不存在時 noindex，避免 soft 404
   const bioDescription = data?.author?.bio?.split(/\s+/).join(" ").trim();
-  useTitle(`${username} 的作品 - ${STORYTELLER_APP_NAME}`, {
-    path: steamloomPath(`user/${username}`),
-    description:
-      bioDescription && bioDescription.length > 150
-        ? `${bioDescription.slice(0, 150)}…`
-        : bioDescription || undefined,
-    image: data?.author?.avatar_url || undefined,
-    robots:
-      isError || (!isLoading && !data?.author)
-        ? "noindex, nofollow"
-        : "index, follow",
-  });
+  const isPostsTab = activeTab === "posts";
+  useTitle(
+    `${username} 的${isPostsTab ? "動態" : "作品"} - ${STORYTELLER_APP_NAME}`,
+    {
+      path: steamloomPath(`user/${username}${isPostsTab ? "/posts" : ""}`),
+      description:
+        bioDescription && bioDescription.length > 150
+          ? `${bioDescription.slice(0, 150)}…`
+          : bioDescription || undefined,
+      image: data?.author?.avatar_url || undefined,
+      robots:
+        isError || (!isLoading && !data?.author)
+          ? "noindex, nofollow"
+          : "index, follow",
+    },
+  );
 
   if (isLoading) {
     return (
@@ -209,7 +222,9 @@ export default function StorytellerUserProjects() {
             <FollowAuthorButton
               penName={author.pen_name}
               disabled={isOwner}
-              onLoginRequired={() => setLoginPromptOpen(true)}
+              onLoginRequired={() =>
+                setLoginPrompt("追蹤作者需要登入。是否要現在登入？")
+              }
               onNotify={notify}
             />
           )}
@@ -224,9 +239,9 @@ export default function StorytellerUserProjects() {
       }
     >
       <LoginPromptDialog
-        open={loginPromptOpen}
-        onClose={() => setLoginPromptOpen(false)}
-        description="追蹤作者需要登入。是否要現在登入？"
+        open={Boolean(loginPrompt)}
+        onClose={() => setLoginPrompt("")}
+        description={loginPrompt}
       />
       <CustomSnackbar
         open={Boolean(followSnack)}
@@ -327,6 +342,7 @@ export default function StorytellerUserProjects() {
               allowScrollButtonsMobile
             >
               <Tab value="projects" label="作品" />
+              <Tab value="posts" label="動態" />
               {showFavoriteTabs && (
                 <Tab value="favorite-projects" label="追蹤的作品" />
               )}
@@ -386,6 +402,17 @@ export default function StorytellerUserProjects() {
                   description={`這位作者公開的 ${STORYTELLER_APP_NAME} 專案會顯示在這裡。`}
                 />
               ))}
+
+            {activeTab === "posts" && author && (
+              <AuthorTimeline
+                author={author}
+                isOwner={isOwner}
+                onNotify={notify}
+                onLoginRequired={() =>
+                  setLoginPrompt("按讚和留言需要登入。是否要現在登入？")
+                }
+              />
+            )}
 
             {activeTab === "favorite-projects" &&
               (favoriteProjectsQuery.isLoading ? (

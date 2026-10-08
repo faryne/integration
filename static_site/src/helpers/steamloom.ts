@@ -28,3 +28,13 @@ export function steamloomPath(path = "") {
 // 創作者頁（本人或筆名）的路徑；筆名可能含空白或符號，一律 encode
 export const steamloomCreatorPath = (penName: string) =>
   steamloomPath(`user/${encodeURIComponent(penName)}`);
+
+// 作者動態分頁與貼文單頁；commentId 帶上時捲到那則留言
+export const steamloomPostsPath = (penName: string) =>
+  `${steamloomCreatorPath(penName)}/posts`;
+export const steamloomPostPath = (
+  penName: string,
+  postId: string,
+  commentId?: string,
+) =>
+  `${steamloomPostsPath(penName)}/${postId}${commentId ? `#c-${commentId}` : ""}`;

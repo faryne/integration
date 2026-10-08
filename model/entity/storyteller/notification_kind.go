@@ -10,6 +10,9 @@ const (
 	NotificationKindPATCreated       NotificationKind = "security.pat.created"
 	NotificationKindAuthorFollowed   NotificationKind = "author.followed"
 	NotificationKindProjectFavorited NotificationKind = "project.favorited"
+	NotificationKindAuthorPosted     NotificationKind = "author.posted"
+	NotificationKindPostCommented    NotificationKind = "post.commented"
+	NotificationKindPostReplied      NotificationKind = "post.replied"
 )
 
 // NotificationCategory 是通知的大類，前端拿來決定圖示顏色與「帳號安全」之類的標記。
@@ -33,6 +36,8 @@ const (
 	NotificationViewGeneric  NotificationView = "generic"  // 只用通用欄位 title／body／link
 	NotificationViewFollower NotificationView = "follower" // 追蹤者頭像＋回追
 	NotificationViewFavorite NotificationView = "favorite" // 被收藏的作品＋收藏者＋回追
+	NotificationViewPosted   NotificationView = "posted"   // 追蹤的作者發了新動態
+	NotificationViewComment  NotificationView = "comment"  // 動態留言／回覆：貼文摘要＋留言內容＋直接回覆
 )
 
 type NotificationKindDefinition struct {
@@ -51,6 +56,9 @@ var NotificationKinds = []NotificationKindDefinition{
 	{Kind: NotificationKindPATCreated, Label: "建立 Personal Access Token", Category: NotificationCategorySecurity, View: NotificationViewSecurity},
 	{Kind: NotificationKindAuthorFollowed, Label: "追蹤", Category: NotificationCategorySocial, View: NotificationViewFollower},
 	{Kind: NotificationKindProjectFavorited, Label: "收藏作品", Category: NotificationCategorySocial, View: NotificationViewFavorite},
+	{Kind: NotificationKindAuthorPosted, Label: "新動態", Category: NotificationCategorySocial, View: NotificationViewPosted},
+	{Kind: NotificationKindPostCommented, Label: "動態留言", Category: NotificationCategorySocial, View: NotificationViewComment},
+	{Kind: NotificationKindPostReplied, Label: "留言回覆", Category: NotificationCategorySocial, View: NotificationViewComment},
 }
 
 func IsNotificationKindRegistered(kind NotificationKind) bool {

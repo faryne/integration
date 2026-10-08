@@ -59,14 +59,16 @@ type AuthorIdentityOutput struct {
 
 // AuthorProfileOutput 是擁有者自己看的額外筆名，帶 id 供 CRUD 使用。
 type AuthorProfileOutput struct {
-	ID               uint64    `json:"id"`
-	PenName          string    `json:"pen_name"`
-	Bio              string    `json:"bio,omitempty"`
-	UseDefaultAvatar bool      `json:"use_default_avatar"`
-	AvatarURL        string    `json:"avatar_url,omitempty"`
-	SNSLinks         SNSLinks  `json:"sns_links,omitempty"`
-	SNSPrivateKeys   []string  `json:"sns_private_keys"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               uint64   `json:"id"`
+	PenName          string   `json:"pen_name"`
+	Bio              string   `json:"bio,omitempty"`
+	UseDefaultAvatar bool     `json:"use_default_avatar"`
+	AvatarURL        string   `json:"avatar_url,omitempty"`
+	SNSLinks         SNSLinks `json:"sns_links,omitempty"`
+	SNSPrivateKeys   []string `json:"sns_private_keys"`
+	// PostCount 是這個筆名目前的動態數，刪筆名的確認視窗提示「N 則動態也會一起刪除」
+	PostCount int64     `json:"post_count"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // AuthorIdentityKey 是後端內部用的身份鍵：ProfileID=0 代表本人。

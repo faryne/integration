@@ -440,6 +440,8 @@ export interface StorytellerAuthorIdentity {
 
 export interface StorytellerAuthorProfile extends StorytellerAuthorIdentity {
   id: number;
+  // 這個筆名目前的動態數；刪筆名時一起刪除，確認視窗會提示
+  post_count?: number;
   // sns_links 裡設成「僅自己」的 key；只有本人看的輸出才有
   sns_private_keys?: string[];
 }

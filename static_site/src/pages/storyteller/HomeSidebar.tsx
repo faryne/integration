@@ -1,4 +1,5 @@
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import CableIcon from "@mui/icons-material/Cable";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
@@ -35,6 +36,7 @@ import {
 const tabIcons: Record<StorytellerHomeTab, ReactNode> = {
   project: <AutoStoriesIcon fontSize="small" />,
   notifications: <NotificationsNoneOutlinedIcon fontSize="small" />,
+  blocks: <BlockOutlinedIcon fontSize="small" />,
   agent: <SmartToyIcon fontSize="small" />,
   apikey: <KeyIcon fontSize="small" />,
   usage: <QueryStatsIcon fontSize="small" />,

@@ -20,6 +20,9 @@ func Storyteller(app *fiber.App) {
 	group.Get("/user/:username", storyteller.PublicUserProjects)
 	group.Get("/user/:username/favorites/projects", storyteller.PublicFavoriteProjects)
 	group.Get("/user/:username/favorites/authors", storyteller.PublicFavoriteAuthors)
+	// 作者動態：公開讀取（帶登入 header 時多回按讚、能否留言等狀態）；要註冊在 authenticated 群組之前
+	group.Get("/user/:username/posts", storyteller.PublicAuthorPosts)
+	group.Get("/posts/:post", storyteller.PublicAuthorPost)
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
@@ -78,6 +81,20 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/story/:project/stories/:story/bookmarks", storyteller.DeleteStoryBookmark)
 	authenticated.Get("/story/:project/reading-records", storyteller.ReadingRecords)
 	authenticated.Put("/story/:project/reading-records", storyteller.SaveReadingRecords)
+
+	// 作者動態：發文身份由 :username 決定（必須是自己的身份），留言身份由後端判定
+	authenticated.Post("/user/:username/posts", storyteller.CreateAuthorPost)
+	authenticated.Get("/user/:username/attachable-works", storyteller.AttachableWorks)
+	authenticated.Delete("/posts/:post", storyteller.DeleteAuthorPost)
+	authenticated.Put("/posts/:post/pin", storyteller.PinAuthorPost)
+	authenticated.Delete("/posts/:post/pin", storyteller.UnpinAuthorPost)
+	authenticated.Put("/posts/:post/like", storyteller.LikeAuthorPost)
+	authenticated.Delete("/posts/:post/like", storyteller.UnlikeAuthorPost)
+	authenticated.Post("/posts/:post/comments", storyteller.CreateComment)
+	authenticated.Delete("/comments/:comment", storyteller.DeleteComment)
+	authenticated.Post("/comments/:comment/block", storyteller.BlockCommenter)
+	authenticated.Get("/blocks", storyteller.AuthorBlocks)
+	authenticated.Delete("/blocks/:block", storyteller.DeleteAuthorBlock)
 
 	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)

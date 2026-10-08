@@ -81,17 +81,34 @@ func (r *Repository) SaveAuthorProfile(row *storytellerModel.AuthorProfile) erro
 	return r.db.Save(row).Error
 }
 
-// DeleteAuthorProfile 刪筆名時一併取消以這個筆名做的追蹤，免得留下對方看得到、卻已不存在的追蹤者。
+// DeleteAuthorProfile 刪筆名時一併取消以這個筆名做的追蹤，免得留下對方看得到、卻已不存在的追蹤者；
+// 這個筆名的動態、以它身份發的留言、它的封鎖名單也一起 soft delete。
 func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) error {
 	now := time.Now()
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(row).Updates(map[string]any{"deleted_at": &now}).Error; err != nil {
 			return err
 		}
-		return tx.Model(&storytellerModel.AuthorFavorite{}).
+		if err := tx.Model(&storytellerModel.AuthorFavorite{}).
 			Where("user_id = ? AND follower_profile_id = ? AND deleted_at IS NULL", row.UserID, row.ID).
-			Update("deleted_at", &now).Error
+			Update("deleted_at", &now).Error; err != nil {
+			return err
+		}
+		softDelete := map[string]any{"is_deleted": true, "deleted_at": &now}
+		for _, model := range []any{&storytellerModel.AuthorPost{}, &storytellerModel.Comment{}, &storytellerModel.AuthorBlock{}} {
+			if err := tx.Model(model).Where("user_id = ? AND profile_id = ? AND is_deleted = 0", row.UserID, row.ID).Updates(softDelete).Error; err != nil {
+				return err
+			}
+		}
+		return nil
 	})
+}
+
+// AuthorPostCountByIdentity 給刪筆名前的確認視窗：「這個筆名的 N 則動態也會一起刪除」。
+func (r *Repository) AuthorPostCountByIdentity(userID, profileID uint64) (int64, error) {
+	var count int64
+	err := r.activeIdentityPosts(userID, profileID).Count(&count).Error
+	return count, err
 }
 
 func (r *Repository) StoryProfilesByStoryIDs(storyIDs []uint64) (map[uint64][]uint64, error) {

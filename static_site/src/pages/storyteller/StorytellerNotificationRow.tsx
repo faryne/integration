@@ -1,5 +1,7 @@
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import DynamicFeedOutlinedIcon from "@mui/icons-material/DynamicFeedOutlined";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import LockIcon from "@mui/icons-material/Lock";
@@ -41,6 +43,8 @@ const viewIcons: Record<StorytellerNotificationView, ReactNode> = {
   generic: <NotificationsNoneOutlinedIcon fontSize="small" />,
   follower: <PersonAddAltOutlinedIcon fontSize="small" />,
   favorite: <FavoriteBorderIcon fontSize="small" />,
+  posted: <DynamicFeedOutlinedIcon fontSize="small" />,
+  comment: <ChatBubbleOutlineIcon fontSize="small" />,
 };
 
 const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
@@ -62,7 +66,9 @@ export function NotificationLeading({
   view: StorytellerNotificationView;
   size?: number;
 }) {
-  if (view === "follower") return <NotificationActorAvatar n={n} size={size} />;
+  // 追蹤、新動態、留言都是「人」為主角：用對方頭像（點了進創作者頁）
+  if (view === "follower" || view === "posted" || view === "comment")
+    return <NotificationActorAvatar n={n} size={size} />;
   if (view === "favorite")
     return <NotificationFavoriteCover n={n} size={size} />;
   return <NotificationViewAvatar view={view} size={size} />;

@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>作者動態時間軸 Mockup</title>
+<style>
+/* 色票、外框沿用 follow-notification-mockup，這裡只保留這份用得到的部分 */
+:root {
+  color-scheme: dark;
+  --bg: #0d0f14; --paper: #151820; --paper-2: #1b1f29; --paper-3: #232834;
+  --text: #f1f2f6; --muted: #9aa2b1; --disabled: #687080; --line: #2d3340;
+  --primary: #aa91ff; --primary-soft: rgba(170, 145, 255, 0.14);
+  --success: #66d5a0; --danger: #ff7f8b; --warning: #f4bd67; --blue: #69a9ff;
+  --like: #ff6f91; --shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f6fa; --paper: #ffffff; --paper-2: #f9f9fc; --paper-3: #eff1f6;
+  --text: #20232b; --muted: #687080; --disabled: #979eaa; --line: #dfe2e9;
+  --primary: #6951bd; --primary-soft: rgba(105, 81, 189, 0.11);
+  --success: #23845a; --danger: #c83f50; --warning: #a96712; --blue: #276fc5;
+  --like: #d63a63; --shadow: 0 18px 60px rgba(45, 48, 58, 0.16);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; font-family: Inter, "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+button, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+h1, h2, h3, p { margin-top: 0; }
+
+/* Mockup 控制列（不屬於產品 UI） */
+.prototype-bar { min-height: 54px; padding: 9px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #101219; border-bottom: 1px solid #2d3340; color: #f1f2f6; position: sticky; top: 0; z-index: 50; flex-wrap: wrap; }
+.prototype-bar > div:first-child { display: flex; gap: 10px; align-items: baseline; }
+.prototype-bar span { color: #9aa2b1; font-size: 12px; }
+.prototype-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.prototype-chip, .prototype-controls select { border: 1px solid #3c4351; border-radius: 8px; padding: 6px 9px; background: #1a1e27; color: #dfe2e9; font-size: 12px; }
+.prototype-chip.active { color: #d9d0ff; border-color: #7561c6; background: rgba(170, 145, 255, 0.16); }
+.prototype-separator { width: 1px; height: 22px; background: #3c4351; margin: 0 3px; }
+.sub-controls { padding: 8px 18px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: #14171f; border-bottom: 1px solid #2d3340; font-size: 12px; color: #9aa2b1; }
+.sub-controls:empty { display: none; }
+
+/* App 外框 */
+.stage { padding: 24px; display: grid; place-items: start center; }
+.app-shell { width: min(1100px, 100%); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+body.mobile .app-shell { width: 390px; }
+.site-header { height: 58px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: var(--paper); border-bottom: 1px solid var(--line); }
+.brand { color: var(--text); text-decoration: none; font: 900 20px Georgia, serif; }
+.brand small { color: var(--primary); font: 700 10px sans-serif; vertical-align: top; }
+.site-header nav { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; }
+body.mobile .site-header nav > span.txt { display: none; }
+.bell { position: relative; border: 0; background: transparent; font-size: 17px; }
+.bell .count { position: absolute; top: -6px; right: -8px; min-width: 17px; height: 17px; padding: 0 4px; display: grid; place-items: center; border-radius: 999px; background: var(--danger); color: #fff; font-size: 10px; font-weight: 900; }
+.crumbs { padding: 11px 20px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); display: flex; gap: 7px; flex-wrap: wrap; }
+.crumbs b { color: var(--primary); }
+.page { padding: 22px 24px 40px; display: grid; gap: 16px; max-width: 760px; margin: 0 auto; }
+body.mobile .page { padding: 14px 10px 30px; }
+
+/* 共用 */
+.face { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 900; font-size: 15px; }
+.face.sm { width: 30px; height: 30px; font-size: 12px; }
+.face.lg { width: 72px; height: 72px; font-size: 26px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.muted { color: var(--muted); }
+.tiny { font-size: 11.5px; color: var(--disabled); }
+.tag { display: inline-block; padding: 1px 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 10.5px; font-weight: 700; vertical-align: middle; }
+.tag.author { color: var(--primary); border-color: color-mix(in srgb, var(--primary) 50%, var(--line)); background: var(--primary-soft); }
+.tag.pin { color: var(--warning); border-color: color-mix(in srgb, var(--warning) 50%, var(--line)); }
+.btn { min-height: 34px; padding: 6px 16px; border: 0; border-radius: 999px; background: #715bc4; color: #fff; font-weight: 800; font-size: 13px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 700; }
+.btn.danger { background: #c83f50; }
+.link { border: 0; background: transparent; color: var(--primary); font-size: 12.5px; font-weight: 700; padding: 0; }
+.icon-btn { border: 0; background: transparent; color: var(--disabled); border-radius: 7px; padding: 4px 8px; font-size: 14px; }
+.icon-btn:hover { background: var(--paper-3); color: var(--text); }
+
+/* 作者頁 */
+.hero { display: flex; gap: 18px; align-items: center; padding: 20px; }
+.hero h1 { margin: 0 0 4px; font-size: 22px; }
+.hero .spacer { flex: 1; }
+body.mobile .hero { flex-wrap: wrap; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs span { padding: 10px 14px; font-size: 13.5px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.tabs span.active { color: var(--text); border-bottom: 2px solid var(--primary); }
+.tabs span.new::after { content: "NEW"; margin-left: 5px; font-size: 9px; color: var(--success); }
+
+/* 發文框 */
+.composer { padding: 14px 16px; display: grid; gap: 10px; }
+.composer-top { display: flex; gap: 12px; }
+.composer textarea { flex: 1; min-height: 76px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-2); line-height: 1.6; font-size: 14px; }
+.composer textarea:focus { outline: 2px solid color-mix(in srgb, var(--primary) 60%, transparent); }
+.composer-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.as-chip { font-size: 12px; color: var(--muted); }
+.as-chip b { color: var(--primary); }
+.counter { font-size: 12px; color: var(--disabled); }
+.counter.over { color: var(--danger); font-weight: 800; }
+
+/* 貼文卡 */
+.post { padding: 14px 16px 10px; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; }
+.post + .post { border-top: 1px solid var(--line); }
+.post.clickable:hover { background: var(--paper-2); cursor: pointer; }
+.post-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 13.5px; }
+.post-head b { font-weight: 800; }
+.post-body { margin: 5px 0 8px; font-size: 14.5px; line-height: 1.75; white-space: pre-line; word-break: break-word; }
+.post-body a { color: var(--blue); }
+.post-actions { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 13px; }
+.post-actions button { border: 0; background: transparent; color: inherit; padding: 4px 6px; border-radius: 7px; display: inline-flex; gap: 6px; align-items: center; }
+.post-actions button:hover { background: var(--paper-3); }
+.post-actions .liked { color: var(--like); }
+.post-actions .spacer { flex: 1; }
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: 30px; z-index: 20; min-width: 150px; padding: 5px; background: var(--paper); border: 1px solid var(--line); border-radius: 9px; box-shadow: var(--shadow); }
+.menu button { width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; }
+.menu button:hover { background: var(--paper-3); }
+.menu .danger { color: var(--danger); }
+.post.big .post-body { font-size: 16px; }
+/* spoiler／R18 標籤：預設摺起來，點了才顯示 */
+.sp { display: inline; padding: 1px 6px; border-radius: 5px; cursor: pointer; font-size: .92em; }
+.sp.hidden { background: var(--paper-3); color: var(--muted); border: 1px dashed var(--line); }
+.sp.hidden.r18 { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.sp.shown { background: color-mix(in srgb, var(--paper-3) 70%, transparent); cursor: text; }
+/* 作品卡：只有貼文能附，只能選發文身份署名的作品 */
+.work { margin: 0 0 10px; display: flex; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-2); align-items: center; max-width: 460px; }
+.work .cv { flex: none; width: 48px; height: 64px; border-radius: 5px; display: grid; place-items: center; color: #fff; font: 800 11px Georgia, serif; background: linear-gradient(160deg, #4a3d7a, #1f2a44); }
+.work .cv.gated { background: repeating-linear-gradient(45deg, var(--paper-3), var(--paper-3) 6px, var(--paper) 6px, var(--paper) 12px); color: var(--danger); }
+.work b { display: block; font-size: 14px; }
+.work .x { margin-left: auto; align-self: flex-start; }
+.toolbar { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.toolbar button { border: 1px solid var(--line); background: var(--paper); border-radius: 7px; padding: 4px 9px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.toolbar button:hover, .toolbar button.on { color: var(--text); background: var(--paper-3); }
+.picker { padding: 6px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); display: grid; gap: 4px; }
+.picker button { text-align: left; border: 0; background: transparent; border-radius: 6px; padding: 7px 9px; font-size: 13px; }
+.picker button:hover { background: var(--paper-3); }
+.preview { padding: 10px 12px; border: 1px dashed var(--line); border-radius: 9px; font-size: 14.5px; line-height: 1.75; white-space: pre-line; }
+.load-more { padding: 12px; text-align: center; border-top: 1px solid var(--line); }
+
+/* 留言 */
+.thread { padding: 0 16px 6px; }
+.c { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+.c.reply { margin-left: 40px; border-top: 0; padding-top: 6px; }
+.c.flash { animation: flash 2s ease-out; }
+@keyframes flash { from { background: var(--primary-soft); } to { background: transparent; } }
+.c-head { display: flex; align-items: baseline; gap: 6px; font-size: 13px; flex-wrap: wrap; }
+.c-body { margin: 3px 0 4px; font-size: 14px; line-height: 1.7; white-space: pre-line; }
+.c-body.deleted { color: var(--disabled); font-style: italic; }
+.c-actions { display: flex; gap: 12px; font-size: 12px; }
+.c-actions button { border: 0; background: transparent; color: var(--muted); padding: 0; font-weight: 700; }
+.c-actions button:hover { color: var(--text); }
+.c-actions .del:hover { color: var(--danger); }
+.c-box { display: grid; gap: 8px; padding: 12px 16px 14px; border-top: 1px solid var(--line); }
+.c-box.inline { margin-left: 40px; padding: 6px 0 10px; border-top: 0; }
+.c-box textarea { min-height: 54px; resize: vertical; padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-2); font-size: 14px; line-height: 1.6; }
+.c-box .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gate { padding: 14px 16px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.more-replies { margin: 0 0 8px 40px; }
+.reply-to { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
+.reply-to b { color: var(--primary); }
+
+/* 通知 */
+.split { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); }
+body.mobile .split { grid-template-columns: 1fr; }
+body.mobile .split.show-detail .list-pane, body.mobile .split:not(.show-detail) .detail-pane { display: none; }
+.list-pane { border-right: 1px solid var(--line); }
+.n-row { position: relative; padding: 12px 14px; display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 11px; border-top: 1px solid var(--line); cursor: pointer; }
+.n-row:first-child { border-top: 0; }
+.n-row:hover { background: var(--paper-2); }
+.n-row.unread { background: color-mix(in srgb, var(--primary) 6%, var(--paper)); }
+.n-row.unread::before { content: ""; position: absolute; left: 4px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--primary); }
+.n-row.selected { background: var(--paper-3); }
+.n-row .face { width: 36px; height: 36px; font-size: 13px; position: relative; }
+.n-row .badge { position: absolute; right: -4px; bottom: -4px; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; background: var(--blue); border: 2px solid var(--paper); }
+.n-title { margin: 0 0 3px; font-size: 13.5px; line-height: 1.5; }
+.n-sub { margin: 0 0 4px; color: var(--muted); font-size: 12.5px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.detail-head { padding: 18px 20px 14px; display: flex; gap: 12px; align-items: flex-start; border-bottom: 1px solid var(--line); }
+.detail-head h2 { margin: 0 0 4px; font-size: 16.5px; line-height: 1.45; }
+.detail-body { padding: 18px 20px; display: grid; gap: 14px; }
+.quote { padding: 11px 13px; border-left: 3px solid var(--line); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: 13px; color: var(--muted); line-height: 1.65; }
+.quote .who { display: block; margin-bottom: 2px; font-size: 11.5px; color: var(--disabled); }
+.bubble { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; font-size: 14px; line-height: 1.7; }
+.detail-foot { padding: 12px 20px; border-top: 1px solid var(--line); color: var(--disabled); font-size: 11px; }
+.back { margin: 12px 0 0 16px; }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.empty b { display: block; color: var(--text); font-size: 15px; margin-bottom: 4px; }
+
+/* 審查筆記：可能漏想的點（不屬於產品 UI） */
+.review { padding: 16px 18px; border: 1px dashed color-mix(in srgb, var(--warning) 60%, var(--line)); border-radius: 10px; background: color-mix(in srgb, var(--warning) 6%, var(--paper)); }
+.review h2 { margin: 0 0 8px; font-size: 14px; color: var(--warning); }
+.review ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 13px; line-height: 1.65; }
+.review b { color: var(--text); }
+.review .rec { color: var(--success); font-weight: 700; }
+
+/* Dialog / snack */
+.modal { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(5, 6, 10, .6); }
+.dialog { width: min(420px, 100%); padding: 22px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.dialog h3 { margin: 0 0 8px; font-size: 16px; }
+.dialog p { font-size: 13.5px; line-height: 1.65; color: var(--muted); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.snack { position: fixed; right: 24px; bottom: 24px; z-index: 80; padding: 12px 16px; display: none; gap: 10px; align-items: center; color: #fff; background: #23845a; border-radius: 8px; box-shadow: var(--shadow); font-size: 13px; font-weight: 700; }
+.snack.show { display: flex; }
+.snack.error { background: #9f3040; }
+</style>
+</head>
+<body>
+<header class="prototype-bar">
+  <div><strong>作者動態時間軸 Mockup</strong><span>純靜態資料 · 黃框是審查筆記，不屬於產品 UI</span></div>
+  <div class="prototype-controls">
+    <button class="prototype-chip active" data-screen="mine">我的作者頁</button>
+    <button class="prototype-chip" data-screen="other">他人作者頁</button>
+    <button class="prototype-chip" data-screen="post">貼文單頁</button>
+    <button class="prototype-chip" data-screen="notify">通知</button>
+    <button class="prototype-chip" data-screen="blocks">封鎖名單</button>
+    <span class="prototype-separator"></span>
+    <button class="prototype-chip active" data-view="desktop">Desktop</button>
+    <button class="prototype-chip" data-view="mobile">Mobile 390</button>
+    <select id="themeSelect" aria-label="色彩模式"><option value="dark">深色</option><option value="light">淺色</option></select>
+  </div>
+</header>
+<div class="sub-controls" id="subControls"></div>
+<main class="stage">
+  <div class="app-shell">
+    <header class="site-header">
+      <a class="brand" href="#">SteamLoom <small>beta</small></a>
+      <nav><span class="txt">探索</span><span class="txt">搜尋</span><button class="bell" data-goto="notify">🔔<span class="count">3</span></button><span class="face sm" id="viewerFace"></span></nav>
+    </header>
+    <div class="crumbs" id="crumbs"></div>
+    <div class="page" id="page"></div>
+  </div>
+</main>
+<div id="modalRoot"></div>
+<div class="snack" id="snack"></div>
+
+<script>
+// ---- 假資料：我（Faryne）有本人身份＋筆名「霧島」；白夜是另一位作者 ----
+const colors = { Faryne: "#6e59bd", 霧島: "#3f6f9a", 白夜: "#c0567a", 青嵐: "#3f8f7a", 小麥: "#b07a2a", 墨蝶: "#5965c0", 鐵鏽: "#8a5a3c", 路人: "#777" };
+const face = (name, cls = "") => `<span class="face ${cls}" style="background:${colors[name] || "#6e59bd"}">${name[0]}</span>`;
+const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+// 純文字＋網址自動連結＋保留換行
+const linkify = (s) => esc(s).replace(/https?:\/\/\S+/g, (u) => `<a href="#">${u}</a>`);
+// [spoiler]…[/spoiler]、[r18]…[/r18]：存純文字標記，顯示時摺起來；不支援巢狀，沒關閉的標記當一般文字
+const SP_RE = /\[(spoiler|r18)\]([\s\S]*?)\[\/\1\]/g;
+const SP_LABEL = { spoiler: "劇透", r18: "R18" };
+const revealed = new Set();
+const renderBody = (s, key) => { let i = 0; return linkify(s).replace(SP_RE, (_, kind, text) => {
+  const k = `${key}:${i++}`;
+  return revealed.has(k) ? `<span class="sp shown">${text}</span>`
+    : `<span class="sp hidden ${kind}" data-act="reveal" data-k="${k}" data-kind="${kind}">${kind === "r18" ? "🔞" : "🙈"} ${SP_LABEL[kind]}・點擊顯示</span>`;
+}); };
+// 通知、分享預覽等摘要：被包起來的內容一律換成佔位，不能外洩
+const maskExcerpt = (s) => s.replace(SP_RE, (_, kind) => `［${SP_LABEL[kind]}］`);
+// 作品卡候選：只列「這個身份署名、目前公開」的作品
+const works = {
+  Faryne: [{ id: "w-fog", title: "霧都旅館", sub: "第二卷・第 13 話 雨夜的鍋爐室", rating: "general" },
+           { id: "w-fog-p", title: "霧都旅館", sub: "作品首頁・連載中・24 話", rating: "general" },
+           { id: "w-iron", title: "鐵與蒸氣", sub: "作品首頁・完結・12 話", rating: "r18" }],
+  霧島: [{ id: "w-star", title: "星屑列車", sub: "作品首頁・連載中・9 話", rating: "general" }],
+  白夜: [{ id: "w-heron", title: "白鷺館", sub: "作品首頁・連載中・3 話", rating: "r18" }],
+};
+const workCard = (w, removable = false) => {
+  const gated = w.rating === "r18" && !state.age; // 沿用限制級封面閘門：沒確認年齡就不顯示封面
+  return `<div class="work"><span class="cv ${gated ? "gated" : ""}">${gated ? "R18" : w.title.slice(0, 2)}</span>
+    <div><b>《${w.title}》</b><span class="tiny">${w.sub}</span>${w.rating === "r18" ? ` <span class="tag" style="color:var(--danger)">限制級</span>` : ""}</div>
+    ${removable ? `<button class="icon-btn x" data-act="unattach" title="移除">×</button>` : ""}</div>`;
+};
+
+const posts = {
+  Faryne: [
+    { id: "p1", pinned: true, time: "10月1日", likes: 42, liked: false, comments: 7,
+      body: "《霧都旅館》第二卷開始連載了！\n之後固定每週五晚上十點更新，有事會在這裡先講。",
+      attach: "w-fog" },
+    { id: "p0", time: "20 分鐘前", likes: 5, liked: false, comments: 2,
+      body: "第 12 話結尾那個反轉，[spoiler]管家其實就是十年前失蹤的鍋爐工[/spoiler]，這條伏筆從第一卷就埋了，終於可以講了。看過的人應該懂我在得意什麼 😎" },
+    { id: "p2", time: "3 小時前", likes: 8, liked: true, comments: 3,
+      body: "最近在補蒸氣機關的資料，翻到一本 1890 年代的鍋爐維修手冊，插圖超好看，大概會偷偷塞進第三卷的機房場景。" },
+    { id: "p3", time: "2 天前", likes: 15, liked: false, comments: 0,
+      body: "這週五停更一次，家裡有事。下週會補兩話。" },
+  ],
+  霧島: [
+    { id: "q1", time: "昨天", likes: 23, liked: false, comments: 4,
+      body: "《星屑列車》番外寫完了，想先問大家：想看車掌視角還是乘客視角？留言告訴我～" },
+  ],
+  白夜: [
+    { id: "w1", pinned: true, time: "9月20日", likes: 130, liked: true, comments: 18,
+      body: "新作《白鷺館》開坑，限制級，請自己斟酌。", attach: "w-heron" },
+    { id: "w2", time: "5 小時前", likes: 12, liked: false, comments: 2,
+      body: "今天寫到卡關，去散步。\n散步回來終於想通了：[r18]溫室那場床戲要從她先解開領結開始寫，節奏才對[/r18]\n今晚應該寫得完。" },
+  ],
+};
+
+// 貼文單頁的留言（掛在 p1：Faryne 本人身份的貼文）。兩層：頂層＋回覆。
+// replyTo：直接回覆的那則留言是誰寫的（回覆的是頂層留言時不顯示，因為本來就看得出來）
+let comments = [
+  { id: "c1", who: "白夜", time: "10月1日", body: "等好久了！！第二卷還是一樣週五更新嗎？", replies: [
+    { id: "c1r1", who: "Faryne", author: true, time: "10月1日", body: "對～週五晚上十點，偶爾會晚一點點，我會先在這邊講" },
+    { id: "c1r2", who: "青嵐", replyTo: "Faryne", time: "10月2日", body: "十點剛好下班到家，完美" },
+  ]},
+  { id: "c2", who: "小麥", deleted: true, time: "10月2日", body: "", replies: [
+    { id: "c2r1", who: "Faryne", author: true, time: "10月2日", body: "這個問題第三卷會講到，先賣個關子" },
+  ]},
+  { id: "c3", who: "墨蝶", time: "10月3日", body: "第一卷結尾那段鍋爐室的描寫我看了三遍，第二卷也要繼續有機房戲啊", replies: [
+    { id: "c3r1", who: "白夜", time: "10月3日", body: "同意，機房那段超有畫面" },
+    { id: "c3r2", who: "青嵐", time: "10月3日", body: "我也是看那段入坑的，而且現在回頭看，[spoiler]鍋爐工那條線[/spoiler]其實第一卷就很明顯了" },
+    { id: "c3r3", who: "小麥", deleted: true, time: "10月4日", body: "" },
+    { id: "c3r4", who: "Faryne", author: true, replyTo: "青嵐", time: "10月4日", body: "原來是那段入坑的！第三卷會有一整話在機房" },
+  ]},
+];
+
+// 封鎖名單以「作者身份」為單位：在霧島封鎖的人，在 Faryne 本人貼文底下照樣能留言（不然會洩漏筆名關係）
+const blocks = { Faryne: [{ who: "鐵鏽", since: "9月28日" }], 霧島: [] };
+const isBlocked = (identity, who) => blocks[identity].some((b) => b.who === who);
+// 留言數＝頂層＋回覆，排除已刪除
+const countComments = () => comments.reduce((n, c) => n + (c.deleted ? 0 : 1) + (c.replies || []).filter((r) => !r.deleted).length, 0);
+
+const notifications = [
+  // 追蹤者收到的「發了新動態」：同一身份每天最多一則，依掃描時累積的則數顯示
+  { id: "n0", kind: "posted", actor: "白夜", unread: true, time: "5 小時前", count: 2,
+    excerpts: ["今天寫到卡關，去散步。\n散步回來終於想通了：[r18]溫室那場床戲要從她先解開領結開始寫，節奏才對[/r18]\n今晚應該寫得完。", "（同一天稍早的一則）今天的進度：第 4 話初稿完成"] },
+  { id: "n1", kind: "commented", actor: "白夜", target: null, unread: true, time: "3 分鐘前",
+    post: "《霧都旅館》第二卷開始連載了！之後固定每週五晚上十點更新…", postBy: "Faryne", comment: "等好久了！！第二卷還是一樣週五更新嗎？" },
+  { id: "n2", kind: "commented", actor: "青嵐", target: "霧島", unread: true, time: "1 小時前",
+    post: "《星屑列車》番外寫完了，想先問大家：想看車掌視角還是乘客視角？", postBy: "霧島", comment: "車掌！！想知道他每天在想什麼" },
+  { id: "n3", kind: "replied", actor: "白夜", unread: true, time: "昨天",
+    post: "今天寫到卡關，去散步。", postBy: "白夜", parent: "散步完有靈感了嗎", comment: "有喔，回來寫了兩千字 😂" },
+  { id: "n4", kind: "commented", actor: "小麥", unread: false, time: "3 天前", deleted: true,
+    post: "《霧都旅館》第二卷開始連載了！之後固定每週五晚上十點更新…", postBy: "Faryne", comment: "" },
+];
+
+// ---- 狀態 ----
+const state = { screen: "mine", identity: "Faryne", composer: "", viewer: "reader", other: "loggedin", blockId: "Faryne",
+  menu: null, replyTo: null, expanded: {}, selected: "n0", mobileDetail: false, flash: null, age: false, attach: null, picker: false, preview: false };
+const viewerName = () => ({ owner: "Faryne", reader: "青嵐", guest: null, nopen: "路人", blocked: "鐵鏽" }[state.viewer]);
+
+const subControls = {
+  mine: () => chips("identity", [["Faryne", "本人頁 Faryne"], ["霧島", "筆名頁 霧島"], ["empty", "空的時間軸"]]),
+  other: () => chips("other", [["loggedin", "已登入讀者"], ["guest", "未登入"]]),
+  post: () => chips("viewer", [["owner", "作者本人（Faryne）"], ["reader", "讀者 青嵐"], ["nopen", "沒設筆名的讀者"], ["blocked", "被封鎖的 鐵鏽"], ["guest", "未登入"]]),
+  notify: () => "",
+  blocks: () => chips("blockId", [["Faryne", "本人 Faryne"], ["霧島", "筆名 霧島"]]),
+};
+function chips(key, opts) {
+  return `<span>情境：</span>` + opts.map(([v, l]) =>
+    `<button class="prototype-chip ${state[key] === v ? "active" : ""}" data-set="${key}" data-val="${v}">${l}</button>`).join("");
+}
+
+// ---- 元件 ----
+const MAX_POST = 1000;
+function composer(identity) {
+  const n = [...state.composer].length;
+  const attached = state.attach && works[identity].find((w) => w.id === state.attach);
+  return `<div class="card composer">
+    <div class="composer-top">${face(identity)}
+      <textarea id="composerInput" placeholder="想說點什麼？公告、近況、創作碎念都可以">${esc(state.composer)}</textarea></div>
+    ${attached ? workCard(attached, true) : ""}
+    ${state.picker ? `<div class="picker"><span class="tiny" style="padding:2px 9px">只列出 ${identity} 署名、目前公開的作品</span>
+      ${works[identity].map((w) => `<button data-act="attach" data-id="${w.id}">《${w.title}》<span class="tiny"> ${w.sub}${w.rating === "r18" ? "・限制級" : ""}</span></button>`).join("")}</div>` : ""}
+    ${state.preview ? `<div class="preview">${state.composer ? renderBody(state.composer, "preview") : '<span class="tiny">（沒有內容）</span>'}</div>` : ""}
+    <div class="composer-foot">
+      <span class="toolbar">
+        <button data-act="wrap" data-kind="spoiler" title="選取文字後按，包成劇透">🙈 劇透</button>
+        <button data-act="wrap" data-kind="r18" title="選取文字後按，包成限制級">🔞 R18</button>
+        <button data-act="picker" class="${state.picker ? "on" : ""}">📎 附上作品</button>
+        <button data-act="preview" class="${state.preview ? "on" : ""}">👁 預覽</button>
+      </span>
+      <span style="display:flex;gap:12px;align-items:center"><span class="counter ${n > MAX_POST ? "over" : ""}" id="counter">${n} / ${MAX_POST}</span>
+      <button class="btn" data-act="publish" ${n === 0 || n > MAX_POST ? "disabled" : ""}>發佈</button></span>
+    </div>
+    <span class="as-chip">以 <b>${identity}</b> 發佈${identity !== "Faryne" ? "・只會出現在這個筆名的動態" : ""}・會通知 ${identity === "Faryne" ? 128 : 37} 位追蹤者（同一天只通知一次）</span>
+    </div>`;
+}
+function postCard(p, who, { owner, clickable = true, big = false, canLike = true } = {}) {
+  const count = p.id === "p1" ? countComments() : p.comments;
+  const menu = state.menu === p.id ? `<div class="menu">
+      ${owner ? `<button data-act="pin" data-id="${p.id}">${p.pinned ? "取消置頂" : "📌 置頂"}</button>` : ""}
+      <button data-act="copy">🔗 複製連結</button>
+      ${owner ? `<button class="danger" data-act="delpost" data-id="${p.id}" data-c="${count}">🗑 刪除</button>` : ""}
+    </div>` : "";
+  return `<article class="post ${clickable ? "clickable" : ""} ${big ? "big" : ""}" ${clickable ? `data-open="${p.id}"` : ""}>
+    ${face(who)}
+    <div>
+      <div class="post-head"><b>${who}</b><span class="tiny">· ${p.time}</span>${p.pinned ? `<span class="tag pin">📌 置頂</span>` : ""}</div>
+      <div class="post-body">${renderBody(p.body, p.id)}</div>
+      ${p.attach ? workCard(Object.values(works).flat().find((w) => w.id === p.attach)) : ""}
+      <div class="post-actions">
+        <button class="${p.liked ? "liked" : ""}" data-act="like" data-id="${p.id}" ${canLike ? "" : 'data-guest="1"'}>${p.liked ? "♥" : "♡"} ${p.likes}</button>
+        <button data-open="${p.id}">💬 ${count}</button>
+        <span class="spacer"></span>
+        <span class="menu-wrap"><button data-act="menu" data-id="${p.id}">⋯</button>${menu}</span>
+      </div>
+    </div></article>`;
+}
+function hero(name, { mine, followers, works }) {
+  return `<div class="card"><div class="hero">${face(name, "lg")}
+    <div><h1>${name}</h1><p class="muted" style="margin:0;font-size:13px">${works} 部作品 · ${followers} 人追蹤</p></div>
+    <span class="spacer"></span>
+    ${mine ? `<button class="btn ghost">編輯個人檔案</button>` : `<button class="btn">追蹤作者</button>`}
+    </div>
+    <div class="tabs" style="padding:0 16px">
+      <span>作品</span><span class="active new">動態</span>
+      ${name === "霧島" ? `<span style="color:var(--warning)">此筆名追蹤的作家</span>` : `<span>追蹤的作品</span><span>追蹤的作家</span>`}
+    </div></div>`;
+}
+
+// ---- 畫面 ----
+const screens = {
+  mine() {
+    const empty = state.identity === "empty";
+    const who = empty ? "霧島" : state.identity;
+    const list = empty ? [] : [...posts[who]].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    crumbs(["SteamLoom", "創作者", who, "動態"]);
+    return hero(who, { mine: true, followers: who === "Faryne" ? 128 : 37, works: who === "Faryne" ? 4 : 1 })
+      + composer(who)
+      + `<div class="card">${list.length ? list.map((p) => postCard(p, who, { owner: true })).join("")
+          + (who === "Faryne" ? `<div class="load-more"><button class="link">載入更多</button></div>` : "")
+          : `<div class="empty"><b>還沒有動態</b>發第一則吧：連載公告、休刊通知、創作碎念都可以。</div>`}</div>`
+      + review([
+        `<b>通知追蹤者</b>：發文後由既有的 5 分鐘掃描排程通知<b>這個身份</b>的追蹤者（本人頁的追蹤者收 Faryne、筆名的追蹤者收霧島，互不相干）。同一身份<b>每天最多一則</b>，一天內發第二則以後就不再跳通知（看「通知」畫面的「白夜 發了 2 則新動態」）。被封鎖的人仍然會收到，因為封鎖只擋留言、不擋閱讀。`,
+        `<b>作品卡</b>：只有貼文能附、一則一張，候選只列<b>這個身份署名、目前公開</b>的作品（切到「筆名頁 霧島」再按 📎 看看，只剩《星屑列車》）。可以附整部作品或某一話。作品之後轉私密／刪除，卡片改成「這部作品目前無法瀏覽」。限制級作品的封面沿用年齡確認閘門（看《鐵與蒸氣》）。`,
+        `<b>劇透／R18 標籤</b>：選取一段文字後按「🙈 劇透」「🔞 R18」包起來，存成 <code>[spoiler]…[/spoiler]</code>、<code>[r18]…[/r18]</code> 純文字標記，不用記語法。不支援巢狀；沒關閉的標記就當一般文字顯示。`,
+        `<b>不能編輯 → 加了「預覽」</b>：標籤包錯了只能刪掉重發，所以發文框多一個 👁 預覽，發佈前先看摺起來的樣子。`,
+        `<b>刪除筆名</b>：本人和筆名的時間軸完全分開，刪除筆名時 confirm 要多寫一句「這個筆名的 N 則動態也會一起刪除」。`,
+      ]);
+  },
+  other() {
+    const guest = state.other === "guest";
+    crumbs(["SteamLoom", "創作者", "白夜", "動態"]);
+    return hero("白夜", { mine: false, followers: 530, works: 12 })
+      + `<div class="card">${posts.白夜.map((p) => postCard(p, "白夜", { owner: false, canLike: !guest })).join("")}</div>`
+      + review([
+        `<b>未登入</b>按 ♡ 或 💬 → 導去登入，登入完回到原頁（切上方「未登入」後點 ♡ 試試）。`,
+        `<b>R18 標籤</b>：點開前如果還沒確認過年齡，會先跳既有的「我已滿 18 歲」確認（沿用 <code>nekomaid_r18_confirmed</code> cookie），確認過之後點一下就展開。劇透標籤沒有年齡確認，點了就開。`,
+        `<b>作品卡的限制級封面</b>：《白鷺館》在確認年齡前只顯示條紋佔位，確認之後就出現封面（點開 R18 標籤後再看看這張卡）。`,
+        `<b>讚數公開</b>：數字公開、名單不公開。要不要連數字都只給作者本人看（像 IG 的隱藏讚數）？我傾向公開，小站的數字是熱鬧感。`,
+      ]);
+  },
+  post() {
+    const p = posts.Faryne.find((x) => x.id === "p1");
+    const v = state.viewer, me = viewerName(), owner = v === "owner";
+    // 被封鎖是看「這則貼文的身份」有沒有封鎖這個帳號
+    const blocked = v === "blocked" && isBlocked("Faryne", me);
+    const canWrite = !["guest", "nopen"].includes(v) && !blocked;
+    crumbs(["SteamLoom", "創作者", "Faryne", "動態", "貼文"]);
+    const cmt = (c, isReply, parent) => {
+      const canDel = !c.deleted && (owner || c.who === me);
+      // 作者可以封鎖別人（不能封鎖自己）；已封鎖的人只有作者看得到標記
+      const canBlock = owner && !c.deleted && !c.author && !isBlocked("Faryne", c.who);
+      const flash = state.flash === c.id ? "flash" : "";
+      if (c.deleted) return `<div class="c ${isReply ? "reply" : ""}" id="c-${c.id}">${face("路人", "sm")}
+        <div><div class="c-body deleted">${isReply ? "此回覆已刪除" : "此留言已刪除"}</div></div></div>`;
+      return `<div class="c ${isReply ? "reply" : ""} ${flash}" id="c-${c.id}">${face(c.who, "sm")}
+        <div><div class="c-head"><b>${c.who}</b>${c.author ? `<span class="tag author">作者</span>` : ""}${owner && isBlocked("Faryne", c.who) ? `<span class="tag" style="color:var(--danger)">已封鎖</span>` : ""}<span class="tiny">· ${c.time}</span></div>
+        ${c.replyTo ? `<div class="reply-to">↪ 回覆 <b>@${c.replyTo}</b></div>` : ""}
+        <div class="c-body">${renderBody(c.body, c.id)}</div>
+        <div class="c-actions">
+          ${canWrite ? `<button data-act="reply" data-id="${parent || c.id}" data-to="${isReply ? c.who : ""}">回覆</button>` : ""}
+          ${canDel ? `<button class="del" data-act="delc" data-id="${c.id}" data-own="${c.who === me ? 1 : 0}">刪除</button>` : ""}
+          ${canBlock ? `<button class="del" data-act="block" data-who="${c.who}">封鎖</button>` : ""}
+        </div></div></div>`;
+    };
+    // 回覆對象是結構化欄位（reply_to_id），不是使用者手打的 @：不能改、只能取消
+    const replyBox = (cid) => state.replyTo?.thread !== cid ? "" : `<div class="c-box inline">
+        ${state.replyTo.to ? `<div class="reply-to">↪ 回覆 <b>@${state.replyTo.to}</b> <button class="link" data-act="clearto" title="改成回覆整串">×</button></div>` : ""}
+        <textarea placeholder="回覆…" autofocus></textarea>
+        <div class="row"><span class="as-chip">以 <b>${me}</b> 回覆</span>
+        <span style="display:flex;gap:8px"><button class="btn ghost" data-act="cancelreply">取消</button><button class="btn" data-act="sendreply">回覆</button></span></div></div>`;
+    const thread = comments.map((c) => {
+      const replies = c.replies || [];
+      const open = state.expanded[c.id] || replies.length <= 2;
+      const shown = open ? replies : replies.slice(-2);
+      return cmt(c, false)
+        + (!open ? `<div class="more-replies"><button class="link" data-act="expand" data-id="${c.id}">↳ 查看前面 ${replies.length - 2} 則回覆</button></div>` : "")
+        + shown.map((r) => cmt(r, true, c.id)).join("") + replyBox(c.id);
+    }).join("");
+    const bottom = v === "guest"
+      ? `<div class="gate"><span>登入後才能留言</span><button class="btn">登入</button></div>`
+      : v === "nopen"
+      ? `<div class="gate"><span>留言前要先設定筆名，其他人會看到這個名字。</span><button class="btn">設定筆名</button></div>`
+      : blocked
+      ? `<div class="gate"><span>Faryne 已限制你在這裡留言。你還是可以看動態和作品。</span></div>`
+      : `<div class="c-box"><textarea placeholder="${owner ? "回應讀者…" : "留言給 Faryne…"}"></textarea>
+         <div class="row"><span class="toolbar"><button data-act="wrap" data-kind="spoiler">🙈 劇透</button><button data-act="wrap" data-kind="r18">🔞 R18</button></span>
+         <span class="as-chip">以 <b>${me}</b> 留言${owner ? "（這則貼文的身份）" : ""}</span><span style="display:flex;gap:10px;align-items:center"><span class="counter">0 / 500</span><button class="btn" data-act="sendc">留言</button></span></div></div>`;
+    return `<div><button class="link" data-goto="mine">‹ 回 Faryne 的動態</button></div>
+      <div class="card">${postCard(p, "Faryne", { owner, clickable: false, big: true, canLike: v !== "guest" })}
+        <div style="padding:6px 16px 2px;font-size:13px;font-weight:800;border-top:1px solid var(--line)">留言 ${countComments()}</div>
+        <div class="thread">${thread}</div>${bottom}</div>`
+      + review([
+        `<b>留言數</b>＝主留言＋回覆，排除已刪除。標題的「留言 N」和時間軸卡片的 💬 是同一個數字（刪一則試試，會同步變）。`,
+        `<b>刪除一律留佔位</b>：主留言顯示「此留言已刪除」，回覆顯示「此回覆已刪除」，不會直接消失（看小麥那兩則）。佔位不顯示名字和時間。`,
+        `<b>回覆對象（@）</b>：在第二層按「回覆」會帶出「↪ 回覆 @青嵐」，送出後顯示在那則回覆上方（看墨蝶那串最後一則）。這是<b>結構化欄位</b>，不是自由輸入：不能手打 @任何人、不解析內文、不會變成 mention 洗版的管道；按 × 可以改成回覆整串。回覆主留言時不顯示，因為本來就看得出來。`,
+        `<b>留言也能用劇透／R18 標籤</b>：讀者最常在留言裡劇透（看青嵐那則），但留言不能附作品卡。`,
+        `<b>回覆通知</b>：主留言者＋被 @ 的那個人都通知（去重、不通知自己）。被 @ 的那則留言後來刪了，就顯示「↪ 回覆 已刪除的留言」。`,
+        `<b>封鎖</b>：作者在留言旁按「封鎖」→ confirm。被封鎖的人看不到回覆按鈕，留言框換成「已限制你在這裡留言」（切上方「被封鎖的 鐵鏽」看），<b>按讚和閱讀不受影響</b>。對方以前的留言保留，作者可以逐則刪。`,
+        `<b>封鎖以身份為單位</b>：在 Faryne 封鎖的人，在霧島的貼文底下仍然可以留言。如果封鎖對整個帳號生效，被封鎖的人去霧島那邊一試就知道霧島＝Faryne。要同時封鎖兩邊，就在兩個身份各封一次。`,
+      ]);
+  },
+  blocks() {
+    const id = state.blockId, list = blocks[id];
+    crumbs(["SteamLoom", "我的工作台", "封鎖名單"]);
+    return `<div><h1 style="margin:0 0 4px;font-size:22px">封鎖名單</h1>
+        <p class="muted" style="margin:0;font-size:13px">被封鎖的人不能在 <b>${id}</b> 的動態（以及之後的討論區）留言或回覆，但還是可以閱讀你的動態和作品。</p></div>
+      <div class="card">${list.length ? list.map((b) => `<div class="post" style="grid-template-columns:40px 1fr auto;align-items:center">
+          ${face(b.who)}<div><b>${b.who}</b><div class="tiny">${b.since} 封鎖</div></div>
+          <button class="btn ghost" data-act="unblock" data-who="${b.who}">解除封鎖</button></div>`).join("")
+        : `<div class="empty"><b>${id} 沒有封鎖任何人</b>在留言旁按「封鎖」就會加到這裡。</div>`}</div>`
+      + review([
+        `<b>放在哪</b>：工作台側欄「設定」底下，用上方 chip 切換身份（本人／各筆名分開管理）。也可以放在作者頁擁有者才看得到的分頁，我傾向放工作台：作者頁是對外門面。`,
+        `<b>被封鎖的人會知道嗎</b>：會，留言框直接寫「已限制你在這裡留言」。另一種做法是「影子封鎖」（對方以為留言成功、其實只有他自己看得到），對付洗版比較有效，但做起來複雜、也有點不誠實，v1 不建議。`,
+        `<b>之後的討論區</b>：封鎖記的是「哪個身份封鎖了哪個帳號」，討論區只要查「這個專案的署名身份裡，有沒有人封鎖了發言者」。多身份署名的專案，任一身份封鎖就擋——同一個專案上已經公開了這幾個身份屬於同一位作者，所以不會多洩漏什麼。`,
+      ]);
+  },
+  notify() {
+    crumbs(["SteamLoom", "我的工作台", "通知"]);
+    const n = notifications.find((x) => x.id === state.selected);
+    return `<div class="card split ${state.mobileDetail ? "show-detail" : ""}">
+      <div class="list-pane">${notifications.map(nRow).join("")}</div>
+      <div class="detail-pane">${nDetail(n)}</div></div>`
+      + review([
+        `<b>從通知直接回覆</b>：內容頁下方有回覆框，回覆完不用跳頁。身份一樣由後端決定（回 霧島 貼文底下的留言就是以霧島回）。如果嫌多，就只留「前往貼文」。`,
+        `<b>同一則貼文短時間很多留言</b>：v1 一則留言一則通知。熱門公告可能一晚十幾則，要不要改成「白夜 等 12 人留言了你的貼文」聚合？我傾向先不聚合，等真的有人被洗才做。`,
+        `<b>通知分類</b>：留言／回覆歸在「社群」類（跟追蹤、收藏同類），鈴鐺圖示角落有 💬 小徽章。`,
+        `<b>刪掉的留言</b>：通知還在，但內容頁顯示「這則留言已經刪除」，不給連結。`,
+        `<b>摘要要遮內容</b>：通知列表、留言摘要、之後的分享預覽，被標籤包起來的內容一律換成［劇透］／［R18］（看「白夜 發了 2 則新動態」那列）。後端產生 payload 摘要時就先遮掉，前端不需要也拿不到原文。`,
+        `<b>發了新動態</b>：同一個身份每天最多一則。顯示的是掃描當下累積的則數，點進去列出當天的動態，按「前往動態」到作者頁。`,
+      ]);
+  },
+};
+const headline = (n) => n.kind === "posted" ? `<b>${n.actor}</b> 發了${n.count > 1 ? ` ${n.count} 則` : ""}新動態`
+  : n.kind === "replied"
+  ? `<b>${n.actor}</b> 回覆了你的留言`
+  : `<b>${n.actor}</b> 留言了你${n.target ? `的筆名 <b>${n.target}</b> ` : ""}的貼文`;
+function nRow(n) {
+  return `<div class="n-row ${n.unread ? "unread" : ""} ${n.id === state.selected ? "selected" : ""}" data-sel="${n.id}">
+    <span class="face" style="background:${colors[n.actor]}">${n.actor[0]}<span class="badge">${n.kind === "posted" ? "📝" : "💬"}</span></span>
+    <div><p class="n-title">${headline(n)}</p>
+    <p class="n-sub">${n.deleted ? "（留言已刪除）" : `「${esc(maskExcerpt(n.kind === "posted" ? n.excerpts[0] : n.comment))}」`}</p>
+    <div class="tiny">${n.time} <span class="tag">${{ posted: "動態", replied: "回覆", commented: "留言" }[n.kind]}</span></div></div></div>`;
+}
+function nDetail(n) {
+  if (n.kind === "posted") return `<button class="link back" data-act="nback" style="${document.body.classList.contains("mobile") ? "" : "display:none"}">‹ 返回通知</button>
+    <div class="detail-head">${face(n.actor)}<div><h2>${headline(n)}</h2><div class="tiny">${n.time}・你追蹤了 ${n.actor}</div></div></div>
+    <div class="detail-body">${n.excerpts.map((x, i) => `<div class="bubble">${renderBody(x, `${n.id}-${i}`)}</div>`).join("")}
+      <div><button class="btn ghost" data-goto="other">前往 ${n.actor} 的動態</button></div></div>
+    <div class="detail-foot">這則通知會在 180 天後自動清除，想留下來可以按右上角的鎖頭。</div>`;
+  const quote = `<div class="quote"><span class="who">${n.postBy} 的貼文</span>${esc(n.post)}</div>`;
+  const parent = n.parent ? `<div class="quote" style="margin-left:14px"><span class="who">你的留言</span>${esc(n.parent)}</div>` : "";
+  const body = n.deleted
+    ? `<div class="bubble muted">這則留言已經刪除。</div>`
+    : `<div class="bubble" style="display:flex;gap:10px">${face(n.actor, "sm")}<div><b>${n.actor}</b><br>${esc(n.comment)}</div></div>
+       <div class="c-box" style="padding:0;border:0"><textarea placeholder="直接回覆 ${n.actor}…"></textarea>
+       <div class="row"><span class="as-chip">以 <b>${n.target || (n.kind === "replied" ? "Faryne" : n.postBy)}</b> 回覆</span>
+       <span style="display:flex;gap:8px"><button class="btn ghost" data-goto-post="1">前往貼文</button><button class="btn" data-act="sendreply">回覆</button></span></div></div>`;
+  return `<button class="link back" data-act="nback" style="${document.body.classList.contains("mobile") ? "" : "display:none"}">‹ 返回通知</button>
+    <div class="detail-head">${face(n.actor)}<div><h2>${headline(n)}</h2><div class="tiny">${n.time}</div></div></div>
+    <div class="detail-body">${quote}${parent}${body}</div>
+    <div class="detail-foot">這則通知會在 180 天後自動清除，想留下來可以按右上角的鎖頭。</div>`;
+}
+function review(items) {
+  return `<section class="review"><h2>⚠ 可能漏想的點</h2><ol>${items.map((i) => `<li>${i}</li>`).join("")}</ol></section>`;
+}
+function crumbs(list) {
+  document.getElementById("crumbs").innerHTML = list.map((c, i) => i === list.length - 1 ? `<b>${c}</b>` : `<span>${c}</span><span>／</span>`).join("");
+}
+
+// ---- dialog / snack ----
+function confirmDialog(title, text, okLabel, onOk) {
+  const root = document.getElementById("modalRoot");
+  root.innerHTML = `<div class="modal"><div class="dialog"><h3>${title}</h3><p>${text}</p>
+    <div class="dialog-actions"><button class="btn ghost" id="dlgNo">取消</button><button class="btn danger" id="dlgOk">${okLabel}</button></div></div></div>`;
+  document.getElementById("dlgNo").onclick = () => (root.innerHTML = "");
+  document.getElementById("dlgOk").onclick = () => { root.innerHTML = ""; onOk(); };
+}
+let snackTimer;
+function snack(text, error = false) {
+  const el = document.getElementById("snack");
+  el.textContent = text; el.className = `snack show ${error ? "error" : ""}`;
+  clearTimeout(snackTimer); snackTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+// ---- render ----
+function render() {
+  document.querySelectorAll("[data-screen]").forEach((b) => b.classList.toggle("active", b.dataset.screen === state.screen));
+  document.getElementById("subControls").innerHTML = subControls[state.screen]();
+  const vf = document.getElementById("viewerFace");
+  const vn = state.screen === "post" ? viewerName() : state.screen === "other" && state.other === "guest" ? null : "Faryne";
+  vf.style.background = vn ? colors[vn] : "transparent";
+  vf.textContent = vn ? vn[0] : "";
+  vf.style.display = vn ? "" : "none";
+  document.getElementById("page").innerHTML = screens[state.screen]();
+  const input = document.getElementById("composerInput");
+  if (input) input.oninput = (e) => {
+    state.composer = e.target.value;
+    const n = [...state.composer].length;
+    const counter = document.getElementById("counter");
+    counter.textContent = `${n} / ${MAX_POST}`; counter.classList.toggle("over", n > MAX_POST);
+    document.querySelector('[data-act="publish"]').disabled = n === 0 || n > MAX_POST;
+    const pv = document.querySelector(".preview");
+    if (pv) pv.innerHTML = state.composer ? renderBody(state.composer, "preview") : '<span class="tiny">（沒有內容）</span>';
+  };
+  if (state.flash) { document.getElementById(`c-${state.flash}`)?.scrollIntoView({ block: "center" }); state.flash = null; }
+}
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("button, [data-act], [data-open], [data-sel]");
+  if (!t) { if (state.menu) { state.menu = null; render(); } return; }
+  const d = t.dataset;
+  if (d.screen) { state.screen = d.screen; state.menu = null; return render(); }
+  if (d.view) {
+    document.querySelectorAll("[data-view]").forEach((b) => b.classList.toggle("active", b === t));
+    document.body.classList.toggle("mobile", d.view === "mobile"); return render();
+  }
+  if (d.set) { state[d.set] = d.val; state.replyTo = null; if (d.set === "identity") state.attach = null; return render(); }
+  if (d.goto) { state.screen = d.goto; return render(); }
+  if (d.gotoPost) { state.screen = "post"; state.viewer = "owner"; state.flash = "c1"; return render(); }
+  if (d.sel) { state.selected = d.sel; state.mobileDetail = true; notifications.find((n) => n.id === d.sel).unread = false; return render(); }
+  const act = d.act;
+  if (act === "nback") { state.mobileDetail = false; return render(); }
+  if (act === "menu") { e.stopPropagation(); state.menu = state.menu === d.id ? null : d.id; return render(); }
+  if (act === "like") {
+    e.stopPropagation();
+    if (d.guest || (state.screen === "post" && state.viewer === "guest")) return snack("登入後才能按讚", true);
+    const p = Object.values(posts).flat().find((x) => x.id === d.id);
+    p.liked = !p.liked; p.likes += p.liked ? 1 : -1; return render();
+  }
+  if (act === "pin") {
+    e.stopPropagation();
+    const list = Object.values(posts).find((l) => l.some((x) => x.id === d.id));
+    const target = list.find((x) => x.id === d.id), was = target.pinned;
+    list.forEach((x) => (x.pinned = false)); // 同身份最多一則置頂
+    target.pinned = !was; state.menu = null; render();
+    return snack(was ? "已取消置頂" : "已置頂，原本的置頂已取消");
+  }
+  if (act === "copy") { e.stopPropagation(); state.menu = null; render(); return snack("已複製貼文連結"); }
+  if (act === "delpost") {
+    e.stopPropagation(); state.menu = null; render();
+    const c = Number(d.c);
+    return confirmDialog("刪除這則動態？", `刪除後無法復原${c ? `，底下 <b>${c} 則留言</b>也會一起看不到` : ""}。`, "刪除", () => {
+      Object.values(posts).forEach((l) => { const i = l.findIndex((x) => x.id === d.id); if (i >= 0) l.splice(i, 1); });
+      render(); snack("已刪除動態");
+    });
+  }
+  if (act === "reveal") {
+    e.stopPropagation();
+    const show = () => { revealed.add(d.k); render(); };
+    // R18 沿用既有年齡確認：沒確認過先跳確認，確認過直接展開
+    if (d.kind === "r18" && !state.age) return confirmDialog("這段內容含限制級描寫", "確認你已滿 18 歲才會顯示。確認後，全站的限制級封面與 R18 標籤都會解鎖。", "我已滿 18 歲", () => { state.age = true; show(); });
+    return show();
+  }
+  if (act === "wrap") {
+    // 把選取的文字包成標籤；沒選取就插入一組空標籤
+    const ta = t.closest(".composer, .c-box").querySelector("textarea");
+    const [a, b] = [ta.selectionStart, ta.selectionEnd], kind = d.kind;
+    const inner = ta.value.slice(a, b) || (kind === "r18" ? "限制級內容" : "劇透內容");
+    ta.value = ta.value.slice(0, a) + `[${kind}]${inner}[/${kind}]` + ta.value.slice(b);
+    ta.dispatchEvent(new Event("input")); ta.focus();
+    if (state.preview && ta.id === "composerInput") render();
+    return;
+  }
+  if (act === "picker") { state.picker = !state.picker; return render(); }
+  if (act === "attach") { state.attach = d.id; state.picker = false; return render(); }
+  if (act === "unattach") { state.attach = null; return render(); }
+  if (act === "preview") { state.preview = !state.preview; return render(); }
+  if (act === "publish") {
+    const who = state.identity === "empty" ? "霧島" : state.identity;
+    (posts[who] ||= []).splice(posts[who].some((x) => x.pinned) ? 1 : 0, 0,
+      { id: "n" + Date.now(), time: "剛剛", likes: 0, liked: false, comments: 0, body: state.composer, attach: state.attach });
+    state.attach = null; state.preview = false; state.picker = false;
+    if (state.identity === "empty") state.identity = "霧島";
+    state.composer = ""; render(); return snack(`已以 ${who} 發佈`);
+  }
+  if (act === "reply") { state.replyTo = { thread: d.id, to: d.to }; return render(); }
+  if (act === "clearto") { state.replyTo.to = ""; return render(); }
+  if (act === "block") {
+    return confirmDialog(`封鎖 ${d.who}？`, `${d.who} 將不能在 <b>Faryne</b> 的動態留言或回覆（之後的討論區也一樣），但還是可以看你的動態和作品。<br><br>對方以前的留言會保留，你可以逐則刪除。這個封鎖<b>只對 Faryne 這個身份有效</b>，不影響你的其他筆名。`, "封鎖", () => {
+      blocks.Faryne.push({ who: d.who, since: "剛剛" }); render(); snack(`已封鎖 ${d.who}`);
+    });
+  }
+  if (act === "unblock") {
+    return confirmDialog(`解除封鎖 ${d.who}？`, `${d.who} 之後就可以在 <b>${state.blockId}</b> 的動態留言了。`, "解除封鎖", () => {
+      blocks[state.blockId] = blocks[state.blockId].filter((b) => b.who !== d.who); render(); snack(`已解除封鎖 ${d.who}`);
+    });
+  }
+  if (act === "cancelreply") { state.replyTo = null; return render(); }
+  if (act === "sendreply" || act === "sendc") { state.replyTo = null; render(); return snack(act === "sendc" ? "已留言" : "已回覆"); }
+  if (act === "expand") { state.expanded[d.id] = true; return render(); }
+  if (act === "delc") {
+    const own = d.own === "1";
+    return confirmDialog("刪除這則留言？", own ? "刪除後無法復原，這裡會留下「已刪除」的佔位。" : "這是讀者的留言。你是貼文作者，可以刪除自己貼文底下的任何留言；對方不會收到通知。", "刪除", () => {
+      // 一律留佔位，不直接移除，避免回覆串和 @ 對象斷掉
+      const all = comments.flatMap((c) => [c, ...(c.replies || [])]);
+      all.find((c) => c.id === d.id).deleted = true;
+      render(); snack("已刪除留言");
+    });
+  }
+  if (d.open) { if (state.screen === "mine") state.viewer = "owner"; state.screen = "post"; return render(); }
+});
+document.getElementById("themeSelect").onchange = (e) => (document.documentElement.dataset.theme = e.target.value);
+render();
+</script>
+</body>
+</html>

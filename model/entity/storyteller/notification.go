@@ -56,8 +56,30 @@ type NotificationPayload struct {
 	Actor         *AuthorIdentityOutput `json:"actor,omitempty"`
 	TargetPenName string                `json:"target_pen_name,omitempty"`
 
+	// 作者動態（author.posted／post.commented／post.replied）。摘要在寫入時就把 [spoiler]／[r18]
+	// 內容遮成［劇透］／［R18］，前端拿不到原文。PostAuthor 是貼文身份的筆名（輸出時即時更新）。
+	PostPublicID    string `json:"post_public_id,omitempty"`
+	PostAuthor      string `json:"post_author,omitempty"`
+	PostExcerpt     string `json:"post_excerpt,omitempty"`
+	CommentPublicID string `json:"comment_public_id,omitempty"`
+	// ThreadPublicID 是留言所在那一串的頂層留言（頂層留言就是自己），從通知直接回覆時當 parent
+	ThreadPublicID string             `json:"thread_public_id,omitempty"`
+	CommentExcerpt string             `json:"comment_excerpt,omitempty"`
+	ParentExcerpt  string             `json:"parent_excerpt,omitempty"`
+	Posts          []NotificationPost `json:"posts,omitempty"`
+	// Deleted 不存 DB：輸出時發現貼文或留言已刪除才設為 true，前端改顯示「已刪除」、不給連結
+	Deleted bool `json:"deleted,omitempty"`
+
 	// Internal 是後端用的身份鍵，會存進 DB，但輸出前一律清空（見 storytellernotify 的 output）
 	Internal *NotificationInternal `json:"internal,omitempty"`
+}
+
+// NotificationPost 是「發了新動態」通知裡每一則的快照（摘要已遮蔽劇透／R18）。
+type NotificationPost struct {
+	PublicID string `json:"public_id"`
+	Excerpt  string `json:"excerpt"`
+	// Work 是附上的作品卡名稱（「《作品》第 13 話」），沒附或作品已不可見時留空；不帶封面
+	Work string `json:"work,omitempty"`
 }
 
 // NotificationInternal 是通知裡不能對外輸出的身份鍵：回追、即時查詢筆名都靠它，前端拿不到 id。

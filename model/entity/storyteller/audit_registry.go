@@ -135,6 +135,18 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "notification.delete", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/notifications/:notification")}},
 	{Name: "notification.follow_back", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/notifications/:notification/follow-back")}},
 
+	// 作者動態：發文／刪文／留言／封鎖記錄；按讚與置頂屬低重要度（同收藏）
+	{Name: "post.create", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/user/:username/posts")}},
+	{Name: "post.delete", Category: "social", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("DELETE", "/storyteller/posts/:post")}},
+	{Name: "post.pin", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("PUT", "/storyteller/posts/:post/pin")}},
+	{Name: "post.unpin", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/posts/:post/pin")}},
+	{Name: "post.like", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("PUT", "/storyteller/posts/:post/like")}},
+	{Name: "post.unlike", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("DELETE", "/storyteller/posts/:post/like")}},
+	{Name: "comment.create", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/posts/:post/comments")}},
+	{Name: "comment.delete", Category: "social", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("DELETE", "/storyteller/comments/:comment")}},
+	{Name: "author.block", Category: "social", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/comments/:comment/block")}},
+	{Name: "author.unblock", Category: "social", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("DELETE", "/storyteller/blocks/:block")}},
+
 	{Name: "system.memory_draft.cleanup", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.notification.fanout", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.notification.purge", Category: "system", Importance: AuditImportanceNormal},
