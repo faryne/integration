@@ -79,9 +79,10 @@ var pathCollection = []pathMeta{
 	{Pattern: storytellerSharePattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerWorkMeta},
 	{Pattern: storytellerWorkPattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerWorkMeta},
 	{Pattern: storytellerUserPattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerAuthorMeta},
-	// 需要登入的頁面（工作台、OAuth 授權、MCP）與搜尋：爬蟲沒有登入狀態，維持通用卡、不查 DB 也不帶作品資訊，
-	// 只補 noindex，跟 robots.txt 的 Disallow 清單（sitemap.go）一致
-	{Pattern: storytellerPrivatePattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerPrivateMeta},
+	// 後台（工作台、OAuth 授權）跟私人作品一樣視為「不存在」：404、不查 DB、不帶作品資訊
+	{Pattern: storytellerBackstagePattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerBackstageMeta},
+	// MCP、搜尋是公開頁面但不收錄：通用卡＋noindex。兩組合起來對應 robots.txt 的 Disallow 清單（sitemap.go）
+	{Pattern: storytellerNoindexPattern, Title: steamloomSiteName, Description: steamloomDescription, Apply: applyStorytellerNoindexMeta},
 	{
 		Pattern:     regexp.MustCompile(`^/(pixiv|nico|tinami)(?:/([^/]+))?(?:/([^/]+))?$`),
 		Title:       nekomaidSiteName,
