@@ -21,7 +21,12 @@ func (s *Service) AuthorProfiles(userID uint64) ([]storytellerModel.AuthorProfil
 	}
 	outputs := make([]storytellerModel.AuthorProfileOutput, 0, len(rows))
 	for i := range rows {
-		outputs = append(outputs, authorProfileOutput(&rows[i]))
+		output := authorProfileOutput(&rows[i])
+		// 筆名數有上限（FreeMaxProfiles），逐一計數即可
+		if output.PostCount, err = s.repo.AuthorPostCountByIdentity(userID, rows[i].ID); err != nil {
+			return nil, err
+		}
+		outputs = append(outputs, output)
 	}
 	return outputs, nil
 }

@@ -135,6 +135,9 @@ const StorytellerReader = lazy(() => import("@/pages/storyteller/Reader.tsx"));
 const StorytellerStoryVersionDiff = lazy(
   () => import("@/pages/storyteller/StoryVersionDiff.tsx"),
 );
+const StorytellerAuthorPostPage = lazy(
+  () => import("@/pages/storyteller/AuthorPostPage.tsx"),
+);
 const StorytellerUserProjects = lazy(
   () => import("@/pages/storyteller/UserProjects.tsx"),
 );
@@ -410,6 +413,7 @@ const storytellerRoutes = (
       <Route path={"mcp"} element={<StorytellerHome />} />
       <Route path={"activity"} element={<StorytellerHome />} />
       <Route path={"notifications"} element={<StorytellerHome />} />
+      <Route path={"blocks"} element={<StorytellerHome />} />
       <Route
         path={"notifications/:notificationId"}
         element={<StorytellerHome />}
@@ -420,6 +424,14 @@ const storytellerRoutes = (
     {/* OAuth 授權同意頁：steamloom.works/oauth/authorize 是 authorization_endpoint */}
     <Route path={"oauth/authorize"} element={<StorytellerOAuthAuthorize />} />
     <Route path={"user/:username"} element={<StorytellerUserProjects />} />
+    <Route
+      path={"user/:username/posts"}
+      element={<StorytellerUserProjects />}
+    />
+    <Route
+      path={"user/:username/posts/:postId"}
+      element={<StorytellerAuthorPostPage />}
+    />
     <Route
       path={"user/:username/favorite-projects"}
       element={<StorytellerUserProjects />}

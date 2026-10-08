@@ -41,11 +41,16 @@ type publishScanStats struct {
 // RunNotificationPublishScan 每 5 分鐘找出「現在對讀者可見、但還沒通知過」的話，依專案聚合後
 // 派送給追蹤者與收藏者。不在每個寫入點 hook：新建、改狀態、冊完成、搬冊、專案轉公開、
 // MCP／單機 publish 都會讓話變可見，集中在這裡掃描才不會漏。
+// 作者動態的「發了新動態」也併在這裡掃，同樣最多晚 5 分鐘。
 func RunNotificationPublishScan() {
 	startedAt := time.Now()
-	stats, err := scanPublishedStories(NewService().repo)
+	service := NewService()
+	stats, err := scanPublishedStories(service.repo)
+	postStats, postErr := service.scanAuthorPosts()
+	err = errors.Join(err, postErr)
 	emitStorytellerCronAudit("system.notification.fanout", startedAt, storytellerModel.AuditSummary{
-		"projects": stats.Projects, "stories": stats.Stories, "notifications": stats.Notifications,
+		"projects": stats.Projects, "stories": stats.Stories, "notifications": stats.Notifications + postStats.Notifications,
+		"author_posts": postStats.Posts,
 	}, err)
 	if err != nil {
 		log.Logger().Error("Storyteller notification publish scan failed", zap.Error(err))

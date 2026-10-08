@@ -40,6 +40,7 @@ import {
   type StorytellerHomeTab,
 } from "@/pages/storyteller/homeTabs.ts";
 import { StorytellerAgentUsagePanel } from "@/pages/storyteller/AgentUsagePanel.tsx";
+import { StorytellerAuthorBlocksPanel } from "@/pages/storyteller/AuthorBlocksPanel.tsx";
 import { StorytellerApiKeyPanel } from "@/pages/storyteller/ApiKeyManagement.tsx";
 import { StorytellerFavoritesContent } from "@/pages/storyteller/Favorites.tsx";
 import { StorytellerMcpPanel } from "@/pages/storyteller/McpPanel.tsx";
@@ -96,25 +97,27 @@ export default function StorytellerHome() {
     "/my/notifications",
   )
     ? "notifications"
-    : location.pathname.includes("/agent")
-      ? "agent"
-      : location.pathname.includes("/api-keys")
-        ? "apikey"
-        : location.pathname.includes("/usage")
-          ? "usage"
-          : location.pathname.endsWith("/my/pat")
-            ? "pat"
-            : location.pathname.endsWith("/my/oauth")
-              ? "oauth"
-              : location.pathname.includes("/mcp")
-                ? "mcp"
-                : location.pathname.endsWith("/my/activity")
-                  ? "activity"
-                  : location.pathname.includes("/favorites")
-                    ? "favorites"
-                    : location.pathname.includes("/profile")
-                      ? "profile"
-                      : "project";
+    : location.pathname.endsWith("/my/blocks")
+      ? "blocks"
+      : location.pathname.includes("/agent")
+        ? "agent"
+        : location.pathname.includes("/api-keys")
+          ? "apikey"
+          : location.pathname.includes("/usage")
+            ? "usage"
+            : location.pathname.endsWith("/my/pat")
+              ? "pat"
+              : location.pathname.endsWith("/my/oauth")
+                ? "oauth"
+                : location.pathname.includes("/mcp")
+                  ? "mcp"
+                  : location.pathname.endsWith("/my/activity")
+                    ? "activity"
+                    : location.pathname.includes("/favorites")
+                      ? "favorites"
+                      : location.pathname.includes("/profile")
+                        ? "profile"
+                        : "project";
 
   const homeTitle = isProjectFormRoute
     ? `建立 ${STORYTELLER_APP_NAME} 專案`
@@ -123,7 +126,8 @@ export default function StorytellerHome() {
       : activeTab === "favorites" ||
           activeTab === "profile" ||
           activeTab === "activity" ||
-          activeTab === "notifications"
+          activeTab === "notifications" ||
+          activeTab === "blocks"
         ? `${STORYTELLER_APP_NAME} ${tabBreadcrumbLabel[activeTab]}`
         : `${STORYTELLER_APP_NAME} 我的工作台`;
   useTitle(homeTitle, {
@@ -195,6 +199,7 @@ export default function StorytellerHome() {
         activeTab !== "profile" &&
         activeTab !== "activity" &&
         activeTab !== "notifications" &&
+        activeTab !== "blocks" &&
         !projectsLoading &&
         !agentsLoading && (
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -284,6 +289,8 @@ export default function StorytellerHome() {
                   <StorytellerAccountActivityPanel />
                 ) : activeTab === "notifications" ? (
                   <StorytellerNotificationsPanel />
+                ) : activeTab === "blocks" ? (
+                  <StorytellerAuthorBlocksPanel />
                 ) : activeTab === "favorites" ? (
                   <StorytellerFavoritesContent />
                 ) : activeTab === "profile" ? (

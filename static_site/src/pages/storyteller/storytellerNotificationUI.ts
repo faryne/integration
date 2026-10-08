@@ -1,9 +1,9 @@
-import axios from "axios";
 import {
   storytellerReaderPath,
   storytellerSearchResultPath,
 } from "@/data/storyteller.ts";
 import { useStorytellerNotificationKinds } from "@/apis/storyteller.ts";
+import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import type {
   StorytellerNotification,
@@ -20,6 +20,8 @@ const knownViews: StorytellerNotificationView[] = [
   "generic",
   "follower",
   "favorite",
+  "posted",
+  "comment",
 ];
 
 // 前端只依「呈現方式」分支，不寫死 kind；註冊表查不到或 view 不認識的一律當 generic
@@ -89,6 +91,25 @@ export function notificationHeadline(
         text: ` 收藏了你的作品《${p.project_name}》`,
         sub:
           (p.authors ?? []).length > 0 ? `署名：${p.authors!.join("、")}` : "",
+      };
+    case "posted": {
+      const count = p.posts?.length ?? 0;
+      return {
+        actor: notificationActorName(n),
+        text: count > 1 ? ` 發了 ${count} 則新動態` : " 發了新動態",
+        sub: p.deleted ? "（動態已刪除）" : (p.posts?.[0]?.excerpt ?? p.body),
+      };
+    }
+    case "comment":
+      return {
+        actor: notificationActorName(n),
+        text:
+          n.kind === "post.replied"
+            ? " 回覆了你的留言"
+            : p.target_pen_name
+              ? ` 留言了你的筆名 ${p.target_pen_name} 的貼文`
+              : " 留言了你的貼文",
+        sub: p.deleted ? "（留言已刪除）" : `「${p.comment_excerpt ?? ""}」`,
       };
     case "security":
       return {
@@ -229,11 +250,5 @@ export function notificationStoryPath(
   });
 }
 
-export function notificationErrorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError(error)) {
-    const message = (error.response?.data as { message?: string } | undefined)
-      ?.message;
-    if (message) return message;
-  }
-  return fallback;
-}
+// 實作共用 helpers/apiError.ts；保留這個名字讓既有通知元件不用改 import
+export const notificationErrorMessage = apiErrorMessage;

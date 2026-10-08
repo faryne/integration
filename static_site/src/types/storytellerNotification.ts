@@ -6,7 +6,14 @@ import type { StorytellerAuthorIdentity } from "./storyteller.ts";
 // kind 不在前端寫死：文字、分類、呈現方式都由 GET /storyteller/notification-kinds 提供
 // （後端註冊表 model/entity/storyteller/notification_kind.go）。前端只認識下面幾種畫面。
 export type StorytellerNotificationView =
-  "stories" | "project" | "security" | "generic" | "follower" | "favorite";
+  | "stories"
+  | "project"
+  | "security"
+  | "generic"
+  | "follower"
+  | "favorite"
+  | "posted"
+  | "comment";
 
 export interface StorytellerNotificationKindDefinition {
   kind: string;
@@ -54,6 +61,20 @@ export interface StorytellerNotificationPayload {
   // target_pen_name 是被追蹤的是我的哪個筆名，本人身份留空
   actor?: StorytellerAuthorIdentity;
   target_pen_name?: string;
+  // 作者動態（author.posted／post.commented／post.replied）：摘要後端已把劇透／R18 遮成［劇透］／［R18］。
+  // post_author 是貼文身份目前的筆名；deleted 是輸出時才判斷的「貼文或留言已刪除」
+  post_public_id?: string;
+  post_author?: string;
+  post_excerpt?: string;
+  comment_public_id?: string;
+  comment_excerpt?: string;
+  // 留言所在那一串的頂層留言（頂層留言就是自己），從通知直接回覆時當 parent
+  thread_public_id?: string;
+  // 被回覆的是我哪一則留言的摘要（post.replied）
+  parent_excerpt?: string;
+  // work 是附上的作品卡名稱（「《作品》第 13 話」），沒附就沒有
+  posts?: { public_id: string; excerpt: string; work?: string }[];
+  deleted?: boolean;
 }
 
 // 回追狀態：none 可回追／following 已互相追蹤／unavailable 對方或我的身份已不存在

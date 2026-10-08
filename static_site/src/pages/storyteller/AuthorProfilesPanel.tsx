@@ -281,7 +281,11 @@ export function AuthorProfilesPanel({
       <StorytellerConfirmNameDialog
         open={Boolean(deleteTarget)}
         title="刪除筆名"
-        description="刪除後無法復原。若仍有故事署名此筆名，後端會拒絕刪除。"
+        description={`刪除後無法復原。若仍有故事署名此筆名，後端會拒絕刪除。${
+          deleteTarget?.post_count
+            ? `這個筆名的 ${deleteTarget.post_count} 則動態、以它身份發的留言與它的封鎖名單也會一起刪除。`
+            : "以它身份發的留言與它的封鎖名單也會一起刪除。"
+        }`}
         confirmName={deleteTarget?.pen_name ?? ""}
         confirmLabel="刪除筆名"
         loading={deleteProfile.isPending}

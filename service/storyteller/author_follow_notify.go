@@ -338,8 +338,12 @@ func decorateFollowNotifications(repo followRepository, userID uint64, rows []st
 }
 
 // DecorateNotifications 掛在 storytellernotify 的輸出流程上（見 controller 的 notifyServiceForViewer）。
+// 追蹤類補回追狀態，動態類補最新筆名與「已刪除」標記。
 func (s *Service) DecorateNotifications(userID uint64, rows []storytellerModel.Notification, outs []storytellerModel.NotificationOutput) error {
-	return decorateFollowNotifications(s.repo, userID, rows, outs)
+	if err := decorateFollowNotifications(s.repo, userID, rows, outs); err != nil {
+		return err
+	}
+	return s.decoratePostNotifications(rows, outs)
 }
 
 // chooseFollowBackIdentity 決定用哪個身份回追：只有一個候選就直接用；多個時必須指定 as。

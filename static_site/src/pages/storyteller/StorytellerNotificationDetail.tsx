@@ -26,6 +26,10 @@ import {
   FollowerBody,
 } from "./StorytellerNotificationFollow.tsx";
 import {
+  CommentNotificationBody,
+  PostedNotificationBody,
+} from "./StorytellerNotificationPost.tsx";
+import {
   NotificationLeading,
   NotificationTags,
   NotificationTitle,
@@ -131,6 +135,10 @@ function NotificationBody({
       return <FollowerBody n={n} />;
     case "favorite":
       return <FavoriteBody n={n} />;
+    case "posted":
+      return <PostedNotificationBody n={n} />;
+    case "comment":
+      return <CommentNotificationBody n={n} />;
     default:
       return <GenericBody n={n} />;
   }

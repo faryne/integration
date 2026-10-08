@@ -4,7 +4,8 @@ import type { ReactNode } from "react";
 interface CustomEmptyStateProps {
   icon: ReactNode;
   title: string;
-  description: string;
+  // 沒有必要補充說明時可以省略，只顯示標題
+  description?: string;
   action?: ReactNode;
 }
 
@@ -20,9 +21,11 @@ export function CustomEmptyState({
         <Box sx={{ color: "text.secondary", lineHeight: 0 }}>{icon}</Box>
         <Stack spacing={0.5}>
           <Typography fontWeight={800}>{title}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {description}
-          </Typography>
+          {description && (
+            <Typography variant="body2" color="text.secondary">
+              {description}
+            </Typography>
+          )}
         </Stack>
         {action}
       </Stack>
