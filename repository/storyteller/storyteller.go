@@ -1614,12 +1614,64 @@ func (r *Repository) FavoriteAuthors(userID uint64) ([]storytellerModel.AuthorFa
 	return rows, err
 }
 
-func (r *Repository) AuthorFavorite(userID, authorUserID, authorProfileID uint64) (*storytellerModel.AuthorFavorite, error) {
+// AuthorFavorite 含已取消的列（deleted_at 非 NULL），重新追蹤時沿用同一列。
+// followerProfileID 是追蹤者用的身份（0＝本人）。
+func (r *Repository) AuthorFavorite(userID, followerProfileID, authorUserID, authorProfileID uint64) (*storytellerModel.AuthorFavorite, error) {
 	var row storytellerModel.AuthorFavorite
 	err := r.db.Unscoped().
-		Where("user_id = ? AND author_user_id = ? AND author_profile_id = ?", userID, authorUserID, authorProfileID).
+		Where("user_id = ? AND follower_profile_id = ? AND author_user_id = ? AND author_profile_id = ?", userID, followerProfileID, authorUserID, authorProfileID).
 		First(&row).Error
 	return &row, err
+}
+
+// FavoriteAuthorsByFollowerProfile 是以某個身份做的追蹤（筆名作者頁給擁有者看的分頁用）。
+func (r *Repository) FavoriteAuthorsByFollowerProfile(userID, followerProfileID uint64) ([]storytellerModel.AuthorFavorite, error) {
+	rows := make([]storytellerModel.AuthorFavorite, 0)
+	err := r.db.
+		Where("user_id = ? AND follower_profile_id = ? AND deleted_at IS NULL", userID, followerProfileID).
+		Order("updated_at DESC, id DESC").
+		Find(&rows).Error
+	return rows, err
+}
+
+// ActiveAuthorFavoritesTo 是本人（含所有筆名）目前對這些作者帳號的追蹤；回追狀態、作者頁按鈕狀態用。
+func (r *Repository) ActiveAuthorFavoritesTo(userID uint64, authorUserIDs []uint64) ([]storytellerModel.AuthorFavorite, error) {
+	rows := make([]storytellerModel.AuthorFavorite, 0)
+	if len(authorUserIDs) == 0 {
+		return rows, nil
+	}
+	err := r.db.
+		Where("user_id = ? AND author_user_id IN ? AND deleted_at IS NULL", userID, authorUserIDs).
+		Find(&rows).Error
+	return rows, err
+}
+
+// ProjectSigningProfiles 回傳各專案（未刪除的話）署名過的身份，依第一次出現的順序；
+// 沒有 pivot 列的話視為帳號本人（profile 0）。收藏通知決定「用哪個身份回追」用。
+func (r *Repository) ProjectSigningProfiles(projectIDs []uint64) (map[uint64][]uint64, error) {
+	result := make(map[uint64][]uint64, len(projectIDs))
+	if len(projectIDs) == 0 {
+		return result, nil
+	}
+	type row struct {
+		ProjectID uint64
+		ProfileID uint64
+	}
+	rows := make([]row, 0)
+	if err := r.db.
+		Table("storyteller_stories AS stories").
+		Select("stories.project_id, COALESCE(sp.profile_id, 0) AS profile_id").
+		Joins("LEFT JOIN storyteller_story_profiles AS sp ON sp.story_id = stories.id").
+		Where("stories.project_id IN ? AND stories.is_volume = 0 AND stories.is_deleted = 0 AND stories.deleted_at IS NULL", projectIDs).
+		Group("stories.project_id, profile_id").
+		Order("stories.project_id ASC, MIN(stories.id) ASC").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	for _, item := range rows {
+		result[item.ProjectID] = append(result[item.ProjectID], item.ProfileID)
+	}
+	return result, nil
 }
 
 func (r *Repository) CreateAuthorFavorite(row *storytellerModel.AuthorFavorite) error {
@@ -1717,7 +1769,8 @@ func (r *Repository) FavoriteProjectHiddenFlags(userID uint64, projectIDs []uint
 
 func (r *Repository) PublicFavoriteAuthors(authorUserID uint64, includeHidden bool) ([]storytellerModel.AuthorFavorite, error) {
 	rows := make([]storytellerModel.AuthorFavorite, 0)
-	query := r.db.Where("user_id = ? AND deleted_at IS NULL", authorUserID)
+	// 只列本人身份的追蹤：以筆名做的追蹤混進來就等於把筆名串回本人帳號
+	query := r.db.Where("user_id = ? AND follower_profile_id = 0 AND deleted_at IS NULL", authorUserID)
 	if !includeHidden {
 		query = query.Where("hidden = 0")
 	}
@@ -1735,7 +1788,7 @@ func (r *Repository) SetFavoriteProjectHidden(userID, projectID uint64, hidden b
 func (r *Repository) SetFavoriteAuthorHidden(userID, authorUserID, authorProfileID uint64, hidden bool) error {
 	return r.db.
 		Table("storyteller_author_favorites").
-		Where("user_id = ? AND author_user_id = ? AND author_profile_id = ? AND deleted_at IS NULL", userID, authorUserID, authorProfileID).
+		Where("user_id = ? AND follower_profile_id = 0 AND author_user_id = ? AND author_profile_id = ? AND deleted_at IS NULL", userID, authorUserID, authorProfileID).
 		Update("hidden", hidden).Error
 }
 

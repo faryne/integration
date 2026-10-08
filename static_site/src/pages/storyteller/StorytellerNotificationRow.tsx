@@ -4,7 +4,9 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenOutlinedIcon from "@mui/icons-material/LockOpenOutlined";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 import {
   Avatar,
   Box,
@@ -21,6 +23,10 @@ import type {
   StorytellerNotificationView,
 } from "@/types/storytellerNotification.ts";
 import {
+  NotificationActorAvatar,
+  NotificationFavoriteCover,
+} from "./StorytellerNotificationFollow.tsx";
+import {
   NOTIFICATION_EXPIRING_WITHIN_DAYS,
   notificationDaysLeft,
   notificationHeadline,
@@ -33,6 +39,8 @@ const viewIcons: Record<StorytellerNotificationView, ReactNode> = {
   project: <AutoAwesomeOutlinedIcon fontSize="small" />,
   security: <GppMaybeOutlinedIcon fontSize="small" />,
   generic: <NotificationsNoneOutlinedIcon fontSize="small" />,
+  follower: <PersonAddAltOutlinedIcon fontSize="small" />,
+  favorite: <FavoriteBorderIcon fontSize="small" />,
 };
 
 const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
@@ -43,6 +51,22 @@ const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
       : view === "security"
         ? theme.palette.warning.main
         : theme.palette.info.main;
+
+// 通知左側圖示：追蹤＝追蹤者頭像、收藏作品＝書封＋收藏者小頭像，其餘依 view 顯示類型圖示
+export function NotificationLeading({
+  n,
+  view,
+  size = 36,
+}: {
+  n: StorytellerNotification;
+  view: StorytellerNotificationView;
+  size?: number;
+}) {
+  if (view === "follower") return <NotificationActorAvatar n={n} size={size} />;
+  if (view === "favorite")
+    return <NotificationFavoriteCover n={n} size={size} />;
+  return <NotificationViewAvatar view={view} size={size} />;
+}
 
 export function NotificationViewAvatar({
   view,
@@ -233,7 +257,7 @@ export function StorytellerNotificationRow({
             },
       })}
     >
-      <NotificationViewAvatar view={view} />
+      <NotificationLeading n={n} view={view} />
       <Box sx={{ minWidth: 0 }}>
         <Typography
           variant="body2"

@@ -1,15 +1,17 @@
+import type { StorytellerAuthorIdentity } from "./storyteller.ts";
+
 // 站內通知的型別：對應後端 model/entity/storyteller/notification.go。
 // payload 是寫入當下的快照，各 kind 只會帶自己用得到的欄位。
 
 // kind 不在前端寫死：文字、分類、呈現方式都由 GET /storyteller/notification-kinds 提供
 // （後端註冊表 model/entity/storyteller/notification_kind.go）。前端只認識下面幾種畫面。
 export type StorytellerNotificationView =
-  "stories" | "project" | "security" | "generic";
+  "stories" | "project" | "security" | "generic" | "follower" | "favorite";
 
 export interface StorytellerNotificationKindDefinition {
   kind: string;
   label: string;
-  category: "content" | "security" | "general";
+  category: "content" | "security" | "general" | "social";
   // 後端之後若出現前端不認識的 view，前端一律退回 generic
   view: StorytellerNotificationView | (string & {});
 }
@@ -48,6 +50,17 @@ export interface StorytellerNotificationPayload {
   source?: string;
   ip?: string;
   user_agent?: string;
+  // 追蹤／收藏：actor 是追蹤者（後端已換成目前的筆名，身份不存在時沒有這個欄位）；
+  // target_pen_name 是被追蹤的是我的哪個筆名，本人身份留空
+  actor?: StorytellerAuthorIdentity;
+  target_pen_name?: string;
+}
+
+// 回追狀態：none 可回追／following 已互相追蹤／unavailable 對方或我的身份已不存在
+export interface StorytellerNotificationFollowBack {
+  state: "none" | "following" | "unavailable";
+  // 可以拿來回追的我的身份；作品有多個署名身份時會有多筆
+  identities: { pen_name: string; is_self?: boolean }[];
 }
 
 export interface StorytellerNotification {
@@ -59,6 +72,8 @@ export interface StorytellerNotification {
   // null 代表已鎖定、不會被保留期清除
   expires_at: string | null;
   created_at: string;
+  // 只有追蹤／收藏類通知才有
+  follow_back?: StorytellerNotificationFollowBack;
 }
 
 export interface StorytellerNotificationPage {

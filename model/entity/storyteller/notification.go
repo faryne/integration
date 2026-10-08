@@ -50,6 +50,21 @@ type NotificationPayload struct {
 	Source             string     `json:"source,omitempty"`
 	IP                 string     `json:"ip,omitempty"`
 	UserAgent          string     `json:"user_agent,omitempty"`
+
+	// 追蹤／收藏（author.followed／project.favorited）：Actor 是追蹤者，TargetPenName 是被追蹤的
+	// 是收件人的哪個筆名（本人身份留空）。兩者都是快照，輸出時會依 Internal 即時更新成目前的筆名。
+	Actor         *AuthorIdentityOutput `json:"actor,omitempty"`
+	TargetPenName string                `json:"target_pen_name,omitempty"`
+
+	// Internal 是後端用的身份鍵，會存進 DB，但輸出前一律清空（見 storytellernotify 的 output）
+	Internal *NotificationInternal `json:"internal,omitempty"`
+}
+
+// NotificationInternal 是通知裡不能對外輸出的身份鍵：回追、即時查詢筆名都靠它，前端拿不到 id。
+type NotificationInternal struct {
+	ActorUserID     uint64 `json:"actor_user_id"`
+	ActorProfileID  uint64 `json:"actor_profile_id"`
+	TargetProfileID uint64 `json:"target_profile_id"`
 }
 
 func (p NotificationPayload) Value() (driver.Value, error) {
@@ -105,6 +120,28 @@ type NotificationOutput struct {
 	Locked    bool                `json:"locked"`
 	ExpiresAt *time.Time          `json:"expires_at"`
 	CreatedAt time.Time           `json:"created_at"`
+	// FollowBack 只有追蹤／收藏類通知才有：能不能回追、用哪些身份回追
+	FollowBack *NotificationFollowBack `json:"follow_back,omitempty"`
+}
+
+// NotificationFollowBackState：none 可回追／following 已互相追蹤／unavailable 對方或我的身份已不存在。
+type NotificationFollowBackState string
+
+const (
+	NotificationFollowBackNone        NotificationFollowBackState = "none"
+	NotificationFollowBackFollowing   NotificationFollowBackState = "following"
+	NotificationFollowBackUnavailable NotificationFollowBackState = "unavailable"
+)
+
+// NotificationFollowBackIdentity 是可以拿來回追的我的身份；IsSelf 為帳號本人（按鈕只寫「回追」）。
+type NotificationFollowBackIdentity struct {
+	PenName string `json:"pen_name"`
+	IsSelf  bool   `json:"is_self,omitempty"`
+}
+
+type NotificationFollowBack struct {
+	State      NotificationFollowBackState      `json:"state"`
+	Identities []NotificationFollowBackIdentity `json:"identities"`
 }
 
 type NotificationListOutput struct {

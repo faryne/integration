@@ -24,3 +24,7 @@ export function steamloomPath(path = "") {
     `${isSteamLoomSite() ? "" : STEAMLOOM_PATH_PREFIX}${normalizedPath}` || "/"
   );
 }
+
+// 創作者頁（本人或筆名）的路徑；筆名可能含空白或符號，一律 encode
+export const steamloomCreatorPath = (penName: string) =>
+  steamloomPath(`user/${encodeURIComponent(penName)}`);

@@ -1,6 +1,7 @@
 package storytellernotify
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -123,6 +124,27 @@ func TestOutputExpiresAfterRetentionUnlessLocked(t *testing.T) {
 	out := s.output(*row(1, "a", false))
 	require.Equal(t, time.Date(2027, 3, 30, 0, 0, 0, 0, time.UTC), *out.ExpiresAt)
 	require.Nil(t, s.output(*row(2, "b", true)).ExpiresAt)
+}
+
+func TestOutputStripsInternalKeysAndRunsDecorator(t *testing.T) {
+	internal := row(1, "a", false)
+	internal.Payload.Internal = &storytellerModel.NotificationInternal{ActorUserID: 9, TargetProfileID: 3}
+	s, _ := newTestService(internal)
+	var seen *storytellerModel.NotificationInternal
+	s.WithDecorator(func(_ uint64, rows []storytellerModel.Notification, outs []storytellerModel.NotificationOutput) error {
+		// decorator 拿得到內部鍵，輸出裡已經清空
+		seen = rows[0].Payload.Internal
+		outs[0].FollowBack = &storytellerModel.NotificationFollowBack{State: storytellerModel.NotificationFollowBackNone}
+		return nil
+	})
+	out, err := s.Get(1, "a")
+	require.NoError(t, err)
+	require.Equal(t, uint64(9), seen.ActorUserID)
+	require.Nil(t, out.Payload.Internal)
+	require.NotNil(t, out.FollowBack)
+	encoded, err := json.Marshal(out)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "internal")
 }
 
 func TestLockRespectsLimitAndIsIdempotent(t *testing.T) {

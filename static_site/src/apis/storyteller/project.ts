@@ -9,6 +9,7 @@ import type { CommonResponse, EsPagination } from "@/apis/interfaces.ts";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import type {
   StorytellerAccountLimits,
+  StorytellerAuthorFavoriteStatus,
   StorytellerAuthorProfile,
   StorytellerAuthorProfileRequest,
   StorytellerFavoriteAuthor,
@@ -109,8 +110,17 @@ export function usePublicUserStorytellerProjects(
   page = 1,
   pageSize = 20,
 ) {
+  // 帶 session 後端才判斷得出 is_owner（本人的公開／隱藏切換、筆名頁的「此筆名追蹤的作家」靠它）
+  const { session } = useAuth();
   return useQuery({
-    queryKey: ["storyteller", "public-user-projects", username, page, pageSize],
+    queryKey: [
+      "storyteller",
+      "public-user-projects",
+      username,
+      page,
+      pageSize,
+      session?.user.id,
+    ],
     enabled: Boolean(username),
     retry: false,
     queryFn: async () => {
@@ -122,6 +132,7 @@ export function usePublicUserStorytellerProjects(
         }>
       >(`${apiBase}/storyteller/user/${encodeURIComponent(username!)}`, {
         params: { page, pageSize },
+        headers: session ? sessionHeaders(session.encrypt_key) : undefined,
       });
       return (
         response.data.data ?? {
@@ -410,11 +421,13 @@ export function useStorytellerAuthorFavorite(authorPenName?: string) {
     ],
     enabled: Boolean(session?.encrypt_key && authorPenName),
     queryFn: async () => {
-      const response = await axios.get<CommonResponse<{ favorited: boolean }>>(
+      const response = await axios.get<
+        CommonResponse<StorytellerAuthorFavoriteStatus>
+      >(
         `${apiBase}/storyteller/authors/${encodeURIComponent(authorPenName!)}/favorite`,
         { headers: sessionHeaders(session!.encrypt_key) },
       );
-      return response.data.data ?? { favorited: false };
+      return response.data.data ?? { favorited: false, following_as: [] };
     },
   });
 }
@@ -423,17 +436,20 @@ export function useSaveStorytellerAuthorFavorite(authorPenName?: string) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (favorited: boolean) => {
+    // 傳 { as } 是取消「以該筆名做的追蹤」；true／false 是本人身份追蹤／取消
+    mutationFn: async (input: boolean | { as: string }) => {
       const url = `${apiBase}/storyteller/authors/${encodeURIComponent(authorPenName!)}/favorite`;
-      const response = favorited
-        ? await axios.post<CommonResponse<StorytellerFavoriteAuthor>>(
-            url,
-            null,
-            { headers: sessionHeaders(session!.encrypt_key) },
-          )
-        : await axios.delete<CommonResponse<{ deleted: boolean }>>(url, {
-            headers: sessionHeaders(session!.encrypt_key),
-          });
+      const response =
+        input === true
+          ? await axios.post<CommonResponse<StorytellerFavoriteAuthor>>(
+              url,
+              null,
+              { headers: sessionHeaders(session!.encrypt_key) },
+            )
+          : await axios.delete<CommonResponse<{ deleted: boolean }>>(url, {
+              headers: sessionHeaders(session!.encrypt_key),
+              params: typeof input === "object" ? { as: input.as } : undefined,
+            });
       return response.data.data;
     },
     onSuccess: () => {

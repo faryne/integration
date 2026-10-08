@@ -81,9 +81,17 @@ func (r *Repository) SaveAuthorProfile(row *storytellerModel.AuthorProfile) erro
 	return r.db.Save(row).Error
 }
 
+// DeleteAuthorProfile 刪筆名時一併取消以這個筆名做的追蹤，免得留下對方看得到、卻已不存在的追蹤者。
 func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(row).Updates(map[string]any{"deleted_at": &now}).Error; err != nil {
+			return err
+		}
+		return tx.Model(&storytellerModel.AuthorFavorite{}).
+			Where("user_id = ? AND follower_profile_id = ? AND deleted_at IS NULL", row.UserID, row.ID).
+			Update("deleted_at", &now).Error
+	})
 }
 
 func (r *Repository) StoryProfilesByStoryIDs(storyIDs []uint64) (map[uint64][]uint64, error) {

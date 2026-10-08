@@ -1,7 +1,3 @@
-import ArticleIcon from "@mui/icons-material/Article";
-import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
-import BookmarkAddedIcon from "@mui/icons-material/BookmarkAdded";
-import CollectionsIcon from "@mui/icons-material/Collections";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import InstagramIcon from "@mui/icons-material/Instagram";
@@ -17,7 +13,6 @@ import {
   Box,
   Button,
   Chip,
-  Collapse,
   Grid,
   IconButton,
   Pagination,
@@ -40,12 +35,8 @@ import {
   usePublicFavoriteStorytellerAuthors,
   usePublicFavoriteStorytellerProjects,
   usePublicUserStorytellerProjects,
-  useSaveFavoriteAuthorVisibility,
   useSaveFavoriteProjectVisibility,
-  useSaveStorytellerAuthorFavorite,
-  useStorytellerAuthorFavorite,
 } from "@/apis/storyteller.ts";
-import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomEmptyState } from "@/components/common/CustomEmptyState.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -56,16 +47,15 @@ import {
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
-import { StorytellerMarkdown } from "@/pages/storyteller/StorytellerMarkdown.tsx";
+import { FollowAuthorButton } from "@/pages/storyteller/FollowAuthorButton.tsx";
+import { AuthorBio } from "@/pages/storyteller/StorytellerAuthorBio.tsx";
+import { StorytellerFavoriteAuthorCard } from "@/pages/storyteller/StorytellerFavoriteAuthorCard.tsx";
 import { StorytellerProjectCard } from "@/pages/storyteller/StorytellerProjectCard.tsx";
 import {
   StorytellerLoading,
   StorytellerShell,
 } from "@/pages/storyteller/StorytellerShell.tsx";
-import type {
-  StorytellerFavoriteAuthor,
-  StorytellerProject,
-} from "@/types/storyteller.ts";
+import type { StorytellerProject } from "@/types/storyteller.ts";
 
 const SNS_TYPE_LABEL: Record<string, string> = {
   x: "X",
@@ -104,7 +94,6 @@ const tabBreadcrumbLabel: Record<ProfileTab, string> = {
 };
 
 export default function StorytellerUserProjects() {
-  const { session } = useAuth();
   const { username } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -142,14 +131,12 @@ export default function StorytellerUserProjects() {
   const author = data?.author;
   const isOwner = Boolean(author?.is_owner);
   const showFavoriteTabs = Boolean(author?.show_favorites);
-  const activeTab: ProfileTab = showFavoriteTabs ? tab : "projects";
-  const authorFavoriteQuery = useStorytellerAuthorFavorite(
-    isOwner ? undefined : author?.pen_name,
-  );
-  const saveAuthorFavorite = useSaveStorytellerAuthorFavorite(
-    isOwner ? undefined : author?.pen_name,
-  );
-  const isAuthorFavorited = authorFavoriteQuery.data?.favorited ?? false;
+  // 筆名作者頁不公開收藏；擁有者自己看時多一個「此筆名追蹤的作家」分頁，管理以筆名做的追蹤
+  const isPenNameOwner = isOwner && !showFavoriteTabs;
+  const activeTab: ProfileTab =
+    showFavoriteTabs || (isPenNameOwner && tab === "favorite-authors")
+      ? tab
+      : "projects";
 
   const favoriteProjectsQuery = usePublicFavoriteStorytellerProjects(
     activeTab === "favorite-projects" ? username : undefined,
@@ -209,36 +196,22 @@ export default function StorytellerUserProjects() {
       breadcrumbs={[
         { label: STORYTELLER_APP_NAME, to: steamloomPath() },
         { label: displayName, to: steamloomPath(`user/${username}`) },
-        { label: tabBreadcrumbLabel[activeTab] },
+        {
+          label:
+            isPenNameOwner && activeTab === "favorite-authors"
+              ? "此筆名追蹤的作家"
+              : tabBreadcrumbLabel[activeTab],
+        },
       ]}
       action={
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
           {author?.pen_name && (
-            <Button
-              variant={isAuthorFavorited ? "contained" : "outlined"}
-              startIcon={
-                isAuthorFavorited ? <BookmarkAddedIcon /> : <BookmarkAddIcon />
-              }
-              disabled={isOwner || saveAuthorFavorite.isPending}
-              onClick={() => {
-                if (!session) {
-                  setLoginPromptOpen(true);
-                  return;
-                }
-                const nextAuthorFavorited = !isAuthorFavorited;
-                saveAuthorFavorite.mutate(nextAuthorFavorited, {
-                  onSuccess: () => {
-                    notify(
-                      nextAuthorFavorited ? "已追蹤此作者" : "已取消追蹤此作者",
-                    );
-                  },
-                  onError: () =>
-                    notify("作者追蹤狀態更新失敗，請重試。", "error"),
-                });
-              }}
-            >
-              {isAuthorFavorited ? "已追蹤作者" : "追蹤作者"}
-            </Button>
+            <FollowAuthorButton
+              penName={author.pen_name}
+              disabled={isOwner}
+              onLoginRequired={() => setLoginPromptOpen(true)}
+              onNotify={notify}
+            />
           )}
           <Button
             component={RouterLink}
@@ -357,8 +330,11 @@ export default function StorytellerUserProjects() {
               {showFavoriteTabs && (
                 <Tab value="favorite-projects" label="追蹤的作品" />
               )}
-              {showFavoriteTabs && (
-                <Tab value="favorite-authors" label="追蹤的作家" />
+              {(showFavoriteTabs || isPenNameOwner) && (
+                <Tab
+                  value="favorite-authors"
+                  label={isPenNameOwner ? "此筆名追蹤的作家" : "追蹤的作家"}
+                />
               )}
             </Tabs>
 
@@ -440,8 +416,16 @@ export default function StorytellerUserProjects() {
               ) : (favoriteAuthorsQuery.data ?? []).length === 0 ? (
                 <CustomEmptyState
                   icon={<PersonIcon fontSize="large" />}
-                  title="沒有公開的追蹤作家"
-                  description="這位作者追蹤的作家會顯示在這裡。"
+                  title={
+                    isPenNameOwner
+                      ? "這個筆名還沒有追蹤作家"
+                      : "沒有公開的追蹤作家"
+                  }
+                  description={
+                    isPenNameOwner
+                      ? "從通知回追時用的是被追蹤的筆名，以筆名做的追蹤會列在這裡，只有你看得到。"
+                      : "這位作者追蹤的作家會顯示在這裡。"
+                  }
                 />
               ) : (
                 <Grid container spacing={2}>
@@ -450,10 +434,13 @@ export default function StorytellerUserProjects() {
                       key={favoriteAuthor.pen_name}
                       size={{ xs: 12, sm: 6 }}
                     >
-                      <FavoriteAuthorCard
+                      <StorytellerFavoriteAuthorCard
                         author={favoriteAuthor}
-                        isOwner={isOwner}
-                        onVisibilityChanged={notify}
+                        canToggleVisibility={isOwner && !isPenNameOwner}
+                        unfollowAs={
+                          isPenNameOwner ? author?.pen_name : undefined
+                        }
+                        onNotify={notify}
                       />
                     </Grid>
                   ))}
@@ -463,32 +450,6 @@ export default function StorytellerUserProjects() {
         </Grid>
       </Grid>
     </StorytellerShell>
-  );
-}
-
-const BIO_COLLAPSE_THRESHOLD = 160;
-
-export function AuthorBio({ bio }: { bio: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = bio.length > BIO_COLLAPSE_THRESHOLD;
-
-  return (
-    <Box>
-      <Collapse in={expanded || !isLong} collapsedSize={64}>
-        <Box sx={{ "& p": { mt: 0, mb: 1 }, "& p:last-child": { mb: 0 } }}>
-          <StorytellerMarkdown>{bio}</StorytellerMarkdown>
-        </Box>
-      </Collapse>
-      {isLong && (
-        <Button
-          size="small"
-          onClick={() => setExpanded((value) => !value)}
-          sx={{ mt: 0.5, minWidth: 0, px: 0 }}
-        >
-          {expanded ? "收合簡介" : "顯示完整簡介"}
-        </Button>
-      )}
-    </Box>
   );
 }
 
@@ -553,120 +514,5 @@ function FavoriteProjectCard({
         </Button>
       }
     />
-  );
-}
-
-function FavoriteAuthorCard({
-  author,
-  isOwner,
-  onVisibilityChanged,
-}: {
-  author: StorytellerFavoriteAuthor;
-  isOwner: boolean;
-  onVisibilityChanged: (
-    message: string,
-    severity?: "success" | "error",
-  ) => void;
-}) {
-  const saveVisibility = useSaveFavoriteAuthorVisibility(author.pen_name);
-  const hidden = author.hidden ?? false;
-
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ p: 2, borderRadius: 1, height: 1, boxSizing: "border-box" }}
-    >
-      <Stack spacing={1.5} sx={{ height: 1, minWidth: 0 }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          justifyContent="space-between"
-        >
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            sx={{ minWidth: 0 }}
-          >
-            <Avatar
-              src={author.avatar_url}
-              alt={author.pen_name || "未命名作者"}
-              sx={{ width: 32, height: 32 }}
-            >
-              <PersonIcon fontSize="small" />
-            </Avatar>
-            <Typography
-              variant="h6"
-              fontWeight={800}
-              sx={{ minWidth: 0, overflowWrap: "anywhere" }}
-            >
-              {author.pen_name || "未命名作者"}
-            </Typography>
-          </Stack>
-          {isOwner && (
-            <Tooltip title={hidden ? "設為公開" : "設為隱藏"}>
-              <span>
-                <IconButton
-                  size="small"
-                  aria-label={hidden ? "設為公開" : "設為隱藏"}
-                  disabled={saveVisibility.isPending}
-                  onClick={() =>
-                    saveVisibility.mutate(!hidden, {
-                      onSuccess: () =>
-                        onVisibilityChanged(
-                          hidden
-                            ? "追蹤作者已設為公開。"
-                            : "追蹤作者已設為隱藏。",
-                        ),
-                      onError: () =>
-                        onVisibilityChanged(
-                          "追蹤作者公開狀態更新失敗。",
-                          "error",
-                        ),
-                    })
-                  }
-                >
-                  {hidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                </IconButton>
-              </span>
-            </Tooltip>
-          )}
-        </Stack>
-        {author.bio && <AuthorBio bio={author.bio} />}
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          <Chip size="small" label={`${author.project_count} 個專案`} />
-          <Chip
-            size="small"
-            variant="outlined"
-            icon={<ArticleIcon />}
-            label={`${author.story_count} 篇故事`}
-          />
-          {author.image_story_count > 0 && (
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={<CollectionsIcon />}
-              label={`${author.image_story_count} 話`}
-            />
-          )}
-          <Chip
-            size="small"
-            label={`平均 ${author.average_rating.toFixed(1)}`}
-          />
-          <Chip size="small" label={`${author.follower_count} 人追蹤`} />
-          {hidden && <Chip size="small" color="warning" label="對外隱藏中" />}
-        </Stack>
-        {author.pen_name && (
-          <Button
-            component={RouterLink}
-            to={steamloomPath(`user/${encodeURIComponent(author.pen_name)}`)}
-            variant="contained"
-          >
-            查看作者
-          </Button>
-        )}
-      </Stack>
-    </Paper>
   );
 }
