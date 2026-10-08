@@ -71,7 +71,7 @@ func (r *Repository) SetAuthorPostPinned(post *storytellerModel.AuthorPost, pinn
 				UpdateColumn("pinned_at", nil).Error; err != nil {
 				return err
 			}
-			return tx.Model(post).UpdateColumn("pinned_at", gorm.Expr("NOW()")).Error
+			return tx.Model(post).UpdateColumn("pinned_at", time.Now()).Error
 		}
 		return tx.Model(post).UpdateColumn("pinned_at", nil).Error
 	})
@@ -190,7 +190,7 @@ func (r *Repository) ClaimAuthorPosts(postIDs []uint64, rows []*storytellerModel
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&storytellerModel.AuthorPost{}).
 			Where("id IN ? AND notified_at IS NULL", postIDs).
-			UpdateColumn("notified_at", gorm.Expr("NOW()"))
+			UpdateColumn("notified_at", time.Now())
 		if result.Error != nil {
 			return result.Error
 		}

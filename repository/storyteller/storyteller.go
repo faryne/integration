@@ -20,12 +20,21 @@ type Repository struct{ db *gorm.DB }
 // 或底下已經有 assistant 訊息。呼叫端不能再補寫第二份 AI 回覆。
 var ErrStoryChatNotCompletable = errors.New("story chat is not completable")
 
-const agenticChatStaleInProgressMinutes = "8"
+// agenticChatStaleInProgress：in_progress 超過這麼久沒更新就視為卡住，可以重送。
+const agenticChatStaleInProgress = 8 * time.Minute
+
+// 截止時間由 Go 帶入（? 參數），不用 MySQL 的 NOW()：updated_at 是 Go 寫入的時間，
+// 連線時區與 DB 時區不同時混用 NOW() 會差好幾小時（本機 +08 vs UTC）。
 const agenticChatOutputStatusSQL = `CASE
-				WHEN chats.status = 'in_progress' AND chats.updated_at < DATE_SUB(NOW(), INTERVAL ` + agenticChatStaleInProgressMinutes + ` MINUTE) THEN 'pending'
+				WHEN chats.status = 'in_progress' AND chats.updated_at < ? THEN 'pending'
 				ELSE chats.status
 			END AS chat_status`
-const agenticChatStaleInProgressClaimSQL = `(status = ? OR (status = ? AND updated_at < DATE_SUB(NOW(), INTERVAL ` + agenticChatStaleInProgressMinutes + ` MINUTE)))`
+const agenticChatStaleInProgressClaimSQL = `(status = ? OR (status = ? AND updated_at < ?))`
+
+// agenticChatStaleCutoff 是 agenticChatOutputStatusSQL／agenticChatStaleInProgressClaimSQL 的截止時間參數。
+func agenticChatStaleCutoff() time.Time {
+	return time.Now().Add(-agenticChatStaleInProgress)
+}
 
 func NewRepository() *Repository {
 	return &Repository{db: client.GetDB(enum.DBWalolita)}
@@ -899,6 +908,7 @@ func (r *Repository) ClaimStoryChatForResend(userID, storyID, chatID uint64) (in
 		Where(agenticChatStaleInProgressClaimSQL,
 			storytellerModel.StoryChatStatusPending,
 			storytellerModel.StoryChatStatusInProgress,
+			agenticChatStaleCutoff(),
 		).
 		Update("status", storytellerModel.StoryChatStatusInProgress)
 	return result.RowsAffected, result.Error
@@ -911,6 +921,7 @@ func (r *Repository) ClaimLoreChatForResend(userID, loreID, chatID uint64) (int6
 		Where(agenticChatStaleInProgressClaimSQL,
 			storytellerModel.StoryChatStatusPending,
 			storytellerModel.StoryChatStatusInProgress,
+			agenticChatStaleCutoff(),
 		).
 		Update("status", storytellerModel.StoryChatStatusInProgress)
 	return result.RowsAffected, result.Error
@@ -1206,12 +1217,12 @@ func (r *Repository) StoryChatMessages(storyID uint64, offset, limit int) ([]sto
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
-			` + agenticChatOutputStatusSQL + `,
+			`+agenticChatOutputStatusSQL+`,
 			messages.role,
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at`).
+			messages.updated_at`, agenticChatStaleCutoff()).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1240,12 +1251,12 @@ func (r *Repository) LoreChatMessages(loreID uint64, offset, limit int) ([]story
 	err := query.
 		Select(`messages.id,
 			messages.chat_id,
-			` + agenticChatOutputStatusSQL + `,
+			`+agenticChatOutputStatusSQL+`,
 			messages.role,
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at`).
+			messages.updated_at`, agenticChatStaleCutoff()).
 		Order("messages.created_at DESC, messages.id DESC").
 		Offset(offset).
 		Limit(limit).
@@ -1292,12 +1303,12 @@ func (r *Repository) agenticChatMessages(where string, args ...interface{}) (*st
 		Where("messages.deleted_at IS NULL").
 		Select(`messages.id,
 			messages.chat_id,
-			` + agenticChatOutputStatusSQL + `,
+			`+agenticChatOutputStatusSQL+`,
 			messages.role,
 			messages.content,
 			messages.metadata,
 			messages.created_at,
-			messages.updated_at`).
+			messages.updated_at`, agenticChatStaleCutoff()).
 		Order("messages.created_at ASC, messages.id ASC").
 		Find(&rows).Error
 	if err != nil {

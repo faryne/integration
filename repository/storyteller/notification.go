@@ -82,7 +82,7 @@ func (r *Repository) ClaimPublishedStories(storyIDs []uint64, rows []*storytelle
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		result := tx.Model(&storytellerModel.Story{}).
 			Where("id IN ? AND first_published_at IS NULL", storyIDs).
-			UpdateColumn("first_published_at", gorm.Expr("NOW()"))
+			UpdateColumn("first_published_at", time.Now())
 		if result.Error != nil {
 			return result.Error
 		}
@@ -147,11 +147,11 @@ func (r *Repository) UnreadNotificationCount(userID uint64) (int64, error) {
 func (r *Repository) MarkNotificationRead(userID uint64, publicID string) error {
 	return r.activeNotifications(userID).
 		Where("public_id = ? AND read_at IS NULL", publicID).
-		UpdateColumn("read_at", gorm.Expr("NOW()")).Error
+		UpdateColumn("read_at", time.Now()).Error
 }
 
 func (r *Repository) MarkAllNotificationsRead(userID uint64) (int64, error) {
-	result := r.activeNotifications(userID).Where("read_at IS NULL").UpdateColumn("read_at", gorm.Expr("NOW()"))
+	result := r.activeNotifications(userID).Where("read_at IS NULL").UpdateColumn("read_at", time.Now())
 	return result.RowsAffected, result.Error
 }
 
@@ -162,8 +162,8 @@ func (r *Repository) LockNotification(id, userID uint64, limit int) (bool, error
 			SELECT COUNT(*) AS locked FROM storyteller_notifications
 			WHERE user_id = ? AND is_deleted = 0 AND locked_at IS NOT NULL
 		) AS t
-		SET n.locked_at = NOW()
-		WHERE n.id = ? AND n.locked_at IS NULL AND t.locked < ?`, userID, id, limit)
+		SET n.locked_at = ?
+		WHERE n.id = ? AND n.locked_at IS NULL AND t.locked < ?`, userID, time.Now(), id, limit)
 	return result.RowsAffected > 0, result.Error
 }
 
