@@ -142,10 +142,14 @@ func (r *Repository) ReplaceStoryProfiles(storyID uint64, profileIDs []uint64) e
 	})
 }
 
-func (r *Repository) StoryProfileCountByProfileID(profileID uint64) (int64, error) {
+// LiveStoryCountByProfileID 是還在使用這個筆名的話數：只算話未刪除、所屬作品也未刪除的署名。
+// 刪掉的話與作品不再佔用筆名（軟刪除不會清 pivot，所以要在這裡排除），刪筆名前用它判斷。
+func (r *Repository) LiveStoryCountByProfileID(profileID uint64) (int64, error) {
 	var count int64
-	err := r.db.Model(&storytellerModel.StoryProfile{}).
-		Where("profile_id = ?", profileID).
+	err := r.db.Table("storyteller_story_profiles AS sp").
+		Joins("INNER JOIN storyteller_stories AS stories ON stories.id = sp.story_id").
+		Joins("INNER JOIN storyteller_projects AS projects ON projects.id = stories.project_id").
+		Where("sp.profile_id = ? AND stories.is_deleted = 0 AND stories.deleted_at IS NULL AND projects.deleted_at IS NULL", profileID).
 		Count(&count).Error
 	return count, err
 }

@@ -103,7 +103,8 @@ func (s *Service) DeleteAuthorProfile(userID, profileID uint64) error {
 	if err != nil {
 		return err
 	}
-	used, err := s.repo.StoryProfileCountByProfileID(row.ID)
+	// 只看未刪除的作品：作品或那一話刪掉後，筆名就可以刪
+	used, err := s.repo.LiveStoryCountByProfileID(row.ID)
 	if err != nil {
 		return err
 	}
