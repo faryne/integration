@@ -6,6 +6,9 @@ services:
     platform: linux/amd64
     container_name: mysql
     restart: always
+    # 時區跟正式環境一致（+08）：Go 連線用 loc=Local 寫入本地時間，MySQL 若是 UTC，
+    # NOW() 與 ON UPDATE CURRENT_TIMESTAMP 寫出來的時間會差 8 小時
+    command: --default-time-zone=+08:00
     ports:
       - "3307:3306"
     environment:
