@@ -38,6 +38,24 @@ func (r *Repository) BlockedUserIDs(userID, profileID uint64, candidates []uint6
 	return result, nil
 }
 
+// BlockedByAnyIdentity 回傳 candidates 裡被 owner 的任一身份（profileIDs）封鎖的帳號；討論版用。
+func (r *Repository) BlockedByAnyIdentity(ownerID uint64, profileIDs, candidates []uint64) (map[uint64]bool, error) {
+	result := make(map[uint64]bool, len(candidates))
+	if len(profileIDs) == 0 || len(candidates) == 0 {
+		return result, nil
+	}
+	ids := make([]uint64, 0)
+	if err := r.db.Model(&storytellerModel.AuthorBlock{}).
+		Where("user_id = ? AND profile_id IN ? AND is_deleted = 0 AND blocked_user_id IN ?", ownerID, profileIDs, candidates).
+		Distinct().Pluck("blocked_user_id", &ids).Error; err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		result[id] = true
+	}
+	return result, nil
+}
+
 func (r *Repository) AuthorBlocks(userID, profileID uint64) ([]storytellerModel.AuthorBlock, error) {
 	rows := make([]storytellerModel.AuthorBlock, 0)
 	err := r.activeBlocks(userID, profileID).Order("id DESC").Find(&rows).Error

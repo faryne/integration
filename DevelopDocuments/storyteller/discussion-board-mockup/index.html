@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>專案討論板 Mockup</title>
+<style>
+/* 沿用 reader-lore-mockup 的紙張色系，跟閱讀頁、設定頁對照 */
+:root {
+  --page: #f4edd8; --paper: #fbf7ea; --paper-elevated: #fffaf0;
+  --ink: #2c241b; --muted: #746856; --faint: #a59a86; --line: #cdbd96;
+  --accent: #8a5b18; --accent-soft: #ead9ad;
+  --lore: #3f6b6a; --lore-soft: #d6e4dc;
+  --talk: #6b4a8a; --talk-soft: #e6dcef;
+  --danger: #a33a3a; --ok: #3f7a3a;
+  --header: rgba(251, 247, 234, .94);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.serif { font-family: Georgia, "Noto Serif TC", serif; }
+
+/* mockup 控制列（不屬於產品 UI） */
+.mock-switch { position: sticky; top: 0; z-index: 200; display: flex; gap: 6px; padding: 8px 16px; background: #2c241b; color: #fbf7ea; align-items: center; flex-wrap: wrap; }
+.mock-switch b { margin-right: 6px; font-size: 13px; }
+.mock-switch button { border: 1px solid #746856; background: transparent; border-radius: 4px; padding: 4px 10px; font-size: 13px; color: #fbf7ea; }
+.mock-switch button.on { background: #ead9ad; color: #2c241b; }
+.mock-switch .sep { width: 1px; height: 20px; background: #746856; margin: 0 4px; }
+.mock-sub { display: flex; gap: 6px; padding: 6px 16px; background: #3a2f22; color: #e8dcc0; font-size: 12px; align-items: center; flex-wrap: wrap; }
+.mock-sub button { border: 1px solid #746856; background: transparent; border-radius: 4px; padding: 3px 9px; font-size: 12px; color: #e8dcc0; }
+.mock-sub button.on { background: #ead9ad; color: #2c241b; }
+
+.site-header { height: 54px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; background: var(--header); border-bottom: 1px solid var(--line); }
+.brand { font-family: Georgia, "Noto Serif TC", serif; font-size: 20px; font-weight: 800; }
+.crumb { font-size: 13px; color: var(--muted); padding: 14px 24px 0; max-width: 1000px; margin: 0 auto; }
+.crumb b { color: var(--ink); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px 80px; }
+.narrow { max-width: 760px; margin: 0 auto; padding: 0 16px 80px; }
+
+/* 共用 */
+.face { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 13px; }
+.face.sm { width: 28px; height: 28px; font-size: 11px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.story { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent-soft) 60%, transparent); }
+.tag.lore { color: var(--lore); border-color: color-mix(in srgb, var(--lore) 45%, var(--line)); background: var(--lore-soft); }
+.tag.author { color: var(--talk); border-color: color-mix(in srgb, var(--talk) 45%, var(--line)); background: var(--talk-soft); }
+.tag.lock { color: var(--muted); }
+.tag.blocked { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.btn { border: 0; background: var(--talk); color: #fff; font-weight: 700; padding: 8px 16px; border-radius: 6px; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); font-weight: 600; }
+.btn.small { padding: 5px 11px; font-size: 13px; }
+.muted { color: var(--muted); }
+.tiny { font-size: 12px; color: var(--faint); }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+
+/* 作品首頁分頁 */
+.hero { margin: 12px 0 0; padding: 30px 28px; border-radius: 10px; background: linear-gradient(120deg, #3a2f22, #6a5233); color: #fbf7ea; }
+.hero h1 { margin: 0 0 6px; font-size: 30px; } .hero p { margin: 0; opacity: .85; }
+.section-tabs { margin: 20px 0 0; display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.section-tabs span { padding: 10px 18px; font-size: 16px; font-weight: 650; border-bottom: 3px solid transparent; margin-bottom: -1px; color: var(--muted); }
+.section-tabs span.on { color: var(--talk); border-color: var(--talk); }
+.section-tabs small { font-weight: 400; margin-left: 4px; }
+
+/* 討論板 */
+.board-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 16px 0 10px; flex-wrap: wrap; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button { border: 1px solid var(--line); background: var(--paper); padding: 5px 12px; border-radius: 99px; font-size: 13px; color: var(--muted); }
+.filters button.on { background: var(--talk-soft); border-color: color-mix(in srgb, var(--talk) 50%, var(--line)); color: var(--talk); font-weight: 700; }
+.sort { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+.thread-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--line); align-items: center; cursor: pointer; }
+.thread-row:first-child { border-top: 0; }
+.thread-row:hover { background: var(--paper-elevated); }
+.thread-row .title { font-weight: 700; font-size: 15px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.thread-row .sub { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.thread-row .count { text-align: right; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.thread-row .count b { display: block; font-size: 16px; color: var(--ink); }
+.thread-row.masked .title { color: var(--muted); font-style: italic; font-weight: 600; }
+
+/* 留言（沿用作者動態的留言樣式） */
+.c { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+.c.reply { margin-left: 38px; border-top: 0; padding-top: 4px; }
+.c-head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.c-body { margin: 3px 0 4px; font-size: 15px; line-height: 1.75; white-space: pre-line; }
+.c-body.deleted { color: var(--faint); font-style: italic; }
+.c-reply-to { font-size: 12px; color: var(--muted); }
+.c-actions { display: flex; gap: 12px; font-size: 12px; }
+.c-actions button { border: 0; background: transparent; padding: 0; color: var(--muted); font-weight: 700; }
+.c-actions button:hover { color: var(--ink); } .c-actions .danger:hover { color: var(--danger); }
+.sp { border: 1px dashed var(--muted); border-radius: 4px; padding: 0 6px; font-size: .9em; font-weight: 700; color: var(--muted); cursor: pointer; }
+.sp.shown { border: 0; background: color-mix(in srgb, var(--accent-soft) 70%, transparent); font-weight: 400; color: inherit; cursor: text; }
+.box { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.box textarea, .field textarea, .field input, .field select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper-elevated); font-size: 15px; }
+.box textarea { min-height: 64px; resize: vertical; }
+.box-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tools { display: flex; gap: 6px; } .tools button { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700; }
+.gatebox { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; flex-wrap: wrap; }
+.more-replies { margin: 0 0 6px 38px; border: 0; background: transparent; color: var(--talk); font-weight: 700; font-size: 13px; }
+
+/* ⋯ 選單 */
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: 34px; z-index: 30; min-width: 150px; padding: 5px; background: var(--paper-elevated); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 26px rgba(44,36,27,.18); }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 5px; font-size: 14px; }
+.menu button:hover { background: var(--accent-soft); } .menu .danger { color: var(--danger); }
+
+/* 發起討論 dialog */
+.modal { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; background: rgba(44,36,27,.45); }
+.dialog { width: min(560px, 100%); max-height: 92vh; overflow: auto; padding: 22px; background: var(--paper-elevated); border-radius: 12px; box-shadow: 0 20px 50px rgba(44,36,27,.3); }
+.dialog h3 { margin: 0 0 14px; font-size: 19px; }
+.field { display: grid; gap: 5px; margin-bottom: 12px; }
+.field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.field textarea { min-height: 120px; resize: vertical; }
+.anchor-pick { display: flex; gap: 6px; flex-wrap: wrap; }
+.anchor-pick button { border: 1px solid var(--line); background: var(--paper); border-radius: 99px; padding: 4px 12px; font-size: 13px; }
+.anchor-pick button.on { background: var(--talk-soft); border-color: var(--talk); color: var(--talk); font-weight: 700; }
+.dialog-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 6px; }
+
+/* 通知 */
+.n-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.n-row:first-child { border-top: 0; }
+.n-row.unread { background: color-mix(in srgb, var(--talk-soft) 50%, var(--paper)); }
+.n-row p { margin: 0 0 3px; font-size: 14px; } .n-row .ex { font-size: 13px; color: var(--muted); }
+
+/* 審查筆記（不屬於產品 UI） */
+.review { margin: 26px 0 0; padding: 16px 18px; border: 1px dashed #c9a640; border-radius: 10px; background: #fff3c4; color: #5a4512; }
+.review h2 { margin: 0 0 8px; font-size: 14px; }
+.review ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 13px; line-height: 1.65; }
+.review b { color: #3f2f08; } .review .rec { color: var(--ok); font-weight: 700; }
+
+.snack { position: fixed; right: 20px; bottom: 20px; z-index: 400; padding: 10px 16px; border-radius: 8px; background: var(--ok); color: #fff; font-weight: 700; font-size: 14px; display: none; }
+.snack.on { display: block; }
+
+@media (max-width: 720px) {
+  .thread-row { grid-template-columns: 30px minmax(0, 1fr); } .thread-row .count { grid-column: 2; text-align: left; } .thread-row .count b { display: inline; margin-right: 4px; }
+  .hero { padding: 22px 18px; } .hero h1 { font-size: 24px; }
+  .section-tabs span { padding: 10px 12px; font-size: 15px; }
+}
+
+/* 閱讀工具列：討論按鈕跟設定、外觀並排，不在正文加任何區塊 */
+.reading-bar { position: sticky; top: 37px; z-index: 50; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; padding: 6px 20px; background: var(--header); border-bottom: 1px solid var(--line); }
+.reading-bar .c { font-size: 14px; font-weight: 700; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; } .reading-bar .r { display: flex; justify-content: flex-end; gap: 4px; }
+.tool { border: 0; background: transparent; padding: 7px 11px; border-radius: 6px; font-size: 14px; }
+.tool:hover { background: var(--accent-soft); }
+.tool.talk { color: var(--talk); font-weight: 700; } .tool.talk:hover, .tool.talk.on { background: var(--talk-soft); }
+.tool .badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 99px; background: var(--talk); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+.bottom-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; gap: 12px; padding: 10px; background: var(--header); border-top: 1px solid var(--line); z-index: 40; }
+.bottom-bar button { border: 1px solid var(--line); background: var(--paper); padding: 7px 16px; border-radius: 5px; }
+
+/* 討論 modal：桌機置中、手機全螢幕；關掉回到原本閱讀位置 */
+.talk-modal { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 24px; background: rgba(44,36,27,.45); }
+.talk-panel { width: min(720px, 100%); height: min(86vh, 900px); display: flex; flex-direction: column; background: var(--paper-elevated); border-radius: 12px; box-shadow: 0 20px 50px rgba(44,36,27,.3); overflow: hidden; }
+.talk-panel header { flex: none; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--talk-soft); }
+.talk-panel header b { color: var(--talk); font-size: 16px; }
+.talk-panel .body { flex: 1; overflow: auto; }
+.x { border: 0; background: transparent; font-size: 20px; line-height: 1; padding: 4px 8px; border-radius: 6px; }
+.x:hover { background: rgba(0,0,0,.06); }
+
+/* 討論串列表（討論板與 modal 共用）：點一串就在原地展開，同時只展開一串 */
+.t-item { border-top: 1px solid var(--line); }
+.t-item:first-child { border-top: 0; }
+.t-item.open > .thread-row { background: var(--paper-elevated); }
+.t-open { padding: 4px 18px 14px 62px; border-top: 1px dashed var(--line); background: var(--paper-elevated); }
+.talk-panel .t-open { padding-left: 18px; }
+.t-open .opening { padding: 10px 0 12px; font-size: 15px; line-height: 1.8; white-space: pre-line; }
+.t-open .opening-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; }
+.inline-gate { margin: 10px 0; padding: 14px 16px; border: 2px solid #c98a2b; border-radius: 10px; background: #fff6e0; }
+.inline-gate b { display: block; margin-bottom: 4px; } .inline-gate .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.chev { color: var(--faint); font-size: 12px; margin-left: 4px; }
+.as-select { border: 1px solid var(--line); background: var(--paper); border-radius: 5px; padding: 1px 4px; font-size: 12px; color: var(--talk); font-weight: 700; }
+.edit-title { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 16px; font-weight: 700; }
+.thread-row.no-face { grid-template-columns: minmax(0, 1fr) auto; }
+.mock-device button { }
+body.mobile .page-frame { width: 390px; margin: 0 auto; border-left: 1px solid #b8a985; border-right: 1px solid #b8a985; min-height: 100vh; position: relative; background: var(--page); }
+body.mobile .talk-modal { padding: 0; left: calc(50% - 195px); right: calc(50% - 195px); }
+body.mobile .talk-panel { width: 100%; height: 100%; border-radius: 0; }
+body.mobile .thread-row { grid-template-columns: 30px minmax(0, 1fr); } body.mobile .thread-row .count { grid-column: 2; text-align: left; } body.mobile .thread-row .count b { display: inline; margin-right: 4px; }
+body.mobile .talk-panel .thread-row.no-face { grid-template-columns: minmax(0, 1fr); } body.mobile .talk-panel .thread-row .count { grid-column: 1; }
+body.mobile .t-open { padding-left: 14px; padding-right: 14px; }
+body.mobile .reading-bar { grid-template-columns: auto 1fr auto; padding: 6px 8px; } body.mobile .reading-bar .c { text-align: center; font-size: 13px; }
+body.mobile .bottom-bar { left: calc(50% - 195px); right: calc(50% - 195px); }
+body.mobile .hero { padding: 22px 18px; } body.mobile .hero h1 { font-size: 24px; }
+@media (max-width: 720px) {
+  .talk-modal { padding: 0; } .talk-panel { width: 100%; height: 100%; border-radius: 0; }
+  .talk-panel .thread-row.no-face { grid-template-columns: minmax(0, 1fr); } .talk-panel .thread-row .count { grid-column: 1; }
+  .t-open { padding-left: 14px; padding-right: 14px; }
+  .reading-bar { grid-template-columns: auto 1fr auto; padding: 6px 8px; }
+}
+</style>
+</head>
+<body>
+<div class="mock-switch">
+  <b>畫面：</b>
+  <button data-screen="chapter" class="on">① 閱讀頁（第 3 話）</button>
+  <button data-screen="lore">② 設定頁</button>
+  <button data-screen="board">③ 作品頁「討論」分頁</button>
+  <span class="sep"></span>
+  <button data-device="desktop" class="on">Desktop</button>
+  <button data-device="mobile">Mobile 390</button>
+</div>
+<div class="mock-sub" id="mockSub"></div>
+<div class="page-frame">
+<div class="site-header"><span class="brand">SteamLoom</span><span style="font-size:13px;color:var(--muted)" id="viewerLabel"></span></div>
+<main id="main"></main>
+</div>
+<div id="talkRoot"></div>
+<div id="modalRoot"></div>
+<div class="snack" id="snack"></div>
+
+<script>
+// ---- 假資料：《霧都旅館》共 12 話，作者筆名「霧島」；設定「老陳」依賴第 10 話 ----
+const colors = { 霧都: "#4d7d6a", 霧島: "#3f6f9a", 白夜: "#c0567a", 青嵐: "#3f8f7a", 小麥: "#b07a2a", 墨蝶: "#5965c0", F: "#8a5a3c", 路人: "#9a8f7a" };
+const face = (n, cls = "") => `<span class="face ${cls}" style="background:${colors[n] || "#888"}">${n[0]}</span>`;
+const episodeTitles = ["霧中的旅館", "鍋爐室", "雨夜的訪客", "管家的鑰匙", "地下水道", "第七號房", "舊照片", "失蹤的工人", "蒸汽與灰", "老陳", "白鷺", "真相"];
+const lores = { chen: { name: "老陳", dep: 10 } };
+
+// anchor：null＝一般；{type:"story",no} 或 {type:"lore",id}。所有討論都是有標題的串
+const threads = [
+  { id: "t1", title: "第二卷連載時程與勘誤", who: "霧島", author: true, anchor: null, replies: 18, last: "2 小時前" },
+  { id: "t2", title: "管家到底是不是兇手？", who: "白夜", anchor: { type: "story", no: 12 }, replies: 34, last: "10 分鐘前" },
+  { id: "t3", title: "推薦給新讀者的切入點", who: "青嵐", anchor: null, replies: 7, last: "昨天", edited: true },
+  { id: "t4", title: "老陳的過去跟鍋爐爆炸案有關嗎", who: "墨蝶", anchor: { type: "lore", id: "chen" }, replies: 11, last: "3 小時前" },
+  { id: "t5", title: "第 3 話鍋爐室的描寫好有畫面", who: "小麥", anchor: { type: "story", no: 3 }, replies: 9, last: "昨天" },
+  { id: "t6", title: "雨夜那個訪客是不是後來的白鷺", who: "F", anchor: { type: "story", no: 3 }, replies: 4, last: "5 天前", locked: true },
+  { id: "t7", title: "這一話看完好想去泡溫泉", who: "白夜", anchor: { type: "story", no: 3 }, replies: 2, last: "18 小時前" },
+];
+// 各串的開頭內文（假資料）
+const openings = {
+  t1: "第二卷固定每週五晚上十點更新。\n第 7 話「舊照片」有兩個錯字已修正，感謝回報。",
+  t2: "那句「鑰匙一直在你身上」，我越想越覺得在講管家。\n\n[spoiler]而且工人名單上沒有他[/spoiler]，大家覺得呢？",
+  t3: "朋友想入坑但嫌開頭慢，大家都怎麼推薦的？",
+  t4: "設定裡寫他「十年前之後就沒人見過」，跟爆炸案的時間點完全對上。",
+  t5: "鍋爐那段熱氣、煤灰跟鐵鏽味寫得好有畫面，作者是不是有實際去看過？",
+  t6: "雨夜那個訪客 [spoiler]右手的燙傷疤[/spoiler]，白鷺出場時好像也有。",
+  t7: "整話都在下雨又冷又濕，看完只想去泡溫泉 www",
+};
+
+const state = { editing: null, screen: "chapter", viewer: "reader5", filter: "all", talkOpen: false, expanded: null, passed: new Set(), sp: new Set(), replyTo: null, menu: null };
+const viewers = {
+  reader5: { name: "青嵐", label: "讀者 青嵐（讀到第 5 話）", progress: 5 },
+  readerAll: { name: "白夜", label: "讀者 白夜（全部讀完）", progress: 12 },
+  owner: { name: "霧島", label: "作者（霧島／霧都）", progress: 12, owner: true },
+  guest: { name: null, label: "未登入", progress: 0 },
+  blocked: { name: "F", label: "被封鎖的 F", progress: 12, blocked: true },
+};
+const V = () => viewers[state.viewer];
+// 作者在這部作品可用的身份＝這部作品署名過的身份（例：有 A／B／C 三個筆名，作品只署名 B、C，就只能選 B、C）
+const ownerIds = ["霧島", "霧都"];
+const isMine = (who) => V().owner ? ownerIds.includes(who) : who === V().name;
+// 「以 X 留言」：作者可在作品的署名身份間切換，讀者固定用本人
+const asLabel = (verb) => V().owner
+  ? `以 <select class="as-select">${ownerIds.map((n) => `<option>${n}</option>`).join("")}</select> ${verb}`
+  : `以 ${V().name} ${verb}`;
+const anchorText = (a) => !a ? "" : a.type === "story" ? `第 ${a.no} 話` : `設定：${lores[a.id].name}`;
+const anchorNeed = (a) => !a ? 0 : a.type === "story" ? a.no : lores[a.id].dep;
+const anchorTag = (a) => a ? `<span class="tag ${a.type}">${anchorText(a)}</span>` : "";
+const canWrite = () => V().name && !V().blocked;
+
+// ---- 留言（沿用作者動態那一套） ----
+const threadReplies = [
+  { id: "r1", who: "墨蝶", time: "1 小時前", body: "那句「鑰匙一直在你身上」我覺得是在講管家", replies: [
+    { id: "r1a", who: "青嵐", time: "50 分鐘前", body: "可是第 4 話管家明明說鑰匙丟了" },
+    { id: "r1b", who: "白夜", to: "青嵐", time: "40 分鐘前", edited: true, body: "所以他在說謊啊 [spoiler]工人名單也少了他[/spoiler]" },
+    { id: "r1c", who: "霧都", author: true, to: "白夜", time: "10 分鐘前", body: "（作者表示不予置評）" },
+  ]},
+  { id: "r2", who: "小麥", deleted: true, replies: [] },
+];
+function renderBody(s, key) {
+  let i = 0;
+  return s.replace(/\[(spoiler|r18)\]([\s\S]*?)\[\/\1\]/g, (_, kind, text) => {
+    const k = `${key}:${i++}`;
+    return state.sp.has(k) ? `<span class="sp shown">${text}</span>` : `<span class="sp" data-sp="${k}">${kind === "r18" ? "🔞 R18" : "🙈 劇透"}・點擊顯示</span>`;
+  });
+}
+function comment(c, thread, reply = false, locked = false) {
+  if (c.deleted) return `<div class="c ${reply ? "reply" : ""}">${face("路人", "sm")}<div class="c-body deleted">${reply ? "此回覆已刪除" : "此留言已刪除"}</div></div>`;
+  const v = V(), mine = isMine(c.who), editing = state.editing === c.id;
+  const body = editing
+    ? `<div class="box" style="border-top:0;padding:6px 0"><textarea>${c.body}</textarea>
+        <div class="box-foot"><span class="tools"><button>🙈 劇透</button><button>🔞 R18</button></span>
+        <span style="display:flex;gap:8px"><button class="btn ghost small" data-edit-cancel>取消</button><button class="btn small" data-edit-save="${c.id}">儲存</button></span></div></div>`
+    : `<div class="c-body">${renderBody(c.body, c.id)}</div>`;
+  return `<div class="c ${reply ? "reply" : ""}">${face(c.who, "sm")}<div>
+    <div class="c-head"><b>${c.who}</b>${c.author ? '<span class="tag author">作者</span>' : ""}${v.owner && c.blocked ? '<span class="tag blocked">已封鎖</span>' : ""}<span class="tiny">· ${c.time}${c.edited ? " · 已編輯" : ""}</span></div>
+    ${c.to ? `<div class="c-reply-to">↪ 回覆 <b>@${c.to}</b></div>` : ""}
+    ${body}
+    ${editing ? "" : `<div class="c-actions">${canWrite() && !locked ? `<button data-reply="${thread}" data-to="${reply ? c.who : ""}">回覆</button>` : ""}
+      ${mine && !locked ? `<button data-edit="${c.id}">編輯</button>` : ""}
+      ${v.owner || mine ? '<button class="danger">刪除</button>' : ""}${v.owner && !c.author && !c.blocked ? '<button class="danger" data-block="' + c.who + '">封鎖</button>' : ""}</div>`}
+  </div></div>`;
+}
+function commentList(list, locked) {
+  return list.map((c) => {
+    const replies = c.replies || [], open = replies.length <= 2;
+    return comment(c, c.id, false, locked) + (!open ? `<button class="more-replies">↳ 查看前面 ${replies.length - 2} 則回覆</button>` : "")
+      + (open ? replies : replies.slice(-2)).map((r) => comment(r, c.id, true, locked)).join("")
+      + (state.replyTo && state.replyTo.thread === c.id ? replyBox(state.replyTo.to) : "");
+  }).join("");
+}
+function replyBox(to) {
+  return `<div class="box" style="margin-left:38px;border-top:0">${to ? `<div class="c-reply-to">↪ 回覆 <b>@${to}</b> ×</div>` : ""}
+    <textarea placeholder="回覆…"></textarea>
+    <div class="box-foot"><span class="tools"><button>🙈 劇透</button><button>🔞 R18</button></span>
+    <span style="display:flex;gap:8px;align-items:center"><span class="tiny">${asLabel("回覆")}</span><button class="btn ghost small" data-cancel>取消</button><button class="btn small" data-send>回覆</button></span></div></div>`;
+}
+function writeBox(locked) {
+  const v = V();
+  if (locked) return `<div class="gatebox">🔒 已鎖定</div>`;
+  if (!v.name) return `<div class="gatebox"><span>登入後才能留言</span><button class="btn small">登入</button></div>`;
+  if (v.blocked) return `<div class="gatebox">霧島 已限制你在這裡留言</div>`;
+  return `<div class="box"><textarea placeholder="留言…"></textarea>
+    <div class="box-foot"><span class="tools"><button>🙈 劇透</button><button>🔞 R18</button></span>
+    <span style="display:flex;gap:8px;align-items:center"><span class="tiny">${asLabel("留言")}</span><button class="btn small" data-send>留言</button></span></div></div>`;
+}
+
+// ---- 討論串列表：討論分頁與閱讀頁 modal 共用；點一串原地展開，同時只展開一串 ----
+function threadItem(t, { showAnchor = true } = {}) {
+  const need = anchorNeed(t.anchor), spoiler = need > V().progress && !state.passed.has(t.id);
+  const open = state.expanded === t.id;
+  const title = spoiler
+    ? `尚未讀到第 ${need} 話的討論`
+    : `${t.title}${t.locked ? ' <span class="tag lock">🔒 已鎖定</span>' : ""}`;
+  const head = `<div class="thread-row ${spoiler ? "masked" : ""} ${showAnchor ? "" : "no-face"}" data-expand="${t.id}">
+    ${showAnchor ? face(t.who) : ""}
+    <div><div class="title">${title}<span class="chev">${open ? "▾" : "▸"}</span></div>
+      <div class="sub">${showAnchor ? anchorTag(t.anchor) : ""}<span>${t.who}${t.author ? ' <span class="tag author">作者</span>' : ""}</span><span>· 最後回覆 ${t.last}</span></div></div>
+    <div class="count"><b>${t.replies}</b>回覆</div></div>`;
+  if (!open) return `<div class="t-item">${head}</div>`;
+  let inner;
+  if (spoiler) {
+    inner = `<div class="inline-gate"><b>這串在討論${need ? `第 ${need} 話` : ""}${t.anchor.type === "lore" ? "以後的設定" : ""}</b><span class="muted">你目前讀到第 ${V().progress} 話。</span>
+      <div class="acts"><button class="btn small">去讀第 ${V().progress + 1} 話</button><button class="btn ghost small" data-pass="${t.id}">直接看</button></div></div>`;
+  } else {
+    const mine = isMine(t.who), editing = state.editing === `thread:${t.id}`;
+    const menu = state.menu === t.id ? `<div class="menu">
+      ${mine ? `<button data-edit="thread:${t.id}">✏️ 編輯</button>` : ""}
+      ${V().owner ? `<button data-lock="${t.id}">${t.locked ? "解除鎖定" : "🔒 鎖定"}</button>` : ""}
+      <button>🔗 複製連結</button>
+      ${V().owner && !mine ? `<button class="danger" data-block="${t.who}">🚫 封鎖發串者</button>` : ""}
+      ${V().owner || mine ? '<button class="danger">🗑 刪除</button>' : ""}</div>` : "";
+    inner = editing
+      ? `<div class="box" style="border-top:0"><input class="edit-title" value="${t.title}" />
+          <textarea style="min-height:110px">${openings[t.id] || ""}</textarea>
+          <div class="box-foot"><span class="tools"><button>🙈 劇透</button><button>🔞 R18</button><button>👁 預覽</button></span>
+          <span style="display:flex;gap:8px"><button class="btn ghost small" data-edit-cancel>取消</button><button class="btn small" data-edit-save="thread:${t.id}">儲存</button></span></div></div>`
+      : `<div class="opening-head"><span class="tiny">${t.who} · 3 天前${t.edited ? " · 已編輯" : ""}</span><span class="menu-wrap"><button class="btn ghost small" data-menu="${t.id}">⋯</button>${menu}</span></div>
+      <div class="opening">${renderBody(openings[t.id] || "", t.id)}</div>`;
+    inner += `${commentList(threadReplies, t.locked)}${writeBox(t.locked)}`;
+  }
+  return `<div class="t-item open">${head}<div class="t-open">${inner}</div></div>`;
+}
+function review(items) {
+  return `<section class="review"><h2>⚠ 待決定／說明（不屬於產品 UI）</h2><ol>${items.map((i) => `<li>${i}</li>`).join("")}</ol></section>`;
+}
+
+// ---- 閱讀頁 modal ----
+function talkModal() {
+  const s = state.screen;
+  const list = s === "chapter"
+    ? threads.filter((t) => t.anchor && t.anchor.type === "story" && t.anchor.no === 3)
+    : threads.filter((t) => t.anchor && t.anchor.type === "lore" && t.anchor.id === "chen");
+  return `<div class="talk-modal" data-talk-backdrop><div class="talk-panel">
+    <header><b>${s === "chapter" ? "第 3 話的討論" : "老陳的討論"}</b>
+      <span style="display:flex;gap:6px;align-items:center">${canWrite() ? '<button class="btn small" data-new>發起討論</button>' : ""}<button class="x" data-talk-close aria-label="關閉">×</button></span></header>
+    <div class="body">${list.length ? list.map((t) => threadItem(t, { showAnchor: false })).join("") : '<div class="gatebox" style="justify-content:center;border:0;padding:40px 0">還沒有討論</div>'}</div>
+  </div></div>`;
+}
+function readingBar(title) {
+  const n = threads.filter((t) => t.anchor && (state.screen === "chapter" ? t.anchor.type === "story" && t.anchor.no === 3 : t.anchor.type === "lore")).length;
+  return `<div class="reading-bar"><span><button class="tool">‹ 目錄</button></span><span class="c">${title}</span>
+    <span class="r"><button class="tool">設定</button><button class="tool talk ${state.talkOpen ? "on" : ""}" data-talk>💬 討論${n ? `<span class="badge">${n}</span>` : ""}</button><button class="tool">Aa</button></span></div>`;
+}
+
+// ---- 畫面 ----
+const screens = {
+  chapter() {
+    return `${readingBar("第 3 話　雨夜的訪客")}
+    <div class="article"><h1 class="serif">第 3 話　雨夜的訪客</h1><div class="meta">霧島 · 4,213 字</div>
+      <p>雨下到第三天，旅館的鍋爐終於發出一聲長長的嘆息，像是終於撐不下去。</p>
+      <p>門鈴就在那時響了。站在門外的人渾身濕透，帽沿壓得很低，右手一直藏在大衣口袋裡。</p>
+      <p>「還有空房嗎？」他問。聲音被雨聲吃掉了一半。</p>
+      <p>管家沒有馬上回答，只是盯著那隻藏起來的手看了很久。</p></div>
+    <div class="bottom-bar"><button>‹ 上一話</button><button>下一話 ›</button></div>
+    <div class="narrow" style="padding-bottom:110px">${review([
+      `<b>正文完全不加區塊</b>：討論只是工具列上的一顆「💬 討論」按鈕（跟設定、外觀並排），按了才開 modal；關掉回到原本的閱讀位置。正文結尾、上下話按鈕都維持現狀。`,
+      `<b>按鈕上的數字</b>：錨定這一話的討論串數；沒有討論時不顯示數字，不做未讀紅點，避免干擾閱讀。`,
+      `<b>Modal 內容</b>：錨定這一話、有標題的討論串。點一列就在原地展開該串的開頭內文與全部回覆，再點一次收合；同時只展開一串。在這裡發起的討論自動錨定這一話，不用選「關於」。`,
+      `<b>Modal 裡的劇透</b>：讀者人就在第 3 話，這裡列的都是錨定第 3 話的內容，不需要再擋；串裡講後面劇情的，靠留言自己的劇透標籤。`,
+      `<b>手機</b>：modal 改成全螢幕（切右上「Mobile 390」看），關閉鍵在右上角。`,
+      `<b>Reader.tsx 不再擴大</b>：按鈕和 modal 做成獨立元件，Reader.tsx 只在工具列掛一顆按鈕。`,
+    ])}</div>`;
+  },
+  lore() {
+    return `${readingBar("設定：老陳")}
+    <div class="article"><div class="tiny" style="color:var(--lore);font-weight:700;letter-spacing:.1em">角色</div><h1 class="serif">老陳</h1>
+      <p>旅館的鍋爐工，十年前的爆炸案之後就沒有人再見過他。</p></div>
+    <div class="narrow">${review([
+      `<b>設定頁同一顆按鈕、同一個 modal</b>：列出錨定這篇設定的討論串。`,
+      `<b>防劇透</b>：這篇設定依賴第 10 話，讀者沒讀到時進設定頁本來就會先擋（設定集防劇透），modal 裡不另外擋。`,
+    ])}</div>`;
+  },
+  board() {
+    const all = threads;
+    const list = all.filter((t) => state.filter === "all" ? true : state.filter === "general" ? !t.anchor : t.anchor && t.anchor.type === state.filter)
+;
+    return `<div class="crumb">SteamLoom ／ 霧島 ／ 《霧都旅館》 ／ <b>討論</b></div>
+    <div class="wrap">
+      <div class="hero"><h1 class="serif">霧都旅館</h1><p>霧島、霧都 · 連載中 · 12 話</p></div>
+      <div class="section-tabs"><span>本篇</span><span>設定集</span><span class="on">討論<small>${all.length}</small></span></div>
+      <div class="board-bar">
+        <div class="filters">${[["all", "全部"], ["general", "一般"], ["story", "故事"], ["lore", "設定"]].map(([k, l]) => `<button class="${state.filter === k ? "on" : ""}" data-filter="${k}">${l}</button>`).join("")}</div>
+        <span style="display:flex;gap:8px;align-items:center"><select class="sort"><option>最新回覆</option><option>最新發起</option></select>
+        ${canWrite() ? '<button class="btn" data-new>發起討論</button>' : ""}</span>
+      </div>
+      <div class="card">${list.map((t) => threadItem(t)).join("")}</div>
+      ${review([
+        `<b>誰能開串、留言</b>：登入且有筆名的人都可以；被這部作品任一署名身份封鎖的人不行（跟創作者動態共用同一份封鎖名單——在動態封鎖的人，在討論版也不能開串、留言）。切「被封鎖的 F」看：沒有「發起討論」，留言框換成提示。`,
+        `<b>作者可以在討論版封鎖人</b>：留言旁的「封鎖」、串的「⋯ → 🚫 封鎖發串者」。封鎖記在這部作品的署名身份上，所以也會擋到那個身份的動態留言。`,
+        `<b>作者切換身份</b>：切「作者（霧島／霧都）」看留言框、回覆框、發起討論：「以 [霧島 ▾] 留言」只列這部作品署名過的身份。讀者固定用本人。`,
+        `<b>編輯</b>：每個人都能編輯自己的串（標題＋內文）與留言；串在「⋯ → ✏️ 編輯」，留言在「編輯」。每次編輯把舊版本存進編輯歷史欄位，v1 不顯示歷史，只在時間後面標「已編輯」（看「推薦給新讀者的切入點」與白夜那則回覆）。已鎖定的串不能再編輯留言。`,
+        `<b>沒有置頂</b>；作者的管理工具是鎖定（按下時先確認）、刪除、封鎖。`,
+        `<b>公開與不公開（僅限連結）的作品都有討論</b>，私人作品沒有。不公開作品的討論只有拿到分享連結的人看得到。`,
+        `<b>通知</b>：v1 先留接口、不發任何討論通知，之後再補。`,
+        `<b>不顯示字數</b>：發起討論、留言都不顯示字數。後端仍留一個寬鬆的上限防灌爆（不在畫面上提示）。`,
+        `<b>沒有獨立的討論串頁</b>：分享連結導到這個分頁並自動展開那一串（網址帶 <code>?thread=…</code>）。`,
+        `<b>篩選</b>：全部／一般（沒有指定故事或設定）／故事（每列標出是哪一話）／設定（標出是哪篇設定）。`,
+        `<b>防劇透</b>：切「讀者 青嵐（讀到第 5 話）」：錨定第 12 話、依賴第 10 話的設定串標題摺起來；點開先看到劇透閘門，按「直接看」才展開。`,
+      ])}
+    </div>`;
+  },
+};
+
+// 發起討論 dialog：錨點預設帶入目前所在的話／設定
+function newThreadDialog() {
+  // 從閱讀頁或設定頁的討論 modal 開：關於哪一話／哪篇設定已經確定，不顯示「關於」
+  const fromBoard = state.screen === "board";
+  const anchorField = fromBoard ? `<div class="field"><label>關於</label><div class="anchor-pick">
+      <button class="on" data-pick="none">不指定</button><button data-pick="story">故事</button><button data-pick="lore">設定</button></div>
+      <select id="pickStory" hidden>${episodeTitles.map((t, i) => `<option>第 ${i + 1} 話 ${t}</option>`).join("")}</select>
+      <select id="pickLore" hidden>${Object.values(lores).map((l) => `<option>${l.name}</option>`).join("")}<option>霧都旅館</option></select></div>` : "";
+  document.getElementById("modalRoot").innerHTML = `<div class="modal" data-close><div class="dialog">
+    <h3>${fromBoard ? "發起討論" : state.screen === "chapter" ? "發起討論・第 3 話" : "發起討論・老陳"}</h3>
+    <div class="field"><label>標題</label><input maxlength="60" /></div>
+    ${anchorField}
+    <div class="field"><label>內容</label><textarea></textarea></div>
+    <div class="box-foot" style="margin-bottom:12px"><span class="tools"><button>🙈 劇透</button><button>🔞 R18</button><button>👁 預覽</button></span></div>
+    <div class="dialog-actions"><span class="tiny">${asLabel("發起")}</span>
+      <span style="display:flex;gap:8px"><button class="btn ghost" data-close-btn>取消</button><button class="btn" data-create>發起</button></span></div>
+  </div></div>`;
+}
+
+// 鎖定討論串的確認：所有人都不能再回覆，但仍可閱讀
+function lockDialog(t) {
+  document.getElementById("modalRoot").innerHTML = `<div class="modal" data-close><div class="dialog">
+    <h3>鎖定「${t.title}」？</h3>
+    <p class="muted" style="line-height:1.7;margin:0 0 16px">鎖定後所有人都無法再回覆這個討論串，已經有的內容仍然看得到。之後可以解除鎖定。</p>
+    <div class="dialog-actions"><span></span><span style="display:flex;gap:8px"><button class="btn ghost" data-close-btn>取消</button><button class="btn" data-lock-confirm="${t.id}">鎖定</button></span></div>
+  </div></div>`;
+}
+
+// ---- render ----
+function render() {
+  document.querySelectorAll("[data-screen]").forEach((b) => b.classList.toggle("on", b.dataset.screen === state.screen));
+  document.getElementById("mockSub").innerHTML = "看的人：" + Object.entries(viewers).map(([k, v]) => `<button class="${state.viewer === k ? "on" : ""}" data-viewer="${k}">${v.label}</button>`).join("");
+  document.getElementById("viewerLabel").textContent = V().name ? `登入中：${V().name}` : "登入";
+  document.getElementById("main").innerHTML = screens[state.screen]();
+  document.getElementById("talkRoot").innerHTML = state.talkOpen && (state.screen === "chapter" || state.screen === "lore") ? talkModal() : "";
+}
+let snackTimer;
+function snack(t) { const el = document.getElementById("snack"); el.textContent = t; el.classList.add("on"); clearTimeout(snackTimer); snackTimer = setTimeout(() => el.classList.remove("on"), 2200); }
+
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-edit],[data-edit-cancel],[data-edit-save],[data-lock],[data-lock-confirm],[data-screen],[data-device],[data-viewer],[data-filter],[data-expand],[data-pass],[data-sp],[data-reply],[data-cancel],[data-send],[data-new],[data-menu],[data-talk],[data-talk-close],[data-talk-backdrop],[data-close],[data-close-btn],[data-create],[data-pick],[data-block]");
+  if (!t) { if (state.menu) { state.menu = null; render(); } return; }
+  const d = t.dataset;
+  if (d.screen) { state.screen = d.screen; state.expanded = null; state.replyTo = null; state.menu = null; state.talkOpen = false; return render(); }
+  if (d.device) { document.querySelectorAll("[data-device]").forEach((b) => b.classList.toggle("on", b === t)); document.body.classList.toggle("mobile", d.device === "mobile"); return; }
+  if (d.viewer) { state.viewer = d.viewer; state.passed.clear(); return render(); }
+  if (d.filter) { state.filter = d.filter; state.expanded = null; return render(); }
+  if (d.talk !== undefined) { state.talkOpen = true; state.expanded = null; return render(); }
+  if (d.talkClose !== undefined || (d.talkBackdrop !== undefined && e.target === t)) { state.talkOpen = false; state.replyTo = null; return render(); }
+  if (d.talkBackdrop !== undefined) return;
+  if (d.expand) { state.expanded = state.expanded === d.expand ? null : d.expand; state.replyTo = null; state.menu = null; return render(); }
+  if (d.pass) { state.passed.add(d.pass); return render(); }
+  if (d.sp) { state.sp.add(d.sp); return render(); }
+  if (d.reply) { state.replyTo = { thread: d.reply, to: d.to }; return render(); }
+  if (d.cancel !== undefined) { state.replyTo = null; return render(); }
+  if (d.send !== undefined) { state.replyTo = null; render(); return snack("已送出"); }
+  if (d.menu) { e.stopPropagation(); state.menu = state.menu === d.menu ? null : d.menu; return render(); }
+  if (d.edit) { state.editing = d.edit; state.menu = null; return render(); }
+  if (d.editCancel !== undefined) { state.editing = null; return render(); }
+  if (d.editSave) {
+    const [kind, id] = d.editSave.startsWith("thread:") ? ["thread", d.editSave.slice(7)] : ["comment", d.editSave];
+    const target = kind === "thread" ? threads.find((x) => x.id === id) : threadReplies.flatMap((c) => [c, ...(c.replies || [])]).find((c) => c.id === id);
+    target.edited = true; state.editing = null; render(); return snack("已儲存，舊版本已留存");
+  }
+  if (d.lock) {
+    const th = threads.find((x) => x.id === d.lock); state.menu = null;
+    if (th.locked) { th.locked = false; render(); return snack("已解除鎖定"); }
+    render(); return lockDialog(th);
+  }
+  if (d.lockConfirm) { threads.find((x) => x.id === d.lockConfirm).locked = true; document.getElementById("modalRoot").innerHTML = ""; render(); return snack("已鎖定，所有人都無法再回覆"); }
+  if (d.block) { return snack(`（mockup）封鎖 ${d.block}：同動態的 confirm`); }
+  if (d.new !== undefined) { return newThreadDialog(); }
+  if (d.pick !== undefined) {
+    t.parentElement.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === t));
+    document.getElementById("pickStory").hidden = d.pick !== "story";
+    document.getElementById("pickLore").hidden = d.pick !== "lore";
+    return;
+  }
+  if (d.closeBtn !== undefined || (d.close !== undefined && e.target === t)) { document.getElementById("modalRoot").innerHTML = ""; return; }
+  if (d.create !== undefined) { document.getElementById("modalRoot").innerHTML = ""; return snack("已發起討論"); }
+});
+render();
+</script>
+</body>
+</html>

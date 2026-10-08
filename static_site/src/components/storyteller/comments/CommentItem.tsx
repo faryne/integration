@@ -1,32 +1,52 @@
 import PersonIcon from "@mui/icons-material/Person";
-import { Avatar, Box, Chip, Link, Stack, Typography } from "@mui/material";
+import {
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Link,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { PostMarkerText } from "@/components/storyteller/timeline/PostMarkerText.tsx";
+import { PostTextInput } from "@/components/storyteller/timeline/PostTextInput.tsx";
+import {
+  postFullTime,
+  postTimeLabel,
+} from "@/components/storyteller/timeline/postTime.ts";
+import { postTextValid } from "@/helpers/postMarkers.ts";
 import { steamloomCreatorPath } from "@/helpers/steamloom.ts";
 import type { AuthorPostComment } from "@/types/storytellerTimeline.ts";
 import type { CommentConfirm, ReplyTarget } from "./CommentBox.tsx";
-import { PostMarkerText } from "./PostMarkerText.tsx";
-import { postFullTime, postTimeLabel } from "./postTime.ts";
 
-// 一則留言或回覆；已刪除的只留佔位（不顯示名字、時間、內文）
+// 一則留言或回覆；已刪除的只留佔位（不顯示名字、時間、內文）。
+// can_edit（只有討論版）時可以原地編輯，舊內文由後端存進編輯歷史。
 export function CommentItem({
   comment,
   threadId,
   isReply = false,
   canWrite,
   flash,
+  maxLength,
   onReply,
   onConfirm,
+  onEdit,
 }: {
   comment: AuthorPostComment;
   threadId: string;
   isReply?: boolean;
   canWrite: boolean;
   flash: string;
+  maxLength?: number;
   onReply: (target: ReplyTarget) => void;
   onConfirm: (confirm: CommentConfirm) => void;
+  onEdit?: (comment: AuthorPostComment, body: string, done: () => void) => void;
 }) {
   const name = comment.author?.pen_name;
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <Box
       id={`c-${comment.public_id}`}
@@ -117,6 +137,7 @@ export function CommentItem({
                 title={postFullTime(comment.created_at)}
               >
                 · {postTimeLabel(comment.created_at)}
+                {comment.edited && " · 已編輯"}
               </Typography>
             )}
           </Stack>
@@ -130,8 +151,38 @@ export function CommentItem({
               )}
             </Typography>
           )}
-          <PostMarkerText body={comment.body ?? ""} fontSize={14} />
-          <Stack direction="row" spacing={1.5}>
+          {draft !== null ? (
+            <Box sx={{ py: 0.75 }}>
+              <PostTextInput
+                value={draft}
+                onChange={setDraft}
+                maxLength={maxLength}
+                placeholder=""
+                minRows={2}
+                footer={
+                  <>
+                    <Button onClick={() => setDraft(null)}>取消</Button>
+                    <Button
+                      variant="contained"
+                      disabled={!postTextValid(draft, maxLength)}
+                      onClick={() =>
+                        onEdit?.(comment, draft, () => setDraft(null))
+                      }
+                    >
+                      儲存
+                    </Button>
+                  </>
+                }
+              />
+            </Box>
+          ) : (
+            <PostMarkerText body={comment.body ?? ""} fontSize={14} />
+          )}
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ display: draft !== null ? "none" : undefined }}
+          >
             {canWrite && (
               <CommentAction
                 label="回覆"
@@ -144,6 +195,12 @@ export function CommentItem({
                         : undefined,
                   })
                 }
+              />
+            )}
+            {comment.can_edit && onEdit && (
+              <CommentAction
+                label="編輯"
+                onClick={() => setDraft(comment.body ?? "")}
               />
             )}
             {comment.can_delete && (

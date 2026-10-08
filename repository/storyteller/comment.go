@@ -36,6 +36,15 @@ func (r *Repository) CommentsByTarget(targetType storytellerModel.CommentTargetT
 	return rows, err
 }
 
+// UpdateCommentBody 編輯討論版留言：舊內文先附加進 edit_history（MySQL 單表 UPDATE 由左到右賦值，
+// 所以 edit_history 讀到的是更新前的 body／edited_at），再寫入新內文。
+func (r *Repository) UpdateCommentBody(id uint64, body string) error {
+	return r.db.Exec(`UPDATE storyteller_comments SET
+		edit_history = JSON_ARRAY_APPEND(COALESCE(edit_history, JSON_ARRAY()), '$', JSON_OBJECT('body', body, 'edited_at', COALESCE(edited_at, created_at))),
+		body = ?, edited_at = ?
+		WHERE id = ? AND is_deleted = 0`, body, time.Now(), id).Error
+}
+
 func (r *Repository) SoftDeleteComment(id uint64) error {
 	return r.db.Model(&storytellerModel.Comment{}).Where("id = ?", id).
 		Updates(map[string]any{"is_deleted": true, "deleted_at": time.Now()}).Error

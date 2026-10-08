@@ -10,20 +10,24 @@ import (
 // 若封鎖對整個帳號生效，被封鎖者去另一個身份一試就知道兩者是同一人。
 // 被封鎖者仍可閱讀與按讚，只是不能在該身份的動態（以及之後的討論區）留言。
 
-// BlockCommenter 從留言旁的「封鎖」按鈕進來：封鎖者身份＝留言所在貼文的身份，前端不傳身份。
+// BlockCommenter 從留言旁的「封鎖」按鈕進來，前端不傳身份：動態留言以貼文的身份封鎖；
+// 討論版留言以作品的所有署名身份封鎖（這些身份在作品頁本來就公開是同一位作者，不會多洩漏）。
 func (s *Service) BlockCommenter(viewerID uint64, commentPublicID string) error {
-	comment, post, err := s.commentWithPost(commentPublicID)
+	comment, place, err := s.commentWithPlace(commentPublicID)
 	if err != nil {
 		return err
 	}
-	if post.UserID != viewerID {
+	if place.OwnerID != viewerID {
 		return ErrAuthorPostForbidden
 	}
 	if comment.UserID == viewerID {
 		return ErrCannotBlockSelf
 	}
+	if place.thread != nil {
+		return s.blockInProject(place.project, comment.UserID)
+	}
 	return s.repo.UpsertAuthorBlock(&storytellerModel.AuthorBlock{
-		PublicID: randomID(), UserID: post.UserID, ProfileID: post.ProfileID, BlockedUserID: comment.UserID,
+		PublicID: randomID(), UserID: place.post.UserID, ProfileID: place.post.ProfileID, BlockedUserID: comment.UserID,
 	})
 }
 

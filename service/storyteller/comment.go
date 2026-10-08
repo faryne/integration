@@ -56,9 +56,9 @@ func (s *Service) commentContext(viewerID uint64, post *storytellerModel.AuthorP
 	return key, state, nil
 }
 
-// replyTargets 驗證 parent／reply_to：parent 必須是同一則貼文的頂層留言，reply_to 必須是同一串的回覆；
-// reply_to 等於 parent 本身時視同回覆整串。
-func (s *Service) replyTargets(post *storytellerModel.AuthorPost, parentPublicID, replyToPublicID string) (*storytellerModel.Comment, *storytellerModel.Comment, error) {
+// replyTargets 驗證 parent／reply_to：parent 必須是同一個地方（同一則貼文／同一個討論串）的頂層留言，
+// reply_to 必須是同一串的回覆；reply_to 等於 parent 本身時視同回覆整串。
+func (s *Service) replyTargets(targetType storytellerModel.CommentTargetType, targetID uint64, parentPublicID, replyToPublicID string) (*storytellerModel.Comment, *storytellerModel.Comment, error) {
 	if parentPublicID == "" {
 		if replyToPublicID != "" {
 			return nil, nil, ErrInvalidReplyTarget
@@ -67,7 +67,7 @@ func (s *Service) replyTargets(post *storytellerModel.AuthorPost, parentPublicID
 	}
 	lookup := func(publicID string) (*storytellerModel.Comment, error) {
 		comment, err := s.repo.CommentByPublicID(publicID)
-		if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && (comment.TargetType != storytellerModel.CommentTargetAuthorPost || comment.TargetID != post.ID)) {
+		if errors.Is(err, gorm.ErrRecordNotFound) || (err == nil && (comment.TargetType != targetType || comment.TargetID != targetID)) {
 			return nil, ErrInvalidReplyTarget
 		}
 		return comment, err
@@ -111,7 +111,7 @@ func (s *Service) CreateComment(viewerID uint64, postPublicID string, input stor
 	if err != nil {
 		return nil, err
 	}
-	parent, replyTo, err := s.replyTargets(post, strings.TrimSpace(input.Parent), strings.TrimSpace(input.ReplyTo))
+	parent, replyTo, err := s.replyTargets(storytellerModel.CommentTargetAuthorPost, post.ID, strings.TrimSpace(input.Parent), strings.TrimSpace(input.ReplyTo))
 	if err != nil {
 		return nil, err
 	}
@@ -135,26 +135,71 @@ func (s *Service) CreateComment(viewerID uint64, postPublicID string, input stor
 	return &storytellerModel.CommentOutput{PublicID: row.PublicID}, nil
 }
 
-// commentWithPost 取未刪除的留言與它所在的貼文。
-func (s *Service) commentWithPost(commentPublicID string) (*storytellerModel.Comment, *storytellerModel.AuthorPost, error) {
+// commentPlace 是留言所在的地方：動態貼文或討論串。刪除、封鎖、編輯都依它判斷權限。
+type commentPlace struct {
+	// OwnerID 是這個地方的擁有者帳號（貼文擁有者／作品擁有者），可以刪任何留言、封鎖人
+	OwnerID uint64
+	post    *storytellerModel.AuthorPost
+	thread  *storytellerModel.DiscussionThread
+	project *storytellerModel.Project
+}
+
+// commentWithPlace 取未刪除的留言與它所在的地方。
+func (s *Service) commentWithPlace(commentPublicID string) (*storytellerModel.Comment, *commentPlace, error) {
 	comment, err := s.repo.CommentByPublicID(commentPublicID)
 	if err != nil {
 		return nil, nil, err
 	}
+	if comment.TargetType == storytellerModel.CommentTargetDiscussionThread {
+		thread, err := s.repo.DiscussionThreadByID(comment.TargetID)
+		if err != nil {
+			return nil, nil, err
+		}
+		project, err := s.repo.ProjectByID(thread.ProjectID)
+		if err != nil {
+			return nil, nil, err
+		}
+		return comment, &commentPlace{OwnerID: project.UserID, thread: thread, project: project}, nil
+	}
 	post, err := s.repo.AuthorPostByID(comment.TargetID)
-	return comment, post, err
+	if err != nil {
+		return nil, nil, err
+	}
+	return comment, &commentPlace{OwnerID: post.UserID, post: post}, nil
 }
 
-// DeleteComment：留言者本人，或貼文擁有者（管自己的版面）可刪；一律 soft delete、前端留佔位。
+// DeleteComment：留言者本人，或這個地方的擁有者（管自己的版面）可刪；一律 soft delete、前端留佔位。
 func (s *Service) DeleteComment(viewerID uint64, commentPublicID string) error {
-	comment, post, err := s.commentWithPost(commentPublicID)
+	comment, place, err := s.commentWithPlace(commentPublicID)
 	if err != nil {
 		return err
 	}
-	if comment.UserID != viewerID && post.UserID != viewerID {
+	if comment.UserID != viewerID && place.OwnerID != viewerID {
 		return ErrAuthorPostForbidden
 	}
 	return s.repo.SoftDeleteComment(comment.ID)
+}
+
+// EditComment 只開放討論版的留言：留言者本人、串沒有鎖定、沒有被作者封鎖；舊內文存進編輯歷史。
+func (s *Service) EditComment(viewerID uint64, commentPublicID string, input storytellerModel.CommentEditRequest) error {
+	comment, place, err := s.commentWithPlace(commentPublicID)
+	if err != nil {
+		return err
+	}
+	if place.thread == nil || comment.UserID != viewerID {
+		return ErrAuthorPostForbidden
+	}
+	if place.thread.LockedAt != nil {
+		return ErrDiscussionLocked
+	}
+	if err := s.ensureNotBlockedInProject(place.project, viewerID); err != nil {
+		return err
+	}
+	body, err := normalizePostBody(input.Body, "留言內容", storytellerModel.DiscussionCommentMaxRunes)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpdateCommentBody(comment.ID, body)
 }
 
 // AuthorPostDetail 是貼文單頁：貼文＋整串留言（含刪除佔位）＋看的人能不能留言。
@@ -197,7 +242,8 @@ func (s *Service) AuthorPostDetail(postPublicID string, viewerID uint64) (*story
 		}
 	}
 	output := &storytellerModel.AuthorPostDetailOutput{
-		Post: posts[0], Comments: buildCommentThreads(comments, book, post.Identity(), viewerID, blocked), CommentState: state,
+		Post: posts[0], CommentState: state,
+		Comments: buildCommentThreads(comments, book, commentScope{OwnerID: post.UserID, IsAuthor: func(c *storytellerModel.Comment) bool { return c.Identity() == post.Identity() }}, viewerID, blocked),
 	}
 	if state == storytellerModel.CommentViewerCanComment {
 		output.CommentAs = book.displayName(commentAs)
@@ -205,9 +251,19 @@ func (s *Service) AuthorPostDetail(postPublicID string, viewerID uint64) (*story
 	return output, nil
 }
 
+// commentScope 是組留言串時跟所在地方有關的規則。
+type commentScope struct {
+	// OwnerID 是這個地方的擁有者帳號：可以刪任何留言、可以封鎖別人
+	OwnerID uint64
+	// IsAuthor 決定「作者」標籤：動態＝貼文的身份；討論版＝作品擁有者的任一身份
+	IsAuthor func(*storytellerModel.Comment) bool
+	// Editable：討論版且串沒有鎖定、看的人沒有被封鎖時，留言者可以編輯自己的留言（動態留言不開放）
+	Editable bool
+}
+
 // buildCommentThreads 把平的留言列組成兩層：頂層依時間排序，回覆掛在所屬頂層底下。
-func buildCommentThreads(rows []storytellerModel.Comment, book *identityBook, postKey storytellerModel.AuthorIdentityKey, viewerID uint64, blocked map[uint64]bool) []storytellerModel.CommentOutput {
-	isOwner := viewerID != 0 && viewerID == postKey.UserID
+func buildCommentThreads(rows []storytellerModel.Comment, book *identityBook, scope commentScope, viewerID uint64, blocked map[uint64]bool) []storytellerModel.CommentOutput {
+	isOwner := viewerID != 0 && viewerID == scope.OwnerID
 	byID := make(map[uint64]*storytellerModel.Comment, len(rows))
 	for i := range rows {
 		byID[rows[i].ID] = &rows[i]
@@ -218,11 +274,13 @@ func buildCommentThreads(rows []storytellerModel.Comment, book *identityBook, po
 		}
 		createdAt := row.CreatedAt
 		out := storytellerModel.CommentOutput{
-			PublicID: row.PublicID, Body: row.Body, IsPostAuthor: row.Identity() == postKey, CreatedAt: &createdAt,
+			PublicID: row.PublicID, Body: row.Body, IsPostAuthor: scope.IsAuthor(row), CreatedAt: &createdAt,
+			Edited:    row.EditedAt != nil,
+			CanEdit:   scope.Editable && viewerID != 0 && row.UserID == viewerID,
 			CanDelete: viewerID != 0 && (row.UserID == viewerID || isOwner),
 			Blocked:   isOwner && blocked[row.UserID],
 		}
-		out.CanBlock = isOwner && row.UserID != postKey.UserID && !out.Blocked
+		out.CanBlock = isOwner && row.UserID != scope.OwnerID && !out.Blocked
 		// 留言者身份已不存在時 Author 留 nil，前端顯示「已不存在的使用者」、不給連結
 		if identity, ok := book.lookup(row.Identity()); ok {
 			out.Author = &identity

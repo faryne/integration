@@ -116,7 +116,8 @@ func TestBuildCommentThreads(t *testing.T) {
 	}
 
 	// 作者本人看：可刪全部、可封鎖別人；被封鎖的人標 Blocked、不再出現封鎖按鈕
-	threads := buildCommentThreads(rows, testIdentityBook(), post, 1, map[uint64]bool{3: true})
+	scope := commentScope{OwnerID: post.UserID, IsAuthor: func(c *storytellerModel.Comment) bool { return c.Identity() == post }}
+	threads := buildCommentThreads(rows, testIdentityBook(), scope, 1, map[uint64]bool{3: true})
 	require.Len(t, threads, 2)
 	require.Equal(t, "白夜", threads[0].Author.PenName)
 	require.True(t, threads[0].CanDelete && threads[0].CanBlock)
@@ -138,7 +139,7 @@ func TestBuildCommentThreads(t *testing.T) {
 	require.Len(t, threads[1].Replies, 1)
 
 	// 讀者白夜看：只能刪自己的，不能封鎖
-	threads = buildCommentThreads(rows, testIdentityBook(), post, 2, nil)
+	threads = buildCommentThreads(rows, testIdentityBook(), scope, 2, nil)
 	require.True(t, threads[0].CanDelete)
 	require.False(t, threads[0].CanBlock)
 	require.False(t, threads[0].Replies[0].CanDelete)

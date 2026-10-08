@@ -3,10 +3,11 @@ import { Link as RouterLink } from "react-router-dom";
 import { useAuthorPost, useTimelineAction } from "@/apis/storyteller.ts";
 import { useState } from "react";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
-import { CommentBox } from "@/components/storyteller/timeline/CommentBox.tsx";
+import { CommentBox } from "@/components/storyteller/comments/CommentBox.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { steamloomPostPath, steamloomPostsPath } from "@/helpers/steamloom.ts";
 import type { StorytellerNotification } from "@/types/storytellerNotification.ts";
+import { COMMENT_MAX_LENGTH } from "@/types/storytellerTimeline.ts";
 import { NotificationActorAvatar } from "./StorytellerNotificationFollow.tsx";
 import { notificationActorName } from "./storytellerNotificationUI.ts";
 
@@ -155,7 +156,8 @@ function QuickReply({ n }: { n: StorytellerNotification }) {
     <Stack spacing={1}>
       {data?.comment_state === "ok" && p.thread_public_id && (
         <CommentBox
-          asName={data.comment_as ?? ""}
+          asOptions={data.comment_as ? [data.comment_as] : []}
+          maxLength={COMMENT_MAX_LENGTH}
           target={{
             thread: p.thread_public_id,
             to: isReply
@@ -167,7 +169,7 @@ function QuickReply({ n }: { n: StorytellerNotification }) {
           }}
           placeholder={`直接回覆 ${notificationActorName(n)}…`}
           pending={action.isPending}
-          onSend={(body, done) =>
+          onSend={(body, _as, done) =>
             action.mutate(
               {
                 type: "comment",

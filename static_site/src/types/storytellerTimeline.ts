@@ -56,6 +56,9 @@ export interface AuthorPostComment {
   is_post_author?: boolean;
   body?: string;
   reply_to?: CommentReplyTo;
+  // edited／can_edit 只有討論版的留言會有（動態留言不開放編輯）
+  edited?: boolean;
+  can_edit?: boolean;
   can_delete?: boolean;
   can_block?: boolean;
   // 只有貼文擁有者看得到：這位留言者已被封鎖
@@ -97,4 +100,6 @@ export interface CommentInput {
   body: string;
   parent?: string;
   reply_to?: string;
+  // 討論版：作品作者用哪個署名身份發言
+  as?: string;
 }
