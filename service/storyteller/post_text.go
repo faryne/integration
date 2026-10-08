@@ -32,13 +32,22 @@ func maskSpoilers(text string) string {
 	})
 }
 
-// postExcerpt 是遮蔽後再截斷的單行摘要（換行壓成空白）。先遮再截，避免截斷把標記切成「沒關閉」而外洩。
-func postExcerpt(text string) string {
+// postShareExcerptRunes 是分享預覽（og:description）的貼文摘要長度，平台卡片大約只顯示這麼多
+const postShareExcerptRunes = 150
+
+// postExcerpt 是通知用的貼文／留言摘要
+func postExcerpt(text string) string { return maskedExcerpt(text, postExcerptRunes) }
+
+// PostShareExcerpt 是分享預覽用的貼文摘要，遮蔽規則跟通知相同
+func PostShareExcerpt(text string) string { return maskedExcerpt(text, postShareExcerptRunes) }
+
+// maskedExcerpt 是遮蔽後再截斷的單行摘要（換行壓成空白）。先遮再截，避免截斷把標記切成「沒關閉」而外洩。
+func maskedExcerpt(text string, limit int) string {
 	text = strings.Join(strings.Fields(maskSpoilers(text)), " ")
-	if utf8.RuneCountInString(text) <= postExcerptRunes {
+	if utf8.RuneCountInString(text) <= limit {
 		return text
 	}
-	return string([]rune(text)[:postExcerptRunes]) + "…"
+	return string([]rune(text)[:limit]) + "…"
 }
 
 // normalizePostBody 去掉頭尾空白並檢查字數（標記本身也算字數）；label 是錯誤訊息裡的名稱。

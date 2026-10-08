@@ -27,6 +27,8 @@ type Meta struct {
 	SiteURL string
 	// SchemaType 是 JSON-LD 的 @type，預設 WebPage；單篇故事／設定用 CreativeWork
 	SchemaType string
-	// AuthorName 只在 CreativeWork 時輸出成 JSON-LD 的 author
+	// AuthorName 有值時輸出成 JSON-LD 的 author（單篇故事、單則動態）
 	AuthorName string
+	// TwitterCard 預設 summary_large_image；頭像這類方圖用 summary 小卡
+	TwitterCard string
 }

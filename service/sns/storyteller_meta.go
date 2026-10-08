@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 
 	modelSNS "faryne.dev/model/entity/sns"
 	storytellerModel "faryne.dev/model/entity/storyteller"
@@ -30,8 +29,6 @@ const (
 	storytellerNotFoundTitle         = "找不到這個頁面"
 	storytellerNotFoundDescription   = "這個頁面不存在，或作者還沒公開。"
 	storytellerRestrictedDescription = "此作品為限制級內容，需年滿 18 歲才能閱讀。"
-	// storytellerDescriptionMaxRunes 是作者自介當描述時的長度上限，平台卡片大約只顯示這麼多
-	storytellerDescriptionMaxRunes = 150
 )
 
 var (
@@ -41,8 +38,6 @@ var (
 	// work/:project/(story|lore)/:id 是現行網址；分組同上（1＝專案路徑）。
 	// 開頭的 story/、內容的 image/、沒有種類前綴的 /:id 都只保留舊外部連結的 meta 相容性。
 	storytellerWorkPattern = regexp.MustCompile(`^/storyteller/(?:work|story)/([^/]+)(?:/(?:(story|image|lore)/)?([^/]+))?(?:/versions/[^/]+)?$`)
-	// 作者頁三個 Tab 共用同一張卡
-	storytellerUserPattern = regexp.MustCompile(`^/storyteller/user/([^/]+)(?:/(?:favorite-projects|favorite-authors))?$`)
 	// 舊網址沒有種類前綴時，這些是作品首頁的分頁，不是內容 public_id
 	storytellerTabSegments = map[string]bool{"lores": true, "stories": true, "images": true}
 )
@@ -51,7 +46,6 @@ var (
 var (
 	fetchStorytellerPublicProjectMeta = fetchStorytellerPublicProjectMetaFromService
 	fetchStorytellerSharedProjectMeta = fetchStorytellerSharedProjectMetaFromService
-	fetchStorytellerAuthorMeta        = fetchStorytellerAuthorMetaFromService
 	storytellerFirstPageImage         = func(projectID uint64, story storytellerModel.Story) (string, string, bool) {
 		return storyteller.NewService().StoryFirstPageImage(projectID, story)
 	}
@@ -78,12 +72,6 @@ type storytellerProjectMeta struct {
 	Focal        storytellerModel.ProjectCoverFocalPoint
 	// Items 以 storytellerItemKey 為 key，只含讀者看得到的故事與設定
 	Items map[string]storytellerItemMeta
-}
-
-type storytellerAuthorMeta struct {
-	PenName   string
-	Bio       string
-	AvatarURL string
 }
 
 // storytellerTarget 是一個閱讀頁網址解析後的結果：NotFound＝讀者看不到（私人、草稿、未公開、不存在），
@@ -177,35 +165,6 @@ func applyStorytellerWorkMeta(meta *modelSNS.Meta, matches []string) {
 	}
 }
 
-// applyStorytellerAuthorMeta 作者頁：筆名、自介、頭像
-func applyStorytellerAuthorMeta(meta *modelSNS.Meta, matches []string) {
-	penName, err := url.PathUnescape(matches[1])
-	if err != nil {
-		applyStorytellerNotFoundMeta(meta)
-		return
-	}
-	author, err := fetchStorytellerAuthorMeta(penName)
-	if err != nil {
-		if repository.IsRecordNotFound(err) {
-			applyStorytellerNotFoundMeta(meta)
-		} else {
-			log.Logger().Warn("SNS storyteller author fetch failed", zap.String("pen_name", penName), zap.Error(err))
-		}
-		return
-	}
-	meta.Title = fullTitleForSite(author.PenName+" 的作品", meta.SiteName)
-	meta.Description = fmt.Sprintf("%s 在 SteamLoom 發表的作品。", author.PenName)
-	if bio := truncateRunes(strings.Join(strings.Fields(author.Bio), " "), storytellerDescriptionMaxRunes); bio != "" {
-		meta.Description = bio
-	}
-	meta.Type = "profile"
-	meta.SchemaType = "ProfilePage"
-	if author.AvatarURL != "" {
-		// 頭像尺寸不固定（Gravatar、登入提供者的照片），不填寬高讓平台自己判斷
-		meta.Image, meta.ImageWidth, meta.ImageHeight = author.AvatarURL, 0, 0
-	}
-}
-
 // applyStorytellerNotFoundMeta 讀者看不到的頁面：回 404，不帶任何作品資訊
 func applyStorytellerNotFoundMeta(meta *modelSNS.Meta) {
 	meta.Status = 404
@@ -280,14 +239,6 @@ func fetchStorytellerSharedProjectMetaFromService(shareToken string) (storytelle
 	return storytellerProjectMetaFromOutput(project), nil
 }
 
-func fetchStorytellerAuthorMetaFromService(penName string) (storytellerAuthorMeta, error) {
-	_, _, author, err := storyteller.NewService().PublicUserProjects(penName, 1, 1, 0)
-	if err != nil {
-		return storytellerAuthorMeta{}, err
-	}
-	return storytellerAuthorMeta{PenName: author.PenName, Bio: author.Bio, AvatarURL: author.AvatarURL}, nil
-}
-
 // storytellerProjectMetaFromOutput 只收讀者看得到的內容：PublicProject／SharedProject 已經濾掉草稿與未公開的設定
 func storytellerProjectMetaFromOutput(project *storytellerModel.ProjectOutput) storytellerProjectMeta {
 	items := make(map[string]storytellerItemMeta, len(project.Stories)+len(project.Lores))
@@ -335,11 +286,4 @@ func storytellerPenNames(authors []storytellerModel.AuthorIdentityOutput) string
 		}
 	}
 	return strings.Join(names, "、")
-}
-
-func truncateRunes(value string, limit int) string {
-	if utf8.RuneCountInString(value) <= limit {
-		return value
-	}
-	return string([]rune(value)[:limit]) + "…"
 }
