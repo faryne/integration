@@ -15,8 +15,11 @@ type AuthorProfile struct {
 	// SNSPrivateKeys 是 SNSLinks 裡設成「僅自己」的 key，公開輸出時濾掉（見 PublicSNSLinks）
 	SNSPrivateKeys StringList `gorm:"column:sns_private_keys;type:json" json:"sns_private_keys"`
 	DeletedAt      *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt      time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	IsDeleted      bool       `gorm:"column:is_deleted" json:"-"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AuthorProfile) TableName() string {

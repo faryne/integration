@@ -86,7 +86,7 @@ func (r *Repository) SaveAuthorProfile(row *storytellerModel.AuthorProfile) erro
 func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) error {
 	now := time.Now()
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(row).Updates(map[string]any{"deleted_at": &now}).Error; err != nil {
+		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&storytellerModel.AuthorFavorite{}).

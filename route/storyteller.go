@@ -26,6 +26,8 @@ func Storyteller(app *fiber.App) {
 	// 專案討論版：公開讀取（不公開作品帶 ?share=）
 	group.Get("/story/:project/discussions", storyteller.PublicDiscussionThreads)
 	group.Get("/discussions/:thread", storyteller.PublicDiscussionThread)
+	// 檢舉理由：公開讀取，檢舉 dialog 依對象種類過濾
+	group.Get("/moderation-reasons", storyteller.ModerationReasons)
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
@@ -108,6 +110,9 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/discussions/:thread/lock", storyteller.UnlockDiscussionThread)
 	authenticated.Post("/discussions/:thread/block", storyteller.BlockDiscussionStarter)
 	authenticated.Post("/discussions/:thread/comments", storyteller.CreateDiscussionComment)
+
+	// 讀者檢舉：目標可見度沿用閱讀規則，不公開作品裡的東西帶 share
+	authenticated.Post("/reports", storyteller.CreateReport)
 
 	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)

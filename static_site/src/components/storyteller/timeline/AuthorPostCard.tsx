@@ -18,6 +18,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTimelineAction } from "@/apis/storyteller.ts";
+import { useOpenReport } from "@/components/storyteller/report/reportContext.ts";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { steamloomPostPath, steamloomPostsPath } from "@/helpers/steamloom.ts";
@@ -42,6 +43,7 @@ export function AuthorPostCard({
 }) {
   const navigate = useNavigate();
   const action = useTimelineAction();
+  const openReport = useOpenReport();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const penName = post.author.pen_name;
@@ -185,6 +187,21 @@ export function AuthorPostCard({
         >
           🔗 複製連結
         </MenuItem>
+        {!post.is_owner && (
+          <MenuItem
+            sx={{ color: "error.main" }}
+            onClick={() => {
+              setMenuAnchor(null);
+              openReport({
+                type: "author_post",
+                publicId: post.public_id,
+                label: `${penName} 的動態`,
+              });
+            }}
+          >
+            🚩 檢舉
+          </MenuItem>
+        )}
         {post.is_owner && (
           <MenuItem
             sx={{ color: "error.main" }}

@@ -15,6 +15,7 @@ import {
   useDiscussionThread,
 } from "@/apis/storyteller.ts";
 import { CommentThreadView } from "@/components/storyteller/comments/CommentThreadView.tsx";
+import { useOpenReport } from "@/components/storyteller/report/reportContext.ts";
 import { StorytellerMascotDialog } from "@/components/storyteller/StorytellerMascotDialog.tsx";
 import { PostMarkerText } from "@/components/storyteller/timeline/PostMarkerText.tsx";
 import { PostTextInput } from "@/components/storyteller/timeline/PostTextInput.tsx";
@@ -34,7 +35,7 @@ import {
 type Notify = (message: string, severity?: "success" | "error") => void;
 type Confirm = "lock" | "delete" | "block";
 
-// 展開的一串：開頭內文（可編輯）、⋯ 選單（編輯／鎖定／複製連結／封鎖發串者／刪除）、整串留言。
+// 展開的一串：開頭內文（可編輯）、⋯ 選單（編輯／鎖定／複製連結／檢舉／封鎖發串者／刪除）、整串留言。
 export function DiscussionThreadPanel({
   summary,
   context,
@@ -53,6 +54,7 @@ export function DiscussionThreadPanel({
     context.share,
   );
   const action = useDiscussionAction(context.share);
+  const openReport = useOpenReport();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [draft, setDraft] = useState<{ title: string; body: string } | null>(
@@ -214,6 +216,7 @@ export function DiscussionThreadPanel({
         }}
         onNotify={onNotify}
         onLoginRequired={onLoginRequired}
+        share={context.share}
       />
       <Menu
         anchorEl={menuAnchor}
@@ -256,6 +259,22 @@ export function DiscussionThreadPanel({
         >
           🔗 複製連結
         </MenuItem>
+        {!thread.is_mine && (
+          <MenuItem
+            sx={{ color: "error.main" }}
+            onClick={() => {
+              setMenuAnchor(null);
+              openReport({
+                type: "discussion_thread",
+                publicId: threadId,
+                share: context.share,
+                label: `討論串「${thread.title}」`,
+              });
+            }}
+          >
+            🚩 檢舉
+          </MenuItem>
+        )}
         {thread.can_block && (
           <MenuItem
             sx={{ color: "error.main" }}

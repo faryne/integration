@@ -4,6 +4,7 @@ import {
 } from "@/data/storyteller.ts";
 import { useStorytellerNotificationKinds } from "@/apis/storyteller.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
+import { removedByStaffText } from "@/helpers/moderationReasons.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import type {
   StorytellerNotification,
@@ -97,7 +98,9 @@ export function notificationHeadline(
       return {
         actor: notificationActorName(n),
         text: count > 1 ? ` 發了 ${count} 則新動態` : " 發了新動態",
-        sub: p.deleted ? "（動態已刪除）" : (p.posts?.[0]?.excerpt ?? p.body),
+        sub: p.deleted
+          ? deletedText("動態", p.delete_reason)
+          : (p.posts?.[0]?.excerpt ?? p.body),
       };
     }
     case "comment":
@@ -109,7 +112,9 @@ export function notificationHeadline(
             : p.target_pen_name
               ? ` 留言了你的筆名 ${p.target_pen_name} 的貼文`
               : " 留言了你的貼文",
-        sub: p.deleted ? "（留言已刪除）" : `「${p.comment_excerpt ?? ""}」`,
+        sub: p.deleted
+          ? deletedText("留言", p.delete_reason)
+          : `「${p.comment_excerpt ?? ""}」`,
       };
     case "security":
       return {
@@ -252,3 +257,10 @@ export function notificationStoryPath(
 
 // 實作共用 helpers/apiError.ts；保留這個名字讓既有通知元件不用改 import
 export const notificationErrorMessage = apiErrorMessage;
+
+// 已刪除的貼文／留言：本人刪的「（留言已刪除）」，站方移除的補列原因
+function deletedText(kind: string, reason?: string) {
+  return reason
+    ? `（${kind}${removedByStaffText(reason)}）`
+    : `（${kind}已刪除）`;
+}

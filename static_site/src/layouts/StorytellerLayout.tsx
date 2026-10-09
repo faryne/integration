@@ -4,6 +4,7 @@ import { SteamLoomMark } from "@/components/storyteller/SteamLoomMark.tsx";
 import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
+import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import {
@@ -257,330 +258,336 @@ export function StorytellerLayout() {
         value={{ appearance, setAppearance }}
       >
         <StorytellerHeaderContext.Provider value={headerContextValue}>
-          <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-            <PenNameDialog
-              open={Boolean(showPenNameDialog)}
-              onCompleted={welcomeGuide.onPenNameCompleted}
-            />
-            <WelcomeGuideDialog
-              open={welcomeGuide.open}
-              onClose={welcomeGuide.close}
-            />
-            <AppBar
-              position="sticky"
-              color="default"
-              elevation={0}
-              sx={{
-                borderBottom: "1px solid",
-                borderColor: "divider",
-                backgroundColor:
-                  "color-mix(in srgb, var(--storyteller-surface-base) 88%, transparent)",
-                backdropFilter: "blur(18px)",
-              }}
-            >
-              <Toolbar sx={{ minHeight: { xs: 60, sm: 68 } }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  sx={{ flex: "1 1 0", minWidth: 0 }}
-                >
-                  <Box
-                    sx={{
-                      color: "primary.main",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
+          <ReportProvider>
+            <Stack sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+              <PenNameDialog
+                open={Boolean(showPenNameDialog)}
+                onCompleted={welcomeGuide.onPenNameCompleted}
+              />
+              <WelcomeGuideDialog
+                open={welcomeGuide.open}
+                onClose={welcomeGuide.close}
+              />
+              <AppBar
+                position="sticky"
+                color="default"
+                elevation={0}
+                sx={{
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                  backgroundColor:
+                    "color-mix(in srgb, var(--storyteller-surface-base) 88%, transparent)",
+                  backdropFilter: "blur(18px)",
+                }}
+              >
+                <Toolbar sx={{ minHeight: { xs: 60, sm: 68 } }}>
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    sx={{ flex: "1 1 0", minWidth: 0 }}
                   >
-                    <SteamLoomMark size={24} />
-                  </Box>
-                  <Typography
-                    component={RouterLink}
-                    to={steamloomPath()}
-                    variant="h6"
-                    sx={{
-                      color: "inherit",
-                      textDecoration: "none",
-                      lineHeight: 1,
-                      display: readerHeaderVisible
-                        ? { xs: "none", md: "block" }
-                        : "block",
-                    }}
-                  >
-                    {STORYTELLER_APP_NAME}
-                  </Typography>
-                  {readerHeaderVisible && (
-                    <Typography
-                      noWrap
-                      fontWeight={800}
-                      sx={{ display: { xs: "block", md: "none" }, minWidth: 0 }}
+                    <Box
+                      sx={{
+                        color: "primary.main",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
                     >
-                      {readerHeader?.title}
+                      <SteamLoomMark size={24} />
+                    </Box>
+                    <Typography
+                      component={RouterLink}
+                      to={steamloomPath()}
+                      variant="h6"
+                      sx={{
+                        color: "inherit",
+                        textDecoration: "none",
+                        lineHeight: 1,
+                        display: readerHeaderVisible
+                          ? { xs: "none", md: "block" }
+                          : "block",
+                      }}
+                    >
+                      {STORYTELLER_APP_NAME}
                     </Typography>
+                    {readerHeaderVisible && (
+                      <Typography
+                        noWrap
+                        fontWeight={800}
+                        sx={{
+                          display: { xs: "block", md: "none" },
+                          minWidth: 0,
+                        }}
+                      >
+                        {readerHeader?.title}
+                      </Typography>
+                    )}
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      sx={{
+                        display: readerHeaderVisible
+                          ? { xs: "none", md: "flex" }
+                          : "flex",
+                      }}
+                    >
+                      {quickSearchOpen ? (
+                        <Stack
+                          component="form"
+                          direction="row"
+                          alignItems="center"
+                          spacing={0.5}
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            submitQuickSearch();
+                          }}
+                        >
+                          <TextField
+                            autoFocus
+                            size="small"
+                            variant="standard"
+                            placeholder="搜尋作品..."
+                            value={quickSearchKeyword}
+                            onChange={(event) =>
+                              setQuickSearchKeyword(event.target.value)
+                            }
+                            onBlur={() => {
+                              if (!quickSearchKeyword.trim()) {
+                                setQuickSearchOpen(false);
+                              }
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Escape") {
+                                setQuickSearchOpen(false);
+                                setQuickSearchKeyword("");
+                              }
+                            }}
+                            sx={{ width: { xs: 120, sm: 200 } }}
+                          />
+                          <IconButton
+                            type="submit"
+                            aria-label="送出搜尋"
+                            color="inherit"
+                            size="small"
+                          >
+                            <SearchIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            aria-label="關閉搜尋"
+                            color="inherit"
+                            size="small"
+                            onClick={() => {
+                              setQuickSearchOpen(false);
+                              setQuickSearchKeyword("");
+                            }}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      ) : (
+                        <Tooltip title="全站搜尋">
+                          <IconButton
+                            aria-label="全站搜尋"
+                            color="inherit"
+                            size="small"
+                            onClick={() => setQuickSearchOpen(true)}
+                          >
+                            <SearchIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      <StorytellerAppearanceMenu />
+                    </Stack>
+                  </Stack>
+                  {readerHeaderVisible && (
+                    <Box
+                      component="section"
+                      aria-label="目前閱讀內容"
+                      sx={[
+                        readerHeader?.coverUrl
+                          ? (theme) => ({
+                              px: 1.5,
+                              py: 0.75,
+                              border: "1px solid",
+                              borderColor: "divider",
+                              backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.62)} 100%), url("${readerHeader.coverUrl}")`,
+                              backgroundSize: "cover",
+                              backgroundPosition:
+                                storytellerCoverObjectPosition(
+                                  readerHeader.coverLayout,
+                                  readerHeader.coverFocalPoint,
+                                ),
+                            })
+                          : {},
+                        {
+                          display: { xs: "none", md: "grid" },
+                          gridTemplateColumns: {
+                            md: "minmax(0, 1fr)",
+                            lg: "minmax(110px, .36fr) minmax(180px, .64fr)",
+                            xl: "minmax(110px, .28fr) minmax(210px, .4fr) minmax(0, 1fr)",
+                          },
+                          alignItems: "center",
+                          gap: 2,
+                          flex: {
+                            md: "0 1 320px",
+                            lg: "0 1 500px",
+                            xl: "0 1 760px",
+                          },
+                          minWidth: 0,
+                          mx: 2,
+                        },
+                      ]}
+                    >
+                      <Typography
+                        variant="overline"
+                        color="primary.main"
+                        noWrap
+                        sx={{
+                          display: { md: "none", lg: "block" },
+                          letterSpacing: "0.1em",
+                        }}
+                      >
+                        {readerHeader?.projectName}
+                      </Typography>
+                      <Typography variant="body2" fontWeight={800} noWrap>
+                        {readerHeader?.title}
+                      </Typography>
+                      {readerHeader?.summary && (
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                          sx={{ display: { md: "none", xl: "block" } }}
+                        >
+                          {readerHeader.summary}
+                        </Typography>
+                      )}
+                    </Box>
                   )}
                   <Stack
                     direction="row"
                     alignItems="center"
-                    sx={{
-                      display: readerHeaderVisible
-                        ? { xs: "none", md: "flex" }
-                        : "flex",
-                    }}
+                    justifyContent="flex-end"
+                    sx={{ flex: "1 1 0", minWidth: 0 }}
                   >
-                    {quickSearchOpen ? (
-                      <Stack
-                        component="form"
-                        direction="row"
-                        alignItems="center"
-                        spacing={0.5}
-                        onSubmit={(event) => {
-                          event.preventDefault();
-                          submitQuickSearch();
-                        }}
-                      >
-                        <TextField
-                          autoFocus
-                          size="small"
-                          variant="standard"
-                          placeholder="搜尋作品..."
-                          value={quickSearchKeyword}
-                          onChange={(event) =>
-                            setQuickSearchKeyword(event.target.value)
-                          }
-                          onBlur={() => {
-                            if (!quickSearchKeyword.trim()) {
-                              setQuickSearchOpen(false);
-                            }
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key === "Escape") {
-                              setQuickSearchOpen(false);
-                              setQuickSearchKeyword("");
-                            }
-                          }}
-                          sx={{ width: { xs: 120, sm: 200 } }}
-                        />
-                        <IconButton
-                          type="submit"
-                          aria-label="送出搜尋"
-                          color="inherit"
-                          size="small"
-                        >
-                          <SearchIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          aria-label="關閉搜尋"
-                          color="inherit"
-                          size="small"
-                          onClick={() => {
-                            setQuickSearchOpen(false);
-                            setQuickSearchKeyword("");
-                          }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Stack>
-                    ) : (
-                      <Tooltip title="全站搜尋">
-                        <IconButton
-                          aria-label="全站搜尋"
-                          color="inherit"
-                          size="small"
-                          onClick={() => setQuickSearchOpen(true)}
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                    <StorytellerAppearanceMenu />
-                  </Stack>
-                </Stack>
-                {readerHeaderVisible && (
-                  <Box
-                    component="section"
-                    aria-label="目前閱讀內容"
-                    sx={[
-                      readerHeader?.coverUrl
-                        ? (theme) => ({
-                            px: 1.5,
-                            py: 0.75,
-                            border: "1px solid",
-                            borderColor: "divider",
-                            backgroundImage: `linear-gradient(90deg, ${alpha(theme.palette.background.paper, 0.94)} 0%, ${alpha(theme.palette.background.paper, 0.82)} 55%, ${alpha(theme.palette.background.paper, 0.62)} 100%), url("${readerHeader.coverUrl}")`,
-                            backgroundSize: "cover",
-                            backgroundPosition: storytellerCoverObjectPosition(
-                              readerHeader.coverLayout,
-                              readerHeader.coverFocalPoint,
-                            ),
-                          })
-                        : {},
-                      {
-                        display: { xs: "none", md: "grid" },
-                        gridTemplateColumns: {
-                          md: "minmax(0, 1fr)",
-                          lg: "minmax(110px, .36fr) minmax(180px, .64fr)",
-                          xl: "minmax(110px, .28fr) minmax(210px, .4fr) minmax(0, 1fr)",
-                        },
-                        alignItems: "center",
-                        gap: 2,
-                        flex: {
-                          md: "0 1 320px",
-                          lg: "0 1 500px",
-                          xl: "0 1 760px",
-                        },
-                        minWidth: 0,
-                        mx: 2,
-                      },
-                    ]}
-                  >
-                    <Typography
-                      variant="overline"
-                      color="primary.main"
-                      noWrap
+                    <Button
+                      component={RouterLink}
+                      to={steamloomPath("my/projects/new")}
+                      variant="contained"
+                      color="primary"
+                      startIcon={<AddIcon />}
                       sx={{
-                        display: { md: "none", lg: "block" },
-                        letterSpacing: "0.1em",
+                        mr: 1,
+                        whiteSpace: "nowrap",
+                        display: readerHeaderVisible
+                          ? { xs: "none", md: "inline-flex" }
+                          : { xs: "none", sm: "inline-flex" },
                       }}
                     >
-                      {readerHeader?.projectName}
-                    </Typography>
-                    <Typography variant="body2" fontWeight={800} noWrap>
-                      {readerHeader?.title}
-                    </Typography>
-                    {readerHeader?.summary && (
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        noWrap
-                        sx={{ display: { md: "none", xl: "block" } }}
-                      >
-                        {readerHeader.summary}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-                <Stack
-                  direction="row"
-                  alignItems="center"
-                  justifyContent="flex-end"
-                  sx={{ flex: "1 1 0", minWidth: 0 }}
-                >
-                  <Button
-                    component={RouterLink}
-                    to={steamloomPath("my/projects/new")}
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    sx={{
-                      mr: 1,
-                      whiteSpace: "nowrap",
-                      display: readerHeaderVisible
-                        ? { xs: "none", md: "inline-flex" }
-                        : { xs: "none", sm: "inline-flex" },
-                    }}
-                  >
-                    建立創作專案
-                  </Button>
-                  <IconButton
-                    component={RouterLink}
-                    to={steamloomPath("my/projects/new")}
-                    color="primary"
-                    aria-label="建立創作專案"
-                    sx={{
-                      mr: 1,
-                      display: readerHeaderVisible
-                        ? "none"
-                        : { xs: "inline-flex", sm: "none" },
-                    }}
-                  >
-                    <AddIcon />
-                  </IconButton>
-                  {session ? (
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <StorytellerNotificationBell />
-                      <Tooltip title="帳號選單">
-                        <IconButton
-                          onClick={(event) =>
-                            setAccountMenuAnchor(event.currentTarget)
-                          }
-                          aria-label="帳號選單"
-                          sx={{ borderRadius: 5, pr: 0.5 }}
-                        >
-                          <Avatar
-                            src={photoURL}
-                            alt={displayName}
-                            sx={{ width: 32, height: 32 }}
-                          />
-                          <ArrowDropDownIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Menu
-                        anchorEl={accountMenuAnchor}
-                        open={Boolean(accountMenuAnchor)}
-                        onClose={() => setAccountMenuAnchor(null)}
-                        anchorOrigin={{
-                          vertical: "bottom",
-                          horizontal: "right",
-                        }}
-                        transformOrigin={{
-                          vertical: "top",
-                          horizontal: "right",
-                        }}
-                      >
-                        <Box sx={{ px: 2, py: 1 }}>
-                          <Typography variant="body2" fontWeight={700}>
-                            {profile?.pen_name || displayName}
-                          </Typography>
-                        </Box>
-                        <Divider />
-                        {accountMenuItems.map((item) => (
-                          <MenuItem
-                            key={item.to}
-                            component={RouterLink}
-                            to={item.to}
-                            onClick={() => setAccountMenuAnchor(null)}
+                      建立創作專案
+                    </Button>
+                    <IconButton
+                      component={RouterLink}
+                      to={steamloomPath("my/projects/new")}
+                      color="primary"
+                      aria-label="建立創作專案"
+                      sx={{
+                        mr: 1,
+                        display: readerHeaderVisible
+                          ? "none"
+                          : { xs: "inline-flex", sm: "none" },
+                      }}
+                    >
+                      <AddIcon />
+                    </IconButton>
+                    {session ? (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <StorytellerNotificationBell />
+                        <Tooltip title="帳號選單">
+                          <IconButton
+                            onClick={(event) =>
+                              setAccountMenuAnchor(event.currentTarget)
+                            }
+                            aria-label="帳號選單"
+                            sx={{ borderRadius: 5, pr: 0.5 }}
                           >
-                            <ListItemIcon>{item.icon}</ListItemIcon>
-                            <ListItemText primary={item.label} />
-                          </MenuItem>
-                        ))}
-                        <Divider />
-                        <MenuItem
-                          disabled={submitting}
-                          onClick={() => {
-                            setAccountMenuAnchor(null);
-                            void logout();
+                            <Avatar
+                              src={photoURL}
+                              alt={displayName}
+                              sx={{ width: 32, height: 32 }}
+                            />
+                            <ArrowDropDownIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Menu
+                          anchorEl={accountMenuAnchor}
+                          open={Boolean(accountMenuAnchor)}
+                          onClose={() => setAccountMenuAnchor(null)}
+                          anchorOrigin={{
+                            vertical: "bottom",
+                            horizontal: "right",
+                          }}
+                          transformOrigin={{
+                            vertical: "top",
+                            horizontal: "right",
                           }}
                         >
-                          <ListItemIcon>
-                            <LogoutIcon fontSize="small" />
-                          </ListItemIcon>
-                          <ListItemText primary="登出" />
-                        </MenuItem>
-                      </Menu>
-                    </Stack>
-                  ) : (
-                    <Button
-                      variant="contained"
-                      startIcon={<LoginIcon />}
-                      disabled={loading || submitting}
-                      onClick={() => void login()}
-                    >
-                      登入
-                    </Button>
-                  )}
-                </Stack>
-              </Toolbar>
-            </AppBar>
-            <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
-              <Outlet />
-            </Container>
-            {showFooter && (
-              <Container maxWidth="xl">
-                <SteamLoomFooter />
+                          <Box sx={{ px: 2, py: 1 }}>
+                            <Typography variant="body2" fontWeight={700}>
+                              {profile?.pen_name || displayName}
+                            </Typography>
+                          </Box>
+                          <Divider />
+                          {accountMenuItems.map((item) => (
+                            <MenuItem
+                              key={item.to}
+                              component={RouterLink}
+                              to={item.to}
+                              onClick={() => setAccountMenuAnchor(null)}
+                            >
+                              <ListItemIcon>{item.icon}</ListItemIcon>
+                              <ListItemText primary={item.label} />
+                            </MenuItem>
+                          ))}
+                          <Divider />
+                          <MenuItem
+                            disabled={submitting}
+                            onClick={() => {
+                              setAccountMenuAnchor(null);
+                              void logout();
+                            }}
+                          >
+                            <ListItemIcon>
+                              <LogoutIcon fontSize="small" />
+                            </ListItemIcon>
+                            <ListItemText primary="登出" />
+                          </MenuItem>
+                        </Menu>
+                      </Stack>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        startIcon={<LoginIcon />}
+                        disabled={loading || submitting}
+                        onClick={() => void login()}
+                      >
+                        登入
+                      </Button>
+                    )}
+                  </Stack>
+                </Toolbar>
+              </AppBar>
+              <Container component="main" maxWidth="xl" sx={{ flex: 1, py: 3 }}>
+                <Outlet />
               </Container>
-            )}
-          </Stack>
+              {showFooter && (
+                <Container maxWidth="xl">
+                  <SteamLoomFooter />
+                </Container>
+              )}
+            </Stack>
+          </ReportProvider>
         </StorytellerHeaderContext.Provider>
       </StorytellerAppearanceContext.Provider>
     </ThemeProvider>

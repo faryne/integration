@@ -51,6 +51,10 @@ export interface CommentReplyTo {
 export interface AuthorPostComment {
   public_id: string;
   deleted?: boolean;
+  // 站方移除時的理由 slug（本人刪除沒有），佔位後補列原因
+  delete_reason?: string;
+  // 看的人就是留言者：不顯示「檢舉」
+  is_mine?: boolean;
   // 留言者身份已不存在時沒有這個欄位
   author?: StorytellerAuthorIdentity;
   is_post_author?: boolean;

@@ -275,15 +275,22 @@ func (s *Service) decoratePostNotifications(rows []storytellerModel.Notification
 		return err
 	}
 	livePosts, liveComments := map[string]*storytellerModel.AuthorPost{}, map[string]bool{}
+	// deleteReasons：已被站方移除的貼文／留言的理由 slug（本人刪除不會有）
+	deleteReasons := map[string]string{}
 	keys := make([]storytellerModel.AuthorIdentityKey, 0, len(rows)+len(posts))
 	for i, post := range posts {
 		if !post.IsDeleted {
 			livePosts[post.PublicID] = &posts[i]
 			keys = append(keys, post.Identity())
+		} else {
+			deleteReasons[post.PublicID] = stringValue(post.DeleteReason)
 		}
 	}
 	for _, comment := range comments {
 		liveComments[comment.PublicID] = !comment.IsDeleted
+		if comment.IsDeleted {
+			deleteReasons[comment.PublicID] = stringValue(comment.DeleteReason)
+		}
 	}
 	for _, row := range rows {
 		if isPostNotificationKind(row.Kind) && row.Payload.Internal != nil {
@@ -313,11 +320,20 @@ func (s *Service) decoratePostNotifications(rows []storytellerModel.Notification
 					live = append(live, post)
 				}
 			}
+			if len(live) == 0 && len(payload.Posts) > 0 {
+				payload.DeleteReason = deleteReasons[payload.Posts[0].PublicID]
+			}
 			payload.Posts, payload.Deleted = live, len(live) == 0
 			continue
 		}
 		post := livePosts[row.Payload.PostPublicID]
 		payload.Deleted = post == nil || !liveComments[row.Payload.CommentPublicID]
+		// 貼文整則被移除時以貼文的理由為準，否則是留言的理由
+		if post == nil {
+			payload.DeleteReason = deleteReasons[row.Payload.PostPublicID]
+		} else if payload.Deleted {
+			payload.DeleteReason = deleteReasons[row.Payload.CommentPublicID]
+		}
 		if post != nil {
 			if identity, ok := book.lookup(post.Identity()); ok {
 				payload.PostAuthor = identity.PenName

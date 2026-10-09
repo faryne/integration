@@ -157,7 +157,7 @@ func (r *Repository) UpdateProject(row *storytellerModel.Project) error {
 
 func (r *Repository) DeleteProject(row *storytellerModel.Project) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
 
 func (r *Repository) Agents(userID uint64) ([]storytellerModel.Agent, error) {
@@ -1893,5 +1893,5 @@ func (r *Repository) SaveUserProfile(row *storytellerModel.UserProfile) error {
 
 func (r *Repository) DeleteUserProfile(row *storytellerModel.UserProfile) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }

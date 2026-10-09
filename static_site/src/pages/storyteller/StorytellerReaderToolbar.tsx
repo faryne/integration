@@ -59,6 +59,7 @@ export function StorytellerReaderToolbar({
   labels = STORY_TOOLBAR_LABELS,
   navigationHref,
   discussionButton,
+  reportButton,
 }: {
   projectName: string;
   currentTitle?: string;
@@ -82,6 +83,8 @@ export function StorytellerReaderToolbar({
   navigationHref?: string;
   // 討論按鈕（私人作品沒有討論版時不給）
   discussionButton?: ReactNode;
+  // 檢舉按鈕（作者本人看自己的作品時不傳）
+  reportButton?: ReactNode;
 }) {
   const [projectAnchor, setProjectAnchor] = useState<HTMLElement | null>(null);
   const [historyAnchor, setHistoryAnchor] = useState<HTMLElement | null>(null);
@@ -308,6 +311,7 @@ export function StorytellerReaderToolbar({
               </Box>
             </Button>
           </Tooltip>
+          {reportButton}
           <Tooltip title={nextChapter?.title ?? `沒有${labels.next}`}>
             <span>
               <Button

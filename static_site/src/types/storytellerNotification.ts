@@ -75,6 +75,8 @@ export interface StorytellerNotificationPayload {
   // work 是附上的作品卡名稱（「《作品》第 13 話」），沒附就沒有
   posts?: { public_id: string; excerpt: string; work?: string }[];
   deleted?: boolean;
+  // 已刪除且是站方移除時的理由 slug
+  delete_reason?: string;
 }
 
 // 回追狀態：none 可回追／following 已互相追蹤／unavailable 對方或我的身份已不存在

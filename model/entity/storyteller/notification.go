@@ -69,6 +69,8 @@ type NotificationPayload struct {
 	Posts          []NotificationPost `json:"posts,omitempty"`
 	// Deleted 不存 DB：輸出時發現貼文或留言已刪除才設為 true，前端改顯示「已刪除」、不給連結
 	Deleted bool `json:"deleted,omitempty"`
+	// DeleteReason 不存 DB：已刪除且是站方移除時帶理由 slug（貼文優先於留言）
+	DeleteReason string `json:"delete_reason,omitempty"`
 
 	// Internal 是後端用的身份鍵，會存進 DB，但輸出前一律清空（見 storytellernotify 的 output）
 	Internal *NotificationInternal `json:"internal,omitempty"`

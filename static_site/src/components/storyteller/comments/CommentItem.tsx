@@ -17,13 +17,15 @@ import {
   postFullTime,
   postTimeLabel,
 } from "@/components/storyteller/timeline/postTime.ts";
+import { useOpenReport } from "@/components/storyteller/report/reportContext.ts";
+import { removedByStaffText } from "@/helpers/moderationReasons.ts";
 import { postTextValid } from "@/helpers/postMarkers.ts";
 import { steamloomCreatorPath } from "@/helpers/steamloom.ts";
 import type { AuthorPostComment } from "@/types/storytellerTimeline.ts";
 import type { CommentConfirm, ReplyTarget } from "./CommentBox.tsx";
 
-// 一則留言或回覆；已刪除的只留佔位（不顯示名字、時間、內文）。
-// can_edit（只有討論版）時可以原地編輯，舊內文由後端存進編輯歷史。
+// 一則留言或回覆；已刪除的只留佔位（不顯示名字、時間、內文），站方移除的補列原因。
+// can_edit（只有討論版）時可以原地編輯，舊內文由後端存進編輯歷史。不是自己的留言可以檢舉。
 export function CommentItem({
   comment,
   threadId,
@@ -31,6 +33,7 @@ export function CommentItem({
   canWrite,
   flash,
   maxLength,
+  share,
   onReply,
   onConfirm,
   onEdit,
@@ -41,12 +44,14 @@ export function CommentItem({
   canWrite: boolean;
   flash: string;
   maxLength?: number;
+  share?: string;
   onReply: (target: ReplyTarget) => void;
   onConfirm: (confirm: CommentConfirm) => void;
   onEdit?: (comment: AuthorPostComment, body: string, done: () => void) => void;
 }) {
   const name = comment.author?.pen_name;
   const [draft, setDraft] = useState<string | null>(null);
+  const openReport = useOpenReport();
   return (
     <Box
       id={`c-${comment.public_id}`}
@@ -81,7 +86,21 @@ export function CommentItem({
           fontStyle="italic"
           sx={{ alignSelf: "center" }}
         >
-          {isReply ? "此回覆已刪除" : "此留言已刪除"}
+          {comment.delete_reason ? (
+            <>
+              {isReply ? "此回覆" : "此留言"}
+              <Box
+                component="span"
+                sx={{ fontStyle: "normal", color: "text.secondary" }}
+              >
+                {removedByStaffText(comment.delete_reason)}
+              </Box>
+            </>
+          ) : isReply ? (
+            "此回覆已刪除"
+          ) : (
+            "此留言已刪除"
+          )}
         </Typography>
       ) : (
         <Box sx={{ minWidth: 0 }}>
@@ -215,6 +234,20 @@ export function CommentItem({
                 label="封鎖"
                 danger
                 onClick={() => onConfirm({ type: "block", comment })}
+              />
+            )}
+            {!comment.is_mine && (
+              <CommentAction
+                label="檢舉"
+                danger
+                onClick={() =>
+                  openReport({
+                    type: "comment",
+                    publicId: comment.public_id,
+                    share,
+                    label: `${name ?? "已不存在的使用者"} 的${isReply ? "回覆" : "留言"}`,
+                  })
+                }
               />
             )}
           </Stack>
