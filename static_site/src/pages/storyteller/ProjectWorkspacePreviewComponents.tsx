@@ -262,7 +262,7 @@ export function WorkspaceSidebar({
 }
 
 // 專案層級操作固定在 navigator 底部，不跟會捲動的冊／設定集混在一起；mobile
-// Drawer 與 desktop sidebar 共用這一區，也就不需要再放一個網站 footer。
+// Drawer 與 desktop sidebar 共用這一區。
 function ProjectActionsGroup({
   project,
   onNavigate,

@@ -1,10 +1,10 @@
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { PenNameDialog } from "@/components/storyteller/PenNameDialog.tsx";
 import { SteamLoomMark } from "@/components/storyteller/SteamLoomMark.tsx";
+import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
-import IndependentFooter from "@/components/common/IndependentFooter.tsx";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import {
   storytellerAppearanceMeta,
@@ -70,6 +70,42 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+
+const workspaceHomePaths = new Set([
+  "",
+  "projects",
+  "projects/new",
+  "agent",
+  "agent/new",
+  "api-keys",
+  "usage",
+  "pat",
+  "oauth",
+  "mcp",
+  "activity",
+  "notifications",
+  "blocks",
+  "favorites",
+  "profile",
+]);
+
+// 固定高度的 WorkspaceChrome 自帶 compact footer；外層再畫一次會藏在殼後，
+// 也會留下看不見但仍可被鍵盤聚焦的重複連結。舊版 my/project/* 頁面不在此列。
+function usesWorkspaceChrome(pathname: string) {
+  if (pathname === steamloomPath("oauth/authorize")) return true;
+
+  const myRoot = steamloomPath("my");
+  if (pathname === myRoot) return true;
+  if (!pathname.startsWith(`${myRoot}/`)) return false;
+
+  const relativePath = pathname.slice(myRoot.length + 1);
+  return (
+    workspaceHomePaths.has(relativePath) ||
+    relativePath.startsWith("workspace/") ||
+    /^agent\/[^/]+\/edit$/.test(relativePath) ||
+    /^notifications\/[^/]+$/.test(relativePath)
+  );
+}
 
 export function StorytellerLayout() {
   const { user, session, loading, submitting, login, logout } = useAuth();
@@ -181,15 +217,7 @@ export function StorytellerLayout() {
     profile,
     session?.user.photo_url ?? user?.photoURL ?? undefined,
   );
-  const workspaceRoot = steamloomPath("my/workspace");
-  // 工作台本身是固定高度的 app shell，專案操作也已收進 navigator；普通網站 footer
-  // 在這裡只會被壓在殼後或造成重複操作，僅保留給公開瀏覽與閱讀頁。這裡只能比對
-  // workspace/:id 這條新版 app shell 的路由前綴，不能用整個 /my——/my 底下還有
-  // 首頁、api-keys、favorites、profile 等一般可捲動頁面，也有 legacy 的
-  // /my/project/:id 系列頁面，那些都要保留 footer。
-  const showFooter =
-    location.pathname !== workspaceRoot &&
-    !location.pathname.startsWith(`${workspaceRoot}/`);
+  const showFooter = !usesWorkspaceChrome(location.pathname);
 
   const showPenNameDialog =
     Boolean(session) && !isProfileLoading && profile && !profile.pen_name;
@@ -548,9 +576,8 @@ export function StorytellerLayout() {
               <Outlet />
             </Container>
             {showFooter && (
-              <Container component="footer" maxWidth="xl">
-                <Divider />
-                <IndependentFooter service_name={STORYTELLER_APP_NAME} />
+              <Container maxWidth="xl">
+                <SteamLoomFooter />
               </Container>
             )}
           </Stack>

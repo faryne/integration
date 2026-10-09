@@ -14,7 +14,6 @@ import BiotechIcon from "@mui/icons-material/Biotech";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { FaryneLogo } from "@/components/common/FaryneLogo";
 import { FooterNavigation } from "@/components/common/FooterNavigation";
-import { SocialLinks } from "@/components/common/SocialLinks";
 import { headerNavigationItems, isLayoutDropMenu } from "@/data/navigation";
 import { type LayoutDropMenu, type LayoutMenuItem } from "@/types/layout";
 
@@ -241,7 +240,7 @@ export const LabLayout: FC = () => {
               sx={{ flexShrink: 0 }}
             >
               <FaryneLogo width={28} />
-              <Stack spacing={0.75}>
+              <Stack spacing={0.75} sx={{ textAlign: "left" }}>
                 <Typography sx={{ color: "#a7bdc1", fontSize: 14 }}>
                   Powered By Faryne |{" "}
                   <MuiLink
@@ -251,14 +250,6 @@ export const LabLayout: FC = () => {
                     faryne.dev
                   </MuiLink>
                 </Typography>
-                <Box
-                  sx={{
-                    "& a": { color: "#d9f8fa" },
-                    "& svg": { color: "#d9f8fa" },
-                  }}
-                >
-                  <SocialLinks />
-                </Box>
               </Stack>
             </Stack>
             <Box

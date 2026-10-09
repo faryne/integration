@@ -16,6 +16,7 @@ import {
   formatStorytellerDate,
   STORYTELLER_APP_NAME,
 } from "@/data/storyteller.ts";
+import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import { WorkspaceEditorBackProvider } from "@/pages/storyteller/WorkspaceEditorBackContext.ts";
 
@@ -252,6 +253,7 @@ export function WorkspaceChrome({
         </Menu>
       )}
       {children}
+      <SteamLoomFooter compact />
     </Box>
   );
 }
@@ -329,7 +331,7 @@ export function WorkspaceCentered({ children }: { children: ReactNode }) {
       justifyContent="center"
       spacing={1.5}
       textAlign="center"
-      sx={{ minHeight: "calc(100vh - 150px)", p: 3 }}
+      sx={{ flex: 1, minHeight: 0, p: 3 }}
     >
       {children}
     </Stack>

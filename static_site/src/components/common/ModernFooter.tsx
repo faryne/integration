@@ -1,7 +1,6 @@
 import { Box, Container, Link, Stack, Typography } from "@mui/material";
 import { FaryneLogo } from "./FaryneLogo";
 import { FooterNavigation } from "./FooterNavigation";
-import { SocialLinks } from "./SocialLinks";
 
 export function ModernFooter() {
   return (
@@ -31,14 +30,13 @@ export function ModernFooter() {
             spacing={1}
           >
             <FaryneLogo width={26} />
-            <Stack spacing={0.75}>
+            <Stack spacing={0.75} sx={{ textAlign: "left" }}>
               <Typography variant="body2" color="text.secondary">
                 Powered By Faryne |{" "}
                 <Link color="inherit" href="https://faryne.dev/">
                   faryne.dev
                 </Link>
               </Typography>
-              <SocialLinks />
             </Stack>
           </Stack>
           <Box sx={{ flexGrow: 1, width: "100%" }}>

@@ -1,26 +1,24 @@
 import { Stack, Typography } from "@mui/material";
 
-import { SocialLinks } from "@/components/common/SocialLinks.tsx";
-
 export interface IndependentFooterProps {
   service_name: string; // 服務名稱
+  // 獨立服務可自行補品牌首頁與社群入口，不把特定站台連結寫死在共用 footer。
+  service_href?: string;
+  links?: ReadonlyArray<{
+    href: string;
+    label: string;
+  }>;
 }
 
 export default function IndependentFooter(props: IndependentFooterProps) {
   return (
     <Stack
       spacing={0.75}
-      alignItems="center"
+      alignItems="flex-start"
       sx={{
         width: "100%",
         py: 2,
-        textAlign: "center",
-        "& [aria-label='social links']": {
-          flexWrap: "wrap",
-          justifyContent: "center",
-          maxWidth: "100%",
-          rowGap: 0.5,
-        },
+        textAlign: "left",
       }}
     >
       <Typography
@@ -28,7 +26,19 @@ export default function IndependentFooter(props: IndependentFooterProps) {
         color="text.secondary"
         sx={{ maxWidth: "100%" }}
       >
-        {props.service_name} powered By Faryne |{" "}
+        {props.service_href ? (
+          <Typography
+            component="a"
+            variant="body2"
+            href={props.service_href}
+            sx={{ color: "inherit", textDecoration: "underline" }}
+          >
+            {props.service_name}
+          </Typography>
+        ) : (
+          props.service_name
+        )}{" "}
+        powered by Faryne |{" "}
         <Typography
           component="a"
           variant="body2"
@@ -40,7 +50,19 @@ export default function IndependentFooter(props: IndependentFooterProps) {
           faryne.dev
         </Typography>
       </Typography>
-      <SocialLinks />
+      {props.links?.map((link) => (
+        <Typography
+          key={link.href}
+          component="a"
+          variant="body2"
+          href={link.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ color: "text.secondary", textDecoration: "underline" }}
+        >
+          {link.label}
+        </Typography>
+      ))}
     </Stack>
   );
 }
