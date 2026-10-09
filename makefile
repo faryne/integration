@@ -31,7 +31,7 @@ build-frontend-nekomaid:
 
 build-frontend-steamloom:
 	cd static_site; \
-	VITE_SITE=steamloom VITE_API_BASE=https://faryne.dev/api-integration pnpm build && \
+	VITE_SITE=steamloom VITE_API_BASE=https://steamloom.works/api pnpm build && \
 	pnpm deploy:steamloom && \
 	cd ..
 
