@@ -91,7 +91,7 @@ export function SteamLoomFooter({ compact = false }: { compact?: boolean }) {
             color="text.disabled"
             sx={{ display: compact ? { xs: "none", sm: "block" } : "block" }}
           >
-            © {new Date().getFullYear()} Faryne ·{" "}
+            Powered by Faryne ·{" "}
             <Link
               href="https://faryne.dev/"
               target="_blank"
