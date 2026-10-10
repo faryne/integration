@@ -20,26 +20,26 @@ const (
 	consumeRetryDelay = 5 * time.Second
 )
 
-// rabbitMQQueue 是 Queue 的 RabbitMQ 實作：一律走 default exchange，routing key 即佇列名稱，
+// amqpQueue 是 Queue 的 AMQP 0-9-1 實作（LavinMQ／RabbitMQ 皆適用）：一律走 default exchange，routing key 即佇列名稱，
 // 佇列在第一次使用時以 durable 宣告，訊息以 persistent 送出，broker 重啟也不會遺失。
-type rabbitMQQueue struct {
-	conn *client.RabbitMQ
+type amqpQueue struct {
+	conn *client.AMQP
 
 	mu       sync.Mutex
 	pubCh    *amqp.Channel       // confirm 模式的發佈專用 channel，斷線後重建
 	declared map[string]struct{} // 已宣告過的佇列，避免每次發佈都多一趟 QueueDeclare
 }
 
-// NewRabbitMQ 以既有連線建立 Queue；conn 為 nil（沒設定 AMQP_URL）時回傳 nil，
+// NewAMQP 以既有連線建立 Queue；conn 為 nil（沒設定 AMQP_URL）時回傳 nil，
 // 呼叫端據此判斷佇列功能是否開啟。
-func NewRabbitMQ(conn *client.RabbitMQ) Queue {
+func NewAMQP(conn *client.AMQP) Queue {
 	if conn == nil {
 		return nil
 	}
-	return &rabbitMQQueue{conn: conn, declared: make(map[string]struct{})}
+	return &amqpQueue{conn: conn, declared: make(map[string]struct{})}
 }
 
-func (q *rabbitMQQueue) Produce(ctx context.Context, queue string, msg Message) error {
+func (q *amqpQueue) Produce(ctx context.Context, queue string, msg Message) error {
 	confirm, err := q.publish(ctx, queue, msg)
 	if err != nil {
 		return err
@@ -50,12 +50,12 @@ func (q *rabbitMQQueue) Produce(ctx context.Context, queue string, msg Message) 
 		return err
 	}
 	if !acked {
-		return fmt.Errorf("rabbitmq nacked message to queue %s", queue)
+		return fmt.Errorf("broker nacked message to queue %s", queue)
 	}
 	return nil
 }
 
-func (q *rabbitMQQueue) publish(ctx context.Context, queue string, msg Message) (*amqp.DeferredConfirmation, error) {
+func (q *amqpQueue) publish(ctx context.Context, queue string, msg Message) (*amqp.DeferredConfirmation, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.pubCh == nil || q.pubCh.IsClosed() {
@@ -89,7 +89,7 @@ func (q *rabbitMQQueue) publish(ctx context.Context, queue string, msg Message) 
 	})
 }
 
-func (q *rabbitMQQueue) Consume(ctx context.Context, queue string, handler Handler) error {
+func (q *amqpQueue) Consume(ctx context.Context, queue string, handler Handler) error {
 	if queue == "" || handler == nil {
 		return errors.New("queue name and handler are required")
 	}
@@ -98,7 +98,7 @@ func (q *rabbitMQQueue) Consume(ctx context.Context, queue string, handler Handl
 		if ctx.Err() != nil {
 			return nil
 		}
-		log.Logger().Warn("RabbitMQ consumer stopped, resubscribing", zap.String("queue", queue), zap.Error(err))
+		log.Logger().Warn("AMQP consumer stopped, resubscribing", zap.String("queue", queue), zap.Error(err))
 		select {
 		case <-ctx.Done():
 			return nil
@@ -108,7 +108,7 @@ func (q *rabbitMQQueue) Consume(ctx context.Context, queue string, handler Handl
 }
 
 // consumeOnce 開一個 channel 訂閱佇列，直到 ctx 結束或 channel／連線斷掉才返回。
-func (q *rabbitMQQueue) consumeOnce(ctx context.Context, queue string, handler Handler) error {
+func (q *amqpQueue) consumeOnce(ctx context.Context, queue string, handler Handler) error {
 	ch, err := q.conn.Channel()
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func (q *rabbitMQQueue) consumeOnce(ctx context.Context, queue string, handler H
 	}
 	for d := range deliveries {
 		if err := handleDelivery(ctx, handler, d); err != nil {
-			log.Logger().Warn("Handle RabbitMQ message failed", zap.String("queue", queue), zap.String("messageId", d.MessageId), zap.Bool("redelivered", d.Redelivered), zap.Error(err))
+			log.Logger().Warn("Handle AMQP message failed", zap.String("queue", queue), zap.String("messageId", d.MessageId), zap.Bool("redelivered", d.Redelivered), zap.Error(err))
 			// 第一次失敗退回佇列重試；已經重送過還失敗就丟棄，避免毒訊息卡死佇列
 			_ = d.Nack(false, !d.Redelivered)
 			continue

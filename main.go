@@ -218,7 +218,7 @@ func waitBackgroundWorkBeforeShutdown() {
 
 func shutdownClients() error {
 	var shutdownErr error
-	shutdownErr = errors.Join(shutdownErr, client.CloseRabbitMQConnections())
+	shutdownErr = errors.Join(shutdownErr, client.CloseAMQPConnections())
 	shutdownErr = errors.Join(shutdownErr, client.CloseRedisConnections())
 	shutdownErr = errors.Join(shutdownErr, client.CloseMySqlConnections())
 	return shutdownErr
@@ -383,9 +383,9 @@ func loadCommandSettings(inputEnvFile string) error {
 		return esConnError
 	}
 
-	// RabbitMQ 連不上不會擋開機（背景自動重連），只有 URL 格式錯誤才會回傳錯誤
+	// AMQP broker 連不上不會擋開機（背景自動重連），只有 URL 格式錯誤才會回傳錯誤
 	if config.EnvConfig().AMQPURL != "" {
-		if err := client.InitRabbitMQ(enum.RabbitMQDefault, config.EnvConfig().AMQPURL); err != nil {
+		if err := client.InitAMQP(enum.AMQPDefault, config.EnvConfig().AMQPURL); err != nil {
 			_ = client.CloseRedisConnections()
 			_ = client.CloseMySqlConnections()
 			return err

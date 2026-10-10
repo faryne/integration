@@ -20,8 +20,8 @@ func newTestQueue(t *testing.T) (Queue, string) {
 	if url == "" {
 		t.Skip("AMQP_TEST_URL is not set")
 	}
-	require.NoError(t, client.InitRabbitMQ(enum.RabbitMQDefault, url))
-	conn := client.GetRabbitMQ(enum.RabbitMQDefault)
+	require.NoError(t, client.InitAMQP(enum.AMQPDefault, url))
+	conn := client.GetAMQP(enum.AMQPDefault)
 	// 每個測試用獨立佇列名稱，避免殘留訊息互相干擾
 	queue := "test." + t.Name() + "." + strconv.FormatInt(time.Now().UnixNano(), 36)
 	t.Cleanup(func() {
@@ -30,12 +30,12 @@ func newTestQueue(t *testing.T) (Queue, string) {
 			_, _ = ch.QueueDelete(queue, false, false, false)
 			_ = ch.Close()
 		}
-		_ = client.CloseRabbitMQConnections()
+		_ = client.CloseAMQPConnections()
 	})
-	return NewRabbitMQ(conn), queue
+	return NewAMQP(conn), queue
 }
 
-func TestRabbitMQProduceConsume(t *testing.T) {
+func TestAMQPProduceConsume(t *testing.T) {
 	q, queue := newTestQueue(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -60,7 +60,7 @@ func TestRabbitMQProduceConsume(t *testing.T) {
 }
 
 // 第一次處理失敗要退回重送一次（Redelivered=true），重送後再失敗就丟棄、不再出現。
-func TestRabbitMQRetryOnceThenDrop(t *testing.T) {
+func TestAMQPRetryOnceThenDrop(t *testing.T) {
 	q, queue := newTestQueue(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

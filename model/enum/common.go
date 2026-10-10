@@ -19,8 +19,8 @@ const (
 	ESDefault ESName = "default"
 )
 
-type RabbitMQName string
+type AMQPName string
 
 const (
-	RabbitMQDefault RabbitMQName = "default"
+	AMQPDefault AMQPName = "default"
 )

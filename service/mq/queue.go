@@ -1,4 +1,4 @@
-// Package mq 定義訊息佇列的共用介面，讓通知等非同步工作不直接綁死 RabbitMQ 實作。
+// Package mq 定義訊息佇列的共用介面，讓通知等非同步工作不直接綁死特定 broker 或協定的實作。
 package mq
 
 import (
