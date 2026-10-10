@@ -2,7 +2,7 @@ package storyteller
 
 import "time"
 
-// 管理後台的檢舉處理輸出。後台 API 直接用內部 id（只給管理員），文字標籤由前端依種類組合。
+// 管理後台的檢舉處理輸出。對外一律用 public_id（內部流水號只在後端使用），文字標籤由前端依種類組合。
 
 // AdminReportPageSize 是後台檢舉列表每頁的對象數。
 const AdminReportPageSize = 20
@@ -35,12 +35,15 @@ type AdminFootprint struct {
 
 type AdminReportTarget struct {
 	Type ReportTargetType `json:"type"`
-	ID   uint64           `json:"id"`
+	// ID 是內部流水號，只在後端組資料用，不輸出
+	ID       uint64 `json:"-"`
+	PublicID string `json:"public_id"`
 	// Title：作品名／話名／設定名／討論串標題／筆名；留言與動態沒有標題
 	Title string `json:"title,omitempty"`
 	// OwnerName 是發言（或擁有）身份目前的筆名；身份已不存在時為空
-	OwnerName   string `json:"owner_name,omitempty"`
-	OwnerUserID uint64 `json:"owner_user_id"`
+	OwnerName string `json:"owner_name,omitempty"`
+	// OwnerUserID 只給後端判斷「不能處置自己」，不輸出
+	OwnerUserID uint64 `json:"-"`
 	Excerpt     string `json:"excerpt,omitempty"`
 	// Body 只有詳情才帶（留言／動態／討論串全文）
 	Body string `json:"body,omitempty"`

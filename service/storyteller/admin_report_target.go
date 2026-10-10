@@ -53,7 +53,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.OwnerUserID, out.OwnerName = row.UserID, s.adminIdentityName(row.UserID, row.ProfileID)
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.CommentPublicID = row.PublicID
 		withBody(row.Body)
 		if row.TargetType == storytellerModel.CommentTargetDiscussionThread {
@@ -67,7 +67,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.OwnerUserID, out.OwnerName = row.UserID, s.adminIdentityName(row.UserID, row.ProfileID)
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.PostPublicID, out.Link.PenName = row.PublicID, out.OwnerName
 		withBody(row.Body)
 	case storytellerModel.ReportTargetDiscussionThread:
@@ -76,7 +76,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title, out.OwnerUserID, out.OwnerName = row.Title, row.UserID, s.adminIdentityName(row.UserID, row.ProfileID)
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		withBody(row.Body)
 		s.fillAdminThreadContext(out, row.ID)
 	case storytellerModel.ReportTargetStory:
@@ -85,7 +85,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title, out.IsVolume = row.Title, row.IsVolume
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.StoryPublicID = row.PublicID
 		s.fillAdminProjectContext(out, row.ProjectID)
 	case storytellerModel.ReportTargetLore:
@@ -94,7 +94,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title = row.Title
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.LorePublicID = row.PublicID
 		s.fillAdminProjectContext(out, row.ProjectID)
 	case storytellerModel.ReportTargetProject:
@@ -103,7 +103,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title, out.OwnerUserID, out.OwnerName = row.Name, row.UserID, s.adminIdentityName(row.UserID, 0)
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.ProjectPublicID, out.Link.ProjectSlug = row.PublicID, row.Slug
 	case storytellerModel.ReportTargetUser:
 		row, err := storytellerRepo.AdminRowByID[storytellerModel.UserProfile](s.repo, id)
@@ -111,7 +111,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title, out.OwnerUserID, out.OwnerName = row.PenName, row.ID, row.PenName
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.PenName = row.PenName
 		if detail {
 			footprint, err := s.repo.AdminFootprint(row.ID, nil)
@@ -133,7 +133,7 @@ func (s *Service) adminTarget(targetType storytellerModel.ReportTargetType, id u
 			return nil, err
 		}
 		out.Title, out.OwnerUserID, out.OwnerName = row.PenName, row.UserID, row.PenName
-		out.Deleted, out.DeleteReason, out.CreatedAt = row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
+		out.PublicID, out.Deleted, out.DeleteReason, out.CreatedAt = row.PublicID, row.IsDeleted, stringValue(row.DeleteReason), &row.CreatedAt
 		out.Link.PenName, out.AccountPenName = row.PenName, s.adminIdentityName(row.UserID, 0)
 		if detail {
 			footprint, err := s.repo.AdminFootprint(row.UserID, &row.ID)

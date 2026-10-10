@@ -76,15 +76,15 @@ export function useAdminReports(
   });
 }
 
-export function useAdminReportDetail(type: AdminTargetType, id: string) {
+export function useAdminReportDetail(type: AdminTargetType, publicId: string) {
   const { userId, headers } = useAdminHeaders();
   return useQuery({
-    queryKey: [...adminQueryKey, "report", type, id, userId],
-    enabled: Boolean(userId && type && id),
+    queryKey: [...adminQueryKey, "report", type, publicId, userId],
+    enabled: Boolean(userId && type && publicId),
     queryFn: async () =>
       (
         await axios.get<CommonResponse<AdminReportDetail>>(
-          `${apiBase}/storyteller/admin/reports/${type}/${id}`,
+          `${apiBase}/storyteller/admin/reports/${type}/${publicId}`,
           { headers },
         )
       ).data.data,
@@ -95,13 +95,13 @@ export type AdminReportAction =
   { type: "remove"; reasonKey: string } | { type: "dismiss" };
 
 // 處置後讓列表與詳情重抓（tab 上的數字也會更新）
-export function useAdminReportAction(type: AdminTargetType, id: string) {
+export function useAdminReportAction(type: AdminTargetType, publicId: string) {
   const { headers } = useAdminHeaders();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (action: AdminReportAction) =>
       axios.post(
-        `${apiBase}/storyteller/admin/reports/${type}/${id}/${action.type}`,
+        `${apiBase}/storyteller/admin/reports/${type}/${publicId}/${action.type}`,
         action.type === "remove" ? { reason_key: action.reasonKey } : {},
         { headers },
       ),

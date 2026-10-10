@@ -112,6 +112,13 @@ func AdminRowByID[T any](r *Repository, id uint64) (*T, error) {
 	return &row, err
 }
 
+// AdminIDByPublicID 把後台網址上的 public_id 換回內部 id（含已刪除的列）。
+func (r *Repository) AdminIDByPublicID(model any, publicID string) (uint64, error) {
+	var row struct{ ID uint64 }
+	err := r.db.Model(model).Select("id").Where("public_id = ?", publicID).Take(&row).Error
+	return row.ID, err
+}
+
 // SetDeleteReason 在 soft delete 之前寫入站方處置理由；只寫還沒被刪除的列，不覆寫作者自行刪除的狀態。
 func (r *Repository) SetDeleteReason(model any, id uint64, reason string) error {
 	return r.db.Model(model).Where("id = ? AND is_deleted = 0", id).Update("delete_reason", reason).Error

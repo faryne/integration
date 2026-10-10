@@ -52,7 +52,7 @@ const ownerOrMissing = (target: AdminReportTarget) =>
 export function adminTargetName(target: AdminReportTarget) {
   if (target.type === "comment") return `${ownerOrMissing(target)} 的留言`;
   if (target.type === "author_post") return `${ownerOrMissing(target)} 的動態`;
-  return target.title || `#${target.id}`;
+  return target.title || target.public_id;
 }
 
 // adminTargetPlace：所在位置（留言在哪個討論串／誰的動態、故事屬於哪部作品）

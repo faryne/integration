@@ -74,6 +74,9 @@ func (r *Repository) UserProfilesByIDs(ids []uint64) (map[uint64]storytellerMode
 }
 
 func (r *Repository) CreateAuthorProfile(row *storytellerModel.AuthorProfile) error {
+	if row.PublicID == "" {
+		row.PublicID = newPublicID()
+	}
 	return r.db.Create(row).Error
 }
 

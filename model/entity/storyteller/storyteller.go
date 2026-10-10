@@ -787,7 +787,9 @@ func (AuthorFavorite) TableName() string {
 }
 
 type UserProfile struct {
-	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	ID uint64 `gorm:"column:id;primaryKey" json:"id"`
+	// PublicID 對外（例如管理後台）指向這個帳號時用；內部流水號不對外
+	PublicID         string   `gorm:"column:public_id" json:"-"`
 	UserID           uint64   `gorm:"column:user_id" json:"user_id"`
 	FirebaseUID      string   `gorm:"column:firebase_uid" json:"firebase_uid"`
 	Email            *string  `gorm:"column:email" json:"email"`

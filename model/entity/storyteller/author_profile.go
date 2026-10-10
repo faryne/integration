@@ -5,7 +5,9 @@ import "time"
 // AuthorProfile 是帳號底下的「額外筆名」。本人身份仍在 storyteller_users（UserProfile），
 // 不搬遷；這張表只放另外建立的筆名。user_id 是擁有者帳號，僅後端使用、不對外輸出。
 type AuthorProfile struct {
-	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	ID uint64 `gorm:"column:id;primaryKey" json:"id"`
+	// PublicID 對外（例如管理後台）指向這個筆名時用；內部流水號不對外
+	PublicID         string   `gorm:"column:public_id" json:"-"`
 	UserID           uint64   `gorm:"column:user_id" json:"-"`
 	PenName          string   `gorm:"column:pen_name" json:"pen_name"`
 	Bio              string   `gorm:"column:bio" json:"bio"`

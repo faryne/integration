@@ -54,10 +54,11 @@ const statusLabels: Record<AdminReportStatus, string> = {
 
 // 檢舉詳情：對象預覽、檢舉紀錄、原因統計與處置。按鈕只依後端回的 actions 顯示，前端不自己判斷權限。
 export function AdminReportDetail() {
-  const { targetType = "", targetId = "" } = useParams();
+  // :targetPublicId 是對象的 public_id（後台不使用內部流水號）
+  const { targetType = "", targetPublicId = "" } = useParams();
   const type = targetType as AdminTargetType;
-  const query = useAdminReportDetail(type, targetId);
-  const action = useAdminReportAction(type, targetId);
+  const query = useAdminReportDetail(type, targetPublicId);
+  const action = useAdminReportAction(type, targetPublicId);
   const { t } = useTranslation();
   const [dialog, setDialog] = useState<AdminReportDialogKind | null>(null);
   const [snack, setSnack] = useState<{

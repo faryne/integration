@@ -1,4 +1,4 @@
-// 管理後台（檢舉處理）。後台 API 直接用內部 id，文字標籤由前端依種類組合。
+// 管理後台（檢舉處理）。對象一律以 public_id 指定，文字標籤由前端依種類組合。
 
 // 檢舉紀錄裡存的對象種類（創作者分成帳號本人 user 與額外筆名 author_profile）
 export type AdminTargetType =
@@ -37,10 +37,10 @@ export interface AdminFootprint {
 
 export interface AdminReportTarget {
   type: AdminTargetType;
-  id: number;
+  // 對外只用 public_id（後台網址、API 都不帶內部流水號）
+  public_id: string;
   title?: string;
   owner_name?: string;
-  owner_user_id: number;
   excerpt?: string;
   body?: string;
   context_project?: string;

@@ -312,7 +312,7 @@ const storytellerRoutes = (
       <Route index element={<Navigate to={"reports"} replace />} />
       <Route path={"reports"} element={<StorytellerAdminReportList />} />
       <Route
-        path={"reports/:targetType/:targetId"}
+        path={"reports/:targetType/:targetPublicId"}
         element={<StorytellerAdminReportDetail />}
       />
     </Route>

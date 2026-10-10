@@ -30,6 +30,27 @@ var adminTargetTypeLabels = map[storytellerModel.ReportTargetType]string{
 	storytellerModel.ReportTargetAuthorProfile: "筆名",
 }
 
+// adminTargetModels 是各種檢舉對象對應的資料表（public_id → 內部 id 時用）。
+var adminTargetModels = map[storytellerModel.ReportTargetType]func() any{
+	storytellerModel.ReportTargetComment:          func() any { return &storytellerModel.Comment{} },
+	storytellerModel.ReportTargetAuthorPost:       func() any { return &storytellerModel.AuthorPost{} },
+	storytellerModel.ReportTargetDiscussionThread: func() any { return &storytellerModel.DiscussionThread{} },
+	storytellerModel.ReportTargetStory:            func() any { return &storytellerModel.Story{} },
+	storytellerModel.ReportTargetLore:             func() any { return &storytellerModel.Lore{} },
+	storytellerModel.ReportTargetProject:          func() any { return &storytellerModel.Project{} },
+	storytellerModel.ReportTargetUser:             func() any { return &storytellerModel.UserProfile{} },
+	storytellerModel.ReportTargetAuthorProfile:    func() any { return &storytellerModel.AuthorProfile{} },
+}
+
+// adminTargetID 把後台網址上的 public_id 換回內部 id；後台對外一律只用 public_id。
+func (s *Service) adminTargetID(targetType storytellerModel.ReportTargetType, publicID string) (uint64, error) {
+	model, ok := adminTargetModels[targetType]
+	if !ok {
+		return 0, ErrReportInvalidTarget
+	}
+	return s.repo.AdminIDByPublicID(model(), publicID)
+}
+
 // reasonCounts 統計各原因次數，多的在前。
 func reasonCounts(reports []storytellerModel.Report) []storytellerModel.AdminReasonCount {
 	counts := map[string]int64{}
@@ -85,8 +106,12 @@ func (s *Service) AdminReports(viewerID uint64, query storytellerModel.AdminRepo
 	return out, nil
 }
 
-func (s *Service) AdminReportDetail(viewerID uint64, targetType storytellerModel.ReportTargetType, targetID uint64) (*storytellerModel.AdminReportDetailOutput, error) {
+func (s *Service) AdminReportDetail(viewerID uint64, targetType storytellerModel.ReportTargetType, targetPublicID string) (*storytellerModel.AdminReportDetailOutput, error) {
 	auth, err := s.requirePlatform(viewerID, storytellerModel.PermissionAdminReportRead)
+	if err != nil {
+		return nil, err
+	}
+	targetID, err := s.adminTargetID(targetType, targetPublicID)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +186,7 @@ func (s *Service) adminActions(auth PlatformAuthorization, target *storytellerMo
 
 // AdminRemoveReportTarget 移除對象（創作者本人＝停權）並結案。對象已被作者自行刪除時只結案、不覆寫理由，
 // 這時只需要 admin.report.update。
-func (s *Service) AdminRemoveReportTarget(viewerID uint64, targetType storytellerModel.ReportTargetType, targetID uint64, input storytellerModel.AdminRemoveRequest) error {
+func (s *Service) AdminRemoveReportTarget(viewerID uint64, targetType storytellerModel.ReportTargetType, targetPublicID string, input storytellerModel.AdminRemoveRequest) error {
 	auth, err := s.requirePlatform(viewerID, storytellerModel.PermissionAdminReportUpdate)
 	if err != nil {
 		return err
@@ -169,6 +194,10 @@ func (s *Service) AdminRemoveReportTarget(viewerID uint64, targetType storytelle
 	removePermission, ok := storytellerModel.AdminRemovePermission[targetType]
 	if !ok {
 		return ErrReportInvalidTarget
+	}
+	targetID, err := s.adminTargetID(targetType, targetPublicID)
+	if err != nil {
+		return err
 	}
 	target, err := s.adminTarget(targetType, targetID, false)
 	if err != nil {
@@ -203,11 +232,15 @@ func (s *Service) AdminRemoveReportTarget(viewerID uint64, targetType storytelle
 }
 
 // AdminDismissReportTarget 駁回：內容不動，待處理的檢舉改成已駁回（沒有待處理的也回成功）。
-func (s *Service) AdminDismissReportTarget(viewerID uint64, targetType storytellerModel.ReportTargetType, targetID uint64) error {
+func (s *Service) AdminDismissReportTarget(viewerID uint64, targetType storytellerModel.ReportTargetType, targetPublicID string) error {
 	if _, err := s.requirePlatform(viewerID, storytellerModel.PermissionAdminReportUpdate); err != nil {
 		return err
 	}
-	_, err := s.repo.HandlePendingReports(targetType, targetID, storytellerModel.ReportStatusDismissed, viewerID)
+	targetID, err := s.adminTargetID(targetType, targetPublicID)
+	if err != nil {
+		return err
+	}
+	_, err = s.repo.HandlePendingReports(targetType, targetID, storytellerModel.ReportStatusDismissed, viewerID)
 	return err
 }
 

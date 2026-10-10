@@ -2,7 +2,6 @@ package storyteller
 
 import (
 	"errors"
-	"strconv"
 
 	storytellerModel "faryne.dev/model/entity/storyteller"
 	"faryne.dev/repository"
@@ -32,15 +31,6 @@ func adminResponse(data any, err error) error {
 	}
 }
 
-// adminTargetParams 解析 /admin/reports/:type/:target。
-func adminTargetParams(ctx fiber.Ctx) (storytellerModel.ReportTargetType, uint64, error) {
-	id, err := strconv.ParseUint(ctx.Params("target"), 10, 64)
-	if err != nil {
-		return "", 0, output.BadRequest(errors.New("無效的項目"))
-	}
-	return storytellerModel.ReportTargetType(ctx.Params("type")), id, nil
-}
-
 func AdminMe(ctx fiber.Ctx) error {
 	return adminResponse(storyteller.NewService().AdminMe(sessionUserID(ctx)))
 }
@@ -53,30 +43,24 @@ func AdminReports(ctx fiber.Ctx) error {
 	return adminResponse(storyteller.NewService().AdminReports(sessionUserID(ctx), query))
 }
 
+// :type 是對象種類、:target 是對象的 public_id（後台不使用內部流水號）
+
 func AdminReportDetail(ctx fiber.Ctx) error {
-	targetType, id, err := adminTargetParams(ctx)
-	if err != nil {
-		return err
-	}
-	return adminResponse(storyteller.NewService().AdminReportDetail(sessionUserID(ctx), targetType, id))
+	return adminResponse(storyteller.NewService().AdminReportDetail(sessionUserID(ctx), adminTargetType(ctx), ctx.Params("target")))
 }
 
 func AdminRemoveReportTarget(ctx fiber.Ctx) error {
-	targetType, id, err := adminTargetParams(ctx)
-	if err != nil {
-		return err
-	}
 	var input storytellerModel.AdminRemoveRequest
 	if err := ctx.Bind().Body(&input); err != nil {
 		return output.BadRequest(err)
 	}
-	return adminResponse(nil, storyteller.NewService().AdminRemoveReportTarget(sessionUserID(ctx), targetType, id, input))
+	return adminResponse(nil, storyteller.NewService().AdminRemoveReportTarget(sessionUserID(ctx), adminTargetType(ctx), ctx.Params("target"), input))
 }
 
 func AdminDismissReportTarget(ctx fiber.Ctx) error {
-	targetType, id, err := adminTargetParams(ctx)
-	if err != nil {
-		return err
-	}
-	return adminResponse(nil, storyteller.NewService().AdminDismissReportTarget(sessionUserID(ctx), targetType, id))
+	return adminResponse(nil, storyteller.NewService().AdminDismissReportTarget(sessionUserID(ctx), adminTargetType(ctx), ctx.Params("target")))
+}
+
+func adminTargetType(ctx fiber.Ctx) storytellerModel.ReportTargetType {
+	return storytellerModel.ReportTargetType(ctx.Params("type"))
 }

@@ -1850,6 +1850,10 @@ func (r *Repository) UserProfileWithDeleted(userID uint64) (*storytellerModel.Us
 }
 
 func (r *Repository) UpsertFirebaseUser(input storytellerModel.UserProfile) (*storytellerModel.UserProfile, error) {
+	// 只有新建時會用到；既有帳號衝突時不在 DoUpdates 名單內，public_id 維持原值
+	if input.PublicID == "" {
+		input.PublicID = newPublicID()
+	}
 	if err := r.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "firebase_uid"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -1884,6 +1888,9 @@ func (r *Repository) UserProfileByPenName(penName string) (*storytellerModel.Use
 }
 
 func (r *Repository) CreateUserProfile(row *storytellerModel.UserProfile) error {
+	if row.PublicID == "" {
+		row.PublicID = newPublicID()
+	}
 	return r.db.Create(row).Error
 }
 

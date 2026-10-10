@@ -104,7 +104,7 @@ export function AdminReportList() {
           <Paper variant="outlined">
             {query.data!.items.map((group) => (
               <AdminReportRow
-                key={`${group.target.type}:${group.target.id}`}
+                key={`${group.target.type}:${group.target.public_id}`}
                 group={group}
                 status={status}
               />
@@ -145,7 +145,7 @@ function AdminReportRow({
   return (
     <Box
       component={RouterLink}
-      to={steamloomPath(`admin/reports/${target.type}/${target.id}`)}
+      to={steamloomPath(`admin/reports/${target.type}/${target.public_id}`)}
       sx={{
         display: "grid",
         gridTemplateColumns: {
