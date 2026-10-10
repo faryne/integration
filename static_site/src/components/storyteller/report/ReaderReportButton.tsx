@@ -1,5 +1,5 @@
 import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
-import { Button, Tooltip } from "@mui/material";
+import { Box, Button, Tooltip } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import { useOpenReport } from "./reportContext.ts";
 
@@ -8,7 +8,7 @@ interface ReaderReportItem {
   label: string;
 }
 
-// 閱讀工具列的「檢舉」：設定頁檢舉這篇設定，故事頁檢舉這一話。工具列空間有限，只放旗子圖示。
+// 閱讀工具列的「檢舉」：設定頁檢舉這篇設定，故事頁檢舉這一話。
 export function ReaderReportButton({
   projectPublicId,
   share,
@@ -24,24 +24,33 @@ export function ReaderReportButton({
   const { t } = useTranslation();
   const item = lore ?? story;
   if (!item) return null;
+  const type = lore ? "lore" : "story";
+  // 跟工具列其他按鈕同一套寫法：桌機「圖示＋文字」、手機只留圖示；tooltip 說明具體動作
   return (
-    <Tooltip title={t("moderation.report.menu.action")}>
+    <Tooltip title={t(`moderation.report.title.${type}`)}>
       <Button
         size="small"
         color="inherit"
-        aria-label={t("moderation.report.menu.action")}
+        startIcon={<OutlinedFlagIcon />}
+        aria-label={t(`moderation.report.title.${type}`)}
         onClick={() =>
           openReport({
-            type: lore ? "lore" : "story",
+            type,
             publicId: item.id,
             projectPublicId,
             share,
             name: item.label,
           })
         }
-        sx={{ minWidth: 32, px: 0.75 }}
+        sx={{
+          minWidth: { xs: 32, sm: "auto" },
+          px: { xs: 0.75, sm: 1 },
+          "& .MuiButton-startIcon": { mr: { xs: 0, sm: 0.5 } },
+        }}
       >
-        <OutlinedFlagIcon fontSize="small" />
+        <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+          {t("moderation.report.menu.action")}
+        </Box>
       </Button>
     </Tooltip>
   );
