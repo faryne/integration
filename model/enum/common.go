@@ -18,3 +18,9 @@ type ESName string
 const (
 	ESDefault ESName = "default"
 )
+
+type AMQPName string
+
+const (
+	AMQPDefault AMQPName = "default"
+)
