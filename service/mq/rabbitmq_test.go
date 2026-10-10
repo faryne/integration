@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// 需要真的 broker 才能跑；本機 `docker-compose up -d rabbitmq` 後以
+// 需要真的 broker 才能跑；本機 `docker-compose up -d lavinmq` 後以
 // RABBITMQ_TEST_URL=amqp://guest:guest@localhost:5672/ go test ./service/mq/ 執行，沒設就略過。
 func newTestQueue(t *testing.T) (Queue, string) {
 	url := os.Getenv("RABBITMQ_TEST_URL")
@@ -21,9 +21,18 @@ func newTestQueue(t *testing.T) (Queue, string) {
 		t.Skip("RABBITMQ_TEST_URL is not set")
 	}
 	require.NoError(t, client.InitRabbitMQ(enum.RabbitMQDefault, url))
-	t.Cleanup(func() { _ = client.CloseRabbitMQConnections() })
+	conn := client.GetRabbitMQ(enum.RabbitMQDefault)
 	// 每個測試用獨立佇列名稱，避免殘留訊息互相干擾
-	return NewRabbitMQ(client.GetRabbitMQ(enum.RabbitMQDefault)), "test." + t.Name() + "." + strconv.FormatInt(time.Now().UnixNano(), 36)
+	queue := "test." + t.Name() + "." + strconv.FormatInt(time.Now().UnixNano(), 36)
+	t.Cleanup(func() {
+		// 測試佇列是 durable 的，不刪會一直留在 broker 上（連到 CloudAMQP 測試時尤其要清乾淨）
+		if ch, err := conn.Channel(); err == nil {
+			_, _ = ch.QueueDelete(queue, false, false, false)
+			_ = ch.Close()
+		}
+		_ = client.CloseRabbitMQConnections()
+	})
+	return NewRabbitMQ(conn), queue
 }
 
 func TestRabbitMQProduceConsume(t *testing.T) {
