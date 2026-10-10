@@ -14,11 +14,11 @@ import (
 )
 
 // 需要真的 broker 才能跑；本機 `docker-compose up -d lavinmq` 後以
-// RABBITMQ_TEST_URL=amqp://guest:guest@localhost:5672/ go test ./service/mq/ 執行，沒設就略過。
+// AMQP_TEST_URL=amqp://guest:guest@localhost:5672/ go test ./service/mq/ 執行，沒設就略過。
 func newTestQueue(t *testing.T) (Queue, string) {
-	url := os.Getenv("RABBITMQ_TEST_URL")
+	url := os.Getenv("AMQP_TEST_URL")
 	if url == "" {
-		t.Skip("RABBITMQ_TEST_URL is not set")
+		t.Skip("AMQP_TEST_URL is not set")
 	}
 	require.NoError(t, client.InitRabbitMQ(enum.RabbitMQDefault, url))
 	conn := client.GetRabbitMQ(enum.RabbitMQDefault)

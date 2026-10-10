@@ -384,8 +384,8 @@ func loadCommandSettings(inputEnvFile string) error {
 	}
 
 	// RabbitMQ 連不上不會擋開機（背景自動重連），只有 URL 格式錯誤才會回傳錯誤
-	if config.EnvConfig().RabbitMQURL != "" {
-		if err := client.InitRabbitMQ(enum.RabbitMQDefault, config.EnvConfig().RabbitMQURL); err != nil {
+	if config.EnvConfig().AMQPURL != "" {
+		if err := client.InitRabbitMQ(enum.RabbitMQDefault, config.EnvConfig().AMQPURL); err != nil {
 			_ = client.CloseRedisConnections()
 			_ = client.CloseMySqlConnections()
 			return err

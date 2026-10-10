@@ -17,8 +17,8 @@ type envConfig struct {
 	ChromePath       string `env:"CHROME_PATH"`
 	FrontendPath     string `env:"FRONTEND_PATH" default:"https://beta.faryne.dev"`
 
-	// RabbitMQURL 是 AMQP 連線字串，目前用 CloudAMQP 代管的 LavinMQ（amqps://user:pass@host/vhost）；留空代表不啟用佇列
-	RabbitMQURL string `env:"RABBITMQ_URL"`
+	// AMQPURL 是 AMQP 連線字串，目前用 CloudAMQP 代管的 LavinMQ（amqps://user:pass@host/vhost）；留空代表不啟用佇列
+	AMQPURL string `env:"AMQP_URL"`
 
 	// AuditHotRetentionMonths 是稽核事件留在 MySQL 的月數；近期查詢只允許這個範圍內，
 	// 更早的資料要走封存查詢（P4）。

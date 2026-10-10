@@ -30,7 +30,7 @@ type rabbitMQQueue struct {
 	declared map[string]struct{} // 已宣告過的佇列，避免每次發佈都多一趟 QueueDeclare
 }
 
-// NewRabbitMQ 以既有連線建立 Queue；conn 為 nil（沒設定 RABBITMQ_URL）時回傳 nil，
+// NewRabbitMQ 以既有連線建立 Queue；conn 為 nil（沒設定 AMQP_URL）時回傳 nil，
 // 呼叫端據此判斷佇列功能是否開啟。
 func NewRabbitMQ(conn *client.RabbitMQ) Queue {
 	if conn == nil {
