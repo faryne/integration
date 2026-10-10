@@ -16,8 +16,11 @@ export interface ReportTarget {
   projectPublicId?: string;
   // 不公開作品裡的東西要帶分享 token
   share?: string;
-  // dialog 標題下顯示的對象名稱，例如「路人甲 的留言」
-  label: string;
+  // 對象的名稱（筆名、作品名、話名、討論串標題…）；dialog 依種類套翻譯樣板組成「路人甲 的留言」。
+  // 留言者身份已不存在時不帶，顯示「已不存在的使用者」
+  name?: string;
+  // 留言是回覆時用「的回覆」樣板
+  reply?: boolean;
 }
 
 // 檢舉理由只有 slug；文字由 moderationReasonLabel 對照

@@ -305,6 +305,11 @@ func (s *Service) DeleteProject(userID uint64, publicID string) error {
 	if err != nil {
 		return err
 	}
+	return s.deleteProjectRecord(project)
+}
+
+// deleteProjectRecord 是作者刪除與站方移除共用的作品刪除：soft delete＋封面資產引用＋搜尋索引。
+func (s *Service) deleteProjectRecord(project *storytellerModel.Project) error {
 	if err := s.repo.DeleteProject(project); err != nil {
 		return err
 	}
@@ -1175,6 +1180,12 @@ func (s *Service) DeleteStory(userID uint64, projectPublicID, storyPublicID stri
 			return errors.New("cannot delete a volume that still has stories")
 		}
 	}
+	return s.deleteStoryRecord(story)
+}
+
+// deleteStoryRecord 是作者刪除與站方移除共用的單話／冊刪除：soft delete＋冊隸屬異動紀錄＋資產引用＋搜尋索引。
+// 冊非空的檢查由呼叫端負責（站方只移除單話，不處理冊）。
+func (s *Service) deleteStoryRecord(story *storytellerModel.Story) error {
 	volumeEvent := volumeMoveEvent(story.ParentID, nil)
 	if err := s.repo.DeleteStory(story, volumeEvent); err != nil {
 		return err
@@ -2426,6 +2437,11 @@ func (s *Service) DeleteLore(userID uint64, projectPublicID, lorePublicID string
 	if err != nil {
 		return err
 	}
+	return s.deleteLoreRecord(lore)
+}
+
+// deleteLoreRecord 是作者刪除與站方移除共用的設定刪除：soft delete＋資產引用。
+func (s *Service) deleteLoreRecord(lore *storytellerModel.Lore) error {
 	if err := s.repo.DeleteLore(lore); err != nil {
 		return err
 	}

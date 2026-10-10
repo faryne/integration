@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useTimelineAction } from "@/apis/storyteller.ts";
 import { useOpenReport } from "@/components/storyteller/report/reportContext.ts";
@@ -44,6 +45,7 @@ export function AuthorPostCard({
   const navigate = useNavigate();
   const action = useTimelineAction();
   const openReport = useOpenReport();
+  const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const penName = post.author.pen_name;
@@ -195,11 +197,11 @@ export function AuthorPostCard({
               openReport({
                 type: "author_post",
                 publicId: post.public_id,
-                label: `${penName} 的動態`,
+                name: penName,
               });
             }}
           >
-            🚩 檢舉
+            🚩 {t("moderation.report.menu.action")}
           </MenuItem>
         )}
         {post.is_owner && (

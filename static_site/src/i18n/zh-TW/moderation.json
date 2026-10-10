@@ -1,0 +1,97 @@
+{
+  "reason": {
+    "spam": "廣告、洗版",
+    "harassment": "騷擾、人身攻擊",
+    "hate_speech": "仇恨言論",
+    "unmarked_adult_content": "限制級內容未標示",
+    "copyright": "抄襲、侵權",
+    "impersonation": "冒充他人",
+    "personal_info": "洩漏他人個資",
+    "illegal_content": "違法內容",
+    "other": "其他",
+    "tos_violation": "違反服務條款",
+    "unknown": "違反社群規範"
+  },
+  "removedByStaff": {
+    "comment": "此留言已由站方移除，原因：{{reason}}",
+    "reply": "此回覆已由站方移除，原因：{{reason}}",
+    "notice": {
+      "comment": "（留言已由站方移除，原因：{{reason}}）",
+      "post": "（動態已由站方移除，原因：{{reason}}）"
+    }
+  },
+  "report": {
+    "title": {
+      "project": "檢舉作品",
+      "story": "檢舉這一話",
+      "lore": "檢舉設定",
+      "author": "檢舉創作者",
+      "author_post": "檢舉動態",
+      "discussion_thread": "檢舉討論串",
+      "comment": "檢舉留言"
+    },
+    "target": {
+      "project": "作品《{{name}}》",
+      "story": "{{name}}",
+      "lore": "設定〈{{name}}〉",
+      "author": "創作者 {{name}}",
+      "author_post": "{{name}} 的動態",
+      "discussion_thread": "討論串「{{name}}」",
+      "comment": "{{name}} 的留言",
+      "reply": "{{name}} 的回覆",
+      "missingUser": "已不存在的使用者"
+    },
+    "menu": {
+      "action": "檢舉",
+      "project": "檢舉作品",
+      "author": "檢舉創作者"
+    },
+    "field": {
+      "reason": "原因",
+      "note": "補充說明",
+      "noteRequired": "補充說明（必填）"
+    },
+    "cancel": "取消",
+    "submit": "送出檢舉",
+    "submitted": "已收到檢舉",
+    "submitFailed": "檢舉送出失敗，請稍後再試",
+    "reasonsFailed": "無法載入檢舉原因，請稍後再試",
+    "loginRequired": "檢舉需要登入。是否要現在登入？"
+  },
+  "admin": {
+    "action": {
+      "remove": "移除內容",
+      "removeProfile": "移除筆名",
+      "ban": "停權帳號",
+      "dismiss": "駁回",
+      "close": "結案"
+    },
+    "dialog": {
+      "removeTitle": "{{action}}「{{name}}」？",
+      "removeBody": "讀者會看到「已由站方移除」與原因，擁有者會收到通知；這個對象的 {{count}} 筆待處理檢舉一起結案。",
+      "removeProfileBody": "這個筆名的 {{posts}} 則動態、{{threads}} 個討論串與 {{comments}} 則留言一併移除；所屬帳號與其他筆名不受影響。",
+      "banBody": "停權後會立即登出所有裝置、無法再登入，Token 與 MCP 連線全部失效。作品、筆名、動態、留言暫時保留，停權滿 6 個月後自動清除。",
+      "dismissTitle": "駁回這些檢舉？",
+      "dismissBody": "內容不會有任何變動，待處理的檢舉改為「已駁回」。",
+      "closeTitle": "結案？",
+      "closeBody": "作者已自行刪除這個內容，待處理的檢舉改為「已結案」。",
+      "removeReason": "移除原因",
+      "banReason": "停權原因",
+      "typeToConfirm": "輸入「{{name}}」確認",
+      "cancel": "取消",
+      "confirm": {
+        "remove": "移除",
+        "removeProfile": "移除筆名",
+        "ban": "停權",
+        "dismiss": "駁回",
+        "close": "結案"
+      },
+      "done": {
+        "remove": "已處置，檢舉已結案",
+        "dismiss": "已駁回",
+        "close": "已結案"
+      },
+      "failed": "處置失敗，請重試"
+    }
+  }
+}

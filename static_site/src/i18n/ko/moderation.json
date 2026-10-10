@@ -1,0 +1,97 @@
+{
+  "reason": {
+    "spam": "광고·도배",
+    "harassment": "괴롭힘·인신공격",
+    "hate_speech": "혐오 발언",
+    "unmarked_adult_content": "성인 표시 없는 성인 콘텐츠",
+    "copyright": "표절·저작권 침해",
+    "impersonation": "사칭",
+    "personal_info": "타인의 개인정보 노출",
+    "illegal_content": "불법 콘텐츠",
+    "other": "기타",
+    "tos_violation": "이용약관 위반",
+    "unknown": "커뮤니티 가이드라인 위반"
+  },
+  "removedByStaff": {
+    "comment": "이 댓글은 운영진에 의해 삭제되었습니다. 사유: {{reason}}",
+    "reply": "이 답글은 운영진에 의해 삭제되었습니다. 사유: {{reason}}",
+    "notice": {
+      "comment": "(댓글이 운영진에 의해 삭제되었습니다. 사유: {{reason}})",
+      "post": "(게시물이 운영진에 의해 삭제되었습니다. 사유: {{reason}})"
+    }
+  },
+  "report": {
+    "title": {
+      "project": "작품 신고",
+      "story": "이 화 신고",
+      "lore": "설정 신고",
+      "author": "창작자 신고",
+      "author_post": "게시물 신고",
+      "discussion_thread": "토론 신고",
+      "comment": "댓글 신고"
+    },
+    "target": {
+      "project": "작품 《{{name}}》",
+      "story": "{{name}}",
+      "lore": "설정 〈{{name}}〉",
+      "author": "창작자 {{name}}",
+      "author_post": "{{name}}님의 게시물",
+      "discussion_thread": "토론 「{{name}}」",
+      "comment": "{{name}}님의 댓글",
+      "reply": "{{name}}님의 답글",
+      "missingUser": "탈퇴한 사용자"
+    },
+    "menu": {
+      "action": "신고",
+      "project": "작품 신고",
+      "author": "창작자 신고"
+    },
+    "field": {
+      "reason": "사유",
+      "note": "상세 내용",
+      "noteRequired": "상세 내용 (필수)"
+    },
+    "cancel": "취소",
+    "submit": "신고하기",
+    "submitted": "신고가 접수되었습니다",
+    "submitFailed": "신고를 보내지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "reasonsFailed": "신고 사유를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "loginRequired": "신고하려면 로그인이 필요합니다. 지금 로그인할까요?"
+  },
+  "admin": {
+    "action": {
+      "remove": "콘텐츠 삭제",
+      "removeProfile": "필명 삭제",
+      "ban": "계정 정지",
+      "dismiss": "기각",
+      "close": "종결"
+    },
+    "dialog": {
+      "removeTitle": "{{action}}할까요? 「{{name}}」",
+      "removeBody": "독자에게는 운영진이 삭제했다는 안내와 사유가 표시되고, 작성자에게 알림이 전송됩니다. 이 대상의 처리 대기 중인 신고 {{count}}건은 함께 종결됩니다.",
+      "removeProfileBody": "이 필명의 게시물 {{posts}}개, 토론 {{threads}}개, 댓글 {{comments}}개도 함께 삭제됩니다. 계정 본체와 다른 필명에는 영향이 없습니다.",
+      "banBody": "정지하면 모든 기기에서 즉시 로그아웃되고 다시 로그인할 수 없습니다. Token과 MCP 연결도 모두 무효가 됩니다. 작품·필명·게시물·댓글은 일단 유지되며, 정지 후 6개월이 지나면 자동으로 삭제됩니다.",
+      "dismissTitle": "이 신고들을 기각할까요?",
+      "dismissBody": "콘텐츠는 변경되지 않으며, 처리 대기 중인 신고는 「기각됨」으로 바뀝니다.",
+      "closeTitle": "종결할까요?",
+      "closeBody": "작성자가 이미 삭제한 콘텐츠입니다. 처리 대기 중인 신고는 「종결됨」으로 바뀝니다.",
+      "removeReason": "삭제 사유",
+      "banReason": "정지 사유",
+      "typeToConfirm": "확인을 위해 「{{name}}」을(를) 입력하세요",
+      "cancel": "취소",
+      "confirm": {
+        "remove": "삭제",
+        "removeProfile": "필명 삭제",
+        "ban": "정지",
+        "dismiss": "기각",
+        "close": "종결"
+      },
+      "done": {
+        "remove": "처리했습니다. 신고가 종결되었습니다",
+        "dismiss": "기각했습니다",
+        "close": "종결했습니다"
+      },
+      "failed": "처리하지 못했습니다. 다시 시도해 주세요."
+    }
+  }
+}

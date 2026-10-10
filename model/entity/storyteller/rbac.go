@@ -49,6 +49,33 @@ const (
 	PermissionAssetUpdate PermissionKey = "asset.update"
 )
 
+// 平台（管理後台）權限：admin.<resource>.<action>，只由 migration seed；與 project scope 分開判斷。
+const (
+	PermissionAdminReportRead   PermissionKey = "admin.report.read"
+	PermissionAdminReportUpdate PermissionKey = "admin.report.update"
+
+	PermissionAdminCommentDelete          PermissionKey = "admin.comment.delete"
+	PermissionAdminAuthorPostDelete       PermissionKey = "admin.author_post.delete"
+	PermissionAdminDiscussionThreadDelete PermissionKey = "admin.discussion_thread.delete"
+	PermissionAdminStoryDelete            PermissionKey = "admin.story.delete"
+	PermissionAdminLoreDelete             PermissionKey = "admin.lore.delete"
+	PermissionAdminProjectDelete          PermissionKey = "admin.project.delete"
+	PermissionAdminAuthorProfileDelete    PermissionKey = "admin.author_profile.delete"
+	PermissionAdminUserBan                PermissionKey = "admin.user.ban"
+)
+
+// AdminRemovePermission 是站方移除各種檢舉對象需要的權限（user 是停權）。
+var AdminRemovePermission = map[ReportTargetType]PermissionKey{
+	ReportTargetComment:          PermissionAdminCommentDelete,
+	ReportTargetAuthorPost:       PermissionAdminAuthorPostDelete,
+	ReportTargetDiscussionThread: PermissionAdminDiscussionThreadDelete,
+	ReportTargetStory:            PermissionAdminStoryDelete,
+	ReportTargetLore:             PermissionAdminLoreDelete,
+	ReportTargetProject:          PermissionAdminProjectDelete,
+	ReportTargetAuthorProfile:    PermissionAdminAuthorProfileDelete,
+	ReportTargetUser:             PermissionAdminUserBan,
+}
+
 // Role 是可重用的權限集合定義。project scope 一定帶 ProjectID；platform scope 的
 // ProjectID 是 nil。
 type Role struct {

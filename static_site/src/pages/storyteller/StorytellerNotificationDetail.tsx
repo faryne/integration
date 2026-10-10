@@ -17,6 +17,7 @@ import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import { steamloomPath } from "@/helpers/steamloom.ts";
+import { moderationReasonLabel } from "@/helpers/moderationReasons.ts";
 import type {
   StorytellerNotification,
   StorytellerNotificationView,
@@ -139,9 +140,27 @@ function NotificationBody({
       return <PostedNotificationBody n={n} />;
     case "comment":
       return <CommentNotificationBody n={n} />;
+    case "moderation":
+      return <ModerationBody n={n} />;
     default:
       return <GenericBody n={n} />;
   }
+}
+
+// 站方移除：被移除的內容名稱／摘要與原因（原因 slug 在前端對照文字）
+function ModerationBody({ n }: { n: StorytellerNotification }) {
+  return (
+    <>
+      {n.payload.label && (
+        <Typography variant="body2" sx={{ whiteSpace: "pre-line" }}>
+          「{n.payload.label}」
+        </Typography>
+      )}
+      <Typography variant="body2" color="text.secondary">
+        原因：{moderationReasonLabel(n.payload.delete_reason ?? "")}
+      </Typography>
+    </>
+  );
 }
 
 // 沒有專屬畫面的類型：顯示通用內文與「前往查看」

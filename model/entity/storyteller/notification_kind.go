@@ -13,6 +13,8 @@ const (
 	NotificationKindAuthorPosted     NotificationKind = "author.posted"
 	NotificationKindPostCommented    NotificationKind = "post.commented"
 	NotificationKindPostReplied      NotificationKind = "post.replied"
+	// NotificationKindModerationRemoved：自己的內容被站方移除
+	NotificationKindModerationRemoved NotificationKind = "moderation.removed"
 )
 
 // NotificationCategory 是通知的大類，前端拿來決定圖示顏色與「帳號安全」之類的標記。
@@ -30,14 +32,15 @@ const (
 type NotificationView string
 
 const (
-	NotificationViewStories  NotificationView = "stories"  // 列出這次更新的每一話
-	NotificationViewProject  NotificationView = "project"  // 新作品：簡介、tags、話數
-	NotificationViewSecurity NotificationView = "security" // 憑證資訊＋「不是你本人操作？」
-	NotificationViewGeneric  NotificationView = "generic"  // 只用通用欄位 title／body／link
-	NotificationViewFollower NotificationView = "follower" // 追蹤者頭像＋回追
-	NotificationViewFavorite NotificationView = "favorite" // 被收藏的作品＋收藏者＋回追
-	NotificationViewPosted   NotificationView = "posted"   // 追蹤的作者發了新動態
-	NotificationViewComment  NotificationView = "comment"  // 動態留言／回覆：貼文摘要＋留言內容＋直接回覆
+	NotificationViewStories    NotificationView = "stories"    // 列出這次更新的每一話
+	NotificationViewProject    NotificationView = "project"    // 新作品：簡介、tags、話數
+	NotificationViewSecurity   NotificationView = "security"   // 憑證資訊＋「不是你本人操作？」
+	NotificationViewGeneric    NotificationView = "generic"    // 只用通用欄位 title／body／link
+	NotificationViewFollower   NotificationView = "follower"   // 追蹤者頭像＋回追
+	NotificationViewFavorite   NotificationView = "favorite"   // 被收藏的作品＋收藏者＋回追
+	NotificationViewPosted     NotificationView = "posted"     // 追蹤的作者發了新動態
+	NotificationViewComment    NotificationView = "comment"    // 動態留言／回覆：貼文摘要＋留言內容＋直接回覆
+	NotificationViewModeration NotificationView = "moderation" // 站方移除：被移除的內容＋原因
 )
 
 type NotificationKindDefinition struct {
@@ -59,6 +62,7 @@ var NotificationKinds = []NotificationKindDefinition{
 	{Kind: NotificationKindAuthorPosted, Label: "新動態", Category: NotificationCategorySocial, View: NotificationViewPosted},
 	{Kind: NotificationKindPostCommented, Label: "動態留言", Category: NotificationCategorySocial, View: NotificationViewComment},
 	{Kind: NotificationKindPostReplied, Label: "留言回覆", Category: NotificationCategorySocial, View: NotificationViewComment},
+	{Kind: NotificationKindModerationRemoved, Label: "站方移除", Category: NotificationCategoryGeneral, View: NotificationViewModeration},
 }
 
 func IsNotificationKindRegistered(kind NotificationKind) bool {

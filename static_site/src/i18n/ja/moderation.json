@@ -1,0 +1,97 @@
+{
+  "reason": {
+    "spam": "広告・スパム",
+    "harassment": "嫌がらせ・誹謗中傷",
+    "hate_speech": "ヘイトスピーチ",
+    "unmarked_adult_content": "成人向け表示のない成人向けコンテンツ",
+    "copyright": "盗作・著作権侵害",
+    "impersonation": "なりすまし",
+    "personal_info": "他人の個人情報の公開",
+    "illegal_content": "違法なコンテンツ",
+    "other": "その他",
+    "tos_violation": "利用規約違反",
+    "unknown": "コミュニティガイドライン違反"
+  },
+  "removedByStaff": {
+    "comment": "このコメントは運営により削除されました。理由：{{reason}}",
+    "reply": "この返信は運営により削除されました。理由：{{reason}}",
+    "notice": {
+      "comment": "（コメントは運営により削除されました。理由：{{reason}}）",
+      "post": "（投稿は運営により削除されました。理由：{{reason}}）"
+    }
+  },
+  "report": {
+    "title": {
+      "project": "作品を報告",
+      "story": "このエピソードを報告",
+      "lore": "設定を報告",
+      "author": "クリエイターを報告",
+      "author_post": "投稿を報告",
+      "discussion_thread": "スレッドを報告",
+      "comment": "コメントを報告"
+    },
+    "target": {
+      "project": "作品『{{name}}』",
+      "story": "{{name}}",
+      "lore": "設定〈{{name}}〉",
+      "author": "クリエイター {{name}}",
+      "author_post": "{{name}} の投稿",
+      "discussion_thread": "スレッド「{{name}}」",
+      "comment": "{{name}} のコメント",
+      "reply": "{{name}} の返信",
+      "missingUser": "退会したユーザー"
+    },
+    "menu": {
+      "action": "報告",
+      "project": "作品を報告",
+      "author": "クリエイターを報告"
+    },
+    "field": {
+      "reason": "理由",
+      "note": "詳細",
+      "noteRequired": "詳細（必須）"
+    },
+    "cancel": "キャンセル",
+    "submit": "報告する",
+    "submitted": "報告を受け付けました",
+    "submitFailed": "報告を送信できませんでした。しばらくしてからもう一度お試しください。",
+    "reasonsFailed": "報告理由を読み込めませんでした。しばらくしてからもう一度お試しください。",
+    "loginRequired": "報告するにはログインが必要です。今すぐログインしますか？"
+  },
+  "admin": {
+    "action": {
+      "remove": "コンテンツを削除",
+      "removeProfile": "ペンネームを削除",
+      "ban": "アカウントを停止",
+      "dismiss": "却下",
+      "close": "クローズ"
+    },
+    "dialog": {
+      "removeTitle": "{{action}}しますか？「{{name}}」",
+      "removeBody": "読者には運営による削除と理由が表示され、投稿者に通知が届きます。この対象の未処理の報告 {{count}} 件はまとめて対応済みになります。",
+      "removeProfileBody": "このペンネームの投稿 {{posts}} 件、スレッド {{threads}} 件、コメント {{comments}} 件もまとめて削除されます。アカウント本体とほかのペンネームには影響しません。",
+      "banBody": "停止すると、すべての端末からただちにログアウトされ、再ログインできなくなります。Token と MCP 接続もすべて無効になります。作品・ペンネーム・投稿・コメントはいったん残り、停止から 6 か月後に自動で削除されます。",
+      "dismissTitle": "これらの報告を却下しますか？",
+      "dismissBody": "コンテンツは変更されません。未処理の報告は「却下」になります。",
+      "closeTitle": "クローズしますか？",
+      "closeBody": "このコンテンツは作者が削除済みです。未処理の報告は「対応済み」になります。",
+      "removeReason": "削除理由",
+      "banReason": "停止理由",
+      "typeToConfirm": "確認のため「{{name}}」と入力してください",
+      "cancel": "キャンセル",
+      "confirm": {
+        "remove": "削除",
+        "removeProfile": "ペンネームを削除",
+        "ban": "停止",
+        "dismiss": "却下",
+        "close": "クローズ"
+      },
+      "done": {
+        "remove": "対応しました。報告はクローズされました",
+        "dismiss": "却下しました",
+        "close": "クローズしました"
+      },
+      "failed": "処理に失敗しました。もう一度お試しください。"
+    }
+  }
+}

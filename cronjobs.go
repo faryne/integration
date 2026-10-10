@@ -250,6 +250,13 @@ var cronJobs = map[string]cronGroup{
 				Handler:  storytellerService.RunCleanupAssistantMemoryDrafts,
 			},
 			{
+				// 停權滿 bannedAccountPurgeAfter（6 個月）的帳號，清除其下仍未刪除的內容
+				Name:     "storyteller-purge-banned-accounts",
+				Schedule: "40 4 * * *",
+				Enabled:  true,
+				Handler:  storytellerService.RunPurgeBannedAccounts,
+			},
+			{
 				// OAuth DCR 是公開端點，每天清掉註冊超過 7 天仍沒完成授權的 client
 				Name:     "storyteller-cleanup-oauth-clients",
 				Schedule: "50 4 * * *",

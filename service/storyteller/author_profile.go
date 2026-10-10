@@ -111,7 +111,7 @@ func (s *Service) DeleteAuthorProfile(userID, profileID uint64) error {
 	if used > 0 {
 		return errors.New("仍有故事署名此筆名，請先改署名後再刪除")
 	}
-	return s.repo.DeleteAuthorProfile(row)
+	return s.repo.DeleteAuthorProfile(row, nil)
 }
 
 func (s *Service) SetStoryProfiles(userID uint64, projectPublicID, storyPublicID string, profileIDs []uint64) (*storytellerModel.Story, error) {

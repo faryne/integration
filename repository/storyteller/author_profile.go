@@ -83,10 +83,11 @@ func (r *Repository) SaveAuthorProfile(row *storytellerModel.AuthorProfile) erro
 
 // DeleteAuthorProfile 刪筆名時一併取消以這個筆名做的追蹤，免得留下對方看得到、卻已不存在的追蹤者；
 // 這個筆名的動態、以它身份發的留言與討論串、它的封鎖名單也一起 soft delete。
-func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) error {
+// reason 是站方處置理由（本人刪除傳 nil）：筆名本身與連帶的動態、留言、討論串都寫入同一個理由。
+func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile, reason *string) error {
 	now := time.Now()
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error; err != nil {
+		if err := tx.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now, "delete_reason": reason}).Error; err != nil {
 			return err
 		}
 		if err := tx.Model(&storytellerModel.AuthorFavorite{}).
@@ -94,9 +95,14 @@ func (r *Repository) DeleteAuthorProfile(row *storytellerModel.AuthorProfile) er
 			Update("deleted_at", &now).Error; err != nil {
 			return err
 		}
+		// 封鎖名單沒有 delete_reason 欄位，另外處理
 		softDelete := map[string]any{"is_deleted": true, "deleted_at": &now}
-		for _, model := range []any{&storytellerModel.AuthorPost{}, &storytellerModel.Comment{}, &storytellerModel.AuthorBlock{}, &storytellerModel.DiscussionThread{}} {
-			if err := tx.Model(model).Where("user_id = ? AND profile_id = ? AND is_deleted = 0", row.UserID, row.ID).Updates(softDelete).Error; err != nil {
+		withReason := map[string]any{"is_deleted": true, "deleted_at": &now, "delete_reason": reason}
+		for _, item := range []struct {
+			model  any
+			values map[string]any
+		}{{&storytellerModel.AuthorPost{}, withReason}, {&storytellerModel.Comment{}, withReason}, {&storytellerModel.DiscussionThread{}, withReason}, {&storytellerModel.AuthorBlock{}, softDelete}} {
+			if err := tx.Model(item.model).Where("user_id = ? AND profile_id = ? AND is_deleted = 0", row.UserID, row.ID).Updates(item.values).Error; err != nil {
 				return err
 			}
 		}

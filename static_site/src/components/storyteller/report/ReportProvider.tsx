@@ -1,4 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/auth/AuthContext.ts";
 import { LoginPromptDialog } from "@/components/auth/LoginPromptDialog.tsx";
 import { CustomSnackbar } from "@/components/common/CustomSnackbar.tsx";
@@ -11,6 +12,7 @@ type Snack = { message: string; severity: "success" | "error" };
 // 掛在 StorytellerLayout：未登入先問要不要登入，登入後才開檢舉 dialog。
 export function ReportProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
+  const { t } = useTranslation();
   const [target, setTarget] = useState<ReportTarget | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
   const [snack, setSnack] = useState<Snack | null>(null);
@@ -35,7 +37,10 @@ export function ReportProvider({ children }: { children: ReactNode }) {
           onClose={() => setTarget(null)}
           onDone={() => {
             setTarget(null);
-            setSnack({ message: "已收到檢舉", severity: "success" });
+            setSnack({
+              message: t("moderation.report.submitted"),
+              severity: "success",
+            });
           }}
           onError={onError}
         />
@@ -43,7 +48,7 @@ export function ReportProvider({ children }: { children: ReactNode }) {
       <LoginPromptDialog
         open={loginOpen}
         onClose={() => setLoginOpen(false)}
-        description="檢舉需要登入。是否要現在登入？"
+        description={t("moderation.report.loginRequired")}
       />
       <CustomSnackbar
         open={Boolean(snack)}

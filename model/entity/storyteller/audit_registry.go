@@ -153,6 +153,11 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "discussion.comment.create", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/discussions/:thread/comments")}},
 	{Name: "comment.update", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("PUT", "/storyteller/comments/:comment")}},
 	{Name: "author.unblock", Category: "social", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("DELETE", "/storyteller/blocks/:block")}},
+	{Name: "report.create", Category: "social", Importance: AuditImportanceLow, Routes: []AuditRouteRef{route("POST", "/storyteller/reports")}},
+
+	// 管理後台的處置：actor 是管理員，target 與理由在請求路徑／內容裡
+	{Name: "admin.report.remove", Category: "admin", Importance: AuditImportanceHigh, Routes: []AuditRouteRef{route("POST", "/storyteller/admin/reports/:type/:target/remove")}},
+	{Name: "admin.report.dismiss", Category: "admin", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/admin/reports/:type/:target/dismiss")}},
 
 	{Name: "system.memory_draft.cleanup", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.notification.fanout", Category: "system", Importance: AuditImportanceNormal},
@@ -161,6 +166,7 @@ var StorytellerAuditActions = []AuditActionDefinition{
 	{Name: "system.audit.export", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.audit.mysql_purge", Category: "system", Importance: AuditImportanceNormal},
 	{Name: "system.audit.archive_purge", Category: "system", Importance: AuditImportanceHigh},
+	{Name: "system.banned_account.purge", Category: "system", Importance: AuditImportanceHigh},
 
 	// 封存查詢會實際花 Athena 掃描費用，屬於「花了使用者的錢或額度」，要記。
 	{Name: "audit.archive_query.create", Category: "audit", Importance: AuditImportanceNormal, Routes: []AuditRouteRef{route("POST", "/storyteller/account/audit-archive-queries")}},

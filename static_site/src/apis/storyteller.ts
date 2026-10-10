@@ -14,3 +14,4 @@ export * from "./storyteller/readingRecord.ts";
 export * from "./storyteller/timeline.ts";
 export * from "./storyteller/discussion.ts";
 export * from "./storyteller/report.ts";
+export * from "./storyteller/admin.ts";

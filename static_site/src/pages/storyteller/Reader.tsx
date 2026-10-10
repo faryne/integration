@@ -1099,12 +1099,11 @@ export default function StorytellerReader({
       </Paper>
       {apiProject && !isOwner && (
         <ReportMenuButton
-          label="檢舉作品"
           target={{
             type: "project",
             publicId: apiProject.public_id,
             share: shareToken,
-            label: `作品《${project.name}》`,
+            name: project.name,
           }}
         />
       )}

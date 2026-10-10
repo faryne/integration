@@ -1,0 +1,97 @@
+{
+  "reason": {
+    "spam": "广告、刷屏",
+    "harassment": "骚扰、人身攻击",
+    "hate_speech": "仇恨言论",
+    "unmarked_adult_content": "限制级内容未标示",
+    "copyright": "抄袭、侵权",
+    "impersonation": "冒充他人",
+    "personal_info": "泄露他人隐私",
+    "illegal_content": "违法内容",
+    "other": "其他",
+    "tos_violation": "违反服务条款",
+    "unknown": "违反社区规范"
+  },
+  "removedByStaff": {
+    "comment": "此评论已被平台移除，原因：{{reason}}",
+    "reply": "此回复已被平台移除，原因：{{reason}}",
+    "notice": {
+      "comment": "（评论已被平台移除，原因：{{reason}}）",
+      "post": "（动态已被平台移除，原因：{{reason}}）"
+    }
+  },
+  "report": {
+    "title": {
+      "project": "举报作品",
+      "story": "举报这一话",
+      "lore": "举报设定",
+      "author": "举报创作者",
+      "author_post": "举报动态",
+      "discussion_thread": "举报讨论帖",
+      "comment": "举报评论"
+    },
+    "target": {
+      "project": "作品《{{name}}》",
+      "story": "{{name}}",
+      "lore": "设定〈{{name}}〉",
+      "author": "创作者 {{name}}",
+      "author_post": "{{name}} 的动态",
+      "discussion_thread": "讨论帖「{{name}}」",
+      "comment": "{{name}} 的评论",
+      "reply": "{{name}} 的回复",
+      "missingUser": "已注销的用户"
+    },
+    "menu": {
+      "action": "举报",
+      "project": "举报作品",
+      "author": "举报创作者"
+    },
+    "field": {
+      "reason": "原因",
+      "note": "补充说明",
+      "noteRequired": "补充说明（必填）"
+    },
+    "cancel": "取消",
+    "submit": "提交举报",
+    "submitted": "已收到举报",
+    "submitFailed": "举报提交失败，请稍后再试",
+    "reasonsFailed": "无法加载举报原因，请稍后再试",
+    "loginRequired": "举报需要登录。要现在登录吗？"
+  },
+  "admin": {
+    "action": {
+      "remove": "移除内容",
+      "removeProfile": "移除笔名",
+      "ban": "封禁账号",
+      "dismiss": "驳回",
+      "close": "结案"
+    },
+    "dialog": {
+      "removeTitle": "{{action}}「{{name}}」？",
+      "removeBody": "读者会看到「已被平台移除」及原因，所有者会收到通知；该对象的 {{count}} 条待处理举报将一并结案。",
+      "removeProfileBody": "该笔名的 {{posts}} 条动态、{{threads}} 个讨论帖和 {{comments}} 条评论将一并移除；所属账号及其他笔名不受影响。",
+      "banBody": "封禁后将立即在所有设备上退出登录且无法再次登录，Token 与 MCP 连接全部失效。作品、笔名、动态、评论暂时保留，封禁满 6 个月后自动清除。",
+      "dismissTitle": "驳回这些举报？",
+      "dismissBody": "内容不会有任何变动，待处理的举报将标记为「已驳回」。",
+      "closeTitle": "结案？",
+      "closeBody": "作者已自行删除该内容，待处理的举报将标记为「已结案」。",
+      "removeReason": "移除原因",
+      "banReason": "封禁原因",
+      "typeToConfirm": "输入「{{name}}」以确认",
+      "cancel": "取消",
+      "confirm": {
+        "remove": "移除",
+        "removeProfile": "移除笔名",
+        "ban": "封禁",
+        "dismiss": "驳回",
+        "close": "结案"
+      },
+      "done": {
+        "remove": "已处理，举报已结案",
+        "dismiss": "已驳回",
+        "close": "已结案"
+      },
+      "failed": "处理失败，请重试"
+    }
+  }
+}

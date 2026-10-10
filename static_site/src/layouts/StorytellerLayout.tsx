@@ -5,7 +5,7 @@ import { SteamLoomFooter } from "@/components/storyteller/SteamLoomFooter.tsx";
 import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerAppearanceMenu.tsx";
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
-import { useStorytellerUserProfile } from "@/apis/storyteller.ts";
+import { useAdminMe, useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import {
   storytellerAppearanceMeta,
@@ -33,6 +33,7 @@ import { isSteamLoomSite, steamloomPath } from "@/helpers/steamloom.ts";
 import { storytellerCoverObjectPosition } from "@/helpers/storytellerCover.ts";
 import { storytellerUserAvatarSrc } from "@/helpers/storytellerUser.ts";
 import { StorytellerNotificationBell } from "@/pages/storyteller/StorytellerNotificationBell.tsx";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AddIcon from "@mui/icons-material/Add";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
@@ -228,6 +229,8 @@ export function StorytellerLayout() {
   );
   const readerHeaderVisible = Boolean(readerHeader?.visible);
 
+  // 有任一平台權限才出現「管理後台」入口（API 仍由後端每次檢查）
+  const adminMe = useAdminMe();
   const accountMenuItems = [
     { label: "我的工作台", to: steamloomPath("my"), icon: <AutoStoriesIcon /> },
     {
@@ -240,6 +243,15 @@ export function StorytellerLayout() {
       to: steamloomPath("my/profile"),
       icon: <PersonIcon />,
     },
+    ...((adminMe.data?.permissions.length ?? 0) > 0
+      ? [
+          {
+            label: "管理後台",
+            to: steamloomPath("admin"),
+            icon: <AdminPanelSettingsIcon />,
+          },
+        ]
+      : []),
   ];
 
   return (

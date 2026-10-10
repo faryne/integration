@@ -236,11 +236,10 @@ export default function StorytellerUserProjects() {
           </Button>
           {author?.pen_name && !isOwner && (
             <ReportMenuButton
-              label="檢舉創作者"
               target={{
                 type: "author",
                 publicId: author.pen_name,
-                label: `創作者 ${author.pen_name}`,
+                name: author.pen_name,
               }}
             />
           )}

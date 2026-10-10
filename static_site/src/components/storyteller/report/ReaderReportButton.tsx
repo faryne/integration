@@ -1,5 +1,6 @@
 import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
 import { Button, Tooltip } from "@mui/material";
+import { useTranslation } from "react-i18next";
 import { useOpenReport } from "./reportContext.ts";
 
 interface ReaderReportItem {
@@ -20,21 +21,22 @@ export function ReaderReportButton({
   story?: ReaderReportItem;
 }) {
   const openReport = useOpenReport();
+  const { t } = useTranslation();
   const item = lore ?? story;
   if (!item) return null;
   return (
-    <Tooltip title="檢舉">
+    <Tooltip title={t("moderation.report.menu.action")}>
       <Button
         size="small"
         color="inherit"
-        aria-label="檢舉"
+        aria-label={t("moderation.report.menu.action")}
         onClick={() =>
           openReport({
             type: lore ? "lore" : "story",
             publicId: item.id,
             projectPublicId,
             share,
-            label: lore ? `設定〈${item.label}〉` : item.label,
+            name: item.label,
           })
         }
         sx={{ minWidth: 32, px: 0.75 }}

@@ -1,23 +1,11 @@
 import { Button, MenuItem, Stack, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useCreateReport, useModerationReasons } from "@/apis/storyteller.ts";
 import { StorytellerDialog } from "@/components/storyteller/StorytellerDialog.tsx";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
 import { moderationReasonLabel } from "@/helpers/moderationReasons.ts";
-import type {
-  ReportTarget,
-  ReportTargetType,
-} from "@/types/storytellerReport.ts";
-
-const TITLES: Record<ReportTargetType, string> = {
-  project: "檢舉作品",
-  story: "檢舉這一話",
-  lore: "檢舉設定",
-  author: "檢舉創作者",
-  author_post: "檢舉動態",
-  discussion_thread: "檢舉討論串",
-  comment: "檢舉留言",
-};
+import type { ReportTarget } from "@/types/storytellerReport.ts";
 
 // 後端字數上限（ReportNoteMaxRunes）
 const NOTE_MAX = 1000;
@@ -35,7 +23,13 @@ export function ReportDialog({
   onDone: () => void;
   onError: (message: string) => void;
 }) {
+  const { t } = useTranslation();
   const reasons = useModerationReasons(target.type);
+  // 對象描述：依種類套樣板（留言回覆用 reply），名稱不存在時顯示「已不存在的使用者」
+  const description = t(
+    `moderation.report.target.${target.reply ? "reply" : target.type}`,
+    { name: target.name ?? t("moderation.report.target.missingUser") },
+  );
   const report = useCreateReport();
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
@@ -44,8 +38,8 @@ export function ReportDialog({
   );
   // 理由載入失敗時用 snack 告知（dialog 留著，讓人可以取消）
   useEffect(() => {
-    if (reasons.isError) onError("無法載入檢舉原因，請稍後再試");
-  }, [reasons.isError, onError]);
+    if (reasons.isError) onError(t("moderation.report.reasonsFailed"));
+  }, [reasons.isError, onError, t]);
   const canSubmit =
     reason !== "" && (!noteRequired || note.trim() !== "") && !report.isPending;
 
@@ -61,26 +55,26 @@ export function ReportDialog({
       })
       .then(onDone)
       .catch((error) =>
-        onError(apiErrorMessage(error, "檢舉送出失敗，請稍後再試")),
+        onError(apiErrorMessage(error, t("moderation.report.submitFailed"))),
       );
   }
 
   return (
     <StorytellerDialog
       open
-      title={TITLES[target.type]}
-      description={target.label}
+      title={t(`moderation.report.title.${target.type}`)}
+      description={description}
       onClose={onClose}
       actions={
         <>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose}>{t("moderation.report.cancel")}</Button>
           <Button
             variant="contained"
             color="error"
             disabled={!canSubmit}
             onClick={submit}
           >
-            送出檢舉
+            {t("moderation.report.submit")}
           </Button>
         </>
       }
@@ -88,7 +82,7 @@ export function ReportDialog({
       <Stack spacing={2}>
         <TextField
           select
-          label="原因"
+          label={t("moderation.report.field.reason")}
           value={reason}
           onChange={(event) => setReason(event.target.value)}
           fullWidth
@@ -100,7 +94,11 @@ export function ReportDialog({
           ))}
         </TextField>
         <TextField
-          label={noteRequired ? "補充說明（必填）" : "補充說明"}
+          label={t(
+            noteRequired
+              ? "moderation.report.field.noteRequired"
+              : "moderation.report.field.note",
+          )}
           value={note}
           onChange={(event) => setNote(event.target.value)}
           multiline

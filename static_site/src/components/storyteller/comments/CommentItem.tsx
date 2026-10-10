@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link as RouterLink } from "react-router-dom";
 import { PostMarkerText } from "@/components/storyteller/timeline/PostMarkerText.tsx";
 import { PostTextInput } from "@/components/storyteller/timeline/PostTextInput.tsx";
@@ -52,6 +53,7 @@ export function CommentItem({
   const name = comment.author?.pen_name;
   const [draft, setDraft] = useState<string | null>(null);
   const openReport = useOpenReport();
+  const { t } = useTranslation();
   return (
     <Box
       id={`c-${comment.public_id}`}
@@ -87,15 +89,15 @@ export function CommentItem({
           sx={{ alignSelf: "center" }}
         >
           {comment.delete_reason ? (
-            <>
-              {isReply ? "此回覆" : "此留言"}
-              <Box
-                component="span"
-                sx={{ fontStyle: "normal", color: "text.secondary" }}
-              >
-                {removedByStaffText(comment.delete_reason)}
-              </Box>
-            </>
+            <Box
+              component="span"
+              sx={{ fontStyle: "normal", color: "text.secondary" }}
+            >
+              {removedByStaffText(
+                isReply ? "reply" : "comment",
+                comment.delete_reason,
+              )}
+            </Box>
           ) : isReply ? (
             "此回覆已刪除"
           ) : (
@@ -238,14 +240,15 @@ export function CommentItem({
             )}
             {!comment.is_mine && (
               <CommentAction
-                label="檢舉"
+                label={t("moderation.report.menu.action")}
                 danger
                 onClick={() =>
                   openReport({
                     type: "comment",
                     publicId: comment.public_id,
                     share,
-                    label: `${name ?? "已不存在的使用者"} 的${isReply ? "回覆" : "留言"}`,
+                    name,
+                    reply: isReply,
                   })
                 }
               />

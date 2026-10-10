@@ -10,6 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useDiscussionAction,
   useDiscussionThread,
@@ -55,6 +56,7 @@ export function DiscussionThreadPanel({
   );
   const action = useDiscussionAction(context.share);
   const openReport = useOpenReport();
+  const { t } = useTranslation();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [draft, setDraft] = useState<{ title: string; body: string } | null>(
@@ -268,11 +270,11 @@ export function DiscussionThreadPanel({
                 type: "discussion_thread",
                 publicId: threadId,
                 share: context.share,
-                label: `討論串「${thread.title}」`,
+                name: thread.title,
               });
             }}
           >
-            🚩 檢舉
+            🚩 {t("moderation.report.menu.action")}
           </MenuItem>
         )}
         {thread.can_block && (
