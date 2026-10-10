@@ -45,8 +45,18 @@ type certCache struct {
 
 var firebaseCertCache = &certCache{}
 
-func VerifyFirebaseIDToken(idToken string) (*FirebaseToken, error) {
-	projectID := strings.TrimSpace(config.EnvConfig().FirebaseProjectID)
+// firebaseProjectID 依品牌決定要比對哪個 Firebase 專案：SteamLoom 有自己的專案，
+// 同一個 Google 帳號在不同專案拿到的 UID 不同，所以每個品牌只收自己專案簽發的 token。
+func firebaseProjectID(brand string) string {
+	cfg := config.EnvConfig()
+	if id := strings.TrimSpace(cfg.StorytellerFirebaseProjectID); brand == BrandStoryteller && id != "" {
+		return id
+	}
+	return strings.TrimSpace(cfg.FirebaseProjectID)
+}
+
+func VerifyFirebaseIDToken(idToken string, brand string) (*FirebaseToken, error) {
+	projectID := firebaseProjectID(brand)
 	if projectID == "" {
 		return nil, errors.New("FIREBASE_PROJECT_ID is not configured")
 	}
