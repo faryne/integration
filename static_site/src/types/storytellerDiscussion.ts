@@ -33,6 +33,8 @@ export interface DiscussionThread {
   can_delete?: boolean;
   can_lock?: boolean;
   can_block?: boolean;
+  // 看的人就是發串者：不顯示「檢舉」
+  is_mine?: boolean;
   // 只有作品作者看得到：發串者已被封鎖
   blocked?: boolean;
   last_activity_at: string;

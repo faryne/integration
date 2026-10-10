@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>後台檢舉處理 Mockup</title>
+<style>
+/* 沿用 report-mockup 的紙張色系 */
+:root {
+  --page: #f4edd8; --paper: #fbf7ea; --paper-elevated: #fffaf0;
+  --ink: #2c241b; --muted: #746856; --faint: #a59a86; --line: #cdbd96;
+  --accent: #8a5b18; --accent-soft: #ead9ad;
+  --talk: #6b4a8a; --talk-soft: #e6dcef;
+  --danger: #a33a3a; --danger-soft: #f3dcd6; --ok: #3f7a3a; --ok-soft: #dcebd6;
+  --header: rgba(251, 247, 234, .94);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+button, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* mockup 控制列（不屬於產品 UI） */
+.mock-switch { position: sticky; top: 0; z-index: 200; display: flex; gap: 6px; padding: 8px 16px; background: #2c241b; color: #fbf7ea; align-items: center; flex-wrap: wrap; }
+.mock-switch b { margin-right: 6px; font-size: 13px; }
+.mock-switch button { border: 1px solid #746856; background: transparent; border-radius: 4px; padding: 4px 10px; font-size: 13px; color: #fbf7ea; }
+.mock-switch button.on { background: #ead9ad; color: #2c241b; }
+
+.site-header { height: 54px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; background: var(--header); border-bottom: 1px solid var(--line); }
+.brand { font-family: Georgia, "Noto Serif TC", serif; font-size: 20px; font-weight: 800; }
+.user-menu { position: relative; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; background: #6b4a8a; color: #fff; display: grid; place-items: center; font-weight: 800; border: 0; }
+.crumb { font-size: 13px; color: var(--muted); padding: 14px 16px 0; max-width: 1000px; margin: 0 auto; }
+.crumb a { color: var(--muted); text-decoration: none; } .crumb b { color: var(--ink); }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px 80px; }
+.view { display: none; } .view.on { display: block; }
+h1 { font-size: 24px; margin: 10px 0 14px; }
+
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.type { color: var(--talk); border-color: color-mix(in srgb, var(--talk) 40%, var(--line)); background: var(--talk-soft); }
+.chip.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); background: var(--danger-soft); }
+.chip.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); background: var(--ok-soft); }
+.btn { border: 0; background: var(--talk); color: #fff; font-weight: 700; padding: 8px 16px; border-radius: 6px; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); font-weight: 600; }
+.btn.danger { background: var(--danger); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.muted { color: var(--muted); } .tiny { font-size: 12px; color: var(--faint); }
+
+/* 使用者選單 */
+.menu { position: absolute; right: 0; top: 40px; z-index: 30; min-width: 170px; padding: 5px; background: var(--paper-elevated); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 26px rgba(44,36,27,.18); }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 5px; font-size: 14px; }
+.menu button:hover { background: var(--accent-soft); }
+.menu .new { background: color-mix(in srgb, var(--danger-soft) 70%, transparent); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+
+/* 後台 layout：左側導覽＋內容；手機收成上方橫向分頁 */
+.admin { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; padding: 0 16px; }
+.admin-nav { position: sticky; top: 60px; align-self: start; margin-top: 16px; padding: 12px; }
+.admin-nav .title { font-size: 12px; font-weight: 800; color: var(--muted); letter-spacing: .06em; padding: 4px 8px 8px; }
+.admin-nav a { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 7px; color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 600; }
+.admin-nav a.on { background: var(--talk-soft); color: var(--talk); }
+.admin-nav a small { background: var(--danger); color: #fff; border-radius: 99px; padding: 0 7px; font-size: 11px; font-weight: 800; }
+.admin-main { min-width: 0; }
+.admin-main .crumb, .admin-main .wrap { max-width: none; padding-left: 0; padding-right: 0; }
+.admin.denied { grid-template-columns: minmax(0, 1fr); }
+
+/* 列表 */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs button { border: 0; background: transparent; padding: 9px 16px; font-size: 15px; font-weight: 650; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs button.on { color: var(--talk); border-color: var(--talk); }
+.tabs small { font-weight: 400; margin-left: 4px; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.filters button { border: 1px solid var(--line); background: var(--paper); padding: 5px 12px; border-radius: 99px; font-size: 13px; color: var(--muted); }
+.filters button.on { background: var(--talk-soft); border-color: color-mix(in srgb, var(--talk) 50%, var(--line)); color: var(--talk); font-weight: 700; }
+.row { display: grid; grid-template-columns: 56px minmax(0, 1fr) 150px 110px; gap: 14px; padding: 13px 16px; border-top: 1px solid var(--line); align-items: center; cursor: pointer; }
+.row:first-child { border-top: 0; }
+.row:hover { background: var(--paper-elevated); }
+.count { text-align: center; }
+.count b { display: block; font-size: 22px; line-height: 1; color: var(--danger); }
+.count span { font-size: 11px; color: var(--muted); }
+.row .title { font-weight: 700; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.row .excerpt { font-size: 13px; color: var(--muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reasons { display: flex; gap: 4px; flex-wrap: wrap; }
+.row .when { font-size: 12px; color: var(--muted); text-align: right; }
+.pager { display: flex; justify-content: center; gap: 6px; padding: 12px; }
+.pager button { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 4px 10px; font-size: 13px; }
+.pager button.on { background: var(--talk); color: #fff; border-color: var(--talk); }
+
+/* 詳情 */
+.detail { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.target { padding: 18px; }
+.target-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.target-body { font-size: 15px; line-height: 1.8; padding: 12px 14px; background: var(--paper-elevated); border: 1px solid var(--line); border-radius: 8px; white-space: pre-line; }
+.meta { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; font-size: 13px; margin-top: 12px; }
+.meta dt { color: var(--muted); } .meta dd { margin: 0; }
+.meta a { color: var(--talk); }
+.side { padding: 16px; position: sticky; top: 60px; }
+.side h3 { margin: 0 0 10px; font-size: 15px; }
+.side .actions { display: grid; gap: 8px; }
+.reason-bars { display: grid; gap: 6px; margin-bottom: 14px; }
+.bar { display: grid; grid-template-columns: 1fr 26px; gap: 8px; font-size: 13px; align-items: center; }
+.bar i { display: block; height: 6px; border-radius: 99px; background: var(--danger); margin-top: 3px; }
+.reports { margin-top: 16px; }
+.reports h3 { font-size: 15px; margin: 0 0 8px; }
+.rep { padding: 12px 16px; border-top: 1px solid var(--line); }
+.rep:first-child { border-top: 0; }
+.rep-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+.rep-note { margin-top: 6px; font-size: 14px; color: var(--ink); }
+
+/* dialog */
+.modal { position: fixed; inset: 0; z-index: 300; display: none; place-items: center; padding: 16px; background: rgba(44,36,27,.45); }
+.modal.on { display: grid; }
+.dialog { width: min(480px, 100%); max-height: 92vh; overflow: auto; padding: 22px; background: var(--paper-elevated); border-radius: 12px; box-shadow: 0 20px 50px rgba(44,36,27,.3); }
+.dialog h3 { margin: 0 0 6px; font-size: 19px; }
+.dialog p { margin: 0 0 14px; font-size: 14px; line-height: 1.7; color: var(--muted); }
+.dialog ul { margin: 0 0 14px; padding-left: 20px; font-size: 14px; line-height: 1.8; }
+.field { display: grid; gap: 5px; margin-bottom: 14px; }
+.field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.field select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 15px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.empty { padding: 60px 16px; text-align: center; color: var(--muted); }
+.empty b { display: block; font-size: 20px; color: var(--ink); margin-bottom: 6px; }
+
+/* 審查筆記（不屬於產品 UI） */
+.review { margin: 26px 0 0; padding: 16px 18px; border: 1px dashed #c9a640; border-radius: 10px; background: #fff3c4; color: #5a4512; }
+.review h2 { margin: 0 0 8px; font-size: 14px; }
+.review ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 13px; line-height: 1.65; }
+.review b { color: #3f2f08; }
+
+.snack { position: fixed; right: 20px; bottom: 20px; z-index: 400; padding: 10px 16px; border-radius: 8px; background: var(--ok); color: #fff; font-weight: 700; font-size: 14px; display: none; }
+.snack.on { display: block; }
+
+@media (max-width: 760px) {
+  .admin { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .admin-nav { position: static; margin-top: 10px; padding: 6px; display: flex; gap: 4px; overflow-x: auto; }
+  .admin-nav .title { display: none; }
+  .row { grid-template-columns: 44px minmax(0, 1fr); }
+  .row .reasons, .row .when { grid-column: 2; text-align: left; }
+  .detail { grid-template-columns: minmax(0, 1fr); }
+  .side { position: static; order: -1; }
+}
+</style>
+</head>
+<body>
+
+<div class="mock-switch">
+  <b>後台檢舉 Mockup</b>
+  <button data-view="list" class="on">① 檢舉列表</button>
+  <button data-view="comment">② 詳情：留言</button>
+  <button data-view="user">③ 詳情：創作者（帳號本人）</button>
+  <button data-view="profile">④ 詳情：額外筆名</button>
+  <button data-view="denied">⑤ 沒有權限</button>
+</div>
+
+<header class="site-header">
+  <span class="brand">SteamLoom</span>
+  <div class="user-menu">
+    <button class="avatar" id="avatar">F</button>
+    <div class="menu" id="userMenu" hidden>
+      <button>我的作品</button>
+      <button>個人檔案</button>
+      <button>通知</button>
+      <button class="new" data-go="list">管理後台</button>
+      <hr>
+      <button>登出</button>
+    </div>
+  </div>
+</header>
+
+<!-- 後台 layout（StorytellerAdminLayout）：沒有權限時整頁只顯示「沒有權限」，不出現導覽 -->
+<div class="admin" id="adminLayout">
+  <nav class="card admin-nav" id="adminNav">
+    <div class="title">管理後台</div>
+    <a href="#" class="on" data-go="list">檢舉 <small>12</small></a>
+  </nav>
+  <main class="admin-main">
+<!-- ① 列表 -->
+<section class="view on" id="view-list">
+  <div class="crumb"><a href="#">SteamLoom</a> › <a href="#">管理後台</a> › <b>檢舉</b></div>
+  <div class="wrap">
+    <h1>檢舉</h1>
+    <div class="tabs">
+      <button class="on">待處理<small>12</small></button>
+      <button>已結案<small>48</small></button>
+      <button>已駁回<small>9</small></button>
+    </div>
+    <div class="filters">
+      <button class="on">全部</button><button>作品</button><button>故事</button><button>設定</button>
+      <button>創作者</button><button>動態</button><button>討論串</button><button>留言</button>
+    </div>
+    <div class="card">
+      <div class="row" data-go="comment">
+        <div class="count"><b>10</b><span>待處理</span></div>
+        <div><div class="title"><span class="chip type">留言</span>路人甲 的留言</div><div class="excerpt">加我line領免費點數 👉 xxx　·　於《霧港紀事》討論串「老闆到底幾歲？」</div></div>
+        <div class="reasons"><span class="chip danger">廣告、洗版 ×9</span><span class="chip">騷擾 ×1</span></div>
+        <div class="when">5 分鐘前</div>
+      </div>
+      <div class="row" data-go="user">
+        <div class="count"><b>4</b><span>待處理</span></div>
+        <div><div class="title"><span class="chip type">創作者</span>霧島透官方</div><div class="excerpt">帳號本人 · 3 部作品 · 註冊 2 天</div></div>
+        <div class="reasons"><span class="chip danger">冒充他人 ×4</span></div>
+        <div class="when">1 小時前</div>
+      </div>
+      <div class="row" data-go="profile">
+        <div class="count"><b>2</b><span>待處理</span></div>
+        <div><div class="title"><span class="chip type">創作者</span>代寫小舖</div><div class="excerpt">額外筆名 · 12 則動態</div></div>
+        <div class="reasons"><span class="chip danger">廣告、洗版 ×2</span></div>
+        <div class="when">3 小時前</div>
+      </div>
+      <div class="row">
+        <div class="count"><b>1</b><span>待處理</span></div>
+        <div><div class="title"><span class="chip type">故事</span>第七話　夜行</div><div class="excerpt">《深海旅館》· 作者 青鳥</div></div>
+        <div class="reasons"><span class="chip danger">限制級內容未標示 ×1</span></div>
+        <div class="when">今天 09:12</div>
+      </div>
+      <div class="row">
+        <div class="count"><b>1</b><span>待處理</span></div>
+        <div><div class="title"><span class="chip type">動態</span>阿明 的動態 <span class="chip">作者已自行刪除</span></div><div class="excerpt">（已刪除）</div></div>
+        <div class="reasons"><span class="chip danger">其他 ×1</span></div>
+        <div class="when">昨天</div>
+      </div>
+    </div>
+    <div class="pager"><button class="on">1</button><button>2</button><button>›</button></div>
+
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>一列＝一個被檢舉的對象</b>；左邊大數字是待處理檢舉數，<b>排序先看待處理數、同數再看最後被檢舉時間</b>。</li>
+        <li>「已結案」「已駁回」分頁依處理時間新到舊，大數字換成總檢舉數。</li>
+        <li>入口在右上使用者選單「管理後台」（點頭像看），只有持有任一平台權限的人才看得到。左側是<b>後台專用 layout 的導覽</b>，之後的管理功能都加在這裡；手機收成上方橫向分頁。</li>
+        <li><b>檢舉人不會收到通知</b>（結案、駁回都不通知）。</li>
+        <li>作者已自行刪除的對象仍留在待處理，進去只能「結案」，不會覆寫原因。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ② 詳情：留言 -->
+<section class="view" id="view-comment">
+  <div class="crumb"><a href="#">SteamLoom</a> › <a href="#">管理後台</a> › <a href="#" data-go="list">檢舉</a> › <b>路人甲 的留言</b></div>
+  <div class="wrap">
+    <h1>路人甲 的留言</h1>
+    <div class="detail">
+      <div>
+        <div class="card target">
+          <div class="target-head"><span class="chip type">留言</span><span class="chip ok" id="commentState" hidden>已移除</span></div>
+          <div class="target-body">加我line領免費點數 👉 xxx
+每天簽到再送 500 點！</div>
+          <dl class="meta">
+            <dt>留言者</dt><dd>路人甲（帳號 #2051）</dd>
+            <dt>所在位置</dt><dd>《霧港紀事》討論串「老闆到底幾歲？」 <a href="#">前往查看 ↗</a></dd>
+            <dt>留言時間</dt><dd>2026-10-10 14:02</dd>
+          </dl>
+        </div>
+        <div class="card reports">
+          <div style="padding:12px 16px 0"><h3>檢舉紀錄（10）</h3></div>
+          <div class="rep"><div class="rep-head"><span class="chip danger">廣告、洗版</span><b>讀者阿青</b><span class="tiny">5 分鐘前</span><span class="chip">待處理</span></div></div>
+          <div class="rep"><div class="rep-head"><span class="chip danger">騷擾、人身攻擊</span><b>小雨</b><span class="tiny">12 分鐘前</span><span class="chip">待處理</span></div><div class="rep-note">一直私訊我要我加 line</div></div>
+          <div class="rep"><div class="rep-head"><span class="chip danger">廣告、洗版</span><b>夜貓</b><span class="tiny">20 分鐘前</span><span class="chip">待處理</span></div></div>
+          <div class="rep"><div class="tiny" style="text-align:center">顯示其餘 7 筆</div></div>
+        </div>
+      </div>
+      <div class="card side">
+        <h3>原因統計</h3>
+        <div class="reason-bars">
+          <div class="bar"><div>廣告、洗版<i style="width:90%"></i></div><b>9</b></div>
+          <div class="bar"><div>騷擾、人身攻擊<i style="width:10%"></i></div><b>1</b></div>
+        </div>
+        <div class="actions" id="commentActions">
+          <button class="btn danger" data-dialog="remove">移除內容</button>
+          <button class="btn ghost" data-dialog="dismiss">駁回</button>
+        </div>
+      </div>
+    </div>
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>留言／動態／討論串顯示全文</b>；故事、設定、作品只顯示標題與「前往查看」（全文太長，到前台看）。</li>
+        <li><b>「移除內容」</b>：理由預設帶被檢舉最多次的原因，可改成任何適用理由（含內部用的「違反服務條款」）。確認後這 10 筆一起結案、通知留言者。</li>
+        <li>沒有對應 <code>admin.comment.delete</code> 權限時「移除內容」不顯示，只剩「駁回」。</li>
+        <li>處理完成後按鈕消失，改顯示狀態 chip；檢舉紀錄改成「已結案／已駁回 · 處理者」。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ③ 詳情：創作者（帳號本人） -->
+<section class="view" id="view-user">
+  <div class="crumb"><a href="#">SteamLoom</a> › <a href="#">管理後台</a> › <a href="#" data-go="list">檢舉</a> › <b>霧島透官方</b></div>
+  <div class="wrap">
+    <h1>霧島透官方</h1>
+    <div class="detail">
+      <div>
+        <div class="card target">
+          <div class="target-head"><span class="chip type">創作者</span><span class="chip">帳號本人</span><span class="chip danger" id="userState" hidden>已停權</span></div>
+          <dl class="meta">
+            <dt>帳號</dt><dd>#3388 · 註冊於 2026-10-08</dd>
+            <dt>額外筆名</dt><dd>霧島透的助理</dd>
+            <dt>公開足跡</dt><dd>3 部作品 · 5 則動態 · 2 個討論串 · 14 則留言</dd>
+            <dt>創作者頁</dt><dd><a href="#">前往查看 ↗</a></dd>
+          </dl>
+        </div>
+        <div class="card reports">
+          <div style="padding:12px 16px 0"><h3>檢舉紀錄（4）</h3></div>
+          <div class="rep"><div class="rep-head"><span class="chip danger">冒充他人</span><b>霧島透</b><span class="tiny">1 小時前</span><span class="chip">待處理</span></div><div class="rep-note">這不是我，大頭貼跟簡介都是抄我的</div></div>
+          <div class="rep"><div class="rep-head"><span class="chip danger">冒充他人</span><b>讀者阿青</b><span class="tiny">2 小時前</span><span class="chip">待處理</span></div></div>
+        </div>
+      </div>
+      <div class="card side">
+        <h3>原因統計</h3>
+        <div class="reason-bars"><div class="bar"><div>冒充他人<i style="width:100%"></i></div><b>4</b></div></div>
+        <div class="actions" id="userActions">
+          <button class="btn danger" data-dialog="ban">停權帳號</button>
+          <button class="btn ghost" data-dialog="dismiss">駁回</button>
+        </div>
+      </div>
+    </div>
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>停權當下不移除任何內容</b>（誤停權只要改回帳號狀態）；停權滿 6 個月由排程清除。「公開足跡」讓管理員知道之後會被清掉多少東西。</li>
+        <li><b>停權 dialog 要求輸入筆名才能確認</b>（不可逆程度最高的操作）。</li>
+        <li>不能停權自己（按鈕不顯示，API 也擋）。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ④ 詳情：額外筆名 -->
+<section class="view" id="view-profile">
+  <div class="crumb"><a href="#">SteamLoom</a> › <a href="#">管理後台</a> › <a href="#" data-go="list">檢舉</a> › <b>代寫小舖</b></div>
+  <div class="wrap">
+    <h1>代寫小舖</h1>
+    <div class="detail">
+      <div>
+        <div class="card target">
+          <div class="target-head"><span class="chip type">創作者</span><span class="chip">額外筆名</span></div>
+          <dl class="meta">
+            <dt>所屬帳號</dt><dd>#2210（本人筆名：阿凱）</dd>
+            <dt>公開足跡</dt><dd>12 則動態 · 0 個討論串 · 3 則留言</dd>
+            <dt>創作者頁</dt><dd><a href="#">前往查看 ↗</a></dd>
+          </dl>
+        </div>
+      </div>
+      <div class="card side">
+        <h3>原因統計</h3>
+        <div class="reason-bars"><div class="bar"><div>廣告、洗版<i style="width:100%"></i></div><b>2</b></div></div>
+        <div class="actions">
+          <button class="btn danger" data-dialog="removeProfile">移除筆名</button>
+          <button class="btn ghost" data-dialog="dismiss">駁回</button>
+        </div>
+      </div>
+    </div>
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li>移除筆名只影響這個筆名（連帶它的動態、討論串、留言），帳號本人「阿凱」與其他筆名不受影響、仍可登入。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ⑤ 沒有權限 -->
+<section class="view" id="view-denied">
+  <div class="crumb"><a href="#">SteamLoom</a> › <b>管理後台</b></div>
+  <div class="wrap"><div class="card empty"><b>沒有權限</b>這個頁面只開放給站方管理員。</div></div>
+</section>
+
+  </main>
+</div>
+
+<!-- dialogs -->
+<div class="modal" id="dlg-remove"><div class="dialog">
+  <h3>移除這則留言？</h3>
+  <p>讀者會看到「此留言已由站方移除，原因：…」，留言者會收到通知；這個對象的 10 筆檢舉一起結案。</p>
+  <div class="field"><label>移除原因</label>
+    <select><option>廣告、洗版</option><option>騷擾、人身攻擊</option><option>仇恨言論</option><option>抄襲、侵權</option><option>洩漏他人個資</option><option>違法內容</option><option>其他</option><option>違反服務條款</option></select></div>
+  <div class="dialog-actions"><button class="btn ghost" data-close>取消</button><button class="btn danger" data-done="comment">移除</button></div>
+</div></div>
+
+<div class="modal" id="dlg-dismiss"><div class="dialog">
+  <h3>駁回這些檢舉？</h3>
+  <p>內容不會有任何變動，待處理的檢舉改為「已駁回」。</p>
+  <div class="dialog-actions"><button class="btn ghost" data-close>取消</button><button class="btn" data-done="dismiss">駁回</button></div>
+</div></div>
+
+<div class="modal" id="dlg-ban"><div class="dialog">
+  <h3>停權「霧島透官方」？</h3>
+  <p>停權後會：</p>
+  <ul>
+    <li>立即登出所有裝置，無法再登入；Token 與 MCP 連線全部失效</li>
+    <li>作品、筆名、動態、留言暫時保留；停權滿 6 個月後自動清除</li>
+  </ul>
+  <div class="field"><label>停權原因</label>
+    <select><option>冒充他人</option><option>廣告、洗版</option><option>騷擾、人身攻擊</option><option>仇恨言論</option><option>抄襲、侵權</option><option>洩漏他人個資</option><option>違法內容</option><option>其他</option><option>違反服務條款</option></select></div>
+  <div class="field"><label>輸入「霧島透官方」確認</label><input id="banConfirm" style="width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:7px;background:var(--paper);font-size:15px"></div>
+  <div class="dialog-actions"><button class="btn ghost" data-close>取消</button><button class="btn danger" id="banBtn" data-done="user" disabled>停權</button></div>
+</div></div>
+
+<div class="modal" id="dlg-removeProfile"><div class="dialog">
+  <h3>移除筆名「代寫小舖」？</h3>
+  <p>這個筆名的 12 則動態與 3 則留言一併移除；所屬帳號與其他筆名不受影響。</p>
+  <div class="field"><label>移除原因</label>
+    <select><option>廣告、洗版</option><option>騷擾、人身攻擊</option><option>冒充他人</option><option>違反服務條款</option></select></div>
+  <div class="dialog-actions"><button class="btn ghost" data-close>取消</button><button class="btn danger" data-done="profile">移除筆名</button></div>
+</div></div>
+
+<div class="snack" id="snack"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+function go(view) {
+  document.querySelectorAll(".mock-switch [data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === "view-" + view));
+  $("#adminNav").hidden = view === "denied";
+  $("#adminLayout").classList.toggle("denied", view === "denied");
+  window.scrollTo(0, 0);
+}
+function snack(msg) { const el = $("#snack"); el.textContent = msg; el.classList.add("on"); clearTimeout(snack.t); snack.t = setTimeout(() => el.classList.remove("on"), 2200); }
+const closeAll = () => document.querySelectorAll(".modal").forEach((m) => m.classList.remove("on"));
+
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("[data-view]")) return go(t.closest("[data-view]").dataset.view);
+  if (t.closest("#avatar")) { $("#userMenu").hidden = !$("#userMenu").hidden; return; }
+  if (!t.closest(".user-menu")) $("#userMenu").hidden = true;
+  const goEl = t.closest("[data-go]"); if (goEl) { e.preventDefault(); $("#userMenu").hidden = true; return go(goEl.dataset.go); }
+  const dlg = t.closest("[data-dialog]"); if (dlg) { $("#dlg-" + dlg.dataset.dialog).classList.add("on"); return; }
+  if (t.closest("[data-close]") || t.classList.contains("modal")) return closeAll();
+  const done = t.closest("[data-done]");
+  if (done && !done.disabled) {
+    closeAll();
+    const kind = done.dataset.done;
+    if (kind === "comment") { $("#commentState").hidden = false; $("#commentActions").innerHTML = '<span class="tiny">已結案 · 處理者 Faryne · 剛剛</span>'; snack("已移除，10 筆檢舉已結案"); }
+    else if (kind === "user") { $("#userState").hidden = false; $("#userActions").innerHTML = '<span class="tiny">已結案 · 處理者 Faryne · 剛剛</span>'; snack("已停權，4 筆檢舉已結案"); }
+    else if (kind === "profile") snack("已移除筆名，2 筆檢舉已結案");
+    else snack("已駁回");
+  }
+});
+$("#banConfirm").addEventListener("input", (e) => ($("#banBtn").disabled = e.target.value.trim() !== "霧島透官方"));
+</script>
+</body>
+</html>

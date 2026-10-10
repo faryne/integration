@@ -108,6 +108,9 @@ export const auditActionLabels: Record<string, string> = {
   "comment.delete": "刪除留言",
   "author.block": "封鎖留言者",
   "author.unblock": "解除封鎖",
+  "report.create": "檢舉",
+  "admin.report.remove": "站方移除被檢舉的內容",
+  "admin.report.dismiss": "駁回檢舉",
   "project.list": "讀取專案列表",
   "project.read": "讀取專案",
   "story.list": "讀取作品列表",
@@ -135,6 +138,7 @@ export const auditActionLabels: Record<string, string> = {
   "system.audit.archive_purge": "刪除超過保存期限的封存",
   "system.notification.fanout": "派送作品更新通知",
   "system.notification.purge": "清除超過保留期的通知",
+  "system.banned_account.purge": "清除停權帳號的內容",
 };
 
 export const auditCategoryLabels: Record<string, string> = {
@@ -151,6 +155,7 @@ export const auditCategoryLabels: Record<string, string> = {
   read: "讀取",
   audit: "稽核查詢",
   system: "系統",
+  admin: "站方管理",
 };
 
 export const auditSourceLabels: Record<StorytellerAuditSource, string> = {

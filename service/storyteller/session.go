@@ -22,6 +22,10 @@ func UpsertFirebaseUser(token *authService.FirebaseToken) (*modelAuth.User, erro
 	if err != nil {
 		return nil, err
 	}
+	// 站方停權的帳號（is_deleted＋理由）不能登入；本人刪帳號不在此限
+	if profile.IsDeleted && profile.DeleteReason != nil {
+		return nil, ErrAccountSuspended
+	}
 	return &modelAuth.User{
 		Id:          profile.ID,
 		FirebaseUID: profile.FirebaseUID,

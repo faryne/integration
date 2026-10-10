@@ -49,6 +49,7 @@ import { steamloomCreatorPath, steamloomPath } from "@/helpers/steamloom.ts";
 import { steamloomCreatorSeo } from "@/helpers/steamloomCreatorSeo.ts";
 import { useTitle } from "@/helpers/title.tsx";
 import { ErrorPage } from "@/pages/ErrorPage.tsx";
+import { ReportMenuButton } from "@/components/storyteller/report/ReportMenuButton.tsx";
 import { FollowAuthorButton } from "@/pages/storyteller/FollowAuthorButton.tsx";
 import { AuthorBio } from "@/pages/storyteller/StorytellerAuthorBio.tsx";
 import { StorytellerFavoriteAuthorCard } from "@/pages/storyteller/StorytellerFavoriteAuthorCard.tsx";
@@ -233,6 +234,15 @@ export default function StorytellerUserProjects() {
           >
             回首頁
           </Button>
+          {author?.pen_name && !isOwner && (
+            <ReportMenuButton
+              target={{
+                type: "author",
+                publicId: author.pen_name,
+                name: author.pen_name,
+              }}
+            />
+          )}
         </Stack>
       }
     >

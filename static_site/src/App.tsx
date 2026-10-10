@@ -101,6 +101,24 @@ const StorytellerPublicHome = lazy(
 );
 const StorytellerSearch = lazy(() => import("@/pages/storyteller/Search.tsx"));
 const StorytellerHome = lazy(() => import("@/pages/storyteller/Home.tsx"));
+// 管理後台：layout 負責權限閘門，各模組頁面放 pages/storyteller/admin/ 底下的子目錄
+const StorytellerAdminLayout = lazy(() =>
+  import("@/layouts/StorytellerAdminLayout.tsx").then((m) => ({
+    default: m.StorytellerAdminLayout,
+  })),
+);
+const StorytellerAdminReportList = lazy(() =>
+  import("@/pages/storyteller/admin/reports/AdminReportList.tsx").then((m) => ({
+    default: m.AdminReportList,
+  })),
+);
+const StorytellerAdminReportDetail = lazy(() =>
+  import("@/pages/storyteller/admin/reports/AdminReportDetail.tsx").then(
+    (m) => ({
+      default: m.AdminReportDetail,
+    }),
+  ),
+);
 const StorytellerOAuthAuthorize = lazy(
   () => import("@/pages/storyteller/OAuthAuthorize.tsx"),
 );
@@ -289,6 +307,15 @@ const storytellerRoutes = (
   <>
     <Route path={""} element={<StorytellerPublicHome />} />
     <Route path={"search"} element={<StorytellerSearch />} />
+    {/* 管理後台：平台營運入口，跟作者工作台（my）分開 */}
+    <Route path={"admin"} element={<StorytellerAdminLayout />}>
+      <Route index element={<Navigate to={"reports"} replace />} />
+      <Route path={"reports"} element={<StorytellerAdminReportList />} />
+      <Route
+        path={"reports/:targetType/:targetPublicId"}
+        element={<StorytellerAdminReportDetail />}
+      />
+    </Route>
     <Route path={"my"}>
       <Route path={""} element={<StorytellerHome />} />
       <Route path={"projects"} element={<StorytellerHome />} />

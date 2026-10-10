@@ -13,7 +13,9 @@ export type StorytellerNotificationView =
   | "follower"
   | "favorite"
   | "posted"
-  | "comment";
+  | "comment"
+  // 自己的內容被站方移除
+  | "moderation";
 
 export interface StorytellerNotificationKindDefinition {
   kind: string;
@@ -75,6 +77,10 @@ export interface StorytellerNotificationPayload {
   // work 是附上的作品卡名稱（「《作品》第 13 話」），沒附就沒有
   posts?: { public_id: string; excerpt: string; work?: string }[];
   deleted?: boolean;
+  // 已刪除且是站方移除時的理由 slug；moderation.removed 是處置理由
+  delete_reason?: string;
+  // moderation.removed：被移除的對象種類（名稱／摘要放在 label）
+  moderation_target_type?: string;
 }
 
 // 回追狀態：none 可回追／following 已互相追蹤／unavailable 對方或我的身份已不存在

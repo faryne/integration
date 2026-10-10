@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>檢舉機制 Mockup</title>
+<style>
+/* 沿用 discussion-board-mockup 的紙張色系 */
+:root {
+  --page: #f4edd8; --paper: #fbf7ea; --paper-elevated: #fffaf0;
+  --ink: #2c241b; --muted: #746856; --faint: #a59a86; --line: #cdbd96;
+  --accent: #8a5b18; --accent-soft: #ead9ad;
+  --talk: #6b4a8a; --talk-soft: #e6dcef;
+  --danger: #a33a3a; --danger-soft: #f3dcd6; --ok: #3f7a3a;
+  --header: rgba(251, 247, 234, .94);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.serif { font-family: Georgia, "Noto Serif TC", serif; }
+
+/* mockup 控制列（不屬於產品 UI） */
+.mock-switch { position: sticky; top: 0; z-index: 200; display: flex; gap: 6px; padding: 8px 16px; background: #2c241b; color: #fbf7ea; align-items: center; flex-wrap: wrap; }
+.mock-switch b { margin-right: 6px; font-size: 13px; }
+.mock-switch button, .mock-sub button { border: 1px solid #746856; background: transparent; border-radius: 4px; padding: 4px 10px; font-size: 13px; color: #fbf7ea; }
+.mock-switch button.on, .mock-sub button.on { background: #ead9ad; color: #2c241b; }
+.mock-sub { display: flex; gap: 6px; padding: 6px 16px; background: #3a2f22; color: #e8dcc0; font-size: 12px; align-items: center; flex-wrap: wrap; }
+.mock-sub button { font-size: 12px; padding: 3px 9px; color: #e8dcc0; }
+
+.site-header { height: 54px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; background: var(--header); border-bottom: 1px solid var(--line); }
+.brand { font-family: Georgia, "Noto Serif TC", serif; font-size: 20px; font-weight: 800; }
+.crumb { font-size: 13px; color: var(--muted); padding: 14px 16px 0; max-width: 820px; margin: 0 auto; }
+.crumb b { color: var(--ink); }
+.narrow { max-width: 820px; margin: 0 auto; padding: 0 16px 80px; }
+.view { display: none; } .view.on { display: block; }
+
+/* 共用 */
+.face { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 13px; }
+.face.sm { width: 28px; height: 28px; font-size: 11px; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); color: var(--muted); }
+.btn { border: 0; background: var(--talk); color: #fff; font-weight: 700; padding: 8px 16px; border-radius: 6px; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); font-weight: 600; }
+.btn.danger { background: var(--danger); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.muted { color: var(--muted); } .tiny { font-size: 12px; color: var(--faint); }
+.dots { border: 0; background: transparent; width: 32px; height: 32px; border-radius: 50%; font-size: 18px; color: var(--muted); line-height: 1; }
+.dots:hover { background: var(--accent-soft); }
+.section-title { margin: 26px 0 8px; font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: .04em; }
+
+/* ⋯ 選單 */
+.menu-wrap { position: relative; }
+.menu { position: absolute; right: 0; top: 34px; z-index: 30; min-width: 150px; padding: 5px; background: var(--paper-elevated); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 26px rgba(44,36,27,.18); }
+.menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 5px; font-size: 14px; }
+.menu button:hover { background: var(--accent-soft); }
+.menu .danger { color: var(--danger); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
+.menu .new { background: color-mix(in srgb, var(--danger-soft) 70%, transparent); }
+
+/* 作品首頁 hero */
+.hero { position: relative; margin: 12px 0 0; padding: 26px 24px; border-radius: 10px; background: linear-gradient(120deg, #3a2f22, #6a5233); color: #fbf7ea; }
+.hero h1 { margin: 0 0 6px; font-size: 26px; } .hero p { margin: 0; opacity: .85; font-size: 14px; }
+.hero .menu-wrap { position: absolute; right: 12px; top: 12px; }
+.hero .dots { color: #fbf7ea; } .hero .dots:hover { background: rgba(255,255,255,.12); }
+.hero .menu { color: var(--ink); }
+
+.prose { font-size: 17px; line-height: 2; padding: 12px 0; color: #3c3226; }
+
+/* 閱讀工具列 */
+.toolbar { margin-top: 10px; display: flex; gap: 4px; align-items: center; padding: 6px 8px; background: var(--paper-elevated); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 18px rgba(44,36,27,.12); overflow-x: auto; }
+.toolbar button { border: 0; background: transparent; padding: 6px 9px; border-radius: 6px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.toolbar button:hover { background: var(--accent-soft); color: var(--ink); }
+.toolbar button.icon { font-size: 16px; padding: 4px 9px; }
+.toolbar button.new { background: color-mix(in srgb, var(--danger-soft) 70%, transparent); }
+.toolbar .progress { flex: 1; min-width: 40px; height: 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.toolbar .progress i { display: block; height: 100%; background: var(--accent); }
+
+/* 創作者頁 */
+.creator { display: flex; gap: 14px; align-items: center; padding: 18px; }
+.creator .face { width: 56px; height: 56px; font-size: 20px; }
+.creator .name { font-size: 20px; font-weight: 800; }
+.creator .actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+
+/* 動態卡片、討論串 */
+.post { padding: 14px 16px; }
+.post-head { display: flex; gap: 10px; align-items: center; }
+.post-head .who { flex: 1; } .post-head .who b { display: block; font-size: 14px; }
+.post-body { margin: 10px 0 0; font-size: 15px; line-height: 1.75; }
+
+/* 留言 */
+.c { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); }
+.c:first-child { border-top: 0; }
+.c.reply { margin-left: 38px; border-top: 0; padding-top: 4px; }
+.c-head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-size: 13px; }
+.c-body { margin: 3px 0 4px; font-size: 15px; line-height: 1.75; }
+.c-deleted { align-self: center; font-size: 14px; color: var(--faint); font-style: italic; }
+.c-deleted .reason { font-style: normal; color: var(--muted); }
+.c-reply-to { font-size: 12px; color: var(--muted); }
+.c-actions { display: flex; gap: 12px; font-size: 12px; }
+.c-actions button { border: 0; background: transparent; padding: 0; color: var(--muted); font-weight: 700; }
+.c-actions button:hover { color: var(--ink); }
+.c-actions .new { color: var(--danger); }
+.c-list { padding: 4px 16px; }
+
+/* 通知 */
+.n-row { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 11px; padding: 12px 16px; border-top: 1px solid var(--line); }
+.n-row:first-child { border-top: 0; }
+.n-row p { margin: 0 0 3px; font-size: 14px; } .n-row .ex { font-size: 13px; color: var(--muted); }
+
+/* 檢舉 dialog */
+.modal { position: fixed; inset: 0; z-index: 300; display: none; place-items: center; padding: 16px; background: rgba(44,36,27,.45); }
+.modal.on { display: grid; }
+.dialog { width: min(480px, 100%); max-height: 92vh; overflow: auto; padding: 22px; background: var(--paper-elevated); border-radius: 12px; box-shadow: 0 20px 50px rgba(44,36,27,.3); }
+.dialog h3 { margin: 0 0 4px; font-size: 19px; }
+.dialog .target { font-size: 13px; color: var(--muted); margin-bottom: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field { display: grid; gap: 5px; margin-bottom: 12px; }
+.field label { font-size: 13px; font-weight: 700; color: var(--muted); }
+.field select { width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 15px; }
+.field select:invalid { color: var(--faint); }
+.field textarea { width: 100%; min-height: 84px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 15px; resize: vertical; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* 審查筆記（不屬於產品 UI） */
+.review { margin: 26px 0 0; padding: 16px 18px; border: 1px dashed #c9a640; border-radius: 10px; background: #fff3c4; color: #5a4512; }
+.review h2 { margin: 0 0 8px; font-size: 14px; }
+.review ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 13px; line-height: 1.65; }
+.review b { color: #3f2f08; }
+
+.snack { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 400; padding: 10px 16px; border-radius: 8px; background: #2c241b; color: #fbf7ea; font-weight: 700; font-size: 14px; display: none; }
+.snack.on { display: block; } .snack.err { background: var(--danger); }
+
+@media (max-width: 720px) {
+  .dialog { position: fixed; inset: auto 0 0 0; width: 100%; border-radius: 14px 14px 0 0; max-height: 88vh; }
+  .modal { padding: 0; place-items: end stretch; }
+  .creator { flex-wrap: wrap; } .creator .actions { margin-left: 0; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="mock-switch">
+  <b>檢舉機制 Mockup</b>
+  <button data-view="entries" class="on">① 檢舉入口</button>
+  <button data-view="dialog">② 檢舉 dialog</button>
+  <button data-view="reason">③ 刪除原因顯示</button>
+</div>
+<div class="mock-sub" id="dialogSub" hidden>
+  檢舉對象：
+  <button data-target="comment" class="on">留言</button>
+  <button data-target="author_post">動態</button>
+  <button data-target="discussion_thread">討論串</button>
+  <button data-target="project">作品</button>
+  <button data-target="story">故事</button>
+  <button data-target="lore">設定</button>
+  <button data-target="author">創作者</button>
+  <span style="width:12px"></span>
+  狀態：
+  <button data-state="normal" class="on">已登入</button>
+  <button data-state="guest">未登入</button>
+  <button data-state="error">送出失敗</button>
+</div>
+
+<header class="site-header"><span class="brand">SteamLoom</span><span class="tiny">mockup</span></header>
+
+<!-- ① 檢舉入口：每一種可檢舉的內容放一個代表畫面，紅底是新增的項目 -->
+<section class="view on" id="view-entries">
+  <div class="crumb">首頁 › <b>檢舉入口總覽</b></div>
+  <div class="narrow">
+
+    <div class="section-title">作品首頁（ReaderWorkLanding）— hero 右上新增 ⋯</div>
+    <div class="hero">
+      <h1 class="serif">霧港紀事</h1>
+      <p>雨季不停的港口城市，與一間只在午夜開門的鐘錶行。</p>
+      <div class="menu-wrap">
+        <button class="dots" data-menu>⋯</button>
+        <div class="menu" hidden>
+          <button>複製連結</button>
+          <hr>
+          <button class="danger new" data-report="project" data-label="作品《霧港紀事》">檢舉作品</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">閱讀頁／公開設定頁 — 閱讀工具列新增「檢舉」（兩頁共用 StorytellerReaderToolbar）</div>
+    <div class="card" style="padding:0 18px">
+      <div class="prose serif">鐘錶行的門鈴響起時，雨剛好停了。老闆從櫃檯後抬起頭，像是早就知道今晚會有人來……</div>
+    </div>
+    <div class="toolbar">
+      <button>← 上一話</button>
+      <button>目錄</button>
+      <span class="progress"><i style="width:42%"></i></span>
+      <button>作品資訊</button>
+      <button>討論 3</button>
+      <button>書籤</button>
+      <button>閱讀設定</button>
+      <button class="new icon" title="檢舉" data-report="story" data-label="第三話　午夜的鐘聲">⚑</button>
+      <button>下一話 →</button>
+    </div>
+    <div class="tiny" style="margin-top:6px">設定頁同一顆按鈕，檢舉對象自動換成「設定〈霧港鐘錶行〉」。</div>
+
+    <div class="section-title">創作者頁 — 追蹤按鈕旁新增 ⋯</div>
+    <div class="card creator">
+      <div class="face" style="background:#6b4a8a">霧</div>
+      <div><div class="name">霧島透</div><div class="tiny">3 部作品 · 128 位追蹤者</div></div>
+      <div class="actions">
+        <button class="btn">追蹤</button>
+        <div class="menu-wrap">
+          <button class="dots" data-menu>⋯</button>
+          <div class="menu" hidden>
+            <button class="danger new" data-report="author" data-label="創作者 霧島透">檢舉創作者</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">動態卡片 — 既有 ⋯ 選單加一項（非本人才出現）</div>
+    <div class="card post">
+      <div class="post-head">
+        <div class="face" style="background:#3f6b6a">霧</div>
+        <div class="who"><b>霧島透</b><span class="tiny">2 小時前</span></div>
+        <div class="menu-wrap">
+          <button class="dots" data-menu>⋯</button>
+          <div class="menu" hidden>
+            <button>複製連結</button>
+            <button>封鎖這個人</button>
+            <hr>
+            <button class="danger new" data-report="author_post" data-label="霧島透 的動態">檢舉動態</button>
+          </div>
+        </div>
+      </div>
+      <div class="post-body">第四話寫到一半，鐘錶行老闆的過去比我想像的還要沉重……</div>
+    </div>
+
+    <div class="section-title">討論串 — 既有 ⋯ 選單加一項（非本人才出現）</div>
+    <div class="card post">
+      <div class="post-head">
+        <div class="face" style="background:#8a5b18">讀</div>
+        <div class="who"><b>老闆到底幾歲？</b><span class="tiny">讀者阿青 · 關於 第三話 · 5 則回覆</span></div>
+        <div class="menu-wrap">
+          <button class="dots" data-menu>⋯</button>
+          <div class="menu" hidden>
+            <button>複製連結</button>
+            <hr>
+            <button class="danger new" data-report="discussion_thread" data-label="討論串「老闆到底幾歲？」">檢舉討論串</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">留言 — 行內動作列加「檢舉」（跟回覆、封鎖並排；非本人才出現）</div>
+    <div class="card c-list">
+      <div class="c">
+        <div class="face sm" style="background:#7a6a50">路</div>
+        <div>
+          <div class="c-head"><b>路人甲</b><span class="tiny">· 1 小時前</span></div>
+          <div class="c-body">加我line領免費點數 👉 xxx</div>
+          <div class="c-actions"><button>回覆</button><button class="new" data-report="comment" data-label="路人甲 的留言">檢舉</button></div>
+        </div>
+      </div>
+      <div class="c">
+        <div class="face sm" style="background:#6b4a8a">我</div>
+        <div>
+          <div class="c-head"><b>我自己</b><span class="tiny">· 30 分鐘前</span></div>
+          <div class="c-body">這話的雨景寫得好好。</div>
+          <div class="c-actions"><button>回覆</button><button>編輯</button><button>刪除</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>自己的內容不出現「檢舉」</b>：作品／故事／設定的擁有者、動態與留言本人都看不到這一項（上面「我自己」那則就沒有）。</li>
+        <li><b>作品首頁、創作者頁原本沒有 ⋯</b>，這次新增。<b>閱讀頁、設定頁統一放閱讀工具列</b>：比照討論按鈕走插槽（<code>reportButton</code>），元件放獨立檔，<code>Reader.tsx</code> 只多一行串接。工具列空間有限，用 icon-only 旗子＋tooltip「檢舉」。</li>
+        <li><b>留言沿用行內文字動作</b>，不另加 ⋯，跟現在「回覆／編輯／刪除／封鎖」一致。</li>
+        <li><b>作者對自己作品底下的留言／討論串</b>可以檢舉（作者能刪，但也可能想交給站方處理帳號）。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ② 檢舉 dialog：由上方子列切換對象與狀態 -->
+<section class="view" id="view-dialog">
+  <div class="crumb">首頁 › <b>檢舉 dialog</b></div>
+  <div class="narrow">
+    <div class="card c-list" style="margin-top:12px">
+      <div class="c">
+        <div class="face sm" style="background:#7a6a50">路</div>
+        <div>
+          <div class="c-head"><b>路人甲</b><span class="tiny">· 1 小時前</span></div>
+          <div class="c-body">加我line領免費點數 👉 xxx</div>
+          <div class="c-actions"><button>回覆</button><button class="new" id="reopenDialog">檢舉</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>原因用下拉選單</b>，不條列 radio，dialog 高度固定。<b>選項依對象過濾</b>：「限制級內容未標示」只出現在作品／故事／設定；「冒充他人」只出現在創作者。切換上方「檢舉對象」看差異。</li>
+        <li><b>選「其他」時補充說明變必填</b>，沒填「送出檢舉」維持 disabled；其他理由補充說明可留空。</li>
+        <li><b>未登入</b>：按「檢舉」直接導去登入頁，不開 dialog（切到「未登入」再按一次看 snack 示意）。</li>
+        <li><b>重複檢舉</b>：同一目標還在處理中時，後端回成功、前端一樣顯示「已收到檢舉」，不提示「你已經檢舉過」。</li>
+        <li><b>手機版</b>：dialog 改成底部 sheet。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ③ 刪除原因顯示：既有佔位補列原因 -->
+<section class="view" id="view-reason">
+  <div class="crumb">首頁 › <b>刪除原因顯示</b></div>
+  <div class="narrow">
+    <div class="section-title">留言佔位（CommentItem）</div>
+    <div class="card c-list">
+      <div class="c">
+        <div class="face sm" style="background:#cdbd96"></div>
+        <div class="c-deleted">此留言已刪除</div>
+      </div>
+      <div class="c reply">
+        <div class="face sm" style="background:#cdbd96"></div>
+        <div class="c-deleted">此回覆已刪除</div>
+      </div>
+      <div class="c">
+        <div class="face sm" style="background:#cdbd96"></div>
+        <div class="c-deleted">此留言已由站方移除<span class="reason">，原因：廣告、洗版</span></div>
+      </div>
+      <div class="c reply">
+        <div class="face sm" style="background:#cdbd96"></div>
+        <div class="c-deleted">此回覆已由站方移除<span class="reason">，原因：騷擾、人身攻擊</span></div>
+      </div>
+      <div class="c reply">
+        <div class="face sm" style="background:#8a5b18">讀</div>
+        <div>
+          <div class="c-head"><b>讀者阿青</b><span class="tiny">· 20 分鐘前</span></div>
+          <div class="c-reply-to">↪ 回覆 已刪除的留言</div>
+          <div class="c-body">上面那則已經被處理了，謝謝站方。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">通知列表（storytellerNotificationUI）</div>
+    <div class="card">
+      <div class="n-row">
+        <div class="face" style="background:#3f6b6a">阿</div>
+        <div><p><b>讀者阿青</b> 回覆了你的留言</p><div class="ex">（留言已刪除）</div></div>
+      </div>
+      <div class="n-row">
+        <div class="face" style="background:#7a6a50">路</div>
+        <div><p><b>路人甲</b> 在你的動態留言</p><div class="ex">（留言已由站方移除，原因：廣告、洗版）</div></div>
+      </div>
+      <div class="n-row">
+        <div class="face" style="background:#6b4a8a">霧</div>
+        <div><p><b>霧島透</b> 發布了新動態</p><div class="ex">（動態已由站方移除，原因：違反服務條款）</div></div>
+      </div>
+    </div>
+
+    <div class="review">
+      <h2>審查筆記（不屬於產品 UI）</h2>
+      <ol>
+        <li><b>使用者自己刪的</b>（<code>delete_reason</code> 為空）維持原文字不變；只有內部刪除才補原因。</li>
+        <li><b>內部刪除改寫成「已由站方移除，原因：……」</b>，原因部分顏色深一階、不斜體；本人刪除仍是「此留言已刪除」，兩者一眼分得出來。</li>
+        <li><b>「↪ 回覆 已刪除的留言」不補原因</b>：那只是指向，原因看上面的佔位就好，避免同一個原因重複出現。</li>
+        <li>原本 404 的（作品、故事、設定、創作者、討論串整串）維持 404，這裡不畫。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 檢舉 dialog 本體 -->
+<div class="modal" id="modal">
+  <div class="dialog" role="dialog" aria-labelledby="dlgTitle">
+    <h3 id="dlgTitle">檢舉留言</h3>
+    <div class="target" id="dlgTarget">路人甲 的留言</div>
+    <div class="field">
+      <label for="reason">原因</label>
+      <select id="reason"></select>
+    </div>
+    <div class="field">
+      <label for="note" id="noteLabel">補充說明</label>
+      <textarea id="note" maxlength="1000"></textarea>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn ghost" id="cancel">取消</button>
+      <button class="btn danger" id="submit" disabled>送出檢舉</button>
+    </div>
+  </div>
+</div>
+<div class="snack" id="snack"></div>
+
+<script>
+// 理由清單（對應 storyteller_moderation_reasons seed；只列 is_reportable=1 的）
+const REASONS = [
+  { key: "spam", label: "廣告、洗版" },
+  { key: "harassment", label: "騷擾、人身攻擊" },
+  { key: "hate_speech", label: "仇恨言論" },
+  { key: "unmarked_adult_content", label: "限制級內容未標示", only: ["project", "story", "lore"] },
+  { key: "copyright", label: "抄襲、侵權" },
+  { key: "impersonation", label: "冒充他人", only: ["author"] },
+  { key: "personal_info", label: "洩漏他人個資" },
+  { key: "illegal_content", label: "違法內容" },
+  { key: "other", label: "其他" },
+];
+const TITLES = { comment: "檢舉留言", author_post: "檢舉動態", discussion_thread: "檢舉討論串", project: "檢舉作品", story: "檢舉這一話", lore: "檢舉設定", author: "檢舉創作者" };
+const LABELS = { comment: "路人甲 的留言", author_post: "霧島透 的動態", discussion_thread: "討論串「老闆到底幾歲？」", project: "作品《霧港紀事》", story: "第三話　午夜的鐘聲", lore: "設定〈霧港鐘錶行〉", author: "創作者 霧島透" };
+let state = "normal", target = "comment";
+
+const $ = (s) => document.querySelector(s);
+const modal = $("#modal"), note = $("#note"), submit = $("#submit");
+
+function snack(msg, err) {
+  const el = $("#snack"); el.textContent = msg; el.className = "snack on" + (err ? " err" : "");
+  clearTimeout(snack.t); snack.t = setTimeout(() => (el.className = "snack"), 2200);
+}
+const reasonSel = $("#reason");
+function selected() { return reasonSel.value; }
+function validate() {
+  const r = selected();
+  submit.disabled = !r || (r === "other" && !note.value.trim());
+  $("#noteLabel").textContent = r === "other" ? "補充說明（必填）" : "補充說明";
+}
+function openDialog(t, label) {
+  if (state === "guest") return snack("（示意）導向登入頁");
+  target = t;
+  $("#dlgTitle").textContent = TITLES[t];
+  $("#dlgTarget").textContent = label || LABELS[t];
+  // 下拉選單：預設空白 placeholder，選了才能送出
+  reasonSel.innerHTML = '<option value="" disabled selected hidden>選擇原因</option>' +
+    REASONS.filter((r) => !r.only || r.only.includes(t)).map((r) => `<option value="${r.key}">${r.label}</option>`).join("");
+  reasonSel.required = true;
+  note.value = ""; validate(); modal.classList.add("on");
+}
+const closeDialog = () => modal.classList.remove("on");
+
+reasonSel.addEventListener("change", validate);
+note.addEventListener("input", validate);
+$("#cancel").onclick = closeDialog;
+modal.addEventListener("click", (e) => e.target === modal && closeDialog());
+submit.onclick = () => {
+  if (state === "error") return snack("檢舉送出失敗，請稍後再試", true); // 失敗時 dialog 不關，保留已填內容
+  closeDialog(); snack("已收到檢舉");
+};
+$("#reopenDialog").onclick = () => openDialog(target);
+
+// ⋯ 選單開合
+document.addEventListener("click", (e) => {
+  const dots = e.target.closest("[data-menu]");
+  document.querySelectorAll(".menu").forEach((m) => { if (!dots || m !== dots.nextElementSibling) m.hidden = true; });
+  if (dots) dots.nextElementSibling.hidden = !dots.nextElementSibling.hidden;
+  const rep = e.target.closest("[data-report]");
+  if (rep) openDialog(rep.dataset.report, rep.dataset.label);
+});
+
+// mockup 控制列
+document.querySelectorAll(".mock-switch [data-view]").forEach((b) => b.onclick = () => {
+  document.querySelectorAll(".mock-switch [data-view]").forEach((x) => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("on", v.id === "view-" + b.dataset.view));
+  $("#dialogSub").hidden = b.dataset.view !== "dialog";
+  closeDialog();
+  if (b.dataset.view === "dialog") openDialog(target);
+});
+document.querySelectorAll("#dialogSub [data-target]").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#dialogSub [data-target]").forEach((x) => x.classList.toggle("on", x === b));
+  target = b.dataset.target; closeDialog(); openDialog(target);
+});
+document.querySelectorAll("#dialogSub [data-state]").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#dialogSub [data-state]").forEach((x) => x.classList.toggle("on", x === b));
+  state = b.dataset.state; closeDialog();
+  if (state !== "guest") openDialog(target); else snack("切到未登入：按留言的「檢舉」看行為");
+});
+</script>
+</body>
+</html>

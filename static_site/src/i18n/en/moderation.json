@@ -1,0 +1,97 @@
+{
+  "reason": {
+    "spam": "Spam or advertising",
+    "harassment": "Harassment or personal attacks",
+    "hate_speech": "Hate speech",
+    "unmarked_adult_content": "Unmarked adult content",
+    "copyright": "Plagiarism or copyright infringement",
+    "impersonation": "Impersonation",
+    "personal_info": "Sharing someone's personal information",
+    "illegal_content": "Illegal content",
+    "other": "Other",
+    "tos_violation": "Terms of Service violation",
+    "unknown": "Community guidelines violation"
+  },
+  "removedByStaff": {
+    "comment": "This comment was removed by staff. Reason: {{reason}}",
+    "reply": "This reply was removed by staff. Reason: {{reason}}",
+    "notice": {
+      "comment": "(Comment removed by staff. Reason: {{reason}})",
+      "post": "(Post removed by staff. Reason: {{reason}})"
+    }
+  },
+  "report": {
+    "title": {
+      "project": "Report work",
+      "story": "Report this episode",
+      "lore": "Report lore entry",
+      "author": "Report creator",
+      "author_post": "Report post",
+      "discussion_thread": "Report discussion",
+      "comment": "Report comment"
+    },
+    "target": {
+      "project": "Work: {{name}}",
+      "story": "{{name}}",
+      "lore": "Lore: {{name}}",
+      "author": "Creator: {{name}}",
+      "author_post": "Post by {{name}}",
+      "discussion_thread": "Discussion: {{name}}",
+      "comment": "Comment by {{name}}",
+      "reply": "Reply by {{name}}",
+      "missingUser": "Deleted user"
+    },
+    "menu": {
+      "action": "Report",
+      "project": "Report work",
+      "author": "Report creator"
+    },
+    "field": {
+      "reason": "Reason",
+      "note": "Details",
+      "noteRequired": "Details (required)"
+    },
+    "cancel": "Cancel",
+    "submit": "Submit report",
+    "submitted": "Thanks, we've received your report",
+    "submitFailed": "Couldn't submit the report. Please try again later.",
+    "reasonsFailed": "Couldn't load report reasons. Please try again later.",
+    "loginRequired": "You need to sign in to report. Sign in now?"
+  },
+  "admin": {
+    "action": {
+      "remove": "Remove content",
+      "removeProfile": "Remove pen name",
+      "ban": "Ban account",
+      "dismiss": "Dismiss",
+      "close": "Close"
+    },
+    "dialog": {
+      "removeTitle": "{{action}}: \"{{name}}\"?",
+      "removeBody": "Readers will see that it was removed by staff, along with the reason, and the owner will be notified. The {{count}} pending report(s) on this item will be resolved.",
+      "removeProfileBody": "This pen name's {{posts}} post(s), {{threads}} discussion(s) and {{comments}} comment(s) will be removed too. The account and its other pen names are not affected.",
+      "banBody": "The account will be signed out on every device and can no longer sign in. All tokens and MCP connections stop working. Works, pen names, posts and comments are kept for now and removed automatically 6 months after the ban.",
+      "dismissTitle": "Dismiss these reports?",
+      "dismissBody": "Nothing will change on the content. The pending reports will be marked as dismissed.",
+      "closeTitle": "Close these reports?",
+      "closeBody": "The author has already deleted this content. The pending reports will be marked as resolved.",
+      "removeReason": "Removal reason",
+      "banReason": "Ban reason",
+      "typeToConfirm": "Type \"{{name}}\" to confirm",
+      "cancel": "Cancel",
+      "confirm": {
+        "remove": "Remove",
+        "removeProfile": "Remove pen name",
+        "ban": "Ban",
+        "dismiss": "Dismiss",
+        "close": "Close"
+      },
+      "done": {
+        "remove": "Removed. Reports resolved.",
+        "dismiss": "Reports dismissed",
+        "close": "Reports resolved"
+      },
+      "failed": "Action failed. Please try again."
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import AutoAwesomeOutlinedIcon from "@mui/icons-material/AutoAwesomeOutlined";
 import AutoStoriesOutlinedIcon from "@mui/icons-material/AutoStoriesOutlined";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -45,6 +46,7 @@ const viewIcons: Record<StorytellerNotificationView, ReactNode> = {
   favorite: <FavoriteBorderIcon fontSize="small" />,
   posted: <DynamicFeedOutlinedIcon fontSize="small" />,
   comment: <ChatBubbleOutlineIcon fontSize="small" />,
+  moderation: <GavelOutlinedIcon fontSize="small" />,
 };
 
 const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
@@ -54,7 +56,9 @@ const viewColor = (theme: Theme, view: StorytellerNotificationView) =>
       ? theme.palette.success.main
       : view === "security"
         ? theme.palette.warning.main
-        : theme.palette.info.main;
+        : view === "moderation"
+          ? theme.palette.error.main
+          : theme.palette.info.main;
 
 // 通知左側圖示：追蹤＝追蹤者頭像、收藏作品＝書封＋收藏者小頭像，其餘依 view 顯示類型圖示
 export function NotificationLeading({

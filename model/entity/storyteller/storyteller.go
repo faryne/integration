@@ -252,8 +252,11 @@ type Project struct {
 	// 公開 JSON 一律走 ProjectOutput 攤平出來的 CoverLayout／CoverFocalPoint。
 	DisplaySettings ProjectDisplaySettings `gorm:"column:display_settings" json:"-"`
 	DeletedAt       *time.Time             `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time              `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time              `gorm:"column:updated_at" json:"updated_at"`
+	IsDeleted       bool                   `gorm:"column:is_deleted" json:"-"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 // defaultProjectCoverFocalPoint 是沒設定過焦點時套用的位置，跟這次改版前寫死的
@@ -523,8 +526,10 @@ type Story struct {
 	WordCount       uint               `gorm:"column:word_count" json:"word_count"`
 	IsDeleted       bool               `gorm:"column:is_deleted" json:"is_deleted"`
 	DeletedAt       *time.Time         `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time          `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time          `gorm:"column:updated_at" json:"updated_at"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 	// Authors 是這一話的公開署名，身份只用 pen_name；ProfileIDs 只有擁有者管理端會帶。
 	Authors    []AuthorIdentityOutput `gorm:"-" json:"authors,omitempty"`
 	ProfileIDs []uint64               `gorm:"-" json:"profile_ids,omitempty"`
@@ -643,8 +648,10 @@ type Lore struct {
 	WordCount       uint                `gorm:"column:word_count" json:"word_count"`
 	IsDeleted       bool                `gorm:"column:is_deleted" json:"is_deleted"`
 	DeletedAt       *time.Time          `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt       time.Time           `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt       time.Time           `gorm:"column:updated_at" json:"updated_at"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (Lore) TableName() string { return "storyteller_lores" }
@@ -780,7 +787,9 @@ func (AuthorFavorite) TableName() string {
 }
 
 type UserProfile struct {
-	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	ID uint64 `gorm:"column:id;primaryKey" json:"id"`
+	// PublicID 對外（例如管理後台）指向這個帳號時用；內部流水號不對外
+	PublicID         string   `gorm:"column:public_id" json:"-"`
 	UserID           uint64   `gorm:"column:user_id" json:"user_id"`
 	FirebaseUID      string   `gorm:"column:firebase_uid" json:"firebase_uid"`
 	Email            *string  `gorm:"column:email" json:"email"`
@@ -798,8 +807,11 @@ type UserProfile struct {
 	AutoSaveEnabled         bool       `gorm:"column:auto_save_enabled" json:"auto_save_enabled"`
 	AutoSaveIntervalMinutes int        `gorm:"column:auto_save_interval_minutes" json:"auto_save_interval_minutes"`
 	DeletedAt               *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt               time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt               time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	IsDeleted               bool       `gorm:"column:is_deleted" json:"-"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (UserProfile) TableName() string {

@@ -76,6 +76,8 @@ import { ReaderDiscussionButton } from "@/components/storyteller/discussion/Read
 import { readingTargetKey } from "@/pages/storyteller/readingRecordStore.ts";
 import { StorytellerReaderHistory } from "@/pages/storyteller/StorytellerReaderHistory.tsx";
 import { StorytellerReaderToolbar } from "@/pages/storyteller/StorytellerReaderToolbar.tsx";
+import { ReaderReportButton } from "@/components/storyteller/report/ReaderReportButton.tsx";
+import { ReportMenuButton } from "@/components/storyteller/report/ReportMenuButton.tsx";
 import {
   StorytellerLoading,
   StorytellerShell,
@@ -1095,6 +1097,16 @@ export default function StorytellerReader({
           )}
         </Stack>
       </Paper>
+      {apiProject && !isOwner && (
+        <ReportMenuButton
+          target={{
+            type: "project",
+            publicId: apiProject.public_id,
+            share: shareToken,
+            name: project.name,
+          }}
+        />
+      )}
     </>
   );
   const projectPrimaryMeta = (
@@ -1742,6 +1754,27 @@ export default function StorytellerReader({
                         id: currentItem?.id ?? "",
                         label: currentItem?.title ?? "",
                       }
+                }
+              />
+            )
+          }
+          reportButton={
+            apiProject &&
+            !isOwner && (
+              <ReaderReportButton
+                projectPublicId={apiProject.public_id}
+                share={shareToken}
+                lore={
+                  currentLore && {
+                    id: currentLore.id,
+                    label: spoilerGate.displayTitle(currentLore),
+                  }
+                }
+                story={
+                  currentItem && {
+                    id: currentItem.id,
+                    label: currentItem.title,
+                  }
                 }
               />
             )

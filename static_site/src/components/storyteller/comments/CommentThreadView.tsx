@@ -46,6 +46,7 @@ export function CommentThreadView({
   actions,
   onNotify,
   onLoginRequired,
+  share,
 }: {
   comments: AuthorPostComment[];
   state: CommentViewerState;
@@ -60,6 +61,8 @@ export function CommentThreadView({
   actions: CommentActions;
   onNotify: Notify;
   onLoginRequired: () => void;
+  // 不公開作品的討論版要帶分享 token，檢舉留言時用
+  share?: string;
 }) {
   const location = useLocation();
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
@@ -125,6 +128,7 @@ export function CommentThreadView({
   const itemProps = {
     canWrite,
     flash,
+    share,
     maxLength,
     onReply: (target: ReplyTarget) => setReplyTarget(target),
     onConfirm: setConfirm,

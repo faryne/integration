@@ -25,8 +25,10 @@ type AuthorPost struct {
 	NotifiedAt      *time.Time `gorm:"column:notified_at"`
 	IsDeleted       bool       `gorm:"column:is_deleted"`
 	DeletedAt       *time.Time `gorm:"column:deleted_at"`
-	CreatedAt       time.Time  `gorm:"column:created_at"`
-	UpdatedAt       time.Time  `gorm:"column:updated_at"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
 
 func (AuthorPost) TableName() string { return "storyteller_author_posts" }
@@ -60,7 +62,9 @@ type Comment struct {
 	EditedAt  *time.Time `gorm:"column:edited_at"`
 	IsDeleted bool       `gorm:"column:is_deleted"`
 	DeletedAt *time.Time `gorm:"column:deleted_at"`
-	CreatedAt time.Time  `gorm:"column:created_at"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
 }
 
 func (Comment) TableName() string { return "storyteller_comments" }
@@ -158,9 +162,13 @@ type CommentReplyToOutput struct {
 
 // CommentOutput：已刪除的留言只留佔位（Deleted=true，不帶身份、內文與時間以外的資訊）。
 type CommentOutput struct {
-	PublicID string                `json:"public_id"`
-	Deleted  bool                  `json:"deleted,omitempty"`
-	Author   *AuthorIdentityOutput `json:"author,omitempty"`
+	PublicID string `json:"public_id"`
+	Deleted  bool   `json:"deleted,omitempty"`
+	// DeleteReason 只在站方移除時有值（理由 slug）；本人刪除為空
+	DeleteReason string `json:"delete_reason,omitempty"`
+	// IsMine：看的人就是留言者（任一身份），前端用來隱藏「檢舉」
+	IsMine bool                  `json:"is_mine,omitempty"`
+	Author *AuthorIdentityOutput `json:"author,omitempty"`
 	// IsPostAuthor：留言者是作者（動態＝貼文的身份；討論版＝作品擁有者的任一署名身份），前端顯示「作者」標籤
 	IsPostAuthor bool                  `json:"is_post_author,omitempty"`
 	Edited       bool                  `json:"edited,omitempty"`

@@ -37,8 +37,10 @@ type DiscussionThread struct {
 	LastActivityAt time.Time  `gorm:"column:last_activity_at"`
 	IsDeleted      bool       `gorm:"column:is_deleted"`
 	DeletedAt      *time.Time `gorm:"column:deleted_at"`
-	CreatedAt      time.Time  `gorm:"column:created_at"`
-	UpdatedAt      time.Time  `gorm:"column:updated_at"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason"`
+	CreatedAt    time.Time `gorm:"column:created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at"`
 }
 
 func (DiscussionThread) TableName() string { return "storyteller_discussion_threads" }
@@ -111,6 +113,8 @@ type DiscussionThreadOutput struct {
 	CanDelete       bool                    `json:"can_delete,omitempty"`
 	CanLock         bool                    `json:"can_lock,omitempty"`
 	CanBlock        bool                    `json:"can_block,omitempty"`
+	// IsMine：看的人就是發串者（任一身份），前端用來隱藏「檢舉」
+	IsMine bool `json:"is_mine,omitempty"`
 	// Blocked 只輸出給作品作者：發串者已被封鎖
 	Blocked        bool      `json:"blocked,omitempty"`
 	LastActivityAt time.Time `json:"last_activity_at"`

@@ -6,6 +6,7 @@ import (
 	"faryne.dev/controller/storyteller"
 	"faryne.dev/controller/storytelleroauth"
 	"faryne.dev/middleware/authsession"
+	storytellerAccount "faryne.dev/middleware/storytelleraccount"
 	storytellerAI "faryne.dev/middleware/storytellerai"
 	storytellerAudit "faryne.dev/middleware/storytelleraudit"
 	authService "faryne.dev/service/auth"
@@ -26,6 +27,8 @@ func Storyteller(app *fiber.App) {
 	// 專案討論版：公開讀取（不公開作品帶 ?share=）
 	group.Get("/story/:project/discussions", storyteller.PublicDiscussionThreads)
 	group.Get("/discussions/:thread", storyteller.PublicDiscussionThread)
+	// 檢舉理由：公開讀取，檢舉 dialog 依對象種類過濾
+	group.Get("/moderation-reasons", storyteller.ModerationReasons)
 	group.Get("/story/share/:token", storyteller.SharedProject)
 	group.Get("/story/:project", storyteller.PublicProject)
 	group.Get("/story/:project/stories/:story/latest-version", storyteller.PublicStoryLatestVersion)
@@ -40,7 +43,8 @@ func Storyteller(app *fiber.App) {
 		group.Post("/auth/dev-session", storyteller.CreateDevSession)
 	}
 
-	authenticated := group.Group("", authsession.New(authService.BrandStoryteller), storytellerAudit.WebSuccess())
+	// storytellerAccount.Active：被站方停權的帳號，既有 session 下一個請求就失效
+	authenticated := group.Group("", authsession.New(authService.BrandStoryteller), storytellerAccount.Active(), storytellerAudit.WebSuccess())
 	// 站內 AI 助理（agent chat、API key、Skill、用量、記憶草稿、AI 提案）的路由逐條掛 aiGate；
 	// 不能用空前綴 group 包住——Fiber 的 group middleware 會套到之後註冊的所有路由。
 	aiGate := storytellerAI.Gate()
@@ -108,6 +112,16 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/discussions/:thread/lock", storyteller.UnlockDiscussionThread)
 	authenticated.Post("/discussions/:thread/block", storyteller.BlockDiscussionStarter)
 	authenticated.Post("/discussions/:thread/comments", storyteller.CreateDiscussionComment)
+
+	// 讀者檢舉：目標可見度沿用閱讀規則，不公開作品裡的東西帶 share
+	authenticated.Post("/reports", storyteller.CreateReport)
+
+	// 管理後台：只開放 session，每支 handler 由 service 檢查平台權限（admin.*）
+	authenticated.Get("/admin/me", storyteller.AdminMe)
+	authenticated.Get("/admin/reports", storyteller.AdminReports)
+	authenticated.Get("/admin/reports/:type/:target", storyteller.AdminReportDetail)
+	authenticated.Post("/admin/reports/:type/:target/remove", storyteller.AdminRemoveReportTarget)
+	authenticated.Post("/admin/reports/:type/:target/dismiss", storyteller.AdminDismissReportTarget)
 
 	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
 	authenticated.Get("/oauth/grants", storytelleroauth.Grants)

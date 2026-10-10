@@ -69,6 +69,11 @@ type NotificationPayload struct {
 	Posts          []NotificationPost `json:"posts,omitempty"`
 	// Deleted 不存 DB：輸出時發現貼文或留言已刪除才設為 true，前端改顯示「已刪除」、不給連結
 	Deleted bool `json:"deleted,omitempty"`
+	// DeleteReason：動態／留言通知是輸出時才判斷（不存 DB），已刪除且是站方移除時帶理由 slug（貼文優先於留言）；
+	// moderation.removed 則是寫入當下的處置理由
+	DeleteReason string `json:"delete_reason,omitempty"`
+	// ModerationTargetType 是被站方移除的對象種類（moderation.removed），被移除內容的名稱／摘要放在 Label
+	ModerationTargetType string `json:"moderation_target_type,omitempty"`
 
 	// Internal 是後端用的身份鍵，會存進 DB，但輸出前一律清空（見 storytellernotify 的 output）
 	Internal *NotificationInternal `json:"internal,omitempty"`

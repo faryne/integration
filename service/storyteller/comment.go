@@ -270,7 +270,7 @@ func buildCommentThreads(rows []storytellerModel.Comment, book *identityBook, sc
 	}
 	output := func(row *storytellerModel.Comment) storytellerModel.CommentOutput {
 		if row.IsDeleted {
-			return storytellerModel.CommentOutput{PublicID: row.PublicID, Deleted: true}
+			return storytellerModel.CommentOutput{PublicID: row.PublicID, Deleted: true, DeleteReason: stringValue(row.DeleteReason)}
 		}
 		createdAt := row.CreatedAt
 		out := storytellerModel.CommentOutput{
@@ -279,6 +279,7 @@ func buildCommentThreads(rows []storytellerModel.Comment, book *identityBook, sc
 			CanEdit:   scope.Editable && viewerID != 0 && row.UserID == viewerID,
 			CanDelete: viewerID != 0 && (row.UserID == viewerID || isOwner),
 			Blocked:   isOwner && blocked[row.UserID],
+			IsMine:    viewerID != 0 && row.UserID == viewerID,
 		}
 		out.CanBlock = isOwner && row.UserID != scope.OwnerID && !out.Blocked
 		// 留言者身份已不存在時 Author 留 nil，前端顯示「已不存在的使用者」、不給連結

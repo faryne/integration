@@ -4,6 +4,10 @@ import {
 } from "@/data/storyteller.ts";
 import { useStorytellerNotificationKinds } from "@/apis/storyteller.ts";
 import { apiErrorMessage } from "@/helpers/apiError.ts";
+import {
+  moderationReasonLabel,
+  removedByStaffText,
+} from "@/helpers/moderationReasons.ts";
 import { steamloomPath } from "@/helpers/steamloom.ts";
 import type {
   StorytellerNotification,
@@ -22,6 +26,7 @@ const knownViews: StorytellerNotificationView[] = [
   "favorite",
   "posted",
   "comment",
+  "moderation",
 ];
 
 // 前端只依「呈現方式」分支，不寫死 kind；註冊表查不到或 view 不認識的一律當 generic
@@ -97,7 +102,9 @@ export function notificationHeadline(
       return {
         actor: notificationActorName(n),
         text: count > 1 ? ` 發了 ${count} 則新動態` : " 發了新動態",
-        sub: p.deleted ? "（動態已刪除）" : (p.posts?.[0]?.excerpt ?? p.body),
+        sub: p.deleted
+          ? deletedText("post", p.delete_reason)
+          : (p.posts?.[0]?.excerpt ?? p.body),
       };
     }
     case "comment":
@@ -109,7 +116,20 @@ export function notificationHeadline(
             : p.target_pen_name
               ? ` 留言了你的筆名 ${p.target_pen_name} 的貼文`
               : " 留言了你的貼文",
-        sub: p.deleted ? "（留言已刪除）" : `「${p.comment_excerpt ?? ""}」`,
+        sub: p.deleted
+          ? deletedText("comment", p.delete_reason)
+          : `「${p.comment_excerpt ?? ""}」`,
+      };
+    case "moderation":
+      // 標題是後端寫入的「你的留言已由站方移除」，原因依 slug 在前端對照
+      return {
+        text: p.title,
+        sub: [
+          p.label && `「${p.label}」`,
+          `原因：${moderationReasonLabel(p.delete_reason ?? "")}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
       };
     case "security":
       return {
@@ -252,3 +272,9 @@ export function notificationStoryPath(
 
 // 實作共用 helpers/apiError.ts；保留這個名字讓既有通知元件不用改 import
 export const notificationErrorMessage = apiErrorMessage;
+
+// 已刪除的貼文／留言：本人刪的「（留言已刪除）」，站方移除的整句帶原因（翻譯檔 moderation.removedByStaff.notice.*）
+function deletedText(kind: "comment" | "post", reason?: string) {
+  if (reason) return removedByStaffText(`notice.${kind}`, reason);
+  return kind === "post" ? "（動態已刪除）" : "（留言已刪除）";
+}

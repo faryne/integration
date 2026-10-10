@@ -53,7 +53,21 @@ func New() fiber.Handler {
 		}
 		return credential, err
 	}
-	return newMiddleware(authenticate, auditService.Emit, oauth.ResourceMetadataURL())
+	// 站方停權的帳號：PAT／OAuth 跟 session 一樣，下一個請求就失效
+	active := func(token string) (*Credential, error) {
+		credential, err := authenticate(token)
+		if err != nil || credential == nil {
+			return credential, err
+		}
+		if err := pat.EnsureAccountActive(credential.UserID); err != nil {
+			if errors.Is(err, storytellerService.ErrAccountSuspended) {
+				credential.DeniedReason = "account_suspended"
+			}
+			return credential, err
+		}
+		return credential, nil
+	}
+	return newMiddleware(active, auditService.Emit, oauth.ResourceMetadataURL())
 }
 
 type authenticateFunc func(string) (*Credential, error)

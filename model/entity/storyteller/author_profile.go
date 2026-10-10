@@ -5,7 +5,9 @@ import "time"
 // AuthorProfile 是帳號底下的「額外筆名」。本人身份仍在 storyteller_users（UserProfile），
 // 不搬遷；這張表只放另外建立的筆名。user_id 是擁有者帳號，僅後端使用、不對外輸出。
 type AuthorProfile struct {
-	ID               uint64   `gorm:"column:id;primaryKey" json:"id"`
+	ID uint64 `gorm:"column:id;primaryKey" json:"id"`
+	// PublicID 對外（例如管理後台）指向這個筆名時用；內部流水號不對外
+	PublicID         string   `gorm:"column:public_id" json:"-"`
 	UserID           uint64   `gorm:"column:user_id" json:"-"`
 	PenName          string   `gorm:"column:pen_name" json:"pen_name"`
 	Bio              string   `gorm:"column:bio" json:"bio"`
@@ -15,8 +17,11 @@ type AuthorProfile struct {
 	// SNSPrivateKeys 是 SNSLinks 裡設成「僅自己」的 key，公開輸出時濾掉（見 PublicSNSLinks）
 	SNSPrivateKeys StringList `gorm:"column:sns_private_keys;type:json" json:"sns_private_keys"`
 	DeletedAt      *time.Time `gorm:"column:deleted_at" json:"deleted_at"`
-	CreatedAt      time.Time  `gorm:"column:created_at" json:"created_at"`
-	UpdatedAt      time.Time  `gorm:"column:updated_at" json:"updated_at"`
+	IsDeleted      bool       `gorm:"column:is_deleted" json:"-"`
+	// DeleteReason 是內部處置的理由 slug（見 moderation.go）；NULL＝使用者自己刪的
+	DeleteReason *string   `gorm:"column:delete_reason" json:"-"`
+	CreatedAt    time.Time `gorm:"column:created_at" json:"created_at"`
+	UpdatedAt    time.Time `gorm:"column:updated_at" json:"updated_at"`
 }
 
 func (AuthorProfile) TableName() string {

@@ -140,6 +140,7 @@ func (s *Service) discussionThreadOutputs(project *storytellerModel.Project, row
 			CanEdit:   viewerID != 0 && row.UserID == viewerID && row.LockedAt == nil && !speaker.Blocked,
 			CanDelete: viewerID != 0 && (row.UserID == viewerID || isOwner),
 			CanLock:   isOwner, Blocked: isOwner && blocked[row.UserID],
+			IsMine:         viewerID != 0 && row.UserID == viewerID,
 			LastActivityAt: row.LastActivityAt, CreatedAt: row.CreatedAt,
 		}
 		out.CanBlock = isOwner && row.UserID != project.UserID && !out.Blocked

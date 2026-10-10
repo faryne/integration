@@ -157,7 +157,7 @@ func (r *Repository) UpdateProject(row *storytellerModel.Project) error {
 
 func (r *Repository) DeleteProject(row *storytellerModel.Project) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
 
 func (r *Repository) Agents(userID uint64) ([]storytellerModel.Agent, error) {
@@ -1850,6 +1850,10 @@ func (r *Repository) UserProfileWithDeleted(userID uint64) (*storytellerModel.Us
 }
 
 func (r *Repository) UpsertFirebaseUser(input storytellerModel.UserProfile) (*storytellerModel.UserProfile, error) {
+	// 只有新建時會用到；既有帳號衝突時不在 DoUpdates 名單內，public_id 維持原值
+	if input.PublicID == "" {
+		input.PublicID = newPublicID()
+	}
 	if err := r.db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "firebase_uid"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -1884,6 +1888,9 @@ func (r *Repository) UserProfileByPenName(penName string) (*storytellerModel.Use
 }
 
 func (r *Repository) CreateUserProfile(row *storytellerModel.UserProfile) error {
+	if row.PublicID == "" {
+		row.PublicID = newPublicID()
+	}
 	return r.db.Create(row).Error
 }
 
@@ -1893,5 +1900,5 @@ func (r *Repository) SaveUserProfile(row *storytellerModel.UserProfile) error {
 
 func (r *Repository) DeleteUserProfile(row *storytellerModel.UserProfile) error {
 	now := time.Now()
-	return r.db.Model(row).Updates(map[string]any{"deleted_at": &now}).Error
+	return r.db.Model(row).Updates(map[string]any{"is_deleted": true, "deleted_at": &now}).Error
 }
