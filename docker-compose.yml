@@ -20,6 +20,12 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+  # 本機用的 RabbitMQ，正式環境是 CloudAMQP；management UI 在 http://localhost:15672（guest/guest）
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
   manticore:
     image: manticoresearch/manticore
     container_name: search

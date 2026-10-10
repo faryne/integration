@@ -18,3 +18,9 @@ type ESName string
 const (
 	ESDefault ESName = "default"
 )
+
+type RabbitMQName string
+
+const (
+	RabbitMQDefault RabbitMQName = "default"
+)

@@ -218,6 +218,7 @@ func waitBackgroundWorkBeforeShutdown() {
 
 func shutdownClients() error {
 	var shutdownErr error
+	shutdownErr = errors.Join(shutdownErr, client.CloseRabbitMQConnections())
 	shutdownErr = errors.Join(shutdownErr, client.CloseRedisConnections())
 	shutdownErr = errors.Join(shutdownErr, client.CloseMySqlConnections())
 	return shutdownErr
@@ -380,6 +381,15 @@ func loadCommandSettings(inputEnvFile string) error {
 		_ = client.CloseRedisConnections()
 		_ = client.CloseMySqlConnections()
 		return esConnError
+	}
+
+	// RabbitMQ 連不上不會擋開機（背景自動重連），只有 URL 格式錯誤才會回傳錯誤
+	if config.EnvConfig().RabbitMQURL != "" {
+		if err := client.InitRabbitMQ(enum.RabbitMQDefault, config.EnvConfig().RabbitMQURL); err != nil {
+			_ = client.CloseRedisConnections()
+			_ = client.CloseMySqlConnections()
+			return err
+		}
 	}
 
 	// 稽核事件的 producer 在這裡設定，常駐後端與手動 -cmd 共用：事件寫進 Redis Stream，
