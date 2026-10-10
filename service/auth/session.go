@@ -32,7 +32,7 @@ func ptr(s string) *string { return &s }
 type UpsertFirebaseUserFunc func(*FirebaseToken) (*modelAuth.User, error)
 
 func CreateSessionFor(idToken string, brand string, upsert UpsertFirebaseUserFunc) (*modelAuth.SessionResponse, error) {
-	verified, err := VerifyFirebaseIDToken(idToken)
+	verified, err := VerifyFirebaseIDToken(idToken, brand)
 	if err != nil {
 		return nil, err
 	}
