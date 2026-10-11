@@ -5,10 +5,7 @@ name: SteamLoom Writer
 
 on:
   push:
-    branches:
-      - main
-      # TODO: 驗證 CI 用，merge 進 main 前拿掉
-      - feat/steamloom-desktop-agent
+    branches: [main]
     tags: ['steamloom-writer-v*']
     paths: &writer-paths
       - 'apps/steamloom/writer/**'
