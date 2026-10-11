@@ -45,3 +45,18 @@ func (a *App) CancelLogin() { a.session.CancelLogin() }
 func (a *App) Logout() error { return a.session.Logout(a.ctx) }
 
 func (a *App) Projects() ([]api.Project, error) { return a.api.Projects(a.ctx) }
+
+// Workspace 回傳專案工作台側邊列的樹狀資料（冊／故事、設定集／設定、資產集）。
+func (a *App) Workspace(project string) (*api.Workspace, error) {
+	return a.api.Workspace(a.ctx, project)
+}
+
+// Document 回傳單篇故事或設定，kind 是 "story" 或 "lore"（綁定參數用 string，Wails 不會產生 Go 自訂型別的 TS 定義）。
+func (a *App) Document(project, kind, id string) (*api.Document, error) {
+	return a.api.Document(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// Versions 回傳單篇故事或設定的編輯歷史（不含內文）。
+func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
+	return a.api.Versions(a.ctx, project, api.DocumentKind(kind), id)
+}

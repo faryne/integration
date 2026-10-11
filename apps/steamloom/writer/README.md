@@ -60,5 +60,5 @@ macOS 版沒有簽名／notarization，第一次開啟要在 Finder 按右鍵選
 - `app.go`：綁定給前端呼叫的方法
 - `internal/auth`：OAuth（PKCE＋loopback）與 token refresh
 - `internal/tokenstore`：憑證存在系統鑰匙圈
-- `internal/api`：呼叫 `/storyteller-client` API
+- `internal/api`：呼叫網站的 `/storyteller` API（帶 Bearer token）
 - `frontend/`：React 前端；主題與共用元件透過 `@steamloom-web` alias 直接 import `static_site/src`

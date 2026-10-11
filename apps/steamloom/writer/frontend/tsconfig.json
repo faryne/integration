@@ -13,6 +13,7 @@
       "@steamloom-web/*": ["../../../../static_site/src/*"],
       "@mui/*": ["./node_modules/@mui/*"],
       "@emotion/*": ["./node_modules/@emotion/*"],
+      "@tiptap/*": ["./node_modules/@tiptap/*"],
       "react": ["./node_modules/@types/react"],
       "react/*": ["./node_modules/@types/react/*"]
     },

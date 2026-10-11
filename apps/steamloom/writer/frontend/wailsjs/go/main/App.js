@@ -6,6 +6,10 @@ export function CancelLogin() {
   return window['go']['main']['App']['CancelLogin']();
 }
 
+export function Document(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Document'](arg1, arg2, arg3);
+}
+
 export function Login() {
   return window['go']['main']['App']['Login']();
 }
@@ -20,4 +24,12 @@ export function Me() {
 
 export function Projects() {
   return window['go']['main']['App']['Projects']();
+}
+
+export function Versions(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Versions'](arg1, arg2, arg3);
+}
+
+export function Workspace(arg1) {
+  return window['go']['main']['App']['Workspace'](arg1);
 }

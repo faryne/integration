@@ -1,4 +1,5 @@
-// Package api 呼叫 SteamLoom 的 /storyteller-client REST API（Bearer token 認證）。
+// Package api 呼叫 SteamLoom 網站的 /storyteller REST API；帶 Bearer token 時後端會把它轉成 session，
+// 跟網站共用同一組路由與回應格式（見 route/storyteller.go 的 authenticated 群組）。
 package api
 
 import (
@@ -6,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"faryne.dev/apps/steamloom/writer/internal/auth"
@@ -18,7 +20,7 @@ type Client struct {
 }
 
 func New(base string, session *auth.Session) *Client {
-	return &Client{base: base + "/storyteller-client", session: session, http: &http.Client{Timeout: 30 * time.Second}}
+	return &Client{base: base + "/storyteller", session: session, http: &http.Client{Timeout: 30 * time.Second}}
 }
 
 // envelope 是後端 service/output 的標準回應格式。
@@ -27,7 +29,9 @@ type envelope[T any] struct {
 	Message string `json:"message"`
 }
 
-// get 帶上 access token 呼叫 API；401 代表授權已失效（過期或在網站上被撤銷），清掉憑證要求重新登入。
+// get 帶上 access token 呼叫 API。只有 401 且 WWW-Authenticate 帶 error="invalid_token"（RFC 6750）才代表
+// token 本身失效（過期或在網站上被撤銷），這時才清掉憑證要求重新登入；其他 401（後端版本不對、代理設定錯誤）
+// 只回報錯誤、保留憑證，避免一次部署時間差就把使用者登出。
 func get[T any](ctx context.Context, c *Client, path string) (T, error) {
 	var out envelope[T]
 	token, err := c.session.AccessToken(ctx)
@@ -44,7 +48,7 @@ func get[T any](ctx context.Context, c *Client, path string) (T, error) {
 		return out.Data, fmt.Errorf("無法連線到 SteamLoom：%w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode == http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusUnauthorized && strings.Contains(resp.Header.Get("WWW-Authenticate"), `error="invalid_token"`) {
 		c.session.Invalidate()
 		return out.Data, auth.ErrNotLoggedIn
 	}
@@ -58,7 +62,7 @@ func get[T any](ctx context.Context, c *Client, path string) (T, error) {
 }
 
 func (c *Client) Me(ctx context.Context) (*Profile, error) {
-	return get[*Profile](ctx, c, "/me")
+	return get[*Profile](ctx, c, "/user")
 }
 
 func (c *Client) Projects(ctx context.Context) ([]Project, error) {
