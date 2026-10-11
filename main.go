@@ -21,9 +21,11 @@ import (
 	"faryne.dev/service/background"
 	"faryne.dev/service/client"
 	"faryne.dev/service/log"
+	"faryne.dev/service/mq"
 	"faryne.dev/service/output"
 	storytellerService "faryne.dev/service/storyteller"
 	storytellerAudit "faryne.dev/service/storytelleraudit"
+	storytellerNotify "faryne.dev/service/storytellernotify"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -59,7 +61,9 @@ type appRuntime struct {
 	app           *fiber.App
 	cron          *cron.Cron
 	auditConsumer *storytellerAudit.Consumer
-	listenErr     chan error
+	// steamloomConsumer 消費 SteamLoom 業務事件佇列；沒設 AMQP_URL 時為 nil
+	steamloomConsumer *mq.Consumer
+	listenErr         chan error
 }
 
 func newApp() *fiber.App {
@@ -121,6 +125,9 @@ func main() {
 			log.Logger().Panic("Initialize command failed: " + err.Error())
 		}
 		executeCommand(cmdName)
+		// 指令可能留下背景工作（例如通知的 AMQP 非同步發佈），要等它們送完才能關連線，否則訊息會遺失
+		beginBackgroundWorkDrain()
+		waitBackgroundWorkBeforeShutdown()
 		if err := shutdownClients(); err != nil {
 			log.Logger().Panic("Command shutdown failed: " + err.Error())
 		}
@@ -192,6 +199,8 @@ func shutdownAllSettings(runtime *appRuntime) error {
 	if runtime.auditConsumer != nil {
 		runtime.auditConsumer.Stop()
 	}
+	// 要在 shutdownClients 關掉 AMQP 連線之前停掉 consumer
+	runtime.steamloomConsumer.Stop()
 	if runtime.cron != nil {
 		ctx := runtime.cron.Stop()
 		select {
@@ -262,6 +271,11 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 		}
 	}
 
+	// consumer 只在常駐後端啟動（-cmd 不消費）；handler 必須在 Start 之前註冊完
+	storytellerNotify.RegisterAMQPHandlers()
+	steamloomConsumer := mq.NewConsumer(mq.Default(), enum.AMQPQueueSteamLoom, mq.Dispatch)
+	steamloomConsumer.Start()
+
 	// 記錄開始時間
 	app.Use(func(c fiber.Ctx) error {
 		c.Locals("start_time", time.Now().UnixMilli())
@@ -319,10 +333,11 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	}()
 
 	return &appRuntime{
-		app:           app,
-		cron:          c,
-		auditConsumer: auditConsumer,
-		listenErr:     listenErr,
+		app:               app,
+		cron:              c,
+		auditConsumer:     auditConsumer,
+		steamloomConsumer: steamloomConsumer,
+		listenErr:         listenErr,
 	}, nil
 }
 
@@ -390,6 +405,8 @@ func loadCommandSettings(inputEnvFile string) error {
 			_ = client.CloseMySqlConnections()
 			return err
 		}
+		// 預設佇列給 mq.PublishAsync 用，-cmd 與常駐後端共用；沒設 AMQP_URL 時不設定，發佈皆為 no-op
+		mq.SetDefault(mq.NewAMQP(client.GetAMQP(enum.AMQPDefault)))
 	}
 
 	// 稽核事件的 producer 在這裡設定，常駐後端與手動 -cmd 共用：事件寫進 Redis Stream，
