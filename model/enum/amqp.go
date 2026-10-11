@@ -13,8 +13,8 @@ const (
 type AMQPMessageType string
 
 const (
-	// AMQPMessageSteamLoomProjectCreated SteamLoom 作者建立新專案
-	AMQPMessageSteamLoomProjectCreated AMQPMessageType = "steamloom.project_created"
+	// AMQPMessageSteamLoomNotification SteamLoom 站內通知，Payload 為 []storyteller.NotificationInput
+	AMQPMessageSteamLoomNotification AMQPMessageType = "steamloom.notification"
 )
 
 // AMQPQueueSteamLoom 是 SteamLoom 業務事件共用的佇列；同一佇列混放多種 AMQPMessageType，

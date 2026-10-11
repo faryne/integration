@@ -1,10 +1,11 @@
 package storyteller
 
-// ProjectCreatedMessage 是 steamloom.project_created 訊息的 Payload。
-// 只帶識別與摘要資訊；consumer 需要完整或最新狀態時應以 ProjectPublicID 回查 DB。
-type ProjectCreatedMessage struct {
-	ProjectPublicID string            `json:"project_public_id"`
-	UserID          uint64            `json:"user_id"`
-	Name            string            `json:"name"`
-	Visibility      ProjectVisibility `json:"visibility"`
+// NotificationInput 是一則要送出的站內通知；GroupKey 是冪等鍵，同一收件人同一 key 只會有一筆。
+// 會序列化成 steamloom.notification 訊息的 Payload，所以欄位要向後相容（新增 OK，改名／刪欄位要小心）。
+type NotificationInput struct {
+	UserID    uint64              `json:"user_id"`
+	Kind      NotificationKind    `json:"kind"`
+	GroupKey  string              `json:"group_key"`
+	ProjectID *uint64             `json:"project_id,omitempty"`
+	Payload   NotificationPayload `json:"payload"`
 }

@@ -1,11 +1,18 @@
 package storytellernotify
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
+	"faryne.dev/model/entity"
 	storytellerModel "faryne.dev/model/entity/storyteller"
+	"faryne.dev/model/enum"
+	"faryne.dev/service/background"
+	"faryne.dev/service/mq"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
 )
@@ -192,4 +199,71 @@ func TestPurgeUsesRetentionWindow(t *testing.T) {
 	_, err := s.Purge()
 	require.NoError(t, err)
 	require.Equal(t, now.AddDate(0, 0, -storytellerModel.NotificationRetentionDays), repo.purgedAt)
+}
+
+// fakeQueue 記錄 Produce 收到的訊息；produceErr 有值時模擬 broker 掛掉。
+type fakeQueue struct {
+	mu         sync.Mutex
+	produced   []mq.Message
+	produceErr error
+}
+
+func (f *fakeQueue) Produce(_ context.Context, _ string, msg mq.Message) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.produced = append(f.produced, msg)
+	return f.produceErr
+}
+
+func (f *fakeQueue) Consume(context.Context, string, mq.Handler) error { return nil }
+
+// withQueue 掛上假佇列，測試結束還原成沒開佇列；PublishAsync 是背景執行，斷言前要 background.Wait。
+func withQueue(t *testing.T, q mq.Queue) {
+	mq.SetDefault(q)
+	t.Cleanup(func() { mq.SetDefault(nil) })
+}
+
+func TestNotifyEnqueuesWhenQueueEnabled(t *testing.T) {
+	s, repo := newTestService()
+	q := &fakeQueue{}
+	withQueue(t, q)
+	input := Input{UserID: 7, Kind: storytellerModel.NotificationKindPATCreated, GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "內文"}}
+
+	require.NoError(t, s.Notify([]Input{input}))
+	background.Wait()
+	require.Empty(t, repo.inserted, "佇列有開時由 consumer 寫入，producer 端不直接寫 DB")
+	require.Len(t, q.produced, 1)
+
+	msg, err := mq.Decode[[]Input](q.produced[0])
+	require.NoError(t, err)
+	require.Equal(t, enum.AMQPMessageSteamLoomNotification, msg.Type)
+	require.Equal(t, []Input{input}, msg.Payload)
+
+	// 驗證失敗照舊同步回傳，不會送進佇列
+	require.ErrorIs(t, s.Notify([]Input{{UserID: 7, Kind: input.Kind, Payload: input.Payload}}), errEmptyGroupKey)
+	require.Len(t, q.produced, 1)
+}
+
+func TestNotifyFallsBackToDBWhenPublishFails(t *testing.T) {
+	s, repo := newTestService()
+	withQueue(t, &fakeQueue{produceErr: errors.New("broker down")})
+
+	require.NoError(t, s.Notify([]Input{{UserID: 7, Kind: storytellerModel.NotificationKindPATCreated, GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "內文"}}}))
+	background.Wait()
+	require.Len(t, repo.inserted, 1, "發佈失敗要改走直接寫 DB，通知不能遺失")
+}
+
+func TestHandleNotificationUsesEventTime(t *testing.T) {
+	s, repo := newTestService()
+	occurredAt := time.Date(2026, 10, 1, 8, 0, 0, 0, time.Local)
+	inputs := []Input{{UserID: 7, Kind: storytellerModel.NotificationKindPATCreated, GroupKey: "k", Payload: storytellerModel.NotificationPayload{Title: "標題", Body: "內文"}}}
+
+	require.NoError(t, s.handleNotification(context.Background(), entity.AMQPMessage[[]Input]{ID: "m1", Payload: inputs, CreatedAt: occurredAt}))
+	require.Len(t, repo.inserted, 1)
+	require.Equal(t, occurredAt, repo.inserted[0].CreatedAt, "佇列積壓時 created_at 仍要是事件發生時間")
+
+	// 驗證失敗屬於重送也不會好的狀況：回 nil 丟棄、不寫 DB
+	inputs[0].GroupKey = ""
+	require.NoError(t, s.handleNotification(context.Background(), entity.AMQPMessage[[]Input]{ID: "m2", Payload: inputs, CreatedAt: occurredAt}))
+	require.Len(t, repo.inserted, 1)
 }

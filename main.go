@@ -25,6 +25,7 @@ import (
 	"faryne.dev/service/output"
 	storytellerService "faryne.dev/service/storyteller"
 	storytellerAudit "faryne.dev/service/storytelleraudit"
+	storytellerNotify "faryne.dev/service/storytellernotify"
 	"faryne.dev/service/validation"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -124,6 +125,9 @@ func main() {
 			log.Logger().Panic("Initialize command failed: " + err.Error())
 		}
 		executeCommand(cmdName)
+		// 指令可能留下背景工作（例如通知的 AMQP 非同步發佈），要等它們送完才能關連線，否則訊息會遺失
+		beginBackgroundWorkDrain()
+		waitBackgroundWorkBeforeShutdown()
 		if err := shutdownClients(); err != nil {
 			log.Logger().Panic("Command shutdown failed: " + err.Error())
 		}
@@ -268,7 +272,7 @@ func loadAllSettings(inputEnvFile string) (*appRuntime, error) {
 	}
 
 	// consumer 只在常駐後端啟動（-cmd 不消費）；handler 必須在 Start 之前註冊完
-	storytellerService.RegisterAMQPHandlers()
+	storytellerNotify.RegisterAMQPHandlers()
 	steamloomConsumer := mq.NewConsumer(mq.Default(), enum.AMQPQueueSteamLoom, mq.Dispatch)
 	steamloomConsumer.Start()
 

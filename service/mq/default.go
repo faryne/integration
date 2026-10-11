@@ -21,16 +21,23 @@ func SetDefault(q Queue) { defaultQueue = q }
 
 func Default() Queue { return defaultQueue }
 
-// PublishAsync 在背景把訊息送進預設佇列，不阻塞呼叫端（例如 HTTP request）；
-// 失敗只記 log，適合通知這類非關鍵事件。goroutine 會掛在 background tracker 上，
-// 優雅重啟時會等它送完；已進入 drain 階段則放棄發佈。
-func PublishAsync[T any](queue string, msg entity.AMQPMessage[T]) {
+// PublishAsync 在背景把訊息送進預設佇列，不阻塞呼叫端（例如 HTTP request）。
+// 送不出去（broker 掛掉、confirm 逾時、程序已進入 drain 不再接背景工作）時呼叫 onFail，
+// 讓呼叫端決定要不要改走備援（例如直接寫 DB）；onFail 為 nil 則只記 log。
+// goroutine 會掛在 background tracker 上，優雅重啟時會等它送完。
+func PublishAsync[T any](queue string, msg entity.AMQPMessage[T], onFail func(error)) {
 	if defaultQueue == nil {
 		return
 	}
+	fail := func(err error) {
+		log.Logger().Warn("Publish AMQP message failed", zap.String("queue", queue), zap.String("type", string(msg.Type)), zap.Error(err))
+		if onFail != nil {
+			onFail(err)
+		}
+	}
 	finish, err := background.Track("amqp publish " + string(msg.Type))
 	if err != nil {
-		log.Logger().Warn("Skip AMQP publish while draining", zap.String("queue", queue), zap.String("type", string(msg.Type)))
+		fail(err)
 		return
 	}
 	go func() {
@@ -38,7 +45,7 @@ func PublishAsync[T any](queue string, msg entity.AMQPMessage[T]) {
 		ctx, cancel := context.WithTimeout(background.Context(), asyncPublishTimeout)
 		defer cancel()
 		if err := Publish(ctx, defaultQueue, queue, msg); err != nil {
-			log.Logger().Warn("Publish AMQP message failed", zap.String("queue", queue), zap.String("type", string(msg.Type)), zap.Error(err))
+			fail(err)
 		}
 	}()
 }
