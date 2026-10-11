@@ -7,17 +7,11 @@ import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.
 import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
 import { useAdminMe, useStorytellerUserProfile } from "@/apis/storyteller.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
+import { storytellerAppearanceMeta } from "@/data/storytellerTheme.ts";
 import {
-  storytellerAppearanceMeta,
-  storytellerDisplayFontFamily,
-  storytellerMonoFontFamily,
-  storytellerThemeTokens,
-} from "@/data/storytellerTheme.ts";
-import {
-  storytellerSemanticTokensToCssVariables,
-  toStorytellerSemanticTokens,
-} from "@/data/storytellerSemanticTheme.ts";
-import { storytellerComponentOverrides } from "@/data/storytellerComponentOverrides.ts";
+  createStorytellerTheme,
+  storytellerGlobalStyles,
+} from "@/data/storytellerMuiTheme.ts";
 import {
   StorytellerAppearanceContext,
   getInitialStorytellerAppearance,
@@ -50,7 +44,6 @@ import {
   Box,
   Button,
   Container,
-  createTheme,
   Divider,
   GlobalStyles,
   IconButton,
@@ -138,57 +131,12 @@ export function StorytellerLayout() {
   // 三種 appearance 已各自包含明暗與配色；舊版設定由 initializer 一次遷移。
   const [appearance, setAppearance] = useState(getInitialStorytellerAppearance);
   const mode = storytellerAppearanceMeta[appearance].mode;
-  const theme = useMemo(() => {
-    const tokens = storytellerThemeTokens[appearance];
-    const headingStyle = {
-      fontFamily: storytellerDisplayFontFamily,
-      fontWeight: 700,
-    };
-    return createTheme({
-      // 開 CSS variables 模式：MUI 會把目前的 palette 值同步寫成 `--mui-palette-*`
-      // 這種 CSS custom property，掛在 <html> 上。這樣手刻 DOM（不吃 MUI 元件、
-      // 不在 React tree 裡用 sx 的那種，例如 slash 選單）也能直接用 var(...) 讀到
-      // 當下的顏色，不用把顏色寫死或另外傳遞 theme context 進去——見已知 Bug 記錄
-      // 第 7 項，slash 選單原本 background 寫死 #fff，深色模式下不會跟著變。
-      cssVariables: true,
-      palette: {
-        mode,
-        primary: {
-          main: tokens.accent,
-          light: tokens.accentBright,
-          dark: tokens.support,
-        },
-        secondary: { main: tokens.accentSecondary },
-        background: { default: tokens.bg, paper: tokens.surface },
-        text: { primary: tokens.text, secondary: tokens.textMuted },
-        divider: tokens.border,
-      },
-      shape: { borderRadius: 2 },
-      typography: {
-        fontFamily: storytellerMonoFontFamily,
-        h1: headingStyle,
-        h2: headingStyle,
-        h3: headingStyle,
-        h4: headingStyle,
-        h5: headingStyle,
-        h6: headingStyle,
-        button: {
-          fontFamily: storytellerMonoFontFamily,
-          fontWeight: 700,
-          textTransform: "none",
-          letterSpacing: "0.02em",
-        },
-      },
-      components: storytellerComponentOverrides(),
-    });
-  }, [appearance, mode]);
+  const theme = useMemo(() => createStorytellerTheme(appearance), [appearance]);
   // Semantic variables 同步提供給 editor 內不在 MUI tree 裡的原生選單。
-  const storytellerCssVariables = useMemo(() => {
-    const tokens = storytellerThemeTokens[appearance];
-    return storytellerSemanticTokensToCssVariables(
-      toStorytellerSemanticTokens(tokens),
-    );
-  }, [appearance]);
+  const globalStyles = useMemo(
+    () => storytellerGlobalStyles(appearance),
+    [appearance],
+  );
   useEffect(() => {
     window.localStorage.setItem(storytellerAppearanceStorageKey, appearance);
     removeLegacyStorytellerAppearancePreferences();
@@ -256,16 +204,7 @@ export function StorytellerLayout() {
 
   return (
     <ThemeProvider theme={theme}>
-      <GlobalStyles
-        styles={{
-          ":root": storytellerCssVariables,
-          body: {
-            backgroundColor: "var(--storyteller-surface-base)",
-            backgroundImage:
-              "radial-gradient(circle at 8% 18%, color-mix(in srgb, var(--storyteller-accent-main) 10%, transparent), transparent 30rem)",
-          },
-        }}
-      />
+      <GlobalStyles styles={globalStyles} />
       <StorytellerAppearanceContext.Provider
         value={{ appearance, setAppearance }}
       >

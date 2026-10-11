@@ -1,0 +1,138 @@
+# SteamLoom Writer 桌面版（apps/steamloom/writer）的編譯與 release。
+# - main／PR：Writer 或它共用的 static_site 檔案有變動才編譯，產物放在 workflow artifacts
+# - 推 steamloom-writer-v* tag：編譯後建立 GitHub Release（tag 推送不套用 paths 過濾）
+name: SteamLoom Writer
+
+on:
+  push:
+    branches: [main]
+    tags: ['steamloom-writer-v*']
+    paths: &writer-paths
+      - 'apps/steamloom/writer/**'
+      # Writer 透過 @steamloom-web alias 直接 import 的 static_site 檔案；新增共用檔案時要補進來
+      - 'static_site/src/data/storytellerMuiTheme.ts'
+      - 'static_site/src/data/storytellerTheme.ts'
+      - 'static_site/src/data/storytellerSemanticTheme.ts'
+      - 'static_site/src/data/storytellerComponentOverrides.ts'
+      - 'static_site/src/components/storyteller/SteamLoomMark.tsx'
+      - '.github/workflows/steamloom-writer.yml'
+  pull_request:
+    paths: *writer-paths
+  workflow_dispatch:
+
+# 同一個分支／tag 有新的推送就取消舊的編譯
+concurrency:
+  group: steamloom-writer-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 跟 apps/steamloom/writer/go.mod 的 wails 版本一致
+  WAILS_VERSION: v2.16.0
+  APP_DIR: apps/steamloom/writer
+
+jobs:
+  build:
+    name: build (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # universal binary 同時支援 Apple Silicon 與 Intel
+          - name: macos-universal
+            runner: macos-latest
+            platform: darwin/universal
+          - name: windows-amd64
+            runner: windows-latest
+            platform: windows/amd64
+          # Windows 版不需要 CGO，直接在 x64 runner 交叉編譯 arm64
+          - name: windows-arm64
+            runner: windows-latest
+            platform: windows/arm64
+          # Linux 版要 CGO＋webkit2gtk，各架構用原生 runner 編譯
+          - name: linux-amd64
+            runner: ubuntu-24.04
+            platform: linux/amd64
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ env.APP_DIR }}/go.mod
+          cache-dependency-path: ${{ env.APP_DIR }}/go.sum
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: ${{ env.APP_DIR }}/frontend/pnpm-lock.yaml
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      # tag 編譯時把版號寫進 wails.json，macOS Info.plist／Windows 檔案資訊才會是正確版本
+      - name: Set version from tag
+        if: startsWith(github.ref, 'refs/tags/steamloom-writer-v')
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          version="${GITHUB_REF_NAME#steamloom-writer-v}"
+          jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+
+      - name: Build
+        working-directory: ${{ env.APP_DIR }}
+        run: |
+          # Ubuntu 24.04 只有 webkit2gtk-4.1，要加 build tag 才會連到 4.1
+          tags=""
+          if [ "$RUNNER_OS" = "Linux" ]; then tags="-tags webkit2_41"; fi
+          wails build -platform "${{ matrix.platform }}" -clean $tags
+
+      # 打包成單一檔案：macOS 用 ditto 保留 .app 的權限與符號連結
+      - name: Package
+        working-directory: ${{ env.APP_DIR }}/build/bin
+        run: |
+          name="steamloom-writer-${{ matrix.name }}"
+          case "$RUNNER_OS" in
+            macOS)   ditto -c -k --keepParent "SteamLoom Writer.app" "$GITHUB_WORKSPACE/$name.zip" ;;
+            Windows) 7z a "$GITHUB_WORKSPACE/$name.zip" steamloom-writer.exe ;;
+            Linux)   tar -czf "$GITHUB_WORKSPACE/$name.tar.gz" steamloom-writer ;;
+          esac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: steamloom-writer-${{ matrix.name }}
+          path: |
+            steamloom-writer-${{ matrix.name }}.zip
+            steamloom-writer-${{ matrix.name }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/steamloom-writer-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: SteamLoom Writer ${{ github.ref_name }}
+          files: dist/*
