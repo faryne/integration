@@ -2,12 +2,14 @@ package mq
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"strconv"
 	"testing"
 	"time"
 
+	"faryne.dev/model/entity"
 	"faryne.dev/model/enum"
 	"faryne.dev/service/client"
 	"github.com/stretchr/testify/require"
@@ -76,4 +78,42 @@ func TestAMQPRetryOnceThenDrop(t *testing.T) {
 		return errors.New("fail")
 	})
 	require.Equal(t, []bool{false, true}, attempts)
+}
+
+// Publish 自動補 ID／CreatedAt；consumer 端先以 json.RawMessage 取得 Type，再解出 Payload。
+func TestAMQPPublishDecode(t *testing.T) {
+	q, queue := newTestQueue(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	type payload struct {
+		UserID uint64 `json:"user_id"`
+	}
+	const msgType enum.AMQPMessageType = "test.publish_decode"
+	require.NoError(t, Publish(ctx, q, queue, entity.AMQPMessage[payload]{Type: msgType, Payload: payload{UserID: 42}, RequestID: "req-1"}))
+	require.Error(t, Publish(ctx, q, queue, entity.AMQPMessage[payload]{Payload: payload{UserID: 1}}), "type is required")
+
+	got := make(chan Message, 1)
+	go func() {
+		_ = q.Consume(ctx, queue, func(_ context.Context, msg Message) error {
+			got <- msg
+			return nil
+		})
+	}()
+	select {
+	case msg := <-got:
+		raw, err := Decode[json.RawMessage](msg)
+		require.NoError(t, err)
+		require.Equal(t, msgType, raw.Type)
+		require.NotEmpty(t, raw.ID)
+		require.Equal(t, raw.ID, msg.ID, "envelope ID 要同步寫進 AMQP message_id")
+		require.Equal(t, "req-1", raw.RequestID)
+		require.False(t, raw.CreatedAt.IsZero())
+
+		var p payload
+		require.NoError(t, json.Unmarshal(raw.Payload, &p))
+		require.Equal(t, uint64(42), p.UserID)
+	case <-ctx.Done():
+		t.Fatal("message not consumed")
+	}
 }

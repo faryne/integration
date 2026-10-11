@@ -242,6 +242,7 @@ func (s *Service) CreateProject(userID uint64, input storytellerModel.ProjectReq
 	if err := s.repo.CreateProject(project); err != nil {
 		return nil, err
 	}
+	publishProjectCreated(project)
 	// 新專案尚無資產，忽略 CoverAssetPublicID。
 	return outputProject(*project), nil
 }
