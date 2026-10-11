@@ -53,6 +53,7 @@ func TestDeniedBearerAttribution(t *testing.T) {
 					return nil
 				},
 				"https://steamloom.test/.well-known/oauth-protected-resource",
+				false,
 			))
 			app.Post("/storyteller-mcp", func(ctx fiber.Ctx) error { return ctx.SendStatus(http.StatusNoContent) })
 
