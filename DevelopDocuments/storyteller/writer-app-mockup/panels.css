@@ -1,0 +1,144 @@
+/* 三個分頁（AI 對話／編輯／編輯歷史）與浮層（snack、confirm、mockup 控制）的樣式 */
+
+/* ── AI 對話區 ── */
+.chat { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.chat-tools { position: absolute; top: 10px; right: 16px; z-index: 2; }
+.chat-scroll { flex: 1; overflow: auto; padding: 28px 20px 12px; }
+.thread { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.msg-user {
+  align-self: flex-end; max-width: 78%; background: var(--paper-3); border: 1px solid var(--border);
+  padding: 10px 14px; border-radius: 12px 12px 4px 12px; white-space: pre-wrap;
+}
+.msg-ai { display: flex; flex-direction: column; gap: 6px; }
+.engine-tag { display: flex; align-items: center; gap: 6px; color: var(--faint); font-size: 12px; margin-bottom: 2px; }
+.tool {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+  padding: 5px 10px; border-left: 2px solid var(--border);
+}
+.tool svg.i { width: 15px; height: 15px; }
+.tool .ok { color: var(--ok); }
+.tool.write { border-left-color: var(--accent); background: var(--accent-soft); color: var(--text); border-radius: 0 6px 6px 0; padding: 6px 10px; }
+.tool .acts { margin-left: auto; display: flex; gap: 2px; }
+.ai-text { line-height: 1.85; margin-top: 6px; }
+.ai-text ol { padding-left: 22px; margin: 6px 0; }
+.ai-text p + p { margin-top: 8px; }
+.running-only { display: none !important; }
+body.running .running-only { display: flex !important; }
+body.running .idle-only { display: none !important; }
+
+.composer-wrap { padding: 10px 20px 18px; flex: none; }
+.composer {
+  max-width: 780px; margin: 0 auto; background: var(--paper); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 12px 8px;
+}
+.composer:focus-within { border-color: var(--accent); }
+.composer textarea {
+  width: 100%; min-height: 50px; resize: none; background: transparent; border: 0; outline: 0;
+  color: var(--text); font: 14px/1.6 var(--sans);
+}
+.composer textarea::placeholder { color: var(--faint); }
+.composer-bar { display: flex; align-items: center; gap: 8px; }
+.engine { position: relative; }
+.engine-btn {
+  display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 9px; border-radius: 6px;
+  border: 1px solid var(--border); background: transparent; color: var(--text); font: 12.5px var(--sans); cursor: pointer;
+}
+.engine-btn:hover { background: var(--paper-3); }
+.engine-btn svg.i { width: 16px; height: 16px; color: var(--muted); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+.status-dot.off { background: var(--faint); }
+.status-dot.warn { background: var(--warn); }
+.engine-menu {
+  position: absolute; bottom: 34px; left: 0; width: 250px; background: var(--paper-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px; display: none; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45); z-index: 5;
+}
+.engine.open .engine-menu { display: block; }
+.engine-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.engine-item:hover { background: var(--paper-3); }
+.engine-item small { margin-left: auto; color: var(--faint); font-size: 12px; }
+.engine-item.disabled { opacity: 0.45; cursor: not-allowed; }
+.engine-item.disabled:hover { background: transparent; }
+.send-btn, .stop-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: 0; display: grid; place-items: center; cursor: pointer;
+}
+.send-btn { background: var(--accent); color: #0b2a28; }
+.stop-btn { background: var(--paper-3); color: var(--text); border: 1px solid var(--border); }
+body.running .send-btn { display: none; }
+body:not(.running) .stop-btn { display: none; }
+
+/* ── 文章主要編輯區 ── */
+.editor { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.banner {
+  display: none; align-items: center; gap: 10px; margin: 12px 20px 0; padding: 10px 14px;
+  background: rgba(240, 192, 96, 0.1); border: 1px solid rgba(240, 192, 96, 0.4); border-radius: 8px; font-size: 13.5px;
+}
+.banner svg.i { color: var(--warn); }
+.banner .acts { margin-left: auto; display: flex; gap: 8px; }
+body.conflict .banner { display: flex; }
+.editor-scroll { flex: 1; overflow: auto; }
+.doc { max-width: 860px; margin: 0 auto; padding: 26px 40px 60px; }
+.doc h1 { font: 700 34px var(--serif); margin-bottom: 12px; }
+.doc-meta { display: flex; gap: 18px; color: var(--muted); font-size: 12.5px; margin-bottom: 10px; flex-wrap: wrap; }
+.doc-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.doc-meta svg.i { width: 15px; height: 15px; }
+.doc-meta b { color: var(--text); font-weight: 500; }
+.summary { color: var(--faint); font-size: 13px; padding: 6px 0 18px; border-bottom: 1px solid var(--border-soft); margin-bottom: 22px; }
+.doc .body p { font-size: 16px; line-height: 2; margin-bottom: 12px; }
+.editor-bar {
+  height: 48px; flex: none; border-top: 1px solid var(--border-soft); display: flex; align-items: center;
+  gap: 2px; padding: 0 20px; color: var(--muted); font-size: 13px;
+}
+.editor-bar .back { display: flex; align-items: center; gap: 6px; margin-right: 10px; cursor: pointer; }
+
+/* ── 編輯歷史區 ── */
+.history { flex: 1; display: flex; min-height: 0; }
+.ver-list { width: 540px; flex: none; border-right: 1px solid var(--border-soft); display: flex; flex-direction: column; }
+.ver-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border-soft); }
+.ver-scroll { flex: 1; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th {
+  position: sticky; top: 0; background: var(--bg); text-align: left; color: var(--muted); font-weight: 500;
+  padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+td { padding: 10px; border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+tr.picked td { background: var(--paper-2); }
+.radio { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--muted); display: inline-block; vertical-align: middle; cursor: pointer; }
+.radio.on { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 3px var(--bg); }
+.ver-no { color: var(--muted); }
+.diff { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.diff-head { display: flex; align-items: center; gap: 10px; padding: 10px 20px; border-bottom: 1px solid var(--border-soft); }
+.diff-head .stat { color: var(--faint); font-size: 12.5px; }
+.diff-head .stat .plus { color: var(--ok); }
+.diff-head .stat .minus { color: var(--danger); }
+.diff-body { flex: 1; overflow: auto; padding: 20px 28px; }
+.diff-body p { font-size: 15px; line-height: 1.9; padding: 4px 12px; border-left: 3px solid transparent; margin-bottom: 6px; }
+.diff-body p.ins { background: var(--ins); border-left-color: var(--ok); }
+.diff-body p.del { background: var(--del); border-left-color: var(--danger); color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(239, 107, 107, 0.5); }
+.diff-body .gap { color: var(--faint); font-size: 12px; text-align: center; margin: 12px 0; }
+
+/* ── 浮層：snack／confirm／mockup 控制面板 ── */
+.snack {
+  position: fixed; left: 50%; bottom: 36px; transform: translate(-50%, 16px); opacity: 0; pointer-events: none;
+  background: #3a1f28; border: 1px solid #6b3340; padding: 10px 10px 10px 14px; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px; transition: 0.2s; font-size: 13.5px; max-width: 600px; z-index: 40;
+}
+.snack svg.i { color: var(--danger); }
+.snack.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.dlg { position: fixed; inset: 0; background: rgba(5, 3, 8, 0.6); display: none; place-items: center; z-index: 50; }
+.dlg.show { display: grid; }
+.dlg-box { width: 400px; background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+.dlg-box h3 { font: 700 17px var(--serif); margin-bottom: 8px; }
+.dlg-box p { color: var(--muted); margin-bottom: 20px; }
+.dlg-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.mock {
+  position: fixed; top: 26px; left: 50%; transform: translateX(-50%); z-index: 60; background: rgba(12, 8, 18, 0.94);
+  border: 1px dashed #6a5a80; border-radius: 8px; padding: 2px 8px; font-size: 12px; color: var(--muted);
+  display: flex; align-items: center; gap: 10px;
+}
+.mock b { color: var(--text); }
+.mock .row { display: flex; flex-wrap: wrap; gap: 4px; }
+.mock button {
+  background: var(--paper-2); border: 1px solid var(--border); color: var(--text); border-radius: 5px;
+  padding: 3px 8px; font: 12px var(--sans); cursor: pointer;
+}
+.mock button.on { border-color: var(--accent); color: var(--accent); }

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "SteamLoom Writer",
+  "outputfilename": "steamloom-writer",
+  "frontend:install": "pnpm install",
+  "frontend:build": "pnpm build",
+  "frontend:dev:watcher": "pnpm dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Faryne",
+    "email": "faryne@gmail.com"
+  },
+  "info": {
+    "companyName": "SteamLoom",
+    "productName": "SteamLoom Writer",
+    "productVersion": "0.1.0",
+    "copyright": "© SteamLoom"
+  }
+}

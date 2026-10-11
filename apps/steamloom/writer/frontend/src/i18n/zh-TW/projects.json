@@ -1,0 +1,12 @@
+{
+  "title": "我的專案",
+  "empty": "還沒有專案",
+  "storyCount": "{{count}} 篇故事",
+  "wordCount": "{{words}} 字",
+  "updatedAt": "更新於 {{date}}",
+  "visibility": {
+    "private": "私密",
+    "unlisted": "分享",
+    "public": "公開"
+  }
+}
