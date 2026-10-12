@@ -1,4 +1,5 @@
 import { useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { useSnack } from "@/components/SnackProvider.tsx";
 import { backend, errorMessage, isNotLoggedIn, type Workspace } from "@/lib/backend.ts";
 import { SessionExpiredContext } from "@/lib/useBackendData.ts";
@@ -17,6 +18,7 @@ export function useWorkspaceEditing({
   setWorkspace: (ws: Workspace) => void;
   reload: () => void;
 }) {
+  const { t } = useTranslation();
   const { showError } = useSnack();
   const onSessionExpired = useContext(SessionExpiredContext);
   const fail = (err: unknown) => (isNotLoggedIn(err) ? onSessionExpired() : showError(errorMessage(err)));
@@ -50,6 +52,20 @@ export function useWorkspaceEditing({
     },
     moveStoryTo: (story: string, volume: string) => backend.MoveStory(project, story, volume).catch(fail).finally(reload),
     moveLoreTo: (lore: string, collection: string) => backend.MoveLore(project, lore, collection).catch(fail).finally(reload),
+    // 上傳資產：回傳 true 代表有上傳（對話框可關），使用者在選檔視窗取消則回 false；略過的檔案跳 snack 說明原因
+    upload: async (collection: string) => {
+      try {
+        const result = await backend.UploadAssets(project, collection);
+        if (!result) return false;
+        reload();
+        if (result.skipped?.length) showError(t("workspace.upload.skipped", { count: result.skipped.length }));
+        return true;
+      } catch (err) {
+        fail(err);
+        reload();
+        return false;
+      }
+    },
     // 成功回傳新項目，失敗回 null（已跳 snack），讓對話框決定要不要關
     create: async (kind: string, name: string, group: string) => {
       try {

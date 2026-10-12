@@ -183,6 +183,64 @@ export namespace agent {
 
 export namespace api {
 	
+	export class Asset {
+	    public_id: string;
+	    title: string;
+	    mime_type: string;
+	    file_size: number;
+	    preview_url: string;
+	    created_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Asset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.public_id = source["public_id"];
+	        this.title = source["title"];
+	        this.mime_type = source["mime_type"];
+	        this.file_size = source["file_size"];
+	        this.preview_url = source["preview_url"];
+	        this.created_at = source["created_at"];
+	    }
+	}
+	export class AssetPage {
+	    assets: Asset[];
+	    total_count: number;
+	    page: number;
+	    page_size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AssetPage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.assets = this.convertValues(source["assets"], Asset);
+	        this.total_count = source["total_count"];
+	        this.page = source["page"];
+	        this.page_size = source["page_size"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CreateRequest {
 	    kind: string;
 	    name: string;
@@ -293,6 +351,32 @@ export namespace api {
 		    return a;
 		}
 	}
+	export class ListedDocument {
+	    kind: string;
+	    public_id: string;
+	    title: string;
+	    content_type: string;
+	    status: string;
+	    word_count: number;
+	    updated_at: string;
+	    group_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ListedDocument(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.public_id = source["public_id"];
+	        this.title = source["title"];
+	        this.content_type = source["content_type"];
+	        this.status = source["status"];
+	        this.word_count = source["word_count"];
+	        this.updated_at = source["updated_at"];
+	        this.group_name = source["group_name"];
+	    }
+	}
 	export class Profile {
 	    pen_name: string;
 	    avatar_url: string;
@@ -331,6 +415,20 @@ export namespace api {
 	        this.story_count = source["story_count"];
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class UploadResult {
+	    uploaded: number;
+	    skipped: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new UploadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.uploaded = source["uploaded"];
+	        this.skipped = source["skipped"];
 	    }
 	}
 	export class Version {

@@ -10,15 +10,16 @@ import { useTranslation } from "react-i18next";
 
 const iconSx = { p: 0.375, "& .MuiSvgIcon-root": { fontSize: 16 } };
 
-// 排序模式下每一列右側的上移／下移；第一列不能上移、最後一列不能下移
+// 排序模式下每一列右側的上移／下移；第一列沒有上移、最後一列沒有下移（保留位置讓整排箭頭對齊）
 export function SortArrows({ index, count, onMove }: { index: number; count: number; onMove: (delta: -1 | 1) => void }) {
   const { t } = useTranslation();
+  const hidden = { visibility: "hidden" } as const;
   return (
     <>
-      <IconButton size="small" sx={iconSx} disabled={index === 0} aria-label={t("workspace.actions.moveUp")} onClick={() => onMove(-1)}>
+      <IconButton size="small" sx={{ ...iconSx, ...(index === 0 && hidden) }} aria-label={t("workspace.actions.moveUp")} onClick={() => onMove(-1)}>
         <ArrowUpwardIcon />
       </IconButton>
-      <IconButton size="small" sx={iconSx} disabled={index === count - 1} aria-label={t("workspace.actions.moveDown")} onClick={() => onMove(1)}>
+      <IconButton size="small" sx={{ ...iconSx, ...(index === count - 1 && hidden) }} aria-label={t("workspace.actions.moveDown")} onClick={() => onMove(1)}>
         <ArrowDownwardIcon />
       </IconButton>
     </>

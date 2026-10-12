@@ -16,7 +16,9 @@ export function useBackendData<T>(load: () => Promise<T>, deps: DependencyList):
     // 快速切換時忽略已過期的回應，避免舊資料蓋掉新資料
     let active = true;
     setData(null);
-    load()
+    // 包一層 Promise：load 同步丟例外（例如綁定不存在）也走同一套錯誤處理，不會讓整個畫面當掉
+    Promise.resolve()
+      .then(load)
       .then((result) => active && setData(result))
       .catch((err) => {
         if (!active) return;

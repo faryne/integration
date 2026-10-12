@@ -59,7 +59,8 @@
       "volume": "冊",
       "lore": "設定",
       "lore-collection": "設定集",
-      "asset-collection": "資產集"
+      "asset-collection": "資產集",
+      "asset-upload": "上傳資產"
     },
     "title": "建立{{kind}}",
     "name": "名稱",
@@ -67,5 +68,24 @@
     "collection": "設定集",
     "submit": "建立",
     "cancel": "取消"
+  },
+  "all": {
+    "stories": "全部作品",
+    "lores": "全部設定",
+    "assets": "全部資產"
+  },
+  "upload": {
+    "title": "上傳資產",
+    "collection": "資產集",
+    "uncategorized": "未分類",
+    "pick": "選擇檔案並上傳",
+    "cancel": "取消",
+    "skipped": "{{count}} 個檔案沒有上傳：只支援 JPEG／PNG／WebP／GIF，單檔 15 MB 以內，一次最多 60 張"
+  },
+  "list": {
+    "wordCount": "{{words}} 字",
+    "updatedAt": "更新於 {{date}}",
+    "image": "圖像作品",
+    "empty": "沒有項目"
   }
 }

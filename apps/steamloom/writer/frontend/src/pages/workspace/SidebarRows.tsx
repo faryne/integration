@@ -1,5 +1,4 @@
 import ArticleIcon from "@mui/icons-material/Article";
-import ChatIcon from "@mui/icons-material/Chat";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
@@ -79,11 +78,11 @@ export function SidebarSection({ icon, title, actions, children }: { icon: React
   );
 }
 
-// 側邊列最上方：沒有選文件時就是 AI 助理。
-export function AssistantRow({ selected, label, onClick }: { selected: boolean; label: string; onClick: () => void }) {
+// 單純的導覽列：最上方的 AI 助理、各區塊的「全部作品／全部設定／全部資產」
+export function NavRow({ icon, label, selected, onClick, depth = 0 }: { icon: ReactNode; label: string; selected: boolean; onClick: () => void; depth?: number }) {
   return (
-    <Row selected={selected} onClick={onClick}>
-      <ChatIcon />
+    <Row depth={depth} selected={selected} onClick={onClick}>
+      {icon}
       <Label>{label}</Label>
     </Row>
   );

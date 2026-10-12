@@ -20,6 +20,7 @@ export type InstalledAgent = agent.Installed;
 export type AskRequest = agent.Request;
 export type AskReply = agent.Reply;
 export type VersionDetail = api.VersionDetail;
+export type ListedDocument = api.ListedDocument;
 // 對應 internal/api 的 DocumentKind
 export type DocumentKind = "story" | "lore";
 

@@ -1,4 +1,6 @@
+import AllInboxIcon from "@mui/icons-material/AllInbox";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
+import ChatIcon from "@mui/icons-material/Chat";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -8,7 +10,9 @@ import { useTranslation } from "react-i18next";
 import type { DocumentItem, Workspace } from "@/lib/backend.ts";
 import { CreateDialog } from "@/pages/workspace/CreateDialog.tsx";
 import { MoveMenuButton, SectionActions, SortArrows, type MoveTarget } from "@/pages/workspace/SidebarActions.tsx";
-import { AssistantRow, GroupRow, SidebarSection } from "@/pages/workspace/SidebarRows.tsx";
+import type { ListSection } from "@/pages/workspace/ListPanels.tsx";
+import { GroupRow, NavRow, SidebarSection } from "@/pages/workspace/SidebarRows.tsx";
+import { UploadDialog } from "@/pages/workspace/UploadDialog.tsx";
 import type { useWorkspaceEditing } from "@/pages/workspace/useWorkspaceEditing.ts";
 import { groupIdOf } from "@/pages/workspace/workspaceTree.ts";
 
@@ -17,6 +21,9 @@ type Props = {
   selected: DocumentItem | null;
   onSelect: (item: DocumentItem) => void;
   onAssistant: () => void;
+  // 目前打開的「全部作品／全部設定／全部資產」頁，沒有則為 null
+  listSection: ListSection | null;
+  onList: (section: ListSection) => void;
   editing: ReturnType<typeof useWorkspaceEditing>;
   // 建立的是故事類或設定時，外層據此打開新項目
   onCreated: (item: DocumentItem) => void;
@@ -25,15 +32,18 @@ type Props = {
 // 各區塊「建立」選單的項目，比照網站
 const storyKinds = ["story", "image", "volume"];
 const loreKinds = ["lore", "lore-collection"];
-const assetKinds = ["asset-collection"];
+const assetKinds = ["asset-collection", "asset-upload"];
 
 // 專案工作台側邊列：最上方是 AI 助理，下面是作品與冊、設定集、資產集、梭梭的記憶。
 // 「作品與冊」「設定集」可以切換排序模式（上移／下移）；平常滑過文件會出現 ⋮ 可移動到其他冊／設定集。
-export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, editing, onCreated }: Props) {
+export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, listSection, onList, editing, onCreated }: Props) {
   const { t } = useTranslation();
   const [sortingStories, setSortingStories] = useState(false);
   const [sortingLores, setSortingLores] = useState(false);
   const [creating, setCreating] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  // 「上傳資產」不是建立對話框，另外開上傳對話框
+  const onCreate = (kind: string) => (kind === "asset-upload" ? setUploading(true) : setCreating(kind));
   const volumes = workspace.volumes ?? [];
   const loreCollections = workspace.lore_collections ?? [];
   const ungroupedStories = workspace.ungrouped_stories ?? [];
@@ -73,13 +83,14 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, e
 
   return (
     <Box component="nav" sx={{ width: 248, flex: "none", borderRight: 1, borderColor: "divider", overflow: "auto", py: 0.5 }}>
-      <AssistantRow selected={selected === null} label={t("workspace.assistant")} onClick={onAssistant} />
+      <NavRow icon={<ChatIcon />} label={t("workspace.assistant")} selected={selected === null && listSection === null} onClick={onAssistant} />
       <Divider />
       <SidebarSection
         icon={<AutoStoriesIcon />}
         title={t("workspace.sections.stories")}
-        actions={<SectionActions sorting={sortingStories} onToggleSort={() => setSortingStories(!sortingStories)} createKinds={storyKinds} onCreate={setCreating} />}
+        actions={<SectionActions sorting={sortingStories} onToggleSort={() => setSortingStories(!sortingStories)} createKinds={storyKinds} onCreate={onCreate} />}
       >
+        <NavRow icon={<AllInboxIcon />} label={t("workspace.all.stories")} selected={listSection === "stories"} onClick={() => onList("stories")} />
         {volumes.map((volume, index) => (
           <GroupRow
             key={volume.public_id}
@@ -111,10 +122,11 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, e
             sorting={sortingLores}
             onToggleSort={loreCollections.length > 1 ? () => setSortingLores(!sortingLores) : undefined}
             createKinds={loreKinds}
-            onCreate={setCreating}
+            onCreate={onCreate}
           />
         }
       >
+        <NavRow icon={<AllInboxIcon />} label={t("workspace.all.lores")} selected={listSection === "lores"} onClick={() => onList("lores")} />
         {loreCollections.map((collection, index) => (
           <GroupRow
             key={collection.public_id}
@@ -131,7 +143,8 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, e
           <GroupRow name={t("workspace.uncategorizedLores")} items={uncategorizedLores} selected={selected} onSelect={onSelect} itemExtra={loreExtra("")} />
         )}
       </SidebarSection>
-      <SidebarSection icon={<CollectionsIcon />} title={t("workspace.sections.assets")} actions={<SectionActions createKinds={assetKinds} onCreate={setCreating} />}>
+      <SidebarSection icon={<CollectionsIcon />} title={t("workspace.sections.assets")} actions={<SectionActions createKinds={assetKinds} onCreate={onCreate} />}>
+        <NavRow icon={<AllInboxIcon />} label={t("workspace.all.assets")} selected={listSection === "assets"} onClick={() => onList("assets")} />
         {(workspace.asset_collections ?? []).map((collection) => (
           <GroupRow key={collection.public_id} name={collection.name} selected={selected} />
         ))}
@@ -142,6 +155,21 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, e
           {t("workspace.sections.memories")}
         </Typography>
       </Box>
+      {uploading && (
+        <UploadDialog
+          collections={[
+            { publicId: "", name: t("workspace.upload.uncategorized") },
+            ...(workspace.asset_collections ?? []).map((collection) => ({ publicId: collection.public_id, name: collection.name })),
+          ]}
+          onClose={() => setUploading(false)}
+          onUpload={async (collection) => {
+            const done = await editing.upload(collection);
+            // 上傳完直接帶到「全部資產」，看得到剛傳上去的圖
+            if (done) onList("assets");
+            return done;
+          }}
+        />
+      )}
       {creating && (
         <CreateDialog
           kind={creating}

@@ -187,3 +187,25 @@ func (a *App) MoveLore(project, lore, collection string) error {
 func (a *App) Reorder(project, kind string, ids []string) error {
 	return a.api.Reorder(a.ctx, project, kind, ids)
 }
+
+// ListDocuments 是「全部作品／全部設定」頁的資料；kind 是 "story" 或 "lore"。
+func (a *App) ListDocuments(project, kind string) ([]api.ListedDocument, error) {
+	return a.api.ListDocuments(a.ctx, project, api.DocumentKind(kind))
+}
+
+// Assets 是「全部資產」頁的資料，分頁從 1 開始。
+func (a *App) Assets(project string, page int) (*api.AssetPage, error) {
+	return a.api.Assets(a.ctx, project, page)
+}
+
+// UploadAssets 開原生選檔視窗（可多選），上傳到指定資產集（空字串＝未分類）；使用者取消選檔時回傳 nil。
+func (a *App) UploadAssets(project, collection string) (*api.UploadResult, error) {
+	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "選擇要上傳的圖片",
+		Filters: []runtime.FileFilter{{DisplayName: "圖片（JPEG／PNG／WebP／GIF）", Pattern: api.AssetFileFilter()}},
+	})
+	if err != nil || len(paths) == 0 {
+		return nil, err
+	}
+	return a.api.UploadAssets(a.ctx, project, collection, paths)
+}
