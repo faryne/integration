@@ -77,9 +77,10 @@ jobs:
           go-version-file: ${{ env.APP_DIR }}/go.mod
           cache-dependency-path: ${{ env.APP_DIR }}/go.sum
 
+      # 固定版本，不用 "10" 浮動抓最新：2026-10-12 曾撞上 pnpm 剛發佈、registry 還沒同步而 404（v0.1.5 Linux 編譯失敗）
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.32.1
 
       - uses: actions/setup-node@v4
         with:
