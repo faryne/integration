@@ -86,6 +86,19 @@
     "wordCount": "{{words}} 字",
     "updatedAt": "更新於 {{date}}",
     "image": "圖像作品",
-    "empty": "沒有項目"
+    "empty": {
+      "story": {
+        "title": "沒有作品",
+        "description": "這個專案目前沒有作品。"
+      },
+      "lore": {
+        "title": "沒有設定",
+        "description": "這個專案目前沒有設定。"
+      },
+      "asset": {
+        "title": "沒有資產",
+        "description": "這個專案目前沒有資產。"
+      }
+    }
   }
 }

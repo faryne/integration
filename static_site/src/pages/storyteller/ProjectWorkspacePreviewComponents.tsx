@@ -52,6 +52,7 @@ import {
   type WorkspaceToolPage,
 } from "./workspaceToolPages.tsx";
 import { useWorkspaceViewMode } from "./workspaceViewMode.ts";
+import { WorkspaceEmptyState } from "@/components/storyteller/WorkspaceEmptyState.tsx";
 import { WorkspaceSearchField } from "./WorkspaceSearchField.tsx";
 import type {
   StorytellerAsset,
@@ -755,47 +756,6 @@ export function WorkspacePane({
           )}
         </>
       )}
-    </Stack>
-  );
-}
-
-function WorkspaceEmptyState({
-  icon,
-  title,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Stack
-      spacing={1}
-      alignItems="center"
-      justifyContent="center"
-      textAlign="center"
-      sx={{
-        minHeight: 180,
-        mt: 1,
-        px: 3,
-        py: 4,
-        border: 1,
-        borderStyle: "dashed",
-        borderColor: "divider",
-        borderRadius: 1,
-        color: "text.secondary",
-        bgcolor: (theme) => alpha(theme.palette.primary.main, 0.025),
-      }}
-    >
-      <Box sx={{ color: "primary.main", opacity: 0.64, lineHeight: 0 }}>
-        {icon}
-      </Box>
-      <Typography fontWeight={800} color="text.primary">
-        {title}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {description}
-      </Typography>
     </Stack>
   );
 }

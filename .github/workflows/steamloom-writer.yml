@@ -20,6 +20,7 @@ on:
       - 'static_site/src/components/common/CustomDiffSection.tsx'
       - 'static_site/src/components/common/CustomDiffLegend.tsx'
       - 'static_site/src/components/storyteller/SteamLoomMark.tsx'
+      - 'static_site/src/components/storyteller/WorkspaceEmptyState.tsx'
       - 'static_site/src/pages/storyteller/StoryEditHistory.tsx'
       - 'static_site/src/pages/storyteller/StorytellerVersionCompareDialog.tsx'
       - 'static_site/src/pages/storyteller/useVersionCompareSelection.ts'

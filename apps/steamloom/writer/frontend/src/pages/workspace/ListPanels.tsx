@@ -1,3 +1,4 @@
+import { WorkspaceEmptyState } from "@steamloom-web/components/storyteller/WorkspaceEmptyState.tsx";
 import ArticleIcon from "@mui/icons-material/Article";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import { Box, ButtonBase, Card, CardMedia, Chip, CircularProgress, Pagination, Stack, Typography } from "@mui/material";
@@ -9,10 +10,12 @@ import { useBackendData } from "@/lib/useBackendData.ts";
 
 export type ListSection = "stories" | "lores" | "assets";
 
-const Empty = () => {
+// 沒有內容時的空狀態用網站工作台同一個元件，兩邊長得一樣
+function Empty({ kind }: { kind: "story" | "lore" | "asset" }) {
   const { t } = useTranslation();
-  return <Typography color="text.secondary">{t("workspace.list.empty")}</Typography>;
-};
+  const icon = { story: <ArticleIcon />, lore: <ArticleIcon />, asset: <CollectionsIcon /> }[kind];
+  return <WorkspaceEmptyState icon={icon} title={t(`workspace.list.empty.${kind}.title`)} description={t(`workspace.list.empty.${kind}.description`)} />;
+}
 
 // 「全部作品／全部設定」：版面比照網站工作台的列表（標題、所屬分組、字數、更新時間、狀態），點一列就打開它。
 // version 變動（建立、移動、排序之後）就重新抓。
@@ -33,7 +36,7 @@ export function DocumentListPanel({
   return (
     <Box sx={{ flex: 1, overflow: "auto", px: 3, py: 2.5 }}>
       <Stack sx={{ maxWidth: 960 }} divider={<Box sx={{ borderBottom: 1, borderColor: "divider" }} />}>
-        {!rows?.length && <Empty />}
+        {!rows?.length && <Empty kind={kind} />}
         {(rows ?? []).map((row: ListedDocument) => (
           <ButtonBase
             key={row.public_id}
@@ -74,7 +77,7 @@ export function AssetListPanel({ project, version }: { project: string; version:
   const pageCount = data ? Math.max(1, Math.ceil(data.total_count / data.page_size)) : 1;
   return (
     <Box sx={{ flex: 1, overflow: "auto", px: 3, py: 2.5 }}>
-      {!assets.length && <Empty />}
+      {!assets.length && <Empty kind="asset" />}
       <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 2, maxWidth: 1080 }}>
         {assets.map((asset) => (
           <Card key={asset.public_id} variant="outlined">
