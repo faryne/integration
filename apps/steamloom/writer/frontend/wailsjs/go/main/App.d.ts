@@ -3,6 +3,7 @@
 import {agent} from '../models';
 import {updater} from '../models';
 import {api} from '../models';
+import {skillupdate} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
@@ -24,7 +25,7 @@ export function CheckForUpdate():Promise<updater.Info>;
 
 export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
 
-export function EnsureSkill(arg1:string):Promise<agent.SkillResult>;
+export function EnsureSkill(arg1:string):Promise<skillupdate.Result>;
 
 export function InstallUpdate():Promise<void>;
 
@@ -37,8 +38,6 @@ export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
-
-export function UpdateSkill():Promise<void>;
 
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 

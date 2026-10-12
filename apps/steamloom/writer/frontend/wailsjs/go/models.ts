@@ -178,20 +178,6 @@ export namespace agent {
 	        this.prompt = source["prompt"];
 	    }
 	}
-	export class SkillResult {
-	    version: string;
-	    updated: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new SkillResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.version = source["version"];
-	        this.updated = source["updated"];
-	    }
-	}
 
 }
 
@@ -400,6 +386,25 @@ export namespace api {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace skillupdate {
+	
+	export class Result {
+	    version: string;
+	    updated: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Result(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.updated = source["updated"];
+	    }
 	}
 
 }
