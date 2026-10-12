@@ -3,7 +3,7 @@ import { alpha } from "@mui/material/styles";
 import type { ReactNode } from "react";
 
 // 工作台列表沒有內容時的空狀態（虛線框＋圖示＋標題＋說明），網站工作台與 SteamLoom Writer 共用。
-// Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+// Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 export function WorkspaceEmptyState({
   icon,
   title,

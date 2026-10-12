@@ -959,8 +959,8 @@ type StoryRequest struct {
 	// 值只會是 "auto" 或 "manual"，其他呼叫端（如 MCP）留空即可。
 	SaveTrigger string `json:"save_trigger,omitempty"`
 	// BaseVersionID 是呼叫端目前手上內容對應的版本 id；更新時如果這篇故事的最新版本
-	// 已經不是這個 id，代表內容被別的呼叫端動過，後端會拒絕這次存檔並回 409，
-	// 不會覆蓋掉那個更新。留空（nil）就不檢查，直接往最新版本後面接一版。
+	// 已經不是這個 id，代表內容被別的呼叫端動過——後端照樣寫入（接在最新版本後面存成新版），
+	// 但回應的 version_conflict 會是 true，讓呼叫端提示使用者去編輯歷史確認。留空（nil）就不檢查。
 	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
 	// ParentID 是所屬冊的 public_id；空字串或 nil 代表移出冊／不分冊。
 	// 只能指向 is_volume=true 的故事，後端會驗證。
