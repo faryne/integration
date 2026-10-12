@@ -106,9 +106,10 @@ func (a *App) ChatNew(agentID, projectID string) (*agent.ChatPage, error) {
 	return chatPage(agent.NewChat(agentID, projectID))
 }
 
-// EnsureSkill 在 MCP 檢查之後呼叫：這個 Agent 的 Skill 不是最新版就裝上。
-func (a *App) EnsureSkill(agentID string) (agent.SkillResult, error) {
-	return agent.EnsureSkill(agentID)
+// EnsureSkill 在「AI 助理」選擇工具、MCP 檢查之後呼叫：這個工具還沒有 Skill 就安裝，遠端較新就更新。
+// Skill 的安裝與更新只有這一個入口，Writer 啟動時不會處理。
+func (a *App) EnsureSkill(agentID string) (skillupdate.Result, error) {
+	return a.skill.Ensure(a.ctx, agentID)
 }
 
 func chatPage(page agent.ChatPage, err error) (*agent.ChatPage, error) {
@@ -144,9 +145,6 @@ func (a *App) CheckForUpdate() (*appupdate.Info, error) { return a.updater.Check
 
 // AppVersion 讓 About 顯示 release workflow 透過 ldflags 寫入的實際版號。
 func (a *App) AppVersion() string { return version }
-
-// UpdateSkill 在 Writer 啟動時由前端呼叫；沒有偵測到 Claude Code／Codex 時直接略過。
-func (a *App) UpdateSkill() error { return a.skill.Update(a.ctx) }
 
 // InstallUpdate 驗證並替換 app；macOS helper 會在舊程序退出後接手重啟。
 func (a *App) InstallUpdate() error {

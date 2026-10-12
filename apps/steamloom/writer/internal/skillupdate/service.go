@@ -1,10 +1,12 @@
-// Package skillupdate 負責替本機 Claude Code／Codex 更新 SteamLoom Skill。
+// Package skillupdate 負責替本機 AI CLI（Claude Code／Codex／Grok）安裝與更新 SteamLoom Skill。
+// 只在使用者於「AI 助理」選擇工具時，由 MCP 檢查之後呼叫（app.go 的 EnsureSkill）；Writer 啟動時不會碰使用者的 skills 目錄。
 package skillupdate
 
 import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,51 +37,48 @@ func New(url string) *Service {
 	}
 }
 
-// Update 只在偵測到對應工具時下載並更新；遠端內容會先驗證名稱與 semver，絕不執行下載內容。
-func (s *Service) Update(ctx context.Context) error {
+// Result 是一次檢查的結果；Updated 為 true 代表這次剛安裝或覆蓋了 SKILL.md。
+type Result struct {
+	Version string `json:"version"`
+	Updated bool   `json:"updated"`
+}
+
+// Ensure 替 agentID 指定的工具安裝或更新 Skill：本機沒有就安裝，遠端版本較新才覆蓋（不降版）。
+// 遠端內容會先驗證名稱、semver 與大小，絕不執行下載內容。
+func (s *Service) Ensure(ctx context.Context, agentID string) (Result, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	home, err := s.homeDir()
 	if err != nil {
-		return fmt.Errorf("找不到使用者目錄：%w", err)
+		return Result{}, fmt.Errorf("找不到使用者目錄：%w", err)
 	}
-	targets := detectedTargets(home)
-	if len(targets) == 0 {
-		return nil
+	dir, err := skillsDir(agentID, home)
+	if err != nil {
+		return Result{}, err
 	}
-
 	content, latest, err := s.download(ctx)
 	if err != nil {
-		return err
+		return Result{}, err
 	}
-	for _, target := range targets {
-		if err := install(target, content, latest); err != nil {
-			return fmt.Errorf("更新 %s 的 SteamLoom Skill 失敗：%w", target.label, err)
-		}
+	updated, err := install(dir, content, latest)
+	if err != nil {
+		return Result{}, fmt.Errorf("安裝 SteamLoom Skill 失敗：%w", err)
 	}
-	return nil
+	return Result{Version: latest.Original(), Updated: updated}, nil
 }
 
-type target struct {
-	label     string
-	skillsDir string
-}
-
-func detectedTargets(home string) []target {
-	var targets []target
-	if isDir(filepath.Join(home, ".claude")) {
-		targets = append(targets, target{"Claude Code", filepath.Join(home, ".claude", "skills")})
+// skillsDir：Claude Code 放 ~/.claude/skills，Codex 放 ~/.agents/skills，Grok 放 ~/.grok/skills。
+func skillsDir(agentID, home string) (string, error) {
+	switch agentID {
+	case "claude":
+		return filepath.Join(home, ".claude", "skills"), nil
+	case "codex":
+		return filepath.Join(home, ".agents", "skills"), nil
+	case "grok":
+		return filepath.Join(home, ".grok", "skills"), nil
 	}
-	if isDir(filepath.Join(home, ".codex")) || isDir(filepath.Join(home, ".agents")) {
-		targets = append(targets, target{"Codex", filepath.Join(home, ".agents", "skills")})
-	}
-	return targets
-}
-
-func isDir(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
+	return "", errors.New("不支援的 AI Agent")
 }
 
 func (s *Service) download(ctx context.Context) ([]byte, *semver.Version, error) {
@@ -113,24 +112,25 @@ func (s *Service) download(ctx context.Context) ([]byte, *semver.Version, error)
 	return content, parsed, nil
 }
 
-func install(target target, content []byte, latest *semver.Version) error {
-	dir := filepath.Join(target.skillsDir, "steamloom")
+// install 回傳是否真的寫入；本機版本不比遠端舊就保留原檔，只順手清掉已驗證的舊版。
+func install(skillsDir string, content []byte, latest *semver.Version) (bool, error) {
+	dir := filepath.Join(skillsDir, "steamloom")
 	path := filepath.Join(dir, "SKILL.md")
 	if current, err := os.ReadFile(path); err == nil {
 		_, currentVersion := metadata(current)
 		if parsed, err := semver.NewVersion(currentVersion); err == nil && !latest.GreaterThan(parsed) {
-			return removeLegacy(target.skillsDir)
+			return false, removeLegacy(skillsDir)
 		}
 	} else if !os.IsNotExist(err) {
-		return err
+		return false, err
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return false, err
 	}
 	if err := replaceFile(path, content); err != nil {
-		return err
+		return false, err
 	}
-	return removeLegacy(target.skillsDir)
+	return true, removeLegacy(skillsDir)
 }
 
 // replaceFile 先在同目錄寫完整暫存檔再替換；Windows 不允許 rename 覆蓋，需先移除舊檔。

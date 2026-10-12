@@ -70,10 +70,6 @@ export function Projects() {
   return window['go']['main']['App']['Projects']();
 }
 
-export function UpdateSkill() {
-  return window['go']['main']['App']['UpdateSkill']();
-}
-
 export function VersionDetail(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['VersionDetail'](arg1, arg2, arg3, arg4);
 }

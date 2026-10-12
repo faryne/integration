@@ -72,11 +72,6 @@ function Shell() {
     void checkForUpdate().catch(() => undefined);
   }, [checkForUpdate]);
 
-  // Writer 啟動後更新已安裝的 SteamLoom Skill；下載內容由 Go 端驗證，不執行遠端 script。
-  useEffect(() => {
-    backend.UpdateSkill().catch((err) => showError(errorMessage(err)));
-  }, [showError]);
-
   useEffect(() => {
     backend.AppVersion().then(setAppVersion).catch((err) => showError(errorMessage(err)));
     return EventsOn("app:show-about", () => setAboutOpen(true));
