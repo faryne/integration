@@ -4,9 +4,9 @@ import CollectionsIcon from "@mui/icons-material/Collections";
 import { Box, ButtonBase, Card, CardMedia, Chip, CircularProgress, Pagination, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { backend, type DocumentItem, type ListedDocument } from "@/lib/backend.ts";
-import { dateTimeFormat } from "@/lib/format.ts";
-import { useBackendData } from "@/lib/useBackendData.ts";
+import { backend, type DocumentItem, type ListedDocument } from "@writer/lib/backend.ts";
+import { dateTimeFormat } from "@writer/lib/format.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
 
 export type ListSection = "stories" | "lores" | "assets";
 

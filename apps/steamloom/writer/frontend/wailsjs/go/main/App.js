@@ -14,6 +14,10 @@ export function Ask(arg1, arg2) {
   return window['go']['main']['App']['Ask'](arg1, arg2);
 }
 
+export function Asset(arg1, arg2) {
+  return window['go']['main']['App']['Asset'](arg1, arg2);
+}
+
 export function Assets(arg1, arg2) {
   return window['go']['main']['App']['Assets'](arg1, arg2);
 }
@@ -70,6 +74,10 @@ export function Logout() {
   return window['go']['main']['App']['Logout']();
 }
 
+export function Lores(arg1) {
+  return window['go']['main']['App']['Lores'](arg1);
+}
+
 export function McpInstalled(arg1) {
   return window['go']['main']['App']['McpInstalled'](arg1);
 }
@@ -92,6 +100,14 @@ export function Projects() {
 
 export function Reorder(arg1, arg2, arg3) {
   return window['go']['main']['App']['Reorder'](arg1, arg2, arg3);
+}
+
+export function SaveDocument(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
+}
+
+export function SetUnsaved(arg1) {
+  return window['go']['main']['App']['SetUnsaved'](arg1);
 }
 
 export function UploadAssets(arg1, arg2) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	goruntime "runtime"
+	"sync/atomic"
 	"time"
 
 	"faryne.dev/apps/steamloom/writer/internal/agent"
@@ -24,6 +25,8 @@ type App struct {
 	api     *api.Client
 	updater *appupdate.Service
 	skill   *skillupdate.Service
+	// unsaved：編輯分頁有沒有未存檔的內容，由前端回報（見 unsaved.go）
+	unsaved atomic.Bool
 }
 
 func NewApp() *App {
@@ -67,6 +70,18 @@ func (a *App) Workspace(project string) (*api.Workspace, error) {
 // Document 回傳單篇故事或設定，kind 是 "story" 或 "lore"（綁定參數用 string，Wails 不會產生 Go 自訂型別的 TS 定義）。
 func (a *App) Document(project, kind, id string) (*api.Document, error) {
 	return a.api.Document(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// SaveDocument 存檔故事或設定（每次一個新版本），回傳新的版本 id 與是否跟別處的修改衝突。
+func (a *App) SaveDocument(project, kind, id string, input api.SaveInput) (*api.SaveResult, error) {
+	return a.api.SaveDocument(a.ctx, project, api.DocumentKind(kind), id, input)
+}
+
+// Lores／Asset 給編輯器用：連結到設定的選單、失效設定連結的標示、內文資產圖片的預覽網址。
+func (a *App) Lores(project string) ([]api.EditorLore, error) { return a.api.Lores(a.ctx, project) }
+
+func (a *App) Asset(project, id string) (*api.EditorAsset, error) {
+	return a.api.Asset(a.ctx, project, id)
 }
 
 // Versions 回傳單篇故事或設定的編輯歷史（不含內文）。

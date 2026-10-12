@@ -17,11 +17,6 @@
     "draft": "Draft",
     "completed": "Published"
   },
-  "meta": {
-    "status": "Status",
-    "wordCount": "{{words}} words",
-    "updatedAt": "Updated {{date}}"
-  },
   "chat": {
     "placeholder": "Write a message…",
     "send": "Send",
@@ -42,5 +37,47 @@
     "source": "Source",
     "wordCount": "Words",
     "createdAt": "Created"
+  },
+  "editor": {
+    "titlePlaceholder": {
+      "story": "Untitled story",
+      "lore": "Untitled lore"
+    },
+    "summaryPlaceholder": {
+      "story": "Add a summary...",
+      "lore": "Add a summary for readers..."
+    },
+    "status": "Status",
+    "group": {
+      "story": "Volume",
+      "lore": "Collection"
+    },
+    "authors": "Byline",
+    "autoSave": {
+      "label": "Autosave",
+      "off": "Off",
+      "every": "Every {{minutes}} min",
+      "custom": "Custom",
+      "range": "{{min}}-{{max}} min"
+    },
+    "titleRequired": "Enter a title before saving.",
+    "saved": "Saved.",
+    "autoSaved": "Autosaved.",
+    "saveFailed": "Save failed, please try again: ",
+    "autoSaveFailed": "Autosave failed, please save manually: ",
+    "conflict": {
+      "story": "This story was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
+      "lore": "This lore entry was updated elsewhere while you were editing. Your changes were saved as a new version after the latest one.",
+      "viewHistory": "View history"
+    },
+    "unsaved": {
+      "title": "Discard unsaved changes?",
+      "cancel": "Keep editing",
+      "discard": "Discard"
+    },
+    "image": {
+      "title": "Image works can't be edited in Writer yet",
+      "description": "Please edit image works on the website for now."
+    }
   }
 }

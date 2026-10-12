@@ -1,9 +1,9 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, isNotLoggedIn, type Workspace } from "@/lib/backend.ts";
-import { SessionExpiredContext } from "@/lib/useBackendData.ts";
-import { moveInList } from "@/pages/workspace/workspaceTree.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, isNotLoggedIn, type Workspace } from "@writer/lib/backend.ts";
+import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
+import { moveInList } from "@writer/pages/workspace/workspaceTree.ts";
 
 // 側邊列的建立、移動、排序。排序先在畫面上換好順序（不用等 API），再送出；
 // 不管成功或失敗都重新抓一次工作台，以伺服器為準（例如中途某一筆失敗、順序一半新一半舊）。

@@ -1,6 +1,6 @@
 # SteamLoom Writer 編輯區（比照網站）規格
 
-- 狀態：規格草稿，待確認後實作（2026-10-12）
+- 狀態：第一階段已實作（2026-10-12，分支 feat/steamloom-writer-editor），尚未併入 main
 - 目標：Writer 的「編輯」分頁從唯讀改成跟網站同一套所見即所得編輯器，右鍵選單、slash 指令、浮動工具列、表格、腳注、註解、程式碼區塊等全部一致。
 
 ## 做法：直接沿用網站的 `StorytellerWysiwygEditor`，不重寫
@@ -71,3 +71,25 @@
 
 1. 決策 1、2 是否照建議做。
 2. 第一階段範圍是否 OK（特別是：狀態／冊／署名先只顯示不給改、插入資產放第二階段）。
+
+## 實作紀錄（第一階段，2026-10-12）
+
+跟規格不同或規格沒寫到的地方：
+
+- **版本衝突不是 409**：後端 `UpdateStory`／`UpdateLore` 一律照寫，只回 `version_conflict: true`（`StoryRequest.BaseVersionID` 舊註解寫 409，已更正）。Writer 跟網站一樣：存檔後顯示提示＋「查看編輯歷史」。
+- **故事存檔要先讀一次 status／sort**：故事 PUT 會整筆覆寫 status 與 sort（沒帶就變預設值），編輯頁又不改這兩個欄位，Go 端 `SaveDocument` 先 GET 再 PUT，避免把側邊列剛排好的順序蓋回去。設定的 status 是指標（省略＝不變），不用讀。
+- **設定也能改摘要**：網站 LoreEditor 有「給讀者看的摘要」，雙胞胎原則下 Writer 兩邊都給改。
+- **切分頁不問**：改成編輯器在切到「編輯歷史」時不卸載（`display: none`），內容不會掉，所以只有換文件／看列表／回 AI 助理／回專案列表才問。
+- **關閉視窗**：前端回報未存檔狀態（`SetUnsaved`），Go 的 `OnBeforeClose` 用原生對話框確認（macOS 自訂按鈕；Windows／Linux 是 Yes／No）。
+- **未存檔判斷的基準**：編輯器載入後會先吐一次正規化過的 markdown（補段落 marker），要把那一次當成「已存檔」基準，否則每篇一打開就是未存檔。網站用 `hasCapturedInitialEditorContentRef` 做同一件事；Writer 在 `useDocumentDraft` 的 `baselinePendingRef`，重新載入新版本時也重新等一次（Tiptap v3 的 `setContent` 預設會觸發 onUpdate）。
+- **屬性只顯示**：狀態、冊／設定集、署名用網站同一組按鈕但停用；圖像作品顯示空狀態（之後接 ImageEpisodeEditor）。
+- **套件版本鎖死**：Writer 的 TipTap 全部固定 `3.27.3`（跟網站實際安裝的一致）；用 `^` 會讓 `@tiptap/react` 跑到 3.31 而 core 留在 3.27，build 直接失敗。
+- **共用檔的第三方套件**：Vite plugin 強制從 Writer 的 node_modules 解析，找不到直接報錯（不能讓它退回 static_site/node_modules，本機過、CI 掛）。tsconfig 的 `paths` 不讀套件 exports，`@tiptap/react/menus` 這種只靠 exports 的子路徑要逐一列。
+- **字數**：`storytellerContentWordCount.ts` 抽出來給 StoryEditor、LoreEditor、Writer 共用（原本兩份一樣的函式）。
+
+### 驗證
+
+- 網站：`tsc -b`、eslint（改到的檔案）、`vitest run src/pages/storyteller`（54 個測試）皆通過。
+- Writer：`tsc -b`、`pnpm build`、`go vet`、`go test ./internal/...` 通過；拿掉 `static_site/node_modules` 模擬 CI 的 `tsc -b`＋build 也通過。
+- 實機（Wails dev，本機作者帳號，只做不存檔的操作）：編輯器顯示、資產圖片預覽（Go 綁定取簽名網址）、slash 選單、右鍵選單、切分頁保留內容、未存檔確認（繼續編輯／放棄修改）、沒改內容換文件不會問、設定編輯頁、圖像作品空狀態。
+- **存檔沒有實機測**（測試實例登入的是作者自己的本機資料）；請用一篇可以亂改的文件確認手動存檔、⌘S、自動存檔、版本衝突提示。

@@ -3,16 +3,16 @@ import { Box, CircularProgress, CssBaseline, GlobalStyles, ThemeProvider } from 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EventsOn } from "../wailsjs/runtime/runtime";
-import { AboutDialog } from "@/components/AboutDialog.tsx";
-import { AppHeader } from "@/components/AppHeader.tsx";
-import { SnackProvider, useSnack } from "@/components/SnackProvider.tsx";
-import { UpdateDialog } from "@/components/UpdateDialog.tsx";
-import { backend, errorMessage, isNotLoggedIn, type Profile, type Project, type UpdateInfo } from "@/lib/backend.ts";
-import { SessionExpiredContext } from "@/lib/useBackendData.ts";
-import { LoadErrorPage } from "@/pages/LoadErrorPage.tsx";
-import { LoginPage } from "@/pages/LoginPage.tsx";
-import { ProjectsPage } from "@/pages/ProjectsPage.tsx";
-import { WorkspacePage } from "@/pages/workspace/WorkspacePage.tsx";
+import { AboutDialog } from "@writer/components/AboutDialog.tsx";
+import { AppHeader } from "@writer/components/AppHeader.tsx";
+import { SnackProvider, useSnack } from "@writer/components/SnackProvider.tsx";
+import { UpdateDialog } from "@writer/components/UpdateDialog.tsx";
+import { backend, errorMessage, isNotLoggedIn, type Profile, type Project, type UpdateInfo } from "@writer/lib/backend.ts";
+import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
+import { LoadErrorPage } from "@writer/pages/LoadErrorPage.tsx";
+import { LoginPage } from "@writer/pages/LoginPage.tsx";
+import { ProjectsPage } from "@writer/pages/ProjectsPage.tsx";
+import { WorkspacePage } from "@writer/pages/workspace/WorkspacePage.tsx";
 
 // 外觀先固定 nocturne（網站預設的深色），之後要切換再接網站的 appearance 設定
 const theme = createStorytellerTheme("nocturne");
@@ -112,7 +112,7 @@ function Shell() {
         ) : profile === "error" ? (
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
         ) : openProject ? (
-          <WorkspacePage key={openProject.public_id} project={openProject} onBack={() => setOpenProject(null)} />
+          <WorkspacePage key={openProject.public_id} project={openProject} profile={typeof profile === "object" ? profile : null} onBack={() => setOpenProject(null)} />
         ) : (
           <ProjectsPage onOpen={setOpenProject} />
         )}

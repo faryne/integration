@@ -241,6 +241,18 @@ export namespace api {
 		    return a;
 		}
 	}
+	export class Author {
+	    pen_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Author(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pen_name = source["pen_name"];
+	    }
+	}
 	export class CreateRequest {
 	    kind: string;
 	    name: string;
@@ -281,6 +293,8 @@ export namespace api {
 	    latest_content: string;
 	    word_count: number;
 	    updated_at: string;
+	    latest_version_id?: number;
+	    authors: Author[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Document(source);
@@ -297,7 +311,27 @@ export namespace api {
 	        this.latest_content = source["latest_content"];
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
+	        this.latest_version_id = source["latest_version_id"];
+	        this.authors = this.convertValues(source["authors"], Author);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DocumentItem {
 	    kind: string;
@@ -315,6 +349,38 @@ export namespace api {
 	        this.public_id = source["public_id"];
 	        this.title = source["title"];
 	        this.content_type = source["content_type"];
+	    }
+	}
+	export class EditorAsset {
+	    preview_url: string;
+	    title: string;
+	    original_filename: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditorAsset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.preview_url = source["preview_url"];
+	        this.title = source["title"];
+	        this.original_filename = source["original_filename"];
+	    }
+	}
+	export class EditorLore {
+	    public_id: string;
+	    title: string;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EditorLore(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.public_id = source["public_id"];
+	        this.title = source["title"];
+	        this.status = source["status"];
 	    }
 	}
 	export class Group {
@@ -380,6 +446,8 @@ export namespace api {
 	export class Profile {
 	    pen_name: string;
 	    avatar_url: string;
+	    auto_save_enabled: boolean;
+	    auto_save_interval_minutes: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Profile(source);
@@ -389,6 +457,8 @@ export namespace api {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pen_name = source["pen_name"];
 	        this.avatar_url = source["avatar_url"];
+	        this.auto_save_enabled = source["auto_save_enabled"];
+	        this.auto_save_interval_minutes = source["auto_save_interval_minutes"];
 	    }
 	}
 	export class Project {
@@ -415,6 +485,44 @@ export namespace api {
 	        this.story_count = source["story_count"];
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class SaveInput {
+	    title: string;
+	    summary: string;
+	    content: string;
+	    trigger: string;
+	    base_version_id?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.trigger = source["trigger"];
+	        this.base_version_id = source["base_version_id"];
+	    }
+	}
+	export class SaveResult {
+	    latest_version_id?: number;
+	    word_count: number;
+	    updated_at: string;
+	    version_conflict: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new SaveResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.latest_version_id = source["latest_version_id"];
+	        this.word_count = source["word_count"];
+	        this.updated_at = source["updated_at"];
+	        this.version_conflict = source["version_conflict"];
 	    }
 	}
 	export class UploadResult {

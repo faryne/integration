@@ -11,6 +11,8 @@ export function AppVersion():Promise<string>;
 
 export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
 
+export function Asset(arg1:string,arg2:string):Promise<api.EditorAsset>;
+
 export function Assets(arg1:string,arg2:number):Promise<api.AssetPage>;
 
 export function CancelLogin():Promise<void>;
@@ -39,6 +41,8 @@ export function Login():Promise<void>;
 
 export function Logout():Promise<void>;
 
+export function Lores(arg1:string):Promise<Array<api.EditorLore>>;
+
 export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 
 export function Me():Promise<api.Profile>;
@@ -50,6 +54,10 @@ export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
 export function Projects():Promise<Array<api.Project>>;
 
 export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
+
+export function SaveDocument(arg1:string,arg2:string,arg3:string,arg4:api.SaveInput):Promise<api.SaveResult>;
+
+export function SetUnsaved(arg1:boolean):Promise<void>;
 
 export function UploadAssets(arg1:string,arg2:string):Promise<api.UploadResult>;
 

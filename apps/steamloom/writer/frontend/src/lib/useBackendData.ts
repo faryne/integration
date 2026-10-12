@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type DependencyList } from "react";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { errorMessage, isNotLoggedIn } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { errorMessage, isNotLoggedIn } from "@writer/lib/backend.ts";
 
 // 呼叫 API 時發現授權失效（過期或在網站上被撤銷）要通知外層切回登入頁，由 App 的 Shell 提供。
 export const SessionExpiredContext = createContext<() => void>(() => {});

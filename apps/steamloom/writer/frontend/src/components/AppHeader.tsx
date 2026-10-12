@@ -3,7 +3,7 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { Avatar, Box, ButtonBase, ListItemIcon, Menu, MenuItem, Stack, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Profile } from "@/lib/backend.ts";
+import type { Profile } from "@writer/lib/backend.ts";
 
 // 頂部列：左邊品牌標誌，右邊登入後的作者帳號選單（目前只有登出）。
 export function AppHeader({ profile, onLogout }: { profile: Profile | null; onLogout: () => void }) {

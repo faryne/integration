@@ -1,7 +1,7 @@
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { MoveTarget } from "@/pages/workspace/SidebarActions.tsx";
+import type { MoveTarget } from "@writer/pages/workspace/SidebarActions.tsx";
 
 // 「上傳資產」：先選要放進哪個資產集，按下後由 Go 端開原生選檔視窗（可多選）並直傳 S3。
 // onUpload 回傳 true 代表有完成上傳（關閉對話框），使用者在選檔視窗按取消則回 false、保留對話框。

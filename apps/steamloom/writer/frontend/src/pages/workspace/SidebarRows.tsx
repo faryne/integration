@@ -4,8 +4,8 @@ import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useEffect, useState, type ReactNode } from "react";
-import type { DocumentItem } from "@/lib/backend.ts";
-import { isSameDocument } from "@/pages/workspace/workspaceTree.ts";
+import type { DocumentItem } from "@writer/lib/backend.ts";
+import { isSameDocument } from "@writer/pages/workspace/workspaceTree.ts";
 
 // 側邊列的列樣式比照網站工作台：30px 高、選取時左邊一條強調色＋淡底色。
 // extra 是列右側的操作（排序箭頭、移動選單），放在可點區域旁邊而不是裡面，避免 button 包 button；

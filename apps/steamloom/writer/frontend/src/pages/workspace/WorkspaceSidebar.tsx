@@ -7,14 +7,14 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import { Box, Divider, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { DocumentItem, Workspace } from "@/lib/backend.ts";
-import { CreateDialog } from "@/pages/workspace/CreateDialog.tsx";
-import { MoveMenuButton, SectionActions, SortArrows, type MoveTarget } from "@/pages/workspace/SidebarActions.tsx";
-import type { ListSection } from "@/pages/workspace/ListPanels.tsx";
-import { GroupRow, NavRow, SidebarSection } from "@/pages/workspace/SidebarRows.tsx";
-import { UploadDialog } from "@/pages/workspace/UploadDialog.tsx";
-import type { useWorkspaceEditing } from "@/pages/workspace/useWorkspaceEditing.ts";
-import { groupIdOf } from "@/pages/workspace/workspaceTree.ts";
+import type { DocumentItem, Workspace } from "@writer/lib/backend.ts";
+import { CreateDialog } from "@writer/pages/workspace/CreateDialog.tsx";
+import { MoveMenuButton, SectionActions, SortArrows, type MoveTarget } from "@writer/pages/workspace/SidebarActions.tsx";
+import type { ListSection } from "@writer/pages/workspace/ListPanels.tsx";
+import { GroupRow, NavRow, SidebarSection } from "@writer/pages/workspace/SidebarRows.tsx";
+import { UploadDialog } from "@writer/pages/workspace/UploadDialog.tsx";
+import type { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
+import { groupIdOf } from "@writer/pages/workspace/workspaceTree.ts";
 
 type Props = {
   workspace: Workspace;

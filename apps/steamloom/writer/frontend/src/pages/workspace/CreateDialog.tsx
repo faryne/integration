@@ -1,7 +1,7 @@
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { MoveTarget } from "@/pages/workspace/SidebarActions.tsx";
+import type { MoveTarget } from "@writer/pages/workspace/SidebarActions.tsx";
 
 // 側邊列「建立」的對話框：只問名稱；故事／圖像作品可選要放在哪一冊、設定可選設定集。
 // 名稱空白或送出中時「建立」不能按；成功與否由外層 onSubmit 處理（失敗會跳 snack，對話框保留讓使用者重試）。

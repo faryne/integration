@@ -7,9 +7,9 @@ import {
 import { useVersionCompareSelection } from "@steamloom-web/pages/storyteller/useVersionCompareSelection.ts";
 import { Box, CircularProgress } from "@mui/material";
 import { useMemo, useState } from "react";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, type DocumentItem, type VersionDetail } from "@/lib/backend.ts";
-import { useBackendData } from "@/lib/useBackendData.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage, type DocumentItem, type VersionDetail } from "@writer/lib/backend.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
 
 // Writer 是整個分頁的空間，一頁比網站側欄（5 筆）多放一些
 const PAGE_SIZE = 10;

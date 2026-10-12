@@ -1,4 +1,4 @@
-import type { DocumentItem, Workspace, WorkspaceGroup } from "@/lib/backend.ts";
+import type { DocumentItem, Workspace, WorkspaceGroup } from "@writer/lib/backend.ts";
 
 export type DocumentTab = "editor" | "history";
 
