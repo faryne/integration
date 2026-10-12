@@ -120,25 +120,5 @@ export function storytellerProjectRatingColor(
   return "success";
 }
 
-// 對應後端 story/lore version 的 source 欄位：web_auto／web_manual／web_agent_apply
-// 是網頁編輯頁自己存的，"mcp:<token label>" 是外部工具透過 MCP 用哪把 Personal
-// Access Token 寫入的。source 可能因為資料庫還沒跑過補欄位的 migration、或本來
-// 就是舊資料而缺值，一律當手動存檔。
-export function storytellerVersionSourceLabel(
-  source: string | null | undefined,
-) {
-  if (!source) {
-    return "手動存檔";
-  }
-  if (source === "web_auto") {
-    return "自動存檔";
-  }
-  if (source === "web_agent_apply") {
-    return "套用 AI 提案存檔";
-  }
-  if (source.startsWith("mcp:")) {
-    const label = source.slice("mcp:".length);
-    return label ? `透過 MCP 使用 PAT「${label}」操作` : "透過 MCP 操作";
-  }
-  return "手動存檔";
-}
+// 版本來源標籤搬到獨立檔案，讓 SteamLoom Writer 也能 import（那邊不能用 "@/" alias）
+export { storytellerVersionSourceLabel } from "./storytellerVersionSource";

@@ -1,0 +1,34 @@
+{
+  "sections": {
+    "stories": "作品與冊",
+    "lores": "設定集",
+    "assets": "資產集",
+    "memories": "梭梭的記憶"
+  },
+  "ungroupedStories": "未分冊",
+  "uncategorizedLores": "未歸類",
+  "tabs": {
+    "chat": "AI 對話",
+    "editor": "編輯",
+    "history": "編輯歷史"
+  },
+  "status": {
+    "draft": "草稿",
+    "completed": "公開中"
+  },
+  "meta": {
+    "status": "狀態",
+    "wordCount": "{{words}} 字",
+    "updatedAt": "更新於 {{date}}"
+  },
+  "chat": {
+    "placeholder": "輸入訊息……",
+    "send": "送出"
+  },
+  "history": {
+    "version": "版本",
+    "source": "來源",
+    "wordCount": "字數",
+    "createdAt": "建立時間"
+  }
+}

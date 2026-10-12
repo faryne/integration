@@ -1,6 +1,6 @@
 # SteamLoom Writer 桌面版
 
-- 狀態：第一階段（登入＋列出專案）實作中，2026-10-11
+- 狀態：v0.1.0 已發佈（登入＋專案列表）；專案主頁骨架實作中，2026-10-11
 - Branch：`feat/steamloom-desktop-agent`
 - 程式碼：`apps/steamloom/writer/`（獨立 go module `faryne.dev/apps/steamloom/writer`）
 - Mockup：`DevelopDocuments/storyteller/writer-app-mockup/`
@@ -28,13 +28,27 @@
 5. 呼叫 API 前，access token 剩不到 2 分鐘就 refresh（整段加鎖，避免 rotation 時兩個請求互相作廢）；server 明確拒絕 refresh → 清憑證要求重新登入；API 回 401（例如在網站撤銷授權）也一樣。
 6. 登出：先 `POST /oauth/revoke`（失敗不影響），再清鑰匙圈。
 
-## 後端：`/storyteller-client`
+## 後端：沿用網站的 `/storyteller` 路由
 
-- `route/storyteller_client.go`、`controller/storytellerclient/`
-- 掛 `storytellerbearer.New()`（OAuth access token 或 PAT），對外是 `https://steamloom.works/api/storyteller-client/...`（走既有的同源 `/api` nginx 規則，不用改 nginx）。
-- 不放在 `/storyteller/` 底下：那邊 authenticated 群組的 session middleware 會攔截所有 `/storyteller/*`（同 `/storyteller-mcp` 的理由）。
-- 目前端點：`GET /me`、`GET /projects`，回應格式同網頁版對應的 API。
+- 2026-10-11 起不另開路由群組（原本的 `/storyteller-client` 已移除）：`route/storyteller.go` 的 authenticated 群組改成 `storytellerbearer.Optional()` → `authsession.NewWithBearer()`。
+  - 沒帶 `Authorization` 就照舊驗網站 session（X-Encrypt-Key）。
+  - 帶 Bearer token（OAuth access token 或 PAT）就驗 token，再轉成 session 形狀，網站 handler 讀 `Session(ctx).UserId` 不用改（盤點過只讀 `UserId`）。token 無效直接 401，不會退回 session。
+  - 稽核的 AuthMethod 由 Bearer middleware 設成 oauth／pat，`WebSuccess` 照樣記錄、不會誤記成網站 session。
+- **帳號安全相關端點逐條掛 `authsession.SessionOnly()`**，Bearer token 打到回 403（custom code `403301`）：session 續期、刪除帳號、管理後台、OAuth 授權與授權管理、Provider 金鑰、稽核、PAT、站內 AI 的用量與 agent。理由：OAuth 授權頁承諾第三方工具「不能變更帳號設定、刪除帳號、查看或使用 Provider 金鑰／PAT 與其他授權」，也避免拿到 OAuth token 的工具自己生出一把 PAT。**之後新增這類端點要記得掛 `sessionOnly`。**
+- Writer 打 `https://steamloom.works/api/storyteller/...`（同源 `/api` nginx 規則，不用改 nginx）。
 - token 的 resource 綁的是 MCP 網址，但 `Authenticate` 不檢查 resource，所以同一支 token 也能打這組 API。
+- 待確認：Writer 之後透過網站 handler 寫入時，版本來源會記成網站的 `web_manual`／`web_auto`，要不要另外標成 Writer。
+
+## 專案主頁（2026-10-11 骨架）
+
+- Go 端 `Workspace()` 平行抓 5 份清單，在 Go 端依 `parent_id`／`collection_id` 組成樹，前端只負責畫；`Document()`／`Versions()` 以 kind（story／lore）共用同一套路徑，版本列表在 Go 端丟掉內文不傳給前端。
+- 側邊列：作品與冊（冊＋未分冊）、設定集（設定集＋未歸類）、資產集（只列名稱）、梭梭的記憶（只列入口）。進入專案自動打開第一篇，所在分組自動展開。
+- 三個 tab 都綁「目前選取的那一篇」，故事與設定共用：
+  - AI 對話：只有外型（空對話串＋輸入框＋CLI 選單），送出還沒接。
+  - 編輯：唯讀，內文用網站 `wysiwygCore/parser.ts` 的 `stripMarkerForDiffLine` 去掉段落／行內 marker 後逐行顯示。
+  - 編輯歷史：版本列表（版本號、來源、字數、時間），來源標籤用共用的 `data/storytellerVersionSource.ts`；比對與還原還沒做。
+- 已知小問題：`wails dev` 用瀏覽器開 `localhost:34115` 時，console 會出現 Wails 自己 `ipc.js` 的 `Cannot read properties of null (reading 'nodes')`，不影響功能。
+- 效能注意：網站的 `stories`／`versions` API 會帶完整內文，專案大的時候側邊列與歷史會慢，之後可能要加輕量版端點。
 
 ## 已知 Bug 記錄
 
@@ -44,9 +58,15 @@
    - 解法：`Login()` 只負責授權；作者資料由前端用跟啟動時同一個 `loadProfile` 載入，只有 `not_logged_in` 才回登入頁，其他錯誤顯示「無法載入作者資料」＋重試／登出。
    - 狀態：已修，本機驗證過斷線→重試恢復。正式站要等後端部署後才能用。
 
+2. **後端版本對不上時，Writer 把憑證刪掉**（2026-10-11，已修）
+   - 現象：開發時 Writer 先改成打 `/storyteller/user`，後端還沒重啟（舊版不收 Bearer）→ 401 `X-Encrypt-Key header is required` → Writer 清掉鑰匙圈憑證，畫面跳回登入頁。
+   - Root cause：Writer 把所有 401 都當成「授權被撤銷」。
+   - 解法：只有 401 且 `WWW-Authenticate` 帶 `error="invalid_token"`（RFC 6750，storytellerbearer 驗證失敗時會帶）才清憑證；其他 401 只回報錯誤。正式站部署時間差或代理設定錯誤不會把使用者登出。
+   - 狀態：已修。
+
 ## 待辦
 
-- 專案主頁：側邊列＋AI 對話／編輯／編輯歷史三個 tab（見 mockup）。
+- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史比對／還原、資產與記憶頁。
 - 本機 CLI adapter（先 Claude Code，再 Codex app-server，Grok 最後）。
 - static_site 的 API client 改成可注入（Bearer＋base URL），編輯器等元件才能在 Writer 裡沿用。
 - 外觀目前固定 nocturne，之後接 appearance 切換。

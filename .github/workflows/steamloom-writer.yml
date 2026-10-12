@@ -14,7 +14,10 @@ on:
       - 'static_site/src/data/storytellerTheme.ts'
       - 'static_site/src/data/storytellerSemanticTheme.ts'
       - 'static_site/src/data/storytellerComponentOverrides.ts'
+      - 'static_site/src/data/storytellerVersionSource.ts'
       - 'static_site/src/components/storyteller/SteamLoomMark.tsx'
+      - 'static_site/src/pages/storyteller/wysiwygCore/parser.ts'
+      - 'static_site/src/pages/storyteller/wysiwygCore/whitelist.ts'
       - '.github/workflows/steamloom-writer.yml'
   pull_request:
     paths: *writer-paths

@@ -34,7 +34,14 @@ type Credential struct {
 
 // New 驗證 `Authorization: Bearer <token>`，供外部工具（如 MCP client）存取：
 // `sto_` 開頭走 OAuth access token，其餘走 Personal Access Token。
-func New() fiber.Handler {
+func New() fiber.Handler { return build(false) }
+
+// Optional 跟 New 一樣驗證 Bearer token，但沒帶 Authorization 時直接放行給後面的 session middleware，
+// 讓網站的 /storyteller API 同時服務瀏覽器（X-Encrypt-Key）與原生 app（SteamLoom Writer）。
+// 有帶 token 但驗證失敗仍然回 401，不會退回 session。
+func Optional() fiber.Handler { return build(true) }
+
+func build(optional bool) fiber.Handler {
 	oauth := oauthService.NewService()
 	pat := storytellerService.NewService()
 	authenticate := func(token string) (*Credential, error) {
@@ -67,17 +74,20 @@ func New() fiber.Handler {
 		}
 		return credential, nil
 	}
-	return newMiddleware(active, auditService.Emit, oauth.ResourceMetadataURL())
+	return newMiddleware(active, auditService.Emit, oauth.ResourceMetadataURL(), optional)
 }
 
 type authenticateFunc func(string) (*Credential, error)
 type emitFunc func(context.Context, auditService.EventInput) error
 
-func newMiddleware(authenticate authenticateFunc, emit emitFunc, resourceMetadataURL string) fiber.Handler {
+func newMiddleware(authenticate authenticateFunc, emit emitFunc, resourceMetadataURL string, optional bool) fiber.Handler {
 	// RFC 9728：401 帶上 resource_metadata，支援 OAuth 的 MCP client 會從這裡開始授權流程
 	challenge := fmt.Sprintf(`Bearer resource_metadata="%s"`, resourceMetadataURL)
 	return func(ctx fiber.Ctx) error {
 		token := extractBearerToken(ctx.Get(fiber.HeaderAuthorization))
+		if token == "" && optional {
+			return ctx.Next()
+		}
 		if token == "" {
 			ctx.Set(fiber.HeaderWWWAuthenticate, challenge)
 			return output.Unauthorized(errors.New("Authorization bearer token is required"))

@@ -9,6 +9,7 @@ import (
 	storytellerAccount "faryne.dev/middleware/storytelleraccount"
 	storytellerAI "faryne.dev/middleware/storytellerai"
 	storytellerAudit "faryne.dev/middleware/storytelleraudit"
+	"faryne.dev/middleware/storytellerbearer"
 	authService "faryne.dev/service/auth"
 	"github.com/gofiber/fiber/v3"
 )
@@ -44,17 +45,26 @@ func Storyteller(app *fiber.App) {
 	}
 
 	// storytellerAccount.Active：被站方停權的帳號，既有 session 下一個請求就失效
-	authenticated := group.Group("", authsession.New(authService.BrandStoryteller), storytellerAccount.Active(), storytellerAudit.WebSuccess())
+	// 同時接受網站 session（X-Encrypt-Key）與原生 app／外部工具的 Bearer token（OAuth／PAT）：
+	// storytellerbearer.Optional 驗過 token 就由 NewWithBearer 轉成 session 形狀，handler 不用分兩套；
+	// 帳號安全相關的端點逐條掛 sessionOnly，Bearer token 打不到（見 authsession.SessionOnly）。
+	authenticated := group.Group("",
+		storytellerbearer.Optional(),
+		authsession.NewWithBearer(authService.BrandStoryteller, storytellerbearer.UserID),
+		storytellerAccount.Active(),
+		storytellerAudit.WebSuccess(),
+	)
 	// 站內 AI 助理（agent chat、API key、Skill、用量、記憶草稿、AI 提案）的路由逐條掛 aiGate；
 	// 不能用空前綴 group 包住——Fiber 的 group middleware 會套到之後註冊的所有路由。
 	aiGate := storytellerAI.Gate()
+	sessionOnly := authsession.SessionOnly()
 	// sliding TTL 續期用（前端 touchAuthSession），純粹靠這個 group 的 brand 檢查生效，
 	// handler 本身跟主站共用（無狀態、只回 active:true，不用另外寫一份）。
-	authenticated.Get("/auth/session", auth.GetSession)
+	authenticated.Get("/auth/session", sessionOnly, auth.GetSession)
 	authenticated.Get("/user", storyteller.UserProfile)
 	authenticated.Post("/user", storyteller.SaveUserProfile)
 	authenticated.Put("/user", storyteller.SaveUserProfile)
-	authenticated.Delete("/user", storyteller.DeleteUserProfile)
+	authenticated.Delete("/user", sessionOnly, storyteller.DeleteUserProfile)
 	authenticated.Get("/profiles", storyteller.AuthorProfiles)
 	authenticated.Post("/profiles", storyteller.CreateAuthorProfile)
 	authenticated.Put("/profiles/:profile", storyteller.UpdateAuthorProfile)
@@ -117,34 +127,34 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/reports", storyteller.CreateReport)
 
 	// 管理後台：只開放 session，每支 handler 由 service 檢查平台權限（admin.*）
-	authenticated.Get("/admin/me", storyteller.AdminMe)
-	authenticated.Get("/admin/reports", storyteller.AdminReports)
-	authenticated.Get("/admin/reports/:type/:target", storyteller.AdminReportDetail)
-	authenticated.Post("/admin/reports/:type/:target/remove", storyteller.AdminRemoveReportTarget)
-	authenticated.Post("/admin/reports/:type/:target/dismiss", storyteller.AdminDismissReportTarget)
+	authenticated.Get("/admin/me", sessionOnly, storyteller.AdminMe)
+	authenticated.Get("/admin/reports", sessionOnly, storyteller.AdminReports)
+	authenticated.Get("/admin/reports/:type/:target", sessionOnly, storyteller.AdminReportDetail)
+	authenticated.Post("/admin/reports/:type/:target/remove", sessionOnly, storyteller.AdminRemoveReportTarget)
+	authenticated.Post("/admin/reports/:type/:target/dismiss", sessionOnly, storyteller.AdminDismissReportTarget)
 
-	authenticated.Post("/oauth/authorize", storytelleroauth.Authorize)
-	authenticated.Get("/oauth/grants", storytelleroauth.Grants)
-	authenticated.Delete("/oauth/grants/:grant", storytelleroauth.RevokeGrant)
+	authenticated.Post("/oauth/authorize", sessionOnly, storytelleroauth.Authorize)
+	authenticated.Get("/oauth/grants", sessionOnly, storytelleroauth.Grants)
+	authenticated.Delete("/oauth/grants/:grant", sessionOnly, storytelleroauth.RevokeGrant)
 
-	authenticated.Get("/provider-apikeys", aiGate, storyteller.ProviderAPIKeys)
-	authenticated.Post("/provider-apikeys", aiGate, storyteller.CreateProviderAPIKey)
-	authenticated.Put("/provider-apikeys/:apikey", aiGate, storyteller.UpdateProviderAPIKey)
-	authenticated.Delete("/provider-apikeys/:apikey", aiGate, storyteller.DeleteProviderAPIKey)
-	authenticated.Get("/provider-apikeys/:apikey/models", aiGate, storyteller.ProviderAPIKeyModels)
-	authenticated.Post("/provider-apikeys/:apikey/models", aiGate, storyteller.CreateProviderAPIKeyModel)
-	authenticated.Delete("/provider-apikeys/:apikey/models/:model", aiGate, storyteller.DeleteProviderAPIKeyModel)
-	authenticated.Post("/provider-apikeys/:apikey/test-connection", aiGate, storyteller.TestProviderAPIKey)
+	authenticated.Get("/provider-apikeys", sessionOnly, aiGate, storyteller.ProviderAPIKeys)
+	authenticated.Post("/provider-apikeys", sessionOnly, aiGate, storyteller.CreateProviderAPIKey)
+	authenticated.Put("/provider-apikeys/:apikey", sessionOnly, aiGate, storyteller.UpdateProviderAPIKey)
+	authenticated.Delete("/provider-apikeys/:apikey", sessionOnly, aiGate, storyteller.DeleteProviderAPIKey)
+	authenticated.Get("/provider-apikeys/:apikey/models", sessionOnly, aiGate, storyteller.ProviderAPIKeyModels)
+	authenticated.Post("/provider-apikeys/:apikey/models", sessionOnly, aiGate, storyteller.CreateProviderAPIKeyModel)
+	authenticated.Delete("/provider-apikeys/:apikey/models/:model", sessionOnly, aiGate, storyteller.DeleteProviderAPIKeyModel)
+	authenticated.Post("/provider-apikeys/:apikey/test-connection", sessionOnly, aiGate, storyteller.TestProviderAPIKey)
 
-	authenticated.Get("/account/audit-events", storyteller.AccountAuditEvents)
-	authenticated.Get("/account/audit-event-filters", storyteller.AccountAuditEventFilters)
-	authenticated.Get("/account/audit-archive-months", storyteller.AuditArchiveMonths)
-	authenticated.Post("/account/audit-archive-queries", storyteller.CreateAuditArchiveQuery)
-	authenticated.Get("/audit-archive-queries/:query", storyteller.AuditArchiveQueryStatus)
-	authenticated.Get("/audit-archive-queries/:query/results", storyteller.AuditArchiveQueryResults)
-	authenticated.Get("/personal-access-tokens", storyteller.PersonalAccessTokens)
-	authenticated.Post("/personal-access-tokens", storyteller.CreatePersonalAccessToken)
-	authenticated.Delete("/personal-access-tokens/:token", storyteller.DeletePersonalAccessToken)
+	authenticated.Get("/account/audit-events", sessionOnly, storyteller.AccountAuditEvents)
+	authenticated.Get("/account/audit-event-filters", sessionOnly, storyteller.AccountAuditEventFilters)
+	authenticated.Get("/account/audit-archive-months", sessionOnly, storyteller.AuditArchiveMonths)
+	authenticated.Post("/account/audit-archive-queries", sessionOnly, storyteller.CreateAuditArchiveQuery)
+	authenticated.Get("/audit-archive-queries/:query", sessionOnly, storyteller.AuditArchiveQueryStatus)
+	authenticated.Get("/audit-archive-queries/:query/results", sessionOnly, storyteller.AuditArchiveQueryResults)
+	authenticated.Get("/personal-access-tokens", sessionOnly, storyteller.PersonalAccessTokens)
+	authenticated.Post("/personal-access-tokens", sessionOnly, storyteller.CreatePersonalAccessToken)
+	authenticated.Delete("/personal-access-tokens/:token", sessionOnly, storyteller.DeletePersonalAccessToken)
 
 	// 站內通知：unread-count 要排在 :notification 之前，避免被當成 public_id
 	authenticated.Get("/notifications", storyteller.Notifications)
@@ -158,17 +168,17 @@ func Storyteller(app *fiber.App) {
 	authenticated.Delete("/notifications/:notification", storyteller.DeleteNotification)
 	authenticated.Post("/notifications/:notification/follow-back", storyteller.FollowBackNotification)
 
-	authenticated.Get("/usage/summary", aiGate, storyteller.AgentUsageSummary)
-	authenticated.Get("/usage/logs", aiGate, storyteller.AgentUsageLogs)
+	authenticated.Get("/usage/summary", sessionOnly, aiGate, storyteller.AgentUsageSummary)
+	authenticated.Get("/usage/logs", sessionOnly, aiGate, storyteller.AgentUsageLogs)
 
-	authenticated.Get("/agents", aiGate, storyteller.Agents)
-	authenticated.Get("/agents/provider-models", aiGate, storyteller.AgentProviderModels)
-	authenticated.Post("/agents", aiGate, storyteller.CreateAgent)
-	authenticated.Get("/agents/:agent", aiGate, storyteller.Agent)
-	authenticated.Get("/agents/:agent/versions", aiGate, storyteller.AgentPromptVersions)
-	authenticated.Get("/agents/:agent/versions/:version", aiGate, storyteller.AgentPromptVersion)
-	authenticated.Put("/agents/:agent", aiGate, storyteller.UpdateAgent)
-	authenticated.Delete("/agents/:agent", aiGate, storyteller.DeleteAgent)
+	authenticated.Get("/agents", sessionOnly, aiGate, storyteller.Agents)
+	authenticated.Get("/agents/provider-models", sessionOnly, aiGate, storyteller.AgentProviderModels)
+	authenticated.Post("/agents", sessionOnly, aiGate, storyteller.CreateAgent)
+	authenticated.Get("/agents/:agent", sessionOnly, aiGate, storyteller.Agent)
+	authenticated.Get("/agents/:agent/versions", sessionOnly, aiGate, storyteller.AgentPromptVersions)
+	authenticated.Get("/agents/:agent/versions/:version", sessionOnly, aiGate, storyteller.AgentPromptVersion)
+	authenticated.Put("/agents/:agent", sessionOnly, aiGate, storyteller.UpdateAgent)
+	authenticated.Delete("/agents/:agent", sessionOnly, aiGate, storyteller.DeleteAgent)
 	// AI 助理對話：唯一的一組路由，目標（專案／故事／設定集）由請求體指定，不分 story／lore 兩套。
 	authenticated.Post("/agent-chats", aiGate, storyteller.SubmitAgent)
 	authenticated.Post("/agent-chats/:chat/resend", aiGate, storyteller.ResubmitAgent)

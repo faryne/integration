@@ -4,6 +4,13 @@ import type { api } from "../../wailsjs/go/models";
 
 export type Profile = api.Profile;
 export type Project = api.Project;
+export type Workspace = api.Workspace;
+export type WorkspaceGroup = api.Group;
+export type DocumentItem = api.DocumentItem;
+export type Document = api.Document;
+export type Version = api.Version;
+// 對應 internal/api 的 DocumentKind
+export type DocumentKind = "story" | "lore";
 
 export const backend = App;
 

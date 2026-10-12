@@ -4,6 +4,8 @@ import {api} from '../models';
 
 export function CancelLogin():Promise<void>;
 
+export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
+
 export function Login():Promise<void>;
 
 export function Logout():Promise<void>;
@@ -11,3 +13,7 @@ export function Logout():Promise<void>;
 export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
+
+export function Versions(arg1:string,arg2:string,arg3:string):Promise<Array<api.Version>>;
+
+export function Workspace(arg1:string):Promise<api.Workspace>;

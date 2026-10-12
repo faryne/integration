@@ -1,5 +1,85 @@
 export namespace api {
 	
+	export class Document {
+	    kind: string;
+	    public_id: string;
+	    title: string;
+	    summary: string;
+	    status: string;
+	    content_type: string;
+	    latest_content: string;
+	    word_count: number;
+	    updated_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Document(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.public_id = source["public_id"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.status = source["status"];
+	        this.content_type = source["content_type"];
+	        this.latest_content = source["latest_content"];
+	        this.word_count = source["word_count"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class DocumentItem {
+	    kind: string;
+	    public_id: string;
+	    title: string;
+	    content_type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.public_id = source["public_id"];
+	        this.title = source["title"];
+	        this.content_type = source["content_type"];
+	    }
+	}
+	export class Group {
+	    public_id: string;
+	    name: string;
+	    items: DocumentItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Group(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.public_id = source["public_id"];
+	        this.name = source["name"];
+	        this.items = this.convertValues(source["items"], DocumentItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class Profile {
 	    pen_name: string;
 	    avatar_url: string;
@@ -39,6 +119,62 @@ export namespace api {
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
 	    }
+	}
+	export class Version {
+	    id: number;
+	    source: string;
+	    word_count: number;
+	    created_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Version(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.source = source["source"];
+	        this.word_count = source["word_count"];
+	        this.created_at = source["created_at"];
+	    }
+	}
+	export class Workspace {
+	    volumes: Group[];
+	    ungrouped_stories: DocumentItem[];
+	    lore_collections: Group[];
+	    uncategorized_lores: DocumentItem[];
+	    asset_collections: Group[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Workspace(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.volumes = this.convertValues(source["volumes"], Group);
+	        this.ungrouped_stories = this.convertValues(source["ungrouped_stories"], DocumentItem);
+	        this.lore_collections = this.convertValues(source["lore_collections"], Group);
+	        this.uncategorized_lores = this.convertValues(source["uncategorized_lores"], DocumentItem);
+	        this.asset_collections = this.convertValues(source["asset_collections"], Group);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }
