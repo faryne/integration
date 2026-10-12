@@ -53,13 +53,12 @@ type storyRow struct {
 }
 
 type loreRow struct {
-	PublicID     string  `json:"public_id"`
-	CollectionID *uint64 `json:"collection_id"`
-	Title        string  `json:"title"`
+	PublicID     string `json:"public_id"`
+	CollectionID string `json:"collection_id"`
+	Title        string `json:"title"`
 }
 
 type collectionRow struct {
-	ID       uint64 `json:"id"`
 	PublicID string `json:"public_id"`
 	Name     string `json:"name"`
 	Sort     int    `json:"sort"`
@@ -103,7 +102,10 @@ func (c *Client) Workspace(ctx context.Context, project string) (*Workspace, err
 	if len(errs) > 0 {
 		return nil, errors.Join(errs...)
 	}
+	return buildWorkspace(stories, volumes, lores, loreCollections, assetGroups), nil
+}
 
+func buildWorkspace(stories, volumes []storyRow, lores []loreRow, loreCollections, assetGroups []collectionRow) *Workspace {
 	bySort := func(a, b storyRow) int { return a.Sort - b.Sort }
 	slices.SortStableFunc(stories, bySort)
 	slices.SortStableFunc(volumes, bySort)
@@ -128,20 +130,20 @@ func (c *Client) Workspace(ctx context.Context, project string) (*Workspace, err
 		ws.Volumes = append(ws.Volumes, Group{PublicID: volume.PublicID, Name: volume.Title, Items: storiesByVolume[volume.ID]})
 	}
 	// 設定依設定集分組
-	loresByCollection := map[uint64][]DocumentItem{}
+	loresByCollection := map[string][]DocumentItem{}
 	for _, row := range lores {
 		item := DocumentItem{Kind: KindLore, PublicID: row.PublicID, Title: row.Title}
-		if row.CollectionID == nil {
+		if row.CollectionID == "" {
 			ws.UncategorizedLores = append(ws.UncategorizedLores, item)
 		} else {
-			loresByCollection[*row.CollectionID] = append(loresByCollection[*row.CollectionID], item)
+			loresByCollection[row.CollectionID] = append(loresByCollection[row.CollectionID], item)
 		}
 	}
 	for _, collection := range loreCollections {
-		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Items: loresByCollection[collection.ID]})
+		ws.LoreCollections = append(ws.LoreCollections, Group{PublicID: collection.PublicID, Name: collection.Name, Items: loresByCollection[collection.PublicID]})
 	}
 	for _, collection := range assetGroups {
 		ws.AssetCollections = append(ws.AssetCollections, Group{PublicID: collection.PublicID, Name: collection.Name})
 	}
-	return ws, nil
+	return ws
 }

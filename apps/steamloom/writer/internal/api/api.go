@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -52,11 +53,26 @@ func get[T any](ctx context.Context, c *Client, path string) (T, error) {
 		c.session.Invalidate()
 		return out.Data, auth.ErrNotLoggedIn
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return out.Data, fmt.Errorf("SteamLoom 回應格式錯誤（HTTP %d）", resp.StatusCode)
+	return decodeResponse[T](resp, path)
+}
+
+func decodeResponse[T any](resp *http.Response, path string) (T, error) {
+	var out envelope[T]
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return out.Data, fmt.Errorf("讀取 SteamLoom API %s 回應失敗：%w", path, err)
+	}
+	if err := json.Unmarshal(body, &out); err != nil {
+		// Fiber 的舊 fallback 會把未包裝的 server error 回成 HTTP 200 JSON 字串；保留原訊息才能定位根因。
+		var message string
+		if json.Unmarshal(body, &message) == nil && strings.TrimSpace(message) != "" {
+			return out.Data, fmt.Errorf("SteamLoom API %s 回應錯誤（HTTP %d）：%s", path, resp.StatusCode, message)
+		}
+		contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-Type"), ";")[0])
+		return out.Data, fmt.Errorf("SteamLoom API %s 回應格式錯誤（HTTP %d，Content-Type %s）", path, resp.StatusCode, contentType)
 	}
 	if resp.StatusCode >= http.StatusBadRequest {
-		return out.Data, fmt.Errorf("SteamLoom 回應錯誤（HTTP %d）：%s", resp.StatusCode, out.Message)
+		return out.Data, fmt.Errorf("SteamLoom API %s 回應錯誤（HTTP %d）：%s", path, resp.StatusCode, out.Message)
 	}
 	return out.Data, nil
 }
