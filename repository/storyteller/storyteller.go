@@ -1522,12 +1522,12 @@ func (r *Repository) UpdateStoryWithVersion(story *storytellerModel.Story, versi
 	return conflicted, err
 }
 
-// MoveStory 只更新 parent_id（冊隸屬），不建立新的 StoryVersion——跟 MoveLore 對稱，
-// 純粹分類異動不算內容變更。volumeEvent 非 nil 時（parent_id 真的有變化）一併寫入
+// PatchStoryFields 只更新指定欄位（排序、狀態、冊隸屬），不建立新的 StoryVersion——跟 MoveLore 對稱，
+// 純粹分類／排序異動不算內容變更。volumeEvent 非 nil 時（parent_id 真的有變化）一併寫入
 // 冊隸屬異動記錄，時間軸邏輯跟 UpdateStoryWithVersion 一致。
-func (r *Repository) MoveStory(story *storytellerModel.Story, volumeEvent *storytellerModel.StoryVolumeEvent) error {
+func (r *Repository) PatchStoryFields(story *storytellerModel.Story, fields map[string]any, volumeEvent *storytellerModel.StoryVolumeEvent) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(story).Update("parent_id", story.ParentID).Error; err != nil {
+		if err := tx.Model(story).Updates(fields).Error; err != nil {
 			return err
 		}
 		if volumeEvent != nil {

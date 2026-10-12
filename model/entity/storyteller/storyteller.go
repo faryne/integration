@@ -978,6 +978,16 @@ type StoryMoveRequest struct {
 	VolumePublicID string `json:"volume_public_id"`
 }
 
+// StoryPatchRequest 是只改排序／狀態／冊隸屬的局部更新（PATCH /projects/:project/stories/:story），
+// 故事與冊共用；省略（nil）的欄位維持不變。這些都不算內容變更：不送內文、不寫 StoryVersion，
+// 只記 audit——不會像整篇 PUT 那樣拿呼叫端手上的舊內文蓋掉別人（例如 MCP）剛寫的內容。
+type StoryPatchRequest struct {
+	Sort   *int         `json:"sort,omitempty"`
+	Status *StoryStatus `json:"status,omitempty"`
+	// ParentID 是目標冊的 public_id；空字串代表移出冊。冊本身不能帶（不支援冊中冊）。
+	ParentID *string `json:"parent_id,omitempty"`
+}
+
 // StoryVolumeRequest 是冊的建立／重新命名請求，刻意跟 StoryRequest 分開、
 // 只有標題欄位——冊沒有內容／摘要／狀態可以編輯。
 type StoryVolumeRequest struct {

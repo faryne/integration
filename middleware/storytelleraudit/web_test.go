@@ -40,8 +40,20 @@ func TestResolvedWebStoryAction(t *testing.T) {
 		"public_id": "story-1", "parent_id": nil, "sort": 2, "title": "", "summary": "", "status": "", "latest_version_id": 11,
 	}))
 
+	// PATCH 不寫版本：只有 sort 變動也要認成排序
+	require.Equal(t, "story.reorder", resolvedWebStoryAction("story.update", story, map[string]any{
+		"public_id": "story-1", "parent_id": nil, "sort": 2, "title": "", "summary": "", "status": "", "latest_version_id": 10,
+	}))
+
 	story.IsVolume = true
 	require.Equal(t, "volume.delete", resolvedWebStoryAction("story.delete", story, nil))
+	// 冊透過 stories 路徑的 PATCH：排序記成 volume.reorder，其他（例如狀態）記成 volume.update
+	require.Equal(t, "volume.reorder", resolvedWebStoryAction("story.update", story, map[string]any{
+		"public_id": "story-1", "parent_id": nil, "sort": 3, "title": "", "summary": "", "status": "", "latest_version_id": 10,
+	}))
+	require.Equal(t, "volume.update", resolvedWebStoryAction("story.update", story, map[string]any{
+		"public_id": "story-1", "parent_id": nil, "sort": 1, "title": "", "summary": "", "status": "completed", "latest_version_id": 10,
+	}))
 }
 
 func TestRouteTemplateMatches(t *testing.T) {

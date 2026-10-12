@@ -831,6 +831,23 @@ func CreateVolume(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+// PatchStory 只改排序／狀態／冊隸屬（故事與冊共用），不送內文、不寫版本；
+// 網站工作台與 SteamLoom Writer 的排序、移動到冊、狀態切換都走這支。
+func PatchStory(ctx fiber.Ctx) error {
+	var input storytellerModel.StoryPatchRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().PatchStory(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("story"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller story not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func UpdateVolume(ctx fiber.Ctx) error {
 	var input storytellerModel.StoryVolumeRequest
 	if err := ctx.Bind().Body(&input); err != nil {
