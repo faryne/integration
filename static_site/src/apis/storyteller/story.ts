@@ -6,6 +6,7 @@ import type {
   StorytellerStory,
   StorytellerStoryBookmark,
   StorytellerStoryBookmarkWithStory,
+  StorytellerStoryPatchRequest,
   StorytellerStoryRequest,
   StorytellerStoryVersion,
   StorytellerStoryVolumeActivity,
@@ -24,6 +25,32 @@ export function useStorytellerStories(projectPublicId?: string) {
         { headers: sessionHeaders(session!.encrypt_key) },
       );
       return response.data.data ?? [];
+    },
+  });
+}
+
+// 排序、移動到冊、狀態切換用這支：只送變動的欄位、後端不寫版本（不進編輯歷史，只記 audit）。
+// 不能用 useSaveStorytellerStory 的整篇 PUT，那會拿畫面上載入當下的內文蓋掉別處（例如 MCP）剛寫的內容。
+export function usePatchStorytellerStory(projectPublicId?: string) {
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      storyPublicId,
+      input,
+    }: {
+      storyPublicId: string;
+      input: StorytellerStoryPatchRequest;
+    }) => {
+      const response = await axios.patch<CommonResponse<StorytellerStory>>(
+        `${apiBase}/storyteller/projects/${projectPublicId}/stories/${storyPublicId}`,
+        input,
+        { headers: sessionHeaders(session!.encrypt_key) },
+      );
+      return response.data.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["storyteller"] });
     },
   });
 }
