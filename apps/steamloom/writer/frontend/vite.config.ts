@@ -15,7 +15,7 @@ export default defineConfig({
     },
     // static_site 底下的檔案會往上找到 static_site/node_modules，強制這些套件只用 Writer 自己這份，
     // 否則會出現兩份 React／MUI（hook 失效、ThemeProvider 對不上）
-    dedupe: ["react", "react-dom", "@mui/material", "@emotion/react", "@emotion/styled"],
+    dedupe: ["react", "react-dom", "@mui/material", "@mui/icons-material", "@emotion/react", "@emotion/styled"],
   },
   server: {
     // 允許 dev server 讀取 repo 內 static_site 的檔案

@@ -122,8 +122,11 @@ export namespace api {
 	}
 	export class Version {
 	    id: number;
+	    title: string;
 	    source: string;
 	    word_count: number;
+	    reverted_from_version_id?: number;
+	    conflicted_with_version_id?: number;
 	    created_at: string;
 	
 	    static createFrom(source: any = {}) {
@@ -133,8 +136,33 @@ export namespace api {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.title = source["title"];
 	        this.source = source["source"];
 	        this.word_count = source["word_count"];
+	        this.reverted_from_version_id = source["reverted_from_version_id"];
+	        this.conflicted_with_version_id = source["conflicted_with_version_id"];
+	        this.created_at = source["created_at"];
+	    }
+	}
+	export class VersionDetail {
+	    id: number;
+	    title: string;
+	    summary: string;
+	    content: string;
+	    source: string;
+	    created_at: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VersionDetail(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.summary = source["summary"];
+	        this.content = source["content"];
+	        this.source = source["source"];
 	        this.created_at = source["created_at"];
 	    }
 	}

@@ -9,6 +9,7 @@ export type WorkspaceGroup = api.Group;
 export type DocumentItem = api.DocumentItem;
 export type Document = api.Document;
 export type Version = api.Version;
+export type VersionDetail = api.VersionDetail;
 // 對應 internal/api 的 DocumentKind
 export type DocumentKind = "story" | "lore";
 

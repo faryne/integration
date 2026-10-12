@@ -60,3 +60,8 @@ func (a *App) Document(project, kind, id string) (*api.Document, error) {
 func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 	return a.api.Versions(a.ctx, project, api.DocumentKind(kind), id)
 }
+
+// VersionDetail 回傳單一版本的完整內容（標題、摘要、內文），給版本比對用。
+func (a *App) VersionDetail(project, kind, id, versionID string) (*api.VersionDetail, error) {
+	return a.api.VersionDetail(a.ctx, project, api.DocumentKind(kind), id, versionID)
+}
