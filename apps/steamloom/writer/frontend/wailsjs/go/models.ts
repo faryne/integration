@@ -179,3 +179,21 @@ export namespace api {
 
 }
 
+export namespace updater {
+
+	export class Info {
+	    current_version: string;
+	    version: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Info(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current_version = source["current_version"];
+	        this.version = source["version"];
+	    }
+	}
+
+}

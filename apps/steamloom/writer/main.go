@@ -12,6 +12,9 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// release workflow 會用 ldflags 寫入 tag 版號；本機開發版不執行自動更新檢查。
+var version = "dev"
+
 func main() {
 	app := NewApp()
 	err := wails.Run(&options.App{

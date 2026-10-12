@@ -19,6 +19,12 @@ export function AppHeader({ profile, onLogout }: { profile: Profile | null; onLo
       <Typography variant="h6" sx={{ ml: 1, fontSize: 16 }}>
         {t("app.name")}
       </Typography>
+      <Typography
+        component="span"
+        sx={{ ml: 0.75, px: 0.65, py: 0.15, border: 1, borderColor: "divider", borderRadius: 10, color: "text.secondary", fontSize: 10, lineHeight: 1.2, letterSpacing: 0.4 }}
+      >
+        Writer
+      </Typography>
       <Box sx={{ flex: 1 }} />
       {profile && (
         <>

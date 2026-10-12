@@ -52,11 +52,11 @@ wails build
 3. 在要發佈的 commit 上打 tag 並推上去，CI 會編譯五個平台並建立 Release：
 
 ```bash
-git tag steamloom-writer-v0.1.1
+git tag steamloom-writer-v0.1.2
 ```
 
 ```bash
-git push origin steamloom-writer-v0.1.1
+git push origin steamloom-writer-v0.1.2
 ```
 
 macOS 版沒有簽名／notarization，第一次開啟要在 Finder 按右鍵選「打開」。

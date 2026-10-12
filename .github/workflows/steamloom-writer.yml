@@ -87,13 +87,14 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
 
-      # tag 編譯時把版號寫進 wails.json，macOS Info.plist／Windows 檔案資訊才會是正確版本
-      - name: Set version from tag
-        if: startsWith(github.ref, 'refs/tags/steamloom-writer-v')
+      # release tag 優先；一般 workflow build 則沿用 wails.json 版號。
+      - name: Resolve app version
         working-directory: ${{ env.APP_DIR }}
         run: |
-          version="${GITHUB_REF_NAME#steamloom-writer-v}"
+          version="$(jq -r '.info.productVersion' wails.json)"
+          if [[ "$GITHUB_REF" == refs/tags/steamloom-writer-v* ]]; then version="${GITHUB_REF_NAME#steamloom-writer-v}"; fi
           jq --arg v "$version" '.info.productVersion = $v' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Build
         working-directory: ${{ env.APP_DIR }}
@@ -101,7 +102,7 @@ jobs:
           # Ubuntu 24.04 只有 webkit2gtk-4.1，要加 build tag 才會連到 4.1
           tags=""
           if [ "$RUNNER_OS" = "Linux" ]; then tags="-tags webkit2_41"; fi
-          wails build -platform "${{ matrix.platform }}" -clean $tags
+          wails build -platform "${{ matrix.platform }}" -clean -ldflags "-X main.version=$APP_VERSION" $tags
 
       # 打包成單一檔案：macOS 用 ditto 保留 .app 的權限與符號連結
       - name: Package
@@ -134,6 +135,11 @@ jobs:
         with:
           path: dist
           merge-multiple: true
+
+      # Updater 會拒絕安裝未列在這份檔案裡，或 SHA-256 不相符的 asset。
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum * > checksums.txt
 
       - uses: softprops/action-gh-release@v2
         with:

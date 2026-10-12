@@ -6,8 +6,16 @@ export function CancelLogin() {
   return window['go']['main']['App']['CancelLogin']();
 }
 
+export function CheckForUpdate() {
+  return window['go']['main']['App']['CheckForUpdate']();
+}
+
 export function Document(arg1, arg2, arg3) {
   return window['go']['main']['App']['Document'](arg1, arg2, arg3);
+}
+
+export function InstallUpdate() {
+  return window['go']['main']['App']['InstallUpdate']();
 }
 
 export function Login() {

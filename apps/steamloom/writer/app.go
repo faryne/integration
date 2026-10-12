@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"log"
+	goruntime "runtime"
+	"time"
 
 	"faryne.dev/apps/steamloom/writer/internal/api"
 	"faryne.dev/apps/steamloom/writer/internal/auth"
 	"faryne.dev/apps/steamloom/writer/internal/config"
 	"faryne.dev/apps/steamloom/writer/internal/tokenstore"
+	appupdate "faryne.dev/apps/steamloom/writer/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -17,6 +20,7 @@ type App struct {
 	ctx     context.Context
 	session *auth.Session
 	api     *api.Client
+	updater *appupdate.Service
 }
 
 func NewApp() *App {
@@ -28,6 +32,11 @@ func NewApp() *App {
 		runtime.BrowserOpenURL(app.ctx, url)
 	})
 	app.api = api.New(cfg.APIBase, app.session)
+	var err error
+	app.updater, err = appupdate.New(version)
+	if err != nil {
+		panic(err)
+	}
 	return app
 }
 
@@ -59,4 +68,24 @@ func (a *App) Document(project, kind, id string) (*api.Document, error) {
 // Versions 回傳單篇故事或設定的編輯歷史（不含內文）。
 func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 	return a.api.Versions(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// CheckForUpdate 由前端啟動時呼叫；沒有新版時回傳 nil。
+func (a *App) CheckForUpdate() (*appupdate.Info, error) { return a.updater.Check(a.ctx) }
+
+// InstallUpdate 驗證並替換 app；macOS helper 會在舊程序退出後接手重啟。
+func (a *App) InstallUpdate() error {
+	if err := a.updater.Install(a.ctx); err != nil {
+		return err
+	}
+	if goruntime.GOOS != "darwin" {
+		if err := appupdate.Restart(); err != nil {
+			return err
+		}
+	}
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		runtime.Quit(a.ctx)
+	}()
+	return nil
 }

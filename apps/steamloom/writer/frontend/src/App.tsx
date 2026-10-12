@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AppHeader } from "@/components/AppHeader.tsx";
 import { SnackProvider, useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage, isNotLoggedIn, type Profile, type Project } from "@/lib/backend.ts";
+import { UpdateDialog } from "@/components/UpdateDialog.tsx";
+import { backend, errorMessage, isNotLoggedIn, type Profile, type Project, type UpdateInfo } from "@/lib/backend.ts";
 import { SessionExpiredContext } from "@/lib/useBackendData.ts";
 import { LoadErrorPage } from "@/pages/LoadErrorPage.tsx";
 import { LoginPage } from "@/pages/LoginPage.tsx";
@@ -34,6 +35,7 @@ function Shell() {
   const [profile, setProfile] = useState<Profile | null | "error" | undefined>(undefined);
   // 目前打開的專案；null 時顯示專案列表
   const [openProject, setOpenProject] = useState<Project | null>(null);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   // 啟動時與授權完成後共用：只有 not_logged_in 才回登入頁，其他錯誤（離線、站台錯誤）給重試
   const loadProfile = useCallback(() => {
@@ -50,6 +52,11 @@ function Shell() {
 
   useEffect(loadProfile, [loadProfile]);
 
+  // 自動檢查只提示、不強迫更新；檢查失敗沿用全域 snack 顯示。
+  useEffect(() => {
+    backend.CheckForUpdate().then(setUpdate).catch((err) => showError(errorMessage(err)));
+  }, [showError]);
+
   // 呼叫 API 時發現授權失效（過期或在網站上被撤銷）
   const handleSessionExpired = useCallback(() => {
     setProfile(null);
@@ -65,6 +72,12 @@ function Shell() {
         setProfile(null);
         setOpenProject(null);
       });
+
+  const installUpdate = () =>
+    backend.InstallUpdate().catch((err) => {
+      showError(errorMessage(err));
+      throw err;
+    });
 
   return (
     <SessionExpiredContext.Provider value={handleSessionExpired}>
@@ -83,6 +96,7 @@ function Shell() {
         ) : (
           <ProjectsPage onOpen={setOpenProject} />
         )}
+        <UpdateDialog info={update} onLater={() => setUpdate(null)} onInstall={installUpdate} />
       </Box>
     </SessionExpiredContext.Provider>
   );
