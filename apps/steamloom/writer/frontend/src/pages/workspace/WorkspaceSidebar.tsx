@@ -9,12 +9,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { DocumentItem, Workspace } from "@writer/lib/backend.ts";
 import { CreateDialog } from "@writer/pages/workspace/CreateDialog.tsx";
-import { MoveMenuButton, SectionActions, SortArrows, type MoveTarget } from "@writer/pages/workspace/SidebarActions.tsx";
+import { MoveMenuButton, SectionActions, SortArrows } from "@writer/pages/workspace/SidebarActions.tsx";
 import type { ListSection } from "@writer/pages/workspace/ListPanels.tsx";
 import { GroupRow, NavRow, SidebarSection } from "@writer/pages/workspace/SidebarRows.tsx";
 import { UploadDialog } from "@writer/pages/workspace/UploadDialog.tsx";
 import type { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
-import { groupIdOf } from "@writer/pages/workspace/workspaceTree.ts";
+import { groupIdOf, groupTargets } from "@writer/pages/workspace/workspaceTree.ts";
 
 type Props = {
   workspace: Workspace;
@@ -48,14 +48,8 @@ export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant, l
   const loreCollections = workspace.lore_collections ?? [];
   const ungroupedStories = workspace.ungrouped_stories ?? [];
   const uncategorizedLores = workspace.uncategorized_lores ?? [];
-  const volumeTargets: MoveTarget[] = [
-    { publicId: "", name: t("workspace.ungroupedStories") },
-    ...volumes.map((volume) => ({ publicId: volume.public_id, name: volume.name })),
-  ];
-  const collectionTargets: MoveTarget[] = [
-    { publicId: "", name: t("workspace.uncategorizedLores") },
-    ...loreCollections.map((collection) => ({ publicId: collection.public_id, name: collection.name })),
-  ];
+  const volumeTargets = groupTargets(workspace, "story", t("workspace.ungroupedStories"));
+  const collectionTargets = groupTargets(workspace, "lore", t("workspace.uncategorizedLores"));
 
   // 文件右側：排序模式顯示上移／下移，平常顯示「移動到…」選單
   const storyExtra = (groupId: string, count: number) => (item: DocumentItem, index: number) =>

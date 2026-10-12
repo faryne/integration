@@ -8,12 +8,17 @@ import (
 // SaveInput 是編輯分頁存檔送出的內容；故事與設定都有標題、摘要、內文。
 // Trigger 是 "manual" 或 "auto"，讓版本記錄跟網站一樣分得出手動／自動存檔；
 // BaseVersionID 是打開（或上次存檔）時的最新版本，後端據此判斷中途是否被別處改過。
+// Status／GroupID／ProfileIDs 只有作者這次有改才帶（nil＝不變），避免把別處剛改的值蓋回去；
+// GroupID 是冊（故事）或設定集（設定）的 public_id，空字串代表移出冊／未歸類。
 type SaveInput struct {
-	Title         string  `json:"title"`
-	Summary       string  `json:"summary"`
-	Content       string  `json:"content"`
-	Trigger       string  `json:"trigger"`
-	BaseVersionID *uint64 `json:"base_version_id"`
+	Title         string    `json:"title"`
+	Summary       string    `json:"summary"`
+	Content       string    `json:"content"`
+	Trigger       string    `json:"trigger"`
+	BaseVersionID *uint64   `json:"base_version_id"`
+	Status        *string   `json:"status,omitempty"`
+	GroupID       *string   `json:"group_id,omitempty"`
+	ProfileIDs    *[]uint64 `json:"profile_ids,omitempty"`
 }
 
 // SaveResult 是存檔後前端需要更新的狀態。VersionConflict=true 代表內容照樣存成新版本，
@@ -39,24 +44,40 @@ type EditorAsset struct {
 }
 
 // SaveDocument 存檔故事或設定，每次都會產生一個新版本。
-// 故事的 PUT 會整筆覆寫 status／sort（沒帶就變成預設值），編輯頁又不改這兩個欄位，
-// 所以先讀一次伺服器上目前的值再送，避免把側邊列剛排好的順序或剛切換的狀態蓋回去。
-// 設定的 status 是「省略＝不變更」，只送標題、摘要與內文。
+// 故事的 PUT 會整筆覆寫 status／sort（沒帶就變成預設值），所以沒改狀態時先讀一次伺服器上目前的值再送，
+// 避免把側邊列剛排好的順序或別處剛切換的狀態蓋回去；parent_id／profile_ids 省略就是不變。
+// 設定的 status／collection_id 本來就是「省略＝不變更」。
 func (c *Client) SaveDocument(ctx context.Context, project string, kind DocumentKind, id string, input SaveInput) (*SaveResult, error) {
 	path, err := documentPath(project, kind, id)
 	if err != nil {
 		return nil, err
 	}
 	body := map[string]any{"title": input.Title, "summary": input.Summary, "content": input.Content, "save_trigger": input.Trigger, "base_version_id": input.BaseVersionID}
-	if kind == KindStory {
-		current, err := get[struct {
-			Status string `json:"status"`
-			Sort   int    `json:"sort"`
-		}](ctx, c, path)
-		if err != nil {
-			return nil, err
+	if input.Status != nil {
+		body["status"] = *input.Status
+	}
+	if kind == KindLore {
+		if input.GroupID != nil {
+			body["collection_id"] = *input.GroupID
 		}
-		body["status"], body["sort"] = current.Status, current.Sort
+		return request[*SaveResult](ctx, c, http.MethodPut, path, body)
+	}
+	current, err := get[struct {
+		Status string `json:"status"`
+		Sort   int    `json:"sort"`
+	}](ctx, c, path)
+	if err != nil {
+		return nil, err
+	}
+	body["sort"] = current.Sort
+	if input.Status == nil {
+		body["status"] = current.Status
+	}
+	if input.GroupID != nil {
+		body["parent_id"] = *input.GroupID
+	}
+	if input.ProfileIDs != nil {
+		body["profile_ids"] = *input.ProfileIDs
 	}
 	return request[*SaveResult](ctx, c, http.MethodPut, path, body)
 }

@@ -4,10 +4,20 @@ import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { backend, errorMessage, isNotLoggedIn, type Document, type DocumentItem } from "@writer/lib/backend.ts";
 import { SessionExpiredContext } from "@writer/lib/useBackendData.ts";
 
-export type Draft = { title: string; summary: string; content: string };
+// groupId 是所在冊（故事）或設定集（設定）的 public_id，空字串＝未分冊／未歸類；profileIds 只有故事用（0＝本人）
+export type Draft = { title: string; summary: string; content: string; status: string; groupId: string; profileIds: number[] };
 
-const draftOf = (doc: Document): Draft => ({ title: doc.title, summary: doc.summary ?? "", content: doc.latest_content ?? "" });
-const sameDraft = (a: Draft, b: Draft) => a.title === b.title && a.summary === b.summary && a.content === b.content;
+const draftOf = (doc: Document, groupId: string): Draft => ({
+  title: doc.title,
+  summary: doc.summary ?? "",
+  content: doc.latest_content ?? "",
+  status: doc.status,
+  groupId,
+  profileIds: doc.profile_ids?.length ? doc.profile_ids : [0],
+});
+const sameProfiles = (a: number[], b: number[]) => a.join() === b.join();
+const sameDraft = (a: Draft, b: Draft) =>
+  a.title === b.title && a.summary === b.summary && a.content === b.content && a.status === b.status && a.groupId === b.groupId && sameProfiles(a.profileIds, b.profileIds);
 
 // 編輯分頁的草稿與存檔，行為比照網站 StoryEditor／LoreEditor（雙胞胎，故事與設定共用這一份）：
 // - 手動存檔每次都送（跟網站一樣會多一個版本）；自動存檔只在內容有變、標題不是空白時送。
@@ -18,12 +28,15 @@ export function useDocumentDraft({
   project,
   item,
   doc,
+  groupId,
   autoSaveMinutes,
   onSaved,
 }: {
   project: string;
   item: DocumentItem;
   doc: Document;
+  // 打開時所在的冊／設定集（後端回的故事 parent_id 是內部 id，所以由工作台樹提供 public_id）
+  groupId: string;
   // null＝關閉自動存檔
   autoSaveMinutes: number | null;
   // 存檔成功後通知外層（標題可能改了，側邊列要重抓）
@@ -32,8 +45,8 @@ export function useDocumentDraft({
   const { t } = useTranslation();
   const { showError, showSuccess } = useSnack();
   const onSessionExpired = useContext(SessionExpiredContext);
-  const [draft, setDraftState] = useState(() => draftOf(doc));
-  const [saved, setSaved] = useState(() => draftOf(doc));
+  const [draft, setDraftState] = useState(() => draftOf(doc, groupId));
+  const [saved, setSaved] = useState(() => draftOf(doc, groupId));
   const [updatedAt, setUpdatedAt] = useState(doc.updated_at);
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(false);
@@ -71,6 +84,8 @@ export function useDocumentDraft({
     }
     savingRef.current = true;
     setSaving(true);
+    // 狀態、冊／設定集、署名只在這次有改時才送，沒改就沿用伺服器上的值（見 Go 端 SaveDocument）
+    const base = savedRef.current;
     try {
       const result = await backend.SaveDocument(project, item.kind, item.public_id, {
         title: current.title,
@@ -78,6 +93,9 @@ export function useDocumentDraft({
         content: current.content,
         trigger,
         base_version_id: versionRef.current,
+        status: current.status !== base.status ? current.status : undefined,
+        group_id: current.groupId !== base.groupId ? current.groupId : undefined,
+        profile_ids: item.kind === "story" && !sameProfiles(current.profileIds, base.profileIds) ? current.profileIds : undefined,
       });
       versionRef.current = result.latest_version_id ?? versionRef.current;
       markSaved(current);
@@ -114,7 +132,8 @@ export function useDocumentDraft({
       versionRef.current = latest.latest_version_id;
       // 內文一樣時編輯器不會重設內容、也不會再吐一次，這時不能等基準
       baselinePendingRef.current = latest.latest_content !== draftRef.current.content;
-      draftRef.current = draftOf(latest);
+      // 冊／設定集沿用目前的（側邊列重抓後才會知道別處有沒有搬動）
+      draftRef.current = draftOf(latest, savedRef.current.groupId);
       setDraftState(draftRef.current);
       markSaved(draftRef.current);
       setUpdatedAt(latest.updated_at);
@@ -122,6 +141,13 @@ export function useDocumentDraft({
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [project, item.kind, item.public_id]);
+
+  // 側邊列「移動到冊／設定集」搬了正在編輯的這篇：編輯頁沒改過分組就跟著換，改過就以作者的選擇為準
+  useEffect(() => {
+    if (draftRef.current.groupId !== savedRef.current.groupId || savedRef.current.groupId === groupId) return;
+    setDraft({ groupId });
+    markSaved({ ...savedRef.current, groupId });
+  }, [groupId]);
 
   // 有未存檔內容時讓 Go 端在關閉視窗前先問；離開這篇（換文件、離開專案）時清掉
   useEffect(() => {

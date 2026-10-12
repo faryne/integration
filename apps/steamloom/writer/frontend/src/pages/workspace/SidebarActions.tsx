@@ -7,6 +7,7 @@ import SwapVertIcon from "@mui/icons-material/SwapVert";
 import { IconButton, ListSubheader, Menu, MenuItem, Tooltip } from "@mui/material";
 import { useState, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
+import type { MoveTarget } from "@writer/pages/workspace/workspaceTree.ts";
 
 const iconSx = { p: 0.375, "& .MuiSvgIcon-root": { fontSize: 16 } };
 
@@ -74,7 +75,6 @@ export function SectionActions({
   );
 }
 
-export type MoveTarget = { publicId: string; name: string };
 
 // 文件右側的 ⋮：「移動到冊／設定集」，列出未分冊（未歸類）與各分組，目前所在的那一組不能選
 export function MoveMenuButton({

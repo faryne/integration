@@ -78,6 +78,8 @@
     "image": {
       "title": "图像作品暂时无法在 Writer 编辑",
       "description": "请先到网站编辑图像作品。"
-    }
+    },
+    "self": "本人（{{penName}}）",
+    "selfOnly": "本人"
   }
 }

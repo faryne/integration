@@ -16,7 +16,7 @@ import { useSnack } from "@writer/components/SnackProvider.tsx";
 import { useWorkspaceEditing } from "@writer/pages/workspace/useWorkspaceEditing.ts";
 import { WorkspaceSidebar } from "@writer/pages/workspace/WorkspaceSidebar.tsx";
 import { UnsavedChangesDialog } from "@writer/pages/workspace/UnsavedChangesDialog.tsx";
-import { findGroup, isSameDocument, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
+import { findGroup, groupTargets, isSameDocument, type DocumentTab } from "@writer/pages/workspace/workspaceTree.ts";
 
 // 還沒載入前給 hook 用的空工作台（hook 必須無條件呼叫）
 const emptyWorkspace: Workspace = { volumes: [], ungrouped_stories: [], lore_collections: [], uncategorized_lores: [], asset_collections: [] };
@@ -122,7 +122,8 @@ export function WorkspacePage({ project, profile, onBack }: { project: Project; 
                       <EditorPanel
                         project={project.public_id}
                         item={selected}
-                        groupName={group?.name ?? t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores")}
+                        groupId={group?.public_id ?? ""}
+                        groupTargets={groupTargets(workspace, selected.kind, t(selected.kind === "story" ? "workspace.ungroupedStories" : "workspace.uncategorizedLores"))}
                         profile={profile}
                         onDirtyChange={setDirty}
                         onSaved={reload}

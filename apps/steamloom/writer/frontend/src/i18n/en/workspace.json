@@ -78,6 +78,8 @@
     "image": {
       "title": "Image works can't be edited in Writer yet",
       "description": "Please edit image works on the website for now."
-    }
+    },
+    "self": "Me ({{penName}})",
+    "selfOnly": "Me"
   }
 }

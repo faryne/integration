@@ -136,6 +136,8 @@
     "image": {
       "title": "圖像作品還不能在 Writer 編輯",
       "description": "請先到網站編輯圖像作品。"
-    }
+    },
+    "self": "本人（{{penName}}）",
+    "selfOnly": "本人"
   }
 }

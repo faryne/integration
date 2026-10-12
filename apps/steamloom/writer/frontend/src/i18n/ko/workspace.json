@@ -78,6 +78,8 @@
     "image": {
       "title": "이미지 작품은 아직 Writer에서 편집할 수 없습니다",
       "description": "이미지 작품은 웹사이트에서 편집해 주세요."
-    }
+    },
+    "self": "본인({{penName}})",
+    "selfOnly": "본인"
   }
 }
