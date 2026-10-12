@@ -9,6 +9,7 @@ import (
 	"faryne.dev/apps/steamloom/writer/internal/api"
 	"faryne.dev/apps/steamloom/writer/internal/auth"
 	"faryne.dev/apps/steamloom/writer/internal/config"
+	"faryne.dev/apps/steamloom/writer/internal/skillupdate"
 	"faryne.dev/apps/steamloom/writer/internal/tokenstore"
 	appupdate "faryne.dev/apps/steamloom/writer/internal/updater"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -21,6 +22,7 @@ type App struct {
 	session *auth.Session
 	api     *api.Client
 	updater *appupdate.Service
+	skill   *skillupdate.Service
 }
 
 func NewApp() *App {
@@ -32,6 +34,7 @@ func NewApp() *App {
 		runtime.BrowserOpenURL(app.ctx, url)
 	})
 	app.api = api.New(cfg.APIBase, app.session)
+	app.skill = skillupdate.New(cfg.SkillURL)
 	var err error
 	app.updater, err = appupdate.New(version)
 	if err != nil {
@@ -72,6 +75,12 @@ func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 
 // CheckForUpdate 由前端啟動時呼叫；沒有新版時回傳 nil。
 func (a *App) CheckForUpdate() (*appupdate.Info, error) { return a.updater.Check(a.ctx) }
+
+// AppVersion 讓 About 顯示 release workflow 透過 ldflags 寫入的實際版號。
+func (a *App) AppVersion() string { return version }
+
+// UpdateSkill 在 Writer 啟動時由前端呼叫；沒有偵測到 Claude Code／Codex 時直接略過。
+func (a *App) UpdateSkill() error { return a.skill.Update(a.ctx) }
 
 // InstallUpdate 驗證並替換 app；macOS helper 會在舊程序退出後接手重啟。
 func (a *App) InstallUpdate() error {

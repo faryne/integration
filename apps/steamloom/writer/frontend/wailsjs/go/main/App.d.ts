@@ -3,6 +3,8 @@
 import {updater} from '../models';
 import {api} from '../models';
 
+export function AppVersion():Promise<string>;
+
 export function CancelLogin():Promise<void>;
 
 export function CheckForUpdate():Promise<updater.Info>;
@@ -18,6 +20,8 @@ export function Logout():Promise<void>;
 export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
+
+export function UpdateSkill():Promise<void>;
 
 export function Versions(arg1:string,arg2:string,arg3:string):Promise<Array<api.Version>>;
 

@@ -2,6 +2,8 @@ import { createStorytellerTheme, storytellerGlobalStyles } from "@steamloom-web/
 import { Box, CircularProgress, CssBaseline, GlobalStyles, ThemeProvider } from "@mui/material";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { EventsOn } from "../wailsjs/runtime/runtime";
+import { AboutDialog } from "@/components/AboutDialog.tsx";
 import { AppHeader } from "@/components/AppHeader.tsx";
 import { SnackProvider, useSnack } from "@/components/SnackProvider.tsx";
 import { UpdateDialog } from "@/components/UpdateDialog.tsx";
@@ -36,6 +38,8 @@ function Shell() {
   // 目前打開的專案；null 時顯示專案列表
   const [openProject, setOpenProject] = useState<Project | null>(null);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [appVersion, setAppVersion] = useState("dev");
 
   // 啟動時與授權完成後共用：只有 not_logged_in 才回登入頁，其他錯誤（離線、站台錯誤）給重試
   const loadProfile = useCallback(() => {
@@ -52,9 +56,30 @@ function Shell() {
 
   useEffect(loadProfile, [loadProfile]);
 
-  // 自動檢查只提示、不強迫更新；檢查失敗沿用全域 snack 顯示。
+  // 啟動與 About 共用同一條檢查流程；找到新版時一律交給 UpdateDialog 詢問。
+  const checkForUpdate = useCallback(() =>
+    backend.CheckForUpdate()
+      .then((info) => {
+        setUpdate(info);
+        return info !== null;
+      })
+      .catch((err) => {
+        showError(errorMessage(err));
+        throw err;
+      }), [showError]);
+
   useEffect(() => {
-    backend.CheckForUpdate().then(setUpdate).catch((err) => showError(errorMessage(err)));
+    void checkForUpdate().catch(() => undefined);
+  }, [checkForUpdate]);
+
+  // Writer 啟動後更新已安裝的 SteamLoom Skill；下載內容由 Go 端驗證，不執行遠端 script。
+  useEffect(() => {
+    backend.UpdateSkill().catch((err) => showError(errorMessage(err)));
+  }, [showError]);
+
+  useEffect(() => {
+    backend.AppVersion().then(setAppVersion).catch((err) => showError(errorMessage(err)));
+    return EventsOn("app:show-about", () => setAboutOpen(true));
   }, [showError]);
 
   // 呼叫 API 時發現授權失效（過期或在網站上被撤銷）
@@ -97,6 +122,7 @@ function Shell() {
           <ProjectsPage onOpen={setOpenProject} />
         )}
         <UpdateDialog info={update} onLater={() => setUpdate(null)} onInstall={installUpdate} />
+        <AboutDialog open={aboutOpen} version={appVersion} onClose={() => setAboutOpen(false)} onCheckForUpdate={checkForUpdate} />
       </Box>
     </SessionExpiredContext.Provider>
   );

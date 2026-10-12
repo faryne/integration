@@ -21,6 +21,7 @@ wails dev
 | `STEAMLOOM_ISSUER` | OAuth server（register／token／revoke） | `http://localhost:8080` |
 | `STEAMLOOM_API_BASE` | REST API 前綴 | `http://localhost:8080` |
 | `STEAMLOOM_AUTHORIZE_URL` | 授權頁 | `http://localhost:5174/storyteller/oauth/authorize` |
+| `STEAMLOOM_SKILL_URL` | 啟動時檢查的 Skill 來源 | `http://localhost:8080/storyteller-mcp/skill.md` |
 
 ```bash
 STEAMLOOM_ISSUER=http://localhost:8080 STEAMLOOM_API_BASE=http://localhost:8080 \
@@ -67,4 +68,5 @@ macOS 版沒有簽名／notarization，第一次開啟要在 Finder 按右鍵選
 - `internal/auth`：OAuth（PKCE＋loopback）與 token refresh
 - `internal/tokenstore`：憑證存在系統鑰匙圈
 - `internal/api`：呼叫網站的 `/storyteller` API（帶 Bearer token）
+- `internal/skillupdate`：驗證並更新本機 Claude Code／Codex 的 SteamLoom Skill
 - `frontend/`：React 前端；主題與共用元件透過 `@steamloom-web` alias 直接 import `static_site/src`
