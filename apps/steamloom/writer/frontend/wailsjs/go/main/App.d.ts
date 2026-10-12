@@ -6,6 +6,8 @@ import {api} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
+export function AppVersion():Promise<string>;
+
 export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
 
 export function CancelLogin():Promise<void>;
@@ -35,6 +37,8 @@ export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
+
+export function UpdateSkill():Promise<void>;
 
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 

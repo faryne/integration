@@ -6,6 +6,10 @@ export function Agents() {
   return window['go']['main']['App']['Agents']();
 }
 
+export function AppVersion() {
+  return window['go']['main']['App']['AppVersion']();
+}
+
 export function Ask(arg1, arg2) {
   return window['go']['main']['App']['Ask'](arg1, arg2);
 }
@@ -64,6 +68,10 @@ export function Me() {
 
 export function Projects() {
   return window['go']['main']['App']['Projects']();
+}
+
+export function UpdateSkill() {
+  return window['go']['main']['App']['UpdateSkill']();
 }
 
 export function VersionDetail(arg1, arg2, arg3, arg4) {

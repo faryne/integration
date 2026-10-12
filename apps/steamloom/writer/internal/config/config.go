@@ -15,6 +15,8 @@ type Config struct {
 	AuthorizeURL string
 	// APIBase 是 REST API 前綴，正式站走同源 /api（nginx 會去掉前綴轉給後端）
 	APIBase string
+	// SkillURL 是 Writer 啟動時檢查的 SteamLoom Skill 來源
+	SkillURL string
 }
 
 func Load() Config {
@@ -23,6 +25,7 @@ func Load() Config {
 		Issuer:       issuer,
 		AuthorizeURL: trim(cmp.Or(os.Getenv("STEAMLOOM_AUTHORIZE_URL"), issuer+"/oauth/authorize")),
 		APIBase:      trim(cmp.Or(os.Getenv("STEAMLOOM_API_BASE"), issuer+"/api")),
+		SkillURL:     cmp.Or(os.Getenv("STEAMLOOM_SKILL_URL"), issuer+"/mcp/skill.md"),
 	}
 }
 
