@@ -1,4 +1,5 @@
 import ArticleIcon from "@mui/icons-material/Article";
+import ChatIcon from "@mui/icons-material/Chat";
 import FolderIcon from "@mui/icons-material/Folder";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import { Box, ButtonBase, Collapse, Typography } from "@mui/material";
@@ -54,6 +55,16 @@ export function SidebarSection({ icon, title, children }: { icon: ReactNode; tit
   );
 }
 
+// 側邊列最上方：沒有選文件時就是 AI 助理。
+export function AssistantRow({ selected, label, onClick }: { selected: boolean; label: string; onClick: () => void }) {
+  return (
+    <Row selected={selected} onClick={onClick}>
+      <ChatIcon />
+      <Label>{label}</Label>
+    </Row>
+  );
+}
+
 // 單篇故事或設定
 export function DocumentRow({ item, depth, selected, onSelect }: { item: DocumentItem; depth: number; selected: DocumentItem | null; onSelect: (item: DocumentItem) => void }) {
   return (
@@ -67,7 +78,7 @@ export function DocumentRow({ item, depth, selected, onSelect }: { item: Documen
 // 可展開的分組（冊、設定集）；沒有 items 的分組（資產集）只顯示名稱
 export function GroupRow({ name, items, selected, onSelect }: { name: string; items?: DocumentItem[]; selected: DocumentItem | null; onSelect?: (item: DocumentItem) => void }) {
   const [open, setOpen] = useState(false);
-  // 選取的文件在這個分組裡就自動展開（含進入專案時自動選第一篇的情況）；使用者手動收合不會被蓋回去
+  // 選取的文件在這個分組裡就自動展開；使用者手動收合不會被蓋回去
   const containsSelected = (items ?? []).some((item) => isSameDocument(selected, item));
   useEffect(() => {
     if (containsSelected) setOpen(true);

@@ -1,0 +1,12 @@
+{
+  "title": "プロジェクト",
+  "empty": "プロジェクトはまだありません",
+  "storyCount": "物語 {{count}} 本",
+  "wordCount": "{{words}} 字",
+  "updatedAt": "{{date}} に更新",
+  "visibility": {
+    "private": "非公開",
+    "unlisted": "共有",
+    "public": "公開"
+  }
+}

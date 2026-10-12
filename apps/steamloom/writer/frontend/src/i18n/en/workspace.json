@@ -1,0 +1,46 @@
+{
+  "assistant": "AI assistant",
+  "sections": {
+    "stories": "Stories and volumes",
+    "lores": "Lore collections",
+    "assets": "Asset collections",
+    "memories": "Suosuo's memories"
+  },
+  "ungroupedStories": "Ungrouped",
+  "uncategorizedLores": "Uncategorized",
+  "tabs": {
+    "chat": "AI chat",
+    "editor": "Edit",
+    "history": "Edit history"
+  },
+  "status": {
+    "draft": "Draft",
+    "completed": "Published"
+  },
+  "meta": {
+    "status": "Status",
+    "wordCount": "{{words}} words",
+    "updatedAt": "Updated {{date}}"
+  },
+  "chat": {
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "detecting": "Looking for AI agents on this computer…",
+    "noAgent": "Claude Code, Codex, or Grok Build is not installed on this computer",
+    "sending": "Waiting for a reply…",
+    "newThread": "New chat",
+    "noThread": "No chats yet",
+    "older": "Load earlier messages",
+    "mcpMissing": "This agent does not have the SteamLoom MCP configured. Run the commands below in a terminal yourself (name it SteamLoom). Writer will not install it for you.",
+    "mcpCopy": "Copy commands",
+    "mcpCopied": "Copied",
+    "mcpRecheck": "Check again",
+    "skillInstalled": "Installed SteamLoom Skill v{{version}}"
+  },
+  "history": {
+    "version": "Version",
+    "source": "Source",
+    "wordCount": "Words",
+    "createdAt": "Created"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "SteamLoom",
+  "account": {
+    "logout": "Sign out"
+  },
+  "update": {
+    "title": "A new Writer version is available",
+    "message": "SteamLoom Writer {{latest}} is ready. You are on {{current}}.",
+    "restartNotice": "The app restarts automatically after the update.",
+    "later": "Later",
+    "install": "Download and update",
+    "installing": "Updating"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "SteamLoom",
+  "account": {
+    "logout": "로그아웃"
+  },
+  "update": {
+    "title": "새 Writer 버전이 있습니다",
+    "message": "SteamLoom Writer {{latest}}을(를) 사용할 수 있습니다. 현재 버전은 {{current}}입니다.",
+    "restartNotice": "업데이트가 끝나면 자동으로 다시 시작합니다.",
+    "later": "나중에",
+    "install": "다운로드 후 업데이트",
+    "installing": "업데이트 중"
+  }
+}

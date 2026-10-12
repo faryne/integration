@@ -6,6 +6,7 @@ import (
 	goruntime "runtime"
 	"time"
 
+	"faryne.dev/apps/steamloom/writer/internal/agent"
 	"faryne.dev/apps/steamloom/writer/internal/api"
 	"faryne.dev/apps/steamloom/writer/internal/auth"
 	"faryne.dev/apps/steamloom/writer/internal/config"
@@ -68,6 +69,71 @@ func (a *App) Document(project, kind, id string) (*api.Document, error) {
 // Versions 回傳單篇故事或設定的編輯歷史（不含內文）。
 func (a *App) Versions(project, kind, id string) ([]api.Version, error) {
 	return a.api.Versions(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// Agents 回傳這台機器偵測得到的本機 AI CLI。沒安裝的不會出現在選單。
+func (a *App) Agents() []agent.Installed { return agent.Detect() }
+
+// McpInstalled 只看這個 Agent 的設定裡有沒有 SteamLoom 的 MCP 位址。沒有時附上使用者自己執行的安裝指令。
+func (a *App) McpInstalled(agentID string) (agent.McpHint, error) {
+	return agent.McpHintFor(agentID)
+}
+
+// ChatOpen 讀出這個專案在這個 Agent 底下、目前那一條對話的尾端。
+func (a *App) ChatOpen(agentID, projectID string) (*agent.ChatPage, error) {
+	return chatPage(agent.OpenChat(agentID, projectID))
+}
+
+// ChatSelect 改看同一個專案、同一個 Agent 的另一條串。
+func (a *App) ChatSelect(agentID, projectID, threadID string) (*agent.ChatPage, error) {
+	return chatPage(agent.SelectChat(agentID, projectID, threadID))
+}
+
+// ChatOlder 補上畫面上方更早的訊息。start 是目前畫面上最舊一則的索引。
+func (a *App) ChatOlder(agentID, projectID, threadID string, start int) (*agent.OlderMessages, error) {
+	older, err := agent.OlderChat(agentID, projectID, threadID, start)
+	if err != nil {
+		return nil, err
+	}
+	return &older, nil
+}
+
+// ChatNew 為了切開 context 開一條新串。舊串留在列表裡，還可以回去續聊。
+func (a *App) ChatNew(agentID, projectID string) (*agent.ChatPage, error) {
+	return chatPage(agent.NewChat(agentID, projectID))
+}
+
+// EnsureSkill 在 MCP 檢查之後呼叫：這個 Agent 的 Skill 不是最新版就裝上。
+func (a *App) EnsureSkill(agentID string) (agent.SkillResult, error) {
+	return agent.EnsureSkill(agentID)
+}
+
+func chatPage(page agent.ChatPage, err error) (*agent.ChatPage, error) {
+	if err != nil {
+		return nil, err
+	}
+	return &page, nil
+}
+
+// Ask 把一輪問答交給 id 指定的 CLI，成功後把原文和回答接到這條串的檔案後面。
+// 續聊用的 session 以檔案為準，不採前端傳來的值。
+func (a *App) Ask(id string, req agent.Request) (*agent.Reply, error) {
+	sessionID, err := agent.SessionOf(id, req.ProjectID, req.ThreadID)
+	if err != nil {
+		return nil, err
+	}
+	req.SessionID = sessionID
+	reply, err := agent.Ask(a.ctx, id, req)
+	if err != nil {
+		return nil, err
+	}
+	saved, err := agent.SaveTurn(id, req.ProjectID, req.ThreadID, req.Prompt, reply.Text, reply.SessionID)
+	if err != nil {
+		return nil, err
+	}
+	reply.ThreadID = saved.ID
+	reply.Title = saved.Title
+	return &reply, nil
 }
 
 // CheckForUpdate 由前端啟動時呼叫；沒有新版時回傳 nil。

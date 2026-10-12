@@ -1,0 +1,46 @@
+{
+  "assistant": "AI 어시스턴트",
+  "sections": {
+    "stories": "작품과 권",
+    "lores": "설정집",
+    "assets": "에셋 모음",
+    "memories": "梭梭의 기억"
+  },
+  "ungroupedStories": "권으로 나누지 않음",
+  "uncategorizedLores": "미분류",
+  "tabs": {
+    "chat": "AI 대화",
+    "editor": "편집",
+    "history": "편집 기록"
+  },
+  "status": {
+    "draft": "초고",
+    "completed": "공개 중"
+  },
+  "meta": {
+    "status": "상태",
+    "wordCount": "{{words}}자",
+    "updatedAt": "{{date}}에 업데이트"
+  },
+  "chat": {
+    "placeholder": "메시지를 입력하세요…",
+    "send": "보내기",
+    "detecting": "이 컴퓨터의 AI Agent를 찾는 중…",
+    "noAgent": "이 컴퓨터에 Claude Code, Codex 또는 Grok Build가 설치되어 있지 않습니다",
+    "sending": "답변을 기다리는 중…",
+    "newThread": "새 대화",
+    "noThread": "대화 없음",
+    "older": "이전 메시지 불러오기",
+    "mcpMissing": "이 Agent에는 SteamLoom MCP가 설정되어 있지 않습니다. 터미널에서 아래 명령을 직접 실행하세요(이름은 SteamLoom). Writer는 대신 설치하지 않습니다.",
+    "mcpCopy": "명령 복사",
+    "mcpCopied": "복사함",
+    "mcpRecheck": "다시 확인",
+    "skillInstalled": "SteamLoom Skill v{{version}}을(를) 설치했습니다"
+  },
+  "history": {
+    "version": "버전",
+    "source": "출처",
+    "wordCount": "글자 수",
+    "createdAt": "만든 시간"
+  }
+}

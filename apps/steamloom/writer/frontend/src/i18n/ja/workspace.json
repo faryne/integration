@@ -1,0 +1,46 @@
+{
+  "assistant": "AI アシスタント",
+  "sections": {
+    "stories": "作品と冊",
+    "lores": "設定集",
+    "assets": "素材集",
+    "memories": "梭梭の記憶"
+  },
+  "ungroupedStories": "未分冊",
+  "uncategorizedLores": "未分類",
+  "tabs": {
+    "chat": "AI との会話",
+    "editor": "編集",
+    "history": "編集履歴"
+  },
+  "status": {
+    "draft": "下書き",
+    "completed": "公開中"
+  },
+  "meta": {
+    "status": "状態",
+    "wordCount": "{{words}} 字",
+    "updatedAt": "{{date}} に更新"
+  },
+  "chat": {
+    "placeholder": "メッセージを入力……",
+    "send": "送信",
+    "detecting": "このコンピュータの AI Agent を確認しています……",
+    "noAgent": "このコンピュータには Claude Code、Codex、Grok Build がインストールされていません",
+    "sending": "返答を待っています……",
+    "newThread": "新しい会話",
+    "noThread": "会話はまだありません",
+    "older": "以前のメッセージを読み込む",
+    "mcpMissing": "この Agent には SteamLoom MCP が設定されていません。ターミナルで次のコマンドを実行してください（名前は SteamLoom）。Writer は代わりにインストールしません。",
+    "mcpCopy": "コマンドをコピー",
+    "mcpCopied": "コピーしました",
+    "mcpRecheck": "再確認",
+    "skillInstalled": "SteamLoom Skill v{{version}} をインストールしました"
+  },
+  "history": {
+    "version": "バージョン",
+    "source": "ソース",
+    "wordCount": "字数",
+    "createdAt": "作成日時"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "assistant": "AI 助理",
+  "sections": {
+    "stories": "作品与册",
+    "lores": "设定集",
+    "assets": "资产集",
+    "memories": "梭梭的记忆"
+  },
+  "ungroupedStories": "未分册",
+  "uncategorizedLores": "未归类",
+  "tabs": {
+    "chat": "AI 对话",
+    "editor": "编辑",
+    "history": "编辑历史"
+  },
+  "status": {
+    "draft": "草稿",
+    "completed": "公开中"
+  },
+  "meta": {
+    "status": "状态",
+    "wordCount": "{{words}} 字",
+    "updatedAt": "更新于 {{date}}"
+  },
+  "chat": {
+    "placeholder": "输入消息……",
+    "send": "发送",
+    "detecting": "正在检测本机的 AI Agent……",
+    "noAgent": "这台电脑没有安装 Claude Code、Codex 或 Grok Build",
+    "sending": "正在等待回答……",
+    "newThread": "新对话",
+    "noThread": "还没有对话",
+    "older": "加载更早的消息",
+    "mcpMissing": "这个 Agent 还没有设置 SteamLoom MCP。请在终端里自己执行下面的命令（名称用 SteamLoom），Writer 不会代为安装。",
+    "mcpCopy": "复制命令",
+    "mcpCopied": "已复制",
+    "mcpRecheck": "重新检查",
+    "skillInstalled": "已安装 SteamLoom Skill v{{version}}"
+  },
+  "history": {
+    "version": "版本",
+    "source": "来源",
+    "wordCount": "字数",
+    "createdAt": "创建时间"
+  }
+}

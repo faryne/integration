@@ -2,20 +2,22 @@ import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CollectionsIcon from "@mui/icons-material/Collections";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { Box, Typography } from "@mui/material";
+import { Box, Divider, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
 import type { DocumentItem, Workspace } from "@/lib/backend.ts";
-import { GroupRow, SidebarSection } from "@/pages/workspace/SidebarRows.tsx";
+import { AssistantRow, GroupRow, SidebarSection } from "@/pages/workspace/SidebarRows.tsx";
 
-type Props = { workspace: Workspace; selected: DocumentItem | null; onSelect: (item: DocumentItem) => void };
+type Props = { workspace: Workspace; selected: DocumentItem | null; onSelect: (item: DocumentItem) => void; onAssistant: () => void };
 
-// 專案工作台側邊列：作品與冊、設定集、資產集、梭梭的記憶（後兩者目前只列出，還不能打開）。
-export function WorkspaceSidebar({ workspace, selected, onSelect }: Props) {
+// 專案工作台側邊列：最上方是 AI 助理，下面才是作品與冊、設定集、資產集、梭梭的記憶。
+export function WorkspaceSidebar({ workspace, selected, onSelect, onAssistant }: Props) {
   const { t } = useTranslation();
   const ungroupedStories = workspace.ungrouped_stories ?? [];
   const uncategorizedLores = workspace.uncategorized_lores ?? [];
   return (
     <Box component="nav" sx={{ width: 248, flex: "none", borderRight: 1, borderColor: "divider", overflow: "auto", py: 0.5 }}>
+      <AssistantRow selected={selected === null} label={t("workspace.assistant")} onClick={onAssistant} />
+      <Divider />
       <SidebarSection icon={<AutoStoriesIcon />} title={t("workspace.sections.stories")}>
         {(workspace.volumes ?? []).map((volume) => (
           <GroupRow key={volume.public_id} name={volume.name} items={volume.items ?? []} selected={selected} onSelect={onSelect} />

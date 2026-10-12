@@ -1,0 +1,12 @@
+{
+  "title": "My projects",
+  "empty": "No projects yet",
+  "storyCount": "{{count}} stories",
+  "wordCount": "{{words}} words",
+  "updatedAt": "Updated {{date}}",
+  "visibility": {
+    "private": "Private",
+    "unlisted": "Shared",
+    "public": "Public"
+  }
+}

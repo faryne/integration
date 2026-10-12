@@ -1,0 +1,14 @@
+{
+  "name": "SteamLoom",
+  "account": {
+    "logout": "退出登录"
+  },
+  "update": {
+    "title": "有新的 Writer 版本",
+    "message": "SteamLoom Writer {{latest}} 已经可以使用，当前版本是 {{current}}。",
+    "restartNotice": "更新完成后会自动重新启动。",
+    "later": "以后再说",
+    "install": "下载并更新",
+    "installing": "正在更新"
+  }
+}
