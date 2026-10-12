@@ -42,5 +42,30 @@
     "source": "來源",
     "wordCount": "字數",
     "createdAt": "建立時間"
+  },
+  "actions": {
+    "sort": "調整順序",
+    "sortDone": "完成排序",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "create": "建立",
+    "moveStory": "移動到冊",
+    "moveLore": "移動到設定集"
+  },
+  "create": {
+    "kinds": {
+      "story": "故事",
+      "image": "圖像作品",
+      "volume": "冊",
+      "lore": "設定",
+      "lore-collection": "設定集",
+      "asset-collection": "資產集"
+    },
+    "title": "建立{{kind}}",
+    "name": "名稱",
+    "volume": "冊",
+    "collection": "設定集",
+    "submit": "建立",
+    "cancel": "取消"
   }
 }

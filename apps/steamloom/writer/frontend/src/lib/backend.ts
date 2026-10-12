@@ -4,8 +4,14 @@ import type { agent, api, updater } from "../../wailsjs/go/models";
 
 export type Profile = api.Profile;
 export type Project = api.Project;
-export type Workspace = api.Workspace;
-export type WorkspaceGroup = api.Group;
+// Wails 產生的 model 是帶 convertValues 方法的 class；工作台會被複製、局部改寫（排序的樂觀更新），
+// 所以這兩個型別只取資料欄位，避免展開後的物件因為少了方法而對不上型別。
+export type WorkspaceGroup = Omit<api.Group, "convertValues">;
+export type Workspace = Omit<api.Workspace, "convertValues" | "volumes" | "lore_collections" | "asset_collections"> & {
+  volumes: WorkspaceGroup[];
+  lore_collections: WorkspaceGroup[];
+  asset_collections: WorkspaceGroup[];
+};
 export type DocumentItem = api.DocumentItem;
 export type Document = api.Document;
 export type Version = api.Version;

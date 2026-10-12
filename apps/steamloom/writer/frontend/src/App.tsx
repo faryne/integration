@@ -112,7 +112,7 @@ function Shell() {
         ) : profile === "error" ? (
           <LoadErrorPage onRetry={loadProfile} onLogout={logout} />
         ) : openProject ? (
-          <WorkspacePage project={openProject} onBack={() => setOpenProject(null)} />
+          <WorkspacePage key={openProject.public_id} project={openProject} onBack={() => setOpenProject(null)} />
         ) : (
           <ProjectsPage onOpen={setOpenProject} />
         )}

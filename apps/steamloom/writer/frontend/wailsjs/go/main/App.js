@@ -38,6 +38,10 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
+export function Create(arg1, arg2) {
+  return window['go']['main']['App']['Create'](arg1, arg2);
+}
+
 export function Document(arg1, arg2, arg3) {
   return window['go']['main']['App']['Document'](arg1, arg2, arg3);
 }
@@ -66,8 +70,20 @@ export function Me() {
   return window['go']['main']['App']['Me']();
 }
 
+export function MoveLore(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveLore'](arg1, arg2, arg3);
+}
+
+export function MoveStory(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveStory'](arg1, arg2, arg3);
+}
+
 export function Projects() {
   return window['go']['main']['App']['Projects']();
+}
+
+export function Reorder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Reorder'](arg1, arg2, arg3);
 }
 
 export function VersionDetail(arg1, arg2, arg3, arg4) {

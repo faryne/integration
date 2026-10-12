@@ -167,3 +167,23 @@ func (a *App) InstallUpdate() error {
 func (a *App) VersionDetail(project, kind, id, versionID string) (*api.VersionDetail, error) {
 	return a.api.VersionDetail(a.ctx, project, api.DocumentKind(kind), id, versionID)
 }
+
+// Create 是側邊列「建立」：故事、圖像作品、冊、設定、設定集、資產集，比照網站的建立選單。
+func (a *App) Create(project string, req api.CreateRequest) (*api.Created, error) {
+	return a.api.Create(a.ctx, project, req)
+}
+
+// MoveStory 把故事移到某一冊（空字串＝未分冊）；不寫版本，只記 audit。
+func (a *App) MoveStory(project, story, volume string) error {
+	return a.api.MoveStory(a.ctx, project, story, volume)
+}
+
+// MoveLore 把設定移到某個設定集（空字串＝未歸類）。
+func (a *App) MoveLore(project, lore, collection string) error {
+	return a.api.MoveLore(a.ctx, project, lore, collection)
+}
+
+// Reorder 依 ids 順序重設排序；kind 是 volumes／stories／lore-collections。故事與冊不寫版本，只記 audit。
+func (a *App) Reorder(project, kind string, ids []string) error {
+	return a.api.Reorder(a.ctx, project, kind, ids)
+}

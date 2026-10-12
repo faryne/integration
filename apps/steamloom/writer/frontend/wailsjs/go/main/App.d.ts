@@ -23,6 +23,8 @@ export function ChatSelect(arg1:string,arg2:string,arg3:string):Promise<agent.Ch
 
 export function CheckForUpdate():Promise<updater.Info>;
 
+export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
+
 export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
 
 export function EnsureSkill(arg1:string):Promise<skillupdate.Result>;
@@ -37,7 +39,13 @@ export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 
 export function Me():Promise<api.Profile>;
 
+export function MoveLore(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function Projects():Promise<Array<api.Project>>;
+
+export function Reorder(arg1:string,arg2:string,arg3:Array<string>):Promise<void>;
 
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 

@@ -183,6 +183,36 @@ export namespace agent {
 
 export namespace api {
 	
+	export class CreateRequest {
+	    kind: string;
+	    name: string;
+	    group_public_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CreateRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.group_public_id = source["group_public_id"];
+	    }
+	}
+	export class Created {
+	    kind: string;
+	    public_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Created(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.public_id = source["public_id"];
+	    }
+	}
 	export class Document {
 	    kind: string;
 	    public_id: string;
