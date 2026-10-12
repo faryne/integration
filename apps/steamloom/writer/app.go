@@ -155,3 +155,8 @@ func (a *App) InstallUpdate() error {
 	}()
 	return nil
 }
+
+// VersionDetail 回傳單一版本的完整內容（標題、摘要、內文），給版本比對用。
+func (a *App) VersionDetail(project, kind, id, versionID string) (*api.VersionDetail, error) {
+	return a.api.VersionDetail(a.ctx, project, api.DocumentKind(kind), id, versionID)
+}

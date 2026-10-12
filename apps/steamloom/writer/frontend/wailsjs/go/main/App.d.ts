@@ -36,6 +36,8 @@ export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
 
+export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
+
 export function Versions(arg1:string,arg2:string,arg3:string):Promise<Array<api.Version>>;
 
 export function Workspace(arg1:string):Promise<api.Workspace>;

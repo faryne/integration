@@ -66,6 +66,10 @@ export function Projects() {
   return window['go']['main']['App']['Projects']();
 }
 
+export function VersionDetail(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['VersionDetail'](arg1, arg2, arg3, arg4);
+}
+
 export function Versions(arg1, arg2, arg3) {
   return window['go']['main']['App']['Versions'](arg1, arg2, arg3);
 }

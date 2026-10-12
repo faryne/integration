@@ -89,12 +89,8 @@ export function storytellerSearchResultPath(result: {
   );
 }
 
-export function formatStorytellerDate(input: string) {
-  return new Intl.DateTimeFormat("zh-TW", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(input));
-}
+// 日期格式搬到獨立檔案，讓 SteamLoom Writer 也能 import（那邊不能用 "@/" alias）
+export { formatStorytellerDate } from "./storytellerDate";
 
 export function storytellerProjectRatingLabel(
   rating: "general" | "guidance" | "restricted" | undefined,

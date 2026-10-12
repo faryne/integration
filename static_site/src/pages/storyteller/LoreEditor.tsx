@@ -65,6 +65,7 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerEditorSideDrawer } from "@/pages/storyteller/StorytellerEditorSideDrawer.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import { useVersionCompareSelection } from "@/pages/storyteller/useVersionCompareSelection.ts";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
 import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
 import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
@@ -251,8 +252,6 @@ export default function StorytellerLoreEditor({
   const [loreSummary, setLoreSummary] = useState("");
   const [loreIsSpoiler, setLoreIsSpoiler] = useState(false);
   const [loreDependsOn, setLoreDependsOn] = useState<string[]>([]);
-  const [leftVersionId, setLeftVersionId] = useState("");
-  const [rightVersionId, setRightVersionId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [snack, setSnack] = useState("");
   const [saveSuccessTarget, setSaveSuccessTarget] = useState<string | null>(
@@ -365,6 +364,14 @@ export default function StorytellerLoreEditor({
       ? String(version.conflicted_with_version_id)
       : null,
   }));
+  // 編輯歷史「選兩個版本比對」的選取規則跟 StoryEditor、SteamLoom Writer 共用
+  const {
+    leftVersionId,
+    rightVersionId,
+    setRightVersionId,
+    isRightVersionDisabled,
+    handleLeftVersionChange,
+  } = useVersionCompareSelection(loreHistoryItems);
   const selectedCollectionExists =
     selectedCollectionId === "" ||
     loreCollections.some(
@@ -889,36 +896,6 @@ export default function StorytellerLoreEditor({
         showSnack("選取範圍已變更，請改用插入或複製。", "error"),
       onAfterApply: () => {},
     });
-  }
-
-  function isRightVersionDisabled(versionId: string) {
-    const version = loreHistoryItems.find((item) => item.id === versionId);
-    const leftVersion = loreHistoryItems.find(
-      (item) => item.id === leftVersionId,
-    );
-    if (!version || !leftVersion || version.id === leftVersion.id) {
-      return true;
-    }
-    return new Date(version.createdAt) <= new Date(leftVersion.createdAt);
-  }
-
-  function handleLeftVersionChange(versionId: string) {
-    setLeftVersionId(versionId);
-    const nextLeftVersion = loreHistoryItems.find(
-      (item) => item.id === versionId,
-    );
-    const selectedRightVersion = loreHistoryItems.find(
-      (item) => item.id === rightVersionId,
-    );
-    if (
-      !nextLeftVersion ||
-      !selectedRightVersion ||
-      selectedRightVersion.id === nextLeftVersion.id ||
-      new Date(selectedRightVersion.createdAt) <=
-        new Date(nextLeftVersion.createdAt)
-    ) {
-      setRightVersionId("");
-    }
   }
 
   function handleSelectionAgentTrigger(

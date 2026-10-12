@@ -46,7 +46,8 @@
 - 三個 tab 都綁「目前選取的那一篇」，故事與設定共用：
   - AI 對話：只有外型（空對話串＋輸入框＋CLI 選單），送出還沒接。
   - 編輯：唯讀，內文用網站 `wysiwygCore/parser.ts` 的 `stripMarkerForDiffLine` 去掉段落／行內 marker 後逐行顯示。
-  - 編輯歷史：版本列表（版本號、來源、字數、時間），來源標籤用共用的 `data/storytellerVersionSource.ts`；比對與還原還沒做。
+  - 編輯歷史：直接用網站的 `StoryEditHistory`（表格）、`useVersionCompareSelection`（選兩版的規則，網站 StoryEditor／LoreEditor 也改用它）、`StorytellerVersionCompareDialog`（比對視窗），兩邊 UI 一致；Writer 一頁 10 筆（網站側欄 5 筆）。比對時才用 `VersionDetail()` 抓兩個版本的完整內文。還原還沒做。
+  - 比對視窗只顯示差異前後 3 行（`customDiff.ts` 的 `collapseUnchangedLines`，上限 5、前後文不計段落間空行、至少 2 行相同才收合），其餘收成「展開 N 行未變更的內容」，網站所有版本比對（故事、設定、Agent prompt）同步生效。
 - 已知小問題：`wails dev` 用瀏覽器開 `localhost:34115` 時，console 會出現 Wails 自己 `ipc.js` 的 `Cannot read properties of null (reading 'nodes')`，不影響功能。
 - 效能注意：網站的 `stories`／`versions` API 會帶完整內文，專案大的時候側邊列與歷史會慢，之後可能要加輕量版端點。
 
@@ -66,7 +67,7 @@
 
 ## 待辦
 
-- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史比對／還原、資產與記憶頁。
+- 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原、資產與記憶頁。
 - 本機 CLI adapter（先 Claude Code，再 Codex app-server，Grok 最後）。
 - static_site 的 API client 改成可注入（Bearer＋base URL），編輯器等元件才能在 Writer 裡沿用。
 - 外觀目前固定 nocturne，之後接 appearance 切換。
@@ -78,5 +79,6 @@
   - 觸發：main／PR 動到 `apps/steamloom/writer/**` 或共用的 static_site 檔案才編譯；推 `steamloom-writer-v*` tag 才建 Release（tag 推送不套用 paths 過濾）。
   - 平台：macOS universal（`darwin/universal`）、Windows amd64／arm64（x64 runner 交叉編譯，Windows 版不需要 CGO）、Linux amd64／arm64（各自原生 runner，Ubuntu 24.04 要 `-tags webkit2_41`）。
   - 共用 static_site 檔案清單寫死在 workflow 的 `paths`，Writer 新 import 了 static_site 的檔案要同步補上。
+  - 共用檔案 import 的第三方套件（例如 `@mui/icons-material`）要列進 Writer `vite.config.ts` 的 `resolve.dedupe`，否則 CI 的乾淨環境會因為沒有 `static_site/node_modules` 而解析失敗（本機不會發現）。
   - CI 只裝 Writer 自己的套件，所以 tsconfig 的 `paths` 要把 `react`、`@mui/*`、`@emotion/*` 指向 Writer 的 node_modules，否則 static_site 檔案的型別會找不到（本機因為 `static_site/node_modules` 存在而不會發現）。
   - 沒有簽名／notarization，`linux-arm64` 依賴 GitHub 的 `ubuntu-24.04-arm` runner。

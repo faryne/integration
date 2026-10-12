@@ -19,10 +19,24 @@ type Document struct {
 }
 
 // Version 是編輯歷史的一列；後端回傳的版本含完整內文，這裡丟掉不傳給前端。
+// 欄位對應網站 StoryEditHistory 需要的資料（標題、回復自哪一版、存檔時跟哪一版衝突）。
 type Version struct {
+	ID                      uint64  `json:"id"`
+	Title                   string  `json:"title"`
+	Source                  string  `json:"source"`
+	WordCount               uint    `json:"word_count"`
+	RevertedFromVersionID   *uint64 `json:"reverted_from_version_id"`
+	ConflictedWithVersionID *uint64 `json:"conflicted_with_version_id"`
+	CreatedAt               string  `json:"created_at"`
+}
+
+// VersionDetail 是比對用的單一版本完整內容；設定沒有摘要，Summary 會是空字串。
+type VersionDetail struct {
 	ID        uint64 `json:"id"`
+	Title     string `json:"title"`
+	Summary   string `json:"summary"`
+	Content   string `json:"content"`
 	Source    string `json:"source"`
-	WordCount uint   `json:"word_count"`
 	CreatedAt string `json:"created_at"`
 }
 
@@ -55,4 +69,12 @@ func (c *Client) Versions(ctx context.Context, project string, kind DocumentKind
 		return nil, err
 	}
 	return get[[]Version](ctx, c, path+"/versions")
+}
+
+func (c *Client) VersionDetail(ctx context.Context, project string, kind DocumentKind, id, versionID string) (*VersionDetail, error) {
+	path, err := documentPath(project, kind, id)
+	if err != nil {
+		return nil, err
+	}
+	return get[*VersionDetail](ctx, c, path+"/versions/"+versionID)
 }

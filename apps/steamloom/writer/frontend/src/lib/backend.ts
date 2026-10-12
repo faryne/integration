@@ -13,6 +13,7 @@ export type UpdateInfo = updater.Info;
 export type InstalledAgent = agent.Installed;
 export type AskRequest = agent.Request;
 export type AskReply = agent.Reply;
+export type VersionDetail = api.VersionDetail;
 // 對應 internal/api 的 DocumentKind
 export type DocumentKind = "story" | "lore";
 
