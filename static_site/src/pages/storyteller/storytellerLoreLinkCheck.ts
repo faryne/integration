@@ -1,4 +1,4 @@
-import { useStorytellerLores } from "@/apis/storyteller.ts";
+import { useEditorLores } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import type { StorytellerLore } from "@/types/storyteller.ts";
 import {
   ASSET_PUBLIC_ID_PATTERN_SOURCE,
@@ -48,7 +48,7 @@ export function publishLoreLinkWarning(
 // CSS 只能一個 id 一條規則寫：先把所有設定連結預設成「已刪除」，再逐一蓋回存在的設定；
 // 清單還在載入時不套任何規則，避免整片閃紅。
 export function useLoreLinkStatusSx(projectPublicId?: string) {
-  const { data: lores, isSuccess } = useStorytellerLores(projectPublicId);
+  const { data: lores, isSuccess } = useEditorLores(projectPublicId);
   if (!projectPublicId || !isSuccess) {
     return {};
   }
@@ -62,7 +62,7 @@ export function useLoreLinkStatusSx(projectPublicId?: string) {
       textDecorationStyle: "wavy",
     },
     ...Object.fromEntries(
-      lores.map((lore) => [
+      (lores ?? []).map((lore) => [
         selector(lore.public_id),
         lore.status === "completed"
           ? { color: "secondary.main", textDecorationStyle: "dotted" }

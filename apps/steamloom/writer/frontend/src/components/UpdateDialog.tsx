@@ -2,7 +2,7 @@ import DownloadIcon from "@mui/icons-material/Download";
 import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Stack } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { UpdateInfo } from "@/lib/backend.ts";
+import type { UpdateInfo } from "@writer/lib/backend.ts";
 
 // 偵測到新版時詢問使用者；安裝成功後 Go 端會自動重啟 Writer。
 export function UpdateDialog({ info, onLater, onInstall }: { info: UpdateInfo | null; onLater: () => void; onInstall: () => Promise<void> }) {

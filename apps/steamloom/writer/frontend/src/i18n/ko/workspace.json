@@ -17,11 +17,6 @@
     "draft": "초고",
     "completed": "공개 중"
   },
-  "meta": {
-    "status": "상태",
-    "wordCount": "{{words}}자",
-    "updatedAt": "{{date}}에 업데이트"
-  },
   "chat": {
     "placeholder": "메시지를 입력하세요…",
     "send": "보내기",
@@ -42,5 +37,47 @@
     "source": "출처",
     "wordCount": "글자 수",
     "createdAt": "만든 시간"
+  },
+  "editor": {
+    "titlePlaceholder": {
+      "story": "제목 없는 이야기",
+      "lore": "제목 없는 설정"
+    },
+    "summaryPlaceholder": {
+      "story": "요약 추가...",
+      "lore": "독자용 요약 추가..."
+    },
+    "status": "상태",
+    "group": {
+      "story": "권",
+      "lore": "설정집"
+    },
+    "authors": "서명",
+    "autoSave": {
+      "label": "자동 저장",
+      "off": "자동 저장 안 함",
+      "every": "{{minutes}}분마다",
+      "custom": "사용자 지정",
+      "range": "{{min}}-{{max}}분"
+    },
+    "titleRequired": "저장하기 전에 제목을 입력하세요.",
+    "saved": "저장했습니다.",
+    "autoSaved": "자동 저장했습니다.",
+    "saveFailed": "저장에 실패했습니다. 다시 시도하세요: ",
+    "autoSaveFailed": "자동 저장에 실패했습니다. 직접 저장하세요: ",
+    "conflict": {
+      "story": "저장한 뒤 이 이야기가 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "lore": "저장한 뒤 이 설정이 도중에 다른 곳에서 수정된 것을 확인했습니다. 최신 버전 뒤에 새 버전으로 저장했습니다.",
+      "viewHistory": "편집 기록 보기"
+    },
+    "unsaved": {
+      "title": "저장하지 않은 변경 사항을 버릴까요?",
+      "cancel": "계속 편집",
+      "discard": "버리기"
+    },
+    "image": {
+      "title": "이미지 작품은 아직 Writer에서 편집할 수 없습니다",
+      "description": "이미지 작품은 웹사이트에서 편집해 주세요."
+    }
   }
 }

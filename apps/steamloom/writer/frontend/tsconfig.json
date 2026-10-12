@@ -9,13 +9,12 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
+      "@writer/*": ["./src/*"],
       "@steamloom-web/*": ["../../../../static_site/src/*"],
-      "@mui/*": ["./node_modules/@mui/*"],
-      "@emotion/*": ["./node_modules/@emotion/*"],
-      "@tiptap/*": ["./node_modules/@tiptap/*"],
-      "react": ["./node_modules/@types/react"],
-      "react/*": ["./node_modules/@types/react/*"]
+      "@/*": ["../../../../static_site/src/*"],
+      // paths 對應不讀套件的 exports：只靠 exports 才有的子路徑要逐一列（CI 沒有 static_site/node_modules 可退回）
+      "@tiptap/react/menus": ["./node_modules/@tiptap/react/dist/menus/index.d.ts"],
+      "*": ["./node_modules/@types/*", "./node_modules/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

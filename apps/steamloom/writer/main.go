@@ -30,6 +30,7 @@ func main() {
 		// 跟 nocturne 主題的底色一致，避免視窗開啟時閃白
 		BackgroundColour: &options.RGBA{R: 16, G: 11, B: 24, A: 1},
 		OnStartup:        app.startup,
+		OnBeforeClose:    app.beforeClose,
 		Bind:             []any{app},
 	})
 	if err != nil {

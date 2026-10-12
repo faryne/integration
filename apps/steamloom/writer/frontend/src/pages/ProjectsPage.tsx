@@ -1,9 +1,9 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import { AppBreadcrumbs } from "@/components/AppBreadcrumbs.tsx";
-import { backend, type Project } from "@/lib/backend.ts";
-import { useBackendData } from "@/lib/useBackendData.ts";
-import { ProjectCard } from "@/pages/ProjectCard.tsx";
+import { AppBreadcrumbs } from "@writer/components/AppBreadcrumbs.tsx";
+import { backend, type Project } from "@writer/lib/backend.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
+import { ProjectCard } from "@writer/pages/ProjectCard.tsx";
 
 // 登入後的主頁：列出作者可以使用的專案，點卡片進入專案工作台。
 export function ProjectsPage({ onOpen }: { onOpen: (project: Project) => void }) {

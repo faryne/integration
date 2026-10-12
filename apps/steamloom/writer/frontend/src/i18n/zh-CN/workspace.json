@@ -17,11 +17,6 @@
     "draft": "草稿",
     "completed": "公开中"
   },
-  "meta": {
-    "status": "状态",
-    "wordCount": "{{words}} 字",
-    "updatedAt": "更新于 {{date}}"
-  },
   "chat": {
     "placeholder": "输入消息……",
     "send": "发送",
@@ -42,5 +37,47 @@
     "source": "来源",
     "wordCount": "字数",
     "createdAt": "创建时间"
+  },
+  "editor": {
+    "titlePlaceholder": {
+      "story": "未命名故事",
+      "lore": "未命名设定"
+    },
+    "summaryPlaceholder": {
+      "story": "添加摘要...",
+      "lore": "添加给读者看的摘要..."
+    },
+    "status": "状态",
+    "group": {
+      "story": "册",
+      "lore": "设定集"
+    },
+    "authors": "署名",
+    "autoSave": {
+      "label": "自动保存",
+      "off": "不自动保存",
+      "every": "每 {{minutes}} 分钟",
+      "custom": "自定义频率",
+      "range": "{{min}}-{{max}} 分钟"
+    },
+    "titleRequired": "请先输入标题再保存。",
+    "saved": "已保存。",
+    "autoSaved": "已自动保存。",
+    "saveFailed": "保存失败，请重试：",
+    "autoSaveFailed": "自动保存失败，请手动重试：",
+    "conflict": {
+      "story": "刚刚保存完成后才发现这篇故事在中途被更新过，已经接在最新版本后面保存为新版本。",
+      "lore": "刚刚保存完成后才发现这篇设定在中途被更新过，已经接在最新版本后面保存为新版本。",
+      "viewHistory": "查看编辑历史"
+    },
+    "unsaved": {
+      "title": "放弃未保存的修改？",
+      "cancel": "继续编辑",
+      "discard": "放弃修改"
+    },
+    "image": {
+      "title": "图像作品暂时无法在 Writer 编辑",
+      "description": "请先到网站编辑图像作品。"
+    }
   }
 }

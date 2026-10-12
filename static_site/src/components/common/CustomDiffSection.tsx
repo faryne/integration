@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMemo, useState } from "react";
-// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import（改這支也會影響 Writer）。
 import {
   collapseUnchangedLines,
   type CustomDiffLine,

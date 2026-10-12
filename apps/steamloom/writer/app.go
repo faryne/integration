@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	goruntime "runtime"
+	"sync/atomic"
 	"time"
 
 	"faryne.dev/apps/steamloom/writer/internal/agent"
@@ -24,6 +25,8 @@ type App struct {
 	api     *api.Client
 	updater *appupdate.Service
 	skill   *skillupdate.Service
+	// unsaved：編輯分頁有沒有未存檔的內容，由前端回報（見 unsaved.go）
+	unsaved atomic.Bool
 }
 
 func NewApp() *App {
@@ -67,6 +70,18 @@ func (a *App) Workspace(project string) (*api.Workspace, error) {
 // Document 回傳單篇故事或設定，kind 是 "story" 或 "lore"（綁定參數用 string，Wails 不會產生 Go 自訂型別的 TS 定義）。
 func (a *App) Document(project, kind, id string) (*api.Document, error) {
 	return a.api.Document(a.ctx, project, api.DocumentKind(kind), id)
+}
+
+// SaveDocument 存檔故事或設定（每次一個新版本），回傳新的版本 id 與是否跟別處的修改衝突。
+func (a *App) SaveDocument(project, kind, id string, input api.SaveInput) (*api.SaveResult, error) {
+	return a.api.SaveDocument(a.ctx, project, api.DocumentKind(kind), id, input)
+}
+
+// Lores／Asset 給編輯器用：連結到設定的選單、失效設定連結的標示、內文資產圖片的預覽網址。
+func (a *App) Lores(project string) ([]api.EditorLore, error) { return a.api.Lores(a.ctx, project) }
+
+func (a *App) Asset(project, id string) (*api.EditorAsset, error) {
+	return a.api.Asset(a.ctx, project, id)
 }
 
 // Versions 回傳單篇故事或設定的編輯歷史（不含內文）。
@@ -166,4 +181,46 @@ func (a *App) InstallUpdate() error {
 // VersionDetail 回傳單一版本的完整內容（標題、摘要、內文），給版本比對用。
 func (a *App) VersionDetail(project, kind, id, versionID string) (*api.VersionDetail, error) {
 	return a.api.VersionDetail(a.ctx, project, api.DocumentKind(kind), id, versionID)
+}
+
+// Create 是側邊列「建立」：故事、圖像作品、冊、設定、設定集、資產集，比照網站的建立選單。
+func (a *App) Create(project string, req api.CreateRequest) (*api.Created, error) {
+	return a.api.Create(a.ctx, project, req)
+}
+
+// MoveStory 把故事移到某一冊（空字串＝未分冊）；不寫版本，只記 audit。
+func (a *App) MoveStory(project, story, volume string) error {
+	return a.api.MoveStory(a.ctx, project, story, volume)
+}
+
+// MoveLore 把設定移到某個設定集（空字串＝未歸類）。
+func (a *App) MoveLore(project, lore, collection string) error {
+	return a.api.MoveLore(a.ctx, project, lore, collection)
+}
+
+// Reorder 依 ids 順序重設排序；kind 是 volumes／stories／lore-collections。故事與冊不寫版本，只記 audit。
+func (a *App) Reorder(project, kind string, ids []string) error {
+	return a.api.Reorder(a.ctx, project, kind, ids)
+}
+
+// ListDocuments 是「全部作品／全部設定」頁的資料；kind 是 "story" 或 "lore"。
+func (a *App) ListDocuments(project, kind string) ([]api.ListedDocument, error) {
+	return a.api.ListDocuments(a.ctx, project, api.DocumentKind(kind))
+}
+
+// Assets 是「全部資產」頁的資料，分頁從 1 開始。
+func (a *App) Assets(project string, page int) (*api.AssetPage, error) {
+	return a.api.Assets(a.ctx, project, page)
+}
+
+// UploadAssets 開原生選檔視窗（可多選），上傳到指定資產集（空字串＝未分類）；使用者取消選檔時回傳 nil。
+func (a *App) UploadAssets(project, collection string) (*api.UploadResult, error) {
+	paths, err := runtime.OpenMultipleFilesDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:   "選擇要上傳的圖片",
+		Filters: []runtime.FileFilter{{DisplayName: "圖片（JPEG／PNG／WebP／GIF）", Pattern: api.AssetFileFilter()}},
+	})
+	if err != nil || len(paths) == 0 {
+		return nil, err
+	}
+	return a.api.UploadAssets(a.ctx, project, collection, paths)
 }

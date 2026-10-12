@@ -3,8 +3,10 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,20 +32,36 @@ type envelope[T any] struct {
 	Message string `json:"message"`
 }
 
-// get 帶上 access token 呼叫 API。只有 401 且 WWW-Authenticate 帶 error="invalid_token"（RFC 6750）才代表
-// token 本身失效（過期或在網站上被撤銷），這時才清掉憑證要求重新登入；其他 401（後端版本不對、代理設定錯誤）
-// 只回報錯誤、保留憑證，避免一次部署時間差就把使用者登出。
+// get 是讀取用的 request。
 func get[T any](ctx context.Context, c *Client, path string) (T, error) {
+	return request[T](ctx, c, http.MethodGet, path, nil)
+}
+
+// request 帶上 access token 呼叫 API，body 非 nil 時以 JSON 送出（寫入用）。只有 401 且 WWW-Authenticate 帶
+// error="invalid_token"（RFC 6750）才代表 token 本身失效（過期或在網站上被撤銷），這時才清掉憑證要求重新登入；
+// 其他 401（後端版本不對、代理設定錯誤）只回報錯誤、保留憑證，避免一次部署時間差就把使用者登出。
+func request[T any](ctx context.Context, c *Client, method, path string, body any) (T, error) {
 	var out envelope[T]
 	token, err := c.session.AccessToken(ctx)
 	if err != nil {
 		return out.Data, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
+	var reader io.Reader
+	if body != nil {
+		payload, err := json.Marshal(body)
+		if err != nil {
+			return out.Data, err
+		}
+		reader = bytes.NewReader(payload)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, reader)
 	if err != nil {
 		return out.Data, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return out.Data, fmt.Errorf("無法連線到 SteamLoom：%w", err)
@@ -91,4 +109,14 @@ func (c *Client) Projects(ctx context.Context) ([]Project, error) {
 		projects[i] = row.toProject()
 	}
 	return projects, nil
+}
+
+// joinErrors 合併多個請求的錯誤；授權失效時每個請求都會回 not_logged_in，單獨回傳這個代碼前端才認得出來。
+func joinErrors(errs []error) error {
+	for _, err := range errs {
+		if errors.Is(err, auth.ErrNotLoggedIn) {
+			return err
+		}
+	}
+	return errors.Join(errs...)
 }

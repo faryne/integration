@@ -5,17 +5,25 @@ import (
 	"fmt"
 )
 
-// Document 是編輯分頁要顯示的單篇故事或設定（目前唯讀）。
+// Document 是編輯分頁打開的單篇故事或設定。LatestVersionID 存檔時帶回去當 base_version_id。
 type Document struct {
-	Kind        DocumentKind `json:"kind"`
-	PublicID    string       `json:"public_id"`
-	Title       string       `json:"title"`
-	Summary     string       `json:"summary"`
-	Status      string       `json:"status"`
-	ContentType string       `json:"content_type"`
-	Content     string       `json:"latest_content"`
-	WordCount   uint         `json:"word_count"`
-	UpdatedAt   string       `json:"updated_at"`
+	Kind            DocumentKind `json:"kind"`
+	PublicID        string       `json:"public_id"`
+	Title           string       `json:"title"`
+	Summary         string       `json:"summary"`
+	Status          string       `json:"status"`
+	ContentType     string       `json:"content_type"`
+	Content         string       `json:"latest_content"`
+	WordCount       uint         `json:"word_count"`
+	UpdatedAt       string       `json:"updated_at"`
+	LatestVersionID *uint64      `json:"latest_version_id"`
+	// Authors 是故事的署名，設定沒有這個欄位
+	Authors []Author `json:"authors"`
+}
+
+// Author 是署名的筆名（Wails 產生前端型別時不支援匿名 struct，所以獨立出來）。
+type Author struct {
+	PenName string `json:"pen_name"`
 }
 
 // Version 是編輯歷史的一列；後端回傳的版本含完整內文，這裡丟掉不傳給前端。

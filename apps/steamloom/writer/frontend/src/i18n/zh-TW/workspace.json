@@ -17,11 +17,6 @@
     "draft": "草稿",
     "completed": "公開中"
   },
-  "meta": {
-    "status": "狀態",
-    "wordCount": "{{words}} 字",
-    "updatedAt": "更新於 {{date}}"
-  },
   "chat": {
     "placeholder": "輸入訊息……",
     "send": "送出",
@@ -42,5 +37,105 @@
     "source": "來源",
     "wordCount": "字數",
     "createdAt": "建立時間"
+  },
+  "actions": {
+    "sort": "調整順序",
+    "sortDone": "完成排序",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "create": "建立",
+    "moveStory": "移動到冊",
+    "moveLore": "移動到設定集"
+  },
+  "create": {
+    "kinds": {
+      "story": "故事",
+      "image": "圖像作品",
+      "volume": "冊",
+      "lore": "設定",
+      "lore-collection": "設定集",
+      "asset-collection": "資產集",
+      "asset-upload": "上傳資產"
+    },
+    "title": "建立{{kind}}",
+    "name": "名稱",
+    "volume": "冊",
+    "collection": "設定集",
+    "submit": "建立",
+    "cancel": "取消"
+  },
+  "all": {
+    "stories": "全部作品",
+    "lores": "全部設定",
+    "assets": "全部資產"
+  },
+  "upload": {
+    "title": "上傳資產",
+    "collection": "資產集",
+    "uncategorized": "未分類",
+    "pick": "選擇檔案並上傳",
+    "cancel": "取消",
+    "skipped": "{{count}} 個檔案沒有上傳：只支援 JPEG／PNG／WebP／GIF，單檔 15 MB 以內，一次最多 60 張"
+  },
+  "list": {
+    "wordCount": "{{words}} 字",
+    "updatedAt": "更新於 {{date}}",
+    "image": "圖像作品",
+    "empty": {
+      "story": {
+        "title": "沒有作品",
+        "description": "這個專案目前沒有作品。"
+      },
+      "lore": {
+        "title": "沒有設定",
+        "description": "這個專案目前沒有設定。"
+      },
+      "asset": {
+        "title": "沒有資產",
+        "description": "這個專案目前沒有資產。"
+      }
+    }
+  },
+  "editor": {
+    "titlePlaceholder": {
+      "story": "未命名故事",
+      "lore": "未命名設定"
+    },
+    "summaryPlaceholder": {
+      "story": "新增摘要...",
+      "lore": "新增給讀者看的摘要..."
+    },
+    "status": "狀態",
+    "group": {
+      "story": "冊",
+      "lore": "設定集"
+    },
+    "authors": "署名",
+    "autoSave": {
+      "label": "自動存檔",
+      "off": "不自動存檔",
+      "every": "每 {{minutes}} 分鐘",
+      "custom": "自訂頻率",
+      "range": "{{min}}-{{max}} 分鐘"
+    },
+    "titleRequired": "請先輸入標題再存檔。",
+    "saved": "已存檔。",
+    "autoSaved": "已自動存檔。",
+    "saveFailed": "存檔失敗，請重試：",
+    "autoSaveFailed": "自動存檔失敗，請手動重試：",
+    "conflict": {
+      "story": "剛剛存檔完成後才發現這篇故事在中途被更新過，已經接在最新版本後面存成新版了。",
+      "lore": "剛剛存檔完成後才發現這篇設定在中途被更新過，已經接在最新版本後面存成新版了。",
+      "viewHistory": "查看編輯歷史"
+    },
+    "unsaved": {
+      "title": "放棄未存檔的修改？",
+      "cancel": "繼續編輯",
+      "discard": "放棄修改"
+    },
+    "image": {
+      "title": "圖像作品還不能在 Writer 編輯",
+      "description": "請先到網站編輯圖像作品。"
+    }
   }
 }

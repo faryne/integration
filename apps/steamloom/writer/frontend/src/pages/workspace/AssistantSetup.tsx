@@ -1,8 +1,8 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage } from "@writer/lib/backend.ts";
 
 // 助理初始化：先檢查 MCP 位址，接著才檢查並安裝這個 Agent 的 SKILL.md。MCP 不代為安裝。
 export function AssistantSetup({ agentID }: { agentID: string }) {

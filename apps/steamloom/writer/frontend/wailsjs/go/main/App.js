@@ -14,6 +14,14 @@ export function Ask(arg1, arg2) {
   return window['go']['main']['App']['Ask'](arg1, arg2);
 }
 
+export function Asset(arg1, arg2) {
+  return window['go']['main']['App']['Asset'](arg1, arg2);
+}
+
+export function Assets(arg1, arg2) {
+  return window['go']['main']['App']['Assets'](arg1, arg2);
+}
+
 export function CancelLogin() {
   return window['go']['main']['App']['CancelLogin']();
 }
@@ -38,6 +46,10 @@ export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
 }
 
+export function Create(arg1, arg2) {
+  return window['go']['main']['App']['Create'](arg1, arg2);
+}
+
 export function Document(arg1, arg2, arg3) {
   return window['go']['main']['App']['Document'](arg1, arg2, arg3);
 }
@@ -50,12 +62,20 @@ export function InstallUpdate() {
   return window['go']['main']['App']['InstallUpdate']();
 }
 
+export function ListDocuments(arg1, arg2) {
+  return window['go']['main']['App']['ListDocuments'](arg1, arg2);
+}
+
 export function Login() {
   return window['go']['main']['App']['Login']();
 }
 
 export function Logout() {
   return window['go']['main']['App']['Logout']();
+}
+
+export function Lores(arg1) {
+  return window['go']['main']['App']['Lores'](arg1);
 }
 
 export function McpInstalled(arg1) {
@@ -66,8 +86,32 @@ export function Me() {
   return window['go']['main']['App']['Me']();
 }
 
+export function MoveLore(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveLore'](arg1, arg2, arg3);
+}
+
+export function MoveStory(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MoveStory'](arg1, arg2, arg3);
+}
+
 export function Projects() {
   return window['go']['main']['App']['Projects']();
+}
+
+export function Reorder(arg1, arg2, arg3) {
+  return window['go']['main']['App']['Reorder'](arg1, arg2, arg3);
+}
+
+export function SaveDocument(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['SaveDocument'](arg1, arg2, arg3, arg4);
+}
+
+export function SetUnsaved(arg1) {
+  return window['go']['main']['App']['SetUnsaved'](arg1);
+}
+
+export function UploadAssets(arg1, arg2) {
+  return window['go']['main']['App']['UploadAssets'](arg1, arg2);
 }
 
 export function VersionDetail(arg1, arg2, arg3, arg4) {

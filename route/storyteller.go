@@ -193,6 +193,8 @@ func Storyteller(app *fiber.App) {
 	authenticated.Post("/projects/:project/stories", storyteller.CreateStory)
 	authenticated.Get("/projects/:project/stories/:story", storyteller.Story)
 	authenticated.Put("/projects/:project/stories/:story", storyteller.UpdateStory)
+	// 只改排序／狀態／冊隸屬（故事與冊共用），不寫版本
+	authenticated.Patch("/projects/:project/stories/:story", storyteller.PatchStory)
 	authenticated.Delete("/projects/:project/stories/:story", storyteller.DeleteStory)
 	authenticated.Get("/projects/:project/stories/:story/chat-messages/:message/reference-content", aiGate, storyteller.StoryChatMessageReferenceContent)
 	authenticated.Get("/projects/:project/agentic-proposals/:proposal/reference-content", aiGate, storyteller.AgentProposalReferenceContent)

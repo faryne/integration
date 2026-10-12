@@ -102,7 +102,7 @@ import {
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
-import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
 import type {
   StorytellerAgenticProposal,
   StorytellerAsset,
@@ -160,20 +160,10 @@ interface StoryDraft {
   profileIds: number[];
 }
 
-// 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
-// wordCount 顯示跟「離開頁面前要不要示警」的空白判斷都靠這個共用，不要分開重算兩次。
-function storyContentWordCount(content: string) {
-  const cleanText = parseMarkdownToParagraphs(content)
-    .flatMap((paragraph) => paragraph.runs)
-    .map((run) => run.text)
-    .join("");
-  return cleanText.replace(/\s+/g, "").length;
-}
-
 // 標題跟內容都是空的，就算跟已存檔版本不同也不用示警——沒有東西值得保護，
 // 使用者離開後頂多是回到空白畫面，不會有「辛苦寫的東西不見了」的感覺。
 function isStoryDraftEmpty(title: string, content: string) {
-  return title.trim() === "" && storyContentWordCount(content) === 0;
+  return title.trim() === "" && contentWordCount(content) === 0;
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -626,7 +616,7 @@ export default function StorytellerStoryEditor({
     robots: "noindex, nofollow",
   });
 
-  const wordCount = useMemo(() => storyContentWordCount(content), [content]);
+  const wordCount = useMemo(() => contentWordCount(content), [content]);
 
   // 編輯頁開關預設值取自 profile 設定，只在第一次拿到資料時套用一次，
   // 避免使用者在這次編輯 session 已經自己調整過，卻被之後的 profile 重新整理蓋掉。

@@ -98,7 +98,7 @@ import {
   type StorytellerWysiwygEditorHandle,
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
-import { parseMarkdownToParagraphs } from "@/pages/storyteller/wysiwygCore/parser.ts";
+import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
 import type {
   StorytellerAgenticProposal,
   StorytellerAsset,
@@ -159,19 +159,9 @@ function loreDependencyRefs(keys: string[]): StorytellerLoreDependency[] {
   });
 }
 
-// 字數只算段落實際文字，不含 marker id／comment 屬性／標題與對齊語法的符號——
-// wordCount 顯示跟「離開頁面前要不要示警」的空白判斷都靠這個共用，不要分開重算兩次。
-function loreContentWordCount(content: string) {
-  const cleanText = parseMarkdownToParagraphs(content)
-    .flatMap((paragraph) => paragraph.runs)
-    .map((run) => run.text)
-    .join("");
-  return cleanText.replace(/\s+/g, "").length;
-}
-
 // 標題跟內容都是空的，就算跟已存檔版本不同也不用示警——沒有東西值得保護。
 function isLoreDraftEmpty(title: string, content: string) {
-  return title.trim() === "" && loreContentWordCount(content) === 0;
+  return title.trim() === "" && contentWordCount(content) === 0;
 }
 
 function errorMessage(error: unknown, fallback: string) {
@@ -344,7 +334,7 @@ export default function StorytellerLoreEditor({
   const pageTitle = isNewLore
     ? "建立設定"
     : title.trim() || lore?.title || "設定";
-  const wordCount = useMemo(() => loreContentWordCount(content), [content]);
+  const wordCount = useMemo(() => contentWordCount(content), [content]);
   const panelAgents: StorytellerAgentPanelAgent[] = agents.map((agent) => ({
     id: String(agent.id),
     name: agent.name,

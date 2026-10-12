@@ -2,11 +2,11 @@ import SendIcon from "@mui/icons-material/Send";
 import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Stack, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage } from "@/lib/backend.ts";
-import { useBackendData } from "@/lib/useBackendData.ts";
-import { AssistantSetup } from "@/pages/workspace/AssistantSetup.tsx";
-import { useChatLog } from "@/pages/workspace/useChatLog.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage } from "@writer/lib/backend.ts";
+import { useBackendData } from "@writer/lib/useBackendData.ts";
+import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
+import { useChatLog } from "@writer/pages/workspace/useChatLog.ts";
 
 // 專案層的 AI 助理。Agent 選單只列有安裝的 CLI，對話存在 [agent]/[project]。
 export function ChatPanel({ projectID, projectName }: { projectID: string; projectName: string }) {

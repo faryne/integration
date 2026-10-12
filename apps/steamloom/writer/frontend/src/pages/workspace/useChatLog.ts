@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useSnack } from "@/components/SnackProvider.tsx";
-import { backend, errorMessage } from "@/lib/backend.ts";
+import { useSnack } from "@writer/components/SnackProvider.tsx";
+import { backend, errorMessage } from "@writer/lib/backend.ts";
 import type { agent } from "../../../wailsjs/go/models";
 
 // 不用 wails 產生的 class：那些 class 帶了 convertValues，物件字面值塞不回去。

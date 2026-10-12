@@ -15,7 +15,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
-import { useStorytellerLores } from "@/apis/storyteller.ts";
+import { useEditorLores } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import {
   isSafeHref,
   LORE_URI_PREFIX,
@@ -60,7 +60,7 @@ export function StorytellerWysiwygLinkDialog({
   const [loreId, setLoreId] = useState(initialLoreId ?? "");
   // 輸入框文字自己管理：手動打字時要清掉選取，但不能讓 Autocomplete 跟著把打到一半的字清空
   const [loreInput, setLoreInput] = useState("");
-  const loresQuery = useStorytellerLores(projectPublicId);
+  const loresQuery = useEditorLores(projectPublicId);
   const lores = loresQuery.data ?? [];
   const selectedLore = lores.find((lore) => lore.public_id === loreId) ?? null;
   const hadExistingLink = Boolean(initialHref);

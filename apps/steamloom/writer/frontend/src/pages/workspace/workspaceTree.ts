@@ -1,4 +1,4 @@
-import type { DocumentItem, Workspace, WorkspaceGroup } from "@/lib/backend.ts";
+import type { DocumentItem, Workspace, WorkspaceGroup } from "@writer/lib/backend.ts";
 
 export type DocumentTab = "editor" | "history";
 
@@ -10,4 +10,16 @@ export const isSameDocument = (a: DocumentItem | null, b: DocumentItem) =>
 export function findGroup(ws: Workspace, item: DocumentItem): WorkspaceGroup | null {
   const groups = item.kind === "story" ? ws.volumes : ws.lore_collections;
   return (groups ?? []).find((group) => (group.items ?? []).some((each) => isSameDocument(each, item))) ?? null;
+}
+
+// 文件所在分組（冊／設定集）的 public_id，未分冊／未歸類回空字串
+export const groupIdOf = (ws: Workspace, item: DocumentItem) => findGroup(ws, item)?.public_id ?? "";
+
+// 把 list[index] 往前（-1）或往後（+1）移一格，回傳新陣列；排序模式的上移／下移用
+export function moveInList<T>(list: T[], index: number, delta: -1 | 1): T[] {
+  const target = index + delta;
+  if (target < 0 || target >= list.length) return list;
+  const next = [...list];
+  [next[index], next[target]] = [next[target], next[index]];
+  return next;
 }
