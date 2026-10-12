@@ -292,3 +292,72 @@ export function buildCustomLineDiff(
   const compacted = compactChangedBlocks(alignLineDiff(leftLines, rightLines));
   return withParagraphSpacers(compacted);
 }
+
+// 未變更段落收合：只保留每個差異前後 DIFF_CONTEXT_LINES 行（上限 MAX_DIFF_CONTEXT_LINES），
+// 中間連續相同的部分收成一列「展開」，長篇只改一句話時不用捲過整篇才找得到差異。
+// 網站與 SteamLoom Writer 的版本比對都經過 CustomDiffSection 套用這個規則。
+export const DIFF_CONTEXT_LINES = 3;
+export const MAX_DIFF_CONTEXT_LINES = 5;
+// 連續相同的內容至少這麼多行才收合
+const MIN_COLLAPSED_LINES = 2;
+
+export type CustomDiffRow =
+  | { kind: "line"; line: CustomDiffLine }
+  // hidden 是被收合的行（含段落間空行），hiddenCount 只算有內容的行，給「展開 N 行」用
+  | { kind: "gap"; id: number; hidden: CustomDiffLine[]; hiddenCount: number };
+
+// withParagraphSpacers 補回來的段落間空行：不算進前後文行數，也不單獨顯示在收合邊界上
+const isParagraphSpacer = (line: CustomDiffLine) =>
+  line.state === "same" &&
+  line.left === "" &&
+  line.right === "" &&
+  line.leftIndex === undefined &&
+  line.rightIndex === undefined;
+
+export function collapseUnchangedLines(
+  lines: CustomDiffLine[],
+  context = DIFF_CONTEXT_LINES,
+): CustomDiffRow[] {
+  const radius = Math.min(Math.max(context, 0), MAX_DIFF_CONTEXT_LINES);
+  // 有內容的行在 lines 裡的位置；前後文以「內容行」計算，空行不佔名額
+  const contentPositions = lines.flatMap((line, i) =>
+    isParagraphSpacer(line) ? [] : [i],
+  );
+  const keep = lines.map(() => false);
+  contentPositions.forEach((position, k) => {
+    if (lines[position].state === "same") return;
+    for (let offset = -radius; offset <= radius; offset++) {
+      const neighbor = contentPositions[k + offset];
+      if (neighbor !== undefined) keep[neighbor] = true;
+    }
+  });
+  // 空行只在前後兩行都保留時才保留，避免收合邊界多出一列空白
+  lines.forEach((line, i) => {
+    if (isParagraphSpacer(line)) keep[i] = Boolean(keep[i - 1] && keep[i + 1]);
+  });
+
+  const rows: CustomDiffRow[] = [];
+  let hidden: CustomDiffLine[] = [];
+  const flushHidden = () => {
+    const hiddenCount = hidden.filter(
+      (line) => !isParagraphSpacer(line),
+    ).length;
+    if (hiddenCount >= MIN_COLLAPSED_LINES) {
+      rows.push({ kind: "gap", id: hidden[0].index, hidden, hiddenCount });
+    } else if (hiddenCount > 0) {
+      // 只藏一行的話收合列跟原本那行一樣佔位，直接顯示；只剩空行的收合段則整段略過
+      hidden.forEach((line) => rows.push({ kind: "line", line }));
+    }
+    hidden = [];
+  };
+  lines.forEach((line, i) => {
+    if (keep[i]) {
+      flushHidden();
+      rows.push({ kind: "line", line });
+    } else {
+      hidden.push(line);
+    }
+  });
+  flushHidden();
+  return rows;
+}

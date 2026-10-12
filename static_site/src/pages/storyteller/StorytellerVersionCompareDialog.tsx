@@ -13,14 +13,15 @@ import {
   useTheme,
 } from "@mui/material";
 import { useMemo } from "react";
-import { buildCustomLineDiff } from "@/components/common/customDiff.ts";
-import { CustomDiffLegend } from "@/components/common/CustomDiffLegend.tsx";
-import { CustomDiffSection } from "@/components/common/CustomDiffSection.tsx";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+import { buildCustomLineDiff } from "../../components/common/customDiff.ts";
+import { CustomDiffLegend } from "../../components/common/CustomDiffLegend.tsx";
+import { CustomDiffSection } from "../../components/common/CustomDiffSection.tsx";
+import { formatStorytellerDate } from "../../data/storytellerDate.ts";
 import {
   extractFootnoteNotesForDiff,
   stripMarkerForDiffContent,
-} from "@/pages/storyteller/wysiwygCore/parser.ts";
+} from "./wysiwygCore/parser.ts";
 
 // 故事有摘要、設定集沒有，summary 留 undefined 就代表這個類型不比對摘要——
 // 兩邊呼叫端（StoryEditor／LoreEditor）都直接把 apiStoryVersions／apiLoreVersions

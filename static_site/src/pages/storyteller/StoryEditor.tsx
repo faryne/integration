@@ -68,6 +68,7 @@ import {
 import { StorytellerAssetPickerDialog } from "@/pages/storyteller/StorytellerAssetPickerDialog.tsx";
 import { StorytellerEditorSideDrawer } from "@/pages/storyteller/StorytellerEditorSideDrawer.tsx";
 import { StorytellerVersionCompareDialog } from "@/pages/storyteller/StorytellerVersionCompareDialog.tsx";
+import { useVersionCompareSelection } from "@/pages/storyteller/useVersionCompareSelection.ts";
 import { StoryWritingWorkspace } from "@/pages/storyteller/StoryWritingWorkspace.tsx";
 import { StorytellerEditorOutlinePanel } from "@/pages/storyteller/StorytellerEditorOutlinePanel.tsx";
 import { StorytellerEditorOutlineToggle } from "@/pages/storyteller/StorytellerEditorOutlineToggle.tsx";
@@ -371,8 +372,6 @@ export default function StorytellerStoryEditor({
   // 去編輯歷史看一下，不會擋下存檔或自動存檔。
   const [versionConflict, setVersionConflict] = useState(false);
   const latestVersionIdRef = useRef<number | undefined>(undefined);
-  const [leftDiffId, setLeftDiffId] = useState("");
-  const [rightDiffId, setRightDiffId] = useState("");
   const [compareDialogOpen, setCompareDialogOpen] = useState(false);
   const [historyPage, setHistoryPage] = useState(1);
   const currentDraftRef = useRef(
@@ -421,6 +420,14 @@ export default function StorytellerStoryEditor({
           : null,
       }))
     : [];
+  // 編輯歷史「選兩個版本比對」的選取規則跟 LoreEditor、SteamLoom Writer 共用
+  const {
+    leftVersionId: leftDiffId,
+    rightVersionId: rightDiffId,
+    setRightVersionId: setRightDiffId,
+    isRightVersionDisabled: isRightDiffDisabled,
+    handleLeftVersionChange: handleLeftDiffChange,
+  } = useVersionCompareSelection(storyDiffs);
   const totalHistoryPages = Math.max(
     1,
     Math.ceil(storyDiffs.length / historyPerPage),
@@ -438,7 +445,6 @@ export default function StorytellerStoryEditor({
   const rightCompareVersion = apiStoryVersions.find(
     (version) => String(version.id) === rightDiffId,
   );
-  const leftDiff = storyDiffs.find((diff) => diff.id === leftDiffId);
   const panelAgents: StorytellerAgentPanelAgent[] = agentRows.map((agent) => ({
     id: agent.id,
     name: agent.name,
@@ -861,33 +867,6 @@ export default function StorytellerStoryEditor({
         }
       />
     );
-  }
-
-  function isRightDiffDisabled(diffId: string) {
-    const diff = storyDiffs.find((item) => item.id === diffId);
-    if (!leftDiff || !diff || diff.id === leftDiff.id) {
-      return true;
-    }
-
-    return new Date(diff.createdAt) <= new Date(leftDiff.createdAt);
-  }
-
-  function handleLeftDiffChange(diffId: string) {
-    setLeftDiffId(diffId);
-    const selectedLeftDiff = storyDiffs.find((diff) => diff.id === diffId);
-    const selectedRightDiff = storyDiffs.find(
-      (diff) => diff.id === rightDiffId,
-    );
-
-    if (
-      !selectedLeftDiff ||
-      !selectedRightDiff ||
-      selectedRightDiff.id === selectedLeftDiff.id ||
-      new Date(selectedRightDiff.createdAt) <=
-        new Date(selectedLeftDiff.createdAt)
-    ) {
-      setRightDiffId("");
-    }
   }
 
   function handleSidePanelChange(value: StorytellerEditorSidePanel | null) {

@@ -19,7 +19,8 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { formatStorytellerDate } from "@/data/storyteller.ts";
+// 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
+import { formatStorytellerDate } from "../../data/storytellerDate.ts";
 
 export interface StoryEditHistoryItem {
   id: string;
