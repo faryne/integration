@@ -35,6 +35,7 @@ type storytellerUpsertStoryArguments struct {
 	Content         string    `json:"content"`
 	VolumePublicID  *string   `json:"volume_public_id"`
 	BaseVersionID   *uint64   `json:"base_version_id"`
+	AbortOnConflict bool      `json:"abort_on_conflict"`
 	Profiles        *[]string `json:"profiles"`
 }
 
@@ -217,7 +218,8 @@ func storytellerStoryToolSpecs() []ToolSpec {
 				"Pass base_version_id (from storyteller_get_story) to detect if someone else's edit (e.g. from the web editor) happened " +
 				"in the meantime: the write always succeeds and is saved as a new version either way, but the response's " +
 				"version_conflict is true if the story had moved on past base_version_id — consider re-fetching with " +
-				"storyteller_get_story afterwards to check nothing important got lost.",
+				"storyteller_get_story afterwards to check nothing important got lost. Set abort_on_conflict=true for an approved " +
+				"write that must fail before creating a version when base_version_id is stale.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"story_public_id": stringSchema("Existing story public_id to update. Omit ONLY when you actually want to create a brand " +
@@ -233,9 +235,10 @@ func storytellerStoryToolSpecs() []ToolSpec {
 						"NOT count — the proposal card shown to the user is built purely from this argument, so if you leave " +
 						"it out the user sees an empty diff and an empty overwrite. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 				),
-				"volume_public_id": stringSchema("Optional, but semantically important. Omit to preserve the story's current volume membership on update; pass an empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
-				"base_version_id":  integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
-				"profiles":         stringArraySchema("Optional pen names to attribute this story to. Use the account's own pen name for the account identity. Omit to keep current attribution on update, or default to the account identity on create."),
+				"volume_public_id":  stringSchema("Optional, but semantically important. Omit to preserve the story's current volume membership on update; pass an empty string to remove it from any volume; pass a volume public_id to move it into that volume."),
+				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_story; the response's version_conflict flags if the story has moved on since, but the write still always happens."),
+				"abort_on_conflict": booleanSchema("Optional. When true, base_version_id is required for updates and a stale base aborts the transaction before any version or metadata is written. Use true for Writer-approved proposals."),
+				"profiles":          stringArraySchema("Optional pen names to attribute this story to. Use the account's own pen name for the account identity. Omit to keep current attribution on update, or default to the account identity on create."),
 			}, []string{"project_public_id", "title", "content"}),
 			Handler: func(ctx context.Context, arguments map[string]interface{}) (interface{}, error) {
 				userID, err := storytellerUserIDFromContext(ctx)
@@ -247,13 +250,14 @@ func storytellerStoryToolSpecs() []ToolSpec {
 					return nil, err
 				}
 				input := storytellerModel.StoryRequest{
-					Title:         args.Title,
-					Summary:       args.Summary,
-					Status:        storytellerModel.StoryStatus(args.Status),
-					Sort:          args.Sort,
-					Content:       args.Content,
-					BaseVersionID: args.BaseVersionID,
-					ParentID:      args.VolumePublicID,
+					Title:           args.Title,
+					Summary:         args.Summary,
+					Status:          storytellerModel.StoryStatus(args.Status),
+					Sort:            args.Sort,
+					Content:         args.Content,
+					BaseVersionID:   args.BaseVersionID,
+					AbortOnConflict: args.AbortOnConflict,
+					ParentID:        args.VolumePublicID,
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()

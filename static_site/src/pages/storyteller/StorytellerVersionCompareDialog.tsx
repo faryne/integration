@@ -4,6 +4,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import {
   Chip,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
@@ -12,7 +13,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 // 網站與 SteamLoom Writer 共用；Writer 透過 alias 直接 import，這支檔案只能用相對路徑 import。
 import { buildCustomLineDiff } from "../../components/common/customDiff.ts";
 import { CustomDiffLegend } from "../../components/common/CustomDiffLegend.tsx";
@@ -50,12 +51,23 @@ export function StorytellerVersionCompareDialog({
   itemTitle,
   leftVersion,
   rightVersion,
+  dialogTitle,
+  leftVersionLabel = "舊版本",
+  rightVersionLabel = "新版本",
+  notice,
+  actions,
 }: {
   open: boolean;
   onClose: () => void;
   itemTitle: string;
   leftVersion: StorytellerVersionCompareEntry | null;
   rightVersion: StorytellerVersionCompareEntry | null;
+  /** proposal review 可覆寫標題與左右語意，預設仍維持編輯歷史的版本比對文案。 */
+  dialogTitle?: string;
+  leftVersionLabel?: string;
+  rightVersionLabel?: string;
+  notice?: ReactNode;
+  actions?: ReactNode;
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -141,7 +153,7 @@ export function StorytellerVersionCompareDialog({
         >
           <Stack spacing={0.25} sx={{ minWidth: 0 }}>
             <Typography variant="h6" fontWeight={800} noWrap>
-              {itemTitle} 版本比對
+              {dialogTitle ?? `${itemTitle} 版本比對`}
             </Typography>
             {diffSections.length > 0 && (
               <Chip
@@ -172,7 +184,7 @@ export function StorytellerVersionCompareDialog({
               <Stack direction="row" spacing={1} alignItems="center">
                 <ArrowBackIcon fontSize="small" color="disabled" />
                 <Typography variant="body2" color="text.secondary">
-                  舊版本
+                  {leftVersionLabel}
                 </Typography>
                 <Chip size="small" label={leftVersion.source} />
                 <Typography variant="body2" color="text.secondary">
@@ -181,7 +193,7 @@ export function StorytellerVersionCompareDialog({
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography variant="body2" color="text.secondary">
-                  新版本
+                  {rightVersionLabel}
                 </Typography>
                 <Chip size="small" label={rightVersion.source} />
                 <Typography variant="body2" color="text.secondary">
@@ -190,14 +202,15 @@ export function StorytellerVersionCompareDialog({
                 <ArrowForwardIcon fontSize="small" color="disabled" />
               </Stack>
             </Stack>
+            {notice}
             <CustomDiffLegend />
             {diffSections.map((section) => (
               <CustomDiffSection
                 key={section.key}
                 title={section.title}
                 lines={section.lines}
-                leftTitle="舊版本"
-                rightTitle="新版本"
+                leftTitle={leftVersionLabel}
+                rightTitle={rightVersionLabel}
                 leftMetadataLabels={[
                   leftVersion.source,
                   formatStorytellerDate(leftVersion.createdAt),
@@ -211,6 +224,7 @@ export function StorytellerVersionCompareDialog({
           </Stack>
         )}
       </DialogContent>
+      {actions && <DialogActions>{actions}</DialogActions>}
     </Dialog>
   );
 }

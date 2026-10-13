@@ -177,6 +177,10 @@ body[data-screen="workspace"] #workspace { display: flex; }
 .tab:hover { color: var(--text); }
 .tab svg.i { width: 17px; height: 17px; }
 .tab .dot { width: 7px; height: 7px; border-radius: 50%; display: none; }
+.review-count {
+  min-width: 19px; height: 19px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--warn); color: #2d2108; font-size: 11px; font-weight: 700;
+}
 body.running .tab[data-tab-go="chat"] .dot { display: block; background: var(--accent); }
 body.conflict .tab[data-tab-go="editor"] .dot { display: block; background: var(--warn); }
 body[data-tab="chat"] .tab[data-tab-go="chat"],

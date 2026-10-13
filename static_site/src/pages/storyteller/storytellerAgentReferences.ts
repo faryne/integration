@@ -1,8 +1,8 @@
-import { steamloomPath } from "@/helpers/steamloom.ts";
+import { steamloomPath } from "../../helpers/steamloom.ts";
 import type {
   StorytellerAgenticProposal,
   StorytellerAgentRunReference,
-} from "@/types/storyteller.ts";
+} from "../../types/storyteller.ts";
 
 export type StorytellerAgentReferenceKind = "story" | "lore";
 
@@ -28,7 +28,7 @@ interface ResolveAgentReferencesInput {
   lores: StorytellerAgentReferenceSource[];
 }
 
-interface ParsedReferenceToken {
+export interface ParsedReferenceToken {
   token: string;
   kind: StorytellerAgentReferenceKind;
   title: string;
@@ -60,6 +60,8 @@ export interface StorytellerAgentPromptSegment {
 export interface StorytellerAgentKnownReferenceTitles {
   storyTitles?: Iterable<string>;
   loreTitles?: Iterable<string>;
+  // Writer 的 AI 助理位於專案層級，設為 false 後不把 @thisStory／@thisLore 視為有效語法。
+  includeCurrentReferences?: boolean;
 }
 
 // 把整段輸入文字切成「一般文字」跟「引用 token」的交錯片段。純掃語法
@@ -83,11 +85,19 @@ export function segmentStorytellerAgentPromptForHighlight(
   const loreTitles = knownTitles?.loreTitles
     ? [...knownTitles.loreTitles].sort((a, b) => b.length - a.length)
     : [];
+  const includeCurrentReferences =
+    knownTitles?.includeCurrentReferences ?? true;
   const segments: StorytellerAgentPromptSegment[] = [];
   let plainStart = 0;
   let index = 0;
   while (index < prompt.length) {
-    const token = matchHighlightTokenAt(prompt, index, storyTitles, loreTitles);
+    const token = matchHighlightTokenAt(
+      prompt,
+      index,
+      storyTitles,
+      loreTitles,
+      includeCurrentReferences,
+    );
     if (!token) {
       index += 1;
       continue;
@@ -110,12 +120,14 @@ function matchHighlightTokenAt(
   start: number,
   storyTitles: string[],
   loreTitles: string[],
+  includeCurrentReferences: boolean,
 ): { text: string; kind: "current" | "named" } | null {
   const match = matchHighlightTokenCandidate(
     prompt,
     start,
     storyTitles,
     loreTitles,
+    includeCurrentReferences,
   );
   if (!match) {
     return null;
@@ -142,11 +154,12 @@ function matchHighlightTokenCandidate(
   start: number,
   storyTitles: string[],
   loreTitles: string[],
+  includeCurrentReferences: boolean,
 ): { text: string; kind: "current" | "named" } | null {
-  if (prompt.startsWith("@thisStory", start)) {
+  if (includeCurrentReferences && prompt.startsWith("@thisStory", start)) {
     return { text: "@thisStory", kind: "current" };
   }
-  if (prompt.startsWith("@thisLore", start)) {
+  if (includeCurrentReferences && prompt.startsWith("@thisLore", start)) {
     return { text: "@thisLore", kind: "current" };
   }
   const storyByTitle = matchKnownReferenceTitleAt(
@@ -503,7 +516,7 @@ function summarizeStorytellerAgentReplyContent(
   return `${characters.slice(0, maxLength).join("")}…`;
 }
 
-function parseStorytellerAgentReferenceTokens(prompt: string) {
+export function parseStorytellerAgentReferenceTokens(prompt: string) {
   const tokens: ParsedReferenceToken[] = [];
   for (let index = 0; index < prompt.length; index += 1) {
     // 集中解析 bracket token，避免標題含空白或中括號時被錯誤切割。

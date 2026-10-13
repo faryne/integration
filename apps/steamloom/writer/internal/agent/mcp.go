@@ -6,12 +6,26 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 )
 
 // 安裝提示用的名稱。偵測不看這個名字，只看位址；使用者自己取的名字不用管。
 const steamLoomMCPName = "SteamLoom"
 const steamLoomMCPURL = "https://steamloom.works/mcp"
+
+// writerReadOnlyTools 是 draft turn 唯一會被自動核准的 SteamLoom 工具；任何 mutation 都不在清單內。
+var writerReadOnlyTools = []string{
+	"storyteller_get_project",
+	"storyteller_list_stories", "storyteller_get_story", "storyteller_list_story_versions", "storyteller_get_story_version",
+	"storyteller_list_story_chapters", "storyteller_get_story_chapter", "storyteller_get_story_chapters", "storyteller_list_volumes",
+	"storyteller_list_lores", "storyteller_get_lore", "storyteller_list_lore_versions", "storyteller_get_lore_version",
+	"storyteller_list_lore_collections", "storyteller_list_lore_chapters", "storyteller_get_lore_chapter", "storyteller_get_lore_chapters",
+	"storyteller_list_assets", "storyteller_get_asset", "storyteller_list_asset_collections",
+	"storyteller_search_project", "storyteller_list_memories", "storyteller_search_memories", "storyteller_list_profiles",
+	"storyteller_validate_content",
+}
 
 // McpHint 是對話區要不要提示安裝。Command 是給使用者自己貼到終端機的指令，Writer 不執行。
 type McpHint struct {
@@ -42,15 +56,20 @@ func mcpHint(agentID, home string) (McpHint, error) {
 }
 
 func mcpInstalled(agentID, home string) (bool, error) {
+	_, installed, err := mcpServer(agentID, home)
+	return installed, err
+}
+
+func mcpServer(agentID, home string) (string, bool, error) {
 	switch agentID {
 	case "claude":
-		return claudeHasMCP(home)
+		return claudeMCPServer(home)
 	case "codex":
-		return tomlHasMCP(filepath.Join(home, ".codex", "config.toml"))
+		return tomlMCPServer(filepath.Join(home, ".codex", "config.toml"))
 	case "grok":
-		return tomlHasMCP(filepath.Join(home, ".grok", "config.toml"))
+		return tomlMCPServer(filepath.Join(home, ".grok", "config.toml"))
 	default:
-		return false, errors.New("不支援的 AI Agent")
+		return "", false, errors.New("不支援的 AI Agent")
 	}
 }
 
@@ -89,52 +108,50 @@ type mcpURL struct {
 	URL string `json:"url"`
 }
 
-func claudeHasMCP(home string) (bool, error) {
+func claudeMCPServer(home string) (string, bool, error) {
 	data, err := os.ReadFile(filepath.Join(home, ".claude.json"))
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return "", false, nil
 	}
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	var cfg struct {
 		McpServers map[string]mcpURL `json:"mcpServers"`
-		Projects   map[string]struct {
-			McpServers map[string]mcpURL `json:"mcpServers"`
-		} `json:"projects"`
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return false, err
+		return "", false, err
 	}
-	if urlsHaveMCP(cfg.McpServers) {
-		return true, nil
+	if name := serverNameWithMCP(cfg.McpServers); name != "" {
+		return name, true, nil
 	}
-	for _, project := range cfg.Projects {
-		if urlsHaveMCP(project.McpServers) {
-			return true, nil
-		}
-	}
-	return false, nil
+	// Writer 的 Agent 在獨立 session 目錄執行，不能誤用只對其他專案生效的 local-scope MCP。
+	return "", false, nil
 }
 
-func urlsHaveMCP(servers map[string]mcpURL) bool {
-	for _, server := range servers {
+func serverNameWithMCP(servers map[string]mcpURL) string {
+	names := make([]string, 0, len(servers))
+	for name, server := range servers {
 		if sameSteamLoomMCP(server.URL) {
-			return true
+			names = append(names, name)
 		}
 	}
-	return false
+	sort.Strings(names)
+	if len(names) == 0 {
+		return ""
+	}
+	return names[0]
 }
 
-func tomlHasMCP(path string) (bool, error) {
+func tomlMCPServer(path string) (string, bool, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+		return "", false, nil
 	}
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
-	inServer := false
+	serverName := ""
 	for _, line := range strings.Split(string(data), "\n") {
 		trim := strings.TrimSpace(line)
 		if trim == "" || strings.HasPrefix(trim, "#") {
@@ -143,11 +160,10 @@ func tomlHasMCP(path string) (bool, error) {
 		if strings.HasPrefix(trim, "[") {
 			// [mcp_servers.名稱] 才算；[mcp_servers.名稱.headers] 裡的 url 不是連線位址。
 			header := strings.Trim(trim, "[]")
-			name, ok := strings.CutPrefix(header, "mcp_servers.")
-			inServer = ok && name != "" && !strings.Contains(name, ".")
+			serverName = tomlMCPServerName(header)
 			continue
 		}
-		if !inServer {
+		if serverName == "" {
 			continue
 		}
 		key, value, ok := strings.Cut(trim, "=")
@@ -155,10 +171,44 @@ func tomlHasMCP(path string) (bool, error) {
 			continue
 		}
 		if sameSteamLoomMCP(tomlString(value)) {
-			return true, nil
+			return serverName, true, nil
 		}
 	}
-	return false, nil
+	return "", false, nil
+}
+
+func tomlMCPServerName(header string) string {
+	value, ok := strings.CutPrefix(strings.TrimSpace(header), "mcp_servers.")
+	if !ok || value == "" {
+		return ""
+	}
+	if value[0] == '"' {
+		for i := 1; i < len(value); i++ {
+			if value[i] != '"' || value[i-1] == '\\' {
+				continue
+			}
+			if strings.TrimSpace(value[i+1:]) != "" {
+				return ""
+			}
+			name, err := strconv.Unquote(value[:i+1])
+			if err == nil {
+				return name
+			}
+			return ""
+		}
+		return ""
+	}
+	if value[0] == '\'' {
+		end := strings.IndexByte(value[1:], '\'')
+		if end < 0 || strings.TrimSpace(value[end+2:]) != "" {
+			return ""
+		}
+		return value[1 : end+1]
+	}
+	if strings.Contains(value, ".") {
+		return ""
+	}
+	return strings.TrimSpace(value)
 }
 
 func tomlString(value string) string {

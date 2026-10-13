@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	goruntime "runtime"
 	"time"
@@ -24,6 +26,7 @@ type App struct {
 	api     *api.Client
 	updater *appupdate.Service
 	skill   *skillupdate.Service
+	tasks   *agent.TaskManager
 }
 
 func NewApp() *App {
@@ -44,7 +47,18 @@ func NewApp() *App {
 	return app
 }
 
-func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+	a.tasks = agent.NewTaskManager(ctx, agent.Ask, func(event agent.TaskEvent) {
+		runtime.EventsEmit(ctx, agent.TaskEventName, event)
+	})
+}
+
+func (a *App) shutdown(context.Context) {
+	if a.tasks != nil {
+		a.tasks.Close()
+	}
+}
 
 // Me 回傳目前登入的作者；沒登入時回 ErrNotLoggedIn，前端顯示登入畫面。
 func (a *App) Me() (*api.Profile, error) { return a.api.Me(a.ctx) }
@@ -84,6 +98,9 @@ func (a *App) McpInstalled(agentID string) (agent.McpHint, error) {
 
 // ChatOpen 讀出這個專案在這個 Agent 底下、目前那一條對話的尾端。
 func (a *App) ChatOpen(agentID, projectID string) (*agent.ChatPage, error) {
+	if err := agent.RecoverInterruptedApplies(projectID); err != nil {
+		return nil, err
+	}
 	return chatPage(agent.OpenChat(agentID, projectID))
 }
 
@@ -104,6 +121,101 @@ func (a *App) ChatOlder(agentID, projectID, threadID string, start int) (*agent.
 // ChatNew 為了切開 context 開一條新串。舊串留在列表裡，還可以回去續聊。
 func (a *App) ChatNew(agentID, projectID string) (*agent.ChatPage, error) {
 	return chatPage(agent.NewChat(agentID, projectID))
+}
+
+// ChatDelete 永久移除 Writer 本機對話；不刪除 Agent provider session，也不碰 SteamLoom。
+func (a *App) ChatDelete(agentID, projectID, threadID string) (*agent.ChatPage, error) {
+	if a.tasks != nil {
+		for _, task := range a.tasks.Active(projectID) {
+			if task.AgentID == agentID && task.ThreadID == threadID {
+				return nil, errors.New("這條對話仍有工作執行中，請先停止工作再刪除")
+			}
+		}
+	}
+	return chatPage(agent.DeleteChat(agentID, projectID, threadID))
+}
+
+// ChatThreads 彙整專案底下所有 provider 的 thread，供專案層級 task rail 顯示。
+func (a *App) ChatThreads(projectID string) ([]agent.ProjectThread, error) {
+	if err := agent.RecoverInterruptedApplies(projectID); err != nil {
+		return nil, err
+	}
+	threads, err := agent.ProjectThreads(projectID)
+	if err != nil {
+		return nil, err
+	}
+	active := []agent.Task{}
+	if a.tasks != nil {
+		active = a.tasks.Active(projectID)
+	}
+	for i := range threads {
+		thread := &threads[i]
+		thread.LastTaskState = staleTaskState(thread.LastTaskState, active, thread.AgentID, thread.ID)
+		for _, task := range active {
+			if task.AgentID != thread.AgentID || task.ThreadID != thread.ID {
+				continue
+			}
+			if task.State == agent.TaskRunning || thread.LastTaskState != agent.TaskRunning {
+				thread.LastTaskState = task.State
+				thread.ActiveTaskID = task.ID
+			}
+		}
+	}
+	return threads, nil
+}
+
+// ChatProposals 只讀 Writer 本機的待確認成果，不接觸 SteamLoom MCP。
+func (a *App) ChatProposals(agentID, projectID, threadID string) ([]agent.Proposal, error) {
+	return agent.Proposals(agentID, projectID, threadID)
+}
+
+// ProposalAssetPreview 只在使用者打開 review 時讀取 Writer 管理的本機圖片。
+func (a *App) ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID string) (string, error) {
+	return agent.ProposalAssetPreview(agentID, projectID, threadID, proposalID, itemID)
+}
+
+// DecideProposal 只保存作者決策；Writer 不執行 MCP。允許前先確認審閱基準仍是 DB latest。
+func (a *App) DecideProposal(agentID, projectID, threadID, proposalID, decision string) (*agent.Proposal, error) {
+	proposal, err := agent.ProposalByID(agentID, projectID, threadID, proposalID)
+	if err != nil {
+		return nil, err
+	}
+	if decision == agent.ProposalDecisionApprove && proposal.Status == agent.ProposalAwaitingConfirmation {
+		for _, item := range proposal.Items {
+			if item.TargetID == "" || (item.Kind != agent.ProposalKindStory && item.Kind != agent.ProposalKindLore) {
+				continue
+			}
+			document, err := a.api.Document(a.ctx, projectID, api.DocumentKind(item.Kind), item.TargetID)
+			if err != nil {
+				return nil, err
+			}
+			if document.LatestVersionID == nil || fmt.Sprint(*document.LatestVersionID) != item.BaseVersionID {
+				return nil, fmt.Errorf("%s 的目前版本已變更，請讓 Agent 重新產生提案", item.Title)
+			}
+		}
+	}
+	decided, err := agent.DecideProposal(agentID, projectID, threadID, proposalID, decision)
+	if err != nil {
+		return nil, err
+	}
+	if decision == agent.ProposalDecisionApprove && decided.Status == agent.ProposalApproved {
+		if _, err := a.tasks.Apply(decided); err != nil {
+			return nil, err
+		}
+	}
+	return &decided, nil
+}
+
+func staleTaskState(state string, active []agent.Task, agentID, threadID string) string {
+	if state != agent.TaskQueued && state != agent.TaskRunning {
+		return state
+	}
+	for _, task := range active {
+		if task.AgentID == agentID && task.ThreadID == threadID {
+			return state
+		}
+	}
+	return agent.TaskInterrupted
 }
 
 // EnsureSkill 在「AI 助理」選擇工具、MCP 檢查之後呼叫：這個工具還沒有 Skill 就安裝，遠端較新就更新。
@@ -139,6 +251,18 @@ func (a *App) Ask(id string, req agent.Request) (*agent.Reply, error) {
 	reply.Title = saved.Title
 	return &reply, nil
 }
+
+// StartTask 立即回傳 task；實際 CLI 執行由 TaskManager 在背景依 thread 排程。
+func (a *App) StartTask(id string, req agent.Request) (*agent.Task, error) {
+	task, err := a.tasks.Start(id, req)
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
+// CancelTask 只停止指定 task，不影響同專案或同 provider 的其他 thread。
+func (a *App) CancelTask(taskID string) error { return a.tasks.Cancel(taskID) }
 
 // CheckForUpdate 由前端啟動時呼叫；沒有新版時回傳 nil。
 func (a *App) CheckForUpdate() (*appupdate.Info, error) { return a.updater.Check(a.ctx) }

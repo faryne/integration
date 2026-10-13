@@ -958,10 +958,12 @@ type StoryRequest struct {
 	// SaveTrigger 只有網頁編輯頁會帶，用來讓後端記錄這次存檔是自動存檔還是手動存檔；
 	// 值只會是 "auto" 或 "manual"，其他呼叫端（如 MCP）留空即可。
 	SaveTrigger string `json:"save_trigger,omitempty"`
-	// BaseVersionID 是呼叫端目前手上內容對應的版本 id；更新時如果這篇故事的最新版本
-	// 已經不是這個 id，代表內容被別的呼叫端動過，後端會拒絕這次存檔並回 409，
-	// 不會覆蓋掉那個更新。留空（nil）就不檢查，直接往最新版本後面接一版。
+	// BaseVersionID 是呼叫端目前手上內容對應的版本 id；預設只回報 version_conflict，
+	// AbortOnConflict=true 時才會在版本落後時拒絕整個 transaction。留空就不檢查。
 	BaseVersionID *uint64 `json:"base_version_id,omitempty"`
+	// AbortOnConflict 只供需要 fail-before-write 的呼叫端使用；一般網頁存檔維持既有
+	// last-write-wins＋version_conflict 回報，AI 核准寫回則必須設為 true。
+	AbortOnConflict bool `json:"abort_on_conflict,omitempty"`
 	// ParentID 是所屬冊的 public_id；空字串或 nil 代表移出冊／不分冊。
 	// 只能指向 is_volume=true 的故事，後端會驗證。
 	ParentID *string `json:"parent_id,omitempty"`
@@ -1156,11 +1158,12 @@ type LoreRequest struct {
 	Status  *StoryStatus `json:"status,omitempty"`
 	Summary *string      `json:"summary,omitempty"`
 	// IsSpoiler／DependsOn 同樣是「省略＝不變更」；DependsOn 傳空陣列代表清空依賴
-	IsSpoiler     *bool                `json:"is_spoiler,omitempty"`
-	DependsOn     *[]LoreDependencyRef `json:"depends_on,omitempty"`
-	SaveTrigger   string               `json:"save_trigger,omitempty"`
-	BaseVersionID *uint64              `json:"base_version_id,omitempty"`
-	CollectionID  *string              `json:"collection_id,omitempty"`
+	IsSpoiler       *bool                `json:"is_spoiler,omitempty"`
+	DependsOn       *[]LoreDependencyRef `json:"depends_on,omitempty"`
+	SaveTrigger     string               `json:"save_trigger,omitempty"`
+	BaseVersionID   *uint64              `json:"base_version_id,omitempty"`
+	AbortOnConflict bool                 `json:"abort_on_conflict,omitempty"`
+	CollectionID    *string              `json:"collection_id,omitempty"`
 }
 
 type LoreMoveRequest struct {

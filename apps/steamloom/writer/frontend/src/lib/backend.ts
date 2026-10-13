@@ -13,6 +13,13 @@ export type UpdateInfo = updater.Info;
 export type InstalledAgent = agent.Installed;
 export type AskRequest = agent.Request;
 export type AskReply = agent.Reply;
+export type AgentTask = agent.Task;
+export type AgentProposal = agent.Proposal;
+export type AgentProposalItem = agent.ProposalItem;
+// Wails events 不屬於綁定方法的 return type，因此不會自動產生 event wrapper。
+export interface AgentStreamEvent { type: string; text?: string; tool_name?: string }
+export interface AgentTaskEvent { type: string; task: AgentTask; stream?: AgentStreamEvent; proposal?: AgentProposal }
+export type AgentThread = agent.ProjectThread;
 export type VersionDetail = api.VersionDetail;
 // 對應 internal/api 的 DocumentKind
 export type DocumentKind = "story" | "lore";

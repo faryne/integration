@@ -11,3 +11,10 @@ export function findGroup(ws: Workspace, item: DocumentItem): WorkspaceGroup | n
   const groups = item.kind === "story" ? ws.volumes : ws.lore_collections;
   return (groups ?? []).find((group) => (group.items ?? []).some((each) => isSameDocument(each, item))) ?? null;
 }
+
+// AI 指示詞 autocomplete 只需要專案目錄的 metadata，不讀取故事或設定本文。
+export function workspaceDocuments(ws: Workspace, kind: DocumentItem["kind"]): DocumentItem[] {
+  const groups = kind === "story" ? ws.volumes : ws.lore_collections;
+  const ungrouped = kind === "story" ? ws.ungrouped_stories : ws.uncategorized_lores;
+  return [...(groups ?? []).flatMap((group) => group.items ?? []), ...(ungrouped ?? [])];
+}

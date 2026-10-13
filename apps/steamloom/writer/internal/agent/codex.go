@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"strings"
 )
 
@@ -23,27 +24,65 @@ type codexClient struct{ bin string }
 
 func newCodex(bin string) Client { return codexClient{bin: bin} }
 
-func codexArgs(sessionID, dir string) []string {
+func codexArgs(sessionID, dir, mcpServer string) []string {
+	return codexArgsWithTools(sessionID, dir, mcpServer, writerReadOnlyTools)
+}
+
+func codexArgsWithTools(sessionID, dir, mcpServer string, allowed []string) []string {
+	config := codexMCPConfig(mcpServer, allowed)
 	// resume 子命令沒有 --color，色碼靠 --json 就不會進 stdout
 	if sessionID != "" {
-		return []string{
+		args := []string{
 			"exec", "resume",
 			"--json",
 			"--skip-git-repo-check",
 			"-c", `sandbox_mode="read-only"`,
-			sessionID,
-			"-",
 		}
+		args = append(args, config...)
+		return append(args, sessionID, "-")
 	}
-	return []string{
+	args := []string{
 		"exec",
 		"--json",
 		"--color", "never",
 		"--sandbox", "read-only",
 		"--skip-git-repo-check",
 		"-C", dir,
-		"-",
 	}
+	args = append(args, config...)
+	return append(args, "-")
+}
+
+func codexMCPConfig(server string, allowed []string) []string {
+	if server == "" {
+		return nil
+	}
+	tools, _ := json.Marshal(allowed)
+	key := "mcp_servers." + strconv.Quote(server)
+	// Codex 自行使用既有 MCP 設定；未列入 enabled_tools 的 mutation 不會進入這輪工具集合。
+	return []string{"-c", key + ".enabled_tools=" + string(tools), "-c", key + `.default_tools_approval_mode="approve"`}
+}
+
+func codexRequestArgs(req Request, dir string) []string {
+	args := codexArgsWithTools(req.SessionID, dir, req.mcpServer, req.mcpTools())
+	if req.grant == nil || req.grant.assetMCP == nil {
+		return args
+	}
+	key := "mcp_servers." + strconv.Quote(assetMCPServerName)
+	serverArgs, _ := json.Marshal(req.grant.assetMCP.Args)
+	toolNames, _ := json.Marshal([]string{assetMCPToolName})
+	config := []string{
+		"-c", key + ".command=" + strconv.Quote(req.grant.assetMCP.Command),
+		"-c", key + ".args=" + string(serverArgs),
+		"-c", key + ".enabled_tools=" + string(toolNames),
+		"-c", key + `.default_tools_approval_mode="approve"`,
+	}
+	tail := 1
+	if req.SessionID != "" {
+		tail = 2
+	}
+	position := len(args) - tail
+	return append(append(append([]string{}, args[:position]...), config...), args[position:]...)
 }
 
 func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
@@ -51,13 +90,15 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
+	tools := map[string]string{}
 	return invoke(ctx, invocation{
 		name:   "Codex",
 		bin:    c.bin,
 		dir:    dir,
-		args:   codexArgs(req.SessionID, dir),
+		args:   codexRequestArgs(req, dir),
 		stdin:  req.body(),
 		parse:  parseCodex,
+		stream: func(line string) { emitCodexStream(req, line, tools) },
 		resume: req.SessionID,
 	})
 }
@@ -125,4 +166,37 @@ func codexMessage(raw json.RawMessage, fallback string) string {
 		return obj.Message
 	}
 	return fallback
+}
+
+func emitCodexStream(req Request, line string, tools map[string]string) {
+	var event struct {
+		Type string `json:"type"`
+		Item struct {
+			ID     string `json:"id"`
+			Type   string `json:"type"`
+			Text   string `json:"text"`
+			Server string `json:"server"`
+			Tool   string `json:"tool"`
+		} `json:"item"`
+	}
+	if json.Unmarshal([]byte(line), &event) != nil {
+		return
+	}
+	if event.Type == "item.completed" && event.Item.Type == "agent_message" && event.Item.Text != "" {
+		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: event.Item.Text})
+		return
+	}
+	if event.Item.Type != "mcp_tool_call" {
+		return
+	}
+	name := strings.Trim(strings.Join([]string{event.Item.Server, event.Item.Tool}, "."), ".")
+	if event.Type == "item.started" {
+		tools[event.Item.ID] = name
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: name})
+	} else if event.Type == "item.completed" {
+		if name == "" {
+			name = tools[event.Item.ID]
+		}
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: name})
+	}
 }

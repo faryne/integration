@@ -1,4 +1,4 @@
-import { formatStorytellerAgentReferenceToken } from "@/pages/storyteller/storytellerAgentReferences.ts";
+import { formatStorytellerAgentReferenceToken } from "./storytellerAgentReferences.ts";
 
 // StoryEditor／LoreEditor 共用的 AI Agent 編輯行為：@story:／@lore: 引用解析與插入、
 // 內文選取範圍追蹤、AI 回應套用到內文。兩個編輯器各自擁有自己的 content／selection

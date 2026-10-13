@@ -1,6 +1,6 @@
 # SteamLoom Writer 桌面版
 
-- 狀態：v0.1.0 已發佈（登入＋專案列表）；專案主頁骨架實作中，2026-10-11
+- 狀態：v0.1.5 已發佈；登入、專案工作台骨架、版本歷史與本機 AI CLI 純問答已完成，2026-10-12
 - Branch：`feat/steamloom-desktop-agent`
 - 程式碼：`apps/steamloom/writer/`（獨立 go module `faryne.dev/apps/steamloom/writer`）
 - Mockup：`DevelopDocuments/storyteller/writer-app-mockup/`
@@ -68,7 +68,7 @@
 ## 待辦
 
 - 專案主頁：編輯器換成網站 WYSIWYG、編輯歷史還原、資產與記憶頁。
-- 本機 CLI adapter（先 Claude Code，再 Codex app-server，Grok 最後）。
+- 本機 CLI adapter 已完成第一版（Claude Code／Codex／Grok Build 的 headless 純問答與 session resume）；agentic 化、streaming、MCP tool trace／approval 的研究與分期見 [SteamLoom_Writer_AI助理_2026-10-12.md](SteamLoom_Writer_AI助理_2026-10-12.md)。
 - static_site 的 API client 改成可注入（Bearer＋base URL），編輯器等元件才能在 Writer 裡沿用。
 - 外觀目前固定 nocturne，之後接 appearance 切換。
 

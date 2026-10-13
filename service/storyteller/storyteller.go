@@ -966,6 +966,9 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	if err := validateStory(input); err != nil {
 		return nil, false, err
 	}
+	if input.AbortOnConflict && input.BaseVersionID == nil {
+		return nil, false, errors.New("base_version_id is required when abort_on_conflict is true")
+	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, false, err
@@ -1014,7 +1017,7 @@ func (s *Service) UpdateStory(userID uint64, projectPublicID, storyPublicID stri
 	story.LatestContent = input.Content
 	story.WordCount = storyWordCount(story.ContentType, input.Content)
 	version := buildStoryVersion(*story, source)
-	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID, volumeEvent)
+	conflicted, err = s.repo.UpdateStoryWithVersion(story, version, input.BaseVersionID, input.AbortOnConflict, volumeEvent)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1145,7 +1148,7 @@ func (s *Service) RevertStory(userID uint64, projectPublicID, storyPublicID stri
 	story.WordCount = target.WordCount
 	version := buildStoryVersion(*story, source)
 	version.RevertedFromVersionID = &target.ID
-	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil, nil); err != nil {
+	if _, err := s.repo.UpdateStoryWithVersion(story, version, nil, false, nil); err != nil {
 		return nil, err
 	}
 	if story.ContentType == storytellerModel.ProjectContentTypeImage {
@@ -1262,7 +1265,7 @@ func (s *Service) UpdateVolume(userID uint64, projectPublicID, volumePublicID st
 	volume.Sort = input.Sort
 	volume.Status = input.Status
 	version := buildStoryVersion(*volume, source)
-	if _, err := s.repo.UpdateStoryWithVersion(volume, version, nil, nil); err != nil {
+	if _, err := s.repo.UpdateStoryWithVersion(volume, version, nil, false, nil); err != nil {
 		return nil, err
 	}
 	s.resyncProjectSearchIndex(project)
@@ -2350,6 +2353,9 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	if err := validateLore(input); err != nil {
 		return nil, false, err
 	}
+	if input.AbortOnConflict && input.BaseVersionID == nil {
+		return nil, false, errors.New("base_version_id is required when abort_on_conflict is true")
+	}
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
 		return nil, false, err
@@ -2380,7 +2386,7 @@ func (s *Service) UpdateLore(userID uint64, projectPublicID, lorePublicID string
 	lore.LatestContent = input.Content
 	lore.WordCount = wordCount(input.Content)
 	version := buildLoreVersion(*lore, source)
-	conflicted, err = s.repo.UpdateLoreWithVersion(lore, version, input.BaseVersionID)
+	conflicted, err = s.repo.UpdateLoreWithVersion(lore, version, input.BaseVersionID, input.AbortOnConflict)
 	if err != nil {
 		return nil, false, err
 	}
@@ -2419,7 +2425,7 @@ func (s *Service) RevertLore(userID uint64, projectPublicID, lorePublicID string
 	lore.WordCount = target.WordCount
 	version := buildLoreVersion(*lore, source)
 	version.RevertedFromVersionID = &target.ID
-	if _, err := s.repo.UpdateLoreWithVersion(lore, version, nil); err != nil {
+	if _, err := s.repo.UpdateLoreWithVersion(lore, version, nil, false); err != nil {
 		return nil, err
 	}
 	if err := s.syncMarkdownAssetReferences(project.ID, assetReferenceTargetLore, lore.ID, lore.LatestVersionID, lore.LatestContent); err != nil {

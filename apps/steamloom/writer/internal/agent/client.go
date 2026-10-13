@@ -26,14 +26,20 @@ type Request struct {
 	DocumentID string `json:"document_id"`
 	Title      string `json:"title"`
 	Prompt     string `json:"prompt"`
+	emit       func(StreamEvent)
+	mcpServer  string
+	grant      *ApprovalGrant
+	workDir    string
 }
 
 // Reply 是這一輪的回答。ThreadID／Title 是存檔之後的結果，前端用來更新串列表。
 type Reply struct {
-	SessionID string `json:"session_id"`
-	Text      string `json:"text"`
-	ThreadID  string `json:"thread_id"`
-	Title     string `json:"title"`
+	SessionID   string `json:"session_id"`
+	Text        string `json:"text"`
+	ThreadID    string `json:"thread_id"`
+	Title       string `json:"title"`
+	proposals   []ProposalItem
+	applyResult *ApplyResult
 }
 
 // Installed 是選單上的一項：這台機器找得到的 CLI。
@@ -72,9 +78,34 @@ func Ask(ctx context.Context, id string, req Request) (Reply, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	// Writer 只讀本機 CLI 設定來限制這輪可見的 tool；MCP 連線、OAuth 與內容讀取都由 Agent CLI 自己處理。
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return Reply{}, err
+	}
+	if serverName, installed, err := mcpServer(id, home); err != nil {
+		return Reply{}, err
+	} else if installed {
+		req.mcpServer = serverName
+	}
+	if req.grant != nil && req.mcpServer == "" {
+		return Reply{}, errors.New("這個 Agent 尚未設定 SteamLoom MCP，無法執行核准寫入")
+	}
 	ctx, cancel := context.WithTimeout(ctx, askTimeout)
 	defer cancel()
-	return client.Ask(ctx, req)
+	reply, err := client.Ask(ctx, req)
+	if err != nil {
+		return Reply{}, err
+	}
+	if req.grant != nil {
+		reply.Text, reply.applyResult, err = parseApplyResultEnvelope(reply.Text, *req.grant)
+	} else {
+		reply.Text, reply.proposals, err = parseProposalEnvelope(reply.Text)
+	}
+	if err != nil {
+		return Reply{}, err
+	}
+	return reply, nil
 }
 
 func open(id string) (Client, error) {
@@ -121,11 +152,40 @@ func (r Request) body() string {
 	if title == "" {
 		title = "未命名"
 	}
-	return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉。只用自然語言回答寫作問題，不要修改檔案，也不要執行指令。\n\n作者的問題：\n%s", title, strings.TrimSpace(r.Prompt))
+	if r.grant != nil {
+		return r.grant.body(title)
+	}
+	if r.mcpServer != "" {
+		return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉（project_public_id: %s）。你可以使用這輪提供的 SteamLoom 唯讀與內容驗證工具自行讀取作品、設定、記憶與資產；不得建立、更新、刪除、移動、上傳或執行其他具副作用的操作。產生的內容只能放在回答或 Writer proposal 中，尚未寫入 SteamLoom。除了 provider 自己產生、且放在目前工作目錄內的 proposal 圖片，不要修改其他本機檔案，也不要執行指令。%s%s\n\n作者的問題：\n%s", title, r.ProjectID, r.referenceRules(), r.proposalRules(), strings.TrimSpace(r.Prompt))
+	}
+	return fmt.Sprintf("你是 SteamLoom Writer 裡的寫作助手。作者正在看專案〈%s〉。只用自然語言回答寫作問題，不要修改檔案，也不要執行指令。%s\n\n作者的問題：\n%s", title, r.proposalRules(), strings.TrimSpace(r.Prompt))
+}
+
+func (r Request) mcpTools() []string {
+	if r.grant != nil {
+		return r.grant.Tools
+	}
+	return writerReadOnlyTools
+}
+
+func (r Request) proposalRules() string {
+	return `
+成果規則：只有作者明確要求建立、修改或上傳 SteamLoom 內容時，才在一般回覆摘要之後附上一個 Writer proposal；討論、分析、腦力激盪或文筆示範不要附。proposal 只是本機待確認資料，不得呼叫任何寫入工具。格式必須以獨立行 <<<STEAMLOOM_WRITER_PROPOSAL_V1>>> 開始、<<<END_STEAMLOOM_WRITER_PROPOSAL_V1>>> 結束，中間是單一 JSON object：{"items":[...]}。每個 item 只用 kind（story／lore／asset）、operations（陣列，每項有 tool 與 arguments）、target_id、base_version_id、title、summary、content_type、content、base、local_path、file_name、mime_type、alt_text、collection_id。更新既有 story／lore 時必須附 target_id、讀取時取得的 base_version_id，以及包含 title／summary／content_type／content 的 base snapshot；新增時省略。asset 的 local_path 必須是目前工作目錄內的絕對路徑。operations 只描述確認後可能執行的 SteamLoom 寫入步驟與完整參數，不代表現在獲准執行。結束標記後不要再輸出任何內容。`
+}
+
+// Writer 只傳遞原始指示詞，不展開內容；名稱解析與讀取都由 Agent 的 MCP 工具完成。
+func (r Request) referenceRules() string {
+	if !strings.Contains(r.Prompt, "@story:") && !strings.Contains(r.Prompt, "@lore:") {
+		return ""
+	}
+	return "\n引用規則：@story:[標題] 請先用 storyteller_list_stories 在目前專案依完整標題定位，再用 storyteller_get_story 讀取；@lore:[標題] 同理使用 storyteller_list_lores 與 storyteller_get_lore。若同名、找不到或無法確定目標，先在回答中請作者確認，不要自行猜測。Writer 沒有附上引用內容。"
 }
 
 // 問答的工作目錄跟作品倉庫分開，CLI 才不會把 Writer 的專案當成程式專案去改。
 func (r Request) dir() (string, error) {
+	if r.workDir != "" {
+		return r.workDir, nil
+	}
 	base, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -135,6 +195,14 @@ func (r Request) dir() (string, error) {
 		return "", err
 	}
 	return dir, nil
+}
+
+func (r Request) applyDir() (string, error) {
+	root, err := r.dir()
+	if err != nil {
+		return "", err
+	}
+	return os.MkdirTemp(root, ".apply-")
 }
 
 func segment(value string) string {

@@ -55,7 +55,7 @@ export function WorkspacePage({ project, onBack }: { project: Project; onBack: (
                   </Box>
                 </>
               ) : (
-                <ChatPanel projectID={project.public_id} projectName={project.name} />
+                <ChatPanel projectID={project.public_id} projectName={project.name} workspace={workspace} />
               )}
             </Box>
           </Box>

@@ -21,6 +21,7 @@ type storytellerUpsertLoreArguments struct {
 	CollectionID    *string `json:"collection_id"`
 	Content         string  `json:"content"`
 	BaseVersionID   *uint64 `json:"base_version_id"`
+	AbortOnConflict bool    `json:"abort_on_conflict"`
 	Status          *string `json:"status"`
 	Summary         *string `json:"summary"`
 	IsSpoiler       *bool   `json:"is_spoiler"`
@@ -297,7 +298,8 @@ func storytellerLoreToolSpecs() []ToolSpec {
 				"pass an existing lore_public_id to overwrite its content (this creates a new version, the previous content is not lost). " +
 				"Pass base_version_id (from storyteller_get_lore) to detect if someone else's edit happened in the meantime: the write " +
 				"always succeeds and is saved as a new version either way, but the response's version_conflict is true if the entry had " +
-				"moved on past base_version_id — consider re-fetching with storyteller_get_lore afterwards to check nothing important got lost.",
+				"moved on past base_version_id — consider re-fetching with storyteller_get_lore afterwards to check nothing important got lost. " +
+				"Set abort_on_conflict=true for an approved write that must fail before creating a version when base_version_id is stale.",
 			InputSchema: objectSchema(map[string]interface{}{
 				"project_public_id": stringSchema("Project public_id."),
 				"lore_public_id": stringSchema("Existing lore public_id to update. Omit ONLY when you actually want to create a brand " +
@@ -311,10 +313,11 @@ func storytellerLoreToolSpecs() []ToolSpec {
 						"NOT count — the proposal card shown to the user is built purely from this argument, so if you leave " +
 						"it out the user sees an empty diff and an empty overwrite. " + storytellerContentSyntaxHint + " " + storytellerContentMarkerHint,
 				),
-				"base_version_id": integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
-				"status":          stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
-				"summary":         stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
-				"is_spoiler":      booleanSchema("Optional. Mark this lore as containing spoilers. Readers who have not finished every depends_on target must confirm before reading it; with no depends_on, readers always confirm. Omit to keep the current value."),
+				"base_version_id":   integerSchema("Optional. The version_id you last read via storyteller_get_lore; the response's version_conflict flags if the entry has moved on since, but the write still always happens."),
+				"abort_on_conflict": booleanSchema("Optional. When true, base_version_id is required for updates and a stale base aborts the transaction before any version or metadata is written. Use true for Writer-approved proposals."),
+				"status":            stringSchema("Optional. draft (author only, the default for new lores) or completed (visible to readers on the public work page). Omit to keep the current status. Lore often holds private notes and unrevealed plot, so only publish when the author asks."),
+				"summary":           stringSchema("Optional. Short reader-facing summary shown in the public lore list (max 500 characters). Omit to keep the current summary."),
+				"is_spoiler":        booleanSchema("Optional. Mark this lore as containing spoilers. Readers who have not finished every depends_on target must confirm before reading it; with no depends_on, readers always confirm. Omit to keep the current value."),
 				"depends_on": map[string]interface{}{
 					"type":        "array",
 					"description": "Optional. Stories (text or image episodes) or other lores of the same project that readers should finish before this spoiler lore. Replaces the whole list; pass [] to clear; omit to keep. Only meaningful when is_spoiler is true.",
@@ -334,14 +337,15 @@ func storytellerLoreToolSpecs() []ToolSpec {
 					return nil, err
 				}
 				input := storytellerModel.LoreRequest{
-					Title:         args.Title,
-					CollectionID:  args.CollectionID,
-					Content:       args.Content,
-					BaseVersionID: args.BaseVersionID,
-					Status:        loreStatusArgument(args.Status),
-					Summary:       args.Summary,
-					IsSpoiler:     args.IsSpoiler,
-					DependsOn:     args.DependsOn,
+					Title:           args.Title,
+					CollectionID:    args.CollectionID,
+					Content:         args.Content,
+					BaseVersionID:   args.BaseVersionID,
+					AbortOnConflict: args.AbortOnConflict,
+					Status:          loreStatusArgument(args.Status),
+					Summary:         args.Summary,
+					IsSpoiler:       args.IsSpoiler,
+					DependsOn:       args.DependsOn,
 				}
 				source := storytellerSourceFromContext(ctx)
 				service := NewService()

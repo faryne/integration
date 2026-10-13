@@ -10,25 +10,60 @@ import (
 //
 // 新對話與續聊都是一次 headless 程序，題目走 stdin（避免命令列長度上限）：
 //
-//	claude -p --output-format json --tools "" --disable-slash-commands --strict-mcp-config
-//	claude -p --output-format json --tools "" --disable-slash-commands --strict-mcp-config --resume <session_id>
+//	claude -p --output-format stream-json --include-partial-messages --verbose --tools "" --strict-mcp-config
+//	claude -p --output-format stream-json --include-partial-messages --verbose --tools "" --strict-mcp-config --resume <session_id>
 //
-// --tools "" 關掉內建工具，這輪只回答、不改檔。
+// --tools "" 關掉內建工具；有 SteamLoom MCP 時再用 allowedTools 精確放行唯讀工具。
 // stdout 是一個 JSON：session_id 用來續聊，result 是回答，is_error 為 true 時 result 是錯誤。
 type claudeClient struct{ bin string }
 
 func newClaude(bin string) Client { return claudeClient{bin: bin} }
 
-func claudeArgs(sessionID string) []string {
+func claudeArgs(sessionID, mcpServer string) []string {
+	return claudeArgsWithGrant(sessionID, mcpServer, writerReadOnlyTools)
+}
+
+func claudeArgsWithGrant(sessionID, mcpServer string, mcpTools []string) []string {
 	args := []string{
 		"-p",
-		"--output-format", "json",
+		"--output-format", "stream-json",
+		"--include-partial-messages",
+		"--verbose",
 		"--tools", "",
-		"--disable-slash-commands",
-		"--strict-mcp-config",
+	}
+	if mcpServer == "" {
+		args = append(args, "--strict-mcp-config")
+	} else {
+		// Claude Code 自行載入使用者既有的 MCP 設定與 Skill；dontAsk 只執行 Writer 明確放行的唯讀工具。
+		tools := claudeMCPTools(mcpServer, mcpTools)
+		args = append(args, "--allowedTools", tools, "--permission-mode", "dontAsk")
 	}
 	if sessionID != "" {
 		args = append(args, "--resume", sessionID)
+	}
+	return args
+}
+
+func claudeMCPTools(server string, allowed []string) string {
+	tools := make([]string, len(allowed))
+	for i, tool := range allowed {
+		tools[i] = "mcp__" + server + "__" + tool
+	}
+	return strings.Join(tools, ",")
+}
+
+func claudeRequestArgs(req Request) []string {
+	args := claudeArgsWithGrant(req.SessionID, req.mcpServer, req.mcpTools())
+	if req.grant == nil || req.grant.assetMCP == nil {
+		return args
+	}
+	config, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{assetMCPServerName: map[string]any{"command": req.grant.assetMCP.Command, "args": req.grant.assetMCP.Args}}})
+	args = append(args, "--mcp-config", string(config))
+	for index := 0; index+1 < len(args); index++ {
+		if args[index] == "--allowedTools" {
+			args[index+1] += ",mcp__" + assetMCPServerName + "__" + assetMCPToolName
+			break
+		}
 	}
 	return args
 }
@@ -38,13 +73,15 @@ func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
+	tools := map[string]string{}
 	return invoke(ctx, invocation{
 		name:   "Claude Code",
 		bin:    c.bin,
 		dir:    dir,
-		args:   claudeArgs(req.SessionID),
+		args:   claudeRequestArgs(req),
 		stdin:  req.body(),
 		parse:  parseClaude,
+		stream: func(line string) { emitClaudeStream(req, line, tools) },
 		resume: req.SessionID,
 	})
 }
@@ -75,4 +112,43 @@ func parseClaude(stdout string) (Reply, error) {
 		return Reply{}, errNoResult
 	}
 	return Reply{SessionID: result.SessionID, Text: result.Result}, nil
+}
+
+func emitClaudeStream(req Request, line string, tools map[string]string) {
+	var message struct {
+		Type  string `json:"type"`
+		Event struct {
+			Type  string `json:"type"`
+			Delta struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"delta"`
+		} `json:"event"`
+		Message struct {
+			Content []struct {
+				Type      string `json:"type"`
+				ID        string `json:"id"`
+				Name      string `json:"name"`
+				ToolUseID string `json:"tool_use_id"`
+			} `json:"content"`
+		} `json:"message"`
+	}
+	if json.Unmarshal([]byte(line), &message) != nil {
+		return
+	}
+	if message.Type == "stream_event" && message.Event.Type == "content_block_delta" && message.Event.Delta.Type == "text_delta" && message.Event.Delta.Text != "" {
+		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: message.Event.Delta.Text})
+		return
+	}
+	for _, content := range message.Message.Content {
+		switch content.Type {
+		case "tool_use":
+			if content.ID != "" {
+				tools[content.ID] = content.Name
+			}
+			req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: content.Name})
+		case "tool_result":
+			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tools[content.ToolUseID]})
+		}
+	}
 }

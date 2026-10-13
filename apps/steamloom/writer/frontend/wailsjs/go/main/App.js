@@ -18,6 +18,14 @@ export function CancelLogin() {
   return window['go']['main']['App']['CancelLogin']();
 }
 
+export function CancelTask(arg1) {
+  return window['go']['main']['App']['CancelTask'](arg1);
+}
+
+export function ChatDelete(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ChatDelete'](arg1, arg2, arg3);
+}
+
 export function ChatNew(arg1, arg2) {
   return window['go']['main']['App']['ChatNew'](arg1, arg2);
 }
@@ -30,12 +38,24 @@ export function ChatOpen(arg1, arg2) {
   return window['go']['main']['App']['ChatOpen'](arg1, arg2);
 }
 
+export function ChatProposals(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ChatProposals'](arg1, arg2, arg3);
+}
+
 export function ChatSelect(arg1, arg2, arg3) {
   return window['go']['main']['App']['ChatSelect'](arg1, arg2, arg3);
 }
 
+export function ChatThreads(arg1) {
+  return window['go']['main']['App']['ChatThreads'](arg1);
+}
+
 export function CheckForUpdate() {
   return window['go']['main']['App']['CheckForUpdate']();
+}
+
+export function DecideProposal(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['DecideProposal'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function Document(arg1, arg2, arg3) {
@@ -68,6 +88,14 @@ export function Me() {
 
 export function Projects() {
   return window['go']['main']['App']['Projects']();
+}
+
+export function ProposalAssetPreview(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ProposalAssetPreview'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function StartTask(arg1, arg2) {
+  return window['go']['main']['App']['StartTask'](arg1, arg2);
 }
 
 export function VersionDetail(arg1, arg2, arg3, arg4) {

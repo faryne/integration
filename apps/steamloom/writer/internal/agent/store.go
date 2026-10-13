@@ -18,16 +18,12 @@ const chatPageSize = 40
 
 // Thread 是一個專案、一個 Agent 底下的一條對話串。
 type Thread struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	SessionID string `json:"session_id"`
-	UpdatedAt string `json:"updated_at"`
-}
-
-// ChatLine 是畫面上的一則，只留使用者原文和助手回答，不含送給 CLI 的前言。
-type ChatLine struct {
-	Role string `json:"role"`
-	Text string `json:"text"`
+	ID            string `json:"id"`
+	Title         string `json:"title"`
+	SessionID     string `json:"session_id"`
+	UpdatedAt     string `json:"updated_at"`
+	LastTaskState string `json:"last_task_state,omitempty"`
+	ActiveTaskID  string `json:"active_task_id,omitempty"`
 }
 
 // ChatPage 是開一條串時畫面上要的東西：串列表、目前這條、以及尾端的訊息。
@@ -53,6 +49,7 @@ type chatIndex struct {
 }
 
 var chatMu sync.Mutex
+var userConfigDir = os.UserConfigDir
 
 // OpenChat 讀出這個專案、這個 Agent 目前那一條的尾端。沒有對話時列表是空的。
 func OpenChat(agentID, projectID string) (ChatPage, error) {
@@ -199,8 +196,8 @@ func SaveTurn(agentID, projectID, threadID, prompt, answer, sessionID string) (T
 		thread = found
 	}
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{
-		{Role: "user", Text: prompt},
-		{Role: "assistant", Text: answer},
+		messageEvent("user", prompt),
+		messageEvent("assistant", answer),
 	}); err != nil {
 		return Thread{}, err
 	}
@@ -217,11 +214,87 @@ func SaveTurn(agentID, projectID, threadID, prompt, answer, sessionID string) (T
 	return thread, nil
 }
 
+// DeleteChat 永久刪除 Writer 本機 thread。Provider session 與 SteamLoom 內容不受影響。
+func DeleteChat(agentID, projectID, threadID string) (ChatPage, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	if !validThread(threadID) {
+		return ChatPage{}, errors.New("找不到這段對話")
+	}
+	dir, idx, err := loadChat(agentID, projectID)
+	if err != nil {
+		return ChatPage{}, err
+	}
+	if !hasThread(idx, threadID) {
+		return ChatPage{}, errors.New("找不到這段對話")
+	}
+
+	next := idx
+	next.Threads = make([]Thread, 0, len(idx.Threads)-1)
+	for _, thread := range idx.Threads {
+		if thread.ID != threadID {
+			next.Threads = append(next.Threads, thread)
+		}
+	}
+	if next.CurrentID == threadID {
+		next.CurrentID = ""
+		if len(next.Threads) > 0 {
+			next.CurrentID = next.Threads[0].ID
+		}
+	}
+
+	// 先改名成同目錄暫存檔，index 寫入失敗時還能復原，不留下指向不存在檔案的 thread。
+	path := filepath.Join(dir, threadID+".jsonl")
+	trash := path + ".deleting"
+	moved := false
+	if err := os.Rename(path, trash); err == nil {
+		moved = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return ChatPage{}, err
+	}
+	proposalPath := filepath.Join(dir, "proposals", threadID)
+	proposalTrash := proposalPath + ".deleting"
+	proposalMoved := false
+	if err := os.Rename(proposalPath, proposalTrash); err == nil {
+		proposalMoved = true
+	} else if !errors.Is(err, os.ErrNotExist) {
+		if moved {
+			_ = os.Rename(trash, path)
+		}
+		return ChatPage{}, err
+	}
+	if err := saveIndex(dir, next); err != nil {
+		if moved {
+			_ = os.Rename(trash, path)
+		}
+		if proposalMoved {
+			_ = os.Rename(proposalTrash, proposalPath)
+		}
+		return ChatPage{}, err
+	}
+	if moved {
+		if err := os.Remove(trash); err != nil {
+			_ = saveIndex(dir, idx)
+			_ = os.Rename(trash, path)
+			return ChatPage{}, err
+		}
+	}
+	if proposalMoved {
+		if err := os.RemoveAll(proposalTrash); err != nil {
+			return ChatPage{}, err
+		}
+	}
+	if len(next.Threads) == 0 {
+		return blankPage(), nil
+	}
+	return pageFrom(dir, next, next.CurrentID)
+}
+
 func loadChat(agentID, projectID string) (string, chatIndex, error) {
 	if err := validChatKey(agentID, projectID); err != nil {
 		return "", chatIndex{}, err
 	}
-	base, err := os.UserConfigDir()
+	base, err := userConfigDir()
 	if err != nil {
 		return "", chatIndex{}, err
 	}
@@ -327,7 +400,11 @@ func readLines(path string) ([]ChatLine, error) {
 			continue
 		}
 		var line ChatLine
-		if json.Unmarshal([]byte(raw), &line) != nil || (line.Role != "user" && line.Role != "assistant") {
+		if json.Unmarshal([]byte(raw), &line) != nil {
+			continue
+		}
+		line, ok := normalizeEvent(line)
+		if !ok {
 			continue
 		}
 		lines = append(lines, line)

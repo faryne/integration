@@ -13,15 +13,25 @@ export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
 
 export function CancelLogin():Promise<void>;
 
+export function CancelTask(arg1:string):Promise<void>;
+
+export function ChatDelete(arg1:string,arg2:string,arg3:string):Promise<agent.ChatPage>;
+
 export function ChatNew(arg1:string,arg2:string):Promise<agent.ChatPage>;
 
 export function ChatOlder(arg1:string,arg2:string,arg3:string,arg4:number):Promise<agent.OlderMessages>;
 
 export function ChatOpen(arg1:string,arg2:string):Promise<agent.ChatPage>;
 
+export function ChatProposals(arg1:string,arg2:string,arg3:string):Promise<Array<agent.Proposal>>;
+
 export function ChatSelect(arg1:string,arg2:string,arg3:string):Promise<agent.ChatPage>;
 
+export function ChatThreads(arg1:string):Promise<Array<agent.ProjectThread>>;
+
 export function CheckForUpdate():Promise<updater.Info>;
+
+export function DecideProposal(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<agent.Proposal>;
 
 export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
 
@@ -38,6 +48,10 @@ export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 export function Me():Promise<api.Profile>;
 
 export function Projects():Promise<Array<api.Project>>;
+
+export function ProposalAssetPreview(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
+
+export function StartTask(arg1:string,arg2:agent.Request):Promise<agent.Task>;
 
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 

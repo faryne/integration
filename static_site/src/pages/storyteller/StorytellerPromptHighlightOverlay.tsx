@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { Box } from "@mui/material";
-import { segmentStorytellerAgentPromptForHighlight } from "@/pages/storyteller/storytellerAgentReferences.ts";
+import { segmentStorytellerAgentPromptForHighlight } from "./storytellerAgentReferences.ts";
 
 // 疊在輸入框「文字看不見的那顆真正 textarea」底下的純視覺層，讓 @thisStory／
 // @story:[...] 這類引用語法在打字當下就變色。textarea 本身還是原生元素，
@@ -28,6 +28,7 @@ export function StorytellerPromptHighlightOverlay({
   text,
   textareaRef,
   slashCommandHighlightLength = 0,
+  includeCurrentReferences = true,
 }: {
   text: string;
   textareaRef: RefObject<HTMLTextAreaElement | null>;
@@ -37,6 +38,8 @@ export function StorytellerPromptHighlightOverlay({
    * 不驗證語意，不然任何 `/亂打` 都會被誤標成合法指令）。
    */
   slashCommandHighlightLength?: number;
+  /** 專案層級的 Writer 不提供 @thisStory／@thisLore。 */
+  includeCurrentReferences?: boolean;
 }) {
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -93,9 +96,13 @@ export function StorytellerPromptHighlightOverlay({
     slashLength > 0
       ? [
           { text: text.slice(0, slashLength), kind: "slash-command" as const },
-          ...segmentStorytellerAgentPromptForHighlight(text.slice(slashLength)),
+          ...segmentStorytellerAgentPromptForHighlight(text.slice(slashLength), {
+            includeCurrentReferences,
+          }),
         ]
-      : segmentStorytellerAgentPromptForHighlight(text);
+      : segmentStorytellerAgentPromptForHighlight(text, {
+          includeCurrentReferences,
+        });
 
   return (
     <Box

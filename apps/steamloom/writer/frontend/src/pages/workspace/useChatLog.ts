@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSnack } from "@/components/SnackProvider.tsx";
 import { backend, errorMessage } from "@/lib/backend.ts";
-import type { agent } from "../../../wailsjs/go/models";
 
 // 不用 wails 產生的 class：那些 class 帶了 convertValues，物件字面值塞不回去。
-type ChatThread = { id: string; title: string; session_id: string; updated_at: string };
-type ChatLine = { role: string; text: string };
+type ChatThread = { id: string; title: string; session_id: string; updated_at: string; last_task_state?: string; active_task_id?: string };
+type ChatLine = { type?: string; role?: string; text: string; created_at?: string; task_id?: string; proposal_id?: string; event_id?: string };
 type ChatPage = {
   threads: ChatThread[];
   current_id: string;
@@ -14,10 +13,6 @@ type ChatPage = {
   start: number;
   total: number;
 };
-type Reply = agent.Reply;
-
-const pageSize = 40;
-
 // 一個專案 × 一個 Agent 的對話紀錄。切換時只讀目前那一條的尾端，更早的另按一次才補上。
 export function useChatLog(projectID: string, agentID: string) {
   const { showError } = useSnack();
@@ -25,7 +20,13 @@ export function useChatLog(projectID: string, agentID: string) {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const pin = useRef(true);
   const request = useRef(0);
+  const refresh = useRef(0);
   const box = useRef<HTMLDivElement>(null);
+  const current = useRef<ChatPage | null>(null);
+
+  useEffect(() => {
+    current.current = page;
+  }, [page]);
 
   useEffect(() => {
     if (!agentID) {
@@ -51,10 +52,10 @@ export function useChatLog(projectID: string, agentID: string) {
     box.current?.scrollTo({ top: box.current.scrollHeight });
   }, [page?.messages, page?.current_id]);
 
-  const replace = (next: ChatPage) => {
+  const replace = useCallback((next: ChatPage) => {
     pin.current = true;
     setPage(next);
-  };
+  }, []);
 
   const selectThread = async (threadID: string) => {
     if (!agentID || threadID === page?.current_id) return;
@@ -65,12 +66,47 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  const startNew = async () => {
-    if (!agentID) return;
+  // Task event 只刷新目前正在看的 thread；背景完成不能搶走使用者選取狀態。
+  const refreshVisibleThread = useCallback(async (threadID: string) => {
+    if (!agentID || current.current?.current_id !== threadID) return;
+    const token = ++refresh.current;
     try {
-      replace(await backend.ChatNew(agentID, projectID));
+      const next = await backend.ChatSelect(agentID, projectID, threadID);
+      if (refresh.current === token && current.current?.current_id === threadID) replace(next);
     } catch (err) {
       showError(errorMessage(err));
+    }
+  }, [agentID, projectID, replace, showError]);
+
+  const openThread = useCallback(async (threadID: string) => {
+    if (!agentID || !threadID) return;
+    try {
+      replace(await backend.ChatSelect(agentID, projectID, threadID));
+    } catch (err) {
+      showError(errorMessage(err));
+    }
+  }, [agentID, projectID, replace, showError]);
+
+  const startNew = async () => {
+    if (!agentID) return null;
+    try {
+      const next = await backend.ChatNew(agentID, projectID);
+      replace(next);
+      return next;
+    } catch (err) {
+      showError(errorMessage(err));
+      return null;
+    }
+  };
+
+  const deleteCurrent = async () => {
+    if (!agentID || !page?.current_id) return false;
+    try {
+      replace(await backend.ChatDelete(agentID, projectID, page.current_id));
+      return true;
+    } catch (err) {
+      showError(errorMessage(err));
+      return false;
     }
   };
 
@@ -98,24 +134,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  // 送出成功後接上這一來一回。視窗超過一頁就丟掉最舊的，位置還在檔案裡。
-  const appendTurn = (prompt: string, reply: Reply) => {
-    pin.current = true;
-    setPage((current) => {
-      const same = current?.current_id === reply.thread_id && current.current_id !== "";
-      const base = same ? (current.messages ?? []) : [];
-      let start = same ? current.start : 0;
-      let total = (same ? current.total : 0) + 2;
-      let messages = [...base, { role: "user", text: prompt }, { role: "assistant", text: reply.text }];
-      if (messages.length > pageSize) {
-        start += messages.length - pageSize;
-        messages = messages.slice(messages.length - pageSize);
-      }
-      const thread = { id: reply.thread_id, title: reply.title, session_id: reply.session_id, updated_at: new Date().toISOString() };
-      const threads = [thread, ...(current?.threads ?? []).filter((item) => item.id !== reply.thread_id)];
-      return { threads, current_id: reply.thread_id, session_id: reply.session_id, messages, start, total };
-    });
-  };
-
-  return { page, box, loadingOlder, selectThread, startNew, loadOlder, appendTurn };
+  return { page, box, loadingOlder, selectThread, openThread, refreshVisibleThread, startNew, deleteCurrent, loadOlder };
 }

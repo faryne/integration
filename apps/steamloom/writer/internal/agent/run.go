@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -27,11 +29,12 @@ type invocation struct {
 	args   []string
 	stdin  string
 	parse  func(stdout string) (Reply, error)
+	stream func(line string)
 	resume string
 }
 
 func invoke(ctx context.Context, call invocation) (Reply, error) {
-	stdout, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin)
+	stdout, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, call.stream)
 	reply, parseErr := call.parse(stdout)
 	if parseErr == nil {
 		if reply.SessionID == "" {
@@ -49,33 +52,58 @@ func invoke(ctx context.Context, call invocation) (Reply, error) {
 	return Reply{}, parseErr
 }
 
-func run(ctx context.Context, name, bin, dir string, args []string, stdin string) (string, error) {
+func run(ctx context.Context, name, bin, dir string, args []string, stdin string, stream func(string)) (string, error) {
 	cmd := newCommand(bin, args)
 	cmd.Dir = dir
 	cmd.Env = withWorkDir(dir)
 	cmd.Stdin = strings.NewReader(stdin)
 	setProcessGroup(cmd)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
+	var stderr bytes.Buffer
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("無法讀取 %s 輸出", name)
+	}
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("無法啟動 %s", name)
 	}
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
-	select {
-	case err := <-done:
-		if err != nil {
-			return stdout.String(), commandError(name, err, stderr.String())
+	type runResult struct {
+		stdout string
+		err    error
+	}
+	done := make(chan runResult, 1)
+	go func() {
+		var output strings.Builder
+		scanner := bufio.NewScanner(stdout)
+		scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
+		for scanner.Scan() {
+			line := scanner.Text()
+			output.WriteString(line)
+			output.WriteByte('\n')
+			if stream != nil {
+				stream(line)
+			}
 		}
-		return stdout.String(), nil
+		scanErr := scanner.Err()
+		waitErr := cmd.Wait()
+		if waitErr == nil {
+			waitErr = scanErr
+		}
+		done <- runResult{stdout: output.String(), err: waitErr}
+	}()
+	select {
+	case result := <-done:
+		if result.err != nil {
+			return result.stdout, commandError(name, result.err, stderr.String())
+		}
+		return result.stdout, nil
 	case <-ctx.Done():
 		killProcessGroup(cmd)
-		<-done
+		result := <-done
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return "", fmt.Errorf("%s 超過 10 分鐘還沒有回答", name)
+			return result.stdout, fmt.Errorf("%s 超過 10 分鐘還沒有回答", name)
 		}
-		return "", fmt.Errorf("%s 已取消", name)
+		return result.stdout, fmt.Errorf("%s 已取消", name)
 	}
 }
 
@@ -112,13 +140,25 @@ func tail(text string, n int) string {
 	return string(runes[len(runes)-n:])
 }
 
-// 有些 CLI 會在 JSON 前面印警告，取最外層那個物件。
+// 有些 CLI 會在 JSON 前後印警告，逐個解碼並取最後一個完整的 top-level 物件。
+// 不能直接從第一個 { 切到最後一個 }：warning 本身可能帶 JSON 或大括號。
 func jsonObject(stdout string) []byte {
-	text := strings.TrimSpace(stdout)
-	start := strings.IndexByte(text, '{')
-	end := strings.LastIndexByte(text, '}')
-	if start < 0 || end <= start {
-		return nil
+	data := []byte(strings.TrimSpace(stdout))
+	var last []byte
+	for offset := 0; offset < len(data); {
+		start := bytes.IndexByte(data[offset:], '{')
+		if start < 0 {
+			break
+		}
+		start += offset
+		decoder := json.NewDecoder(bytes.NewReader(data[start:]))
+		var raw json.RawMessage
+		if err := decoder.Decode(&raw); err != nil || len(raw) == 0 || raw[0] != '{' {
+			offset = start + 1
+			continue
+		}
+		last = append(last[:0], raw...)
+		offset = start + int(decoder.InputOffset())
 	}
-	return []byte(text[start : end+1])
+	return last
 }
