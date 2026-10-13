@@ -10,5 +10,13 @@
     "later": "Later",
     "install": "Download and update",
     "installing": "Updating"
+  },
+  "about": {
+    "tagline": "Desktop writing workspace",
+    "currentVersion": "Current version",
+    "checkUpdate": "Check for updates",
+    "checking": "Checking",
+    "upToDate": "You're on the latest version {{version}}",
+    "close": "Close"
   }
 }

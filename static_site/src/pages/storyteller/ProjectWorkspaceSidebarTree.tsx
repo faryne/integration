@@ -233,7 +233,8 @@ export function SidebarCollectionRow({
         <ListItemButton
           selected={isSelected}
           onClick={() => onSelect(section, row.id)}
-          sx={{ ...sidebarTreeRowSx, flex: 1 }}
+          // minWidth 0：長標題時列本身要能縮，右側排序箭頭才不會被擠出側邊列
+          sx={{ ...sidebarTreeRowSx, flex: 1, minWidth: 0 }}
         >
           {canExpandChildren && (
             <Tooltip title={childrenExpanded ? "收合項目" : "展開項目"}>
@@ -272,7 +273,7 @@ export function SidebarCollectionRow({
               noWrap: true,
               fontSize: 13,
             }}
-            sx={{ minWidth: 0 }}
+            sx={{ minWidth: 0, overflow: "hidden" }}
           />
           {row.count !== undefined && (
             <Typography

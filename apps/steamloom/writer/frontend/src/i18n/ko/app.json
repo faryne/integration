@@ -10,5 +10,13 @@
     "later": "나중에",
     "install": "다운로드 후 업데이트",
     "installing": "업데이트 중"
+  },
+  "about": {
+    "tagline": "데스크톱 글쓰기 작업 공간",
+    "currentVersion": "현재 버전",
+    "checkUpdate": "업데이트 확인",
+    "checking": "확인 중",
+    "upToDate": "최신 버전 {{version}}입니다",
+    "close": "닫기"
   }
 }
