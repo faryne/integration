@@ -146,37 +146,46 @@
           <div class="assistant-workspace">
             <aside class="task-rail">
               <div class="task-head"><b>AI 任務</b><button class="btn sm" data-action="new-chat"><svg class="i"><use href="#i-add"/></svg>新增</button></div>
+              <label class="task-search"><svg class="i"><use href="#i-search"/></svg><input id="task-search" type="search" placeholder="搜尋任務標題"></label>
               <div class="task-list">
-                <button class="task-card" data-task="claude" data-action="review-text">
-                  <span class="task-provider"><span class="status-dot warn"></span>Claude Code</span>
-                  <b>撰寫第一話</b>
-                  <small>草稿完成・尚未寫入</small>
-                  <span class="task-state review-state">待確認</span>
-                </button>
-                <button class="task-card running-task">
-                  <span class="task-provider"><span class="spinner"></span>Codex</span>
-                  <b>整理角色 A 設定</b>
-                  <small>正在比對既有設定……</small>
-                  <span class="task-state running-state">執行中</span>
-                </button>
-                <button class="task-card running-task">
-                  <span class="task-provider"><span class="spinner"></span>Codex</span>
-                  <b>檢查第一話時間線</b>
-                  <small>另一條 thread・正在讀取前文……</small>
-                  <span class="task-state running-state">執行中</span>
-                </button>
-                <button class="task-card selected" data-task="grok" data-action="select-artifact-thread">
-                  <span class="task-provider"><span class="status-dot warn"></span>Grok Builds</span>
-                  <b>產生角色 A 圖片資產</b>
-                  <small>3 張圖片尚未上傳</small>
-                  <span class="task-state review-state">待確認</span>
-                </button>
+                <button class="task-group-head open" data-action="task-group-toggle"><svg class="i"><use href="#i-right"/></svg><b>今天</b><span>4</span></button>
+                <div class="task-group-items">
+                  <button class="task-card" data-task="claude" data-action="review-text">
+                    <span class="task-provider"><span class="status-dot warn"></span>Claude Code</span>
+                    <b>撰寫第一話</b>
+                    <small>草稿完成・尚未寫入</small>
+                    <span class="task-state review-state">待確認</span>
+                  </button>
+                  <button class="task-card running-task">
+                    <span class="task-provider"><span class="spinner"></span>Codex</span>
+                    <b>整理角色 A 設定</b>
+                    <small>正在比對既有設定……</small>
+                    <span class="task-state running-state">執行中</span>
+                  </button>
+                  <button class="task-card running-task">
+                    <span class="task-provider"><span class="spinner"></span>Codex</span>
+                    <b>檢查第一話時間線</b>
+                    <small>另一條 thread・正在讀取前文……</small>
+                    <span class="task-state running-state">執行中</span>
+                  </button>
+                  <button class="task-card selected" data-task="grok" data-action="select-artifact-thread">
+                    <span class="task-provider"><span class="status-dot warn"></span>Grok Builds</span>
+                    <b>產生角色 A 圖片資產</b>
+                    <small>3 張圖片尚未上傳</small>
+                    <span class="task-state review-state">待確認</span>
+                  </button>
+                </div>
+                <button class="task-group-head" data-action="task-group-toggle"><svg class="i"><use href="#i-right"/></svg><b>2026-10-09</b><span>2</span></button>
+                <div class="task-group-items collapsed">
+                  <button class="task-card"><span class="task-provider">Claude Code</span><b>整理第二話大綱</b><small>已完成</small></button>
+                  <button class="task-card"><span class="task-provider">Codex</span><b>檢查角色設定衝突</b><small>已完成</small></button>
+                </div>
               </div>
             </aside>
 
             <div class="chat">
               <div class="task-detail-head">
-                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Builds</span><h3>產生角色 A 圖片資產</h3></div>
+                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Builds</span><div class="task-title-edit"><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
                 <span class="task-state review-state">已完成・尚未上傳</span>
                 <button class="icon-btn" title="刪除 thread" data-action="delete-thread"><svg class="i"><use href="#i-delete"/></svg></button>
               </div>

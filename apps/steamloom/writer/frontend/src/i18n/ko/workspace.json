@@ -34,6 +34,15 @@
     "taskQueuedCount": "{{count}}개 더 대기 중",
     "stopTask": "이 작업 중지",
     "tasks": "AI 작업",
+    "searchTasks": "작업 제목 검색",
+    "noMatchingTasks": "검색 조건과 일치하는 작업이 없습니다",
+    "threadTitle": "작업 제목",
+    "saveThreadTitle": "작업 제목 저장",
+    "dateGroups": {
+      "today": "오늘",
+      "yesterday": "어제",
+      "dayBefore": "그저께"
+    },
     "activity": {
       "runningTitle": "Agent 실행 기록",
       "completedTitle": "Agent 완료",

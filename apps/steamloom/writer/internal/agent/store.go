@@ -152,6 +152,36 @@ func NewChat(agentID, projectID string) (ChatPage, error) {
 	return pageFrom(dir, idx, id)
 }
 
+// RenameChat 只改 Writer 本機 thread 標題；不改 activity 時間，也不碰 provider session。
+func RenameChat(agentID, projectID, threadID, title string) (ChatPage, error) {
+	chatMu.Lock()
+	defer chatMu.Unlock()
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return ChatPage{}, errors.New("對話標題不能留白")
+	}
+	if len([]rune(title)) > 100 {
+		return ChatPage{}, errors.New("對話標題不能超過 100 個字")
+	}
+	if !validThread(threadID) {
+		return ChatPage{}, errors.New("找不到這段對話")
+	}
+	dir, idx, err := loadChat(agentID, projectID)
+	if err != nil {
+		return ChatPage{}, err
+	}
+	thread, ok := threadByID(idx, threadID)
+	if !ok {
+		return ChatPage{}, errors.New("找不到這段對話")
+	}
+	thread.Title = title
+	idx.Threads = replaceThread(idx.Threads, thread)
+	if err := saveIndex(dir, idx); err != nil {
+		return ChatPage{}, err
+	}
+	return pageFrom(dir, idx, threadID)
+}
+
 // SessionOf 是這條串要拿去續聊的 CLI session。沒有這條串時回錯誤。
 func SessionOf(agentID, projectID, threadID string) (string, error) {
 	chatMu.Lock()
@@ -463,6 +493,16 @@ func upsertFront(threads []Thread, thread Thread) []Thread {
 		}
 	}
 	return out
+}
+
+func replaceThread(threads []Thread, thread Thread) []Thread {
+	for index := range threads {
+		if threads[index].ID == thread.ID {
+			threads[index] = thread
+			break
+		}
+	}
+	return threads
 }
 
 func newThreadID() (string, error) {

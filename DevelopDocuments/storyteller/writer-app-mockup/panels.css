@@ -10,7 +10,24 @@
 .task-head b { font: 700 15px var(--serif); }
 .task-head .btn { margin-left: auto; }
 .task-head .btn svg.i { width: 15px; height: 15px; }
+.task-search {
+  height: 34px; flex: none; display: flex; align-items: center; gap: 7px; margin: 9px 10px 2px; padding: 0 9px;
+  color: var(--faint); background: var(--paper); border: 1px solid var(--border-soft); border-radius: 7px;
+}
+.task-search .i { width: 16px; height: 16px; }
+.task-search input { width: 100%; color: var(--text); background: transparent; border: 0; outline: 0; font: 12.5px var(--sans); }
+.task-search:focus-within { border-color: var(--accent); }
 .task-list { padding: 10px; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
+.task-group-head {
+  width: 100%; display: flex; align-items: center; gap: 4px; padding: 3px 2px; color: var(--faint);
+  background: transparent; border: 0; font: 11.5px var(--sans); cursor: pointer;
+}
+.task-group-head .i { width: 16px; height: 16px; transition: transform .12s; }
+.task-group-head.open .i { transform: rotate(90deg); }
+.task-group-head b { font-weight: 700; }
+.task-group-head span { font-size: 10.5px; }
+.task-group-items { display: flex; flex-direction: column; gap: 8px; }
+.task-group-items.collapsed { display: none; }
 .task-card {
   width: 100%; position: relative; display: flex; flex-direction: column; gap: 4px; padding: 11px 12px 12px;
   text-align: left; color: var(--text); background: var(--paper); border: 1px solid var(--border-soft);
@@ -33,7 +50,14 @@
 }
 .task-detail-head > div { min-width: 0; }
 .task-detail-head .engine-tag { margin: 0; }
-.task-detail-head h3 { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-title-edit { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.task-title-input {
+  min-width: 280px; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px;
+  padding: 3px 6px; outline: 0; font: 500 14px var(--sans);
+}
+.task-title-input:hover { border-color: var(--border-soft); }
+.task-title-input:focus { border-color: var(--accent); background: var(--paper); }
+.task-title-edit .icon-btn { width: 27px; height: 27px; }
 .task-detail-head > .task-state { margin-left: auto; }
 .chat-tools { position: absolute; top: 10px; right: 16px; z-index: 2; }
 .chat-scroll { flex: 1; overflow: auto; padding: 28px 20px 12px; }

@@ -11,6 +11,7 @@ import { ActiveTaskStatus } from "@writer/pages/workspace/ActiveTaskStatus.tsx";
 import { AgentPromptEditor } from "@writer/pages/workspace/AgentPromptEditor.tsx";
 import { AssistantSetup } from "@writer/pages/workspace/AssistantSetup.tsx";
 import { ChatTranscript } from "@writer/pages/workspace/ChatTranscript.tsx";
+import { ChatThreadHeader } from "@writer/pages/workspace/ChatThreadHeader.tsx";
 import { ProposalReviewDialog } from "@writer/pages/workspace/ProposalReviewDialog.tsx";
 import { TaskRail } from "@writer/pages/workspace/TaskRail.tsx";
 import { ThreadDeleteDialog } from "@writer/pages/workspace/ThreadDeleteDialog.tsx";
@@ -41,6 +42,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
     [chat.page?.current_id, selected, tasks],
   );
   const activeTask = activeTasks.find((task) => task.state === "applying" || task.state === "running") ?? activeTasks[0];
+  const currentTitle = chat.page?.threads.find((thread) => thread.id === chat.page?.current_id)?.title || t("workspace.chat.newThread");
 
   const loadThreads = useCallback(async () => {
     try {
@@ -104,6 +106,12 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   const startNew = async () => {
     setPendingThread(null);
     if (await chat.startNew()) await loadThreads();
+  };
+
+  const renameThread = async (title: string) => {
+    if (!(await chat.renameCurrent(title))) return false;
+    await loadThreads();
+    return true;
   };
 
   const send = async () => {
@@ -180,6 +188,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         onNew={() => void startNew()}
       />
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        <ChatThreadHeader threadID={chat.page?.current_id ?? ""} title={currentTitle} onSave={renameThread} />
         <Box ref={chat.box} sx={{ flex: 1, overflow: "auto" }}>
         <Stack spacing={1.25} sx={{ maxWidth: 780, mx: "auto", px: 2.5, py: 2.5 }}>
           {selected && <AssistantSetup agentID={selected} />}

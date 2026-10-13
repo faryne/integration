@@ -34,6 +34,15 @@
     "taskQueuedCount": "{{count}} more queued",
     "stopTask": "Stop this task",
     "tasks": "AI tasks",
+    "searchTasks": "Search task titles",
+    "noMatchingTasks": "No tasks match your search",
+    "threadTitle": "Task title",
+    "saveThreadTitle": "Save task title",
+    "dateGroups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "dayBefore": "Two days ago"
+    },
     "activity": {
       "runningTitle": "Agent activity",
       "completedTitle": "Agent completed",

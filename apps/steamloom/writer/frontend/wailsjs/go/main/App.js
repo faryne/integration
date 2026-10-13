@@ -50,6 +50,10 @@ export function ChatProposals(arg1, arg2, arg3) {
   return window['go']['main']['App']['ChatProposals'](arg1, arg2, arg3);
 }
 
+export function ChatRename(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ChatRename'](arg1, arg2, arg3, arg4);
+}
+
 export function ChatSelect(arg1, arg2, arg3) {
   return window['go']['main']['App']['ChatSelect'](arg1, arg2, arg3);
 }

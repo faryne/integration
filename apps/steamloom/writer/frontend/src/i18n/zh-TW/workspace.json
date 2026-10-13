@@ -34,6 +34,15 @@
     "taskQueuedCount": "另有 {{count}} 項等待中",
     "stopTask": "停止這項工作",
     "tasks": "AI 任務",
+    "searchTasks": "搜尋任務標題",
+    "noMatchingTasks": "沒有符合搜尋條件的任務",
+    "threadTitle": "任務標題",
+    "saveThreadTitle": "儲存任務標題",
+    "dateGroups": {
+      "today": "今天",
+      "yesterday": "昨天",
+      "dayBefore": "前天"
+    },
     "activity": {
       "runningTitle": "Agent 執行紀錄",
       "completedTitle": "Agent 已完成",
