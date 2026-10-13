@@ -713,8 +713,9 @@ func (r *Repository) Lore(projectID uint64, publicID string) (*storytellerModel.
 	return &row, err
 }
 
-func (r *Repository) MoveLore(row *storytellerModel.Lore) error {
-	return r.db.Model(row).Update("collection_id", row.CollectionID).Error
+// PatchLoreFields 只更新指定欄位（狀態、設定集），不建立新的 LoreVersion——跟 PatchStoryFields 對稱。
+func (r *Repository) PatchLoreFields(row *storytellerModel.Lore, fields map[string]any) error {
+	return r.db.Model(row).Updates(fields).Error
 }
 
 func (r *Repository) LoreCollections(projectID uint64) ([]storytellerModel.LoreCollection, error) {

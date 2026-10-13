@@ -21,6 +21,9 @@ export type AskRequest = agent.Request;
 export type AskReply = agent.Reply;
 export type VersionDetail = api.VersionDetail;
 export type ListedDocument = api.ListedDocument;
+export type Asset = api.Asset;
+// 對應 internal/api 的 UncategorizedAssets：資產列表「未分類」的篩選值
+export const UNCATEGORIZED_ASSETS = "__uncategorized__";
 // 對應 internal/api 的 DocumentKind
 export type DocumentKind = "story" | "lore";
 

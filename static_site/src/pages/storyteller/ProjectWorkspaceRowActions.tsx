@@ -1,6 +1,5 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import DriveFileMoveOutlinedIcon from "@mui/icons-material/DriveFileMoveOutlined";
-import EditIcon from "@mui/icons-material/Edit";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import PublicIcon from "@mui/icons-material/Public";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
@@ -14,9 +13,9 @@ import {
   Tooltip,
 } from "@mui/material";
 import type { MouseEvent } from "react";
-import { Link as RouterLink } from "react-router-dom";
 
-/** Row 本身已能進入編輯，右側只保留單一 overflow 入口，避免 mobile 操作擠成一排。 */
+/** Row 本身已能進入編輯，右側只保留單一 overflow 入口，避免 mobile 操作擠成一排。
+ * 網站工作台與 SteamLoom Writer 的作品／設定列表共用（Writer 透過 alias 直接 import，改這支也會影響 Writer）。 */
 export function WorkspaceRowActionButton({
   label,
   onOpen,
@@ -37,10 +36,10 @@ export function WorkspaceRowActionButton({
   );
 }
 
+// 列的 ⋮ 選單：公開狀態切換（有給 onToggleStatus 才出現）、移動、刪除。
+// 不放「編輯」：點列本身就會打開編輯頁，選單再放一次只是重複。
 export function WorkspaceRowActionMenu({
   anchorEl,
-  editTo,
-  editLabel,
   moveLabel,
   deleteLabel,
   status,
@@ -51,8 +50,6 @@ export function WorkspaceRowActionMenu({
   onDelete,
 }: {
   anchorEl: HTMLElement | null;
-  editTo: string;
-  editLabel: string;
   moveLabel: string;
   deleteLabel: string;
   status?: "completed" | "draft";
@@ -70,12 +67,6 @@ export function WorkspaceRowActionMenu({
       onClose={onClose}
       slotProps={{ paper: { sx: { minWidth: 190 } } }}
     >
-      <MenuItem component={RouterLink} to={editTo} onClick={onClose}>
-        <ListItemIcon>
-          <EditIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>{editLabel}</ListItemText>
-      </MenuItem>
       {status && onToggleStatus && (
         <MenuItem disabled={disabled} onClick={onToggleStatus}>
           <ListItemIcon>

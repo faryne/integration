@@ -528,6 +528,8 @@ export default function StorytellerProjectWorkspacePreview() {
     onCreateAssetCollection: listActions.onCreateAssetCollection,
     onReorderVolume: listActions.reorderVolume,
     onReorderLoreCollection: listActions.reorderLoreCollection,
+    onReorderStoryInVolume: (collectionId, draggedId, beforeId) =>
+      listActions.reorderStory(draggedId, beforeId, collectionId),
     onSearch: workspaceSearch.openSearch,
     activeToolPage: toolPage?.key,
     onOpenToolPage: (page) =>

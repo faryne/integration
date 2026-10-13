@@ -30,6 +30,7 @@ import {
 } from "react-router-dom";
 import {
   useRevertStorytellerStoryVersion,
+  usePatchStorytellerStory,
   useSaveStorytellerStory,
   useStorytellerAgents,
   useStorytellerLores,
@@ -103,10 +104,9 @@ import {
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
-import type {
-  StorytellerAgenticProposal,
-  StorytellerAsset,
-} from "@/types/storyteller.ts";
+import { withDraftAttributes } from "@/pages/storyteller/editorDraftAttributes.ts";
+import type { StorytellerAgenticProposal } from "@/types/storyteller.ts";
+import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 
 const historyPerPage = 5;
@@ -292,6 +292,7 @@ export default function StorytellerStoryEditor({
           enabled: agent.enabled,
         }));
   const saveStory = useSaveStorytellerStory(apiProject?.public_id);
+  const patchStory = usePatchStorytellerStory(apiProject?.public_id);
   const revertStoryVersion = useRevertStorytellerStoryVersion(
     apiProject?.public_id,
     apiStory?.public_id,
@@ -471,45 +472,116 @@ export default function StorytellerStoryEditor({
     }
   }, [apiStory?.latest_version_id, apiStoryVersions]);
 
+  // 伺服器上的屬性（狀態／冊／署名）。灌表單分成兩個 effect：屬性改走 PATCH 即時存後，
+  // 存完 refetch 只會讓屬性 effect 重跑，不能連標題／內文一起重灌（會蓋掉作者還沒存的內容）。
+  const serverAttributesRef = useRef({
+    status: "draft" as "draft" | "completed",
+    parentPublicId: "",
+    profileIds: [ACCOUNT_PROFILE_ID],
+  });
+
+  // 內容類欄位（標題／摘要／內文）：載入、換篇或伺服器上的內容變了才重灌，並重設整份已存檔基準
   useEffect(() => {
     setStoryTitle(story?.title ?? "");
     setStorySummary(story?.summary ?? "");
-    setStoryStatus(story?.status ?? "draft");
     setContent(story?.content ?? "");
+    const attributes = serverAttributesRef.current;
+    const savedDraft = serializeStoryDraft(
+      story?.title ?? "",
+      story?.summary ?? "",
+      attributes.status,
+      attributes.parentPublicId,
+      story?.content ?? "",
+      attributes.profileIds,
+    );
+    currentDraftRef.current = savedDraft;
+    lastSavedDraftRef.current = savedDraft;
+    hasCapturedInitialEditorContentRef.current = false;
+  }, [story?.content, story?.summary, story?.title]);
+
+  // 屬性類欄位：伺服器值變了（載入、PATCH 後 refetch、側邊列搬移）只更新屬性與基準裡的屬性
+  const storyProfileKey = (story?.profileIds ?? [ACCOUNT_PROFILE_ID]).join(",");
+  useEffect(() => {
     const parentVolume = apiVolumes.find(
       (volume) => volume.id === story?.parentId,
     );
+    const attributes = {
+      status: story?.status ?? "draft",
+      parentPublicId: parentVolume?.public_id ?? "",
+      profileIds: story?.profileIds ?? [ACCOUNT_PROFILE_ID],
+    };
+    serverAttributesRef.current = attributes;
+    setStoryStatus(attributes.status);
     if (isNewStory) {
       const defaultVolume = apiVolumes.find(
         (volume) => volume.public_id === defaultVolumeIdFromQuery,
       );
       setSelectedVolumeId(defaultVolume?.public_id ?? "");
     } else if (story?.parentId === null || parentVolume) {
-      setSelectedVolumeId(parentVolume?.public_id ?? "");
+      setSelectedVolumeId(attributes.parentPublicId);
     }
-    setSelectedProfileIds(story?.profileIds ?? [ACCOUNT_PROFILE_ID]);
-    const savedDraft = serializeStoryDraft(
-      story?.title ?? "",
-      story?.summary ?? "",
-      story?.status ?? "draft",
-      parentVolume?.public_id ?? "",
-      story?.content ?? "",
-      story?.profileIds ?? [ACCOUNT_PROFILE_ID],
+    setSelectedProfileIds(attributes.profileIds);
+    lastSavedDraftRef.current = withDraftAttributes(
+      lastSavedDraftRef.current,
+      attributes,
     );
-    currentDraftRef.current = savedDraft;
-    lastSavedDraftRef.current = savedDraft;
-    hasCapturedInitialEditorContentRef.current = false;
+    // storyProfileKey 代表 story?.profileIds（陣列每次 render 都是新參考，改用字串比較）
   }, [
     apiVolumes,
     defaultVolumeIdFromQuery,
     isNewStory,
-    story?.content,
     story?.parentId,
     story?.status,
-    story?.summary,
-    story?.title,
-    story?.profileIds,
+    storyProfileKey,
   ]);
+
+  // 狀態／冊／署名一變更就走 PATCH 即時存（不寫版本、不進編輯歷史，跟側邊列的排序／移動一致）；
+  // 還沒建立的新故事沒有東西可以 PATCH，先留在草稿裡等第一次存檔一起送。失敗就還原並提示。
+  function changeStoryAttributes(patch: {
+    status?: "draft" | "completed";
+    parentPublicId?: string;
+    profileIds?: number[];
+  }) {
+    const previous = {
+      status: storyStatus,
+      parentPublicId: selectedVolumeId,
+      profileIds: selectedProfileIds,
+    };
+    const apply = (next: typeof previous) => {
+      setStoryStatus(next.status);
+      setSelectedVolumeId(next.parentPublicId);
+      setSelectedProfileIds(next.profileIds);
+    };
+    apply({ ...previous, ...patch });
+    if (isNewStory || !story?.id) {
+      return;
+    }
+    patchStory.mutate(
+      {
+        storyPublicId: story.id,
+        input: {
+          status: patch.status,
+          parent_id: patch.parentPublicId,
+          profile_ids: patch.profileIds,
+        },
+      },
+      {
+        onSuccess: () => {
+          lastSavedDraftRef.current = withDraftAttributes(
+            lastSavedDraftRef.current,
+            patch,
+          );
+        },
+        onError: (error) => {
+          apply(previous);
+          showEditorSnack(
+            errorMessage(error, "屬性更新失敗，請重試。"),
+            "error",
+          );
+        },
+      },
+    );
+  }
 
   useEffect(() => {
     currentDraftRef.current = serializeStoryDraft(
@@ -904,7 +976,7 @@ export default function StorytellerStoryEditor({
     });
   }
 
-  function insertAsset(asset: StorytellerAsset) {
+  function insertAsset(asset: EditorPickerAsset) {
     const inserted = editorRef.current?.insertAsset({
       publicId: asset.public_id,
       src: asset.preview_url,
@@ -1307,7 +1379,9 @@ export default function StorytellerStoryEditor({
                 value={storyStatus}
                 options={publicationStatusOptions}
                 onChange={(value) => {
-                  setStoryStatus(value as "draft" | "completed");
+                  changeStoryAttributes({
+                    status: value as "draft" | "completed",
+                  });
                   // 公開時提醒：內文連到還沒公開或已刪除的設定（不擋存檔）
                   const warning =
                     value === "completed"
@@ -1321,15 +1395,22 @@ export default function StorytellerStoryEditor({
                 label="冊"
                 value={selectedVolumeId}
                 options={volumeOptions}
-                onChange={setSelectedVolumeId}
+                // 沒有冊（只剩不分冊）、沒有其他筆名時沒得選，停用
+                disabled={volumeOptions.length <= 1}
+                onChange={(value) =>
+                  changeStoryAttributes({ parentPublicId: value })
+                }
               />
               <WorkspaceEditorMultiSelectButton
                 icon={<PersonIcon fontSize="small" />}
                 label="署名"
                 values={selectedProfileIds.map(String)}
                 options={profileOptions}
+                disabled={profileOptions.length <= 1}
                 onChange={(values) =>
-                  setSelectedProfileIds(values.map((value) => Number(value)))
+                  changeStoryAttributes({
+                    profileIds: values.map((value) => Number(value)),
+                  })
                 }
               />
               {apiProject && (
@@ -1481,7 +1562,9 @@ export default function StorytellerStoryEditor({
             label="故事狀態"
             value={storyStatus}
             onChange={(event) =>
-              setStoryStatus(event.target.value as "draft" | "completed")
+              changeStoryAttributes({
+                status: event.target.value as "draft" | "completed",
+              })
             }
             helperText="未公開的故事不會出現在公開閱讀頁與故事索引。"
           >
@@ -1495,7 +1578,10 @@ export default function StorytellerStoryEditor({
             select
             label="冊"
             value={selectedVolumeId}
-            onChange={(event) => setSelectedVolumeId(event.target.value)}
+            disabled={apiVolumes.length === 0}
+            onChange={(event) =>
+              changeStoryAttributes({ parentPublicId: event.target.value })
+            }
             helperText="未選擇時視為不分冊。"
           >
             <MenuItem value="">不分冊</MenuItem>
@@ -1515,14 +1601,15 @@ export default function StorytellerStoryEditor({
             slotProps={{
               select: { multiple: true },
             }}
+            disabled={profileOptions.length <= 1}
             onChange={(event) => {
               const value = event.target.value;
               const next = typeof value === "string" ? value.split(",") : value;
-              setSelectedProfileIds(
-                next
+              changeStoryAttributes({
+                profileIds: next
                   .map((item) => Number(item))
                   .filter((id) => !Number.isNaN(id)),
-              );
+              });
             }}
             helperText="可多選；預設為本人。"
           >

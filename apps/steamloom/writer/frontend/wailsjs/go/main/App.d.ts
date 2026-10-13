@@ -4,6 +4,7 @@ import {agent} from '../models';
 import {api} from '../models';
 import {updater} from '../models';
 import {skillupdate} from '../models';
+import {main} from '../models';
 
 export function Agents():Promise<Array<agent.Installed>>;
 
@@ -13,7 +14,7 @@ export function Ask(arg1:string,arg2:agent.Request):Promise<agent.Reply>;
 
 export function Asset(arg1:string,arg2:string):Promise<api.EditorAsset>;
 
-export function Assets(arg1:string,arg2:number):Promise<api.AssetPage>;
+export function Assets(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<api.AssetPage>;
 
 export function CancelLogin():Promise<void>;
 
@@ -29,9 +30,17 @@ export function CheckForUpdate():Promise<updater.Info>;
 
 export function Create(arg1:string,arg2:api.CreateRequest):Promise<api.Created>;
 
+export function DeleteAsset(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteAssetCollection(arg1:string,arg2:string):Promise<void>;
+
+export function DeleteDocument(arg1:string,arg2:string,arg3:string):Promise<void>;
+
 export function Document(arg1:string,arg2:string,arg3:string):Promise<api.Document>;
 
 export function EnsureSkill(arg1:string):Promise<skillupdate.Result>;
+
+export function ImagePages(arg1:string,arg2:string):Promise<Array<api.ImagePage>>;
 
 export function InstallUpdate():Promise<void>;
 
@@ -47,9 +56,15 @@ export function McpInstalled(arg1:string):Promise<agent.McpHint>;
 
 export function Me():Promise<api.Profile>;
 
+export function MoveAsset(arg1:string,arg2:string,arg3:string):Promise<api.Asset>;
+
 export function MoveLore(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function MoveStory(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function PatchDocument(arg1:string,arg2:string,arg3:string,arg4:api.AttributePatch):Promise<void>;
+
+export function PickImageFiles():Promise<main.LocalImagePick>;
 
 export function Projects():Promise<Array<api.Project>>;
 
@@ -59,7 +74,13 @@ export function SaveDocument(arg1:string,arg2:string,arg3:string,arg4:api.SaveIn
 
 export function SetUnsaved(arg1:boolean):Promise<void>;
 
+export function UpdateAsset(arg1:string,arg2:string,arg3:api.AssetInput):Promise<api.Asset>;
+
+export function UpdateAssetCollection(arg1:string,arg2:string,arg3:string,arg4:string):Promise<void>;
+
 export function UploadAssets(arg1:string,arg2:string):Promise<api.UploadResult>;
+
+export function UploadLocalImages(arg1:string,arg2:Array<string>):Promise<Record<string, string>>;
 
 export function VersionDetail(arg1:string,arg2:string,arg3:string,arg4:string):Promise<api.VersionDetail>;
 

@@ -41,11 +41,13 @@
   "editor": {
     "titlePlaceholder": {
       "story": "Untitled story",
-      "lore": "Untitled lore"
+      "lore": "Untitled lore",
+      "image": "Untitled image work"
     },
     "summaryPlaceholder": {
       "story": "Add a summary...",
-      "lore": "Add a summary for readers..."
+      "lore": "Add a summary for readers...",
+      "image": "Add a description..."
     },
     "status": "Status",
     "group": {
@@ -75,9 +77,71 @@
       "cancel": "Keep editing",
       "discard": "Discard"
     },
-    "image": {
-      "title": "Image works can't be edited in Writer yet",
-      "description": "Please edit image works on the website for now."
-    }
+    "self": "Me ({{penName}})",
+    "selfOnly": "Me",
+    "attributeFailed": "Couldn't update this setting, please try again: "
+  },
+  "assets": {
+    "search": "Search assets",
+    "refresh": "Refresh",
+    "upload": "Upload images",
+    "editCollection": "Edit collection",
+    "deleteCollection": "Delete collection",
+    "deleteCollectionDescription": "Other collections won't be affected. Type the collection name to confirm.",
+    "move": "Move asset",
+    "delete": "Delete asset",
+    "referenced": "This asset is still used by a work. Remove those references first.",
+    "moveToUncategorized": "Move to Uncategorized",
+    "deleteTitle": "Delete asset",
+    "deleteDescription": "This can't be undone. Type the asset name to confirm.",
+    "deleted": "Asset deleted.",
+    "moved": "Asset moved.",
+    "collection": "Asset collection",
+    "collectionSaved": "Collection updated.",
+    "collectionDeleted": "Collection deleted."
+  },
+  "image": {
+    "save": "Save",
+    "saving": "Working...",
+    "noPages": "Add at least one page before saving.",
+    "uploadIncomplete": "Some images weren't turned into assets. Please try again.",
+    "partial": "Some files weren't added: {{reasons}}",
+    "rejected": "only JPEG/PNG/WebP/GIF images up to 15MB each",
+    "tooMany": "up to {{max}} pages per episode",
+    "pickHint": "Click to choose images (you can pick several)",
+    "pickerTitle": "Add pages from assets"
+  },
+  "list": {
+    "actions": {
+      "story": "Work actions",
+      "lore": "Lore actions"
+    },
+    "move": {
+      "story": "Move to volume…",
+      "lore": "Move to collection…"
+    },
+    "moveToUngrouped": {
+      "story": "Move out of volumes",
+      "lore": "Move to Uncategorized"
+    },
+    "delete": {
+      "story": "Delete work",
+      "lore": "Delete lore",
+      "image": "Delete episode"
+    },
+    "deleteDescription": {
+      "story": "This removes the work and its versions. Type the work's title to confirm.",
+      "lore": "This removes the lore entry and its versions. Type its title to confirm."
+    },
+    "moved": {
+      "story": "Work moved.",
+      "lore": "Lore moved."
+    },
+    "deleted": {
+      "story": "Work deleted.",
+      "lore": "Lore deleted."
+    },
+    "published": "Work published.",
+    "unpublished": "Work set to unpublished."
   }
 }

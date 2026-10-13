@@ -26,6 +26,8 @@ func main() {
 		Menu:      applicationMenu(app),
 		AssetServer: &assetserver.Options{
 			Assets: assets,
+			// 圖像作品選好、還沒上傳的本機圖預覽（/local-image/<token>）
+			Middleware: app.localImageMiddleware,
 		},
 		// 跟 nocturne 主題的底色一致，避免視窗開啟時閃白
 		BackgroundColour: &options.RGBA{R: 16, G: 11, B: 24, A: 1},

@@ -6,7 +6,7 @@ import { StorytellerAppearanceMenu } from "@/components/storyteller/StorytellerA
 import { WelcomeGuideDialog } from "@/components/storyteller/WelcomeGuideDialog.tsx";
 import { ReportProvider } from "@/components/storyteller/report/ReportProvider.tsx";
 import { useAdminMe, useStorytellerUserProfile } from "@/apis/storyteller.ts";
-import { webEditorData } from "@/apis/storyteller/editorData.ts";
+import { webEditorData } from "@/apis/storyteller/editorData.tsx";
 import { StorytellerEditorDataContext } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { STORYTELLER_APP_NAME } from "@/data/storyteller.ts";
 import { storytellerAppearanceMeta } from "@/data/storytellerTheme.ts";

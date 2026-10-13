@@ -3,11 +3,14 @@ import { Box, Typography } from "@mui/material";
 import { useRef, useState, type DragEvent, type ReactNode } from "react";
 
 export interface StorytellerAssetDropzoneProps {
-  accept: string[];
+  accept?: string[];
   multiple?: boolean;
   disabled?: boolean;
   hint: ReactNode;
-  onFilesSelected: (files: File[]) => void;
+  onFilesSelected?: (files: File[]) => void;
+  // 自己處理選檔（SteamLoom Writer：WebView 拿不到本機路徑，改用 Go 的原生選檔視窗）；
+  // 有給就點擊時呼叫它，不用 <input type=file>、也不接拖放
+  onPick?: () => void;
 }
 
 export function StorytellerAssetDropzone({
@@ -16,6 +19,7 @@ export function StorytellerAssetDropzone({
   disabled = false,
   hint,
   onFilesSelected,
+  onPick,
 }: StorytellerAssetDropzoneProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -24,11 +28,11 @@ export function StorytellerAssetDropzone({
     if (!files || disabled) {
       return;
     }
-    onFilesSelected(Array.from(files));
+    onFilesSelected?.(Array.from(files));
   }
 
   function handleDragOver(event: DragEvent<HTMLElement>) {
-    if (disabled) {
+    if (disabled || onPick) {
       return;
     }
     event.preventDefault();
@@ -37,6 +41,9 @@ export function StorytellerAssetDropzone({
 
   function handleDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
+    if (onPick) {
+      return;
+    }
     setDragOver(false);
     selectFiles(event.dataTransfer.files);
   }
@@ -48,7 +55,8 @@ export function StorytellerAssetDropzone({
       onDrop={handleDrop}
       onClick={() => {
         if (!disabled) {
-          fileInputRef.current?.click();
+          if (onPick) onPick();
+          else fileInputRef.current?.click();
         }
       }}
       sx={{
@@ -69,15 +77,17 @@ export function StorytellerAssetDropzone({
       <Typography color="text.secondary" sx={{ mt: 1 }}>
         {hint}
       </Typography>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={accept.join(",")}
-        multiple={multiple}
-        disabled={disabled}
-        hidden
-        onChange={(event) => selectFiles(event.target.files)}
-      />
+      {!onPick && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={accept?.join(",")}
+          multiple={multiple}
+          disabled={disabled}
+          hidden
+          onChange={(event) => selectFiles(event.target.files)}
+        />
+      )}
     </Box>
   );
 }

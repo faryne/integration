@@ -27,6 +27,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   useRevertStorytellerLoreVersion,
+  usePatchStorytellerLore,
   useSaveStorytellerLore,
   useStorytellerAgents,
   useStorytellerLoreCollections,
@@ -99,11 +100,12 @@ import {
 } from "@/pages/storyteller/StorytellerWysiwygEditor.tsx";
 import type { StorytellerSelectionAgentTrigger } from "@/pages/storyteller/storytellerSelectionAgentTrigger.ts";
 import { contentWordCount } from "@/pages/storyteller/storytellerContentWordCount.ts";
+import { withDraftAttributes } from "@/pages/storyteller/editorDraftAttributes.ts";
 import type {
   StorytellerAgenticProposal,
-  StorytellerAsset,
   StorytellerLoreDependency,
 } from "@/types/storyteller.ts";
+import type { EditorPickerAsset } from "@/pages/storyteller/StorytellerEditorDataContext.ts";
 import { publishLoreLinkWarning } from "@/pages/storyteller/storytellerLoreLinkCheck.ts";
 import { LORE_DEPENDENCY_TYPE_LABEL } from "@/pages/storyteller/readerModel.ts";
 
@@ -297,6 +299,7 @@ export default function StorytellerLoreEditor({
     );
   const { data: agents = [] } = useStorytellerAgents();
   const saveLore = useSaveStorytellerLore(apiProject?.public_id);
+  const patchLore = usePatchStorytellerLore(apiProject?.public_id);
   const saveLoreRef = useRef(saveLore);
   const revertLoreVersion = useRevertStorytellerLoreVersion(
     apiProject?.public_id,
@@ -368,24 +371,25 @@ export default function StorytellerLoreEditor({
       (collection) => collection.public_id === selectedCollectionId,
     );
 
+  // 伺服器上的屬性（狀態／設定集）。灌表單分成兩個 effect（跟 StoryEditor 一樣）：屬性改走 PATCH 即時存後，
+  // 存完 refetch 只會讓屬性 effect 重跑，不能連標題／內文一起重灌（會蓋掉作者還沒存的內容）。
+  const serverAttributesRef = useRef({
+    status: "draft" as PublicationStatus,
+    collectionId: "",
+  });
+
+  // 內容類欄位：載入、換篇或伺服器上的內容變了才重灌，並重設整份已存檔基準
   useEffect(() => {
-    const defaultCollectionId = isNewLore
-      ? (loreCollections.find(
-          (collection) => collection.public_id === defaultCollectionIdFromQuery,
-        )?.public_id ?? "")
-      : (lore?.collectionId ?? "");
     setTitle(lore?.title ?? "");
-    setSelectedCollectionId(defaultCollectionId);
     setContent(lore?.content ?? "");
-    setLoreStatus(lore?.status ?? "draft");
     setLoreSummary(lore?.summary ?? "");
     setLoreIsSpoiler(lore?.isSpoiler ?? false);
     setLoreDependsOn(lore?.dependsOn ?? []);
     const savedDraft = serializeLoreDraft({
       title: lore?.title ?? "",
-      collectionId: defaultCollectionId,
+      collectionId: serverAttributesRef.current.collectionId,
       content: lore?.content ?? "",
-      status: lore?.status ?? "draft",
+      status: serverAttributesRef.current.status,
       summary: lore?.summary ?? "",
       isSpoiler: lore?.isSpoiler ?? false,
       dependsOn: lore?.dependsOn ?? [],
@@ -394,18 +398,74 @@ export default function StorytellerLoreEditor({
     lastSavedDraftRef.current = savedDraft;
     hasCapturedInitialEditorContentRef.current = false;
   }, [
-    lore?.collectionId,
     lore?.content,
     lore?.title,
-    lore?.status,
     lore?.summary,
     lore?.isSpoiler,
     // 陣列每次 render 都是新參考，轉成字串比較內容
     lore?.dependsOn.join(","),
+  ]);
+
+  // 屬性類欄位：伺服器值變了（載入、PATCH 後 refetch、側邊列搬移）只更新屬性與基準裡的屬性
+  useEffect(() => {
+    const attributes = {
+      status: lore?.status ?? "draft",
+      collectionId: isNewLore
+        ? (loreCollections.find(
+            (collection) =>
+              collection.public_id === defaultCollectionIdFromQuery,
+          )?.public_id ?? "")
+        : (lore?.collectionId ?? ""),
+    };
+    serverAttributesRef.current = attributes;
+    setLoreStatus(attributes.status);
+    setSelectedCollectionId(attributes.collectionId);
+    lastSavedDraftRef.current = withDraftAttributes(
+      lastSavedDraftRef.current,
+      attributes,
+    );
+  }, [
+    lore?.collectionId,
+    lore?.status,
     isNewLore,
     defaultCollectionIdFromQuery,
     loreCollections,
   ]);
+
+  // 狀態／設定集一變更就走 PATCH 即時存（不寫版本、不進編輯歷史，跟側邊列的移動一致）；
+  // 還沒建立的新設定沒有東西可以 PATCH，先留在草稿裡等第一次存檔一起送。失敗就還原並提示。
+  function changeLoreAttributes(patch: {
+    status?: PublicationStatus;
+    collectionId?: string;
+  }) {
+    const previous = { status: loreStatus, collectionId: selectedCollectionId };
+    const apply = (next: typeof previous) => {
+      setLoreStatus(next.status);
+      setSelectedCollectionId(next.collectionId);
+    };
+    apply({ ...previous, ...patch });
+    if (isNewLore || !apiLore?.public_id) {
+      return;
+    }
+    patchLore.mutate(
+      {
+        lorePublicId: apiLore.public_id,
+        input: { status: patch.status, collection_id: patch.collectionId },
+      },
+      {
+        onSuccess: () => {
+          lastSavedDraftRef.current = withDraftAttributes(
+            lastSavedDraftRef.current,
+            patch,
+          );
+        },
+        onError: (error) => {
+          apply(previous);
+          showSnack(errorMessage(error, "屬性更新失敗，請重試。"), "error");
+        },
+      },
+    );
+  }
 
   useEffect(() => {
     latestVersionIdRef.current =
@@ -698,7 +758,7 @@ export default function StorytellerLoreEditor({
     );
   }
 
-  function insertAsset(asset: StorytellerAsset) {
+  function insertAsset(asset: EditorPickerAsset) {
     const inserted = editorRef.current?.insertAsset({
       publicId: asset.public_id,
       src: asset.preview_url,
@@ -1130,7 +1190,7 @@ export default function StorytellerLoreEditor({
                 value={loreStatus}
                 options={publicationStatusOptions}
                 onChange={(value) => {
-                  setLoreStatus(value as PublicationStatus);
+                  changeLoreAttributes({ status: value as PublicationStatus });
                   // 公開時提醒：內文連到還沒公開或已刪除的設定（不擋存檔）
                   const warning =
                     value === "completed"
@@ -1144,8 +1204,13 @@ export default function StorytellerLoreEditor({
                 label="設定集"
                 value={selectedCollectionId}
                 options={collectionOptions}
-                disabled={loreCollectionsLoading}
-                onChange={setSelectedCollectionId}
+                // 沒有設定集（只剩未歸類）時沒得選，停用
+                disabled={
+                  loreCollectionsLoading || collectionOptions.length <= 1
+                }
+                onChange={(value) =>
+                  changeLoreAttributes({ collectionId: value })
+                }
               />
               <WorkspaceEditorSelectButton
                 icon={
@@ -1258,8 +1323,10 @@ export default function StorytellerLoreEditor({
             fullWidth
             label="設定集"
             value={selectedCollectionId}
-            disabled={loreCollectionsLoading}
-            onChange={(event) => setSelectedCollectionId(event.target.value)}
+            disabled={loreCollectionsLoading || collectionOptions.length <= 1}
+            onChange={(event) =>
+              changeLoreAttributes({ collectionId: event.target.value })
+            }
           >
             <MenuItem value="">未歸類</MenuItem>
             {!selectedCollectionExists && (

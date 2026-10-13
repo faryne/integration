@@ -17,13 +17,8 @@ type Document struct {
 	WordCount       uint         `json:"word_count"`
 	UpdatedAt       string       `json:"updated_at"`
 	LatestVersionID *uint64      `json:"latest_version_id"`
-	// Authors 是故事的署名，設定沒有這個欄位
-	Authors []Author `json:"authors"`
-}
-
-// Author 是署名的筆名（Wails 產生前端型別時不支援匿名 struct，所以獨立出來）。
-type Author struct {
-	PenName string `json:"pen_name"`
+	// ProfileIDs 是故事的署名（0＝本人），設定沒有這個欄位
+	ProfileIDs []uint64 `json:"profile_ids"`
 }
 
 // Version 是編輯歷史的一列；後端回傳的版本含完整內文，這裡丟掉不傳給前端。

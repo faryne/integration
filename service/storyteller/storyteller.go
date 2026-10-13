@@ -1046,8 +1046,9 @@ func (s *Service) MoveStory(userID uint64, projectPublicID, storyPublicID string
 	return s.PatchStory(userID, projectPublicID, storyPublicID, storytellerModel.StoryPatchRequest{ParentID: &input.VolumePublicID})
 }
 
-// PatchStory 只改排序／狀態／冊隸屬（故事與冊共用），不寫入版本：排序、移動到冊、狀態切換
-// 都不進編輯歷史，只記 audit。網站工作台、SteamLoom Writer 與 MCP 的 move_story 都走這裡。
+// PatchStory 只改排序／狀態／冊隸屬／署名（排序、狀態、冊隸屬故事與冊共用；署名只有故事），不寫入版本：
+// 這些屬性異動都不進編輯歷史，只記 audit。網站與 SteamLoom Writer 的側邊列、編輯頁屬性列，
+// 以及 MCP 的 move_story 都走這裡。
 func (s *Service) PatchStory(userID uint64, projectPublicID, storyPublicID string, input storytellerModel.StoryPatchRequest) (*storytellerModel.Story, error) {
 	project, err := s.repo.ProjectByPublicIDForUser(userID, projectPublicID)
 	if err != nil {
@@ -1085,11 +1086,33 @@ func (s *Service) PatchStory(userID uint64, projectPublicID, storyPublicID strin
 		volumeEvent = volumeMoveEvent(previousParentID, story.ParentID)
 		fields["parent_id"] = story.ParentID
 	}
-	if len(fields) == 0 {
-		return nil, errors.New("nothing to update: sort, status or parent_id is required")
+	var profileIDs []uint64
+	if input.ProfileIDs != nil {
+		if story.IsVolume {
+			return nil, errors.New("a volume has no author profiles")
+		}
+		if profileIDs, err = s.resolveStoryProfileIDs(userID, input.ProfileIDs, false); err != nil {
+			return nil, err
+		}
 	}
-	if err := s.repo.PatchStoryFields(story, fields, volumeEvent); err != nil {
-		return nil, err
+	if len(fields) == 0 && profileIDs == nil {
+		return nil, errors.New("nothing to update: sort, status, parent_id or profile_ids is required")
+	}
+	if len(fields) > 0 {
+		if err := s.repo.PatchStoryFields(story, fields, volumeEvent); err != nil {
+			return nil, err
+		}
+	}
+	if profileIDs != nil {
+		if err := s.repo.ReplaceStoryProfiles(story.ID, profileIDs); err != nil {
+			return nil, err
+		}
+		story.ProfileIDs = profileIDs
+	}
+	// 狀態（公開與否）、所屬冊、署名都會影響搜尋索引；只改排序不用動。冊本身不在索引裡
+	_, sortOnly := fields["sort"]
+	if !story.IsVolume && !(sortOnly && len(fields) == 1 && profileIDs == nil) {
+		s.syncStorySearchIndex(project, story)
 	}
 	return story, nil
 }

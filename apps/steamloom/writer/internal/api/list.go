@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 )
 
@@ -15,8 +16,11 @@ type ListedDocument struct {
 	Status      string       `json:"status"`
 	WordCount   uint         `json:"word_count"`
 	UpdatedAt   string       `json:"updated_at"`
-	// GroupName 是所屬的冊／設定集名稱，未分冊／未歸類為空字串
+	// GroupID／GroupName 是所屬冊／設定集的 public_id 與名稱，未分冊／未歸類為空字串
+	GroupID   string `json:"group_id"`
 	GroupName string `json:"group_name"`
+	// LatestContent 只有圖像作品會帶（頁面清單 JSON，列表用來算頁數）；文字作品的內文太大，不傳
+	LatestContent string `json:"latest_content,omitempty"`
 }
 
 type listedRow struct {
@@ -30,6 +34,8 @@ type listedRow struct {
 	Sort         int     `json:"sort"`
 	WordCount    uint    `json:"word_count"`
 	UpdatedAt    string  `json:"updated_at"`
+	// 只在圖像作品時轉給前端
+	LatestContent string `json:"latest_content"`
 }
 
 // ListDocuments 列出專案全部的故事（不含冊）或設定，附上所屬分組名稱；故事依冊的順序、冊內 sort 排。
@@ -46,9 +52,9 @@ func (c *Client) ListDocuments(ctx context.Context, project string, kind Documen
 			return nil, err
 		}
 		slices.SortStableFunc(volumes, func(a, b storyRow) int { return a.Sort - b.Sort })
-		volumeName, volumeOrder := map[uint64]string{}, map[uint64]int{}
+		volumeByID, volumeOrder := map[uint64]storyRow{}, map[uint64]int{}
 		for i, volume := range volumes {
-			volumeName[volume.ID], volumeOrder[volume.ID] = volume.Title, i
+			volumeByID[volume.ID], volumeOrder[volume.ID] = volume, i
 		}
 		// 未分冊排在最後，跟側邊列一致
 		order := func(row listedRow) int {
@@ -68,11 +74,11 @@ func (c *Client) ListDocuments(ctx context.Context, project string, kind Documen
 			if row.IsVolume {
 				continue
 			}
-			group := ""
+			var volume storyRow
 			if row.ParentID != nil {
-				group = volumeName[*row.ParentID]
+				volume = volumeByID[*row.ParentID]
 			}
-			out = append(out, toListed(KindStory, row, group))
+			out = append(out, toListed(KindStory, row, volume.PublicID, volume.Title))
 		}
 		return out, nil
 	case KindLore:
@@ -90,16 +96,30 @@ func (c *Client) ListDocuments(ctx context.Context, project string, kind Documen
 		}
 		out := make([]ListedDocument, 0, len(lores))
 		for _, row := range lores {
-			out = append(out, toListed(KindLore, row, collectionName[row.CollectionID]))
+			out = append(out, toListed(KindLore, row, row.CollectionID, collectionName[row.CollectionID]))
 		}
 		return out, nil
 	}
 	return nil, fmt.Errorf("unknown document kind: %s", kind)
 }
 
-func toListed(kind DocumentKind, row listedRow, group string) ListedDocument {
-	return ListedDocument{
+func toListed(kind DocumentKind, row listedRow, groupID, groupName string) ListedDocument {
+	listed := ListedDocument{
 		Kind: kind, PublicID: row.PublicID, Title: row.Title, ContentType: row.ContentType,
-		Status: row.Status, WordCount: row.WordCount, UpdatedAt: row.UpdatedAt, GroupName: group,
+		Status: row.Status, WordCount: row.WordCount, UpdatedAt: row.UpdatedAt, GroupID: groupID, GroupName: groupName,
 	}
+	if row.ContentType == "image" {
+		listed.LatestContent = row.LatestContent
+	}
+	return listed
+}
+
+// DeleteDocument 刪除故事或設定（後端軟刪除）；網站與 Writer 都要先輸入名稱確認才會呼叫。
+func (c *Client) DeleteDocument(ctx context.Context, project string, kind DocumentKind, id string) error {
+	path, err := documentPath(project, kind, id)
+	if err != nil {
+		return err
+	}
+	_, err = request[struct{}](ctx, c, http.MethodDelete, path, nil)
+	return err
 }

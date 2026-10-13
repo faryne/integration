@@ -41,11 +41,13 @@
   "editor": {
     "titlePlaceholder": {
       "story": "無題のストーリー",
-      "lore": "無題の設定"
+      "lore": "無題の設定",
+      "image": "無題の画像作品"
     },
     "summaryPlaceholder": {
       "story": "あらすじを追加...",
-      "lore": "読者向けの概要を追加..."
+      "lore": "読者向けの概要を追加...",
+      "image": "説明を追加..."
     },
     "status": "状態",
     "group": {
@@ -75,9 +77,71 @@
       "cancel": "編集を続ける",
       "discard": "破棄する"
     },
-    "image": {
-      "title": "画像作品はまだ Writer で編集できません",
-      "description": "画像作品はウェブサイトで編集してください。"
-    }
+    "self": "本人（{{penName}}）",
+    "selfOnly": "本人",
+    "attributeFailed": "属性を更新できませんでした。もう一度お試しください："
+  },
+  "assets": {
+    "search": "アセットを検索",
+    "refresh": "再読み込み",
+    "upload": "画像をアップロード",
+    "editCollection": "アセット集を編集",
+    "deleteCollection": "アセット集を削除",
+    "deleteCollectionDescription": "他のアセット集には影響しません。確認のためアセット集名を入力してください。",
+    "move": "アセットを移動",
+    "delete": "アセットを削除",
+    "referenced": "このアセットはまだ作品で使われています。先に参照を外してください。",
+    "moveToUncategorized": "未分類へ移動",
+    "deleteTitle": "アセットを削除",
+    "deleteDescription": "削除すると元に戻せません。確認のためアセット名を入力してください。",
+    "deleted": "アセットを削除しました。",
+    "moved": "アセットを移動しました。",
+    "collection": "アセット集",
+    "collectionSaved": "アセット集を更新しました。",
+    "collectionDeleted": "アセット集を削除しました。"
+  },
+  "image": {
+    "save": "保存",
+    "saving": "処理中...",
+    "noPages": "保存するには 1 ページ以上必要です。",
+    "uploadIncomplete": "一部の画像がアセットになりませんでした。もう一度お試しください。",
+    "partial": "一部のファイルは追加されませんでした：{{reasons}}",
+    "rejected": "JPEG／PNG／WebP／GIF のみ、1 枚 15MB まで",
+    "tooMany": "1 話は最大 {{max}} ページ",
+    "pickHint": "クリックして画像を選択（複数選択可）",
+    "pickerTitle": "アセットからページを追加"
+  },
+  "list": {
+    "actions": {
+      "story": "作品の操作",
+      "lore": "設定の操作"
+    },
+    "move": {
+      "story": "巻へ移動…",
+      "lore": "設定集へ移動…"
+    },
+    "moveToUngrouped": {
+      "story": "巻から外す",
+      "lore": "未分類へ移動"
+    },
+    "delete": {
+      "story": "作品を削除",
+      "lore": "設定を削除",
+      "image": "話を削除"
+    },
+    "deleteDescription": {
+      "story": "作品と版のデータが削除されます。確認のため作品名を入力してください。",
+      "lore": "この設定と版のデータが削除されます。確認のため設定名を入力してください。"
+    },
+    "moved": {
+      "story": "作品を移動しました。",
+      "lore": "設定を移動しました。"
+    },
+    "deleted": {
+      "story": "作品を削除しました。",
+      "lore": "設定を削除しました。"
+    },
+    "published": "作品を公開しました。",
+    "unpublished": "作品を非公開にしました。"
   }
 }

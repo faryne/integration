@@ -41,11 +41,8 @@ import {
   type SelectedNode,
   type WorkspaceSection,
 } from "./ProjectWorkspacePreviewTypes.ts";
-import {
-  AssetCard,
-  LoreRow,
-  StoryRow,
-} from "./ProjectWorkspacePreviewRows.tsx";
+import { LoreRow, StoryRow } from "./WorkspaceDocumentRows.tsx";
+import { AssetCard } from "./WorkspaceAssetPanel.tsx";
 import { SidebarGroup } from "./ProjectWorkspaceSidebarTree.tsx";
 import {
   workspaceToolPages,
@@ -87,6 +84,12 @@ export interface WorkspaceSidebarProps {
     draggedId: string,
     beforeId: string | null,
   ) => void;
+  // 側邊列排序模式下，同一冊內的作品上移／下移
+  onReorderStoryInVolume?: (
+    collectionId: string,
+    draggedId: string,
+    beforeId: string | null,
+  ) => void;
   onNavigate?: () => void;
   // 目前開啟的專案層工具頁（梭梭的記憶、稽核紀錄）；見 workspaceToolPages。
   activeToolPage?: WorkspaceToolPage;
@@ -110,6 +113,7 @@ export function WorkspaceSidebar({
   onCreateAssetCollection,
   onReorderVolume,
   onReorderLoreCollection,
+  onReorderStoryInVolume,
   onNavigate,
   activeToolPage,
   onOpenToolPage,
@@ -178,6 +182,7 @@ export function WorkspaceSidebar({
           onCreate={onCreateVolume}
           createLabel="新增冊"
           onReorder={onReorderVolume}
+          onReorderItem={onReorderStoryInVolume}
         />
         <SidebarGroup
           title="設定集"

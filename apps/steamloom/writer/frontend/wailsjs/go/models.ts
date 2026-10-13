@@ -185,11 +185,20 @@ export namespace api {
 	
 	export class Asset {
 	    public_id: string;
-	    title: string;
+	    collection_id: string;
+	    asset_type: string;
 	    mime_type: string;
+	    file_ext: string;
 	    file_size: number;
+	    metadata: Record<string, any>;
+	    original_filename: string;
+	    title: string;
+	    alt_text: string;
+	    description: string;
 	    preview_url: string;
+	    reference_count: number;
 	    created_at: string;
+	    updated_at: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Asset(source);
@@ -198,11 +207,38 @@ export namespace api {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.public_id = source["public_id"];
-	        this.title = source["title"];
+	        this.collection_id = source["collection_id"];
+	        this.asset_type = source["asset_type"];
 	        this.mime_type = source["mime_type"];
+	        this.file_ext = source["file_ext"];
 	        this.file_size = source["file_size"];
+	        this.metadata = source["metadata"];
+	        this.original_filename = source["original_filename"];
+	        this.title = source["title"];
+	        this.alt_text = source["alt_text"];
+	        this.description = source["description"];
 	        this.preview_url = source["preview_url"];
+	        this.reference_count = source["reference_count"];
 	        this.created_at = source["created_at"];
+	        this.updated_at = source["updated_at"];
+	    }
+	}
+	export class AssetInput {
+	    title: string;
+	    alt_text: string;
+	    description: string;
+	    metadata: Record<string, any>;
+	
+	    static createFrom(source: any = {}) {
+	        return new AssetInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.title = source["title"];
+	        this.alt_text = source["alt_text"];
+	        this.description = source["description"];
+	        this.metadata = source["metadata"];
 	    }
 	}
 	export class AssetPage {
@@ -241,16 +277,20 @@ export namespace api {
 		    return a;
 		}
 	}
-	export class Author {
-	    pen_name: string;
+	export class AttributePatch {
+	    status?: string;
+	    group_id?: string;
+	    profile_ids?: number[];
 	
 	    static createFrom(source: any = {}) {
-	        return new Author(source);
+	        return new AttributePatch(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.pen_name = source["pen_name"];
+	        this.status = source["status"];
+	        this.group_id = source["group_id"];
+	        this.profile_ids = source["profile_ids"];
 	    }
 	}
 	export class CreateRequest {
@@ -294,7 +334,7 @@ export namespace api {
 	    word_count: number;
 	    updated_at: string;
 	    latest_version_id?: number;
-	    authors: Author[];
+	    profile_ids: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Document(source);
@@ -312,26 +352,8 @@ export namespace api {
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
 	        this.latest_version_id = source["latest_version_id"];
-	        this.authors = this.convertValues(source["authors"], Author);
+	        this.profile_ids = source["profile_ids"];
 	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
 	}
 	export class DocumentItem {
 	    kind: string;
@@ -386,6 +408,7 @@ export namespace api {
 	export class Group {
 	    public_id: string;
 	    name: string;
+	    description: string;
 	    items: DocumentItem[];
 	
 	    static createFrom(source: any = {}) {
@@ -396,6 +419,7 @@ export namespace api {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.public_id = source["public_id"];
 	        this.name = source["name"];
+	        this.description = source["description"];
 	        this.items = this.convertValues(source["items"], DocumentItem);
 	    }
 	
@@ -417,6 +441,28 @@ export namespace api {
 		    return a;
 		}
 	}
+	export class ImagePage {
+	    id: string;
+	    key: string;
+	    asset_public_id: string;
+	    image_url: string;
+	    description: string;
+	    sort: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImagePage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.key = source["key"];
+	        this.asset_public_id = source["asset_public_id"];
+	        this.image_url = source["image_url"];
+	        this.description = source["description"];
+	        this.sort = source["sort"];
+	    }
+	}
 	export class ListedDocument {
 	    kind: string;
 	    public_id: string;
@@ -425,7 +471,9 @@ export namespace api {
 	    status: string;
 	    word_count: number;
 	    updated_at: string;
+	    group_id: string;
 	    group_name: string;
+	    latest_content?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new ListedDocument(source);
@@ -440,7 +488,23 @@ export namespace api {
 	        this.status = source["status"];
 	        this.word_count = source["word_count"];
 	        this.updated_at = source["updated_at"];
+	        this.group_id = source["group_id"];
 	        this.group_name = source["group_name"];
+	        this.latest_content = source["latest_content"];
+	    }
+	}
+	export class PenNameProfile {
+	    id: number;
+	    pen_name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PenNameProfile(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.pen_name = source["pen_name"];
 	    }
 	}
 	export class Profile {
@@ -448,6 +512,7 @@ export namespace api {
 	    avatar_url: string;
 	    auto_save_enabled: boolean;
 	    auto_save_interval_minutes: number;
+	    profiles: PenNameProfile[];
 	
 	    static createFrom(source: any = {}) {
 	        return new Profile(source);
@@ -459,7 +524,26 @@ export namespace api {
 	        this.avatar_url = source["avatar_url"];
 	        this.auto_save_enabled = source["auto_save_enabled"];
 	        this.auto_save_interval_minutes = source["auto_save_interval_minutes"];
+	        this.profiles = this.convertValues(source["profiles"], PenNameProfile);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class Project {
 	    public_id: string;
@@ -603,6 +687,59 @@ export namespace api {
 	        this.lore_collections = this.convertValues(source["lore_collections"], Group);
 	        this.uncategorized_lores = this.convertValues(source["uncategorized_lores"], DocumentItem);
 	        this.asset_collections = this.convertValues(source["asset_collections"], Group);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace main {
+	
+	export class LocalImage {
+	    token: string;
+	    name: string;
+	    preview_url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalImage(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.token = source["token"];
+	        this.name = source["name"];
+	        this.preview_url = source["preview_url"];
+	    }
+	}
+	export class LocalImagePick {
+	    files: LocalImage[];
+	    skipped: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalImagePick(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.files = this.convertValues(source["files"], LocalImage);
+	        this.skipped = source["skipped"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

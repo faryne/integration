@@ -1155,6 +1155,22 @@ func MoveLore(ctx fiber.Ctx) error {
 	return output.Success(row)
 }
 
+// PatchLore 只改設定的狀態／設定集（不寫版本），對應 PatchStory。
+func PatchLore(ctx fiber.Ctx) error {
+	var input storytellerModel.LorePatchRequest
+	if err := ctx.Bind().Body(&input); err != nil {
+		return output.BadRequest(err)
+	}
+	row, err := storyteller.NewService().PatchLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore"), input)
+	if err != nil {
+		if repository.IsRecordNotFound(err) {
+			return output.NotFound(errors.New("storyteller lore not found"))
+		}
+		return output.BadRequest(err)
+	}
+	return output.Success(row)
+}
+
 func DeleteLore(ctx fiber.Ctx) error {
 	if err := storyteller.NewService().DeleteLore(authsession.Session(ctx).UserId, ctx.Params("project"), ctx.Params("lore")); err != nil {
 		return output.BadRequest(err)
