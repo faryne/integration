@@ -64,7 +64,11 @@
       },
       "review": "成果を確認",
       "view": "内容を表示",
-      "kinds": { "story": "ストーリー", "lore": "設定", "asset": "画像" },
+      "kinds": {
+        "story": "ストーリー",
+        "lore": "設定",
+        "asset": "画像"
+      },
       "untitled": "無題の成果",
       "diffTitle": "{{title}}・提案比較",
       "currentVersion": "現在のバージョン",
@@ -92,7 +96,13 @@
     "mcpCopy": "コマンドをコピー",
     "mcpCopied": "コピーしました",
     "mcpRecheck": "再確認",
-    "skillInstalled": "SteamLoom Skill v{{version}} をインストールしました"
+    "skillInstalled": "SteamLoom Skill v{{version}} をインストールしました",
+    "deleteThread": "会話を削除",
+    "deleteTitle": "この Writer の会話を完全に削除しますか？",
+    "deleteDescription": "この会話とローカルのタスク記録がディスクから削除されます。SteamLoom 上のストーリー・設定・アセットには影響しません。",
+    "deleteProviderNote": "Agent provider のセッションは今のところ残ります。今回削除されるのは Writer のローカル記録だけです。",
+    "deleteCancel": "キャンセル",
+    "deleteConfirm": "完全に削除"
   },
   "history": {
     "version": "バージョン",

@@ -64,7 +64,11 @@
       },
       "review": "결과 검토",
       "view": "내용 보기",
-      "kinds": { "story": "스토리", "lore": "설정", "asset": "이미지" },
+      "kinds": {
+        "story": "스토리",
+        "lore": "설정",
+        "asset": "이미지"
+      },
       "untitled": "제목 없는 결과",
       "diffTitle": "{{title}} · 제안 비교",
       "currentVersion": "현재 버전",
@@ -92,7 +96,13 @@
     "mcpCopy": "명령 복사",
     "mcpCopied": "복사함",
     "mcpRecheck": "다시 확인",
-    "skillInstalled": "SteamLoom Skill v{{version}}을(를) 설치했습니다"
+    "skillInstalled": "SteamLoom Skill v{{version}}을(를) 설치했습니다",
+    "deleteThread": "대화 삭제",
+    "deleteTitle": "이 Writer 대화를 영구적으로 삭제할까요?",
+    "deleteDescription": "이 대화와 로컬 작업 기록이 디스크에서 삭제됩니다. SteamLoom의 이야기, 설정, 에셋에는 영향이 없습니다.",
+    "deleteProviderNote": "Agent provider 세션은 당분간 유지되며, 이번에는 Writer의 로컬 기록만 삭제됩니다.",
+    "deleteCancel": "취소",
+    "deleteConfirm": "영구 삭제"
   },
   "history": {
     "version": "버전",

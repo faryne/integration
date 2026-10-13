@@ -64,7 +64,11 @@
       },
       "review": "查看成果",
       "view": "查看内容",
-      "kinds": { "story": "故事", "lore": "设定", "asset": "图片" },
+      "kinds": {
+        "story": "故事",
+        "lore": "设定",
+        "asset": "图片"
+      },
       "untitled": "未命名成果",
       "diffTitle": "{{title}}・提案对比",
       "currentVersion": "当前版本",
@@ -92,7 +96,13 @@
     "mcpCopy": "复制命令",
     "mcpCopied": "已复制",
     "mcpRecheck": "重新检查",
-    "skillInstalled": "已安装 SteamLoom Skill v{{version}}"
+    "skillInstalled": "已安装 SteamLoom Skill v{{version}}",
+    "deleteThread": "删除对话",
+    "deleteTitle": "永久删除这条 Writer 对话？",
+    "deleteDescription": "这条对话与本机任务记录会从硬盘移除。SteamLoom 上的故事、设定与资产不受影响。",
+    "deleteProviderNote": "Agent provider session 目前会保留；这次只删除 Writer 本机记录。",
+    "deleteCancel": "取消",
+    "deleteConfirm": "永久删除"
   },
   "history": {
     "version": "版本",
