@@ -1,10 +1,11 @@
 import StopCircleOutlinedIcon from "@mui/icons-material/StopCircleOutlined";
 import { CircularProgress, IconButton, Paper, Stack, Typography } from "@mui/material";
 import { useTranslation } from "react-i18next";
-import type { AgentTask } from "@writer/lib/backend.ts";
+import type { AgentTask, Workspace } from "@writer/lib/backend.ts";
+import { agentActivityLabel } from "@writer/pages/workspace/agentActivity.ts";
 
 // 同一 thread 只會有一個 running task，其餘維持 queued；不同 thread 不共用這個狀態。
-export function ActiveTaskStatus({ task, queued, canceling, onCancel }: { task: AgentTask; queued: number; canceling: boolean; onCancel: () => void }) {
+export function ActiveTaskStatus({ task, workspace, queued, canceling, onCancel }: { task: AgentTask; workspace: Workspace; queued: number; canceling: boolean; onCancel: () => void }) {
   const { t } = useTranslation();
   return (
     <Stack spacing={0.75} alignItems="flex-start">
@@ -17,7 +18,7 @@ export function ActiveTaskStatus({ task, queued, canceling, onCancel }: { task: 
         <CircularProgress size={13} />
         <Typography sx={{ fontSize: 12.5 }}>
           {task.activity
-            ? t("workspace.chat.taskTool", { tool: task.activity })
+            ? t("workspace.chat.taskTool", { tool: agentActivityLabel(task.activity, task.activity_target, workspace, t) })
             : task.state === "queued" ? t("workspace.chat.taskQueued") : task.state === "applying" ? t("workspace.chat.taskApplying") : t("workspace.chat.taskRunning")}
           {queued > 0 ? ` · ${t("workspace.chat.taskQueuedCount", { count: queued })}` : ""}
         </Typography>

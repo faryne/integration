@@ -94,7 +94,7 @@ func recordTaskStopped(agentID, projectID, threadID, taskID, state, detail, part
 }
 
 // 工具執行紀錄屬於對話歷史，不改變 task/thread 狀態；重開 Writer 後仍能回看 Agent 做過什麼。
-func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName string) error {
+func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName, toolTarget string) error {
 	if toolName == "" {
 		return nil
 	}
@@ -114,6 +114,7 @@ func recordTaskActivity(agentID, projectID, threadID, taskID, typeName, toolName
 	}
 	event := taskEvent(typeName, taskID, text)
 	event.ToolName = toolName
+	event.ToolTarget = toolTarget
 	if err := appendLines(filepath.Join(dir, thread.ID+".jsonl"), []ChatLine{event}); err != nil {
 		return err
 	}

@@ -51,10 +51,13 @@
 .task-detail-head > div { min-width: 0; }
 .task-detail-head .engine-tag { margin: 0; }
 .task-title-edit { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+.task-title-edit h3 { min-width: 280px; padding: 3px 6px; font-size: 14px; font-weight: 500; }
 .task-title-input {
   min-width: 280px; color: var(--text); background: transparent; border: 1px solid transparent; border-radius: 5px;
   padding: 3px 6px; outline: 0; font: 500 14px var(--sans);
 }
+.task-title-edit:not(.editing) .task-title-input, .task-title-edit:not(.editing) .title-save-btn { display: none; }
+.task-title-edit.editing h3, .task-title-edit.editing .title-edit-btn { display: none; }
 .task-title-input:hover { border-color: var(--border-soft); }
 .task-title-input:focus { border-color: var(--accent); background: var(--paper); }
 .task-title-edit .icon-btn { width: 27px; height: 27px; }
@@ -62,6 +65,10 @@
 .chat-tools { position: absolute; top: 10px; right: 16px; z-index: 2; }
 .chat-scroll { flex: 1; overflow: auto; padding: 28px 20px 12px; }
 .thread { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.message { display: flex; flex-direction: column; gap: 4px; }
+.message time { padding: 0 4px; color: var(--faint); font-size: 10.5px; }
+.user-message { align-items: flex-end; }
+.agent-message { align-items: flex-start; }
 .msg-user {
   align-self: flex-end; max-width: 78%; background: var(--paper-3); border: 1px solid var(--border);
   padding: 10px 14px; border-radius: 12px 12px 4px 12px; white-space: pre-wrap;

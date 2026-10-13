@@ -169,7 +169,7 @@
                     <span class="task-state running-state">執行中</span>
                   </button>
                   <button class="task-card selected" data-task="grok" data-action="select-artifact-thread">
-                    <span class="task-provider"><span class="status-dot warn"></span>Grok Builds</span>
+                    <span class="task-provider"><span class="status-dot warn"></span>Grok Build</span>
                     <b>產生角色 A 圖片資產</b>
                     <small>3 張圖片尚未上傳</small>
                     <span class="task-state review-state">待確認</span>
@@ -185,16 +185,16 @@
 
             <div class="chat">
               <div class="task-detail-head">
-                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Builds</span><div class="task-title-edit"><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
+                <div><span class="engine-tag"><span class="status-dot warn"></span>Grok Build</span><div class="task-title-edit"><h3>產生角色 A 圖片資產</h3><input class="task-title-input" value="產生角色 A 圖片資產" maxlength="100" aria-label="任務標題"><button class="icon-btn title-edit-btn" title="編輯標題" data-action="edit-task-title"><svg class="i"><use href="#i-edit"/></svg></button><button class="icon-btn title-save-btn" title="儲存標題" data-action="save-task-title"><svg class="i"><use href="#i-save"/></svg></button></div></div>
                 <span class="task-state review-state">已完成・尚未上傳</span>
                 <button class="icon-btn" title="刪除 thread" data-action="delete-thread"><svg class="i"><use href="#i-delete"/></svg></button>
               </div>
               <div class="chat-scroll">
                 <div class="thread">
-                  <div class="msg-user">幫角色 A 產生三張半身立繪，服裝沿用角色設定，表情分別是平靜、微笑、生氣；透明背景。</div>
+                  <div class="message user-message"><div class="msg-user">幫角色 A 產生三張半身立繪，服裝沿用角色設定，表情分別是平靜、微笑、生氣；透明背景。</div><time>2026-10-13 18:18</time></div>
 
-                  <div class="msg-ai">
-                    <div class="engine-tag"><span class="status-dot"></span>Grok Builds</div>
+                  <div class="message agent-message"><div class="msg-ai">
+                    <div class="engine-tag"><span class="status-dot"></span>Grok Build</div>
                     <div class="tool"><svg class="i ok"><use href="#i-check"/></svg>讀取角色設定〈角色 A〉</div>
                     <div class="tool"><svg class="i ok"><use href="#i-check"/></svg>讀取專案圖片資產與命名規則</div>
                     <div class="tool"><svg class="i ok"><use href="#i-check"/></svg>完成 3 張透明背景 PNG</div>
@@ -203,7 +203,7 @@
                       <button class="btn sm" data-action="review-artifacts">檢視 3 項成果</button>
                     </div>
                     <div class="ai-text"><p>三張半身立繪已完成。我沿用設定集中的短外套與銀色髮夾，只有表情不同；你確認後，Writer 才會允許我呼叫 SteamLoom MCP 上傳到這個專案的資產集。</p></div>
-                  </div>
+                  </div><time>2026-10-13 18:21</time></div>
                 </div>
               </div>
 
@@ -217,11 +217,11 @@
                   <div class="reference-chips" id="reference-chips"></div>
                   <div class="composer-bar">
                     <div class="engine" id="engine">
-                      <button class="engine-btn" data-action="engine-toggle"><span class="status-dot" id="engine-dot"></span><span id="engine-name">Grok Builds</span><svg class="i"><use href="#i-more"/></svg></button>
+                      <button class="engine-btn" data-action="engine-toggle" disabled><span class="status-dot" id="engine-dot"></span><span id="engine-name">Grok Build</span><svg class="i"><use href="#i-more"/></svg></button>
                       <div class="engine-menu">
                         <div class="engine-item" data-action="engine-pick" data-name="Claude Code"><span class="status-dot"></span>Claude Code<small>1 條執行中</small></div>
                         <div class="engine-item" data-action="engine-pick" data-name="Codex"><span class="status-dot"></span>Codex<small>2 條執行中</small></div>
-                        <div class="engine-item" data-action="engine-pick" data-name="Grok Builds"><span class="status-dot"></span>Grok Builds<small>已登入</small></div>
+                        <div class="engine-item" data-action="engine-pick" data-name="Grok Build"><span class="status-dot"></span>Grok Build<small>已登入</small></div>
                       </div>
                     </div>
                     <span class="composer-hint">Writer 只傳引用指示；內容由 Agent 自己透過 MCP 讀取</span>
@@ -340,10 +340,10 @@
 <div class="dlg" id="artifact-confirm">
   <div class="dlg-box artifact-dialog">
     <div class="artifact-title">
-      <div><span class="engine-tag"><span class="status-dot"></span>Grok Builds</span><h3>允許 Grok Builds 上傳 3 張圖片資產？</h3></div>
+      <div><span class="engine-tag"><span class="status-dot"></span>Grok Build</span><h3>允許 Grok Build 上傳 3 張圖片資產？</h3></div>
       <button class="icon-btn" data-action="artifact-close"><svg class="i"><use href="#i-close"/></svg></button>
     </div>
-    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>目前只暫存在這台電腦；確認後 Writer 才會允許 Grok Builds 自行上傳。</p>
+    <p class="artifact-note"><svg class="i"><use href="#i-warn"/></svg>目前只暫存在這台電腦；確認後 Writer 才會允許 Grok Build 自行上傳。</p>
     <div class="artifact-destination"><span>上傳位置</span><b>資產集／角色立繪</b></div>
     <div class="artifact-grid">
       <div class="artifact-item"><div class="fake-image calm"><span>平靜</span></div><b>角色A_平靜.png</b><small>1536 × 2048・2.8 MB</small></div>
@@ -354,7 +354,7 @@
       <button class="btn ghost" data-action="artifact-reject">放棄成果</button>
       <span class="spacer"></span>
       <button class="btn ghost" data-action="artifact-close">稍後確認</button>
-      <button class="btn" data-action="artifact-apply">允許 Grok Builds 上傳</button>
+      <button class="btn" data-action="artifact-apply">允許 Grok Build 上傳</button>
     </div>
   </div>
 </div>
@@ -410,7 +410,7 @@
   <div class="dlg-box">
     <h3>永久刪除這條 Writer thread？</h3>
     <p>會停止目前工作，並從硬碟刪除這條對話、任務紀錄與尚未上傳的成果。SteamLoom 內容不受影響。</p>
-    <p class="provider-note">Grok Builds 的 provider session 會保留；這次只刪 Writer 本機紀錄。</p>
+    <p class="provider-note">Grok Build 的 provider session 會保留；這次只刪 Writer 本機紀錄。</p>
     <div class="dlg-acts">
       <button class="btn ghost" data-action="thread-delete-close">取消</button>
       <button class="btn danger" data-action="thread-delete-confirm">永久刪除</button>

@@ -7,6 +7,8 @@ import { Box, Collapse, IconButton, Paper, Stack, Typography } from "@mui/materi
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLoginCard } from "@writer/pages/workspace/AgentLoginCard.tsx";
+import { agentActivityLabel } from "@writer/pages/workspace/agentActivity.ts";
+import type { Workspace } from "@writer/lib/backend.ts";
 import type { ChatLine } from "@writer/pages/workspace/useChatLog.ts";
 
 const failedTypes = new Set(["task.failed", "apply.failed", "apply.conflict", "apply.interrupted"]);
@@ -19,9 +21,10 @@ function fallbackLoginCommands(agentID: string, events: ChatLine[]) {
   return { claude: ["claude auth login"], codex: ["codex login"], grok: ["grok login"] }[agentID] ?? [];
 }
 
-function eventLabel(event: ChatLine, t: (key: string, values?: Record<string, string>) => string) {
-  if (event.type === "task.tool.started") return t("workspace.chat.activity.toolStarted", { tool: event.tool_name || event.text });
-  if (event.type === "task.tool.completed") return t("workspace.chat.activity.toolCompleted", { tool: event.tool_name || event.text });
+function eventLabel(event: ChatLine, workspace: Workspace, t: (key: string, values?: Record<string, string>) => string) {
+  const tool = agentActivityLabel(event.tool_name || event.text, event.tool_target, workspace, t);
+  if (event.type === "task.tool.started") return t("workspace.chat.activity.toolStarted", { tool });
+  if (event.type === "task.tool.completed") return t("workspace.chat.activity.toolCompleted", { tool });
   const key = {
     "task.queued": "queued",
     "task.started": "started",
@@ -37,7 +40,26 @@ function eventLabel(event: ChatLine, t: (key: string, values?: Record<string, st
   return key ? t(`workspace.chat.activity.${key}`) : event.text;
 }
 
-export function TaskActivityCard({ agentID, events }: { agentID: string; events: ChatLine[] }) {
+// 同一次 tool call 完成後以 completed event 取代 started event，避免每個動作重複顯示兩行。
+function compactToolEvents(events: ChatLine[]) {
+  const timeline: ChatLine[] = [];
+  const pending = new Map<string, number[]>();
+  for (const event of events) {
+    const key = `${event.tool_name ?? ""}:${event.tool_target ?? ""}`;
+    if (event.type === "task.tool.started") {
+      pending.set(key, [...(pending.get(key) ?? []), timeline.length]);
+      timeline.push(event);
+    } else if (event.type === "task.tool.completed" && pending.get(key)?.length) {
+      const positions = pending.get(key)!;
+      timeline[positions.shift()!] = event;
+    } else {
+      timeline.push(event);
+    }
+  }
+  return timeline;
+}
+
+export function TaskActivityCard({ agentID, events, workspace }: { agentID: string; events: ChatLine[]; workspace: Workspace }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(true);
   const last = events[events.length - 1];
@@ -45,6 +67,7 @@ export function TaskActivityCard({ agentID, events }: { agentID: string; events:
   const completed = events.some((event) => completedTypes.has(event.type ?? ""));
   const canceled = last?.type === "task.canceled";
   const commands = [...events].reverse().find((event) => event.action === "agent.login" && event.commands?.length)?.commands ?? fallbackLoginCommands(agentID, events);
+  const timeline = compactToolEvents(events);
 
   return (
     <Paper variant="outlined" sx={{ px: 1.5, py: 1, borderRadius: 2, bgcolor: "action.hover" }}>
@@ -59,10 +82,10 @@ export function TaskActivityCard({ agentID, events }: { agentID: string; events:
       </Stack>
       <Collapse in={expanded}>
         <Stack spacing={0.75} sx={{ mt: 0.75, ml: 0.5, pl: 1.25, borderLeft: 1, borderColor: "divider" }}>
-          {events.map((event, index) => (
+          {timeline.map((event, index) => (
             <Box key={event.event_id ?? `${event.type}:${index}`}>
               <Typography color={failedTypes.has(event.type ?? "") ? "error.main" : "text.secondary"} sx={{ fontSize: 12.5 }}>
-                {eventLabel(event, t)}
+                {eventLabel(event, workspace, t)}
               </Typography>
               {failedTypes.has(event.type ?? "") && event.text && <Typography sx={{ mt: 0.25, fontSize: 12.5, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{event.text}</Typography>}
             </Box>

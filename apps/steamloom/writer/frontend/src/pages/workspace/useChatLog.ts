@@ -13,6 +13,7 @@ export type ChatLine = {
   proposal_id?: string;
   event_id?: string;
   tool_name?: string;
+  tool_target?: string;
   action?: string;
   commands?: string[];
 };
@@ -68,15 +69,6 @@ export function useChatLog(projectID: string, agentID: string) {
     setPage(next);
   }, []);
 
-  const selectThread = async (threadID: string) => {
-    if (!agentID || threadID === page?.current_id) return;
-    try {
-      replace(await backend.ChatSelect(agentID, projectID, threadID));
-    } catch (err) {
-      showError(errorMessage(err));
-    }
-  };
-
   // Task event 只刷新目前正在看的 thread；背景完成不能搶走使用者選取狀態。
   const refreshVisibleThread = useCallback(async (threadID: string) => {
     if (!agentID || current.current?.current_id !== threadID) return;
@@ -90,11 +82,14 @@ export function useChatLog(projectID: string, agentID: string) {
   }, [agentID, projectID, replace, showError]);
 
   const openThread = useCallback(async (threadID: string) => {
-    if (!agentID || !threadID) return;
+    if (!agentID || !threadID) return "error" as const;
     try {
       replace(await backend.ChatSelect(agentID, projectID, threadID));
+      return "opened" as const;
     } catch (err) {
-      showError(errorMessage(err));
+      const message = errorMessage(err);
+      if (!message.includes("找不到這段對話")) showError(message);
+      return message.includes("找不到這段對話") ? "missing" as const : "error" as const;
     }
   }, [agentID, projectID, replace, showError]);
 
@@ -156,5 +151,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  return { page, box, loadingOlder, selectThread, openThread, refreshVisibleThread, startNew, renameCurrent, deleteCurrent, loadOlder };
+  return { page, box, loadingOlder, openThread, refreshVisibleThread, startNew, renameCurrent, deleteCurrent, loadOlder };
 }

@@ -73,7 +73,7 @@ func (c claudeClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	tools := map[string]string{}
+	tools := map[string]streamedTool{}
 	return invoke(ctx, invocation{
 		name:   "Claude Code",
 		bin:    c.bin,
@@ -114,7 +114,7 @@ func parseClaude(stdout string) (Reply, error) {
 	return Reply{SessionID: result.SessionID, Text: result.Result}, nil
 }
 
-func emitClaudeStream(req Request, line string, tools map[string]string) {
+func emitClaudeStream(req Request, line string, tools map[string]streamedTool) {
 	var message struct {
 		Type  string `json:"type"`
 		Event struct {
@@ -126,10 +126,11 @@ func emitClaudeStream(req Request, line string, tools map[string]string) {
 		} `json:"event"`
 		Message struct {
 			Content []struct {
-				Type      string `json:"type"`
-				ID        string `json:"id"`
-				Name      string `json:"name"`
-				ToolUseID string `json:"tool_use_id"`
+				Type      string          `json:"type"`
+				ID        string          `json:"id"`
+				Name      string          `json:"name"`
+				ToolUseID string          `json:"tool_use_id"`
+				Input     json.RawMessage `json:"input"`
 			} `json:"content"`
 		} `json:"message"`
 	}
@@ -143,12 +144,14 @@ func emitClaudeStream(req Request, line string, tools map[string]string) {
 	for _, content := range message.Message.Content {
 		switch content.Type {
 		case "tool_use":
+			tool := streamedTool{Name: content.Name, Target: toolTarget(content.Input)}
 			if content.ID != "" {
-				tools[content.ID] = content.Name
+				tools[content.ID] = tool
 			}
-			req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: content.Name})
+			req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 		case "tool_result":
-			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tools[content.ToolUseID]})
+			tool := tools[content.ToolUseID]
+			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
 }

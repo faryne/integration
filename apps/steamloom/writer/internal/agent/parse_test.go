@@ -33,11 +33,11 @@ func TestParseClaude(t *testing.T) {
 func TestClaudeStreamEmitsDeltaAndToolLifecycle(t *testing.T) {
 	var events []StreamEvent
 	req := Request{emit: func(event StreamEvent) { events = append(events, event) }}
-	tools := map[string]string{}
+	tools := map[string]streamedTool{}
 	emitClaudeStream(req, `{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"一段"}}}`, tools)
-	emitClaudeStream(req, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_get_story"}]}}`, tools)
+	emitClaudeStream(req, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tool-1","name":"storyteller_get_story","input":{"story_public_id":"story-id"}}]}}`, tools)
 	emitClaudeStream(req, `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool-1"}]}}`, tools)
-	if len(events) != 3 || events[0].Text != "一段" || events[1].Type != StreamToolStarted || events[2].ToolName != "storyteller_get_story" {
+	if len(events) != 3 || events[0].Text != "一段" || events[1].Type != StreamToolStarted || events[1].ToolTarget != "story-id" || events[2].ToolName != "storyteller_get_story" || events[2].ToolTarget != "story-id" {
 		t.Fatalf("unexpected Claude stream events: %#v", events)
 	}
 }
@@ -85,20 +85,23 @@ func TestParseGrokCurrentStreamingJSON(t *testing.T) {
 	}
 
 	var events []StreamEvent
-	emitGrokStream(Request{emit: func(event StreamEvent) { events = append(events, event) }}, `{"type":"text","data":"串流片段"}`, map[string]string{})
+	emitGrokStream(Request{emit: func(event StreamEvent) { events = append(events, event) }}, `{"type":"text","data":"串流片段"}`, map[string]streamedTool{})
 	if len(events) != 1 || events[0].Type != StreamAssistantDelta || events[0].Text != "串流片段" {
 		t.Fatalf("unexpected current Grok stream events: %#v", events)
+	}
+	if !grokTerminalEvent(`{"type":"end","sessionId":"grok-session"}`) || grokTerminalEvent(`{"type":"text","data":"還在輸出"}`) {
+		t.Fatal("Grok terminal event detection is incorrect")
 	}
 }
 
 func TestCodexStreamEmitsFinalMessageAndToolLifecycle(t *testing.T) {
 	var events []StreamEvent
 	req := Request{emit: func(event StreamEvent) { events = append(events, event) }}
-	tools := map[string]string{}
-	emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story"}}`, tools)
+	tools := map[string]streamedTool{}
+	emitCodexStream(req, `{"type":"item.started","item":{"id":"tool-1","type":"mcp_tool_call","server":"SteamLoom","tool":"storyteller_get_story","arguments":{"story_public_id":"story-id"}}}`, tools)
 	emitCodexStream(req, `{"type":"item.completed","item":{"id":"tool-1","type":"mcp_tool_call"}}`, tools)
 	emitCodexStream(req, `{"type":"item.completed","item":{"type":"agent_message","text":"完成"}}`, tools)
-	if len(events) != 3 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[1].ToolName != events[0].ToolName || events[2].Text != "完成" {
+	if len(events) != 3 || events[0].ToolName != "SteamLoom.storyteller_get_story" || events[0].ToolTarget != "story-id" || events[1].ToolName != events[0].ToolName || events[1].ToolTarget != "story-id" || events[2].Text != "完成" {
 		t.Fatalf("unexpected Codex stream events: %#v", events)
 	}
 }

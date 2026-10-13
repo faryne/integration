@@ -23,18 +23,25 @@ func (e outputError) Error() string { return e.msg }
 var ansi = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
 
 type invocation struct {
-	name   string
-	bin    string
-	dir    string
-	args   []string
-	stdin  string
-	parse  func(stdout string) (Reply, error)
-	stream func(line string)
-	resume string
+	name     string
+	bin      string
+	dir      string
+	args     []string
+	stdin    string
+	parse    func(stdout string) (Reply, error)
+	stream   func(line string)
+	complete func(line string) bool
+	resume   string
 }
 
 func invoke(ctx context.Context, call invocation) (Reply, error) {
-	stdout, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, call.stream)
+	stdout, runErr := run(ctx, call.name, call.bin, call.dir, call.args, call.stdin, call.stream, call.complete)
+	if ctx.Err() != nil {
+		if runErr != nil {
+			return Reply{}, runErr
+		}
+		return Reply{}, ctx.Err()
+	}
 	reply, parseErr := call.parse(stdout)
 	if parseErr == nil {
 		if reply.SessionID == "" {
@@ -52,7 +59,7 @@ func invoke(ctx context.Context, call invocation) (Reply, error) {
 	return Reply{}, parseErr
 }
 
-func run(ctx context.Context, name, bin, dir string, args []string, stdin string, stream func(string)) (string, error) {
+func run(ctx context.Context, name, bin, dir string, args []string, stdin string, stream func(string), complete func(string) bool) (string, error) {
 	cmd := newCommand(bin, args)
 	cmd.Dir = dir
 	cmd.Env = withWorkDir(dir)
@@ -74,6 +81,7 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 	done := make(chan runResult, 1)
 	go func() {
 		var output strings.Builder
+		terminal := false
 		scanner := bufio.NewScanner(stdout)
 		scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 		for scanner.Scan() {
@@ -83,10 +91,16 @@ func run(ctx context.Context, name, bin, dir string, args []string, stdin string
 			if stream != nil {
 				stream(line)
 			}
+			if !terminal && complete != nil && complete(line) {
+				terminal = true
+				killProcessGroup(cmd)
+			}
 		}
 		scanErr := scanner.Err()
 		waitErr := cmd.Wait()
-		if waitErr == nil {
+		if terminal {
+			waitErr = scanErr
+		} else if waitErr == nil {
 			waitErr = scanErr
 		}
 		done <- runResult{stdout: output.String(), err: waitErr}

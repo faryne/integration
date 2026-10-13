@@ -29,18 +29,19 @@ const (
 
 // Task 是 thread 裡的一輪 Agent 工作；同一 thread 串行，不同 thread 可並行。
 type Task struct {
-	ID         string `json:"id"`
-	AgentID    string `json:"agent_id"`
-	ProjectID  string `json:"project_id"`
-	ThreadID   string `json:"thread_id"`
-	Prompt     string `json:"prompt"`
-	State      string `json:"state"`
-	Error      string `json:"error,omitempty"`
-	CreatedAt  string `json:"created_at"`
-	StartedAt  string `json:"started_at,omitempty"`
-	FinishedAt string `json:"finished_at,omitempty"`
-	Partial    string `json:"partial,omitempty"`
-	Activity   string `json:"activity,omitempty"`
+	ID             string `json:"id"`
+	AgentID        string `json:"agent_id"`
+	ProjectID      string `json:"project_id"`
+	ThreadID       string `json:"thread_id"`
+	Prompt         string `json:"prompt"`
+	State          string `json:"state"`
+	Error          string `json:"error,omitempty"`
+	CreatedAt      string `json:"created_at"`
+	StartedAt      string `json:"started_at,omitempty"`
+	FinishedAt     string `json:"finished_at,omitempty"`
+	Partial        string `json:"partial,omitempty"`
+	Activity       string `json:"activity,omitempty"`
+	ActivityTarget string `json:"activity_target,omitempty"`
 }
 
 type TaskEvent struct {
@@ -253,6 +254,9 @@ func (m *TaskManager) runQueue(key string) {
 				var reply Reply
 				reply, err = m.run(ctx, task.AgentID, req)
 				m.flushProposalStream(managed)
+				if ctx.Err() != nil {
+					err = ctx.Err()
+				}
 				if err == nil && len(reply.proposals) > 0 {
 					assetRoot := ""
 					if proposalHasAsset(reply.proposals) {
@@ -296,6 +300,9 @@ func (m *TaskManager) runApply(ctx context.Context, managed *managedTask) {
 					var reply Reply
 					reply, err = m.run(ctx, task.AgentID, req)
 					m.flushProposalStream(managed)
+					if ctx.Err() != nil {
+						err = ctx.Err()
+					}
 					if err == nil {
 						err = verifyApplyReply(grant, reply, managed.completedTools)
 					}
@@ -429,10 +436,12 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 		managed.task.Partial += stream.Text
 	case StreamToolStarted:
 		managed.task.Activity = stream.ToolName
+		managed.task.ActivityTarget = stream.ToolTarget
 		activityType = EventTaskToolStarted
 	case StreamToolCompleted:
 		if managed.task.Activity == stream.ToolName || stream.ToolName == "" {
 			managed.task.Activity = ""
+			managed.task.ActivityTarget = ""
 		}
 		managed.completedTools = append(managed.completedTools, stream.ToolName)
 		activityType = EventTaskToolFinished
@@ -440,7 +449,7 @@ func (m *TaskManager) stream(managed *managedTask, stream StreamEvent) {
 	task := managed.task
 	m.mu.Unlock()
 	if activityType != "" {
-		_ = recordTaskActivity(task.AgentID, task.ProjectID, task.ThreadID, task.ID, activityType, stream.ToolName)
+		_ = recordTaskActivity(task.AgentID, task.ProjectID, task.ThreadID, task.ID, activityType, stream.ToolName, stream.ToolTarget)
 	}
 	m.emit(TaskEvent{Type: stream.Type, Task: task, Stream: &stream})
 }

@@ -10,6 +10,7 @@ export namespace agent {
 	    content_hash?: string;
 	    event_id?: string;
 	    tool_name?: string;
+	    tool_target?: string;
 	    action?: string;
 	    commands?: string[];
 
@@ -28,6 +29,7 @@ export namespace agent {
 	        this.content_hash = source["content_hash"];
 	        this.event_id = source["event_id"];
 	        this.tool_name = source["tool_name"];
+	        this.tool_target = source["tool_target"];
 	        this.action = source["action"];
 	        this.commands = source["commands"];
 	    }
@@ -390,6 +392,7 @@ export namespace agent {
 	    finished_at?: string;
 	    partial?: string;
 	    activity?: string;
+	    activity_target?: string;
 
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -409,6 +412,7 @@ export namespace agent {
 	        this.finished_at = source["finished_at"];
 	        this.partial = source["partial"];
 	        this.activity = source["activity"];
+	        this.activity_target = source["activity_target"];
 	    }
 	}
 

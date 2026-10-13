@@ -72,7 +72,7 @@ const threadHTML = {
     <div class="ai-text"><p>第一話草稿已完成。你確認 diff 後，我才會恢復這條 thread 並寫入故事。</p></div></div>`,
 };
 const threadMeta = {
-  grok: { provider: "Grok Builds", title: "產生角色 A 圖片資產" },
+  grok: { provider: "Grok Build", title: "產生角色 A 圖片資產" },
   claude: { provider: "Claude Code", title: "撰寫第一話" },
 };
 const selectThread = (key) => {
@@ -81,6 +81,8 @@ const selectThread = (key) => {
   $(".thread").innerHTML = threadHTML[key];
   document.querySelectorAll(".task-card").forEach((card) => card.classList.toggle("selected", card.dataset.task === key));
   $(".task-detail-head .engine-tag").innerHTML = `<span class="status-dot"></span>${threadMeta[key].provider}`;
+  $(".task-title-edit").classList.remove("editing");
+  $(".task-title-edit h3").textContent = threadMeta[key].title;
   $(".task-title-input").value = threadMeta[key].title;
   $(".task-detail-head > .task-state").textContent = $(`.task-card[data-task='${key}'] .task-state`).textContent;
 };
@@ -133,15 +135,21 @@ const actions = {
     el.classList.toggle("open");
     el.nextElementSibling.classList.toggle("collapsed", !el.classList.contains("open"));
   },
+  "edit-task-title": () => {
+    $(".task-title-edit").classList.add("editing");
+    $(".task-title-input").focus();
+  },
   "save-task-title": () => {
     const title = $(".task-title-input").value.trim();
     if (!title) return notify("任務標題不可為空白");
     threadMeta[activeThread].title = title;
+    $(".task-title-edit h3").textContent = title;
+    $(".task-title-edit").classList.remove("editing");
     const card = $(`.task-card[data-task='${activeThread}'] b`);
     if (card) card.textContent = title;
     notify("任務標題已儲存", true);
   },
-  send: () => { body.classList.add("running"); syncMock(); },
+  send: () => { body.classList.add("running"); $(".engine-btn").disabled = true; syncMock(); },
   stop: () => { body.classList.remove("running"); syncMock(); },
   diff: () => tab("history"),
   revert: () => $("#confirm").classList.add("show"),
@@ -161,12 +169,12 @@ const actions = {
     $("#artifact-confirm").classList.remove("show");
     resolveReview();
     finalizeProposalReview("grok");
-    updateTaskState("grok", "上傳中", "已恢復原 Grok Builds thread");
-    appendDecisionEvent("grok", "你已允許 Grok Builds 上傳", "授權 3 張圖片寫入「資產集／角色立繪」。");
-    appendApplyProgress("grok", "Grok Builds", "正在取得上傳位置並寫入 SteamLoom…");
+    updateTaskState("grok", "上傳中", "已恢復原 Grok Build thread");
+    appendDecisionEvent("grok", "你已允許 Grok Build 上傳", "授權 3 張圖片寫入「資產集／角色立繪」。");
+    appendApplyProgress("grok", "Grok Build", "正在取得上傳位置並寫入 SteamLoom…");
     actions.artifactApplyTimer = setTimeout(() => {
       updateTaskState("grok", "已上傳", "3 張圖片已加入資產集");
-      appendApplyResult("grok", "Grok Builds", ["上傳 3 張 PNG", "建立資產紀錄並驗證結果"], "已完成上傳。3 張圖片都在「資產集／角色立繪」，asset ID 與結果已保存到這條 thread。");
+      appendApplyResult("grok", "Grok Build", ["上傳 3 張 PNG", "建立資產紀錄並驗證結果"], "已完成上傳。3 張圖片都在「資產集／角色立繪」，asset ID 與結果已保存到這條 thread。");
     }, 1100);
   },
   "review-text": () => { selectThread("claude"); $("#text-confirm").classList.add("show"); },
@@ -195,9 +203,9 @@ const actions = {
   "thread-delete-confirm": () => {
     $("#thread-delete").classList.remove("show");
     $(".task-card.selected").remove();
-    $(".task-title-input").value = "Thread 已刪除";
+    $(".task-title-edit h3").textContent = "Thread 已刪除";
     $(".task-detail-head > .task-state").textContent = "本機紀錄已移除";
-    notify("Writer thread 與本機暫存成果已永久刪除；Grok Builds session 保留", true);
+    notify("Writer thread 與本機暫存成果已永久刪除；Grok Build session 保留", true);
   },
   "keep-mine": () => { body.classList.remove("conflict"); syncMock(); },
   "reload-latest": () => { body.classList.remove("conflict"); syncMock(); },

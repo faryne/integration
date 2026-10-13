@@ -34,6 +34,7 @@ type ChatLine struct {
 	ContentHash string   `json:"content_hash,omitempty"`
 	EventID     string   `json:"event_id,omitempty"`
 	ToolName    string   `json:"tool_name,omitempty"`
+	ToolTarget  string   `json:"tool_target,omitempty"`
 	Action      string   `json:"action,omitempty"`
 	Commands    []string `json:"commands,omitempty"`
 }

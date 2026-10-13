@@ -18,8 +18,8 @@ func TestTaskManagerPersistsToolActivity(t *testing.T) {
 	}
 	events := make(chan TaskEvent, 20)
 	manager := NewTaskManager(context.Background(), func(_ context.Context, _ string, req Request) (Reply, error) {
-		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: "storyteller_get_story"})
-		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "storyteller_get_story"})
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: "storyteller_get_story", ToolTarget: "story-id"})
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: "storyteller_get_story", ToolTarget: "story-id"})
 		return Reply{Text: "done"}, nil
 	}, func(event TaskEvent) { events <- event })
 	defer manager.Close()
@@ -39,7 +39,7 @@ func TestTaskManagerPersistsToolActivity(t *testing.T) {
 			activity = append(activity, line)
 		}
 	}
-	if len(activity) != 2 || activity[0].ToolName != "storyteller_get_story" || activity[1].ToolName != "storyteller_get_story" {
+	if len(activity) != 2 || activity[0].ToolName != "storyteller_get_story" || activity[0].ToolTarget != "story-id" || activity[1].ToolName != "storyteller_get_story" || activity[1].ToolTarget != "story-id" {
 		t.Fatalf("tool activity was not persisted: %#v", activity)
 	}
 }
@@ -172,7 +172,8 @@ func TestTaskManagerCancelsRunningTask(t *testing.T) {
 		req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: "尚未完成的回答"})
 		started <- struct{}{}
 		<-ctx.Done()
-		return Reply{}, ctx.Err()
+		// 部分 CLI 被中斷時仍會把已取得文字解析成成功 reply；TaskManager 必須以 context 狀態為準。
+		return Reply{Text: "尚未完成的回答"}, nil
 	}, func(event TaskEvent) { events <- event })
 	defer manager.Close()
 
@@ -198,6 +199,11 @@ func TestTaskManagerCancelsRunningTask(t *testing.T) {
 	}
 	if partial := chat.Messages[len(chat.Messages)-2]; partial.Type != EventMessagePartial || partial.Text != "尚未完成的回答" {
 		t.Fatalf("partial answer was not persisted before cancel: %#v", partial)
+	}
+	for _, message := range chat.Messages {
+		if message.Type == EventMessageAssistant {
+			t.Fatalf("canceled reply was also persisted as a completed answer: %#v", chat.Messages)
+		}
 	}
 }
 

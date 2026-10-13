@@ -1,4 +1,4 @@
-import type { AgentProposal, AgentProposalItem } from "@writer/lib/backend.ts";
+import type { AgentProposal, AgentProposalItem, Workspace } from "@writer/lib/backend.ts";
 import { ChatMessage } from "@writer/pages/workspace/ChatMessage.tsx";
 import { ProposalCard } from "@writer/pages/workspace/ProposalCard.tsx";
 import { TaskActivityCard } from "@writer/pages/workspace/TaskActivityCard.tsx";
@@ -14,11 +14,12 @@ interface ChatTranscriptProps {
   messages: ChatLine[];
   start: number;
   proposals: AgentProposal[] | null;
+  workspace: Workspace;
   onReview: (proposal: AgentProposal, item: AgentProposalItem) => void;
 }
 
 // 同一 task 的 queued/tool/complete event 收進一張可收合 timeline，避免狀態只閃一下就消失。
-export function ChatTranscript({ agentID, messages, start, proposals, onReview }: ChatTranscriptProps) {
+export function ChatTranscript({ agentID, messages, start, proposals, workspace, onReview }: ChatTranscriptProps) {
   const activity = new Map<string, { first: number; events: ChatLine[] }>();
   messages.forEach((message, index) => {
     if (!message.task_id || !activityTypes.has(message.type ?? "")) return;
@@ -31,7 +32,7 @@ export function ChatTranscript({ agentID, messages, start, proposals, onReview }
     const key = message.event_id ?? `${start}:${index}`;
     if (message.task_id && activityTypes.has(message.type ?? "")) {
       const group = activity.get(message.task_id);
-      return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} /> : null;
+      return group?.first === index ? <TaskActivityCard key={`activity:${message.task_id}`} agentID={agentID} events={group.events} workspace={workspace} /> : null;
     }
     const proposal = message.type === "proposal.ready" ? proposals?.find((item) => item.id === message.proposal_id) : undefined;
     if (proposal) return <ProposalCard key={key} proposal={proposal} onReview={(item) => onReview(proposal, item)} />;

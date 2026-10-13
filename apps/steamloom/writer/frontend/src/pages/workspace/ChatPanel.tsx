@@ -43,6 +43,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   );
   const activeTask = activeTasks.find((task) => task.state === "applying" || task.state === "running") ?? activeTasks[0];
   const currentTitle = chat.page?.threads.find((thread) => thread.id === chat.page?.current_id)?.title || t("workspace.chat.newThread");
+  const agentLocked = starting || Boolean(pendingThread) || activeTasks.length > 0 || Boolean(chat.page?.messages.length);
 
   const loadThreads = useCallback(async () => {
     try {
@@ -90,13 +91,17 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
     if (!pendingThread || pendingThread.agent_id !== selected || chat.page === null) return;
     const thread = pendingThread;
     setPendingThread(null);
-    void chat.openThread(thread.id);
+    void chat.openThread(thread.id).then((result) => {
+      if (result === "missing") setThreads((current) => current?.filter((item) => item.agent_id !== thread.agent_id || item.id !== thread.id) ?? null);
+    });
   }, [chat.openThread, chat.page, pendingThread, selected]);
 
   const selectProjectThread = (thread: AgentThread) => {
     setDeleteOpen(false);
     if (thread.agent_id === selected) {
-      void chat.openThread(thread.id);
+      void chat.openThread(thread.id).then((result) => {
+        if (result === "missing") setThreads((current) => current?.filter((item) => item.agent_id !== thread.agent_id || item.id !== thread.id) ?? null);
+      });
       return;
     }
     setPendingThread(thread);
@@ -209,10 +214,11 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
               messages={chat.page.messages}
               start={chat.page.start}
               proposals={proposals}
+              workspace={workspace}
               onReview={(proposal, item) => setReview({ proposal, item })}
             />
           )}
-          {activeTask && <ActiveTaskStatus task={activeTask} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
+          {activeTask && <ActiveTaskStatus task={activeTask} workspace={workspace} queued={Math.max(0, activeTasks.length - 1)} canceling={canceling === activeTask.id} onCancel={() => void cancelTask()} />}
         </Stack>
         </Box>
         <Box sx={{ px: 2.5, pt: 1.25, pb: 2.25 }}>
@@ -229,7 +235,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
               size="small"
               displayEmpty
               value={selected}
-              disabled={!agents?.length}
+              disabled={!agents?.length || agentLocked}
               onChange={(e) => {
                 setPendingThread(null);
                 setAgentID(e.target.value);

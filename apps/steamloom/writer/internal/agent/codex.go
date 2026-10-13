@@ -112,7 +112,7 @@ func (c codexClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil {
 		return Reply{}, err
 	}
-	tools := map[string]string{}
+	tools := map[string]streamedTool{}
 	return invoke(ctx, invocation{
 		name:   "Codex",
 		bin:    c.bin,
@@ -190,15 +190,16 @@ func codexMessage(raw json.RawMessage, fallback string) string {
 	return fallback
 }
 
-func emitCodexStream(req Request, line string, tools map[string]string) {
+func emitCodexStream(req Request, line string, tools map[string]streamedTool) {
 	var event struct {
 		Type string `json:"type"`
 		Item struct {
-			ID     string `json:"id"`
-			Type   string `json:"type"`
-			Text   string `json:"text"`
-			Server string `json:"server"`
-			Tool   string `json:"tool"`
+			ID        string          `json:"id"`
+			Type      string          `json:"type"`
+			Text      string          `json:"text"`
+			Server    string          `json:"server"`
+			Tool      string          `json:"tool"`
+			Arguments json.RawMessage `json:"arguments"`
 		} `json:"item"`
 	}
 	if json.Unmarshal([]byte(line), &event) != nil {
@@ -213,12 +214,14 @@ func emitCodexStream(req Request, line string, tools map[string]string) {
 	}
 	name := strings.Trim(strings.Join([]string{event.Item.Server, event.Item.Tool}, "."), ".")
 	if event.Type == "item.started" {
-		tools[event.Item.ID] = name
-		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: name})
+		tool := streamedTool{Name: name, Target: toolTarget(event.Item.Arguments)}
+		tools[event.Item.ID] = tool
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 	} else if event.Type == "item.completed" {
+		tool := tools[event.Item.ID]
 		if name == "" {
-			name = tools[event.Item.ID]
+			name = tool.Name
 		}
-		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: name})
+		req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: name, ToolTarget: tool.Target})
 	}
 }

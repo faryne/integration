@@ -98,19 +98,20 @@ func (c grokClient) Ask(ctx context.Context, req Request) (Reply, error) {
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return Reply{}, errors.New("無法建立提問暫存檔")
 	}
-	tools := map[string]string{}
+	tools := map[string]streamedTool{}
 	args, err := grokRequestArgs(req, dir, promptFile)
 	if err != nil {
 		return Reply{}, err
 	}
 	return invoke(ctx, invocation{
-		name:   "Grok Build",
-		bin:    c.bin,
-		dir:    dir,
-		args:   args,
-		parse:  parseGrok,
-		stream: func(line string) { emitGrokStream(req, line, tools) },
-		resume: req.SessionID,
+		name:     "Grok Build",
+		bin:      c.bin,
+		dir:      dir,
+		args:     args,
+		parse:    parseGrok,
+		stream:   func(line string) { emitGrokStream(req, line, tools) },
+		complete: grokTerminalEvent,
+		resume:   req.SessionID,
 	})
 }
 
@@ -180,10 +181,13 @@ type grokStreamResult struct {
 		Content       struct {
 			Text string `json:"text"`
 		} `json:"content"`
+		Input     json.RawMessage `json:"input"`
+		Arguments json.RawMessage `json:"arguments"`
+		RawInput  json.RawMessage `json:"rawInput"`
 	} `json:"update"`
 }
 
-func emitGrokStream(req Request, line string, tools map[string]string) {
+func emitGrokStream(req Request, line string, tools map[string]streamedTool) {
 	var result grokStreamResult
 	if json.Unmarshal([]byte(line), &result) != nil {
 		return
@@ -200,11 +204,18 @@ func emitGrokStream(req Request, line string, tools map[string]string) {
 			req.emitStream(StreamEvent{Type: StreamAssistantDelta, Text: result.Update.Content.Text})
 		}
 	case "tool_call":
-		tools[result.Update.ToolCallID] = result.Update.Title
-		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: result.Update.Title})
+		tool := streamedTool{Name: result.Update.Title, Target: toolTarget(result.Update.Input, result.Update.Arguments, result.Update.RawInput)}
+		tools[result.Update.ToolCallID] = tool
+		req.emitStream(StreamEvent{Type: StreamToolStarted, ToolName: tool.Name, ToolTarget: tool.Target})
 	case "tool_call_update":
 		if result.Update.Status == "completed" || result.Update.Status == "failed" {
-			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tools[result.Update.ToolCallID]})
+			tool := tools[result.Update.ToolCallID]
+			req.emitStream(StreamEvent{Type: StreamToolCompleted, ToolName: tool.Name, ToolTarget: tool.Target})
 		}
 	}
+}
+
+func grokTerminalEvent(line string) bool {
+	var result grokResult
+	return json.Unmarshal([]byte(line), &result) == nil && (result.Type == "end" || result.Type == "error")
 }
