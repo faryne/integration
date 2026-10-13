@@ -149,6 +149,10 @@ const actions = {
     if (card) card.textContent = title;
     notify("任務標題已儲存", true);
   },
+  "cancel-task-title": () => {
+    $(".task-title-input").value = threadMeta[activeThread].title;
+    $(".task-title-edit").classList.remove("editing");
+  },
   send: () => { body.classList.add("running"); $(".engine-btn").disabled = true; syncMock(); },
   stop: () => { body.classList.remove("running"); syncMock(); },
   diff: () => tab("history"),
@@ -198,13 +202,25 @@ const actions = {
       appendApplyResult("claude", "Claude Code", ["寫入第一話", "讀回並驗證版本 #31"], "第一話已寫入完成，建立版本 #31。你可以在編輯歷史比對或還原這個版本。");
     }, 1100);
   },
-  "delete-thread": () => $("#thread-delete").classList.add("show"),
+  "delete-task": (el) => {
+    actions.deleteTaskCard = el.closest(".task-card");
+    $("#thread-delete").classList.add("show");
+  },
+  "delete-thread": () => {
+    actions.deleteTaskCard = $(".task-card.selected");
+    $("#thread-delete").classList.add("show");
+  },
   "thread-delete-close": () => $("#thread-delete").classList.remove("show"),
   "thread-delete-confirm": () => {
     $("#thread-delete").classList.remove("show");
-    $(".task-card.selected").remove();
-    $(".task-title-edit h3").textContent = "Thread 已刪除";
-    $(".task-detail-head > .task-state").textContent = "本機紀錄已移除";
+    const card = actions.deleteTaskCard;
+    const selected = card?.classList.contains("selected");
+    card?.remove();
+    actions.deleteTaskCard = null;
+    if (selected) {
+      $(".task-title-edit h3").textContent = "Task 已刪除";
+      $(".task-detail-head > .task-state").textContent = "本機紀錄已移除";
+    }
     notify("Writer thread 與本機暫存成果已永久刪除；Grok Build session 保留", true);
   },
   "keep-mine": () => { body.classList.remove("conflict"); syncMock(); },
@@ -234,6 +250,11 @@ document.addEventListener("click", (e) => {
 });
 
 prompt.addEventListener("input", () => { renderPromptReferences(); syncMentionOptions(); });
+prompt.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+  event.preventDefault();
+  if (prompt.value.trim()) actions.send();
+});
 prompt.addEventListener("click", syncMentionOptions);
 prompt.addEventListener("keyup", syncMentionOptions);
 prompt.addEventListener("scroll", () => { $(".composer-highlight").scrollTop = prompt.scrollTop; });
@@ -251,7 +272,10 @@ $("#task-search").addEventListener("input", (event) => {
     if (query && matches > 0) { head.classList.add("open"); group.classList.remove("collapsed"); }
   });
 });
-$(".task-title-input").addEventListener("keydown", (event) => { if (event.key === "Enter") actions["save-task-title"](); });
+$(".task-title-input").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") actions["save-task-title"]();
+  else if (event.key === "Escape") actions["cancel-task-title"]();
+});
 
 renderPromptReferences();
 syncMock();

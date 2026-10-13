@@ -24,6 +24,7 @@
       "lore": "设定"
     },
     "send": "发送",
+    "submitHint": "Enter 发送・Shift + Enter 换行",
     "detecting": "正在检测本机的 AI Agent……",
     "noAgent": "这台电脑没有安装 Claude Code、Codex 或 Grok Build",
     "sending": "正在等待回答……",
@@ -39,6 +40,7 @@
     "threadTitle": "任务标题",
     "editThreadTitle": "编辑任务标题",
     "saveThreadTitle": "保存任务标题",
+    "cancelThreadTitle": "取消",
     "dateGroups": {
       "today": "今天",
       "yesterday": "昨天",

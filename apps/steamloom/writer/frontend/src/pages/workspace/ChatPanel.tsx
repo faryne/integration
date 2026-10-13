@@ -1,4 +1,3 @@
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import SendIcon from "@mui/icons-material/Send";
 import { Box, Button, CircularProgress, IconButton, MenuItem, Paper, Select, Stack, Typography } from "@mui/material";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,7 +28,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   const [tasks, setTasks] = useState<Record<string, AgentTask>>({});
   const [threads, setThreads] = useState<AgentThread[] | null>(null);
   const [pendingThread, setPendingThread] = useState<AgentThread | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AgentThread | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [proposals, setProposals] = useState<AgentProposal[] | null>(null);
   const [proposalRevision, setProposalRevision] = useState(0);
@@ -97,7 +96,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   }, [chat.openThread, chat.page, pendingThread, selected]);
 
   const selectProjectThread = (thread: AgentThread) => {
-    setDeleteOpen(false);
+    setDeleteTarget(null);
     if (thread.agent_id === selected) {
       void chat.openThread(thread.id).then((result) => {
         if (result === "missing") setThreads((current) => current?.filter((item) => item.agent_id !== thread.agent_id || item.id !== thread.id) ?? null);
@@ -157,9 +156,22 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
   };
 
   const deleteThread = async () => {
+    if (!deleteTarget) return;
     setDeleting(true);
-    if (await chat.deleteCurrent()) {
-      setDeleteOpen(false);
+    let deleted = false;
+    if (deleteTarget.agent_id === selected) {
+      deleted = await chat.deleteThread(deleteTarget.id);
+    } else {
+      try {
+        await backend.ChatDelete(deleteTarget.agent_id, projectID, deleteTarget.id);
+        deleted = true;
+      } catch (err) {
+        showError(errorMessage(err));
+      }
+    }
+    if (deleted) {
+      setPendingThread((current) => current?.id === deleteTarget.id && current.agent_id === deleteTarget.agent_id ? null : current);
+      setDeleteTarget(null);
       await loadThreads();
     }
     setDeleting(false);
@@ -190,6 +202,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         selectedThread={chat.page?.current_id ?? ""}
         canCreate={Boolean(selected && chat.page !== null)}
         onSelect={selectProjectThread}
+        onDelete={setDeleteTarget}
         onNew={() => void startNew()}
       />
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
@@ -253,15 +266,6 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
                 </MenuItem>
               ))}
             </Select>
-            <IconButton
-              size="small"
-              color="error"
-              disabled={!chat.page?.current_id || activeTasks.length > 0}
-              aria-label={t("workspace.chat.deleteThread")}
-              onClick={() => setDeleteOpen(true)}
-            >
-              <DeleteOutlineIcon fontSize="small" />
-            </IconButton>
             <Box sx={{ flex: 1 }} />
             <IconButton color="primary" disabled={!selected || starting || chat.page === null || !draft.trim()} aria-label={t("workspace.chat.send")} onClick={() => void send()}>
               {starting ? <CircularProgress size={16} /> : <SendIcon fontSize="small" />}
@@ -270,7 +274,7 @@ export function ChatPanel({ projectID, projectName, workspace }: { projectID: st
         </Paper>
         </Box>
       </Box>
-      <ThreadDeleteDialog open={deleteOpen} deleting={deleting} onClose={() => setDeleteOpen(false)} onDelete={() => void deleteThread()} />
+      <ThreadDeleteDialog open={deleteTarget !== null} deleting={deleting} onClose={() => setDeleteTarget(null)} onDelete={() => void deleteThread()} />
       <ProposalReviewDialog
         agentID={selected}
         projectID={projectID}

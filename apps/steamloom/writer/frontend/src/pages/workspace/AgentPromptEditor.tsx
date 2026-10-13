@@ -1,4 +1,4 @@
-import { Box, Button, Chip, Stack, TextField } from "@mui/material";
+import { Box, Button, Chip, Stack, TextField, Typography } from "@mui/material";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -43,6 +43,7 @@ export function AgentPromptEditor({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [selection, setSelection] = useState<PromptSelection>({ start: 0, end: 0 });
   const [composing, setComposing] = useState(false);
+  const [focused, setFocused] = useState(false);
   const stories = useMemo(() => workspaceDocuments(workspace, "story"), [workspace]);
   const lores = useMemo(() => workspaceDocuments(workspace, "lore"), [workspace]);
   const storyQuery = currentStoryMentionQuery(value, selection.start, selection.end);
@@ -93,6 +94,11 @@ export function AgentPromptEditor({
             onChange(event.target.value);
             syncSelection(event.target);
           }}
+          onFocus={(event) => {
+            setFocused(true);
+            syncSelection(event.target as HTMLTextAreaElement);
+          }}
+          onBlur={() => setFocused(false)}
           onSelect={(event) => syncSelection(event.target as HTMLTextAreaElement)}
           onKeyUp={(event) => syncSelection(event.target as HTMLTextAreaElement)}
           onMouseUp={(event) => syncSelection(event.target as HTMLTextAreaElement)}
@@ -102,7 +108,7 @@ export function AgentPromptEditor({
             syncSelection(event.target as HTMLTextAreaElement);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+            if (event.key === "Enter" && !event.shiftKey && !composing && !event.nativeEvent.isComposing) {
               event.preventDefault();
               onSubmit();
             }
@@ -115,7 +121,7 @@ export function AgentPromptEditor({
                 zIndex: 1,
                 fontSize: 14,
                 color: composing ? "text.primary" : "transparent",
-                caretColor: "text.primary",
+                caretColor: composing ? "text.primary" : "transparent",
                 "& textarea::placeholder": { color: "text.secondary", opacity: 1 },
               },
             },
@@ -126,9 +132,14 @@ export function AgentPromptEditor({
             text={value}
             textareaRef={textareaRef}
             includeCurrentReferences={false}
+            caretOffset={selection.start}
+            showCaret={focused && selection.start === selection.end}
           />
         )}
       </Box>
+      <Typography color="text.secondary" sx={{ mt: 0.25, fontSize: 11.5 }}>
+        {t("workspace.chat.submitHint")}
+      </Typography>
       {suggestions.length > 0 && (
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
           {suggestions.map((item) => (

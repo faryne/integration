@@ -116,10 +116,10 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  const deleteCurrent = async () => {
-    if (!agentID || !page?.current_id) return false;
+  const deleteThread = async (threadID: string) => {
+    if (!agentID || !threadID) return false;
     try {
-      replace(await backend.ChatDelete(agentID, projectID, page.current_id));
+      replace(await backend.ChatDelete(agentID, projectID, threadID));
       return true;
     } catch (err) {
       showError(errorMessage(err));
@@ -151,5 +151,5 @@ export function useChatLog(projectID: string, agentID: string) {
     }
   };
 
-  return { page, box, loadingOlder, openThread, refreshVisibleThread, startNew, renameCurrent, deleteCurrent, loadOlder };
+  return { page, box, loadingOlder, openThread, refreshVisibleThread, startNew, renameCurrent, deleteThread, loadOlder };
 }
